@@ -28,6 +28,7 @@ export class AwsSqs implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS SQS',
 		name: 'awsSqs',
+		schemaPath: 'Aws/SQS',
 		icon: 'file:sqs.svg',
 		group: ['output'],
 		version: 1,

@@ -27,7 +27,9 @@ test.describe(
 			}
 		});
 
-		test('form triggers are served on /form and return 404 on /webhook', async ({ api }) => {
+		test('form triggers are served on /form and return 404 on /webhook @engine:v2', async ({
+			api,
+		}) => {
 			const webhookId = nanoid();
 			const workflow: Partial<IWorkflowBase> = {
 				name: `Form Endpoint Test ${nanoid()}`,

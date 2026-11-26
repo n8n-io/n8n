@@ -1,0 +1,55 @@
+{
+	"properties": {
+		"column_values": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"text": {
+						"type": ["null", "string"]
+					},
+					"type": {
+						"type": "string"
+					},
+					"value": {
+						"type": ["null", "string"]
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"group": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"title": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"state": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

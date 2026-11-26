@@ -13,7 +13,11 @@ import {
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import { ResourceTracker, type CleanupReport } from './resource-tracker';
-import { assertEngineSupported, createEngineTlsFiles } from './services/engine';
+import {
+	assertEngineSupported,
+	createEngineTlsFiles,
+	ENGINE_SHARED_STORAGE_PATH,
+} from './services/engine';
 import type { LoadBalancerResult } from './services/load-balancer';
 import {
 	createN8NInstances,
@@ -52,6 +56,7 @@ export interface ReplaceN8NOptions {
 
 export interface N8NStack {
 	attemptId: string;
+	/** Includes the trailing slash when the stack serves n8n under a subpath. */
 	baseUrl: string;
 	projectName: string;
 	stop: () => Promise<void>;
@@ -72,8 +77,8 @@ export interface N8NStack {
 	 * image, keeping the service containers, network, host port, and
 	 * readiness/logging/cleanup behavior. Data survives the swap when it lives
 	 * outside the replaced container: in the postgres service, or in a
-	 * `userHomeHostDir` mount (the sqlite file and user folder). Single-main
-	 * stacks only — the substrate of the upgrade/downgrade cycles.
+	 * `userHomeHostDir` mount (the sqlite file and user folder). This requires
+	 * a single main without a load balancer.
 	 */
 	replaceN8N: (options: ReplaceN8NOptions) => Promise<void>;
 	/** The database engine v2 writes to. Present only when the stack runs engine v2. */
@@ -149,6 +154,47 @@ function groupByDependencyLevel(serviceNames: ServiceName[]): ServiceName[][] {
 	return levels;
 }
 
+/** Lets the host remove nested directories that n8n wrote. */
+async function openSharedStorage(
+	storageContainers: Iterable<StartedTestContainer>,
+	signal: AbortSignal,
+): Promise<void> {
+	for (const container of storageContainers) {
+		if (signal.aborted) return;
+		try {
+			// The mount root is already writable and can belong to a different user.
+			const { exitCode } = await container.exec([
+				'find',
+				ENGINE_SHARED_STORAGE_PATH,
+				'-mindepth',
+				'1',
+				'-type',
+				'd',
+				'-exec',
+				'chmod',
+				'a+rwx',
+				'{}',
+				'+',
+			]);
+			if (exitCode === 0) return;
+		} catch {
+			// The container is stopped or gone: try the next one.
+		}
+	}
+}
+
+function normalizePathPrefix(value: string): string {
+	const prefix = value.replace(/\/$/, '');
+	const segments = prefix.slice(1).split('/');
+	if (
+		!prefix.startsWith('/') ||
+		segments.some((segment) => !/^[\w.~-]+$/.test(segment) || segment === '.' || segment === '..')
+	) {
+		throw new Error('pathPrefix must be an absolute subpath, such as "/n8n/".');
+	}
+	return `${prefix}/`;
+}
+
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
 	const {
 		mains = 1,
@@ -156,7 +202,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		webhooks = 0,
 		postgres: usePostgresConfig = false,
 		engine,
+		sharedStorage,
 		env = {},
+		unsetEnv,
+		files: stackFiles,
 		projectName,
 		resourceQuota,
 		workerResourceQuota,
@@ -168,6 +217,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		image,
 		userHomeHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 	} = config;
 
@@ -177,11 +227,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	const log = createElapsedLogger('stack');
 
+	const pathPrefix =
+		config.pathPrefix === undefined ? undefined : normalizePathPrefix(config.pathPrefix);
 	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
-	const needsLoadBalancer = mains > 1 || webhooks > 0;
+	const needsLoadBalancer = mains > 1 || webhooks > 0 || pathPrefix !== undefined;
 	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
 
-	assertEngineSupported({ engine, mains, isQueueMode, usePostgres });
+	assertEngineSupported({ engine, mains, workers, webhooks, usePostgres });
 
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	// Derived from the project name, not random, so a rerun with the same name
@@ -192,7 +244,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			: undefined;
 	// Once per stack, like the secret, so a replaced main still trusts the engine.
 	const engineTlsFiles =
-		engine === 'container' ? createEngineTlsFiles(uniqueProjectName) : undefined;
+		engine === 'container' ? createEngineTlsFiles(uniqueProjectName, mains) : undefined;
 
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
@@ -212,6 +264,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	}
 
 	const containers: StartedTestContainer[] = [];
+	const registerContainer = (container: StartedTestContainer) => {
+		resources.trackContainer(container);
+		if (!containers.includes(container)) containers.push(container);
+	};
 	const serviceResults: Record<string, ServiceResult> = {};
 	const hostedServiceEnv: Partial<Record<ServiceName, Record<string, string>>> = {};
 	let environment: Record<string, string> = {};
@@ -258,7 +314,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	try {
 		const ctx: StartContext = {
-			config: { ...config, postgres: usePostgres },
+			config: { ...config, postgres: usePostgres, pathPrefix },
 			projectName: uniqueProjectName,
 			mains,
 			workers,
@@ -273,10 +329,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				main: allocatedMainPort,
 				loadBalancer: allocatedLbPort,
 			},
-			registerContainer: (container) => {
-				resources.trackContainer(container);
-				if (!containers.includes(container)) containers.push(container);
-			},
+			registerContainer,
 			registerPath: (path) => resources.trackPath(path),
 		};
 
@@ -334,8 +387,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						? (result.containers as StartedTestContainer[])
 						: [result.container];
 				for (const container of serviceContainers) {
-					resources.trackContainer(container);
-					if (!containers.includes(container)) containers.push(container);
+					registerContainer(container);
 				}
 				telemetry.recordService(name, Math.round(performance.now() - serviceStart));
 				telemetry.finishStage();
@@ -378,19 +430,29 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// Step 2: Start n8n (main 1 first for DB setup, then rest in parallel)
 		const lbResult = serviceResults.loadBalancer as LoadBalancerResult | undefined;
 		const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`;
+		if (pathPrefix) {
+			environment.N8N_PATH = pathPrefix;
+			environment.N8N_EDITOR_BASE_URL = baseUrl;
+			// Keep the prefix if a tunnel supplies the public webhook URL.
+			environment.WEBHOOK_URL = new URL(pathPrefix, environment.WEBHOOK_URL ?? baseUrl).href;
+		}
 
 		const filesToMount: FileToMount[] = Object.values(serviceResults).flatMap((result) => {
 			const meta = result.meta as { n8nFilesToMount?: FileToMount[] } | undefined;
 			return meta?.n8nFilesToMount ?? [];
 		});
 
-		// The main and the engine container share one binary data store, so a
-		// file one plane stores is read by the other. Deleted with the stack.
 		let binaryDataHostDir: string | undefined;
-		if (engine === 'container') {
+		const storageContainers = new Set<StartedTestContainer>();
+		if (sharedStorage || engine === 'container') {
 			binaryDataHostDir = mkdtempSync(join(tmpdir(), `${uniqueProjectName}-binary-data-`));
 			resources.trackPath(binaryDataHostDir);
+			resources.beforeStop(async (signal) => await openSharedStorage(storageContainers, signal));
 		}
+		const registerN8NContainer = (container: StartedTestContainer) => {
+			registerContainer(container);
+			if (binaryDataHostDir) storageContainers.add(container);
+		};
 
 		// Earliest log line the readiness gate below may accept
 		const n8nStartedAtSeconds = Math.floor(Date.now() / 1000);
@@ -408,6 +470,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				network,
 				serviceEnvironment: environment,
 				userEnvironment: env,
+				unsetEnv,
 				usePostgres,
 				engine,
 				engineAuthSecret,
@@ -418,16 +481,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				workerResourceQuota,
 				webhookResourceQuota,
 				filesToMount,
+				stackFiles,
 				coverageHostDir,
-				registerContainer: (container) => {
-					resources.trackContainer(container);
-					if (!containers.includes(container)) containers.push(container);
-				},
+				registerContainer: registerN8NContainer,
 				startupDeadline,
 				image,
 				userHomeHostDir,
 				binaryDataHostDir,
 				user,
+				n8nContainer,
 				startupTimeoutMs,
 			});
 			startupDeadline.throwIfAborted();
@@ -449,7 +511,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			try {
 				await pollContainerHttpEndpoint(
 					lbResult.container,
-					'/healthz/readiness',
+					new URL('healthz/readiness', baseUrl).pathname,
 					startupDeadline.remainingMs,
 					startupDeadline.signal,
 				);
@@ -638,12 +700,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			},
 			async replaceN8N(options: ReplaceN8NOptions): Promise<void> {
 				if (mains > 1 || needsLoadBalancer) {
-					throw new Error('replaceN8N supports single-main stacks only');
+					throw new Error('replaceN8N requires a single main without a load balancer');
 				}
 				const current = containers.find((c) => c.getName().endsWith('-n8n'));
 				if (current) {
 					await current.stop();
 					containers.splice(containers.indexOf(current), 1);
+					storageContainers.delete(current);
 				}
 				const endAcquisition = resources.beginAcquisition();
 				const replacementDeadline = new StartupDeadline(startupDeadlineMs);
@@ -655,6 +718,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						network,
 						serviceEnvironment: environment,
 						userEnvironment: { ...env, ...options.env },
+						unsetEnv,
 						usePostgres,
 						// Without this the replacement main drops the engine-v2 module, and a
 						// workflow that still asks for engine v2 fails far from the cause.
@@ -669,17 +733,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						allocatedPort: allocatedMainPort,
 						resourceQuota,
 						filesToMount,
+						stackFiles,
 						coverageHostDir,
-						registerContainer: (container) => {
-							resources.trackContainer(container);
-							if (!containers.includes(container)) containers.push(container);
-						},
+						registerContainer: registerN8NContainer,
 						startupDeadline: replacementDeadline,
 						image: options.image,
 						userHomeHostDir,
-						// The kept engine container still writes here.
+						// Keep the storage directory across the swap.
 						binaryDataHostDir,
 						user,
+						n8nContainer,
 						startupTimeoutMs,
 					});
 				} finally {

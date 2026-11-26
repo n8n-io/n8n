@@ -4,6 +4,8 @@ import type { AgentExecutionStatus } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
@@ -36,17 +38,15 @@ describe('n8n Chat page HTTP routes', () => {
 		} = {},
 	) {
 		const agentRepository = Container.get(AgentRepository);
-		const agent = await agentRepository.save(
-			agentRepository.create({
-				id: randomUUID(),
-				name,
-				projectId,
-				schema: { name, model, instructions: 'Help' },
-				integrations: [chatIntegration],
-				tools: {},
-				versionId: randomUUID(),
-			}),
-		);
+		const agent = await createAgent({
+			id: randomUUID(),
+			name,
+			projectId,
+			schema: { name, model, instructions: 'Help' },
+			integrations: [chatIntegration],
+			tools: {},
+			versionId: randomUUID(),
+		});
 		const versionId = randomUUID();
 		await Container.get(AgentHistoryRepository).saveVersion(
 			{
@@ -238,6 +238,38 @@ describe('n8n Chat page HTTP routes', () => {
 			data: [{ id: thread.id, title: 'My chat', agent: { id: agent.id, projectId: project.id } }],
 			nextCursor: null,
 		});
+	});
+
+	it('pages through threads with the same update time', async () => {
+		const { chatUser, project, agent } = await setup();
+		const first = await createN8nChatThread(agent.id, project.id, chatUser.id);
+		const second = await createN8nChatThread(agent.id, project.id, chatUser.id);
+		const [lowerId, higherId] = [first.id, second.id].sort();
+		const threads = Container.get(AgentExecutionThreadRepository);
+		for (const [id, timestamp] of [
+			[lowerId, '2026-01-01 00:00:00.000'],
+			[higherId, '2026-01-01 00:00:00'],
+		]) {
+			await threads
+				.createQueryBuilder()
+				.update()
+				.set({ updatedAt: () => ':timestamp' })
+				.where('id = :id', { id, timestamp })
+				.execute();
+		}
+		const client = server.authAgentFor(chatUser);
+		const url = '/agents/v2/n8n-chat/threads';
+
+		const page = await client.get(url).query({ limit: '1' }).expect(200);
+		expect(page.body).toMatchObject({ data: [{ id: higherId }], nextCursor: expect.any(String) });
+		const next = await client
+			.get(url)
+			.query({ limit: '1', cursor: page.body.nextCursor })
+			.expect(200);
+		expect(next.body).toMatchObject({ data: [{ id: lowerId }], nextCursor: null });
+
+		const legacy = await client.get(url).query({ cursor: '2026-01-01T00:00:00.000Z' }).expect(200);
+		expect(legacy.body).toMatchObject({ data: [], nextCursor: null });
 	});
 
 	it('narrows the thread list to one agent via the agentId filter', async () => {

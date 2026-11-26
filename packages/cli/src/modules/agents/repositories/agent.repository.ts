@@ -18,13 +18,14 @@ import {
 	FolderRepository,
 	chunkIds,
 	escapeLike,
+	isUniqueConstraintError,
 	LIKE_ESCAPE_CLAUSE,
 	ServiceAccountRepository,
 	TransactionRunner,
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from '@n8n/errors';
+import { ConflictError, UnexpectedError } from '@n8n/errors';
 import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -35,6 +36,7 @@ import {
 	type ProjectAgent,
 	type ProjectScoped,
 } from '../entities/agent.entity';
+import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { AgentDefinitionMetadata } from '../utils/agent-definition';
 
 export interface AgentListResult {
@@ -90,12 +92,49 @@ export type AgentSummaryFilters = {
 export class AgentRepository extends BaseRepository<Agent> {
 	constructor(
 		dataSource: DataSource,
-		transactionRunner: TransactionRunner,
+		private readonly transactions: TransactionRunner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly serviceAccountRepository: ServiceAccountRepository,
 	) {
-		super(Agent, dataSource.manager, transactionRunner);
+		super(Agent, dataSource.manager, transactions);
+	}
+
+	async removeAfterApprovalCleanup(
+		id: string,
+		projectId: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.transactions.run(ctx, async (ctx) => {
+			const manager = this.managerFor(ctx);
+			// SQLite needs a write before the read. Preserve the authored revision timestamp.
+			await manager.update(
+				Agent,
+				{ id, projectId, scope: projectScope },
+				{ updatedAt: () => '"updatedAt"' },
+			);
+			const agent = await manager.findOne(Agent, {
+				where: { id, projectId, scope: projectScope },
+				lock:
+					manager.connection.options.type === 'postgres'
+						? { mode: 'pessimistic_write' }
+						: undefined,
+			});
+			if (!agent) return;
+			if (
+				agent.approvalWorkflowId ||
+				(await manager.existsBy(AgentBackgroundJob, {
+					parentAgentId: id,
+					kind: 'approval',
+					notifiedAt: IsNull(),
+				}))
+			)
+				throw new ConflictError(
+					'An Agent approval started during cleanup. Stop its session and retry deletion.',
+				);
+			// The row lock also serializes new job references with the final delete.
+			await manager.remove(agent);
+		});
 	}
 
 	/** Whether tags are readable on agents: reads join `agent.tags` only then. */
@@ -745,22 +784,44 @@ export class AgentRepository extends BaseRepository<Agent> {
 	}
 
 	/**
-	 * Creates or renames the row of a code-defined instance agent. The row
-	 * anchors threads, executions and queue items through foreign keys. It
-	 * stores no config, because the runtime comes from code.
+	 * Inserts the row of a code-defined instance agent. The row anchors threads,
+	 * executions and queue items through foreign keys. It stores no config,
+	 * because the runtime comes from code. Returns false when a row with this id
+	 * already exists. On PostgreSQL the transaction is then aborted, so the
+	 * caller must roll it back.
 	 */
-	async ensureInstanceAgent(id: string, name: string): Promise<void> {
-		// Two mains can start at the same time: the second insert of the id must not fail.
-		await this.createQueryBuilder()
-			.insert()
-			.into(Agent)
-			.values({ id, name, scope: 'instance', projectId: null, schema: null })
-			.orIgnore()
-			.execute();
-		const existing = await this.findOneOrFail({
+	async insertInstanceAgent(
+		id: string,
+		name: string,
+		identityId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		try {
+			await this.managerFor(ctx).insert(Agent, {
+				id,
+				name,
+				scope: 'instance',
+				projectId: null,
+				schema: null,
+				identityId,
+			});
+			return true;
+		} catch (error) {
+			if (isUniqueConstraintError(error)) return false;
+			throw error;
+		}
+	}
+
+	/**
+	 * Renames an instance agent and its identity when the name changed. Returns
+	 * false when no agent has this id. Throws when the id belongs to a project agent.
+	 */
+	async renameInstanceAgentIfExists(id: string, name: string): Promise<boolean> {
+		const existing = await this.findOne({
 			select: ['id', 'name', 'scope', 'identityId'],
 			where: { id },
 		});
+		if (!existing) return false;
 		if (existing.scope !== 'instance') {
 			throw new UnexpectedError(`Agent "${id}" exists as a project agent`);
 		}
@@ -770,11 +831,12 @@ export class AgentRepository extends BaseRepository<Agent> {
 				await this.renameIdentity(existing, name, ctx);
 			});
 		}
+		return true;
 	}
 
-	async findIdentityId(id: string): Promise<string | null> {
-		const agent = await this.findOne({ select: ['identityId'], where: { id } });
-		return agent?.identityId ?? null;
+	/** Deletes the agent row. Rows that reference the agent follow their FK rules. */
+	async deleteById(id: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).delete(Agent, { id });
 	}
 
 	/** The agent that acts as this identity, if there is one. */
@@ -808,24 +870,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 		for (const batch of chunkIds(projectIds)) {
 			const agents = await this.find({
 				select: ['identityId'],
-				where: { projectId: In(batch), identityId: Not(IsNull()) },
+				where: { projectId: In(batch) },
 			});
-			for (const { identityId } of agents) {
-				if (identityId) identityIds.push(identityId);
-			}
+			for (const { identityId } of agents) identityIds.push(identityId);
 		}
 		return identityIds;
-	}
-
-	/** Sets the identity only when the agent has none. Returns false when another write set it first. */
-	async linkIdentity(id: string, identityId: string, ctx: OperationContext): Promise<boolean> {
-		const result = await this.managerFor(ctx)
-			.createQueryBuilder()
-			.update(Agent)
-			.set({ identityId })
-			.where('id = :id AND "identityId" IS NULL', { id })
-			.execute();
-		return (result.affected ?? 0) > 0;
 	}
 
 	async findDependencyIndexAgentIdsBatch(
@@ -1226,7 +1275,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		name: string,
 		ctx: OperationContext,
 	) {
-		if (!previous?.identityId || previous.name === name || name.trim() === '') return;
+		if (!previous || previous.name === name || name.trim() === '') return;
 		await this.serviceAccountRepository.rename(previous.identityId, name, ctx);
 	}
 

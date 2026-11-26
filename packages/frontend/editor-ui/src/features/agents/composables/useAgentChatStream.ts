@@ -57,6 +57,10 @@ import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/share
 import { CHAT_MESSAGE_ROLE, CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isPolicyRefusedToolOutput } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
+import {
+	readStreamedToolCatalogTarget,
+	resolveToolCatalogCall,
+} from '@/features/ai/shared/agentsChat/toolCatalogCall';
 import { addReplyAttachments } from '@/features/ai/shared/agentsChat/replyFiles';
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
@@ -102,6 +106,11 @@ export interface UseAgentChatStreamParams {
 	interactionExtensions?: readonly AgentsChatInteractionExtension[];
 	/** Called with each event of the chat stream, as received. */
 	onStreamEvent?: (event: AgentSseEvent) => void;
+	/**
+	 * The `references` of a sent message, from the client context that it sends.
+	 * The history gives the same references after a reload.
+	 */
+	messageReferences?: (clientContext: Record<string, unknown> | undefined) => unknown[];
 }
 
 type ResumePayload =
@@ -772,6 +781,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		minted: Set<ChatMessage>;
 		reasoningStartedAt: Map<string, number>;
 		openReasoning: Map<string, ThinkingSegment>;
+		/** The streamed input of each call_tool call, until it names the tool that the call runs. */
+		toolCatalogInputPrefixes: Map<string, string>;
 	}
 
 	/**
@@ -963,6 +974,24 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * iterations after the tool-call message has been closed by `finish-step`,
 	 * so we cannot rely on the cursor — only the natural id.
 	 */
+	function nameStreamedToolCatalogCall(
+		session: StreamSession,
+		toolCallId: string,
+		delta: string,
+	): void {
+		const found = findToolCallById(toolCallId);
+		if (!found) return;
+		const prefixes = session.toolCatalogInputPrefixes;
+		const prefix = (prefixes.get(toolCallId) ?? '') + delta;
+		const target = readStreamedToolCatalogTarget(found.tc.tool, prefix);
+		if (target === undefined) {
+			prefixes.set(toolCallId, prefix);
+			return;
+		}
+		prefixes.delete(toolCallId);
+		if (target) found.tc.tool = target;
+	}
+
 	function findToolCallById(toolCallId: string): { msg: ChatMessage; tc: ToolCall } | null {
 		for (let i = messages.value.length - 1; i >= 0; i--) {
 			const m = messages.value[i];
@@ -1282,24 +1311,29 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'tool-input-delta':
 				// Streaming tool input isn't rendered incrementally; the full
-				// input arrives on `tool-call`. No ToolCall state mutation here.
+				// input arrives on `tool-call`. Only a call_tool call reads it, for its tool name.
+				nameStreamedToolCatalogCall(session, event.toolCallId, event.delta);
 				break;
 			case 'tool-call': {
 				// LLM finalized the call. Update input on the existing entry,
 				// or push one if `tool-input-start` was missing.
 				const msg = ensureCurrent(session);
 				msg.toolCalls = msg.toolCalls ?? [];
+				// `tool-input-start` names a tool catalog call `call_tool`. The full input names the real tool.
+				session.toolCatalogInputPrefixes.delete(event.toolCallId);
+				const call = resolveToolCatalogCall(event.toolName, event.input);
 				const existing = msg.toolCalls.find((t) => t.toolCallId === event.toolCallId);
 				if (!existing) {
 					msg.toolCalls.push({
-						tool: event.toolName,
+						tool: call.tool,
 						toolCallId: event.toolCallId,
-						input: event.input,
+						input: call.input,
 						state: TOOL_CALL_STATE.PENDING,
-						displaySummary: summariseToolCall(event.toolName, undefined, event.input),
+						displaySummary: summariseToolCall(call.tool, undefined, call.input),
 					});
 				} else {
-					existing.input = event.input;
+					existing.tool = call.tool;
+					existing.input = call.input;
 					existing.displaySummary = summariseToolCall(
 						existing.tool,
 						existing.output,
@@ -1691,6 +1725,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			minted: new Set(),
 			reasoningStartedAt: new Map(),
 			openReasoning: new Map(),
+			toolCatalogInputPrefixes: new Map(),
 		};
 		streams.set(controller, session);
 
@@ -1858,7 +1893,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * the resume fails, falling back to the previous card state if history is unavailable.
 	 */
 	async function resume(payload: ResumePayload, onAccepted?: () => void): Promise<'sent' | 'busy'> {
-		if (isStreaming.value || isCancelling.value) return 'busy';
+		// A card shows when its tool suspends, a moment before the server ends the
+		// response of that turn. An answer in that moment waits for the response to end.
+		const controller = abortController.value;
+		const endedTurn =
+			controller && streams.get(controller)?.terminalEventReceived
+				? streamSettlements.get(controller)
+				: undefined;
+		if ((isStreaming.value && !endedTurn) || isCancelling.value) return 'busy';
 
 		const isCancellation = 'cancelled' in payload;
 		const text = isCancellation ? payload.text.trim() : '';
@@ -1930,12 +1972,25 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			});
 		}
 
+		let taken = false;
+		if (endedTurn) {
+			const target = targetKey();
+			await endedTurn;
+			if (disposed || target !== targetKey()) return 'busy';
+			// Another answer or a stop can take the turn during the wait.
+			taken = isStreaming.value || isCancelling.value;
+		}
+
 		const url = `${agentChatBaseUrl(rootStore.restApiContext, params.projectId.value, params.agentId.value, channel.value)}/resume`;
-		const { outcome } = await postAndConsume(
-			url,
-			{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },
-			onAccepted,
-		);
+		const outcome = taken
+			? 'busy'
+			: (
+					await postAndConsume(
+						url,
+						{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },
+						onAccepted,
+					)
+				).outcome;
 		let reconciled = false;
 		if (outcome === 'failed' || outcome === 'busy') {
 			reconciled = await refreshHistory();
@@ -2002,6 +2057,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		isSubmitting.value = true;
 		const submission = ++submissionVersion;
 		const target = targetKey();
+		const references = params.messageReferences?.(clientContext);
 		const userMessage: ChatMessage = {
 			id: crypto.randomUUID(),
 			role: 'user',
@@ -2014,6 +2070,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				sizeBytes: file.size,
 				file,
 			})),
+			...(references?.length ? { references } : {}),
 		};
 		// Nothing waits ahead of the first message of a new session, so its run starts
 		// right away. The message shows now, not when the run starts.

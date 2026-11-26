@@ -1,5 +1,8 @@
+import { useRootStore } from '@n8n/stores/useRootStore';
+
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { listAgentsPage } from '@/features/agents/composables/useAgentApi';
 import type { IWorkflowDb } from '@/Interface';
 import { onScopeDispose, ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
@@ -10,6 +13,7 @@ import type {
 	WorkflowArtifactReference,
 } from '../assistantAtMentions.types';
 import {
+	buildAgentMentionItem,
 	buildArtifactBrowseItems,
 	buildArtifactSearchItems,
 	buildWorkflowMentionItem,
@@ -20,6 +24,8 @@ import type { useArtifactMentionIndex } from './useArtifactMentionIndex';
 
 type ArtifactMentionIndex = ReturnType<typeof useArtifactMentionIndex>;
 const MAX_WORKFLOW_BROWSE_CANDIDATES = 50;
+/** The agents list refuses a longer name filter. */
+const MAX_AGENT_QUERY_LENGTH = 128;
 
 export function createArtifactMentionSourceProvider(options: {
 	artifacts: MaybeRefOrGetter<readonly WorkflowArtifactReference[]>;
@@ -155,6 +161,39 @@ export function createWorkflowMentionSourceProvider(options: {
 				},
 			});
 			return toMentionItems(workflows.filter(({ id }) => !excludedWorkflowIds.has(id)));
+		},
+	};
+}
+
+/**
+ * The agents of the project: the most recently updated ones to browse, and a
+ * name search. Archived agents are not listed.
+ */
+export function createAgentMentionSourceProvider(options: {
+	projectId: MaybeRefOrGetter<string | undefined>;
+}): MentionSourceProvider {
+	const rootStore = useRootStore();
+
+	async function listAgents(query?: string): Promise<AssistantMentionItem[]> {
+		const projectId = toValue(options.projectId)?.trim();
+		if (!projectId) return [];
+		const { data } = await listAgentsPage(rootStore.restApiContext, projectId, {
+			limit: MAX_MENTION_RESULTS,
+			sortBy: 'updatedAt:desc',
+			...(query ? { filter: { query: query.slice(0, MAX_AGENT_QUERY_LENGTH) } } : {}),
+		});
+		return data.map(buildAgentMentionItem);
+	}
+
+	return {
+		id: 'agents',
+		async browse() {
+			return await listAgents();
+		},
+		async search(query) {
+			const normalizedQuery = query.trim();
+			if (!normalizedQuery) return [];
+			return await listAgents(normalizedQuery);
 		},
 	};
 }

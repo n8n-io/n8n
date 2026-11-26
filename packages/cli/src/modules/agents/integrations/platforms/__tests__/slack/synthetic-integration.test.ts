@@ -141,7 +141,7 @@ describe('Slack channel integration scenarios', () => {
 	);
 
 	it('handles Slack URL verification without an active connection', () => {
-		const integration = new SlackIntegration(mock<AgentRepository>());
+		const integration = new SlackIntegration(mock<AgentRepository>(), mock());
 
 		expect(
 			integration.handleUnauthenticatedWebhook({

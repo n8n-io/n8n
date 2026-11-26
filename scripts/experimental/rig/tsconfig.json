@@ -1,0 +1,12 @@
+{
+	"extends": "../../../tsconfig.json",
+	"compilerOptions": {
+		"sourceMap": false,
+		"declaration": false,
+		"types": ["node"],
+		"module": "preserve",
+		"moduleResolution": "bundler"
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts"],
+	"exclude": ["**/node_modules/**", "**/dist/**"]
+}

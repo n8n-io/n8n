@@ -1,5 +1,4 @@
-// A fake of the two GitHub hosts that `GitHubSkillSourceClient` reads, on nock: `ls-refs` over
-// smart HTTP on github.com, and the tarball of one commit on codeload.github.com.
+// A fake of GitHub smart HTTP, tarballs and the REST API, on nock.
 import nock from 'nock';
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -9,7 +8,10 @@ import { create as createTar } from 'tar';
 
 import { pktLine } from '../../sources/github/git-refs';
 
-type Files = Record<string, string>;
+type Files = Record<string, string | Buffer>;
+type TreeEntry =
+	| { path: string; type: 'tree'; mode: '040000'; sha: string }
+	| { path: string; type: 'blob'; mode: '100644'; sha: string; size: number };
 
 type Repository = {
 	defaultBranch: string;
@@ -27,17 +29,20 @@ type Repository = {
 export class FakeGitHub {
 	private readonly repositories = new Map<string, Repository>();
 
-	/** Commits by SHA, for the tarball host. */
-	private readonly commits = new Map<string, { repository: string; files: Files }>();
+	/** Commits by SHA, for tarballs and raw file reads. */
+	private readonly commits = new Map<string, { key: string; repository: string; files: Files }>();
+	private readonly trees = new Map<string, TreeEntry[]>();
+	private readonly blobs = new Map<string, Buffer>();
 
 	/** Requests per host, for tests that count them. */
-	readonly requests = { refs: 0, archives: 0 };
+	readonly requests = { refs: 0, archives: 0, trees: 0, files: 0 };
 
 	/**
 	 * The status that the next requests answer, such as 429, until it is cleared. With
 	 * `headers`, the answer sends them too, such as `x-ratelimit-remaining`.
 	 */
 	failWith: number | { status: number; headers?: Record<string, string> } | undefined;
+	truncateTree = false;
 
 	private failure(): [number, string, Record<string, string>] | undefined {
 		if (this.failWith === undefined) return undefined;
@@ -80,10 +85,18 @@ export class FakeGitHub {
 			.reply(function (this: nock.ReplyFnContext, uri) {
 				return github.apiTarballReply(uri, bearerToken(this.req.headers.authorization));
 			})
+			.get(/^\/repos\/([^/]+)\/([^/]+)\/git\/(trees|blobs)\/([0-9a-f]+)(\?recursive=1)?$/)
+			.reply(function (this: nock.ReplyFnContext, uri) {
+				return github.gitObjectReply(uri, bearerToken(this.req.headers.authorization));
+			})
 			.get(/^\/(user\/repos|installation\/repositories)\?/)
 			.reply(function (this: nock.ReplyFnContext, uri) {
 				return github.listReply(uri, bearerToken(this.req.headers.authorization));
 			});
+		nock('https://raw.githubusercontent.com', { badheaders: ['authorization'] })
+			.persist()
+			.get(/^\/[^/]+\/[^/]+\/[0-9a-f]+\/.+$/)
+			.reply((uri) => github.rawFileReply(uri));
 		nock('https://codeload.github.com')
 			.persist()
 			.get(/^\/([^/]+)\/([^/]+)\/(tar\.gz|legacy\.tar\.gz)\/([0-9a-f]+)(\?token=.*)?$/)
@@ -131,6 +144,84 @@ export class FakeGitHub {
 		return [200, tarball(`${commit.repository}-${sha}`, commit.files)];
 	}
 
+	private gitObjectReply(uri: string, token: string | undefined): nock.ReplyFnResult {
+		const [path, query] = uri.split('?');
+		const [, , owner, repository, , kind, sha] = path.split('/');
+		const failure = this.failure();
+		if (failure) return failure;
+		const status = this.access(`${owner}/${repository}`.toLowerCase(), token);
+		if (status !== 200) return [status, ''];
+		if (kind === 'blobs') {
+			this.requests.files += 1;
+			const content = this.blobs.get(sha);
+			return content === undefined ? [404, ''] : [200, content];
+		}
+		this.requests.trees += 1;
+		const tree = this.trees.get(sha);
+		if (!tree) return [404, ''];
+		return [
+			200,
+			{ truncated: query ? this.truncateTree : false, tree: query ? this.expandTree(tree) : tree },
+		];
+	}
+
+	private rawFileReply(uri: string): nock.ReplyFnResult {
+		this.requests.files += 1;
+		const failure = this.failure();
+		if (failure) return failure;
+		const [, owner, repository, sha, ...parts] = uri.split('/');
+		const key = `${owner}/${repository}`.toLowerCase();
+		const commit = this.commits.get(sha);
+		if (this.access(key, undefined) !== 200 || commit?.key !== key) return [404, ''];
+		const path = parts.map(decodeURIComponent).join('/');
+		if (!Object.hasOwn(commit.files, path)) return [404, ''];
+		const content = commit.files[path];
+		return [200, typeof content === 'string' ? Buffer.from(content) : content];
+	}
+
+	private expandTree(tree: TreeEntry[], prefix = ''): TreeEntry[] {
+		return tree.flatMap((entry) => {
+			const path = `${prefix}${entry.path}`;
+			return [
+				{ ...entry, path },
+				...(entry.type === 'tree'
+					? this.expandTree(this.trees.get(entry.sha) ?? [], `${path}/`)
+					: []),
+			];
+		});
+	}
+
+	private indexTree(sha: string, files: Files): void {
+		const tree: TreeEntry[] = [];
+		const folders = new Map<string, Files>();
+		for (const [path, content] of Object.entries(files)) {
+			const slash = path.indexOf('/');
+			if (slash === -1) {
+				const bytes = typeof content === 'string' ? Buffer.from(content) : content;
+				const blob = createHash('sha1').update(bytes).digest('hex');
+				this.blobs.set(blob, bytes);
+				tree.push({
+					path,
+					type: 'blob',
+					mode: '100644',
+					sha: blob,
+					size: bytes.length,
+				});
+			} else {
+				const folder = path.slice(0, slash);
+				const children = folders.get(folder) ?? {};
+				children[path.slice(slash + 1)] = content;
+				folders.set(folder, children);
+			}
+		}
+		for (const [path, children] of folders) {
+			const child = createHash('sha1').update(`${sha}/${path}`).digest('hex');
+			tree.push({ path, type: 'tree', mode: '040000', sha: child });
+			this.indexTree(child, children);
+		}
+		this.trees.set(sha, tree);
+	}
+
 	private listReply(uri: string, token: string | undefined): nock.ReplyFnResult {
 		const failure = this.failure();
 		if (failure) return failure;
@@ -162,9 +253,14 @@ export class FakeGitHub {
 		this.tokens.clear();
 		this.repositories.clear();
 		this.commits.clear();
+		this.trees.clear();
+		this.blobs.clear();
 		this.requests.refs = 0;
 		this.requests.archives = 0;
+		this.requests.trees = 0;
+		this.requests.files = 0;
 		this.failWith = undefined;
+		this.truncateTree = false;
 	}
 
 	/** Creates the repository, or a new commit on one branch of it. Answers the commit SHA. */
@@ -185,7 +281,8 @@ export class FakeGitHub {
 			.update(`${key}@${branch}#${this.commits.size}:${JSON.stringify(files)}`)
 			.digest('hex');
 		repo.branches.set(branch, { sha, files: { ...files } });
-		this.commits.set(sha, { repository: fullName.split('/')[1], files: { ...files } });
+		this.commits.set(sha, { key, repository: fullName.split('/')[1], files: { ...files } });
+		this.indexTree(sha, files);
 		return sha;
 	}
 

@@ -1,16 +1,21 @@
 # n8n OWNERS
 #
-# Format: <pattern> <@org/team> [required]
+# Format: <pattern> <@org/team> [required[(k)] | involved[(k)]]
 #
 # Examples:
-#   packages/foo/        @n8n-io/team-a            advisory reviewer recommendation
-#   packages/foo/bar.ts  @n8n-io/team-b required   team approval blocks merge
+#   packages/foo/        @n8n-io/team-a              advisory reviewer recommendation
+#   packages/foo/bar.ts  @n8n-io/team-b required     team approval blocks merge
+#   packages/foo/baz.ts  @n8n-io/team-c involved     team approval blocks merge, unless a team member is the author
+#   packages/foo/qux.ts  @n8n-io/team-d required(2)  two team approvals block merge
 #
 # Last-match-wins: specific rules MUST come AFTER general rules.
 #
-# The `required` option makes team approval mandatory for non-test files: a
-# member of the team must approve the PR before merge. This is enforced by the
-# "Required Reviews" commit status (ci-owners-required-reviews.yml).
+# The review options apply to non-test files. DevHub enforces them with the
+# "Required Reviews" commit status (ci-owners-required-reviews.yml):
+#   required(k)  k team members other than the PR author must approve.
+#   involved(k)  k team members must review. A PR author in the team counts
+#                as one, so `involved` needs no approval from a team author.
+# `k` is from 1 to 5. Without `(k)`, the count is 1.
 # All other entries are advisory (reviewer recommendations and opt-in
 # reviewer auto-assignment).
 #
@@ -73,7 +78,7 @@ packages/@n8n/eslint-config/                            @n8n-io/qa-dx required
 packages/@n8n/oxlint-config/                            @n8n-io/qa-dx required
 packages/@n8n/typescript-config/                        @n8n-io/qa-dx
 
-packages/@n8n/db/src/migrations/                        @n8n-io/migrations-review required
+packages/@n8n/db/src/migrations/                        @n8n-io/migrations-review involved
 
 # Top-level paths
 scripts/                                                @n8n-io/qa-dx
@@ -117,6 +122,7 @@ packages/cli/src/security-audit/                        @n8n-io/core-application
 packages/cli/src/modules/workflow-index/                @n8n-io/core-application
 packages/cli/src/modules/breaking-changes/              @n8n-io/core-application
 packages/cli/src/workflows/publication/                 @n8n-io/core-application required
+packages/modules/durable-leases/                        @n8n-io/core-application required
 
 packages/cli/src/scaling/                               @n8n-io/core-execution
 packages/cli/src/concurrency/                           @n8n-io/core-execution
@@ -127,6 +133,7 @@ packages/cli/src/binary-data/                           @n8n-io/core-execution
 packages/cli/src/eventbus/                              @n8n-io/core-execution
 packages/cli/src/events/                                @n8n-io/core-execution
 packages/cli/src/modules/engine-v2/                     @n8n-io/core-execution required
+packages/modules/engine-v2/frontend/                    @n8n-io/core-execution
 packages/cli/src/workflow-runner.ts                     @n8n-io/core-execution
 packages/cli/src/wait-tracker.ts                        @n8n-io/core-execution
 packages/cli/src/active-executions.ts                   @n8n-io/core-execution
@@ -151,6 +158,8 @@ packages/cli/src/modules/token-exchange/                @n8n-io/iam
 
 packages/cli/src/environments.ee/                       @n8n-io/ligo
 packages/cli/src/public-api/                            @n8n-io/ligo
+packages/cli/src/hooks-api/                             @n8n-io/api-and-oem
+packages/@n8n/hooks-api/                                @n8n-io/api-and-oem required
 packages/cli/src/modules/source-control.ee/             @n8n-io/ligo
 packages/cli/src/modules/external-secrets.ee/           @n8n-io/ligo
 packages/modules/insights/                              @n8n-io/ligo
@@ -325,7 +334,6 @@ packages/cli/src/modules/mcp-registry/                  @n8n-io/nodes required
 packages/cli/src/modules/agents/integrations/           @n8n-io/nodes
 packages/@n8n/api-types/src/schemas/mcp-registry.schema.ts @n8n-io/nodes required
 packages/cli/templates/send-and-wait-no-action-required.handlebars @n8n-io/nodes required
-packages/@n8n/ai-node-sdk/                              @n8n-io/nodes required
 
 # Relay (AI gateway & credits)
 packages/cli/src/services/ai-gateway.service.ts         @n8n-io/relay required
@@ -408,6 +416,7 @@ packages/@n8n/scan-community-package/                   @n8n-io/community-engine
 packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/community-engineering
 packages/@n8n/node-cli/                                 @n8n-io/community-engineering
 packages/@n8n/create-node/                              @n8n-io/community-engineering
+packages/@n8n/ai-node-sdk/                              @n8n-io/community-engineering required
 
 # IAM
 

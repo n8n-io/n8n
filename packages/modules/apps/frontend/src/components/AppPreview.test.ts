@@ -5,6 +5,7 @@ import {
 	type AppResponse,
 	type AppVersionResponse,
 } from '@n8n/api-types';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor } from '@testing-library/vue';
@@ -91,12 +92,17 @@ const renderComponent = createComponentRenderer(AppPreviewHost, {
 describe('AppPreview', () => {
 	beforeEach(() => {
 		grants = 0;
-		vi.mocked(createAppPreview).mockImplementation(async (_ctx, _p, _a, versionId) => ({
-			url: `https://sales--preview.apps.example.com/_n8n/preview?code=${versionId}-${++grants}`,
-		}));
+		vi.mocked(createAppPreview).mockImplementation(async (_ctx, _p, _a, versionId) => {
+			const code = `${versionId}-${++grants}`;
+			return {
+				url: `https://sales--preview.apps.example.com/_n8n/preview?code=${code}`,
+				authorizeUrl: `https://n8n.example.com/oauth/authorize?state=${code}`,
+			};
+		});
 	});
 
 	afterEach(() => {
+		capabilityRegistry.clear();
 		vi.clearAllMocks();
 		vi.restoreAllMocks();
 		vi.useRealTimers();
@@ -118,6 +124,35 @@ describe('AppPreview', () => {
 		expect(createAppPreview).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1', 'v2');
 		expect(getByTestId('app-preview-version')).toHaveTextContent('Label v2');
 		expect(getByTestId('app-preview-status')).toHaveTextContent('Build failed');
+	});
+
+	it('opens the sign-in in the frame after the marked preview URL loads', async () => {
+		vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+		const { findByTestId } = renderComponent();
+		const frame = await findByTestId('app-preview-frame');
+
+		expect(frame).toHaveAttribute(
+			'src',
+			'https://sales--preview.apps.example.com/_n8n/preview?code=v2-1&frame=1',
+		);
+
+		await fireEvent.load(frame);
+		expect(frame).toHaveAttribute('src', 'https://n8n.example.com/oauth/authorize?state=v2-1');
+
+		await fireEvent.load(frame);
+		expect(frame).toHaveAttribute('src', 'https://n8n.example.com/oauth/authorize?state=v2-1');
+	});
+
+	it('shows the feedback button under the preview when the app has no build', async () => {
+		capabilityRegistry.provide(
+			capabilities.appsFeedbackFormUrl,
+			() => 'https://forms.example.com/apps-feedback',
+		);
+		vi.mocked(listAppVersions).mockResolvedValue([]);
+		const { findByTestId, getByTestId } = renderComponent({ props: { app: app(null) } });
+
+		expect(await findByTestId('app-preview-empty')).toBeInTheDocument();
+		expect(getByTestId('app-preview-feedback')).toHaveTextContent('Give feedback');
 	});
 
 	it('shows an empty state when the app has no build', async () => {
@@ -287,7 +322,11 @@ describe('AppPreview', () => {
 		await userEvent.click(getByTestId('app-preview-open'));
 
 		expect(open).toHaveBeenCalledWith('about:blank', '_blank');
-		await waitFor(() => expect(tab.location.href).toContain('code=v2-2'));
+		await waitFor(() =>
+			expect(tab.location.href).toBe(
+				'https://sales--preview.apps.example.com/_n8n/preview?code=v2-2',
+			),
+		);
 		expect(tab.opener).toBeNull();
 	});
 
@@ -446,9 +485,14 @@ describe('AppPreview', () => {
 			await userEvent.click(getByTestId('app-preview-mode-select'));
 			postMessage.mockClear();
 
+			// The first load only prepares the sign-in, then the frame opens a new document.
+			await fireEvent.load(frame);
+			expect(postMessage).not.toHaveBeenCalled();
+			const appPostMessage = vi.spyOn(frame.contentWindow!, 'postMessage');
+
 			await fireEvent.load(frame);
 
-			expect(postMessage).toHaveBeenCalledExactlyOnceWith(
+			expect(appPostMessage).toHaveBeenCalledExactlyOnceWith(
 				command('inspect:enable'),
 				PREVIEW_ORIGIN,
 			);
