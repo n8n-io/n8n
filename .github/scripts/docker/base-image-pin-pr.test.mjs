@@ -154,6 +154,7 @@ describe('renderBody', () => {
 			body,
 			/This pin updates the version from `26\.13\.0-alpine3\.24-dev` to `26\.13\.1-alpine3\.24-dev`/,
 		);
+		assert.match(body, /Only the OS packages change/);
 		assert.match(body, /`NODE_VERSION`/);
 		const hcl = `variable "DHI_REF" {\n  default = "${result.pinned}"\n}\n`;
 		assert.match(

@@ -86,7 +86,7 @@ export function renderBody(results, { group, runUrl }) {
 		);
 		if (result.versionBump)
 			lines.push(
-				`This pin updates the version from \`${result.versionBump.from}\` to \`${result.versionBump.to}\`: the pinned tag gets no new digest. The n8n images keep the Node that they compile from \`NODE_VERSION\`.`,
+				`This pin updates the version from \`${result.versionBump.from}\` to \`${result.versionBump.to}\`: the pinned tag gets no new digest. Only the OS packages change: the n8n images replace this Node with the Node that they compile from \`NODE_VERSION\`.`,
 				'',
 			);
 		if (result.gateSkipped)

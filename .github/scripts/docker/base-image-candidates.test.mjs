@@ -219,8 +219,9 @@ describe('classifyNoFix', () => {
 });
 
 describe('PATCH_UPDATES', () => {
-	it('covers the DHI Node pins only', () => {
-		assert.deepEqual([...PATCH_UPDATES], ['DHI_REF', 'DEBIAN_DHI_REF']);
+	it('covers the Alpine DHI Node pin only', () => {
+		// The Debian images run the Node of DEBIAN_DHI_REF, so a person updates it.
+		assert.deepEqual([...PATCH_UPDATES], ['DHI_REF']);
 	});
 });
 
@@ -381,16 +382,16 @@ describe('renderSummary', () => {
 	it('lists the patch updates with their status', () => {
 		const summary = renderSummary([
 			{
-				source: 'DEBIAN_DHI_REF',
+				source: 'DHI_REF',
 				status: 'in-24h-gate',
 				platforms: [],
-				versionBump: { from: '26.13.0-debian13-dev', to: '26.13.1-debian13-dev' },
+				versionBump: { from: '26.13.0-alpine3.24-dev', to: '26.13.1-alpine3.24-dev' },
 			},
 		]);
 		assert.match(summary, /### Patch updates/);
 		assert.match(
 			summary,
-			/- `DEBIAN_DHI_REF`: `26\.13\.0-debian13-dev` → `26\.13\.1-debian13-dev` \(in-24h-gate\)\./,
+			/- `DHI_REF`: `26\.13\.0-alpine3\.24-dev` → `26\.13\.1-alpine3\.24-dev` \(in-24h-gate\)\./,
 		);
 		assert.doesNotMatch(summary, /Needs a person/);
 	});

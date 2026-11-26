@@ -9,7 +9,7 @@
  * removes at least one finding. A candidate is ready when its publisher is
  * verified and it is at least 24 hours old (see applyGate). When no digest of
  * the tag removes a finding, the moving tag of the line shows whether a newer
- * patch does (see classifyNoFix). For DHI Node, that patch becomes a candidate
+ * patch does (see classifyNoFix). For DHI_REF, that patch becomes a candidate
  * on its exact tag. For the other sources, a person updates the version.
  *
  * Usage: node base-image-candidates.mjs [--out <file>] [--skip-gate]
@@ -123,11 +123,13 @@ export function movingTagOf(tag) {
 }
 
 /**
- * The DHI Node pins. A newer patch of their line gets a pin PR, not only an
- * alert: the n8n images run the Node that node-pc and node-patched compile from
- * NODE_VERSION, so the patch of the DHI image changes the OS packages only.
+ * The pins whose newer patch gets a pin PR, not only an alert. The Alpine n8n
+ * images replace the Node of the DHI image with the Node that they compile from
+ * NODE_VERSION, so its patch changes the OS packages only. The Debian images
+ * run the Node of DEBIAN_DHI_REF, so its patch stays a person's decision: it
+ * would move their Node away from the other images.
  */
-export const PATCH_UPDATES = new Set(['DHI_REF', 'DEBIAN_DHI_REF']);
+export const PATCH_UPDATES = new Set(['DHI_REF']);
 
 /** The tags of the next patches of a pinned tag: 26.13.0-x -> 26.13.1-x, 26.13.2-x, ... */
 export function nextPatchTags(tag, count = 20) {
@@ -149,8 +151,8 @@ export function exactTagOf(tag, digest, resolve) {
 
 /**
  * Classifies a source whose newest digest leaves fixable findings. When the
- * moving tag points to a newer patch that removes a finding, `patch` (DHI Node
- * only) makes that patch a candidate. Otherwise a person must update the
+ * moving tag points to a newer patch that removes a finding, `patch` (see
+ * PATCH_UPDATES) makes that patch a candidate. Otherwise a person must update the
  * version. When no newer patch removes a finding, the upstream has no fix yet.
  */
 export function classifyNoFix(result, moving, patch = null) {
