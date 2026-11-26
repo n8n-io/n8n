@@ -132,9 +132,10 @@ export async function getPromotionSettings(context: PublicApiContext): Promise<P
 	return await makePublicApiRequest(context, 'GET', '/promotions/settings');
 }
 
+/** Sends only the changed settings, so another admin's newer change to the others stays. */
 export async function updatePromotionSettings(
 	context: PublicApiContext,
-	settings: PromotionSettings,
+	changes: Partial<PromotionSettings>,
 ): Promise<PromotionSettings> {
-	return await makePublicApiRequest(context, 'PUT', '/promotions/settings', settings);
+	return await makePublicApiRequest(context, 'PATCH', '/promotions/settings', changes);
 }

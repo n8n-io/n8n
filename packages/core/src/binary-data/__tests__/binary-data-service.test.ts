@@ -40,6 +40,21 @@ describe('BinaryDataService', () => {
 
 			expect(token).toBe(validToken);
 		});
+
+		it('should round-trip the owner workflow in a signed token', () => {
+			const token = service.createSignedToken(binaryData, '1 day', 'workflow-123');
+
+			expect(service.validateSignedToken(token)).toMatchObject({
+				id: binaryData.id,
+				workflowId: 'workflow-123',
+			});
+		});
+
+		it('should not add a workflow id without an owner workflow', () => {
+			const token = service.createSignedToken(binaryData, '1 day');
+
+			expect(service.validateSignedToken(token)).not.toHaveProperty('workflowId');
+		});
 	});
 
 	describe('validateSignedToken', () => {
@@ -54,9 +69,9 @@ describe('BinaryDataService', () => {
 			expect(() => service.validateSignedToken(expiredToken)).toThrow(TokenExpiredError);
 		});
 
-		it('should return binary-data id on valid tokens', () => {
+		it('should return the signing payload on valid tokens', () => {
 			const result = service.validateSignedToken(validToken);
-			expect(result).toBe(binaryData.id);
+			expect(result).toMatchObject({ id: binaryData.id });
 		});
 	});
 
@@ -161,6 +176,59 @@ describe('BinaryDataService', () => {
 
 			expect(azureManager.deleteMany).toHaveBeenCalledWith(locations);
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('duplicateBinaryData', () => {
+		const location: BinaryData.FileLocation = {
+			type: 'execution',
+			workflowId: 'parent-workflow',
+			executionId: 'parent-execution',
+		};
+
+		const setup = () => {
+			const manager = mock<BinaryData.Manager>();
+			manager.copyByFileId.mockImplementation(async (_location, fileId) => `copy-of-${fileId}`);
+			Object.assign(service, { mode: 'filesystem-v2', managers: { 'filesystem-v2': manager } });
+			return manager;
+		};
+
+		const createItems = () => [
+			[
+				{
+					json: {},
+					binary: {
+						first: { data: '', mimeType: 'text/plain', id: 'filesystem-v2:first' },
+						second: { data: '', mimeType: 'text/plain', id: 'filesystem-v2:second' },
+					},
+				},
+			],
+		];
+
+		it('should copy every binary when no shouldDuplicate is given', async () => {
+			const manager = setup();
+
+			const [[item]] = await service.duplicateBinaryData(location, createItems());
+
+			expect(manager.copyByFileId).toHaveBeenCalledTimes(2);
+			expect(item.binary?.first.id).toBe('filesystem-v2:copy-of-first');
+			expect(item.binary?.second.id).toBe('filesystem-v2:copy-of-second');
+		});
+
+		it('should keep the original id when shouldDuplicate returns false', async () => {
+			const manager = setup();
+			const shouldDuplicate = vi.fn(async (id: string) => id === 'filesystem-v2:first');
+
+			const [[item]] = await service.duplicateBinaryData(location, createItems(), {
+				shouldDuplicate,
+			});
+
+			expect(shouldDuplicate).toHaveBeenCalledWith('filesystem-v2:first');
+			expect(shouldDuplicate).toHaveBeenCalledWith('filesystem-v2:second');
+			expect(manager.copyByFileId).toHaveBeenCalledTimes(1);
+			expect(manager.copyByFileId).toHaveBeenCalledWith(location, 'first');
+			expect(item.binary?.first.id).toBe('filesystem-v2:copy-of-first');
+			expect(item.binary?.second.id).toBe('filesystem-v2:second');
 		});
 	});
 

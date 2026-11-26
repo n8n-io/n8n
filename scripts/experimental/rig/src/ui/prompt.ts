@@ -142,6 +142,11 @@ export async function ask(
 	return value.length > 0 ? value : (options.defaultValue ?? '');
 }
 
+/** Asks for a value and masks the input. */
+export async function password(message: string): Promise<string> {
+	return orCancel(await clack.password({ message }));
+}
+
 export async function confirm(message: string, initialValue = true): Promise<boolean> {
 	return orCancel(await clack.confirm({ message, initialValue }));
 }

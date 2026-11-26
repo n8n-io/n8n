@@ -3,7 +3,6 @@ import {
 	appAgentBindingSchema,
 	appBindingKeySchema,
 	appBindingSchema,
-	appBlueprintErrorsSchema,
 	appBlueprintResumeSchema,
 	appBlueprintSchema,
 	appDataTableBindingSchema,
@@ -18,7 +17,6 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
-import { AppNamespaceTakenError } from '../../errors/app-namespace-taken.error';
 import type { InstanceAiAppService, InstanceAiContext } from '../../types';
 import { addAppTarget, readPendingAppTarget } from './app-target-binding';
 import {
@@ -323,7 +321,6 @@ function createCreateAppTool(context: InstanceAiContext) {
 				severity: z.literal('info'),
 				inputType: z.literal('app-blueprint'),
 				appBlueprint: appBlueprintSchema,
-				appBlueprintErrors: appBlueprintErrorsSchema.optional(),
 			}),
 		)
 		.resume(appBlueprintResumeSchema)
@@ -354,19 +351,6 @@ function createCreateAppTool(context: InstanceAiContext) {
 							...(await createApp(context, apps, blueprint)),
 						};
 					} catch (error) {
-						// The user can fix the namespace on the card, so show it again
-						// with the edits they made instead of handing the error to the model.
-						// A new requestId keeps the frontend from treating it as answered.
-						if (error instanceof AppNamespaceTakenError) {
-							return await ctx.suspend({
-								requestId: nanoid(),
-								message: `Review the blueprint for ${blueprint.name}`,
-								severity: 'info',
-								inputType: 'app-blueprint',
-								appBlueprint: blueprint,
-								appBlueprintErrors: { namespace: 'taken' },
-							});
-						}
 						return {
 							approved: true,
 							blueprint,

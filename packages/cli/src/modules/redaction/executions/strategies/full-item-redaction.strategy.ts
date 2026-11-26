@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { INodeExecutionData, ITaskDataConnections } from 'n8n-workflow';
+import type { INodeExecutionData, ITaskDataConnections, ITaskMetadata } from 'n8n-workflow';
 import { redactExecutionError } from 'n8n-workflow';
 
 import type { RedactableExecution } from '@n8n/backend-services';
@@ -19,8 +19,8 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 	}
 
 	async apply(execution: RedactableExecution, context: RedactionContext): Promise<void> {
-		const runData = execution.data.resultData.runData;
-		if (!runData) return;
+		// No early return without node runs: the error, highlighted data and stack still need redaction.
+		const runData = execution.data.resultData.runData ?? {};
 
 		const reason = context.enforceDynCredRedaction
 			? 'dynamic_credentials'
@@ -44,6 +44,7 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 					taskData.redactedError = redactExecutionError(taskData.error);
 					delete taskData.error;
 				}
+				this.redactTaskMetadata(taskData.metadata);
 			}
 		}
 
@@ -52,6 +53,9 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 			resultData.redactedError = redactExecutionError(resultData.error);
 			delete resultData.error;
 		}
+		// Highlighted data (`$execution.customData`) holds node payload, e.g. chat input and output.
+		delete resultData.metadata;
+		if (execution.customData) execution.customData = {};
 
 		const executionData = execution.data.executionData;
 
@@ -62,6 +66,13 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 			for (const executeData of executionData.nodeExecutionStack ?? []) {
 				if (executeData.data) {
 					this.redactConnections(executeData.data, reason);
+				}
+				this.redactTaskMetadata(executeData.metadata);
+			}
+
+			for (const taskMetadataList of Object.values(executionData.metadata ?? {})) {
+				for (const taskMetadata of taskMetadataList) {
+					this.redactTaskMetadata(taskMetadata);
 				}
 			}
 
@@ -81,6 +92,15 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 				credentialIds: [...context.inaccessibleCredentialIds],
 			}),
 		};
+	}
+
+	/**
+	 * An AI Agent keeps the tool-call arguments, the model reasoning and the request
+	 * history in `subNodeExecutionData`. The engine reads it only from the live
+	 * execution, so a response does not need it.
+	 */
+	private redactTaskMetadata(metadata: ITaskMetadata | undefined): void {
+		if (metadata) delete metadata.subNodeExecutionData;
 	}
 
 	private redactConnections(connections: ITaskDataConnections, reason: string): void {

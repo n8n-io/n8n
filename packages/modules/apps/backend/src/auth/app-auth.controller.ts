@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 
 import { AppAuthService } from './app-auth.service';
 import { AppPreviewService } from '../preview/app-preview.service';
+import { AppHostService } from '../serving/app-host.service';
 
 const middlewares = [cookieParser()];
 
@@ -12,6 +13,7 @@ export class AppAuthController {
 	constructor(
 		private readonly auth: AppAuthService,
 		private readonly preview: AppPreviewService,
+		private readonly hosts: AppHostService,
 	) {}
 
 	@Get('/_n8n/auth/:appId/login', {
@@ -33,7 +35,12 @@ export class AppAuthController {
 		middlewares,
 	})
 	async completeSignIn(req: Request, res: Response) {
-		await this.auth.complete(req, res, String(req.params.appId));
+		const appId = String(req.params.appId);
+		if (this.hosts.previewNamespace(req)) {
+			await this.preview.complete(req, res, appId);
+		} else {
+			await this.auth.complete(req, res, appId);
+		}
 	}
 
 	@Get('/_n8n/preview', { skipAuth: true, usesTemplates: true, ipRateLimit: true, middlewares })

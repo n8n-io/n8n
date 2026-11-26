@@ -15,6 +15,7 @@ import {
 	NodeConnectionTypes,
 	getCredentialAllowedDomains,
 	toHostname,
+	toParameterAdditionalKeys,
 } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -146,6 +147,14 @@ export class RoutingNode {
 				}
 
 				const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+				// `$credentials` is for the strings the node description owns (`requestDefaults`,
+				// `routing`). Node parameters are author-owned and resolve without it.
+				const descriptionKeys: IWorkflowDataProxyAdditionalKeys = {
+					...additionalKeys,
+					$credentials: credentials,
+					$version: node.typeVersion,
+				};
+				const parameterKeys = toParameterAdditionalKeys(descriptionKeys);
 
 				if (nodeType.description.requestDefaults) {
 					for (const key of Object.keys(nodeType.description.requestDefaults)) {
@@ -157,7 +166,7 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							executeData,
-							{ ...additionalKeys, $credentials: credentials, $version: node.typeVersion },
+							descriptionKeys,
 							false,
 						) as string;
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -173,7 +182,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeData,
-						{ ...additionalKeys, $credentials: credentials, $version: node.typeVersion },
+						parameterKeys,
 						false,
 					) as string | NodeParameterValue;
 
@@ -183,12 +192,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						'',
-						{
-							...additionalKeys,
-							$credentials: credentials,
-							$value: value,
-							$version: node.typeVersion,
-						},
+						{ ...descriptionKeys, $value: value },
 					);
 
 					this.mergeOptions(itemContext[itemIndex].requestData, tempOptions);
@@ -250,15 +254,10 @@ export class RoutingNode {
 				// with `$parameter`/`$rawParameter` cleared (see `resolveBaseUrl`) - only the host
 				// matters, since that's all the domain allowlist checks. Without a node-owned
 				// `baseURL` there is nothing to compare `url` against.
-				const baseUrlOwnershipKeys: IWorkflowDataProxyAdditionalKeys = {
-					...additionalKeys,
-					$credentials: credentials,
-					$version: node.typeVersion,
-				};
 				const { baseURL, url } = itemContext[itemIndex].requestData.options;
 				const ownHost = toHostname(
 					this.resolveBaseUrl(itemIndex, runIndex, executeData, itemContext[itemIndex].thisArgs, {
-						...baseUrlOwnershipKeys,
+						...descriptionKeys,
 						$parameter: {},
 						$rawParameter: {},
 					}),
@@ -854,7 +853,7 @@ export class RoutingNode {
 	}
 
 	/**
-	 * Resolves the `baseURL` a request would use under the given parameter keys, replaying the
+	 * Resolves the `baseURL` a request would use under the given keys, replaying the
 	 * same requestDefaults + per-property routing computation `runNode` does, without touching
 	 * `itemContext`. Comparing this under real vs. `$parameter`/`$rawParameter`-cleared keys tells
 	 * a node-owned `baseURL` from one a caller-supplied parameter determines - whether that
@@ -866,10 +865,12 @@ export class RoutingNode {
 		runIndex: number,
 		executeData: IExecuteData,
 		thisArgs: IExecuteSingleFunctions,
-		parameterKeys: IWorkflowDataProxyAdditionalKeys,
+		descriptionKeys: IWorkflowDataProxyAdditionalKeys,
 	): string | undefined {
 		const { nodeType, context } = this;
 		const { node } = context;
+		// Same split as `runNode`: node parameters resolve without the description-only keys.
+		const parameterKeys = toParameterAdditionalKeys(descriptionKeys);
 		const scratch: DeclarativeRestApiSettings.ResultOptions = {
 			options: { qs: {}, body: {}, headers: {} },
 			preSend: [],
@@ -883,7 +884,7 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeData,
-				parameterKeys,
+				descriptionKeys,
 				false,
 			) as string;
 		}
@@ -905,7 +906,7 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				'',
-				{ ...parameterKeys, $value: value },
+				{ ...descriptionKeys, $value: value },
 				true,
 			);
 
@@ -1192,13 +1193,14 @@ export class RoutingNode {
 					value = [value];
 				}
 
-				// Resolve expressions
+				// Resolve expressions. The values are node parameters, so they resolve without
+				// the description-only keys.
 				value = this.getParameterValue(
 					value as INodeParameters[],
 					itemIndex,
 					runIndex,
 					executeSingleFunctions.getExecuteData(),
-					{ ...additionalKeys },
+					toParameterAdditionalKeys(additionalKeys ?? {}),
 					false,
 				) as INodeParameters[];
 

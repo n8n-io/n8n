@@ -167,6 +167,9 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		renewQueuedStep: vi.fn(),
 		findStaleRunningSteps: vi.fn().mockResolvedValue([]),
 		failStaleRunningStep: vi.fn(),
+		findStaleSettledSteps: vi.fn().mockResolvedValue([]),
+		renewSettledStep: vi.fn(),
+		acknowledgeSettledStep: vi.fn(),
 		failWaitingStep: vi.fn().mockResolvedValue(true),
 		...overrides,
 	} satisfies StepStore;
