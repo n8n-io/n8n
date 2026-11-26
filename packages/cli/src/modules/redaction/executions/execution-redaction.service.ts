@@ -6,7 +6,7 @@ import {
 	type RedactableExecution,
 	loginIdOf,
 } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	channelsToPolicy,
@@ -22,6 +22,8 @@ import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
 
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
 
 import type {
 	IExecutionRedactionStrategy,
@@ -52,7 +54,15 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		private readonly eventService: EventService,
 		private readonly fullItemRedactionStrategy: FullItemRedactionStrategy,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
 	) {}
+
+	/** Policies resolved by {@link resolveOversizedBasePolicies}, for the executions of one call. */
+	private readonly oversizedBasePolicies = new WeakMap<
+		RedactableExecution,
+		WorkflowSettings.RedactionPolicy
+	>();
 
 	async init(): Promise<void> {
 		this.logger.debug('Initializing ExecutionRedactionService...');
@@ -102,6 +112,8 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				e.data !== undefined && e.data !== null,
 		);
 		if (processable.length === 0) return;
+
+		await this.resolveOversizedBasePolicies(processable);
 
 		// Only executions where policy doesn't already grant access need a scope check.
 		// Shared by both the reveal and redact paths, and resolved concurrently with
@@ -457,12 +469,64 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	}
 
 	/**
+	 * An oversized execution is read without its run data, so the policy captured at
+	 * run time (`runtimeData.redaction`) is not available. Its `customData` is still
+	 * returned. For these executions, use the strictest of the stored workflow
+	 * settings, the current workflow settings and the current instance floor.
+	 * A blob-stored execution has no stored settings, so it is always redacted.
+	 */
+	private async resolveOversizedBasePolicies(executions: RedactableExecution[]): Promise<void> {
+		if (!this.licenseState.isDataRedactionLicensed()) return;
+
+		const oversized = executions.filter(
+			(e) => e.dataTooLargeToDisplay && !e.data.executionData?.runtimeData?.redaction,
+		);
+		if (oversized.length === 0) return;
+
+		const floor = await this.instanceRedactionEnforcementService.get();
+		const floorChannels = { production: floor !== 'off', manual: floor === 'all' };
+
+		const workflowIds = [...new Set(oversized.map((e) => e.workflowId))];
+		const currentSettings = new Map(
+			await Promise.all(
+				workflowIds.map(
+					async (id) => [id, await this.workflowRepository.findSettings(id)] as const,
+				),
+			),
+		);
+
+		for (const execution of oversized) {
+			// A blob-stored execution is read with a stub instead of its workflow snapshot,
+			// so the policy from run time is not known. Redact it.
+			if (execution.storedAt && execution.storedAt !== 'db') {
+				this.oversizedBasePolicies.set(execution, 'all');
+				continue;
+			}
+
+			const stored = policyToChannels(execution.workflowData.settings?.redactionPolicy ?? 'none');
+			const current = policyToChannels(
+				currentSettings.get(execution.workflowId)?.redactionPolicy ?? 'none',
+			);
+			const channels = mergeRedactionChannels(
+				mergeRedactionChannels(floorChannels, stored),
+				current,
+			);
+			// `channelsToPolicy` turns manual-only channels into 'all'. Keep a legacy
+			// `manual-only` setting as it is, so production runs stay unredacted.
+			const policy =
+				!channels.production && channels.manual ? 'manual-only' : channelsToPolicy(channels);
+			this.oversizedBasePolicies.set(execution, policy);
+		}
+	}
+
+	/**
 	 * Resolves the execution's own redaction policy.
 	 *
 	 * Prefers the snapshot captured in `runtimeData.redaction` at execution time. That snapshot
 	 * is versioned: V2 stores per-channel booleans (reconstructed into the policy enum), while
-	 * V1 (older executions) stores the policy enum directly. Falls back to `workflowData.settings`
-	 * for executions captured before runtime snapshots existed, and defaults to 'none'.
+	 * V1 (older executions) stores the policy enum directly. An oversized execution without the
+	 * snapshot uses the policy from {@link resolveOversizedBasePolicies}. Other executions fall
+	 * back to `workflowData.settings` (captured before runtime snapshots existed), then 'none'.
 	 */
 	private resolveBasePolicy(execution: RedactableExecution): WorkflowSettings.RedactionPolicy {
 		const redaction = execution.data.executionData?.runtimeData?.redaction;
@@ -471,6 +535,12 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			return channelsToPolicy({ production: redaction.production, manual: redaction.manual });
 		}
 
-		return redaction?.policy ?? execution.workflowData.settings?.redactionPolicy ?? 'none';
+		if (redaction?.policy) return redaction.policy;
+
+		return (
+			this.oversizedBasePolicies.get(execution) ??
+			execution.workflowData.settings?.redactionPolicy ??
+			'none'
+		);
 	}
 }

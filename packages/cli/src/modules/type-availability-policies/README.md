@@ -216,7 +216,8 @@ A policy lives in three tables:
 
 `projectId: null` is the instance scope. An unwritten scope has no row: it allows everything and
 reports version `0`, so a first write sends `expectedVersion: 0`. One accepted write moves the
-version by exactly one, whatever it changed.
+version by exactly one, whatever it changed. An access write that changes no rule writes nothing
+(see [Setting the access of a type](#setting-the-access-of-a-type)).
 
 Evaluation is `instance ∩ project`, and a project can only restrict further. `delegate` is the
 one exception: an instance `delegate` is satisfied only by an explicit project `allow` rule,
@@ -338,6 +339,32 @@ Each project's verdicts are compared with the verdicts of a project that has no 
 A project rule on a hidden type, or on a tool variant that follows its base, adds nothing to the
 counts.
 
+### Setting the access of a type
+
+`PATCH /{node,credential}-type-policies/instance/access` and
+`PATCH /projects/:projectId/{node,credential}-type-policies/project/access` take
+`{ version, changes: [{ type, access }] }`. `access` is `allow`, `deny`, `delegate` (instance
+only) or `inherit`. The client does not send the rule list, so the order of the rules stays a
+server decision. `policy-access-changes.ts` places the rules:
+
+- `allow`, `deny` and `delegate` write a `name` rule at the position of the rule that decides
+  the type today, or at the end when the default action decides, and removes the other `name`
+  rules for the type. No earlier rule matches the type, so the new rule decides it and is never
+  shadowed. Every other type keeps its access. A generated tool variant that followed its base
+  follows the new rule.
+- `inherit` removes the `name` rules for the type. It also removes a `name` rule for a tool
+  variant that comes after the base rule: that rule never matched, and it would decide the
+  variant once the base rule is gone. It keeps `package` and `extends` rules, because those
+  decide other types too.
+
+The write goes through the same path as `PUT`, so the same version check, warnings and `409`
+for several attachments or a shared document apply. One call changes either all types or none.
+
+Unlike `PUT`, a call that leaves the rules as they are writes nothing and keeps the version, so
+it does not fail the next write of another admin. A stale `version` still fails with `409`, but
+the `409` for several attachments or a shared document does not apply, because the call changes
+no document.
+
 ### Usage counts of each credential type
 
 `GET /credential-type-policies/usage` and `GET /projects/:projectId/credential-type-policies/usage`
@@ -443,6 +470,7 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `credential-type-policy.check.ts`                 | Credential types: every point but `executionAdmission`, incl. `credentialSave` |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
+| `policy-access-changes.ts`                        | Places the rules for an access write, so that only the changed types move       |
 | `policy-rule-lint.ts`                             | Adds `notLoaded` warnings and merges all write-time warnings in rule order      |
 | `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |

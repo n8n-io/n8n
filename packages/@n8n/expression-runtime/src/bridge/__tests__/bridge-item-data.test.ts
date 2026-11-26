@@ -373,6 +373,14 @@ describe.each(bridges)('$label item data', ({ create }) => {
 		expect(lastRowRead).toBeLessThan(100);
 	});
 
+	it('reads a field with a name over the small size by name', () => {
+		const name = 'n'.repeat(BATCH_READ_LIMITS.smallValueChars + 1);
+		const $json = { rows: rowsOf(20).map((row) => ({ ...row, [name]: row.id })) };
+		const code = `return $json.rows.map(function (r) { return r.${name}; });`;
+
+		expect(evaluate(code, $json)).toStrictEqual(evaluatePlain(code, $json));
+	});
+
 	it('never calls a getter of the item data more than a read of one field does', () => {
 		const read = vi.fn(() => 'computed');
 		const rows = rowsOf(10).map((row) =>

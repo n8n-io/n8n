@@ -27,6 +27,20 @@ export abstract class BasePage extends FloatingUiHelper {
 		return this.page.getByTestId('empty-resources-list');
 	}
 
+	/**
+	 * Filter popover trigger on the shared resources-list layout.
+	 */
+	protected getResourcesListFiltersTrigger(): Locator {
+		return this.page.getByTestId('resources-list-filters-trigger');
+	}
+
+	/**
+	 * Filter popover content panel on the shared resources-list layout.
+	 */
+	protected getResourcesListFiltersDropdown(): Locator {
+		return this.page.getByTestId('resources-list-filters-dropdown');
+	}
+
 	protected async clickByTestId(testId: string) {
 		await this.page.getByTestId(testId).click();
 	}

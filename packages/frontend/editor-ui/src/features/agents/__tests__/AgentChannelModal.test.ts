@@ -393,6 +393,13 @@ describe('AgentChannelModal', () => {
 		mocks.saveDescription.mockResolvedValue(undefined);
 	});
 
+	it('uses the Add trigger title in the trigger picker', async () => {
+		const wrapper = mountModal('list');
+		await flushPromises();
+
+		expect(wrapper.get('h3').text()).toBe('agents.builder.addTrigger.modal.title');
+	});
+
 	it('uses registry metadata and setup rendering without platform checks', async () => {
 		const list = mountModal('list');
 		await flushPromises();
