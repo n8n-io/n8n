@@ -23,8 +23,8 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 - `teleported?: boolean` Whether to teleport the dropdown to body | `default: true`
 - `reference?: DropdownMenuContentProps['reference']` Element or virtual element used to position the menu instead of its trigger
 - `maxHeight?: string | number` Maximum height of the dropdown menu
-- `loading?: boolean` Whether to show loading state
-- `loadingItemCount?: number` Number of skeleton items to show when loading | `default: 3`
+- `loading?: boolean` Whether to show the loading spinner
+- `loadingItemCount?: number` Existing callers pass this value. The built-in loader shows one spinner. | `default: 3`
 - `extraPopperClass?: string` Additional CSS class for the dropdown popper
 
 
@@ -78,7 +78,7 @@ type DropdownMenuItemProps<T = string> = {
   // Sub-menu support
   children?: Array<DropdownMenuItemProps<T>>;
   loading?: boolean;
-  loadingItemCount?: number;
+  loadingItemCount?: number; // Existing callers pass this. The built-in loader shows one spinner.
   searchable?: boolean;
   selectable?: boolean; // Lets a sub-menu parent label select the parent
   searchPlaceholder?: string;
@@ -99,8 +99,8 @@ A companion component for rendering individual dropdown items with full slot-bas
 - `checked?: boolean` Whether to show a checkmark indicator (from `ActionDropdownItem`)
 - `class?: string` Additional CSS classes
 - `children?: Array<DropdownMenuItemProps<T>>` Nested menu items (creates a sub-menu)
-- `loading?: boolean` Whether to show loading state in sub-menu
-- `loadingItemCount?: number` Number of skeleton items when loading | `default: 3`
+- `loading?: boolean` Whether to show the loading spinner in the sub-menu
+- `loadingItemCount?: number` Existing callers pass this value. The built-in loader shows one spinner. | `default: 3`
 - `searchable?: boolean` Enable search functionality for this item's children
 - `selectable?: boolean` Allow the sub-menu parent label and Enter key to select the parent
 - `searchPlaceholder?: string` Search input placeholder
