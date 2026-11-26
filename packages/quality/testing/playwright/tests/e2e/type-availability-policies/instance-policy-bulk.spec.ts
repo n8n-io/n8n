@@ -1,6 +1,7 @@
 import { NO_OP, prepareTypePolicyInstance, scheduleToNoOpWorkflow, SET } from './policy-helpers';
 import { expect, test } from '../../../fixtures/base';
 import type { InstancePolicyPage } from '../../../pages/instance-policy-page';
+import type { n8nPage } from '../../../pages/n8nPage';
 import { policyRule as rule } from '../../../services/type-policy-api-helper';
 
 // An instance policy applies to every workflow on the instance, so the spec needs its own.
@@ -21,6 +22,20 @@ async function selectRows(page: InstancePolicyPage, types: Array<{ type: string;
 		await page.getRowCheckbox(name).check();
 	}
 	await page.search('');
+}
+
+/** Reloads the page and checks the saved access of each type. */
+async function expectAccessAfterReload(
+	n8n: n8nPage,
+	types: Array<{ type: string; name: string }>,
+	access: 'Allowed' | 'Restricted',
+) {
+	await n8n.page.reload();
+	// Each search shows one row. A wider search lists the rows on several pages.
+	for (const { type, name } of types) {
+		await n8n.instancePolicy.search(type);
+		await expect(n8n.instancePolicy.getRowAccess(name)).toContainText(access);
+	}
 }
 
 test.describe(
@@ -51,15 +66,10 @@ test.describe(
 			await expect(page.getSelectionBar()).toBeHidden();
 			await expect(page.getRestrictReview()).toBeHidden();
 
-			await n8n.page.reload();
-			// Each search shows one row. A wider search lists the rows on several pages.
-			await page.search(NO_OP.type);
-			await expect(page.getRowAccess(NO_OP.name)).toContainText('Allowed');
-			await page.search(SET.type);
-			await expect(page.getRowAccess(SET.name)).toContainText('Allowed');
+			await expectAccessAfterReload(n8n, [NO_OP, SET], 'Allowed');
 		});
 
-		test('should select the rows of one page from the header and restrict them', async ({
+		test('should select the rows of one page from the page checkbox and restrict them', async ({
 			n8n,
 			api,
 		}) => {
@@ -86,9 +96,7 @@ test.describe(
 			await page.getRestrictReviewButton('Restrict 1').click();
 
 			await expect(page.getSelectionBar()).toBeHidden();
-			await n8n.page.reload();
-			await page.search(NO_OP.type);
-			await expect(page.getRowAccess(NO_OP.name)).toContainText('Restricted');
+			await expectAccessAfterReload(n8n, [NO_OP], 'Restricted');
 		});
 
 		test('should ask once before it restricts the selected node types that workflows use', async ({
@@ -118,12 +126,7 @@ test.describe(
 			await page.getRestrictReviewButton('Restrict 2').click();
 			await expect(page.getSelectionBar()).toBeHidden();
 
-			await n8n.page.reload();
-			// Each search shows one row. A wider search lists the rows on several pages.
-			await page.search(NO_OP.type);
-			await expect(page.getRowAccess(NO_OP.name)).toContainText('Restricted');
-			await page.search(SET.type);
-			await expect(page.getRowAccess(SET.name)).toContainText('Restricted');
+			await expectAccessAfterReload(n8n, [NO_OP, SET], 'Restricted');
 		});
 
 		test('should change nothing when the policy changed after the page loaded', async ({
@@ -148,9 +151,7 @@ test.describe(
 			await expect(n8n.notifications.getNotificationByTitle('The policy changed')).toBeVisible();
 			await expect(page.getSelectionBar()).toContainText('1 row selected');
 
-			await n8n.page.reload();
-			await page.search(NO_OP.type);
-			await expect(page.getRowAccess(NO_OP.name)).toContainText('Restricted');
+			await expectAccessAfterReload(n8n, [NO_OP], 'Restricted');
 		});
 
 		test('should select a row and apply an action from the keyboard', async ({ n8n, api }) => {

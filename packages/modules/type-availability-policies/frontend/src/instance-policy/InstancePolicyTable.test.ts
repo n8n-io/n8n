@@ -627,10 +627,7 @@ describe('InstancePolicyTable', () => {
 		});
 
 		it('keeps the selection when the page, the search or the filter changes', async () => {
-			const rows = Array.from({ length: 26 }, (_, index) =>
-				row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),
-			);
-			const { getByRole, getByTestId, getByPlaceholderText } = setup(rows);
+			const { getByRole, getByTestId, getByPlaceholderText } = setup(TWO_PAGES);
 
 			await userEvent.click(rowCheckbox(getByRole, 'Type 00'));
 			await fireEvent.click(getByTestId('pagination-next'));
@@ -643,7 +640,7 @@ describe('InstancePolicyTable', () => {
 			expect(rowCheckbox(getByRole, 'Type 25')).toHaveAttribute('aria-checked', 'true');
 		});
 
-		it('selects the rows of the page from the header, and keeps the rows of other pages', async () => {
+		it('selects the rows of the page from the page checkbox, and keeps the rows of other pages', async () => {
 			const { getByRole, getByTestId } = setup(TWO_PAGES);
 			const selectAll = () => getByRole('checkbox', { name: 'Select all rows on this page' });
 			const bar = () => within(getByTestId('selected-items-info'));

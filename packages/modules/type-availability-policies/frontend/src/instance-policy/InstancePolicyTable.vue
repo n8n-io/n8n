@@ -2,6 +2,7 @@
 import type { PolicyAction, TypeUsage } from '@n8n/api-types';
 import {
 	N8nButton,
+	N8nCheckbox,
 	N8nDataTableServer,
 	N8nDropdownMenu,
 	N8nEmptyState,
@@ -89,6 +90,16 @@ const PAGE_SIZES = [10, 25, 50, 100];
 const itemsPerPage = ref(25);
 
 const headers = computed<Array<TableHeader<InstancePolicyTableRow>>>(() => [
+	{
+		// The table's own select column has no accessible names, so the rows render their checkboxes.
+		// The checkbox of the page is next to the search, because a header cannot hold a control.
+		title: '',
+		key: 'select',
+		value: () => undefined,
+		width: 40,
+		disableSort: true,
+		resize: false,
+	},
 	{
 		title: i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.name'),
 		key: 'displayName',
@@ -277,19 +288,45 @@ watch(rowsByName, (rows) => {
 	if (kept.length !== selection.value.length) selection.value = kept;
 });
 
-// The header checkbox selects one page. This selects the rows of every page that the search and the
-// filter show, so with neither it selects all the types.
+const selectedNames = computed(() => new Set(selection.value));
+
+/** Adds the names to the selection, or takes them out. The other selected names stay. */
+function setSelected(names: string[], selected: boolean) {
+	if (selected) {
+		selection.value = [...new Set([...selection.value, ...names])];
+	} else {
+		const removed = new Set(names);
+		selection.value = selection.value.filter((name) => !removed.has(name));
+	}
+}
+
+// The page checkbox shows the state of this page only, so rows selected on other pages do not
+// make it look checked.
+const pageSelectableNames = computed(() =>
+	pageRows.value.filter((row) => row.editable).map((row) => row.name),
+);
+const pageSelectedCount = computed(
+	() => pageSelectableNames.value.filter((name) => selectedNames.value.has(name)).length,
+);
+const pageAllSelected = computed(
+	() =>
+		pageSelectableNames.value.length > 0 &&
+		pageSelectedCount.value === pageSelectableNames.value.length,
+);
+const pageSomeSelected = computed(() => pageSelectedCount.value > 0 && !pageAllSelected.value);
+
+// This selects the rows of every page that the search and the filter show, so with neither it
+// selects all the types.
 const selectableRows = computed(() => filteredRows.value.filter((row) => row.editable));
-const allSelected = computed(() => {
-	const selected = new Set(selection.value);
-	return selectableRows.value.every((row) => selected.has(row.name));
-});
+const allSelected = computed(() =>
+	selectableRows.value.every((row) => selectedNames.value.has(row.name)),
+);
 
 function selectAll() {
-	// Rows that the search or the filter hides stay selected.
-	selection.value = [
-		...new Set([...selection.value, ...selectableRows.value.map((row) => row.name)]),
-	];
+	setSelected(
+		selectableRows.value.map((row) => row.name),
+		true,
+	);
 }
 
 const canRestrict = computed(() => selectedRows.value.some((row) => row.access !== 'deny'));
@@ -308,10 +345,15 @@ function onBulkChange(access: PolicyAction) {
 	);
 }
 
-/** The bar leaves the DOM with the selection, so the focus goes to the checkbox of the page. */
+/**
+ * The bar leaves the DOM with the selection, so the focus goes to the checkbox of the page. A
+ * disabled checkbox cannot take the focus, so then it goes to the filter.
+ */
 function focusSelectAll() {
-	const selectAll = root.value?.querySelector<HTMLElement>('thead [role="checkbox"]');
-	if (selectAll) selectAll.focus();
+	const selectPage = root.value?.querySelector<HTMLButtonElement>(
+		'[data-test-id="instance-policy-select-page"]',
+	);
+	if (selectPage && !selectPage.disabled) selectPage.focus();
 	else focusFilter();
 }
 
@@ -370,6 +412,14 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 					<N8nIcon icon="search" />
 				</template>
 			</N8nInput>
+			<N8nCheckbox
+				:model-value="pageAllSelected"
+				:indeterminate="pageSomeSelected"
+				:disabled="pageSelectableNames.length === 0"
+				:label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.selectPage')"
+				data-test-id="instance-policy-select-page"
+				@update:model-value="(value: boolean) => setSelected(pageSelectableNames, value)"
+			/>
 			<N8nSelect2
 				ref="filter"
 				:model-value="accessFilter"
@@ -404,16 +454,12 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 		<!-- The reload after a save must not swap the message, and its clear button, for skeleton rows. -->
 		<N8nDataTableServer
 			v-model:sort-by="sortBy"
-			v-model:selection="selection"
-			show-select
-			item-selectable="editable"
-			:select-row-label="selectRowLabel"
 			:headers="headers"
 			:items="pageRows"
 			:items-length="filteredRows.length"
 			:loading="loading && !noMatch"
 			item-value="name"
-			:pin-columns="1"
+			:pin-columns="2"
 			:pagination="false"
 			data-test-id="instance-policy-table"
 			:row-props="{ class: $style.row }"
@@ -429,6 +475,17 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 					data-test-id="instance-policy-no-match"
 					@click:button="clearSearchAndFilter"
 				/>
+			</template>
+			<template #[`item.select`]="{ item }">
+				<!-- A click on the checkbox selects the row and does not also open it. -->
+				<div :class="$style.select" @click.stop>
+					<N8nCheckbox
+						:model-value="selectedNames.has(item.name)"
+						:disabled="!item.editable"
+						:aria-label="selectRowLabel(item)"
+						@update:model-value="(value: boolean) => setSelected([item.name], value)"
+					/>
+				</div>
 			</template>
 			<template #[`item.displayName`]="{ item }">
 				<!-- A row is not focusable, so the name is the button that keyboard users reach. -->
@@ -542,6 +599,12 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 
 .row {
 	cursor: pointer;
+}
+
+.select {
+	display: flex;
+	align-items: center;
+	cursor: default;
 }
 
 .name,

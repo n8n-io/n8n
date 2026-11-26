@@ -21,7 +21,7 @@ export type InstanceTypeAccessRow = {
 type PendingChange = { access: PolicyAction; savedVersion?: number };
 
 /** The result of a bulk change. `unchanged` means that no selected type needed the change. */
-export type BulkChangeStatus = InstancePolicySaveResult['status'] | 'cancelled' | 'unchanged';
+type BulkChangeStatus = InstancePolicySaveResult['status'] | 'cancelled' | 'unchanged';
 
 /** The access of every type of one kind under the instance policy, for a tab of the admin page. */
 export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
@@ -92,26 +92,20 @@ export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 			return type.access !== access || (change !== undefined && change.savedVersion === undefined);
 		});
 		if (toChange.length === 0) return 'unchanged';
+		const names = toChange.map(({ name }) => name);
 
 		if (access === 'deny') {
 			if (!(await restrictReview.reviewBulkRestrict(kind, toChange))) return 'cancelled';
 		} else {
-			restrictReview.supersede(
-				kind,
-				toChange.map(({ name }) => name),
-			);
+			restrictReview.supersede(kind, names);
 		}
 
-		const changes = toChange.map(({ name }): [string, PendingChange] => {
+		const changes = names.map((name): [string, PendingChange] => {
 			const change: PendingChange = { access };
 			pending.set(name, change);
 			return [name, change];
 		});
-		const result = await instancePolicy.setAccessMany(
-			kind,
-			toChange.map(({ name }) => name),
-			access,
-		);
+		const result = await instancePolicy.setAccessMany(kind, names, access);
 		settle(changes, result);
 		return result.status;
 	}

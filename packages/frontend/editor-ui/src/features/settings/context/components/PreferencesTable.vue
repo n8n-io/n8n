@@ -88,10 +88,14 @@ function onAction(preference: Preference, action: PreferenceAction) {
 	else emit('delete', preference);
 }
 
-// The modal has no read-only mode, so only a row the viewer may change opens it. The data table
-// does not report a click on a selection checkbox as a row click.
-function onRowClick(_event: MouseEvent, payload: { item: Preference }) {
-	if (!permissions(payload.item).update) return;
+/** The selection checkbox lives in the first cell, so a click there selects and does not open. */
+function isSelectCellClick(event: MouseEvent) {
+	return event.target instanceof Element && event.target.closest('td')?.cellIndex === 0;
+}
+
+// The modal has no read-only mode, so only a row the viewer may change opens it.
+function onRowClick(event: MouseEvent, payload: { item: Preference }) {
+	if (isSelectCellClick(event) || !permissions(payload.item).update) return;
 	emit('edit', payload.item);
 }
 
