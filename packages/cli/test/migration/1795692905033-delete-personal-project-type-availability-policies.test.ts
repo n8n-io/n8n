@@ -8,7 +8,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'DeletePersonalProjectTypeAvailabilityPolicies1795617409226';
+const MIGRATION_NAME = 'DeletePersonalProjectTypeAvailabilityPolicies1795692905033';
 
 const SCOPE_TABLE = 'type_availability_policy_scope';
 const POLICY_TABLE = 'type_availability_policy';
