@@ -10,15 +10,15 @@ import type {
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
-	N8nActionToggle,
 	N8nBreadcrumbs,
 	N8nContextMenu,
+	N8nDropdownMenu,
 	N8nHeading,
+	N8nIconButton,
 	N8nInlineTextEdit,
 	N8nText,
 } from '@n8n/design-system';
-import type { ContextMenuNode, PathItem } from '@n8n/design-system';
-import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
+import type { ContextMenuNode, DropdownMenuItemProps, PathItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -40,7 +40,7 @@ import { useCollectionPermissions } from '@/features/settings/context/composable
 
 const COLLECTIONS_CRUMB = 'collections';
 
-type CollectionAction = 'edit-description' | 'delete';
+type CollectionAction = 'rename' | 'edit-description' | 'delete';
 
 const props = defineProps<{
 	projectId: string;
@@ -62,8 +62,9 @@ const collection = ref<KnowledgeCollectionDto | null>(null);
 const uploading = ref(false);
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 
-// The title edit gets the saved name, so a refused name stays in its text and the user can send it again.
+// The name edits get the saved name, so a refused name stays in their text and the user can send it again.
 const nameEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('nameEdit');
+const crumbNameEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('crumbNameEdit');
 const renaming = ref(false);
 const renameError = ref('');
 const modalOpen = ref(false);
@@ -73,16 +74,23 @@ const deletingCollection = ref<KnowledgeCollectionDto | null>(null);
 
 const canEdit = computed(() => collection.value !== null && canChange(collection.value));
 
-const collectionActions = computed<Array<ActionToggleItem<CollectionAction>>>(() => [
+const collectionActions = computed<Array<DropdownMenuItemProps<CollectionAction>>>(() => [
 	{
-		value: 'edit-description',
-		label: i18n.baseText('settings.context.collections.actions.editDescription'),
-		icon: 'square-pen',
+		id: 'rename',
+		label: i18n.baseText('generic.rename'),
+		icon: { type: 'icon', value: 'pencil' },
+		// The focus moves to the name edit. Back on the trigger, it would end the edit.
+		suppressCloseAutoFocus: true,
 	},
 	{
-		value: 'delete',
+		id: 'edit-description',
+		label: i18n.baseText('settings.context.collections.actions.editDescription'),
+		icon: { type: 'icon', value: 'square-pen' },
+	},
+	{
+		id: 'delete',
 		label: i18n.baseText('settings.context.collections.actions.delete'),
-		icon: 'trash-2',
+		icon: { type: 'icon', value: 'trash-2' },
 		destructive: true,
 		divided: true,
 	},
@@ -107,7 +115,10 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 		label: i18n.baseText('settings.context.collections.title'),
 		href: router.resolve(collectionsRoute).href,
 	},
-	...(collection.value ? [{ id: collection.value.id, label: collection.value.name }] : []),
+	// A user who can change the collection gets the name as an edit after the crumbs.
+	...(collection.value && !canEdit.value
+		? [{ id: collection.value.id, label: collection.value.name }]
+		: []),
 ]);
 
 const fileMenuItems = computed<ContextMenuNode[]>(() => [
@@ -219,6 +230,7 @@ async function onRename(name: string) {
 
 		toast.showError(error, i18n.baseText('settings.context.collections.error.update'));
 		nameEdit.value?.forceCancel();
+		crumbNameEdit.value?.forceCancel();
 		renameError.value = '';
 	} finally {
 		renaming.value = false;
@@ -231,7 +243,9 @@ function onAction(action: CollectionAction) {
 		return;
 	}
 
-	if (action === 'edit-description') {
+	if (action === 'rename') {
+		crumbNameEdit.value?.forceFocus();
+	} else if (action === 'edit-description') {
 		editingCollection.value = current;
 		modalOpen.value = true;
 	} else {
@@ -328,20 +342,51 @@ async function removeFile(fileId: string) {
 <template>
 	<div :class="$style.view" data-test-id="collection-view">
 		<div :class="$style.topBar">
-			<N8nBreadcrumbs :items="breadcrumbItems" theme="medium" @item-selected="onBreadcrumbSelect">
+			<N8nBreadcrumbs
+				:items="breadcrumbItems"
+				theme="medium"
+				:highlight-last-item="!canEdit"
+				@item-selected="onBreadcrumbSelect"
+			>
 				<template #prepend>
 					<ProjectIcon :icon="projectIcon" size="mini" />
 				</template>
+				<template v-if="collection && canEdit" #append>
+					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
+					<N8nInlineTextEdit
+						ref="crumbNameEdit"
+						:model-value="collection.name"
+						:disabled="renaming"
+						:max-length="KNOWLEDGE_COLLECTION_NAME_MAX_LENGTH"
+						:placeholder="i18n.baseText('settings.context.collections.modal.name.label')"
+						:class="$style.crumbName"
+						data-test-id="collection-name-crumb-edit"
+						@update:model-value="onRename"
+						@focusin="renameError = ''"
+					/>
+				</template>
 			</N8nBreadcrumbs>
 			<!-- A user who cannot change the collection has no menu. -->
-			<N8nActionToggle
+			<N8nDropdownMenu
 				v-if="canEdit"
-				:actions="collectionActions"
-				:aria-label="i18n.baseText('node.moreActions')"
+				:items="collectionActions"
 				:disabled="renaming"
+				:modal="false"
+				placement="bottom-end"
 				data-test-id="collection-actions"
-				@action="onAction"
-			/>
+				@select="onAction"
+			>
+				<template #trigger>
+					<N8nIconButton
+						variant="ghost"
+						icon="ellipsis-12"
+						size="small"
+						icon-size="small"
+						:disabled="renaming"
+						:aria-label="i18n.baseText('node.moreActions')"
+					/>
+				</template>
+			</N8nDropdownMenu>
 		</div>
 
 		<div :class="$style.body">
@@ -484,6 +529,17 @@ async function removeFile(fileId: string) {
 	:global(.n8n-breadcrumbs > ul > li:first-child) {
 		display: none;
 	}
+}
+
+.crumbSeparator {
+	color: var(--color--foreground);
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
+	font-size: var(--font-size--xl);
+	user-select: none;
+}
+
+.crumbName {
+	font-size: var(--font-size--sm);
 }
 
 .body {

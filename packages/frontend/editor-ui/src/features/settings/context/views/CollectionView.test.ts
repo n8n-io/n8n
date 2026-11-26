@@ -120,7 +120,13 @@ const selectFiles = async (files: File[]) => {
 const titleEdit = () => screen.getByTestId('collection-name-inline-edit');
 const titleInput = () => within(titleEdit()).getByTestId('inline-edit-input');
 const titlePreview = () => within(titleEdit()).getByTestId('inline-edit-preview');
-const currentCrumb = () => screen.getAllByTestId('breadcrumbs-item').at(-1);
+/** The last crumb. Its title is the saved name. A user who can change the collection gets a name edit. */
+const currentCrumb = () =>
+	screen.queryByTestId('collection-name-crumb-edit') ??
+	screen.getAllByTestId('breadcrumbs-item').at(-1);
+const crumbEdit = () => screen.getByTestId('collection-name-crumb-edit');
+const crumbInput = () => within(crumbEdit()).getByTestId('inline-edit-input');
+const crumbPreview = () => within(crumbEdit()).getByTestId('inline-edit-preview');
 
 /** Clicks the title, replaces its text and presses the given key. */
 async function typeTitle(name: string, key = '{Enter}') {
@@ -133,14 +139,13 @@ function menuLabels() {
 	return screen.getAllByRole('menuitem').map((item) => item.textContent?.trim());
 }
 
-const moreActionsButton = () =>
-	within(screen.getByTestId('collection-actions')).getByRole('button', { name: 'More actions' });
+const moreActionsButton = () => screen.getByRole('button', { name: 'More actions' });
 
 async function openMenu() {
 	await userEvent.click(moreActionsButton());
 }
 
-async function pickAction(name: 'Edit description' | 'Delete') {
+async function pickAction(name: 'Rename' | 'Edit description' | 'Delete') {
 	await openMenu();
 	await userEvent.click(await screen.findByRole('menuitem', { name }));
 }
@@ -349,22 +354,32 @@ describe('CollectionView', () => {
 	});
 
 	describe('actions menu', () => {
-		it('offers Edit description and Delete to a user who can change the collection', async () => {
+		it('offers Rename, Edit description and Delete to a user who can change the collection', async () => {
 			await setup();
 
 			await openMenu();
 
-			await screen.findByRole('menuitem', { name: 'Edit description' });
-			expect(menuLabels()).toEqual(['Edit description', 'Delete']);
+			await screen.findByRole('menuitem', { name: 'Rename' });
+			expect(menuLabels()).toEqual(['Rename', 'Edit description', 'Delete']);
 		});
 
-		it('shows no menu and a plain title to a user without the scope', async () => {
+		it('starts the rename in the breadcrumb from Rename in the menu', async () => {
+			await setup();
+
+			await pickAction('Rename');
+
+			await waitFor(() => expect(crumbInput()).toHaveFocus());
+		});
+
+		it('shows no menu, a plain title and a plain crumb to a user without the scope', async () => {
 			await setup({ canEdit: false });
 			const heading = screen.getByRole('heading', { level: 1 });
 
 			expect(screen.queryByTestId('collection-actions')).toBeNull();
 			expect(heading).toHaveTextContent('Customer support');
 			expect(within(heading).queryByTestId('inline-edit-input')).toBeNull();
+			expect(screen.queryByTestId('collection-name-crumb-edit')).toBeNull();
+			expect(currentCrumb()).toHaveAttribute('title', 'Customer support');
 			expect(await tabsIntoTitle()).toBe(false);
 			expect(collectionsStore.updateCollection).not.toHaveBeenCalled();
 		});
@@ -394,6 +409,23 @@ describe('CollectionView', () => {
 			expect(titlePreview()).toHaveTextContent('Support handbook');
 			expect(document.title).toContain('Support handbook');
 			expect(showMessageMock).not.toHaveBeenCalled();
+		});
+
+		it('saves a new name from the breadcrumb and shows it in the title', async () => {
+			await setup();
+			collectionsStore.updateCollection.mockResolvedValue(
+				collectionDto({ name: 'Support handbook' }),
+			);
+
+			await userEvent.click(crumbPreview());
+			await userEvent.clear(crumbInput());
+			await userEvent.type(crumbInput(), 'Support handbook{Enter}');
+
+			expect(collectionsStore.updateCollection).toHaveBeenCalledWith('p1', 'c1', {
+				name: 'Support handbook',
+			});
+			await waitFor(() => expect(titlePreview()).toHaveTextContent('Support handbook'));
+			expect(crumbPreview()).toHaveTextContent('Support handbook');
 		});
 
 		it('keeps the saved name and sends nothing when the user empties the title', async () => {
