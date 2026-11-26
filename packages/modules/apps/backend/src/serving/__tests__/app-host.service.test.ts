@@ -67,6 +67,39 @@ describe('AppHostService', () => {
 		expect(hosts.previewNamespace(request('--preview.apps.localhost:5678'))).toBeUndefined();
 	});
 
+	it('builds callback URLs and host kinds for both hosts', () => {
+		const hosts = setup({ baseUrl: 'http://apps.localhost:5678' });
+		const app = { id: 'app-1', namespace: 'sales' };
+
+		expect(hosts.callbackUrl(app)).toBe(
+			'http://sales.apps.localhost:5678/_n8n/auth/app-1/callback',
+		);
+		expect(hosts.callbackUrl(app, 'preview')).toBe(
+			'http://sales--preview.apps.localhost:5678/_n8n/auth/app-1/callback',
+		);
+		expect(hosts.hostKindFromUrl(new URL('http://sales.apps.localhost:5678'))).toBe('published');
+		expect(hosts.hostKindFromUrl(new URL('http://sales--preview.apps.localhost:5678'))).toBe(
+			'preview',
+		);
+		expect(hosts.hostKindFromUrl(new URL('http://other.example.com'))).toBeUndefined();
+	});
+
+	it('uses the origin of the instance base URL as the editor origin', () => {
+		expect(setup({ instanceBaseUrl: 'https://n8n.example.net/base' }).editorOrigin).toBe(
+			'https://n8n.example.net',
+		);
+	});
+
+	it.each([
+		['sales.apps.example.com', "'none'"],
+		['unknown.nested.apps.example.com', "'none'"],
+		['sales--preview.apps.example.com', 'https://n8n.example.net'],
+	])('allows only the editor to frame preview hosts: %s', (host, frameAncestors) => {
+		expect(setup().contentSecurityPolicy(request(host))).toBe(
+			`base-uri 'self'; object-src 'none'; frame-ancestors ${frameAncestors}`,
+		);
+	});
+
 	it('accepts valid parent labels with consecutive hyphens', () => {
 		expect(setup({ baseUrl: 'https://apps--public.example.com' }).origin('sales')).toBe(
 			'https://sales.apps--public.example.com',

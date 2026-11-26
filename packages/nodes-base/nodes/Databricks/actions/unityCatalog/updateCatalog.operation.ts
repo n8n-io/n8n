@@ -1,3 +1,4 @@
+import { requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
@@ -13,13 +14,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const catalogName = extractResourceLocatorValue(this.getNodeParameter('catalogName', i));
 	const comment = this.getNodeParameter('comment', i, '') as string;
 
-	const response = await databricksApiRequest(this, credentialType, {
-		method: 'PATCH',
-		url: `${host}/api/2.1/unity-catalog/catalogs/${catalogName}`,
-		body: { comment },
-		headers: { 'Content-Type': 'application/json' },
-		json: true,
-	});
+	const response = await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.1/unity-catalog/catalogs/${catalogName}`,
+		{
+			method: 'PATCH',
+			body: { comment },
+			headers: { 'Content-Type': 'application/json' },
+			json: true,
+		},
+	);
 
 	return [{ json: response, pairedItem: { item: i } }];
 }

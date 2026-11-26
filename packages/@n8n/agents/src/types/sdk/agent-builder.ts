@@ -9,9 +9,10 @@ import type { BuiltGuardrail } from './guardrail';
 import type { CheckpointStore } from './memory';
 import type { ReasoningLevel } from './reasoning';
 import type { BuiltProviderTool, BuiltTool } from './tool';
-import type { VolatileInstructionsProvider } from '../runtime/agent-runtime';
+import type { ContextCueProvider, VolatileInstructionsProvider } from '../runtime/agent-runtime';
 import type { ScopedMemoryTaskEvent } from '../../runtime/memory/scoped-memory-task-runner';
 import type { RuntimeSkill, RuntimeSkillSource } from '../../skills';
+import type { ContextCueProviderOptions, ContextCueSet } from '../../context-cues';
 
 /**
  * Interface describing the fluent builder methods used to configure an agent.
@@ -26,6 +27,11 @@ export interface AgentBuilder {
 	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this;
 	instructions(text: string): this;
 	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this;
+	contextCueProvider(provider: ContextCueProvider): this;
+	contextCues(
+		sets: readonly ContextCueSet[],
+		options?: Omit<ContextCueProviderOptions, 'sets'>,
+	): this;
 	tool(t: BuiltTool | BuiltTool[]): this;
 	nativeToolDeferral(config: NativeToolDeferralConfig): this;
 	toolDeferral(config: ToolDeferralConfig): this;

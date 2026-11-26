@@ -1,4 +1,5 @@
 import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -6,7 +7,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
@@ -18,8 +19,8 @@ import { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillService } from '../../services/skill.service';
 import { createSkill } from '../../testing';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
-import { PostHogClient } from '@/posthog';
 
+import { createAgent } from '@test-integration/db/agents';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -34,7 +35,7 @@ beforeAll(async () => {
 describe('SkillsController', () => {
 	const server = setupTestServer({ endpointGroups: ['ai'] });
 	const postHog = mockInstance(PostHogClient);
-	let ownerUser: User;
+	let ownerPerson: Person;
 	let memberUser: User;
 	let editorUser: User;
 	let owner: SuperAgentTest;
@@ -45,11 +46,11 @@ describe('SkillsController', () => {
 	let project: Project;
 
 	beforeAll(async () => {
-		ownerUser = await createOwner();
+		ownerPerson = await createOwner();
 		memberUser = await createMember();
 		editorUser = await createMember();
 		const viewerUser = await createMember();
-		owner = server.authAgentFor(ownerUser);
+		owner = server.authAgentFor(ownerPerson);
 		member = server.authAgentFor(memberUser);
 		editor = server.authAgentFor(editorUser);
 		viewer = server.authAgentFor(viewerUser);
@@ -176,18 +177,15 @@ describe('SkillsController', () => {
 	});
 
 	async function newAgent(name: string, projectId: string) {
-		const agents = Container.get(AgentRepository);
-		return await agents.save(
-			agents.create({
-				id: randomUUID(),
-				name,
-				projectId,
-				integrations: [],
-				tools: {},
-				skills: {},
-				versionId: randomUUID(),
-			}),
-		);
+		return await createAgent({
+			id: randomUUID(),
+			name,
+			projectId,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: randomUUID(),
+		});
 	}
 
 	async function attachToNewAgent(
@@ -198,16 +196,14 @@ describe('SkillsController', () => {
 	) {
 		const agents = Container.get(AgentRepository);
 		const versionId = randomUUID();
-		const agent = await agents.save(
-			agents.create({
-				id: randomUUID(),
-				name,
-				projectId,
-				integrations: [],
-				tools: {},
-				versionId,
-			}),
-		);
+		const agent = await createAgent({
+			id: randomUUID(),
+			name,
+			projectId,
+			integrations: [],
+			tools: {},
+			versionId,
+		});
 		if (options.published) {
 			// Published and in sync: the draft is the published version.
 			const histories = Container.get(DataSource).getRepository(AgentHistory);
@@ -315,8 +311,8 @@ describe('SkillsController', () => {
 			const response = await owner.get('/skills').expect(200);
 
 			expect(response.body.data.data[0].createdBy).toMatchObject({
-				id: ownerUser.id,
-				email: ownerUser.email,
+				id: ownerPerson.id,
+				email: ownerPerson.email,
 			});
 		});
 
@@ -347,7 +343,7 @@ describe('SkillsController', () => {
 
 		it('lists the skills one agent may attach, never those of another project', async () => {
 			const support = await newAgent('Support bot', project.id);
-			const elsewhere = await createTeamProject('Elsewhere', ownerUser);
+			const elsewhere = await createTeamProject('Elsewhere', ownerPerson);
 			await create(owner, {
 				scope: 'project',
 				projectId: elsewhere.id,
@@ -388,7 +384,7 @@ describe('SkillsController', () => {
 			const hiddenAgent = await member.get('/skills').query({ agentId: support.id });
 			const byCreator = await owner
 				.get('/skills')
-				.query({ createdById: ownerUser.id, sortBy: 'name:asc' })
+				.query({ createdById: ownerPerson.id, sortBy: 'name:asc' })
 				.expect(200);
 			const byName = await owner.get('/skills').query({ sortBy: 'name:desc' }).expect(200);
 
@@ -440,7 +436,7 @@ describe('SkillsController', () => {
 
 			expect(forEditor.body.data).toHaveLength(2);
 			expect(forOutsider.body.data).toEqual([
-				expect.objectContaining({ id: ownerUser.id, email: ownerUser.email }),
+				expect.objectContaining({ id: ownerPerson.id, email: ownerPerson.email }),
 			]);
 		});
 	});
@@ -549,6 +545,36 @@ describe('SkillsController', () => {
 			});
 		});
 
+		it('returns the hash of the stored version when references arrive out of path order', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+
+			const saved = await editor
+				.patch(`/skills/${id}`)
+				.send({
+					references: [
+						{ path: 'references/zeta.md', content: 'Zeta.' },
+						{ path: 'references/alpha.md', content: 'Alpha.' },
+					],
+					baseSkillHash: skillHash,
+				})
+				.expect(200);
+			const read = await editor.get(`/skills/${id}`).expect(200);
+
+			expect(saved.body.data.skill.references.map((file: { path: string }) => file.path)).toEqual([
+				'references/alpha.md',
+				'references/zeta.md',
+			]);
+			expect(saved.body.data.skillHash).toBe(read.body.data.skillHash);
+			await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: saved.body.data.skillHash })
+				.expect(200);
+		});
+
 		it('refuses a save based on a stale hash', async () => {
 			const { id, skillHash } = await create(editor, {
 				scope: 'project',
@@ -567,7 +593,7 @@ describe('SkillsController', () => {
 
 		it('refuses a content change to a synced skill', async () => {
 			const { id } = await createSkill({ projectId: project.id, source: 'github' });
-			await linkSkill(id, { projectId: project.id, createdById: ownerUser.id });
+			await linkSkill(id, { projectId: project.id, createdById: ownerPerson.id });
 			const { skillHash } = (await editor.get(`/skills/${id}`).expect(200)).body.data;
 
 			const refused = await editor
@@ -584,7 +610,7 @@ describe('SkillsController', () => {
 
 		it('refuses to move a synced skill on its own, as it moves only with its source', async () => {
 			const { id } = await createSkill({ projectId: project.id, source: 'github' });
-			await linkSkill(id, { projectId: project.id, createdById: ownerUser.id });
+			await linkSkill(id, { projectId: project.id, createdById: ownerPerson.id });
 			const { skillHash } = (await owner.get(`/skills/${id}`).expect(200)).body.data;
 
 			const refused = await owner
@@ -628,7 +654,7 @@ describe('SkillsController', () => {
 			);
 		});
 
-		it('marks a following agent that was in sync as changed, and leaves a pinned agent alone', async () => {
+		it('keeps the draft version of following and pinned agents when a skill is saved', async () => {
 			const { id, skillHash } = await create(editor, {
 				scope: 'project',
 				projectId: project.id,
@@ -647,7 +673,7 @@ describe('SkillsController', () => {
 				.expect(200);
 
 			expect(saved.body.data).toMatchObject({ version: 2, created: true });
-			expect(await draftVersionOf(following.id)).not.toBe(following.versionId);
+			expect(await draftVersionOf(following.id)).toBe(following.versionId);
 			expect(await draftVersionOf(pinned.id)).toBe(pinned.versionId);
 		});
 	});
@@ -772,7 +798,7 @@ describe('SkillsController', () => {
 				target: { projectId: null },
 				skill: { ...body, name: 'brand voice' },
 				source: 'ui',
-				createdById: ownerUser.id,
+				createdById: ownerPerson.id,
 			});
 
 			await owner

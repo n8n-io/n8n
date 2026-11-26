@@ -16,13 +16,13 @@ import { formatContextBudget, measureContextBudget } from '../context-budget';
  * Raise one only on purpose, and say why in the PR.
  */
 const CEILINGS = {
-	systemPrompt: 21_000,
+	systemPrompt: 21_500,
 	skillCatalog: 9_000,
 	alwaysLoadedTools: 72_000,
 	buildSkills: 117_000,
 };
 
-/** The skills that a typical workflow build loads and keeps for the rest of the thread. */
+/** The skills that a typical workflow build loads in a thread. */
 const BUILD_SKILLS = ['intent-recognition', 'workflow-builder', 'post-build-flow'];
 
 async function measureDefaultProfile() {

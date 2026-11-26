@@ -1,6 +1,6 @@
 import type { AgentSkill } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import type { AgentSkillRefsService } from '../agent-skill-refs.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
@@ -39,18 +39,28 @@ function getPublishedAgentSnapshot<T extends Agent>(agentEntity: T): T {
  * Select the draft or the published version of an agent for a run, with the
  * skill refs of the same draft or version.
  */
+/** A run reads text files only. The runtime gives no binary file to the model. */
+const RUN_FILES = { textOnly: true } as const;
+
 export async function resolveAgentRunSource<T extends Agent>(
 	agentEntity: T,
 	usePublishedVersion: boolean,
 	agentSkillRefs: AgentSkillRefsService,
 	ctx: OperationContext,
+	{ allowArchived = false }: { allowArchived?: boolean } = {},
 ): Promise<AgentRunSource<T>> {
+	if (agentEntity.isArchived && !allowArchived) {
+		throw new UserError('Agent is archived. Restore the agent before running it.');
+	}
 	if (!usePublishedVersion) {
-		return { agent: agentEntity, ...(await agentSkillRefs.readDraft(agentEntity, ctx)) };
+		return {
+			agent: agentEntity,
+			...(await agentSkillRefs.readDraft(agentEntity, ctx, RUN_FILES)),
+		};
 	}
 	const activeVersion = getPublishedVersion(agentEntity);
 	return {
 		agent: getPublishedAgentSnapshot(agentEntity),
-		...(await agentSkillRefs.readVersion(activeVersion, ctx)),
+		...(await agentSkillRefs.readVersion(activeVersion, ctx, RUN_FILES)),
 	};
 }

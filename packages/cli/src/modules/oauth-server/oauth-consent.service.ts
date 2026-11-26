@@ -371,6 +371,15 @@ export class OAuthConsentService {
 			(await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource));
 		if (!resource?.isFirstParty) return null;
 
+		if (resource.skipConsent && this.isOwnClient(resource, sessionPayload)) {
+			if (!(await resource.authorize(user))) return null;
+			const scopes = this.grantableScopes(
+				await this.supportedScopesFor(resource, user),
+				sessionPayload.requestedScopes,
+			);
+			return await this.issueGrant(user, sessionPayload, scopes);
+		}
+
 		const consent = await this.userConsentRepository.findGrant(
 			user.id,
 			sessionPayload.clientId,
@@ -429,5 +438,13 @@ export class OAuthConsentService {
 				return null;
 			return await this.issueGrant(user, sessionPayload, consented, ctx);
 		});
+	}
+
+	private isOwnClient(resource: ProtectedResource, sessionPayload: OAuthSessionPayload): boolean {
+		const resourceUrls = resource.getResourceUrls?.() ?? [resource.getResourceUrl()];
+		return (
+			sessionPayload.redirectUri === sessionPayload.clientId &&
+			resourceUrls.includes(sessionPayload.clientId)
+		);
 	}
 }

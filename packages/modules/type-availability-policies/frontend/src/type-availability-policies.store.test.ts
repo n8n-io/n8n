@@ -150,6 +150,33 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			expect(mocks.fetchAvailableTypes).toHaveBeenCalledTimes(1);
 		});
 
+		it('joins a load of the same project that is still in flight', async () => {
+			mocks.fetchAvailableTypes.mockResolvedValue(PROJECT_A_RESPONSE);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await Promise.all([store.fetchForProject('project-a'), store.fetchForProject('project-a')]);
+
+			expect(mocks.fetchAvailableTypes).toHaveBeenCalledTimes(1);
+			expect(store.loadedProjectId).toBe('project-a');
+		});
+
+		it('joins the reload, not the load that the reload replaced', async () => {
+			let resolveFirst: (value: typeof PROJECT_A_RESPONSE) => void = () => {};
+			mocks.fetchAvailableTypes
+				.mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+				.mockResolvedValueOnce(PROJECT_A_RESPONSE);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			const firstLoad = store.fetchForProject('project-a');
+			await Promise.all([store.reload(), store.fetchForProject('project-a')]);
+
+			expect(store.loadedProjectId).toBe('project-a');
+			expect(mocks.fetchAvailableTypes).toHaveBeenCalledTimes(2);
+
+			resolveFirst(PROJECT_A_RESPONSE);
+			await firstLoad;
+		});
+
 		it('reloads the requested project', async () => {
 			mocks.fetchAvailableTypes
 				.mockResolvedValueOnce(PROJECT_A_RESPONSE)

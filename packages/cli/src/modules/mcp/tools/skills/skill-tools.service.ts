@@ -1,18 +1,31 @@
 import {
+	connectPublicSkillSourceSchema,
 	CreateSkillDto,
+	discoverPublicSkillSourceSchema,
 	ListSkillsQueryDto,
+	projectSkillDetailsForModel,
+	skillReferenceReadError,
 	SaveSkillDto,
 	SKILLS_MAX_PAGE_SIZE,
+	skillReferenceReadShape,
 	skillScopeSchema,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillReferenceRead,
 } from '@n8n/api-types';
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { z } from 'zod';
 
-import { AssistantSkillsFlagGate, SkillService, toSkillToolRefusal } from '@/modules/skills';
-import { Telemetry } from '@/telemetry';
+import {
+	AssistantSkillsFlagGate,
+	SkillService,
+	SkillSourceService,
+	SkillSyncFlagGate,
+	skillSourceReasonOf,
+	toSkillToolRefusal,
+} from '@/modules/skills';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { RegisterToolFn, UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -98,25 +111,34 @@ function summary(item: SkillListItem, flags: SkillAvailabilityFlags) {
 		usedByAgents: item.usedByAgents,
 		canEdit: item.canEdit,
 		canDelete: item.canDelete,
+		sourceId: item.sourceId,
+		syncState: item.syncState,
 		updatedAt: item.updatedAt,
 	};
 }
 
-function details(detail: SkillDetail, flags: SkillAvailabilityFlags) {
+function details(
+	detail: SkillDetail,
+	flags: SkillAvailabilityFlags,
+	reference?: SkillReferenceRead,
+) {
 	return {
 		...summary(detail, flags),
-		skill: detail.skill,
+		...projectSkillDetailsForModel(detail.skill, reference),
 		skillHash: detail.skillHash,
 		usedBy: detail.usedBy,
+		syncedFrom: detail.syncedFrom,
 	};
 }
 
 @Service()
 export class McpSkillToolsService {
 	constructor(
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly skillService: SkillService,
 		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
+		private readonly skillSourceService: SkillSourceService,
+		private readonly skillSyncFlagGate: SkillSyncFlagGate,
 	) {}
 
 	async registerTools(
@@ -162,8 +184,8 @@ export class McpSkillToolsService {
 			name: 'get_skill',
 			config: {
 				description:
-					'Read a skill with its instructions, references, skillHash and the Agents that use it.',
-				inputSchema: skillIdInput,
+					'Read a skill with its instructions, reference paths, bounded text content, skillHash and the Agents that use it. Read omitted paths separately with referencePath. Binary files show only metadata.',
+				inputSchema: { ...skillIdInput, ...skillReferenceReadShape },
 				annotations: {
 					title: 'Get Skill',
 					readOnlyHint: true,
@@ -172,10 +194,12 @@ export class McpSkillToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ skillId }) =>
-				await this.run(user, 'get_skill', { skillId }, async () =>
-					details(await this.skillService.get(user, skillId), flags),
-				),
+			handler: async ({ skillId, ...reference }) =>
+				await this.run(user, 'get_skill', { skillId }, async () => {
+					const error = skillReferenceReadError(reference);
+					if (error) return { ok: false, skillId, error };
+					return details(await this.skillService.get(user, skillId), flags, reference);
+				}),
 		});
 
 		registerTool({
@@ -218,7 +242,7 @@ export class McpSkillToolsService {
 			name: 'update_skill',
 			config: {
 				description:
-					'Update a skill. Content changes create a new version. Pass only the fields to change.',
+					'Update a skill. Pass only the fields to change. Content changes create a new version. `references` replaces the text files. Read all parts of the files you want to keep before replacing them. A binary file that you do not name stays in the skill.',
 				inputSchema: withAvailabilityInputs(updateSkillInput, flags),
 				annotations: {
 					title: 'Update Skill',
@@ -236,6 +260,7 @@ export class McpSkillToolsService {
 							skillId,
 							SaveSkillDto.parse(update),
 							'mcp',
+							{ keepUnnamedBinaryFiles: true },
 						);
 						return saved;
 					} catch (error) {
@@ -274,6 +299,60 @@ export class McpSkillToolsService {
 					return { deleted: true, skillId };
 				}),
 		});
+
+		if (await this.skillSyncFlagGate.isEnabled(user)) this.registerSourceTools(registerTool, user);
+	}
+
+	private registerSourceTools(registerTool: RegisterToolFn, user: User) {
+		registerTool({
+			name: 'list_skill_sources',
+			config: {
+				description:
+					'List the skill sources you can see, with their sync status and update counts. Review and accept pending updates in Settings > Context > Skills.',
+				annotations: { readOnlyHint: true, openWorldHint: false },
+			},
+			handler: async () =>
+				await this.run(user, 'list_skill_sources', {}, async () => ({
+					sources: await this.skillSourceService.list(user),
+				})),
+		});
+		registerTool({
+			name: 'discover_skill_source',
+			config: {
+				description:
+					'Preview skills from a public GitHub repository, folder, or SKILL.md in a chosen scope. Show the user the check verdicts and eligible skills. Only skills with a pass verdict, no error and no name conflict can be imported here. Review warnings in Settings > Context > Skills.',
+				inputSchema: discoverPublicSkillSourceSchema.shape,
+				annotations: { readOnlyHint: true, openWorldHint: true },
+			},
+			handler: async (input: z.infer<typeof discoverPublicSkillSourceSchema>) =>
+				await this.run(
+					user,
+					'discover_skill_source',
+					{ scope: input.scope },
+					async () => await this.skillSourceService.discoverPublic(user, input, 'mcp'),
+				),
+		});
+		registerTool({
+			name: 'import_skills_from_source',
+			config: {
+				description:
+					'Connect a public GitHub source and import the selected skills as read-only synced skills. Call discover_skill_source first. Confirm the source, destination and selection with the user before calling. Use the same URL, scope and revision as the preview. Review warnings and accept updates in Settings > Context > Skills.',
+				inputSchema: connectPublicSkillSourceSchema.shape,
+				annotations: {
+					readOnlyHint: false,
+					destructiveHint: false,
+					idempotentHint: false,
+					openWorldHint: true,
+				},
+			},
+			handler: async (input: z.infer<typeof connectPublicSkillSourceSchema>) =>
+				await this.run(
+					user,
+					'import_skills_from_source',
+					{ scope: input.scope },
+					async () => await this.skillSourceService.connectPublic(user, input, 'mcp'),
+				),
+		});
 	}
 
 	private async run(
@@ -293,6 +372,12 @@ export class McpSkillToolsService {
 			this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 			return toolResult(data, data.ok === false);
 		} catch (error) {
+			const reason = skillSourceReasonOf(error);
+			if (reason && error instanceof Error) {
+				telemetryPayload.results = { success: false, data: { reason } };
+				this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+				return toolResult({ ok: false, code: reason, error: error.message }, true);
+			}
 			return trackAndReturnToolError(this.telemetry, telemetryPayload, error, (message) => ({
 				ok: false,
 				code: 'skill_tool_error',

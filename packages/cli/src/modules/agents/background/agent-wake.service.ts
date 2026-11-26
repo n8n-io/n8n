@@ -1,3 +1,4 @@
+import type { ContextCueEntry } from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
@@ -6,12 +7,14 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from '@n8n/errors';
+import { randomUUID } from 'node:crypto';
 
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@n8n/backend-services';
 
 import { AgentConversationStateService } from '../agent-conversation-state.service';
+import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { AgentPlanService } from '../agent-plan.service';
 import { planLeaves } from '../plans/agent-plan-state';
 import { isFinal as isFinalPlanStatus } from '../plans/agent-plan.validation';
@@ -112,42 +115,59 @@ export class AgentWakeService {
 	}
 
 	/**
-	 * Return a hint about pending job results for the current memory resource.
-	 * Authors who share a thread see only their own jobs.
-	 * Wake runs already receive these results as input and need no hint.
+	 * Return append-only context cues about pending job results or active stop
+	 * requests for the current memory resource. Authors who share a thread see
+	 * only their own jobs. Wake runs already receive these results as input and
+	 * need no cue.
 	 */
-	async getBackgroundUpdates(threadId: string, resourceId: string): Promise<string | undefined> {
-		if (!this.agentsConfig.backgroundTasksEnabled) return undefined;
-		if (this.activeWakes.has(threadId)) return undefined;
+	async getBackgroundUpdateCues(
+		threadId: string,
+		resourceId: string,
+		sentCueIds: ReadonlySet<string> = new Set(),
+	): Promise<ContextCueEntry[]> {
+		if (!this.agentsConfig.backgroundTasksEnabled) return [];
+		if (this.activeWakes.has(threadId)) return [];
 
-		const [pending, stoppedHere] = await Promise.all([
+		const [pending, stopIds] = await Promise.all([
 			this.jobRepository.findWakeableUnconsumed(threadId),
-			this.jobRepository.hasRequestedStop(threadId, resourceId),
+			this.jobRepository.findRequestedStopIds(threadId, resourceId),
 		]);
-		const jobs = pending.filter(
+		const unseenJobs = pending.filter(
 			(job) =>
-				job.parentResourceId === resourceId && job.status !== 'suspended' && !job.pauseRequestId,
+				job.parentResourceId === resourceId &&
+				job.status !== 'suspended' &&
+				!job.pauseRequestId &&
+				!job.wakeAttemptId &&
+				!sentCueIds.has(settledJobCueId(job)),
 		);
-		if (jobs.length === 0 && !stoppedHere) return undefined;
+		const stopCueId = stopIds.length > 0 ? `background-updates:stop:${stopIds.join(',')}` : null;
+		const includeStopCue = stopCueId !== null && !sentCueIds.has(stopCueId);
+		if (unseenJobs.length === 0 && !includeStopCue) return [];
 
-		// Remove tag characters so titles cannot close the surrounding tag.
-		// Quote titles to distinguish them from instructions.
-		const summaries = jobs
-			.map((job) => {
-				const title = job.title.replace(/[<>]/g, '').slice(0, HINT_TITLE_MAX_CHARS);
-				return `${JSON.stringify(title)} (${job.status})`;
-			})
-			.join(', ');
-		const updates: string[] = [];
-		if (jobs.length > 0)
-			updates.push(
-				`${jobs.length} background job(s) settled: ${summaries}. Call background_jobs with action "check" once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.`,
-			);
-		if (stoppedHere)
-			updates.push(
-				'The user requested a stop for background tasks. Sub-agents pause at their checkpoints. Workflows stop through execution cancellation. One combined report follows when the selected tasks are inactive. Do not replace or resume these tasks automatically. First call background_jobs with action "resume" when the latest user message explicitly asks to continue. If that message arrived before the report, ask the user to wait and retry. Cancelled workflows need new calls through their normal tools. Check conversation history and current jobs before repeating a workflow call.',
-			);
-		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${updates.join('\n')}${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
+		const cues: ContextCueEntry[] = [];
+
+		for (const [index, job] of unseenJobs.entries()) {
+			// Remove tag characters so titles cannot close the surrounding tag.
+			// Quote titles to distinguish them from instructions.
+			const title = job.title.replace(/[<>]/g, '').slice(0, HINT_TITLE_MAX_CHARS);
+			const checkInstruction =
+				index === unseenJobs.length - 1
+					? ' Call background_jobs with action "check" once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.'
+					: '';
+			cues.push({
+				id: settledJobCueId(job),
+				content: `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}Background job settled: ${JSON.stringify(title)} (${job.status}).${checkInstruction}${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`,
+			});
+		}
+
+		if (includeStopCue) {
+			cues.push({
+				id: stopCueId,
+				content: `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}The user requested a stop for background tasks. Sub-agents pause at their checkpoints. Workflows stop through execution cancellation. One combined report follows when the selected tasks are inactive. Do not replace or resume these tasks automatically. First call background_jobs with action "resume" when the latest user message explicitly asks to continue. If that message arrived before the report, ask the user to wait and retry. Cancelled workflows need new calls through their normal tools. Check conversation history and current jobs before repeating a workflow call.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`,
+			});
+		}
+
+		return cues;
 	}
 
 	private scheduleLocal(threadId: string): void {
@@ -197,6 +217,13 @@ export class AgentWakeService {
 			);
 		}
 
+		// A started wake already received these results. Finish its consumption update.
+		const received = pending.filter((job) => job.wakeAttemptId);
+		if (received.length > 0) {
+			if (!(await this.consumeReceived(threadId, received))) return;
+			pending = pending.filter((job) => !job.wakeAttemptId);
+		}
+
 		for (const job of pending.filter(
 			(item) => item.status === 'suspended' && !item.pauseRequestId,
 		)) {
@@ -223,6 +250,12 @@ export class AgentWakeService {
 			return;
 		}
 
+		const ids = jobs.map((job) => job.id);
+		// The claim persists before the agent starts, so recovery on any main can tell
+		// that the agent received these results, also after a restart.
+		const wakeAttemptId = randomUUID();
+		let ran = false;
+		let started = false;
 		try {
 			const { agent, identity } = await this.resolveWakeTarget(first);
 			const { running, suspendedCheckpoint } = await this.conversationState.inspect(
@@ -230,23 +263,70 @@ export class AgentWakeService {
 				threadId,
 			);
 			if (running || suspendedCheckpoint !== null) return;
-			await this.runWake(agent, identity, jobs, threadId, first.parentResourceId, signal);
+			await this.runWake(agent, identity, jobs, threadId, first.parentResourceId, signal, {
+				onAdmitted: async () => await this.jobRepository.claimForWake(threadId, ids, wakeAttemptId),
+				onRuntimeStarted: () => {
+					started = true;
+				},
+			});
+			ran = true;
 
 			if (signal.aborted) return;
 			await this.backgroundJobService.markMailConsumed(
 				threadId,
-				jobs.map((job) => job.id),
+				ids,
 				Boolean(first.pauseRequestId),
 			);
 			this.failures.delete(threadId);
 
 			// Check for results that arrived during this reply; an empty queue stops further checks.
 			this.scheduleLocal(threadId);
-		} catch {
-			if (signal.aborted) return;
+		} catch (error) {
+			if (signal.aborted) {
+				// The agent did not run. Release the claim so a later wake delivers these results.
+				if (!started) await this.releaseClaim(threadId, wakeAttemptId);
+				return;
+			}
+			if (ran || isStartedRecordingFailure(error)) {
+				// The agent ran. Another run would repeat its tool actions.
+				await this.consumeReceived(threadId, jobs);
+				return;
+			}
+			// Ordinary failures retry. Release the claim so the next wake can select these results.
+			await this.releaseClaim(threadId, wakeAttemptId);
 			// Keep provider and tool error details in the execution record.
 			// Log only that the wake failed.
 			this.recordFailure(threadId, generation);
+		}
+	}
+
+	private async releaseClaim(threadId: string, wakeAttemptId: string): Promise<void> {
+		try {
+			await this.jobRepository.releaseWakeClaim(threadId, wakeAttemptId);
+		} catch (error) {
+			// Recovery then treats the results as received. No replay is safer than a lost retry.
+			this.logger.warn('Failed to release background job results after a failed wake', {
+				threadId,
+				error,
+			});
+		}
+	}
+
+	/** Mark results consumed that a started wake received. Recovery retries on failure. */
+	private async consumeReceived(threadId: string, jobs: AgentBackgroundJob[]): Promise<boolean> {
+		try {
+			await this.backgroundJobService.markMailConsumed(
+				threadId,
+				jobs.map((job) => job.id),
+				true,
+			);
+			return true;
+		} catch (error) {
+			this.logger.warn('Failed to mark background job results consumed after a wake', {
+				threadId,
+				error,
+			});
+			return false;
 		}
 	}
 
@@ -376,6 +456,7 @@ export class AgentWakeService {
 		threadId: string,
 		resourceId: string,
 		signal: AbortSignal,
+		{ onAdmitted, onRuntimeStarted }: Pick<ExecuteForWakeConfig, 'onAdmitted' | 'onRuntimeStarted'>,
 	): Promise<void> {
 		this.activeWakes.add(threadId);
 
@@ -410,9 +491,19 @@ export class AgentWakeService {
 				memory: { threadId, resourceId },
 				identity,
 				abortSignal: signal,
+				onAdmitted,
+				onRuntimeStarted,
 			});
 		} finally {
 			this.activeWakes.delete(threadId);
 		}
 	}
+}
+
+function settledJobCueId(job: Pick<AgentBackgroundJob, 'id' | 'status'>): string {
+	return `background-updates:job:${job.id}:${job.status}`;
+}
+
+function isStartedRecordingFailure(error: unknown): boolean {
+	return error instanceof AgentExecutionRecordingError && error.executionStarted;
 }

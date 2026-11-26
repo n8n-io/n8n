@@ -19,7 +19,7 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 	const rootStore = useRootStore();
 	const selection = ref<SelfHealingSelection | null>(null);
 	const detail = ref<SelfHealingResultDetail | null>(null);
-	const workflow = ref<SelfHealingResultWorkflowMetadata | null>(null);
+	const workflows = ref(new Map<string, SelfHealingResultWorkflowMetadata>());
 	const loading = ref(false);
 	const error = ref<unknown>(null);
 	const workflowError = ref<unknown>(null);
@@ -90,24 +90,32 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 		return undefined;
 	}
 
-	async function refreshWorkflow() {
-		const target = selection.value;
-		if (!target) return;
+	const workflowIds = computed(() => {
+		if (!selection.value) return [];
+		const suggestionIds = detail.value?.suggestions.map(({ workflowId }) => workflowId) ?? [];
+		return [...new Set([selection.value.workflowId, ...suggestionIds])];
+	});
+
+	async function refreshWorkflows({ onlyMissing = false } = {}) {
+		if (!selection.value) return;
+
+		const ids = workflowIds.value.filter((id) => !onlyMissing || !workflows.value.has(id));
+		if (ids.length === 0) return;
 
 		const requestSequence = ++workflowRequestSequence;
+		const responses = await Promise.allSettled(
+			ids.map(async (id) => await fetchResultWorkflow(rootStore.restApiContext, id)),
+		);
+		if (requestSequence !== workflowRequestSequence) return;
 
-		try {
-			const response = await fetchResultWorkflow(rootStore.restApiContext, target.workflowId);
-			if (requestSequence !== workflowRequestSequence) return;
-
-			workflow.value = response;
-			workflowError.value = null;
-		} catch (cause) {
-			if (requestSequence !== workflowRequestSequence) return;
-
-			workflow.value = null;
-			workflowError.value = cause;
-		}
+		const next = new Map(onlyMissing ? workflows.value : []);
+		let failure: unknown = null;
+		responses.forEach((response, index) => {
+			if (response.status === 'fulfilled') next.set(ids[index], response.value);
+			else failure ??= response.reason;
+		});
+		workflows.value = next;
+		workflowError.value = failure;
 	}
 
 	function beginAction(target: SelfHealingSelection, action: SelfHealingResultAction) {
@@ -122,29 +130,43 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 		pendingActions.value.delete(resultKey(target));
 	}
 
+	// The sub-workflows of a fix are known only after the detail loads.
+	async function refreshSubWorkflows(target: SelfHealingSelection) {
+		if (isSelected(target) && detail.value && !workflowError.value) {
+			await refreshWorkflows({ onlyMissing: true });
+		}
+	}
+
 	async function select(target: SelfHealingSelection) {
 		detailRequestSequence++;
 		workflowRequestSequence++;
 
 		selection.value = { ...target };
 		detail.value = null;
-		workflow.value = null;
+		workflows.value = new Map();
 		error.value = null;
 		workflowError.value = null;
 
-		await Promise.all([refreshDetail(), refreshWorkflow()]);
+		await Promise.all([refreshDetail(), refreshWorkflows()]);
+		await refreshSubWorkflows(target);
+	}
+
+	async function retryDetail(beforeShow?: (result: SelfHealingResultDetail) => Promise<void>) {
+		const target = selection.value;
+		if (target && (await refreshDetail(beforeShow))) await refreshSubWorkflows(target);
 	}
 
 	return {
 		detail,
-		workflow,
+		workflows,
+		workflowIds,
 		loading,
 		error,
 		workflowError,
 		pendingAction,
 		select,
-		refreshDetail,
-		refreshWorkflow,
+		retryDetail,
+		refreshWorkflows,
 		acceptResult,
 		beginAction,
 		endAction,

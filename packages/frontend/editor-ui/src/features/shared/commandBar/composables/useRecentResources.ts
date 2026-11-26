@@ -21,7 +21,7 @@ import {
 	AGENT_SESSIONS_LIST_VIEW,
 } from '@/features/agents/constants';
 import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
-import type { AgentResource } from '@/features/agents/types';
+import type { AgentListItem } from '@/features/agents/agent.types';
 
 const MAX_RECENT_ITEMS = 5;
 const MAX_RECENT_WORKFLOWS_TO_DISPLAY = 5;
@@ -187,7 +187,7 @@ export function useRecentResources(): CommandGroup & {
 		};
 	};
 
-	const toAgentItem = (agent: AgentResource): CommandBarItem => {
+	const toAgentItem = (agent: AgentListItem): CommandBarItem => {
 		const location = {
 			name: AGENT_BUILDER_VIEW,
 			params: { projectId: agent.projectId, agentId: agent.id },
@@ -254,8 +254,8 @@ export function useRecentResources(): CommandGroup & {
 		if (!settingsStore.isAgentsEnabled || recentOpens.length === 0) return;
 
 		const agents = await listAgentsPageGlobal(rootStore.restApiContext, {
-			skip: 0,
-			take: recentOpens.length,
+			offset: 0,
+			limit: recentOpens.length,
 			filter: { ids: recentOpens.map(({ id }) => id) },
 		}).catch(() => undefined);
 		if (!agents) return;

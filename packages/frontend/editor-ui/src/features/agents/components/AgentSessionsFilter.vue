@@ -46,6 +46,7 @@ const origins: Array<{ id: AgentSessionOrigin | 'all'; name: string }> = [
 	{ id: 'discord', name: i18n.baseText('agentSessions.origin.discord') },
 	{ id: 'whatsapp', name: i18n.baseText('agentSessions.origin.whatsapp') },
 	{ id: 'teams', name: i18n.baseText('agentSessions.origin.teams') },
+	{ id: 'webhook', name: i18n.baseText('agentSessions.origin.webhook') },
 ];
 
 const activeFilterCount = computed(
@@ -73,7 +74,6 @@ function reset() {
 		align="end"
 		position-strategy="absolute"
 		width="calc(var(--spacing--5xl) + var(--spacing--4xl))"
-		:content-class="$style.popoverContent"
 		show-arrow
 	>
 		<template #trigger>
@@ -100,7 +100,7 @@ function reset() {
 		</template>
 
 		<template #content>
-			<div data-test-id="agent-sessions-filter-form">
+			<div :class="$style.form" data-test-id="agent-sessions-filter-form">
 				<div :class="$style.group">
 					<label for="agent-sessions-filter-status">{{
 						i18n.baseText('agentSessions.filters.status')
@@ -220,7 +220,9 @@ function reset() {
 	transform: translate(50%, -50%);
 }
 
-.popoverContent {
+// The popover scroll area clips its content, so keep the padding inside it. This leaves room
+// for the focus rings of the full-width controls.
+.form {
 	padding: var(--spacing--sm);
 }
 </style>

@@ -102,7 +102,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
-			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getBinaryHelperFunctions(additionalData, workflow.id, runExecutionData),
 			...getDataTableHelperFunctions(additionalData, workflow, node),
 			...getDeduplicationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
@@ -114,6 +114,9 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 					propertyName,
 					0,
 					workflow.settings.binaryMode,
+					additionalData,
+					workflow.id,
+					runExecutionData,
 				),
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 
@@ -195,7 +198,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	}
 
 	getInputData(inputIndex = 0, connectionType = this.connectionType) {
-		if (!this.inputData.hasOwnProperty(connectionType)) {
+		if (!Object.hasOwn(this.inputData, connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];
 		}
@@ -354,7 +357,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				};
 			}
 
-			if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
+			if (!Object.hasOwn(runExecutionData.resultData.runData, nodeName)) {
 				runExecutionData.resultData.runData[nodeName] = [];
 			}
 

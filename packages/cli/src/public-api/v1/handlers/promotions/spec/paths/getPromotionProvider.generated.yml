@@ -6,7 +6,9 @@ description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
   Returns the provider with its public configuration. Secrets are never returned.
-x-required-scope: promotions:read
+
+  Requires the `promotions:readProviders` API key scope.
+x-required-scope: promotions:readProviders
 parameters:
   - schema:
       type: string

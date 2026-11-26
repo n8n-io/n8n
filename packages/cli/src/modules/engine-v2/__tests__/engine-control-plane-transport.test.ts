@@ -1,13 +1,10 @@
-import type {
-	HttpRequestClient,
-	HttpRequestClientOptions,
-	OutboundHttp,
-} from '@n8n/backend-network';
+import type { HttpRequestClient, HttpRequestClientOptions } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
 import { InvalidActionTokenError, verifyActionToken } from '@n8n/engine';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
+import type { EngineMtls } from '../engine-mtls';
 
 const authSecret = 'a'.repeat(32);
 
@@ -20,7 +17,7 @@ describe('EngineControlPlaneTransport', () => {
 	/** Rebuilds the transport so each test can vary the config. */
 	const newTransport = (overrides: Partial<EngineConfig> = {}) => {
 		http = mock<HttpRequestClient>();
-		const outboundHttp = mock<OutboundHttp>({
+		const mtls = mock<EngineMtls>({
 			requests: vi.fn((options?: HttpRequestClientOptions) => {
 				clientOptions = options;
 				return http;
@@ -33,7 +30,7 @@ describe('EngineControlPlaneTransport', () => {
 			...overrides,
 		});
 
-		return new EngineControlPlaneTransport(engineConfig, outboundHttp);
+		return new EngineControlPlaneTransport(engineConfig, mtls);
 	};
 
 	/** Resolves the authorization header the way the HTTP client does per request. */

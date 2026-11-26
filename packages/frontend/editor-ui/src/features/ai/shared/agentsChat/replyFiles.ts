@@ -21,17 +21,24 @@ function readFiles(result: unknown): AgentToolOutputFile[] {
 	return result.results.flatMap((entry) => (isRecord(entry) ? readFiles(entry.result) : []));
 }
 
+/** The files of an interactive card. The resume output has only the user's answer, so they stay in the suspend payload. */
+function readSuspendFiles(payload: unknown): AgentToolOutputFile[] {
+	if (!isRecord(payload) || payload.type !== 'integration_action') return [];
+	return Array.isArray(payload.files) ? payload.files.filter(isToolOutputFile) : [];
+}
+
+type ReplyToolCall = Pick<ToolCall, 'tool' | 'output' | 'suspendPayload'>;
+
 /** The files that the agent sent with its reply through the n8n Chat `respond` action. */
-export function getReplyAttachments(
-	toolCall: Pick<ToolCall, 'tool' | 'output'>,
-): ChatMessageAttachment[] {
-	return toolCall.tool === N8N_CHAT_ACTION_TOOL_NAME ? readFiles(toolCall.output) : [];
+export function getReplyAttachments(toolCall: ReplyToolCall): ChatMessageAttachment[] {
+	if (toolCall.tool !== N8N_CHAT_ACTION_TOOL_NAME) return [];
+	return [...readSuspendFiles(toolCall.suspendPayload), ...readFiles(toolCall.output)];
 }
 
 /** The reply files of a tool call that are not in `known` yet. Each file comes one time. */
 export function newReplyAttachments(
 	known: readonly ChatMessageAttachment[] | undefined,
-	toolCall: Pick<ToolCall, 'tool' | 'output'>,
+	toolCall: ReplyToolCall,
 ): ChatMessageAttachment[] {
 	const seen = new Set(known?.map((attachment) => attachment.fileId));
 	return getReplyAttachments(toolCall).filter((file) => {
@@ -44,7 +51,7 @@ export function newReplyAttachments(
 /** Add the reply files of a tool call to the message. */
 export function addReplyAttachments(
 	message: Pick<ChatMessage, 'attachments'>,
-	toolCall: Pick<ToolCall, 'tool' | 'output'>,
+	toolCall: ReplyToolCall,
 ): void {
 	const added = newReplyAttachments(message.attachments, toolCall);
 	if (added.length > 0) message.attachments = [...(message.attachments ?? []), ...added];

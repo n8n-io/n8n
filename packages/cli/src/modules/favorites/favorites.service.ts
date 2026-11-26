@@ -33,10 +33,19 @@ const enrichWithName = <F>(
 const enrichWithMeta = <F>(
 	fav: F,
 	meta: ResourceMeta | undefined,
-): Array<F & { resourceName: string; resourceProjectId: string }> =>
+): Array<
+	F & { resourceName: string; resourceProjectId: string; folderResourceType?: 'workflow' | 'agent' }
+> =>
 	meta === undefined
 		? []
-		: [{ ...fav, resourceName: meta.name, resourceProjectId: meta.projectId }];
+		: [
+				{
+					...fav,
+					resourceName: meta.name,
+					resourceProjectId: meta.projectId,
+					...(meta.folderResourceType ? { folderResourceType: meta.folderResourceType } : {}),
+				},
+			];
 
 @Service()
 export class FavoritesService {
@@ -187,7 +196,11 @@ export class FavoritesService {
 		for (const folder of folders) {
 			const projectId = folder.homeProject?.id;
 			if (projectId && (hasGlobalAccess || accessibleProjectIds.has(projectId))) {
-				result.set(folder.id, { name: folder.name, projectId });
+				result.set(folder.id, {
+					name: folder.name,
+					projectId,
+					folderResourceType: folder.resourceType,
+				});
 			}
 		}
 		return result;

@@ -2,8 +2,11 @@ operationId: getPromotionEnvironmentProjects
 tags:
   - Promotions
 summary: 'Beta: List projects linked to a promotion environment'
-description: '**Beta** — breaking changes may still occur without major version bump.'
-x-required-scope: promotions:read
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Requires the `promotions:readEnvironments` API key scope.
+x-required-scope: promotions:readEnvironments
 parameters:
   - schema:
       type: string

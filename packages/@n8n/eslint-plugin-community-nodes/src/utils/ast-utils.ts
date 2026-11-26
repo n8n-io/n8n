@@ -56,6 +56,40 @@ export function isTriggerNode(
 }
 
 /**
+ * Returns whether a connection entry is `main`, or null when it is only known at
+ * runtime. The entry can be a string, `NodeConnectionTypes.X`, or `{ type: … }`.
+ */
+export function isMainConnection(element: TSESTree.Node | null | undefined): boolean | null {
+	const connection =
+		element?.type === AST_NODE_TYPES.ObjectExpression
+			? (findStaticProperty(element, 'type')?.value ?? null)
+			: (element ?? null);
+	const value = getStringLiteralValue(connection);
+	if (value !== null) return value === 'main';
+
+	if (
+		connection?.type === AST_NODE_TYPES.MemberExpression &&
+		connection.object.type === AST_NODE_TYPES.Identifier &&
+		connection.object.name === 'NodeConnectionTypes'
+	) {
+		const key =
+			!connection.computed && connection.property.type === AST_NODE_TYPES.Identifier
+				? connection.property.name
+				: getStringLiteralValue(connection.property);
+		if (key !== null) return key === 'Main';
+	}
+	return null;
+}
+
+export function isAiOnlyNode(descriptionValue: TSESTree.ObjectExpression): boolean {
+	const outputs = findArrayLiteralProperty(descriptionValue, 'outputs');
+	const inputs = findArrayLiteralProperty(descriptionValue, 'inputs');
+	if (!outputs || inputs?.elements.length !== 0) return false;
+
+	return outputs.elements.some((element) => isMainConnection(element) === false);
+}
+
+/**
  * Returns the name a property key stands for, or null when it is only known at
  * runtime. `delete`, `'delete'` and `['delete']` all name the same property, so
  * how the key is written must not decide whether a rule sees it.
@@ -95,10 +129,9 @@ export function findClassProperty(
 }
 
 /**
- * Returns the object literal behind an expression, and looks through the type
- * assertions node authors write, e.g. `{ … } as INodeTypeDescription`.
+ * Returns the expression behind TypeScript assertions and non-null assertions.
  */
-function asObjectExpression(node: TSESTree.Node | null): TSESTree.ObjectExpression | null {
+export function unwrapExpression(node: TSESTree.Node | null): TSESTree.Node | null {
 	let current = node;
 	while (
 		current?.type === AST_NODE_TYPES.TSAsExpression ||
@@ -109,6 +142,11 @@ function asObjectExpression(node: TSESTree.Node | null): TSESTree.ObjectExpressi
 		current = current.expression;
 	}
 
+	return current;
+}
+
+function asObjectExpression(node: TSESTree.Node | null): TSESTree.ObjectExpression | null {
+	const current = unwrapExpression(node);
 	return current?.type === AST_NODE_TYPES.ObjectExpression ? current : null;
 }
 
@@ -169,6 +207,23 @@ export function findObjectProperty(
 		(prop) => prop.type === AST_NODE_TYPES.Property && getPropertyKeyName(prop) === propertyName,
 	);
 	return property?.type === AST_NODE_TYPES.Property ? property : null;
+}
+
+/**
+ * Returns the property that sets `name` last, null when no property sets it, or
+ * undefined when a later spread or computed key could replace it.
+ */
+export function findStaticProperty(
+	object: TSESTree.ObjectExpression,
+	name: string,
+): TSESTree.Property | null | undefined {
+	for (const property of [...object.properties].reverse()) {
+		if (property.type !== AST_NODE_TYPES.Property) return undefined;
+		const key = getPropertyKeyName(property);
+		if (key === null) return undefined;
+		if (key === name) return property;
+	}
+	return null;
 }
 
 export function getLiteralValue(node: TSESTree.Node | null): string | boolean | number | null {

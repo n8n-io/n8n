@@ -12,7 +12,7 @@ import {
 	PollerStateRepository,
 	ScheduledJobRepository,
 	SettingsRepository,
-	UserRepository,
+	PersonRepository,
 } from '@n8n/db';
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -28,10 +28,9 @@ import { MfaService } from '@/mfa/mfa.service';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Push } from '@/push';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
-import { CacheService } from '@n8n/backend-services';
+import { CacheService, PasswordUtility } from '@n8n/backend-services';
 import { FrontendService } from '@/services/frontend.service';
 import { HeapDiagnosticsService } from '@/services/heap-diagnostics.service';
-import { PasswordUtility } from '@/services/password.utility';
 import { ProcessInternalsService } from '@/services/process-internals.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -43,6 +42,8 @@ if (!inE2ETests) {
 }
 
 const tablesToTruncate = [
+	// Before `user`: an agent's identity is a user that it must not lose.
+	'agents',
 	'auth_identity',
 	'auth_provider_sync_history',
 	'credentials_entity',
@@ -203,7 +204,7 @@ export class E2EController {
 		private readonly cacheService: CacheService,
 		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly frontendService: FrontendService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly logStreamingDestinationsService: LogStreamingDestinationService,
@@ -606,7 +607,7 @@ export class E2EController {
 		chat: UserSetupPayload,
 	) {
 		const userCreatePromises = [
-			this.userRepository.createUserWithProject({
+			this.personRepository.createPersonWithProject({
 				id: uuid(),
 				...owner,
 				password: await this.passwordUtility.hash(owner.password),
@@ -617,7 +618,7 @@ export class E2EController {
 		];
 
 		userCreatePromises.push(
-			this.userRepository.createUserWithProject({
+			this.personRepository.createPersonWithProject({
 				id: uuid(),
 				...admin,
 				password: await this.passwordUtility.hash(admin.password),
@@ -629,7 +630,7 @@ export class E2EController {
 
 		for (const { password, ...payload } of members) {
 			userCreatePromises.push(
-				this.userRepository.createUserWithProject({
+				this.personRepository.createPersonWithProject({
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
@@ -641,7 +642,7 @@ export class E2EController {
 		}
 
 		userCreatePromises.push(
-			this.userRepository.createUserWithProject({
+			this.personRepository.createPersonWithProject({
 				id: uuid(),
 				...chat,
 				password: await this.passwordUtility.hash(chat.password),
@@ -654,17 +655,11 @@ export class E2EController {
 		const [newOwner] = await Promise.all(userCreatePromises);
 
 		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
-			const { encryptedRecoveryCodes, encryptedSecret } =
-				await this.mfaService.encryptSecretAndRecoveryCodes(
-					owner.mfaSecret,
-					owner.mfaRecoveryCodes,
-				);
-
-			// oxlint-disable-next-line typescript/no-deprecated
-			await this.userRepository.update(newOwner.user.id, {
-				mfaSecret: encryptedSecret,
-				mfaRecoveryCodes: encryptedRecoveryCodes,
-			});
+			await this.mfaService.saveSecretAndRecoveryCodes(
+				newOwner.user.id,
+				owner.mfaSecret,
+				owner.mfaRecoveryCodes,
+			);
 		}
 	}
 

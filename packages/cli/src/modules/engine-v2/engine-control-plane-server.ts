@@ -2,7 +2,7 @@ import { inTest, Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import express, { type Application } from 'express';
-import { createServer, type Server } from 'node:http';
+import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 import { bodyParser, rawBodyReader } from '@/middlewares';
@@ -12,6 +12,7 @@ import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-a
 import { EngineCredentialsController } from './engine-credentials.controller';
 import { EngineDataTablesController } from './engine-data-tables.controller';
 import { EngineSubWorkflowController } from './engine-sub-workflow.controller';
+import { EngineMtls } from './engine-mtls';
 import {
 	CREDENTIALS_RESOLVE_PATH,
 	DATA_TABLES_CALL_PATH,
@@ -35,6 +36,7 @@ export class EngineControlPlaneServer {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
+		private readonly mtls: EngineMtls,
 		private readonly credentialsController: EngineCredentialsController,
 		private readonly dataTablesController: EngineDataTablesController,
 		private readonly subWorkflowController: EngineSubWorkflowController,
@@ -50,7 +52,7 @@ export class EngineControlPlaneServer {
 
 		const { controlPlaneHost: host, controlPlanePort: port } = this.engineConfig;
 
-		this.server = createServer(app);
+		this.server = this.mtls.createServer(app);
 		this.server.on('error', (error: NodeJS.ErrnoException) => {
 			if (error.code !== 'EADDRINUSE') {
 				// Nothing else handles these, so an unlogged one is a silent failure.
@@ -76,7 +78,9 @@ export class EngineControlPlaneServer {
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
 		// The bound port, not the configured one, which is `0` when the OS picks it.
-		this.logger.info(`Engine v2 control plane listening on http://${shownHost}:${this.port}`);
+		this.logger.info(
+			`Engine v2 control plane listening on ${this.mtls.enabled ? 'https' : 'http'}://${shownHost}:${this.port}`,
+		);
 	}
 
 	async stop(): Promise<void> {

@@ -1,6 +1,15 @@
-import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
-import { EventService } from '@n8n/backend-services';
+import { isDeepStrictEqual } from 'node:util';
+
+import type {
+	InstanceTypeAccessResponse,
+	NodeTypeAvailabilityScope,
+	ProjectPolicyEffectiveCounts,
+	ProjectPolicyKindSummary,
+	TypeAccessChange,
+} from '@n8n/api-types';
+import { EventService, loginIdOf } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { Service } from '@n8n/di';
 import {
 	CREDENTIAL_ONLY_NODE_PREFIX,
@@ -25,8 +34,16 @@ import {
 	type EffectivePolicy,
 	type ProjectEffectivePolicy,
 } from './effective-policy';
+import type { ListTypes } from './listed-node-types';
 import { loadedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
-import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
+import { applyAccessChanges } from './policy-access-changes';
+import {
+	evaluateComposedType,
+	evaluateRules,
+	orderedAttachments,
+	type ComposedVerdict,
+	type PolicedType,
+} from './policy-evaluator';
 import type { PolicyAction, PolicyAttachment, PolicyRule } from './policy-rule.types';
 import { lintPolicyRules, type PolicyRuleWarning } from './policy-rule-lint';
 import { TypeAvailabilityPolicySnapshot } from './type-availability-policy-snapshot';
@@ -47,6 +64,17 @@ export type ScopeAttachments = {
 
 /** One type's composed verdict, as `evaluateComposedTypes` reports it. */
 export type ComposedTypeVerdict = ComposedVerdict & { readonly name: string };
+
+/** One kind's counts for the project policy list. Projects without a scope row are absent. */
+export type ProjectPolicyKindSummaries = {
+	withoutProjectPolicy: ProjectPolicyEffectiveCounts;
+	byProject: Map<string, { updatedAt: Date; summary: ProjectPolicyKindSummary }>;
+};
+
+export type AllProjectsEvaluation = {
+	withoutProjectPolicy: ComposedTypeVerdict[];
+	byProject: Array<{ projectId: string; verdicts: ComposedTypeVerdict[] }>;
+};
 
 /**
  * Composed verdicts plus the version of every scope that was read.
@@ -96,6 +124,12 @@ function assertNoDelegateAtProjectScope(
 	}
 }
 
+function scopeVersionConflict(expectedVersion: number, foundVersion: number): ConflictError {
+	return new ConflictError(
+		`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${foundVersion})`,
+	);
+}
+
 /**
  * A credential-only node (`n8n-creds-base.<type>`) exists only in the editor. It is stored and
  * executed as `n8n-nodes-base.httpRequest`, so a node type rule on the generated name would
@@ -135,6 +169,24 @@ function assertExtendsSelectorsValid(kind: string, rules: readonly PolicyRule[])
 
 	if (rules.some((rule) => rule.selector.kind === 'extends')) {
 		throw new UserError('An "extends" rule is only valid in a credential type policy');
+	}
+}
+
+/**
+ * A name strips only one tool suffix, so a rule for `xToolTool` does not follow the rules of
+ * `x`. The placement of an access write needs that, and no registry generates such a type.
+ */
+function assertNoNestedToolVariants(
+	changes: readonly TypeAccessChange[],
+	policedType: (name: string) => PolicedType,
+): void {
+	for (const { type } of changes) {
+		const { baseName } = policedType(type);
+		if (baseName !== type && policedType(baseName).baseName !== baseName) {
+			throw new UserError(
+				`Node type "${type}" is a tool variant of "${baseName}", which is itself a tool variant`,
+			);
+		}
 	}
 }
 
@@ -226,9 +278,7 @@ export class TypeAvailabilityPolicyService {
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {
-				throw new ConflictError(
-					`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${currentVersion})`,
-				);
+				throw scopeVersionConflict(expectedVersion, currentVersion);
 			}
 
 			if (!scope) {
@@ -311,6 +361,7 @@ export class TypeAvailabilityPolicyService {
 		kind: string,
 		rules: readonly PolicyRule[],
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<PolicyDocumentWrite> {
 		const warnings = this.validateAndLintRules(kind, rules);
 
@@ -322,6 +373,7 @@ export class TypeAvailabilityPolicyService {
 			policyId: policy.id,
 			origin: 'document-api',
 			after: { rules: policy.rules, version: policy.version },
+			loginId: loginIdOf(ctx),
 		});
 
 		return { policy, warnings };
@@ -344,6 +396,7 @@ export class TypeAvailabilityPolicyService {
 		rules: readonly PolicyRule[],
 		expectedVersion: number,
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<PolicyDocumentWrite> {
 		const warnings = this.validateAndLintRules(kind, rules);
 
@@ -416,6 +469,7 @@ export class TypeAvailabilityPolicyService {
 			origin: 'document-api',
 			before: { rules: result.existing.rules, version: result.existing.version },
 			after: { rules: result.updated.rules, version: result.updated.version },
+			loginId: loginIdOf(ctx),
 		});
 
 		return { policy: result.updated, warnings };
@@ -430,7 +484,12 @@ export class TypeAvailabilityPolicyService {
 	 * row lock. An attachment insert takes a key-share lock on the document it points at, so a
 	 * concurrent attach waits for this transaction rather than landing between the two.
 	 */
-	async deletePolicyDocument(kind: string, policyId: string, updatedBy: string): Promise<void> {
+	async deletePolicyDocument(
+		kind: string,
+		policyId: string,
+		updatedBy: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
 		const existing = await this.transactionRunner.run({}, async (ctx) => {
 			const policy = await this.policyRepository.findByIdAndKind(policyId, kind, ctx, true);
 			if (!policy) {
@@ -457,6 +516,7 @@ export class TypeAvailabilityPolicyService {
 			kind: existing.kind,
 			policyId,
 			before: { rules: existing.rules, version: existing.version },
+			loginId: loginIdOf(ctx),
 		});
 	}
 
@@ -514,6 +574,7 @@ export class TypeAvailabilityPolicyService {
 		attachments: readonly AttachmentInput[],
 		expectedVersion: number,
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<ScopeAttachments> {
 		assertNoDuplicateAttachmentSlots(attachments);
 
@@ -524,9 +585,7 @@ export class TypeAvailabilityPolicyService {
 			}
 
 			if (scope.version !== expectedVersion) {
-				throw new ConflictError(
-					`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${scope.version})`,
-				);
+				throw scopeVersionConflict(expectedVersion, scope.version);
 			}
 
 			// Attaching a document to a project scope makes its rules that project's policy, so
@@ -581,6 +640,7 @@ export class TypeAvailabilityPolicyService {
 			scopeId,
 			before: { attachments: result.before, version: result.versionBefore },
 			after: { attachments: result.after, version: result.versionAfter },
+			loginId: loginIdOf(ctx),
 		});
 
 		return { attachments: orderedAttachments(result.after), version: result.versionAfter };
@@ -601,6 +661,7 @@ export class TypeAvailabilityPolicyService {
 		input: { rules: readonly PolicyRule[]; defaultAction: PolicyAction },
 		expectedVersion: number,
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<{
 		scopeId: string;
 		defaultAction: PolicyAction;
@@ -621,9 +682,7 @@ export class TypeAvailabilityPolicyService {
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {
-				throw new ConflictError(
-					`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${currentVersion})`,
-				);
+				throw scopeVersionConflict(expectedVersion, currentVersion);
 			}
 
 			const scopeBefore = scope
@@ -768,6 +827,7 @@ export class TypeAvailabilityPolicyService {
 			scopeId: result.scopeId,
 			before: result.scopeBefore,
 			after: result.scopeAfter,
+			loginId: loginIdOf(ctx),
 		});
 
 		if (result.documentCreated) {
@@ -777,6 +837,7 @@ export class TypeAvailabilityPolicyService {
 				policyId: result.policyId,
 				origin: 'composed-save',
 				after: result.documentAfter,
+				loginId: loginIdOf(ctx),
 			});
 		} else {
 			this.eventService.emit('node-type-policy-document-updated', {
@@ -786,6 +847,7 @@ export class TypeAvailabilityPolicyService {
 				origin: 'composed-save',
 				before: result.documentBefore ?? { rules: [], version: UNCONFIGURED_VERSION },
 				after: result.documentAfter,
+				loginId: loginIdOf(ctx),
 			});
 		}
 
@@ -808,6 +870,84 @@ export class TypeAvailabilityPolicyService {
 			version: result.scopeAfter.version,
 			rules: [...result.documentAfter.rules],
 			warnings,
+		};
+	}
+
+	/**
+	 * The read takes no lock: `setEffectivePolicy` checks `expectedVersion` again under the scope
+	 * lock, so a write that lands in between fails with a conflict instead of being overwritten.
+	 */
+	async setTypeAccess(
+		kind: string,
+		projectId: string | null,
+		changes: readonly TypeAccessChange[],
+		expectedVersion: number,
+		updatedBy: string,
+	) {
+		const effective = await this.getEffectivePolicy(kind, projectId);
+		if (effective.version !== expectedVersion) {
+			throw scopeVersionConflict(expectedVersion, effective.version);
+		}
+
+		const policedType = policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials);
+		assertNoNestedToolVariants(changes, policedType);
+
+		const rules = applyAccessChanges(effective.rules, changes, {
+			resolvePackage: packageResolverFor(kind, this.loadNodesAndCredentials),
+			policedType,
+			newRuleId: generateNanoId,
+		});
+
+		// A write moves the version, which fails the next write of every admin who read the old one.
+		if (isDeepStrictEqual(rules, effective.rules)) {
+			return {
+				scopeId: effective.scopeId,
+				defaultAction: effective.defaultAction,
+				version: effective.version,
+				rules,
+				warnings: this.validateAndLintRules(kind, rules),
+			};
+		}
+
+		return await this.setEffectivePolicy(
+			kind,
+			projectId,
+			{ rules, defaultAction: effective.defaultAction },
+			expectedVersion,
+			updatedBy,
+		);
+	}
+
+	/**
+	 * What the instance policy alone decides for each type, evaluated against one read so that
+	 * `version` matches the verdicts. Uncached for the reason on `getEffectivePolicy`.
+	 */
+	async getInstanceAccess(
+		kind: string,
+		typeNames: readonly string[],
+		listTypes: ListTypes = (types) => types,
+	): Promise<InstanceTypeAccessResponse> {
+		const effective = await this.getEffectivePolicy(kind, null);
+		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
+		const policedType = policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials);
+
+		return {
+			scopeId: effective.scopeId,
+			version: effective.version,
+			defaultAction: effective.defaultAction,
+			types: listTypes(
+				typeNames.map((name) => {
+					const { action, matchedRuleId } = evaluateRules(
+						effective.rules,
+						effective.defaultAction,
+						policedType(name),
+						resolvePackage,
+					);
+
+					return { name, access: action, matchedRuleId };
+				}),
+				effective.rules,
+			),
 		};
 	}
 
@@ -873,10 +1013,7 @@ export class TypeAvailabilityPolicyService {
 	async evaluateComposedTypesForAllProjects(
 		kind: string,
 		typeNames: readonly string[],
-	): Promise<{
-		withoutProjectPolicy: ComposedTypeVerdict[];
-		byProject: Array<{ projectId: string; verdicts: ComposedTypeVerdict[] }>;
-	}> {
+	): Promise<AllProjectsEvaluation> {
 		const [instance, projects] = await Promise.all([
 			this.readEnforcedScope(kind, null),
 			this.snapshot.projectScopes(kind) ?? this.readProjectScopes(kind),
@@ -927,7 +1064,65 @@ export class TypeAvailabilityPolicyService {
 		return this.snapshot.read(kind, projectId) ?? (await this.getEffectivePolicy(kind, projectId));
 	}
 
-	private async readProjectScopes(kind: string): Promise<ProjectEffectivePolicy[]> {
+	/**
+	 * Counts for the project policy list. Reads the database, not the snapshot, so the counts and
+	 * `updatedAt` come from one source. `listTypes` picks the types to count from the verdicts of a
+	 * project without a policy.
+	 */
+	async summarizeProjectPolicies(
+		kind: string,
+		typeNames: readonly string[],
+		listTypes: ListTypes = (verdicts) => verdicts,
+	): Promise<ProjectPolicyKindSummaries> {
+		const [instance, projects] = await Promise.all([
+			this.getEffectivePolicy(kind, null),
+			this.readProjectScopes(kind),
+		]);
+
+		const withoutProjectPolicy = listTypes(
+			this.verdictComposer(kind, typeNames)(instance, unconfiguredScope(kind, null)),
+			instance.rules,
+		);
+		const composeVerdicts = this.verdictComposer(
+			kind,
+			withoutProjectPolicy.map((verdict) => verdict.name),
+		);
+
+		const effectiveCounts = (verdicts: readonly ComposedTypeVerdict[]) => {
+			const allowed = verdicts.filter((verdict) => verdict.action === 'allow').length;
+			return { allowed, restricted: verdicts.length - allowed };
+		};
+
+		return {
+			withoutProjectPolicy: effectiveCounts(withoutProjectPolicy),
+			byProject: new Map(
+				projects.map((project) => {
+					// Same type order as `withoutProjectPolicy`, so index `i` names the same type. Only a
+					// satisfied `delegate` turns a deny into an allow.
+					const verdicts = composeVerdicts(instance, project);
+					let restricted = 0;
+					let optedIn = 0;
+					verdicts.forEach((verdict, i) => {
+						const before = withoutProjectPolicy[i].action;
+						if (before === 'allow' && verdict.action === 'deny') restricted++;
+						if (before === 'deny' && verdict.action === 'allow') optedIn++;
+					});
+
+					return [
+						project.projectId,
+						{
+							updatedAt: project.updatedAt,
+							summary: { restricted, optedIn, effective: effectiveCounts(verdicts) },
+						},
+					];
+				}),
+			),
+		};
+	}
+
+	private async readProjectScopes(
+		kind: string,
+	): Promise<Array<ProjectEffectivePolicy & { updatedAt: Date }>> {
 		const scopes = await this.scopeRepository.findProjectScopes(kind, {});
 		const attachmentsByScope = await this.attachmentRepository.listAttachmentsForScopes(
 			scopes.map((scope) => scope.id),
@@ -937,6 +1132,7 @@ export class TypeAvailabilityPolicyService {
 		return scopes.map((scope) => ({
 			...toEffectivePolicy(scope, attachmentsByScope.get(scope.id) ?? []),
 			projectId: scope.projectId,
+			updatedAt: scope.updatedAt,
 		}));
 	}
 }

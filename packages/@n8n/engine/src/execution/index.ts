@@ -22,6 +22,8 @@ export type {
 	ResumeBinding,
 	ResumeCause,
 	StepSlots,
+	ItemSource,
+	StepOutputSources,
 	StepStatus,
 	SeededSteps,
 	TriggerOutputs,
@@ -29,7 +31,14 @@ export type {
 	WorkflowDocument,
 } from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
-export type { ExecutionRecord, ExecutionStore, NewExecutionRecord } from './execution-store';
+export type {
+	ExecutionRecord,
+	ExecutionStore,
+	NewExecutionRecord,
+	PrunableExecution,
+	PrunableExecutionQuery,
+	StaleQueuedExecution,
+} from './execution-store';
 export type {
 	ExecutionViewStore,
 	ExecutionView,
@@ -38,12 +47,26 @@ export type {
 	StepView,
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
-export type { DueStep, NewStepRecord, StepRecord, StepStore, StepSummary } from './step-store';
+export { announceStepFailed } from './step-events';
+export { validateStepContext } from './validate-step-context';
+export type {
+	DueStep,
+	NewStepRecord,
+	StaleQueuedStep,
+	StaleRunningStep,
+	StaleSettledStep,
+	StepRecord,
+	StepStore,
+	StepSummary,
+} from './step-store';
+export { assertValidStalenessThresholds, DEFAULT_STALENESS_THRESHOLDS } from './staleness';
+export type { StalenessThresholds } from './staleness';
 export { ExecutionStartHandler } from './execution-start-handler';
 export { ExecutionQueryService } from './execution-query.service';
 export { OrchestrationWorker } from './orchestration-worker';
 export { StepSettledHandler } from './step-settled-handler';
 export { StepReadyHandler } from './step-ready-handler';
+export { attachStepErrorDetails, stepErrorDetails } from './step-error-details';
 export { StepWorker } from './step-worker';
 export {
 	WaitSweeper,

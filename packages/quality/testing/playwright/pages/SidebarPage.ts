@@ -53,14 +53,12 @@ export class SidebarPage extends BasePage {
 	}
 
 	async clickWorkflowsLink(): Promise<void> {
-		// Not scoped to `this.container` (#side-menu): after selecting a project these
-		// links render as project-header tabs in the main content area, outside the sidebar.
-		await this.page.getByRole('link', { name: 'Workflows' }).click();
+		// Project navigation renders as tabs outside the sidebar.
+		await this.page.getByTestId('project-tabs').getByRole('tab', { name: 'Workflows' }).click();
 	}
 
 	async clickCredentialsLink(): Promise<void> {
-		// See clickWorkflowsLink: the link can live in the project header, not the sidebar.
-		await this.page.getByRole('link', { name: 'Credentials' }).click();
+		await this.page.getByTestId('project-tabs').getByRole('tab', { name: 'Credentials' }).click();
 	}
 
 	getProjectButtonInUniversalAdd(): Locator {
@@ -109,6 +107,20 @@ export class SidebarPage extends BasePage {
 		return this.container.getByTestId('main-sidebar-settings');
 	}
 
+	// The account row at the bottom opens a menu with the user's own links, help, and sign out.
+	getAccountMenuTrigger(): Locator {
+		return this.container.getByTestId('main-sidebar-account-trigger');
+	}
+
+	getAccountMenu(): Locator {
+		return this.page.getByTestId('main-sidebar-account-menu');
+	}
+
+	async openAccountMenu(): Promise<void> {
+		await this.getAccountMenuTrigger().click();
+		await expect(this.getAccountMenu()).toBeVisible();
+	}
+
 	getLogoutMenuItem(): Locator {
 		return this.page.getByTestId('main-sidebar-log-out');
 	}
@@ -118,16 +130,26 @@ export class SidebarPage extends BasePage {
 	}
 
 	getHelp(): Locator {
-		return this.container.getByTestId('main-sidebar-help');
+		return this.page.getByTestId('main-sidebar-account-help');
+	}
+
+	getWhatsNewMenuItem(): Locator {
+		return this.page.getByTestId('main-sidebar-account-whats-new');
 	}
 
 	async clickHelpMenuItem(): Promise<void> {
+		await this.openAccountMenu();
 		await this.getHelp().click();
 	}
 
+	async clickWhatsNewMenuItem(): Promise<void> {
+		await this.openAccountMenu();
+		await this.getWhatsNewMenuItem().click();
+	}
+
 	async clickAboutMenuItem(): Promise<void> {
-		await this.getHelp().click();
-		await this.page.getByTestId('about').click();
+		await this.clickHelpMenuItem();
+		await this.page.getByTestId('main-sidebar-help-about').click();
 	}
 
 	async openAboutModalViaShortcut(): Promise<void> {
@@ -135,11 +157,11 @@ export class SidebarPage extends BasePage {
 	}
 
 	async closeAboutModal(): Promise<void> {
-		await this.page.getByTestId('close-about-modal-button').click();
+		await this.getAboutModal().getByTestId('dialog-close-button').click();
 	}
 
 	getAdminPanel(): Locator {
-		return this.container.getByTestId('main-sidebar-cloud-admin');
+		return this.page.getByTestId('main-sidebar-account-cloud-console');
 	}
 
 	getTrialBanner(): Locator {
@@ -150,8 +172,9 @@ export class SidebarPage extends BasePage {
 		return this.container.getByTestId('main-sidebar-templates').locator('a');
 	}
 
+	// The sidebar no longer lists updates; the nudge is the one in the What's new modal.
 	getVersionUpdateItem(): Locator {
-		return this.page.getByTestId('version-update-cta-button');
+		return this.page.getByTestId('whats-new-modal-next-versions-link');
 	}
 
 	getSourceControlPushButton(): Locator {
@@ -166,13 +189,9 @@ export class SidebarPage extends BasePage {
 		return this.container.getByTestId('main-sidebar-source-control-connected');
 	}
 
-	async openSettings(): Promise<void> {
-		await this.getSettings().click();
-	}
-
 	async clickSignout(): Promise<void> {
 		await this.expand();
-		await this.openSettings();
+		await this.openAccountMenu();
 		await this.getLogoutMenuItem().click();
 	}
 
@@ -182,8 +201,8 @@ export class SidebarPage extends BasePage {
 	}
 
 	async expand() {
-		// First ensure the sidebar is visible before checking if it is expanded
-		await expect(this.getSettings()).toBeVisible();
+		// The account row is on every sidebar, so it marks the sidebar as rendered.
+		await expect(this.getAccountMenuTrigger()).toBeVisible();
 
 		const logo = this.container.getByTestId('n8n-logo');
 		const isExpanded = await logo.isVisible();

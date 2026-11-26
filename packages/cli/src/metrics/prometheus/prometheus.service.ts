@@ -6,6 +6,7 @@ import promClient from 'prom-client';
 import { DatabaseIndependentRoutes } from '@/services/database-independent-routes.service';
 
 import { PrometheusActiveWorkflowMetricsService } from './active-workflow-metrics.service';
+import { PrometheusAgentMetricsService } from './agent-metrics.service';
 import type { PrometheusMetricsCollector } from './base';
 import { PrometheusCacheMetricsService } from './cache-metrics.service';
 import { METRICS_PATH } from './constant';
@@ -15,6 +16,7 @@ import { PrometheusDnsCacheMetricsService } from './dns-cache-metrics.service';
 import { PrometheusEncryptionMetricsService } from './encryption-metrics.service';
 import { PrometheusEventBusMetricsService } from './event-bus-metrics.service';
 import { PrometheusExecutionDataMetricsService } from './execution-data-metrics.service';
+import { PrometheusExecutionLedgerMetricsService } from './execution-ledger-metrics.service';
 import { PrometheusInstanceAiMetricsService } from './instance-ai-metrics.service';
 import { PrometheusInstanceRoleMetricsService } from './instance-role-metrics.service';
 import { PrometheusMcpPostSaveMetricsService } from './mcp-post-save-metrics.service';
@@ -60,6 +62,7 @@ export class PrometheusMetricsService {
 		webhook: PrometheusWebhookAndFormMetricsService,
 		workflowInfo: PrometheusWorkflowInfoMetricsService,
 		instanceAi: PrometheusInstanceAiMetricsService,
+		agent: PrometheusAgentMetricsService,
 		mcpPostSave: PrometheusMcpPostSaveMetricsService,
 		dbPool: PrometheusDbPoolMetricsService,
 		workflowPublication: PrometheusWorkflowPublicationMetricsService,
@@ -68,6 +71,7 @@ export class PrometheusMetricsService {
 		encryption: PrometheusEncryptionMetricsService,
 		systemTask: PrometheusSystemTaskMetricsService,
 		memoryGuard: PrometheusMemoryGuardMetricsService,
+		executionLedger: PrometheusExecutionLedgerMetricsService,
 		private readonly databaseIndependentRoutes: DatabaseIndependentRoutes,
 	) {
 		this.logger = logger.scoped('metrics');
@@ -90,6 +94,7 @@ export class PrometheusMetricsService {
 			webhook,
 			workflowInfo,
 			instanceAi,
+			agent,
 			mcpPostSave,
 			dbPool,
 			workflowPublication,
@@ -98,6 +103,7 @@ export class PrometheusMetricsService {
 			encryption,
 			systemTask,
 			memoryGuard,
+			executionLedger,
 		];
 	}
 

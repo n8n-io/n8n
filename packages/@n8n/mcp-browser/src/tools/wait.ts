@@ -16,7 +16,6 @@ const browserWaitSchema = z.object({
 		.enum(['load', 'domcontentloaded', 'networkidle'])
 		.optional()
 		.describe('Wait for load state'),
-	predicate: z.string().optional().describe('JavaScript expression that must return truthy'),
 	text: z.string().optional().describe('Text content to wait for on the page'),
 	timeoutMs: z.number().optional().describe('Timeout in ms (default: 30000)'),
 	pageId: pageIdField,
@@ -38,7 +37,6 @@ function browserWait(connection: BrowserConnection): ToolDefinition {
 				selector: input.selector,
 				url: input.url,
 				loadState: input.loadState,
-				predicate: input.predicate,
 				text: input.text,
 				timeoutMs: input.timeoutMs,
 			});

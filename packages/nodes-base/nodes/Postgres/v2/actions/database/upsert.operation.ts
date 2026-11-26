@@ -6,6 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { createEventLoopYielder } from '@n8n/utils/promise/create-event-loop-yielder';
+
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type {
@@ -215,7 +217,9 @@ export async function execute(
 
 	const queries: QueryWithValues[] = [];
 	const errorItemsMap = new Map<number, INodeExecutionData>();
+	const yieldToEventLoop = createEventLoopYielder();
 	for (let i = 0; i < items.length; i++) {
+		await yieldToEventLoop();
 		try {
 			schema = this.getNodeParameter('schema', i, undefined, {
 				extractValue: true,
@@ -257,14 +261,20 @@ export async function execute(
 				}
 			}
 
-			if (!item[columnsToMatchOn[0]]) {
+			const matchColumn = columnsToMatchOn[0];
+			if (
+				!item ||
+				!matchColumn ||
+				!Object.hasOwn(item, matchColumn) ||
+				item[matchColumn] === undefined
+			) {
 				throw new NodeOperationError(
 					this.getNode(),
 					"Column to match on not found in input item. Add a column to match on or set the 'Data Mode' to 'Define Below' to define the value to match on.",
 				);
 			}
 
-			if (item[columnsToMatchOn[0]] && Object.keys(item).length === 1) {
+			if (Object.keys(item).length === 1) {
 				throw new NodeOperationError(
 					this.getNode(),
 					"Add values to update or insert to the input item or set the 'Data Mode' to 'Define Below' to define the values to insert or update.",

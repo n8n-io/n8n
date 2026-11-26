@@ -5,7 +5,7 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { type Project, type User } from '@n8n/db';
+import { type Person, type Project, type User } from '@n8n/db';
 import { DateTime } from 'luxon';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
@@ -339,7 +339,7 @@ describe('GET /insights/summary', () => {
 	});
 
 	describe('project access', () => {
-		let viewer: User;
+		let viewer: Person;
 		let viewerAgent: SuperAgentTest;
 		let accessibleProject: Project;
 		let inaccessibleProject: Project;

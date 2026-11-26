@@ -1,0 +1,27 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"bytes": {
+			"type": "number"
+		},
+		"fileExtension": {
+			"type": "string"
+		},
+		"fileName": {
+			"type": "string"
+		},
+		"fileSize": {
+			"type": "string"
+		},
+		"fileType": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"mimeType": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

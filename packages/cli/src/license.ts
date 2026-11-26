@@ -135,6 +135,7 @@ export class License implements LicenseProvider {
 				loadCertStr: async () => await this.loadCertStr(),
 				saveCertStr,
 				deviceFingerprint: () => this.deviceFingerprint(),
+				installId: this.instanceSettings.installId,
 				collectUsageMetrics,
 				collectPassthroughData,
 				onFeatureChange,
@@ -479,6 +480,14 @@ export class License implements LicenseProvider {
 
 	getConsumerId() {
 		return this.manager?.getConsumerId() ?? 'unknown';
+	}
+
+	isEphemeral() {
+		return this.manager?.isEphemeral() ?? false;
+	}
+
+	getDeviceFingerprint() {
+		return this.manager?.getDeviceFingerprint();
 	}
 
 	// Helper functions for computed data

@@ -2,13 +2,16 @@ operationId: updateWorkflow
 tags:
   - Workflow
 summary: Update a workflow
-description: 'Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`. Because that re-publication puts a new version live, it additionally requires the `workflow:activate` API key scope and the `workflow:publish` project permission. A caller without either can still save: the new version is stored as a draft and the response is a `403` naming the missing permission, leaving the published version live. Saving an unpublished workflow, or saving with `publishIfActive=false`, only needs `workflow:update`.'
+description: |-
+  Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`. Because that re-publication puts a new version live, it additionally requires the `workflow:activate` API key scope and the `workflow:publish` project permission. A caller without either can still save: the new version is stored as a draft and the response is a `403` naming the missing permission, leaving the published version live. Saving an unpublished workflow, or saving with `publishIfActive=false`, only needs `workflow:update`.
+
+  Requires the `workflow:update` API key scope.
 x-required-scope: workflow:update
 parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the workflow.
+    description: The ID of the workflow
     name: workflowId
     in: path
   - schema:
@@ -1113,7 +1116,7 @@ responses:
             - meta
             - activeVersion
   '400':
-    $ref: ../../../../shared/spec/responses/badRequest.yml
+    description: The request body is invalid, or the update changes a node that uses a credential the caller cannot access.
   '401':
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
@@ -1137,7 +1140,7 @@ responses:
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
-    description: Conflict, e.g. re-publication blocked by an open workflow review (then `reason` and `workflowReviewRequestId` are present; the update itself is still saved as a draft) or a webhook path conflict.
+    description: Conflict, e.g. re-publication blocked by an open workflow review (then `reason` and `workflowReviewRequestId` are present), re-publication of a version without an approved review when the instance or the project requires one (then `reason` is `review_required` and `versionId` names the draft), or a webhook path conflict. A blocked re-publication still saves the update as a draft. To save without publishing, set `publishIfActive=false`.
     content:
       application/json:
         schema:
@@ -1150,7 +1153,10 @@ responses:
               enum:
                 - review_pending
                 - changes_requested
+                - review_required
             workflowReviewRequestId:
+              type: string
+            versionId:
               type: string
           required:
             - message

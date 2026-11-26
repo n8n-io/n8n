@@ -6,12 +6,16 @@
  * after the user submits answers via the questions wizard.
  * Styled to match the AI builder's UserAnswersMessage.
  */
-import type { InstanceAiToolCallState } from '@n8n/api-types';
-import { N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+
+import { getAskedQuestions } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 
 const props = defineProps<{
-	toolCall: InstanceAiToolCallState;
+	toolCall: ToolCall;
 }>();
+
+const i18n = useI18n();
 
 interface DisplayAnswer {
 	question: string;
@@ -20,8 +24,8 @@ interface DisplayAnswer {
 }
 
 function getAnswers(): DisplayAnswer[] {
-	const questions = props.toolCall.confirmation?.questions ?? [];
-	const result = props.toolCall.result as
+	const questions = getAskedQuestions(props.toolCall) ?? [];
+	const result = props.toolCall.output as
 		| { answered?: boolean; answers?: Array<Record<string, unknown>> }
 		| undefined;
 	const rawAnswers = result?.answers ?? [];
@@ -52,11 +56,11 @@ function getAnswers(): DisplayAnswer[] {
 	<div :class="$style.wrapper">
 		<div :class="$style.userBubble" data-test-id="instance-ai-answered-questions">
 			<div v-for="(item, idx) in getAnswers()" :key="idx" :class="$style.answerItem">
-				<N8nText :bold="true" size="large" :class="$style.question">
-					{{ item.question }}
-				</N8nText>
-				<N8nText v-if="item.skipped" :class="$style.skipped" size="large">Skipped</N8nText>
-				<N8nText v-else size="large">{{ item.answer }}</N8nText>
+				<span :class="$style.question">{{ item.question }}</span>
+				<span v-if="item.skipped" :class="$style.skipped">{{
+					i18n.baseText('aiAssistant.builder.planMode.answers.skipped')
+				}}</span>
+				<span v-else>{{ item.answer }}</span>
 			</div>
 		</div>
 	</div>
@@ -70,6 +74,11 @@ function getAnswers(): DisplayAnswer[] {
 }
 
 .userBubble {
+	// The text size of the chat message, which follows its width. The bubble can render
+	// in the message content or in its after-actions slot, and both provide this size.
+	font-size: var(--n8n-chat-message--font-size, var(--font-size--sm));
+	line-height: var(--line-height--xl);
+	color: var(--assistant--color--text--user-bubble, var(--text-color));
 	background: var(--assistant--color--background--user-bubble);
 	padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--sm);
 	border-radius: var(--radius--xl);
@@ -89,6 +98,7 @@ function getAnswers(): DisplayAnswer[] {
 }
 
 .question {
+	font-weight: var(--font-weight--bold);
 	line-height: var(--line-height--md);
 }
 

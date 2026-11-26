@@ -3,6 +3,11 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { parse } from 'csv-parse';
 import { createReadStream } from 'fs';
+import { pipeline } from 'stream/promises';
+
+import { CsvColumnLimit } from './csv-column-limit';
+
+export const CSV_ROW_BATCH_SIZE = 1000;
 
 export interface CsvColumnMetadata {
 	name: string;
@@ -44,6 +49,9 @@ export class CsvParserService {
 			columns: hasHeaders ? true : (false as const),
 			skip_empty_lines: true,
 			bom: true,
+			// The same line endings that `CsvColumnLimit` counts. With auto-detection, a file that
+			// starts with `\r\n` reads every later `\n` as data, so one record could span many lines.
+			record_delimiter: ['\r\n', '\n', '\r'],
 		};
 	}
 
@@ -100,30 +108,28 @@ export class CsvParserService {
 		let columnNames: string[] = [];
 		let rowCount = 0;
 
-		return await new Promise((resolve, reject) => {
-			const parser = parse({
-				...this.createParserOptions(hasHeaders),
-				...(hasHeaders && {
-					columns: (header: string[]) => {
-						columnNames = this.trimColumnNames(header);
-						return columnNames;
-					},
-				}),
-			})
-				.on('data', (row: Record<string, string> | string[]) => {
-					rowCount++;
-					if (!hasHeaders && Array.isArray(row) && columnNames.length === 0) {
-						columnNames = this.generateColumnNames(row.length);
-					}
-					const rowObject = this.normalizeRow(row, hasHeaders, columnNames);
-					if (!rowObject) return;
-					onRow(rowObject, columnNames, rowCount);
-				})
-				.on('end', () => resolve(onEnd(columnNames, rowCount)))
-				.on('error', reject);
-
-			createReadStream(filePath).on('error', reject).pipe(parser);
+		const parser = parse({
+			...this.createParserOptions(hasHeaders),
+			...(hasHeaders && {
+				columns: (header: string[]) => {
+					columnNames = this.trimColumnNames(header);
+					return columnNames;
+				},
+			}),
+		}).on('data', (row: Record<string, string> | string[]) => {
+			rowCount++;
+			if (!hasHeaders && Array.isArray(row) && columnNames.length === 0) {
+				columnNames = this.generateColumnNames(row.length);
+			}
+			const rowObject = this.normalizeRow(row, hasHeaders, columnNames);
+			if (rowObject) {
+				onRow(rowObject, columnNames, rowCount);
+			}
 		});
+
+		await pipeline(createReadStream(filePath), new CsvColumnLimit(), parser);
+
+		return onEnd(columnNames, rowCount);
 	}
 
 	/**
@@ -149,44 +155,91 @@ export class CsvParserService {
 	}
 
 	/**
-	 * Parses a CSV file and returns all rows as an array of objects
+	 * Reads only the header line of a CSV file and returns its column names.
 	 */
-	async parseFileData(
-		fileId: string,
-		hasHeaders: boolean = true,
-	): Promise<Array<Record<string, string>>> {
-		const rows: Array<Record<string, string>> = [];
+	async parseColumnNames(fileId: string): Promise<string[]> {
+		let columnNames: string[] = [];
+		await this.readRows(fileId, true, {
+			toLine: 1,
+			onColumnNames: (names) => {
+				columnNames = names;
+			},
+		}).next();
 
-		return await this.parseCsvFile(
-			fileId,
-			hasHeaders,
-			(rowObject) => rows.push(rowObject),
-			() => rows,
-		);
+		return columnNames;
 	}
 
 	/**
-	 * Parses a CSV file in a single pass, returning column names and all rows.
-	 * Skips type inference since callers only need column names for matching.
+	 * Yields the rows of a CSV file in batches of at most `batchSize` rows.
+	 * The file is read only as fast as the caller consumes the batches.
 	 */
-	async parseFileWithData(
+	async *parseFileInBatches(
 		fileId: string,
 		hasHeaders: boolean = true,
-	): Promise<{ metadata: CsvMetadata; rows: Array<Record<string, string>> }> {
-		const rows: Array<Record<string, string>> = [];
+		batchSize: number = CSV_ROW_BATCH_SIZE,
+	): AsyncGenerator<Array<Record<string, string>>> {
+		let batch: Array<Record<string, string>> = [];
 
-		return await this.parseCsvFile(
-			fileId,
-			hasHeaders,
-			(rowObject) => rows.push(rowObject),
-			(colNames) => {
-				const columns = colNames.map((name) => ({ name, type: 'string' as const }));
-				return {
-					metadata: { rowCount: rows.length, columnCount: columns.length, columns },
-					rows,
-				};
-			},
-		);
+		for await (const rowObject of this.readRows(fileId, hasHeaders)) {
+			batch.push(rowObject);
+			if (batch.length >= batchSize) {
+				yield batch;
+				batch = [];
+			}
+		}
+
+		if (batch.length > 0) {
+			yield batch;
+		}
+	}
+
+	private async *readRows(
+		fileId: string,
+		hasHeaders: boolean,
+		{
+			toLine,
+			onColumnNames,
+		}: { toLine?: number; onColumnNames?: (columnNames: string[]) => void } = {},
+	): AsyncGenerator<Record<string, string>> {
+		const filePath = safeJoinPath(this.uploadDir, fileId);
+		let columnNames: string[] = [];
+
+		const parser = parse({
+			...this.createParserOptions(hasHeaders),
+			to_line: toLine,
+			...(hasHeaders && {
+				columns: (header: string[]) => {
+					columnNames = this.trimColumnNames(header);
+					onColumnNames?.(columnNames);
+					return columnNames;
+				},
+			}),
+		});
+
+		const input = createReadStream(filePath);
+		// Errors reach the caller through the parser. A parser that stops early at `toLine`
+		// ends the pipeline with a premature close, which is expected.
+		pipeline(input, new CsvColumnLimit(), parser).catch(() => {});
+
+		const records: AsyncIterable<Record<string, string> | string[]> = parser;
+
+		try {
+			for await (const row of records) {
+				const needsGeneratedColumnNames = !hasHeaders && columnNames.length === 0;
+				if (needsGeneratedColumnNames && Array.isArray(row)) {
+					columnNames = this.generateColumnNames(row.length);
+					onColumnNames?.(columnNames);
+				}
+
+				const rowObject = this.normalizeRow(row, hasHeaders, columnNames);
+				if (rowObject) {
+					yield rowObject;
+				}
+			}
+		} finally {
+			input.destroy();
+			parser.destroy();
+		}
 	}
 
 	/**

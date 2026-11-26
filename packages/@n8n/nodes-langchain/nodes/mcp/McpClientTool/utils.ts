@@ -1,6 +1,10 @@
 import { DynamicStructuredTool, type DynamicStructuredToolInput } from '@langchain/core/tools';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+	CompatibilityCallToolResultSchema,
+	type CallToolResult,
+} from '@modelcontextprotocol/sdk/types.js';
+import { isRecord } from '@n8n/utils/is-record';
 import { type IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -8,7 +12,7 @@ import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
 import type { McpToolIncludeMode } from './types';
 import type { McpTool } from '../shared/types';
-import { isStructuredContent } from '../shared/utils';
+import { isMcpContentArray, isStructuredContent } from '../shared/utils';
 
 export function getSelectedTools({
 	mode,
@@ -71,11 +75,15 @@ export const createCallTool =
 
 		let result: Awaited<ReturnType<Client['callTool']>>;
 
-		function handleError(error: unknown) {
+		function handleError(error: unknown): CallToolResult {
 			const errorDescription =
 				getErrorDescriptionFromToolCall(error) ?? `Failed to execute tool "${name}"`;
 			onError(errorDescription);
-			return errorDescription;
+			const content =
+				isRecord(error) && isMcpContentArray(error.content)
+					? error.content
+					: [{ type: 'text' as const, text: errorDescription }];
+			return { isError: true, content };
 		}
 
 		try {

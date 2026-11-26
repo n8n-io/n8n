@@ -39,6 +39,7 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 			userId: string,
 			threadId: string,
 			confirmationEvent: { payload: Record<string, unknown> },
+			approvalMode?: 'auto' | 'manual',
 		) => void;
 	};
 
@@ -57,8 +58,8 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 		});
 
 		expect(service.telemetry.track).toHaveBeenCalledWith(
-			'Builder asked for input',
-			expect.objectContaining({ type: 'questions', num_steps: 2 }),
+			TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
+			expect.objectContaining({ type: 'questions', num_steps: 2, runtime: 'instance-ai' }),
 		);
 	});
 
@@ -70,7 +71,7 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 		});
 
 		expect(service.telemetry.track).toHaveBeenCalledWith(
-			'Builder asked for input',
+			TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
 			expect.objectContaining({ type: 'app_blueprint' }),
 		);
 	});
@@ -83,7 +84,7 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 		});
 
 		expect(service.telemetry.track).toHaveBeenCalledWith(
-			'Builder asked for input',
+			TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
 			expect.objectContaining({ type: 'setup', num_steps: 3, contains_templated_cred: false }),
 		);
 	});
@@ -101,7 +102,7 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 		});
 
 		expect(service.telemetry.track).toHaveBeenCalledWith(
-			'Builder asked for input',
+			TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
 			expect.objectContaining({
 				type: 'credential-setup',
 				num_steps: 2,
@@ -118,7 +119,7 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 		});
 
 		expect(service.telemetry.track).toHaveBeenCalledWith(
-			'Builder asked for input',
+			TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
 			expect.objectContaining({ type: 'credential-setup', contains_templated_cred: false }),
 		);
 	});
@@ -215,7 +216,7 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 		});
 
 		expect(service.telemetry.track).toHaveBeenCalledWith(
-			'Builder asked for input',
+			TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
 			expect.objectContaining({ type: 'mcp-connect', num_steps: 2 }),
 		);
 	});
@@ -226,8 +227,33 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 		service.trackConfirmationRequest('user-1', 'thread-a', { payload: {} });
 
 		expect(service.telemetry.track).toHaveBeenCalledWith(
-			'Builder asked for input',
-			expect.objectContaining({ type: 'approval', num_steps: 1 }),
+			TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
+			expect.objectContaining({ type: 'approval', num_steps: 1, approval_mode: 'unavailable' }),
 		);
+	});
+
+	it('links an approval card to its tool call and records the approval mode of the run', () => {
+		const service = makeService();
+
+		service.trackConfirmationRequest(
+			'user-1',
+			'thread-a',
+			{ payload: { toolCallId: 'call-1', toolName: 'publish-workflow', severity: 'warning' } },
+			'auto',
+		);
+
+		const [event, properties] = service.telemetry.track.mock.calls[0];
+		expect(event).toBe(TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT);
+		expect(properties).toMatchObject({
+			type: 'approval',
+			tool_call_id: 'call-1',
+			tool_name: 'publish-workflow',
+			severity: 'warning',
+			approval_mode: 'auto',
+		});
+		// The transport only logs a warning when a payload does not match the registry schema.
+		expect(
+			TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT.getValidationError(properties),
+		).toBeNull();
 	});
 });

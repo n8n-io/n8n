@@ -10,6 +10,7 @@ import type { ModelCost } from '../../sdk/catalog';
 import type { RuntimeSkillSource } from '../../skills/types';
 import type { WorkspaceFilesystem } from '../../workspace';
 import type {
+	AgentMessage,
 	BuiltFileStore,
 	BuiltMemory,
 	BuiltProviderTool,
@@ -23,6 +24,7 @@ import type {
 	ReasoningLevel,
 	ThinkingConfig,
 	TitleGenerationConfig,
+	ToolCallInterceptor,
 } from '../index';
 import type {
 	AgentPersistenceOptions,
@@ -35,6 +37,37 @@ import type {
 export interface VolatileInstructionsContext {
 	persistence?: AgentPersistenceOptions;
 }
+
+/** A context cue that a provider wants the model to see now. */
+export interface ContextCueEntry {
+	/**
+	 * Stable id. The runtime skips a cue whose id is already in the visible
+	 * conversation. Observation masking can hide a sent cue, so it can be sent again.
+	 */
+	id: string;
+	content: string;
+}
+
+export interface ContextCueRequest {
+	/** Messages the model sees, oldest first, before this model call. */
+	messages: readonly AgentMessage[];
+	/**
+	 * Skills that `load_skill` loaded anywhere in the thread, also in messages
+	 * that compaction hides. Without it, only `messages` count.
+	 */
+	loadedSkillIds?: ReadonlySet<string>;
+	/** Ids of the cues that the conversation already contains. */
+	sentCueIds: ReadonlySet<string>;
+	persistence?: AgentPersistenceOptions;
+	abortSignal?: AbortSignal;
+}
+
+/**
+ * Supplies context cues before each model call. The runtime saves the cues in the
+ * conversation as a `<system-reminder>`, after the earlier messages, so the
+ * prompt cache stays valid. A provider failure skips its cues for that call.
+ */
+export type ContextCueProvider = (request: ContextCueRequest) => Promise<ContextCueEntry[]>;
 
 export type VolatileInstructionsProvider = (
 	context: VolatileInstructionsContext,
@@ -88,6 +121,8 @@ export interface AgentRuntimeConfig {
 	eventBus?: AgentEventBus;
 	/** Number of tool calls to execute concurrently. Default `1` (sequential). */
 	toolCallConcurrency?: number;
+	/** Runs around every tool handler. See {@link ToolCallInterceptor}. */
+	toolCallInterceptor?: ToolCallInterceptor;
 	titleGeneration?: TitleGenerationConfig;
 	telemetry?: BuiltTelemetry;
 	/** Existing run id to continue, used when resuming a suspended run. */
@@ -114,4 +149,6 @@ export interface AgentRuntimeConfig {
 	mcpConnectionFailures?: McpConnectionFailedEvent[];
 	/** The runtime loads these host instructions before each model call but does not save them. */
 	volatileInstructionsProvider?: VolatileInstructionsProvider;
+	/** The runtime asks these providers for context cues before each model call. */
+	contextCueProviders?: ContextCueProvider[];
 }

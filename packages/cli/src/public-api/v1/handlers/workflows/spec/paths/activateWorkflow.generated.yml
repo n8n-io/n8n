@@ -2,14 +2,17 @@ operationId: activateWorkflow
 tags:
   - Workflow
 summary: Publish a workflow
-description: 'Deprecated: use POST /workflows/{id}/publish instead. Publish a workflow. In n8n v1, this action was termed activating a workflow.'
+description: |-
+  Deprecated: use POST /workflows/{id}/publish instead. Publish a workflow. In n8n v1, this action was termed activating a workflow.
+
+  Requires the `workflow:activate` API key scope.
 x-required-scope: workflow:activate
 deprecated: true
 parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the workflow.
+    description: The ID of the workflow
     name: workflowId
     in: path
 requestBody:
@@ -43,7 +46,7 @@ responses:
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
-    description: Conflict, e.g. publication blocked by an open workflow review (then `reason` and `workflowReviewRequestId` are present) or a webhook path conflict.
+    description: Conflict, e.g. publication blocked by an open workflow review (then `reason` and `workflowReviewRequestId` are present), publication of a version without an approved review when the instance or the project requires one (then `reason` is `review_required` and `versionId` is present), or a webhook path conflict.
     content:
       application/json:
         schema:
@@ -56,7 +59,10 @@ responses:
               enum:
                 - review_pending
                 - changes_requested
+                - review_required
             workflowReviewRequestId:
+              type: string
+            versionId:
               type: string
           required:
             - message

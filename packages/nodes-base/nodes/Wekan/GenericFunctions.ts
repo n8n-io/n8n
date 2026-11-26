@@ -5,12 +5,15 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: object,
 	query?: IDataObject,
 ): Promise<any> {
@@ -18,14 +21,14 @@ export async function apiRequest(
 
 	query = query || {};
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 		},
 		method,
 		body,
 		qs: query,
-		uri: `${credentials.url}/api/${endpoint}`,
+		uri: requestUrl`${credentials.url}/api/${endpoint}`,
 		json: true,
 	};
 

@@ -191,6 +191,7 @@ describe('DynamicNodeParametersController', () => {
 				'/test/path',
 				baseAdditionalData,
 				{ name: 'TestNode', version: 1 },
+				mockUser,
 			);
 			expect(result).toEqual(expectedResult);
 		});

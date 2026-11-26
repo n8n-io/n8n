@@ -1,0 +1,58 @@
+{
+	"name": "DeepL Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"text": "Hello world",
+				"translateTo": "DE",
+				"additionalFields": {}
+			},
+			"id": "deepl-0",
+			"name": "Translate",
+			"type": "n8n-nodes-base.deepL",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"deepLApi": {
+					"id": "1",
+					"name": "DeepL account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Translate": [
+			{
+				"json": {
+					"detected_source_language": "EN",
+					"text": "Hallo Welt"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Translate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

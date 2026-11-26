@@ -21,7 +21,8 @@ import type {
 	N8nOAuth2FlowResult,
 	N8nOAuth2RefreshResult,
 } from 'n8n-workflow';
-import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
+import { createEmptyRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { SupplyDataContext } from './supply-data-context';
@@ -87,10 +88,14 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			createDeferredPromise,
 			returnJsonArray,
 			...getRequestHelperFunctions(workflow, node, additionalData),
-			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getBinaryHelperFunctions(additionalData, workflow.id, runExecutionData),
 		};
 
-		this.nodeHelpers = getNodeBinaryHelperFunctions(this.workflow, this.additionalData);
+		this.nodeHelpers = getNodeBinaryHelperFunctions(
+			this.workflow,
+			this.additionalData,
+			runExecutionData,
+		);
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {

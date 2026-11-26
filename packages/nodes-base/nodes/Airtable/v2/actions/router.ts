@@ -24,11 +24,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					extractValue: true,
 				}) as string;
 
-				const table = encodeURI(
-					this.getNodeParameter('table', 0, undefined, {
-						extractValue: true,
-					}) as string,
-				);
+				const table = this.getNodeParameter('table', 0, undefined, {
+					extractValue: true,
+				}) as string;
 				returnData = await record[airtableNodeData.operation].execute.call(
 					this,
 					items,

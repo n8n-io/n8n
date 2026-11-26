@@ -2,11 +2,14 @@ import {
 	activeLifecycleState,
 	droppedLifecycleState,
 	estimateObservationTokens,
+	fromObservationResumeColumns,
 	normalizeObservationLogReflection,
+	toObservationResumeColumns,
 	supersededLifecycleState,
 	type AgentDbMessage,
 	type BuiltObservationLogStore,
 	type BuiltObservationLogTaskLockStore,
+	type BuiltObservationResumeStore,
 	type NewObservationLogEntry,
 	type ObservationCursor,
 	type ObservationLogBatch,
@@ -18,6 +21,7 @@ import {
 	type ObservationLogScope,
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
+	type ObservationResumeState,
 } from '@n8n/agents';
 import { Equal, In, IsNull, MoreThan, type FindOptionsWhere } from '@n8n/typeorm';
 
@@ -43,7 +47,7 @@ function toObservationLogEntry(entity: InstanceAiObservation): ObservationLogEnt
 }
 
 export class TypeORMObservationLogStore
-	implements BuiltObservationLogStore, BuiltObservationLogTaskLockStore
+	implements BuiltObservationLogStore, BuiltObservationLogTaskLockStore, BuiltObservationResumeStore
 {
 	constructor(
 		private readonly observationRepo: InstanceAiObservationRepository,
@@ -229,6 +233,7 @@ export class TypeORMObservationLogStore
 			lastObservedMessageId: entity.lastObservedMessageId,
 			lastObservedAt: entity.lastObservedAt,
 			updatedAt: entity.updatedAt,
+			...(entity.workingSet !== null && { workingSet: entity.workingSet }),
 		};
 	}
 
@@ -239,8 +244,26 @@ export class TypeORMObservationLogStore
 				lastObservedMessageId: cursor.lastObservedMessageId,
 				lastObservedAt: cursor.lastObservedAt,
 				updatedAt: cursor.updatedAt,
+				// Leave the stored working set alone when the caller did not write one.
+				...(cursor.workingSet !== undefined && { workingSet: cursor.workingSet }),
 			},
 			{},
+		);
+	}
+
+	async getResumeState(observationScopeId: string): Promise<ObservationResumeState | null> {
+		const entity = await this.observationCursorRepo.findOneBy({ observationScopeId });
+		return entity ? fromObservationResumeColumns(observationScopeId, entity) : null;
+	}
+
+	async saveResumeState(state: ObservationResumeState): Promise<void> {
+		const { observationScopeId } = state;
+		const entity = await this.observationCursorRepo.findOneBy({ observationScopeId });
+		if (!entity) return;
+		// Keep updatedAt: the Observer commit matches the cursor row on it.
+		await this.observationCursorRepo.update(
+			{ observationScopeId, updatedAt: entity.updatedAt },
+			{ ...toObservationResumeColumns(state), updatedAt: entity.updatedAt },
 		);
 	}
 

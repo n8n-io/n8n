@@ -11,10 +11,15 @@ import { AppsConfig } from '../apps.config';
 const FQDN_MAX_LENGTH = 253;
 const DNS_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const PREVIEW_MARKER = '--preview';
+const APP_CSP = "base-uri 'self'; object-src 'none'";
+
+/** A preview host serves a version that can be an unpublished draft. */
+export type AppHostKind = 'published' | 'preview';
 
 @Service()
 export class AppHostService {
 	readonly baseUrl: URL;
+	readonly editorOrigin: string;
 	private readonly hostSuffix: string = '';
 
 	constructor(
@@ -26,6 +31,7 @@ export class AppHostService {
 			throw new BadRequestError('Set N8N_APPS_BASE_URL before enabling the apps module.');
 		}
 		const instanceBaseUrl = urls.getInstanceBaseUrl();
+		this.editorOrigin = new URL(instanceBaseUrl).origin;
 		try {
 			const url = new URL(config.baseUrl);
 			if (
@@ -70,12 +76,18 @@ export class AppHostService {
 		return this.originForLabel(namespace, '');
 	}
 
+	contentSecurityPolicy(req: IncomingMessage): string {
+		const frameAncestors = this.previewNamespace(req) ? this.editorOrigin : "'none'";
+		return `${APP_CSP}; frame-ancestors ${frameAncestors}`;
+	}
+
 	previewOrigin(namespace: string): string | null {
 		return this.originForLabel(namespace, PREVIEW_MARKER);
 	}
 
-	callbackUrl(app: { id: string; namespace: string }): string {
-		const origin = this.origin(app.namespace);
+	callbackUrl(app: { id: string; namespace: string }, kind: AppHostKind = 'published'): string {
+		const origin =
+			kind === 'preview' ? this.previewOrigin(app.namespace) : this.origin(app.namespace);
 		if (!origin) throw new BadRequestError('Use a valid app namespace before publishing this app.');
 		return `${origin}/_n8n/auth/${app.id}/callback`;
 	}
@@ -115,10 +127,19 @@ export class AppHostService {
 
 	previewNamespace(req: IncomingMessage): string | undefined {
 		const host = this.parseHost(this.requestHost(req));
+		return host ? this.previewNamespaceFromUrl(host) : undefined;
+	}
+
+	previewNamespaceFromUrl(url: URL): string | undefined {
 		const suffix = `${PREVIEW_MARKER}${this.hostSuffix}.${this.baseUrl.hostname}`;
-		if (!host?.hostname.endsWith(suffix)) return undefined;
-		const namespace = host.hostname.slice(0, -suffix.length);
-		return this.previewOrigin(namespace) === host.origin ? namespace : undefined;
+		if (!url.hostname.endsWith(suffix)) return undefined;
+		const namespace = url.hostname.slice(0, -suffix.length);
+		return this.previewOrigin(namespace) === url.origin ? namespace : undefined;
+	}
+
+	hostKindFromUrl(url: URL): AppHostKind | undefined {
+		if (this.previewNamespaceFromUrl(url)) return 'preview';
+		return this.namespaceFromUrl(url) ? 'published' : undefined;
 	}
 
 	private originForLabel(namespace: string, marker: string): string | null {

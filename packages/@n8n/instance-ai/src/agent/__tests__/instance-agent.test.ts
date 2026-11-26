@@ -8,6 +8,7 @@ const mockAgentInstances: Array<{
 	deferredTool: Mock;
 	toolDeferral: Mock;
 	skills: Mock;
+	contextCueProvider: Mock;
 	checkpoint: Mock;
 	memory: Mock;
 	telemetry: Mock;
@@ -37,6 +38,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.deferredTool = vi.fn().mockReturnThis();
 		this.toolDeferral = vi.fn().mockReturnThis();
 		this.skills = vi.fn().mockReturnThis();
+		this.contextCueProvider = vi.fn().mockReturnThis();
 		this.checkpoint = vi.fn().mockReturnThis();
 		this.memory = vi.fn().mockReturnThis();
 		this.telemetry = vi.fn().mockReturnThis();
@@ -47,6 +49,10 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.functionId = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
+	createContextCueProvider: vi.fn(() => vi.fn()),
+	parseAblatedContextCues: vi.fn(() => []),
+	whenSkillLoads: vi.fn(() => vi.fn()),
+	whileSkillLoaded: vi.fn(() => vi.fn()),
 	Memory: vi.fn().mockImplementation(function Memory() {
 		return mockMemoryBuilder;
 	}),
@@ -138,6 +144,7 @@ vi.mock('../../tracing/langsmith-tracing', () => ({
 	mergeTraceRunInputs: vi.fn(),
 	setTracePromptVersion: vi.fn(),
 	setTraceModelId: vi.fn(),
+	setTraceApprovalMode: vi.fn(),
 	modelIdTraceMetadata: (modelId: unknown) =>
 		typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
 }));
@@ -152,7 +159,11 @@ import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
 
 import { createOrchestratorDomainTools as createOrchestratorDomainToolsImport } from '../../tools';
 import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/create-tools-from-mcp-server';
-import { setTraceModelId, setTracePromptVersion } from '../../tracing/langsmith-tracing';
+import {
+	setTraceApprovalMode,
+	setTraceModelId,
+	setTracePromptVersion,
+} from '../../tracing/langsmith-tracing';
 import { createInstanceAgent } from '../instance-agent';
 import { getSystemPrompt as getSystemPromptImport } from '../system-prompt';
 
@@ -453,6 +464,7 @@ describe('createInstanceAgent', () => {
 				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
+				approvalMode: 'auto',
 			},
 			orchestrationContext: {
 				runId: 'trace-test',
@@ -466,6 +478,7 @@ describe('createInstanceAgent', () => {
 		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
 		expect(setTracePromptVersion).toHaveBeenCalledWith(tracing, 'default@1');
 		expect(setTraceModelId).toHaveBeenCalledWith(tracing, 'test-model');
+		expect(setTraceApprovalMode).toHaveBeenCalledWith(tracing, 'auto');
 		expect(tracing.getTelemetry).toHaveBeenCalledWith({
 			agentRole: 'orchestrator',
 			functionId: 'instance-ai.orchestrator',
@@ -644,6 +657,50 @@ describe('createInstanceAgent', () => {
 			expect.objectContaining({ projectId: 'project-1' }),
 		);
 	});
+
+	it('passes the engine setup to the prompt so the workflow engine section renders', async () => {
+		const engineSetup = { engineV2Available: true, newWorkflowEngine: 'v2' };
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'engine-prompt',
+				engineSetup,
+				browserUseState: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'engine-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map()),
+		} as never);
+
+		expect(getSystemPrompt).toHaveBeenCalledWith(expect.objectContaining({ engineSetup }));
+	});
+
+	it.each([
+		{ startCloudBrowserTask: vi.fn(), cloudBrowserEnabled: true },
+		{ startCloudBrowserTask: undefined, cloudBrowserEnabled: false },
+	])(
+		'renders the Cloud Browser section only when the host sets startCloudBrowserTask (enabled: $cloudBrowserEnabled)',
+		async ({ startCloudBrowserTask, cloudBrowserEnabled }) => {
+			await createInstanceAgent({
+				modelId: 'test-model',
+				context: {
+					runLabel: 'cloud-browser-prompt',
+					browserUseState: undefined,
+					licenseHints: undefined,
+					localMcpServer: undefined,
+				},
+				orchestrationContext: { runId: 'cloud-browser-prompt', startCloudBrowserTask },
+				memoryConfig: {},
+				mcpManager: createMcpManagerStub(new Map()),
+			} as never);
+
+			expect(getSystemPrompt).toHaveBeenCalledWith(
+				expect.objectContaining({ cloudBrowserEnabled }),
+			);
+		},
+	);
 
 	describe('connected MCP services', () => {
 		const lastDomainToolContext = () => {

@@ -1,13 +1,24 @@
 import type { Logger } from '@n8n/backend-common';
+import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mintActionToken, mintIdentityToken } from '@n8n/engine';
 import type { Request, Response } from 'express';
+import { generateTlsCerts, type TlsCertFiles } from 'n8n-containers/helpers/tls-certs';
+import { X509Certificate } from 'node:crypto';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { get } from 'node:https';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { TLSSocket } from 'node:tls';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
+import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsController } from '../engine-credentials.controller';
 import type { EngineDataTablesController } from '../engine-data-tables.controller';
+import { EngineMtls } from '../engine-mtls';
 import type { EngineSubWorkflowController } from '../engine-sub-workflow.controller';
 
 const authSecret = 'a'.repeat(32);
@@ -29,18 +40,39 @@ describe('EngineControlPlaneServer', () => {
 			...overrides,
 		});
 
-	beforeEach(async () => {
-		serverLogger = mock<Logger>();
-		credentialsController = mock<EngineCredentialsController>();
-		dataTablesController = mock<EngineDataTablesController>();
+	const openedMtls: EngineMtls[] = [];
+
+	/** Real mTLS over the given files, which it watches until the test ends. */
+	const mtlsFrom = (files: Partial<EngineConfig> = {}) => {
+		const logger = mock<Logger>();
+		logger.scoped.mockReturnValue(logger);
+		const config = engineConfig({ tlsCertFile: '', tlsKeyFile: '', tlsCaFile: '', ...files });
+		const mtls = new EngineMtls(config, Container.get(OutboundHttp), logger);
+		openedMtls.push(mtls);
+		return mtls;
+	};
+
+	afterEach(() => {
+		for (const mtls of openedMtls.splice(0)) mtls.close();
+	});
+
+	const startServer = async (mtls = mtlsFrom()) => {
 		server = new EngineControlPlaneServer(
 			engineConfig(),
+			mtls,
 			credentialsController,
 			dataTablesController,
 			mock<EngineSubWorkflowController>(),
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(serverLogger) }),
 		);
 		await server.start();
+	};
+
+	beforeEach(async () => {
+		serverLogger = mock<Logger>();
+		credentialsController = mock<EngineCredentialsController>();
+		dataTablesController = mock<EngineDataTablesController>();
+		await startServer();
 
 		baseUrl = `http://127.0.0.1:${server.port}`;
 	});
@@ -189,6 +221,162 @@ describe('EngineControlPlaneServer', () => {
 
 			expect(response.status).toBe(401);
 			expect(dataTablesController.call).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('over mutual TLS', () => {
+		const loopback = ['DNS:localhost', 'IP:127.0.0.1'];
+		const body = { credential: { id: 'cred-1' } };
+		let dir: string;
+		let certs: TlsCertFiles;
+
+		beforeAll(() => {
+			dir = mkdtempSync(join(tmpdir(), 'engine-cp-tls-'));
+			certs = generateTlsCerts(dir, {
+				cp: loopback,
+				dp: loopback,
+				renewedCp: loopback,
+				renewedDp: loopback,
+			});
+		});
+
+		afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+		const filesOf = (leaf: { certFile: string; keyFile: string }) => ({
+			tlsCertFile: leaf.certFile,
+			tlsKeyFile: leaf.keyFile,
+			tlsCaFile: certs.caFile,
+		});
+
+		const dataPlaneClient = (
+			controlPlaneBaseUrl: string,
+			mtls = mtlsFrom(filesOf(certs.leaves.dp)),
+		) =>
+			new EngineControlPlaneTransport(engineConfig({ controlPlaneBaseUrl }), mtls).forScope(
+				'credentials:read',
+			);
+
+		const resolveVia = async (client: HttpRequestClient) =>
+			await client.request({
+				url: '/internal/credentials/resolve',
+				method: 'POST',
+				body,
+				json: true,
+				returnFullResponse: true,
+			});
+
+		beforeEach(async () => {
+			vi.mocked(credentialsController.resolveCredential).mockImplementation(
+				async (_req: Request, res: Response) => {
+					res.status(200).json({ data: {} });
+				},
+			);
+			await server.stop();
+			await startServer(mtlsFrom(filesOf(certs.leaves.cp)));
+			baseUrl = `https://127.0.0.1:${server.port}`;
+		});
+
+		it('accepts the control plane transport of a data plane with a certificate from the trusted CA', async () => {
+			const response = await resolveVia(dataPlaneClient(baseUrl));
+
+			expect(response.statusCode).toBe(200);
+			expect(credentialsController.resolveCredential).toHaveBeenCalledOnce();
+		});
+
+		it('refuses a control plane certificate from another CA even with NODE_TLS_REJECT_UNAUTHORIZED=0', async () => {
+			const otherDir = mkdtempSync(join(tmpdir(), 'engine-cp-tls-other-'));
+			try {
+				const other = generateTlsCerts(otherDir, { cp: loopback });
+				await server.stop();
+				await startServer(mtlsFrom(filesOf(other.leaves.cp)));
+				vi.stubEnv('NODE_TLS_REJECT_UNAUTHORIZED', '0');
+
+				await expect(
+					resolveVia(dataPlaneClient(`https://127.0.0.1:${server.port}`)),
+				).rejects.toThrow(/certificate/);
+				expect(credentialsController.resolveCredential).not.toHaveBeenCalled();
+			} finally {
+				vi.unstubAllEnvs();
+				rmSync(otherDir, { recursive: true, force: true });
+			}
+		});
+
+		it('uses renewed certificates for new connections in both directions once the files are replaced', async () => {
+			const fingerprintOf = (leafName: string) =>
+				new X509Certificate(readFileSync(certs.leaves[leafName].certFile)).fingerprint256;
+			const replace = (files: ReturnType<typeof filesOf>, leafName: string) => {
+				copyFileSync(certs.leaves[leafName].keyFile, files.tlsKeyFile);
+				copyFileSync(certs.leaves[leafName].certFile, files.tlsCertFile);
+			};
+			const mount = (leafName: string) => {
+				const mountDir = mkdtempSync(join(dir, 'mount-'));
+				const files = {
+					tlsCertFile: join(mountDir, 'tls.crt'),
+					tlsKeyFile: join(mountDir, 'tls.key'),
+					tlsCaFile: join(mountDir, 'ca.crt'),
+				};
+				copyFileSync(certs.caFile, files.tlsCaFile);
+				replace(files, leafName);
+				return files;
+			};
+			const serverFingerprint = async () =>
+				await new Promise<string>((resolve, reject) => {
+					const options = { host: '127.0.0.1', port: server.port, path: '/healthz', agent: false };
+					get({ ...options, ca: readFileSync(certs.caFile) }, (res) => {
+						resolve((res.socket as TLSSocket).getPeerCertificate().fingerprint256);
+						res.resume();
+					}).on('error', reject);
+				});
+
+			const cpFiles = mount('cp');
+			const dpFiles = mount('dp');
+			const cpMtls = mtlsFrom(cpFiles);
+			const dpMtls = mtlsFrom(dpFiles);
+			await server.stop();
+			await startServer(cpMtls);
+			const clientFingerprints: string[] = [];
+			server['server']!.on('secureConnection', (socket: TLSSocket) => {
+				clientFingerprints.push(socket.getPeerCertificate().fingerprint256);
+			});
+			const client = dataPlaneClient(`https://127.0.0.1:${server.port}`, dpMtls);
+			await resolveVia(client);
+
+			replace(cpFiles, 'renewedCp');
+			replace(dpFiles, 'renewedDp');
+			await vi.waitFor(
+				() => {
+					expect(cpMtls['tls']?.current.cert).toEqual(
+						readFileSync(certs.leaves.renewedCp.certFile),
+					);
+					expect(dpMtls['tls']?.current.cert).toEqual(
+						readFileSync(certs.leaves.renewedDp.certFile),
+					);
+				},
+				{ timeout: 4000, interval: 50 },
+			);
+
+			const response = await resolveVia(client);
+
+			expect(response.statusCode).toBe(200);
+			expect(clientFingerprints).toEqual([fingerprintOf('dp'), fingerprintOf('renewedDp')]);
+			await expect(serverFingerprint()).resolves.toBe(fingerprintOf('renewedCp'));
+		});
+
+		it('rejects a valid token without a client certificate', async () => {
+			const response = await request(baseUrl)
+				.post('/internal/credentials/resolve')
+				.ca(readFileSync(certs.caFile))
+				.set('Authorization', `Bearer ${mintActionToken(authSecret, 'credentials:read')}`)
+				.send(body);
+
+			expect(response.status).toBe(401);
+			expect(credentialsController.resolveCredential).not.toHaveBeenCalled();
+		});
+
+		it('serves the healthcheck without a client certificate', async () => {
+			const response = await request(baseUrl).get('/healthz').ca(readFileSync(certs.caFile));
+
+			expect(response.status).toBe(200);
 		});
 	});
 

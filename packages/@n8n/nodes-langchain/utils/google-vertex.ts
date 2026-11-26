@@ -4,6 +4,7 @@ import {
 	getGoogleServiceAccountCredentials,
 } from 'n8n-nodes-base/google-service-account';
 import {
+	assertCredentialAllowsUrl,
 	NodeOperationError,
 	type ICredentialDataDecryptedObject,
 	type ICredentialsDecrypted,
@@ -13,9 +14,14 @@ import {
 	type INodeListSearchResult,
 	type INodeProperties,
 	type ISupplyDataFunctions,
+	requestUrl,
 } from 'n8n-workflow';
 
-import { resolveVertexLocation } from '../nodes/llms/gemini-common/vertex-location';
+import {
+	getVertexHost,
+	isValidVertexLocation,
+	resolveVertexLocation,
+} from '../nodes/llms/gemini-common/vertex-location';
 
 export const GOOGLE_VERTEX_CUSTOM_PROJECT = '__custom__';
 
@@ -50,6 +56,45 @@ function getGoogleVertexProjectId(credentials: ICredentialDataDecryptedObject) {
 	return project === GOOGLE_VERTEX_CUSTOM_PROJECT ? credentials.projectId : project;
 }
 
+/**
+ * The location reaches the SDK as part of the request authority, so an override
+ * outside the option list can point an authenticated Vertex call at an arbitrary
+ * host. The option list is a UI affordance only and is not enforced on a stored
+ * workflow, so the value is checked here, on the one path both Vertex nodes take.
+ *
+ * Two layers, because they cover different cases. The shape check holds even when
+ * the credential allows every domain, which is the default. The allowlist check
+ * then honours an administrator's restriction, and runs only when the node asks
+ * for a region other than the credential's own: that region is the baseline the
+ * credential already grants, and `domains` mode does not read `pinnedUrl`, so
+ * checking it there would reject a credential for its own configured endpoint.
+ */
+function assertVertexLocationAllowed(
+	context: ISupplyDataFunctions,
+	credentials: ICredentialDataDecryptedObject,
+	location: string,
+	credentialRegion: string,
+): void {
+	const node = context.getNode();
+
+	if (!isValidVertexLocation(location)) {
+		throw new NodeOperationError(node, `The Region "${location}" is not a valid Vertex region`, {
+			description:
+				'A region is lowercase letters, digits and hyphens, such as us-central1, or global.',
+		});
+	}
+
+	if (location === credentialRegion) return;
+
+	assertCredentialAllowsUrl({
+		node,
+		credentialData: credentials,
+		url: `https://${getVertexHost(location)}`,
+		pinnedUrl: `https://${getVertexHost(credentialRegion)}`,
+		surface: 'Google Vertex',
+	});
+}
+
 export async function resolveGoogleVertexCredentials(
 	context: ISupplyDataFunctions,
 	itemIndex: number,
@@ -74,6 +119,7 @@ export async function resolveGoogleVertexCredentials(
 		typeof locationOverride === 'string' ? locationOverride : undefined,
 		credentials.region,
 	);
+	assertVertexLocationAllowed(context, credentials, location, credentials.region);
 
 	return {
 		projectId: projectId.trim(),
@@ -109,7 +155,7 @@ export async function googleVertexAiCredentialTest(
 		// Check project access without running a model or requiring the Resource Manager API.
 		await this.helpers.request({
 			method: 'GET',
-			uri: `https://aiplatform.googleapis.com/v1/projects/${encodeURIComponent(projectId.trim())}/locations`,
+			uri: requestUrl`https://aiplatform.googleapis.com/v1/projects/${projectId.trim()}/locations`,
 			headers: { Authorization: `Bearer ${token.access_token}` },
 			qs: { pageSize: 1 },
 			json: true,

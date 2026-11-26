@@ -1,5 +1,7 @@
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { defineComponent } from 'vue';
+import type { RunDataDisplayModeContribution } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@/__tests__/render';
 import RunDataDisplayModeSelect from '@/features/ndv/runData/components/RunDataDisplayModeSelect.vue';
 
@@ -8,10 +10,16 @@ const renderComponent = createComponentRenderer(RunDataDisplayModeSelect, {
 		compact: false,
 		value: 'schema',
 		hasBinaryData: false,
-		paneType: 'output',
-		nodeGeneratesHtml: false,
 		hasRenderableData: false,
 	},
+});
+
+const registered = (id: string, label: string): RunDataDisplayModeContribution => ({
+	id,
+	label: () => label,
+	icon: 'globe',
+	component: defineComponent({ render: () => null }),
+	canRender: () => true,
 });
 
 function getOptionValues(container: Element) {
@@ -38,23 +46,6 @@ describe('RunDataDisplayModeSelect', () => {
 			expect(getByTestId('radio-button-binary')).toHaveTextContent('Binary');
 		});
 
-		it('should offer html first in the output pane when the node generates HTML', () => {
-			const { container, getByTestId } = renderComponent({
-				props: { paneType: 'output', nodeGeneratesHtml: true },
-			});
-
-			expect(getOptionValues(container)).toEqual(['html', 'schema', 'table', 'json']);
-			expect(getByTestId('radio-button-html')).toHaveTextContent('HTML');
-		});
-
-		it('should not offer html in the input pane', () => {
-			const { container } = renderComponent({
-				props: { paneType: 'input', nodeGeneratesHtml: true },
-			});
-
-			expect(getOptionValues(container)).toEqual(['schema', 'table', 'json']);
-		});
-
 		it('should offer rendered first when the data has renderable content', () => {
 			const { container, getByTestId } = renderComponent({ props: { hasRenderableData: true } });
 
@@ -62,25 +53,33 @@ describe('RunDataDisplayModeSelect', () => {
 			expect(getByTestId('radio-button-ai')).toHaveTextContent('Rendered');
 		});
 
-		it('should order rendered, html, built-in modes and binary when all apply', () => {
+		it('should order rendered, built-in modes and binary when all apply', () => {
 			const { container } = renderComponent({
+				props: { value: 'ai', hasBinaryData: true, hasRenderableData: true },
+			});
+
+			expect(getOptionValues(container)).toEqual(['ai', 'schema', 'table', 'json', 'binary']);
+		});
+
+		it('should offer registered modes after rendered and before the built-in modes', () => {
+			const { container, getByTestId } = renderComponent({
 				props: {
-					value: 'ai',
-					paneType: 'output',
-					hasBinaryData: true,
-					nodeGeneratesHtml: true,
 					hasRenderableData: true,
+					hasBinaryData: true,
+					registeredDisplayModes: [registered('map', 'Map'), registered('chart', 'Chart')],
 				},
 			});
 
 			expect(getOptionValues(container)).toEqual([
 				'ai',
-				'html',
+				'map',
+				'chart',
 				'schema',
 				'table',
 				'json',
 				'binary',
 			]);
+			expect(getByTestId('radio-button-map')).toHaveTextContent('Map');
 		});
 
 		it('should keep the test ids that end-to-end tests use', () => {
@@ -97,16 +96,13 @@ describe('RunDataDisplayModeSelect', () => {
 				props: {
 					compact: true,
 					value: 'ai',
-					paneType: 'output',
 					hasBinaryData: true,
-					nodeGeneratesHtml: true,
 					hasRenderableData: true,
 				},
 			});
 
 			const expectedIcons = {
 				ai: 'text',
-				html: 'file-code',
 				schema: 'schema',
 				table: 'table',
 				json: 'json',
@@ -118,6 +114,15 @@ describe('RunDataDisplayModeSelect', () => {
 				expect(option.querySelector('[data-icon]')).toHaveAttribute('data-icon', icon);
 				expect(option).not.toHaveTextContent(/\S/);
 			}
+		});
+
+		it('should show the icon of a registered mode', () => {
+			const { getByTestId } = renderComponent({
+				props: { compact: true, registeredDisplayModes: [registered('map', 'Map')] },
+			});
+
+			const option = getByTestId('radio-button-map');
+			expect(option.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'globe');
 		});
 
 		it('should show labels and no icons when not compact', () => {
@@ -153,8 +158,14 @@ describe('RunDataDisplayModeSelect', () => {
 		});
 
 		it('should emit the first mode when the value is not offered', () => {
+			const { emitted } = renderComponent({ props: { value: 'ai' } });
+
+			expect(emitted('change')).toEqual([['schema']]);
+		});
+
+		it('should emit the first built-in mode, not a registered mode, when the value is not offered', () => {
 			const { emitted } = renderComponent({
-				props: { value: 'html', paneType: 'output', nodeGeneratesHtml: false },
+				props: { value: 'geo-map', registeredDisplayModes: [registered('map', 'Map')] },
 			});
 
 			expect(emitted('change')).toEqual([['schema']]);

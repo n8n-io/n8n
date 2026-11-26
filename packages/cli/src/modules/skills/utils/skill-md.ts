@@ -1,38 +1,61 @@
 import { agentSkillReferencePathSchema } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { isUtf8 } from 'node:buffer';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 import { compareSkillFilePaths, type SkillContent } from './skill-content-hash';
+import { isTextFile } from './skipped-files';
 import { SkillParseError } from '../errors/skill-parse.error';
 
 /** One file of a skill folder. The path is relative to the folder. */
-export type SkillFolderFile = { path: string; content: string };
+export type SkillFolderFile = { path: string; content: string | Buffer };
 
 export const SKILL_MD = 'SKILL.md';
+
+export const MARKDOWN_FILE = /\.(?:md|markdown)$/i;
 
 /**
  * One skill folder to the content of one skill. The reader is lenient. It keeps every
  * frontmatter key other than name and description, so an imported skill keeps keys that
  * n8n does not know.
- * A skill holds only `references/*.md` besides SKILL.md. Every other file is left out and
- * listed in `skippedFiles`, in path order.
+ * Keeps other files at their original relative paths. Files with invalid paths are left out.
+ * A Markdown file loses its byte order mark and gets LF line endings, as before n8n kept
+ * other files, so a skill that n8n synced earlier shows no update. Every other text file
+ * keeps its bytes, because a script can depend on them. A file that is not UTF-8 text is
+ * stored as Base64, unless its name says that it is text.
  */
 export function readSkillFolder(
 	folderName: string,
 	files: SkillFolderFile[],
 ): { content: SkillContent; skippedFiles: string[] } {
-	const normalized = files
-		.map((file) => ({ path: normalizePath(file.path), content: file.content }))
-		.sort((left, right) => compareSkillFilePaths(left.path, right.path));
+	const sorted = [...files].sort((left, right) => compareSkillFilePaths(left.path, right.path));
 	// Sorted, so two paths for one file are neighbors.
-	const duplicate = normalized.find((file, index) => normalized[index + 1]?.path === file.path);
+	const duplicate = sorted.find((file, index) => sorted[index + 1]?.path === file.path);
 	if (duplicate) {
 		throw new SkillParseError(`The folder has more than one file at ${duplicate.path}.`);
 	}
-	const skillFile = normalized.find((file) => file.path === SKILL_MD);
+	const skillFile = sorted.find((file) => file.path === SKILL_MD);
 	if (!skillFile) throw new SkillParseError('The folder has no SKILL.md.');
-	const others = normalized.filter((file) => file !== skillFile);
-	const { data, instructions } = parseSkillMd(skillFile.content);
+	const { data, instructions } = parseSkillMd(skillFile.content.toString());
+	const kept: SkillContent['files'] = [];
+	const skippedFiles: string[] = [];
+	for (const { path, content } of sorted) {
+		if (path === SKILL_MD) continue;
+		if (!agentSkillReferencePathSchema.safeParse(path).success) {
+			skippedFiles.push(path);
+			continue;
+		}
+		const bytes = Buffer.isBuffer(content) ? content : Buffer.from(content);
+		// A file with a text name stays text when some bytes are not UTF-8. The decoder writes
+		// U+FFFD for each of them, as before n8n kept other files, so an agent can still read
+		// the file. Postgres cannot store NUL in text, so a file with NUL is binary.
+		if (bytes.includes(0) || (!isUtf8(bytes) && !isTextFile(path))) {
+			kept.push({ path, content: bytes.toString('base64'), isBinary: true });
+			continue;
+		}
+		const text = bytes.toString('utf8');
+		kept.push({ path, content: MARKDOWN_FILE.test(path) ? normalizeText(text) : text });
+	}
 	const { name, description, ...frontmatter } = data;
 	return {
 		content: {
@@ -40,19 +63,16 @@ export function readSkillFolder(
 			description: descriptionOf(description),
 			instructions,
 			frontmatter: Object.keys(frontmatter).length > 0 ? frontmatter : null,
-			files: others
-				.filter((file) => isReferencePath(file.path))
-				.map((file) => ({ path: file.path, content: normalizeText(file.content) })),
+			files: kept,
 		},
-		skippedFiles: others.filter((file) => !isReferencePath(file.path)).map((file) => file.path),
+		skippedFiles,
 	};
 }
 
 /**
  * The content of one skill back to its folder: SKILL.md, then the references. For content
  * that `readSkillFolder` returned, reading the result gives the same `skillContentHash`.
- * Other content can change, because the reader trims text and normalizes line endings
- * and paths.
+ * Other content can change, because the reader trims SKILL.md and normalizes Markdown files.
  */
 export function writeSkillFolder(content: SkillContent): SkillFolderFile[] {
 	// The real name and description win over the same keys in the frontmatter.
@@ -64,7 +84,10 @@ export function writeSkillFolder(content: SkillContent): SkillFolderFile[] {
 	);
 	return [
 		{ path: SKILL_MD, content: `---\n${frontmatter}---\n\n${content.instructions}\n` },
-		...content.files.map(({ path, content: text }) => ({ path, content: text })),
+		...content.files.map(({ path, content: text, isBinary }) => ({
+			path,
+			content: isBinary ? Buffer.from(text, 'base64') : text,
+		})),
 	];
 }
 
@@ -92,7 +115,21 @@ function parseSkillMd(text: string): { data: Record<string, unknown>; instructio
 	if (!instructions) {
 		throw new SkillParseError('SKILL.md needs instructions after the frontmatter.');
 	}
+	// Postgres stores no NUL in a text or JSON column, so the skill cannot come in.
+	if (instructions.includes('\0') || hasNul(data)) {
+		throw new SkillParseError('SKILL.md has a NUL character, which n8n cannot store.');
+	}
 	return { data, instructions };
+}
+
+/** Whether a frontmatter value holds a NUL character in a string or a key, at any level. */
+function hasNul(value: unknown): boolean {
+	if (typeof value === 'string') return value.includes('\0');
+	if (Array.isArray(value)) return value.some(hasNul);
+	if (isRecord(value)) {
+		return Object.entries(value).some(([key, entry]) => key.includes('\0') || hasNul(entry));
+	}
+	return false;
 }
 
 /** The frontmatter name, or else the folder name, as the Agent Skills format does. */
@@ -113,14 +150,4 @@ function descriptionOf(value: unknown): string {
  */
 function normalizeText(text: string): string {
 	return text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
-}
-
-/** Forward slashes and no leading `./`, so a path from any checkout names the same file. */
-function normalizePath(path: string): string {
-	return path.replaceAll('\\', '/').replace(/^(\.\/)+/, '');
-}
-
-/** A markdown file under `references/`, by the rule of `agentSkillReferencePathSchema`. */
-function isReferencePath(path: string): boolean {
-	return agentSkillReferencePathSchema.safeParse(path).success;
 }

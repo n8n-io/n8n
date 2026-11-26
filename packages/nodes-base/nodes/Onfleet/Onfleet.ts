@@ -7,7 +7,7 @@ import type {
 	INodeExecutionData,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, decodePathValue, requestPath } from 'n8n-workflow';
 
 import { onfleetApiRequest, onfleetApiRequestAllItems } from './GenericFunctions';
 import type {
@@ -784,7 +784,7 @@ export class Onfleet {
 			/* -------------------------------------------------------------------------- */
 			/*                       Create multiple tasks by batch                       */
 			/* -------------------------------------------------------------------------- */
-			const path = `${resource}/batch`;
+			const path = requestPath`${resource}/batch`;
 			const tasksData = {
 				tasks: items.map((_item, index) => Onfleet.getTaskFields.call(this, index, operation)),
 			};
@@ -804,14 +804,18 @@ export class Onfleet {
 					if (!taskData) {
 						continue;
 					}
-					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, taskData));
+					responseData.push(
+						await onfleetApiRequest.call(this, 'POST', requestPath`${resource}`, taskData),
+					);
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Get a single task                             */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const shortId = String(id).length <= 8;
-					const path = `${resource}${shortId ? '/shortId' : ''}/${id}`;
+					const path = shortId
+						? requestPath`${resource}/shortId/${id}`
+						: requestPath`${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				} else if (operation === 'clone') {
 					/* -------------------------------------------------------------------------- */
@@ -823,14 +827,14 @@ export class Onfleet {
 					if (!taskData) {
 						continue;
 					}
-					const path = `${resource}/${id}/clone`;
+					const path = requestPath`${resource}/${id}/clone`;
 					responseData.push(await onfleetApiRequest.call(this, 'POST', path, taskData));
 				} else if (operation === 'delete') {
 					/* -------------------------------------------------------------------------- */
 					/*                            Delete a single task                            */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					await onfleetApiRequest.call(this, 'DELETE', path);
 					responseData.push({ success: true });
 				} else if (operation === 'getAll') {
@@ -840,7 +844,7 @@ export class Onfleet {
 					const taskData = Onfleet.getTaskFields.call(this, 0, operation) as IDataObject;
 					if (!taskData) return [];
 					const returnAll = this.getNodeParameter('returnAll', 0, false);
-					const path = `${resource}/all`;
+					const path = requestPath`${resource}/all`;
 					let tasks;
 					if (returnAll === true) {
 						tasks = await onfleetApiRequestAllItems.call(this, 'tasks', 'GET', path, {}, taskData);
@@ -860,7 +864,7 @@ export class Onfleet {
 					if (!taskData) {
 						continue;
 					}
-					const path = `${resource}/${id}/complete`;
+					const path = requestPath`${resource}/${id}/complete`;
 					await onfleetApiRequest.call(this, 'POST', path, taskData);
 					responseData.push({ success: true });
 				} else if (operation === 'update') {
@@ -868,7 +872,7 @@ export class Onfleet {
 					/*                                Update a task                               */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', 0) as string;
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					const taskData = Onfleet.getTaskFields.call(this, index, operation);
 					if (!taskData) {
 						continue;
@@ -911,13 +915,15 @@ export class Onfleet {
 					if (!destinationData) {
 						continue;
 					}
-					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, destinationData));
+					responseData.push(
+						await onfleetApiRequest.call(this, 'POST', requestPath`${resource}`, destinationData),
+					);
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                           Get single destination                           */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
@@ -952,14 +958,14 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 					/*                          Get organization details                          */
 					/* -------------------------------------------------------------------------- */
-					const path = 'organization';
+					const path = requestPath`organization`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				} else if (operation === 'getDelegatee') {
 					/* -------------------------------------------------------------------------- */
 					/*                         Get organization delegatee                         */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
@@ -998,7 +1004,9 @@ export class Onfleet {
 					if (!recipientData) {
 						continue;
 					}
-					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, recipientData));
+					responseData.push(
+						await onfleetApiRequest.call(this, 'POST', requestPath`${resource}`, recipientData),
+					);
 				} else if (operation === 'update') {
 					/* -------------------------------------------------------------------------- */
 					/*                             Update a recipient                             */
@@ -1008,15 +1016,22 @@ export class Onfleet {
 						continue;
 					}
 					const id = this.getNodeParameter('id', index) as string;
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, recipientData));
 				} else if (operation === 'get') {
 					/* -------------------------------------------------------------------------- */
 					/*                          Get recipient information                         */
 					/* -------------------------------------------------------------------------- */
 					const lookupBy = this.getNodeParameter('getBy', index) as string;
-					const lookupByValue = this.getNodeParameter(lookupBy, index) as string;
-					const path = `${resource}${lookupBy === 'id' ? '' : '/' + lookupBy}/${lookupByValue}`;
+					const lookupByParameter = this.getNodeParameter(lookupBy, index) as string;
+					const lookupByValue =
+						this.getNode().typeVersion < 1.1
+							? decodePathValue(lookupByParameter)
+							: lookupByParameter;
+					const path =
+						lookupBy === 'id'
+							? requestPath`${resource}/${lookupByValue}`
+							: requestPath`${resource}/${lookupBy}/${lookupByValue}`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				}
 			} catch (error) {
@@ -1053,7 +1068,7 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 
 					const returnAll = this.getNodeParameter('returnAll', 0, false);
-					let adminUsers = await onfleetApiRequest.call(this, 'GET', resource);
+					let adminUsers = await onfleetApiRequest.call(this, 'GET', requestPath`${resource}`);
 					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', 0);
 						adminUsers = adminUsers.slice(0, limit);
@@ -1064,21 +1079,23 @@ export class Onfleet {
 					/*                             Create a new admin                             */
 					/* -------------------------------------------------------------------------- */
 					const adminData = Onfleet.getAdminFields.call(this, index, operation);
-					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, adminData));
+					responseData.push(
+						await onfleetApiRequest.call(this, 'POST', requestPath`${resource}`, adminData),
+					);
 				} else if (operation === 'update') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Update admin                                */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const adminData = Onfleet.getAdminFields.call(this, index, operation);
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, adminData));
 				} else if (operation === 'delete') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Delete admin                                */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					await onfleetApiRequest.call(this, 'DELETE', path);
 					responseData.push({ success: true });
 				}
@@ -1115,7 +1132,7 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 
 					const returnAll = this.getNodeParameter('returnAll', 0, false);
-					let hubs = await onfleetApiRequest.call(this, 'GET', resource);
+					let hubs = await onfleetApiRequest.call(this, 'GET', requestPath`${resource}`);
 					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', 0);
 						hubs = hubs.slice(0, limit);
@@ -1126,7 +1143,9 @@ export class Onfleet {
 					/*                              Create a new hub                              */
 					/* -------------------------------------------------------------------------- */
 					const hubData = Onfleet.getHubFields.call(this, index, operation);
-					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, hubData));
+					responseData.push(
+						await onfleetApiRequest.call(this, 'POST', requestPath`${resource}`, hubData),
+					);
 				}
 				if (operation === 'update') {
 					/* -------------------------------------------------------------------------- */
@@ -1134,7 +1153,7 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const hubData = Onfleet.getHubFields.call(this, index, operation);
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, hubData));
 				}
 			} catch (error) {
@@ -1177,7 +1196,7 @@ export class Onfleet {
 						const longitude = this.getNodeParameter('longitude', index) as string;
 						const latitude = this.getNodeParameter('latitude', index) as number;
 						const filters = this.getNodeParameter('filters', index);
-						const path = `${resource}/location`;
+						const path = requestPath`${resource}/location`;
 						workers = await onfleetApiRequest.call(
 							this,
 							'GET',
@@ -1192,7 +1211,13 @@ export class Onfleet {
 							0,
 							operation,
 						) as OnfleetWorkerFilter;
-						workers = await onfleetApiRequest.call(this, 'GET', resource, {}, workerFilters);
+						workers = await onfleetApiRequest.call(
+							this,
+							'GET',
+							requestPath`${resource}`,
+							{},
+							workerFilters,
+						);
 					}
 
 					if (!returnAll) {
@@ -1212,28 +1237,30 @@ export class Onfleet {
 						operation,
 					) as OnfleetWorkerFilter;
 
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path, {}, workerFilters));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                             Create a new worker                            */
 					/* -------------------------------------------------------------------------- */
 					const workerData = Onfleet.getWorkerFields.call(this, index, operation);
-					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, workerData));
+					responseData.push(
+						await onfleetApiRequest.call(this, 'POST', requestPath`${resource}`, workerData),
+					);
 				} else if (operation === 'update') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Update worker                               */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const workerData = Onfleet.getWorkerFields.call(this, index, operation);
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, workerData));
 				} else if (operation === 'delete') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Delete worker                               */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					await onfleetApiRequest.call(this, 'DELETE', path);
 					responseData.push({ success: true });
 				} else if (operation === 'getSchedule') {
@@ -1241,7 +1268,7 @@ export class Onfleet {
 					/*                             Get worker schedule                            */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const path = `${resource}/${id}/schedule`;
+					const path = requestPath`${resource}/${id}/schedule`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				} else if (operation === 'setSchedule') {
 					/* -------------------------------------------------------------------------- */
@@ -1253,7 +1280,7 @@ export class Onfleet {
 						index,
 						operation,
 					) as OnfleetWorkerSchedule;
-					const path = `${resource}/${id}/schedule`;
+					const path = requestPath`${resource}/${id}/schedule`;
 					responseData.push(await onfleetApiRequest.call(this, 'POST', path, workerSchedule));
 				}
 			} catch (error) {
@@ -1288,20 +1315,26 @@ export class Onfleet {
 					/*                              Get all webhooks                              */
 					/* -------------------------------------------------------------------------- */
 					responseData.push(
-						...((await onfleetApiRequest.call(this, 'GET', resource)) as IDataObject[]),
+						...((await onfleetApiRequest.call(
+							this,
+							'GET',
+							requestPath`${resource}`,
+						)) as IDataObject[]),
 					);
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                            Create a new webhook                            */
 					/* -------------------------------------------------------------------------- */
 					const webhookData = Onfleet.getWebhookFields.call(this, index, operation);
-					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, webhookData));
+					responseData.push(
+						await onfleetApiRequest.call(this, 'POST', requestPath`${resource}`, webhookData),
+					);
 				} else if (operation === 'delete') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Delete a webhook                              */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					await onfleetApiRequest.call(this, 'DELETE', path);
 					responseData.push({ success: true });
 				}
@@ -1339,7 +1372,7 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 					const containerId = this.getNodeParameter('containerId', index) as string;
 					const containerType = this.getNodeParameter('containerType', index) as string;
-					const path = `${resource}/${containerType}/${containerId}`;
+					const path = requestPath`${resource}/${containerType}/${containerId}`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				} else if (['addTask', 'updateTask'].includes(operation)) {
 					/* -------------------------------------------------------------------------- */
@@ -1360,7 +1393,7 @@ export class Onfleet {
 						}
 					}
 
-					const path = `${resource}/${containerType}/${containerId}`;
+					const path = requestPath`${resource}/${containerType}/${containerId}`;
 					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, { tasks, ...options }));
 				}
 			} catch (error) {
@@ -1396,7 +1429,7 @@ export class Onfleet {
 					/*                                Get all teams                               */
 					/* -------------------------------------------------------------------------- */
 					const returnAll = this.getNodeParameter('returnAll', 0, false);
-					let teams = await onfleetApiRequest.call(this, 'GET', resource);
+					let teams = await onfleetApiRequest.call(this, 'GET', requestPath`${resource}`);
 					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', 0);
 						teams = teams.slice(0, limit);
@@ -1408,28 +1441,30 @@ export class Onfleet {
 					/*                              Get a single team                             */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'GET', path));
 				} else if (operation === 'create') {
 					/* -------------------------------------------------------------------------- */
 					/*                              Create a new team                             */
 					/* -------------------------------------------------------------------------- */
 					const teamData = Onfleet.getTeamFields.call(this, index, operation);
-					responseData.push(await onfleetApiRequest.call(this, 'POST', resource, teamData));
+					responseData.push(
+						await onfleetApiRequest.call(this, 'POST', requestPath`${resource}`, teamData),
+					);
 				} else if (operation === 'update') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Update a team                               */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
 					const teamData = Onfleet.getTeamFields.call(this, index, operation);
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					responseData.push(await onfleetApiRequest.call(this, 'PUT', path, teamData));
 				} else if (operation === 'delete') {
 					/* -------------------------------------------------------------------------- */
 					/*                                Delete a team                               */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					const path = `${resource}/${id}`;
+					const path = requestPath`${resource}/${id}`;
 					await onfleetApiRequest.call(this, 'DELETE', path);
 					responseData.push({ success: true });
 				} else if (operation === 'getTimeEstimates') {
@@ -1442,7 +1477,7 @@ export class Onfleet {
 						index,
 						operation,
 					) as OnfleetWorkerSchedule;
-					const path = `${resource}/${id}/estimate`;
+					const path = requestPath`${resource}/${id}/estimate`;
 					responseData.push(
 						await onfleetApiRequest.call(this, 'GET', path, {}, workerTimeEstimates),
 					);
@@ -1456,7 +1491,7 @@ export class Onfleet {
 						index,
 						operation,
 					) as OnfleetWorkerSchedule;
-					const path = `${resource}/${id}/dispatch`;
+					const path = requestPath`${resource}/${id}/dispatch`;
 					responseData.push(await onfleetApiRequest.call(this, 'POST', path, teamAutoDispatch));
 				}
 			} catch (error) {

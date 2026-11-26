@@ -106,8 +106,8 @@ describe('PollTriggerJobRegistrar', () => {
 	});
 
 	it('leaves a failing poller_state row untouched when durable cursors are disabled, even though a job is inserted', async () => {
-		// Mirrors an instance that never set N8N_POLLER_DURABLE_CURSORS_ENABLED: the
-		// flag PollBackoffService itself is gated on, not something register() controls.
+		// Mirrors an instance that opted out of durable cursors: the flag
+		// PollBackoffService itself is gated on, not something register() controls.
 		schedulerConfig.durableCursorsEnabled = false;
 
 		await pollerStateRepository.insert({ workflowId: workflow.id, nodeId: node.id, cursor: {} });

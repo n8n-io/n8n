@@ -16,7 +16,8 @@ import type {
 	IExecutionContext,
 	IRun,
 } from 'n8n-workflow';
-import { UnexpectedError, NodeHelpers, WAIT_FOR_SUB_EXECUTION } from 'n8n-workflow';
+import { NodeHelpers, WAIT_FOR_SUB_EXECUTION } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { captor, mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
@@ -45,6 +46,14 @@ export const describeCommonTests = (
 	},
 ) => {
 	const additionalData = context.additionalData as MockProxy<IWorkflowExecuteAdditionalData>;
+	const isBinaryDataAllowed = vi.fn(
+		async (_binaryDataId: string, _workflowId: string, _grantedIds?: string[]) => false,
+	);
+	additionalData.binaryDataAccess = {
+		grant: vi.fn(),
+		isGranted: vi.fn(),
+		isAllowed: isBinaryDataAllowed,
+	};
 
 	describe('getRuntimeCredential', () => {
 		beforeEach(() => {
@@ -439,6 +448,58 @@ export const describeCommonTests = (
 				await context.executeWorkflow(workflowInfo, undefined, undefined, { parentExecution });
 
 				expect(executeData.metadata?.waitingChildExecutionIds).toBeUndefined();
+			});
+		});
+
+		describe('binary data access propagation', () => {
+			const originalBinaryMode = workflow.settings.binaryMode;
+
+			beforeEach(() => {
+				additionalData.executeWorkflow.mockResolvedValue(executeWorkflowData);
+				isBinaryDataAllowed.mockImplementation(async (id) => id === 'allowed-id');
+			});
+
+			afterEach(() => {
+				workflow.settings.binaryMode = originalBinaryMode;
+				isBinaryDataAllowed.mockImplementation(async () => false);
+			});
+
+			it('passes only allowed binary IDs to a sub-workflow', async () => {
+				workflow.settings.binaryMode = 'separate';
+
+				await context.executeWorkflow(workflowInfo, [
+					{
+						json: {},
+						binary: {
+							allowed: { id: 'allowed-id', data: 'filesystem-v2', mimeType: 'text/plain' },
+							denied: { id: 'denied-id', data: 'filesystem-v2', mimeType: 'text/plain' },
+						},
+					},
+				]);
+
+				expect(additionalData.executeWorkflow).toHaveBeenCalledWith(
+					workflowInfo,
+					additionalData,
+					expect.objectContaining({ binaryDataAccess: ['allowed-id'] }),
+				);
+			});
+
+			it('discovers allowed binary IDs in combined-mode JSON', async () => {
+				workflow.settings.binaryMode = 'combined';
+
+				await context.executeWorkflow(workflowInfo, [
+					{
+						json: {
+							file: { id: 'allowed-id', data: 'filesystem-v2', mimeType: 'text/plain' },
+						},
+					},
+				]);
+
+				expect(additionalData.executeWorkflow).toHaveBeenCalledWith(
+					workflowInfo,
+					additionalData,
+					expect.objectContaining({ binaryDataAccess: ['allowed-id'] }),
+				);
 			});
 		});
 

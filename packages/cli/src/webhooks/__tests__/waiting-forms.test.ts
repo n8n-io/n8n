@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { NotFoundError } from '@n8n/errors';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -256,6 +257,61 @@ describe('WaitingForms', () => {
 
 			expect(result).toEqual({ noWebhookResponse: true });
 			expect(res.render).not.toHaveBeenCalled();
+		});
+
+		it('should ask the browser to request the form again when the execution is still running', async () => {
+			const execution = mock<IExecutionResponse>({
+				status: 'running',
+				data: { waitReason: undefined, resumeToken: undefined, resultData: { error: undefined } },
+			});
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				method: 'GET',
+				headers: {},
+				params: { path: '123', suffix: undefined },
+			});
+			const res = mock<express.Response>();
+
+			const result = await waitingForms.executeWebhook(req, res);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(res.setHeader).toHaveBeenCalledWith('Refresh', '1');
+			expect(res.end).toHaveBeenCalled();
+		});
+
+		it('should ask the browser to request the form again when the execution has no stored data yet', async () => {
+			const execution = mock<IExecutionResponse>({ status: 'running', data: undefined });
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				method: 'GET',
+				headers: {},
+				params: { path: '123', suffix: undefined },
+			});
+			const res = mock<express.Response>();
+
+			const result = await waitingForms.executeWebhook(req, res);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(res.setHeader).toHaveBeenCalledWith('Refresh', '1');
+			expect(res.end).toHaveBeenCalled();
+		});
+
+		it('should answer a status poll when the execution has no stored data yet', async () => {
+			const execution = mock<IExecutionResponse>({ status: 'running', data: undefined });
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: {},
+				params: { path: '123', suffix: WAITING_FORMS_EXECUTION_STATUS },
+			});
+			const res = mock<express.Response>();
+
+			const result = await waitingForms.executeWebhook(req, res);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(res.send).toHaveBeenCalledWith('running');
 		});
 
 		const statusPoll = async (waitReason?: 'suspended') => {
@@ -889,6 +945,19 @@ describe('WaitingForms', () => {
 			expect(req.headers.cookie).not.toContain('n8n-auth=');
 			expect(req.cookies['n8n-auth']).toBeUndefined();
 		});
+	});
+
+	it('throws NotFoundError for an execution id that cannot name a v1 row', async () => {
+		executionPersistence.findSingleExecution.mockClear();
+		const req = mock<WaitingWebhookRequest>({
+			headers: {},
+			params: { path: 'abc', suffix: undefined },
+		});
+
+		await expect(waitingForms.executeWebhook(req, mock<express.Response>())).rejects.toThrowError(
+			NotFoundError,
+		);
+		expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 	});
 });
 

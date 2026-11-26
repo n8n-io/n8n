@@ -54,6 +54,98 @@ describe('ChatResourceLink', () => {
 		expect(wrapper.attributes('href')).toBe(`/projects/p1/${segment}/abc`);
 	});
 
+	it('opens the preview for an app link to a known workflow', () => {
+		const openWorkflowPreview = vi.fn(() => true);
+		const wrapper = mount(ChatResourceLink, {
+			props: {
+				href: '/workflow/abc',
+				label: 'Workflow',
+				resources: [{ type: 'workflow', id: 'abc', name: 'Workflow' }],
+				openWorkflowPreview,
+			},
+		});
+		expect(click(wrapper.element).defaultPrevented).toBe(true);
+		expect(openWorkflowPreview).toHaveBeenCalledWith('abc');
+	});
+
+	it('opens the preview for an app link to a known data table with the project of the path', () => {
+		const openDataTablePreview = vi.fn(() => true);
+		const wrapper = mount(ChatResourceLink, {
+			props: {
+				href: '/projects/p1/datatables/dt1',
+				label: 'Table',
+				resources: [{ type: 'data-table', id: 'dt1', name: 'Table' }],
+				openDataTablePreview,
+			},
+		});
+		expect(click(wrapper.element).defaultPrevented).toBe(true);
+		expect(openDataTablePreview).toHaveBeenCalledWith('dt1', 'p1');
+	});
+
+	it('opens the preview for an app link to a known agent with the project of the path', () => {
+		const openAgentPreview = vi.fn(() => true);
+		const wrapper = mount(ChatResourceLink, {
+			props: {
+				href: '/projects/p1/agents/a1',
+				label: 'Agent',
+				resources: [{ type: 'agent', id: 'a1', name: 'Agent' }],
+				openAgentPreview,
+			},
+		});
+		expect(click(wrapper.element).defaultPrevented).toBe(true);
+		expect(openAgentPreview).toHaveBeenCalledWith('a1', 'p1');
+	});
+
+	it('opens the preview for an app link to a known app', () => {
+		const openAppPreview = vi.fn(() => true);
+		const wrapper = mount(ChatResourceLink, {
+			props: {
+				href: '/projects/p1/apps/app1',
+				label: 'App',
+				resources: [{ type: 'app', id: 'app1', name: 'App' }],
+				openAppPreview,
+			},
+		});
+		expect(click(wrapper.element).defaultPrevented).toBe(true);
+		expect(openAppPreview).toHaveBeenCalledWith('app1');
+	});
+
+	it.each([
+		{ href: '/workflow/abc/debug/exec-1', type: 'workflow', id: 'abc' },
+		{ href: '/workflow/abc/executions', type: 'workflow', id: 'abc' },
+		{ href: '/projects/p1/agents/a1/sessions/s1', type: 'agent', id: 'a1' },
+	])('keeps the sub-page link $href of a known resource', ({ href, type, id }) => {
+		const openWorkflowPreview = vi.fn(() => true);
+		const openAgentPreview = vi.fn(() => true);
+		const wrapper = mount(ChatResourceLink, {
+			props: {
+				href,
+				label: 'Sub-page',
+				resources: [{ type, id, name: 'Resource' }],
+				openWorkflowPreview,
+				openAgentPreview,
+			},
+		});
+		expect(click(wrapper.element).defaultPrevented).toBe(false);
+		expect(openWorkflowPreview).not.toHaveBeenCalled();
+		expect(openAgentPreview).not.toHaveBeenCalled();
+	});
+
+	it('keeps the new tab for an app link to a resource that the thread does not know', () => {
+		const openWorkflowPreview = vi.fn(() => true);
+		const wrapper = mount(ChatResourceLink, {
+			props: {
+				href: '/workflow/other',
+				label: 'Workflow',
+				resources: [{ type: 'workflow', id: 'abc', name: 'Workflow' }],
+				openWorkflowPreview,
+			},
+		});
+		expect(click(wrapper.element).defaultPrevented).toBe(false);
+		expect(openWorkflowPreview).not.toHaveBeenCalled();
+		expect(wrapper.attributes('target')).toBe('_blank');
+	});
+
 	it('switches workflow previews and keeps new-tab fallback', () => {
 		const openWorkflowPreview = vi.fn().mockReturnValueOnce(true).mockReturnValue(false);
 		const wrapper = mount(ChatResourceLink, {

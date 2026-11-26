@@ -9,6 +9,7 @@ import { N8nApprovalCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
+import ApprovalAskReason from './ApprovalAskReason.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -99,6 +100,9 @@ function submit(key: string) {
 					</template>
 				</I18nT>
 			</N8nText>
+		</template>
+		<template v-if="input.askReason" #description>
+			<ApprovalAskReason :reason="input.askReason" />
 		</template>
 	</N8nApprovalCard>
 </template>

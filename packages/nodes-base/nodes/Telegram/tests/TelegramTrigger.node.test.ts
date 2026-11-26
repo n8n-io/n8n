@@ -132,18 +132,22 @@ describe('TelegramTrigger', () => {
 		);
 
 		it.each([
-			{ type: 'photo', attachment: [{ file_id: 'photo0909' }] },
-			{ type: 'video', attachment: { file_id: 'vid666' } },
-			{ type: 'document', attachment: { file_id: '0909' } },
+			{ type: 'photo', attachment: [{ file_id: 'photo0909' }], fileId: 'photo0909' },
+			{ type: 'video', attachment: { file_id: 'vid666' }, fileId: 'vid666' },
+			{ type: 'document', attachment: { file_id: '0909' }, fileId: '0909' },
 		])(
 			'should return downloaded files for %s attachments with message',
-			async ({ type, attachment }) => {
+			async ({ type, attachment, fileId }) => {
 				const options = createOptions({ type, attachment });
 				const { responseData } = await testWebhookTriggerNode(TelegramTrigger, options);
 
 				expect(responseData).toEqual({
 					workflowData: [[{ json: mockResult, binary: { data: binaryData } }]],
 				});
+				expect(apiRequest).toHaveBeenCalledWith('GET', 'getFile', {}, { file_id: fileId });
+				expect(String(vi.mocked(apiRequest).mock.lastCall?.[5])).toBe(
+					'https://api.telegram.org/file/bot999999/path/to/file',
+				);
 			},
 		);
 

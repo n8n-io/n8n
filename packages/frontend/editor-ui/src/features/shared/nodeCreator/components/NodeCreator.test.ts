@@ -9,6 +9,18 @@ import { EmbeddedCanvasElementKey } from '@/app/constants/injectionKeys';
 import NodeCreator from './NodeCreator.vue';
 
 const mockFetchConfig = vi.fn();
+const mockNodeCreatorState = vi.hoisted(() => ({
+	openingContext: null as null | 'replacement',
+	isReplacingFromSetupPanel: false,
+}));
+const mockFocusPanel = vi.hoisted(() => ({ focusPanelActive: false, focusPanelWidth: 0 }));
+const mockSetMergeNodes = vi.hoisted(() => vi.fn());
+// Stands in for store state that the generator reads, such as type availability policies.
+const generatorDependency = ref(0);
+
+vi.mock('@/app/stores/focusPanel.store', () => ({
+	useFocusPanelStore: vi.fn(() => mockFocusPanel),
+}));
 
 vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
@@ -38,14 +50,23 @@ vi.mock('@/features/shared/nodeCreator/composables/useKeyboardNavigation', () =>
 
 vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => ({
 	useActionsGenerator: vi.fn(() => ({
-		generateMergedNodesAndActions: vi.fn(() => ({ actions: [], mergedNodes: [] })),
+		generateMergedNodesAndActions: vi.fn(() => ({
+			actions: [],
+			mergedNodes: [{ name: `generation-${generatorDependency.value}` }],
+		})),
 	})),
 }));
 
 vi.mock('@/features/shared/nodeCreator/nodeCreator.store', () => ({
 	useNodeCreatorStore: vi.fn(() => ({
 		setActions: vi.fn(),
-		setMergeNodes: vi.fn(),
+		setMergeNodes: mockSetMergeNodes,
+		get openingContext() {
+			return mockNodeCreatorState.openingContext;
+		},
+		get isReplacingFromSetupPanel() {
+			return mockNodeCreatorState.isReplacingFromSetupPanel;
+		},
 	})),
 }));
 
@@ -91,6 +112,22 @@ const renderComponent = createComponentRenderer(NodeCreator, {
 describe('NodeCreator', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockNodeCreatorState.openingContext = null;
+		mockNodeCreatorState.isReplacingFromSetupPanel = false;
+		mockFocusPanel.focusPanelActive = false;
+		mockFocusPanel.focusPanelWidth = 0;
+		generatorDependency.value = 0;
+	});
+
+	it('regenerates the merged nodes when state read by the generator changes', async () => {
+		renderComponent();
+		expect(mockSetMergeNodes).toHaveBeenLastCalledWith([{ name: 'generation-0' }]);
+
+		generatorDependency.value = 1;
+
+		await waitFor(() =>
+			expect(mockSetMergeNodes).toHaveBeenLastCalledWith([{ name: 'generation-1' }]),
+		);
 	});
 
 	it('calls fetchConfig from useAiGateway composable on mount', async () => {
@@ -153,5 +190,37 @@ describe('NodeCreator', () => {
 		});
 
 		await waitFor(() => expect(getByTestId('node-creator')).toHaveStyle({ top: '120px' }));
+	});
+
+	it('opens a replacement from the setup panel beside the open focus panel', () => {
+		mockNodeCreatorState.openingContext = 'replacement';
+		mockNodeCreatorState.isReplacingFromSetupPanel = true;
+		mockFocusPanel.focusPanelActive = true;
+		mockFocusPanel.focusPanelWidth = 420;
+
+		const { getByTestId } = renderComponent({ props: { active: true } });
+
+		expect(getByTestId('node-creator').style.getPropertyValue('--node-creator--right')).toBe(
+			'420px',
+		);
+	});
+
+	it('keeps the right edge for a replacement from the canvas', () => {
+		mockNodeCreatorState.openingContext = 'replacement';
+		mockFocusPanel.focusPanelActive = true;
+		mockFocusPanel.focusPanelWidth = 420;
+
+		const { getByTestId } = renderComponent({ props: { active: true } });
+
+		expect(getByTestId('node-creator').style.getPropertyValue('--node-creator--right')).toBe('0px');
+	});
+
+	it('keeps the right edge when it adds a node while the focus panel is open', () => {
+		mockFocusPanel.focusPanelActive = true;
+		mockFocusPanel.focusPanelWidth = 420;
+
+		const { getByTestId } = renderComponent({ props: { active: true } });
+
+		expect(getByTestId('node-creator').style.getPropertyValue('--node-creator--right')).toBe('0px');
 	});
 });

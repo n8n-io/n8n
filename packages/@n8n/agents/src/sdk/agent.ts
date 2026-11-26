@@ -11,8 +11,14 @@ import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import type { VectorStore } from './vector-store';
 import {
+	createContextCueProvider,
+	type ContextCueProviderOptions,
+	type ContextCueSet,
+} from '../context-cues';
+import {
 	AgentRuntime,
 	type AgentRuntimeConfig,
+	type ContextCueProvider,
 	type VolatileInstructionsProvider,
 } from '../runtime/loop/agent-runtime';
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
@@ -64,6 +70,7 @@ import type {
 	BuiltProviderTool,
 	BuiltTool,
 	BuiltTelemetry,
+	ToolCallInterceptor,
 	CheckpointStore,
 	ExecutionOptions,
 	FinishReason,
@@ -234,6 +241,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private concurrencyValue?: number;
 
+	private toolCallInterceptorValue?: ToolCallInterceptor;
+
 	private telemetryBuilder?: Telemetry;
 
 	private telemetryConfig?: BuiltTelemetry;
@@ -250,6 +259,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private externalMcpConnectionFailures: McpConnectionFailedEvent[] = [];
 
 	private volatileInstructionsProviderValue?: VolatileInstructionsProvider;
+
+	private contextCueProviders: ContextCueProvider[] = [];
 
 	private defaultExecutionOptions?: ExecutionOptions;
 
@@ -279,10 +290,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * // Typed form — enables provider-specific config on .thinking() etc.
-	 * agent.model('anthropic', 'claude-sonnet-4-5')
+	 * agent.model('anthropic', 'claude-sonnet-5-5')
 	 *
 	 * // Untyped form — backwards compatible
-	 * agent.model('anthropic/claude-sonnet-4-5')
+	 * agent.model('anthropic/claude-sonnet-5-5')
 	 * ```
 	 */
 	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this {
@@ -326,6 +337,24 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this {
 		this.volatileInstructionsProviderValue = provider;
 		return this;
+	}
+
+	/** Add a provider of context cues that the runtime appends to the conversation before each model call. */
+	contextCueProvider(provider: ContextCueProvider): this {
+		this.contextCueProviders.push(provider);
+		return this;
+	}
+
+	/**
+	 * Add skill-scoped context cues. Before each model call, the runtime
+	 * retrieves the cues that match the current step and adds them to the conversation.
+	 * Without an embedding model, retrieval uses BM25.
+	 */
+	contextCues(
+		sets: readonly ContextCueSet[],
+		options: Omit<ContextCueProviderOptions, 'sets'> = {},
+	): this {
+		return this.contextCueProvider(createContextCueProvider({ ...options, sets }));
 	}
 
 	/** Add a tool to the agent's capabilities. Accepts a built tool or a Tool builder (which will be built automatically). Can also accept an array of tools. */
@@ -490,7 +519,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * const agent = new Agent('assistant')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .instructions('...')
 	 *   .tool(dangerousTool) // has .suspend() / .resume()
 	 *   .checkpoint('memory');
@@ -515,7 +544,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * const agent = new Agent('extractor')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .instructions('Extract structured data.')
 	 *   .structuredOutput(z.object({
 	 *     code: z.string(),
@@ -537,10 +566,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 *
 	 * @example
 	 * ```typescript
-	 * // Anthropic — budgetTokens
+	 * // Anthropic — adaptive thinking
 	 * new Agent('thinker')
-	 *   .model('anthropic', 'claude-sonnet-4-5')
-	 *   .thinking('anthropic', { budgetTokens: 5000 })
+	 *   .model('anthropic', 'claude-sonnet-5-5')
+	 *   .thinking('anthropic', { mode: 'adaptive', effort: 'high' })
 	 *
 	 * // OpenAI — reasoningEffort
 	 * new Agent('thinker')
@@ -559,7 +588,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * new Agent('thinker')
-	 *   .model('anthropic', 'claude-sonnet-4-5')
+	 *   .model('anthropic', 'claude-sonnet-5-5')
 	 *   .reasoning('high')
 	 * ```
 	 */
@@ -578,7 +607,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * new Agent('assistant')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .promptCaching()
 	 *   .instructions(LONG_SYSTEM_PROMPT);
 	 * ```
@@ -618,6 +647,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			throw new Error('toolCallConcurrency must be a positive integer or Infinity');
 		}
 		this.concurrencyValue = n;
+		return this;
+	}
+
+	/**
+	 * Run a function around every tool handler, including MCP tools and the
+	 * tools of inline sub-agents. A host uses it to guard or redirect tool calls.
+	 */
+	toolCallInterceptor(interceptor: ToolCallInterceptor): this {
+		this.toolCallInterceptorValue = interceptor;
 		return this;
 	}
 
@@ -701,7 +739,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * const agent = new Agent('assistant')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .instructions('You are a helpful assistant.')
 	 *   .configuration({ maxIterations: 5 });
 	 *
@@ -1248,6 +1286,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			deferredToolGroups: this.deferredToolGroups,
 			deferredToolGroupDescriptions: this.deferredToolGroupDescriptions,
 			toolCallConcurrency: this.concurrencyValue,
+			...(this.toolCallInterceptorValue !== undefined
+				? { toolCallInterceptor: this.toolCallInterceptorValue }
+				: {}),
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 			modelCost,
@@ -1256,6 +1297,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...(mcpConnectionFailures.length > 0 ? { mcpConnectionFailures } : {}),
 			...(this.volatileInstructionsProviderValue
 				? { volatileInstructionsProvider: this.volatileInstructionsProviderValue }
+				: {}),
+			...(this.contextCueProviders.length > 0
+				? { contextCueProviders: [...this.contextCueProviders] }
 				: {}),
 		};
 	}
@@ -1407,6 +1451,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				...(telemetry !== undefined ? { telemetry } : {}),
 				...(options.toolCallConcurrency !== undefined
 					? { toolCallConcurrency: options.toolCallConcurrency }
+					: {}),
+				// Children run under the parent's guard, like the model transport above.
+				...(this.toolCallInterceptorValue !== undefined
+					? { toolCallInterceptor: this.toolCallInterceptorValue }
 					: {}),
 			});
 

@@ -9,8 +9,9 @@ import type { Scheduler, SchedulerPasses } from '@n8n/scheduler';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -68,18 +69,16 @@ describe('agent tasks across two mains over one database', () => {
 		const versionId = uuid();
 		// Task ids are capped at 32 characters.
 		const taskId = uuid().replaceAll('-', '');
-		const agent = await agentRepo.save(
-			agentRepo.create({
-				id: uuid(),
-				name: 'Scheduled agent',
-				projectId,
-				schema: { name: 'Scheduled agent', model: 'm', instructions: 'i' },
-				integrations: [],
-				tools: {},
-				versionId,
-				activeVersionId: null,
-			} as Partial<Agent>),
-		);
+		const agent = await createAgent({
+			id: uuid(),
+			name: 'Scheduled agent',
+			projectId,
+			schema: { name: 'Scheduled agent', model: 'm', instructions: 'i' },
+			integrations: [],
+			tools: {},
+			versionId,
+			activeVersionId: null,
+		});
 		await historyRepo.insert({
 			versionId,
 			agentId: agent.id,

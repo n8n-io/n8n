@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as load from '../../../actions/window/load.operation';
@@ -51,7 +52,7 @@ describe('Test Airtop, window load operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 			{
 				url: 'https://example.com',
 			},
@@ -104,7 +105,7 @@ describe('Test Airtop, window load operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 			{
 				url: 'https://example.com',
 				waitUntil: 'domContentLoaded',

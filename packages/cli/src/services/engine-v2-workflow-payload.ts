@@ -1,7 +1,10 @@
+import {
+	toWorkflowSnapshot,
+	type WorkflowRunDocument,
+	type WorkflowSnapshot,
+} from '@n8n/backend-services';
 import type { TriggerOutputs, WorkflowDocument, WorkflowGraph } from '@n8n/engine';
-import type { INodeExecutionData, IWorkflowBase } from 'n8n-workflow';
-
-import { toWorkflowDocument } from '@/executions/execution-data/types';
+import type { INodeExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
 
 /** The part of an engine start that describes the workflow to run. */
 export interface EngineWorkflowPayload {
@@ -22,10 +25,13 @@ export async function toEngineWorkflowPayload({
 	triggerName,
 	triggerOutputs,
 	allowNonTriggerRoot = false,
+	pinData,
 }: {
 	workflowData: IWorkflowBase;
 	/** The workflow the graph is built from, when a plan rewrote it. */
 	graphSource?: IWorkflowBase;
+	/** Stored with the workflow, so an execution read can mark the pinned nodes. */
+	pinData?: IPinData;
 	/** Absent when no trigger is named; the converter then takes the sole one. */
 	triggerName?: string;
 	triggerOutputs: INodeExecutionData[][];
@@ -38,8 +44,21 @@ export async function toEngineWorkflowPayload({
 
 	return {
 		graph: new V1WorkflowConverter().convert(graphSource, triggerName, { allowNonTriggerRoot }),
-		workflow: toWorkflowDocument(workflowData),
+		workflow: toWorkflowDocument(workflowData, pinData),
 		// The wire schema rejects an empty array; `null` is how "no slots" is sent.
 		triggerOutputs: slots.length === 0 ? null : slots,
 	};
+}
+
+/**
+ * The workflow snapshot, shaped for the engine v2 start request. The data plane
+ * stores it beside the execution and reports it back, without reading into it,
+ * so it crosses the boundary as plain JSON. The cast is unavoidable: the engine
+ * has no `n8n-workflow` dependency, and `INode` and friends are interfaces, so
+ * they never gain the index signature `JsonObject` asks for.
+ */
+function toWorkflowDocument(workflow: WorkflowSnapshot, pinData?: IPinData): WorkflowDocument {
+	const document: WorkflowRunDocument = toWorkflowSnapshot(workflow);
+	if (pinData !== undefined) document.pinData = pinData;
+	return document as unknown as WorkflowDocument;
 }

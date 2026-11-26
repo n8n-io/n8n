@@ -1,3 +1,4 @@
+import type { FolderResourceType } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
 
@@ -6,6 +7,7 @@ import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 import { BaseRepository } from './base-repository';
+import { FOLDER_TREE_JOIN } from './folder.repository';
 
 @Service()
 export class FolderAccessRepository extends BaseRepository<Folder> {
@@ -43,11 +45,20 @@ export class FolderAccessRepository extends BaseRepository<Folder> {
 			const baseQuery = manager
 				.createQueryBuilder(Folder, 'f')
 				.select('f.id', 'id')
+				.addSelect('f.projectId', 'project_id')
+				.addSelect('f.resourceType', 'resource_type')
+				.innerJoin(
+					Folder,
+					'anchor',
+					'f.parentFolderId = anchor.id AND f.projectId = anchor.projectId AND f.resourceType = anchor.resourceType',
+				)
 				.where('f.parentFolderId IN (:...parentFolderIds)', { parentFolderIds: chunk });
 			const recursiveQuery = manager
 				.createQueryBuilder(Folder, 'child')
 				.select('child.id', 'id')
-				.innerJoin('folder_tree', 'parent', 'child.parentFolderId = parent.id');
+				.addSelect('child.projectId', 'project_id')
+				.addSelect('child.resourceType', 'resource_type')
+				.innerJoin('folder_tree', 'parent', FOLDER_TREE_JOIN);
 			const query = manager
 				.createQueryBuilder()
 				.addCommonTableExpression(
@@ -72,6 +83,7 @@ export class FolderAccessRepository extends BaseRepository<Folder> {
 		const manager = this.managerFor(ctx);
 		for (const chunk of chunkIds(folderIds)) {
 			const rows = await manager.find(Folder, {
+				relations: { homeProject: true },
 				where: {
 					id: In(chunk),
 					...(access
@@ -91,10 +103,14 @@ export class FolderAccessRepository extends BaseRepository<Folder> {
 		return [...folders.values()];
 	}
 
-	async findFolderIdsInProject(projectId: string, ctx: OperationContext = {}): Promise<string[]> {
+	async findFolderIdsInProject(
+		projectId: string,
+		resourceType: FolderResourceType | undefined,
+		ctx: OperationContext = {},
+	): Promise<string[]> {
 		const rows = await this.managerFor(ctx).find(Folder, {
 			select: { id: true },
-			where: { homeProject: { id: projectId } },
+			where: { homeProject: { id: projectId }, ...(resourceType ? { resourceType } : {}) },
 		});
 		return rows.map((row) => row.id);
 	}

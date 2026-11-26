@@ -62,6 +62,20 @@ $E: null;
 	}
 }
 
+/** Set the grid size and dot colour. Set the dot diameter separately if needed. */
+@mixin dotted-background(
+	$size: var(--spacing--2xs),
+	$dot-color: var(--border-color),
+	$dot-size: var(--spacing--5xs)
+) {
+	background-image: radial-gradient(
+		circle,
+		$dot-color calc($dot-size / 2),
+		transparent calc($dot-size / 2)
+	);
+	background-size: $size $size;
+}
+
 @mixin scroll-mask($edge, $size: var(--spacing--sm)) {
 	@if $edge == top {
 		mask-image: linear-gradient(to bottom, transparent 0, black $size, black 100%);

@@ -2,12 +2,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { aiClientFetch } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import {
-	type IExecuteFunctions,
-	type INode,
-	NodeOperationError,
-	OperationalError,
-} from 'n8n-workflow';
+import { type IExecuteFunctions, type INode, NodeOperationError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { AgentExecutor } from '@langchain/classic/agents';
 import { OpenAI as OpenAIClient } from 'openai';
 import type { Mocked } from 'vitest';
@@ -110,5 +106,19 @@ describe('OpenAI assistant message operation', () => {
 		} as never);
 
 		await expect(messageOperation.execute.call(ctx, 0)).rejects.toBeInstanceOf(NodeOperationError);
+	});
+
+	it('should abort the signal of a failed run', async () => {
+		const ctx = setupMockContext();
+		const invoke = vi.fn().mockRejectedValue(new Error('A tool failed'));
+		vi.mocked(AgentExecutor.fromAgentAndTools).mockReturnValueOnce({
+			withConfig: vi.fn().mockReturnValue({ invoke }),
+		} as never);
+
+		await expect(messageOperation.execute.call(ctx, 0)).rejects.toThrow('A tool failed');
+
+		const [chainValues, config] = invoke.mock.calls[0] as Array<{ signal: AbortSignal }>;
+		expect(chainValues.signal.aborted).toBe(true);
+		expect(config.signal).toBe(chainValues.signal);
 	});
 });

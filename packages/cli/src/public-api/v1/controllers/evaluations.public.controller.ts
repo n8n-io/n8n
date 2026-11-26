@@ -133,8 +133,7 @@ export class EvaluationsPublicController {
 	@ApiSummary('Trigger a test run')
 	@ApiDescription(
 		'Start a new evaluation test run for a workflow. The workflow must contain a configured ' +
-			'evaluation trigger. Requires the `workflow:execute` project scope in addition to the ' +
-			'`testRun:create` API key scope.',
+			'evaluation trigger. The user must also have the `workflow:execute` project scope.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(201, CreatedTestRunPublicDto)
@@ -210,13 +209,15 @@ export class EvaluationsPublicController {
 	@ApiKeyScope('testRun:read')
 	@ProjectScope('workflow:read')
 	@ApiSummary('Retrieve test run cases')
-	@ApiDescription('Retrieve the per-case results of an evaluation test run.')
+	@ApiDescription(
+		'Retrieve the per-case results of an evaluation test run. Requires the `execution:read` project scope.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(200, TestCaseExecutionListPublicDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async getTestCases(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Param('runId', testRunIdParamSchema) runId: string,
@@ -224,10 +225,12 @@ export class EvaluationsPublicController {
 	): Promise<TestCaseExecutionListPublicDto> {
 		const { offset, limit } = resolveOffsetPagination(query);
 
-		const result = await this.evaluationTestRunService.findTestCasesAndCount(runId, workflowId, {
-			offset,
-			limit,
-		});
+		const result = await this.evaluationTestRunService.findTestCasesAndCount(
+			req.user,
+			runId,
+			workflowId,
+			{ offset, limit },
+		);
 		if (!result) throw new NotFoundError('Test run not found');
 
 		return {
@@ -241,8 +244,8 @@ export class EvaluationsPublicController {
 	@ProjectScope('workflow:execute')
 	@ApiSummary('Cancel a test run')
 	@ApiDescription(
-		'Cancel a running evaluation test run of a workflow. Requires the `workflow:execute` project ' +
-			'scope in addition to the `testRun:cancel` API key scope.',
+		'Cancel a running evaluation test run of a workflow. The user must also have the ' +
+			'`workflow:execute` project scope.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(202, CancelledTestRunPublicDto)

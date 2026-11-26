@@ -1,0 +1,125 @@
+{
+	"properties": {
+		"cover": {},
+		"created_by": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"object": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"created_time": {
+			"type": "string"
+		},
+		"icon": {
+			"additionalProperties": true,
+			"properties": {
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"id": {
+			"type": "string"
+		},
+		"in_trash": {
+			"type": "boolean"
+		},
+		"is_archived": {
+			"type": "boolean"
+		},
+		"is_locked": {
+			"type": "boolean"
+		},
+		"last_edited_by": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"object": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"last_edited_time": {
+			"type": "string"
+		},
+		"object": {
+			"type": "string"
+		},
+		"parent": {
+			"additionalProperties": true,
+			"properties": {
+				"data_source_id": {
+					"type": "string"
+				},
+				"database_id": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"properties": {
+			"additionalProperties": true,
+			"properties": {
+				"Status": {
+					"properties": {
+						"id": {
+							"type": "string"
+						},
+						"select": {
+							"properties": {
+								"color": {
+									"type": "string"
+								},
+								"id": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"status": {
+							"properties": {
+								"color": {
+									"type": "string"
+								},
+								"id": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"public_url": {},
+		"request_id": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

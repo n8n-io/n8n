@@ -54,6 +54,7 @@ const emit = defineEmits<{
 	'workflow-failures': [report: WorkflowFailuresReport];
 	/** A later run of the workflow succeeded, so an earlier failure is stale. */
 	'workflow-succeeded': [workflowId: string];
+	'workflow-loaded': [workflowId: string];
 }>();
 
 const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
@@ -126,6 +127,7 @@ const { restoreExecutionResult } = useInstanceAiWorkflowPreviewExecution({
 let pendingInitialNodeId = props.initialNodeId;
 
 function handleWorkflowLoaded(workflowId: string) {
+	emit('workflow-loaded', workflowId);
 	restoreExecutionResult();
 
 	const nodeId = pendingInitialNodeId;
@@ -157,13 +159,9 @@ const handoff = thread.consumePendingHandoff(props.workflowId);
 const initialWorkflow = handoff?.workflow;
 const initialExecution = handoff?.execution;
 
-const isAgentEditingThisWorkflow = computed(() => {
-	for (const message of thread.messages) {
-		if (!message.agentTree) continue;
-		if (isAgentEditingWorkflow(message.agentTree, props.workflowId)) return true;
-	}
-	return false;
-});
+const isAgentEditingThisWorkflow = computed(() =>
+	isAgentEditingWorkflow(thread.artifactTurns, props.workflowId),
+);
 
 // Per-editor host overrides for the embedded editor. Instance AI supersedes the
 // standalone AI helpers (`false`), forces the canvas read-only while the agent

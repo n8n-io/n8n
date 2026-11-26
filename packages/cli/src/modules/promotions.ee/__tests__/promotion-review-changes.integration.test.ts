@@ -1,6 +1,6 @@
 import type { PromotionResource } from '@n8n/api-types';
 import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
 	ProjectRepository,
@@ -57,7 +57,7 @@ const server = setupTestServer({
 const author = ['-c', 'user.name=Reviewer', '-c', 'user.email=reviewer@example.com'];
 let remoteFolder: string;
 let remoteSeed: Promise<TestRemote> | undefined;
-let owner: User;
+let owner: Person;
 let environmentId: string;
 /** What GitLab reports for each merge request, by iid. */
 let hostMergeRequests: Map<number, GitLabMergeRequest>;
@@ -139,7 +139,6 @@ afterEach(async () => {
 async function promote(commitMessage: string) {
 	const result = await Container.get(PromotionsService).promote(environmentId, owner, {
 		commitMessage,
-		canExportVariableValues: true,
 	});
 	if (!result.review) throw new Error('The promotion opened no review');
 	const { reviewId, number: iid } = result.review;
