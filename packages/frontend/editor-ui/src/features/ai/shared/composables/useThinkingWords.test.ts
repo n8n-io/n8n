@@ -6,7 +6,7 @@ import {
 	THINKING_WORD_ROTATION_MS,
 	WORKFLOW_THINKING_WORD_KEYS,
 	useThinkingWordRotation,
-} from '../composables/useThinkingWords';
+} from './useThinkingWords';
 
 const i18n = useI18n();
 const generalWords = GENERAL_THINKING_WORD_KEYS.map((key) => i18n.baseText(key));

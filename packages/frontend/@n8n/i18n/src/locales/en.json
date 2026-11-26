@@ -9740,7 +9740,6 @@
 	"instanceAi.stepTimeline.done": "Done",
 	"instanceAi.stepTimeline.craftingWorkflow": "Crafting workflow",
 	"instanceAi.activitySummary.toolCalls": "{count} tool calls",
-	"ai.reasoning": "Reasoning",
 	"ai.thinking.active": "Thinking",
 	"ai.thinking.done": "Thought for {duration}",
 	"ai.thinking.doneFallback": "Finished thinking",

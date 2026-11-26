@@ -76,15 +76,17 @@ function pickRandom<T>(items: readonly T[]): T {
  */
 export function useThinkingWordRotation(options: {
 	active: () => boolean;
-	building: () => boolean;
-	threadId: () => string;
+	/** Adds the workflow words. Defaults to false. */
+	building?: () => boolean;
+	/** A new thread starts a new cycle of words. */
+	threadId?: () => string;
 }) {
 	const i18n = useI18n();
 	const used = new Set<BaseTextKey>();
 	const current = ref<BaseTextKey>();
 
 	function next() {
-		const words = options.building()
+		const words = options.building?.()
 			? [...GENERAL_THINKING_WORD_KEYS, ...WORKFLOW_THINKING_WORD_KEYS]
 			: GENERAL_THINKING_WORD_KEYS;
 		let unused = words.filter((key) => !used.has(key));
@@ -98,7 +100,7 @@ export function useThinkingWordRotation(options: {
 
 	const rotation = useIntervalFn(next, THINKING_WORD_ROTATION_MS, { immediate: false });
 
-	watch(options.threadId, () => used.clear());
+	if (options.threadId) watch(options.threadId, () => used.clear());
 	watch(
 		options.active,
 		(active) => {
