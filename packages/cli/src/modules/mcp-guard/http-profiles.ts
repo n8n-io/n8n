@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { looksLikeId, type HttpToolArgs } from './http-tool-caller';
+import { decodeSegment, looksLikeId, type HttpToolArgs } from './http-tool-caller';
 import type { PathSecretPattern } from './path-secret';
 
 /** What the guard needs to run one HTTP vendor on a gym. The instructions are in `vendors/<name>.md`. */
@@ -290,14 +290,6 @@ const GRAPH_OBJECT = /^(.*\/(?:messages|mailFolders|events|contacts|calendars))\
 // `/v1.0/me` or `/v1.0/users/<address>`.
 const MAILBOX_PREFIX = /^(\/v1\.0\/(?:me|users\/[^/]+))\//;
 
-const decodeSegment = (segment: string): string => {
-	try {
-		return decodeURIComponent(segment);
-	} catch {
-		return segment;
-	}
-};
-
 const graphObject = (path: string): { base: string; id: string } | undefined => {
 	const named = GRAPH_OBJECT.exec(path);
 	if (!named) return undefined;
@@ -321,6 +313,10 @@ const WELL_KNOWN_FOLDERS: ReadonlySet<string> = new Set(
 		'Scheduled',
 	].map((name) => name.toLowerCase()),
 );
+
+// The lists that hold the system folders: the folders of the mailbox, or the children of its root.
+const SYSTEM_FOLDER_LIST =
+	/^\/v1\.0\/(?:me|users\/[^/]+)\/mailFolders(?:\/msgfolderroot\/childFolders)?$/i;
 
 const readOf = (base: string, id: string) => ({
 	tool: `read_get_${base.split('/').pop()}`,
@@ -395,11 +391,14 @@ export const OUTLOOK_PROFILE: HttpVendorProfile = {
 		// The gym has the system folders. Only a folder that the user made needs a copy.
 		if (/\/(?:mailFolders|childFolders)$/.test(args.path)) {
 			const folders = isRecord(real) && Array.isArray(real.value) ? real.value : [];
+			// The system folders sit at the root only. A folder of the user below another folder can
+			// have the name of a system folder (`Inbox/Archive`), so it needs a copy.
+			const atRoot = SYSTEM_FOLDER_LIST.test(args.path);
 			return folders.some(
 				(folder) =>
 					isRecord(folder) &&
 					typeof folder.displayName === 'string' &&
-					!WELL_KNOWN_FOLDERS.has(folder.displayName.toLowerCase()),
+					!(atRoot && WELL_KNOWN_FOLDERS.has(folder.displayName.toLowerCase())),
 			);
 		}
 		return true;

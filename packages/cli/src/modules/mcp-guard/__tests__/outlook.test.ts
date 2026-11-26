@@ -245,6 +245,24 @@ describe('Graph ids', () => {
 		expect(looksLikeId(word)).toBe(false);
 	});
 
+	it.each(['maria.lopez2024@contoso.example', `${'a'.repeat(45)}@contoso.example`])(
+		'looksLikeId refuses the mailbox address %s',
+		(address) => {
+			expect(looksLikeId(address)).toBe(false);
+		},
+	);
+
+	it('reads a shared mailbox with a digit in its address only after the gym answers its own ids', async () => {
+		const { router, upstream, gym } = setup();
+		const made = 'AAMkGym-made_id=0123456789012345678901234567890123456789==';
+		gym.callTool.mockResolvedValueOnce(result({ id: made }));
+		await router.handle(request('POST', `/v1.0/users/maria2024@contoso.example/messages`, {}));
+
+		await router.handle(request('GET', `/v1.0/users/maria2024@contoso.example/messages/${made}`));
+
+		expect(upstream.callTool).not.toHaveBeenCalled();
+	});
+
 	it('names the calls with ids by their resources', () => {
 		const name = (method: string, path: string) =>
 			toToolCall(request(method, path, method === 'POST' ? {} : undefined), method === 'GET').name;
@@ -497,6 +515,26 @@ describe('Outlook hydration rules', () => {
 			),
 		).toBe(true);
 		expect(OUTLOOK_PROFILE.hydrateRead!({ method: 'GET', path: `${ME}/messages` }, {})).toBe(true);
+	});
+
+	it('copies a folder of the user that has the name of a system folder, below another folder', () => {
+		const archive = { value: [{ displayName: 'Archive' }] };
+
+		expect(
+			OUTLOOK_PROFILE.hydrateRead!(
+				{ method: 'GET', path: `${ME}/mailFolders/${FOLDER}/childFolders` },
+				archive,
+			),
+		).toBe(true);
+		expect(
+			OUTLOOK_PROFILE.hydrateRead!({ method: 'GET', path: `${ME}/mailFolders` }, archive),
+		).toBe(false);
+		expect(
+			OUTLOOK_PROFILE.hydrateRead!(
+				{ method: 'GET', path: `${ME}/mailFolders/msgfolderroot/childFolders` },
+				archive,
+			),
+		).toBe(false);
 	});
 
 	it('copies the object of a write only when the gym did not make its id', () => {

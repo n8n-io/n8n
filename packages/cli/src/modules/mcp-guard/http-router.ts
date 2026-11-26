@@ -3,7 +3,13 @@ import { Container } from '@n8n/di';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import type { HttpVendorProfile } from './http-profiles';
-import { looksLikeId, NO_BODY_STATUS, toToolCall, type HttpToolArgs } from './http-tool-caller';
+import {
+	decodeSegment,
+	looksLikeId,
+	NO_BODY_STATUS,
+	toToolCall,
+	type HttpToolArgs,
+} from './http-tool-caller';
 import type { McpCaller } from './mcp-upstream';
 import type { CapturedRequest } from './network';
 import {
@@ -45,15 +51,6 @@ function toResponse(res: CallToolResult): Response {
 
 // `parentFolderId` names a folder that the gym made, when a message of the gym is read.
 const ID_FIELD = /"(?:id|threadId|spreadsheetId|parentFolderId)"\s*:\s*"([^"]+)"/g;
-
-// A path can hold an id with `%2B` or `%3D`. The gym answer holds it as plain text.
-const decodeSegment = (segment: string): string => {
-	try {
-		return decodeURIComponent(segment);
-	} catch {
-		return segment;
-	}
-};
 
 /**
  * Routes the HTTP requests of one chat. A read-shaped request reads the real service, then the gym

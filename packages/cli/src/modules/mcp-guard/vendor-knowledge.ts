@@ -108,15 +108,18 @@ export function matchesVendor(vendor: VendorKnowledge, host: string, pathname: s
 const VENDOR_NAMES = ['gmail', 'outlook'] as const;
 
 export function vendorForRequest(host: string, pathname: string): VendorKnowledge | undefined {
-	return VENDOR_NAMES.map(loadVendorKnowledge).find((vendor) =>
-		matchesVendor(vendor, host, pathname),
-	);
+	// Load one file at a time, so a request for one vendor does not read the file of another.
+	for (const name of VENDOR_NAMES) {
+		const vendor = loadVendorKnowledge(name);
+		if (matchesVendor(vendor, host, pathname)) return vendor;
+	}
+	return undefined;
 }
 
 /** True for a host whose requests the guard sends to the real network as they are. */
 export function isPassthroughHost(host: string): boolean {
-	return VENDOR_NAMES.map(loadVendorKnowledge).some((vendor) =>
-		vendor.passthroughHosts.includes(canonicalHost(host)),
+	return VENDOR_NAMES.some((name) =>
+		loadVendorKnowledge(name).passthroughHosts.includes(canonicalHost(host)),
 	);
 }
 
