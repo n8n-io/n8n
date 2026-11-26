@@ -1,13 +1,14 @@
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { CredentialProvider } from '@n8n/agents';
 import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
-import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
+import type { TransactionRunner, User, WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import type { PolicyViolation } from '@n8n/decorators';
-import { mock } from 'vitest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentDefinitionService } from '../agent-definition.service';
@@ -88,6 +89,7 @@ function makeService() {
 	const agentPolicyService = mock<AgentPolicyService>();
 	agentPolicyService.evaluatePublish.mockResolvedValue({ violations: [] });
 	const workflowsInSkillsFlagGate = mock<WorkflowsInSkillsFlagGate>();
+	const workflowFinderService = mock<WorkflowFinderService>();
 	return {
 		service: new AgentValidationService(
 			agentRepository,
@@ -106,6 +108,7 @@ function makeService() {
 			skillRefs,
 			agentPolicyService,
 			workflowsInSkillsFlagGate,
+			workflowFinderService,
 		),
 		skillRefs,
 		agentRepository,
@@ -118,6 +121,7 @@ function makeService() {
 		aiGatewayService,
 		agentPolicyService,
 		workflowsInSkillsFlagGate,
+		workflowFinderService,
 	};
 }
 
@@ -1343,6 +1347,158 @@ describe('AgentValidationService — structured issues', () => {
 		expect(result.issues.filter((i) => i.path.startsWith('config.guardrails.tools'))).toEqual([]);
 	});
 
+	it.each(['publish', 'runtime'] as const)(
+		'flags a workflow guardrail whose check workflow is missing (%s scope)',
+		async (scope) => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					...runnableConfig,
+					config: {
+						guardrails: {
+							tools: [{ kind: 'workflow', id: 'guard_1', workflowId: 'wf-missing' }],
+						},
+					},
+				}),
+			);
+
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+				scope,
+			);
+
+			expect(result.status).toBe('invalid');
+			expect(result.issues).toEqual(
+				expect.arrayContaining([
+					{
+						code: 'missing_reference',
+						path: 'config.guardrails.tools.0.workflowId',
+						capability: { kind: 'guardrail', id: 'guard_1' },
+					},
+				]),
+			);
+		},
+	);
+
+	it('flags an incompatible check workflow at every scope and an unpublished one at publish scope only', async () => {
+		const { service, agentRepository, workflowRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				config: {
+					guardrails: {
+						tools: [
+							{ kind: 'workflow', id: 'guard_broken', workflowId: 'wf-broken' },
+							{ kind: 'workflow', id: 'guard_draft', workflowId: 'wf-draft' },
+						],
+					},
+				},
+			}),
+		);
+		workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+			{
+				id: 'wf-broken',
+				name: 'Broken Check',
+				activeVersionId: 'v1',
+				nodes: [{ ...executeWorkflowTriggerNode, type: 'n8n-nodes-base.manualTrigger' }],
+			},
+			{
+				id: 'wf-draft',
+				name: 'Draft Check',
+				activeVersionId: null,
+				nodes: [executeWorkflowTriggerNode],
+			},
+		] as never);
+		const credentials = makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]);
+
+		const publishResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials,
+			'publish',
+		);
+		expect(publishResult.issues).toEqual(
+			expect.arrayContaining([
+				{
+					code: 'incompatible_reference',
+					path: 'config.guardrails.tools.0.workflowId',
+					capability: { kind: 'guardrail', id: 'guard_broken' },
+					reason: 'no_supported_trigger',
+				},
+				{
+					code: 'incompatible_reference',
+					path: 'config.guardrails.tools.1.workflowId',
+					capability: { kind: 'guardrail', id: 'guard_draft' },
+					reason: 'not_published',
+				},
+			]),
+		);
+
+		const runtimeResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials,
+			'runtime',
+		);
+		expect(runtimeResult.issues).toEqual(
+			expect.arrayContaining([
+				{
+					code: 'incompatible_reference',
+					path: 'config.guardrails.tools.0.workflowId',
+					capability: { kind: 'guardrail', id: 'guard_broken' },
+					reason: 'no_supported_trigger',
+				},
+			]),
+		);
+		expect(
+			runtimeResult.issues.filter(
+				(issue) => issue.capability.kind === 'guardrail' && issue.capability.id === 'guard_draft',
+			),
+		).toEqual([]);
+	});
+
+	it('does not treat a workflow tool name as a guardrail workflow id', async () => {
+		const { service, agentRepository, workflowRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [{ type: 'workflow', workflow: 'wf-check' }],
+				config: {
+					guardrails: {
+						tools: [{ kind: 'workflow', id: 'guard_1', workflowId: 'wf-check' }],
+					},
+				},
+			}),
+		);
+		workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+			{
+				id: 'wf-real',
+				name: 'wf-check',
+				activeVersionId: 'v1',
+				nodes: [executeWorkflowTriggerNode],
+			},
+		] as never);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			'runtime',
+		);
+
+		expect(result.issues).toEqual(
+			expect.arrayContaining([
+				{
+					code: 'missing_reference',
+					path: 'config.guardrails.tools.0.workflowId',
+					capability: { kind: 'guardrail', id: 'guard_1' },
+				},
+			]),
+		);
+	});
+
 	it('flags an enabled task with an invalid schedule while keeping its body available, but ignores the same invalid body on a disabled task', async () => {
 		const { service, agentRepository, agentTaskRepository } = makeService();
 		agentTaskRepository.findByAgentId.mockResolvedValue([
@@ -1729,19 +1885,35 @@ describe('AgentValidationService — structured issues', () => {
 			expect(runtimeResult).toEqual({ missing: [] });
 		});
 
-		it('blocks publish when a mentioned workflow is outside the project of the agent', async () => {
-			const { service, workflowRepository } = mentionSetup();
+		const user = mock<User>();
+
+		async function validateMentionPublish(service: AgentValidationService, publishingUser?: User) {
+			return await service.validateLoadedAgentConfiguration(
+				makeAgent({ ...runnableConfig, skills: [{ type: 'skill', id: 'lucky' }] }),
+				projectId,
+				credentials,
+				'publish',
+				undefined,
+				publishingUser,
+			);
+		}
+
+		it('reports a mentioned workflow outside the project of the agent when the user can read it', async () => {
+			const { service, workflowRepository, workflowFinderService } = mentionSetup();
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['wf-mentioned']),
+			);
 			workflowRepository.findByIds.mockResolvedValue([
 				{ id: 'wf-mentioned', isArchived: false },
 			] as never);
 
-			const result = await service.validateAgentConfiguration(
-				agentId,
-				projectId,
-				credentials,
-				'publish',
-			);
+			const result = await validateMentionPublish(service, user);
 
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf-mentioned'],
+				user,
+				['workflow:read'],
+			);
 			expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf-mentioned'], {
 				fields: ['isArchived'],
 			});
@@ -1755,18 +1927,48 @@ describe('AgentValidationService — structured issues', () => {
 			]);
 		});
 
+		it('reports a mentioned workflow outside the project of the agent as not found when the user cannot read it', async () => {
+			const { service, workflowRepository, workflowFinderService } = mentionSetup();
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+
+			const result = await validateMentionPublish(service, user);
+
+			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+			expect(result.issues).toEqual([
+				{
+					code: 'missing_reference',
+					path: 'skills.lucky.workflows.wf-mentioned',
+					capability: { kind: 'tool', id: 'Get code', toolType: 'workflow' },
+				},
+			]);
+		});
+
+		it('reports a mentioned workflow outside the project of the agent as not found without a user', async () => {
+			const { service, workflowRepository, workflowFinderService } = mentionSetup();
+
+			const result = await validateMentionPublish(service);
+
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+			expect(result.issues).toEqual([
+				{
+					code: 'missing_reference',
+					path: 'skills.lucky.workflows.wf-mentioned',
+					capability: { kind: 'tool', id: 'Get code', toolType: 'workflow' },
+				},
+			]);
+		});
+
 		it('reports an archived mentioned workflow as not found', async () => {
-			const { service, workflowRepository } = mentionSetup();
+			const { service, workflowRepository, workflowFinderService } = mentionSetup();
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['wf-mentioned']),
+			);
 			workflowRepository.findByIds.mockResolvedValue([
 				{ id: 'wf-mentioned', isArchived: true },
 			] as never);
 
-			const result = await service.validateAgentConfiguration(
-				agentId,
-				projectId,
-				credentials,
-				'publish',
-			);
+			const result = await validateMentionPublish(service, user);
 
 			expect(result.issues).toEqual([
 				{
@@ -1777,16 +1979,34 @@ describe('AgentValidationService — structured issues', () => {
 			]);
 		});
 
-		it('does not report a published mentioned workflow without a supported trigger', async () => {
-			const { service, workflowRepository } = mentionSetup();
-			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
-				{ ...draftWorkflow, activeVersionId: 'version-1', nodes: [] },
-			] as never);
+		it.each([
+			{ state: 'published', activeVersionId: 'version-1' },
+			{ state: 'unpublished', activeVersionId: null },
+		])(
+			'reports a $state mentioned workflow without a supported trigger only as that',
+			async ({ activeVersionId }) => {
+				const { service, workflowRepository } = mentionSetup();
+				workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+					{ ...draftWorkflow, activeVersionId, nodes: [] },
+				] as never);
 
-			const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
+				const result = await service.validateAgentConfiguration(
+					agentId,
+					projectId,
+					credentials,
+					'publish',
+				);
 
-			expect(result.status).toBe('valid');
-		});
+				expect(result.issues).toEqual([
+					{
+						code: 'incompatible_reference',
+						path: 'skills.lucky.workflows.wf-mentioned',
+						capability: { kind: 'tool', id: 'Get code', toolType: 'workflow' },
+						reason: 'no_supported_trigger',
+					},
+				]);
+			},
+		);
 
 		it('reports a workflow that a legacy direct tool attaches by name only on that tool', async () => {
 			const { service, workflowRepository } = mentionSetup({
@@ -2213,5 +2433,232 @@ describe('AgentValidationService — restricted node types', () => {
 		);
 
 		expect(result).toEqual({ status: 'valid', issues: [] });
+	});
+});
+
+describe('human review validation', () => {
+	it.each([undefined, []])(
+		'reports an incomplete review assignment without throwing: %s',
+		async (configurationIds) => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					...runnableConfig,
+					tools: [
+						{
+							type: 'custom',
+							id: 'missing-tool',
+							approvalRoute: { type: 'configuration', configurationIds },
+						},
+					],
+				} as unknown as AgentJsonConfig),
+			);
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+				'runtime',
+			);
+			expect(result.issues).toContainEqual(
+				expect.objectContaining({ code: 'missing_reference', path: 'tools.0.approvalRoute' }),
+			);
+		},
+	);
+
+	it('reports an assignment whose configuration is missing', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [
+					{
+						type: 'custom',
+						id: 'missing-tool',
+						approvalRoute: { type: 'configuration', configurationIds: ['missing'] },
+					},
+				],
+			}),
+		);
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			'runtime',
+		);
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({ code: 'missing_reference', path: 'tools.0.approvalRoute' }),
+		);
+	});
+	it('accepts assignments that match saved configurations and skips disabled tools', async () => {
+		const { service, agentRepository, workflowRepository } = makeService();
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+			mockDeep<WorkflowEntity>({
+				id: 'decision',
+				isArchived: false,
+				nodes: [{ disabled: false, type: 'n8n-nodes-base.agentDecisionTrigger' }],
+			}),
+		);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				hitlConfigurations: [
+					{ id: 'first', name: 'First', method: 'workflow', workflowId: 'decision' },
+					{ id: 'second', name: 'Second', method: 'workflow', workflowId: 'decision' },
+				],
+				tools: [
+					{
+						type: 'custom',
+						id: 'matched-tool',
+						approvalRoute: { type: 'configuration', configurationIds: ['second', 'first'] },
+					},
+					{
+						type: 'custom',
+						id: 'disabled-tool',
+						enabled: false,
+						approvalRoute: { type: 'configuration', configurationIds: ['missing'] },
+					},
+				],
+			} as unknown as AgentJsonConfig),
+		);
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			'runtime',
+		);
+		expect(result.issues.filter(({ path }) => path.endsWith('.approvalRoute'))).toEqual([]);
+		expect(result.issues.filter(({ path }) => path.startsWith('hitlConfigurations'))).toEqual([]);
+	});
+
+	it.each(['missing', 'archived', 'unpublished', 'wrong-trigger', 'valid'] as const)(
+		'checks a decision workflow before publication: %s',
+		async (state) => {
+			const { service, agentRepository, workflowRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					...runnableConfig,
+					hitlConfigurations: [
+						{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'decision' },
+					],
+				}),
+			);
+			workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+				state === 'missing'
+					? null
+					: mockDeep<WorkflowEntity>({
+							id: 'decision',
+							isArchived: state === 'archived',
+							activeVersionId: state === 'unpublished' ? null : 'version',
+							activeVersion: {
+								nodes: [
+									{
+										disabled: false,
+										type:
+											state === 'wrong-trigger'
+												? 'n8n-nodes-base.manualTrigger'
+												: 'n8n-nodes-base.agentDecisionTrigger',
+									},
+								],
+							},
+						}),
+			);
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+				'publish',
+			);
+			const issues = result.issues.filter(({ path }) => path === 'hitlConfigurations.0.workflowId');
+			const expectedByState = {
+				missing: { code: 'missing_reference' },
+				archived: { code: 'missing_reference' },
+				unpublished: { code: 'incompatible_reference', reason: 'not_published' },
+				'wrong-trigger': { code: 'incompatible_reference', reason: 'no_decision_trigger' },
+				valid: undefined,
+			} as const;
+			const expected = expectedByState[state];
+			expect(issues).toEqual(expected ? [expect.objectContaining(expected)] : []);
+		},
+	);
+
+	describe('channel destination', () => {
+		const slackHitl = { supported: true, credentialType: 'slackApi' };
+		const channelConfiguration = {
+			id: 'review',
+			name: 'Review',
+			method: 'channel',
+			channel: 'slack',
+			credentialId: 'slack-cred',
+			recipient: { kind: 'channel', id: 'C123' },
+		} as const;
+
+		async function validateChannel({
+			integrations,
+			credentials,
+		}: {
+			integrations: Array<{ type: string; credentialId: string }>;
+			credentials: Array<{ id: string; type: string }>;
+		}) {
+			const { service, agentRepository, chatIntegrationRegistry } = makeService();
+			chatIntegrationRegistry.get.mockReturnValue({
+				type: 'slack',
+				credentialTypes: ['slackApi'],
+				acceptedCredentialTypes: () => ['slackApi'],
+				hitl: slackHitl,
+			} as never);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ ...runnableConfig, hitlConfigurations: [channelConfiguration] }, {}, {
+					integrations,
+				} as Partial<ProjectAgent>),
+			);
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }, ...credentials]),
+				'runtime',
+			);
+			return result.issues.filter(({ path }) => path === 'hitlConfigurations.0.credentialId');
+		}
+
+		it('accepts a connected channel with a compatible credential', async () => {
+			await expect(
+				validateChannel({
+					integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
+					credentials: [{ id: 'slack-cred', type: 'slackApi' }],
+				}),
+			).resolves.toEqual([]);
+		});
+
+		it('reports a missing integration for the review credential', async () => {
+			await expect(
+				validateChannel({
+					integrations: [{ type: 'slack', credentialId: 'other-cred' }],
+					credentials: [{ id: 'slack-cred', type: 'slackApi' }],
+				}),
+			).resolves.toEqual([
+				expect.objectContaining({
+					code: 'missing_reference',
+					capability: { kind: 'humanReview', id: 'review', index: 0 },
+				}),
+			]);
+		});
+
+		it('reports a credential that no longer exists', async () => {
+			await expect(
+				validateChannel({
+					integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
+					credentials: [],
+				}),
+			).resolves.toEqual([expect.objectContaining({ code: 'invalid_credential' })]);
+		});
+
+		it('reports a credential of the wrong type', async () => {
+			await expect(
+				validateChannel({
+					integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
+					credentials: [{ id: 'slack-cred', type: 'httpHeaderAuth' }],
+				}),
+			).resolves.toEqual([expect.objectContaining({ code: 'incompatible_credential' })]);
+		});
 	});
 });

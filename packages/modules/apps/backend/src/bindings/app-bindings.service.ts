@@ -25,6 +25,7 @@ import {
 } from './app-binding-ports';
 import { renderBindingTypes } from './app-binding-types';
 import type { App } from '../app.entity';
+import type { AppBindingsChangeSource } from '../app-events';
 import { AppRepository } from '../app.repository';
 import type { AppVersion } from '../versions/app-version.entity';
 import { AppVersionRepository } from '../versions/app-version.repository';
@@ -105,6 +106,7 @@ export class AppBindingsService {
 		appId: string,
 		baseVersionId: string | null,
 		bindings: AppBinding[],
+		{ threadId, source = 'user' }: { threadId?: string; source?: AppBindingsChangeSource } = {},
 	): Promise<AppBindingsResponse> {
 		const app = await this.requireApp(projectId, appId);
 		if (app.draftVersionId !== baseVersionId) {
@@ -118,9 +120,7 @@ export class AppBindingsService {
 			appId,
 			baseVersionId,
 			bindings,
-			{
-				userId: user.id,
-			},
+			{ userId: user.id, threadId },
 		);
 		// Counts compare binding keys: a key that points to another resource is neither added nor removed.
 		const previousKeys = new Set(previousBindings.map(({ key }) => key));
@@ -131,6 +131,8 @@ export class AppBindingsService {
 			projectId,
 			versionId: version.id,
 			userId: user.id,
+			threadId,
+			source,
 			workflowCount: count('workflow'),
 			dataTableCount: count('dataTable'),
 			agentCount: count('agent'),

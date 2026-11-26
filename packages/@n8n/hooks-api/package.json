@@ -1,6 +1,6 @@
 {
   "name": "@n8n/hooks-api",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Versioned in-process contract between n8n and extensions that load into the n8n process",
   "scripts": {
     "clean": "rimraf dist .turbo",

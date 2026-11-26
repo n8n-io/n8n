@@ -17,6 +17,7 @@ import {
 	getSameOriginUrl,
 	decodeResourceId,
 	buildResourceUrl,
+	parseResourceRoute,
 } from './ChatResourceLink.utils';
 
 const props = defineProps<{
@@ -52,12 +53,6 @@ const testLabel = computed(() =>
 const custom = computed(() =>
 	/^#?n8n-resource:\/\/(workflow|credential|data-table|agent|skill|app)\/(.+)$/.exec(props.href),
 );
-const id = computed(() => (custom.value ? decodeResourceId(custom.value[2]) : undefined));
-const entry = computed(() =>
-	props.resources?.find(
-		(resource) => resource.type === custom.value?.[1] && resource.id === id.value,
-	),
-);
 
 const routerPath = computed(() => {
 	if (props.artifactLinks) return props.artifactLinks.toRouterPath(props.href);
@@ -73,6 +68,32 @@ const internalRoute = computed(() => {
 		? undefined
 		: INTERNAL_ROUTE_PATTERNS.find(({ pattern }) => pattern.test(pathname));
 });
+
+/**
+ * A known resource that a plain app link, such as `/workflow/<id>`, points to. Only a
+ * resource of the thread counts, so a link to anything else still opens in a new tab.
+ */
+const routeResource = computed(() => {
+	if (custom.value || !routerPath.value) return undefined;
+	const resource = parseResourceRoute(routerPath.value.pathname);
+	const known = props.resources?.some(
+		(candidate) => candidate.type === resource?.type && candidate.id === resource?.id,
+	);
+	return known ? resource : undefined;
+});
+
+const id = computed(() => {
+	if (custom.value) return decodeResourceId(custom.value[2]);
+	return routeResource.value?.id;
+});
+const entry = computed(() => {
+	const resourceType = custom.value?.[1] ?? routeResource.value?.type;
+	return props.resources?.find(
+		(resource) => resource.type === resourceType && resource.id === id.value,
+	);
+});
+/** The project of the resource, from the thread or from the link path. */
+const projectId = computed(() => entry.value?.projectId ?? routeResource.value?.projectId);
 
 const preview = computed(() => {
 	const resolved = routerPath.value ? resolveAgentTestLink(routerPath.value.fullPath) : undefined;
@@ -128,11 +149,10 @@ function handleClick(event: MouseEvent) {
 	if (type.value === 'workflow') switched = props.openWorkflowPreview?.(id.value);
 	if (type.value === 'skill') switched = props.openSkillPreview?.(id.value);
 	if (type.value === 'app') switched = props.openAppPreview?.(id.value);
-	if (entry.value?.projectId) {
+	if (projectId.value) {
 		if (type.value === 'data-table')
-			switched = props.openDataTablePreview?.(id.value, entry.value.projectId);
-		if (type.value === 'agent')
-			switched = props.openAgentPreview?.(id.value, entry.value.projectId);
+			switched = props.openDataTablePreview?.(id.value, projectId.value);
+		if (type.value === 'agent') switched = props.openAgentPreview?.(id.value, projectId.value);
 	}
 	if (switched === true) event.preventDefault();
 }

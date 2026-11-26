@@ -1,19 +1,13 @@
 name: 'CI: Owners Required Reviews'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Required Reviews (PR #{0})', inputs.pr_number) || '' }}"
 
-# Enforces the `required` entries in OWNERS through DevHub. DevHub reads OWNERS
-# from master, checks approvals and team membership, and writes the
-# "Required Reviews" commit status as its own GitHub App. This workflow only
-# tells DevHub which pull request to evaluate. It authenticates with its
-# GitHub Actions OIDC token and checks out no code, so pull_request_target is
-# safe. See .github/WORKFLOWS.md ("Required reviews") and
-# n8n-io/github-actions ownership-checks/README.md.
+# The shared workflow uses the configured GitHub App to publish Required Reviews.
+# It also asks DevHub to post the PR review overview comment.
+# Keep the comment here: this repository runs only allowed workflows on pull_request_target.
 
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, edited, labeled, unlabeled]
-  pull_request_review:
-    types: [submitted, dismissed]
   workflow_run:
     workflows: ['Util: Notify PR Status']
     types: [completed]
@@ -28,12 +22,40 @@ on:
 permissions: {}
 
 jobs:
+  dispatch-review:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request_review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      pull-requests: read
+    steps:
+      - name: Evaluate reviews with the caller on master
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUN_HEAD_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+        run: |
+          set -euo pipefail
+          gh api --paginate -X GET "repos/${GITHUB_REPOSITORY}/pulls" \
+            -f state=open -f "head=${RUN_HEAD_OWNER}:${RUN_HEAD_BRANCH}" \
+            --jq '.[].number' |
+          while IFS= read -r number; do
+            gh api -X POST \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/ci-owners-required-reviews.yml/dispatches" \
+              -f ref=master -f "inputs[pr_number]=$number"
+          done
+
   required-reviews:
-    uses: n8n-io/github-actions/.github/workflows/ownership-checks.yml@be626e7b43cf88fe6d1404a29ed4e2b4f9cbb294 # ownership-checks/v1.0.0
+    if: github.event_name != 'workflow_run'
+    uses: n8n-io/github-actions/.github/workflows/ownership-checks.yml@565cebcd8f10f91c5164219e827c30b6f9d46708 # v1.1.0
     permissions:
       id-token: write
       pull-requests: read
     with:
-      ownership-comment: false
+      ownership-comment: true
       devhub-url: https://devhub.services.n8n.cloud
       pull-request-number: ${{ inputs.pr_number }}
+    secrets:
+      required-reviews-app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+      required-reviews-app-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}

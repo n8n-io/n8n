@@ -21,13 +21,14 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { z } from 'zod';
 
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { diffDataTableSchema } from '@/modules/n8n-packages/entities/data-table/data-table-compat';
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import { PACKAGE_ENTITY_LAYOUT, entityIdOfSegment } from '@/modules/n8n-packages/io/manifest-entry';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { PACKAGE_SUBFOLDER } from './constants';
 import {
@@ -46,6 +47,7 @@ import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { ApplyPreviewService } from './apply-preview.service';
 import { PromotePreviewService } from './promote-preview.service';
 import { exportInstancePackage, type InstancePackage } from './instance-package';
+import { PromotionCredentialSelectionService } from './promotion-credential-selection.service';
 import {
 	LocalPackageEntities,
 	type LocalDataTable,
@@ -70,6 +72,7 @@ export class PromotionChangeService {
 		private readonly localEntities: LocalPackageEntities,
 		private readonly environmentResolver: PromotionEnvironmentResolver,
 		private readonly projectRepository: ProjectRepository,
+		private readonly credentialSelection: PromotionCredentialSelectionService,
 	) {}
 
 	/**
@@ -81,8 +84,8 @@ export class PromotionChangeService {
 		projectId: string,
 		direction: PromotionDirection,
 	): Promise<PromotionPreview> {
+		await this.assertCanPreview(user, projectId, direction);
 		if (direction === 'apply') return await this.getApplyPreview(user, projectId);
-		this.assertCanPreview(user, direction);
 		const input = await this.environmentResolver.resolveForProject(projectId, direction);
 		return await this.promotePreviewService.build({
 			user,
@@ -94,7 +97,6 @@ export class PromotionChangeService {
 
 	/** The Apply preview, built from the import plan at the branch tip. */
 	private async getApplyPreview(user: User, projectId: string): Promise<PromotionPreview> {
-		this.assertCanPreview(user, 'apply');
 		const branch = await this.promotionsService.readBranchPackage(projectId, 'apply');
 		if (branch.commitSha === null) {
 			throw new BadRequestError(
@@ -132,16 +134,17 @@ export class PromotionChangeService {
 	 * The file content of each requested resource on both sides, for the change cards.
 	 * The branch side is read at the commit of the summary. The instance side is read now,
 	 * so its blob SHA tells the caller whether the resource changed after the summary.
-	 * Variable values are left out unless `canSeeVariableValues` is set.
+	 * Variable values are left out unless the user's role can list variables. The scopes of an
+	 * API key do not matter, as for every promotion read.
 	 */
 	async getDetails(
 		user: User,
 		projectId: string,
 		direction: PromotionDirection,
 		{ commitSha, keys }: PromotionResourceDetailsRequestDto,
-		{ canSeeVariableValues }: { canSeeVariableValues: boolean },
 	): Promise<PromotionResourceDetails> {
-		this.assertCanPreview(user, direction);
+		await this.assertCanPreview(user, projectId, direction);
+		const canSeeVariableValues = hasGlobalScope(user, 'variable:list');
 		const requestedIds = new Set(keys.map((key) => key.slice(key.indexOf(':') + 1)));
 		const readBranch = async (paths: readonly string[]) =>
 			commitSha === null
@@ -153,6 +156,11 @@ export class PromotionChangeService {
 						paths,
 					);
 		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
+		// Promote lists the project's own credentials that the user can select. Details show no other.
+		const selectableCredentialIds =
+			direction === 'promote'
+				? await this.credentialSelection.findSelectableIds(user, projectId)
+				: [];
 		const [branchFiles, instance] = await Promise.all([
 			readBranch([manifestPath]),
 			exportInstancePackage(this.packagesService, user, [projectId], {
@@ -160,19 +168,35 @@ export class PromotionChangeService {
 				keepContent: (path) =>
 					requestedIds.has(entityIdOfPath(path)) ||
 					path.includes(`/${PACKAGE_ENTITY_LAYOUT.variables.directory}/`),
+				// Promote lists the project's own credentials, so their details need them in the export.
+				// Only the requested credentials need an export, because the content of the others is dropped.
+				credentialIds: selectableCredentialIds.filter((id) => requestedIds.has(id)),
 			}),
 		]);
 		const branchManifest = parseBranchManifest(branchFiles.get(manifestPath), projectId);
-		const branchIndex = indexSide({ manifest: branchManifest, blobByPath: new Map() }, projectId);
-		const instanceIndex = indexSide(
-			{ manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
+		const ownedCredentials = direction === 'promote';
+		const visibleCredentialIds = new Set(selectableCredentialIds);
+		const branchIndex = indexSide(
+			{ manifest: branchManifest, blobByPath: new Map(), ownedCredentials, visibleCredentialIds },
 			projectId,
 		);
+		const instanceIndex = indexSide(
+			{
+				manifest: instance.manifest,
+				blobByPath: blobsByPath(instance.files),
+				ownedCredentials,
+				visibleCredentialIds,
+			},
+			projectId,
+		);
+		const hiddenKeys = await this.unreadableCredentialKeys(user, keys, branchIndex);
 		// A resource can disappear after the summary, for example when a local workflow is deleted.
-		const missingKeys = keys.filter((key) => !branchIndex.has(key) && !instanceIndex.has(key));
+		const missingKeys = keys.filter(
+			(key) => hiddenKeys.has(key) || (!branchIndex.has(key) && !instanceIndex.has(key)),
+		);
 
 		const details = await this.assembleDetails({
-			keys,
+			keys: keys.filter((key) => !hiddenKeys.has(key)),
 			direction,
 			branchIndex,
 			instanceIndex,
@@ -193,8 +217,8 @@ export class PromotionChangeService {
 		user: User,
 		environmentId: string,
 		{ commitSha, keys }: PromotionResourceDetailsRequestDto,
-		{ canSeeVariableValues }: { canSeeVariableValues: boolean },
 	): Promise<PromotionResourceDetails> {
+		const canSeeVariableValues = hasGlobalScope(user, 'variable:list');
 		// The whole-instance preview always has a commit.
 		if (commitSha === null) {
 			throw new BadRequestError('Send the commitSha of the whole-instance Apply preview.');
@@ -342,10 +366,37 @@ export class PromotionChangeService {
 		});
 	}
 
+	/**
+	 * The branch can hold a credential that the user cannot read on this instance, for example
+	 * after its owner stopped sharing it with the project. Its content stays hidden, as in the export.
+	 */
+	private async unreadableCredentialKeys(
+		user: User,
+		keys: readonly string[],
+		branchIndex: SideIndex,
+	): Promise<Set<string>> {
+		const hidden = new Set<string>();
+		for (const key of keys) {
+			const resource = branchIndex.get(key);
+			if (resource?.type !== 'credential') continue;
+			const canRead = await userHasScopes(user, ['credential:read'], false, {
+				credentialId: resource.id,
+			}).catch((error: unknown) => {
+				// A credential that is gone from this instance has nobody who can read it.
+				if (error instanceof NotFoundError) return false;
+				throw error;
+			});
+			if (!canRead) hidden.add(key);
+		}
+		return hidden;
+	}
+
 	/** One route serves both directions, so the per-direction scope is checked here, not on the decorator. */
-	private assertCanPreview(user: User, direction: PromotionDirection) {
+	private async assertCanPreview(user: User, projectId: string, direction: PromotionDirection) {
 		const scope = PROMOTION_SCOPES[direction];
-		if (!hasGlobalScope(user, scope)) {
+		// Promote reads the role in the project. Apply from a project role ships with LIGO-1476.
+		const instanceRoleOnly = direction === 'apply';
+		if (!(await userHasScopes(user, [scope], instanceRoleOnly, { projectId }))) {
 			throw new ForbiddenError(
 				`Change preview requires the ${scope} scope. Ask an administrator for access.`,
 			);

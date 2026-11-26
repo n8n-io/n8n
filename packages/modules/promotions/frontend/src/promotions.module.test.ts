@@ -3,7 +3,10 @@ import {
 	capabilities,
 	capabilityRegistry,
 	type EnvironmentsSettings,
+	type ProjectContext,
+	type ProjectPermissions,
 } from '@n8n/frontend-module-sdk';
+import type { Project } from '@n8n/rest-api-client';
 import type { Scope } from '@n8n/permissions';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createTestingPinia } from '@pinia/testing';
@@ -12,6 +15,7 @@ import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-rout
 
 import { PromotionsModule } from './promotions.module';
 import {
+	PROMOTION_INSTANCE_APPLY_VIEW,
 	PROMOTION_PREVIEW_VIEWS,
 	PROMOTIONS_SETTINGS_SCOPES,
 	PROMOTIONS_SETTINGS_VIEW,
@@ -51,8 +55,16 @@ const createTestRouter = () =>
 const setup = ({
 	activeModules = ['promotions'],
 	environmentsVersion = 'v2',
-	scopes = ['promotions:read', 'promotions:promote', 'promotions:apply'] as Scope[],
-}: { activeModules?: string[]; environmentsVersion?: 'v1' | 'v2'; scopes?: Scope[] } = {}) => {
+	scopes = ['promotions:promote', 'promotions:apply'] as Scope[],
+	projectScopes = {} as Record<string, Scope[]>,
+	openProject = null as Pick<Project, 'id' | 'scopes'> | null,
+}: {
+	activeModules?: string[];
+	environmentsVersion?: 'v1' | 'v2';
+	scopes?: Scope[];
+	projectScopes?: Record<string, Scope[]>;
+	openProject?: Pick<Project, 'id' | 'scopes'> | null;
+} = {}) => {
 	createTestingPinia({ stubActions: false });
 
 	capabilityRegistry.provide(
@@ -62,7 +74,17 @@ const setup = ({
 				activeModules.includes('promotions') && environmentsVersion === 'v2',
 		}),
 	);
-	// Project scopes stay empty, as in the app, where the frontend does not load them.
+	capabilityRegistry.provide(
+		capabilities.projectContext,
+		mock<ProjectContext>({ currentProject: () => openProject as Project | null }),
+	);
+	// As in the app: the instance scopes plus the scopes of the role in that project.
+	capabilityRegistry.provide(
+		capabilities.projectPermissions,
+		mock<ProjectPermissions>({
+			scopesFor: (projectId) => [...scopes, ...(projectScopes[projectId] ?? [])],
+		}),
+	);
 	useRBACStore().setGlobalScopes(scopes);
 };
 
@@ -73,8 +95,8 @@ afterEach(() => {
 describe('PromotionsModule settings link', () => {
 	const link = () => PromotionsModule.settingsPages?.find(({ id }) => id === 'settings-promotions');
 
-	it('is available when promotions are enabled and the user can manage them', () => {
-		setup({ scopes: [...PROMOTIONS_SETTINGS_SCOPES] });
+	it('is available when promotions are enabled and the user can read the setup', () => {
+		setup({ scopes: ['promotions:readProviders', 'promotions:readEnvironments'] });
 
 		expect(link()?.available).toBe(true);
 	});
@@ -113,23 +135,59 @@ describe('PromotionsModule settings route', () => {
 });
 
 describe('PromotionsModule preview routes', () => {
-	it('opens the apply preview of a project with the direction from the route', async () => {
-		setup();
+	it('opens the whole-instance Apply preview with the apply and environment read scopes', async () => {
+		setup({ scopes: ['promotions:apply'] });
 		const router = createTestRouter();
 
-		await router.push('/projects/p1/promotions/apply');
+		// The page lists the instance environments, so the apply scope alone leads home.
+		await router.push('/promotions/apply');
+		expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
 
-		const route = router.currentRoute.value;
-		expect(route.name).toBe(PROMOTION_PREVIEW_VIEWS.apply);
-		const props = route.matched.at(-1)?.props.default;
-		expect(typeof props === 'function' ? props(route) : props).toEqual({
-			projectId: 'p1',
-			direction: 'apply',
+		useRBACStore().setGlobalScopes(['promotions:apply', 'promotions:readEnvironments']);
+		await router.push('/promotions/apply');
+		expect(router.currentRoute.value.name).toBe(PROMOTION_INSTANCE_APPLY_VIEW);
+	});
+
+	it.each(['promote', 'apply'] as const)(
+		'opens the %s preview of a project for a user with only that direction scope',
+		async (direction) => {
+			setup({ scopes: [`promotions:${direction}`] });
+			const router = createTestRouter();
+
+			await router.push(`/projects/p1/promotions/${direction}`);
+
+			const route = router.currentRoute.value;
+			expect(route.name).toBe(PROMOTION_PREVIEW_VIEWS[direction]);
+			const props = route.matched.at(-1)?.props.default;
+			expect(typeof props === 'function' ? props(route) : props).toEqual({
+				projectId: 'p1',
+				direction,
+			});
+		},
+	);
+
+	it('opens the promote preview only for projects where the role can promote', async () => {
+		// The project list loaded before an admin let the role of p3 promote. The open p3 knows it.
+		setup({
+			scopes: [],
+			projectScopes: { p1: ['promotions:promote'] },
+			openProject: { id: 'p3', scopes: ['promotions:promote'] },
 		});
+		const router = createTestRouter();
+
+		await router.push('/projects/p2/promotions/promote');
+		expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+
+		await router.push('/projects/p1/promotions/promote');
+		expect(router.currentRoute.value.name).toBe(PROMOTION_PREVIEW_VIEWS.promote);
+
+		await router.push('/home');
+		await router.push('/projects/p3/promotions/promote');
+		expect(router.currentRoute.value.name).toBe(PROMOTION_PREVIEW_VIEWS.promote);
 	});
 
 	it('leads users who cannot apply changes home', async () => {
-		setup({ scopes: ['promotions:read', 'promotions:promote'] });
+		setup({ scopes: ['promotions:promote'] });
 		const router = createTestRouter();
 
 		await router.push('/projects/p1/promotions/apply');

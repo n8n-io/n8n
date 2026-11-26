@@ -368,6 +368,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3'],
 			folderIds: [],
+			credentialIds: [],
 			expectedPreviewRevision: REVISION,
 		});
 	});
@@ -552,6 +553,19 @@ describe('PromotionPreviewView', () => {
 		},
 	);
 
+	it.each(['promote', 'apply'] as const)(
+		'puts Refresh and the submit button in the title row for %s',
+		async (direction) => {
+			const { getByTestId } = await render(`/projects/p1/promotions/${direction}`, direction);
+
+			const titleRow = within(getByTestId('promotion-preview-title-row'));
+			expect(titleRow.getByRole('heading', { level: 1 })).toBeInTheDocument();
+			expect(titleRow.getByTestId('promotion-preview-refresh')).toBeInTheDocument();
+			expect(titleRow.getByTestId('promotion-preview-submit')).toBeInTheDocument();
+			expect(within(getByTestId('promotion-preview-tabs')).queryByRole('button')).toBeNull();
+		},
+	);
+
 	it('should keep the changes and warn when a refresh fails', async () => {
 		const { getByTestId, getByText } = await render();
 		vi.mocked(api.getPromotionPreview).mockRejectedValueOnce(new Error('offline'));
@@ -643,6 +657,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
 			folderIds: [],
+			credentialIds: [],
 			expectedPreviewRevision: REVISION,
 		});
 		expect(showMessage).toHaveBeenCalledWith({
@@ -680,6 +695,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
 			folderIds: [],
+			credentialIds: [],
 			expectedPreviewRevision: REVISION,
 		});
 	});
@@ -695,6 +711,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
 			folderIds: [],
+			credentialIds: [],
 			commitMessage: 'Route leads by region',
 			expectedPreviewRevision: REVISION,
 		});
@@ -728,6 +745,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1'],
 			folderIds: [],
+			credentialIds: [],
 			commitMessage: 'Route leads by region',
 			expectedPreviewRevision: REVISION,
 		});
@@ -967,6 +985,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenLastCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
 			folderIds: [],
+			credentialIds: [],
 			commitMessage: 'Route leads by region',
 			expectedPreviewRevision: newRevision,
 		});

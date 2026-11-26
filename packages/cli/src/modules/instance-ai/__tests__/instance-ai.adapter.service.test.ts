@@ -74,6 +74,8 @@ import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	ASSISTANT_SKILLS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
@@ -81,8 +83,10 @@ import {
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+	type AppResponse,
 } from '@n8n/api-types';
 
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -128,10 +132,12 @@ function globalConfigStub(
 		allowSendingParameterValues?: boolean;
 		queueMode?: boolean;
 		maxExecutionTimeout?: number;
+		diagnosticsEnabled?: boolean;
 	} = {},
 ): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
+		diagnostics: { enabled: overrides.diagnosticsEnabled ?? false },
 		executions: {
 			mode: overrides.queueMode ? 'queue' : 'regular',
 			maxTimeout: overrides.maxExecutionTimeout ?? 3600,
@@ -1956,6 +1962,7 @@ import {
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
 	ExecutionRedactionServiceProxy,
+	WorkflowPublishGuardProxy,
 	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
@@ -5340,6 +5347,69 @@ describe('createWorkflowAdapter', () => {
 		});
 	});
 
+	describe('getPublishReviewBlock', () => {
+		let guardSpy: MockInstance | undefined;
+
+		afterEach(() => {
+			guardSpy?.mockRestore();
+			guardSpy = undefined;
+		});
+
+		it('returns the reason when the review rules refuse the draft', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockRejectedValue(
+					new WorkflowPublishBlockedError({ reason: 'review_required', versionId: 'version-id' }),
+				);
+			const { adapter } = createWorkflowAdapterForTests();
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new')).resolves.toBe('review_required');
+			expect(guardSpy).toHaveBeenCalledWith('wf-new', { versionId: 'version-id' });
+		});
+
+		it('returns undefined when the review rules allow the version', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockResolvedValue(undefined);
+			const { adapter } = createWorkflowAdapterForTests();
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new', 'v-2')).resolves.toBeUndefined();
+			expect(guardSpy).toHaveBeenCalledWith('wf-new', { versionId: 'v-2' });
+		});
+
+		it('does not check the version that is already live, as the publish does not', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockRejectedValue(
+					new WorkflowPublishBlockedError({ reason: 'review_required', versionId: 'version-id' }),
+				);
+			const { adapter, mockWorkflowFinderService, savedWorkflow } = createWorkflowAdapterForTests();
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+				...savedWorkflow,
+				activeVersionId: 'version-id',
+			});
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new')).resolves.toBeUndefined();
+			expect(guardSpy).not.toHaveBeenCalled();
+		});
+
+		it('does not check an archived workflow, so the publish returns its archive error', async () => {
+			guardSpy = vi
+				.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish')
+				.mockRejectedValue(
+					new WorkflowPublishBlockedError({ reason: 'review_required', versionId: 'version-id' }),
+				);
+			const { adapter, mockWorkflowFinderService, savedWorkflow } = createWorkflowAdapterForTests();
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+				...savedWorkflow,
+				isArchived: true,
+			});
+
+			await expect(adapter.getPublishReviewBlock?.('wf-new')).resolves.toBeUndefined();
+			expect(guardSpy).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('notifying open editors', () => {
 		it('notifies after publishing', async () => {
 			const { adapter, mockCollaborationService } = createWorkflowAdapterForTests();
@@ -6857,6 +6927,7 @@ function createAdapterWithGatewayMock(
 		instanceContext?: InstanceContextService;
 		aiPreferenceService?: unknown;
 		logger?: unknown;
+		diagnosticsEnabled?: boolean;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -6876,7 +6947,7 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = globalConfigStub();
+	args[1] = globalConfigStub({ diagnosticsEnabled: overrides?.diagnosticsEnabled });
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -8560,6 +8631,7 @@ describe('resolveExperimentGates', () => {
 	const allEnabled = {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+		[INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG]: INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 		[INSTANCE_AI_CONCISE_STYLE_FLAG]: INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
@@ -8575,6 +8647,7 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: true,
 			conversationHistoryEnabled: true,
+			draftWorkflowPreviewEnabled: true,
 			conciseStyleEnabled: true,
 			setupPanelEnabled: true,
 			setupPanelVariant: 'variant',
@@ -8699,6 +8772,7 @@ describe('resolveExperimentGates', () => {
 		stubContainer({
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
+			[INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG]: 'control',
 			[INSTANCE_AI_CONCISE_STYLE_FLAG]: 'control',
 			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
@@ -8711,6 +8785,7 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
+			draftWorkflowPreviewEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			setupPanelVariant: 'control',
@@ -8769,6 +8844,7 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
+			draftWorkflowPreviewEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
@@ -8788,6 +8864,7 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
+			draftWorkflowPreviewEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
@@ -10150,17 +10227,52 @@ describe('createContext: appService', () => {
 		);
 	});
 
-	it('reports a namespace conflict as a taken namespace', async () => {
+	it('creates the app with the next numbered namespace when the namespace is taken', async () => {
 		const { apps } = mockAppsModule(true);
-		apps.createApp.mockRejectedValue(
-			new ConflictError('An app already uses this namespace. Choose another namespace.'),
-		);
+		const created = mock<AppResponse>({ id: APP_ID, namespace: 'todos-3' });
+		apps.createApp
+			.mockRejectedValueOnce(new ConflictError('An app already uses this namespace.'))
+			.mockRejectedValueOnce(new ConflictError('An app already uses this namespace.'))
+			.mockResolvedValueOnce(created);
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await expect(
+			context.appService?.createApp({ name: 'Todos', namespace: 'todos' }),
+		).resolves.toBe(created);
+
+		expect(apps.createApp.mock.calls.map(([, dto]) => dto.namespace)).toEqual([
+			'todos',
+			'todos-2',
+			'todos-3',
+		]);
+	});
+
+	it('keeps numbered namespaces within the namespace length limit of the instance', async () => {
+		const { apps } = mockAppsModule(true);
+		apps.maxNamespaceLength.mockReturnValue(9);
+		apps.createApp
+			.mockRejectedValueOnce(new ConflictError('An app already uses this namespace.'))
+			.mockResolvedValueOnce(mock<AppResponse>({ id: APP_ID }));
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await context.appService?.createApp({ name: 'Todo list', namespace: 'todo-list' });
+
+		expect(apps.createApp.mock.calls.map(([, dto]) => dto.namespace)).toEqual([
+			'todo-list',
+			'todo-li-2',
+		]);
+	});
+
+	it('reports a taken namespace when every numbered namespace is taken too', async () => {
+		const { apps } = mockAppsModule(true);
+		apps.createApp.mockRejectedValue(new ConflictError('An app already uses this namespace.'));
 		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
 
 		const created = context.appService?.createApp({ name: 'Todos', namespace: 'todos' });
 
 		await expect(created).rejects.toBeInstanceOf(AppNamespaceTakenError);
 		await expect(created).rejects.toThrow('An app already uses the namespace "todos".');
+		expect(apps.createApp).toHaveBeenCalledTimes(21);
 	});
 
 	it('passes other create failures through unchanged', async () => {
@@ -10238,7 +10350,10 @@ describe('createContext: appService', () => {
 
 	it('saves bindings as the acting user with the update scope', async () => {
 		const { bindings } = mockAppsModule(true);
-		const { context, mockUser } = createDataTableAdapterForTests({ projectId: 'project-1' });
+		const { context, mockUser } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			threadId: 'thread-1',
+		});
 		const workflow = { key: 'submit', kind: 'workflow' as const, workflowId: 'w1' };
 		bindings.setBindings.mockResolvedValue({ versionId: 'v2', bindings: [], warnings: [] });
 
@@ -10247,9 +10362,14 @@ describe('createContext: appService', () => {
 		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:update'], false, {
 			projectId: 'project-1',
 		});
-		expect(bindings.setBindings).toHaveBeenCalledWith(mockUser, 'project-1', APP_ID, null, [
-			workflow,
-		]);
+		expect(bindings.setBindings).toHaveBeenCalledWith(
+			mockUser,
+			'project-1',
+			APP_ID,
+			null,
+			[workflow],
+			{ threadId: 'thread-1', source: 'assistant' },
+		);
 		expect(result).toMatchObject({ versionId: 'v2', types: '// Generated by n8n' });
 	});
 
@@ -10335,5 +10455,115 @@ describe('createContext: appService', () => {
 		).rejects.toThrow('Cannot modify apps on a protected instance.');
 		await context.appService?.exportDraft(APP_ID);
 		expect(sources.commit).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — agentFeedbackService
+// ---------------------------------------------------------------------------
+
+describe('createContext: agentFeedbackService', () => {
+	const user = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	function buildService({ diagnosticsEnabled = true } = {}) {
+		const logger = { error: vi.fn(), warn: vi.fn(), scoped: vi.fn().mockReturnThis() };
+		const telemetry = { track: vi.fn() };
+		const service = createAdapterWithGatewayMock(vi.fn(), {
+			logger,
+			telemetry,
+			diagnosticsEnabled,
+		});
+		return { service, telemetry };
+	}
+
+	it('is present when telemetry is enabled', () => {
+		const { service } = buildService();
+		expect(service.createContext(user, { threadId: 't1' }).agentFeedbackService).toBeDefined();
+	});
+
+	it('is absent when telemetry is disabled', () => {
+		const { service } = buildService({ diagnosticsEnabled: false });
+		expect(service.createContext(user, { threadId: 't1' }).agentFeedbackService).toBeUndefined();
+	});
+
+	it('tracks the feedback as a registered telemetry event', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'blocked',
+			summary: 'build_workflow rejects valid code with the same error.',
+			toolName: 'build-workflow',
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.ASSISTANT_SENT_FEEDBACK,
+			{
+				user_id: 'user-1',
+				thread_id: 't1',
+				run_id: 'r1',
+				category: 'bug',
+				severity: 'blocked',
+				summary: 'build_workflow rejects valid code with the same error.',
+				tool_name: 'build-workflow',
+			},
+		);
+	});
+
+	it('removes secrets from the summary before it tracks the event', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'minor',
+			summary: 'The API key sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789 failed.',
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		const [, properties] = telemetry.track.mock.calls[0];
+		expect(JSON.stringify(properties)).not.toContain(
+			'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789',
+		);
+	});
+
+	it('removes a secret that crosses the summary length cap, then cuts the summary', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+		const secret = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789';
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'minor',
+			summary: `${'x'.repeat(990)} ${secret} ${'y'.repeat(500)}`,
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		const [, properties] = telemetry.track.mock.calls[0];
+		const { summary } = properties as { summary: string };
+		expect(summary).not.toContain('sk-ant-api03-abcdefghij');
+		expect(summary.length).toBeLessThanOrEqual(1003);
+	});
+
+	it('removes secrets from the tool name before it tracks the event', () => {
+		const { service, telemetry } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+
+		context.agentFeedbackService!.send({
+			category: 'bug',
+			severity: 'minor',
+			summary: 'A tool failed.',
+			toolName: 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789',
+			threadId: 't1',
+			runId: 'r1',
+		});
+
+		const [, properties] = telemetry.track.mock.calls[0];
+		expect(JSON.stringify(properties)).not.toContain('abcdefghijklmnopqrstuvwxyz0123456789');
 	});
 });

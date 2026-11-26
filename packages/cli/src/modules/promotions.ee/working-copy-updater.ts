@@ -22,6 +22,8 @@ const selectivePushOptionsSchema = z.object({
 	workflowIds: z.array(z.string().min(1)),
 	deletedWorkflowIds: z.array(z.string().min(1)),
 	folderIds: z.array(z.string().min(1)),
+	/** Credentials of the project to write although no selected workflow uses them. */
+	credentialIds: z.array(z.string().min(1)).optional(),
 });
 
 export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
@@ -95,6 +97,10 @@ export class WorkingCopyUpdater {
 		if (new Set(selection.folderIds).size !== selection.folderIds.length) {
 			throw new BadRequestError('folderIds contains duplicates');
 		}
+		const credentialIds = selection.credentialIds ?? [];
+		if (new Set(credentialIds).size !== credentialIds.length) {
+			throw new BadRequestError('credentialIds contains duplicates');
+		}
 
 		const overlap = selection.deletedWorkflowIds.filter((id) => addSet.has(id));
 		if (overlap.length > 0) {
@@ -111,9 +117,11 @@ export class WorkingCopyUpdater {
 		const stagedIds = new Set((staging.workflows ?? []).map((workflow) => workflow.id));
 		const selectedIds = new Set(selection.workflowIds);
 		const stagedFolderIds = new Set((staging.folders ?? []).map((folder) => folder.id));
+		const stagedCredentialIds = new Set((staging.credentials ?? []).map(({ id }) => id));
 		const missing = [
 			...selection.workflowIds.filter((id) => !stagedIds.has(id)),
 			...selection.folderIds.filter((id) => !stagedFolderIds.has(id)),
+			...(selection.credentialIds ?? []).filter((id) => !stagedCredentialIds.has(id)),
 		];
 		const extra = [...stagedIds].filter((id) => !selectedIds.has(id));
 		if (missing.length === 0 && extra.length === 0) return;

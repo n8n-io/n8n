@@ -103,6 +103,46 @@ it('shows import previews without a diff', () => {
 	expect(view.queryByTestId('skill-source-file-diff')).not.toBeInTheDocument();
 });
 
+it('marks a binary update and shows text when a file changes encoding', () => {
+	const view = render({
+		props: {
+			skill,
+			diffFiles: [
+				{
+					path: 'assets/logo.png',
+					before: '',
+					after: '',
+					beforeIsBinary: true,
+					afterIsBinary: true,
+					status: 'modified',
+				},
+				{
+					path: 'guide',
+					before: '',
+					after: 'New plain text.',
+					beforeIsBinary: true,
+					status: 'modified',
+				},
+				{
+					path: 'assets/same.png',
+					before: '',
+					after: '',
+					beforeIsBinary: true,
+					afterIsBinary: true,
+				},
+			],
+		},
+	});
+	const logo = within(view.getByRole('region', { name: 'skills/release-notes/assets/logo.png' }));
+	const guide = within(view.getByRole('region', { name: 'skills/release-notes/guide' }));
+	const same = within(view.getByRole('region', { name: 'skills/release-notes/assets/same.png' }));
+	expect(logo.getByText('Modified file')).toBeVisible();
+	expect(logo.queryByTestId('skill-source-file-diff')).not.toBeInTheDocument();
+	expect(guide.getByText('Modified file')).toBeVisible();
+	expect(guide.getByTestId('skill-source-file-diff')).toHaveTextContent('New plain text.');
+	expect(same.queryByText('Modified file')).not.toBeInTheDocument();
+});
+
 it('explains blocked content and links files without a preview to their source', () => {
 	const view = render({
 		props: {

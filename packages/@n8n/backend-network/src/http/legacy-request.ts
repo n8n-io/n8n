@@ -20,9 +20,11 @@ import {
 	destroyRequestBody,
 	resolveLegacyRequestUrl,
 	throwIfDomainNotAllowed,
+	throwIfProxyNotAllowed,
 	validateProxySsrf,
 	validateUrlSsrf,
 } from './axios/utils';
+import { streamToBufferPartial } from './binary-buffer';
 import { binaryToString } from './binary-string';
 import { parseIncomingMessage } from './parse-incoming-message';
 
@@ -62,6 +64,32 @@ export async function executeLegacyRequest(
 	}
 }
 
+/**
+ * Drains an Axios error-response body into a string.
+ * If the stream is already destroyed or fails to finish (for example a denied
+ * proxy CONNECT response, a truncated error response, or a stalled error body),
+ * return any received or buffered bytes so the caller keeps the HTTP error
+ * status and available error text.
+ */
+async function readErrorResponseBody(body: Buffer | Readable): Promise<string> {
+	let encoding: string | undefined;
+	if (body instanceof IncomingMessage) {
+		parseIncomingMessage(body);
+		encoding = body.encoding;
+	}
+
+	const buffer = Buffer.isBuffer(body) ? body : await streamToBufferPartial(body);
+	if (buffer.length === 0) {
+		return '';
+	}
+
+	try {
+		return await binaryToString(buffer, encoding);
+	} catch {
+		return buffer.toString('utf-8');
+	}
+}
+
 async function sendLegacyRequest(
 	requestObject: IRequestOptions,
 	ssrfBridge: SsrfBridge | undefined,
@@ -86,6 +114,7 @@ async function sendLegacyRequest(
 		await buildAxiosConfigFromLegacyRequest(requestObject, ssrfBridge),
 	);
 	throwIfDomainNotAllowed(axiosConfig, requestObject.allowedDomains);
+	throwIfProxyNotAllowed(requestObject.proxy, requestObject.allowedDomains);
 
 	try {
 		const response = shouldFollowRedirectsManually(axiosConfig, requestObject.proxy, ssrfBridge)
@@ -138,7 +167,7 @@ async function sendLegacyRequest(
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-					responseData = await binaryToString(responseData);
+					responseData = await readErrorResponseBody(responseData);
 				}
 
 				if (requestObject.simple === false) {
