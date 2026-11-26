@@ -6,8 +6,6 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { WEBDAV_URL_SUFFIX } from '../nodes/NextCloud/constants';
-
 export class NextCloudApi implements ICredentialType {
 	name = 'nextCloudApi';
 
@@ -51,10 +49,10 @@ export class NextCloudApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: `={{$credentials.webDavUrl.replace(${WEBDAV_URL_SUFFIX.toString()}, "")}}`,
-			// Needs a login, unlike cloud/capabilities, so a wrong password fails the test.
-			url: '/ocs/v2.php/cloud/user',
-			headers: { 'OCS-APIRequest': true },
+			// Needs a login and a WebDAV folder, so a wrong password or a bare server URL fails the test
+			method: 'PROPFIND',
+			url: '={{$credentials.webDavUrl}}',
+			headers: { Depth: '0' },
 		},
 	};
 }

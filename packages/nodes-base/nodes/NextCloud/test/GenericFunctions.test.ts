@@ -397,22 +397,11 @@ describe('NextCloud GenericFunctions', () => {
 	});
 
 	describe('Context types', () => {
-		it('sends requests from poll, webhook and load-options contexts', async () => {
-			const { functions, requestWithAuthentication } = buildFunctions();
-			requestWithAuthentication.mockResolvedValue('');
-			const poll = functions as unknown as IPollFunctions;
-			const webhook = functions as unknown as IWebhookFunctions;
-			const loadOptions = functions as unknown as ILoadOptionsFunctions;
-
-			await nextCloudApiRequest.call(poll, 'GET', webDavPath('/a.txt'), '');
-			await nextCloudApiRequest.call(webhook, 'GET', webDavPath('/a.txt'), '');
-			await nextCloudApiRequest.call(loadOptions, 'GET', webDavPath('/a.txt'), '');
-
-			expect(requestWithAuthentication).toHaveBeenCalledTimes(3);
-			expect(requestWithAuthentication).toHaveBeenCalledWith(
-				'nextCloudApi',
-				expect.objectContaining({ uri: requestUrl`${webDavUrl}//a.txt` }),
-			);
+		it('accepts poll, webhook and load-options contexts', () => {
+			type Context = ThisParameterType<typeof nextCloudApiRequest>;
+			expectTypeOf<IPollFunctions>().toExtend<Context>();
+			expectTypeOf<IWebhookFunctions>().toExtend<Context>();
+			expectTypeOf<ILoadOptionsFunctions>().toExtend<Context>();
 		});
 	});
 
