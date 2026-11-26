@@ -2065,6 +2065,16 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 				'{{ (() => { const list = $json.other; list.constructor = { [Symbol.species]: function () { return { tag: "mine" }; } }; return list.concat("b").tag; })() }}',
 				'mine',
 			],
+			[
+				'{{ (() => { const list = $json.list; list[Symbol.isConcatSpreadable] = true; return list.concat($json.other, 9); })() }}',
+				[1, [2, 3], { id: 4 }, 'a', 9],
+			],
+			[
+				'{{ $json.list.concat({ length: 1, 0: "x", [Symbol.isConcatSpreadable]: true }) }}',
+				[1, [2, 3], { id: 4 }, 'x'],
+			],
+			['{{ $json.other.concat(null, [null]) }}', ['a', null, null]],
+			['{{ Array.isArray($json.list.concat($json.other)) }}', true],
 		])('%s', (expression, expected) => {
 			expect(evaluator.evaluate(expression, data, caller)).toEqual(expected);
 		});

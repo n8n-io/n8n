@@ -68,13 +68,94 @@ function plainItems(items: unknown[]): unknown[] {
 	return items;
 }
 
+/** Say whether `concat` creates a plain `Array` for this receiver. */
+function givesPlainArray(receiver: unknown): receiver is unknown[] {
+	return (
+		isArray(receiver) &&
+		receiver.constructor === NativeArray &&
+		reflectGet(NativeArray, Symbol.species) === NativeArray
+	);
+}
+
+/** How `concat` adds a value to its result. `other` is a spread value that is not an array. */
+type OperandKind = 'spread' | 'single' | 'other';
+
+function operandKindOf(value: unknown): OperandKind {
+	if (value === null || (typeof value !== 'object' && typeof value !== 'function')) {
+		return 'single';
+	}
+	const spreadable: unknown = reflectGet(value, Symbol.isConcatSpreadable);
+	if (spreadable === undefined) {
+		return isArray(value) ? 'spread' : 'single';
+	}
+	if (!spreadable) {
+		return 'single';
+	}
+	return isArray(value) ? 'spread' : 'other';
+}
+
+/** The receiver and the items, each with how `concat` adds it. Undefined when one is `other`. */
+function operandsOf(
+	receiver: unknown,
+	items: unknown[],
+): Array<{ value: unknown; kind: OperandKind }> | undefined {
+	const operands: Array<{ value: unknown; kind: OperandKind }> = [];
+	let isSupported = true;
+	for (let index = -1; isSupported && index < items.length; index++) {
+		const value = index === -1 ? receiver : items[index];
+		const kind = operandKindOf(value);
+		isSupported = kind !== 'other';
+		operands[operands.length] = { value, kind };
+	}
+	return isSupported ? operands : undefined;
+}
+
 /**
- * Same result as the native `concat`. A lazy array is read into a plain array
- * first, because the native `concat` needs far more memory for a Proxy.
+ * The result of `concat` for arrays and single values, with the holes of each
+ * array. The result gets its full length first. The native `concat` needs far
+ * more memory after an expression sets `Symbol.isConcatSpreadable` on an array.
+ */
+function mergeOperands(operands: Array<{ value: unknown; kind: OperandKind }>): unknown[] {
+	let total = 0;
+	for (let index = 0; index < operands.length; index++) {
+		const { value, kind } = operands[index];
+		total += kind === 'spread' ? (value as unknown[]).length : 1;
+	}
+	const result = new NativeArray<unknown>(total);
+	let offset = 0;
+	for (let index = 0; index < operands.length; index++) {
+		const { value, kind } = operands[index];
+		if (kind === 'spread') {
+			const array = value as unknown[];
+			const { length } = array;
+			for (let item = 0; item < length; item++) {
+				if (item in array) {
+					result[offset + item] = array[item];
+				}
+			}
+			offset += length;
+		} else {
+			result[offset++] = value;
+		}
+	}
+	return result;
+}
+
+/** `concat` with a lazy array. Lazy arrays are read with index reads, not by the native `concat`. */
+function concatWithLazyArray(receiver: unknown, items: unknown[]): unknown[] {
+	const operands = givesPlainArray(receiver) ? operandsOf(receiver, items) : undefined;
+	return operands !== undefined
+		? mergeOperands(operands)
+		: apply(nativeConcat, plainIfSpreadLazyArray(receiver), plainItems(items));
+}
+
+/**
+ * Same result as the native `concat`. A lazy array is not given to the native
+ * `concat`, because the native `concat` needs far more memory for a Proxy.
  */
 function concat(this: unknown, ...items: unknown[]): unknown[] {
 	return holdsLazyProxy(this, items)
-		? apply(nativeConcat, plainIfSpreadLazyArray(this), plainItems(items))
+		? concatWithLazyArray(this, items)
 		: apply(nativeConcat, this, items);
 }
 
