@@ -1,6 +1,42 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
 
+const errorObjectTest = (
+	description: string,
+	errorObject: string,
+	error: string,
+): WorkflowTestData => ({
+	description,
+	input: {
+		workflowData: {
+			nodes: [
+				{
+					parameters: {},
+					id: 'b1dcfb89-3dda-4d18-bdd6-c12d8dee70d2',
+					name: 'When clicking "Execute Workflow"',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [820, 400],
+				},
+				{
+					parameters: { errorType: 'errorObject', errorObject },
+					id: '5dae596a-8956-4149-ba9d-36b6b5e80c4a',
+					name: 'Stop and Error',
+					type: 'n8n-nodes-base.stopAndError',
+					typeVersion: 1,
+					position: [1080, 400],
+				},
+			],
+			connections: {
+				'When clicking "Execute Workflow"': {
+					main: [[{ node: 'Stop and Error', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+		},
+	},
+	output: { nodeData: {}, error },
+});
+
 describe('Execute Stop and Error Node', () => {
 	const testHarness = new NodeTestHarness();
 	const tests: WorkflowTestData[] = [
@@ -71,6 +107,16 @@ describe('Execute Stop and Error Node', () => {
 				error: 'error message from node 0',
 			},
 		},
+		errorObjectTest(
+			'should throw the error object from a JSON string',
+			'{\n"code": 404,\n"message": "error object from node"\n}',
+			'error object from node',
+		),
+		errorObjectTest(
+			'should throw the error object from an expression',
+			'={{ { "code": 500, "message": "error object from expression" } }}',
+			'error object from expression',
+		),
 	];
 
 	for (const testData of tests) {

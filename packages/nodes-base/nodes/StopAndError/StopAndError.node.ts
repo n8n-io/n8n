@@ -3,6 +3,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
@@ -63,6 +64,7 @@ export class StopAndError implements INodeType {
 				displayName: 'Error Object',
 				name: 'errorObject',
 				type: 'json',
+				validateType: 'object',
 				description: 'Object containing error properties',
 				default: '',
 				typeOptions: {
@@ -84,9 +86,9 @@ export class StopAndError implements INodeType {
 		const errorParameter =
 			errorType === 'errorMessage'
 				? (this.getNodeParameter('errorMessage', 0) as string)
-				: (this.getNodeParameter('errorObject', 0) as string);
+				: ((this.getNodeParameter('errorObject', 0) as JsonObject | undefined) ?? {});
 
-		const { message, options } = createErrorFromParameters(errorType, errorParameter);
+		const { message, options } = createErrorFromParameters(errorParameter);
 
 		throw new NodeOperationError(this.getNode(), message, options);
 	}
