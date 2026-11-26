@@ -292,7 +292,7 @@ describe('PromoteInstanceDialog', () => {
 			api.promotePackage
 				.mockResolvedValueOnce({ environmentId: 'environment-1', ...fields })
 				.mockResolvedValue(promoteResult('main'));
-			const { findByRole, findByTestId, getByTestId, queryByTestId, emitted } = renderComponent();
+			const { findByTestId, getByTestId, queryByTestId, emitted } = renderComponent();
 			await findByTestId('promotion-unresolved-summary');
 
 			await userEvent.click(getByTestId('promote-confirm-button'));

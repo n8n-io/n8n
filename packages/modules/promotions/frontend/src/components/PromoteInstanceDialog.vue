@@ -103,11 +103,11 @@ const dialogTitle = computed(() =>
 			}),
 );
 
-const ariaDescription = computed(() =>
-	result.value
-		? dialogTitle.value
-		: i18n.baseText('settings.promotions.promote.dialog.ariaDescription'),
-);
+const ariaDescription = computed(() => {
+	if (result.value) return dialogTitle.value;
+	const text = i18n.baseText('settings.promotions.promote.dialog.ariaDescription');
+	return unresolved.value.length > 0 ? `${text} ${lead.value}` : text;
+});
 
 const bodyText = computed(() => {
 	if (props.providerType === 'gitlab' && props.createBranchOnPromotion) {
