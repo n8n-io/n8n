@@ -5,9 +5,12 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import type * as http from 'node:http';
+import { createServer } from 'node:http';
+import { connect, type AddressInfo } from 'node:net';
 import { mock } from 'vitest-mock-extended';
 
 import { ChatServer } from '@/chat/chat-server';
+import type { ChatService } from '@/chat/chat-service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 const mockApp = mock<express.Application>();
@@ -66,6 +69,56 @@ describe('WebhookServer', () => {
 		webhookServer['setupPushServer']();
 
 		expect(chatServer.setup).toHaveBeenCalledWith(httpServer, mockApp);
+	});
+
+	it('should reject an upgrade request on a path that chat does not serve', async () => {
+		const chatServer = mockInstance(ChatServer);
+		chatServer.isWebSocketPath.mockReturnValue(false);
+		const webhookServer = new WebhookServer();
+		const httpServer = createServer();
+		Object.assign(webhookServer, { server: httpServer });
+		webhookServer['setupPushServer']();
+		await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
+		const { port } = httpServer.address() as AddressInfo;
+
+		const reply = await new Promise<string>((resolve) => {
+			const client = connect(port, '127.0.0.1');
+			let received = '';
+			client.on('data', (chunk: Buffer) => {
+				received += chunk.toString('latin1');
+			});
+			client.on('close', () => resolve(received));
+			client.write(
+				'GET /healthz HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n',
+			);
+		});
+		httpServer.close();
+
+		expect(reply).toBe('HTTP/1.1 404 Not Found\r\n\r\n');
+	});
+
+	it('should upgrade a chat request', async () => {
+		Container.set(ChatServer, new ChatServer(mock<ChatService>()));
+		const webhookServer = new WebhookServer();
+		const httpServer = createServer();
+		Object.assign(webhookServer, { server: httpServer });
+		webhookServer['setupPushServer']();
+		await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
+		const { port } = httpServer.address() as AddressInfo;
+
+		const statusLine = await new Promise<string>((resolve) => {
+			const client = connect(port, '127.0.0.1');
+			client.on('data', (chunk: Buffer) => {
+				resolve(chunk.toString('latin1').split('\r\n')[0]);
+				client.destroy();
+			});
+			client.write(
+				'GET /chat HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n',
+			);
+		});
+		httpServer.close();
+
+		expect(statusLine).toBe('HTTP/1.1 101 Switching Protocols');
 	});
 
 	it('should mount diagnostics only during E2E tests', async () => {

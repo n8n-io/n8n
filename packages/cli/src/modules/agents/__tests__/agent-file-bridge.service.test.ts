@@ -2,6 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
+
 import {
 	AgentFileLimitError,
 	type AgentChatAttachmentService,
@@ -31,19 +33,28 @@ describe('AgentFileBridge', () => {
 		projectId: 'project-1',
 		threadId: 'thread-1',
 		resourceId: 'draft-chat:user-1',
+		workflowId: 'workflow-1',
 	};
 	const logger = mock<Logger>();
 	const binaryDataService = mock<BinaryDataService>();
+	const binaryDataAccessService = mock<BinaryDataAccessService>();
 	const attachmentService = mock<AgentChatAttachmentService>({
 		maxGeneratedFileBytes: MAX_GENERATED_FILE_BYTES,
 	});
 	const sandboxFiles = mock<AgentSandboxFilesService>();
-	const bridge = new AgentFileBridge(logger, binaryDataService, attachmentService, sandboxFiles);
+	const bridge = new AgentFileBridge(
+		logger,
+		binaryDataService,
+		binaryDataAccessService,
+		attachmentService,
+		sandboxFiles,
+	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
 		sandboxFiles.resolveFileRefs.mockImplementation(async (refs) => refs);
 		binaryDataService.getAsBuffer.mockResolvedValue(PNG);
+		binaryDataAccessService.assertIsAllowed.mockResolvedValue();
 		attachmentService.storeInbound.mockResolvedValue(
 			mock<AgentChatAttachment>({ id: 'aid-1', fileSizeBytes: PNG.byteLength }),
 		);
@@ -99,6 +110,21 @@ describe('AgentFileBridge', () => {
 			skippedFiles: [],
 		});
 		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it('does not read an inaccessible binary', async () => {
+		binaryDataAccessService.assertIsAllowed.mockRejectedValue(new Error('denied'));
+
+		const result = await bridge.adoptFromItems([{ json: {}, binary: { data: pngBinary } }], scope);
+
+		expect(binaryDataService.getMetadata).not.toHaveBeenCalled();
+		expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
+		expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			items: [{ json: {}, binary: {} }],
+			files: [],
+			skippedFiles: [],
+		});
 	});
 
 	describe('binary IDs in json', () => {
