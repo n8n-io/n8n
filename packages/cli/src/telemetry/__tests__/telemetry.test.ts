@@ -1351,7 +1351,7 @@ describe('Telemetry', () => {
 			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
 		});
 
-		test('should send the trigger counts of a workflow as a JSON list', () => {
+		test('should send the trigger counts of a workflow as a list', () => {
 			const scheduleRun: Parameters<Telemetry['trackWorkflowExecution']>[0] = {
 				workflow_id: '1',
 				user_id: 'user1',
@@ -1381,7 +1381,7 @@ describe('Telemetry', () => {
 				user_id: 'user1',
 				prod_success: { count: 2, first: execTime },
 				manual_success: { count: 1, first: execTime },
-				trigger_counts: JSON.stringify([
+				trigger_counts: [
 					{
 						node_type: 'n8n-nodes-base.scheduleTrigger',
 						mode: 'trigger',
@@ -1400,7 +1400,7 @@ describe('Telemetry', () => {
 						first: execTime.toISOString(),
 						last: execTime.toISOString(),
 					},
-				]),
+				],
 			});
 			expect(telemetry.getCountsBuffer()).toEqual({});
 		});

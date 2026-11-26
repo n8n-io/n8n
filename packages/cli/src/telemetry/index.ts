@@ -51,8 +51,9 @@ interface IExecutionTrackData {
 }
 
 /**
- * One row for each trigger node, mode, caller and status. A flat list is easier to query in Hex,
- * and node types as object keys would add one warehouse column for each node type.
+ * One row for each trigger node, mode, caller and status. RudderStack writes a list to the
+ * warehouse as one JSON string column, but it makes one column for each key of an object, so
+ * node types as object keys would add one warehouse column for each node type.
  */
 interface IExecutionTriggerCount extends IExecutionTrackData {
 	/** null when no trigger node ran */
@@ -308,7 +309,7 @@ export class Telemetry implements TelemetryTracker {
 				event_version: '3',
 				workflow_id: workflowId,
 				...counts,
-				trigger_counts: JSON.stringify(triggerCountRows),
+				trigger_counts: triggerCountRows,
 			});
 		}
 
