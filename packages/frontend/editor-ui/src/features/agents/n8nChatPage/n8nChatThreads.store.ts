@@ -70,12 +70,17 @@ export const useAgentN8nChatThreadsStore = defineStore(STORES.AGENT_N8N_CHAT_THR
 	 * Best-effort: a missing title must not break the page, so this swallows
 	 * every error instead of throwing.
 	 */
-	async function loadThread(threadId: string): Promise<void> {
+	async function loadThread(threadId: string, firstMessage?: string): Promise<void> {
 		if (threadsById.value.has(threadId)) return;
 		try {
 			const thread = await getN8nChatThread(rootStore.restApiContext, threadId);
 			if (threadsById.value.has(thread.id)) return;
-			openedThreads.value.push(thread);
+			// A new chat can load while its first message is still queued, before the
+			// server has its preview. The sent text stands in until the title arrives.
+			openedThreads.value.push({
+				...thread,
+				firstMessage: thread.firstMessage ?? firstMessage ?? null,
+			});
 		} catch (error) {
 			console.error('Failed to load n8n Chat thread', error);
 		}

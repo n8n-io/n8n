@@ -167,8 +167,24 @@ describe('useAgentN8nChatThreadsStore', () => {
 				{ baseUrl: '/rest', pushRef: 'push-1' },
 				'1',
 			);
-			expect(store.threadsById.get('1')).toEqual(thread);
+			expect(store.threadsById.get('1')).toEqual({ ...thread, firstMessage: null });
 			expect(store.recentThreads).toEqual([]);
+		});
+
+		it('keeps the sent text as the preview of a new thread that the server has no preview for yet', async () => {
+			mockGetN8nChatThread
+				.mockResolvedValueOnce(makeThread('queued', '2025-01-02T00:00:00.000Z'))
+				.mockResolvedValueOnce({
+					...makeThread('admitted', '2025-01-02T00:00:00.000Z'),
+					firstMessage: 'Server preview',
+				});
+			const store = useAgentN8nChatThreadsStore();
+
+			await store.loadThread('queued', 'Budget questions');
+			await store.loadThread('admitted', 'Budget questions');
+
+			expect(store.threadsById.get('queued')?.firstMessage).toBe('Budget questions');
+			expect(store.threadsById.get('admitted')?.firstMessage).toBe('Server preview');
 		});
 
 		it('keeps a loaded thread when a later fetchRecent replaces the recent list', async () => {
@@ -183,7 +199,7 @@ describe('useAgentN8nChatThreadsStore', () => {
 			await store.loadThread('old');
 			await store.fetchRecent(10);
 
-			expect(store.threadsById.get('old')).toEqual(opened);
+			expect(store.threadsById.get('old')).toEqual({ ...opened, firstMessage: null });
 		});
 
 		it('does not fetch a thread already in recentThreads', async () => {

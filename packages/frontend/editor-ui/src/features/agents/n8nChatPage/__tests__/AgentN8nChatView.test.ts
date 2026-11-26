@@ -186,14 +186,24 @@ describe('AgentN8nChatView', () => {
 			expect(toggleText(wrapper)).toBe('New conversation');
 		});
 
-		it('shows the placeholder, not the first user message, until the thread has a title', async () => {
+		it('uses the first user message, cut like the sidebar, until the thread has a title', async () => {
 			const wrapper = renderView({ agentThreadId: 'thread-9' });
 			await flushPromises();
 			const message = 'Please review this offer letter for the senior engineer role in Berlin';
 			wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('first-user-message', message);
 			await flushPromises();
 
-			expect(toggleText(wrapper)).toBe('New conversation');
+			expect(toggleText(wrapper)).toBe(`${message.slice(0, 59).trimEnd()}…`);
+		});
+
+		it('uses the first-message preview of the thread summary until the thread has a title', async () => {
+			const wrapper = renderView({ agentThreadId: 'thread-9' });
+			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [
+				{ ...recentThread(null), firstMessage: 'Budget questions for Q3' },
+			];
+			await flushPromises();
+
+			expect(toggleText(wrapper)).toBe('Budget questions for Q3');
 		});
 
 		it('keeps "Chat history" on a new chat', async () => {
@@ -210,7 +220,10 @@ describe('AgentN8nChatView', () => {
 			renderView({ agentThreadId: 'thread-9' });
 			await flushPromises();
 
-			expect(mockedStore(useAgentN8nChatThreadsStore).loadThread).toHaveBeenCalledWith('thread-9');
+			expect(mockedStore(useAgentN8nChatThreadsStore).loadThread).toHaveBeenCalledWith(
+				'thread-9',
+				undefined,
+			);
 		});
 
 		it('does not fetch it when the thread is already in the list', async () => {

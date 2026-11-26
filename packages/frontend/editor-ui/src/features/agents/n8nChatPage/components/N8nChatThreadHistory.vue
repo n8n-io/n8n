@@ -14,6 +14,7 @@ import { DEBOUNCE_TIME } from '@/app/constants';
 import { usePagedN8nChatThreads } from '../usePagedN8nChatThreads';
 import { useAgentN8nChatThreadsStore } from '../n8nChatThreads.store';
 import { agentThreadActions } from '../mergeRecentChats';
+import { formatThreadTitle } from '../../utils/thread-title';
 import { AGENT_N8N_CHAT_HISTORY_PAGE_SIZE, AGENT_N8N_CHAT_VIEW } from '../../constants';
 
 const props = defineProps<{
@@ -98,7 +99,7 @@ const newChatItem: ChatHistoryItem = {
 const items = computed<ChatHistoryItem[]>(() =>
 	paged.items.value.map((thread) => ({
 		id: thread.id,
-		label: thread.title ?? i18n.baseText('commandBar.instanceAi.newThread'),
+		label: formatThreadTitle(thread, i18n.baseText('commandBar.instanceAi.newThread')),
 		checked: thread.id === currentThreadId.value,
 		testId: 'agent-n8n-chat-history-item',
 		data: { updatedAt: thread.updatedAt, actions: threadActions },
