@@ -5,9 +5,7 @@ exports[`MultipleParameter > should render correctly 1`] = `
   <div data-v-e2d23dd5="" class="container" data-test-id="input-label">
     <div class="labelRow"><label class="n8n-input-label inputLabel heading underline small">
         <div class="main-content">
-          <div class="title"><span class="n8n-text text-dark size-small bold">Additional Fields <!--v-if--></span>
-            <!--v-if-->
-          </div>
+          <div class="title"><span class="n8n-text text-dark size-small bold">Additional Fields <!--v-if--></span><span class="labelSuffix"><!--v-if--></span></div>
           <!--v-if-->
         </div>
         <div class="trailing-content">

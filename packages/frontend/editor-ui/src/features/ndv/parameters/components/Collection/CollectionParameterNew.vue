@@ -273,6 +273,10 @@ function valueChanged(parameterData: IUpdateInformation) {
 		:show-actions-on-hover="!isDropdownOpen"
 		@keydown.stop
 	>
+		<template #title>
+			{{ i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)
+			}}<ParameterNewTag :class="$style.newTag" :path="path" />
+		</template>
 		<template v-if="!isReadOnly" #actions>
 			<N8nDropdownMenu
 				:items="dropdownOptions"
@@ -352,6 +356,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:bordered="showHeaderDivider"
 				:class="$style.collectionSectionHeader"
 			>
+				<template #titleSuffix><ParameterNewTag :path="path" /></template>
 				<template v-if="!isReadOnly" #actions>
 					<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
 						<template #content>{{ addTooltipText }}</template>
@@ -412,6 +417,10 @@ function valueChanged(parameterData: IUpdateInformation) {
 </template>
 
 <style lang="scss" module>
+.newTag {
+	margin-inline-start: var(--spacing--3xs);
+}
+
 .parameterList {
 	& > div:first-child {
 		:global(.multi-parameter),

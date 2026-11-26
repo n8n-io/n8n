@@ -240,6 +240,22 @@ describe('CollectionParameterNew.vue', () => {
 			},
 		);
 
+		it.each([false, true])('tags the header of a new collection (nested: %s)', (isNested) => {
+			const { getByText, getByTestId } = renderComponent({
+				props: { ...baseProps, isNested },
+				global: {
+					provide: {
+						[NodeVersionNewParameterKey as symbol]: (path: string) =>
+							path === 'parameters.additionalFields',
+					},
+				},
+			});
+
+			expect(getByText('Additional Fields').parentElement).toContainElement(
+				getByTestId('parameter-new-tag'),
+			);
+		});
+
 		it('tags the label of a new option after the user adds it', async () => {
 			const { findAllByTestId, getByText } = renderComponent({
 				props: {

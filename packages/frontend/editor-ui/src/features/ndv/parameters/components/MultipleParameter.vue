@@ -11,6 +11,7 @@ import ParameterInputFull from './ParameterInputFull.vue';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { N8nButton, N8nIcon, N8nInputLabel, N8nText } from '@n8n/design-system';
+import ParameterNewTag from './ParameterNewTag.vue';
 defineOptions({ name: 'MultipleParameter' });
 
 const props = withDefaults(
@@ -116,7 +117,9 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			:underline="true"
 			size="small"
 			color="text-dark"
-		/>
+		>
+			<template #labelSuffix><ParameterNewTag :path="path" /></template>
+		</N8nInputLabel>
 
 		<div
 			v-for="(value, index) in mutableValues"

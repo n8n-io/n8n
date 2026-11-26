@@ -22,6 +22,7 @@ import {
 } from './ResourceMapper.test.constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
+	NodeVersionNewParameterKey,
 	ResourceMapperRefreshEmptySchemaKey,
 	ResourceMapperSchemaAutoRefreshKey,
 } from '@/app/constants';
@@ -61,6 +62,31 @@ describe('ResourceMapper.vue', () => {
 		expect(
 			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
 		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length);
+	});
+
+	it('shows the new tag when the node version added the parameter', async () => {
+		const tagged = renderComponent({
+			global: {
+				provide: {
+					[NodeVersionNewParameterKey as symbol]: (path: string) => path === 'parameters.columns',
+				},
+			},
+		});
+		await waitAllPromises();
+		expect(tagged.getByTestId('mapping-mode-select')).toContainElement(
+			tagged.getByTestId('parameter-new-tag'),
+		);
+		tagged.unmount();
+
+		const other = renderComponent({
+			global: {
+				provide: {
+					[NodeVersionNewParameterKey as symbol]: (path: string) => path === 'parameters.other',
+				},
+			},
+		});
+		await waitAllPromises();
+		expect(other.queryByTestId('parameter-new-tag')).not.toBeInTheDocument();
 	});
 
 	it('renders an input for url fields', async () => {

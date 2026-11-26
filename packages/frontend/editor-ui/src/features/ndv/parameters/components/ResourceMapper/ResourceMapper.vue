@@ -659,6 +659,7 @@ defineExpose({
 	<div class="mt-4xs" data-test-id="resource-mapper-container">
 		<MappingModeSelect
 			v-if="showMappingModeSelect"
+			:path="props.path"
 			:input-size="inputSize"
 			:label-size="labelSize"
 			:initial-value="state.paramValue.mappingMode || 'defineBelow'"

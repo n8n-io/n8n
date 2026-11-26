@@ -26,6 +26,7 @@ import type {
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import ParameterInputList from '../ParameterInputList.vue';
+import ParameterNewTag from '../ParameterNewTag.vue';
 import FixedCollectionItemList from './FixedCollectionItemList.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -592,6 +593,7 @@ const onAddButtonClick = () => {
 	>
 		<template v-if="shouldShowSectionHeader">
 			<N8nSectionHeader :title="displayName" :bordered="isEmpty" :class="$style.sectionHeader">
+				<template #titleSuffix><ParameterNewTag :path="path" /></template>
 				<template v-if="shouldShowAddInHeader" #actions>
 					<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
 						<template #content>{{ addTooltipText }}</template>
@@ -712,6 +714,9 @@ const onAddButtonClick = () => {
 			:title="displayName"
 			:show-actions-on-hover="!isDropdownOpen"
 		>
+			<template #title>
+				{{ displayName }}<ParameterNewTag :class="$style.newTag" :path="path" />
+			</template>
 			<template #actions>
 				<N8nTooltip v-if="shouldShowAddInCollapsibleActions" :show-after="TOOLTIP_DELAY_MS">
 					<template #content>{{ addTooltipText }}</template>
@@ -883,6 +888,10 @@ const onAddButtonClick = () => {
 </template>
 
 <style lang="scss" module>
+.newTag {
+	margin-inline-start: var(--spacing--3xs);
+}
+
 .fixedCollectionParameter {
 	padding-left: 0;
 }

@@ -11,7 +11,10 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { i18nInstance } from '@n8n/i18n';
 import { N8nPlugin } from '@n8n/design-system';
 import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	NodeVersionNewParameterKey,
+	WorkflowDocumentStoreKey,
+} from '@/app/constants/injectionKeys';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -1160,6 +1163,33 @@ describe('FixedCollectionParameterNew.vue', () => {
 				const parameterItems = container.querySelectorAll('[data-test-id="parameter-item"]');
 				expect(parameterItems.length).toBe(4);
 			});
+		});
+	});
+
+	describe('New parameter tag', () => {
+		it.each([false, true])('tags the header of a new fixed collection (nested: %s)', (isNested) => {
+			const tagged = renderComponent({
+				props: { ...baseProps, isNested },
+				global: {
+					provide: {
+						[NodeVersionNewParameterKey as symbol]: (path: string) => path === 'parameters.rules',
+					},
+				},
+			});
+			expect(tagged.getByText('Routing Rules').parentElement).toContainElement(
+				tagged.getByTestId('parameter-new-tag'),
+			);
+			tagged.unmount();
+
+			const other = renderComponent({
+				props: { ...baseProps, isNested },
+				global: {
+					provide: {
+						[NodeVersionNewParameterKey as symbol]: (path: string) => path === 'parameters.other',
+					},
+				},
+			});
+			expect(other.queryByTestId('parameter-new-tag')).not.toBeInTheDocument();
 		});
 	});
 });
