@@ -146,7 +146,7 @@ jobs:
   cells:
     name: ${{ needs.resolve.outputs.channel }} · ${{ matrix.arch }} · ${{ matrix.group }}
     needs: resolve
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || matrix.runner }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && (matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest') || matrix.runner }}
     timeout-minutes: 25
     permissions:
       contents: read
@@ -170,6 +170,18 @@ jobs:
           - group: pc-distroless
             arch: amd64
             runner: blacksmith-2vcpu-ubuntu-2204
+            n8n_image_key: n8n_pc
+            runners_image_key: runners_distroless
+            specs: tests/deployment/cloud-image-pair.spec.ts
+          - group: standard
+            arch: arm64
+            runner: blacksmith-8vcpu-ubuntu-2204-arm
+            n8n_image_key: n8n
+            runners_image_key: runners
+            specs: tests/deployment/standard-image-pair.spec.ts
+          - group: pc-distroless
+            arch: arm64
+            runner: blacksmith-8vcpu-ubuntu-2204-arm
             n8n_image_key: n8n_pc
             runners_image_key: runners_distroless
             specs: tests/deployment/cloud-image-pair.spec.ts
