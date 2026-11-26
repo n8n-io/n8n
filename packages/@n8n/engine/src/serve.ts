@@ -34,6 +34,9 @@ async function main(): Promise<void> {
 		connectTimeoutMS: config.databaseConnectionTimeoutMs,
 	});
 	await dataSource.initialize();
+	logger.info(
+		'Running the engine migrations. This waits while another engine process holds the migration lock.',
+	);
 	await runMigrations(dataSource);
 
 	const runtime = createEngineRuntime({

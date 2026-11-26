@@ -128,6 +128,9 @@ export class EngineV2Runtime {
 			connectTimeoutMS: databaseConnectionTimeoutMs,
 		});
 		await this.dataSource.initialize();
+		this.logger.info(
+			'Running the engine migrations. This waits while another engine process holds the migration lock.',
+		);
 		await runMigrations(this.dataSource);
 	}
 

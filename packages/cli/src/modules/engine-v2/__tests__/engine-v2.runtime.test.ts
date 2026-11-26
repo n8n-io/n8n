@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EngineConfig } from '@n8n/config';
@@ -155,12 +156,16 @@ describe('EngineV2Runtime', () => {
 		queues: mock<EngineWorkQueues>(),
 	});
 
-	const newRuntime = (databaseUrl = 'postgres://engine', config: Partial<EngineConfig> = {}) =>
+	const newRuntime = (
+		databaseUrl = 'postgres://engine',
+		config: Partial<EngineConfig> = {},
+		logger: Logger = mockLogger(),
+	) =>
 		new EngineV2Runtime(
 			engineConfig(databaseUrl, config),
 			{ enabled: false, createServer: mocks.createServer } as unknown as EngineMtls,
 			nodeTypes,
-			mockLogger(),
+			logger,
 			credentialsClient,
 			transport,
 			subWorkflowClient,
@@ -224,6 +229,21 @@ describe('EngineV2Runtime', () => {
 			expect(mocks.runMigrations).toHaveBeenCalledWith(mocks.dataSource);
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
 				expect.objectContaining({ dataSource: mocks.dataSource }),
+			);
+		});
+
+		it('logs before it migrates, because the migration waits while another engine process holds the lock', async () => {
+			const scopedLogger = mock<Logger>();
+			const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
+
+			await newRuntime('postgres://engine', {}, logger).init(initOptions());
+
+			const logged = scopedLogger.info.mock.calls.findIndex(([message]) =>
+				message.includes('migration lock'),
+			);
+			expect(logged).not.toBe(-1);
+			expect(scopedLogger.info.mock.invocationCallOrder[logged]).toBeLessThan(
+				mocks.runMigrations.mock.invocationCallOrder[0],
 			);
 		});
 
