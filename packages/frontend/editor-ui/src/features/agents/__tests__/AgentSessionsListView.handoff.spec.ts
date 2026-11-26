@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enableAutoUnmount, flushPromises, RouterLinkStub, shallowMount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, type Component } from 'vue';
 import type { VueWrapper } from '@vue/test-utils';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
@@ -95,7 +95,7 @@ async function mountView(threads = [makeThread()], provideAssistant = true) {
 
 /** Returns the row menu of the row at `index`. */
 function rowMenu(wrapper: VueWrapper, index = 0) {
-	return wrapper.findAllComponents(N8nDropdownMenu)[index];
+	return wrapper.findAllComponents(N8nDropdownMenu as Component)[index];
 }
 
 function fixAction(wrapper: VueWrapper, index = 0) {
