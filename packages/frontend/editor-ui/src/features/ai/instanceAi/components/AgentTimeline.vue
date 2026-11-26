@@ -6,6 +6,7 @@ import {
 	type InstanceAiTimelineEntry,
 	type InstanceAiToolCallState,
 } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import { computed, inject } from 'vue';
 import {
@@ -17,7 +18,12 @@ import {
 	type ArtifactInfo,
 	type TimelineBlock,
 } from '../agentTimeline.utils';
+import AgentAssistantTestRunCard from '@/features/agents/components/AgentAssistantTestRunCard.vue';
 import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import {
+	resolveAssistantTestRunCard,
+	type AssistantTestRunCardView,
+} from '../assistantTestRunCard.utils';
 import { formatArtifactMetadata } from '@/features/ai/instanceAi/artifactCardMetadata';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useThread } from '../instanceAi.store';
@@ -33,8 +39,12 @@ import ThinkingBlock from './ThinkingBlock.vue';
 import TimelineActivityIndicator from './TimelineActivityIndicator.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
 
+const i18n = useI18n();
 const thread = useThread();
 const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
+const openAgentChatPreview = inject<
+	((id: string, projectId: string, sessionId?: string) => boolean) | undefined
+>('openAgentChatPreview', undefined);
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
@@ -250,6 +260,24 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 	}
 	return tc.confirmation?.appBlueprint;
 }
+
+function resolveTestRunCard(
+	tc: InstanceAiToolCallState,
+): (AssistantTestRunCardView & { agentName: string }) | null {
+	const card = resolveAssistantTestRunCard(tc);
+	if (!card) return null;
+	const agentName =
+		card.agentName ??
+		(card.agentId ? thread.producedArtifacts.get(card.agentId)?.name : undefined) ??
+		i18n.baseText('agents.assistantTestRun.badge');
+	return { ...card, agentName };
+}
+
+function handleOpenTestChat(tc: InstanceAiToolCallState, testChatId: string): void {
+	const card = resolveAssistantTestRunCard(tc);
+	if (!card?.agentId || !card.projectId) return;
+	openAgentChatPreview?.(card.agentId, card.projectId, testChatId);
+}
 </script>
 
 <template>
@@ -325,6 +353,16 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 						:run-id="props.runId ?? ''"
 						:read-only="!canActOnPreferenceCard"
 						:class="$style.timelineItem"
+					/>
+
+					<!-- Simulated agent test run card -->
+					<AgentAssistantTestRunCard
+						v-else-if="block.type === 'assistant-test-run' && resolveTestRunCard(block.toolCall)"
+						:agent-name="resolveTestRunCard(block.toolCall)!.agentName"
+						:calls="resolveTestRunCard(block.toolCall)!.calls"
+						:test-chat-id="resolveTestRunCard(block.toolCall)!.testChatId"
+						:class="$style.timelineItem"
+						@open-test-chat="(testChatId) => handleOpenTestChat(block.toolCall, testChatId)"
 					/>
 
 					<!-- The run is live but a committed answer settled the block behind it -->

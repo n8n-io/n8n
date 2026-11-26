@@ -90,6 +90,9 @@ const {
 		emit: undefined as ((event: string, ...args: unknown[]) => void) | undefined,
 		targets: undefined as ArtifactAgentTargets | undefined,
 		thread: undefined as ArtifactThread | undefined,
+		openChatPreview: undefined as
+			| ((agentId: string, projectId: string, sessionId?: string) => boolean)
+			| undefined,
 	},
 }));
 
@@ -287,6 +290,8 @@ vi.mock('../../components/InstanceAiAgentPreview.vue', async () => {
 				agentPreview.thread = useArtifactThread();
 				agentPreview.targets = useArtifactAgentTargets();
 				agentPreview.emit = emit as (event: string, ...args: unknown[]) => void;
+				// The view provides this to the test run cards of the timeline.
+				agentPreview.openChatPreview = inject('openAgentChatPreview', undefined);
 				return () => {
 					agentPreview.props = { ...attrs };
 					return h('div', { 'data-test-id': 'agent-preview-stub' });
@@ -624,6 +629,7 @@ describe('AssistantAgentThreadView', () => {
 		agentPreview.emit = undefined;
 		agentPreview.targets = undefined;
 		agentPreview.thread = undefined;
+		agentPreview.openChatPreview = undefined;
 	});
 
 	describe('draft workflow preview experiment', () => {
@@ -2515,6 +2521,36 @@ describe('AssistantAgentThreadView', () => {
 			onStreaming(false);
 			await flushPromises();
 			expect(agentPreview.props).toMatchObject({ 'preview-session-id': 'session-2' });
+		});
+
+		it('shows the session of a clicked test run card instead of the hand-off and stored sessions', async () => {
+			await renderAgentTab();
+			agentPreview.emit?.('assistant-handoff', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'session-2',
+			});
+			await flushPromises();
+			expect(agentPreview.props).toMatchObject({ 'preview-session-id': 'session-2' });
+
+			agentPreview.openChatPreview?.('agent-1', 'project-1', 'test-chat-42');
+			await flushPromises();
+
+			expect(agentPreview.props).toMatchObject({
+				'agent-id': 'agent-1',
+				'preview-session-id': 'test-chat-42',
+			});
+		});
+
+		it('goes back to the stored session when the preview opens without a card session', async () => {
+			await renderAgentTab();
+
+			agentPreview.openChatPreview?.('agent-1', 'project-1', 'test-chat-42');
+			await flushPromises();
+			agentPreview.openChatPreview?.('agent-1', 'project-1');
+			await flushPromises();
+
+			expect(agentPreview.props).toMatchObject({ 'preview-session-id': 'session-1' });
 		});
 
 		it('keeps the stored session of another agent after a hand-off', async () => {

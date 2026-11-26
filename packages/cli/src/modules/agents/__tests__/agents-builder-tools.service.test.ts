@@ -3109,6 +3109,7 @@ describe('AgentsBuilderToolsService', () => {
 				approved: true,
 				user,
 				source: 'instance-ai',
+				chatMode: 'test',
 				abortSignal: expect.any(AbortSignal),
 			});
 			expect(secondSuspensions).toHaveLength(1);
@@ -3245,13 +3246,160 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledTimes(1);
 			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith(
-				expect.objectContaining({ sessionId: 'session-1' }),
+				expect.objectContaining({ sessionId: 'session-1', chatMode: 'test' }),
 			);
-			expect(result).toEqual({
+			expect(result).toMatchObject({
 				status: 'completed',
+				simulated: true,
+				agentId,
+				projectId,
 				response: 'Welcome back.',
 				sessionId: 'session-1',
 				executionId: 'execution-2',
+				simulation: { toolCalls: [] },
+				simulationNote: expect.stringContaining('simulated test run'),
+			});
+			expect(result).not.toHaveProperty('sessionNote');
+		});
+
+		it('describes itself as a simulated test run and prompts honest phrasing', () => {
+			const { service } = makeService();
+			const tool = getCallAgentTool(service);
+
+			expect(tool.description).toContain('simulated test run');
+			expect(tool.description).toContain('no real emails, messages, or writes are sent');
+			expect(tool.description).toContain('in the test run it would have sent an email');
+		});
+
+		it('always requests test mode and returns structured previews for simulated email and Slack calls', async () => {
+			const { service, agentTestRunService, agentsService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support notifier',
+			} as never);
+			agentTestRunService.executeDraftRun.mockResolvedValue({
+				status: 'completed',
+				response: 'Done.',
+				sessionId: 'test-chat-1',
+				executionId: 'execution-1',
+				simulation: {
+					worldId: 'world-1',
+					toolCalls: [
+						{
+							toolCallId: 'tc-email',
+							toolName: 'send_email',
+							route: 'simulated_made_up',
+							reason: 'invented_by_llm',
+							input: {
+								to: ['customer@example.com'],
+								subject: 'Refund update',
+								body: 'Your refund is on the way.',
+							},
+						},
+						{
+							toolCallId: 'tc-slack',
+							toolName: 'Send_Slack',
+							route: 'simulated',
+							reason: 'served_from_world',
+							evidence: ['world_write'],
+							input: {
+								channel: '#support',
+								text: 'Escalated refund for customer@example.com',
+							},
+						},
+						{
+							toolCallId: 'tc-blocked',
+							toolName: 'run_code',
+							route: 'blocked',
+							reason: 'not_simulatable',
+							detail: 'Custom code cannot run in a test run.',
+						},
+					],
+					localToolCalls: [{ toolCallId: 'tc-local', toolName: 'load_skill' }],
+				},
+			});
+
+			const result = await getCallAgentTool(service).handler!(
+				{ message: 'Send refund email and notify Slack' },
+				ctx,
+			);
+
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agentId,
+					projectId,
+					chatMode: 'test',
+				}),
+			);
+			expect(result).toEqual({
+				status: 'completed',
+				simulated: true,
+				agentId,
+				projectId,
+				agentName: 'Support notifier',
+				response: 'Done.',
+				sessionId: 'test-chat-1',
+				executionId: 'execution-1',
+				simulationNote: expect.stringContaining('in the test run it would have sent an email'),
+				simulation: {
+					worldId: 'world-1',
+					toolCalls: [
+						{
+							toolCallId: 'tc-email',
+							toolName: 'send_email',
+							route: 'simulated_made_up',
+							reason: 'invented_by_llm',
+							preview: {
+								kind: 'email',
+								toolName: 'send_email',
+								to: ['customer@example.com'],
+								subject: 'Refund update',
+								body: 'Your refund is on the way.',
+							},
+						},
+						{
+							toolCallId: 'tc-slack',
+							toolName: 'Send_Slack',
+							route: 'simulated',
+							reason: 'served_from_world',
+							evidence: ['world_write'],
+							preview: {
+								kind: 'chatMessage',
+								toolName: 'Send_Slack',
+								channel: '#support',
+								text: 'Escalated refund for customer@example.com',
+							},
+						},
+						{
+							toolCallId: 'tc-blocked',
+							toolName: 'run_code',
+							route: 'blocked',
+							reason: 'not_simulatable',
+							detail: 'Custom code cannot run in a test run.',
+						},
+					],
+					localToolCalls: [{ toolCallId: 'tc-local', toolName: 'load_skill' }],
+				},
+			});
+		});
+
+		it('fails closed without running live when test runs are unavailable', async () => {
+			const { service, agentTestRunService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentTestRunService.executeDraftRun.mockRejectedValue(
+				new UserError('Test runs are not available, so this message did not run.'),
+			);
+
+			const result = await getCallAgentTool(service).handler!({ message: 'Send an email' }, ctx);
+
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledTimes(1);
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith(
+				expect.objectContaining({ chatMode: 'test' }),
+			);
+			expect(result).toMatchObject({
+				status: 'error',
+				message: expect.stringContaining('Test runs are not available'),
 			});
 		});
 
@@ -3294,6 +3442,9 @@ describe('AgentsBuilderToolsService', () => {
 				code: 'max_iterations',
 				sessionId: 'session-1',
 				executionId: 'execution-1',
+				// The calls before the cap were simulated, so the note must still be there.
+				simulated: true,
+				simulationNote: expect.stringContaining('simulated test run'),
 			});
 			// The guidance is the fix: without it the builder retries the same test.
 			const { message } = result as { message: string };
