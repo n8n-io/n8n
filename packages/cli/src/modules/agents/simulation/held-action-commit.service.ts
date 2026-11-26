@@ -1,4 +1,10 @@
-import type { BuiltTool } from '@n8n/agents';
+import type {
+	BuiltTool,
+	ExecutionOptions,
+	GuardrailToolCallContext,
+	ModelGuardrail,
+	RunOptions,
+} from '@n8n/agents';
 import type { AgentTestRunCommitActionResult, AgentTestRunCommitResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -12,6 +18,7 @@ import { isPolicyRefusal } from '@/policy/policy-violation.error';
 
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import { withToolGuardrails } from '../tool-guardrails';
 import { draftChatMemoryResourceId } from '../utils/agent-memory-scope';
 import type { HeldActionDescriptor } from './simulation-session';
 import { SimulationSessionService } from './simulation-session.service';
@@ -142,6 +149,19 @@ export class HeldActionCommitService {
 					throw error;
 				}
 
+				// The turn checked the guardrails when it held the action. The draft can change before
+				// the commit, so the replay checks the current before-call guardrails again.
+				const guardrailHooks =
+					withToolGuardrails<RunOptions & ExecutionOptions>(
+						{},
+						{
+							toolGuardrails: runtime.toolGuardrails,
+							toolRegistry: runtime.toolRegistry,
+							guardrailModel: runtime.guardrailModel,
+							guardrailWorkflowContext: runtime.guardrailWorkflowContext,
+						},
+					).guardrails?.hooks ?? [];
+
 				for (const item of pending) {
 					const { action, index } = item;
 					const tool = toolsByName.get(action.toolName);
@@ -152,6 +172,30 @@ export class HeldActionCommitService {
 							toolName: action.toolName,
 							status: 'failed',
 							error: 'Tool is no longer available on this agent.',
+						};
+						continue;
+					}
+
+					let guardrailError: string | undefined;
+					try {
+						const stopCode = await firstBeforeToolStop(guardrailHooks, {
+							toolCallId: action.actionId,
+							toolName: action.toolName,
+							input: action.input,
+							runId: input.executionId ?? action.actionId,
+						});
+						if (stopCode) guardrailError = `Tool call stopped by guardrail: ${stopCode}`;
+					} catch (error) {
+						guardrailError = toSafeErrorMessage(error);
+					}
+					// Nothing was sent, so release the claim.
+					if (guardrailError !== undefined) {
+						session.abortCommitAction(action.actionId);
+						results[index] = {
+							actionId: action.actionId,
+							toolName: action.toolName,
+							status: 'failed',
+							error: guardrailError,
 						};
 						continue;
 					}
@@ -218,6 +262,18 @@ export class HeldActionCommitService {
 			),
 		};
 	}
+}
+
+/** Runs the hooks in order like the tool-call runner. Returns the code of the first stop. */
+async function firstBeforeToolStop(
+	hooks: ModelGuardrail[],
+	ctx: GuardrailToolCallContext,
+): Promise<string | undefined> {
+	for (const hook of hooks) {
+		const decision = await hook.beforeTool?.(ctx);
+		if (decision?.action === 'stop') return decision.code;
+	}
+	return undefined;
 }
 
 function toSafeErrorMessage(error: unknown): string {
