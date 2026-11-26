@@ -1,21 +1,19 @@
 ---
 name: app-builder
 description: >-
-  Load before calling the apps tool. Use when the user wants to build or change
+  Load before calling the app tools. Use when the user wants to build or change
   an n8n App: a small web app, form, dashboard, tracker or other browser UI that
   n8n hosts. Also load when the conversation lists app targets or a pending app.
 recommended_tool_groups:
-  - tools
   - apps
-  - workspace_execute_command
 ---
 
 # App Builder
 
 An n8n App is a static browser app (Vue 3 and Vite). n8n stores its source,
-builds it in a sandbox and hosts the build on the apps domain. The `apps` tool
-puts the source of an app into your sandbox workspace and saves it back. You
-edit the files with the workspace tools.
+builds it in a sandbox and hosts the build on the apps domain. `open_app` puts
+the source of an app into your sandbox workspace and `commit_app` saves it back.
+You edit the files with the workspace tools.
 
 ## What an app can do today
 
@@ -43,13 +41,13 @@ Add components under `src/`. Keep files small and focused.
 ## Workflow
 
 1. **Propose or open the app.**
-   - Before the first `create`, make sure you understand what the user wants to
+   - Before the first `create_app`, make sure you understand what the user wants to
      achieve, who will use the app, its core data, its essential actions, and its
      required views. Do not propose a blueprint while a material part of the
      request is unclear. Use `ask_user` to clarify it. Prefer selectable options
      with a recommended default. Do not ask about minor styling or details with
      safe defaults.
-   - New app: call `apps` with `action: "create"` and a short blueprint. The
+   - New app: call `create_app` with a short blueprint. The
      user can review the description and edit the name, namespace, visibility,
      and theme before approval. Include a high-level binding plan for the
      workflows, data tables, and agents the app is likely to need. Do not delay
@@ -57,19 +55,19 @@ Add components under `src/`. Keep files small and focused.
      resource as `existing` and include its id only when you already know it.
      Otherwise, mark it as `new`. Do not create or change a resource before the
      user approves the blueprint. Approval creates the app. Build from the
-     blueprint returned by the tool, not from your proposal. Then call `apps`
-     with `action: "open"` and the returned `app.id` before you edit files. After
+     blueprint returned by the tool, not from your proposal.
+     Then call `open_app` with the returned `app.id` before you edit files. After
      the app is open, build and commit the app layout with empty data first.
      Create data tables, workflows and agents only after that commit. See
      [Build order for a new app](#build-order-for-a-new-app).
      If the user cancels, do not create, open, or edit app files.
-   - If the conversation lists a pending app, use `create`. n8n reuses the
+   - If the conversation lists a pending app, use `create_app`. n8n reuses the
      pending id after approval.
    - Existing app: use the `appId` from the conversation context. If the
-     conversation has no id, call `list` (optionally with a `search` text) and
+     conversation has no id, call `list_apps` (optionally with a `search` text) and
      pick the app by name. If several apps match, ask the user which one. Then
-     call `open`.
-   - `open` returns the app folder, `apps/<appId>`. It keeps a folder that is
+     call `open_app`.
+   - `open_app` returns the app folder, `apps/<appId>`. It keeps a folder that is
      already open, with your uncommitted edits.
 2. **Apply the selected theme.**
    - For `light`, build only a light theme.
@@ -93,17 +91,17 @@ Add components under `src/`. Keep files small and focused.
    `npm run build`. After that, run only `npm run build` unless `package.json`
    or `package-lock.json` changed. Fix every error and build again until the
    build passes.
-5. **Commit once for each finished change.** A commit saves the folder (without
+5. **Commit once for each finished change.** `commit_app` saves the folder (without
    `node_modules` and `dist`) as one version, and n8n builds it again. Never
    commit half-done work: every commit is a version. An app layout with empty
    data is a finished step.
-6. **Check the build.** A commit returns `buildStatus`. On `failed`, read
+6. **Check the build.** `commit_app` returns `buildStatus`. On `failed`, read
    `diagnostics` (stage, message, log), fix the source and commit again. After
    three failed builds in a row, stop and explain the problem to the user.
 
 If a commit reports that the app draft changed, someone else saved a newer
-version. Your folder is kept. Note your changes, call `discard` to load the
-newer draft, and apply your changes again. `discard` keeps `node_modules`. Run
+version. Your folder is kept. Note your changes, call `discard_app_changes` to
+load the newer draft, and apply your changes again. It keeps `node_modules`. Run
 `npm ci --ignore-scripts --no-audit --no-fund --prefer-offline` only if the
 newer draft changed the package files.
 
@@ -130,10 +128,10 @@ the existing resources before the first commit and use the real data.
 A binding gives the app access to one workflow, data table or agent of its
 project under a key. The app uses the key, never a resource ID.
 
-1. Call `bindings` with the `appId`. The result lists each binding with its
-   `key`, `kind`, resource name and permissions, and `types` describes the
+1. Call `list_app_bindings` with the `appId`. The result lists each binding
+   with its `key`, `kind`, resource name and permissions, and `types` describes the
    input, output and row shapes. Use only keys from this list in the source.
-2. If the app needs a resource without a binding, add one with `bind`:
+2. If the app needs a resource without a binding, add one with `bind_app_resource`:
    - `{ key, kind: 'dataTable', dataTableId, permissions }` with permissions
      from `read`, `insert`, `update` and `delete`.
    - `{ key, kind: 'workflow', workflowId }`.
@@ -142,8 +140,9 @@ project under a key. The app uses the key, never a resource ID.
 
    Find the ID with the data table, workflow or agent tools. The resource must
    be in the project of the app. The key is a short camelCase name, for
-   example `tasks`. `bind` with an existing key replaces that binding.
-3. Remove a binding that the app no longer uses with `unbind` and its `key`.
+   example `tasks`. A binding with an existing key replaces that binding.
+3. Remove a binding that the app no longer uses with `unbind_app_resource` and
+   its `key`.
 4. Grant only the permissions that the app uses. Every visitor who can open
    the app can use its bindings. On an `instance` app, this is every user of
    the instance. Ask the user before you give an `instance` app write access, a
@@ -154,9 +153,9 @@ project under a key. The app uses the key, never a resource ID.
 Each binding change saves a new version of the app, like a commit. You can
 change bindings before the first commit and while the app folder is open. A
 binding change keeps an open folder on the current draft, so you do not need
-to `discard`. If a commit reports that the app draft changed, use `discard` as
-described in [Workflow](#workflow). The live app gets the new bindings when the
-user publishes.
+to discard it. If a commit reports that the app draft changed, use
+`discard_app_changes` as described in [Workflow](#workflow). The live app gets
+the new bindings when the user publishes.
 
 Import the client from `@n8n/app-sdk`. It calls the API of the app origin, so
 it works on the preview and on the published app:
@@ -183,6 +182,48 @@ const { user } = await n8n.me();
 
 Every call throws `N8nAppError` with `status`, `code` and `message` on failure.
 Show the user a short error message, and a loading state while a call runs.
+
+A workflow can use the visitor's own accounts. When the visitor has not
+connected one, `run` throws code `credentials_required`, and
+`error.credentials` lists the accounts. Show a link for each account with a
+`connectUrl`. Open the link in a new tab. Let the visitor run the workflow
+again after they connect:
+
+```js
+try {
+  await n8n.workflows.submit.run({ email });
+} catch (error) {
+  if (error instanceof N8nAppError && error.code === 'credentials_required') {
+    showConnectLinks(error.credentials.filter((c) => c.connectUrl));
+  } else throw error;
+}
+```
+
+### Data for each visitor
+
+By default, bind data tables to the app and read and write them directly. A
+bound data table shows all its rows to every visitor. This is correct when all
+visitors share the same data.
+
+Use a workflow only when each visitor must see or change only their own rows,
+and the app must not trust the visitor's input. The visitor can change a user
+ID, email or name that the app sends in the run input or in a table filter. Use
+the values from `n8n.me()` only for display. For this case:
+
+1. Do not bind the data table to the app.
+2. Bind a workflow that reads and writes the table for the visitor.
+3. In that workflow, add a Code node directly after the trigger. The Code node
+   reads the visitor's user ID and adds it to each item:
+
+   ```js
+   const visitor = $execution.customData.get('appVisitor');
+   return $input.all().map((item) => ({ json: { ...item.json, visitor } }));
+   ```
+
+4. In the later nodes, read `visitor` from the output of the Code node. For
+   example, filter and set a `userId` column of the data table with it.
+
+The value has the format `user:<id>`. Read `appVisitor` only in a Code node.
 
 ## Several apps
 

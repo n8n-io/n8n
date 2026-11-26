@@ -507,6 +507,44 @@ describe('IntegrationMessageContextService', () => {
 		expect(derived.continueAs).toEqual(otherOrigin);
 	});
 
+	it('stores and reads episodic scope decisions per resource and fails closed on malformed entries', async () => {
+		const { service } = setup({
+			'thread-1': {
+				episodicScopesByResource: {
+					'integration:slack:bad': { writeScopeId: '' },
+					'integration:slack:mixed': {
+						disabled: true,
+						writeScopeId: 'slack:a1:T1:channel:C1',
+						readScopeIds: ['slack:a1:T1:channel:C1'],
+					},
+				},
+			},
+		});
+		const scope = {
+			writeScopeId: 'slack:a1:T1:channel:C1',
+			readScopeIds: ['slack:a1:T1:channel:C1'],
+		};
+
+		await service.setEpisodicScope('thread-1', 'integration:slack:U1', scope);
+		await service.setEpisodicScope('thread-1', 'integration:slack:U2', { disabled: true });
+
+		await expect(service.getEpisodicScope('thread-1', 'integration:slack:U1')).resolves.toEqual(
+			scope,
+		);
+		await expect(service.getEpisodicScope('thread-1', 'integration:slack:U2')).resolves.toEqual({
+			disabled: true,
+		});
+		await expect(service.getEpisodicScope('thread-1', 'integration:slack:bad')).resolves.toEqual({
+			disabled: true,
+		});
+		await expect(service.getEpisodicScope('thread-1', 'integration:slack:mixed')).resolves.toEqual({
+			disabled: true,
+		});
+		await expect(
+			service.getEpisodicScope('thread-1', 'integration:slack:missing'),
+		).resolves.toBeUndefined();
+	});
+
 	it('clearSessionBindings does not create a thread that no longer exists', async () => {
 		const { service, threadRepository, threads } = setup();
 

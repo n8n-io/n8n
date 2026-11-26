@@ -194,6 +194,7 @@ export class DynamicNodeParametersController {
 			path,
 			additionalData,
 			nodeTypeAndVersion,
+			req.user,
 		);
 	}
 

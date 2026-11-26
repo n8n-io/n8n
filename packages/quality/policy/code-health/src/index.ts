@@ -7,6 +7,7 @@ import { AdrConventionsRule } from './rules/adr-conventions.rule.js';
 import { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 import { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
 import { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
+import { ExperimentalIsolationRule } from './rules/experimental-isolation.rule.js';
 import { LintConfigLayeringRule } from './rules/lint-config-layering.rule.js';
 import { MigrationBusyTableRule } from './rules/migration-busy-table.rule.js';
 import { MigrationConventionsRule } from './rules/migration-conventions.rule.js';
@@ -25,6 +26,7 @@ export { AdrConventionsRule } from './rules/adr-conventions.rule.js';
 export { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 export { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
 export { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
+export { ExperimentalIsolationRule } from './rules/experimental-isolation.rule.js';
 export { LintConfigLayeringRule } from './rules/lint-config-layering.rule.js';
 export { MigrationBusyTableRule } from './rules/migration-busy-table.rule.js';
 export { MigrationConventionsRule } from './rules/migration-conventions.rule.js';
@@ -73,7 +75,7 @@ const defaultRuleSettings: RuleSettingsMap = {
 	'workflow-pr-target-safety': {
 		enabled: true,
 		severity: 'error',
-		// ci-owners-required-reviews.yml checks out master only, never PR code.
+		// ci-owners-required-reviews.yml only calls DevHub and checks out no code.
 		options: { allowedWorkflows: ['ci-cla-check.yml', 'ci-owners-required-reviews.yml'] },
 	},
 	'migration-timestamp': {
@@ -130,6 +132,11 @@ const defaultRuleSettings: RuleSettingsMap = {
 		enabled: false,
 		severity: 'warning',
 		options: { packages: ['packages/cli'] },
+	},
+	'experimental-isolation': {
+		enabled: true,
+		severity: 'error',
+		options: {},
 	},
 	'subpath-purity': {
 		enabled: true,
@@ -210,6 +217,7 @@ export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<Code
 	runner.registerRule(new StaleOverridesRule());
 	runner.registerRule(new EndpointScopeCoverageRule());
 	runner.registerRule(new SubpathPurityRule());
+	runner.registerRule(new ExperimentalIsolationRule());
 	runner.applySettings(mergeSettings(defaultRuleSettings, settings));
 	return runner;
 }

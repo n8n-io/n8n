@@ -1,10 +1,11 @@
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
-	EventService,
-	RoleService,
+	CredentialRestrictionsProviderProxy,
 	CredentialsFinderService,
+	EventService,
 	loginIdOf,
+	RoleService,
 } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import {
@@ -36,6 +37,7 @@ import type { PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import cloneDeep from 'lodash/cloneDeep';
 import isEqual from 'lodash/isEqual';
 import { CredentialDataError, Credentials, ErrorReporter } from 'n8n-core';
@@ -163,6 +165,7 @@ type GetManyOptions = {
 	includeData?: boolean;
 	onlySharedWithMe?: boolean;
 	includeGlobal?: boolean;
+	includeRestrictions?: boolean;
 	filters?: {
 		externalSecretsStore?: string;
 	};
@@ -282,6 +285,7 @@ export class CredentialsService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly credentialRestrictions: CredentialRestrictionsProviderProxy,
 	) {}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
@@ -344,6 +348,7 @@ export class CredentialsService {
 			includeData = false,
 			onlySharedWithMe = false,
 			includeGlobal = false,
+			includeRestrictions = false,
 			filters = {},
 		}: GetManyOptions = {},
 	): Promise<
@@ -392,8 +397,39 @@ export class CredentialsService {
 			listQueryOptions,
 			onlySharedWithMe,
 		);
+		// A custom select can leave out the home project, so the verdicts would be wrong.
+		if (includeRestrictions && isDefaultSelect) {
+			const { projectId } = listQueryOptions.filter ?? {};
+			await this.addRestrictions(enriched, typeof projectId === 'string' ? projectId : undefined);
+		}
 
 		return { credentials: enriched, count };
+	}
+
+	/**
+	 * Workflows of the listed project use its credentials, shared ones too, so a project list is
+	 * judged by that project. Other lists judge each credential by its home project.
+	 */
+	private async addRestrictions(
+		credentials: Array<{ type: string; homeProject?: { id: string } | null }>,
+		listedProjectId?: string,
+	): Promise<void> {
+		try {
+			const restrictions = await this.credentialRestrictions.findRestrictions(
+				credentials.map(({ type, homeProject }) => ({
+					type,
+					projectId: listedProjectId ?? homeProject?.id ?? null,
+				})),
+			);
+			credentials.forEach((credential, index) => {
+				const restriction = restrictions[index];
+				if (restriction) Object.assign(credential, { restriction });
+			});
+		} catch (error) {
+			this.logger.warn('Failed to resolve credential restrictions for the credentials list', {
+				error: ensureError(error),
+			});
+		}
 	}
 
 	private async getManyForAdminUser(

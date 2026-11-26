@@ -70,6 +70,7 @@ import type {
 	BuiltProviderTool,
 	BuiltTool,
 	BuiltTelemetry,
+	ToolCallInterceptor,
 	CheckpointStore,
 	ExecutionOptions,
 	FinishReason,
@@ -240,6 +241,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private concurrencyValue?: number;
 
+	private toolCallInterceptorValue?: ToolCallInterceptor;
+
 	private telemetryBuilder?: Telemetry;
 
 	private telemetryConfig?: BuiltTelemetry;
@@ -287,10 +290,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * // Typed form — enables provider-specific config on .thinking() etc.
-	 * agent.model('anthropic', 'claude-sonnet-4-5')
+	 * agent.model('anthropic', 'claude-sonnet-5-5')
 	 *
 	 * // Untyped form — backwards compatible
-	 * agent.model('anthropic/claude-sonnet-4-5')
+	 * agent.model('anthropic/claude-sonnet-5-5')
 	 * ```
 	 */
 	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this {
@@ -516,7 +519,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * const agent = new Agent('assistant')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .instructions('...')
 	 *   .tool(dangerousTool) // has .suspend() / .resume()
 	 *   .checkpoint('memory');
@@ -541,7 +544,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * const agent = new Agent('extractor')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .instructions('Extract structured data.')
 	 *   .structuredOutput(z.object({
 	 *     code: z.string(),
@@ -563,10 +566,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 *
 	 * @example
 	 * ```typescript
-	 * // Anthropic — budgetTokens
+	 * // Anthropic — adaptive thinking
 	 * new Agent('thinker')
-	 *   .model('anthropic', 'claude-sonnet-4-5')
-	 *   .thinking('anthropic', { budgetTokens: 5000 })
+	 *   .model('anthropic', 'claude-sonnet-5-5')
+	 *   .thinking('anthropic', { mode: 'adaptive', effort: 'high' })
 	 *
 	 * // OpenAI — reasoningEffort
 	 * new Agent('thinker')
@@ -585,7 +588,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * new Agent('thinker')
-	 *   .model('anthropic', 'claude-sonnet-4-5')
+	 *   .model('anthropic', 'claude-sonnet-5-5')
 	 *   .reasoning('high')
 	 * ```
 	 */
@@ -604,7 +607,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * new Agent('assistant')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .promptCaching()
 	 *   .instructions(LONG_SYSTEM_PROMPT);
 	 * ```
@@ -644,6 +647,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			throw new Error('toolCallConcurrency must be a positive integer or Infinity');
 		}
 		this.concurrencyValue = n;
+		return this;
+	}
+
+	/**
+	 * Run a function around every tool handler, including MCP tools and the
+	 * tools of inline sub-agents. A host uses it to guard or redirect tool calls.
+	 */
+	toolCallInterceptor(interceptor: ToolCallInterceptor): this {
+		this.toolCallInterceptorValue = interceptor;
 		return this;
 	}
 
@@ -727,7 +739,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * const agent = new Agent('assistant')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .instructions('You are a helpful assistant.')
 	 *   .configuration({ maxIterations: 5 });
 	 *
@@ -1274,6 +1286,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			deferredToolGroups: this.deferredToolGroups,
 			deferredToolGroupDescriptions: this.deferredToolGroupDescriptions,
 			toolCallConcurrency: this.concurrencyValue,
+			...(this.toolCallInterceptorValue !== undefined
+				? { toolCallInterceptor: this.toolCallInterceptorValue }
+				: {}),
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 			modelCost,
@@ -1436,6 +1451,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				...(telemetry !== undefined ? { telemetry } : {}),
 				...(options.toolCallConcurrency !== undefined
 					? { toolCallConcurrency: options.toolCallConcurrency }
+					: {}),
+				// Children run under the parent's guard, like the model transport above.
+				...(this.toolCallInterceptorValue !== undefined
+					? { toolCallInterceptor: this.toolCallInterceptorValue }
 					: {}),
 			});
 

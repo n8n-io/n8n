@@ -1,0 +1,84 @@
+operationId: runWorkflow
+tags:
+  - Workflow
+summary: Run a workflow with existing run data
+description: |-
+  Start a manual execution of the latest saved version of a workflow. n8n reuses the given run data and runs the nodes up to the destination node. The call returns when the execution starts. It does not wait for the execution to finish. The user must also have the `workflow:execute` project scope.
+
+  Requires the `workflow:execute` API key scope.
+x-required-scope: workflow:execute
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+  - schema:
+      type: string
+    required: true
+    description: The ID of the workflow
+    name: workflowId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          runData:
+            type: object
+            description: Run data to reuse, keyed by node name. Use `data.resultData.runData` from `GET /executions/{id}?includeData=true`. n8n reuses the output of these nodes and runs the other nodes up to the destination node. If the run data does not reach the destination node from a trigger, n8n runs the workflow from its trigger. If that trigger needs an external event to start, the API returns `409`.
+            additionalProperties: true
+          destinationNode:
+            type: object
+            properties:
+              nodeName:
+                type: string
+                description: Name of the node to run to.
+              mode:
+                type: string
+                enum:
+                  - inclusive
+                  - exclusive
+                description: '`inclusive` runs the destination node. `exclusive` stops before the destination node.'
+            required:
+              - nodeName
+              - mode
+            additionalProperties: false
+            description: The node where the run stops.
+          dirtyNodeNames:
+            type: array
+            items:
+              type: string
+            description: Names of nodes that changed since the run data was made. n8n runs these nodes again and does not reuse their run data.
+        required:
+          - runData
+          - destinationNode
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            executionId:
+              type: string
+              description: ID of the new execution. Use `GET /executions/{id}` to read its status.
+              example: '1001'
+          required:
+            - executionId
+  '400':
+    description: The request body is invalid, or `destinationNode.nodeName` is not a node in the workflow.
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    description: The API key or the user does not have the required permission, or the instance is in read-only mode.
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    description: The run data does not reach the destination node from a trigger, and the trigger needs an external event to start. Pin data on the trigger. Or add run data for a trigger node that comes before the destination node to `runData`.
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

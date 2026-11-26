@@ -1,0 +1,153 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"addonIDs": {
+			"items": {},
+			"type": "array"
+		},
+		"amountPaid": {
+			"type": "string"
+		},
+		"appointmentTypeID": {
+			"type": "number"
+		},
+		"calendar": {
+			"type": "string"
+		},
+		"calendarID": {
+			"type": "number"
+		},
+		"calendarTimezone": {
+			"type": "string"
+		},
+		"canceled": {
+			"type": "boolean"
+		},
+		"canClientCancel": {
+			"type": "boolean"
+		},
+		"canClientReschedule": {
+			"type": "boolean"
+		},
+		"category": {
+			"type": "string"
+		},
+		"certificate": {
+			"type": ["null", "string"]
+		},
+		"classID": {
+			"type": ["null", "number"]
+		},
+		"confirmationPage": {
+			"type": "string"
+		},
+		"confirmationPagePaymentLink": {
+			"type": "string"
+		},
+		"date": {
+			"type": "string"
+		},
+		"dateCreated": {
+			"type": "string"
+		},
+		"datetime": {
+			"type": "string"
+		},
+		"datetimeCreated": {
+			"type": "string"
+		},
+		"duration": {
+			"type": "string"
+		},
+		"email": {
+			"type": "string"
+		},
+		"endTime": {
+			"type": "string"
+		},
+		"firstName": {
+			"type": "string"
+		},
+		"forms": {
+			"items": {
+				"properties": {
+					"id": {
+						"type": "number"
+					},
+					"name": {
+						"type": "string"
+					},
+					"values": {
+						"items": {
+							"properties": {
+								"fieldID": {
+									"type": "number"
+								},
+								"fieldWidget": {
+									"type": "number"
+								},
+								"id": {
+									"type": "number"
+								},
+								"name": {
+									"type": "string"
+								},
+								"value": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"formsText": {
+			"type": "string"
+		},
+		"id": {
+			"type": ["number", "string"]
+		},
+		"isVerified": {
+			"type": "boolean"
+		},
+		"labels": {},
+		"lastName": {
+			"type": "string"
+		},
+		"location": {
+			"type": "string"
+		},
+		"notes": {
+			"type": "string"
+		},
+		"paid": {
+			"type": "string"
+		},
+		"phone": {
+			"type": "string"
+		},
+		"price": {
+			"type": "string"
+		},
+		"priceSold": {
+			"type": "string"
+		},
+		"scheduledBy": {
+			"type": ["null", "string"]
+		},
+		"time": {
+			"type": "string"
+		},
+		"timezone": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

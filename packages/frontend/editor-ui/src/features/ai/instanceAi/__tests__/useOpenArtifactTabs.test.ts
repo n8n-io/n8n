@@ -372,6 +372,50 @@ describe('useOpenArtifactTabs', () => {
 		expect(tabs.storedActiveTab.value).toEqual({ type: 'workflow', id: 'wf-2' });
 	});
 
+	describe('draft tabs', () => {
+		function draftTab(id: string): ArtifactTab {
+			return { ...workflowTab(id), draft: true };
+		}
+
+		it('never saves a draft tab, also when it is the active tab', async () => {
+			const loaded = createStorage();
+			const { tabs } = setup([workflowTab('wf-1'), draftTab('draft:a.ts')], loaded.storage);
+			await loaded.finishLoad(null);
+
+			tabs.moveTab('wf-1', 1);
+			tabs.saveTabs('draft:a.ts');
+			await vi.advanceTimersByTimeAsync(SAVE_DELAY);
+
+			expect(loaded.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					tabs: [{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' }],
+					activeTab: null,
+				}),
+			);
+		});
+
+		it('never saves a closed draft tab as closed', async () => {
+			const loaded = createStorage();
+			const { tabs } = setup([workflowTab('wf-1'), draftTab('draft:a.ts')], loaded.storage);
+			await loaded.finishLoad(null);
+
+			expect(tabs.closeTab('draft:a.ts')).toBe('wf-1');
+			tabs.saveTabs('wf-1');
+			await vi.advanceTimersByTimeAsync(SAVE_DELAY);
+
+			expect(ids(tabs.openTabs.value)).toEqual(['wf-1']);
+			expect(loaded.save).toHaveBeenCalledWith(expect.objectContaining({ closedTabs: [] }));
+		});
+
+		it('opens a closed draft tab again without a change to the saved tabs', () => {
+			const { tabs } = setup([workflowTab('wf-1'), draftTab('draft:a.ts')]);
+			tabs.closeTab('draft:a.ts');
+
+			expect(tabs.reopenTab('draft:a.ts')).toBe(false);
+			expect(ids(tabs.openTabs.value)).toEqual(['wf-1', 'draft:a.ts']);
+		});
+	});
+
 	describe('storeDefaultTabs', () => {
 		it('stores the default tabs without an active tab or a preview state', async () => {
 			const { storage, save, finishLoad } = createStorage();

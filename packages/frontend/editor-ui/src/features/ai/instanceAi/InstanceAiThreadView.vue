@@ -11,7 +11,7 @@ import {
 } from '@n8n/design-system';
 import { useDebounceFn, useElementSize, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentAttachment } from '@n8n/api-types';
+import type { InstanceAiAgentAttachment, InstanceAiConfirmationInputType } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { DEBOUNCE_TIME } from '@/app/constants';
@@ -29,7 +29,7 @@ import {
 	threadTargetsAgent,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { isArtifactTab, useCanvasPreview } from './useCanvasPreview';
+import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from './useCanvasPreview';
 import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
 import { getCurrentTurn } from './assistantTurn';
 import { CloudBrowserTasksKey, useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
@@ -73,6 +73,13 @@ import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
 import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
+import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
+import InstanceAiCanvasRunOverlay from './components/InstanceAiCanvasRunOverlay.vue';
+import { isPendingItemFloating } from './confirmationKinds';
+import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
+import { collectActiveBuilderAgents } from './builderAgents';
+import { isStagingDraft } from './instanceAi.workflowStaging';
+import { useDraftWorkflowPreview } from './composables/useDraftWorkflowPreview';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -263,6 +270,33 @@ watch(
 	{ immediate: true },
 );
 
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+// A reload can restore the open question from history and not the run, for example after a
+// restart. The chat still asks the question, so the canvas waits too.
+const isAwaitingUser = () => thread.isAwaitingUserInput || thread.pendingConfirmations.length > 0;
+const ANSWER_INPUT_TYPES = new Set<InstanceAiConfirmationInputType>([
+	'questions',
+	'text',
+	'continue',
+]);
+const draftPreview = useDraftWorkflowPreview({
+	threadId: () => props.threadId,
+	turns: () => thread.artifactTurns,
+	workflowDrafts: () => thread.workflowDrafts,
+	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
+	// A builder can still work in the background after the orchestrator run ended.
+	isRunning: () => thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0,
+	isAwaitingUser,
+	// The card in the chat input slot comes first, as the pill focuses it. A card that waits for
+	// user input asks for an answer. Any other card asks for an approval.
+	isAwaitingApproval: () => {
+		const pending = thread.pendingConfirmations;
+		const shown = pending.find(isPendingItemFloating) ?? pending[0];
+		return !ANSWER_INPUT_TYPES.has(shown?.toolCall.confirmation.inputType ?? 'approval');
+	},
+});
+// EOF Experiment cleanup
+
 // --- Canvas / data table preview ---
 const appTargets = computed(() =>
 	getAppTargetsFromThreadMetadata(store.getThreadMetadata(props.threadId)),
@@ -287,6 +321,7 @@ const preview = useCanvasPreview({
 			await saveThreadTabs(rootStore.restApiContext, props.threadId, state);
 		},
 	},
+	...draftPreview.canvasOptions,
 });
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 watch(
@@ -296,11 +331,37 @@ watch(
 	},
 	{ immediate: true },
 );
+
+const canvasRunState = draftPreview.useCanvasRunState(preview);
+
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const draftPreviewTelemetry = useDraftWorkflowPreviewTelemetry(thread);
+watch(
+	() => {
+		const draft = preview.activeWorkflowDraft.value;
+		if (!preview.isPreviewVisible.value || !draft) return undefined;
+		return isStagingDraft(draft) ? 'staging' : 'draft';
+	},
+	(kind) => {
+		if (kind) draftPreviewTelemetry.trackCanvasRendered(kind);
+	},
+	{ immediate: true },
+);
+// EOF Experiment cleanup
+
+// The saved canvas loaded under its draft, so the draft has nothing left to cover.
+function handleSavedWorkflowLoaded(workflowId: string) {
+	// Only the workflow that the build works on counts, not one the user opens.
+	if (draftPreview.isBuiltWorkflow(workflowId)) draftPreviewTelemetry.trackCanvasRendered('saved');
+	thread.dismissWorkflowDrafts(workflowId);
+}
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
-		// The agent only hears about artifacts, not browser tabs.
-		const isArtifact = preview.openTabs.value.some((tab) => tab.id === tabId && isArtifactTab(tab));
+		// The agent knows saved artifacts only. A browser or draft tab has no id that it can use.
+		const isArtifact = preview.openTabs.value.some(
+			(tab) => tab.id === tabId && isSavedArtifactTab(tab),
+		);
 		thread.setActiveArtifactId(previewVisible && isArtifact ? tabId : undefined);
 	},
 	{ immediate: true },
@@ -309,7 +370,7 @@ watch(
 // stored tabs load, the default tabs can still hold closed ones, so send none.
 watch(
 	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
-	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isArtifactTab) : null),
+	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isSavedArtifactTab) : null),
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
@@ -830,26 +891,29 @@ function handleNewThreadClick() {
 								store.debugMode = showDebugPanel;
 							"
 						/>
-						<N8nTooltip
-							:content="artifactsPanelToggleLabel"
-							placement="bottom"
-							:show-after="TOOLTIP_DELAY_MS"
-						>
-							<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
-								<N8nIconButton
-									v-if="showArtifactsPanelToggle"
-									icon="list"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="instance-ai-artifacts-panel-toggle"
-									:aria-label="artifactsPanelToggleLabel"
-									:aria-pressed="showArtifactsPanel"
-									:disabled="!canShowArtifactsPanel"
-									@click="toggleArtifactsPanel"
-								/>
-							</Transition>
-						</N8nTooltip>
+						<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
+							<span v-if="showArtifactsPanelToggle">
+								<N8nTooltip
+									as-child
+									:content="artifactsPanelToggleLabel"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+								>
+									<N8nIconButton
+										icon="list"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-artifacts-panel-toggle"
+										:aria-label="artifactsPanelToggleLabel"
+										:aria-pressed="showArtifactsPanel"
+										:disabled="!canShowArtifactsPanel"
+										focusable-when-disabled
+										@click="toggleArtifactsPanel"
+									/>
+								</N8nTooltip>
+							</span>
+						</Transition>
 						<!-- With no tabs to show, the toggle opens a resource in a new tab. -->
 						<InstanceAiResourcePicker
 							v-if="showOpenResourcePicker && thread.projectId"
@@ -877,27 +941,29 @@ function handleNewThreadClick() {
 								</N8nTooltip>
 							</template>
 						</InstanceAiResourcePicker>
-						<N8nTooltip
-							v-else
-							:content="artifactsPreviewToggleLabel"
-							placement="bottom"
-							:show-after="TOOLTIP_DELAY_MS"
-						>
-							<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
-								<N8nIconButton
-									v-if="!preview.isPreviewVisible.value"
-									icon="panel-right"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="instance-ai-artifacts-preview-toggle"
-									:aria-label="artifactsPreviewToggleLabel"
-									:aria-pressed="preview.isPreviewVisible.value"
-									:disabled="!hasPreviewTabs"
-									@click="toggleArtifactsPreview"
-								/>
-							</Transition>
-						</N8nTooltip>
+						<Transition v-else name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
+							<span v-if="!preview.isPreviewVisible.value">
+								<N8nTooltip
+									as-child
+									:content="artifactsPreviewToggleLabel"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+								>
+									<N8nIconButton
+										icon="panel-right"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-artifacts-preview-toggle"
+										:aria-label="artifactsPreviewToggleLabel"
+										:aria-pressed="preview.isPreviewVisible.value"
+										:disabled="!hasPreviewTabs"
+										focusable-when-disabled
+										@click="toggleArtifactsPreview"
+									/>
+								</N8nTooltip>
+							</span>
+						</Transition>
 					</template>
 				</InstanceAiViewHeader>
 			</div>
@@ -1066,6 +1132,19 @@ function handleNewThreadClick() {
 								:execution-result="preview.activeWorkflowExecutionResult.value"
 								@initial-node-id-consumed="consumeAgentReturnNodeId"
 								@workflow-failures="handleWorkflowFailures"
+								@workflow-loaded="handleSavedWorkflowLoaded"
+							/>
+							<InstanceAiWorkflowDraftPreview
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
+								:key="preview.activeWorkflowDraft.value.filePath"
+								:class="$style.previewSlot"
+								:draft="preview.activeWorkflowDraft.value"
+								:building="isAgentWorking || isAwaitingUser()"
+							/>
+							<InstanceAiCanvasRunOverlay
+								v-if="canvasRunState"
+								:state="canvasRunState"
+								@focus-chat="conversationRef?.focusPendingConfirmation()"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

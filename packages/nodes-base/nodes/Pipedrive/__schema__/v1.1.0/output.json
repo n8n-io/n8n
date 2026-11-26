@@ -1,0 +1,162 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"data": {
+			"additionalProperties": true,
+			"properties": {
+				"add_time": {
+					"type": "string"
+				},
+				"archive_time": {},
+				"channel": {
+					"type": ["null", "number"]
+				},
+				"channel_id": {
+					"type": ["null", "string"]
+				},
+				"close_time": {
+					"type": ["null", "string"]
+				},
+				"creator_user_id": {
+					"type": "number"
+				},
+				"currency": {
+					"type": "string"
+				},
+				"custom_fields": {
+					"type": "object"
+				},
+				"expected_close_date": {},
+				"first_won_time": {
+					"type": ["null", "string"]
+				},
+				"id": {
+					"type": "number"
+				},
+				"is_archived": {
+					"type": "boolean"
+				},
+				"label_ids": {
+					"items": {
+						"type": "number"
+					},
+					"type": "array"
+				},
+				"lost_reason": {
+					"type": ["null", "string"]
+				},
+				"lost_time": {
+					"type": ["null", "string"]
+				},
+				"org_id": {
+					"type": ["null", "number"]
+				},
+				"origin": {
+					"type": "string"
+				},
+				"origin_id": {
+					"type": ["null", "string"]
+				},
+				"owner_id": {
+					"type": "number"
+				},
+				"person_id": {
+					"type": ["null", "number"]
+				},
+				"pipeline_id": {
+					"type": "number"
+				},
+				"probability": {},
+				"stage_change_time": {
+					"type": ["null", "string"]
+				},
+				"stage_id": {
+					"type": "number"
+				},
+				"status": {
+					"type": "string"
+				},
+				"title": {
+					"type": "string"
+				},
+				"update_time": {
+					"type": ["null", "string"]
+				},
+				"value": {
+					"type": "number"
+				},
+				"visible_to": {
+					"type": "string"
+				},
+				"won_time": {
+					"type": ["null", "string"]
+				}
+			},
+			"type": "object"
+		},
+		"meta": {
+			"additionalProperties": true,
+			"properties": {
+				"action": {
+					"type": "string"
+				},
+				"attempt": {
+					"type": "number"
+				},
+				"change_source": {
+					"type": "string"
+				},
+				"company_id": {
+					"type": "string"
+				},
+				"correlation_id": {
+					"type": "string"
+				},
+				"entity": {
+					"type": "string"
+				},
+				"entity_id": {
+					"type": "string"
+				},
+				"host": {
+					"type": "string"
+				},
+				"id": {
+					"type": ["number", "string"]
+				},
+				"is_bulk_edit": {
+					"type": "boolean"
+				},
+				"permitted_user_ids": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"timestamp": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"user_id": {
+					"type": "string"
+				},
+				"version": {
+					"type": "string"
+				},
+				"webhook_id": {
+					"type": "string"
+				},
+				"webhook_owner_id": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"previous": {
+			"type": ["null", "object"]
+		}
+	},
+	"type": "object"
+}

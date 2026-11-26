@@ -2,32 +2,43 @@ import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { ExecutionChannelPublisher, RedisWorkQueues } from '@n8n/engine';
+import type { EngineRole, ExecutionChannelPublisher, RedisWorkQueues } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
+import { z } from 'zod';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
 
 import { BaseCommand } from './base-command';
 
+const flagsSchema = z.object({
+	roles: z
+		.string()
+		.optional()
+		.describe(
+			'Comma-separated list, without spaces, of the engine roles to run: api, orchestrator, step-worker. Takes precedence over N8N_ENGINE_ROLES. Runs every role when neither is set.',
+		),
+});
+
 @Command({
 	name: 'engine',
 	description:
-		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis for its work queues and to send execution responses and lifecycle events over.',
+		'Starts the engine v2 data plane, with the work queues, execution responses and lifecycle events in Redis. The `api` role serves the engine API, the `orchestrator` role plans executions, and the `step-worker` role runs the nodes and resolves their credentials from a control plane (`n8n start` with N8N_ENGINE_MODE=remote).',
+	examples: [
+		'',
+		'--roles=api',
+		'--roles=orchestrator',
+		'--roles=step-worker',
+		'--roles=api,orchestrator',
+	],
+	flagsSchema,
 })
-export class Engine extends BaseCommand {
+export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 	// The data plane has no control plane database. Its own database is the
 	// engine's, opened by the runtime from N8N_ENGINE_DATABASE_URL.
 	override needsDb = false;
-
-	// The data plane runs the nodes, so it hosts the task broker the Code node's
-	// runners connect to. Same module and env as `n8n start`.
-	// TODO(CET-332): remove once Code nodes run on the sandbox service.
-	override needsCodeExecution = true;
-
-	override needsExpressionEngine = true;
 
 	private runtime?: EngineV2Runtime;
 
@@ -39,15 +50,25 @@ export class Engine extends BaseCommand {
 		// The guards below run before `super.init()` wires the reporter, and the
 		// crash path reports through it.
 		this.errorReporter = Container.get(ErrorReporter);
-		assertControlPlaneIsolated(process.env);
 		const engineConfig = Container.get(EngineConfig);
-		assertRemoteControlPlane(engineConfig);
+		const { parseEngineRoles } = await import('@/modules/engine-v2/engine-roles.js');
+		const roles = parseEngineRoles(this.flags.roles, engineConfig.roles);
+		assertControlPlaneIsolated(process.env);
+		assertRoleSettings(engineConfig, roles);
+		// Only the step worker runs nodes, so only it loads them, evaluates expressions and
+		// Code nodes, and dials the control plane.
+		const runsSteps = roles.includes('step-worker');
 		const { EngineMtls } = await import('@/modules/engine-v2/engine-mtls.js');
-		Container.get(EngineMtls).assertSecureTransport({
-			N8N_ENGINE_CONTROL_PLANE_BASE_URL: engineConfig.controlPlaneBaseUrl,
-		});
+		Container.get(EngineMtls).assertSecureTransport(
+			runsSteps ? { N8N_ENGINE_CONTROL_PLANE_BASE_URL: engineConfig.controlPlaneBaseUrl } : {},
+		);
 
-		this.logger.info('Starting engine v2 data plane...');
+		this.needsNodeTypes = runsSteps;
+		this.needsExpressionEngine = runsSteps;
+		// TODO(CET-332): remove once Code nodes run on the sandbox service.
+		this.needsCodeExecution = runsSteps;
+
+		this.logger.info(`Starting engine v2 data plane with roles ${roles.join(', ')}...`);
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await super.init();
@@ -91,9 +112,10 @@ export class Engine extends BaseCommand {
 			responseSender: new ExecutionChannelSender(publisher, createExecutionResponseCodec(logger)),
 			lifecycleEventSender: new LifecycleEventChannelSender(publisher, logger),
 			queues: this.workQueues.queues,
+			roles,
 		});
 
-		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+		if (runsSteps) await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
 
 	/**
@@ -150,7 +172,7 @@ export class Engine extends BaseCommand {
 			async () => await this.runtime?.shutdown(),
 			// Before the publisher, so a late fetch fails instead of taking a message it can no longer give back.
 			async () => this.workQueues?.close(),
-			// After the engine and the queues, so a final response still has somewhere to go.
+			// After the engine, so a final response still has somewhere to go.
 			async () => await this.channelPublisher?.stop(),
 			async () => await Expression.disposeExpressionEngine(),
 		];
@@ -192,16 +214,18 @@ function assertControlPlaneIsolated(env: NodeJS.ProcessEnv): void {
 	}
 }
 
-function assertRemoteControlPlane(config: EngineConfig): void {
-	if (!config.authSecret) {
+/** The api role verifies the mains' tokens, and the step worker signs its control plane requests. */
+function assertRoleSettings(config: EngineConfig, roles: readonly EngineRole[]): void {
+	const secretUser = roles.find((role) => role === 'api' || role === 'step-worker');
+	if (secretUser && !config.authSecret) {
 		throw new UserError(
-			'The engine process needs N8N_ENGINE_AUTH_SECRET. The control plane runs elsewhere, so nothing here can generate the shared secret.',
+			`The ${secretUser} role needs N8N_ENGINE_AUTH_SECRET. The control plane runs elsewhere, so nothing here can generate the shared secret.`,
 		);
 	}
 
-	if (!config.controlPlaneBaseUrl) {
+	if (roles.includes('step-worker') && !config.controlPlaneBaseUrl) {
 		throw new UserError(
-			'The engine process needs N8N_ENGINE_CONTROL_PLANE_BASE_URL. The default points at this process, which does not run the control plane.',
+			'The step-worker role needs N8N_ENGINE_CONTROL_PLANE_BASE_URL to resolve credentials, sub-workflows and data tables. The default points at this process, which does not run the control plane.',
 		);
 	}
 }

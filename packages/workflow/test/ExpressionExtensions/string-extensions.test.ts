@@ -290,6 +290,74 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "test @ n8n".isEmail() }}')).toEqual(false);
 		});
 
+		test.each([
+			['test@example.com', true],
+			['first.last@sub.example.org', true],
+			['name+tag@example.com', true],
+			['john@[192.168.1.1]', true],
+			['user@example.xn--p1ai', true],
+			['user@example.xn--vermgensberater-ctb', true],
+			['USER@EXAMPLE.XN--P1AI', true],
+			['"john"@example.com', true],
+			['test@example.com!', false],
+			['test@example.com;', false],
+			['test@example.com/extra', false],
+			['<test@example.com>', false],
+			['x,me@example.com', false],
+			['.user@example.com', false],
+			['a..b@example.com', false],
+			['a@b.com,c@d.com', false],
+			['"a"@example.com,"b"@other.org', false],
+			['"a\nb"@example.com', false],
+			['mailto:test@example.com', false],
+			['https://medium.com/@jane.doe', false],
+			['https://example.com/contact?email=a@b.com', false],
+			["It's me@example.com", false],
+			['test@example.com\n', true],
+			['test@example.com\r\n', true],
+			['\ttest@example.com', true],
+			[' test@example.com', false],
+			['test@example.com ', false],
+			['x\ttest@example.com', false],
+			['a@b.com\nc@d.com', false],
+			['"john doe"@example.com', false],
+		])('.isEmail should check the whole string: %j', (value, expected) => {
+			expect(evaluate('={{ $json.value.isEmail() }}', [{ value }])).toEqual(expected);
+		});
+
+		test.each([
+			['https://medium.com/@jane.doe', 'medium.com'],
+			['https://example.com/contact?email=a@b.com', 'example.com'],
+			['MAILTO:john.doe@example.com', 'example.com'],
+			['mailto:john.doe@example.com?subject=Hello', 'example.com'],
+			['mailto:a@b.com,c@d.com', 'b.com'],
+			['mailto:example.com', 'example.com'],
+			['<test@example.com>', 'example.com'],
+			['test@example.com;', 'example.com'],
+			['test@example.com\n', 'example.com'],
+			['https://user@example.com/', 'example.com'],
+			['https://user@localhost/path?email=a@other.org', 'localhost'],
+			['https://user@example.xn--p1ai/', 'example.xn--p1ai'],
+			['http://a.example\\@b.example/', undefined],
+			['ftp://john@corp.com@files.example.org/', 'files.example.org'],
+			['example.com/a@b.com', 'b.com'],
+			['user@example.xn--p1ai', 'example.xn--p1ai'],
+			['Name <test@example.com>', undefined],
+		])('.extractDomain should read the domain of %j', (value, expected) => {
+			expect(evaluate('={{ $json.value.extractDomain() }}', [{ value }])).toEqual(expected);
+		});
+
+		test.each([
+			['Contact test@example.com; thanks', 'test@example.com'],
+			['<test@example.com>', 'test@example.com'],
+			['mailto:test@example.com', 'test@example.com'],
+			['user@example.xn--p1ai', 'user@example.xn--p1ai'],
+			['user@example.xn--vermgensberater-ctb', 'user@example.xn--vermgensberater-ctb'],
+			['"a"@example.com,"b"@other.org', '"a"@example.com'],
+		])('.extractEmail should find the address inside %j', (value, expected) => {
+			expect(evaluate('={{ $json.value.extractEmail() }}', [{ value }])).toEqual(expected);
+		});
+
 		test('.toDateTime should work on a variety of formats', () => {
 			expect(
 				asDateTime(evaluate('={{ "Wed, 21 Oct 2015 07:28:00 GMT".toDateTime() }}')),
@@ -316,6 +384,29 @@ describe('Data Transformation Functions', () => {
 				evaluate('={{ "https://example.com/orders/1/detail#hash?foo=bar".extractUrlPath() }}'),
 			).toEqual('/orders/1/detail');
 			expect(evaluate('={{ "hi".extractUrlPath() }}')).toBeUndefined();
+		});
+
+		test.each([
+			['https://de.wikipedia.org/wiki/Käse', '/wiki/K%C3%A4se'],
+			['https://example.com/my report.pdf', '/my%20report.pdf'],
+			['https://example.com/a<b>c', '/a%3Cb%3Ec'],
+			['https://example.com/v1/../v2/users', '/v2/users'],
+			['https://example.com/a/./b', '/a/b'],
+			['https://example.com/a/b/..', '/a/'],
+			['https://example.com/a%2fb', '/a%2fb'],
+			['https://example.com/a+b;c=d', '/a+b;c=d'],
+			['http:example.com/path', '/path'],
+			['mailto:me@example.com', 'me@example.com'],
+			['https://exa mple.com/path', undefined],
+			['https://example.com:port/path', undefined],
+		])('.extractUrlPath should give the path of `new URL()` for %j', (url, path) => {
+			expect(evaluate('={{ $json.url.extractUrlPath() }}', [{ url }])).toEqual(path);
+		});
+
+		test('.extractUrlPath should replace a lone surrogate in the path', () => {
+			expect(
+				evaluate('={{ ("https://example.com/" + "😀".substring(0, 1)).extractUrlPath() }}'),
+			).toEqual('/%EF%BF%BD');
 		});
 
 		test('.parseJson should work on a string', () => {
@@ -356,5 +447,33 @@ describe('Data Transformation Functions', () => {
 		test('.base64Decode should work on a string', () => {
 			expect(evaluate('={{ "bjhuIHRlc3Q=".base64Decode() }}')).toBe('n8n test');
 		});
+
+		test.each([
+			["'😀'.substring(0, 1)", '77+9'],
+			["'𐀀'[0]", '77+9'],
+			["'é😀'", 'w6nwn5iA'],
+		])(
+			'.base64Encode should encode %s as UTF-8 with U+FFFD for lone surrogates',
+			(value, expected) => {
+				expect(evaluate(`={{ ${value}.base64Encode() }}`)).toBe(expected);
+				expect(evaluate(`={{ ${value}.hash('base64') }}`)).toBe(expected);
+			},
+		);
+
+		test.each([
+			['/w==', '\uFFFD'],
+			['wA==', '\uFFFD'],
+			['7aCA', '\uFFFD\uFFFD\uFFFD'],
+			['w6nwn5iA', 'é😀'],
+			['a@b.com', 'i\uFFFD('],
+			['a-b_c', 'k\uFFFD\uFFFD'],
+			['aGVs bG8=', 'hello'],
+			['!!!', ''],
+		])(
+			'.base64Decode should decode %s, skip non-base64 characters and give U+FFFD for invalid UTF-8',
+			(value, expected) => {
+				expect(evaluate(`={{ "${value}".base64Decode() }}`)).toBe(expected);
+			},
+		);
 	});
 });

@@ -143,6 +143,19 @@ export class ProjectRepository extends BaseRepository<Project> {
 		});
 	}
 
+	/**
+	 * Returns every project. With `serviceAccountIds`, it hides the personal
+	 * projects of service accounts that are not in the list. An empty list hides
+	 * all of them. Team projects and the personal projects of people always stay.
+	 */
+	async findAllProjects(options: { serviceAccountIds?: string[] } = {}): Promise<Project[]> {
+		const query = this.createQueryBuilder('project').leftJoin('project.creator', 'creator');
+		if (options.serviceAccountIds !== undefined) {
+			this.limitServiceAccountProjects(query, 'project', options.serviceAccountIds);
+		}
+		return await query.getMany();
+	}
+
 	/** An undefined role list allows global access. An empty list matches no projects. */
 	async findOneWithUserRoles(
 		projectId: string,
@@ -218,6 +231,37 @@ export class ProjectRepository extends BaseRepository<Project> {
 
 	async findTeamProjects(): Promise<Project[]> {
 		return await this.findBy({ type: 'team' });
+	}
+
+	/** Members count every project relation, people and service accounts alike. */
+	async findTeamProjectsWithMemberCount(): Promise<
+		Array<Pick<Project, 'id' | 'name' | 'icon'> & { memberCount: number }>
+	> {
+		const projects = await this.find({
+			where: { type: 'team' },
+			select: ['id', 'name', 'icon'],
+			order: { name: 'ASC' },
+		});
+		if (projects.length === 0) return [];
+
+		const counts = await this.manager
+			.createQueryBuilder(ProjectRelation, 'relation')
+			.select('relation.projectId', 'projectId')
+			.addSelect('COUNT(relation.userId)', 'memberCount')
+			.innerJoin('relation.project', 'project')
+			.where('project.type = :type', { type: 'team' })
+			.groupBy('relation.projectId')
+			.getRawMany<{ projectId: string; memberCount: string | number }>();
+		const memberCountByProject = new Map(
+			counts.map(({ projectId, memberCount }) => [projectId, Number(memberCount)]),
+		);
+
+		return projects.map(({ id, name, icon }) => ({
+			id,
+			name,
+			icon,
+			memberCount: memberCountByProject.get(id) ?? 0,
+		}));
 	}
 
 	async findTeamProjectsExcluding(excludedProjectIds: string[]): Promise<Project[]> {

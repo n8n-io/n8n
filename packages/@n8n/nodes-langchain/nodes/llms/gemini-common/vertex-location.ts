@@ -18,6 +18,28 @@ export function getVertexEndpoint(location: string): string | undefined {
 }
 
 /**
+ * A Vertex location is a region token, never a URL fragment. The SDK interpolates
+ * it straight into the request authority, so the value is constrained to that shape.
+ */
+const VERTEX_LOCATION_PATTERN = /^[a-z0-9-]+$/;
+
+export function isValidVertexLocation(location: string): boolean {
+	return VERTEX_LOCATION_PATTERN.test(location);
+}
+
+/**
+ * The host the SDK will actually call for a location, mirroring
+ * `GoogleHostConnection.endpoint`: an explicit endpoint wins, `global` has no
+ * region prefix, and every other region is prefixed.
+ */
+export function getVertexHost(location: string): string {
+	return (
+		getVertexEndpoint(location) ??
+		(location === 'global' ? 'aiplatform.googleapis.com' : `${location}-aiplatform.googleapis.com`)
+	);
+}
+
+/**
  * Node-level location override wins over the region set in the credential.
  * An empty override (the field default) means "use the credential region".
  */
