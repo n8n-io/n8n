@@ -39,7 +39,6 @@ pnpm --filter n8n-playwright test:deployment tests/deployment/valkey.spec.ts
 # PLT-04: standalone SQLite upgrade from 2.x stable to 3.x nightly (3.x channel only)
 TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:v3-nightly \
 TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:v3-nightly \
-TEST_IMAGE_N8N_UPGRADE_FROM=ghcr.io/n8n-io/n8n:stable \
 pnpm --filter n8n-playwright test:deployment tests/deployment/upgrade-2x-to-3x.spec.ts
 ```
 
@@ -62,7 +61,7 @@ To test the `3.x` channel, replace `nightly` with `v3-nightly` (`v3-nightly`, `v
 | --- | --- | --- |
 | `TEST_IMAGE_N8N` | `n8nio/n8n:local` | Published n8n image reference (tag or `@sha256:` digest) |
 | `TEST_IMAGE_TASK_RUNNER` | Derived from `TEST_IMAGE_N8N` | Published task-runner image reference (set explicitly for distroless or digest-pinned images) |
-| `TEST_IMAGE_N8N_UPGRADE_FROM` | `ghcr.io/n8n-io/n8n:stable` | 2.x stable source n8n image reference for `PLT-04` upgrade cell |
+| `TEST_IMAGE_N8N_UPGRADE_FROM` | `ghcr.io/n8n-io/n8n@sha256:17a3e5a8c5e2a7440cc757f5392d57b50eefdfd46eac4532a7dea9bf2735d9ae` (`2.49.7`) | Pinned 2.x source n8n image reference for `PLT-04` upgrade cell (CI resolves 2.x stable by digest) |
 | `TEST_IMAGE_REDIS` | `redis:7.4.12-alpine` | Redis or Valkey image reference for queue-mode cells |
 | `DEPLOYMENT_CHANNEL` | `local` | Channel annotation (`master` or `3.x` in CI) |
 | `DEPLOYMENT_ARCH` | Host arch (`amd64` on `x64`, `arm64` on `arm64`) | Expected container image architecture, annotation, and Currents group suffix |

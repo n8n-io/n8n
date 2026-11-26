@@ -6,7 +6,10 @@ import type { DeploymentProbe } from './probe';
 
 type StackContainer = N8NStack['containers'][number];
 
-const DEFAULT_FROM_IMAGE = 'ghcr.io/n8n-io/n8n:stable';
+// Pin to 2.49.7 so local runs and retries stay reproducible.
+// Override with TEST_IMAGE_N8N_UPGRADE_FROM (CI resolves 2.x stable by digest).
+const DEFAULT_FROM_IMAGE =
+	'ghcr.io/n8n-io/n8n@sha256:17a3e5a8c5e2a7440cc757f5392d57b50eefdfd46eac4532a7dea9bf2735d9ae';
 export const CONTAINER_HOME_DIR = '/home/node';
 const CONTAINER_N8N_FOLDER = `${CONTAINER_HOME_DIR}/.n8n`;
 
