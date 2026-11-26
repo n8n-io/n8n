@@ -63,7 +63,7 @@ export class HeldActionCommitService {
 			throw new ForbiddenError('You do not have permission to run the draft of this agent.');
 		}
 
-		const session = this.simulationSessions.getSession({
+		const session = await this.simulationSessions.getSession({
 			userId: input.user.id,
 			projectId: input.projectId,
 			agentId: input.agentId,
