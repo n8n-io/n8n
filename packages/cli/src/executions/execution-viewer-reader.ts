@@ -1,9 +1,12 @@
 import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
-import type { ExecutionEntity, IExecutionResponse, User } from '@n8n/db';
+import type { ExecutionEntity, IExecutionBase, IExecutionResponse, User } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Scope } from '@n8n/permissions';
 
 import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
+import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
+import { type ExecutionIdV2, isExecutionIdV2 } from '@/executions/execution-id';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -18,20 +21,76 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
  *
  * A manual execution that n8n did not save is loaded only for the user who
  * started it, until pruning hard-deletes it. See {@link loadUnsavedManualExecution}.
+ *
+ * An engine v2 execution comes from the data plane. The data plane cannot
+ * authorize the read, so this function also checks `execution:read` for it.
  */
 export async function loadExecutionForViewer(
 	executionId: string,
 	viewer: User,
 ): Promise<IExecutionResponse | undefined> {
-	const execution =
-		(await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		})) ?? (await loadUnsavedManualExecution(executionId, viewer));
+	const execution = isExecutionIdV2(executionId)
+		? await Container.get(EngineV2ExecutionReader).findOne(
+				executionId,
+				async (workflowId) => await canAccessWorkflow(workflowId, viewer, EXECUTION_READ_SCOPES),
+			)
+		: ((await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			})) ?? (await loadUnsavedManualExecution(executionId, viewer)));
 	if (!execution) return undefined;
 
-	// Redacts in place. Never reveals: a reveal is an audited user action in the
-	// editor, and the Assistant must not do it on the user's behalf.
+	return await redactForViewer(execution, viewer);
+}
+
+/**
+ * The newest engine v2 execution of a workflow, with its run data, redacted for
+ * `viewer`. The caller must check that the viewer has `execution:read` on the
+ * workflow first.
+ */
+export async function loadLatestEngineV2ExecutionForViewer(
+	workflowId: string,
+	viewer: User,
+): Promise<IExecutionResponse | undefined> {
+	const execution = await Container.get(EngineV2ExecutionReader).findLatest({}, [workflowId]);
+	if (!execution) return undefined;
+
+	return await redactForViewer(execution, viewer);
+}
+
+/**
+ * An engine v2 execution without its run data, if `viewer` has `scopes` on its
+ * workflow. Use it to check who may read or stop the execution, and to read
+ * its status.
+ */
+export async function loadEngineV2ExecutionMetadataForViewer(
+	executionId: ExecutionIdV2,
+	viewer: User,
+	scopes: Scope[],
+): Promise<IExecutionBase | undefined> {
+	return await Container.get(EngineV2ExecutionReader).findOne(
+		executionId,
+		async (workflowId) => await canAccessWorkflow(workflowId, viewer, scopes),
+		{ includeData: false },
+	);
+}
+
+const EXECUTION_READ_SCOPES: Scope[] = ['workflow:read', 'execution:read'];
+
+async function canAccessWorkflow(workflowId: string, viewer: User, scopes: Scope[]) {
+	const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
+		workflowId,
+		viewer,
+		scopes,
+	);
+	return Boolean(workflow);
+}
+
+/**
+ * Redacts in place. Never reveals: a reveal is an audited user action in the
+ * editor, and the Assistant must not do it on the user's behalf.
+ */
+async function redactForViewer(execution: IExecutionResponse, viewer: User) {
 	await Container.get(ExecutionRedactionServiceProxy).processExecution(execution, {
 		user: viewer,
 	});

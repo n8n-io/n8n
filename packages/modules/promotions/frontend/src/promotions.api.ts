@@ -11,6 +11,7 @@ import type {
 	PromotionResourceDetailsRequestDto,
 	PromotionReviewChanges,
 	PromotionReviewDetailsRequestDto,
+	PromotionSettings,
 } from '@n8n/api-types';
 import type { IRestApiContext, PublicApiContext } from '@n8n/rest-api-client';
 import { makePublicApiRequest, makeRestApiRequest } from '@n8n/rest-api-client';
@@ -125,4 +126,15 @@ export async function continueApplyProjectSelection(
 		`/promotions/projects/${projectId}/apply/continue`,
 		payload,
 	);
+}
+
+export async function getPromotionSettings(context: PublicApiContext): Promise<PromotionSettings> {
+	return await makePublicApiRequest(context, 'GET', '/promotions/settings');
+}
+
+export async function updatePromotionSettings(
+	context: PublicApiContext,
+	settings: PromotionSettings,
+): Promise<PromotionSettings> {
+	return await makePublicApiRequest(context, 'PUT', '/promotions/settings', settings);
 }

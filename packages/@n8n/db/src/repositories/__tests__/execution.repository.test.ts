@@ -329,6 +329,20 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
+	describe('findRunningIds', () => {
+		test('should select the ids among the given ones of running executions', async () => {
+			entityManager.find.mockResolvedValueOnce([{ id: '1' }]);
+
+			const result = await executionRepository.findRunningIds(['1', '2']);
+
+			expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
+				select: ['id'],
+				where: { id: In(['1', '2']), status: 'running' },
+			});
+			expect(result).toEqual(['1']);
+		});
+	});
+
 	const crashedStartedAt = new Date('2025-01-01T00:00:00.000Z');
 
 	const crashableRow = (id: string, overrides: Partial<ExecutionEntity> = {}) =>
@@ -745,5 +759,29 @@ describe('ExecutionRepository', () => {
 				expect(txCallback).toHaveBeenCalledTimes(1);
 			},
 		);
+	});
+
+	describe('findWorkflowIdByExecutionId', () => {
+		test('returns null for a non-integer id without querying', async () => {
+			await expect(executionRepository.findWorkflowIdByExecutionId('abc')).resolves.toBeNull();
+
+			expect(entityManager.findOne).not.toHaveBeenCalled();
+		});
+
+		test('returns null when the id is above the PostgreSQL integer limit', async () => {
+			await expect(
+				executionRepository.findWorkflowIdByExecutionId('2147483648'),
+			).resolves.toBeNull();
+
+			expect(entityManager.findOne).not.toHaveBeenCalled();
+		});
+
+		test('returns the workflow id for the largest PostgreSQL integer id', async () => {
+			entityManager.findOne.mockResolvedValueOnce({ workflowId: 'wf-1' });
+
+			await expect(executionRepository.findWorkflowIdByExecutionId('2147483647')).resolves.toBe(
+				'wf-1',
+			);
+		});
 	});
 });

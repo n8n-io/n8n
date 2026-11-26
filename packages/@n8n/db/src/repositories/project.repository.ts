@@ -233,6 +233,37 @@ export class ProjectRepository extends BaseRepository<Project> {
 		return await this.findBy({ type: 'team' });
 	}
 
+	/** Members count every project relation, people and service accounts alike. */
+	async findTeamProjectsWithMemberCount(): Promise<
+		Array<Pick<Project, 'id' | 'name' | 'icon'> & { memberCount: number }>
+	> {
+		const projects = await this.find({
+			where: { type: 'team' },
+			select: ['id', 'name', 'icon'],
+			order: { name: 'ASC' },
+		});
+		if (projects.length === 0) return [];
+
+		const counts = await this.manager
+			.createQueryBuilder(ProjectRelation, 'relation')
+			.select('relation.projectId', 'projectId')
+			.addSelect('COUNT(relation.userId)', 'memberCount')
+			.innerJoin('relation.project', 'project')
+			.where('project.type = :type', { type: 'team' })
+			.groupBy('relation.projectId')
+			.getRawMany<{ projectId: string; memberCount: string | number }>();
+		const memberCountByProject = new Map(
+			counts.map(({ projectId, memberCount }) => [projectId, Number(memberCount)]),
+		);
+
+		return projects.map(({ id, name, icon }) => ({
+			id,
+			name,
+			icon,
+			memberCount: memberCountByProject.get(id) ?? 0,
+		}));
+	}
+
 	async findTeamProjectsExcluding(excludedProjectIds: string[]): Promise<Project[]> {
 		return await this.findBy({ type: 'team', id: Not(In(excludedProjectIds)) });
 	}

@@ -1,4 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { CommandMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 
 import { ExportService } from '@/services/export.service';
 
@@ -108,6 +110,36 @@ describe('ExportEntitiesCommand', () => {
 				undefined,
 				{ includeDataTableRows: false },
 			);
+		});
+
+		it('passes binaryEncoding through to the export service', async () => {
+			const command = new ExportEntitiesCommand();
+			// @ts-expect-error Protected property
+			command.flags = {
+				outputDir: './exports',
+				binaryEncoding: 'base64',
+			};
+			// @ts-expect-error Protected property
+			command.logger = {
+				info: vi.fn(),
+				error: vi.fn(),
+			};
+			await command.run();
+
+			expect(mockExportService.exportEntities).toHaveBeenCalledWith(
+				'./exports',
+				expect.any(Set),
+				undefined,
+				expect.objectContaining({ binaryEncoding: 'base64' }),
+			);
+		});
+	});
+
+	describe('flags', () => {
+		it('defaults binaryEncoding to buffer', () => {
+			const flagsSchema = Container.get(CommandMetadata).get('export:entities')?.flagsSchema;
+
+			expect(flagsSchema?.parse({})).toMatchObject({ binaryEncoding: 'buffer' });
 		});
 	});
 

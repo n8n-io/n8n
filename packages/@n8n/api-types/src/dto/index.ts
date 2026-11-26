@@ -50,6 +50,11 @@ export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rena
 export { TrackPageHideEventRequestDto } from './telemetry/track-page-hide-event-request.dto';
 export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
 export { AssistantAgentTargetRequestDto } from './assistant/assistant-agent-target-request.dto';
+export { AssistantAgentFeedbackRequestDto } from './assistant/assistant-agent-feedback-request.dto';
+export {
+	AssistantPreferenceCardUndoRequestDto,
+	AssistantPreferenceCardEditRequestDto,
+} from './assistant/assistant-preference-card-request.dto';
 export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
@@ -206,6 +211,13 @@ export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dt
 export { AiPreferenceRequestDto } from './ai-preference/ai-preference-request.dto';
 export { AiPreferenceSettingsRequestDto } from './ai-preference/ai-preference-settings-request.dto';
 export {
+	AiPreferencePublicDto,
+	AiPreferenceListPublicDto,
+	ListAiPreferencesPublicQueryDto,
+	CreateAiPreferencePublicDto,
+	UpdateAiPreferencePublicDto,
+} from './ai-preference/ai-preference-public.dto';
+export {
 	AiPreferenceListQueryDto,
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
 	AI_PREFERENCES_MAX_IDS_FILTER,
@@ -257,6 +269,10 @@ export {
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 export { TransferWorkflowPublicDto } from './workflows/transfer-workflow-public.dto';
+export {
+	RunWorkflowPublicDto,
+	StartedWorkflowRunPublicDto,
+} from './workflows/run-workflow-public.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
@@ -431,6 +447,7 @@ export {
 	PutCredentialTypeProjectPolicyDto,
 	PutProjectPolicyDto,
 } from './type-availability-policies/put-project-policy.dto';
+export { CreateProjectPolicyDto } from './type-availability-policies/create-project-policy.dto';
 export {
 	CreateCredentialTypePolicyDocumentDto,
 	CreatePolicyDocumentDto,
@@ -440,6 +457,11 @@ export {
 	UpdatePolicyDocumentDto,
 } from './type-availability-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './type-availability-policies/replace-attachments.dto';
+export {
+	SetInstanceTypeAccessDto,
+	SetProjectTypeAccessDto,
+	type TypeAccessChange,
+} from './type-availability-policies/set-type-access.dto';
 export {
 	CredentialTypePolicyAttachmentsPublicDto,
 	CredentialTypePolicyDocumentListPublicDto,
@@ -703,6 +725,19 @@ export {
 	type WorkflowReviewRequestList,
 } from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
+export {
+	UpdateProjectWorkflowReviewSettingsDto,
+	type ProjectWorkflowReviewSettingsResponse,
+} from './workflow-reviews/update-project-workflow-review-settings.dto';
+export {
+	ListWorkflowReviewInstanceSettingsQueryDto,
+	type WorkflowReviewInstanceSettingsList,
+	type WorkflowReviewInstanceSettingsProject,
+} from './workflow-reviews/list-workflow-review-instance-settings-query.dto';
+export {
+	UpdateWorkflowReviewInstanceSettingsDto,
+	type WorkflowReviewInstanceSettingsResponse,
+} from './workflow-reviews/update-workflow-review-instance-settings.dto';
 export type { WorkflowReviewInboxItem } from './workflow-reviews/list-workflow-review-inbox.dto';
 export { ListInboxQueryDto } from './inbox/list-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
@@ -892,6 +927,11 @@ export {
 	type PromotionReviewType,
 	type PromotionReviewTab,
 } from './promotions/promotion-review.dto';
+export {
+	PromotionSettingsPublicDto,
+	UpdatePromotionSettingsDto,
+	type PromotionSettings,
+} from './promotions/promotion-settings.dto';
 
 export {
 	ScimConfigPatchDto,

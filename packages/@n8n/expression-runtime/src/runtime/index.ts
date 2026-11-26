@@ -3,6 +3,7 @@ import { DateTime, Duration, Interval } from 'luxon';
 import { extend, extendOptional } from '../extensions/extend';
 
 import { SafeObject, SafeError, ExpressionError } from './safe-globals';
+import { installLazyArrayConcat } from './lazy-array-concat';
 import { createDeepLazyProxy } from './lazy-proxy';
 import { buildContext, type BridgeCallbacks } from './context';
 import { __prepareForTransfer } from './serialize';
@@ -54,3 +55,5 @@ globalThis.SafeError = SafeError;
 globalThis.createDeepLazyProxy = createDeepLazyProxy;
 globalThis.buildContext = buildContext;
 globalThis.__prepareForTransfer = __prepareForTransfer;
+
+installLazyArrayConcat();

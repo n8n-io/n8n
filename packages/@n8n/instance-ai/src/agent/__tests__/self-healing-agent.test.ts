@@ -10,6 +10,7 @@ import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import { mock } from 'vitest-mock-extended';
 
 import { createSelfHealingAgent } from '../self-healing-agent';
+import { getSelfHealingWorkflowEngineSection } from '../workflow-engine-prompt';
 import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
 import type { SelfHealingCandidateVerifier } from '../../self-healing';
 import { loadInstanceAiSkills } from '../../skills/skills';
@@ -288,6 +289,30 @@ describe('createSelfHealingAgent', () => {
 		expect(agent.hasCheckpointStorage()).toBe(true);
 		expect(agent.snapshot.hasObservationalMemory).toBe(false);
 		expect(await loadInstanceAiSkills().loadSkill('self-healing')).toBeNull();
+	});
+
+	it('adds the engine section only with the engine-v2 module', async () => {
+		const setInstructions = vi.spyOn(Agent.prototype, 'instructions');
+		const instructionsFor = async (engineSetup?: InstanceAiContext['engineSetup']) => {
+			setInstructions.mockClear();
+			await createAgent({ ...createContext(), engineSetup });
+			return setInstructions.mock.calls[0][0];
+		};
+
+		const withoutSetup = await instructionsFor();
+		const withoutModule = await instructionsFor({
+			engineV2Available: false,
+			newWorkflowEngine: 'v1',
+		});
+		const engineSetup = { engineV2Available: true, newWorkflowEngine: 'v2' } as const;
+		const withModule = await instructionsFor(engineSetup);
+		setInstructions.mockRestore();
+
+		expect(withoutModule).toBe(withoutSetup);
+		expect(withoutSetup).not.toContain('## Workflow Engine');
+		expect(withModule).toBe(
+			`${withoutSetup}\n\n${getSelfHealingWorkflowEngineSection(engineSetup)}`,
+		);
 	});
 
 	it('does not declare workflow tools that change a workflow', async () => {

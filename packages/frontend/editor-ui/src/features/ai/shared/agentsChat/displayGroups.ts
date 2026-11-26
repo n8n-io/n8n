@@ -3,7 +3,7 @@ import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { CHAT_MESSAGE_ROLE } from './constants';
 import { appendHostEventSources, type AgentsChatHostEventSource } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
-import { getMessageInteractives } from './messageMappers';
+import { getMessageInteractives, isStoppedMessage } from './messageMappers';
 import { getMessageThinkingSegments } from './thinking';
 import type { AgentsChatMessage, InteractivePayload, ThinkingSegment, ToolCall } from './types';
 
@@ -90,6 +90,11 @@ export function isGroupable(message: AgentsChatMessage): boolean {
 
 type ToolRunGroup = Extract<DisplayGroup, { kind: typeof DISPLAY_GROUP_KIND.TOOL_RUN }>;
 
+/** Whether the group is the notice of a stopped turn, which the list shows as a status line. */
+function isStoppedGroup(group: DisplayGroup): boolean {
+	return group.kind === DISPLAY_GROUP_KIND.MESSAGE && isStoppedMessage(group.message);
+}
+
 export function isAssistantGroup(group: DisplayGroup): group is TurnDisplayGroup {
 	return (
 		group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ||
@@ -102,7 +107,10 @@ function executionIdForGroup(group: TurnDisplayGroup): string | undefined {
 	return group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ? group.executionId : group.message.executionId;
 }
 
-/** Keep one reasoning block at the tail of each assistant run, below its final output. */
+/**
+ * Keep one reasoning block at the tail of each assistant run, below its final output.
+ * The notice of a stopped turn ends the run, so the block stays above it.
+ */
 function moveThinkingToRunTail(groups: DisplayGroup[]): void {
 	let run: TurnDisplayGroup[] = [];
 	let executionId: string | undefined;
@@ -117,7 +125,7 @@ function moveThinkingToRunTail(groups: DisplayGroup[]): void {
 	};
 
 	for (const group of groups) {
-		if (!isAssistantGroup(group)) {
+		if (!isAssistantGroup(group) || isStoppedGroup(group)) {
 			flush();
 			continue;
 		}
@@ -143,7 +151,7 @@ function moveThinkingToRunTail(groups: DisplayGroup[]): void {
  * handoff uses the turn that owns the errored tool.
  */
 function canAppendToToolRun(last: ToolRunGroup, message: AgentsChatMessage): boolean {
-	if (last.finalMessage || message.stopReport) return false;
+	if (last.finalMessage || message.stopReport || isStoppedMessage(message)) return false;
 
 	if (
 		last.executionId !== undefined &&

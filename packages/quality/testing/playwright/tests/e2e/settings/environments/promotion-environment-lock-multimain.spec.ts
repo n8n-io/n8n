@@ -8,11 +8,10 @@ import { TestError } from '../../../../Types';
 import { generateUniqueRepoName } from '../../../../utils/source-control-helper';
 
 const PROMOTION_SCOPES: ApiKeyScope[] = [
-	'promotions:create',
-	'promotions:read',
-	'promotions:update',
-	'promotions:delete',
-	'promotions:connect',
+	'promotions:manageProviders',
+	'promotions:readProviders',
+	'promotions:manageEnvironments',
+	'promotions:readEnvironments',
 	'promotions:promote',
 ];
 

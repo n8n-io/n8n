@@ -53,7 +53,10 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 	let prefill: InstanceAiPrefillPayload | null = null;
 	let hostSend: AssistantAgentHostSend | null = null;
 
-	function takeAuthorship(text: string): Omit<AssistantAgentHostSend, 'text'> {
+	function takeAuthorship(
+		text: string,
+		composerMentionCounts: AssistantMentionCounts | undefined,
+	): Omit<AssistantAgentHostSend, 'text'> {
 		// Only the next send can be the host send. A refused host send leaves its text
 		// as the user's draft, so that next send is still the host text when it matches.
 		const host = hostSend;
@@ -61,17 +64,22 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 		if (host?.text.trim() === text) {
 			return { authorship: host.authorship, mentionCounts: host.mentionCounts };
 		}
-		return { authorship: resolveAuthorship(text, prefill) };
+		return { authorship: resolveAuthorship(text, prefill), mentionCounts: composerMentionCounts };
 	}
 
-	/** Returns the context of the message, which `User received AI Assistant response` repeats. */
-	function trackSend({
-		text,
-		files,
-		clientContext,
-		isFirstMessage,
-	}: AssistantAgentSendingMessage): AssistantAgentSentMessageContext {
-		const { authorship, mentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS } = takeAuthorship(text);
+	/**
+	 * Returns the context of the message, which `User received AI Assistant response` repeats.
+	 * `composerMentionCounts` are the composer mentions that this message sends. A host send
+	 * reports its own counts instead.
+	 */
+	function trackSend(
+		{ text, files, clientContext, isFirstMessage }: AssistantAgentSendingMessage,
+		composerMentionCounts?: AssistantMentionCounts,
+	): AssistantAgentSentMessageContext {
+		const { authorship, mentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS } = takeAuthorship(
+			text,
+			composerMentionCounts,
+		);
 		const isPrefill = authorship.kind === 'prefill';
 		const attachments: unknown[] = Array.isArray(clientContext?.attachments)
 			? clientContext.attachments

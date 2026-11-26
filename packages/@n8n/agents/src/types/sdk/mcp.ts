@@ -1,4 +1,5 @@
 import type { McpToolDescriptor } from '@n8n/ai-utilities/agent-config';
+import type { BuiltTool } from './tool';
 
 export type { McpToolAnnotations, McpToolDescriptor } from '@n8n/ai-utilities/agent-config';
 
@@ -54,6 +55,9 @@ export interface McpServerConfig {
 
 	/** Optional callback that's invoked after an MCP tool call settles. */
 	onToolCallSettled?: (event: McpToolCallSettledEvent) => void | Promise<void>;
+
+	/** Wrap a gated tool with the host's approval route. Permission rules still select the tools. */
+	wrapApproval?: (tool: BuiltTool) => BuiltTool;
 
 	/** Optional callback invoked when this server fails to connect or initialize. */
 	onConnectionFailed?: (event: McpConnectionFailedEvent) => void | Promise<void>;
