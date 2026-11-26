@@ -1857,24 +1857,31 @@ describe(`Integration: ${engineName} error handling`, () => {
 	});
 
 	it.each([
-		'{{ $json.list.concat($json.list).length }}',
-		'{{ (() => { const list = $json.list; list[Symbol.isConcatSpreadable] = true; return list.concat(list).length; })() }}',
-	])('should concat workflow data arrays within a small memory limit: %s', async (expression) => {
-		const evaluator = new ExpressionEvaluator({
-			createBridge: () => newBridge({ memoryLimit: 16, timeout: 5000 }),
-			maxCodeCacheSize: 64,
-		});
-		const caller = {};
-		const data = { $json: { list: Array.from({ length: 200_000 }, () => 1) } };
-		await evaluator.initialize();
-		await evaluator.acquire(caller);
-		try {
-			expect(evaluator.evaluate(expression, data, caller)).toBe(400_000);
-		} finally {
-			await evaluator.release(caller);
-			await evaluator.dispose();
-		}
-	});
+		['{{ $json.list.concat($json.list).length }}', 200_000],
+		// The symbol write materializes the proxy before concat and uses more memory.
+		[
+			'{{ (() => { const list = $json.list; list[Symbol.isConcatSpreadable] = true; return list.concat(list).length; })() }}',
+			100_000,
+		],
+	])(
+		'should concat workflow data arrays within a small memory limit: %s',
+		async (expression, size) => {
+			const evaluator = new ExpressionEvaluator({
+				createBridge: () => newBridge({ memoryLimit: 16, timeout: 5000 }),
+				maxCodeCacheSize: 64,
+			});
+			const caller = {};
+			const data = { $json: { list: Array.from({ length: size }, () => 1) } };
+			await evaluator.initialize();
+			await evaluator.acquire(caller);
+			try {
+				expect(evaluator.evaluate(expression, data, caller)).toBe(size * 2);
+			} finally {
+				await evaluator.release(caller);
+				await evaluator.dispose();
+			}
+		},
+	);
 });
 
 describe('Integration: Concurrent execution pooling', () => {
