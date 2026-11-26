@@ -8,9 +8,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
-import { toMultiOptionsCsv, validateJSON, zulipApiRequest } from './GenericFunctions';
+import { toMultiOptionsCsv, zulipApiRequest } from './GenericFunctions';
 import { messageFields, messageOperations } from './MessageDescription';
 import type { IMessage } from './MessageInterface';
 import { streamFields, streamOperations } from './StreamDescription';
@@ -275,27 +275,15 @@ export class Zulip implements INodeType {
 
 					if (operation === 'create') {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
-						const subscriptions = this.getNodeParameter('subscriptions', i) as IDataObject;
+						const subscriptions = this.getNodeParameter('subscriptions', i, {}) as IDataObject;
 
 						body.subscriptions = JSON.stringify(subscriptions.properties);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter(
-								'additionalFieldsJson',
-								i,
-							) as string;
-
-							if (additionalFieldsJson !== '') {
-								if (validateJSON(additionalFieldsJson) !== undefined) {
-									Object.assign(body, JSON.parse(additionalFieldsJson));
-								} else {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Additional fields must be a valid JSON',
-										{ itemIndex: i },
-									);
-								}
-							}
+							Object.assign(
+								body,
+								this.getNodeParameter('additionalFieldsJson', i) as IDataObject | undefined,
+							);
 						} else {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -353,22 +341,10 @@ export class Zulip implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter(
-								'additionalFieldsJson',
-								i,
-							) as string;
-
-							if (additionalFieldsJson !== '') {
-								if (validateJSON(additionalFieldsJson) !== undefined) {
-									Object.assign(body, JSON.parse(additionalFieldsJson));
-								} else {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Additional fields must be a valid JSON',
-										{ itemIndex: i },
-									);
-								}
-							}
+							Object.assign(
+								body,
+								this.getNodeParameter('additionalFieldsJson', i) as IDataObject | undefined,
+							);
 						} else {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 
