@@ -78,12 +78,12 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 					{ id: errorSource.executionId },
 					{ errorWorkflowDueAt: null },
 				);
-				if (!inserted) return { sourceHasErrorExecution: true };
+				if (!inserted) return { errorExecutionAlreadyExists: true };
 			} else {
 				await manager.insert(this.repo.target, execution as InsertValues);
 			}
 			if (seeded.length > 0) await manager.insert(WorkflowSeededStep, seeded);
-			return { sourceHasErrorExecution: false };
+			return { errorExecutionAlreadyExists: false };
 		});
 	}
 

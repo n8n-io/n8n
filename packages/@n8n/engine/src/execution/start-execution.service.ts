@@ -80,7 +80,7 @@ export interface StartExecutionResult {
 	 * Set when the request named an error source that already has an error
 	 * execution. Nothing was written and nothing starts.
 	 */
-	sourceHasErrorExecution?: true;
+	errorExecutionAlreadyExists?: true;
 }
 
 /** The parent link names a missing row, or a row that cannot start a sub-execution now. */
@@ -164,7 +164,8 @@ export class StartExecutionService {
 			endedParentAsInvalid(error);
 		}
 		// Only an error execution can lose to an earlier start for the same source.
-		if (created.sourceHasErrorExecution) return { executionId, sourceHasErrorExecution: true };
+		if (created.errorExecutionAlreadyExists)
+			return { executionId, errorExecutionAlreadyExists: true };
 
 		// The persist above and this publish aren't atomic. A crash between them
 		// leaves the execution 'queued' until the reconciliation sweeper

@@ -35,7 +35,7 @@ function makeQueue(): WorkQueue<OrchestrationMessage> {
 
 function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 	return {
-		createExecution: vi.fn().mockResolvedValue({ sourceHasErrorExecution: false }),
+		createExecution: vi.fn().mockResolvedValue({ errorExecutionAlreadyExists: false }),
 		loadExecution: vi.fn(),
 		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
@@ -124,7 +124,7 @@ describe('StartExecutionService', () => {
 		it('stores the link and resolveErrorWorkflowOnFailure, and publishes the start', async () => {
 			const store = makeStore({
 				loadExecutionStatus: vi.fn().mockResolvedValue('failed'),
-				createExecution: vi.fn().mockResolvedValue({ sourceHasErrorExecution: false }),
+				createExecution: vi.fn().mockResolvedValue({ errorExecutionAlreadyExists: false }),
 			});
 			const queue = makeQueue();
 			const service = new StartExecutionService(admittance, store, makeStepStore(), queue);
@@ -145,14 +145,14 @@ describe('StartExecutionService', () => {
 		it('publishes nothing when the source already has an error execution', async () => {
 			const store = makeStore({
 				loadExecutionStatus: vi.fn().mockResolvedValue('failed'),
-				createExecution: vi.fn().mockResolvedValue({ sourceHasErrorExecution: true }),
+				createExecution: vi.fn().mockResolvedValue({ errorExecutionAlreadyExists: true }),
 			});
 			const queue = makeQueue();
 			const service = new StartExecutionService(admittance, store, makeStepStore(), queue);
 
 			const result = await service.start(request);
 
-			expect(result).toEqual({ executionId: 'error-exec', sourceHasErrorExecution: true });
+			expect(result).toEqual({ executionId: 'error-exec', errorExecutionAlreadyExists: true });
 			expect(queue.publish).not.toHaveBeenCalled();
 		});
 

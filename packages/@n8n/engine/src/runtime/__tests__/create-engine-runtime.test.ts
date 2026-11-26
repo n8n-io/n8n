@@ -310,7 +310,7 @@ describe('createEngineRuntime', () => {
 	it('runs on the queues the host gives it', async () => {
 		const executionId = generateId();
 		vi.spyOn(TypeOrmExecutionStore.prototype, 'createExecution').mockResolvedValue({
-			sourceHasErrorExecution: false,
+			errorExecutionAlreadyExists: false,
 		});
 		// Lets the wait sweeper publish to the step queue without a database.
 		vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null);

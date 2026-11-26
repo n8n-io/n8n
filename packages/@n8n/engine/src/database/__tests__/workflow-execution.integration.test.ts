@@ -755,7 +755,7 @@ describe('workflow_execution table (integration)', () => {
 			expect((await loadRow(sourceId)).errorWorkflowDueAt).not.toBeNull();
 			const record = errorRecord(sourceId);
 
-			expect(await store.createExecution(record)).toEqual({ sourceHasErrorExecution: false });
+			expect(await store.createExecution(record)).toEqual({ errorExecutionAlreadyExists: false });
 
 			expect((await loadRow(sourceId)).errorWorkflowDueAt).toBeNull();
 			const viewStore = new TypeOrmExecutionViewStore(
@@ -790,7 +790,10 @@ describe('workflow_execution table (integration)', () => {
 				store.createExecution(errorRecord(sourceId)),
 			]);
 
-			expect(results.map((result) => result.sourceHasErrorExecution).sort()).toEqual([false, true]);
+			expect(results.map((result) => result.errorExecutionAlreadyExists).sort()).toEqual([
+				false,
+				true,
+			]);
 			const errorExecutions = await dataSource
 				.getRepository(WorkflowExecution)
 				.find({ where: { errorSourceExecutionId: sourceId } });

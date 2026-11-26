@@ -69,7 +69,7 @@ export interface CreateExecutionResult {
 	 * `true` when the record has an error source and that source already has an
 	 * error execution.
 	 */
-	sourceHasErrorExecution: boolean;
+	errorExecutionAlreadyExists: boolean;
 }
 
 /** An execution that is still `queued` after its `stale_after` time. */
@@ -137,7 +137,7 @@ export interface ExecutionStore {
 	 *
 	 * A record with an error source link clears the pending marker of the
 	 * source in the same transaction. When the source already has an error
-	 * execution, nothing is written and the result sets `sourceHasErrorExecution`.
+	 * execution, nothing is written and the result sets `errorExecutionAlreadyExists`.
 	 *
 	 * @throws {ExecutionNotFoundError} when the parent row is missing.
 	 * @throws {ParentExecutionEndedError} when the parent has ended.
