@@ -347,6 +347,7 @@ describe('assignDatabaseFilesToExecution', () => {
 
 		await assignDatabaseFilesToExecution(run, executionId);
 
+		expect(databaseManager.assignToExecution).toHaveBeenCalledTimes(1);
 		expect(databaseManager.assignToExecution).toHaveBeenCalledWith([fileId], executionId);
 	});
 
