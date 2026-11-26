@@ -79,13 +79,6 @@ export class ProjectRepository extends BaseRepository<Project> {
 		return await this.managerFor(ctx).findOneBy(Project, { id: projectId });
 	}
 
-	async findPersonalProjectForUser(
-		userId: string,
-		ctx: OperationContext = {},
-	): Promise<Project | null> {
-		return await this.getPersonalProjectForUser(userId, this.managerFor(ctx));
-	}
-
 	async getPersonalProjectForUser(userId: string, entityManager?: EntityManager) {
 		const em = entityManager ?? this.manager;
 
@@ -149,8 +142,8 @@ export class ProjectRepository extends BaseRepository<Project> {
 		return rows;
 	}
 
-	async getAccessibleProjects(userId: string, ctx: OperationContext = {}) {
-		return await this.managerFor(ctx).find(Project, {
+	async getAccessibleProjects(userId: string) {
+		return await this.find({
 			where: {
 				projectRelations: {
 					userId,
@@ -245,8 +238,8 @@ export class ProjectRepository extends BaseRepository<Project> {
 		});
 	}
 
-	async findTeamProjects(ctx: OperationContext = {}): Promise<Project[]> {
-		return await this.managerFor(ctx).findBy(Project, { type: 'team' });
+	async findTeamProjects(): Promise<Project[]> {
+		return await this.findBy({ type: 'team' });
 	}
 
 	/**

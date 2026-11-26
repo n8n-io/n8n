@@ -40,21 +40,12 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 	}
 
 	/** Oldest first, so the prompt text is stable across reads. */
-	async findApplicable(
-		query: ApplicableAiPreferencesQuery,
-		ctx: OperationContext = {},
-	): Promise<AiPreference[]> {
-		return await this.managerFor(ctx).find(AiPreference, {
-			where: visibleTo(query, false),
-			order: ORDER,
-		});
+	async findApplicable(query: ApplicableAiPreferencesQuery): Promise<AiPreference[]> {
+		return await this.find({ where: visibleTo(query, false), order: ORDER });
 	}
 
 	/** Wider than `findApplicable`: an admin sees rows that never reach their own prompts. */
-	async findPageVisible(
-		query: AiPreferencePageQuery,
-		ctx: OperationContext = {},
-	): Promise<[AiPreference[], number]> {
+	async findPageVisible(query: AiPreferencePageQuery): Promise<[AiPreference[], number]> {
 		const visible = visibleTo(query, query.allUsers, query.scope);
 		if (visible.length === 0) return [[], 0];
 		const { ids, search } = query;
@@ -63,7 +54,7 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 			...(ids ? { id: In(ids) } : {}),
 			...(search ? { content: containsIgnoringCase(search) } : {}),
 		};
-		return await this.managerFor(ctx).findAndCount(AiPreference, {
+		return await this.findAndCount({
 			where: visible.map((where) => ({ ...where, ...narrowing })),
 			relations: RELATIONS,
 			order: query.sortBy ? SORT_ORDERS[query.sortBy] : ORDER,
@@ -76,13 +67,8 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 		return await this.exists();
 	}
 
-	async countVisible(
-		query: VisibleAiPreferencesQuery,
-		ctx: OperationContext = {},
-	): Promise<number> {
-		return await this.managerFor(ctx).count(AiPreference, {
-			where: visibleTo(query, query.allUsers),
-		});
+	async countVisible(query: VisibleAiPreferencesQuery): Promise<number> {
+		return await this.count({ where: visibleTo(query, query.allUsers) });
 	}
 
 	/**
@@ -90,8 +76,8 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 	 * Counts the target itself, not what a caller may see: a cap is a property of the
 	 * scope, and an admin writing into another user's scope fills the same bucket.
 	 */
-	async countForTarget(target: AiPreferenceTarget, ctx: OperationContext = {}): Promise<number> {
-		return await this.managerFor(ctx).count(AiPreference, { where: whereTarget(target) });
+	async countForTarget(target: AiPreferenceTarget): Promise<number> {
+		return await this.count({ where: whereTarget(target) });
 	}
 
 	/** Exact-match duplicate probe for a write. Content is stored trimmed by the
@@ -101,9 +87,8 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 		target: AiPreferenceTarget,
 		content: string,
 		excludeId?: string,
-		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const count = await this.managerFor(ctx).count(AiPreference, {
+		const count = await this.count({
 			where: {
 				...whereTarget(target),
 				content,
@@ -111,14 +96,6 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 			},
 		});
 		return count > 0;
-	}
-
-	async savePreference(row: AiPreference, ctx: OperationContext = {}): Promise<AiPreference> {
-		return await this.managerFor(ctx).save(AiPreference, row);
-	}
-
-	async deletePreference(id: string, ctx: OperationContext = {}): Promise<void> {
-		await this.managerFor(ctx).delete(AiPreference, { id });
 	}
 
 	/** No visibility filter. The service authorizes the row before it returns or acts on it. */
