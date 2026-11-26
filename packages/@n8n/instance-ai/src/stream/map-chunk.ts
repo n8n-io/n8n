@@ -15,7 +15,6 @@ import {
 	mcpConnectRequestSchema,
 	credentialDestinationSchema,
 	testListenerCardSchema,
-	appBlueprintErrorsSchema,
 	appBlueprintSchema,
 	confirmationInputTypeSchema,
 	type InstanceAiEvent,
@@ -357,10 +356,6 @@ function mapSuspendedChunk(
 	);
 	const testListener = parseSchemaRecord(suspendPayload.testListener, testListenerCardSchema);
 	const appBlueprint = parseSchemaRecord(suspendPayload.appBlueprint, appBlueprintSchema);
-	const appBlueprintErrors = parseSchemaRecord(
-		suspendPayload.appBlueprintErrors,
-		appBlueprintErrorsSchema,
-	);
 	// A test run of the target Agent pauses for the target's own tool approvals.
 	const isTargetTestRun =
 		resolveBuilderToolName(call.toolName) === AGENT_BUILDER_TOOL_NAMES.CALL_AGENT;
@@ -411,7 +406,6 @@ function mapSuspendedChunk(
 			...(mcpConnectRequest ? { mcpConnectRequest } : {}),
 			...(testListener ? { testListener } : {}),
 			...(appBlueprint ? { appBlueprint } : {}),
-			...(appBlueprintErrors ? { appBlueprintErrors } : {}),
 		},
 	};
 }

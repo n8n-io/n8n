@@ -146,7 +146,8 @@ test('streams tool progress but excludes reasoning', async () => {
 		type: 'tool_use',
 		sessionID: 'ses_1',
 		part: {
-			id: 'prt_tool',
+			partID: 'prt_tool',
+			id: 'call_1',
 			type: 'tool',
 			tool: 'read',
 			state: { status: 'completed', title: 'Read worker source' },
@@ -215,7 +216,8 @@ test('replaces progress with the final answer', async () => {
 		type: 'tool_use',
 		sessionID: 'ses_1',
 		part: {
-			id: 'prt_tool',
+			partID: 'prt_tool',
+			id: 'call_1',
 			type: 'tool',
 			tool: 'read',
 			state: { status: 'completed', title: 'Read worker source' },
@@ -331,6 +333,31 @@ test('stops the OpenCode process group at the turn limit', async () => {
 	assert.deepEqual(signals, ['SIGTERM']);
 });
 
+test('reports OpenCode V2 error events clearly', async () => {
+	await assert.rejects(
+		runOpenCode(
+			{ message: 'Test message', cwd: '/workspaces/n8n', author: 'Tester' },
+			() => {},
+			() => {},
+			{
+				spawnProcess() {
+					return completedChild([
+						JSON.stringify({
+							type: 'error',
+							sessionID: 'ses_err',
+							error: {
+								type: 'provider.no-route',
+								message: 'Model unavailable: openrouter/openai/gpt-5.6-sol',
+							},
+						}),
+					]);
+				},
+			},
+		),
+		/Model unavailable: openrouter\/openai\/gpt-5\.6-sol/,
+	);
+});
+
 test('keeps broker credentials out of the OpenCode process', () => {
 	const environment = openCodeEnvironment({
 		AGENT_WORKER_TOKEN: 'worker',
@@ -341,7 +368,7 @@ test('keeps broker credentials out of the OpenCode process', () => {
 		GITHUB_TOKEN: 'github',
 	});
 	assert.deepEqual(JSON.parse(environment.OPENCODE_CONFIG_CONTENT), {
-		provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
+		providers: { openrouter: { settings: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
 	});
 	delete environment.OPENCODE_CONFIG_CONTENT;
 	assert.deepEqual(environment, {
@@ -362,14 +389,15 @@ test('configures Flaky MCP without serializing its token', () => {
 	});
 
 	assert.deepEqual(JSON.parse(environment.OPENCODE_CONFIG_CONTENT), {
-		provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
+		providers: { openrouter: { settings: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
 		mcp: {
-			flaky: {
-				type: 'remote',
-				url: 'https://example.com/mcp',
-				enabled: true,
-				oauth: false,
-				headers: { Authorization: 'Bearer {env:FLAKY_MCP_TOKEN}' },
+			servers: {
+				flaky: {
+					type: 'remote',
+					url: 'https://example.com/mcp',
+					oauth: false,
+					headers: { Authorization: 'Bearer {env:FLAKY_MCP_TOKEN}' },
+				},
 			},
 		},
 	});

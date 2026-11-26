@@ -506,4 +506,62 @@ describe('CollectionModal', () => {
 			expect(getByTestId('collection-modal-submit')).toHaveTextContent('Create collection');
 		});
 	});
+
+	describe('in description-only mode', () => {
+		const existing: KnowledgeCollectionDto = {
+			...created,
+			id: 'c7',
+			name: 'Support knowledge base',
+			description: 'Every help-centre article',
+			homeProject: { id: 'p-write', name: 'Support team', type: 'team' },
+		};
+		const described: KnowledgeCollectionDto = {
+			...existing,
+			description: 'Help-centre articles and macros',
+		};
+
+		function renderDescriptionOnly() {
+			return renderModal({
+				props: { open: true, collection: existing, descriptionOnly: true },
+				pinia,
+			});
+		}
+
+		beforeEach(() => {
+			collectionsStore.updateCollection.mockResolvedValue(described);
+		});
+
+		it('shows the name of the collection as the header and no name field', () => {
+			const { getByTestId, getByRole, queryByTestId } = renderDescriptionOnly();
+
+			expect(getByRole('heading', { name: 'Support knowledge base' })).toBeInTheDocument();
+			expect(getByTestId('collection-modal')).not.toHaveTextContent('Edit collection');
+			expect(queryByTestId('collection-name-input')).toBeNull();
+			expect(descriptionInput(getByTestId)).toHaveValue('Every help-centre article');
+		});
+
+		it('saves a description change without the name field', async () => {
+			const { getByTestId, emitted } = renderDescriptionOnly();
+
+			await userEvent.clear(descriptionInput(getByTestId));
+			await userEvent.type(descriptionInput(getByTestId), 'Help-centre articles and macros');
+			await userEvent.click(getByTestId('collection-modal-submit'));
+
+			expect(collectionsStore.updateCollection).toHaveBeenCalledWith('p-write', 'c7', {
+				description: 'Help-centre articles and macros',
+			});
+			await waitFor(() => expect(emitted('saved')).toEqual([[described]]));
+			expect(emitted('update:open')).toEqual([[false]]);
+		});
+
+		it('shows the required error and saves nothing when the user clears the description', async () => {
+			const { getByTestId, getAllByText } = renderDescriptionOnly();
+
+			await userEvent.clear(descriptionInput(getByTestId));
+			await userEvent.click(getByTestId('collection-modal-submit'));
+
+			expect(getAllByText('This field is required')).toHaveLength(1);
+			expect(collectionsStore.updateCollection).not.toHaveBeenCalled();
+		});
+	});
 });
