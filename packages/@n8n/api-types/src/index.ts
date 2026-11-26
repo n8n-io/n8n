@@ -1161,6 +1161,7 @@ export {
 
 export {
 	AGENT_SAFE_TESTING_FLAG,
+	AGENT_SAFE_TESTING_TEST_VARIANT,
 	toolCallRouteSchema,
 	toolCallReasonSchema,
 	toolCallEvidenceSchema,

@@ -45,7 +45,6 @@ import {
 	getProviderAttachmentCapabilities,
 	acceptedMimeTypesFromCapabilities,
 	AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
-	AGENT_SAFE_TESTING_FLAG,
 	AGENT_SANDBOX_FILES_FLAG,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -99,6 +98,7 @@ import type {
 	AgentJsonConfig,
 } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { useAgentSafeTestingFlag } from '../composables/useAgentSafeTestingFlag';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { AGENT_SESSION_DETAIL_VIEW, CHAT_MESSAGE_ROLE, TOOL_CALL_STATE } from '../constants';
 import {
@@ -1553,6 +1553,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 					agentId: props.agentId,
 					status: props.agentStatus,
 					agentConfig: fingerprint,
+					chatMode: props.chatMode,
 				});
 			}
 			queueExpanded.value = false;
@@ -1781,9 +1782,8 @@ const showSessionFilesToggle = computed(
 		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true && Boolean(props.continueSessionId),
 );
 
-const isSafeTestingEnabled = computed(
-	() => props.channel === 'chat' && posthog.isFeatureEnabled(AGENT_SAFE_TESTING_FLAG) === true,
-);
+const safeTestingFlag = useAgentSafeTestingFlag();
+const isSafeTestingEnabled = computed(() => props.channel === 'chat' && safeTestingFlag.value);
 const testRunConfigKey = computed(() => {
 	if (!isSafeTestingEnabled.value || !props.agentConfig) return '';
 	return JSON.stringify({
@@ -1813,6 +1813,7 @@ async function onNewTestRun() {
 		props.projectId === target.projectId &&
 		props.agentId === target.agentId &&
 		props.continueSessionId === target.sessionId;
+	const hadMessages = messages.value.length > 0;
 	try {
 		// A simulated world belongs to a chat session, so a chat without one has no world.
 		if (target.sessionId) {
@@ -1828,6 +1829,7 @@ async function onNewTestRun() {
 			await clearHistory();
 			if (!isCurrentTarget()) return;
 		}
+		agentTelemetry.trackStartedNewTestRun({ agentId: target.agentId, hadMessages });
 		void refreshTestRunTools();
 	} catch (error) {
 		if (isCurrentTarget()) toast.showError(error, locale.baseText('agents.testRun.reset.error'));

@@ -10,9 +10,11 @@ import {
 	type AgentChatMode,
 	type ToolCallSimulation,
 } from '@n8n/api-types';
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { z } from 'zod';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -25,6 +27,13 @@ import {
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import {
+	countBy,
+	noEvidence,
+	noReasons,
+	noRoutes,
+	telemetryBackend,
+} from './simulation/safe-testing-telemetry';
 import type { SimulationSession } from './simulation/simulation-session';
 import { SimulationSessionService } from './simulation/simulation-session.service';
 import { findPendingStandardApproval, parseStandardApprovalSuspension } from './standard-approval';
@@ -56,6 +65,10 @@ interface DraftRunState {
 	observerFailed: boolean;
 	observerError?: unknown;
 }
+
+type DraftRunIds = { agentId: string; projectId: string; user: User };
+
+type TurnStatus = PreparedDraftRunResult['status'] | 'failed';
 
 interface DraftRunConsumptionOptions {
 	errorMode?: 'throw' | 'forward';
@@ -182,6 +195,7 @@ export class AgentTestRunService {
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly simulationSessions: SimulationSessionService,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	async prepareDraftRun({
@@ -262,6 +276,7 @@ export class AgentTestRunService {
 			errorMode,
 			onChunk,
 			simulation: simulation.session,
+			run: execution,
 		});
 	}
 
@@ -290,6 +305,7 @@ export class AgentTestRunService {
 			errorMode,
 			onChunk,
 			simulation: simulation.session,
+			run: execution,
 		});
 	}
 
@@ -425,7 +441,11 @@ export class AgentTestRunService {
 			errorMode = 'throw',
 			onChunk,
 			simulation,
-		}: DraftRunConsumptionOptions & { simulation?: () => SimulationSession | undefined },
+			run,
+		}: DraftRunConsumptionOptions & {
+			simulation?: () => SimulationSession | undefined;
+			run: DraftRunIds;
+		},
 	): Promise<PreparedDraftRunResult> {
 		const state: DraftRunState = {
 			response: initialResponse,
@@ -434,6 +454,62 @@ export class AgentTestRunService {
 			maxIterations: false,
 			observerFailed: false,
 		};
+		let status: TurnStatus = 'failed';
+		try {
+			const result = await this.consumeDraftRun(stream, getExecutionId, state, {
+				errorMode,
+				onChunk,
+				simulation,
+			});
+			status = result.status;
+			return result;
+		} finally {
+			const session = simulation?.();
+			if (session) this.trackTestRunTurn(session, run, state, status);
+		}
+	}
+
+	/** One event per test chat turn. Counts only: no tool names, inputs or details. */
+	private trackTestRunTurn(
+		session: SimulationSession,
+		run: DraftRunIds,
+		state: DraftRunState,
+		status: TurnStatus,
+	): void {
+		const calls = state.simulatedToolCalls;
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_TEST_RUN_TURN_FINISHED, {
+			agent_id: run.agentId,
+			project_id: run.projectId,
+			user_id: run.user.id,
+			backend: telemetryBackend(session.backend),
+			status,
+			tool_call_count: calls.length,
+			tool_calls_by_route: countBy(
+				noRoutes(),
+				calls.map((call) => call.route),
+			),
+			tool_calls_by_reason: countBy(
+				noReasons(),
+				calls.map((call) => call.reason),
+			),
+			tool_calls_by_evidence: countBy(
+				noEvidence(),
+				calls.flatMap((call) => call.evidence ?? []),
+			),
+			held_action_count: calls.filter((call) => session.getHeldAction(call.toolCallId)).length,
+		});
+	}
+
+	private async consumeDraftRun(
+		stream: AsyncIterable<AgentExecutionStreamChunk>,
+		getExecutionId: () => string | undefined,
+		state: DraftRunState,
+		{
+			errorMode = 'throw',
+			onChunk,
+			simulation,
+		}: DraftRunConsumptionOptions & { simulation?: () => SimulationSession | undefined },
+	): Promise<PreparedDraftRunResult> {
 		try {
 			for await (const rawChunk of stream) {
 				const chunk = this.withSimulation(rawChunk, simulation?.(), state);

@@ -1,9 +1,10 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, TelemetryProxy } from '@n8n/backend-services';
 import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { PubSubMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
@@ -109,6 +110,7 @@ function setup({
 		(type: string) =>
 			(type === 'telegram' ? { conversationTools: ['do_not_respond'] } : undefined) as never,
 	);
+	const telemetry = mock<TelemetryProxy>();
 	const service = new SimulationSessionService(
 		mock<Logger>(),
 		flagGate,
@@ -120,8 +122,16 @@ function setup({
 		workflowRepository,
 		chatIntegrations,
 		mock<CredentialsFinderService>(),
+		telemetry,
 	);
-	return { service, threadRepository, executionRepository, flagGate, workflowRepository };
+	return {
+		service,
+		threadRepository,
+		executionRepository,
+		flagGate,
+		workflowRepository,
+		telemetry,
+	};
 }
 
 function llmBackend(): SimulationBackend {
@@ -431,6 +441,42 @@ describe('SimulationSessionService', () => {
 		await session!.markTestChat();
 
 		expect(threadRepository.markTestChat).toHaveBeenCalledWith('chat-1');
+	});
+
+	it('tracks the start of a test run once, when the chat is first marked', async () => {
+		const { service, telemetry } = setup({ backend: llmBackend() });
+		const session = await service.openForDraftRun(openInput);
+
+		await session!.markTestChat();
+		await session!.markTestChat();
+
+		expect(telemetry.track).toHaveBeenCalledTimes(1);
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_TEST_RUN_STARTED, {
+			agent_id: 'agent-1',
+			project_id: 'project-1',
+			user_id: 'user-1',
+			backend: 'llm-mock',
+			world_opened: true,
+			simulated_tool_count: 4,
+			blocked_tool_count: 3,
+			blocked_tools_by_reason: {
+				unsupported_by_simulator: 0,
+				simulator_unavailable: 0,
+				not_simulatable: 3,
+			},
+		});
+	});
+
+	it('tracks a test run without a simulator as backend none', async () => {
+		const { service, telemetry } = setup();
+		const session = await service.openForDraftRun(openInput);
+
+		await session!.markTestChat();
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.AGENT_TEST_RUN_STARTED,
+			expect.objectContaining({ backend: 'none', world_opened: false, simulated_tool_count: 0 }),
+		);
 	});
 
 	it('keeps a marked chat a test run when a later message does not ask for one', async () => {

@@ -40,7 +40,7 @@ import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.servic
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ExternalHooks } from '@/external-hooks';
-import type { Publisher } from '@n8n/backend-services';
+import type { Publisher, TelemetryProxy } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
@@ -1764,6 +1764,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				service,
 				checkpointStorage,
 				mock<SimulationSessionService>(),
+				mock<TelemetryProxy>(),
 			);
 			const finalization = createDeferredPromise<string>();
 			executionService.finalizeExecution.mockReturnValue(finalization.promise);
@@ -1883,6 +1884,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				service,
 				checkpointStorage,
 				mock<SimulationSessionService>(),
+				mock<TelemetryProxy>(),
 			);
 			const finalization = createDeferredPromise<string>();
 			executionService.finalizeExecution.mockReturnValue(finalization.promise);

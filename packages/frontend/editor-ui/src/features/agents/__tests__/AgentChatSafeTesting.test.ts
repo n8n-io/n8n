@@ -34,6 +34,18 @@ vi.mock('@/features/agents/composables/useAgentApi', async (importOriginal) => {
 	};
 });
 
+const trackStartedNewTestRunMock = vi.fn();
+vi.mock('@/features/agents/composables/useAgentTelemetry', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('@/features/agents/composables/useAgentTelemetry')>();
+	return {
+		useAgentTelemetry: () => ({
+			...actual.useAgentTelemetry(),
+			trackStartedNewTestRun: trackStartedNewTestRunMock,
+		}),
+	};
+});
+
 const renderToolSteps = createComponentRenderer(AgentChatToolSteps);
 const renderChatPanel = createComponentRenderer(AgentChatPanel);
 
@@ -205,7 +217,9 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 
 		const pinia = createTestingPinia();
 		const posthog = mockedStore(usePostHog);
-		posthog.isFeatureEnabled.mockImplementation((flag) => flag === AGENT_SAFE_TESTING_FLAG);
+		posthog.isVariantEnabled.mockImplementation(
+			(flag, variant) => flag === AGENT_SAFE_TESTING_FLAG && variant === 'test',
+		);
 		const pushStore = mockedStore(usePushConnectionStore);
 		pushStore.addEventListener.mockReturnValue(() => {});
 
@@ -254,6 +268,10 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 			);
 		});
 		expect(emitted('new-test-run')).toHaveLength(1);
+		expect(trackStartedNewTestRunMock).toHaveBeenCalledExactlyOnceWith({
+			agentId: 'agent-1',
+			hadMessages: false,
+		});
 	});
 
 	it('does not start a new test run in a chat that the panel opened during the reset', async () => {
@@ -276,7 +294,9 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 
 		const pinia = createTestingPinia();
 		const posthog = mockedStore(usePostHog);
-		posthog.isFeatureEnabled.mockImplementation((flag) => flag === AGENT_SAFE_TESTING_FLAG);
+		posthog.isVariantEnabled.mockImplementation(
+			(flag, variant) => flag === AGENT_SAFE_TESTING_FLAG && variant === 'test',
+		);
 		const pushStore = mockedStore(usePushConnectionStore);
 		pushStore.addEventListener.mockReturnValue(() => {});
 
@@ -315,5 +335,6 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
 		expect(emitted('new-test-run')).toBeUndefined();
+		expect(trackStartedNewTestRunMock).not.toHaveBeenCalled();
 	});
 });

@@ -25,6 +25,17 @@ import { AgentModalTestStub } from './utils/AgentModalTestStub';
 configure({ testIdAttribute: 'data-testid' });
 
 const commitAgentTestRunActionsMock = vi.fn();
+const trackHeldActionsShownMock = vi.fn();
+const trackOpenedHeldActionPreviewMock = vi.fn();
+const trackClickedRunHeldActionsMock = vi.fn();
+
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackHeldActionsShown: trackHeldActionsShownMock,
+		trackOpenedHeldActionPreview: trackOpenedHeldActionPreviewMock,
+		trackClickedRunHeldActions: trackClickedRunHeldActionsMock,
+	}),
+}));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
@@ -198,7 +209,16 @@ describe('AgentTestRunEmptyState', () => {
 });
 
 describe('AgentHeldActionsTray', () => {
-	const renderTray = createComponentRenderer(AgentHeldActionsTray, { pinia: createTestingPinia() });
+	const renderTray = createComponentRenderer(AgentHeldActionsTray, {
+		pinia: createTestingPinia(),
+		props: { agentId: 'agent-1' },
+	});
+
+	beforeEach(() => {
+		trackHeldActionsShownMock.mockReset();
+		trackOpenedHeldActionPreviewMock.mockReset();
+		trackClickedRunHeldActionsMock.mockReset();
+	});
 
 	it('shows N actions on hold, expands previews, and emits run-actions', async () => {
 		const { getByTestId, getAllByTestId, queryByTestId, emitted } = renderTray({
@@ -236,6 +256,18 @@ describe('AgentHeldActionsTray', () => {
 		expect(runBtn).toHaveTextContent('Run 2 actions');
 		await fireEvent.click(runBtn);
 		expect(emitted('run-actions')).toEqual([[sampleActions]]);
+
+		expect(trackHeldActionsShownMock).toHaveBeenCalledExactlyOnceWith({
+			agentId: 'agent-1',
+			actionCount: 2,
+		});
+		expect(trackOpenedHeldActionPreviewMock).toHaveBeenCalledExactlyOnceWith({
+			agentId: 'agent-1',
+		});
+		expect(trackClickedRunHeldActionsMock).toHaveBeenCalledExactlyOnceWith({
+			agentId: 'agent-1',
+			actionCount: 2,
+		});
 	});
 
 	it('does not emit run-actions while the run is disabled', async () => {
@@ -247,8 +279,10 @@ describe('AgentHeldActionsTray', () => {
 		await waitFor(() => expect(getByTestId('agent-held-actions-run-btn')).toBeDisabled());
 		await fireEvent.click(getByTestId('agent-held-actions-run-btn'));
 		expect(emitted('run-actions')).toBeUndefined();
+		expect(trackHeldActionsShownMock).not.toHaveBeenCalled();
 
 		await rerender({ runDisabled: false });
+		expect(trackHeldActionsShownMock).toHaveBeenCalledOnce();
 		expect(getByTestId('agent-held-actions-run-btn')).toBeEnabled();
 		await fireEvent.click(getByTestId('agent-held-actions-run-btn'));
 		expect(emitted('run-actions')).toEqual([[sampleActions]]);
