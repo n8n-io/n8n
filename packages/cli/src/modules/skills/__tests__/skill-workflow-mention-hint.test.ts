@@ -12,6 +12,12 @@ describe('withSkillWorkflowMentionHint', () => {
 		);
 	});
 
+	it('tells the agent to report a workflow it cannot run and not to make up its result', () => {
+		expect(SKILL_WORKFLOW_MENTION_HINT).toContain(
+			'If you cannot find or run the workflow, say so first and stop. Do not make up its result.',
+		);
+	});
+
 	it('keeps instructions without a mention', () => {
 		const skill = { instructions: 'Be brief.' };
 

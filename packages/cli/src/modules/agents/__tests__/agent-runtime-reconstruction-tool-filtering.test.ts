@@ -1437,7 +1437,7 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		);
 
 		expect(skillInstructionsPassedToBuildFromJson()).toMatch(
-			/^Call \[Get code\]\(n8n:\/\/workflow\/wf-mentioned\) and reply with the code\.\n\n.*If you cannot find or run the workflow, stop and tell the user\.$/,
+			/^Call \[Get code\]\(n8n:\/\/workflow\/wf-mentioned\) and reply with the code\.\n\n.*If you cannot find or run the workflow, say so first and stop\. Do not make up its result\.$/,
 		);
 	});
 
@@ -1457,7 +1457,7 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		await service.reconstructFromAgentEntity(source, mock<CredentialProvider>(), 'production');
 
 		expect(skillInstructionsPassedToBuildFromJson()).toMatch(
-			/^Read the reference\.\n\n.*If you cannot find or run the workflow, stop and tell the user\.$/,
+			/^Read the reference\.\n\n.*If you cannot find or run the workflow, say so first and stop\. Do not make up its result\.$/,
 		);
 	});
 
@@ -1485,7 +1485,7 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		});
 
 		expect(skillInstructionsPassedToBuildFromJson()).toMatch(
-			/^Call \[Get code\]\(n8n:\/\/workflow\/wf-mentioned\) and reply with the code\.\n\n.*stop and tell the user\.$/,
+			/^Call \[Get code\]\(n8n:\/\/workflow\/wf-mentioned\) and reply with the code\.\n\n.*say so first and stop\. Do not make up its result\.$/,
 		);
 	});
 
