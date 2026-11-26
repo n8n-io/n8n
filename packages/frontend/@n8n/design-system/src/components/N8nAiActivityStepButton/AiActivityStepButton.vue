@@ -10,7 +10,7 @@ const props = withDefaults(
 		fullWidth?: boolean;
 	}>(),
 	{
-		size: 'small',
+		size: 'medium',
 		loading: false,
 		interactive: true,
 		fullWidth: false,

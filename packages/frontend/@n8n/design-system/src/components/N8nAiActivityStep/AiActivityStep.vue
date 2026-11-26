@@ -64,7 +64,7 @@ const errorTooltip = computed(() =>
 		</span>
 		<CollapsibleRoot v-if="props.hasContent" v-slot="{ open: isOpen }">
 			<CollapsibleTrigger as-child>
-				<N8nAiActivityStepButton size="small" :loading="props.loading">
+				<N8nAiActivityStepButton :loading="props.loading">
 					<template #prefix><slot name="prefix" /></template>
 					<slot name="label">{{ props.label }}</slot>
 					<template #icon>
@@ -102,7 +102,7 @@ const errorTooltip = computed(() =>
 				</N8nCallout>
 			</N8nAnimatedCollapsibleContent>
 		</CollapsibleRoot>
-		<N8nAiActivityStepButton v-else size="small" :loading="props.loading" :interactive="false">
+		<N8nAiActivityStepButton v-else :loading="props.loading" :interactive="false">
 			<template #prefix><slot name="prefix" /></template>
 			<slot name="label">{{ props.label }}</slot>
 			<template #icon>
@@ -143,6 +143,9 @@ const errorTooltip = computed(() =>
 	align-items: flex-start;
 	justify-content: center;
 	align-self: self-start;
+	/** Half the height change from the small to the medium step button. Keeps the rail centered on the label. */
+	--rail--offset: calc((var(--height--md) - var(--height--sm)) / 2);
+
 	width: var(--spacing--md);
 	min-height: var(--spacing--lg);
 	height: 100%;
@@ -159,11 +162,11 @@ const errorTooltip = computed(() =>
 
 	&::before {
 		top: 0;
-		height: calc(var(--spacing--xs) - var(--spacing--4xs));
+		height: calc(var(--spacing--xs) - var(--spacing--4xs) + var(--rail--offset));
 	}
 
 	&::after {
-		top: calc(var(--spacing--xs) + calc(var(--spacing--3xs) + var(--spacing--4xs)));
+		top: calc(var(--spacing--xs) + var(--spacing--3xs) + var(--spacing--4xs) + var(--rail--offset));
 		/** Extends the rail through the parent timeline gap when that shared value is set. */
 		bottom: calc(var(--n8n-ai-activity-step--gap, 0px) * -1);
 	}
@@ -177,7 +180,7 @@ const errorTooltip = computed(() =>
 .railDot {
 	position: relative;
 	z-index: 1;
-	top: var(--spacing--xs);
+	top: calc(var(--spacing--xs) + var(--rail--offset));
 	width: var(--spacing--3xs);
 	height: var(--spacing--3xs);
 	border-radius: 50%;
