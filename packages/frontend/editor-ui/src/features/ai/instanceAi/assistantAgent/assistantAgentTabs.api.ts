@@ -1,4 +1,8 @@
-import type { AssistantThreadTabsResponse, AssistantThreadTabsState } from '@n8n/api-types';
+import type {
+	AssistantSetupCredentialMetadataResponse,
+	AssistantThreadTabsResponse,
+	AssistantThreadTabsState,
+} from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -28,7 +32,7 @@ export async function saveAssistantAgentThreadTabs(
 export async function fetchAssistantAgentSetupCredentials(
 	context: IRestApiContext,
 	threadId: string,
-): Promise<{ metadata: Record<string, unknown> }> {
+): Promise<AssistantSetupCredentialMetadataResponse> {
 	return await makeRestApiRequest(
 		context,
 		'GET',
@@ -40,7 +44,7 @@ export async function saveAssistantAgentSetupCredentials(
 	context: IRestApiContext,
 	threadId: string,
 	metadata: Record<string, unknown>,
-): Promise<{ metadata: Record<string, unknown> }> {
+): Promise<AssistantSetupCredentialMetadataResponse> {
 	return await makeRestApiRequest(
 		context,
 		'PATCH',

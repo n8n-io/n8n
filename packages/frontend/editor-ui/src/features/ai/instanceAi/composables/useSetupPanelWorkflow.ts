@@ -10,10 +10,7 @@ import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiS
  */
 export function useSetupPanelWorkflow(
 	thread: Pick<ArtifactThread, 'producedArtifacts' | 'latestSetupWorkflowId'>,
-	preview: {
-		activeTabId: Readonly<Ref<string | undefined>>;
-		activeWorkflowId: Readonly<Ref<string | null | undefined>>;
-	},
+	preview: { activeTabId: Ref<string | undefined>; activeWorkflowId: Ref<string | null> },
 ) {
 	const settingsStore = useInstanceAiSettingsStore();
 

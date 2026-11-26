@@ -680,7 +680,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				runId: options.runId,
 				threadId: turn.thread.id,
 			}),
-			// Earlier turns are not read: each announcement sends the whole checklist of its workflow.
+			// Only this turn: a new turn publishes its checklists again, and a merge starts from this turn's rows.
 			readSetupItemsSnapshots: async () => eventBus.setupItemsSnapshots(),
 			// The setup panel announces the checklist without suspending the turn.
 			markWorkflowSetupHandled: async (workflowId) =>

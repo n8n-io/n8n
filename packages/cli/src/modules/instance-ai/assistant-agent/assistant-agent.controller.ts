@@ -11,6 +11,7 @@ import {
 	type AssistantPreferenceCardEditResponse,
 	type AssistantPreferenceCardsResponse,
 	type AssistantPreferenceCardUndoResponse,
+	type AssistantSetupCredentialMetadataResponse,
 	type AssistantThreadTabsResponse,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -95,7 +96,7 @@ export class AssistantAgentController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
-	): Promise<{ metadata: Record<string, unknown> }> {
+	): Promise<AssistantSetupCredentialMetadataResponse> {
 		const { metadata } = await this.threadMetadata.readThread(
 			ASSISTANT_AGENT_ID,
 			req.user,
@@ -112,7 +113,7 @@ export class AssistantAgentController {
 		_res: Response,
 		@Param('threadId') threadId: string,
 		@Body payload: AssistantSetupCredentialMetadataRequestDto,
-	): Promise<{ metadata: Record<string, unknown> }> {
+	): Promise<AssistantSetupCredentialMetadataResponse> {
 		const metadata = await this.threadMetadata.patch(
 			ASSISTANT_AGENT_ID,
 			req.user,

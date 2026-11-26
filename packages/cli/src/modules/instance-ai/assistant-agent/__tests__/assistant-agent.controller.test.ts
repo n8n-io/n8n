@@ -231,6 +231,17 @@ describe('AssistantAgentController', () => {
 			);
 		});
 
+		it('returns only the setup keys of the thread metadata', async () => {
+			threadMetadata.readThread.mockResolvedValue({
+				projectId: 'project-1',
+				metadata: { assistantTabs: { tabs: [] }, [selectionKey]: selection },
+			});
+
+			await expect(controller.getSetupCredentials(req, res, THREAD_ID)).resolves.toEqual({
+				metadata: { [selectionKey]: selection },
+			});
+		});
+
 		it('refuses metadata keys that the setup panel does not own', () => {
 			expect(
 				AssistantSetupCredentialMetadataRequestDto.safeParse({

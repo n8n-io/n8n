@@ -23,6 +23,11 @@ export function instanceAiSetupCredentialAppliedKey(itemId: string, selectionId:
 	return `${APPLIED_KEY_PREFIX}${itemId}:${selectionId}`;
 }
 
+/** The setup credential keys of an Assistant agent thread metadata. */
+export interface AssistantSetupCredentialMetadataResponse {
+	metadata: Record<string, unknown>;
+}
+
 /** Whether a thread metadata key holds a setup credential choice or its applied marker. */
 export function isInstanceAiSetupCredentialMetadataKey(key: string): boolean {
 	return key.startsWith(SELECTION_KEY_PREFIX) || key.startsWith(APPLIED_KEY_PREFIX);

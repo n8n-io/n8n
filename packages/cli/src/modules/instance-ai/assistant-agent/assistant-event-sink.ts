@@ -71,10 +71,7 @@ export class AssistantEventSink implements InstanceAiEventBus {
 		}
 	}
 
-	/**
-	 * The setup checklists that this turn recorded with its history. The setup
-	 * tools read them back to confirm that the setup panel can show them.
-	 */
+	/** The setup tools read these back to confirm that the chat accepted a checklist. */
 	setupItemsSnapshots(): Array<{ workflowId: string; items: InstanceAiSetupItem[] }> {
 		return [...this.setupItems].map(([workflowId, items]) => ({ workflowId, items }));
 	}
