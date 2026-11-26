@@ -1,13 +1,14 @@
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { CredentialProvider } from '@n8n/agents';
 import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
-import type { TransactionRunner, WorkflowRepository, WorkflowEntity } from '@n8n/db';
+import type { TransactionRunner, User, WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import type { PolicyViolation } from '@n8n/decorators';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentDefinitionService } from '../agent-definition.service';
@@ -88,6 +89,7 @@ function makeService() {
 	const agentPolicyService = mock<AgentPolicyService>();
 	agentPolicyService.evaluatePublish.mockResolvedValue({ violations: [] });
 	const workflowsInSkillsFlagGate = mock<WorkflowsInSkillsFlagGate>();
+	const workflowFinderService = mock<WorkflowFinderService>();
 	return {
 		service: new AgentValidationService(
 			agentRepository,
@@ -106,6 +108,7 @@ function makeService() {
 			skillRefs,
 			agentPolicyService,
 			workflowsInSkillsFlagGate,
+			workflowFinderService,
 		),
 		skillRefs,
 		agentRepository,
@@ -118,6 +121,7 @@ function makeService() {
 		aiGatewayService,
 		agentPolicyService,
 		workflowsInSkillsFlagGate,
+		workflowFinderService,
 	};
 }
 
@@ -1881,19 +1885,35 @@ describe('AgentValidationService — structured issues', () => {
 			expect(runtimeResult).toEqual({ missing: [] });
 		});
 
-		it('blocks publish when a mentioned workflow is outside the project of the agent', async () => {
-			const { service, workflowRepository } = mentionSetup();
+		const user = mock<User>();
+
+		async function validateMentionPublish(service: AgentValidationService, publishingUser?: User) {
+			return await service.validateLoadedAgentConfiguration(
+				makeAgent({ ...runnableConfig, skills: [{ type: 'skill', id: 'lucky' }] }),
+				projectId,
+				credentials,
+				'publish',
+				undefined,
+				publishingUser,
+			);
+		}
+
+		it('reports a mentioned workflow outside the project of the agent when the user can read it', async () => {
+			const { service, workflowRepository, workflowFinderService } = mentionSetup();
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['wf-mentioned']),
+			);
 			workflowRepository.findByIds.mockResolvedValue([
 				{ id: 'wf-mentioned', isArchived: false },
 			] as never);
 
-			const result = await service.validateAgentConfiguration(
-				agentId,
-				projectId,
-				credentials,
-				'publish',
-			);
+			const result = await validateMentionPublish(service, user);
 
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf-mentioned'],
+				user,
+				['workflow:read'],
+			);
 			expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf-mentioned'], {
 				fields: ['isArchived'],
 			});
@@ -1907,18 +1927,48 @@ describe('AgentValidationService — structured issues', () => {
 			]);
 		});
 
+		it('reports a mentioned workflow outside the project of the agent as not found when the user cannot read it', async () => {
+			const { service, workflowRepository, workflowFinderService } = mentionSetup();
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+
+			const result = await validateMentionPublish(service, user);
+
+			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+			expect(result.issues).toEqual([
+				{
+					code: 'missing_reference',
+					path: 'skills.lucky.workflows.wf-mentioned',
+					capability: { kind: 'tool', id: 'Get code', toolType: 'workflow' },
+				},
+			]);
+		});
+
+		it('reports a mentioned workflow outside the project of the agent as not found without a user', async () => {
+			const { service, workflowRepository, workflowFinderService } = mentionSetup();
+
+			const result = await validateMentionPublish(service);
+
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+			expect(result.issues).toEqual([
+				{
+					code: 'missing_reference',
+					path: 'skills.lucky.workflows.wf-mentioned',
+					capability: { kind: 'tool', id: 'Get code', toolType: 'workflow' },
+				},
+			]);
+		});
+
 		it('reports an archived mentioned workflow as not found', async () => {
-			const { service, workflowRepository } = mentionSetup();
+			const { service, workflowRepository, workflowFinderService } = mentionSetup();
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['wf-mentioned']),
+			);
 			workflowRepository.findByIds.mockResolvedValue([
 				{ id: 'wf-mentioned', isArchived: true },
 			] as never);
 
-			const result = await service.validateAgentConfiguration(
-				agentId,
-				projectId,
-				credentials,
-				'publish',
-			);
+			const result = await validateMentionPublish(service, user);
 
 			expect(result.issues).toEqual([
 				{

@@ -26,7 +26,7 @@ import {
 	type AgentJsonWorkflowToolConfig,
 	type AgentSkill,
 } from '@n8n/api-types';
-import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
+import { WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import type { PolicyViolation } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
@@ -46,6 +46,7 @@ import {
 } from '@/policy/policed-agent-nodes';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentDefinitionService } from './agent-definition.service';
 import { AgentPolicyService } from './agent-policy.service';
@@ -92,6 +93,7 @@ interface ConfigurationValidationContext {
 	integrations: AgentIntegrationConfig[];
 	tasks: ReadonlyMap<string, TaskBody>;
 	credentialProvider: CredentialProvider;
+	user?: User;
 }
 
 function issue(
@@ -160,6 +162,7 @@ export class AgentValidationService {
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	/**
@@ -230,6 +233,7 @@ export class AgentValidationService {
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
 		pending?: PendingSkillRefs,
+		user?: User,
 	): Promise<AgentConfigValidationResponse> {
 		if (scope === 'runtime') {
 			return await this.validateAgentEntityConfiguration(
@@ -249,6 +253,7 @@ export class AgentValidationService {
 			agent.integrations ?? [],
 			credentialProvider,
 			scope,
+			user,
 		);
 	}
 
@@ -292,6 +297,7 @@ export class AgentValidationService {
 		history: AgentHistory,
 		currentIntegrations: AgentIntegrationConfig[],
 		credentialProvider: CredentialProvider,
+		user?: User,
 	): Promise<AgentConfigValidationResponse> {
 		const definition = await this.definitionService.readVersion(history);
 		return await this.validateDefinition(
@@ -301,6 +307,7 @@ export class AgentValidationService {
 			currentIntegrations,
 			credentialProvider,
 			'publish',
+			user,
 		);
 	}
 
@@ -311,6 +318,7 @@ export class AgentValidationService {
 		integrations: AgentIntegrationConfig[],
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope,
+		user?: User,
 	): Promise<AgentConfigValidationResponse> {
 		return await this.runValidation(
 			{
@@ -322,6 +330,7 @@ export class AgentValidationService {
 				tasks: definition.tasks,
 				integrations,
 				credentialProvider,
+				user,
 			},
 			scope,
 		);
@@ -417,7 +426,7 @@ export class AgentValidationService {
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
 		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
-		await this.collectSkillWorkflowIssues(config, skillWorkflowTools, workflowsByReference, issues);
+		await this.collectSkillWorkflowIssues(ctx, skillWorkflowTools, workflowsByReference, issues);
 		this.collectGuardrailWorkflowIssues(config, guardrailWorkflowsById, issues, scope);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 		await this.collectHumanReviewIssues(ctx, findCredential, issues, scope);
@@ -440,17 +449,18 @@ export class AgentValidationService {
 	}
 
 	private async collectSkillWorkflowIssues(
-		config: AgentJsonConfig,
+		{ config, user }: ConfigurationValidationContext,
 		skillWorkflowTools: SkillWorkflowTool[],
 		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 	) {
 		const attached = directWorkflowIds(config, workflowsByReference);
 		const unattached = skillWorkflowTools.filter(({ tool }) => !attached.has(tool.workflowId));
-		const outsideProjectIds = await this.findWorkflowsOutsideProject(
+		const outsideProjectIds = await this.findReadableWorkflowsOutsideProject(
 			unattached
 				.map(({ tool }) => tool.workflowId)
 				.filter((workflowId) => !workflowsByReference.has(workflowId)),
+			user,
 		);
 		for (const { skillId, tool } of unattached) {
 			const path = `skills.${skillId}.workflows.${tool.workflowId}`;
@@ -475,9 +485,18 @@ export class AgentValidationService {
 		}
 	}
 
-	private async findWorkflowsOutsideProject(workflowIds: string[]): Promise<Set<string>> {
-		if (workflowIds.length === 0) return new Set();
-		const workflows = await this.workflowRepository.findByIds(workflowIds, {
+	private async findReadableWorkflowsOutsideProject(
+		workflowIds: string[],
+		user: User | undefined,
+	): Promise<Set<string>> {
+		if (!user || workflowIds.length === 0) return new Set();
+		const readableIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+			workflowIds,
+			user,
+			['workflow:read'],
+		);
+		if (readableIds.size === 0) return new Set();
+		const workflows = await this.workflowRepository.findByIds([...readableIds], {
 			fields: ['isArchived'],
 		});
 		return new Set(workflows.filter(({ isArchived }) => !isArchived).map(({ id }) => id));

@@ -375,6 +375,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			// No enforcement implementation is registered, so every evaluation comes back clear.
 			new AgentPolicyService(new PolicyEnforcementService()),
 			mock<WorkflowsInSkillsFlagGate>(),
+			mock<WorkflowFinderService>(),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,
