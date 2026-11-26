@@ -77,6 +77,9 @@ describe('toolsAgentExecute', () => {
 		expect(result[0]).toHaveLength(2);
 		expect(result[0][0].json).toEqual({ output: { text: 'success 1' } });
 		expect(result[0][1].json).toEqual({ output: { text: 'success 2' } });
+		expect(AgentExecutor.fromAgentAndTools).toHaveBeenCalledWith(
+			expect.objectContaining({ handleParsingErrors: true }),
+		);
 	});
 
 	it('should handle errors when continueOnFail is true', async () => {
