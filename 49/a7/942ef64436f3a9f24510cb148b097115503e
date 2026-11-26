@@ -1,0 +1,48 @@
+packages/cli/test/migration/1795700000002-create-runtime-credential-rule-table.test.ts
+  s_55c9c16466c150::t_08ecbbbf73ada0 1-208
+packages/@n8n/db/src/migrations/common/1795700000002-CreateRuntimeCredentialRuleTable.ts
+  s_55c9c16466c150::t_08ecbbbf73ada0 1-32
+packages/@n8n/db/src/migrations/common/1795700000001-AddIsRuntimeToCredentials.ts
+  s_55c9c16466c150::t_08ecbbbf73ada0 1-21
+packages/cli/test/migration/1795700000001-add-is-runtime-to-credentials.test.ts
+  s_55c9c16466c150::t_08ecbbbf73ada0 1-157
+packages/cli/test/migration/1795700000003-add-allowed-domains-to-runtime-credential-rule.test.ts
+  s_55c9c16466c150::t_08ecbbbf73ada0 1-126
+packages/@n8n/db/src/migrations/common/1795700000003-AddAllowedDomainsToRuntimeCredentialRule.ts
+  s_55c9c16466c150::t_08ecbbbf73ada0 1-23
+packages/@n8n/db/src/migrations/sqlite/1795700000001-AddIsRuntimeToCredentials.ts
+  s_55c9c16466c150::t_08ecbbbf73ada0 1-7
+docs/backend/runtime-credentials.md
+  s_55c9c16466c150::t_bad2db14fea33a 45,335-336
+docs/generated/sqlite-schema/knowledge_vector_store.md
+  s_af367323ed1620::t_f034e1a857a932 101,103,108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49a7942ef64436f3a9f24510cb148b097115503e",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
