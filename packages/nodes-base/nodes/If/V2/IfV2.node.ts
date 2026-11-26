@@ -22,11 +22,8 @@ export class IfV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: [2, 2.1, 2.2, 2.3, 2.4],
-<<<<<<< HEAD
 			iconColor: 'green',
-=======
 			annotations: READ_ONLY_ANNOTATIONS,
->>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
 			defaults: {
 				name: 'If',
 			},

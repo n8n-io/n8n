@@ -4100,11 +4100,7 @@ importers:
         version: 1.0.1(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-<<<<<<< HEAD
-        version: 1.1.27(a6c5dde5a7866d3008f31f456ee8cd2a)
-=======
-        version: 1.1.27(a4d94d26bce574e0185a96e917957c90)
->>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
+        version: 1.1.27(de87f382ec460444012478acf26cccf6)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -18636,7 +18632,7 @@ packages:
   alasql@4.4.0:
     resolution: {integrity: sha512-EQOk3NEvKcQxoYeY0d4ePF0VHAcljx3pn5ZkEowMPRThjWXyDc/VHYqC8Sg+6BH2ZhKZBdeRqlvlgZmhfGBtDA==}
     engines: {node: '>=15'}
-    deprecated: 'Please upgrade to 4.4.2 or later: https://github.com/AlaSQL/alasql/security/advisories/GHSA-834p-3m5w-q478'
+    deprecated: 'Please upgrade to 4.4.3 or later: https://github.com/AlaSQL/alasql/security/advisories/GHSA-67vj-hh8j-j94f'
     hasBin: true
 
   alien-signals@1.0.4:
@@ -31744,11 +31740,7 @@ snapshots:
       - aws-crt
       - encoding
 
-<<<<<<< HEAD
   '@langchain/community@1.1.27(6a537aadd7ef46c1b62ec015156742f1)':
-=======
-  '@langchain/community@1.1.27(4e59d8369963e09853e77d65cd00623b)':
->>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -31771,10 +31763,6 @@ snapshots:
       '@azure/storage-blob': 12.32.0(supports-color@8.1.1)
       '@browserbasehq/sdk': 2.12.0(encoding@0.1.13)
       '@getzep/zep-cloud': 1.0.6(9980a818c6426eec4183d32c32b19e1a)
-<<<<<<< HEAD
-=======
-      '@getzep/zep-js': 2.0.2(encoding@0.1.13)
->>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)(supports-color@8.1.1)
       '@libsql/client': 0.17.2(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
       '@mozilla/readability': 0.6.0
@@ -31800,11 +31788,7 @@ snapshots:
       jsdom: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       jsonwebtoken: 9.0.3
       lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
-<<<<<<< HEAD
       mammoth: 1.12.1
-=======
-      mammoth: 1.12.3
->>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5(patch_hash=3827ce0d19ea8a667a03b05afe753b3d8a7a5a837ccfc4b8f5516e738e6cea82)
@@ -31822,11 +31806,7 @@ snapshots:
       - '@smithy/hash-node'
       - peggy
 
-<<<<<<< HEAD
-  '@langchain/community@1.1.27(a6c5dde5a7866d3008f31f456ee8cd2a)':
-=======
-  '@langchain/community@1.1.27(a4d94d26bce574e0185a96e917957c90)':
->>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
+  '@langchain/community@1.1.27(de87f382ec460444012478acf26cccf6)':
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -31850,10 +31830,6 @@ snapshots:
       '@azure/storage-blob': 12.32.0(supports-color@8.1.1)
       '@browserbasehq/sdk': 2.12.0(encoding@0.1.13)
       '@getzep/zep-cloud': 1.0.6(9980a818c6426eec4183d32c32b19e1a)
-<<<<<<< HEAD
-=======
-      '@getzep/zep-js': 2.0.2(encoding@0.1.13)
->>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)(supports-color@8.1.1)
       '@huggingface/inference': 4.0.5
       '@libsql/client': 0.17.2(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
@@ -31883,11 +31859,7 @@ snapshots:
       jsonwebtoken: 9.0.3
       lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mammoth: 1.12.3
-<<<<<<< HEAD
-      mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.3)
-=======
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
->>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5(patch_hash=3827ce0d19ea8a667a03b05afe753b3d8a7a5a837ccfc4b8f5516e738e6cea82)
       pg: 8.21.0(pg-native@3.8.0)

@@ -170,7 +170,6 @@ describe('router', () => {
 		20000,
 	);
 
-<<<<<<< HEAD
 	test.each<[string, RouteRecordName, boolean, boolean]>([
 		['/settings/ai', VIEWS.WORKFLOWS, false, false],
 		['/settings/ai', VIEWS.AI_SETTINGS, true, false],
@@ -190,7 +189,11 @@ describe('router', () => {
 			settingsStore.settings.aiBuilder = { enabled: builderEnabled, setup: builderEnabled };
 
 			await router.push(path);
-=======
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		20000,
+	);
+
 	test.each<[string, boolean, Scope[], RouteRecordName]>([
 		['without permission', true, [], VIEWS.WORKFLOWS],
 		['with reviews off', false, ['securitySettings:manage'], VIEWS.SECURITY_SETTINGS],
@@ -210,7 +213,6 @@ describe('router', () => {
 			rbacStore.setGlobalScopes(scopes);
 
 			await router.push('/settings/security/workflow-reviews/project-requirements');
->>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
 			expect(router.currentRoute.value.name).toBe(name);
 		},
 		20000,

@@ -12,11 +12,7 @@ import {
 	PROJECT_EDITOR_ROLE_SLUG,
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
-<<<<<<< HEAD
-=======
-	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
 	PROMOTION_PROJECT_ACCESS_SETTING_KEYS,
->>>>>>> 113d2c7013710ff7108b00d3f9d358fb3abf998c
 } from '@n8n/permissions';
 import type { EntityManager, FindManyOptions, Repository } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
