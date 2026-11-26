@@ -32,37 +32,6 @@ const deprecatedNodes = [
 	'./nodes/WriteBinaryFile/**',
 ];
 
-// A json parameter must set validateType, so that an expression can return an
-// object or an array. Remove a folder from the list when its findings are fixed.
-const jsonValidateTypePending = [
-	'./nodes/Amqp/**',
-	'./nodes/Beeminder/**',
-	'./nodes/Confluence/**',
-	'./nodes/Databricks/**',
-	'./nodes/Discord/**',
-	'./nodes/Elastic/**',
-	'./nodes/ExecuteWorkflow/**',
-	'./nodes/Ghost/**',
-	'./nodes/Google/CloudStorage/**',
-	'./nodes/GraphQL/**',
-	'./nodes/HttpRequest/**',
-	'./nodes/KoBoToolbox/**',
-	'./nodes/MessageAnAgent/**',
-	'./nodes/Microsoft/AzureCosmosDb/**',
-	'./nodes/Microsoft/Dataverse/**',
-	'./nodes/Microsoft/Excel/**',
-	'./nodes/Microsoft/ExcelSharePoint/**',
-	'./nodes/Misp/**',
-	'./nodes/MondayCom/**',
-	'./nodes/MongoDb/**',
-	'./nodes/N8n/**',
-	'./nodes/Oracle/**',
-	'./nodes/Perplexity/**',
-	'./nodes/RespondToWebhook/**',
-	'./nodes/TheHive/**',
-	'./nodes/TheHiveProject/**',
-];
-
 // Request URLs must come from requestPath or requestUrl, or be a constant string.
 // These folders still send a full URL on purpose (a next page link, a URL from a
 // response, a record or the user) or hit a limit of the rule. Remove a folder from
@@ -312,13 +281,6 @@ export default defineConfig(
 		},
 	},
 	{
-		files: ['./nodes/**/*.ts'],
-		ignores: [...jsonValidateTypePending, ...deprecatedNodes],
-		rules: {
-			'n8n-local-rules/require-json-validate-type': 'error',
-		},
-	},
-	{
 		files: ['**/*.test.ts', '**/test/**/*.ts'],
 		rules: {
 			'import-x/no-extraneous-dependencies': 'off',
@@ -328,7 +290,6 @@ export default defineConfig(
 			'n8n-local-rules/require-encoded-path-segments': 'off',
 			'n8n-local-rules/require-disable-reason': 'off',
 			'n8n-local-rules/require-request-target': 'off',
-			'n8n-local-rules/require-json-validate-type': 'off',
 		},
 	},
 	...databricksUserAgentRestriction,
