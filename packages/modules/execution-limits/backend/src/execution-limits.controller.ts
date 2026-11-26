@@ -35,7 +35,6 @@ export class ExecutionLimitsController {
 				instanceMaxExecutions: dto.maxExecutions,
 				defaultProjectMaxExecutions: dto.defaultProjectMaxExecutions,
 			},
-			dto.version,
 			req.user.id,
 			loginIdOf(req.ctx),
 		);

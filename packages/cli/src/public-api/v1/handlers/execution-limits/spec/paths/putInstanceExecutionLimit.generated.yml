@@ -5,7 +5,7 @@ summary: 'Preview: Replace the instance execution limit'
 description: |-
   **Preview** — breaking changes may still occur without major version bump.
 
-  Replaces the instance execution limit settings. All four fields are required, and a `GET` response is a valid `PUT` body. `defaultProjectMaxExecutions` cannot be above `maxExecutions`. Each new team project gets `defaultProjectMaxExecutions` as its own limit when it is created. Existing projects keep their limits. `version` must equal the version from the last read; a stale version is rejected with 409 without changes.
+  Replaces the instance execution limit settings. All three fields are required, and a `GET` response is a valid `PUT` body. `defaultProjectMaxExecutions` cannot be above `maxExecutions`. Each new team project gets `defaultProjectMaxExecutions` as its own limit when it is created. Existing projects keep their limits.
 
   Requires the `executionLimit:update` API key scope.
 x-required-scope: executionLimit:update
@@ -38,16 +38,10 @@ requestBody:
             maximum: 2147483647
             description: Default execution limit for new team projects, or null for no default. Cannot be above maxExecutions. Each new team project gets this limit when it is created. Existing projects keep their limits.
             example: 10000
-          version:
-            type: integer
-            minimum: 0
-            description: Optimistic concurrency version. Must match the version from the last read. A PUT that changes no value keeps the version.
-            example: 3
         required:
           - periodUnit
           - maxExecutions
           - defaultProjectMaxExecutions
-          - version
         additionalProperties: false
 responses:
   '200':
@@ -62,8 +56,6 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
-  '409':
-    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '429':

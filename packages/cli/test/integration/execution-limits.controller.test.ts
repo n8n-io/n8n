@@ -50,16 +50,14 @@ describe('Internal API /rest/execution-limits/instance', () => {
 			periodUnit: 'month',
 			maxExecutions: null,
 			defaultProjectMaxExecutions: null,
-			version: 0,
 		});
 	});
 
-	test('allows an admin to read and write with the current version', async () => {
+	test('allows an admin to read and write', async () => {
 		const write = await testServer.authAgentFor(admin).put(INSTANCE_PATH).send({
 			periodUnit: 'week',
 			maxExecutions: 100_000,
 			defaultProjectMaxExecutions: 10_000,
-			version: 0,
 		});
 
 		expect(write.statusCode).toBe(200);
@@ -67,66 +65,28 @@ describe('Internal API /rest/execution-limits/instance', () => {
 			periodUnit: 'week',
 			maxExecutions: 100_000,
 			defaultProjectMaxExecutions: 10_000,
-			version: 1,
 		});
 
 		const read = await testServer.authAgentFor(admin).get(INSTANCE_PATH);
 		expect(read.statusCode).toBe(200);
 		expect(read.body.data).toEqual(write.body.data);
 
-		// A GET body round-trips as a valid PUT body. It changes no value, so the version stays.
+		// A GET body round-trips as a valid PUT body.
 		const roundTrip = await testServer.authAgentFor(admin).put(INSTANCE_PATH).send(read.body.data);
 		expect(roundTrip.statusCode).toBe(200);
 		expect(roundTrip.body.data).toEqual(read.body.data);
 	});
 
-	test('rejects a stale version with 409 and changes nothing', async () => {
-		await testServer.authAgentFor(owner).put(INSTANCE_PATH).send({
-			periodUnit: 'month',
-			maxExecutions: 50_000,
-			defaultProjectMaxExecutions: 5_000,
-			version: 0,
-		});
-
-		const stale = await testServer.authAgentFor(owner).put(INSTANCE_PATH).send({
-			periodUnit: 'day',
-			maxExecutions: 10_000,
-			defaultProjectMaxExecutions: null,
-			version: 0,
-		});
-
-		expect(stale.statusCode).toBe(409);
-
-		const current = await testServer.authAgentFor(owner).get(INSTANCE_PATH);
-		expect(current.body.data).toEqual({
-			periodUnit: 'month',
-			maxExecutions: 50_000,
-			defaultProjectMaxExecutions: 5_000,
-			version: 1,
-		});
-	});
-
 	test.each([
-		['missing periodUnit', { maxExecutions: 100, defaultProjectMaxExecutions: null, version: 0 }],
-		[
-			'missing maxExecutions',
-			{ periodUnit: 'month', defaultProjectMaxExecutions: null, version: 0 },
-		],
-		[
-			'missing defaultProjectMaxExecutions',
-			{ periodUnit: 'month', maxExecutions: 100, version: 0 },
-		],
-		[
-			'missing version',
-			{ periodUnit: 'month', maxExecutions: 100, defaultProjectMaxExecutions: null },
-		],
+		['missing periodUnit', { maxExecutions: 100, defaultProjectMaxExecutions: null }],
+		['missing maxExecutions', { periodUnit: 'month', defaultProjectMaxExecutions: null }],
+		['missing defaultProjectMaxExecutions', { periodUnit: 'month', maxExecutions: 100 }],
 		[
 			'extra unknown field',
 			{
 				periodUnit: 'month',
 				maxExecutions: 100,
 				defaultProjectMaxExecutions: null,
-				version: 0,
 				unknownField: true,
 			},
 		],
@@ -141,7 +101,6 @@ describe('Internal API /rest/execution-limits/instance', () => {
 			periodUnit: 'month',
 			maxExecutions: 100,
 			defaultProjectMaxExecutions: 101,
-			version: 0,
 		});
 
 		expect(response.statusCode).toBe(400);
@@ -151,7 +110,6 @@ describe('Internal API /rest/execution-limits/instance', () => {
 			periodUnit: 'month',
 			maxExecutions: null,
 			defaultProjectMaxExecutions: null,
-			version: 0,
 		});
 	});
 
@@ -163,7 +121,6 @@ describe('Internal API /rest/execution-limits/instance', () => {
 					periodUnit: 'month',
 					maxExecutions: null,
 					defaultProjectMaxExecutions: null,
-					version: 0,
 				})
 			).statusCode,
 		).toBe(401);
@@ -177,7 +134,6 @@ describe('Internal API /rest/execution-limits/instance', () => {
 					periodUnit: 'month',
 					maxExecutions: 100,
 					defaultProjectMaxExecutions: null,
-					version: 0,
 				})
 			).statusCode,
 		).toBe(403);
@@ -190,7 +146,6 @@ describe('Internal API /rest/execution-limits/instance', () => {
 					periodUnit: 'month',
 					maxExecutions: 100,
 					defaultProjectMaxExecutions: null,
-					version: 0,
 				})
 			).statusCode,
 		).toBe(403);
@@ -206,7 +161,6 @@ describe('Internal API /rest/execution-limits/instance', () => {
 					periodUnit: 'month',
 					maxExecutions: 100,
 					defaultProjectMaxExecutions: null,
-					version: 0,
 				})
 			).statusCode,
 		).toBe(403);
@@ -217,7 +171,6 @@ describe('Internal API /rest/execution-limits/instance', () => {
 			periodUnit: 'month',
 			maxExecutions: 10_000,
 			defaultProjectMaxExecutions: 250,
-			version: 0,
 		});
 		expect(updateResponse.statusCode).toBe(200);
 

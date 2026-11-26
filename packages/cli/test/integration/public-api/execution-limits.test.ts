@@ -51,16 +51,14 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 			periodUnit: 'month',
 			maxExecutions: null,
 			defaultProjectMaxExecutions: null,
-			version: 0,
 		});
 	});
 
-	test('allows an admin API key to read, write with the current version, and round-trip GET to PUT', async () => {
+	test('allows an admin API key to read, write, and round-trip GET to PUT', async () => {
 		const write = await testServer.publicApiAgentFor(admin).put(INSTANCE_PATH).send({
 			periodUnit: 'day',
 			maxExecutions: 100_000,
 			defaultProjectMaxExecutions: 10_000,
-			version: 0,
 		});
 
 		expect(write.statusCode).toBe(200);
@@ -68,7 +66,6 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 			periodUnit: 'day',
 			maxExecutions: 100_000,
 			defaultProjectMaxExecutions: 10_000,
-			version: 1,
 		});
 
 		const read = await testServer.publicApiAgentFor(admin).get(INSTANCE_PATH);
@@ -80,85 +77,16 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 		expect(roundTrip.body).toEqual(read.body);
 	});
 
-	test('keeps the version when a PUT changes no value', async () => {
-		const settings = {
-			periodUnit: 'week',
-			maxExecutions: 50_000,
-			defaultProjectMaxExecutions: 5_000,
-		};
-		await testServer
-			.publicApiAgentFor(owner)
-			.put(INSTANCE_PATH)
-			.send({ ...settings, version: 0 });
-
-		const unchanged = await testServer
-			.publicApiAgentFor(owner)
-			.put(INSTANCE_PATH)
-			.send({ ...settings, version: 1 });
-		expect(unchanged.statusCode).toBe(200);
-		expect(unchanged.body).toEqual({ ...settings, version: 1 });
-
-		const stale = await testServer
-			.publicApiAgentFor(owner)
-			.put(INSTANCE_PATH)
-			.send({ ...settings, version: 0 });
-		expect(stale.statusCode).toBe(409);
-
-		const changed = await testServer
-			.publicApiAgentFor(owner)
-			.put(INSTANCE_PATH)
-			.send({ ...settings, maxExecutions: 60_000, version: 1 });
-		expect(changed.statusCode).toBe(200);
-		expect(changed.body).toEqual({ ...settings, maxExecutions: 60_000, version: 2 });
-	});
-
-	test('rejects a stale version with 409 and changes nothing', async () => {
-		await testServer.publicApiAgentFor(owner).put(INSTANCE_PATH).send({
-			periodUnit: 'week',
-			maxExecutions: 50_000,
-			defaultProjectMaxExecutions: 5_000,
-			version: 0,
-		});
-
-		const stale = await testServer.publicApiAgentFor(owner).put(INSTANCE_PATH).send({
-			periodUnit: 'month',
-			maxExecutions: 10_000,
-			defaultProjectMaxExecutions: null,
-			version: 0,
-		});
-
-		expect(stale.statusCode).toBe(409);
-
-		const current = await testServer.publicApiAgentFor(owner).get(INSTANCE_PATH);
-		expect(current.body).toEqual({
-			periodUnit: 'week',
-			maxExecutions: 50_000,
-			defaultProjectMaxExecutions: 5_000,
-			version: 1,
-		});
-	});
-
 	test.each([
-		['missing periodUnit', { maxExecutions: 100, defaultProjectMaxExecutions: null, version: 0 }],
-		[
-			'missing maxExecutions',
-			{ periodUnit: 'month', defaultProjectMaxExecutions: null, version: 0 },
-		],
-		[
-			'missing defaultProjectMaxExecutions',
-			{ periodUnit: 'month', maxExecutions: 100, version: 0 },
-		],
-		[
-			'missing version',
-			{ periodUnit: 'month', maxExecutions: 100, defaultProjectMaxExecutions: null },
-		],
+		['missing periodUnit', { maxExecutions: 100, defaultProjectMaxExecutions: null }],
+		['missing maxExecutions', { periodUnit: 'month', defaultProjectMaxExecutions: null }],
+		['missing defaultProjectMaxExecutions', { periodUnit: 'month', maxExecutions: 100 }],
 		[
 			'extra unknown field',
 			{
 				periodUnit: 'month',
 				maxExecutions: 100,
 				defaultProjectMaxExecutions: null,
-				version: 0,
 				unknownField: true,
 			},
 		],
@@ -173,7 +101,6 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 			periodUnit: 'month',
 			maxExecutions: 100,
 			defaultProjectMaxExecutions: 101,
-			version: 0,
 		});
 
 		expect(response.statusCode).toBe(400);
@@ -183,7 +110,6 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 			periodUnit: 'month',
 			maxExecutions: null,
 			defaultProjectMaxExecutions: null,
-			version: 0,
 		});
 	});
 
@@ -197,7 +123,6 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 					periodUnit: 'month',
 					maxExecutions: null,
 					defaultProjectMaxExecutions: null,
-					version: 0,
 				})
 			).statusCode,
 		).toBe(401);
@@ -213,7 +138,6 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 					periodUnit: 'month',
 					maxExecutions: 100,
 					defaultProjectMaxExecutions: null,
-					version: 0,
 				})
 			).statusCode,
 		).toBe(403);
@@ -225,7 +149,6 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 					periodUnit: 'month',
 					maxExecutions: 100,
 					defaultProjectMaxExecutions: null,
-					version: 0,
 				})
 			).statusCode,
 		).toBe(403);
@@ -240,7 +163,6 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 					periodUnit: 'month',
 					maxExecutions: 100,
 					defaultProjectMaxExecutions: null,
-					version: 0,
 				})
 			).statusCode,
 		).toBe(403);
@@ -256,7 +178,6 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 					periodUnit: 'month',
 					maxExecutions: 100,
 					defaultProjectMaxExecutions: null,
-					version: 0,
 				})
 			).statusCode,
 		).toBe(403);
@@ -272,7 +193,6 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 					periodUnit: 'month',
 					maxExecutions: 100,
 					defaultProjectMaxExecutions: null,
-					version: 0,
 				})
 			).statusCode,
 		).toBe(503);
@@ -283,7 +203,6 @@ describe('Public API /api/v1/execution-limits/instance', () => {
 			periodUnit: 'month',
 			maxExecutions: 10_000,
 			defaultProjectMaxExecutions: 500,
-			version: 0,
 		});
 		expect(updateResponse.statusCode).toBe(200);
 

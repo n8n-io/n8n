@@ -12,12 +12,11 @@ describe('executionLimitMaxExecutionsSchema', () => {
 });
 
 describe('DEFAULT_EXECUTION_LIMIT_SETTINGS', () => {
-	test('is a valid settings row with a monthly period, no caps and version 0', () => {
+	test('is a valid settings row with a monthly period and no caps', () => {
 		expect(executionLimitSettingsSchema.parse(DEFAULT_EXECUTION_LIMIT_SETTINGS)).toEqual({
 			periodUnit: 'month',
 			instanceMaxExecutions: null,
 			defaultProjectMaxExecutions: null,
-			version: 0,
 		});
 	});
 });
@@ -27,7 +26,6 @@ describe('executionLimitSettingsSchema', () => {
 		periodUnit: 'month',
 		instanceMaxExecutions: 100_000,
 		defaultProjectMaxExecutions: 5_000,
-		version: 3,
 	};
 
 	test.each([
@@ -36,7 +34,6 @@ describe('executionLimitSettingsSchema', () => {
 			'a cap at the int column limit',
 			{ ...valid, instanceMaxExecutions: EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING },
 		],
-		['version 0', { ...valid, version: 0 }],
 	])('accepts a period with %s', (_, value) => {
 		expect(executionLimitSettingsSchema.safeParse(value).success).toBe(true);
 	});
@@ -46,19 +43,9 @@ describe('executionLimitSettingsSchema', () => {
 			periodUnit: 'day',
 			instanceMaxExecutions: null,
 			defaultProjectMaxExecutions: null,
-			version: 0,
 		});
 
 		expect(result.success).toBe(true);
-	});
-
-	test('reads a stored row without version as version 0', () => {
-		const { version: _, ...withoutVersion } = valid;
-
-		expect(executionLimitSettingsSchema.parse(withoutVersion)).toEqual({
-			...withoutVersion,
-			version: 0,
-		});
 	});
 
 	test('reads a row that a newer version saved with an extra field', () => {
@@ -79,10 +66,6 @@ describe('executionLimitSettingsSchema', () => {
 		['a missing cap', { periodUnit: 'day', instanceMaxExecutions: null }],
 		['a string cap', { ...valid, instanceMaxExecutions: '100' }],
 		['a fractional cap', { ...valid, defaultProjectMaxExecutions: 1.5 }],
-		['a negative version', { ...valid, version: -1 }],
-		['a fractional version', { ...valid, version: 1.5 }],
-		['a string version', { ...valid, version: '1' }],
-		['a null version', { ...valid, version: null }],
 	])('rejects %s', (_, value) => {
 		expect(executionLimitSettingsSchema.safeParse(value).success).toBe(false);
 	});

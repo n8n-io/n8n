@@ -11,7 +11,7 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { ExecutionLimitAuditRepository } from './execution-limit-audit.repository';
 import {
@@ -73,22 +73,13 @@ export class ExecutionLimitsService {
 	 * Changes the given settings and keeps the others. A `null` maximum removes that limit.
 	 * An instance limit below a project limit is accepted. The project limit stays as it is.
 	 * The default limit for new projects cannot be above the instance limit.
-	 * `expectedVersion` must match the stored version; a stale version throws `ConflictError`.
-	 * A change that sets the values already stored writes nothing and keeps the version.
 	 */
 	async updateSettings(
-		changes: Partial<Omit<ExecutionLimitSettings, 'version'>>,
-		expectedVersion: number,
+		changes: Partial<ExecutionLimitSettings>,
 		updatedBy: string | null,
 		loginId?: string,
 	): Promise<ExecutionLimitSettings> {
 		return await this.commit(updatedBy, loginId, async (ctx, current) => {
-			if (current.version !== expectedVersion) {
-				throw new ConflictError(
-					`Execution limit settings changed since the last read (expected version ${expectedVersion}, found ${current.version})`,
-				);
-			}
-
 			const merged = executionLimitSettingsSchema.safeParse({ ...current, ...changes });
 			if (!merged.success) {
 				throw BadRequestError.wrap('The execution limit settings are not valid', merged.error);
@@ -99,15 +90,9 @@ export class ExecutionLimitsService {
 				);
 			}
 
-			// A new version tells other clients that their read is stale. Without a change, it
-			// would only make their next write fail.
-			const settingChanges = diffLimitSettings(current, merged.data);
-			if (settingChanges.length === 0) return { result: current, changes: [] };
+			await this.settingsStore.write(merged.data, ctx);
 
-			const saved = { ...merged.data, version: current.version + 1 };
-			await this.settingsStore.write(saved, ctx);
-
-			return { result: saved, changes: settingChanges };
+			return { result: merged.data, changes: diffLimitSettings(current, merged.data) };
 		});
 	}
 

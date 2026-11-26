@@ -3,7 +3,6 @@ import '../../openapi-extend';
 import {
 	executionLimitMaxExecutionsSchema,
 	executionLimitPeriodUnitSchema,
-	executionLimitVersionSchema,
 	type ExecutionLimitSettings,
 } from '../../schemas/execution-limit-settings.schema';
 import { Z } from '../../zod-class';
@@ -22,11 +21,6 @@ const instanceExecutionLimitShape = {
 			'Default execution limit for new team projects, or null for no default. Cannot be above maxExecutions. Each new team project gets this limit when it is created. Existing projects keep their limits.',
 		example: 10_000,
 	}),
-	version: executionLimitVersionSchema.openapi({
-		description:
-			'Optimistic concurrency version. Must match the version from the last read. A PUT that changes no value keeps the version.',
-		example: 3,
-	}),
 };
 
 /** Instance execution limit returned by `GET` and `PUT` on both internal and public APIs. */
@@ -44,6 +38,5 @@ export function toInstanceExecutionLimit(
 		periodUnit: settings.periodUnit,
 		maxExecutions: settings.instanceMaxExecutions,
 		defaultProjectMaxExecutions: settings.defaultProjectMaxExecutions,
-		version: settings.version,
 	};
 }

@@ -10,7 +10,6 @@ describe('InstanceExecutionLimitDto and PutInstanceExecutionLimitDto', () => {
 		periodUnit: 'month' as const,
 		maxExecutions: 100_000,
 		defaultProjectMaxExecutions: 10_000,
-		version: 3,
 	};
 
 	test('accepts a full object with caps', () => {
@@ -18,12 +17,11 @@ describe('InstanceExecutionLimitDto and PutInstanceExecutionLimitDto', () => {
 		expect(InstanceExecutionLimitDto.parse(valid)).toEqual(valid);
 	});
 
-	test('accepts a fresh instance shape with null caps and version 0', () => {
+	test('accepts a fresh instance shape with null caps', () => {
 		const fresh = {
 			periodUnit: 'month' as const,
 			maxExecutions: null,
 			defaultProjectMaxExecutions: null,
-			version: 0,
 		};
 
 		expect(PutInstanceExecutionLimitDto.parse(fresh)).toEqual(fresh);
@@ -41,26 +39,14 @@ describe('InstanceExecutionLimitDto and PutInstanceExecutionLimitDto', () => {
 	});
 
 	test.each([
-		['missing periodUnit', { maxExecutions: 100, defaultProjectMaxExecutions: null, version: 0 }],
-		[
-			'missing maxExecutions',
-			{ periodUnit: 'month', defaultProjectMaxExecutions: null, version: 0 },
-		],
-		[
-			'missing defaultProjectMaxExecutions',
-			{ periodUnit: 'month', maxExecutions: 100, version: 0 },
-		],
-		[
-			'missing version',
-			{ periodUnit: 'month', maxExecutions: 100, defaultProjectMaxExecutions: null },
-		],
+		['missing periodUnit', { maxExecutions: 100, defaultProjectMaxExecutions: null }],
+		['missing maxExecutions', { periodUnit: 'month', defaultProjectMaxExecutions: null }],
+		['missing defaultProjectMaxExecutions', { periodUnit: 'month', maxExecutions: 100 }],
 		['unknown periodUnit', { ...valid, periodUnit: 'year' }],
 		['zero maxExecutions', { ...valid, maxExecutions: 0 }],
 		['negative defaultProjectMaxExecutions', { ...valid, defaultProjectMaxExecutions: -1 }],
 		['cap above ceiling', { ...valid, maxExecutions: EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING + 1 }],
 		['fractional maxExecutions', { ...valid, maxExecutions: 10.5 }],
-		['negative version', { ...valid, version: -1 }],
-		['fractional version', { ...valid, version: 1.2 }],
 		['unknown extra field', { ...valid, extra: true }],
 	])('PutInstanceExecutionLimitDto rejects %s', (_, payload) => {
 		expect(PutInstanceExecutionLimitDto.safeParse(payload).success).toBe(false);
@@ -72,7 +58,6 @@ describe('InstanceExecutionLimitDto and PutInstanceExecutionLimitDto', () => {
 				periodUnit: 'month',
 				instanceMaxExecutions: 100_000,
 				defaultProjectMaxExecutions: 10_000,
-				version: 3,
 			}),
 		).toEqual(valid);
 	});

@@ -1156,7 +1156,6 @@ export {
 	executionLimitMaxExecutionsSchema,
 	executionLimitPeriodUnitSchema,
 	executionLimitSettingsSchema,
-	executionLimitVersionSchema,
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,
 } from './schemas/execution-limit-settings.schema';

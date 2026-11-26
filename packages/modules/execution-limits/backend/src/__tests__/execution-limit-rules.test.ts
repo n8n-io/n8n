@@ -57,7 +57,6 @@ describe('isDefaultProjectLimitAboveInstanceLimit', () => {
 				periodUnit: 'month' as const,
 				instanceMaxExecutions,
 				defaultProjectMaxExecutions,
-				version: 0,
 			};
 
 			expect(isDefaultProjectLimitAboveInstanceLimit(settings)).toBe(expected);
@@ -70,16 +69,10 @@ describe('diffLimitSettings', () => {
 		periodUnit: 'month' as const,
 		instanceMaxExecutions: 100,
 		defaultProjectMaxExecutions: null,
-		version: 1,
 	};
 
 	it('returns one change for each setting with a new value', () => {
-		const after = {
-			...before,
-			periodUnit: 'week' as const,
-			instanceMaxExecutions: null,
-			version: 2,
-		};
+		const after = { ...before, periodUnit: 'week' as const, instanceMaxExecutions: null };
 
 		expect(diffLimitSettings(before, after)).toEqual([
 			{ projectId: null, field: 'periodUnit', oldValue: 'month', newValue: 'week' },
@@ -87,8 +80,8 @@ describe('diffLimitSettings', () => {
 		]);
 	});
 
-	it('returns nothing when no setting has a new value, even when version changes', () => {
-		expect(diffLimitSettings(before, { ...before, version: before.version + 1 })).toEqual([]);
+	it('returns nothing when no setting has a new value', () => {
+		expect(diffLimitSettings(before, { ...before })).toEqual([]);
 	});
 });
 

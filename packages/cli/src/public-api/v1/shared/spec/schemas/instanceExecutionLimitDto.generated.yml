@@ -22,13 +22,7 @@ properties:
     maximum: 2147483647
     description: Default execution limit for new team projects, or null for no default. Cannot be above maxExecutions. Each new team project gets this limit when it is created. Existing projects keep their limits.
     example: 10000
-  version:
-    type: integer
-    minimum: 0
-    description: Optimistic concurrency version. Must match the version from the last read. A PUT that changes no value keeps the version.
-    example: 3
 required:
   - periodUnit
   - maxExecutions
   - defaultProjectMaxExecutions
-  - version

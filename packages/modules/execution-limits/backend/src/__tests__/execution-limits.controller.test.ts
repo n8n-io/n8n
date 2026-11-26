@@ -56,23 +56,20 @@ describe('ExecutionLimitsController handlers', () => {
 			periodUnit: 'month',
 			instanceMaxExecutions: 100_000,
 			defaultProjectMaxExecutions: 10_000,
-			version: 3,
 		});
 
 		expect(await controller.getInstanceLimit()).toEqual({
 			periodUnit: 'month',
 			maxExecutions: 100_000,
 			defaultProjectMaxExecutions: 10_000,
-			version: 3,
 		});
 	});
 
-	it('putInstanceLimit forwards fields, version, user id and loginId from request context', async () => {
+	it('putInstanceLimit forwards fields, user id and loginId from request context', async () => {
 		service.updateSettings.mockResolvedValue({
 			periodUnit: 'week',
 			instanceMaxExecutions: 500,
 			defaultProjectMaxExecutions: 100,
-			version: 4,
 		});
 		const req = mock<AuthenticatedRequest>({
 			user: mock<User>({ id: 'user-1' }),
@@ -86,7 +83,6 @@ describe('ExecutionLimitsController handlers', () => {
 			periodUnit: 'week',
 			maxExecutions: 500,
 			defaultProjectMaxExecutions: 100,
-			version: 3,
 		} as PutInstanceExecutionLimitDto;
 
 		const result = await controller.putInstanceLimit(req, undefined, dto);
@@ -97,7 +93,6 @@ describe('ExecutionLimitsController handlers', () => {
 				instanceMaxExecutions: 500,
 				defaultProjectMaxExecutions: 100,
 			},
-			3,
 			'user-1',
 			'login-1',
 		);
@@ -105,7 +100,6 @@ describe('ExecutionLimitsController handlers', () => {
 			periodUnit: 'week',
 			maxExecutions: 500,
 			defaultProjectMaxExecutions: 100,
-			version: 4,
 		});
 	});
 });
