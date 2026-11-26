@@ -65,6 +65,16 @@ describe('agentSkillExport', () => {
 		await expect(useAgentSkillImport().importSkillFiles(files)).resolves.toEqual(skill);
 	});
 
+	it('keeps a binary asset byte for byte at its original path', async () => {
+		const { blob } = await exportAgentSkill({
+			...base,
+			references: [{ path: 'assets/icons/logo.png', content: 'AP8K', isBinary: true }],
+		});
+
+		const entries = unzipSync(await blobBytes(blob));
+		expect(entries['research-search/assets/icons/logo.png']).toEqual(new Uint8Array([0, 255, 10]));
+	});
+
 	it.each(['.', '..', '  '])('names the folder `skill` for the name %j', async (name) => {
 		const result = await exportAgentSkill({
 			...base,

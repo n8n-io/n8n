@@ -16,9 +16,10 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeTypeDescription,
+	NodeConnectionType,
 	NodeHint,
 } from 'n8n-workflow';
-import { jsonParse, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type { ViewportBoundaries } from '@/features/workflows/canvas/canvas.types';
 import {
@@ -51,9 +52,14 @@ export const PUSH_NODES_OFFSET = DEFAULT_NODE_SIZE[0] * 2 + GRID_SIZE;
 // Horizontal gap the auto-layout leaves between adjacent nodes (dagre `ranksep`).
 // Shared so manual placement and cleanup stay in lockstep.
 export const NODE_X_SPACING = GRID_SIZE * 8;
-// Center-to-center horizontal step when placing a node directly after another
-// (plus button, connection drop, mid-flow insert). Must equal a node width plus
-// NODE_X_SPACING so a freshly placed node lands exactly where cleanup would put it.
+// Vertical gap the auto-layout leaves between nodes in one column (dagre `nodesep`)
+export const NODE_Y_SPACING = GRID_SIZE * 6;
+// Gaps the auto-layout leaves between an AI node and its sub-nodes
+export const AI_X_SPACING = GRID_SIZE * 3;
+export const AI_Y_SPACING = GRID_SIZE * 8;
+// Horizontal step past a default-width node: its width plus NODE_X_SPACING. A
+// mid-flow insert uses it to shift the downstream nodes. To place a node after
+// another node, use getNextNodeSlot, which uses the rendered width of the source.
 export const HORIZONTAL_NODE_STEP = DEFAULT_NODE_SIZE[0] + NODE_X_SPACING;
 export const DEFAULT_VIEWPORT_BOUNDARIES: ViewportBoundaries = {
 	xMin: -Infinity,
@@ -116,35 +122,23 @@ export const getBottomMostNode = <T extends { position: XYPosition }>(nodes: T[]
 	}, nodes[0]);
 };
 
-export const getNodesGroupSize = (nodes: INodeUi[]): [number, number] => {
-	const leftMostNode = getLeftMostNode(nodes);
-	const topMostNode = getTopMostNode(nodes);
-	const rightMostNode = getRightMostNode(nodes);
-	const bottomMostNode = getBottomMostNode(nodes);
-
-	const width =
-		Math.abs(rightMostNode.position[0] - leftMostNode.position[0]) + DEFAULT_NODE_SIZE[0];
-	const height =
-		Math.abs(bottomMostNode.position[1] - topMostNode.position[1]) + DEFAULT_NODE_SIZE[1];
-
-	return [width, height];
-};
-
 /**
- * Checks if the given position is available for a new node
+ * Returns the size of the bounding box of the nodes. Without `getNodeSize`, every node is 96 × 96.
  */
-export const canUsePosition = (
-	position1: XYPosition,
-	position2: XYPosition,
-	size: [number, number] = DEFAULT_NODE_SIZE,
-) => {
-	if (Math.abs(position1[0] - position2[0]) <= size[0]) {
-		if (Math.abs(position1[1] - position2[1]) <= size[1]) {
-			return false;
-		}
+export const getNodesGroupSize = (
+	nodes: INodeUi[],
+	getNodeSize: (node: INodeUi) => [number, number] = () => DEFAULT_NODE_SIZE,
+): [number, number] => {
+	let [xMin, yMin, xMax, yMax] = [Infinity, Infinity, -Infinity, -Infinity];
+	for (const node of nodes) {
+		const [width, height] = getNodeSize(node);
+		xMin = Math.min(xMin, node.position[0]);
+		yMin = Math.min(yMin, node.position[1]);
+		xMax = Math.max(xMax, node.position[0] + width);
+		yMax = Math.max(yMax, node.position[1] + height);
 	}
 
-	return true;
+	return [xMax - xMin, yMax - yMin];
 };
 
 /**
@@ -173,7 +167,19 @@ export function snapToGrid(value: number): number {
 }
 
 /**
- * Returns the new position for a node based on the given position and the nodes in the workflow
+ * A node blocks a position when it overlaps the candidate rectangle or is less
+ * than one grid cell away from it.
+ */
+export function isPositionBlocked(candidate: Rect, obstacle: Rect): boolean {
+	return doRectsOverlap(addPadding(candidate, GRID_SIZE), obstacle);
+}
+
+const isFiniteRect = ({ x, y, width, height }: Rect) =>
+	[x, y, width, height].every((value) => Number.isFinite(value));
+
+/**
+ * Returns the new position for a node based on the given position and the nodes in the workflow.
+ * `getNodeSize` gives the size of each existing node. Without it, every node is 96 × 96.
  */
 export const getNewNodePosition = (
 	nodes: INodeUi[],
@@ -183,11 +189,13 @@ export const getNewNodePosition = (
 		size = DEFAULT_NODE_SIZE,
 		viewport = DEFAULT_VIEWPORT_BOUNDARIES,
 		normalize = true,
+		getNodeSize = () => DEFAULT_NODE_SIZE,
 	}: {
 		offset?: XYPosition;
 		size?: [number, number];
 		viewport?: ViewportBoundaries;
 		normalize?: boolean;
+		getNodeSize?: (node: INodeUi) => [number, number];
 	} = {},
 ): XYPosition => {
 	// Step at least one grid cell, so that the conflict loop always moves the position
@@ -198,28 +206,31 @@ export const getNewNodePosition = (
 	const resolvedPosition: XYPosition = snapPositionToGrid(initialPosition);
 
 	if (normalize) {
-		let conflictFound = false;
-		let i, node;
-		do {
-			conflictFound = false;
-			for (i = 0; i < nodes.length; i++) {
-				node = nodes[i];
+		// A rectangle with a non-finite value overlaps everything, so the loop would never end
+		const obstacles = nodes
+			.filter((node) => node && !NODE_POSITION_CONFLICT_ALLOWLIST.includes(node.type))
+			.map((node) => {
+				const [width, height] = getNodeSize(node);
+				return { x: node.position[0], y: node.position[1], width, height };
+			})
+			.filter(isFiniteRect);
+		const isBlocked = () => {
+			const candidate = {
+				x: resolvedPosition[0],
+				y: resolvedPosition[1],
+				width: size[0],
+				height: size[1],
+			};
+			return (
+				isFiniteRect(candidate) &&
+				obstacles.some((obstacle) => isPositionBlocked(candidate, obstacle))
+			);
+		};
 
-				if (!node || NODE_POSITION_CONFLICT_ALLOWLIST.includes(node.type)) {
-					continue;
-				}
-
-				if (!canUsePosition(node.position, resolvedPosition, size)) {
-					conflictFound = true;
-					break;
-				}
-			}
-
-			if (conflictFound) {
-				resolvedPosition[0] += resolvedOffset[0];
-				resolvedPosition[1] += resolvedOffset[1];
-			}
-		} while (conflictFound);
+		while (isBlocked()) {
+			resolvedPosition[0] += resolvedOffset[0];
+			resolvedPosition[1] += resolvedOffset[1];
+		}
 
 		if (resolvedPosition[0] < viewport.xMin + resolvedOffset[0]) {
 			resolvedPosition[0] = viewport.xMin + resolvedOffset[0];
@@ -510,34 +521,65 @@ export function getGenericHints({
 }
 
 /**
- * Generate vertical insertion offsets for the given node count
+ * Generates vertical offsets for the given node count, centered on 0.
+ * Each offset is one `nodeSize + spacing` step from the next one:
  *
- * 2 nodes -> [-nodeSize, nodeSize],
- * 3 nodes -> [-nodeSize - 2 * gridSize, 0, nodeSize + 2 * gridSize],
- * 4 nodes ->	[-2 * nodeSize - 2 * gridSize, -nodeSize, nodeSize, 2 * nodeSize + 2 * gridSize]
- * 5 nodes ->	[-2 * nodeSize - 2 * gridSize, -nodeSize, 0, nodeSize, 2 * nodeSize + 2 * gridSize]
+ * 2 nodes -> [-step / 2, step / 2]
+ * 3 nodes -> [-step, 0, step]
  */
-export function generateOffsets(nodeCount: number, nodeSize: number, gridSize: number) {
-	const offsets = [];
-	const half = Math.floor(nodeCount / 2);
-	const isOdd = nodeCount % 2 === 1;
+export function generateOffsets(nodeCount: number, nodeSize: number, spacing: number) {
+	const step = nodeSize + spacing;
 
-	if (nodeCount === 0) {
-		return [];
-	}
+	return Array.from({ length: nodeCount }, (_, index) => (index - (nodeCount - 1) / 2) * step);
+}
 
-	for (let i = -half; i <= half; i++) {
-		if (i === 0) {
-			if (isOdd) {
-				offsets.push(0);
-			}
-		} else {
-			const offset = i * nodeSize + Math.sign(i) * (Math.abs(i) - (isOdd ? 0 : 1)) * gridSize;
-			offsets.push(offset);
-		}
-	}
+/** The node that the new node comes after */
+export type NextNodeSlotSource = {
+	position: XYPosition;
+	/** Rendered width */
+	width: number;
+	/** Offset of the main output handle from the top */
+	handleOffset: number;
+};
 
-	return offsets;
+/** The node to place */
+export type NextNodeSlotTarget = {
+	/** Rendered height */
+	height: number;
+	/** Offset of the main input handle from the top */
+	handleOffset: number;
+};
+
+/** The main output of the source that the new node connects to, of `count` main outputs */
+export type NextNodeSlotFan = {
+	index: number;
+	count: number;
+};
+
+export type NextNodeSlotOptions = {
+	source: NextNodeSlotSource;
+	target: NextNodeSlotTarget;
+	fan?: NextNodeSlotFan;
+};
+
+/**
+ * Gets the position of a node that comes after the source node. The node is one
+ * NODE_X_SPACING gap past the source's right edge, and its main input handle is
+ * on the line of the source's main output handle, the same as after tidy-up.
+ * For a source with more than one main output, `fan` moves the node to the row of
+ * output `index`. The rows are one new node height plus NODE_Y_SPACING apart.
+ */
+export function getNextNodeSlot({
+	source,
+	target,
+	fan = { index: 0, count: 1 },
+}: NextNodeSlotOptions): XYPosition {
+	const fanOffset = generateOffsets(fan.count, target.height, NODE_Y_SPACING)[fan.index] ?? 0;
+
+	return [
+		source.position[0] + source.width + NODE_X_SPACING,
+		source.position[1] + source.handleOffset + fanOffset - target.handleOffset,
+	];
 }
 
 /**
@@ -572,7 +614,7 @@ export function getBounds(
 	return { xMin, yMin, xMax, yMax };
 }
 
-function addPadding({ x, y, width, height }: Rect, amount: number): Rect {
+export function addPadding({ x, y, width, height }: Rect, amount: number): Rect {
 	return {
 		x: x - amount,
 		y: y - amount,
@@ -629,6 +671,7 @@ export function calculateNodeSize(
 	mainInputCount: number,
 	mainOutputCount: number,
 	nonMainInputCount: number,
+	nonMainOutputCount: number,
 	isExperimentalNdvActive: boolean,
 ): { width: number; height: number } {
 	const maxVerticalHandles = Math.max(mainInputCount, mainOutputCount, 1);
@@ -636,7 +679,8 @@ export function calculateNodeSize(
 	const widthScale = isExperimentalNdvActive ? 1.5 : 1;
 
 	if (isConfigurable) {
-		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount);
+		// Non-main inputs sit at the bottom and non-main outputs at the top: the busier side sets the width
+		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount, nonMainOutputCount);
 
 		return {
 			// Configuration node has extra width so that its centered port aligns to the grid
@@ -653,6 +697,30 @@ export function calculateNodeSize(
 	}
 
 	return { width: DEFAULT_NODE_SIZE[0] * widthScale, height };
+}
+
+/**
+ * Returns the size of a default-rendered node from its port types, with the rule
+ * of the canvas node: a non-main output makes it a configuration node, and a
+ * configurable node is as wide as its busier side of non-main ports.
+ */
+export function getNodeSizeFromPorts(
+	inputTypes: NodeConnectionType[],
+	outputTypes: NodeConnectionType[],
+): { width: number; height: number } {
+	const isMain = (type: NodeConnectionType) => type === NodeConnectionTypes.Main;
+	const nonMainInputCount = inputTypes.filter((type) => !isMain(type)).length;
+	const nonMainOutputCount = outputTypes.filter((type) => !isMain(type)).length;
+
+	return calculateNodeSize(
+		nonMainOutputCount > 0,
+		nonMainInputCount > 0,
+		inputTypes.filter(isMain).length,
+		outputTypes.filter(isMain).length,
+		nonMainInputCount,
+		nonMainOutputCount,
+		false,
+	);
 }
 
 /** True when the canvas paste handler can import the text: workflow JSON or a workflow URL. */

@@ -57,6 +57,7 @@ describe('Agent package export scope', () => {
 			'export',
 			'import',
 			'read',
+			'list',
 			'create',
 			'update',
 			'publish',
@@ -181,6 +182,11 @@ describe('custom role scope whitelists', () => {
 		// Every role can message Chat, so the scope is baseline rather than part of Manage.
 		expect(bundle).not.toContain('chatHub:message');
 		expect(BASELINE_INSTANCE_SCOPES).toContain('chatHub:message');
+	});
+
+	it('grants Migration Report access to every instance role, but not running migrations', () => {
+		expect(MANDATORY_INSTANCE_SCOPES).toContain('breakingChanges:list');
+		expect(GLOBAL_CUSTOM_ROLE_SCOPES).not.toContain('breakingChanges:migrate');
 	});
 
 	it('exposes n8n Assistant and n8n Agent scopes as their own use/manage options', () => {
@@ -427,6 +433,7 @@ describe('mandatory instance options', () => {
 describe('baseline instance scopes', () => {
 	it('lists the read scopes Member holds that have no option of their own', () => {
 		expect([...BASELINE_INSTANCE_SCOPES].sort()).toEqual([
+			'breakingChanges:list',
 			'chatHub:message',
 			'credentialResolver:list',
 			'dataTable:list',

@@ -208,11 +208,7 @@ jq -r '.publicKey' provider.json   # add to the repository as a deploy key
 n8n-cli promotion-environment create --file=promote.json
 n8n-cli promotion-environment create --file=apply.json
 
-# 3. Connect each environment before you use it.
-n8n-cli promotion-environment connect <promoteId>
-n8n-cli promotion-environment connect <applyId>
-
-# 4. Promote from this instance, or apply to it.
+# 3. Promote from this instance, or apply to it.
 n8n-cli promotion-environment promote <promoteId>
 n8n-cli promotion-environment apply <applyId>
 
@@ -232,28 +228,32 @@ remote URL and the branch names from it instead of guessing them:
 n8n-cli promotion-provider create --file=gitlab-provider.json --format=id-only   # providerId
 n8n-cli promotion-provider list-repositories <providerId> --search=flows --json  # remoteUrl, fullPath
 n8n-cli promotion-provider list-branches <providerId> <fullPath> --json          # isDefault marks the default branch
-# Put remoteUrl and a branch name in the environment JSON, then create and connect as above.
+# Put remoteUrl and a branch name in the environment JSON, then create the environment as above.
 ```
 
 Apply a reviewed commit only:
 
 ```bash
-# Review the changes. Take the commit SHA from the same response as the rows:
-# a second request can read a newer commit.
-n8n-cli promotion-environment list-changes <projectId> apply --json > reviewed-changes.json
-jq '{commitSha, source, resources}' reviewed-changes.json
-# The branch comes from the Apply environment.
-n8n-cli promotion-environment get <applyId> --jq '.settings.branchName'
+# Review the changes. The table lists each changed resource with its PROJECT. A team project
+# that the package does not hold is listed as deleted, with everything in it. Take the source,
+# the commit SHA and the revision from the same response as the rows: a second request can
+# read a newer commit.
+n8n-cli promotion-environment list-apply-changes <applyId> --json > reviewed-changes.json
+jq '{commitSha, source, revision}' reviewed-changes.json
 
 n8n-cli promotion-environment apply <applyId> \
-  --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
-# Exit 3: the source changed since the review. Review again.
+  --expected-environment-id=<source.environmentId> --expected-branch=<source.branchName> \
+  --expected-commit-sha=<commitSha> --expected-preview-revision=<revision>
+# Exit 3: the source or this instance changed since the review. Review again.
 # Exit 4: the Apply check found missing bindings, access requirements, or conflicts. Resolve them,
 # then run the apply-continue command that apply printed:
 n8n-cli promotion-environment apply-continue <applyId> \
   --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
+# Setting up bindings changes the preview. To continue only with a reviewed preview, run
+# list-apply-changes again and add --expected-preview-revision=<new revision>.
 # To also apply destructive data table changes and delete the team projects that the
-# package does not hold, add --confirm-destructive-changes.
+# package does not hold, add --confirm-destructive-changes. With --expected-preview-revision,
+# it covers only what that preview showed.
 ```
 
 Promote or apply a selection of a project:
@@ -264,6 +264,12 @@ Promote or apply a selection of a project:
 # variable, or tag can't be selected: select a workflow from its USEDBY column instead.
 n8n-cli promotion-environment list-changes <projectId> promote
 n8n-cli promotion-environment promote-selection <projectId> -w <workflowId> --folder <folderId>
+
+# Promote only the reviewed selection. Take the revision from the preview.
+n8n-cli promotion-environment list-changes <projectId> promote --json > preview.json
+n8n-cli promotion-environment promote-selection <projectId> -w <workflowId> \
+  --expected-preview-revision="$(jq -r .revision preview.json)"
+# Exit 3: the project or its branch changed since the review. Review again.
 
 # Apply only the reviewed selection. Take the source and the revision from the same preview.
 n8n-cli promotion-environment list-changes <projectId> apply --json > preview.json
@@ -303,7 +309,8 @@ n8n-cli promotion-environment list --provider=<providerId>
 n8n-cli promotion-environment get <id>
 echo '{"name":"New name"}' | n8n-cli promotion-environment update <id> --stdin
 n8n-cli promotion-environment delete <id>
-n8n-cli promotion-environment disconnect <id>
+n8n-cli promotion-environment connect <id>      # optional: clone the branch now
+n8n-cli promotion-environment disconnect <id>   # remove the local checkout
 
 # Change the settings. The write replaces the whole settings object,
 # so send every setting you want to keep. Direction and scope cannot change.
@@ -333,20 +340,31 @@ Key points:
   shortens values longer than 60 characters to `...`.
 - `createBranchOnPromotion` is always required in promote settings.
 - `promote` and `apply` work on an `instance` environment of their direction
-  only, and need it connected first. Connecting one environment does not make another
-  ready.
+  only.
+- `connect` is optional. The other commands prepare the environment when they
+  need it. Do not run `connect` before each command.
 - A project can have one environment for each direction. A direction without a
   project environment uses the instance environment.
-- `apply` and `apply-continue` import nothing on exit code `3` (`source-changed`)
-  or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
+- `apply` and `apply-continue` import nothing on exit code `3` (`source-changed`
+  or `preview-changed`) or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
   read `counts`. With `--json`, a `blocked` result lists what is missing under
   `check`.
 - The `--expected-environment-id`, `--expected-branch`, and
   `--expected-commit-sha` flags go together: pass all three or none. The commit
-  SHA must be the full SHA. `--expected-preview-revision` is separate and works
-  only with `apply-selection` and `apply-selection-continue`.
-- API key scopes for this group are named `promotions:*`. `promote` also needs
-  `variable:list` when the workflows reference variables.
+  SHA must be the full SHA. `--expected-preview-revision` is separate. It works
+  with `promote-selection`, `apply`, `apply-continue`, `apply-selection`, and
+  `apply-selection-continue`. Take it from `list-apply-changes` for a whole-instance
+  Apply and from `list-changes <projectId> <promote|apply>` for a selection.
+- API key scopes for this group are named `promotions:*`:
+  - `promotion-provider create`, `update`, `delete`, `list-repositories` and
+    `list-branches` need `manageProviders`. `promotion-provider list` and `get`
+    need `readProviders`.
+  - `promotion-environment create`, `update`, `delete`, `connect`,
+    `disconnect`, `add-project` and `remove-project` need `manageEnvironments`.
+    `promotion-environment list`, `get`, `list-projects` and
+    `list-missing-projects` need `readEnvironments`.
+  - Preview and promote commands need only `promote`. Preview, apply and
+    continue commands need only `apply`.
 
 ## Other
 

@@ -3,11 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
-import type { BuiltTool } from '../../types/sdk/tool';
+import type { BuiltTool, ToolCallInterceptor } from '../../types/sdk/tool';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentMessageList } from '../model/message-list';
 import { fromAiMessages } from '../model/messages';
+import { estimateObservationTokens } from '../model/model-token-counter';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
@@ -38,7 +39,7 @@ describe('ToolCallRunner large results', () => {
 					},
 				]),
 			);
-			const tokenCounter = vi.fn((text: string) => Math.ceil(text.length / 4));
+			const tokenCounter = (text: string) => Math.ceil(text.length / 5);
 			const runner = new ToolCallRunner({
 				eventBus: new AgentEventBus(),
 				telemetry: new RuntimeTelemetry({
@@ -76,9 +77,13 @@ describe('ToolCallRunner large results', () => {
 			expect(list.responseDelta()).toMatchObject([
 				{ content: [{ type: 'tool-call', state: 'resolved', output: result.modelOutput }] },
 			]);
-			expect(Buffer.byteLength(JSON.stringify(result.modelOutput), 'utf8')).toBeLessThanOrEqual(
+			expect(tokenCounter(JSON.stringify(result.modelOutput))).toBeLessThanOrEqual(
 				MAX_MODEL_TOOL_RESULT_TOKENS,
 			);
+			if (storageMode !== 'writable') {
+				const envelope = result.modelOutput as { head: string; tail: string };
+				expect(envelope.head.length + envelope.tail.length).toBeGreaterThan(200_000);
+			}
 			expect(runner.hasOffloadedToolResults).toBe(storageMode === 'writable');
 			expect(writeFile).toHaveBeenCalledTimes(
 				storageMode === 'writable' || storageMode === 'failed' ? 1 : 0,
@@ -90,8 +95,62 @@ describe('ToolCallRunner large results', () => {
 					expect.objectContaining({ recursive: true, overwrite: true }),
 				);
 			}
-			expect(tokenCounter).not.toHaveBeenCalled();
 		},
+	);
+
+	it.each([false, true])(
+		'preserves a large result within the token limit with storage available: %s',
+		async (storageAvailable) => {
+			const filesystem = new InMemoryFilesystem();
+			const writeFile = vi.spyOn(filesystem, 'writeFile');
+			const output = ' '.repeat(5_200_000);
+			const tool: BuiltTool = {
+				name: 'large_result',
+				description: 'Return a large result',
+				handler: vi.fn().mockResolvedValue(output),
+			};
+			const list = new AgentMessageList();
+			list.addResponse(
+				fromAiMessages([
+					{
+						role: 'assistant',
+						content: [{ type: 'tool-call', toolCallId: 'tc-1', toolName: tool.name, input: {} }],
+					},
+				]),
+			);
+			const runner = new ToolCallRunner({
+				eventBus: new AgentEventBus(),
+				telemetry: new RuntimeTelemetry({
+					name: 'test-agent',
+					model: 'openai/gpt-5',
+					instructions: '',
+				}),
+				concurrency: 1,
+				onCancelled: vi.fn(),
+				tokenCounter: estimateObservationTokens,
+				workspaceFilesystem: storageAvailable ? filesystem : undefined,
+			});
+
+			const result = await runner.processToolCall({
+				toolName: tool.name,
+				toolCallId: 'tc-1',
+				input: {},
+				toolMap: new Map([[tool.name, tool]]),
+				list,
+				runId: 'run-1',
+			});
+
+			if (result.outcome !== 'success') throw new Error('Expected a successful tool call');
+			expect(runner.hasOffloadedToolResults).toBe(false);
+			expect(typeof result.modelOutput).toBe('string');
+			expect(result.modelOutput).toBe(output);
+			expect(result.toolEntry.output).toBe(output);
+			expect(list.responseDelta()).toMatchObject([
+				{ content: [{ type: 'tool-call', state: 'resolved', output }] },
+			]);
+			expect(writeFile).not.toHaveBeenCalled();
+		},
+		35_000,
 	);
 });
 
@@ -181,4 +240,114 @@ describe('ToolCallRunner error budgeting', () => {
 			expect(budgetText.includes('\t')).toBe(false);
 		},
 	);
+});
+
+describe('ToolCallRunner guardrail after-stage stop', () => {
+	function makeRunner(toolCallInterceptor?: ToolCallInterceptor) {
+		const config: AgentRuntimeConfig = {
+			name: 'test-agent',
+			model: 'openai/gpt-5',
+			instructions: '',
+			memory: new InMemoryMemory(),
+		};
+		return {
+			config,
+			runner: new ToolCallRunner({
+				eventBus: new AgentEventBus(),
+				telemetry: new RuntimeTelemetry(config),
+				concurrency: 1,
+				onCancelled: vi.fn(),
+				tokenCounter: vi.fn((text: string) => text.length),
+				...(toolCallInterceptor ? { toolCallInterceptor } : {}),
+			}),
+		};
+	}
+
+	function makeCall(tool: BuiltTool) {
+		const toolName = tool.name;
+		const sdkMessages: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [{ type: 'tool-call', toolCallId: 'call-1', toolName, input: {} }],
+			},
+		];
+		const list = new AgentMessageList();
+		list.addResponse(fromAiMessages(sdkMessages));
+		return {
+			toolName,
+			list,
+			params: {
+				toolName,
+				toolCallId: 'call-1',
+				input: {},
+				toolMap: new Map([[toolName, tool]]),
+				list,
+				runId: 'run-1',
+			},
+		};
+	}
+
+	it('turns an afterTool stop into a tool-error outcome', async () => {
+		const handler = vi
+			.fn<NonNullable<BuiltTool['handler']>>()
+			.mockResolvedValue('a result with a http://evil.example link');
+		const tool: BuiltTool = { name: 'fetch_page', description: 'Synthetic tool', handler };
+		const { runner } = makeRunner();
+		const { params } = makeCall(tool);
+
+		const outcome = await runner.processToolCall({
+			...params,
+			guardrails: {
+				hooks: [
+					{
+						afterTool: async () => ({ action: 'stop' as const, code: 'guardrail.urls.g1' }),
+					},
+				],
+			},
+		});
+
+		expect(outcome).toMatchObject({
+			outcome: 'error',
+			error: expect.stringContaining('Tool result blocked by guardrail: guardrail.urls.g1'),
+		});
+		// The tool ran; only its result is refused.
+		expect(handler).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the success outcome when the after-stage hook only observes', async () => {
+		const handler = vi.fn<NonNullable<BuiltTool['handler']>>().mockResolvedValue('clean result');
+		const tool: BuiltTool = { name: 'fetch_page', description: 'Synthetic tool', handler };
+		const { runner } = makeRunner();
+		const { params } = makeCall(tool);
+
+		const outcome = await runner.processToolCall({
+			...params,
+			guardrails: {
+				hooks: [{ afterTool: async () => await Promise.resolve(undefined) }],
+			},
+		});
+
+		expect(outcome).toMatchObject({ outcome: 'success' });
+		expect(handler).toHaveBeenCalledTimes(1);
+	});
+
+	it('checks the result an interceptor returns', async () => {
+		const handler = vi.fn<NonNullable<BuiltTool['handler']>>().mockResolvedValue('real result');
+		const tool: BuiltTool = { name: 'fetch_page', description: 'Synthetic tool', handler };
+		const afterTool = vi.fn(async () => ({ action: 'stop' as const, code: 'guardrail.urls.g1' }));
+		const { runner } = makeRunner(async () => await Promise.resolve('replaced result'));
+		const { params } = makeCall(tool);
+
+		const outcome = await runner.processToolCall({
+			...params,
+			guardrails: { hooks: [{ afterTool }] },
+		});
+
+		expect(outcome).toMatchObject({
+			outcome: 'error',
+			error: expect.stringContaining('Tool result blocked by guardrail: guardrail.urls.g1'),
+		});
+		expect(afterTool).toHaveBeenCalledWith(expect.anything(), 'replaced result');
+		expect(handler).not.toHaveBeenCalled();
+	});
 });

@@ -36,4 +36,8 @@ export class AgentObservationCursorEntity
 
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	lastModelId: string | null;
+
+	/** Plan checklist and working commands the Observer last wrote. Each write replaces it. */
+	@Column({ type: 'text', nullable: true })
+	workingSet: string | null;
 }

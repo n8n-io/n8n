@@ -170,6 +170,30 @@ describe('router', () => {
 		20000,
 	);
 
+	test.each<[string, boolean, Scope[], RouteRecordName]>([
+		['without permission', true, [], VIEWS.WORKFLOWS],
+		['with reviews off', false, ['securitySettings:manage'], VIEWS.SECURITY_SETTINGS],
+		[
+			'with reviews on',
+			true,
+			['securitySettings:manage'],
+			VIEWS.SECURITY_WORKFLOW_REVIEW_INSTANCE_SETTINGS,
+		],
+	])(
+		'should resolve the workflow review project settings %s',
+		async (_case, reviewsEnabled, scopes, name) => {
+			const rbacStore = useRBACStore();
+
+			settingsStore.settings.enterprise.workflowReviews = true;
+			settingsStore.setWorkflowReviewsPolicy({ enabled: reviewsEnabled, alwaysRequired: false });
+			rbacStore.setGlobalScopes(scopes);
+
+			await router.push('/settings/security/workflow-reviews/project-requirements');
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		20000,
+	);
+
 	test.each<[string, RouteRecordName, Scope[]]>([
 		['/settings/resolvers', VIEWS.WORKFLOWS, []],
 		[

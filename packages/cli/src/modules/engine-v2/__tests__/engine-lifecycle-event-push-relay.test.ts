@@ -5,11 +5,13 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Push } from '@/push';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
+import type { EngineV2PushSession } from '@/services/engine-v2-push-session';
 
 import { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 
 const EXECUTION_ID = 'exec-1';
 const PUSH_REF = 'push-1';
+const USER_ID = 'user-1';
 const WORKFLOW_ID = 'wf-1';
 const TRIGGER_NAME = 'When clicking Execute';
 
@@ -47,6 +49,11 @@ const stepFailed: LifecycleEvent = {
 	...stepFields,
 	type: 'step:failed',
 	at: '2026-08-25T10:00:01.500Z',
+	error: {
+		name: 'NodeOperationError',
+		message: 'Node execution failed',
+		details: { description: 'Check the credentials', context: { itemIndex: 2 } },
+	},
 };
 
 const stepWaiting: LifecycleEvent = {
@@ -73,9 +80,10 @@ describe('EngineLifecycleEventPushRelay', () => {
 	const sentOfType = <T extends PushMessage['type']>(type: T) =>
 		sent().filter((message): message is Extract<PushMessage, { type: T }> => message.type === type);
 
-	const register = (overrides: { trigger?: { nodeName: string; outputs: never } } = {}) =>
+	const register = (overrides: Partial<Pick<EngineV2PushSession, 'trigger' | 'start'>> = {}) =>
 		registry.register(EXECUTION_ID, {
 			pushRef: PUSH_REF,
+			userId: USER_ID,
 			workflowId: WORKFLOW_ID,
 			...overrides,
 		});
@@ -102,18 +110,47 @@ describe('EngineLifecycleEventPushRelay', () => {
 
 		relay.relay([stepStarted, stepCompleted]);
 
-		for (const [, pushRef] of vi.mocked(push.send).mock.calls) {
-			expect(pushRef).toBe(PUSH_REF);
+		for (const [, pushRef, userId] of vi.mocked(push.send).mock.calls) {
+			expect([pushRef, userId]).toEqual([PUSH_REF, USER_ID]);
 		}
 	});
 
-	it('never sends executionStarted', () => {
-		// Would overwrite the editor's existing run data with an empty scaffold.
-		register();
+	describe('execution:started', () => {
+		const start = {
+			mode: 'webhook' as const,
+			source: 'instance_ai' as const,
+			workflowName: 'My workflow',
+			flattedRunData: '[{"Edit Fields":"1"},[]]',
+		};
 
-		relay.relay([executionStarted, stepStarted, stepCompleted]);
+		it('sends executionStarted from what the dispatcher prepared', () => {
+			register({ start });
 
-		expect(sentOfType('executionStarted')).toHaveLength(0);
+			relay.relay([executionStarted]);
+
+			expect(sent()).toEqual([
+				{
+					type: 'executionStarted',
+					data: {
+						executionId: EXECUTION_ID,
+						workflowId: WORKFLOW_ID,
+						mode: 'webhook',
+						source: 'instance_ai',
+						workflowName: 'My workflow',
+						startedAt: new Date(executionStarted.at),
+						flattedRunData: start.flattedRunData,
+					},
+				},
+			]);
+		});
+
+		it('sends it once, however often the event is redelivered', () => {
+			register({ start });
+
+			relay.relay([executionStarted, executionStarted]);
+
+			expect(sentOfType('executionStarted')).toHaveLength(1);
+		});
 	});
 
 	describe('the trigger', () => {
@@ -124,14 +161,16 @@ describe('EngineLifecycleEventPushRelay', () => {
 				pushRef: PUSH_REF,
 				workflowId: WORKFLOW_ID,
 				trigger: { nodeName: TRIGGER_NAME, outputs: triggerOutputs },
+				start: { mode: 'manual', flattedRunData: '[{}]' },
 			});
 
-		it('reports its run, because the engine never announces it', () => {
+		it('reports its run after the run is announced, because the engine never announces it', () => {
 			registerWithTrigger();
 
 			relay.relay([executionStarted]);
 
 			expect(sent().map((message) => message.type)).toEqual([
+				'executionStarted',
 				'nodeExecuteBefore',
 				'nodeExecuteAfter',
 				'nodeExecuteAfterData',
@@ -212,7 +251,7 @@ describe('EngineLifecycleEventPushRelay', () => {
 			const call = vi
 				.mocked(push.send)
 				.mock.calls.find(([message]) => message.type === 'nodeExecuteAfterData');
-			expect(call?.[2]).toBe(true);
+			expect(call?.[3]).toBe(true);
 		});
 
 		it('reuses the executionIndex allocated at the start, so the two messages pair up', () => {
@@ -245,6 +284,20 @@ describe('EngineLifecycleEventPushRelay', () => {
 			expect(sentOfType('nodeExecuteAfterData')[0].data.data.data).toEqual({
 				main: [[{ json: { a: 1 } }], []],
 			});
+		});
+
+		it('reports success without data when the engine withheld the outputs', () => {
+			register();
+
+			relay.relay([
+				stepStarted,
+				{ ...stepFields, type: 'step:completed', at: '2026-08-25T10:00:01.500Z' },
+			]);
+
+			const [after] = sentOfType('nodeExecuteAfter');
+			expect(after.data.data.executionStatus).toBe('success');
+			expect(after.data.data).not.toHaveProperty('error');
+			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(0);
 		});
 
 		it('still reports the outcome when the start was lost', () => {
@@ -316,14 +369,19 @@ describe('EngineLifecycleEventPushRelay', () => {
 			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(0);
 		});
 
-		it('sends an error that survives the wire', () => {
+		it('sends the recorded error with its details, in a shape that survives the wire', () => {
 			// A plain `Error` would serialize to `{}`.
 			register();
 
 			relay.relay([stepStarted, stepFailed]);
 
 			const { error } = sentOfType('nodeExecuteAfter')[0].data.data;
-			expect(JSON.stringify(error)).toContain('Node execution failed');
+			expect(error?.toJSON?.()).toMatchObject({
+				name: 'NodeOperationError',
+				message: 'Node execution failed',
+				description: 'Check the credentials',
+				context: { itemIndex: 2 },
+			});
 		});
 	});
 

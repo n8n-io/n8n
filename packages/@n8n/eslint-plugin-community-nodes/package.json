@@ -1,7 +1,7 @@
 {
   "name": "@n8n/eslint-plugin-community-nodes",
   "type": "module",
-  "version": "0.40.0",
+  "version": "0.42.0",
   "main": "./dist/plugin.js",
   "types": "./dist/plugin.d.ts",
   "exports": {
@@ -28,18 +28,25 @@
     "watch": "tsc --watch --project tsconfig.build.json"
   },
   "dependencies": {
+    "@n8n/constants": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@typescript-eslint/typescript-estree": "catalog:",
     "@typescript-eslint/utils": "catalog:",
     "change-case": "catalog:",
+    "css-select": "^6.0.0",
+    "culori": "^4.0.2",
+    "domhandler": "^5.0.3",
     "fastest-levenshtein": "catalog:",
-    "pluralize": "^8.0.0"
+    "pluralize": "catalog:",
+    "postcss": "^8.4.38",
+    "saxes": "^6.0.0"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/node": "catalog:",
-    "@types/pluralize": "^0.0.33",
+    "@types/culori": "^4.0.1",
+    "@types/pluralize": "catalog:",
     "n8n-workflow": "workspace:*",
     "@typescript-eslint/rule-tester": "catalog:",
     "eslint-doc-generator": "^2.2.2",
@@ -52,7 +59,7 @@
   },
   "peerDependencies": {
     "eslint": "catalog:",
-    "n8n-workflow": ">=2"
+    "n8n-workflow": "^2.36.0"
   },
   "eslint-doc-generator": {
     "configEmoji": [

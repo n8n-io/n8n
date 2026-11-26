@@ -1,7 +1,8 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, Publisher } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type ApiKey, type AuthenticatedRequest, Person, type User, Role } from '@n8n/db';
+import { PubSubMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -85,6 +86,7 @@ describe('McpSettingsController', () => {
 	const workflowService = mock<WorkflowService>();
 	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>();
 	const eventService = mock<EventService>();
+	const publisher = mock<Publisher>();
 
 	let controller: McpSettingsController;
 
@@ -98,6 +100,7 @@ describe('McpSettingsController', () => {
 		Container.set(WorkflowService, workflowService);
 		Container.set(InstanceSettingsLoaderConfig, instanceSettingsLoaderConfig);
 		Container.set(EventService, eventService);
+		Container.set(Publisher, publisher);
 		controller = Container.get(McpSettingsController);
 	});
 
@@ -151,6 +154,55 @@ describe('McpSettingsController', () => {
 			// surfacing the real stored auto-expose value on enable.
 			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: true });
 		});
+
+		test('tells the other mains to reload the MCP settings', async () => {
+			const req = createReq({ mcpAccessEnabled: true }, { user: createPerson() });
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			await controller.updateSettings(req, createRes(), dto);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-settings' });
+		});
+
+		test('keeps the update when the other mains cannot be told', async () => {
+			const req = createReq({ mcpAccessEnabled: true }, { user: createPerson() });
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+			publisher.publishCommand.mockRejectedValueOnce(new Error('Redis down'));
+
+			const result = await controller.updateSettings(req, createRes(), dto);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to notify other main processes of the MCP settings',
+				{ cause: 'Redis down' },
+			);
+			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: false });
+		});
+
+		test('refreshes the MCP module settings on a reload command from another main', async () => {
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			await controller.refreshMcpModuleSettings();
+
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
+		});
+
+		test.each(['reload-mcp-settings', 'pubsub-reconnected'])(
+			'refreshes the MCP module settings on %s',
+			(eventName) => {
+				const handlers = Container.get(PubSubMetadata)
+					.getHandlers()
+					.filter(
+						({ eventName: name, eventHandlerClass }) =>
+							name === eventName && eventHandlerClass.name === 'McpSettingsController',
+					);
+
+				expect(handlers.map(({ methodName }) => methodName)).toEqual(['refreshMcpModuleSettings']);
+			},
+		);
 
 		test('handles module registry refresh failure gracefully', async () => {
 			const req = createReq({ mcpAccessEnabled: true }, { user: createPerson() });
@@ -243,13 +295,34 @@ describe('McpSettingsController', () => {
 			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: true });
 		});
 
+		test('saves the preferences switch and returns it', async () => {
+			const req = createReq({ preferencesEnabled: false }, { user: createPerson() });
+			const dto = UpdateMcpSettingsDto.parse({ preferencesEnabled: false });
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
+			mcpSettingsService.getPreferencesEnabled.mockResolvedValue(false);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			const result = await controller.updateSettings(req, createRes(), dto);
+
+			expect(mcpSettingsService.setPreferencesEnabled).toHaveBeenCalledWith(false);
+			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
+			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-settings' });
+			expect(result).toEqual({
+				mcpAccessEnabled: true,
+				autoExposeNewWorkflows: false,
+				preferencesEnabled: false,
+			});
+		});
+
 		test('rejects an empty body', () => {
 			const result = UpdateMcpSettingsDto.safeParse({});
 
 			expect(result.success).toBe(false);
 			if (!result.success) {
 				expect(result.error.errors[0].message).toBe(
-					'Provide at least one of mcpAccessEnabled or autoExposeNewWorkflows',
+					'Provide at least one of mcpAccessEnabled, autoExposeNewWorkflows or preferencesEnabled',
 				);
 			}
 			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();

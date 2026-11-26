@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../../../v2/actions/versionDescription';
@@ -20,14 +20,14 @@ const teamId = '1111-2222-3333';
 const channelId = '19:abc@thread.tacv2';
 const messageId = '1698378560692';
 const parentMessageId = '1698324478896';
-const messagesPath = `/v1.0/teams/${teamId}/channels/${channelId}/messages`;
+const messagesPath = requestPath`/v1.0/teams/${teamId}/channels/${channelId}/messages`;
 const successOutput = [[{ json: { success: true }, pairedItem: { item: 0 } }]];
 
 describe.each<[string, string]>([
 	['softDeleteMessage', 'softDelete'],
 	['undoSoftDeleteMessage', 'undoSoftDelete'],
 ])('Microsoft Teams V2 — channelMessage:%s', (operation, action) => {
-	const rootPath = `${messagesPath}/${messageId}/${action}`;
+	const rootPath = requestPath`${messagesPath}/${messageId}/${action}`;
 	const apiRequest = vi.mocked(transport.microsoftApiRequest);
 	let node: MicrosoftTeamsV2;
 	let ctx: MockProxy<IExecuteFunctions>;
@@ -70,7 +70,10 @@ describe.each<[string, string]>([
 		await run({ messageId: 1698324478896 });
 
 		expect(apiRequest).toHaveBeenCalledTimes(1);
-		expect(apiRequest).toHaveBeenCalledWith('POST', `${messagesPath}/1698324478896/${action}`);
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`${messagesPath}/1698324478896/${action}`,
+		);
 	});
 
 	it('posts the action path of a reply when a parent message ID is set', async () => {
@@ -81,7 +84,7 @@ describe.each<[string, string]>([
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			`${messagesPath}/${parentMessageId}/replies/${messageId}/${action}`,
+			requestPath`${messagesPath}/${parentMessageId}/replies/${messageId}/${action}`,
 		);
 		expect(result).toEqual(successOutput);
 	});

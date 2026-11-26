@@ -20,7 +20,10 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { isCloudBrowserResourceDecision } from '../cloudBrowserAgents';
 import { isPendingItemFloating } from '../confirmationKinds';
+import ApprovalAskReason from '@/features/ai/shared/components/ApprovalAskReason.vue';
+import CloudBrowserResourceDecision from './CloudBrowserResourceDecision.vue';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
 import {
 	approvalInputs,
@@ -149,6 +152,7 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
 		toolName: item.toolCall.toolName,
 		args: item.toolCall.args,
 		resourceName: item.toolCall.confirmation.resourceName,
+		approvalDetails: item.toolCall.confirmation.approvalDetails,
 	});
 }
 
@@ -588,6 +592,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				:url="chunk.item.toolCall.confirmation.domainAccess.url"
 				:host="chunk.item.toolCall.confirmation.domainAccess.host"
 				:severity="chunk.item.toolCall.confirmation.severity"
+				:ask-reason="chunk.item.toolCall.confirmation.askReason"
 				@decide="handleDomainDecision(chunk.item.toolCall.confirmation, $event)"
 			/>
 
@@ -597,7 +602,23 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				data-test-id="instance-ai-confirmation-panel"
 				:query="chunk.item.toolCall.confirmation.webSearch.query"
 				:severity="chunk.item.toolCall.confirmation.severity"
+				:ask-reason="chunk.item.toolCall.confirmation.askReason"
 				@decide="handleDomainDecision(chunk.item.toolCall.confirmation, $event)"
+			/>
+
+			<CloudBrowserResourceDecision
+				v-else-if="
+					isCloudBrowserResourceDecision(chunk.item) &&
+					chunk.item.toolCall.confirmation.resourceDecision
+				"
+				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
+				data-test-id="instance-ai-confirmation-panel"
+				:request-id="chunk.item.toolCall.confirmation.requestId"
+				:kind="chunk.item.toolCall.confirmation.resourceDecision.kind"
+				:resource="chunk.item.toolCall.confirmation.resourceDecision.resource"
+				:description="chunk.item.toolCall.confirmation.resourceDecision.description"
+				:options="chunk.item.toolCall.confirmation.resourceDecision.options"
+				:task-title="chunk.item.agentNode.title ?? ''"
 			/>
 
 			<N8nApprovalCard
@@ -628,6 +649,12 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 					<N8nText tag="p" size="small" :class="$style.credentialDescription">
 						{{ buildApprovalSubtitle(chunk.item) }}
 					</N8nText>
+				</template>
+				<template v-else-if="chunk.item.toolCall.confirmation.askReason" #description>
+					<ApprovalAskReason
+						:description="buildApprovalSubtitle(chunk.item)"
+						:reason="chunk.item.toolCall.confirmation.askReason!"
+					/>
 				</template>
 			</N8nApprovalCard>
 		</template>

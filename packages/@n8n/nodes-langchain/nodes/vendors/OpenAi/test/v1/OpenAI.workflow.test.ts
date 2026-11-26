@@ -1,5 +1,6 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import pick from 'lodash/pick';
+import nock from 'nock';
 import type { WorkflowTestData } from 'n8n-workflow';
 import path from 'node:path';
 
@@ -76,4 +77,64 @@ describe('OpenAI Workflow', () => {
 	};
 
 	testHarness.setupTest(testData, { credentials });
+
+	const assistantId = 'asst_abc123';
+	const fileId = 'file-XjGxS3KTG0uNmNOK362iJua3';
+	const updatedAssistant = { ...assistants[0], name: 'Math Tutor' };
+	const deletedAssistant = { id: assistantId, object: 'assistant.deleted', deleted: true };
+	const deletedFile = { id: fileId, object: 'file', deleted: true };
+
+	const requestUrlsTestData: WorkflowTestData = {
+		description: 'Request URLs for assistant and file operations',
+		input: {
+			workflowData: testHarness.readWorkflowJSON('request-urls.workflow.json'),
+		},
+		output: {
+			nodeExecutionOrder: [
+				'When clicking ‘Execute workflow’',
+				'Update Assistant',
+				'Delete Assistant',
+				'Delete File',
+			],
+			nodeData: {
+				'Update Assistant': [[{ json: updatedAssistant }]],
+				'Delete Assistant': [[{ json: deletedAssistant }]],
+				'Delete File': [[{ json: deletedFile }]],
+			},
+		},
+		nock: {
+			baseUrl,
+			mocks: [
+				{
+					method: 'get',
+					path: `/assistants/${assistantId}`,
+					statusCode: 200,
+					responseBody: assistants[0],
+				},
+				{
+					method: 'post',
+					path: `/assistants/${assistantId}`,
+					statusCode: 200,
+					responseBody: updatedAssistant,
+				},
+				{
+					method: 'delete',
+					path: `/assistants/${assistantId}`,
+					statusCode: 200,
+					responseBody: deletedAssistant,
+				},
+				{
+					method: 'delete',
+					path: `/files/${fileId}`,
+					statusCode: 200,
+					responseBody: deletedFile,
+				},
+			],
+		},
+	};
+
+	testHarness.setupTest(requestUrlsTestData, {
+		credentials,
+		customAssertions: () => expect(nock.isDone()).toBe(true),
+	});
 });

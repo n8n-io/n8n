@@ -40,6 +40,11 @@
 			"reason": "Per-project worker-pool config; scoped to the deleted project and dropped via FK cascade."
 		},
 		{
+			"name": "ProjectWorkflowReviewSettings",
+			"path": "packages/@n8n/db/src/entities/project-workflow-review-settings.ee.ts",
+			"reason": "Per-project workflow review config; scoped to the deleted project and dropped via FK cascade."
+		},
+		{
 			"name": "RoleMappingRule",
 			"path": "packages/@n8n/db/src/entities/role-mapping-rule.ts",
 			"reason": "SSO role-mapping config attached to the project, not user data."
@@ -48,6 +53,11 @@
 			"name": "TypeAvailabilityPolicyScope",
 			"path": "packages/cli/src/modules/type-availability-policies/database/entities/type-availability-policy-scope.entity.ts",
 			"reason": "Governance config attached to the project, not user data; dropped via FK cascade. Transferring it could not work anyway: a destination project may already own a scope of the same kind, which uq_type_availability_policy_scope_project rejects."
+		},
+		{
+			"name": "ProjectExecutionLimit",
+			"path": "packages/modules/execution-limits/backend/src/project-execution-limit.entity.ts",
+			"reason": "Governance config attached to the project, not user data; dropped via FK cascade. Transferring it could not work anyway: a destination project may already have its own cap, which the primary key rejects."
 		},
 		{
 			"name": "Variables",
@@ -135,9 +145,34 @@
 			"reason": "Workflow selections belong to the original project configuration. A transfer to another project removes them. Deleting the configuration, project, or workflow also removes them through its foreign key."
 		},
 		{
+			"name": "KnowledgeCollection",
+			"path": "packages/cli/src/modules/knowledge/entities/knowledge-collection.entity.ts",
+			"reason": "Dropped with its owner project through the foreign-key cascade until project deletion can transfer collections. Its files, vector stores, share rows and agent dependencies go with it. An agent collection has no project and goes with its agent."
+		},
+		{
+			"name": "SharedKnowledgeCollection",
+			"path": "packages/cli/src/modules/knowledge/entities/shared-knowledge-collection.entity.ts",
+			"reason": "Dropped with its project through the foreign-key cascade until project deletion can transfer collections. The owner row repeats KnowledgeCollection.projectId and goes with its collection. A user row goes alone: the collection stays in its owner project."
+		},
+		{
 			"name": "ExecutionLedgerEntity",
 			"path": "packages/modules/execution-ledger/backend/src/database/entities/execution-ledger.entity.ts",
 			"reason": "Event record of runs in the project at the time they happened; re-homing rows would misstate where they ran. Rows live only seconds before the fold deletes them, and no foreign key ties them to the project."
+		},
+		{
+			"name": "ExecutionLedgerParkedEntity",
+			"path": "packages/modules/execution-ledger/backend/src/database/entities/execution-ledger-parked.entity.ts",
+			"reason": "Copy of ledger rows that a fold step could not fold. A replay counts them for the project where the run happened, so re-homing rows would misstate where they ran. No foreign key ties them to the project."
+		},
+		{
+			"name": "ExecutionLimitUsage",
+			"path": "packages/modules/execution-limits/backend/src/execution-limit-usage.entity.ts",
+			"reason": "Daily usage counts of runs in the project at the time they ran; re-homing rows would misstate where they ran. No foreign key: rows outlive the project."
+		},
+		{
+			"name": "ExecutionLimitAudit",
+			"path": "packages/modules/execution-limits/backend/src/execution-limit-audit.entity.ts",
+			"reason": "History of the limit changes of the project at the time they happened; re-homing rows would misstate which project a limit belonged to. Rows are never updated, and no foreign key ties them to the project."
 		}
 	]
 }

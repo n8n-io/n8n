@@ -1,6 +1,7 @@
 import {
 	AgentConnectIntegrationDto,
 	AgentDisconnectIntegrationDto,
+	type AgentIntegrationAccountResponse,
 	type AgentDisconnectIntegrationResponse,
 	type AgentIntegrationConnectResponse,
 	type AgentIntegrationStatusResponse,
@@ -15,6 +16,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { AgentIntegrationManagementService } from './agent-integration-management.service';
 import { AgentChannelStatusReporter } from './integrations/agent-channel-status-reporter';
+import { AgentIntegrationAccountService } from './integrations/agent-integration-account.service';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { buildChannelStatusReport } from './integrations/channel-status-report';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
@@ -23,7 +25,7 @@ import { channelIntegrationRecorder } from './integrations/recording/channel-int
 import { AgentChannelStatusRepository } from './repositories/agent-channel-status.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from './agent-write-lock.service';
 import { NotFoundError } from '@n8n/errors';
 
 @RestController('/projects/:projectId/agents/v2')
@@ -36,8 +38,9 @@ export class AgentIntegrationsController {
 		private readonly channelStatusRepository: AgentChannelStatusRepository,
 		private readonly statusReporter: AgentChannelStatusReporter,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
 		private readonly urlService: UrlService,
+		private readonly accountService: AgentIntegrationAccountService,
 	) {}
 
 	@Post('/:agentId/integrations/connect')
@@ -52,7 +55,7 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -83,7 +86,7 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -133,6 +136,32 @@ export class AgentIntegrationsController {
 						false),
 			},
 		};
+	}
+
+	/** Bot name and workspaces of a connected channel, for display labels. */
+	@Get('/:agentId/integrations/:type/account')
+	@ProjectScope('agent:read')
+	async integrationAccount(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('type') type: string,
+	): Promise<AgentIntegrationAccountResponse> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		// Only a credential that this agent uses, so the route cannot read any other.
+		const credentialId = agent.integrations?.find(
+			(integration) => integration.type === type && integration.credentialId,
+		)?.credentialId;
+		if (!credentialId) return {};
+
+		return await this.accountService.describe({
+			user: req.user,
+			projectId: req.params.projectId,
+			type,
+			credentialId,
+		});
 	}
 
 	// Meta has no API for n8n to register this secret with, so the user pastes it

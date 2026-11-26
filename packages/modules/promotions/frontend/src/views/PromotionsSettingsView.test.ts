@@ -10,10 +10,6 @@ import userEvent from '@testing-library/user-event';
 import { mock } from 'vitest-mock-extended';
 import { computed, reactive, ref } from 'vue';
 
-import {
-	invalidateInstancePromotionConnection,
-	useInstancePromotionConnection,
-} from '../composables/useInstancePromotionConnection';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import type { PromotionEnvironment } from '../promotionsSettings.api';
 import { PROMOTIONS_SETTINGS_SCOPES } from '../promotions.constants';
@@ -42,6 +38,7 @@ const environmentsSettings = {
 };
 
 const mockConfirm = vi.fn();
+const showMessage = vi.fn();
 
 vi.mock('@n8n/design-system', async () => ({
 	...(await vi.importActual<object>('@n8n/design-system')),
@@ -49,7 +46,7 @@ vi.mock('@n8n/design-system', async () => ({
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
+	useToast: () => ({ showError: vi.fn(), showMessage }),
 }));
 
 vi.mock('vue-router', async () => ({
@@ -82,6 +79,14 @@ const applyEnvironment: PromotionEnvironment = {
 
 const renderView = createComponentRenderer(PromotionsSettingsView);
 
+const menuButton = (card: HTMLElement) =>
+	within(within(card).getByTestId('promotion-environment-menu')).getByRole('button');
+
+async function testConnection(card: HTMLElement) {
+	await userEvent.click(menuButton(card));
+	await userEvent.click(await screen.findByTestId('action-connect'));
+}
+
 describe('PromotionsSettingsView', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -90,7 +95,6 @@ describe('PromotionsSettingsView', () => {
 			git: null,
 			data: [{ id: 'missing-project', name: 'Billing' }],
 		});
-		invalidateInstancePromotionConnection();
 		createTestingPinia({ stubActions: false });
 		shell.isProtected = false;
 		environmentsSettings.setProtected.mockImplementation(async (value) => {
@@ -157,15 +161,13 @@ describe('PromotionsSettingsView', () => {
 		expect(api.fetchMissingPromotionProjects).toHaveBeenCalledTimes(2);
 	});
 
-	it('removes the environment, then its provider, then refreshes the cached environments', async () => {
+	it('removes the environment, then its provider', async () => {
 		useRBACStore().setGlobalScopes([...PROMOTIONS_SETTINGS_SCOPES, 'project:create']);
 		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
 		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
 		const removal = Promise.withResolvers<undefined>();
 		api.deletePromotionEnvironment.mockReturnValueOnce(removal.promise);
 		mockConfirm.mockResolvedValue('confirm');
-		const cachedEnvironments = useInstancePromotionConnection();
-		await cachedEnvironments.load();
 		renderView();
 
 		const card = await screen.findByTestId('promotion-environment-card-apply');
@@ -194,8 +196,6 @@ describe('PromotionsSettingsView', () => {
 		expect(api.deletePromotionEnvironment.mock.invocationCallOrder[0]).toBeLessThan(
 			api.deleteProviderIfUnused.mock.invocationCallOrder[0],
 		);
-		await cachedEnvironments.load();
-		expect(cachedEnvironments.hasApplyConfig.value).toBe(false);
 	});
 
 	it.each([
@@ -248,17 +248,17 @@ describe('PromotionsSettingsView', () => {
 		expect(switchTo).toHaveBeenCalledWith('v1');
 	});
 
-	it('keeps each card busy until its own retry finishes', async () => {
-		mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['promotions:connect'] });
-		const notConnected = { hasCheckout: false, matchesEnvironment: false };
+	it('keeps each card busy until its own connection test finishes', async () => {
+		mockedStore(useUsersStore).currentUser = mock<IUser>({
+			globalScopes: ['promotions:manageEnvironments'],
+		});
 		const promoteEnvironment = {
 			...applyEnvironment,
 			id: 'environment-promote',
 			direction: 'promote',
 			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
-			checkout: notConnected,
 		} as PromotionEnvironment;
-		const environments = [{ ...applyEnvironment, checkout: notConnected }, promoteEnvironment];
+		const environments = [applyEnvironment, promoteEnvironment];
 		api.fetchPromotionEnvironments.mockResolvedValue(environments);
 		api.fetchPromotionEnvironment.mockImplementation(
 			async (_, id) => environments.find((environment) => environment.id === id)!,
@@ -276,19 +276,104 @@ describe('PromotionsSettingsView', () => {
 
 		const applyCard = await screen.findByTestId('promotion-environment-card-apply');
 		const promoteCard = screen.getByTestId('promotion-environment-card-promote');
-		await userEvent.click(within(applyCard).getByTestId('promotion-environment-retry'));
-		await userEvent.click(within(promoteCard).getByTestId('promotion-environment-retry'));
+		await testConnection(applyCard);
+		await testConnection(promoteCard);
 
-		const applyMenu = within(within(applyCard).getByTestId('promotion-environment-menu')).getByRole(
-			'button',
-		);
-		const promoteMenu = within(
-			within(promoteCard).getByTestId('promotion-environment-menu'),
-		).getByRole('button');
-		await waitFor(() => expect(promoteMenu).toBeEnabled());
+		const applyMenu = menuButton(applyCard);
+		await waitFor(() => expect(menuButton(promoteCard)).toBeEnabled());
 		expect(applyMenu).toBeDisabled();
+		expect(within(applyCard).getByTestId('promotion-environment-connecting')).toBeInTheDocument();
 		finishApply();
 		await waitFor(() => expect(applyMenu).toBeEnabled());
+	});
+
+	it('shows the connection test result on the card', async () => {
+		mockedStore(useUsersStore).currentUser = mock<IUser>({
+			globalScopes: ['promotions:manageEnvironments'],
+		});
+		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
+		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
+		api.connectPromotionCheckout
+			.mockRejectedValueOnce(new Error('Authentication failed'))
+			.mockResolvedValueOnce(mock());
+		renderView();
+
+		const card = await screen.findByTestId('promotion-environment-card-apply');
+		expect(screen.queryByTestId('promotion-environment-retry')).not.toBeInTheDocument();
+		await testConnection(card);
+
+		expect(await screen.findByTestId('promotion-environment-connect-error')).toHaveTextContent(
+			'Authentication failed',
+		);
+		expect(showMessage).not.toHaveBeenCalled();
+
+		await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+		await waitFor(() =>
+			expect(screen.queryByTestId('promotion-environment-connect-error')).not.toBeInTheDocument(),
+		);
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Connected to Development',
+			type: 'success',
+		});
+		expect(screen.queryByTestId('promotion-environment-retry')).not.toBeInTheDocument();
+	});
+
+	it('sets the Remove action apart from the other actions with a divider', async () => {
+		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
+		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
+		renderView();
+
+		await userEvent.click(
+			menuButton(await screen.findByTestId('promotion-environment-card-apply')),
+		);
+
+		const remove = await screen.findByTestId('action-remove');
+		const separators = screen.getAllByRole('separator');
+		expect(separators).toHaveLength(1);
+		expect(separators[0].nextElementSibling).toBe(remove);
+	});
+
+	it('hides the connection test from a user who cannot connect', async () => {
+		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
+		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
+		renderView();
+
+		await userEvent.click(
+			menuButton(await screen.findByTestId('promotion-environment-card-apply')),
+		);
+
+		expect(await screen.findByTestId('action-remove')).toBeInTheDocument();
+		expect(screen.queryByTestId('action-connect')).not.toBeInTheDocument();
+	});
+
+	// Each main has its own local copy, so the card must not depend on it.
+	it.each([
+		['has a local copy', { hasCheckout: true, matchesEnvironment: true }],
+		['has no local copy', { hasCheckout: false, matchesEnvironment: false }],
+		['has an out-of-date local copy', { hasCheckout: true, matchesEnvironment: false }],
+	])('shows the same card when the instance %s', async (_, checkout) => {
+		mockedStore(useUsersStore).currentUser = mock<IUser>({
+			globalScopes: ['promotions:promote', 'promotions:apply'],
+		});
+		const promoteEnvironment = {
+			...applyEnvironment,
+			id: 'environment-promote',
+			direction: 'promote',
+			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+			checkout,
+		} as PromotionEnvironment;
+		const environments = [{ ...applyEnvironment, checkout }, promoteEnvironment];
+		api.fetchPromotionEnvironments.mockResolvedValue(environments);
+		api.fetchPromotionEnvironment.mockImplementation(
+			async (_, id) => environments.find((environment) => environment.id === id)!,
+		);
+		renderView();
+
+		expect(await screen.findByTestId('apply-instance-button')).toBeEnabled();
+		expect(screen.getByTestId('promote-instance-button')).toBeEnabled();
+		expect(screen.queryByText(/connected|out of date/i)).not.toBeInTheDocument();
+		expect(api.fetchMissingPromotionProjects).toHaveBeenCalledTimes(1);
 	});
 
 	it('allows a toggle only after the current protection state loads', async () => {

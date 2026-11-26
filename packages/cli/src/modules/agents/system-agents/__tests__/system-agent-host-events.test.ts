@@ -3,6 +3,7 @@ import type { AgentSseEvent } from '@n8n/api-types';
 import { ExecutionRecorder } from '../../execution-recorder';
 import {
 	MAX_HOST_EVENT_PAYLOAD_BYTES,
+	MAX_TRANSIENT_HOST_EVENT_PAYLOAD_BYTES,
 	SystemAgentHostEventChannel,
 } from '../system-agent-host-events';
 
@@ -148,5 +149,65 @@ describe('SystemAgentHostEventChannel', () => {
 
 		expect(() => channel.emit('')).toThrow('A host event needs a name');
 		expect(() => channel.emit('x'.repeat(129))).toThrow('A host event needs a name');
+	});
+});
+
+describe('SystemAgentHostEventChannel, transient events', () => {
+	it('sends a transient event at once and does not record it', () => {
+		const send = vi.fn<(event: AgentSseEvent) => void>();
+		const recorder = new ExecutionRecorder();
+		const channel = new SystemAgentHostEventChannel(send);
+		channel.attach(recorder);
+
+		channel.emitTransient('test.draft', { revision: 1 });
+
+		expect(send).toHaveBeenCalledWith({
+			type: 'transient-host-event',
+			name: 'test.draft',
+			payload: { revision: 1 },
+		});
+		expect(recorder.getMessageRecord().timeline).toEqual([]);
+	});
+
+	it('sends a transient event before the recorder is attached', () => {
+		const send = vi.fn<(event: AgentSseEvent) => void>();
+		const channel = new SystemAgentHostEventChannel(send);
+
+		channel.emitTransient('test.draft', { revision: 1 });
+
+		expect(send).toHaveBeenCalledTimes(1);
+	});
+
+	it('drops a transient event after the turn closed', () => {
+		const send = vi.fn();
+		const onDropped = vi.fn();
+		const channel = new SystemAgentHostEventChannel(send, onDropped);
+		channel.attach(new ExecutionRecorder());
+		channel.close();
+
+		channel.emitTransient('test.draft', { revision: 1 });
+
+		expect(send).not.toHaveBeenCalled();
+		expect(onDropped).toHaveBeenCalledWith('test.draft');
+	});
+
+	it('takes a payload larger than a recorded event, up to its own cap', () => {
+		const send = vi.fn();
+		const channel = new SystemAgentHostEventChannel(send);
+		const atLimit = 'x'.repeat(MAX_TRANSIENT_HOST_EVENT_PAYLOAD_BYTES - 2);
+
+		expect(() =>
+			channel.emitTransient('test.draft', 'x'.repeat(MAX_HOST_EVENT_PAYLOAD_BYTES)),
+		).not.toThrow();
+		expect(() => channel.emitTransient('test.draft', atLimit)).not.toThrow();
+		expect(() => channel.emitTransient('test.draft', `${atLimit}x`)).toThrow(
+			'A transient host event payload must not be larger than 1 MiB',
+		);
+	});
+
+	it('refuses an empty name', () => {
+		const channel = new SystemAgentHostEventChannel(vi.fn());
+
+		expect(() => channel.emitTransient('', null)).toThrow('A host event needs a name');
 	});
 });

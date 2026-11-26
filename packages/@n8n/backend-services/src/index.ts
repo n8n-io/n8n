@@ -1,4 +1,6 @@
 export { EventService, type EventMap } from './events/event.service';
+export { loginIdOf } from './events/login-id';
+export { EventRelay } from './events/relays/event-relay';
 export {
 	countsTowardExecutionLimit,
 	executionLimitDelta,
@@ -17,10 +19,21 @@ export {
 } from './executions/counting-rules';
 export { computeTimeSavedMinutes, sumNodeTimeSavedMinutes } from './executions/time-saved';
 export {
+	toEndedFactsFromCancel,
+	toEndedFactsFromCrash,
+	toEndedFactsFromRun,
+} from './executions/execution-ledger-ended-facts';
+export {
 	CredentialsFinderService,
 	CREDENTIAL_USABILITY_SCOPES,
 	type UnusableCredential,
 } from './credentials/credentials-finder.service';
+export {
+	CodeExecutionBackend,
+	type CodeExecutionBackendStatus,
+	type CodeTaskRequest,
+	toCodeTaskRequest,
+} from './code-execution/code-execution-backend';
 export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.error';
 export { CacheService } from './services/cache/cache.service';
 export type { Hash, MaybeHash } from './services/cache/cache.types';
@@ -37,17 +50,32 @@ export {
 	type RoleDeletionChecker,
 } from './services/role-deletion-check-proxy.service';
 export { RoleService } from './services/role.service';
+export {
+	ProjectMutationHooksProxy,
+	type AfterProjectDeleted,
+	type ProjectDeletion,
+	type ProjectMutationHooks,
+} from './services/project-mutation-hooks-proxy.service';
 export { ProjectScopeService } from './services/project-scope.service';
+export { UserDeactivationHooks } from './services/user-deactivation-hooks.service';
+export { PasswordUtility } from './services/password.utility';
 export {
 	FavoriteResourceResolverRegistry,
 	type FavoriteResourceMeta,
 	type FavoriteResourceResolver,
 	type ResolvedFavoriteResourceType,
 } from './services/favorite-resource-resolver.registry';
+export { CollaborationState, type WriteLock } from './collaboration/collaboration.state';
+export {
+	AgentProjectLookupProxy,
+	type AgentProjectLookup,
+} from './collaboration/agent-project-lookup-proxy.service';
 export { WorkflowProjectService } from './services/workflow-project.service';
 export {
 	OwnershipTransferHandlerRegistry,
 	type ProjectOwnershipTransferHandler,
+	type UserDeletionActor,
+	type UserDeletionContext,
 } from './services/ownership-transfer-handler.registry';
 export {
 	WorkflowSharingService,
@@ -97,6 +125,7 @@ export {
 	type PublishedWorkflowData,
 	type PublishedWorkflowDataForExecution,
 } from './workflows/workflow-published-data.service';
+export { WorkflowVersionedSettingsService } from './workflows/workflow-versioned-settings.service';
 
 export {
 	RuntimeCredentialProxyService,
@@ -106,8 +135,26 @@ export {
 	InstanceRegistryProxyService,
 	type InstanceRegistryProvider,
 } from './services/instance-registry-proxy.service';
+export { PushProxy, type PushSender } from './services/push-proxy.service';
+export { TelemetryProxy, type TelemetryTracker } from './services/telemetry-proxy.service';
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
+export { ExecutionLedger, type CreatedExecution } from './executions/execution-ledger.service';
+export { ExecutionDataJsonStore } from './executions/execution-data/execution-data-json-store';
+export { CorruptedExecutionDataError } from './executions/execution-data/corrupted-execution-data.error';
+export { ExecutionDataWriteError } from './executions/execution-data/execution-data-write.error';
+export {
+	createExecutionRef,
+	isExecutionDataPayload,
+	toWorkflowSnapshot,
+	type BlobStorageLocation,
+	type BundleWorkflowSnapshot,
+	type ExecutionDataPayload,
+	type ExecutionRef,
+	type WorkflowRunDocument,
+	type WorkflowSnapshot,
+} from './executions/execution-data/types';
+export type * from './executions/execution-ledger-writer';
 export { ExecutionRedactionServiceProxy } from './executions/execution-redaction-proxy.service';
 export {
 	isRedactableExecution,
@@ -122,11 +169,17 @@ export {
 export {
 	WorkflowPublishGuardProxy,
 	type WorkflowPublishGuard,
+	type WorkflowPublishTarget,
 } from './workflows/workflow-publish-guard-proxy.service';
 export {
 	NodeTypesProviderMissingError,
 	NodeTypesProxy,
 } from './services/node-types-proxy.service';
+export {
+	CredentialRestrictionsProviderProxy,
+	type CredentialRestrictionsProvider,
+	type CredentialToJudge,
+} from './credentials/credential-restrictions-provider-proxy.service';
 export {
 	RestrictedNodeTypesProviderProxy,
 	type RestrictedNodeTypesProvider,
@@ -155,3 +208,5 @@ export {
 export { AiPreferenceScopeFullError } from './errors/response-errors/ai-preference-scope-full.error';
 export * from './auth';
 export { ProjectNotFoundError } from './errors/project-not-found.error';
+
+export { ExecutionRetentionService } from './services/execution-retention.service';

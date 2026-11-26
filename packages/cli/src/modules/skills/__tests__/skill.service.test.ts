@@ -1,4 +1,9 @@
-import type { ListSkillsQueryDto } from '@n8n/api-types';
+import {
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
+	SaveSkillDto,
+	type ListSkillsQueryDto,
+} from '@n8n/api-types';
 import { Person, type User } from '@n8n/db';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -12,6 +17,8 @@ import {
 	versionRow,
 	resetSkillMocks,
 } from './test-utils/skill-services';
+import type { SkillFile } from '../database/entities/skill-file.entity';
+import type { SkillSourceLink } from '../database/entities/skill-source-link.entity';
 import type { Skill } from '../database/entities/skill.entity';
 import { SkillSyncedError } from '../errors/skill-synced.error';
 import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
@@ -226,6 +233,7 @@ describe('SkillService', () => {
 				}),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -253,12 +261,14 @@ describe('SkillService', () => {
 			);
 
 			expect(result.skill.name).toBe('Renamed');
+			expect(skills.lockNames).toHaveBeenCalledWith(TX_CTX);
 			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
 				'skill_a',
 				3,
 				expect.objectContaining({ name: 'Renamed' }),
 				user.id,
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -303,16 +313,25 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { license: 'Apache-2.0' } }),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
-		it('does not check the name when the save keeps it', async () => {
-			const baseSkillHash = givenLatest(versionRow(skill, 2));
+		it.each([undefined, 'BRAND_VOICE'])(
+			'does not lock or check an unchanged name key (%s)',
+			async (name) => {
+				const baseSkillHash = givenLatest(versionRow(skill, 2));
 
-			await service.saveTrusted('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
+				await service.saveTrusted(
+					'skill_a',
+					{ baseSkillHash, ...(name === undefined ? {} : { name }), instructions: 'new' },
+					user.id,
+				);
 
-			expect(skills.findLatestNamesInTarget).not.toHaveBeenCalled();
-		});
+				expect(skills.lockNames).not.toHaveBeenCalled();
+				expect(skills.findLatestNamesInTarget).not.toHaveBeenCalled();
+			},
+		);
 
 		it('removes references set to an empty list', async () => {
 			const baseSkillHash = givenLatest(
@@ -346,6 +365,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { 'allowed-tools': 'Read' } }),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -362,6 +382,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { license: 'MIT', 'allowed-tools': 'Read' } }),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -450,7 +471,7 @@ describe('SkillService', () => {
 					},
 					user.id,
 					{},
-					{ allowSynced: true },
+					{ allowSynced: true, sourceRevision: 'reviewed-revision' },
 				);
 
 				expect(result).toMatchObject({ version: 3, created: true });
@@ -460,6 +481,7 @@ describe('SkillService', () => {
 					fetched,
 					user.id,
 					TX_CTX,
+					'reviewed-revision',
 				);
 			});
 
@@ -490,6 +512,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ instructions: 'new', frontmatter: { license: 'MIT' } }),
 				user.id,
 				TX_CTX,
+				undefined,
 			);
 		});
 
@@ -504,7 +527,7 @@ describe('SkillService', () => {
 		it('marks the following agents in the transaction and refreshes them after the commit', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 			await givenFollowers();
-			const markFollowersChanged = vi.spyOn(skillUsage, 'markFollowersChanged');
+			const findFollowingAgentIds = vi.spyOn(skillUsage, 'findFollowingAgentIds');
 
 			const result = await service.saveTrusted(
 				'skill_a',
@@ -514,7 +537,7 @@ describe('SkillService', () => {
 				{ pushRef: 'push-ref-1' },
 			);
 
-			expect(markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(findFollowingAgentIds).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(result.followingAgentIds).toEqual(['agent-1', 'agent-2']);
 			expect(usage.refreshed).toEqual([
 				{ agentIds: ['agent-1', 'agent-2'], excludePushRef: 'push-ref-1' },
@@ -629,7 +652,7 @@ describe('SkillService', () => {
 
 		it('refuses to move a synced skill on its own, for every caller', async () => {
 			await givenUsers();
-			links.isLinked.mockResolvedValue(true);
+			links.findLinkBySkillId.mockResolvedValue(mock<SkillSourceLink>({ sourceId: 'source-1' }));
 			skills.findLatestSummaries.mockResolvedValue(
 				new Map([['skill_a', { name: 'Brand voice', description: 'd', version: 1 }]]),
 			);
@@ -640,7 +663,7 @@ describe('SkillService', () => {
 				SkillSyncedError,
 				'"Brand voice" is synced from GitHub, so it moves only with its source. Stop syncing it to move it on its own.',
 			);
-			expect(links.isLinked).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(links.findLinkBySkillId).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(skills.updateTarget).not.toHaveBeenCalled();
 		});
 
@@ -835,7 +858,12 @@ describe('SkillService', () => {
 				]),
 			);
 			skills.findProjects.mockResolvedValue(
-				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const, icon: null }]]),
+				new Map([
+					[
+						PROJECT,
+						{ name: 'Marketing', type: 'team' as const, icon: { type: 'emoji', value: '🚀' } },
+					],
+				]),
 			);
 			users.findManyByIds.mockResolvedValue([
 				Object.assign(new Person(), {
@@ -852,15 +880,27 @@ describe('SkillService', () => {
 			expect(users.findManyByIds).toHaveBeenCalledWith(['user-1']);
 			expect(skills.findProjects).toHaveBeenCalledWith([PROJECT, 'project-gone']);
 			expect(
-				data.map(({ id, scope, projectId, projectName, projectType, createdBy, usedByAgents }) => ({
-					id,
-					scope,
-					projectId,
-					projectName,
-					projectType,
-					createdBy,
-					usedByAgents,
-				})),
+				data.map(
+					({
+						id,
+						scope,
+						projectId,
+						projectName,
+						projectType,
+						projectIcon,
+						createdBy,
+						usedByAgents,
+					}) => ({
+						id,
+						scope,
+						projectId,
+						projectName,
+						projectType,
+						projectIcon,
+						createdBy,
+						usedByAgents,
+					}),
+				),
 			).toEqual([
 				{
 					id: 'skill_project',
@@ -868,6 +908,7 @@ describe('SkillService', () => {
 					projectId: PROJECT,
 					projectName: 'Marketing',
 					projectType: 'team',
+					projectIcon: { type: 'emoji', value: '🚀' },
 					createdBy: { id: 'user-1', email: null, firstName: null, lastName: null },
 					usedByAgents: 2,
 				},
@@ -877,6 +918,7 @@ describe('SkillService', () => {
 					projectId: 'project-gone',
 					projectName: null,
 					projectType: null,
+					projectIcon: null,
 					createdBy: null,
 					usedByAgents: 0,
 				},
@@ -886,6 +928,7 @@ describe('SkillService', () => {
 					projectId: null,
 					projectName: null,
 					projectType: null,
+					projectIcon: null,
 					createdBy: null,
 					usedByAgents: 0,
 				},
@@ -944,6 +987,125 @@ describe('SkillService', () => {
 		});
 	});
 
+	describe('update by a caller that reads no binary content', () => {
+		const skill = skillRow('skill_a', { projectId: PROJECT });
+		const stored = versionRow(skill, 2, {}, [
+			{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+			{ path: 'assets/old.png', content: 'AP4=', isBinary: true },
+			{ path: 'references/tone.md', content: 'Warm.' },
+		]);
+		let saveTrusted: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			vi.spyOn(access, 'requireAccess').mockResolvedValue(skill);
+			skills.findLatestSaved.mockResolvedValue(new Map([['skill_a', stored]]));
+			saveTrusted = vi.spyOn(service, 'saveTrusted').mockResolvedValue({
+				created: true,
+				versionId: 'skill_a-v3',
+				version: 3,
+				skill: toAgentSkill(stored),
+				followingAgentIds: [],
+			});
+		});
+
+		it('keeps the binary files that the new references do not name', async () => {
+			await service.update(
+				user,
+				'skill_a',
+				{
+					baseSkillHash: 'hash-2',
+					references: [
+						{ path: 'references/new.md', content: 'New.' },
+						{ path: 'assets/old.png', content: 'Now text.' },
+					],
+				},
+				'mcp',
+				{ keepUnnamedBinaryFiles: true },
+			);
+
+			expect(saveTrusted.mock.calls[0][1]).toEqual({
+				baseSkillHash: 'hash-2',
+				references: [
+					{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+					{ path: 'assets/old.png', content: 'Now text.' },
+					{ path: 'references/new.md', content: 'New.' },
+				],
+			});
+		});
+
+		it('keeps the stored bytes of a binary file that the update names with empty content', async () => {
+			await service.update(
+				user,
+				'skill_a',
+				{
+					baseSkillHash: 'hash-2',
+					references: [{ path: 'assets/logo.png', content: '', isBinary: true }],
+				},
+				'mcp',
+				{ keepUnnamedBinaryFiles: true },
+			);
+
+			expect(saveTrusted.mock.calls[0][1]).toEqual({
+				baseSkillHash: 'hash-2',
+				references: [
+					{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+					{ path: 'assets/old.png', content: 'AP4=', isBinary: true },
+				],
+			});
+		});
+
+		it('reads no stored files when the update has no references', async () => {
+			await service.update(
+				user,
+				'skill_a',
+				{ baseSkillHash: 'hash-2', instructions: 'New.' },
+				'mcp',
+				{ keepUnnamedBinaryFiles: true },
+			);
+
+			expect(skills.findLatestSaved).not.toHaveBeenCalled();
+			expect(saveTrusted.mock.calls[0][1]).toEqual({
+				baseSkillHash: 'hash-2',
+				instructions: 'New.',
+			});
+		});
+
+		it.each([
+			{
+				limit: 'file count',
+				references: Array.from({ length: AGENT_SKILL_REFERENCE_MAX_COUNT }, (_, i) => ({
+					path: `guide-${i}.md`,
+					content: 'Guide',
+				})),
+			},
+			{
+				limit: 'total size',
+				references: ['a.md', 'b.md'].map((path) => ({
+					path,
+					content: 'x'.repeat(AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / 2),
+				})),
+			},
+		])(
+			'refuses a valid update if the preserved binaries put it over the $limit limit',
+			async ({ references }) => {
+				const update = SaveSkillDto.parse({
+					baseSkillHash: getSkillHash(toAgentSkill(stored)),
+					references,
+				});
+				await expect(
+					service.update(user, 'skill_a', update, 'mcp', { keepUnnamedBinaryFiles: true }),
+				).rejects.toThrow('Invalid skill files:');
+				expect(saveTrusted).not.toHaveBeenCalled();
+			},
+		);
+
+		it('replaces every file for the skill editor, which sends the binary files', async () => {
+			await service.update(user, 'skill_a', { baseSkillHash: 'hash-2', references: [] });
+
+			expect(saveTrusted.mock.calls[0][1]).toEqual({ baseSkillHash: 'hash-2', references: [] });
+		});
+	});
+
 	describe('setAssistantAvailability', () => {
 		it('throws NotFoundError for a skill that is gone under the lock', async () => {
 			await expect(
@@ -977,7 +1139,31 @@ describe('SkillService', () => {
 						rows.filter((row) => ids.includes(row.skill.id)).map((row) => [row.skill.id, row]),
 					),
 			);
+			skills.findLatestVersionIds.mockImplementation(
+				async (ids) =>
+					new Map(
+						rows
+							.filter((row) => ids.includes(row.skill.id))
+							.map((row) => [row.skill.id, row.version.id]),
+					),
+			);
+			skills.findVersionsByIds.mockImplementation(
+				async (ids) =>
+					new Map(
+						rows.filter((row) => ids.includes(row.version.id)).map((row) => [row.version.id, row]),
+					),
+			);
+			skills.findByIds.mockImplementation(async (ids) =>
+				rows.filter((row) => ids.includes(row.skill.id)).map((row) => row.skill),
+			);
 			projectScope.hasScopes.mockResolvedValue(true);
+		});
+
+		const mcpContent = (row: typeof instanceSkill) => ({
+			id: row.skill.id,
+			projectId: row.skill.projectId,
+			versionId: row.version.id,
+			skill: toAgentSkill(row),
 		});
 
 		it('lists one page of the project and instance skills that the user can list and that are available to MCP', async () => {
@@ -995,10 +1181,90 @@ describe('SkillService', () => {
 			);
 			expect(result).toEqual({
 				count: 7,
-				skills: [
-					{ id: 'skill-1', projectId: null, skill: toAgentSkill(instanceSkill) },
-					{ id: 'skill-2', projectId: 'project-1', skill: toAgentSkill(projectSkill) },
-				],
+				skills: [instanceSkill, projectSkill].map((row) => ({
+					id: row.skill.id,
+					versionId: row.version.id,
+					content: mcpContent(row),
+				})),
+			});
+		});
+
+		it('reads no content for a version that the caller knows', async () => {
+			projectScope.getProjectIds.mockResolvedValue(['project-1']);
+			skills.findVisiblePage.mockResolvedValue({
+				skills: [instanceSkill.skill, projectSkill.skill],
+				count: 2,
+			});
+
+			const result = await service.listForMcp(
+				user,
+				0,
+				100,
+				(versionId) => versionId === instanceSkill.version.id,
+			);
+
+			expect(skills.findVersionsByIds).toHaveBeenCalledWith([projectSkill.version.id]);
+			expect(skills.findLatestSaved).not.toHaveBeenCalled();
+			expect(result.skills).toEqual([
+				{ id: 'skill-1', versionId: instanceSkill.version.id },
+				{ id: 'skill-2', versionId: projectSkill.version.id, content: mcpContent(projectSkill) },
+			]);
+		});
+
+		describe('one file', () => {
+			const file = { path: 'references/style.md', content: 'Be brief.' };
+
+			beforeEach(() => {
+				skills.findLatestFile.mockImplementation(async (skillId, path) =>
+					skillId === 'skill-1' && path === file.path
+						? {
+								name: instanceSkill.version.name,
+								file: mock<SkillFile>({ ...file, isBinary: false }),
+							}
+						: null,
+				);
+			});
+
+			it('reads one file of the latest version without the other files', async () => {
+				expect(await service.readFileForMcp(user, 'skill-1', file.path)).toEqual({
+					id: 'skill-1',
+					projectId: null,
+					name: instanceSkill.version.name,
+					file,
+				});
+				expect(skills.findLatestSaved).not.toHaveBeenCalled();
+				expect(skills.findVersionsByIds).not.toHaveBeenCalled();
+			});
+
+			it('marks a binary file', async () => {
+				skills.findLatestFile.mockResolvedValue({
+					name: 'Logo',
+					file: mock<SkillFile>({ path: 'assets/logo.png', content: 'AP8=', isBinary: true }),
+				});
+
+				expect((await service.readFileForMcp(user, 'skill-1', 'assets/logo.png'))?.file).toEqual({
+					path: 'assets/logo.png',
+					content: 'AP8=',
+					isBinary: true,
+				});
+			});
+
+			it('does not read a file of a skill the user cannot read', async () => {
+				projectScope.hasScopes.mockResolvedValue(false);
+
+				expect(await service.readFileForMcp(user, 'skill-2', file.path)).toBeNull();
+				expect(skills.findLatestFile).not.toHaveBeenCalled();
+			});
+
+			it('does not read a file of a skill that is not available to MCP', async () => {
+				instanceSkill.skill.availableToMCP = false;
+
+				expect(await service.readFileForMcp(user, 'skill-1', file.path)).toBeNull();
+				expect(skills.findLatestFile).not.toHaveBeenCalled();
+			});
+
+			it('does not read a missing file', async () => {
+				expect(await service.readFileForMcp(user, 'skill-1', 'references/none.md')).toBeNull();
 			});
 		});
 
@@ -1018,6 +1284,7 @@ describe('SkillService', () => {
 			expect(await service.readForMcp(user, 'skill-2')).toEqual({
 				id: 'skill-2',
 				projectId: 'project-1',
+				versionId: projectSkill.version.id,
 				skill: toAgentSkill(projectSkill),
 			});
 		});
@@ -1061,6 +1328,7 @@ describe('SkillService', () => {
 				expect(await service.readForMcp(user, 'skill-2')).toEqual({
 					id: 'skill-2',
 					projectId: 'project-1',
+					versionId: projectSkill.version.id,
 					skill: toAgentSkill(projectSkill),
 					origin: { provider: 'github', access: 'public' },
 				});
@@ -1082,6 +1350,7 @@ describe('SkillService', () => {
 				expect(result).toEqual({
 					id: 'skill-2',
 					projectId: 'project-1',
+					versionId: projectSkill.version.id,
 					skill: toAgentSkill(projectSkill),
 				});
 				expect(logger.warn).toHaveBeenCalledWith('Could not find the source of a synced skill', {

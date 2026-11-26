@@ -3,9 +3,13 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 import {
 	connectSkillSource,
+	deleteSkillSource,
 	discoverSkillSource,
 	getSkillSourceCredentials,
+	getSkillSourceReplacementCredentials,
 	getSkillSourceRepositories,
+	replaceSkillSourceCredential,
+	updateSkillSyncSettings,
 } from './skills.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -18,6 +22,19 @@ describe('skills.api', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+
+	it.each([{ keepSkills: true }, { onlySkillId: 'skill-1' }])(
+		'sends source removal choices as query parameters: %j',
+		async (query) => {
+			await deleteSkillSource(context, 'source-1', query);
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				context,
+				'DELETE',
+				'/skill-sources/source-1',
+				query,
+			);
+		},
+	);
 
 	it('lists the credentials a source scope accepts', async () => {
 		await getSkillSourceCredentials(context, { scope: 'project', projectId: 'team-1' });
@@ -57,6 +74,26 @@ describe('skills.api', () => {
 		expect(makeRestApiRequest).toHaveBeenNthCalledWith(2, context, 'POST', '/skill-sources', {
 			...target,
 			skillKeys: ['skills/pdf'],
+		});
+	});
+
+	it.each([
+		['a project source', 'p1', '/projects/p1/skill-sources/s1'],
+		['a Global source', null, '/skill-sources/s1'],
+	])('sends credential replacement for %s to its scope', async (_name, projectId, path) => {
+		await getSkillSourceReplacementCredentials(context, { id: 's1', projectId });
+		await replaceSkillSourceCredential(context, { id: 's1', projectId }, 'c1');
+		expect(makeRestApiRequest).toHaveBeenNthCalledWith(1, context, 'GET', `${path}/credentials`);
+		expect(makeRestApiRequest).toHaveBeenNthCalledWith(2, context, 'POST', `${path}/credential`, {
+			credentialId: 'c1',
+		});
+	});
+
+	it('saves the Skill Sync switch', async () => {
+		await updateSkillSyncSettings(context, { enabled: false });
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'PUT', '/skill-sync/settings', {
+			enabled: false,
 		});
 	});
 });

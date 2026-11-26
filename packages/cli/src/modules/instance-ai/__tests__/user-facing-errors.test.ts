@@ -45,7 +45,9 @@ describe('getUserFacingErrorMessage', () => {
 			errorCode: 'quota_exhausted',
 		});
 		const message = getUserFacingErrorMessage(error);
-		expect(message.toLowerCase()).toContain('credits');
+		expect(message).toBe(
+			"You've run out of Assistant credits. Upgrade your plan to continue using the n8n Assistant.",
+		);
 		expect(message).not.toContain('Something went wrong');
 	});
 

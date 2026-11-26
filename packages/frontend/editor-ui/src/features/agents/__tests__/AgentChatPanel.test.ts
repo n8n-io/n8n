@@ -44,6 +44,7 @@ import {
 enableAutoUnmount(afterEach);
 
 type PanelVm = { sendMessageFromOutside: (message: string, files?: File[]) => void };
+type FocusVm = { focusOpenInteraction: () => void; isAwaitingUserApproval: boolean };
 const isMacOsMock = ref(false);
 const sessionFilesFlag = vi.hoisted(() => ({ value: true }));
 vi.mock('@/app/stores/posthog.store', () => ({
@@ -143,7 +144,7 @@ const fatalErrorMock = ref<{ missing: string[] } | null>(null);
 
 const defaultAgentConfig: AgentJsonConfig = {
 	name: 'Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help.',
 };
 
@@ -201,6 +202,9 @@ vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', async (importOriginal) => ({
+	N8nAttachment: (await importOriginal<typeof import('@n8n/design-system')>()).N8nAttachment,
+	N8nAttachmentGroup: (await importOriginal<typeof import('@n8n/design-system')>())
+		.N8nAttachmentGroup,
 	N8nApprovalCard: (await importOriginal<typeof import('@n8n/design-system')>()).N8nApprovalCard,
 	N8nAiActivityStepGroup: (await importOriginal<typeof import('@n8n/design-system')>())
 		.N8nAiActivityStepGroup,
@@ -226,6 +230,11 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
 	},
 	N8nScrollArea: { template: '<div><slot /></div>' },
+	N8nChatScrollArea: {
+		name: 'N8nChatScrollArea',
+		template: '<div data-test-id="chat-scroll-area"><slot /><slot name="input" /></div>',
+		methods: { scrollToBottom: vi.fn() },
+	},
 	N8nText: { template: '<span><slot /></span>' },
 	N8nTooltip: { template: '<div><slot /></div>' },
 	TOOLTIP_DELAY_MS: 500,
@@ -376,6 +385,9 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			isStreaming: isStreamingMock,
 			isSubmitting: isSubmittingMock,
 			isLoadingHistory: isLoadingHistoryMock,
+			hasOlderMessages: ref(false),
+			loadOlderMessages: vi.fn(),
+			getFullHistory: async () => messagesMock.value,
 			queuedMessages: queuedMessagesMock,
 			removingQueueIds: ref(new Set()),
 			steeringQueueIds: steeringQueueIdsMock,
@@ -468,6 +480,7 @@ describe('AgentChatPanel', () => {
 			placeholderPreview: Readonly<Ref<string | undefined>>;
 			showAttachButton: boolean;
 			interactionExtensions: readonly AgentsChatInteractionExtension[];
+			disabled: boolean;
 		}> = {},
 		attachTo?: HTMLElement,
 		slots?: Record<string, string | ((props: Record<string, unknown>) => unknown)>,
@@ -967,6 +980,24 @@ describe('AgentChatPanel', () => {
 			expect(isCentered(mountPanel({ centerEmptyState: true, newSession: true }))).toBe(false);
 		});
 
+		it('keeps the centered empty state while a new chat loads its history', () => {
+			// The history load counts as a recovering run.
+			isLoadingHistoryMock.value = true;
+			isStreamingMock.value = true;
+			const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+			expect(isCentered(wrapper)).toBe(true);
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(true);
+		});
+
+		it('hides the empty state while the history loads in other hosts', () => {
+			isLoadingHistoryMock.value = true;
+			isStreamingMock.value = true;
+			const wrapper = mountPanel({ newSession: true });
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+		});
+
 		describe('first message preview', () => {
 			const messageList = (wrapper: ReturnType<typeof mountPanel>) =>
 				wrapper.findComponent({ name: 'AgentChatMessageList' });
@@ -1456,14 +1487,42 @@ describe('AgentChatPanel', () => {
 			getSessionFilesMock.mockResolvedValue({ files: [file] });
 		});
 
-		it('shows the toggle only for a preview or n8n Chat session', () => {
+		it('shows the toggle for a session on every channel', () => {
 			expect(mountPanel({ continueSessionId: 't1' }).find(toggle).exists()).toBe(true);
 			expect(
 				mountPanel({ continueSessionId: 't1', channel: 'n8n-chat' }).find(toggle).exists(),
 			).toBe(true);
-			expect(mountPanel().find(toggle).exists()).toBe(false);
 			expect(mountPanel({ continueSessionId: 't1', channel: 'system' }).find(toggle).exists()).toBe(
-				false,
+				true,
+			);
+			expect(mountPanel().find(toggle).exists()).toBe(false);
+		});
+
+		it('shows the toggle after the host controls of the footer', () => {
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'system' }, undefined, {
+				'footer-start': '<button data-testid="host-menu" />',
+			});
+
+			const html = wrapper.html();
+			expect(html.indexOf('data-testid="host-menu"')).toBeLessThan(
+				html.indexOf('data-test-id="agent-session-files-toggle"'),
+			);
+		});
+
+		it('lists system agent files with links to the system download route', async () => {
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'system' });
+
+			await open(wrapper);
+
+			expect(getSessionFilesMock).toHaveBeenCalledWith(
+				{ baseUrl: '/rest' },
+				'p1',
+				'a1',
+				't1',
+				'system',
+			);
+			expect(wrapper.find('[data-test-id="session-file-link"]').attributes('href')).toContain(
+				'/agents/system/a1/chat/attachments/f-1',
 			);
 		});
 
@@ -1629,6 +1688,29 @@ describe('AgentChatPanel', () => {
 		},
 	);
 
+	it('focuses draft attachments with Up and restores input focus with Escape', async () => {
+		const wrapper = mountPanel({}, document.body);
+		try {
+			const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+			composer.vm.$emit('files-selected', [
+				new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+			]);
+			await flushPromises();
+			const textbox = wrapper.get('textarea');
+			textbox.element.focus();
+			await textbox.trigger('keydown', { key: 'ArrowUp' });
+			expect(document.activeElement).toBe(wrapper.get('.n8n-attachment').element);
+			await wrapper.get('.n8n-attachment').trigger('keydown', { key: 'Escape' });
+			expect(document.activeElement).toBe(textbox.element);
+			composer.vm.$emit('update:modelValue', 'Draft');
+			await flushPromises();
+			await textbox.trigger('keydown', { key: 'ArrowUp' });
+			expect(document.activeElement).toBe(textbox.element);
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
 	it('edits the last queued message with Alt+ArrowUp from the composer', async () => {
 		queuedMessagesMock.value = ['first', 'last'].map((message, index) => ({
 			id: String(index + 1),
@@ -1707,6 +1789,25 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.get('[aria-label="generic.edit"]').attributes('disabled')).toBeDefined();
 		expect(composer.props('modelValue')).toBe('next draft');
 		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('keeps queued messages queued while the host disables the composer', async () => {
+		queuedMessagesMock.value = [
+			{
+				id: '1',
+				steeringExecutionId: null,
+				message: 'original',
+				createdAt: new Date().toISOString(),
+			},
+		];
+		const wrapper = mountPanel({ disabled: true });
+		const editButton = wrapper.get('[aria-label="generic.edit"]');
+		expect(editButton.attributes('disabled')).toBeDefined();
+		wrapper.findComponent({ name: 'ChatMessageQueue' }).vm.$emit('edit', '1');
+		await flushPromises();
+		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
 		wrapper.unmount();
 	});
 
@@ -3005,6 +3106,7 @@ describe('AgentChatPanel', () => {
 			backgroundJobsMock.value = [
 				job,
 				{ ...job, id: 'job-2', kind: 'workflow', title: 'Forecast refresh' },
+				{ ...job, id: 'job-3', kind: 'approval', title: 'Publish forecast' },
 			];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 			expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
@@ -3012,6 +3114,7 @@ describe('AgentChatPanel', () => {
 			await trigger.trigger('click');
 			const workflow = wrapper.findAll('li')[1];
 			expect(workflow.text()).toBe('Workflow — Forecast refresh');
+			expect(wrapper.findAll('li')[2].text()).toBe('Approval for Publish forecast');
 			expect(workflow.get('[role="img"]').attributes('aria-label')).toBe('Waiting');
 			expect(workflow.findComponent({ name: 'N8nIcon' }).props()).toMatchObject({
 				icon: 'circle',
@@ -3119,7 +3222,7 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
-	it('formats conversation markdown in message order with speaker labels', function formatsConversation() {
+	it('formats conversation markdown in message order with speaker labels', async function formatsConversation() {
 		messagesMock.value = [
 			{ id: 'user-1', role: 'user', content: '  Hello  ', status: 'success' },
 			{ id: 'assistant-1', role: 'assistant', content: '\n**Welcome**\n', status: 'success' },
@@ -3128,25 +3231,25 @@ describe('AgentChatPanel', () => {
 		];
 		const wrapper = mountPanel();
 
-		expect(wrapper.vm.getConversationMarkdown()).toBe(
+		await expect(wrapper.vm.getConversationMarkdown()).resolves.toBe(
 			'**User:**\n\nHello\n\n---\n\n**Agent:**\n\n**Welcome**\n\n---\n\n**User:**\n\nNext question',
 		);
 	});
 
-	it('returns empty markdown without messages', function formatsEmptyConversation() {
+	it('returns empty markdown without messages', async function formatsEmptyConversation() {
 		const wrapper = mountPanel();
 
-		expect(wrapper.vm.getConversationMarkdown()).toBe('');
+		await expect(wrapper.vm.getConversationMarkdown()).resolves.toBe('');
 	});
 
-	it('returns empty markdown when messages contain only whitespace', function skipsBlankMessages() {
+	it('returns empty markdown when messages contain only whitespace', async function skipsBlankMessages() {
 		messagesMock.value = [
 			{ id: 'user-1', role: 'user', content: ' \n\t ', status: 'success' },
 			{ id: 'assistant-1', role: 'assistant', content: '', status: 'success' },
 		];
 		const wrapper = mountPanel();
 
-		expect(wrapper.vm.getConversationMarkdown()).toBe('');
+		await expect(wrapper.vm.getConversationMarkdown()).resolves.toBe('');
 	});
 
 	it('uses the live agent name in the normal chat placeholder', async () => {
@@ -3858,6 +3961,52 @@ describe('AgentChatPanel', () => {
 		},
 	);
 
+	it('focuses the open approval card on request, and reports it as an approval', async () => {
+		const wrapper = mountPanel({}, document.body);
+		try {
+			messagesMock.value = [
+				{
+					...openInteractiveMessage(),
+					interactive: {
+						toolName: APPROVAL_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						input: { type: 'approval', toolName: 'send_message', args: {} },
+					},
+				},
+			];
+			await flushPromises();
+			if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+			const vm = wrapper.vm as unknown as FocusVm;
+
+			vm.focusOpenInteraction();
+
+			expect(vm.isAwaitingUserApproval).toBe(true);
+			expect(document.activeElement).toBe(
+				wrapper.get('[data-testid="agent-chat-approvals"] button').element,
+			);
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
+	it('focuses the composer for an open question on request', async () => {
+		const wrapper = mountPanel({}, document.body);
+		try {
+			messagesMock.value = [openInteractiveMessage()];
+			await flushPromises();
+			focusInputMock.mockClear();
+			const vm = wrapper.vm as unknown as FocusVm;
+
+			vm.focusOpenInteraction();
+
+			expect(vm.isAwaitingUserApproval).toBe(false);
+			expect(focusInputMock).toHaveBeenCalled();
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
 	it.each(['resolved', 'stale', 'previous turn'] as const)(
 		'keeps the composer available for a %s approval',
 		(state) => {
@@ -4220,6 +4369,52 @@ describe('AgentChatPanel', () => {
 			},
 		};
 	}
+
+	describe('isAwaitingUserAnswer', () => {
+		type AwaitingVm = { isAwaitingUserAnswer: boolean };
+
+		it('is false while a waiting card is open, because the workflow resumes the run', () => {
+			messagesMock.value = [openWaitMessage()];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(false);
+			wrapper.unmount();
+		});
+
+		it('is true while a card waits for the user to answer', () => {
+			messagesMock.value = [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: '',
+					status: 'awaitingUser',
+					interactive: {
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						input: {
+							card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
+						},
+					},
+				},
+			];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(true);
+			wrapper.unmount();
+		});
+
+		it('is false when no card is open', () => {
+			messagesMock.value = [];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(false);
+			wrapper.unmount();
+		});
+	});
 
 	it('allows queue submissions while a waiting card is open', () => {
 		messagesMock.value = [openWaitMessage()];
@@ -4601,7 +4796,11 @@ describe('AgentChatPanel', () => {
 
 	describe('host extension API', () => {
 		type HostPanelVm = {
-			sendMessageFromOutside: (message: string, files?: File[]) => void;
+			sendMessageFromOutside: (
+				message: string,
+				files?: File[],
+				clientContext?: Record<string, unknown>,
+			) => void;
 			isDirty: () => boolean;
 			setDraft: (text: string) => void;
 			openFilePicker: () => void;
@@ -4623,6 +4822,18 @@ describe('AgentChatPanel', () => {
 			expect(input.props('acceptedMimeTypes')).toBe(
 				`image/png,image/jpeg,image/gif,image/webp,application/pdf,${AGENT_CHAT_DATA_ATTACHMENT_ACCEPT}`,
 			);
+		});
+
+		it('shows the empty state only after the history loads', async () => {
+			isLoadingHistoryMock.value = true;
+			const wrapper = mountPanel();
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+
+			isLoadingHistoryMock.value = false;
+			await nextTick();
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(true);
 		});
 
 		describe('slots', () => {
@@ -4763,6 +4974,28 @@ describe('AgentChatPanel', () => {
 
 				expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(false);
 			});
+
+			it('disables the composer, its send and its footer controls while the host disables it', async () => {
+				const wrapper = mountPanel({ disabled: true }, undefined, {
+					'footer-start': (props) =>
+						h('button', { 'data-testid': 'host-menu', disabled: props.disabled }),
+				});
+				hostVm(wrapper).setDraft('hello');
+				await nextTick();
+				const input = composer(wrapper);
+				const hostMenu = () => wrapper.get('[data-testid="host-menu"]').element;
+
+				expect(input.props('disabled')).toBe(true);
+				expect(input.props('canSubmit')).toBe(false);
+				expect(hostMenu()).toHaveProperty('disabled', true);
+
+				await wrapper.setProps({ disabled: false });
+
+				expect(input.props('disabled')).toBe(false);
+				expect(input.props('canSubmit')).toBe(true);
+				expect(hostMenu()).toHaveProperty('disabled', false);
+				wrapper.unmount();
+			});
 		});
 
 		describe('message-accepted', () => {
@@ -4793,6 +5026,88 @@ describe('AgentChatPanel', () => {
 				await flushPromises();
 
 				expect(wrapper.emitted('message-accepted')).toBeUndefined();
+			});
+		});
+
+		describe('draft-cleared', () => {
+			it('emits when typed text that cancels an open question leaves the composer', async () => {
+				messagesMock.value = [openInteractiveMessage()];
+				const wrapper = mountPanel();
+				const input = composer(wrapper);
+
+				input.vm.$emit('update:modelValue', 'go another direction');
+				await nextTick();
+				input.vm.$emit('submit');
+				await flushPromises();
+				expect(wrapper.emitted('draft-cleared')).toBeUndefined();
+
+				cancelAndSteerMock.mock.lastCall?.[1]?.();
+				await flushPromises();
+
+				expect(wrapper.emitted('draft-cleared')).toHaveLength(1);
+			});
+		});
+
+		describe('message-sending', () => {
+			it('emits each new message on send, also when the server does not accept it', async () => {
+				sendMessageMock.mockResolvedValueOnce('busy');
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('hello', [], { attachments: [] });
+				await flushPromises();
+
+				expect(wrapper.emitted('message-sending')).toEqual([
+					[{ text: 'hello', files: [], clientContext: { attachments: [] }, isFirstMessage: true }],
+				]);
+			});
+
+			it('emits typed text that cancels an open question, without its files', async () => {
+				messagesMock.value = [
+					{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage,
+					openInteractiveMessage(),
+				];
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('go another direction', [
+					new File(['a'], 'a.png', { type: 'image/png' }),
+				]);
+				await flushPromises();
+
+				expect(cancelAndSteerMock).toHaveBeenCalledOnce();
+				expect(wrapper.emitted('message-sending')).toEqual([
+					[{ text: 'go another direction', files: [], isFirstMessage: false }],
+				]);
+			});
+
+			it('sends nothing, emits nothing and keeps the draft when beforeSend refuses the send', async () => {
+				const beforeSend = vi.fn(() => {
+					throw new Error('refused');
+				});
+				const wrapper = mountPanel({ beforeSend });
+				hostVm(wrapper).setDraft('hello');
+				await nextTick();
+
+				composer(wrapper).vm.$emit('submit');
+				await flushPromises();
+
+				expect(beforeSend).toHaveBeenCalledOnce();
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				expect(wrapper.emitted('message-sending')).toBeUndefined();
+				expect(wrapper.emitted('draft-cleared')).toBeUndefined();
+				expect(composer(wrapper).props('modelValue')).toBe('hello');
+			});
+
+			it('marks a message as not the first once the thread has a user message', async () => {
+				messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
+				sendMessageMock.mockResolvedValueOnce('sent');
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('again');
+				await flushPromises();
+
+				expect(wrapper.emitted('message-sending')?.[0]?.[0]).toMatchObject({
+					isFirstMessage: false,
+				});
 			});
 		});
 
@@ -4848,7 +5163,7 @@ describe('AgentChatPanel', () => {
 			getInputElement: () => HTMLTextAreaElement | undefined;
 			insertText: (text: string) => Promise<void>;
 			addComposerAttachment: (
-				chip: { id: string; label: string; icon?: string },
+				chip: { id: string; label: string; icon?: string; hostRendered?: boolean },
 				clientContextPatch?: Record<string, unknown>,
 			) => void;
 			removeComposerAttachment: (id: string) => void;
@@ -4945,25 +5260,68 @@ describe('AgentChatPanel', () => {
 			);
 			expect(chip.text()).toContain('Invoices');
 
-			await wrapper.find('[data-test-id="agent-chat-composer-chip-remove"]').trigger('click');
+			await chip.find('[data-test-id="attachment-remove"]').trigger('click');
 
 			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
+			expect(composerVm(wrapper).composerAttachments).toEqual([]);
+			expect(wrapper.emitted('composer-attachment-removed')).toEqual([['wf-1']]);
 		});
 
-		it('passes the chips to a host composer-attachments slot instead of the default chips', async () => {
-			const slot = vi.fn((props: Record<string, unknown>) =>
-				h('span', { 'data-testid': 'host-chips' }, JSON.stringify(props.chips)),
-			);
-			const wrapper = mountPanel({}, undefined, { 'composer-attachments': slot });
+		it('shows chips as cards before the files in one group, except chips that the host draws', async () => {
+			const wrapper = mountPanel({}, undefined, {
+				'composer-attachments': '<span data-testid="host-chip" />',
+			});
+			const vm = composerVm(wrapper);
+			vm.addComposerAttachment({ id: 'nodes-1', label: '2 nodes', hostRendered: true });
+			vm.addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+			composer(wrapper).vm.$emit('files-selected', [
+				new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+			]);
+			await flushPromises();
 
+			const cards = wrapper.findAll('[data-testid="chat-input"] .n8n-attachment');
+			expect(cards.map((card) => card.text())).toEqual([
+				expect.stringContaining('Invoices'),
+				expect.stringContaining('notes.txt'),
+			]);
+			expect(cards[0].element.parentElement?.parentElement).toBe(
+				cards[1].element.parentElement?.parentElement,
+			);
+			expect(wrapper.find('[data-testid="host-chip"]').exists()).toBe(true);
+		});
+
+		it('blocks the send while a chip card plays its remove animation', async () => {
+			const wrapper = mountPanel();
 			composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+			composer(wrapper).vm.$emit('update:modelValue', 'Use it');
 			await nextTick();
+			const card = wrapper.findComponent('[data-test-id="agent-chat-composer-chip"]') as VueWrapper;
 
-			expect(wrapper.find('[data-testid="host-chips"]').text()).toContain('Invoices');
-			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
-			expect(slot).toHaveBeenLastCalledWith(
-				expect.objectContaining({ removeChip: expect.any(Function) }),
-			);
+			card.vm.$emit('remove-start');
+			await nextTick();
+			expect(composer(wrapper).props('canSubmit')).toBe(false);
+
+			card.vm.$emit('remove-end');
+			await nextTick();
+			expect(composer(wrapper).props('canSubmit')).toBe(true);
+		});
+
+		it('focuses a chip card with Up when the draft is empty', async () => {
+			const wrapper = mountPanel({}, document.body);
+			try {
+				composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+				await flushPromises();
+				const textbox = wrapper.get('textarea');
+				textbox.element.focus();
+
+				await textbox.trigger('keydown', { key: 'ArrowUp' });
+
+				expect(document.activeElement).toBe(
+					wrapper.get('[data-test-id="agent-chat-composer-chip"] .n8n-attachment').element,
+				);
+			} finally {
+				wrapper.unmount();
+			}
 		});
 
 		it('sends the merged clientContext patches with the next message and then clears the chips', async () => {
@@ -5078,6 +5436,7 @@ describe('AgentChatPanel', () => {
 					[{ text: 'fix it', files: [], clientContext }],
 				]);
 				expect(composer(wrapper).props('modelValue')).toBe('half-typed');
+				expect(wrapper.emitted('draft-cleared')).toBeUndefined();
 				expect(vm.composerAttachments.map(({ chip }) => chip.id)).toEqual(['wf-1']);
 			});
 

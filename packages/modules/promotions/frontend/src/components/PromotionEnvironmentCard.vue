@@ -5,77 +5,98 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nSettingsRow,
-	N8nStatusDot,
 	N8nText,
-	type StatusDotVariant,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import type { PromotionEnvironment } from '../promotionsSettings.api';
-import { promotionEnvironmentBranch, promotionProviderIcon } from '../promotionsSettings.utils';
-import ApplyInstanceDialog from './ApplyInstanceDialog.vue';
+import { PROMOTION_INSTANCE_APPLY_VIEW } from '../promotions.constants';
+import {
+	promotionDirectionIcon,
+	promotionEnvironmentBranch,
+	promotionProviderIcon,
+} from '../promotionsSettings.utils';
 import PromoteInstanceDialog from './PromoteInstanceDialog.vue';
 import PromotionMissingProjectsButton from './PromotionMissingProjectsButton.vue';
 
 const props = defineProps<{
 	environment: PromotionEnvironment;
-	busy?: 'retry' | 'remove';
+	busy?: 'connect' | 'remove';
 	connectError?: string;
 	canConnect: boolean;
 }>();
 
 const emit = defineEmits<{
-	retry: [];
+	connect: [];
 	edit: [];
 	remove: [];
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 const { permissions } = usePromotionCheckout();
 
 const dialogOpen = ref(false);
 
 const branch = computed(() => promotionEnvironmentBranch(props.environment));
 
-const status = computed(() => {
-	const { hasCheckout, matchesEnvironment } = props.environment.checkout;
-	if (!hasCheckout) return 'notConnected';
-	return matchesEnvironment ? 'connected' : 'outOfDate';
-});
-
-const statusDotVariant: Record<typeof status.value, StatusDotVariant> = {
-	connected: 'success',
-	outOfDate: 'warning',
-	notConnected: 'danger',
-};
-
 const canRun = computed(() =>
 	props.environment.direction === 'apply' ? !!permissions.value.apply : !!permissions.value.promote,
 );
 
+// Test connection sits in the menu: it is optional, and the button row has no room for it.
 const actions = computed(() => [
 	{ label: i18n.baseText('generic.edit'), value: 'edit' as const },
+	...(props.canConnect
+		? [
+				{
+					label: i18n.baseText('settings.promotions.environment.testConnection'),
+					value: 'connect' as const,
+				},
+			]
+		: []),
 	{
 		label: i18n.baseText('settings.promotions.environment.remove'),
 		value: 'remove' as const,
 		destructive: true,
+		divided: true,
 	},
 ]);
 
-function onAction(action: 'edit' | 'remove') {
+// Apply opens its preview page, so users review the whole Apply first. Promote asks in a dialog.
+async function run() {
+	if (props.environment.direction === 'apply') {
+		await router.push({ name: PROMOTION_INSTANCE_APPLY_VIEW });
+		return;
+	}
+	dialogOpen.value = true;
+}
+
+function onAction(action: 'edit' | 'connect' | 'remove') {
 	if (action === 'edit') emit('edit');
+	else if (action === 'connect') emit('connect');
 	else emit('remove');
 }
 </script>
 
 <template>
 	<div>
-		<N8nSettingsRow
-			:title="i18n.baseText(`settings.promotions.environments.${environment.direction}.title`)"
-			:show-divider="false"
-		>
+		<N8nSettingsRow :show-divider="false">
+			<template #info>
+				<div :style="{ display: 'flex', alignItems: 'center', gap: 'var(--spacing--2xs)' }">
+					<N8nIcon
+						:icon="promotionDirectionIcon[environment.direction]"
+						color="text-dark"
+						size="small"
+					/>
+					<N8nText bold size="medium" color="text-dark">
+						{{ i18n.baseText(`settings.promotions.environments.${environment.direction}.title`) }}
+					</N8nText>
+				</div>
+			</template>
 			<template #action>
 				<N8nActionToggle
 					:actions="actions"
@@ -95,77 +116,81 @@ function onAction(action: 'edit' | 'remove') {
 		</N8nSettingsRow>
 		<N8nSettingsRow :show-divider="false">
 			<template #info>
-				<N8nText bold color="text-dark">{{ environment.name }}</N8nText>
-				<N8nText :class="$style.remote" size="small" color="text-light">
-					{{
-						i18n.baseText('settings.promotions.environment.remoteSummary', {
-							interpolate: {
-								type: i18n.baseText(
-									`settings.promotions.providers.type.${environment.provider.type}`,
-								),
-								remoteUrl: environment.remote.remoteUrl,
-								branch,
-							},
-						})
-					}}
-				</N8nText>
-				<div role="status" :class="$style.status" data-test-id="promotion-environment-status">
-					<div :class="$style.state">
-						<N8nStatusDot :variant="statusDotVariant[status]" />
-						<N8nText size="small" color="text-dark">
-							{{ i18n.baseText(`settings.promotions.environment.status.${status}`) }}
+				<div :class="$style.details">
+					<div :class="$style.providerIcon">
+						<N8nIcon
+							:icon="promotionProviderIcon[environment.provider.type]"
+							color="text-dark"
+							size="xlarge"
+						/>
+					</div>
+					<div :class="$style.description">
+						<N8nText bold color="text-dark">{{ environment.name }}</N8nText>
+						<N8nText :class="$style.remote" size="small" color="text-light">
+							{{
+								i18n.baseText('settings.promotions.environment.remoteSummary', {
+									interpolate: {
+										type: i18n.baseText(
+											`settings.promotions.providers.type.${environment.provider.type}`,
+										),
+										remoteUrl: environment.remote.remoteUrl,
+										branch,
+									},
+								})
+							}}
+						</N8nText>
+						<!-- No status from the local checkout: each main has its own, so it differs between mains. -->
+						<N8nText
+							v-if="busy === 'connect'"
+							role="status"
+							:class="$style.connectState"
+							size="small"
+							color="text-light"
+							data-test-id="promotion-environment-connecting"
+						>
+							{{ i18n.baseText('settings.promotions.environment.testingConnection') }}
+						</N8nText>
+						<N8nText
+							v-else-if="connectError"
+							role="alert"
+							:class="$style.connectState"
+							size="small"
+							color="danger"
+							data-test-id="promotion-environment-connect-error"
+						>
+							{{ connectError }}
 						</N8nText>
 					</div>
-					<N8nText v-if="status === 'outOfDate'" size="small" color="warning">
-						{{ i18n.baseText('settings.promotions.environment.status.outOfDate.description') }}
-					</N8nText>
-					<N8nText v-if="status !== 'connected' && connectError" size="small" color="danger">
-						{{ connectError }}
-					</N8nText>
 				</div>
 			</template>
-			<template #visual>
-				<N8nIcon
-					:icon="promotionProviderIcon[environment.provider.type]"
-					color="text-dark"
-					size="xlarge"
-				/>
-			</template>
 		</N8nSettingsRow>
-		<!-- No info here: the buttons get the whole row. -->
-		<N8nSettingsRow :show-divider="false" :action-max-width="false">
+		<!-- No info here: the buttons get the whole row, and wrap when they do not fit. -->
+		<N8nSettingsRow :show-divider="false" action-max-width="100%">
 			<template #action>
 				<div :class="$style.actions">
 					<N8nButton
-						v-if="status !== 'connected' && canConnect"
+						v-if="connectError && canConnect"
 						variant="outline"
 						size="small"
-						:loading="busy === 'retry'"
+						:loading="busy === 'connect'"
 						:disabled="busy === 'remove'"
 						data-test-id="promotion-environment-retry"
-						@click="emit('retry')"
+						@click="emit('connect')"
 					>
-						{{
-							i18n.baseText(
-								status === 'outOfDate'
-									? 'settings.promotions.environment.reconnect'
-									: 'generic.retry',
-							)
-						}}
+						{{ i18n.baseText('generic.retry') }}
 					</N8nButton>
 					<PromotionMissingProjectsButton
 						v-if="environment.direction === 'apply'"
 						:environment-id="environment.id"
 						:environment-name="environment.name"
-						:connected="status === 'connected'"
 						:busy="!!busy"
 					/>
 					<N8nButton
 						v-if="canRun"
 						size="small"
-						:disabled="status !== 'connected' || !!busy"
+						:disabled="!!busy"
 						:data-test-id="`${environment.direction}-instance-button`"
-						@click="dialogOpen = true"
+						@click="run"
 					>
 						{{ i18n.baseText(`settings.promotions.${environment.direction}.button`) }}
 					</N8nButton>
@@ -183,37 +208,45 @@ function onAction(action: 'edit' | 'remove') {
 			:provider-type="environment.provider.type"
 			@update:open="dialogOpen = $event"
 		/>
-		<ApplyInstanceDialog
-			v-if="dialogOpen && environment.direction === 'apply'"
-			:open="dialogOpen"
-			:environment-id="environment.id"
-			:branch-name="environment.settings.branchName"
-			:environment-name="environment.name"
-			@update:open="dialogOpen = $event"
-		/>
 	</div>
 </template>
 
 <style lang="scss" module>
+.details {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: start;
+	gap: var(--spacing--2xs);
+}
+
+.providerIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	border: var(--border-width) solid var(--border-color--subtle);
+	border-radius: var(--radius--2xs);
+}
+
+.description {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
 .remote {
 	overflow-wrap: anywhere;
 }
 
-.status {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
+.connectState {
 	margin-block-start: var(--spacing--3xs);
-}
-
-.state {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
 }
 
 .actions {
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
 	gap: var(--spacing--2xs);
 }
 </style>

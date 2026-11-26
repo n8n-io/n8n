@@ -70,11 +70,7 @@ The skills module cannot import the agents module, because the agents module imp
 Two checks enforce two rules. The code-health rule `skills-module-boundary` resolves each import to a file, so relative imports cannot bypass it. The ESLint and oxlint configs of cli match the import strings and show errors in the editor. If you change a rule, change it in the code-health rule and in both lint configs.
 
 - Code outside the module imports only `@/modules/skills`. Tests outside the module can also import `@/modules/skills/testing`.
-- Code in the module imports nothing from cli outside the module, except an allowlist. The allowlist only shrinks. The rule also stops imports of the agents, MCP and instance-ai modules.
-
-| Allowed import                                    | Used in                                        | Needed before a move to a package                                      |
-| ------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------- |
-| `Telemetry` (`@/telemetry`)                       | `SkillsTelemetry`                              | A shared package, or a contract that cli implements                    |
+- Code in the module imports nothing from cli outside the module. The allowlist in the code-health rule is empty, and it must stay empty. The rule also stops imports of the agents, MCP and instance-ai modules.
 
 These rules keep the module ready to move to `packages/modules/skills/backend`, like `packages/modules/insights/backend`. The ownership transfer manifest (`src/services/ownership-transfer/ownership-transfer.manifest.json`) also holds the path of `skill.entity.ts`.
 
@@ -83,18 +79,83 @@ These rules keep the module ready to move to `packages/modules/skills/backend`, 
 Split services by capability, never by caller.
 
 - `SkillService`: list, get, create, update and delete. A user action takes the `User` and checks access through `SkillAccessService`. The writes `createTrusted`, `saveTrusted` and `moveTrusted` check no access. A caller that checked access itself uses them inside its own transaction. After a trusted write commits, the caller calls `trackCreated` or `trackUpdated`.
-  A synced skill is a skill with a `skill_source_link` row. `skill.source` records how the skill was created and keeps `github` after Stop syncing, so it never decides whether a skill is synced. A synced skill is read-only, and it moves only with its source: `moveTrusted` refuses it with `SkillSyncedError` (`action: 'move'`). `saveTrusted` refuses a content change to it with `SkillSyncedError`, unless the caller passes `allowSynced`. Only Skill Sync passes it, with content that it fetched from the source. A field that a `SkillUpdate` leaves out keeps its stored value, so Skill Sync sends every field: `references: []` removes all files, and `frontmatter: null` removes the frontmatter. A frontmatter change needs `baseVersionId`, because `baseSkillHash` does not cover the frontmatter. The package import uses the same update with `checkedTarget`.
-  `list` with `groupBy: 'source'` gives the rows of the skills table: each source by repository, its synced skills under it, then the skills that no source syncs. A source in `collapsedSourceIds` is one row, listed in `collapsedSources`. The `page` query selects a zero-based page. A source group stays on one page. The `take` value is a target, so a larger group gets a page of its own. The response includes the selected page and the page count. `SkillSourceService.list` gives the sources for their group rows.
+  A synced skill is a skill with a `skill_source_link` row. `skill.source` records how the skill was created and keeps `github` after Stop syncing, so it never decides whether a skill is synced. A synced skill is read-only, and it moves only with its source: `moveTrusted` refuses it with `SkillSyncedError` (`action: 'move'`), unless a source move passes its matching `movingSourceId`. `saveTrusted` refuses a content change to it with `SkillSyncedError`, unless the caller passes `allowSynced`. Only Skill Sync passes it, with content that it fetched from the source. A field that a `SkillUpdate` leaves out keeps its stored value, so Skill Sync sends every field: `references: []` removes all files, and `frontmatter: null` removes the frontmatter. A frontmatter change needs `baseVersionId`, because `baseSkillHash` does not cover the frontmatter. The package import uses the same update with `checkedTarget`.
+  `list` with `groupBy: 'source'` gives the rows of the skills table: each source by repository, its synced skills under it, then the skills that no source syncs. The `page` query selects a zero-based page. The `take` value limits skills. Sources can span pages. Headers consume no slots. A source in `collapsedSourceIds` hides its skills but keeps their pagination slots. `collapsedSources` places folded and empty headers on the page. Empty headers stay beside the next skill, or on the last page if no skill follows. The response includes the matching skill count, selected page, and page count. `SkillSourceService.list` gives the sources for their group rows.
 - `SkillAccessService`: the project of a skill, access to one skill or to a list, and the checks for edit, move and the create target. For skill sources: `canOnSource`, `canChangeSourceScope` and `visibleSourceProjects`. A source reuses the skill scopes of its scope, so Skill Sync has no scopes of its own. `services/skill-source.policy.ts` maps each source action to its scope. The policy checks only skill scopes. A route that takes a credential, such as connect or replace credential, must also check that the user can use that credential.
 - `SkillSourceService`: Skill Sync connect and import. It parses a link with the client that reads it, applies the duplicate rules, and creates synced skills through `createTrusted` with a link row each, in one transaction. `SkillSecurityScanner` checks each skill at discover and again at connect, because the source can change in between. Connect leaves out a `blocked` skill (`blocked_by_check`), and a `needs_review` skill unless the request lists its key in `reviewedSkillKeys` (`review_required`). So connect does not import a skill that needs review only since discover because the user reviewed another skill. `SkillSyncedFromService` gives the "Synced from" data of a skill detail.
-- `SkillSyncService`: what happens to synced skills after the import. Stop syncing deletes the link, so the skill becomes a normal skill and keeps its versions. The check for updates runs from `SkillSourceCheckTask` (every `N8N_SKILL_SYNC_CHECK_INTERVAL_SECONDS`, one hour by default, on one main) and from Check now, through one use case. For a client with `probe`, it probes the source first, so an unchanged source costs one request. A client without `probe` has every synced skill fetched on each check. For a changed source it fetches each synced skill at the new revision and compares its content hash: the content of the latest version moves the base and drops a pending update, and new content gets the security check against the latest version and waits on the link as `update_available` or `update_blocked`. A SKILL.md that n8n cannot parse is an `update_blocked` update with no content. A skill folder that is gone is skipped. A check never changes a skill or a version. A check of a source that already runs on this main is joined. Every write is conditional on what the check read: `storePending` and `moveBase` on the pending hash of the link, `recordCheck` on the check time and the cursor. A write that another check, also on another main, got to first is skipped, and the check clears the cursor, so the next check reads every skill again. Check now claims its minute with one conditional update (`claimCheckNow`). Accept must move `baseContentHash`, as the check compares with it. After a rate limit, the access (credential, or public per source type) waits as long as the source asked, in memory. A source skipped during the wait stores `rate_limited` and keeps its check time, so the task still checks it first. Check now checks a source at most once a minute. The review of updates belongs here too.
+- `SkillSyncService`: what happens to synced skills after the import. Stop syncing deletes the link, so the skill becomes a normal skill and keeps its versions. The check for updates runs from `SkillSourceCheckTask` (every `N8N_SKILL_SYNC_CHECK_INTERVAL_SECONDS`, one hour by default, on one main) and from Check now, through one use case. For a client with `probe`, it probes the source first, so an unchanged source costs one request. A client without `probe` has every synced skill fetched on each check. For a changed source it fetches each synced skill at the new revision and compares its content hash: the content of the latest version moves the base and drops a pending update, and new content gets the security check against the latest version and waits on the link as `update_available` or `update_blocked`. A SKILL.md that n8n cannot parse is an `update_blocked` update with no content. A skill folder that is gone is skipped. A check never changes a skill or a version. A check of a source that already runs on this main is joined. Every write is conditional on what the check read: `storePending` and `moveBase` on the base, pending and skipped hashes of the link, `recordCheck` on the check time and the cursor. A write that another check, also on another main, got to first is skipped, and the check clears the cursor, so the next check reads every skill again. Check now claims its minute with one conditional update (`claimCheckNow`). Accept must move `baseContentHash`, as the check compares with it. After a rate limit, the access (credential, or public per source type) waits as long as the source asked, in memory. A source skipped during the wait stores `rate_limited` and keeps its check time, so the task still checks it first. Check now checks a source at most once a minute. Review reads the stored pending content and scan. Accept checks the pending hash and saved version ID, then saves the complete selection in one transaction. Unselected updates stay pending. Commit metadata is optional and reads the stored revision. It never blocks review or accept.
 - `SkillRuntimeService`: what a draft runs, runtime names, the publish snapshot, the targets and versions that agents read, and the reads of n8n Assistant. Agent reads have no permission check. The agents module checked access at attach time. The n8n Assistant reads check the project scopes of the session and access to each skill.
+
+## New skills from connected sources
+
+Checks discover unlinked skills in changed sources. `skill_source.unlinkedSkills` stores
+only keys, content hashes, verdicts, and skipped flags. Initial omissions are skipped.
+The source row counts only entries that are not skipped. Review reads the content live
+and scans it again. New skills start unchecked. Unchecked skills stay pending.
+"Hide from new count" applies only to new skills. A content change clears the skipped
+flag. The source menu always offers "Review skills", including skipped entries.
+Closing review changes nothing. Imports use the source scope and create a link.
+
+## Skill sources in n8n Assistant and MCP
+
+Both surfaces use `SkillSourceService` and the same Skill Sync gate as the UI.
+They list visible sources and show sync status on skill reads. They can preview
+public GitHub sources and import selected skills from the previewed revision.
+The service checks access and scans the skills again before it writes. Only
+skills that pass can come in. The other selected skills come back in `failed`,
+on both surfaces. If no selected skill can come in, the request fails with the
+reason of the first one.
+
+The import rules are in `SkillSourceService` only. `checkPublicImport` applies
+them and stores nothing. n8n Assistant calls it before the approval, so the
+card names the skills that come in. A check that fails reports a failed connect,
+as `connectPublic` does. A flagged skill in the selection comes back in `failed`.
+The check sends no flagged-skill telemetry event for it, because the preview
+sent one. Use the Skills UI to review warnings, accept
+updates, or connect private repositories.
+
+A model can start a source request on each tool call, and each request reads the
+source. So `SkillSourceToolBudget` allows 15 preview, check, and import requests
+for each user in 5 minutes, on both surfaces together. The next request fails
+with `rate_limited`. The budget is in memory on each main. The connect dialog
+does not use it. The tools also fail with `rate_limited`, with no read of the
+source, while `SkillSourceBackoff` holds a wait for the public access of the
+source type. `SkillSyncService` records that wait after a rate limit, and the
+checks of public sources need the same request budget.
+
+The MCP tools are `list_skill_sources` (`skill:read` or `skill:write`),
+`discover_skill_source`, and `import_skills_from_source` (both `skill:write`).
+n8n Assistant asks for approval for each import. Connect and import use the
+existing telemetry events with `surface: 'assistant'` or `surface: 'mcp'`.
+
+The user decision for an MCP import is the `skill:write` grant plus the pass
+verdict. `import_skills_from_source` has no confirmation step of its own, as
+`create_skill` has none. The revision check guards against a changed source,
+not against a missing user decision. An imported skill starts with
+`availableToAssistant` and `availableToMCP` off, and no agent uses it. Do not
+add an MCP source action that takes a skill with a warning or accepts an update:
+those need a review by a person, in the Skills UI.
+
+The three surfaces (Skills UI, MCP, n8n Assistant) have one switch, the Skill
+Sync gate. They go on and off together.
 
 ## Gates
 
-- `SkillsGate.isEnabled` reads one fact: the agents module registered its `SkillUsage`. Without the agents module, the delete and move guards cannot see the agents that use a skill. Every entry point (REST, MCP, n8n Assistant) checks this gate. Do not check `isActive('agents')` or the proxy in other code.
+- `SkillsGate.isEnabled` decides if skills are on. Skills have no admin toggle of their own. Every entry point (REST, MCP, n8n Assistant) checks this gate. Do not check `isActive('agents')`, the proxy or the consumer settings in other code. The gate needs two facts:
+  - The agents module registered its `SkillUsage`. Without the agents module, the delete and move guards cannot see the agents that use a skill, so skills stay off.
+  - One or more consumers are on. The gate reads the module settings that `ModuleRegistry` caches, so it does not import the consumer modules:
+
+    | Consumer      | Module setting                  | Admin control                       |
+    | ------------- | ------------------------------- | ----------------------------------- |
+    | Agents        | `agents.enabled`                | Settings > Agents (`PUT /agents/settings`) |
+    | n8n Assistant | `instance-ai.enabled`           | n8n Assistant settings              |
+    | MCP           | `mcp.mcpAccessEnabled`          | Instance MCP access                 |
+
+  When all consumers are off, the skills routes and the Skill Sync routes answer 404, MCP and n8n Assistant show no skill tools, and the frontend hides the skills page (`isContextSkillsEnabled`, which uses the same rule). n8n keeps the skill data. Each consumer refreshes its module settings on every main when an admin changes it (`reload-agents-settings`, `reload-instance-ai-settings` and `reload-mcp-settings`).
+  The delete and move guards do not read the agents toggle. While agents are off and skills stay on for n8n Assistant or MCP, a user still cannot delete or move a skill that an agent uses.
 - `AssistantSkillsFlagGate.isEnabled()` needs two facts: `SkillsGate` is on, and the PostHog instance flag `ASSISTANT_SKILLS_FLAG` is on. It switches n8n Assistant skills separately from skills.
-- `SkillSyncFlagGate.isEnabled(user)` needs two facts: `SkillsGate` is on, and the per-user PostHog flag `SKILL_SYNC_FLAG` is on for that user. The Skill Sync controller checks it in a middleware before the body is validated, and the service calls `assertEnabled`. Both answer 404. The check task has no user, so it reads the flag of the user who created the source, or of the instance owner when that user is gone. Force the flag on with `N8N_FEATURE_FLAG_OVERRIDES='{"136_skill_sync":true}'`. The frontend reads the same flag through `useSkillSyncFlag`.
+- `SkillSyncFlagGate.isEnabled(user)` needs three facts: `SkillsGate` is on, the Skill Sync switch is on, and the per-user PostHog flag `SKILL_SYNC_FLAG` is on for that user. The Skill Sync controller checks it in a middleware before the body is validated, and the service calls `assertEnabled`. Both answer 404. The check task has no user, so it reads the flag of the user who created the source, or of the instance owner when that user is gone. Force the flag on with `N8N_FEATURE_FLAG_OVERRIDES='{"136_skill_sync":true}'`. The frontend reads the same flag and switch through `useSkillSyncFlag`. `isAvailable` is the instance part of the gate, without the flag of a user. The MCP consent screen has no user, so it reads `isAvailable` to hide the source tools.
+- `SkillSyncSettingsService.isEnabled()` is the Skill Sync switch. An admin with `skill:manage` sets it with `PUT /skill-sync/settings`, and every main reloads it (`reload-skill-sync-settings`). When `N8N_SKILL_SYNC_MANAGED_BY_ENV` is true, `N8N_SKILL_SYNC_ENABLED` is the value and the route answers 403. With no saved value, the switch is off on the enterprise plan and on for other plans. The service reads the plan on each call, like the n8n Assistant, Preferences and MCP switches. At startup, an enterprise instance that has a skill source saves the switch as on. While the switch is off, the check task does not run, and the sources and synced skills stay.
 
 ## DI and start order
 
@@ -119,7 +180,7 @@ Say "skills" or "skills module". Do not say "skills hub". Do not use "provider" 
 
 Skill Sync adds sources such as GitHub and GitLab. It uses the Strategy pattern with a registry. The abstract class `SkillSourceClient` in `sources/` is the contract. A client parses a link, gives the identity of a source, lists its skills and fetches one skill. It knows nothing else. The locator and the skill refs are opaque JSON that only the client reads.
 
-1. Add one client for each source type in `sources/`, such as `GitHubSkillSourceClient` in `sources/github/`. It reads public repositories with `ls-refs` over git smart HTTP and the tarball of the head commit, so it does not use the GitHub REST API.
+1. Add one client for each source type in `sources/`, such as `GitHubSkillSourceClient` in `sources/github/`. It reads branches with `ls-refs` over git smart HTTP. Repository links use tarballs. Folder links use the GitHub REST API to list the files under the folder. Public files come from `raw.githubusercontent.com`. Private tarballs and files use the REST API with the credential's token. Optional commit metadata also uses the GitHub REST API.
 2. Run `describeSkillSourceClientContract` from `__tests__/test-utils/` on it. `__tests__/in-memory-skill-source-client.test.ts` runs the same cases on `InMemorySkillSourceClient`, which reads an `InMemoryPagesStore`: a pages source with no files and no branches. The test sets up the store, and the client only reads it. If the fake cannot pass a new case, the case has a git-only assumption.
 3. Register each client on `SkillSourceClientRegistry`, keyed by its type, in `SkillsModule.init()`.
 4. Keep the shared logic in `SkillSyncService`: compare hashes, build the diff, find conflicts, and write through `createTrusted` and `saveTrusted`. A source never writes skills itself.
@@ -145,7 +206,7 @@ If a decision sits between repository reads, move it into a pure function first 
 
 - `__tests__/test-utils/skill-services.ts` builds the three services over a mocked repository and transactions. The agents side is `FakeSkillUsage` behind a real `SkillUsageProxy`: seed agents, drafts and publishes with `usage.seed`, and do not mock its answers.
 - `describeSkillUsageContract` in `testing/` holds the cases that every `SkillUsage` passes. `__tests__/skill-usage.fake.test.ts` runs them on the fake, and `../agents/__tests__/agent-skill-usage.integration.test.ts` runs them on the database. When the contract changes, change the cases first.
-- `__tests__/integration/skills-off.integration.test.ts` loads the skills module without the agents module, so the gates are off with nothing stubbed.
+- `__tests__/integration/skills-off.integration.test.ts` loads the skills module without the agents module, so the gates are off with nothing stubbed. Then it registers `FakeSkillUsage` and sets the consumer settings on the real `ModuleRegistry`.
 - Tests outside the module use the fixtures in `testing/` to create skills and versions, read them back, and clear the tables. They never import the repository or the entities.
 - `testing/` holds only what tests outside the module import. It is the one test path that the boundary rules allow, as `index.ts` is for code. Before you add a file to `testing/`, find the test outside the module that imports it. If no such test exists, put the file in `__tests__/test-utils/`. Move it to `testing/` with the first outside test that needs it. A fake or a contract suite for a strategy of this module, such as `InMemorySkillSourceClient`, stays in `__tests__/test-utils/`.
 - AI tools report a refused write through `toSkillToolRefusal`, so MCP and n8n Assistant tell the model the same thing.

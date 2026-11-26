@@ -54,11 +54,9 @@ import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
-import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 
 import { CollaborationService } from '../collaboration/collaboration.service';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
@@ -69,7 +67,6 @@ import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
-import { toUserLike } from '@/utils/to-user-like';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -94,7 +91,6 @@ export class WorkflowsController {
 		private readonly collaborationService: CollaborationService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
-		private readonly ownershipService: OwnershipService,
 	) {}
 
 	@Post('/')
@@ -242,7 +238,8 @@ export class WorkflowsController {
 
 			const enterpriseWorkflowService = this.enterpriseWorkflowService;
 
-			const workflowWithMetaData = enterpriseWorkflowService.addOwnerAndSharings(workflow);
+			const workflowWithMetaData =
+				await enterpriseWorkflowService.addOwnerSharingsAndAccountKinds(workflow);
 
 			await enterpriseWorkflowService.addCredentialsToWorkflow(workflowWithMetaData, req.user);
 
@@ -540,28 +537,16 @@ export class WorkflowsController {
 
 		const n8nAuthCookie = this.authService.getCookieToken(req);
 
-		const result = await this.workflowExecutionService.executeManually(
-			dbWorkflow,
-			body,
-			req.user,
-			req.headers['push-ref'],
+		const result = await this.workflowExecutionService.executeManually({
+			workflowData: dbWorkflow,
+			payload: body,
+			user: req.user,
+			pushRef: req.headers['push-ref'],
 			n8nAuthCookie,
-		);
+		});
 
 		if ('executionId' in result) {
-			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
-				this.ownershipService,
-				dbWorkflow.id,
-			);
-			this.eventService.emit('workflow-executed', {
-				user: toUserLike(req.user),
-				workflowId: dbWorkflow.id,
-				workflowName: dbWorkflow.name,
-				executionId: result.executionId,
-				projectId,
-				projectName,
-				source: 'user-manual',
-			});
+			await this.workflowService.emitWorkflowExecuted(req.user, dbWorkflow, result.executionId);
 		}
 
 		return result;

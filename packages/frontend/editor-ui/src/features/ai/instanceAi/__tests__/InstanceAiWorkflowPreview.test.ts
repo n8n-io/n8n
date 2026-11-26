@@ -55,7 +55,6 @@ const thread = reactive({
 	// Same shape as the runtime's logs panel memory; it survives the simulated tab switch.
 	logsPanelMemory: {
 		collapsedByUser: false,
-		autoOpened: false,
 		latestStartedExecutionIds: new Map<string, string>(),
 	},
 });
@@ -228,7 +227,6 @@ describe('InstanceAiWorkflowPreview', () => {
 		thread.sendMessage.mockReset();
 		rememberedManualExecutions.clear();
 		thread.logsPanelMemory.collapsedByUser = false;
-		thread.logsPanelMemory.autoOpened = false;
 		thread.logsPanelMemory.latestStartedExecutionIds.clear();
 		telemetryTrackSpy.mockReset();
 	});
@@ -255,6 +253,14 @@ describe('InstanceAiWorkflowPreview', () => {
 
 			expect(readOnly(wrapper)).toBe('true');
 		});
+	});
+
+	it('reports that the saved workflow loaded, so its draft can go', async () => {
+		const { wrapper } = await mountPreview();
+
+		await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+
+		expect(wrapper.emitted('workflow-loaded')).toEqual([['wf-1']]);
 	});
 
 	it('restores the cached agent execution after the artifact workflow reloads', async () => {
@@ -514,39 +520,49 @@ describe('InstanceAiWorkflowPreview', () => {
 				.filter(([event]) => event === 'User toggled log view')
 				.map(([, properties]) => properties);
 
-		it('opens the panel when a run starts and collapses it when the run succeeds', async () => {
+		it('does not open the panel when a run starts or succeeds', async () => {
 			const { listeners } = await mountPreview();
 			const logsStore = useLogsStore();
-			expect(logsStore.isOpen).toBe(false);
 
 			// User run from the artifact canvas.
 			startExecution(listeners, 'exec-user-1');
-			expect(logsStore.isOpen).toBe(true);
-			finishExecution(listeners, 'exec-user-1', 'success');
 			expect(logsStore.isOpen).toBe(false);
+			finishExecution(listeners, 'exec-user-1', 'success');
 
 			// Agent run while the artifact is open.
 			startExecution(listeners, 'exec-agent-2', 'instance_ai');
-			expect(logsStore.isOpen).toBe(true);
-			finishExecution(listeners, 'exec-agent-2', 'success');
 			expect(logsStore.isOpen).toBe(false);
+			finishExecution(listeners, 'exec-agent-2', 'success');
 
+			expect(logsStore.isOpen).toBe(false);
+			expect(toggleEvents()).toHaveLength(0);
+		});
+
+		it.each([
+			['user', undefined],
+			['agent', 'instance_ai' as const],
+		])('opens the panel when a %s run fails', async (_label, source) => {
+			const { listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+
+			startExecution(listeners, 'exec-1', source);
+			finishExecution(listeners, 'exec-1', 'error');
+
+			expect(logsStore.isOpen).toBe(true);
 			expect(toggleEvents()).toEqual([
 				{ new_state: 'attached', source: 'auto', context: 'artifact' },
-				{ new_state: 'collapsed', source: 'auto', context: 'artifact' },
-				{ new_state: 'attached', source: 'auto', context: 'artifact' },
-				{ new_state: 'collapsed', source: 'auto', context: 'artifact' },
 			]);
 		});
 
-		it('keeps the panel open when the run fails', async () => {
+		it('does not open the panel when an older run fails', async () => {
 			const { listeners } = await mountPreview();
 			const logsStore = useLogsStore();
 
 			startExecution(listeners, 'exec-user-1');
+			startExecution(listeners, 'exec-user-2');
 			finishExecution(listeners, 'exec-user-1', 'error');
 
-			expect(logsStore.isOpen).toBe(true);
+			expect(logsStore.isOpen).toBe(false);
 		});
 
 		it('stops opening the panel for the thread after the user collapses it', async () => {
@@ -554,9 +570,10 @@ describe('InstanceAiWorkflowPreview', () => {
 			const logsStore = useLogsStore();
 
 			startExecution(listeners, 'exec-user-1');
+			finishExecution(listeners, 'exec-user-1', 'error');
 			logsStore.toggleOpen(false); // the user collapses the panel
-			finishExecution(listeners, 'exec-user-1', 'success');
 			startExecution(listeners, 'exec-agent-2', 'instance_ai');
+			finishExecution(listeners, 'exec-agent-2', 'error');
 
 			expect(thread.logsPanelMemory.collapsedByUser).toBe(true);
 			expect(logsStore.isOpen).toBe(false);
@@ -583,11 +600,12 @@ describe('InstanceAiWorkflowPreview', () => {
 			const logsStore = useLogsStore();
 
 			startExecution(listeners, 'exec-user-1');
+			finishExecution(listeners, 'exec-user-1', 'error');
 
 			expect(logsStore.isOpen).toBe(false);
 		});
 
-		it('does not open the panel for executions of other workflows', async () => {
+		it('does not open the panel for failed executions of other workflows', async () => {
 			const { listeners } = await mountPreview();
 			const logsStore = useLogsStore();
 
@@ -602,24 +620,26 @@ describe('InstanceAiWorkflowPreview', () => {
 						flattedRunData: '[]',
 					},
 				});
+				listener({
+					type: 'executionFinished',
+					data: { executionId: 'exec-other-1', workflowId: 'wf-2', status: 'error' },
+				});
 			}
 
 			expect(logsStore.isOpen).toBe(false);
 		});
 
-		it('collapses the panel after a tab switch when the run that opened it succeeds', async () => {
+		it('opens the panel after a tab switch when the latest run fails', async () => {
 			const first = await mountPreview();
 			const logsStore = useLogsStore();
 			startExecution(first.listeners, 'exec-user-1');
-			expect(logsStore.isOpen).toBe(true);
 
 			// A tab switch and back remounts the preview on the same thread runtime.
 			first.wrapper.unmount();
 			const { listeners } = await mountPreview({ pinia: first.pinia });
-			finishExecution(listeners, 'exec-user-1', 'success');
+			finishExecution(listeners, 'exec-user-1', 'error');
 
-			expect(logsStore.isOpen).toBe(false);
-			expect(toggleEvents()).toHaveLength(2);
+			expect(logsStore.isOpen).toBe(true);
 		});
 
 		// Another artifact tab is active: the preview stays mounted but hidden.
@@ -629,28 +649,16 @@ describe('InstanceAiWorkflowPreview', () => {
 			document.head.appendChild(document.createElement('style'));
 		};
 
-		it('does not open the panel for a run of a hidden tab', async () => {
+		it('does not open the panel for a failed run of a hidden tab', async () => {
 			const { wrapper, listeners } = await mountPreview();
 			const logsStore = useLogsStore();
 			hidePreview(wrapper);
 
 			startExecution(listeners, 'exec-user-1');
+			finishExecution(listeners, 'exec-user-1', 'error');
 
 			expect(logsStore.isOpen).toBe(false);
 			expect(toggleEvents()).toHaveLength(0);
-		});
-
-		it('does not collapse the panel for a run of a hidden tab', async () => {
-			const { wrapper, listeners } = await mountPreview();
-			const logsStore = useLogsStore();
-			startExecution(listeners, 'exec-user-1');
-			expect(logsStore.isOpen).toBe(true);
-
-			hidePreview(wrapper);
-			finishExecution(listeners, 'exec-user-1', 'success');
-
-			expect(logsStore.isOpen).toBe(true);
-			expect(toggleEvents()).toHaveLength(1);
 		});
 	});
 });

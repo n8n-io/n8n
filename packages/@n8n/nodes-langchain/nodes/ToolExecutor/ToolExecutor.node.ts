@@ -2,6 +2,7 @@ import type { Toolkit } from '@langchain/classic/agents';
 import { StructuredTool, Tool } from '@langchain/core/tools';
 import { buildResponseMetadata, processHitlResponses } from '@utils/agent-execution';
 import {
+	buildHitlNodeInput,
 	extractHitlMetadata,
 	hasGatedToolNodeName,
 } from '@utils/agent-execution/createEngineRequests';
@@ -99,7 +100,7 @@ export class ToolExecutor implements INodeType {
 		const getQueryData = (name: string) => {
 			// node names in query may have underscores in place of spaces, use it for accessing the query data.
 			return (get(parsedQuery, name, null) ?? get(parsedQuery, name.replaceAll(' ', '_'), null)) as
-				| Record<string, unknown>
+				| IDataObject
 				| string
 				| null;
 		};
@@ -156,11 +157,12 @@ export class ToolExecutor implements INodeType {
 									{
 										actionType: 'ExecutionNodeAction' as const,
 										nodeName: node,
-										input: {
-											tool: toolName,
-											toolParameters: toolInput.toolParameters as IDataObject,
-											...hitlInput,
-										},
+										input: buildHitlNodeInput(
+											toolkitTool,
+											hitlInput,
+											toolName,
+											toolInput.toolParameters as IDataObject,
+										),
 										type: 'ai_tool',
 										id: crypto.randomUUID(),
 										metadata: {

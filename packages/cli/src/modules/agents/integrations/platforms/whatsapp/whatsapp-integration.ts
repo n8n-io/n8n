@@ -25,6 +25,14 @@ import type { WhatsAppRawMessage } from '@chat-adapter/whatsapp';
 
 import { AgentRepository } from '../../../repositories/agent.repository';
 import {
+	integrationMemoryResourceId,
+	integrationTypeFromMemoryResourceId,
+	isTaskRunMemoryResourceId,
+	userIdFromDraftChatMemoryResourceId,
+	userIdFromProductionChatMemoryResourceId,
+	userIdFromSystemChatMemoryResourceId,
+} from '../../../utils/agent-memory-scope';
+import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
 	type AgentIntegrationRemovalContext,
@@ -61,7 +69,11 @@ import {
 	resolveIntegrationContextQueryDefinitions,
 } from '../../integration-tool-definitions';
 import { buildIntegrationConnectionId } from '../../integration-tool-factory';
-import type { IntegrationActionResult, ReplyExpectation } from '../../integration-tool-types';
+import type {
+	IntegrationActionResult,
+	IntegrationMessageContext,
+	ReplyExpectation,
+} from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
 import {
 	GRAPH_API_BASE_URL,
@@ -111,6 +123,13 @@ type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
  * rejects the send, so we fail fast and point the agent to `send_template`.
  * @see https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates
  */
+const OTHER_CUSTOMER_REFUSAL =
+	'You can message only the customer in this conversation. Do not try other numbers.';
+const ORIGIN_REFUSAL = 'This run cannot send WhatsApp messages.';
+
+/** `+44 7397-567320` and `447397567320` name the same WhatsApp number. */
+const digitsOnly = (phone: string) => phone.replace(/\D/g, '');
+
 const WHATSAPP_CUSTOMER_SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const WINDOW_CLOSED_MESSAGE =
@@ -215,12 +234,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'whatsapp';
 
-	/**
-	 * Hidden from the public catalog and the add-trigger UI until the
-	 * follow-on work (rate limiting, media handling, setup UX) lands —
-	 * without it this channel would go live with only the bare MVP.
-	 */
-	readonly internal = true;
+	readonly internal = false;
 
 	readonly builderGuidance = {
 		capabilities: [
@@ -266,12 +280,22 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 	readonly actionToolGuidance = [
 		'For scheduled tasks without an inbound conversation, use send_dm with the known WhatsApp user ID (the customer phone number, WhatsApp "wa_id" format). This fails outside the 24-hour customer service window.',
+		'In a conversation that a customer started, send_dm and send_template can reach only that customer. Scheduled tasks can reach any number.',
 		'When a send fails with an error that says the 24-hour window has closed, call list_templates, choose the template that best fits what you wanted to say, and send it with send_template. Use only facts you know as placeholder values. If no template fits, do not send one. For any other send error, do not send a template.',
 		'A template does not open the 24-hour window. Free-form messages to the customer still fail until the customer replies. Send a template only when its content is the message you want the customer to receive. Never send one as a placeholder or to try to open the window.',
 		'WhatsApp has no group conversations — every thread is a 1:1 DM.',
 	];
 
 	readonly disableStreaming = true;
+
+	/**
+	 * Inbound messages use the digits-only "wa_id". Strip "+", spaces and
+	 * dashes so "+447397567320" and "447397567320" share one thread.
+	 */
+	normalizeUserId(userId: string): string {
+		const digits = userId.replace(/\D/g, '');
+		return digits || userId;
+	}
 
 	/**
 	 * WhatsApp supports neither editing nor deleting a sent message (Cloud API
@@ -308,6 +332,47 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		return { ok: true, ...result };
 	}
 
+	/**
+	 * A run that a customer message started can message only that customer. This
+	 * holds in a task session too: a customer's reply continues the task that
+	 * messaged them. A scheduled task or an n8n user chat can message any number.
+	 * An unknown origin gets no send.
+	 */
+	checkActionRecipient(params: {
+		action: string;
+		input: Record<string, unknown>;
+		resourceId?: string;
+		currentMessageContext?: IntegrationMessageContext;
+	}): string | undefined {
+		if (params.action !== 'send_dm' && params.action !== 'send_template') return undefined;
+
+		const { resourceId, currentMessageContext } = params;
+		const startedBy =
+			currentMessageContext?.platform === this.type
+				? currentMessageContext.interactingUserId
+				: undefined;
+		const customer =
+			startedBy ??
+			(resourceId !== undefined && integrationTypeFromMemoryResourceId(resourceId) === this.type
+				? resourceId.slice(integrationMemoryResourceId(this.type, '').length)
+				: undefined);
+
+		if (customer !== undefined) {
+			const { userId } = params.input;
+			const sameCustomer =
+				typeof userId === 'string' && digitsOnly(customer) === digitsOnly(userId);
+			return sameCustomer ? undefined : OTHER_CUSTOMER_REFUSAL;
+		}
+
+		const startedByBusinessOrUser =
+			isTaskRunMemoryResourceId(resourceId) ||
+			(resourceId !== undefined &&
+				(userIdFromDraftChatMemoryResourceId(resourceId) !== undefined ||
+					userIdFromProductionChatMemoryResourceId(resourceId) !== undefined ||
+					userIdFromSystemChatMemoryResourceId(resourceId) !== undefined));
+		return startedByBusinessOrUser ? undefined : ORIGIN_REFUSAL;
+	}
+
 	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {
 		if (params.action !== 'send_template') return undefined;
 		const adapter = templateAdapter(params.chat);
@@ -320,14 +385,15 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		);
 		// Sent straight through the adapter, not `postMessage`: a template is the
 		// one message type the customer service window allows.
-		const threadId = await adapter.openDM(input.userId);
+		const userId = this.normalizeUserId(input.userId);
+		const threadId = await adapter.openDM(userId);
 		const sent = await adapter.sendTemplate(threadId, message);
 		return {
 			ok: true,
 			messageContext: {
 				integrationConnectionId: params.descriptor.integrationConnectionId,
 				platform: params.descriptor.integration.type,
-				target: { type: 'dm', userId: input.userId, threadId },
+				target: { type: 'dm', userId, threadId },
 				messageId: sent.id,
 				updatedAt: new Date().toISOString(),
 			},
@@ -409,8 +475,14 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		if (mode !== 'subscribe' || !token || !challenge) return undefined;
 
 		if (token !== this.deriveVerifyToken(context.agentId)) {
+			this.logger.debug('[WhatsAppIntegration] Refused a webhook handshake: wrong verify token', {
+				agentId: context.agentId,
+			});
 			return { status: 403, body: 'Forbidden', raw: true };
 		}
+		this.logger.debug('[WhatsAppIntegration] Accepted a webhook handshake', {
+			agentId: context.agentId,
+		});
 		// Recorded so the setup can confirm the step. Not awaited, because Meta
 		// times out the handshake and the record is only for display.
 		void this.webhookVerification.markVerified(context.agentId);
@@ -866,7 +938,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		return this.requireCredentialField(
 			credential,
 			'businessAccountId',
-			'The WhatsApp credential is missing a WhatsApp Business Account ID.',
+			'The WhatsApp credential is missing a Messaging account ID.',
 		);
 	}
 

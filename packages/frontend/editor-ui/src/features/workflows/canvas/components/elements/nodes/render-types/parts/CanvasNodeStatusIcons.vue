@@ -16,6 +16,7 @@ import {
 	useSubWorkflowRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
+import { useNodeCredentialTypeRestrictions } from '@/features/credentials/composables/useNodeCredentialTypeRestrictions';
 import CanvasNodeStatusMark from './CanvasNodeStatusMark.vue';
 const {
 	size = 'large',
@@ -36,6 +37,7 @@ const {
 	name,
 	validationErrors,
 	hasValidationErrors,
+	isSetupRequired: needsCredentialSetup,
 	executionStatus,
 	hasRunData,
 	runDataIterations,
@@ -60,25 +62,6 @@ const deprecatedTooltip = computed(() =>
 
 const editorFeatures = inject(EditorEnabledFeaturesKey, undefined);
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const needsCredentialSetup = computed(() => {
-	if (!editorFeatures?.value.credentialSetupWarnings) return false;
-	const node = workflowDocumentStore.value.getNodeById(id.value);
-	const issues = node?.issues;
-	const credentialTypes = Object.keys(issues?.credentials ?? {});
-	if (!node || !credentialTypes.length) return false;
-	if (
-		Object.entries(issues ?? {}).some(
-			([kind, issue]) =>
-				kind !== 'credentials' &&
-				(typeof issue === 'boolean' ? issue : Object.keys(issue ?? {}).length > 0),
-		)
-	)
-		return false;
-	return credentialTypes.every((type) => {
-		const credential = node.credentials?.[type];
-		return !credential?.id && !credential?.__aiGatewayManaged;
-	});
-});
 const { labelOf } = usePolicyViolationLabels();
 const { restriction: subWorkflowRestriction } = useSubWorkflowRestriction({
 	parentWorkflowId: () => workflowDocumentStore.value.workflowId,
@@ -92,19 +75,16 @@ const subWorkflowRestrictionLines = computed(() =>
 		? describeSubWorkflowRestriction(subWorkflowRestriction.value, labelOf)
 		: [],
 );
+const { descriptions: credentialTypeRestrictionLines } = useNodeCredentialTypeRestrictions(() =>
+	workflowDocumentStore.value.getNodeById(id.value),
+);
 const executionErrors = computed(
 	() => renderData.value.executionIssuesByNodeId.get(id.value)?.value ?? [],
 );
 const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
-const hasPinnedData = computed(
-	() =>
-		!renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.pinnedDataByNodeName[name.value],
-);
+const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
 const hasExecutionPinData = computed(
-	() =>
-		renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.executionPinDataByNodeId.get(id.value)?.value,
+	() => !!renderData.value.getDisplayedExecutionPinData(id.value),
 );
 const hasVisiblePinData = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const route = useRoute();
@@ -169,6 +149,18 @@ const groupedExecutionErrors = computed(() => {
 	</div>
 	<div v-else-if="isDisabled" :class="[...commonClasses, $style.disabled]">
 		<N8nIcon icon="power" :size="size" />
+	</div>
+	<div
+		v-else-if="credentialTypeRestrictionLines.length > 0"
+		:class="[...commonClasses, $style.warning]"
+		data-test-id="node-credential-type-restricted"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				<div v-for="line in credentialTypeRestrictionLines" :key="line">{{ line }}</div>
+			</template>
+			<N8nIcon icon="triangle-alert" :size="size" />
+		</N8nTooltip>
 	</div>
 	<div
 		v-else-if="hasExecutionErrors && !hideNodeIssues"

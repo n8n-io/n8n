@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentApproval, ChatIntegrationDescriptor } from '@n8n/api-types';
 
+import { getAgentChannelPlatform } from '../channels/registry';
 import AgentChannelModal, { type ChannelView } from '../components/AgentChannelModal.vue';
 
 const mocks = vi.hoisted(() => ({
@@ -44,6 +45,7 @@ const slackIntegration = {
 const statuses = ref<
 	Record<string, 'configured' | 'starting' | 'connected' | 'error' | 'disconnected'>
 >({});
+const n8nChatPublishedEnabled = ref(false);
 const connectedCredentials = ref<Record<string, string>>({});
 const integrationApproval = ref<Record<string, AgentApproval | undefined>>({});
 const selectedCredentials = ref<Record<string, string>>({});
@@ -103,6 +105,7 @@ vi.mock('../channels/registry', async () => {
 				:data-setup-kind="runtime.setupKind?.value"
 			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
+				<button data-testid="clear-credential" @click="$emit('update:modelValue', '')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
 				<button data-testid="platform-done" @click="$emit('done')" />
 				<button data-testid="persist-channel" @click="$emit('persist')" />
@@ -162,13 +165,13 @@ vi.mock('../channels/registry', async () => {
 	// n8n Chat has no credential and drives its footer from the modal itself, so
 	// its view only needs to hold a description, not the connect/beforeSave flow.
 	const n8nChatView = defineComponent({
-		props: ['savedDescription'],
+		props: ['savedDescription', 'availableInChat'],
 		setup(props: { savedDescription?: string }) {
 			const description = ref(props.savedDescription ?? '');
 			return { description };
 		},
 		template: `
-			<div data-testid="n8n-chat-view">
+			<div data-testid="n8n-chat-view" :data-available-in-chat="availableInChat">
 				<button data-testid="set-description" @click="description = 'New description'" />
 			</div>
 		`,
@@ -211,6 +214,7 @@ vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 vi.mock('../composables/useAgentIntegrationStatus', () => ({
 	useAgentIntegrationStatus: () => ({
 		fetchStatus: mocks.fetchStatus,
+		n8nChatPublishedEnabled,
 		connectedCredentials,
 		integrationSettings: ref({ example: { accessMode: 'all' } }),
 		integrationApproval,
@@ -361,6 +365,7 @@ describe('AgentChannelModal', () => {
 		platformCredentialRequired.value = undefined;
 		catalog.value = [exampleIntegration];
 		statuses.value = {};
+		n8nChatPublishedEnabled.value = false;
 		connectedCredentials.value = {};
 		integrationApproval.value = {};
 		selectedCredentials.value = {};
@@ -386,6 +391,13 @@ describe('AgentChannelModal', () => {
 		mocks.afterSave.mockResolvedValue(undefined);
 		mocks.ensureAgentPersisted.mockResolvedValue(undefined);
 		mocks.saveDescription.mockResolvedValue(undefined);
+	});
+
+	it('uses the Add trigger title in the trigger picker', async () => {
+		const wrapper = mountModal('list');
+		await flushPromises();
+
+		expect(wrapper.get('h3').text()).toBe('agents.builder.addTrigger.modal.title');
 	});
 
 	it('uses registry metadata and setup rendering without platform checks', async () => {
@@ -798,6 +810,24 @@ describe('AgentChannelModal', () => {
 			expect(mocks.connect).toHaveBeenCalledWith('example', '', { accessMode: 'all' }, {});
 		});
 
+		it('drops the saved credential when the selection is cleared', async () => {
+			statuses.value.example = 'connected';
+			connectedCredentials.value.example = 'credential-old';
+			const wrapper = mountModal('example_edit');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="clear-credential"]').trigger('click');
+			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledWith(
+				'example',
+				'',
+				{ accessMode: 'all' },
+				{ replaces: { credentialId: 'credential-old' } },
+			);
+		});
+
 		it('replaces a saved entry without a credential when a credential is chosen', async () => {
 			statuses.value.example = 'connected';
 			connectedCredentials.value.example = '';
@@ -938,6 +968,31 @@ describe('AgentChannelModal', () => {
 			duration: 0,
 		});
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+	});
+
+	it('tells the platform when a removal is a restart', async () => {
+		statuses.value.example = 'connected';
+		connectedCredentials.value.example = 'credential-old';
+		const warning = {
+			integrationType: 'example',
+			code: 'cleanup_incomplete',
+			action: { type: 'open_url', url: 'https://example.test/settings' },
+		};
+		mocks.disconnect.mockResolvedValueOnce({ status: 'disconnected', warning });
+		const presentDisconnectWarning = vi.spyOn(
+			getAgentChannelPlatform('example'),
+			'presentDisconnectWarning',
+		);
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+
+		await wrapper.get('[data-testid="platform-restart"]').trigger('click');
+		await flushPromises();
+
+		expect(presentDisconnectWarning).toHaveBeenCalledWith(
+			warning,
+			expect.objectContaining({ restart: true }),
+		);
 	});
 
 	it('confirms managed removal from the edit view and keeps the Slack app when unchecked', async () => {
@@ -1226,6 +1281,17 @@ describe('AgentChannelModal', () => {
 	});
 
 	describe('n8n Chat', () => {
+		it('passes published chat availability to the setup view after removal from the draft', () => {
+			statuses.value.n8n_chat = 'disconnected';
+			n8nChatPublishedEnabled.value = true;
+
+			const wrapper = mountModal('n8n_chat_setup', true);
+
+			expect(
+				wrapper.get('[data-testid="n8n-chat-view"]').attributes('data-available-in-chat'),
+			).toBe('true');
+		});
+
 		it('hides n8n Chat when its feature flag is off', async () => {
 			n8nChatFlag.value = false;
 			const wrapper = mountModal('list');

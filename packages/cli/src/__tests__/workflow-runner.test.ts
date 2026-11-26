@@ -56,6 +56,7 @@ import {
 	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { Push } from '@/push';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
@@ -273,7 +274,7 @@ describe('processError', () => {
 		);
 		const deleteInFlightSpy = vi
 			.spyOn(Container.get(ExecutionPersistence), 'deleteInFlightExecution')
-			.mockResolvedValue();
+			.mockResolvedValue({ ended: false });
 
 		globalConfig.executions.mode = 'queue';
 		await runner.processError(
@@ -385,7 +386,7 @@ describe('processError', () => {
 		);
 		const deleteInFlightSpy = vi
 			.spyOn(Container.get(ExecutionPersistence), 'deleteInFlightExecution')
-			.mockResolvedValue();
+			.mockResolvedValue({ ended: false });
 
 		globalConfig.executions.mode = 'queue';
 		await runner.processError(
@@ -561,7 +562,7 @@ describe('processError', () => {
 			hooks,
 		);
 
-		expect(announce).toHaveBeenCalledExactlyOnceWith(execution.id);
+		expect(announce).toHaveBeenCalledExactlyOnceWith(execution.id, hooks.workflowData.name);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -1281,11 +1282,58 @@ describe('run', () => {
 			expect(additionalData.evalLlmMockHandler).toBe(sentinel);
 		});
 
+		it('restores the root execution mode from the execution data', async () => {
+			const { data, additionalData } = arrangeRunDeps({
+				...createRunExecutionData({}),
+				rootExecutionMode: 'manual',
+			});
+
+			await runner.run(data);
+
+			expect(additionalData.rootExecutionMode).toBe('manual');
+		});
+
 		it('is a no-op when not provided', async () => {
 			const { data } = arrangeRunDeps();
 			// Not setting data.configureAdditionalData
 
 			await expect(runner.run(data)).resolves.toBe('1');
+		});
+	});
+
+	describe('user of the pushRef', () => {
+		it('binds sendDataToUI to the user of the pushRef', async () => {
+			const push = mockInstance(Push);
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
+			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
+				new PCancelable(() => mock<IRun>()),
+			);
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			const data = mock<IWorkflowExecutionDataProcess>({
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
+				executionData: Object.assign(createRunExecutionData({}), { pushRefUserId: undefined }),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				pushRef: 'push-ref',
+				pushRefUserId: undefined,
+				userId: 'editor',
+			});
+
+			await runner.run(data);
+			additionalData.sendDataToUI?.('sendConsoleMessage', { message: 'hi' });
+
+			expect(push.send).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'sendConsoleMessage' }),
+				'push-ref',
+				'editor',
+			);
 		});
 	});
 
@@ -1403,7 +1451,7 @@ describe('enqueueExecution', () => {
 				'queue unavailable',
 			);
 
-			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe('startFailed');
 		});
 
 		it('does not flag the run once the job is enqueued', async () => {
@@ -1446,7 +1494,7 @@ describe('enqueueExecution', () => {
 			status: 'error',
 			startedAt: new Date(),
 			stoppedAt: new Date(),
-			failedBeforeStart: true,
+			failedBeforeStart: 'startFailed',
 		} satisfies JobFinishedProps);
 
 		// @ts-expect-error Private method
@@ -1454,7 +1502,7 @@ describe('enqueueExecution', () => {
 		await workflowExecution;
 
 		const [, run] = finalize.mock.calls.at(-1)!;
-		expect(run?.data.resultData.failedBeforeStart).toBe(true);
+		expect(run?.data.resultData.failedBeforeStart).toBe('startFailed');
 	});
 
 	it.each([
@@ -1613,7 +1661,7 @@ describe('enqueueExecution', () => {
 			'1',
 			expect.anything(),
 			undefined,
-			true,
+			'startFailed',
 		);
 		expect(addJob).not.toHaveBeenCalled();
 	});
@@ -1675,6 +1723,30 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(addJob).toHaveBeenCalledWith(expect.objectContaining(processData), expect.any(Object));
+	});
+
+	it('enqueues the user of the pushRef with the job', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		vi.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			executionMode: 'trigger',
+			pushRef: 'push-ref',
+			pushRefUserId: undefined,
+			userId: 'editor',
+		});
+		const error = new Error('stop for test purposes');
+		addJob.mockRejectedValueOnce(error);
+
+		// @ts-expect-error Private method
+		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+
+		expect(addJob).toHaveBeenCalledWith(
+			expect.objectContaining({ pushRefUserId: 'editor' }),
+			expect.any(Object),
+		);
 	});
 
 	it('excludes the execution from getRunningExecutionIds once enqueued', async () => {
@@ -2101,7 +2173,14 @@ describe('pre-persist context establishment', () => {
 		await expect(runner.run(data)).resolves.toBe('exec-1');
 
 		expect(gateSpy).not.toHaveBeenCalled();
-		expect(failExecution).toHaveBeenCalledWith(data, 'exec-1', unauthorized, undefined, undefined);
+		expect(failExecution).toHaveBeenCalledWith(
+			data,
+			'exec-1',
+			unauthorized,
+			'credentialAccess',
+			undefined,
+			undefined,
+		);
 	});
 
 	it('flags the run as failed before start when credential authorization fails', async () => {
@@ -2122,7 +2201,7 @@ describe('pre-persist context establishment', () => {
 			string,
 			[IRun],
 		];
-		expect(run.data.resultData.failedBeforeStart).toBe(true);
+		expect(run.data.resultData.failedBeforeStart).toBe('credentialAccess');
 	});
 
 	it('skips the preExecute gate when claiming an existing execution', async () => {
@@ -2240,7 +2319,7 @@ describe('pre-persist context establishment', () => {
 		it('flags the failed run as failed before start', async () => {
 			await runner.run(buildRunData(buildExecutionDataWithHeader()));
 
-			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe('contextHook');
 		});
 
 		const withEarlierRunData = () => {
@@ -2254,7 +2333,7 @@ describe('pre-persist context establishment', () => {
 		it('flags a retry that carries the run data of the original execution', async () => {
 			await runner.run(buildRunData(withEarlierRunData(), 'retry'));
 
-			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe('contextHook');
 		});
 
 		it('flags a claimed new execution', async () => {
@@ -2263,7 +2342,7 @@ describe('pre-persist context establishment', () => {
 				expectedStatus: 'new',
 			});
 
-			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe('contextHook');
 		});
 
 		it('does not flag a resumed run whose nodes ran before it waited', async () => {

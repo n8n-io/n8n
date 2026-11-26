@@ -17,6 +17,8 @@ import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { BinaryDataService } from 'n8n-core';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
 import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
@@ -99,9 +101,11 @@ describe('Agent memory on user deletion', () => {
 			: await createTeamProject(undefined, user);
 		const agent = system
 			? await agentRepo.findOneByOrFail({ id: INSTANCE_AGENT_ID })
-			: await agentRepo.save(
-					agentRepo.create({ name: 'Audit agent', projectId: project.id, integrations: [] }),
-				);
+			: await createAgent({
+					name: 'Audit agent',
+					projectId: project.id,
+					integrations: [],
+				});
 		const threadId = uuid();
 		await threadRepo.save(
 			threadRepo.create({

@@ -28,6 +28,7 @@ import { NotFoundError } from '@n8n/errors';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@n8n/backend-services';
@@ -58,6 +59,21 @@ const SINGLE_WEBHOOK_TRIGGERS = [
 	'n8n-nodes-base.facebookLeadAdsTrigger',
 ];
 
+export type RegisterWebhooksOptions = {
+	userId: string;
+	workflowEntity: IWorkflowBase;
+	additionalData: IWorkflowExecuteAdditionalData;
+	runData?: IRunData;
+	pushRef?: string;
+	destinationNode?: IDestinationNode;
+	triggerToStartFrom?: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload['triggerToStartFrom'];
+	chatSessionId?: string;
+	workflowIsActive?: boolean;
+	n8nAuthCookie?: string;
+	/** How long the test webhook stays registered, at most `TEST_WEBHOOK_MAX_TIMEOUT`. Defaults to `TEST_WEBHOOK_TIMEOUT`. */
+	timeoutMs?: number;
+};
+
 /**
  * Service for handling the execution of webhooks of manual executions
  * that use the [Test URL](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#webhook-urls).
@@ -73,6 +89,7 @@ export class TestWebhooks implements IWebhookManager {
 		private readonly publisher: Publisher,
 		private readonly webhookService: WebhookService,
 		private readonly executionContextService: ExecutionContextService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
@@ -204,6 +221,7 @@ export class TestWebhooks implements IWebhookManager {
 								data: { workflowId: webhook?.workflowId, executionId },
 							},
 							pushRef,
+							webhook.userId,
 						);
 					}
 				} catch (error) {
@@ -391,6 +409,71 @@ export class TestWebhooks implements IWebhookManager {
 		return await this.executionContextService.buildManualExecutionCredentials(n8nAuthCookie);
 	}
 
+	/** Webhooks that a manual run must listen on. Empty when the run can start without an event. Call while the isolate is held. */
+	private getStartingWebhooks(
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		destinationNode: IDestinationNode | undefined,
+		triggerToStartFrom: RegisterWebhooksOptions['triggerToStartFrom'],
+	): IWebhookData[] {
+		let webhooks = WebhookHelpers.getWorkflowWebhooks(
+			workflow,
+			additionalData,
+			destinationNode,
+			true,
+		);
+
+		// If we have a preferred trigger with data, we don't have to listen for a
+		// webhook.
+		if (triggerToStartFrom?.data) {
+			return [];
+		}
+
+		// If we have a preferred trigger without data we only want to listen for
+		// that trigger, not the other ones.
+		if (triggerToStartFrom) {
+			webhooks = webhooks.filter((w) => w.node === triggerToStartFrom.name);
+		}
+
+		// No webhooks found to start a workflow.
+		if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
+			return [];
+		}
+
+		return webhooks;
+	}
+
+	/** Whether a manual run must wait for an external event. */
+	async needsTriggerEvent(
+		options: Pick<
+			RegisterWebhooksOptions,
+			'workflowEntity' | 'additionalData' | 'destinationNode' | 'triggerToStartFrom'
+		>,
+	): Promise<boolean> {
+		const { workflowEntity, additionalData, destinationNode, triggerToStartFrom } = options;
+
+		if (!workflowEntity.id) {
+			throw new WorkflowMissingIdError(workflowEntity);
+		}
+
+		const workflow = this.toWorkflow(workflowEntity);
+
+		await workflow.expression.acquireIsolate();
+
+		try {
+			const startingWebhooks = this.getStartingWebhooks(
+				workflow,
+				additionalData,
+				destinationNode,
+				triggerToStartFrom,
+			);
+
+			return startingWebhooks.length > 0;
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
+	}
+
 	/**
 	 * Register a test webhook for every webhook call the manual run must listen for.
 	 *
@@ -398,20 +481,7 @@ export class TestWebhooks implements IWebhookManager {
 	 * registration order, and the test URL of each registered Form Trigger. No node
 	 * names means the run does not need to listen for a webhook call.
 	 */
-	async registerWebhooks(options: {
-		userId: string;
-		workflowEntity: IWorkflowBase;
-		additionalData: IWorkflowExecuteAdditionalData;
-		runData?: IRunData;
-		pushRef?: string;
-		destinationNode?: IDestinationNode;
-		triggerToStartFrom?: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload['triggerToStartFrom'];
-		chatSessionId?: string;
-		workflowIsActive?: boolean;
-		n8nAuthCookie?: string;
-		/** How long the test webhook stays registered, at most `TEST_WEBHOOK_MAX_TIMEOUT`. Defaults to `TEST_WEBHOOK_TIMEOUT`. */
-		timeoutMs?: number;
-	}): Promise<RegisteredTestWebhooks> {
+	async registerWebhooks(options: RegisterWebhooksOptions): Promise<RegisteredTestWebhooks> {
 		const {
 			userId,
 			workflowEntity,
@@ -433,28 +503,25 @@ export class TestWebhooks implements IWebhookManager {
 		await workflow.expression.acquireIsolate();
 		let webhooks: IWebhookData[];
 		try {
-			webhooks = WebhookHelpers.getWorkflowWebhooks(
+			webhooks = this.getStartingWebhooks(
 				workflow,
 				additionalData,
 				destinationNode,
-				true,
+				triggerToStartFrom,
 			);
 
-			// If we have a preferred trigger with data, we don't have to listen for a
-			// webhook.
-			if (triggerToStartFrom?.data) {
+			if (webhooks.length === 0) {
 				return { nodeNames: [], formTestUrls: [] };
 			}
 
-			// If we have a preferred trigger without data we only want to listen for
-			// that trigger, not the other ones.
-			if (triggerToStartFrom) {
-				webhooks = webhooks.filter((w) => w.node === triggerToStartFrom.name);
-			}
-
-			if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
-				return { nodeNames: [], formTestUrls: [] }; // no webhooks found to start a workflow
-			}
+			// Creating a webhook calls the node's webhook methods with its credentials
+			// before any run starts, and the webhook phase can load sub-nodes with theirs.
+			// So it must pass the check that the run passes, on the same nodes.
+			await this.credentialsPermissionChecker.check(
+				workflowEntity.id,
+				workflowEntity.nodes,
+				userId,
+			);
 
 			// A non-positive or oversized delay would fire the cancel timer at once, so clamp it.
 			const timeoutDuration =
@@ -615,7 +682,7 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (!registration) continue;
 
-			const { pushRef, workflowEntity } = registration;
+			const { pushRef, workflowEntity, webhook } = registration;
 
 			const workflow = this.toWorkflow(workflowEntity);
 
@@ -625,7 +692,11 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (pushRef !== undefined) {
 				try {
-					this.push.send({ type: 'testWebhookDeleted', data: { workflowId } }, pushRef);
+					this.push.send(
+						{ type: 'testWebhookDeleted', data: { workflowId } },
+						pushRef,
+						webhook.userId,
+					);
 				} catch {
 					// Could not inform editor, probably is not connected anymore. So simply go on.
 				}
@@ -705,22 +776,40 @@ export class TestWebhooks implements IWebhookManager {
 		if (!webhooks) return; // nothing to deactivate
 
 		for (const webhook of webhooks) {
-			const { userId, staticData } = webhook;
-
-			if (userId) {
-				webhook.workflowExecuteAdditionalData = await WorkflowExecuteAdditionalData.getBase({
-					userId,
-					workflowId: workflow.id,
-				});
-			}
+			const { staticData } = webhook;
 
 			if (staticData) workflow.staticData = staticData;
 
-			await this.webhookService.deleteWebhook(workflow, webhook, 'internal', 'update');
+			await this.webhookService.deleteWebhook(
+				workflow,
+				await this.withAdditionalData(webhook, workflow.id),
+				'internal',
+				'update',
+			);
 
 			// Deregister only this webhook, not all webhooks from other running workflows
 			await this.registrations.deregister(webhook);
 		}
+	}
+
+	/**
+	 * Returns a copy of the webhook that carries the additional data of its user.
+	 * The given webhook is not changed, because a cached webhook must stay cloneable.
+	 */
+	private async withAdditionalData(webhook: IWebhookData, workflowId: string) {
+		const { userId } = webhook;
+
+		if (userId) {
+			return {
+				...webhook,
+				workflowExecuteAdditionalData: await WorkflowExecuteAdditionalData.getBase({
+					userId,
+					workflowId,
+				}),
+			};
+		}
+
+		return webhook;
 	}
 
 	/**

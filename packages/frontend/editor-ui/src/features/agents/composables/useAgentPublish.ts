@@ -1,15 +1,8 @@
 import { ref } from 'vue';
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
-import { useStorage } from '@n8n/composables/useStorage';
-import { useUIStore } from '@/app/stores/ui.store';
 import { MODAL_CONFIRM } from '@/app/constants';
-import {
-	AGENT_PUBLISHED_MODAL_KEY,
-	LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION,
-} from '../constants';
 import {
 	getAgent,
 	getAgentVersion,
@@ -25,26 +18,6 @@ import { upsertProjectAgentsListCache } from './useProjectAgentsList';
 import type { AgentResource } from '../types';
 
 /**
- * Opens the "Agent published" confirmation modal after a successful publish,
- * unless the user opted out with "Don't show again". Shared by the
- * header/list publish flow and the version-history republish flow (AGENT-1102).
- */
-export function showAgentPublishedConfirmation(agent: AgentResource): void {
-	if (useStorage(LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION).value === 'true') return;
-	// The published snapshot decides n8n Chat reachability, not the draft (see
-	// `AgentRepository.publishedN8nChatSql`), and a republish can differ from the draft.
-	const n8nChatLive =
-		useAgentsN8nChatFlag().value &&
-		(agent.activeVersion?.schema?.integrations ?? []).some(
-			({ type }) => type === N8N_CHAT_INTEGRATION_TYPE,
-		);
-	useUIStore().openModalWithData({
-		name: AGENT_PUBLISHED_MODAL_KEY,
-		data: { agentId: agent.id, projectId: agent.projectId, n8nChatLive },
-	});
-}
-
-/**
  * Shared publish/unpublish flow used by the builder header button and the list card.
  * Owns the confirmation modal, toasts, error handling, and the `publishing` spinner
  * state so both call sites stay thin and behave consistently.
@@ -55,6 +28,7 @@ export function useAgentPublish() {
 	const { showMessage, showError } = useToast();
 	const { openAgentConfirmationModal } = useAgentConfirmationModal();
 	const { trackRevertedChangesOnAgent } = useAgentTelemetry();
+	const isN8nChatEnabled = useAgentsN8nChatFlag();
 
 	const publishing = ref(false);
 	const { openVersionMetadata } = useAgentVersionMetadataModal();
@@ -95,12 +69,15 @@ export function useAgentPublish() {
 			if (!isCurrent()) return null;
 
 			let updated: AgentResource | null = null;
-			const published = await openVersionMetadata({
+			await openVersionMetadata({
 				mode: 'publish',
 				versionId: selectedId,
 				isCurrent,
 				name: version.name,
 				description: version.description,
+				// The version being published decides n8n Chat reachability, not the draft:
+				// a republish from version history can differ from it.
+				n8nChatAgentId: isN8nChatEnabled.value && version.includesN8nChat ? agentId : undefined,
 				onSubmit: async (metadata) => {
 					try {
 						updated = await publishAgent(
@@ -123,8 +100,6 @@ export function useAgentPublish() {
 					}
 				},
 			});
-
-			if (published && updated && isCurrent()) showAgentPublishedConfirmation(updated);
 
 			return updated;
 		} catch (error) {

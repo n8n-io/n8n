@@ -4,7 +4,9 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
-import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
+import { onBeforeRouteLeave, useRouter, type NavigationGuardNext } from 'vue-router';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	N8nButton,
 	N8nDialog,
@@ -14,16 +16,21 @@ import {
 	N8nCallout,
 	N8nOption,
 	N8nSelect,
+	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nText,
 } from '@n8n/design-system';
-import AuthenticationBackLink from '../components/AuthenticationBackLink.vue';
+import { VIEWS } from '@/app/constants';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
 import OidcSettingsForm from '../components/OidcSettingsForm.vue';
+import ScimProvisioningSection from '../components/ScimProvisioningSection.vue';
 import { useUserRoleProvisioningStore } from '../provisioning/composables/userRoleProvisioning.store';
 
 const i18n = useI18n();
+const router = useRouter();
 const ssoStore = useSSOStore();
+const settingsStore = useSettingsStore();
+const rbacStore = useRBACStore();
 const provisioningStore = useUserRoleProvisioningStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -32,8 +39,12 @@ const isRulesMappingInN8n = computed(
 	() => provisioningStore.provisioningConfig?.scopesUseExpressionMapping ?? false,
 );
 
+/** The env config locks the SSO form, unless n8n owns the role mapping rules. */
+const canEditSso = computed(() => !ssoStore.ssoManagedByEnv || isRulesMappingInN8n.value);
+
 const samlFormRef = useTemplateRef<InstanceType<typeof SamlSettingsForm>>('samlForm');
 const oidcFormRef = useTemplateRef<InstanceType<typeof OidcSettingsForm>>('oidcForm');
+const scimSectionRef = useTemplateRef<InstanceType<typeof ScimProvisioningSection>>('scimSection');
 
 const showUnsavedChangesDialog = ref(false);
 const pendingNext = ref<NavigationGuardNext | null>(null);
@@ -57,6 +68,19 @@ const hasAnySsoEnabled = computed(
 	() => ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled,
 );
 
+/** SCIM needs the `feat:scim` license, which activates the module, and the `scim:manage` scope. */
+const showScimSection = computed(
+	() => settingsStore.isModuleActive('scim') && rbacStore.hasScope('scim:manage'),
+);
+
+const isSsoLoginEnabled = computed(
+	() => ssoStore.isSamlLoginEnabled || ssoStore.isOidcLoginEnabled,
+);
+
+async function goToAuthentication() {
+	await router.push({ name: VIEWS.AUTHENTICATION_SETTINGS });
+}
+
 const activeForm = computed(() => {
 	if (authProtocol.value === SupportedProtocols.SAML) return samlFormRef.value;
 	if (authProtocol.value === SupportedProtocols.OIDC) return oidcFormRef.value;
@@ -64,6 +88,58 @@ const activeForm = computed(() => {
 });
 
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
+
+const isSamlFormShown = computed(
+	() =>
+		hasAnySsoEnabled.value &&
+		ssoStore.isEnterpriseSamlEnabled &&
+		authProtocol.value === SupportedProtocols.SAML,
+);
+
+const isOidcFormShown = computed(
+	() =>
+		hasAnySsoEnabled.value &&
+		ssoStore.isEnterpriseOidcEnabled &&
+		authProtocol.value === SupportedProtocols.OIDC,
+);
+
+function onTestConnection() {
+	void activeForm.value?.onTest();
+}
+
+const hasUnsavedChanges = computed(
+	() =>
+		Boolean(activeForm.value?.hasUnsavedChanges) ||
+		Boolean(scimSectionRef.value?.hasUnsavedChanges),
+);
+
+const isSaving = computed(
+	() => Boolean(activeForm.value?.saving) || Boolean(scimSectionRef.value?.saving),
+);
+
+/**
+ * One save for the SSO form and SCIM. SSO goes first, because the backend
+ * accepts SCIM only while SAML or OIDC login is on.
+ */
+async function saveAll(): Promise<boolean> {
+	if (activeForm.value?.hasUnsavedChanges) {
+		const saved = await activeForm.value.onSave();
+		if (!saved) return false;
+	}
+	const scimSection = scimSectionRef.value;
+	if (!scimSection) return true;
+	// Turning SSO off also turns SCIM off on the backend. Drop the pending SCIM
+	// change, which the backend would reject, and show the saved state.
+	if (!isSsoLoginEnabled.value) {
+		await scimSection.reload();
+		return true;
+	}
+	return scimSection.hasUnsavedChanges ? await scimSection.save() : true;
+}
+
+async function onSave() {
+	await saveAll();
+}
 
 function onAuthProtocolUpdated(value: SupportedProtocolType) {
 	authProtocol.value = value;
@@ -74,7 +150,7 @@ const goToUpgrade = () => {
 };
 
 onBeforeRouteLeave((_to, _from, next) => {
-	if (!activeForm.value?.hasUnsavedChanges) {
+	if (!hasUnsavedChanges.value) {
 		next();
 		return;
 	}
@@ -87,7 +163,7 @@ async function onSaveAndLeave() {
 	const next = pendingNext.value;
 	pendingNext.value = null;
 	showUnsavedChangesDialog.value = false;
-	const saved = await activeForm.value?.onSave();
+	const saved = await saveAll();
 	if (saved) {
 		next?.();
 	} else {
@@ -120,8 +196,15 @@ onMounted(() => {
 </script>
 
 <template>
-	<div class="pb-2xl">
-		<AuthenticationBackLink />
+	<!-- Full width: the role mapping rules need the room for their expressions. -->
+	<N8nSettingsLayout
+		:class="$style.layout"
+		full-width
+		show-back
+		:back-label="i18n.baseText('settings.authentication.back')"
+		data-test-id="sso-settings-view"
+		@back="goToAuthentication"
+	>
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.sso.title')"
 			:description="i18n.baseText('settings.sso.info')"
@@ -129,57 +212,53 @@ onMounted(() => {
 			:class="$style.header"
 			data-test-id="sso-settings-header"
 		/>
-		<N8nCallout v-if="ssoStore.ssoManagedByEnv" theme="warning" class="mb-m">
+		<N8nCallout v-if="ssoStore.ssoManagedByEnv" theme="warning">
 			{{
 				isRulesMappingInN8n
 					? i18n.baseText('settings.sso.settings.envConfigBannerWithRules')
 					: i18n.baseText('settings.sso.settings.envConfigBanner')
 			}}
 		</N8nCallout>
-		<!-- Protocol selector — rendered independently outside form v-ifs for E2E timing -->
-		<div v-if="hasAnySsoEnabled" :class="[shared.card, $style.protocolCard]">
-			<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
-				<div :class="shared.settingsItemLabel">
-					<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
-					<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
-				</div>
-				<div :class="shared.settingsItemControl">
-					<N8nSelect
-						filterable
-						size="medium"
-						:disabled="ssoStore.ssoManagedByEnv"
-						:model-value="authProtocol"
-						:placeholder="i18n.baseText('parameterInput.select')"
-						@update:model-value="onAuthProtocolUpdated"
-						@keydown.stop
-					>
-						<N8nOption
-							v-for="{ label, value } in options"
-							:key="value"
-							:value="value"
-							:label="label"
-							data-test-id="credential-select-option"
-						/>
-					</N8nSelect>
+		<!-- One wrapper keeps the protocol card joined to the form: the layout spaces its direct children. -->
+		<div v-if="hasAnySsoEnabled">
+			<!-- Protocol selector — rendered independently outside form v-ifs for E2E timing -->
+			<div :class="[shared.card, $style.protocolCard]">
+				<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
+					<div :class="shared.settingsItemLabel">
+						<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
+						<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
+					</div>
+					<div :class="shared.settingsItemControl">
+						<N8nSelect
+							filterable
+							size="medium"
+							:disabled="ssoStore.ssoManagedByEnv"
+							:model-value="authProtocol"
+							:placeholder="i18n.baseText('parameterInput.select')"
+							@update:model-value="onAuthProtocolUpdated"
+							@keydown.stop
+						>
+							<N8nOption
+								v-for="{ label, value } in options"
+								:key="value"
+								:value="value"
+								:label="label"
+								data-test-id="credential-select-option"
+							/>
+						</N8nSelect>
+					</div>
 				</div>
 			</div>
-		</div>
-		<div
-			v-if="ssoStore.isEnterpriseSamlEnabled && authProtocol === SupportedProtocols.SAML"
-			data-test-id="sso-content-licensed"
-		>
-			<SamlSettingsForm ref="samlForm" />
-		</div>
-		<div
-			v-if="ssoStore.isEnterpriseOidcEnabled && authProtocol === SupportedProtocols.OIDC"
-			data-test-id="sso-content-licensed"
-		>
-			<OidcSettingsForm ref="oidcForm" />
+			<div v-if="isSamlFormShown" data-test-id="sso-content-licensed">
+				<SamlSettingsForm ref="samlForm" />
+			</div>
+			<div v-if="isOidcFormShown" data-test-id="sso-content-licensed">
+				<OidcSettingsForm ref="oidcForm" />
+			</div>
 		</div>
 		<N8nEmptyState
-			v-if="!hasAnySsoEnabled"
+			v-else
 			data-test-id="sso-content-unlicensed"
-			:class="$style.actionBox"
 			:description="i18n.baseText('settings.sso.actionBox.description')"
 			:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
 			@click:button="goToUpgrade"
@@ -188,6 +267,46 @@ onMounted(() => {
 				<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
 			</template>
 		</N8nEmptyState>
+
+		<ScimProvisioningSection
+			v-if="showScimSection"
+			ref="scimSection"
+			:sso-enabled="isSsoLoginEnabled"
+		/>
+
+		<!-- One save for the SSO form and SCIM. The buttons close the page, below the SCIM section. -->
+		<div v-if="isSamlFormShown || isOidcFormShown || showScimSection" :class="$style.actions">
+			<N8nButton
+				v-if="canEditSso || showScimSection"
+				:disabled="!hasUnsavedChanges || isSaving"
+				:loading="isSaving"
+				size="large"
+				data-test-id="sso-save"
+				@click="onSave"
+			>
+				{{ i18n.baseText('settings.sso.settings.save') }}
+			</N8nButton>
+			<N8nButton
+				v-if="isSamlFormShown"
+				variant="outline"
+				:disabled="!samlFormRef?.isTestEnabled"
+				size="large"
+				data-test-id="sso-test"
+				@click="onTestConnection"
+			>
+				{{ i18n.baseText('settings.sso.settings.test') }}
+			</N8nButton>
+			<N8nButton
+				v-else-if="isOidcFormShown"
+				variant="outline"
+				:disabled="!oidcFormRef?.isTestEnabled"
+				size="large"
+				data-test-id="sso-oidc-test"
+				@click="onTestConnection"
+			>
+				{{ i18n.baseText('settings.sso.settings.test') }}
+			</N8nButton>
+		</div>
 
 		<N8nDialog
 			:open="showUnsavedChangesDialog"
@@ -212,15 +331,21 @@ onMounted(() => {
 				</N8nButton>
 			</N8nDialogFooter>
 		</N8nDialog>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module="shared" src="../styles/sso-form.module.scss" />
 
 <style lang="scss" module>
-/* This page is not inside N8nSettingsLayout (which owns the header → content gap), so it keeps its own. */
-.header {
-	margin-bottom: var(--spacing--lg);
+/* Collapse the layout's own top inset; the settings shell already pads the page top. */
+.layout {
+	padding-top: 0;
+}
+
+/* On a full-width page the header lines up with the cards instead of a centered column. */
+.layout .header {
+	max-width: none;
+	margin-inline: 0;
 }
 
 .protocolCard {
@@ -231,7 +356,9 @@ onMounted(() => {
 	border-bottom-right-radius: 0;
 }
 
-.actionBox {
-	margin-top: var(--spacing--lg);
+/* The layout puts the space above the buttons. */
+.actions {
+	display: flex;
+	gap: var(--spacing--sm);
 }
 </style>

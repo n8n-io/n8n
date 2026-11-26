@@ -1,0 +1,8 @@
+{
+	"properties": {
+		"token": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -7,6 +7,7 @@ import type { BaseFilters, Resource } from '@/Interface';
 import type { ICredentialsResponse, ICredentialTypeMap } from '../credentials.types';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
@@ -20,7 +21,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { isCredentialsResource } from '@/app/utils/typeGuards';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import pickBy from 'lodash/pickBy';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
@@ -31,7 +32,17 @@ import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
-import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
+import {
+	CauseCheckboxFilter,
+	useTypeAvailability,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
+import {
+	CREDENTIAL_TYPE_USABILITY_REASONS,
+	parseCredentialTypeUsabilityReasons,
+	useCredentialTypeUsability,
+	type CredentialTypeUsabilityReason,
+} from '../composables/useCredentialTypeUsability';
 
 import { N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -41,6 +52,8 @@ const props = defineProps<{
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+
+usePrefetchModals([CREDENTIAL_SELECT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY]);
 const sourceControlStore = useSourceControlStore();
 const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
@@ -58,13 +71,21 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const overview = useProjectPages();
 
+const USABILITY_REASON_LABEL_KEY: Record<CredentialTypeUsabilityReason, BaseTextKey> = {
+	typeRestricted: 'credentials.filters.cannotBeUsed.typeRestricted',
+	nodesRestricted: 'credentials.filters.cannotBeUsed.nodesRestricted',
+};
+
 type Filters = BaseFilters & {
 	type?: string[];
 	setupNeeded?: boolean;
+	cannotBeUsed?: CredentialTypeUsabilityReason[];
 	externalSecretsStore?: string;
 };
 const updateFilter = (state: Filters) => {
-	void router.replace({ query: pickBy(state) as LocationQueryRaw });
+	// `pickBy` drops the empty string of an empty selection.
+	const query = pickBy({ ...state, cannotBeUsed: state.cannotBeUsed?.join(',') });
+	void router.replace({ query: query as LocationQueryRaw });
 };
 
 const onSearchUpdated = (search: string) => {
@@ -74,6 +95,7 @@ const onSearchUpdated = (search: string) => {
 const filters = ref<Filters>({
 	...route.query,
 	setupNeeded: route.query.setupNeeded?.toString() === 'true',
+	cannotBeUsed: parseCredentialTypeUsabilityReasons(route.query.cannotBeUsed),
 	...(route.query.externalSecretsStore
 		? { externalSecretsStore: route.query.externalSecretsStore.toString() }
 		: {}),
@@ -93,6 +115,20 @@ const needsSetup = (credential: ICredentialsResponse): boolean => {
 	return Object.values(dataObject).every((value) => !value || value === CREDENTIAL_EMPTY_VALUE);
 };
 
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+const { fromCredentialRestriction } = useCredentialTypeUsability();
+
+// The server judges a project list by that project, and other lists by each home project.
+const listedProject = computed(() => {
+	const { projectId } = route?.params ?? {};
+	if (typeof projectId !== 'string') return undefined;
+	const { currentProject } = projectsStore;
+	return {
+		id: projectId,
+		type: currentProject?.id === projectId ? currentProject.type : undefined,
+	};
+});
+
 const allCredentials = computed<Resource[]>(() =>
 	credentialsStore.allCredentials.map((credential) => ({
 		resourceType: 'credential',
@@ -111,8 +147,18 @@ const allCredentials = computed<Resource[]>(() =>
 		isResolvable: credential.isResolvable,
 		connectedByMe: credential.connectedByMe,
 		type: credential.type,
+		...restrictionOf(credential),
 	})),
 );
+
+function restrictionOf(credential: ICredentialsResponse) {
+	const restriction = credentialsStore.restrictionsById[credential.id];
+	if (!typeAvailabilityPoliciesStore.isEnabled || !restriction) return {};
+	return {
+		restriction: fromCredentialRestriction(restriction),
+		restrictionProject: listedProject.value ?? credential.homeProject ?? undefined,
+	};
+}
 
 const allCredentialTypes = computed<ICredentialType[]>(() => credentialsStore.allCredentialTypes);
 
@@ -146,6 +192,7 @@ const refreshCredentials = () => {
 	void credentialsStore.fetchAllCredentials({
 		projectId: route?.params?.projectId as string | undefined,
 		includeScopes: true,
+		includeRestrictions: typeAvailabilityPoliciesStore.isEnabled,
 		externalSecretsStore: filters.value.externalSecretsStore,
 	});
 };
@@ -188,6 +235,11 @@ const onFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean)
 
 	if (filtersToApply.setupNeeded) {
 		matches = matches && resource.needsSetup;
+	}
+
+	if (typeAvailabilityPoliciesStore.isEnabled && filtersToApply.cannotBeUsed?.length) {
+		const reason = resource.restriction?.reason;
+		matches = matches && !!reason && filtersToApply.cannotBeUsed.includes(reason);
 	}
 
 	return matches;
@@ -242,6 +294,7 @@ const initialize = async () => {
 			// a credential shared with all users and projects belongs in every
 			// project list, the personal one included
 			includeGlobal: true,
+			includeRestrictions: typeAvailabilityPoliciesStore.isEnabled,
 			externalSecretsStore: filters.value.externalSecretsStore,
 		}),
 		credentialsStore.fetchCredentialTypes(false),
@@ -357,6 +410,7 @@ onMounted(() => {
 					size="medium"
 					multiple
 					filterable
+					data-test-id="credential-filter-type"
 					:class="$style['type-input']"
 					@update:model-value="setKeyValue('type', $event)"
 				>
@@ -384,6 +438,16 @@ onMounted(() => {
 					@update:model-value="setKeyValue('setupNeeded', $event)"
 				>
 				</N8nCheckbox>
+				<CauseCheckboxFilter
+					v-if="typeAvailabilityPoliciesStore.isEnabled"
+					class="mt-2xs"
+					:model-value="filters.cannotBeUsed ?? []"
+					:causes="CREDENTIAL_TYPE_USABILITY_REASONS"
+					:label="i18n.baseText('credentials.filters.cannotBeUsed')"
+					:cause-label="(reason) => i18n.baseText(USABILITY_REASON_LABEL_KEY[reason])"
+					test-id-prefix="credential-filter-cannot-be-used"
+					@update:model-value="setKeyValue('cannotBeUsed', $event)"
+				/>
 			</div>
 
 			<!-- secret store filter is only shown if query parameter is set in url

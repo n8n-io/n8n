@@ -4,8 +4,10 @@ import type {
 	IStepExecutor,
 	SubExecutionDeclaration,
 	StepExecutionResult,
+	StepInputSources,
 } from '../dependencies';
 import {
+	compareByConcatenationOrder,
 	deriveLoops,
 	isBatchStepConfig,
 	type GraphEdge,
@@ -14,9 +16,9 @@ import {
 } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
-import { runBatchStep } from './batch-step';
+import { runBatchStep, type BatchStepResult } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
-import type { ExecutionRecord, ExecutionStore } from './execution-store';
+import { isMissingExecution, type ExecutionRecord, type ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
 	isLiveExecutionStatus,
@@ -29,10 +31,13 @@ import {
 	type StepKeyId,
 	type StepSlots,
 	type ExecutorWaitDeclaration,
+	type StepOutputSources,
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
+import { stepErrorDetails } from './step-error-details';
+import { announceStepFailed, stepEventFields } from './step-events';
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
@@ -52,6 +57,7 @@ type Dispatch =
 			kind: 'run';
 			executor: IStepExecutor;
 			inputs: StepSlots;
+			inputSources: StepInputSources;
 			subExecutionResult?: SubExecutionResumeCause;
 	  };
 
@@ -89,7 +95,17 @@ export class StepReadyHandler {
 
 		// Read after the claim, so an execution that ended in between is seen
 		// here and the step is not run.
-		const execution = await this.executionStore.loadExecution(event.executionId);
+		let execution: ExecutionRecord;
+		try {
+			execution = await this.executionStore.loadExecution(event.executionId);
+		} catch (error) {
+			// A deletion after the claim removed the execution and its step row.
+			// A step of another execution means a wrong message, which must still fail.
+			if (isMissingExecution(error, event.executionId) && step.executionId === event.executionId) {
+				return;
+			}
+			throw error;
+		}
 		const node = validateStepContext(step, execution);
 
 		if (!isLiveExecutionStatus(execution.status)) {
@@ -115,28 +131,28 @@ export class StepReadyHandler {
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
 		let run:
-			| { kind: 'outputs'; outputs: StepSlots }
+			| { kind: 'outputs'; outputs: StepSlots; outputSources: StepOutputSources | null }
 			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
 			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
-			| { kind: 'error'; error: unknown };
+			| { kind: 'error'; error: StepError };
 		try {
-			let result: StepExecutionResult;
-			if (dispatch.kind === 'replay') {
-				result = { outputs: recordedOutputs(step, dispatch.cause) };
-			} else if (dispatch.kind === 'batch') {
-				result = { outputs: await this.runBatchNode(step, execution, node) };
+			if (dispatch.kind === 'batch') {
+				run = { kind: 'outputs', ...(await this.runBatchNode(step, execution, node)) };
 			} else {
-				result = await this.runStep(step, execution, node, dispatch);
-			}
-			if (result.wait) {
-				run = { kind: 'wait', wait: result.wait };
-			} else if (result.subExecution) {
-				run = { kind: 'subExecution', subExecution: result.subExecution };
-			} else {
-				run = { kind: 'outputs', outputs: result.outputs };
+				const result: StepExecutionResult =
+					dispatch.kind === 'replay'
+						? { outputs: recordedOutputs(step, dispatch.cause) }
+						: await this.runStep(step, execution, node, dispatch);
+				if (result.wait) {
+					run = { kind: 'wait', wait: result.wait };
+				} else if (result.subExecution) {
+					run = { kind: 'subExecution', subExecution: result.subExecution };
+				} else {
+					run = { kind: 'outputs', outputs: result.outputs, outputSources: null };
+				}
 			}
 		} catch (error) {
-			run = { kind: 'error', error };
+			run = { kind: 'error', error: toStepError(error) };
 		}
 
 		if (run.kind === 'subExecution') {
@@ -148,23 +164,26 @@ export class StepReadyHandler {
 			const started = await this.handleDetachedSubExecution(step, execution, subExecution);
 			run =
 				started.kind === 'error'
-					? { kind: 'error', error: started.error }
-					: { kind: 'outputs', outputs: subExecution.outputs };
+					? { kind: 'error', error: toStepError(started.error) }
+					: { kind: 'outputs', outputs: subExecution.outputs, outputSources: null };
 		}
 
 		let recorded: boolean;
 		if (run.kind === 'outputs') {
-			recorded = await this.stepStore.completeStep(event.stepId, run.outputs);
+			recorded = await this.stepStore.completeStep(event.stepId, run.outputs, run.outputSources);
 		} else if (run.kind === 'wait') {
 			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
 		} else {
-			recorded = await this.stepStore.failStep(event.stepId, toStepError(run.error));
+			recorded = await this.stepStore.failStep(event.stepId, run.error);
 		}
 
 		// Recording is a CAS on `running`, so losing it means something else took the
 		// step over while we ran — announce only outcomes we actually wrote, and let
-		// whoever holds it now announce theirs. TODO(CAT-2938): reconciliation is the
-		// only thing that can take a step over, and it doesn't exist yet.
+		// whoever holds it now announce theirs. The reconciliation sweeper does this
+		// when it fails a step that is `running` past its `stale_after` time.
+		//
+		// A wait in an ended execution is not recorded either: `suspendStep` cancels
+		// the step.
 		if (!recorded) return;
 
 		// A wait is no outcome: nothing settled, so no planning follows.
@@ -177,12 +196,13 @@ export class StepReadyHandler {
 			return;
 		}
 
-		// Before the settled event, or the execution could announce its end first.
+		// Before the settled event, so an orchestrator in this process cannot
+		// announce the execution's end first.
 		// Outputs ride along so a consumer needs no read to render them.
 		lifecycleEventPublisher.publish(
 			run.kind === 'outputs'
 				? { type: 'step:completed', ...stepEventFields(step, node), outputs: run.outputs }
-				: { type: 'step:failed', ...stepEventFields(step, node) },
+				: { type: 'step:failed', ...stepEventFields(step, node), error: run.error },
 		);
 
 		await this.orchestrationQueue.publish({
@@ -204,7 +224,8 @@ export class StepReadyHandler {
 		node: GraphNode,
 		subExecution: SubExecutionDeclaration,
 	): Promise<void> {
-		// A CAS on `running`: losing it means something else took the step over.
+		// A CAS on `running`: losing it means something else took the step over, or
+		// the execution has ended.
 		const recorded = await this.stepStore.suspendStep(event.stepId, {
 			subExecutionId: subExecution.executionId,
 		});
@@ -215,16 +236,17 @@ export class StepReadyHandler {
 		const started = await this.startSubExecution(step, execution, subExecution);
 		if (started.kind === 'started') return;
 
-		const failed = await this.stepStore.failWaitingStep(step.id, toStepError(started.error));
+		const error = toStepError(started.error);
+		const failed = await this.stepStore.failWaitingStep(step.id, error);
 		if (!failed) return;
-		this.lifecycleEventPublisherFactory
-			.create(execution)
-			.publish({ type: 'step:failed', ...stepEventFields(step, node) });
-		await this.orchestrationQueue.publish({
-			type: 'step:settled',
-			executionId: event.executionId,
-			stepId: event.stepId,
-		});
+		await announceStepFailed(
+			this.lifecycleEventPublisherFactory,
+			this.orchestrationQueue,
+			execution,
+			step,
+			node,
+			error,
+		);
 	}
 
 	/** Starts a detached sub-execution. */
@@ -285,7 +307,7 @@ export class StepReadyHandler {
 		return {
 			kind: 'run',
 			executor: this.executorFor(step, node),
-			inputs: await this.gatherInputs(execution, step),
+			...(await this.gatherInputs(execution, step)),
 			...(resumeCause ? { subExecutionResult: resumeCause } : {}),
 		};
 	}
@@ -294,7 +316,7 @@ export class StepReadyHandler {
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-		{ executor, inputs, subExecutionResult }: Extract<Dispatch, { kind: 'run' }>,
+		{ executor, inputs, inputSources, subExecutionResult }: Extract<Dispatch, { kind: 'run' }>,
 	): Promise<StepExecutionResult> {
 		// The slots are stored without inspection: which ones fired is the
 		// settlement handler's concern. A declaration is not opaque in the same
@@ -304,6 +326,7 @@ export class StepReadyHandler {
 		const result = await executor.execute({
 			node,
 			inputs,
+			inputSources,
 			// If we're resuming from a sub-execution, we pass in the result so the
 			// executor can use it to answer the sub-workflow call.
 			...(subExecutionResult ? { resume: subExecutionResult } : {}),
@@ -329,7 +352,7 @@ export class StepReadyHandler {
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-	): Promise<StepSlots> {
+	): Promise<BatchStepResult> {
 		if (!isBatchStepConfig(node.config)) {
 			throw new UnexpectedError(
 				`step ${step.id} runs batch node ${step.nodeId}, whose config has no whole batch size of at least 1`,
@@ -360,8 +383,16 @@ export class StepReadyHandler {
 		return await runBatchStep(node.config, step.iteration, reader);
 	}
 
-	/** Inputs for `node`, each slot taken from the row its edge reads. */
-	private async gatherInputs(execution: ExecutionRecord, step: StepRecord): Promise<StepSlots> {
+	/**
+	 * The step's inputs, and where the items of each slot came from. Several
+	 * live edges into one slot concatenate in `compareByConcatenationOrder`.
+	 * Dead edges add nothing. A slot with one live edge passes its value through
+	 * as is.
+	 */
+	private async gatherInputs(
+		execution: ExecutionRecord,
+		step: StepRecord,
+	): Promise<{ inputs: StepSlots; inputSources: StepInputSources }> {
 		// These are all the edges that feed into the node this step runs.
 		const incomingEdges = execution.graph.edges.filter((edge) => edge.to === step.nodeId);
 		if (incomingEdges.length === 0) {
@@ -388,18 +419,29 @@ export class StepReadyHandler {
 			...new Map(reads.map(({ key }) => [stepKeyId(key), key])).values(),
 		]);
 
-		// Array of length equal to the highest input slot plus one.
-		// The entries are `null` placeholders filled by the loop immediately below.
-		const inputs: StepSlots = Array.from(
-			{ length: Math.max(...reads.map(({ edge }) => edge.inputIndex)) + 1 },
-			() => null,
-		);
+		const slotCount = Math.max(...reads.map(({ edge }) => edge.inputIndex)) + 1;
+		const inputs: StepSlots = Array.from({ length: slotCount }, () => null);
+		const inputSources: StepInputSources = Array.from({ length: slotCount }, () => []);
 
-		for (const { edge, key } of reads) {
-			inputs[edge.inputIndex] = readEdgeValue(edge, key, step, rows);
+		const byConcatenationOrder = compareByConcatenationOrder(execution.graph);
+		const inConcatenationOrder = [...reads].sort((x, y) => byConcatenationOrder(x.edge, y.edge));
+
+		for (const { edge, key } of inConcatenationOrder) {
+			const value = readEdgeValue(edge, key, step, rows);
+			if (value === null) continue;
+
+			const slot = edge.inputIndex;
+			inputs[slot] = concatenateSlotValue(inputs[slot], value, step, slot);
+			inputSources[slot].push({
+				nodeId: key.nodeId,
+				outputIndex: edge.outputIndex,
+				iteration: key.iteration,
+				offset: 0,
+				itemCount: Array.isArray(value) ? value.length : 1,
+			});
 		}
 
-		return inputs;
+		return { inputs, inputSources };
 	}
 
 	/**
@@ -423,12 +465,8 @@ export class StepReadyHandler {
 }
 
 /**
- * Which row each incoming edge reads for this step, one per input slot.
- *
- * An edge that connects nothing at this iteration is dropped, which is what lets
- * a batch node carry both an entry edge and a return edge on slot 0: they never
- * apply at the same iteration, so per iteration the slot still has one source.
- * Two edges that do both apply are the unsupported convergence case.
+ * Which row each incoming edge reads for this step. An edge that connects
+ * nothing at this iteration is dropped.
  */
 export function resolveInputReads(
 	incomingEdges: GraphEdge[],
@@ -458,19 +496,20 @@ export function resolveInputReads(
 		);
 	}
 
-	const filledSlots: Set<number> = new Set();
-	for (const { edge } of reads) {
-		if (filledSlots.has(edge.inputIndex)) {
-			// TODO(CAT-3982): same-slot convergence gets a defined meaning. We
-			// should have rejected this graph at validation time.
-			throw new UnexpectedError(
-				`step ${step.id} runs node ${step.nodeId}, which has more than one edge into input slot ${edge.inputIndex}; validated graphs have at most one edge per input slot`,
-			);
-		}
-		filledSlots.add(edge.inputIndex);
-	}
-
 	return reads;
+}
+
+function concatenateSlotValue(
+	current: JsonValue,
+	value: JsonValue,
+	step: StepRecord,
+	slot: number,
+): JsonValue {
+	if (current === null) return value;
+	if (Array.isArray(current) && Array.isArray(value)) return [...current, ...value];
+	throw new UnexpectedError(
+		`step ${step.id} runs node ${step.nodeId}, which has several live edges into input slot ${slot} whose values are not all lists; only lists concatenate`,
+	);
 }
 
 /**
@@ -496,21 +535,15 @@ function readEdgeValue(
 	return row.outputs?.[edge.outputIndex] ?? null;
 }
 
-/** The identifiers every step event carries. */
-function stepEventFields(step: StepRecord, node: GraphNode) {
-	return {
-		executionId: step.executionId,
-		stepId: step.id,
-		nodeId: step.nodeId,
-		nodeName: node.name,
-		iteration: step.iteration,
-		at: new Date().toISOString(),
-	};
-}
-
 function toStepError(error: unknown): StepError {
 	if (error instanceof Error) {
-		return { name: error.name, message: error.message, stack: error.stack };
+		const details = stepErrorDetails(error);
+		return {
+			name: error.name,
+			message: error.message,
+			stack: error.stack,
+			...(details === undefined ? {} : { details }),
+		};
 	}
 	return { name: 'Error', message: String(error) };
 }

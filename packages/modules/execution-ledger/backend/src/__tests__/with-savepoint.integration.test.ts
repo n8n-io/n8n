@@ -12,7 +12,7 @@ describe('withSavepoint', () => {
 
 	const remainingExecutionIds = async () =>
 		await txRunner.run({}, async (ctx) =>
-			(await repository.claimBatch(100, ctx)).map((r) => r.executionId),
+			(await repository.claimBatch(100, ctx)).rows.map((r) => r.executionId),
 		);
 
 	beforeAll(async () => {

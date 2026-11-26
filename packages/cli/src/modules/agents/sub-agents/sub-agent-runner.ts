@@ -41,8 +41,6 @@ import { jsonParse } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 
-import type { AgentRunTelemetryType } from '@/interfaces';
-
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import {
 	type ActiveRun,
@@ -51,6 +49,7 @@ import {
 	usedWorkspace,
 } from '../agent-sandbox-files.service';
 import type { StartExecutionParams } from '../agent-execution.service';
+import type { AgentRunTelemetryType } from '../agent-telemetry.types';
 import {
 	AgentExecutionRepository,
 	type AgentExecutionLinks,
@@ -279,7 +278,8 @@ export class SubAgentRunner {
 		// Same versioning model as sub-workflows and "Message an Agent": test runs
 		// resolve the child's current draft, production runs its published version.
 		// A resume carries the pinned versionId it started with, which wins either way.
-		const runtimeSource = await this.sourceResolver.resolveForRuntime(
+		// The service account id stays out of `runtimeSource`, so a background snapshot never saves it.
+		const { agentServiceAccountId, ...runtimeSource } = await this.sourceResolver.resolveForRuntime(
 			operation.type === 'run' ? operation.request.source : operation.source,
 			{
 				projectId: context.projectId,
@@ -368,6 +368,7 @@ export class SubAgentRunner {
 				runType: context.runType,
 				workflowToolExecutionMode: context.workflowToolExecutionMode,
 				parentAgentIdForDelegation: context.parentAgentId,
+				...(agentServiceAccountId ? { agentServiceAccountId } : {}),
 				rootSessionId: context.rootSessionId,
 				rootSessionCapUsd: context.rootSessionCapUsd,
 				budgetForwarded: context.budgetForwarded,

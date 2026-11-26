@@ -37,11 +37,17 @@ describe('eligibleModules', () => {
 		const eligible = Container.get(ModuleRegistry).eligibleModules;
 		expect(eligible).not.toContain('engine-v2');
 		expect(eligible).not.toContain('execution-ledger');
+		expect(eligible).not.toContain('durable-leases');
 	});
 
 	it('should include execution-ledger when N8N_ENABLED_MODULES names it', () => {
 		process.env.N8N_ENABLED_MODULES = 'execution-ledger';
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain('execution-ledger');
+	});
+
+	it('should include durable-leases when N8N_ENABLED_MODULES names it', () => {
+		process.env.N8N_ENABLED_MODULES = 'durable-leases';
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain('durable-leases');
 	});
 
 	it('should include policy-infrastructure by default', () => {
@@ -73,7 +79,6 @@ describe('eligibleModules', () => {
 		'inbox',
 		'promotions',
 		'type-availability-policies',
-		'execution-limits',
 	])('should include %s by default', (moduleName) => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
 	});
@@ -86,7 +91,6 @@ describe('eligibleModules', () => {
 		'inbox',
 		'promotions',
 		'type-availability-policies',
-		'execution-limits',
 	])('should allow opting out of the default %s module via env var', (moduleName) => {
 		process.env.N8N_DISABLED_MODULES = moduleName;
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain(moduleName);
@@ -180,7 +184,6 @@ describe('eligibleModules', () => {
 			'agent-evals',
 			'scim',
 			'type-availability-policies',
-			'execution-limits',
 		]);
 	});
 
@@ -230,7 +233,6 @@ describe('eligibleModules', () => {
 			'agent-evals',
 			'scim',
 			'type-availability-policies',
-			'execution-limits',
 			'engine-v2',
 		]);
 	});

@@ -6,8 +6,7 @@ import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Person, PersonRepository, Role, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@n8n/backend-services';
-import type { PasswordUtility } from '@/services/password.utility';
+import type { EventService, PasswordUtility } from '@n8n/backend-services';
 import type { UrlService } from '@n8n/backend-services';
 
 import {
@@ -98,13 +97,23 @@ describe('ScimService', () => {
 				id: 'user-1',
 				userName: 'user@example.com',
 				externalId: 'okta-external-id',
-				name: { givenName: 'First', familyName: 'Last' },
+				name: { formatted: 'First Last', givenName: 'First', familyName: 'Last' },
+				displayName: 'First Last',
 				active: true,
 				meta: {
 					resourceType: 'User',
 					location: 'https://n8n.example.com/scim/v2/Users/user-1',
 				},
 			});
+		});
+
+		it('should omit the formatted name and show the email when the user has no name', async () => {
+			userRepository.findOne.mockResolvedValue(createTestPerson({ firstName: '', lastName: '' }));
+
+			const result = await service.getUserById('user-1');
+
+			expect(result?.name).toEqual({});
+			expect(result?.displayName).toBe('user@example.com');
 		});
 
 		it('should not expose the role, which SCIM does not manage', async () => {
@@ -343,6 +352,7 @@ describe('ScimService', () => {
 				user: createdUser,
 				userType: 'saml',
 				wasDisabledLdapUser: false,
+				source: 'scim',
 			});
 		});
 
@@ -411,6 +421,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: ['disabled'],
+				source: 'scim',
 			});
 		});
 
@@ -430,6 +441,55 @@ describe('ScimService', () => {
 
 			expect(user.disabled).toBe(true);
 			expect(user.firstName).toBe('Updated');
+		});
+
+		it.each([
+			['"False" with a path', [{ op: 'replace', path: 'active', value: 'False' }], true],
+			['"false" in an object value', [{ op: 'replace', value: { active: 'false' } }], true],
+			['"True" with a path', [{ op: 'replace', path: 'active', value: 'True' }], false],
+		])('should read active %s as sent by Entra ID', async (_, operations, disabled) => {
+			const user = createTestPerson({ disabled: !disabled });
+			userRepository.findOne.mockResolvedValue(user);
+
+			await service.patchUser('user-1', patchRequest(operations));
+
+			expect(user.disabled).toBe(disabled);
+		});
+
+		it.each(['no', 0, null, ' false'])(
+			'should reject an active value that is not a boolean (%j)',
+			async (value) => {
+				const user = createTestPerson();
+				userRepository.findOne.mockResolvedValue(user);
+
+				await expect(
+					service.patchUser('user-1', patchRequest([{ op: 'replace', path: 'active', value }])),
+				).rejects.toThrow(ScimInvalidValueError);
+
+				expect(user.disabled).toBe(false);
+				expect(personRepository.save).not.toHaveBeenCalled();
+			},
+		);
+
+		it('should take the email whose primary flag is true, also as a string', async () => {
+			const user = createTestPerson();
+			userRepository.findOne.mockResolvedValue(user);
+
+			await service.patchUser(
+				'user-1',
+				patchRequest([
+					{
+						op: 'replace',
+						path: 'emails',
+						value: [
+							{ value: 'other@example.com', primary: 'False' },
+							{ value: 'Primary@Example.com', primary: 'True' },
+						],
+					},
+				]),
+			);
+
+			expect(user.email).toBe('primary@example.com');
 		});
 
 		it('should update the email via a work-email path as sent by Okta', async () => {
@@ -515,6 +575,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: ['firstName'],
+				source: 'scim',
 			});
 		});
 	});
@@ -543,6 +604,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: expect.arrayContaining(['email', 'firstName', 'lastName', 'disabled']),
+				source: 'scim',
 			});
 		});
 
@@ -557,6 +619,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: expect.not.arrayContaining(['disabled']),
+				source: 'scim',
 			});
 		});
 
@@ -715,6 +778,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: ['disabled'],
+				source: 'scim',
 			});
 		});
 
