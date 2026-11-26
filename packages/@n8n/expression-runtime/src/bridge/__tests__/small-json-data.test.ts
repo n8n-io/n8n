@@ -152,7 +152,7 @@ describe('smallJsonCopy', () => {
 	it('gives a copy that shares no object with the data', () => {
 		const value = { rows: [{ id: 1 }], meta: { total: 1 } };
 
-		const copy = smallJsonCopy(value, 1000)?.copy as typeof value;
+		const copy = smallJsonCopy(value, 1000).copy as typeof value;
 
 		expect(copy).toEqual(value);
 		expect(copy).not.toBe(value);
@@ -165,7 +165,7 @@ describe('smallJsonCopy', () => {
 			'{"__proto__": {"a": 1}, "toString": "text", "constructor": 2}',
 		) as object;
 
-		const copy = smallJsonCopy(value, 1000)?.copy as object;
+		const copy = smallJsonCopy(value, 1000).copy as object;
 
 		expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
 		expect(Object.entries(copy)).toEqual(Object.entries(value));
@@ -177,6 +177,6 @@ describe('smallJsonCopy', () => {
 			{ get: (target, key) => (key === 'id' ? 22 : Reflect.get(target, key)) },
 		);
 
-		expect(smallJsonCopy(value, 1000)?.copy).toEqual({ id: 22 });
+		expect(smallJsonCopy(value, 1000).copy).toEqual({ id: 22 });
 	});
 });

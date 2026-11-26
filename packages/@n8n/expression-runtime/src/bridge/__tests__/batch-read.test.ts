@@ -450,7 +450,7 @@ describe('readBatchAtPath with a field that does not go across', () => {
 		Array.from({ length: 2000 }, (_, index) => [`key${index}`, index]),
 	);
 
-	it('takes from the budget only what the walk of a Date and a class instance counted', () => {
+	it('charges a Date and a class instance what their walks counted', () => {
 		const item = { at: new Date(0), obj: new Item() };
 		const named = { remaining: 1000 };
 		const fields = { remaining: 1000 };
@@ -463,7 +463,7 @@ describe('readBatchAtPath with a field that does not go across', () => {
 		expect(1000 - fields.remaining).toBe(2 + 8 + 3 + 8);
 	});
 
-	it('takes the whole allowance for a wide field and starts no copy after it', () => {
+	it('charges a wide field its whole limit and leaves out the fields after it', () => {
 		const named = { remaining: 100_000 };
 		const fields = { remaining: 100_000 };
 
