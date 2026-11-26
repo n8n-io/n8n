@@ -447,6 +447,7 @@ export {
 	PutCredentialTypeProjectPolicyDto,
 	PutProjectPolicyDto,
 } from './type-availability-policies/put-project-policy.dto';
+export { CreateProjectPolicyDto } from './type-availability-policies/create-project-policy.dto';
 export {
 	CreateCredentialTypePolicyDocumentDto,
 	CreatePolicyDocumentDto,
@@ -456,6 +457,11 @@ export {
 	UpdatePolicyDocumentDto,
 } from './type-availability-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './type-availability-policies/replace-attachments.dto';
+export {
+	SetInstanceTypeAccessDto,
+	SetProjectTypeAccessDto,
+	type TypeAccessChange,
+} from './type-availability-policies/set-type-access.dto';
 export {
 	CredentialTypePolicyAttachmentsPublicDto,
 	CredentialTypePolicyDocumentListPublicDto,

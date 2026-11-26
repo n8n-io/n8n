@@ -987,6 +987,63 @@ describe('OAuthConsentService', () => {
 			expect(result).toBeNull();
 			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
 		});
+
+		describe('resource that skips consent', () => {
+			const skipConsentResource = (authorized = true) =>
+				({
+					isFirstParty: true,
+					skipConsent: true,
+					scopes: [],
+					getResourceUrl: () => sessionPayload.resource,
+					authorize: async () => authorized,
+				}) as unknown as ProtectedResource;
+
+			it("approves the resource's own client without a prior consent", async () => {
+				protectedResourceRegistry.getByResourceUrl.mockResolvedValue(skipConsentResource());
+				authorizationCodeService.createAuthorizationCode.mockResolvedValue('implicit-code');
+
+				const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
+
+				expect(result?.redirectUrl).toContain('code=implicit-code');
+				expect(userConsentRepository.findGrant).not.toHaveBeenCalled();
+				expect(authorizationCodeService.createAuthorizationCode).toHaveBeenCalledWith(
+					sessionPayload.clientId,
+					'user-1',
+					sessionPayload.redirectUri,
+					sessionPayload.codeChallenge,
+					sessionPayload.state,
+					sessionPayload.resource,
+					[],
+					{},
+				);
+			});
+
+			it('returns null when the user is not authorized for the resource', async () => {
+				protectedResourceRegistry.getByResourceUrl.mockResolvedValue(skipConsentResource(false));
+
+				const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
+
+				expect(result).toBeNull();
+				expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+			});
+
+			it.each([
+				{ clientId: 'client-123', redirectUri: 'client-123' },
+				{ clientId: sessionPayload.clientId, redirectUri: 'https://other.example.com/callback' },
+			])('falls back to stored consent for another client (%o)', async (client) => {
+				protectedResourceRegistry.getByResourceUrl.mockResolvedValue(skipConsentResource());
+				userConsentRepository.findGrant.mockResolvedValue(null);
+
+				const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), {
+					...sessionPayload,
+					...client,
+				});
+
+				expect(result).toBeNull();
+				expect(userConsentRepository.findGrant).toHaveBeenCalled();
+				expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('per-user grantable scopes', () => {

@@ -1,3 +1,4 @@
+import { StatisticsNames } from '@n8n/db';
 import {
 	ExecutionStatusList,
 	isCompletedExecutionStatus,
@@ -17,6 +18,7 @@ import {
 	isLedgerFact,
 	savesTime,
 	toLedgerOutcome,
+	toWorkflowStatisticsCount,
 } from '../counting-rules';
 import type {
 	CompletedRun,
@@ -113,6 +115,20 @@ const expectDelta = (f: LedgerFact) => {
 	if (expectLimit(f)) return 1;
 	const wouldHaveCounted = expectLimit({ ...f, event: 'started', outcome: 'none' });
 	return f.event === 'ended' && f.outcome === 'blocked' && wouldHaveCounted ? -1 : 0;
+};
+
+const expectStatisticsName = (f: LedgerFact): StatisticsNames | null => {
+	const counted =
+		f.entityType === 'workflow' &&
+		f.event === 'ended' &&
+		['success', 'error', 'crashed'].includes(f.outcome) &&
+		f.mode !== 'chat';
+	if (!counted) return null;
+	const isManual = f.mode === 'manual' || f.source === 'instance_ai';
+	if (f.outcome === 'success') {
+		return isManual ? StatisticsNames.manualSuccess : StatisticsNames.productionSuccess;
+	}
+	return isManual ? StatisticsNames.manualError : StatisticsNames.productionError;
 };
 
 function fact(overrides: Partial<LedgerFact> = {}): LedgerFact {
@@ -448,5 +464,94 @@ describe('run form equivalence with the previous per-service rules', () => {
 		const previous = ({ mode, status, source }: RunCase) =>
 			source !== 'instance_ai' && billableMode[mode] && isCompletedExecutionStatus(status);
 		expect(findRunMismatches(isBillableExecution, previous)).toEqual([]);
+	});
+});
+
+describe('toWorkflowStatisticsCount (fact)', () => {
+	test('matches the expected counter and root flag for every fact', () => {
+		const mismatches = allFacts
+			.filter((f) => {
+				const actual = toWorkflowStatisticsCount(f);
+				const name = expectStatisticsName(f);
+				if (name === null) return actual !== null;
+				return actual?.name !== name || actual.isRoot !== expectBillable(f);
+			})
+			.map(describeFact);
+		expect(mismatches).toEqual([]);
+	});
+
+	test('does not count a blocked run', () => {
+		expect(toWorkflowStatisticsCount(fact({ outcome: 'blocked' }))).toBeNull();
+	});
+
+	test('an Instance AI run in trigger mode counts as a manual success outside the root count', () => {
+		const instanceAi = fact({ mode: 'trigger', source: 'instance_ai' });
+		expect(toWorkflowStatisticsCount(instanceAi)).toEqual({
+			name: StatisticsNames.manualSuccess,
+			isRoot: false,
+		});
+	});
+});
+
+describe('toWorkflowStatisticsCount (run)', () => {
+	const sources: Array<WorkflowExecutionSource | undefined> = [undefined, 'user', 'instance_ai'];
+
+	// Re-implementation of the previous private rule in the statistics service.
+	const previousName = (
+		mode: WorkflowExecuteMode,
+		status: ExecutionStatus,
+		source?: WorkflowExecutionSource,
+	): StatisticsNames | null => {
+		if (mode === 'chat' || !isCompletedExecutionStatus(status)) return null;
+		const isManual = mode === 'manual' || source === 'instance_ai';
+		if (isManual) {
+			return status === 'success' ? StatisticsNames.manualSuccess : StatisticsNames.manualError;
+		}
+		return status === 'success'
+			? StatisticsNames.productionSuccess
+			: StatisticsNames.productionError;
+	};
+
+	test('matches the previous name and root rules for every mode, status and source', () => {
+		const mismatches = allModes.flatMap((mode) =>
+			allStatuses.flatMap((status) =>
+				sources
+					.filter((source) => {
+						const input = run(mode, status);
+						const actual = toWorkflowStatisticsCount(input, source);
+						const name = previousName(mode, status, source);
+						if (name === null) return actual !== null;
+						return actual?.name !== name || actual.isRoot !== isBillableExecution(input, source);
+					})
+					.map((source) => `${mode}/${status}/${String(source)}`),
+			),
+		);
+		expect(mismatches).toEqual([]);
+	});
+
+	test('does not count a run that failed before its first node started', () => {
+		const blocked = {
+			...run('webhook', 'error'),
+			data: { resultData: { failedBeforeStart: 'policy' as const } },
+		};
+		expect(toWorkflowStatisticsCount(blocked)).toBeNull();
+	});
+
+	test('does not count a crashed run that no runner took', () => {
+		const crashed = { mode: 'trigger' as const, status: 'crashed' as const, startedAt: null };
+		expect(toWorkflowStatisticsCount(crashed)).toBeNull();
+	});
+
+	test('does not count a trigger error saved without a start', () => {
+		const triggerError = { mode: 'trigger' as const, status: 'error' as const, startedAt: null };
+		expect(toWorkflowStatisticsCount(triggerError)).toBeNull();
+	});
+
+	test('does not count a canceled run', () => {
+		expect(toWorkflowStatisticsCount(run('webhook', 'canceled'))).toBeNull();
+	});
+
+	test('does not throw for a deep mock', () => {
+		expect(() => toWorkflowStatisticsCount(mock<CompletedRun>())).not.toThrow();
 	});
 });

@@ -9,6 +9,7 @@ import { Container } from '@n8n/di';
 import { RoutingNode } from 'n8n-core';
 import {
 	type ILoadOptionsFunctions,
+	type ILocalLoadOptionsFunctions,
 	type INodeParameters,
 	type INodeType,
 	type IExecutionContext,
@@ -594,6 +595,7 @@ describe('DynamicNodeParametersService', () => {
 				'test',
 				mock<IWorkflowExecuteAdditionalData>(),
 				{ name: 'TestNode', version: 1 },
+				mock<User>(),
 			);
 			expect(result).toEqual({
 				fields: [
@@ -602,6 +604,38 @@ describe('DynamicNodeParametersService', () => {
 					{ id: '3', displayName: 'Field 3', defaultMatch: false, required: true, display: true },
 				],
 			});
+		});
+
+		it('should load referenced workflows with a loader scoped to the requesting user', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const scopedLoader = { get: vi.fn().mockResolvedValue({ id: 'workflow-1', nodes: [] }) };
+			workflowLoaderService.forUser.mockReturnValue(scopedLoader);
+
+			const localResourceMappingMethod = vi.fn(async function (this: ILocalLoadOptionsFunctions) {
+				await this.getWorkflowNodeContext('n8n-nodes-base.executeWorkflowTrigger');
+				return { fields: [] };
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { localResourceMapping: { getFields: localResourceMappingMethod } },
+				}),
+			);
+
+			await service.getLocalResourceMappingFields(
+				'getFields',
+				'parameters.workflowInputs',
+				mock<IWorkflowExecuteAdditionalData>({
+					currentNodeParameters: {
+						workflowId: { __rl: true, value: 'workflow-1', mode: 'id' },
+					},
+				}),
+				{ name: 'TestNode', version: 1 },
+				user,
+			);
+
+			expect(workflowLoaderService.forUser).toHaveBeenCalledWith(user);
+			expect(scopedLoader.get).toHaveBeenCalledWith('workflow-1');
 		});
 	});
 

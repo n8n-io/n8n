@@ -1,18 +1,29 @@
+import { readFileSync } from 'node:fs';
 import { defineCommand } from 'citty';
 import pc from 'picocolors';
 
 import { type RigEnv, suggest } from '../environment';
-import { setInDotenvFile, unsetInDotenvFile } from '../env/dotenv';
+import { unsetInDotenvFile } from '../env/dotenv';
+import { editEnvFile, encryptEnvFile, hasEncryptedValues } from '../env/secret-store';
+import { isMaskedValue, isSensitiveKey } from '../env/sensitive';
 import { TOPOLOGY_KEYS } from '../env/managed';
 import { diffResolved, type EnvSource, type ResolvedEnv, resolveRunnerEnv } from '../env/resolve';
 import { RigError } from '../errors';
-import { editFile } from '../integrations/editor';
+import { RIG } from '../meta';
+import { editFile, editorWaits } from '../integrations/editor';
 import { RUNNER_LAYERS } from '../topology/components';
 import { table, ui } from '../ui/output';
-import { confirm, isInteractive } from '../ui/prompt';
-import { envArg, loadEnv, offerRestart, parseAssignments, positionals } from './common';
+import { ask, confirm, isInteractive, password } from '../ui/prompt';
+import { envArg, loadEnv, offerRestart, positionals } from './common';
 import { browseCommand } from './env-browse';
-import { ensureLayerFile, managedConflicts, resolveLayer } from './layers';
+import {
+	ensureLayerFile,
+	generatedSecretWarning,
+	isSecretLayer,
+	managedConflicts,
+	resolveLayer,
+	setInLayer,
+} from './layers';
 
 const onArg = {
 	on: {
@@ -43,24 +54,87 @@ const restartArg = {
 	},
 } as const;
 
+interface SetArg {
+	key: string;
+	/** `undefined` for a bare `KEY`: rig asks for the value. */
+	value?: string;
+}
+
+function parseSetArgs(values: string[]): SetArg[] {
+	return values.map((arg) => {
+		const index = arg.indexOf('=');
+		return index === -1 ? { key: arg } : { key: arg.slice(0, index), value: arg.slice(index + 1) };
+	});
+}
+
+/**
+ * Gets the values of bare keys from stdin or a prompt, so a secret stays out
+ * of the shell history and the process list. Sensitive values get a masked prompt.
+ */
+async function askMissingValues(env: RigEnv, layer: string, args: SetArg[]): Promise<void> {
+	const missing = args.filter((arg) => arg.value === undefined);
+	if (missing.length === 0) return;
+	if (!process.stdin.isTTY) {
+		if (missing.length > 1) {
+			throw new RigError(
+				'stdin can give the value of one key only.',
+				'Pass the other keys as KEY=VALUE.',
+			);
+		}
+		const value = readFileSync(0, 'utf8').replace(/\r?\n$/, '');
+		if (value === '') throw new RigError(`stdin has no value for ${missing[0].key}.`);
+		missing[0].value = value;
+		return;
+	}
+	if (!isInteractive()) {
+		throw new RigError(
+			`${missing[0].key} has no value.`,
+			'Use KEY=VALUE, or pipe the value to stdin.',
+		);
+	}
+	for (const arg of missing) {
+		const message = `${arg.key} ${pc.dim(`(in ${env.layerLabel(layer)})`)}`;
+		const masked = isSecretLayer(layer) || isSensitiveKey(arg.key);
+		const value = masked ? await password(message) : await ask(message);
+		if (value === '') throw new RigError(`No value for ${arg.key}. Nothing changed.`);
+		arg.value = value;
+	}
+}
+
 const setCommand = defineCommand({
 	meta: {
 		name: 'set',
-		description: 'Set env vars: rig env set KEY=VALUE [KEY=VALUE…] [--on <layer>]',
+		description:
+			'Set env vars: rig env set KEY=VALUE [KEY=VALUE…] [--on <layer>]. A bare KEY asks for the value, or reads it from stdin',
 	},
 	args: {
 		...envArg,
 		...onArg,
 		...restartArg,
-		assignment: { type: 'positional', required: true, description: 'KEY=VALUE' },
+		assignment: {
+			type: 'positional',
+			required: true,
+			description: 'KEY=VALUE, or KEY to enter the value at a prompt',
+		},
 		force: { type: 'boolean', description: 'Skip the guardrails' },
 	},
 	async run({ args }) {
 		const env = loadEnv(args.env);
 		const layer = layerOf(env, args);
-		const assignments = parseAssignments(positionals(args));
+		const setArgs = parseSetArgs(positionals(args));
 
-		for (const [key] of Object.entries(assignments)) {
+		const inline = setArgs.filter(
+			(arg) => arg.value !== undefined && (isSecretLayer(layer) || isSensitiveKey(arg.key)),
+		);
+		if (inline.length > 0) {
+			const keys = inline.map((arg) => arg.key);
+			throw new RigError(
+				`${keys.join(', ')} ${keys.length === 1 ? 'is a secret' : 'are secrets'}. rig does not take secret values on the command line: the shell history and the process list would keep them.`,
+				`Run \`${RIG} env set ${keys.join(' ')}${args.on ? ` --on ${args.on}` : args.secret ? ' --secret' : ''}\` and enter the value, or pipe one value to stdin.`,
+			);
+		}
+
+		for (const { key } of setArgs) {
 			if (!ENV_KEY.test(key)) {
 				throw new RigError(`Invalid name "${key}". Use letters, digits, and underscores.`);
 			}
@@ -71,6 +145,12 @@ const setCommand = defineCommand({
 					`Change \`${topologyKey}\` in ${env.paths.envYaml} instead, or add --force.`,
 				);
 			}
+			const generated = generatedSecretWarning(env, layer, key);
+			if (generated && !args.force) {
+				ui.warn(generated);
+				if (!isInteractive()) throw new RigError('Add --force to override a generated secret.');
+				if (!(await confirm('Override it?', false))) return;
+			}
 			const conflicts = managedConflicts(env, layer, key);
 			if (conflicts.length > 0 && !args.force) {
 				const list = conflicts.map((c) => `${c.component}=${c.value}`).join(', ');
@@ -80,9 +160,11 @@ const setCommand = defineCommand({
 			}
 		}
 
-		const file = ensureLayerFile(env, layer);
-		for (const [key, value] of Object.entries(assignments)) {
-			setInDotenvFile(file, key, value);
+		// Ask after the guardrails, so nobody types a secret for a change that rig then refuses.
+		await askMissingValues(env, layer, setArgs);
+		for (const { key, value } of setArgs) {
+			if (value === undefined) continue;
+			setInLayer(env, layer, key, value);
 			ui.success(`${key} set in ${pc.bold(env.layerLabel(layer))}`);
 		}
 		await offerRestart(env, layer, args.restart);
@@ -118,13 +200,47 @@ const editCommand = defineCommand({
 	async run({ args }) {
 		const env = loadEnv(args.env);
 		const layer = layerOf(env, args);
-		await editFile(ensureLayerFile(env, layer));
+		const file = ensureLayerFile(env, layer);
+		if (isSecretLayer(layer) || hasEncryptedValues(file)) {
+			if (!(await editEnvFile(file, editPlaintextCopy))) {
+				// Plaintext values from before the encryption still get encrypted.
+				const count = encryptEnvFile(file);
+				ui.step(
+					count > 0
+						? `No change in ${env.layerLabel(layer)}. Encrypted ${count} plaintext value(s).`
+						: `No change in ${env.layerLabel(layer)}.`,
+				);
+				return;
+			}
+		} else {
+			await editFile(file);
+			// New sensitive values, for example an API key, get encrypted now.
+			const count = encryptEnvFile(file);
+			if (count > 0) ui.step(`Encrypted ${count} sensitive value(s).`);
+		}
 		await offerRestart(env, layer, args.restart);
 	},
 });
 
-function isSecret(source: EnvSource | undefined): boolean {
-	return source?.layer === 'secrets';
+/**
+ * Opens the decrypted copy of an env file. An editor without a wait flag
+ * returns before the edit ends, so ask before rig encrypts the copy and deletes it.
+ */
+async function editPlaintextCopy(file: string): Promise<void> {
+	const waits = await editorWaits();
+	if (!waits && !isInteractive()) {
+		throw new RigError(
+			'Without a terminal, rig cannot check that the editor closed the decrypted copy.',
+			`Set a known editor, which rig opens with its wait flag: \`${RIG} config set editor <name>\`.`,
+		);
+	}
+	await editFile(file);
+	// A saved change does not show that the editor closed the file. So ask every time.
+	if (waits) return;
+	ui.step(`rig shows the secrets decrypted in ${file}. It deletes this copy after the edit.`);
+	while (!(await confirm('Did you save and close the file?', false))) {
+		// Wait for the user.
+	}
 }
 
 function resolvedFor(env: RigEnv, target: string): { name: string; resolved: ResolvedEnv } {
@@ -172,7 +288,7 @@ const lsCommand = defineCommand({
 			const winner = sources[sources.length - 1];
 			if (winner?.layer === 'shell' && !args.all) continue;
 			const value =
-				isSecret(winner) && !args['show-secrets'] ? pc.dim('••••••') : resolved.env[key];
+				isMaskedValue(key, winner) && !args['show-secrets'] ? pc.dim('••••••') : resolved.env[key];
 			rows.push([pc.bold(key), value, pc.dim(winner?.label ?? '')]);
 		}
 		console.log(table(rows));
@@ -200,7 +316,7 @@ const explainCommand = defineCommand({
 			return;
 		}
 		const show = (source: EnvSource) =>
-			isSecret(source) && !args['show-secrets'] ? '••••••' : source.value;
+			isMaskedValue(args.key, source) && !args['show-secrets'] ? '••••••' : source.value;
 		const winner = sources[sources.length - 1];
 		console.log(`${pc.bold(args.key)} = ${show(winner)}  ${pc.dim(`(${name})`)}`);
 		const rows = [...sources]
@@ -254,14 +370,14 @@ const diffCommand = defineCommand({
 			ui.success(`${a.label} and ${b.label} have the same env.`);
 			return;
 		}
-		const show = (source: EnvSource | undefined) => {
+		const show = (key: string, source: EnvSource | undefined) => {
 			if (!source) return pc.dim('(not set)');
-			const value = isSecret(source) && !args['show-secrets'] ? '••••••' : source.value;
+			const value = isMaskedValue(key, source) && !args['show-secrets'] ? '••••••' : source.value;
 			return `${value} ${pc.dim(source.label)}`;
 		};
 		const rows = [[pc.dim('KEY'), pc.dim(a.label), pc.dim(b.label)]];
 		for (const { key, a: left, b: right } of differences)
-			rows.push([pc.bold(key), show(left), show(right)]);
+			rows.push([pc.bold(key), show(key, left), show(key, right)]);
 		console.log(table(rows));
 		ui.step(`${differences.length} key${differences.length === 1 ? '' : 's'} differ.`);
 	},

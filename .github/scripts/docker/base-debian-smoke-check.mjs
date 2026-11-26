@@ -7,7 +7,16 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const run = (file, args = [], options = {}) =>
@@ -23,7 +32,9 @@ const onPath = (bin) => {
 };
 
 // The n8n image, its entrypoint and the nodes run these by name.
-const missing = ['node', 'npm', 'git', 'ssh', 'tini', 'gm', 'c_rehash'].filter((b) => !onPath(b));
+const missing = ['node', 'npm', 'git', 'ssh', 'tini', 'gm', 'c_rehash', 'tar', 'gzip'].filter(
+	(b) => !onPath(b),
+);
 assert.deepEqual(missing, [], `Not on PATH: ${missing.join(', ')}`);
 
 // Like the Alpine base, this image has no package manager.
@@ -62,6 +73,27 @@ try {
 	assert.equal(value, '42', 'A global npm module is not require()-able');
 } finally {
 	rmSync(moduleDir, { recursive: true, force: true });
+}
+
+// Community package installation extracts .tgz archives with `tar -xzf`.
+// GNU `tar` calls `gzip` for `-z`.
+const tarDir = mkdtempSync(path.join(tmpdir(), 'base-smoke-tar-'));
+try {
+	const srcDir = path.join(tarDir, 'package');
+	const outDir = path.join(tarDir, 'extracted');
+	const archive = path.join(tarDir, 'pkg.tgz');
+	mkdirSync(srcDir, { recursive: true });
+	mkdirSync(outDir, { recursive: true });
+	writeFileSync(path.join(srcDir, 'hello.txt'), 'ok');
+	run('tar', ['-czf', archive, '-C', tarDir, 'package']);
+	run('tar', ['-xzf', archive, '-C', outDir, '--strip-components=1']);
+	assert.equal(
+		readFileSync(path.join(outDir, 'hello.txt'), 'utf8'),
+		'ok',
+		'tar -xzf round-trip did not extract expected file content',
+	);
+} finally {
+	rmSync(tarDir, { recursive: true, force: true });
 }
 
 // The EditImage node uses Arial by default and draws text with GraphicsMagick.
