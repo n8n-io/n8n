@@ -1,53 +1,71 @@
 <script setup lang="ts">
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
-import EngineV2CompatibilityDialog from './EngineV2CompatibilityDialog.vue';
-import { severityIcon, worstSeverity } from './severityIcon';
-import type { EngineCompatibilityReason } from '../engineV2Check';
+import { useEngineV2FindingsDialog } from '../composables/useEngineV2FindingsDialog';
+import { hasBlockingGroup, type EngineV2FindingGroup } from '../engineV2Findings';
+import { severityIcon } from './severityIcon';
 
-const { reasons } = defineProps<{
-	reasons: EngineCompatibilityReason[];
+const { groups } = defineProps<{
+	groups: EngineV2FindingGroup[];
 }>();
 
 const i18n = useI18n();
+const findingsDialog = useEngineV2FindingsDialog();
 
-// The dialog is a sibling of the button, so a change to the reasons never closes it.
-const isDialogOpen = ref(false);
+const severity = computed(() => (hasBlockingGroup(groups) ? 'blocking' : 'warning'));
+const icon = computed(() => severityIcon(severity.value));
+const badgeVariant = computed(() => (severity.value === 'blocking' ? 'danger' : 'warning'));
 
-const icon = computed(() => severityIcon(worstSeverity(reasons)));
+const count = computed(() => groups.length);
 
-const label = computed(() =>
-	i18n.baseText('engineV2Compatibility.button.label', {
-		adjustToNumber: reasons.length,
-		interpolate: { count: reasons.length },
-	}),
-);
+function countText(key: 'label' | 'labelWithoutCount') {
+	return i18n.baseText(`engineV2Compatibility.button.${key}`, {
+		adjustToNumber: count.value,
+		interpolate: { count: count.value },
+	});
+}
+
+const accessibleName = computed(() => countText('label'));
+const visibleLabel = computed(() => countText('labelWithoutCount'));
 </script>
 
 <template>
-	<div>
-		<N8nButton
-			variant="outline"
-			size="small"
-			:class="$style.button"
-			data-test-id="engine-v2-compatibility-button"
-			data-attr="engine-v2-compatibility-button"
-			@click="isDialogOpen = true"
-		>
-			<template #icon>
-				<N8nIcon :icon="icon.icon" :color="icon.color" />
-			</template>
-			{{ label }}
-		</N8nButton>
-		<EngineV2CompatibilityDialog v-model:open="isDialogOpen" :reasons="reasons" />
-	</div>
+	<N8nButton
+		variant="outline"
+		size="small"
+		:class="$style.button"
+		:aria-label="accessibleName"
+		data-test-id="engine-v2-compatibility-button"
+		data-attr="engine-v2-compatibility-button"
+		@click="findingsDialog.open()"
+	>
+		<template #icon>
+			<N8nIcon :icon="icon.icon" :color="icon.color" />
+		</template>
+		<span :class="$style.content" aria-hidden="true">
+			{{ visibleLabel }}
+			<N8nBadge
+				:variant="badgeVariant"
+				size="xsmall"
+				data-test-id="engine-v2-compatibility-button-count"
+			>
+				{{ count }}
+			</N8nBadge>
+		</span>
+	</N8nButton>
 </template>
 
 <style lang="scss" module>
 .button {
 	box-shadow: var(--shadow--xs);
 	pointer-events: auto;
+}
+
+.content {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 </style>
