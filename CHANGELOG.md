@@ -1,3 +1,21 @@
+## [2.50.2](https://github.com/n8n-io/n8n/compare/n8n@2.50.1...n8n@2.50.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* Apply execution data size limit in MCP get_workflow_execution ([#45141](https://github.com/n8n-io/n8n/issues/45141)) ([965e5b2](https://github.com/n8n-io/n8n/commit/965e5b251a8441919d93b9b9c92beee22748671d))
+* **core:** Align extractUrlPath results of isolate expression engines with legacy ([#45149](https://github.com/n8n-io/n8n/issues/45149)) ([5e1ed62](https://github.com/n8n-io/n8n/commit/5e1ed624c0047fe0f874e2792adbbbb0a422a01d))
+* **core:** Reduce memory use of concat on workflow data arrays in isolate expression engines ([#45155](https://github.com/n8n-io/n8n/issues/45155)) ([f8ec2b0](https://github.com/n8n-io/n8n/commit/f8ec2b02ec900042dae8bec085400b7fba0e3397))
+* **core:** Refresh expired credentials with pagination and Never Error ([#45176](https://github.com/n8n-io/n8n/issues/45176)) ([6566e7f](https://github.com/n8n-io/n8n/commit/6566e7f98aedd355c646bbebdd6a7ef906ad60d5))
+* **editor:** Center the empty state of the Assistant chat again ([#45105](https://github.com/n8n-io/n8n/issues/45105)) ([8353e50](https://github.com/n8n-io/n8n/commit/8353e50f0425a3b284ed44348cd9e168517bb157))
+* Preserve boxed primitives across expression engines ([#45205](https://github.com/n8n-io/n8n/issues/45205)) ([6b96095](https://github.com/n8n-io/n8n/commit/6b9609562b43033960ddb493e97aa9c165741e68))
+
+
+### Features
+
+* **ai-builder:** Show attached workflows as cards in the Assistant ([#45092](https://github.com/n8n-io/n8n/issues/45092)) ([ebc67ec](https://github.com/n8n-io/n8n/commit/ebc67ec3923e37d50453d19f09c795d4b8907268))
+
+
 ## [2.50.1](https://github.com/n8n-io/n8n/compare/n8n@2.50.0...n8n@2.50.1) (2026-11-25)
 
 
