@@ -1196,6 +1196,7 @@ function handleNewThreadClick() {
 								:project-id="preview.activeApp.value.projectId"
 								:app-id="preview.activeApp.value.id"
 								:refresh-key="preview.appRefreshKey.value"
+								:auto-run="preview.liveBuiltAppIds.value.has(preview.activeApp.value.id)"
 								@deleted="preview.closeTab"
 							/>
 						</div>

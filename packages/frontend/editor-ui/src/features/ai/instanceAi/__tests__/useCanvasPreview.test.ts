@@ -1512,6 +1512,24 @@ describe('useCanvasPreview', () => {
 			expect(ctx.appRefreshKey.value).toBe(initialKey + 1);
 		});
 
+		test('marks only an app that the assistant wrote in this session as live built', async () => {
+			const ctx = setup();
+			registerApp(ctx.thread);
+			ctx.thread.isHydratingThread = true;
+
+			ctx.thread.messages = [appCall('tc-create', 'create_app')];
+			await nextTick();
+			expect(ctx.liveBuiltAppIds.value.has('app-1')).toBe(false);
+
+			ctx.thread.isHydratingThread = false;
+			ctx.thread.messages = [
+				...ctx.thread.messages,
+				appCall('tc-commit', 'commit_app', { appId: 'app-1' }),
+			];
+			await nextTick();
+			expect(ctx.liveBuiltAppIds.value.has('app-1')).toBe(true);
+		});
+
 		test('does not open an app the assistant only read', async () => {
 			const ctx = setup();
 			registerApp(ctx.thread);

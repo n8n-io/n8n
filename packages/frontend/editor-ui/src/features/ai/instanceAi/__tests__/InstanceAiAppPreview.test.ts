@@ -12,7 +12,13 @@ const { refresh, mounted } = vi.hoisted(() => ({ refresh: vi.fn(), mounted: vi.f
 vi.mock('@n8n/frontend-module-apps', () => ({
 	loadAppView: async () =>
 		defineComponent({
-			props: { projectId: String, appId: String, inspectable: Boolean, elementSelected: Boolean },
+			props: {
+				projectId: String,
+				appId: String,
+				inspectable: Boolean,
+				elementSelected: Boolean,
+				autoRun: Boolean,
+			},
 			emits: ['element-selected'],
 			setup(props, { expose, emit }) {
 				mounted(props.appId);
@@ -22,6 +28,7 @@ vi.mock('@n8n/frontend-module-apps', () => ({
 						props.appId,
 						h('span', { 'data-test-id': 'inspectable' }, String(props.inspectable)),
 						h('span', { 'data-test-id': 'element-selected' }, String(props.elementSelected)),
+						h('span', { 'data-test-id': 'auto-run' }, String(props.autoRun)),
 						h('button', {
 							'data-test-id': 'pick',
 							onClick: () => emit('element-selected', { tagName: 'button', text: 'Save' }),
@@ -31,7 +38,13 @@ vi.mock('@n8n/frontend-module-apps', () => ({
 		}),
 }));
 
-const renderPreview = (props = { projectId: 'project-1', appId: 'app-1', refreshKey: 0 }) =>
+const renderPreview = (
+	props: { projectId: string; appId: string; refreshKey: number; autoRun?: boolean } = {
+		projectId: 'project-1',
+		appId: 'app-1',
+		refreshKey: 0,
+	},
+) =>
 	render(InstanceAiAppPreview, {
 		props,
 		global: { plugins: [createTestingPinia({ stubActions: false })] },
@@ -94,5 +107,14 @@ describe('InstanceAiAppPreview', () => {
 		store.setComposerElementAppId('app-1');
 		await flushPromises();
 		expect(getByTestId('element-selected')).toHaveTextContent('true');
+	});
+
+	it('passes auto run to the app view', async () => {
+		const { getByTestId, rerender } = renderPreview();
+		await flushPromises();
+		expect(getByTestId('auto-run')).toHaveTextContent('false');
+
+		await rerender({ projectId: 'project-1', appId: 'app-1', refreshKey: 0, autoRun: true });
+		expect(getByTestId('auto-run')).toHaveTextContent('true');
 	});
 });

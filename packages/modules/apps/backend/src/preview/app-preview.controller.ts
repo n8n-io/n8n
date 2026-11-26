@@ -10,7 +10,7 @@ export class AppPreviewController {
 	constructor(private readonly preview: AppPreviewService) {}
 
 	@Post('/')
-	@ProjectScope('app:read')
+	@ProjectScope('app:update')
 	async createGrant(req: PreviewRequest) {
 		const { projectId, appId, versionId } = req.params;
 		return await this.preview.createGrant(req.user.id, projectId, appId, versionId);

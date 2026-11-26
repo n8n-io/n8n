@@ -37,7 +37,7 @@ function setup(baseUrl = 'https://apps.example.com') {
 		}),
 	);
 	const resources = mock<AppProtectedResource>();
-	resources.canRead.mockResolvedValue(true);
+	resources.canPreview.mockResolvedValue(true);
 	const users = mock<UserRepository>();
 	users.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1', disabled: false }));
 	const store = new Map<string, unknown>();
@@ -279,9 +279,9 @@ describe('AppPreviewService', () => {
 				},
 			],
 			[
-				'a user without read access',
+				'a user without update access',
 				(ctx) => {
-					ctx.resources.canRead.mockResolvedValue(false);
+					ctx.resources.canPreview.mockResolvedValue(false);
 					return session();
 				},
 			],

@@ -7,10 +7,12 @@ import {
 } from '@n8n/api-types';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { defineComponent, h, type PropType } from 'vue';
 
+import { providePermissions } from '../__tests__/fixtures';
 import { createAppPreview, getAppBuild, listAppVersions } from '../apps.api';
 import { useAppVersions, type AppVersions } from '../composables/useAppVersions';
 import AppPreview from './AppPreview.vue';
@@ -53,6 +55,7 @@ const AppPreviewHost = defineComponent({
 		app: { type: Object as PropType<AppResponse>, required: true },
 		inspectable: Boolean,
 		elementSelected: Boolean,
+		autoRun: Boolean,
 	},
 	emits: ['element-selected'],
 	setup(props, { emit }) {
@@ -64,13 +67,14 @@ const AppPreviewHost = defineComponent({
 				versions,
 				inspectable: props.inspectable,
 				elementSelected: props.elementSelected,
+				autoRun: props.autoRun,
 				onElementSelected: (element: AppPreviewElement) => emit('element-selected', element),
 			});
 	},
 });
 
 const renderComponent = createComponentRenderer(AppPreviewHost, {
-	props: { app: app() },
+	props: { app: app(), autoRun: true },
 	global: {
 		stubs: {
 			DropdownMenu: {
@@ -92,6 +96,8 @@ const renderComponent = createComponentRenderer(AppPreviewHost, {
 describe('AppPreview', () => {
 	beforeEach(() => {
 		grants = 0;
+		useUsersStore().currentUserId = 'user-1';
+		providePermissions(['app:read', 'app:update']);
 		vi.mocked(createAppPreview).mockImplementation(async (_ctx, _p, _a, versionId) => ({
 			url: `https://sales--preview.apps.example.com/_n8n/preview?code=${versionId}-${++grants}`,
 		}));
@@ -103,6 +109,73 @@ describe('AppPreview', () => {
 		vi.restoreAllMocks();
 		vi.useRealTimers();
 		delete document.body.dataset.theme;
+		localStorage.clear();
+	});
+
+	describe('run confirmation', () => {
+		it('asks before it runs a version that the user did not build or run', async () => {
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const { findByTestId, queryByTestId } = renderComponent({ props: { autoRun: false } });
+
+			expect(await findByTestId('app-preview-confirm')).toBeInTheDocument();
+			expect(queryByTestId('app-preview-frame')).not.toBeInTheDocument();
+			expect(createAppPreview).not.toHaveBeenCalled();
+		});
+
+		it('runs the version on confirmation and does not ask again for it', async () => {
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const first = renderComponent({ props: { autoRun: false } });
+			await userEvent.click(await first.findByRole('button', { name: 'Run preview' }));
+
+			expect(await first.findByTestId('app-preview-frame')).toHaveAttribute(
+				'src',
+				expect.stringContaining('code=v2-1'),
+			);
+			first.unmount();
+
+			const second = renderComponent({ props: { autoRun: false } });
+			expect(await second.findByTestId('app-preview-frame')).toBeInTheDocument();
+		});
+
+		it('asks again when a new version replaces a running one', async () => {
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const { findByRole, findByTestId, queryByTestId } = renderComponent({
+				props: { autoRun: false },
+			});
+			await userEvent.click(await findByRole('button', { name: 'Run preview' }));
+			await findByTestId('app-preview-frame');
+
+			vi.mocked(listAppVersions).mockResolvedValue([
+				version('v3', 'succeeded'),
+				version('v2', 'succeeded'),
+			]);
+			await versions.refresh();
+
+			expect(await findByTestId('app-preview-confirm')).toBeInTheDocument();
+			expect(queryByTestId('app-preview-frame')).not.toBeInTheDocument();
+			expect(createAppPreview).toHaveBeenCalledOnce();
+		});
+
+		it('keeps the confirmation for each user', async () => {
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const first = renderComponent();
+			await first.findByTestId('app-preview-frame');
+			first.unmount();
+
+			useUsersStore().currentUserId = 'user-2';
+			const second = renderComponent({ props: { autoRun: false } });
+			expect(await second.findByTestId('app-preview-confirm')).toBeInTheDocument();
+		});
+
+		it('does not request a preview without the update scope', async () => {
+			capabilityRegistry.clear();
+			providePermissions(['app:read']);
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const { findByTestId } = renderComponent();
+
+			expect(await findByTestId('app-preview-no-permission')).toBeInTheDocument();
+			expect(createAppPreview).not.toHaveBeenCalled();
+		});
 	});
 
 	it('shows the newest successful version with a new grant', async () => {

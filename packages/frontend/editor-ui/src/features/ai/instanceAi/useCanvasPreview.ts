@@ -382,6 +382,7 @@ export function useCanvasPreview({
 		() => skillRefreshKeys.value.get(activeSkillId.value ?? '') ?? 0,
 	);
 	const appRefreshKey = ref(0);
+	const liveBuiltAppIds = ref(new Set<string>());
 
 	const isPreviewVisible = computed(
 		() =>
@@ -805,6 +806,7 @@ export function useCanvasPreview({
 		getLatestAppArtifactResult,
 		(result) => result.appId,
 		(id) => {
+			liveBuiltAppIds.value.add(id);
 			if (activeTabId.value === id) appRefreshKey.value++;
 		},
 	);
@@ -970,6 +972,7 @@ export function useCanvasPreview({
 		dataTableRefreshKey,
 		skillRefreshKey,
 		appRefreshKey,
+		liveBuiltAppIds,
 		isPreviewVisible,
 		workflowRefreshKey,
 		selectTab,

@@ -22,7 +22,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { createAppPreview } from '../apps.api';
+import { getAppPermissions } from '../apps.permissions';
 import { getAppVersionLabel, type AppVersions } from '../composables/useAppVersions';
+import { useSeenAppPreviewVersions } from '../composables/useSeenAppPreviewVersions';
 import AppPreviewOptionMenu from './AppPreviewOptionMenu.vue';
 import AppFeedbackLink from './feedback/AppFeedbackLink.vue';
 
@@ -58,6 +60,7 @@ const props = defineProps<{
 	versions: AppVersions;
 	inspectable?: boolean;
 	elementSelected?: boolean;
+	autoRun?: boolean;
 }>();
 
 const emit = defineEmits<{ 'element-selected': [element: AppPreviewElement] }>();
@@ -66,6 +69,8 @@ const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
 const latestFetch = useLatestFetch();
+const { hasSeen, markSeen } = useSeenAppPreviewVersions();
+const { canPreview } = getAppPermissions(props.projectId);
 
 const { head, latestBuilt, building } = props.versions;
 
@@ -104,6 +109,11 @@ const versionLabel = computed(() => {
 	const version = preview.value?.version;
 	return version ? getAppVersionLabel(version) : null;
 });
+const awaitingRun = computed(() => !!latestBuilt.value && !canRun(latestBuilt.value));
+
+function canRun(version: AppVersionResponse) {
+	return canPreview && (props.autoRun || hasSeen(version.id));
+}
 
 async function grant(versionId: string) {
 	return await createAppPreview(rootStore.restApiContext, props.projectId, props.app.id, versionId);
@@ -119,7 +129,7 @@ async function show(force = false) {
 	const version = latestBuilt.value;
 	if (!force && version?.id === preview.value?.version.id) return;
 	const isLatest = latestFetch.next();
-	if (!version) {
+	if (!version || !canRun(version)) {
 		granting.value = false;
 		showPreview(null);
 		return;
@@ -128,6 +138,7 @@ async function show(force = false) {
 	try {
 		const { url } = await grant(version.id);
 		if (!isLatest()) return;
+		markSeen(version.id);
 		showPreview({ version, url });
 		grantFailed.value = false;
 	} catch (error) {
@@ -137,6 +148,11 @@ async function show(force = false) {
 	} finally {
 		if (isLatest()) granting.value = false;
 	}
+}
+
+async function run() {
+	if (latestBuilt.value) markSeen(latestBuilt.value.id);
+	await show();
 }
 
 async function reload() {
@@ -200,11 +216,9 @@ onMounted(() => {
 	window.addEventListener('keydown', onKeyDown);
 });
 
-watch(
-	() => latestBuilt.value?.id,
-	async () => await show(),
-	{ immediate: true },
-);
+watch([() => latestBuilt.value?.id, () => props.autoRun], async () => await show(), {
+	immediate: true,
+});
 
 onBeforeUnmount(() => {
 	window.removeEventListener('message', onMessage);
@@ -306,6 +320,23 @@ onBeforeUnmount(() => {
 				sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads"
 				data-test-id="app-preview-frame"
 				@load="onFrameLoad"
+			/>
+			<N8nEmptyState
+				v-else-if="!canPreview"
+				:icon="{ type: 'icon', value: 'lock' }"
+				:heading="i18n.baseText('apps.preview.noPermission.heading')"
+				:description="i18n.baseText('apps.preview.noPermission.description')"
+				data-test-id="app-preview-no-permission"
+			/>
+			<N8nEmptyState
+				v-else-if="awaitingRun"
+				:icon="{ type: 'icon', value: 'play' }"
+				:heading="i18n.baseText('apps.preview.confirm.heading')"
+				:description="i18n.baseText('apps.preview.confirm.description')"
+				:button-text="i18n.baseText('apps.preview.confirm.run')"
+				button-icon="play"
+				data-test-id="app-preview-confirm"
+				@click:button="run"
 			/>
 			<N8nEmptyState
 				v-else-if="building"

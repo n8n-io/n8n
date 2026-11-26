@@ -108,7 +108,7 @@ export class AppPreviewService {
 
 	/**
 	 * Resolves the preview session of the request. The session user must still
-	 * be able to read the app. Returns `null` when the session is missing or ended.
+	 * be able to edit the app. Returns `null` when the session is missing or ended.
 	 */
 	async admit(req: Request): Promise<AppPreviewAdmission | null> {
 		const session = this.verifySession(readCookie(req, this.cookieName()));
@@ -117,7 +117,7 @@ export class AppPreviewService {
 		const app = namespace ? await this.apps.findByNamespace(namespace) : null;
 		if (!app || app.id !== session.appId) return null;
 		const user = await this.users.findByIdWithRole(session.sub);
-		if (!user || user.disabled || !(await this.resources.canRead(app, user))) return null;
+		if (!user || user.disabled || !(await this.resources.canPreview(app, user))) return null;
 		return { app, versionId: session.versionId, user };
 	}
 

@@ -69,6 +69,11 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 		return await this.projectScope.hasScopes(user, app.projectId, ['app:read']);
 	}
 
+	/** A preview runs unpublished code with the viewer's identity, so it needs edit access. */
+	async canPreview(app: App, user: ResourcePrincipal): Promise<boolean> {
+		return await this.projectScope.hasScopes(user, app.projectId, ['app:update']);
+	}
+
 	matchesVirtualClientUrl(value: string): boolean {
 		try {
 			const url = new URL(value);
