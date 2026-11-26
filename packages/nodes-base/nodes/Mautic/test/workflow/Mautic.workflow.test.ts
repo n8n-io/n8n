@@ -48,6 +48,60 @@ describe('Mautic > Workflows', () => {
 		});
 	});
 
+	// The Primary Company field became a resourceLocator. These run through the real
+	// execution engine (including core's extractValue): workflows saved before the change
+	// (no company, raw string, expression) must send exactly what they sent before, and
+	// resourceLocator values must send the company name. nock only answers requests whose
+	// body matches exactly.
+	describe('Primary Company', () => {
+		const credentials = {
+			mauticApi: {
+				url: 'https://mautic.example.com',
+				username: 'nathan',
+				password: 'fake-password',
+			},
+		};
+		const created = (id: number, email: string) => ({
+			contact: { id, fields: { all: { id, email } } },
+		});
+		const updated = (id: number) => ({ contact: { id, fields: { all: { id } } } });
+		const createBody = (email: string, company: string) => ({
+			email,
+			firstname: '',
+			lastname: '',
+			company,
+			position: '',
+			title: '',
+		});
+
+		beforeAll(() => {
+			const mock = nock('https://mautic.example.com/api');
+			mock
+				.post('/contacts/new', createBody('legacy-none@example.com', ''))
+				.reply(200, created(1, 'legacy-none@example.com'));
+			mock
+				.post('/contacts/new', createBody('legacy-string@example.com', 'Legacy Company'))
+				.reply(200, created(2, 'legacy-string@example.com'));
+			mock
+				.post('/contacts/new', createBody('legacy-expression@example.com', 'Expression Company'))
+				.reply(200, created(3, 'legacy-expression@example.com'));
+			mock
+				.post('/contacts/new', createBody('rl-list@example.com', 'Acme: North Branch'))
+				.reply(200, created(4, 'rl-list@example.com'));
+			mock
+				.post('/contacts/new', createBody('rl-name@example.com', 'Typed Company'))
+				.reply(200, created(5, 'rl-name@example.com'));
+			mock.patch('/contacts/41/edit', { company: 'Legacy Company' }).reply(200, updated(41));
+			mock.patch('/contacts/42/edit', { company: 'Acme Corp' }).reply(200, updated(42));
+			mock.patch('/contacts/43/edit', { firstname: 'Nathan' }).reply(200, updated(43));
+		});
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['requests.company.workflow.json'],
+		});
+	});
+
 	describe('OAuth2 authentication', () => {
 		const credentials = {
 			mauticOAuth2Api: {

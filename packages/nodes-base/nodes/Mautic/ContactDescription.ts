@@ -1,5 +1,37 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+/**
+ * Primary company of a contact. Mautic matches companies by name, so the value is the
+ * company name. Backed by the `searchCompanies` listSearch method, which asks Mautic for
+ * one filtered page at a time instead of downloading every company, so instances with
+ * large company tables stay responsive.
+ */
+const companyResourceLocator = (): INodeProperties => ({
+	displayName: 'Primary Company',
+	name: 'company',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	description: 'The primary company of the contact, matched by name',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a company...',
+			typeOptions: {
+				searchListMethod: 'searchCompanies',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By Name',
+			name: 'name',
+			type: 'string',
+			placeholder: 'e.g. Acme Inc.',
+		},
+	],
+});
+
 export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -123,14 +155,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Primary Company Name or ID',
-		name: 'company',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getCompanies',
-		},
+		...companyResourceLocator(),
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -138,7 +163,6 @@ export const contactFields: INodeProperties[] = [
 				jsonParameters: [false],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Position',
@@ -766,20 +790,12 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Primary Company Name or ID',
-				name: 'company',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getCompanies',
-				},
+				...companyResourceLocator(),
 				displayOptions: {
 					show: {
 						'/jsonParameters': [false],
 					},
 				},
-				default: '',
 			},
 			{
 				displayName: 'Prospect or Customer',
