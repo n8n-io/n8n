@@ -16,6 +16,8 @@ import type { ContentToolResult, Message, MessageContent } from '../types/messag
 
 type PromptPart = Exclude<LanguageModelV4Message['content'], string>[number];
 
+export type UnsupportedWarning = Extract<SharedV4Warning, { type: 'unsupported' }>;
+
 /**
  * Converts an AI SDK prompt into the messages a chat model takes. The provider
  * options of a part become the metadata of its block, so the metadata that
@@ -160,7 +162,7 @@ function toJsonFileData(data: SharedV4FileData): JSONValue {
 export function toAiSdkContent(
 	message: Message,
 	provider: string,
-): { content: LanguageModelV4Content[]; warnings: SharedV4Warning[] } {
+): { content: LanguageModelV4Content[]; warnings: UnsupportedWarning[] } {
 	// A chat model tool result carries no tool name. Take it from the tool call
 	// with the same id in the same message.
 	const toolNames = new Map<string, string>();
@@ -173,7 +175,7 @@ export function toAiSdkContent(
 	}
 
 	const content: LanguageModelV4Content[] = [];
-	const warnings: SharedV4Warning[] = [];
+	const warnings: UnsupportedWarning[] = [];
 	for (const block of message.content) {
 		const part = toAiSdkContentPart(block, toolNames, provider, warnings);
 		if (part?.type === 'tool-call' && toolResultIds.has(part.toolCallId)) {
@@ -190,7 +192,7 @@ function toAiSdkContentPart(
 	block: MessageContent,
 	toolNames: Map<string, string>,
 	provider: string,
-	warnings: SharedV4Warning[],
+	warnings: UnsupportedWarning[],
 ): LanguageModelV4Content | undefined {
 	const providerMetadata = toAiSdkProviderMetadata(provider, block.providerMetadata);
 
@@ -254,7 +256,7 @@ function toAiSdkContentPart(
 	}
 }
 
-function drop(warnings: SharedV4Warning[], feature: string, details?: string): undefined {
+function drop(warnings: UnsupportedWarning[], feature: string, details?: string): undefined {
 	warnings.push(
 		details === undefined
 			? { type: 'unsupported', feature }

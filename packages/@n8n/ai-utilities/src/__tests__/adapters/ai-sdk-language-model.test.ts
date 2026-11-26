@@ -779,7 +779,7 @@ describe('AiSdkLanguageModelAdapter', () => {
 					chunks: [
 						{ type: 'tool-call-delta', id: 'call-1', argumentsDelta: '{"q":' },
 						{ type: 'tool-call-delta', id: 'call-1', argumentsDelta: '1}' },
-						{ type: 'content', content: { type: 'provider', value: { raw: true } } },
+						{ type: 'tool-call-delta', id: 'call-1' },
 						{ type: 'tool-call-delta', id: 'call-1', name: 'lookup' },
 						{ type: 'finish', finishReason: 'tool-calls' },
 					],
@@ -1097,6 +1097,38 @@ describe('AiSdkLanguageModelAdapter', () => {
 			expect(error).toMatchObject({
 				error: { message: 'The chat model "fake/fake-model" streamed a tool call without a name' },
 			});
+		});
+
+		it('sends an error for each streamed content block that the AI SDK cannot take', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'content', content: { type: 'invalid-tool-call', error: 'no name' } },
+						{ type: 'content', content: { type: 'citation', text: 'no url' } },
+						{ type: 'content', content: { type: 'provider', value: { raw: true } } },
+						{ type: 'finish', finishReason: 'stop' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2);
+			const errors = parts.flatMap((part) => (part.type === 'error' ? [part.error] : []));
+
+			expect(parts.map((part) => part.type)).toEqual(['error', 'error', 'error', 'finish']);
+			expect(errors.every((error) => error instanceof UserError)).toBe(true);
+			expect(errors).toMatchObject([
+				{
+					message:
+						'The chat model "fake/fake-model" streamed an unsupported invalid tool call without a name',
+					description: 'no name',
+				},
+				{
+					message:
+						'The chat model "fake/fake-model" streamed an unsupported citation without a URL',
+				},
+				{ message: 'The chat model "fake/fake-model" streamed an unsupported provider content' },
+			]);
 		});
 
 		it('passes complete content chunks through as bracketed parts', async () => {

@@ -285,14 +285,19 @@ export class AiSdkStreamConverter {
 		const withChunkMetadata = this.withPendingToolCallId(
 			metadata ? { ...block, providerMetadata: metadata } : block,
 		);
-		const parts: LanguageModelV4StreamPart[] = [];
-
-		// A stream sends its warnings in stream-start, before the first chunk, so
-		// the warnings for dropped blocks have no place here.
-		const { content } = toAiSdkContent(
+		const { content, warnings } = toAiSdkContent(
 			{ role: 'assistant', content: [withChunkMetadata] },
 			this.provider,
 		);
+		// Warnings go out in stream-start, before the first chunk. A block that
+		// is dropped later is reported as an error part instead.
+		const parts: LanguageModelV4StreamPart[] = warnings.map(({ feature, details }) => ({
+			type: 'error',
+			error: new UserError(
+				`The chat model "${this.provider}/${this.modelId}" streamed an unsupported ${feature}`,
+				{ description: details },
+			),
+		}));
 		for (const part of content) {
 			switch (part.type) {
 				case 'text':
