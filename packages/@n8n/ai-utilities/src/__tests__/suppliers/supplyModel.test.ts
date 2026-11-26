@@ -286,16 +286,13 @@ describe('isOpenAiModel', () => {
 		).toBe(true);
 	});
 
-	it('rejects a ChatModel, even one with type "openai"', () => {
-		expect(isOpenAiModel(new OpenAiTypedChatModel('vendor', 'm'))).toBe(false);
-		expect(
-			isOpenAiModel({
-				provider: 'vendor',
-				modelId: 'm',
-				generate: vi.fn(),
-				stream: vi.fn(),
-				withTools: vi.fn(),
-			}),
-		).toBe(false);
+	it.each([
+		['a BaseChatModel with type "openai"', new OpenAiTypedChatModel('vendor', 'm')],
+		[
+			'a plain ChatModel',
+			{ provider: 'vendor', modelId: 'm', generate: vi.fn(), stream: vi.fn(), withTools: vi.fn() },
+		],
+	])('rejects %s', (_, model) => {
+		expect(isOpenAiModel(model)).toBe(false);
 	});
 });

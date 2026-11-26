@@ -9,18 +9,20 @@ import { buildOpenAiCompatible, statelessResponses, type FetchFn } from './model
 type RequestBody = Record<string, unknown>;
 
 /** `ChatOpenAI` adds these after `modelKwargs`, so `additionalParams` cannot replace them. */
-const CONVERSATION_FIELDS = new Set(['messages', 'input', 'stream']);
+const CONVERSATION_FIELDS: ReadonlySet<string> = new Set(['messages', 'input', 'stream']);
 
 /** The model names that `ChatOpenAI` treats as reasoning models. */
 function isReasoningModel(model: string): boolean {
-	if (/^o\d/.test(model)) return true;
-	return model.startsWith('gpt-5') && !model.startsWith('gpt-5-chat');
+	return /^o\d/.test(model) || (model.startsWith('gpt-5') && !model.startsWith('gpt-5-chat'));
 }
 
 /** `ChatOpenAI` also picks the Responses API by itself for these configs. */
 function usesResponsesApi(config: OpenAiModel): boolean {
-	if (config.useResponsesApi === true || Boolean(config.reasoning?.summary)) return true;
-	return /gpt-5\.[24]-pro|codex/.test(config.model);
+	return (
+		config.useResponsesApi === true ||
+		Boolean(config.reasoning?.summary) ||
+		/gpt-5\.[24]-pro|codex/.test(config.model)
+	);
 }
 
 function withRequestBody(fetch: FetchFn, transform: (body: RequestBody) => RequestBody): FetchFn {
@@ -71,8 +73,8 @@ function chatCompletionsBody(config: OpenAiModel): (body: RequestBody) => Reques
 
 function responsesBody(config: OpenAiModel): (body: RequestBody) => RequestBody {
 	const reasoning = isReasoningModel(config.model) ? config.reasoning : undefined;
-	return (body) =>
-		applyConfigFields(
+	return (body) => ({
+		...applyConfigFields(
 			body,
 			{
 				service_tier: config.service_tier,
@@ -80,7 +82,11 @@ function responsesBody(config: OpenAiModel): (body: RequestBody) => RequestBody 
 				reasoning,
 			},
 			config.additionalParams,
-		);
+		),
+		// The runtime sends the whole history on each turn, so `additionalParams`
+		// cannot turn stored responses back on.
+		store: false,
+	});
 }
 
 /** A tool that does not set `strict` gets the config's value, as in `ChatOpenAI`. */
@@ -94,6 +100,27 @@ function strictToolsByDefault(strict: boolean): LanguageModelMiddleware {
 			),
 		}),
 	};
+}
+
+type Credentials = Parameters<typeof buildOpenAiCompatible>[2];
+
+async function createBaseModel(
+	config: OpenAiModel,
+	transport: FetchFn,
+	credentials: Credentials,
+	responsesApi: boolean,
+): Promise<Parameters<typeof statelessResponses>[0]> {
+	if (responsesApi) {
+		const { createOpenAI } = await import('@ai-sdk/openai');
+		const fetch = withRequestBody(transport, responsesBody(config));
+		// The runtime sends the whole history on each turn, which an endpoint
+		// that does not store responses can only read with `store: false`.
+		return statelessResponses(createOpenAI({ ...credentials, fetch }).responses(config.model));
+	}
+	const fetch = withRequestBody(transport, chatCompletionsBody(config));
+	return buildOpenAiCompatible('custom', undefined, credentials, config.model, fetch, {
+		includeUsage: config.streamUsage ?? true,
+	});
 }
 
 /**
@@ -117,26 +144,16 @@ export async function createOpenAiConfigModel(
 			: { headersTimeout: config.timeout, bodyTimeout: config.timeout };
 	const transport: FetchFn = async (input, init) =>
 		await proxyFetch({ input, init, timeoutOptions, egressFilter });
-	const credentials = {
+	const credentials: Credentials = {
 		baseURL: config.baseUrl,
-		apiKey: config.apiKey,
+		// Without a key the OpenAI provider reads `OPENAI_API_KEY` of the host,
+		// which must not reach the vendor's base URL.
+		apiKey: config.apiKey ?? '',
 		headers: config.defaultHeaders,
 	};
 
 	const responsesApi = usesResponsesApi(config);
-	let model: Parameters<typeof statelessResponses>[0];
-	if (responsesApi) {
-		const { createOpenAI } = await import('@ai-sdk/openai');
-		const fetch = withRequestBody(transport, responsesBody(config));
-		// The runtime sends the whole history on each turn, which an endpoint
-		// that does not store responses can only read with `store: false`.
-		model = statelessResponses(createOpenAI({ ...credentials, fetch }).responses(config.model));
-	} else {
-		const fetch = withRequestBody(transport, chatCompletionsBody(config));
-		model = buildOpenAiCompatible('custom', undefined, credentials, config.model, fetch, {
-			includeUsage: config.streamUsage ?? true,
-		});
-	}
+	const model = await createBaseModel(config, transport, credentials, responsesApi);
 
 	const maxTokens = config.maxCompletionTokens ?? config.maxTokens;
 	const { wrapLanguageModel, defaultSettingsMiddleware } = loadAi();
@@ -154,9 +171,9 @@ export async function createOpenAiConfigModel(
 				stopSequences: config.stopSequences ?? config.stop,
 			},
 		}),
+		...(config.supportsStrictToolCalling === undefined
+			? []
+			: [strictToolsByDefault(config.supportsStrictToolCalling)]),
 	];
-	if (config.supportsStrictToolCalling !== undefined) {
-		middleware.push(strictToolsByDefault(config.supportsStrictToolCalling));
-	}
 	return wrapLanguageModel({ model, middleware });
 }

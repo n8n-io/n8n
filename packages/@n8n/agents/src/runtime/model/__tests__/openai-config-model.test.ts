@@ -8,12 +8,12 @@ import { z } from 'zod';
 
 import { createOpenAiConfigModel } from '../openai-config-model';
 
-interface RecordedRequest {
+type RecordedRequest = {
 	method?: string;
 	url?: string;
 	headers: IncomingMessage['headers'];
 	body: Record<string, unknown>;
-}
+};
 
 type Responder = (res: ServerResponse, req: IncomingMessage) => void;
 
@@ -64,6 +64,24 @@ const blockAll: EgressFilter = {
 	validateUrl: async () => ({ ok: false, error: new Error('Blocked by the egress policy') }),
 };
 
+const responsesReply = {
+	id: 'resp_1',
+	object: 'response',
+	created_at: 0,
+	model: 'vendor-model',
+	status: 'completed',
+	output: [
+		{
+			type: 'message',
+			id: 'msg_1',
+			role: 'assistant',
+			status: 'completed',
+			content: [{ type: 'output_text', text: 'Hello', annotations: [] }],
+		},
+	],
+	usage: { input_tokens: 11, output_tokens: 7, total_tokens: 18 },
+};
+
 describe('createOpenAiConfigModel', () => {
 	let server: Server;
 	let baseUrl: string;
@@ -97,6 +115,10 @@ describe('createOpenAiConfigModel', () => {
 	afterAll(async () => {
 		server.closeAllConnections();
 		await new Promise<void>((resolve) => server.close(() => resolve()));
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
 	});
 
 	beforeEach(() => {
@@ -259,7 +281,7 @@ describe('createOpenAiConfigModel', () => {
 
 		await expect(
 			generateText({ model, prompt: 'Hi', abortSignal: abort.signal, maxRetries: 0 }),
-		).rejects.toThrow();
+		).rejects.toThrow('This operation was aborted');
 
 		await vi.waitFor(() => expect(closedRequests).toBe(1));
 	});
@@ -311,25 +333,7 @@ describe('createOpenAiConfigModel', () => {
 	});
 
 	it('sends the config to the Responses endpoint when useResponsesApi is set', async () => {
-		responders.push(
-			json({
-				id: 'resp_1',
-				object: 'response',
-				created_at: 0,
-				model: 'vendor-model',
-				status: 'completed',
-				output: [
-					{
-						type: 'message',
-						id: 'msg_1',
-						role: 'assistant',
-						status: 'completed',
-						content: [{ type: 'output_text', text: 'Hello', annotations: [] }],
-					},
-				],
-				usage: { input_tokens: 11, output_tokens: 7, total_tokens: 18 },
-			}),
-		);
+		responders.push(json(responsesReply));
 		const model = await createOpenAiConfigModel(
 			{ ...integratorConfig(), useResponsesApi: true },
 			allowAll,
@@ -349,5 +353,26 @@ describe('createOpenAiConfigModel', () => {
 			response_format: { type: 'json_object' },
 			provider: { data_residency: 'eu' },
 		});
+	});
+
+	it('keeps Responses requests stateless and sends no key of the host without a config key', async () => {
+		vi.stubEnv('OPENAI_API_KEY', 'host-key');
+		responders.push(json(responsesReply));
+		const config = integratorConfig();
+		const model = await createOpenAiConfigModel(
+			{
+				...config,
+				// A node written in JavaScript can leave the key out.
+				apiKey: undefined as unknown as string,
+				useResponsesApi: true,
+				additionalParams: { ...config.additionalParams, store: true },
+			},
+			allowAll,
+		);
+
+		await generateText({ model, prompt: 'Hi' });
+
+		expect(requests[0].headers.authorization).not.toContain('host-key');
+		expect(requests[0].body).toMatchObject({ store: false, provider: { data_residency: 'eu' } });
 	});
 });
