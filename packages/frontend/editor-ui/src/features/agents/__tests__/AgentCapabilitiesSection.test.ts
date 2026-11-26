@@ -95,6 +95,13 @@ vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 }));
 
 const workflowsInSkillsEnabled = ref(false);
+const searchWorkflowsSpy = vi.hoisted(() =>
+	vi.fn(async () => [] as Array<{ id: string; name: string }>),
+);
+vi.mock('@/app/stores/workflowsList.store', () => ({
+	useWorkflowsListStore: () => ({ searchWorkflows: searchWorkflowsSpy }),
+}));
+
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
 		isVariantEnabled: (name: string, variant: string) =>
@@ -1896,6 +1903,26 @@ describe('AgentCapabilitiesSection workflows from skills', () => {
 
 	afterEach(() => {
 		workflowsInSkillsEnabled.value = false;
+		searchWorkflowsSpy.mockReset();
+		searchWorkflowsSpy.mockResolvedValue([]);
+	});
+
+	it('shows the current name of a renamed workflow, and the mention name when it cannot be read', async () => {
+		searchWorkflowsSpy.mockResolvedValue([{ id: 'wf-1', name: 'Send weekly report' }]);
+
+		const wrapper = mountWithSkills([]);
+		await flushPromises();
+
+		expect(searchWorkflowsSpy).toHaveBeenCalledWith({
+			ids: ['wf-1', 'wf-2'],
+			select: ['id', 'name'],
+			options: { take: 2, includeScopes: false },
+		});
+		const chips = wrapper.findAll('[data-testid="agent-capabilities-skill-workflow-row"]');
+		expect(chips.map((chip) => chip.text().replace(/\s+/g, ' '))).toEqual([
+			'Send weekly report Weekly ops agents.builder.tools.workflow.fromSkill',
+			'Notify Weekly ops agents.builder.tools.workflow.fromSkill',
+		]);
 	});
 
 	it('shows each workflow that an attached skill mentions, with a tag that names the skill', () => {
