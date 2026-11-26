@@ -1956,6 +1956,8 @@
 	"agentSessions.origin.webhook": "API",
 	"agentSessions.origin.n8nChat": "n8n Chat",
 	"agentSessions.goToParentRun": "Go to parent run",
+	"agentSessions.openSession": "Open session",
+	"agentSessions.copyId": "Copy ID",
 	"agentSessions.stop": "Stop session",
 	"agentSessions.stopped": "Session stopped",
 	"agentSessions.viewTrace": "View session trace",

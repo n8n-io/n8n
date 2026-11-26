@@ -6,6 +6,7 @@ import {
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useToast } from '@n8n/composables/useToast';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
@@ -76,6 +77,7 @@ const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const clipboard = useClipboard();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const sessionsStore = useAgentSessionsStore();
 const agentTelemetry = useAgentTelemetry();
@@ -127,12 +129,13 @@ const flagCardActions = computed<Array<DropdownMenuItemProps<string>>>(() => [
 		id: FLAG_CARD_ACTION.viewSessions,
 		label: i18n.baseText('agentSessions.flagCard.viewSessions'),
 		icon: { type: 'icon', value: 'eye' },
+		iconSize: 'medium',
 	},
 	{
 		id: FLAG_CARD_ACTION.dismiss,
 		label: i18n.baseText('agentSessions.flagCard.dismiss'),
-		icon: { type: 'icon', value: 'x' },
-		divided: true,
+		icon: { type: 'icon', value: 'circle-x' },
+		iconSize: 'medium',
 	},
 ]);
 
@@ -295,6 +298,26 @@ async function fixWithAssistant(thread: AgentExecutionThread) {
 	}
 }
 
+/** Only Test and Assistant sessions of this agent can continue in the preview panel. */
+function canOpenInPreview(thread: AgentExecutionThread): boolean {
+	return (
+		Boolean(openAgentPreview) && thread.canContinueInPreview && thread.agentId === agentId.value
+	);
+}
+
+function canFixWithAssistant(thread: AgentExecutionThread): boolean {
+	return hasAssistantEnabled.value && thread.status === 'error';
+}
+
+async function copySessionId(thread: AgentExecutionThread) {
+	try {
+		await clipboard.copy(thread.id);
+		toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error'));
+	}
+}
+
 function rowActions(thread: AgentExecutionThread): Array<DropdownMenuItemProps<string>> {
 	const actions: Array<DropdownMenuItemProps<string>> = [];
 	if (thread.status === 'running' && canStop.value) {
@@ -302,6 +325,7 @@ function rowActions(thread: AgentExecutionThread): Array<DropdownMenuItemProps<s
 			id: 'stop',
 			label: i18n.baseText('agentSessions.stop'),
 			icon: { type: 'icon', value: 'square' },
+			iconSize: 'medium',
 			destructive: true,
 			disabled: stoppingSessionIds.value.has(thread.id),
 		});
@@ -312,6 +336,35 @@ function rowActions(thread: AgentExecutionThread): Array<DropdownMenuItemProps<s
 			id: 'goToParentRun',
 			label: i18n.baseText('agentSessions.goToParentRun'),
 			icon: { type: 'icon', value: 'arrow-up-right' },
+			iconSize: 'medium',
+		});
+	}
+
+	if (canOpenInPreview(thread)) {
+		actions.push({
+			id: 'openSession',
+			label: i18n.baseText('agentSessions.openSession'),
+			icon: { type: 'icon', value: 'message-circle' },
+			iconSize: 'medium',
+			divided: actions.length > 0,
+		});
+	}
+
+	actions.push({
+		id: 'copyId',
+		label: i18n.baseText('agentSessions.copyId'),
+		icon: { type: 'icon', value: 'copy' },
+		iconSize: 'medium',
+	});
+
+	if (canFixWithAssistant(thread)) {
+		actions.push({
+			id: 'fixWithAssistant',
+			label: i18n.baseText('agentSessions.fixWithAssistant'),
+			icon: { type: 'icon', value: 'sparkles' },
+			iconSize: 'medium',
+			disabled: fixingThreadId.value !== null,
+			divided: true,
 		});
 	}
 
@@ -319,7 +372,8 @@ function rowActions(thread: AgentExecutionThread): Array<DropdownMenuItemProps<s
 		id: 'delete',
 		label: i18n.baseText('generic.delete'),
 		icon: { type: 'icon', value: 'trash-2' },
-		divided: actions.length > 0,
+		iconSize: 'medium',
+		divided: true,
 	});
 
 	return actions;
@@ -346,6 +400,21 @@ async function onAction(actionId: string, thread: AgentExecutionThread) {
 				threadId: thread.parentThreadId,
 			},
 		});
+		return;
+	}
+
+	if (actionId === 'openSession') {
+		if (canOpenInPreview(thread)) await openAgentPreview?.open(thread.id);
+		return;
+	}
+
+	if (actionId === 'copyId') {
+		await copySessionId(thread);
+		return;
+	}
+
+	if (actionId === 'fixWithAssistant') {
+		await fixWithAssistant(thread);
 		return;
 	}
 
@@ -469,10 +538,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 				:agent-id="row.thread.agentId"
 				:actions="rowActions(row.thread)"
 				:reasoning-label="reasoningLabels.get(row.thread.id)"
-				:assistant-available="sessionAssistant?.isAvailable.value ?? false"
-				:fixing-thread-id="fixingThreadId"
 				@action="onAction($event, row.thread)"
-				@fix-with-assistant="fixWithAssistant(row.thread)"
 			/>
 			<li v-if="sessionsStore.nextCursor" :class="$style.loadMore">
 				<N8nButton

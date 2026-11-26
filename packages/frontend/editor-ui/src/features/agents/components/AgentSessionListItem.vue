@@ -9,7 +9,6 @@ import {
 	N8nSpinner,
 	N8nIcon,
 	N8nTooltip,
-	N8nButton,
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps, IconColor, IconName } from '@n8n/design-system';
 import type { AgentExecutionThread, AgentSessionStatus } from '../composables/useAgentThreadsApi';
@@ -33,12 +32,9 @@ const props = defineProps<{
 	agentId: string;
 	actions: Array<DropdownMenuItemProps<string>>;
 	reasoningLabel?: BaseTextKey;
-	assistantAvailable: boolean;
-	fixingThreadId: string | null;
 }>();
 const emit = defineEmits<{
 	action: [actionId: string];
-	'fix-with-assistant': [];
 }>();
 const i18n = useI18n();
 const threadTitleOf = useThreadTitle();
@@ -277,20 +273,6 @@ function formatDuration(ms: number): string {
 						{{ threadTitleOf(row.thread) }}
 					</N8nText>
 				</RouterLink>
-				<N8nButton
-					v-if="assistantAvailable && row.thread.status === 'error'"
-					:class="$style.fixButton"
-					size="xsmall"
-					icon-size="small"
-					variant="outline"
-					icon="n8n-assistant"
-					:loading="fixingThreadId === row.thread.id"
-					:disabled="fixingThreadId !== null"
-					data-test-id="agent-session-fix-with-assistant"
-					@click="emit('fix-with-assistant')"
-				>
-					{{ i18n.baseText('agentSessions.fixWithAssistant') }}
-				</N8nButton>
 			</div>
 			<div v-if="row.thread.status !== 'running'" :class="$style.listEnd">
 				<N8nBadge
@@ -344,7 +326,7 @@ function formatDuration(ms: number): string {
 	border: var(--n8n-agent-session-list-row-border-width) solid transparent;
 	border-radius: var(--radius);
 
-	&:hover:not(:has(.actionGroup:hover, .fixButton:hover)) {
+	&:hover:not(:has(.actionGroup:hover)) {
 		background-color: var(--background--hover);
 	}
 
@@ -380,12 +362,6 @@ function formatDuration(ms: number): string {
 		z-index: 1;
 		border-radius: inherit;
 	}
-}
-
-.fixButton,
-.actionGroup {
-	position: relative;
-	z-index: 2;
 }
 
 .listStart,
@@ -474,10 +450,8 @@ function formatDuration(ms: number): string {
 	padding-inline: var(--spacing--3xs);
 	min-width: var(--height--xl);
 	flex-shrink: 0;
-}
-
-.fixButton {
-	flex-shrink: 0;
+	position: relative;
+	z-index: 2;
 }
 
 .activityLabel {

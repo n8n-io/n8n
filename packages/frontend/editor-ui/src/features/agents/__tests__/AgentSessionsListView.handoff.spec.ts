@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enableAutoUnmount, flushPromises, RouterLinkStub, shallowMount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { computed, nextTick, ref } from 'vue';
+import type { VueWrapper } from '@vue/test-utils';
 import { createMemoryHistory, createRouter } from 'vue-router';
-import { N8nButton } from '@n8n/design-system';
+import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import * as toastModule from '@n8n/composables/useToast';
 import type { AgentPreviewHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
@@ -13,7 +14,7 @@ import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import { AGENT_SESSION_ASSISTANT_KEY } from '../components/agentBuilderInjectionKeys';
 
-const fixButton = '[data-test-id="agent-session-fix-with-assistant"]';
+const FIX_ACTION = 'fixWithAssistant';
 const ready = ref(true);
 const handoffToPanel = vi.fn<(params: AgentPreviewHandoffParams) => Promise<boolean>>();
 const showError = vi.fn<ReturnType<typeof toastModule.useToast>['showError']>();
@@ -87,9 +88,24 @@ async function mountView(threads = [makeThread()], provideAssistant = true) {
 					}
 				: {},
 			renderStubDefaultSlot: true,
-			stubs: { RouterLink: RouterLinkStub, N8nButton: false, AgentSessionListItem: false },
+			stubs: { RouterLink: RouterLinkStub, AgentSessionListItem: false },
 		},
 	});
+}
+
+/** Returns the row menu of the row at `index`. */
+function rowMenu(wrapper: VueWrapper, index = 0) {
+	return wrapper.findAllComponents(N8nDropdownMenu)[index];
+}
+
+function fixAction(wrapper: VueWrapper, index = 0) {
+	const items = rowMenu(wrapper, index).props('items') as Array<DropdownMenuItemProps<string>>;
+	return items.find((item) => item.id === FIX_ACTION);
+}
+
+async function selectFix(wrapper: VueWrapper, index = 0) {
+	rowMenu(wrapper, index).vm.$emit('select', FIX_ACTION);
+	await nextTick();
 }
 
 enableAutoUnmount(afterEach);
@@ -112,25 +128,33 @@ describe('AgentSessionsListView Assistant handoff', () => {
 	it('hides the action without an Assistant provider', async () => {
 		const wrapper = await mountView([makeThread()], false);
 
-		expect(wrapper.find(fixButton).exists()).toBe(false);
+		expect(fixAction(wrapper)).toBeUndefined();
+		await selectFix(wrapper);
 		expect(handoffToPanel).not.toHaveBeenCalled();
+	});
+
+	it('does not render an inline fix button in the row', async () => {
+		const wrapper = await mountView();
+		expect(wrapper.find('[data-test-id="agent-session-fix-with-assistant"]').exists()).toBe(false);
 	});
 
 	it('shows the action for an error without a failure summary only while Assistant is ready', async () => {
 		ready.value = false;
 		const wrapper = await mountView();
-		expect(wrapper.find(fixButton).exists()).toBe(false);
+		expect(fixAction(wrapper)).toBeUndefined();
 
 		ready.value = true;
 		await nextTick();
-		expect(wrapper.find(fixButton).exists()).toBe(true);
-		expect(wrapper.get(fixButton).text()).toBe(
-			useI18n().baseText('agentSessions.fixWithAssistant'),
-		);
+		expect(fixAction(wrapper)).toMatchObject({
+			label: useI18n().baseText('agentSessions.fixWithAssistant'),
+			icon: { type: 'icon', value: 'sparkles' },
+			disabled: false,
+		});
 
 		ready.value = false;
 		await nextTick();
-		expect(wrapper.find(fixButton).exists()).toBe(false);
+		expect(fixAction(wrapper)).toBeUndefined();
+		await selectFix(wrapper);
 		expect(handoffToPanel).not.toHaveBeenCalled();
 	});
 
@@ -140,7 +164,9 @@ describe('AgentSessionsListView Assistant handoff', () => {
 			const wrapper = await mountView([
 				makeThread({ status, failureSummary: failureSummary('Earlier failure') }),
 			]);
-			expect(wrapper.find(fixButton).exists()).toBe(false);
+			expect(fixAction(wrapper)).toBeUndefined();
+			await selectFix(wrapper);
+			expect(handoffToPanel).not.toHaveBeenCalled();
 		},
 	);
 
@@ -148,7 +174,7 @@ describe('AgentSessionsListView Assistant handoff', () => {
 		const wrapper = await mountView([
 			makeThread({ failureSummary: failureSummary('Service unavailable') }),
 		]);
-		await wrapper.get(fixButton).trigger('click');
+		await selectFix(wrapper);
 		await flushPromises();
 
 		expect(handoffToPanel).toHaveBeenCalledExactlyOnceWith({
@@ -171,7 +197,7 @@ describe('AgentSessionsListView Assistant handoff', () => {
 			const wrapper = await mountView([
 				makeThread({ title: null, firstMessage: 'Help with my report', failureSummary: summary }),
 			]);
-			await wrapper.get(fixButton).trigger('click');
+			await selectFix(wrapper);
 			await flushPromises();
 
 			expect(handoffToPanel).toHaveBeenCalledExactlyOnceWith({
@@ -189,30 +215,24 @@ describe('AgentSessionsListView Assistant handoff', () => {
 		},
 	);
 
-	it('blocks concurrent clicks across rows and clears loading after completion', async () => {
+	it('blocks concurrent requests across rows and enables the action again after completion', async () => {
 		const pending = Promise.withResolvers<boolean>();
 		handoffToPanel.mockReturnValueOnce(pending.promise);
 		const wrapper = await mountView([makeThread(), makeThread({ id: 'thread-2' })]);
-		const buttons = wrapper.findAllComponents(N8nButton);
-		const first = buttons[0];
-		const second = buttons[1];
 
-		await first.trigger('click');
-		expect(first.props('loading')).toBe(true);
-		expect(second.props('loading')).toBe(false);
-		expect(first.props('disabled')).toBe(true);
-		expect(second.props('disabled')).toBe(true);
-		/** Emitted clicks also check the handler guard, not only the native disabled state. */
-		first.vm.$emit('click');
-		second.vm.$emit('click');
+		await selectFix(wrapper, 0);
+		expect(fixAction(wrapper, 0)?.disabled).toBe(true);
+		expect(fixAction(wrapper, 1)?.disabled).toBe(true);
+		/** The handler guard also blocks selections that skip the disabled state. */
+		await selectFix(wrapper, 0);
+		await selectFix(wrapper, 1);
 		expect(handoffToPanel).toHaveBeenCalledTimes(1);
 
 		pending.resolve(true);
 		await flushPromises();
-		expect(first.props('loading')).toBe(false);
-		expect(first.props('disabled')).toBe(false);
-		expect(second.props('disabled')).toBe(false);
-		await second.trigger('click');
+		expect(fixAction(wrapper, 0)?.disabled).toBe(false);
+		expect(fixAction(wrapper, 1)?.disabled).toBe(false);
+		await selectFix(wrapper, 1);
 		expect(handoffToPanel).toHaveBeenCalledTimes(2);
 	});
 
@@ -220,17 +240,15 @@ describe('AgentSessionsListView Assistant handoff', () => {
 		const error = new Error('Could not open Assistant');
 		handoffToPanel.mockRejectedValueOnce(error);
 		const wrapper = await mountView();
-		await wrapper.get(fixButton).trigger('click');
+		await selectFix(wrapper);
 		await flushPromises();
 
 		expect(showError).toHaveBeenCalledExactlyOnceWith(
 			error,
 			useI18n().baseText('instanceAi.handoff.openFailed.title'),
 		);
-		const button = wrapper.getComponent(N8nButton);
-		expect(button.props('loading')).toBe(false);
-		expect(button.props('disabled')).toBe(false);
-		await wrapper.get(fixButton).trigger('click');
+		expect(fixAction(wrapper)?.disabled).toBe(false);
+		await selectFix(wrapper);
 		await flushPromises();
 		expect(handoffToPanel).toHaveBeenCalledTimes(2);
 	});

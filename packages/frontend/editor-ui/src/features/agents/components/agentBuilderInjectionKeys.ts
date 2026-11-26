@@ -17,7 +17,7 @@ export const AGENT_CONFIG_WRITE_KEY: InjectionKey<AgentConfigWrite> = Symbol('ag
 export const AGENT_BUILDER_STANDALONE_KEY: InjectionKey<boolean> = Symbol('agentBuilderStandalone');
 
 export const OPEN_AGENT_PREVIEW_KEY: InjectionKey<{
-	open: () => Promise<boolean>;
+	open: (sessionId?: string) => Promise<boolean>;
 	isRunnable: ComputedRef<boolean>;
 	validationIssues: ComputedRef<AgentConfigValidationIssue[]>;
 }> = Symbol('openAgentPreview');

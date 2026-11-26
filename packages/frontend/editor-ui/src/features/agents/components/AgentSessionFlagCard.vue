@@ -97,7 +97,8 @@ const i18n = useI18n();
 
 .card {
 	flex-shrink: 0;
-	--card--padding: var(--spacing--sm);
+	/** Asymmetric padding so ••• button and leading icon line up vertically and height is controlled **/
+	--card--padding: var(--spacing--xs) var(--spacing--2xs) var(--spacing--xs) var(--spacing--sm);
 }
 
 .inner {

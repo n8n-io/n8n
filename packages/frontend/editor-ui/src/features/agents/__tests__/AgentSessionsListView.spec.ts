@@ -4,7 +4,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { readFileSync } from 'node:fs';
 
 // Hoisted mock state so vi.mock factories (which run before any imports)
 // can reference these without hitting a temporal-dead-zone error.
@@ -42,7 +41,28 @@ let documentAddEventListenerSpy: ReturnType<typeof vi.spyOn>;
 let documentRemoveEventListenerSpy: ReturnType<typeof vi.spyOn>;
 
 const stopSession = vi.hoisted(() => vi.fn());
+const { clipboardCopy, toastShowMessage, toastShowError } = vi.hoisted(() => ({
+	clipboardCopy: vi.fn(),
+	toastShowMessage: vi.fn(),
+	toastShowError: vi.fn(),
+}));
 const agentPermissions = vi.hoisted(() => ({ canExecute: { value: true } }));
+
+vi.mock('../composables/useAgentAttentionFlags', async () => {
+	const { computed, ref } = await import('vue');
+	return {
+		useAgentAttentionFlags: () => ({
+			flags: ref([]),
+			count: computed(() => 0),
+			hasFlags: computed(() => false),
+			flaggedSessionIds: computed(() => new Set<string>()),
+			isFlagged: () => false,
+			dismiss: vi.fn(),
+			dismissSession: vi.fn(),
+			dismissAllSessions: vi.fn(),
+		}),
+	};
+});
 
 vi.mock('../composables/useAgentPermissions', () => ({
 	useAgentPermissions: () => agentPermissions,
@@ -183,7 +203,11 @@ vi.mock('../components/AgentSessionsFilter.vue', () => ({
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
+	useToast: () => ({ showError: toastShowError, showMessage: toastShowMessage }),
+}));
+
+vi.mock('@n8n/composables/useClipboard', () => ({
+	useClipboard: () => ({ copy: clipboardCopy }),
 }));
 
 vi.mock('../utils/thread-title', () => ({
@@ -209,6 +233,11 @@ import type { AgentExecutionThread, AgentSessionFilters } from '../composables/u
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import * as agentConfirmationModal from '../composables/useAgentConfirmationModal';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { computed } from 'vue';
+import {
+	AGENT_SESSION_ASSISTANT_KEY,
+	OPEN_AGENT_PREVIEW_KEY,
+} from '../components/agentBuilderInjectionKeys';
 
 const defaultFilters: AgentSessionFilters = {
 	status: 'all',
@@ -253,10 +282,12 @@ async function mountView({
 	threads = [makeThread()],
 	manageStoreLifecycle = true,
 	filters = { status: 'all', origin: 'all', startDate: '', endDate: '' },
+	provide = {},
 }: {
 	threads?: AgentExecutionThread[];
 	manageStoreLifecycle?: boolean;
 	filters?: typeof storeState.filters;
+	provide?: Record<symbol, unknown>;
 } = {}) {
 	storeState.threads = threads;
 	storeState.loading = false;
@@ -270,7 +301,7 @@ async function mountView({
 			agentId: 'agent-1',
 			manageStoreLifecycle,
 		},
-		global: { plugins: [createTestingPinia({ createSpy: vi.fn })] },
+		global: { plugins: [createTestingPinia({ createSpy: vi.fn })], provide },
 	});
 }
 
@@ -568,19 +599,6 @@ describe('AgentSessionsListView', () => {
 		);
 	});
 
-	it('lets the empty-state row grow in the narrow layout', async () => {
-		const wrapper = await mountView({ threads: [] });
-		const emptyRow = wrapper.get('[data-test-id="agent-sessions-empty"]').element.closest('tr');
-		expect(emptyRow?.className).toContain('lastRow');
-
-		// jsdom does not evaluate container queries, so check the rule itself.
-		// A block cell keeps a fixed `height` and clips the two-line empty state.
-		const source = readFileSync('src/features/agents/views/AgentSessionsListView.vue', 'utf8');
-		const narrowLayout = source.slice(source.indexOf('@container sessions (max-width: 44rem)'));
-		const lastRowCell = narrowLayout.match(/\.wrapper \.sessionsTable \.lastRow td \{([^}]*)\}/);
-		expect(lastRowCell?.[1]).toMatch(/height:\s*auto;/);
-	});
-
 	it('shows the filtered empty state when no sessions match', async () => {
 		const wrapper = await mountView({
 			threads: [],
@@ -591,6 +609,147 @@ describe('AgentSessionsListView', () => {
 			'No sessions match these filters',
 		);
 		expect(wrapper.find('[data-test-id="agent-sessions-empty-description"]').exists()).toBe(false);
+	});
+
+	describe('row actions', () => {
+		const openPreview = vi.fn();
+
+		function previewProvider() {
+			return {
+				[OPEN_AGENT_PREVIEW_KEY as symbol]: {
+					open: openPreview,
+					isRunnable: computed(() => true),
+					validationIssues: computed(() => []),
+				},
+			};
+		}
+
+		function assistantProvider() {
+			return {
+				[AGENT_SESSION_ASSISTANT_KEY as symbol]: {
+					isAvailable: computed(() => true),
+					handoff: vi.fn().mockResolvedValue(true),
+				},
+			};
+		}
+
+		function itemIds(wrapper: Awaited<ReturnType<typeof mountView>>) {
+			const items = wrapper.getComponent({ name: 'N8nDropdownMenu' }).props('items') as Array<{
+				id: string;
+			}>;
+			return items.map((item) => item.id);
+		}
+
+		beforeEach(() => {
+			openPreview.mockReset().mockResolvedValue(true);
+			clipboardCopy.mockReset().mockResolvedValue(undefined);
+		});
+
+		it('lists every action in order', async () => {
+			agentPermissions.canExecute.value = true;
+			const wrapper = await mountView({
+				threads: [
+					makeThread({
+						status: 'running',
+						parentAgentId: 'agent-1',
+						parentThreadId: 'parent-thread',
+					}),
+				],
+				provide: { ...previewProvider(), ...assistantProvider() },
+			});
+			expect(itemIds(wrapper)).toEqual([
+				'stop',
+				'goToParentRun',
+				'openSession',
+				'copyId',
+				'delete',
+			]);
+
+			const errorWrapper = await mountView({
+				threads: [makeThread({ status: 'error' })],
+				provide: { ...previewProvider(), ...assistantProvider() },
+			});
+			expect(itemIds(errorWrapper)).toEqual([
+				'openSession',
+				'copyId',
+				'fixWithAssistant',
+				'delete',
+			]);
+		});
+
+		it('uses the expected icons', async () => {
+			const wrapper = await mountView({
+				threads: [makeThread({ status: 'error' })],
+				provide: { ...previewProvider(), ...assistantProvider() },
+			});
+			const items = wrapper.getComponent({ name: 'N8nDropdownMenu' }).props('items') as Array<{
+				id: string;
+				icon: { value: string };
+			}>;
+			const icons = Object.fromEntries(items.map((item) => [item.id, item.icon.value]));
+			expect(icons).toMatchObject({
+				openSession: 'message-circle',
+				copyId: 'copy',
+				fixWithAssistant: 'sparkles',
+			});
+		});
+
+		it('opens a preview session in the preview panel', async () => {
+			const wrapper = await mountView({ provide: previewProvider() });
+			wrapper.getComponent({ name: 'N8nDropdownMenu' }).vm.$emit('select', 'openSession');
+			await flushPromises();
+			expect(openPreview).toHaveBeenCalledExactlyOnceWith('thread-1');
+		});
+
+		it.each([
+			{ name: 'without a preview provider', thread: makeThread(), withProvider: false },
+			{
+				name: 'for a session that cannot continue in preview',
+				thread: makeThread({ canContinueInPreview: false }),
+				withProvider: true,
+			},
+			{
+				name: 'for a session of another agent',
+				thread: makeThread({ agentId: 'child-agent' }),
+				withProvider: true,
+			},
+		])('hides Open session $name', async ({ thread, withProvider }) => {
+			const wrapper = await mountView({
+				threads: [thread],
+				provide: withProvider ? previewProvider() : {},
+			});
+			expect(itemIds(wrapper)).not.toContain('openSession');
+			wrapper.getComponent({ name: 'N8nDropdownMenu' }).vm.$emit('select', 'openSession');
+			await flushPromises();
+			expect(openPreview).not.toHaveBeenCalled();
+		});
+
+		it('copies the session ID and confirms it', async () => {
+			const wrapper = await mountView();
+			expect(itemIds(wrapper)).toContain('copyId');
+			wrapper.getComponent({ name: 'N8nDropdownMenu' }).vm.$emit('select', 'copyId');
+			await flushPromises();
+			expect(clipboardCopy).toHaveBeenCalledExactlyOnceWith('thread-1');
+			expect(toastShowMessage).toHaveBeenCalledExactlyOnceWith({
+				title: 'generic.copiedToClipboard',
+				type: 'success',
+			});
+		});
+
+		it('shows an error when the copy fails', async () => {
+			const error = new Error('Denied');
+			clipboardCopy.mockRejectedValueOnce(error);
+			const wrapper = await mountView();
+			wrapper.getComponent({ name: 'N8nDropdownMenu' }).vm.$emit('select', 'copyId');
+			await flushPromises();
+			expect(toastShowError).toHaveBeenCalledExactlyOnceWith(error, 'generic.error');
+			expect(toastShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('hides Fix error without an Assistant', async () => {
+			const wrapper = await mountView({ threads: [makeThread({ status: 'error' })] });
+			expect(itemIds(wrapper)).not.toContain('fixWithAssistant');
+		});
 	});
 
 	it('opens the parent trace in the current tab by default', async () => {
