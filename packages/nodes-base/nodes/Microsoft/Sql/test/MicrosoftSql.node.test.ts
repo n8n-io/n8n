@@ -2,7 +2,7 @@ import { mock } from 'vitest-mock-extended';
 import mssqlDefault from 'mssql';
 import type * as mssql from 'mssql';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
 
 import { configurePool } from '../GenericFunctions';
 import { MicrosoftSql } from '../MicrosoftSql.node';
@@ -81,6 +81,32 @@ describe('MicrosoftSql Node', () => {
 		const result = await node.execute.call(context);
 
 		expect(result).toEqual([[{ json: { error: 'Connection failed' }, pairedItem: [{ item: 0 }] }]]);
+	});
+
+	test('throws a connection error as a node error with the driver code and cause', async () => {
+		const message = 'Failed to connect to db.example:1433 - Could not connect (sequence)';
+		const driverError = Object.assign(new Error(message), {
+			code: 'ESOCKET',
+			originalError: new Error(message, {
+				cause: new AggregateError([new Error('connect ECONNREFUSED 10.0.0.5:1433')]),
+			}),
+		});
+		mockedConnectionPool.mockImplementation(function () {
+			return mock<mssql.ConnectionPool>({
+				connect: vi.fn().mockRejectedValue(driverError),
+				close: vi.fn(),
+			});
+		});
+
+		const node = new MicrosoftSql();
+		const context = getMockedExecuteFunctions({ continueOnFail: vi.fn().mockReturnValue(false) });
+		const result = node.execute.call(context);
+
+		await expect(result).rejects.toBeInstanceOf(NodeOperationError);
+		await expect(result).rejects.toMatchObject({
+			message,
+			description: 'Error code: ESOCKET. Cause: connect ECONNREFUSED 10.0.0.5:1433',
+		});
 	});
 
 	test('executes query on happy path', async () => {
