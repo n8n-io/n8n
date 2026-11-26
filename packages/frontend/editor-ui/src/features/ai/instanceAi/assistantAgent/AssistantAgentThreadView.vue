@@ -1025,6 +1025,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						:connected-triggers="[]"
 						channel="system"
 						:thinking-label="draftPreview.thinkingWord.value"
+						:stopped-label="i18n.baseText('instanceAi.agentTree.stoppedByUser')"
 						:client-context="clientContext"
 						:message-references="messageReferences"
 						:input-draft="mentions.draft.value"
