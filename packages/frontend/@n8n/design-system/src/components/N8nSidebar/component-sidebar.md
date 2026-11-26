@@ -13,7 +13,7 @@ A layout that needs a resize handle and its own markup uses `N8nResizeWrapper` i
 ```
 N8nSidebar
 ├── header slot (when set)
-├── scroll area
+├── scroll area (when scrollable) or body
 │   └── default slot
 ├── footer slot (when set)
 └── resize handle (when resizable)
@@ -30,6 +30,7 @@ N8nSidebar
 - `minWidth?: number` Minimum width in pixels. The width stays at or above this value. | `default: 160`
 - `maxWidth?: number` Maximum width in pixels. The width stays at or below this value. | `default: 480`
 - `resizable?: boolean` Show the drag handle. | `default: true`
+- `scrollable?: boolean` Wrap the body in a scroll area. The area fades the top and the bottom. Set this to false when the body scrolls itself. | `default: true`
 - `label?: string` Accessible name for the sidebar.
 
 **Events**
@@ -40,7 +41,7 @@ N8nSidebar
 **Slots**
 
 - `header` Content above the scrolling body. This region stays in place. Omit the slot and the region is absent.
-- `default` Sidebar body. This region scrolls. The caller supplies the content and the behaviour. A selectable list is an `N8nListbox` in this slot. A form is inputs in this slot. A control’s click handler lives on that control.
+- `default` Sidebar body. This region scrolls when `scrollable` is true. The caller supplies the content and the behaviour. A selectable list is an `N8nListbox` in this slot. A form is inputs in this slot. A control’s click handler lives on that control. Set `scrollable` to false when the body scrolls itself.
 - `footer` Content below the scrolling body. This region stays in place. Omit the slot and the region is absent.
 
 **Tokens**
@@ -52,7 +53,7 @@ Set a token on the sidebar. The sidebar uses the token. When the token is unset,
 
 A list uses the default padding. A form sets a larger padding on the sidebar.
 
-The sidebar fills the height of its parent. The default slot scrolls in an `N8nScrollArea`. The area fades at the top and the bottom. The header and the footer stay in place. Content beside the sidebar scrolls on its own when that content has its own overflow.
+The sidebar fills the height of its parent. When `scrollable` is true, the default slot scrolls in an `N8nScrollArea`. The area fades at the top and the bottom. Set `scrollable` to false when the body scrolls itself. The header and the footer stay in place. Content beside the sidebar scrolls on its own when that content has its own overflow.
 
 **Types**
 
@@ -110,6 +111,13 @@ type SidebarProps = {
 	 * @default true
 	 */
 	resizable?: boolean;
+	/**
+	 * Wrap the body in a scroll area.
+	 * The area fades the top and the bottom.
+	 * Set this to false when the body scrolls itself.
+	 * @default true
+	 */
+	scrollable?: boolean;
 	/** Accessible name for the sidebar. */
 	label?: string;
 };

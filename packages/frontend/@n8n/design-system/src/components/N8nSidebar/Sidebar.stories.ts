@@ -53,6 +53,7 @@ const meta = {
 	argTypes: {
 		side: { control: 'select', options: ['left', 'right'] },
 		resizable: { control: 'boolean' },
+		scrollable: { control: 'boolean' },
 		minWidth: { control: 'number' },
 		maxWidth: { control: 'number' },
 		widthStorageId: { control: 'text' },

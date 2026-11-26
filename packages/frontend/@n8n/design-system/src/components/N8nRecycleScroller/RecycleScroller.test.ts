@@ -65,6 +65,77 @@ describe('components', () => {
 			}
 		});
 
+		it('does not scroll past a target when the visible rows are taller than the estimate', async () => {
+			const originalOffsetHeight = Object.getOwnPropertyDescriptor(
+				HTMLElement.prototype,
+				'offsetHeight',
+			);
+			const originalScrollTop = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTop');
+			const scrollTops = new WeakMap<HTMLElement, number>();
+			let rowHeight = itemSize;
+
+			Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+				configurable: true,
+				get() {
+					if (this.classList?.contains('recycle-scroller-wrapper')) return 400;
+					if (this.classList?.contains('recycle-scroller-item')) return rowHeight;
+					return itemSize;
+				},
+			});
+			Object.defineProperty(HTMLElement.prototype, 'scrollTop', {
+				configurable: true,
+				get() {
+					return scrollTops.get(this) ?? 0;
+				},
+				set(value: number) {
+					scrollTops.set(this, value);
+				},
+			});
+			// jsdom drops scrollTo when the layout height stays 0.
+			const scrollTo = vi.spyOn(HTMLElement.prototype, 'scrollTo').mockImplementation(function (
+				this: HTMLElement,
+				options?: ScrollToOptions | number,
+			) {
+				if (typeof options === 'object' && typeof options.top === 'number') {
+					this.scrollTop = options.top;
+				}
+			});
+
+			try {
+				const wrapper = mount(N8nRecycleScroller, {
+					props: {
+						itemSize,
+						itemKey,
+						items,
+					},
+				});
+
+				await nextTick();
+				await nextTick();
+				rowHeight = itemSize + 60;
+				wrapper.vm.scrollToKey('20');
+				await nextTick();
+				await nextTick();
+
+				// The first screen stays at the estimate. Three rows above the target grow.
+				// Rows on screen must not add their growth, or the target leaves the view.
+				expect(wrapper.get('.recycle-scroller-wrapper').element.scrollTop).toBe(2000 + 60 * 3);
+				wrapper.unmount();
+			} finally {
+				scrollTo.mockRestore();
+				if (originalOffsetHeight) {
+					Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight);
+				} else {
+					Reflect.deleteProperty(HTMLElement.prototype, 'offsetHeight');
+				}
+				if (originalScrollTop) {
+					Object.defineProperty(HTMLElement.prototype, 'scrollTop', originalScrollTop);
+				} else {
+					Reflect.deleteProperty(HTMLElement.prototype, 'scrollTop');
+				}
+			}
+		});
+
 		it('keeps positions finite when the item keys are all replaced', async () => {
 			const originalOffsetHeight = Object.getOwnPropertyDescriptor(
 				HTMLElement.prototype,

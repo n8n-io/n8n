@@ -13,6 +13,7 @@ const props = withDefaults(defineProps<Omit<SidebarProps, 'width'>>(), {
 	minWidth: 160,
 	maxWidth: 480,
 	resizable: true,
+	scrollable: true,
 });
 
 const width = defineModel<number>('width', { default: 240 });
@@ -24,7 +25,7 @@ const emit = defineEmits<{
 defineSlots<{
 	/** Content above the scrolling body. This region stays in place. */
 	header?: () => unknown;
-	/** Sidebar body. The caller supplies the content. This region scrolls. */
+	/** Sidebar body. The caller supplies the content. This region scrolls unless scrollable is false. */
 	default?: () => unknown;
 	/** Content below the scrolling body. This region stays in place. */
 	footer?: () => unknown;
@@ -132,9 +133,12 @@ function onResize(data: ResizeData) {
 				<div v-if="$slots.header">
 					<slot name="header" />
 				</div>
-				<N8nScrollArea :class="$style.scroller" edge-fade="y">
+				<N8nScrollArea v-if="scrollable" :class="$style.scroller" edge-fade="y">
 					<slot />
 				</N8nScrollArea>
+				<div v-else :class="[$style.scroller, $style.body]">
+					<slot />
+				</div>
 				<div v-if="$slots.footer">
 					<slot name="footer" />
 				</div>
@@ -160,7 +164,21 @@ function onResize(data: ResizeData) {
 
 .scroller {
 	flex: 1;
+	min-height: 0;
+	min-width: 0;
 	padding: var(--n8n-sidebar--padding, var(--spacing--2xs));
+}
+
+.body {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.body > * {
+	flex: 1 1 auto;
+	min-height: 0;
+	min-width: 0;
 }
 
 .left {
