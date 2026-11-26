@@ -11,7 +11,11 @@ const isNewParameter = inject(NodeVersionNewParameterKey, undefined);
 </script>
 
 <template>
-	<N8nBadge v-if="isNewParameter?.(path)" size="xxsmall" data-test-id="parameter-new-tag">{{
-		i18n.baseText('generic.new')
-	}}</N8nBadge>
+	<N8nBadge
+		v-if="isNewParameter?.(path)"
+		variant="info"
+		size="xxsmall"
+		data-test-id="parameter-new-tag"
+		>{{ i18n.baseText('generic.new') }}</N8nBadge
+	>
 </template>
