@@ -906,6 +906,35 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.error).toEqual(error);
 	});
 
+	it('TypeOrmStepStore.loadFailedSteps orders the failed steps by settle time, not by node id', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const settledLater = await seedStep({ executionId, nodeId: 'a', status: 'running' });
+		const settledFirst = await seedStep({ executionId, nodeId: 'z', status: 'running' });
+		await seedStep({ executionId, nodeId: 'm', status: 'running' });
+		await store.failStep(settledFirst.id, { name: 'Error', message: 'z failed' });
+		await store.failStep(settledLater.id, { name: 'Error', message: 'a failed' });
+		// Set the settle times, so that the order does not depend on the clock.
+		const table = dataSource.getRepository(WorkflowStepExecution).metadata.tableName;
+		const setSettledAt = async (id: string, at: string) =>
+			await dataSource.query(`UPDATE ${table} SET updated_at = $1 WHERE id = $2`, [at, id]);
+		await setSettledAt(settledFirst.id, '2026-01-01T00:00:00.100Z');
+		await setSettledAt(settledLater.id, '2026-01-01T00:00:00.300Z');
+
+		const steps = await store.loadFailedSteps(executionId);
+
+		expect(steps.map(({ id }) => id)).toEqual([settledFirst.id, settledLater.id]);
+		expect(steps[0].error).toEqual({ name: 'Error', message: 'z failed' });
+	});
+
+	it('TypeOrmStepStore.loadFailedSteps returns no steps when no step failed', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await seedStep({ executionId, nodeId: 'a', status: 'running' });
+
+		expect(await store.loadFailedSteps(executionId)).toEqual([]);
+	});
+
 	it('TypeOrmStepStore.failWaitingStep fails a waiting step and persists the error', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
