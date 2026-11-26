@@ -3,6 +3,7 @@ import type {
 	ApplySelectionDto,
 	ContinueApplySelectionDto,
 	PromoteSelectionRequestDto,
+	ProjectPromotionEnvironmentsResponse,
 	PromoteSelectionResultDto,
 	PromotionDirection,
 	PromotionInstanceApplyPreview,
@@ -138,4 +139,11 @@ export async function updatePromotionSettings(
 	changes: Partial<PromotionSettings>,
 ): Promise<PromotionSettings> {
 	return await makePublicApiRequest(context, 'PATCH', '/promotions/settings', changes);
+}
+
+export async function getProjectPromotionEnvironments(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ProjectPromotionEnvironmentsResponse> {
+	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/promotion-environments`);
 }
