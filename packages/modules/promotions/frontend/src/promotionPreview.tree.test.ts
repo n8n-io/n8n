@@ -1,4 +1,4 @@
-import { billingPreview } from './__tests__/preview.fixtures';
+import { billingPreview, resource } from './__tests__/preview.fixtures';
 import { buildSelectionGraph } from './promotionPreview.selection';
 import { buildPreviewTree, cardOrder, type PreviewTreeItem } from './promotionPreview.tree';
 
@@ -47,5 +47,40 @@ describe('promotion preview tree', () => {
 			'dataTable:t1',
 			'tag:g1',
 		]);
+	});
+
+	describe('a project without workflows', () => {
+		const project = resource({ key: 'project:p1', name: 'Platform', change: 'modified' });
+		const folder = resource({ key: 'folder:f1', name: 'Shared', parentKey: 'project:p1' });
+		const crmKey = resource({
+			key: 'credential:c1',
+			name: 'CRM key',
+			parentKey: 'project:p1',
+			change: 'added',
+			selectable: true,
+		});
+
+		it('should show the project as its own row and not under "Workflows"', () => {
+			expect(outline(buildPreviewTree({ resources: [project, crmKey] }, labels))).toEqual([
+				'project:p1',
+				{ 'group:credential': ['credential:c1'] },
+			]);
+		});
+
+		it('should keep the folders below the project row', () => {
+			expect(outline(buildPreviewTree({ resources: [project, folder] }, labels))).toEqual([
+				{ 'project:p1': ['folder:f1'] },
+			]);
+		});
+
+		it('should list the project row first in the cards when the project has a change', () => {
+			const preview = { ...billingPreview(), resources: [project, crmKey] };
+			const { resources } = buildSelectionGraph(preview, 'promote');
+
+			expect(cardOrder(buildPreviewTree(preview, labels), resources)).toEqual([
+				'project:p1',
+				'credential:c1',
+			]);
+		});
 	});
 });

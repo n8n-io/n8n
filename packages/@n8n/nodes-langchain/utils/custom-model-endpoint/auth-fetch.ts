@@ -10,7 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import { wrapCustomModelEndpointErrorFetch } from './error-handling';
-import { buildRequestHeaders } from './headers';
+import { asSent, buildRequestHeaders, credentialSecrets } from './headers';
 import { createClientCredentialsTokenSource } from './oauth2';
 import type { EndpointCredential } from './types';
 
@@ -61,10 +61,18 @@ export function createCustomModelEndpointAuthFetch(
 		endpoint: EndpointCredential;
 		egressFilter: NodeEgressFilter;
 		baseFetch: typeof fetch;
-		requestHeaders?: Record<string, string>;
+		/**
+		 * n8n's own context headers carry the workflow name and the execution id. They are
+		 * not secrets, and filtering them would cut the names out of any error that uses them.
+		 */
+		contextHeaders?: Record<string, string>;
+		/** The headers the user typed on the node, any of which can hold a key. */
+		userHeaders?: Record<string, string>;
 	},
 ): typeof fetch {
-	const { endpoint, egressFilter, baseFetch, requestHeaders } = options;
+	const { endpoint, egressFilter, baseFetch, contextHeaders = {}, userHeaders = {} } = options;
+	// Built here from the one list, so a header cannot be sent without also being filtered
+	const requestHeaders = { ...contextHeaders, ...userHeaders };
 	const node = ctx.getNode();
 	const allowedDomains = getCredentialAllowedDomains({
 		node,
@@ -96,7 +104,12 @@ export function createCustomModelEndpointAuthFetch(
 		});
 
 	const authFetch = createRefreshingAuthFetch({
-		baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch),
+		baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch, [
+			...credentialSecrets(endpoint),
+			...Object.values(userHeaders)
+				.map(asSent)
+				.filter((value) => value.length > 0),
+		]),
 		resolveHeaders,
 		...(tokenSource && {
 			// The retry is a whole request again, so it needs the gateway headers too

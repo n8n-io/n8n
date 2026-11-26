@@ -44,6 +44,7 @@ import { provideArtifactThread } from '../artifactThread';
 import { useAssistantCreditsStore } from '../assistantCredits.store';
 import ApprovalModeSelector from '../components/ApprovalModeSelector.vue';
 import AttachmentPreview from '../components/AttachmentPreview.vue';
+import InstanceAiCanvasRunOverlay from '../components/InstanceAiCanvasRunOverlay.vue';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
@@ -51,10 +52,14 @@ import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview
 import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
-import InstanceAiResourceChip from '../components/InstanceAiResourceChip.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
+import InstanceAiWorkflowDraftPreview from '../components/InstanceAiWorkflowDraftPreview.vue';
+import { useDraftWorkflowPreview } from '../composables/useDraftWorkflowPreview';
+import { useToolLabel } from '../toolLabels';
+import { AGENT_TOOL_STEP_LABEL_KEY } from '@/features/agents/components/agentChatInjectionKeys';
+import { isRecord } from '@n8n/utils/is-record';
 import LimitedModeNotice from '../components/LimitedModeNotice.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
@@ -95,7 +100,7 @@ import {
 } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
-import { isArtifactTab, useCanvasPreview } from '../useCanvasPreview';
+import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from '../useCanvasPreview';
 import { toAgentPreviewComposerAttachment } from './assistantAgentPreviewHandoff';
 import {
 	fetchAssistantAgentThreadTabs,
@@ -111,6 +116,7 @@ import {
 	getAssistantAgentLaunch,
 	type PendingAssistantAgentMessage,
 } from './assistantAgentThreads';
+import { assistantAnsweredQuestionsExtension } from './assistantAnsweredQuestions';
 import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
@@ -121,10 +127,15 @@ import {
 	useAssistantPreferenceCards,
 } from './assistantPreferenceCards';
 import { assistantSharedFilesExtension } from './assistantSharedFiles';
+import { provideAssistantArtifactCards } from './assistantArtifactCards';
 import { assistantToolResultTableExtension } from './assistantToolResultTables';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
-import { readMessageReferences } from './assistantMentionAttachments';
+import {
+	mentionChipId,
+	readMessageReferences,
+	toMentionComposerAttachment,
+} from './assistantMentionAttachments';
 import {
 	countSentNodes,
 	readNodesAttachment,
@@ -144,6 +155,7 @@ import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantAgentFeedback } from './useAssistantAgentFeedback';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
+import { useAssistantWorkflowDrafts } from './useAssistantWorkflowDrafts';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
 
@@ -208,24 +220,24 @@ function readPendingHandoff() {
 	const fromEmptyView = consumePendingAssistantAgentMessage(props.threadId);
 	const fromHandoff = consumePendingFirstMessage(props.threadId);
 	const firstMessage = firstMessageOf(fromEmptyView, fromHandoff);
-	const workflow = getPendingWorkflowAttachment(props.threadId);
+	// The handed-off workflow shows as a composer chip, so the user sees it and can remove it.
+	const workflowChip = getPendingWorkflowAttachment(props.threadId) ?? undefined;
 	const draft = getPendingComposerDraft(props.threadId);
 	const nodes = consumePendingDraftAttachment(props.threadId);
 	const context = fromHandoff?.context ?? getPendingHandoffContext(props.threadId) ?? undefined;
-	const references: InstanceAiAttachment[] = [
-		...(firstMessage?.references ?? []),
-		...(workflow ? [workflow] : []),
-	];
+	const references: InstanceAiAttachment[] = firstMessage?.references ?? [];
 	return {
 		firstMessage,
 		draft,
 		nodes,
 		context,
 		references,
+		workflowChip,
 		// The preview opens the handed-off workflow before the first message.
-		workflow: references.find(
-			(reference): reference is InstanceAiWorkflowAttachment => reference.type === 'workflow',
-		),
+		workflow:
+			references.find(
+				(reference): reference is InstanceAiWorkflowAttachment => reference.type === 'workflow',
+			) ?? workflowChip,
 	};
 }
 
@@ -259,7 +271,7 @@ function threadArtifactsContext(): Record<string, unknown> {
 	const threadArtifacts = buildThreadArtifactsContext(
 		thread.producedArtifacts.values(),
 		activeId,
-		preview.openTabs.value.filter(isArtifactTab),
+		preview.openTabs.value.filter(isSavedArtifactTab),
 		createDisplayedExecutionReader(thread.artifactTurns, thread.getRememberedManualExecution),
 	);
 	return threadArtifacts ? { threadArtifacts } : {};
@@ -292,16 +304,6 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 function messageReferences(context: Record<string, unknown> | undefined): unknown[] {
 	return readMessageReferences(context?.attachments);
 }
-
-const interactionExtensions = [
-	assistantConfirmationExtension,
-	assistantAutoApprovalExtension,
-	assistantPreferenceCardExtension,
-	...assistantHostEventExtensions,
-	assistantToolResultTableExtension,
-	assistantCodeToolResultExtension,
-	assistantSharedFilesExtension,
-];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 
@@ -355,6 +357,7 @@ function onMessageSending(message: AssistantAgentSendingMessage): void {
 function onStreamEvent(event: AgentSseEvent): void {
 	trace.recordEvent(event);
 	turnTelemetry.handleStreamEvent(event);
+	workflowDrafts.handleStreamEvent(event);
 }
 
 const setupSavedTelemetry = useAssistantAgentSetupSavedTelemetry({
@@ -365,6 +368,10 @@ provide(ASSISTANT_AGENT_SETUP_SAVED, setupSavedTelemetry.expectResult);
 
 watch(panel, (current) => {
 	if (!current) return;
+	if (handoff.workflowChip) {
+		const { chip, clientContextPatch } = toMentionComposerAttachment(handoff.workflowChip);
+		current.addComposerAttachment(chip, clientContextPatch);
+	}
 	if (handoff.firstMessage) {
 		messageTelemetry.expectHostSend(handoff.firstMessage);
 		current.sendMessageFromOutside(handoff.firstMessage.text, handoff.firstMessage.files);
@@ -467,6 +474,7 @@ const thread = useAssistantArtifactThread({
 	projectId: props.projectId,
 	messages: () => panel.value?.messages ?? [],
 	isStreaming: () => panel.value?.isStreaming ?? false,
+	isAwaitingUser: () => panel.value?.isAwaitingUserAnswer ?? false,
 	// Until the chat mounts, its history is not known, so a past build does not open the preview.
 	isLoadingHistory: () => panel.value?.isLoadingHistory ?? true,
 	// The hand-off context, for example a credential to set up, goes with this message only.
@@ -485,6 +493,42 @@ const thread = useAssistantArtifactThread({
 });
 provideArtifactThread(thread);
 
+const interactionExtensions = [
+	assistantConfirmationExtension,
+	assistantAnsweredQuestionsExtension,
+	assistantAutoApprovalExtension,
+	assistantPreferenceCardExtension,
+	...assistantHostEventExtensions,
+	assistantToolResultTableExtension,
+	assistantCodeToolResultExtension,
+	assistantSharedFilesExtension,
+	provideAssistantArtifactCards(thread),
+];
+
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const isAwaitingUser = () => panel.value?.isAwaitingUserAnswer ?? false;
+// A run that waits on a card can end its stream, but the build is not over.
+const isAgentRunning = () =>
+	(panel.value?.isStreaming || panel.value?.isSubmitting || isAwaitingUser()) ?? false;
+const workflowDrafts = useAssistantWorkflowDrafts({
+	liveRunId: () => thread.artifactTurns.find((turn) => turn.isLive)?.id,
+});
+const draftPreview = useDraftWorkflowPreview({
+	threadId: () => props.threadId,
+	turns: () => thread.artifactTurns,
+	workflowDrafts: () => workflowDrafts.drafts.value,
+	dismissWorkflowDrafts: workflowDrafts.dismiss,
+	isRunning: isAgentRunning,
+	isAwaitingUser,
+	isAwaitingApproval: () => panel.value?.isAwaitingUserApproval ?? false,
+});
+// The tool steps of the chat name what a node lookup or a workflow source write works on.
+const { getSpecificToolLabel } = useToolLabel();
+provide(AGENT_TOOL_STEP_LABEL_KEY, (toolName, input) =>
+	getSpecificToolLabel(toolName, isRecord(input) ? input : undefined),
+);
+// EOF Experiment cleanup
+
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
@@ -500,7 +544,10 @@ const preview = useCanvasPreview({
 			await saveAssistantAgentThreadTabs(rootStore.restApiContext, props.threadId, state);
 		},
 	},
+	...draftPreview.canvasOptions,
 });
+
+const canvasRunState = draftPreview.useCanvasRunState(preview);
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAppPreview', preview.openAppPreview);
@@ -551,7 +598,10 @@ const mentionReference = computed(
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
-		activeArtifactId.value = previewVisible ? tabId : undefined;
+		const isDraft = preview.openTabs.value.some(
+			(tab) => tab.id === tabId && isArtifactTab(tab) && tab.draft,
+		);
+		activeArtifactId.value = previewVisible && !isDraft ? tabId : undefined;
 	},
 	{ immediate: true },
 );
@@ -794,13 +844,21 @@ watch(
 	},
 );
 
-/** The staged chips. A nodes chip carries its nodes, so the user can drop single nodes. */
-const composerChips = computed(() =>
-	(panel.value?.composerAttachments ?? []).map((staged) => ({
-		chip: staged.chip,
-		nodes: readNodesAttachment(staged),
-	})),
+/** The staged nodes chips. The panel shows the other chips as cards. */
+const stagedNodes = computed(() =>
+	(panel.value?.composerAttachments ?? []).flatMap((staged) => {
+		const nodes = readNodesAttachment(staged);
+		return nodes ? [{ id: staged.chip.id, nodes }] : [];
+	}),
 );
+
+/** A removed handoff workflow must not come back when the page reloads. */
+function onComposerChipRemoved(chipId: string): void {
+	mentions.handleChipRemoved(chipId);
+	if (handoff.workflowChip && chipId === mentionChipId(handoff.workflowChip)) {
+		clearPendingWorkflowAttachment(props.threadId);
+	}
+}
 
 /** The user removed some of the nodes from a chip. */
 function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
@@ -966,6 +1024,8 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						agent-status="production"
 						:connected-triggers="[]"
 						channel="system"
+						:thinking-label="draftPreview.thinkingWord.value"
+						:stopped-label="i18n.baseText('instanceAi.agentTree.stoppedByUser')"
 						:client-context="clientContext"
 						:message-references="messageReferences"
 						:input-draft="mentions.draft.value"
@@ -981,6 +1041,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
 						@update:input-draft="mentions.handleTextChange"
+						@composer-attachment-removed="onComposerChipRemoved"
 					>
 						<!-- Passed only with an offer, so the chat keeps its empty state and spacing. -->
 						<template v-if="activeFixWithAiOffer" #inline-offers>
@@ -1015,31 +1076,16 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 								@rate="feedback.rate(executionId, $event)"
 							/>
 						</template>
-						<!-- Nodes chips can drop single nodes. The other chips look as the panel draws them. -->
-						<template v-if="composerChips.length > 0" #composer-attachments>
-							<template v-for="{ chip, nodes } in composerChips" :key="chip.id">
-								<NodesAttachmentChips
-									v-if="nodes"
-									:attachment="nodes"
-									is-removable
-									@update:attachment="updateStagedNodes"
-									@remove-all="mentions.handleChipRemoved(chip.id)"
-								/>
-								<InstanceAiResourceChip
-									v-else
-									:label="chip.label"
-									:icon="chip.icon"
-									removable
-									:remove-label="
-										i18n.baseText('agents.chat.composer.removeChip', {
-											interpolate: { label: chip.label },
-										})
-									"
-									test-id="agent-chat-composer-chip"
-									remove-test-id="agent-chat-composer-chip-remove"
-									@remove="mentions.handleChipRemoved(chip.id)"
-								/>
-							</template>
+						<!-- Nodes chips can drop single nodes, so they are not cards. -->
+						<template v-if="stagedNodes.length > 0" #composer-attachments>
+							<NodesAttachmentChips
+								v-for="{ id, nodes } in stagedNodes"
+								:key="id"
+								:attachment="nodes"
+								is-removable
+								@update:attachment="updateStagedNodes"
+								@remove-all="mentions.handleChipRemoved(id)"
+							/>
 						</template>
 						<template #user-message-references="{ message }">
 							<AttachmentPreview
@@ -1140,6 +1186,19 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 							:execution-result="preview.activeWorkflowExecutionResult.value"
 							@workflow-failures="handleWorkflowFailures"
 							@workflow-succeeded="handleWorkflowSucceeded"
+							@workflow-loaded="workflowDrafts.dismiss"
+						/>
+						<InstanceAiWorkflowDraftPreview
+							v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
+							:key="preview.activeWorkflowDraft.value.filePath"
+							:class="$style.previewSlot"
+							:draft="preview.activeWorkflowDraft.value"
+							:building="isAgentRunning()"
+						/>
+						<InstanceAiCanvasRunOverlay
+							v-if="canvasRunState"
+							:state="canvasRunState"
+							@focus-chat="panel?.focusOpenInteraction()"
 						/>
 						<InstanceAiDataTablePreview
 							v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

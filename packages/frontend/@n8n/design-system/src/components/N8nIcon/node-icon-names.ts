@@ -1,4 +1,6 @@
 export const nodeIconNames = [
+	'node:agent-decision-response',
+	'node:agent-decision-trigger',
 	'node:aggregate',
 	'node:ai-agent',
 	'node:ai-transform',

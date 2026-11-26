@@ -298,6 +298,7 @@ export class AgentContextService {
 					projectId,
 					input.skillId,
 					input.referencePaths,
+					input.referenceOffset,
 				);
 			}
 			case 'tasks': {

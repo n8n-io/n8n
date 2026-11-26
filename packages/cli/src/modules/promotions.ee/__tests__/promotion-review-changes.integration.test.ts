@@ -139,7 +139,6 @@ afterEach(async () => {
 async function promote(commitMessage: string) {
 	const result = await Container.get(PromotionsService).promote(environmentId, owner, {
 		commitMessage,
-		canExportVariableValues: true,
 	});
 	if (!result.review) throw new Error('The promotion opened no review');
 	const { reviewId, number: iid } = result.review;

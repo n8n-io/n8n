@@ -666,8 +666,8 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'apps',
-				input: { action: 'create', blueprint: appBlueprint },
+				toolName: 'create_app',
+				input: { blueprint: appBlueprint },
 				suspendPayload: {
 					requestId: 'request-1',
 					severity: 'info',
@@ -697,8 +697,8 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'apps',
-				input: { action: 'create', blueprint: appBlueprint },
+				toolName: 'create_app',
+				input: { blueprint: appBlueprint },
 				suspendPayload: {
 					requestId: 'request-2',
 					severity: 'info',

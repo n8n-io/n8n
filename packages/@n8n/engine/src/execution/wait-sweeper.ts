@@ -22,7 +22,7 @@ export const DEFAULT_WAIT_SWEEP_BATCH_SIZE = 500;
  */
 export class WaitSweeper {
 	private timer: NodeJS.Timeout | undefined;
-	private stopped = false;
+	private stopped = true;
 	/** The sweep in flight, so `stop` can wait for it to settle. */
 	private sweeping: Promise<void> | undefined;
 
@@ -38,6 +38,7 @@ export class WaitSweeper {
 	) {}
 
 	start(): void {
+		this.stopped = false;
 		this.rearm();
 	}
 

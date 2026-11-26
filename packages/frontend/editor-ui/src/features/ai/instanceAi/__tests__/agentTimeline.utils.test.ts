@@ -491,7 +491,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'apps',
+					toolName: 'create_app',
 					confirmation: {
 						requestId: 'req-1',
 						severity: 'info',

@@ -1,10 +1,8 @@
 <script lang="ts" setup>
 import type { InstanceAiAttachment, InstanceAiNodesAttachment } from '@n8n/api-types';
 import { useAttachmentPreviews } from '@/features/ai/shared/composables/useAttachmentPreviews';
-import { N8nAttachment } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { N8nAttachment, type IconName } from '@n8n/design-system';
 import { computed } from 'vue';
-import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
 import { elementAttachmentLabel } from '../utils/elementAttachment';
 import NodesAttachmentChips from './NodesAttachmentChips.vue';
 
@@ -13,7 +11,6 @@ const props = defineProps<{
 	attachment?: InstanceAiAttachment;
 	isRemovable?: boolean;
 }>();
-const i18n = useI18n();
 
 const emit = defineEmits<{
 	remove: [file: File];
@@ -28,19 +25,32 @@ const { previewUrl } = useAttachmentPreviews(() => (props.file ? [props.file] : 
 const nodesAttachment = computed(() =>
 	props.attachment?.type === 'nodes' ? props.attachment : undefined,
 );
-/** Resource references use chips instead of file previews. */
-const workflowAttachment = computed(() =>
-	props.attachment?.type === 'workflow' ? props.attachment : undefined,
-);
-const agentAttachment = computed(() =>
-	props.attachment?.type === 'agent' ? props.attachment : undefined,
-);
-const elementAttachment = computed(() =>
-	props.attachment?.type === 'element' ? props.attachment : undefined,
-);
-const elementLabel = computed(() =>
-	elementAttachment.value ? elementAttachmentLabel(elementAttachment.value) : '',
-);
+/** Workflows, agents and page elements show as attachments, with an icon in place of a preview. */
+const resourceCard = computed((): { name: string; icon: IconName; testId: string } | undefined => {
+	const attachment = props.attachment;
+	switch (attachment?.type) {
+		case 'workflow':
+			return {
+				name: attachment.name ?? 'Workflow',
+				icon: 'workflow',
+				testId: 'attachment-preview-resource',
+			};
+		case 'agent':
+			return {
+				name: attachment.name ?? 'Agent',
+				icon: 'robot',
+				testId: 'attachment-preview-resource',
+			};
+		case 'element':
+			return {
+				name: elementAttachmentLabel(attachment),
+				icon: 'mouse-pointer',
+				testId: 'attachment-preview-element',
+			};
+		default:
+			return undefined;
+	}
+});
 const fileAttachment = computed(() =>
 	props.attachment?.type === 'file' ? props.attachment : undefined,
 );
@@ -61,35 +71,12 @@ const thumbnailSrc = computed(() => {
 		@update:attachment="emit('update:attachment', $event)"
 		@remove-all="emit('remove-resource')"
 	/>
-	<InstanceAiResourceChip
-		v-else-if="workflowAttachment"
-		:label="workflowAttachment.name ?? 'Workflow'"
-		icon="workflow"
-		:trailing-icon="workflowAttachment.executionId ? 'play' : undefined"
-		:removable="isRemovable"
-		:remove-label="i18n.baseText('instanceAi.mentions.removeWorkflow')"
-		test-id="attachment-preview-resource"
-		remove-test-id="attachment-preview-remove-resource"
-		@remove="emit('remove-resource')"
-	/>
-	<InstanceAiResourceChip
-		v-else-if="elementAttachment"
-		:label="elementLabel"
-		icon="mouse-pointer"
-		:removable="isRemovable"
-		:remove-label="i18n.baseText('instanceAi.elementSelection.remove')"
-		test-id="attachment-preview-element"
-		remove-test-id="attachment-preview-remove-element"
-		@remove="emit('remove-resource')"
-	/>
-	<InstanceAiResourceChip
-		v-else-if="agentAttachment"
-		:label="agentAttachment.name ?? 'Agent'"
-		icon="robot"
-		:removable="isRemovable"
-		:remove-label="i18n.baseText('instanceAi.mentions.removeAgent')"
-		test-id="attachment-preview-resource"
-		remove-test-id="attachment-preview-remove-resource"
+	<N8nAttachment
+		v-else-if="resourceCard"
+		:file-name="resourceCard.name"
+		:icon="resourceCard.icon"
+		:is-removable="isRemovable ?? false"
+		:data-test-id="resourceCard.testId"
 		@remove="emit('remove-resource')"
 	/>
 	<N8nAttachment

@@ -296,7 +296,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 
 			expect(hook.messages.value.filter(({ id }) => id === 'exec-stopped:stopped')).toHaveLength(1);
 			expect(hook.messages.value.at(-1)).toMatchObject({
-				content: 'agentSessions.stopped',
+				id: 'exec-stopped:stopped',
 				executionId: 'exec-stopped',
 			});
 			expect(hook.messages.value.flatMap(({ toolCalls }) => toolCalls ?? [])).toEqual(
@@ -348,7 +348,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				resolvedAt: expect.any(Number),
 			});
 			expect(assistant.status).toBe('success');
-			expect(hook.messages.value.at(-1)?.content).toBe('agentSessions.stopped');
+			expect(hook.messages.value.at(-1)?.id).toBe('exec-stopped:stopped');
 			expect(cancelAgentChatExecutionMock).not.toHaveBeenCalled();
 		},
 	);
@@ -2150,6 +2150,69 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(toolCall?.tool).toBe('list_workflows');
 		expect(toolCall?.input).toEqual({ limit: 5 });
 		expect(toolCall?.output).toEqual({ workflows: [] });
+	});
+
+	it('names the tool of a call_tool call from its streamed input, before the full input', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{ type: 'tool-input-delta', toolCallId: 'tc-1', delta: '{"tool": "search_' },
+			{ type: 'tool-input-delta', toolCallId: 'tc-1', delta: 'nodes", "arguments": {"que' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('find the gmail node');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].tool).toBe('search_nodes');
+	});
+
+	it('starts the tool name of a call_tool call again in a new stream', async () => {
+		const interrupted: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{ type: 'tool-input-delta', toolCallId: 'tc-1', delta: '{"tool": "sear' },
+		];
+		const next: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{ type: 'tool-input-delta', toolCallId: 'tc-1', delta: '{"tool": "list_workflows", ' },
+		];
+		globalThis.fetch = vi
+			.fn()
+			.mockResolvedValueOnce(makeSseResponse(interrupted))
+			.mockResolvedValueOnce(makeSseResponse(next)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('find the gmail node');
+		await flushPromises();
+		await hook.sendMessage('list my workflows');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value.at(-1)?.toolCalls?.[0].tool).toBe('list_workflows');
+	});
+
+	it('keeps call_tool when the streamed input does not start with the tool name', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{
+				type: 'tool-input-delta',
+				toolCallId: 'tc-1',
+				delta: '{"arguments": {"tool": "fake"}, "tool": "search_',
+			},
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('find the gmail node');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].tool).toBe('call_tool');
 	});
 
 	// -----------------------------------------------------------------------
@@ -4507,10 +4570,8 @@ describe('useAgentChatStream — execution recovery', () => {
 			for (const hook of [first, second]) {
 				expect(hook.isStreaming.value).toBe(false);
 				expect(hook.isCancelling.value).toBe(false);
-				expect(hook.messages.value.map((message) => message.content)).toEqual(
-					status === 'cancelled'
-						? ['retained answer', 'agentSessions.stopped']
-						: ['retained answer'],
+				expect(hook.messages.value.map((message) => message.id)).toEqual(
+					status === 'cancelled' ? ['exec-1:assistant', 'exec-1:stopped'] : ['exec-1:assistant'],
 				);
 			}
 			expect(fetch).not.toHaveBeenCalled();
