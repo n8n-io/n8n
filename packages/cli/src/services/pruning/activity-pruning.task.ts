@@ -24,6 +24,7 @@ export class ActivityPruningTask implements SystemTask {
 			/** Deleting rows already deleted is a no-op, so a repeated or retried run is harmless. */
 			retryOnFailure: true,
 		},
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {
 			/** A new leader inherits whatever backlog built up while nobody was sweeping. */
 			runOnTakeover: true,

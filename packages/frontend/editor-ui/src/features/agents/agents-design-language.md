@@ -17,6 +17,58 @@ Show the project icon before the project name in Agent builder and session
 timeline breadcrumbs. Use the same icon as the owning project. Show the user
 icon for a personal project.
 
+Include the selected folder path for an unsaved Agent. Keep the path through
+its first save. Use saved placement for saved Agents.
+
+## Folder subtitles
+
+Use the shared `FolderCardSubtitle` for Agent and workflow folder metadata.
+Show direct resource counts, child-folder counts, Last updated, and Created in
+that order. Hide zero counts. Keep timestamps visible for empty folders.
+Hide Created on narrow screens. Keep count labels together when the subtitle
+wraps. Show search paths on a separate line.
+
+## Folder pagination
+
+List folders before Agents, as workflow lists do. Use one total, page size, and
+pager for both resource types. Fill the remaining page slots with Agents when a
+page contains the last folders. Keep the global overview flat.
+
+## Folder action menus
+
+Use the shared `FolderCardActions` for workflow and Agent folder cards. Keep
+the same trigger, menu width, labels, and neutral Delete treatment. Order Agent
+actions as Open, Create folder inside, Create Agent inside, Favorite, Rename,
+Move, and Delete. Keep unavailable actions visible and disabled. Keep Open and
+Favorite available in read-only branches. Keep MCP access actions specific to
+workflow folders. Create the Agent in the selected folder through the existing
+Agent creation flow.
+
+## Folder moves
+
+Match the workflow move dialog. Name the Agent or folder in the title. Show the
+current project and its icon above the shared searchable folder picker. Keep the
+project fixed. Offer project root and show nested folder paths. Use `Move Agent`
+or `Move folder` after Cancel. Keep the Agent modal shell and its narrow layout.
+Disable the fixed project field. Focus the folder picker after its options load.
+
+## Folder removal
+
+Match the workflow folder confirmation. Name the folder in the title and show
+its content counts. Offer relocation and archival as radio choices. Start with
+neither choice selected. Show the destination picker after relocation is selected.
+Require the same typed folder confirmation as workflows before archival. Keep
+keyboard focus on the choices without selecting text when the dialog opens. Archival
+deletes the folder tree and moves its Agents to the project root. Keep all Agent
+data. Explain that users can unarchive the Agents later. Use `Delete folder` for
+the confirmation action. Do not offer permanent Agent deletion in this dialog.
+Keep a `Show archived agents` link in the empty state when only archived Agents remain.
+
+## Agent card subtitles
+
+Use a separate element for each separator between metadata fields, as workflow
+cards do. Use the row gap to give each separator equal space on both sides.
+
 ## History entry points
 
 Put `Version history` in the Agent actions menu. Put `View timeline` in the
@@ -182,7 +234,9 @@ Agent artifacts inside an Assistant chat keep the handoff in that chat.
 
 ## Setup checklist
 
-Show `Finish setup` after the Agent exists and the Assistant finishes building it.
+In the setup header experiment, show `Finish setup` beside `Test Agent` in the
+Agent identity header. Otherwise, keep it in the top navigation bar.
+Show it after the Agent exists and the Assistant finishes building it.
 Hide it when the Agent is published, including when the draft has pending changes.
 Keep the checklist hidden while the Assistant builds or updates the Agent.
 Use this behavior in Agent artifacts and the standalone Agent Builder.
@@ -421,6 +475,10 @@ user how to edit the skill, or whom to ask. A skill that the user can use but
 not edit opens this way. Hide Save. Keep `Detach` for an attached skill, and
 `Add skill` for a preview of a skill that is not attached.
 
+Render Mermaid code blocks as diagrams in the skill view. Keep the source in a
+collapsed section below each diagram. If a block cannot render, show its source
+as code. Keep the original Markdown in the editor.
+
 A skill that the draft pins to an older version also opens read-only, with
 the hint that the agent uses an older version. Its primary action is
 `Use latest version`. The action removes the pin, saves the draft, and opens
@@ -582,7 +640,7 @@ composer has no text or attachments. Otherwise, show Send. Keep file and voice
 input available during a turn.
 Stack the background task card above the composer. Attach pending messages to
 the top of the composer. Use `--background--subtle` for the queue background.
-Use `--color--neutral-600` for queue text and the Steer label in light mode.
+Use `--color--neutral-600` for queue text and the Send now label in light mode.
 Use `--text-color--subtler` in dark mode. Use `--color--neutral-400` for all queue
 icons. Use `--border-color--subtle` for the dividers.
 Use `xs` text and `medium` icons. Keep the action targets at least 24 by 24 pixels.
@@ -597,7 +655,7 @@ Edit removes the pending message from the queue and restores its text and attach
 
 Show drag handles only when the queue has two or more messages. Put a six-dot drag handle on the left of each pending message in that queue. Drag the handle to move the message. Support the Up and Down arrow keys on the handle. Expand the queue when a drag starts or a message moves. Keep keyboard focus on the moved message. Show the new order during saving. Disable queue actions while the order saves. Messages reserved for steering cannot move. If the move no longer applies, refresh the queue and show an error.
 
-Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary queue processing. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.
+Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Send now label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary queue processing. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.
 
 ## Preview retries
 

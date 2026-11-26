@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { NodeTypesProxy, TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import {
@@ -10,8 +11,6 @@ import {
 import type { Mock } from 'vitest';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { NodeTypesProxy } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
@@ -69,14 +68,14 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 	let workflowFinderService: WorkflowFinderService;
 	let executionService: ExecutionService;
 	let nodeTypes: ReturnType<typeof createMockNodeTypes>;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		executionService = mockInstance(ExecutionService);
 		nodeTypes = createMockNodeTypes();
-		telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 
 		// Default: no execution history, no schema discovery
 		(executionService.getLastSuccessfulExecution as Mock).mockResolvedValue(undefined);

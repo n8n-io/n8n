@@ -1,4 +1,5 @@
 import get from 'lodash/get';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -16,6 +17,9 @@ import * as update from '../../v2/actions/database/update.operation';
 import * as upsert from '../../v2/actions/database/upsert.operation';
 import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
 import * as utils from '../../v2/helpers/utils';
+
+const { copyRows } = vi.hoisted(() => ({ copyRows: vi.fn() }));
+vi.mock('../../v2/helpers/copy', () => ({ copyRows }));
 
 const { yieldToEventLoop } = vi.hoisted(() => ({ yieldToEventLoop: vi.fn(async () => {}) }));
 vi.mock('@n8n/utils/promise/create-event-loop-yielder', () => ({
@@ -262,11 +266,35 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		);
 	});
 
+	it.each([
+		{ nodeVersion: 2.9, expected: "select '1$&2', '1$$2', '^[0-9]+$'" },
+		{ nodeVersion: 2.8, expected: "select '1{{ $json.sql }}2', '1$2', '^[0-9]+" },
+	])(
+		'should insert the resolved query for version $nodeVersion',
+		async ({ nodeVersion, expected }) => {
+			const nodeParameters: IDataObject = {
+				operation: 'executeQuery',
+				query: '{{ $json.sql }}',
+				options: { nodeVersion },
+			};
+			const nodeOptions = nodeParameters.options as IDataObject;
+			const mockExecute = createMockExecuteFunction(nodeParameters);
+			mockExecute.evaluateExpression = vi.fn().mockReturnValue("select '1$&2', '1$$2', '^[0-9]+$'");
+
+			await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
+
+			expect(runQueries).toHaveBeenCalledWith(
+				[{ query: expected, values: [], options: { partial: true } }],
+				nodeOptions,
+			);
+		},
+	);
+
 	it('should call runQueries and insert enclosed placeholder into values', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',
 			query: "select '$1';",
-			options: {},
+			options: { nodeVersion: 2.8 },
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
@@ -289,6 +317,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			query: "select '$1';",
 			options: {
 				queryReplacement: 'my_table',
+				nodeVersion: 2.8,
 			},
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -313,6 +342,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			options: {
 				queryReplacement: 'my_table',
 				treatQueryParametersInSingleQuotesAsText: true,
+				nodeVersion: 2.8,
 			},
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -326,6 +356,31 @@ describe('Test PostgresV2, executeQuery operation', () => {
 
 		expect(runQueries).toHaveBeenCalledWith(
 			[{ query: 'select $2;', values: ['my_table', '$1'], options: { partial: true } }],
+			nodeOptions,
+		);
+	});
+
+	it('should leave enclosed placeholders unchanged from v2.9', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: "select '$1';",
+			options: {
+				queryReplacement: 'my_table',
+				treatQueryParametersInSingleQuotesAsText: true,
+				nodeVersion: 2.9,
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: "select '$1';", values: ['my_table'], options: { partial: true } }],
 			nodeOptions,
 		);
 	});
@@ -1097,6 +1152,171 @@ describe('Test PostgresV2, insert operation', () => {
 	});
 });
 
+describe('Test PostgresV2, insert operation with COPY', () => {
+	const columnsInfo: ColumnInfo[] = [
+		{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+		{ column_name: 'tags', data_type: 'ARRAY', is_nullable: 'YES', udt_name: '_text' },
+		{ column_name: 'name', data_type: 'text', is_nullable: 'YES', udt_name: '' },
+	];
+
+	const nodeParameters = (options: IDataObject): IDataObject => ({
+		schema: { __rl: true, mode: 'list', value: 'public' },
+		table: { __rl: true, mode: 'list', value: 'my_table' },
+		columns: { mappingMode: 'autoMapInputData', value: null },
+		options,
+	});
+
+	const inputItems = [
+		{ json: { id: 1, tags: ['a', 'b'], name: 'first' } },
+		{ json: { id: 2, name: 'second' } },
+		{ json: { id: 3, tags: [], name: null } },
+	];
+
+	const runInsert = async (
+		options: IDataObject,
+		input: typeof inputItems | Array<{ json: IDataObject }> = inputItems,
+		continueOnFail = false,
+	) => {
+		const parameters = nodeParameters(options);
+		const executeFunctions = createMockExecuteFunction(parameters);
+		executeFunctions.continueOnFail = () => continueOnFail;
+		const db = createMockDb(columnsInfo);
+		const pgp = pgPromise();
+		const result = await insert.execute.call(
+			executeFunctions,
+			runQueries,
+			input,
+			{ ...options, nodeVersion: 2.8 },
+			db,
+			pgp,
+		);
+		return { result, db, pgp };
+	};
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should load all rows with COPY and output one summary item', async () => {
+		copyRows.mockResolvedValue(3);
+
+		const { result, db, pgp } = await runInsert({ useCopy: true });
+
+		expect(runQueries).not.toHaveBeenCalled();
+		expect(copyRows).toHaveBeenCalledWith(node, db, pgp, [
+			{
+				itemIndex: 0,
+				schema: 'public',
+				table: 'my_table',
+				item: { id: 1, tags: '{"a","b"}', name: 'first' },
+			},
+			{ itemIndex: 1, schema: 'public', table: 'my_table', item: { id: 2, name: 'second' } },
+			{
+				itemIndex: 2,
+				schema: 'public',
+				table: 'my_table',
+				item: { id: 3, tags: '{}', name: null },
+			},
+		]);
+		expect(result).toEqual([
+			{ json: { rows: 3 }, pairedItem: [{ item: 0 }, { item: 1 }, { item: 2 }] },
+		]);
+	});
+
+	it.each([{}, { useCopy: false }])(
+		'should keep one INSERT statement per item when COPY is off (%o)',
+		async (options) => {
+			await runInsert({ ...options, skipOnConflict: true });
+
+			expect(copyRows).not.toHaveBeenCalled();
+			expect(runQueries).toHaveBeenCalledWith(
+				inputItems.map(() => ({
+					query:
+						'INSERT INTO $1:name.$2:name($3:name) VALUES($3:csv) ON CONFLICT DO NOTHING RETURNING *',
+					values: expect.any(Array),
+				})),
+				expect.any(Object),
+			);
+		},
+	);
+
+	it('should ignore Skip on Conflict and Output Columns when COPY is on', async () => {
+		copyRows.mockResolvedValue(3);
+
+		const { result } = await runInsert({
+			useCopy: true,
+			skipOnConflict: true,
+			outputColumns: ['id'],
+			queryBatching: 'independently',
+		});
+
+		expect(runQueries).not.toHaveBeenCalled();
+		expect(result).toEqual([expect.objectContaining({ json: { rows: 3 } })]);
+	});
+
+	it('should throw for an item without values when COPY is on', async () => {
+		await expect(runInsert({ useCopy: true }, [{ json: { id: 1 } }, { json: {} }])).rejects.toThrow(
+			'Load Rows With COPY needs at least one column value in each item',
+		);
+		expect(copyRows).not.toHaveBeenCalled();
+	});
+
+	it('should not run COPY when an item fails the checks and Continue On Fail is on', async () => {
+		const { result } = await runInsert(
+			{ useCopy: true },
+			[{ json: { id: 1 } }, { json: { unknown: 1 } }],
+			true,
+		);
+
+		expect(copyRows).not.toHaveBeenCalled();
+		expect(result).toEqual([
+			{ json: { error: expect.any(NodeOperationError) }, pairedItem: { item: 1 } },
+		]);
+	});
+
+	it('should return the COPY error for the failed item when Continue On Fail is on', async () => {
+		copyRows.mockRejectedValue(
+			new NodeOperationError(node, 'duplicate key value violates unique constraint', {
+				itemIndex: 1,
+				description: 'Key (id)=(1) already exists.',
+			}),
+		);
+
+		const { result } = await runInsert({ useCopy: true }, inputItems, true);
+
+		expect(result).toEqual([
+			{
+				json: {
+					error: expect.objectContaining({
+						message: 'duplicate key value violates unique constraint',
+						description: 'Key (id)=(1) already exists.',
+					}),
+				},
+				pairedItem: { item: 1 },
+			},
+		]);
+	});
+
+	it('should pair a COPY error that names no item with all items when Continue On Fail is on', async () => {
+		copyRows.mockRejectedValue(new NodeOperationError(node, 'violates foreign key constraint'));
+
+		const { result } = await runInsert({ useCopy: true }, inputItems, true);
+
+		expect(result).toEqual([
+			{
+				json: { error: expect.objectContaining({ message: 'violates foreign key constraint' }) },
+				pairedItem: [{ item: 0 }, { item: 1 }, { item: 2 }],
+			},
+		]);
+	});
+
+	it('should throw the COPY error when Continue On Fail is off', async () => {
+		copyRows.mockRejectedValue(new NodeOperationError(node, 'duplicate key', { itemIndex: 1 }));
+
+		await expect(runInsert({ useCopy: true })).rejects.toThrow('duplicate key');
+	});
+});
+
 describe('Test PostgresV2, select operation', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -1126,6 +1346,7 @@ describe('Test PostgresV2, select operation', () => {
 			runQueries,
 			items,
 			nodeOptions,
+			createMockDb([]),
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
@@ -1186,6 +1407,7 @@ describe('Test PostgresV2, select operation', () => {
 			runQueries,
 			items,
 			nodeOptions,
+			createMockDb([]),
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
@@ -1247,8 +1469,680 @@ describe('Test PostgresV2, select operation', () => {
 			runQueries,
 			items,
 			nodeOptions,
+			createMockDb([]),
 		);
 		await expect(promise).rejects.toThrow('Failed to parse value to number');
+	});
+});
+
+describe('Test PostgresV2, select operation with Start After', () => {
+	/**
+	 * `oneOrNone` returns what the node reads about the Start After column, or null for a missing column.
+	 * `one` tells if a row has empty text in the column.
+	 */
+	const createColumnInfoDb = (columnInfo: IDataObject | null = {}, hasEmptyText = false) => {
+		const oneOrNone = vi.fn().mockResolvedValue(
+			columnInfo && {
+				data_type: 'integer',
+				is_text: false,
+				not_null: true,
+				is_unique: true,
+				has_child_tables: false,
+				...columnInfo,
+			},
+		);
+		const one = vi.fn().mockResolvedValue({ has_empty_text: hasEmptyText });
+		return { db: { oneOrNone, one } as unknown as PgpDatabase, oneOrNone, one };
+	};
+
+	const selectParameters = (
+		startAfter: IDataObject,
+		parameters: IDataObject = {},
+	): IDataObject => ({
+		operation: 'select',
+		schema: { __rl: true, mode: 'list', value: 'public' },
+		table: { __rl: true, value: 'orders', mode: 'list', cachedResultName: 'orders' },
+		limit: 100,
+		startAfter: { values: startAfter },
+		options: {},
+		...parameters,
+	});
+
+	// Like n8n, throw when a parameter is missing and there is no fallback value.
+	const createStrictMockExecuteFunction = (nodeParameters: IDataObject) => {
+		const context = createMockExecuteFunction(nodeParameters);
+		const getNodeParameter = context.getNodeParameter.bind(context);
+		context.getNodeParameter = ((
+			name: string,
+			itemIndex: number,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
+		) => {
+			const value = getNodeParameter(name, itemIndex, fallbackValue, options);
+			if (value === undefined) throw new Error(`Could not get parameter "${name}"`);
+			return value;
+		}) as IExecuteFunctions['getNodeParameter'];
+		return context;
+	};
+
+	const runSelect = async (
+		nodeParameters: IDataObject,
+		db: PgpDatabase = createColumnInfoDb().db,
+		inputItems = items,
+	) =>
+		await select.execute.call(
+			createStrictMockExecuteFunction(nodeParameters),
+			runQueries,
+			inputItems,
+			nodeParameters.options as IDataObject,
+			db,
+		);
+
+	const expectQuery = (query: string, values: unknown[]) =>
+		expect(runQueries).toHaveBeenCalledWith([{ query, values }], {});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should give the first page sorted by the column when the value is empty', async () => {
+		const { db, oneOrNone } = createColumnInfoDb();
+
+		await runSelect(selectParameters({ column: 'id', value: '' }), db);
+
+		expectQuery('SELECT * FROM $1:name.$2:name ORDER BY $3:name ASC LIMIT $4', [
+			'public',
+			'orders',
+			'id',
+			100,
+		]);
+		expect(oneOrNone).toHaveBeenCalledTimes(1);
+		expect(oneOrNone).toHaveBeenCalledWith(expect.stringContaining('FROM pg_attribute a'), [
+			'public',
+			'orders',
+			'id',
+		]);
+	});
+
+	// A unit test cannot run the column query. Each of these conditions stops a column whose pages can skip or repeat rows.
+	it.each([
+		'n.nspname = $1 AND c.relname = $2 AND a.attname = $3',
+		'format_type(COALESCE(NULLIF(t.typbasetype, 0), a.atttypid), NULL) AS data_type',
+		'i.indrelid = c.oid',
+		'(i.indisprimary OR i.indisunique)',
+		'i.indkey[0] = a.attnum',
+		'i.indisvalid',
+		'i.indpred IS NULL',
+		"COALESCE((to_jsonb(i) ->> 'indnkeyatts')::int, i.indnatts) = 1",
+		"c.relkind <> 'p' AND EXISTS (SELECT 1 FROM pg_inherits WHERE inhparent = c.oid)",
+		"t.typcategory = 'S' AS is_text",
+		'a.attnotnull AS not_null',
+		'a.attnum > 0 AND NOT a.attisdropped',
+	])('should keep the condition %s in the column query', async (condition) => {
+		const { db, oneOrNone } = createColumnInfoDb();
+
+		await runSelect(selectParameters({ column: 'id', value: '5' }), db);
+
+		const query = String(oneOrNone.mock.calls[0][0]).replace(/\s+/g, ' ');
+		expect(query).toContain(condition);
+	});
+
+	it('should give the first page when the value is null', async () => {
+		await runSelect(selectParameters({ column: 'id', value: null }));
+
+		expectQuery('SELECT * FROM $1:name.$2:name ORDER BY $3:name ASC LIMIT $4', [
+			'public',
+			'orders',
+			'id',
+			100,
+		]);
+	});
+
+	it('should give the rows after the value and send the value as text', async () => {
+		await runSelect(selectParameters({ column: 'id', value: 5 }));
+
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6', [
+			'public',
+			'orders',
+			'id',
+			'5',
+			'id',
+			100,
+		]);
+	});
+
+	it('should use 0 as a value, not as the first page', async () => {
+		await runSelect(selectParameters({ column: 'id', value: 0 }));
+
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6', [
+			'public',
+			'orders',
+			'id',
+			'0',
+			'id',
+			100,
+		]);
+	});
+
+	it('should keep a text value that looks like a number as text', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'code', value: '10' },
+				{ table: { __rl: true, value: 'skus', mode: 'list' } },
+			),
+		);
+
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6', [
+			'public',
+			'skus',
+			'code',
+			'10',
+			'code',
+			100,
+		]);
+	});
+
+	it('should put brackets around the conditions in Select Rows', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'id', value: '12' },
+				{
+					where: {
+						values: [
+							{ column: 'status', condition: 'equal', value: 'new' },
+							{ column: 'customer', condition: 'equal', value: 'Acme Corp' },
+						],
+					},
+					combineConditions: 'OR',
+				},
+			),
+		);
+
+		expectQuery(
+			'SELECT * FROM $1:name.$2:name WHERE ($3:name = $4 OR $5:name = $6) AND $7:name > $8 ORDER BY $9:name ASC LIMIT $10',
+			['public', 'orders', 'status', 'new', 'customer', 'Acme Corp', 'id', '12', 'id', 100],
+		);
+	});
+
+	it('should keep the conditions in Select Rows as they are on the first page', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'id', value: '' },
+				{
+					where: {
+						values: [
+							{ column: 'status', condition: 'equal', value: 'new' },
+							{ column: 'customer', condition: 'equal', value: 'Acme Corp' },
+						],
+					},
+					combineConditions: 'OR',
+				},
+			),
+		);
+
+		expectQuery(
+			'SELECT * FROM $1:name.$2:name WHERE $3:name = $4 OR $5:name = $6 ORDER BY $7:name ASC LIMIT $8',
+			['public', 'orders', 'status', 'new', 'customer', 'Acme Corp', 'id', 100],
+		);
+	});
+
+	it('should give the rows before the value when the column is sorted DESC', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'id', value: '901' },
+				{ sort: { values: [{ column: 'id', direction: 'DESC' }] } },
+			),
+		);
+
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name < $4 ORDER BY $5:name DESC LIMIT $6', [
+			'public',
+			'orders',
+			'id',
+			'901',
+			'id',
+			100,
+		]);
+	});
+
+	it('should give the biggest values first on the first page when the column is sorted DESC', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'id', value: '' },
+				{ sort: { values: [{ column: 'id', direction: 'DESC' }] } },
+			),
+		);
+
+		expectQuery('SELECT * FROM $1:name.$2:name ORDER BY $3:name DESC LIMIT $4', [
+			'public',
+			'orders',
+			'id',
+			100,
+		]);
+	});
+
+	it('should keep the sort rules after the column', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'id', value: '5' },
+				{
+					sort: {
+						values: [
+							{ column: 'id', direction: 'ASC' },
+							{ column: 'customer', direction: 'DESC' },
+						],
+					},
+				},
+			),
+		);
+
+		expectQuery(
+			'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC, $6:name DESC LIMIT $7',
+			['public', 'orders', 'id', '5', 'id', 'customer', 100],
+		);
+	});
+
+	it('should throw when another sort rule comes before the column', async () => {
+		const { db, oneOrNone } = createColumnInfoDb();
+
+		await expect(
+			runSelect(
+				selectParameters(
+					{ column: 'id', value: '5' },
+					{
+						sort: {
+							values: [
+								{ column: 'customer', direction: 'ASC' },
+								{ column: 'id', direction: 'ASC' },
+							],
+						},
+					},
+				),
+				db,
+			),
+		).rejects.toThrow('Sort by "id" first');
+		expect(oneOrNone).not.toHaveBeenCalled();
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should tell how to fix the sort when the column is in Sort but not first', async () => {
+		await expect(
+			runSelect(
+				selectParameters(
+					{ column: 'id', value: '5' },
+					{
+						sort: {
+							values: [
+								{ column: 'customer', direction: 'ASC' },
+								{ column: 'id', direction: 'ASC' },
+							],
+						},
+					},
+				),
+			),
+		).rejects.toMatchObject({
+			description: expect.stringContaining('Move "id" to the top of Sort.'),
+		});
+	});
+
+	it('should tell how to fix the sort when the column is not in Sort', async () => {
+		await expect(
+			runSelect(
+				selectParameters(
+					{ column: 'id', value: '5' },
+					{ sort: { values: [{ column: 'customer', direction: 'ASC' }] } },
+				),
+			),
+		).rejects.toMatchObject({
+			description: expect.stringContaining('Add "id" as the first sort rule'),
+		});
+	});
+
+	it('should throw when the value is a number too big to be exact', async () => {
+		await expect(
+			runSelect(selectParameters({ column: 'id', value: 9007199254740992 })),
+		).rejects.toThrow('The Start After value is too big to be exact');
+	});
+
+	it('should accept a big number as text', async () => {
+		await runSelect(selectParameters({ column: 'id', value: '9007199254740993' }));
+
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6', [
+			'public',
+			'orders',
+			'id',
+			'9007199254740993',
+			'id',
+			100,
+		]);
+	});
+
+	it('should throw when Output Columns is one string that is not the column', async () => {
+		await expect(
+			runSelect(
+				selectParameters({ column: 'id', value: '5' }, { options: { outputColumns: 'tenant_id' } }),
+			),
+		).rejects.toThrow('Add "id" to Output Columns');
+	});
+
+	it('should throw when Output Columns leaves out the column', async () => {
+		await expect(
+			runSelect(
+				selectParameters(
+					{ column: 'id', value: '5' },
+					{ options: { outputColumns: ['customer'] } },
+				),
+			),
+		).rejects.toThrow('Add "id" to Output Columns');
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should accept Output Columns that include the column', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'id', value: '5' },
+				{ options: { outputColumns: ['id', 'customer'] } },
+			),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query:
+						'SELECT $3:name FROM $1:name.$2:name WHERE $4:name > $5 ORDER BY $6:name ASC LIMIT $7',
+					values: ['public', 'orders', ['id', 'customer'], 'id', '5', 'id', 100],
+				},
+			],
+			{ outputColumns: ['id', 'customer'] },
+		);
+	});
+
+	it.each([
+		[
+			'not unique',
+			'created_on',
+			{ data_type: 'date', is_unique: false },
+			'Column "created_on" has no unique index that Start After can use',
+		],
+		[
+			'nullable',
+			'email',
+			{ data_type: 'text', is_text: true, not_null: false },
+			'Column "email" can be null',
+		],
+		[
+			'a timestamp',
+			'happened_at',
+			{ data_type: 'timestamp without time zone' },
+			'Start After does not support the timestamp column "happened_at"',
+		],
+		[
+			'a timestamp with time zone',
+			'updated_at',
+			{ data_type: 'timestamp with time zone' },
+			'Start After does not support the timestamp column "updated_at"',
+		],
+		[
+			'of a type that n8n outputs as an object',
+			'raw',
+			{ data_type: 'bytea' },
+			'Start After does not support the column "raw" of type bytea',
+		],
+		[
+			'an array',
+			'tags',
+			{ data_type: 'text[]' },
+			'Start After does not support the column "tags" of type text[]',
+		],
+		[
+			'in a table that other tables inherit from',
+			'id',
+			{ has_child_tables: true },
+			'Start After does not support "public.orders" because other tables inherit from it',
+		],
+		['missing', 'nope', null, 'Cannot find column "nope" in "public.orders"'],
+	])('should throw when the column is %s', async (_, column, columnInfo, message) => {
+		const { db, one } = createColumnInfoDb(columnInfo);
+
+		await expect(runSelect(selectParameters({ column, value: '' }), db)).rejects.toThrow(message);
+		expect(one).not.toHaveBeenCalled();
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should throw when a row has empty text in the column', async () => {
+		const { db, one } = createColumnInfoDb({ data_type: 'character varying', is_text: true }, true);
+
+		await expect(
+			runSelect(selectParameters({ column: 'slug', value: '' }), db),
+		).rejects.toMatchObject({
+			message: 'Column "slug" has empty text in one row',
+			description: expect.stringContaining('the next page is the first page again'),
+		});
+		expect(one).toHaveBeenCalledWith(
+			"SELECT EXISTS (SELECT 1 FROM $1:name.$2:name WHERE $3:name = '' AND octet_length($3:name) = 0) AS has_empty_text",
+			['public', 'orders', 'slug'],
+		);
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should give the first page of a text column when no row has empty text', async () => {
+		const { db, one } = createColumnInfoDb({ data_type: 'text', is_text: true });
+
+		await runSelect(selectParameters({ column: 'slug', value: '' }), db);
+
+		expect(one).toHaveBeenCalledTimes(1);
+		expectQuery('SELECT * FROM $1:name.$2:name ORDER BY $3:name ASC LIMIT $4', [
+			'public',
+			'orders',
+			'slug',
+			100,
+		]);
+	});
+
+	it('should not look for empty text when the value is set', async () => {
+		const { db, one } = createColumnInfoDb({ data_type: 'text', is_text: true }, true);
+
+		await runSelect(selectParameters({ column: 'slug', value: 'about' }), db);
+
+		expect(one).not.toHaveBeenCalled();
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6', [
+			'public',
+			'orders',
+			'slug',
+			'about',
+			'slug',
+			100,
+		]);
+	});
+
+	it('should look for empty text only in the runs with an empty value', async () => {
+		const { db, oneOrNone, one } = createColumnInfoDb({ data_type: 'text', is_text: true });
+		const itemValues = ['about', '', 'blog'];
+		const context = createMockExecuteFunction(selectParameters({}));
+		const getNodeParameter = context.getNodeParameter.bind(context);
+		context.getNodeParameter = ((name: string, itemIndex: number, ...rest: unknown[]) => {
+			if (name === 'startAfter.values') return { column: 'slug', value: itemValues[itemIndex] };
+			return getNodeParameter(name, itemIndex, ...(rest as []));
+		}) as IExecuteFunctions['getNodeParameter'];
+
+		await select.execute.call(
+			context,
+			runQueries,
+			itemValues.map(() => ({ json: {} })),
+			{},
+			db,
+		);
+
+		expect(oneOrNone).toHaveBeenCalledTimes(2);
+		expect(one).toHaveBeenCalledTimes(1);
+	});
+
+	it('should not look for empty text in a column that is not text', async () => {
+		const { db, one } = createColumnInfoDb({ data_type: 'integer' }, true);
+
+		await runSelect(selectParameters({ column: 'id', value: '' }), db);
+
+		expect(one).not.toHaveBeenCalled();
+	});
+
+	// Without a unique index, the lookup reads the full table
+	it('should look for empty text only after the unique index check', async () => {
+		const { db, one } = createColumnInfoDb(
+			{ data_type: 'text', is_text: true, is_unique: false },
+			true,
+		);
+
+		await expect(runSelect(selectParameters({ column: 'slug', value: '' }), db)).rejects.toThrow(
+			'Column "slug" has no unique index that Start After can use',
+		);
+		expect(one).not.toHaveBeenCalled();
+	});
+
+	it('should name the problem in the error description', async () => {
+		const { db } = createColumnInfoDb({ data_type: 'date', is_unique: false });
+
+		await expect(
+			runSelect(selectParameters({ column: 'created_on', value: '' }), db),
+		).rejects.toMatchObject({
+			description: expect.stringContaining('unique index on this column alone'),
+		});
+	});
+
+	it('should not add a limit when Return All is on', async () => {
+		await runSelect(selectParameters({ column: 'id', value: '5' }, { returnAll: true }));
+
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC', [
+			'public',
+			'orders',
+			'id',
+			'5',
+			'id',
+		]);
+	});
+
+	it('should read the column once per run for each schema, table and column', async () => {
+		const { db, oneOrNone, one } = createColumnInfoDb({ data_type: 'text', is_text: true });
+		const itemColumns = [
+			['public', 'orders', 'id'],
+			['public', 'orders', 'id'],
+			['public', 'orders', 'order_number'],
+			['public', 'customers', 'id'],
+			['archive', 'orders', 'id'],
+		];
+		const context = createMockExecuteFunction(selectParameters({}));
+		const getNodeParameter = context.getNodeParameter.bind(context);
+		context.getNodeParameter = ((name: string, itemIndex: number, ...rest: unknown[]) => {
+			const [schema, table, column] = itemColumns[itemIndex];
+			if (name === 'schema') return schema;
+			if (name === 'table') return table;
+			if (name === 'startAfter.values') return { column, value: '' };
+			return getNodeParameter(name, itemIndex, ...(rest as []));
+		}) as IExecuteFunctions['getNodeParameter'];
+
+		await select.execute.call(
+			context,
+			runQueries,
+			itemColumns.map(() => ({ json: {} })),
+			{},
+			db,
+		);
+
+		const readColumns = [
+			['public', 'orders', 'id'],
+			['public', 'orders', 'order_number'],
+			['public', 'customers', 'id'],
+			['archive', 'orders', 'id'],
+		];
+		expect(oneOrNone.mock.calls.map(([, values]) => values)).toEqual(readColumns);
+		expect(one.mock.calls.map(([, values]) => values)).toEqual(readColumns);
+		expect(vi.mocked(runQueries).mock.calls[0][0]).toHaveLength(5);
+	});
+
+	it('should build the same SQL as before on an old node version without Start After', async () => {
+		await runSelect(selectParameters({}, { startAfter: {}, options: { nodeVersion: 2.6 } }));
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: 'SELECT * FROM $1:name.$2:name LIMIT $3', values: ['public', 'orders', 100] }],
+			{ nodeVersion: 2.6 },
+		);
+	});
+
+	it('should throw for a numeric column when large numbers come back as numbers', async () => {
+		const { db } = createColumnInfoDb({ data_type: 'numeric' });
+
+		await expect(
+			runSelect(
+				selectParameters(
+					{ column: 'amount', value: '' },
+					{ options: { largeNumbersOutput: 'numbers' } },
+				),
+				db,
+			),
+		).rejects.toThrow('Set Output Large-Format Numbers As to Text to page by "amount"');
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should page by a numeric column when large numbers come back as text', async () => {
+		const { db } = createColumnInfoDb({ data_type: 'numeric' });
+
+		await runSelect(
+			selectParameters(
+				{ column: 'amount', value: '0.12345678901234567' },
+				{ options: { largeNumbersOutput: 'text' } },
+			),
+			db,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6',
+					values: ['public', 'orders', 'amount', '0.12345678901234567', 'amount', 100],
+				},
+			],
+			{ largeNumbersOutput: 'text' },
+		);
+	});
+
+	it('should throw when Column is empty', async () => {
+		await expect(runSelect(selectParameters({ column: '', value: '5' }))).rejects.toThrow(
+			'Choose a column in Start After',
+		);
+	});
+
+	it('should throw when the value is an object', async () => {
+		await expect(runSelect(selectParameters({ column: 'id', value: { id: 5 } }))).rejects.toThrow(
+			'The Start After value must be text or a number',
+		);
+	});
+
+	it('should build the same SQL as before when the node has no Start After parameter', async () => {
+		const { db, oneOrNone } = createColumnInfoDb();
+		const { startAfter: _, ...parameters } = selectParameters({});
+
+		await runSelect({ ...parameters, limit: 5 }, db);
+
+		expectQuery('SELECT * FROM $1:name.$2:name LIMIT $3', ['public', 'orders', 5]);
+		expect(oneOrNone).not.toHaveBeenCalled();
+	});
+
+	it('should not read the column without Start After', async () => {
+		const { db, oneOrNone } = createColumnInfoDb();
+
+		await runSelect(
+			selectParameters(
+				{},
+				{ startAfter: {}, sort: { values: [{ column: 'id', direction: 'ASC' }] } },
+			),
+			db,
+		);
+
+		expectQuery('SELECT * FROM $1:name.$2:name ORDER BY $3:name ASC LIMIT $4', [
+			'public',
+			'orders',
+			'id',
+			100,
+		]);
+		expect(oneOrNone).not.toHaveBeenCalled();
 	});
 });
 

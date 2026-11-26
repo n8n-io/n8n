@@ -7,8 +7,8 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
-    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "build": "tsc -p tsconfig.build.json && node esbuild.config.mts",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && node esbuild.config.mts",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "oxlint --quiet",
@@ -23,11 +23,17 @@
   "files": [
     "dist/**/*"
   ],
+  "dependencies": {
+    "@n8n/code-task-contract": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "n8n-workflow": "workspace:*"
+  },
   "devDependencies": {
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "esbuild": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",

@@ -30,22 +30,27 @@ export const nonDelegatingPolicyActionSchema = policyActionSchema.exclude([
 	'delegate',
 ]) satisfies z.ZodType<NonDelegatingPolicyAction>;
 
-function rejectDuplicateRuleIds(rules: ReadonlyArray<{ id: string }>, ctx: z.RefinementCtx): void {
-	const seenIds = new Set<string>();
+/** A list refinement that reports each item whose `key` repeats an earlier item's. */
+export function rejectDuplicates<Key extends string>(key: Key, label: string) {
+	return (items: ReadonlyArray<Record<Key, string>>, ctx: z.RefinementCtx): void => {
+		const seen = new Set<string>();
 
-	for (const [index, rule] of rules.entries()) {
-		if (seenIds.has(rule.id)) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: `Duplicate rule id: ${rule.id}`,
-				path: [index, 'id'],
-			});
-			continue;
+		for (const [index, item] of items.entries()) {
+			if (seen.has(item[key])) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: `Duplicate ${label}: ${item[key]}`,
+					path: [index, key],
+				});
+				continue;
+			}
+
+			seen.add(item[key]);
 		}
-
-		seenIds.add(rule.id);
-	}
+	};
 }
+
+const rejectDuplicateRuleIds = rejectDuplicates('id', 'rule id');
 
 /**
  * One rule, an ordered rule list, and the project-scope list that also rejects `delegate`, for

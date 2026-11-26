@@ -1,4 +1,5 @@
-import type { IExecutionResponse } from '@n8n/db';
+import { toWorkflowSnapshot, type WorkflowRunDocument } from '@n8n/backend-services';
+import type { IExecutionBase, IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	ExecutionListItem,
@@ -15,12 +16,12 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import { UnexpectedError, UserError } from '@n8n/errors';
+import type { ExecutionLinks } from '@n8n/node-engine-compatibility';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
-import { resolveV2Statuses, toV1Mode, toV1Status } from './engine-v2-mapping';
+import { resolveV2Statuses, toModeFilter, toV1Mode, toV1Status } from './engine-v2-mapping';
 import type { ExecutionPosition } from './execution-cursor';
-import { toWorkflowSnapshot, type WorkflowRunDocument } from './execution-data/types';
 import type { ExecutionIdV2 } from './execution-id';
 
 /**
@@ -28,6 +29,9 @@ import type { ExecutionIdV2 } from './execution-id';
  * returned by the search.
  */
 export type V2Scope = 'all' | ReadonlyArray<Workflow['id']>;
+
+/** The ids of the workflows a caller may read, or a check of one workflow. */
+type WorkflowAccess = string[] | ((workflowId: string) => Promise<boolean>);
 
 /** The subset of a range query the data plane search actually understands. */
 export interface EngineV2SearchQuery {
@@ -156,7 +160,7 @@ export class EngineV2ExecutionReader {
 		return {
 			workflowIds: scope,
 			status,
-			hostMode: query.mode,
+			...toModeFilter(query.mode),
 			createdAfter: query.startedAfter ? new Date(query.startedAfter).toISOString() : undefined,
 			createdBefore: query.startedBefore ? new Date(query.startedBefore).toISOString() : undefined,
 		};
@@ -167,7 +171,8 @@ export class EngineV2ExecutionReader {
 			id: item.id,
 			workflowId: item.workflowId,
 			status: toV1Status(item.status),
-			mode: toV1Mode(item.hostMode),
+			mode: toV1Mode(item),
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve the v1 execution response format.
 			finished: item.status === 'completed',
 			createdAt: new Date(item.createdAt),
 			startedAt: new Date(item.createdAt),
@@ -190,20 +195,57 @@ export class EngineV2ExecutionReader {
 		return { id: snapshot.id, workflowId: snapshot.workflowId };
 	}
 
-	/** `undefined` for absent and for inaccessible alike, so neither reveals the other. */
+	/**
+	 * `undefined` for absent and for inaccessible alike, so neither reveals the
+	 * other.
+	 *
+	 * `access` is the `workflow:read` check: the ids of the workflows the caller
+	 * may read, or a check of the execution's one workflow. Pass the check when a
+	 * list of every shared workflow id costs more.
+	 *
+	 * The steps are the run data, so `includeData` decides both.
+	 */
 	async findOne(
 		executionId: ExecutionIdV2,
-		sharedWorkflowIds: string[],
-	): Promise<IExecutionResponse | undefined> {
+		access: WorkflowAccess,
+		options?: { includeData?: true },
+	): Promise<IExecutionResponse | undefined>;
+	async findOne(
+		executionId: ExecutionIdV2,
+		access: WorkflowAccess,
+		options: { includeData: false },
+	): Promise<IExecutionBase | undefined>;
+	async findOne(
+		executionId: ExecutionIdV2,
+		access: WorkflowAccess,
+		options?: { includeData?: boolean },
+	): Promise<IExecutionResponse | IExecutionBase | undefined>;
+	async findOne(
+		executionId: ExecutionIdV2,
+		access: WorkflowAccess,
+		{ includeData = true }: { includeData?: boolean } = {},
+	): Promise<IExecutionResponse | IExecutionBase | undefined> {
 		// TODO(CAT-4235): mirror this metadata on the control plane, so we can
 		// authorize before reading.
-		const snapshot = await this.dataPlane.getExecution(executionId, { includeSteps: true });
+		const snapshot = await this.dataPlane.getExecution(executionId, {
+			includeSteps: includeData,
+		});
 		if (!snapshot) return undefined;
 
-		// The `workflow:read` check.
-		if (!sharedWorkflowIds.includes(snapshot.workflowId)) return undefined;
+		const canRead = Array.isArray(access)
+			? access.includes(snapshot.workflowId)
+			: await access(snapshot.workflowId);
+		if (!canRead) return undefined;
 
-		return await this.fromSnapshot(snapshot);
+		if (includeData) {
+			return await this.fromSnapshot(snapshot);
+		}
+
+		// Checked in both modes, so a metadata read and a data read agree on
+		// whether the execution exists.
+		if (!asWorkflowSnapshot(snapshot.workflow)) return undefined;
+
+		return this.toExecutionBase(snapshot);
 	}
 
 	/**
@@ -222,8 +264,31 @@ export class EngineV2ExecutionReader {
 		return this.toExecutionResponse(
 			snapshot,
 			workflow,
-			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? [], workflow.pinData),
+			toV1RunExecutionData(
+				snapshot.graph,
+				snapshot.steps ?? [],
+				workflow.pinData,
+				toExecutionLinks(snapshot),
+			),
 		);
+	}
+
+	private toExecutionBase(snapshot: ExecutionSnapshot): IExecutionBase {
+		// No real run timing yet (CAT-4234), so both come from the row.
+		const startedAt = new Date(snapshot.createdAt);
+
+		return {
+			id: snapshot.id,
+			workflowId: snapshot.workflowId,
+			mode: toV1Mode(snapshot),
+			status: toV1Status(snapshot.status),
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve the v1 execution response format.
+			finished: snapshot.status === 'completed',
+			createdAt: startedAt,
+			startedAt,
+			stoppedAt: snapshot.finishedAt ? new Date(snapshot.finishedAt) : undefined,
+			storedAt: 'db',
+		};
 	}
 
 	private toExecutionResponse(
@@ -231,19 +296,8 @@ export class EngineV2ExecutionReader {
 		workflow: WorkflowRunDocument,
 		data: IRunExecutionData,
 	): IExecutionResponse {
-		// No real run timing yet (CAT-4234), so both come from the row.
-		const startedAt = new Date(snapshot.createdAt);
-
 		return {
-			id: snapshot.id,
-			workflowId: snapshot.workflowId,
-			mode: toV1Mode(snapshot.hostMode),
-			status: toV1Status(snapshot.status),
-			finished: snapshot.status === 'completed',
-			createdAt: startedAt,
-			startedAt,
-			stoppedAt: snapshot.finishedAt ? new Date(snapshot.finishedAt) : undefined,
-			storedAt: 'db',
+			...this.toExecutionBase(snapshot),
 			data,
 			// The same projection the v1 path reports, so the editor sees one shape.
 			// The cast: the declared type overstates what either path returns.
@@ -266,4 +320,19 @@ export function asWorkflowSnapshot(document: unknown): WorkflowRunDocument | und
 	if (!Array.isArray((document as { nodes?: unknown }).nodes)) return undefined;
 
 	return document as unknown as WorkflowRunDocument;
+}
+
+/** The links the editor offers, from what the snapshot reports. */
+function toExecutionLinks({
+	parent,
+	parentWorkflowId,
+	subExecutions = [],
+}: ExecutionSnapshot): ExecutionLinks {
+	return {
+		parent:
+			parent && parentWorkflowId
+				? { executionId: parent.executionId, workflowId: parentWorkflowId }
+				: undefined,
+		subExecutions,
+	};
 }

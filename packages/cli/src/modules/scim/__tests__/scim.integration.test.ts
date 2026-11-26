@@ -111,10 +111,6 @@ const turnOnSso = async (protocol: 'saml' | 'oidc') => {
 	await setCurrentAuthenticationMethod(protocol);
 };
 
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_SCIM;
-});
-
 beforeEach(async () => {
 	await testDb.truncate([
 		'ApiKey',
@@ -131,9 +127,6 @@ beforeEach(async () => {
 	await Container.get(ScimSettingsService).setDeprovisioningPolicy({
 		...DEFAULT_SCIM_DEPROVISIONING_POLICY,
 	});
-
-	// Every test except the opt-in ones runs with the opt-in on.
-	process.env.N8N_ENV_FEAT_SCIM = 'true';
 
 	// SCIM provisioning works only while SAML or OIDC single sign-on is on.
 	await turnOnSso('saml');
@@ -1173,72 +1166,6 @@ describe('SCIM /scim/v2/Schemas', () => {
 		expect(user.attributes.map((attribute: { name: string }) => attribute.name)).not.toContain(
 			'roles',
 		);
-	});
-});
-
-describe('SCIM opt-in', () => {
-	const restRoutes = [
-		['get', '/scim/config'],
-		['patch', '/scim/config'],
-		['put', '/scim/deprovisioning'],
-		['post', '/scim/token'],
-		['delete', '/scim/token'],
-		['get', '/scim/transfer-targets'],
-	] as const;
-
-	describe('while the opt-in is off', () => {
-		beforeEach(() => {
-			process.env.N8N_ENV_FEAT_SCIM = 'false';
-		});
-
-		it.each(scimRoutes)('%s /scim/v2%s returns 404 with a valid token', async (method, path) => {
-			expect((await scimRequest(method, path)).status).toBe(404);
-		});
-
-		it.each(scimRoutes)('%s /scim/v2%s returns 404 without a token', async (method, path) => {
-			expect((await scimRequest(method, path, { bearer: null })).status).toBe(404);
-		});
-
-		// The gate runs after the session and the scope checks.
-		it.each(restRoutes)('%s /rest%s returns 404 to an admin', async (method, path) => {
-			const response = await testServer
-				.authAgentFor(admin)
-				[method](path)
-				.send(method === 'patch' ? { enabled: true } : {});
-
-			expect(response.status).toBe(404);
-		});
-
-		it.each(restRoutes)('%s /rest%s returns 403 to a member', async (method, path) => {
-			const member = await createMember();
-			const response = await testServer
-				.authAgentFor(member)
-				[method](path)
-				.send(method === 'patch' ? { enabled: true } : {});
-
-			expect(response.status).toBe(403);
-		});
-
-		it.each(restRoutes)('%s /rest%s returns 401 without a session', async (method, path) => {
-			const response = await testServer.authlessAgent[method](path).send(
-				method === 'patch' ? { enabled: true } : {},
-			);
-
-			expect(response.status).toBe(401);
-		});
-
-		it('keeps the SCIM setting and the token', async () => {
-			await testServer.authAgentFor(admin).patch('/scim/config').send({ enabled: false });
-
-			expect(await Container.get(ScimSettingsService).isEnabled()).toBe(true);
-			expect(await scimTokenRepository().findInstanceToken({})).not.toBeNull();
-		});
-	});
-
-	it('answers while N8N_ENV_FEAT_SCIM is true', async () => {
-		await scimRequest('get', '/ServiceProviderConfig').expect(200);
-		await scimRequest('get', '/Users').expect(200);
-		await testServer.authAgentFor(admin).get('/scim/config').expect(200);
 	});
 });
 

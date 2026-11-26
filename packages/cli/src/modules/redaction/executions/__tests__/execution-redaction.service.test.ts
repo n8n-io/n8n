@@ -5,7 +5,7 @@ import type {
 	RedactableExecution,
 } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { WorkflowRepository, type User } from '@n8n/db';
 import type { INode, IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
 import { shouldRedactExecutionOutput } from 'n8n-workflow';
 import type { SecurityContext } from '@n8n/permissions';
@@ -16,6 +16,7 @@ import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { InstanceRedactionEnforcementService } from '../../instance-redaction-enforcement.service';
 import { ExecutionRedactionService } from '../execution-redaction.service';
 import { FullItemRedactionStrategy } from '../strategies/full-item-redaction.strategy';
 
@@ -26,6 +27,8 @@ describe('ExecutionRedactionService', () => {
 	const eventService = mock<EventService>();
 	const fullItemRedactionStrategy = mockInstance(FullItemRedactionStrategy);
 	const credentialsPermissionChecker = mockInstance(CredentialsPermissionChecker);
+	const workflowRepository = mockInstance(WorkflowRepository);
+	const instanceRedactionEnforcementService = mockInstance(InstanceRedactionEnforcementService);
 
 	let service: ExecutionRedactionService;
 
@@ -47,7 +50,11 @@ describe('ExecutionRedactionService', () => {
 			eventService,
 			fullItemRedactionStrategy,
 			credentialsPermissionChecker,
+			workflowRepository,
+			instanceRedactionEnforcementService,
 		);
+		instanceRedactionEnforcementService.get.mockResolvedValue('off');
+		workflowRepository.findSettings.mockResolvedValue(undefined);
 		// Default: user lacks execution:reveal scope
 		workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
 		fullItemRedactionStrategy.apply.mockResolvedValue(undefined);
@@ -775,6 +782,117 @@ describe('ExecutionRedactionService', () => {
 				mode: 'trigger',
 			});
 			await service.processExecution(execution, { user: mockUser });
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('oversized execution read without run data', () => {
+		const makeOversized = (
+			overrides: Parameters<typeof makeExecution>[0] = {},
+		): RedactableExecution => {
+			const execution = makeExecution({ withRuntimeData: false, mode: 'trigger', ...overrides });
+			execution.dataTooLargeToDisplay = true;
+			execution.customData = { chatInput: 'hello' };
+			return execution;
+		};
+
+		it('redacts when the instance floor enforces the execution mode', async () => {
+			instanceRedactionEnforcementService.get.mockResolvedValue('production');
+
+			await service.processExecution(makeOversized(), { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('redacts when the current workflow settings redact the execution mode', async () => {
+			workflowRepository.findSettings.mockResolvedValue({ redactionPolicy: 'all' });
+
+			await service.processExecution(makeOversized(), { user: mockUser });
+
+			expect(workflowRepository.findSettings).toHaveBeenCalledWith('workflow-123');
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('redacts when the stored workflow settings redact the execution mode', async () => {
+			await service.processExecution(makeOversized({ workflowSettingsPolicy: 'non-manual' }), {
+				user: mockUser,
+			});
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not redact when no setting redacts the execution mode', async () => {
+			instanceRedactionEnforcementService.get.mockResolvedValue('production');
+
+			await service.processExecution(makeOversized({ mode: 'manual' }), { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{ mode: 'trigger' as const, redacted: false },
+			{ mode: 'manual' as const, redacted: true },
+		])(
+			'keeps a legacy manual-only setting for a $mode execution (redacted: $redacted)',
+			async ({ mode, redacted }) => {
+				workflowRepository.findSettings.mockResolvedValue({ redactionPolicy: 'manual-only' });
+
+				await service.processExecution(makeOversized({ mode }), { user: mockUser });
+
+				expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(redacted ? 1 : 0);
+			},
+		);
+
+		it.each(['fs', 's3'])(
+			'redacts a %s-stored execution when no setting redacts it',
+			async (storedAt) => {
+				const execution = makeOversized({ mode: 'manual' });
+				execution.storedAt = storedAt;
+
+				await service.processExecution(execution, { user: mockUser });
+
+				expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it('does not redact a db-stored execution when no setting redacts it', async () => {
+			const execution = makeOversized({ mode: 'manual' });
+			execution.storedAt = 'db';
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('uses the runtime snapshot when it is present', async () => {
+			instanceRedactionEnforcementService.get.mockResolvedValue('all');
+			const execution = makeExecution({ policy: 'none', mode: 'trigger' });
+			execution.dataTooLargeToDisplay = true;
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(instanceRedactionEnforcementService.get).not.toHaveBeenCalled();
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('does not read the floor for an execution with its run data', async () => {
+			instanceRedactionEnforcementService.get.mockResolvedValue('all');
+
+			await service.processExecution(makeExecution({ withRuntimeData: false, mode: 'trigger' }), {
+				user: mockUser,
+			});
+
+			expect(instanceRedactionEnforcementService.get).not.toHaveBeenCalled();
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('does not read the floor or the workflow when redaction is not licensed', async () => {
+			licenseState.isDataRedactionLicensed.mockReturnValue(false);
+
+			await service.processExecution(makeOversized(), { user: mockUser });
+
+			expect(instanceRedactionEnforcementService.get).not.toHaveBeenCalled();
+			expect(workflowRepository.findSettings).not.toHaveBeenCalled();
 			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
 		});
 	});

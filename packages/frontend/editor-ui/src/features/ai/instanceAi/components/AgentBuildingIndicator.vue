@@ -6,6 +6,11 @@ import { ref } from 'vue';
 
 import { TIME } from '@/app/constants/durations';
 
+const { showLabel = true } = defineProps<{
+	/** Off shows only the wave, for a surface that must not show text. */
+	showLabel?: boolean;
+}>();
+
 const i18n = useI18n();
 
 const lobes = [
@@ -56,8 +61,9 @@ useIntervalFn(() => {
 </script>
 
 <template>
-	<div :class="$style.wave">
+	<div :class="[$style.wave, { [$style.bare]: !showLabel }]">
 		<div
+			v-if="showLabel"
 			:class="$style.buildingIndicator"
 			role="status"
 			aria-live="polite"
@@ -121,6 +127,11 @@ useIntervalFn(() => {
 	pointer-events: none;
 	@include motion.fade-in-up;
 	animation-fill-mode: backwards;
+}
+
+// The label sets the height of the wave. Without it, the wave keeps the same height.
+.bare {
+	height: var(--height--xl);
 }
 
 :global(.agent-building-indicator-leave-active) {

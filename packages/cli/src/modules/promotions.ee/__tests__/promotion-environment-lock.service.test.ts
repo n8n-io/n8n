@@ -1,5 +1,6 @@
 import { LockAcquisitionTimeoutError, LockNamespace, LockService } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import { LockedError, ServiceUnavailableError } from '@n8n/errors';
@@ -21,14 +22,13 @@ const holders: Holder[] = [];
 
 /** Resolves once the holder runs, and keeps the lock until `release` is called. */
 function holdLock(service: PromotionEnvironmentLockService, environmentId = ENVIRONMENT_ID) {
-	let release: () => void = () => {};
-	let acquired!: () => void;
-	const held = new Promise<void>((resolve) => (acquired = resolve));
+	const acquired = createDeferredPromise();
+	const release = createDeferredPromise();
 	const done = service.run(environmentId, async () => {
-		acquired();
-		await new Promise<void>((resolve) => (release = resolve));
+		acquired.resolve();
+		await release.promise;
 	});
-	const holder: Holder = { held, release: () => release(), done };
+	const holder: Holder = { held: acquired.promise, release: () => release.resolve(), done };
 	holders.push(holder);
 	return holder;
 }
@@ -38,7 +38,6 @@ describe('PromotionEnvironmentLockService', () => {
 
 	afterEach(async () => {
 		for (const holder of holders.splice(0)) {
-			await holder.held;
 			holder.release();
 			await holder.done;
 		}

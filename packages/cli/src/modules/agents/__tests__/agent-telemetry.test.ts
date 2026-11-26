@@ -28,7 +28,7 @@ describe('agent telemetry', () => {
 	it('derives safe configuration dimensions from an agent entity', () => {
 		const schema: AgentJsonConfig = {
 			name: 'Test Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
 			tools: [
@@ -67,12 +67,36 @@ describe('agent telemetry', () => {
 				),
 			),
 		).toEqual({
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			channels: ['linear', 'slack'],
 			tool_types: ['custom', 'mcp', 'provider', 'subagent', 'web_search', 'workflow'],
 			tool_count: 6,
 			num_skills: 1,
 			memory_type: 'n8n_observational_episodic',
+		});
+	});
+
+	it('reports node tools from a community package as community_node', () => {
+		const nodeTool = (nodeType: string) => ({
+			type: 'node' as const,
+			name: nodeType,
+			node: { nodeType, nodeTypeVersion: 1, nodeParameters: {} },
+		});
+		const config: AgentJsonConfig = {
+			name: 'Test Agent',
+			model: 'anthropic/claude-sonnet-5-5',
+			instructions: 'Be helpful',
+			tools: [
+				nodeTool('n8n-nodes-base.slack'),
+				nodeTool('@n8n/n8n-nodes-langchain.toolCalculator'),
+				nodeTool('n8n-nodes-example.exampleNode'),
+				nodeTool('@scope/n8n-nodes-example.scopedNode'),
+			],
+		};
+
+		expect(buildAgentConfigurationTelemetryFromConfig(config)).toMatchObject({
+			tool_types: ['community_node', 'node'],
+			tool_count: 4,
 		});
 	});
 
@@ -90,7 +114,7 @@ describe('agent telemetry', () => {
 	it('reports the ids of the attached skills on the capability profile', () => {
 		const config: AgentJsonConfig = {
 			name: 'Test Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			skills: [
 				{ type: 'skill', id: 'skill_b' },

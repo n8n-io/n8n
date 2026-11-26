@@ -36,8 +36,8 @@ export class ExecutionLedgerEntity extends BaseEntity {
 	@Column({ type: 'varchar', length: 36 })
 	entityId: string;
 
-	@Column({ type: 'varchar', length: 36 })
-	projectId: string;
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	projectId: string | null;
 
 	@Column({ type: 'varchar', length: 32 })
 	mode: string;

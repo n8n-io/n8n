@@ -12,7 +12,8 @@ Flag:
   read pattern that needs it;
 - a drop before expand-contract is complete;
 - two unrelated changes in one file;
-- an edit to an already-merged migration. Add a new one instead.
+- an edit to an already-merged migration. Add a new one instead. A guard or a
+  log line that does not change the result of `up()` is the exception.
 
 ## Is the shape right?
 

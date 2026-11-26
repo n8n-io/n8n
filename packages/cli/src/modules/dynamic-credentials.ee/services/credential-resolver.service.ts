@@ -250,6 +250,7 @@ export class DynamicCredentialResolverService {
 				}
 				// Deactivate the workflow so UI state reflects reality
 				await this.workflowRepository.update(workflowId, {
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 					active: false,
 					activeVersionId: null,
 				});

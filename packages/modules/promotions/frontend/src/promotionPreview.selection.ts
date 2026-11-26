@@ -35,6 +35,12 @@ export type InclusionReason =
 export type Inclusion = {
 	included: ReadonlySet<ResourceKey>;
 	reasons: ReadonlyMap<ResourceKey, InclusionReason>;
+	/**
+	 * The selected resources that need each resource, directly or through another dependency. A
+	 * resource that users selected themselves is listed too, and it stays locked while one of these
+	 * is selected.
+	 */
+	requiredBy: ReadonlyMap<ResourceKey, readonly ResourceKey[]>;
 };
 
 /**
@@ -159,7 +165,7 @@ export function resolveInclusion(
 	const included = new Set(
 		[...reasons].filter(([, reason]) => reason.kind !== 'calledOnly').map(([key]) => key),
 	);
-	return { included, reasons };
+	return { included, reasons, requiredBy: required };
 }
 
 /** Included resources that the operation changes. */
@@ -244,6 +250,10 @@ export function selectionCheck(
 			disabled: locked || (!canAdd && check === 'unchecked'),
 		};
 	}
+	// A selected resource that needs this one locks it, even when users selected it as well.
+	if (resource.selectable && inclusion.requiredBy.has(resource.key)) {
+		return { checked: true, indeterminate: false, disabled: true };
+	}
 	if (resource.selectable) {
 		const checked = selected.has(resource.key);
 		return {
@@ -271,6 +281,67 @@ export function toggleContainer(
 	const selected = new Set(state.selected);
 	if (available.every((key) => selected.has(key))) {
 		for (const key of keys) selected.delete(key);
+	} else {
+		for (const key of available) selected.add(key);
+	}
+	return { mode: 'custom', selected };
+}
+
+/** The members of a group that a header click can add or clear. A locked resource is left out. */
+function availableMembers(
+	graph: SelectionGraph,
+	inclusion: Inclusion,
+	members: readonly ResourceKey[],
+	disabled: DisabledKeys,
+): ResourceKey[] {
+	return members.filter(
+		(key) => canSelect(graph, key) && !disabled.has(key) && !inclusion.requiredBy.has(key),
+	);
+}
+
+export type GroupCheck = {
+	state: CheckState;
+	/** The resources of the group that the operation includes, out of `total`. */
+	included: number;
+	total: number;
+	/** False when users can neither add nor clear anything in the group. */
+	canToggle: boolean;
+};
+
+/**
+ * What the header of a group shows. `members` are the resources that the group counts. Users can
+ * toggle a group only when it holds a resource that they can select.
+ */
+export function groupCheck(
+	graph: SelectionGraph,
+	inclusion: Inclusion,
+	members: readonly ResourceKey[],
+	disabled: DisabledKeys = noKeys,
+): GroupCheck {
+	const included = members.filter((key) => inclusion.included.has(key)).length;
+	const state: CheckState =
+		included === 0 ? 'unchecked' : included === members.length ? 'checked' : 'indeterminate';
+	const canToggle = availableMembers(graph, inclusion, members, disabled).length > 0;
+	return { state, included, total: members.length, canToggle };
+}
+
+/**
+ * Selects every resource of the group that users can add, or clears the group when all of them
+ * are included. A resource that a selected resource needs is locked, so the header leaves it alone
+ * and it keeps its own selection.
+ */
+export function toggleGroup(
+	state: SelectionState,
+	graph: SelectionGraph,
+	inclusion: Inclusion,
+	members: readonly ResourceKey[],
+	disabled: DisabledKeys = noKeys,
+): SelectionState {
+	const available = availableMembers(graph, inclusion, members, disabled);
+	if (available.length === 0) return state;
+	const selected = new Set(state.selected);
+	if (available.every((key) => inclusion.included.has(key))) {
+		for (const key of available) selected.delete(key);
 	} else {
 		for (const key of available) selected.add(key);
 	}

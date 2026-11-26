@@ -32,6 +32,7 @@ const openReview = review();
 const listOf = (...data: WorkflowReviewRequestForWorkflow[]): WorkflowReviewRequestList => ({
 	count: data.length,
 	data,
+	reviewRequiredBy: null,
 });
 
 describe('reviewStatus.store', () => {
@@ -150,6 +151,16 @@ describe('reviewStatus.store', () => {
 		expect(store.latestReviewRequest('workflow-1')?.workflowVersionName).toBe('Release candidate');
 	});
 
+	it('stores the level that requires a review', async () => {
+		const store = useWorkflowReviewStatusStore();
+		expect(store.reviewRequiredBy('workflow-1')).toBeUndefined();
+		fetchMock.mockResolvedValue({ ...listOf(), reviewRequiredBy: 'project' });
+
+		await store.fetchStatus('workflow-1');
+
+		expect(store.reviewRequiredBy('workflow-1')).toBe('project');
+	});
+
 	it('stores null when the API returns no review', async () => {
 		const store = useWorkflowReviewStatusStore();
 		fetchMock.mockResolvedValue(listOf());
@@ -171,15 +182,16 @@ describe('reviewStatus.store', () => {
 		);
 		const firstFetch = store.fetchStatus('workflow-1');
 
-		fetchMock.mockResolvedValueOnce(listOf(openReview));
+		fetchMock.mockResolvedValueOnce({ ...listOf(openReview), reviewRequiredBy: 'project' });
 		await store.fetchStatus('workflow-1');
 		expect(store.hasOpenReview('workflow-1')).toBe(true);
 
 		// The stale first response resolves last and must be dropped.
-		resolveFirst(listOf());
+		resolveFirst({ ...listOf(), reviewRequiredBy: 'instance' });
 		await firstFetch;
 
 		expect(store.hasOpenReview('workflow-1')).toBe(true);
+		expect(store.reviewRequiredBy('workflow-1')).toBe('project');
 	});
 
 	it('discards an older successful response even when a newer request failed transiently', async () => {
@@ -230,7 +242,7 @@ describe('reviewStatus.store', () => {
 
 	it.each([404, 403])('clears the stored status on %i', async (httpStatusCode) => {
 		const store = useWorkflowReviewStatusStore();
-		fetchMock.mockResolvedValueOnce(listOf(openReview));
+		fetchMock.mockResolvedValueOnce({ ...listOf(openReview), reviewRequiredBy: 'project' });
 		await store.fetchStatus('workflow-1');
 		expect(store.hasOpenReview('workflow-1')).toBe(true);
 
@@ -239,17 +251,19 @@ describe('reviewStatus.store', () => {
 
 		expect(store.hasOpenReview('workflow-1')).toBe(false);
 		expect(store.latestReviewByWorkflowId).not.toHaveProperty('workflow-1');
+		expect(store.reviewRequiredBy('workflow-1')).toBeUndefined();
 	});
 
 	it('keeps the last known status on a transient error', async () => {
 		const store = useWorkflowReviewStatusStore();
-		fetchMock.mockResolvedValueOnce(listOf(openReview));
+		fetchMock.mockResolvedValueOnce({ ...listOf(openReview), reviewRequiredBy: 'project' });
 		await store.fetchStatus('workflow-1');
 
 		fetchMock.mockRejectedValueOnce(new Error('network down'));
 		await store.fetchStatus('workflow-1');
 
 		expect(store.hasOpenReview('workflow-1')).toBe(true);
+		expect(store.reviewRequiredBy('workflow-1')).toBe('project');
 	});
 
 	it('keys statuses per workflow', async () => {

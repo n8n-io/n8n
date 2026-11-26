@@ -19,9 +19,15 @@ import {
 	McpOAuth2CredentialTypeSchema,
 	agentSkillSchema,
 	agentTaskSchema,
+	projectSkillDetailsForModel,
+	projectSkillForModel,
 	sanitizeAgentJsonConfig,
+	skillReferenceReadError,
+	skillReferenceReadShape,
 	WEBHOOK_INTEGRATION_TYPE,
 	type AgentJsonConfig,
+	type AgentSkill,
+	type SkillReferenceRead,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { OperationContext, User } from '@n8n/db';
@@ -74,9 +80,9 @@ import {
 	CredentialsFinderService,
 	NodeTypesProxy,
 	ProjectScopeService,
+	TelemetryProxy,
 	UrlService,
 } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { McpAgentSlackSetup, SLACK_INTEGRATION_TYPE } from './agent-slack-setup';
@@ -111,6 +117,19 @@ const MCP_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 	dynamicSelectorFollowUp:
 		'Ask the user for the concrete value and write it into nodeParameters as a literal.',
 };
+
+/**
+ * The skills of an Agent as a model reads them: each file as a path and a size, with no
+ * content. One Agent can hold several skills of 2 MiB each, and a tool result has a limit.
+ */
+function skillsForModel(skills: Record<string, AgentSkill>) {
+	return Object.fromEntries(
+		Object.entries(skills).map(([id, skill]) => [
+			id,
+			projectSkillForModel(skill, { paths: [], maxBytes: 0 }).skill,
+		]),
+	);
+}
 
 function integrationsField(config: unknown): unknown {
 	return isRecord(config) ? config.integrations : undefined;
@@ -178,6 +197,14 @@ const getAgentInput = {
 		.describe(
 			'Read a published version snapshot instead of the draft, e.g. the activeVersionId. Snapshots are read-only, so the response has no configHash.',
 		),
+	skillId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Read bounded reference text from one attached skill of this Agent (or of the selected versionId) instead of returning the full Agent snapshot.',
+		),
+	...skillReferenceReadShape,
 } satisfies z.ZodRawShape;
 
 const publishAgentInput = {
@@ -253,6 +280,7 @@ const getAgentSessionInput = {
 } satisfies z.ZodRawShape;
 
 const searchAgentsInput = {
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	projectId: z.string().min(1).optional().describe('Restrict results to one project'),
 	query: z.string().optional().describe('Filter by Agent name'),
 	publishedOnly: z.boolean().optional().default(false),
@@ -286,6 +314,7 @@ const initialAgentConfigSchema = AgentJsonConfigBaseSchema.omit({
 });
 
 const createAgentInput = {
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	projectId: z.string().min(1),
 	name: z.string().trim().min(1).max(128),
 	config: initialAgentConfigSchema
@@ -293,6 +322,16 @@ const createAgentInput = {
 		.describe(
 			'Optional initial Agent config without name, skills, tasks, or custom tools. The top-level name is injected into the config.',
 		),
+} satisfies z.ZodRawShape;
+
+const moveAgentInput = {
+	...agentIdentityShape,
+	parentFolderId: z
+		.string()
+		.min(1)
+		.max(36)
+		.nullable()
+		.describe('Agent folder in the same project, or null for the project root'),
 } satisfies z.ZodRawShape;
 
 const jsonPatchValueSchema = z.union([
@@ -490,7 +529,7 @@ type MutationResource = {
 @Service()
 export class McpAgentToolsService {
 	constructor(
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentConfigService: AgentConfigService,
@@ -541,6 +580,7 @@ export class McpAgentToolsService {
 		registerIfAllowed(this.searchAgentsTool(user));
 		registerIfAllowed(this.getAgentTool(user));
 		registerIfAllowed(this.createAgentTool(user));
+		registerIfAllowed(this.moveAgentTool(user));
 		registerIfAllowed(this.mutateAgentTool(user));
 		registerIfAllowed(this.validateAgentTool(user, isCallAgentAvailable));
 		registerIfAllowed(this.callAgentTool(user));
@@ -602,6 +642,7 @@ export class McpAgentToolsService {
 					}
 					const agents = await this.agentsService.findSummariesInProjects(projectIds, {
 						query: input.query?.trim() || undefined,
+						parentFolderId: input.parentFolderId,
 						publishedOnly: input.publishedOnly,
 						excludeAgentId: input.excludeAgentId,
 						limit: input.limit,
@@ -610,6 +651,7 @@ export class McpAgentToolsService {
 						id: agent.id,
 						name: agent.name,
 						projectId: agent.projectId,
+						parentFolderId: agent.parentFolderId,
 						published: agent.activeVersionId !== null,
 						availableInMCP: agent.availableInMCP,
 						updatedAt: agent.updatedAt.toISOString(),
@@ -624,7 +666,7 @@ export class McpAgentToolsService {
 			name: 'get_agent',
 			config: {
 				description:
-					'Read an Agent draft, sidecar resources, runnable state, and configHash. Call before mutate_agent. Pass versionId to inspect a published version snapshot instead of the draft.',
+					'Read an Agent draft, sidecar resources, runnable state, and configHash. Call before mutate_agent. Pass versionId to inspect a published version snapshot instead of the draft. A skill lists its files by path and size, without content. Pass skillId (and optional referencePath, referenceOffset, and versionId) to read bounded reference text from an attached skill.',
 				inputSchema: getAgentInput,
 				annotations: {
 					title: 'Get Agent',
@@ -634,14 +676,34 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ agentId, versionId }) =>
+			handler: async ({ agentId, versionId, skillId, referencePath, referenceOffset }) =>
 				await this.run(
 					user,
 					'get_agent',
-					{ agentId, ...(versionId ? { versionId } : {}) },
+					{
+						agentId,
+						...(versionId ? { versionId } : {}),
+						...(skillId ? { skillId } : {}),
+					},
 					async () => {
+						if (!skillId && (referencePath !== undefined || referenceOffset !== undefined)) {
+							throw new UserError('Pass skillId with referencePath or referenceOffset.');
+						}
+						const readError = skillReferenceReadError({ referencePath, referenceOffset });
+						if (readError) throw new UserError(readError);
+
 						const agent = await this.resolveAgent(user, agentId);
 						await this.assertScope(user, agent.projectId, 'agent:read');
+						if (skillId) {
+							return {
+								ok: true,
+								...(await this.getAgentSkillDetails(agent, skillId, {
+									versionId,
+									referencePath,
+									referenceOffset,
+								})),
+							};
+						}
 						const snapshot = versionId
 							? await this.getAgentVersionSnapshot(agent.projectId, agentId, versionId)
 							: await this.getAgentSnapshot(user, agent);
@@ -666,7 +728,7 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ projectId, name, config }: CreateAgentInput) =>
+			handler: async ({ projectId, name, config, parentFolderId }: CreateAgentInput) =>
 				await this.run(user, 'create_agent', { projectId }, async () => {
 					await this.assertScope(user, projectId, 'agent:create');
 					const initialConfig = config ? { ...config, name } : undefined;
@@ -681,6 +743,7 @@ export class McpAgentToolsService {
 						createdBy: 'mcp',
 						config: initialConfig,
 						availableInMCP: true,
+						parentFolderId,
 					});
 
 					return {
@@ -696,6 +759,36 @@ export class McpAgentToolsService {
 						configHash,
 						url: this.getAgentUrl(projectId, agent.id),
 					};
+				}),
+		};
+	}
+
+	private moveAgentTool(user: User): ToolDefinition<typeof moveAgentInput> {
+		return {
+			name: 'move_agent',
+			config: {
+				description:
+					'Move an Agent to an Agent folder in its project, or to the project root. Keeps its saved versions and publication state.',
+				inputSchema: moveAgentInput,
+				annotations: {
+					title: 'Move Agent',
+					readOnlyHint: false,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ agentId, parentFolderId }) =>
+				await this.run(user, 'move_agent', { agentId, parentFolderId }, async () => {
+					const agent = await this.resolveAgent(user, agentId);
+					await this.assertScope(user, agent.projectId, 'agent:update');
+					const moved = await this.agentsService.move(agentId, agent.projectId, parentFolderId);
+
+					if (!moved) {
+						throw new UserError('Agent not found');
+					}
+
+					return { ok: true, agentId, parentFolderId };
 				}),
 		};
 	}
@@ -1310,7 +1403,7 @@ export class McpAgentToolsService {
 			configHash: getAgentConfigHash(config),
 			isRunnable: runnable.missing.length === 0,
 			missing: runnable.missing,
-			skills,
+			skills: skillsForModel(skills),
 			skillHashes: Object.fromEntries(
 				Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 			),
@@ -1357,7 +1450,7 @@ export class McpAgentToolsService {
 				isActive: version.versionId === agent.activeVersionId,
 			},
 			config: editableConfig,
-			skills: definition.skills,
+			skills: skillsForModel(definition.skills),
 			tasks: [...definition.tasks].map(([id, task]) => ({
 				id,
 				name: task.name,
@@ -1370,6 +1463,49 @@ export class McpAgentToolsService {
 				id,
 				descriptor: tool.descriptor,
 			})),
+		};
+	}
+
+	/**
+	 * Bounded read of one skill attached to the draft or to a published version snapshot.
+	 * Uses the Agent's own authorization so Agent-scoped MCP clients can read attached files,
+	 * and resolves pinned or published skill versions directly from the selected definition.
+	 */
+	private async getAgentSkillDetails(
+		agent: ProjectAgent,
+		skillId: string,
+		{ versionId, referencePath, referenceOffset }: { versionId?: string } & SkillReferenceRead,
+	) {
+		let skill: AgentSkill;
+		if (versionId) {
+			const { definition } = await this.agentPublishService.getVersion(
+				agent.id,
+				agent.projectId,
+				versionId,
+			);
+			const found = Object.hasOwn(definition.skills, skillId)
+				? definition.skills[skillId]
+				: undefined;
+			if (!found) {
+				throw new UserError(`Skill "${skillId}" is not attached to version "${versionId}".`);
+			}
+			skill = found;
+		} else {
+			skill = await this.agentSkillsService.getSkill(agent.id, agent.projectId, skillId);
+		}
+		const { missingReferencePaths, ...projection } = projectSkillDetailsForModel(skill, {
+			referencePath,
+			referenceOffset,
+		});
+		if (missingReferencePaths) {
+			throw new UserError(`Skill reference not found: ${missingReferencePaths.join(', ')}`);
+		}
+		return {
+			agentId: agent.id,
+			...(versionId ? { versionId } : {}),
+			skillId,
+			...(!versionId ? { skillHash: getAgentSkillHash(skill) } : {}),
+			...projection,
 		};
 	}
 

@@ -8,6 +8,7 @@ import { createBaseInlineConfig } from '@n8n/vitest-config/node';
 const ENGINE_TESTS = [
 	'test/expression.test.ts',
 	'test/expression-array-proxy-semantics.test.ts',
+	'test/expression-boxed-primitive-engine-parity.test.ts',
 	'test/expression-compatibility.test.ts',
 	'test/expression-engine-start-failure.test.ts',
 	'test/expression-error-item-engine-parity.test.ts',
@@ -16,6 +17,7 @@ const ENGINE_TESTS = [
 	'test/expression-nested-data.test.ts',
 	'test/expression-node-reference-engine-parity.test.ts',
 	'test/expression-shadow.test.ts',
+	'test/expression-unclonable-item-engine-parity.test.ts',
 	'test/expression-vm-errors.test.ts',
 	'test/expression-with-isolate.test.ts',
 	'test/ExpressionExtensions/*.test.ts',

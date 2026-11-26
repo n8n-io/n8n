@@ -11,9 +11,7 @@ import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
 import { restrictedNodeTypeMatch, type RestrictedNodeTypes } from './restricted-node-type-match';
-
-const runningVersionRows = (dependencyAlias: string, workflowAlias: string) =>
-	`((${workflowAlias}.activeVersionId IS NULL AND ${dependencyAlias}.publishedVersionId IS NULL) OR ${dependencyAlias}.publishedVersionId = ${workflowAlias}.activeVersionId)`;
+import { runningVersionRows } from './running-version-rows';
 
 class WorkflowDependencyTable extends BaseRepository<WorkflowDependency> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {

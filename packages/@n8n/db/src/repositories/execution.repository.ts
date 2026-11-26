@@ -1,5 +1,5 @@
 import { Logger, parseFlatted } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, type DatabaseConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -40,6 +40,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	CRASHABLE_EXECUTION_STATUSES,
+	UNFINISHED_EXECUTION_STATUSES,
 	migrateRunExecutionData,
 	WAIT_FOR_SUB_EXECUTION,
 } from 'n8n-workflow';
@@ -118,6 +119,11 @@ export type CrashedExecution = {
 	project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 };
 
+export type CanceledExecution = Pick<
+	CrashedExecution,
+	'id' | 'workflowId' | 'workflowName' | 'mode' | 'startedAt' | 'stoppedAt'
+>;
+
 export type ResumableExecutionStatus = 'waiting' | 'new';
 
 export type ResumeAttemptClaim =
@@ -126,6 +132,8 @@ export type ResumeAttemptClaim =
 	| { outcome: 'conflict' };
 
 export interface UpdateExecutionConditions {
+	/** Match the wait that the caller read before replacing its response. */
+	requireWaitTill?: Date;
 	requireStatus?: ExecutionStatus;
 	requireStatuses?: readonly ExecutionStatus[];
 	requireNotFinished?: boolean;
@@ -158,8 +166,15 @@ export type ExecutionDeletionCriteria = {
 	};
 };
 
+function toDateQueryParameter(date: Date, dbType: DatabaseConfig['type']) {
+	// SQLite compares stored UTC text. PostgreSQL needs the timezone that the
+	// driver includes for Date values, otherwise it applies the session timezone.
+	return dbType === 'sqlite' ? DateUtils.mixedDateToUtcDatetimeString(date) : date;
+}
+
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
+	dbType: DatabaseConfig['type'],
 	filters?: IGetExecutionsQueryFilter,
 ) {
 	if (filters?.status) {
@@ -180,7 +195,7 @@ function parseFiltersToQueryBuilder(
 			}
 		}
 	}
-	const startedAt = startedAtCondition(filters ?? {});
+	const startedAt = startedAtCondition(filters ?? {}, dbType);
 	if (startedAt) qb.andWhere({ startedAt });
 	if (filters?.workflowId) {
 		qb.andWhere({
@@ -189,25 +204,18 @@ function parseFiltersToQueryBuilder(
 	}
 }
 
-const startedAtCondition = ({
-	startedAfter,
-	startedBefore,
-}: {
-	startedAfter?: string;
-	startedBefore?: string;
-}) => {
+const startedAtCondition = (
+	{ startedAfter, startedBefore }: { startedAfter?: string; startedBefore?: string },
+	dbType: DatabaseConfig['type'],
+) => {
 	const conditions = [];
 
 	if (startedAfter) {
-		conditions.push(
-			MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter))),
-		);
+		conditions.push(MoreThanOrEqual(toDateQueryParameter(new Date(startedAfter), dbType)));
 	}
 
 	if (startedBefore) {
-		conditions.push(
-			LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore))),
-		);
+		conditions.push(LessThanOrEqual(toDateQueryParameter(new Date(startedBefore), dbType)));
 	}
 
 	if (conditions.length === 0) return undefined;
@@ -338,6 +346,19 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
+	async findWorkflowIdByExecutionId(executionId: string): Promise<string | null> {
+		// Execution IDs are PostgreSQL `SERIAL` values. Anything else becomes `NaN`
+		// or an out-of-range integer in the query.
+		if (!/^\d+$/.test(executionId) || BigInt(executionId) > 2_147_483_647n) return null;
+
+		const execution = await this.findOne({
+			select: { workflowId: true },
+			where: { id: executionId },
+			withDeleted: true,
+		});
+		return execution?.workflowId ?? null;
+	}
+
 	async findSingleExecution(
 		id: string,
 		options?: {
@@ -449,7 +470,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 		for (const batch of chunk(ids, MAX_UPDATE_BATCH_SIZE)) {
 			const transitioned = await this.withOwnerProjects(
-				await this.transitionToCrashed({ id: In(batch) }),
+				await this.transitionTo('crashed', { id: In(batch) }, CRASHABLE_EXECUTION_STATUSES),
 			);
 
 			crashed.push(...transitioned);
@@ -464,7 +485,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	/** Set the workflow's in-progress executions to `crashed`. */
 	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
 		const transitioned = await this.withOwnerProjects(
-			await this.transitionToCrashed({ workflowId }),
+			await this.transitionTo('crashed', { workflowId }, CRASHABLE_EXECUTION_STATUSES),
 		);
 
 		if (transitioned.length > 0) {
@@ -492,7 +513,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		if (expectedAttempts !== undefined) where.resumeAttempts = expectedAttempts;
 
 		const transitioned = await this.withOwnerProjects(
-			await this.transitionToCrashed(where, [status]),
+			await this.transitionTo('crashed', where, [status]),
 		);
 
 		if (transitioned.length === 0) return false;
@@ -503,12 +524,30 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * Set the rows matching `where` to `crashed`. The caller's predicate selects the
+	 * Set executions to `canceled` in batches. Only rows still in `fromStatuses` change,
+	 * so a run that has finished keeps its outcome. Returns the rows this call changed.
+	 */
+	async markAsCanceled(
+		executionIds: string[],
+		fromStatuses: readonly ExecutionStatus[] = UNFINISHED_EXECUTION_STATUSES,
+	): Promise<CanceledExecution[]> {
+		const canceled: CanceledExecution[] = [];
+
+		for (const batch of chunk([...new Set(executionIds)], MAX_UPDATE_BATCH_SIZE)) {
+			canceled.push(...(await this.transitionTo('canceled', { id: In(batch) }, fromStatuses)));
+		}
+
+		return canceled;
+	}
+
+	/**
+	 * Set the rows matching `where` to `status`. The caller's predicate selects the
 	 * candidates; the status guard and the identity of the written rows are added here.
 	 */
-	private async transitionToCrashed(
+	private async transitionTo(
+		status: 'crashed' | 'canceled',
 		where: FindOptionsWhere<ExecutionEntity>,
-		fromStatuses: readonly ExecutionStatus[] = CRASHABLE_EXECUTION_STATUSES,
+		fromStatuses: readonly ExecutionStatus[],
 	): Promise<CrashedExecution[]> {
 		// `stoppedAt` doubles as a claim token, so the read below can match the rows this
 		// UPDATE wrote without `SELECT ... FOR UPDATE`, which SQLite does not support. A
@@ -516,13 +555,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		const stoppedAt = new Date();
 
 		return await this.runInTransaction({}, async (tx) => {
-			// Guard against overwriting executions that have since moved to a `waiting` or
-			// terminal status: recovery can race a `running` -> `waiting` transition and flag a
-			// healthy execution as dangling, but only genuinely in-progress rows should be crashed
+			// The status guard keeps a run that moved on since the caller read it.
 			const updateResult = await tx.update(
 				ExecutionEntity,
 				{ ...where, status: In(fromStatuses) },
-				{ status: 'crashed', stoppedAt, waitTill: null },
+				{ status, stoppedAt, waitTill: null },
 			);
 
 			// An unreported `affected` is unknown rather than zero, so it falls through to the read.
@@ -542,8 +579,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 					workflow: { id: true, name: true, settings: { customTelemetryTags: true } },
 				},
 				relations: { workflow: true },
-				where: { ...where, status: 'crashed', stoppedAt },
-				// The UPDATE above also crashes soft-deleted rows, so keep them in the read.
+				where: { ...where, status, stoppedAt },
+				// The UPDATE above also changes soft-deleted rows, so keep them in the read.
 				withDeleted: true,
 			});
 
@@ -624,6 +661,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	 * @param executionId - The ID of the execution to update
 	 * @param execution - Partial execution data to update
 	 * @param conditions - Optional conditions that must be met for the update to proceed.
+	 *   `requireWaitTill`: only update if the wait timestamp matches.
 	 *   `requireStatus`: only update if execution has this exact status.
 	 *   `requireStatuses`: only update if execution has one of these statuses.
 	 *   `requireNotFinished`: only update if `finished = false`.
@@ -667,6 +705,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+				if (conditions?.requireWaitTill) whereCondition.waitTill = conditions.requireWaitTill;
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
 				if (conditions?.requireStatuses)
 					whereCondition.status = In([...conditions.requireStatuses]);
@@ -709,6 +748,20 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}));
 	}
 
+	/** Whether any of `executionIds`, deleted or not, belongs to `workflowId`. */
+	async hasWorkflowExecutionAmong(workflowId: string, executionIds: string[]): Promise<boolean> {
+		for (const ids of chunkIds(executionIds)) {
+			const match = await this.createQueryBuilder('execution')
+				.withDeleted()
+				.select('execution.id')
+				.where('execution.workflowId = :workflowId', { workflowId })
+				.andWhere('execution.id IN (:...ids)', { ids })
+				.getOne();
+			if (match) return true;
+		}
+		return false;
+	}
+
 	async findExecutionsToDelete({
 		filters,
 		accessibleWorkflowIds,
@@ -732,7 +785,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 				deleteBefore: deleteConditions.deleteBefore,
 			});
 			// Filters are only used when filtering by date
-			parseFiltersToQueryBuilder(query, filters);
+			parseFiltersToQueryBuilder(query, this.globalConfig.database.type, filters);
 		} else if (deleteConditions.ids) {
 			// delete executions by IDs, if user may access the underlying workflows
 			query.andWhere('execution.id IN (:...executionIds)', { executionIds: deleteConditions.ids });
@@ -760,12 +813,12 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.find({
 			select: ['id'],
 			where: {
-				startedAt: MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+				startedAt: MoreThanOrEqual(toDateQueryParameter(date, this.globalConfig.database.type)),
 			},
 		}).then((executions) => executions.map(({ id }) => id));
 	}
 
-	async softDeletePrunableExecutions() {
+	async softDeletePrunableExecutions(retainedExecutionIds: string[] = []) {
 		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
@@ -809,6 +862,16 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			})
 			// Only mark executions as deleted if they are not annotated
 			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
+			.andWhere(
+				isPostgres
+					? 'CAST(id AS TEXT) <> ALL(CAST(:retainedExecutionIds AS TEXT[]))'
+					: 'CAST(id AS TEXT) NOT IN (SELECT value FROM json_each(:retainedExecutionIds))',
+				{
+					retainedExecutionIds: isPostgres
+						? retainedExecutionIds
+						: JSON.stringify(retainedExecutionIds),
+				},
+			)
 			.andWhere(pruningCriteria)
 			.execute();
 	}
@@ -1145,7 +1208,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			workflowId: In(workflowIds),
 		};
 
-		const startedAt = startedAtCondition(options);
+		const startedAt = startedAtCondition(options, this.globalConfig.database.type);
 		if (startedAt) where.startedAt = startedAt;
 
 		return where;
@@ -1166,35 +1229,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.findSingleExecution(executionId, {
 			where: { workflowId: In(accessibleWorkflowIds) },
 		});
-	}
-
-	async stopBeforeRun(execution: IExecutionResponse) {
-		execution.status = 'canceled';
-		execution.stoppedAt = new Date();
-		execution.waitTill = null;
-
-		await this.update(
-			{ id: execution.id },
-			{ status: execution.status, stoppedAt: execution.stoppedAt, waitTill: execution.waitTill },
-		);
-
-		return execution;
-	}
-
-	async cancelMany(executionIds: string[]) {
-		await this.update(
-			{ id: In(executionIds) },
-			{ status: 'canceled', stoppedAt: new Date(), waitTill: null },
-		);
-	}
-
-	async cancelManyRunning(executionIds: string[]) {
-		await this.update(
-			// The caller's ID list is a snapshot. The status match stops an execution that
-			// reached a terminal status in the meantime from being recorded as cancelled.
-			{ id: In(executionIds), status: 'running' },
-			{ status: 'canceled', stoppedAt: new Date(), waitTill: null },
-		);
 	}
 
 	// ----------------------------------
@@ -1440,7 +1474,10 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
 		if (query.mode) qb.andWhere('execution.mode = :filterMode', { filterMode: query.mode });
 		if (workflowId) qb.andWhere({ workflowId });
-		const startedAt = startedAtCondition({ startedAfter, startedBefore });
+		const startedAt = startedAtCondition(
+			{ startedAfter, startedBefore },
+			this.globalConfig.database.type,
+		);
 		if (startedAt) qb.andWhere({ startedAt });
 
 		if (metadata?.length === 1) {
@@ -1567,7 +1604,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		const result = await this.createQueryBuilder('execution')
 			.select('DISTINCT execution.workflowId', 'workflowId')
 			.where('execution.startedAt >= :date', {
-				date: DateUtils.mixedDateToUtcDatetimeString(date),
+				date: toDateQueryParameter(date, this.globalConfig.database.type),
 			})
 			.getRawMany<{ workflowId: string }>();
 
@@ -1592,6 +1629,20 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			where: { status: In(['running', 'unknown']) },
 		});
 		return rows.map(({ id }) => id);
+	}
+
+	/** IDs among `ids` of executions with `running` status. */
+	async findRunningIds(ids: string[]): Promise<string[]> {
+		const running: string[] = [];
+		for (const chunk of chunkIds(ids)) {
+			const rows = await this.find({
+				select: ['id'],
+				where: { id: In(chunk), status: 'running' },
+			});
+			running.push(...rows.map(({ id }) => id));
+		}
+
+		return running;
 	}
 
 	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {
@@ -1665,7 +1716,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			where.workflowId = query.workflowId;
 		}
 
-		const startedAt = startedAtCondition(query);
+		const startedAt = startedAtCondition(query, this.globalConfig.database.type);
 		if (startedAt) where.startedAt = startedAt;
 
 		return await this.find({ select: ['id'], where });

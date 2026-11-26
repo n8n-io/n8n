@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import type { PortWithOptionalBinding, StartedNetwork, StartedTestContainer } from 'testcontainers';
-import { GenericContainer } from 'testcontainers';
+import { GenericContainer, getContainerRuntimeClient } from 'testcontainers';
 
 import { DockerImageNotFoundError } from '../docker-image-not-found-error';
 import {
@@ -14,13 +14,14 @@ import type { StartupDeadline } from '../startup-deadline';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import {
 	applyEngineEnv,
+	applySharedStorageEnv,
 	ENGINE_PORT,
 	ENGINE_SHARED_STORAGE_PATH,
 	engineContainerEnv,
 	engineHostname,
 	type EngineMode,
 } from './engine';
-import type { FileToMount } from './types';
+import type { FileToMount, StackConfig } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
 
@@ -82,6 +83,7 @@ export interface N8NInstancesOptions {
 	network: StartedNetwork;
 	serviceEnvironment: Record<string, string>;
 	userEnvironment?: Record<string, string>;
+	unsetEnv?: string[];
 	usePostgres: boolean;
 	engine?: EngineMode;
 	engineAuthSecret?: string;
@@ -99,6 +101,7 @@ export interface N8NInstancesOptions {
 	/** Resource quota for webhook procs. Falls back to `resourceQuota` if omitted. */
 	webhookResourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
+	stackFiles?: FileToMount[];
 	coverageHostDir?: string;
 	registerContainer?: (container: StartedTestContainer) => void;
 	startupDeadline: StartupDeadline;
@@ -116,13 +119,13 @@ export interface N8NInstancesOptions {
 	 */
 	userHomeHostDir?: string;
 	/**
-	 * Host dir bind-mounted as the storage path of the main and the engine
-	 * container, so a binary file one plane stores is read by the other.
-	 * `container` engine mode only. Disables container reuse.
+	 * Host directory to bind-mount at the same storage path in every container.
+	 * Disables container reuse.
 	 */
 	binaryDataHostDir?: string;
 	/** Run the container as this uid:gid (e.g. the host user for bind mounts). */
 	user?: string;
+	n8nContainer?: StackConfig['n8nContainer'];
 	/** Readiness timeout override; an old release migrating a fresh DB can exceed the default. */
 	startupTimeoutMs?: number;
 }
@@ -152,6 +155,8 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 		projectName,
 		serviceEnvironment,
 		userEnvironment = {},
+		binaryDataHostDir,
+		unsetEnv = [],
 	} = options;
 
 	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
@@ -168,10 +173,21 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 	// Before `applyEngineEnv`: it removes the dedicated engine URL from the main.
 	const engineEnvironment =
 		engine === 'container'
-			? engineContainerEnv(env, { projectName, authSecret: engineAuthSecret ?? '' })
+			? engineContainerEnv(env, { projectName, mains, authSecret: engineAuthSecret ?? '' })
 			: undefined;
 
-	applyEngineEnv(env, { engine, authSecret: engineAuthSecret, mains, isQueueMode, projectName });
+	applyEngineEnv(env, {
+		engine,
+		authSecret: engineAuthSecret,
+		mains,
+		workers,
+		webhooks,
+		projectName,
+	});
+
+	if (binaryDataHostDir && engine !== 'container') {
+		applySharedStorageEnv(env, env.N8N_DEFAULT_BINARY_DATA_MODE);
+	}
 
 	if (isQueueMode) {
 		env.EXECUTIONS_MODE = 'queue';
@@ -197,6 +213,11 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 		engineEnvironment.WEBHOOK_URL = env.WEBHOOK_URL;
 	}
 
+	for (const key of unsetEnv) {
+		delete env[key];
+		if (engineEnvironment) delete engineEnvironment[key];
+	}
+
 	return { environment: env, engineEnvironment };
 }
 
@@ -216,6 +237,7 @@ interface SharedConfig {
 	network: StartedNetwork;
 	resourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
+	stackFiles?: FileToMount[];
 	coverageHostDir?: string;
 	registerContainer?: (container: StartedTestContainer) => void;
 	startupDeadline: StartupDeadline;
@@ -223,6 +245,7 @@ interface SharedConfig {
 	userHomeHostDir?: string;
 	binaryDataHostDir?: string;
 	user?: string;
+	n8nContainer?: StackConfig['n8nContainer'];
 	startupTimeoutMs?: number;
 }
 
@@ -239,6 +262,38 @@ const SERVICE_LABEL: Record<InstanceRole, string> = {
 	engine: 'n8n-engine',
 };
 
+class N8NContainer extends GenericContainer {
+	withReadOnlyRootfs(readOnly: boolean): this {
+		this.hostConfig.ReadonlyRootfs = readOnly;
+		return this;
+	}
+
+	override async start(): Promise<StartedTestContainer> {
+		const { platform } = this.createOpts;
+		if (platform) {
+			// Testcontainers pulls missing images. A platform-specific pull can change a shared tag.
+			const { image } = await getContainerRuntimeClient();
+			if (!(await image.exists(this.imageName))) {
+				throw new Error(
+					`Docker image '${this.imageName.string}' must be present locally for n8nContainer.platform '${platform}'. ` +
+						'Build or pull a platform-specific image and set the stack image to that reference.',
+				);
+			}
+		}
+		return await super.start();
+	}
+}
+
+function isAtOrBelow(path: string, directory: string): boolean {
+	const relative = posix.relative(directory, path);
+	return relative !== '..' && !relative.startsWith('../');
+}
+
+function resolveRunAlias(path: string): string {
+	// n8n images link /var/run to /run.
+	return path.replace(/^\/var\/run(?=\/|$)/, '/run');
+}
+
 async function createContainer(
 	instance: InstanceConfig,
 	shared: SharedConfig,
@@ -250,7 +305,8 @@ async function createContainer(
 		environment,
 		network,
 		resourceQuota,
-		filesToMount,
+		filesToMount = [],
+		stackFiles = [],
 		coverageHostDir,
 		registerContainer,
 		startupDeadline,
@@ -258,8 +314,30 @@ async function createContainer(
 		userHomeHostDir,
 		binaryDataHostDir,
 		user,
+		n8nContainer: { readOnlyRootfs, tmpfs, platform } = {},
 		startupTimeoutMs,
 	} = shared;
+	const filesToCopy = [...stackFiles, ...filesToMount];
+	if (filesToCopy.length > 0) {
+		if (readOnlyRootfs) {
+			throw new Error(
+				`Container "${name}" cannot copy "${filesToCopy[0].target}" with n8nContainer.readOnlyRootfs enabled. Use a writable root filesystem to copy files.`,
+			);
+		}
+		for (const mountPath of Object.keys(tmpfs ?? {})) {
+			const mount = posix.resolve('/', mountPath);
+			const resolvedMount = resolveRunAlias(mount);
+			const hidden = filesToCopy.find(({ target }) => {
+				const file = posix.resolve('/', target);
+				return isAtOrBelow(file, mount) || isAtOrBelow(resolveRunAlias(file), resolvedMount);
+			});
+			if (hidden) {
+				throw new Error(
+					`Container "${name}" cannot copy "${hidden.target}": the tmpfs mount at "${mountPath}" hides this path.`,
+				);
+			}
+		}
+	}
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
 	// The engine serves no REST API; its health route lives on the engine port,
 	// over TLS in `container` mode.
@@ -280,13 +358,9 @@ async function createContainer(
 		},
 	);
 
-	const containerEnvironment = coverageHostDir
-		? { ...environment, NODE_V8_COVERAGE: CONTAINER_COVERAGE_DIR }
-		: environment;
-
 	const containerImage = image ?? N8N_IMAGE;
-	let container = new GenericContainer(containerImage)
-		.withEnvironment(containerEnvironment)
+	let container = new N8NContainer(containerImage)
+		.withEnvironment(environment)
 		.withLabels({
 			'com.docker.compose.project': projectName,
 			'com.docker.compose.service': SERVICE_LABEL[role],
@@ -299,6 +373,15 @@ async function createContainer(
 
 	if (user) {
 		container = container.withUser(user);
+	}
+	if (readOnlyRootfs !== undefined) {
+		container = container.withReadOnlyRootfs(readOnlyRootfs);
+	}
+	if (tmpfs) {
+		container = container.withTmpFs(tmpfs);
+	}
+	if (platform) {
+		container = container.withPlatform(platform);
 	}
 
 	// withBindMounts REPLACES the mount list, so all mounts go in one call.
@@ -325,8 +408,7 @@ async function createContainer(
 	}
 
 	if (binaryDataHostDir) {
-		// One host dir in both planes, at the path their env names. Writable by
-		// the container's `node` user for the same reason as the coverage dir.
+		// Make the directory writable by the container's `node` user.
 		mkdirSync(binaryDataHostDir, { recursive: true });
 		chmodSync(binaryDataHostDir, 0o777);
 		bindMounts.push({
@@ -343,12 +425,20 @@ async function createContainer(
 	// Reuse stays off for a container with a host dir mounted: the process must
 	// exit to flush coverage, cycle data belongs to the cycle, and a reused
 	// container would keep the binary data dir of an earlier stack.
-	if (!coverageHostDir && !userHomeHostDir && !binaryDataHostDir) {
+	// Testcontainers does not hash stack file contents or filesystem settings in HostConfig.
+	if (
+		!coverageHostDir &&
+		!userHomeHostDir &&
+		!binaryDataHostDir &&
+		stackFiles.length === 0 &&
+		!readOnlyRootfs &&
+		!tmpfs
+	) {
 		container = container.withReuse();
 	}
 
-	if (filesToMount?.length) {
-		container = container.withCopyContentToContainer(filesToMount);
+	if (filesToCopy.length > 0) {
+		container = container.withCopyContentToContainer(filesToCopy);
 	}
 
 	if (resourceQuota) {
@@ -385,11 +475,8 @@ async function createContainer(
 		diagnostics.logs[name] = getLogs();
 		diagnostics.readinessPayloads[name] = getLastReadinessBody();
 
-		if (error instanceof Error && 'statusCode' in error) {
-			const statusCode = (error as Error & { statusCode: number }).statusCode;
-			if (statusCode === 404) {
-				throw new DockerImageNotFoundError(name, error);
-			}
+		if (!platform && error instanceof Error && 'statusCode' in error && error.statusCode === 404) {
+			throw new DockerImageNotFoundError(name, error);
 		}
 		console.error(`Container "${name}" failed to start:`, error);
 		return throwWithLogs(error);
@@ -404,6 +491,7 @@ export async function createN8NInstances(
 		mains,
 		workers,
 		webhooks = 0,
+		unsetEnv,
 		projectName,
 		network,
 		allocatedPort,
@@ -411,6 +499,7 @@ export async function createN8NInstances(
 		workerResourceQuota,
 		webhookResourceQuota,
 		filesToMount,
+		stackFiles,
 		coverageHostDir,
 		registerContainer,
 		startupDeadline,
@@ -418,6 +507,7 @@ export async function createN8NInstances(
 		userHomeHostDir,
 		binaryDataHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 		engine,
 		engineTlsFiles,
@@ -428,13 +518,19 @@ export async function createN8NInstances(
 	const { environment, engineEnvironment } = computeEnvironment(options);
 	const containers: StartedTestContainer[] = [];
 	const diagnostics: N8NStartupDiagnostics = { attemptId, logs: {}, readinessPayloads: {} };
+	const withCoverageEnv = (env: Record<string, string>) =>
+		coverageHostDir && !unsetEnv?.includes('NODE_V8_COVERAGE')
+			? { ...env, NODE_V8_COVERAGE: CONTAINER_COVERAGE_DIR }
+			: env;
+	const environmentWithCoverage = withCoverageEnv(environment);
 
 	const mainShared: SharedConfig = {
 		projectName,
-		environment,
+		environment: environmentWithCoverage,
 		network,
 		resourceQuota,
 		filesToMount: [...(filesToMount ?? []), ...(engineTlsFiles?.main ?? [])],
+		stackFiles,
 		coverageHostDir,
 		registerContainer,
 		startupDeadline,
@@ -442,20 +538,24 @@ export async function createN8NInstances(
 		userHomeHostDir,
 		binaryDataHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 	};
 
 	const workerShared: SharedConfig = {
 		projectName,
-		environment,
+		environment: environmentWithCoverage,
 		network,
 		resourceQuota: workerResourceQuota ?? resourceQuota,
 		filesToMount,
+		stackFiles,
 		coverageHostDir,
 		registerContainer,
 		startupDeadline,
 		image,
+		binaryDataHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 	};
 
@@ -465,16 +565,19 @@ export async function createN8NInstances(
 		network,
 		resourceQuota: webhookResourceQuota ?? resourceQuota,
 		filesToMount,
+		stackFiles,
 		registerContainer,
 		startupDeadline,
 		image,
+		binaryDataHostDir,
 		user,
+		n8nContainer,
 		startupTimeoutMs,
 	};
 
 	const engineShared: SharedConfig = {
 		projectName,
-		environment: engineEnvironment ?? {},
+		environment: withCoverageEnv(engineEnvironment ?? {}),
 		network,
 		resourceQuota,
 		filesToMount: [...(filesToMount ?? []), ...(engineTlsFiles?.engine ?? [])],

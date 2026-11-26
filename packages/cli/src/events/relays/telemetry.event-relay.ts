@@ -1,6 +1,6 @@
 import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { EventService, PostHogClient } from '@n8n/backend-services';
+import { EventService, PostHogClient, EventRelay } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
@@ -66,7 +66,6 @@ import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
 import { detectDbVendor, detectRedisVendor } from '@/utils/detect-managed-services';
 import { detectKubernetesProvider, detectRuntime } from '@/utils/detect-runtime';
 
-import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
 import { toTrustedSourceTelemetryFacets } from '@n8n/inbound-auth';
 
@@ -330,6 +329,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'login-failed-due-to-ldap-disabled': (event) => this.loginFailedDueToLdapDisabled(event),
 			'sso-user-project-access-updated': (event) => this.ssoUserProjectAccessUpdated(event),
 			'sso-user-instance-role-updated': (event) => this.ssoUserInstanceRoleUpdated(event),
+			'sso-settings-updated': (event) => this.ssoSettingsUpdated(event),
+			'provisioning-settings-updated': (event) => this.provisioningSettingsUpdated(event),
 			'scim-settings-updated': (event) => this.scimSettingsUpdated(event),
 			'scim-request-rejected': (event) => this.scimRequestRejected(event),
 			'workflow-created': (event) => this.workflowCreated(event),
@@ -386,6 +387,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-review-version-updated': (event) => this.workflowReviewVersionUpdated(event),
 			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
 			'workflow-review-closed': (event) => this.workflowReviewClosed(event),
+			'workflow-review-closed-by-user': (event) => this.workflowReviewClosedByUser(event),
 			'workflow-review-comment-created': (event) => this.workflowReviewCommentCreated(event),
 			'promotion-provider-created': (event) => this.promotionProviderCreated(event),
 			'promotion-environment-created': (event) => this.promotionEnvironmentCreated(event),
@@ -719,6 +721,8 @@ export class TelemetryEventRelay extends EventRelay {
 		projectId,
 		versionId,
 		userId,
+		threadId,
+		source,
 		workflowCount,
 		dataTableCount,
 		agentCount,
@@ -730,6 +734,8 @@ export class TelemetryEventRelay extends EventRelay {
 			project_id: projectId,
 			version_id: versionId,
 			user_id: userId,
+			thread_id: threadId,
+			source,
 			workflow_count: workflowCount,
 			data_table_count: dataTableCount,
 			agent_count: agentCount,
@@ -1167,6 +1173,7 @@ export class TelemetryEventRelay extends EventRelay {
 		packageAuthor,
 		packageAuthorEmail,
 		failureReason,
+		source,
 	}: RelayEventMap['community-package-installed']) {
 		this.telemetry.track('cnr package install finished', {
 			user_id: user.id,
@@ -1178,6 +1185,7 @@ export class TelemetryEventRelay extends EventRelay {
 			package_author: packageAuthor,
 			package_author_email: packageAuthorEmail,
 			failure_reason: failureReason,
+			source,
 		});
 	}
 
@@ -1533,6 +1541,40 @@ export class TelemetryEventRelay extends EventRelay {
 		role,
 	}: RelayEventMap['sso-user-instance-role-updated']) {
 		this.telemetry.track('Sso user instance role update', { user_id: userId, role });
+	}
+
+	private ssoSettingsUpdated({
+		user,
+		protocol,
+		loginEnabled,
+		fieldsChanged,
+		publicApi,
+	}: RelayEventMap['sso-settings-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS, {
+			user_id: user.id,
+			authentication_method: protocol,
+			is_active: loginEnabled,
+			fields_changed: fieldsChanged,
+			public_api: publicApi,
+		});
+	}
+
+	private provisioningSettingsUpdated({
+		user,
+		authenticationMethod,
+		assignmentMethod,
+		roleMappingMethod,
+		instanceRuleCount,
+		projectRuleCount,
+	}: RelayEventMap['provisioning-settings-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROVISIONING.USER_UPDATED_PROVISIONING_SETTINGS, {
+			user_id: user.id,
+			authentication_method: authenticationMethod,
+			assignment_method: assignmentMethod,
+			role_mapping_method: roleMappingMethod,
+			instance_rule_count: instanceRuleCount,
+			project_rule_count: projectRuleCount,
+		});
 	}
 
 	private scimSettingsUpdated({ user, isActive, change }: RelayEventMap['scim-settings-updated']) {
@@ -2256,6 +2298,8 @@ export class TelemetryEventRelay extends EventRelay {
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
 			saml_enabled: authenticationMethod === 'saml',
+			public_api_disabled: this.globalConfig.publicApi.disabled,
+			public_api_swagger_ui_disabled: this.globalConfig.publicApi.swaggerUiDisabled,
 			license_plan_name: this.license.getPlanName(),
 			license_tenant_id: this.globalConfig.license.tenantId,
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
@@ -2307,9 +2351,21 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED, {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
+			license_consumer_id: this.getLicenseConsumerId(),
 			otel,
 			settings_managed_by_env_vars: settingsManagedByEnvVars,
 		});
+	}
+
+	/**
+	 * The license server's consumer ID for this install's license, so the
+	 * warehouse can join a license to telemetry. Absent without a license, and
+	 * for ephemeral licenses, which all share one placeholder consumer ID.
+	 */
+	private getLicenseConsumerId(): string | undefined {
+		if (this.license.isEphemeral()) return undefined;
+		const consumerId = this.license.getConsumerId();
+		return consumerId !== 'unknown' ? consumerId : undefined;
 	}
 
 	// Instance information available at group level on PostHog & Rudderstack
@@ -3031,6 +3087,20 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_review_request_id: workflowReviewRequestId,
 			cause_trigger: cause.trigger,
 			cause_actor_kind: cause.actorKind,
+		});
+	}
+
+	private workflowReviewClosedByUser({
+		user,
+		workflowReviewRequestId,
+		workflowId,
+		workflowVersionId,
+	}: RelayEventMap['workflow-review-closed-by-user']) {
+		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_CLOSED_WORKFLOW_REVIEW, {
+			user_id: user.id,
+			workflow_review_request_id: workflowReviewRequestId,
+			workflow_id: workflowId,
+			workflow_version_id: workflowVersionId,
 		});
 	}
 

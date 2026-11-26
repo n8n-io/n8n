@@ -91,6 +91,88 @@ describe('components', () => {
 			await userEvent.click(wrapper.container.querySelector('button')!);
 
 			expect(await wrapper.findByText('Goes live for everyone')).toBeVisible();
+			expect(wrapper.getByText('Publish').closest('.n8n-text')).toHaveClass('size-medium');
+		});
+
+		it('uses the standard menu label size for enabled and disabled actions', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [
+						{ id: 'edit', label: 'Edit' },
+						{ id: 'delete', label: 'Delete', disabled: true },
+					],
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			expect(await wrapper.findByText('Edit')).toHaveClass('n8n-text', 'size-medium', 'text-dark');
+			expect(wrapper.getByText('Delete')).toHaveClass('n8n-text', 'size-medium', 'text-xlight');
+		});
+
+		it('keeps custom menu item content', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: { items: [{ id: 'edit', label: 'Edit' }] },
+				slots: {
+					menuItem:
+						'<template #menuItem="item"><strong>{{ item.label }} action</strong></template>',
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			expect(await wrapper.findByText('Edit action')).toBeVisible();
+		});
+
+		it('renders one checkmark for a checked action', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: { items: [{ id: 'selected', label: 'Selected', checked: true }] },
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			const item = await wrapper.findByRole('menuitem', { name: 'Selected' });
+			expect(item.querySelectorAll('[data-icon="check"]')).toHaveLength(1);
+		});
+
+		it('keeps the configured icon size', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [{ id: 'edit', label: 'Edit', icon: 'pencil' }],
+					iconSize: 'small',
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			const item = await wrapper.findByRole('menuitem', { name: 'Edit' });
+			expect(item.querySelector('[data-icon="pencil"]')).toHaveAttribute('width', '12px');
+		});
+
+		it('shows descriptions in nested menus', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [
+						{
+							id: 'share',
+							label: 'Share',
+							children: [
+								{
+									id: 'publish',
+									label: 'Publish',
+									description: 'Goes live for everyone',
+								},
+							],
+						},
+					],
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+			await userEvent.keyboard('{ArrowDown}{ArrowRight}');
+
+			expect(await wrapper.findByText('Goes live for everyone')).toBeVisible();
+			expect(wrapper.getByText('Publish').closest('.n8n-text')).toHaveClass('size-medium');
 		});
 
 		it('forwards badge variants over the default variant', async function testBadgeVariants() {

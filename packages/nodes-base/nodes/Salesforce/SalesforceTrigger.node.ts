@@ -24,6 +24,7 @@ export class SalesforceTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Salesforce Trigger',
 		name: 'salesforceTrigger',
+		schemaPath: 'Salesforce',
 		icon: 'file:salesforce.svg',
 		group: ['trigger'],
 		version: [1, 1.1],
