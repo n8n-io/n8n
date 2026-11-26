@@ -1,8 +1,10 @@
+import type { JsonObject } from '../src/interfaces';
 import { ALPHABET } from '../src/constants';
 import { UnexpectedError } from '../src/errors';
 import {
 	jsonParse,
 	jsonStringify,
+	removeCircularRefs,
 	replaceCircularReferences,
 	deepCopy,
 	isObjectEmpty,
@@ -324,6 +326,62 @@ describe('replaceCircularReferences', () => {
 		expect(copy.note).toBe('x');
 		expect(copy.id).toBeUndefined();
 		expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
+	});
+});
+
+describe('removeCircularRefs', () => {
+	it('should replace a reference back to the root', () => {
+		const obj: JsonObject = { name: 'root' };
+		obj.self = obj;
+
+		removeCircularRefs(obj);
+
+		expect(obj.self).toEqual({ circularReference: true });
+	});
+
+	it('should replace a cycle reached through nested objects', () => {
+		const root: JsonObject = {};
+		const child: JsonObject = {};
+		const grand: JsonObject = {};
+		root.child = child;
+		child.grand = grand;
+		grand.back = root;
+
+		removeCircularRefs(root);
+
+		expect(grand.back).toEqual({ circularReference: true });
+	});
+
+	it('should keep the same object when it is shared between sibling properties', () => {
+		const shared: JsonObject = { a: 1 };
+		const obj: JsonObject = { x: shared, y: shared };
+
+		removeCircularRefs(obj);
+
+		expect(obj.x).toBe(shared);
+		expect(obj.y).toBe(shared);
+	});
+
+	it('should keep objects shared between array positions', () => {
+		const shared: JsonObject = { a: 1 };
+		const obj: JsonObject = { list: [shared, shared] };
+
+		removeCircularRefs(obj);
+
+		const items = obj.list as JsonObject[];
+		expect(items[0]).toBe(shared);
+		expect(items[1]).toBe(shared);
+	});
+
+	it('should keep a shared object that is also referenced after its own subtree', () => {
+		const shared: JsonObject = { a: 1 };
+		const nested: JsonObject = { inner: shared };
+		const obj: JsonObject = { first: nested, second: shared };
+
+		removeCircularRefs(obj);
+
+		expect(obj.second).toBe(shared);
+		expect(nested.inner).toBe(shared);
 	});
 });
 
