@@ -580,11 +580,22 @@ describe('AgentTestRunService', () => {
 			onChunk = vi.fn(),
 		) {
 			orchestrator.executeForChat.mockImplementation(async function* (config) {
-				await config.simulation?.(config.memory.threadId);
+				const session = await config.simulation?.(config.memory.threadId);
+				await session?.markTestChat();
 				yield* chunks;
 				config.onExecutionRecorded?.('execution-1');
 			});
 			return await service.executePreparedDraftRun({ ...preparedDraftRunInput, onChunk });
+		}
+
+		/** Counts the admitted turns as the real session does. */
+		function countAdmittedTurns(session: ReturnType<typeof mock<SimulationSession>>) {
+			let admitted = 0;
+			session.markTestChat.mockImplementation(async () => {
+				admitted++;
+			});
+			session.admittedTurns.mockImplementation(() => admitted);
+			return session;
 		}
 
 		it('leaves a draft run unchanged when there is no test-run session', async () => {
@@ -720,7 +731,9 @@ describe('AgentTestRunService', () => {
 		it('tracks one event per test turn with counts only', async () => {
 			const { service, agentExecutionOrchestratorService, simulationSessions, telemetry } =
 				makeService();
-			const session = mock<SimulationSession>({ worldId: 'world-1', backend: 'llm-mock' });
+			const session = countAdmittedTurns(
+				mock<SimulationSession>({ worldId: 'world-1', backend: 'llm-mock' }),
+			);
 			const decisions: Record<string, ToolCallSimulation> = {
 				'tc-1': { route: 'simulated', reason: 'served_from_world', evidence: ['world_write'] },
 				'tc-2': { route: 'simulated_made_up', reason: 'invented_by_llm' },
@@ -769,7 +782,7 @@ describe('AgentTestRunService', () => {
 			expect(telemetry.track).not.toHaveBeenCalled();
 
 			simulationSessions.openForDraftRun.mockResolvedValue(
-				mock<SimulationSession>({ backend: undefined }),
+				countAdmittedTurns(mock<SimulationSession>({ backend: undefined })),
 			);
 			const failure = new Error('model failed');
 			await expect(
@@ -781,6 +794,23 @@ describe('AgentTestRunService', () => {
 				TELEMETRY_EVENT.AGENTS.AGENT_TEST_RUN_TURN_FINISHED,
 				expect.objectContaining({ status: 'failed', backend: 'none', tool_call_count: 0 }),
 			);
+		});
+
+		it('tracks no turn when the test chat marker fails, also in a chat with earlier turns', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions, telemetry } =
+				makeService();
+			const session = countAdmittedTurns(mock<SimulationSession>({ backend: 'llm-mock' }));
+			simulationSessions.openForDraftRun.mockResolvedValue(session);
+			await runWithStream(service, agentExecutionOrchestratorService, [toolResult('tc-1')]);
+			expect(telemetry.track).toHaveBeenCalledTimes(1);
+
+			const failure = new Error('Could not mark the test chat');
+			session.markTestChat.mockRejectedValue(failure);
+			await expect(
+				runWithStream(service, agentExecutionOrchestratorService, [toolResult('tc-2')]),
+			).rejects.toBe(failure);
+
+			expect(telemetry.track).toHaveBeenCalledTimes(1);
 		});
 
 		it('resolves the session for a resumed draft run too', async () => {

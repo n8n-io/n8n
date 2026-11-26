@@ -276,6 +276,7 @@ export class AgentTestRunService {
 			errorMode,
 			onChunk,
 			simulation: simulation.session,
+			turnAdmitted: simulation.turnAdmitted,
 			run: execution,
 		});
 	}
@@ -305,6 +306,7 @@ export class AgentTestRunService {
 			errorMode,
 			onChunk,
 			simulation: simulation.session,
+			turnAdmitted: simulation.turnAdmitted,
 			run: execution,
 		});
 	}
@@ -416,6 +418,7 @@ export class AgentTestRunService {
 		testRunRequested = false,
 	) {
 		let resolved: SimulationSession | undefined;
+		let admittedBefore = 0;
 		const { user } = execution;
 		return {
 			resolve: async (threadId: string) => {
@@ -427,9 +430,12 @@ export class AgentTestRunService {
 					message,
 					testRunRequested,
 				});
+				// A chat keeps its session, so earlier turns are already in the count.
+				admittedBefore = resolved?.admittedTurns() ?? 0;
 				return resolved;
 			},
 			session: () => resolved,
+			turnAdmitted: () => resolved !== undefined && resolved.admittedTurns() > admittedBefore,
 		};
 	}
 
@@ -441,9 +447,11 @@ export class AgentTestRunService {
 			errorMode = 'throw',
 			onChunk,
 			simulation,
+			turnAdmitted,
 			run,
 		}: DraftRunConsumptionOptions & {
 			simulation?: () => SimulationSession | undefined;
+			turnAdmitted?: () => boolean;
 			run: DraftRunIds;
 		},
 	): Promise<PreparedDraftRunResult> {
@@ -465,7 +473,8 @@ export class AgentTestRunService {
 			return result;
 		} finally {
 			const session = simulation?.();
-			if (session) this.trackTestRunTurn(session, run, state, status);
+			// A turn that fails before admission never ran, so it has no event.
+			if (session && turnAdmitted?.()) this.trackTestRunTurn(session, run, state, status);
 		}
 	}
 
