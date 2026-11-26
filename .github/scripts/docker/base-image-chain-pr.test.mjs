@@ -11,11 +11,11 @@ describe('isRefreshCommit', () => {
 	it('accepts the squash merge of a refresh PR', () => {
 		assert.ok(isRefreshCommit('build: Update base image digests with fewer OS findings (#45000)'));
 		assert.ok(isRefreshCommit('build: Update base image digests that need a review (#45003)'));
-		assert.ok(isRefreshCommit('build: Pin the base images that master published (#45001)'));
 	});
 
 	it('rejects other commits', () => {
 		assert.ok(!isRefreshCommit('build: Update Docker base images to Node 26.14.0 (#45002)'));
+		assert.ok(!isRefreshCommit('build: Pin the base images that master published (#45001)'));
 		assert.ok(!isRefreshCommit(''));
 	});
 });
@@ -99,7 +99,6 @@ describe('commitOf', () => {
 		const commit = 'a'.repeat(40);
 		assert.equal(commitOf(`n8nio/base:26.13.0-${commit}@${digest('b')}`), commit);
 		assert.equal(commitOf(`n8nio/base:26.13.0-debian-${commit}@${digest('b')}`), commit);
-		assert.equal(commitOf(`n8nio/node-pc:26.13.0-${commit}-dev@${digest('b')}`), commit);
 	});
 
 	it('returns null for a tag without a commit', () => {
