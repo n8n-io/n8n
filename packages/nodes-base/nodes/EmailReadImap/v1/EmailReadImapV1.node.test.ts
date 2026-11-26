@@ -57,7 +57,12 @@ const credentials: ICredentialsDataImap = {
 
 const start = async (
 	mailbox: Fixture[],
-	params: { format: string; downloadAttachments?: boolean; postProcessAction?: string },
+	params: {
+		format: string;
+		downloadAttachments?: boolean;
+		postProcessAction?: string;
+		options?: IDataObject;
+	},
 ) => {
 	const client = new FakeImapFlow(mailbox);
 	const connect = vi
@@ -89,7 +94,7 @@ const start = async (
 		if (name === 'format') return params.format;
 		if (name === 'mailbox') return 'INBOX';
 		if (name === 'postProcessAction') return params.postProcessAction ?? 'nothing';
-		if (name === 'options') return {};
+		if (name === 'options') return params.options ?? {};
 		if (name === 'downloadAttachments') return params.downloadAttachments ?? false;
 		if (name === 'dataPropertyAttachmentsPrefixName') return 'attachment_';
 		return undefined;
@@ -139,6 +144,16 @@ const run = async (
 };
 
 describe('EmailReadImapV1 output', () => {
+	describe('custom email config', () => {
+		it('activates with criteria from an array', async () => {
+			const { stop } = await start([], {
+				format: 'simple',
+				options: { customEmailConfig: ['UNSEEN', ['FROM', 'a@b.co']] },
+			});
+			await stop();
+		});
+	});
+
 	describe('format: simple', () => {
 		it('splits headers into top-level fields and metadata, without an attributes key', async () => {
 			const { emitted } = await run([PLAIN_ONLY], { format: 'simple' });
