@@ -237,6 +237,13 @@ export interface SideCallUsageReport {
 	reportId: string;
 }
 
+/** A title that title generation stored on a thread. */
+export interface ThreadTitleUpdate {
+	threadId: string;
+	title: string;
+	emoji?: string;
+}
+
 export interface AgentInputBoundary {
 	/** Current turn messages, ready for durable storage. */
 	messages: AgentDbMessage[];
@@ -308,6 +315,12 @@ export interface ExecutionOptions {
 	 * Best-effort: a host failure here must not break the run.
 	 */
 	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
+	/**
+	 * Called when title generation has stored a title on the thread. The title
+	 * call runs beside the agent loop, so this can come before the run ends.
+	 * Best-effort: a host failure here does not break the run.
+	 */
+	onThreadTitle?: (update: ThreadTitleUpdate) => void | Promise<void>;
 	/** Thread allowances supplied for this execution. Not stored in checkpoints. */
 	approvalContext?: ToolApprovalContext;
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
@@ -331,6 +344,8 @@ export interface ExecutionOptions {
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
+	/** The `titleText` of the run, so that a resumed run titles the same text. */
+	titleText?: string;
 }
 
 export interface NativeToolDeferralConfig {

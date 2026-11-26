@@ -910,10 +910,12 @@ describe('AssistantAgentThreadView', () => {
 		// The thread does not exist on the server before its first message.
 		expect(threadsStore.loadThread).not.toHaveBeenCalled();
 
+		chatMessages.value = [{ id: 'u1', role: 'user', content: 'Build a digest' }];
 		const onSessionCreated = panelProps.current.onSessionCreated as () => void;
 		onSessionCreated();
 
-		expect(threadsStore.loadThread).toHaveBeenCalledWith('thread-new');
+		// The sent text is the preview of the lists until the server has one.
+		expect(threadsStore.loadThread).toHaveBeenCalledWith('thread-new', 'Build a digest');
 	});
 
 	it('sends the first message of a new thread, with its references until the message is accepted', async () => {
@@ -1591,12 +1593,47 @@ describe('AssistantAgentThreadView', () => {
 		expect(getByTestId('header-title')).toHaveTextContent('Weekly digest');
 	});
 
-	it('titles an untitled thread with its first message', async () => {
+	it('shows the first message of an untitled thread until the title arrives', async () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
 		chatMessages.value = [{ id: 'u1', role: 'user', content: 'Build a digest' }];
 		await flushPromises();
 
 		expect(getByTestId('header-title')).toHaveTextContent('Build a digest');
+
+		useAssistantAgentThreadsStore().openedThreads = [
+			{
+				id: 'thread-1',
+				title: 'Weekly digest',
+				updatedAt: '2026-10-26T10:00:00.000Z',
+				projectId: 'project-1',
+			},
+		];
+		await flushPromises();
+
+		expect(getByTestId('header-title')).toHaveTextContent('Weekly digest');
+	});
+
+	it('shows the same first-message preview as the sidebar', async () => {
+		useAssistantAgentThreadsStore().openedThreads = [
+			{
+				id: 'thread-1',
+				title: null,
+				firstMessage: 'Build a digest of the support inbox',
+				updatedAt: '2026-10-26T10:00:00.000Z',
+				projectId: 'project-1',
+			},
+		];
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('header-title')).toHaveTextContent('Build a digest of the support inbox');
+	});
+
+	it('shows no title for a thread with no messages', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('header-title')).toBeEmptyDOMElement();
 	});
 
 	it('opens a new Assistant thread from the header', async () => {

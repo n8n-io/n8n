@@ -3,6 +3,7 @@ import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import { useScrollEdges } from '../../composables/useScrollEdges';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
@@ -210,6 +211,7 @@ const {
 	stop: stopProgressiveRender,
 	visibleRows,
 } = useProgressiveRender(activeRows, popupVisible);
+const { scrollMaskAttrs } = useScrollEdges(scrollAreaRef, { axis: 'vertical' });
 const activeCoordinate = ref<PickerCoordinate | null>(null);
 const hasActiveItem = computed(() => activeCoordinate.value !== null);
 let activeDescendantOwner: HTMLElement | null = null;
@@ -605,6 +607,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 						role="grid"
 						:class="$style.scrollArea"
 						data-icon-picker-scroll-area
+						v-bind="scrollMaskAttrs"
 					>
 						<template v-for="(item, rowIndex) in visibleRows" :key="item.id">
 							<div v-if="item.type === 'header'" :class="$style.sectionHeaderRow">
@@ -661,6 +664,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 						role="grid"
 						:class="$style.scrollArea"
 						data-icon-picker-scroll-area
+						v-bind="scrollMaskAttrs"
 					>
 						<template v-for="(item, rowIndex) in visibleRows" :key="item.id">
 							<div v-if="item.type === 'header'" :class="$style.sectionHeaderRow">
@@ -820,7 +824,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 		padding: 0 var(--spacing--2xs);
 		overflow-x: hidden;
 		overflow-y: auto;
-		@include scrollbar-mixins.scroll-mask(bottom);
+		@include scrollbar-mixins.scroll-mask-when-y;
 		@include scrollbar-mixins.hoverable-scroll-bar;
 	}
 

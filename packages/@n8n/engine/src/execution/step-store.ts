@@ -361,6 +361,9 @@ export interface StepStore {
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;
 
-	/** The execution's failed steps, by node and then by pass. */
+	/**
+	 * The execution's failed steps by settle time, the first to settle first.
+	 * The read path reports the first one as the failure of the execution.
+	 */
 	loadFailedSteps(executionId: string): Promise<StepRecord[]>;
 }

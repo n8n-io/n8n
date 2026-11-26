@@ -18,8 +18,8 @@ import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWor
 import { currentSentence } from '../../shared/thinking.utils';
 
 import { useSteadyValue } from './useSteadyValue';
-import { ThinkingWordKey } from './useThinkingWords';
-import { getAgentActivityKey, getAgentSectionTitle, isActiveBuilderAgent } from '../builderAgents';
+import { ThinkingWordKey } from '../../shared/composables/useThinkingWords';
+import { getAgentActivityKey, getAgentSectionTitle } from '../builderAgents';
 import { useToolLabel } from '../toolLabels';
 
 export interface RunActivity {
@@ -261,7 +261,8 @@ export function useRunActivity() {
 			.find(
 				(m) =>
 					m.role === 'assistant' &&
-					(m.isStreaming || (m.agentTree?.children.some(isActiveBuilderAgent) ?? false)),
+					(m.isStreaming ||
+						(m.agentTree?.children.some((child) => child.status === 'active') ?? false)),
 			);
 		if (!lastMsg?.agentTree) return thinking();
 
