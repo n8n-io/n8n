@@ -1,31 +1,37 @@
-# API-663 spike, approach A: the credential file sends the ORD ID
+# API-663 spike: managed credentials
 
 Spike code for a partner platform to test. Do not merge. Context:
-[API-663](https://linear.app/n8n/issue/API-663). Approach B (fully authless) is on branch
-`api-663-approach-b-authless`. Both branches have the same n8n code. Only the example
-credential file differs.
+[API-663](https://linear.app/n8n/issue/API-663).
 
 The platform runs n8n behind its own proxy and gateway. The gateway holds every
 third-party secret and adds it to each outbound request. n8n must hold none.
+
+**One n8n change, two configurations.** The n8n code is the same for both approaches. The
+credential type file that the platform loads decides the approach:
+
+| Approach | Example file | What leaves n8n |
+|---|---|---|
+| A: the credential file sends the ORD ID | `approach-a/PlatformManagedApi.credentials.js` | Each request carries the ORD ID on the node, as an `ordID` header |
+| B: fully authless | `approach-b/PlatformManagedApi.credentials.js` | Nothing is added. The gateway finds the ORD ID from the address |
+
+The ORD ID is the ID of one API in the platform's API registry, in the
+[Open Resource Discovery](https://open-resource-discovery.github.io/specification/) format.
 
 ## What it does
 
 In managed mode, n8n does not use third-party secrets when nodes run:
 
 - Every node's credential field shows **Managed by platform**, disabled. Users cannot change it.
-- **No credential is stored.** Each node's credential reference in the workflow JSON holds
-  only the platform's data, here an **ORD ID**, with no record behind it. Gateway credits
-  marks a node the same way.
-- **The credential file sends the ORD ID.** n8n gives the data on the node to the file's
-  `authenticate` block as `$credentials`, and applies the block to every request of the
-  node. This includes nodes that build their own auth header. n8n has no ORD ID logic.
+- **No credential is stored.** n8n refuses to create any credential. A node's credential
+  reference in the workflow JSON has `id: null` and, in A, the platform's data, such as the
+  ORD ID. Gateway credits marks a node the same way.
+- When a node runs, n8n builds its credential with empty secrets, plus the data on the
+  node's reference. Then it applies the file's `authenticate` block to every request of the
+  node, including nodes that build their own auth header. n8n has no ORD ID logic.
 - n8n adds **no `Authorization` header**. Nodes that build their own auth header send it
-  with an empty key (see below).
+  with an empty key.
 - The platform's proxy catches the request. Its gateway checks the grant and adds the real
   secret. n8n needs no other setup for this: no proxy settings, no plug-in.
-
-The ORD ID is the ID of one API in the platform's API registry, in the
-[Open Resource Discovery](https://open-resource-discovery.github.io/specification/) format.
 
 ## Configuration
 
@@ -33,11 +39,12 @@ Two settings and one file:
 
 | Part | Value | Effect |
 |---|---|---|
-| Credential type file | `PlatformManagedApi.credentials.js`, in a folder | Defines the managed credential and its `authenticate` block. An example is in `managed-credential/`. The platform can change its name, display name, notice, fields and `authenticate` |
-| `N8N_CUSTOM_EXTENSIONS` | The folder that holds the file | n8n loads the file at startup, the same way it loads custom nodes |
+| Credential type file | `PlatformManagedApi.credentials.js`, in a folder | Defines the managed credential. The platform can change its name, display name, notice, fields and `authenticate` |
+| `N8N_CUSTOM_EXTENSIONS` | The folder that holds the file. Use one approach folder, not both | n8n loads the file at startup, the same way it loads custom nodes |
 | `N8N_MANAGED_CREDENTIAL_TYPE` | `platformManagedApi` (the `name` in the file) | Turns managed mode on. Every node then uses this type. When unset, n8n works as today. When no loaded type has this name, n8n does not start |
 
-In a Docker image, copy the folder into the image or mount it, and set both variables.
+In a Docker image, mount the folder and set both variables. To change the approach, mount
+the other folder and restart.
 
 **How the setting overrides a node's credential types:** each node lists the credential
 types it accepts (Slack accepts only "Slack API" and "Slack OAuth2"). In managed mode, the
@@ -45,19 +52,22 @@ editor sees the managed type as the only credential of every node. When the node
 asks for "Slack API", n8n gives it data built from the "Slack API" fields, with empty
 secrets, plus the data on the node's managed reference. The node itself does not change.
 
-**How the ORD ID reaches every request:**
+**How `authenticate` reaches every request:**
 
-| How the node sends the request | What applies the credential file's `authenticate` |
+| How the node sends the request | What applies the file's `authenticate` |
 |---|---|
 | Through n8n's auth helpers, OAuth1, OAuth2, or declared in the node | n8n's auth helper, as for any credential |
 | Through `httpRequest` or `request`, with its own auth header (Freshdesk) | n8n, when the node has a managed reference |
 | Node without a credential (RSS Read) | Nothing. The request is not changed |
 
-## What the platform does
+A field marked `required` in the file must be on the node. If it is not, the node fails
+before it sends anything, for example with `Add ordId to this node's managed credential`.
+
+## Approach A: what the platform does
 
 1. **Find the ORD ID** of each application the workflow uses, in its API registry.
-2. **Write it into the workflow JSON**, on every node that calls an application. For a
-   test, use the public API, `PUT /api/v1/workflows/{id}`:
+2. **Write it into the workflow JSON**, on every node that calls an application, with the
+   public API (`POST /api/v1/workflows` or `PUT /api/v1/workflows/{id}`):
 
    ```json
    "credentials": { "platformManagedApi": { "id": null, "name": "Outlook", "ordId": "<ORD ID>" } }
@@ -69,36 +79,44 @@ secrets, plus the data on the node's managed reference. The node itself does not
 4. **On deploy**, nothing changes but the workflow. If prod needs a different ORD ID, set it
    in the workflow JSON.
 
-n8n refuses to create any credential in managed mode. A field marked `required` in the
-credential file must be on the node. If it is not, the node fails before it sends anything,
-with the error `Add ordId to this node's managed credential`.
+## Approach B: what the platform does
 
-**Addresses that n8n does not know** (the Jira site, the Freshdesk domain): n8n sends the
-example from the credential form, for example `https://example.atlassian.net`. The workflow
-can give the real address on the node instead, and n8n then calls it directly:
+1. **Map each host to an ORD ID** in the gateway. Most hosts have one API.
+2. **Map paths for hosts with several APIs.** Outlook, Teams and OneDrive all call
+   `graph.microsoft.com`.
+
+Workflows need no data on the node.
+
+## Addresses that n8n does not know
+
+For the Jira site or the Freshdesk domain, n8n sends the example from the credential form,
+for example `https://example.atlassian.net`. In both approaches, the workflow can give the
+real address on the node instead, and n8n then calls it directly:
 
 ```json
-"credentials": { "platformManagedApi": { "id": null, "name": "Jira", "ordId": "<ORD ID>", "domain": "https://acme.atlassian.net" } }
+"credentials": { "platformManagedApi": { "id": null, "name": "Jira", "domain": "https://acme.atlassian.net" } }
 ```
 
 ## What the platform's proxy and gateway receive
 
-| Part of the request | Value |
-|---|---|
-| `ordID` header | The ORD ID on the node, added by the credential file. It replaces an `ordID` header that the workflow sets |
-| `Authorization` header | None |
-| Nodes that build their own auth header (about 25%) | An `Authorization` header with an empty key. Freshdesk, for example, sends `Basic Olg=`, the encoding of its fixed `:X` suffix. The gateway must replace it. The `ordID` header is also there |
-| Address fields from the credential (Jira, self-hosted apps) | The real address if the workflow gives it on the node. If not, a placeholder, for example `https://example.atlassian.net` |
+| Part of the request | Approach A | Approach B |
+|---|---|---|
+| `ordID` header | The ORD ID on the node. It replaces an `ordID` header that the workflow sets | Not sent |
+| `Authorization` header | None | None |
+| Nodes that build their own auth header (about 25%) | An `Authorization` header with an empty key. Freshdesk, for example, sends `Basic Olg=`. The gateway must replace it. The `ordID` header is also there | The same, with no `ordID` header |
+| Address fields from the credential (Jira, self-hosted apps) | The real address if the workflow gives it on the node. If not, a placeholder, for example `https://example.atlassian.net` | Same as A |
 
 ## Test it
 
 ```bash
 pnpm build > build.log 2>&1
-cd packages/cli && N8N_CUSTOM_EXTENSIONS=../../spike/api-663/managed-credential \
+cd packages/cli && N8N_CUSTOM_EXTENSIONS=../../spike/api-663/approach-a \
   N8N_MANAGED_CREDENTIAL_TYPE=platformManagedApi pnpm start
 ```
 
-1. Create a workflow with a Slack node whose `credentials` hold an ORD ID, as above.
+For Approach B, use `../../spike/api-663/approach-b`.
+
+1. Create a workflow with a Slack node. In A, give its `credentials` an ORD ID, as above.
 2. Open the Slack node: the Credential field shows **Managed by platform**, disabled.
 3. Run it. Without the platform's proxy, Slack rejects the call: the request left n8n with
    no token.
@@ -123,13 +141,13 @@ cd packages/cli && pnpm test src/__tests__/spike-managed-credential-types.test.t
 | Node uses a vendor SDK, not n8n's request helpers (AI model nodes) | `authenticate` is not applied. Not tested |
 | HTTP Request with an SSL client certificate | The certificate credential is not offered |
 | `n8n import:credentials`, and credentials stored before managed mode | Stay in the database. n8n never uses them in managed mode |
-| The disabled field shows "Managed by platform" even when the node has no ORD ID | The node fails when it runs |
+| Approach A: the disabled field shows "Managed by platform" even when the node has no ORD ID | The node fails when it runs |
 
 ## Where the code is
 
 | File | Change |
 |---|---|
-| `spike/api-663/managed-credential/PlatformManagedApi.credentials.js` | Example managed credential type, with the `authenticate` block that sends the ORD ID |
+| `spike/api-663/approach-a/`, `spike/api-663/approach-b/` | Example managed credential type for each approach |
 | `packages/core/.../utils/managed-credential.ts` | Reads the data on the node's managed reference, checks required fields, builds the node's credential data |
 | `packages/core/.../node-execution-context.ts` | In managed mode, reads no stored credential |
 | `packages/core/.../request-helpers/factory.ts` | Auth helpers and OAuth paths use the managed type. `httpRequest` and `request` also apply its `authenticate` |
