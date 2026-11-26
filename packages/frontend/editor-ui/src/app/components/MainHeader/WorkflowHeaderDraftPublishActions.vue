@@ -713,7 +713,11 @@ const enum VERSION_ACTIONS {
 /** Why Publish is disabled in the version menu, or '' when it is available. */
 const publishDisabledReason = computed(() => {
 	if (!shouldDisablePublishButton.value) return '';
-	if (collaborationReadOnly.value) return i18n.baseText('workflows.publish.readOnly');
+	if (collaborationReadOnly.value) {
+		return collaborationStore.isCurrentUserWriter
+			? i18n.baseText('workflows.publish.readOnlyAnotherTab')
+			: i18n.baseText('workflows.publish.readOnly');
+	}
 	if (unusableCredentialReason.value) return unusableCredentialReason.value;
 	if (!hasPublishPermission.value) {
 		return isPersonalSpace.value
@@ -721,7 +725,9 @@ const publishDisabledReason = computed(() => {
 			: i18n.baseText('workflows.publish.permissionDenied');
 	}
 	if (reviewsApply.value && isReviewUpdateBlocked.value) {
-		return i18n.baseText('workflows.publish.waitingForReview');
+		return openReviewRequest.value?.decision === 'changes_requested'
+			? i18n.baseText('workflows.publish.changesRequested')
+			: i18n.baseText('workflows.publish.waitingForReview');
 	}
 	if (workflowPublishState.value === 'publishing') return publishButtonConfig.value.tooltip;
 	if (publishBlockedReason.value) return publishBlockedReason.value;
@@ -736,7 +742,11 @@ const publishDisabledReason = computed(() => {
 /** Why Unpublish is disabled, or '' when it is not. Also the tooltip of the menu item. */
 const unpublishDisabledReason = computed(() => {
 	if (!activeVersion.value) return i18n.baseText('workflows.unpublish.notPublished');
-	if (collaborationReadOnly.value) return i18n.baseText('workflows.unpublish.readOnly');
+	if (collaborationReadOnly.value) {
+		return collaborationStore.isCurrentUserWriter
+			? i18n.baseText('workflows.unpublish.readOnlyAnotherTab')
+			: i18n.baseText('workflows.unpublish.readOnly');
+	}
 	if (!hasUnpublishPermission.value) return i18n.baseText('workflows.unpublish.permissionDenied');
 
 	return '';

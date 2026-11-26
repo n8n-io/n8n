@@ -280,6 +280,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		workflowDocumentStore.setPublicationStatus({ status: 'idle' });
 		uiStore.markStateClean();
 		collaborationStore.shouldBeReadOnly = false;
+		collaborationStore.isCurrentUserWriter = false;
 
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
@@ -974,81 +975,102 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(publishItem.parentElement).not.toHaveAttribute('content');
 		});
 
-		it('should explain collaboration read-only on the disabled Publish menu item even with pending changes', async () => {
-			setupEnabledPublishButton();
-			workflowDocumentStore.setActiveState({
-				activeVersionId: 'version-1',
-				activeVersion: createMockActiveVersion('version-1'),
-			});
-			workflowDocumentStore.setVersionData({
-				versionId: 'version-2',
-				name: null,
-				description: null,
-			});
-			collaborationStore.shouldBeReadOnly = true;
+		it.each([
+			{
+				name: 'someone else is editing the workflow',
+				isCurrentUserWriter: false,
+				reason: 'This workflow is read-only while someone else is editing it',
+			},
+			{
+				name: 'the current user is editing the workflow in another tab',
+				isCurrentUserWriter: true,
+				reason: "You're editing this workflow in another tab",
+			},
+		])(
+			'should explain collaboration read-only on the disabled Publish menu item when $name even with pending changes',
+			async ({ isCurrentUserWriter, reason }) => {
+				setupEnabledPublishButton();
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'version-1',
+					activeVersion: createMockActiveVersion('version-1'),
+				});
+				workflowDocumentStore.setVersionData({
+					versionId: 'version-2',
+					name: null,
+					description: null,
+				});
+				collaborationStore.shouldBeReadOnly = true;
+				collaborationStore.isCurrentUserWriter = isCurrentUserWriter;
 
-			const { getByTestId } = renderComponent();
+				const { getByTestId } = renderComponent();
 
-			await userEvent.click(getByTestId('version-menu-button'));
+				await userEvent.click(getByTestId('version-menu-button'));
 
-			const publishItem = getByTestId('version-menu-item-publish');
-			expect(publishItem).toHaveClass('is-disabled');
-			expect(publishItem.parentElement).toHaveAttribute(
-				'content',
-				'This workflow is read-only while someone else is editing it',
-			);
-		});
+				const publishItem = getByTestId('version-menu-item-publish');
+				expect(publishItem).toHaveClass('is-disabled');
+				expect(publishItem.parentElement).toHaveAttribute('content', reason);
+			},
+		);
 
-		it('should explain when the saved version is already waiting for review on the disabled Publish menu item', async () => {
-			setWorkflowReviewGates({ alwaysRequired: true });
-			setHomeProjectType('team');
-			setupEnabledPublishButton();
-			workflowDocumentStore.setActiveState({
-				activeVersionId: 'version-0',
-				activeVersion: createMockActiveVersion('version-0'),
-			});
-			workflowDocumentStore.setVersionData({
-				versionId: 'version-1',
-				name: null,
-				description: null,
-			});
-			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
-				count: 1,
-				data: [
-					{
-						id: 'req-1',
-						state: 'open',
-						decision: 'pending',
-						workflowVersionId: 'version-1',
-						workflowVersionName: null,
-						description: null,
-						createdAt: '2026-07-20T10:00:00.000Z',
-						updatedAt: '2026-07-20T10:00:00.000Z',
-						decisionBy: null,
-						viewerCanOpen: true,
-					},
-				],
-				reviewRequiredBy: 'instance',
-			});
+		it.each([
+			{
+				decision: 'pending' as const,
+				reason: 'This version is already waiting for review',
+			},
+			{
+				decision: 'changes_requested' as const,
+				reason: 'Make the requested changes before you submit again',
+			},
+		])(
+			'should explain the open review state ($decision) on the disabled Publish menu item when it holds the saved version',
+			async ({ decision, reason }) => {
+				setWorkflowReviewGates({ alwaysRequired: true });
+				setHomeProjectType('team');
+				setupEnabledPublishButton();
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'version-0',
+					activeVersion: createMockActiveVersion('version-0'),
+				});
+				workflowDocumentStore.setVersionData({
+					versionId: 'version-1',
+					name: null,
+					description: null,
+				});
+				vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+					count: 1,
+					data: [
+						{
+							id: 'req-1',
+							state: 'open',
+							decision,
+							workflowVersionId: 'version-1',
+							workflowVersionName: null,
+							description: null,
+							createdAt: '2026-07-20T10:00:00.000Z',
+							updatedAt: '2026-07-20T10:00:00.000Z',
+							decisionBy: null,
+							viewerCanOpen: true,
+						},
+					],
+					reviewRequiredBy: 'instance',
+				});
 
-			const { getByTestId } = renderComponent();
+				const { getByTestId } = renderComponent();
 
-			await waitFor(() =>
-				expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
-					'aria-disabled',
-					'true',
-				),
-			);
+				await waitFor(() =>
+					expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+						'aria-disabled',
+						'true',
+					),
+				);
 
-			await userEvent.click(getByTestId('version-menu-button'));
+				await userEvent.click(getByTestId('version-menu-button'));
 
-			const publishItem = getByTestId('version-menu-item-publish');
-			expect(publishItem).toHaveClass('is-disabled');
-			expect(publishItem.parentElement).toHaveAttribute(
-				'content',
-				'This version is already waiting for review',
-			);
-		});
+				const publishItem = getByTestId('version-menu-item-publish');
+				expect(publishItem).toHaveClass('is-disabled');
+				expect(publishItem.parentElement).toHaveAttribute('content', reason);
+			},
+		);
 
 		it('should explain when a published workflow has no changes on the disabled Publish menu item', async () => {
 			setupEnabledPublishButton();
@@ -1819,6 +1841,15 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 				props: {},
 				reason: 'This workflow is read-only while someone else is editing it',
+			},
+			{
+				name: 'the current user is editing the workflow in another tab',
+				arrange: () => {
+					collaborationStore.shouldBeReadOnly = true;
+					collaborationStore.isCurrentUserWriter = true;
+				},
+				props: {},
+				reason: "You're editing this workflow in another tab",
 			},
 			{
 				name: 'the user lacks the unpublish permission',
