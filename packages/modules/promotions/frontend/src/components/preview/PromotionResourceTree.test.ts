@@ -225,7 +225,7 @@ describe('PromotionResourceTree', () => {
 					{ ...notOnBranchWorkflow, ...usedByBlocked },
 					{ ...archivedWorkflow, ...usedByBlocked },
 				],
-				'1 issue needs your action.',
+				'1 issue needs your action. 1 is outside your access.',
 			],
 		])(
 			'should show one amber marker for a workflow with an issue and %s',
@@ -388,7 +388,7 @@ describe('PromotionResourceTree', () => {
 			[
 				'no dependency is on the branch',
 				[notOnBranchWorkflow, anotherNotOnBranch],
-				'2 dependencies are not on the branch.',
+				'This workflow uses 2 dependencies that are outside your access. You can apply it without them.',
 			],
 			[
 				'every dependency is outside the access of the user',
@@ -396,9 +396,9 @@ describe('PromotionResourceTree', () => {
 				'This workflow uses 1 dependency that is outside your access. You can apply it without it.',
 			],
 			[
-				'only some dependencies are outside the access of the user',
+				'a dependency is outside the access of the user and another is not on the branch',
 				[unreachableWorkflow, notOnBranchWorkflow],
-				'2 dependencies are not usable on this instance.',
+				'This workflow uses 2 dependencies that are outside your access. You can apply it without them.',
 			],
 			[
 				'the user can resolve one of the dependencies',

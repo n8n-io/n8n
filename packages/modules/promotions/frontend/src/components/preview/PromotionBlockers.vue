@@ -132,7 +132,6 @@ type StatusKey =
 	| 'moved'
 	| 'otherProject'
 	| 'outside'
-	| 'notOnBranch'
 	| 'personal';
 
 const WARNING_STYLE: StatusStyle = { tone: 'warning', icon: 'circle-alert' };
@@ -140,7 +139,6 @@ const WARNING_STYLE: StatusStyle = { tone: 'warning', icon: 'circle-alert' };
 const STATUS_STYLES: Partial<Record<StatusKey, StatusStyle>> = {
 	resolved: { tone: 'success', icon: 'circle-check' },
 	...PROMOTE_STATUS_STYLES,
-	notOnBranch: { tone: 'neutral', icon: 'circle-minus' },
 };
 
 const status = (key: StatusKey) => ({
@@ -388,7 +386,6 @@ function includeAction(
  * access". The user cannot change the workflow, so no text asks the user to.
  */
 const OUTSIDE_WORKFLOW_DETAILS: Partial<Record<PromotionMissingDependencyReason, BaseTextKey>> = {
-	'not-on-branch': 'promotions.preview.blockers.workflow.notOnBranch',
 	'not-on-instance': 'promotions.preview.blockers.workflow.notOnInstance',
 	archived: 'promotions.preview.blockers.workflow.archived.noAccess',
 	'caller-policy': 'promotions.preview.blockers.workflow.callerPolicy.noAccess',
@@ -412,20 +409,15 @@ function outsideAccessOnApply({
 	if (reason === 'archived' || reason === 'caller-policy') {
 		return { status: status('outside'), detail };
 	}
-	// Apply cannot add a dependency that the branch does not hold, or that users cannot access.
-	// The button of the action only says why.
-	const notOnBranch = reason === 'not-on-branch';
+	// Apply cannot add a dependency that users cannot access. The button of the action only says why.
 	return {
-		status: status(notOnBranch ? 'notOnBranch' : 'outside'),
+		status: status('outside'),
 		detail,
 		disabledAction: {
 			label: i18n.baseText(`promotions.preview.blockers.create.${kind}`),
-			reason: i18n.baseText(
-				notOnBranch
-					? 'promotions.preview.blockers.disabled.notOnBranch.apply'
-					: 'promotions.preview.blockers.disabled.outside.apply',
-				{ interpolate: typeInSentence(kind) },
-			),
+			reason: i18n.baseText('promotions.preview.blockers.disabled.outside.apply', {
+				interpolate: typeInSentence(kind),
+			}),
 		},
 	};
 }

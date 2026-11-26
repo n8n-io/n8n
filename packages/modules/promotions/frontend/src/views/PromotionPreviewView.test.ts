@@ -1946,7 +1946,7 @@ describe('PromotionPreviewView', () => {
 			);
 		});
 
-		it('should say that a dependency is not on the branch, and that the user cannot add it here', async () => {
+		it('should show a dependency that the branch does not hold as "No access", and say that the user cannot add it', async () => {
 			const { findByTestId, getAllByRole, getAllByTestId, getByRole, getByTestId } =
 				await renderIssues({
 					missingDependencies: [notOnBranchCredential, notOnBranchWorkflow],
@@ -1959,30 +1959,31 @@ describe('PromotionPreviewView', () => {
 				'Legacy SMTP',
 				'Invoice reconciliation',
 				'Credential',
-				'Not on the branch',
+				'No access',
 				'Add credential',
 			]);
 			const workflowRow = outside.getByRole('row', { name: /Sync ledger/ });
+			// No note under the name: the copy of an outside dependency does not mention the branch.
 			expect(cells(workflowRow)).toEqual([
-				'Sync ledgerThis workflow is not on this instance and not on the branch. Workflows that use it fail until it exists here.',
+				'Sync ledger',
 				'Weekly KPI report',
 				'Workflow',
-				'Not on the branch',
+				'No access',
 				'Add workflow',
 			]);
-			// The status is neutral, with the icon of a dependency that the operation leaves out.
+			// The status is neutral, with a lock.
 			for (const row of [credentialRow, workflowRow]) {
-				const status = within(row).getByText('Not on the branch');
+				const status = within(row).getByText('No access');
 				expect(status.className).toContain('neutral');
-				expect(status.querySelector('n8n-icon-stub')).toHaveAttribute('icon', 'circle-minus');
-				expect(row).not.toHaveTextContent('No access');
+				expect(status.querySelector('n8n-icon-stub')).toHaveAttribute('icon', 'lock');
+				expect(row).not.toHaveTextContent('branch');
 			}
 
 			const addWorkflow = within(workflowRow).getByTestId(
 				'promotion-preview-blocker-disabled-action',
 			);
 			expect(addWorkflow).toHaveAccessibleName(
-				'Add workflow. The branch does not hold this workflow, so you cannot add it here.',
+				'Add workflow. This workflow is in a project that you do not have access to, so you cannot add it.',
 			);
 			const addCredential = within(credentialRow).getByTestId(
 				'promotion-preview-blocker-disabled-action',
@@ -1990,14 +1991,16 @@ describe('PromotionPreviewView', () => {
 			expect(within(addCredential).getByRole('button', { name: 'Add credential' })).toBeDisabled();
 			addCredential.focus();
 			expect(await findByTestId('tooltip-content')).toHaveTextContent(
-				'The branch does not hold this credential, so you cannot add it here.',
+				'This credential is in a project that you do not have access to, so you cannot add it.',
 			);
 
 			// "Weekly KPI report" (w3) uses the sub-workflow, which does not stop it.
 			await userEvent.click(getByRole('tab', { name: /Changes/ }));
 			expect(
 				treeRow(getAllByTestId, 'workflow:w3').getByTestId('promotion-preview-tree-dependencies'),
-			).toHaveAccessibleName('1 dependency is not on the branch.');
+			).toHaveAccessibleName(
+				'This workflow uses 1 dependency that is outside your access. You can apply it without it.',
+			);
 			// The credential does not stop "Invoice reconciliation" (w1). The user accepts both.
 			const usesCredential = treeRow(getAllByTestId, 'workflow:w1');
 			expect(usesCredential.getByRole('checkbox')).toBeChecked();
