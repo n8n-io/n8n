@@ -1,0 +1,19 @@
+packages/cli/src/execution-lifecycle/__tests__/restore-binary-data-id.test.ts
+  s_cce43c4af47484::t_fe538afb93d67a 350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5f49e979af87023a119b0d65dfe5950a60a35508",
+  "prompts": {},
+  "sessions": {
+    "s_cce43c4af47484": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0161c2fc-d88d-4b5f-b6be-eca78ba87a36",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
