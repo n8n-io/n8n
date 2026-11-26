@@ -90,7 +90,8 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	/**
 	 * Inserts an error execution unless its source already has an error execution.
 	 * The unique index on the source decides, so two concurrent starts cannot
-	 * both insert.
+	 * both insert. Only a conflict on that index is ignored: an id that another
+	 * execution already has still throws, so the marker of the source stays.
 	 */
 	private async insertErrorExecution(
 		manager: EntityManager,
@@ -101,7 +102,11 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.insert()
 			.into(this.repo.target)
 			.values(execution)
-			.orIgnore()
+			// Deprecated, but `orIgnore` takes no conflict target and `orUpdate` cannot do nothing.
+			// oxlint-disable-next-line typescript/no-deprecated
+			.onConflict(
+				'(error_source_execution_id) WHERE error_source_execution_id IS NOT NULL DO NOTHING',
+			)
 			.returning('id')
 			.execute();
 		return Array.isArray(result.raw) && result.raw.length > 0;

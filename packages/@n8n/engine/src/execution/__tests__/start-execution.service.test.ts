@@ -132,6 +132,7 @@ describe('StartExecutionService', () => {
 			const result = await service.start(request);
 
 			expect(result).toEqual({ executionId: 'error-exec' });
+			expect(store.loadExecutionStatus).toHaveBeenCalledWith('failed-exec');
 			expect(store.createExecution).toHaveBeenCalledWith(
 				expect.objectContaining({ errorSource, resolveErrorWorkflowOnFailure: true, parent: null }),
 			);
