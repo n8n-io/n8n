@@ -13,6 +13,7 @@ import type express from 'express';
 import merge from 'lodash/merge';
 import {
 	BinaryDataService,
+	collectAllowedBinaryDataIds,
 	ErrorReporter,
 	establishExecutionContext,
 	ExecutionContextService,
@@ -63,6 +64,7 @@ import { finished } from 'stream/promises';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import {
 	ResponseError,
@@ -340,6 +342,19 @@ const getChatResponseMode = (
 	return undefined;
 };
 
+export function shouldUseLastNodeForChatHistory(
+	nodeType: string,
+	body: unknown,
+	responseMode: WebhookResponseMode,
+): boolean {
+	return (
+		nodeType === CHAT_TRIGGER_NODE_TYPE &&
+		isRecord(body) &&
+		body.action === 'loadPreviousSession' &&
+		(responseMode === 'lastNode' || responseMode === 'streaming' || responseMode === 'hostedChat')
+	);
+}
+
 /** Returns whether the node is an enabled Form node or form-resuming Wait node. */
 function isEnabledFormPageNode(node: INode): boolean {
 	if (node.disabled) return false;
@@ -449,16 +464,22 @@ async function sendResponseNodeResponse(
 	workflowStartNode: INode,
 	executionId: string | undefined,
 	workflow: Workflow,
+	grantedBinaryDataIds?: string[],
 ): Promise<void> {
 	try {
 		const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 		if (binaryData?.id) {
-			if (response.statusCode) {
-				res.status(response.statusCode);
-			}
-			WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
-			applySandboxCSP(res);
 			try {
+				await Container.get(BinaryDataAccessService).assertIsAllowed(
+					binaryData.id,
+					workflow.id,
+					grantedBinaryDataIds,
+				);
+				if (response.statusCode) {
+					res.status(response.statusCode);
+				}
+				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
+				applySandboxCSP(res);
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
 				await ResponseHelper.sendStreamToResponse(res, stream);
 			} finally {
@@ -512,6 +533,7 @@ export function setupResponseNodePromise(
 	workflowStartNode: INode,
 	executionId: string | undefined,
 	workflow: Workflow,
+	grantedBinaryDataIds?: string[],
 ): void {
 	void responsePromise.promise
 		.then(async (response) => {
@@ -529,6 +551,7 @@ export function setupResponseNodePromise(
 				workflowStartNode,
 				executionId,
 				workflow,
+				grantedBinaryDataIds,
 			);
 		})
 		.catch(async (e: unknown) => {
@@ -762,7 +785,6 @@ export function prepareExecutionData(
 		},
 		...(executionMode === 'manual' && userId ? { manualData: { userId } } : {}),
 	});
-
 	if (destinationNode && runExecutionData.startData) {
 		runExecutionData.startData.destinationNode = destinationNode;
 	}
@@ -1086,7 +1108,7 @@ export async function executeWebhook(
 	});
 
 	const {
-		responseMode,
+		responseMode: configuredResponseMode,
 		responseCode,
 		responseData,
 		checkAllMainOutputs,
@@ -1094,6 +1116,7 @@ export async function executeWebhook(
 		responseContentType,
 		responseBinaryPropertyName,
 	} = evaluateResponseOptions(context, req);
+	let responseMode = configuredResponseMode;
 
 	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -1157,6 +1180,14 @@ export async function executeWebhook(
 			additionalKeys,
 		);
 
+		// The widget loads history from one JSON response.
+		const useLastNodeForChatHistory = shouldUseLastNodeForChatHistory(
+			workflowStartNode.type,
+			req.body,
+			responseMode,
+		);
+		if (useLastNodeForChatHistory) responseMode = 'lastNode';
+
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
 			[
@@ -1203,6 +1234,14 @@ export async function executeWebhook(
 		const { webhookResultData } = invocationResult;
 		runExecutionDataMerge = invocationResult.runExecutionDataChanges;
 		if (routesToEngineV2) engineV2Payload = webhookResultData.workflowData;
+		const binaryDataAccess = routesToEngineV2
+			? []
+			: await collectAllowedBinaryDataIds(
+					(webhookResultData.workflowData ?? []).flatMap((slot) => slot ?? []),
+					additionalData.binaryDataAccess,
+					workflowData,
+					runExecutionData?.binaryDataAccess,
+				);
 
 		if (cleanupMultipartFiles && webhookResultData.webhookResponse instanceof Readable) {
 			deferCleanupUntilStreamEnds(webhookResultData.webhookResponse, res, cleanupMultipartFiles);
@@ -1257,8 +1296,14 @@ export async function executeWebhook(
 			webhookData.userId,
 		);
 		runExecutionData = preparedRunExecutionData;
+		runExecutionData.binaryDataAccess = [
+			...new Set([...(runExecutionData.binaryDataAccess ?? []), ...binaryDataAccess]),
+		];
 
 		const runData: IWorkflowExecutionDataProcess = {
+			...(runExecutionData.binaryDataAccess.length > 0
+				? { binaryDataAccess: runExecutionData.binaryDataAccess }
+				: {}),
 			executionMode,
 			executionData: runExecutionData,
 			pushRef,
@@ -1269,6 +1314,8 @@ export async function executeWebhook(
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
 			callerAwaitsOutcome: IMMEDIATE_RESPONSE_MODES.has(responseMode) ? 'none' : 'response',
+			// A queue worker can finish before this handler registers the response mode.
+			forceFullExecutionData: useLastNodeForChatHistory,
 			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
 			// sets, so carrying it here changes nothing for v1. Engine v2 has no way to
 			// stop at a node, and its dispatcher refuses the run on this field.
@@ -1309,6 +1356,7 @@ export async function executeWebhook(
 				workflowStartNode,
 				executionId,
 				workflow,
+				runExecutionData.binaryDataAccess,
 			);
 		}
 
@@ -1590,7 +1638,15 @@ export async function executeWebhook(
 						responseData as WebhookResponseData,
 						lastNodeTaskData,
 						checkAllMainOutputs,
-						{ responsePropertyName, responseContentType, responseBinaryPropertyName },
+						{
+							responsePropertyName,
+							responseContentType,
+							responseBinaryPropertyName,
+							binaryDataAccess: {
+								workflowId: workflow.id,
+								grantedIds: runData.data.binaryDataAccess,
+							},
+						},
 					);
 
 					if (!result.ok) {

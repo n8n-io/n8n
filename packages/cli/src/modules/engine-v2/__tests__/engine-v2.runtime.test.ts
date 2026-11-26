@@ -5,6 +5,7 @@ import {
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
+	SharedSecretIdentityVerifier,
 	type EngineWorkQueues,
 	type ExecutionResponseSender,
 } from '@n8n/engine';
@@ -246,6 +247,40 @@ describe('EngineV2Runtime', () => {
 				expect.objectContaining({ queues: options.queues }),
 			);
 		});
+
+		it('passes the roles it is given to the engine', async () => {
+			await newRuntime().init({ ...initOptions(), roles: ['orchestrator'] });
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ roles: ['orchestrator'] }),
+			);
+		});
+
+		it('leaves the roles to the engine default when it is given none', async () => {
+			await newRuntime().init(initOptions());
+
+			const [options] = mocks.createEngineRuntime.mock.calls[0] as [{ roles?: unknown }];
+			expect(options.roles).toBeUndefined();
+		});
+
+		it.each([
+			{ roles: undefined, verifies: true },
+			{ roles: ['api'] as const, verifies: true },
+			{ roles: ['api', 'step-worker'] as const, verifies: true },
+			{ roles: ['orchestrator'] as const, verifies: false },
+			{ roles: ['orchestrator', 'step-worker'] as const, verifies: false },
+		])(
+			'with roles $roles, gives the engine an identity verifier: $verifies',
+			async ({ roles, verifies }) => {
+				await newRuntime().init({ ...initOptions(), roles });
+
+				const [options] = mocks.createEngineRuntime.mock.calls[0] as [
+					{ identityVerifier?: unknown },
+				];
+				expect(options.identityVerifier !== undefined).toBe(verifies);
+				expect(SharedSecretIdentityVerifier).toHaveBeenCalledTimes(verifies ? 1 : 0);
+			},
+		);
 
 		it('starts the engine', async () => {
 			await newRuntime().init(initOptions());

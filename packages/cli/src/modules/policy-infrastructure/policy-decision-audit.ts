@@ -124,6 +124,11 @@ const AUDIT_TARGETS: {
 		consumerNodeType: ctx.consumer?.nodeType,
 		projectId: ctx.projectId,
 	}),
+	// A reference has no stored version, so its id is always the committed one.
+	executionAdmission: ({ artifact, projectId }) =>
+		artifact.kind === 'agent'
+			? { agentId: artifact.id, agentName: artifact.name, projectId }
+			: { workflowId: artifact.id, workflowName: artifact.name, projectId },
 	contentImport: (ctx) =>
 		'workflow' in ctx
 			? workflowTarget(ctx.workflow.id, ctx.workflow, ctx.projectId)

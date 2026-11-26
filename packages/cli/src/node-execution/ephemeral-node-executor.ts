@@ -39,6 +39,7 @@ import {
 
 /** Minimal tool shape for constructing an in-memory single-node execution. */
 export type EphemeralWorkflowToolLike = {
+	binaryDataAccess?: string[];
 	projectId: string;
 	nodeType: string;
 	nodeTypeVersion: number;
@@ -51,6 +52,7 @@ export type EphemeralWorkflowToolLike = {
 };
 
 export interface InlineNodeExecutionRequest {
+	binaryDataAccess?: string[];
 	nodeType: string;
 	nodeTypeVersion: number;
 	nodeParameters: INodeParameters;
@@ -72,6 +74,8 @@ export interface NodeExecutionResult {
 	status: 'success' | 'error';
 	data: INodeExecutionData[];
 	error?: string;
+	/** Binary IDs that this execution may return to its caller. */
+	binaryDataAccess?: string[];
 	/** Set when a policy refused the run. */
 	violations?: NonEmptyViolations;
 }
@@ -344,6 +348,7 @@ export class EphemeralNodeExecutor {
 		}
 		tool.configureAdditionalData?.(additionalData);
 		const runExecutionData = createEmptyRunExecutionData();
+		runExecutionData.binaryDataAccess = tool.binaryDataAccess;
 		const inputData: ITaskDataConnections = { main: [inputItems] };
 		const executeData: IExecuteData = { node, data: inputData, source: null };
 		const mode = 'internal' as const;
@@ -406,7 +411,9 @@ export class EphemeralNodeExecutor {
 					return { status: 'success', data: output[0] };
 				},
 			);
-			return executionResult;
+			return parts.runExecutionData.binaryDataAccess?.length
+				? { ...executionResult, binaryDataAccess: parts.runExecutionData.binaryDataAccess }
+				: executionResult;
 		} catch (error) {
 			const result = errorResult(error);
 			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: result.error });
@@ -493,6 +500,7 @@ export class EphemeralNodeExecutor {
 				: { ...fromNames, ...fromDetails };
 
 		const tool: EphemeralWorkflowToolLike = {
+			binaryDataAccess: request.binaryDataAccess,
 			projectId: request.projectId,
 			nodeType: request.nodeType,
 			nodeTypeVersion: request.nodeTypeVersion,

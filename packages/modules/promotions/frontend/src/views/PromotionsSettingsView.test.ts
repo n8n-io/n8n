@@ -319,6 +319,21 @@ describe('PromotionsSettingsView', () => {
 		expect(screen.queryByTestId('promotion-environment-retry')).not.toBeInTheDocument();
 	});
 
+	it('sets the Remove action apart from the other actions with a divider', async () => {
+		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
+		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
+		renderView();
+
+		await userEvent.click(
+			menuButton(await screen.findByTestId('promotion-environment-card-apply')),
+		);
+
+		const remove = await screen.findByTestId('action-remove');
+		const separators = screen.getAllByRole('separator');
+		expect(separators).toHaveLength(1);
+		expect(separators[0].nextElementSibling).toBe(remove);
+	});
+
 	it('hides the connection test from a user who cannot connect', async () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
 		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);

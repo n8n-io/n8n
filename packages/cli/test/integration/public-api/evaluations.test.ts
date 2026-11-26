@@ -1,5 +1,7 @@
 import {
+	createTeamProject,
 	createWorkflow,
+	linkUserToProject,
 	mockInstance,
 	shareWorkflowWithUsers,
 	testDb,
@@ -15,6 +17,7 @@ import { Telemetry } from '@/telemetry';
 
 import { createTestCaseExecution, createTestRun } from '../shared/db/evaluation';
 import { createExecution } from '../shared/db/executions';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -300,6 +303,62 @@ describe('GET /workflows/:workflowId/test-runs/:runId/test-cases', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
+});
+
+describe('GET /workflows/:workflowId/test-runs/:runId/test-cases with a custom project role', () => {
+	const setup = async (roleScopes: string[]) => {
+		const member = await createMemberWithApiKey({ scopes: ['testRun:read'] });
+		const project = await createTeamProject(undefined, owner);
+		const role = await createCustomRoleWithScopeSlugs(roleScopes);
+		await linkUserToProject(member, project, role.slug);
+		const workflow = await createWorkflow(undefined, project);
+		const testRun = await createTestRun(workflow.id, { status: 'completed' });
+		await createTestCaseExecution(testRun.id, {
+			status: 'success',
+			inputs: { name: 'Charlie' },
+			outputs: { output: 'Charlie' },
+		});
+		return { memberAgent: testServer.publicApiAgentFor(member), workflow, testRun };
+	};
+
+	test('should return 404 when the role has workflow:read but not execution:read', async () => {
+		const { memberAgent, workflow, testRun } = await setup(['workflow:read', 'workflow:list']);
+
+		const response = await memberAgent.get(
+			`/workflows/${workflow.id}/test-runs/${testRun.id}/test-cases`,
+		);
+
+		expect(response.statusCode).toBe(404);
+		expect(JSON.stringify(response.body)).not.toContain('Charlie');
+	});
+
+	test('should still let the same role read the run summary', async () => {
+		const { memberAgent, workflow, testRun } = await setup(['workflow:read', 'workflow:list']);
+
+		const response = await memberAgent.get(`/workflows/${workflow.id}/test-runs/${testRun.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.id).toBe(testRun.id);
+	});
+
+	test('should return the cases when the role also has execution:read', async () => {
+		const { memberAgent, workflow, testRun } = await setup([
+			'workflow:read',
+			'workflow:list',
+			'execution:read',
+		]);
+
+		const response = await memberAgent.get(
+			`/workflows/${workflow.id}/test-runs/${testRun.id}/test-cases`,
+		);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0]).toMatchObject({
+			inputs: { name: 'Charlie' },
+			outputs: { output: 'Charlie' },
+		});
 	});
 });
 

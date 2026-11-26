@@ -4,6 +4,7 @@ import {
 	N8nButton,
 	N8nDataTableServer,
 	N8nDropdownMenu,
+	N8nEmptyState,
 	N8nIcon,
 	N8nInput,
 	N8nNodeIcon,
@@ -35,10 +36,11 @@ const props = defineProps<{
 	rows: InstancePolicyTableRow[];
 	loading: boolean;
 	searchPlaceholder: string;
+	noMatchText: string;
 }>();
 
 const emit = defineEmits<{
-	change: [name: string, access: PolicyAction];
+	change: [name: string, access: PolicyAction, label: string];
 	open: [name: string];
 }>();
 
@@ -184,6 +186,19 @@ const filteredRows = computed(() =>
 		: searchedRows.value.filter((row) => row.access === accessFilter.value),
 );
 
+// With rows to show, an empty result means that the search or the filter removed all of them. The
+// first load has no rows, so the message never replaces it.
+const noMatch = computed(() => props.rows.length > 0 && filteredRows.value.length === 0);
+
+const searchInput = useTemplateRef<InstanceType<typeof N8nInput>>('searchInput');
+
+// The click removes the clear button, so the focus moves to the search box.
+function clearSearchAndFilter() {
+	search.value = '';
+	accessFilter.value = 'all';
+	searchInput.value?.focus();
+}
+
 const pageRows = computed(() =>
 	filteredRows.value.slice(page.value * itemsPerPage.value, (page.value + 1) * itemsPerPage.value),
 );
@@ -219,12 +234,16 @@ function focusFilter() {
 }
 
 // A change of access can take the focused row out of the table, or move it when the table is sorted
-// by access. Both lose the focus to the body.
+// by access. Both lose the focus to the body. A restriction applies after its usage check, so the
+// focus can be on the Access button of the row by then.
 watch(
 	pageRows,
 	async () => {
 		const focused = document.activeElement;
-		const focusedRow = focused instanceof HTMLElement ? focused.dataset.typeName : undefined;
+		const focusedRow =
+			focused instanceof HTMLElement
+				? (focused.dataset.typeName ?? focused.dataset.accessOf)
+				: undefined;
 		if (focusedRow === undefined) return;
 		await nextTick();
 		if (document.activeElement === document.body) returnFocus(focusedRow);
@@ -254,7 +273,7 @@ function onRowClick(_event: MouseEvent, { item }: { item: InstancePolicyTableRow
 
 async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 	if (access === row.access) return;
-	emit('change', row.name, access);
+	emit('change', row.name, access, row.displayName);
 	await nextTick();
 	// The menu returns the focus to its trigger, which a row that left the filter took with it.
 	if (!pageRows.value.some(({ name }) => name === row.name)) focusFilter();
@@ -266,6 +285,7 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 		<div :class="$style.controls">
 			<slot name="toolbar-start" />
 			<N8nInput
+				ref="searchInput"
 				v-model="search"
 				:placeholder="searchPlaceholder"
 				:class="$style.search"
@@ -290,12 +310,13 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 				@update:model-value="onFilterChange"
 			/>
 		</div>
+		<!-- The reload after a save must not swap the message, and its clear button, for skeleton rows. -->
 		<N8nDataTableServer
 			v-model:sort-by="sortBy"
 			:headers="headers"
 			:items="pageRows"
 			:items-length="filteredRows.length"
-			:loading="loading"
+			:loading="loading && !noMatch"
 			item-value="name"
 			:pin-columns="1"
 			:pagination="false"
@@ -303,6 +324,17 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 			:row-props="{ class: $style.row }"
 			@click:row="onRowClick"
 		>
+			<template v-if="noMatch" #cover>
+				<N8nEmptyState
+					size="small"
+					:description="noMatchText"
+					:button-text="
+						i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noMatch.clear')
+					"
+					data-test-id="instance-policy-no-match"
+					@click:button="clearSearchAndFilter"
+				/>
+			</template>
 			<template #[`item.displayName`]="{ item }">
 				<!-- A row is not focusable, so the name is the button that keyboard users reach. -->
 				<button
@@ -329,14 +361,23 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 						<N8nButton
 							variant="ghost"
 							size="small"
-							@click.stop
+							:data-access-of="item.name"
 							:aria-label="
 								i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.access.ariaLabel', {
 									interpolate: { name: item.displayName },
 								})
 							"
+							@click.stop
 						>
-							<N8nIcon v-bind="ACCESS_ICON[item.access]" size="small" />
+							<!-- A spinner and not a disabled button: a disabled button loses the focus. -->
+							<N8nIcon
+								v-if="item.checking"
+								icon="loader-circle"
+								size="small"
+								spin
+								:data-test-id="`instance-policy-access-checking-${item.name}`"
+							/>
+							<N8nIcon v-else v-bind="ACCESS_ICON[item.access]" size="small" />
 							{{ i18n.baseText(ACCESS_LABEL_KEY[item.access]) }}
 							<N8nIcon icon="chevron-down" size="small" />
 						</N8nButton>

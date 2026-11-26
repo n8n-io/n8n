@@ -3,8 +3,11 @@ import type {
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ProjectWorkflowReviewSettingsResponse,
 	UpdateProjectWorkflowReviewSettingsDto,
+	UpdateWorkflowReviewInstanceSettingsDto,
 	UpdateWorkflowReviewRequestVersionDto,
 	WorkflowReviewEligibleReviewersList,
+	WorkflowReviewInstanceSettingsList,
+	WorkflowReviewInstanceSettingsResponse,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestSummary,
@@ -81,6 +84,31 @@ export async function updateProjectWorkflowReviewSettings(
 		context,
 		'PATCH',
 		`/projects/${encodeURIComponent(projectId)}/workflow-review-settings`,
+		{ ...payload },
+	);
+}
+
+export async function getWorkflowReviewInstanceSettings(
+	context: IRestApiContext,
+	query: { skip: number; take: number; search?: string; requiredByInstance?: boolean },
+): Promise<WorkflowReviewInstanceSettingsList> {
+	return await makeRestApiRequest<WorkflowReviewInstanceSettingsList>(
+		context,
+		'GET',
+		'/workflow-review-settings/projects',
+		{ ...query },
+	);
+}
+
+export async function updateWorkflowReviewInstanceSettings(
+	context: IRestApiContext,
+	projectId: string,
+	payload: UpdateWorkflowReviewInstanceSettingsDto,
+): Promise<WorkflowReviewInstanceSettingsResponse> {
+	return await makeRestApiRequest<WorkflowReviewInstanceSettingsResponse>(
+		context,
+		'PATCH',
+		`/workflow-review-settings/projects/${encodeURIComponent(projectId)}`,
 		{ ...payload },
 	);
 }
