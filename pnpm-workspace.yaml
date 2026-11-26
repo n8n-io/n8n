@@ -422,7 +422,7 @@ overrides:
   '@google-cloud/resource-manager>google-gax': ^5.0.1
   '@google-cloud/secret-manager>google-gax': ^5.0.1
   google-gax: ^4.3.7
-  ws: '>=8.21.1'
+  ws: '>=8.23.0'
   date-fns: 2.30.0
   date-fns-tz: 2.0.0
   form-data: 4.0.6
