@@ -260,13 +260,14 @@ runDataDisplayModes: [
   filtered by search. It must be synchronous and cheap, because it runs on every data change. When
   it returns false for the saved mode, the pane shows its default view and keeps the saved mode.
 - `autoSelect: true` makes the output pane select the mode when the node opens or finishes a run,
-  if `canRender` is true.
+  if `canRender` is true. When the node opens, it wins over the automatic switch to Binary or
+  Rendered (AI).
 - `supports.search: true` shows the search field. Without it, the search field is hidden and
   `search` is always `''`.
 
 The component gets `RunDataDisplayModeProps`: `data`, `node`, `pane`, `runIndex`, `outputIndex`,
 `search` and `compact`. `data` is never paginated, so a component that can get many items must
-handle that itself. Pinned data needs no code: `data` holds the pinned items when the node has them.
+handle that itself. The shell's too-much-data check measures only the current page. Pinned data needs no code: `data` holds the pinned items when the node has them.
 
 ### Route names are yours, and a check guards them
 

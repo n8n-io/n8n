@@ -138,7 +138,8 @@ describe('NodeTypesTab', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
-	it('restricts a node type at once', async () => {
+	it('restricts a node type that no workflow uses at once', async () => {
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
 		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
 		const { findByText, getByTestId } = await setup(() =>
 			mocks.fetchInstanceAccess.mockResolvedValueOnce(access(1)).mockResolvedValue(
@@ -207,6 +208,7 @@ describe('NodeTypesTab', () => {
 	});
 
 	it('loads the access list again when the policy changed after the page loaded', async () => {
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
 		mocks.saveInstancePolicy.mockRejectedValue(new ResponseError('stale', { httpStatusCode: 409 }));
 		mocks.fetchInstancePolicy.mockResolvedValueOnce(policy(1)).mockResolvedValue(policy(5));
 		const { findByText, getByTestId } = await setup(() =>

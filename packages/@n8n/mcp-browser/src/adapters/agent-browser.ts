@@ -18,7 +18,6 @@ import type {
 	ClickOptions,
 	ConnectConfig,
 	ConsoleEntry,
-	Cookie,
 	ElementTarget,
 	ModalState,
 	NavigateResult,
@@ -568,38 +567,6 @@ export class AgentBrowserAdapter implements Adapter {
 	// =========================================================================
 	// State
 	// =========================================================================
-
-	async getCookies(pageId: string, _url?: string): Promise<Cookie[]> {
-		await this.switchToTab(pageId);
-		const script =
-			"document.cookie.split('; ').filter(Boolean)" +
-			".map(c=>{const i=c.indexOf('=');return{name:c.slice(0,i),value:c.slice(i+1)}})";
-		const resp = await this.run(['eval', script]);
-		return Array.isArray(resp.data) ? (resp.data as Cookie[]) : [];
-	}
-
-	async setCookies(pageId: string, cookies: Cookie[]): Promise<void> {
-		await this.switchToTab(pageId);
-		const assignments = cookies
-			.map((c) => {
-				let s = `${c.name}=${c.value}`;
-				if (c.path) s += ';path=' + c.path;
-				if (c.domain) s += ';domain=' + c.domain;
-				if (c.expires) s += ';expires=' + new Date(c.expires * 1000).toUTCString();
-				return 'document.cookie=' + JSON.stringify(s);
-			})
-			.join(';');
-		await this.run(['eval', assignments]);
-	}
-
-	async clearCookies(pageId: string): Promise<void> {
-		await this.switchToTab(pageId);
-		const script =
-			"document.cookie.split(';').forEach(c=>{" +
-			"const n=c.split('=')[0].trim();" +
-			"document.cookie=n+'=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;'})";
-		await this.run(['eval', script]);
-	}
 
 	async getStorage(pageId: string, kind: 'local' | 'session'): Promise<Record<string, string>> {
 		await this.switchToTab(pageId);

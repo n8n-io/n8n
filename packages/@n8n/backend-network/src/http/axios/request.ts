@@ -21,6 +21,7 @@ import {
 	searchForHeader,
 	setAxiosAgents,
 	throwIfDomainNotAllowed,
+	throwIfProxyNotAllowed,
 	validateProxySsrf,
 	validateUrlSsrf,
 } from './utils';
@@ -223,6 +224,7 @@ async function sendHttpRequest(
 	}
 
 	throwIfDomainNotAllowed(axiosRequest, requestOptions.allowedDomains);
+	throwIfProxyNotAllowed(requestOptions.proxy, requestOptions.allowedDomains);
 
 	const result = shouldFollowRedirectsManually(axiosRequest, requestOptions.proxy, ssrfBridge)
 		? await followSsrfRedirects(axiosRequest, {

@@ -71,49 +71,55 @@ if (args[0] === 'has-session') {
 	bin(
 		'opencode',
 		`
-if (args[0] === '--version') { console.log('1.2.3'); process.exit(0); }
+if (args[0] === '--version') { console.log('opencode v2.4.1'); process.exit(0); }
 fs.writeFileSync(file('server-env.json'), JSON.stringify({
   worker: !!process.env.AGENT_WORKER_TOKEN, queue: !!process.env.N8N_DEQUEUE_URL, slack: !!process.env.SLACK_BOT_TOKEN,
+  password: !!process.env.OPENCODE_PASSWORD,
+  legacyPassword: !!process.env.OPENCODE_SERVER_PASSWORD,
+  legacyUsername: !!process.env.OPENCODE_SERVER_USERNAME,
+  codeMode: !!process.env.OPENCODE_EXPERIMENTAL_CODE_MODE,
   cache: process.env.TURBO_CACHE_DIR, config: JSON.parse(process.env.OPENCODE_CONFIG_CONTENT),
   runtime: process.env.N8N_AGENT_RUNTIME, profile: process.env.N8N_AGENT_PROFILE ?? null,
 }));
 let sessions = fs.existsSync(file('sessions.json')) ? JSON.parse(fs.readFileSync(file('sessions.json'), 'utf8')) : {};
 const server = require('node:http').createServer(async (req, res) => {
   res.setHeader('content-type', 'application/json');
-  const expected = 'Basic ' + Buffer.from('opencode:' + process.env.OPENCODE_SERVER_PASSWORD).toString('base64');
+  const expected = 'Basic ' + Buffer.from('opencode:' + process.env.OPENCODE_PASSWORD).toString('base64');
   if (req.headers.authorization !== expected) { res.writeHead(401).end('{}'); return; }
-  const directory = decodeURIComponent(req.headers['x-opencode-directory']);
-  if (req.url === '/global/health') { res.end(JSON.stringify({ healthy:true, version:'1.2.3' })); return; }
-  if (req.method === 'POST' && req.url === '/session') {
+  if (req.url === '/api/info') {
+    res.end(JSON.stringify({ version: '2.4.1', pid: process.pid, urls: [], paths: { tmp: '/tmp' } }));
+    return;
+  }
+  if (req.method === 'POST' && req.url === '/api/session') {
     if (fs.existsSync(file('reject-create'))) { res.writeHead(503).end('{}'); return; }
     let body = '';
     for await (const chunk of req) body += chunk;
+    const payload = JSON.parse(body);
     const id = 'ses_' + (Object.keys(sessions).length + 1);
-    sessions[id] = { id, directory, title: JSON.parse(body).title };
+    sessions[id] = { id, title: payload.title, location: { directory: payload.location?.directory } };
     fs.writeFileSync(file('sessions.json'), JSON.stringify(sessions));
-    res.end(JSON.stringify(sessions[id])); return;
+    res.end(JSON.stringify({ data: sessions[id] })); return;
   }
   if (fs.existsSync(file('reject-session'))) { res.writeHead(503).end('{}'); return; }
   const url = new URL(req.url, 'http://localhost');
-  if (url.pathname === '/session') {
-    // Newest first, like the real server. Filter on the query, not the header,
-    // so the test fails when the launcher omits either parameter. The
-    // child-session file models a subagent conversation that the roots query
-    // flag must exclude.
+  if (url.pathname === '/api/session') {
+    // Newest first, like the real server. Filter on the query parameters so the
+    // test fails when the launcher omits directory or parentID=null. The
+    // child-session file models a subagent conversation that parentID=null must
+    // exclude.
     const directory = url.searchParams.get('directory');
-    const roots = url.searchParams.get('roots') === 'true';
+    const roots = url.searchParams.get('parentID') === 'null';
+    const order = url.searchParams.get('order');
     const stored = Object.values(sessions);
     if (fs.existsSync(file('child-session')))
-      stored.push({ id: 'ses_child', directory, title: 'child', parentID: 'ses_1' });
-    const list = stored
-      .filter(s => s.directory === directory && (!roots || !s.parentID))
-      .reverse();
-    if (fs.existsSync(file('extra-session'))) list.unshift({ id: 'ses_extra', directory, title: 'TUI session' });
-    res.end(JSON.stringify(list)); return;
+      stored.push({ id: 'ses_child', title: 'child', parentID: 'ses_1', location: { directory } });
+    let list = stored.filter(s => s.location?.directory === directory && (!roots || !s.parentID));
+    if (order !== 'asc') list = list.reverse();
+    if (fs.existsSync(file('extra-session')))
+      list.unshift({ id: 'ses_extra', title: 'TUI session', location: { directory } });
+    res.end(JSON.stringify({ data: list, cursor: { previous: null, next: null } })); return;
   }
-  const session = sessions[req.url.split('/').at(-1)];
-  if (!session) { res.writeHead(404).end('{}'); return; }
-  res.end(JSON.stringify(session));
+  res.writeHead(404).end('{}');
 });
 server.listen(+args[args.indexOf('--port') + 1], '127.0.0.1');
 `,
@@ -178,7 +184,7 @@ test(
 		assert.equal(webbed.sessionID, 'ses_1');
 		const created = JSON.parse(readFileSync(join(f.dir, 'sessions.json'), 'utf8'));
 		assert.equal(created.ses_1.title, 'n8n: fix-flaky');
-		assert.equal(created.ses_1.directory, join(f.dir, 'wt-fix-flaky'));
+		assert.equal(created.ses_1.location.directory, join(f.dir, 'wt-fix-flaky'));
 		assert.equal((await f.prepare({ name: 'fix-flaky', web: true })).sessionID, 'ses_1');
 		assert.equal((await f.prepare({ name: 'another-task', web: true })).sessionID, 'ses_2');
 		writeFileSync(join(f.dir, 'extra-session'), '');
@@ -192,9 +198,16 @@ test(
 		assert.equal((await f.prepare({ name: 'fix-flaky', web: true })).sessionID, fresh.sessionID);
 		const env = JSON.parse(readFileSync(join(f.dir, 'server-env.json'), 'utf8'));
 		assert.deepEqual([env.worker, env.queue, env.slack], [false, false, false]);
+		assert.deepEqual(
+			[env.password, env.legacyPassword, env.legacyUsername, env.codeMode],
+			[true, false, false, false],
+		);
 		assert.equal(env.cache, join(f.dir, '.turbo-cache'));
-		assert.equal(env.config.provider.openrouter.options.apiKey, '{env:OPENROUTER_API_KEY}');
-		assert.deepEqual(env.config.enabled_providers, ['openrouter']);
+		assert.equal(env.config.providers.openrouter.settings.apiKey, '{env:OPENROUTER_API_KEY}');
+		assert.deepEqual(env.config.policies, [
+			{ action: 'provider.use', resource: '*', effect: 'deny' },
+			{ action: 'provider.use', resource: 'openrouter', effect: 'allow' },
+		]);
 		assert.deepEqual([env.runtime, env.profile], ['sandbox', null]);
 		assert.equal(statSync(join(f.dir, '.n8n-opencode')).mode & 0o777, 0o700);
 		for (const file of ['serve.sh', 'server.json']) {

@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EngineConfig, ExecutionsConfig } from '@n8n/config';
@@ -21,7 +22,7 @@ import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsClient } from '../engine-credentials-client';
-import type { EngineSubWorkflowClient } from '../engine-sub-workflow-client';
+import type { EngineSubWorkflowClient } from '../engine-workflow-resolve-client';
 import type { EngineMtls } from '../engine-mtls';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { RemoteCredentialsHelper } from '../remote-credentials-helper';
@@ -35,7 +36,6 @@ const mocks = vi.hoisted(() => {
 		initialize: vi.fn(async () => {
 			dataSource.isInitialized = true;
 		}),
-		runMigrations: vi.fn(async () => []),
 		destroy: vi.fn(async () => {
 			dataSource.isInitialized = false;
 		}),
@@ -96,6 +96,7 @@ const mocks = vi.hoisted(() => {
 		v1StepExecutor,
 		stepDataLoader,
 		createDataSource: vi.fn((_url: string, _options?: unknown) => dataSource),
+		runMigrations: vi.fn(async (_dataSource: unknown) => {}),
 		createServer: vi.fn((_app: unknown) => httpServer),
 		createEngineRuntime: vi.fn((_options: unknown) => engine),
 		createEngineStepDataLoader: vi.fn((_executionStore: unknown, _stepStore: unknown) => {
@@ -113,6 +114,7 @@ vi.mock('@n8n/engine', async (importOriginal) => ({
 	AllowAllAdmittance: vi.fn(),
 	SharedSecretIdentityVerifier: vi.fn(),
 	createDataSource: mocks.createDataSource,
+	runMigrations: mocks.runMigrations,
 	createEngineRuntime: mocks.createEngineRuntime,
 	mintResumeToken: vi.fn((_secret: string, executionId: string) => `token-for-${executionId}`),
 	mintStepBoundResumeToken: vi.fn(() => 'step-bound-token'),
@@ -158,13 +160,14 @@ describe('EngineV2Runtime', () => {
 		databaseUrl = 'postgres://engine',
 		config: Partial<EngineConfig> = {},
 		executions: Partial<ExecutionsConfig> = {},
+		logger: Logger = mockLogger(),
 	) =>
 		new EngineV2Runtime(
 			engineConfig(databaseUrl, config),
 			mock<ExecutionsConfig>({ pruneData: true, pruneDataMaxAge: 336, ...executions }),
 			{ enabled: false, createServer: mocks.createServer } as unknown as EngineMtls,
 			nodeTypes,
-			mockLogger(),
+			logger,
 			credentialsClient,
 			transport,
 			subWorkflowClient,
@@ -225,9 +228,24 @@ describe('EngineV2Runtime', () => {
 
 			expect(mocks.createDataSource).toHaveBeenCalledWith('postgres://engine', expect.anything());
 			expect(mocks.dataSource.initialize).toHaveBeenCalled();
-			expect(mocks.dataSource.runMigrations).toHaveBeenCalled();
+			expect(mocks.runMigrations).toHaveBeenCalledWith(mocks.dataSource);
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
 				expect.objectContaining({ dataSource: mocks.dataSource }),
+			);
+		});
+
+		it('logs before it migrates, because the migration waits while another engine process holds the lock', async () => {
+			const scopedLogger = mock<Logger>();
+			const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
+
+			await newRuntime('postgres://engine', {}, {}, logger).init(initOptions());
+
+			const logged = scopedLogger.info.mock.calls.findIndex(([message]) =>
+				message.includes('migration lock'),
+			);
+			expect(logged).not.toBe(-1);
+			expect(scopedLogger.info.mock.invocationCallOrder[logged]).toBeLessThan(
+				mocks.runMigrations.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -515,7 +533,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('closes the connection when migrations fail', async () => {
-			mocks.dataSource.runMigrations.mockRejectedValueOnce(new Error('migration failed'));
+			mocks.runMigrations.mockRejectedValueOnce(new Error('migration failed'));
 
 			await expect(newRuntime().init(initOptions())).rejects.toThrow('migration failed');
 

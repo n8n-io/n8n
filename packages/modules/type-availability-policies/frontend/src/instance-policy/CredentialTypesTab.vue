@@ -70,6 +70,9 @@ defineExpose({ returnFocus: (name: string | undefined) => table.value?.returnFoc
 		:search-placeholder="
 			i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.search.credential')
 		"
+		:no-match-text="
+			i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noMatch.credential')
+		"
 		data-test-id="credential-types-tab"
 		@change="changeAccess"
 		@open="(name) => emit('open', name)"

@@ -2892,7 +2892,7 @@ async function onHeaderAction(action: string) {
 			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
 			favoritesStore.removeFavoriteLocally(agentId.value, 'agent');
 		} catch (error) {
-			showError(error, 'Could not delete agent');
+			showError(error, locale.baseText('agents.builder.deleteError'));
 			return;
 		}
 

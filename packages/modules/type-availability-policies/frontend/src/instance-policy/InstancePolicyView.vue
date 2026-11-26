@@ -9,13 +9,15 @@ import {
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { createReusableTemplate } from '@vueuse/core';
-import { computed, onMounted, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import CredentialTypesTab from './CredentialTypesTab.vue';
 import CredentialTypeAccessDialog from './access-dialog/CredentialTypeAccessDialog.vue';
 import NodeTypeAccessDialog from './access-dialog/NodeTypeAccessDialog.vue';
 import NodeTypesTab from './NodeTypesTab.vue';
+import RestrictReviewDialog from './restrict-review/RestrictReviewDialog.vue';
+import { useRestrictReviewStore } from './restrict-review/restrict-review.store';
 import { useInstancePolicy } from './useInstancePolicy';
 import { usePolicyAdminAccess } from '../composables/usePolicyAdminAccess';
 import {
@@ -31,6 +33,7 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 const { manageableKinds, entryRouteName } = usePolicyAdminAccess();
 const instancePolicy = useInstancePolicy();
+const restrictReview = useRestrictReviewStore();
 // The tabs sit in the table's toolbar, so a tab with a table renders them there.
 const [DefineTabs, ReuseTabs] = createReusableTemplate();
 
@@ -111,6 +114,13 @@ watch(
 	{ immediate: true },
 );
 
+watch(
+	() => details.value && `${details.value.kind}:${details.value.name}`,
+	(next, previous) => {
+		if (previous && next !== previous) restrictReview.cancelAll();
+	},
+);
+
 // A user who skips the landing page on the way in goes back to Policies.
 const back = computed(() =>
 	entryRouteName.value === POLICIES_LANDING_VIEW
@@ -127,6 +137,11 @@ const back = computed(() =>
 function onBack() {
 	void router.push({ name: back.value.name });
 }
+
+// A review that is open or still loading when the admin leaves applies nothing.
+onBeforeUnmount(() => {
+	restrictReview.cancelAll();
+});
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('typeAvailabilityPolicies.instancePolicy.title'));
@@ -183,6 +198,7 @@ onMounted(() => {
 			@update:open="closeDetails"
 			@close-auto-focus="onDialogCloseAutoFocus"
 		/>
+		<RestrictReviewDialog :stacked="!!details" />
 	</N8nSettingsLayout>
 </template>
 
