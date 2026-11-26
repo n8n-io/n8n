@@ -184,5 +184,10 @@ export type {
 
 export type { ExecutionRetentionPolicy } from './retention';
 
-export { createDataSource, WorkflowExecution, WorkflowStepExecution } from './database';
+export {
+	createDataSource,
+	runMigrations,
+	WorkflowExecution,
+	WorkflowStepExecution,
+} from './database';
 export type { EngineStores } from './database';
