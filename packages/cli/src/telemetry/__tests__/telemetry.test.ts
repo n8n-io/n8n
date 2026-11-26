@@ -319,7 +319,7 @@ describe('Telemetry', () => {
 
 			const webhookSuccessTime = fakeTestSystemTime('2022-01-01 12:00:00');
 			telemetry.trackWorkflowExecution(webhookRun);
-			fakeTestSystemTime('2022-01-01 12:30:00');
+			const webhookLastSuccessTime = fakeTestSystemTime('2022-01-01 12:30:00');
 			telemetry.trackWorkflowExecution(webhookRun);
 			const webhookErrorTime = fakeTestSystemTime('2022-01-01 13:00:00');
 			telemetry.trackWorkflowExecution({ ...webhookRun, success: false });
@@ -339,6 +339,7 @@ describe('Telemetry', () => {
 					status: 'success',
 					count: 2,
 					first: webhookSuccessTime,
+					last: webhookLastSuccessTime,
 				},
 				{
 					node_type: 'n8n-nodes-base.webhook',
@@ -347,6 +348,7 @@ describe('Telemetry', () => {
 					status: 'error',
 					count: 1,
 					first: webhookErrorTime,
+					last: webhookErrorTime,
 				},
 				{
 					node_type: 'n8n-nodes-base.executeWorkflowTrigger',
@@ -355,6 +357,7 @@ describe('Telemetry', () => {
 					status: 'success',
 					count: 1,
 					first: agentSuccessTime,
+					last: agentSuccessTime,
 				},
 				{
 					node_type: null,
@@ -363,6 +366,7 @@ describe('Telemetry', () => {
 					status: 'error',
 					count: 1,
 					first: noRunDataTime,
+					last: noRunDataTime,
 				},
 			]);
 			const rowTotal = triggerCounts.reduce((total, row) => total + row.count, 0);
@@ -1348,15 +1352,16 @@ describe('Telemetry', () => {
 		});
 
 		test('should send the trigger counts of a workflow as a JSON list', () => {
-			const execTime = fakeTestSystemTime('2022-01-01 12:00:00');
-			telemetry.trackWorkflowExecution({
+			const scheduleRun: Parameters<Telemetry['trackWorkflowExecution']>[0] = {
 				workflow_id: '1',
 				user_id: 'user1',
 				is_manual: false,
 				success: true,
 				execution_mode: 'trigger',
 				trigger_node_type: 'n8n-nodes-base.scheduleTrigger',
-			});
+			};
+			const execTime = fakeTestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(scheduleRun);
 			telemetry.trackWorkflowExecution({
 				workflow_id: '1',
 				user_id: 'user1',
@@ -1365,6 +1370,8 @@ describe('Telemetry', () => {
 				execution_mode: 'manual',
 				trigger_node_type: 'n8n-nodes-base.manualTrigger',
 			});
+			const lastExecTime = fakeTestSystemTime('2022-01-01 12:20:00');
+			telemetry.trackWorkflowExecution(scheduleRun);
 
 			telemetry.flushBuffers();
 
@@ -1372,7 +1379,7 @@ describe('Telemetry', () => {
 				event_version: '3',
 				workflow_id: '1',
 				user_id: 'user1',
-				prod_success: { count: 1, first: execTime },
+				prod_success: { count: 2, first: execTime },
 				manual_success: { count: 1, first: execTime },
 				trigger_counts: JSON.stringify([
 					{
@@ -1380,8 +1387,9 @@ describe('Telemetry', () => {
 						mode: 'trigger',
 						caller: null,
 						status: 'success',
-						count: 1,
+						count: 2,
 						first: execTime.toISOString(),
+						last: lastExecTime.toISOString(),
 					},
 					{
 						node_type: 'n8n-nodes-base.manualTrigger',
@@ -1390,6 +1398,7 @@ describe('Telemetry', () => {
 						status: 'success',
 						count: 1,
 						first: execTime.toISOString(),
+						last: execTime.toISOString(),
 					},
 				]),
 			});

@@ -62,6 +62,8 @@ interface IExecutionTriggerCount extends IExecutionTrackData {
 	/** null when no agent or parent workflow started the run */
 	caller: ExecutionCaller | null;
 	status: 'success' | 'error' | 'crashed';
+	/** Time of the last run since the last flush. `first` is the time of the first run. */
+	last: Date;
 }
 
 type IExecutionsBufferEntry = Partial<Record<ExecutionTrackDataKey, IExecutionTrackData>> & {
@@ -299,6 +301,7 @@ export class Telemetry implements TelemetryTracker {
 			const triggerCountRows = [...(triggerCounts?.values() ?? [])].map((row) => ({
 				...row,
 				first: row.first.toISOString(),
+				last: row.last.toISOString(),
 			}));
 
 			this.track('Workflow execution count', {
@@ -386,6 +389,7 @@ export class Telemetry implements TelemetryTracker {
 
 		if (row) {
 			row.count++;
+			row.last = execTime;
 		} else {
 			triggerCounts.set(key, {
 				node_type: nodeType,
@@ -394,6 +398,7 @@ export class Telemetry implements TelemetryTracker {
 				status,
 				count: 1,
 				first: execTime,
+				last: execTime,
 			});
 		}
 	}
