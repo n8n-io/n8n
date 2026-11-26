@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceFilesView.vue
+  s_bc27ac3adda411::t_1b39d7e11a8249 437
+packages/cli/src/modules/skills/sources/github/github-folder.ts
+  s_bc27ac3adda411::t_cc139523855c51 27
+  s_bc27ac3adda411::t_09aa8477b22383 70-74
+  s_bc27ac3adda411::t_ba6e56a11a259f 77-79
+  s_bc27ac3adda411::t_c949210fd03944 1,19-26,28-30,56,68-69,75-76,80-82,86,88
+packages/cli/src/modules/skills/__tests__/github-skill-source-client.test.ts
+  s_bc27ac3adda411::t_ba6e56a11a259f 475-477
+  s_bc27ac3adda411::t_0ff479c262b474 192-198
+  s_bc27ac3adda411::t_b297b5a0ae5700 468-474,478-492,585-588
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceConnectDialog.vue
+  s_bc27ac3adda411::t_cd242c65d671ba 1011-1014
+packages/cli/src/modules/skills/sources/github/github-skill-source-client.ts
+  s_bc27ac3adda411::t_ba6e56a11a259f 489-494
+  s_bc27ac3adda411::t_c949210fd03944 28,130
+packages/frontend/editor-ui/src/features/settings/context/catalog/SkillCatalog.vue
+  s_bc27ac3adda411::t_cd242c65d671ba 288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9bb1f8b38a2275cfe2fd89fa80d62be94fbef6b9",
+  "prompts": {},
+  "sessions": {
+    "s_bc27ac3adda411": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e944-3dbf-7aa3-9124-352b45e22dd3",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
