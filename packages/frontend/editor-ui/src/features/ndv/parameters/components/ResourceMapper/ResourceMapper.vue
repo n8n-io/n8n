@@ -13,7 +13,7 @@ import type {
 	ResourceMapperFields,
 	ResourceMapperValue,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, resolveRelativePath } from 'n8n-workflow';
 import { computed, inject, onMounted, reactive, watch } from 'vue';
 import {
 	ExpressionLocalResolveContextSymbol,
@@ -162,10 +162,29 @@ async function checkStaleFields(): Promise<void> {
 		schemaAutoRefreshEnabled &&
 		props.parameter.typeOptions?.resourceMapper?.refreshStaleSchemaOnOpen
 	) {
+		// Fields fetched without the parameter they depend on do not describe the
+		// source. Keep the saved schema and values until the dependency resolves.
+		if (await hasUnresolvedDependency()) {
+			return;
+		}
 		await initFetching(true, fetchedFields);
 		return;
 	}
 	state.hasStaleFields = isSchemaStale;
+}
+
+// True when a parameter in `loadOptionsDependsOn` has no resolved value. For example,
+// a workflow ID expression that reads data from a node that did not run yet.
+async function hasUnresolvedDependency(): Promise<boolean> {
+	const dependsOn = props.parameter.typeOptions?.loadOptionsDependsOn ?? [];
+	if (!props.node || dependsOn.length === 0) {
+		return false;
+	}
+	const resolvedParameters = await resolveNodeParameters(props.node);
+	return dependsOn.some((dependencyPath) => {
+		const value: unknown = get(resolvedParameters, resolveRelativePath(props.path, dependencyPath));
+		return value === undefined || value === null || value === '';
+	});
 }
 
 // Reload fields to map when node is executed
@@ -378,6 +397,15 @@ async function initFetching(
 	}
 }
 
+async function resolveNodeParameters(node: INode): Promise<INodeParameters> {
+	return (await resolveRequiredParameters(
+		props.parameter,
+		node.parameters,
+		workflowDocumentStore.value.documentId,
+		expressionLocalResolveCtx?.value ?? {},
+	)) as INodeParameters;
+}
+
 const createRequestParams = async (methodName: string) => {
 	if (!props.node) {
 		return;
@@ -387,12 +415,7 @@ const createRequestParams = async (methodName: string) => {
 			name: props.node.type,
 			version: props.node.typeVersion,
 		},
-		currentNodeParameters: (await resolveRequiredParameters(
-			props.parameter,
-			props.node.parameters,
-			workflowDocumentStore.value.documentId,
-			expressionLocalResolveCtx?.value ?? {},
-		)) as INodeParameters,
+		currentNodeParameters: await resolveNodeParameters(props.node),
 		path: props.path,
 		methodName,
 		credentials: props.node.credentials,
