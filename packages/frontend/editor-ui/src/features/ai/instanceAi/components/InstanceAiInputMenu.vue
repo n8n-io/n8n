@@ -31,10 +31,11 @@ const props = withDefaults(
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { menuItems, disconnectedConnectionCount, refreshSkills } = useInstanceAiInputMenuItems(
-	() => emit('attachFiles'),
-	() => props.projectId,
-);
+const { menuItems, disconnectedConnectionCount, refreshSkills, handleSubMenuToggle, handleSearch } =
+	useInstanceAiInputMenuItems(
+		() => emit('attachFiles'),
+		() => props.projectId,
+	);
 
 const tooltip = computed(() => {
 	if (props.disabled && props.isStreaming) {
@@ -131,6 +132,8 @@ const menuAnchor = useTemplateRef<HTMLElement>('menuAnchor');
 			:disabled="props.disabled"
 			data-test-id="instance-ai-input-menu"
 			@select="handleSelect"
+			@search="handleSearch"
+			@submenu:toggle="handleSubMenuToggle"
 			@update:model-value="handleUpdateDropdownModelValue"
 		>
 			<template #trigger>
