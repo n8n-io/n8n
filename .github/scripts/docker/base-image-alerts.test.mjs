@@ -165,10 +165,11 @@ describe('planAlerts', () => {
 		assert.equal(next.findings['DHI_REF CVE-1 zlib'], ago(STALE_MS));
 	});
 
-	it('ignores medium findings for the 7-day alert', () => {
+	it('alerts on a stale finding of any severity', () => {
 		const state = { findings: { 'DHI_REF CVE-2 zlib': ago(STALE_MS) } };
-		const source = withRemaining('DHI_REF', 'no-upstream-fix', [finding('CVE-2', 'MEDIUM')]);
-		assert.deepEqual(planAlerts([source], state, { now }).alerts, []);
+		const source = withRemaining('DHI_REF', 'no-upstream-fix', [finding('CVE-2', 'LOW')]);
+		const [alert] = planAlerts([source], state, { now }).alerts;
+		assert.match(alert, /CVE-2 \(LOW: zlib\)/);
 	});
 
 	it('skips the finding alerts for PYTHON_IMAGE, which apk upgrade fixes at build time', () => {
