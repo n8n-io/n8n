@@ -56,6 +56,7 @@ export const formFields: INodeProperties[] = [
 		displayName: 'Form Data',
 		name: 'dataFieldsJson',
 		type: 'json',
+		validateType: 'object',
 		default: '',
 		typeOptions: {
 			alwaysOpenEditWindow: true,

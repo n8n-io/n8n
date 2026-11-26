@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
-import { jsonParse, requestPath } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import type { ICollection } from './CollectionInterface';
 import { cockpitApiRequest } from './GenericFunctions';
@@ -50,9 +50,7 @@ export async function getAllCollectionEntries(
 	}
 
 	if (options.filter) {
-		body.filter = jsonParse(options.filter.toString(), {
-			errorMessage: "'Filter' option is not valid JSON",
-		});
+		body.filter = options.filter as IDataObject;
 	}
 
 	if (options.limit) {
@@ -64,9 +62,7 @@ export async function getAllCollectionEntries(
 	}
 
 	if (options.sort) {
-		body.sort = jsonParse(options.sort.toString(), {
-			errorMessage: "'Sort' option is not valid JSON",
-		});
+		body.sort = options.sort as IDataObject;
 	}
 
 	if (options.populate) {

@@ -31,6 +31,23 @@ describe('Cockpit > Workflows', () => {
 			.post('/forms/submit/contact', { form: { email: 'nathan@example.com' } })
 			.query(token)
 			.reply(200, { email: 'nathan@example.com' });
+		api
+			.post('/collections/save/posts', { data: { title: 'From JSON' } })
+			.query(token)
+			.reply(200, entry);
+		api
+			.post('/forms/submit/contact', { form: { email: 'grace@example.com' } })
+			.query(token)
+			.reply(200, { email: 'grace@example.com' });
+		api
+			.post('/collections/get/posts', {
+				filter: { published: true },
+				limit: 5,
+				sort: { title: 1 },
+				simple: true,
+			})
+			.query(token)
+			.reply(200, [entry]);
 		api.get('/singletons/get/settings').query(token).reply(200, { siteName: 'Acme Corp' });
 	});
 

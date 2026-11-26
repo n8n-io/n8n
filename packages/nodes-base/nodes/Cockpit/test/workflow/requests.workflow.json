@@ -2,6 +2,69 @@
 	"name": "Cockpit Requests",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "getAll",
+				"collection": "posts",
+				"limit": 5,
+				"options": {
+					"filter": "{\"published\": true}",
+					"sort": "={{ { \"title\": 1 } }}"
+				}
+			},
+			"id": "29ebde3f-3729-581f-9bf0-9635f540ae38",
+			"name": "Collection Get Many Filter",
+			"type": "n8n-nodes-base.cockpit",
+			"typeVersion": 1,
+			"position": [300, 2150],
+			"credentials": {
+				"cockpitApi": {
+					"id": "1",
+					"name": "Cockpit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "form",
+				"operation": "submit",
+				"form": "contact",
+				"jsonDataFields": true,
+				"dataFieldsJson": "={{ { \"email\": \"grace@example.com\" } }}"
+			},
+			"id": "789de42a-ad97-54cf-bdee-db35689bcb48",
+			"name": "Form Submit Expression",
+			"type": "n8n-nodes-base.cockpit",
+			"typeVersion": 1,
+			"position": [300, 2450],
+			"credentials": {
+				"cockpitApi": {
+					"id": "1",
+					"name": "Cockpit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "create",
+				"collection": "posts",
+				"jsonDataFields": true,
+				"dataFieldsJson": "{\"title\": \"From JSON\"}"
+			},
+			"id": "0e9ebaf3-bea6-5024-ac63-b56eb7795b61",
+			"name": "Collection Create JSON",
+			"type": "n8n-nodes-base.cockpit",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"credentials": {
+				"cockpitApi": {
+					"id": "1",
+					"name": "Cockpit account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "trigger",
 			"name": "When clicking \"Execute Workflow\"",
@@ -171,6 +234,21 @@
 		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
+					{
+						"node": "Collection Get Many Filter",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Form Submit Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Collection Create JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Collection Create",
 						"type": "main",
