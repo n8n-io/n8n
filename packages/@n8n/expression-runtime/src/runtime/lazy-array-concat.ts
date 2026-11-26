@@ -77,60 +77,44 @@ function givesPlainArray(receiver: unknown): receiver is unknown[] {
 	);
 }
 
-/** How `concat` adds a value to its result. `other` is a spread value that is not an array. */
-type OperandKind = 'spread' | 'single' | 'other';
-
-function operandKindOf(value: unknown): OperandKind {
-	if (value === null || (typeof value !== 'object' && typeof value !== 'function')) {
-		return 'single';
+/** Say whether `concat` spreads the value. The rule is the rule of the native `concat`. */
+function isSpread(value: unknown): value is Record<number, unknown> {
+	let spread = false;
+	if (value !== null && (typeof value === 'object' || typeof value === 'function')) {
+		const spreadable: unknown = reflectGet(value, Symbol.isConcatSpreadable);
+		spread = spreadable === undefined ? isArray(value) : !!spreadable;
 	}
-	const spreadable: unknown = reflectGet(value, Symbol.isConcatSpreadable);
-	if (spreadable === undefined) {
-		return isArray(value) ? 'spread' : 'single';
-	}
-	if (!spreadable) {
-		return 'single';
-	}
-	return isArray(value) ? 'spread' : 'other';
+	return spread;
 }
 
-/** The receiver and the items, each with how `concat` adds it. Undefined when one is `other`. */
-function operandsOf(
-	receiver: unknown,
-	items: unknown[],
-): Array<{ value: unknown; kind: OperandKind }> | undefined {
-	const operands: Array<{ value: unknown; kind: OperandKind }> = [];
-	let isSupported = true;
-	for (let index = -1; isSupported && index < items.length; index++) {
-		const value = index === -1 ? receiver : items[index];
-		const kind = operandKindOf(value);
-		isSupported = kind !== 'other';
-		operands[operands.length] = { value, kind };
+const MAX_LENGTH = 2 ** 53 - 1;
+
+/** The length that the native `concat` reads from a spread value: an integer from 0 to 2^53 - 1. */
+function spreadLengthOf(value: object): number {
+	const length = +(reflectGet(value, 'length') as number);
+	let result = 0;
+	if (length > 0) {
+		result = length >= MAX_LENGTH ? MAX_LENGTH : length - (length % 1);
 	}
-	return isSupported ? operands : undefined;
+	return result;
 }
 
 /**
- * The result of `concat` for arrays and single values, with the holes of each
- * array. The result gets its full length first. The native `concat` needs far
- * more memory after an expression sets `Symbol.isConcatSpreadable` on an array.
+ * The result of `concat` as a plain array, with the holes of each spread value.
+ * Each value is examined, then read, before the next value, as the native
+ * `concat` does. The native `concat` needs far more memory after an expression
+ * sets `Symbol.isConcatSpreadable` on an array.
  */
-function mergeOperands(operands: Array<{ value: unknown; kind: OperandKind }>): unknown[] {
-	let total = 0;
-	for (let index = 0; index < operands.length; index++) {
-		const { value, kind } = operands[index];
-		total += kind === 'spread' ? (value as unknown[]).length : 1;
-	}
-	const result = new NativeArray<unknown>(total);
+function mergeOperands(receiver: unknown, items: unknown[]): unknown[] {
+	const result: unknown[] = [];
 	let offset = 0;
-	for (let index = 0; index < operands.length; index++) {
-		const { value, kind } = operands[index];
-		if (kind === 'spread') {
-			const array = value as unknown[];
-			const { length } = array;
+	for (let index = -1; index < items.length; index++) {
+		const value = index === -1 ? receiver : items[index];
+		if (isSpread(value)) {
+			const length = spreadLengthOf(value);
 			for (let item = 0; item < length; item++) {
-				if (item in array) {
-					result[offset + item] = array[item];
+				if (item in value) {
+					result[offset + item] = value[item];
 				}
 			}
 			offset += length;
@@ -138,14 +122,16 @@ function mergeOperands(operands: Array<{ value: unknown; kind: OperandKind }>): 
 			result[offset++] = value;
 		}
 	}
+	if (result.length !== offset) {
+		result.length = offset;
+	}
 	return result;
 }
 
 /** `concat` with a lazy array. Lazy arrays are read with index reads, not by the native `concat`. */
 function concatWithLazyArray(receiver: unknown, items: unknown[]): unknown[] {
-	const operands = givesPlainArray(receiver) ? operandsOf(receiver, items) : undefined;
-	return operands !== undefined
-		? mergeOperands(operands)
+	return givesPlainArray(receiver)
+		? mergeOperands(receiver, items)
 		: apply(nativeConcat, plainIfSpreadLazyArray(receiver), plainItems(items));
 }
 

@@ -2074,6 +2074,14 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 				[1, [2, 3], { id: 4 }, 'x'],
 			],
 			['{{ $json.other.concat(null, [null]) }}', ['a', null, null]],
+			[
+				'{{ $json.other.concat({ length: 1.5, 0: 7, 1: 8, [Symbol.isConcatSpreadable]: true }) }}',
+				['a', 7],
+			],
+			[
+				'{{ (() => { const later = [7, 8]; const first = [0]; first.__defineGetter__(0, () => { later[Symbol.isConcatSpreadable] = false; return 0; }); return first.concat($json.other, later); })() }}',
+				[0, 'a', [7, 8]],
+			],
 			['{{ Array.isArray($json.list.concat($json.other)) }}', true],
 		])('%s', (expression, expected) => {
 			expect(evaluator.evaluate(expression, data, caller)).toEqual(expected);
