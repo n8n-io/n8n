@@ -1518,7 +1518,16 @@ export class SourceControlImportService {
 				if (isUniqueConstraintError(errorUpsert as Error)) {
 					this.logger.debug(`Variable ${variable.key} already exists, updating instead`);
 					try {
-						await this.variablesRepository.update({ key: variable.key }, { ...variable });
+						// A remote stub carries an empty value because real values are
+						// instance-local. Adopt the remote id without wiping the local value,
+						// matching the same-id re-import rule.
+						await this.variablesRepository.update(
+							{ key: variable.key },
+							{
+								...variable,
+								value: variable.value === '' ? undefined : variable.value,
+							},
+						);
 					} catch (errorUpdate) {
 						this.logger.debug(`Failed to update variable ${variable.key}, skipping`);
 						this.logger.debug((errorUpdate as Error).message);
