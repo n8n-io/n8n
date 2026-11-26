@@ -30,7 +30,7 @@ import { generateId } from '../generate-id';
 	where: "status IN ('queued', 'running', 'waiting')",
 })
 @Index('idx_workflow_step_execution_stale_after', ['status', 'staleAfter'], {
-	where: "status IN ('queued', 'running')",
+	where: 'stale_after IS NOT NULL',
 })
 export class WorkflowStepExecution {
 	@PrimaryColumn('uuid')
@@ -83,9 +83,11 @@ export class WorkflowStepExecution {
 	resumeCause!: ResumeCause | null;
 
 	/**
-	 * When the engine treats the step as stuck in `queued` or `running`. The
-	 * store writes it at each transition into those statuses, and clears it at
-	 * each transition out of them.
+	 * When the engine treats the step as stuck. The store writes it at each
+	 * transition into `queued` or `running`. The store also writes it at each
+	 * transition into `completed`, `failed` or `skipped`, and clears it after the
+	 * orchestration worker handled the `step:settled` message of the step. It is
+	 * NULL in every other case.
 	 */
 	@Column({ name: 'stale_after', type: 'timestamptz', precision: 3, nullable: true })
 	staleAfter!: Date | null;

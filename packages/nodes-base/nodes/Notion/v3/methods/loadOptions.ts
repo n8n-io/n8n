@@ -2,7 +2,7 @@ import moment from 'moment-timezone';
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 import { requestPath } from 'n8n-workflow';
 
-import { extractPageId, getBlockTypesOptions } from '../../shared/GenericFunctions';
+import { getBlockTypesOptions, getCurrentPageId } from '../../shared/GenericFunctions';
 import { splitPropertyKey } from '../helpers/utils';
 import {
 	getDataSourceProperties,
@@ -124,10 +124,7 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 async function getParentDataSourceIdFromPage(
 	this: ILoadOptionsFunctions,
 ): Promise<string | undefined> {
-	const pageIdValue = this.getCurrentNodeParameter('pageId', { extractValue: true }) as
-		| string
-		| null;
-	const pageId = extractPageId(pageIdValue ?? '');
+	const pageId = getCurrentPageId.call(this);
 	if (!pageId) {
 		return undefined;
 	}
