@@ -8,6 +8,7 @@ import {
 import type { Person, Project, User } from '@n8n/db';
 import {
 	WorkflowRepository,
+	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
@@ -474,6 +475,31 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 
 			expect(response.body.data.viewerCanDecide).toBe(false);
 			expect(response.body.data.viewerDecisionIneligibilityReason).toBe('missing_permission');
+		});
+	});
+
+	describe('viewer close eligibility', () => {
+		test('lets the requester close the review they cannot decide', async () => {
+			const workflow = await createWorkflow({}, teamProject);
+			const request = await seedRequest(workflow.id, null, member);
+
+			const response = await getDetail(memberAgent, request.id).expect(200);
+
+			expect(response.body.data.viewerCanDecide).toBe(false);
+			expect(response.body.data.viewerCanClose).toBe(true);
+		});
+
+		test('does not let a co-author who did not request the review close it', async () => {
+			const workflow = await createWorkflow({}, teamProject);
+			const request = await seedRequest(workflow.id, null, owner);
+			await Container.get(WorkflowReviewRequestAuthorRepository).addAuthor(
+				{ workflowReviewRequestId: request.id, userId: member.id },
+				{},
+			);
+
+			const response = await getDetail(memberAgent, request.id).expect(200);
+
+			expect(response.body.data.viewerCanClose).toBe(false);
 		});
 	});
 

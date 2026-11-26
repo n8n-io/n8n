@@ -221,9 +221,22 @@ export function runExpectedToolsInvokedCheck(
 }
 
 /**
+ * Whether the calls so far satisfy each rule that requires a call. A scenario
+ * that only forbids calls has nothing to wait for.
+ */
+export function requiredCallsMade(scenario: DiscoveryTestCase, outcome: EventOutcome): boolean {
+	const { anyOf, anyOfToolCalls, allOfToolCalls } = scenario.expectedToolInvocations;
+	const required = { anyOf, anyOfToolCalls, allOfToolCalls };
+	if (!Object.values(required).some((rule) => rule && rule.length > 0)) return true;
+	return runExpectedToolsInvokedCheck({ ...scenario, expectedToolInvocations: required }, outcome)
+		.pass;
+}
+
+/**
  * Only a run that finished on its own terms can settle an expectation, so anything else
  * fails whichever way the expectation points — a truncated run that satisfied a positive
- * expectation still means the agent never got to finish what it was doing.
+ * expectation still means the agent never got to finish what it was doing. A turn that
+ * ends at a question to the user finished on its own terms.
  */
 export function evaluateDiscoveryTrial(
 	scenario: DiscoveryTestCase,
@@ -249,6 +262,7 @@ function invalidTrialReason(trial: DiscoveryTrialFacts): string | undefined {
 		case 'stopped-on-route':
 			return undefined;
 		case 'completed':
+		case 'waiting-for-user':
 			return trial.unmatchedConfirmations.length > 0
 				? `Scenario declared confirmation answers for [${trial.unmatchedConfirmations.join(', ')}] that no suspension asked for, so those decisions never ran.`
 				: undefined;

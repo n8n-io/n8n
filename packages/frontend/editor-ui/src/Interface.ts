@@ -16,7 +16,7 @@ import type {
 	IUsedCredential,
 } from '@/features/credentials/credentials.types';
 import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
-import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
+import type { NodeCreatorTag, IconName, IconColor, BinaryMetadata } from '@n8n/design-system';
 import type { DisplayMode, ModalState, SlotResourcesListFilters } from '@n8n/frontend-module-sdk';
 import type {
 	GenericValue,
@@ -878,9 +878,11 @@ export interface IBounds {
 
 export interface ITab<Value extends string | number = string | number> {
 	value: Value;
-	label?: string;
+	label: string;
 	href?: string;
 	icon?: IconName;
+	iconPosition?: 'left' | 'right';
+	iconColor?: IconColor;
 	align?: 'right';
 	tooltip?: string;
 	notification?: boolean;

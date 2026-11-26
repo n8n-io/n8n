@@ -23,9 +23,9 @@ export const {{PascalName}}Module = defineFrontendModule({
 	// settingsPages: [ /* IMenuItem[]; feeds SettingsSidebar */ ],
 	// pushHandlers: { /* keyed by push message type */ },
 	// parameterInputs: [ /* ParameterInputContribution[]; resolved by parameter.type in the NDV */ ],
+	// runDataDisplayModes: [ /* RunDataDisplayModeContribution[]; shown in the NDV and Logs run data panes */ ],
 	// commands: [ /* CommandBarEntry[] */ ],
 
 	// The SDK types the fields below, but no host in the shell reads them yet.
-	// A value here does nothing at runtime: locales, shortcuts, banners, setup,
-	// runDataDisplayModes.
+	// A value here does nothing at runtime: locales, shortcuts, banners, setup.
 });

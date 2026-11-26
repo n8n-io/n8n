@@ -334,8 +334,14 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
+/** The fields the artifact extractors read. The Agents chat maps its tool calls to them too. */
+type ArtifactSourceToolCall = Pick<
+	InstanceAiToolCallState,
+	'toolName' | 'args' | 'result' | 'isLoading' | 'completedAt'
+>;
+
 /** The workflow a workflow_builder_build_workflow / submit-workflow call wrote, if it wrote one. */
-function workflowArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
+function workflowArtifactFromToolCall(tc: ArtifactSourceToolCall): ArtifactInfo | undefined {
 	if (
 		tc.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
 		tc.toolName !== REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW
@@ -365,7 +371,7 @@ function workflowArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo
  * Only successful builds count, each workflow once.
  */
 export function extractBuiltWorkflowArtifacts(
-	toolCalls: InstanceAiToolCallState[],
+	toolCalls: readonly ArtifactSourceToolCall[],
 ): ArtifactInfo[] {
 	const artifacts = new Map<string, ArtifactInfo>();
 	for (const tc of toolCalls) {
@@ -379,7 +385,7 @@ export function extractBuiltWorkflowArtifacts(
 }
 
 /** The Agent an orchestrator builder call created or changed, if it did. */
-function agentArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
+function agentArtifactFromToolCall(tc: ArtifactSourceToolCall): ArtifactInfo | undefined {
 	if (tc.isLoading || !isRecord(tc.result)) return undefined;
 	const result = tc.result;
 	if (typeof result.agentId !== 'string') return undefined;
@@ -402,7 +408,9 @@ function agentArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | 
  * Agents the orchestrator created or changed with its own builder tool calls.
  * Each Agent appears once, with the name and project of its latest change.
  */
-export function extractBuiltAgentArtifacts(toolCalls: InstanceAiToolCallState[]): ArtifactInfo[] {
+export function extractBuiltAgentArtifacts(
+	toolCalls: readonly ArtifactSourceToolCall[],
+): ArtifactInfo[] {
 	const artifacts = new Map<string, ArtifactInfo>();
 	for (const tc of toolCalls) {
 		const agent = agentArtifactFromToolCall(tc);

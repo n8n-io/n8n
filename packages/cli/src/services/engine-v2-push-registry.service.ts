@@ -28,12 +28,12 @@ export class EngineV2PushRegistry {
 
 	register(
 		executionId: string,
-		init: Pick<EngineV2PushSession, 'pushRef' | 'userId' | 'workflowId' | 'trigger'>,
+		init: Pick<EngineV2PushSession, 'pushRef' | 'userId' | 'workflowId' | 'trigger' | 'start'>,
 	): void {
 		this.evict();
 		this.sessions.set(
 			executionId,
-			new EngineV2PushSession(init.pushRef, init.workflowId, init.trigger, init.userId),
+			new EngineV2PushSession(init.pushRef, init.workflowId, init.trigger, init.userId, init.start),
 		);
 	}
 

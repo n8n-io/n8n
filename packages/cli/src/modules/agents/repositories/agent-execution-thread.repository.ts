@@ -273,9 +273,8 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/**
-	 * Paginated thread listing sorted by updatedAt DESC.
-	 * Uses cursor-based pagination where the cursor is the updatedAt ISO string
-	 * of the last item on the previous page.
+	 * Lists threads by update time, with the thread ID as a tie-breaker.
+	 * Pass the previous page's cursor to continue the listing.
 	 */
 	async findByProjectIdPaginated(
 		projectId: string,
@@ -416,17 +415,37 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		limit: number,
 		cursor?: string,
 	): Promise<AgentExecutionThreadPage> {
-		query.orderBy('thread.updatedAt', 'DESC').take(limit + 1);
+		const updatedAt = this.updatedAtExpression();
+		if (updatedAt === 'thread.updatedAt') {
+			query.orderBy(updatedAt, 'DESC');
+		} else {
+			// TypeORM needs a selected alias for the SQLite expression when paginating joins.
+			query.addSelect(updatedAt, 'page_updated_at').orderBy('page_updated_at', 'DESC');
+		}
+		query.addOrderBy('thread.id', 'DESC').take(limit + 1);
 		if (cursor) {
-			query.andWhere(`${this.updatedAtExpression()} < :cursor`, { cursor: new Date(cursor) });
+			// Timestamp-only cursors from older clients still work.
+			const [timestamp, ...idParts] = cursor.split('|');
+			const id = idParts.join('|');
+			const date = new Date(timestamp);
+			if (Number.isNaN(date.getTime()) || cursor.includes('\0') || (idParts.length && !id)) {
+				throw new UserError('Invalid session cursor');
+			}
+			query.andWhere(
+				id
+					? `(${updatedAt} < :cursor OR (${updatedAt} = :cursor AND thread.id < :cursorId))`
+					: `${updatedAt} < :cursor`,
+				{ cursor: date, cursorId: id },
+			);
 		}
 		const threads = await query.getMany();
 		const hasMore = threads.length > limit;
 		if (hasMore) threads.pop();
 
+		const last = threads.at(-1);
 		return {
 			threads,
-			nextCursor: hasMore ? threads[threads.length - 1].updatedAt.toISOString() : null,
+			nextCursor: hasMore && last ? `${last.updatedAt.toISOString()}|${last.id}` : null,
 		};
 	}
 
@@ -436,6 +455,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		userId: string,
 		updatedAt: string,
 	) {
+		if (filters.sessionIds !== undefined) {
+			query.andWhere(filters.sessionIds.length ? 'thread.id IN (:...sessionIds)' : '1 = 0', {
+				sessionIds: filters.sessionIds,
+			});
+		}
 		if (filters.scope === 'mine') {
 			query.andWhere('thread.ownerId = :userId', { userId });
 		}

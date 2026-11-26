@@ -962,7 +962,7 @@ export interface BinaryHelperFunctions {
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
-	getBinaryPath(binaryDataId: string): string;
+	getBinaryPath(binaryDataId: string): Promise<string>;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
 	createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: string): string;
 	getBinaryMetadata(binaryDataId: string): Promise<{
@@ -1627,6 +1627,8 @@ export interface IPollFunctions
 	 * runs out, return what it has, and leave the rest to the next poll.
 	 */
 	getPollBudgetMs(): number;
+	/** Marks this poll as fetching in bounded batches, so it keeps its cursor when its run is refused. */
+	declareBoundedPoll?(): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
@@ -3951,6 +3953,8 @@ export type ExecutionTracingContext = {
 };
 
 export interface IWorkflowExecutionDataProcess {
+	/** Binary IDs validated by a trusted execution entry point. */
+	binaryDataAccess?: string[];
 	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
@@ -4058,6 +4062,7 @@ export interface IWorkflowExecutionDataProcess {
 }
 
 export interface ExecuteWorkflowOptions {
+	binaryDataAccess?: string[];
 	node?: INode;
 	parentWorkflowId: string;
 	inputData?: INodeExecutionData[];
@@ -4069,6 +4074,8 @@ export interface ExecuteWorkflowOptions {
 	parentExecution?: RelatedExecution;
 	executionMode?: WorkflowExecuteMode;
 	returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
+	/** Aborts when the calling execution is cancelled, so an awaited sub-workflow stops with it. */
+	abortSignal?: AbortSignal;
 }
 
 export type AiEvent =
@@ -4118,6 +4125,11 @@ export interface AiAgentRequest {
 }
 
 export interface IWorkflowExecuteAdditionalData {
+	binaryDataAccess?: {
+		grant(binaryDataId: string): void;
+		isGranted(binaryDataId: string): boolean;
+		isAllowed(binaryDataId: string, workflowId: string, grantedIds?: string[]): Promise<boolean>;
+	};
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
@@ -4745,6 +4757,10 @@ export interface IUserSettings {
 	mcpPreferencesNote?: {
 		impressions: number;
 		lastShownAt?: number;
+	};
+	assistantPreferencesNote?: {
+		impressions: number;
+		lastShownAt: number;
 	};
 }
 

@@ -60,6 +60,13 @@ describe('Push', () => {
 				expect(wssSpy).not.toHaveBeenCalled();
 				expect(server.on).not.toHaveBeenCalled();
 			});
+
+			test('should not claim the push path for upgrade requests', () => {
+				config.backend = 'sse';
+				push = new Push(config, mock(), logger, mock(), mock());
+
+				expect(push.isWebSocketPath('/rest/push', restEndpoint)).toBe(false);
+			});
 		});
 
 		describe('websocket backend', () => {

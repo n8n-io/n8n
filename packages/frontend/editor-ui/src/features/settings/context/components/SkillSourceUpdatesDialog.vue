@@ -29,7 +29,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import SkillSourceReview from './SkillSourceReview.vue';
 import SkillSourceFilesView from './SkillSourceFilesView.vue';
 import { useSkillsStore } from '../skills.store';
-import { useSkillSourceReasons } from '../skills.utils';
+import { SKIPPED_FILE_RULES, useSkillSourceReasons } from '../skills.utils';
 
 const props = defineProps<{ source: SkillSourceListItem }>();
 const emit = defineEmits<{ close: []; changed: [] }>();
@@ -43,6 +43,7 @@ const selected = ref<string[]>([]);
 const reviewed = ref(false);
 const loading = ref(true);
 const saving = ref(false);
+const hiding = ref(false);
 const error = ref('');
 /** Why the new skills did not load. The stored updates still show. */
 const newSkillsError = ref('');
@@ -84,9 +85,7 @@ const discovery = computed(() => ({
 			webUrl: update.webUrl,
 			check: update.check,
 			skippedFiles: update.check.findings.flatMap((finding) =>
-				(finding.rule === 'file_skipped' || finding.rule === 'file_unstorable') && finding.file
-					? [finding.file]
-					: [],
+				SKIPPED_FILE_RULES.has(finding.rule) && finding.file ? [finding.file] : [],
 			),
 			previewFiles: update.newSkill?.previewFiles ?? [],
 			previewTruncated: update.newSkill?.previewTruncated ?? false,
@@ -204,7 +203,6 @@ async function loadPreview() {
 	detailError.value = '';
 	detailLoading.value = false;
 	if (!update) return;
-	if (update.check.verdict === 'blocked') return;
 	if (update.newSkill) {
 		detail.value = {
 			files: update.newSkill.previewFiles.map(({ path, text }) => ({
@@ -334,6 +332,7 @@ async function hideNewSkill() {
 	const update = focused.value;
 	if (!update?.newSkill || saving.value) return;
 	saving.value = true;
+	hiding.value = true;
 	error.value = '';
 	try {
 		await store.acceptSourceUpdates(props.source.id, {
@@ -342,14 +341,20 @@ async function hideNewSkill() {
 			skippedNewSkills: [{ key: update.newSkill.key, contentHash: update.contentHash }],
 			reviewedWarnings: false,
 		});
-		selected.value = selected.value.filter((id) => id !== update.skillId);
+		update.newSkill.skipped = true;
+		if (selected.value.includes(update.skillId))
+			selected.value = selected.value.filter((id) => id !== update.skillId);
+		showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.context.skills.updates.hiddenNew'),
+		});
 		emit('changed');
-		await load();
 	} catch (cause) {
 		error.value = errorText(cause);
 		if (cause instanceof ResponseError && cause.httpStatusCode === 409) await load();
 	} finally {
 		saving.value = false;
+		hiding.value = false;
 	}
 }
 void load();
@@ -372,7 +377,6 @@ void load();
 					{{ sourceLine }}
 				</N8nText>
 				<div v-if="commit" :class="$style.commit" data-test-id="skill-update-commit">
-					<span aria-hidden="true">·</span>
 					<N8nLink
 						v-if="commit.webUrl"
 						:href="commit.webUrl"
@@ -384,8 +388,20 @@ void load();
 						new-window
 						>{{ commitTitle }}</N8nLink
 					>
-					<N8nText v-else size="small" color="text-light">{{ commitTitle }}</N8nText>
-					<N8nText v-if="commit.author || commitDate" size="small" color="text-light">
+					<N8nText
+						v-else
+						size="small"
+						color="text-light"
+						:class="$style.commitLink"
+						:title="commitTitle"
+						>{{ commitTitle }}</N8nText
+					>
+					<N8nText
+						v-if="commit.author || commitDate"
+						size="small"
+						color="text-light"
+						:class="$style.commitDetails"
+					>
 						· {{ [commit.author, commitDate].filter(Boolean).join(' · ') }}
 					</N8nText>
 				</div>
@@ -428,57 +444,66 @@ void load();
 					}}</N8nText>
 				</template>
 				<template #preview="{ skill }">
-					<div :class="$style.detailHeader">
-						<N8nText size="small" bold>{{
-							i18n.baseText('settings.context.skills.updates.nextVersion', {
-								interpolate: {
-									name: skill.name ?? '',
-									version: byId.get(skill.key)?.nextVersion ?? '',
-								},
-							})
-						}}</N8nText>
-						<N8nText v-if="detail && !focused?.newSkill" size="small" color="text-light"
-							>{{ impact }}
-							{{ i18n.baseText('settings.context.skills.updates.publishedUnchanged') }}</N8nText
-						>
-						<template v-if="focused?.newSkill">
-							<N8nText v-if="!source.canImport" size="small" color="text-light">{{
-								i18n.baseText('settings.context.skills.updates.importNotAllowed')
-							}}</N8nText>
-							<N8nText size="small" color="text-light">{{
-								i18n.baseText('settings.context.skills.updates.newHint')
-							}}</N8nText>
-							<N8nButton
-								variant="ghost"
-								:disabled="saving || focused.newSkill.skipped"
-								:label="
-									i18n.baseText(
-										focused.newSkill.skipped
-											? 'settings.context.skills.updates.hiddenNew'
-											: 'settings.context.skills.updates.hideNew',
-									)
-								"
-								data-test-id="skill-new-hide"
-								data-attr="skill-new-hide"
-								@click="hideNewSkill"
-							/>
-						</template>
-					</div>
 					<N8nText v-if="detailLoading" :class="$style.detailNotice">{{
 						i18n.baseText('generic.loading')
 					}}</N8nText>
-					<N8nCallout v-else-if="detailError" theme="warning" :class="$style.detailNotice"
-						>{{ detailError }}
-						<N8nButton variant="ghost" :label="i18n.baseText('generic.retry')" @click="loadPreview"
-					/></N8nCallout>
-					<N8nCallout
-						v-else-if="skill.check?.verdict === 'blocked'"
-						theme="danger"
-						:class="$style.detailNotice"
-						data-test-id="skill-update-blocked"
-						>{{ i18n.baseText('settings.context.skills.updates.blocked') }}</N8nCallout
+					<!-- The findings of the skill come with the list, so they show when the files fail to load. -->
+					<SkillSourceFilesView
+						v-else
+						:skill="{ ...skill, ...detail?.preview }"
+						:diff-files="detail?.preview ? undefined : (detail?.files ?? [])"
 					>
-					<SkillSourceFilesView v-else-if="detail" :skill="skill" :diff-files="detail.files" />
+						<template #footer>
+							<N8nCallout
+								v-if="detailError"
+								theme="warning"
+								data-test-id="skill-update-detail-error"
+								>{{ detailError }}
+								<N8nButton
+									variant="ghost"
+									:label="i18n.baseText('generic.retry')"
+									@click="loadPreview"
+							/></N8nCallout>
+							<N8nText
+								v-if="detail && !focused?.newSkill && skill.check?.verdict !== 'blocked'"
+								size="small"
+								color="text-light"
+								data-test-id="skill-update-impact"
+							>
+								{{ impact }}
+								{{ i18n.baseText('settings.context.skills.updates.publishedUnchanged') }}
+							</N8nText>
+							<N8nCallout
+								v-if="skill.check?.verdict === 'blocked' && !skill.check.findings.length"
+								theme="danger"
+								data-test-id="skill-update-blocked"
+								>{{ i18n.baseText('settings.context.skills.updates.blocked') }}</N8nCallout
+							>
+							<div v-if="focused?.newSkill" :class="$style.detailActions">
+								<N8nText v-if="!source.canImport" size="small" color="text-light">{{
+									i18n.baseText('settings.context.skills.updates.importNotAllowed')
+								}}</N8nText>
+								<N8nText size="small" color="text-light">{{
+									i18n.baseText('settings.context.skills.updates.newHint')
+								}}</N8nText>
+								<N8nButton
+									variant="ghost"
+									:loading="hiding"
+									:disabled="saving || focused.newSkill.skipped"
+									:label="
+										i18n.baseText(
+											focused.newSkill.skipped
+												? 'settings.context.skills.updates.hiddenNew'
+												: 'settings.context.skills.updates.hideNew',
+										)
+									"
+									data-test-id="skill-new-hide"
+									data-attr="skill-new-hide"
+									@click="hideNewSkill"
+								/>
+							</div>
+						</template>
+					</SkillSourceFilesView>
 				</template>
 			</SkillSourceReview>
 			<N8nText v-else-if="!error">{{
@@ -494,7 +519,7 @@ void load();
 				"
 			/>
 		</N8nDialogBody>
-		<N8nDialogFooter>
+		<N8nDialogFooter :class="$style.footer">
 			<N8nCheckbox
 				v-if="needsReview"
 				v-model="reviewed"
@@ -509,7 +534,7 @@ void load();
 				@click="close"
 			/>
 			<N8nButton
-				:loading="saving"
+				:loading="saving && !hiding"
 				:disabled="loading || saving || selectedUpdates.length === 0 || (needsReview && !reviewed)"
 				:label="
 					i18n.baseText(
@@ -533,7 +558,7 @@ void load();
 
 <style lang="scss" module>
 .body,
-.detailHeader {
+.detailActions {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
@@ -542,8 +567,8 @@ void load();
 .header {
 	flex-direction: column;
 	align-items: stretch;
-	gap: var(--spacing--3xs);
-	padding-bottom: var(--spacing--xs);
+	gap: var(--spacing--xs);
+	padding-bottom: var(--spacing--sm);
 }
 
 .metadata,
@@ -556,28 +581,50 @@ void load();
 
 .metadata,
 .commit {
-	flex-wrap: wrap;
-	row-gap: var(--spacing--4xs);
 	min-width: 0;
 	color: var(--text-color--subtler);
 }
 
+.metadata {
+	flex-wrap: wrap;
+	column-gap: var(--spacing--md);
+}
+
+.commit {
+	flex: 1 1 50%;
+}
+
 .commitLink {
 	min-width: 0;
-	overflow-wrap: anywhere;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 
 	&:hover {
 		text-decoration: underline;
 	}
 }
 
+.commitDetails {
+	flex-shrink: 0;
+}
+
 .source {
 	overflow-wrap: anywhere;
 }
 
-.detailHeader {
+.footer {
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--sm);
+	border-top: var(--border);
+}
+
+.detailActions {
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--sm) var(--spacing--sm) 0;
+	align-items: flex-start;
+	padding-top: var(--spacing--xs);
+	border-top: var(--border);
 }
 .detailNotice {
 	margin: var(--spacing--sm);

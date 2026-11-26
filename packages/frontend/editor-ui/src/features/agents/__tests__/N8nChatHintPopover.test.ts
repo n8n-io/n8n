@@ -22,10 +22,10 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 
 const stubs = {
 	N8nPopover: {
-		props: ['open'],
+		props: ['open', 'sideOffset'],
 		emits: ['update:open'],
 		template:
-			'<div><slot name="trigger" /><div v-if="open"><slot name="content" /><button data-test-id="outside" @click="$emit(\'update:open\', false)" /></div></div>',
+			'<div data-test-id="popover-stub" :data-side-offset="sideOffset"><slot name="trigger" /><div v-if="open"><slot name="content" /><button data-test-id="outside" @click="$emit(\'update:open\', false)" /></div></div>',
 	},
 	N8nText: { template: '<span><slot /></span>' },
 	N8nButton: {
@@ -109,5 +109,13 @@ describe('N8nChatHintPopover', () => {
 
 		expect(queryByTestId('n8n-chat-hint-channel_chip')).toBeNull();
 		expect(trackViewedN8nChatHint).not.toHaveBeenCalled();
+	});
+
+	it('forwards sideOffset to N8nPopover when provided', () => {
+		const { getByTestId } = renderComponent({
+			props: { ...baseProps, active: true, sideOffset: 13 },
+		});
+
+		expect(getByTestId('popover-stub')).toHaveAttribute('data-side-offset', '13');
 	});
 });

@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
-import { WorkflowPublicationTriggerStatus } from '../entities';
+import { WorkflowPublicationRetryState, WorkflowPublicationTriggerStatus } from '../entities';
 import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
@@ -60,6 +60,23 @@ export class WorkflowPublicationTriggerStatusRepository extends BaseRepository<W
 			rows.push(...(await this.findBy({ workflowId: In(chunk) })));
 		}
 		return rows;
+	}
+
+	/** The triggers that failed at this version while the workflow has a retry note for it. */
+	async findRetriedTriggerNodeIds(workflowId: string, versionId: string): Promise<Set<string>> {
+		const failedStatus: WorkflowPublicationTriggerStatus['status'] = 'failed';
+		const rows = await this.createQueryBuilder('ts')
+			.select('ts.nodeId', 'nodeId')
+			.innerJoin(
+				WorkflowPublicationRetryState,
+				'retry',
+				'retry.workflowId = ts.workflowId AND retry.targetVersionId = ts.versionId',
+			)
+			.where('ts.workflowId = :workflowId', { workflowId })
+			.andWhere('ts.versionId = :versionId', { versionId })
+			.andWhere('ts.status = :failedStatus', { failedStatus })
+			.getRawMany<{ nodeId: string }>();
+		return new Set(rows.map((row) => row.nodeId));
 	}
 
 	/**

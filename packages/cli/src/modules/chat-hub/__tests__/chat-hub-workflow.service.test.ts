@@ -1381,6 +1381,70 @@ describe('ChatHubWorkflowService', () => {
 		});
 	});
 
+	describe('binary data access', () => {
+		const attachment = {
+			id: 'filesystem-v2:chat-hub/file-1',
+			data: 'filesystem-v2',
+			mimeType: 'image/png',
+			fileName: 'cat.png',
+		} satisfies IBinaryData;
+
+		it('keeps attachment access in a generated chat execution', async () => {
+			const result = await service.createChatWorkflow(
+				'user-123',
+				'session-456',
+				'project-789',
+				[],
+				'Hello',
+				[attachment],
+				{},
+				{ provider: 'openai', model: 'gpt-4' },
+				undefined,
+				[],
+				'UTC',
+				null,
+				defaultExecutionMetadata,
+			);
+
+			expect(result.executionData.binaryDataAccess).toEqual([attachment.id]);
+		});
+
+		it('keeps attachment access in a custom workflow execution', async () => {
+			const chatTrigger = {
+				id: 'chat-trigger',
+				name: 'Chat Trigger',
+				type: CHAT_TRIGGER_NODE_TYPE,
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: { options: { responseMode: 'streaming' }, availableInChat: true },
+			} satisfies INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue({
+				id: 'workflow-1',
+				name: 'Custom chat',
+				nodes: [chatTrigger],
+				connections: {},
+				settings: {},
+				activeVersion: { nodes: [chatTrigger], connections: {} },
+			} as never);
+
+			const result = await service.prepareReplyWorkflow(
+				mock<User>({ id: 'user-123' }),
+				'session-456',
+				{},
+				{ provider: 'n8n', workflowId: 'workflow-1' },
+				[],
+				'Hello',
+				[],
+				[attachment],
+				'UTC',
+				{},
+				defaultExecutionMetadata,
+			);
+
+			expect(result.executionData.binaryDataAccess).toEqual([attachment.id]);
+		});
+	});
+
 	describe('createEmbeddingsInsertionWorkflow', () => {
 		const SEMANTIC_SEARCH_OPTIONS: SemanticSearchOptions = {
 			embeddingModel: { provider: 'openai', credentialId: 'embedding-cred' },

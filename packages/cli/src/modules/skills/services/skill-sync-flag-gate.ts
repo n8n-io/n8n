@@ -21,9 +21,20 @@ export class SkillSyncFlagGate {
 	) {}
 
 	async isEnabled(user: User): Promise<boolean> {
-		if (!this.skillsGate.isEnabled || !this.skillSyncSettings.isEnabled()) return false;
-		const flags = await this.postHog.getFeatureFlags(user);
-		return flags?.[SKILL_SYNC_FLAG] === true;
+		if (!this.isAvailable) return false;
+		return this.isEnabledForFlags(await this.postHog.getFeatureFlags(user));
+	}
+
+	isEnabledForFlags(flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>>): boolean {
+		return flags?.[SKILL_SYNC_FLAG] === true && this.isAvailable;
+	}
+
+	/**
+	 * The instance part of the gate: skills and the Skill Sync switch, without the flag of a
+	 * user. For a caller that has no user, such as the MCP consent screen.
+	 */
+	get isAvailable(): boolean {
+		return this.skillsGate.isEnabled && this.skillSyncSettings.isEnabled();
 	}
 
 	// 404, not 403: a surface behind a flag that is off looks unknown, not forbidden.

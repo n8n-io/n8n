@@ -10,7 +10,7 @@ Chrome via the **n8n Browser Bridge** extension, using their actual profile,
 cookies, and login sessions.
 
 The AI can navigate pages, click elements, fill forms, read page content,
-take screenshots, manage cookies and storage, and execute JavaScript — all
+take screenshots, manage storage, and execute JavaScript — all
 through MCP tools.
 
 ---
@@ -114,13 +114,12 @@ tab; the default is the active page.
 
 | Tool | Description |
 |------|-------------|
-| `browser_wait` | Wait for a condition (selector, URL, load state, text, or JS predicate) |
+| `browser_wait` | Wait for a condition (selector, URL, load state, or text) |
 
 ### State
 
 | Tool | Description |
 |------|-------------|
-| `browser_cookies` | Read or set cookies |
 | `browser_storage` | Read or modify localStorage/sessionStorage |
 
 ---
