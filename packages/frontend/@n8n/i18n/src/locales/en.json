@@ -1946,6 +1946,7 @@
 	"executionsList.lastProductionExecution.title": "Last production execution",
 	"executionsList.lastProductionExecution.succeeded": "Succeeded",
 	"executionsList.lastProductionExecution.failed": "Failed",
+	"executionsList.lastProductionExecution.row": "{status} {time}",
 	"executionsList.lastProductionExecution.notSavedNote": "Includes executions this workflow didn't save.",
 	"executionsList.filters": "Filters",
 	"agentSessions.session": "Session",

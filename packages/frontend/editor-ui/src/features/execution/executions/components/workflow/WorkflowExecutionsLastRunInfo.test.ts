@@ -59,6 +59,19 @@ describe('WorkflowExecutionsLastRunInfo', () => {
 		expect(getWorkflowStatisticsTimes).toHaveBeenCalledWith(expect.anything(), 'wf-1');
 	});
 
+	it('shows the tooltip and loads the times again when the icon gets keyboard focus', async () => {
+		const { findByTestId } = renderComponent();
+		const icon = await findByTestId('last-production-execution-icon');
+		expect(icon).toHaveAccessibleName('Last production execution');
+
+		vi.setSystemTime(new Date('2026-10-25T10:00:31.000Z'));
+		await userEvent.tab();
+
+		expect(icon).toHaveFocus();
+		expect(await findByTestId('last-production-success')).toHaveTextContent('Succeeded 5 days ago');
+		expect(getWorkflowStatisticsTimes).toHaveBeenCalledTimes(2);
+	});
+
 	it('loads the times again when the pointer enters the icon', async () => {
 		const { findByTestId } = renderComponent();
 		const icon = await findByTestId('last-production-execution-icon');

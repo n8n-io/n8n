@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { I18nT } from 'vue-i18n';
 import type { Iso8601DateTimeString } from '@n8n/api-types';
-import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { WorkflowSettings } from 'n8n-workflow';
 import { getWorkflowStatisticsTimes } from '@n8n/rest-api-client';
@@ -63,9 +64,9 @@ async function loadLastExecutionTimes() {
 	}
 }
 
-// The refresh runs only on hover. If the first load fails or finds no production execution,
+// The refresh runs only on hover or focus. If the first load fails or finds no production execution,
 // the icon stays hidden until the workflow changes or the sidebar mounts again.
-function onIconHover() {
+function onTriggerActivate() {
 	if (Date.now() - lastLoadStartedAt < HOVER_REFRESH_INTERVAL) return;
 	void loadLastExecutionTimes();
 }
@@ -83,7 +84,7 @@ watch(
 </script>
 
 <template>
-	<N8nTooltip v-if="lastSucceededAt || lastFailedAt" placement="bottom">
+	<N8nTooltip v-if="lastSucceededAt || lastFailedAt" placement="bottom" as-child>
 		<template #content>
 			<div data-test-id="last-production-execution-tooltip">
 				<N8nText tag="div" size="small" :bold="true">
@@ -93,27 +94,30 @@ watch(
 					v-if="lastSucceededAt"
 					tag="div"
 					size="small"
-					:class="$style.row"
 					data-test-id="last-production-success"
 				>
-					<span :class="$style.succeeded">{{
-						i18n.baseText('executionsList.lastProductionExecution.succeeded')
-					}}</span>
-					{{ ' ' }}
-					<TimeAgo :date="lastSucceededAt" />
+					<I18nT keypath="executionsList.lastProductionExecution.row" scope="global">
+						<template #status>
+							<span :class="$style.succeeded">{{
+								i18n.baseText('executionsList.lastProductionExecution.succeeded')
+							}}</span>
+						</template>
+						<template #time>
+							<TimeAgo :date="lastSucceededAt" />
+						</template>
+					</I18nT>
 				</N8nText>
-				<N8nText
-					v-if="lastFailedAt"
-					tag="div"
-					size="small"
-					:class="$style.row"
-					data-test-id="last-production-error"
-				>
-					<span :class="$style.failed">{{
-						i18n.baseText('executionsList.lastProductionExecution.failed')
-					}}</span>
-					{{ ' ' }}
-					<TimeAgo :date="lastFailedAt" />
+				<N8nText v-if="lastFailedAt" tag="div" size="small" data-test-id="last-production-error">
+					<I18nT keypath="executionsList.lastProductionExecution.row" scope="global">
+						<template #status>
+							<span :class="$style.failed">{{
+								i18n.baseText('executionsList.lastProductionExecution.failed')
+							}}</span>
+						</template>
+						<template #time>
+							<TimeAgo :date="lastFailedAt" />
+						</template>
+					</I18nT>
 				</N8nText>
 				<N8nText
 					v-if="!isSavingAllProductionExecutions"
@@ -126,33 +130,31 @@ watch(
 				</N8nText>
 			</div>
 		</template>
-		<N8nIcon
+		<N8nIconButton
+			variant="ghost"
 			icon="clock"
-			size="small"
-			color="text-light"
+			size="xsmall"
+			icon-size="small"
 			:aria-label="i18n.baseText('executionsList.lastProductionExecution.title')"
 			data-test-id="last-production-execution-icon"
-			@mouseenter="onIconHover"
+			@mouseenter="onTriggerActivate"
+			@focus="onTriggerActivate"
 		/>
 	</N8nTooltip>
 </template>
 
 <style module lang="scss">
-.row {
-	display: flex;
-	gap: var(--spacing--4xs);
-}
-
+/* The tooltip surface is always black, so these colors do not follow the theme. */
 .succeeded {
-	color: var(--color--success);
+	color: var(--color--green-400);
 }
 
 .failed {
-	color: var(--color--danger);
+	color: var(--color--red-400);
 }
 
 .note {
 	margin-top: var(--spacing--3xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--neutral-400);
 }
 </style>
