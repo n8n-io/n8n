@@ -12,6 +12,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, OperationalError, UserError } from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -29,6 +30,7 @@ const MAX_TOOLS_IN_PROMPT = 30;
 const MAX_TOOL_DESCRIPTION_CHARS = 200;
 const MAX_LABEL_CHARS = 100;
 const MAX_SCENARIO_CHARS = 300;
+const MAX_ERROR_DETAIL_CHARS = 300;
 const MAX_PREVIOUS_SCENARIOS = 20;
 const GENERATE_TIMEOUT_MS = 30_000;
 
@@ -249,10 +251,10 @@ export class AgentTestScenariosService {
 			) {
 				const reason =
 					result.error !== undefined && result.error !== null
-						? getErrorMessage(result.error).trim()
+						? sanitizeErrorDetail(getErrorMessage(result.error), MAX_ERROR_DETAIL_CHARS).trim()
 						: '';
 
-				throw new OperationalError(
+				throw new UserError(
 					reason
 						? `Failed to generate test scenarios: ${reason}`
 						: 'Failed to generate test scenarios',

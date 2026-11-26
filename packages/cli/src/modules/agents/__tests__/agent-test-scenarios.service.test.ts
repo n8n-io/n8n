@@ -313,10 +313,12 @@ describe('AgentTestScenariosService', () => {
 		expect(result.scenarios).toEqual(['Retry 1', 'Retry 2']);
 	});
 
-	it('fails fast without retrying when agent.generate returns an error result', async () => {
+	it('fails fast with a sanitized UserError without retrying when agent.generate returns an error result', async () => {
 		const { service, agentConfigService } = makeService();
 		agentConfigService.getConfig.mockResolvedValue(makeConfig());
-		const providerError = new Error('Incorrect API key provided');
+		const providerError = new Error(
+			'Incorrect API key provided: sk-proj-secret1234567890abcdef at https://api.example.com/v1?api_key=leak',
+		);
 		generateMock.mockResolvedValueOnce({
 			finishReason: 'error',
 			error: providerError,
@@ -329,15 +331,17 @@ describe('AgentTestScenariosService', () => {
 			caught = error;
 		}
 
-		expect(caught).toBeInstanceOf(OperationalError);
-		expect((caught as OperationalError).message).toBe(
-			'Failed to generate test scenarios: Incorrect API key provided',
+		expect(caught).toBeInstanceOf(UserError);
+		expect((caught as UserError).message).toContain(
+			'Failed to generate test scenarios: Incorrect API key provided:',
 		);
-		expect((caught as OperationalError).cause).toBe(providerError);
+		expect((caught as UserError).message).not.toContain('sk-proj-secret1234567890abcdef');
+		expect((caught as UserError).message).not.toContain('api_key=leak');
+		expect((caught as UserError).cause).toBe(providerError);
 		expect(generateMock).toHaveBeenCalledTimes(1);
 	});
 
-	it('fails fast with a fallback message when finishReason is error without an error object', async () => {
+	it('fails fast with a fallback UserError when finishReason is error without an error object', async () => {
 		const { service, agentConfigService } = makeService();
 		agentConfigService.getConfig.mockResolvedValue(makeConfig());
 		generateMock.mockResolvedValueOnce({
@@ -345,7 +349,7 @@ describe('AgentTestScenariosService', () => {
 		});
 
 		await expect(service.generateTestScenarios(user, 'project-1', 'agent-1')).rejects.toThrow(
-			OperationalError,
+			UserError,
 		);
 		expect(generateMock).toHaveBeenCalledTimes(1);
 	});
