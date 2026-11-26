@@ -30,6 +30,22 @@ const deprecatedNodes = [
 	'./nodes/vector_store/VectorStoreZepLoad/**',
 ];
 
+// A json parameter must set validateType, so that an expression can return an
+// object or an array. Remove a folder from the list when its findings are fixed.
+const jsonValidateTypePending = [
+	'./nodes/embeddings/EmbeddingsAwsBedrock/**',
+	'./nodes/llms/LMChatOpenAi/**',
+	'./nodes/llms/LmChatAwsBedrock/**',
+	'./nodes/llms/LmChatAzureOpenAi/**',
+	'./nodes/output_parser/OutputParserStructured/**',
+	'./nodes/retrievers/RetrieverWorkflow/**',
+	'./nodes/tools/ToolWorkflow/**',
+	'./nodes/vector_store/VectorStoreMongoDBAtlas/**',
+	'./nodes/vector_store/VectorStoreQdrant/**',
+	'./nodes/vendors/GoogleGemini/**',
+	'./nodes/vendors/OpenAi/**',
+];
+
 // Request URLs must come from requestPath or requestUrl, or be a constant string.
 // These folders still send a full URL on purpose (a URL from a response, from the
 // user or from the model) or hit a limit of the rule. Remove a folder from the list
@@ -86,6 +102,19 @@ export default defineConfig(
 		],
 		rules: {
 			'n8n-local-rules/require-request-target': 'error',
+		},
+	},
+	{
+		files: ['./nodes/**/*.ts'],
+		ignores: [
+			'**/*.test.ts',
+			'**/test/**',
+			'**/__tests__/**',
+			...deprecatedNodes,
+			...jsonValidateTypePending,
+		],
+		rules: {
+			'n8n-local-rules/require-json-validate-type': 'error',
 		},
 	},
 );
