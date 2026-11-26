@@ -211,8 +211,10 @@ function whereClause(
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<IDataObject[]> {
-	const query = this.getNodeParameter('query', i, '') as string;
-	const segments = (this.getNodeParameter('path', i, '/') as string).split('/').filter(Boolean);
+	const query = this.getNodeParameter('query', i, '', { ensureType: 'string' }) as string;
+	const segments = (this.getNodeParameter('path', i, '/', { ensureType: 'string' }) as string)
+		.split('/')
+		.filter(Boolean);
 	const folder = `/${segments.join('/')}`;
 	const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
 	const limit = returnAll ? RETURN_ALL_LIMIT : Number(this.getNodeParameter('limit', i, 100));
@@ -221,7 +223,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 			itemIndex: i,
 		});
 	}
-	const filter = this.getNodeParameter('filter', i, {}) as Filter;
+	const filter: Filter = {
+		...(this.getNodeParameter('filter', i, {}) as Filter),
+		mimeType: this.getNodeParameter('filter.mimeType', i, '', { ensureType: 'string' }) as string,
+	};
 	const options = this.getNodeParameter('options', i, {}) as { exactName?: boolean };
 	const where = whereClause.call(this, query, options.exactName === true, filter, i);
 

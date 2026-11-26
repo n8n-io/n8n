@@ -143,6 +143,7 @@ export class NextCloud implements INodeType {
 						value: 'download',
 						description: 'Download a file',
 						action: 'Download a file',
+						annotations: READ_ONLY_ANNOTATIONS,
 					},
 					{
 						name: 'Move',
@@ -200,6 +201,7 @@ export class NextCloud implements INodeType {
 						value: 'list',
 						description: 'Return the contents of a given folder',
 						action: 'List a folder',
+						annotations: READ_ONLY_ANNOTATIONS,
 					},
 					{
 						name: 'Move',
@@ -252,12 +254,14 @@ export class NextCloud implements INodeType {
 						value: 'get',
 						description: 'Retrieve information about a single user',
 						action: 'Get a user',
+						annotations: READ_ONLY_ANNOTATIONS,
 					},
 					{
 						name: 'Get Many',
 						value: 'getAll',
 						description: 'Retrieve a list of users',
 						action: 'Get many users',
+						annotations: READ_ONLY_ANNOTATIONS,
 					},
 					{
 						name: 'Update',

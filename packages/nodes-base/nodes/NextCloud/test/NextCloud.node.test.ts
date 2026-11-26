@@ -5,7 +5,12 @@ import type {
 	INodeExecutionData,
 	INodeType,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	READ_ONLY_ANNOTATIONS,
+	resolveNodeAnnotations,
+} from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { NextCloud } from '../NextCloud.node';
@@ -197,6 +202,30 @@ describe('NextCloud Node', () => {
 
 	it('gives new nodes version 1.1', () => {
 		expect(nextCloudNode.description.version).toEqual([1, 1.1]);
+	});
+
+	it.each([
+		['file', 'download'],
+		['folder', 'list'],
+		['folder', 'search'],
+		['user', 'get'],
+		['user', 'getAll'],
+	])('marks %s %s as read-only', (resource, operation) => {
+		expect(
+			resolveNodeAnnotations(nextCloudNode.description, {
+				parameters: { resource, operation },
+				typeVersion: 1.1,
+			}),
+		).toEqual(READ_ONLY_ANNOTATIONS);
+	});
+
+	it('keeps a write operation off the read-only list', () => {
+		expect(
+			resolveNodeAnnotations(nextCloudNode.description, {
+				parameters: { resource: 'folder', operation: 'create' },
+				typeVersion: 1.1,
+			}),
+		).not.toEqual(READ_ONLY_ANNOTATIONS);
 	});
 
 	describe.each(['accessToken', 'oAuth2'] as const)('authentication: %s', (authentication) => {

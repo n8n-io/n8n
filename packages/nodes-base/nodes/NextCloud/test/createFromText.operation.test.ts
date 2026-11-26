@@ -57,6 +57,7 @@ function fakeNextcloud() {
         <d:getlastmodified>Mon, 23 Nov 2026 10:00:00 GMT</d:getlastmodified>
         <d:getcontentlength>${existing.content.length}</d:getcontentlength>
         <d:getcontenttype>text/plain</d:getcontenttype>
+        <d:resourcetype/>
       </d:prop>
       <d:status>HTTP/1.1 200 OK</d:status>
     </d:propstat>
@@ -156,6 +157,7 @@ describe('NextCloud Node: file createFromText', () => {
 						lastModified: 'Mon, 23 Nov 2026 10:00:00 GMT',
 						contentLength: '5',
 						contentType: 'text/plain',
+						type: 'file',
 					},
 					pairedItem: { item: 0 },
 				},

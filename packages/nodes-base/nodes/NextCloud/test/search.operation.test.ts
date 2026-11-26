@@ -5,7 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 } from 'n8n-workflow';
-import { NodeApiError, READ_ONLY_ANNOTATIONS, resolveNodeAnnotations } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { RETURN_ALL_LIMIT } from '../actions/folder/search.operation';
 import { NextCloud } from '../NextCloud.node';
@@ -89,10 +89,19 @@ function buildExecuteFunctions(
 		getNode: () => node,
 		getTimezone: () => 'Europe/Berlin',
 		addExecutionHints,
-		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) => {
+		getNodeParameter: (
+			name: string,
+			_itemIndex: number,
+			fallback?: unknown,
+			options?: { ensureType?: string },
+		) => {
 			if (name === 'authentication') return 'accessToken';
 			const all: IDataObject = { resource: 'folder', operation: 'search', ...parameters };
-			return name in all ? all[name] : fallback;
+			const value = name
+				.split('.')
+				.reduce<unknown>((parent, key) => (parent as IDataObject | undefined)?.[key], all);
+			const result = value === undefined ? fallback : value;
+			return options?.ensureType === 'string' ? String(result) : result;
 		},
 		helpers: {
 			requestWithAuthentication: request,
@@ -307,6 +316,18 @@ describe('NextCloud Node: folder search', () => {
 		expect(request).not.toHaveBeenCalled();
 	});
 
+	it.each<[string, IDataObject, string]>([
+		['Search Query', { query: 2024 }, '<d:literal>%2024%</d:literal>'],
+		['Folder', { query: 'a', path: 2024 }, '<d:href>/files/alice/2024</d:href>'],
+		['MIME Type', { query: 'a', filter: { mimeType: 2024 } }, '<d:literal>2024</d:literal>'],
+	])('reads a number from an expression in "%s" as text', async (_, parameters, expected) => {
+		const { request, searchBody } = fakeNextcloud();
+
+		await run(buildExecuteFunctions({ path: '/', ...parameters }, request));
+
+		expect(searchBody()).toContain(expected);
+	});
+
 	it('keeps the only result, because a SEARCH response has no folder entry', async () => {
 		const { request } = fakeNextcloud([pdf]);
 
@@ -406,14 +427,5 @@ describe('NextCloud Node: folder search', () => {
 		);
 
 		expect(addExecutionHints).not.toHaveBeenCalled();
-	});
-
-	it('marks the operation as read-only', () => {
-		expect(
-			resolveNodeAnnotations(new NextCloud().description, {
-				parameters: { resource: 'folder', operation: 'search' },
-				typeVersion: 1.1,
-			}),
-		).toEqual(READ_ONLY_ANNOTATIONS);
 	});
 });
