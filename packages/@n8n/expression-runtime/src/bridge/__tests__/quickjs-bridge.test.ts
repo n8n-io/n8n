@@ -673,6 +673,40 @@ describe('QuickJsBridge string transfer', () => {
 });
 
 describe('QuickJsBridge cycle guard', () => {
+	it('should return values nested 400 levels deep in Map, Set and class instances', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const depthOf = (value: unknown, next: (current: unknown) => unknown): number => {
+				let depth = 0;
+				for (let current = next(value); current !== undefined; current = next(current)) {
+					depth++;
+				}
+				return depth;
+			};
+
+			const maps = bridge.execute(
+				'let o = new Map([["v", 1]]); for (let i = 0; i < 400; i++) { o = new Map([["n", o]]); } return o;',
+				{},
+			);
+			expect(depthOf(maps, (current) => (current as Map<string, unknown>).get('n'))).toBe(400);
+
+			const sets = bridge.execute(
+				'let o = new Set(); for (let i = 0; i < 400; i++) { o = new Set([o]); } return o;',
+				{},
+			);
+			expect(depthOf(sets, (current) => [...(current as Set<unknown>)][0])).toBe(400);
+
+			const instances = bridge.execute(
+				'function Node(next) { this.next = next; } let o = new Node(); for (let i = 0; i < 700; i++) { o = new Node(o); } return o;',
+				{},
+			);
+			expect(depthOf(instances, (current) => (current as { next?: unknown }).next)).toBe(700);
+		} finally {
+			await bridge.dispose();
+		}
+	});
+
 	it('should return cyclic values inside Map, Set and Error without breaking or failing dispose', async () => {
 		const bridge = new QuickJsBridge({ timeout: 5000 });
 		await bridge.initialize();
@@ -844,6 +878,31 @@ describe('QuickJsBridge cycle guard', () => {
 			expect(setResult.has(setResult)).toBe(true);
 		} finally {
 			await expect(bridge.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should keep a value that a Map holds twice after an array iterator replacement', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const result = bridge.execute(
+				`
+				const date = new Date(0);
+				const m = new Map();
+				m.set("a", date);
+				m.set("b", date);
+				Array.prototype[Symbol.iterator] = function () {
+					return { next: () => ({ done: true }) };
+				};
+				return m;
+				`,
+				{},
+			) as Map<string, unknown>;
+
+			expect(result.get('a')).toBeInstanceOf(Date);
+			expect(result.get('b')).toBe(result.get('a'));
+		} finally {
+			await bridge.dispose();
 		}
 	});
 
@@ -1027,6 +1086,7 @@ describe('QuickJsBridge cycle guard', () => {
 				hostData,
 				execution,
 			) as Map<string, Record<string, unknown>>;
+			expect(returnedMap.get('k')).toBeDefined();
 			expect(returnedMap.get('k')?.self).toBe(returnedMap.get('k'));
 			expect(
 				evaluator.evaluate('{{ $input.first().json.mapWithObj.get("k").a }}', hostData, execution),

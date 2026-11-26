@@ -208,6 +208,7 @@ describe('Expression - self-referencing values in Map, Set and Error (engine par
 			expect(outMap.get('self')).toBe(outMap);
 			expect(outSet).toBeInstanceOf(Set);
 			expect(outSet.has(outSet)).toBe(true);
+			expect(outMapObj.get('k')).toBeDefined();
 			expect(outMapObj.get('k')?.self).toBe(outMapObj.get('k'));
 			expect(outErr).toBeInstanceOf(Error);
 			expect(outErr.message).toBe('from host');
