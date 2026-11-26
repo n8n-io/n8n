@@ -3075,7 +3075,7 @@ describe('PromotionsService', () => {
 			);
 		});
 
-		it('deletes no project when the read of the left-out projects fails before the deletion', async () => {
+		it('stops before deleting a project when the own Apply environments cannot be read', async () => {
 			projectRepository.findTeamProjectIds.mockResolvedValue(['p1', 'p2', 'p3']);
 			projectRepository.findTeamProjectInfoByIds.mockResolvedValue([
 				{ id: 'p3', name: 'Gamma' },
@@ -3090,6 +3090,7 @@ describe('PromotionsService', () => {
 					confirmDestructiveChanges: true,
 				}),
 			).rejects.toThrow('Settings read failed');
+			expect(n8nPackagesService.applyPackagePlan).toHaveBeenCalledOnce();
 			expect(projectService.deleteProject).not.toHaveBeenCalled();
 		});
 

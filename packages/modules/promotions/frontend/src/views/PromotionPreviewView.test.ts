@@ -1259,7 +1259,7 @@ describe('PromotionPreviewView', () => {
 			await userEvent.click(getByTestId('promotion-preview-submit'));
 
 			expect(confirm).toHaveBeenCalledWith(
-				expect.stringContaining('left out'),
+				expect.stringContaining('projects that apply from their own environment are left out'),
 				'Apply all changes?',
 				expect.anything(),
 			);

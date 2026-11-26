@@ -371,8 +371,8 @@ export class ApplyPreviewService {
 
 	/**
 	 * What stops the Apply of a plan. Without a selection, it checks the whole package, except the
-	 * projects that the plan leaves out. It reads
-	 * credential and variable references only from the workflows that the plan imports.
+	 * projects that the plan leaves out. It reads credential and variable references only from the
+	 * workflows that the plan imports.
 	 */
 	check(
 		plan: PackageImportPlan,
