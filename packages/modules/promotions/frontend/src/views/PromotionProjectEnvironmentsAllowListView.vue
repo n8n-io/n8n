@@ -98,7 +98,7 @@ async function load({ keepRowsOnError = false } = {}) {
 		const lastPage = Math.max(0, Math.ceil(result.count / itemsPerPage) - 1);
 		if (page > lastPage) {
 			tableOptions.value = { ...tableOptions.value, page: lastPage };
-			await load();
+			await load({ keepRowsOnError });
 			return;
 		}
 		projects.value = result.data;
@@ -195,6 +195,7 @@ onMounted(async () => {
 				v-model="search"
 				:class="$style.search"
 				:placeholder="i18n.baseText('settings.promotions.projectEnvironments.allowList.search')"
+				:aria-label="i18n.baseText('settings.promotions.projectEnvironments.allowList.search')"
 				clearable
 				data-test-id="promotion-project-environments-allow-list-search"
 				@update:model-value="onSearch"
@@ -280,6 +281,10 @@ onMounted(async () => {
 <style lang="scss" module>
 .layout {
 	padding-top: 0;
+
+	header {
+		margin-inline: 0 auto;
+	}
 }
 
 /* Pin the back action to the top-left of the settings area so the heading lines up with the overview. */
@@ -306,7 +311,8 @@ onMounted(async () => {
 	max-width: 20rem;
 }
 
-/* The select trigger is full width by default. Hug the label instead. */
+/* The select trigger is full width by default. Hug the label instead.
+   The doubled class outranks the trigger's own width rule. */
 .filter.filter {
 	flex: none;
 	width: fit-content;

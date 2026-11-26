@@ -6,6 +6,7 @@ import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { flushPromises } from '@vue/test-utils';
 import { onTestFinished } from 'vitest';
 
 import type * as PromotionsApi from '../promotionsSettings.api';
@@ -106,31 +107,41 @@ describe('PromotionProjectEnvironmentsAllowListView', () => {
 	});
 
 	it.each([
-		['the reload returns the stored value', true],
-		['the reload fails too', false],
+		{ label: 'the reload returns the stored value', reloadFails: false, shown: 'true' },
+		{ label: 'the reload fails too', reloadFails: true, shown: 'false' },
 	])(
-		'shows the stored value and one error when the save fails and %s',
-		async (_, reloadSucceeds) => {
-			serveStoredProjects([project('p1', 'Alpha'), project('p2', 'Beta')]);
+		'shows the stored value and one error when the save fails and $label',
+		async ({ reloadFails, shown }) => {
+			const stored = [project('p1', 'Alpha'), project('p2', 'Beta')];
+			serveStoredProjects(stored);
 			renderView();
 			await allowSwitch('Alpha');
-			api.updatePromotionProjectEnvironmentsAllowList.mockRejectedValue(new Error('failed'));
-			if (!reloadSucceeds) {
+			if (reloadFails) {
+				api.updatePromotionProjectEnvironmentsAllowList.mockRejectedValue(new Error('failed'));
 				api.getPromotionProjectEnvironmentsAllowList.mockRejectedValue(new Error('failed'));
+			} else {
+				// The server stores the value and the response still fails.
+				api.updatePromotionProjectEnvironmentsAllowList.mockImplementation(async () => {
+					stored[0].allowEnvironments = true;
+					throw new Error('failed');
+				});
 			}
 
 			await userEvent.click(await allowSwitch('Alpha'));
-
 			await waitFor(() =>
 				expect(api.getPromotionProjectEnvironmentsAllowList).toHaveBeenCalledTimes(2),
 			);
-			await waitFor(() => expect(showError).toHaveBeenCalledTimes(1));
-			expect(await allowSwitch('Alpha')).not.toBeChecked();
+			await flushPromises();
+
+			await waitFor(async () =>
+				expect(await allowSwitch('Alpha')).toHaveAttribute('aria-checked', shown),
+			);
 			expect(await allowSwitch('Beta')).toBeInTheDocument();
+			expect(showError).toHaveBeenCalledTimes(1);
+			expect(showMessage).not.toHaveBeenCalled();
 			expect(
 				screen.queryByTestId('promotion-project-environments-allow-list-load-error'),
 			).not.toBeInTheDocument();
-			expect(showMessage).not.toHaveBeenCalled();
 		},
 	);
 
@@ -193,6 +204,33 @@ describe('PromotionProjectEnvironmentsAllowListView', () => {
 			expect.anything(),
 			{ skip: 0, take: 10, allowEnvironments: true },
 		);
+	});
+
+	it('keeps the rows when the reload after a save fails while it moves to the last page', async () => {
+		serveStoredProjects(
+			Array.from({ length: 11 }, (_, index) =>
+				project(`p${index + 1}`, `Project ${String(index + 1).padStart(2, '0')}`, true),
+			),
+		);
+		renderView();
+		await chooseFilter('Allowed');
+		await allowSwitch('Project 01');
+		await userEvent.click(screen.getByTestId('pagination-next'));
+		await allowSwitch('Project 11');
+		const serve = api.getPromotionProjectEnvironmentsAllowList.getMockImplementation();
+		api.getPromotionProjectEnvironmentsAllowList.mockImplementation(async (context, query) => {
+			if (query.skip === 0 || !serve) throw new Error('failed');
+			return await serve(context, query);
+		});
+
+		await userEvent.click(await allowSwitch('Project 11'));
+		await waitFor(() => expect(showMessage).toHaveBeenCalled());
+		await flushPromises();
+
+		expect(await allowSwitch('Project 11')).not.toBeChecked();
+		expect(
+			screen.queryByTestId('promotion-project-environments-allow-list-load-error'),
+		).not.toBeInTheDocument();
 	});
 
 	it.each([
