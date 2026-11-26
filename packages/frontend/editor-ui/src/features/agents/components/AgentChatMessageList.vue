@@ -20,6 +20,7 @@ import {
 	DISPLAY_GROUP_KIND,
 	isAssistantGroup,
 	type DisplayGroup,
+	type TurnDisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
 import {
 	getMessageInteractives,
@@ -511,6 +512,21 @@ function isThinkingActive(message: ChatMessage): boolean {
 	);
 }
 
+/** The thinking of a run sits on its head group but is live while the last group of the run is. */
+function getThinkingLiveState(group: TurnDisplayGroup): {
+	active: boolean;
+	awaitingInput: boolean;
+} {
+	const tail = group.runTail ?? group;
+	if (tail.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
+		return { active: tail.active || tail.awaitingInput, awaitingInput: tail.awaitingInput };
+	}
+	return {
+		active: isThinkingActive(tail.message),
+		awaitingInput: tail.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER,
+	};
+}
+
 function getAssistantGroupContent(group: DisplayGroup): string {
 	if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return '';
 	if (group.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
@@ -712,8 +728,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						:tool-calls="getGroupToolCalls(group.id).steps"
 						:thinking="{
 							segments: group.thinkingSegments,
-							active: group.active || group.awaitingInput,
-							awaitingInput: group.awaitingInput,
+							...getThinkingLiveState(group),
 							durationSec: getThinkingDurationSec(group.thinkingSegments),
 							idleLabel: props.thinkingLabel,
 							hostEvents: getGroupHostEventItems(group.id).thinking,
@@ -871,8 +886,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						:tool-calls="getGroupToolCalls(group.id).steps"
 						:thinking="{
 							segments: group.thinkingSegments,
-							active: isThinkingActive(group.message),
-							awaitingInput: group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER,
+							...getThinkingLiveState(group),
 							durationSec: getThinkingDurationSec(group.thinkingSegments),
 							idleLabel: props.thinkingLabel,
 							hostEvents: getGroupHostEventItems(group.id).thinking,

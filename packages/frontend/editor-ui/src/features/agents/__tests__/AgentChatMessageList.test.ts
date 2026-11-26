@@ -1189,6 +1189,34 @@ describe('AgentChatMessageList', () => {
 		).toEqual(['Choose a query.', 'Compose the answer.']);
 	});
 
+	it('keeps the reasoning at the top of a run live while a later step streams', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-narration',
+						role: 'assistant',
+						content: 'I will search first.',
+						thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a query.' }],
+						toolCalls: [{ tool: 'search', toolCallId: 'tool-1', state: 'done' }],
+						status: 'success',
+					} satisfies ChatMessage,
+					{
+						id: 'assistant-next-step',
+						role: 'assistant',
+						content: '',
+						thinkingSegments: [{ id: 'reasoning-2', content: 'Read the results.' }],
+						status: 'streaming',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'receiving',
+			},
+		});
+
+		const blocks = wrapper.findAll('[data-test-id="shared-thinking-block"]');
+		expect(blocks.map((block) => block.attributes('data-active'))).toEqual(['true']);
+	});
+
 	it('passes persisted reasoning duration to the shared thinking block', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
