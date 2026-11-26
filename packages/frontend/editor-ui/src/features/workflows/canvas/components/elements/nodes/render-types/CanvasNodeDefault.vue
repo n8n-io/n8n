@@ -237,6 +237,7 @@ function onActivate(event: MouseEvent) {
 		<NodeIcon
 			:icon-source="iconSource"
 			:size="iconSize"
+			:zoom="viewport.zoom"
 			:shrink="false"
 			:disabled="isDisabled || isRestricted || isDeprecated"
 			:class="$style.icon"

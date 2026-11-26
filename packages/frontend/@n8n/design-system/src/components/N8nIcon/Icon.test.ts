@@ -135,6 +135,32 @@ describe('Icon', () => {
 		});
 	});
 
+	it('should draw a node icon for its size on screen', async () => {
+		const wrapper = render(Icon, {
+			props: { icon: 'node:ftp', size: 48, drawSize: 18 },
+			...renderOptions,
+		});
+
+		await waitFor(() => {
+			const svg = wrapper.container.querySelector('svg[data-icon="node:ftp"]');
+			expect(svg?.getAttribute('viewBox')).toBe('0 0 18 18');
+			expect(svg?.getAttribute('width')).toBe('48px');
+			expect(svg?.innerHTML).toContain('<path');
+		});
+	});
+
+	it('should scale the 24px node icon drawing above 24px on screen', async () => {
+		const wrapper = render(Icon, {
+			props: { icon: 'node:ftp', size: 48 },
+			...renderOptions,
+		});
+
+		await waitFor(() => {
+			const svg = wrapper.container.querySelector('svg[data-icon="node:ftp"]');
+			expect(svg?.getAttribute('viewBox')).toBe('0 0 24 24');
+		});
+	});
+
 	it('should keep the requested icon when it loads', async () => {
 		const wrapper = render(Icon, {
 			props: { icon: 'app-window-mac', fallbackIcon: 'bot' },

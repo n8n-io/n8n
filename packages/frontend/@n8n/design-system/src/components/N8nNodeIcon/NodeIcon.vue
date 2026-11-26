@@ -13,6 +13,8 @@ interface NodeIconProps {
 	name?: string;
 	nodeTypeName?: string;
 	size?: number;
+	// how much the icon is scaled on screen, for example by canvas zoom
+	zoom?: number;
 	disabled?: boolean;
 	circle?: boolean;
 	color?: string;
@@ -63,6 +65,7 @@ const iconStyleData = computed((): Record<string, string> => {
 					:name="name"
 					:node-type-name="nodeTypeName"
 					:size="size"
+					:zoom="zoom"
 					:badge="badge"
 				/>
 			</N8nTooltip>
@@ -73,6 +76,7 @@ const iconStyleData = computed((): Record<string, string> => {
 				:name="name"
 				:node-type-name="nodeTypeName"
 				:size="size"
+				:zoom="zoom"
 				:badge="badge"
 			/>
 		</div>

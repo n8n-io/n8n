@@ -1,10 +1,11 @@
 <script lang="ts" setup>
-import { computed, ref, shallowRef, useCssModule, watch } from 'vue';
+import { computed, ref, shallowRef, useCssModule, useId, watch } from 'vue';
 
 import { resolveIconColor } from './iconColor';
 import { deprecatedIconSet, updatedIconSet } from './icons';
 import type { IconName, NodeIconName } from './icons';
 import type { nodeIconSet as NodeIconSetType } from './node-icons';
+import type * as NodeIconSkeletons from './node-icon-skeletons';
 import { vSvgContent } from './svgContentDirective';
 import { useInjectIconBodyLoader } from '../../composables/useIconBodyLoader';
 import type { IconSize, IconColor } from '../../types/icon';
@@ -20,6 +21,9 @@ interface IconProps {
 	strokeWidth?: number | undefined;
 	// drawn instead when `icon` is in no icon set
 	fallbackIcon?: IconName;
+	// size in screen pixels, for example after canvas zoom. Node icons use it to pick
+	// or blend the drawing for that size. Defaults to the pixel value of `size`.
+	drawSize?: number;
 }
 
 defineOptions({ name: 'N8nIcon' });
@@ -29,6 +33,7 @@ const props = withDefaults(defineProps<IconProps>(), {
 	size: undefined,
 	color: undefined,
 	fallbackIcon: undefined,
+	drawSize: undefined,
 });
 
 const $style = useCssModule();
@@ -82,6 +87,8 @@ const styles = computed(() => {
 });
 
 const nodeIconSetRef = shallowRef<typeof NodeIconSetType | null>(null);
+const nodeIconSkeletonsRef = shallowRef<typeof NodeIconSkeletons | null>(null);
+const maskIdPrefix = `n8n-icon-${useId()}-`;
 
 const findComponent = (name: string) =>
 	nodeIconSetRef.value?.[name as keyof typeof NodeIconSetType] ??
@@ -105,12 +112,30 @@ watch(
 	async (icon) => {
 		missingIcon.value = null;
 		if (typeof icon === 'string' && icon.startsWith('node:') && !nodeIconSetRef.value) {
-			const { nodeIconSet } = await import('./node-icons');
+			const [{ nodeIconSet }, skeletons] = await Promise.all([
+				import('./node-icons'),
+				import('./node-icon-skeletons'),
+			]);
+			nodeIconSkeletonsRef.value = skeletons;
 			nodeIconSetRef.value = nodeIconSet;
 		}
 	},
 	{ immediate: true },
 );
+
+const screenSize = computed((): number | undefined => {
+	if (props.drawSize) return props.drawSize;
+	if (typeof props.size === 'number') return props.size;
+	return props.size ? sizesInPixels[props.size] : undefined;
+});
+
+// A node icon with a skeleton is drawn for its size on screen. Without a known size, the
+// static 24px drawing is used.
+const skeletonDrawing = computed(() => {
+	const skeletons = nodeIconSkeletonsRef.value;
+	if (!skeletons || screenSize.value === undefined) return null;
+	return skeletons.drawNodeIcon(displayedIcon.value, screenSize.value, maskIdPrefix);
+});
 
 const loadIconBody = useInjectIconBodyLoader();
 
@@ -142,9 +167,22 @@ watch(
 </script>
 
 <template>
-	<Component
+	<svg
+		v-if="skeletonDrawing"
+		v-svg-content="skeletonDrawing.body"
+		xmlns="http://www.w3.org/2000/svg"
+		:viewBox="`0 0 ${skeletonDrawing.viewBoxSize} ${skeletonDrawing.viewBoxSize}`"
+		:class="classes"
+		:height="size.height"
+		:width="size.width"
+		aria-hidden="true"
+		focusable="false"
+		role="img"
+		:data-icon="displayedIcon"
+		:style="styles"
+	/><Component
 		:is="resolvedComponent"
-		v-if="resolvedComponent"
+		v-else-if="resolvedComponent"
 		:class="classes"
 		aria-hidden="true"
 		focusable="false"

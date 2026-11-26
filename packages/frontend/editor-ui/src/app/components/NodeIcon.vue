@@ -9,6 +9,8 @@ import { N8nNodeIcon } from '@n8n/design-system';
 import { useNodeIconSource } from '../composables/useNodeIconSource';
 type Props = {
 	size?: number;
+	// how much the icon is scaled on screen, for example by canvas zoom
+	zoom?: number;
 	disabled?: boolean;
 	circle?: boolean;
 	colorDefault?: string;
@@ -27,6 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 	iconSource: undefined,
 	node: undefined,
 	size: undefined,
+	zoom: undefined,
 	circle: false,
 	disabled: false,
 	showTooltip: false,
@@ -77,6 +80,7 @@ const nodeTypeName = computed(() =>
 		:name="iconName"
 		:disabled="disabled"
 		:size="size"
+		:zoom="zoom"
 		:circle="circle"
 		:node-type-name="nodeTypeName"
 		:show-tooltip="showTooltip"

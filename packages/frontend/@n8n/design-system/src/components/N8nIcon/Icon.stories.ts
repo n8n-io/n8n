@@ -396,3 +396,48 @@ export const Variants: Story = {
 		`,
 	}),
 };
+
+const nodeIconSamples = [
+	'node:http-request',
+	'node:if',
+	'node:ai-agent',
+	'node:code',
+	'node:schedule-trigger',
+	'node:webhook',
+	'node:send-mail',
+	'node:totp',
+] as const;
+
+/**
+ * A node icon draws the icon pack drawing for its size on screen. Between 12px and 24px it
+ * moves between the 12px, 16px and 24px drawings. Above 24px the 24px drawing scales.
+ */
+export const NodeIconDrawSize: Story = {
+	args: {
+		icon: 'node:http-request',
+	},
+	render: () => ({
+		components: { N8nIcon, N8nText },
+		setup() {
+			const drawSize = ref(16);
+			return { drawSize, nodeIconSamples };
+		},
+		template: `
+			<div style="display: flex; flex-direction: column; gap: var(--spacing--md)">
+				<label style="display: flex; align-items: center; gap: var(--spacing--xs)">
+					<N8nText size="small">Size on screen: {{ drawSize }}px</N8nText>
+					<input v-model.number="drawSize" type="range" min="8" max="48" step="0.25" />
+				</label>
+				<div style="display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing--lg)">
+					<N8nIcon
+						v-for="icon in nodeIconSamples"
+						:key="icon"
+						:icon="icon"
+						:size="drawSize"
+						:draw-size="drawSize"
+					/>
+				</div>
+			</div>
+		`,
+	}),
+};

@@ -14,6 +14,8 @@ interface IconContentProps {
 	name?: string;
 	nodeTypeName?: string;
 	size?: number;
+	// how much the icon is scaled on screen, for example by canvas zoom
+	zoom?: number;
 	badge?: { src?: string; name?: string; type: IconType; tooltip?: string };
 }
 
@@ -50,6 +52,9 @@ const badgeStyleData = computed((): Record<string, string> => {
 	};
 });
 
+// Node icons pick the drawing for their size on screen.
+const drawSize = computed(() => (props.size ? props.size * (props.zoom ?? 1) : undefined));
+
 const supportedIconName = computed((): IconName | NodeIconName | undefined => {
 	return isSupportedIconName(props.name) ? props.name : undefined;
 });
@@ -63,7 +68,12 @@ const supportedIconName = computed((): IconName | NodeIconName | undefined => {
 			referrerpolicy="no-referrer"
 			:class="$style.nodeIconImage"
 		/>
-		<N8nIcon v-else-if="supportedIconName" :icon="supportedIconName" :style="fontStyleData" />
+		<N8nIcon
+			v-else-if="supportedIconName"
+			:icon="supportedIconName"
+			:draw-size="drawSize"
+			:style="fontStyleData"
+		/>
 		<div v-else :class="$style.nodeIconPlaceholder">
 			{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
 		</div>
