@@ -228,6 +228,7 @@ describe('PromotionProjectEnvironmentsAllowListView', () => {
 		await flushPromises();
 
 		expect(await allowSwitch('Project 11')).not.toBeChecked();
+		expect(showError).not.toHaveBeenCalled();
 		expect(
 			screen.queryByTestId('promotion-project-environments-allow-list-load-error'),
 		).not.toBeInTheDocument();
