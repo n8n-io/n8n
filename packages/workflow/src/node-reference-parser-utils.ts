@@ -86,7 +86,9 @@ const ACCESS_PATTERNS: AccessPattern[] = [
 	},
 	{
 		checkPattern: '$node.',
-		replacePattern: (s) => String.raw`(\$node\.)${s}(\.?)`,
+		// Require a boundary after the old name so renaming `Code` does not
+		// also rewrite `$node.Code1` or `$node.Code_old`.
+		replacePattern: (s) => String.raw`(\$node\.)${s}(?![A-Za-z0-9_])(\.?)`,
 		customCallback: (expression: string, newName: string, escapedNewName: string) => {
 			if (hasDotNotationBannedChar(newName)) {
 				return expression.replace(

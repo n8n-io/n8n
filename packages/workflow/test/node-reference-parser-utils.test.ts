@@ -54,6 +54,12 @@ describe('NodeReferenceParserUtils', () => {
 	describe('applyAccessPatterns', () => {
 		it.each([
 			{
+				expression: '$node.oldName1.data + $node.oldName.data',
+				previousName: 'oldName',
+				newName: 'newName',
+				expected: '$node.oldName1.data + $node.newName.data',
+			},
+			{
 				expression: '$node["oldName"].data',
 				previousName: 'oldName',
 				newName: 'newName',
