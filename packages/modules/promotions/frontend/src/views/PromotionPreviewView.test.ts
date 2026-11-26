@@ -1231,9 +1231,11 @@ describe('PromotionPreviewView', () => {
 
 			const { getAllByRole, getByTestId, queryByTestId, queryAllByTestId } = await render();
 
-			expect(getAllByRole('tab')).toHaveLength(1);
+			expect(getAllByRole('tab')).toHaveLength(2);
 			expect(getAllByRole('tab')[0]).toHaveTextContent('Changes');
-			expect(queryByTestId('promotion-preview-blockers')).not.toBeInTheDocument();
+			expect(getAllByRole('tab')[1]).toHaveTextContent(/^Issues\s*0$/);
+			// The Issues panel is there, but the Changes tab is open, so the panel is not visible.
+			expect(queryByTestId('promotion-preview-blockers')).not.toBeVisible();
 			expect(queryAllByTestId('promotion-preview-tree-dependencies')).toHaveLength(0);
 			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Promote \d+ changes$/);
 		});
@@ -1440,7 +1442,7 @@ describe('PromotionPreviewView', () => {
 			);
 		});
 
-		it('should keep only the issues of the selected workflows, and remove the tab when none is left', async () => {
+		it('should keep only the issues of the selected workflows, and show Issues 0 when none is left', async () => {
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(
 				billingPreview({
 					missingDependencies: [otherProjectCredential, outsideAccessWorkflow, personalCredential],
@@ -1463,7 +1465,7 @@ describe('PromotionPreviewView', () => {
 
 			await userEvent.click(getByRole('tab', { name: /Changes/ }));
 			await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
-			expect(queryByRole('tab', { name: /Issues/ })).not.toBeInTheDocument();
+			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*0$/);
 		});
 
 		it('should mark the selected workflows that use a missing dependency, and open the Issues tab from the marker', async () => {
@@ -1504,7 +1506,7 @@ describe('PromotionPreviewView', () => {
 			const { getByRole, getByTestId, queryAllByTestId } = await render();
 
 			const tab = getByRole('tab', { name: /Issues/ });
-			expect(tab).toHaveTextContent(/^Issues$/);
+			expect(tab).toHaveTextContent(/^Issues\s*0$/);
 			await userEvent.click(tab);
 
 			expect(getByRole('heading', { level: 2, name: '1 warning' })).toBeVisible();
@@ -1797,7 +1799,7 @@ describe('PromotionPreviewView', () => {
 
 			expect(getAllByRole('tab').map((tab) => tab.textContent?.trim())).toEqual([
 				expect.stringMatching(/^Changes\s*\d+$/),
-				'Issues',
+				expect.stringMatching(/^Issues\s*0$/),
 			]);
 			expect(queryAllByTestId('promotion-preview-tree-dependencies')).toHaveLength(0);
 			expect(queryAllByTestId('promotion-preview-tree-blocker')).toHaveLength(0);
@@ -2092,7 +2094,7 @@ describe('PromotionPreviewView', () => {
 
 				// The selection includes the target, so the Apply adds it.
 				expect(target()).toBeChecked();
-				expect(issuesTab).toHaveTextContent(/^Issues$/);
+				expect(issuesTab).toHaveTextContent(/^Issues\s*0$/);
 				expect(marker()).not.toBeInTheDocument();
 				expect(queryAllByTestId('promotion-preview-blocker-row')).toHaveLength(0);
 				expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
@@ -2102,7 +2104,7 @@ describe('PromotionPreviewView', () => {
 				await userEvent.click(target());
 
 				// A warning does not count on the tab, and nothing is to resolve.
-				expect(issuesTab).toHaveTextContent(/^Issues$/);
+				expect(issuesTab).toHaveTextContent(/^Issues\s*0$/);
 				expect(marker()).toHaveAccessibleName('1 dependency is not usable on this instance.');
 				expect(caller().getByRole('checkbox')).toBeChecked();
 				expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
@@ -2120,7 +2122,7 @@ describe('PromotionPreviewView', () => {
 				await openTab(getByRole, /Changes/);
 				await userEvent.click(target());
 
-				expect(issuesTab).toHaveTextContent(/^Issues$/);
+				expect(issuesTab).toHaveTextContent(/^Issues\s*0$/);
 				expect(marker()).not.toBeInTheDocument();
 				expect(queryByTestId('promotion-preview-dependency-warning')).not.toBeInTheDocument();
 				expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
@@ -2293,7 +2295,7 @@ describe('PromotionPreviewView', () => {
 				};
 
 				// The selection includes the target: the caller policy of the branch applies.
-				expect(issuesTab).toHaveTextContent(/^Issues$/);
+				expect(issuesTab).toHaveTextContent(/^Issues\s*0$/);
 				expect(marker()).toHaveAccessibleName('1 dependency is not usable on this instance.');
 				expect(await rows()).toEqual([
 					[
@@ -2306,7 +2308,7 @@ describe('PromotionPreviewView', () => {
 				await userEvent.click(target());
 
 				// The selection leaves out the target: this instance does not have the workflow.
-				expect(issuesTab).toHaveTextContent(/^Issues$/);
+				expect(issuesTab).toHaveTextContent(/^Issues\s*0$/);
 				expect(marker()).toHaveAccessibleName('1 dependency is not usable on this instance.');
 				expect(await rows()).toEqual([
 					[
@@ -2907,7 +2909,7 @@ describe('PromotionPreviewView', () => {
 
 			const { getByRole, getByTestId, queryAllByTestId, queryByTestId } = await renderApply();
 			// A warning does not count, on the tab or on the button.
-			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues$/);
+			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*0$/);
 			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Apply \d+ changes$/);
 
 			await userEvent.click(getByRole('tab', { name: /Issues/ }));
@@ -3139,7 +3141,7 @@ describe('PromotionPreviewView', () => {
 
 			// The Apply has no selection, so the tab lists the dependency for every workflow. The
 			// dependency is a warning, so the tab does not count it.
-			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues$/);
+			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*0$/);
 			await userEvent.click(getByRole('tab', { name: /Issues/ }));
 			expect(getAllByTestId('promotion-preview-dependency-warning')).toHaveLength(1);
 		});
