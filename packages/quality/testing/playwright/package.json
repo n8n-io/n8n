@@ -24,6 +24,7 @@
     "bench:canvas:sentinels": "node scripts/canvas-perf-sentinels.mjs test-results.json",
     "bench:canvas:report": "playwright show-report",
     "test:infrastructure": "playwright test --project='*:infrastructure'",
+    "test:deployment": "playwright test --project='deployment*'",
     "test:encryption:upgrade": "playwright test --project='encryption:infrastructure' tests/infrastructure/encryption/upgrade-cycle.spec.ts",
     "test:encryption:rotation": "playwright test --project='encryption:infrastructure' tests/infrastructure/encryption/rotation-cycle.spec.ts",
     "test:community-packages": "playwright test --project='sqlite:e2e' --project='sqlite:infrastructure' community-nodes/node-api-version-guard community-packages/startup-guard",

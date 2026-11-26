@@ -1233,7 +1233,13 @@ describe('workflow tool → binary output', () => {
 
 		expect(bridge.adoptFromItems).toHaveBeenCalledWith(
 			[binaryItem],
-			{ agentId: 'agent-1', projectId: 'p1', threadId: 't-1', resourceId: 'draft-chat:user-1' },
+			expect.objectContaining({
+				agentId: 'agent-1',
+				projectId: 'p1',
+				threadId: 't-1',
+				resourceId: 'draft-chat:user-1',
+				workflowId: workflow.id,
+			}),
 			expect.any(Map),
 			expect.any(Set),
 		);
@@ -1714,10 +1720,13 @@ describe('workflow tool → file input', () => {
 			{ data: 'aid-1' },
 			{ projectId: 'p1', threadId: 't-1' },
 		);
-		const { pinData } = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		const { pinData } = runData;
 		const [triggerItems] = Object.values(pinData ?? {});
 		expect(triggerItems[0].binary).toEqual(binary);
 		expect(triggerItems[0].json).not.toHaveProperty('files');
+		expect(runData.binaryDataAccess).toEqual(['fs:x']);
+		expect(runData.executionData?.binaryDataAccess).toEqual(['fs:x']);
 	});
 
 	it('passes the input files to adoptFromItems, so an unchanged file keeps its ID', async () => {

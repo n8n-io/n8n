@@ -50,8 +50,14 @@ export const appVersionSchema = z.object({
 });
 export type AppVersionResponse = z.infer<typeof appVersionSchema>;
 
-export const appPreviewResponseSchema = z.object({ url: z.string().url() });
+export const appPreviewResponseSchema = z.object({
+	url: z.string().url(),
+	authorizeUrl: z.string().url(),
+});
 export type AppPreviewResponse = z.infer<typeof appPreviewResponseSchema>;
+
+/** Marks a frame load of the preview URL. Browsers omit `Sec-Fetch-Dest` on plain HTTP. */
+export const APP_PREVIEW_FRAME_PARAM = 'frame';
 
 export const APP_INSPECTOR_MESSAGE_SOURCE = 'n8n-app-inspector';
 

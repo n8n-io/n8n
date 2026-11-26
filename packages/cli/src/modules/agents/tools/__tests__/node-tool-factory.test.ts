@@ -476,7 +476,10 @@ describe('resolveNodeTool → file input', () => {
 
 		expect(toBinary).toHaveBeenCalledWith({ data: 'aid-1' }, { projectId: 'p1', threadId: 't1' });
 		expect(executeInline).toHaveBeenCalledWith(
-			expect.objectContaining({ inputData: [{ json: { name: 'cat.png' }, binary }] }),
+			expect.objectContaining({
+				binaryDataAccess: ['fs:x'],
+				inputData: [{ json: { name: 'cat.png' }, binary }],
+			}),
 		);
 	});
 

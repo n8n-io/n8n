@@ -3,8 +3,13 @@ import { UserError } from '@n8n/errors';
 import type { ICredentialDataDecryptedObject, INode } from 'n8n-workflow';
 
 import type { CustomModelEndpointFetchContext } from './auth-fetch';
-import { createCustomModelEndpointAuthFetch, createEndpointBaseFetch } from './auth-fetch';
+import {
+	createCustomModelEndpointAuthFetch,
+	createCustomModelEndpointTokenSource,
+	createEndpointBaseFetch,
+} from './auth-fetch';
 import { readCustomModelEndpointCredential, readOpenAiCredential } from './credential-data';
+import type { AccessTokenSource } from './oauth2';
 import type { EndpointCredential } from './types';
 
 export const CUSTOM_MODEL_ENDPOINT_CREDENTIAL = 'customModelEndpointApi';
@@ -81,6 +86,7 @@ export function createCustomModelEndpointConfig(
 		contextHeaders?: Record<string, string>;
 		/** The headers the user typed on the node, any of which can hold a key. */
 		userHeaders?: Record<string, string>;
+		tokenSource?: AccessTokenSource;
 	},
 ): { configuration: ClientOptions; endpoint: EndpointCredential } {
 	const endpoint = readEndpointCredential(options.credentialType, credential);
@@ -93,6 +99,7 @@ export function createCustomModelEndpointConfig(
 		baseFetch: createEndpointBaseFetch(egressFilter, options.timeout),
 		contextHeaders: options.contextHeaders,
 		userHeaders: options.userHeaders,
+		tokenSource: options.tokenSource,
 	});
 
 	return {
@@ -102,4 +109,24 @@ export function createCustomModelEndpointConfig(
 			fetch: authFetch,
 		},
 	};
+}
+
+/**
+ * One sign-in for a whole run. A caller that builds a config for each item passes the
+ * result back in as `tokenSource`, or every item signs in again.
+ */
+export function createRunTokenSource(
+	ctx: CustomModelEndpointFetchContext,
+	credential: ICredentialDataDecryptedObject,
+	credentialType: AcceptedCredential,
+): AccessTokenSource | undefined {
+	const endpoint = readEndpointCredential(credentialType, credential);
+	// The whole check, not the base URL alone: this is an entry point of its own, and the
+	// source it builds talks to the token URL.
+	assertEndpointUrls(endpoint);
+
+	return createCustomModelEndpointTokenSource(ctx, credential, {
+		endpoint,
+		egressFilter: ctx.helpers.getSecureEgressFilter(),
+	});
 }

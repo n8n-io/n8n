@@ -725,6 +725,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * hosts can show the user that an MCP server was unavailable without
 	 * aborting inference.
 	 */
+	/**
+	 * Resolve the tools of every attached MCP client, with the names that the
+	 * built agent gives them. Servers that fail to connect are skipped.
+	 */
+	async listMcpTools(): Promise<BuiltTool[]> {
+		const mcpToolLists = await Promise.all(this.mcpClients.map(async (c) => await c.listTools()));
+		return ensureUniqueMcpToolNames(mcpToolLists.flat());
+	}
+
 	getMcpConnectionFailures(): McpConnectionFailedEvent[] {
 		return [
 			...this.mcpClients.flatMap((c) => [...c.getConnectionFailures()]),
@@ -1129,9 +1138,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			);
 		}
 
-		// Resolve tools from all MCP clients.
-		const mcpToolLists = await Promise.all(this.mcpClients.map(async (c) => await c.listTools()));
-		const mcpTools = ensureUniqueMcpToolNames(mcpToolLists.flat());
+		const mcpTools = await this.listMcpTools();
 		const mcpConnectionFailures = this.getMcpConnectionFailures();
 
 		// Detect collisions between direct, deferred, and MCP tools.

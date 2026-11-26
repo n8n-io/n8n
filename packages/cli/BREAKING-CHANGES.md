@@ -4,6 +4,17 @@ This list shows all the versions which include breaking changes and how to upgra
 
 # Unreleased
 
+## SAML
+
+n8n now checks that each SAML response is for this instance.
+The `Audience` must be the n8n Entity ID.
+The `Destination` and the `Recipient` must be the n8n ACS URL.
+If your identity provider has an old Entity ID or ACS URL for n8n, SAML sign-in fails with `ERR_AUDIENCE_MISMATCH` or `ERR_RECIPIENT_MISMATCH`.
+Copy the Entity ID URL and the Redirect URL from the n8n SAML settings into your identity provider.
+The identity provider metadata must contain a signing certificate.
+Without one, SAML sign-in fails with `NO_SELECTED_CERTIFICATE`.
+n8n accepts each SAML assertion only once.
+
 ## n8n Packages (preview)
 
 Package manifest requirements now use `usedBy: [{ "kind": "workflow", "id": "workflow-id" }]`.
