@@ -1,0 +1,75 @@
+packages/core/src/execution-engine/runtime-credential-scrubber.ts
+  s_55c9c16466c150::t_5c79ebe5ac757a 1-122
+packages/core/src/execution-engine/workflow-execute.ts
+  s_55c9c16466c150::t_6427a789bebd1b 73-76,128-133,1786,2302,2385,2389-2392,2394,2737-2739,2741-2742
+  s_55c9c16466c150::t_f7524487a6a3a9 126-127
+  s_55c9c16466c150::t_9bf8dc5c7b321e 2386-2388
+  s_55c9c16466c150::t_c6fd59a2da61b3 2393
+  s_55c9c16466c150::t_5b40c4a92d87ba 2395-2397
+  s_55c9c16466c150::t_e7b6cfc5f7ffea 2740
+  s_55c9c16466c150::t_71282c36b1df0c 2743
+  s_16993190805102::t_c85b7e6d2e275c 2398-2408
+packages/@n8n/decorators/src/pubsub/pubsub.event-map.ts
+  s_55c9c16466c150::t_0f29dbf406b03f 32
+packages/core/src/execution-engine/__tests__/runtime-credential-scrubber.test.ts
+  s_55c9c16466c150::t_3ae5b0e37515f4 1-131
+packages/workflow/src/interfaces.ts
+  s_55c9c16466c150::t_0cb6328388c26a 4112-4118,4196-4201
+packages/@n8n/decorators/src/context-establishment/__tests__/context-establishment-hook.test.ts
+  s_529ec0fcbfe5ab::t_b74fc42405f53f 148-195
+packages/@n8n/decorators/src/context-establishment/context-establishment-hook-metadata.ts
+  s_4f8be112ee2a31::t_3b80651cac32ed 23-32,129-139
+packages/core/src/execution-engine/__tests__/execution-context-hook-service.test.ts
+  s_4f8be112ee2a31::t_5389929a6e8ee2 512-574
+packages/core/src/execution-engine/__tests__/execution-context.service.test.ts
+  s_529ec0fcbfe5ab::t_864594cc89c939 77,1022-1135
+packages/core/src/execution-engine/execution-context-hook-registry.service.ts
+  s_4f8be112ee2a31::t_4fca7c2726818d 16,38,43,80-82,127-134
+packages/core/src/execution-engine/execution-context.service.ts
+  s_4f8be112ee2a31::t_536854ee81c10a 2,258-259,266,278-339,344-346
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db713df0a23bf17e72e28605d5d7657cdfc3b587",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_16993190805102": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a21cbb5488c2c3240",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_4f8be112ee2a31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6c2aebe16ead862",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_529ec0fcbfe5ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9884d862f2331e32",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
