@@ -1,19 +1,24 @@
 import {
 	createTeamProject,
+	createWorkflow,
 	linkUserToProject,
 	randomCredentialPayload,
 	testDb,
 } from '@n8n/backend-test-utils';
+import type { Project, User } from '@n8n/db';
 import type { AssignableProjectRole } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import type {
+	ILocalLoadOptionsFunctions,
 	INodeListSearchResult,
+	INodeType,
 	IWorkflowExecuteAdditionalData,
 	ResourceMapperFields,
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { NodeTypes } from '@/node-types';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 
@@ -209,6 +214,144 @@ describe('DynamicNodeParametersController', () => {
 				.post('/dynamic-node-parameters/local-resource-mapper-fields')
 				.send(commonRequestParams)
 				.expect(400);
+		});
+	});
+
+	describe('POST /dynamic-node-parameters/local-resource-mapper-fields workflow access', () => {
+		const triggerType = 'n8n-nodes-base.executeWorkflowTrigger';
+
+		const requestFor = (workflowId: string, topLevelWorkflowId?: string) => ({
+			...commonRequestParams,
+			methodName: 'loadSubWorkflowInputs',
+			path: 'parameters.workflowInputs',
+			...(topLevelWorkflowId ? { workflowId: topLevelWorkflowId } : {}),
+			currentNodeParameters: {
+				workflowId: { __rl: true, value: workflowId, mode: 'id' },
+			},
+		});
+
+		const createSubWorkflow = async (owner: User | Project) =>
+			await createWorkflow(
+				{
+					nodes: [
+						{
+							id: 'trigger',
+							name: 'Trigger',
+							type: triggerType,
+							typeVersion: 1.1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+				},
+				owner,
+			);
+
+		beforeEach(async () => {
+			await testDb.truncate(['SharedWorkflow', 'WorkflowEntity']);
+
+			vi.spyOn(AdditionalData, 'getBase').mockImplementation(
+				async ({ currentNodeParameters } = {}) =>
+					mock<IWorkflowExecuteAdditionalData>({ currentNodeParameters }),
+			);
+
+			// Report the loaded trigger node, so a response shows whether the workflow was read.
+			const localResourceMapping = async function (this: ILocalLoadOptionsFunctions) {
+				const context = await this.getWorkflowNodeContext(triggerType);
+				return {
+					fields: context
+						? [
+								{
+									id: context.getNode().id,
+									displayName: 'Trigger',
+									required: false,
+									defaultMatch: false,
+									display: true,
+								},
+							]
+						: [],
+				};
+			};
+			vi.spyOn(Container.get(NodeTypes), 'getByNameAndVersion').mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { localResourceMapping: { loadSubWorkflowInputs: localResourceMapping } },
+				}),
+			);
+		});
+
+		it('should load a workflow in the user’s own project', async () => {
+			const member = await createMember();
+			const workflow = await createSubWorkflow(member);
+
+			const response = await testServer
+				.authAgentFor(member)
+				.post('/dynamic-node-parameters/local-resource-mapper-fields')
+				.send(requestFor(workflow.id))
+				.expect(200);
+
+			expect(response.body.data.fields).toEqual([expect.objectContaining({ id: 'trigger' })]);
+		});
+
+		it('should load a workflow from a project the user is a member of', async () => {
+			const project = await createTeamProject();
+			const member = await createMember();
+			await linkUserToProject(member, project, 'project:viewer');
+			const workflow = await createSubWorkflow(project);
+
+			const response = await testServer
+				.authAgentFor(member)
+				.post('/dynamic-node-parameters/local-resource-mapper-fields')
+				.send(requestFor(workflow.id))
+				.expect(200);
+
+			expect(response.body.data.fields).toEqual([expect.objectContaining({ id: 'trigger' })]);
+		});
+
+		it('should respond for a workflow the user cannot read the same as for a missing workflow', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+			const workflow = await createSubWorkflow(owner);
+			const memberAgent = testServer.authAgentFor(member);
+
+			const inaccessible = await memberAgent
+				.post('/dynamic-node-parameters/local-resource-mapper-fields')
+				.send(requestFor(workflow.id))
+				.expect(400);
+			const missing = await memberAgent
+				.post('/dynamic-node-parameters/local-resource-mapper-fields')
+				.send(requestFor('missingWorkflow1'))
+				.expect(400);
+
+			expect(inaccessible.body.message).toBe(`Failed to find workflow with ID "${workflow.id}"`);
+			expect(missing.body.message).toBe('Failed to find workflow with ID "missingWorkflow1"');
+		});
+
+		it('should check the referenced workflow even when the request names an accessible workflow', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+			const ownWorkflow = await createSubWorkflow(member);
+			const otherWorkflow = await createSubWorkflow(owner);
+
+			await testServer
+				.authAgentFor(member)
+				.post('/dynamic-node-parameters/local-resource-mapper-fields')
+				.send(requestFor(otherWorkflow.id, ownWorkflow.id))
+				.expect(400);
+		});
+
+		it('should load any workflow for the instance owner', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+			const workflow = await createSubWorkflow(member);
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.post('/dynamic-node-parameters/local-resource-mapper-fields')
+				.send(requestFor(workflow.id))
+				.expect(200);
+
+			expect(response.body.data.fields).toEqual([expect.objectContaining({ id: 'trigger' })]);
 		});
 	});
 

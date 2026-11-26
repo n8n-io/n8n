@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { PasswordUtility } from '../password.utility';
+import { DUMMY_PASSWORD_HASH, PasswordUtility } from '../password.utility';
 
 function toComponents(hash: string) {
 	const BCRYPT_HASH_REGEX =
@@ -47,6 +47,26 @@ describe('PasswordUtility', () => {
 			const isMatch = await passwordUtility.compare(secondPlaintext, hashed);
 
 			expect(isMatch).toBe(false);
+		});
+
+		test('should return false when no hash is stored', async () => {
+			const isMatch = await passwordUtility.compare('abcd1234X', null);
+
+			expect(isMatch).toBe(false);
+		});
+
+		test('should return false when the stored value is not a bcrypt hash', async () => {
+			const isMatch = await passwordUtility.compare('no password set', 'no password set');
+
+			expect(isMatch).toBe(false);
+		});
+	});
+
+	describe('DUMMY_PASSWORD_HASH', () => {
+		test('should use the same cost factor as hash()', async () => {
+			const hashed = await passwordUtility.hash('abcd1234X');
+
+			expect(toComponents(DUMMY_PASSWORD_HASH).costFactor).toBe(toComponents(hashed).costFactor);
 		});
 	});
 });

@@ -1,4 +1,4 @@
-import type { Tool } from '@n8n/agents';
+import type { BuiltTool, Tool } from '@n8n/agents';
 import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { FolderService } from '@/services/folder.service';
 import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
@@ -20,6 +20,7 @@ import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-netw
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
+	AgentExecutionStatisticsRepository,
 	TransactionRunner,
 	Person,
 	UserRepository,
@@ -348,6 +349,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentsSettingsService>(),
 			skillRefs,
 			mock<UserRepository>(),
+			mock<AgentExecutionStatisticsRepository>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -373,6 +375,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			// No enforcement implementation is registered, so every evaluation comes back clear.
 			new AgentPolicyService(new PolicyEnforcementService()),
 			mock<WorkflowsInSkillsFlagGate>(),
+			mock<WorkflowFinderService>(),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,
@@ -421,6 +424,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<N8nChatFlagService>(),
 			mock<AgentDefinitionService>(),
+			mock(),
 			mock<GlobalConfig>({ tags: { disabled: false } }),
 			mock<TagService>(),
 			mock<FolderService>(),
@@ -457,7 +461,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			'attaches eager conversation tools with n8n Chat=%s',
 			async (n8nChat) => {
 				const registry = new ChatIntegrationRegistry();
-				registry.register(new SlackIntegration(mock<AgentRepository>()));
+				registry.register(new SlackIntegration(mock<AgentRepository>(), mock()));
 				registry.register(new N8nChatIntegration(mock()));
 				Container.set(ChatIntegrationRegistry, registry);
 				Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
@@ -466,10 +470,17 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 					ChatIntegrationContextQueryExecutor,
 					mock<ChatIntegrationContextQueryExecutor>(),
 				);
-				const attached: Array<ReturnType<Tool['build']>> = [];
+				const attached: BuiltTool[] = [];
+				// Like Agent.tool: takes builders or built tools.
 				const agent = {
-					tool: (tools: Tool | Tool[]) => {
-						for (const tool of Array.isArray(tools) ? tools : [tools]) attached.push(tool.build());
+					tool: (tools: Tool | BuiltTool | Array<Tool | BuiltTool>) => {
+						for (const tool of Array.isArray(tools) ? tools : [tools]) {
+							attached.push(
+								'build' in tool && typeof tool.build === 'function'
+									? tool.build()
+									: (tool as BuiltTool),
+							);
+						}
 					},
 				};
 				await (
@@ -499,6 +510,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 								'do_not_respond',
 							],
 				);
+				// A test run tells integration tools apart by this tag.
+				for (const tool of attached) expect(tool.metadata).toEqual({ kind: 'integration' });
 				const actions = attached.filter(({ name }) => name.endsWith('_action'));
 				for (const action of actions) {
 					expect(action.systemInstruction).toContain('Search your tools');

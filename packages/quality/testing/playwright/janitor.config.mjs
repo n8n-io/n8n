@@ -98,9 +98,9 @@ export default defineConfig({
 				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.locator\('body'\)\.click\(\)$/,
 				// This filter intersects with a menu item in the visible portal menu.
 				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.locator\('\[aria-haspopup="menu"\]'\)$/,
-				// Project links render in the main content header, outside the sidebar.
-				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByRole\('link', \{ name: 'Workflows' \}\)\.click\(\)$/,
-				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByRole\('link', \{ name: 'Credentials' \}\)\.click\(\)$/,
+				// Project tabs render in the main content header, outside the sidebar.
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('project-tabs'\)\.getByRole\('tab', \{ name: 'Workflows' \}\)\.click\(\)$/,
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('project-tabs'\)\.getByRole\('tab', \{ name: 'Credentials' \}\)\.click\(\)$/,
 				// The account menu and its help submenu render in portals.
 				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('main-sidebar-account-menu'\)$/,
 				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('main-sidebar-log-out'\)$/,

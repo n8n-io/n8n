@@ -1,6 +1,8 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
+
 import EmptyStateIconCards from './EmptyStateIconCards.vue';
-import type { EmptyStateIconCards as EmptyStateIconCardsIcon } from './types';
+import type { EmptyStateIconCards as EmptyStateIconCardsIcon, EmptyStateSize } from './types';
 import type { ButtonVariant } from '../../types/button';
 import N8nButton from '../N8nButton';
 import N8nCallout, { type CalloutTheme } from '../N8nCallout';
@@ -22,17 +24,32 @@ interface EmptyStateProps {
 	calloutText?: string;
 	calloutTheme?: CalloutTheme;
 	calloutIcon?: IconName;
+	/**
+	 * `small` fits inside a table or a list, for example in the `#cover` slot of
+	 * `N8nDataTableServer`. Put the one-line message in `description`.
+	 */
+	size?: EmptyStateSize;
 }
 
 defineOptions({ name: 'N8nEmptyState' });
-withDefaults(defineProps<EmptyStateProps>(), {
+const props = withDefaults(defineProps<EmptyStateProps>(), {
 	calloutTheme: 'info',
 	buttonIcon: undefined,
+	size: 'default',
 });
+
+const isSmall = computed(() => props.size === 'small');
+// The default size leaves the variant to N8nButton.
+const resolvedButtonVariant = computed(
+	() => props.buttonVariant ?? (isSmall.value ? 'outline' : undefined),
+);
 </script>
 
 <template>
-	<div :class="['n8n-empty-state', $style.container]" data-test-id="empty-state">
+	<div
+		:class="['n8n-empty-state', $style.container, { [$style.small]: isSmall }]"
+		data-test-id="empty-state"
+	>
 		<div v-if="icon" :class="$style.icon">
 			<EmptyStateIconCards
 				v-if="icon.type === 'cards'"
@@ -43,7 +60,7 @@ withDefaults(defineProps<EmptyStateProps>(), {
 			<N8nIcon
 				v-else-if="icon.type === 'icon'"
 				:icon="icon.value"
-				:size="40"
+				:size="isSmall ? 24 : 40"
 				:stroke-width="1.5"
 				color="foreground-xdark"
 			/>
@@ -51,7 +68,7 @@ withDefaults(defineProps<EmptyStateProps>(), {
 		</div>
 		<div v-if="heading || $slots.heading || description" :class="$style.text">
 			<div v-if="heading || $slots.heading" :class="$style.heading">
-				<N8nHeading size="xlarge" align="center">
+				<N8nHeading :size="isSmall ? 'medium' : 'xlarge'" align="center">
 					<slot name="heading">{{ heading }}</slot>
 				</N8nHeading>
 			</div>
@@ -73,10 +90,10 @@ withDefaults(defineProps<EmptyStateProps>(), {
 			</template>
 			<N8nButton
 				:label="buttonText"
-				:variant="buttonVariant"
+				:variant="resolvedButtonVariant"
 				:disabled="buttonDisabled"
 				:icon="buttonIcon"
-				size="large"
+				:size="isSmall ? 'small' : 'large'"
 				role="button"
 				@click="$emit('click:button', $event)"
 			/>
@@ -110,6 +127,17 @@ withDefaults(defineProps<EmptyStateProps>(), {
 
 .icon {
 	font-size: 40px;
+}
+
+.small {
+	border: 0;
+	border-radius: 0;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--2xl) var(--spacing--md);
+
+	.icon {
+		font-size: var(--font-size--2xl);
+	}
 }
 
 .text {

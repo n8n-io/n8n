@@ -1,10 +1,10 @@
 <script lang="ts" setup>
+import { Bar } from '@n8n/design-system/charts';
 import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smart-decimal';
 import { useCssVar } from '@vueuse/core';
 import type { ChartData } from 'chart.js';
 import { computed } from 'vue';
-import { Bar } from 'vue-chartjs';
 
 import type { ChartProps } from './insightChartProps';
 import { generateBarChartOptions } from '../../chartjs.utils';

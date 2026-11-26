@@ -211,15 +211,6 @@ export const engineRefusals: EngineRefusal[] = [
 		check: { code: 'LOOP_EXITS_MID_BODY' },
 	},
 	{
-		name: 'two edges feed the same input of a node',
-		workflow: fromTrigger('A', [noOp('A'), noOp('B'), noOp('C')], {
-			A: outputs([to('B'), to('C')]),
-			B: outputs([to('C')]),
-		}),
-		engineError: 'more than one edge into input slot 0',
-		check: { code: 'INPUT_SLOT_CONVERGENCE' },
-	},
-	{
 		name: 'a Split In Batches node has no return edge',
 		workflow: fromTrigger('Loop', [splitInBatches('Loop'), noOp('Body'), noOp('After')], {
 			Loop: outputs([to('After')], [to('Body')]),

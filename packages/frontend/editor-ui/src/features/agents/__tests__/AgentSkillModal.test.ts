@@ -568,7 +568,7 @@ describe('AgentSkillModal', () => {
 
 		expect(
 			container.querySelector(
-				'[data-testid="agent-skill-reference-nav-item-references-reference-21-md"]',
+				`[data-testid="agent-skill-reference-nav-item-references-reference-${AGENT_SKILL_REFERENCE_MAX_COUNT + 1}-md"]`,
 			),
 		).not.toBeInTheDocument();
 		expect(
@@ -630,8 +630,6 @@ describe('AgentSkillModal', () => {
 		);
 		await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
 		await fireEvent.click(getByTestId('agent-skill-add-reference'));
-		await fireEvent.click(getByTestId('agent-skill-create-save'));
-		expect(onConfirm).not.toHaveBeenCalled();
 
 		await fireEvent.update(
 			getByTestId('agent-skill-reference-name-input').querySelector('input')!,
@@ -653,7 +651,7 @@ describe('AgentSkillModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('opens the empty reference on a blocked save, marks it, and names it on SKILL.md', async () => {
+	it('saves a skill with an empty supporting file', async () => {
 		const onConfirm = vi.fn();
 		const { getByTestId, queryByTestId } = renderModal({ onConfirm });
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
@@ -672,22 +670,13 @@ describe('AgentSkillModal', () => {
 
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
 
-		// The save is blocked and the modal opens the file that blocks it.
-		expect(onConfirm).not.toHaveBeenCalled();
-		expect(getByTestId('agent-skill-reference-editor')).toBeInTheDocument();
-		expect(
-			getByTestId('agent-skill-reference-nav-item-references-reference-md-invalid'),
-		).toBeInTheDocument();
-
-		await fireEvent.click(getByTestId('agent-skill-file-nav-item'));
-		// The notice names the empty file instead of the general summary.
-		expect(getByTestId('agent-skill-references-error')).toHaveTextContent(
-			'agents.builder.skills.references.emptyFile references/reference.md',
+		expect(onConfirm).toHaveBeenCalledWith(
+			expect.objectContaining({
+				skill: expect.objectContaining({
+					references: [{ path: 'references/reference.md', content: '' }],
+				}),
+			}),
 		);
-		// Screen readers hear that the file blocks the save, not only its path.
-		expect(
-			getByTestId('agent-skill-reference-nav-item-references-reference-md'),
-		).toHaveAccessibleName('agents.builder.skills.references.invalidLabel references/reference.md');
 	});
 
 	it('opens a reference that is too long on a blocked save, marks it, and names it', async () => {
@@ -2744,10 +2733,10 @@ describe('header and footer', () => {
 		expect(mcpItem()).toBeChecked();
 		assistantItem().focus();
 		await userEvent.keyboard('{Enter}');
-		await openMenu();
+		expect(queryByRole('menu')).toBeInTheDocument();
 		expect(assistantItem()).toBeChecked();
 		await userEvent.click(mcpItem());
-		await openMenu();
+		expect(queryByRole('menu')).toBeInTheDocument();
 		expect(mcpItem()).not.toBeChecked();
 		await userEvent.keyboard('{Escape}');
 		await userEvent.click(getByTestId('agent-skill-create-save'));

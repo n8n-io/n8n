@@ -11,14 +11,18 @@ import {
 } from './promotion-common.dto';
 
 /**
- * A Promote always writes the project itself, so a request without workflows and folders
- * promotes only the project.
+ * A Promote always writes the project itself, so a request without workflows, folders and
+ * credentials promotes only the project.
  */
 export const promoteRequestSchema = z.object({
 	workflowIds: promotionSelectedIdsSchema('workflowIds'),
 	folderIds: promotionSelectedIdsSchema('folderIds').openapi({
 		description:
 			'Folders of the project to promote. Promote writes a selected folder with its current name and place, even when it is empty.',
+	}),
+	credentialIds: promotionSelectedIdsSchema('credentialIds').openapi({
+		description:
+			'Credentials that the project owns, to promote without a selected workflow that uses them. Promote writes a credential under the folder of its owner project. It never writes secret values.',
 	}),
 	commitMessage: promotionCommitMessageSchema,
 	expectedPreviewRevision: expectedPreviewRevisionSchema,

@@ -3,6 +3,7 @@ import { ref, shallowRef, defineComponent, h } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { render } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 
 import { useWorkflowInitialization } from './useWorkflowInitialization';
 import { VIEWS } from '@/app/constants';
@@ -10,6 +11,7 @@ import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -227,6 +229,33 @@ describe('useWorkflowInitialization', () => {
 			await initializeWorkspaceForNewWorkflow();
 
 			expect(mockWorkflowDocumentStore.setHydrated).toHaveBeenCalledWith(true);
+		});
+	});
+
+	describe('initializeData', () => {
+		it('waits for the shared node types load and sends no second request', async () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockReturnValueOnce(promise);
+
+			let initializeData!: () => Promise<void>;
+			renderWithComposable((init) => {
+				initializeData = init.initializeData;
+			});
+
+			let done = false;
+			const initializing = initializeData().then(() => {
+				done = true;
+			});
+			await flushPromises();
+
+			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalledTimes(1);
+			expect(nodeTypesStore.getNodeTypes).not.toHaveBeenCalled();
+			expect(done).toBe(false);
+
+			resolve();
+			await initializing;
+			expect(done).toBe(true);
 		});
 	});
 

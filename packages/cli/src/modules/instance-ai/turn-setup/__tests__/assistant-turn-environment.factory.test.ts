@@ -31,7 +31,13 @@ function createFactory(fields: FactoryFields): AssistantTurnEnvironmentFactory {
 }
 
 function createSetupFactory() {
-	const createContext = vi.fn((): InstanceAiContext => mock<InstanceAiContext>({}));
+	// A plain object, so the test can see which optional hooks the factory sets.
+	const createContext = vi.fn(
+		(): InstanceAiContext => ({
+			...mock<InstanceAiContext>({}),
+			credentialService: mock<InstanceAiContext['credentialService']>(),
+		}),
+	);
 	const fields = {
 		logger: { warn: vi.fn(), debug: vi.fn() },
 		instanceAiConfig: {},
@@ -44,6 +50,7 @@ function createSetupFactory() {
 			resolveExperimentGates: vi.fn(async () => ({
 				configEvalsEnabled: false,
 				conversationHistoryEnabled: false,
+				draftWorkflowPreviewEnabled: false,
 				conciseStyleEnabled: false,
 				setupPanelEnabled: false,
 				setupPanelVariant: 'control',
@@ -77,6 +84,7 @@ function createSetupFactory() {
 			resolveUtilityModelConfig: vi.fn(async () => undefined),
 			resolveApprovalJudgeModelConfig: vi.fn(async () => 'anthropic/claude-haiku'),
 			getModelFetch: vi.fn(() => undefined),
+			getLabeledModelFetch: vi.fn(() => undefined),
 		},
 		creditService: { claimRunUsage: vi.fn(), helperUsageClaimer: vi.fn(() => vi.fn()) },
 		instanceAiErrorReporter: {
@@ -287,6 +295,29 @@ describe('AssistantTurnEnvironmentFactory', () => {
 				);
 			},
 		);
+
+		it('creates no workflow draft publisher when the draft preview gate is off', async () => {
+			const { factory } = createSetupFactory();
+
+			const { context } = await factory.create(params, createRuntime());
+
+			expect(context.workflowDraftPublisher).toBeUndefined();
+		});
+
+		it('creates a workflow draft publisher when the draft preview gate is on', async () => {
+			const { factory, fields } = createSetupFactory();
+			const gates = await fields.adapterService.resolveExperimentGates();
+			fields.adapterService.resolveExperimentGates.mockResolvedValue({
+				...gates,
+				draftWorkflowPreviewEnabled: true,
+			});
+
+			const { context } = await factory.create(params, createRuntime());
+
+			expect(context.workflowDraftPublisher).toEqual(
+				expect.objectContaining({ publish: expect.any(Function) }),
+			);
+		});
 
 		it('leaves out the optional hooks that a runtime does not supply', async () => {
 			const { factory } = createSetupFactory();

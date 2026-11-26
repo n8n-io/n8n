@@ -14,6 +14,7 @@ import {
 	AuthRolesService,
 	DeploymentKeyRepository,
 	ExecutionRepository,
+	FoldStepRegistry,
 	SettingsRepository,
 } from '@n8n/db';
 import { Command } from '@n8n/decorators';
@@ -312,6 +313,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		Container.get(PushProxy).registerProvider(Container.get(Push));
+
+		// The step needs cli services, so cli registers it for the ledger module to run.
+		const { WorkflowStatisticsFoldStep } = await import(
+			'@/services/workflow-statistics.fold-step.js'
+		);
+		Container.get(FoldStepRegistry).register(Container.get(WorkflowStatisticsFoldStep));
+
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		// The skills module reads the credentials of its sources through cli.

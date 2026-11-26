@@ -11,7 +11,8 @@ import { migrations } from './migrations';
  *
  * This is the persistence adapter's construction helper; composition roots
  * (`serve.ts`, or the host in integrated mode) call it and own the
- * `initialize()` / `runMigrations()` lifecycle. It only constructs the
+ * `initialize()` lifecycle and call the exported `runMigrations(dataSource)`,
+ * not the unlocked `dataSource.runMigrations()`. It only constructs the
  * DataSource — it does not open connections.
  *
  * `poolSize` is the most connections the pool opens, and `connectTimeoutMS` how
