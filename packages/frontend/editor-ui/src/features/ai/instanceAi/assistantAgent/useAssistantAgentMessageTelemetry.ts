@@ -9,9 +9,14 @@ import {
 	type AssistantMentionCounts,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 
-import { messageApprovalMode, threadTargetsAgent } from '../instanceAi.threadRuntime';
+import {
+	messageApprovalMode,
+	threadTargetsAgent,
+	type SetupChatTelemetryContext,
+} from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import {
+	isSetupPanelRunReport,
 	resolveAuthorship,
 	type InstanceAiMessageAuthorship,
 	type InstanceAiPrefillPayload,
@@ -45,7 +50,11 @@ export interface AssistantAgentSendingMessage {
  * thread, with the properties of the current runtime. The host tells who wrote
  * a text before it pre-fills or sends it. The chat reports each send.
  */
-export function useAssistantAgentMessageTelemetry(threadId: string) {
+export function useAssistantAgentMessageTelemetry(
+	threadId: string,
+	/** The state of the setup panel, which a message reports while the panel shows. */
+	readSetupContext?: () => SetupChatTelemetryContext | undefined,
+) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
 	const settingsStore = useInstanceAiSettingsStore();
@@ -93,6 +102,7 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 			attachments.some((attachment) => isRecord(attachment) && attachment.type === 'agent') ||
 			threadTargetsAgent(threadsStore.threadsById.get(threadId)?.metadata);
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
+			...(isSetupPanelRunReport(authorship) ? undefined : readSetupContext?.()),
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
 			is_first_message: isFirstMessage,

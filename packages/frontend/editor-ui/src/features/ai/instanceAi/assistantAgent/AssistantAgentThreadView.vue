@@ -185,7 +185,10 @@ const settingsStore = useInstanceAiSettingsStore();
 const identity = useN8nAssistantIdentity();
 const threadsStore = useAssistantAgentThreadsStore();
 const toast = useToast();
-const messageTelemetry = useAssistantAgentMessageTelemetry(props.threadId);
+// The setup panel is defined later in setup. The chat sends no message before then.
+const messageTelemetry = useAssistantAgentMessageTelemetry(props.threadId, () =>
+	readSetupChatTelemetryContext(),
+);
 
 // A new thread has a launch marker until the server accepts its first message.
 // The server does not know the thread before then.
@@ -557,10 +560,12 @@ const preview = useCanvasPreview({
 const canvasRunState = draftPreview.useCanvasRunState(preview);
 
 // --- Setup panel (checklist docked above the composer) ---
-const { workflowId: setupPanelWorkflowId, projectId: setupPanelProjectId } = useSetupPanelWorkflow(
-	thread,
-	preview,
-);
+const setupPanelRef = useTemplateRef<InstanceType<typeof InstanceAiSetupPanel>>('setupPanel');
+const {
+	workflowId: setupPanelWorkflowId,
+	projectId: setupPanelProjectId,
+	readChatTelemetryContext: readSetupChatTelemetryContext,
+} = useSetupPanelWorkflow(thread, preview, setupPanelRef);
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
@@ -1152,6 +1157,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 							/>
 							<InstanceAiSetupPanel
 								v-if="setupPanelWorkflowId"
+								ref="setupPanel"
 								:workflow-id="setupPanelWorkflowId"
 								:project-id="setupPanelProjectId"
 							/>

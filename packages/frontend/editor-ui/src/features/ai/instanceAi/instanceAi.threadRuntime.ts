@@ -63,7 +63,7 @@ import {
 	fetchThreadMessages as fetchThreadMessagesApi,
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
-import type { InstanceAiMessageAuthorship } from './prefills';
+import { isSetupPanelRunReport, type InstanceAiMessageAuthorship } from './prefills';
 import {
 	EMPTY_ASSISTANT_MENTION_COUNTS,
 	type AssistantMentionCounts,
@@ -126,7 +126,7 @@ export interface PendingConfirmationItem {
 
 export type HistoricalHydrationStatus = 'applied' | 'stale' | 'skipped';
 
-type SetupChatTelemetryContext = Pick<
+export type SetupChatTelemetryContext = Pick<
 	InferTelemetryProps<typeof TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE>,
 	| 'workflow_id'
 	| 'pending_credential_count'
@@ -1630,10 +1630,9 @@ export function createThreadRuntime(
 		selectedElementCount: number,
 	): void {
 		const isPrefill = authorship.kind === 'prefill';
-		const setupContext =
-			isPrefill && authorship.prefillType === 'handoff_setup_panel_execute'
-				? undefined
-				: readSetupChatTelemetryContext?.();
+		const setupContext = isSetupPanelRunReport(authorship)
+			? undefined
+			: readSetupChatTelemetryContext?.();
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
 			...setupContext,
 			thread_id: threadId,

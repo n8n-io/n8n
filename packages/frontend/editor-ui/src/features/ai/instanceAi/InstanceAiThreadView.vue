@@ -373,18 +373,14 @@ watch(
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
-const { workflowId: setupPanelWorkflowId, projectId: setupPanelProjectId } = useSetupPanelWorkflow(
-	thread,
-	preview,
-);
-const setupOverlapHeight = ref(0);
 const setupPanelRef = useTemplateRef<InstanceType<typeof InstanceAiSetupPanel>>('setupPanel');
-onUnmounted(
-	thread.registerSetupChatTelemetryContext(() => {
-		const context = setupPanelRef.value?.getChatTelemetryContext();
-		return context?.workflow_id === setupPanelWorkflowId.value ? context : undefined;
-	}),
-);
+const {
+	workflowId: setupPanelWorkflowId,
+	projectId: setupPanelProjectId,
+	readChatTelemetryContext: readSetupChatTelemetryContext,
+} = useSetupPanelWorkflow(thread, preview, setupPanelRef);
+const setupOverlapHeight = ref(0);
+onUnmounted(thread.registerSetupChatTelemetryContext(readSetupChatTelemetryContext));
 
 const agentReturnContext = useAgentReturnContextStore().consumePendingArtifactReturn();
 const agentReturnWorkflowId = agentReturnContext?.workflowId;
