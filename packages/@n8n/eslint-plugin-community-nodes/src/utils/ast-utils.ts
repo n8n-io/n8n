@@ -55,16 +55,30 @@ export function isTriggerNode(
 	return hasTriggerGroup(descriptionValue) || isTriggerNodeClass(node);
 }
 
-/** Matches a non-main connection type, written as `NodeConnectionTypes.X` or the string literal. */
-function isNonMainConnectionType(node: TSESTree.Node | null | undefined): boolean {
-	const isEnumMember =
-		node?.type === AST_NODE_TYPES.MemberExpression &&
-		node.object.type === AST_NODE_TYPES.Identifier &&
-		node.object.name === 'NodeConnectionTypes' &&
-		node.property.type === AST_NODE_TYPES.Identifier &&
-		node.property.name !== 'Main';
-	const isStringLiteral = node?.type === AST_NODE_TYPES.Literal && node.value !== 'main';
-	return isEnumMember || isStringLiteral;
+/**
+ * Returns whether a connection entry is `main`, or null when it is only known at
+ * runtime. The entry can be a string, `NodeConnectionTypes.X`, or `{ type: … }`.
+ */
+export function isMainConnection(element: TSESTree.Node | null | undefined): boolean | null {
+	const connection =
+		element?.type === AST_NODE_TYPES.ObjectExpression
+			? (findStaticProperty(element, 'type')?.value ?? null)
+			: (element ?? null);
+	const value = getStringLiteralValue(connection);
+	if (value !== null) return value === 'main';
+
+	if (
+		connection?.type === AST_NODE_TYPES.MemberExpression &&
+		connection.object.type === AST_NODE_TYPES.Identifier &&
+		connection.object.name === 'NodeConnectionTypes'
+	) {
+		const key =
+			!connection.computed && connection.property.type === AST_NODE_TYPES.Identifier
+				? connection.property.name
+				: getStringLiteralValue(connection.property);
+		if (key !== null) return key === 'Main';
+	}
+	return null;
 }
 
 export function isAiOnlyNode(descriptionValue: TSESTree.ObjectExpression): boolean {
@@ -72,13 +86,7 @@ export function isAiOnlyNode(descriptionValue: TSESTree.ObjectExpression): boole
 	const inputs = findArrayLiteralProperty(descriptionValue, 'inputs');
 	if (!outputs || inputs?.elements.length !== 0) return false;
 
-	return outputs.elements.some((element) => {
-		if (element?.type === AST_NODE_TYPES.ObjectExpression) {
-			const typeProperty = findObjectProperty(element, 'type');
-			return isNonMainConnectionType(typeProperty?.value);
-		}
-		return isNonMainConnectionType(element);
-	});
+	return outputs.elements.some((element) => isMainConnection(element) === false);
 }
 
 /**
@@ -199,6 +207,23 @@ export function findObjectProperty(
 		(prop) => prop.type === AST_NODE_TYPES.Property && getPropertyKeyName(prop) === propertyName,
 	);
 	return property?.type === AST_NODE_TYPES.Property ? property : null;
+}
+
+/**
+ * Returns the property that sets `name` last, null when no property sets it, or
+ * undefined when a later spread or computed key could replace it.
+ */
+export function findStaticProperty(
+	object: TSESTree.ObjectExpression,
+	name: string,
+): TSESTree.Property | null | undefined {
+	for (const property of [...object.properties].reverse()) {
+		if (property.type !== AST_NODE_TYPES.Property) return undefined;
+		const key = getPropertyKeyName(property);
+		if (key === null) return undefined;
+		if (key === name) return property;
+	}
+	return null;
 }
 
 export function getLiteralValue(node: TSESTree.Node | null): string | boolean | number | null {

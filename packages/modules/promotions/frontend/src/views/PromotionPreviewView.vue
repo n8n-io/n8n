@@ -218,6 +218,7 @@ const request = computed((): OperationRequest => {
 		return {
 			workflowIds: [],
 			folderIds: [],
+			credentialIds: [],
 			confirmDestructiveChanges: blockerList.value.some(({ kind }) => kind === 'destructive'),
 			deletedProjects: (check.value?.conflicts ?? []).flatMap((conflict) =>
 				conflict.code === 'project-deletion' ? conflict.project.name : [],
@@ -227,7 +228,7 @@ const request = computed((): OperationRequest => {
 	return {
 		...(graph.value
 			? toOperationRequest(graph.value, selection.selected.value)
-			: { workflowIds: [], folderIds: [] }),
+			: { workflowIds: [], folderIds: [], credentialIds: [] }),
 		confirmDestructiveChanges: touchesDestructiveChange(blockers.value, selection.selected.value),
 	};
 });
@@ -369,14 +370,8 @@ const treeResizer = useResizablePanel({
 			<N8nLink :to="backRoute" theme="text" size="small" data-test-id="promotion-preview-back">
 				<span :class="$style.back"><N8nIcon icon="arrow-left" size="small" />{{ backLabel }}</span>
 			</N8nLink>
-			<N8nHeading tag="h1" size="xlarge" :class="$style.title">{{ title }}</N8nHeading>
-			<div :class="$style.tabRow">
-				<N8nTabs
-					v-model="activeTab"
-					:options="tabs"
-					:class="$style.tabs"
-					data-test-id="promotion-preview-tabs"
-				/>
+			<div :class="$style.titleRow" data-test-id="promotion-preview-title-row">
+				<N8nHeading tag="h1" size="xlarge" :class="$style.title">{{ title }}</N8nHeading>
 				<div :class="$style.actions">
 					<N8nButton
 						variant="outline"
@@ -400,6 +395,14 @@ const treeResizer = useResizablePanel({
 						{{ submitLabel }}
 					</N8nButton>
 				</div>
+			</div>
+			<div :class="$style.tabRow">
+				<N8nTabs
+					v-model="activeTab"
+					:options="tabs"
+					:class="$style.tabs"
+					data-test-id="promotion-preview-tabs"
+				/>
 			</div>
 		</header>
 
@@ -485,6 +488,7 @@ const treeResizer = useResizablePanel({
 						@show-blockers="showBlockers"
 						@toggle="selection.toggle"
 						@toggle-container="selection.toggleAllInside"
+						@toggle-group="selection.toggleGroup"
 						@select-all="selection.selectAll"
 						@clear="selection.clear"
 						@inspect="inspect"
@@ -585,8 +589,22 @@ const treeResizer = useResizablePanel({
 	background-color: var(--background--surface);
 }
 
-.title {
+.titleRow {
+	display: flex;
+	align-items: flex-start;
+	// The buttons wrap below the title when the page is too narrow for both.
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs) var(--spacing--sm);
+	width: 100%;
 	margin-bottom: var(--spacing--2xs);
+}
+
+.title {
+	// A long project or environment name wraps inside the title. It does not push the buttons away.
+	// The buttons drop below the title only when the title would get narrower than this.
+	flex: 1 1 20rem;
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .back {
@@ -596,10 +614,6 @@ const treeResizer = useResizablePanel({
 }
 
 .tabRow {
-	display: flex;
-	align-items: flex-end;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
 	width: 100%;
 	border-bottom: var(--border);
 }
@@ -609,9 +623,10 @@ const treeResizer = useResizablePanel({
 	min-width: 0;
 }
 
+// The title grows to fill the row, so the buttons sit on the right beside it. On their own line
+// below the title they align to the left.
 .actions {
 	flex-shrink: 0;
-	align-self: center;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);

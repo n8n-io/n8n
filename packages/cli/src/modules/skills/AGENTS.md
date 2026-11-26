@@ -88,6 +88,24 @@ Split services by capability, never by caller.
 - `SkillSyncService`: what happens to synced skills after the import. Stop syncing deletes the link, so the skill becomes a normal skill and keeps its versions. The check for updates runs from `SkillSourceCheckTask` (every `N8N_SKILL_SYNC_CHECK_INTERVAL_SECONDS`, one hour by default, on one main) and from Check now, through one use case. For a client with `probe`, it probes the source first, so an unchanged source costs one request. A client without `probe` has every synced skill fetched on each check. For a changed source it fetches each synced skill at the new revision and compares its content hash: the content of the latest version moves the base and drops a pending update, and new content gets the security check against the latest version and waits on the link as `update_available` or `update_blocked`. A SKILL.md that n8n cannot parse is an `update_blocked` update with no content. A skill folder that is gone is skipped. A check never changes a skill or a version. A check of a source that already runs on this main is joined. Every write is conditional on what the check read: `storePending` and `moveBase` on the base, pending and skipped hashes of the link, `recordCheck` on the check time and the cursor. A write that another check, also on another main, got to first is skipped, and the check clears the cursor, so the next check reads every skill again. Check now claims its minute with one conditional update (`claimCheckNow`). Accept must move `baseContentHash`, as the check compares with it. After a rate limit, the access (credential, or public per source type) waits as long as the source asked, in memory. A source skipped during the wait stores `rate_limited` and keeps its check time, so the task still checks it first. Check now checks a source at most once a minute. Review reads the stored pending content and scan. Accept checks the pending hash and saved version ID, then saves the complete selection in one transaction. Unselected updates stay pending. Commit metadata is optional and reads the stored revision. It never blocks review or accept.
 - `SkillRuntimeService`: what a draft runs, runtime names, the publish snapshot, the targets and versions that agents read, and the reads of n8n Assistant. Agent reads have no permission check. The agents module checked access at attach time. The n8n Assistant reads check the project scopes of the session and access to each skill.
 
+## Source identity and folder imports
+
+Each GitHub source keeps its saved folder as its discovery and update boundary.
+Sibling folders can have separate sources in the same scope. Equal or overlapping
+folders use the existing duplicate rules: Global and the target scope block the
+import, visible projects give a warning, and hidden projects reveal nothing.
+Branch changes do not make another identity for the same folder.
+Source labels include the saved folder so sibling sources have distinct names.
+The skills table orders source groups by repository and folder before pagination.
+It does not use the stored identity key as a display order.
+
+Root sources keep the repository identity key. New folder keys hash the repository
+identity and the case-sensitive folder path to fit the existing column. Duplicate
+checks read both key formats and compare the saved locators through the source
+client. Existing rows need no migration or backfill. A scope move writes the current
+identity key so a legacy folder can move beside a sibling. Import and move check
+duplicates inside the transaction that holds the skill-name lock.
+
 ## New skills from connected sources
 
 Checks discover unlinked skills in changed sources. `skill_source.unlinkedSkills` stores

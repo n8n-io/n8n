@@ -14,6 +14,7 @@ import {
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, toRef } from 'vue';
+import { AGENT_TOOL_STEP_LABEL_KEY } from './agentChatInjectionKeys';
 import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
 	findToolOutputRenderer,
@@ -156,6 +157,7 @@ interface ToolStepDisplay {
 const { skillWorkflowName } = useSkillWorkflowToolNames(() =>
 	props.toolCalls.map(({ tool }) => tool),
 );
+const hostToolStepLabel = inject(AGENT_TOOL_STEP_LABEL_KEY, undefined);
 
 function getToolDisplayName(toolName: string, output?: unknown): string {
 	return skillWorkflowName(toolName) ?? resolveToolNameForDisplay(toolName, i18n, output);
@@ -166,6 +168,8 @@ function toolStepLabel(tc: ToolCall, isCompact = false): string {
 		return i18n.baseText('agents.chat.delegate.labelFallback');
 	}
 	if (isWriteTodosTool(tc.tool)) return writeTodosLabel(i18n);
+	const hostLabel = hostToolStepLabel?.(tc.tool, tc.input);
+	if (hostLabel) return hostLabel;
 	// The compact "Memory noted" label only applies once the call has finished.
 	return getToolDisplayName(tc.tool, isCompact ? tc.output : undefined);
 }

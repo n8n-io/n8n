@@ -134,14 +134,8 @@ describe('CloudBrowserLocalMcpServer', () => {
 			execute: vi.fn(),
 			getAffectedResources: () => [],
 		};
-		const cookies = {
-			name: 'browser_cookies',
-			inputSchema: z.object({}),
-			execute: vi.fn(),
-			getAffectedResources: () => [],
-		};
 		return {
-			tools: [navigate, click, createCredential, tabList, tabClose, connect, cookies],
+			tools: [navigate, click, createCredential, tabList, tabClose, connect],
 			connection,
 			adapter,
 			connectionOnDisconnect,
@@ -934,7 +928,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			expect(click?.execute).toHaveBeenCalledWith({ ref: 'e1' }, { dir: '/tmp' });
 		});
 
-		it.each(['browser_connect', 'browser_cookies', 'browser_does_not_exist'])(
+		it.each(['browser_connect', 'browser_does_not_exist'])(
 			'refuses %s, which is not a tool the model can call',
 			async (name) => {
 				const { server, toolkits, start } = setup();
@@ -946,12 +940,8 @@ describe('CloudBrowserLocalMcpServer', () => {
 					content: [{ type: 'text', text: `Unknown browser tool: ${name}` }],
 					isError: true,
 				});
-				const hiddenTools = toolkits[0].tools.filter((tool) =>
-					['browser_connect', 'browser_cookies'].includes(tool.name),
-				);
-				for (const tool of hiddenTools) {
-					expect(tool.execute).not.toHaveBeenCalled();
-				}
+				const connect = toolkits[0].tools.find((tool) => tool.name === 'browser_connect');
+				expect(connect?.execute).not.toHaveBeenCalled();
 			},
 		);
 	});

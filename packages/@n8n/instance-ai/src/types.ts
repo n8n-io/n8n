@@ -51,6 +51,9 @@ import type {
 	McpToolPermissions,
 	McpToolCallRequest,
 	McpToolCallResult,
+	WorkflowReviewBlockedDetails,
+	InstanceAiAgentFeedbackCategory,
+	InstanceAiAgentFeedbackSeverity,
 } from '@n8n/api-types';
 import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
@@ -97,6 +100,7 @@ import type {
 	WorkflowVerificationEvidence,
 	WorkflowTriggerVerificationProgress,
 } from './workflow-loop/workflow-loop-state';
+import type { WorkflowDraftPublisher } from './tools/workflows/workflow-draft-publisher';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -630,6 +634,14 @@ export interface InstanceAiWorkflowService {
 		options?: { versionId?: string; name?: string; description?: string },
 	): Promise<{ activeVersionId: string }>;
 	unpublish(workflowId: string): Promise<void>;
+	/**
+	 * The workflow review rule that blocks publishing this version (the draft when omitted), or
+	 * undefined when the version may go live. Absent when the host has no review rules.
+	 */
+	getPublishReviewBlock?(
+		workflowId: string,
+		versionId?: string,
+	): Promise<WorkflowReviewBlockedDetails['reason'] | undefined>;
 	/** List version history for a workflow (metadata only, no nodes/connections). */
 	listVersions?(
 		workflowId: string,
@@ -1248,6 +1260,21 @@ export interface InstanceAiPreferenceService {
 	): void;
 }
 
+/** One report from the `send_feedback` tool. */
+export interface InstanceAiAgentFeedback {
+	category: InstanceAiAgentFeedbackCategory;
+	severity: InstanceAiAgentFeedbackSeverity;
+	summary: string;
+	toolName?: string;
+	threadId?: string;
+	runId?: string;
+}
+
+export interface InstanceAiAgentFeedbackService {
+	/** Records the report for the n8n team. Nothing replies to it. */
+	send(feedback: InstanceAiAgentFeedback): void;
+}
+
 export interface InstanceAiSkillService {
 	assistantSkillsEnabled: boolean;
 	sources?: {
@@ -1830,8 +1857,10 @@ export interface InstanceAiContext {
 	 * utility calls use `modelId`.
 	 */
 	utilityModelId?: ModelConfig;
-	/** Transport for those utility LLM calls. It carries no run labels. */
+	/** Transport for those utility LLM calls. It carries run labels when request labels are enabled. */
 	modelFetch?: FetchFn;
+	/** Unlabeled transport for non-LLM utility fetches such as the models.dev catalog. */
+	catalogFetch?: FetchFn;
 	/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
 	onHelperUsage?: HelperUsageHook;
 	workflowService: InstanceAiWorkflowService;
@@ -1856,6 +1885,8 @@ export interface InstanceAiContext {
 	/** Present only when saved preferences are enabled for this user; its
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
+	/** Present when the host can record agent feedback; its absence hides `send_feedback`. */
+	agentFeedbackService?: InstanceAiAgentFeedbackService;
 	skillService?: InstanceAiSkillService;
 	appService?: InstanceAiAppService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
@@ -1950,6 +1981,8 @@ export interface InstanceAiContext {
 	 * paths stay in effect.
 	 */
 	setupItemsEmitter?: SetupItemsEmitter;
+	/** Shows each compiled workflow on the canvas before the build saves it. Present only while the draft preview gate is on. */
+	workflowDraftPublisher?: WorkflowDraftPublisher;
 	/**
 	 * Setup panel v2: the setup tool announced a workflow's final checklist
 	 * instead of suspending, so the host must treat that build's setup as

@@ -29,7 +29,6 @@ import type {
 	ClickOptions,
 	ConnectConfig,
 	ConsoleEntry,
-	Cookie,
 	ElementTarget,
 	ErrorEntry,
 	ModalState,
@@ -803,9 +802,6 @@ export class PlaywrightAdapter {
 		if (options.loadState) {
 			promises.push(page.waitForLoadState(options.loadState, { timeout }));
 		}
-		if (options.predicate) {
-			promises.push(page.waitForFunction(options.predicate, undefined, { timeout }));
-		}
 		if (options.text) {
 			promises.push(page.waitForSelector(`text=${options.text}`, { timeout }));
 		}
@@ -823,45 +819,6 @@ export class PlaywrightAdapter {
 	// =========================================================================
 	// State
 	// =========================================================================
-
-	async getCookies(pageId: string, url?: string): Promise<Cookie[]> {
-		await this.ensurePage(pageId);
-		const context = this.requireContext();
-		const cookies = url ? await context.cookies(url) : await context.cookies();
-
-		return cookies.map((c) => ({
-			name: c.name,
-			value: c.value,
-			domain: c.domain,
-			path: c.path,
-			expires: c.expires,
-			httpOnly: c.httpOnly,
-			secure: c.secure,
-			sameSite: c.sameSite,
-		}));
-	}
-
-	async setCookies(pageId: string, cookies: Cookie[]): Promise<void> {
-		await this.ensurePage(pageId);
-		const context = this.requireContext();
-		await context.addCookies(
-			cookies.map((c) => ({
-				name: c.name,
-				value: c.value,
-				domain: c.domain,
-				path: c.path ?? '/',
-				expires: c.expires,
-				httpOnly: c.httpOnly,
-				secure: c.secure,
-				sameSite: c.sameSite,
-			})),
-		);
-	}
-
-	async clearCookies(pageId: string): Promise<void> {
-		await this.ensurePage(pageId);
-		await this.requireContext().clearCookies();
-	}
 
 	async getStorage(pageId: string, kind: 'local' | 'session'): Promise<Record<string, string>> {
 		const { page } = await this.ensurePage(pageId);

@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
+import { AgentAttentionFlagRepository } from './agent-attention-flag.repository';
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
@@ -66,7 +67,11 @@ type AgentExecutionFinalizationValues = Pick<
 
 @Service()
 export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly attentionFlags: AgentAttentionFlagRepository,
+	) {
 		super(AgentExecution, dataSource.manager, transactionRunner);
 	}
 
@@ -503,7 +508,10 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	 * Session status follows the latest execution, so this is the expiry notice.
 	 * A waiting run can already list failed tool calls. Keep those in the count.
 	 */
-	async failExpiredWaitingApprovals(threadIds: string[]): Promise<void> {
+	async failExpiredWaitingApprovals(
+		threadIds: string[],
+		ctx: OperationContext = {},
+	): Promise<void> {
 		if (threadIds.length === 0) return;
 		const message = 'This approval expired.';
 		const expiry = {
@@ -512,8 +520,8 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			message,
 			occurredAt: Date.now(),
 		};
-		const awaiting = await this.find({
-			select: ['id', 'failureSummary'],
+		const awaiting = await this.managerFor(ctx).find(AgentExecution, {
+			select: ['id', 'threadId', 'failureSummary'],
 			where: { threadId: In(threadIds), status: 'awaiting' },
 		});
 		for (const execution of awaiting) {
@@ -524,10 +532,16 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 						latest: expiry.occurredAt >= existing.latest.occurredAt ? expiry : existing.latest,
 					}
 				: { count: 1, latest: expiry };
-			await this.update(
-				{ id: execution.id, status: 'awaiting' },
-				{ status: 'error', error: message, failureSummary },
-			);
+			await this.runInTransaction(ctx, async (manager, writeCtx) => {
+				const result = await manager.update(
+					AgentExecution,
+					{ id: execution.id, status: 'awaiting' },
+					{ status: 'error', error: message, failureSummary },
+				);
+				if (result.affected === 1) {
+					await this.attentionFlags.flagSession(execution.threadId, 'session-error', writeCtx);
+				}
+			});
 		}
 	}
 

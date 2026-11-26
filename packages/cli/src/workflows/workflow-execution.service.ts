@@ -15,7 +15,7 @@ import type {
 	PollLeaseFence,
 } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
@@ -24,6 +24,8 @@ import {
 	ErrorReporter,
 	ExecutionContextService,
 	anyReachableRootHasRunData,
+	collectAllowedBinaryDataIds,
+	filterBinaryDataIds,
 } from 'n8n-core';
 import type {
 	IExecuteData,
@@ -38,9 +40,15 @@ import type {
 	IWorkflowBase,
 	PollCursor,
 } from 'n8n-workflow';
-import { SubworkflowOperationError, Workflow, createRunExecutionData } from 'n8n-workflow';
+import {
+	BINARY_MODE_COMBINED,
+	SubworkflowOperationError,
+	Workflow,
+	createRunExecutionData,
+} from 'n8n-workflow';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { ConflictError, ForbiddenError, OperationalError, UnexpectedError } from '@n8n/errors';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
@@ -98,6 +106,14 @@ export class WorkflowExecutionService {
 		deduplicationKey?: string,
 		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
 	) {
+		const binaryDataAccess =
+			workflowData.settings?.engineType === 'v2'
+				? []
+				: await collectAllowedBinaryDataIds(
+						data.flat(),
+						additionalData.binaryDataAccess,
+						workflowData,
+					);
 		const nodeExecutionStack: IExecuteData[] = [
 			{
 				node,
@@ -109,6 +125,7 @@ export class WorkflowExecutionService {
 		];
 
 		const executionData = createRunExecutionData({
+			binaryDataAccess,
 			executionData: {
 				nodeExecutionStack,
 			},
@@ -121,6 +138,7 @@ export class WorkflowExecutionService {
 
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
+			...(binaryDataAccess.length > 0 ? { binaryDataAccess } : {}),
 			userId: additionalData.userId,
 			executionMode: mode,
 			executionData,
@@ -136,7 +154,7 @@ export class WorkflowExecutionService {
 
 	/**
 	 * Starts an execution for polled items, committing its row in the same transaction
-	 * as the poll's cursor advance so neither can exist without the other.
+	 * as the poll's cursor advance. A refused run advances the cursor alone, unless the poll is bounded.
 	 */
 	async runPolledWorkflow(
 		workflowData: IWorkflowBase,
@@ -148,7 +166,16 @@ export class WorkflowExecutionService {
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		fence?: PollLeaseFence,
 		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
+		pollIsBounded = false,
 	): Promise<string | undefined> {
+		const binaryDataAccess =
+			workflowData.settings?.engineType === 'v2'
+				? []
+				: await collectAllowedBinaryDataIds(
+						data.flat(),
+						additionalData.binaryDataAccess,
+						workflowData,
+					);
 		const nodeExecutionStack: IExecuteData[] = [
 			{
 				node,
@@ -160,6 +187,7 @@ export class WorkflowExecutionService {
 		];
 
 		const executionData = createRunExecutionData({
+			binaryDataAccess,
 			executionData: {
 				nodeExecutionStack,
 			},
@@ -171,6 +199,7 @@ export class WorkflowExecutionService {
 		);
 
 		const runData: IWorkflowExecutionDataProcess = {
+			...(binaryDataAccess.length > 0 ? { binaryDataAccess } : {}),
 			userId: additionalData.userId,
 			executionMode: mode,
 			executionData,
@@ -205,10 +234,26 @@ export class WorkflowExecutionService {
 				this.logger.error('Blocked a polled execution before its row was committed', {
 					workflowId: workflowData.id,
 					nodeName: node.name,
+					pollIsBounded,
 					error: error.cause,
 				});
 
 				responsePromise?.reject(error.cause);
+
+				if (!pollIsBounded) {
+					const committed = await this.pollCursorService.commitCursorOnly({
+						workflowId: workflowData.id,
+						nodeId: node.id,
+						cursor,
+						fence,
+					});
+					if (!committed) {
+						this.logger.warn(
+							'Poll cursor commit skipped after a blocked execution: the poll no longer holds its lease',
+							{ workflowId: workflowData.id, nodeId: node.id, nodeName: node.name },
+						);
+					}
+				}
 
 				return undefined;
 			}
@@ -515,6 +560,25 @@ export class WorkflowExecutionService {
 		}
 
 		if (data) {
+			const usesEngineV2 = workflowData.settings?.engineType === 'v2';
+			if (!usesEngineV2) {
+				const binaryItems = [
+					...Object.values(data.pinData ?? {}).flatMap((items) => items ?? []),
+					...Object.values(data.runData ?? {})
+						.flatMap((runs) => runs ?? [])
+						.flatMap((run) => run.data?.main ?? [])
+						.flatMap((items) => items ?? []),
+					...(data.triggerToStartFrom?.data?.data?.main ?? []).flatMap((items) => items ?? []),
+				];
+				const accessService = Container.get(BinaryDataAccessService);
+				const binaryDataAccess = await filterBinaryDataIds(
+					binaryItems,
+					workflowData.settings?.binaryMode === BINARY_MODE_COMBINED,
+					async (binaryDataId) => await accessService.hasReadAccess(user, binaryDataId),
+				);
+				if (binaryDataAccess.length > 0) data.binaryDataAccess = binaryDataAccess;
+			}
+
 			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
 				this.ownershipService,
 				workflowData.id,
@@ -539,6 +603,7 @@ export class WorkflowExecutionService {
 			 */
 			if (data.executionMode === 'manual' && offloadingManualExecutionsInQueueMode) {
 				data.executionData = createRunExecutionData({
+					binaryDataAccess: data.binaryDataAccess,
 					startData: {
 						startNodes: data.startNodes,
 						destinationNode: data.destinationNode,

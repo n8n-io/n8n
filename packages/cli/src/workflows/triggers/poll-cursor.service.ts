@@ -179,10 +179,7 @@ export class PollCursorService {
 		});
 	}
 
-	/**
-	 * Commits an advance made by a poll that emitted no items, so a source that only
-	 * ever moves the cursor is not re-fetched forever.
-	 */
+	/** Commits a cursor advance that has no execution row. */
 	async commitCursorOnly(args: {
 		workflowId: string;
 		nodeId: string;

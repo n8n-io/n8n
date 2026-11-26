@@ -634,6 +634,105 @@ describe('CredentialEdit', () => {
 		);
 	});
 
+	describe('credential types in edit mode', () => {
+		// createTestingPinia makes its pinia the active one; the tests after these ones
+		// read stores from the renderer's pinia, so hand it back afterwards.
+		let rendererPinia: ReturnType<typeof getActivePinia>;
+
+		beforeEach(() => {
+			rendererPinia = getActivePinia();
+		});
+
+		afterEach(() => {
+			if (rendererPinia) setActivePinia(rendererPinia);
+		});
+
+		const typeWithDefault = {
+			name: 'defaultsApi',
+			displayName: 'Defaults API',
+			properties: [{ displayName: 'Region', name: 'region', type: 'string', default: 'eu' }],
+		} as ICredentialType;
+
+		const setupStores = () => {
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.UI]: {
+						modalStateById: { [CREDENTIAL_EDIT_MODAL_KEY]: { open: true } },
+					},
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: { sharing: true, externalSecrets: false },
+							templates: { host: '' },
+						},
+					},
+				},
+			});
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValue(
+				createCredentialResponse({ id: 'cred-defaults', type: typeWithDefault.name }),
+			);
+			return { credentialsStore, pinia };
+		};
+
+		test('loads the credential only after the credential types are in the store', async () => {
+			const { credentialsStore, pinia } = setupStores();
+			const { promise, resolve } = Promise.withResolvers<void>();
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(promise);
+
+			renderComponent({
+				props: { activeId: 'cred-defaults', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false));
+			expect(credentialsStore.getCredentialData).not.toHaveBeenCalled();
+
+			credentialsStore.state.credentialTypes = { [typeWithDefault.name]: typeWithDefault };
+			resolve();
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(screen.getByDisplayValue('eu')).toBeInTheDocument());
+		});
+
+		test('does not load the credential when the modal closes while the types load', async () => {
+			const { credentialsStore, pinia } = setupStores();
+			const { promise, resolve } = Promise.withResolvers<void>();
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(promise);
+
+			renderComponent({
+				props: { activeId: 'cred-defaults', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+			await retry(() => expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false));
+
+			mockedStore(useUIStore).modalsById = {
+				[CREDENTIAL_EDIT_MODAL_KEY]: { open: false },
+			} as never;
+			resolve();
+			await new Promise((r) => setTimeout(r, 0));
+
+			expect(credentialsStore.getCredentialData).not.toHaveBeenCalled();
+		});
+
+		test('still loads the credential when the credential types fail to load', async () => {
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			const { credentialsStore, pinia } = setupStores();
+			credentialsStore.fetchCredentialTypes.mockRejectedValueOnce(new Error('credential types'));
+			const onInitializeError = vi.fn();
+			mockedStore(useUIStore).modalsById = {
+				[CREDENTIAL_EDIT_MODAL_KEY]: { open: true, showAuthSelector: false, onInitializeError },
+			} as never;
+
+			renderComponent({
+				props: { activeId: 'cred-defaults', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			expect(onInitializeError).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('dependency pill', () => {
 		const emptyCounts = {
 			agentUsage: 0,

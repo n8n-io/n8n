@@ -15,6 +15,7 @@ export const N8N_NODE_CONFIG: GenerateConfig = {
 	spec: {
 		ignoredHeaderParameters: ['Idempotency-Key'],
 		cursorParameter: 'cursor',
+		offsetParameter: 'offset',
 		limitParameter: 'limit',
 		nextCursorProperty: 'nextCursor',
 		itemsProperty: 'data',

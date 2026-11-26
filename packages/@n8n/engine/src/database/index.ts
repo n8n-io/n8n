@@ -1,4 +1,5 @@
 export { createDataSource } from './data-source';
+export { runMigrations } from './run-migrations';
 export { createStores } from './create-stores';
 export type { EngineStores } from './create-stores';
 export { WorkflowExecution, WorkflowSeededStep, WorkflowStepExecution } from './entities';

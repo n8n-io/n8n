@@ -5,10 +5,8 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nAlertDialog,
 	N8nButton,
-	N8nHeading,
 	N8nInput,
 	N8nOption,
-	N8nPreviewBadge,
 	N8nSelect,
 	N8nSettingsSection,
 	N8nTooltip,
@@ -142,17 +140,10 @@ watch(
 
 <template>
 	<N8nSettingsSection
+		:title="i18n.baseText('settings.sso.scim.title')"
 		:description="i18n.baseText('settings.sso.scim.description')"
 		data-test-id="sso-scim-section"
 	>
-		<template #title>
-			<div :class="$style.titleRow">
-				<N8nHeading tag="h2" step="md" color="text-dark">
-					{{ i18n.baseText('settings.sso.scim.title') }}
-				</N8nHeading>
-				<N8nPreviewBadge size="xsmall" data-test-id="sso-scim-preview-badge" />
-			</div>
-		</template>
 		<!-- The same card and row containers as the SAML and OIDC settings above, so the sizes match. -->
 		<div v-if="config" :class="shared.card">
 			<div :class="shared.settingsItem">
@@ -295,12 +286,6 @@ watch(
 <style lang="scss" module="shared" src="../styles/sso-form.module.scss" />
 
 <style lang="scss" module>
-.titleRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
 /* The shared control is a flex row, so these wrappers fill it and pass the width on. */
 .selectWrapper {
 	display: flex;
