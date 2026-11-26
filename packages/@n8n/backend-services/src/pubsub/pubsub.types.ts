@@ -46,6 +46,7 @@ export namespace PubSub {
 		export type ReloadSamlConfiguration = ToCommand<'reload-saml-config'>;
 		export type ReloadOAuthSigningKeys = ToCommand<'reload-oauth-signing-keys'>;
 		export type ReloadCredentialsOverwrites = ToCommand<'reload-overwrite-credentials'>;
+		export type ReloadRuntimeCredentialRules = ToCommand<'reload-runtime-credential-rules'>;
 		export type RestartEventBus = ToCommand<'restart-event-bus'>;
 		export type ReloadExternalSecretsProviders = ToCommand<'reload-external-secrets-providers'>;
 		export type CommunityPackageInstall = ToCommand<'community-package-install'>;
@@ -148,6 +149,7 @@ export namespace PubSub {
 		| Commands.ReloadSamlConfiguration
 		| Commands.ReloadOAuthSigningKeys
 		| Commands.ReloadCredentialsOverwrites
+		| Commands.ReloadRuntimeCredentialRules
 		| Commands.ReloadSsoProvisioningConfiguration
 		| Commands.ReloadSourceControlConfiguration
 		| Commands.ReloadMcpRegistry

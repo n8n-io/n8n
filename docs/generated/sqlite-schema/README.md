@@ -69,7 +69,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [chat_hub_sessions](chat_hub_sessions.md) | 13 |  | table |
 | [chat_hub_tools](chat_hub_tools.md) | 9 |  | table |
 | [credential_dependency](credential_dependency.md) | 5 |  | table |
-| [credentials_entity](credentials_entity.md) | 14 |  | table |
+| [credentials_entity](credentials_entity.md) | 15 |  | table |
 | [data_table](data_table.md) | 5 |  | table |
 | [data_table_column](data_table_column.md) | 7 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
@@ -147,6 +147,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
+| [runtime_credential_rule](runtime_credential_rule.md) | 9 |  | table |
 | [scheduled_job](scheduled_job.md) | 26 |  | table |
 | [scheduled_task](scheduled_task.md) | 19 |  | table |
 | [scope](scope.md) | 3 |  | table |
@@ -1185,13 +1186,14 @@ erDiagram
   boolean isGlobal
   boolean isManaged
   boolean isResolvable
+  boolean isRuntime
   varchar_128_ name
-  DATETIME pendingAuthorizationExpiresAt
+  datetime pendingAuthorizationExpiresAt
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
   varchar_32_ type
   datetime_3_ updatedAt
-  VARCHAR_16_ usageScope
+  varchar_16_ usageScope
 }
 "data_table" {
   datetime_3_ createdAt
@@ -1922,6 +1924,17 @@ erDiagram
 "role_scope" {
   VARCHAR_128_ roleSlug PK
   VARCHAR_128_ scopeSlug PK
+}
+"runtime_credential_rule" {
+  varchar_255_ alias
+  TEXT allowedDomains
+  datetime_3_ createdAt
+  varchar_255_ credentialType
+  INTEGER id
+  varchar_255_ nodeType
+  TEXT path
+  varchar_255_ transform
+  datetime_3_ updatedAt
 }
 "scheduled_job" {
   INT concurrencyLimit

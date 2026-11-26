@@ -81,3 +81,26 @@ describe('credentialTypePolicy:manage as an API key scope', () => {
 		expect(getOwnerOnlyApiKeyScopes()).not.toContain('credentialTypePolicy:manage');
 	});
 });
+
+describe('credentialTypePolicy:manageRequestFed', () => {
+	it('is independent of credentialTypePolicy:manage', () => {
+		expect(
+			hasGlobalScope(
+				principal('custom:credential-policy-manager-only', ['credentialTypePolicy:manage']),
+				'credentialTypePolicy:manageRequestFed',
+			),
+		).toBe(false);
+	});
+
+	it('is granted to instance owners, admins and project admins', () => {
+		expect(GLOBAL_OWNER_SCOPES).toContain('credentialTypePolicy:manageRequestFed');
+		expect(GLOBAL_ADMIN_SCOPES).toContain('credentialTypePolicy:manageRequestFed');
+		expect(REGULAR_PROJECT_ADMIN_SCOPES).toContain('credentialTypePolicy:manageRequestFed');
+	});
+
+	it('is not granted to editors, viewers or members', () => {
+		expect(PROJECT_EDITOR_SCOPES).not.toContain('credentialTypePolicy:manageRequestFed');
+		expect(PROJECT_VIEWER_SCOPES).not.toContain('credentialTypePolicy:manageRequestFed');
+		expect(MEMBER_API_KEY_SCOPES).not.toContain('credentialTypePolicy:manageRequestFed');
+	});
+});

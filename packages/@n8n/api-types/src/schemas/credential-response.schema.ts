@@ -10,6 +10,7 @@ export const publicApiCredentialResponseSchema = z.object({
 	isManaged: z.boolean(),
 	isGlobal: z.boolean(),
 	isResolvable: z.boolean(),
+	isRuntime: z.boolean(),
 	resolvableAllowFallback: z.boolean(),
 	resolverId: z.union([z.string(), z.null()]).optional(),
 	createdAt: z.coerce.date(),

@@ -943,3 +943,14 @@ export {
 } from './scim';
 export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
 export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';
+export {
+	CreateRuntimeCredentialRuleDto,
+	UpdateRuntimeCredentialRuleDto,
+	runtimeCredentialAllowedDomainsSchema,
+	type RuntimeCredentialRule,
+} from './runtime-credential-rule/runtime-credential-rule.dto';
+export {
+	RuntimeCredentialRuleImpactDto,
+	type RuntimeCredentialRuleImpact,
+	type RuntimeCredentialRuleImpactWorkflow,
+} from './runtime-credential-rule/runtime-credential-rule-impact.dto';

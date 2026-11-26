@@ -16,6 +16,7 @@ import type {
 } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { PROJECT_ROOT, type IWorkflowSettings } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
 import { UnexpectedError, UserError } from '@n8n/errors';
 
 import type { ActivityProjectScope } from './activity-event.repository';
@@ -2256,6 +2257,83 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.getMany();
 
 		return workflows;
+	}
+
+	/**
+	 * One page of non-archived workflows for the run-time input rule impact scan, ordered by id.
+	 * Returns the nodes that run (the active version, else the draft) with the owning project.
+	 * `nodesContain` is a literal text that the nodes JSON must contain. `triggerNodeTypes` limits
+	 * the page to workflows whose nodes mention one of the types. Both are only pre-filters:
+	 * the caller must check the nodes again.
+	 */
+	async findNodesPageForImpactScan(options: {
+		afterId?: string;
+		limit: number;
+		nodesContain?: string;
+		triggerNodeTypes?: string[];
+	}): Promise<
+		Array<{
+			id: string;
+			name: string;
+			projectId: string;
+			projectName: string;
+			nodes: INode[];
+			connections: IConnections;
+		}>
+	> {
+		const { afterId, limit, nodesContain, triggerNodeTypes } = options;
+		const nodesColumn =
+			this.globalConfig.database.type === 'postgresdb'
+				? 'COALESCE("activeVersion"."nodes"::text, "workflow"."nodes"::text)'
+				: 'COALESCE(activeVersion.nodes, workflow.nodes)';
+
+		const qb = this.createQueryBuilder('workflow')
+			.leftJoin('workflow.activeVersion', 'activeVersion')
+			.innerJoin('workflow.shared', 'shared', 'shared.role = :ownerRole', {
+				ownerRole: 'workflow:owner',
+			})
+			.innerJoin('shared.project', 'project')
+			.select([
+				'workflow.id',
+				'workflow.name',
+				'workflow.nodes',
+				'workflow.connections',
+				'activeVersion.versionId',
+				'activeVersion.nodes',
+				'activeVersion.connections',
+				'shared.projectId',
+				'project.id',
+				'project.name',
+			])
+			.where('workflow.isArchived = :isArchived', { isArchived: false })
+			.orderBy('workflow.id', 'ASC')
+			.limit(limit);
+
+		if (afterId !== undefined) qb.andWhere('workflow.id > :afterId', { afterId });
+		if (nodesContain) {
+			qb.andWhere(`${nodesColumn} LIKE :nodesContain ${LIKE_ESCAPE_CLAUSE}`, {
+				nodesContain: `%${escapeLike(nodesContain)}%`,
+			});
+		}
+		if (triggerNodeTypes?.length) {
+			const parameters: Record<string, string> = {};
+			const conditions = triggerNodeTypes.map((type, index) => {
+				parameters[`triggerType${index}`] = `%${escapeLike(type)}%`;
+				return `${nodesColumn} LIKE :triggerType${index} ${LIKE_ESCAPE_CLAUSE}`;
+			});
+			qb.andWhere(`(${conditions.join(' OR ')})`, parameters);
+		}
+
+		const workflows = await qb.getMany();
+
+		return workflows.map((workflow) => ({
+			id: workflow.id,
+			name: workflow.name,
+			projectId: workflow.shared[0].project.id,
+			projectName: workflow.shared[0].project.name,
+			nodes: workflow.activeVersion?.nodes ?? workflow.nodes,
+			connections: workflow.activeVersion?.connections ?? workflow.connections,
+		}));
 	}
 
 	/**

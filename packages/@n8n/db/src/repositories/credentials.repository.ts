@@ -107,6 +107,25 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 	}
 
+	/**
+	 * Inserts the system-owned stub row for a run-time input rule, unless it exists.
+	 * The row holds placeholder data only and is global, so every project can use it.
+	 * Idempotent: every main can call it at startup without a check-then-write race.
+	 * Returns true when this call inserted the row.
+	 */
+	async insertRuntimeStubIfMissing(
+		stub: Pick<CredentialsEntity, 'id' | 'name' | 'type' | 'data'>,
+	): Promise<boolean> {
+		const result = await this.createQueryBuilder()
+			.insert()
+			.into(CredentialsEntity)
+			.values({ ...stub, isRuntime: true, isGlobal: true, usageScope: 'project' })
+			.orIgnore()
+			.execute();
+
+		return result.identifiers.length > 0;
+	}
+
 	async findStartingWith(credentialName: string) {
 		return await this.find({
 			select: ['name'],
@@ -431,6 +450,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			'updatedAt',
 			'isGlobal',
 			'isResolvable',
+			'isRuntime',
 			'resolverId',
 		];
 
@@ -750,6 +770,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			'updatedAt',
 			'isGlobal',
 			'isResolvable',
+			'isRuntime',
 			'resolverId',
 		];
 

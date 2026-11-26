@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "data" text NOT NULL, "type" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isManaged" boolean NOT NULL DEFAULT (0), "isGlobal" boolean NOT NULL DEFAULT (0), "isResolvable" boolean NOT NULL DEFAULT (false), "resolvableAllowFallback" boolean NOT NULL DEFAULT (false), "resolverId" varchar(16), "usageScope" VARCHAR(16) NOT NULL DEFAULT 'project' CONSTRAINT "CHK_credentials_entity_usageScope" CHECK ("usageScope" IN ('project', 'instance')), "description" TEXT, "pendingAuthorizationExpiresAt" DATETIME, CONSTRAINT "credentials_entity_resolverId_foreign" FOREIGN KEY ("resolverId") REFERENCES "dynamic_credential_resolver" ("id") ON DELETE SET NULL)
+CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "data" text NOT NULL, "type" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isManaged" boolean NOT NULL DEFAULT (0), "isGlobal" boolean NOT NULL DEFAULT (0), "isResolvable" boolean NOT NULL DEFAULT (false), "resolvableAllowFallback" boolean NOT NULL DEFAULT (false), "resolverId" varchar(16), "usageScope" varchar(16) NOT NULL DEFAULT ('project'), "description" text, "pendingAuthorizationExpiresAt" datetime, "isRuntime" boolean NOT NULL DEFAULT (false), CONSTRAINT "CHK_credentials_entity_usageScope" CHECK (("usageScope" IN ('project', 'instance'))), CONSTRAINT "credentials_entity_resolverId_foreign" FOREIGN KEY ("resolverId") REFERENCES "dynamic_credential_resolver" ("id") ON DELETE SET NULL ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -22,19 +22,20 @@ CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 | isGlobal | boolean | 0 | false |  |  |  |
 | isManaged | boolean | 0 | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
+| isRuntime | boolean | false | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
-| pendingAuthorizationExpiresAt | DATETIME |  | true |  |  |  |
+| pendingAuthorizationExpiresAt | datetime |  | true |  |  |  |
 | resolvableAllowFallback | boolean | false | false |  |  |  |
 | resolverId | varchar(16) |  | true |  | [dynamic_credential_resolver](dynamic_credential_resolver.md) |  |
 | type | varchar(32) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| usageScope | VARCHAR(16) | 'project' | false |  |  |  |
+| usageScope | varchar(16) | 'project' | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("usageScope" IN ('project', 'instance')) |
+| - | CHECK | CHECK (("usageScope" IN ('project', 'instance'))) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_credentials_entity_1 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -74,13 +75,14 @@ erDiagram
   boolean isGlobal
   boolean isManaged
   boolean isResolvable
+  boolean isRuntime
   varchar_128_ name
-  DATETIME pendingAuthorizationExpiresAt
+  datetime pendingAuthorizationExpiresAt
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
   varchar_32_ type
   datetime_3_ updatedAt
-  VARCHAR_16_ usageScope
+  varchar_16_ usageScope
 }
 "agent_credential_dependency" {
   varchar_36_ agentId PK
