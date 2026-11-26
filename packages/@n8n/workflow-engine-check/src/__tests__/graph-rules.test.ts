@@ -201,30 +201,6 @@ describe('graph rules', () => {
 			node: 'Loop',
 		},
 		{
-			shape: 'two connections into one input',
-			connections: [
-				['Trigger', 'If'],
-				['If', 'Join', 0],
-				['If', 'Join', 1],
-			],
-			code: 'INPUT_SLOT_CONVERGENCE',
-			kind: 'temporary',
-			node: 'Join',
-		},
-		{
-			shape: 'two branches that meet in one input when a disabled node is bypassed',
-			connections: [
-				['Trigger', 'If'],
-				['If', 'Disabled', 0],
-				['If', 'Disabled', 1],
-				['Disabled', 'Join'],
-			],
-			disabled: ['Disabled'],
-			code: 'INPUT_SLOT_CONVERGENCE',
-			kind: 'temporary',
-			node: 'Join',
-		},
-		{
 			// Only the first input of a disabled node passes data on, so Side loses its way in.
 			shape: 'a node that the trigger reaches only through the second input of a disabled node',
 			connections: [
@@ -328,6 +304,41 @@ describe('graph rules', () => {
 			]);
 		},
 	);
+
+	it.each<{ shape: string; connections: Connection[]; disabled?: string[] }>([
+		{
+			shape: 'two connections into one input',
+			connections: [
+				['Trigger', 'If'],
+				['If', 'Join', 0],
+				['If', 'Join', 1],
+			],
+		},
+		{
+			shape: 'two branches that meet in one input when a disabled node is bypassed',
+			connections: [
+				['Trigger', 'If'],
+				['If', 'Disabled', 0],
+				['If', 'Disabled', 1],
+				['Disabled', 'Join'],
+			],
+			disabled: ['Disabled'],
+		},
+	])('warns about $shape and keeps the workflow eligible', ({ connections, disabled }) => {
+		expect(check(connections, disabled)).toEqual({
+			eligible: true,
+			reasons: [
+				{
+					code: 'INPUT_SLOT_CONVERGENCE',
+					kind: 'permanent',
+					severity: 'warning',
+					message: expect.stringContaining('once for each connection'),
+					nodeId: 'join',
+					nodeName: 'Join',
+				},
+			],
+		});
+	});
 
 	it.each<{ shape: string; connections: Connection[]; disabled?: string[] }>([
 		{ shape: 'a simple loop', connections: simpleLoop },

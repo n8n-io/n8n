@@ -1,3 +1,4 @@
+import { discordHitl } from './discord-hitl';
 import type { AgentMessageIntegrationOrigin, RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
@@ -39,6 +40,7 @@ import {
 import { DiscordGateway, type DiscordConnection } from './discord-gateway';
 import {
 	executeDiscordContextQuery,
+	fetchDiscordAccount,
 	fetchDiscordApplicationMetadata,
 	settleDiscordActionMessage,
 } from './discord-operations';
@@ -75,6 +77,7 @@ const DISCORD_API_URL = 'https://discord.com/api/v10';
  */
 @Service()
 export class DiscordIntegration extends AgentChatIntegration {
+	readonly hitl = discordHitl;
 	readonly type = 'discord';
 
 	readonly credentialTypes = ['discordBotApi'];
@@ -229,6 +232,14 @@ export class DiscordIntegration extends AgentChatIntegration {
 
 	async fetchOriginNames(input: OriginInput, origin: AgentMessageIntegrationOrigin) {
 		return await fetchDiscordOriginNames(input, origin);
+	}
+
+	async describeAccount(credential: Record<string, unknown>) {
+		return await fetchDiscordAccount({
+			httpClient: this.httpClient,
+			apiUrl: DISCORD_API_URL,
+			botToken: this.extractBotToken(credential),
+		});
 	}
 
 	/** Episodic memory stays off until this channel defines its ownership policy. */

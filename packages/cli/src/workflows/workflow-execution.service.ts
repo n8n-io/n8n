@@ -15,7 +15,7 @@ import type {
 	PollLeaseFence,
 } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
@@ -24,6 +24,8 @@ import {
 	ErrorReporter,
 	ExecutionContextService,
 	anyReachableRootHasRunData,
+	collectAllowedBinaryDataIds,
+	filterBinaryDataIds,
 } from 'n8n-core';
 import type {
 	IExecuteData,
@@ -38,9 +40,15 @@ import type {
 	IWorkflowBase,
 	PollCursor,
 } from 'n8n-workflow';
-import { SubworkflowOperationError, Workflow, createRunExecutionData } from 'n8n-workflow';
+import {
+	BINARY_MODE_COMBINED,
+	SubworkflowOperationError,
+	Workflow,
+	createRunExecutionData,
+} from 'n8n-workflow';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { ConflictError, ForbiddenError, OperationalError, UnexpectedError } from '@n8n/errors';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
@@ -98,6 +106,14 @@ export class WorkflowExecutionService {
 		deduplicationKey?: string,
 		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
 	) {
+		const binaryDataAccess =
+			workflowData.settings?.engineType === 'v2'
+				? []
+				: await collectAllowedBinaryDataIds(
+						data.flat(),
+						additionalData.binaryDataAccess,
+						workflowData,
+					);
 		const nodeExecutionStack: IExecuteData[] = [
 			{
 				node,
@@ -109,6 +125,7 @@ export class WorkflowExecutionService {
 		];
 
 		const executionData = createRunExecutionData({
+			binaryDataAccess,
 			executionData: {
 				nodeExecutionStack,
 			},
@@ -121,6 +138,7 @@ export class WorkflowExecutionService {
 
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
+			...(binaryDataAccess.length > 0 ? { binaryDataAccess } : {}),
 			userId: additionalData.userId,
 			executionMode: mode,
 			executionData,
@@ -150,6 +168,14 @@ export class WorkflowExecutionService {
 		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
 		pollIsBounded = false,
 	): Promise<string | undefined> {
+		const binaryDataAccess =
+			workflowData.settings?.engineType === 'v2'
+				? []
+				: await collectAllowedBinaryDataIds(
+						data.flat(),
+						additionalData.binaryDataAccess,
+						workflowData,
+					);
 		const nodeExecutionStack: IExecuteData[] = [
 			{
 				node,
@@ -161,6 +187,7 @@ export class WorkflowExecutionService {
 		];
 
 		const executionData = createRunExecutionData({
+			binaryDataAccess,
 			executionData: {
 				nodeExecutionStack,
 			},
@@ -172,6 +199,7 @@ export class WorkflowExecutionService {
 		);
 
 		const runData: IWorkflowExecutionDataProcess = {
+			...(binaryDataAccess.length > 0 ? { binaryDataAccess } : {}),
 			userId: additionalData.userId,
 			executionMode: mode,
 			executionData,
@@ -532,6 +560,25 @@ export class WorkflowExecutionService {
 		}
 
 		if (data) {
+			const usesEngineV2 = workflowData.settings?.engineType === 'v2';
+			if (!usesEngineV2) {
+				const binaryItems = [
+					...Object.values(data.pinData ?? {}).flatMap((items) => items ?? []),
+					...Object.values(data.runData ?? {})
+						.flatMap((runs) => runs ?? [])
+						.flatMap((run) => run.data?.main ?? [])
+						.flatMap((items) => items ?? []),
+					...(data.triggerToStartFrom?.data?.data?.main ?? []).flatMap((items) => items ?? []),
+				];
+				const accessService = Container.get(BinaryDataAccessService);
+				const binaryDataAccess = await filterBinaryDataIds(
+					binaryItems,
+					workflowData.settings?.binaryMode === BINARY_MODE_COMBINED,
+					async (binaryDataId) => await accessService.hasReadAccess(user, binaryDataId),
+				);
+				if (binaryDataAccess.length > 0) data.binaryDataAccess = binaryDataAccess;
+			}
+
 			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
 				this.ownershipService,
 				workflowData.id,
@@ -556,6 +603,7 @@ export class WorkflowExecutionService {
 			 */
 			if (data.executionMode === 'manual' && offloadingManualExecutionsInQueueMode) {
 				data.executionData = createRunExecutionData({
+					binaryDataAccess: data.binaryDataAccess,
 					startData: {
 						startNodes: data.startNodes,
 						destinationNode: data.destinationNode,

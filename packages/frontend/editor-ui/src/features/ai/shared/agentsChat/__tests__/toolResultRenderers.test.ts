@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { TOOL_CALL_STATE } from '../constants';
 import {
+	findToolFooterRenderer,
 	findToolOutputRenderer,
 	findToolResultRenderer,
 	type AgentsChatInteractionExtension,
@@ -14,6 +15,7 @@ import {
 	TestToolOutput,
 	TestToolResult,
 	testInteractionExtension,
+	testToolFooterExtension,
 	testToolOutputExtension,
 	testToolResultExtension,
 } from './fixtures/testInteractionExtension';
@@ -98,6 +100,20 @@ describe('findToolResultRenderer', () => {
 		expect(
 			findToolResultRenderer({ ...finishedCall, tool: TEST_OUTPUT_TOOL_NAME }, [
 				testToolOutputExtension,
+			]),
+		).toBeUndefined();
+	});
+});
+
+describe('findToolFooterRenderer', () => {
+	it('returns the footer of a finished call, and none while the call runs', () => {
+		expect(findToolFooterRenderer(finishedCall, [testToolFooterExtension])).toEqual({
+			key: 'test_footer',
+			component: TestToolResult,
+		});
+		expect(
+			findToolFooterRenderer({ ...finishedCall, state: TOOL_CALL_STATE.RUNNING }, [
+				testToolFooterExtension,
 			]),
 		).toBeUndefined();
 	});

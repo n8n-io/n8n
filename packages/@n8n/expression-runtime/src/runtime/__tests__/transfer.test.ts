@@ -1,14 +1,17 @@
+import { runInNewContext } from 'node:vm';
 import { describe, it, expect, vi } from 'vitest';
 
 import { __prepareForTransfer } from '../serialize';
 import type { SentinelDecoder, TransferSentinel } from '../transfer';
 import {
+	isBoxedPrimitive,
 	isEscapedTransferValue,
 	isOpaqueTransferValue,
 	isPlainObject,
 	isStructuredCloneBuiltin,
 	isTransferSentinel,
 	transferTypeOf,
+	unboxPrimitive,
 	ERROR_SENTINEL_KEY,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_FRAMING_KEYS,
@@ -89,6 +92,66 @@ describe('transfer framing', () => {
 			expect(isStructuredCloneBuiltin(new Error('x'))).toBe(true);
 			expect(isStructuredCloneBuiltin(new ArrayBuffer(1))).toBe(true);
 			expect(isStructuredCloneBuiltin(new Uint8Array(1))).toBe(true);
+			expect(isStructuredCloneBuiltin(Object('ab') as object)).toBe(true);
+			expect(isStructuredCloneBuiltin(Object(5) as object)).toBe(true);
+			expect(isStructuredCloneBuiltin(Object(true) as object)).toBe(true);
+			expect(isStructuredCloneBuiltin(Object(1n) as object)).toBe(true);
+		});
+
+		it('should unbox real boxed primitives including subclasses and cross-realm values', () => {
+			class SubString extends String {}
+			class SubNumber extends Number {}
+			class SubBoolean extends Boolean {}
+
+			const mutated = Object.assign(Object('ab') as object, {
+				valueOf: () => 'fake',
+				[Symbol.toStringTag]: 'Fake',
+			});
+
+			expect(unboxPrimitive(Object('ab') as object)).toBe('ab');
+			expect(unboxPrimitive(Object('') as object)).toBe('');
+			expect(unboxPrimitive(Object(5) as object)).toBe(5);
+			expect(Object.is(unboxPrimitive(Object(-0) as object), -0)).toBe(true);
+			expect(Number.isNaN(unboxPrimitive(Object(NaN) as object))).toBe(true);
+			expect(unboxPrimitive(Object(Infinity) as object)).toBe(Infinity);
+			expect(unboxPrimitive(Object(-Infinity) as object)).toBe(-Infinity);
+			expect(unboxPrimitive(Object(true) as object)).toBe(true);
+			expect(unboxPrimitive(Object(false) as object)).toBe(false);
+			expect(unboxPrimitive(Object(1n) as object)).toBe(1n);
+			expect(unboxPrimitive(Object(0n) as object)).toBe(0n);
+			expect(unboxPrimitive(new SubString('sub'))).toBe('sub');
+			expect(unboxPrimitive(new SubNumber(7))).toBe(7);
+			expect(unboxPrimitive(new SubBoolean(false))).toBe(false);
+			expect(unboxPrimitive(mutated)).toBe('ab');
+			expect(unboxPrimitive(runInNewContext('new String("xr")') as object)).toBe('xr');
+			expect(unboxPrimitive(runInNewContext('new Number(9)') as object)).toBe(9);
+			expect(unboxPrimitive(runInNewContext('new Boolean(false)') as object)).toBe(false);
+			expect(unboxPrimitive(runInNewContext('Object(2n)') as object)).toBe(2n);
+		});
+
+		it('should reject objects that mimic a boxed primitive without its internal slot', () => {
+			for (const candidate of [
+				{},
+				Object.create(null) as object,
+				Object.create(String.prototype) as object,
+				Object.create(Number.prototype) as object,
+				Object.create(Boolean.prototype) as object,
+				Object.create(BigInt.prototype) as object,
+				{ [Symbol.toStringTag]: 'String' },
+				{ [Symbol.toStringTag]: 'Number' },
+				{ [Symbol.toStringTag]: 'Boolean' },
+				{ [Symbol.toStringTag]: 'BigInt' },
+				new Proxy(Object('ab') as object, {}),
+			]) {
+				expect(isBoxedPrimitive(candidate)).toBe(false);
+				expect(unboxPrimitive(candidate)).toBeUndefined();
+				expect(isStructuredCloneBuiltin(candidate)).toBe(false);
+			}
+
+			const { proxy: revoked, revoke } = Proxy.revocable({}, {});
+			revoke();
+			expect(isBoxedPrimitive(revoked)).toBe(false);
+			expect(unboxPrimitive(revoked)).toBeUndefined();
 		});
 	});
 

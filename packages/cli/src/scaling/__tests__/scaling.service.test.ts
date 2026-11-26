@@ -1518,6 +1518,7 @@ describe('ScalingService', () => {
 				mcpType: 'trigger',
 				sessionId: 'session-trigger',
 				messageId: 'msg-trigger',
+				toolName: 'test-tool',
 				response,
 				workerId: 'worker-xyz',
 			});
@@ -1532,6 +1533,7 @@ describe('ScalingService', () => {
 				'session-trigger',
 				'msg-trigger',
 				response,
+				'test-tool',
 			);
 		});
 
@@ -1626,6 +1628,7 @@ describe('ScalingService', () => {
 					'session-trigger',
 					'msg-trigger',
 					response,
+					undefined,
 				),
 			);
 			expect(webhookResponseRelay.restoreOffloadedBody).toHaveBeenCalledWith(response, {

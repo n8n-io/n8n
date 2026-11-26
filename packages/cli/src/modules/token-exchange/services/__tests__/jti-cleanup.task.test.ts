@@ -34,7 +34,7 @@ describe('JtiCleanupTask', () => {
 
 			await task.run(signal);
 
-			expect(jtiRepository.deleteExpiredBatch).toHaveBeenCalledWith(500);
+			expect(jtiRepository.deleteExpiredBatch).toHaveBeenCalledWith(500, {});
 			expect(jtiRepository.deleteExpiredBatch).toHaveBeenCalledTimes(1);
 		});
 

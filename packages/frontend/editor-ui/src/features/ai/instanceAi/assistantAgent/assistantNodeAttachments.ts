@@ -56,6 +56,8 @@ export function toNodesComposerAttachment(
 				interpolate: { count: countAttachedNodes([merged]) },
 			}),
 			icon: 'layers',
+			// The host draws nodes chips, so the user can drop single nodes.
+			hostRendered: true,
 		},
 		clientContextPatch: { attachments: [merged] },
 	};

@@ -7,7 +7,6 @@ import {
 	type InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
 import {
 	buildTimelineBlocks,
@@ -19,6 +18,7 @@ import {
 	type TimelineBlock,
 } from '../agentTimeline.utils';
 import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import { formatArtifactMetadata } from '@/features/ai/instanceAi/artifactCardMetadata';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useThread } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';
@@ -33,7 +33,6 @@ import ThinkingBlock from './ThinkingBlock.vue';
 import TimelineActivityIndicator from './TimelineActivityIndicator.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
 
-const i18n = useI18n();
 const thread = useThread();
 const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
 
@@ -41,50 +40,6 @@ const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
 function resolveArtifactName(artifact: ArtifactInfo): string {
 	const entry = thread.producedArtifacts.get(artifact.resourceId);
 	return entry?.name ?? artifact.name;
-}
-
-function formatRelativeTime(isoTime: string): string {
-	const diffMs = Date.now() - new Date(isoTime).getTime();
-	const diffMin = Math.floor(diffMs / 60_000);
-	if (diffMin < 1) {
-		return i18n.baseText('instanceAi.artifactCard.updatedJustNow');
-	}
-	const diffHours = Math.floor(diffMin / 60);
-	if (diffHours < 1) {
-		const key =
-			diffMin === 1 ? 'instanceAi.artifactCard.minute' : 'instanceAi.artifactCard.minutes';
-		const time = i18n.baseText(key, {
-			interpolate: { count: `${diffMin}` },
-		});
-		return i18n.baseText('instanceAi.artifactCard.updatedAgo', { interpolate: { time } });
-	}
-	const key = diffHours === 1 ? 'instanceAi.artifactCard.hour' : 'instanceAi.artifactCard.hours';
-	const time = i18n.baseText(key, {
-		interpolate: { count: `${diffHours}` },
-	});
-	return i18n.baseText('instanceAi.artifactCard.updatedAgo', { interpolate: { time } });
-}
-
-function formatCreatedDate(isoTime: string): string {
-	const date = new Date(isoTime);
-	const day = date.getDate();
-	const month = date.toLocaleString('en', { month: 'long' });
-	return i18n.baseText('instanceAi.artifactCard.createdAt', {
-		interpolate: { date: `${day} ${month}` },
-	});
-}
-
-function formatArtifactMetadata(artifact: ArtifactInfo): string {
-	const parts: string[] = [];
-
-	if (artifact.completedAt) {
-		parts.push(formatRelativeTime(artifact.completedAt));
-		parts.push(formatCreatedDate(artifact.completedAt));
-	} else {
-		parts.push(i18n.baseText('instanceAi.artifactCard.updatedJustNow'));
-	}
-
-	return parts.join(' │ ');
 }
 
 const props = withDefaults(
@@ -309,7 +264,7 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 						:resource-id="item.artifact.resourceId"
 						:project-id="item.artifact.projectId"
 						:archived="thread.producedArtifacts.get(item.artifact.resourceId)?.archived"
-						:metadata="formatArtifactMetadata(item.artifact)"
+						:metadata="formatArtifactMetadata(item.artifact.completedAt)"
 					/>
 					<TimelineTextSegment
 						v-else
