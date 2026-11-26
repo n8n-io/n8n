@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  h_8a472ace01776f 63,70,78,84
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  h_8a472ace01776f 1199,1212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef00b5437112a3060bb8e185eadc11a40e89b396",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
