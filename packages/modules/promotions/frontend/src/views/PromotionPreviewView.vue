@@ -263,13 +263,15 @@ const submitBlockedReason = computed(() => {
 const submitBlockedReasonId = useId();
 const submitTooltip = computed(() => {
 	if (!submitBlockedReason.value) {
-		// A ready preview with nothing selected has no callout, so the tooltip is the only hint.
-		return state.value === 'ready' && actionableChanges.value === 0
-			? i18n.baseText(`promotions.preview.submit.selectTooltip.${props.direction}`)
-			: undefined;
+		// A ready preview with no actionable changes has no callout, so the tooltip is the only hint.
+		if (state.value !== 'ready' || actionableChanges.value !== 0) return undefined;
+		return i18n.baseText(
+			isInstance.value
+				? 'promotions.preview.badge.empty.apply'
+				: `promotions.preview.submit.selectTooltip.${props.direction}`,
+		);
 	}
-	const foldersMoved = (scopedCheck.value?.movedFolders ?? []).length > 0;
-	return props.direction === 'apply' && !foldersMoved
+	return props.direction === 'apply' && !scopedCheck.value?.movedFolders.length
 		? i18n.baseText('promotions.preview.submit.blockedTooltip')
 		: submitBlockedReason.value;
 });

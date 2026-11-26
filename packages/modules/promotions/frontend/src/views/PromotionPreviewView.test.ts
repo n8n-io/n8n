@@ -1230,6 +1230,24 @@ describe('PromotionPreviewView', () => {
 			).toBeGreaterThan(0);
 		});
 
+		it('should say there are no changes to apply when an instance preview has no changes', async () => {
+			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue({
+				...instancePreview(),
+				resources: [
+					resource({ key: 'project:p1', name: 'Billing', change: 'unchanged', selectable: false }),
+				],
+				dependencies: [],
+			});
+
+			const { getByTestId, findAllByText, queryByText } = await renderInstance();
+			const submit = getByTestId('promotion-preview-submit');
+			expect(submit).toHaveAttribute('aria-disabled', 'true');
+
+			await userEvent.hover(submit);
+			expect((await findAllByText('No changes to apply')).length).toBeGreaterThan(0);
+			expect(queryByText('Select at least one change to apply.')).not.toBeInTheDocument();
+		});
+
 		it.each([false, true])(
 			'should keep the preview after a locked Apply (confirmation: %s)',
 			async (destructive) => {
