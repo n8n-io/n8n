@@ -1858,6 +1858,7 @@
 	"engineV2Compatibility.dialog.switchToV1": "Switch to Engine v1",
 	"engineV2Compatibility.dialog.switchToV1.success": "Switched to Engine v1",
 	"engineV2Compatibility.dialog.switchToV1.error": "Couldn't switch to Engine v1",
+	"engineV2Compatibility.dialog.gotIt": "Got it",
 	"engineV2Compatibility.reason.errorWorkflow": "Error workflows aren't supported yet.",
 	"engineV2Compatibility.reason.redactionPolicy": "Data redaction isn't fully tested yet. It might not redact some execution data.",
 	"engineV2Compatibility.reason.endUserCredentials": "End-user credentials aren't supported yet.",

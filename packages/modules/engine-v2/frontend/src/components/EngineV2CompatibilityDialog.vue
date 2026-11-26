@@ -8,7 +8,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, useId } from 'vue';
+import { computed, useId, useTemplateRef } from 'vue';
 
 import { hasBlockingGroup, type EngineV2FindingGroup } from '../engineV2Findings';
 import { describeCompatibilityReason } from '../engineV2ReasonText';
@@ -35,6 +35,16 @@ const open = defineModel<boolean>('open', { required: true });
 
 const i18n = useI18n();
 const idPrefix = useId();
+
+const gotItButton = useTemplateRef('gotIt');
+
+// People open the findings often to check them. Focus "Got it", so Enter closes the dialog.
+function onOpenAutoFocus(event: Event) {
+	const button: unknown = gotItButton.value?.$el;
+	if (!(button instanceof HTMLElement)) return;
+	event.preventDefault();
+	button.focus();
+}
 
 const intro = computed(() =>
 	i18n.baseText(
@@ -64,6 +74,7 @@ const rows = computed(() =>
 		size="medium"
 		:header="i18n.baseText('engineV2Compatibility.dialog.title')"
 		data-test-id="engine-v2-compatibility-dialog"
+		@open-auto-focus="onOpenAutoFocus"
 	>
 		<N8nDialogBody>
 			<N8nText
@@ -146,6 +157,14 @@ const rows = computed(() =>
 				@click="emit('switch-to-v1')"
 			>
 				{{ i18n.baseText('engineV2Compatibility.dialog.switchToV1') }}
+			</N8nButton>
+			<N8nButton
+				ref="gotIt"
+				data-test-id="engine-v2-compatibility-got-it"
+				data-attr="engine-v2-compatibility-got-it"
+				@click="open = false"
+			>
+				{{ i18n.baseText('engineV2Compatibility.dialog.gotIt') }}
 			</N8nButton>
 		</N8nDialogFooter>
 	</N8nDialog>

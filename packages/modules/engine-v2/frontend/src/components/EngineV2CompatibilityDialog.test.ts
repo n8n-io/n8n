@@ -1,5 +1,5 @@
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { fireEvent, render } from '@testing-library/vue';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
 
 import type { EngineCompatibilityReason } from '../engineV2Check';
 import { groupEngineV2Reasons } from '../engineV2Findings';
@@ -365,6 +365,27 @@ describe('EngineV2CompatibilityDialog', () => {
 		await fireEvent.click(button);
 
 		expect(emitted('switch-to-v1')).toHaveLength(1);
+	});
+
+	it('closes from "Got it", which has focus when the dialog opens', async () => {
+		const { getByTestId, emitted } = await renderDialog([reason('ERROR_WORKFLOW', 'temporary')]);
+
+		const gotIt = getByTestId('engine-v2-compatibility-got-it');
+		expect(gotIt).toHaveTextContent('Got it');
+		await waitFor(() => expect(gotIt).toHaveFocus());
+
+		await fireEvent.click(gotIt);
+
+		expect(emitted('update:open')).toEqual([[false]]);
+		expect(emitted('switch-to-v1')).toBeUndefined();
+	});
+
+	it('keeps "Got it" on when the user cannot edit the workflow', async () => {
+		const { getByTestId } = await renderDialog([reason('ERROR_WORKFLOW', 'temporary')], {
+			canSwitchToV1: false,
+		});
+
+		expect(getByTestId('engine-v2-compatibility-got-it')).toBeEnabled();
 	});
 
 	it('turns off the switch to engine v1 when the user cannot edit the workflow', async () => {

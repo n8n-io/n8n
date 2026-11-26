@@ -115,6 +115,20 @@ describe('EngineV2CompatibilityFindings', () => {
 		expect(getByTestId('engine-v2-compatibility-switch-to-v1')).not.toBeDisabled();
 	});
 
+	it('closes from "Got it" and saves nothing', async () => {
+		const update = vi.spyOn(useWorkflowsStore(), 'updateWorkflowSetting');
+		const { findByTestId, queryByTestId } = setup();
+		await openDialog(findByTestId);
+
+		await fireEvent.click(await findByTestId('engine-v2-compatibility-got-it'));
+
+		await waitFor(() =>
+			expect(queryByTestId('engine-v2-compatibility-dialog')).not.toBeInTheDocument(),
+		);
+		expect(useEngineV2FindingsDialog().isOpen.value).toBe(false);
+		expect(update).not.toHaveBeenCalled();
+	});
+
 	it('turns off the switch on a read-only canvas', async () => {
 		const { findByTestId } = setup({ readOnly: true });
 		await openDialog(findByTestId);
