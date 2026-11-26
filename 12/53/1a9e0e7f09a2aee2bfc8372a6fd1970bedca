@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.test.ts
+  s_3679bb156dea85::t_f56dcd5669143e 762-772
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_3679bb156dea85::t_49eaa814a35529 597-599
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12531a9e0e7f09a2aee2bfc8372a6fd1970bedca",
+  "prompts": {},
+  "sessions": {
+    "s_3679bb156dea85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc486e4b-d311-4744-b781-40acf813995c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jani Jez <jani.jez@n8n.io>"
+    }
+  }
+}

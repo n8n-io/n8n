@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/groupActivityItems.test.ts
+  s_b7ea3cc858f498::t_d35e5fd093e3f6 10
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/displayGroups.test.ts
+  s_b7ea3cc858f498::t_f6cf4244b1ed95 322,356-357
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_b7ea3cc858f498::t_7e57b08ce91788 1159,1186
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_b7ea3cc858f498::t_084b3375779473 111-113,116,124,334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f8bfd11d85f2439d1b40d75f0f72a227b2d853c9",
+  "prompts": {},
+  "sessions": {
+    "s_b7ea3cc858f498": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a217ae-36d8-7573-8a09-8e5331a2380e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

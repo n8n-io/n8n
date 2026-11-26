@@ -1,0 +1,27 @@
+packages/@n8n/cli/docs/commands/promotions.md
+  s_4a494bfdece475::t_2360d7eadb81e7 422,515-527
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_4a494bfdece475::t_5c70b5224fa352 368-370,372-373
+packages/@n8n/cli/src/__tests__/promotion-missing-dependencies.test.ts
+  s_4a494bfdece475::t_a0300adacda474 401-418
+packages/@n8n/cli/src/commands/promotion-environment/list-changes.ts
+  s_4a494bfdece475::t_3a191057a61eb3 13
+packages/@n8n/cli/src/commands/promotion-environment/missing-dependencies.ts
+  s_4a494bfdece475::t_70363f91695578 157-159,175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d64212b3334e0a6282f44109104e49d0b82ead0c",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

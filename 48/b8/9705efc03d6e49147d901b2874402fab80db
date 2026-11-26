@@ -1,0 +1,35 @@
+packages/cli/src/modules/promotions.ee/__tests__/project-promotion-environments.integration.test.ts
+  s_72860b67d0263f::t_9426cd1f586676 147
+packages/modules/promotions/frontend/src/components/ProjectPromotionEnvironmentsSection.test.ts
+  s_72860b67d0263f::t_ae21780f5ce004 13,91-93,110-112
+  s_72860b67d0263f::t_ff1ec730700828 1-4,29
+packages/modules/promotions/frontend/src/components/ProjectPromotionEnvironmentsSection.vue
+  s_72860b67d0263f::t_e57811f28e1805 2-6,32-43,62,90-93,95,98
+packages/@n8n/api-types/src/dto/promotions/project-promotion-environments.dto.ts
+  s_72860b67d0263f::t_1ad63020a1a600 6,17
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-environment.repository.ts
+  s_72860b67d0263f::t_1ad63020a1a600 56-58
+  s_72860b67d0263f::t_c973ba94c00b9b 52-55
+packages/cli/src/modules/promotions.ee/project-promotion-environments.service.ts
+  s_72860b67d0263f::t_1ad63020a1a600 4,42-43,46-47
+packages/@n8n/api-types/src/dto/index.ts
+  s_72860b67d0263f::t_1ad63020a1a600 938,940
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_72860b67d0263f::t_df4fccea2ea6c2 24,1461,1463-1464
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "48b89705efc03d6e49147d901b2874402fab80db",
+  "prompts": {},
+  "sessions": {
+    "s_72860b67d0263f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf0a6a12-ff59-42b9-b058-80693a4ddacf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
