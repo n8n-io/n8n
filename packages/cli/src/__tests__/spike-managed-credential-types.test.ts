@@ -2,6 +2,7 @@ import type { Types } from 'n8n-core';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import {
+	applyManagedCredentialToDescription,
 	applyManagedCredentialToTypes,
 	assertManagedCredentialType,
 	isManagedCredentialReference,
@@ -131,6 +132,19 @@ describe('spike managed credential types', () => {
 			it('leaves nodes without credentials alone', () => {
 				expect(t.nodes.find((n) => n.name === 'n8n-nodes-base.noOp')!.credentials).toBeUndefined();
 			});
+		});
+	});
+
+	describe('applyManagedCredentialToDescription', () => {
+		it('changes nothing when managed mode is off', () => {
+			expect(applyManagedCredentialToDescription(sheets)).toBe(sheets);
+		});
+
+		it('gives a description that the editor fetches alone only the managed type', () => {
+			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
+			expect(applyManagedCredentialToDescription(sheets).credentials).toEqual([
+				{ name: 'platformManagedApi', required: true },
+			]);
 		});
 	});
 
