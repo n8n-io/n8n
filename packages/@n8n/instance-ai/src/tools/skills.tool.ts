@@ -2,6 +2,7 @@ import {
 	agentSkillShape,
 	connectPublicSkillSourceSchema,
 	discoverPublicSkillSourceSchema,
+	getSkillWorkflowMentionUrl,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	SKILLS_MAX_PAGE_SIZE,
@@ -115,6 +116,8 @@ const deleteAction = z.object({
 		.describe('Permanently delete a skill. Refused while an agent uses it'),
 	skillId: skillIdField,
 });
+
+const workflowMentionHint = ` To make a skill run an n8n workflow, link the workflow in the instructions as [Workflow name](${getSkillWorkflowMentionUrl('<workflow-id>')}).`;
 
 const allActions = [listAction, getAction, createAction, updateAction, deleteAction] as const;
 
@@ -431,6 +434,7 @@ export function createSkillsTool(context: InstanceAiContext) {
 		.description(
 			'Manage skills: list, get, create, update and delete. A skill is reusable instructions. ' +
 				'This tool does not attach a skill to an agent.' +
+				(context.skillService?.workflowsInSkillsEnabled === true ? workflowMentionHint : '') +
 				(sources
 					? ' List connected sources or preview a public GitHub link with discover-source. Show the check verdicts to the user. To connect the source, use import-from-source with the same URL, scope and revision, and the selected skills. Only skills that passed come in, and the result lists the others in failed. Review warnings and accept updates in Settings > Context > Skills.'
 					: ''),

@@ -9,10 +9,11 @@ import { extractAgentWorkflowRefs } from './extract-agent-workflow-refs';
 
 export type SkillWorkflowTool = {
 	skillId: string;
+	skillIds: string[];
 	tool: AgentJsonWorkflowToolConfig & { workflowId: string };
 };
 
-type MentionedWorkflows = Map<string, { name: string; skillId: string; skillName: string }>;
+type MentionedWorkflows = Map<string, { name: string; skillIds: string[]; skillName: string }>;
 
 type WorkflowsByName = ReadonlyMap<string, { id: string }>;
 
@@ -49,8 +50,12 @@ function findMentionedWorkflows(
 		const texts = [skill.instructions, ...(skill.references ?? []).map((file) => file.content)];
 		for (const text of texts) {
 			for (const { workflowId, name } of parseSkillWorkflowMentions(text)) {
-				if (mentioned.has(workflowId)) continue;
-				mentioned.set(workflowId, { name, skillId: ref.id, skillName: skill.name });
+				const known = mentioned.get(workflowId);
+				if (!known) {
+					mentioned.set(workflowId, { name, skillIds: [ref.id], skillName: skill.name });
+				} else if (!known.skillIds.includes(ref.id)) {
+					known.skillIds.push(ref.id);
+				}
 			}
 		}
 	}
@@ -63,8 +68,9 @@ function toSkillWorkflowTools(
 ): SkillWorkflowTool[] {
 	return [...mentioned]
 		.filter(([workflowId]) => !attached.has(workflowId))
-		.map(([workflowId, { name, skillId, skillName }]) => ({
-			skillId,
+		.map(([workflowId, { name, skillIds, skillName }]) => ({
+			skillId: skillIds[0],
+			skillIds,
 			tool: {
 				type: 'workflow',
 				workflowId,
@@ -78,10 +84,11 @@ function toSkillWorkflowTools(
 export function findSkillWorkflowTools(
 	config: AgentJsonConfig,
 	skills: Record<string, AgentSkill>,
+	workflowsByName: WorkflowsByName = new Map(),
 ): SkillWorkflowTool[] {
 	return toSkillWorkflowTools(
 		findMentionedWorkflows(config, skills),
-		directWorkflowIds(config, new Map()),
+		directWorkflowIds(config, workflowsByName),
 	);
 }
 

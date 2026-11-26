@@ -45,9 +45,11 @@ export class InstanceAiSkillsAdapterService {
 		user: User,
 		assistantSkillsEnabled: boolean,
 		skillSourcesEnabled = false,
+		workflowsInSkillsEnabled = false,
 	): InstanceAiSkillService {
 		return {
 			assistantSkillsEnabled,
+			workflowsInSkillsEnabled,
 			...(skillSourcesEnabled
 				? {
 						sources: {

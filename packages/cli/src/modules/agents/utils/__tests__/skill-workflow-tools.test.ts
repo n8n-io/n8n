@@ -136,7 +136,7 @@ describe('withSkillWorkflowTools', () => {
 });
 
 describe('findSkillWorkflowTools', () => {
-	it('returns the skill of the first mention and leaves out directly attached workflows', () => {
+	it('returns every skill that mentions a workflow and leaves out directly attached workflows', () => {
 		const direct: AgentJsonToolConfig = {
 			type: 'workflow',
 			workflowId: 'wf1',
@@ -150,7 +150,24 @@ describe('findSkillWorkflowTools', () => {
 		const result = findSkillWorkflowTools(config(['skill-1', 'skill-2'], [direct]), skills);
 
 		expect(result).toEqual([
-			{ skillId: 'skill-1', tool: expect.objectContaining({ workflowId: 'wf2' }) },
+			{
+				skillId: 'skill-1',
+				skillIds: ['skill-1', 'skill-2'],
+				tool: expect.objectContaining({ workflowId: 'wf2' }),
+			},
 		]);
+	});
+
+	it('leaves out a legacy direct tool by its resolved workflow ID', () => {
+		const direct: AgentJsonToolConfig = { type: 'workflow', workflow: 'Get code' };
+		const skills = { 'skill-1': skill('First', '[Get code](n8n://workflow/wf1)') };
+
+		const result = findSkillWorkflowTools(
+			config(['skill-1'], [direct]),
+			skills,
+			new Map([['Get code', { id: 'wf1' }]]),
+		);
+
+		expect(result).toEqual([]);
 	});
 });

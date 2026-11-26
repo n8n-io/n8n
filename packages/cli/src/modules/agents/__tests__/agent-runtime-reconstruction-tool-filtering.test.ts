@@ -41,6 +41,7 @@ import { AgentsCredentialProvider } from '../adapters/agents-credential-provider
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentSkillWorkflowTelemetry } from '../agent-skill-workflow-telemetry.service';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
@@ -1097,6 +1098,9 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		Container.set(SubAgentRunner, mock<SubAgentRunner>());
+		const skillWorkflowTelemetry = mock<AgentSkillWorkflowTelemetry>();
+		skillWorkflowTelemetry.withRunTracking.mockImplementation((tool) => tool);
+		Container.set(AgentSkillWorkflowTelemetry, skillWorkflowTelemetry);
 	});
 
 	afterEach(() => {
@@ -1116,6 +1120,43 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 
 		expect(resolveWorkflowToolMock).toHaveBeenCalledTimes(1);
 		expect(resolveWorkflowToolMock).toHaveBeenCalledWith(mentionedTool, expect.anything());
+	});
+
+	it('tracks the runs of a mentioned workflow tool, and not of a direct tool', async () => {
+		const skillWorkflowTelemetry = mock<AgentSkillWorkflowTelemetry>();
+		const tracked = mock<agents.BuiltTool>({ name: 'tracked' });
+		skillWorkflowTelemetry.withRunTracking.mockReturnValue(tracked);
+		Container.set(AgentSkillWorkflowTelemetry, skillWorkflowTelemetry);
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		const built = mock<agents.BuiltTool>({ name: 'workflow_wf-mentioned' });
+		resolveWorkflowToolMock.mockResolvedValueOnce(built).mockResolvedValueOnce(built);
+		const resolved: Array<agents.BuiltTool | null | undefined> = [];
+		buildFromJsonResolvingTools(resolved);
+		const direct: AgentJsonToolConfig = {
+			type: 'workflow',
+			workflowId: 'wf-direct',
+			workflow: 'Other',
+		};
+
+		await service.reconstructFromAgentEntity(
+			makeSkillAgentEntity([direct]),
+			mock<CredentialProvider>(),
+			'production',
+			undefined,
+			undefined,
+			undefined,
+			'integrated',
+		);
+
+		expect(skillWorkflowTelemetry.withRunTracking).toHaveBeenCalledTimes(1);
+		expect(skillWorkflowTelemetry.withRunTracking).toHaveBeenCalledWith(built, {
+			agent_id: expect.any(String),
+			workflow_id: 'wf-mentioned',
+			skill_ids: ['skill-1'],
+			execution_mode: 'integrated',
+		});
+		expect(resolved).toEqual([built, tracked]);
 	});
 
 	it('builds a workflow tool for a mention in a resolved sub-agent source', async () => {
