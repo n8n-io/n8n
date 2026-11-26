@@ -1452,6 +1452,58 @@ describe('AgentSkillModal', () => {
 				expect(getAgentSkillWorkflowAccess).not.toHaveBeenCalled();
 				expect(queryByTestId('agent-skill-workflow-warnings')).not.toBeInTheDocument();
 			});
+
+			it('warns about each workflow that the agent project cannot use in an attached skill', async () => {
+				enableWorkflowsInSkills();
+				getSkillDetail.mockResolvedValue(mentioningDetail());
+				getAgentSkillWorkflowAccess.mockResolvedValue({ outsideProjectWorkflowIds: ['wf2'] });
+				const { findAllByTestId } = renderModal({
+					skillRefsEnabled: true,
+					skillId: 'tone',
+					skill: mentioningDetail().skill,
+				});
+
+				const warnings = await findAllByTestId('agent-skill-workflow-warnings');
+				expect(warnings).toHaveLength(1);
+				expect(warnings[0]).toHaveAttribute(
+					'aria-label',
+					'agents.builder.validation.issue.tool.workflow.notInProject Archive',
+				);
+				expect(getAgentSkillWorkflowAccess).toHaveBeenCalledWith(
+					expect.anything(),
+					'p1',
+					'a1',
+					'tone',
+				);
+			});
+
+			it('does not ask for the workflows outside the project for a skill without an agent', async () => {
+				enableWorkflowsInSkills();
+				getSkillDetail.mockResolvedValue(mentioningDetail());
+				const { findAllByTestId, queryByTestId } = renderModal({
+					skillId: 'tone',
+					skill: mentioningDetail().skill,
+					settings: {},
+				});
+
+				expect(await findAllByTestId('agent-skill-workflow-item')).toHaveLength(2);
+				expect(getAgentSkillWorkflowAccess).not.toHaveBeenCalled();
+				expect(queryByTestId('agent-skill-workflow-warnings')).not.toBeInTheDocument();
+			});
+
+			it('does not ask for the workflows outside the project of an attached skill while the flag is off', async () => {
+				getSkillDetail.mockResolvedValue(mentioningDetail());
+				const { findByTestId, queryByTestId } = renderModal({
+					skillRefsEnabled: true,
+					skillId: 'tone',
+					skill: mentioningDetail().skill,
+				});
+
+				await findByTestId('agent-skill-file-nav');
+
+				expect(getAgentSkillWorkflowAccess).not.toHaveBeenCalled();
+				expect(queryByTestId('agent-skill-workflow-warnings')).not.toBeInTheDocument();
+			});
 		});
 
 		it('stays on the picker when the preview cannot load', async () => {
