@@ -1,12 +1,14 @@
 import has from 'lodash/has';
 
 import type {
+	IConnections,
 	INode,
+	INodeCredentials,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
 } from '../src/interfaces';
-import { carryOverNodeParameters } from '../src/node-helpers';
+import { carryOverNodeParameters, getUnfitNodeConnections } from '../src/node-helpers';
 import {
 	desc,
 	httpRequestV1,
@@ -19,13 +21,18 @@ import {
 	ifV2,
 } from './fixtures/node-version-descriptions';
 
-const node = (typeVersion: number, parameters: INodeParameters): INode => ({
+const node = (
+	typeVersion: number,
+	parameters: INodeParameters,
+	credentials?: INodeCredentials,
+): INode => ({
 	id: '1',
 	name: 'Node',
 	type: 'test',
 	typeVersion,
 	position: [0, 0],
 	parameters,
+	...(credentials ? { credentials } : {}),
 });
 
 /** Runs the helper and checks that `parameters` holds no value that `setAside` lists. */
@@ -88,6 +95,7 @@ describe('carryOverNodeParameters', () => {
 				],
 				changedDefaults: [],
 				issues: null,
+				droppedCredentials: [],
 			});
 		});
 
@@ -119,6 +127,7 @@ describe('carryOverNodeParameters', () => {
 				],
 				changedDefaults: [],
 				issues: null,
+				droppedCredentials: [],
 			});
 		});
 	});
@@ -153,6 +162,7 @@ describe('carryOverNodeParameters', () => {
 				],
 				changedDefaults: [],
 				issues: null,
+				droppedCredentials: [],
 			});
 		});
 
@@ -164,6 +174,7 @@ describe('carryOverNodeParameters', () => {
 				setAside: [],
 				changedDefaults: [],
 				issues: null,
+				droppedCredentials: [],
 			});
 		});
 
@@ -177,6 +188,7 @@ describe('carryOverNodeParameters', () => {
 					{ name: 'output', displayName: 'Output Index', oldDefault: 0, newDefault: '={{}}' },
 				],
 				issues: null,
+				droppedCredentials: [],
 			});
 		});
 	});
@@ -211,6 +223,7 @@ describe('carryOverNodeParameters', () => {
 				],
 				changedDefaults: [],
 				issues: null,
+				droppedCredentials: [],
 			});
 		});
 
@@ -225,6 +238,7 @@ describe('carryOverNodeParameters', () => {
 				],
 				changedDefaults: [],
 				issues: null,
+				droppedCredentials: [],
 			});
 		});
 	});
@@ -252,6 +266,7 @@ describe('carryOverNodeParameters', () => {
 				],
 				changedDefaults: [],
 				issues: null,
+				droppedCredentials: [],
 			});
 		});
 	});
@@ -468,6 +483,7 @@ describe('carryOverNodeParameters', () => {
 				setAside: [],
 				changedDefaults: [],
 				issues: null,
+				droppedCredentials: [],
 			});
 		});
 
@@ -838,6 +854,7 @@ describe('carryOverNodeParameters', () => {
 				setAside: [],
 				changedDefaults: [],
 				issues: null,
+				droppedCredentials: [],
 			});
 		});
 
@@ -847,6 +864,7 @@ describe('carryOverNodeParameters', () => {
 				setAside: [{ name: 'legacy', path: ['legacy'], displayName: 'Legacy', value: 'x' }],
 				changedDefaults: [],
 				issues: null,
+				droppedCredentials: [],
 			});
 		});
 	});
@@ -1281,5 +1299,160 @@ describe('carryOverNodeParameters', () => {
 			expect(result.changedDefaults[0].newDefault).toEqual(['b']);
 			expect(result.changedDefaults[0].newDefault).not.toBe(target.properties[0].default);
 		});
+	});
+
+	describe('droppedCredentials', () => {
+		const basicAuth = { id: '1', name: 'My Basic Auth' };
+		const queryAuth = { id: '2', name: 'My Query Auth' };
+
+		it('should list a credential that the target version does not use', () => {
+			const result = carry(
+				node(
+					1,
+					{ authentication: 'basicAuth', url: 'https://example.com' },
+					{ httpBasicAuth: basicAuth },
+				),
+				httpRequestV1,
+				httpRequestV3,
+				3,
+			);
+
+			expect(result.droppedCredentials).toEqual(['httpBasicAuth']);
+		});
+
+		it('should not list a credential that the two versions use', () => {
+			const credentials = [{ name: 'testApi', required: true }];
+			const result = carry(
+				node(1, {}, { testApi: { id: '1', name: 'Test' } }),
+				desc(1, [], credentials),
+				desc(2, [], credentials),
+				2,
+			);
+
+			expect(result.droppedCredentials).toEqual([]);
+		});
+
+		it('should not list a credential that the current version did not use', () => {
+			const result = carry(
+				node(
+					1,
+					{ authentication: 'basicAuth', url: 'https://example.com' },
+					{ httpBasicAuth: basicAuth, httpQueryAuth: queryAuth },
+				),
+				httpRequestV1,
+				httpRequestV3,
+				3,
+			);
+
+			expect(result.droppedCredentials).toEqual(['httpBasicAuth']);
+		});
+
+		it('should not list a credential that a parameter of the target version selects', () => {
+			const result = carry(
+				node(
+					3,
+					{
+						url: 'https://example.com',
+						authentication: 'genericCredentialType',
+						genericAuthType: 'httpBasicAuth',
+					},
+					{ httpBasicAuth: basicAuth },
+				),
+				httpRequestV3,
+				httpRequestV3,
+				4,
+			);
+
+			expect(result.droppedCredentials).toEqual([]);
+		});
+
+		it('should list nothing when an expression selects the credential type', () => {
+			const result = carry(
+				node(
+					3,
+					{
+						url: 'https://example.com',
+						authentication: 'genericCredentialType',
+						genericAuthType: '={{ $json.type }}',
+					},
+					{ httpBasicAuth: basicAuth },
+				),
+				httpRequestV3,
+				httpRequestV3,
+				4,
+			);
+
+			expect(result.droppedCredentials).toEqual([]);
+		});
+	});
+});
+
+describe('getUnfitNodeConnections', () => {
+	const main = (name: string, index = 0) => ({ node: name, type: 'main' as const, index });
+
+	it('should return the connections of an output that no longer exists', () => {
+		const connections: IConnections = {
+			Node: { main: [[main('A')], [main('B')], [], [main('C')]] },
+		};
+
+		expect(getUnfitNodeConnections('Node', connections, ['main'], ['main', 'main'])).toEqual([
+			[main('Node', 3), main('C')],
+		]);
+	});
+
+	it('should return nothing when all connections fit', () => {
+		const connections: IConnections = {
+			Node: { main: [[main('A')], [main('B')]] },
+			Before: { main: [[main('Node')]] },
+		};
+
+		expect(getUnfitNodeConnections('Node', connections, ['main'], ['main', 'main'])).toEqual([]);
+	});
+
+	it('should return the connections into an input that no longer exists', () => {
+		const connections: IConnections = {
+			A: { main: [[main('Node', 0)]] },
+			B: { main: [[main('Node', 1)]] },
+		};
+
+		expect(getUnfitNodeConnections('Node', connections, ['main'], ['main'])).toEqual([
+			[main('B'), main('Node', 1)],
+		]);
+	});
+
+	it('should return the connections of a type that the node no longer has', () => {
+		const tool = { node: 'Node', type: 'ai_tool' as const, index: 0 };
+		const connections: IConnections = {
+			A: { main: [[main('Node')]] },
+			Tool: { ai_tool: [[tool]] },
+			Node: { main: [[main('B')]] },
+		};
+
+		expect(getUnfitNodeConnections('Node', connections, ['main'], ['main'])).toEqual([
+			[{ node: 'Tool', type: 'ai_tool', index: 0 }, tool],
+		]);
+		expect(
+			getUnfitNodeConnections('Node', connections, ['main', { type: 'ai_tool' }], ['main']),
+		).toEqual([]);
+	});
+
+	it('should skip an empty slot', () => {
+		const connections: IConnections = {
+			Node: { main: [null, [main('A')], null, [main('B')]] },
+		};
+
+		expect(getUnfitNodeConnections('Node', connections, ['main'], ['main', 'main'])).toEqual([
+			[main('Node', 3), main('B')],
+		]);
+	});
+
+	it('should return a copy of the target connection', () => {
+		const target = main('A');
+		const connections: IConnections = { Node: { main: [[target]] } };
+
+		const [[, returned]] = getUnfitNodeConnections('Node', connections, ['main'], []);
+
+		expect(returned).toEqual(target);
+		expect(returned).not.toBe(target);
 	});
 });

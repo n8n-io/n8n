@@ -21,6 +21,8 @@ import { NodeConnectionTypes } from './interfaces';
 import { safeRegex } from './safe-regex';
 import type {
 	FieldType,
+	IConnection,
+	IConnections,
 	IContextObject,
 	ICredentialsDisplayOptions,
 	INode,
@@ -60,6 +62,7 @@ import {
 	isINodePropertiesList,
 	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
+	isNodeConnectionType,
 	isResourceLocatorValue,
 	isResourceMapperValue,
 	isValidResourceLocatorParameterValue,
@@ -1822,7 +1825,54 @@ export function carryOverNodeParameters(
 		targetNodeType,
 	);
 
-	return { parameters, setAside, changedDefaults, issues };
+	// A credential that the current version did not use is not a result of this change.
+	const oldActive = getActiveCredentialTypes(node, currentNodeType);
+	const newActive = getActiveCredentialTypes({ ...targetNode, parameters }, targetNodeType);
+	const droppedCredentials = newActive
+		? Object.keys(node.credentials ?? {}).filter(
+				(type) => !newActive.has(type) && oldActive?.has(type) !== false,
+			)
+		: [];
+
+	return { parameters, setAside, changedDefaults, issues, droppedCredentials };
+}
+
+/**
+ * Returns the connections of a node that do not fit its ports.
+ * Each entry is a `[source, target]` pair of copies.
+ *
+ * @param inputs The resolved inputs of the node, from `getNodeInputs`.
+ * @param outputs The resolved outputs of the node, from `getNodeOutputs`.
+ */
+export function getUnfitNodeConnections(
+	nodeName: string,
+	connectionsBySourceNode: IConnections,
+	inputs: Array<NodeConnectionType | INodeInputConfiguration>,
+	outputs: Array<NodeConnectionType | INodeOutputConfiguration>,
+): Array<[IConnection, IConnection]> {
+	const count = (types: NodeConnectionType[], type: string) =>
+		types.filter((portType) => portType === type).length;
+	const inputTypes = getConnectionTypes(inputs);
+	const outputTypes = getConnectionTypes(outputs);
+
+	const unfit: Array<[IConnection, IConnection]> = [];
+	for (const [source, connectionsByType] of Object.entries(connectionsBySourceNode)) {
+		for (const [type, slots] of Object.entries(connectionsByType)) {
+			if (!isNodeConnectionType(type)) continue;
+			slots.forEach((slot, index) => {
+				for (const target of slot ?? []) {
+					// Index check only. A port filter (filter.nodes) is not checked.
+					if (
+						(source === nodeName && index >= count(outputTypes, type)) ||
+						(target.node === nodeName && target.index >= count(inputTypes, target.type))
+					) {
+						unfit.push([{ node: source, type, index }, { ...target }]);
+					}
+				}
+			});
+		}
+	}
+	return unfit;
 }
 
 /**

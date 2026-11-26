@@ -1,8 +1,13 @@
-import type { INodeProperties, INodeTypeDescription } from '../../src/interfaces';
+import type {
+	INodeCredentialDescription,
+	INodeProperties,
+	INodeTypeDescription,
+} from '../../src/interfaces';
 
 export const desc = (
 	version: number | number[],
 	properties: INodeProperties[],
+	credentials?: INodeCredentialDescription[],
 ): INodeTypeDescription => ({
 	displayName: 'Test',
 	name: 'test',
@@ -13,45 +18,60 @@ export const desc = (
 	inputs: ['main'],
 	outputs: ['main'],
 	properties,
+	...(credentials ? { credentials } : {}),
+});
+
+const credentialFor = (name: string, authentication: string): INodeCredentialDescription => ({
+	name,
+	required: true,
+	displayOptions: { show: { authentication: [authentication] } },
 });
 
 // packages/nodes-base/nodes/HttpRequest/V1/HttpRequestV1.node.ts
-export const httpRequestV1 = desc(1, [
-	{
-		displayName: 'Authentication',
-		name: 'authentication',
-		type: 'options',
-		options: [
-			{ name: 'Basic Auth', value: 'basicAuth' },
-			{ name: 'Header Auth', value: 'headerAuth' },
-			{ name: 'None', value: 'none' },
-		],
-		default: 'none',
-	},
-	{
-		displayName: 'Request Method',
-		name: 'requestMethod',
-		type: 'options',
-		options: [
-			{ name: 'GET', value: 'GET' },
-			{ name: 'POST', value: 'POST' },
-		],
-		default: 'GET',
-	},
-	{ displayName: 'URL', name: 'url', type: 'string', default: '', required: true },
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add option',
-		default: {},
-		options: [
-			{ displayName: 'Batch Interval', name: 'batchInterval', type: 'number', default: 1000 },
-			{ displayName: 'Batch Size', name: 'batchSize', type: 'number', default: 50 },
-			{ displayName: 'Timeout', name: 'timeout', type: 'number', default: 10000 },
-		],
-	},
-]);
+export const httpRequestV1 = desc(
+	1,
+	[
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{ name: 'Basic Auth', value: 'basicAuth' },
+				{ name: 'Header Auth', value: 'headerAuth' },
+				{ name: 'None', value: 'none' },
+			],
+			default: 'none',
+		},
+		{
+			displayName: 'Request Method',
+			name: 'requestMethod',
+			type: 'options',
+			options: [
+				{ name: 'GET', value: 'GET' },
+				{ name: 'POST', value: 'POST' },
+			],
+			default: 'GET',
+		},
+		{ displayName: 'URL', name: 'url', type: 'string', default: '', required: true },
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			placeholder: 'Add option',
+			default: {},
+			options: [
+				{ displayName: 'Batch Interval', name: 'batchInterval', type: 'number', default: 1000 },
+				{ displayName: 'Batch Size', name: 'batchSize', type: 'number', default: 50 },
+				{ displayName: 'Timeout', name: 'timeout', type: 'number', default: 10000 },
+			],
+		},
+	],
+	[
+		credentialFor('httpBasicAuth', 'basicAuth'),
+		credentialFor('httpHeaderAuth', 'headerAuth'),
+		credentialFor('httpQueryAuth', 'queryAuth'),
+	],
+);
 
 // packages/nodes-base/nodes/HttpRequest/V3/Description.ts
 export const httpRequestV3 = desc(
@@ -79,6 +99,15 @@ export const httpRequestV3 = desc(
 				{ name: 'Generic Credential Type', value: 'genericCredentialType' },
 			],
 			default: 'none',
+		},
+		{
+			displayName: 'Generic Auth Type',
+			name: 'genericAuthType',
+			type: 'credentialsSelect',
+			required: true,
+			default: '',
+			credentialTypes: ['has:genericAuth'],
+			displayOptions: { show: { authentication: ['genericCredentialType'] } },
 		},
 		{
 			displayName: 'Options',
@@ -117,6 +146,14 @@ export const httpRequestV3 = desc(
 				},
 				{ displayName: 'Timeout', name: 'timeout', type: 'number', default: 10000 },
 			],
+		},
+	],
+	// packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts
+	[
+		{
+			name: 'httpSslAuth',
+			required: true,
+			displayOptions: { show: { provideSslCertificates: [true] } },
 		},
 	],
 );
