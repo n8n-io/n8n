@@ -1,4 +1,4 @@
-import { billingPreview, billingResources } from './__tests__/preview.fixtures';
+import { billingPreview, billingResources, resource } from './__tests__/preview.fixtures';
 import {
 	applyPreview,
 	buildSelectionGraph,
@@ -193,6 +193,36 @@ describe('promotion preview selection', () => {
 		expect(result.dropped).toEqual([reminders.key]);
 
 		expect(applyPreview(clearSelection(), refreshed).state.selected.size).toBe(0);
+	});
+
+	it('should leave the project unchecked when only a credential of it is selected', () => {
+		const preview = billingPreview();
+		const credential = resource({
+			key: 'credential:c9',
+			name: 'CRM key',
+			parentKey: 'project:p1',
+			change: 'added',
+			selectable: true,
+		});
+		const withCredential = buildSelectionGraph(
+			{ ...preview, resources: [...preview.resources, credential] },
+			'apply',
+		);
+		const project = withCredential.resources.get('project:p1');
+		if (!project) throw new Error('missing project');
+		const selected = new Set([credential.key]);
+
+		expect(
+			selectionCheck(withCredential, project, {
+				selected,
+				inclusion: resolveInclusion(withCredential, selected),
+				disabled: new Set(),
+				locked: false,
+			}),
+		).toMatchObject({ checked: false, indeterminate: false });
+		// The project checkbox selects its workflows and folders, and leaves the credential as it is.
+		const toggled = toggleContainer(selectedState(), withCredential, 'project:p1');
+		expect(toggled.selected.has(credential.key)).toBe(false);
 	});
 
 	it('should leave a blocked workflow out until its blockers are resolved, and never remove a selected one', () => {
