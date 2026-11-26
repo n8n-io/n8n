@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { N8nButton, N8nCard, N8nDropdownMenu, N8nIconButton, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCard,
+	N8nDropdownMenu,
+	N8nIconButton,
+	N8nText,
+	N8nIcon,
+} from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -46,14 +53,17 @@ const i18n = useI18n();
 		@after-leave="emit('exit')"
 	>
 		<N8nCard v-if="count > 0" :class="$style.card" data-test-id="agent-session-flag-card">
-			<N8nText step="sm" bold>
-				{{
-					i18n.baseText('agentSessions.flagCard.title', {
-						adjustToNumber: count,
-						interpolate: { count: String(count) },
-					})
-				}}
-			</N8nText>
+			<div :class="$style.inner">
+				<N8nIcon icon="exclamation-circle" color="danger" size="medium" />
+				<N8nText step="sm" bold color="danger">
+					{{
+						i18n.baseText('agentSessions.flagCard.title', {
+							adjustToNumber: count,
+							interpolate: { count: String(count) },
+						})
+					}}
+				</N8nText>
+			</div>
 			<template #append>
 				<div :class="$style.actions">
 					<N8nButton
@@ -87,6 +97,15 @@ const i18n = useI18n();
 
 .card {
 	flex-shrink: 0;
+	--card--padding: var(--spacing--sm);
+}
+
+.inner {
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+	flex-flow: row;
+	gap: var(--spacing--sm);
 }
 
 .actions {

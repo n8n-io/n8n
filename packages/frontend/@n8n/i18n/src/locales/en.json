@@ -1979,6 +1979,8 @@
 	"agentSessions.filters.latest": "Latest",
 	"agentSessions.filters.to": "to",
 	"agentSessions.filters.reset": "Reset filters",
+	"agentSessions.filters.sessionIds": "Session IDs",
+	"agentSessions.filters.sessionIdsPlaceholder": "Add a session ID",
 	"agentSessions.status.succeeded": "Succeeded",
 	"agentSessions.status.error": "Error",
 	"agentSessions.fixWithAssistant": "Fix error",
