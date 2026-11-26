@@ -8,9 +8,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
-import { validateJSON, zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
+import { zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 import { organizationFields, organizationOperations } from './OrganizationDescription';
 import { ticketFields, ticketOperations } from './TicketDescription';
 import { ticketFieldFields, ticketFieldOperations } from './TicketFieldDescription';
@@ -328,22 +328,10 @@ export class Zendesk implements INodeType {
 							comment,
 						};
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter(
-								'additionalFieldsJson',
-								i,
-							) as string;
-
-							if (additionalFieldsJson !== '') {
-								if (validateJSON(additionalFieldsJson) !== undefined) {
-									Object.assign(body, JSON.parse(additionalFieldsJson));
-								} else {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Additional fields must be a valid JSON',
-										{ itemIndex: i },
-									);
-								}
-							}
+							Object.assign(
+								body,
+								this.getNodeParameter('additionalFieldsJson', i) as IDataObject | undefined,
+							);
 						} else {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -385,19 +373,10 @@ export class Zendesk implements INodeType {
 						const body: ITicket = {};
 
 						if (jsonParameters) {
-							const updateFieldsJson = this.getNodeParameter('updateFieldsJson', i) as string;
-
-							if (updateFieldsJson !== '') {
-								if (validateJSON(updateFieldsJson) !== undefined) {
-									Object.assign(body, JSON.parse(updateFieldsJson));
-								} else {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Additional fields must be a valid JSON',
-										{ itemIndex: i },
-									);
-								}
-							}
+							Object.assign(
+								body,
+								this.getNodeParameter('updateFieldsJson', i) as IDataObject | undefined,
+							);
 						} else {
 							const updateFields = this.getNodeParameter('updateFields', i);
 

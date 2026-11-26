@@ -85,7 +85,6 @@ const jsonValidateTypePending = [
 	'./nodes/TheHive/**',
 	'./nodes/TheHiveProject/**',
 	'./nodes/Vero/**',
-	'./nodes/Zendesk/**',
 ];
 
 // Request URLs must come from requestPath or requestUrl, or be a constant string.

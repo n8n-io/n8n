@@ -17,6 +17,12 @@ describe('Zendesk > Workflows', () => {
 
 	beforeAll(() => {
 		const api = nock('https://acme.zendesk.com/api/v2');
+		api
+			.post('/tickets.json', {
+				ticket: { comment: { body: 'Printer is broken' }, subject: 'Printer' },
+			})
+			.reply(200, { ticket });
+		api.put('/tickets/42.json', { ticket: { status: 'solved' } }).reply(200, { ticket });
 		api.post('/tickets.json').reply(200, { ticket });
 		api.get('/tickets/42.json').reply(200, { ticket });
 		api.get('/suspended_tickets/43.json').reply(200, { suspended_ticket: suspendedTicket });

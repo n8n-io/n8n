@@ -2,6 +2,46 @@
 	"name": "Zendesk Requests",
 	"nodes": [
 		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "update",
+				"id": "42",
+				"jsonParameters": true,
+				"updateFieldsJson": "={{ { \"status\": \"solved\" } }}"
+			},
+			"id": "0aab7b2f-13f2-547e-ae48-2e6b20a13791",
+			"name": "Ticket Update Expression",
+			"type": "n8n-nodes-base.zendesk",
+			"typeVersion": 1,
+			"position": [300, 2450],
+			"credentials": {
+				"zendeskApi": {
+					"id": "1",
+					"name": "Zendesk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "create",
+				"description": "Printer is broken",
+				"jsonParameters": true,
+				"additionalFieldsJson": "{\"subject\":\"Printer\"}"
+			},
+			"id": "82b30c18-d689-55ce-be48-9f1eefea92d1",
+			"name": "Ticket Create JSON",
+			"type": "n8n-nodes-base.zendesk",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"credentials": {
+				"zendeskApi": {
+					"id": "1",
+					"name": "Zendesk account"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "trigger",
 			"name": "When clicking \"Execute Workflow\"",
@@ -373,6 +413,16 @@
 		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
+					{
+						"node": "Ticket Update Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Create JSON",
+						"type": "main",
+						"index": 0
+					},
 					{
 						"node": "Ticket Create",
 						"type": "main",
