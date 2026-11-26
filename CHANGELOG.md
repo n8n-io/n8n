@@ -1,3 +1,99 @@
+## [3.4.1](https://github.com/n8n-io/n8n/compare/n8n@2.50.0...n8n@3.4.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **ai-builder:** Apply the configured reasoning effort to OpenRouter ([#45004](https://github.com/n8n-io/n8n/issues/45004)) ([93a9bd9](https://github.com/n8n-io/n8n/commit/93a9bd95e4a193bea0e2dacbfada0823b752b386))
+* Apply execution data size limit in MCP get_workflow_execution ([#45097](https://github.com/n8n-io/n8n/issues/45097)) ([3b3939d](https://github.com/n8n-io/n8n/commit/3b3939d030db40e061e2a0c53339234a42170f57))
+* Community package supportedNodesApiVersion v3 compatibility ([136be23](https://github.com/n8n-io/n8n/commit/136be23c14b524ba2e3f5a4c42e1ae202d1c1513))
+* **core, editor:** Load the Assistant session timeline through the system agent routes ([#45010](https://github.com/n8n-io/n8n/issues/45010)) ([acbf6b5](https://github.com/n8n-io/n8n/commit/acbf6b5af30f129b5d62adadaa9436e539905e1b))
+* **core:** Advance the poll cursor when the execution quota refuses a polled run ([#44903](https://github.com/n8n-io/n8n/issues/44903)) ([6f65c5a](https://github.com/n8n-io/n8n/commit/6f65c5a80c10c8e26b99b9713f97111554446474))
+* **core:** Align base64, urlEncode and format results of isolate expression engines with legacy ([#44871](https://github.com/n8n-io/n8n/issues/44871)) ([48cf079](https://github.com/n8n-io/n8n/commit/48cf079aa87cf5fbe5fe2de2c88d6fc45f55fbe6))
+* **core:** Align extractUrlPath results of isolate expression engines with legacy ([#44910](https://github.com/n8n-io/n8n/issues/44910)) ([5acdf13](https://github.com/n8n-io/n8n/commit/5acdf133f7432f9dd9aaa7bf5bffe0a1334c74ff))
+* **core:** Apply workflow review rules to CLI publish commands ([#44544](https://github.com/n8n-io/n8n/issues/44544)) ([10de2a1](https://github.com/n8n-io/n8n/commit/10de2a10cc3959b302cc03fd8522455e396e4b0e))
+* **core:** Cache MCP tool schemas instead of rebuilding them on every request ([#44702](https://github.com/n8n-io/n8n/issues/44702)) ([51fefec](https://github.com/n8n-io/n8n/commit/51fefec1190074dbec9e714591e4166c96125acf))
+* **core:** Cancel the tool calls of a failed agent run ([#44881](https://github.com/n8n-io/n8n/issues/44881)) ([4b3feb8](https://github.com/n8n-io/n8n/commit/4b3feb8036d21d6e64bfa146280cdd9d46584cce))
+* **core:** Expand default blocked IP ranges for outbound request guard ([#38912](https://github.com/n8n-io/n8n/issues/38912)) ([488ef31](https://github.com/n8n-io/n8n/commit/488ef31d1207673657a02e79991a7beb60a37d7b))
+* **core:** Guard misconfigured s3 binary data mode at boot and normalize removed-mode detection ([#37337](https://github.com/n8n-io/n8n/issues/37337)) ([d1b925b](https://github.com/n8n-io/n8n/commit/d1b925b45ee3ccd58b2248ea639b6ec92767df05))
+* **core:** Keep a replacement SSH tunnel open when the old tunnel closes late ([#45161](https://github.com/n8n-io/n8n/issues/45161)) ([ce2f41b](https://github.com/n8n-io/n8n/commit/ce2f41b19e369aed7ef319210a61a81f58d4de7c))
+* **core:** Make Object.hasField() ignore prototype names ([#43965](https://github.com/n8n-io/n8n/issues/43965)) ([acd9d7a](https://github.com/n8n-io/n8n/commit/acd9d7ab1a1c77a08b86a54695d5d5fcac2c6b66))
+* **core:** Reduce memory use of concat on workflow data arrays in isolate expression engines ([#45026](https://github.com/n8n-io/n8n/issues/45026)) ([b21e5e7](https://github.com/n8n-io/n8n/commit/b21e5e7c6b76a13fb1c744b4943c6053939989f5))
+* **core:** Refresh expired credentials with pagination and Never Error ([#45123](https://github.com/n8n-io/n8n/issues/45123)) ([afd8786](https://github.com/n8n-io/n8n/commit/afd878675c016c23af2c1f60e138d51761a397dd))
+* **core:** Resolve master sync with 3.x queue routing ([1a9ee08](https://github.com/n8n-io/n8n/commit/1a9ee08134924d2fb80aee2881c152193c1fca2c))
+* **core:** Skip non-credential files in import:credentials --separate ([#38523](https://github.com/n8n-io/n8n/issues/38523)) ([ac16c35](https://github.com/n8n-io/n8n/commit/ac16c358b01a141562c90634c11c0aab2bb18402))
+* **core:** Skip unparseable credential and project files in source control instead of failing ([#43952](https://github.com/n8n-io/n8n/issues/43952)) ([8898a4c](https://github.com/n8n-io/n8n/commit/8898a4c9b5e1053ce4067fa3e9e67c02e9a68519))
+* **core:** Stop an awaited sub-workflow when its parent is stopped ([#44755](https://github.com/n8n-io/n8n/issues/44755)) ([a322915](https://github.com/n8n-io/n8n/commit/a3229158fc39a2da425bfe4400e18e06663cddcd))
+* **core:** Trim whitespace in webhook Allowed Origins list ([#44773](https://github.com/n8n-io/n8n/issues/44773)) ([dfc628f](https://github.com/n8n-io/n8n/commit/dfc628faac9595544ed5fcdcd5a1deec4aa3d6cb))
+* **Custom Endpoint Chat Model Node:** Remove credential values from a gateway's response ([#44964](https://github.com/n8n-io/n8n/issues/44964)) ([347aac3](https://github.com/n8n-io/n8n/commit/347aac30c81ae98ee1d647fe02c19cc616559f39))
+* **editor:** Center the empty state of the Assistant chat again ([#45096](https://github.com/n8n-io/n8n/issues/45096)) ([1bc7508](https://github.com/n8n-io/n8n/commit/1bc75081aac3df4315b698ba3e0d51b86e168024))
+* **editor:** Clarify disabled checkbox states in dark theme ([#44958](https://github.com/n8n-io/n8n/issues/44958)) ([937cc4c](https://github.com/n8n-io/n8n/commit/937cc4cf217426fc19f4051df475e21586428b70))
+* **editor:** Keep an allowed trigger separate from its restricted node in the nodes panel ([#44908](https://github.com/n8n-io/n8n/issues/44908)) ([3382fd3](https://github.com/n8n-io/n8n/commit/3382fd3e8fa2e01c252c3efd511396e7f3636b01))
+* **editor:** Localize the close button label in the nodes panel ([#44713](https://github.com/n8n-io/n8n/issues/44713)) ([4e00e60](https://github.com/n8n-io/n8n/commit/4e00e604c33f7e776ac61e923791263af8c867d8))
+* **editor:** Localize the role mapping rules table in the SSO settings ([#44709](https://github.com/n8n-io/n8n/issues/44709)) ([7ada757](https://github.com/n8n-io/n8n/commit/7ada757567b27c4fcac98f8fd72d510d9d75d999))
+* **editor:** Render the credential notice in agent tool removal ([#45192](https://github.com/n8n-io/n8n/issues/45192)) ([4dd889a](https://github.com/n8n-io/n8n/commit/4dd889ac8d7a1dbfad835380d72aea736be2cb23))
+* **Email Trigger IMAP Node:** Retry messages that produced no item ([#44956](https://github.com/n8n-io/n8n/issues/44956)) ([8ce3f29](https://github.com/n8n-io/n8n/commit/8ce3f295539df351ce01f7fddf1b50070fa04828))
+* Fail fast on closed streamed HTTP error bodies ([#44907](https://github.com/n8n-io/n8n/issues/44907)) ([ef05235](https://github.com/n8n-io/n8n/commit/ef05235480cd4ac24e58a3f3e0b9117953d799b0))
+* Keep filter popover padding inside the scroll area ([#44978](https://github.com/n8n-io/n8n/issues/44978)) ([5c20ba6](https://github.com/n8n-io/n8n/commit/5c20ba621124cb6cbcf595ae9bcc899ce87e9e32))
+* Load hidden breadcrumb items when the ellipsis tooltip opens ([#41718](https://github.com/n8n-io/n8n/issues/41718)) ([b1d9c00](https://github.com/n8n-io/n8n/commit/b1d9c00c9a0c76eaa83bb745673a19acb36ca165))
+* Localize delete error toast in the agent builder ([#45210](https://github.com/n8n-io/n8n/issues/45210)) ([75d5da9](https://github.com/n8n-io/n8n/commit/75d5da9e2dbc787c59f7214702dfeae70b3d9969))
+* **MCP Server Trigger Node:** Pass downstream MCP tool errors to clients ([#45043](https://github.com/n8n-io/n8n/issues/45043)) ([facd0f1](https://github.com/n8n-io/n8n/commit/facd0f1728bce194872e0b8b2b0d429a30e5dc2c))
+* **Microsoft SQL Node:** Ignore $N inside [bracketed] identifiers in placeholder check ([#44132](https://github.com/n8n-io/n8n/issues/44132)) ([5ebdf4f](https://github.com/n8n-io/n8n/commit/5ebdf4f47958502159d8c57722d2b22e993e5fe0))
+* **Nextcloud Node:** Return correct folder list paths in version 1.1 ([#44452](https://github.com/n8n-io/n8n/issues/44452)) ([daaa9ba](https://github.com/n8n-io/n8n/commit/daaa9baa0e1b34bca9e52e621cc8f92fd7bb142d))
+* **node-cli:** Give each n8n image its own dev data volume ([2a01188](https://github.com/n8n-io/n8n/commit/2a01188ee6b6cda02d1af332a17f26d2c6dd9105))
+* **node-cli:** Harden the dev command against shell, timeout and port issues ([f8887e3](https://github.com/n8n-io/n8n/commit/f8887e3179757c4459275bcf0215406a9a8e5fee))
+* **node-cli:** Report why a dev reload did not reach n8n ([8beced0](https://github.com/n8n-io/n8n/commit/8beced080604359e349cda09fe29abfb5d94e11f))
+* **node-cli:** Watch asset roots created after dev starts ([8710cc5](https://github.com/n8n-io/n8n/commit/8710cc5b8b23fde03f1f6ce6a2681086e5e87041))
+* Preserve boxed primitives across expression engines ([#45137](https://github.com/n8n-io/n8n/issues/45137)) ([7ef6097](https://github.com/n8n-io/n8n/commit/7ef60972a59293b844e4e940fc36a516c290238b))
+* Remove LangChain Code example prompts from Instance AI examples ([7272d2f](https://github.com/n8n-io/n8n/commit/7272d2facedfb161e83d12f00810c8f370f3311b))
+* Rename queued message "Steer" action label to "Send now" ([#45216](https://github.com/n8n-io/n8n/issues/45216)) ([784fec8](https://github.com/n8n-io/n8n/commit/784fec807c35452bab2a201330b0f9476a23da64))
+* Return manual session history as JSON ([#43607](https://github.com/n8n-io/n8n/issues/43607)) ([09dd54f](https://github.com/n8n-io/n8n/commit/09dd54f1e88a6580d48cd6fcd83185ed5b308376))
+* **Snowflake Node:** Send failed statements to the error output ([#44570](https://github.com/n8n-io/n8n/issues/44570)) ([8146411](https://github.com/n8n-io/n8n/commit/8146411b5ae8ff8bc29ec80a12ab393e17b3dab5))
+* **Splunk Node:** Parse XML responses without repeating requests ([#38546](https://github.com/n8n-io/n8n/issues/38546)) ([0f3ec50](https://github.com/n8n-io/n8n/commit/0f3ec5042477e569866544193b2cfad97d56d319))
+* Validate community node codex categories in JSON and inline ([#39697](https://github.com/n8n-io/n8n/issues/39697)) ([0c087a5](https://github.com/n8n-io/n8n/commit/0c087a50140f429fb8da829d7093c4698345fe54))
+* **Weaviate Vector Store Node:** Keep a max vector distance of 0 ([#44028](https://github.com/n8n-io/n8n/issues/44028)) ([e6ac7ef](https://github.com/n8n-io/n8n/commit/e6ac7ef805e413da61dcd4a337f4231916a9b636))
+
+
+### Features
+
+* **ai-builder:** Show attached workflows as cards in the Assistant ([#44996](https://github.com/n8n-io/n8n/issues/44996)) ([add2e29](https://github.com/n8n-io/n8n/commit/add2e29e5e80f8ff5e50bf9d56933f6dce8cb00d))
+* **API, core:** Add who can promote, approve, and apply settings for promotions ([#44495](https://github.com/n8n-io/n8n/issues/44495)) ([a30dec4](https://github.com/n8n-io/n8n/commit/a30dec4acdc04aea7fae8fa62a393ceabae79062))
+* **API:** Trim the promotion scopes to 8 ([#44250](https://github.com/n8n-io/n8n/issues/44250)) ([68c45dc](https://github.com/n8n-io/n8n/commit/68c45dce1c98565c49f79468102edf85b91c8123))
+* Bump N8N_NODES_API_VERSION to 3 ([2a8a63c](https://github.com/n8n-io/n8n/commit/2a8a63cad61d07456b2e0a99deed84469ee166c1))
+* **core, editor:** Enforce workflow reviews on project level ([#44315](https://github.com/n8n-io/n8n/issues/44315)) ([fd7b57b](https://github.com/n8n-io/n8n/commit/fd7b57b5a89cf35b69454040b0271fc62bba1f56))
+* **core, editor:** Set the workflow review requirement for each project ([#44914](https://github.com/n8n-io/n8n/issues/44914)) ([d294b35](https://github.com/n8n-io/n8n/commit/d294b35822c2849bf8f86e5406b2527283067ec6))
+* **core:** Add agent archive and unarchive endpoints to public API ([#44982](https://github.com/n8n-io/n8n/issues/44982)) ([8757580](https://github.com/n8n-io/n8n/commit/87575809a0ca764ed251ae9d4b91abed04227a93))
+* **core:** Add agent attention flags and session filtering ([#44304](https://github.com/n8n-io/n8n/issues/44304)) ([d2559ee](https://github.com/n8n-io/n8n/commit/d2559ee8b8b40a6e390ee5754464da7b32838f56))
+* **core:** Add durable Human review for Agent tool approvals ([#44220](https://github.com/n8n-io/n8n/issues/44220)) ([9528447](https://github.com/n8n-io/n8n/commit/952844744eaa3e3b3d1add6be93d259503009ae1))
+* **core:** Add import as a preference creation source ([#45012](https://github.com/n8n-io/n8n/issues/45012)) ([9f9dbd6](https://github.com/n8n-io/n8n/commit/9f9dbd669862b25bbf9b2fdd17debc4b74072f6a))
+* **core:** Add workflow checks to agent tool guardrails ([#44732](https://github.com/n8n-io/n8n/issues/44732)) ([84529ac](https://github.com/n8n-io/n8n/commit/84529acc790b4d7347ed9d5d6d2d5ec338669672))
+* **core:** Agent publish endpoints on public API ([#44985](https://github.com/n8n-io/n8n/issues/44985)) ([95d1d9f](https://github.com/n8n-io/n8n/commit/95d1d9f2ef99dfa174f293de64edf6f3403f8002))
+* **core:** Evaluate urlEncode, base64Decode and format natively ([#44875](https://github.com/n8n-io/n8n/issues/44875)) ([e2ad6aa](https://github.com/n8n-io/n8n/commit/e2ad6aaa3328ffcc45d99873e4bebc8562ad49b1))
+* **core:** Promote a credential on its own under its owner project ([#44855](https://github.com/n8n-io/n8n/issues/44855)) ([fd785c5](https://github.com/n8n-io/n8n/commit/fd785c5f469f02f0af238d6c913d7c94ad055d0f))
+* **core:** Send executionStarted for engine v2 runs the editor did not start ([#45035](https://github.com/n8n-io/n8n/issues/45035)) ([32c58ca](https://github.com/n8n-io/n8n/commit/32c58ca60d01261c137e13ecbb80a1b4cb9dbc20))
+* **core:** Set workflow review settings through environment variables ([#44542](https://github.com/n8n-io/n8n/issues/44542)) ([6fe71a9](https://github.com/n8n-io/n8n/commit/6fe71a9d7afe18077684861dd88e9b5ba666584e))
+* **core:** Turn off the chat hub module by default ([#38612](https://github.com/n8n-io/n8n/issues/38612)) ([c23837d](https://github.com/n8n-io/n8n/commit/c23837da98583666478d244f5d9d4512361d482e))
+* **editor:** Add Talk to agent link to the n8n Chat modal ([#45072](https://github.com/n8n-io/n8n/issues/45072)) ([d59d091](https://github.com/n8n-io/n8n/commit/d59d09149c6fe4788e4f85194ba731bafa259332))
+* **editor:** Ask before an admin restricts a type that workflows use… ([#45031](https://github.com/n8n-io/n8n/issues/45031)) ([9888e1b](https://github.com/n8n-io/n8n/commit/9888e1b2ff4b24fbda430ce3b9f5052d0314a6e9))
+* **editor:** Show a warning on canvas nodes that use a restricted credential type ([#44989](https://github.com/n8n-io/n8n/issues/44989)) ([5478f8b](https://github.com/n8n-io/n8n/commit/5478f8b1b2f1948ffc85b69bf3af5604d8f77a74))
+* **Kafka Node:** Add TLS material to the Schema Registry credential ([#44611](https://github.com/n8n-io/n8n/issues/44611)) ([c7f802b](https://github.com/n8n-io/n8n/commit/c7f802b85554dfd8f4a4ec8122f742ae38a8c8a7))
+* **Microsoft Teams Trigger Node:** Keep changeType, resource and parsed ids in each item ([#44790](https://github.com/n8n-io/n8n/issues/44790)) ([6c29386](https://github.com/n8n-io/n8n/commit/6c293867f7bb68c7b86337b1409a7b89d3c6be78))
+* **Oracle Database Node:** Add Start After keyset paging to Select ([#44245](https://github.com/n8n-io/n8n/issues/44245)) ([7cf15b7](https://github.com/n8n-io/n8n/commit/7cf15b7bccc2f80bf703af79c3e393ca9a702299))
+* Remove dead nodes ([#34327](https://github.com/n8n-io/n8n/issues/34327)) ([8035d9c](https://github.com/n8n-io/n8n/commit/8035d9ccb06742ccad49d3e1ac62c6c77366bfd3))
+* Remove Edit Image v1-1.1 ([a2d527d](https://github.com/n8n-io/n8n/commit/a2d527d18e6ba3dc46a23ecff43c521c3bad39e7))
+
+
+### Performance Improvements
+
+* **editor:** Render signed-in pages without waiting for node and credential types ([#44828](https://github.com/n8n-io/n8n/issues/44828)) ([3cb9f1c](https://github.com/n8n-io/n8n/commit/3cb9f1c1309f80c301075316601ae71e6704a87d))
+
+
+### Reverts
+
+* Revert "feat(Execute Sub-workflow Node)!: Remove "Run once for each item" mode (#37036)" ([daa56f9](https://github.com/n8n-io/n8n/commit/daa56f97a78d72ad3d8069bef71b3c1da958a68c)), closes [#37036](https://github.com/n8n-io/n8n/issues/37036)
+* Revert "chore: baseline migration timestamps for 3.x sync" ([8f251d1](https://github.com/n8n-io/n8n/commit/8f251d102d3ff71907b77b1f02e4880842e170af))
+* Revert "feat(core)!: Remove the "Any workflow" caller policy (#38381)" ([fcbb717](https://github.com/n8n-io/n8n/commit/fcbb717b160bdded5bddf34e302ceca1ab94b415)), closes [#38381](https://github.com/n8n-io/n8n/issues/38381)
+
+
 # [3.4.0](https://github.com/n8n-io/n8n/compare/n8n@2.49.0...n8n@3.4.0) (2026-11-24)
 
 
