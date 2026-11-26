@@ -4,7 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, READ_ONLY_ANNOTATIONS } from 'n8n-workflow';
 
 export class NoOp implements INodeType {
 	description: INodeTypeDescription = {
@@ -14,6 +14,7 @@ export class NoOp implements INodeType {
 		iconColor: 'neutral',
 		group: ['organization'],
 		version: 1,
+		annotations: READ_ONLY_ANNOTATIONS,
 		description: 'No Operation',
 		defaults: {
 			name: 'No Operation, do nothing',
