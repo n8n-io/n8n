@@ -155,6 +155,14 @@ describe('Data Transformation Functions', () => {
 				).toBeDefined();
 			});
 
+			test('should treat date-only string bounds as local midnight', () => {
+				expect(
+					evaluate(
+						"={{ DateTime.local(2023, 6, 16, 23, 0).isBetween('2023-06-16', '2023-06-17') }}",
+					),
+				).toBe(true);
+			});
+
 			test('should work on string and DateTime', () => {
 				expect(evaluate("={{ $now.isBetween($now, '2023-06-23') }}")).toBeDefined();
 			});
