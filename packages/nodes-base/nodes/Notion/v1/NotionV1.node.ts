@@ -20,6 +20,7 @@ import {
 	formatBlocks,
 	formatTitle,
 	getBlockTypesOptions,
+	getCurrentPageId,
 	mapFilters,
 	mapProperties,
 	mapSorting,
@@ -161,9 +162,7 @@ export class NotionV1 implements INodeType {
 				return returnData;
 			},
 			async getDatabaseIdFromPage(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const pageIdValue = this.getCurrentNodeParameter('pageId', { extractValue: true });
-				const pageId =
-					typeof pageIdValue === 'string' && pageIdValue ? extractPageId(pageIdValue) : '';
+				const pageId = getCurrentPageId.call(this);
 				if (!pageId) {
 					return [];
 				}
@@ -209,9 +208,7 @@ export class NotionV1 implements INodeType {
 			async getDatabaseOptionsFromPage(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				const pageIdValue = this.getCurrentNodeParameter('pageId', { extractValue: true });
-				const pageId =
-					typeof pageIdValue === 'string' && pageIdValue ? extractPageId(pageIdValue) : '';
+				const pageId = getCurrentPageId.call(this);
 				if (!pageId) {
 					return [];
 				}

@@ -153,6 +153,49 @@ describe('Notion V2 load options', () => {
 	});
 
 	describe('getDatabaseOptionsFromPage', () => {
+		it('returns select options for a valid database page URL', async () => {
+			const pageId = '4eb10d5001254b7faaa831d72d9445aa';
+			mockNotionApiRequest
+				.mockResolvedValueOnce({ parent: { database_id: 'database-123' } })
+				.mockResolvedValueOnce({
+					properties: {
+						Status: {
+							type: 'select',
+							select: { options: [{ name: 'In Progress' }, { name: 'Done' }] },
+						},
+					},
+				});
+
+			const context = createNotionV2LoadOptionsContext(
+				{
+					resource: 'databasePage',
+					operation: 'update',
+					pageId: {
+						__rl: true,
+						mode: 'url',
+						value: `https://www.notion.com/My-Database-Page-${pageId}`,
+					},
+					propertiesUi: {
+						propertyValues: [{ key: 'Status|select', type: 'select' }],
+					},
+				},
+				'parameters.propertiesUi.propertyValues[0].selectValue',
+			);
+
+			const result = await getDatabaseOptionsFromPage.call(context);
+
+			expect(result).toEqual([
+				{ name: 'In Progress', value: 'In Progress' },
+				{ name: 'Done', value: 'Done' },
+			]);
+			expect(mockNotionApiRequest).toHaveBeenNthCalledWith(1, 'GET', requestPath`/pages/${pageId}`);
+			expect(mockNotionApiRequest).toHaveBeenNthCalledWith(
+				2,
+				'GET',
+				requestPath`/databases/database-123`,
+			);
+		});
+
 		it.each([
 			['incomplete url resourceLocator object', { __rl: true, mode: 'url' }],
 			['incomplete id resourceLocator object', { __rl: true, mode: 'id' }],

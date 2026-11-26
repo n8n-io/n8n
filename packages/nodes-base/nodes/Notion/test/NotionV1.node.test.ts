@@ -46,6 +46,42 @@ describe('NotionV1', () => {
 		expect(mockNotionApiRequest).toHaveBeenCalledWith('GET', requestPath`/users/team%2Fmember`);
 	});
 
+	it('loads database properties and select options for a valid pageId', async () => {
+		const pageId = '4eb10d5001254b7faaa831d72d9445aa';
+		const node = createNotionV1();
+		const context = {
+			getCurrentNodeParameter: vi.fn((name: string) =>
+				name === 'pageId' ? `https://www.notion.com/My-Page-${pageId}` : 'Status|select',
+			),
+		} as unknown as ILoadOptionsFunctions;
+
+		mockNotionApiRequest
+			.mockResolvedValueOnce({ parent: { database_id: 'database-123' } })
+			.mockResolvedValueOnce({
+				properties: {
+					Status: { type: 'select', select: { options: [{ name: 'Done', id: 'opt-1' }] } },
+					Name: { type: 'title' },
+				},
+			})
+			.mockResolvedValueOnce({ parent: { database_id: 'database-123' } })
+			.mockResolvedValueOnce({
+				properties: {
+					Status: { type: 'select', select: { options: [{ name: 'Done', id: 'opt-1' }] } },
+				},
+			});
+
+		const properties = await node.methods.loadOptions.getDatabaseIdFromPage.call(context);
+		expect(properties.map(({ name, value }) => [name, value])).toEqual([
+			['Name - (title)', 'Name|title'],
+			['Status - (select)', 'Status|select'],
+		]);
+		await expect(
+			node.methods.loadOptions.getDatabaseOptionsFromPage.call(context),
+		).resolves.toEqual([{ name: 'Done', value: 'opt-1' }]);
+		expect(mockNotionApiRequest).toHaveBeenNthCalledWith(1, 'GET', requestPath`/pages/${pageId}`);
+		expect(mockNotionApiRequest).toHaveBeenNthCalledWith(3, 'GET', requestPath`/pages/${pageId}`);
+	});
+
 	it.each([
 		['incomplete url resourceLocator object', { __rl: true, mode: 'url' }],
 		['null value', null],

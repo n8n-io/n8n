@@ -3,8 +3,8 @@ import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n
 import { requestPath } from 'n8n-workflow';
 
 import {
-	extractPageId,
 	getBlockTypesOptions,
+	getCurrentPageId,
 	notionApiRequest,
 	notionApiRequestAllItems,
 } from '../../shared/GenericFunctions';
@@ -138,8 +138,7 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 export async function getDatabaseIdFromPage(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const pageIdValue = this.getCurrentNodeParameter('pageId', { extractValue: true });
-	const pageId = typeof pageIdValue === 'string' && pageIdValue ? extractPageId(pageIdValue) : '';
+	const pageId = getCurrentPageId.call(this);
 	if (!pageId) {
 		return [];
 	}
@@ -185,8 +184,7 @@ export async function getDatabaseIdFromPage(
 export async function getDatabaseOptionsFromPage(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const pageIdValue = this.getCurrentNodeParameter('pageId', { extractValue: true });
-	const pageId = typeof pageIdValue === 'string' && pageIdValue ? extractPageId(pageIdValue) : '';
+	const pageId = getCurrentPageId.call(this);
 	if (!pageId) {
 		return [];
 	}

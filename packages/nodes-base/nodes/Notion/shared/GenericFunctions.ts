@@ -941,6 +941,10 @@ export function extractPageId(page: unknown = ''): string {
 	return page;
 }
 
+export function getCurrentPageId(this: ILoadOptionsFunctions): string {
+	return extractPageId(this.getCurrentNodeParameter('pageId', { extractValue: true }));
+}
+
 export function getPageId(this: IExecuteFunctions, i: number) {
 	const page = this.getNodeParameter('pageId', i, {}) as INodeParameterResourceLocator;
 	let pageId = '';
