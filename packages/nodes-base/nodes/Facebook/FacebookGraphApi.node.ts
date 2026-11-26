@@ -359,6 +359,7 @@ export class FacebookGraphApi implements INodeType {
 						displayName: 'Query Parameters JSON',
 						name: 'queryParametersJson',
 						type: 'json',
+						validateType: 'object',
 						default: '{}',
 						placeholder: '{"field_name": "field_value"}',
 						description: 'The query parameters to send, defined as a JSON object',
@@ -433,15 +434,9 @@ export class FacebookGraphApi implements INodeType {
 
 				// Add the query parameters defined as a JSON object
 				if (options.queryParametersJson) {
-					let queryParametersJsonObj = {};
-					try {
-						queryParametersJsonObj = JSON.parse(options.queryParametersJson as string);
-					} catch {
-						/* Do nothing, at least for now */
-					}
 					requestOptions.qs = {
 						...qs,
-						...queryParametersJsonObj,
+						...(options.queryParametersJson as IDataObject),
 					};
 				}
 			}

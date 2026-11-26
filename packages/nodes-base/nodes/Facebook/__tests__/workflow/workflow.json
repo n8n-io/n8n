@@ -2,6 +2,46 @@
 	"name": "Facebook Graph API",
 	"nodes": [
 		{
+			"parameters": {
+				"graphApiVersion": "v23.0",
+				"node": "page_expression",
+				"options": {
+					"queryParametersJson": "={{ { \"fields\": \"id,name\" } }}"
+				}
+			},
+			"id": "0fb5c9ca-506f-53eb-ac19-5e98abe03b78",
+			"name": "Get Node Query Expression",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"typeVersion": 1,
+			"position": [300, 2150],
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "1",
+					"name": "Facebook Graph API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"graphApiVersion": "v23.0",
+				"node": "page_json",
+				"options": {
+					"queryParametersJson": "{\"limit\": 5}"
+				}
+			},
+			"id": "dbafd99b-1233-52ba-b688-429fc14899ad",
+			"name": "Get Node Query JSON",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"typeVersion": 1,
+			"position": [300, 2150],
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "1",
+					"name": "Facebook Graph API"
+				}
+			}
+		},
+		{
 			"parameters": {},
 			"id": "8b0d4c7e-1f1a-4c1e-9d3a-000000000001",
 			"name": "When clicking 'Execute workflow'",
@@ -77,6 +117,8 @@
 		"When clicking 'Execute workflow'": {
 			"main": [
 				[
+					{ "node": "Get Node Query Expression", "type": "main", "index": 0 },
+					{ "node": "Get Node Query JSON", "type": "main", "index": 0 },
 					{ "node": "Get Node", "type": "main", "index": 0 },
 					{ "node": "Get Edge", "type": "main", "index": 0 },
 					{ "node": "Post Video Host", "type": "main", "index": 0 }

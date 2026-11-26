@@ -43,7 +43,6 @@ const jsonValidateTypePending = [
 	'./nodes/Discord/**',
 	'./nodes/Elastic/**',
 	'./nodes/ExecuteWorkflow/**',
-	'./nodes/Facebook/**',
 	'./nodes/Ghost/**',
 	'./nodes/Google/CloudStorage/**',
 	'./nodes/GraphQL/**',
