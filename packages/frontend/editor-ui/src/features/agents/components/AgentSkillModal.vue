@@ -1159,6 +1159,11 @@ watch(
 	{ immediate: true },
 );
 const displayedSkill = computed(() => viewedVersion.value?.skill ?? skill.value);
+const displayedOutsideProjectWorkflowIds = computed(() =>
+	viewedVersion.value && viewedVersion.value.version !== baseVersion.value
+		? []
+		: skillOutsideProjectWorkflowIds.value,
+);
 const viewingText = computed(() => {
 	const viewed = viewedVersion.value;
 	if (!viewed) return '';
@@ -1849,7 +1854,7 @@ function onRemove() {
 						:instance-skill="mentionsInInstanceSkill"
 						:available-to-mcp="mentionsAvailableToMcp"
 						:agent-context="!!props.data.agentId"
-						:outside-project-workflow-ids="skillOutsideProjectWorkflowIds"
+						:outside-project-workflow-ids="displayedOutsideProjectWorkflowIds"
 						@add-workflow="onAddWorkflow"
 						@add-reference="onAddReference"
 						@remove-reference="onRemoveReference"

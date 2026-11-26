@@ -71,11 +71,13 @@ import { compareSkillFilePaths, skillContentHash } from '../utils/skill-content-
 import { skillGroupPage, type SkillSourceGroup } from '../utils/skill-group-page';
 import { getSkillHash } from '../utils/skill-hash';
 import { withUnsentSkillFiles } from '../utils/skill-model-update';
+import { withSkillWorkflowMentionHint } from '../utils/skill-workflow-mention-hint';
 import { addedWorkflowMentionIds } from '../utils/skill-workflow-mentions';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
+import { WorkflowsInSkillsFlagGate } from './workflows-in-skills-flag-gate';
 import { SkillSyncedFromService } from './skill-synced-from.service';
 import {
 	blocksDelete,
@@ -170,6 +172,7 @@ export class SkillService {
 		private readonly sourceRepository: SkillSourceRepository,
 		private readonly skillSyncFlagGate: SkillSyncFlagGate,
 		private readonly sourceClients: SkillSourceClientRegistry,
+		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
 	// ---------------------------------------------------------------- user actions
@@ -377,12 +380,11 @@ export class SkillService {
 		const rows = await this.skillRepository.findVersionsByIds(
 			[...versionIds.values()].filter((versionId) => !isKnown(versionId)),
 		);
+		const hintsWorkflowMentions = await this.workflowsInSkillsFlagGate.isEnabled();
 		const contents = new Map(
-			await Promise.all(
-				[...rows].map(
-					async ([versionId, row]) =>
-						[versionId, await this.withMentionHint(toMcpSkillContent(row))] as const,
-				),
+			[...rows].map(
+				([versionId, row]) =>
+					[versionId, withMentionHint(toMcpSkillContent(row), hintsWorkflowMentions)] as const,
 			),
 		);
 		return {
@@ -396,10 +398,6 @@ export class SkillService {
 		};
 	}
 
-	private async withMentionHint(content: McpSkillContent): Promise<McpSkillContent> {
-		return { ...content, skill: await this.skillRuntime.withWorkflowMentionHint(content.skill) };
-	}
-
 	/** The latest saved version of a project or instance skill, for the MCP skills extension. */
 	async readForMcp(user: User, skillId: string): Promise<McpSkillContent | null> {
 		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
@@ -411,7 +409,7 @@ export class SkillService {
 			return null;
 		}
 		return {
-			...(await this.withMentionHint(toMcpSkillContent(row))),
+			...withMentionHint(toMcpSkillContent(row), await this.workflowsInSkillsFlagGate.isEnabled()),
 			...(await this.mcpOriginOf(skillId)),
 		};
 	}
@@ -1184,4 +1182,12 @@ function sourceLabelOf(source: SkillSource): string {
  */
 function visibilityOf(projectIds: string[] | null): SkillVisibility {
 	return { projectIds: projectIds ?? 'all' };
+}
+
+function withMentionHint(
+	content: McpSkillContent,
+	hintsWorkflowMentions: boolean,
+): McpSkillContent {
+	if (!hintsWorkflowMentions) return content;
+	return { ...content, skill: withSkillWorkflowMentionHint(content.skill) };
 }

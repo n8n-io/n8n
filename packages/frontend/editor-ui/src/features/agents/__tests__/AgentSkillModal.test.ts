@@ -3325,6 +3325,47 @@ describe('Compare mode', () => {
 		expect(queryByTestId('agent-skill-workflow-warnings')).not.toBeInTheDocument();
 	});
 
+	it('shows no outside-project warning while it shows a different version', async () => {
+		mockedStore(usePostHog).isVariantEnabled = vi.fn(
+			(name: string, variant: string) =>
+				name === WORKFLOWS_IN_SKILLS_EXPERIMENT.name &&
+				variant === WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		);
+		mockedStore(useWorkflowsListStore).searchWorkflows = vi
+			.fn()
+			.mockResolvedValue(callableWorkflows(['wf1', 'wf2']));
+		const mentioning = (skill: AgentSkill) => ({
+			...skill,
+			instructions: `${skill.instructions} Run [Archive](n8n://workflow/wf2).`,
+		});
+		getSkillVersion.mockImplementation(async (_context: unknown, _id: string, version: number) => ({
+			id: `v${version}`,
+			version,
+			createdBy: null,
+			createdAt: '2026-10-20T11:07:00.000Z',
+			skill: mentioning(version === 1 ? v1 : v2),
+		}));
+		getAgentSkillWorkflowAccess.mockResolvedValue({ outsideProjectWorkflowIds: ['wf2'] });
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: mentioning(v2),
+			skillId: 'tone',
+			skillRefsEnabled: true,
+			latestVersion: 2,
+		});
+
+		expect(await findByTestId('agent-skill-workflow-warnings')).toBeInTheDocument();
+
+		await userEvent.click(getByTestId('agent-skill-versions-button'));
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+
+		expect(await findByTestId('agent-skill-viewing-version')).toBeInTheDocument();
+		expect(queryByTestId('agent-skill-workflow-warnings')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('agent-skill-version-done'));
+
+		expect(await findByTestId('agent-skill-workflow-warnings')).toBeInTheDocument();
+	});
+
 	it('compares a version from the panel with the version the editor shows, and leaves with Done', async () => {
 		const { findByTestId, getByTestId, queryByTestId } = renderModal({
 			skill: v2,

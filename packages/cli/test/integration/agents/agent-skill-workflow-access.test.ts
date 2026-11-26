@@ -20,9 +20,11 @@ import { AgentValidationService } from '@/modules/agents/agent-validation.servic
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
+import { getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { SkillService, WorkflowsInSkillsFlagGate } from '@/modules/skills';
-import { deleteAllSkills } from '@/modules/skills/testing';
+import { deleteAllSkills, findLatestSkillVersion } from '@/modules/skills/testing';
 import { Telemetry } from '@/telemetry';
 
 import { createMember, createOwner } from '../shared/db/users';
@@ -137,6 +139,32 @@ describe('AgentSkillWorkflowAccessService', () => {
 		await expect(
 			service.findOutsideProjectWorkflowIds(member, agentProject.id, agentId, skillId),
 		).resolves.toEqual([readable.id]);
+	});
+
+	it('reads the skill version that the agent draft pins', async () => {
+		const outside = await createWorkflow({ name: 'Outside' }, otherProject);
+		const skillId = await createSkillMentioning([outside]);
+		const pinnedVersion = await findLatestSkillVersion(skillId);
+		await Container.get(SkillService).saveTrusted(
+			skillId,
+			{
+				instructions: 'Help.',
+				baseSkillHash: getAgentSkillHash({
+					name: 'Skill',
+					description: 'Skill description',
+					instructions: `Use ${formatSkillWorkflowMention({ workflowId: outside.id, name: outside.name })}.`,
+				}),
+			},
+			owner.id,
+		);
+		const agentId = await createAgent(agentProject.id);
+		await Container.get(AgentSkillRepository).replaceDependencies(agentId, [
+			{ skillId, versionId: pinnedVersion?.id },
+		]);
+
+		await expect(
+			service.findOutsideProjectWorkflowIds(owner, agentProject.id, agentId, skillId),
+		).resolves.toEqual([outside.id]);
 	});
 
 	it('lists nothing when workflows in skills are off', async () => {
