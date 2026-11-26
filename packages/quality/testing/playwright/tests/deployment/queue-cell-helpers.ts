@@ -121,3 +121,81 @@ export async function readBullJobCounter(stack: N8NStack): Promise<number | null
 	}
 	return Number.parseInt(raw, 10);
 }
+
+export type RedisEngine = 'redis' | 'valkey';
+
+export interface RedisServerInfo {
+	engine: RedisEngine;
+	version: string;
+	majorVersion: number;
+	fields: Record<string, string>;
+}
+
+/**
+ * Parses `INFO server` output from Redis or Valkey and distinguishes the
+ * engine. Valkey retains a compatibility `redis_version` line alongside
+ * `server_name:valkey` and `valkey_version`, so Valkey markers take precedence.
+ */
+export function parseRedisServerInfo(rawInfo: string): RedisServerInfo {
+	const fields: Record<string, string> = {};
+	for (const rawLine of rawInfo.split(/\r?\n/)) {
+		const line = rawLine.trim();
+		if (!line || line.startsWith('#')) continue;
+		const separator = line.indexOf(':');
+		if (separator <= 0) continue;
+		const key = line.slice(0, separator).trim();
+		const value = line.slice(separator + 1).trim();
+		fields[key] = value;
+	}
+
+	const serverName = fields.server_name?.toLowerCase();
+	const valkeyVersion = fields.valkey_version;
+	const redisVersion = fields.redis_version;
+
+	let engine: RedisEngine;
+	let version: string;
+
+	if (serverName === 'valkey' || valkeyVersion) {
+		engine = 'valkey';
+		version = valkeyVersion ?? '';
+		if (!version) {
+			throw new Error(
+				`INFO server reported Valkey without valkey_version: ${rawInfo.slice(0, 400)}`,
+			);
+		}
+	} else if (serverName && serverName !== 'redis') {
+		throw new Error(`Unexpected INFO server server_name: "${fields.server_name}"`);
+	} else if (redisVersion) {
+		engine = 'redis';
+		version = redisVersion;
+	} else {
+		throw new Error(
+			`INFO server output missing redis_version and valkey_version: ${rawInfo.slice(0, 400)}`,
+		);
+	}
+
+	const majorMatch = /^(\d+)\./.exec(version);
+	if (!majorMatch) {
+		throw new Error(`Unable to parse major version from ${engine} version "${version}"`);
+	}
+
+	return {
+		engine,
+		version,
+		majorVersion: Number.parseInt(majorMatch[1], 10),
+		fields,
+	};
+}
+
+/** Runs `INFO server` on the stack Redis/Valkey container and returns its parsed server identity. */
+export async function readRedisServerInfo(stack: N8NStack): Promise<RedisServerInfo> {
+	const redis = stack.serviceResults.redis?.container;
+	if (!redis) {
+		throw new Error('Expected a Redis/Valkey container in the stack');
+	}
+	const result = await redis.exec(['redis-cli', '--raw', 'INFO', 'server']);
+	if (result.exitCode !== 0) {
+		throw new Error(`redis-cli INFO server failed (${result.exitCode}): ${result.output}`);
+	}
+	return parseRedisServerInfo(result.stdout || result.output);
+}
