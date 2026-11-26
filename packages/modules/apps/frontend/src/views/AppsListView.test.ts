@@ -54,7 +54,6 @@ const app = (id: string): AppResponse => ({
 	projectId: 'project-1',
 	name: `App ${id}`,
 	namespace: `app-${id}`,
-	visibility: 'project',
 	draftVersionId: null,
 	publishedVersionId: null,
 	publishedUrl: null,

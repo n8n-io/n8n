@@ -23,7 +23,6 @@ const app: AppResponse = {
 	projectId: 'project-1',
 	name: 'Expense tracker',
 	namespace: 'expenses',
-	visibility: 'project',
 	draftVersionId: null,
 	publishedVersionId: null,
 	publishedUrl: null,

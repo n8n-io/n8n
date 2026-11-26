@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-import type { AppVisibility } from './app.schema';
 import { dataTableFilterSchema } from './data-table-filter.schema';
 import { dataTableColumnNameSchema, dataTableColumnValueSchema } from './data-table.schema';
 
@@ -146,7 +145,6 @@ export type AppRuntimeMeResponse = {
 		firstName: string | null;
 		lastName: string | null;
 	};
-	visibility: AppVisibility;
 };
 
 export const APP_RUNTIME_ERROR_CODES = [

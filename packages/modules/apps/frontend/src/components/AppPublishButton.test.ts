@@ -31,7 +31,6 @@ const app = (publishedVersionId: string | null = null): AppResponse => ({
 	projectId: 'project-1',
 	name: 'Expense tracker',
 	namespace: 'expenses',
-	visibility: 'project',
 	draftVersionId: 'v2',
 	publishedVersionId,
 	publishedUrl: publishedVersionId ? PUBLISHED_URL : null,

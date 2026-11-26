@@ -20,7 +20,6 @@ const app = (id: string): AppResponse => ({
 	projectId: 'project-1',
 	name: `App ${id}`,
 	namespace: `app-${id}`,
-	visibility: 'project',
 	draftVersionId: null,
 	publishedVersionId: null,
 	publishedUrl: null,
@@ -49,7 +48,7 @@ const globalOptions = {
 					<button data-test-id="app-header" @click="$emit('deleted', app?.id)">{{ app?.name }}</button>
 					<span data-test-id="publishable-version">{{ publishableVersion?.id }}</span>
 					<button data-test-id="publish" @click="$emit('updated', { ...app, name: 'Published app', publishedVersionId: 'v9' })" />
-					<button data-test-id="share" @click="$emit('updated', { ...app, visibility: 'public' })" />
+					<button data-test-id="share" @click="$emit('updated', { ...app, name: 'Renamed' })" />
 					<button data-test-id="configure" @click="$emit('update:tab', 'configure')" />
 					<button data-test-id="show-versions" @click="$emit('showVersions')" />
 				</div>`,

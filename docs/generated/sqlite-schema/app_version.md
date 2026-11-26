@@ -84,7 +84,6 @@ erDiagram
   varchar_36_ projectId FK
   varchar publishedVersionId FK
   datetime_3_ updatedAt
-  varchar_16_ visibility
 }
 "app_artifact" {
   varchar appId

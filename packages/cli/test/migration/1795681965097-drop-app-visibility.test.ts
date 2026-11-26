@@ -9,11 +9,11 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'RemoveInstanceAppVisibility1795455809960';
+const migrationName = 'DropAppVisibility1795681965097';
 
 type Row = Record<string, string | number | null>;
 
-describe('RemoveInstanceAppVisibility migration', () => {
+describe('DropAppVisibility migration', () => {
 	let dataSource: DataSource;
 	let context: TestMigrationContext;
 	let projectId: string;
@@ -68,22 +68,21 @@ describe('RemoveInstanceAppVisibility migration', () => {
 		return id;
 	}
 
-	async function visibilityOf(appId: string) {
-		const [row] = await context.runQuery<{ visibility: string }[]>(
-			`SELECT ${column('visibility')} AS visibility FROM ${context.escape.tableName('app')} WHERE ${column('id')} = :appId`,
-			{ appId },
+	async function appRows() {
+		return await context.runQuery<Row[]>(
+			`SELECT * FROM ${context.escape.tableName('app')} ORDER BY ${column('namespace')}`,
 		);
-		return row?.visibility;
 	}
 
-	it('makes instance apps visible to project members and keeps the project apps', async () => {
+	it('drops the visibility column and keeps the apps', async () => {
 		const instanceApp = await insertApp('wiki', 'instance');
 		const projectApp = await insertApp('crm', 'project');
 
 		await migrate();
 
-		expect(await visibilityOf(instanceApp)).toBe('project');
-		expect(await visibilityOf(projectApp)).toBe('project');
+		const rows = await appRows();
+		expect(rows.map((row) => row.id)).toEqual([projectApp, instanceApp]);
+		for (const row of rows) expect(row).not.toHaveProperty('visibility');
 	});
 
 	it('keeps the versions of the apps', async () => {
@@ -106,9 +105,11 @@ describe('RemoveInstanceAppVisibility migration', () => {
 		expect(versions).toEqual([{ id: versionId }]);
 	});
 
-	it('rejects the instance visibility', async () => {
+	it('accepts new apps without a visibility', async () => {
 		await migrate();
 
-		await expect(insertApp('sales', 'instance')).rejects.toThrow();
+		const id = randomUUID();
+		await insertRow('app', { id, name: 'sales', namespace: 'sales', projectId });
+		expect((await appRows()).map((row) => row.id)).toEqual([id]);
 	});
 });

@@ -65,7 +65,6 @@ export class AppPublicationService {
 				...actor,
 				appId,
 				versionId,
-				visibility: before.visibility,
 				isFirstPublish: before.publishedVersionId === null,
 			});
 		}

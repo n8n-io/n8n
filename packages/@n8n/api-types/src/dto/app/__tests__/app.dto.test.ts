@@ -73,7 +73,6 @@ describe('app DTOs', () => {
 			projectId: 'aBcDeFgHiJkLmNoP',
 			name: 'App',
 			namespace: 'app',
-			visibility: 'project',
 			draftVersionId: uuid,
 			publishedVersionId: null,
 			publishedUrl: null,

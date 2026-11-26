@@ -24,7 +24,6 @@ const app: AppResponse = {
 	projectId: 'project-1',
 	name: 'SMM Dashboard',
 	namespace: 'smm',
-	visibility: 'project',
 	draftVersionId: 'v1',
 	publishedVersionId: null,
 	publishedUrl: null,

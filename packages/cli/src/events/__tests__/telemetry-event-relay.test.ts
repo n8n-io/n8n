@@ -6838,14 +6838,13 @@ describe('TelemetryEventRelay', () => {
 		it.each([
 			[
 				'app-created',
-				{ userId: 'user-1', threadId: 'thread-1', appId, projectId: 'p-1', visibility: 'project' },
+				{ userId: 'user-1', threadId: 'thread-1', appId, projectId: 'p-1' },
 				TELEMETRY_EVENT.APPS.USER_CREATED_APP,
 				{
 					app_id: appId,
 					project_id: 'p-1',
 					user_id: 'user-1',
 					thread_id: 'thread-1',
-					visibility: 'project',
 				},
 			],
 			[
@@ -6856,13 +6855,12 @@ describe('TelemetryEventRelay', () => {
 			],
 			[
 				'app-published',
-				{ userId: 'user-1', appId, versionId: 'v-1', visibility: 'project', isFirstPublish: true },
+				{ userId: 'user-1', appId, versionId: 'v-1', isFirstPublish: true },
 				TELEMETRY_EVENT.APPS.USER_PUBLISHED_APP,
 				{
 					app_id: appId,
 					version_id: 'v-1',
 					user_id: 'user-1',
-					access_level: 'project',
 					is_first_publish: true,
 				},
 			],

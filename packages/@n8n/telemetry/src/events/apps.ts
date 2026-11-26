@@ -1,9 +1,6 @@
-import { appVisibilitySchema } from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
-
-const visibility = z.enum(appVisibilitySchema.options);
 
 const actorUserId = z
 	.string()
@@ -22,7 +19,6 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 				.string()
 				.optional()
 				.describe('The n8n Assistant thread that created the app. Absent outside the Assistant'),
-			visibility,
 		}),
 	},
 	USER_OPENED_APP_BUILDER: {
@@ -43,7 +39,6 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 			app_id: z.string(),
 			version_id: z.string(),
 			user_id: actorUserId,
-			access_level: visibility.describe('Who can open the published app'),
 			is_first_publish: z
 				.boolean()
 				.describe('True when the app had no published version before this publish'),

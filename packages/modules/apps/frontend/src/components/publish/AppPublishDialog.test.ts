@@ -64,11 +64,11 @@ describe('AppPublishDialog', () => {
 		});
 	});
 
-	it('says that everyone in the project can open the app', async () => {
+	it('says which project members can open the app', async () => {
 		renderComponent();
 
 		expect(await screen.findByTestId('app-project-access-note')).toHaveTextContent(
-			'This app will be available to everyone in this project',
+			'Project members who can view apps can open this app',
 		);
 	});
 

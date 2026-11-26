@@ -1,4 +1,4 @@
-import type { AppVisibility, CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
+import type { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import {
 	BaseRepository,
 	escapeLike,
@@ -86,7 +86,7 @@ export class AppRepository extends BaseRepository<App> {
 
 	async createApp(
 		projectId: string,
-		dto: CreateAppDto & { id?: string; visibility: AppVisibility },
+		dto: CreateAppDto & { id?: string },
 		ctx: OperationContext = {},
 	): Promise<App> {
 		try {

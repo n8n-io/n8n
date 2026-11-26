@@ -46,7 +46,6 @@ const app: AppResponse = {
 	projectId: 'project-1',
 	name: 'Test app',
 	namespace: 'test-app',
-	visibility: 'project',
 	draftVersionId: null,
 	publishedVersionId: null,
 	publishedUrl: null,

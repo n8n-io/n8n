@@ -1,4 +1,3 @@
-import type { AppVisibility } from '@n8n/api-types';
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
@@ -13,9 +12,6 @@ export class App extends WithTimestamps {
 
 	@Column({ type: 'varchar', length: 128 })
 	namespace: string;
-
-	@Column({ type: 'varchar', length: 16, default: 'project' })
-	visibility: AppVisibility;
 
 	@Index()
 	@Column({ type: 'varchar', length: 36 })

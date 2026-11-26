@@ -48,8 +48,8 @@ Add components under `src/`. Keep files small and focused.
      with a recommended default. Do not ask about minor styling or details with
      safe defaults.
    - New app: call `create_app` with a short blueprint. The
-     user can review the description and edit the name, namespace, visibility,
-     and theme before approval. Include a high-level binding plan for the
+     user can review the description and edit the name, namespace and theme
+     before approval. Include a high-level binding plan for the
      workflows, data tables, and agents the app is likely to need. Do not delay
      the blueprint to design every resource or find every resource id. Mark a
      resource as `existing` and include its id only when you already know it.
@@ -144,9 +144,7 @@ project under a key. The app uses the key, never a resource ID.
 3. Remove a binding that the app no longer uses with `unbind_app_resource` and
    its `key`.
 4. Grant only the permissions that the app uses. Every visitor who can open
-   the app can use its bindings. On an `instance` app, this is every user of
-   the instance. Ask the user before you give an `instance` app write access, a
-   workflow or agent chat.
+   the app can use its bindings.
 5. Read `warnings` in each result. A missing resource or an unpublished
    workflow or agent gives the app an error. Tell the user about it.
 
@@ -228,12 +226,12 @@ The value has the format `user:<id>`. Read `appVisitor` only in a Code node.
 ## Several apps
 
 One conversation can build several apps for one requirement, for example a
-dashboard for all users and an admin app for the project. Create one app for
-each audience or access level. Each app has its own folder. Commit each app separately and always pass
-the right `appId`.
+form and a dashboard. Each app has its own folder. Commit each app separately
+and always pass the right `appId`.
 
 ## Publishing and access
 
 You cannot publish apps. Tell the user to publish with the Publish button of
-the app. The app uses the visibility that the user approved in the blueprint.
-The user can change it in the app settings.
+the app. Only members of the app's project who can view apps can open it. To
+give other users access, the user adds them to the project. An app cannot be
+open to the whole instance.

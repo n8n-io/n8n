@@ -180,9 +180,7 @@ describe('AppPublicationService', () => {
 			'emits app-published with isFirstPublish $isFirstPublish',
 			async ({ publishedVersionId, isFirstPublish }) => {
 				const { service, apps, events } = setup();
-				apps.findInProject.mockResolvedValue(
-					mock<App>({ id: appId, visibility: 'project', publishedVersionId }),
-				);
+				apps.findInProject.mockResolvedValue(mock<App>({ id: appId, publishedVersionId }));
 
 				await service.publish('project', appId, versionId, {}, actor);
 
@@ -190,7 +188,6 @@ describe('AppPublicationService', () => {
 					...actor,
 					appId,
 					versionId,
-					visibility: 'project',
 					isFirstPublish,
 				});
 			},

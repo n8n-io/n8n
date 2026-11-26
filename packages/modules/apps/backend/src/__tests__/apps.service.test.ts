@@ -80,14 +80,13 @@ describe('AppsService', () => {
 		expect(appRepository.list).toHaveBeenCalledWith(projectIds, query);
 	});
 
-	it('creates an app with project visibility by default', async () => {
+	it('creates an app in the project', async () => {
 		const { service, appRepository } = createService();
 		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
 		const app = mock<App>({
 			id: '11111111-1111-4111-8111-111111111111',
 			projectId: 'project-1',
 			...dto,
-			visibility: 'project',
 			draftVersionId: null,
 			publishedVersionId: null,
 			createdAt: new Date('2026-10-13T00:00:00.000Z'),
@@ -97,11 +96,8 @@ describe('AppsService', () => {
 		appRepository.createApp.mockResolvedValue(app);
 
 		const response = await service.createApp('project-1', dto);
-		expect(appRepository.createApp).toHaveBeenCalledWith(
-			'project-1',
-			expect.objectContaining({ visibility: 'project' }),
-		);
-		expect(response.visibility).toBe('project');
+		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', dto);
+		expect(response).toMatchObject({ id: app.id, projectId: 'project-1' });
 	});
 
 	it('creates an app with a caller-provided id', async () => {
@@ -118,7 +114,6 @@ describe('AppsService', () => {
 		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', {
 			...dto,
 			id,
-			visibility: 'project',
 		});
 	});
 
@@ -166,7 +161,6 @@ describe('AppsService', () => {
 		const app = mock<App>({
 			id: appId,
 			projectId: 'project-1',
-			visibility: 'project',
 			...dto,
 			draftVersionId: '22222222-2222-4222-8222-222222222222',
 			publishedVersionId: '33333333-3333-4333-8333-333333333333',
@@ -185,7 +179,6 @@ describe('AppsService', () => {
 			projectId: 'project-1',
 			name: 'Updated app',
 			namespace: 'updated-app',
-			visibility: 'project',
 			draftVersionId: '22222222-2222-4222-8222-222222222222',
 			publishedVersionId: '33333333-3333-4333-8333-333333333333',
 			createdAt: '2026-10-13T00:00:00.000Z',
@@ -220,7 +213,6 @@ describe('AppsService', () => {
 		});
 		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', {
 			...dto,
-			visibility: 'project',
 		});
 		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, {
 			namespace,
@@ -390,7 +382,6 @@ describe('AppsService', () => {
 		const appRow = (fields: Partial<App>) =>
 			mock<App>({
 				id: appId,
-				visibility: 'project',
 				publishedVersionId: null,
 				createdAt: new Date('2026-10-13T00:00:00.000Z'),
 				updatedAt: new Date('2026-10-13T00:00:00.000Z'),
@@ -409,7 +400,6 @@ describe('AppsService', () => {
 				...actor,
 				appId,
 				projectId: 'project-1',
-				visibility: 'project',
 			});
 		});
 

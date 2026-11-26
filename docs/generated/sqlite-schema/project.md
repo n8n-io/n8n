@@ -198,7 +198,6 @@ erDiagram
   varchar_36_ projectId FK
   varchar publishedVersionId FK
   datetime_3_ updatedAt
-  varchar_16_ visibility
 }
 "data_table" {
   datetime_3_ createdAt

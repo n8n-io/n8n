@@ -21,7 +21,7 @@ describe('AppSharePopover', () => {
 
 		expect(getByTestId('link')).toHaveTextContent(PUBLISHED_URL);
 		expect(getByTestId('app-project-access-note')).toHaveTextContent(
-			'This app will be available to everyone in this project',
+			'Project members who can view apps can open this app',
 		);
 	});
 });

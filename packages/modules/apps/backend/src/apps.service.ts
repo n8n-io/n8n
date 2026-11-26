@@ -26,7 +26,6 @@ function toResponse(app: App, hosts: AppHostService): AppResponse {
 		projectId: app.projectId,
 		name: app.name,
 		namespace: app.namespace,
-		visibility: app.visibility,
 		draftVersionId: app.draftVersionId,
 		publishedVersionId: app.publishedVersionId,
 		publishedUrl: app.publishedVersionId ? hosts.origin(app.namespace) : null,
@@ -61,14 +60,12 @@ export class AppsService {
 		const app = await this.appRepository.createApp(projectId, {
 			...dto,
 			id: options.id,
-			visibility: 'project',
 		});
 		this.logger.debug('Created app.', { projectId, appId: app.id });
 		this.events.emit('app-created', {
 			...options.actor,
 			appId: app.id,
 			projectId,
-			visibility: app.visibility,
 		});
 		return toResponse(app, this.hosts);
 	}

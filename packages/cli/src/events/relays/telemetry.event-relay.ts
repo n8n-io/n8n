@@ -622,19 +622,12 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #region Apps
 
-	private appCreated({
-		userId,
-		threadId,
-		appId,
-		projectId,
-		visibility,
-	}: RelayEventMap['app-created']) {
+	private appCreated({ userId, threadId, appId, projectId }: RelayEventMap['app-created']) {
 		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_CREATED_APP, {
 			app_id: appId,
 			project_id: projectId,
 			user_id: userId,
 			thread_id: threadId,
-			visibility,
 		});
 	}
 
@@ -650,14 +643,12 @@ export class TelemetryEventRelay extends EventRelay {
 		userId,
 		appId,
 		versionId,
-		visibility,
 		isFirstPublish,
 	}: RelayEventMap['app-published']) {
 		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_PUBLISHED_APP, {
 			app_id: appId,
 			version_id: versionId,
 			user_id: userId,
-			access_level: visibility,
 			is_first_publish: isFirstPublish,
 		});
 	}

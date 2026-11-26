@@ -9,7 +9,6 @@ export const testApp = (overrides: Partial<AppResponse> = {}): AppResponse => ({
 	projectId: 'project-1',
 	name: 'Expense tracker',
 	namespace: 'expenses',
-	visibility: 'project',
 	draftVersionId: 'v2',
 	publishedVersionId: null,
 	publishedUrl: null,

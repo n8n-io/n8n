@@ -37,7 +37,6 @@ export interface AppUser {
 
 export interface MeResponse {
 	user: AppUser;
-	visibility: 'project' | 'instance';
 }
 
 export type RuntimeBinding =

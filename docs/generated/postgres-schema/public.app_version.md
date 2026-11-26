@@ -81,7 +81,6 @@ erDiagram
   varchar_36_ projectId FK
   uuid publishedVersionId FK
   timestamp_3__with_time_zone updatedAt
-  varchar_16_ visibility
 }
 "public.app_artifact" {
   uuid appId

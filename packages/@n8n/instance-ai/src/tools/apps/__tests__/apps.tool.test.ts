@@ -661,7 +661,6 @@ describe('app tools', () => {
 				{
 					...app(SERVER_ID),
 					namespace: 'todos',
-					visibility: 'project',
 					publishedUrl: 'https://todos.example.com',
 				},
 			],

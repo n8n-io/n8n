@@ -25,7 +25,6 @@ const app = (draftVersionId: string | null = 'v2'): AppResponse => ({
 	projectId: 'project-1',
 	name: 'Sales',
 	namespace: 'sales',
-	visibility: 'project',
 	draftVersionId,
 	publishedVersionId: null,
 	publishedUrl: null,

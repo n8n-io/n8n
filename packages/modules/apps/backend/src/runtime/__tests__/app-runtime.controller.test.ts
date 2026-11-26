@@ -42,7 +42,6 @@ const app = {
 	id: 'app-1',
 	namespace: 'crm',
 	projectId: 'project-1',
-	visibility: 'project',
 	draftVersionId: DRAFT_ID,
 	publishedVersionId: PUBLISHED_ID,
 } as App;
@@ -423,7 +422,6 @@ describe('AppRuntimeController', () => {
 
 		expect(res.json).toHaveBeenCalledWith({
 			user: { id: 'user-1', email: 'a@b.c', firstName: 'Ada', lastName: null },
-			visibility: 'project',
 		});
 	});
 

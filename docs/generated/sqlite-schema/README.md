@@ -56,7 +56,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) | 4 |  | table |
 | [ai_preference](ai_preference.md) | 8 |  | table |
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
-| [app](app.md) | 9 |  | table |
+| [app](app.md) | 8 |  | table |
 | [app_artifact](app_artifact.md) | 8 |  | table |
 | [app_version](app_version.md) | 13 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
@@ -298,9 +298,9 @@ erDiagram
 "ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app_version" }o--o| "app_artifact" : "FOREIGN KEY (bundleArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app_version" }o--|| "app_artifact" : "FOREIGN KEY (sourceArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "app_version" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1044,7 +1044,6 @@ erDiagram
   varchar_36_ projectId FK
   varchar publishedVersionId FK
   datetime_3_ updatedAt
-  varchar_16_ visibility
 }
 "app_artifact" {
   varchar appId
