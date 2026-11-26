@@ -15,7 +15,7 @@ Flag a style value that does not come from a design-system token:
   `--font-weight--medium`, or italic text.
 - A shadow other than `--shadow--xs` on a surface that does not float.
 
-Flag a hand-rolled copy of an `N8n*` component. It arrives without hover,
+Flag a hand-rolled copy of an `N8n*` component, or a direct `element-plus`/`reka-ui` import where an equivalent exists. It arrives without hover,
 focus and disabled states. Name the replacement:
 
 - badge-styled `<div>` or `ElTag`: `N8nBadge`
