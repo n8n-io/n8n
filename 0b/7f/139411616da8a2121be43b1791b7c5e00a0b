@@ -1,0 +1,18 @@
+.github/WORKFLOWS.md
+  h_52a137d26d774c 768-770
+.github/workflows/test-deployment-cells.yml
+  h_52a137d26d774c 1-2,21,33,59-62,88,95,126,170
+packages/quality/testing/playwright/tests/deployment/README.md
+  h_52a137d26d774c 36,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b7f139411616da8a2121be43b1791b7c5e00a0b",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
