@@ -249,6 +249,7 @@ describe('PromotionResourceTree', () => {
 				personalCredential,
 				{ ...personalCredential, id: 'c10', name: 'Other personal', accessible: false },
 				otherProjectCredential,
+				{ ...outsideAccessWorkflow, id: 'w9', name: 'Format currency' },
 			],
 		);
 		const renderLocked = () => {

@@ -50,6 +50,7 @@ describe('promotion preview tree', () => {
 					project: named,
 				},
 				{ ...outsideAccessWorkflow, id: 'w21', name: 'Audit log' },
+				{ ...outsideAccessWorkflow, id: 'w9', name: 'Normalize contact data' },
 			],
 		);
 
@@ -62,6 +63,7 @@ describe('promotion preview tree', () => {
 			],
 		);
 		expect(rows?.every((row) => row.plain)).toBe(true);
+		expect(withProjects.find((item) => item.id === 'group:subWorkflow')).toBeUndefined();
 		expect(rows?.[0].children?.[0].locked).toMatchObject({
 			group: 'other-project',
 			accessible: true,
@@ -70,6 +72,13 @@ describe('promotion preview tree', () => {
 			group: 'outside-access',
 			accessible: false,
 		});
+	});
+
+	it('should keep a sub-workflow that the check does not list in its group, without a lock', () => {
+		const group = tree.find((item) => item.id === 'group:subWorkflow');
+
+		expect(group?.children?.map((item) => item.id)).toEqual(['workflow:w9']);
+		expect(group?.children?.[0].locked).toBeUndefined();
 	});
 
 	it('should not lock a credential that the project owns', () => {
@@ -89,10 +98,9 @@ describe('promotion preview tree', () => {
 							'workflow:w4',
 						],
 					},
-					// The workflow of another project is the last item of the group.
-					{ 'locked-project:other': ['workflow:w9'] },
 				],
 			},
+			{ 'group:subWorkflow': ['workflow:w9'] },
 			{ 'group:credential': ['credential:c2', 'credential:c1'] },
 			{ 'group:variable': ['variable:global:API_URL'] },
 			{ 'group:dataTable': ['dataTable:t1'] },

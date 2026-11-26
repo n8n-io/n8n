@@ -254,14 +254,22 @@ export function buildPreviewTree(
 	},
 	dependencies: readonly PromotionMissingDependency[] = [],
 ): PreviewTreeItem[] {
+	// Only a workflow that the check lists is locked and moves to its project. Any other workflow of
+	// another project stays in its group, as before.
+	const listedWorkflows = new Set(
+		dependencies.flatMap((entry) =>
+			entry.kind === 'workflow' && entry.id ? [`workflow:${entry.id}`] : [],
+		),
+	);
 	const hierarchy: PromotionResource[] = [];
 	const outsideResources: PromotionResource[] = [];
 	const groups = new Map<PreviewTreeGroup, PromotionResource[]>();
 	for (const resource of preview.resources) {
 		const group = groupOf(resource);
 		if (group === null) hierarchy.push(resource);
-		else if (group === 'subWorkflow') outsideResources.push(resource);
-		else {
+		else if (group === 'subWorkflow' && listedWorkflows.has(resource.key)) {
+			outsideResources.push(resource);
+		} else {
 			const members = groups.get(group) ?? [];
 			members.push(resource);
 			groups.set(group, members);

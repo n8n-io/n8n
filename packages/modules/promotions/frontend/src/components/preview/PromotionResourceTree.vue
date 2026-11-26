@@ -194,7 +194,7 @@ function onToggle(resource: PromotionResource) {
 					:class="[$style.row, $style.resource]"
 					data-test-id="promotion-preview-tree-label-row"
 				>
-					<span :class="$style.name" :style="{ '--preview-tree--indent': indent }">
+					<span :class="[$style.name, $style.static]" :style="{ '--preview-tree--indent': indent }">
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
 						<span :class="$style.text">
 							<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
@@ -214,7 +214,7 @@ function onToggle(resource: PromotionResource) {
 						:aria-label="selectLabel({ name: item.label } as PromotionResource)"
 						data-test-id="promotion-preview-tree-checkbox"
 					/>
-					<span :class="$style.name" :style="{ '--preview-tree--indent': indent }">
+					<span :class="[$style.name, $style.static]" :style="{ '--preview-tree--indent': indent }">
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
 						<span :class="$style.text">
 							<N8nText step="xs" color="text-dark" :class="[$style.label, $style.muted]">{{
@@ -440,6 +440,11 @@ function onToggle(resource: PromotionResource) {
 }
 
 /* The checkbox mutes its own label when it is disabled. A locked row needs the same color. */
+/* A row that users cannot open is not a button, so it keeps the default cursor. */
+.static {
+	cursor: default;
+}
+
 .label.muted {
 	color: var(--checkbox--label--color--disabled);
 }
