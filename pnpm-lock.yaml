@@ -16911,7 +16911,7 @@ packages:
     resolution: {integrity: sha512-8SCGQF/VSiXnifVFTajmRNtjHUDTNxkd9SrBrvG2A/80uwLVee5xmv/juH4hnDNTfU9qxfd6HR4Mfmg2nC3RVw==}
 
   '@types/parseurl@1.3.3':
-    resolution: {integrity: sha512-eamlh+uXpNIG2yVdl6UdBTRB6jtmJl/JWTNTQAN1K3VH1s5F6UPOhgLwCnU9FJ7R/PnUsRN9zFSpMcxwa2Ndg==}
+    resolution: {integrity: sha512-eamlh+uXpNIG2yVdl6UdBTR3B6jtmJl/JWTNTQAN1K3VH1s5F6UPOhgLwCnU9FJ7R/PnUsRN9zFSpMcxwa2Ndg==}
 
   '@types/pg-pool@2.0.7':
     resolution: {integrity: sha512-U4CwmGVQcbEuqpyju8/ptOKg6gEC+Tqsvj2xS9o1g71bUh8twxnC6ZL5rZKCsGN0iyH0CwgUyc9VR5owNQF9Ng==}
