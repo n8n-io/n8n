@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
+import { nextTick } from 'vue';
 
 import N8nActionDropdown from './ActionDropdown.vue';
 
@@ -272,6 +273,22 @@ describe('components', () => {
 			});
 			// No icon: the item is the only trigger.
 			expect(publishItem.querySelector('svg')).toBeNull();
+
+			await userEvent.hover(publishItem);
+			expect(await wrapper.findByText('Fix the node issues first')).toBeVisible();
+
+			// Moving the pointer off the disabled item closes the tooltip, and hovering again reopens it.
+			publishItem.dispatchEvent(
+				new MouseEvent('pointerleave', { bubbles: false, clientX: 100, clientY: 100 }),
+			);
+			await nextTick();
+			const editItem = document.querySelector<HTMLElement>('[data-test-id="action-edit"]')!;
+			editItem.dispatchEvent(
+				new MouseEvent('pointermove', { bubbles: true, clientX: 500, clientY: 500 }),
+			);
+			await waitFor(() => {
+				expect(wrapper.queryByText('Fix the node issues first')).not.toBeInTheDocument();
+			});
 
 			await userEvent.hover(publishItem);
 			expect(await wrapper.findByText('Fix the node issues first')).toBeVisible();

@@ -133,7 +133,7 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	data?: D;
 	/** Whether this item should be rendered as a destructive action (e.g. delete) */
 	destructive?: boolean;
-	/** Tooltip shown while the pointer is over the item, such as the reason it is disabled. */
+	/** Tooltip shown while the pointer is over a regular item (not section headers, checkboxes, or sub-menu triggers), such as the reason it is disabled. */
 	hoverTooltip?: string;
 };
 

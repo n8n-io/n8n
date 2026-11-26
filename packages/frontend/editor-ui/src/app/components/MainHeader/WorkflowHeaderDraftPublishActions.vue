@@ -710,6 +710,29 @@ const enum VERSION_ACTIONS {
 	UNPUBLISH = 'unpublish',
 }
 
+/** Why Publish is disabled in the version menu, or '' when it is available. */
+const publishDisabledReason = computed(() => {
+	if (!shouldDisablePublishButton.value) return '';
+	if (collaborationReadOnly.value) return i18n.baseText('workflows.publish.readOnly');
+	if (unusableCredentialReason.value) return unusableCredentialReason.value;
+	if (!hasPublishPermission.value) {
+		return isPersonalSpace.value
+			? i18n.baseText('workflows.publish.personalSpaceRestricted')
+			: i18n.baseText('workflows.publish.permissionDenied');
+	}
+	if (reviewsApply.value && isReviewUpdateBlocked.value) {
+		return i18n.baseText('workflows.publish.waitingForReview');
+	}
+	if (workflowPublishState.value === 'publishing') return publishButtonConfig.value.tooltip;
+	if (publishBlockedReason.value) return publishBlockedReason.value;
+	if (props.isNewWorkflow) return i18n.baseText('workflows.publish.unsaved');
+	if (workflowPublishState.value === 'published-no-changes') {
+		return i18n.baseText('workflows.publishModal.noChanges');
+	}
+
+	return publishButtonConfig.value.tooltip;
+});
+
 /** Why Unpublish is disabled, or '' when it is not. Also the tooltip of the menu item. */
 const unpublishDisabledReason = computed(() => {
 	if (!activeVersion.value) return i18n.baseText('workflows.unpublish.notPublished');
@@ -728,10 +751,7 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 				: i18n.baseText('workflows.publish'),
 			shortcut: { shiftKey: true, keys: ['P'] },
 			disabled: shouldDisablePublishButton.value,
-			// The same reason as the tooltip of the Publish button.
-			tooltip: shouldDisablePublishButton.value
-				? publishButtonConfig.value.tooltip || undefined
-				: undefined,
+			tooltip: publishDisabledReason.value || undefined,
 		},
 	];
 
