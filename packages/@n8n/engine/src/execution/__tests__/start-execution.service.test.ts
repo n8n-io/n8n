@@ -35,7 +35,7 @@ function makeQueue(): WorkQueue<OrchestrationMessage> {
 
 function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 	return {
-		createExecution: vi.fn(),
+		createExecution: vi.fn().mockResolvedValue({ sourceHasErrorExecution: false }),
 		loadExecution: vi.fn(),
 		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
@@ -97,10 +97,102 @@ describe('StartExecutionService', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
 			parent: null,
+			errorSource: null,
+			resolveErrorWorkflowOnFailure: false,
 		});
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'execution:enqueued',
 			executionId: 'exec-id-1',
+		});
+	});
+
+	describe('error source', () => {
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const errorSource = { executionId: 'failed-exec', workflowId: 'wf-failed' };
+		const request = {
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			executionId: 'error-exec',
+			callerContext: { hostMode: 'error' },
+			errorSource,
+			resolveErrorWorkflowOnFailure: true,
+		};
+
+		it('stores the link and resolveErrorWorkflowOnFailure, and publishes the start', async () => {
+			const store = makeStore({
+				loadExecutionStatus: vi.fn().mockResolvedValue('failed'),
+				createExecution: vi.fn().mockResolvedValue({ sourceHasErrorExecution: false }),
+			});
+			const queue = makeQueue();
+			const service = new StartExecutionService(admittance, store, makeStepStore(), queue);
+
+			const result = await service.start(request);
+
+			expect(result).toEqual({ executionId: 'error-exec' });
+			expect(store.createExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ errorSource, resolveErrorWorkflowOnFailure: true, parent: null }),
+			);
+			expect(queue.publish).toHaveBeenCalledWith({
+				type: 'execution:enqueued',
+				executionId: 'error-exec',
+			});
+		});
+
+		it('publishes nothing when the source already has an error execution', async () => {
+			const store = makeStore({
+				loadExecutionStatus: vi.fn().mockResolvedValue('failed'),
+				createExecution: vi.fn().mockResolvedValue({ sourceHasErrorExecution: true }),
+			});
+			const queue = makeQueue();
+			const service = new StartExecutionService(admittance, store, makeStepStore(), queue);
+
+			const result = await service.start(request);
+
+			expect(result).toEqual({ executionId: 'error-exec', sourceHasErrorExecution: true });
+			expect(queue.publish).not.toHaveBeenCalled();
+		});
+
+		it('rejects a missing source without persisting', async () => {
+			const store = makeStore({
+				loadExecutionStatus: vi.fn().mockRejectedValue(new ExecutionNotFoundError('failed-exec')),
+			});
+			const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
+
+			await expect(service.start(request)).rejects.toThrow(ExecutionNotFoundError);
+			expect(store.createExecution).not.toHaveBeenCalled();
+		});
+
+		it('rejects a request with both a parent link and an error source', async () => {
+			const store = makeStore();
+			const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
+
+			await expect(
+				service.start({
+					...request,
+					parent: { executionId: 'parent-exec', stepId: 'step-1', awaited: true },
+				}),
+			).rejects.toThrow('both a parent link and an error source');
+			expect(store.createExecution).not.toHaveBeenCalled();
+		});
+
+		it('defaults resolveErrorWorkflowOnFailure to false', async () => {
+			const store = makeStore();
+			const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
+
+			await service.start({
+				workflowId: 'wf-1',
+				graph: sampleGraph,
+				workflow: sampleWorkflow,
+				executionId: 'exec-id-1',
+				callerContext: { hostMode: 'trigger' },
+			});
+
+			expect(store.createExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ errorSource: null, resolveErrorWorkflowOnFailure: false }),
+			);
 		});
 	});
 

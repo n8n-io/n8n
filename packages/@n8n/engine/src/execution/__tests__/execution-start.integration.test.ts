@@ -163,6 +163,8 @@ describe('execution start (integration)', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
 			parent: null,
+			errorSource: null,
+			resolveErrorWorkflowOnFailure: false,
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.
