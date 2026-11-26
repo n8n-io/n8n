@@ -74,4 +74,17 @@ describe('SystemAgentTurnEventsService', () => {
 		).rejects.toThrow(NotFoundError);
 		expect(agentExecutions.findExecutionTimeline).not.toHaveBeenCalled();
 	});
+
+	it('returns the events with the name from the recent turns, oldest first', async () => {
+		agentExecutions.findRecentTimelines.mockResolvedValue([
+			timeline,
+			[{ type: 'host-event', name: 'status', key: 'a', payload: { step: 3 }, timestamp: 5 }],
+		]);
+
+		await expect(
+			service.readRecentHostEvents(AGENT_ID, user, THREAD_ID, 'status', 20),
+		).resolves.toEqual([{ step: 1 }, { step: 2 }, { step: 3 }]);
+		expect(systemAgents.getUsableThread).toHaveBeenCalledWith(AGENT_ID, user, THREAD_ID);
+		expect(agentExecutions.findRecentTimelines).toHaveBeenCalledWith(AGENT_ID, THREAD_ID, 20);
+	});
 });

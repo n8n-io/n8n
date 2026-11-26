@@ -6,6 +6,8 @@ import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
 import type { SystemAgentStartTurn } from '@/modules/agents/system-agents/system-agent.types';
 
+type SetupItemsSnapshot = { workflowId: string; items: InstanceAiSetupItem[] };
+
 type HostEventEmitters = Pick<SystemAgentStartTurn, 'emitHostEvent' | 'emitTransientHostEvent'>;
 
 /**
@@ -71,9 +73,20 @@ export class AssistantEventSink implements InstanceAiEventBus {
 		}
 	}
 
-	/** The setup tools read these back to confirm that the chat accepted a checklist. */
-	setupItemsSnapshots(): Array<{ workflowId: string; items: InstanceAiSetupItem[] }> {
-		return [...this.setupItems].map(([workflowId, items]) => ({ workflowId, items }));
+	/**
+	 * The latest checklist of each workflow, oldest workflow first. The checklists
+	 * of this turn replace the `earlier` ones. The setup tools read these back to
+	 * confirm that the chat accepted a checklist.
+	 */
+	setupItemsSnapshots(earlier: SetupItemsSnapshot[] = []): SetupItemsSnapshot[] {
+		const latest = new Map<string, InstanceAiSetupItem[]>();
+		const add = (workflowId: string, items: InstanceAiSetupItem[]) => {
+			latest.delete(workflowId);
+			latest.set(workflowId, items);
+		};
+		for (const { workflowId, items } of earlier) add(workflowId, items);
+		for (const [workflowId, items] of this.setupItems) add(workflowId, items);
+		return [...latest].map(([workflowId, items]) => ({ workflowId, items }));
 	}
 
 	subscribe(): () => void {

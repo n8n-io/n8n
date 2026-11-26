@@ -42,4 +42,21 @@ export class SystemAgentTurnEventsService {
 		);
 		return event?.type === 'host-event' ? event.payload : undefined;
 	}
+
+	/** The payloads of the host events `name` that the newest `limit` turns recorded, oldest first. */
+	async readRecentHostEvents(
+		agentId: string,
+		user: User,
+		threadId: string,
+		name: string,
+		limit: number,
+	): Promise<unknown[]> {
+		await this.systemAgents.getUsableThread(agentId, user, threadId);
+		const timelines = await this.agentExecutions.findRecentTimelines(agentId, threadId, limit);
+		return timelines.flatMap((timeline) =>
+			timeline.flatMap((item) =>
+				item.type === 'host-event' && item.name === name ? [item.payload] : [],
+			),
+		);
+	}
 }

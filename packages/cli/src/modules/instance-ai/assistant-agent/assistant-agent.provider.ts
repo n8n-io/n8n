@@ -8,9 +8,11 @@ import {
 	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
+	type InstanceAiSetupItem,
 	type InstanceAiThreadSubject,
 	type InstanceAiWorkflowAttachment,
 	isAttachmentMediaTypeSupported,
+	setupItemsPayloadSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, type AiConfig } from '@n8n/config';
@@ -44,6 +46,7 @@ import type {
 	SystemAgentTurnOutcome,
 	SystemAgentUserStopScope,
 } from '@/modules/agents/system-agents/system-agent.types';
+import { SystemAgentTurnEventsService } from '@/modules/agents/system-agents/system-agent-turn-events.service';
 import { TelemetryProxy } from '@n8n/backend-services';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
@@ -111,6 +114,9 @@ import {
 /** The model input of a message that has files but no text. */
 export const FILES_ONLY_MESSAGE =
 	'The user attached file(s) without a message. Inspect the first file and give a short summary. Use parse-file for a file that you cannot read directly.';
+
+/** The turns that the chat loads first. The setup panel reads its checklists from them. */
+const EARLIER_SETUP_ITEMS_TURN_LIMIT = 20;
 
 type FormattedTurnError = NonNullable<
 	Awaited<ReturnType<NonNullable<SystemAgentTurnHandle['formatError']>>>
@@ -182,6 +188,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly telemetry: TelemetryProxy,
 		private readonly runDebug: AssistantRunDebugService,
+		private readonly turnEvents: SystemAgentTurnEventsService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -650,6 +657,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			this.logger,
 			trace ? (event) => trace.observeEvent(event) : undefined,
 		);
+		let earlierSetupItems: ReturnType<AssistantAgentProvider['readEarlierSetupItems']> | undefined;
 		return {
 			memory: turn.memory,
 			resourceId: turn.resourceId,
@@ -680,8 +688,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				runId: options.runId,
 				threadId: turn.thread.id,
 			}),
-			// Only this turn: a new turn publishes its checklists again, and a merge starts from this turn's rows.
-			readSetupItemsSnapshots: async () => eventBus.setupItemsSnapshots(),
+			readSetupItemsSnapshots: async () => {
+				earlierSetupItems ??= this.readEarlierSetupItems(turn);
+				return eventBus.setupItemsSnapshots(await earlierSetupItems);
+			},
 			// The setup panel announces the checklist without suspending the turn.
 			markWorkflowSetupHandled: async (workflowId) =>
 				await setupRoute.markWorkflowSetupHandled(workflowId),
@@ -695,6 +705,35 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					lease ? await this.workspace.getWorkspace(lease, context) : undefined,
 			},
 		};
+	}
+
+	/**
+	 * The setup checklists that earlier turns recorded, oldest first. A merge
+	 * builds on them, and an unchanged checklist is not sent again. Only the
+	 * turns that the chat loads first count.
+	 */
+	private async readEarlierSetupItems(
+		turn: SystemAgentTurn<AssistantSandboxLease>,
+	): Promise<Array<{ workflowId: string; items: InstanceAiSetupItem[] }>> {
+		try {
+			const payloads = await this.turnEvents.readRecentHostEvents(
+				ASSISTANT_AGENT_ID,
+				turn.user,
+				turn.thread.id,
+				'setup-items',
+				EARLIER_SETUP_ITEMS_TURN_LIMIT,
+			);
+			return payloads.flatMap((payload) => {
+				const parsed = setupItemsPayloadSchema.safeParse(payload);
+				return parsed.success ? [parsed.data] : [];
+			});
+		} catch (error) {
+			this.logger.warn('Failed to read the setup checklists of earlier turns', {
+				threadId: turn.thread.id,
+				error: getErrorMessage(error),
+			});
+			return [];
+		}
 	}
 
 	/** The turn overrides supply the prompt version. The client request supplies only the Browser Use report. */
