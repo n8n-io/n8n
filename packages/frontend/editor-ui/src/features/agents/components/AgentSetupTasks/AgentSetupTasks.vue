@@ -176,6 +176,7 @@ function handleTaskKeydown(event: KeyboardEvent): void {
 						:key="task.id"
 						:role="task.state !== 'complete' ? 'menuitem' : undefined"
 						:data-selected="task.state !== 'complete' && activeTaskIndex === index"
+						:data-attr="`agent-setup-task-${task.id}`"
 						:class="[$style.listItem, { [$style.isComplete]: task.state === 'complete' }]"
 						@focus="setActiveTask(task)"
 						@mouseenter="setActiveTask(task)"

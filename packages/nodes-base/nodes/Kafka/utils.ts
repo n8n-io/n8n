@@ -121,13 +121,22 @@ interface SchemaRegistryCredentials {
 	scope?: string;
 	sendCredentialsIn?: string;
 	allowedDomains?: string;
+	ca?: string;
+	cert?: string;
+	key?: string;
 }
 
-interface SchemaRegistryOptions {
-	host: string;
-	auth?: { username: string; password: string };
+/**
+ * What the registry connection needs: `client` goes to the constructor, `tls` to the agent,
+ * and `oauth` to the token source that signs each request.
+ */
+interface ResolvedRegistryConnection {
+	client: { host: string; auth?: { username: string; password: string } };
+	tls?: TlsMaterial;
 	oauth?: ClientCredentialsConfig;
 }
+
+type TlsMaterial = { ca?: string; cert?: string; key?: string };
 
 type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
 
@@ -158,6 +167,33 @@ export function formatAndValidatePem(value: string, fieldName: string): string {
 	return formatted;
 }
 
+/**
+ * Reads the three PEM credential fields, rejecting a client certificate that
+ * arrives without its private key. Shared by the broker and the Schema Registry
+ * so both refuse the same half-configured mTLS setup.
+ * @param credentials - The decrypted credential holding the PEM fields
+ * @param subject - What the fields belong to, used in the error message
+ */
+export function readTlsMaterial(credentials: TlsMaterial, subject: string): TlsMaterial {
+	const cert = credentials.cert?.trim() ? credentials.cert : undefined;
+	const key = credentials.key?.trim() ? credentials.key : undefined;
+	const ca = credentials.ca?.trim() ? credentials.ca : undefined;
+
+	// A client certificate and its private key are only meaningful together.
+	if (Boolean(cert) !== Boolean(key)) {
+		throw new UserError(
+			`${subject} mTLS needs both a client certificate and a client private key`,
+			{
+				level: 'warning',
+				description:
+					'Set both the "Client Certificate" and "Client Private Key" credential fields, or clear both.',
+			},
+		);
+	}
+
+	return { ca, cert, key };
+}
+
 /** kafkajs's `tls.ConnectionOptions` fields take Buffers, the v2 library takes strings. */
 function toPemBuffer(value: string, fieldName: string): Buffer {
 	return Buffer.from(formatAndValidatePem(value, fieldName));
@@ -175,19 +211,8 @@ function toPemBuffer(value: string, fieldName: string): Buffer {
 export function resolveKafkaSsl(credentials: KafkaCredentials): ConnectionOptions | boolean {
 	if (!credentials.ssl) return false;
 
-	const cert = credentials.cert?.trim() ? credentials.cert : undefined;
-	const key = credentials.key?.trim() ? credentials.key : undefined;
-	const ca = credentials.ca?.trim() ? credentials.ca : undefined;
+	const { ca, cert, key } = readTlsMaterial(credentials, 'Kafka');
 	const allowUnauthorized = credentials.allowUnauthorizedCerts === true;
-
-	// A client certificate and its private key are only meaningful together.
-	if (Boolean(cert) !== Boolean(key)) {
-		throw new UserError('Kafka mTLS needs both a client certificate and a client private key', {
-			level: 'warning',
-			description:
-				'Set both the "Client Certificate" and "Client Private Key" credential fields, or clear both.',
-		});
-	}
 
 	// Nothing beyond plain server-side TLS configured: keep the boolean form so
 	// existing SSL-only and SASL credentials are completely unaffected.
@@ -500,16 +525,31 @@ export function sanitizeRegistryError(error: unknown) {
 }
 
 /**
+ * The TLS helpers are shared with the broker path and raise a plain `UserError`. Here it
+ * becomes a node error, like every other configuration problem in this file, so the
+ * trigger can name one class instead of catching every `UserError` a helper can throw.
+ */
+function asNodeError<T>(ctx: Pick<FunctionsBase, 'getNode'>, read: () => T): T {
+	try {
+		return read();
+	} catch (error) {
+		if (!(error instanceof UserError)) throw error;
+		// Given the error itself, so the message, the description and the cause all carry over
+		throw new NodeOperationError(ctx.getNode(), error);
+	}
+}
+
+/**
  * Resolves the Confluent Schema Registry connection options, preferring a
  * selected `schemaRegistryApi` credential over the legacy URL node parameter
  * @param ctx - The execution context (node or trigger)
  * @param fallbackUrl - The `schemaRegistryUrl` node parameter, used when no credential is selected
- * @returns Options for the `SchemaRegistry` constructor
+ * @returns The constructor options and, separately, any TLS material for the agent
  */
 export async function getSchemaRegistryOptions(
 	ctx: Pick<FunctionsBase, 'getNode' | 'getCredentials'>,
 	fallbackUrl: string,
-): Promise<SchemaRegistryOptions> {
+): Promise<ResolvedRegistryConnection> {
 	const emptyConfigError = () =>
 		new NodeOperationError(
 			ctx.getNode(),
@@ -521,7 +561,7 @@ export async function getSchemaRegistryOptions(
 		if (!host) {
 			throw emptyConfigError();
 		}
-		return { host };
+		return { client: { host } };
 	}
 
 	const credentials = await ctx.getCredentials<SchemaRegistryCredentials>('schemaRegistryApi');
@@ -531,7 +571,18 @@ export async function getSchemaRegistryOptions(
 		throw emptyConfigError();
 	}
 
-	const options: SchemaRegistryOptions = { host };
+	const connection: ResolvedRegistryConnection = { client: { host } };
+
+	const tls = asNodeError(ctx, () => {
+		const { ca, cert, key } = readTlsMaterial(credentials, 'Schema Registry');
+		if (!(ca ?? cert)) return undefined;
+		return {
+			...(ca ? { ca: formatAndValidatePem(ca, 'Schema Registry CA certificate') } : {}),
+			...(cert ? { cert: formatAndValidatePem(cert, 'Schema Registry client certificate') } : {}),
+			...(key ? { key: formatAndValidatePem(key, 'Schema Registry client private key') } : {}),
+		};
+	});
+	if (tls) connection.tls = tls;
 
 	if (credentials.authentication === 'basicAuth') {
 		if (!(credentials.username && credentials.password)) {
@@ -540,7 +591,7 @@ export async function getSchemaRegistryOptions(
 				'Username and password are required for Schema Registry Basic Auth',
 			);
 		}
-		options.auth = { username: credentials.username, password: credentials.password };
+		connection.client.auth = { username: credentials.username, password: credentials.password };
 	}
 
 	if (credentials.authentication === 'oAuth2ClientCredentials') {
@@ -550,7 +601,7 @@ export async function getSchemaRegistryOptions(
 				'Token URL, client ID and client secret are required for Schema Registry OAuth2',
 			);
 		}
-		options.oauth = {
+		connection.oauth = {
 			tokenUrl: credentials.tokenUrl,
 			clientId: credentials.clientId,
 			clientSecret: credentials.clientSecret,
@@ -560,40 +611,43 @@ export async function getSchemaRegistryOptions(
 		};
 	}
 
-	return options;
+	return connection;
 }
 
-/**
- * Parses and allows one absolute http(s) target, so the address the client
- * connects to is the address the egress rules were checked against.
- */
-async function assertAllowedUrl(
-	ctx: Pick<FunctionsBase, 'getNode'>,
-	rawUrl: string,
-	filter: NodeEgressFilter,
-	label: string,
-): Promise<URL> {
-	const reject = (description: string) =>
-		new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
-			description,
-		});
+const rejectTarget = (ctx: Pick<FunctionsBase, 'getNode'>, description: string) =>
+	new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
+		description,
+	});
 
+/** Parses one absolute http(s) target, so a scheme the client cannot use is named as such. */
+function parseTarget(ctx: Pick<FunctionsBase, 'getNode'>, rawUrl: string, label: string): URL {
 	let parsed: URL;
 	try {
 		parsed = new URL(rawUrl);
 	} catch {
-		throw reject(`The ${label} is not a valid URL`);
+		throw rejectTarget(ctx, `The ${label} is not a valid URL`);
 	}
 	if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-		throw reject(`The ${label} must use http or https`);
+		throw rejectTarget(ctx, `The ${label} must use http or https`);
 	}
+	return parsed;
+}
 
+/**
+ * Allows one parsed target, so the address the client connects to is the address
+ * the egress rules were checked against. Parsing is separate because a
+ * misconfiguration the user can see, such as http with TLS material, is worth
+ * naming before the egress rules speak.
+ */
+async function assertAllowedTarget(
+	ctx: Pick<FunctionsBase, 'getNode'>,
+	parsed: URL,
+	filter: NodeEgressFilter,
+): Promise<void> {
 	const result = await filter.validateUrl(parsed);
 	if (!result.ok) {
-		throw reject(result.error.message);
+		throw rejectTarget(ctx, result.error.message);
 	}
-
-	return parsed;
 }
 
 /**
@@ -610,30 +664,39 @@ export async function createSchemaRegistry(
 	},
 	fallbackUrl: string,
 ): Promise<SchemaRegistry> {
-	const options = await getSchemaRegistryOptions(ctx, fallbackUrl);
+	const { client, tls, oauth } = await getSchemaRegistryOptions(ctx, fallbackUrl);
 
 	const filter = ctx.helpers.getSecureEgressFilter();
-	const parsed = await assertAllowedUrl(ctx, options.host, filter, 'Schema Registry URL');
+	const parsed = parseTarget(ctx, client.host, 'Schema Registry URL');
+
+	if (tls && parsed.protocol !== 'https:') {
+		throw rejectTarget(
+			ctx,
+			'The credential carries TLS material, so the Schema Registry URL must use https',
+		);
+	}
+
+	await assertAllowedTarget(ctx, parsed, filter);
 
 	// Connect using the canonical href so the client re-parses the exact
 	// authority we validated, and validate the resolved addresses at connect
 	// time via the secure lookup.
 	const agent =
 		parsed.protocol === 'https:'
-			? new https.Agent({ lookup: filter.createSecureLookup() })
+			? new https.Agent({ lookup: filter.createSecureLookup(), ...tls })
 			: new http.Agent({ lookup: filter.createSecureLookup() });
 
-	const { oauth, ...clientOptions } = options;
 	if (!oauth) {
-		return new SchemaRegistry({ ...clientOptions, host: parsed.href, agent });
+		return new SchemaRegistry({ ...client, host: parsed.href, agent });
 	}
 
 	// The token endpoint is a host of its own, so the user has to allow it too.
-	const tokenUrl = await assertAllowedUrl(ctx, String(oauth.tokenUrl), filter, 'token URL');
+	const tokenUrl = parseTarget(ctx, String(oauth.tokenUrl), 'token URL');
+	await assertAllowedTarget(ctx, tokenUrl, filter);
 	const tokenSource = createClientCredentialsTokenSource({ ...oauth, tokenUrl: tokenUrl.href });
 
 	return new SchemaRegistry({
-		...clientOptions,
+		...client,
 		host: parsed.href,
 		agent,
 		middlewares: [
@@ -662,7 +725,9 @@ export async function setSchemaRegistry(ctx: ITriggerFunctions) {
 			const schemaRegistryUrl = ctx.getNodeParameter('schemaRegistryUrl', 0) as string;
 			return await createSchemaRegistry(ctx, schemaRegistryUrl);
 		} catch (error) {
-			// Credential/config misconfiguration must fail loudly at activation
+			// Credential and configuration mistakes must fail loudly at activation, or a
+			// malformed PEM or a half-configured mTLS pair would warn and leave the trigger
+			// running with no registry. Everything this file raises for one is a node error.
 			if (error instanceof NodeOperationError) {
 				throw error;
 			}

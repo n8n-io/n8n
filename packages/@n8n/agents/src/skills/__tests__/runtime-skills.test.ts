@@ -14,6 +14,7 @@ import {
 	loadRuntimeSkillSourceFromDirectory,
 	parseRuntimeSkillMarkdown,
 	renderSkillCatalogPrompt,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 } from '..';
 import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
 import { Agent } from '../../sdk/agent';
@@ -710,6 +711,82 @@ Use the workflow SDK.`,
 		expect(JSON.stringify([skill, file])).not.toContain('/usr/local/lib');
 	});
 
+	it('names the first 50 linked files in the header and counts the rest', async () => {
+		const references = Array.from({ length: 52 }, (_, index) => ({
+			path: `references/${String(index).padStart(2, '0')}.md`,
+		}));
+		const source = createRuntimeSkillSource([
+			{
+				id: 'notes',
+				name: 'Notes',
+				description: 'Use for notes.',
+				instructions: 'Body.',
+				linkedFiles: {
+					references,
+					templates: [],
+					scripts: [],
+					assets: [],
+					examples: [],
+					other: [],
+				},
+			},
+		]);
+		source.loadFile = async (skillId, filePath) =>
+			await Promise.resolve({ skillId, filePath, content: 'Guide' });
+		const loadTool = createSkillLoadTool(source);
+
+		const skill = skillLoadText(await loadTool.handler?.({ skillId: 'notes' }, {}));
+
+		expect(skill).toContain('"references/49.md", and 2 more files.');
+		expect(skill).not.toContain('references/50.md');
+		// A file that the header does not name still loads by its path.
+		expect(
+			await loadTool.handler?.({ skillId: 'notes', filePath: 'references/51.md' }, {}),
+		).toMatchObject({ success: true, content: 'Guide' });
+	});
+
+	it('returns a long linked file in parts that end on a character boundary', async () => {
+		const linkedFiles = {
+			references: [{ path: 'references/guide.md' }],
+			templates: [],
+			scripts: [],
+			assets: [],
+			examples: [],
+			other: [],
+		};
+		const source = createRuntimeSkillSource([
+			{
+				id: 'notes',
+				name: 'Notes',
+				description: 'Use for notes.',
+				instructions: 'Body.',
+				linkedFiles,
+			},
+		]);
+		// One byte, then characters of two bytes, so the byte limit falls inside a character.
+		const content = `a${'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES)}`;
+		source.loadFile = async (skillId, filePath) =>
+			await Promise.resolve({ skillId, filePath, content });
+		const loadTool = createSkillLoadTool(source);
+
+		let read = '';
+		let offset: number | undefined = 0;
+		let parts = 0;
+		while (offset !== undefined) {
+			const result = (await loadTool.handler?.(
+				{ skillId: 'notes', filePath: 'references/guide.md', offset },
+				{},
+			)) as { content: string };
+			const note = /\n\n\[\.\.\. output truncated .* offset (\d+) \.\.\.\]$/.exec(result.content);
+			read += note ? result.content.slice(0, note.index) : result.content;
+			offset = note ? Number(note[1]) : undefined;
+			parts += 1;
+		}
+
+		expect(parts).toBe(3);
+		expect(read).toBe(content);
+	});
+
 	it('injects the agent skill catalog without preparing the runtime skill source', async () => {
 		const source = createRuntimeSkillSource([
 			{
@@ -723,7 +800,7 @@ Use the workflow SDK.`,
 		source.prepare = prepare;
 
 		const agent = new Agent('assistant')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions('Base instructions.')
 			.skills(source);
 		const runtimeConfig = await (
@@ -880,7 +957,7 @@ Use the workflow SDK.`,
 
 	it('adds runtime skills to agents through one shared load path', () => {
 		const agent = new Agent('assistant')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions('Base instructions.')
 			.skills([
 				{
@@ -915,7 +992,7 @@ Use the workflow SDK.`,
 		]);
 
 		const agent = new Agent('assistant')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions('Base instructions.')
 			.skills(initialSource)
 			.skills(materializedSource);
@@ -948,7 +1025,7 @@ Use the workflow SDK.`,
 			.build();
 
 		const agent = new Agent('assistant')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions('Base instructions.')
 			.skills(source);
 

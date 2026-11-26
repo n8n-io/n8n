@@ -55,6 +55,7 @@ export type ResolvedPromotionConfig =
  */
 export type PromotionOperationInput = Readonly<{
 	environmentId: string;
+	environmentName: string;
 	scope: PromotionEnvironmentScope;
 	providerId: string;
 	providerType: PromotionProviderType;
@@ -72,6 +73,8 @@ export type PromotionOperationInput = Readonly<{
  * repository path, so the listing and the contents never describe two commits.
  */
 export type BranchPackage = Readonly<{
+	/** The environment of the read. A caller that names the environment uses this one. */
+	input: PromotionOperationInput;
 	environmentId: string;
 	branchName: string;
 	commitSha: string | null;

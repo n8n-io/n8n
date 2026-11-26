@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	conversationForApprovalJudge,
+	emitApprovalReviewTraceEvent,
 	judgeApproval,
 	modelConfigId,
 	modelIdTraceMetadata,
@@ -50,6 +51,8 @@ export interface ApprovalReviewerParams {
 	/** Resolves the judge model. Called on the first review of the run only. */
 	resolveJudgeModel: () => Promise<ModelConfig>;
 	modelFetch?: FetchFn;
+	/** Tag outgoing judge requests with `x-n8n-function-id` when request labels are enabled. */
+	requestLabels?: boolean;
 	/**
 	 * The trace of the run, read at each review: the host attaches it after the
 	 * reviewer is built, and a resumed run has a new one.
@@ -138,7 +141,13 @@ export class InstanceAiApprovalReviewerFactory {
 
 				const result = await judgeApproval(
 					{ conversation, approval, olderMessagesLeftOut },
-					{ model, modelFetch: params.modelFetch, abortSignal: signal, telemetry },
+					{
+						model,
+						modelFetch: params.modelFetch,
+						requestLabels: params.requestLabels,
+						abortSignal: signal,
+						telemetry,
+					},
 				);
 				review.judgeRun = result;
 				const modelName = result.model ?? modelConfigId(model);
@@ -147,7 +156,7 @@ export class InstanceAiApprovalReviewerFactory {
 				return { decision: result.verdict.decision, reason: result.verdict.reason };
 			},
 
-			onReviewed: (approval, outcome) => {
+			onReviewed: async (approval, outcome) => {
 				if (outcome.decision === 'approve' && approval.toolCallId) {
 					params.eventBus.publish(params.threadId, {
 						type: 'auto-approval',
@@ -162,6 +171,8 @@ export class InstanceAiApprovalReviewerFactory {
 					});
 				}
 				this.trackReview(params, approval, outcome, judgeReviews.get(approval));
+				// A decision of the fixed rules makes no model call, so the trace shows it only here.
+				await emitApprovalReviewTraceEvent(params.getTracing?.(), approval, outcome);
 			},
 		};
 	}

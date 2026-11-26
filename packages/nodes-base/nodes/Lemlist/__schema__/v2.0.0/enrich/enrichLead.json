@@ -1,0 +1,39 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"companyDomain": {
+			"type": "string"
+		},
+		"companyName": {
+			"type": "string"
+		},
+		"companySize": {
+			"type": ["number", "string"]
+		},
+		"email": {
+			"type": "string"
+		},
+		"emailStatus": {
+			"type": "string"
+		},
+		"firstName": {
+			"type": "string"
+		},
+		"industry": {
+			"type": "string"
+		},
+		"jobTitle": {
+			"type": "string"
+		},
+		"lastName": {
+			"type": "string"
+		},
+		"linkedinUrl": {
+			"type": "string"
+		},
+		"phone": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

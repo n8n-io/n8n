@@ -4,6 +4,7 @@ import { PROVIDER_CAPABILITIES } from '@n8n/api-types';
 import { resolveModelIdString, resolveModelProvider } from './model-config-identity';
 import {
 	parseReasoningEffort,
+	parseReplayReasoning,
 	resolveCustomModelExperimentDefaultsFromEnv,
 } from '../utils/custom-model-defaults';
 
@@ -30,10 +31,9 @@ function isGpt56OrNewerModel(modelId: ModelConfig): boolean {
 const ANTHROPIC_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 type AnthropicEffort = (typeof ANTHROPIC_EFFORTS)[number];
 
-/** Eval override via N8N_INSTANCE_AI_REASONING_EFFORT. Unsupported values fall back to medium. */
-function resolveAnthropicEffort(): AnthropicEffort {
+function getConfiguredEffort(): AnthropicEffort | undefined {
 	const effort = parseReasoningEffort(process.env.N8N_INSTANCE_AI_REASONING_EFFORT);
-	return ANTHROPIC_EFFORTS.find((supported) => supported === effort) ?? 'medium';
+	return ANTHROPIC_EFFORTS.find((supported) => supported === effort);
 }
 
 /** An explicit effort wins over the env override and the OpenAI per-model default. */
@@ -44,14 +44,24 @@ export function applyAgentThinking(
 ): void {
 	const provider = resolveModelProvider(modelId);
 
+	if (provider === 'openrouter') {
+		const reasoningEffort = effort ?? getConfiguredEffort();
+		if (reasoningEffort !== undefined) agent.reasoning(reasoningEffort);
+		return;
+	}
+
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
 	if (provider === 'custom') {
 		// No blanket default: env override → known-model map → omit.
 		const resolvedModelId = resolveModelIdString(modelId) ?? '';
 		const { reasoningEffort } = resolveCustomModelExperimentDefaultsFromEnv(resolvedModelId);
-		if (reasoningEffort !== undefined) {
-			agent.thinking('custom', { reasoningEffort });
+		const replayReasoning = parseReplayReasoning(process.env.N8N_INSTANCE_AI_REPLAY_REASONING);
+		if (reasoningEffort !== undefined || replayReasoning !== undefined) {
+			agent.thinking('custom', {
+				...(reasoningEffort !== undefined ? { reasoningEffort } : {}),
+				...(replayReasoning !== undefined ? { replayReasoning } : {}),
+			});
 		}
 		return;
 	}
@@ -76,7 +86,7 @@ export function applyAgentThinking(
 	if (provider === 'anthropic' || provider === 'google-vertex-anthropic') {
 		agent.thinking(provider, {
 			mode: 'adaptive',
-			effort: effort ?? resolveAnthropicEffort(),
+			effort: effort ?? getConfiguredEffort() ?? 'medium',
 		});
 		return;
 	}

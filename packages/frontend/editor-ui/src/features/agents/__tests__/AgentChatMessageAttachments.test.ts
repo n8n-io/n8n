@@ -48,6 +48,17 @@ describe('AgentChatMessageAttachments', () => {
 		expect(wrapper.find('a').attributes('href')).toBe(img.attributes('src'));
 	});
 
+	it('renders the slot before the files, in the same group', () => {
+		const wrapper = mount(AgentChatMessageAttachments, {
+			props: { attachments: [imageAttachment], projectId: 'project-1', agentId: 'agent-1' },
+			slots: { default: '<span data-testid="reference">Orders</span>' },
+		});
+
+		const group = wrapper.get('[data-testid="agent-chat-message-attachments"]');
+		expect(group.element.firstElementChild).toBe(wrapper.get('[data-testid="reference"]').element);
+		expect(group.find('img').exists()).toBe(true);
+	});
+
 	it("uses the panel's injected URL builder when one is provided", () => {
 		const wrapper = renderComponent([imageAttachment], {
 			attachmentUrlBuilder: (id) => `/rest/n8n-chat/${id}`,

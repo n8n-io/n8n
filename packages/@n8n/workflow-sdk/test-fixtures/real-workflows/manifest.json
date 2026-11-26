@@ -99,6 +99,30 @@
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "Think"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create Clips"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create Sounds"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Clips"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Final Video"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Sounds"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Sequence Video"
 				}
 			]
 		},
@@ -145,6 +169,22 @@
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Update Youtube URL"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create Video"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Url Video"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get status"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "HTTP Request"
 				}
 			]
 		},
@@ -582,7 +622,25 @@
 		{
 			"id": 6524,
 			"name": "Automate AI news videos to social media with GPT-4o & HeyGen and Postiz",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Facebook Video Publisher"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Postiz Integrations"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Upload Video to Postiz"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "YouTube Video Publisher"
+				}
+			]
 		},
 		{
 			"id": 5626,
@@ -1120,7 +1178,17 @@
 		{
 			"id": 11724,
 			"name": "Generate news digest videos from WordPress to YouTube with Shotstack",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Check Status"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Shotstack - Submit Request"
+				}
+			]
 		},
 		{
 			"id": 4557,
@@ -1505,13 +1573,35 @@
 				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "HTTP Request2"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Check Job Status"
 				}
 			]
 		},
 		{
 			"id": 7130,
 			"name": "Build targeted prospect lists: find & enrich leads with Surfe to HubSpot",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Search ICP Companies"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Search People in Companies"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Surfe Bulk Enrichments API"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Surfe check enrichement status"
+				}
+			]
 		},
 		{
 			"id": 5953,
@@ -1581,7 +1671,21 @@
 		{
 			"id": 12452,
 			"name": "Generate 3D models from images using Hunyuan3D v2 and Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Check Status"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Final Result"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Submit to Hunyuan3D"
+				}
+			]
 		},
 		{
 			"id": 10290,
@@ -1910,7 +2014,13 @@
 		{
 			"id": 11089,
 			"name": "Send server-side conversions to the Meta Ads API (CAPI)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Sending Events To Facebook Pixel"
+				}
+			]
 		},
 		{
 			"id": 8644,
@@ -2352,6 +2462,18 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Get data from local file"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "DataAnalysis"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "DataInterpretation"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "DataVisualization"
 				}
 			]
 		},
@@ -2412,6 +2534,18 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Get All Skills"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create DOCX"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create PDF"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create PPTX"
 				}
 			]
 		},
@@ -3031,6 +3165,18 @@
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Set Product as Posted"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Latest Offer"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Product Info"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Rule Info"
 				}
 			]
 		},
@@ -3911,7 +4057,13 @@
 		{
 			"id": 9521,
 			"name": "Convert PDF articles to audio podcasts with Google TTS & Cloudflare R2",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Google TTS API"
+				}
+			]
 		},
 		{
 			"id": 9438,
@@ -4046,6 +4198,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Switch"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Perplexity Research"
 				}
 			]
 		},
@@ -4094,6 +4250,10 @@
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "AI API Request"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
 					"nodeName": "AI API Request"
 				}
 			]
@@ -5070,7 +5230,21 @@
 		{
 			"id": 4921,
 			"name": "Generate trend-based video marketing ideas with GPT-4, Tavily and Veo 3",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "FAL Veo 3 Post Request"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Video  Status from FAL / Veo 3"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Video URL request"
+				}
+			]
 		},
 		{
 			"id": 4910,
@@ -5900,7 +6074,37 @@
 		{
 			"id": 13088,
 			"name": "Create hours-long wave music videos with Suno, ffmpeg-api and YouTube",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create Song (Suno API)"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Generated Song"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Merge Audio with Video (ffmpeg-api)"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Prepare Audio Path (ffmpeg-api)"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Prepare Video Path (ffmpeg-api)"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Retrieve Uploaded Song"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Retrieve Uploaded Video"
+				}
+			]
 		},
 		{
 			"id": 10199,
@@ -6234,7 +6438,17 @@
 		{
 			"id": 5591,
 			"name": "Daily website data extraction with Firecrawl and Telegram alerts",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Extract"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Results"
+				}
+			]
 		},
 		{
 			"id": 5511,
@@ -7249,7 +7463,13 @@
 		{
 			"id": 12868,
 			"name": "Extract passport data with OpenAI OCR and generate QR codes",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "OCR - openAI"
+				}
+			]
 		},
 		{
 			"id": 12644,
@@ -7420,6 +7640,10 @@
 				{
 					"code": "SET_CREDENTIAL_FIELD",
 					"nodeName": "Workflow Configuration"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "AssemblyAI Transcription"
 				}
 			]
 		},
@@ -7684,7 +7908,17 @@
 		{
 			"id": 10538,
 			"name": "Discover & analyze n8n workflows from GitHub with OpenAI and Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Fetch Workflow JSON1"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "GitHub Search1"
+				}
+			]
 		},
 		{
 			"id": 10793,
@@ -7703,6 +7937,14 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Create post"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "GET Sora2 Result"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Sora2 POST Request"
 				}
 			]
 		},
@@ -7807,7 +8049,13 @@
 		{
 			"id": 10533,
 			"name": "Automate sales order prioritization with ERP-WMS-TMS integration based on SLA tiers",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Alert Warehouse Manager"
+				}
+			]
 		},
 		{
 			"id": 10488,
@@ -7817,6 +8065,14 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Download Video1"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Generate First Frame Image"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "generate_ad_prompts"
 				}
 			]
 		},
@@ -7948,7 +8204,17 @@
 		{
 			"id": 10354,
 			"name": "Smart travel package finder: Search flights & hotels with Skyscanner-Booking.com",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "✈️ Search Flights (Skyscanner)"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "🏨 Search Hotels (Booking.com)"
+				}
+			]
 		},
 		{
 			"id": 10352,
@@ -7978,7 +8244,13 @@
 		{
 			"id": 10310,
 			"name": "Automate peer review assignments with GPT-4-nano, Slack and email notifications",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Update Dashboard Metrics"
+				}
+			]
 		},
 		{
 			"id": 10292,
@@ -8030,7 +8302,13 @@
 		{
 			"id": 10314,
 			"name": "Qwen-Max: journal paper generation from title/abstract",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Search CrossRef"
+				}
+			]
 		},
 		{
 			"id": 10293,
@@ -8132,6 +8410,14 @@
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "AI Agent - Identify Competitors"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Competitor Scrape Results"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Scrape Target Brand Website"
 				}
 			]
 		},
@@ -8467,6 +8753,14 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Upload media"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Nano Banana Image Result"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Nano Banana"
 				}
 			]
 		},
@@ -8700,6 +8994,14 @@
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "Think1"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create Video"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Video"
 				}
 			]
 		},
@@ -8943,7 +9245,17 @@
 		{
 			"id": 5899,
 			"name": "Automatic Typebot flows two-way sync with GitHub using Typebot API",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Typebot"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "List Typebots"
+				}
+			]
 		},
 		{
 			"id": 5898,
@@ -10863,6 +11175,38 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "YouTube"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Leo - Generate Image"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Leo - Generate Image2"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Leo - Get imageId"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Leo - Get imageId2"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Leo - Improve Prompt"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Runway - Create Video"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Runway - Get Video"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Runway - Get Video2"
 				}
 			]
 		},
@@ -11186,7 +11530,17 @@
 		{
 			"id": 4509,
 			"name": "🏛️ Daily US Congress members stock trades report via Firecrawl + OpenAI + Gmail",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Extract"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Results"
+				}
+			]
 		},
 		{
 			"id": 4471,
@@ -11356,7 +11710,17 @@
 		{
 			"id": 3563,
 			"name": "Build an AI powered phone agent 📞🤖 with Retell, Google Calendar and RAG",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create collection"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Refresh collection"
+				}
+			]
 		},
 		{
 			"id": 3546,
@@ -12350,7 +12714,25 @@
 		{
 			"id": 13110,
 			"name": "Generate daily AI reels from Google Drive images with GPT‑5.1, Wavespeed and Submagic",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "GET Result from Wavespeed"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Submagic Get Result"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Submagic Post Request"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Wavespeed Post Request (To generate reels)"
+				}
+			]
 		},
 		{
 			"id": 13085,
@@ -12364,6 +12746,14 @@
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "Reasoning Engine"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Video"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Merge Video Clips"
 				}
 			]
 		},
@@ -12375,6 +12765,14 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Download Video"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Videos"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Merge Videos"
 				}
 			]
 		},
@@ -12386,6 +12784,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Upload Post - Upload Photo"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "UploadImg"
 				}
 			]
 		},
@@ -12477,7 +12879,21 @@
 		{
 			"id": 11244,
 			"name": "Instant infographic generator (LINE + Nano Banana Pro)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Check Job Status"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Send Image to LINE"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Submit to Nano Banana Pro"
+				}
+			]
 		},
 		{
 			"id": 11200,
@@ -12978,13 +13394,47 @@
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "URGENT: Competitive Threat Alert"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Scrape Competitor Sites"
 				}
 			]
 		},
 		{
 			"id": 10175,
 			"name": "Automate ASMR glass fruit video creation & publishing with Veo, Shotstack & Postiz",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Done?1"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Postiz integrations"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Schedule Instagram"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Schedule TikTok"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Schedule YouTube"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Turn video to 9:16"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Upload video to Postiz"
+				}
+			]
 		},
 		{
 			"id": 10168,
@@ -13067,7 +13517,13 @@
 		{
 			"id": 9843,
 			"name": "Create YouTube videos daily from Google Sheets using MagicHour + Gemini",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create Video"
+				}
+			]
 		},
 		{
 			"id": 9788,
@@ -14382,7 +14838,17 @@
 		{
 			"id": 2658,
 			"name": "Api schema extractor",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Scrape Webpage Contents"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Web Search For API Schema"
+				}
+			]
 		},
 		{
 			"id": 2648,
@@ -14487,6 +14953,14 @@
 				{
 					"code": "AGENT_STATIC_PROMPT",
 					"nodeName": "AI Agent – Script & Avatar Director"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create AI Avatar Video"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Rendered Video"
 				}
 			]
 		},
@@ -14614,6 +15088,14 @@
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "GENERATE PROMPT"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Clipdrop API"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Generate Image"
 				}
 			]
 		},
@@ -14641,7 +15123,13 @@
 		{
 			"id": 11420,
 			"name": "Send AI-personalized LinkedIn connection requests from Google Sheets with Gemini",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Send Connection Request"
+				}
+			]
 		},
 		{
 			"id": 11194,
@@ -14923,6 +15411,14 @@
 				{
 					"code": "SET_CREDENTIAL_FIELD",
 					"nodeName": "Set API Key"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Check Prediction Status"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create Prediction"
 				}
 			]
 		},
@@ -15170,7 +15666,13 @@
 		{
 			"id": 5161,
 			"name": "Enrich LinkedIn profiles with Ghost Genius and Google Sheets (no account needed)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Get Profile Info"
+				}
+			]
 		},
 		{
 			"id": 5098,
@@ -16288,6 +16790,14 @@
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Research, Write & Test"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Generate Video (Veo 3)"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Poll Video Status"
 				}
 			]
 		},
@@ -16311,6 +16821,10 @@
 				{
 					"code": "SET_CREDENTIAL_FIELD",
 					"nodeName": "Threads Fields Copy"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Publish Thread"
 				}
 			]
 		},
@@ -16616,6 +17130,30 @@
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "Thinking1"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Fal.ai Image Gen"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Fal.ai Video Gen"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Fetch Result"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Fetch Result1"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Fetch Status"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Fetch Status1"
 				}
 			]
 		},
@@ -16627,6 +17165,14 @@
 				{
 					"code": "SET_CREDENTIAL_FIELD",
 					"nodeName": "Set API Key"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Check Prediction Status"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create Prediction"
 				}
 			]
 		},
@@ -16649,6 +17195,14 @@
 				{
 					"code": "SET_CREDENTIAL_FIELD",
 					"nodeName": "Set API Key"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Check Prediction Status"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create Prediction"
 				}
 			]
 		},
@@ -16919,7 +17473,13 @@
 		{
 			"id": 5420,
 			"name": "Edit & deliver images with DALL-E 2, Google Drive & Telegram messaging",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "🎨 AI Image Editor"
+				}
+			]
 		},
 		{
 			"id": 5392,
@@ -17093,7 +17653,13 @@
 		{
 			"id": 4978,
 			"name": "Generate AI Responses with Perplexity Sonar Models (Reusable Module)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Perplexity API Request"
+				}
+			]
 		},
 		{
 			"id": 4974,
@@ -17316,7 +17882,17 @@
 		{
 			"id": 4654,
 			"name": "Daily insight email from Structured Web Data with Firecrawl",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "HTTP GET Request"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "POST Request"
+				}
+			]
 		},
 		{
 			"id": 4632,
@@ -17831,6 +18407,22 @@
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Create Immediate Follow-up Task"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "BatchData Property Lookup"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Create Immediate Follow-up Task"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Fetch Lead Data"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Update CRM Lead"
 				}
 			]
 		},
@@ -18392,6 +18984,14 @@
 				},
 				{
 					"code": "MISSING_TRIGGER"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Store Optimised Image ImgBB"
+				},
+				{
+					"code": "PLAIN_GENERIC_AUTH",
+					"nodeName": "Upload Img to ImgBB for URL"
 				}
 			]
 		},

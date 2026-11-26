@@ -1,6 +1,7 @@
 import { stringify as stringifyYaml } from 'yaml';
 
 import type { AgentSkill } from '../types';
+import { base64ToBytes } from '@/app/utils/fileUtils';
 
 const SKILL_FILE_NAME = 'SKILL.md';
 
@@ -43,7 +44,9 @@ export async function exportAgentSkill(skill: AgentSkill): Promise<AgentSkillExp
 		[`${baseName}/${SKILL_FILE_NAME}`]: strToU8(markdown),
 	};
 	for (const reference of references) {
-		files[`${baseName}/${reference.path}`] = strToU8(reference.content);
+		files[`${baseName}/${reference.path}`] = reference.isBinary
+			? base64ToBytes(reference.content)
+			: strToU8(reference.content);
 	}
 	return {
 		blob: new Blob([zipSync(files)], { type: 'application/zip' }),

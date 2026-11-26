@@ -2,8 +2,9 @@
  * Runs the real tools that ask for approval through Auto mode. Each site checks
  * that the probe reads the tool's card, that the route matches the tool's name,
  * that an approval runs the action without a card, and that an ask shows the
- * same card as Manual mode.
+ * card of Manual mode with the reason of the review.
  */
+import { isZodSchema } from '@n8n/agents';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import type { Mock } from 'vitest';
 
@@ -310,7 +311,7 @@ async function runInAuto(site: ApprovalSite, decision: 'approve' | 'ask') {
 	if (!wrapped?.handler) throw new Error(`tool ${tool.name} is missing`);
 	const ctx = interruptibleContext();
 	await wrapped.handler(site.input, ctx);
-	return { context, ctx, reviewer };
+	return { context, ctx, reviewer, suspendSchema: wrapped.suspendSchema };
 }
 
 /** The card that Manual mode shows. Each card gets a new request ID. */
@@ -350,11 +351,21 @@ describe('approval sites in Auto mode', () => {
 		}
 
 		if (site.route !== 'low-risk') {
-			it('shows the same card as Manual mode when the review asks', async () => {
+			it('shows the card of Manual mode with the reason when the review asks', async () => {
 				const manualCard = await cardInManual(site);
-				const { context, ctx } = await runInAuto(site, 'ask');
+				const { context, ctx, suspendSchema } = await runInAuto(site, 'ask');
 				expect(ctx.suspend).toHaveBeenCalledTimes(1);
-				expect(ctx.suspend.mock.calls[0][0]).toEqual(manualCard);
+				const card: unknown = ctx.suspend.mock.calls[0][0];
+				expect(card).toEqual({
+					...manualCard,
+					askReason:
+						site.route === 'always-ask'
+							? { kind: 'always-ask' }
+							: { kind: 'judge', text: 'stub ask' },
+				});
+				// The runtime stores what the suspend schema of the tool returns.
+				if (!isZodSchema(suspendSchema)) throw new Error('expected a Zod suspend schema');
+				expect(suspendSchema.parse(card)).toEqual(card);
 				expect(site.action(context)).not.toHaveBeenCalled();
 			});
 		}

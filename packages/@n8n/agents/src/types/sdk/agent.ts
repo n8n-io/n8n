@@ -16,6 +16,7 @@ import type {
 	SubAgentChunkPayload,
 	SubAgentCompletedPayload,
 	SubAgentStartedPayload,
+	ToolApprovalEventPayload,
 } from '../runtime/event';
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
@@ -175,6 +176,7 @@ export type StreamChunk = ContentMetadata &
 		// `message` is reserved for sub-agent / app-defined `CustomAgentMessage`
 		| { type: 'message'; message: AgentMessage }
 		| ({ type: 'subagent-started' } & SubAgentStartedPayload)
+		| ({ type: 'tool-approval' } & ToolApprovalEventPayload)
 		| ({ type: 'subagent-completed' } & SubAgentCompletedPayload)
 		| ({ type: 'subagent-chunk' } & SubAgentChunkPayload)
 		| {
@@ -223,7 +225,7 @@ export type SideCallTask = 'title' | 'observer' | 'reflector' | 'episodic';
  */
 export interface SideCallUsageReport {
 	task: SideCallTask;
-	/** Stable model id string (e.g. 'anthropic/claude-sonnet-4-5'). */
+	/** Stable model id string (e.g. 'anthropic/claude-sonnet-5-5'). */
 	model: string;
 	usage: TokenUsage;
 	/**

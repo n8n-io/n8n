@@ -93,11 +93,11 @@ describe('Manual run of a Form Trigger', () => {
 			);
 			workflowIds.push(workflow.id);
 
-			const result = await workflowExecutionService.executeManually(
-				workflow,
-				{ triggerToStartFrom: { name: 'Form' } },
-				owner,
-			);
+			const result = await workflowExecutionService.executeManually({
+				workflowData: workflow,
+				payload: { triggerToStartFrom: { name: 'Form' } },
+				user: owner,
+			});
 
 			expect(result).toEqual({ waitingForWebhook: true, formTestUrls: [testUrl(path)] });
 		},

@@ -5,7 +5,8 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { WorkflowRepository, type User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import type {
 	IBinaryKeyData,
@@ -18,6 +19,7 @@ import type {
 import { createRunExecutionData, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { WaitTracker } from '@/wait-tracker';
 
 import { createExecution } from './shared/db/executions';
@@ -86,6 +88,8 @@ function buildRunExecutionData(opts: {
 	item?: SensitiveItem;
 	/** Also plant the item in executionData.nodeExecutionStack and waitingExecution. */
 	withStack?: boolean;
+	/** Plant this text in AI Agent metadata and in highlighted data. */
+	metadataText?: string;
 }): IRunExecutionData {
 	const redaction = opts.channels
 		? {
@@ -111,9 +115,35 @@ function buildRunExecutionData(opts: {
 			}
 		: undefined;
 
+	const taskMetadata = opts.metadataText
+		? {
+				metadata: {
+					subNodeExecutionData: {
+						actions: [
+							{
+								nodeName: 'Tool',
+								runIndex: 0,
+								action: {
+									actionType: 'ExecutionNodeAction' as const,
+									nodeName: 'Tool',
+									input: { query: opts.metadataText },
+									type: 'ai_tool' as const,
+									id: 'call-1',
+									metadata: { itemIndex: 0 },
+								},
+							},
+						],
+						metadata: { previousRequests: [opts.metadataText] },
+					},
+				},
+			}
+		: {};
+
 	const stackSubtrees = opts.withStack
 		? {
-				nodeExecutionStack: [{ node: STACK_NODE, source: null, data: { main: [[{ ...item }]] } }],
+				nodeExecutionStack: [
+					{ node: STACK_NODE, source: null, data: { main: [[{ ...item }]] }, ...taskMetadata },
+				],
 				waitingExecution: { 'Test Node': { 0: { main: [[{ ...item }]] } } },
 			}
 		: undefined;
@@ -129,9 +159,11 @@ function buildRunExecutionData(opts: {
 						executionStatus: 'success',
 						source: [],
 						data: { main: [[{ ...item }]] },
+						...taskMetadata,
 					},
 				],
 			},
+			...(opts.metadataText && { metadata: { chatInput: opts.metadataText } }),
 		},
 		executionData:
 			runtimeData || stackSubtrees
@@ -147,6 +179,7 @@ async function createExecutionWithRedaction(opts: {
 	channels?: { production: boolean; manual: boolean };
 	item?: SensitiveItem;
 	withStack?: boolean;
+	metadataText?: string;
 }) {
 	const runData = buildRunExecutionData({
 		policy: opts.policy,
@@ -154,9 +187,14 @@ async function createExecutionWithRedaction(opts: {
 		mode: opts.mode,
 		item: opts.item,
 		withStack: opts.withStack,
+		metadataText: opts.metadataText,
 	});
 	return await createExecution(
-		{ data: stringify(runData), mode: opts.mode ?? 'trigger' },
+		{
+			data: stringify(runData),
+			mode: opts.mode ?? 'trigger',
+			...(opts.metadataText && { metadata: [{ key: 'chatInput', value: opts.metadataText }] }),
+		},
 		opts.workflow,
 	);
 }
@@ -1117,6 +1155,8 @@ describe('executionData subtrees — redaction through DB round-trip', () => {
 describe('sensitive item values are not exposed across surfaces', () => {
 	const SENTINEL_JSON = 'IAM950-SENTINEL-JSON-8f3a2b';
 	const SENTINEL_BINARY = 'IAM950-SENTINEL-BINARY-8f3a2b';
+	// Planted in AI Agent metadata, resultData.metadata and customData.
+	const SENTINEL_METADATA = 'SENTINEL-METADATA-8f3a2b';
 
 	const item: SensitiveItem = {
 		json: { deep: SENTINEL_JSON },
@@ -1128,7 +1168,11 @@ describe('sensitive item values are not exposed across surfaces', () => {
 	// (flatted string vs. nested object) it hides in.
 	const exposesSentinel = (body: unknown): boolean => {
 		const serialized = JSON.stringify(body);
-		return serialized.includes(SENTINEL_JSON) || serialized.includes(SENTINEL_BINARY);
+		return (
+			serialized.includes(SENTINEL_JSON) ||
+			serialized.includes(SENTINEL_BINARY) ||
+			serialized.includes(SENTINEL_METADATA)
+		);
 	};
 
 	test('REST GET /executions/:id', async () => {
@@ -1139,6 +1183,7 @@ describe('sensitive item values are not exposed across surfaces', () => {
 			policy: 'all',
 			item,
 			withStack: true,
+			metadataText: SENTINEL_METADATA,
 		});
 
 		const response = await testServer
@@ -1157,6 +1202,7 @@ describe('sensitive item values are not exposed across surfaces', () => {
 			policy: 'all',
 			item,
 			withStack: true,
+			metadataText: SENTINEL_METADATA,
 		});
 
 		const response = await testServer
@@ -1175,6 +1221,7 @@ describe('sensitive item values are not exposed across surfaces', () => {
 			policy: 'all',
 			item,
 			withStack: true,
+			metadataText: SENTINEL_METADATA,
 		});
 
 		const response = await testServer
@@ -1193,6 +1240,7 @@ describe('sensitive item values are not exposed across surfaces', () => {
 			policy: 'all',
 			item,
 			withStack: true,
+			metadataText: SENTINEL_METADATA,
 		});
 
 		const response = await testServer
@@ -1213,6 +1261,7 @@ describe('sensitive item values are not exposed across surfaces', () => {
 			policy: 'all',
 			item,
 			withStack: true,
+			metadataText: SENTINEL_METADATA,
 		});
 
 		const response = await testServer
@@ -1222,5 +1271,71 @@ describe('sensitive item values are not exposed across surfaces', () => {
 			.expect(200);
 
 		expect(exposesSentinel(response.body)).toBe(true);
+		expect(response.body.data.customData).toEqual({ chatInput: SENTINEL_METADATA });
+	});
+});
+
+describe('oversized execution — highlighted data', () => {
+	// Above the default display limit, so the read skips the run data and its runtime snapshot.
+	const OVERSIZED_BYTES = 200 * 1024 * 1024;
+
+	const createOversizedExecution = async (workflow: IWorkflowBase) =>
+		await createExecution(
+			{
+				data: stringify(createRunExecutionData()),
+				mode: 'trigger',
+				jsonSizeBytes: OVERSIZED_BYTES,
+				metadata: [{ key: 'chatInput', value: 'hello' }],
+			},
+			workflow,
+		);
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	test('clears customData when the instance floor redacts production executions', async () => {
+		vi.spyOn(Container.get(InstanceRedactionEnforcementService), 'get').mockResolvedValue(
+			'production',
+		);
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createOversizedExecution(workflow);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.get(`/executions/${execution.id}`)
+			.expect(200);
+
+		expect(response.body.data.dataTooLargeToDisplay).toBe(true);
+		expect(response.body.data.customData).toEqual({});
+	});
+
+	test('clears customData in the public API when the current workflow settings redact', async () => {
+		const workflow = await createWorkflow({}, publicApiOwner);
+		const execution = await createOversizedExecution(workflow);
+		await Container.get(WorkflowRepository).update(workflow.id, {
+			settings: { redactionPolicy: 'all' },
+		});
+
+		const response = await testServer
+			.publicApiAgentFor(publicApiOwner)
+			.get(`/executions/${execution.id}?includeData=true`)
+			.expect(200);
+
+		expect(response.body.dataTooLargeToDisplay).toBe(true);
+		expect(response.body.customData).toEqual({});
+	});
+
+	test('control: returns customData when no setting redacts the execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createOversizedExecution(workflow);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.get(`/executions/${execution.id}`)
+			.expect(200);
+
+		expect(response.body.data.dataTooLargeToDisplay).toBe(true);
+		expect(response.body.data.customData).toEqual({ chatInput: 'hello' });
 	});
 });

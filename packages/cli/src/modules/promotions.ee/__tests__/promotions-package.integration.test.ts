@@ -73,7 +73,8 @@ import {
 	entityFilePath,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
-import { saveCredential } from '@test-integration/db/credentials';
+import { createAgent } from '@test-integration/db/agents';
+import { encryptCredentialData, saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { buildWorkflowReferencingVariables } from '@/modules/n8n-packages/__tests__/utils/test-builders';
@@ -103,6 +104,7 @@ import { PromotionProviderRepository } from '../database/repositories/promotion-
 import type { GitHostClients } from '../git-hosts/git-host-clients';
 import { ApplyPreviewService } from '../apply-preview.service';
 import { PromotePreviewService } from '../promote-preview.service';
+import { PromotionCredentialSelectionService } from '../promotion-credential-selection.service';
 import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
@@ -243,6 +245,7 @@ beforeEach(async () => {
 		Container.get(SharedWorkflowRepository),
 		projectService,
 		Container.get(FolderService),
+		Container.get(PromotionCredentialSelectionService),
 		packagesService,
 		Container.get(ApplyPreviewService),
 		Container.get(PromotePreviewService),
@@ -451,6 +454,7 @@ async function readBranchEntities(
 		| 'workflows'
 		| 'folders'
 		| 'projects'
+		| 'credentials'
 		| 'agents']['fileName'],
 ): Promise<Array<{ id: string; name: string; target: string }>> {
 	const exportRoot = path.join(inspectionDir, 'n8n');
@@ -532,6 +536,7 @@ function changeService() {
 		Container.get(LocalPackageEntities),
 		Container.get(PromotionEnvironmentResolver),
 		Container.get(ProjectRepository),
+		Container.get(PromotionCredentialSelectionService),
 	);
 }
 
@@ -734,39 +739,40 @@ describe('Promote and Apply', () => {
 		);
 	});
 
-	it.each([false, true])(
-		'checks permission before exporting referenced variable values: %s',
-		async (canExportVariableValues) => {
-			const remote = await createRemote();
-			const environments = await createInstanceEnvironments(remote.bareDir);
-			await service.clone(environments.promote.id, owner);
-			const originalHead = (await createFixtureGit(remote.bareDir).revparse(['main'])).trim();
-			const project = await createTeamProject('Orders', owner);
-			await createVariable('API_URL', 'https://api.example.com');
-			await buildWorkflowReferencingVariables({
-				name: 'Process order',
-				project,
-				variableNames: ['API_URL'],
-			});
+	it('promotes workflows that use variables with an API key that holds only promotions:promote', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const remoteGit = createFixtureGit(remote.bareDir);
+		const originalHead = (await remoteGit.revparse(['main'])).trim();
+		const project = await createTeamProject('Orders', owner);
+		await createVariable('API_URL', 'https://api.example.com');
+		await buildWorkflowReferencingVariables({
+			name: 'Process order',
+			project,
+			variableNames: ['API_URL'],
+		});
+		const promoteOnly = await createOwnerWithApiKey({ scopes: ['promotions:promote'] });
 
-			const result = service.promote(environments.promote.id, owner, {
-				commitMessage: 'Export orders',
-				canExportVariableValues,
-			});
+		const response = await testServer
+			.publicApiAgentFor(promoteOnly)
+			.post(`/promotions/environments/${environments.promote.id}/promote`)
+			.send({ commitMessage: 'Export orders' });
 
-			if (canExportVariableValues) {
-				await expect(result).resolves.toMatchObject({ counts: { variables: 1 } });
-				expect((await createFixtureGit(remote.bareDir).revparse(['main'])).trim()).not.toBe(
-					originalHead,
-				);
-			} else {
-				await expect(result).rejects.toThrow('variable:list');
-				expect((await createFixtureGit(remote.bareDir).revparse(['main'])).trim()).toBe(
-					originalHead,
-				);
-			}
-		},
-	);
+		expect(response.status, JSON.stringify(response.body)).toBe(200);
+		expect(response.body).toMatchObject({ counts: { variables: 1 } });
+		expect((await remoteGit.revparse(['main'])).trim()).not.toBe(originalHead);
+		// The value travels with the package, although the key has no variable:list scope.
+		const filesWithValue = await remoteGit.raw([
+			'grep',
+			'-l',
+			'https://api.example.com',
+			'main',
+			'--',
+			'n8n/variables',
+		]);
+		expect(filesWithValue).toContain('variable.json');
+	});
 
 	it('replaces the checkout through the trash when Connect runs again', async () => {
 		const remote = await createRemote();
@@ -806,13 +812,11 @@ describe('Promote and Apply', () => {
 
 		try {
 			const first = service.promote(environments.promote.id, owner, {
-				canExportVariableValues: false,
 				commitMessage: 'First promote',
 			});
 			await started.promise;
 
 			const second = service.promote(environments.promote.id, owner, {
-				canExportVariableValues: false,
 				commitMessage: 'Second promote',
 			});
 			await expect(second).rejects.toThrow(LockedError);
@@ -839,7 +843,7 @@ describe('Promote and Apply', () => {
 		await service.clone(environments.promote.id, owner);
 
 		const project = await createTeamProject('Orders', owner);
-		await Container.get(AgentRepository).save({
+		await createAgent({
 			id: 'local-agent',
 			name: 'Local Agent',
 			projectId: project.id,
@@ -858,7 +862,6 @@ describe('Promote and Apply', () => {
 		);
 
 		const result = await service.promote(environments.promote.id, owner, {
-			canExportVariableValues: false,
 			commitMessage: 'Export orders',
 		});
 
@@ -926,7 +929,6 @@ describe('Promote and Apply', () => {
 			const baseCommit = (await remote.git.revparse(['main'])).trim();
 
 			const first = await service.promote(environments.promote.id, owner, {
-				canExportVariableValues: false,
 				commitMessage: 'Promote orders',
 				force: true,
 			});
@@ -954,7 +956,6 @@ describe('Promote and Apply', () => {
 			await Container.get(WorkflowRepository).update(workflow.id, { name: 'Process order v2' });
 
 			const second = await service.promote(environments.promote.id, owner, {
-				canExportVariableValues: false,
 				commitMessage: 'Promote orders again',
 			});
 
@@ -981,7 +982,6 @@ describe('Promote and Apply', () => {
 		await createWorkflow({ name: 'Process order', nodes: [], connections: {} }, project);
 		const promote = async (commitMessage: string) =>
 			await service.promote(environments.promote.id, owner, {
-				canExportVariableValues: false,
 				commitMessage,
 			});
 		await exportPackageToRemote(remote);
@@ -1030,7 +1030,7 @@ describe('Promote and Apply', () => {
 			'#!/bin/sh\ntouch "$(git rev-parse --git-path index.lock)"\n',
 			{ mode: 0o755 },
 		);
-		const request = { canExportVariableValues: false, commitMessage: 'Promote package' };
+		const request = { commitMessage: 'Promote package' };
 
 		const result = await service.promote(environments.promote.id, owner, request);
 
@@ -1068,7 +1068,6 @@ describe('Promote and Apply', () => {
 
 		await expect(
 			service.promote(environments.promote.id, owner, {
-				canExportVariableValues: false,
 				commitMessage: 'Promote orders',
 			}),
 		).rejects.toThrow('Remote branch does not exist: main');
@@ -1515,7 +1514,6 @@ describe('Promote and Apply', () => {
 		);
 
 		const promoteResult = await service.promote(environments.promote.id, owner, {
-			canExportVariableValues: true,
 			commitMessage: 'Promote from a main without a checkout',
 		});
 		await Container.get(WorkflowRepository).delete({ id: workflow.id });
@@ -1546,7 +1544,6 @@ describe('Promote and Apply', () => {
 		});
 
 		const result = await service.promote(environments.promote.id, owner, {
-			canExportVariableValues: true,
 			commitMessage: 'Promote after a restart',
 		});
 
@@ -1570,7 +1567,6 @@ describe('Promote and Apply', () => {
 		await workflowRepository.update(workflow.id, { isArchived: true });
 
 		const promoteResult = await service.promote(environments.promote.id, owner, {
-			canExportVariableValues: true,
 			commitMessage: 'Archive order flow',
 		});
 		expect(promoteResult.counts.workflows).toBe(1);
@@ -1614,7 +1610,6 @@ describe('Promote and Apply', () => {
 			project,
 		);
 		const promoteResult = await service.promote(environments.promote.id, owner, {
-			canExportVariableValues: true,
 			commitMessage: 'Promote to staging',
 		});
 		await remote.git.raw(['fetch', 'origin']);
@@ -2124,7 +2119,6 @@ describe('Apply leaves publish state to the target', () => {
 		const draft = await createActiveWorkflow({ name: 'Draft' }, project);
 		const added = await createActiveWorkflow({ name: 'Added' }, project);
 		await service.promote(environments.promote.id, owner, {
-			canExportVariableValues: true,
 			commitMessage: 'Export',
 		});
 
@@ -2347,7 +2341,6 @@ describe('Apply moves and renames within a project', () => {
 		const { project: billing } = await setupProjectWithWorkflows('Billing', []);
 		const promote = async () =>
 			await service.promote(environments.promote.id, owner, {
-				canExportVariableValues: true,
 				commitMessage: 'Export',
 			});
 		await promote();
@@ -2593,8 +2586,7 @@ describe('Create the projects of the Apply package that are missing here', () =>
 		await service.clone(environments.apply.id, owner);
 		const project = await createTeamProject('Orders', owner);
 		await projectRepository.update(project.id, { description: 'Order handling' });
-		const promoteProject = async () =>
-			await service.promoteProjectSelection(project.id, owner, { canExportVariableValues: true });
+		const promoteProject = async () => await service.promoteProjectSelection(project.id, owner, {});
 
 		// The branch has no package yet.
 		await promoteProject();
@@ -2722,9 +2714,13 @@ describe('Apply a project selection over the public API', () => {
 	it('returns blocked, then applies through Continue once the bindings exist', async () => {
 		const { project, workflow, credential, variable } = await prepareBindingApply();
 		const agent = testServer.publicApiAgentFor(owner);
+		// A pipeline key needs only promotions:apply. The importer checks the role of the key owner.
+		const applyOnly = testServer.publicApiAgentFor(
+			await createOwnerWithApiKey({ scopes: ['promotions:apply'] }),
+		);
 		const before = await snapshotApplyState();
 
-		const blockedResponse = await agent
+		const blockedResponse = await applyOnly
 			.post(`/promotions/projects/${project.id}/apply`)
 			.send({ workflowIds: [workflow.id] });
 		expect(blockedResponse.status, blockedResponse.text).toBe(200);
@@ -2752,7 +2748,7 @@ describe('Apply a project selection over the public API', () => {
 		await createVariable(variable.key, 'target value');
 
 		const result = (
-			await agent
+			await applyOnly
 				.post(`/promotions/projects/${project.id}/apply/continue`)
 				.send({
 					workflowIds: [workflow.id],
@@ -3158,7 +3154,6 @@ describe('Promote a project selection — branch effects', () => {
 			await service.promoteProjectSelection(project.id, owner, {
 				workflowIds: [workflowId],
 				commitMessage: 'Promote selection',
-				canExportVariableValues: true,
 			});
 
 		await promoteWorkflow(workflows[0].id);
@@ -3184,6 +3179,124 @@ describe('Promote a project selection — branch effects', () => {
 		);
 	});
 
+	it('promotes a credential on its own under its owner project and then lists no change', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project } = await setupProjectWithWorkflows('Platform', []);
+		const credential = await saveCredential(
+			{ name: 'CRM key', type: 'httpHeaderAuth', data: { name: 'X-Key', value: 'secret' } },
+			{ project, role: 'credential:owner' },
+		);
+
+		const before = await changeService().getPreview(owner, project.id, 'promote');
+		expect(before.resources).toContainEqual(
+			expect.objectContaining({
+				key: `credential:${credential.id}`,
+				change: 'added',
+				selectable: true,
+				parentKey: `project:${project.id}`,
+			}),
+		);
+
+		await service.promoteProjectSelection(project.id, owner, {
+			credentialIds: [credential.id],
+			commitMessage: 'Promote credential',
+		});
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const [onBranch] = await readBranchEntities(dir, PACKAGE_ENTITY_LAYOUT.credentials.fileName);
+		expect(onBranch).toMatchObject({ id: credential.id, name: 'CRM key' });
+		expect(onBranch.target).toMatch(new RegExp(`^projects/[^/]+-${project.id}/credentials/`));
+		expect(
+			await readFile(path.join(dir, 'n8n', onBranch.target, 'credential.json'), 'utf-8'),
+		).not.toContain('secret');
+
+		const after = await changeService().getPreview(owner, project.id, 'promote');
+		expect(after.resources.find(({ type }) => type === 'credential')).toBeUndefined();
+	});
+
+	it('lists a changed expression of a promoted credential, but not a changed secret', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project } = await setupProjectWithWorkflows('Platform', []);
+		const credential = await saveCredential(
+			{ name: 'CRM key', type: 'httpHeaderAuth', data: { name: 'X-Key', value: 'secret' } },
+			{ project, role: 'credential:owner' },
+		);
+		await service.promoteProjectSelection(project.id, owner, {
+			credentialIds: [credential.id],
+			commitMessage: 'Promote credential',
+		});
+		const setData = async (data: Record<string, string>) => {
+			const repository = Container.get(CredentialsRepository);
+			const row = await repository.findOneByOrFail({ id: credential.id });
+			Object.assign(row, { data });
+			await encryptCredentialData(row);
+			await repository.update({ id: credential.id }, { data: row.data });
+		};
+		const row = async () =>
+			(await changeService().getPreview(owner, project.id, 'promote')).resources.find(
+				({ type }) => type === 'credential',
+			);
+
+		await setData({ name: 'X-Key', value: 'another secret' });
+		expect(await row()).toBeUndefined();
+
+		await setData({ name: 'X-Key', value: '={{ $vars.CRM_TOKEN }}' });
+		expect(await row()).toMatchObject({ key: `credential:${credential.id}`, change: 'modified' });
+	});
+
+	it('promotes a credential that holds no values', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project } = await setupProjectWithWorkflows('Platform', []);
+		const credential = await saveCredential(
+			{ name: 'Empty key', type: 'httpHeaderAuth', data: {} },
+			{ project, role: 'credential:owner' },
+		);
+
+		const before = await changeService().getPreview(owner, project.id, 'promote');
+		expect(before.resources).toContainEqual(
+			expect.objectContaining({
+				key: `credential:${credential.id}`,
+				change: 'added',
+				selectable: true,
+			}),
+		);
+
+		await service.promoteProjectSelection(project.id, owner, {
+			credentialIds: [credential.id],
+			commitMessage: 'Promote credential',
+		});
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const [onBranch] = await readBranchEntities(dir, PACKAGE_ENTITY_LAYOUT.credentials.fileName);
+		expect(onBranch).toMatchObject({ id: credential.id, name: 'Empty key' });
+		const after = await changeService().getPreview(owner, project.id, 'promote');
+		expect(after.resources.find(({ type }) => type === 'credential')).toBeUndefined();
+	});
+
+	it('refuses to promote a credential that another project owns', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project } = await setupProjectWithWorkflows('Sales', []);
+		const platform = await createTeamProject('Platform', owner);
+		const credential = await saveCredential(
+			{ name: 'CRM key', type: 'httpHeaderAuth', data: { name: 'X-Key', value: 'secret' } },
+			{ project: platform, role: 'credential:owner' },
+		);
+
+		await expect(
+			service.promoteProjectSelection(project.id, owner, {
+				credentialIds: [credential.id],
+			}),
+		).rejects.toThrow(BadRequestError);
+	});
+
 	it.each(['n8n', 'n8n/manifest.json'])(
 		'restores committed %s that the local copy lost before it pushes a selection',
 		async (lostPath) => {
@@ -3195,7 +3308,6 @@ describe('Promote a project selection — branch effects', () => {
 				await service.promoteProjectSelection(project.id, owner, {
 					workflowIds: [workflowId],
 					commitMessage: 'Promote selection',
-					canExportVariableValues: true,
 				});
 			await promoteWorkflow(workflows[0].id);
 
@@ -3223,7 +3335,6 @@ describe('Promote a project selection — branch effects', () => {
 				await service.promoteProjectSelection(project.id, owner, {
 					workflowIds: [workflowId],
 					commitMessage: 'Promote selection',
-					canExportVariableValues: true,
 				});
 			await promoteWorkflow(workflows[0].id);
 			// Without a remote branch, the reset cannot restore the lost files.
@@ -3251,7 +3362,6 @@ describe('Promote a project selection — branch effects', () => {
 		const request = {
 			workflowIds: [workflows[0].id],
 			commitMessage: 'Add w1',
-			canExportVariableValues: true,
 		};
 
 		// The remote refuses the push, so the promote commits and then rolls the commit back.
@@ -3296,7 +3406,6 @@ describe('Promote a project selection — branch effects', () => {
 		const result = await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [workflows[0].id],
 			commitMessage: 'Add w1',
-			canExportVariableValues: true,
 		});
 		expectPushed(result);
 
@@ -3320,7 +3429,7 @@ describe('Promote a project selection — branch effects', () => {
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2', 'w3']);
 		await exportPackageToRemote(remote);
 
-		await Container.get(AgentRepository).save({
+		await createAgent({
 			id: 'uT9LdQx7rK2MvB4f',
 			name: 'Local Agent',
 			projectId: project.id,
@@ -3330,7 +3439,6 @@ describe('Promote a project selection — branch effects', () => {
 		const result = await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [w4.id],
 			commitMessage: 'Add w4',
-			canExportVariableValues: true,
 		});
 		expectPushed(result);
 
@@ -3362,7 +3470,6 @@ describe('Promote a project selection — branch effects', () => {
 		// A full promote seeds a branch. Merge it into the base, so a later selection
 		// has a package to build on.
 		const full = await service.promote(environments.promote.id, owner, {
-			canExportVariableValues: true,
 			commitMessage: 'Full promote',
 			force: true,
 		});
@@ -3377,7 +3484,6 @@ describe('Promote a project selection — branch effects', () => {
 		const result = await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [w3.id],
 			commitMessage: 'Add w3',
-			canExportVariableValues: true,
 		});
 		expectPushed(result);
 
@@ -3433,7 +3539,6 @@ describe('Promote a project selection — branch effects', () => {
 		await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [workflows[1].id],
 			commitMessage: 'Update w2',
-			canExportVariableValues: true,
 		});
 
 		const { dir } = await inspectBranch(remote.bareDir);
@@ -3463,7 +3568,6 @@ describe('Promote a project selection — branch effects', () => {
 		await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [workflows[2].id],
 			commitMessage: 'Delete w3',
-			canExportVariableValues: true,
 		});
 
 		const { dir } = await inspectBranch(remote.bareDir);
@@ -3492,7 +3596,6 @@ describe('Promote a project selection — branch effects', () => {
 		await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [w4.id, workflows[2].id],
 			commitMessage: 'Add w4, delete w3',
-			canExportVariableValues: true,
 		});
 
 		const after = await inspectBranch(remote.bareDir);
@@ -3520,7 +3623,6 @@ describe('Promote a project selection — branch effects', () => {
 		await service.promoteProjectSelection(p1.id, owner, {
 			workflowIds: [p1w2.id],
 			commitMessage: 'Add p1-w2',
-			canExportVariableValues: true,
 		});
 
 		const workflowIds = (
@@ -3547,7 +3649,6 @@ describe('Promote a project selection — branch effects', () => {
 		await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [workflows[1].id],
 			commitMessage: 'Rename w2',
-			canExportVariableValues: true,
 		});
 
 		const { dir } = await inspectBranch(remote.bareDir);
@@ -3591,7 +3692,6 @@ describe('Promote a project selection — branch effects', () => {
 		await Container.get(WorkflowRepository).update(changed.id, { name: 'Changed locally' });
 		await service.promoteProjectSelection(project.id, owner, {
 			folderIds: [folder.id],
-			canExportVariableValues: true,
 		});
 
 		const { dir, git } = await inspectBranch(remote.bareDir);
@@ -3637,7 +3737,6 @@ describe('Promote a project selection', () => {
 		const w3 = await createWorkflow({ name: 'w3', nodes: [], connections: {} }, project);
 		const result = await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [w3.id],
-			canExportVariableValues: true,
 		});
 		expectPushed(result);
 
@@ -3663,7 +3762,6 @@ describe('Promote a project selection', () => {
 
 		await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [workflows[0].id],
-			canExportVariableValues: true,
 		});
 
 		const { dir } = await inspectBranch(remote.bareDir);
@@ -3692,7 +3790,6 @@ describe('Promote a project selection', () => {
 		// is written to the branch as archived rather than treated as a deletion.
 		await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [workflows[0].id, w3.id],
-			canExportVariableValues: true,
 		});
 
 		const { dir } = await inspectBranch(remote.bareDir);
@@ -3722,7 +3819,6 @@ describe('Promote a project selection', () => {
 		await expect(
 			service.promoteProjectSelection(orders.id, owner, {
 				workflowIds: [workflows[0].id],
-				canExportVariableValues: true,
 			}),
 		).rejects.toMatchObject({
 			httpStatusCode: 400,
@@ -3750,7 +3846,6 @@ describe('Promote a project selection', () => {
 		await expect(
 			service.promoteProjectSelection(orders.id, owner, {
 				workflowIds: [billingWorkflows[0].id],
-				canExportVariableValues: true,
 			}),
 		).rejects.toThrow('do not belong to the selected project');
 
@@ -3779,7 +3874,6 @@ describe('Promote from a clean checkout', () => {
 		const result = await service.promoteProjectSelection(projectId, owner, {
 			workflowIds: [workflowId],
 			commitMessage,
-			canExportVariableValues: true,
 		});
 		expectPushed(result);
 		return result;
@@ -3870,7 +3964,6 @@ describe('Promote from a clean checkout', () => {
 
 		await expect(
 			service.promote(environments.promote.id, owner, {
-				canExportVariableValues: false,
 				commitMessage: 'Interrupted promotion',
 			}),
 		).rejects.toThrow();
@@ -3882,7 +3975,6 @@ describe('Promote from a clean checkout', () => {
 			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
 		});
 		const result = await service.promote(environments.promote.id, owner, {
-			canExportVariableValues: false,
 			commitMessage: 'Direct promotion',
 		});
 
@@ -3921,7 +4013,6 @@ describe('Promote from a clean checkout', () => {
 		await expect(workingDirectory.readDescriptor(environmentId)).resolves.not.toBeNull();
 
 		const result = await service.promote(environments.promote.id, owner, {
-			canExportVariableValues: false,
 			commitMessage: 'Direct promotion',
 		});
 
@@ -3977,7 +4068,6 @@ describe('Promote from a clean checkout', () => {
 		await writeFile(preReceiveHook, '#!/bin/sh\nexit 1\n', { mode: 0o755 });
 		await expect(
 			service.promote(environments.promote.id, owner, {
-				canExportVariableValues: false,
 				commitMessage: 'Failed promotion',
 			}),
 		).rejects.toThrow();
@@ -3988,7 +4078,6 @@ describe('Promote from a clean checkout', () => {
 
 		await rm(preReceiveHook);
 		const result = await service.promote(environments.promote.id, owner, {
-			canExportVariableValues: false,
 			commitMessage: 'First promotion',
 		});
 
@@ -4064,7 +4153,6 @@ describe('Promote from a clean checkout', () => {
 		await utimes(indexLock, modified, modified);
 
 		const result = await service.promote(environments.promote.id, owner, {
-			canExportVariableValues: false,
 			commitMessage: 'Promote after a crash',
 		});
 
@@ -4144,7 +4232,6 @@ describe('Promotion base branch listing', () => {
 		await createWorkflow({ name: 'Campaign', nodes: [], connections: {} }, projectB);
 
 		await service.promote(environments.promote.id, owner, {
-			canExportVariableValues: true,
 			commitMessage: 'Export projects',
 		});
 		const manifest = packageManifestSchema.parse(

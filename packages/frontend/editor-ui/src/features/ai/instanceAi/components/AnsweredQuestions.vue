@@ -6,12 +6,14 @@
  * after the user submits answers via the questions wizard.
  * Styled to match the AI builder's UserAnswersMessage.
  */
-import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
+import { getAskedQuestions } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
+
 const props = defineProps<{
-	toolCall: InstanceAiToolCallState;
+	toolCall: ToolCall;
 }>();
 
 const i18n = useI18n();
@@ -23,8 +25,8 @@ interface DisplayAnswer {
 }
 
 function getAnswers(): DisplayAnswer[] {
-	const questions = props.toolCall.confirmation?.questions ?? [];
-	const result = props.toolCall.result as
+	const questions = getAskedQuestions(props.toolCall) ?? [];
+	const result = props.toolCall.output as
 		| { answered?: boolean; answers?: Array<Record<string, unknown>> }
 		| undefined;
 	const rawAnswers = result?.answers ?? [];

@@ -27,4 +27,26 @@ describe('DomainAccessApproval', () => {
 
 		expect(emitted().decide).toEqual([[{ kind: 'domainAccessDeny' }]]);
 	});
+
+	it('shows why the "Approve for me" mode asks, below the URL', () => {
+		const { getByText, getByTestId } = render({
+			props: {
+				url: 'https://example.com/a?name=Ada',
+				host: 'example.com',
+				askReason: { kind: 'judge', text: 'The URL holds data from the conversation.' },
+			},
+		});
+
+		expect(getByText('https://example.com/a?name=Ada')).toBeVisible();
+		expect(getByTestId('approval-ask-reason')).toHaveTextContent(
+			'The URL holds data from the conversation.',
+		);
+	});
+
+	it('shows no reason without one', () => {
+		const { getByText, queryByTestId } = render({ props: { query: 'n8n release notes' } });
+
+		expect(getByText('n8n release notes')).toBeVisible();
+		expect(queryByTestId('approval-ask-reason')).not.toBeInTheDocument();
+	});
 });

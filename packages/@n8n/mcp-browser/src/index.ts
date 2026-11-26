@@ -23,7 +23,6 @@ export type {
 	ConnectConfig,
 	ConnectResult,
 	ConnectionState,
-	Cookie,
 	CreateCredentialPayload,
 	ElementTarget,
 	PageChangeDetails,

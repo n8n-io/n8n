@@ -1,9 +1,11 @@
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { hasGlobalScope, type AuthPrincipal } from '@n8n/permissions';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import type { McpConfig } from './mcp.config';
 
@@ -26,6 +28,13 @@ export function canReadMigrationReport(
 	user: AuthPrincipal,
 ): boolean {
 	return isMigrationReportAvailable(moduleRegistry) && hasGlobalScope(user, 'breakingChanges:list');
+}
+
+export function areMcpPreferencesAvailable(moduleRegistry: ModuleRegistry): boolean {
+	return (
+		Container.get(AiPreferenceSettingsService).isEnabled &&
+		moduleRegistry.settings.get('mcp')?.preferencesEnabled === true
+	);
 }
 
 export function areAgentToolsAvailable(

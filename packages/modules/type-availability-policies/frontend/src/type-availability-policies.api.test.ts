@@ -2,9 +2,14 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import {
+	createProjectPolicy,
 	fetchCredentialTypeSummaries,
+	fetchCredentialTypeUsage,
 	fetchInstanceAccess,
 	fetchInstancePolicy,
+	fetchNodeTypeSummaries,
+	fetchNodeTypeUsage,
+	fetchProjectPolicies,
 	saveInstancePolicy,
 } from './type-availability-policies.api';
 
@@ -53,6 +58,26 @@ describe('instance policy requests', () => {
 	});
 });
 
+describe('project policy requests', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('reads the team projects with their policy state', async () => {
+		await fetchProjectPolicies(context);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'GET', '/project-policies');
+	});
+
+	it('adds a policy to one project', async () => {
+		await createProjectPolicy(context, 'project-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'POST', '/project-policies', {
+			projectId: 'project-1',
+		});
+	});
+});
+
 describe('instance access requests', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -66,6 +91,22 @@ describe('instance access requests', () => {
 			'GET',
 			'/credential-type-policies/instance/access',
 		);
+	});
+
+	it('reads the credential type usage from the usage route', async () => {
+		await fetchCredentialTypeUsage(context);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/credential-type-policies/usage',
+		);
+	});
+
+	it('reads the node type usage from the usage route', async () => {
+		await fetchNodeTypeUsage(context);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'GET', '/node-type-policies/usage');
 	});
 
 	it('reads the name, icon and parents of each credential type and skips malformed entries', async () => {
@@ -147,5 +188,75 @@ describe('instance access requests', () => {
 		const types = await fetchCredentialTypeSummaries(baseUrl);
 
 		expect([...types.keys()]).toEqual(['bitlyApi']);
+	});
+});
+
+describe('node type summaries', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('reads the latest version of each node type and skips malformed entries', async () => {
+		get.mockResolvedValue([
+			{ name: 'n8n-nodes-base.set', displayName: 'Set', version: [1, 2] },
+			{
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields (Set)',
+				version: [3, 3.4],
+				iconUrl: 'icons/set.svg',
+			},
+			{ name: 'n8n-nodes-base.set', displayName: 'Set (very old)', version: 0.5 },
+			{
+				name: 'n8n-nodes-base.slack',
+				displayName: 'Slack',
+				version: 2,
+				icon: 'fa:slack',
+				iconColor: 'purple',
+			},
+			{ name: 'n8n-nodes-base.internal', displayName: 'Internal', version: 1, hidden: true },
+			{ name: 'broken' },
+			'notARecord',
+		]);
+
+		const baseUrl = newBaseUrl();
+		const types = await fetchNodeTypeSummaries(baseUrl);
+
+		expect(get).toHaveBeenCalledWith(baseUrl, 'types/nodes.json');
+		expect(Object.fromEntries(types)).toEqual({
+			'n8n-nodes-base.set': {
+				displayName: 'Edit Fields (Set)',
+				hidden: false,
+				icon: undefined,
+				iconUrl: 'icons/set.svg',
+				iconColor: undefined,
+			},
+			'n8n-nodes-base.slack': {
+				displayName: 'Slack',
+				hidden: false,
+				icon: 'fa:slack',
+				iconUrl: undefined,
+				iconColor: 'purple',
+			},
+			'n8n-nodes-base.internal': {
+				displayName: 'Internal',
+				hidden: true,
+				icon: undefined,
+				iconUrl: undefined,
+				iconColor: undefined,
+			},
+		});
+	});
+
+	it('reads the file once for each base URL, apart from the credential types', async () => {
+		get.mockResolvedValue([{ name: 'n8n-nodes-base.slack', displayName: 'Slack', version: 1 }]);
+		const baseUrl = newBaseUrl();
+
+		await fetchNodeTypeSummaries(baseUrl);
+		await fetchNodeTypeSummaries(baseUrl);
+		await fetchCredentialTypeSummaries(baseUrl);
+
+		expect(get).toHaveBeenCalledTimes(2);
+		expect(get).toHaveBeenNthCalledWith(1, baseUrl, 'types/nodes.json');
+		expect(get).toHaveBeenNthCalledWith(2, baseUrl, 'types/credentials.json');
 	});
 });

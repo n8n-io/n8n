@@ -1,189 +1,212 @@
 <script setup lang="ts">
 import { WORKFLOW_REVIEW_TEXT_MAX_LENGTH } from '@n8n/api-types';
-import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nIcon, N8nInput, N8nPopover, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogDescription,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nDropdownMenu,
+	N8nIcon,
+	N8nInput,
+	N8nPopover,
+	N8nText,
+	N8nTooltip,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
-import { computed, ref, useId } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 
 import { useReviewActivityStore } from '../reviewActivity.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 
 const props = defineProps<{
+	reviewTitle: string | null;
 	deciding: boolean;
 	viewerCanDecide: boolean;
-	viewerCanComment: boolean;
-	/** Why the viewer may not decide; empty when they may. */
+	viewerCanClose: boolean;
+	/** Why the viewer may neither decide nor close. Shown only on the disabled trigger. */
 	ineligibilityHint: string;
 }>();
 
 const emit = defineEmits<{
 	decide: [input: WorkflowReviewDecisionInput];
-	'comment-posted': [];
+	close: [];
 }>();
 
+type MenuAction = 'approve' | 'request-changes' | 'close';
+
 const i18n = useI18n();
-const { showError } = useToast();
-const store = useReviewActivityStore();
-const { posting, decisionNote } = storeToRefs(store);
+const { decisionNote } = storeToRefs(useReviewActivityStore());
 
-const isOpen = ref(false);
-const noteInputId = useId();
-
+const anchor = useTemplateRef<HTMLElement>('anchor');
+const noteOpen = ref(false);
+const confirmCloseOpen = ref(false);
 const note = computed(() => decisionNote.value.trim());
 
-// Every viewer who may decide may also comment, and a viewer who may not decide cannot open
-// the popover at all, so the last term only guards against those two rules drifting apart.
-const commentDisabled = computed(
-	() => posting.value || props.deciding || note.value.length === 0 || !props.viewerCanComment,
-);
+const canOpen = computed(() => props.viewerCanDecide || props.viewerCanClose);
 
-// A comment in flight leaves its text in the box on purpose, so without this the same text
-// goes out twice: once as the comment, once as the decision note.
-const decisionDisabled = computed(() => props.deciding || posting.value);
+const menuItems = computed<Array<DropdownMenuItemProps<MenuAction>>>(() => {
+	const close: DropdownMenuItemProps<MenuAction> = {
+		id: 'close',
+		label: i18n.baseText('workflowReviews.detail.decision.closeReview'),
+		icon: { type: 'icon', value: 'x' },
+		destructive: true,
+		testId: 'workflow-review-decision-close',
+	};
+	// The requester may close but never decide their own review, so they see Close alone.
+	if (!props.viewerCanDecide) return [close];
 
-function submitDecision(input: WorkflowReviewDecisionInput) {
-	isOpen.value = false;
-	emit('decide', input);
+	return [
+		{
+			id: 'approve',
+			label: i18n.baseText('workflowReviews.detail.decision.approveAndPublish'),
+			icon: { type: 'icon', value: 'check' },
+			testId: 'workflow-review-decision-approve',
+		},
+		{
+			id: 'request-changes',
+			label: i18n.baseText('workflowReviews.detail.decision.requestChanges'),
+			icon: { type: 'icon', value: 'refresh-cw' },
+			testId: 'workflow-review-decision-request-changes',
+			// The note form takes focus; the menu must not hand it back to the trigger.
+			suppressCloseAutoFocus: true,
+		},
+		...(props.viewerCanClose ? [{ ...close, divided: true }] : []),
+	];
+});
+
+function onSelect(action: MenuAction) {
+	if (action === 'approve') emit('decide', { decision: 'approved' });
+	else if (action === 'close') confirmCloseOpen.value = true;
+	else noteOpen.value = true;
+}
+
+function onConfirmClose() {
+	confirmCloseOpen.value = false;
+	emit('close');
 }
 
 function onRequestChanges() {
-	submitDecision({ decision: 'changes_requested', note: note.value });
-}
-
-function onApprove() {
-	// The key is omitted rather than sent empty: the DTO rejects `''`.
-	submitDecision(
-		note.value ? { decision: 'approved', note: note.value } : { decision: 'approved' },
-	);
-}
-
-async function onComment() {
-	const body = note.value;
-
-	isOpen.value = false;
-	try {
-		// A comment that landed after the viewer moved on says nothing about the review they
-		// are reading now, so neither its note nor its tab may be touched.
-		if (!(await store.postComment(body))) return;
-
-		store.clearDecisionNote(body);
-		// The trigger sits outside the tab panel, so a comment posted from the Changes tab
-		// would otherwise land nowhere the viewer can see.
-		emit('comment-posted');
-	} catch (error) {
-		showError(error, i18n.baseText('workflowReviews.detail.activity.error.post'));
-	}
+	noteOpen.value = false;
+	emit('decide', { decision: 'changes_requested', note: note.value });
 }
 </script>
 
 <template>
-	<!-- 480px deviates from Figma's 440px on purpose: the three icon+label buttons do not fit
-		in 440px, and N8nPopover sets a fixed width, so the row would spill rather than wrap. -->
-	<N8nPopover
-		v-model:open="isOpen"
-		side="bottom"
-		align="end"
-		width="480px"
-		:enable-scrolling="false"
-		:content-class="$style.popover"
-	>
-		<template #trigger>
-			<!-- Wrapped only while the viewer may not decide: N8nTooltip does not forward attrs
-				on this branch, so the trigger props land on the span — which is what makes the
-				hint fire over a natively disabled button, and this trigger cannot open anything
-				anyway. An enabled trigger has to stay the bare button, or it loses `aria-expanded`
-				and the focus it gets back on close. -->
-			<span v-if="ineligibilityHint">
-				<N8nTooltip :content="ineligibilityHint" :show-after="300">
-					<N8nButton
-						size="small"
-						:disabled="deciding || !viewerCanDecide"
-						data-test-id="workflow-review-decision-trigger"
-					>
-						{{ i18n.baseText('workflowReviews.detail.decision.trigger') }}
-						<N8nIcon icon="chevron-down" />
-					</N8nButton>
-				</N8nTooltip>
-			</span>
-			<N8nButton
-				v-else
-				size="small"
-				:disabled="deciding || !viewerCanDecide"
-				data-test-id="workflow-review-decision-trigger"
-			>
+	<!-- Wrapped only while the viewer may not open it: the tooltip needs a hoverable element
+		around the natively disabled button. -->
+	<span v-if="!canOpen">
+		<N8nTooltip :content="ineligibilityHint" :show-after="300">
+			<N8nButton size="small" disabled data-test-id="workflow-review-decision-trigger">
 				{{ i18n.baseText('workflowReviews.detail.decision.trigger') }}
 				<N8nIcon icon="chevron-down" />
 			</N8nButton>
-		</template>
-		<template #content>
-			<div :class="$style.content" data-test-id="workflow-review-decision-popover">
-				<N8nInput
-					:id="noteInputId"
-					v-model="decisionNote"
-					:aria-label="i18n.baseText('workflowReviews.detail.decision.note.label')"
-					type="textarea"
-					:rows="3"
-					:maxlength="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
-					:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
-					:class="$style.input"
-					data-test-id="workflow-review-decision-note"
-				/>
-				<div :class="$style.actions">
-					<N8nButton
-						variant="outline"
-						size="small"
-						:disabled="commentDisabled"
-						data-test-id="workflow-review-decision-comment-button"
-						@click="onComment"
-					>
-						<template #icon>
-							<N8nIcon icon="message-square" />
-						</template>
-						{{ i18n.baseText('workflowReviews.detail.decision.comment') }}
-					</N8nButton>
-					<N8nTooltip
-						:disabled="!!note"
-						:content="i18n.baseText('workflowReviews.detail.decision.note.required')"
-						:show-after="300"
-					>
+		</N8nTooltip>
+	</span>
+	<span v-else ref="anchor">
+		<N8nDropdownMenu
+			:items="menuItems"
+			placement="bottom-end"
+			:disabled="deciding"
+			content-test-id="workflow-review-decision-menu"
+			@select="onSelect"
+		>
+			<template #trigger>
+				<N8nButton
+					size="small"
+					:disabled="deciding"
+					data-test-id="workflow-review-decision-trigger"
+				>
+					{{ i18n.baseText('workflowReviews.detail.decision.trigger') }}
+					<N8nIcon :icon="deciding ? 'loader' : 'chevron-down'" :spin="deciding" />
+				</N8nButton>
+			</template>
+		</N8nDropdownMenu>
+		<N8nPopover
+			v-model:open="noteOpen"
+			:reference="anchor ?? undefined"
+			side="bottom"
+			align="end"
+			width="440px"
+			:enable-scrolling="false"
+			:content-class="$style.notePopover"
+		>
+			<template #content>
+				<form
+					:class="$style.noteForm"
+					data-test-id="workflow-review-request-changes-form"
+					@submit.prevent="onRequestChanges"
+				>
+					<N8nText tag="h3" bold size="medium">
+						{{ i18n.baseText('workflowReviews.detail.decision.note.required') }}
+					</N8nText>
+					<N8nInput
+						v-model="decisionNote"
+						:aria-label="i18n.baseText('workflowReviews.detail.decision.note.label')"
+						type="textarea"
+						:rows="5"
+						:maxlength="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
+						:class="$style.input"
+						data-test-id="workflow-review-decision-note"
+					/>
+					<div :class="$style.actions">
+						<N8nButton variant="ghost" size="small" @click="noteOpen = false">
+							{{ i18n.baseText('generic.cancel') }}
+						</N8nButton>
 						<N8nButton
-							variant="outline"
+							type="submit"
 							size="small"
-							:disabled="!note || decisionDisabled"
+							:disabled="!note || deciding"
 							data-test-id="workflow-review-decision-request-changes-button"
-							@click="onRequestChanges"
 						>
-							<template #icon>
-								<N8nIcon icon="refresh-cw" />
-							</template>
 							{{ i18n.baseText('workflowReviews.detail.decision.requestChanges') }}
 						</N8nButton>
-					</N8nTooltip>
-					<N8nButton
-						variant="outline"
-						size="small"
-						:disabled="decisionDisabled"
-						data-test-id="workflow-review-decision-approve-button"
-						@click="onApprove"
-					>
-						<template #icon>
-							<N8nIcon icon="check" />
-						</template>
-						{{ i18n.baseText('workflowReviews.detail.decision.approveAndPublish') }}
-					</N8nButton>
-				</div>
-			</div>
-		</template>
-	</N8nPopover>
+					</div>
+				</form>
+			</template>
+		</N8nPopover>
+		<N8nDialog v-model:open="confirmCloseOpen" size="small" :show-close-button="false">
+			<N8nDialogHeader>
+				<N8nDialogTitle>
+					{{
+						reviewTitle
+							? i18n.baseText('workflowReviews.detail.decision.closeReview.confirm.titleNamed', {
+									interpolate: { title: reviewTitle },
+								})
+							: i18n.baseText('workflowReviews.detail.decision.closeReview.confirm.title')
+					}}
+				</N8nDialogTitle>
+				<N8nDialogDescription>
+					{{ i18n.baseText('workflowReviews.detail.decision.closeReview.confirm.description') }}
+				</N8nDialogDescription>
+			</N8nDialogHeader>
+			<N8nDialogFooter>
+				<N8nButton
+					variant="outline"
+					:label="i18n.baseText('generic.cancel')"
+					@click="confirmCloseOpen = false"
+				/>
+				<N8nButton
+					variant="destructive"
+					:label="i18n.baseText('workflowReviews.detail.decision.closeReview')"
+					:disabled="deciding"
+					data-test-id="workflow-review-close-confirm"
+					@click="onConfirmClose"
+				/>
+			</N8nDialogFooter>
+		</N8nDialog>
+	</span>
 </template>
 
 <style lang="scss" module>
-.popover {
-	padding: var(--spacing--xs);
+.notePopover {
+	padding: var(--spacing--sm);
 }
 
-.content {
+.noteForm {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);

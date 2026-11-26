@@ -4,7 +4,11 @@ import type { AgentSessionStopService } from '@/modules/agents/agent-session-sto
 import type { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import type { ProjectRelation } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { type EventService, type RoleService } from '@n8n/backend-services';
+import {
+	type EventService,
+	type ProjectMutationHooksProxy,
+	type RoleService,
+} from '@n8n/backend-services';
 import {
 	type FolderRepository,
 	type Project,
@@ -54,6 +58,7 @@ describe('ProjectService', () => {
 	const folderRepository = mock<FolderRepository>();
 	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
 	const agentRepository = mock<AgentRepository>();
+	const agentServiceAccount = mock<AgentServiceAccountService>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const agentExecutionService = mock<AgentExecutionService>();
 	const agentTestChatService = mock<AgentTestChatService>();
@@ -65,6 +70,8 @@ describe('ProjectService', () => {
 	const userRepository = mock<UserRepository>();
 	const roleRepository = mock<RoleRepository>();
 	const user = mock<User>({ id: 'actor-user', role: mock({ slug: 'global:owner' }) });
+	const projectMutationHooks = mock<ProjectMutationHooksProxy>();
+	projectMutationHooks.beforeProjectDeleted.mockResolvedValue(async () => {});
 	const transactions = mock<TransactionRunner>();
 	transactions.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	const projectService = new ProjectService(
@@ -85,10 +92,14 @@ describe('ProjectService', () => {
 		transactions,
 		mock(), // agentsConfig
 		mock(), // serviceAccountProjects
+		projectMutationHooks,
 	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		agentServiceAccount.deleteForAgent.mockImplementation(
+			async (_agent, _actor, _transferId, _ctx, cleanUp) => await cleanUp(),
+		);
 		projectRelationRepository.find.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
 	});
@@ -965,6 +976,20 @@ describe('ProjectService', () => {
 		});
 	});
 
+	describe('createTeamProject', () => {
+		it('runs the project mutation hooks for the new project', async () => {
+			const project = mock<Project>({ id: 'new-project' });
+			projectRepository.insertTeamProjectWithAdmin.mockResolvedValueOnce(project);
+
+			const created = await projectService.createTeamProject(user, { name: 'Team' });
+
+			expect(created).toBe(project);
+			expect(projectMutationHooks.afterTeamProjectCreated).toHaveBeenCalledExactlyOnceWith(
+				'new-project',
+			);
+		});
+	});
+
 	describe('deleteProject', () => {
 		const user = {
 			id: 'user-1',
@@ -1115,7 +1140,6 @@ describe('ProjectService', () => {
 
 		it('cleans agent knowledge files before project deletion cascades agent files', async () => {
 			const project = mock<Project>({ id: 'project-1', type: 'team' });
-			const agentServiceAccount = mock<AgentServiceAccountService>();
 			Object.defineProperty(projectService, 'agentProjectCleanupService', {
 				configurable: true,
 				get: async () =>
@@ -1130,6 +1154,7 @@ describe('ProjectService', () => {
 						mock<AgentSessionStopService>(),
 						mock<AgentExecutionRepository>(),
 						agentServiceAccount,
+						mock(),
 					),
 			});
 			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
@@ -1151,6 +1176,8 @@ describe('ProjectService', () => {
 				user,
 				undefined,
 				{},
+				expect.any(Function),
+				{ source: 'project-deletion' },
 			);
 			expect(agentChatAttachmentService.deleteByProject).toHaveBeenCalledWith(project.id);
 			expect(agentChatAttachmentService.deleteByProject.mock.invocationCallOrder[0]).toBeLessThan(
@@ -1235,6 +1262,22 @@ describe('ProjectService', () => {
 					ctx,
 				);
 				expect(credentialDelete).toHaveBeenCalledWith(user, 'credential-1', {}, ctx);
+			});
+
+			it('runs the deletion hooks as the caller, then their callback', async () => {
+				const afterProjectDeleted = vi.fn();
+				projectMutationHooks.beforeProjectDeleted.mockResolvedValueOnce(afterProjectDeleted);
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				await projectService.deleteProject(user, 'project-1', {}, ctx);
+
+				expect(projectMutationHooks.beforeProjectDeleted).toHaveBeenCalledExactlyOnceWith(
+					{ projectId: 'project-1', userId: user.id, loginId: 'login-1' },
+					expect.anything(),
+				);
+				expect(afterProjectDeleted).toHaveBeenCalledOnce();
 			});
 
 			it('passes an empty operation context when none is given', async () => {
@@ -1434,7 +1477,8 @@ describe('ProjectService', () => {
 						mock<AgentProjectDeletionRepository>(),
 						mock<AgentSessionStopService>(),
 						mock<AgentExecutionRepository>(),
-						mock<AgentServiceAccountService>(),
+						agentServiceAccount,
+						mock(),
 					),
 			});
 			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);

@@ -1,5 +1,7 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
+import { binaryColumnType } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 
 import { DataSource } from '@n8n/typeorm';
 import { mkdir, rm, readdir, appendFile, readFile } from 'fs/promises';
@@ -10,6 +12,26 @@ import { compressFolder } from '@/utils/compression.util';
 import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
 
 import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
+import {
+	type BinaryEncoding,
+	encodeBinaryValues,
+	MAX_BINARY_VALUE_BYTES,
+} from './entity-archive-binary';
+import { EntityArchiveWriter } from './entity-archive-writer';
+
+type EntityMetadata = DataSource['entityMetadatas'][number];
+
+const MiB = 1024 * 1024;
+const MAX_PAGE_SIZE = 500;
+const MAX_PAGE_BINARY_BYTES = 64 * MiB;
+
+/** Rows per query, so one page holds at most 64 MiB of binary values. */
+function binaryPageSize(largestValueBytes: number): number {
+	return Math.min(
+		MAX_PAGE_SIZE,
+		Math.max(1, Math.floor(MAX_PAGE_BINARY_BYTES / largestValueBytes)),
+	);
+}
 
 @Service()
 export class ExportService {
@@ -133,11 +155,15 @@ export class ExportService {
 		const idCol = quoteIdentifier('id', dbType);
 		const escapedUserTable = quoteIdentifier(userTableName, dbType);
 		const pageSize = 500;
-		const entitiesPerFile = 500;
+		const writer = new EntityArchiveWriter(
+			outputDir,
+			fileBaseName,
+			async (text) => await this.cipher.encryptV2(text, customEncryptionKey),
+			this.logger,
+			'rows',
+		);
 
 		let lastId = 0;
-		let fileIndex = 1;
-		let currentFileEntityCount = 0;
 		let totalEntityCount = 0;
 		let hasNextPage = true;
 
@@ -157,25 +183,8 @@ export class ExportService {
 
 			if (pageRows.length === 0) break;
 
-			const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
-			const fileName =
-				targetFileIndex === 1
-					? `${fileBaseName}.jsonl`
-					: `${fileBaseName}.${targetFileIndex}.jsonl`;
-			const filePath = safeJoinPath(outputDir, fileName);
-
-			if (targetFileIndex > fileIndex) {
-				this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} rows`);
-				fileIndex = targetFileIndex;
-				currentFileEntityCount = 0;
-			}
-
-			const rowsJsonl = pageRows.map((row) => JSON.stringify(row)).join('\n');
-			await appendFile(
-				filePath,
-				(await this.cipher.encryptV2(rowsJsonl, customEncryptionKey)) + '\n',
-				'utf8',
-			);
+			for (const row of pageRows) await writer.append(JSON.stringify(row));
+			await writer.endPage();
 
 			const lastRowId = Number((pageRows[pageRows.length - 1] as { id: unknown }).id);
 			if (!Number.isFinite(lastRowId)) {
@@ -186,7 +195,6 @@ export class ExportService {
 			lastId = lastRowId;
 
 			totalEntityCount += pageRows.length;
-			currentFileEntityCount += pageRows.length;
 
 			this.logger.info(
 				`      Fetched ${pageRows.length} rows (last id: ${lastId}, total: ${totalEntityCount})`,
@@ -195,12 +203,10 @@ export class ExportService {
 			hasNextPage = pageRows.length >= pageSize;
 		} while (hasNextPage);
 
-		if (currentFileEntityCount > 0) {
-			this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} rows`);
-		}
+		const fileCount = writer.endTable();
 
 		this.logger.info(
-			`   ✅ Completed export for ${userTableName}: ${totalEntityCount} rows in ${fileIndex} file(s)`,
+			`   ✅ Completed export for ${userTableName}: ${totalEntityCount} rows in ${fileCount} file(s)`,
 		);
 
 		return totalEntityCount;
@@ -230,13 +236,66 @@ export class ExportService {
 		return { totalTables: dataTableIds.length, totalRows };
 	}
 
+	/** Page size of each table that has a binary column. Throws if a value is above the limit of the encoding. */
+	private async binaryTablePageSizes(
+		metadatas: EntityMetadata[],
+		encoding: BinaryEncoding,
+	): Promise<Map<string, number>> {
+		const pageSizes = new Map<string, number>();
+		for (const metadata of metadatas) {
+			const binaryColumns = metadata.columns.filter((column) => column.type === binaryColumnType);
+			let largestValueBytes = 0;
+			for (const column of binaryColumns) {
+				const columnBytes = await this.largestValueBytes(metadata.tableName, column.databaseName);
+				if (columnBytes > MAX_BINARY_VALUE_BYTES[encoding]) {
+					throw await this.valueTooLargeError(metadata, column.databaseName, columnBytes, encoding);
+				}
+				largestValueBytes = Math.max(largestValueBytes, columnBytes);
+			}
+			if (binaryColumns.length > 0) {
+				pageSizes.set(metadata.tableName, binaryPageSize(largestValueBytes));
+			}
+		}
+		return pageSizes;
+	}
+
+	private async largestValueBytes(tableName: string, columnName: string): Promise<number> {
+		const { escape } = this.dataSource.driver;
+		const [row]: Array<{ maxBytes: number | string | null }> = await this.dataSource.query(
+			`SELECT MAX(LENGTH(${escape(columnName)})) AS "maxBytes" FROM ${escape(tableName)}`,
+		);
+		return Number(row?.maxBytes ?? 0);
+	}
+
+	private async valueTooLargeError(
+		metadata: EntityMetadata,
+		columnName: string,
+		valueBytes: number,
+		encoding: BinaryEncoding,
+	): Promise<UserError> {
+		const { escape } = this.dataSource.driver;
+		const limitBytes = MAX_BINARY_VALUE_BYTES[encoding];
+		const primaryColumns = metadata.primaryColumns.map((column) => column.databaseName);
+		const [row]: Array<Record<string, unknown>> = await this.dataSource.query(
+			`SELECT ${primaryColumns.map(escape).join(', ')} FROM ${escape(metadata.tableName)} WHERE LENGTH(${escape(columnName)}) > ${limitBytes} LIMIT 1`,
+		);
+		const rowId = primaryColumns.map((name) => String(row?.[name])).join(', ');
+		const hint =
+			encoding === 'buffer'
+				? ` Run the export with --binaryEncoding=base64 to export values of up to ${MAX_BINARY_VALUE_BYTES.base64 / MiB} MiB.`
+				: '';
+		return new UserError(
+			`Table ${metadata.tableName} has a value of ${(valueBytes / MiB).toFixed(1)} MiB in column ${columnName} (row ${rowId}). export:entities exports binary values of at most ${limitBytes / MiB} MiB with --binaryEncoding=${encoding}.${hint}`,
+		);
+	}
+
 	async exportEntities(
 		outputDir: string,
 		excludedTables: Set<string> = new Set(),
 		keyFilePath?: string,
-		options: { includeDataTableRows?: boolean } = {},
+		options: { includeDataTableRows?: boolean; binaryEncoding?: BinaryEncoding } = {},
 	) {
-		const { includeDataTableRows = true } = options;
+		const { includeDataTableRows = true, binaryEncoding = 'buffer' } = options;
 		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
 
 		validateDbTypeForExportEntities(this.dataSource.options.type);
@@ -258,20 +317,26 @@ export class ExportService {
 			}
 		}
 
+		// Get DataSource from Container and fetch all repositories
+		const entityMetadatas = this.dataSource.entityMetadatas;
+
+		const binaryPageSizes = await this.binaryTablePageSizes(
+			entityMetadatas.filter(
+				(metadata) =>
+					metadata.tableType !== 'entity-child' && !excludedTables.has(metadata.tableName),
+			),
+			binaryEncoding,
+		);
+
 		await rm(outputDir, { recursive: true }).catch(() => {});
 		// Ensure output directory exists
 		await mkdir(outputDir, { recursive: true });
-
-		// Get DataSource from Container and fetch all repositories
-		const entityMetadatas = this.dataSource.entityMetadatas;
 
 		this.logger.info('\n📋 Exporting entities from all tables:');
 		this.logger.info('====================================');
 
 		let totalTablesProcessed = 0;
 		let totalEntitiesExported = 0;
-		const pageSize = 500;
-		const entitiesPerFile = 500;
 
 		await this.exportMigrationsTable(outputDir, customEncryptionKey);
 
@@ -318,11 +383,17 @@ export class ExportService {
 			const columns = columnNames.map(this.dataSource.driver.escape).join(', ');
 			this.logger.info(`   💭 Columns: ${columnNames.join(', ')}`);
 
+			const pageSize = binaryPageSizes.get(tableName) ?? MAX_PAGE_SIZE;
+			const writer = new EntityArchiveWriter(
+				outputDir,
+				entityName,
+				async (text) => await this.cipher.encryptV2(text, customEncryptionKey),
+				this.logger,
+				'entities',
+			);
 			let offset = 0;
 			let totalEntityCount = 0;
 			let hasNextPage = true;
-			let fileIndex = 1;
-			let currentFileEntityCount = 0;
 
 			do {
 				/*
@@ -330,7 +401,7 @@ export class ExportService {
 				 * typeorm repositories do not return joining table entries
 				 */
 				const formattedTableName = this.dataSource.driver.escape(tableName);
-				const pageEntities = await this.dataSource.query(
+				const pageEntities: Array<Record<string, unknown>> = await this.dataSource.query(
 					`SELECT ${columns} FROM ${formattedTableName} LIMIT ${pageSize} OFFSET ${offset}`,
 				);
 
@@ -341,31 +412,12 @@ export class ExportService {
 					break;
 				}
 
-				// Determine which file to write to based on current entity count
-				const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
-				const fileName =
-					targetFileIndex === 1 ? `${entityName}.jsonl` : `${entityName}.${targetFileIndex}.jsonl`;
-				const filePath = safeJoinPath(outputDir, fileName);
-
-				// If we've moved to a new file, log the completion of the previous file
-				if (targetFileIndex > fileIndex) {
-					this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} entities`);
-					fileIndex = targetFileIndex;
-					currentFileEntityCount = 0;
+				for (const entity of pageEntities) {
+					await writer.append(JSON.stringify(encodeBinaryValues(entity, binaryEncoding)));
 				}
-
-				// Append all entities in this page as JSONL (one JSON object per line)
-				const entitiesJsonl: string = pageEntities
-					.map((entity: unknown) => JSON.stringify(entity))
-					.join('\n');
-				await appendFile(
-					filePath,
-					(await this.cipher.encryptV2(entitiesJsonl, customEncryptionKey)) + '\n',
-					'utf8',
-				);
+				await writer.endPage();
 
 				totalEntityCount += pageEntities.length;
-				currentFileEntityCount += pageEntities.length;
 				offset += pageEntities.length;
 
 				this.logger.info(
@@ -381,13 +433,10 @@ export class ExportService {
 				}
 			} while (hasNextPage);
 
-			// Log completion of the final file
-			if (currentFileEntityCount > 0) {
-				this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} entities`);
-			}
+			const fileCount = writer.endTable();
 
 			this.logger.info(
-				`   ✅ Completed export for ${tableName}: ${totalEntityCount} entities in ${fileIndex} file(s)`,
+				`   ✅ Completed export for ${tableName}: ${totalEntityCount} entities in ${fileCount} file(s)`,
 			);
 			totalTablesProcessed++;
 			totalEntitiesExported += totalEntityCount;

@@ -19,6 +19,7 @@ import {
 	describePromptProfile,
 	createDomainAccessTracker,
 	createSetupItemsEmitter,
+	createWorkflowDraftPublisher,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
 	threadTargetsAgent,
@@ -65,6 +66,9 @@ import {
 	isAssistantCreditBalanceExhausted,
 } from './assistant-credits';
 
+/** Marks traces of instances that opted out, so the training pipeline can skip them. */
+const MODEL_TRAINING_OPT_OUT_TAG = 'model-training-opt-out';
+
 /**
  * Normalises `N8N_INSTANCE_AI_PROMPT_VERSION`. Blank and absent both mean "no
  * pin" and must become `undefined`: passing `''` on to `resolvePromptProfile`
@@ -97,6 +101,7 @@ export interface AssistantTurnEnvironment {
 	instanceContextEnabled: boolean;
 	nodeUsageEnabled: boolean;
 	skillScope: InstanceAiSkillScope;
+	preferencesNoteVariant?: string;
 }
 
 export interface AssistantTurnEnvironmentParams {
@@ -178,6 +183,10 @@ export class AssistantTurnEnvironmentFactory {
 	}> {
 		if (!this.aiService.isProxyEnabled()) return {};
 
+		// Tag the traces when the setting cannot be read, so a read error never fails the turn.
+		const allowModelTraining = await this.aiUsageService
+			.isModelTrainingAllowed()
+			.catch(() => false);
 		const client = await this.aiService.getClient();
 		const proxyBaseUrl = client.getApiProxyBaseUrl();
 		const tokenManager = new ProxyTokenManager(async () => {
@@ -204,6 +213,7 @@ export class AssistantTurnEnvironmentFactory {
 					...(await tokenManager.getAuthHeaders()),
 					...featureHeaders,
 				}),
+				...(allowModelTraining ? {} : { traceTags: [MODEL_TRAINING_OPT_OUT_TAG] }),
 			},
 		};
 	}
@@ -271,6 +281,8 @@ export class AssistantTurnEnvironmentFactory {
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 
 		const proxyContext = { runId, threadId };
+		const baseModelFetch = this.modelService.getModelFetch();
+		const labeledModelFetch = this.modelService.getLabeledModelFetch(proxyContext);
 		const modelId =
 			proxyBaseUrl && tokenManager
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
@@ -285,12 +297,15 @@ export class AssistantTurnEnvironmentFactory {
 		const {
 			configEvalsEnabled,
 			conversationHistoryEnabled,
+			draftWorkflowPreviewEnabled,
 			conciseStyleEnabled,
 			setupPanelEnabled,
 			setupPanelVariant,
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
+			skillSourcesEnabled,
+			preferencesNoteVariant,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
 		// Resumed segments use the gates bound to the original turn.
@@ -334,10 +349,12 @@ export class AssistantTurnEnvironmentFactory {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
+			skillSourcesEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),
-			modelFetch: this.modelService.getModelFetch(),
+			modelFetch: labeledModelFetch,
+			catalogFetch: baseModelFetch,
 			allowSendingParameterValues,
 			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
 		});
@@ -383,7 +400,8 @@ export class AssistantTurnEnvironmentFactory {
 						tokenManager,
 						proxyContext,
 					}),
-				modelFetch: this.modelService.getModelFetch(),
+				modelFetch: labeledModelFetch,
+				requestLabels: this.instanceAiConfig.modelRequestLabels,
 				getTracing: () => orchestrationContext.tracing,
 			});
 		}
@@ -553,7 +571,7 @@ export class AssistantTurnEnvironmentFactory {
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
 			...(tracing ? { tracing } : {}),
-			modelFetch: this.modelService.getModelFetch(),
+			modelFetch: labeledModelFetch,
 			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
 			eventBus: runtime.eventBus,
 			logger: this.logger,
@@ -606,6 +624,15 @@ export class AssistantTurnEnvironmentFactory {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 		};
+		if (draftWorkflowPreviewEnabled) {
+			context.workflowDraftPublisher = createWorkflowDraftPublisher({
+				eventBus: runtime.eventBus,
+				threadId,
+				runId,
+				agentId: orchestratorAgentId(runId),
+				context,
+			});
+		}
 
 		const { cloudBrowser } = runtime;
 		if (adminSettings.cloudBrowserEnabled && cloudBrowser && (await cloudBrowser.isAvailable())) {
@@ -641,6 +668,7 @@ export class AssistantTurnEnvironmentFactory {
 			instanceContextEnabled,
 			nodeUsageEnabled,
 			skillScope,
+			preferencesNoteVariant,
 		};
 	}
 

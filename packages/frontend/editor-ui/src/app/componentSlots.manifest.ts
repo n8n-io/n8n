@@ -62,4 +62,16 @@ export const registerComponentSlots = () => {
 			async () => await import('@/app/components/layouts/ResourcesListLayout.vue'),
 		),
 	);
+
+	componentRegistry.register(
+		'node-type-icon',
+		defineAsyncComponent(async () => await import('@/app/components/NodeIcon.vue')),
+	);
+
+	componentRegistry.register(
+		'credential-type-icon',
+		defineAsyncComponent(
+			async () => await import('@/features/credentials/components/CredentialIcon.vue'),
+		),
+	);
 };

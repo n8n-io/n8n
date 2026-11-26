@@ -1,4 +1,6 @@
+import type { IncomingMessage } from 'node:http';
 import path from 'node:path';
+import parseurl from 'parseurl';
 
 const DOT_SEGMENT = /^\.{1,2}$/;
 const DOTS_AND_SPACES = /^[. ]+$/;
@@ -66,4 +68,13 @@ export function mayReachDirectory(requestPath: string, directory: string): boole
 	}
 
 	return hasUnreadableSegment && matchesDirectory;
+}
+
+/** The path that Express routes for a request that has not reached Express yet, or `undefined` if the target cannot be parsed. */
+export function routedPath(req: IncomingMessage): string | undefined {
+	try {
+		return parseurl(req)?.pathname ?? undefined;
+	} catch {
+		return undefined;
+	}
 }

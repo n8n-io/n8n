@@ -1,3 +1,4 @@
+import { AgentApprovalCleanupService } from './approval/agent-approval-cleanup.service';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
@@ -110,6 +111,8 @@ type CreateAgentOptions =
 			metadata?: AgentDefinitionMetadata;
 			plannedDestinations?: PlannedAgentDestinations;
 			writeSkills?: AgentSkillWriter;
+			/** Context of the request, for the audit event. */
+			ctx?: OperationContext;
 	  };
 
 type DraftAgentCreateOptions = {
@@ -141,6 +144,8 @@ type DraftAgentCreateOptions = {
 	tagIds?: string[];
 	/** User for configuration validation and product save effects. With schema, duplicates safely. */
 	user?: User;
+	/** Context of the request, for the audit event. */
+	ctx?: OperationContext;
 };
 
 export type AgentCreationResult = AgentCreationState & { agent: ProjectAgent };
@@ -188,6 +193,7 @@ export class AgentsService {
 		private readonly setupCompletion: AgentSetupCompletionService,
 		private readonly n8nChatFlag: N8nChatFlagService,
 		private readonly definitionService: AgentDefinitionService,
+		private readonly approvalCleanup: AgentApprovalCleanupService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
 		private readonly folderService: FolderService,
@@ -298,6 +304,7 @@ export class AgentsService {
 			);
 			return await this.getCreationResult(existing, true);
 		}
+		this.agentServiceAccount.reportCreated(agent, options.actor, options.ctx);
 
 		// The mappings were written in the insert transaction; carry them on the
 		// entity so the create response reports the agent's tags.
@@ -515,6 +522,7 @@ export class AgentsService {
 			await this.definitionService.captureVersion(agent, user, ctx);
 			return savedRefs;
 		});
+		this.agentServiceAccount.reportCreated(agent, options.actor, options.ctx);
 		await Container.get(AgentSaveCompletionService).definitionSaved(
 			buildAgentMutationEvent(
 				agent,
@@ -1039,27 +1047,29 @@ export class AgentsService {
 		// (no `projectId` argument) cleans up the same as the project-scoped one.
 		const { projectId: agentProjectId } = agent;
 
-		// Remove the account before any cleanup that cannot be undone. If the
-		// removal fails, for example because a policy blocks the transfer of its
-		// work, the agent stays as it was.
-		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx);
+		await this.approvalCleanup.assertCanCleanupAgent(agentId);
 
-		await this.deleteKnowledgeFiles(agentProjectId, agentId);
+		// The work of the account moves before any cleanup that cannot be undone.
+		// If a policy blocks the transfer, the agent stays as it was. The agent
+		// row and the account row go in one transaction.
+		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx, async () => {
+			await this.approvalCleanup.cleanupAgent(agentId, agentProjectId, agent.approvalWorkflowId);
 
-		await this.agentKnowledgeService.destroyKnowledgeSandbox(agentProjectId, agentId);
+			await this.deleteKnowledgeFiles(agentProjectId, agentId);
 
-		await this.deleteChatAttachments(agentId);
+			await this.agentKnowledgeService.destroyKnowledgeSandbox(agentProjectId, agentId);
 
-		const chatIntegrationService = Container.get(ChatIntegrationService);
-		for (const integration of agent.integrations ?? []) {
-			await chatIntegrationService.disconnectChannel(agentId, integration);
-		}
+			await this.deleteChatAttachments(agentId);
 
-		await this.agentExecutionService.deleteExecutionLogsForAgent(agentId);
+			const chatIntegrationService = Container.get(ChatIntegrationService);
+			for (const integration of agent.integrations ?? []) {
+				await chatIntegrationService.disconnectChannel(agentId, integration);
+			}
 
-		await this.agentExecutionService.deleteMemoryThreadsForAgent(agentId);
+			await this.agentExecutionService.deleteExecutionLogsForAgent(agentId);
 
-		await this.agentRepository.remove(agent);
+			await this.agentExecutionService.deleteMemoryThreadsForAgent(agentId);
+		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
