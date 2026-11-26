@@ -21,6 +21,7 @@ export const WORKFLOW_RULES = `Follow these rules strictly when generating workf
    - DO NOT add \`alwaysOutputData: true\` just to "keep the chain alive." Forcing an empty \`{}\` item downstream is what causes \`undefined\` reads, failed HTTP calls to \`GET undefined\`, and Code-node crashes on missing fields.
    - DO NOT add an IF gate before a loop to check "has items?" — loops (\`splitInBatches\`, per-item nodes, \`filter\`) already no-op on empty input. The gate is redundant and adds a failure surface.
    - \`alwaysOutputData: true\` is only correct when you specifically need a downstream branch to run on the "empty" case — e.g. a dedicated "no matches found" notification path. In that case, pair it with an \`IF\` that explicitly checks for the empty case and routes accordingly. Never use it as a default.
+   - Never set \`alwaysOutputData: true\` on a node that also has \`onError: 'continueErrorOutput'\`. When that node fails, the failed item goes to the error output AND n8n puts an empty \`{}\` item on the main output, so one input item continues on both paths: it is counted twice, and inside a \`splitInBatches\` loop it returns to the loop twice, so the done branch fires more than once. The error output already keeps the chain alive for a failed call.
    - To drop invalid items mid-pipeline, use a \`filter\` node. A \`filter\` that rejects everything emits 0 items and the chain correctly stops — no \`IF\` + \`splitInBatches\` composition needed.
 
 3. **Use \`executeOnce: true\` for single-execution nodes**
