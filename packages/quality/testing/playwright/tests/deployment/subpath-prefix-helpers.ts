@@ -10,16 +10,24 @@ export interface SubpathHealthCheck {
 
 export interface WebhookSettingsCheck {
 	ok: boolean;
+	status: number;
+	body: string;
 	urlBaseWebhook: string;
 	endpointWebhook: string;
+}
+
+export interface ProbedEditorAsset {
+	path: string;
+	url: string;
+	status: number;
 }
 
 export interface EditorAssetsCheck {
 	htmlStatus: number;
 	html: string;
 	assetPaths: string[];
-	firstAssetUrl: string | null;
-	firstAssetStatus: number | null;
+	staticAsset: ProbedEditorAsset | null;
+	compiledAsset: ProbedEditorAsset | null;
 }
 
 function extractEditorAssetPaths(html: string): string[] {
@@ -34,15 +42,31 @@ function extractEditorAssetPaths(html: string): string[] {
 	return paths;
 }
 
-/** Checks health endpoints both under the configured prefix and at the origin root. */
+async function probeEditorAsset(
+	probe: DeploymentProbe,
+	assetPath: string | undefined,
+): Promise<ProbedEditorAsset | null> {
+	if (!assetPath) {
+		return null;
+	}
+	const url = new URL(assetPath, probe.baseUrl).href;
+	const response = await probe.fetch(url);
+	return {
+		path: assetPath,
+		url,
+		status: response.status(),
+	};
+}
+
+/** Checks health endpoints under the configured prefix and at the origin root. */
 export async function checkSubpathHealth(probe: DeploymentProbe): Promise<SubpathHealthCheck> {
 	const prefixedResponse = await probe.fetch('healthz');
 	const unprefixedUrl = new URL('/healthz', probe.baseUrl).href;
-	const unprefixedResponse = await fetch(unprefixedUrl);
+	const unprefixedResponse = await probe.fetch(unprefixedUrl);
 	return {
 		prefixedStatus: prefixedResponse.status(),
 		unprefixedUrl,
-		unprefixedStatus: unprefixedResponse.status,
+		unprefixedStatus: unprefixedResponse.status(),
 	};
 }
 
@@ -51,42 +75,46 @@ export async function readSubpathWebhookSettings(
 	probe: DeploymentProbe,
 ): Promise<WebhookSettingsCheck> {
 	const response = await probe.fetch('rest/settings');
+	const status = response.status();
+	const body = await response.text();
 	if (!response.ok()) {
-		return { ok: false, urlBaseWebhook: '', endpointWebhook: '' };
+		return { ok: false, status, body, urlBaseWebhook: '', endpointWebhook: '' };
 	}
-	const body: unknown = await response.json();
-	const data = isRecord(body) && isRecord(body.data) ? body.data : isRecord(body) ? body : {};
+	let parsed: unknown = null;
+	try {
+		parsed = JSON.parse(body);
+	} catch {
+		parsed = null;
+	}
+	const data =
+		isRecord(parsed) && isRecord(parsed.data) ? parsed.data : isRecord(parsed) ? parsed : {};
 	return {
 		ok: true,
+		status,
+		body,
 		urlBaseWebhook: typeof data.urlBaseWebhook === 'string' ? data.urlBaseWebhook : '',
 		endpointWebhook: typeof data.endpointWebhook === 'string' ? data.endpointWebhook : '',
 	};
 }
 
-/** Loads the editor HTML under `probe.baseUrl` and probes its first compiled asset. */
+/** Loads the editor HTML under `probe.baseUrl` and probes one `/static/` file and one `/assets/` file. */
 export async function readSubpathEditorAssets(probe: DeploymentProbe): Promise<EditorAssetsCheck> {
 	const editorResponse = await probe.fetch('', {
 		headers: { accept: 'text/html' },
 	});
 	const html = await editorResponse.text();
 	const assetPaths = extractEditorAssetPaths(html);
-	if (assetPaths.length === 0) {
-		return {
-			htmlStatus: editorResponse.status(),
-			html,
-			assetPaths,
-			firstAssetUrl: null,
-			firstAssetStatus: null,
-		};
-	}
+	const staticPath = assetPaths.find((assetPath) => /(?:^|\/)static\//.test(assetPath));
+	const compiledPath = assetPaths.find((assetPath) => /(?:^|\/)assets\//.test(assetPath));
 
-	const firstAssetUrl = new URL(assetPaths[0], probe.baseUrl).href;
-	const firstAssetResponse = await fetch(firstAssetUrl);
+	const staticAsset = await probeEditorAsset(probe, staticPath);
+	const compiledAsset = await probeEditorAsset(probe, compiledPath);
+
 	return {
 		htmlStatus: editorResponse.status(),
 		html,
 		assetPaths,
-		firstAssetUrl,
-		firstAssetStatus: firstAssetResponse.status,
+		staticAsset,
+		compiledAsset,
 	};
 }

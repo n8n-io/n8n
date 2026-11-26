@@ -32,7 +32,10 @@ test(
 				).toBe(404);
 
 				const settings = await readSubpathWebhookSettings(probe);
-				expect(settings.ok, 'Expected GET rest/settings to succeed').toBe(true);
+				expect(
+					settings.ok,
+					`Expected GET rest/settings to succeed (${settings.status}): ${settings.body.slice(0, 400)}`,
+				).toBe(true);
 				expect(
 					settings.urlBaseWebhook,
 					`Expected urlBaseWebhook "${settings.urlBaseWebhook}" to include "${PATH_PREFIX}"`,
@@ -67,8 +70,20 @@ test(
 					`Expected all editor HTML asset paths to start with "${PATH_PREFIX}"`,
 				).toEqual([]);
 				expect(
-					editor.firstAssetStatus,
-					`Expected prefixed editor asset ${editor.firstAssetUrl ?? '(none)'} to return 200`,
+					editor.staticAsset,
+					'Expected editor HTML to reference at least one /static/ file',
+				).not.toBeNull();
+				expect(
+					editor.staticAsset?.status,
+					`Expected prefixed static asset ${editor.staticAsset?.url ?? '(none)'} to return 200`,
+				).toBe(200);
+				expect(
+					editor.compiledAsset,
+					'Expected editor HTML to reference at least one compiled /assets/ file',
+				).not.toBeNull();
+				expect(
+					editor.compiledAsset?.status,
+					`Expected prefixed compiled asset ${editor.compiledAsset?.url ?? '(none)'} to return 200`,
 				).toBe(200);
 
 				expect(
