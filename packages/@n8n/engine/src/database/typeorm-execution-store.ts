@@ -397,7 +397,9 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 						AND parent_step.execution_id = execution.parent_execution_id
 						AND parent_step.status = 'waiting'
 				)`,
-			);
+			)
+			// The error execution has not started yet, and its start reads this row.
+			.andWhere('execution.error_workflow_due_at IS NULL');
 		if (after) {
 			qb.andWhere('(execution.finished_at, execution.id) > (:afterFinishedAt, :afterId)', {
 				afterFinishedAt: after.finishedAt,
