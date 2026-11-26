@@ -99,11 +99,13 @@ const workflowRows = computed(() =>
 			: [];
 		const isWarning = (note: SkillWorkflowNote) =>
 			props.agentContext && AGENT_BLOCKING_NOTES.includes(note);
+		const isCoveredByWarning = (note: SkillWorkflowNote) =>
+			note === 'instanceAccess' && outsideProjectWarnings.length > 0;
 		const toText = (note: SkillWorkflowNote) => i18n.baseText(NOTE_TEXT_KEYS[note]);
 		return {
 			...workflow,
 			warnings: [...outsideProjectWarnings, ...allNotes.filter(isWarning).map(toText)],
-			notes: allNotes.filter((note) => !isWarning(note)).map(toText),
+			notes: allNotes.filter((note) => !isWarning(note) && !isCoveredByWarning(note)).map(toText),
 		};
 	}),
 );
