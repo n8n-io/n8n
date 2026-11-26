@@ -459,6 +459,9 @@ async function loadCreators() {
 
 async function resetFilters() {
 	filters.value = { ...NO_FILTERS };
+	// A remotely selected agent is pinned into the dropdown options, so clear
+	// it here too or it stays visible after the filters are reset.
+	selectedAgent.value = null;
 	await resetPage();
 }
 
