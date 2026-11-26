@@ -26,6 +26,10 @@ const createMockPool = (rows: object[]) => {
 	};
 };
 
+const locator = (value: string) => ({ __rl: true, mode: 'list', value });
+const isLocator = (value: unknown): value is { value: string } =>
+	typeof value === 'object' && value !== null && '__rl' in value;
+
 const mockLoadOptionsFunctions = (
 	database = 'test_db',
 	parameters: Record<string, unknown> = {},
@@ -34,8 +38,12 @@ const mockLoadOptionsFunctions = (
 		getCredentials: vi.fn().mockResolvedValue({ database }),
 		getNodeParameter: vi
 			.fn()
-			.mockImplementation((name: string) =>
-				Object.hasOwn(parameters, name) ? parameters[name] : {},
+			.mockImplementation(
+				(name: string, _fallback?: unknown, options?: { extractValue?: boolean }) => {
+					const value = Object.hasOwn(parameters, name) ? parameters[name] : {};
+					// Only extractValue turns a locator into its text, as in the editor.
+					return options?.extractValue && isLocator(value) ? value.value : value;
+				},
 			),
 	}) as unknown as ILoadOptionsFunctions;
 
@@ -93,13 +101,22 @@ describe('MySQL v2 / listSearch / searchTables', () => {
 		(createPool as Mock).mockResolvedValue(pool);
 
 		const result = await searchTables.call(
-			mockLoadOptionsFunctions('test_db', { database: 'other_db' }),
+			mockLoadOptionsFunctions('test_db', { database: locator('other_db') }),
 			'user',
 		);
 
 		expect(result).toEqual({ results: [{ name: 'users', value: 'users' }] });
 		expect(mockFormat).toHaveBeenCalledWith('SHOW TABLES FROM `other_db` LIKE ?', ['%user%']);
 		expect(mockQuery).toHaveBeenCalledWith('SHOW TABLES FROM `other_db` LIKE %user%');
+	});
+
+	it('should quote a database name with a dot as one identifier', async () => {
+		const { pool, mockQuery } = createMockPool([{ 'Tables_in_my.db': 'users' }]);
+		(createPool as Mock).mockResolvedValue(pool);
+
+		await searchTables.call(mockLoadOptionsFunctions('test_db', { database: locator('my.db') }));
+
+		expect(mockQuery).toHaveBeenCalledWith('SHOW TABLES FROM `my.db`');
 	});
 
 	it('should return empty results when no tables match filter', async () => {
@@ -138,15 +155,6 @@ describe('MySQL v2 / listSearch / searchDatabases', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockEnd.mockResolvedValue(undefined);
-	});
-
-	it('should quote a database name with a dot as one identifier', async () => {
-		const { pool, mockQuery } = createMockPool([{ 'Tables_in_my.db': 'users' }]);
-		(createPool as Mock).mockResolvedValue(pool);
-
-		await searchTables.call(mockLoadOptionsFunctions('test_db', { database: 'my.db' }));
-
-		expect(mockQuery).toHaveBeenCalledWith('SHOW TABLES FROM `my.db`');
 	});
 
 	it('should list the databases that match the filter', async () => {
@@ -190,7 +198,7 @@ describe('MySQL v2 / loadOptions / getColumns', () => {
 		(createPool as Mock).mockResolvedValue(pool);
 
 		const result = await getColumns.call(
-			mockLoadOptionsFunctions('test_db', { table: 'users', database }),
+			mockLoadOptionsFunctions('test_db', { table: locator('users'), database: locator(database) }),
 		);
 
 		expect(mockQuery).toHaveBeenCalledWith(expected);

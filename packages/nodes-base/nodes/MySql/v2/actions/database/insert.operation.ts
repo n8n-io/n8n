@@ -140,16 +140,22 @@ export async function execute(
 	if (queryBatching === BATCH_MODE.SINGLE) {
 		if (databasePerItem) {
 			for (let i = 1; i < items.length; i++) {
-				if (getTableName(this, i) !== table) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Database or Table value is not the same for all items',
-						{
-							itemIndex: i,
-							description:
-								'Set Options > Query Batching to Independent or Transaction to insert each item into its own table',
-						},
-					);
+				try {
+					if (getTableName(this, i) !== table) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'The Database or Table value is not the same for all items',
+							{
+								itemIndex: i,
+								description:
+									'Set Options > Query Batching to Independent or Transaction to insert each item into its own table',
+							},
+						);
+					}
+				} catch (error) {
+					if (!this.continueOnFail()) throw error;
+					// No query runs, so the error item is the only output.
+					return [prepareErrorItem(items[i].json, error as NodeOperationError, i)];
 				}
 			}
 		}

@@ -87,6 +87,13 @@ export function getTableName(ctx: IExecuteFunctions, itemIndex: number): string 
 			{ itemIndex, description: 'Make sure the value is a non-empty string' },
 		);
 	}
+	if ((tableName.match(/`(?:[^`]|``)*`/g) ?? []).length > 1) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			'The Table value already contains a database name',
+			{ itemIndex, description: 'Remove the database from Table or clear Database' },
+		);
+	}
 	return `${databaseName}.${tableName}`;
 }
 

@@ -1708,6 +1708,25 @@ describe('Test MySql V2, operations', () => {
 				expect(runQueries).not.toHaveBeenCalled();
 			});
 
+			it('should return an error item in single mode when continueOnFail is true', async () => {
+				const nodeParameters = insertParameters('single');
+				const runQueries = vi.fn(async () => []);
+
+				const result = await insert.execute.call(
+					createDatabaseExpressionContext(nodeParameters, ['a', 'b', 'c'], true),
+					items,
+					runQueries,
+					nodeParameters.options as IDataObject,
+				);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].json.message).toBe(
+					'The Database or Table value is not the same for all items',
+				);
+				expect(result[0].pairedItem).toEqual({ item: 1 });
+				expect(runQueries).not.toHaveBeenCalled();
+			});
+
 			it('should send one query in single mode when every item has the same database', async () => {
 				const nodeParameters = insertParameters('single');
 				const runQueries = vi.fn(async () => []);

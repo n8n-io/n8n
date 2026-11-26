@@ -558,6 +558,16 @@ describe('Test MySql V2, getTableName', () => {
 		);
 	});
 
+	it('should throw when the table has its own database and the database is set', () => {
+		const parameters = { table: locator('other.tbl'), database: locator('shop') };
+		expect(() => getTableName(context(parameters), 0)).toThrow(
+			'The Table value already contains a database name',
+		);
+		expect(getTableName(context({ ...parameters, table: locator('`my.tbl`') }), 0)).toBe(
+			'`shop`.`my.tbl`',
+		);
+	});
+
 	it.each([
 		['my.db', '`my.db`.`tbl`'],
 		['my`db', '`my``db`.`tbl`'],
