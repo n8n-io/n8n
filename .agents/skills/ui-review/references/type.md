@@ -1,0 +1,32 @@
+# Type
+
+Guidance on proper sized, set, and scaled type.
+
+## Rules
+
+- Prefer `N8nText` to render UI text over styled semantic tags. Use the `step` value to properly size text. Use `tag` to define semantic tag.
+- Always use font sizes from design-system. Never hard-coded values.
+- Only use `--font-family` on UI. Use `--font-family--monospace` for code.
+- Only use `--font-weight--regular` or `--font-weight--medium`. Never bold or italic.
+- Stick to 1-2 font-sizes per UI section. Prefer using colour, opacity, and weight to create contrast.
+- Default to `--font-size--sm` or `<N8nText step="sm" />` for most UI text. Consider `md` and `xs` sizes for headings and captions respectively. This does not apply to Markdown or user-generated text (e.g Inputs).
+- Links should always be underlined.
+- Always use sentence case for headings and labels.
+- Create contrast by using `text-light` or `--text-color--subtler`
+- Apply `font-variant-numeric: tabular-nums` to timers, counters, prices and numeric table columns, so every digit keeps one width and nothing shifts. Leave figures in prose proportional.
+- Use `utils.utils-ellipsis` mixin to truncate text
+- Inputs must use 16px font size to avoid zoom on Safari
+
+## Common fixes
+
+| Pattern | Fix |
+| --- | --- |
+| `line-height` in `px` or `rem` | A variable from design system |
+| `letter-spacing` in `px` | Use variable from design system |
+| `text-wrap: balance` on a paragraph | `text-wrap: pretty` |
+| `text-align: justify` in application UI | `text-align: start` |
+| A timer, counter, price or numeric column without `tabular-nums` | `font-variant-numeric: tabular-nums` |
+| `...`, `--` or a hyphenated range in rendered strings | `…`, an em dash or an en dash |
+| `text-decoration-skip-ink: none` | Remove it; set `text-underline-offset` or `from-font` instead |
+| `<input>` with `text-sm` or `14px` and no mobile override | One of the **Inputs at 16px on mobile** fixes |
+| Mixed-direction value such as a name, number or URL without `<bdi>` or `dir` | Wrap it in `<bdi>` |
