@@ -63,7 +63,7 @@ variable "DEBIAN_PYTHON_IMAGE" {
   default = "python:3.13.18-slim-trixie@sha256:7249d5587b78209a006dc4a3b5340678f84ea729239193aa559962cd8c1fce50"
 }
 variable "DISTROLESS_BASE_IMAGE" {
-  default = "gcr.io/distroless/cc-debian13:latest@sha256:e1f5543d45a2cd7c02a5b43dda5f0ff30729b4832113759d01ed39b0b152cddb"
+  default = "gcr.io/distroless/cc-debian13:latest@sha256:e8343d4a7da8bb210df0c3ea29de38bbadbba6c773bed0cd8bde506fca3a5c44"
 }
 
 variable "N8N_VERSION" { default = "snapshot" }
