@@ -1,10 +1,6 @@
 import { Container } from '@n8n/di';
 
-<<<<<<< HEAD:packages/cli/src/services/__tests__/password.utility.integration.test.ts
-import { PasswordUtility } from '@/services/password.utility';
-=======
-import { DUMMY_PASSWORD_HASH, PasswordUtility } from '../password.utility';
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253)):packages/@n8n/backend-services/src/services/__tests__/password.utility.test.ts
+import { DUMMY_PASSWORD_HASH, PasswordUtility } from '@/services/password.utility';
 
 function toComponents(hash: string) {
 	const BCRYPT_HASH_REGEX =

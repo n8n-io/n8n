@@ -102,11 +102,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			getAffectedResources: () => [],
 		};
 		return {
-<<<<<<< HEAD
-			tools: [navigate, click, createCredential, connect, cookies],
-=======
-			tools: [navigate, click, createCredential, tabList, tabClose, connect],
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
+			tools: [navigate, click, createCredential, connect],
 			connection,
 		} as unknown as BrowserToolkit & {
 			connection: typeof connection;

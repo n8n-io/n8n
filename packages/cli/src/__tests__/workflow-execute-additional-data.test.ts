@@ -302,8 +302,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 			).rejects.toThrow('Stop after persistence check');
 		});
 
-<<<<<<< HEAD
-=======
 		it('persists explicit parent binary grants in the child run data', async () => {
 			const workflowData = mock<IWorkflowBase>({
 				nodes: [
@@ -381,7 +379,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 			},
 		);
 
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
 		it('should execute workflow, return data and execution id', async () => {
 			const response = await executeWorkflow(
 				mock<IExecuteWorkflowInfo>(),

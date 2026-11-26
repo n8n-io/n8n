@@ -210,11 +210,7 @@ export class AgentBackgroundJobService {
 		executionId: string,
 		settlement: AgentBackgroundJobSettlement,
 		runData?: IRunData,
-<<<<<<< HEAD
-=======
-		connections?: import('n8n-workflow').IConnections,
 		binaryDataAccess?: string[],
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
 	): Promise<boolean> {
 		const job = await this.jobRepository.findRunningWorkflowJobByExecutionId(executionId);
 		if (!job) return false;

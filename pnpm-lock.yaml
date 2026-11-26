@@ -482,18 +482,9 @@ catalogs:
     '@types/oracledb':
       specifier: 6.10.3
       version: 6.10.3
-<<<<<<< HEAD
-=======
     '@types/parseurl':
       specifier: 1.3.3
       version: 1.3.3
-    '@types/pg-copy-streams':
-      specifier: 1.2.5
-      version: 1.2.5
-    '@types/pluralize':
-      specifier: ^0.0.33
-      version: 0.0.33
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
     '@types/proxy-from-env':
       specifier: ^1.0.4
       version: 1.0.4
@@ -740,15 +731,9 @@ catalogs:
     p-limit:
       specifier: ^3.1.0
       version: 3.1.0
-<<<<<<< HEAD
-=======
     parseurl:
       specifier: 1.3.3
       version: 1.3.3
-    pg-copy-streams:
-      specifier: 7.0.0
-      version: 7.0.0
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
     picocolors:
       specifier: 1.0.1
       version: 1.0.1
@@ -16925,15 +16910,9 @@ packages:
   '@types/oracledb@6.10.3':
     resolution: {integrity: sha512-8SCGQF/VSiXnifVFTajmRNtjHUDTNxkd9SrBrvG2A/80uwLVee5xmv/juH4hnDNTfU9qxfd6HR4Mfmg2nC3RVw==}
 
-<<<<<<< HEAD
-=======
   '@types/parseurl@1.3.3':
-    resolution: {integrity: sha512-eamlh+uXpNIG2yVdl6UdBTR3B6jtmJl/JWTNTQAN1K3VH1s5F6UPOhgLwCnU9FJ7R/PnUsRN9zFSpMcxwa2Ndg==}
+    resolution: {integrity: sha512-eamlh+uXpNIG2yVdl6UdBTRB6jtmJl/JWTNTQAN1K3VH1s5F6UPOhgLwCnU9FJ7R/PnUsRN9zFSpMcxwa2Ndg==}
 
-  '@types/pg-copy-streams@1.2.5':
-    resolution: {integrity: sha512-7D6/GYW2uHIaVU6S/5omI+6RZnwlZBpLQDZAH83xX1rjxAOK0f6/deKyyUTewxqts145VIGn6XWYz1YGf50G5g==}
-
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
   '@types/pg-pool@2.0.7':
     resolution: {integrity: sha512-U4CwmGVQcbEuqpyju8/ptOKg6gEC+Tqsvj2xS9o1g71bUh8twxnC6ZL5rZKCsGN0iyH0CwgUyc9VR5owNQF9Ng==}
 
@@ -35587,18 +35566,10 @@ snapshots:
     dependencies:
       '@types/node': 20.19.41
 
-<<<<<<< HEAD
-=======
   '@types/parseurl@1.3.3':
     dependencies:
       '@types/node': 20.19.41
 
-  '@types/pg-copy-streams@1.2.5':
-    dependencies:
-      '@types/node': 20.19.41
-      '@types/pg': 8.20.0
-
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
   '@types/pg-pool@2.0.7':
     dependencies:
       '@types/pg': 8.20.0

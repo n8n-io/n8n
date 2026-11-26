@@ -111,14 +111,6 @@ export class BinaryDataAccessService {
 			return { type: 'execution', executionId, workflowId };
 		}
 
-<<<<<<< HEAD
-		// The execution id column is numeric, so neither the placeholder nor an
-		// engine v2 id can be looked up, and any other id names no execution. The
-		// path is where the file was stored, so the workflow in it authorizes the read.
-		return executionId === TEMP_EXECUTION_ID || isExecutionIdV2(executionId)
-			? { workflowId }
-			: null;
-=======
 		// The workflow in the path authorizes reads before the execution exists.
 		if (executionId === TEMP_EXECUTION_ID) return { type: 'workflow', workflowId };
 
@@ -127,7 +119,6 @@ export class BinaryDataAccessService {
 		// A stored file can outlive its execution.
 		const source = await this.resolveEngineV2Execution(executionId);
 		return source?.workflowId === workflowId ? source : null;
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
 	}
 
 	/**
@@ -135,13 +126,9 @@ export class BinaryDataAccessService {
 	 * plane is asked which workflow the execution belongs to. Its steps are not
 	 * needed. No data plane, or no such execution, means no access.
 	 */
-<<<<<<< HEAD
-	private async resolveEngineV2Execution(executionId: ExecutionIdV2): Promise<AccessSource | null> {
-=======
 	private async resolveEngineV2Execution(
 		executionId: ExecutionIdV2,
 	): Promise<{ type: 'workflow'; workflowId: string } | null> {
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
 		const execution = await this.dataPlane.getExecution(executionId);
 		return execution ? { type: 'workflow', workflowId: execution.workflowId } : null;
 	}

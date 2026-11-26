@@ -180,11 +180,7 @@ export class ManualExecutionService {
 			const workflowExecute = new WorkflowExecute(
 				additionalData,
 				data.executionMode,
-<<<<<<< HEAD
-				undefined,
-=======
-				createRunExecutionData({ binaryDataAccess: data.binaryDataAccess, resumeToken }),
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
+				createRunExecutionData({ binaryDataAccess: data.binaryDataAccess }),
 				storedAt,
 			);
 			return workflowExecute.run({
@@ -207,11 +203,7 @@ export class ManualExecutionService {
 			const workflowExecute = new WorkflowExecute(
 				additionalData,
 				data.executionMode,
-<<<<<<< HEAD
-				undefined,
-=======
-				createRunExecutionData({ binaryDataAccess: data.binaryDataAccess, resumeToken }),
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))
+				createRunExecutionData({ binaryDataAccess: data.binaryDataAccess }),
 				storedAt,
 			);
 

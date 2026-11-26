@@ -427,26 +427,6 @@ export async function prepareBinaryData(
 export const getBinaryHelperFunctions = (
 	additionalData: IWorkflowExecuteAdditionalData,
 	workflowId: string,
-<<<<<<< HEAD
-): BinaryHelperFunctions => ({
-	getBinaryPath,
-	getBinaryStream,
-	getBinaryMetadata,
-	binaryToBuffer,
-	binaryToString,
-	createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: TimeUnitValue) {
-		const token = Container.get(BinaryDataService).createSignedToken(binaryData, expiresIn);
-		return `${restApiUrl}/binary-data/signed?token=${token}`;
-	},
-	prepareBinaryData: async (binaryData, filePath, mimeType) =>
-		await prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
-	setBinaryDataBuffer: async (data, binaryData) =>
-		await setBinaryDataBuffer(data, binaryData, workflowId, executionId!),
-	copyBinaryFile: async () => {
-		throw new UserError('`copyBinaryFile` has been removed. Please upgrade this node.');
-	},
-});
-=======
 	runExecutionData?: IRunExecutionData | null,
 ): BinaryHelperFunctions => {
 	const { executionId, restApiUrl } = additionalData;
@@ -488,10 +468,8 @@ export const getBinaryHelperFunctions = (
 			grantBinaryData(stored, additionalData, runExecutionData);
 			return stored;
 		},
-		// oxlint-disable-next-line typescript/no-deprecated -- Keep the upgrade error for nodes that call the removed helper.
 		copyBinaryFile: async () => {
 			throw new UserError('`copyBinaryFile` has been removed. Please upgrade this node.');
 		},
 	};
 };
->>>>>>> 9d3bf433 (chore: Bundle/2.x (#45253))

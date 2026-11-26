@@ -1,6 +1,6 @@
 import { compare } from 'bcryptjs';
 
-import { DUMMY_PASSWORD_HASH, PasswordUtility } from '../password.utility';
+import { DUMMY_PASSWORD_HASH, PasswordUtility } from '@/services/password.utility';
 
 vi.mock('bcryptjs', () => ({
 	compare: vi.fn(),
