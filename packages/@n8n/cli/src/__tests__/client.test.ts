@@ -213,6 +213,17 @@ describe('N8nClient', () => {
 				expect(JSON.parse(init.body as string)).toEqual(body);
 			});
 
+			it('reads the check of an instance Promote', async () => {
+				const check = { missingDependencies: [], warnings: [], revision: 'c'.repeat(64) };
+				fetchMock.mockResolvedValue(jsonResponse(200, check));
+
+				await expect(client.getPromoteCheck('env-1')).resolves.toEqual(check);
+
+				expect(requestLines(fetchMock)).toEqual([
+					'GET https://n8n.example.com/api/v1/promotions/environments/env-1/promote/check',
+				]);
+			});
+
 			describe('list changes', () => {
 				beforeEach(() => {
 					fetchMock.mockResolvedValue(

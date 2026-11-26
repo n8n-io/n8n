@@ -1,11 +1,12 @@
 import { Args } from '@oclif/core';
 
 import { changedRows } from './list-changes';
+import { applyDependencyLines } from './missing-dependencies';
 import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentListApplyChanges extends BaseCommand {
 	static override description =
-		'Preview what Apply changes on the whole instance: its projects, folders, workflows, credentials, data tables, variables and tags. The table lists each changed resource with its project. A team project that the package does not hold is listed as deleted, together with everything in it. Use --json for the full preview, including the check and the revision for --expected-preview-revision. Requires an Apply environment with instance scope.';
+		'Preview what Apply changes on the whole instance: its projects, folders, workflows, credentials, data tables, variables and tags. The table lists each changed resource with its project. A team project that the package does not hold is listed as deleted, together with everything in it. After the table, the command lists the missing dependencies of the workflows by group. It never names the project of a dependency. Use --json for the full preview, including the check and the revision for --expected-preview-revision. Requires an Apply environment with instance scope.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment list-apply-changes env-1',
@@ -30,6 +31,11 @@ export default class PromotionEnvironmentListApplyChanges extends BaseCommand {
 			this.output(changedRows(preview), flags, {
 				columns: ['type', 'id', 'name', 'project', 'change', 'folder', 'usedBy'],
 			});
+			const dependencies = applyDependencyLines(preview.check.missingDependencies);
+			// On stderr, so stdout holds only the table or the IDs.
+			if (dependencies.length > 0 && !flags.quiet) {
+				this.logToStderr(['', ...dependencies].join('\n'));
+			}
 		});
 	}
 }
