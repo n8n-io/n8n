@@ -20,10 +20,10 @@ import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import type { ITelemetryTrackProperties } from 'n8n-workflow';
+import type { ITelemetryTrackProperties, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
-import type { IExecutionTrackProperties } from '@/interfaces';
+import type { ExecutionCaller, IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import type { PublicApiClient } from '@/public-api/public-api-client';
 import type { PublicApiResult } from '@/public-api/types';
@@ -50,8 +50,23 @@ interface IExecutionTrackData {
 	first: Date;
 }
 
+/**
+ * One row for each trigger node, mode, caller and status. A flat list is easier to query in Hex,
+ * and node types as object keys would add one warehouse column for each node type.
+ */
+interface IExecutionTriggerCount extends IExecutionTrackData {
+	/** null when no trigger node ran */
+	node_type: string | null;
+	/** null when the run has no run data */
+	mode: WorkflowExecuteMode | null;
+	/** null when no agent or parent workflow started the run */
+	caller: ExecutionCaller | null;
+	status: 'success' | 'error' | 'crashed';
+}
+
 type IExecutionsBufferEntry = Partial<Record<ExecutionTrackDataKey, IExecutionTrackData>> & {
 	user_id: string | undefined;
+	trigger_counts?: Map<string, IExecutionTriggerCount>;
 };
 
 interface IExecutionsBuffer {
@@ -280,10 +295,17 @@ export class Telemetry implements TelemetryTracker {
 		});
 
 		for (const workflowId of workflowIdsToReport) {
+			const { trigger_counts: triggerCounts, ...counts } = this.executionCountsBuffer[workflowId];
+			const triggerCountRows = [...(triggerCounts?.values() ?? [])].map((row) => ({
+				...row,
+				first: row.first.toISOString(),
+			}));
+
 			this.track('Workflow execution count', {
-				event_version: '2',
+				event_version: '3',
 				workflow_id: workflowId,
-				...this.executionCountsBuffer[workflowId],
+				...counts,
+				trigger_counts: JSON.stringify(triggerCountRows),
 			});
 		}
 
@@ -317,6 +339,8 @@ export class Telemetry implements TelemetryTracker {
 					: 'error';
 			const executionMode = properties.is_manual ? 'manual' : 'prod';
 
+			this.addTriggerCount(workflowId, properties, executionStatus, execTime);
+
 			if (properties.execution_source === 'instance_ai') {
 				const instanceAiDataType = properties.mock_data_sources ? 'mock' : 'real';
 				const sourceKey: ExecutionTrackDataKey = `instance_ai_${instanceAiDataType}_${executionMode}_${executionStatus}`;
@@ -339,6 +363,38 @@ export class Telemetry implements TelemetryTracker {
 			) {
 				this.track('Workflow execution errored', properties);
 			}
+		}
+	}
+
+	/** Each run adds to one row, so the row counts add up to the sum of the manual_* and prod_* counts. */
+	private addTriggerCount(
+		workflowId: string,
+		properties: IExecutionTrackProperties,
+		status: IExecutionTriggerCount['status'],
+		execTime: Date,
+	) {
+		const nodeType = properties.trigger_node_type ?? null;
+		const mode = properties.execution_mode ?? null;
+		const caller = properties.execution_caller ?? null;
+		const key = JSON.stringify([nodeType, mode, caller, status]);
+
+		const triggerCounts = (this.executionCountsBuffer[workflowId].trigger_counts ??= new Map<
+			string,
+			IExecutionTriggerCount
+		>());
+		const row = triggerCounts.get(key);
+
+		if (row) {
+			row.count++;
+		} else {
+			triggerCounts.set(key, {
+				node_type: nodeType,
+				mode,
+				caller,
+				status,
+				count: 1,
+				first: execTime,
+			});
 		}
 	}
 

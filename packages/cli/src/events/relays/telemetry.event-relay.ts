@@ -21,9 +21,11 @@ import type {
 	FeatureFlags,
 	INode,
 	INodesGraphResult,
+	IRun,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	JsonValue,
+	RelatedAgentRun,
 } from 'n8n-workflow';
 import {
 	ERROR_MESSAGE_REDACTED_MESSAGE,
@@ -31,6 +33,7 @@ import {
 	hasCredentialChanges,
 	hasNonPositionalChanges,
 	isExecutionOutputRedacted,
+	isTriggerNodeType,
 	TelemetryHelpers,
 	toExecutionContextEstablishmentHookParameter,
 } from 'n8n-workflow';
@@ -42,7 +45,7 @@ import { N8N_VERSION } from '@/constants';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
-import type { IExecutionTrackProperties } from '@/interfaces';
+import type { ExecutionCaller, IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CREDENTIAL_TYPES_KIND } from '@/modules/type-availability-policies/constants';
@@ -191,6 +194,46 @@ function limitNodeGraphStringSize(nodeGraphString: string): string {
 	if (Buffer.byteLength(nodeGraphString, 'utf8') > MAX_NODE_GRAPH_STRING_SIZE) return '{}';
 
 	return nodeGraphString;
+}
+
+/**
+ * Returns the type of the trigger node that started the run. The run data normally contains one
+ * trigger node. If it contains more, the trigger node with the earliest start time is used.
+ * In queue mode, main usually gets a run without run data from the worker. Then the start node of
+ * the initial execution stack is used, if it is a trigger node.
+ */
+function getStartingTriggerNodeType(
+	workflow: IWorkflowBase,
+	runData: IRun | undefined,
+	startNodeType: string | undefined,
+): string | undefined {
+	const nodeTypesByName = new Map(workflow.nodes.map((node) => [node.name, node.type]));
+	let startingTrigger: { type: string; startTime: number } | undefined;
+
+	for (const [nodeName, taskDataList] of Object.entries(runData?.data.resultData.runData ?? {})) {
+		const nodeType = nodeTypesByName.get(nodeName);
+		const startTime = taskDataList[0]?.startTime;
+		if (nodeType === undefined || startTime === undefined || !isTriggerNodeType(nodeType)) {
+			continue;
+		}
+
+		if (startingTrigger === undefined || startTime < startingTrigger.startTime) {
+			startingTrigger = { type: nodeType, startTime };
+		}
+	}
+
+	if (startingTrigger) return startingTrigger.type;
+	if (startNodeType && isTriggerNodeType(startNodeType)) return startNodeType;
+	return undefined;
+}
+
+function getExecutionCaller(
+	runData: IRun | undefined,
+	parentAgentRun: RelatedAgentRun | undefined,
+): ExecutionCaller | undefined {
+	if (parentAgentRun) return 'agent';
+	if (runData?.data.parentExecution) return 'workflow';
+	return undefined;
 }
 
 function getExecutionTelemetryProperties(
@@ -1992,6 +2035,8 @@ export class TelemetryEventRelay extends EventRelay {
 		userId,
 		source,
 		telemetryMetadata,
+		parentAgentRun,
+		startNodeType,
 	}: RelayEventMap['workflow-post-execute']) {
 		if (!workflow.id) {
 			return;
@@ -2033,6 +2078,16 @@ export class TelemetryEventRelay extends EventRelay {
 
 		if (userId) {
 			telemetryProperties.user_id = userId;
+		}
+
+		const executionCaller = getExecutionCaller(runData, parentAgentRun);
+		if (executionCaller) {
+			telemetryProperties.execution_caller = executionCaller;
+		}
+
+		const triggerNodeType = getStartingTriggerNodeType(workflow, runData, startNodeType);
+		if (triggerNodeType) {
+			telemetryProperties.trigger_node_type = triggerNodeType;
 		}
 
 		if (runData?.data.resultData.error?.message?.includes('canceled')) {

@@ -300,6 +300,78 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].personal_credentials_manual?.first).toEqual(manualExecTime);
 		});
 
+		test('should count runs by trigger node, mode, caller and status', () => {
+			const webhookRun: Parameters<Telemetry['trackWorkflowExecution']>[0] = {
+				workflow_id: '1',
+				is_manual: false,
+				success: true,
+				execution_mode: 'webhook',
+				trigger_node_type: 'n8n-nodes-base.webhook',
+			};
+			const agentRun: Parameters<Telemetry['trackWorkflowExecution']>[0] = {
+				workflow_id: '1',
+				is_manual: false,
+				success: true,
+				execution_mode: 'integrated',
+				trigger_node_type: 'n8n-nodes-base.executeWorkflowTrigger',
+				execution_caller: 'agent',
+			};
+
+			const webhookSuccessTime = fakeTestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(webhookRun);
+			fakeTestSystemTime('2022-01-01 12:30:00');
+			telemetry.trackWorkflowExecution(webhookRun);
+			const webhookErrorTime = fakeTestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution({ ...webhookRun, success: false });
+			const agentSuccessTime = fakeTestSystemTime('2022-01-01 14:00:00');
+			telemetry.trackWorkflowExecution(agentRun);
+			// A run without run data has no mode and no trigger node.
+			const noRunDataTime = fakeTestSystemTime('2022-01-01 15:00:00');
+			telemetry.trackWorkflowExecution({ workflow_id: '1', is_manual: false, success: false });
+
+			const triggerCounts = [...(telemetry.getCountsBuffer()['1'].trigger_counts?.values() ?? [])];
+
+			expect(triggerCounts).toEqual([
+				{
+					node_type: 'n8n-nodes-base.webhook',
+					mode: 'webhook',
+					caller: null,
+					status: 'success',
+					count: 2,
+					first: webhookSuccessTime,
+				},
+				{
+					node_type: 'n8n-nodes-base.webhook',
+					mode: 'webhook',
+					caller: null,
+					status: 'error',
+					count: 1,
+					first: webhookErrorTime,
+				},
+				{
+					node_type: 'n8n-nodes-base.executeWorkflowTrigger',
+					mode: 'integrated',
+					caller: 'agent',
+					status: 'success',
+					count: 1,
+					first: agentSuccessTime,
+				},
+				{
+					node_type: null,
+					mode: null,
+					caller: null,
+					status: 'error',
+					count: 1,
+					first: noRunDataTime,
+				},
+			]);
+			const rowTotal = triggerCounts.reduce((total, row) => total + row.count, 0);
+			const execBuffer = telemetry.getCountsBuffer();
+			expect(rowTotal).toBe(
+				(execBuffer['1'].prod_success?.count ?? 0) + (execBuffer['1'].prod_error?.count ?? 0),
+			);
+		});
+
 		test('should fire "Workflow execution errored" event for failed executions', async () => {
 			const payload = {
 				workflow_id: '1',
@@ -1273,6 +1345,55 @@ describe('Telemetry', () => {
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
 			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
+		});
+
+		test('should send the trigger counts of a workflow as a JSON list', () => {
+			const execTime = fakeTestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution({
+				workflow_id: '1',
+				user_id: 'user1',
+				is_manual: false,
+				success: true,
+				execution_mode: 'trigger',
+				trigger_node_type: 'n8n-nodes-base.scheduleTrigger',
+			});
+			telemetry.trackWorkflowExecution({
+				workflow_id: '1',
+				user_id: 'user1',
+				is_manual: true,
+				success: true,
+				execution_mode: 'manual',
+				trigger_node_type: 'n8n-nodes-base.manualTrigger',
+			});
+
+			telemetry.flushBuffers();
+
+			expect(spyTrack).toHaveBeenCalledWith('Workflow execution count', {
+				event_version: '3',
+				workflow_id: '1',
+				user_id: 'user1',
+				prod_success: { count: 1, first: execTime },
+				manual_success: { count: 1, first: execTime },
+				trigger_counts: JSON.stringify([
+					{
+						node_type: 'n8n-nodes-base.scheduleTrigger',
+						mode: 'trigger',
+						caller: null,
+						status: 'success',
+						count: 1,
+						first: execTime.toISOString(),
+					},
+					{
+						node_type: 'n8n-nodes-base.manualTrigger',
+						mode: 'manual',
+						caller: null,
+						status: 'success',
+						count: 1,
+						first: execTime.toISOString(),
+					},
+				]),
+			});
+			expect(telemetry.getCountsBuffer()).toEqual({});
 		});
 
 		test('should run the added flushers between the workflow counts and the API usage', () => {

@@ -5231,6 +5231,172 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 
+		describe('trigger node and caller', () => {
+			const workflowWithTwoTriggers: IWorkflowBase = {
+				...mockWorkflowBase,
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Schedule Trigger',
+						type: 'n8n-nodes-base.scheduleTrigger',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: 'node2',
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						parameters: {},
+						typeVersion: 2,
+						position: [0, 200],
+					},
+					{
+						id: 'node3',
+						name: 'Edit Fields',
+						type: 'n8n-nodes-base.set',
+						parameters: {},
+						typeVersion: 3,
+						position: [200, 200],
+					},
+				],
+			};
+
+			const createRunData = (
+				runDataByNode: Record<string, Array<{ startTime: number }>>,
+				extraData: Record<string, unknown> = {},
+			) =>
+				({
+					finished: true,
+					status: 'success',
+					mode: 'webhook',
+					data: { resultData: { runData: runDataByNode }, ...extraData },
+				}) as unknown as IRun;
+
+			const getTrackedProperties = () =>
+				vi.mocked(telemetry.trackWorkflowExecution).mock.calls[0][0];
+
+			it('should add the type of the trigger node that started the run', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: workflowWithTwoTriggers,
+					executionId: 'execution123',
+					runData: createRunData({
+						Webhook: [{ startTime: 1000 }],
+						'Edit Fields': [{ startTime: 1001 }],
+					}),
+				});
+
+				await flushPromises();
+
+				expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+					expect.objectContaining({
+						execution_mode: 'webhook',
+						trigger_node_type: 'n8n-nodes-base.webhook',
+					}),
+				);
+			});
+
+			it('should use the trigger node that started first when the run data has two', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: workflowWithTwoTriggers,
+					executionId: 'execution123',
+					runData: createRunData({
+						'Schedule Trigger': [{ startTime: 2000 }],
+						Webhook: [{ startTime: 1000 }],
+					}),
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties().trigger_node_type).toBe('n8n-nodes-base.webhook');
+			});
+
+			it('should use the start node when the run has no run data', async () => {
+				// In queue mode, main gets a summary of the run from the worker, without run data.
+				eventService.emit('workflow-post-execute', {
+					workflow: workflowWithTwoTriggers,
+					executionId: 'execution123',
+					runData: createRunData({}),
+					startNodeType: 'n8n-nodes-base.scheduleTrigger',
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties().trigger_node_type).toBe('n8n-nodes-base.scheduleTrigger');
+			});
+
+			it('should not use a start node that is not a trigger node', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: workflowWithTwoTriggers,
+					executionId: 'execution123',
+					runData: createRunData({}),
+					startNodeType: 'n8n-nodes-base.wait',
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties()).not.toHaveProperty('trigger_node_type');
+			});
+
+			it('should not add a trigger node type when no trigger node ran', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: workflowWithTwoTriggers,
+					executionId: 'execution123',
+					runData: createRunData({ 'Edit Fields': [{ startTime: 1000 }] }),
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties()).not.toHaveProperty('trigger_node_type');
+			});
+
+			it('should set the caller to agent when an agent started the run', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: workflowWithTwoTriggers,
+					executionId: 'execution123',
+					runData: createRunData({}),
+					parentAgentRun: {
+						agentId: 'agent1',
+						projectId: 'project1',
+						threadId: 'thread1',
+						runId: 'run1',
+						toolCallId: 'toolCall1',
+					},
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties().execution_caller).toBe('agent');
+			});
+
+			it('should set the caller to workflow when a parent workflow started the run', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: workflowWithTwoTriggers,
+					executionId: 'execution123',
+					runData: createRunData(
+						{},
+						{ parentExecution: { executionId: 'parent1', workflowId: 'parentWorkflow1' } },
+					),
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties().execution_caller).toBe('workflow');
+			});
+
+			it('should not set a caller when the run started on its own', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: workflowWithTwoTriggers,
+					executionId: 'execution123',
+					runData: createRunData({ Webhook: [{ startTime: 1000 }] }),
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties()).not.toHaveProperty('execution_caller');
+			});
+		});
+
 		it('should call telemetry.track when manual node execution finished', async () => {
 			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
 			credentialsRepository.findOneBy.mockResolvedValue(
