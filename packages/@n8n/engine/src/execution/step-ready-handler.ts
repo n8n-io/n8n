@@ -286,6 +286,7 @@ export class StepReadyHandler {
 				mode: execution.mode,
 				callerContext: execution.callerContext,
 				parent: { executionId: execution.id, stepId: step.id, awaited: subExecution.awaited },
+				resolveErrorWorkflowOnFailure: subExecution.resolveErrorWorkflowOnFailure,
 			});
 			return { kind: 'started' };
 		} catch (error) {

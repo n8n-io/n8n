@@ -1640,6 +1640,32 @@ describe('StepReadyHandler sub-executions', () => {
 		});
 	});
 
+	it('passes resolveErrorWorkflowOnFailure of the declaration to the sub-execution start', async () => {
+		const subExecutionStarter: SubExecutionStarter = {
+			start: vi.fn().mockResolvedValue({ executionId: 'exec-sub' }),
+		};
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore(),
+			makeQueue(),
+			{
+				v1StepExecutor: makeExecutor({
+					subExecution: { ...detached, resolveErrorWorkflowOnFailure: true, outputs: [[]] },
+				}),
+			},
+			undefined,
+			undefined,
+			undefined,
+			subExecutionStarter,
+		);
+
+		await handler.handle(event);
+
+		expect(subExecutionStarter.start).toHaveBeenCalledWith(
+			expect.objectContaining({ executionId: 'exec-sub', resolveErrorWorkflowOnFailure: true }),
+		);
+	});
+
 	it('records the outputs when the execution ended before a detached sub-execution started', async () => {
 		// A sibling failed, or a cancel came, while the node ran: the outputs are
 		// still the node's outcome, and an ended execution is owed no sub-execution.
