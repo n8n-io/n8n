@@ -7,7 +7,9 @@ type Translate = (key: BaseTextKey, options?: { interpolate: Record<string, stri
 
 export function handoffContextKey(context: InstanceAiHandoffContext): string {
 	if (context.source === 'agent-preview') {
-		return `${context.source}:${context.agentId}:${context.threadId}:${context.executionId ?? ''}:${context.threadIds?.join(',') ?? ''}`;
+		const key = `${context.source}:${context.agentId}:${context.threadId}:${context.executionId ?? ''}`;
+		// Keep saved dismissal keys valid for handoffs without a session list.
+		return context.threadIds?.length ? `${key}:${context.threadIds.join(',')}` : key;
 	}
 
 	if (context.source === 'setup-panel-execute') {
