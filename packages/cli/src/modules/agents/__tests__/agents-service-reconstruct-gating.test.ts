@@ -22,6 +22,7 @@ import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
+import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -150,6 +151,7 @@ function makeReconstructionService(
 		mock<AgentKnowledgeUsageTracker>(),
 		overrides.knowledgeAvailabilityService ?? makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
+		mock<WorkflowsInSkillsFlagGate>(),
 	);
 }
 
