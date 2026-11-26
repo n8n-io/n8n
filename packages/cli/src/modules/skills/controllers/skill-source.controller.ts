@@ -5,6 +5,7 @@ import {
 	ConnectSkillSourceDto,
 	MoveSkillSourceDto,
 	DiscoverSkillSourceDto,
+	PreviewSkillSourceDto,
 	ListSkillSourceCredentialsQueryDto,
 	ListSkillSourceRepositoriesQueryDto,
 	ReplaceSkillSourceCredentialDto,
@@ -64,6 +65,13 @@ export class SkillSourceController {
 		return await this.skillSourceService.listRepositories(req.user, query);
 	}
 
+	// Public content needs a login and the flag, but no create scope or stored credential.
+	// This follows Global skill read access. Project-only roles must also be able to browse.
+	@Post('/preview')
+	async preview(req: AuthenticatedRequest, _res: Response, @Body payload: PreviewSkillSourceDto) {
+		return await this.skillSourceService.preview(req.user, payload.url);
+	}
+
 	/** Reads a link and lists its skills for the picker. Writes nothing. */
 	@Post('/discover')
 	async discover(req: AuthenticatedRequest, _res: Response, @Body payload: DiscoverSkillSourceDto) {
@@ -88,7 +96,7 @@ export class SkillSourceController {
 	/** The sources that the user can see, each with its counts, for its row in the skills table. */
 	@Get('/')
 	async list(req: AuthenticatedRequest) {
-		return await this.skillSourceService.list(req.user);
+		return await this.skillSourceService.list(req.user, { includeSkills: true });
 	}
 
 	// Resource-dependent scope checks run in the service. GlobalScope would exclude project roles.

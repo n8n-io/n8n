@@ -180,14 +180,28 @@ describe('AgentSkillsService', () => {
 
 		it('reports a skill that a person made in the agent builder, with the method sent', async () => {
 			givenAgent({ schema: baseConfig });
-
-			await service.createAndAttachSkill(agentId, projectId, skill, context, 'project', 'upload');
+			const attribution = {
+				navigation_source: 'agent_picker' as const,
+				flow_id: 'b23b6134-b7a7-4912-a635-6d38cbbe0ae8',
+				add_entry_point: 'agent_picker' as const,
+				recommended_skill_id: 'research' as const,
+			};
+			await service.createAndAttachSkill(
+				agentId,
+				projectId,
+				skill,
+				context,
+				'project',
+				'upload',
+				attribution,
+			);
 
 			expect(skillService.trackCreated).toHaveBeenCalledWith(
-				'user-1',
+				user,
 				['skill_new1'],
 				'agent',
 				'upload',
+				attribution,
 			);
 		});
 
@@ -200,10 +214,11 @@ describe('AgentSkillsService', () => {
 			await service.createAndAttachSkills(agentId, projectId, [skill], { user, modifiedBy });
 
 			expect(skillService.trackCreated).toHaveBeenCalledWith(
-				'user-1',
+				user,
 				['skill_new1'],
 				source,
 				'ai',
+				undefined,
 			);
 		});
 

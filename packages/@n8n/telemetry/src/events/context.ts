@@ -3,6 +3,8 @@ import {
 	SKILL_SCAN_RULES,
 	SKILL_SOURCE_REASONS,
 	skillScopeSchema,
+	skillNavigationSourceSchema,
+	skillAddEntryPointSchema,
 } from '@n8n/api-types';
 import { z } from 'zod/v4';
 
@@ -48,6 +50,38 @@ const skillScope = z
 	.describe('Where the skill lives: one project, or the whole instance');
 
 const skillId = z.string().describe('The skill. Its name and text are never reported');
+
+const recommendedSkillsVariant = z
+	.enum(['variant'])
+	.describe(
+		'Variant of the 143_recommended_skills feature flag. Only the treatment shows recommendations and the catalog',
+	);
+
+const skillAttribution = {
+	variant: recommendedSkillsVariant.optional(),
+	'$feature/143_recommended_skills': recommendedSkillsVariant.optional(),
+	navigation_source: z
+		.enum(skillNavigationSourceSchema.options)
+		.optional()
+		.describe(
+			'The entry point that opened Skills or the Agent picker. Direct links have no known origin.',
+		),
+	flow_id: z
+		.uuid()
+		.optional()
+		.describe(
+			'One Skills page visit or Agent picker session. Joins browsing, add starts and committed results.',
+		),
+	add_entry_point: z
+		.enum(skillAddEntryPointSchema.options)
+		.optional()
+		.describe('The surface where the user started this add flow.'),
+	catalog_skill_id: z
+		.string()
+		.optional()
+		.describe('The curated catalog ID, never a user-entered URL or skill name.'),
+	recommended_skill_id: z.enum(['humanizer', 'cold-email', 'research']).optional(),
+};
 
 const skillProjectId = z
 	.string()
@@ -125,12 +159,6 @@ const emptyPreferencesNoteVariant = z
 	.enum(['control', 'variant'])
 	.describe(
 		'Variant of the 147_assistant_empty_preferences_note feature flag. Only the treatment adds the note',
-	);
-
-const recommendedSkillsVariant = z
-	.enum(['variant'])
-	.describe(
-		'Variant of the 143_recommended_skills feature flag. Only the treatment shows the cards',
 	);
 
 const recommendedSkillsEntryPoint = z
@@ -408,9 +436,40 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A user opened the Skills page in the Context settings area. Fires on every visit, so it counts how often the page is used, also when the user changes nothing.',
 		properties: z.object({
+			...skillAttribution,
+			view: z.enum(['installed', 'discover', 'detail']).optional(),
 			count: z
 				.number()
 				.describe('Skills the user can see in total, not the number the first page showed'),
+		}),
+	},
+	USER_VIEWED_SKILL_CATALOG: {
+		name: 'User viewed skill catalog',
+		description:
+			'The Discover skill list became visible. Search, filter changes and source refreshes do not count as another view.',
+		properties: z.object({
+			...skillAttribution,
+			catalog_version: z.string().describe('The review date of the bundled catalog.'),
+		}),
+	},
+	USER_VIEWED_CATALOG_SKILL: {
+		name: 'User viewed catalog skill',
+		description:
+			'A user opened a catalog detail page, including through a direct link. This does not mean its remote files loaded.',
+		properties: z.object({
+			...skillAttribution,
+			catalog_skill_id: z.string(),
+			category: z.enum(['build', 'improve', 'agents', 'data', 'writing', 'design']),
+			opened_from: z.enum(['browse', 'search', 'direct']),
+		}),
+	},
+	USER_STARTED_ADDING_SKILL: {
+		name: 'User started adding skill',
+		description:
+			'A user started a skill creation or GitHub import flow. Opening the Agent picker or recommended cards alone does not count. A cancelled flow has no committed result.',
+		properties: z.object({
+			...skillAttribution,
+			add_entry_point: z.enum(skillAddEntryPointSchema.options),
 		}),
 	},
 	USER_OPENED_SKILL: {
@@ -464,6 +523,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A skill was created from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the data migration or an agent duplicate, reports nothing.',
 		properties: z.object({
+			...skillAttribution,
 			user_id: userId,
 			skill_id: skillId,
 			scope: skillScope,
@@ -558,6 +618,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A user connected a source, such as a GitHub repository, to sync skills into one scope. Fires once per connect request, also when it fails, with the reason code. Also fires as a failure when reading the link for the picker fails or finds the source already connected (`duplicate_result: blocked`). The skills it imported are reported by `User imported skills from source`.',
 		properties: z.object({
+			...skillAttribution,
 			user_id: userId,
 			surface: z.enum(['assistant', 'mcp']).optional().describe('Absent for the Skills UI'),
 			provider: skillSourceProvider,
@@ -577,6 +638,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts and file extensions only, never names, paths or content. Rows before CONTEXT-481 counted every file outside `references/*.md` in `skipped_files` and `skipped_script_files`. Later rows count only a file with a path that n8n cannot store, a file over the size limit of one file, and a file over the limits of one skill, so both numbers fall to almost 0. Do not compare them across that change.',
 		properties: z.object({
+			...skillAttribution,
 			user_id: userId,
 			surface: z.enum(['assistant', 'mcp']).optional().describe('Absent for the Skills UI'),
 			provider: skillSourceProvider,

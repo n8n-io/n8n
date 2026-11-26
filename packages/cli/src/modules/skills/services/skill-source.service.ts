@@ -8,6 +8,7 @@ import {
 	type DiscoveredSkill,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
+	type SkillSourcePreview,
 	type SkillSourceDuplicate,
 	type SkillScanResult,
 	type SkillSourceReason,
@@ -88,6 +89,7 @@ import { SkillService } from './skill.service';
 import { publicAccessKey, SkillSourceBackoff } from './skill-source-backoff';
 import { SkillSourceToolBudget } from './skill-source-tool-budget';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
+import { RecommendedSkillsFlagGate } from './recommended-skills-flag-gate';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
 import {
 	flaggedCodes,
@@ -171,6 +173,7 @@ export class SkillSourceService {
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly toolBudget: SkillSourceToolBudget,
 		private readonly backoff: SkillSourceBackoff,
+		private readonly recommendedSkillsGate: RecommendedSkillsFlagGate,
 	) {}
 
 	/**
@@ -179,25 +182,55 @@ export class SkillSourceService {
 	 * a failed connect. A discover that succeeds reports nothing: the connect reports it.
 	 */
 	async discover(user: User, payload: DiscoverSkillSourceDto): Promise<SkillSourceDiscovery> {
-		const { revision: _revision, ...result } = await this.discoverWith(
-			user,
-			payload,
-			(read, row) => {
-				const preview = read.fetched
-					? skillPreview(read.fetched.content)
-					: { files: [], truncated: false };
-				return {
-					...row,
-					description: read.skill?.description ?? read.fetched?.content.description ?? null,
-					skippedFiles: read.fetched?.skippedFiles ?? [],
-					previewFiles: preview.files,
-					previewTruncated: preview.truncated,
-					error: read.error ? { reason: read.error.reason, message: read.error.message } : null,
-					check: read.check ?? null,
-				};
-			},
+		const { revision: _revision, ...result } = await this.discoverWith(user, payload, (read, row) =>
+			this.previewSkill(read, row),
 		);
 		return result;
+	}
+
+	/** All signed-in users can browse public skills, as they can read Global skills. */
+	async preview(user: User, url: string): Promise<SkillSourcePreview> {
+		await this.flagGate.assertEnabled(user);
+		if (!(await this.recommendedSkillsGate.isEnabled(user))) throw new NotFoundError('Not found');
+		const source = await this.parse({ url }, user, null);
+		const discovered = await this.discoverAll(source);
+		const skills = await this.readAll(source, discovered);
+		return {
+			source: {
+				type: source.type,
+				...source.client.describe(source.locator),
+				webUrl: source.client.webUrl(source.locator),
+			},
+			skills: skills.map((read) =>
+				this.previewSkill(read, {
+					key: read.key,
+					location: source.client.location(read.ref),
+					name: read.skill?.name ?? read.fetched?.content.name ?? null,
+					nameTaken: false,
+					webUrl: source.client.webUrl(source.locator, read.ref),
+				}),
+			),
+			truncated: discovered.truncated,
+			tooDeep: discovered.tooDeep,
+		};
+	}
+
+	private previewSkill(
+		read: ReadSkill,
+		row: Pick<DiscoveredSkill, 'key' | 'location' | 'name' | 'nameTaken' | 'webUrl'>,
+	): DiscoveredSkill {
+		const preview = read.fetched
+			? skillPreview(read.fetched.content)
+			: { files: [], truncated: false };
+		return {
+			...row,
+			description: read.skill?.description ?? read.fetched?.content.description ?? null,
+			skippedFiles: read.fetched?.skippedFiles ?? [],
+			previewFiles: preview.files,
+			previewTruncated: preview.truncated,
+			error: read.error ? { reason: read.error.reason, message: read.error.message } : null,
+			check: read.check ?? null,
+		};
 	}
 
 	async discoverPublic(
@@ -228,7 +261,10 @@ export class SkillSourceService {
 	) {
 		await this.flagGate.assertEnabled(user);
 		const { target, scopeType } = await this.resolveScope(user, payload);
-		const report = connectReport(scopeType, payload.credentialId, surface);
+		const report = {
+			...connectReport(scopeType, payload.credentialId, surface),
+			...(await this.skillsTelemetry.experimentContext(user, payload.telemetry)),
+		};
 		try {
 			if (surface) this.toolBudget.take(user.id);
 			const source = await this.parse(payload, user, target.projectId, surface !== undefined);
@@ -364,7 +400,11 @@ export class SkillSourceService {
 	): Promise<SkillSourceConnectResponse> {
 		await this.flagGate.assertEnabled(user);
 		const { target, scopeType } = await this.resolveScope(user, payload);
-		const report = connectReport(scopeType, payload.credentialId, preview?.surface);
+		const telemetry = await this.skillsTelemetry.experimentContext(user, payload.telemetry);
+		const report = {
+			...connectReport(scopeType, payload.credentialId, preview?.surface),
+			...telemetry,
+		};
 		try {
 			if (preview) this.toolBudget.take(user.id);
 			const source = await this.parse(payload, user, target.projectId, preview !== undefined);
@@ -375,6 +415,7 @@ export class SkillSourceService {
 			const { response, warning } = await this.importSkills(user, source, target, scopeType, {
 				skillKeys: payload.skillKeys,
 				reviewedSkillKeys: payload.reviewedSkillKeys ?? [],
+				telemetry,
 				preview,
 			});
 			await this.skillsTelemetry.connectedSource(
@@ -392,20 +433,27 @@ export class SkillSourceService {
 	}
 
 	/** Visible sources and pending update counts for the skills table. */
-	async list(user: User): Promise<SkillSourceListItem[]> {
+	async list(
+		user: User,
+		{ includeSkills = false }: { includeSkills?: boolean } = {},
+	): Promise<SkillSourceListItem[]> {
 		await this.flagGate.assertEnabled(user);
+		includeSkills = includeSkills && (await this.recommendedSkillsGate.isEnabled(user));
 		const projectIds = await this.skillAccess.visibleSourceProjects(user);
 		const sources = await this.sourceRepository.findVisibleSources(projectIds);
 		const shown = sources.flatMap((source) => {
 			const client = this.clients.get(source.type);
 			return client ? [{ source, client }] : [];
 		});
-		const [counts, projects, canReview, canImport, canDelete] = await Promise.all([
+		const [counts, projects, canReview, canImport, canDelete, installed] = await Promise.all([
 			this.sourceRepository.countLinksBySource(shown.map(({ source }) => source.id)),
 			this.skillRepository.findProjects(shown.flatMap(({ source }) => source.projectId ?? [])),
 			this.skillAccess.accessCheck(user, 'update'),
 			this.skillAccess.accessCheck(user, 'create'),
 			this.skillAccess.accessCheck(user, 'delete'),
+			includeSkills
+				? this.sourceRepository.findInstalledSkills(shown.map(({ source }) => source.id))
+				: undefined,
 		]);
 		const missingLinks = await this.sourceRepository.findMissingLinks(
 			shown.map(({ source }) => source.id),
@@ -425,6 +473,14 @@ export class SkillSourceService {
 				projectName: project?.name ?? null,
 				projectType: project ? (project.type === 'personal' ? 'personal' : 'team') : null,
 				projectIcon: project?.icon ?? null,
+				...(includeSkills && {
+					skills: installed
+						?.filter((link) => link.sourceId === source.id)
+						.map((link) => ({
+							id: link.skillId,
+							webUrl: client.webUrl(source.locator, link.remoteRef),
+						})),
+				}),
 				skillCount: count.skills,
 				updatesAvailable: canReview(source) ? count.available : 0,
 				updatesBlocked: canReview(source) ? count.blocked : 0,
@@ -859,8 +915,14 @@ export class SkillSourceService {
 		{
 			skillKeys,
 			reviewedSkillKeys,
+			telemetry,
 			preview,
-		}: { skillKeys: string[]; reviewedSkillKeys: string[]; preview?: SourceToolPreview },
+		}: {
+			skillKeys: string[];
+			reviewedSkillKeys: string[];
+			telemetry?: ConnectSkillSourceDto['telemetry'];
+			preview?: SourceToolPreview;
+		},
 	): Promise<{ response: SkillSourceConnectResponse; warning?: SkillSourceReason }> {
 		const keys = [...new Set(skillKeys)];
 		const failed: SkillSourceConnectResponse['failed'] = [];
@@ -872,6 +934,7 @@ export class SkillSourceService {
 			const skipped = countSkippedFiles(skippedPaths);
 			await this.skillsTelemetry.importedFromSource(
 				{
+					...telemetry,
 					provider: source.type,
 					...(preview ? { surface: preview.surface } : {}),
 					access,
@@ -1016,7 +1079,7 @@ export class SkillSourceService {
 			imported.map(({ skillId }) => ({ id: skillId, ...target })),
 			source.type,
 			'sync',
-			{ source_provider: source.type, source_access: access },
+			{ source_provider: source.type, source_access: access, ...telemetry },
 		);
 		return { response: { sourceId, imported, failed }, warning: warningOf(discovered) };
 	}

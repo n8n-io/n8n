@@ -33,6 +33,7 @@ import type {
 	AgentN8nChatThreadsResponse,
 	AgentSkill,
 	AgentSkillAvailability,
+	SkillTelemetryContext,
 	AgentsSettingsDto,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
@@ -848,12 +849,18 @@ export const createAgentSkill = async (
 	skill: AgentSkill,
 	availableTo?: AgentSkillAvailability,
 	method?: SkillCreateMethod,
+	telemetry?: SkillTelemetryContext,
 ): Promise<AgentSkillMutationResponse> => {
 	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/skills`,
-		{ ...skill, ...(availableTo ? { availableTo } : {}), ...(method ? { method } : {}) },
+		{
+			...skill,
+			...(availableTo ? { availableTo } : {}),
+			...(method ? { method } : {}),
+			...(telemetry ? { telemetry } : {}),
+		},
 	);
 };
 

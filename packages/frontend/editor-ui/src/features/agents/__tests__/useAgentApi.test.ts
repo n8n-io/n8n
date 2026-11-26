@@ -114,13 +114,26 @@ describe('useAgentApi', () => {
 		});
 
 		it('sends how the user made the skill with the create request', async () => {
-			await createAgentSkill(restApiContext, 'project-1', 'agent-1', skill, undefined, 'upload');
+			const telemetry = {
+				navigation_source: 'agent_picker' as const,
+				flow_id: 'b23b6134-b7a7-4912-a635-6d38cbbe0ae8',
+				add_entry_point: 'agent_picker' as const,
+			};
+			await createAgentSkill(
+				restApiContext,
+				'project-1',
+				'agent-1',
+				skill,
+				undefined,
+				'upload',
+				telemetry,
+			);
 
 			expect(makeRestApiRequest).toHaveBeenCalledWith(
 				restApiContext,
 				'POST',
 				'/projects/project-1/agents/v2/agent-1/skills',
-				{ ...skill, method: 'upload' },
+				{ ...skill, method: 'upload', telemetry },
 			);
 		});
 

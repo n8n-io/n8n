@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { skillTelemetryContextSchema } from '../skills/skill-telemetry.schema';
 
 import {
 	AGENT_SKILL_NAME_MAX_LENGTH,
@@ -18,6 +19,7 @@ export const ASSISTANT_SKILLS_FLAG = '130_attach_skills_to_assistant';
 export const MCP_SKILLS_EXTENSION_FLAG = '128_mcp_skills_extension';
 /** Per-user PostHog flag for Skill Sync. Force it on with `N8N_FEATURE_FLAG_OVERRIDES`. */
 export const SKILL_SYNC_FLAG = '136_skill_sync';
+export const RECOMMENDED_SKILLS_FLAG = '143_recommended_skills';
 
 /** Optional on purpose: without `take` the caller gets every visible skill. */
 const optionalTake = z
@@ -279,6 +281,7 @@ export type SkillNewNameResponse = { name: string };
 export const SKILL_NAME_TAKEN_MESSAGE = 'That name is taken, choose another';
 
 export class CreateSkillDto extends Z.class({
+	telemetry: skillTelemetryContextSchema.optional().catch(undefined),
 	scope: skillScopeSchema,
 	/** Required for a project skill, absent otherwise. */
 	projectId: z.string().max(36).optional(),

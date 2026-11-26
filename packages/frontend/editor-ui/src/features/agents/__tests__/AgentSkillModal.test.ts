@@ -1,4 +1,5 @@
-import { AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
+import { AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH, SKILL_SYNC_FLAG } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, ref, type PropType } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -6,6 +7,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { configure, fireEvent, screen, waitFor, within } from '@testing-library/vue';
@@ -272,6 +274,7 @@ function renderModal({
 
 // Every suite renders an open modal with fresh stores.
 beforeEach(() => {
+	recommendedSkills.show.value = false;
 	vi.clearAllMocks();
 	createTestingPinia({ stubActions: false });
 	const uiStore = mockedStore(useUIStore);
@@ -527,6 +530,7 @@ describe('AgentSkillModal', () => {
 	});
 
 	it('opens the editor after import and saves only when confirmed', async () => {
+		mockedStore(usePostHog).isVariantEnabled.mockReturnValue(true);
 		const onConfirm = vi.fn();
 		const { getByTestId, queryByTestId } = renderModal({ onConfirm });
 		const file = new File(
@@ -559,11 +563,16 @@ describe('AgentSkillModal', () => {
 				instructions: 'Main instructions',
 			},
 			method: 'upload',
+			telemetry: expect.objectContaining({
+				navigation_source: 'agent_picker',
+				add_entry_point: 'agent_picker',
+			}),
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
 	it('validates a manual skill and saves its edited reference', async () => {
+		mockedStore(usePostHog).isVariantEnabled.mockReturnValue(true);
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderModal({ onConfirm });
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
@@ -597,6 +606,10 @@ describe('AgentSkillModal', () => {
 				references: [{ path: 'references/guide.md', content: '# Guide' }],
 			},
 			method: 'manual',
+			telemetry: expect.objectContaining({
+				navigation_source: 'agent_picker',
+				add_entry_point: 'agent_picker',
+			}),
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
@@ -1197,9 +1210,136 @@ describe('AgentSkillModal', () => {
 
 			await fireEvent.click(getByTestId('agent-skill-picker-manage'));
 
-			expect(resolveRoute).toHaveBeenCalledWith({ name: VIEWS.SETTINGS_CONTEXT_SKILLS });
+			expect(resolveRoute).toHaveBeenCalledWith({
+				name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+				query: { skillsFrom: 'agent_picker_manage' },
+			});
 			expect(open).toHaveBeenCalledWith('/settings/context/skills', '_blank', 'noopener');
 			open.mockRestore();
+		});
+
+		function enableCatalog() {
+			recommendedSkills.show.value = true;
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => flag === SKILL_SYNC_FLAG,
+			);
+			mockedStore(useSettingsStore).moduleSettings.skills = {
+				skillSyncEnabled: true,
+				skillSyncManagedByEnv: false,
+			};
+		}
+
+		it('offers discovery alongside the three recommendations when Skill Sync is enabled', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => flag === SKILL_SYNC_FLAG,
+			);
+			mockedStore(useSettingsStore).moduleSettings.skills = {
+				skillSyncEnabled: true,
+				skillSyncManagedByEnv: false,
+			};
+			recommendedSkills.show.value = true;
+			resolveRoute.mockReturnValueOnce({ href: '/settings/context/skills?view=discover' });
+			const open = vi.spyOn(window, 'open').mockReturnValue(null);
+			const view = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
+			await fireEvent.click(view.getByTestId('agent-skill-picker-discover'));
+			expect(resolveRoute).toHaveBeenCalledWith({
+				name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+				query: { skillsFrom: 'agent_picker_discover', view: 'discover' },
+			});
+			expect(open).toHaveBeenCalledWith(
+				'/settings/context/skills?view=discover',
+				'_blank',
+				'noopener',
+			);
+			for (const recommended of RECOMMENDED_SKILLS) {
+				expect(view.getByText(recommended.name)).toBeVisible();
+			}
+			expect(recommendedSkills.trackCardsShown).toHaveBeenCalledExactlyOnceWith(
+				'agent_skill_modal',
+			);
+			open.mockRestore();
+			recommendedSkills.show.value = false;
+		});
+
+		it.each([
+			{ sync: false, recommended: true },
+			{ sync: true, recommended: false },
+		])('hides discovery without both gates: %o', ({ sync, recommended }) => {
+			recommendedSkills.show.value = recommended;
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => flag === SKILL_SYNC_FLAG,
+			);
+			mockedStore(useSettingsStore).moduleSettings.skills = {
+				skillSyncEnabled: sync,
+				skillSyncManagedByEnv: false,
+			};
+			const view = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
+			expect(view.queryByTestId('agent-skill-picker-discover')).not.toBeInTheDocument();
+			expect(view.getByTestId('agent-skill-picker-manage')).toBeVisible();
+		});
+
+		it('refreshes skills on return without replacing the picker or overlapping requests', async () => {
+			enableCatalog();
+			listAttachableSkills.mockResolvedValue([projectSkill]);
+			const onAttach = vi.fn();
+			const view = renderModal({ skillRefsEnabled: true, onAttach });
+			await view.findByText(projectSkill.name);
+			const picker = view.getByTestId('agent-skill-picker');
+			let finishRefresh = (_skills: SkillListItem[]) => {};
+			listAttachableSkills.mockImplementationOnce(
+				async () => await new Promise<SkillListItem[]>((resolve) => (finishRefresh = resolve)),
+			);
+
+			await fireEvent(window, new Event('focus'));
+			await fireEvent(window, new Event('focus'));
+
+			expect(listAttachableSkills).toHaveBeenCalledTimes(2);
+			expect(view.getByText(projectSkill.name)).toBeVisible();
+			finishRefresh([projectSkill, instanceSkill]);
+			await view.findByText(instanceSkill.name);
+			expect(view.getByTestId('agent-skill-picker')).toBe(picker);
+			const addedRow = view
+				.getAllByTestId('agent-skill-picker-row')
+				.find((row) => row.textContent?.includes(instanceSkill.name))!;
+			await fireEvent.click(within(addedRow).getByTestId('agent-skill-picker-add'));
+			expect(onAttach).toHaveBeenCalledWith(instanceSkill);
+		});
+
+		it('keeps the current skills when a refresh fails and retries on the next return', async () => {
+			enableCatalog();
+			listAttachableSkills.mockResolvedValue([projectSkill]);
+			const view = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
+			await view.findByText(projectSkill.name);
+			const error = new Error('Network unavailable');
+			listAttachableSkills.mockRejectedValueOnce(error);
+
+			await fireEvent(window, new Event('focus'));
+
+			await waitFor(() =>
+				expect(showError).toHaveBeenCalledWith(error, 'agents.builder.skills.picker.loadError'),
+			);
+			expect(view.getByText(projectSkill.name)).toBeVisible();
+			listAttachableSkills.mockResolvedValue([projectSkill, instanceSkill]);
+			await fireEvent(window, new Event('focus'));
+			expect(await view.findByText(instanceSkill.name)).toBeVisible();
+		});
+
+		it('does not refresh when the picker is closed, on another step, or unmounted', async () => {
+			enableCatalog();
+			listAttachableSkills.mockResolvedValue([projectSkill]);
+			const view = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
+			await view.findByText(projectSkill.name);
+
+			uiStore.modalsById[MODAL_NAME].open = false;
+			await fireEvent(window, new Event('focus'));
+			uiStore.modalsById[MODAL_NAME].open = true;
+			await flushPromises();
+			await fireEvent.click(view.getByTestId('agent-skill-picker-create'));
+			await fireEvent(window, new Event('focus'));
+			view.unmount();
+			await fireEvent(window, new Event('focus'));
+
+			expect(listAttachableSkills).toHaveBeenCalledTimes(1);
 		});
 
 		it('shows the settings link only on the picker step', async () => {

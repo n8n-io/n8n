@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { skillTelemetryContextSchema } from '../skills/skill-telemetry.schema';
 
 export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 65_536;
 // The Agent Skills format sets no file limits, so these three are n8n limits. They bound what
@@ -378,6 +379,7 @@ export const skillCreateMethodSchema = z.enum(['manual', 'upload']);
 export type SkillCreateMethod = z.infer<typeof skillCreateMethodSchema>;
 
 export const createAgentSkillSchema = agentSkillSchema.extend({
+	telemetry: skillTelemetryContextSchema.optional().catch(undefined),
 	availableTo: agentSkillAvailabilitySchema.optional(),
 	method: skillCreateMethodSchema.optional(),
 });

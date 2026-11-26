@@ -497,7 +497,10 @@ describe('InstanceAiArtifactsPanel', () => {
 		});
 
 		const artifactLink = getByRole('link', { name: 'Open Plan trips' });
-		expect(artifactLink).toHaveAttribute('href', '/settings/context/skills?skillId=skill-1');
+		expect(artifactLink).toHaveAttribute(
+			'href',
+			'/settings/context/skills?skillsFrom=assistant_artifact&skillId=skill-1',
+		);
 		expect(artifactLink).not.toHaveAttribute('target');
 		expect(artifactLink.querySelector('[data-icon="book-open"]')).toBeInTheDocument();
 

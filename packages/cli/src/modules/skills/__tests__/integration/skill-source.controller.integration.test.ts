@@ -1,8 +1,11 @@
 import {
 	connectPublicSkillSourceSchema,
 	SKILL_SYNC_FLAG,
+	RECOMMENDED_SKILLS_FLAG,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
+	type SkillSourcePreview,
+	type SkillSourceListItem,
 } from '@n8n/api-types';
 import { PostHogClient } from '@n8n/backend-services';
 import {
@@ -21,6 +24,7 @@ import type { MockInstance } from 'vitest';
 
 import { createSkill, deleteAllSkills, findLatestSkillVersion, findSkill } from '../../testing';
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
+import { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 import { SkillSourceBackoff } from '../../services/skill-source-backoff';
@@ -101,7 +105,10 @@ describe('SkillSourceController', () => {
 		await deleteAllSkills();
 		// Deleting a skill deletes its link. A source stays until it is deleted.
 		await Container.get(DataSource).manager.delete(SkillSourceConnection, {});
-		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
+		postHog.getFeatureFlags.mockResolvedValue({
+			[SKILL_SYNC_FLAG]: true,
+			[RECOMMENDED_SKILLS_FLAG]: 'variant',
+		});
 		// The budget counts in memory for the whole file, so only its own tests let it count.
 		toolBudget = vi.spyOn(Container.get(SkillSourceToolBudget), 'take').mockReturnValue();
 		github.start();
@@ -138,6 +145,100 @@ describe('SkillSourceController', () => {
 		// The flag is checked before the body, so an invalid body does not reveal the route.
 		await discover(owner, {}, 404);
 		await connect(owner, {}, 404);
+	});
+
+	describe('public preview', () => {
+		it('requires a signed-in user', async () => {
+			await server.authlessAgent.post('/skill-sources/preview').send({ url: REPO }).expect(401);
+		});
+
+		it('lets a viewer read files and checks without creating a source or choosing a save scope', async () => {
+			const response = await viewer
+				.post('/skill-sources/preview')
+				.send({ url: `${REPO}/tree/main/skills/pdf` })
+				.expect(200);
+			const { data } = response.body as Body<SkillSourcePreview>;
+			expect(data.skills).toHaveLength(1);
+			expect(data.skills[0]).toMatchObject({
+				name: 'pdf',
+				nameTaken: false,
+				skippedFiles: ['assets/form.pdf'],
+			});
+			expect(data.skills[0].previewFiles.map((file) => file.path)).toContain('references/pages.md');
+			expect(data.skills[0].check).not.toBeNull();
+			expect(await countSources()).toBe(0);
+		});
+
+		it('requires the feature flag before reading public content', async () => {
+			postHog.getFeatureFlags.mockResolvedValue({});
+			await viewer.post('/skill-sources/preview').send({}).expect(404);
+		});
+
+		it.each(['control', false, true, undefined])(
+			'requires catalog treatment before fetching content (%s)',
+			async (flag) => {
+				postHog.getFeatureFlags.mockResolvedValue({
+					[SKILL_SYNC_FLAG]: true,
+					...(flag === undefined ? {} : { [RECOMMENDED_SKILLS_FLAG]: flag }),
+				});
+				const requestsBefore = { ...github.requests };
+				await viewer.post('/skill-sources/preview').send({ url: REPO }).expect(404);
+				expect(github.requests).toEqual(requestsBefore);
+			},
+		);
+
+		it('does not use a supplied credential to preview private content', async () => {
+			github.push('acme/private', FILES, 'main', { private: true });
+			await viewer
+				.post('/skill-sources/preview')
+				.send({ url: 'https://github.com/acme/private', credentialId: 'not-used' })
+				.expect(404);
+		});
+	});
+
+	it('includes visible installed folders only for editor source lists', async () => {
+		const { data } = await discover(owner, { url: REPO, scope: 'instance' });
+		const result = await connect(owner, {
+			url: REPO,
+			scope: 'instance',
+			skillKeys: keysOf(data, ['docx']),
+		});
+		github.push('acme/hidden', FILES);
+		const hiddenUrl = 'https://github.com/acme/hidden';
+		const hidden = await discover(owner, {
+			url: hiddenUrl,
+			scope: 'project',
+			projectId: otherTeam.id,
+		});
+		await connect(owner, {
+			url: hiddenUrl,
+			scope: 'project',
+			projectId: otherTeam.id,
+			skillKeys: keysOf(hidden.data, ['docx']),
+		});
+		const response = await member.get('/skill-sources').expect(200);
+		const sources = (response.body as Body<SkillSourceListItem[]>).data;
+		expect(sources).toHaveLength(1);
+		expect(sources[0].skills).toEqual([
+			{ id: result.data.imported[0].skillId, webUrl: `${REPO}/tree/main/skills/docx` },
+		]);
+		const installedSkills = vi.spyOn(Container.get(SkillSourceRepository), 'findInstalledSkills');
+		try {
+			const summaries = await Container.get(SkillSourceService).list(memberUser);
+			expect(summaries).toHaveLength(1);
+			expect(summaries[0]).toMatchObject({ id: sources[0].id, skillCount: 1 });
+			expect(summaries[0]).not.toHaveProperty('skills');
+			postHog.getFeatureFlags.mockResolvedValue({
+				[SKILL_SYNC_FLAG]: true,
+				[RECOMMENDED_SKILLS_FLAG]: 'control',
+			});
+			const { body } = await member.get('/skill-sources').expect(200);
+			expect(body.data[0]).toMatchObject({ id: sources[0].id, skillCount: 1 });
+			expect(body.data[0]).not.toHaveProperty('skills');
+			expect(installedSkills).not.toHaveBeenCalled();
+		} finally {
+			installedSkills.mockRestore();
+		}
 	});
 
 	describe('discover', () => {
@@ -1361,6 +1462,17 @@ describe('SkillSourceController', () => {
 	});
 
 	describe('telemetry', () => {
+		const attribution = {
+			navigation_source: 'agent_picker_discover',
+			flow_id: 'b23b6134-b7a7-4912-a635-6d38cbbe0ae8',
+			add_entry_point: 'discover_detail',
+			catalog_skill_id: 'n8n-workflows',
+		};
+		const attributed = {
+			...attribution,
+			variant: 'variant',
+			'$feature/143_recommended_skills': 'variant',
+		};
 		let connectedSource: MockInstance<SkillsTelemetry['connectedSource']>;
 		let created: MockInstance<SkillsTelemetry['created']>;
 
@@ -1387,11 +1499,17 @@ describe('SkillSourceController', () => {
 		};
 
 		it('reports a successful connect in Global and the skills it created', async () => {
-			const { data } = await connectPdf(owner, { scope: 'instance' });
+			const imported = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
+			const { data } = await connectPdf(owner, { scope: 'instance', telemetry: attribution });
+			expect(imported).toHaveBeenCalledWith(
+				expect.objectContaining({ ...attributed, imported: 1 }),
+				ownerUser.id,
+			);
 
 			expect(connectedSource.mock.calls).toEqual([
 				[
 					{
+						...attributed,
 						provider: 'github',
 						access: 'public',
 						scope_type: 'global',
@@ -1406,8 +1524,26 @@ describe('SkillSourceController', () => {
 				[{ id: data.imported[0].skillId, projectId: null }],
 				'github',
 				'sync',
-				{ source_provider: 'github', source_access: 'public' },
+				{ source_provider: 'github', source_access: 'public', ...attributed },
 			);
+		});
+
+		it('imports normally without experiment attribution in control', async () => {
+			postHog.getFeatureFlags.mockResolvedValue({
+				[SKILL_SYNC_FLAG]: true,
+				[RECOMMENDED_SKILLS_FLAG]: 'control',
+			});
+			const { data } = await connectPdf(owner, { scope: 'instance', telemetry: attribution });
+			expect(data.imported).toHaveLength(1);
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'success' }),
+				ownerUser.id,
+			);
+			expect(connectedSource.mock.calls[0][0]).not.toHaveProperty('flow_id');
+			expect(created.mock.calls[0][4]).toEqual({
+				source_provider: 'github',
+				source_access: 'public',
+			});
 		});
 
 		it('reports a connect in a personal project', async () => {
@@ -1505,11 +1641,11 @@ describe('SkillSourceController', () => {
 			async (_name, setUp, status, reason) => {
 				setUp();
 
-				await discover(owner, { url: REPO, scope: 'instance' }, status);
+				await discover(owner, { url: REPO, scope: 'instance', telemetry: attribution }, status);
 
 				expect(connectedSource).toHaveBeenCalledTimes(1);
 				expect(connectedSource).toHaveBeenCalledWith(
-					expect.objectContaining({ status: 'failure', reason }),
+					expect.objectContaining({ ...attribution, status: 'failure', reason }),
 					ownerUser.id,
 				);
 			},

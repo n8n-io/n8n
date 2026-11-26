@@ -4,6 +4,7 @@ import isEqual from 'lodash/isEqual';
 import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { I18nT } from 'vue-i18n';
+import { useEventListener } from '@vueuse/core';
 import {
 	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -14,6 +15,7 @@ import {
 	type AgentSkillAvailability,
 	type ProjectIcon,
 	type SkillCreateMethod,
+	type SkillTelemetryContext,
 	type SkillDetail,
 	type SkillListItem,
 	type SkillSyncedFrom,
@@ -41,7 +43,12 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { preferenceUserName } from '@/features/settings/context/context.utils';
 import SkillScopeBadge from '@/features/settings/context/components/SkillScopeBadge.vue';
+import { useSkillSyncEnabled } from '@/features/settings/context/composables/useSkillSyncFlag';
 import { parseScope } from '@/features/settings/context/skills.utils';
+import {
+	skillNavigationQuery,
+	useSkillTelemetry,
+} from '@/features/settings/context/skills.telemetry';
 import { sourceLineOf } from '@/features/settings/context/skillSourceReview.utils';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
@@ -178,6 +185,7 @@ export type AgentSkillModalData = {
 		availableToMCP?: boolean;
 		/** Set on create only: whether the user typed the skill or uploaded it. */
 		method?: SkillCreateMethod;
+		telemetry?: SkillTelemetryContext;
 		/** Set when the save restores this older version. */
 		restoredFrom?: number;
 	}) => AgentSkillConfirmResult | Promise<AgentSkillConfirmResult>;
@@ -243,6 +251,8 @@ const selectedPath = ref(SKILL_FILE);
 const isEditing = computed(() => !!props.data.skillId);
 // An upload lands on the edit step like a saved skill does, so the step alone cannot tell.
 const createMethod = ref<SkillCreateMethod>(props.data.initialMethod ?? 'manual');
+const skillTelemetry = useSkillTelemetry('agent_picker');
+const createTelemetry = ref<SkillTelemetryContext>();
 const hasPicker = !props.data.skillId && !!props.data.skillRefsEnabled && !!props.data.onAttach;
 // The caller chose "Create manually", so there is no upload step to go back to.
 const startsManual =
@@ -366,6 +376,8 @@ const {
 	trackCardsShown: trackRecommendedSkillsShown,
 	trackSkillAdded: trackRecommendedSkillAdded,
 } = useRecommendedSkillsExperiment();
+const skillSyncEnabled = useSkillSyncEnabled();
+const catalogEnabled = computed(() => skillSyncEnabled.value && showRecommendedSkills.value);
 const recommendedSkillId = ref<RecommendedSkillId>();
 const { loadRecommendedSkill } = useRecommendedSkillLoader();
 const pickerCategories = computed<ToolCategoryKey[]>(() =>
@@ -938,11 +950,19 @@ async function loadLibrarySkills() {
 	}
 }
 
+useEventListener(window, 'focus', () => {
+	if (!catalogEnabled.value) return;
+	if (hasPicker && modalOpen.value && step.value === 'select' && !libraryLoading.value) {
+		void loadLibrarySkills();
+	}
+});
+
 function targetForPickerCategory(category: ToolCategoryKey): AgentSkillAvailability {
 	return category === 'global' && props.data.canCreateInstanceSkills ? 'instance' : 'project';
 }
 
 function onPickerCreate(category: ToolCategoryKey) {
+	createTelemetry.value = skillTelemetry.startAdding('agent_picker');
 	availableTo.value = targetForPickerCategory(category);
 	step.value = 'upload';
 }
@@ -966,6 +986,9 @@ async function selectRecommendedSkill(id: string) {
 	if (!recommended) return;
 	const loadedSkill = await loadRecommendedSkill(recommended);
 	if (!loadedSkill || step.value !== 'select') return;
+	createTelemetry.value = skillTelemetry.startAdding('agent_picker', {
+		recommended_skill_id: recommended.id,
+	});
 	onSkillUploaded(loadedSkill);
 	createMethod.value = 'manual';
 	recommendedSkillId.value = recommended.id;
@@ -1006,8 +1029,18 @@ async function attachLibrarySkill(skillId: string) {
 }
 
 /** Opens Settings > Context > Skills in a new tab, so the agent and the picker stay open. */
-function onManageSkills() {
-	window.open(router.resolve({ name: VIEWS.SETTINGS_CONTEXT_SKILLS }).href, '_blank', 'noopener');
+function onManageSkills(discover = false) {
+	window.open(
+		router.resolve({
+			name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+			query: {
+				...skillNavigationQuery(discover ? 'agent_picker_discover' : 'agent_picker_manage'),
+				...(discover ? { view: 'discover' } : {}),
+			},
+		}).href,
+		'_blank',
+		'noopener',
+	);
 }
 
 function onPreviewAdd() {
@@ -1017,6 +1050,9 @@ function onPreviewAdd() {
 }
 
 onMounted(() => {
+	if (props.data.agentId && !isEditing.value && !hasPicker) {
+		createTelemetry.value = skillTelemetry.startAdding('agent_picker');
+	}
 	if (startsManual) void refreshDefaultName();
 	if (hasPicker) {
 		void loadLibrarySkills();
@@ -1302,6 +1338,7 @@ async function onSave() {
 			: {}),
 		...(availableToMCPChanged.value ? { availableToMCP: availableToMCP.value } : {}),
 		...(isEditing.value ? {} : { method: createMethod.value }),
+		...(!isEditing.value && createTelemetry.value ? { telemetry: createTelemetry.value } : {}),
 	});
 	if (saved) {
 		if (recommendedSkillId.value) {
@@ -1803,7 +1840,15 @@ function onRemove() {
 			</N8nButton>
 		</template>
 		<template v-else-if="step === 'select'" #footerLeft>
-			<N8nButton variant="ghost" data-testid="agent-skill-picker-manage" @click="onManageSkills">
+			<N8nButton
+				v-if="catalogEnabled"
+				variant="ghost"
+				icon="search"
+				data-testid="agent-skill-picker-discover"
+				@click="onManageSkills(true)"
+				>{{ i18n.baseText('settings.context.skills.catalog.discoverSkills') }}</N8nButton
+			>
+			<N8nButton variant="ghost" data-testid="agent-skill-picker-manage" @click="onManageSkills()">
 				<template #icon><N8nIcon icon="settings" :size="16" /></template>
 				{{ i18n.baseText('agents.builder.skills.picker.manage') }}
 			</N8nButton>

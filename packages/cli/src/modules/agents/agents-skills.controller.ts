@@ -58,7 +58,7 @@ export class AgentsSkillsController {
 			agentId,
 			'create skill for',
 		);
-		const { availableTo, method, ...skill } = payload;
+		const { availableTo, method, telemetry, ...skill } = payload;
 		return await this.agentSkillsService.createAndAttachSkill(
 			agentId,
 			projectId,
@@ -70,6 +70,7 @@ export class AgentsSkillsController {
 			},
 			availableTo,
 			method,
+			telemetry,
 		);
 	}
 

@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import {
+	defineAsyncComponent,
 	computed,
 	h,
 	nextTick,
@@ -28,6 +29,7 @@ import {
 	type SkillDetail,
 	type SkillListItem,
 	type SkillSourceListItem,
+	type SkillTelemetryContext,
 	type SkillUserDto,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -53,6 +55,7 @@ import {
 	N8nSettingsPageHeader,
 	N8nSwitch,
 	N8nText,
+	N8nTabs,
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { ActionDropdownItem, TableOptions } from '@n8n/design-system';
@@ -90,8 +93,10 @@ import SkillSourceMoveDialog from '../components/SkillSourceMoveDialog.vue';
 import SkillSourceUpdatesDialog from '../components/SkillSourceUpdatesDialog.vue';
 import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
+	type SkillSourcePreset,
 } from '../components/SkillSourceConnectDialog.vue';
 import SkillsTable from '../components/SkillsTable.vue';
+import type { SkillCatalogEntry } from '@/features/settings/context/catalog/skillCatalog';
 import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
 import SkillSourceCredentialDialog from '../components/SkillSourceCredentialDialog.vue';
 import { useSkillSyncEnabled, useSkillSyncFlag } from '../composables/useSkillSyncFlag';
@@ -109,6 +114,7 @@ import {
 } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
+import { useSkillTelemetry } from '@/features/settings/context/skills.telemetry';
 import { sourceLineOf } from '../skillSourceReview.utils';
 import {
 	PROJECT_SCOPE_PREFIX,
@@ -132,6 +138,10 @@ type SkillFilters = {
 const FILTER_KEYS: Array<keyof SkillFilters> = ['scope', 'agentId', 'createdById', 'sourceIds'];
 const NO_FILTERS: SkillFilters = { scope: '', agentId: '', createdById: '', sourceIds: [] };
 
+const SkillCatalog = defineAsyncComponent(
+	async () => await import('@/features/settings/context/catalog/SkillCatalog.vue'),
+);
+
 const i18n = useI18n();
 const $style = useCssModule();
 const router = useRouter();
@@ -151,6 +161,7 @@ const assistantSkillsEnabled = computed(
 const posthogStore = usePostHog();
 const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
+const skillTelemetry = useSkillTelemetry(route.query.skillsFrom);
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
@@ -186,7 +197,43 @@ const {
 	trackExposure: trackRecommendedSkillsExposure,
 	trackSkillAdded: trackRecommendedSkillAdded,
 } = useRecommendedSkillsExperiment();
+const catalogEnabled = computed(() => skillSyncEnabled.value && showRecommendedSkills.value);
 const connectOpen = ref(false);
+const catalogPreset = ref<SkillSourcePreset>();
+const connectTelemetry = ref<SkillTelemetryContext>();
+const activeView = computed(() =>
+	catalogEnabled.value &&
+	(route.query.view === 'discover' || typeof route.query.catalogSkill === 'string')
+		? 'discover'
+		: 'installed',
+);
+const catalogDetailOpen = computed(
+	() => catalogEnabled.value && activeView.value === 'discover' && !!route.query.catalogSkill,
+);
+const viewTabs = computed(() => [
+	{ value: 'installed', label: i18n.baseText('settings.context.skills.catalog.installed') },
+	{ value: 'discover', label: i18n.baseText('settings.context.skills.catalog.discover') },
+]);
+
+function onViewChange(view: string) {
+	void router.push({ query: { ...route.query, view, catalogSkill: undefined } });
+}
+
+function onCatalogSelect(entry: SkillCatalogEntry) {
+	if (uploadBusy.value) return;
+	dropPendingUpload();
+	connectTelemetry.value = skillTelemetry.startAdding('discover_detail', {
+		catalog_skill_id: entry.id,
+	});
+	catalogPreset.value = {
+		name: i18n.baseText(entry.nameKey),
+		description: i18n.baseText(entry.descriptionKey),
+		url: entry.url,
+		location: entry.location,
+	};
+	connectOpen.value = true;
+}
+
 const movingSource = ref<SkillSourceListItem | null>(null);
 const recommendedOpen = ref(false);
 const sourceToDelete = ref<SkillSourceListItem>();
@@ -480,9 +527,11 @@ function openModal(data: AgentSkillModalData) {
 function openCreateModal(
 	preset: Pick<AgentSkillModalData, 'initialStep' | 'skill' | 'initialMethod'> = {},
 	onCreated?: (skillId: string) => void,
+	attribution?: SkillTelemetryContext,
 ) {
 	const options = scopeOptions.value;
 	if (options.length === 0) return;
+	const createTelemetry = attribution ?? skillTelemetry.startAdding(createEntryPoint());
 	openModal({
 		...preset,
 		scopeOptions: options,
@@ -495,7 +544,14 @@ function openCreateModal(
 				name: i18n.baseText('agents.builder.skills.defaultName'),
 			}),
 		onConfirm: async ({ skill, scope, method, availableToMCP }) =>
-			await onCreate(skill, scope ?? options[0].value, method, availableToMCP, onCreated),
+			await onCreate(
+				skill,
+				scope ?? options[0].value,
+				method,
+				availableToMCP,
+				onCreated,
+				createTelemetry,
+			),
 	});
 }
 
@@ -503,9 +559,18 @@ function onRecommendedSkillSelect(
 	entryPoint: RecommendedSkillsEntryPoint,
 	recommended: RecommendedSkillSelection,
 ) {
-	openCreateModal({ skill: recommended.skill }, (skillId) =>
-		trackRecommendedSkillAdded(recommended.id, skillId, entryPoint),
+	openCreateModal(
+		{ skill: recommended.skill },
+		(skillId) => trackRecommendedSkillAdded(recommended.id, skillId, entryPoint),
+		skillTelemetry.startAdding(
+			entryPoint === 'empty_state' ? 'recommended_empty_state' : 'recommended_dialog',
+			{ recommended_skill_id: recommended.id },
+		),
 	);
+}
+
+function createEntryPoint() {
+	return emptyState.value === 'noSkills' ? 'skills_empty_state' : 'skills_create_menu';
 }
 
 type CreateAction = 'recommended' | 'github' | 'uploadFolder' | 'uploadFile' | 'manual';
@@ -568,6 +633,7 @@ const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => 
 
 const recommendedSkillsEligible = computed(
 	() =>
+		activeView.value === 'installed' &&
 		emptyState.value === 'noSkills' &&
 		skillsStore.collapsedSources.length === 0 &&
 		scopeOptions.value.length > 0,
@@ -599,7 +665,11 @@ function onCreateMenuSelect(action: CreateAction) {
 	else {
 		dropPendingUpload();
 		if (action === 'recommended') recommendedOpen.value = true;
-		else connectOpen.value = true;
+		else {
+			catalogPreset.value = undefined;
+			connectTelemetry.value = skillTelemetry.startAdding(createEntryPoint());
+			connectOpen.value = true;
+		}
 	}
 }
 
@@ -611,13 +681,14 @@ async function onSkillFilesPicked(event: Event) {
 	// Cleared so that the same pick fires a change event again.
 	input.value = '';
 	if (files.length === 0 || uploadBusy.value) return;
+	const attribution = skillTelemetry.startAdding(createEntryPoint());
 	const request = {};
 	pendingUpload = request;
 	uploadBusy.value = true;
 	try {
 		const skill = await importSkillFiles(files);
 		if (pendingUpload !== request) return;
-		openCreateModal({ skill, initialMethod: 'upload' });
+		openCreateModal({ skill, initialMethod: 'upload' }, undefined, attribution);
 	} catch (error) {
 		if (pendingUpload !== request) return;
 		// The same texts as the upload step in the modal, so both paths read alike.
@@ -648,6 +719,7 @@ function failedNames(failed: FailedSkill[]): string {
 async function onSourceConnected({ response, sourceLabel, scopeLabel }: SkillSourceConnected) {
 	const failed = response.failed.length > 0 ? failedNames(response.failed) : '';
 	if (response.imported.length > 0) {
+		onViewChange('installed');
 		showMessage({
 			title: i18n.baseText('settings.context.skills.connect.success', {
 				interpolate: {
@@ -714,6 +786,7 @@ async function onCreate(
 	method?: SkillCreateMethod,
 	availableToMCP?: boolean,
 	onCreated?: (skillId: string) => void,
+	attribution?: SkillTelemetryContext,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let createdId: string;
 	try {
@@ -723,6 +796,7 @@ async function onCreate(
 				skill,
 				...(method ? { method } : {}),
 				availableToMCP,
+				telemetry: attribution,
 			})
 		).id;
 	} catch (error) {
@@ -1131,6 +1205,7 @@ async function onSourceMoved(sourceId: string) {
 
 async function onOpenSource(sourceId: string) {
 	connectOpen.value = false;
+	onViewChange('installed');
 	search.value = '';
 	filters.value = { ...NO_FILTERS };
 	collapsedSourceIds.value = collapsedSourceIds.value.filter((id) => id !== sourceId);
@@ -1158,7 +1233,17 @@ onMounted(async () => {
 	await Promise.all([load(), loadSources(), projectsStore.getMyProjects().catch(() => undefined)]);
 	// Once for the visit, not once for each page. A failed load reports nothing, so a zero
 	// here is an empty list and never a broken one.
-	if (!loadFailed.value) {
+	if (!loadFailed.value && showRecommendedSkills.value) {
+		skillTelemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, {
+			...skillTelemetry.context,
+			count: skillsStore.count,
+			view: catalogDetailOpen.value
+				? 'detail'
+				: activeView.value === 'discover'
+					? 'discover'
+					: 'installed',
+		});
+	} else if (!loadFailed.value) {
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, { count: skillsStore.count });
 	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
@@ -1170,7 +1255,13 @@ onMounted(async () => {
 		// The API refuses a malformed id, which would fail the whole list.
 		await onOpenSource(sourceId);
 	} else if (create === 'true') {
-		openCreateModal();
+		openCreateModal(
+			{},
+			undefined,
+			skillTelemetry.context.navigation_source === 'assistant_menu'
+				? skillTelemetry.startAdding('assistant_menu')
+				: undefined,
+		);
 	}
 });
 </script>
@@ -1179,12 +1270,13 @@ onMounted(async () => {
 	<N8nSettingsLayout
 		:class="$style.layout"
 		full-width
-		show-back
+		:show-back="!catalogDetailOpen"
 		:back-label="i18n.baseText('settings.context.skills.back')"
 		data-test-id="settings-skills-view"
 		@back="goBack"
 	>
 		<N8nSettingsPageHeader
+			v-if="!catalogDetailOpen"
 			:title="i18n.baseText('settings.context.skills.title')"
 			:description="i18n.baseText('settings.context.skills.description')"
 			:show-docs-link="false"
@@ -1197,7 +1289,20 @@ onMounted(async () => {
 			</template>
 		</N8nSettingsPageHeader>
 
-		<div v-if="!showRecommendedEmptyState || canManageSkillSync" :class="$style.toolbar">
+		<N8nTabs
+			v-if="catalogEnabled && !catalogDetailOpen"
+			:model-value="activeView"
+			@update:model-value="onViewChange"
+			:class="$style.tabs"
+			:options="viewTabs"
+			variant="modern"
+			size="small"
+			data-test-id="skills-view-tabs"
+		/>
+		<div
+			v-if="activeView === 'installed' && (!showRecommendedEmptyState || canManageSkillSync)"
+			:class="$style.toolbar"
+		>
 			<N8nInput
 				v-if="!showRecommendedEmptyState"
 				v-model="search"
@@ -1422,7 +1527,7 @@ onMounted(async () => {
 		</div>
 
 		<SkillsTable
-			v-if="!showRecommendedEmptyState"
+			v-if="activeView === 'installed' && !showRecommendedEmptyState"
 			v-model:table-options="tableOptions"
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
@@ -1483,6 +1588,15 @@ onMounted(async () => {
 				</div>
 			</template>
 		</SkillsTable>
+		<SkillCatalog
+			v-if="catalogEnabled && activeView === 'discover'"
+			:loading="uploadBusy"
+			:can-add="scopeOptions.length > 0"
+			:sources="skillsStore.sources"
+			:telemetry-context="skillTelemetry.context"
+			@select="onCatalogSelect"
+			@open-installed="openEditModal({ id: $event })"
+		/>
 
 		<SkillSourceMoveDialog
 			v-if="skillSyncEnabled && movingSource"
@@ -1507,6 +1621,8 @@ onMounted(async () => {
 			v-if="skillSyncEnabled"
 			v-model:open="connectOpen"
 			:scope-options="scopeOptions"
+			:preset="catalogPreset"
+			:telemetry-context="connectTelemetry"
 			@connected="onSourceConnected"
 			@open-source="onOpenSource"
 		/>
@@ -1558,6 +1674,23 @@ onMounted(async () => {
 
 	header {
 		margin-inline: 0 auto;
+	}
+
+	header + .tabs {
+		margin-block-start: var(--spacing--lg);
+	}
+}
+
+.layout .tabs {
+	border-bottom: var(--border);
+	border-color: var(--border-color--subtle);
+
+	[role='tablist'] {
+		gap: var(--spacing--lg);
+	}
+
+	[role='tab'] {
+		font-size: var(--font-size--sm);
 	}
 }
 

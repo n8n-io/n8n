@@ -268,7 +268,7 @@ describe('InstanceAiMarkdown with the shared renderer', () => {
 
 			expect(links[0].getAttribute('href')).toBe('/n8n/projects/project-1/credentials/cred-1');
 			expect(links[1].getAttribute('href')).toBe(
-				'/n8n/settings/context/skills?skillId=skill+1%26x',
+				'/n8n/settings/context/skills?skillsFrom=assistant_artifact&skillId=skill+1%26x',
 			);
 			expect(links[1].dataset.resourceId).toBe('skill 1&x');
 		});

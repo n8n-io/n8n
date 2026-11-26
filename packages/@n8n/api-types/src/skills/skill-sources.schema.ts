@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { skillTelemetryContextSchema } from './skill-telemetry.schema';
 
 import { Z } from '../zod-class';
 import { booleanFromString } from '../schemas/boolean-from-string';
@@ -43,6 +44,7 @@ const skillSourceScope = {
 };
 
 const skillSourceTarget = {
+	telemetry: skillTelemetryContextSchema.optional().catch(undefined),
 	/** A link to a repository, a folder, or one SKILL.md. */
 	url: z.string().trim().min(1).max(2048),
 	...skillSourceScope,
@@ -52,6 +54,11 @@ const skillSourceTarget = {
 	 */
 	credentialId: z.string().min(1).max(36).optional(),
 };
+
+/** Reads public GitHub content without a save scope or a credential. */
+export class PreviewSkillSourceDto extends Z.class({
+	url: z.string().trim().min(1).max(2048),
+}) {}
 
 /** Reads a link and lists the skills in it, for the picker. Writes nothing. */
 export class DiscoverSkillSourceDto extends Z.class(skillSourceTarget) {}
@@ -72,7 +79,7 @@ export class ConnectSkillSourceDto extends Z.class({
 }) {}
 
 export const discoverPublicSkillSourceSchema = DiscoverSkillSourceDto.schema
-	.omit({ credentialId: true })
+	.pick({ url: true, scope: true, projectId: true })
 	.extend({
 		url: skillSourceTarget.url.describe('A public GitHub repository, folder, or SKILL.md URL'),
 		scope: skillSourceScopeSchema.describe('Global (instance) or one project (project)'),
@@ -298,6 +305,10 @@ export type SkillSourceDiscovery = {
 	tooDeep?: number;
 };
 
+export type SkillSourcePreview = Pick<
+	SkillSourceDiscovery,
+	'source' | 'skills' | 'truncated' | 'tooDeep'
+>;
 export type PublicSkillSourceDiscovery = Omit<SkillSourceDiscovery, 'skills'> & {
 	revision: string | null;
 	skills: Array<
@@ -429,6 +440,8 @@ export type SkillSourceListItem = {
 	projectName: string | null;
 	projectType: 'personal' | 'team' | null;
 	projectIcon: ProjectIcon | null;
+	/** Saved skill folders, for catalog installation badges. */
+	skills?: Array<{ id: string; webUrl: string }>;
 	/** Synced skills of the source. */
 	skillCount: number;
 	/** Updates that wait for review and that the security check did not block. */

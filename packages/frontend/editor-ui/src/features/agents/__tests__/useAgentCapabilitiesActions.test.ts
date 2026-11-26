@@ -12,6 +12,7 @@ import {
 	SKILL_NAME_TAKEN_MESSAGE,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillTelemetryContext,
 	type SkillVersionDetail,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -190,6 +191,7 @@ type SkillModalData = {
 		skill: AgentSkill;
 		availableTo?: 'project' | 'instance';
 		method?: 'manual' | 'upload';
+		telemetry?: SkillTelemetryContext;
 	}) => unknown;
 	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (skillId: string) => void;
@@ -841,7 +843,12 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 			});
 			const { modalData } = setupHub();
 
-			modalData.onConfirm({ skill: sqlHelper, availableTo, method: 'upload' });
+			const telemetry = {
+				navigation_source: 'agent_picker' as const,
+				flow_id: 'b23b6134-b7a7-4912-a635-6d38cbbe0ae8',
+				add_entry_point: 'agent_picker' as const,
+			};
+			modalData.onConfirm({ skill: sqlHelper, availableTo, method: 'upload', telemetry });
 			await flushPromises();
 
 			expect(createAgentSkill).toHaveBeenCalledWith(
@@ -851,6 +858,7 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 				sqlHelper,
 				availableTo,
 				'upload',
+				telemetry,
 			);
 		},
 	);

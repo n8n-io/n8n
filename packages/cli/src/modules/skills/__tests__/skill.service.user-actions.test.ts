@@ -616,14 +616,25 @@ describe('SkillService user actions', () => {
 
 		it('reports the create with the method the client sent', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
-
-			await service.create(user, payload({ method: 'upload' }));
+			const attribution = {
+				navigation_source: 'context_settings' as const,
+				flow_id: 'b23b6134-b7a7-4912-a635-6d38cbbe0ae8',
+				add_entry_point: 'skills_create_menu' as const,
+			};
+			skillsTelemetry.experimentContext.mockResolvedValue({
+				...attribution,
+				variant: 'variant',
+				'$feature/143_recommended_skills': 'variant',
+			});
+			await service.create(user, payload({ method: 'upload', telemetry: attribution }));
+			expect(skillsTelemetry.experimentContext).toHaveBeenCalledWith(user, attribution);
 
 			expect(skillsTelemetry.created).toHaveBeenCalledWith(
 				user.id,
 				[{ id: 'skill_new', projectId: null }],
 				'ui',
 				'upload',
+				expect.objectContaining(attribution),
 			);
 		});
 
@@ -637,6 +648,7 @@ describe('SkillService user actions', () => {
 				[{ id: 'skill_new', projectId: null }],
 				'mcp',
 				'ai',
+				undefined,
 			);
 		});
 
@@ -650,6 +662,7 @@ describe('SkillService user actions', () => {
 				[{ id: 'skill_new', projectId: null }],
 				'ui',
 				'manual',
+				undefined,
 			);
 		});
 

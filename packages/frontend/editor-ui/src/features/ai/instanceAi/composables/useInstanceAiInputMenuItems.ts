@@ -15,6 +15,7 @@ import {
 	isContextSkillsEnabled,
 } from '@/features/settings/context/context.utils';
 import { getSkills } from '@/features/settings/context/skills.api';
+import { skillNavigationQuery } from '@/features/settings/context/skills.telemetry';
 import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
 import type { NodeIconSource, ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
 import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
@@ -100,7 +101,10 @@ export function useInstanceAiInputMenuItems(
 
 	function openSkillSettings(query: { skillId?: string; create?: string } = {}) {
 		window.open(
-			router.resolve({ name: VIEWS.SETTINGS_CONTEXT_SKILLS, query }).href,
+			router.resolve({
+				name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+				query: { ...skillNavigationQuery('assistant_menu'), ...query },
+			}).href,
 			'_blank',
 			'noopener',
 		);

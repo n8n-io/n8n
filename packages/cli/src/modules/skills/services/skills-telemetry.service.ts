@@ -1,12 +1,14 @@
-import type { SkillScanFinding } from '@n8n/api-types';
+import type { SkillScanFinding, SkillTelemetryContext } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
+import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
+import { RecommendedSkillsFlagGate } from './recommended-skills-flag-gate';
 
 /** Package imports report no skill telemetry. */
 export type SkillTelemetrySource = Exclude<SkillSource, 'import'>;
@@ -83,14 +85,33 @@ export class SkillsTelemetry {
 		private readonly telemetry: TelemetryProxy,
 		private readonly skillRepository: SkillRepository,
 		private readonly logger: Logger,
+		private readonly recommendedSkillsGate: RecommendedSkillsFlagGate,
 	) {}
+
+	async experimentContext(user: User, context?: SkillTelemetryContext) {
+		if (!context) return undefined;
+		try {
+			if (await this.recommendedSkillsGate.isEnabled(user)) {
+				return {
+					...context,
+					variant: 'variant' as const,
+					'$feature/143_recommended_skills': 'variant' as const,
+				};
+			}
+		} catch (error) {
+			this.logger.warn('Could not check skills telemetry experiment', {
+				error: ensureError(error).message,
+			});
+		}
+		return undefined;
+	}
 
 	async created(
 		userId: string,
 		refs: SkillTelemetryRef[],
 		source: SkillTelemetrySource,
 		method: SkillTelemetryMethod,
-		origin?: SkillTelemetryOrigin,
+		metadata?: SkillTelemetryOrigin | SkillTelemetryContext,
 	): Promise<void> {
 		await this.safely(async () => {
 			const skills = await this.resolve(refs);
@@ -101,7 +122,7 @@ export class SkillsTelemetry {
 					...placeOf(skill),
 					source,
 					method,
-					...origin,
+					...metadata,
 				});
 			}
 		});

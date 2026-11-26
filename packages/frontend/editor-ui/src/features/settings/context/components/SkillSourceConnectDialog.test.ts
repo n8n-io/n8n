@@ -1016,6 +1016,115 @@ describe('SkillSourceConnectDialog', () => {
 		});
 	});
 
+	describe('catalog selection', () => {
+		const preset = {
+			name: 'Brand voice',
+			description: 'Write copy in a consistent voice.',
+			url: 'https://github.com/acme/skills/tree/main/skills/brand-voice',
+			location: 'skills/brand-voice',
+		};
+
+		it('shows the selected skill summary with the save scope as the main choice', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
+			const summary = within(view.getByTestId('skill-source-catalog-selection'));
+			expect(summary.getByRole('heading', { name: 'Brand voice' })).toBeVisible();
+			expect(summary.getByText(preset.description)).toBeVisible();
+			expect(view.getAllByRole('dialog')).toHaveLength(1);
+			expect(summary.queryByRole('link')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skill-source-repository-select')).not.toBeInTheDocument();
+			expect(view.getByTestId('skill-source-credential-select')).not.toBeVisible();
+			expect(view.getByLabelText('Save to')).toBeVisible();
+
+			await selectScope(view, 'project:team-1');
+			await userEvent.click(view.getByRole('button', { name: 'Review skill' }));
+			await view.findByTestId('skill-source-review');
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
+				url: preset.url,
+				scope: 'project',
+				projectId: 'team-1',
+			});
+			await userEvent.click(view.getByTestId('skill-source-back'));
+			expect(view.getByRole('heading', { name: preset.name })).toBeVisible();
+			expect(view.getByTestId('skill-source-scope-select')).toHaveTextContent('Marketing');
+		});
+
+		it('shows the selected skill summary without a writable scope', async () => {
+			const view = renderDialog({ props: { open: true, scopeOptions: [], preset } });
+			expect(view.getByRole('heading', { name: preset.name })).toBeVisible();
+			expect(view.getByText(/permission/)).toBeVisible();
+			expect(view.getByRole('button', { name: 'Review skill' })).toBeDisabled();
+			expect(view.queryByTestId('skill-source-scope-select')).not.toBeInTheDocument();
+			expect(skillsStore.fetchSourceCredentials).not.toHaveBeenCalled();
+			expect(skillsStore.discoverSource).not.toHaveBeenCalled();
+		});
+
+		it('uses the optional credential for the preset without listing repositories', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
+			await userEvent.click(view.getByRole('button', { name: 'GitHub credential (optional)' }));
+			expect(view.getByTestId('skill-source-credential-select')).toBeVisible();
+			await selectCredential(view, 'Ada token');
+			await next(view);
+			await view.findByTestId('skill-source-review');
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
+				url: preset.url,
+				scope: 'instance',
+				credentialId: TOKEN.id,
+			});
+			expect(skillsStore.fetchSourceRepositories).not.toHaveBeenCalled();
+		});
+
+		it('imports the selected folder into the chosen scope with its telemetry', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			skillsStore.connectSource.mockResolvedValue({ sourceId: 'src-1', imported: [], failed: [] });
+			const telemetryContext = {
+				navigation_source: 'agent_picker_discover' as const,
+				flow_id: 'b23b6134-b7a7-4912-a635-6d38cbbe0ae8',
+				add_entry_point: 'discover_detail' as const,
+				catalog_skill_id: 'n8n-workflows',
+			};
+			const view = renderDialog({
+				props: { open: true, scopeOptions: SCOPES, preset, telemetryContext },
+			});
+			await selectScope(view, 'project:team-1');
+			await next(view);
+			await view.findByTestId('skill-source-review');
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith(
+				expect.objectContaining({ telemetry: telemetryContext }),
+			);
+			await view.rerender({ telemetryContext: undefined });
+			await userEvent.click(view.getByTestId('skill-source-import'));
+			expect(skillsStore.connectSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: preset.url,
+					scope: 'project',
+					projectId: 'team-1',
+					skillKeys: ['skills/brand-voice'],
+					telemetry: telemetryContext,
+				}),
+			);
+		});
+
+		it.each(['scope', 'global'] as const)(
+			'offers the existing source when import is blocked by a %s duplicate',
+			async (where) => {
+				skillsStore.discoverSource.mockResolvedValue(
+					discovery({ duplicate: { kind: 'blocked', where, sourceId: 'src-1' } }),
+				);
+				const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
+				await selectScope(view, 'project:team-1');
+				await next(view);
+				await userEvent.click(await view.findByText('View source'));
+				expect(skillsStore.discoverSource).toHaveBeenCalledTimes(1);
+				expect(view.emitted('openSource')).toEqual([['src-1']]);
+				expect(skillsStore.connectSource).not.toHaveBeenCalled();
+				expect(view.queryByTestId('skill-source-review')).not.toBeInTheDocument();
+			},
+		);
+	});
+
 	describe('the import', () => {
 		const flagged = discovered({
 			key: 'skills/flagged',

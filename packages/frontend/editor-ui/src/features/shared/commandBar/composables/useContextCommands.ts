@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
 import { isContextSkillsEnabled } from '@/features/settings/context/context.utils';
+import { skillNavigationQuery } from '@/features/settings/context/skills.telemetry';
 import type { CommandGroup, CommandBarItem } from '../types';
 
 const ITEM_ID = {
@@ -28,7 +29,10 @@ export function useContextCommands(): CommandGroup {
 				title,
 				section,
 				handler: () => {
-					void router.push({ name: VIEWS.SETTINGS_CONTEXT_SKILLS });
+					void router.push({
+						name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+						query: skillNavigationQuery('command_bar'),
+					});
 				},
 				icon: {
 					component: N8nIcon,

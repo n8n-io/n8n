@@ -7,6 +7,7 @@ import {
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
+	RECOMMENDED_SKILLS_FLAG,
 } from '@n8n/api-types';
 
 function createExperiment<
@@ -212,7 +213,7 @@ export const PREFERENCES_EMPTY_STATE_EXPERIMENT = createExperiment('127_preferen
 	assistant: 'assistant',
 });
 
-export const RECOMMENDED_SKILLS_EXPERIMENT = createExperiment('143_recommended_skills');
+export const RECOMMENDED_SKILLS_EXPERIMENT = createExperiment(RECOMMENDED_SKILLS_FLAG);
 
 export const MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT = createExperiment(
 	'150_mcp_preferences_entry_points',
