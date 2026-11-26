@@ -8,9 +8,31 @@ const credentials = {
 	},
 };
 
+const chatResponse = {
+	id: 'chat_test123',
+	model: 'sonar',
+	object: 'chat.completion',
+	choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: 'Done.' } }],
+};
+
 describe('Perplexity Node - Chat Completions', () => {
 	beforeEach(() => {
 		nock.disableNetConnect();
+		nock('https://api.perplexity.ai')
+			.post('/chat/completions', {
+				model: 'sonar',
+				messages: [{ content: 'Chat JSON String', role: 'user' }],
+				response_format: { type: 'json_schema' },
+				web_search_options: { search_context_size: 'high' },
+			})
+			.reply(200, chatResponse)
+			.post('/chat/completions', {
+				model: 'sonar',
+				messages: [{ content: 'Chat JSON Expression', role: 'user' }],
+				response_format: { type: 'json_schema' },
+				web_search_options: { search_context_size: 'low' },
+			})
+			.reply(200, chatResponse);
 		nock('https://api.perplexity.ai')
 			.post('/chat/completions', (body) => {
 				return (
