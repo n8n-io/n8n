@@ -276,11 +276,11 @@ describe('renderSummary', () => {
 		const summary = renderSummary([ready, evaluateSource(pin, digest('a'), [])]);
 		assert.match(
 			summary,
-			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/amd64 \| 1 C \/ 0 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| curl \|/,
+			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/amd64 \| 1 C \/ 0 H \/ 0 M \/ 0 L \/ 0 U \| 0 C \/ 0 H \/ 0 M \/ 0 L \/ 0 U \| 0 C \/ 0 H \/ 0 M \/ 0 L \/ 0 U \| curl \|/,
 		);
 		assert.match(
 			summary,
-			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/arm64 \| 0 C \/ 1 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| - \|/,
+			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/arm64 \| 0 C \/ 1 H \/ 0 M \/ 0 L \/ 0 U \| 0 C \/ 0 H \/ 0 M \/ 0 L \/ 0 U \| 0 C \/ 0 H \/ 0 M \/ 0 L \/ 0 U \| - \|/,
 		);
 		assert.match(summary, /\| `DHI_REF` \| current \| - \| - \| - \| - \| - \| - \| - \|/);
 	});
@@ -301,7 +301,7 @@ describe('renderSummary', () => {
 		assert.match(summary, /### Needs a person/);
 		assert.match(
 			summary,
-			/- `DHI_REF`: version update needed\. `dhi\.io\/node:26\.13-alpine3\.24-dev@sha256:d` removes 0 C \/ 1 H \/ 0 M\./,
+			/- `DHI_REF`: version update needed\. `dhi\.io\/node:26\.13-alpine3\.24-dev@sha256:d` removes 0 C \/ 1 H \/ 0 M \/ 0 L \/ 0 U\./,
 		);
 	});
 

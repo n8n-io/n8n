@@ -37,9 +37,12 @@ export function mergeResumeExecutionOptions(
 	}
 
 	const mergedMaxIterations = callerMaxIterations ?? persistedMaxIterations;
+	// A resumed run can retry the title. Hosts pass `titleText` only when the run starts.
+	const titleText = callerExecOptions.titleText ?? persisted.titleText;
 	return {
 		...callerExecOptions,
 		...(mergedMaxIterations !== undefined ? { maxIterations: mergedMaxIterations } : {}),
+		...(titleText !== undefined ? { titleText } : {}),
 		...(state.iterationCount !== undefined ? { iterationCount: state.iterationCount } : {}),
 	};
 }
@@ -81,14 +84,16 @@ export function buildCheckpointOptions(
 	maxIterations?: number,
 	iterationCount?: number,
 ): Pick<SerializableAgentState, 'executionOptions' | 'iterationCount'> {
-	// Persist loop controls only. providerOptions are intentionally excluded
-	// because they may contain sensitive data (API keys, auth headers).
+	// Persist loop controls and the title text only. providerOptions are intentionally
+	// excluded because they may contain sensitive data (API keys, auth headers).
 	const resolvedMaxIterations = maxIterations ?? options?.maxIterations;
 	const resolvedIterationCount = iterationCount ?? options?.iterationCount;
-	const executionOptions: PersistedExecutionOptions | undefined =
-		resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
+	const persisted: PersistedExecutionOptions = {
+		...(resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : {}),
+		...(options?.titleText !== undefined ? { titleText: options.titleText } : {}),
+	};
 	return {
-		executionOptions,
+		executionOptions: Object.keys(persisted).length > 0 ? persisted : undefined,
 		...(resolvedIterationCount !== undefined ? { iterationCount: resolvedIterationCount } : {}),
 	};
 }

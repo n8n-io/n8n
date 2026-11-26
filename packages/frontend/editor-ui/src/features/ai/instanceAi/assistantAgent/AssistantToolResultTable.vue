@@ -5,8 +5,8 @@ import { computed } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import ToolDataViews from '@/features/ai/shared/components/ToolDataBlock/ToolDataViews.vue';
 
-import ToolResultTable from '../components/ToolResultTable.vue';
-import { extractTableRows } from '../toolResultTable';
+import ToolResultTable from '@/features/ai/shared/components/ToolResult/ToolResultTable.vue';
+import { extractTableRows } from '@/features/ai/shared/components/ToolResult/toolResultTable';
 
 /**
  * The output of an Assistant list tool, as a table that can switch to the raw

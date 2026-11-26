@@ -1,7 +1,14 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CHAIN, commitOf, isRefreshCommit, planPins, renderBody } from './base-image-chain-pr.mjs';
+import {
+	CHAIN,
+	commitOf,
+	fetchWithRetry,
+	isRefreshCommit,
+	planPins,
+	renderBody,
+} from './base-image-chain-pr.mjs';
 
 const digest = (char) => `sha256:${char.repeat(64)}`;
 const sha = 'f'.repeat(40);
@@ -11,11 +18,11 @@ describe('isRefreshCommit', () => {
 	it('accepts the squash merge of a refresh PR', () => {
 		assert.ok(isRefreshCommit('build: Update base image digests with fewer OS findings (#45000)'));
 		assert.ok(isRefreshCommit('build: Update base image digests that need a review (#45003)'));
-		assert.ok(isRefreshCommit('build: Pin the base images that master published (#45001)'));
 	});
 
 	it('rejects other commits', () => {
 		assert.ok(!isRefreshCommit('build: Update Docker base images to Node 26.14.0 (#45002)'));
+		assert.ok(!isRefreshCommit('build: Pin the base images that master published (#45001)'));
 		assert.ok(!isRefreshCommit(''));
 	});
 });
@@ -99,7 +106,6 @@ describe('commitOf', () => {
 		const commit = 'a'.repeat(40);
 		assert.equal(commitOf(`n8nio/base:26.13.0-${commit}@${digest('b')}`), commit);
 		assert.equal(commitOf(`n8nio/base:26.13.0-debian-${commit}@${digest('b')}`), commit);
-		assert.equal(commitOf(`n8nio/node-pc:26.13.0-${commit}-dev@${digest('b')}`), commit);
 	});
 
 	it('returns null for a tag without a commit', () => {
@@ -115,5 +121,33 @@ describe('renderBody', () => {
 		);
 		assert.match(body, /\[publish run\]\(https:\/\/github\.com\/n8n-io\/n8n\/actions\/runs\/2\)/);
 		assert.match(body, /\| `RUNTIME_IMAGE` \| `n8nio\/base:26@a` \| `n8nio\/base:26-x@b` \|/);
+	});
+});
+
+describe('fetchWithRetry', () => {
+	it('sends the request again after a network error', async (t) => {
+		const ok = new Response('{}', { status: 200 });
+		const fetch = t.mock.method(globalThis, 'fetch', async () => {
+			if (fetch.mock.callCount() === 0) throw new TypeError('fetch failed');
+			return ok;
+		});
+		assert.equal(await fetchWithRetry('https://api.github.com/x', { method: 'POST' }), ok);
+		assert.equal(fetch.mock.callCount(), 2);
+	});
+
+	it('does not send the request again after another error', async (t) => {
+		const fetch = t.mock.method(globalThis, 'fetch', async () => {
+			throw new DOMException('The operation timed out.', 'TimeoutError');
+		});
+		await assert.rejects(fetchWithRetry('https://api.github.com/x'), { name: 'TimeoutError' });
+		assert.equal(fetch.mock.callCount(), 1);
+	});
+
+	it('fails when the second request also fails', async (t) => {
+		const fetch = t.mock.method(globalThis, 'fetch', async () => {
+			throw new TypeError('fetch failed');
+		});
+		await assert.rejects(fetchWithRetry('https://api.github.com/x'), TypeError);
+		assert.equal(fetch.mock.callCount(), 2);
 	});
 });

@@ -6,6 +6,7 @@ import type {
 
 import {
 	chatItemRoute,
+	chatItemTitle,
 	mergeRecentChats,
 	mergeChatHistoryPages,
 	type RecentChatItem,
@@ -173,5 +174,50 @@ describe('mergeChatHistoryPages', () => {
 		]);
 
 		expect(result).toEqual([]);
+	});
+});
+
+describe('chatItemTitle', () => {
+	const i18n = { baseText: (key: string) => key } as unknown as Parameters<typeof chatItemTitle>[1];
+	const PLACEHOLDER = 'commandBar.instanceAi.newThread';
+
+	it('shows the generated title of an agent thread', () => {
+		const item: RecentChatItem = {
+			kind: 'assistant-agent',
+			thread: { ...assistantAgentThread('t1', '2026-01-01'), firstMessage: 'Build a digest' },
+		};
+
+		expect(chatItemTitle(item, i18n)).toBe(item.thread.title);
+	});
+
+	it('shows the first message of an untitled agent thread until the title arrives', () => {
+		const items: RecentChatItem[] = [
+			{
+				kind: 'assistant-agent',
+				thread: {
+					...assistantAgentThread('t1', '2026-01-01'),
+					title: null,
+					firstMessage: 'Build a digest',
+				},
+			},
+			{
+				kind: 'agent',
+				thread: { ...agentThread('t2', '2026-01-01'), title: null, firstMessage: 'Refund status' },
+			},
+		];
+
+		expect(items.map((item) => chatItemTitle(item, i18n))).toEqual([
+			'Build a digest',
+			'Refund status',
+		]);
+	});
+
+	it('shows the placeholder for an agent thread with neither', () => {
+		const item: RecentChatItem = {
+			kind: 'agent',
+			thread: { ...agentThread('t1', '2026-01-01'), title: null },
+		};
+
+		expect(chatItemTitle(item, i18n)).toBe(PLACEHOLDER);
 	});
 });

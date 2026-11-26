@@ -48,14 +48,13 @@ export const CHAIN = {
 export const REFRESH_TITLES = [
 	'build: Update base image digests with fewer OS findings',
 	'build: Update base image digests that need a review',
-	CHAIN['build-base-image.yml'].title,
 ];
 
 export const isRefreshCommit = (subject) =>
 	REFRESH_TITLES.some((title) => subject.startsWith(title));
 
 /** The master commit in the tag of a pin that n8n published, or null. */
-export const commitOf = (ref) => /-([0-9a-f]{40})(?:-dev)?@/.exec(ref)?.[1] ?? null;
+export const commitOf = (ref) => /-([0-9a-f]{40})@/.exec(ref)?.[1] ?? null;
 
 /**
  * The pins to change. `publishedHcl` is the bake file at `sha`: the tags use
@@ -95,7 +94,8 @@ export function renderBody(changes, { runUrl }) {
 	].join('\n');
 }
 
-function resolveDigest(tag) {
+/** The digest of a tag, or null when the registry does not have the tag. */
+export function resolveDigest(tag) {
 	try {
 		const out = execFileSync(
 			'docker',
@@ -110,13 +110,28 @@ function resolveDigest(tag) {
 	}
 }
 
-async function github(path, accept) {
+/**
+ * fetch, and once more after a network error. On the runners, a request after
+ * a long step can go out on a keep-alive connection that the server already closed.
+ */
+export async function fetchWithRetry(url, init) {
+	try {
+		return await fetch(url, init);
+	} catch (error) {
+		// fetch rejects with a TypeError for network errors. A timeout is not a TypeError.
+		if (!(error instanceof TypeError)) throw error;
+		return await fetch(url, init);
+	}
+}
+
+/** A GET request to the GitHub REST API of this repository. */
+export async function github(path, accept) {
 	const {
 		GITHUB_API_URL = 'https://api.github.com',
 		GITHUB_REPOSITORY,
 		GITHUB_TOKEN,
 	} = process.env;
-	const response = await fetch(`${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/${path}`, {
+	const response = await fetchWithRetry(`${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/${path}`, {
 		headers: { authorization: `Bearer ${GITHUB_TOKEN}`, accept },
 		signal: AbortSignal.timeout(30_000),
 	});
@@ -125,14 +140,14 @@ async function github(path, accept) {
 }
 
 /** Whether `newer` contains `older` on master, from the GitHub compare API. */
-async function contains(older, newer) {
+export async function contains(older, newer) {
 	const response = await github(`compare/${older}...${newer}`, 'application/vnd.github+json');
 	const { status } = await response.json();
 	return status === 'ahead' || status === 'identical';
 }
 
 /** The bake file at a commit. */
-async function bakeFileAt(sha) {
+export async function bakeFileAt(sha) {
 	const response = await github(
 		`contents/${BAKE_FILE}?ref=${sha}`,
 		'application/vnd.github.raw+json',

@@ -73,7 +73,17 @@ export class StepSettledHandler {
 			}
 			throw executionLoad.reason;
 		}
-		if (stepLoad.status === 'rejected') throw stepLoad.reason;
+		if (stepLoad.status === 'rejected') {
+			// A deletion that commits between the two reads removes the step row after the
+			// execution was read.
+			if (
+				stepLoad.reason instanceof StepNotFoundError &&
+				(await this.executionIsGone(event.executionId))
+			) {
+				return;
+			}
+			throw stepLoad.reason;
+		}
 		const step = stepLoad.value;
 		const execution = executionLoad.value;
 		const node = validateStepContext(step, execution);
@@ -127,6 +137,13 @@ export class StepSettledHandler {
 		// If this call just finished the execution, it is no longer live, and the
 		// refresh leaves it alone.
 		await this.executionStore.refreshLiveStatus(execution.id);
+	}
+
+	private async executionIsGone(executionId: string): Promise<boolean> {
+		return await this.executionStore.loadExecution(executionId).then(
+			() => false,
+			(error: unknown) => isMissingExecution(error, executionId),
+		);
 	}
 
 	private async failExecution(

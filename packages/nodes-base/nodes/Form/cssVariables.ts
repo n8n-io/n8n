@@ -41,6 +41,7 @@ export const cssVariables = `
 	--color-html-text: #555;
 	--color-html-link: #ff6d5a;
 	--color-header-subtext: #7e8186;
+	--color-n8n-logo-text: #191919;
 
 	/* Border Radii */
 	--border-radius-card: 8px;

@@ -23,6 +23,7 @@ function makeExecutionStore(): ExecutionStore {
 		refreshLiveStatus: vi.fn(),
 		loadLiveSubExecutionIds: vi.fn(),
 		findPrunableExecutions: vi.fn(),
+		findRetentionCountCutoff: vi.fn(),
 		deleteEndedExecutions: vi.fn(),
 	};
 }

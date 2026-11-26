@@ -1,8 +1,13 @@
 import { Time, HUMAN_REVIEW_MODULE } from '@n8n/constants';
+import { z } from 'zod';
 
 import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
 import { nonnegativeIntSchema } from '../schemas';
+
+export const AGENT_SANDBOX_EGRESS_POLICIES = ['disabled', 'opt-in', 'opt-out'] as const;
+export type AgentSandboxEgressPolicy = (typeof AGENT_SANDBOX_EGRESS_POLICIES)[number];
+const agentSandboxEgressPolicySchema = z.enum(AGENT_SANDBOX_EGRESS_POLICIES);
 
 /**
  * Known agent sub-feature modules. Add a token here to make it valid in
@@ -101,6 +106,13 @@ export class AgentsConfig {
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
+
+	/**
+	 * Outbound internet access policy for Agent sandboxes. One of `disabled`, `opt-in`, or `opt-out`.
+	 * Use `disabled` to block outbound internet access for all Agent sandboxes, `opt-in` to require enabling it per Agent in Advanced settings, or `opt-out` to allow it by default. Doesn't affect n8n Assistant.
+	 */
+	@Env('N8N_AGENTS_AI_SANDBOX_EGRESS_POLICY', agentSandboxEgressPolicySchema)
+	sandboxEgressPolicy: AgentSandboxEgressPolicy = 'opt-in';
 
 	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
 	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')

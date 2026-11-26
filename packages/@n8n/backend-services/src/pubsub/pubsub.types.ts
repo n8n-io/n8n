@@ -69,6 +69,7 @@ export namespace PubSub {
 		export type StopAgentSession = ToCommand<'stop-agent-session'>;
 		export type RelayAgentMessageQueueUpdate = ToCommand<'relay-agent-message-queue-update'>;
 		export type RelayAgentBackgroundJobsUpdate = ToCommand<'relay-agent-background-tasks-update'>;
+		export type RelayAgentThreadTitleUpdate = ToCommand<'relay-agent-thread-title-update'>;
 		export type RelayAgentUpdate = ToCommand<'relay-agent-update'>;
 		export type ResumeAgentWorkflowTool = ToCommand<'resume-agent-workflow-tool'>;
 		export type CancelAgentBackgroundJob = ToCommand<'cancel-agent-background-job'>;
@@ -132,6 +133,7 @@ export namespace PubSub {
 		| Commands.StopAgentSession
 		| Commands.RelayAgentMessageQueueUpdate
 		| Commands.RelayAgentBackgroundJobsUpdate
+		| Commands.RelayAgentThreadTitleUpdate
 		| Commands.RelayAgentUpdate
 		| Commands.ResumeAgentWorkflowTool
 		| Commands.CancelAgentBackgroundJob
