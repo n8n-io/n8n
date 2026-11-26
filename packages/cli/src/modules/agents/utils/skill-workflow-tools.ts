@@ -60,10 +60,10 @@ function findMentionedWorkflows(
 
 function configuredToolNames(config: AgentJsonConfig): Set<string> {
 	return new Set(
-		(config.tools ?? []).flatMap((tool) => {
+		(config.tools ?? []).map((tool) => {
 			if (tool.type === 'workflow') return sanitizeAgentToolName(tool.name ?? tool.workflow);
 			if (tool.type === 'node') return sanitizeAgentToolName(tool.name);
-			return [];
+			return tool.id;
 		}),
 	);
 }

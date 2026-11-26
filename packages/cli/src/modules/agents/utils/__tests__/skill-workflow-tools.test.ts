@@ -136,6 +136,15 @@ describe('withSkillWorkflowTools', () => {
 		expect(findSkillWorkflowTools(config(['skill-1'], [direct]), skills)).toEqual([]);
 	});
 
+	it('leaves out a skill workflow tool when a custom tool has its name', () => {
+		const custom: AgentJsonToolConfig = { type: 'custom', id: 'workflow_B123' };
+		const skills = { 'skill-1': skill('Skill', '[Get code](n8n://workflow/B123)') };
+
+		const result = withSkillWorkflowTools(config(['skill-1'], [custom]), skills);
+
+		expect(result.tools).toEqual([custom]);
+	});
+
 	it('ignores skills that are not attached or have no body', () => {
 		const skills = { 'skill-2': skill('Other', '[Get code](n8n://workflow/wf1)') };
 		const input = config(['skill-1']);
