@@ -3,21 +3,21 @@ import type { Request, Response } from 'express';
 
 import { BadRequestError } from '@n8n/errors';
 
-import type { ResolveSubWorkflowResponse } from './engine-workflow-resolve.contract';
-import { resolveSubWorkflowRequestSchema } from './engine-workflow-resolve.contract';
-import { EngineSubWorkflowService } from './engine-workflow-resolve.service';
+import type { ResolveWorkflowResponse } from './engine-workflow-resolve.contract';
+import { resolveWorkflowRequestSchema } from './engine-workflow-resolve.contract';
+import { EngineWorkflowResolveService } from './engine-workflow-resolve.service';
 
-/** Serves `POST /internal/sub-workflows/resolve` for the engine v2 data plane. */
+/** Serves `POST /internal/workflows/resolve` for the engine v2 data plane. */
 @Service()
-export class EngineSubWorkflowController {
-	constructor(private readonly subWorkflowService: EngineSubWorkflowService) {}
+export class EngineWorkflowResolveController {
+	constructor(private readonly workflowResolveService: EngineWorkflowResolveService) {}
 
-	async resolveSubWorkflow(req: Request, res: Response): Promise<void> {
-		const parsed = resolveSubWorkflowRequestSchema.safeParse(req.body);
+	async resolveWorkflow(req: Request, res: Response): Promise<void> {
+		const parsed = resolveWorkflowRequestSchema.safeParse(req.body);
 
-		if (!parsed.success) throw new BadRequestError('Invalid sub-workflow resolve request');
+		if (!parsed.success) throw new BadRequestError('Invalid workflow resolve request');
 
-		const body: ResolveSubWorkflowResponse = await this.subWorkflowService.resolve(parsed.data);
+		const body: ResolveWorkflowResponse = await this.workflowResolveService.resolve(parsed.data);
 		res.status(200).json(body);
 	}
 }

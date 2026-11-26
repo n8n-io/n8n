@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 
 import { BaseSandbox } from './base-sandbox';
 import { toShellCommand } from './shell-command';
+import type { N8nSandboxConfig } from './types';
 import { raceWithAbort } from '../../sdk/abort';
 import type {
 	AbortableOptions,
@@ -18,6 +19,7 @@ function isNotFound(error: unknown): boolean {
 }
 
 export interface N8nSandboxServiceSandboxOptions {
+	egress?: N8nSandboxConfig['egress'];
 	/** Lowercase UUID to create or reconnect to; the service generates one when omitted. */
 	id?: string;
 	/** When true, the service deletes the sandbox once it goes idle instead of stopping it. */
@@ -198,7 +200,7 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 		const creation = this.client.createSandbox({
 			id: existingId,
 			ephemeral: this.options.ephemeral,
-			egress: 'public',
+			egress: this.options.egress ?? 'public',
 		});
 		try {
 			return await this.withLifecycleTimeout(creation);

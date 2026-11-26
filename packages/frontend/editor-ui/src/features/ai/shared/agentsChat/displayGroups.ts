@@ -40,11 +40,15 @@ export type DisplayGroup =
 			id: string;
 			message: AgentsChatMessage;
 			thinkingSegments: ThinkingSegment[];
+			/** Last group of the run, set on the head of a run with more than one group. */
+			runTail?: TurnDisplayGroup;
 	  }
 	| {
 			kind: typeof DISPLAY_GROUP_KIND.TOOL_RUN;
 			id: string;
 			thinkingSegments: ThinkingSegment[];
+			/** Last group of the run, set on the head of a run with more than one group. */
+			runTail?: TurnDisplayGroup;
 			active: boolean;
 			awaitingInput: boolean;
 			toolCalls: ToolCall[];
@@ -108,10 +112,12 @@ function executionIdForGroup(group: TurnDisplayGroup): string | undefined {
 }
 
 /**
- * Keep one reasoning block at the tail of each assistant run, below its final output.
+ * Keep one reasoning block at the head of each assistant run. The first group
+ * exists from the start of the stream, so the block does not move while later
+ * groups stream in below it.
  * The notice of a stopped turn ends the run, so the block stays above it.
  */
-function moveThinkingToRunTail(groups: DisplayGroup[]): void {
+function moveThinkingToRunHead(groups: DisplayGroup[]): void {
 	let run: TurnDisplayGroup[] = [];
 	let executionId: string | undefined;
 
@@ -119,7 +125,9 @@ function moveThinkingToRunTail(groups: DisplayGroup[]): void {
 		if (run.length === 0) return;
 		const segments = run.flatMap((group) => group.thinkingSegments);
 		for (const group of run) group.thinkingSegments = [];
-		run[run.length - 1].thinkingSegments = segments;
+		run[0].thinkingSegments = segments;
+		// The head shows the reasoning of the whole run, so it is live while the tail is.
+		if (run.length > 1) run[0].runTail = run[run.length - 1];
 		run = [];
 		executionId = undefined;
 	};
@@ -329,6 +337,6 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 		});
 	}
 
-	moveThinkingToRunTail(groups);
+	moveThinkingToRunHead(groups);
 	return groups;
 }

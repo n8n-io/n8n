@@ -37,7 +37,14 @@ import { pathToFileURL } from 'node:url';
 
 import { renderAlerts } from './base-image-alerts.mjs';
 import { GATE_MS, PLATFORMS, compareScans, readPin, scan } from './base-image-candidates.mjs';
-import { CHAIN, bakeFileAt, commitOf, github, resolveDigest } from './base-image-chain-pr.mjs';
+import {
+	CHAIN,
+	bakeFileAt,
+	commitOf,
+	fetchWithRetry,
+	github,
+	resolveDigest,
+} from './base-image-chain-pr.mjs';
 import { removedFindings, updatePins } from './base-image-pin-pr.mjs';
 
 const BAKE_FILE = 'docker/docker-bake.hcl';
@@ -333,7 +340,7 @@ const json = async (route) => await (await github(route, 'application/vnd.github
 /** Dispatches the base build on master. Returns the run ID when GitHub gives it. */
 async function dispatchBuild(targets) {
 	const post = async (body) =>
-		await fetch(`${API()}/actions/workflows/${BUILD_WORKFLOW}/dispatches`, {
+		await fetchWithRetry(`${API()}/actions/workflows/${BUILD_WORKFLOW}/dispatches`, {
 			method: 'POST',
 			headers: {
 				authorization: `Bearer ${process.env.GITHUB_TOKEN}`,

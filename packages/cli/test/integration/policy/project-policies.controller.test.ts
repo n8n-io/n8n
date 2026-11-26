@@ -6,11 +6,16 @@ import {
 	mockInstance,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { EventService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import {
+	CREDENTIAL_TYPES_KIND,
+	NODE_TYPES_KIND,
+} from '@/modules/type-availability-policies/constants';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { HiddenNodeTypes } from '@/modules/type-availability-policies/hidden-node-types';
 import { NodeTypes } from '@/node-types';
@@ -70,6 +75,25 @@ async function listProjectPolicies(user = owner) {
 	return (response.body.data as ProjectPoliciesResponse).projects;
 }
 
+function createProjectPolicy(projectId: string, user = owner) {
+	return testServer.authAgentFor(user).post('/project-policies').send({ projectId });
+}
+
+const scopeOf = async (kind: string, projectId: string) =>
+	await Container.get(TypeAvailabilityPolicyScopeRepository).findScopeByKindAndProject(
+		kind,
+		projectId,
+		{},
+	);
+
+const BOTH_KINDS = [NODE_TYPES_KIND, CREDENTIAL_TYPES_KIND];
+
+async function expectNoProjectPolicy(projectId: string) {
+	for (const kind of BOTH_KINDS) {
+		expect(await scopeOf(kind, projectId)).toBeNull();
+	}
+}
+
 const entryFor = (projects: ProjectPolicySummary[], projectId: string) =>
 	projects.find((project) => project.projectId === projectId);
 
@@ -113,6 +137,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+	vi.restoreAllMocks();
 	testServer.license.enable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	await testDb.truncate([
 		'TypeAvailabilityPolicyAttachment',
@@ -272,5 +297,193 @@ describe('GET /project-policies', () => {
 			.expect(200);
 
 		await expectUpdatedSincePast(project.id);
+	});
+});
+
+describe('POST /project-policies access', () => {
+	test('rejects a member with 403', async () => {
+		const project = await createTeamProject('Member');
+
+		const response = await createProjectPolicy(project.id, member);
+
+		expect(response.statusCode).toBe(403);
+		await expectNoProjectPolicy(project.id);
+	});
+
+	test.each(['nodeTypePolicy:manage', 'credentialTypePolicy:manage'])(
+		'rejects a user who has only %s with 403',
+		async (scope) => {
+			const role = await createCustomRoleWithScopeSlugs([scope], { roleType: 'global' });
+			const user = await createUser({ role });
+			const project = await createTeamProject('One scope');
+
+			const response = await createProjectPolicy(project.id, user);
+
+			expect(response.statusCode).toBe(403);
+			await expectNoProjectPolicy(project.id);
+		},
+	);
+
+	test('accepts a user who has both scopes', async () => {
+		const role = await createCustomRoleWithScopeSlugs(
+			['nodeTypePolicy:manage', 'credentialTypePolicy:manage'],
+			{ roleType: 'global' },
+		);
+		const user = await createUser({ role });
+		const project = await createTeamProject('Both scopes');
+
+		const response = await createProjectPolicy(project.id, user);
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('rejects an owner with 403 when the license feature is disabled', async () => {
+		testServer.license.disable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
+		const project = await createTeamProject('Unlicensed');
+
+		const response = await createProjectPolicy(project.id);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('rejects a body without a projectId with 400', async () => {
+		const response = await testServer.authAgentFor(owner).post('/project-policies').send({});
+
+		expect(response.statusCode).toBe(400);
+	});
+});
+
+describe('POST /project-policies', () => {
+	test('creates an empty allow policy of both kinds and returns the list entry', async () => {
+		const project = await createTeamProject('New policy', member);
+
+		const response = await createProjectPolicy(project.id);
+
+		expect(response.statusCode).toBe(200);
+		const summary = response.body.data as ProjectPolicySummary;
+		expect(summary).toEqual({
+			projectId: project.id,
+			name: 'New policy',
+			icon: null,
+			memberCount: 1,
+			hasPolicy: true,
+			updatedAt: expect.any(String),
+			node: { restricted: 0, optedIn: 0, effective: { allowed: 4, restricted: 0 } },
+			credential: { restricted: 0, optedIn: 0, effective: { allowed: 2, restricted: 0 } },
+		});
+		expect(entryFor(await listProjectPolicies(), project.id)).toEqual(summary);
+
+		const [nodeScope, credentialScope] = await Promise.all(
+			BOTH_KINDS.map(async (kind) => await scopeOf(kind, project.id)),
+		);
+		for (const scope of [nodeScope, credentialScope]) {
+			expect(scope).toMatchObject({ defaultAction: 'allow', version: 1 });
+		}
+		const attachments = await testServer
+			.authAgentFor(owner)
+			.get(`/node-type-policies/scopes/${nodeScope!.id}/attachments`)
+			.expect(200);
+		expect(attachments.body.data.attachments).toEqual([]);
+	});
+
+	test('emits the policy events for each created kind', async () => {
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		const project = await createTeamProject('Events');
+
+		await createProjectPolicy(project.id).expect(200);
+
+		const events = emit.mock.calls.map(([event]) => event);
+		expect(events.filter((event) => event === 'node-type-policy-scope-updated')).toHaveLength(2);
+		expect(events.filter((event) => event === 'node-type-policy-saved')).toHaveLength(2);
+	});
+
+	test.each([
+		{
+			existing: 'node',
+			existingKind: NODE_TYPES_KIND,
+			missingKind: CREDENTIAL_TYPES_KIND,
+			rule: deny('p1', NOTION),
+		},
+		{
+			existing: 'credential',
+			existingKind: CREDENTIAL_TYPES_KIND,
+			missingKind: NODE_TYPES_KIND,
+			rule: deny('c1', 'slackApi'),
+		},
+	] as const)(
+		'creates only the missing kind when the $existing kind exists',
+		async ({ existing, existingKind, missingKind, rule }) => {
+			const project = await createTeamProject(`Only ${existing}`);
+			const before = await putProjectPolicy(existing, project.id, [rule]);
+
+			const response = await createProjectPolicy(project.id);
+
+			expect(response.statusCode).toBe(200);
+			const missing = existing === 'node' ? 'credential' : 'node';
+			expect(response.body.data).toMatchObject({
+				hasPolicy: true,
+				[existing]: { restricted: 1, optedIn: 0 },
+				[missing]: { restricted: 0, optedIn: 0 },
+			});
+			expect(await scopeOf(existingKind, project.id)).toMatchObject({
+				id: before.scopeId,
+				version: before.version,
+			});
+			expect(await scopeOf(missingKind, project.id)).toMatchObject({
+				defaultAction: 'allow',
+				version: 1,
+			});
+		},
+	);
+
+	test('rejects a project that has a policy of both kinds with 409, and changes nothing', async () => {
+		const project = await createTeamProject('Both kinds');
+		await createProjectPolicy(project.id).expect(200);
+
+		const response = await createProjectPolicy(project.id);
+
+		expect(response.statusCode).toBe(409);
+		for (const kind of BOTH_KINDS) {
+			expect(await scopeOf(kind, project.id)).toMatchObject({ version: 1 });
+		}
+	});
+
+	test('rejects a personal project with 400, and saves nothing', async () => {
+		const personal = await getPersonalProject(owner);
+
+		const response = await createProjectPolicy(personal.id);
+
+		expect(response.statusCode).toBe(400);
+		await expectNoProjectPolicy(personal.id);
+	});
+
+	test('rejects an unknown project with 404', async () => {
+		const response = await createProjectPolicy('does-not-exist');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('saves nothing for either kind when the second write fails', async () => {
+		const project = await createTeamProject('Rollback');
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		const scopeRepo = Container.get(TypeAvailabilityPolicyScopeRepository);
+		const createScopeIfAbsent = scopeRepo.createScopeIfAbsent.bind(scopeRepo);
+		// The second write lands and then throws, so only a rollback can undo both rows.
+		const spy = vi
+			.spyOn(scopeRepo, 'createScopeIfAbsent')
+			.mockImplementationOnce(createScopeIfAbsent)
+			.mockImplementationOnce(async (input, ctx) => {
+				await createScopeIfAbsent(input, ctx);
+				throw new Error('second write failed');
+			});
+
+		const response = await createProjectPolicy(project.id);
+
+		expect(response.statusCode).toBe(500);
+		expect(spy).toHaveBeenCalledTimes(2);
+		await expectNoProjectPolicy(project.id);
+		const events = emit.mock.calls.map(([event]) => event);
+		expect(events).not.toContain('node-type-policy-scope-updated');
+		expect(events).not.toContain('node-type-policy-saved');
 	});
 });
