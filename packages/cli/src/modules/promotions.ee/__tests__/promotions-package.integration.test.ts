@@ -3,6 +3,7 @@ import {
 	applyPackageResultSchema,
 	type ApplyPackageResultDto,
 	type ContinueApplyPackageDto,
+	type PromotionDirection,
 	type PromotionProviderType,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
@@ -30,6 +31,7 @@ import {
 	FolderRepository,
 	ProjectRepository,
 	ProjectRelationRepository,
+	SettingsRepository,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersionRepository,
@@ -108,6 +110,8 @@ import { PromotionCredentialSelectionService } from '../promotion-credential-sel
 import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
+import { PromotionEnvironmentsService } from '../promotion-environments.service';
+import { PromotionSettingsService } from '../promotion-settings.service';
 import { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
@@ -125,7 +129,11 @@ import {
 	createGitRemoteSeed,
 	type TestRemote,
 } from './utils/git-remote-fixture';
-import { expectPushed, writeInstancePromotionPackage } from './utils/promotion-fixtures';
+import {
+	createProjectEnvironment,
+	expectPushed,
+	writeInstancePromotionPackage,
+} from './utils/promotion-fixtures';
 
 beforeAll(async () => await testModules.loadModules(['agents']));
 const testServer = setupTestServer({
@@ -185,6 +193,7 @@ beforeEach(async () => {
 	await linkRepository.delete({});
 	await environmentRepository.delete({});
 	await providerRepository.delete({});
+	await Container.get(SettingsRepository).delete({ key: 'promotions.projectEnvironments' });
 	await testDb.truncate([
 		'WorkflowTagMapping',
 		'TagEntity',
@@ -226,7 +235,12 @@ beforeEach(async () => {
 		instanceSettings,
 	);
 	service = new PromotionsService(
-		new PromotionEnvironmentResolver(environmentRepository, linkRepository, projectRepository),
+		new PromotionEnvironmentResolver(
+			environmentRepository,
+			linkRepository,
+			projectRepository,
+			Container.get(PromotionSettingsService),
+		),
 		new PromotionProvidersService(
 			providerRepository,
 			environmentRepository,
@@ -2673,6 +2687,292 @@ describe('Create the projects of the Apply package that are missing here', () =>
 				role: 'workflow:owner',
 			}),
 		).toMatchObject({ projectId: project.id });
+	});
+});
+
+describe('Instance Apply with projects that have their own Apply environment', () => {
+	/**
+	 * Exports `Orders` and `Billing` to the branch, then renames `Orders` and both workflows on this
+	 * instance. `Process order` uses a global variable. Without `ordersOnBranch`, `Orders` is
+	 * created after the export.
+	 */
+	async function prepareApply({ ordersOnBranch = true } = {}) {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.apply.id, owner);
+		await createVariable('ORDER_URL', 'https://example.com');
+		const createOrders = async () => {
+			const orders = await createTeamProject('Orders', owner);
+			const order = await buildWorkflowReferencingVariables({
+				name: 'Process order',
+				project: orders,
+				variableNames: ['ORDER_URL'],
+			});
+			return { orders, order };
+		};
+		const {
+			workflows: [invoice],
+		} = await setupProjectWithWorkflows('Billing', ['Send invoice']);
+		const early = ordersOnBranch ? await createOrders() : undefined;
+		await exportPackageToRemote(remote);
+		const { orders, order } = early ?? (await createOrders());
+		const workflows = Container.get(WorkflowRepository);
+		await workflows.update(order.id, { name: 'Local order' });
+		await workflows.update(invoice.id, { name: 'Local invoice' });
+		await projectRepository.update(orders.id, { name: 'Local orders' });
+		return { remote, environments, orders, order, invoice };
+	}
+
+	async function giveOwnEnvironment(
+		{
+			environments,
+			remote,
+		}: Pick<Awaited<ReturnType<typeof prepareApply>>, 'environments' | 'remote'>,
+		projectIds: string[],
+		{ enabled = true, direction = 'apply' as PromotionDirection } = {},
+	) {
+		await Container.get(PromotionSettingsService).setProjectEnvironmentsEnabled(owner, enabled);
+		const environment = await createProjectEnvironment({
+			providerId: environments.apply.providerId,
+			remoteUrl: remote.bareDir,
+			direction,
+		});
+		for (const projectId of projectIds) {
+			await linkRepository.linkProject(projectId, environment.id, direction);
+		}
+		return environment;
+	}
+
+	const preview = async (environmentId: string) =>
+		await changeService().getInstanceApplyPreview(owner, environmentId);
+	const keysWith = (
+		{ resources }: Awaited<ReturnType<typeof preview>>,
+		matches: (change: string) => boolean,
+	) =>
+		resources
+			.filter(({ change }) => matches(change))
+			.map(({ key }) => key)
+			.sort();
+	const changed = (reviewed: Awaited<ReturnType<typeof preview>>) =>
+		keysWith(reviewed, (change) => change !== 'unchanged');
+	const confirmApply = async (
+		environmentId: string,
+		reviewed: Awaited<ReturnType<typeof preview>>,
+	) =>
+		await service.continueApply(environmentId, owner, {
+			expectedSource: {
+				environmentId: reviewed.source.environmentId,
+				commitSha: reviewed.commitSha,
+				branchName: 'main',
+			},
+			expectedPreviewRevision: reviewed.revision,
+			confirmDestructiveChanges: true,
+		});
+	const deletionOf = (id: string, name: string) => ({
+		kind: 'project',
+		code: 'project-deletion',
+		project: { id, name },
+	});
+	const workflowName = async (id: string) =>
+		(await Container.get(WorkflowRepository).findOneByOrFail({ id })).name;
+
+	it('lists no change for a project with its own Apply environment and changes nothing in it', async () => {
+		const fixture = await prepareApply();
+		const { environments, orders, order, invoice } = fixture;
+		await giveOwnEnvironment(fixture, [orders.id]);
+
+		const reviewed = await preview(environments.apply.id);
+		expect(changed(reviewed)).toEqual([`workflow:${invoice.id}`]);
+		const result = await service.apply(environments.apply.id, owner, {
+			expectedPreviewRevision: reviewed.revision,
+		});
+
+		expect(result.status).toBe('applied');
+		expect(await workflowName(invoice.id)).toBe('Send invoice');
+		expect(await workflowName(order.id)).toBe('Local order');
+		expect(await projectRepository.findOneByOrFail({ id: orders.id })).toMatchObject({
+			name: 'Local orders',
+		});
+	});
+
+	it('is not blocked when only the copy of a left-out project needs a credential that this instance lacks', async () => {
+		const fixture = await prepareCredentialApply();
+		const { environments, project, credential, reportCredential } = fixture;
+		const credentials = Container.get(CredentialsRepository);
+		await credentials.delete([credential.id, reportCredential.id]);
+		await giveOwnEnvironment(fixture, [project.id]);
+
+		const result = await service.apply(environments.apply.id, owner);
+
+		expect(result.status).toBe('applied');
+		expect(
+			await Promise.all(
+				[credential.id, reportCredential.id].map(async (id) => await credentials.findOneBy({ id })),
+			),
+		).toEqual([null, null]);
+	});
+
+	it('deletes only the projects without their own Apply environment that the default repository does not hold', async () => {
+		const fixture = await prepareApply({ ordersOnBranch: false });
+		const { environments, orders, invoice } = fixture;
+		await giveOwnEnvironment(fixture, [orders.id]);
+		const {
+			project: localOnly,
+			workflows: [localReport],
+		} = await setupProjectWithWorkflows('Local only', ['Local report']);
+
+		const reviewed = await preview(environments.apply.id);
+		expect(reviewed.check.conflicts).toEqual([deletionOf(localOnly.id, 'Local only')]);
+		expect(keysWith(reviewed, (change) => change === 'deleted')).toEqual(
+			[`project:${localOnly.id}`, `workflow:${localReport.id}`].sort(),
+		);
+		const blocked = await service.apply(environments.apply.id, owner, {
+			expectedPreviewRevision: reviewed.revision,
+		});
+		assert(blocked.status === 'blocked', JSON.stringify(blocked));
+		expect(blocked.check.conflicts).toEqual([deletionOf(localOnly.id, 'Local only')]);
+
+		const result = await confirmApply(environments.apply.id, reviewed);
+
+		assert(result.status === 'applied', JSON.stringify(result));
+		expect(result.counts.projects.deleted).toBe(1);
+		expect(await projectRepository.findOneBy({ id: localOnly.id })).toBeNull();
+		expect(await projectRepository.findOneBy({ id: orders.id })).not.toBeNull();
+		expect(await workflowName(fixture.order.id)).toBe('Local order');
+		expect(await workflowName(invoice.id)).toBe('Send invoice');
+	});
+
+	it.each([
+		{ case: 'project environments are off', enabled: false, direction: 'apply' as const },
+		{
+			case: 'it has only its own Promote environment',
+			enabled: true,
+			direction: 'promote' as const,
+		},
+	])('covers a project with its own environment when $case', async ({ enabled, direction }) => {
+		const fixture = await prepareApply();
+		const { environments, orders, order } = fixture;
+		const { project: returns } = await setupProjectWithWorkflows('Returns', []);
+		await giveOwnEnvironment(fixture, [orders.id, returns.id], { enabled, direction });
+
+		const reviewed = await preview(environments.apply.id);
+
+		expect(reviewed.resources).toContainEqual(
+			expect.objectContaining({ key: `workflow:${order.id}`, change: 'modified' }),
+		);
+		expect(reviewed.check.conflicts).toEqual([deletionOf(returns.id, 'Returns')]);
+	});
+
+	it('covers the project again after its own Apply environment is removed', async () => {
+		const fixture = await prepareApply();
+		const { environments, orders, order } = fixture;
+		const ownEnvironment = await giveOwnEnvironment(fixture, [orders.id]);
+		expect(changed(await preview(environments.apply.id))).not.toContain(`workflow:${order.id}`);
+
+		await Container.get(PromotionEnvironmentsService).removeProject({
+			user: owner,
+			environmentId: ownEnvironment.id,
+			projectId: orders.id,
+		});
+		const reviewed = await preview(environments.apply.id);
+		expect(reviewed.resources).toContainEqual(
+			expect.objectContaining({ key: `workflow:${order.id}`, change: 'modified' }),
+		);
+		const result = await service.apply(environments.apply.id, owner, {
+			expectedPreviewRevision: reviewed.revision,
+		});
+
+		expect(result.status).toBe('applied');
+		expect(await workflowName(order.id)).toBe('Process order');
+	});
+
+	it('does not block on a move between two projects with their own Apply environment', async () => {
+		const fixture = await prepareApply();
+		const { environments, orders, order } = fixture;
+		const { project: returns } = await setupProjectWithWorkflows('Returns', []);
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: order.id, role: 'workflow:owner' },
+			{ projectId: returns.id },
+		);
+		await giveOwnEnvironment(fixture, [orders.id, returns.id]);
+
+		const reviewed = await preview(environments.apply.id);
+		expect(reviewed.check.movedWorkflows).toEqual([]);
+		const result = await service.apply(environments.apply.id, owner, {
+			expectedPreviewRevision: reviewed.revision,
+		});
+
+		expect(result.status).toBe('applied');
+		expect(
+			await Container.get(SharedWorkflowRepository).findOneBy({
+				workflowId: order.id,
+				role: 'workflow:owner',
+			}),
+		).toMatchObject({ projectId: returns.id });
+		expect(await workflowName(order.id)).toBe('Local order');
+	});
+
+	it('blocks on a move between a project with its own Apply environment and a covered project', async () => {
+		const fixture = await prepareApply();
+		const { environments, order } = fixture;
+		const { project: returns } = await setupProjectWithWorkflows('Returns', []);
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: order.id, role: 'workflow:owner' },
+			{ projectId: returns.id },
+		);
+		await giveOwnEnvironment(fixture, [returns.id]);
+
+		const reviewed = await preview(environments.apply.id);
+		expect(reviewed.check.movedWorkflows).toEqual([expect.objectContaining({ id: order.id })]);
+		const result = await service.apply(environments.apply.id, owner, {
+			expectedPreviewRevision: reviewed.revision,
+		});
+
+		expect(result.status).toBe('blocked');
+	});
+
+	it('stops a confirmed Apply when a project got its own Apply environment after the review', async () => {
+		const fixture = await prepareApply({ ordersOnBranch: false });
+		const { environments, orders } = fixture;
+		const ownEnvironment = await giveOwnEnvironment(fixture, []);
+		const reviewed = await preview(environments.apply.id);
+		expect(reviewed.check.conflicts).toEqual([deletionOf(orders.id, 'Local orders')]);
+		await linkRepository.linkProject(orders.id, ownEnvironment.id, 'apply');
+
+		const result = await confirmApply(environments.apply.id, reviewed);
+
+		expect(result.status).toBe('preview-changed');
+		expect(await projectRepository.findOneBy({ id: orders.id })).not.toBeNull();
+	});
+
+	it('does not delete a project that got its own Apply environment while another project was deleted', async () => {
+		const fixture = await prepareApply({ ordersOnBranch: false });
+		const { environments, orders } = fixture;
+		const ownEnvironment = await giveOwnEnvironment(fixture, []);
+		const { project: localOnly } = await setupProjectWithWorkflows('Local only', []);
+		const reviewed = await preview(environments.apply.id);
+		let linkedId: string | undefined;
+		const deleteProject = projectService.deleteProject.bind(projectService);
+		const deleteSpy = vi
+			.spyOn(projectService, 'deleteProject')
+			.mockImplementationOnce(async (...args) => {
+				await deleteProject(...args);
+				linkedId = args[1] === orders.id ? localOnly.id : orders.id;
+				await linkRepository.linkProject(linkedId, ownEnvironment.id, 'apply');
+			});
+
+		try {
+			const result = await confirmApply(environments.apply.id, reviewed);
+
+			assert(result.status === 'applied', JSON.stringify(result));
+			expect(result.counts.projects.deleted).toBe(1);
+		} finally {
+			deleteSpy.mockRestore();
+		}
+		assert(linkedId);
+		const deletedId = linkedId === orders.id ? localOnly.id : orders.id;
+		expect(await projectRepository.findOneBy({ id: linkedId })).not.toBeNull();
+		expect(await projectRepository.findOneBy({ id: deletedId })).toBeNull();
 	});
 });
 
