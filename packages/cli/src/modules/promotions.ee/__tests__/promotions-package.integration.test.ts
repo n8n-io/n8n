@@ -2903,6 +2903,32 @@ describe('Instance Apply with projects that have their own Apply environment', (
 		});
 
 		expect(result.status).toBe('applied');
+		expect(
+			await Container.get(SharedWorkflowRepository).findOneBy({
+				workflowId: order.id,
+				role: 'workflow:owner',
+			}),
+		).toMatchObject({ projectId: returns.id });
+		expect(await workflowName(order.id)).toBe('Local order');
+	});
+
+	it('blocks on a move between a project with its own Apply environment and a covered project', async () => {
+		const fixture = await prepareApply();
+		const { environments, order } = fixture;
+		const { project: returns } = await setupProjectWithWorkflows('Returns', []);
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: order.id, role: 'workflow:owner' },
+			{ projectId: returns.id },
+		);
+		await giveOwnEnvironment(fixture, [returns.id]);
+
+		const reviewed = await preview(environments.apply.id);
+		expect(reviewed.check.movedWorkflows).toEqual([expect.objectContaining({ id: order.id })]);
+		const result = await service.apply(environments.apply.id, owner, {
+			expectedPreviewRevision: reviewed.revision,
+		});
+
+		expect(result.status).toBe('blocked');
 	});
 
 	it('stops a confirmed Apply when a project got its own Apply environment after the review', async () => {
