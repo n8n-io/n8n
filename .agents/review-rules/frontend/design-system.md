@@ -2,41 +2,45 @@
 
 Applies to: `packages/frontend`.
 
-Stylelint checks the *grammar* of a custom-property name, at warning severity.
-Nothing checks that a token exists or is the right one, and `var(--gone)`
-resolves to nothing rather than failing. Wrong tokens are the most common
-shipped frontend regression in this repo.
+Flag a style value that does not come from a design-system token:
 
-Three layers, narrowest first; reaching past the narrowest that fits is the
-defect:
+- A hex, `rgb()`, `oklch()`, px, rem, ms or cubic-bezier literal. Name the
+  token that replaces it.
+- A `var()` that names a token that does not exist, e.g. a legacy
+  `--color--*`. It renders as nothing, without an error.
+- A colour primitive (`--color--neutral--100`) where a semantic token
+  (`--text-color--*`, `--background--*`) or a component token
+  (`--input--*`, `--button--*`) fits.
+- A `font-weight` other than `--font-weight--regular` or
+  `--font-weight--medium`, or italic text.
+- A shadow other than `--shadow--xs` on a surface that does not float.
 
-1. component-scoped: `--button--*`, `--callout--*`, `--input--*`, `--tag--*`,
-   `--node--*`, `--canvas-node--*`, `--sticky--*`
-2. semantic: `--background--*`, `--text-color--*`, `--border-color`
-3. primitives, in px: `--spacing--` 5xs 2, 4xs 4, 3xs 6, 2xs 8, xs 12, sm 16,
-   md 20, lg 24, xl 32, 2xl 48, 3xl 64, 4xl 128, 5xl 256; `--radius--` 4xs 2,
-   3xs 4, 2xs 6, xs 8, sm 12, md 16, lg 20, xl 24, 2xl 32, `--radius--full`
+Flag a hand-rolled copy of an `N8n*` component. It arrives without hover,
+focus and disabled states. Name the replacement:
 
-Flag, strongest first:
+- badge-styled `<div>` or `ElTag`: `N8nBadge`
+- local `expanded` toggle: `N8nCollapsiblePanel`
+- reka-ui `DropdownMenu*` parts: `N8nDropdownMenu` or `N8nActionDropdown`
+- `<table>` or `ElTable`: `N8nDataTableServer` or `N8nDatatable`
+- styled `<input>`: `N8nInput`
+- card used as a selector: `N8nListBox` or `N8nRadioGroup`
+- spinning `loader` icon: `N8nSpinner`
+- styled `<p>`, `<span>` or `<h*>` for UI text: `N8nText` with `step`
+- custom scroll container: `N8nScrollArea`
 
-- A `var()` naming a token that no longer exists, e.g. a legacy `--color--*`
-  kept through a refactor. It renders as nothing, silently.
-- A hard-coded px, rem, hex, `rgb()`, ms or `z-index` literal where a token
-  covers it. Name the token.
-- A generic token where a component-scoped one exists, e.g. a `--color--*`
-  background on an input that has `--input--color--background`.
-- A px target stated in the diff or a comment that the chosen token misses.
-  The scales share suffixes at different values: `--radius--xs` is 8px,
-  `--spacing--xs` is 12px. "Design calls for 8px" beside `--radius--lg` (20px)
-  is a real defect.
+A raw interactive element where an `N8n*` exists needs a one-line comment
+that says why.
 
-Soft warning on a plain token swap: ask the intent, since a deliberate change
-and a mistake look identical.
+Flag a mixin written out by hand: an `outline` focus ring (`focus`),
+`text-overflow: ellipsis` (`utils.utils-ellipsis`), scrollbar styles
+(`mixins.scroll-bar`), an edge fade (`mixins.scroll-mask`), or keyframes that
+`_motion.scss` already has.
 
-Flag a hand-rolled control duplicating an `N8n*` component (icon button,
-tooltip, dialog, select), which arrives missing hover, focus and disabled
-states, and a NEW direct `element-plus` or `reka-ui` import in `editor-ui`.
-No lint rule covers those and many files predate the convention, so judge
-only the import being added.
+Flag structural drift:
+
+- The second copy of one UI pattern. Move it to the design system or a shared
+  component before the second copy merges.
+- A feature wrapper that restyles a primitive's own parts with `:deep()` or a
+  global class. Wrappers may change data and props only.
 
 Do NOT comment on Storybook story titles, args, or doc cross-references.
