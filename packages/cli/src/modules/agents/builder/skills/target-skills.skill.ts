@@ -15,6 +15,7 @@ export function targetSkillsSkill(): RuntimeSkill {
 		recommendedToolGroups: ['agents'],
 		allowedTools: [
 			'agent-context',
+			'skills',
 			'agent_builder_update_skill',
 			'agent_builder_create_skills',
 			'ask_user',
@@ -44,8 +45,9 @@ instructions.
 
 ## Don't use when:
 
-- The target agent has one job. Put its rules and steps in the main
-  instructions, even when they run to several paragraphs.
+- The target agent has one job and no existing attachable skill matches it. Put
+  its rules and steps in the main instructions, even when they run to several
+  paragraphs.
 - The behavior is the target agent's identity, overall purpose, or a rule that
   truly applies to every operation; keep that in the main instructions.
 - The request changes only a tool, integration, model, or memory setting and
@@ -120,7 +122,18 @@ vague skill.
   following the latest version will use. If the user does not clearly confirm,
   leave the skill unchanged and explain the remaining mismatch and lost
   behavior.
-- Only call \`agent_builder_create_skills\` when no attached skill owns the capability. Fill the
+- Before creating a new skill, search existing unattached skills that the target
+  agent can attach by calling
+  \`skills({ action: "list", attachableToAgentId: "<agentId>" })\`. Omit \`query\`
+  on the first call so you do not miss a matching skill with a different name;
+  use \`query\` or \`skip\` only when \`count\` exceeds the returned page. Call
+  \`skills({ action: "get", skillId: "<id>" })\` if a candidate's description is
+  not enough to confirm a match. If an existing skill matches the need, attach
+  it by adding \`{ "type": "skill", "id": "<id>" }\` to \`skills\` with
+  \`agent_builder_write_config\` or \`agent_builder_patch_config\` instead of
+  creating a duplicate.
+- Only call \`agent_builder_create_skills\` when neither an attached skill nor an
+  existing attachable skill owns the capability. Fill the
   domain detail you need, deriving missing detail from the goal as stated
   assumptions so each description and applicable body section is concrete.
 - Write each skill's \`description\` as the routing contract and \`instructions\`
@@ -169,6 +182,10 @@ vague skill.
 
 ## Gotchas
 
+- Always search existing attachable skills with
+  \`skills({ action: "list", attachableToAgentId })\` before calling
+  \`agent_builder_create_skills\`, and attach a matching skill instead of creating
+  a duplicate.
 - \`agent_builder_create_skills\` already attaches its skills; do not add a second ref for the
   same id with \`agent_builder_patch_config\`.
 - \`agent_builder_update_skill\` edits the existing body in place and needs no config patch.

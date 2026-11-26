@@ -86,8 +86,12 @@ Use \`agent_builder_patch_config\` with:
 #### Add A Target-Agent Skill Ref
 
 - \`agent_builder_create_skills\` attaches its new skills itself; do not patch those refs in.
-- To attach an existing, unattached skill: if \`skills\` exists, append to
-  \`/skills/-\`; if \`skills\` is missing, add \`/skills\` with an array.
+- Search existing attachable skills with
+  \`skills({ action: "list", attachableToAgentId: "<agentId>" })\` before
+  creating a new one. To attach an existing, unattached skill: include its ref
+  in \`skills\` on \`agent_builder_write_config\`, or with
+  \`agent_builder_patch_config\` append to \`/skills/-\` if \`skills\` exists (or
+  add \`/skills\` with an array if missing).
 - Ref shape: \`{ "type": "skill", "id": "<skill-id>" }\`.
 - A ref with \`versionId\` pins that saved version of the skill. To use the latest
   version, remove \`versionId\` from the ref with \`patch_config\`. Do not remove
