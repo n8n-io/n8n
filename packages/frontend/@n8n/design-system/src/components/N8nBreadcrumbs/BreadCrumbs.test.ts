@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { render } from '@testing-library/vue';
+import { render, waitFor } from '@testing-library/vue';
 import { defineComponent } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
@@ -358,5 +358,48 @@ describe('Breadcrumbs', async () => {
 		// close the tooltip
 		await userEvent.click(getByTestId('mock-dropdown-button'));
 		expect(emitted()).toHaveProperty('tooltipClosed');
+	});
+
+	// KNO-224: the small theme uses the real N8nTooltip. Hovering the ellipsis must
+	// load the hidden items, otherwise the tooltip renders empty.
+	it('loads hidden items into the small theme tooltip on hover', async () => {
+		const hiddenItems = [
+			{ id: 'parent-1', label: 'Parent 1' },
+			{ id: 'parent-2', label: 'Parent 2' },
+		];
+
+		const { emitted, getByTestId } = render(Breadcrumbs, {
+			props: {
+				items: [
+					{ id: '1', label: 'Personal' },
+					{ id: '2', label: 'Productivity' },
+				],
+				hiddenItems: Promise.resolve(hiddenItems),
+				pathTruncated: true,
+				hiddenItemsTrigger: 'hover',
+				theme: 'small',
+			},
+			global: {
+				plugins: [router],
+			},
+		});
+
+		const ellipsis = getByTestId('ellipsis').querySelector('[data-grace-area-trigger]');
+		expect(ellipsis).toBeTruthy();
+		// Reka UI opens tooltips on pointermove with a mouse pointer
+		ellipsis!.dispatchEvent(
+			new PointerEvent('pointermove', { bubbles: true, cancelable: true, pointerType: 'mouse' }),
+		);
+
+		await waitFor(() => {
+			expect(document.querySelector('[data-dismissable-layer]')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			expect(emitted()).toHaveProperty('tooltipOpened');
+			expect(document.querySelector('[data-test-id="hidden-items-tooltip"]')).toHaveTextContent(
+				'Parent 1 / Parent 2',
+			);
+		});
 	});
 });

@@ -38,18 +38,9 @@ export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
 export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
 export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const AGENT_VERSION_METADATA_MODAL_KEY = 'agentVersionMetadata';
-export const AGENT_PUBLISHED_MODAL_KEY = 'agentPublished';
 export const AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY = 'agentUnpublishedWorkflows';
 export const AGENT_DUPLICATE_MODAL_KEY = 'agentDuplicateModal';
 export const AGENT_DESCRIPTION_MODAL_KEY = 'agentDescriptionModal';
-
-/**
- * localStorage flag for the "Agent published" confirmation modal's
- * "Don't show again" checkbox — same mechanism as the workflow-side
- * `N8N_HIDE_ACTIVATION_ALERT`.
- */
-export const LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION =
-	'N8N_HIDE_AGENT_PUBLISHED_CONFIRMATION';
 
 /** One-time n8n Chat hint popovers: set to `'true'` once the user dismisses the hint. */
 export const N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS = {
@@ -118,3 +109,6 @@ export const PENDING_AGENT_ID_STATE = 'instanceAiPendingAgentId';
  * pending agent id, and out of the URL, for the same reason.
  */
 export const PENDING_AGENT_STARTER_STATE = 'instanceAiPendingAgentStarter';
+
+/** The channel modal row and view type of scheduled tasks. It is not a channel platform. */
+export const AGENT_SCHEDULE_VIEW_TYPE = 'schedule';

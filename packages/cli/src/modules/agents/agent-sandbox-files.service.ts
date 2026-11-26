@@ -2,6 +2,7 @@ import { CORE_WORKSPACE_TOOL_NAMES, type Workspace } from '@n8n/agents';
 import {
 	AGENT_SANDBOX_FILES_FLAG,
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
+	type AgentToolOutputFile,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { PostHogClient } from '@n8n/backend-services';
@@ -20,6 +21,7 @@ import {
 } from './agent-chat-attachment.service';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import type { TimelineEvent } from './execution-recorder';
+import { SANDBOX_FILE_SOURCE } from './utils/agent-thread-access';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 
 /** Directory in the workspace root where an agent puts the files that it makes. */
@@ -34,6 +36,15 @@ export interface SandboxOutputFile {
 	/** SHA-256 of the bytes, hex. */
 	hash: string;
 }
+
+/** A conversation file that `import_files` copied into the workspace. */
+export type ImportedSandboxFile = AgentToolOutputFile & {
+	/** Path relative to the workspace root, e.g. `inputs/data/sales.csv`. */
+	path: string;
+};
+
+/** Finds a conversation file that the caller can read, or `null`. */
+export type FindImportableFile = (fileId: string) => Promise<AgentChatAttachment | null>;
 
 /** Prefix of a file reference that names a file in `outputs/` instead of a fileId. */
 export const SANDBOX_FILE_REF_PREFIX = 'sandbox:';
@@ -61,6 +72,8 @@ export interface SandboxFileScope {
 	projectId: string;
 	/** Thread whose workspace holds the file. */
 	threadId: string;
+	/** Memory resource of the stored file. A system chat reads its files by resource. */
+	resourceId?: string;
 }
 
 // Lists and hashes in the sandbox, so unchanged bytes never leave it.
@@ -135,17 +148,44 @@ export class AgentSandboxFilesService {
 		return (await this.postHogClient.getFeatureFlagForInstance(AGENT_SANDBOX_FILES_FLAG)) === true;
 	}
 
+	/** The largest import into a workspace, in bytes. */
+	get maxImportBytes(): number {
+		return this.agentsConfig.maxImportMb * 1024 * 1024;
+	}
+
 	/**
 	 * Copy conversation files into `inputs/` of the workspace. Each key is a
 	 * path relative to `inputs/`, each value a fileId that the thread can read.
 	 * @throws {UserError} when a file is not readable, a path leaves `inputs/`,
-	 * or the files are larger than the import cap together.
+	 * the files are larger than the import cap together, or a copy fails. The
+	 * message of a failed copy names the files that were copied before it.
 	 */
 	async importFiles(
 		workspace: Workspace,
 		files: Record<string, string>,
 		scope: { projectId: string; threadId: string },
-	): Promise<Array<{ path: string; fileId: string; sizeBytes: number }>> {
+		abortSignal?: AbortSignal,
+	): Promise<ImportedSandboxFile[]> {
+		return await this.importFilesFrom(
+			workspace,
+			files,
+			async (fileId) => await this.attachmentService.getReadable(fileId, scope),
+			abortSignal,
+		);
+	}
+
+	/**
+	 * {@link importFiles} with the file lookup of the caller. A system chat
+	 * finds its files by the memory resource of the user, not by project.
+	 * It checks every path and file and the import cap before the first write.
+	 * @throws {UserError} as {@link importFiles} does.
+	 */
+	async importFilesFrom(
+		workspace: Workspace,
+		files: Record<string, string>,
+		findFile: FindImportableFile,
+		abortSignal?: AbortSignal,
+	): Promise<ImportedSandboxFile[]> {
 		const filesystem = workspace.filesystem;
 		if (!filesystem) throw new UserError('This run has no workspace filesystem');
 		const entries = await Promise.all(
@@ -158,7 +198,7 @@ export class AgentSandboxFilesService {
 						`"${fileId}" is already in your workspace at ${SANDBOX_OUTPUTS_DIR}/${outputPath}`,
 					);
 				}
-				const file = await this.attachmentService.getReadable(fileId, scope);
+				const file = await findFile(fileId);
 				if (!file) throw new UserError(`File "${fileId}" not found in this conversation`);
 				return { path: posix.join(SANDBOX_INPUTS_DIR, relativePath), file };
 			}),
@@ -168,14 +208,37 @@ export class AgentSandboxFilesService {
 		if (totalBytes > maxMb * 1024 * 1024) {
 			throw new UserError(`One import copies up to ${maxMb} MB. Import fewer files at a time`);
 		}
-		const imported: Array<{ path: string; fileId: string; sizeBytes: number }> = [];
+		const imported: ImportedSandboxFile[] = [];
 		for (const { path, file } of entries) {
-			// ponytail: loads each file into memory, up to the import cap. Stream it if the cap grows.
-			await filesystem.writeFile(path, await this.attachmentService.getBuffer(file), {
-				recursive: true,
-				overwrite: true,
+			abortSignal?.throwIfAborted();
+			try {
+				// ponytail: loads each file into memory, up to the import cap. Stream it if the cap grows.
+				await filesystem.writeFile(path, await this.attachmentService.getBuffer(file), {
+					recursive: true,
+					overwrite: true,
+					abortSignal,
+				});
+			} catch (error) {
+				if (abortSignal?.aborted) throw error;
+				// The model gets a message without the cause, so log the cause for the operator.
+				this.logger.warn('Failed to import a file into an agent sandbox', {
+					fileId: file.id,
+					path,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				// The files before this one stay in the workspace, so the model must know them.
+				const copied = imported.length
+					? `These files were copied before it: ${imported.map((entry) => entry.path).join(', ')}.`
+					: 'No file was copied.';
+				throw new UserError(`Could not copy "${file.id}" to ${path}. ${copied}`, { cause: error });
+			}
+			imported.push({
+				fileId: file.id,
+				fileName: file.fileName,
+				mimeType: file.mimeType,
+				sizeBytes: file.fileSizeBytes,
+				path,
 			});
-			imported.push({ path, fileId: file.id, sizeBytes: file.fileSizeBytes });
 		}
 		return imported;
 	}
@@ -371,7 +434,7 @@ export class AgentSandboxFilesService {
 		return await this.attachmentService.storeInbound({
 			...scope,
 			id,
-			source: 'sandbox',
+			source: SANDBOX_FILE_SOURCE,
 			fileName,
 			mimeType,
 			data,

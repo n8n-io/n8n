@@ -34,7 +34,7 @@ export class JtiCleanupTask implements SystemTask {
 		let totalDeleted = 0;
 		let deleted: number;
 		do {
-			deleted = await this.jtiRepository.deleteExpiredBatch(batchSize);
+			deleted = await this.jtiRepository.deleteExpiredBatch(batchSize, {});
 			totalDeleted += deleted;
 		} while (deleted >= batchSize && !signal.aborted);
 

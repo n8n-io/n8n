@@ -97,10 +97,15 @@ const components = {
  * Helper to get the actual tab element from a tab container.
  */
 function getTabElement(tabContainer: Element): Element | null {
-	return (
-		tabContainer.querySelector('[class*="activeTab"]') ??
-		tabContainer.querySelector('[class*="tab"]')
-	);
+	return tabContainer.querySelector('[role="tab"]');
+}
+
+/**
+ * Reka tab triggers select on `mousedown`, so a plain click does not change the tab.
+ */
+async function selectTab(tab: Element) {
+	await fireEvent.mouseDown(tab, { button: 0 });
+	await fireEvent.click(tab);
 }
 
 describe('IconPicker', () => {
@@ -129,7 +134,7 @@ describe('IconPicker', () => {
 		// Icons tab should be active
 		const tabIconsContainer = getByTestId('tab-icons');
 		const tabIconsElement = getTabElement(tabIconsContainer);
-		expect(tabIconsElement?.className).toContain('activeTab');
+		expect(tabIconsElement).toHaveAttribute('data-state', 'active');
 
 		// Wait for data to load and icons to render
 		const icons = await findAllByTestId('icon-picker-icon');
@@ -153,7 +158,7 @@ describe('IconPicker', () => {
 		await fireEvent.click(getByTestId('icon-picker-button'));
 
 		const tabEmojisElement = getTabElement(getByTestId('tab-emojis'));
-		expect(tabEmojisElement?.className).toContain('activeTab');
+		expect(tabEmojisElement).toHaveAttribute('data-state', 'active');
 		expect(await findAllByTestId('icon-picker-emoji')).not.toHaveLength(0);
 	});
 
@@ -173,7 +178,7 @@ describe('IconPicker', () => {
 		await fireEvent.click(getByTestId('icon-picker-button'));
 
 		const tabEmojisElement = getTabElement(getByTestId('tab-emojis'));
-		expect(tabEmojisElement?.className).toContain('activeTab');
+		expect(tabEmojisElement).toHaveAttribute('data-state', 'active');
 		expect(await findAllByTestId('icon-picker-emoji')).not.toHaveLength(0);
 	});
 
@@ -287,11 +292,11 @@ describe('IconPicker', () => {
 		// Switch to emojis tab
 		const emojiTabContainer = getByTestId('tab-emojis');
 		const emojiTabElement = getTabElement(emojiTabContainer);
-		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+		await selectTab(emojiTabElement ?? emojiTabContainer);
 
 		await waitFor(() => {
 			const updatedEmojiTab = getTabElement(getByTestId('tab-emojis'));
-			expect(updatedEmojiTab?.className).toContain('activeTab');
+			expect(updatedEmojiTab).toHaveAttribute('data-state', 'active');
 		});
 
 		// Should show emojis from both sections
@@ -316,7 +321,7 @@ describe('IconPicker', () => {
 		// Switch to emojis tab
 		const emojiTabContainer = getByTestId('tab-emojis');
 		const emojiTabElement = getTabElement(emojiTabContainer);
-		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+		await selectTab(emojiTabElement ?? emojiTabContainer);
 
 		const emojis = await findAllByTestId('icon-picker-emoji');
 		await fireEvent.click(emojis[0]);
@@ -418,7 +423,7 @@ describe('IconPicker', () => {
 
 		await fireEvent.click(view.getByTestId('icon-picker-button'));
 		const emojiTab = getTabElement(view.getByTestId('tab-emojis'));
-		await fireEvent.click(emojiTab ?? view.getByTestId('tab-emojis'));
+		await selectTab(emojiTab ?? view.getByTestId('tab-emojis'));
 		const emojis = await view.findAllByTestId('icon-picker-emoji');
 		await fireEvent.click(emojis[0]);
 
@@ -429,7 +434,7 @@ describe('IconPicker', () => {
 		await fireEvent.click(view.getByTestId('icon-picker-button'));
 
 		const activeEmojiTab = getTabElement(view.getByTestId('tab-emojis'));
-		expect(activeEmojiTab?.className).toContain('activeTab');
+		expect(activeEmojiTab).toHaveAttribute('data-state', 'active');
 	});
 
 	it('filters icons by search query', async () => {
@@ -478,7 +483,7 @@ describe('IconPicker', () => {
 		// Switch to emojis tab
 		const emojiTabContainer = getByTestId('tab-emojis');
 		const emojiTabElement = getTabElement(emojiTabContainer);
-		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+		await selectTab(emojiTabElement ?? emojiTabContainer);
 		await findAllByTestId('icon-picker-emoji');
 
 		// Search for "dog"
@@ -590,7 +595,7 @@ describe('IconPicker', () => {
 		// Switch to emojis
 		const emojiTabContainer = getByTestId('tab-emojis');
 		const emojiTabElement = getTabElement(emojiTabContainer);
-		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+		await selectTab(emojiTabElement ?? emojiTabContainer);
 		await findAllByTestId('icon-picker-emoji');
 
 		// Open skin tone popover
@@ -622,7 +627,7 @@ describe('IconPicker', () => {
 		// Switch to emojis tab
 		const emojiTabContainer = getByTestId('tab-emojis');
 		const emojiTabElement = getTabElement(emojiTabContainer);
-		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+		await selectTab(emojiTabElement ?? emojiTabContainer);
 		const emojis = await findAllByTestId('icon-picker-emoji');
 
 		// Before skin tone change: 👋 should show default (no modifier)
@@ -665,7 +670,7 @@ describe('IconPicker', () => {
 		// Switch to emojis tab
 		const emojiTabContainer = getByTestId('tab-emojis');
 		const emojiTabElement = getTabElement(emojiTabContainer);
-		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+		await selectTab(emojiTabElement ?? emojiTabContainer);
 		await findAllByTestId('icon-picker-emoji');
 
 		// Select skin tone 2 (medium-light)

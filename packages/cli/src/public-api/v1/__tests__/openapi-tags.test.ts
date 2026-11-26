@@ -35,6 +35,7 @@ const compareNames = (a: string, b: string) => (a < b ? -1 : 1);
 const EXPECTED_GROUPS: Record<string, string[]> = {
 	BuildAndRun: [
 		'Agent',
+		'AiPreference',
 		'Credential',
 		'DataTable',
 		'Evaluation',

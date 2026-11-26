@@ -74,7 +74,7 @@ export const nodeRequestSchema = z.union([
 
 export type NodeTypeRequest = z.infer<typeof nodeRequestSchema>;
 
-const MAX_EXECUTE_TIMEOUT_MS = 60_000;
+const MAX_EXECUTE_TIMEOUT_MS = 600_000;
 
 const executeNodeFieldsShape = {
 	type: z.string().min(1).describe(NODE_TYPE_ID_DESCRIPTION),
@@ -104,7 +104,15 @@ const executeNodeFieldsShape = {
 		.array(z.object({ json: z.record(z.unknown()) }))
 		.optional()
 		.describe('Input items for the node (defaults to one empty item)'),
-	timeoutMs: z.number().int().positive().max(MAX_EXECUTE_TIMEOUT_MS).optional(),
+	timeoutMs: z
+		.number()
+		.int()
+		.positive()
+		.max(MAX_EXECUTE_TIMEOUT_MS)
+		.optional()
+		.describe(
+			'Max wait time in milliseconds (default 30000, max 600000). Raise it for slow operations, such as large uploads',
+		),
 };
 
 const executeNodeInputSchema = z.object(executeNodeFieldsShape);

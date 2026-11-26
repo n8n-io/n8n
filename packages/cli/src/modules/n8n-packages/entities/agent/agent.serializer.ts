@@ -29,6 +29,8 @@ type AgentPackageKeyHandling = {
 	project: 'exclude';
 	projectId: 'exclude';
 	parentFolderId: 'exclude';
+	approvalWorkflowId: 'exclude';
+	approvalWorkflow: 'exclude';
 	scope: 'exclude';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
@@ -84,6 +86,9 @@ export class AgentSerializer {
 			? {
 					...definition.schema,
 					integrations: withoutChannelCredentials(integrations),
+					hitlConfigurations: definition.schema.hitlConfigurations?.map((interaction) =>
+						interaction.method === 'channel' ? { ...interaction, credentialId: '' } : interaction,
+					),
 					...(definition.schema.skills
 						? { skills: definition.schema.skills.map(({ type, id }) => ({ type, id })) }
 						: {}),

@@ -37,11 +37,17 @@ describe('eligibleModules', () => {
 		const eligible = Container.get(ModuleRegistry).eligibleModules;
 		expect(eligible).not.toContain('engine-v2');
 		expect(eligible).not.toContain('execution-ledger');
+		expect(eligible).not.toContain('durable-leases');
 	});
 
 	it('should include execution-ledger when N8N_ENABLED_MODULES names it', () => {
 		process.env.N8N_ENABLED_MODULES = 'execution-ledger';
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain('execution-ledger');
+	});
+
+	it('should include durable-leases when N8N_ENABLED_MODULES names it', () => {
+		process.env.N8N_ENABLED_MODULES = 'durable-leases';
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain('durable-leases');
 	});
 
 	it('should include policy-infrastructure by default', () => {

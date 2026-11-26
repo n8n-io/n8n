@@ -117,6 +117,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 **Expose**
 
 - `triggerRef` — Reka `SelectTrigger` instance
+- `focus()` — puts the focus on the trigger
 
 
 ### Template usage example

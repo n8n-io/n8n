@@ -23,6 +23,10 @@
 !docker/images
 !docker/images/n8n
 !docker/images/n8n/docker-entrypoint.sh
+!docker/images/node-pc
+!docker/images/node-pc/check-v8-patches.js
+!docker/images/node-pc/patches
+!docker/images/node-pc/patches/**
 !docker/images/runners
 !docker/images/runners/n8n-task-runners.json
 
