@@ -337,14 +337,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				proxyRunConfig,
 				experimentGates,
 				...(trace ? { tracing: trace.context } : {}),
-				// Whether the turn can build or edit an agent. Auto approval is not part of the Agent
-				// Builder, so such a turn keeps every approval card. The subject is bound after this,
-				// so the first turn of an agent thread counts it here. An attached or mentioned agent
-				// does not bind the thread, but this turn can still edit it, so the turn stays manual.
-				// Later turns that do not attach it use the approval mode of the user.
-				attachesAgent:
-					request.subject?.type === 'agent' ||
-					request.attachments?.some((attachment) => attachment.type === 'agent'),
 			},
 			runtime,
 		);
