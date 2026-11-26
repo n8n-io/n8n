@@ -65,8 +65,8 @@ test.describe(
 		}) => {
 			const { itemsOf, sourcesOf } = await runAndRead(api, 'Same_slot_convergence_one_branch.json');
 
-			// Only B fired, so C's source is B, the first edge that sent items, on both
-			// engines. The editor builds C's input from that source.
+			// Only B fired, so C's source is B on both engines. The editor resolves C's
+			// expressions through that source.
 			expect(itemsOf('C')).toEqual([[{ via: 'B', origin: 2, prevNode: 'B' }]]);
 			expect(sourcesOf('C')).toEqual([[expect.objectContaining({ previousNode: 'B' })]]);
 			expect(itemsOf('D')).toEqual([[{ via: 'B', origin: 2 }]]);

@@ -31,7 +31,7 @@ export interface SourceLineage {
 	loops: WorkflowLoop[];
 	/** The last pass each node is known to have run. */
 	lastIterationByNodeId: Map<string, number>;
-	/** The outputs of a node's completed pass, or `undefined` when that pass did not complete. */
+	/** The outputs of a node's completed pass, else `undefined`. */
 	outputsAt: (nodeId: string, iteration: number) => StepSlots | undefined;
 }
 
@@ -61,7 +61,7 @@ export function toSourcesAt(
 	iteration: number,
 ): Array<ISourceData | null> {
 	const previousNodeRun = (edge: GraphEdge) => toPreviousNodeRun(lineage, edge, iteration);
-	// Live as the engine counts it: the source's pass completed and filled the slot.
+	// Live as `readEdgeValue` counts it: the source's pass completed and filled the slot.
 	const isLive = (edge: GraphEdge) =>
 		(lineage.outputsAt(edge.from, previousNodeRun(edge))?.[edge.outputIndex] ?? null) !== null;
 	return toSourceSlots(
