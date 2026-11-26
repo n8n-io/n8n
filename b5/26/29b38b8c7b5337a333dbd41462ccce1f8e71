@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/N8n/v2/overrides.ts
+  s_23a7189d0e3361::t_540deb1aa5d87d 121-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b52629b38b8c7b5337a333dbd41462ccce1f8e71",
+  "prompts": {},
+  "sessions": {
+    "s_23a7189d0e3361": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4679d227-5d7c-43fb-b251-5025cf6aa49b",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
