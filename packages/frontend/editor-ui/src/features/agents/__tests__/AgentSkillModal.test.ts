@@ -466,6 +466,36 @@ describe('AgentSkillModal', () => {
 		expect(getByTestId('agent-skill-workflow-item')).toHaveTextContent('Archive');
 	});
 
+	it('adds a workflow from the sidebar to the open reference file', async () => {
+		mockedStore(usePostHog).isVariantEnabled = vi.fn(
+			(name: string, variant: string) =>
+				name === '152_workflows_in_skills' && variant === 'variant',
+		);
+		mockedStore(useWorkflowsListStore).searchWorkflows = vi
+			.fn()
+			.mockResolvedValue([{ id: 'wf2', name: 'Archive' }]);
+		const { getByTestId } = renderModal({
+			realMenu: true,
+			skillId: 'skill-1',
+			skill: {
+				name: 'Report',
+				description: 'Send the report',
+				instructions: 'Run it.',
+				references: [{ path: 'references/steps.md', content: 'Step one.' }],
+			},
+		});
+
+		await userEvent.click(getByTestId('agent-skill-reference-nav-item-references-steps-md'));
+		await userEvent.click(getByTestId('skill-workflow-mention-button'));
+		await userEvent.click(await screen.findByRole('menuitem', { name: /Archive/ }));
+
+		expect(getByTestId('agent-skill-reference-editor')).toHaveValue(
+			'Step one.\n\n[Archive](n8n://workflow/wf2)',
+		);
+		await userEvent.click(getByTestId('agent-skill-file-nav-item'));
+		expect(getByTestId('agent-skill-instructions-editor')).toHaveValue('Run it.');
+	});
+
 	// The Agent Skills format allows descriptions of up to 1024 characters.
 	it.each([
 		{ length: 1024, saved: true },
