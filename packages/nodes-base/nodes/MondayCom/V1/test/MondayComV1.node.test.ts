@@ -339,6 +339,12 @@ describe('MondayCom', () => {
 		});
 	});
 
+	describe('boardItem:changeColumnValue - throws when the value is not valid JSON', () => {
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['changeColumnValueError.workflow.json'],
+		});
+	});
+
 	describe('boardItem:getAll - cursor-based pagination with returnAll', () => {
 		const secondItem = {
 			...itemData,

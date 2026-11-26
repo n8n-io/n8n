@@ -524,6 +524,12 @@ export class MondayComV1 implements INodeType {
 							},
 						};
 
+						if (value === undefined) {
+							throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON', {
+								itemIndex: i,
+							});
+						}
+
 						try {
 							// A string holds JSON text. An expression can return the value itself.
 							body.variables.value = JSON.stringify(
