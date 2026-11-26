@@ -5,6 +5,11 @@ import { User } from '@n8n/db';
 import * as permissions from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
+vi.mock('@n8n/api-types', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/api-types')>()),
+	MIGRATION_REPORT_TARGET_VERSION: 'v3',
+}));
+
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof permissions>()),
 	hasGlobalScope: vi.fn(),

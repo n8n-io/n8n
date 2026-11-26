@@ -4,6 +4,11 @@ import { computed, defineComponent } from 'vue';
 
 import { useMigrationFindingAssistant } from './useMigrationFindingAssistant';
 
+vi.mock('@n8n/api-types', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/api-types')>()),
+	MIGRATION_REPORT_TARGET_VERSION: 'v3',
+}));
+
 const mocks = vi.hoisted(() => ({
 	startThread: vi.fn(),
 	track: vi.fn(),

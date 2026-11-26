@@ -86,6 +86,15 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
+const report = vi.hoisted(() => ({ target: null as 'v3' | null }));
+
+vi.mock('@n8n/api-types', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/api-types')>()),
+	get MIGRATION_REPORT_TARGET_VERSION() {
+		return report.target;
+	},
+}));
+
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/mcp-apps/server')>()),
 	registerWorkflowPreviewApp: vi.fn(),
@@ -882,6 +891,7 @@ describe('McpService scope enforcement', () => {
 			(server as { server: { _instructions?: string } }).server._instructions ?? '';
 
 		beforeEach(() => {
+			report.target = 'v3';
 			mockInstance(RuleRegistry);
 			mockInstance(MigrationRegistry);
 			mockInstance(MigrationFindingSyncService);
@@ -889,6 +899,22 @@ describe('McpService scope enforcement', () => {
 			mockInstance(MigrationFindingTriageService);
 			mockInstance(BreakingChangeMigrationService);
 			mockInstance(WorkflowRepository);
+		});
+
+		afterEach(() => {
+			report.target = null;
+		});
+
+		it('registers no migration report tools when there is no migration target', async () => {
+			report.target = null;
+			const server = await buildService({ breakingChangesActive: true }).getServer(
+				owner,
+				mcpFeatureFlags(),
+			);
+
+			const registered = getRegisteredToolNames(server);
+			for (const name of MIGRATION_REPORT_TOOLS) expect(registered).not.toContain(name);
+			expect(getInstructions(server)).not.toContain('get_migration_report');
 		});
 
 		it('registers all four for an owner while the module serves a report', async () => {
