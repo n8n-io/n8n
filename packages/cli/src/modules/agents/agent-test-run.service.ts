@@ -520,11 +520,11 @@ export class AgentTestRunService {
 	): AgentExecutionStreamChunk {
 		if (!session || chunk.type !== 'tool-result') return chunk;
 		const simulation = session.takeDecision(chunk.toolCallId);
+		// Only the session knows which calls were local: a call with no decision may have sent nothing.
+		const local = session.takeLocalCall(chunk.toolCallId);
 		if (!simulation) {
-			state.localToolCalls.push({
-				toolCallId: chunk.toolCallId,
-				toolName: chunk.toolName,
-			});
+			if (local)
+				state.localToolCalls.push({ toolCallId: chunk.toolCallId, toolName: chunk.toolName });
 			return chunk;
 		}
 		const input = state.toolCallInputs.get(chunk.toolCallId);

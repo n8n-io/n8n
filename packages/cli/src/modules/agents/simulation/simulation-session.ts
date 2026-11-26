@@ -153,6 +153,9 @@ export class SimulationSession {
 
 	private readonly decisions = new Map<string, ToolCallSimulation>();
 
+	/** Calls of built-in local tools, kept apart so a call with no decision is never taken for one. */
+	private readonly localCalls = new Set<string>();
+
 	constructor(init: SimulationSessionInit) {
 		this.testChatId = init.testChatId;
 		this.world = init.world;
@@ -192,9 +195,25 @@ export class SimulationSession {
 		return decision;
 	}
 
+	private recordLocalCall(toolCallId: string): void {
+		this.localCalls.add(toolCallId);
+		if (this.localCalls.size > MAX_PENDING_DECISIONS) {
+			const oldest = this.localCalls.values().next().value;
+			if (oldest !== undefined) this.localCalls.delete(oldest);
+		}
+	}
+
+	/** True once for a call of a built-in local tool that this session let run. */
+	takeLocalCall(toolCallId: string): boolean {
+		return this.localCalls.delete(toolCallId);
+	}
+
 	readonly interceptor: ToolCallInterceptor = async ({ tool, toolCallId }, run) => {
 		const classification = classifyTool(tool);
-		if (classification.type === 'local') return await run();
+		if (classification.type === 'local') {
+			this.recordLocalCall(toolCallId);
+			return await run();
+		}
 
 		const preflight = this.preflight(classification);
 		if (preflight) {

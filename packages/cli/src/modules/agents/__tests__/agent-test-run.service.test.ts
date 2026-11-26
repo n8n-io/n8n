@@ -748,6 +748,8 @@ describe('AgentTestRunService', () => {
 					? { route: 'simulated_made_up', reason: 'invented_by_llm' }
 					: undefined,
 			);
+			// The session reports local calls itself. `tc-quiet` sent nothing and is neither.
+			session.takeLocalCall.mockImplementation((toolCallId) => toolCallId === 'tc-local');
 			simulationSessions.openForDraftRun.mockResolvedValue(session);
 
 			const result = await runWithStream(service, agentExecutionOrchestratorService, [
@@ -775,6 +777,13 @@ describe('AgentTestRunService', () => {
 					toolCallId: 'tc-local',
 					toolName: 'load_skill',
 					output: { loaded: true },
+					isError: false,
+				},
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-quiet',
+					toolName: 'read_records',
+					output: [],
 					isError: false,
 				},
 			]);
