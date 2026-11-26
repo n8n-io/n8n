@@ -1,0 +1,156 @@
+packages/modules/runtime-credentials/frontend/src/views/RuntimeInputsSettingsView.test.ts
+  s_55c9c16466c150::t_f0e626ece83d9d 1-19,21-26,28-49,51-146,148,162,165,171-173,178,180,186,189,195-198,202,208,221,225,229,233,235,242,245,249,254,256,262-276,409-410
+  s_55c9c16466c150::t_9f0e288b7d2a52 20,27,50,147,153,155,166-167,169,177,185,190-191,193,205-206,214,220,226-227,241,246-247,253,277-408
+  s_55c9c16466c150::t_8bd8fe00f7a272 149-152,154,156-161,163-164,168,170,174-176,179,181-184,187-188,192,194,199-201,203-204,207,209-213,215-219,222-224,228,230-232,234,236-240,243-244,248,250-252,255,257-261
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_55c9c16466c150::t_e0636ec4dfa133 1998-2001
+  s_55c9c16466c150::t_507a1a6f3272a5 444-449,1969-1978,1995-1997,2127-2128
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.store.ts
+  s_55c9c16466c150::t_f05ae11cc72d8a 1-108
+  s_55c9c16466c150::t_14f2907c1cf22b 109
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.api.ts
+  s_55c9c16466c150::t_f05ae11cc72d8a 7-109
+  s_55c9c16466c150::t_a97933c8b332e1 4-6
+  s_d87f0bbfc5f77e::t_9fbb605764d797 1-3
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_55c9c16466c150::t_489c98a02552ce 1141-1168
+packages/modules/runtime-credentials/frontend/src/views/RuntimeInputsProjectView.test.ts
+  s_55c9c16466c150::t_f0e626ece83d9d 1-116
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.api.test.ts
+  s_55c9c16466c150::t_f0e626ece83d9d 1-7,9-32,46-143
+  s_55c9c16466c150::t_9f0e288b7d2a52 8,33-45
+packages/frontend/editor-ui/src/features/credentials/credentials.types.ts
+  s_55c9c16466c150::t_69ed43530a8b07 24-25
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.test.ts
+  s_55c9c16466c150::t_4818d06ecfd90a 209-214,216-217,219-220,222-229,232-235,237-245,247-249,251-254
+  s_55c9c16466c150::t_489c98a02552ce 208,215,218,221,230-231,236,246,250,255-256
+packages/modules/runtime-credentials/frontend/src/components/RuleModal.vue
+  s_55c9c16466c150::t_64e491475459bd 14,16-18,20-24,62,103-137,139-140,287,293,307-355,385-402
+  s_55c9c16466c150::t_f0e626ece83d9d 43-48,159-161,218-220,239-243,296-301
+  s_55c9c16466c150::t_422d8481bfc617 1-11,13,15,19,31-38,41-42,49-61,63-69,71-84,86-89,92-97,100-102,138,141-148,150-158,162-217,221-238,244-257,272,295,302-306,356-384,403-404
+  s_55c9c16466c150::t_242f9bfdf1e818 12,25-30,39-40,70,85,90-91,98-99,149,258-267,271,273-286,294
+  s_55c9c16466c150::t_6876e689c06542 268-270,288-292
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_55c9c16466c150::t_9fb0e733a97299 7259-7260,7288-7292
+  s_55c9c16466c150::t_64e491475459bd 7293-7298
+  s_55c9c16466c150::t_5f78cc38d6359b 7309
+  s_55c9c16466c150::t_88ec828345003f 7249-7258,7261-7287,7299-7308,7310-7329
+  s_55c9c16466c150::t_206614d04a7956 1623-1624
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.utils.ts
+  s_55c9c16466c150::t_242f9bfdf1e818 32-51
+  s_55c9c16466c150::t_f05ae11cc72d8a 1-31
+packages/modules/runtime-credentials/frontend/src/components/RulesTable.vue
+  s_55c9c16466c150::t_242f9bfdf1e818 6,42,71-86,135-140
+  s_55c9c16466c150::t_422d8481bfc617 1-5,7-41,43-70,87-134,141-147
+packages/modules/runtime-credentials/frontend/src/index.ts
+  s_55c9c16466c150::t_f05ae11cc72d8a 3
+  s_55c9c16466c150::t_ada30278d0bfde 1-2,4-5
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.constants.ts
+  s_55c9c16466c150::t_f05ae11cc72d8a 1-9
+  s_55c9c16466c150::t_d74b57752236bd 10
+  s_55c9c16466c150::t_0bea3f5d1f67ad 11
+packages/modules/runtime-credentials/frontend/src/views/RuntimeInputsSettingsView.vue
+  s_55c9c16466c150::t_242f9bfdf1e818 88,95-96
+  s_55c9c16466c150::t_422d8481bfc617 1-61,72-87,89-94,97-145,151-228
+  s_55c9c16466c150::t_f0e626ece83d9d 146-150
+  s_55c9c16466c150::t_5f78cc38d6359b 62-71
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.module.test.ts
+  s_55c9c16466c150::t_f0e626ece83d9d 3-17,46-47
+  s_55c9c16466c150::t_4c5fa84d0a9f05 1-2,18-45
+packages/frontend/editor-ui/src/Interface.ts
+  s_55c9c16466c150::t_69ed43530a8b07 367
+packages/modules/runtime-credentials/frontend/src/views/RuntimeInputsProjectView.vue
+  s_55c9c16466c150::t_f0e626ece83d9d 38-40,96-100
+  s_55c9c16466c150::t_422d8481bfc617 1-37,41-95,101-187
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_55c9c16466c150::t_219d4012e95793 101,111-116
+  s_55c9c16466c150::t_f6550dff7d654c 85-86,88-96,144,273-284,319,342
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.module.ts
+  s_55c9c16466c150::t_f05ae11cc72d8a 2-70,78-80
+  s_55c9c16466c150::t_794e495e3a9ade 1,73-76
+  s_55c9c16466c150::t_e93dff0fa80a33 71-72,77
+  s_55c9c16466c150::t_3a89233ae6c6a3 81
+packages/frontend/@n8n/frontend-vite-config/index.ts
+  s_55c9c16466c150::t_cea7e1d4d16682 47
+packages/frontend/editor-ui/package.json
+  s_55c9c16466c150::t_54ecfdf8d4d68f 64
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_55c9c16466c150::t_3a79ea877c84e4 16,49
+packages/frontend/editor-ui/src/features/credentials/composables/useNodeCredentialOptions.ts
+  s_55c9c16466c150::t_f54beb4d36adc9 143
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.vue
+  s_55c9c16466c150::t_ca9f4d9aafaf7c 86,112
+packages/frontend/editor-ui/tsconfig.json
+  s_55c9c16466c150::t_dfe09f55b10395 28-33
+packages/modules/runtime-credentials/frontend/README.md
+  s_55c9c16466c150::t_991e31f2fc7307 1-52
+packages/modules/runtime-credentials/frontend/biome.jsonc
+  s_55c9c16466c150::t_c5db6cd3cfa5be 1-4
+packages/modules/runtime-credentials/frontend/oxlint.config.mts
+  s_55c9c16466c150::t_df8b992477d291 1-4
+packages/modules/runtime-credentials/frontend/src/__tests__/design-system-icons.test.ts
+  s_55c9c16466c150::t_ddab10a17df910 1-24
+packages/modules/runtime-credentials/frontend/src/__tests__/setup.ts
+  s_55c9c16466c150::t_d63d23ad4c97c4 1-4
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.utils.test.ts
+  s_55c9c16466c150::t_bab34ca37b87be 1-26
+packages/modules/runtime-credentials/frontend/stylelint.config.mjs
+  s_55c9c16466c150::t_54b8f3e15f81e5 1-9
+packages/modules/runtime-credentials/frontend/tsconfig.json
+  s_55c9c16466c150::t_c973e7ac59dfd6 1-21
+packages/modules/runtime-credentials/frontend/vite.config.ts
+  s_55c9c16466c150::t_9d72831a7d1fb5 1-52
+packages/modules/runtime-credentials/frontend/vize-lint.config.mjs
+  s_55c9c16466c150::t_2782b30d970999 1-3
+pnpm-lock.yaml
+  s_55c9c16466c150::t_2d4a64ca87c542 7014-7016,8799-8904,36351-36356
+OWNERS
+  s_529ec0fcbfe5ab::t_5520815fa6eac6 144
+packages/modules/runtime-credentials/frontend/package.json
+  s_4f8be112ee2a31::t_8a7483dc85d314 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc46f62f72b55e34d10291de2ff4df58a2245e20",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4f8be112ee2a31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6c2aebe16ead862",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_529ec0fcbfe5ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9884d862f2331e32",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_d87f0bbfc5f77e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aacca310a2940b1e3",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
