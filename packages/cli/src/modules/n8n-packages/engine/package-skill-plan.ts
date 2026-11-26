@@ -47,9 +47,7 @@ export async function planStandaloneSkills(
 			throw new BadRequestError('A project Skill must belong to a package project.');
 		}
 		if (selectedProjectId && project && project.id !== selectedProjectId) {
-			if (explicit)
-				throw new BadRequestError('A selected Skill belongs to another package project.');
-			continue;
+			throw new BadRequestError('A selected Skill belongs to another package project.');
 		}
 		selected.push({ skill, projectId: project?.id ?? options.destinationProjectId ?? null });
 	}

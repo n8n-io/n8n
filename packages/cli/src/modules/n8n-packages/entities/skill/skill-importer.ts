@@ -11,6 +11,7 @@ import {
 	getSkillHash,
 	isSameSkillTarget,
 	SkillAccessService,
+	SkillAgentNameTakenError,
 	skillContentHashOf,
 	SkillService,
 	SkillRuntimeService,
@@ -34,6 +35,9 @@ import type {
 } from '../agent/agent-import.types';
 import { decideImportConflictAction } from '../import-conflict-policy';
 import { SkillImportFailedError } from '../../engine/import-blocked.error';
+
+const AGENT_SKILL_NAME_CONFLICT_MESSAGE =
+	'The Skill name conflicts with another Skill used by an Agent.';
 
 /** `id` and `name` are the skill ID and the skill name the Agents use after the import. */
 type SkillDecision =
@@ -101,12 +105,12 @@ export class SkillImporter {
 				continue;
 			}
 			const row = existing.get(skill.id);
-			if (row && !isSameSkillTarget(row.target, target)) {
-				issue(skill.id, 'The Skill identity belongs to another scope.');
+			if (row && !(await this.skillAccess.canAccess(user, row.target, 'read'))) {
+				issue(skill.id, 'You cannot import this Skill.');
 				continue;
 			}
-			if (row && !(await this.skillAccess.canAccess(user, target, 'read'))) {
-				issue(skill.id, 'You cannot read the destination Skill.');
+			if (row && !isSameSkillTarget(row.target, target)) {
+				issue(skill.id, 'The Skill identity belongs to another scope.');
 				continue;
 			}
 			if (row && (await this.skillService.isSourceManaged(skill.id))) {
@@ -119,24 +123,26 @@ export class SkillImporter {
 				issue(skill.id, decision.message);
 				continue;
 			}
-			if (row) plan.checked.push(row);
 			if (decision.kind === 'write') {
-				const problem = row
-					? undefined
-					: await this.createNameProblem(skill.id, target, skill.skill.name);
-				if (problem) issue(skill.id, problem);
-				if (!claimName(names, decision.write))
-					issue(skill.id, 'Two selected Skills have the same name in this scope.');
 				if (
 					!(await this.canWrite(
 						user,
 						decision.write,
 						target.projectId !== null && options.pendingProjectIds?.has(target.projectId) === true,
 					))
-				)
-					issue(skill.id, 'You cannot create or edit this Skill.');
+				) {
+					issue(skill.id, 'You cannot import this Skill.');
+					continue;
+				}
+				const problem = row
+					? undefined
+					: await this.createNameProblem(skill.id, target, skill.skill.name);
+				if (problem) issue(skill.id, problem);
+				if (!claimName(names, decision.write))
+					issue(skill.id, 'Two selected Skills have the same name in this scope.');
 				addWrite(plan.writes, decision.write, skill.id, []);
 			}
+			if (row) plan.checked.push(row);
 			plan.outcomes.push({
 				sourceSkillId: skill.id,
 				localId: decision.id,
@@ -155,20 +161,17 @@ export class SkillImporter {
 		}
 		for (const id of new Set(deletedSkillIds)) {
 			const row = existing.get(id);
-			if (!row) {
-				issue(id, 'The requested destination Skill does not exist.');
-				continue;
-			}
-			if (
-				row.target.projectId !== null &&
-				options.allowedProjectIds &&
-				!options.allowedProjectIds.has(row.target.projectId)
-			) {
-				issue(id, 'The Skill is outside the selected destination projects.');
-				continue;
-			}
 			try {
 				await this.skillAccess.requireAccess(user, id, 'delete');
+				if (!row) throw new NotFoundError('Skill not found');
+				if (
+					row.target.projectId !== null &&
+					options.allowedProjectIds &&
+					!options.allowedProjectIds.has(row.target.projectId)
+				) {
+					issue(id, 'The Skill is outside the selected destination projects.');
+					continue;
+				}
 				await this.skillService.assertCanDelete(id);
 				if (await this.skillService.isSourceManaged(id)) {
 					issue(id, 'The destination Skill is managed by a source.');
@@ -462,6 +465,7 @@ export class SkillImporter {
 			await this.skillService.assertCanRename(skillId, target, oldName, newName, {}, plannedNames);
 			return undefined;
 		} catch (error) {
+			if (error instanceof SkillAgentNameTakenError) return AGENT_SKILL_NAME_CONFLICT_MESSAGE;
 			if (error instanceof UserError || error instanceof ConflictError) return error.message;
 			throw error;
 		}
@@ -515,20 +519,26 @@ export class SkillImporter {
 			);
 			return [];
 		}
-		const saved = await this.skillService.saveTrusted(
-			id,
-			{
-				...skill,
-				references: skill.references ?? [],
-				frontmatter,
-				baseSkillHash: write.base.skillHash,
-				baseVersionId: write.base.versionId,
-				checkedTarget: write.target,
-			},
-			user.id,
-			ctx,
-		);
-		return saved.followingAgentIds;
+		try {
+			const saved = await this.skillService.saveTrusted(
+				id,
+				{
+					...skill,
+					references: skill.references ?? [],
+					frontmatter,
+					baseSkillHash: write.base.skillHash,
+					baseVersionId: write.base.versionId,
+					checkedTarget: write.target,
+				},
+				user.id,
+				ctx,
+			);
+			return saved.followingAgentIds;
+		} catch (error) {
+			if (error instanceof SkillAgentNameTakenError)
+				throw new ConflictError(AGENT_SKILL_NAME_CONFLICT_MESSAGE);
+			throw error;
+		}
 	}
 }
 

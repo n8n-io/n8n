@@ -6,7 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
-import { buildImportResult, toPackageSummary } from './engine/import-result';
+import { emptyImportResult } from './engine/import-result';
 import { assertPackageImportApiKeyScopes, packageImportScopes } from './engine/import-gates';
 import { emitPackageImportedEvent, type ImportOutcome } from './engine/import-telemetry';
 import { N8nPackageParser } from './engine/n8n-package-parser';
@@ -58,7 +58,6 @@ import {
 	ImportConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
-	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageDirectoryResult,
 	type ExportPackageResult,
@@ -74,7 +73,6 @@ import {
 	type PromotionLayoutProperties,
 	type ResolvedImportPackageRequest,
 	type ResolvedImportRequest,
-	createBindings,
 } from './n8n-packages.types';
 import { FORMAT_VERSION, STANDALONE_SKILLS_FORMAT_VERSION } from './spec/constants';
 import {
@@ -86,7 +84,7 @@ import type { PackageRequirements } from './spec/requirements.schema';
 
 interface WrittenExport {
 	manifest: PackageManifest;
-	counts: ExportPackageEventCounts & { skills?: number };
+	counts: ExportPackageSummary['counts'];
 	agentIds: string[];
 	workflowIds: string[];
 	folderIds: string[];
@@ -454,7 +452,7 @@ export class N8nPackagesService {
 
 		await writer.writeFile('manifest.json', formatEntityFile(manifest));
 
-		const counts: ExportPackageEventCounts & { skills?: number } = {
+		const counts: ExportPackageSummary['counts'] = {
 			...(hasSkillSelection || skillEntries.length ? { skills: skillEntries.length } : {}),
 			agents: agentEntries.length,
 			workflows: allWorkflowsInPackage.length,
@@ -879,21 +877,4 @@ function hasContentWithoutProjects(manifest: PackageManifest): boolean {
 			manifest.tags,
 		].some((entries) => (entries?.length ?? 0) > 0) || manifest.requirements !== undefined
 	);
-}
-
-function emptyImportResult(manifest: PackageManifest): ImportResult {
-	return buildImportResult({
-		package: toPackageSummary(manifest),
-		agentOutcomes: [],
-		workflows: [],
-		removedWorkflows: [],
-		removedFolders: [],
-		folders: [],
-		projects: [],
-		bindings: createBindings(),
-		credentials: { matched: [], stubbed: [], seeded: [], incomplete: [], updated: [] },
-		dataTables: { matched: 0, created: 0, updated: 0 },
-		variables: { matched: [], created: [], stubbed: [], updated: [], missing: [] },
-		tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
-	});
 }

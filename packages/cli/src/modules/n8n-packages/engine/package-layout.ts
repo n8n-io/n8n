@@ -11,11 +11,28 @@ import {
 	VariableParentPolicy,
 } from '../n8n-packages.types';
 import type { ImportCredentialProperties, ImportVariableProperties } from '../n8n-packages.types';
-import type { ManifestEntry } from '../spec/manifest.schema';
+import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import type {
 	PackageCredentialRequirement,
 	PackageVariableRequirement,
 } from '../spec/requirements.schema';
+
+export function isStandaloneSkillPackage(manifest: PackageManifest): boolean {
+	return (
+		manifest.skills !== undefined &&
+		!Object.values(manifest.requirements ?? {}).some((entries) => entries?.length) &&
+		![
+			manifest.projects,
+			manifest.workflows,
+			manifest.agents,
+			manifest.folders,
+			manifest.credentials,
+			manifest.dataTables,
+			manifest.variables,
+			manifest.tags,
+		].some((entries) => entries?.length)
+	);
+}
 
 export function foldersInScope(
 	entries: ManifestEntry[] | undefined,

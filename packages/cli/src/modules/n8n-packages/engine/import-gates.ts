@@ -18,12 +18,13 @@ import type {
 import type { WorkflowRemovalPlan } from '../entities/workflow/workflow-removal.types';
 import type { CredentialConflictPolicy } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
+import { isStandaloneSkillPackage } from './package-layout';
 
 export function packageImportScopes(manifest: PackageManifest): Scope[] {
 	const scopes: Scope[] = [];
 	if (
 		manifest.workflows?.length ||
-		(!manifest.agents?.length && !manifest.projects?.length && !manifest.skills)
+		(!manifest.agents?.length && !manifest.projects?.length && !isStandaloneSkillPackage(manifest))
 	) {
 		scopes.push('workflow:import');
 	}

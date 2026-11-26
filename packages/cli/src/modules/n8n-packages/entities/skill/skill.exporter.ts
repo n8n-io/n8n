@@ -41,9 +41,9 @@ export class SkillExporter {
 		const entries: ManifestEntry[] = [];
 		for (const id of skillIds) {
 			const row = rows.get(id);
-			if (!row) {
+			if (!row || !canRead(row.target)) {
 				throw new PackageExportBlockedError(
-					`Skill "${id}" does not exist. Remove it from the selection or Agent, then export again.`,
+					`Skill "${id}" was not found. Check access to the Skill, or remove it from the export.`,
 				);
 			}
 			const ownerProjectId = row.target.projectId ?? undefined;
@@ -55,11 +55,6 @@ export class SkillExporter {
 			) {
 				throw new PackageExportBlockedError(
 					'A selected Skill belongs to a project outside this export.',
-				);
-			}
-			if (!canRead(row.target)) {
-				throw new PackageExportBlockedError(
-					`You cannot read skill "${id}". Ask for access to the skill, or remove it from the export.`,
 				);
 			}
 			const directory = projectScopedDirectory(

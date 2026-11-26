@@ -15,12 +15,13 @@ import type { DataTableImportRequest } from '../entities/data-table/data-table.t
 import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
-import { VariableParentPolicy, createBindings } from '../n8n-packages.types';
+import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ResolvedImportRequest } from '../n8n-packages.types';
 import { packageImportScopes } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
+	emptyImportResult,
 	identifyRequirements,
 	reconcileCredentialSummary,
 	toImportedWorkflowSummaries,
@@ -34,6 +35,7 @@ import { PackageImportPreflight } from './package-import-preflight';
 import {
 	needsBundledCredentialFiles,
 	needsBundledVariableValues,
+	isStandaloneSkillPackage,
 	placeByPolicy,
 } from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
@@ -63,47 +65,23 @@ export class WorkflowPackageImporter {
 		reader: PackageReader,
 		manifest: PackageManifest,
 	): Promise<ImportOutcome> {
-		const skillsOnly =
-			manifest.skills !== undefined &&
-			!Object.values(manifest.requirements ?? {}).some((entries) => entries?.length) &&
-			![
-				manifest.workflows,
-				manifest.agents,
-				manifest.folders,
-				manifest.credentials,
-				manifest.dataTables,
-				manifest.variables,
-				manifest.tags,
-			].some((entries) => entries?.length);
-		if (skillsOnly) {
+		if (isStandaloneSkillPackage(manifest)) {
 			const skills = await this.packageParser.getSkills(reader);
-			const projectId =
-				request.projectId ??
-				(skills.some((skill) => skill.scope === 'project')
-					? (await this.resolveImportProject(request.user, undefined, [])).id
-					: undefined);
+			let projectId = request.projectId;
+			if (
+				projectId === undefined &&
+				(skills.some((skill) => skill.scope === 'project') || request.deletedSkillIds?.length)
+			) {
+				projectId = (await this.projectService.getPersonalProject(request.user))?.id;
+			}
 			if (projectId) await this.resolveImportProject(request.user, projectId, []);
 			const skillPlan = await planStandaloneSkills(request, manifest, skills, [], {
 				destinationProjectId: projectId,
 			});
 			await this.importPreflight.prepare([], reader, request.apiKeyScopes, skillPlan);
 			const outcomes = await applyStandaloneSkills(request, skillPlan);
-			const result = buildImportResult({
-				package: toPackageSummary(manifest),
-				agentOutcomes: [],
-				workflows: [],
-				removedWorkflows: [],
-				removedFolders: [],
-				folders: [],
-				projects: [],
-				bindings: createBindings(),
-				credentials: { matched: [], stubbed: [], seeded: [], incomplete: [], updated: [] },
-				dataTables: { matched: 0, created: 0, updated: 0 },
-				variables: { matched: [], created: [], stubbed: [], updated: [], missing: [] },
-				tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
-			});
 			return {
-				result: addSkillResults(result, outcomes, skillPlan),
+				result: addSkillResults(emptyImportResult(manifest), outcomes, skillPlan),
 				scopes: [],
 				agentOutcomes: [],
 			};

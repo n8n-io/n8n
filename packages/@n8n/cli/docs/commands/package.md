@@ -242,8 +242,10 @@ Protected instances reject Skill changes during package planning and apply.
 Standalone selections use package format 2. This destination also reads format
 1. Older destinations reject format 2. Skills must be available on the
 destination. Unsupported formats and files fail validation before writes.
-The current file format supports Markdown reference files under `references/`.
-It does not carry arbitrary paths or binary files.
+The main Skill definition uses Markdown. Supporting files can use any extension,
+such as `.md`, `.py`, or `.png`, with safe paths relative to the Skill folder.
+Packages preserve text as text and binary content as Base64. Agents can read
+text files through `load_skill`; that tool does not list or return binary files.
 
 The import plans Agent dependencies with their Agent. It leaves dependencies
 of skipped Agents unchanged unless they are also selected independently.

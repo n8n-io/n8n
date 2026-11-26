@@ -16,6 +16,7 @@ import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentPublishHistoryRepository } from '@/modules/agents/repositories/agent-publish-history.repository';
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { SkillAccessService, SkillService } from '@/modules/skills';
 import { ForbiddenError } from '@n8n/errors';
@@ -30,6 +31,7 @@ import {
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createAgent } from '@test-integration/db/agents';
 import { LicenseMocker } from '@test-integration/license';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { importPackageRequest } from './fixtures/import-request';
 import { streamToBuffer } from './utils/tar-support';
@@ -419,6 +421,162 @@ it('reports missing resource permission as a plan issue', async () => {
 	expect(await findSkillIds()).toEqual([]);
 });
 
+it('checks create access before reporting destination name conflicts', async () => {
+	const member = await createMember();
+	const importer = Container.get(SkillImporter);
+	const selected = [{ skill: packaged('incoming'), projectId: destination.id }];
+	const before = await importer.planStandalone(member, selected, [], 'new-version');
+	await createSkill({ id: 'existing', projectId: destination.id, content });
+	const after = await importer.planStandalone(member, selected, [], 'new-version');
+	expect(after.issues).toEqual(before.issues);
+	expect(after.issues).toEqual([
+		{
+			type: 'skill-conflict',
+			skillId: 'incoming',
+			message: 'You cannot import this Skill.',
+		},
+	]);
+	expect(after.writes.shared).toEqual([]);
+	expect(after.outcomes).toEqual([]);
+	expect(await findSkillIds()).toEqual(['existing']);
+});
+
+it('returns the same import issue for missing and unreadable Skills when writes are denied', async () => {
+	const member = await createMember();
+	const importer = Container.get(SkillImporter);
+	const selected = [{ skill: packaged('existing', 'instance'), projectId: null }];
+	const before = await importer.planStandalone(member, selected, [], 'new-version');
+	await createSkill({ id: 'existing', projectId: destination.id, content });
+	const after = await importer.planStandalone(member, selected, [], 'new-version');
+	expect(after.issues).toEqual(before.issues);
+	expect(after.issues).toEqual([
+		{ type: 'skill-conflict', skillId: 'existing', message: 'You cannot import this Skill.' },
+	]);
+	expect(after.writes.shared).toEqual([]);
+});
+
+it('uses the same deletion result for missing and unreadable Skills', async () => {
+	const member = await createMember();
+	const importer = Container.get(SkillImporter);
+	const options = { allowedProjectIds: new Set<string>() };
+	const before = await importer.planStandalone(member, [], ['existing'], 'new-version', options);
+	await createSkill({ id: 'existing', projectId: destination.id, content });
+	const after = await importer.planStandalone(member, [], ['existing'], 'new-version', options);
+	expect(after.issues).toEqual(before.issues);
+	expect(after.issues).toEqual([
+		{ type: 'skill-conflict', skillId: 'existing', message: 'Skill not found' },
+	]);
+	expect(after.removals).toEqual([]);
+	expect(after.outcomes).toEqual([]);
+});
+
+it.each([false, true])(
+	'checks update access before rename diagnostics (allowed: %s)',
+	async (allowed) => {
+		const user = allowed ? owner : await createMember();
+		const skill = packaged('instance', 'instance');
+		await importSkills(await archive([skill]));
+		const other = await createSkill({
+			projectId: destination.id,
+			content: { name: 'Other guide' },
+		});
+		const agent = await createAgent({
+			name: 'Private consumer',
+			projectId: destination.id,
+			schema: agentSchema,
+		});
+		await Container.get(AgentSkillRefsService).replaceDraftRefs(
+			agent,
+			[
+				{ type: 'skill', id: skill.id },
+				{ type: 'skill', id: other.id },
+			],
+			{},
+		);
+		skill.skill.name = 'Other guide';
+		await expect(
+			importSkills(await archive([skill]), { user, apiKeyScopes: ['skill:update'] }),
+		).rejects.toMatchObject({
+			meta: {
+				issues: [
+					{
+						type: 'skill-conflict',
+						skillId: skill.id,
+						message: allowed
+							? 'The Skill name conflicts with another Skill used by an Agent.'
+							: 'You cannot import this Skill.',
+					},
+				],
+			},
+		});
+		expect(await findLatestSkillVersion(skill.id)).toMatchObject({
+			name: content.name,
+			version: 1,
+		});
+	},
+);
+
+it('reports a consumer name conflict added after planning without consumer details', async () => {
+	const skill = packaged('instance', 'instance');
+	await importSkills(await archive([skill]));
+	skill.skill.name = 'Other guide';
+	const importer = Container.get(SkillImporter);
+	const plan = await importer.planStandalone(
+		owner,
+		[{ skill, projectId: null }],
+		[],
+		'new-version',
+	);
+	expect(await importer.renameIssues(plan.writes.shared)).toEqual([]);
+	const other = await createSkill({ projectId: destination.id, content: { name: 'Other guide' } });
+	const agent = await createAgent({
+		name: 'Private consumer',
+		projectId: destination.id,
+		schema: agentSchema,
+	});
+	await Container.get(AgentSkillRefsService).replaceDraftRefs(
+		agent,
+		[
+			{ type: 'skill', id: skill.id },
+			{ type: 'skill', id: other.id },
+		],
+		{},
+	);
+	await expect(importer.applyStandalone(owner, plan)).rejects.toMatchObject({
+		message: 'The Skill name conflicts with another Skill used by an Agent.',
+	});
+	expect(await findLatestSkillVersion(skill.id)).toMatchObject({ name: content.name, version: 1 });
+});
+
+it.each(['project', 'instance'] as const)(
+	'removes a %s Skill with the default destination',
+	async (scope) => {
+		const personalProject = await Container.get(ProjectService).getPersonalProject(owner);
+		if (!personalProject) throw new Error('Expected a personal project');
+		const { id } = await createSkill({
+			projectId: scope === 'project' ? personalProject.id : null,
+			content,
+		});
+		const result = await importSkills(await archive([]), {
+			projectId: undefined,
+			deletedSkillIds: [id],
+		});
+		expect(result.skills).toEqual([expect.objectContaining({ localId: id, status: 'deleted' })]);
+		expect(await findSkill(id)).toBeNull();
+	},
+);
+
+it('removes an instance Skill when the caller has no personal project', async () => {
+	const { id } = await createSkill({ projectId: null, content });
+	vi.spyOn(Container.get(ProjectService), 'getPersonalProject').mockResolvedValue(null);
+	const result = await importSkills(await archive([]), {
+		projectId: undefined,
+		deletedSkillIds: [id],
+	});
+	expect(result.skills).toEqual([expect.objectContaining({ localId: id, status: 'deleted' })]);
+	expect(await findSkill(id)).toBeNull();
+});
+
 it('removes only explicitly selected destination Skills', async () => {
 	await importSkills(await archive([packaged()]));
 	await createSkill({ id: 'keep', projectId: destination.id, content: { name: 'Keep' } });
@@ -628,6 +786,13 @@ it('keeps published pins and updates only consumers that follow latest', async (
 		{},
 	);
 	await refs.pinVersion(version.versionId, pins, {});
+	await Container.get(AgentPublishHistoryRepository).record(
+		follower.id,
+		version.versionId,
+		'activated',
+		owner,
+		{},
+	);
 	const pinned = await createAgent({ projectId: destination.id, schema: agentSchema });
 	await refs.replaceDraftRefs(
 		pinned,
@@ -658,6 +823,9 @@ it('keeps published pins and updates only consumers that follow latest', async (
 	expect((await refs.readVersion(version, {})).skills[skill.id].instructions).toBe(
 		content.instructions,
 	);
+	await refs.replaceDraftRefs(follower, [], {});
+	await refs.replaceDraftRefs(pinned, [], {});
+	expect(await Container.get(SkillService).countFollowingAgents(skill.id)).toBe(0);
 	await expect(
 		importSkills(await archive([]), { deletedSkillIds: [skill.id] }),
 	).rejects.toMatchObject({

@@ -954,7 +954,7 @@ it('reports a rename that clashes with a skill of another Agent that follows the
 		expect.objectContaining({
 			type: 'agent-invalid',
 			path: 'skills.skill_shared',
-			message: expect.stringContaining('Cannot rename to "Pricing"'),
+			message: 'The Skill name conflicts with another Skill used by an Agent.',
 		}),
 	]);
 	await agents.delete({ id: 'follower' });

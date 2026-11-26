@@ -7,7 +7,7 @@ import type {
 	PreparedWorkflow,
 } from '../entities/workflow/workflow-import.types';
 import type { PackagePublishingResults } from '../entities/workflow/workflow-publisher';
-import { serializeBindings } from '../n8n-packages.types';
+import { createBindings, serializeBindings } from '../n8n-packages.types';
 import type {
 	RemovedFolderSummary,
 	RemovedWorkflowSummary,
@@ -279,4 +279,21 @@ export function scopeCredentialBindingsToRequirements(
 
 	const requirementIds = new Set((requirements ?? []).map((requirement) => requirement.id));
 	return new Map([...bindings].filter(([sourceId]) => requirementIds.has(sourceId)));
+}
+
+export function emptyImportResult(manifest: PackageManifest): ImportResult {
+	return buildImportResult({
+		package: toPackageSummary(manifest),
+		agentOutcomes: [],
+		workflows: [],
+		removedWorkflows: [],
+		removedFolders: [],
+		folders: [],
+		projects: [],
+		bindings: createBindings(),
+		credentials: { matched: [], stubbed: [], seeded: [], incomplete: [], updated: [] },
+		dataTables: { matched: 0, created: 0, updated: 0 },
+		variables: { matched: [], created: [], stubbed: [], updated: [], missing: [] },
+		tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
+	});
 }
