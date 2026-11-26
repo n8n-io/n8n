@@ -153,7 +153,10 @@ describe('GymSimulationBackend', () => {
 		const { backend } = setup();
 		const world = await backend.openWorld(openInput);
 
-		const reply = await world.handleRequest({ ...get('/api/conversations.history'), method }, call);
+		const reply = await world.handleRequest(
+			{ protocol: 'http', method, url: 'https://slack.com/api/conversations.history' },
+			call,
+		);
 
 		expect(reply).toMatchObject({ outcome: 'served', evidence: [evidence] });
 	});
