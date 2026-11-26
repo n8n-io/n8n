@@ -1362,6 +1362,7 @@ describe('AgentExecutionService', () => {
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			});
+			agentExecutionThreadRepository.setGeneratedTitle.mockResolvedValue(true);
 
 			await recordExecution({
 				threadId: 'thread-1',
@@ -1378,7 +1379,42 @@ describe('AgentExecutionService', () => {
 				'Workflow builder chat',
 				null,
 			);
-			// The title was already set, so nothing changed and no list needs the push.
+			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).toHaveBeenCalledWith({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				title: 'Workflow builder chat',
+			});
+		});
+
+		it('sends no title push from the fallback when the title was already stored during the turn', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread({ title: null }),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
+			memoryBackend.getThread.mockResolvedValue({
+				id: 'thread-1',
+				resourceId: 'user-1',
+				title: 'Workflow builder chat',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+			agentExecutionThreadRepository.setGeneratedTitle.mockResolvedValue(false);
+
+			await recordExecution({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Follow up',
+				record: makeMessageRecord(),
+			});
+
+			expect(agentExecutionThreadRepository.setGeneratedTitle).toHaveBeenCalled();
 			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).not.toHaveBeenCalled();
 		});
 

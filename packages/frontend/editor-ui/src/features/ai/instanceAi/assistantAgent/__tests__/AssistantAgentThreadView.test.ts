@@ -1603,7 +1603,7 @@ describe('AssistantAgentThreadView', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
 		await flushPromises();
 
-		expect(getByTestId('header-title')).toHaveTextContent('');
+		expect(getByTestId('header-title')).toBeEmptyDOMElement();
 	});
 
 	it('opens a new Assistant thread from the header', async () => {

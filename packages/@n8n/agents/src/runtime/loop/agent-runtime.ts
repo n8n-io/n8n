@@ -663,6 +663,7 @@ export class AgentRuntime {
 
 	private async generateResumedRun(ctx: LoopContext): Promise<GenerateResult> {
 		const sink = new GenerateSink(this.createRunServices());
+		this.startTitleGeneration(ctx.list, ctx.options);
 		const rawResult = await this.telemetry.withRootSpan(
 			'generate',
 			ctx.options,
@@ -829,6 +830,7 @@ export class AgentRuntime {
 	 * Starts the thread-title call when the run starts, beside the agent loop. The
 	 * title then does not depend on how the turn ends, and a long turn shows its
 	 * title while it runs. The input is already stored, so the thread exists.
+	 * Resumed runs call it too: the call does nothing when the thread has a title.
 	 */
 	private startTitleGeneration(
 		list: AgentMessageList,
@@ -1510,6 +1512,8 @@ export class AgentRuntime {
 				await this.telemetry.withRootSpan(operation, options, runId, fn),
 			runLoop: async (guard) => {
 				this.writeMcpConnectionWarnings(guard);
+				// A resumed run tries the title again when the first attempt did not store one.
+				if (ctx.list) this.startTitleGeneration(ctx.list, ctx.options);
 				const resolvedList = ctx.list ?? (await this.initRun(ctx.input, ctx.options));
 				list = resolvedList;
 				sink = new StreamSink(guard, this.createRunServices(), ctx.options);
@@ -1628,6 +1632,8 @@ export class AgentRuntime {
 
 	/** Clean up stored state for a run when it finishes without re-suspending. */
 	private async cleanupRun(): Promise<void> {
+		// Failed and cancelled runs end here too. A sync title must be stored before the run returns.
+		await this.settleTitle();
 		try {
 			await this.runState.complete(this.runId, this.getState());
 		} catch (error) {

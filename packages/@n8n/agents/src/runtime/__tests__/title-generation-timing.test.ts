@@ -1,7 +1,8 @@
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type * as AiImport from 'ai';
+import { z } from 'zod';
 
-import type { TitleGenerationConfig } from '../../types';
+import type { BuiltTool, InterruptibleToolContext, TitleGenerationConfig } from '../../types';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentEventBus } from '../state/event-bus';
@@ -58,7 +59,47 @@ const titleReply = {
 	usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
 };
 
-function createRuntime(memory: InMemoryMemory, titleGeneration: TitleGenerationConfig) {
+const approvalTool: BuiltTool = {
+	name: 'approve',
+	description: 'Requires approval',
+	inputSchema: z.object({ question: z.string() }),
+	suspendSchema: z.object({ question: z.string() }),
+	resumeSchema: z.object({ approved: z.boolean() }),
+	handler: async (_input: unknown, ctx: unknown) => {
+		const { suspend, resumeData } = ctx as InterruptibleToolContext;
+		if (!resumeData) return await suspend({ question: 'approve?' });
+		return { approved: true };
+	},
+};
+
+const approvalMessages = [
+	{
+		role: 'assistant',
+		content: [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: 'approve',
+				args: { question: 'continue?' },
+				input: { question: 'continue?' },
+			},
+		],
+	},
+];
+
+const approvalCall = {
+	finishReason: 'tool-calls',
+	usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+	response: { messages: approvalMessages },
+	responseMessages: approvalMessages,
+	toolCalls: [{ toolCallId: 'tc-1', toolName: 'approve', input: { question: 'continue?' } }],
+};
+
+function createRuntime(
+	memory: InMemoryMemory,
+	titleGeneration: TitleGenerationConfig,
+	tools: BuiltTool[] = [],
+) {
 	return new AgentRuntime({
 		name: 'title-timing',
 		model: MODEL,
@@ -66,6 +107,8 @@ function createRuntime(memory: InMemoryMemory, titleGeneration: TitleGenerationC
 		eventBus: new AgentEventBus(),
 		memory,
 		titleGeneration,
+		tools,
+		checkpointStorage: 'memory',
 	});
 }
 
@@ -188,6 +231,46 @@ describe('AgentRuntime title generation timing', () => {
 
 		expect(result.finishReason).toBe('paused');
 		expect(agentCall).not.toHaveBeenCalled();
+		expect((await memory.getThread(persistence.threadId))?.title).toBe('Berlin rain alert');
+	});
+
+	it('stores a sync title before a failed run returns', async () => {
+		const memory = new InMemoryMemory();
+		agentCall.mockRejectedValueOnce(new Error('model unavailable'));
+		const title = titleCallStarted();
+		let finished = false;
+
+		const run = createRuntime(memory, { sync: true })
+			.generate(MESSAGE, { persistence })
+			.finally(() => {
+				finished = true;
+			});
+
+		await title.started;
+		await vi.waitFor(() => expect(agentCall).toHaveBeenCalledTimes(1));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(finished).toBe(false);
+
+		title.reply.resolve(titleReply);
+		await expect(run).resolves.toMatchObject({ finishReason: 'error' });
+		expect((await memory.getThread(persistence.threadId))?.title).toBe('Berlin rain alert');
+	});
+
+	it('tries the title again when a resumed run finds no title', async () => {
+		const memory = new InMemoryMemory();
+		const runtime = createRuntime(memory, { sync: true }, [approvalTool]);
+		agentCall.mockResolvedValueOnce(approvalCall);
+		titleCall.mockRejectedValueOnce(new Error('title model unavailable'));
+
+		const first = await runtime.generate(MESSAGE, { persistence });
+		expect((await memory.getThread(persistence.threadId))?.title).toBeFalsy();
+
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		agentCall.mockResolvedValueOnce(agentReply);
+		titleCall.mockResolvedValueOnce(titleReply);
+		await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(titleCall).toHaveBeenCalledTimes(2);
 		expect((await memory.getThread(persistence.threadId))?.title).toBe('Berlin rain alert');
 	});
 
