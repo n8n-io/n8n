@@ -1,0 +1,25 @@
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_1a3b6572805f97::t_95be4fd9a3a86d 82
+packages/cli/src/execution-lifecycle/__tests__/restore-binary-data-id.test.ts
+  s_1a3b6572805f97::t_297960e1f18b9c 70-94
+packages/cli/src/execution-lifecycle/restore-binary-data-id.ts
+  s_1a3b6572805f97::t_08f646a7d576d9 14
+  s_1a3b6572805f97::t_d4c73e3be13401 98-104
+  s_1a3b6572805f97::t_912d2f4e062eb2 105-106,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8717bfd273913accbfc09cf43edbae126f0baf6f",
+  "prompts": {},
+  "sessions": {
+    "s_1a3b6572805f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "197b7d45-f2ec-48eb-9390-e0472d670832",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

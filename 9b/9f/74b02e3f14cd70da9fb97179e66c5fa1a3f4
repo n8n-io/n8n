@@ -1,0 +1,33 @@
+packages/cli/src/modules/promotions.ee/promote-dependency-check.ts
+  s_6331fd5a9f20b4::t_d4f2dd0e821bc1 15-21,50,59-61,182-184,186,188-189
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_6331fd5a9f20b4::t_d4f2dd0e821bc1 293,316-318
+packages/cli/src/modules/promotions.ee/promote-dependency-check.service.ts
+  s_6331fd5a9f20b4::t_d4f2dd0e821bc1 125,128-131
+packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.revision.test.ts
+  s_6331fd5a9f20b4::t_d4f2dd0e821bc1 45-48
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-apply-check.dto.test.ts
+  s_6331fd5a9f20b4::t_d4f2dd0e821bc1 66-87
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_6331fd5a9f20b4::t_d4f2dd0e821bc1 781
+packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.integration.test.ts
+  s_6331fd5a9f20b4::t_d4f2dd0e821bc1 186,228,239,399,401-405
+packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.test.ts
+  s_6331fd5a9f20b4::t_d4f2dd0e821bc1 1-2,15,88,166,181-199,201-208,237,307-310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9b9f74b02e3f14cd70da9fb97179e66c5fa1a3f4",
+  "prompts": {},
+  "sessions": {
+    "s_6331fd5a9f20b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4bebece5-55c2-4079-9ffd-cadd7628fb13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

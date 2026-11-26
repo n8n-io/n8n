@@ -1,0 +1,48 @@
+packages/cli/src/modules/promotions.ee/promote-dependency-check.service.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 1-130
+packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.revision.test.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 1-66
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 9,11,148-160,175-190,193
+packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.test.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 1-460
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-apply-check.dto.test.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 1-101
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 261-337,394-400
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 3,5,8,546,570-571,573-583
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-preview.dto.test.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 1-86
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 10,55
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_6331fd5a9f20b4::t_e3e7749405ac14 781
+  s_6331fd5a9f20b4::t_94a70beeaf4357 27,628-650
+packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.integration.test.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 1-586
+packages/cli/src/modules/promotions.ee/package-references.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 32-34,102,105,116,126
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 1,14,23,40,112-120,131-139,143-157
+packages/cli/src/modules/promotions.ee/promote-dependency-check.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 1-207
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_6331fd5a9f20b4::t_94a70beeaf4357 20,352-360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c11a878ff692041ade2483d97bffdf54e5d17c46",
+  "prompts": {},
+  "sessions": {
+    "s_6331fd5a9f20b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4bebece5-55c2-4079-9ffd-cadd7628fb13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
