@@ -87,6 +87,23 @@ export class InstanceSettingsLoaderConfig {
 	@Env('N8N_PERSONAL_SPACE_SHARING_ENABLED')
 	personalSpaceSharingEnabled: boolean = true;
 
+	/**
+	 * Whether users can request a review of a workflow before they publish it.
+	 * n8n reads this only when `N8N_SECURITY_POLICY_MANAGED_BY_ENV` is true.
+	 */
+	@Env('N8N_WORKFLOW_REVIEWS_ENABLED')
+	workflowReviewsEnabled: boolean = false;
+
+	/**
+	 * Whether every new version of a workflow in a team project needs an
+	 * approved review before anyone can publish it. When false, each project or
+	 * workflow sets its own rule. n8n reads this only when
+	 * `N8N_SECURITY_POLICY_MANAGED_BY_ENV` is true. It has no effect while
+	 * `N8N_WORKFLOW_REVIEWS_ENABLED` is false.
+	 */
+	@Env('N8N_WORKFLOW_REVIEWS_ALWAYS_REQUIRED')
+	workflowReviewsAlwaysRequired: boolean = false;
+
 	// --- SAML ---
 
 	/** XML metadata string from the identity provider. */
@@ -148,6 +165,14 @@ export class InstanceSettingsLoaderConfig {
 	 */
 	@Env('N8N_SKILL_SYNC_ENABLED')
 	skillSyncEnabled: boolean = false;
+
+	/**
+	 * Whether MCP clients can read and save user preferences. n8n reads this value only when
+	 * `N8N_MCP_MANAGED_BY_ENV` is true. When unset, preferences are off on the Enterprise plan
+	 * and on for other plans, unless an admin already changed the setting.
+	 */
+	@Env('N8N_MCP_PREFERENCES_ENABLED')
+	mcpPreferencesEnabled?: boolean;
 
 	/**
 	 * Whether `N8N_PREFERENCES_ENABLED` controls the Preferences setting. When true, n8n applies

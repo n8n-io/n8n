@@ -1,29 +1,27 @@
 <script setup lang="ts">
-import type { CredentialTypeUsageResponse, TypeUsage } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, onMounted, shallowRef } from 'vue';
+import { computed, onMounted, shallowRef, useTemplateRef } from 'vue';
 
 import { credentialTypeIcon, FALLBACK_TYPE_ICON } from './credentialTypeIcon';
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
-import { setTypeAccess } from './setTypeAccess';
+import { useInstancePolicy } from './useInstancePolicy';
 import { useInstanceTypeAccess } from './useInstanceTypeAccess';
 import { useAppliedTheme } from '../composables/useAppliedTheme';
 import {
 	fetchCredentialTypeSummaries,
-	fetchCredentialTypeUsage,
 	type CredentialTypeSummary,
 } from '../type-availability-policies.api';
 
-const NO_USAGE: TypeUsage = { uses: 0, workflows: 0, activeWorkflows: 0, projects: 0 };
+const emit = defineEmits<{ open: [name: string] }>();
 
 const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
-const { types, loading, changeAccess } = useInstanceTypeAccess('credential', setTypeAccess);
+const instancePolicy = useInstancePolicy();
+const { types, loading, changeAccess } = useInstanceTypeAccess('credential');
 
 const typeSummaries = shallowRef(new Map<string, CredentialTypeSummary>());
-const usage = shallowRef<CredentialTypeUsageResponse | null>(null);
 
 // Kept apart from the rows, so that a change of access does not resolve every icon again.
 const decorations = computed(() => {
@@ -43,7 +41,7 @@ const rows = computed<InstancePolicyTableRow[]>(() =>
 	types.value.map((type) => ({
 		...type,
 		...(decorations.value.get(type.name) ?? { displayName: type.name, icon: FALLBACK_TYPE_ICON }),
-		usage: usage.value === null ? null : (usage.value[type.name] ?? NO_USAGE),
+		usage: instancePolicy.usageOf('credential', type.name),
 	})),
 );
 
@@ -55,28 +53,29 @@ async function loadSummaries() {
 	}
 }
 
-async function loadUsage() {
-	try {
-		usage.value = await fetchCredentialTypeUsage(rootStore.restApiContext);
-	} catch {
-		// The usage cells show no value instead.
-	}
-}
-
 onMounted(async () => {
-	await Promise.all([loadSummaries(), loadUsage()]);
+	await Promise.all([loadSummaries(), instancePolicy.loadUsage('credential')]);
 });
+
+const table = useTemplateRef<InstanceType<typeof InstancePolicyTable>>('table');
+
+defineExpose({ returnFocus: (name: string | undefined) => table.value?.returnFocus(name) });
 </script>
 
 <template>
 	<InstancePolicyTable
+		ref="table"
 		:rows="rows"
 		:loading="loading"
 		:search-placeholder="
 			i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.search.credential')
 		"
+		:no-match-text="
+			i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noMatch.credential')
+		"
 		data-test-id="credential-types-tab"
 		@change="changeAccess"
+		@open="(name) => emit('open', name)"
 	>
 		<template #toolbar-start>
 			<slot name="toolbar-start" />

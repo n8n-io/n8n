@@ -1,8 +1,8 @@
-import type { AgentFileDto } from '@n8n/api-types';
+import type { AgentFileDto, KnowledgeCollectionFileDto } from '@n8n/api-types';
 import { getPromptWorkspaceRoot, type SandboxProvider } from '@n8n/agents/sandbox';
 import path from 'node:path';
 
-import type { AgentFile } from '../entities';
+import type { AgentFile, KnowledgeFile } from '../entities';
 import { KnowledgeUploadError } from './knowledge-upload.error';
 
 export interface KnowledgeMirrorPaths {
@@ -71,6 +71,17 @@ export function toKnowledgeContentFileName(originalFileName: string): string {
 		return `${baseName}.txt`;
 	}
 	return sanitizedName;
+}
+
+export function toKnowledgeCollectionFileDto(file: KnowledgeFile): KnowledgeCollectionFileDto {
+	return {
+		id: file.id,
+		collectionId: file.knowledgeCollectionId,
+		fileName: file.name,
+		mimeType: file.mimeType,
+		fileSizeBytes: file.fileSizeBytes,
+		createdAt: file.createdAt.toISOString(),
+	};
 }
 
 export function toAgentFileDto(file: AgentFile): AgentFileDto {

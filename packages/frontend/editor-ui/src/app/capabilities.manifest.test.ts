@@ -12,6 +12,7 @@ import { registerShellCapabilities } from './capabilities.manifest';
 
 import { ABOUT_MODAL_KEY } from '@/app/constants/modals';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useExistingWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -337,6 +338,25 @@ describe('registerShellCapabilities', () => {
 		});
 	});
 
+	describe('apps feedback form URL', () => {
+		it('reads the URL from the PostHog flag payload', () => {
+			registerShellCapabilities();
+			const posthog = mockedStore(usePostHog);
+			posthog.getFeatureFlagPayload.mockReturnValue('https://forms.example.com/apps');
+			const readFormUrl = capabilityRegistry.use(capabilities.appsFeedbackFormUrl);
+
+			expect(readFormUrl()).toBe('https://forms.example.com/apps');
+			expect(posthog.getFeatureFlagPayload).toHaveBeenCalledWith('config_apps_feedback_form_url');
+		});
+
+		it('ignores a payload that is not a string', () => {
+			registerShellCapabilities();
+			mockedStore(usePostHog).getFeatureFlagPayload.mockReturnValue({ url: 'https://example.com' });
+
+			expect(capabilityRegistry.use(capabilities.appsFeedbackFormUrl)()).toBeUndefined();
+		});
+	});
+
 	describe('tag names', () => {
 		it('reads the names from the tags store', () => {
 			registerShellCapabilities();
@@ -398,6 +418,26 @@ describe('registerShellCapabilities', () => {
 			await load;
 
 			expect(loaded).toBe(true);
+		});
+
+		it('shares a failed load with a retry until both stores answer', async () => {
+			registerShellCapabilities();
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const credentialsStore = mockedStore(useCredentialsStore);
+			const credentialTypes = createDeferredPromise();
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockRejectedValue(new Error('offline'));
+			credentialsStore.fetchCredentialTypes.mockReturnValue(credentialTypes.promise);
+			const types = capabilityRegistry.use(capabilities.typeDescriptions);
+
+			const first = types.load();
+			await flushPromises();
+			const retry = types.load();
+			credentialTypes.resolve();
+
+			await expect(first).rejects.toThrow('offline');
+			await expect(retry).rejects.toThrow('offline');
+			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalledTimes(1);
+			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledTimes(1);
 		});
 	});
 });

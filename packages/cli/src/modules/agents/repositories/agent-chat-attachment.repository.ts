@@ -99,10 +99,31 @@ export class AgentChatAttachmentRepository {
 	 */
 	async findByIdForSystemAgent(
 		id: string,
-		scope: { agentId: string; resourceId: string; source: string },
+		scope: { agentId: string; resourceId: string; sources: readonly string[] },
 		ctx: OperationContext,
 	): Promise<AgentChatAttachment | null> {
-		return await this.table.managerFor(ctx).findOneBy(AgentChatAttachment, { id, ...scope });
+		const { agentId, resourceId, sources } = scope;
+		return await this.table
+			.managerFor(ctx)
+			.findOneBy(AgentChatAttachment, { id, agentId, resourceId, source: In([...sources]) });
+	}
+
+	/**
+	 * Files that a system chat stored in one thread for one memory resource,
+	 * newest first. The scope is the same as for `findByIdForSystemAgent`, so
+	 * the list has only files that a read by id finds. The caller checks access
+	 * to the thread.
+	 */
+	async findInSystemThreadNewestFirst(
+		threadId: string,
+		scope: { agentId: string; resourceId: string; sources: readonly string[] },
+		ctx: OperationContext,
+	): Promise<AgentChatAttachment[]> {
+		const { agentId, resourceId, sources } = scope;
+		return await this.table.managerFor(ctx).find(AgentChatAttachment, {
+			where: { threadId, agentId, resourceId, source: In([...sources]) },
+			order: { createdAt: 'DESC' },
+		});
 	}
 
 	/**

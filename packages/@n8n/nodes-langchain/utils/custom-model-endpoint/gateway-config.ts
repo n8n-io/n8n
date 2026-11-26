@@ -36,22 +36,32 @@ export function readEndpointCredential(
 }
 
 /** Without this the client falls back to its own default host, which is not the user's gateway. */
-function assertAbsoluteHttpUrl(baseUrl: string): void {
-	const parsed = URL.parse(baseUrl);
+function assertAbsoluteHttpUrl(url: string, field: 'Base URL' | 'Token URL'): void {
+	const parsed = URL.parse(url);
 	if (parsed === null || !['http:', 'https:'].includes(parsed.protocol)) {
-		throw new UserError('The credential has no usable Base URL', {
+		throw new UserError(`The credential has no usable ${field}`, {
 			description:
-				'Set Base URL to the root of your gateway, such as https://gateway.example.com/v1.',
+				field === 'Base URL'
+					? 'Set Base URL to the root of your gateway, such as https://gateway.example.com/v1.'
+					: 'Set Token URL to the token endpoint of your login server, such as https://login.example.com/oauth2/token.',
 		});
 	}
 
 	// The transport refuses a URL that carries a login and repeats the whole URL, password
 	// included, in the error it throws. The credential has its own fields for a login.
 	if (parsed.username !== '' || parsed.password !== '') {
-		throw new UserError('The Base URL of the credential carries a user name or a password', {
+		throw new UserError(`The ${field} of the credential carries a user name or a password`, {
 			description:
 				'Take them out of the URL, and set the login on the credential with Authentication.',
 		});
+	}
+}
+
+/** The login server is a second host the credential names, so it takes the same check. */
+function assertEndpointUrls(endpoint: EndpointCredential): void {
+	assertAbsoluteHttpUrl(endpoint.baseUrl, 'Base URL');
+	if (endpoint.login.type === 'oauth2') {
+		assertAbsoluteHttpUrl(endpoint.login.tokenUrl, 'Token URL');
 	}
 }
 
@@ -67,18 +77,22 @@ export function createCustomModelEndpointConfig(
 	options: {
 		credentialType: AcceptedCredential;
 		timeout?: number;
-		requestHeaders?: Record<string, string>;
+		/** n8n's own context headers, which name the workflow and the execution. */
+		contextHeaders?: Record<string, string>;
+		/** The headers the user typed on the node, any of which can hold a key. */
+		userHeaders?: Record<string, string>;
 	},
 ): { configuration: ClientOptions; endpoint: EndpointCredential } {
 	const endpoint = readEndpointCredential(options.credentialType, credential);
-	assertAbsoluteHttpUrl(endpoint.baseUrl);
+	assertEndpointUrls(endpoint);
 	const egressFilter = ctx.helpers.getSecureEgressFilter();
 
 	const authFetch = createCustomModelEndpointAuthFetch(ctx, credential, {
 		endpoint,
 		egressFilter,
 		baseFetch: createEndpointBaseFetch(egressFilter, options.timeout),
-		requestHeaders: options.requestHeaders,
+		contextHeaders: options.contextHeaders,
+		userHeaders: options.userHeaders,
 	});
 
 	return {

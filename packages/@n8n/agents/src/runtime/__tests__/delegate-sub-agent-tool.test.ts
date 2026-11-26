@@ -308,7 +308,7 @@ describe('createDelegateSubAgentTool', () => {
 	it('preserves inlineSubAgentModelsByDifficulty in delegate tool metadata', () => {
 		const tool = createDelegateSubAgentTool({
 			inlineSubAgentModelsByDifficulty: {
-				high: 'anthropic/claude-sonnet-4-5',
+				high: 'anthropic/claude-sonnet-5-5',
 			},
 			runSubAgent: async () =>
 				await Promise.resolve({
@@ -319,7 +319,7 @@ describe('createDelegateSubAgentTool', () => {
 		});
 
 		expect(getInlineDelegateSubAgentToolOptions(tool)?.inlineSubAgentModelsByDifficulty).toEqual({
-			high: 'anthropic/claude-sonnet-4-5',
+			high: 'anthropic/claude-sonnet-5-5',
 		});
 	});
 

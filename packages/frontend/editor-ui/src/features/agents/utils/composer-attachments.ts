@@ -9,6 +9,8 @@ export interface AgentChatComposerChip {
 	id: string;
 	label: string;
 	icon?: IconName;
+	/** The host draws the chip in the `composer-attachments` slot. The panel shows other chips as cards. */
+	hostRendered?: boolean;
 }
 
 /**

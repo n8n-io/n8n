@@ -1,10 +1,13 @@
+import type { WorkflowReviewsPolicy } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@n8n/errors';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
-type WorkflowReviewAvailability = { available: true } | { available: false; errorMessage: string };
+type WorkflowReviewAvailability =
+	| { available: true; policy: WorkflowReviewsPolicy }
+	| { available: false; errorMessage: string };
 
 /**
  * Single gate for the workflow reviews feature: license and the instance
@@ -21,6 +24,12 @@ export class WorkflowReviewFeatureGate {
 
 	async isAvailable(): Promise<boolean> {
 		return (await this.getAvailability()).available;
+	}
+
+	/** The instance policy when reviews are available, so a caller reads it only once. */
+	async getAvailablePolicy(): Promise<WorkflowReviewsPolicy | null> {
+		const availability = await this.getAvailability();
+		return availability.available ? availability.policy : null;
 	}
 
 	async assertAvailable(): Promise<void> {
@@ -46,6 +55,6 @@ export class WorkflowReviewFeatureGate {
 			};
 		}
 
-		return { available: true };
+		return { available: true, policy };
 	}
 }
