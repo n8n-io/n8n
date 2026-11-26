@@ -420,6 +420,8 @@ describe('EngineV2CompatibilityDialog', () => {
 		expect(getByTestId('engine-v2-compatibility-intro')).toHaveTextContent(
 			i18n.baseText('engineV2Compatibility.dialog.intro'),
 		);
+		// The intro names the action, not the button.
+		expect(getByTestId('engine-v2-compatibility-intro')).not.toHaveTextContent('Execute workflow');
 	});
 
 	it('explains the list of warnings when no reason blocks', async () => {
@@ -430,6 +432,8 @@ describe('EngineV2CompatibilityDialog', () => {
 		expect(getByTestId('engine-v2-compatibility-intro')).toHaveTextContent(
 			i18n.baseText('engineV2Compatibility.dialog.introWarnings'),
 		);
+		// The intro names the action, not the button.
+		expect(getByTestId('engine-v2-compatibility-intro')).not.toHaveTextContent('Execute workflow');
 	});
 
 	it('shows the introduction before the list', async () => {
