@@ -5,6 +5,7 @@ import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import { type EventBus } from '@n8n/utils/event-bus';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
+import { DELETE_FOLDER_MODAL_KEY } from '../folders.constants';
 import { useFoldersStore } from '../folders.store';
 import { useRoute } from 'vue-router';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -167,7 +168,13 @@ function onDialogOpenUpdate(open: boolean) {
 </script>
 
 <template>
-	<N8nDialog :open="modalOpen" size="large" :header="title" @update:open="onDialogOpenUpdate">
+	<N8nDialog
+		:open="modalOpen"
+		size="large"
+		:header="title"
+		:data-test-id="`${DELETE_FOLDER_MODAL_KEY}-modal`"
+		@update:open="onDialogOpenUpdate"
+	>
 		<N8nDialogBody>
 			<form :id="FORM_ID" novalidate @submit.prevent="onSubmit">
 				<div>
