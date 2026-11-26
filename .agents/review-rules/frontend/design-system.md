@@ -6,6 +6,8 @@ Flag a style value that does not come from a design-system token:
 
 - A hex, `rgb()`, `oklch()`, px, rem, ms or cubic-bezier literal outside a
   design-system token definition. Name the token that replaces it.
+- A `z-index` literal where an existing `$index-*` token or `APP_Z_INDEXES`
+  entry fits. Name the token or entry that replaces it.
 - A `var()` that names a token that does not exist, e.g. a legacy
   `--color--*`. It renders as nothing, without an error.
 - A colour primitive (`--color--neutral--100`) where a semantic token
