@@ -243,7 +243,7 @@ describe('EmbeddingsAwsBedrock', () => {
 			const node = new EmbeddingsAwsBedrock();
 			await node.supplyData.call(
 				mockContext('amazon.titan-embed-text-v2:0', {
-					additionalModelRequestFields: '{"dimensions": 512, "normalize": false}',
+					additionalModelRequestFields: { dimensions: 512, normalize: false },
 				}),
 				0,
 			);
@@ -258,7 +258,7 @@ describe('EmbeddingsAwsBedrock', () => {
 		it('ignores an empty additional fields object', async () => {
 			const node = new EmbeddingsAwsBedrock();
 			await node.supplyData.call(
-				mockContext('amazon.titan-embed-text-v2:0', { additionalModelRequestFields: ' {} ' }),
+				mockContext('amazon.titan-embed-text-v2:0', { additionalModelRequestFields: {} }),
 				0,
 			);
 
@@ -266,31 +266,6 @@ describe('EmbeddingsAwsBedrock', () => {
 				expect.objectContaining({ additionalModelRequestFields: undefined }),
 			);
 		});
-
-		it('throws a UserError for invalid additional fields JSON', async () => {
-			const node = new EmbeddingsAwsBedrock();
-
-			await expect(
-				node.supplyData.call(
-					mockContext('amazon.titan-embed-text-v2:0', { additionalModelRequestFields: 'not-json' }),
-					0,
-				),
-			).rejects.toThrow(UserError);
-		});
-
-		it.each(['[1, 2]', '"text"', '42', 'true', 'null'])(
-			'throws a UserError for non-object additional fields JSON: %s',
-			async (additionalModelRequestFields) => {
-				const node = new EmbeddingsAwsBedrock();
-
-				await expect(
-					node.supplyData.call(
-						mockContext('amazon.titan-embed-text-v2:0', { additionalModelRequestFields }),
-						0,
-					),
-				).rejects.toThrow('Additional Model Request Fields must be a JSON object');
-			},
-		);
 	});
 
 	describe('runtime endpoint override', () => {

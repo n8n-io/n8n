@@ -33,9 +33,7 @@ const deprecatedNodes = [
 // A json parameter must set validateType, so that an expression can return an
 // object or an array. Remove a folder from the list when its findings are fixed.
 const jsonValidateTypePending = [
-	'./nodes/embeddings/EmbeddingsAwsBedrock/**',
 	'./nodes/llms/LMChatOpenAi/**',
-	'./nodes/llms/LmChatAwsBedrock/**',
 	'./nodes/llms/LmChatAzureOpenAi/**',
 	'./nodes/output_parser/OutputParserStructured/**',
 	'./nodes/retrievers/RetrieverWorkflow/**',

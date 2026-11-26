@@ -4,21 +4,15 @@ import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 import { resolveBedrockRegion } from '@utils/aws/resolveBedrockRegion';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 import {
-	jsonParse,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { UserError } from '@n8n/errors';
 
 import { BedrockInvokeModelEmbeddings } from './BedrockInvokeModelEmbeddings';
 import { listModels } from './methods/listModels';
-
-function isJsonObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 export class EmbeddingsAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -92,6 +86,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 						displayName: 'Additional Model Request Fields',
 						name: 'additionalModelRequestFields',
 						default: '{}',
+						validateType: 'object',
 						description:
 							'Model-specific request fields passed through as JSON (e.g. Titan <code>dimensions</code>/<code>normalize</code>, Cohere <code>input_type</code>/<code>truncate</code>). See the <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html">AWS model parameters docs</a>.',
 						type: 'json',
@@ -133,7 +128,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			maxRetries?: number;
 			timeout?: number;
-			additionalModelRequestFields?: string;
+			additionalModelRequestFields?: Record<string, unknown>;
 		};
 
 		const region = resolveBedrockRegion(modelName, credentialRegion);
@@ -147,24 +142,9 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			egressFilter: this.helpers.getSecureEgressFilter(),
 		});
 
-		let additionalModelRequestFields: Record<string, unknown> | undefined;
-		const additionalFields = options.additionalModelRequestFields?.trim();
-		if (additionalFields && additionalFields !== '{}') {
-			let parsed: unknown;
-			try {
-				parsed = jsonParse(additionalFields);
-			} catch {
-				throw new UserError('Additional Model Request Fields must be valid JSON', {
-					level: 'warning',
-				});
-			}
-			if (!isJsonObject(parsed)) {
-				throw new UserError('Additional Model Request Fields must be a JSON object', {
-					level: 'warning',
-				});
-			}
-			additionalModelRequestFields = parsed;
-		}
+		const additionalFields = options.additionalModelRequestFields;
+		const additionalModelRequestFields =
+			additionalFields && Object.keys(additionalFields).length > 0 ? additionalFields : undefined;
 
 		const embeddings = new BedrockInvokeModelEmbeddings({
 			client,
