@@ -86,6 +86,7 @@ describe('DeleteFolderModal', () => {
 
 	it('submits the delete action when Enter is pressed in the confirmation input', async () => {
 		const { getByRole, getByTestId } = renderResult;
+		expect(getByTestId('deleteFolder-modal')).toBeInTheDocument();
 		const confirmButton = getByTestId('confirm-delete-folder-button');
 		expect(confirmButton).toBeDisabled();
 
