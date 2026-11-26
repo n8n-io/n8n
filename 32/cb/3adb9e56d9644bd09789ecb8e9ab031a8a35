@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_e2020f334615fd::t_7600e0f88064a2 105-109,117,240-243,330
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_e2020f334615fd::t_5394b82bc9b7f8 309
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_e2020f334615fd::t_dfc00e424a6703 193-194,2277
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_e2020f334615fd::t_dfc00e424a6703 1009
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_e2020f334615fd::t_3a3afa5401cee3 1178-1182
+  s_e2020f334615fd::t_2d4e7cf5675e8e 1128-1177,1183-1204,1207-1210
+  s_e2020f334615fd::t_02fa4d1b27063a 1205-1206
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/displayGroups.test.ts
+  s_e2020f334615fd::t_1dfc2e9f499e26 299,337-341
+  s_e2020f334615fd::t_856bff45805cb8 335-336
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_e2020f334615fd::t_8c6a227ace5551 664-682
+  s_e2020f334615fd::t_6efabc57048e93 16,23,98-99,283-285,497-515,732,819,879,1054
+  s_e2020f334615fd::t_87c227b41eafe8 516
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_e2020f334615fd::t_7600e0f88064a2 271-274,333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32cb3adb9e56d9644bd09789ecb8e9ab031a8a35",
+  "prompts": {},
+  "sessions": {
+    "s_e2020f334615fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e862a579-4717-46f7-bca2-e10eefeaf15a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

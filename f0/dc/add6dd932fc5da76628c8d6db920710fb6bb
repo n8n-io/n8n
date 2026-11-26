@@ -1,0 +1,20 @@
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_4a494bfdece475::t_22ead20f70495f 1278-1295,1298
+  s_4a494bfdece475::t_fde3dd0fbdee0d 1296-1297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0dcadd6dd932fc5da76628c8d6db920710fb6bb",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

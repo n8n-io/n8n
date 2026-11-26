@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentToolGuardrailsSection.vue
+  s_dfe3f914c8bb46::t_ae4b27b352e128 7,15,83,113,126,134-137,139
+  s_dfe3f914c8bb46::t_a86f8a717861c6 13,85
+packages/frontend/editor-ui/src/features/agents/utils/guardrails.ts
+  s_dfe3f914c8bb46::t_78a731c40c0526 25-32
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_99d9fbb9400dae 371-372
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentGuardrailsSection.test.ts
+  s_dfe3f914c8bb46::t_a2819f0c6290bf 5
+  s_dfe3f914c8bb46::t_80b40c4f4fb8ff 306,309,322
+  s_dfe3f914c8bb46::t_4a6f212b61d36d 312,316-321,323-330
+  s_dfe3f914c8bb46::t_883a8cb3eff060 331
+packages/frontend/editor-ui/src/features/agents/components/AgentGuardrailsSection.vue
+  s_dfe3f914c8bb46::t_ae4b27b352e128 7,21,27,132,134,187,224-227,229
+packages/frontend/editor-ui/src/features/agents/components/AgentGuardrailAddMenu.vue
+  s_dfe3f914c8bb46::t_78a731c40c0526 1-24,27-74
+  s_dfe3f914c8bb46::t_99d9fbb9400dae 25
+  s_dfe3f914c8bb46::t_a86f8a717861c6 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c6a7e98be61e379b314dd2c289bb505992aaf73",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-project-environments-allow-list.controller.integration.test.ts
+  s_d5e87480ea3fe2::t_b4073398ebf8ba 1-109,113-116,121,125-128,131-133,135-139,141-178,180-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bf88c09a175ae766d3796109e2f73ff507000c09",
+  "prompts": {},
+  "sessions": {
+    "s_d5e87480ea3fe2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c3175dc-1e39-414f-b827-edfb92805e09",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

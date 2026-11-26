@@ -1,0 +1,21 @@
+packages/modules/promotions/frontend/src/promotionPreview.selection.test.ts
+  s_c51b71bedc600f::t_d6f9177174eb91 1,198-225
+packages/modules/promotions/frontend/src/promotionPreview.selection.ts
+  s_c51b71bedc600f::t_7c8257e2c712dd 195-198,200-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "29d5907303b66d4050972c1da10e1b0bae4a89ed",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

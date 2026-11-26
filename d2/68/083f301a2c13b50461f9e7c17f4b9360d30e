@@ -1,0 +1,22 @@
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepButton/AiActivityStepButton.vue
+  s_a07562859ebcf5::t_6de731be8aa981 13
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStep/AiActivityStep.vue
+  s_a07562859ebcf5::t_a2fe3955626099 146-148,165,169,183
+  s_a07562859ebcf5::t_6de731be8aa981 67,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d268083f301a2c13b50461f9e7c17f4b9360d30e",
+  "prompts": {},
+  "sessions": {
+    "s_a07562859ebcf5": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a21742-1971-743f-8df6-813269a94012",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

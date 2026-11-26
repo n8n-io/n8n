@@ -1,0 +1,47 @@
+packages/modules/promotions/frontend/src/components/PromotionUnresolvedSummary.vue
+  s_4a494bfdece475::t_e0d4848681da82 1-68
+packages/modules/promotions/frontend/src/composables/usePromotionUnresolvedSummary.ts
+  s_4a494bfdece475::t_dfc764ac5c2649 1-79
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4a494bfdece475::t_32bf0ba1327621 11696-11702
+packages/modules/promotions/frontend/src/components/ApplyUnresolvedDialog.test.ts
+  s_4a494bfdece475::t_2b758790234713 4,13,15,18-22,28-37,39-45,48-49,52,54-57,62-64,66-78,80,87,109-110
+packages/modules/promotions/frontend/src/components/ApplyUnresolvedDialog.vue
+  s_4a494bfdece475::t_3cf3cbfaa7cc05 13-14,17-18,20-25,30,32-33,35-36,44,49,52,64
+packages/modules/promotions/frontend/src/components/PromoteInstanceDialog.vue
+  s_4a494bfdece475::t_5199f695a96c55 237
+packages/modules/promotions/frontend/src/components/PromoteSelectionDialog.test.ts
+  s_4a494bfdece475::t_4cbf4da3030517 40,44,62-65,67,70-72,74-76,78-88,93-133
+packages/modules/promotions/frontend/src/components/PromoteSelectionDialog.vue
+  s_4a494bfdece475::t_c83046ba0b13ab 15,17,26-29,47-51,54-55,58-62,92,98,101-107,121,133-137
+packages/modules/promotions/frontend/src/components/PromotionMissingDependencyList.test.ts
+  s_4a494bfdece475::t_5718ac27df02c8 37-38,40-44,53-54,65,67,73,85
+packages/modules/promotions/frontend/src/components/PromotionMissingDependencyList.vue
+  s_4a494bfdece475::t_dcc83edc67d42f 13,15,17,27
+packages/modules/promotions/frontend/src/composables/usePromotionUnresolvedSummary.test.ts
+  s_4a494bfdece475::t_43b050899093aa 1-125
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_4a494bfdece475::t_23fec8b519885c 208-213,1519,1526-1527,1529,1533,1535-1537,1539-1546,1548-1550,1552-1557,1559-1582,1585,1587,1597-1598,1602-1609,1612-1614,1616,1618,1620,1671,1726-1731,1757,1776-1777,2007-2008,2131,2146,2154,2166,2168-2170,2180-2184,2362,2404,2412-2413,2415-2423,2429-2439,2441-2448,2450,2452-2455,2458,2472-2474,2476-2478,2480,2483,2609,2611-2613,2623,2664,2807-2808,2811,2830,2832-2834,2992-2995,3110,3164-3165,3169-3174,3253-3254
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_4a494bfdece475::t_43736848a685a6 155-156,356,358-361,671
+packages/quality/testing/playwright/pages/promotion-preview-page.ts
+  s_4a494bfdece475::t_e6a39ea57eaade 74,87-94,98-99,101,103
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-missing-dependencies.spec.ts
+  s_4a494bfdece475::t_a40c8ac438c20b 168-169,174,178,188-189,203-204,207-219,221-223,273-274,279,281,295,299-300,303-312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be90cf299ccbfa1c87fcb9f3934cca8a1fbdff11",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

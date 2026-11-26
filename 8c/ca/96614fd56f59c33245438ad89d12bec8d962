@@ -1,0 +1,18 @@
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  h_8a472ace01776f 175-178
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  h_8a472ace01776f 62,135-137,163,168,3246,3277,3413-3452,3483
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  h_8a472ace01776f 79,82,577,933-936,968-969,978,1017,1019,1030,1053,2006-2021,2051-2054,2066,2071-2072,2078
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8cca96614fd56f59c33245438ad89d12bec8d962",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

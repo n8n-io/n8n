@@ -1,0 +1,54 @@
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_d5bc51776c6f6d::t_38f6a768223a9b 98-99,218,222,225-227,274-278
+packages/cli/src/modules/promotions.ee/__tests__/promotion-preferences.test.ts
+  s_d5bc51776c6f6d::t_f8f16c8105b354 12,148,177
+packages/cli/src/modules/promotions.ee/promotion-preference.service.ts
+  s_d5bc51776c6f6d::t_38f6a768223a9b 6-9,14-15,22,26-27,31-41
+  s_d5bc51776c6f6d::t_9fcd1ea3f995fc 25
+  s_d5bc51776c6f6d::t_e188d0f30fdfa1 28-30
+packages/modules/promotions/frontend/src/promotionPreview.preferences.test.ts
+  s_d5bc51776c6f6d::t_8a83534aad2e15 65
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  ai_agent 1209-1215,1221
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_d5bc51776c6f6d::t_9626e8c77e9c5c 1150-1152,1154-1156,1163-1164,1175,1201-1202,1280-1286,1292-1294,1298,1326-1327,1427
+  s_d5bc51776c6f6d::t_e188d0f30fdfa1 1157-1162,1196-1200,1287-1291,1321-1325
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_d5bc51776c6f6d::t_8a83534aad2e15 303
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d5bc51776c6f6d::t_8a83534aad2e15 11605-11608
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_d5bc51776c6f6d::t_c0b83e7e5c21a8 4543-4579,4615
+  s_d5bc51776c6f6d::t_0d1e1798f077b6 4580-4601,4608,4612-4614,4616-4620,4630-4632,4637-4655,4663-4667
+  s_d5bc51776c6f6d::t_e188d0f30fdfa1 4602-4607,4609-4611,4621-4629,4633-4636,4656-4662
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_d5bc51776c6f6d::t_8a83534aad2e15 428,433
+  s_d5bc51776c6f6d::t_e188d0f30fdfa1 422-427
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_d5bc51776c6f6d::t_0d1e1798f077b6 1035,1048-1049,1062,1064-1070,1074,1086-1087
+  s_d5bc51776c6f6d::t_e188d0f30fdfa1 1036-1047,1050-1061,1063,1071-1073,1075-1085
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_d5bc51776c6f6d::t_8a83534aad2e15 158-160
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_d5bc51776c6f6d::t_e188d0f30fdfa1 112
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_d5bc51776c6f6d::t_8a83534aad2e15 9,252
+packages/cli/src/modules/n8n-packages/entities/preference/preference.serializer.ts
+  s_d5bc51776c6f6d::t_38f6a768223a9b 13-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8e9765cf37c60cb487f37cbb9939f1411cb20cd",
+  "prompts": {},
+  "sessions": {
+    "s_d5bc51776c6f6d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20d41-65de-7b62-b2c0-d680d829e1e5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
