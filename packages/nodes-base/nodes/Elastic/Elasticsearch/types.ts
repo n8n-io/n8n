@@ -1,3 +1,5 @@
+import type { IDataObject } from 'n8n-workflow';
+
 export type ElasticsearchApiCredentials = {
 	username: string;
 	password: string;
@@ -17,7 +19,7 @@ export type DocumentGetAllOptions = Partial<{
 	ignore_unavailable: boolean;
 	max_concurrent_shard_requests: number;
 	pre_filter_shard_size: number;
-	query: string;
+	query: IDataObject;
 	queryParameters: unknown;
 	request_cache: boolean;
 	routing: string;

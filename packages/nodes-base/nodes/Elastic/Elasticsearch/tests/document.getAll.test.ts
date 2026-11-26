@@ -32,6 +32,14 @@ describe('Elasticsearch', () => {
 					],
 				},
 			});
+		nock('https://elastic.local')
+			.post('/my-index/_search', { query: { term: { 'user.id': 'jane' } } })
+			.query({ _source: 'true', size: '10' })
+			.reply(200, {
+				hits: {
+					hits: [{ _index: 'my-index', _id: 'doc2', _score: 1, _source: { 'user.id': 'jane' } }],
+				},
+			});
 	});
 
 	new NodeTestHarness().setupTests({
