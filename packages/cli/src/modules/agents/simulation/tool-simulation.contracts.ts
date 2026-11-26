@@ -99,7 +99,8 @@ export type SimulatedReply =
 			/** What this request did. Optional: a backend that cannot tell leaves it out. */
 			evidence?: ToolCallEvidence[];
 			status: number;
-			headers?: Record<string, string>;
+			/** A list keeps each value apart, for example one `set-cookie` value for each cookie. */
+			headers?: Record<string, string | string[]>;
 			body: unknown;
 	  }
 	/** For example a 501. Shown as a simulator gap, not an agent failure. */
