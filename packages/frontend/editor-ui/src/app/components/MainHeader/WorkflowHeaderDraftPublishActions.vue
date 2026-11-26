@@ -1070,8 +1070,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/focus';
-
 .container {
 	display: contents;
 }
@@ -1092,7 +1090,11 @@ onBeforeUnmount(() => {
 	text-decoration: underline;
 	cursor: pointer;
 
-	@include focus.focus-visible-ring;
+	// The shared focus color is dark, so it would not show on the dark tooltip.
+	&:focus-visible {
+		outline: var(--focus--border-width) solid currentColor;
+		outline-offset: var(--spacing--5xs);
+	}
 }
 
 .activeVersionIndicator {
