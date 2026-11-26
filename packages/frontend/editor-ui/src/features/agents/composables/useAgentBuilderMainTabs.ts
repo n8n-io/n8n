@@ -89,6 +89,7 @@ export function useAgentBuilderMainTabs({
 			label: i18n.baseText('agents.builder.header.tab.executions'),
 			value: 'sessions',
 			icon: failedSessionCount.value > 0 ? 'circle-alert' : undefined,
+			iconColor: failedSessionCount.value > 0 ? 'danger' : undefined,
 			tooltip:
 				failedSessionCount.value > 0
 					? i18n.baseText('agentSessions.flagCard.title', {

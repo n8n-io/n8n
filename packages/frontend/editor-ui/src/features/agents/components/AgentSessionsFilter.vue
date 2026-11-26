@@ -78,6 +78,15 @@ const activeFilterCount = computed(
 		].filter(Boolean).length,
 );
 
+/** The dot shows only by color, so the accessible name carries the active filter count. */
+const filterButtonLabel = computed(() =>
+	activeFilterCount.value > 0
+		? i18n.baseText('agentSessions.filters.buttonLabelActive', {
+				interpolate: { count: String(activeFilterCount.value) },
+			})
+		: i18n.baseText('forms.resourceFiltersDropdown.filters'),
+);
+
 /** Removing the last ID clears the filter. An empty list would match no sessions. */
 function onSessionIdsChange(values: TagsInputValue[]) {
 	const sessionIds = [
@@ -108,13 +117,17 @@ function reset() {
 				icon-only
 				icon="funnel"
 				size="medium"
-				:aria-label="i18n.baseText('forms.resourceFiltersDropdown.filters')"
+				:aria-label="filterButtonLabel"
 				:active="activeFilterCount > 0"
 				data-test-id="agent-sessions-filter-button"
 				:class="$style.filterButton"
 			>
 				<template v-if="activeFilterCount > 0" #default>
-					<span :class="$style.filterDot" data-test-id="agent-sessions-filter-dot" />
+					<span
+						:class="$style.filterDot"
+						aria-hidden="true"
+						data-test-id="agent-sessions-filter-dot"
+					/>
 				</template>
 			</N8nButton>
 		</template>
@@ -207,6 +220,8 @@ function reset() {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/mixins' as mixins;
+
 .group {
 	label {
 		display: inline-block;
@@ -262,7 +277,10 @@ function reset() {
 }
 
 .sessionIdFilter {
-	max-height: 8rem;
+	max-height: var(--spacing--4xl);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	@include mixins.scroll-bar;
 }
 </style>
 

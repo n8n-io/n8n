@@ -9,6 +9,7 @@ import {
 	N8nSpinner,
 	N8nIcon,
 	N8nTooltip,
+	N8nVisuallyHidden,
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps, IconColor, IconName } from '@n8n/design-system';
 import type { AgentExecutionThread, AgentSessionStatus } from '../composables/useAgentThreadsApi';
@@ -284,11 +285,13 @@ function formatDuration(ms: number): string {
 				<N8nTooltip :content="formatDateTooltip(row.thread)" placement="top">
 					<N8nText step="sm" bold color="text-light" data-test-id="agent-session-updated-at">
 						{{ formatRelativeDate(row.thread.updatedAt) }}
+						<N8nVisuallyHidden>({{ formatDateTooltip(row.thread) }})</N8nVisuallyHidden>
 					</N8nText>
 				</N8nTooltip>
 				<N8nTooltip :content="formatTokenTooltip(row.thread)" placement="top">
 					<N8nText step="sm" bold color="text-light" data-test-id="agent-session-token-usage">
 						{{ formatTokenCount(getTotalTokens(row.thread)) }}
+						<N8nVisuallyHidden>({{ formatTokenTooltip(row.thread) }})</N8nVisuallyHidden>
 					</N8nText>
 				</N8nTooltip>
 			</div>
@@ -330,7 +333,7 @@ function formatDuration(ms: number): string {
 		background-color: var(--background--hover);
 	}
 
-	&:has(.sessionLink:focus) {
+	&:has(.sessionLink:focus-visible) {
 		@include focus.focus-ring-with-border;
 	}
 }

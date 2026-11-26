@@ -538,10 +538,6 @@ async function onFiltersChange(value: AgentSessionFilters) {
 					:class="$style.emptyState"
 					:icon="{ type: 'icon', value: 'bot' }"
 					:hide-border="true"
-					:description="
-						hasActiveFilters ? undefined : i18n.baseText('agentSessions.emptyDescription')
-					"
-					button-icon="flask-conical"
 				>
 					<template #heading>
 						<span data-test-id="agent-sessions-empty">
@@ -560,7 +556,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 							@open-preview="openAgentPreview.open()"
 						/>
 					</template>
-					<template #description>
+					<template v-if="!hasActiveFilters" #description>
 						<span data-test-id="agent-sessions-empty-description">
 							{{ i18n.baseText('agentSessions.emptyDescription') }}
 						</span>
@@ -622,7 +618,8 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	margin: 0;
 	list-style: none;
 	background-color: var(--background--surface);
-	border-radius: var(--n8n-agent-session-list-row--radius);
+	/** Outer radius = row radius + container padding, so row corners stay concentric. */
+	border-radius: calc(var(--n8n-agent-session-list-row--radius) + var(--spacing--5xs));
 	padding: var(--spacing--5xs);
 	outline: var(--border);
 	box-shadow: var(--shadow--xs);

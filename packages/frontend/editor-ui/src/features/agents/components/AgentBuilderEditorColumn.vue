@@ -686,10 +686,6 @@ defineExpose({ onSetupTaskAction });
 
 .mainTabs {
 	width: 100%;
-
-	:global([data-test-id='tab-sessions']) {
-		--n8n-tabs--icon-color: var(--color--danger);
-	}
 }
 
 .setupTasks {
