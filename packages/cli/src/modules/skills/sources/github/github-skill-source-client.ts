@@ -4,6 +4,10 @@ import {
 	type HttpRequestClient,
 } from '@n8n/backend-network';
 import {
+	AGENT_SKILL_BINARY_MAX_BYTES,
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 	GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES,
 	isGitHubSkillSourceCredentialType,
 	type GitHubSkillSourceCredentialType,
@@ -11,7 +15,6 @@ import {
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { isRecord } from '@n8n/utils/is-record';
-import { sha256 } from '@n8n/utils/sha256';
 import { LRUCache } from 'lru-cache';
 import type { Readable } from 'node:stream';
 import pLimit from 'p-limit';
@@ -21,6 +24,7 @@ import {
 	DEFAULT_ARCHIVE_LIMITS,
 	archiveSize,
 	archiveTooLarge,
+	fileSelectionLimits,
 	readRepositoryArchive,
 	type ArchiveLimits,
 	type RepositoryArchive,
@@ -34,7 +38,14 @@ import {
 	splitBranchAndPath,
 } from './github-link';
 import { lsRefsRequestBody, parseLsRefsResponse, type GitRefs } from './git-refs';
-import { SKILL_FILE, filesOfSkill, findSkillFolders, isInside } from './skill-discovery';
+import {
+	SKILL_FILE,
+	compareSkillFilePriority,
+	filesOfSkill,
+	findSkillFolders,
+	isInside,
+	selectSkillFiles,
+} from './skill-discovery';
 import { SkillParseError } from '../../errors/skill-parse.error';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
@@ -74,6 +85,7 @@ const ARCHIVE_CACHE_SIZE = 4;
 const ARCHIVE_CACHE_BYTES = 64 * 1024 * 1024;
 /** A download in progress is not in the cache budget, so few run at a time. */
 const MAX_ARCHIVE_DOWNLOADS = 2;
+const MAX_SKILL_MD_BYTES = 1024 * 1024;
 
 const CANNOT_READ = 'n8n cannot read this repository. It is private or does not exist.';
 const CREDENTIAL_CANNOT_READ =
@@ -119,8 +131,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		changeDetection: 'source',
 		pinnedFetch: true,
 		history: false,
-		// An import keeps SKILL.md and `references/*.md` only. It lists the other files in
-		// `skippedFiles`.
+		// SKILL.md is parsed, and files over the transport limits are left out.
 		importFidelity: 'lossy',
 	};
 
@@ -206,13 +217,14 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}
 
 	identity(locator: SkillSourceLocator): SkillSourceIdentity {
-		const { owner, repository } = readLocator(locator);
-		return { type: this.type, host: GITHUB_HOST, owner, repository };
+		const { owner, repository, path } = readLocator(locator);
+		return { type: this.type, host: GITHUB_HOST, owner, repository, path };
 	}
 
 	describe(locator: SkillSourceLocator): { label: string; ref: string | null; path: string } {
 		const { owner, repository, branch, path } = readLocator(locator);
-		return { label: `${owner}/${repository}`, ref: branch, path };
+		const label = path ? `${owner}/${repository} / ${path}` : `${owner}/${repository}`;
+		return { label, ref: branch, path };
 	}
 
 	location(ref: RemoteSkillRef): string {
@@ -276,40 +288,91 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const parsed = readLocator(locator);
 		const { path } = readRef(ref);
 		const sha = revision ?? (await this.head(parsed, auth));
-		const archive = await this.archiveAt(parsed, sha, auth);
+		let archive = await this.archiveAt(parsed, sha, auth);
 		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
 		const skillFile = inRepository(SKILL_FILE);
-		if (archive.oversized.has(skillFile)) {
+		// A linked skill can fall out of the picker, or lose supporting files when other skills fill
+		// the shared archive budget. Re-read its folder alone so it gets its own budget.
+		if (
+			path !== parsed.path &&
+			archive.paths.includes(skillFile) &&
+			((!archive.files.has(skillFile) && !archive.oversized.has(skillFile)) ||
+				archive.starvedFolders?.has(path))
+		) {
+			archive = await this.archiveAt({ ...parsed, path }, sha, auth);
+		}
+		const skillText = archive.files.get(skillFile);
+		if (archive.oversized.has(skillFile) || (skillText && skillText.length > MAX_SKILL_MD_BYTES)) {
 			throw new SkillParseError(
 				`The SKILL.md of ${path || '/'} is larger than 1 MB.`,
-				archive.oversized.get(skillFile) ?? undefined,
+				skillText
+					? createHash('sha256').update(skillText).digest('hex')
+					: (archive.oversized.get(skillFile) ?? undefined),
 			);
 		}
-		const skillText = archive.text.get(skillFile);
 		if (skillText === undefined) {
 			throw new SkillSourceNotFoundError(`The skill folder ${path || '/'} has no SKILL.md.`, {
 				skill: true,
 			});
 		}
-		// A reference over the size limit has no text, so it is skipped, not imported empty.
+		// A file over the size limit has no contents, so it is skipped, not imported empty.
 		const all = filesOfSkill(archive.paths, path);
 		const oversized = all.filter((file) => archive.oversized.has(inRepository(file)));
-		const files = all
-			.filter((file) => !archive.oversized.has(inRepository(file)))
-			.map((file) => ({ path: file, content: archive.text.get(inRepository(file)) ?? '' }));
+		const unread: string[] = [];
+		const files = all.flatMap((file) => {
+			const content = archive.files.get(inRepository(file));
+			if (content !== undefined) return [{ path: file, content }];
+			if (!archive.oversized.has(inRepository(file))) unread.push(file);
+			return [];
+		});
 		const folderName = path.split('/').at(-1) || parsed.repository;
 		try {
-			const { content, skippedFiles, unstorableFiles } = readSkillFolder(folderName, files);
+			const { content, skippedFiles } = readSkillFolder(folderName, files);
+			content.files = content.files.filter((file) => {
+				const tooLarge = file.isBinary
+					? Buffer.byteLength(file.content, 'base64') > AGENT_SKILL_BINARY_MAX_BYTES
+					: file.content.length > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH;
+				if (tooLarge) oversized.push(file.path);
+				return !tooLarge;
+			});
+			// A skill over the limits of one skill keeps the files that fit, in priority order, so
+			// a dependency folder cannot push out the files in `references/`. The review lists
+			// the rest, so the user can still import the skill.
+			const fitting = new Set<string>();
+			let length = 0;
+			const byPriority = [...content.files].sort((left, right) =>
+				compareSkillFilePriority(left.path, right.path),
+			);
+			for (const file of byPriority) {
+				if (
+					fitting.size < AGENT_SKILL_REFERENCE_MAX_COUNT &&
+					length + file.content.length <= AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH
+				) {
+					fitting.add(file.path);
+					length += file.content.length;
+				}
+			}
+			// A reader that chose its files gave the other files a path and no bytes.
+			const overLimit = [
+				...unread,
+				...content.files.flatMap((file) => (fitting.has(file.path) ? [] : [file.path])),
+			];
+			content.files = content.files.filter((file) => fitting.has(file.path));
 			return {
 				content,
 				revision: sha,
 				fidelity: [],
-				skippedFiles: [...skippedFiles, ...oversized],
-				unstorableFiles,
+				skippedFiles: [...skippedFiles, ...oversized, ...overLimit],
+				unstorableFiles: skippedFiles,
+				oversizedFiles: oversized,
+				overLimitFiles: overLimit,
 			};
 		} catch (error) {
 			if (error instanceof SkillParseError) {
-				throw new SkillParseError(error.message, await sha256(skillText));
+				throw new SkillParseError(
+					error.message,
+					createHash('sha256').update(skillText).digest('hex'),
+				);
 			}
 			throw error;
 		}
@@ -482,7 +545,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 					await this.send(
 						{ ...fileTarget(file, blob), method: 'GET', abortSignal: deadline.signal },
 						auth,
-						limit(Math.max(this.archiveLimits.maxTextFileBytes, 1024)),
+						limit(Math.max(this.archiveLimits.maxFileBytes, 1024)),
 					),
 				async (file, blob) => await this.sendStream(fileTarget(file, blob), auth, deadline.signal),
 			);
@@ -510,19 +573,37 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 					headers: bearer(auth),
 				}
 			: { url: `https://codeload.${GITHUB_HOST}/${o}/${r}/tar.gz/${s}` };
-		const deadline = new AbortController();
-		const timer = setTimeout(() => deadline.abort(), DOWNLOAD_MS);
-		try {
-			const body = await this.sendStream(target, auth, deadline.signal);
-			return await readRepositoryArchive(body, {
-				signal: deadline.signal,
-				limits: this.archiveLimits,
-			});
-		} finally {
-			clearTimeout(timer);
-			// Frees the connection when the read stopped early.
-			deadline.abort();
-		}
+		// Each read has its own deadline, so a second read does not start with the time that the
+		// first one left.
+		const read = async (options: Parameters<typeof readRepositoryArchive>[1]) => {
+			const deadline = new AbortController();
+			const timer = setTimeout(() => deadline.abort(), DOWNLOAD_MS);
+			try {
+				return await readRepositoryArchive(await this.sendStream(target, auth, deadline.signal), {
+					...options,
+					signal: deadline.signal,
+					limits: this.archiveLimits,
+				});
+			} finally {
+				clearTimeout(timer);
+				// Frees the connection when the read stopped early.
+				deadline.abort();
+			}
+		};
+		const { overflowed, sizes, ...whole } = await read({ onRetainedOverflow: 'paths' });
+		if (!overflowed) return whole;
+		// The repository holds more than n8n keeps. The first read gave the path and the size of
+		// every file, so a second read keeps the files that the skills can store. The other
+		// files keep their path, and the review lists them.
+		const starvedFolders = new Set<string>();
+		const keep = selectSkillFiles(
+			sizes,
+			new Set(findSkillFolders(whole.paths, '').folders),
+			fileSelectionLimits(this.archiveLimits),
+			starvedFolders,
+		);
+		const { paths, files, oversized } = await read({ keep: (path) => keep.has(path) });
+		return { paths, files, oversized, ...(starvedFolders.size > 0 ? { starvedFolders } : {}) };
 	}
 
 	private async sendStream(

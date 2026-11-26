@@ -14,10 +14,10 @@ import {
 	type AgentMessageIntegrationOrigin,
 } from '@n8n/api-types';
 import { LockNamespace, LockService } from '@n8n/backend-common';
-import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment, Author, CardElement, Chat, Message, Thread } from 'chat';
+import { HITL_CALLBACK_PREFIX } from 'n8n-core';
 import type { Logger } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
@@ -82,7 +82,6 @@ import type {
 	IntegrationPlatformMessageContext,
 	SessionBinding,
 } from './integration-tools';
-import { downloadDiscordAttachment } from './platforms/discord/discord-operations';
 import { SLACK_STREAMING_OPTIONS } from './platforms/slack/slack-bridge-behavior';
 
 import { type InternalThread, toInternalThreadId } from './types';
@@ -270,7 +269,6 @@ export class AgentChatBridge {
 		private readonly integration: AgentIntegrationConfig,
 		messageContextStore?: IntegrationMessageContextService,
 		private readonly attachmentService?: AgentChatAttachmentService,
-		private readonly discordHttpClient?: HttpRequestClient,
 		private readonly messageQueue: AgentMessageQueueService = Container.get(
 			AgentMessageQueueService,
 		),
@@ -434,11 +432,6 @@ export class AgentChatBridge {
 			integration,
 			Container.get(IntegrationMessageContextService),
 			Container.get(AgentChatAttachmentService),
-			integration.type === 'discord'
-				? Container.get(OutboundHttp).requests({
-						useDefaultSsrfPolicy: 'unsafe', // Discord attachment URLs are restricted to its fixed CDN host
-					})
-				: undefined,
 		);
 	}
 
@@ -476,6 +469,28 @@ export class AgentChatBridge {
 
 		this.chat.onAction(async (event) => {
 			try {
+				// Reviewers need not be on the chat allowlist. `respond` verifies the signed
+				// callback and the configured recipient.
+				if (event.actionId.startsWith(HITL_CALLBACK_PREFIX)) {
+					const { AgentChannelHitlService } = await import(
+						'../approval/agent-channel-hitl.service.js'
+					);
+					const decision = await Container.get(AgentChannelHitlService).respond(
+						this.agentId,
+						this.n8nProjectId,
+						this.integration,
+						event,
+					);
+					if (decision === 'unavailable') {
+						if (event.thread)
+							await postToUserOrThread(
+								event.thread,
+								event.user,
+								'This approval request is no longer available or has already been handled',
+							);
+					} else await this.hitlResumeHandler.settleApprovalAction(event, decision);
+					return;
+				}
 				if (!this.canUserAccess(event.user, event.raw)) return;
 				await this.hitlResumeHandler.handleAction(event);
 			} catch (error) {
@@ -1289,9 +1304,8 @@ export class AgentChatBridge {
 	}
 
 	/**
-	 * Download and persist inbound platform attachments. Slack/Telegram adapters
-	 * provide `fetchData`; Discord provides a signed CDN URL. Oversize or failed
-	 * downloads degrade to a text note on the user turn — an attachment problem
+	 * Download and persist inbound platform attachments. Oversize or failed
+	 * downloads degrade to a text note on the user turn so an attachment problem
 	 * never aborts the run. Returns stored refs plus the notes to append.
 	 */
 	private async storeInboundAttachments(
@@ -1395,9 +1409,6 @@ export class AgentChatBridge {
 		}
 		if (Buffer.isBuffer(attachment.data)) return attachment.data;
 		if (attachment.data) return Buffer.from(await attachment.data.arrayBuffer());
-		if (this.integration.type === 'discord' && attachment.url && this.discordHttpClient) {
-			return await downloadDiscordAttachment(attachment.url, this.discordHttpClient);
-		}
 		return null;
 	}
 

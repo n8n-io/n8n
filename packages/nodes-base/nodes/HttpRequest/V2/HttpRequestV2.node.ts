@@ -13,6 +13,7 @@ import type {
 import {
 	NodeApiError,
 	NodeOperationError,
+	READ_ONLY_ANNOTATIONS,
 	removeCircularRefs,
 	NodeConnectionTypes,
 	getMcpAuthHeaders,
@@ -178,30 +179,37 @@ export class HttpRequestV2 implements INodeType {
 						{
 							name: 'DELETE',
 							value: 'DELETE',
+							annotations: { effect: 'write', destructive: true, idempotent: false },
 						},
 						{
 							name: 'GET',
 							value: 'GET',
+							annotations: READ_ONLY_ANNOTATIONS,
 						},
 						{
 							name: 'HEAD',
 							value: 'HEAD',
+							annotations: READ_ONLY_ANNOTATIONS,
 						},
 						{
 							name: 'OPTIONS',
 							value: 'OPTIONS',
+							annotations: READ_ONLY_ANNOTATIONS,
 						},
 						{
 							name: 'PATCH',
 							value: 'PATCH',
+							annotations: { effect: 'write', destructive: true, idempotent: false },
 						},
 						{
 							name: 'POST',
 							value: 'POST',
+							// POST can run arbitrary actions, so it keeps the restrictive default.
 						},
 						{
 							name: 'PUT',
 							value: 'PUT',
+							annotations: { effect: 'write', destructive: true, idempotent: true },
 						},
 					],
 					default: 'GET',

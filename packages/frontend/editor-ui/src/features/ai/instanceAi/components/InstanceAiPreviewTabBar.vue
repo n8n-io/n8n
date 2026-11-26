@@ -167,6 +167,12 @@ const hoveredStatus = computed(() => {
 	const summary = hoveredSummary.value;
 	if (!summary) return undefined;
 	if (summary.type === 'workflow') {
+		if (summary.isArchived) {
+			return {
+				label: i18n.baseText('workflows.item.archived'),
+				published: false,
+			};
+		}
 		return {
 			label: i18n.baseText(
 				summary.published ? 'workflows.published' : 'instanceAi.previewTabBar.draft',
@@ -306,8 +312,15 @@ async function handleCopyLink(tab: PreviewTab) {
 							:class="$style.tabTrigger"
 							@keydown.delete.prevent="emit('closeTab', tab.id)"
 						>
+							<!-- The chat asks the user for an answer, so the tab draws the eye to it. -->
+							<span
+								v-if="isArtifactTab(tab) && tab.waiting"
+								:class="[$style.icon, $style.draftWaitingDot]"
+								aria-hidden="true"
+								data-test-id="instance-ai-tab-waiting-dot"
+							/>
 							<N8nIcon
-								v-if="isArtifactTab(tab) && tab.building"
+								v-else-if="isArtifactTab(tab) && tab.building"
 								icon="spinner"
 								size="large"
 								spin
@@ -501,7 +514,8 @@ async function handleCopyLink(tab: PreviewTab) {
 
 .header {
 	flex-shrink: 0;
-	height: 49px;
+	// 6px above and below the tabs, plus the 1px bottom border.
+	height: 45px;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
@@ -643,6 +657,14 @@ async function handleCopyLink(tab: PreviewTab) {
 
 .icon {
 	flex-shrink: 0;
+}
+
+.draftWaitingDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	margin-inline: var(--spacing--5xs);
+	border-radius: var(--radius--full);
+	background: var(--color--danger);
 }
 
 .hoverCard {

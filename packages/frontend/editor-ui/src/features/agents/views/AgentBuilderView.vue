@@ -2,7 +2,9 @@
 import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import AgentFolderDialog, { type AgentFolderAction } from '../components/AgentFolderDialog.vue';
 import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
+import { useAgentSetupHeaderExperiment } from '@/experiments/agentSetupHeader/useAgentSetupHeaderExperiment';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
+import { useAgentsInvocationStepExperiment } from '@/experiments/agentsInvocationStep/useAgentsInvocationStepExperiment';
 import {
 	ref,
 	computed,
@@ -35,6 +37,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	addMissingAgentPersonalisation,
+	isDraftIntegration,
 	type AgentSkillAvailability,
 	type InstanceAiHandoffContext,
 	type PushMessage,
@@ -1027,9 +1030,18 @@ let configEditRevision = 0;
 function markConfigDraftEdited() {
 	configEditRevision += 1;
 }
+const agentsInvocationStepExperiment = useAgentsInvocationStepExperiment();
 const connectedTriggers = ref<string[]>([]);
 const isPublishReady = ref(false);
 const setupChecklistContext = computed(() => {
+	const connectedChannelIds = (localConfig.value?.integrations ?? [])
+		.filter((integration) => !isDraftIntegration(integration))
+		.map((integration) => integration.type);
+
+	const enabledScheduleCount = (localConfig.value?.tasks ?? []).filter(
+		(task) => task.enabled,
+	).length;
+
 	return {
 		config: {
 			loaded: initialized.value && localConfig.value !== null,
@@ -1040,10 +1052,11 @@ const setupChecklistContext = computed(() => {
 				(localConfig.value?.tools?.length ?? 0) +
 				(localConfig.value?.mcpServers?.length ?? 0) +
 				(localConfig.value?.subAgents?.agents?.length ?? 0),
+			scheduleCount: enabledScheduleCount,
 		},
 		channels: {
-			loaded: initialized.value,
-			ids: connectedTriggers.value,
+			loaded: initialized.value && localConfig.value !== null,
+			ids: connectedChannelIds,
 		},
 		publication: {
 			loaded: initialized.value,
@@ -1058,10 +1071,12 @@ const setupChecklistContext = computed(() => {
 			loaded: initialized.value && previewSessionsLoaded.value,
 			count: sessionsStore.previewThreads.length,
 		},
+		showTriggerStep: agentsInvocationStepExperiment.isEnabled.value,
 	};
 });
 const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =
 	useAgentSetupTasks(setupChecklistContext);
+const { isEnabled: isSetupHeaderEnabled } = useAgentSetupHeaderExperiment();
 const areSetupTasksVisible = computed(
 	() =>
 		isSetupChecklistVisible.value &&
@@ -1989,6 +2004,15 @@ async function flushAutosaveIgnoringResult(): Promise<void> {
 	await flushAutosave();
 }
 
+/** A failed save must not block a message to the embedded assistant, which can help fix the config. */
+async function flushAutosaveBeforeAssistantSend(): Promise<void> {
+	try {
+		await flushAutosave();
+	} catch {
+		// The autosave already showed its own error toast.
+	}
+}
+
 /** The embedded assistant waits to mint its thread until a list-view starter is applied. */
 async function beforeAiNewThread(): Promise<void> {
 	const gate = starterReady;
@@ -2309,11 +2333,7 @@ async function applyTemplateConfig(template: AgentTemplate): Promise<boolean> {
 	// sync — the template's draft entries plus a default n8n Chat it kept.
 	connectedTriggers.value = (next.integrations ?? []).map((i) => i.type);
 	templateApplied.value = true;
-	// Persist the agent and flush the config autosave before sending the chat
-	// message. The chat's `beforeSend` hook calls `flushAutosave` too — if we
-	// send first, a failed save (e.g. invalid tool fields in draft mode)
-	// rejects `beforeSend` and the chat message is never sent. Flushing here
-	// drains the queue so `beforeSend` resolves immediately.
+	// Persist the template config before the task writes and the chat message.
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
 	try {
@@ -2877,7 +2897,7 @@ async function onHeaderAction(action: string) {
 			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
 			favoritesStore.removeFavoriteLocally(agentId.value, 'agent');
 		} catch (error) {
-			showError(error, 'Could not delete agent');
+			showError(error, locale.baseText('agents.builder.deleteError'));
 			return;
 		}
 
@@ -3504,7 +3524,8 @@ useKeybindings({
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
-			:tasks="areSetupTasksVisible ? setupTasks : undefined"
+			:tasks="areSetupTasksVisible && !isSetupHeaderEnabled ? setupTasks : undefined"
+			@setup-task-action="onSetupTaskAction"
 			@header-action="onHeaderAction"
 			@open-publish-timeline="onOpenVersionHistory('timeline')"
 			@publish-ready="isPublishReady = $event"
@@ -3512,7 +3533,6 @@ useKeybindings({
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
-			@setup-task-action="onSetupTaskAction"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
@@ -3640,7 +3660,7 @@ useKeybindings({
 						:launch="instanceAiEmbedLaunch"
 						:thread-id="aiThreadId"
 						:before-new-thread="beforeAiNewThread"
-						:before-send="flushAutosaveIgnoringResult"
+						:before-send="flushAutosaveBeforeAssistantSend"
 						data-testid="agent-ai-chat-panel"
 						@update:thread-id="onAiThreadIdChange"
 						@update:building="embeddedAiBuilding = $event"
@@ -3730,6 +3750,11 @@ useKeybindings({
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
+					:tasks="
+						areSetupTasksVisible && isSetupHeaderEnabled && !isAgentArchived
+							? setupTasks
+							: undefined
+					"
 					:main-tab-options="mainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
@@ -3769,6 +3794,7 @@ useKeybindings({
 					@open-preview="onOpenPreview"
 					@close-preview="closePreviewDock"
 					@publish-agent="onSetupTaskPublishAgent"
+					@setup-task-action="onSetupTaskAction"
 				/>
 
 				<AgentVersionHistoryPanel

@@ -8,10 +8,11 @@ process.getBuiltinModule = (id: string) =>
 	id === 'node:vm' || id === 'vm' ? undefined : getBuiltinModule(id);
 /* eslint-disable @typescript-eslint/no-require-imports -- imports would load before `vm` is hidden */
 const workflow = require('n8n-workflow') as typeof import('n8n-workflow');
-require('./index');
+const runtime = require('./index') as typeof import('./index');
 /* eslint-enable @typescript-eslint/no-require-imports */
 process.getBuiltinModule = getBuiltinModule;
 
 startupSnapshot.setDeserializeMainFunction(() => {
 	workflow.resetSafeRegexEngine();
+	runtime.startRuntime();
 });

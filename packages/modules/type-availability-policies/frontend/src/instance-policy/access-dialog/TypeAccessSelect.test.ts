@@ -58,6 +58,15 @@ describe('TypeAccessSelect', () => {
 		expect(getByTestId('type-access-select')).toBeDisabled();
 	});
 
+	it('shows a spinner and stays enabled while it loads', () => {
+		const { getByTestId } = renderSelect({
+			props: { modelValue: 'allow', label: 'Notion', loading: true },
+		});
+
+		expect(getByTestId('type-access-select-loading')).toBeInTheDocument();
+		expect(getByTestId('type-access-select')).toBeEnabled();
+	});
+
 	it('emits a new access, and nothing for the current one', async () => {
 		const { getByTestId, emitted } = renderSelect({
 			props: { modelValue: 'allow', label: 'Notion' },

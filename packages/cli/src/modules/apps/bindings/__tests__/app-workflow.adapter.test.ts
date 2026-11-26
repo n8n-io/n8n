@@ -415,6 +415,19 @@ describe('AppWorkflowAdapter', () => {
 				Start: [{ json: { email: 'a@b.c' } }],
 			});
 		});
+
+		// The app-builder skill tells workflows to read the visitor from `appVisitor`.
+		it('writes the visitor to the execution custom data', async () => {
+			const { adapter, loader, runner } = setup();
+			loader.loadWorkflow.mockResolvedValue(workflow());
+			runner.run.mockResolvedValue('12');
+
+			await adapter.run(ctx, 'workflow-1', {});
+
+			expect(runner.run.mock.calls[0][0].executionData?.resultData.metadata).toMatchObject({
+				appVisitor: 'user:user-1',
+			});
+		});
 	});
 
 	describe('concurrency limit', () => {

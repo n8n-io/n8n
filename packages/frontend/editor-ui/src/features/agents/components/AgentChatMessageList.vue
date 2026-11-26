@@ -21,11 +21,16 @@ import {
 	isAssistantGroup,
 	type DisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
-import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	getMessageInteractives,
+	isRecord,
+	isStoppedMessage,
+} from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
 	appendHostEventSources,
 	findHostEventRenderer,
+	findToolFooterRenderer,
 	findToolResultRenderer,
 	getHostEventItems,
 	type AgentsChatHostEventItems,
@@ -92,6 +97,10 @@ const props = defineProps<{
 	loadingOlderMessages?: boolean;
 	/** The last older page failed to load. */
 	loadOlderMessagesFailed?: boolean;
+	/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
+	thinkingLabel?: string;
+	/** Replaces the generic "Session stopped" of a stopped turn. The Assistant sets it. */
+	stoppedLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -108,14 +117,25 @@ const emit = defineEmits<{
 	'retry-load-older': [];
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
 	/** Temporary status at the end of the transcript. */
 	status?: () => unknown;
 	/** Host actions for a finished agent reply, next to the default copy action. */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
-	/** The `references` of a user message, for example mentioned workflows. */
+	/**
+	 * The `references` of a user message, for example mentioned workflows. They
+	 * show before the files of the message, in the same group.
+	 */
 	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
 }>();
+
+function showsReferences(message: ChatMessage): boolean {
+	return (
+		message.role === CHAT_MESSAGE_ROLE.USER &&
+		!!message.references?.length &&
+		!!slots['user-message-references']
+	);
+}
 
 const i18n = useI18n();
 const canSendToAssistant = computed(() =>
@@ -288,7 +308,7 @@ const tailSummaryId = computed(() => {
 interface GroupToolCalls {
 	/** Calls that render as default tool steps. */
 	steps: ToolCall[];
-	/** Finished calls that a host extension renders in place of a step. */
+	/** Finished calls that a host extension renders after the steps: in place of a step, or as a step footer. */
 	hostResults: Array<{ toolCall: ToolCall; renderer: AgentsChatToolResultRenderer }>;
 }
 
@@ -312,8 +332,14 @@ const toolCallsByGroupId = computed(() => {
 		for (const toolCall of toolCalls) {
 			const renderer =
 				extensions.length > 0 ? findToolResultRenderer(toolCall, extensions) : undefined;
-			if (renderer) split.hostResults.push({ toolCall, renderer });
-			else split.steps.push(toolCall);
+			if (renderer) {
+				split.hostResults.push({ toolCall, renderer });
+				continue;
+			}
+			split.steps.push(toolCall);
+			const footer =
+				extensions.length > 0 ? findToolFooterRenderer(toolCall, extensions) : undefined;
+			if (footer) split.hostResults.push({ toolCall, renderer: footer });
 		}
 		byGroupId.set(group.id, split);
 	}
@@ -770,11 +796,16 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
 					<template #after-actions>
 						<AiThinkingBlock
+							:idle-label="props.thinkingLabel"
 							v-if="group.thinkingSegments.length"
 							:segments="group.thinkingSegments"
 							:active="group.active || group.awaitingInput"
 							:awaiting-input="group.awaitingInput"
 							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+							:class="[
+								$style.thinkingBlock,
+								{ [$style.thinkingBlockLive]: group.active || group.awaitingInput },
+							]"
 							test-id="agent-chat-thinking-block"
 						>
 							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
@@ -828,11 +859,21 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 				]"
 			>
 				<AgentChatMessageAttachments
-					v-if="group.message.attachments?.length && projectId && agentId"
-					:attachments="group.message.attachments"
+					v-if="
+						(group.message.attachments?.length || showsReferences(group.message)) &&
+						projectId &&
+						agentId
+					"
+					:attachments="group.message.attachments ?? []"
 					:project-id="projectId"
 					:agent-id="agentId"
-				/>
+				>
+					<slot
+						v-if="showsReferences(group.message)"
+						name="user-message-references"
+						:message="group.message"
+					/>
+				</AgentChatMessageAttachments>
 				<N8nText
 					v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.author"
 					size="xsmall"
@@ -928,6 +969,14 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							</N8nLink>
 						</template>
 					</div>
+					<div
+						v-else-if="isStoppedMessage(group.message)"
+						:class="$style.stoppedNotice"
+						data-testid="agent-chat-stopped"
+					>
+						<N8nIcon icon="circle-x" size="small" />
+						<span>{{ props.stoppedLabel ?? i18n.baseText('agentSessions.stopped') }}</span>
+					</div>
 					<template v-else>
 						<AgentChatRetryError
 							v-if="isRetryableChatError(group.message)"
@@ -962,17 +1011,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							</div>
 						</template>
 					</template>
-					<div
-						v-if="
-							group.message.role === CHAT_MESSAGE_ROLE.USER &&
-							group.message.references?.length &&
-							$slots['user-message-references']
-						"
-						:class="$style.references"
-						data-testid="agent-chat-message-references"
-					>
-						<slot name="user-message-references" :message="group.message" />
-					</div>
 					<AgentBudgetNoticeCard
 						v-for="notice in group.message.budgetNotices ?? []"
 						:key="notice.id"
@@ -1019,11 +1057,16 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						</N8nCallout>
 
 						<AiThinkingBlock
+							:idle-label="props.thinkingLabel"
 							v-if="group.thinkingSegments.length"
 							:segments="group.thinkingSegments"
 							:active="isThinkingActive(group.message)"
 							:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
 							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+							:class="[
+								$style.thinkingBlock,
+								{ [$style.thinkingBlockLive]: isThinkingActive(group.message) },
+							]"
 							test-id="agent-chat-thinking-block"
 						>
 							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
@@ -1094,7 +1137,8 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 
 <style lang="scss" module>
 .messages {
-	width: 100%;
+	// A host panel can cover the end of the chat. The messages center in the space it leaves.
+	width: calc(100% - var(--agent-chat-reserved-end, 0px));
 	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
 	padding-bottom: var(--spacing--xl);
 	display: flex;
@@ -1102,6 +1146,9 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	gap: var(--spacing--sm);
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
+	// An offset, not a transform: a transform would move fixed-position descendants.
+	position: relative;
+	left: calc(var(--agent-chat-reserved-end, 0px) / -2);
 }
 
 // Sticks to the top of the view. The zero height and the negative margin
@@ -1182,6 +1229,14 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	margin-bottom: var(--spacing--2xs);
 }
 
+.stoppedNotice {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+}
+
 /* Stretches past the right-aligned user bubble it follows, and stacks the
    hand-off button under the note instead of squeezing it in beside the text.
    `stretch` gives the text row the full width the dismiss button needs to sit
@@ -1232,21 +1287,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	padding: 0 var(--spacing--sm) var(--spacing--4xs);
 }
 
-.references {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-
-	.chatMessage + & {
-		margin-top: var(--spacing--2xs);
-	}
-
-	// The host can show none of the references of a message.
-	&:empty {
-		display: none;
-	}
-}
-
 .chatMessageError {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
@@ -1255,7 +1295,31 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	color: var(--text-color--danger);
 }
 
+/* Takes the row of the thinking header that replaces it, so the dots have the
+   same space above and below. */
 .typingIndicator {
-	margin-top: var(--spacing--xs);
+	align-items: center;
+	height: calc(var(--font-size--sm) * var(--line-height--lg));
+	margin-block: var(--spacing--4xs);
+}
+
+/* The space to the next step (the list gap and the message's top padding), so
+   the line has the same space above and below. */
+.thinkingBlock {
+	margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
+	/* Lines up with the message text, which has the same inline padding. */
+	padding-inline: var(--spacing--sm);
+}
+
+/* A live step can end with the actions row (its margin and its small buttons)
+   above the thinking line. Keep that space, so the line does not move then. */
+.thinkingBlockLive {
+	margin-top: calc(var(--spacing--xs) + var(--height--sm));
+}
+
+/* With the actions row above, or no content above, the space is already there. */
+:has(> .messageFooter) + .thinkingBlock,
+:empty + .thinkingBlock {
+	margin-top: 0;
 }
 </style>

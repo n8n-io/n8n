@@ -847,4 +847,18 @@ describe('v2/components/Select', () => {
 			});
 		});
 	});
+
+	describe('expose', () => {
+		it('should focus the trigger', () => {
+			const select = ref<{ focus: () => void } | null>(null);
+			const wrapper = render({
+				setup: () => () =>
+					h(Select, { ref: select, items: [{ value: 'Option 1', label: 'Option 1' }] }),
+			});
+
+			select.value?.focus();
+
+			expect(wrapper.getByTestId('select-trigger')).toHaveFocus();
+		});
+	});
 });
