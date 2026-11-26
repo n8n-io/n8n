@@ -50,6 +50,7 @@ import {
 import { UnexpectedError, OperationalError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
+import { collectAllowedBinaryDataIds } from '@/binary-data';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 import { deepMerge } from '@/utils/deep-merge';
 
@@ -222,8 +223,15 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 		let result: ExecuteWorkflowData;
 		try {
+			const binaryDataAccess = await collectAllowedBinaryDataIds(
+				inputData ?? [],
+				this.additionalData.binaryDataAccess,
+				this.workflow,
+				this.runExecutionData.binaryDataAccess,
+			);
 			result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
 				...options,
+				binaryDataAccess,
 				parentWorkflowId: this.workflow.id,
 				inputData,
 				parentWorkflowSettings: this.workflow.settings,

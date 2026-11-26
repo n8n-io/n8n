@@ -27,6 +27,8 @@ RUN apt-get update && \
         libaio1t64 \
         openssh-client \
         graphicsmagick \
+        # Community package installation runs tar -xzf, which calls gzip
+        gzip \
         tini \
         tzdata \
         # Runtime libraries of the librdkafka that the n8n image bundles

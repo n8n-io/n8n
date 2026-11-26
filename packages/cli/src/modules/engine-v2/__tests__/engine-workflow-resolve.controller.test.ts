@@ -7,9 +7,9 @@ import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type {
 	ResolveSubWorkflowRequest,
 	ResolveSubWorkflowResponse,
-} from '../engine-sub-workflow.contract';
-import { EngineSubWorkflowController } from '../engine-sub-workflow.controller';
-import type { EngineSubWorkflowService } from '../engine-sub-workflow.service';
+} from '../engine-workflow-resolve.contract';
+import { EngineSubWorkflowController } from '../engine-workflow-resolve.controller';
+import type { EngineSubWorkflowService } from '../engine-workflow-resolve.service';
 
 const resolveRequest: ResolveSubWorkflowRequest = {
 	workflowId: 'wf-sub',

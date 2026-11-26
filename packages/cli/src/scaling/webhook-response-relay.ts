@@ -23,6 +23,7 @@ import {
 import type { BinaryData } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { OperationalError } from '@n8n/errors';
+
 import type {
 	IBinaryData,
 	IDataObject,

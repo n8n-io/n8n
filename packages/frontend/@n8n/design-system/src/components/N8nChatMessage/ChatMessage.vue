@@ -49,30 +49,53 @@ defineSlots<{
 		<div v-if="$slots.actions" :class="$style.actions">
 			<slot name="actions" />
 		</div>
-		<slot name="after-actions" />
+		<!-- A wrapper without a box, so the slot gets the text size of the message. -->
+		<div v-if="$slots['after-actions']" :class="$style.afterActions">
+			<slot name="after-actions" />
+		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-@use '../../css/mixins/breakpoints';
-
 .message {
 	display: block;
 	width: 100%;
+	/**
+	 * The text size follows the width of the message, not of the window, because side
+	 * panels change the chat width. The fixed font size keeps the `ch` units of the
+	 * query below the same in every host.
+	 */
+	container-type: inline-size;
+	font-size: var(--font-size--md);
+}
+
+/**
+ * The text size of the message. Content in the `after-actions` slot can read it from
+ * `--n8n-chat-message--font-size`.
+ */
+.userBubble,
+.assistantContent,
+.afterActions {
+	--n8n-chat-message--font-size: var(--font-size--sm);
 }
 
 .userBubble,
 .assistantContent {
-	--n8n-markdown--font-size--base: var(--font-size--sm);
+	--n8n-markdown--font-size--base: var(--n8n-chat-message--font-size);
 	font-size: var(--n8n-markdown--font-size--base);
 }
 
-/** Use larger text only on large desktop screens. */
-@include breakpoints.breakpoint('xl-only') {
+/** Use larger text when a line has room for about 55 characters. */
+@container (min-width: 55ch) {
 	.userBubble,
-	.assistantContent {
-		--n8n-markdown--font-size--base: var(--font-size--md);
+	.assistantContent,
+	.afterActions {
+		--n8n-chat-message--font-size: var(--font-size--md);
 	}
+}
+
+.afterActions {
+	display: contents;
 }
 
 .userMessage {

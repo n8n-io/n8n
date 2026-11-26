@@ -26,6 +26,7 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 
 	/** A test chat: every turn and resume is a test run, also after a restart. */
 	@Column({
+		name: 'isTestChat',
 		type: 'boolean',
 		default: false,
 		comment: 'True for a test chat: its tool calls go to a simulation, not to real services.',
