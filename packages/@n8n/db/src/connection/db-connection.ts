@@ -184,22 +184,26 @@ export class DbConnection {
 		try {
 			// Go back to the role's search_path for this transaction only, and let Postgres
 			// resolve it: current_schema() is where unqualified table names go.
+			// current_database() is the real name; behind a pooler, the configured one can be an alias.
 			const [row] = await this.dataSource.transaction(async (manager) => {
 				await manager.query('SET LOCAL search_path TO DEFAULT');
-				return await manager.query<Array<{ schema: string | null; statement_timeout: string }>>(
-					"SELECT current_schema() AS schema, reset_val AS statement_timeout FROM pg_settings WHERE name = 'statement_timeout'",
+				return await manager.query<
+					Array<{ database: string; schema: string | null; statement_timeout: string }>
+				>(
+					"SELECT current_database() AS database, current_schema() AS schema, reset_val AS statement_timeout FROM pg_settings WHERE name = 'statement_timeout'",
 				);
 			});
+			if (!row) return;
 
 			const warning = getMissingRoleDefaultsWarning(
 				{
-					database: options.database ?? '',
+					database: row.database,
 					schema: options.schema ?? 'public',
 					statementTimeoutMs: options.statementTimeout ?? 0,
 				},
 				{
-					schema: row?.schema ?? null,
-					statementTimeout: row?.statement_timeout ?? null,
+					schema: row.schema,
+					statementTimeout: row.statement_timeout,
 				},
 			);
 			if (warning) this.logger.warn(warning);

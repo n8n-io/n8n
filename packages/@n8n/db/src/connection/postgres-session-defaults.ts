@@ -1,5 +1,5 @@
 // With DB_POSTGRESDB_SESSION_SETTINGS_MODE=per-connection, n8n sends `search_path` and
-// `statement_timeout` only on the first checkout of each pooled connection. Behind a
+// `statement_timeout` only when the pool opens a connection. Behind a
 // transaction-mode pooler, later queries can run on a server connection that never got
 // them. Role defaults apply to every server connection, so they close that gap.
 
@@ -63,6 +63,6 @@ export function getMissingRoleDefaultsWarning(
 		'DB_POSTGRESDB_SESSION_SETTINGS_MODE is set to "per-connection", but the database role defaults do not match the configured session settings.',
 		'This is safe on a direct connection to Postgres.',
 		'Behind a pooler in transaction mode, such as PgBouncer, queries can fail with "relation does not exist" or run without a timeout.',
-		`To fix this, connect as the n8n database user, run ${statements.join(' ')} Then reconnect the pooler.`,
+		`To fix this, connect as the n8n database user, run ${statements.join(' ')} Then restart the pooler so it opens new connections.`,
 	].join(' ');
 }

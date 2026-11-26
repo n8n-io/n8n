@@ -90,6 +90,6 @@ describe('getMissingRoleDefaultsWarning', () => {
 		expect(warning).toContain(
 			'ALTER ROLE CURRENT_USER IN DATABASE "n8n" SET statement_timeout = 300000;',
 		);
-		expect(warning).toContain('reconnect the pooler');
+		expect(warning).toContain('restart the pooler');
 	});
 });

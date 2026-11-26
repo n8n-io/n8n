@@ -177,9 +177,13 @@ describe('DbConnection', () => {
 			};
 
 			const manager = mock<EntityManager>();
-			const mockRoleDefaults = (row: { schema: string | null; statement_timeout: string }) => {
+			const mockRoleDefaults = (row: {
+				schema: string | null;
+				statement_timeout: string;
+				database?: string;
+			}) => {
 				manager.query.mockImplementation(async (sql: string) =>
-					sql.startsWith('SELECT') ? [row] : [],
+					sql.startsWith('SELECT') ? [{ database: 'n8n', ...row }] : [],
 				);
 				(dataSource.transaction as unknown as Mock).mockImplementation(
 					async (run: (m: EntityManager) => Promise<unknown>) => await run(manager),
@@ -223,6 +227,21 @@ describe('DbConnection', () => {
 				expect(logger.warn).toHaveBeenCalledWith(
 					expect.stringContaining('SET statement_timeout = 300000;'),
 				);
+			});
+
+			it('should name the real database, not the configured alias, in the statements', async () => {
+				mockRoleDefaults({ schema: 'public', statement_timeout: '0', database: 'n8n_prod' });
+
+				await createConnection({
+					database: 'pooler_alias',
+					statementTimeout: 300_000,
+					sessionSettingsMode: 'per-connection',
+				}).init();
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('ALTER ROLE CURRENT_USER IN DATABASE "n8n_prod"'),
+				);
+				expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('pooler_alias'));
 			});
 
 			it('should not warn when the role defaults match', async () => {
