@@ -1194,9 +1194,7 @@ describe('NodeView', () => {
 
 			const aboveToolbar = await findByTestId('node-creation-stub-above-toolbar');
 			expect(aboveToolbar).toContainElement(await findByTestId(BUTTON));
-			expect(await reasonsText(findByTestId)).toContain(
-				"Engine v2 doesn't run error workflows yet.",
-			);
+			expect(await reasonsText(findByTestId)).toContain("Error workflows aren't supported yet.");
 		});
 
 		it('shows the button on its own on a read-only canvas', async () => {

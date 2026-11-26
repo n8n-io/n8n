@@ -16,6 +16,7 @@ import {
 	N8nActionDropdown,
 	N8nButton,
 	N8nIconButton,
+	N8nLink,
 	N8nSpinner,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -44,6 +45,7 @@ import {
 } from '@n8n/frontend-module-type-availability-policies';
 import { describeEngineV2Block } from '@n8n/frontend-module-engine-v2';
 import { useWorkflowEngineV2Compatibility } from '@/app/composables/useWorkflowEngineV2Compatibility';
+import { useOpenEngineV2Findings } from '@/app/composables/useOpenEngineV2Findings';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionFormModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
@@ -247,18 +249,38 @@ const isWorkflowPublishable = computed(
 		!hasEngineV2BlockingReasons.value,
 );
 
-/** Why publishing is blocked, or '' when it is not. Also the Publish tooltip. */
-const publishBlockedReason = computed(() => {
-	if (isWorkflowPublishable.value) return '';
-	if (!containsTrigger.value) return i18n.baseText('workflows.publishModal.noTriggerMessage');
-	if (hasRestrictedNodeTypes.value) return describeRestrictedNodeTypes(restrictedNodeTypes.value);
-	if (hasEngineV2BlockingReasons.value) return describeEngineV2Block();
+/** Why publishing is blocked, and if engine v2 is the reason. */
+const publishBlock = computed((): { reason: string; byEngineV2: boolean } => {
+	if (isWorkflowPublishable.value) return { reason: '', byEngineV2: false };
+	if (!containsTrigger.value) {
+		return { reason: i18n.baseText('workflows.publishModal.noTriggerMessage'), byEngineV2: false };
+	}
+	if (hasRestrictedNodeTypes.value) {
+		return { reason: describeRestrictedNodeTypes(restrictedNodeTypes.value), byEngineV2: false };
+	}
+	if (hasEngineV2BlockingReasons.value)
+		return { reason: describeEngineV2Block(), byEngineV2: true };
 
-	return i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-		interpolate: { count: nodesWithValidationIssues.value.length },
-		adjustToNumber: nodesWithValidationIssues.value.length,
-	});
+	return {
+		reason: i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
+			interpolate: { count: nodesWithValidationIssues.value.length },
+			adjustToNumber: nodesWithValidationIssues.value.length,
+		}),
+		byEngineV2: false,
+	};
 });
+
+/** Why publishing is blocked, or '' when it is not. Also the Publish tooltip. */
+const publishBlockedReason = computed(() => publishBlock.value.reason);
+
+const openEngineV2Findings = useOpenEngineV2Findings();
+
+/** The Publish tooltip links to the findings when engine v2 is why Publish is off. */
+const showEngineV2FindingsLink = computed(
+	() =>
+		publishBlock.value.byEngineV2 &&
+		publishButtonConfig.value.tooltip === publishBlockedReason.value,
+);
 
 type WorkflowPublishState =
 	| 'not-published-not-eligible' // No trigger nodes or has errors
@@ -929,7 +951,19 @@ onBeforeUnmount(() => {
 					<template #content>
 						<div>
 							<template v-if="publishButtonConfig.tooltip">
-								<span :class="$style.tooltipReason">{{ publishButtonConfig.tooltip }}</span> <br />
+								<span :class="$style.tooltipReason">{{ publishButtonConfig.tooltip }}</span>
+								<template v-if="showEngineV2FindingsLink">
+									{{ ' ' }}
+									<N8nLink
+										size="small"
+										data-test-id="engine-v2-publish-blocked-link"
+										data-attr="engine-v2-publish-blocked-link"
+										@click="openEngineV2Findings(props.id)"
+									>
+										{{ i18n.baseText('engineV2Compatibility.publishBlocked.link') }}
+									</N8nLink>
+								</template>
+								<br />
 							</template>
 							<template v-if="activeVersion && publishButtonConfig.showVersionInfo">
 								<span data-test-id="workflow-active-version-info">{{ activeVersionName }}</span
