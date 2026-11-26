@@ -1,7 +1,11 @@
 import type { IVersionNotificationSettings } from '@n8n/api-types';
 import { useStorage } from '@n8n/composables/useStorage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
+import {
+	isDroppedNotification,
+	useToast,
+	type NotificationHandle,
+} from '@n8n/composables/useToast';
 import {
 	LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT,
 	LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES,
@@ -220,7 +224,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 					setWhatsNew(section);
 
 					if (shouldShowWhatsNewCallout()) {
-						whatsNewCallout.value = showMessage({
+						const callout = showMessage({
 							title: whatsNew.value.title,
 							message: whatsNew.value.calloutText,
 							duration: 0,
@@ -240,6 +244,8 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 								});
 							},
 						});
+						// A suppressed toast never renders, so it never closes either.
+						if (!isDroppedNotification(callout)) whatsNewCallout.value = callout;
 
 						// Mark the callout as dismissed as soon as it is shown, so it does not
 						// keep reappearing on subsequent loads for users who simply ignore it.

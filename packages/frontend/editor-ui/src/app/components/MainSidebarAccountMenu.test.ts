@@ -382,11 +382,15 @@ describe('MainSidebarAccountMenu', () => {
 			expect(screen.queryByTestId('cloud-console-coachmark')).not.toBeInTheDocument();
 		});
 
-		it("waits while the What's new toast is open", () => {
+		it("waits while the What's new toast is open, then appears once it closes", async () => {
 			versionsStore.isWhatsNewCalloutOpen = true;
 			renderComponent();
 
 			expect(screen.queryByTestId('cloud-console-coachmark')).not.toBeInTheDocument();
+
+			versionsStore.isWhatsNewCalloutOpen = false;
+
+			expect(await screen.findByTestId('cloud-console-coachmark')).toBeInTheDocument();
 		});
 
 		it('is dismissed with "Got it"', async () => {
@@ -421,6 +425,18 @@ describe('MainSidebarAccountMenu', () => {
 
 		it('does not write again once dismissed', async () => {
 			isCalloutDismissedMock.mockReturnValue(true);
+			const { getByTestId } = renderComponent();
+
+			await openMenu(getByTestId('main-sidebar-account-trigger'));
+
+			expect(dismissCalloutMock).not.toHaveBeenCalled();
+		});
+
+		it('does not write for an account that never qualified', async () => {
+			usersStore.currentUser = {
+				...usersStore.currentUser,
+				createdAt: '2026-11-20T00:00:00Z',
+			} as IUser;
 			const { getByTestId } = renderComponent();
 
 			await openMenu(getByTestId('main-sidebar-account-trigger'));

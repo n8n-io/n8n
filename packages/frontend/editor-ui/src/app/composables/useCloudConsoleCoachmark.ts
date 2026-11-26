@@ -48,7 +48,9 @@ export function useCloudConsoleCoachmark() {
 	// The menu calls this on every open, so it only writes while there is something to dismiss.
 	async function dismiss() {
 		if (isDismissed.value || !canOpenCloudConsole.value) return;
-		if (isCalloutDismissed(CLOUD_CONSOLE_COACHMARK_KEY) && !isPreviewForced()) return;
+		if (!isPreviewForced()) {
+			if (!usedPreviousSidebar.value || isCalloutDismissed(CLOUD_CONSOLE_COACHMARK_KEY)) return;
+		}
 		isDismissed.value = true;
 		await dismissCallout(CLOUD_CONSOLE_COACHMARK_KEY);
 	}

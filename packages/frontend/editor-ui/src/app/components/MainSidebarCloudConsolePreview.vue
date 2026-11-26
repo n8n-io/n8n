@@ -25,7 +25,7 @@ const NAV_ROW_WIDTHS = [44, 58, 36];
 		the theme. Without motion it shows the end state: the menu open on Cloud console.
 	-->
 	<div
-		:class="$style.preview"
+		:class="[$style.preview, { [$style.withoutWhatsNew]: !showWhatsNew }]"
 		role="img"
 		:aria-label="i18n.baseText('mainSidebar.cloudConsoleCoachmark.previewLabel')"
 		data-test-id="cloud-console-coachmark-preview"
@@ -120,6 +120,8 @@ const NAV_ROW_WIDTHS = [44, 58, 36];
  */
 .preview {
 	--cloud-console-preview--duration: 7200ms;
+	// How far the cursor climbs from the user row to Cloud console in the open menu.
+	--cloud-console-preview--cursor-rise: -108px;
 
 	position: relative;
 	width: 100%;
@@ -129,6 +131,12 @@ const NAV_ROW_WIDTHS = [44, 58, 36];
 	background: var(--background--subtle);
 	box-shadow: var(--shadow--outline);
 	isolation: isolate;
+}
+
+// The menu grows up from the user row, so without the What's new row and its gap,
+// Cloud console sits that much lower.
+.withoutWhatsNew {
+	--cloud-console-preview--cursor-rise: -90px;
 }
 
 .sidebar {
@@ -537,19 +545,19 @@ const NAV_ROW_WIDTHS = [44, 58, 36];
 	60%,
 	86% {
 		opacity: 1;
-		transform: translate(18px, -108px) scale(1);
+		transform: translate(18px, var(--cloud-console-preview--cursor-rise)) scale(1);
 	}
 	92%,
 	100% {
 		opacity: 0;
-		transform: translate(18px, -108px) scale(1);
+		transform: translate(18px, var(--cloud-console-preview--cursor-rise)) scale(1);
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
 	.cursor {
 		opacity: 1;
-		transform: translate(18px, -108px);
+		transform: translate(18px, var(--cloud-console-preview--cursor-rise));
 	}
 }
 </style>
