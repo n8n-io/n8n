@@ -1169,6 +1169,7 @@ export {
 	type AgentChatMode,
 	toolTestKindSchema,
 	toolTestCapabilitySchema,
+	AGENT_TEST_RUN_MAX_HELD_ACTIONS,
 	agentTestRunCommitRequestSchema,
 	agentTestRunCommitActionStatusSchema,
 	agentTestRunCommitActionResultSchema,
