@@ -1174,6 +1174,29 @@ describe('WorkflowDataProxy', () => {
 				expect(proxy.$fromAI('safe')).toBe('ok');
 				expect(proxy.$fromAI('evil', '', 'string', 'fallback')).toBe('fallback');
 			});
+
+			test.each(['', '   '])(
+				'ignores a wrapped query envelope when a numeric query placeholder is omitted (%j)',
+				(blank) => {
+					const wrappedOmitted = buildProxy({ query: { input: 'Search' } });
+					expect(wrappedOmitted.$fromAI('query', 'Result count', 'number', blank)).toBeUndefined();
+					expect(wrappedOmitted.$fromAI('query', 'Result count', 'Number', blank)).toBeUndefined();
+					expect(wrappedOmitted.$fromAI('query', 'Result count', 'number', 5)).toBe(5);
+					expect(wrappedOmitted.$fromAI('query', 'Result count', 'number')).toBeUndefined();
+
+					const wrappedZero = buildProxy({ query: { input: 'Search', query: 0 } });
+					expect(wrappedZero.$fromAI('query', 'Result count', 'number', blank)).toBe(0);
+
+					const wrappedFive = buildProxy({ query: { input: 'Search', query: 5 } });
+					expect(wrappedFive.$fromAI('query', 'Result count', 'number', blank)).toBe(5);
+
+					const unwrappedZero = buildProxy({ query: 0 });
+					expect(unwrappedZero.$fromAI('query', 'Result count', 'number', blank)).toBe(0);
+
+					const unwrappedJson = buildProxy({ query: { filter: 'active' } });
+					expect(unwrappedJson.$fromAI('query', 'Filter', 'json')).toEqual({ filter: 'active' });
+				},
+			);
 		});
 	});
 

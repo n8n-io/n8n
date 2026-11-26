@@ -66,6 +66,14 @@ describe('WorkflowExpression', () => {
 
 				expect(evaluate(value, [{ json: {} }])).toBe(25);
 				expect(evaluate(value, [{ json: { limit: 0 } }])).toBe(0);
+
+				const queryKeyValue = `={{ $fromAI('query', '', 'Number', '${defaultValue}') ?? 25 }}`;
+
+				expect(evaluate(queryKeyValue, [{ json: { query: { input: 'Search' } } }])).toBe(25);
+				expect(evaluate(queryKeyValue, [{ json: { query: { input: 'Search', query: 0 } } }])).toBe(
+					0,
+				);
+				expect(evaluate(queryKeyValue, [{ json: { query: 0 } }])).toBe(0);
 			},
 		);
 
