@@ -135,6 +135,7 @@ watch(
 			icon="clock"
 			size="xsmall"
 			icon-size="small"
+			:class="$style.trigger"
 			:aria-label="i18n.baseText('executionsList.lastProductionExecution.title')"
 			data-test-id="last-production-execution-icon"
 			@mouseenter="onTriggerActivate"
@@ -144,7 +145,10 @@ watch(
 </template>
 
 <style module lang="scss">
-/* The tooltip surface is always black, so these colors do not follow the theme. */
+.trigger {
+	--button--color: var(--text-color--subtler);
+}
+
 .succeeded {
 	color: var(--color--green-400);
 }
