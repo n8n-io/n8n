@@ -664,6 +664,125 @@ describe('WorkflowProductionChecklist', () => {
 			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
 		});
 
+		it('should defer the activation when auto-open is disabled while settings load', async () => {
+			let resolveSettings: (settings: object) => void = () => {};
+			workflowsCache.getWorkflowSettings = vi
+				.fn()
+				.mockReturnValueOnce(
+					new Promise((resolve) => {
+						resolveSettings = resolve;
+					}),
+				)
+				.mockResolvedValue({ firstActivatedAt: undefined });
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			const { rerender } = renderComponent({ pinia: createTestingPinia() });
+			await flushPromises();
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			await flushPromises();
+			expect(workflowsCache.getWorkflowSettings).toHaveBeenCalledTimes(1);
+
+			await rerender({ disableAutoOpen: true });
+			resolveSettings({ firstActivatedAt: undefined });
+			await flushPromises();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockN8nSuggestedActionsProps.open).not.toBe(true);
+			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+
+			await rerender({ disableAutoOpen: false });
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.open).toBe(true);
+			});
+			expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+		});
+
+		it('should defer the activation when auto-open is disabled before an open modal closes', async () => {
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
+				firstActivatedAt: undefined,
+			});
+
+			const pinia = createTestingPinia();
+			uiStore = useUIStore(pinia);
+			// @ts-expect-error - mocking readonly property
+			uiStore.isAnyModalOpen = true;
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			const { rerender } = renderComponent({ pinia });
+			await flushPromises();
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			await flushPromises();
+
+			await rerender({ disableAutoOpen: true });
+			// @ts-expect-error - mocking readonly property
+			uiStore.isAnyModalOpen = false;
+			await flushPromises();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockN8nSuggestedActionsProps.open).not.toBe(true);
+			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+
+			await rerender({ disableAutoOpen: false });
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.open).toBe(true);
+			});
+			expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+		});
+
+		it('should record the first activation only when the popover opens after a modal closes', async () => {
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
+				firstActivatedAt: undefined,
+			});
+
+			const pinia = createTestingPinia();
+			uiStore = useUIStore(pinia);
+			// @ts-expect-error - mocking readonly property
+			uiStore.isAnyModalOpen = true;
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			renderComponent({ pinia });
+			await flushPromises();
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			await flushPromises();
+
+			expect(mockN8nSuggestedActionsProps.open).not.toBe(true);
+			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+
+			// @ts-expect-error - mocking readonly property
+			uiStore.isAnyModalOpen = false;
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.open).toBe(true);
+			});
+			expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+		});
+
 		it('should not open popover automatically if workflow was previously activated', async () => {
 			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
 				suggestedActions: {},

@@ -323,35 +323,51 @@ const isConfirmedActive = computed(() => {
 	return true;
 });
 
+// Set when an activation arrives while auto-open is disabled. firstActivatedAt
+// stays unset, and the activation is handled once auto-open is enabled again.
+let hasDeferredActivation = false;
+
 async function handleConfirmedActivation() {
 	const workflowId = workflowDocumentStore?.value?.workflowId ?? '';
 	// Make sure the checklist opens only on the first activation, also when the
 	// workflow loads as active before onMounted has read the cache.
 	const { firstActivatedAt } = await workflowsCache.getWorkflowSettings(workflowId);
+
+	// Auto-open can be disabled while the settings load, e.g. after a route change
+	if (props.disableAutoOpen) {
+		hasDeferredActivation = true;
+		return;
+	}
+
+	if (!firstActivatedAt && isAnyModalOpen.value) {
+		// Defer opening until any open modal closes so the popover doesn't paint
+		// over it. Record the first activation only when the popover opens.
+		const stop = watch(isAnyModalOpen, async (isOpen) => {
+			if (isOpen) {
+				return;
+			}
+
+			stop();
+			if (props.disableAutoOpen) {
+				hasDeferredActivation = true;
+				return;
+			}
+
+			openSuggestedActions();
+			await workflowsCache.updateFirstActivatedAt(workflowId);
+		});
+		return;
+	}
+
 	if (!firstActivatedAt) {
-		if (isAnyModalOpen.value) {
-			// Defer opening until any open modal closes so the popover
-			// doesn't paint over it.
-			const stop = watch(isAnyModalOpen, (isOpen) => {
-				if (!isOpen) {
-					stop();
-					openSuggestedActions();
-				}
-			});
-		} else {
-			setTimeout(() => {
-				openSuggestedActions();
-			}, 0); // Ensure UI is ready and availableActions.length > 0
-		}
+		setTimeout(() => {
+			openSuggestedActions();
+		}, 0); // Ensure UI is ready and availableActions.length > 0
 	}
 
 	// Update firstActivatedAt after opening popover
 	await workflowsCache.updateFirstActivatedAt(workflowId);
 }
-
-// Set when an activation arrives while auto-open is disabled. firstActivatedAt
-// stays unset, and the activation is handled once auto-open is enabled again.
-let hasDeferredActivation = false;
 
 // Watch for workflow activation
 watch(isConfirmedActive, async (isActive, wasActive) => {
