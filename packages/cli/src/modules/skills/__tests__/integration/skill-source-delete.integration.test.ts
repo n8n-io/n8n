@@ -1,5 +1,5 @@
 import { SKILL_SYNC_FLAG, type SkillSourceDeleteBlock } from '@n8n/api-types';
-import { PostHogClient, TelemetryProxy } from '@n8n/backend-services';
+import { InstanceWriteAccessService, PostHogClient, TelemetryProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -90,6 +90,7 @@ describe('Delete a skill source', () => {
 	});
 
 	afterEach(async () => {
+		Container.get(InstanceWriteAccessService).setReadOnly(false);
 		vi.restoreAllMocks();
 		await Container.get(AgentRepository).delete({});
 		await deleteAllSkills();
@@ -165,6 +166,16 @@ describe('Delete a skill source', () => {
 		}
 		return agent;
 	}
+
+	it('keeps source links and Skills on a protected instance', async () => {
+		const { sourceId, first } = await sourceWithSkills();
+		const before = await snapshot();
+		Container.get(InstanceWriteAccessService).setReadOnly(true);
+		await owner.delete(`/skill-sources/${sourceId}`).expect(403);
+		await owner.delete(`/skill-sources/${sourceId}`).query({ keepSkills: true }).expect(403);
+		await owner.post(`/skill-sources/skills/${first.id}/stop-syncing`).expect(403);
+		expect(await snapshot()).toEqual(before);
+	});
 
 	it.each(['project', 'global'] as const)(
 		'deletes the %s source, links, skills, versions, and files',

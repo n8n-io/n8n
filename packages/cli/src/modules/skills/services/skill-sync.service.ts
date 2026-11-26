@@ -511,6 +511,7 @@ export class SkillSyncService {
 	 * skill was created.
 	 */
 	async stopSyncing(user: User, skillId: string): Promise<void> {
+		this.skills.assertWritable();
 		const checked = await this.requireSource(user, skillId, 'stopSyncing');
 		const [canRead, canUpdate] = await Promise.all([
 			this.skillAccess.accessCheck(user, 'read'),

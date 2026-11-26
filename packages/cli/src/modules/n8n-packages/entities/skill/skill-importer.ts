@@ -235,6 +235,7 @@ export class SkillImporter {
 		writes: SkillWrite[],
 		projectPendingCreation = false,
 	): Promise<void> {
+		if (writes.length) this.skillService.assertWritable();
 		const denied: string[] = [];
 		for (const write of writes) {
 			if (!(await this.canWrite(user, write, projectPendingCreation))) {

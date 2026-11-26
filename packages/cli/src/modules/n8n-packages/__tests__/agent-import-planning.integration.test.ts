@@ -21,6 +21,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { ForbiddenError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { Credentials } from 'n8n-core';
@@ -42,6 +43,7 @@ import {
 	deleteAllSkills,
 	deleteSkill,
 	findLatestSkillVersion,
+	findSkillIds,
 	toSkillContent,
 } from '@/modules/skills/testing';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -56,6 +58,7 @@ import { looseAgentsFixture, writeAgentPackageFixture } from './fixtures/agent-p
 import { streamToBuffer } from './utils/tar-support';
 import { ImportOrchestrator, type ImportOrchestrationInput } from '../engine/import-orchestrator';
 import { WorkflowPackageImporter } from '../engine/workflow-package-importer';
+import { SkillImporter } from '../entities/skill/skill-importer';
 import type { PreparedAgent } from '../entities/agent/agent-import.types';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
@@ -86,6 +89,7 @@ beforeAll(async () => {
 	otherProject = await createTeamProject('Other destination', user);
 }, 60_000);
 beforeEach(async () => {
+	Container.get(InstanceWriteAccessService).setReadOnly(false);
 	await agents.delete({});
 	// Skills belong to projects and outlive their Agents.
 	await deleteAllSkills();
@@ -97,7 +101,10 @@ beforeEach(async () => {
 		'SharedCredentials',
 	]);
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+	Container.get(InstanceWriteAccessService).setReadOnly(false);
+	vi.restoreAllMocks();
+});
 afterAll(async () => await testDb.terminate());
 
 function agent(sourceAgentId: string, config: Partial<AgentJsonConfig> = {}): PreparedAgent {
@@ -686,6 +693,37 @@ function sharedSkill(id: string, scope: 'project' | 'instance', name = 'Review')
 		frontmatter: null,
 	};
 }
+
+it.each(['create', 'update'] as const)(
+	'checks instance write settings when planning and applying a Skill %s',
+	async (action) => {
+		const skill = sharedSkill('skill_shared', 'project');
+		if (action === 'update') {
+			await createSkill({
+				id: skill.id,
+				projectId: project.id,
+				content: toSkillContent({ ...skill.skill, instructions: 'Earlier instructions.' }),
+			});
+		}
+		const request = input([agent('source', { skills: [{ type: 'skill', id: skill.id }] })]);
+		request.skills = [skill];
+		const plan = await planner.plan(request);
+		expect(plan.blockingIssues).toEqual([]);
+		const skillPlan = plan.agentPlan?.skills;
+		if (!skillPlan) throw new Error('Expected a Skill plan');
+		expect(skillPlan.shared).toHaveLength(1);
+		const before = await findLatestSkillVersion(skill.id);
+		const ids = await findSkillIds();
+
+		Container.get(InstanceWriteAccessService).setReadOnly(true);
+		await expect(planner.plan(request)).rejects.toThrow('protected instance');
+		await expect(Container.get(SkillImporter).applyShared(user, skillPlan)).rejects.toThrow(
+			'protected instance',
+		);
+		expect(await findLatestSkillVersion(skill.id)).toEqual(before);
+		expect(await findSkillIds()).toEqual(ids);
+	},
+);
 
 it.each([
 	['project', 'projectSkill:create'],
