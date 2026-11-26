@@ -319,7 +319,7 @@ describe('shared agents chat display groups', () => {
 		}
 	});
 
-	it('moves reasoning from narrated tool steps to the final assistant group', () => {
+	it('moves reasoning from later tool steps to the first assistant group', () => {
 		const messages: AgentsChatMessage[] = [
 			{ id: 'u1', role: 'user', content: 'research this', executionId: 'exec-1' },
 			{
@@ -353,8 +353,8 @@ describe('shared agents chat display groups', () => {
 		expect(groups[1].kind).toBe('message');
 		expect(groups[2].kind).toBe('toolRun');
 		if (groups[1].kind !== 'message' || groups[2].kind !== 'toolRun') return;
-		expect(groups[1].thinkingSegments).toEqual([]);
-		expect(groups[2].thinkingSegments.map((segment) => segment.id)).toEqual(['r1', 'r2', 'r3']);
+		expect(groups[1].thinkingSegments.map((segment) => segment.id)).toEqual(['r1', 'r2', 'r3']);
+		expect(groups[2].thinkingSegments).toEqual([]);
 	});
 
 	it('does not group assistant messages with visible text as tool-only messages', () => {

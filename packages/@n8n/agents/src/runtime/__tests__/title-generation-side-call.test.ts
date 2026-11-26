@@ -309,6 +309,76 @@ describe('generateThreadTitle persistence', () => {
 	});
 });
 
+describe('generateThreadTitle host title callback', () => {
+	const turnDelta = [
+		{
+			id: 'm1',
+			role: 'user',
+			content: [{ type: 'text', text: 'Build a daily Berlin rain alert workflow' }],
+			createdAt: new Date(),
+		} as never,
+	];
+
+	async function titleWith(memory: InMemoryMemory, onThreadTitle: () => Promise<void> | void) {
+		await generateThreadTitle({
+			memory,
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+			titleConfig: { model: MODEL_ID },
+			agentModel: MODEL_ID,
+			turnDelta,
+			onThreadTitle,
+		});
+	}
+
+	beforeEach(() => {
+		mockGenerateText.mockReset();
+		mockGetModelCost.mockReset();
+		mockGetModelCost.mockResolvedValue(undefined);
+		mockGenerateText.mockResolvedValue({
+			text: '{"title":"Berlin rain alert","emoji":"🌧️"}',
+			usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+		});
+	});
+
+	it('reports the title after it is stored', async () => {
+		const memory = new InMemoryMemory();
+		const onThreadTitle = vi.fn(async () => {
+			expect((await memory.getThread(THREAD_ID))?.title).toBe('Berlin rain alert');
+		});
+
+		await titleWith(memory, onThreadTitle);
+
+		expect(onThreadTitle).toHaveBeenCalledWith({
+			threadId: THREAD_ID,
+			title: 'Berlin rain alert',
+			emoji: '🌧️',
+		});
+	});
+
+	it('does not report a title that was not stored', async () => {
+		const memory = new InMemoryMemory();
+		vi.spyOn(memory, 'saveThread').mockRejectedValue(new Error('storage down'));
+		const onThreadTitle = vi.fn();
+
+		await titleWith(memory, onThreadTitle);
+
+		expect(onThreadTitle).not.toHaveBeenCalled();
+	});
+
+	it('keeps the stored title when the host callback fails', async () => {
+		const memory = new InMemoryMemory();
+
+		await expect(
+			titleWith(memory, () => {
+				throw new Error('push down');
+			}),
+		).resolves.toBeUndefined();
+
+		expect((await memory.getThread(THREAD_ID))?.title).toBe('Berlin rain alert');
+	});
+});
+
 describe('generateThreadTitle title text', () => {
 	const contextInput = [
 		{

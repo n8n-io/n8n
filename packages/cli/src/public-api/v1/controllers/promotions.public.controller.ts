@@ -10,6 +10,7 @@ import {
 	ListPromotionProvidersQueryDto,
 	ListPromotionRepositoriesQueryDto,
 	ListPromotionBranchesQueryDto,
+	ListPromotionReviewsQueryDto,
 	MAX_ITEMS_PER_PAGE,
 	MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE,
 	PromotePackageDto,
@@ -30,6 +31,8 @@ import {
 	PromotionRepositoryListPublicDto,
 	PromotionResourceDetailsDto,
 	PromotionResourceDetailsRequestDto,
+	PromotionReviewListPublicDto,
+	PromotionReviewPublicDto,
 	PromotionBranchListPublicDto,
 	PromotionSettingsPublicDto,
 	UpdatePromotionEnvironmentDto,
@@ -41,6 +44,7 @@ import {
 	promotionDirectionSchema,
 	promotionProviderIdParamSchema,
 	promotionRepositoryIdParamSchema,
+	promotionReviewIdParamSchema,
 	type PromotionDirection,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -912,6 +916,47 @@ export class PromotionsPublicController {
 		return direction;
 	}
 
+	// -- Reviews -------------------------------------------------------------
+
+	@Get('/reviews')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:readReviews')
+	@ApiSummary('Beta: List promotion reviews')
+	@ApiDescription(
+		BETA_NOTE +
+			'Returns the promotion reviews that the Inbox of the key owner shows. Instance owners and admins see all reviews. `state` selects the open or the closed reviews, as the Inbox tabs do. The list starts with the newest activity. The first page reads all open reviews from the Git host and records their new states. The next pages read only their own reviews and record no state, so paging does not move a review. An approval or a close between two pages can still move a review. `title`, `webUrl`, `headCommitSha` and `hasConflicts` come from the Git host. `remoteError` tells why they are missing. Returns 403 when the instance does not use promotion reviews.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionReviewListPublicDto)
+	@ApiErrorResponse(503)
+	async getPromotionReviews(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListPromotionReviewsQueryDto,
+	): Promise<PromotionReviewListPublicDto> {
+		return await (await this.reviewsService()).listPage(req.user, query);
+	}
+
+	@Get('/reviews/:promotionReviewId')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:readReviews')
+	@ApiSummary('Beta: Retrieve a promotion review')
+	@ApiDescription(
+		BETA_NOTE +
+			'Returns one promotion review with the same fields as the list. Reads the merge request from the Git host now. Returns 404 when the Inbox of the key owner does not show the review.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionReviewPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionReview(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionReviewId', promotionReviewIdParamSchema) promotionReviewId: string,
+	): Promise<PromotionReviewPublicDto> {
+		return await (await this.reviewsService()).getForUser(req.user, promotionReviewId);
+	}
+
 	// -- Module access -------------------------------------------------------
 
 	private assertModuleActive() {
@@ -948,6 +993,14 @@ export class PromotionsPublicController {
 		this.assertModuleActive();
 		const { PromotionsService } = await import('@/modules/promotions.ee/promotions.service.js');
 		return Container.get(PromotionsService);
+	}
+
+	private async reviewsService() {
+		this.assertModuleActive();
+		const { PromotionReviewInboxService } = await import(
+			'@/modules/promotions.ee/promotion-review-inbox.service.js'
+		);
+		return Container.get(PromotionReviewInboxService);
 	}
 
 	private async changeService() {

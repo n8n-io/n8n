@@ -14,5 +14,8 @@ export const DATA_TABLES_CALL_PATH = `${CONTROL_PLANE_PREFIX}/data-tables/call`;
  */
 export const DATA_TABLES_CALL_REFUSED_STATUS = 422;
 
-/** Where the data plane asks for the graph of a sub-workflow a step calls. */
-export const SUB_WORKFLOWS_RESOLVE_PATH = `${CONTROL_PLANE_PREFIX}/sub-workflows/resolve`;
+/**
+ * Where the data plane asks for a workflow to start: a sub-workflow that a step
+ * calls, or the error workflow of an execution that failed.
+ */
+export const WORKFLOWS_RESOLVE_PATH = `${CONTROL_PLANE_PREFIX}/workflows/resolve`;

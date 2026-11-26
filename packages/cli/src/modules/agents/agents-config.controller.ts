@@ -82,6 +82,9 @@ export class AgentsConfigController {
 			agent,
 			projectId,
 			credentialProvider,
+			'publish',
+			undefined,
+			req.user,
 		);
 	}
 
