@@ -11,19 +11,6 @@ on:
     workflows: ['Build: Base Image']
     types: [completed]
     branches: [master]
-  # Runs a change to the workflow before it merges. A dispatch needs the file
-  # on master first.
-  pull_request:
-    paths:
-      - '.github/workflows/sec-base-image-refresh.yml'
-      - '.github/scripts/docker/base-image-candidates.mjs'
-      - '.github/scripts/docker/base-image-publisher.mjs'
-      - '.github/scripts/docker/base-image-pin-pr.mjs'
-      - '.github/scripts/docker/base-image-chain-pr.mjs'
-      - '.github/scripts/docker/base-image-alerts.mjs'
-      - '.github/scripts/docker/base-image-report.mjs'
-      - '.github/scripts/docker/base-image-rebuild.mjs'
-      - 'security/keys/dhi.pub'
   workflow_dispatch:
     inputs:
       preview:
@@ -40,18 +27,14 @@ env:
   # to send a fix to the release branches. The PRs merge only on master today.
   PR_LABELS: ''
 
-# A PR run has its own group, so it does not wait for the scheduled run.
 concurrency:
-  group: sec-base-image-refresh-${{ github.event_name == 'pull_request' && github.ref || 'default' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: sec-base-image-refresh
+  cancel-in-progress: false
 
 jobs:
   refresh:
     name: Refresh base image pins
-    # A fork PR gets no secrets, so the registry login would fail.
-    if: >-
-      github.repository == 'n8n-io/n8n' && github.event_name != 'workflow_run' &&
-      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: github.repository == 'n8n-io/n8n' && github.event_name != 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -99,16 +82,15 @@ jobs:
           if [ "$EVENT" = workflow_dispatch ]; then args+=(--skip-gate); fi
           node .github/scripts/docker/base-image-candidates.mjs "${args[@]}"
 
-      # A PR run, or a run off master, only shows the PRs that it would open.
+      # A preview, or a run off master, only shows the PRs that it would open.
       - name: Decide whether to open the PRs
         id: mode
         env:
-          EVENT: ${{ github.event_name }}
           REF: ${{ github.ref }}
           PREVIEW_INPUT: ${{ inputs.preview }}
         run: |
           preview=false
-          if [ "$EVENT" = pull_request ] || [ "$REF" != refs/heads/master ] || [ "$PREVIEW_INPUT" = true ]; then
+          if [ "$REF" != refs/heads/master ] || [ "$PREVIEW_INPUT" = true ]; then
             preview=true
           fi
           echo "preview=$preview" >> "$GITHUB_OUTPUT"
@@ -229,7 +211,7 @@ jobs:
           overwrite: true
 
       - name: Alert on failure
-        if: failure() && github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+        if: failure() && github.ref == 'refs/heads/master'
         env:
           SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -292,7 +274,7 @@ jobs:
           retention-days: 14
 
       - name: Alert on failure
-        if: failure() && github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+        if: failure() && github.ref == 'refs/heads/master'
         env:
           SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -430,8 +412,7 @@ jobs:
       github.repository == 'n8n-io/n8n' && (
         (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' &&
           github.event.workflow_run.conclusion == 'success') ||
-        (github.event_name == 'workflow_dispatch' && inputs.preview) ||
-        (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository))
+        (github.event_name == 'workflow_dispatch' && inputs.preview))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
