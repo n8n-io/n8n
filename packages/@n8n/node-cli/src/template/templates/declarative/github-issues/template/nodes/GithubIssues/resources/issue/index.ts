@@ -21,7 +21,7 @@ export const issueDescription: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get issues in a repository',
+				action: 'Get many issues in a repository',
 				description: 'Get many issues in a repository',
 				routing: {
 					request: {
