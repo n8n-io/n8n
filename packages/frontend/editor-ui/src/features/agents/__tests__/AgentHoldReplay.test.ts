@@ -402,7 +402,7 @@ describe('AgentHeldActionsTray', () => {
 		expect(banner).toHaveTextContent('2 actions failed');
 		expect(banner).not.toHaveTextContent('done');
 		expect(getByTestId('agent-held-actions-done-summary')).toHaveTextContent(
-			'Nothing was sent or saved. See why below.',
+			'No actions finished. See why below, and check your apps before you try again.',
 		);
 		await waitFor(() => expect(getAllByTestId('agent-held-action-preview-body')).toHaveLength(2));
 		expect(

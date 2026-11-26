@@ -536,6 +536,51 @@ describe('HeldActionCommitService', () => {
 		expect(realMcp).toHaveBeenCalledWith({ id: 'c-1' }, expect.anything());
 	});
 
+	it('checks the current before-call guardrails and keeps a stopped action replayable', async () => {
+		const { session } = createSimulatedSession();
+		const realSlack = vi.fn().mockResolvedValue({ ok: true });
+		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Deploy now' }, vi.fn());
+
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockReturnValue(session);
+		const { runtime, runtimeCache } = makeRuntime([
+			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
+		]);
+		// A guardrail added to the draft after the turn held the action.
+		runtime.toolGuardrails = [
+			{ kind: 'keywords', id: 'no-deploy', stage: 'before', keywords: ['deploy'] },
+		];
+		runtime.toolRegistry = new Map();
+		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const request = {
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1'],
+		};
+
+		const stopped = await service.commitHeldActions(request);
+
+		expect(stopped.results).toEqual([
+			{
+				actionId: 'tc-1',
+				toolName: 'slack_post_message',
+				status: 'failed',
+				error: 'Tool call stopped by guardrail: guardrail.keywords.no-deploy',
+			},
+		]);
+		expect(realSlack).not.toHaveBeenCalled();
+
+		runtime.toolGuardrails = undefined;
+		const replay = await service.commitHeldActions(request);
+
+		expect(replay.results).toEqual([
+			{ actionId: 'tc-1', toolName: 'slack_post_message', status: 'done' },
+		]);
+		expect(realSlack).toHaveBeenCalledTimes(1);
+	});
+
 	it('reports a policy refusal as failed and keeps the action replayable', async () => {
 		const { session } = createSimulatedSession();
 		const realSlack = vi
