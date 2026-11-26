@@ -5539,14 +5539,24 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
-	it('passes a flushAutosave guard as before-send to the embedded AI panel', async () => {
-		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+	it('flushes the config before an embedded AI panel send, and still sends when the save fails', async () => {
 		const wrapper = await renderView();
-		const panel = wrapper.findComponent({ name: 'InstanceAiChatPanel' });
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+		};
+		const beforeSend = wrapper
+			.findComponent({ name: 'InstanceAiChatPanel' })
+			.props('beforeSend') as () => Promise<void>;
+		updateConfigMock.mockRejectedValueOnce(new Error('Skill is not available to this agent'));
 
-		expect(panel.props('beforeSend')).toBe(
-			(wrapper.vm as unknown as { flushAutosaveIgnoringResult: () => Promise<void> })
-				.flushAutosaveIgnoringResult,
+		vm.onConfigFieldUpdate({ instructions: 'Imported' });
+
+		await expect(beforeSend()).resolves.toBeUndefined();
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ instructions: 'Imported' }),
+			expect.anything(),
 		);
 	});
 

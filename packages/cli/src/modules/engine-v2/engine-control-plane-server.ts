@@ -11,7 +11,7 @@ import { send } from '@/response-helper';
 import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-auth.middleware';
 import { EngineCredentialsController } from './engine-credentials.controller';
 import { EngineDataTablesController } from './engine-data-tables.controller';
-import { EngineSubWorkflowController } from './engine-sub-workflow.controller';
+import { EngineSubWorkflowController } from './engine-workflow-resolve.controller';
 import { EngineMtls } from './engine-mtls';
 import {
 	CREDENTIALS_RESOLVE_PATH,

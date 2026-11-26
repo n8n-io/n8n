@@ -41,7 +41,7 @@ import {
 import type {
 	ResolveSubWorkflowRequest,
 	ResolveSubWorkflowResponse,
-} from './engine-sub-workflow.contract';
+} from './engine-workflow-resolve.contract';
 
 /** Get the node that called this sub-workflow, for policy checks. */
 function toCallerNode(node: ResolveSubWorkflowRequest['parent']['node']): INode {

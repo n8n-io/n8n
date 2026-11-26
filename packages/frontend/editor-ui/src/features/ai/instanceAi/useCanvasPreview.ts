@@ -16,6 +16,7 @@ import {
 	getLatestAppArtifactResult,
 	getAppWriteVersionIds,
 	getExecutionResultsByWorkflow,
+	isAppInLiveTurn,
 } from './canvasPreview.utils';
 import { useAgentMutationRefresh } from './composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from './composables/useBuildingArtifactIds';
@@ -368,6 +369,11 @@ export function useCanvasPreview({
 		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
 		return tab?.type === 'app' && tab.projectId ? { id: tab.id, projectId: tab.projectId } : null;
 	});
+
+	// The preview of an app that has no build yet shows the build state while this is true.
+	const isActiveAppInLiveTurn = computed(() =>
+		activeApp.value ? isAppInLiveTurn(thread.artifactTurns, activeApp.value.id) : false,
+	);
 
 	const executionResultsByWorkflow = computed(() =>
 		getExecutionResultsByWorkflow(thread.artifactTurns),
@@ -976,6 +982,7 @@ export function useCanvasPreview({
 		cloudBrowserTasks,
 		activeSkillId,
 		activeApp,
+		isActiveAppInLiveTurn,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		skillRefreshKey,

@@ -1615,6 +1615,130 @@ describe('SkillSourceController', () => {
 	});
 
 	describe('duplicate rules', () => {
+		const connectFolder = async (
+			path: string,
+			agent = owner,
+			scope: Record<string, unknown> = { scope: 'instance' },
+		) => {
+			const url = `${REPO}/tree/main/${path}`;
+			const { data: discovery } = await discover(agent, { url, ...scope });
+			return await connect(agent, { url, ...scope, skillKeys: keysOf(discovery, ['pdf', 'docx']) });
+		};
+
+		it.each([false, true])(
+			'imports sibling folders and rejects a repeated folder (legacy source: %s)',
+			async (legacy) => {
+				const { data: first } = await connectFolder('skills/pdf');
+				const db = Container.get(DataSource).manager;
+				if (legacy) {
+					await db.update(
+						SkillSourceConnection,
+						{ id: first.sourceId },
+						{ identityKey: 'github:github.com/acme/skills' },
+					);
+				}
+				const saved = await db.findOneByOrFail(SkillSourceConnection, { id: first.sourceId });
+				const { data: discovery } = await discover(owner, {
+					url: `${REPO}/tree/main/skills/docx`,
+					scope: 'instance',
+				});
+				expect(discovery.duplicate).toEqual({ kind: 'none' });
+				const { data: second } = await connectFolder('skills/docx');
+				expect(second.sourceId).not.toBe(first.sourceId);
+				expect(second.imported.map(({ name }) => name)).toEqual(['docx']);
+				expect(await db.findOneByOrFail(SkillSourceConnection, { id: first.sourceId })).toEqual(
+					saved,
+				);
+				expect(await findSkill(first.imported[0].skillId)).toMatchObject({
+					id: first.imported[0].skillId,
+					projectId: null,
+				});
+
+				for (const [path, sourceId] of [
+					['pdf', first.sourceId],
+					['docx', second.sourceId],
+				]) {
+					const url = `${REPO}/blob/main/skills/${path}/SKILL.md`;
+					const { data } = await discover(owner, { url, scope: 'instance' });
+					expect(data.duplicate).toEqual({ kind: 'blocked', where: 'global', sourceId });
+					await connect(
+						owner,
+						{ url, scope: 'instance', skillKeys: data.skills.map(({ key }) => key) },
+						409,
+					);
+				}
+				expect(await countSources()).toBe(2);
+			},
+		);
+
+		it.each([
+			['skills', 'skills/pdf'],
+			['skills/pdf', 'skills'],
+			['', 'skills/pdf'],
+			['skills/pdf', ''],
+		])('blocks overlapping source folders: %s then %s', async (firstPath, nextPath) => {
+			const { data: first } = await connectFolder(firstPath);
+			const url = `${REPO}/tree/main/${nextPath}`;
+			const { data } = await discover(owner, { url, scope: 'instance' });
+			expect(data.duplicate).toEqual({
+				kind: 'blocked',
+				where: 'global',
+				sourceId: first.sourceId,
+			});
+			await connect(owner, { url, scope: 'instance', skillKeys: keysOf(data, ['pdf']) }, 409);
+			expect(await countSources()).toBe(1);
+		});
+
+		it('applies Global and hidden-project rules to overlapping folders only', async () => {
+			await connectFolder('skills/pdf');
+			const scope = { scope: 'project', projectId: team.id };
+			const same = await discover(editor, { url: `${REPO}/tree/main/skills/pdf`, ...scope });
+			expect(same.data.duplicate).toEqual({ kind: 'blocked', where: 'global', sourceId: null });
+			const sibling = await discover(editor, { url: `${REPO}/tree/main/skills/docx`, ...scope });
+			expect(sibling.data.duplicate).toEqual({ kind: 'none' });
+			await connectFolder('skills/docx', editor, scope);
+			const hidden = await discover(member, {
+				url: `${REPO}/tree/main/skills/docx`,
+				scope: 'project',
+				projectId: personal.id,
+			});
+			expect(hidden.data.duplicate).toEqual({ kind: 'none' });
+			await connectFolder('skills/docx', member, { scope: 'project', projectId: personal.id });
+			await discover(viewer, { url: `${REPO}/tree/main/skills/docx`, ...scope }, 403);
+		});
+
+		it('serializes concurrent imports of overlapping folders', async () => {
+			const requests = await Promise.all(
+				[
+					['skills', 'docx'],
+					['skills/pdf', 'pdf'],
+				].map(async ([path, name]) => {
+					const payload = { url: `${REPO}/tree/main/${path}`, scope: 'instance' };
+					const { data } = await discover(owner, payload);
+					return { ...payload, skillKeys: keysOf(data, [name]) };
+				}),
+			);
+			const results = await Promise.all(
+				requests.map(async (body) => await owner.post('/skill-sources').send(body)),
+			);
+			expect(results.map(({ status }) => status).sort()).toEqual([200, 409]);
+			expect(results.find(({ status }) => status === 409)?.body.meta.reason).toBe(
+				'duplicate_source',
+			);
+			expect(await countSources()).toBe(1);
+		});
+
+		it('names each visible project once when a parent overlaps several sources', async () => {
+			const scope = { scope: 'project', projectId: otherTeam.id };
+			await connectFolder('skills/pdf', editor, scope);
+			await connectFolder('skills/docx', editor, scope);
+			const { data } = await discover(editor, { url: REPO, scope: 'project', projectId: team.id });
+			expect(data.duplicate).toEqual({
+				kind: 'warning',
+				projects: [{ id: otherTeam.id, name: 'Sales' }],
+			});
+		});
+
 		const connectPdf = async (agent: SuperAgentTest, scope: Record<string, unknown>) => {
 			const { data: discovery } = await discover(agent, { url: REPO, ...scope });
 			return await connect(agent, { url: REPO, ...scope, skillKeys: keysOf(discovery, ['pdf']) });
