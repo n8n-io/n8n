@@ -1,3 +1,14 @@
+## [2.49.7](https://github.com/n8n-io/n8n/compare/n8n@2.49.6...n8n@2.49.7) (2026-11-26)
+
+
+### Bug Fixes
+
+* Apply execution data size limit in MCP get_workflow_execution ([#45142](https://github.com/n8n-io/n8n/issues/45142)) ([1e42a0a](https://github.com/n8n-io/n8n/commit/1e42a0a5b5cf8a4d9406911885708e2334feaf72))
+* **core:** Align extractUrlPath results of isolate expression engines with legacy ([#45150](https://github.com/n8n-io/n8n/issues/45150)) ([c1e144e](https://github.com/n8n-io/n8n/commit/c1e144e5cb1089ad8af3ebfeea7e7a15e2cf8065))
+* **core:** Reduce memory use of concat on workflow data arrays in isolate expression engines ([#45156](https://github.com/n8n-io/n8n/issues/45156)) ([0e11672](https://github.com/n8n-io/n8n/commit/0e11672cafe5b8165caff422d76181bfed6d3a15))
+* Preserve boxed primitives across expression engines ([#45206](https://github.com/n8n-io/n8n/issues/45206)) ([eba225f](https://github.com/n8n-io/n8n/commit/eba225f015eaba3c4d18db501940b7c95c992455))
+
+
 ## [2.49.6](https://github.com/n8n-io/n8n/compare/n8n@2.49.5...n8n@2.49.6) (2026-11-25)
 
 
