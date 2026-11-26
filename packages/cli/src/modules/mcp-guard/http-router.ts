@@ -81,7 +81,8 @@ export class HttpGuardRouter {
 		if (req.headers.authorization) context.authorization = req.headers.authorization;
 		if (secret !== undefined) context.pathSecret = secret;
 		return await runWithRequestContext(context, async () => {
-			const readShaped = isReadShaped(req, vendor.readPaths, vendor.graphqlPaths);
+			const readShaped =
+				!this.deps.profile.gymOnly && isReadShaped(req, vendor.readPaths, vendor.graphqlPaths);
 			const { name, args } = toToolCall(req, readShaped);
 			return readShaped ? await this.read(name, args) : await this.write(name, args);
 		});
