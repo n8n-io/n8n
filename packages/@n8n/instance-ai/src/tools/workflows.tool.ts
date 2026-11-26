@@ -12,7 +12,7 @@ import {
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	buildWorkflowActionSessionGrantKey,
 } from '@n8n/api-types';
-import type { InstanceAiApprovalDetails } from '@n8n/api-types';
+import type { InstanceAiApprovalDetails, WorkflowReviewBlockedDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
@@ -788,6 +788,11 @@ async function readConsistentWorkflowSnapshot(
 	throw new WorkflowSnapshotChangedError(workflowId);
 }
 
+/** A workflow without an engine runs on v1. */
+function workflowEngineOf(json: WorkflowJSON): 'v1' | 'v2' {
+	return json.settings?.engineType === 'v2' ? 'v2' : 'v1';
+}
+
 async function handleGetAsCode(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-as-code' }>,
@@ -804,6 +809,7 @@ async function handleGetAsCode(
 			return {
 				workflowId: input.workflowId,
 				name: json.name,
+				engine: workflowEngineOf(json),
 				nodeCount: json.nodes?.length ?? 0,
 				nodes: await indexSourceNodes(json, code),
 				code,
@@ -813,7 +819,12 @@ async function handleGetAsCode(
 		const { json, saved } = await readConsistentWorkflowSnapshot(context, input.workflowId);
 		const code = await generateWorkflowSource(json);
 		const nodeCount = json.nodes?.length ?? 0;
-		const base = { workflowId: input.workflowId, name: json.name, nodeCount };
+		const base = {
+			workflowId: input.workflowId,
+			name: json.name,
+			engine: workflowEngineOf(json),
+			nodeCount,
+		};
 
 		// A workflow this conversation cannot save stays inline and unbound, so the model
 		// learns before it edits a file that a build would reject.
@@ -1915,6 +1926,9 @@ async function handlePublish(
 	for (const id of [input.workflowId, ...supportingWorkflowIds]) {
 		await context.assertInThreadProject?.({ kind: 'workflow', id });
 	}
+	// Before the approval card: the user must not approve a publish that the review rules refuse.
+	const reviewBlock = await findPublishReviewBlock(context, input, supportingWorkflowIds);
+	if (reviewBlock) return reviewBlock;
 	const verification = await resolveUnverifiedPublishDisclosure(context, input.workflowId);
 	const unverifiedDisclosure = verification?.message;
 
@@ -2065,6 +2079,42 @@ async function rollbackPublishedWorkflows(
 	}
 
 	return result;
+}
+
+const REVIEW_BLOCK_GUIDANCE: Record<WorkflowReviewBlockedDetails['reason'], string> = {
+	review_required:
+		'This workflow needs an approved review before it can go live. Tell the user to open it in the editor and use Submit for review. Do not retry the publish.',
+	review_pending:
+		'A review is open for this workflow, so it cannot go live until the review closes. Tell the user. Do not retry the publish.',
+	changes_requested:
+		'A review is open for this workflow and the reviewer requested changes, so it cannot go live until the review closes. Tell the user. Do not retry the publish.',
+};
+
+async function findPublishReviewBlock(
+	context: InstanceAiContext,
+	input: PublishInput,
+	supportingWorkflowIds: string[],
+) {
+	const targets = [
+		{ workflowId: input.workflowId, versionId: input.versionId },
+		...supportingWorkflowIds.map((workflowId) => ({ workflowId, versionId: undefined })),
+	];
+	for (const { workflowId, versionId } of targets) {
+		// A failed check falls through: the publish itself applies the same rules and reports them.
+		const reason = await context.workflowService
+			.getPublishReviewBlock?.(workflowId, versionId)
+			.catch(() => undefined);
+		if (reason) {
+			return {
+				success: false,
+				denied: true,
+				reason,
+				workflowId,
+				guidance: REVIEW_BLOCK_GUIDANCE[reason],
+			};
+		}
+	}
+	return undefined;
 }
 
 function buildPublishFailure(error: unknown, rollback: PublishRollbackResult) {

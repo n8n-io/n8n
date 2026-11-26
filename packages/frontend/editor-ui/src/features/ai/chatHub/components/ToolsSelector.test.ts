@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, getTooltip } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
@@ -97,6 +97,26 @@ describe('ToolsSelector', () => {
 		chatStore.configuredTools = [];
 	});
 
+	it.each([false, true])(
+		'explains a disabled selector without opening its actions, configured tools: %s',
+		async (configured) => {
+			if (configured) chatStore.configuredTools = [createMockToolDto('tool-1', 'My Tool')];
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent({
+				props: { disabled: true, checkedToolIds: [], disabledTooltip: 'Select a model first' },
+			});
+			const button = getByTestId('chat-tools-button');
+			await user.tab();
+			expect(button).toHaveFocus();
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Select a model first'));
+			expect(button).toHaveAccessibleDescription('Select a model first');
+			await user.keyboard('{Enter} ');
+			await user.click(button);
+			expect(document.querySelector('[role="menu"]')).not.toBeInTheDocument();
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		},
+	);
+
 	describe('when no tools are configured', () => {
 		it('should show a button that opens ToolsManagerModal', async () => {
 			const { getByTestId } = renderComponent({
@@ -110,6 +130,21 @@ describe('ToolsSelector', () => {
 
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith(
 				expect.objectContaining({ name: TOOLS_MANAGER_MODAL_KEY }),
+			);
+		});
+
+		it('opens the tools manager above a parent dialog when stacked', async () => {
+			const { getByTestId } = renderComponent({
+				props: { disabled: false, checkedToolIds: [], stacked: true },
+			});
+
+			await userEvent.click(getByTestId('chat-tools-button'));
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: TOOLS_MANAGER_MODAL_KEY,
+					data: expect.objectContaining({ stacked: true }),
+				}),
 			);
 		});
 

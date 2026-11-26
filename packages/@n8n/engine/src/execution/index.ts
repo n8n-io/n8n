@@ -22,6 +22,8 @@ export type {
 	ResumeBinding,
 	ResumeCause,
 	StepSlots,
+	ItemSource,
+	StepOutputSources,
 	StepStatus,
 	SeededSteps,
 	TriggerOutputs,
@@ -33,6 +35,8 @@ export type {
 	ExecutionRecord,
 	ExecutionStore,
 	NewExecutionRecord,
+	PrunableExecution,
+	PrunableExecutionQuery,
 	StaleQueuedExecution,
 } from './execution-store';
 export type {
@@ -50,6 +54,7 @@ export type {
 	NewStepRecord,
 	StaleQueuedStep,
 	StaleRunningStep,
+	StaleSettledStep,
 	StepRecord,
 	StepStore,
 	StepSummary,

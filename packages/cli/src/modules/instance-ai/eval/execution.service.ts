@@ -1212,8 +1212,8 @@ export class EvalExecutionService {
 			globalContext: run.hints.globalContext,
 			logger: this.logger,
 		};
-		const mocks = (async (): Promise<CalledAgentMocks> => ({
-			mcpFetch: createMcpMockFetch({
+		const mocks = (async (): Promise<CalledAgentMocks> => {
+			const mcpFetch = createMcpMockFetch({
 				...mockContext,
 				servers: mcpServers.map(({ name, url, description }) => ({ name, url, description })),
 				knownToolsByServer: await resolveCanonicalMcpCatalogs(
@@ -1230,19 +1230,22 @@ export class EvalExecutionService {
 						requestBody: call.args,
 						mockResponse: call.result,
 					}),
-			}),
-			webSearch: createWebSearchMock({
-				...mockContext,
-				onSearch: (args, result) =>
-					record({
-						url: 'mock://web-search',
-						method: 'POST',
-						nodeType: 'web-search:fallback',
-						requestBody: args,
-						mockResponse: result,
-					}),
-			}),
-		}))();
+			});
+			return {
+				mcpFetch: () => mcpFetch,
+				webSearch: createWebSearchMock({
+					...mockContext,
+					onSearch: (args, result) =>
+						record({
+							url: 'mock://web-search',
+							method: 'POST',
+							nodeType: 'web-search:fallback',
+							requestBody: args,
+							mockResponse: result,
+						}),
+				}),
+			};
+		})();
 		run.mocks.set(key, mocks);
 		return await mocks;
 	}

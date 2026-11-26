@@ -7,8 +7,13 @@ import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
 import { FolderContentService } from '@/services/folder-content.service';
-import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
-import { AgentProjectLookupProxy, FavoriteResourceResolverRegistry } from '@n8n/backend-services';
+import {
+	AgentProjectLookupProxy,
+	ExecutionRetentionService,
+	FavoriteResourceResolverRegistry,
+	WorkflowProjectService,
+	ExecutionDataJsonStore,
+} from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { ServiceAccountProjects } from '@/services/service-account-projects';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
@@ -59,6 +64,10 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
  * executes.
  */
 function setUpContainerForInit() {
+	const executionRetention = mock<ExecutionRetentionService>();
+	const workflowProjects = mock<WorkflowProjectService>();
+	Container.set(ExecutionRetentionService, executionRetention);
+	Container.set(WorkflowProjectService, workflowProjects);
 	Container.set(FolderContentService, mock<FolderContentService>());
 	Container.set(AgentFolderService, mock<AgentFolderService>());
 	Container.set(SandboxSettingsService, mock<SandboxSettingsService>());
@@ -118,6 +127,8 @@ function setUpContainerForInit() {
 	);
 
 	return {
+		executionRetention,
+		workflowProjects,
 		serviceAccountProjects,
 		agentServiceAccountService,
 		registry,
@@ -266,6 +277,21 @@ describe('AgentsModule', () => {
 			await module.init();
 
 			expect(serviceAccountUsageProxy.register).toHaveBeenCalledWith(serviceAccountUsage);
+		});
+
+		it('registers the approval retention and private owner policies', async () => {
+			const { executionRetention, workflowProjects } = setUpContainerForInit();
+
+			await module.init();
+
+			expect(executionRetention.register).toHaveBeenCalledWith(
+				'agent-approvals',
+				expect.any(Function),
+			);
+			expect(workflowProjects.registerPrivateOwner).toHaveBeenCalledWith(
+				'agent-approvals',
+				expect.any(Function),
+			);
 		});
 	});
 });

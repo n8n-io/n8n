@@ -277,6 +277,12 @@ export interface ExportPackageRequest {
 	projectWorkflowIds?: string[];
 	/** With `projectWorkflowIds`, also export these folders and the folders above them. */
 	projectFolderIds?: string[];
+	/**
+	 * Promotions only. Also writes these credentials, without a requirement row, so a project can
+	 * promote a credential that none of its selected workflows uses. Each id must be owned by one
+	 * of `projectIds`: the caller checks it.
+	 */
+	projectCredentialIds?: string[];
 	/** Internal opt-out for callers that cannot import Agents or Agent folders yet. */
 	includeAgents?: boolean;
 	includeVariableValues?: boolean;

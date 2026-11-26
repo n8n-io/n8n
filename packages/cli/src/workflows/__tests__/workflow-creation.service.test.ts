@@ -338,6 +338,20 @@ describe('WorkflowCreationService', () => {
 			expect(options).toEqual({});
 		});
 
+		it.each(['__proto__', 'constructor', 'prototype'])(
+			'rejects the reserved workflow id "%s" before any other work',
+			async (id) => {
+				await expect(
+					workflowCreationService.createWorkflow(mock<User>(), makeWorkflow({ id }), {
+						projectId: 'project-1',
+					}),
+				).rejects.toThrow('Invalid workflow id');
+
+				expect(projectServiceMock.getProjectWithScope).not.toHaveBeenCalled();
+				expect(workflowRepositoryMock.createContent).not.toHaveBeenCalled();
+			},
+		);
+
 		it('should throw BadRequestError for invalid workflow structure', async () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);

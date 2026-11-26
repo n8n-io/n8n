@@ -823,6 +823,24 @@ describe('RoleMappingRuleService', () => {
 		});
 	});
 
+	describe('countByType', () => {
+		it('should count the rules of each type', async () => {
+			roleMappingRuleRepository.count.mockImplementation(async (options) =>
+				options?.where && 'type' in options.where && options.where.type === 'instance' ? 2 : 1,
+			);
+
+			const counts = await service.countByType();
+
+			expect(counts).toEqual({ instance: 2, project: 1 });
+			expect(roleMappingRuleRepository.count).toHaveBeenCalledWith({
+				where: { type: 'instance' },
+			});
+			expect(roleMappingRuleRepository.count).toHaveBeenCalledWith({
+				where: { type: 'project' },
+			});
+		});
+	});
+
 	describe('deleteAllOfType', () => {
 		it('should delete all rules of the given type using the direct repository when no tx is provided', async () => {
 			roleMappingRuleRepository.delete.mockResolvedValue({ affected: 3, raw: {} });

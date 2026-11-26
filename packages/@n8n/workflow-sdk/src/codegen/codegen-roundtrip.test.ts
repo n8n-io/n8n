@@ -95,20 +95,16 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 	}
 }
 
-function loadTestWorkflows(): TestWorkflow[] {
-	const workflows: TestWorkflow[] = [];
-
-	// Load committed workflows first (always available)
-	loadWorkflowsFromDir(COMMITTED_FIXTURES_DIR, workflows);
-
-	// Load downloaded workflows
-	loadWorkflowsFromDir(DOWNLOADED_FIXTURES_DIR, workflows);
-
-	return workflows;
+function loadWorkflows(dir: string): TestWorkflow[] {
+	const loaded: TestWorkflow[] = [];
+	loadWorkflowsFromDir(dir, loaded);
+	return loaded;
 }
 
-// Load workflows at file parse time for individual test generation
-const workflows = loadTestWorkflows();
+// Load workflows at file parse time for individual test generation. The real
+// workflows come from the zip that the Vitest global setup extracts.
+const realWorkflows = loadWorkflows(DOWNLOADED_FIXTURES_DIR);
+const workflows = [...loadWorkflows(COMMITTED_FIXTURES_DIR), ...realWorkflows];
 
 describe('parseWorkflowCode', () => {
 	it('should parse a simple generated workflow back to JSON', () => {
@@ -2623,13 +2619,13 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 		}
 	}, 60_000);
 
-	if (workflows.length === 0) {
-		it('should have fixtures available (run tests again after download)', () => {
-			// This test only runs if no workflows were loaded at parse time
-			// After beforeAll downloads them, re-running tests should work
-			expect(workflows.length).toBeGreaterThan(0);
-		});
-	} else {
+	// The per-workflow tests are generated at collection time. If the zip is not
+	// extracted before collection, they silently do not exist.
+	it('loads the real workflow fixtures before test collection', () => {
+		expect(realWorkflows.length).toBeGreaterThan(0);
+	});
+
+	if (workflows.length > 0) {
 		describe('generateWorkflowCode -> parseWorkflowCode roundtrip', () => {
 			// Helper to check if an object looks like a resource locator
 			const isResourceLocatorLike = (obj: unknown): obj is Record<string, unknown> => {

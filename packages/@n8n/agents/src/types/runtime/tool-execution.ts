@@ -4,7 +4,6 @@ import type { AgentMessageList } from '../../runtime/model/message-list';
 import type { TokenCounter } from '../../runtime/model/model-token-counter';
 import type { AgentEventBus } from '../../runtime/state/event-bus';
 import type { RuntimeTelemetry } from '../../runtime/telemetry/runtime-telemetry';
-import type { RuntimeSkillLoader } from '../../skills/types';
 import type { WorkspaceFilesystem } from '../../workspace/types';
 import type {
 	AgentExecutionCounter,
@@ -14,6 +13,7 @@ import type {
 	PendingToolCall,
 	ToolSuspendOptions,
 	ToolApprovalContext,
+	ToolCallInterceptor,
 } from '../index';
 import type { AgentPersistenceOptions, ToolResultEntry } from '../sdk/agent';
 import type { AgentMessage } from '../sdk/message';
@@ -144,7 +144,6 @@ export interface ProcessToolCallParams extends ToolCallIdentity {
 }
 
 export interface ToolCallExecutorDeps {
-	loadSkill?: RuntimeSkillLoader;
 	telemetry: RuntimeTelemetry;
 	eventBus: AgentEventBus;
 	/** Effective tool-call concurrency (default 1 = sequential). */
@@ -153,4 +152,5 @@ export interface ToolCallExecutorDeps {
 	onCancelled: () => void;
 	tokenCounter: TokenCounter;
 	workspaceFilesystem?: WorkspaceFilesystem;
+	toolCallInterceptor?: ToolCallInterceptor;
 }

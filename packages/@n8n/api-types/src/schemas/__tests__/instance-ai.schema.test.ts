@@ -228,6 +228,112 @@ describe('instanceAiEventSchema', () => {
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
 	});
 
+	describe('workflow-draft events', () => {
+		const draftEvent = {
+			type: 'workflow-draft',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				filePath: 'src/workflows/demo.workflow.ts',
+				workflowId: 'wf-1',
+				revision: 2,
+				workflow: {
+					name: 'Demo',
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+					},
+				},
+			},
+		};
+
+		it('parses a draft of a bound workflow', () => {
+			expect(instanceAiEventSchema.parse(draftEvent)).toEqual(draftEvent);
+		});
+
+		it('parses a draft without a workflow id', () => {
+			const { workflowId: _workflowId, ...payload } = draftEvent.payload;
+			const event = { ...draftEvent, payload };
+
+			expect(instanceAiEventSchema.parse(event)).toEqual(event);
+		});
+
+		it('keeps the node groups of a draft', () => {
+			const nodeGroups = [
+				{ id: 'g-1', name: 'Intake', nodeIds: ['node-1'], description: 'Reads leads' },
+			];
+			const event = {
+				...draftEvent,
+				payload: {
+					...draftEvent.payload,
+					workflow: { ...draftEvent.payload.workflow, nodeGroups },
+				},
+			};
+
+			const parsed = instanceAiEventSchema.parse(event);
+
+			expect(parsed.type === 'workflow-draft' && parsed.payload.workflow.nodeGroups).toEqual(
+				nodeGroups,
+			);
+		});
+
+		it('rejects a draft without a file path', () => {
+			const { filePath: _filePath, ...payload } = draftEvent.payload;
+
+			expect(instanceAiEventSchema.safeParse({ ...draftEvent, payload }).success).toBe(false);
+		});
+
+		it('is ephemeral, so drafts are never persisted or replayed', () => {
+			expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('workflow-draft')).toBe(true);
+		});
+	});
+
+	describe('workflow-draft-issues events', () => {
+		const issuesEvent = {
+			type: 'workflow-draft-issues',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				filePath: 'src/workflows/demo.workflow.ts',
+				revision: 2,
+				issues: [
+					{ code: 'SET_INVALID_ASSIGNMENT', message: 'Bad assignment', nodeName: 'Set' },
+					{ code: 'GROUP_DROPPED_OVER_CEILING', message: 'Too many groups' },
+				],
+			},
+		};
+
+		it('parses issues with and without a node name', () => {
+			expect(instanceAiEventSchema.parse(issuesEvent)).toEqual(issuesEvent);
+		});
+
+		it('rejects issues without a file path', () => {
+			const { filePath: _filePath, ...payload } = issuesEvent.payload;
+
+			expect(instanceAiEventSchema.safeParse({ ...issuesEvent, payload }).success).toBe(false);
+		});
+
+		it('rejects more than 50 issues', () => {
+			const issues = Array.from({ length: 51 }, () => issuesEvent.payload.issues[0]);
+			const event = { ...issuesEvent, payload: { ...issuesEvent.payload, issues } };
+
+			expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
+		});
+
+		it('is ephemeral, so issues are never persisted or replayed', () => {
+			expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('workflow-draft-issues')).toBe(true);
+		});
+	});
+
 	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
 	});
@@ -294,6 +400,11 @@ describe('instanceAiEventSchema', () => {
 		// A live-only frame would leave the plus menu blank for every turn a client
 		// missed, and a week-old thread could never answer the question at all.
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('preferences-applied')).toBe(false);
+	});
+
+	it('keeps cloud-browser-window-changed durable, so a reconnect still moves the live view', () => {
+		// A live-only frame missed during a reconnect would leave the live view on the old window.
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('cloud-browser-window-changed')).toBe(false);
 	});
 
 	it('drops malformed or unknown-kind items individually instead of failing the event', () => {
@@ -928,7 +1039,7 @@ describe('domain-access grant keys', () => {
 describe('instanceAiEvalSeedAgentSchema resource references', () => {
 	const config = {
 		name: 'Support Triage',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Triage inbound tickets.',
 	};
 	const agent = (over: Record<string, unknown> = {}) => ({

@@ -7,15 +7,19 @@ import type {
 	TestRun,
 	User,
 } from '@n8n/db';
-import type { Mocked } from 'vitest';
+import type { Mocked, MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Telemetry } from '@/telemetry';
 
 import { DETERMINISTIC_MODEL_TAG, EvalInsightsService } from '../eval-insights.service';
 import type { InsightsContextBuilder } from '../insights-context-builder';
 import type { InsightsModelResolver } from '../insights-model-resolver';
+
+vi.mock('@/permissions.ee/check-access');
+const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
 
 // Stub the @n8n/agents SDK: the fluent builder is a no-op and `generate` is a
 // controllable mock so tests drive the model's (in)valid structured output.
@@ -103,6 +107,8 @@ describe('EvalInsightsService', () => {
 		contextBuilder = mock<InsightsContextBuilder>();
 
 		licenseState.isAiAssistantLicensed.mockReturnValue(true);
+		userHasScopesMock.mockReset();
+		userHasScopesMock.mockResolvedValue(true);
 		// Default: no judge model configured → deterministic path. LLM-path tests
 		// override this.
 		modelResolver.resolve.mockResolvedValue(null);
@@ -129,8 +135,8 @@ describe('EvalInsightsService', () => {
 
 	describe('LLM path', () => {
 		const resolvedModel = {
-			modelConfig: { id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-test' },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelConfig: { id: 'anthropic/claude-sonnet-5-5', apiKey: 'sk-test' },
+			modelId: 'anthropic/claude-sonnet-5-5',
 		};
 
 		function seedTwoScoredRuns() {
@@ -175,7 +181,7 @@ describe('EvalInsightsService', () => {
 			const result = await service.generateInsights(user, 'wf-1', 'col-1');
 
 			expect(result.status).toBe('ok');
-			expect(result.modelUsed).toBe('anthropic/claude-sonnet-4-5');
+			expect(result.modelUsed).toBe('anthropic/claude-sonnet-5-5');
 			expect(result.insights.winner).toEqual(validPayload.winner);
 			expect(result.insights.suggestedNext).toEqual(validPayload.suggestedNext);
 			// Regression kept, but `delta` overwritten from context (40 − 100 = −60).
@@ -329,6 +335,36 @@ describe('EvalInsightsService', () => {
 		});
 	});
 
+	describe('execution:read gating', () => {
+		it('returns 404 without loading the collection when the user lacks execution:read', async () => {
+			userHasScopesMock.mockResolvedValueOnce(false);
+
+			await expect(service.generateInsights(user, 'wf-1', 'col-1')).rejects.toThrow(NotFoundError);
+
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['execution:read'], false, {
+				workflowId: 'wf-1',
+			});
+			expect(collectionRepo.getDetailByIdAndWorkflowId).not.toHaveBeenCalled();
+		});
+
+		it('does not serve a cached envelope to a user without execution:read', async () => {
+			userHasScopesMock.mockResolvedValueOnce(false);
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValue({
+				collection: makeCollection({
+					insightsCache: {
+						generatedAt: new Date().toISOString(),
+						modelUsed: 'm',
+						status: 'ok',
+						insights: validPayload,
+					},
+				}),
+				runs: [],
+			});
+
+			await expect(service.generateInsights(user, 'wf-1', 'col-1')).rejects.toThrow(NotFoundError);
+		});
+	});
+
 	describe('collection lookup', () => {
 		it('returns 404 when the collection does not exist on the workflow', async () => {
 			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce(null);
@@ -423,8 +459,8 @@ describe('EvalInsightsService', () => {
 				},
 			};
 			modelResolver.resolve.mockResolvedValueOnce({
-				modelConfig: { id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-test' },
-				modelId: 'anthropic/claude-sonnet-4-5',
+				modelConfig: { id: 'anthropic/claude-sonnet-5-5', apiKey: 'sk-test' },
+				modelId: 'anthropic/claude-sonnet-5-5',
 			});
 			contextBuilder.build.mockResolvedValue({
 				collectionName: 'My collection',

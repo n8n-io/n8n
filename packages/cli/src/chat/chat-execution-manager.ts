@@ -1,4 +1,3 @@
-import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse, Project } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ExecuteContext, isEngineRequest } from 'n8n-core';
@@ -18,6 +17,7 @@ import {
 } from 'n8n-workflow';
 
 import { NotFoundError, UnexpectedError } from '@n8n/errors';
+import { ExecutionCancelService } from '../executions/execution-cancel.service';
 import { ExecutionPersistence } from '../executions/execution-persistence';
 import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
 import { preserveInputOverride } from '../workflow-helpers';
@@ -34,7 +34,7 @@ const CHAT_CANCELABLE_STATUSES: readonly ExecutionStatus[] = ['running', 'waitin
 @Service()
 export class ChatExecutionManager {
 	constructor(
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionCancelService: ExecutionCancelService,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly ownershipService: OwnershipService,
@@ -73,7 +73,7 @@ export class ChatExecutionManager {
 
 		if (!this.isChatDrivenExecution(execution)) return;
 
-		await this.executionRepository.markAsCanceled([executionId], CHAT_CANCELABLE_STATUSES);
+		await this.executionCancelService.markAsCanceled([executionId], CHAT_CANCELABLE_STATUSES);
 	}
 
 	async findExecution(executionId: string) {

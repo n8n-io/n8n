@@ -6,7 +6,11 @@ import { UnexpectedError } from '../common';
  * they write the result in the `stale_after` column of the row.
  */
 export interface StalenessThresholds {
-	/** For an execution or a step that is `queued`. */
+	/**
+	 * For a row whose message waits on a queue: an execution or a step that is
+	 * `queued`, and a settled step whose `step:settled` message the orchestration
+	 * worker has not handled.
+	 */
 	queuedMs: number;
 	/**
 	 * For a step that is `running`. The engine fails a step that runs longer, so
@@ -21,6 +25,11 @@ export const DEFAULT_STALENESS_THRESHOLDS: StalenessThresholds = {
 	// it cannot tell a slow node from a stopped worker. A low value fails healthy nodes.
 	runningStepMs: 600_000,
 };
+
+/** Advance past the observed deadline so it cannot match a second renewal. */
+export function nextQueuedStaleAfter(observed: Date, now: number, queuedMs: number): Date {
+	return new Date(Math.max(now + queuedMs, observed.getTime() + 1));
+}
 
 /** Throws when a threshold is not a positive whole number of milliseconds. */
 export function assertValidStalenessThresholds(thresholds: StalenessThresholds): void {

@@ -64,6 +64,9 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_PUBLISH_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
+	DUPLICATE_MODAL_KEY,
 	ABOUT_MODAL_KEY,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 	HUMAN_IN_THE_LOOP_CATEGORY,
@@ -101,6 +104,8 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
+import { EngineV2CompatibilityButton } from '@n8n/frontend-module-engine-v2';
+import { useWorkflowEngineV2Compatibility } from '@/app/composables/useWorkflowEngineV2Compatibility';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@n8n/stores/users.store';
 
@@ -146,6 +151,8 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useSourceControlPullReload } from './useSourceControlPullReload';
@@ -209,6 +216,7 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowExecutionState = computed(() =>
 	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
 );
+const { reasons: engineV2Reasons } = useWorkflowEngineV2Compatibility();
 const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
@@ -309,6 +317,19 @@ const hideCanvasControls = computed(() => {
 const stripedCanvasBackground = computed(() => route.query.canvasBackground !== 'dots');
 
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
+
+// The demo route is a read-only preview that opens none of these modals.
+usePrefetchModals(
+	[
+		WORKFLOW_PUBLISH_MODAL_KEY,
+		CREDENTIAL_EDIT_MODAL_KEY,
+		WORKFLOW_SETTINGS_MODAL_KEY,
+		WORKFLOW_SHARE_MODAL_KEY,
+		DUPLICATE_MODAL_KEY,
+	],
+	{ enabled: () => !isDemoRoute.value },
+);
+
 const isCanvasOnlyLogoVisible = computed(() => settingsStore.isCanvasOnly && !isDemoRoute.value);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
@@ -2273,6 +2294,14 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
+			<!-- An editable canvas shows the button above the node creator's toolbar instead. -->
+			<div
+				v-if="isCanvasReadOnly && engineV2Reasons.length > 0"
+				:class="$style.canvasTopRightContainer"
+			>
+				<EngineV2CompatibilityButton :reasons="engineV2Reasons" :class="$style.canvasTopRight" />
+			</div>
+
 			<N8nCanvasCollaborationPill
 				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentTabWriter"
 				:class="$style.canvasCenterPill"
@@ -2299,7 +2328,14 @@ onBeforeUnmount(() => {
 					@add-nodes="onAddNodesAndConnections"
 					@add-empty-group="onAddEmptyGroup"
 					@close="onNodeCreatorClose"
-				/>
+				>
+					<template #above-toolbar>
+						<EngineV2CompatibilityButton
+							v-if="engineV2Reasons.length > 0"
+							:reasons="engineV2Reasons"
+						/>
+					</template>
+				</LazyNodeCreation>
 			</Suspense>
 			<Suspense>
 				<LazyNodeDetailsView
@@ -2404,6 +2440,18 @@ onBeforeUnmount(() => {
 	bottom: 16px;
 	left: 50%;
 	transform: translateX(-50%);
+}
+
+.canvasTopRightContainer {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.canvasTopRight {
+	position: absolute;
+	top: var(--spacing--sm);
+	right: var(--spacing--sm);
 }
 
 .canvasCenterPill {

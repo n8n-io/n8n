@@ -79,10 +79,7 @@ interface IApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
-	endpoints_by_client: {
-		editor_ui: Record<string, number>;
-		n8n_node: Record<string, number>;
-	};
+	endpoints_by_client: Record<Exclude<PublicApiClient, 'other'>, Record<string, number>>;
 	routes: IApiRouteCalls[];
 	user_agents: Record<string, number>;
 	clients: Record<PublicApiClient, number>;
@@ -98,7 +95,8 @@ export class Telemetry implements TelemetryTracker {
 
 	private userCloudId?: string;
 
-	private executionCountsBuffer: IExecutionsBuffer = {};
+	// No prototype, so every workflow id is an own key.
+	private executionCountsBuffer: IExecutionsBuffer = Object.create(null);
 
 	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
 
@@ -241,7 +239,7 @@ export class Telemetry implements TelemetryTracker {
 			branchName: sourceControlPreferences.branchName,
 			read_only_instance: sourceControlPreferences.branchReadOnly,
 			team_projects: (await Container.get(ProjectRepository).getProjectCounts()).team,
-			project_role_count: await Container.get(ProjectRelationRepository).countUsersByRole(),
+			project_role_count: await Container.get(ProjectRelationRepository).countPeopleByRole(),
 			...summarizeFootprint(await Container.get(InstanceRegistryProxyService).getAllInstances()),
 		};
 
@@ -289,7 +287,7 @@ export class Telemetry implements TelemetryTracker {
 			});
 		}
 
-		this.executionCountsBuffer = {};
+		this.executionCountsBuffer = Object.create(null);
 	}
 
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
@@ -366,10 +364,10 @@ export class Telemetry implements TelemetryTracker {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
-			endpoints_by_client: { editor_ui: {}, n8n_node: {} },
+			endpoints_by_client: { editor_ui: {}, n8n_node: {}, n8n_cli: {} },
 			routes: [],
 			user_agents: {},
-			clients: { editor_ui: 0, n8n_node: 0, other: 0 },
+			clients: { editor_ui: 0, n8n_node: 0, n8n_cli: 0, other: 0 },
 		});
 		entry.total_calls++;
 		entry.clients[client]++;
@@ -456,7 +454,7 @@ export class Telemetry implements TelemetryTracker {
 			this.postHog.groupIdentify({
 				distinctId: `${instanceId}#${postHog.userId}`,
 				instanceId,
-				properties: postHog.traits,
+				properties: this.withInstallId(postHog.traits),
 			});
 		}
 
@@ -464,7 +462,7 @@ export class Telemetry implements TelemetryTracker {
 			this.rudderStack.group({
 				groupId: instanceId,
 				userId: userId ? `${instanceId}#${userId}` : instanceId, // Rudderstack requires a userId for group calls, using instanceId as fallback
-				traits,
+				traits: this.withInstallId(traits),
 				context: {
 					ip: '0.0.0.0',
 				},
@@ -476,13 +474,13 @@ export class Telemetry implements TelemetryTracker {
 		traits?: { [key: string]: string | number | boolean | object | undefined | null },
 		userId?: string,
 	): void {
-		const { instanceId } = this.instanceSettings;
+		const { instanceId, installId } = this.instanceSettings;
 		if (!instanceId) return;
 
 		if (this.rudderStack) {
 			this.rudderStack.identify({
 				userId: userId ? `${instanceId}#${userId}` : instanceId, // If no userId provided, falling back to instanceId for cross-compatibility
-				traits: { ...traits, instanceId },
+				traits: { ...traits, instanceId, ...(installId && { installId }) },
 				context: {
 					ip: '0.0.0.0',
 				},
@@ -495,6 +493,14 @@ export class Telemetry implements TelemetryTracker {
 				properties: traits,
 			});
 		}
+	}
+
+	/** Instance group traits with the install ID added, when there are traits to send. */
+	private withInstallId(
+		traits: Record<string, string | number> | undefined,
+	): Record<string, string | number> | undefined {
+		const { installId } = this.instanceSettings;
+		return traits && { ...traits, ...(installId && { install_id: installId }) };
 	}
 
 	setUserCloudId(userCloudId?: string) {
@@ -515,13 +521,14 @@ export class Telemetry implements TelemetryTracker {
 			return;
 		}
 
-		const { instanceId } = this.instanceSettings;
+		const { instanceId, installId } = this.instanceSettings;
 		const { user_id } = properties;
 		const updatedProperties = {
 			...(eventName === USER_CALLED_MCP_TOOL_EVENT
 				? redactTelemetryProperties(properties)
 				: properties),
 			instance_id: instanceId,
+			...(installId && { install_id: installId }),
 			user_id: user_id ?? undefined,
 			version_cli: N8N_VERSION,
 		};

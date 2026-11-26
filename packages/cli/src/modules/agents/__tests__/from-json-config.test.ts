@@ -65,7 +65,7 @@ describe('buildFromJson()', () => {
 
 	const makeConfig = (overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig => ({
 		name: 'test-agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		credential: 'my-anthropic-key',
 		instructions: 'You are a test agent.',
 		...overrides,
@@ -210,7 +210,7 @@ describe('buildFromJson()', () => {
 
 	it('sets name, model, and instructions', async () => {
 		const agent = await buildFromJson(
-			makeConfig(),
+			makeConfig({ name: 'Prodigy' }),
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
@@ -220,10 +220,11 @@ describe('buildFromJson()', () => {
 		);
 		const snap: AgentSnapshot = agent.snapshot;
 
-		expect(snap.name).toBe('test-agent');
+		expect(snap.name).toBe('Prodigy');
 		expect(snap.model.provider).toBe('anthropic');
-		expect(snap.model.name).toBe('claude-sonnet-4-5');
-		expect(snap.instructions).toBe('You are a test agent.');
+		expect(snap.model.name).toBe('claude-sonnet-5-5');
+		// AGENT-1663: The agent needs its name even if the authored instructions omit it.
+		expect(snap.instructions).toBe('Your name is "Prodigy".\n\nYou are a test agent.');
 	});
 
 	it('appends the self-modification policy only for the preview chat', async () => {
@@ -242,12 +243,12 @@ describe('buildFromJson()', () => {
 			).snapshot.instructions ?? '';
 
 		const preview = await build(true);
-		expect(preview).toContain('You are a test agent.');
+		expect(preview).toContain('Your name is "test-agent".\n\nYou are a test agent.');
 		expect(preview).toContain('Preview chat policy');
 		expect(preview).toContain('including your own setup, only through your tools');
 		expect(preview).not.toContain('you have no tool that can');
-		expect(await build(false)).toBe('You are a test agent.');
-		expect(await build()).toBe('You are a test agent.');
+		expect(await build(false)).not.toContain('Preview chat policy');
+		expect(await build()).not.toContain('Preview chat policy');
 	});
 
 	it('handles multi-slash model string for aggregator providers', async () => {
@@ -270,7 +271,7 @@ describe('buildFromJson()', () => {
 
 	it('handles single-part model string (no slash)', async () => {
 		const agent = await buildFromJson(
-			makeConfig({ model: 'claude-sonnet-4-5' }),
+			makeConfig({ model: 'claude-sonnet-5-5' }),
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
@@ -281,7 +282,7 @@ describe('buildFromJson()', () => {
 
 		const snap: AgentSnapshot = agent.snapshot;
 		expect(snap.model.provider).toBeNull();
-		expect(snap.model.name).toBe('claude-sonnet-4-5');
+		expect(snap.model.name).toBe('claude-sonnet-5-5');
 	});
 
 	it('executes a custom tool handler and message transform', async () => {
@@ -349,7 +350,7 @@ describe('buildFromJson()', () => {
 		);
 
 		const instructions = agent.snapshot.instructions ?? '';
-		expect(instructions).toBe('You are a test agent.');
+		expect(instructions).toContain('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'agent-context')).toBe(false);
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
@@ -405,9 +406,10 @@ describe('buildFromJson()', () => {
 						allowedTools: ['load_workflow'],
 						references: [
 							{
-								path: 'references/guide.md',
+								path: 'reference/degraded/guide.md',
 								content: '# Guide',
 							},
+							{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
 						],
 					},
 					unused_skill: {
@@ -432,19 +434,31 @@ describe('buildFromJson()', () => {
 		const loadedText = (loaded.value ?? []).map((part) => part.text).join('\n');
 		expect(loadedText).toContain('[Skill: "Summarize notes"]');
 		expect(loadedText).toContain('Extract decisions and action items.');
-		expect(loadedText).toContain('filePath: "references/guide.md"');
+		expect(loadedText).toContain('filePath: "reference/degraded/guide.md"');
 
 		await expect(
-			loadSkill!.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),
+			loadSkill!.handler?.(
+				{ skillId: 'summarize_notes', filePath: './reference/degraded/guide.md' },
+				{},
+			),
 		).resolves.toMatchObject({
 			ok: true,
 			success: true,
 			skillId: 'summarize_notes',
-			filePath: 'references/guide.md',
+			filePath: 'reference/degraded/guide.md',
 			content: '# Guide',
 			bytes: 7,
 			sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
 		});
+
+		// An agent never gets a binary file: it is not a linked file of the skill.
+		expect(loadedText).not.toContain('assets/logo.png');
+		const binary = await loadSkill!.handler?.(
+			{ skillId: 'summarize_notes', filePath: 'assets/logo.png' },
+			{},
+		);
+		expect(binary).toMatchObject({ success: false, errorCode: 'invalid_reference' });
+		expect(JSON.stringify(binary)).not.toContain('AP8=');
 
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
 			ok: false,
@@ -718,9 +732,9 @@ describe('buildFromJson()', () => {
 	});
 
 	it.each([
-		'anthropic/claude-sonnet-4-5',
-		'openrouter/anthropic/claude-sonnet-4.5',
-		'google-vertex/claude-sonnet-4-5',
+		'anthropic/claude-sonnet-5-5',
+		'openrouter/anthropic/claude-sonnet-5.5',
+		'google-vertex/claude-sonnet-5-5',
 	])('preserves the saved cache TTL for %s', async (model) => {
 		const config = makeConfig({
 			model,
@@ -762,9 +776,9 @@ describe('buildFromJson()', () => {
 
 	it.each([
 		'openai/gpt-5',
-		'anthropic/claude-sonnet-4-5',
-		'openrouter/anthropic/claude-sonnet-4.5',
-		'google-vertex/claude-sonnet-4-5',
+		'anthropic/claude-sonnet-5-5',
+		'openrouter/anthropic/claude-sonnet-5.5',
+		'google-vertex/claude-sonnet-5-5',
 	])('preserves disabled caching for %s', async (model) => {
 		const config = makeConfig({
 			model,
@@ -788,7 +802,7 @@ describe('buildFromJson()', () => {
 	// Inline agents have no `config` block, so an inline OpenAI agent sends no cache fields.
 	it.each([
 		'openai/gpt-5',
-		'anthropic/claude-sonnet-4-5',
+		'anthropic/claude-sonnet-5-5',
 		'openrouter/openai/gpt-5',
 		'google-vertex/gemini-2.5-pro',
 	])('keeps the runtime cache default for %s when config is omitted', async (model) => {
@@ -807,7 +821,7 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.promptCaching).toBeNull();
 	});
 
-	it.each(['openrouter/anthropic/claude-sonnet-4.5', 'google-vertex/claude-sonnet-4-5'])(
+	it.each(['openrouter/anthropic/claude-sonnet-5.5', 'google-vertex/claude-sonnet-5-5'])(
 		'enables caching for an existing %s agent without a config update',
 		async (model) => {
 			const config = makeConfig({ model });
@@ -870,7 +884,7 @@ describe('buildFromJson()', () => {
 	});
 
 	it.each([
-		['anthropic/claude-sonnet-4-5', 'anthropic.web_search_20250305'],
+		['anthropic/claude-sonnet-5-5', 'anthropic.web_search_20250305'],
 		['openai/gpt-4o', 'openai.web_search'],
 	])('enables native web search when explicitly enabled for %s', async (model, expectedTool) => {
 		const agent = await buildFromJson(
@@ -884,6 +898,77 @@ describe('buildFromJson()', () => {
 		);
 
 		expect(getProviderToolNames(agent)).toContain(expectedTool);
+	});
+
+	it('leaves out provider tools and attaches the fallback search when they are disabled', async () => {
+		const fallbackWebSearch = vi.fn().mockResolvedValue({ results: [] });
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'anthropic/claude-sonnet-4-5',
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 3 } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				fallbackWebSearch,
+				disableProviderTools: true,
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toEqual([]);
+		const webSearch = agent.declaredTools.find((tool) => tool.name === 'web_search');
+		expect(webSearch).toBeDefined();
+
+		// Calls go to the caller's handler with the parsed query and the run's abort signal.
+		const controller = new AbortController();
+		await webSearch!.handler!({ query: 'n8n', maxResults: 3 }, {
+			abortSignal: controller.signal,
+		} as never);
+		expect(fallbackWebSearch).toHaveBeenCalledWith(
+			{ query: 'n8n', maxResults: 3 },
+			{ signal: controller.signal },
+		);
+	});
+
+	it('attaches no live web search when provider tools are disabled without a handler', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'anthropic/claude-sonnet-4-5',
+				config: { webSearch: { enabled: true, provider: 'brave', credential: 'cred-1' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				disableProviderTools: true,
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toEqual([]);
+		expect(agent.declaredTools.map((tool) => tool.name)).not.toContain('web_search');
+	});
+
+	it('keeps native web search when an eval only replaces the fallback search', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'anthropic/claude-sonnet-4-5',
+				config: { webSearch: { enabled: true } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				fallbackWebSearch: vi.fn(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toContain('anthropic.web_search_20250305');
+		expect(agent.declaredTools.map((tool) => tool.name)).not.toContain('web_search');
 	});
 
 	it('rejects native web search config for unsupported providers without fallback settings', async () => {
@@ -1389,7 +1474,7 @@ describe('buildFromJson()', () => {
 						credential: 'observer-key',
 					},
 					reflectorModel: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						credential: 'reflector-key',
 					},
 				},
@@ -1423,7 +1508,7 @@ describe('buildFromJson()', () => {
 			location: 'europe-west4',
 		});
 		expect(reflectSpy).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-4-5',
+			id: 'anthropic/claude-sonnet-5-5',
 			apiKey: 'reflector-key-api-key',
 			baseURL: 'https://reflector-key.example/v1',
 		});
@@ -1586,7 +1671,7 @@ describe('buildFromJson()', () => {
 					enabled: true,
 					credential: 'embedding-key',
 					reflectorModel: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						credential: 'episodic-reflector-key',
 					},
 				},
@@ -1604,7 +1689,7 @@ describe('buildFromJson()', () => {
 		);
 
 		expect(consolidateSpy).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-4-5',
+			id: 'anthropic/claude-sonnet-5-5',
 			apiKey: 'episodic-reflector-key-api-key',
 			baseURL: 'https://episodic-reflector-key.example/v1',
 		});
@@ -2157,7 +2242,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('parses a minimal valid config', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: 'Be helpful.',
 		};
@@ -2226,7 +2311,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects model with trailing slash', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5/',
+			model: 'anthropic/claude-sonnet-5-5/',
 			credential: 'my-key',
 			instructions: 'Be helpful.',
 		};
@@ -2236,7 +2321,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects model with leading slash in model segment', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic//claude-sonnet-4-5',
+			model: 'anthropic//claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: 'Be helpful.',
 		};
@@ -2246,7 +2331,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects empty name', () => {
 		const config = {
 			name: '',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 		};
@@ -2256,7 +2341,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects name longer than 128 chars', () => {
 		const config = {
 			name: 'a'.repeat(129),
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 		};
@@ -2266,7 +2351,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('parses custom tool ref with valid id', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			tools: [{ type: 'custom', id: 'my_tool_1' }],
@@ -2278,7 +2363,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects inputSchema on node tool configs', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			tools: [
@@ -2308,7 +2393,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects id on node tool configs', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			tools: [
@@ -2334,7 +2419,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects id on workflow tool configs', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are helpful',
 			tools: [{ type: 'workflow', id: 'tool-ref-1', workflow: 'Send Welcome Email' }],
 		};
@@ -2345,7 +2430,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects custom tool ref with invalid id characters', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			tools: [{ type: 'custom', id: 'tool id' }],
@@ -2356,7 +2441,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('parses an integrations array containing chat triggers', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
@@ -2376,7 +2461,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('validates Telegram private integration settings', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
@@ -2405,7 +2490,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects Telegram private integration settings without valid user IDs', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
@@ -2423,7 +2508,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects Telegram integration settings with entries containing invalid characters', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
@@ -2441,7 +2526,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('parses an integrations array containing chat triggers', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
@@ -2461,7 +2546,7 @@ describe('AgentJsonConfigSchema', () => {
 	describe('mcpServers', () => {
 		const base = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: 'Be helpful.',
 		};

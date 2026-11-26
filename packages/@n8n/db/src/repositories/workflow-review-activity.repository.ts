@@ -35,6 +35,7 @@ export type WorkflowReviewActivityPayload =
 	  }
 	| { type: 'review.version_updated'; data: WorkflowReviewVersionUpdatedActivityData }
 	| { type: 'review.closed'; data: WorkflowReviewClosedActivityData }
+	| { type: 'review.closed_by_user'; data: null }
 	| {
 			type: WorkflowReviewWorkflowCauseActivityType;
 			data: WorkflowReviewWorkflowCauseActivityData;

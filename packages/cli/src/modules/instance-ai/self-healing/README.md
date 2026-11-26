@@ -36,6 +36,7 @@ Supply `projectId`, `workflowId`, and the original failed `executionId`.
 The producer selects the project configuration and checks the enabling user’s current access.
 A selected-workflow configuration takes precedence over all-workflow coverage, even when paused.
 The call returns `null` when no enabled configuration authorizes the investigation.
+On Cloud, it returns `null` when the PostHog instance flag is off. See [Availability](#availability).
 It also returns `null` for a new failure during a Could not fix cooldown. See [Investigate again](#investigate-again).
 It captures the baseline with `WorkflowSuggestionService.captureBaseline()`.
 The run keeps the captured baseline in memory. The investigation stores only the published version
@@ -74,6 +75,9 @@ It checks current access before it reads and compiles the candidate against the 
 The workflow ID selects the baseline. The run tries to admit a workflow that is not a target yet.
 A workflow that the run cannot admit fails validation. The error gives the reason.
 The file must declare the same workflow ID. Otherwise, validation fails with `candidate_workflow_mismatch`.
+The candidate keeps the settings of the baseline, so it runs on the engine of the baseline.
+Validation checks the candidate for that engine. When the file sets another `engineType`,
+validation fails with `candidate_engine_changed`.
 With `validationOnly: true`, it returns structural checks without execution.
 For execution checks, the agent selects the failed trigger and supplies its test input.
 The tool passes these options to the existing verification runner. Each call tests one trigger.
@@ -442,6 +446,19 @@ and load review routes. The flag defaults to `false`. Restart n8n after changing
 The `instance-ai` module must be loaded. Entities and migrations do not depend on this rollout flag.
 Saved review services do not require Assistant model availability. Recovery of existing
 investigations remains available when the flag is off.
+
+Self-healing is off on self-hosted Enterprise instances even when the environment variable is on.
+Every Cloud plan requires both `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` and the PostHog
+instance flag `150_self_healing`.
+`SelfHealingConfigurationService.isEnabled()` gives the combined decision.
+The editor gets the PostHog flag with its other feature flags and applies the same rule.
+The editor reads the PostHog flag at page load only.
+Self-hosted instances have no PostHog flag.
+When self-hosted Enterprise is blocked, the PostHog flag is off, or PostHog gives no answer on
+Cloud, no new investigation starts and the editor hides the self-healing setup.
+`GET /self-healing/status` then returns `enabled: false` and no `setupProjectId`, so the Inbox
+does not offer the setup. Investigations in progress finish, and results stay available for review.
+PostHog decisions are cached for 10 minutes. A change needs no restart.
 
 The shared Inbox reads result rows through `SelfHealingResultService.listForInbox()`.
 It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership of every

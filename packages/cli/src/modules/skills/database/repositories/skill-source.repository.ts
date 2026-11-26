@@ -6,14 +6,26 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { UnexpectedError } from '@n8n/errors';
-import { DataSource, In, IsNull, LessThan, LessThanOrEqual, Not, Or } from '@n8n/typeorm';
+import {
+	DataSource,
+	Equal,
+	In,
+	IsNull,
+	LessThan,
+	LessThanOrEqual,
+	Like,
+	Not,
+	Or,
+} from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import {
 	SkillSourceConnection,
 	type OpaqueSourceValue,
 	type SkillSourceType,
+	type UnlinkedSkill,
 } from '../entities/skill-source-connection.entity';
 import { SkillSourceLink, type SkillSourceLinkState } from '../entities/skill-source-link.entity';
 
@@ -29,8 +41,8 @@ class SkillSourceLinkTable extends BaseRepository<SkillSourceLink> {
 	}
 }
 
-/** A source with the same identity in some scope, for the duplicate rules. */
-export type SameSource = Pick<SkillSourceConnection, 'id' | 'projectId'>;
+/** A source in one repository, including its saved discovery root. */
+export type SameSource = Pick<SkillSourceConnection, 'id' | 'projectId' | 'locator'>;
 
 /** The source of a synced skill, and where the skill is in it. */
 export type SyncedFromRow = Pick<
@@ -87,16 +99,23 @@ export class SkillSourceRepository {
 
 	private readonly links: SkillSourceLinkTable;
 
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		private readonly transactionRunner: TransactionRunner,
+	) {
 		this.sources = new SkillSourceTable(dataSource, transactionRunner);
 		this.links = new SkillSourceLinkTable(dataSource, transactionRunner);
 	}
 
-	/** Every source with this identity, in any scope. */
-	async findSameSources(identityKey: string, ctx: OperationContext = {}): Promise<SameSource[]> {
+	/** Includes legacy repository keys and folder keys, without rewriting existing sources. */
+	async findSourcesInRepository(
+		repositoryKey: string,
+		folderKeyPrefix: string,
+		ctx: OperationContext = {},
+	): Promise<SameSource[]> {
 		return await this.sources.managerFor(ctx).find(SkillSourceConnection, {
-			select: ['id', 'projectId'],
-			where: { identityKey },
+			select: ['id', 'projectId', 'locator'],
+			where: { identityKey: Or(Equal(repositoryKey), Like(`${folderKeyPrefix}%`)) },
 		});
 	}
 
@@ -168,6 +187,60 @@ export class SkillSourceRepository {
 		return await this.sources.managerFor(ctx).findOneBy(SkillSourceConnection, { id });
 	}
 
+	/** Stores a complete discovery only while its source snapshot still holds. */
+	async storeUnlinkedSkills(
+		source: SkillSourceConnection,
+		skills: UnlinkedSkill[],
+	): Promise<boolean> {
+		return await this.transactionRunner.run({}, async (ctx) => {
+			const current = await this.findForDelete(source.id, ctx);
+			if (
+				!current ||
+				current.probeCursor !== source.probeCursor ||
+				current.credentialId !== source.credentialId ||
+				current.projectId !== source.projectId ||
+				JSON.stringify(current.unlinkedSkills) !== JSON.stringify(source.unlinkedSkills)
+			)
+				return false;
+			const linked = new Set(
+				(await this.findLinksBySource(source.id, ctx)).map(({ remoteRef }) =>
+					JSON.stringify(remoteRef),
+				),
+			);
+			await this.saveUnlinkedSkills(
+				source.id,
+				skills.filter(({ key }) => !linked.has(key)),
+				ctx,
+			);
+			return true;
+		});
+	}
+
+	/** Call inside the transaction that holds the source lock or creates the source. */
+	async saveUnlinkedSkills(
+		sourceId: string,
+		skills: UnlinkedSkill[],
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.sources
+			.managerFor(ctx)
+			.update(SkillSourceConnection, { id: sourceId }, { unlinkedSkills: skills });
+	}
+
+	/** A removed link needs discovery even when the remote revision stays the same. */
+	async invalidateSourceForSkill(skillId: string, ctx: OperationContext): Promise<void> {
+		const link = await this.findLinkBySkillId(skillId, ctx);
+		if (!link) return;
+		// A unique cursor also invalidates a check that started with a null cursor.
+		await this.sources
+			.managerFor(ctx)
+			.update(
+				SkillSourceConnection,
+				{ id: link.sourceId },
+				{ probeCursor: `local-change:${generateNanoId()}` },
+			);
+	}
+
 	async lockForMove(sourceId: string, ctx: OperationContext): Promise<void> {
 		if (!ctx.trx) throw new UnexpectedError('Source row locks need a transaction');
 		if (this.sources.manager.connection.options.type !== 'postgres') return;
@@ -181,6 +254,7 @@ export class SkillSourceRepository {
 		sourceId: string,
 		projectId: string | null,
 		credentialId: string | null,
+		identityKey: string,
 		ctx: OperationContext,
 	): Promise<void> {
 		try {
@@ -190,6 +264,7 @@ export class SkillSourceRepository {
 				{
 					projectId,
 					credentialId,
+					identityKey,
 					credentialRequired: credentialId !== null,
 					probeCursor: null,
 				},
@@ -270,7 +345,7 @@ export class SkillSourceRepository {
 		});
 	}
 
-	/** Deletes the source. Its links go by cascade. Callers delete its skills first. */
+	/** Deletes the source and its links. Callers can delete its skills first or keep them. */
 	async deleteSource(sourceId: string, ctx: OperationContext): Promise<void> {
 		await this.sources.managerFor(ctx).delete(SkillSourceConnection, { id: sourceId });
 	}
@@ -320,6 +395,10 @@ export class SkillSourceRepository {
 	async deleteLink(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
 		const result = await this.links.managerFor(ctx).delete(SkillSourceLink, { skillId });
 		return (result.affected ?? 0) > 0;
+	}
+
+	async hasAnySource(): Promise<boolean> {
+		return await this.sources.managerFor({}).exists(SkillSourceConnection);
 	}
 
 	/**
@@ -377,6 +456,25 @@ export class SkillSourceRepository {
 	}
 
 	/** The sources in Global and in these projects, for the skills table. `all` for every source. */
+	async findVisibleSourcesForGrouping(
+		projectIds: string[] | 'all',
+	): Promise<Array<Pick<SkillSourceConnection, 'id' | 'type' | 'locator' | 'projectId'>>> {
+		const scopes =
+			projectIds === 'all'
+				? [{}]
+				: [{ projectId: IsNull() }, ...chunkIds(projectIds).map((ids) => ({ projectId: In(ids) }))];
+		const sources: Array<Pick<SkillSourceConnection, 'id' | 'type' | 'locator' | 'projectId'>> = [];
+		for (const where of scopes) {
+			sources.push(
+				...(await this.sources.managerFor({}).find(SkillSourceConnection, {
+					select: ['id', 'type', 'locator', 'projectId'],
+					where,
+				})),
+			);
+		}
+		return sources;
+	}
+
 	async findVisibleSources(projectIds: string[] | 'all'): Promise<SkillSourceConnection[]> {
 		const manager = this.sources.managerFor({});
 		if (projectIds === 'all') {

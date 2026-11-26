@@ -1,11 +1,14 @@
 import type { CommunityNodeType, CommunityPackageRequestDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { EventService, InstalledTypeRestrictionsProxy } from '@n8n/backend-services';
+import type {
+	EventService,
+	InstalledTypeRestrictionsProxy,
+	PushProxy,
+} from '@n8n/backend-services';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { Push } from '@/push';
 import type { AuthenticatedRequest } from '@n8n/db';
 
 import type { CommunityNodeTypesService } from '../community-node-types.service';
@@ -17,7 +20,7 @@ import type { InstalledPackages } from '../installed-packages.entity';
 
 describe('CommunityPackagesController', () => {
 	const logger = mock<Logger>();
-	const push = mock<Push>();
+	const push = mock<PushProxy>();
 	const communityPackagesService = mock<CommunityPackagesService>();
 	const eventService = mock<EventService>();
 	const communityNodeTypesService = mock<CommunityNodeTypesService>();
@@ -108,6 +111,7 @@ describe('CommunityPackagesController', () => {
 				'n8n-nodes-test',
 				'1.0.0',
 				'checksum',
+				{ rejectCredentialTypeConflicts: true },
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'community-package-installed',
@@ -195,6 +199,7 @@ describe('CommunityPackagesController', () => {
 				previouslyInstalledPackage,
 				'2.0.0',
 				undefined,
+				{ rejectCredentialTypeConflicts: true },
 			);
 
 			expect(result).toBe(newInstalledPackage);
@@ -231,6 +236,7 @@ describe('CommunityPackagesController', () => {
 				previouslyInstalledPackage,
 				'2.0.0',
 				'vetted-checksum',
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 

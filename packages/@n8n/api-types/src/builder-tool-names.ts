@@ -104,6 +104,15 @@ export const SHARED_BUILDER_TOOL_NAMES = {
 	GET_NODE_TYPES: 'get_node_types',
 	GET_NODE_PARAMETER_OPTIONS: 'get_node_parameter_options',
 	EXECUTE_NODE: 'execute_node',
+	CREATE_APP: 'create_app',
+	LIST_APPS: 'list_apps',
+	GET_APP: 'get_app',
+	OPEN_APP: 'open_app',
+	LIST_APP_BINDINGS: 'list_app_bindings',
+	BIND_APP_RESOURCE: 'bind_app_resource',
+	UNBIND_APP_RESOURCE: 'unbind_app_resource',
+	COMMIT_APP: 'commit_app',
+	DISCARD_APP_CHANGES: 'discard_app_changes',
 } as const;
 
 export type WorkflowBuilderToolName =
@@ -344,6 +353,31 @@ export const WORKSPACE_FOLDER_TOOL_ACTIONS: readonly WorkspaceToolAction[] = [
 ];
 
 const SPLIT_WORKSPACE_TOOL: SplitBuilderTool = { actions: INSTANCE_TOOL_NAME_BY_ACTION };
+
+/** The tool for each n8n App action. */
+export const APP_TOOL_NAME_BY_ACTION = {
+	create: SHARED_BUILDER_TOOL_NAMES.CREATE_APP,
+	list: SHARED_BUILDER_TOOL_NAMES.LIST_APPS,
+	get: SHARED_BUILDER_TOOL_NAMES.GET_APP,
+	open: SHARED_BUILDER_TOOL_NAMES.OPEN_APP,
+	bindings: SHARED_BUILDER_TOOL_NAMES.LIST_APP_BINDINGS,
+	bind: SHARED_BUILDER_TOOL_NAMES.BIND_APP_RESOURCE,
+	unbind: SHARED_BUILDER_TOOL_NAMES.UNBIND_APP_RESOURCE,
+	commit: SHARED_BUILDER_TOOL_NAMES.COMMIT_APP,
+	discard: SHARED_BUILDER_TOOL_NAMES.DISCARD_APP_CHANGES,
+} as const;
+
+export type AppToolAction = keyof typeof APP_TOOL_NAME_BY_ACTION;
+
+export const APP_TOOL_NAMES: readonly string[] = Object.values(APP_TOOL_NAME_BY_ACTION);
+
+function isAppToolAction(key: string): key is AppToolAction {
+	return Object.hasOwn(APP_TOOL_NAME_BY_ACTION, key);
+}
+
+/** Derived from the map, so a new action always gets a registered tool. */
+export const APP_TOOL_ACTIONS: readonly AppToolAction[] =
+	Object.keys(APP_TOOL_NAME_BY_ACTION).filter(isAppToolAction);
 
 /** Former multi-action tools that became one tool for each action. Never remove an entry. */
 export const SPLIT_BUILDER_TOOLS: Readonly<Record<string, SplitBuilderTool>> = {

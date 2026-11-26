@@ -2,15 +2,22 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EngineRuntime, ExecutionResponseSender, LifecycleEventCallback } from '@n8n/engine';
+import type {
+	EngineRole,
+	EngineRuntime,
+	EngineWorkQueues,
+	ExecutionResponseSender,
+	LifecycleEventCallback,
+} from '@n8n/engine';
 import {
 	AllowAllAdmittance,
 	createDataSource,
 	createEngineRuntime,
+	ENGINE_ROLES,
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
-	noopExecutionResponseSender,
+	runMigrations,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
 import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
@@ -28,16 +35,20 @@ import { NodeTypesProxy } from '@n8n/backend-services';
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
-import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
+import { EngineSubWorkflowClient } from './engine-workflow-resolve-client';
 import { EngineMtls } from './engine-mtls';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
 
-/** The data plane ends of the execution channel. */
-export interface EngineV2ChannelSenders {
+export interface EngineV2RuntimeOptions {
+	/** The data plane end of the execution channel for responses. */
 	responseSender: ExecutionResponseSender;
 	/** Without it, the engine publishes no lifecycle events. */
 	lifecycleEventSender?: { send: LifecycleEventCallback };
+	/** The queues the engine runs on. The caller closes their connections. */
+	queues: EngineWorkQueues;
+	/** The engine roles this process runs. Without it, the process runs every role. */
+	roles?: readonly EngineRole[];
 }
 
 /**
@@ -45,8 +56,9 @@ export interface EngineV2ChannelSenders {
  *
  * This is the integrated-mode composition root. It chooses the adapters the
  * engine needs — the data plane `DataSource`, the admittance policy, the v1 step
- * executor — and owns the connection and the HTTP listener. The engine owns its
- * own wiring, so this host never sees the workers or the queues.
+ * executor — and owns the connection and the HTTP listener. Its caller chooses
+ * the work queues. The engine owns its own wiring, so this host never sees the
+ * workers.
  */
 @Service()
 export class EngineV2Runtime {
@@ -83,13 +95,11 @@ export class EngineV2Runtime {
 		this.dataTablesHttp = transport.forScope('data-tables:use');
 	}
 
-	async init(
-		senders: EngineV2ChannelSenders = { responseSender: noopExecutionResponseSender },
-	): Promise<void> {
+	async init(options: EngineV2RuntimeOptions): Promise<void> {
 		try {
 			await this.initDb();
 
-			this.initEngine(senders);
+			this.initEngine(options);
 
 			await this.initServer();
 		} catch (error) {
@@ -118,28 +128,37 @@ export class EngineV2Runtime {
 			connectTimeoutMS: databaseConnectionTimeoutMs,
 		});
 		await this.dataSource.initialize();
-		await this.dataSource.runMigrations();
+		this.logger.info(
+			'Running the engine migrations. This waits while another engine process holds the migration lock.',
+		);
+		await runMigrations(this.dataSource);
 	}
 
-	private initEngine({ responseSender, lifecycleEventSender }: EngineV2ChannelSenders): void {
+	private initEngine({
+		responseSender,
+		lifecycleEventSender,
+		queues,
+		roles,
+	}: EngineV2RuntimeOptions): void {
 		assert(this.dataSource, 'Engine v2 cannot start without a data source');
 
 		const stopping = new AbortController();
 		this.stopping = stopping;
+		const runsApi = (roles ?? ENGINE_ROLES).includes('api');
 
-		const engine = createEngineRuntime({
+		this.engine = createEngineRuntime({
+			roles,
 			dataSource: this.dataSource,
 			// TODO(CAT-2909): placeholder policy — every execution is admitted and no
 			// limits are applied.
 			admittance: new AllowAllAdmittance(),
-			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
+			identityVerifier: runsApi
+				? new SharedSecretIdentityVerifier(this.engineConfig.authSecret)
+				: undefined,
 			logger: this.logger,
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
-			concurrency: {
-				step: this.engineConfig.stepConcurrency,
-				orchestration: this.engineConfig.orchestrationConcurrency,
-			},
+			queues,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: lifecycleEventSender
 					? async (events, signal) => await lifecycleEventSender.send(events, signal)
@@ -159,9 +178,8 @@ export class EngineV2Runtime {
 				}),
 			}),
 		});
-		engine.start();
-
-		this.engine = engine;
+		// Stored first, so the rollback can stop a queue that began consuming before `start()` threw.
+		this.engine.start();
 	}
 
 	private resumeMinters(): Pick<
