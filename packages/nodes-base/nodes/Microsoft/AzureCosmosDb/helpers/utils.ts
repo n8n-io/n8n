@@ -82,15 +82,19 @@ export async function validateQueryParameters(
 
 	const parameterNames = query.replace(/\$(\d+)/g, '@Param$1').match(/@\w+/g) ?? [];
 
-	const queryParamsJson = queryOptions?.queryParametersJson as string;
+	const queryParamsJson: unknown = queryOptions?.queryParametersJson;
 	const queryParamsString = queryOptions?.queryParameters as string;
 
 	let parameterValues: unknown[];
 
 	if (queryParamsJson) {
-		const parsed = jsonParse<unknown>(queryParamsJson, {
-			errorMessage: 'Query Parameters (JSON) must be a valid JSON array',
-		});
+		// Core does not validate this nested field, so an expression can return an array
+		const parsed =
+			typeof queryParamsJson === 'string'
+				? jsonParse<unknown>(queryParamsJson, {
+						errorMessage: 'Query Parameters (JSON) must be a valid JSON array',
+					})
+				: queryParamsJson;
 		if (!Array.isArray(parsed)) {
 			throw new NodeOperationError(this.getNode(), 'Query Parameters (JSON) must be a JSON array', {
 				description: 'Provide values as a JSON array, e.g. [1737062400000, "01234", true, null]',
