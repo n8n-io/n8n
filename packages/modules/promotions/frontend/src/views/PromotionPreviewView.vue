@@ -214,6 +214,7 @@ const tree = computed(() =>
 				preview.value,
 				{
 					workflows: i18n.baseText('promotions.preview.tree.section.workflows'),
+					otherProjects: i18n.baseText('promotions.preview.tree.otherProjects'),
 					group: (group) => i18n.baseText(`promotions.preview.tree.group.${group}`),
 				},
 				// Promote lists every dependency that it cannot carry, not only those of the selection.

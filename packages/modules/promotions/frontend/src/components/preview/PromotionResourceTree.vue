@@ -190,6 +190,18 @@ function onToggle(resource: PromotionResource) {
 					</N8nText>
 				</li>
 				<li
+					v-else-if="item.plain"
+					:class="[$style.row, $style.resource]"
+					data-test-id="promotion-preview-tree-label-row"
+				>
+					<span :class="$style.name" :style="{ '--preview-tree--indent': indent }">
+						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
+						<span :class="$style.text">
+							<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
+						</span>
+					</span>
+				</li>
+				<li
 					v-else-if="item.locked && !resource"
 					:class="[$style.row, $style.resource]"
 					data-test-id="promotion-preview-tree-locked-row"

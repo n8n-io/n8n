@@ -1,5 +1,6 @@
 import {
 	otherProjectCredential,
+	outsideAccessWorkflow,
 	personalCredential,
 } from './__tests__/missingDependencies.fixtures';
 import { billingPreview, resource } from './__tests__/preview.fixtures';
@@ -34,11 +35,38 @@ describe('promotion preview tree', () => {
 		expect(group?.memberKeys).toEqual(['credential:c1', 'credential:c2']);
 	});
 
-	it('should lock a sub-workflow of another project', () => {
-		const group = tree.find((item) => item.id === 'group:subWorkflow');
+	it('should lock a workflow of another project, under its project or under "Other projects"', () => {
+		const named = { id: 'p7', name: 'Finance' };
+		const withProjects = buildPreviewTree(
+			billingPreview(),
+			{ ...labels, otherProjects: 'Other projects' },
+			[
+				{
+					...outsideAccessWorkflow,
+					id: 'w20',
+					name: 'Close ledger',
+					group: 'other-project',
+					accessible: true,
+					project: named,
+				},
+				{ ...outsideAccessWorkflow, id: 'w21', name: 'Audit log' },
+			],
+		);
 
-		expect(group?.children?.[0].locked).toMatchObject({
-			kind: 'workflow',
+		const section = withProjects.find((item) => item.id === 'section:workflows');
+		const rows = section?.children?.slice(1);
+		expect(rows?.map((row) => [row.id, row.label, row.children?.map((child) => child.id)])).toEqual(
+			[
+				['locked-project:p7', 'Finance', ['locked:workflow:w20']],
+				['locked-project:other', 'Other projects', ['locked:workflow:w21', 'workflow:w9']],
+			],
+		);
+		expect(rows?.every((row) => row.plain)).toBe(true);
+		expect(rows?.[0].children?.[0].locked).toMatchObject({
+			group: 'other-project',
+			accessible: true,
+		});
+		expect(rows?.[1].children?.[1].locked).toMatchObject({
 			group: 'outside-access',
 			accessible: false,
 		});
@@ -61,9 +89,10 @@ describe('promotion preview tree', () => {
 							'workflow:w4',
 						],
 					},
+					// The workflow of another project is the last item of the group.
+					{ 'locked-project:other': ['workflow:w9'] },
 				],
 			},
-			{ 'group:subWorkflow': ['workflow:w9'] },
 			{ 'group:credential': ['credential:c2', 'credential:c1'] },
 			{ 'group:variable': ['variable:global:API_URL'] },
 			{ 'group:dataTable': ['dataTable:t1'] },
