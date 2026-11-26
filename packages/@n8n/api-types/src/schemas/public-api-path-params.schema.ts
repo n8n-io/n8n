@@ -48,6 +48,10 @@ export const promotionEnvironmentIdParamSchema = z
 	.string()
 	.refine((value) => validator.isUUID(value), { message: 'must be a valid ID' })
 	.openapi({ format: 'uuid', param: { description: 'The ID of the promotion environment.' } });
+export const promotionReviewIdParamSchema = z
+	.string()
+	.refine((value) => validator.isUUID(value), { message: 'must be a valid ID' })
+	.openapi({ format: 'uuid', param: { description: 'The ID of the promotion review.' } });
 export const promotionProviderIdParamSchema = stringIdParamSchema(
 	'The ID of the promotion provider.',
 );
