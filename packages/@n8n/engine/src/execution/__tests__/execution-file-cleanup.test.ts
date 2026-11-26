@@ -12,12 +12,6 @@ const first: ExecutionLocation = { workflowId: 'wf-1', executionId: 'exec-1' };
 const second: ExecutionLocation = { workflowId: 'wf-1', executionId: 'exec-2' };
 
 describe('ExecutionFileCleanup', () => {
-	it('returns every execution when the host supplied no deleter', async () => {
-		const cleanup = new ExecutionFileCleanup(undefined, makeLogger());
-
-		await expect(cleanup.deleteFilesOf([first, second])).resolves.toEqual([first, second]);
-	});
-
 	it('calls the deleter once per execution with its location', async () => {
 		const deleteFiles = vi.fn().mockResolvedValue(undefined);
 		const cleanup = new ExecutionFileCleanup(deleteFiles, makeLogger());
@@ -43,5 +37,28 @@ describe('ExecutionFileCleanup', () => {
 			expect.stringContaining('Failed to delete the binary files'),
 			{ executionId: 'exec-1', workflowId: 'wf-1', error },
 		);
+	});
+
+	it('runs at most five file deletions at once', async () => {
+		let inFlight = 0;
+		let peak = 0;
+		const deleteFiles = vi.fn(async () => {
+			inFlight++;
+			peak = Math.max(peak, inFlight);
+			await new Promise((resolve) => setImmediate(resolve));
+			inFlight--;
+		});
+		const executions = Array.from({ length: 12 }, (_, index) => ({
+			executionId: `exec-${index}`,
+			workflowId: 'wf-1',
+		}));
+
+		const kept = await new ExecutionFileCleanup(deleteFiles, makeLogger()).deleteFilesOf(
+			executions,
+		);
+
+		expect(kept).toEqual(executions);
+		expect(deleteFiles).toHaveBeenCalledTimes(12);
+		expect(peak).toBe(5);
 	});
 });

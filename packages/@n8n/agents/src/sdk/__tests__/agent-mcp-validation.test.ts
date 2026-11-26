@@ -101,4 +101,17 @@ describe('Agent MCP validation', () => {
 
 		expect(new Set(config.tools?.map((tool) => tool.name)).size).toBe(2);
 	});
+
+	it('lists MCP tools with the names that the built agent uses', async () => {
+		const agent = new Agent('listed-mcp-tools')
+			.model(fakeModel)
+			.instructions('test')
+			.mcp(makeMcpClient('foo bar'))
+			.mcp(makeMcpClient('foo_bar'));
+		const config = await buildAgentConfig(agent);
+
+		const listed = await agent.listMcpTools();
+
+		expect(listed.map((tool) => tool.name)).toEqual(config.tools?.map((tool) => tool.name));
+	});
 });

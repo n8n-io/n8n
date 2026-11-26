@@ -5,10 +5,12 @@ import { type ClientRequest, IncomingMessage } from 'http';
 import type {
 	IBinaryData,
 	INode,
+	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	WorkflowSettingsBinaryMode,
 } from 'n8n-workflow';
-import { BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, createRunExecutionData } from 'n8n-workflow';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
@@ -22,7 +24,7 @@ import {
 	assertBinaryData,
 	copyBinaryFile,
 	detectBinaryEncoding,
-	getBinaryDataBuffer,
+	getBinaryDataBuffer as getBinaryDataBufferWithAccess,
 	getBinaryHelperFunctions,
 	getNodeBinaryHelperFunctions,
 	prepareBinaryData,
@@ -31,6 +33,33 @@ import {
 
 const workflowId = 'workflow123';
 const executionId = 'execution456';
+const isBinaryDataAllowed = vi.fn(
+	async (_binaryDataId: string, _workflowId: string, _grantedIds?: string[]) => true,
+);
+const binaryAccessAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+	binaryDataAccess: {
+		grant: vi.fn(),
+		isGranted: vi.fn(),
+		isAllowed: isBinaryDataAllowed,
+	},
+});
+
+const getBinaryDataBuffer = async (
+	inputData: ITaskDataConnections,
+	itemIndex: number,
+	parameterData: string | IBinaryData,
+	inputIndex: number,
+	binaryMode?: WorkflowSettingsBinaryMode,
+) =>
+	await getBinaryDataBufferWithAccess(
+		inputData,
+		itemIndex,
+		parameterData,
+		inputIndex,
+		binaryMode,
+		binaryAccessAdditionalData,
+		workflowId,
+	);
 
 const bufferToIncomingMessage = (buffer: Buffer, encoding = 'utf-8') => {
 	const incomingMessage = Readable.from(buffer) as IncomingMessage;
@@ -53,6 +82,7 @@ describe('test binary data helper methods', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		isBinaryDataAllowed.mockResolvedValue(true);
 		binaryDataService = new BinaryDataService(binaryDataConfig, errorReporter, logger);
 		Container.set(BinaryDataService, binaryDataService);
 	});
@@ -1182,6 +1212,27 @@ describe('copyBinaryFile', () => {
 		);
 	});
 
+	it('grants access to the copied file for the current execution', async () => {
+		const access = mock<NonNullable<IWorkflowExecuteAdditionalData['binaryDataAccess']>>();
+		const additionalData = mock<IWorkflowExecuteAdditionalData>({
+			executionId,
+			binaryDataAccess: access,
+		});
+		const data = createRunExecutionData();
+		const stored = { ...binaryData, id: 'stored-id' };
+		binaryDataService.copyBinaryFile.mockReset().mockResolvedValue(stored);
+		const { copyBinaryFile: copy } = getNodeBinaryHelperFunctions(
+			{ id: workflowId },
+			additionalData,
+			data,
+		);
+
+		await expect(copy(filePath, fileName, 'text/plain')).resolves.toBe(stored);
+
+		expect(access.grant).toHaveBeenCalledWith(stored.id);
+		expect(data.binaryDataAccess).toEqual([stored.id]);
+	});
+
 	it('should handle files without explicit mime type', async () => {
 		const result = await copyBinaryFile(workflowId, executionId, filePath, fileName);
 
@@ -1369,25 +1420,179 @@ describe('getBinaryHelperFunctions', () => {
 			'`copyBinaryFile` has been removed',
 		);
 	});
+
+	describe('binary data access', () => {
+		const binaryData = { id: 'stored-id', data: 'filesystem-v2', mimeType: 'text/plain' };
+		const runExecutionData = mock<IRunExecutionData>({ binaryDataAccess: ['stored-id'] });
+		const isAllowed = vi.fn(
+			async (id: string, idWorkflow: string, grants?: string[]) =>
+				id === 'stored-id' && idWorkflow === workflowId && grants?.includes(id) === true,
+		);
+		const additionalData = mock<IWorkflowExecuteAdditionalData>({
+			executionId,
+			binaryDataAccess: {
+				grant: vi.fn(),
+				isGranted: vi.fn(),
+				isAllowed,
+			},
+		});
+		const binaryDataService = mock<BinaryDataService>();
+
+		beforeEach(() => {
+			Container.set(BinaryDataService, binaryDataService);
+			isAllowed.mockImplementation(
+				async (id, idWorkflow, grants) =>
+					id === 'stored-id' && idWorkflow === workflowId && grants?.includes(id) === true,
+			);
+		});
+
+		it.each([
+			[
+				'path',
+				async () =>
+					await getBinaryHelperFunctions(additionalData, workflowId).getBinaryPath('stored-id'),
+			],
+			[
+				'buffer',
+				async () =>
+					await getBinaryDataBufferWithAccess(
+						{ main: [] },
+						0,
+						binaryData,
+						0,
+						undefined,
+						additionalData,
+						workflowId,
+					),
+			],
+			[
+				'stream',
+				async () =>
+					await getBinaryHelperFunctions(additionalData, workflowId).getBinaryStream('stored-id'),
+			],
+			[
+				'metadata',
+				async () =>
+					await getBinaryHelperFunctions(additionalData, workflowId).getBinaryMetadata('stored-id'),
+			],
+		])('denies a stored %s read before storage access', async (_kind, read) => {
+			await expect(read()).rejects.toThrow('not available to the current workflow');
+
+			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
+			expect(binaryDataService.getAsStream).not.toHaveBeenCalled();
+			expect(binaryDataService.getMetadata).not.toHaveBeenCalled();
+			expect(binaryDataService.getPath).not.toHaveBeenCalled();
+		});
+
+		it('allows stored path, buffer, stream, and metadata reads with the exact grant', async () => {
+			const path = '/tmp/stored';
+			const buffer = Buffer.from('stored');
+			const stream = Readable.from(buffer);
+			const metadata = { fileName: 'stored.txt', fileSize: 6 };
+			binaryDataService.getPath.mockReturnValue(path);
+			binaryDataService.getAsBuffer.mockResolvedValue(buffer);
+			binaryDataService.getAsStream.mockResolvedValue(stream);
+			binaryDataService.getMetadata.mockResolvedValue(metadata);
+			const helpers = getBinaryHelperFunctions(additionalData, workflowId, runExecutionData);
+
+			await expect(
+				getBinaryDataBufferWithAccess(
+					{ main: [] },
+					0,
+					binaryData,
+					0,
+					undefined,
+					additionalData,
+					workflowId,
+					runExecutionData,
+				),
+			).resolves.toBe(buffer);
+			await expect(helpers.getBinaryPath('stored-id')).resolves.toBe(path);
+			await expect(helpers.getBinaryStream('stored-id')).resolves.toBe(stream);
+			await expect(helpers.getBinaryMetadata('stored-id')).resolves.toBe(metadata);
+		});
+
+		it('reads an in-memory buffer without checking access', async () => {
+			const buffer = Buffer.from('inline');
+			binaryDataService.getAsBuffer.mockResolvedValue(buffer);
+
+			await expect(
+				getBinaryDataBufferWithAccess(
+					{ main: [] },
+					0,
+					{ data: buffer.toString('base64'), mimeType: 'text/plain' },
+					0,
+					undefined,
+					additionalData,
+					workflowId,
+				),
+			).resolves.toBe(buffer);
+			expect(additionalData.binaryDataAccess!.isAllowed).not.toHaveBeenCalled();
+		});
+
+		it.each(['prepareBinaryData', 'setBinaryDataBuffer'] as const)(
+			'grants a newly stored ID once through %s',
+			async (helperName) => {
+				binaryDataService.store.mockResolvedValue({ ...binaryData });
+				const data = createRunExecutionData();
+				const helpers = getBinaryHelperFunctions(additionalData, workflowId, data);
+
+				if (helperName === 'prepareBinaryData') {
+					await helpers.prepareBinaryData(Buffer.from('stored'));
+					await helpers.prepareBinaryData(Buffer.from('stored'));
+				} else {
+					await helpers.setBinaryDataBuffer(binaryData, Buffer.from('stored'));
+					await helpers.setBinaryDataBuffer(binaryData, Buffer.from('stored'));
+				}
+
+				expect(additionalData.binaryDataAccess!.grant).toHaveBeenCalledWith('stored-id');
+				expect(data.binaryDataAccess).toEqual(['stored-id']);
+			},
+		);
+	});
 });
 
 describe('createBinarySignedUrl', () => {
 	const restApiUrl = 'https://n8n.host/rest';
 
-	it('should get a signed url', async () => {
-		const additionalData = { restApiUrl } as IWorkflowExecuteAdditionalData;
-		const helperFunctions = getBinaryHelperFunctions(additionalData, workflowId);
+	it.each<{ source: string; grants?: string[]; transient: boolean; granted: boolean }>([
+		{ source: 'explicit', grants: ['stored-id'], transient: false, granted: true },
+		{ source: 'transient', transient: true, granted: true },
+		{ source: 'no', transient: false, granted: false },
+	])(
+		'should sign the workflow id for binary data with $source grant only when not granted',
+		({ grants, transient, granted }) => {
+			const isGranted = vi.fn((_binaryDataId: string) => transient);
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				restApiUrl,
+				binaryDataAccess: {
+					grant: vi.fn(),
+					isGranted,
+					isAllowed: vi.fn(),
+				},
+			});
+			const runExecutionData = createRunExecutionData({ binaryDataAccess: grants });
+			const helperFunctions = getBinaryHelperFunctions(
+				additionalData,
+				workflowId,
+				runExecutionData,
+			);
 
-		const binaryData = mock<IBinaryData>();
-		const token = 'signed-token';
+			const binaryData = mock<IBinaryData>({ id: 'stored-id' });
+			const token = 'signed-token';
 
-		const binaryDataService = mock<BinaryDataService>();
-		Container.set(BinaryDataService, binaryDataService);
-		binaryDataService.createSignedToken.mockReturnValueOnce(token);
+			const binaryDataService = mock<BinaryDataService>();
+			Container.set(BinaryDataService, binaryDataService);
+			binaryDataService.createSignedToken.mockReturnValueOnce(token);
 
-		const result = helperFunctions.createBinarySignedUrl(binaryData);
+			const result = helperFunctions.createBinarySignedUrl(binaryData);
 
-		expect(result).toBe(`${restApiUrl}/binary-data/signed?token=${token}`);
-		expect(binaryDataService.createSignedToken).toHaveBeenCalledWith(binaryData, undefined);
-	});
+			expect(result).toBe(`${restApiUrl}/binary-data/signed?token=${token}`);
+			expect(binaryDataService.createSignedToken).toHaveBeenCalledWith(
+				binaryData,
+				undefined,
+				granted ? undefined : workflowId,
+			);
+		},
+	);
 });

@@ -90,6 +90,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
@@ -372,6 +373,7 @@ describe('setupResponseNodePromise', () => {
 	const workflowStartNode = mock<INode>();
 	const workflow = mock<Workflow>({ id: workflowId });
 	const binaryDataService = mockInstance(BinaryDataService);
+	const binaryDataAccessService = mockInstance(BinaryDataAccessService);
 	const webhookResponseRelay = mockInstance(WebhookResponseRelay);
 	const errorReporter = mockInstance(ErrorReporter);
 	const logger = mockInstance(Logger);
@@ -389,6 +391,7 @@ describe('setupResponseNodePromise', () => {
 		res.header.mockReturnValue(res);
 		res.end.mockReturnValue(res);
 		res.destroyed = false;
+		binaryDataAccessService.assertIsAllowed.mockResolvedValue();
 	});
 
 	test('should handle regular response object', async () => {
@@ -440,6 +443,34 @@ describe('setupResponseNodePromise', () => {
 			workflowId,
 			executionId,
 		});
+	});
+
+	test('should reclaim inaccessible binary data without streaming it', async () => {
+		binaryDataAccessService.assertIsAllowed.mockRejectedValue(new Error('denied'));
+		const response = {
+			body: { binaryData: { id: 'binary-123' } },
+			headers: {},
+			statusCode: 200,
+		} as unknown as IN8nHttpFullResponse;
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			new WebhookResponder(responseCallback),
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve(response);
+		await new Promise(process.nextTick);
+
+		expect(binaryDataService.getAsStream).not.toHaveBeenCalled();
+		expect(webhookResponseRelay.deleteOffloadedBody).toHaveBeenCalledWith(response, {
+			workflowId,
+			executionId,
+		});
+		expect(responseCallback).toHaveBeenCalledWith(expect.any(Error), {});
 	});
 
 	test('should reclaim an offloaded body even when streaming fails', async () => {
@@ -920,6 +951,59 @@ describe('prepareExecutionData', () => {
 		expect(nodeExecuteData?.node).toBe(workflowStartNode);
 		expect(nodeExecuteData?.data.main).toBe(webhookResultData.workflowData);
 		expect(pinData).toBeUndefined();
+	});
+
+	test('preserves existing binary grants without collecting IDs from webhook output', () => {
+		const existingRunExecutionData = createRunExecutionData({
+			binaryDataAccess: ['existing-id', 'shared-id'],
+			executionData: { nodeExecutionStack: [] },
+		});
+		const webhookData: IWebhookResponseData = {
+			workflowData: [
+				[
+					{
+						json: {},
+						binary: {
+							shared: { data: '', mimeType: 'text/plain', id: 'shared-id' },
+							added: { data: '', mimeType: 'text/plain', id: 'new-id' },
+						},
+					},
+				],
+			],
+		};
+
+		const { runExecutionData } = prepareExecutionData(
+			'webhook',
+			workflowStartNode,
+			webhookData,
+			existingRunExecutionData,
+		);
+
+		expect(runExecutionData.binaryDataAccess).toEqual(['existing-id', 'shared-id']);
+	});
+
+	test('does not grant binary IDs from webhook output', () => {
+		const webhookData: IWebhookResponseData = {
+			workflowData: [
+				[
+					{
+						json: {},
+						binary: {
+							unavailable: { data: '', mimeType: 'text/plain', id: 'unavailable-id' },
+						},
+					},
+				],
+			],
+		};
+
+		const { runExecutionData } = prepareExecutionData(
+			'webhook',
+			workflowStartNode,
+			webhookData,
+			undefined,
+		);
+
+		expect(runExecutionData.binaryDataAccess).toBeUndefined();
 	});
 
 	test('should update existing runExecutionData when executionId is defined', () => {

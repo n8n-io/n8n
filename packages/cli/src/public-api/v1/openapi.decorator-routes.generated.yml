@@ -294,7 +294,7 @@ paths:
   /promotions/settings:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionSettings.generated.yml
-    put:
+    patch:
       $ref: ./handlers/promotions/spec/paths/updatePromotionSettings.generated.yml
   /promotions/providers:
     post:

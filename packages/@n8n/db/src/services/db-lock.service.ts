@@ -11,6 +11,7 @@ import { TypeOrmTransaction } from './typeorm-transaction';
 /**
  * Centrally managed advisory lock IDs. Every Postgres advisory lock
  * used in the application MUST be registered here to prevent collisions.
+ * IDs 2000–2999 are reserved for `@n8n/engine`, which defines its locks in its own package.
  */
 export const enum DbLock {
 	AUTH_ROLES_SYNC = 1001,

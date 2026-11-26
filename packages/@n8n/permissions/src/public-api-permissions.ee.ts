@@ -181,6 +181,7 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'variable:delete',
 	'variable:list',
 	'variable:update',
+	'promotions:promote',
 	'dataTable:create',
 	'dataTable:read',
 	'dataTable:update',
@@ -265,6 +266,9 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'variable:create',
 	'variable:delete',
 	'variable:update',
+	// Each request checks the role in the target project. "Who can promote" decides which
+	// project roles hold the scope.
+	'promotions:promote',
 	'dataTable:create',
 	'dataTable:read',
 	'dataTable:update',

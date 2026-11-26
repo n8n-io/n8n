@@ -175,6 +175,10 @@ export default mergeConfig(
 					// the component barrel. It stays on `src/index.ts` too — the entry is
 					// an extra door, not a move.
 					plugin: resolve(srcDir, 'plugin.ts'),
+					// Fourth entry, never on `src/index.ts`: the chart components bring Chart.js,
+					// and the editor imports the barrel at startup. A separate entry keeps
+					// Chart.js in the lazy chunks of the views that draw charts.
+					'charts/index': resolve(srcDir, 'charts', 'index.ts'),
 				},
 				// ES only. UMD supports neither multiple entries nor code splitting, and
 				// both are requirements here — the icon buckets have to stay lazy chunks.
