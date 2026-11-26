@@ -1254,6 +1254,38 @@ export class AgentExecutionService {
 		return await this.canUseUnrecordedThread(threadId, agentId, draftChatMemoryResourceId(userId));
 	}
 
+	/**
+	 * Classify an existing draft thread in one lookup: unusable, non-preview draft
+	 * (such as task, system agent, MCP, or Instance AI), or Preview Chat.
+	 * Skips the first-source query whenever the thread cannot be a Preview Chat thread.
+	 */
+	async classifyExistingDraftThread(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<{ usable: boolean; previewChat: boolean }> {
+		const thread = await this.findThreadById(threadId);
+		if (
+			!thread ||
+			!threadBelongsTo(thread, projectId, agentId, userId) ||
+			!canUseTopLevelDraftThread(thread, userId)
+		) {
+			return { usable: false, previewChat: false };
+		}
+
+		if (thread.taskId !== null || this.systemAgents.has(thread.agentId)) {
+			return { usable: true, previewChat: false };
+		}
+
+		const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
+
+		return {
+			usable: true,
+			previewChat: canContinueThreadInPreview(thread, userId, sources.get(threadId), false),
+		};
+	}
+
 	async canUseProductionChatThread(
 		threadId: string,
 		projectId: string,

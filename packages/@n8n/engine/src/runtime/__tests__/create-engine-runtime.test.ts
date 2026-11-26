@@ -451,6 +451,49 @@ describe('createEngineRuntime', () => {
 		expect(start).not.toHaveBeenCalled();
 	});
 
+	it.each<{
+		name: string;
+		roles: EngineRole[];
+		retention?: { maxAgeMs: number };
+		logged: unknown[];
+	}>([
+		{
+			name: 'orchestrator, retention on',
+			roles: ['orchestrator'],
+			retention: { maxAgeMs: 1_000 },
+			logged: [['Execution retention is on', { maxAgeMs: 1_000 }]],
+		},
+		{
+			name: 'orchestrator, retention off',
+			roles: ['orchestrator'],
+			logged: [['Execution retention is off']],
+		},
+		{
+			name: 'api and step-worker',
+			roles: ['api', 'step-worker'],
+			retention: { maxAgeMs: 1_000 },
+			logged: [],
+		},
+	])(
+		'logs whether retention is on only in the orchestrator role ($name)',
+		({ roles, retention, logged }) => {
+			const logger = { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() };
+
+			runtime({
+				roles,
+				retention,
+				logger,
+				externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
+			});
+
+			expect(
+				logger.info.mock.calls.filter(([message]) =>
+					String(message).startsWith('Execution retention'),
+				),
+			).toEqual(logged);
+		},
+	);
+
 	it('refuses a retention policy without a file deleter', () => {
 		expect(() => runtime({ retention: { maxAgeMs: 1_000 } })).toThrow(
 			'Execution retention needs a file deleter',

@@ -1,9 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildDisplayGroups, isGroupable } from '../displayGroups';
+import { createStoppedMessage } from '../messageMappers';
 import type { AgentsChatMessage } from '../types';
 
 describe('shared agents chat display groups', () => {
+	it('keeps the notice of a stopped turn in its own group, below the reasoning', () => {
+		const groups = buildDisplayGroups([
+			{
+				id: 'a1',
+				executionId: 'exec-1',
+				role: 'assistant',
+				content: '',
+				thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a tool.' }],
+				toolCalls: [{ tool: 'search', toolCallId: 'tc1', state: 'cancelled' }],
+			},
+			createStoppedMessage('exec-1'),
+		]);
+
+		expect(groups.map(({ kind, id }) => [kind, id])).toEqual([
+			['toolRun', 'a1'],
+			['message', 'exec-1:stopped'],
+		]);
+		expect(
+			groups.map((group) => 'thinkingSegments' in group && group.thinkingSegments.length),
+		).toEqual([1, 0]);
+	});
+
 	it('keeps the results entry unchanged when the assistant reply arrives', () => {
 		const previous: AgentsChatMessage = {
 			id: 'previous',
