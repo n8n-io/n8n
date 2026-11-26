@@ -4,6 +4,7 @@ import { waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
+	clickDropdownItem,
 	getDropdownItems,
 	mockedStore,
 	type MockedStore,
@@ -303,7 +304,7 @@ describe('ProjectSettings', () => {
 
 		const transferSelect = r1.getByTestId('project-sharing-select');
 		const transferOptions = await getDropdownItems(transferSelect);
-		await userEvent.click(transferOptions[0]);
+		await clickDropdownItem(transferOptions[0]);
 		await nextTick();
 
 		await userEvent.click(r1.getByTestId('project-settings-delete-confirm-button'));
