@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
+import { escapeBackslashQuotedValue } from '@utils/query-escaping';
+
 import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../constants';
 import { extractId, googleApiRequest, googleApiRequestAllItems } from './v1/GenericFunctions';
 import { fileSearch, folderSearch } from './v2/methods/listSearch';
@@ -447,7 +449,7 @@ export class GoogleDriveTrigger implements INodeType {
 			const folderToWatch = extractId(
 				this.getNodeParameter('folderToWatch', '', { extractValue: true }) as string,
 			);
-			query.push(`'${folderToWatch}' in parents`);
+			query.push(`'${escapeBackslashQuotedValue(folderToWatch)}' in parents`);
 		}
 
 		// if (triggerOn === 'anyFileFolder') {
@@ -462,14 +464,14 @@ export class GoogleDriveTrigger implements INodeType {
 		}
 
 		if (options.fileType && options.fileType !== 'all') {
-			query.push(`mimeType = '${options.fileType}'`);
+			query.push(`mimeType = '${escapeBackslashQuotedValue(options.fileType)}'`);
 		}
 
 		if (this.getMode() !== 'manual') {
 			if (event.includes('Created')) {
-				query.push(`createdTime > '${startDate}'`);
+				query.push(`createdTime > '${escapeBackslashQuotedValue(startDate)}'`);
 			} else {
-				query.push(`modifiedTime > '${startDate}'`);
+				query.push(`modifiedTime > '${escapeBackslashQuotedValue(startDate)}'`);
 			}
 		}
 

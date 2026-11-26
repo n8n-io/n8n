@@ -8,7 +8,8 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'postgres',
 	icon: 'file:postgres.svg',
 	group: ['input'],
-	version: [2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6],
+	// Skip v2.7 and v2.8 to align the backport with changes in n8n v2
+	version: [2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.9],
 	subtitle: '={{ $parameter["operation"] }}',
 	description: 'Get, add and update data in Postgres',
 	defaults: {

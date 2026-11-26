@@ -113,6 +113,40 @@ describe('Google Sheets Search Functions', () => {
 			);
 		});
 
+		it('should escape every single quote in the filter, not just the first', async () => {
+			(apiRequest.call as jest.Mock).mockResolvedValue({ files: [] });
+
+			await spreadSheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions, "a'b'c");
+
+			expect(apiRequest.call).toHaveBeenCalledWith(
+				expect.anything(),
+				'GET',
+				requestPath``,
+				{},
+				expect.objectContaining({
+					q: "name contains 'a\\'b\\'c' and mimeType = 'application/vnd.google-apps.spreadsheet'",
+				}),
+				requestUrl`https://www.googleapis.com/drive/v3/files`,
+			);
+		});
+
+		it('should escape backslashes so a trailing one cannot consume the escape', async () => {
+			(apiRequest.call as jest.Mock).mockResolvedValue({ files: [] });
+
+			await spreadSheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions, "x\\'");
+
+			expect(apiRequest.call).toHaveBeenCalledWith(
+				expect.anything(),
+				'GET',
+				requestPath``,
+				{},
+				expect.objectContaining({
+					q: "name contains 'x\\\\\\'' and mimeType = 'application/vnd.google-apps.spreadsheet'",
+				}),
+				requestUrl`https://www.googleapis.com/drive/v3/files`,
+			);
+		});
+
 		it('should handle pagination token', async () => {
 			const mockResponse = { files: [] };
 			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);

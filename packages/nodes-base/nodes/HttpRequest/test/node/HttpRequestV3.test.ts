@@ -1,5 +1,6 @@
 import { IncomingMessage } from 'http';
-import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeTypeBaseDescription, JsonObject } from 'n8n-workflow';
 import { Socket } from 'net';
 
 import { HttpRequestV3 } from '../../V3/HttpRequestV3.node';
@@ -299,6 +300,95 @@ describe('HttpRequestV3', () => {
 			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
 				'URL parameter must be a string, got number',
 			);
+		});
+	});
+
+	describe('Continued request errors', () => {
+		it('should remove request options from continued errors', async () => {
+			const headerName = 'x-custom-header-name';
+			const headerValue = 'header-value';
+
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpHeaderAuth';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as jest.Mock).mockResolvedValue({
+				name: headerName,
+				value: headerValue,
+			});
+			(executeFunctions.helpers.request as jest.Mock).mockImplementation(
+				async (requestOptions: { headers: Record<string, unknown> }) => {
+					expect(requestOptions.headers[headerName]).toBe(headerValue);
+
+					throw Object.assign(new Error('Request failed'), {
+						statusCode: 400,
+						options: { headers: requestOptions.headers },
+					});
+				},
+			);
+
+			const result = await node.execute.call(executeFunctions);
+			const outputError = result[0][0].json.error;
+
+			expect(outputError).toMatchObject({ message: 'Request failed', statusCode: 400 });
+			expect(outputError).not.toHaveProperty('options');
+			expect(JSON.stringify(outputError)).not.toContain(headerValue);
+		});
+
+		it('should remove request options from the cause of continued errors', async () => {
+			const headerValue = 'header-value';
+
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'predefinedCredentialType';
+					case 'nodeCredentialType':
+						return 'testApi';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as jest.Mock).mockResolvedValue({ apiKey: headerValue });
+			(executeFunctions.helpers.requestWithAuthentication as jest.Mock).mockImplementation(
+				async () => {
+					const cause = Object.assign(new Error('Request failed'), {
+						statusCode: 401,
+						options: { headers: { Authorization: `Bearer ${headerValue}` } },
+					});
+
+					throw new NodeApiError(executeFunctions.getNode(), cause as unknown as JsonObject);
+				},
+			);
+
+			const result = await node.execute.call(executeFunctions);
+			const outputError = result[0][0].json.error;
+
+			expect(outputError).toBeInstanceOf(NodeApiError);
+			expect(outputError).toHaveProperty('description', 'Request failed');
+			expect(outputError).not.toHaveProperty('cause.options');
+			expect(JSON.stringify(outputError)).not.toContain(headerValue);
 		});
 	});
 

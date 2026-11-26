@@ -31,7 +31,6 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
-	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
@@ -2006,15 +2005,27 @@ export function useCanvasOperations() {
 						nodeNames.add(newName);
 					}
 
-					// Generate new webhookId
-					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-						if (node.webhookId) {
+					// A caller that keeps node ids is restoring the nodes as they were, so only then does the webhookId stay.
+					if (regenerateIds && node.webhookId) {
+						// Whether a type declares webhooks does not change between versions, so the newest description will do.
+						const nodeTypeDescription =
+							nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
+							nodeTypesStore.getNodeType(node.type);
+
+						if (nodeTypeDescription?.webhooks?.length) {
+							const previousWebhookId = node.webhookId;
+							node.parameters = node.parameters ?? {};
+							const parameters = node.parameters as IDataObject;
+							const pathMatchedWebhookId = parameters.path === previousWebhookId;
+							const optionsPathMatchedWebhookId =
+								(parameters.options as IDataObject)?.path === previousWebhookId;
+
 							nodeHelpers.assignWebhookId(node);
 
-							if (node.parameters.path) {
-								node.parameters.path = node.webhookId;
-							} else if ((node.parameters.options as IDataObject)?.path) {
-								(node.parameters.options as IDataObject).path = node.webhookId;
+							if (pathMatchedWebhookId) {
+								parameters.path = node.webhookId;
+							} else if (optionsPathMatchedWebhookId) {
+								(parameters.options as IDataObject).path = node.webhookId;
 							}
 						}
 					}

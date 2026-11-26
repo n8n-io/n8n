@@ -12,6 +12,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
+import { assertNoQueryDelimiters } from '@utils/query-escaping';
+
 import type {
 	AddressFixedCollection,
 	FreshserviceCredentials,
@@ -173,10 +175,13 @@ export function adjustAgentRoles(roles: RolesParameter) {
 	};
 }
 
-export function formatFilters(filters: IDataObject) {
+export function formatFilters(this: IExecuteFunctions, filters: IDataObject, itemIndex: number) {
 	const query = Object.keys(filters)
 		.map((key) => {
 			const value = filters[key];
+
+			// Before the branches below, because every one of them quotes the value.
+			assertNoQueryDelimiters.call(this, key, value, ["'", '"'], itemIndex);
 
 			if (!isNaN(Number(value))) {
 				return `${key}:${filters[key]}`; // number
@@ -191,6 +196,7 @@ export function formatFilters(filters: IDataObject) {
 		.join(' AND ');
 
 	return {
+		// Safe by the assertion above: no value can carry either quote character.
 		query: `"${query}"`,
 	};
 }

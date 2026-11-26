@@ -43,7 +43,7 @@ describe('ChatServer', () => {
 		chatServer.setup(mockHttpServer, mockApp);
 
 		const req = {
-			url: 'http://localhost:5678/chat?sessionId=123&executionId=456',
+			url: '/chat?sessionId=123&executionId=456',
 			socket: { remoteAddress: '127.0.0.1' },
 		} as ChatRequest;
 		const socket = {} as any;
@@ -64,7 +64,7 @@ describe('ChatServer', () => {
 		chatServer.setup(mockHttpServer, mockApp);
 
 		const req = {
-			url: 'http://localhost:5678/chat?sessionId=123&executionId=456',
+			url: '/chat?sessionId=123&executionId=456',
 			socket: { remoteAddress: '127.0.0.1' },
 		} as ChatRequest;
 		const socket = {} as any;

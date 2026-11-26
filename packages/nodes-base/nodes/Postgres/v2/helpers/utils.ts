@@ -228,6 +228,148 @@ export function addReturning(
 	return [`${query} RETURNING $${replacementIndex}:name`, [...replacements, outputColumns]];
 }
 
+// Mask SQL comments and quoted text so they cannot interfere with query parameter
+// matching. The output keeps the same length so matches can be mapped back to the
+// original query.
+
+// `\` is an escape only inside E-strings (`E'...'`). For standard strings, with
+// `standard_conforming_strings = on` (PG default since 9.1), `\` is a literal.
+// The `E` prefix must be a standalone token, not the trailing char of an identifier.
+const isEStringPrefix = (query: string, quoteIndex: number): boolean => {
+	const prev = query[quoteIndex - 1];
+	return (prev === 'E' || prev === 'e') && !isPostgresIdentifierCharacter(query[quoteIndex - 2]);
+};
+
+const isPostgresIdentifierCharacter = (character: string | undefined): boolean =>
+	character !== undefined && /[A-Za-z0-9_$\u0080-\uFFFF]/.test(character);
+
+const stripStringsAndComments = (query: string, treatBackslashesAsEscapes = false): string => {
+	const len = query.length;
+	let out = '';
+	let i = 0;
+	while (i < len) {
+		const c = query[i];
+		const next = query[i + 1];
+
+		if (c === '/' && next === '*') {
+			const start = i;
+			let depth = 1;
+			i += 2;
+			while (i < len && depth > 0) {
+				if (query[i] === '/' && query[i + 1] === '*') {
+					depth++;
+					i += 2;
+				} else if (query[i] === '*' && query[i + 1] === '/') {
+					depth--;
+					i += 2;
+				} else {
+					i++;
+				}
+			}
+			out += ' '.repeat(i - start);
+			continue;
+		}
+
+		if (c === '-' && next === '-') {
+			const start = i;
+			i += 2;
+			while (i < len && query[i] !== '\n' && query[i] !== '\r') i++;
+			out += ' '.repeat(i - start);
+			continue;
+		}
+
+		if (c === "'") {
+			const start = i;
+			const allowBackslashEscape = treatBackslashesAsEscapes || isEStringPrefix(query, i);
+			i++;
+			while (i < len) {
+				if (allowBackslashEscape && query[i] === '\\' && i + 1 < len) {
+					i += 2;
+					continue;
+				}
+				if (query[i] === "'") {
+					if (query[i + 1] === "'") {
+						i += 2;
+						continue;
+					}
+					i++;
+					break;
+				}
+				i++;
+			}
+			out += `'${' '.repeat(i - start - 1)}`;
+			continue;
+		}
+
+		if (c === '"') {
+			const start = i;
+			i++;
+			while (i < len) {
+				if (query[i] === '"') {
+					if (query[i + 1] === '"') {
+						i += 2;
+						continue;
+					}
+					i++;
+					break;
+				}
+				i++;
+			}
+			out += `"${' '.repeat(i - start - 1)}`;
+			continue;
+		}
+
+		if (c === '$') {
+			const tagMatch = isPostgresIdentifierCharacter(query[i - 1])
+				? null
+				: query.slice(i).match(/^\$(?:[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF]*)?\$/);
+			if (tagMatch) {
+				const start = i;
+				const tag = tagMatch[0];
+				const end = query.indexOf(tag, i + tag.length);
+				i = end === -1 ? len : end + tag.length;
+				out += `$${' '.repeat(i - start - 1)}`;
+				continue;
+			}
+		}
+
+		out += c;
+		i++;
+	}
+	return out;
+};
+
+const POSITIONAL_PARAMETER_PATTERN =
+	/(?<![A-Za-z0-9_$\u0080-\uFFFF])\$[1-9][0-9]{0,16}(?![0-9])(?:(?:\^|~|#)|:(?:raw|alias|name|json|csv|list|value))?(?![A-Za-z0-9_$\u0080-\uFFFF]|:[A-Za-z0-9_$\u0080-\uFFFF])/g;
+
+export const formatPostgresQuery = (
+	pgp: PgpClient,
+	query: QueryWithValues,
+	standardConformingStrings: boolean,
+): string => {
+	if (query.values === undefined) return query.query;
+
+	const queryMask = stripStringsAndComments(query.query, !standardConformingStrings);
+
+	return query.query.replace(POSITIONAL_PARAMETER_PATTERN, (match, offset: number) => {
+		const end = offset + match.length;
+		const isExecutable = queryMask.slice(offset, end) === match;
+
+		return isExecutable ? pgp.as.format(match, query.values, query.options) : match;
+	});
+};
+
+type QueryExecutor = {
+	one<T>(query: string): Promise<T>;
+};
+
+const usesStandardConformingStrings = async (executor: QueryExecutor): Promise<boolean> => {
+	const result = await executor.one<{ standard_conforming_strings: 'on' | 'off' }>(
+		'SHOW standard_conforming_strings',
+	);
+	return result.standard_conforming_strings === 'on';
+};
+
 const isSelectQuery = (query: string) => {
 	return query
 		.replace(/\/\*.*?\*\//g, '') // remove multiline comments
@@ -250,10 +392,20 @@ export function configureQueryRunner(
 			options.operation === 'select' ? [] : [{ json: { success: true } }];
 
 		const queryBatching = (options.queryBatching as QueryMode) || 'single';
+		const useSafeQueryParameters = (options.nodeVersion as number) >= 2.9;
 
 		if (queryBatching === 'single') {
 			try {
-				returnData = (await db.multi(pgp.helpers.concat(queries)))
+				const queryResults = useSafeQueryParameters
+					? await db.task(async (task) => {
+							const standardConformingStrings = await usesStandardConformingStrings(task);
+							const queriesToRun = queries.map((query) =>
+								formatPostgresQuery(pgp, query, standardConformingStrings),
+							);
+							return await task.multi(pgp.helpers.concat(queriesToRun));
+						})
+					: await db.multi(pgp.helpers.concat(queries));
+				returnData = queryResults
 					.map((result, i) => {
 						return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
 							itemData: { item: i },
@@ -299,7 +451,14 @@ export function configureQueryRunner(
 						const values = queries[i].values;
 
 						let transactionResults;
-						if ((options?.nodeVersion as number) < 2.3) {
+						if (useSafeQueryParameters) {
+							const standardConformingStrings = await usesStandardConformingStrings(transaction);
+							transactionResults = (
+								await transaction.multi(
+									formatPostgresQuery(pgp, queries[i], standardConformingStrings),
+								)
+							).flat();
+						} else if ((options?.nodeVersion as number) < 2.3) {
 							transactionResults = await transaction.any(query, values);
 						} else {
 							transactionResults = (await transaction.multi(query, values)).flat();
@@ -339,7 +498,12 @@ export function configureQueryRunner(
 						const values = queries[i].values;
 
 						let transactionResults;
-						if ((options?.nodeVersion as number) < 2.3) {
+						if (useSafeQueryParameters) {
+							const standardConformingStrings = await usesStandardConformingStrings(task);
+							transactionResults = (
+								await task.multi(formatPostgresQuery(pgp, queries[i], standardConformingStrings))
+							).flat();
+						} else if ((options?.nodeVersion as number) < 2.3) {
 							transactionResults = await task.any(query, values);
 						} else {
 							transactionResults = (await task.multi(query, values)).flat();

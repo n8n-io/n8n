@@ -1,8 +1,21 @@
 import type { IExecutionResponse } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
+import type { IExecuteData, INode, Workflow } from 'n8n-workflow';
 import { CHAT_WAIT_USER_REPLY, RESPOND_TO_WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 const AI_TOOL = 'ai_tool';
+
+/**
+ * Resolves the node a chat message would resume. Pure: does not mutate the
+ * execution. Returns null when the parked node is not in the workflow.
+ *
+ * Resolves from `executionData.node`, the top of `nodeExecutionStack`, which is
+ * the node the engine actually resumes. It does not use
+ * `resultData.lastNodeExecuted`, so the resume decision can never authorize a
+ * different node than the one that runs.
+ */
+export function findResumeNode(executionData: IExecuteData, workflow: Workflow): INode | null {
+	return workflow.getNode(executionData.node.name);
+}
 
 /**
  * Returns the message to be sent of the last executed node

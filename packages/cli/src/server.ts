@@ -30,6 +30,7 @@ import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
 import * as requestPath from '@/utils/request-path';
+import { rejectUnknownWebSocketPaths } from '@/websocket-paths';
 
 import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
@@ -537,7 +538,13 @@ export class Server extends AbstractServer {
 
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
-		Container.get(Push).setupPushServer(restEndpoint, server, app);
-		Container.get(ChatServer).setup(server, app);
+		const push = Container.get(Push);
+		const chat = Container.get(ChatServer);
+		push.setupPushServer(restEndpoint, server, app);
+		chat.setup(server, app);
+		rejectUnknownWebSocketPaths(
+			server,
+			(path) => push.isWebSocketPath(path, restEndpoint) || chat.isWebSocketPath(path),
+		);
 	}
 }

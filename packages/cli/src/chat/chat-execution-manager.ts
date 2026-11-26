@@ -13,6 +13,7 @@ import { NotFoundError } from '../errors/response-errors/not-found.error';
 import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
 import { WorkflowRunner } from '../workflow-runner';
 import type { ChatMessage } from './chat-service.types';
+import { findResumeNode } from './utils';
 import { NodeTypes } from '../node-types';
 import { OwnershipService } from '../services/ownership.service';
 
@@ -41,6 +42,10 @@ export class ChatExecutionManager {
 		});
 
 		if (!execution) return;
+
+		// Only a chat-driven execution is owned by its socket. A socket attached to
+		// any other waiting execution must not cancel it when it goes away.
+		if (!this.canResumeOverChat(execution)) return;
 
 		if (['running', 'waiting', 'unknown'].includes(execution.status)) {
 			await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
@@ -86,18 +91,67 @@ export class ChatExecutionManager {
 		return binary;
 	}
 
+	/**
+	 * Resolves the node a chat message would resume and its (version-resolved)
+	 * node type, without mutating the execution. Shared by the resume guard and
+	 * `runNode` so the authorization decision can never drift from what runs.
+	 */
+	private resolveResumeTarget(execution: IExecutionResponse, workflow: Workflow) {
+		const executionData = execution.data.executionData?.nodeExecutionStack[0];
+		if (!executionData) return null;
+
+		const node = findResumeNode(executionData, workflow);
+		if (!node) return null;
+
+		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		return { node, nodeType, executionData };
+	}
+
+	/**
+	 * `resolveResumeTarget` wrapped to fail closed. Building the workflow / resolving
+	 * the parked node's type throws if a node type is unavailable (e.g. an
+	 * uninstalled community node). The guards below must never throw — a resume
+	 * decision that blows up would, on the heartbeat path, abort the whole
+	 * `checkHeartbeats` loop — so an unresolvable node is treated as not chat-resumable.
+	 */
+	private tryResolveResumeTarget(execution: IExecutionResponse) {
+		try {
+			return this.resolveResumeTarget(execution, this.getWorkflow(execution));
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * A chat message may only resume a node that implements the `onMessage` hook:
+	 * the Chat node and its tool variant (chatTool), plus RespondToWebhook.
+	 * Send-and-Wait gates, Wait nodes and forms have no `onMessage` and must not be
+	 * resumable over the socket.
+	 */
+	canResumeOverChat(execution: IExecutionResponse): boolean {
+		const target = this.tryResolveResumeTarget(execution);
+		return !!target && typeof target.nodeType.onMessage === 'function';
+	}
+
+	/**
+	 * The resolved type of the node a chat message would resume, for diagnostics.
+	 * Fails closed (undefined) when the node type can't be resolved.
+	 */
+	resolveResumeNodeType(execution: IExecutionResponse): string | undefined {
+		return this.tryResolveResumeTarget(execution)?.node.type;
+	}
+
 	private async runNode(execution: IExecutionResponse, message: ChatMessage) {
 		const workflow = this.getWorkflow(execution);
-		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-		const node = workflow.getNode(lastNodeExecuted);
-		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId: workflow.id });
-		const executionData = execution.data.executionData?.nodeExecutionStack[0];
+		const target = this.resolveResumeTarget(execution, workflow);
 
-		if (!node || !executionData) return null;
+		if (!target) return null;
+
+		const { node, nodeType, executionData } = target;
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId: workflow.id });
 
 		const inputData = executionData.data;
 		const connectionInputData = executionData.data.main[0];
-		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		const context = new ExecuteContext(
 			workflow,
 			node,

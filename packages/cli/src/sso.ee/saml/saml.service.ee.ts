@@ -5,6 +5,7 @@ import type { Settings, User } from '@n8n/db';
 import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { truncate } from '@n8n/utils';
 import axios from 'axios';
 import type express from 'express';
 import { createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
@@ -30,7 +31,11 @@ import {
 	updateUserFromSamlAttributes,
 } from './saml-helpers';
 import { SamlValidator } from './saml-validator';
-import { getServiceProviderInstance } from './service-provider.ee';
+import {
+	getServiceProviderEntityId,
+	getServiceProviderInstance,
+	getServiceProviderReturnUrl,
+} from './service-provider.ee';
 import type { SamlLoginBinding, SamlUserAttributes } from './types';
 import { isSsoJustInTimeProvisioningEnabled, reloadAuthenticationMethod } from '../sso-helpers';
 
@@ -499,11 +504,18 @@ export class SamlService {
 				req as unknown as ESamlHttpRequest,
 			);
 		} catch (error) {
-			// throw error;
-			throw new AuthError(
-				// INFO: The error can be a string. Samlify rejects promises with strings.
-				`SAML Authentication failed. Could not parse SAML response. ${error instanceof Error ? error.message : error}`,
+			// INFO: The error can be a string. Samlify rejects promises with strings.
+			const reason = error instanceof Error ? error.message : String(error);
+			const loggedReason = truncate(reason.replace(/\s+/g, ' '), 200);
+			const expectedEntityId = getServiceProviderEntityId();
+			const expectedAcsUrl = getServiceProviderReturnUrl();
+			// The default text log format prints only the message, so the message holds the
+			// values that an admin compares with the identity provider settings
+			this.logger.warn(
+				`SAML response was rejected (${loggedReason}). n8n expects Entity ID ${expectedEntityId} and ACS URL ${expectedAcsUrl}`,
+				{ reason: loggedReason, expectedEntityId, expectedAcsUrl },
 			);
+			throw new AuthError(`SAML Authentication failed. Could not parse SAML response. ${reason}`);
 		}
 		const { attributes, missingAttributes } = getMappedSamlAttributesFromFlowResult(
 			parsedSamlResponse,

@@ -6,6 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { requestPath } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
+
 import { encodeOutlookId } from '../helpers/utils';
 import { getSubfolders, microsoftApiRequest } from '../transport';
 
@@ -34,7 +36,7 @@ async function search(
 		};
 
 		if (filter) {
-			const filterValue = encodeURI(filter);
+			const filterValue = escapeODataValue(encodeURI(filter));
 			qs.$filter = `contains(${nameProperty}, '${filterValue}')`;
 		}
 
@@ -92,7 +94,7 @@ export async function searchDrafts(
 		};
 
 		if (filter) {
-			const filterValue = encodeURI(filter);
+			const filterValue = escapeODataValue(encodeURI(filter));
 			qs.$filter += ` AND contains(${'subject'}, '${filterValue}')`;
 		}
 
@@ -134,7 +136,7 @@ export async function searchMessages(
 		};
 
 		if (filter) {
-			const filterValue = encodeURI(filter);
+			const filterValue = escapeODataValue(encodeURI(filter));
 			qs.$filter = `contains(${'subject'}, '${filterValue}')`;
 		}
 
@@ -180,7 +182,7 @@ export async function searchEvents(
 		};
 
 		if (filter) {
-			const filterValue = encodeURI(filter);
+			const filterValue = escapeODataValue(encodeURI(filter));
 			qs.$filter = `contains(${'subject'}, '${filterValue}')`;
 		}
 

@@ -15,6 +15,8 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import nock from 'nock';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import type { SecureContextOptions } from 'tls';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
@@ -31,6 +33,46 @@ import {
 	removeEmptyBody,
 } from '../request-helper-functions';
 import { createFormDataObject } from '../request-helpers/axios-utils';
+
+async function startRecordingProxy() {
+	const receivedUrls: Array<string | undefined> = [];
+	const server = createServer((req, res) => {
+		receivedUrls.push(req.url);
+		res.end('ok');
+	});
+	const host = '127.0.0.1';
+	await new Promise<void>((resolve) => server.listen(0, host, resolve));
+	const { port } = server.address() as AddressInfo;
+
+	return {
+		url: `http://${host}:${port}`,
+		host,
+		port,
+		receivedUrls,
+		close: async () => {
+			server.closeAllConnections();
+			await new Promise<void>((resolve) => server.close(() => resolve()));
+		},
+	};
+}
+
+type RecordingProxy = Awaited<ReturnType<typeof startRecordingProxy>>;
+
+function useRecordingProxy() {
+	const ref = {} as { proxy: RecordingProxy };
+
+	beforeEach(async () => {
+		nock.restore();
+		ref.proxy = await startRecordingProxy();
+	});
+
+	afterEach(async () => {
+		await ref.proxy.close();
+		nock.activate();
+	});
+
+	return ref;
+}
 
 describe('Request Helper Functions', () => {
 	describe('proxyRequestToAxios', () => {
@@ -166,6 +208,88 @@ describe('Request Helper Functions', () => {
 						followRedirect: false,
 					}),
 				).rejects.toThrowError(expect.objectContaining({ statusCode: 301 }));
+			});
+		});
+
+		describe('domain allowlist', () => {
+			test('should block a URL that is not in allowedDomains', async () => {
+				const scope = nock(baseUrl).get('/test').reply(200, 'ok');
+
+				await expect(
+					proxyRequestToAxios(workflow, additionalData, node, {
+						url: `${baseUrl}/test`,
+						allowedDomains: 'other.com',
+					}),
+				).rejects.toThrow('Domain not allowed');
+
+				expect(scope.isDone()).toBe(false);
+				nock.cleanAll();
+			});
+
+			test('should show only the host in the error message', async () => {
+				const error = await proxyRequestToAxios(workflow, additionalData, node, {
+					url: `${baseUrl}/path-value?inline=query-value`,
+					qs: { api_key: 'param-value' },
+					allowedDomains: 'other.com',
+				}).catch((e: Error) => e);
+
+				expect(error.message).toContain('restricted from accessing example.de.');
+				expect(error.message).not.toMatch(/path-value|query-value|param-value/);
+			});
+
+			test('should show only the proxy host in the error message', async () => {
+				const error = await proxyRequestToAxios(workflow, additionalData, node, {
+					url: `${baseUrl}/test`,
+					proxy: 'http://user:proxy-password@proxy.test:8080',
+					allowedDomains: 'example.de',
+				}).catch((e: Error) => e);
+
+				expect(error.message).toContain('restricted from accessing proxy.test:8080.');
+				expect(error.message).not.toContain('proxy-password');
+			});
+
+			test.each([['example.de'], [undefined]])(
+				'should allow the URL when allowedDomains is %s',
+				async (allowedDomains) => {
+					nock(baseUrl).get('/test').reply(200, 'ok');
+
+					const response = await proxyRequestToAxios(workflow, additionalData, node, {
+						url: `${baseUrl}/test`,
+						allowedDomains,
+					});
+
+					expect(response).toEqual('ok');
+				},
+			);
+
+			describe('with a proxy', () => {
+				const ref = useRecordingProxy();
+
+				test('should block a proxy that is not in allowedDomains', async () => {
+					await expect(
+						proxyRequestToAxios(workflow, additionalData, node, {
+							url: 'http://example.de/test',
+							proxy: ref.proxy.url,
+							allowedDomains: 'example.de',
+						}),
+					).rejects.toThrow('Domain not allowed');
+
+					expect(ref.proxy.receivedUrls).toHaveLength(0);
+				});
+
+				test.each([['example.de, 127.0.0.1'], [undefined]])(
+					'should use the proxy when allowedDomains is %s',
+					async (allowedDomains) => {
+						const response = await proxyRequestToAxios(workflow, additionalData, node, {
+							url: 'http://example.de/test',
+							proxy: ref.proxy.url,
+							allowedDomains,
+						});
+
+						expect(response).toEqual('ok');
+						expect(ref.proxy.receivedUrls).toEqual(['http://example.de/test']);
+					},
+				);
 			});
 		});
 	});
@@ -767,6 +891,38 @@ describe('Request Helper Functions', () => {
 
 		beforeEach(() => {
 			nock.cleanAll();
+		});
+
+		describe('with a proxy', () => {
+			const ref = useRecordingProxy();
+
+			test('should block a proxy that is not in allowedDomains', async () => {
+				await expect(
+					httpRequest({
+						method: 'GET',
+						url: 'http://example.com/users',
+						proxy: { host: ref.proxy.host, port: ref.proxy.port },
+						allowedDomains: 'example.com',
+					}),
+				).rejects.toThrow('Domain not allowed');
+
+				expect(ref.proxy.receivedUrls).toHaveLength(0);
+			});
+
+			test.each([['example.com, 127.0.0.1'], [undefined]])(
+				'should use the proxy when allowedDomains is %s',
+				async (allowedDomains) => {
+					const response = await httpRequest({
+						method: 'GET',
+						url: 'http://example.com/users',
+						proxy: { host: ref.proxy.host, port: ref.proxy.port },
+						allowedDomains,
+					});
+
+					expect(response).toEqual('ok');
+					expect(ref.proxy.receivedUrls).toEqual(['http://example.com/users']);
+				},
+			);
 		});
 
 		test('should make a simple GET request', async () => {

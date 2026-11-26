@@ -6,6 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { requestPath } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
+
 import { microsoftApiRequest, toWorkbookId } from '../transport';
 
 export async function searchWorkbooks(
@@ -17,7 +19,7 @@ export async function searchWorkbooks(
 	const extensionFilter = fileExtensions.join(' OR ');
 
 	const q = filter || extensionFilter;
-	const quotedQuery = `'${q}'`;
+	const quotedQuery = `'${escapeODataValue(q)}'`;
 
 	let response: IDataObject = {};
 

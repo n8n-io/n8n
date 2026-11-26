@@ -19,7 +19,7 @@ import { SamlValidator } from '../saml-validator';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { UrlService } from '@/services/url.service';
+import { UrlService } from '@/services/url.service';
 import * as samlHelpers from '@/sso.ee/saml/saml-helpers';
 import { SamlService } from '@/sso.ee/saml/saml.service.ee';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
@@ -197,6 +197,7 @@ describe('SamlService', () => {
 		userRepository = mock<UserRepository>();
 		globalConfig = mock<GlobalConfig>({
 			sso: { saml: { loginEnabled: false } },
+			endpoints: { rest: 'rest' },
 		});
 		provisioningService = mock<ProvisioningService>();
 
@@ -289,6 +290,59 @@ describe('SamlService', () => {
 				userPrincipalName: 'test',
 				n8nInstanceRole: 'global:admin',
 				n8nProjectRoles: ['projectRole1', 'projectRole2'],
+			});
+		});
+
+		describe('when samlify rejects the response', () => {
+			const rejectWith = (rejection: unknown) => {
+				Container.set(
+					UrlService,
+					mock<UrlService>({ getInstanceBaseUrl: () => 'http://localhost:5678' }),
+				);
+				jest
+					.spyOn(samlService, 'getIdentityProviderInstance')
+					.mockReturnValue(mock<IdentityProviderInstance>());
+				const serviceProviderInstance = mock<ServiceProviderInstance>();
+				serviceProviderInstance.parseLoginResponse.mockRejectedValue(rejection);
+				jest
+					.spyOn(samlService, 'getServiceProviderInstance')
+					.mockReturnValue(serviceProviderInstance);
+			};
+
+			test.each([
+				{ kind: 'a string', rejection: 'ERR_AUDIENCE_MISMATCH' },
+				{ kind: 'an Error', rejection: new Error('ERR_AUDIENCE_MISMATCH') },
+			])('logs the reason and the expected values for $kind', async ({ rejection }) => {
+				rejectWith(rejection);
+
+				await expect(
+					samlService.getAttributesFromLoginResponse(mock<express.Request>(), 'post'),
+				).rejects.toThrowError(
+					'SAML Authentication failed. Could not parse SAML response. ERR_AUDIENCE_MISMATCH',
+				);
+				expect(logger.warn).toHaveBeenCalledWith(
+					'SAML response was rejected (ERR_AUDIENCE_MISMATCH). n8n expects Entity ID http://localhost:5678/rest/sso/saml/metadata and ACS URL http://localhost:5678/rest/sso/saml/acs',
+					{
+						reason: 'ERR_AUDIENCE_MISMATCH',
+						expectedEntityId: 'http://localhost:5678/rest/sso/saml/metadata',
+						expectedAcsUrl: 'http://localhost:5678/rest/sso/saml/acs',
+					},
+				);
+			});
+
+			test('logs a long reason on one line and shortens it', async () => {
+				const reason = `invalid signature\nfor uri #${'a'.repeat(500)}`;
+				rejectWith(new Error(reason));
+
+				await expect(
+					samlService.getAttributesFromLoginResponse(mock<express.Request>(), 'post'),
+				).rejects.toThrowError(reason);
+				const [message, metadata] = jest.mocked(logger.warn).mock.calls[0];
+				expect(message).not.toContain('\n');
+				expect(metadata).toMatchObject({
+					reason: expect.stringMatching(/^invalid signature for uri #a+\.\.\.$/),
+				});
+				expect((metadata as { reason: string }).reason).toHaveLength(203);
 			});
 		});
 	});
