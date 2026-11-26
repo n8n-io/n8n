@@ -589,16 +589,6 @@ describe('N8nDataTableServer', () => {
 		expect(bodyCells[2]).not.toHaveClass('is-pinned');
 	});
 
-	it('should keep the pinned columns out of the area that a focused cell scrolls into', () => {
-		const { container } = render(N8nDataTableServer<Item>, {
-			props: { items: items.slice(0, 1), headers, itemsLength: 1, pinColumns: 1, pinEndColumns: 2 },
-		});
-
-		expect(container.querySelector('.table-scroll')?.getAttribute('style')).toContain(
-			'scroll-padding-inline: 150px 300px',
-		);
-	});
-
 	it('should scroll a cell into view when it gets focus from the keyboard only', async () => {
 		const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView);
 		scrollIntoView.mockClear();
@@ -616,28 +606,68 @@ describe('N8nDataTableServer', () => {
 		expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
 	});
 
-	it('should move a focused row out from under the sticky header, but not move for a header', async () => {
-		const { container, getAllByRole, getByRole } = render(N8nDataTableServer<Item>, {
-			props: { items, headers, itemsLength: 3, showSelect: true, selection: [] },
-		});
-		const scroll = container.querySelector<HTMLElement>('.table-scroll')!;
-		let scrollTop = 100;
-		Object.defineProperty(scroll, 'scrollTop', {
-			get: () => scrollTop,
-			set: (value: number) => (scrollTop = value),
-		});
-		const header = container.querySelector('thead')!;
-		vi.spyOn(header, 'getBoundingClientRect').mockReturnValue({ bottom: 36 } as DOMRect);
-		const rowCheckbox = getAllByRole('checkbox')[1];
-		vi.spyOn(rowCheckbox, 'getBoundingClientRect').mockReturnValue({ top: 10 } as DOMRect);
-		const headerButton = getByRole('button', { name: 'Id' });
-		vi.spyOn(headerButton, 'getBoundingClientRect').mockReturnValue({ top: 10 } as DOMRect);
+	describe('keyboard focus near pinned cells', () => {
+		// jsdom has no layout, so each test gives the scroll container and the cells their geometry.
+		function mockScroll(element: HTMLElement, property: 'scrollLeft' | 'scrollTop', start: number) {
+			const state = { value: start };
+			Object.defineProperty(element, property, {
+				get: () => state.value,
+				set: (value: number) => (state.value = value),
+			});
+			return state;
+		}
+		function mockRect(element: Element, rect: Partial<DOMRect>) {
+			vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
+				top: 50,
+				bottom: 80,
+				left: 0,
+				right: 0,
+				...rect,
+			} as DOMRect);
+		}
 
-		headerButton.focus();
-		expect(scrollTop).toBe(100);
+		it('should move a focused cell out from under the pinned columns, but not move for a pinned cell', () => {
+			const { container, getByRole } = render(N8nDataTableServer<Item>, {
+				props: { items, headers, itemsLength: 3, pinColumns: 1, pinEndColumns: 2 },
+			});
+			const scroll = container.querySelector<HTMLElement>('.table-scroll')!;
+			Object.defineProperty(scroll, 'clientWidth', { value: 800 });
+			mockRect(scroll, { left: 0 });
+			mockRect(container.querySelector('thead')!, { bottom: 36 });
+			const scrollLeft = mockScroll(scroll, 'scrollLeft', 400);
+			const headerCell = (name: string) => getByRole('columnheader', { name });
 
-		rowCheckbox.focus();
-		expect(scrollTop).toBe(74);
+			// The pinned columns are 150px on the left and 300px on the right, so 150-500px is clear.
+			mockRect(headerCell('Id'), { left: 0, right: 150 });
+			getByRole('button', { name: 'Id' }).focus();
+			expect(scrollLeft.value).toBe(400);
+
+			mockRect(headerCell('First name'), { left: 100, right: 250 });
+			getByRole('button', { name: 'First name' }).focus();
+			expect(scrollLeft.value).toBe(350);
+
+			mockRect(headerCell('Last name'), { left: 400, right: 600 });
+			getByRole('button', { name: 'Last name' }).focus();
+			expect(scrollLeft.value).toBe(450);
+		});
+
+		it('should move a focused row out from under the sticky header, but not move for a header', () => {
+			const { container, getAllByRole, getByRole } = render(N8nDataTableServer<Item>, {
+				props: { items, headers, itemsLength: 3, showSelect: true, selection: [] },
+			});
+			const scroll = container.querySelector<HTMLElement>('.table-scroll')!;
+			const scrollTop = mockScroll(scroll, 'scrollTop', 100);
+			mockRect(container.querySelector('thead')!, { bottom: 36 });
+			const rowCheckbox = getAllByRole('checkbox')[1];
+			mockRect(rowCheckbox.closest('td')!, { top: 10 });
+			mockRect(getByRole('columnheader', { name: 'Id' }), { top: 0 });
+
+			getByRole('button', { name: 'Id' }).focus();
+			expect(scrollTop.value).toBe(100);
+
+			rowCheckbox.focus();
+			expect(scrollTop.value).toBe(74);
+		});
 	});
 
 	it('should not pin any column by default', () => {
