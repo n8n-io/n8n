@@ -1,0 +1,40 @@
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/common.ts
+  s_126e90b504d18d::t_c91df79ba72b48 579-584
+packages/frontend/editor-ui/src/features/ai/skills/useSkillDependencies.ts
+  s_126e90b504d18d::t_eedf1713036e13 2-17,19-130
+  s_126e90b504d18d::t_7e9d6ee7498bf9 1,18
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/SkillDependencyEdge.vue
+  s_126e90b504d18d::t_a316583ad0c04a 1-40
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_126e90b504d18d::t_a316583ad0c04a 36,152-159,317
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_126e90b504d18d::t_7e9d6ee7498bf9 45,270-275,279
+packages/frontend/editor-ui/src/features/ai/skills/skillDependencies.test.ts
+  s_126e90b504d18d::t_03ab9d70c12589 1-63
+packages/frontend/editor-ui/src/features/ai/skills/skillDependencyState.ts
+  s_126e90b504d18d::t_7e9d6ee7498bf9 1-6
+packages/frontend/editor-ui/src/features/ai/skills/skillDependencies.ts
+  s_126e90b504d18d::t_03ab9d70c12589 1-122
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_126e90b504d18d::t_a316583ad0c04a 102,2178-2179
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_126e90b504d18d::t_89c7c56a8178e3 25,285-286,1816-1867,1884
+packages/@n8n/nodes-langchain/nodes/tools/ToolSkill/ToolSkill.node.ts
+  s_126e90b504d18d::t_c91df79ba72b48 116,175-202,218-227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a6874c0629560c9e3325e12b72c86ded9a8d84ae",
+  "prompts": {},
+  "sessions": {
+    "s_126e90b504d18d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53d0ed1b-1ddd-4373-8a47-d0ff0bb754c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

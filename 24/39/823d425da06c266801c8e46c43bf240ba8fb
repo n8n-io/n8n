@@ -1,0 +1,25 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_c51b71bedc600f::t_4412b4546d6521 427,429-434,440,443,453,455
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_c51b71bedc600f::t_4412b4546d6521 612,636-646
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_c51b71bedc600f::t_0dc8a5045edaff 854-858,860,891-895,897,911-915,917
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_c51b71bedc600f::t_0dc8a5045edaff 1185,1187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2439823d425da06c266801c8e46c43bf240ba8fb",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

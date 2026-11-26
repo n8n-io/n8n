@@ -1,0 +1,22 @@
+.agents/skills/ligo-pr-review/reference.md
+  s_f9f47f1967bb7f::t_4589be169c154b 1-51,53-195
+  s_f9f47f1967bb7f::t_33f184048ada62 52
+.claude/plugins/n8n/skills/ligo-pr-review
+  ai_agent 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0441a173066bf89d86b3d928235770cdc4d6bb37",
+  "prompts": {},
+  "sessions": {
+    "s_f9f47f1967bb7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f982f6ac-cab1-4531-b0d9-14d03efed8bc",
+        "model": "unknown"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

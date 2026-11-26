@@ -1,0 +1,19 @@
+DECISIONS.md
+  s_b928d6a7b77189::t_51508939322e20 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e80f227b63facf81b3a607a5dc5e06a9b74d0351",
+  "prompts": {},
+  "sessions": {
+    "s_b928d6a7b77189": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf0b9667-bcdc-4450-bd16-a672cb1d5240",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

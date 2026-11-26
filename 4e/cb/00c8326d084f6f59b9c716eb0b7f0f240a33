@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_0356cd250cb1f3::t_b8dfc00913a5d2 110,226-236,1635-1639,1944-1947,1949,1952,1978-1984,1988-1989,1994,1996
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.test.ts
+  s_0356cd250cb1f3::t_62e5dab78e2477 429-430,435-437
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_0356cd250cb1f3::t_b8dfc00913a5d2 536-564,572-576
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.test.ts
+  s_0356cd250cb1f3::t_62e5dab78e2477 270-273,280-283,295-299,306-310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ecb00c8326d084f6f59b9c716eb0b7f0f240a33",
+  "prompts": {},
+  "sessions": {
+    "s_0356cd250cb1f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "454afcfb-e073-4118-b4b9-fe81402b424d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

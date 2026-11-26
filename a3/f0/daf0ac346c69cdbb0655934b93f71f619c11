@@ -1,0 +1,11 @@
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  ai_agent 43-44,1275-1292,1432,1436
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  ai_agent 126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a3f0daf0ac346c69cdbb0655934b93f71f619c11",
+  "prompts": {}
+}

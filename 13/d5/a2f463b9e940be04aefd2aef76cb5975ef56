@@ -1,0 +1,22 @@
+packages/workflow/src/expressions/native-evaluation/verify.ts
+  s_c4ae2cb59216c1::t_1ed28c4f796752 1,81-85,171-173
+packages/workflow/test/native-evaluation-verify.test.ts
+  s_c4ae2cb59216c1::t_9525a321468eaa 407-494
+  s_c4ae2cb59216c1::t_fc45726f4ae72d 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "13d5a2f463b9e940be04aefd2aef76cb5975ef56",
+  "prompts": {},
+  "sessions": {
+    "s_c4ae2cb59216c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59ff1d96-d453-4ab0-99d1-37353ea576c7",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

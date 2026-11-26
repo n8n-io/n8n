@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/__spike__/AgentConfigMap.vue
+  s_8b88e77e9d57ad::t_fa34ec2669287c 81-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f40c2c880f0f4a27068aec0190d812f73fe9053a",
+  "prompts": {},
+  "sessions": {
+    "s_8b88e77e9d57ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ad13223-ea86-4147-8df6-552fe78d3520",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/@n8n/api-types/src/schemas/instance-ai-approval.schema.ts
+  s_67ceb9173fafe7::t_4a998c61ff2bb0 162-163
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_67ceb9173fafe7::t_229f790e2edd79 3486-3490,3620,3735,3769,3949
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_67ceb9173fafe7::t_91421220af46d2 1142,1147-1148,1156,1188,1192,1208,1252,1289
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_67ceb9173fafe7::t_971c16666d5572 8786
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/approvalDetails.test.ts
+  s_67ceb9173fafe7::t_9112c4bcbfa6fc 73-78
+packages/frontend/editor-ui/src/features/ai/instanceAi/approvalDetails.ts
+  s_67ceb9173fafe7::t_7035d5de9919dd 246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4a53add159c1dd7ef4e04aca0d84efafc3af7fb",
+  "prompts": {},
+  "sessions": {
+    "s_67ceb9173fafe7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f434-61c8-7540-bfea-4d6f94c2166b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_1c49dc99c655d3::t_fe4a08b79c2ea7 151
+  s_1c49dc99c655d3::t_49ceba37e0ca29 66-70,74-76,250-251,286-289
+  s_1c49dc99c655d3::t_6530d709407aba 71-73
+  s_1c49dc99c655d3::t_e40d12db063d83 77
+  s_1c49dc99c655d3::t_ea0cd7f8f66609 152
+  s_1c49dc99c655d3::t_75a65572f0fb8f 290-291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97cc7eb2f371c2687391fb27eaf2ffc9b1960236",
+  "prompts": {},
+  "sessions": {
+    "s_1c49dc99c655d3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a208a1-354d-75c2-ba12-fba89a9e0907",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

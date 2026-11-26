@@ -1,0 +1,36 @@
+packages/@n8n/utils/src/string/escape-xml.test.ts
+  s_0481ab2872e2f7::t_58367e9c169c1e 1-44
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_0481ab2872e2f7::t_c789adcf8cf3e0 2
+packages/@n8n/ai-workflow-builder.ee/src/utils/context-builders.ts
+  s_0481ab2872e2f7::t_14c03d776577cc 3
+  s_0481ab2872e2f7::t_7589d4bdb2df57 597
+  s_0481ab2872e2f7::t_ee228b1f8271e8 602
+  s_0481ab2872e2f7::t_783dcb064dcb74 581
+  s_0481ab2872e2f7::t_7c232d134f545c 588
+packages/@n8n/agents/src/sdk/untrusted-content.ts
+  s_0481ab2872e2f7::t_a464ab75ed1c11 25-26
+  s_0481ab2872e2f7::t_c641a7e33c62fd 1-2
+packages/@n8n/utils/src/string/escape-xml.ts
+  s_0481ab2872e2f7::t_1389c7f211c1a4 1-13
+packages/@n8n/ai-utilities/src/node-catalog/dynamic-node-parameters.ts
+  s_0481ab2872e2f7::t_b0411369f3e561 279-280
+  s_0481ab2872e2f7::t_3399b528b29bcf 272
+  s_0481ab2872e2f7::t_ec0e634c711a5d 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "43c4884ea4b88ea93ebe4f2dd3c415a41612b2a9",
+  "prompts": {},
+  "sessions": {
+    "s_0481ab2872e2f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5884e799-6268-4cb4-8513-23c91424175e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

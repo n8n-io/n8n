@@ -1,0 +1,19 @@
+packages/cli/test/integration/controllers/invitation/invitation.controller.integration.test.ts
+  s_1f81abe09807b5::t_f924bdc6504b7f 441-443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93682c8650fda1fd2ea510869f72d7eb1f31b0cb",
+  "prompts": {},
+  "sessions": {
+    "s_1f81abe09807b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66abfa0d-c819-44a1-b320-43149bbebabb",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

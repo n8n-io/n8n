@@ -1,0 +1,21 @@
+packages/modules/promotions/frontend/src/components/ProjectPromotionEnvironmentsSection.vue
+  s_72860b67d0263f::t_bd5051745e5555 1-116
+packages/modules/promotions/frontend/src/components/ProjectPromotionEnvironmentsSection.test.ts
+  s_72860b67d0263f::t_8f919028563410 1-4,6,8-61,64-120,122,124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eef453b4ef9de691e54a033b90fdc20cadc960f6",
+  "prompts": {},
+  "sessions": {
+    "s_72860b67d0263f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf0a6a12-ff59-42b9-b058-80693a4ddacf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

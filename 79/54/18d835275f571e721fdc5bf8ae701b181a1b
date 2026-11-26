@@ -1,0 +1,19 @@
+packages/cli/src/commands/import/credentials.ts
+  s_7e5b40e8be9dc5::t_b87b1de7e655fe 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "795418d835275f571e721fdc5bf8ae701b181a1b",
+  "prompts": {},
+  "sessions": {
+    "s_7e5b40e8be9dc5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc63a769-34e8-4919-8ea8-a40e6ad103c8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

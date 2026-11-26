@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentGrid.test.ts
+  s_3fe6847a175364::t_49fea38e132263 48
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentCard.vue
+  s_3fe6847a175364::t_36eae13a0f9add 5,13,25,27,30,51,54,60,65
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentsN8nChatFlag.test.ts
+  s_3fe6847a175364::t_bc5664f9f6bdf9 32-35,38,41,44,47,51-52
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.vue
+  s_3fe6847a175364::t_dd18538f3f9718 2,12-15
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiInput.attachments.test.ts
+  s_3fe6847a175364::t_fb0d3622041858 123,242,266
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  s_3fe6847a175364::t_ddef9f52b6cb62 362,376
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_3fe6847a175364::t_fb0d3622041858 117,931,980
+  s_3fe6847a175364::t_09678c8cd97414 929-930
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/N8nChatAgentLibraryView.vue
+  s_3fe6847a175364::t_36eae13a0f9add 40,69-77,86-91
+packages/@n8n/telemetry/src/events/agents.ts
+  s_3fe6847a175364::t_bc5664f9f6bdf9 1320,1323
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_3fe6847a175364::t_1ba4946694b10e 277
+  s_3fe6847a175364::t_ccfd5955811691 1798-1799,1801
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_3fe6847a175364::t_bc5664f9f6bdf9 18
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_3fe6847a175364::t_dd18538f3f9718 211-213,215,986,1016,1022-1023,1037,1058,1060
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/N8nChatAgentLibraryView.test.ts
+  s_3fe6847a175364::t_49fea38e132263 28
+packages/frontend/editor-ui/src/features/agents/composables/useAgentsN8nChatFlag.ts
+  s_3fe6847a175364::t_bc5664f9f6bdf9 20-22
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_3fe6847a175364::t_0d0b8b78beab9a 26-28
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentGrid.vue
+  s_3fe6847a175364::t_36eae13a0f9add 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e56af97ec0193755c63d2d8f49de22c4c2306985",
+  "prompts": {},
+  "sessions": {
+    "s_3fe6847a175364": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da81a8bb-ea93-402f-9ef9-78d7282c19f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

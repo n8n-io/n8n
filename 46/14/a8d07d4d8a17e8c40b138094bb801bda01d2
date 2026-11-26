@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceConnectDialog.vue
+  s_3d598469e16764::t_29234d30e0c0ac 731,940-941,946,950-955,960-962
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceUpdatesDialog.vue
+  s_3d598469e16764::t_9ad05b2ded74ee 577
+  s_3d598469e16764::t_b486499d9813a4 386-399
+  s_3d598469e16764::t_29234d30e0c0ac 505,553-554,571,573-576,578-579,582-584,591-594,599-603
+  s_3d598469e16764::t_24a0f26bf3b937 572
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4614a8d07d4d8a17e8c40b138094bb801bda01d2",
+  "prompts": {},
+  "sessions": {
+    "s_3d598469e16764": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1f323-0b07-76e2-9e16-ded6407e36ad",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

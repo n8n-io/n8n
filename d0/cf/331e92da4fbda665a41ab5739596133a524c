@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session-binding.test.ts
+  s_11ad25b66a6e8f::t_8dbc6ea6945d1a 92-97
+  s_11ad25b66a6e8f::t_08c41b8f581faa 1-91,98-412
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_11ad25b66a6e8f::t_72df48500b2da0 82,128-133,146-151,169-174,198-203,231-236
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_11ad25b66a6e8f::t_94d2ba18273b7b 1-2,50,68-69,71,74,77,83-84,89-91,96-122,141-150,161,188,199,279,380-387,389,400-405,416-417
+  s_11ad25b66a6e8f::t_3d892cccb704a8 191-198,406-415
+  s_11ad25b66a6e8f::t_ee96b26663fa63 418
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_11ad25b66a6e8f::t_3d892cccb704a8 28
+  s_11ad25b66a6e8f::t_94d2ba18273b7b 16-22,29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0cf331e92da4fbda665a41ab5739596133a524c",
+  "prompts": {},
+  "sessions": {
+    "s_11ad25b66a6e8f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1fa3b-0644-7569-8d36-8acba50c5bb4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

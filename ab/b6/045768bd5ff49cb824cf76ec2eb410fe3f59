@@ -1,0 +1,66 @@
+packages/@n8n/cli/docs/commands/promotions.md
+  s_4a494bfdece475::t_f83a73fdb348d9 428-429,520-522,559-560,562,571-572,594-595,603-604,607-608,614,616-621,623-631,639-640,924
+  s_4a494bfdece475::t_4fb947a90bfcdb 427,430-431
+  s_4a494bfdece475::t_20b6ecee308a69 334,337-351,353-356,360-366,373-375,380-387,425-426,432-440,442-455,465-468,496-501,511,514-519,523-531,541,548-549,553-556,563-570,576,580-581,584-586,588-593,596-597,764,913-920,922-923,925-928,931-933,1011,1015-1016,1147,1152
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_4a494bfdece475::t_98b82eab7de851 414,433-436
+  s_4a494bfdece475::t_4fb947a90bfcdb 211,213,408-413,418
+  s_4a494bfdece475::t_ced678633a5b8f 212
+packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
+  s_4a494bfdece475::t_ad18964fff3a16 2,150,184-196,271,278,288-300,302,310,338-339,361-362,468-471,474,477,480,487-492,503-508,515-520,522,536-565
+  s_4a494bfdece475::t_8bc73defaa3179 4-9,17-18,29,102-149,151-156,158-183,197-198,256-270,272-277,279-287,301,303-309,343-359,360,363-385,467,472-473,475-476,478-479,481-486,493-502,509-514,521,523-529,531-535
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_4a494bfdece475::t_2535d0a8a71ac5 491,508-513,517-522,529-532,534-535,539-547,551-565
+  s_4a494bfdece475::t_6bb6e806c8bf44 633
+  s_4a494bfdece475::t_4d2a4e109d6e7e 62-85,87,89-100,369-374,380,382,384-393,395-396,399,401,404-407,459-487,489-490,492-495,498-500,502-507,566-632,634-677,679-680,683-689
+packages/@n8n/cli/src/__tests__/promotion-environment-promote-check.test.ts
+  s_4a494bfdece475::t_052d8a976cb3ce 99,137-145,147-150,154-157
+  s_4a494bfdece475::t_e7117b9a9e689a 1-46,48-50,52-54,61-82,87-88,90-98,100,104,107-109,111-113,123-136,162,167-179
+  s_4a494bfdece475::t_6bb6e806c8bf44 158-161,163-166
+  s_4a494bfdece475::t_e6ebccb5a0ef94 83-86
+packages/@n8n/cli/src/__tests__/promotion-missing-dependencies.test.ts
+  s_4a494bfdece475::t_b974033cf27ad4 6,98-108,129-149,152-165,215,266-295,297-307,310-314,316,321,323-342,346,350-351,355-357,592-596,600
+  s_4a494bfdece475::t_6bb6e806c8bf44 1-5,9-36,37-97,109-116,119-120,123-124,127-128,188-214,216-219,221-225,227-241,395-413,477-485,562,581-591,597-599,601-602
+packages/@n8n/cli/src/client.ts
+  s_4a494bfdece475::t_b92a7dd4fb286e 168-172
+  s_4a494bfdece475::t_b0620ce5598eae 10-13,17,203,205-210,523-524
+  s_4a494bfdece475::t_a81f8f3f89d598 8,525-526
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_4a494bfdece475::t_7d6c6994ed691f 140,183
+packages/@n8n/cli/src/commands/promotion-environment/missing-dependencies.ts
+  s_4a494bfdece475::t_2118015f48d0c5 30,62-67,84,88-95,98,101-102,114,125-129,147-148,165-169,204-207,209-212,216,221-223,228,248,256,263,265,267-270
+  s_4a494bfdece475::t_ab815c1a890a90 8-10,28-29,31-33,59-61,68,73,75-83,105-111,113,116-119,121,123-124,130,133-134,139-140,143,145-146,150,163-164,181,194-195,224-227,229-233,237-242,254,261,266,271-277
+  s_4a494bfdece475::t_7d6c6994ed691f 120,149,170-171,178-180,182-184,189-190,192-193,251,253,259
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_4a494bfdece475::t_e7117b9a9e689a 94,98,101
+packages/@n8n/cli/src/commands/promotion-environment/promote-check.ts
+  s_4a494bfdece475::t_7d6498dd24750e 1-2,4,6-9,11-32,42-43,45-49
+packages/@n8n/cli/src/commands/promotion-environment/list-changes.ts
+  s_4a494bfdece475::t_7d6c6994ed691f 4,32,35,50-51
+  s_4a494bfdece475::t_7d6498dd24750e 49,52-56
+packages/@n8n/cli/src/__tests__/promotion-command-wiring.test.ts
+  s_4a494bfdece475::t_e7117b9a9e689a 13,154-159
+  s_4a494bfdece475::t_88026be1469b44 160
+packages/@n8n/cli/src/index.ts
+  s_4a494bfdece475::t_7d6498dd24750e 55,136
+packages/@n8n/cli/src/commands/promotion-environment/list-apply-changes.ts
+  s_4a494bfdece475::t_7d6498dd24750e 4,9,34-38
+packages/@n8n/cli/README.md
+  s_4a494bfdece475::t_6ec2bc7a87b50d 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "abb6045768bd5ff49cb824cf76ec2eb410fe3f59",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
