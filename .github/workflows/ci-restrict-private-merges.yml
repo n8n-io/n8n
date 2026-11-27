@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - 1.x
+      - 2.x
 
 permissions:
   pull-requests: write
@@ -22,10 +23,17 @@ jobs:
         shell: bash
         env:
           HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
-          head="$HEAD_REF"
-          if [[ "$head" == bundle/* ]]; then
+          case "$BASE_REF" in
+            master) expected_head='bundle/3.x' ;;
+            2.x) expected_head='bundle/2.x' ;;
+            1.x) expected_head='bundle/1.x' ;;
+            *) exit 1 ;;
+          esac
+          echo "expected_head=$expected_head" >> "$GITHUB_OUTPUT"
+          if [[ "$HEAD_REF" == "$expected_head" ]]; then
             echo "allowed=true" >> "$GITHUB_OUTPUT"
           else
             echo "allowed=false" >> "$GITHUB_OUTPUT"
@@ -34,6 +42,8 @@ jobs:
       - name: Comment on PR (blocked)
         if: ${{ steps.validate.outputs.allowed == 'false' }}
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          EXPECTED_HEAD: ${{ steps.validate.outputs.expected_head }}
         with:
           script: |
             const owner = context.repo.owner;
@@ -45,9 +55,8 @@ jobs:
             const marker = "<!-- bundle-branch-only -->";
             const body =
               `${marker}\n` +
-              `🚫 **Merge blocked**: PRs into \`${base}\` are only allowed from branches named \`bundle/*\`.\n\n` +
-              `Current source branch: \`${head}\`\n\n` +
-              `Merge your developments into a bundle branch instead of directly merging to master or 1.x.`;
+              `🚫 **Merge blocked**: PRs into \`${base}\` must come from \`${process.env.EXPECTED_HEAD}\`.\n\n` +
+              `Current source branch: \`${head}\`.`;
 
             // Find an existing marker comment (to update instead of spamming)
             const { data: comments } = await github.rest.issues.listComments({
@@ -79,8 +88,10 @@ jobs:
         if: ${{ steps.validate.outputs.allowed == 'false' }}
         env:
           HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          EXPECTED_HEAD: ${{ steps.validate.outputs.expected_head }}
         run: |
-          echo "::error::You can only merge to master and 1.x from a bundle/* branch. Got '$HEAD_REF'."
+          echo "::error::PRs into '$BASE_REF' must come from '$EXPECTED_HEAD'. Got '$HEAD_REF'."
           exit 1
 
       - name: Allowed

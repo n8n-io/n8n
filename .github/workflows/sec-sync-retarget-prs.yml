@@ -1,5 +1,5 @@
 # Moves open PRs in n8n-io/n8n-private off a bundle branch's base and back onto the bundle
-# branch: master -> bundle/2.x, 1.x -> bundle/1.x.
+# branch: master -> bundle/3.x, 2.x -> bundle/2.x, 1.x -> bundle/1.x.
 #
 # When a bundle branch is deleted, GitHub retargets every open PR that pointed at it to that
 # branch's own base. Re-creating the branch does not undo this, so the fixes sit on master
@@ -34,6 +34,8 @@ jobs:
       matrix:
         include:
           - base: 'master'
+            bundle: 'bundle/3.x'
+          - base: '2.x'
             bundle: 'bundle/2.x'
           - base: '1.x'
             bundle: 'bundle/1.x'
