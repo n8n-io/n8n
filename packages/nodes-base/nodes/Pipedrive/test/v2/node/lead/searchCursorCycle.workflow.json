@@ -1,0 +1,155 @@
+{
+	"name": "Pipedrive v2 lead search stops when a cursor comes back test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "d4d4d4d4-1111-2222-3333-444444444444",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "lead",
+				"operation": "search",
+				"term": "Promising",
+				"exactMatch": false,
+				"returnAll": true,
+				"additionalFields": {}
+			},
+			"id": "e5e5e5e5-1111-2222-3333-444444444444",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "f6f6f6f6-1111-2222-3333-444444444444",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"result_score": 0.55,
+					"id": "9ce77a10-2e16-11f1-91c1-d76c55e1594b",
+					"type": "lead",
+					"title": "Promising Lead",
+					"owner": {
+						"id": 25455458
+					},
+					"person": {
+						"id": 10,
+						"name": "John Test"
+					},
+					"organization": {
+						"id": 7,
+						"name": "Test Org LLC",
+						"address": null
+					},
+					"phones": [],
+					"emails": [],
+					"custom_fields": [],
+					"notes": [],
+					"value": null,
+					"currency": "USD",
+					"visible_to": 3,
+					"is_archived": false
+				}
+			},
+			{
+				"json": {
+					"result_score": 0.41,
+					"id": "1f0b2c3d-2e16-11f1-91c1-d76c55e1594b",
+					"type": "lead",
+					"title": "Promising Lead 2",
+					"owner": {
+						"id": 25455458
+					},
+					"person": {
+						"id": 10,
+						"name": "John Test"
+					},
+					"organization": {
+						"id": 7,
+						"name": "Test Org LLC",
+						"address": null
+					},
+					"phones": [],
+					"emails": [],
+					"custom_fields": [],
+					"notes": [],
+					"value": null,
+					"currency": "USD",
+					"visible_to": 3,
+					"is_archived": false
+				}
+			},
+			{
+				"json": {
+					"result_score": 0.33,
+					"id": "2a1c3d4e-2e16-11f1-91c1-d76c55e1594b",
+					"type": "lead",
+					"title": "Promising Lead 3",
+					"owner": {
+						"id": 25455458
+					},
+					"person": {
+						"id": 10,
+						"name": "John Test"
+					},
+					"organization": {
+						"id": 7,
+						"name": "Test Org LLC",
+						"address": null
+					},
+					"phones": [],
+					"emails": [],
+					"custom_fields": [],
+					"notes": [],
+					"value": null,
+					"currency": "USD",
+					"visible_to": 3,
+					"is_archived": false
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Pipedrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pipedrive": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
