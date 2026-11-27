@@ -1,0 +1,21 @@
+packages/modules/promotions/frontend/src/views/PromotionEnvironmentView.test.ts
+  s_aa72fb4789ac19::t_639c3ee04c6db5 393-408
+packages/modules/promotions/frontend/src/views/PromotionEnvironmentView.vue
+  s_aa72fb4789ac19::t_639c3ee04c6db5 493
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0c16fa782712970efdeca2691378a8840cf35c0c",
+  "prompts": {},
+  "sessions": {
+    "s_aa72fb4789ac19": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45b46127-128e-4d3c-a0f9-6216158ac2f1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_31fab88c8c26cb::t_58cff1399d58f5 1834,1860,1882
+packages/modules/engine-v2/frontend/src/index.ts
+  s_31fab88c8c26cb::t_6959c391b512be 15
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityDialog.test.ts
+  s_31fab88c8c26cb::t_b381d457a626ee 267-278
+  s_31fab88c8c26cb::t_db885424b72d96 279
+packages/modules/engine-v2/frontend/src/confirmEngineV2Switch.ts
+  s_31fab88c8c26cb::t_6959c391b512be 5-6,29
+packages/modules/engine-v2/frontend/src/composables/useEngineV2Compatibility.ts
+  s_31fab88c8c26cb::t_6959c391b512be 63-70
+packages/modules/engine-v2/frontend/src/engineV2ReasonText.ts
+  s_31fab88c8c26cb::t_6959c391b512be 13-14,29-37,84-86,189-191,194-195
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  s_31fab88c8c26cb::t_6959c391b512be 76,315
+packages/modules/engine-v2/frontend/README.md
+  s_31fab88c8c26cb::t_796e0428dedf6e 42-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ab19bd413de383ec18c1b24ba135242391062c0",
+  "prompts": {},
+  "sessions": {
+    "s_31fab88c8c26cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94a34776-feec-44d9-b2da-ebce086921f8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/stream-delivery.test.ts
+  h_23d60aac2fe72e 81,85,118,130
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/synthetic-integration.test.ts
+  h_23d60aac2fe72e 146,155-157
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-rich-text.ts
+  h_23d60aac2fe72e 86-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37ea5580609bb88f752f17be89ed969bc38d3a34",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/__tests__/agent-conversation-state.service.test.ts
+  s_dfe3f914c8bb46::t_ce931a40ef6156 87,94
+packages/cli/src/modules/agents/agent-conversation-state.service.ts
+  s_dfe3f914c8bb46::t_62c16ac4465a72 21,25
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_0468de2f7eb907 1,550-558,560-569,619
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_cc95311d9495dd 101-105
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_dfe3f914c8bb46::t_f393a56c6bb77d 731-743,830
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_dfe3f914c8bb46::t_26e549c9ab62a9 264-265
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_dfe3f914c8bb46::t_65f6273c739414 599-656
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c694cda65f70cc33b1337dd2b43f4477db427e9",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

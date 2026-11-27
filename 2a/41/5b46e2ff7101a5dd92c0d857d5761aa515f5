@@ -1,0 +1,21 @@
+packages/cli/test/integration/policy/type-availability-policy-instance.controller.test.ts
+  s_1f81abe09807b5::t_f31f52a79ad36b 167-168
+packages/cli/test/integration/policy/credential-type-policy-instance.controller.test.ts
+  s_1f81abe09807b5::t_2987073cd2c4f9 107-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a415b46e2ff7101a5dd92c0d857d5761aa515f5",
+  "prompts": {},
+  "sessions": {
+    "s_1f81abe09807b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66abfa0d-c819-44a1-b320-43149bbebabb",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+packages/cli/src/modules/agents/simulation/__tests__/gym-simulation-backend.test.ts
+  h_8a472ace01776f 253-268
+packages/cli/src/modules/agents/simulation/gym/gym-simulation-backend.ts
+  h_8a472ace01776f 137,212-213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4467bf9ab8128dd28b38f50f6db4e4907838a4e2",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

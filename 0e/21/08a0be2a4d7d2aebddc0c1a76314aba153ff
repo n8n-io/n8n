@@ -1,0 +1,9 @@
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  ai_agent 115-120,877-882,952-957
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0e2108a0be2a4d7d2aebddc0c1a76314aba153ff",
+  "prompts": {}
+}

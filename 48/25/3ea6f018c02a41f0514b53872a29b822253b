@@ -1,0 +1,91 @@
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_dfe3f914c8bb46::t_9914fa348a6366 647-649
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_dfe3f914c8bb46::t_a898a712d4e1b9 745-751
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_dfe3f914c8bb46::t_9914fa348a6366 7803-7823
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_a898a712d4e1b9 165-170,255
+  s_dfe3f914c8bb46::t_7eac3cea7d958f 465-466,471,492
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_dfe3f914c8bb46::t_9914fa348a6366 30-34,365-381,394-416
+  s_dfe3f914c8bb46::t_663406cef0f2e0 20,417-419
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_dfe3f914c8bb46::t_20095c5ef93e24 748,753,764
+packages/@n8n/agents/src/runtime/memory/strip-orphaned-tool-messages.ts
+  s_dfe3f914c8bb46::t_9914fa348a6366 84-90
+  s_dfe3f914c8bb46::t_782bea75c6f3b2 41-43
+  s_dfe3f914c8bb46::t_eb972c5779e4fc 22-25,37-40,44-46,78,80-83,91
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_dfe3f914c8bb46::t_782bea75c6f3b2 100-104
+  s_dfe3f914c8bb46::t_9914fa348a6366 55-99,105-111
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_dfe3f914c8bb46::t_eb972c5779e4fc 441,467,592-594,1088-1091
+  s_dfe3f914c8bb46::t_c90dd187ecfe7c 446
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_dfe3f914c8bb46::t_c1b7597150ad9f 257-258
+  s_dfe3f914c8bb46::t_a898a712d4e1b9 472-473
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_dfe3f914c8bb46::t_9914fa348a6366 316-317
+  s_dfe3f914c8bb46::t_20095c5ef93e24 341
+  s_dfe3f914c8bb46::t_a898a712d4e1b9 23,322-328,342
+  s_dfe3f914c8bb46::t_782bea75c6f3b2 329-340
+  s_dfe3f914c8bb46::t_486b99546e70ca 306,343-344
+packages/@n8n/agents/src/types/runtime/tool-execution.ts
+  s_dfe3f914c8bb46::t_eb972c5779e4fc 24
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_dfe3f914c8bb46::t_a898a712d4e1b9 38,373-376,391-392,398-400
+  s_dfe3f914c8bb46::t_9914fa348a6366 393-394,418-420
+  s_dfe3f914c8bb46::t_2acc618ca46090 395-397
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_dfe3f914c8bb46::t_eb972c5779e4fc 323
+  s_dfe3f914c8bb46::t_9914fa348a6366 324-326
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_dfe3f914c8bb46::t_9914fa348a6366 1680-1686
+  s_dfe3f914c8bb46::t_eb972c5779e4fc 37,345,507,509,512,537-538,541,1645,1679,1687-1688
+  s_dfe3f914c8bb46::t_20095c5ef93e24 539-540
+packages/cli/src/modules/agents/agent-message-steering.service.ts
+  s_dfe3f914c8bb46::t_9914fa348a6366 45-50
+packages/cli/src/modules/agents/approval/decision-continuation.ts
+  s_dfe3f914c8bb46::t_20095c5ef93e24 39
+  s_dfe3f914c8bb46::t_782bea75c6f3b2 20-25
+  s_dfe3f914c8bb46::t_a898a712d4e1b9 1,14,18-19,28-30,36-38,40
+  s_dfe3f914c8bb46::t_9914fa348a6366 26-27,31-35
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_dfe3f914c8bb46::t_9914fa348a6366 195-199,1459-1471
+  s_dfe3f914c8bb46::t_9b51aea6b2b5b0 1472-1473
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_dfe3f914c8bb46::t_9914fa348a6366 223,252-256
+  s_dfe3f914c8bb46::t_20095c5ef93e24 9,397-403
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_dfe3f914c8bb46::t_eb972c5779e4fc 1356-1357
+  s_dfe3f914c8bb46::t_20095c5ef93e24 23-24,954-962,966-984
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-history.test.ts
+  s_dfe3f914c8bb46::t_3bd30372451a4a 472-498
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_dfe3f914c8bb46::t_1a6080b9807d77 14,167-182
+packages/cli/src/modules/agents/agent-conversation-state.service.ts
+  s_dfe3f914c8bb46::t_be06d4d5740b86 5,50,66-70
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_dfe3f914c8bb46::t_5d964b93ceeaea 14,148
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_a0e88950885b3d 549-554,556-560,595,643,662
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_dfe3f914c8bb46::t_009076c46dbe24 20,692-760
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "48253ea6f018c02a41f0514b53872a29b822253b",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
