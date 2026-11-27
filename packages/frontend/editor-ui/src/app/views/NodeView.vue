@@ -106,6 +106,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import { EngineV2CompatibilityButton } from '@n8n/frontend-module-engine-v2';
 import { useWorkflowEngineV2Compatibility } from '@/app/composables/useWorkflowEngineV2Compatibility';
+import EngineV2CompatibilityFindings from '@/app/components/EngineV2CompatibilityFindings.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@n8n/stores/users.store';
 
@@ -216,7 +217,7 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowExecutionState = computed(() =>
 	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
 );
-const { reasons: engineV2Reasons } = useWorkflowEngineV2Compatibility();
+const { groups: engineV2Groups } = useWorkflowEngineV2Compatibility();
 const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
@@ -2296,11 +2297,13 @@ onBeforeUnmount(() => {
 
 			<!-- An editable canvas shows the button above the node creator's toolbar instead. -->
 			<div
-				v-if="isCanvasReadOnly && engineV2Reasons.length > 0"
+				v-if="isCanvasReadOnly && engineV2Groups.length > 0"
 				:class="$style.canvasTopRightContainer"
 			>
-				<EngineV2CompatibilityButton :reasons="engineV2Reasons" :class="$style.canvasTopRight" />
+				<EngineV2CompatibilityButton :groups="engineV2Groups" :class="$style.canvasTopRight" />
 			</div>
+			<!-- One findings dialog for the pill, the Publish tooltip and workflow settings. -->
+			<EngineV2CompatibilityFindings :read-only="isCanvasReadOnly" />
 
 			<N8nCanvasCollaborationPill
 				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentTabWriter"
@@ -2331,8 +2334,8 @@ onBeforeUnmount(() => {
 				>
 					<template #above-toolbar>
 						<EngineV2CompatibilityButton
-							v-if="engineV2Reasons.length > 0"
-							:reasons="engineV2Reasons"
+							v-if="engineV2Groups.length > 0"
+							:groups="engineV2Groups"
 						/>
 					</template>
 				</LazyNodeCreation>

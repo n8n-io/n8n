@@ -20,7 +20,7 @@ import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
 import { readPin } from './base-image-candidates.mjs';
-import { updatePins } from './base-image-pin-pr.mjs';
+import { GROUPS, updatePins } from './base-image-pin-pr.mjs';
 
 const BAKE_FILE = 'docker/docker-bake.hcl';
 
@@ -44,11 +44,11 @@ export const CHAIN = {
 	},
 };
 
-/** The titles of the refresh PRs. Only their merge commits continue a chain. */
-export const REFRESH_TITLES = [
-	'build: Update base image digests with fewer OS findings',
-	'build: Update base image digests that need a review',
-];
+/**
+ * The titles of the refresh PRs, also the Node PR (`build: Update Node to <version>`).
+ * Only their merge commits continue a chain.
+ */
+export const REFRESH_TITLES = Object.values(GROUPS);
 
 export const isRefreshCommit = (subject) =>
 	REFRESH_TITLES.some((title) => subject.startsWith(title));

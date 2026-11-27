@@ -33,6 +33,7 @@ import type {
 	CoreColumn,
 	CoreOptions,
 	DeepKeys,
+	HeaderContext,
 	PaginationState,
 	Row,
 	RowSelectionState,
@@ -135,6 +136,8 @@ const props = withDefaults(
 const slots = useSlots();
 defineSlots<{
 	[key: `item.${string}`]: (props: { value: unknown; item: T }) => void;
+	/** The content of a column header, in place of its title. */
+	[key: `header.${string}`]: () => void;
 	item: (props: { item: T; cells: Array<Cell<T, unknown>> }) => void;
 	cover?: () => void;
 	/** One cell of a group row. `item` is the first row of the group, or undefined for an extra group. */
@@ -215,6 +218,14 @@ function itemKeySlot(info: CellContext<T, unknown>) {
 		: info.getValue();
 }
 
+/** Renders the `header.<column>` slot when the page gives one, or else the title. */
+function headerSlot(column: TableHeader<T>) {
+	return (context: HeaderContext<T, unknown>) => {
+		const slot = slots[`header.${context.column.id}`];
+		return slot ? slot() : getHeaderTitle(column);
+	};
+}
+
 function isValueAccessor(column: TableHeader<T>): column is Required<TableHeader<T>> {
 	return !!column.value;
 }
@@ -255,7 +266,7 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 		return columnHelper.accessor(column.value, {
 			id: column.key,
 			cell: itemKeySlot,
-			header: () => getHeaderTitle(column),
+			header: headerSlot(column),
 			enableSorting: !column.disableSort,
 			enableResizing: column.resize ?? true,
 			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
@@ -270,7 +281,7 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 		return columnHelper.accessor(column.value, {
 			id: column.key ?? column.value,
 			cell: itemKeySlot,
-			header: () => getHeaderTitle(column),
+			header: headerSlot(column),
 			enableSorting: !column.disableSort,
 			enableResizing: column.resize ?? true,
 			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
@@ -296,7 +307,7 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 			return columnHelper.accessor(column.key, {
 				id: accessor,
 				cell: itemKeySlot,
-				header: () => getHeaderTitle(column),
+				header: headerSlot(column),
 				enableSorting: !column.disableSort,
 				enableResizing: column.resize ?? true,
 				minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
@@ -311,7 +322,7 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 
 		return columnHelper.display({
 			id: `display_column_${index}`,
-			header: () => getHeaderTitle(column),
+			header: headerSlot(column),
 			size: column.width,
 			meta: {
 				cellProps: {

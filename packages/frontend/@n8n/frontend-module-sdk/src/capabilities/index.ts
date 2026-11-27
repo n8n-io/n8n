@@ -8,7 +8,9 @@ export { mcpExposeAllOffer } from './mcpExposeAllOffer';
 export { mcpDiscoverySettings } from './mcpDiscoverySettings';
 // EOF Experiment cleanup
 export { mcpPreferencesEntryPoints } from './mcpPreferencesEntryPoints';
+export { modalCloser } from './modalCloser';
 export { modalOpeners } from './modalOpeners';
+export { modalPrefetch } from './modalPrefetch';
 export { projectContext } from './projectContext';
 export { projectPermissions } from './projectPermissions';
 export { resourceEditors } from './resourceEditors';

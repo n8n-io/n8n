@@ -407,6 +407,27 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 		}
 	},
 
+	async beforeInsert(context, _embeddings, itemIndex) {
+		const collection = context.getNodeParameter('chromaCollection', itemIndex, '', {
+			extractValue: true,
+		});
+		if (typeof collection !== 'string') {
+			throw new NodeOperationError(context.getNode(), 'Collection must be a string');
+		}
+
+		const options = context.getNodeParameter('options', itemIndex, {});
+		if (options.clearCollection !== true) return;
+
+		try {
+			const client = await getChromaClient(context, itemIndex);
+			await client.deleteCollection({ name: collection });
+			context.logger.info(`Collection ${collection} deleted`);
+		} catch (error) {
+			context.logger.info(
+				`Collection ${collection} does not exist yet or could not be deleted (continuing)`,
+			);
+		}
+	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const collection = context.getNodeParameter('chromaCollection', itemIndex, '', {
 			extractValue: true,
@@ -419,7 +440,7 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 		const options = context.getNodeParameter('options', itemIndex, {});
 		const clearCollection = options.clearCollection === true;
 
-		if (clearCollection) {
+		if (clearCollection && context.getNode().typeVersion < 1.1) {
 			try {
 				const client = await getChromaClient(context, itemIndex);
 				await client.deleteCollection({ name: collection });
