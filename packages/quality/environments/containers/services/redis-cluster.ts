@@ -1,13 +1,17 @@
+import getPort from 'get-port';
 import Redis, { Cluster, type ClusterNode, type ClusterOptions, type NatMap } from 'ioredis';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
-import { GenericContainer, Wait } from 'testcontainers';
+import { GenericContainer, getContainerRuntimeClient, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { HelperContext, Service, ServiceName, ServiceResult, StartContext } from './types';
 
 const REDIS_PORT = 6379;
+const REDIS_CLUSTER_BUS_PORT = 16379;
+const MAX_PORT = 65535;
+const DEFAULT_CLUSTER_BUS_OFFSET = 10_000;
 const NODE_HOSTNAME_PREFIX = 'redis-cluster';
 const DEFAULT_CLUSTER_NODE_COUNT = 3;
 const MIN_CLUSTER_NODE_COUNT = 3;
@@ -34,6 +38,8 @@ export interface RedisClusterNode {
 
 export interface RedisClusterMeta {
 	nodes: RedisClusterNode[];
+	/** True when cluster nodes advertise host-reachable endpoints for external/local-dev clients. */
+	external?: boolean;
 }
 
 export type RedisClusterResult = ServiceResult<RedisClusterMeta> & {
@@ -284,8 +290,9 @@ export function findSlotOwnerNode(
 	}
 	const owner = nodes.find(
 		(node) =>
-			(node.ip === range.master.host || node.alias === range.master.host) &&
-			node.internalPort === range.master.port,
+			((node.ip === range.master.host || node.alias === range.master.host) &&
+				node.internalPort === range.master.port) ||
+			(node.host === range.master.host && node.mappedPort === range.master.port),
 	);
 	if (!owner) {
 		throw new Error(
@@ -320,9 +327,39 @@ export function parseBullJobCounterValue(raw: string | null): number {
 	return Number.parseInt(trimmed, 10);
 }
 
+export interface RedisClusterServerCommandOptions {
+	/** Internal Redis client port (default: 6379). */
+	port?: number;
+	/** Explicit internal cluster bus port. Required when `port > 55535`. */
+	clusterBusPort?: number;
+	/** Host-reachable hostname or IPv4 address advertised via `CLUSTER SLOTS` and `MOVED`. */
+	announceHostname?: string;
+}
+
 /** Build `redis-server` arguments for one Redis Cluster primary container. */
-export function buildRedisClusterServerCommand(port = REDIS_PORT): string[] {
-	return [
+export function buildRedisClusterServerCommand(
+	options: RedisClusterServerCommandOptions = {},
+): string[] {
+	const { port = REDIS_PORT, clusterBusPort, announceHostname } = options;
+	if (!Number.isInteger(port) || port <= 0 || port > MAX_PORT) {
+		throw new Error(`Invalid Redis port: ${String(port)}`);
+	}
+	if (clusterBusPort !== undefined) {
+		if (!Number.isInteger(clusterBusPort) || clusterBusPort <= 0 || clusterBusPort > MAX_PORT) {
+			throw new Error(`Invalid Redis cluster bus port: ${String(clusterBusPort)}`);
+		}
+		if (clusterBusPort === port) {
+			throw new Error(
+				`Redis cluster bus port (${clusterBusPort}) must differ from client port (${port})`,
+			);
+		}
+	} else if (port + DEFAULT_CLUSTER_BUS_OFFSET > MAX_PORT) {
+		throw new Error(
+			`Redis port ${port} exceeds ${MAX_PORT - DEFAULT_CLUSTER_BUS_OFFSET}; pass clusterBusPort explicitly`,
+		);
+	}
+
+	const command = [
 		'redis-server',
 		'--port',
 		String(port),
@@ -341,14 +378,50 @@ export function buildRedisClusterServerCommand(port = REDIS_PORT): string[] {
 		'--save',
 		'',
 	];
+
+	if (clusterBusPort !== undefined) {
+		command.push('--cluster-port', String(clusterBusPort));
+	}
+
+	if (announceHostname !== undefined) {
+		const trimmedHost = announceHostname.trim();
+		if (!trimmedHost || !/^[A-Za-z0-9.-]+$/.test(trimmedHost)) {
+			throw new Error(
+				`Invalid Redis cluster announce hostname "${announceHostname}": expected a hostname or IPv4 address`,
+			);
+		}
+		command.push(
+			'--cluster-announce-hostname',
+			trimmedHost,
+			'--cluster-preferred-endpoint-type',
+			'hostname',
+		);
+	}
+
+	return command;
+}
+
+/** Format collected startup logs from every cluster node for failure diagnostics. */
+export function formatNodeStartupLogs(
+	entries: ReadonlyArray<{ alias: string; logs: string }>,
+): string {
+	const sections: string[] = [];
+	for (const { alias, logs } of entries) {
+		const trimmed = logs.trim();
+		if (!trimmed) continue;
+		sections.push(`--- Container Logs (${alias}) ---\n${trimmed}\n---------------------`);
+	}
+	return sections.join('\n');
 }
 
 /**
  * Helper for inspecting and querying a Redis Cluster test service via `ioredis`.
- * Translates container-internal cluster endpoints to host-mapped ports through `natMap`.
+ * Translates container-internal cluster endpoints to host-mapped ports through `natMap`
+ * unless the cluster was started in external mode with host-reachable advertised endpoints.
  */
 export class RedisClusterHelper {
 	readonly nodes: readonly RedisClusterNode[];
+	readonly external: boolean;
 	readonly clusterNodesEnv: string;
 	readonly externalClusterNodesEnv: string;
 	readonly natMap: NatMap;
@@ -358,6 +431,7 @@ export class RedisClusterHelper {
 			throw new Error('RedisClusterHelper requires at least one cluster node');
 		}
 		this.nodes = meta.nodes;
+		this.external = meta.external ?? false;
 		this.clusterNodesEnv = formatClusterNodes(meta.nodes, false);
 		this.externalClusterNodesEnv = formatClusterNodes(meta.nodes, true);
 		this.natMap = buildClusterNatMap(meta.nodes);
@@ -377,12 +451,12 @@ export class RedisClusterHelper {
 		return client;
 	}
 
-	/** Create an `ioredis` Cluster client configured with host-mapped startup nodes and `natMap`. */
+	/** Create an `ioredis` Cluster client configured with host-mapped startup nodes. */
 	createClusterClient(startupNodes?: ClusterNode[], options: ClusterOptions = {}): Cluster {
 		const seeds: ClusterNode[] =
 			startupNodes ?? this.nodes.map((node) => ({ host: node.host, port: node.mappedPort }));
 		const cluster = new Cluster(seeds, {
-			natMap: this.natMap,
+			...(this.external ? {} : { natMap: this.natMap }),
 			clusterRetryStrategy: () => null,
 			slotsRefreshTimeout: CLIENT_CONNECT_TIMEOUT_MS,
 			lazyConnect: true,
@@ -543,8 +617,11 @@ export class RedisClusterHelper {
 	}
 }
 
-async function waitForClusterReady(nodes: readonly RedisClusterNode[]): Promise<void> {
-	const helper = new RedisClusterHelper({ nodes: [...nodes] });
+async function waitForClusterReady(
+	nodes: readonly RedisClusterNode[],
+	external = false,
+): Promise<void> {
+	const helper = new RedisClusterHelper({ nodes: [...nodes], external });
 	const deadline = Date.now() + CLUSTER_READY_TIMEOUT_MS;
 	let lastReason = 'cluster did not converge';
 
@@ -558,6 +635,15 @@ async function waitForClusterReady(nodes: readonly RedisClusterNode[]): Promise<
 				const slotRanges = await helper.getClusterSlots();
 				if (!isClusterTopologyComplete(slotRanges, nodes.length)) {
 					lastReason = `incomplete slot topology (${slotRanges.length} ranges)`;
+				} else if (
+					external &&
+					!slotRanges.every((range) =>
+						nodes.some(
+							(node) => node.host === range.master.host && node.mappedPort === range.master.port,
+						),
+					)
+				) {
+					lastReason = 'cluster slots do not yet advertise host-reachable endpoints';
 				} else {
 					const pong = await helper.withClusterClient(async (cluster) => await cluster.ping());
 					if (pong === 'PONG') {
@@ -591,19 +677,48 @@ export const redisCluster: Service<RedisClusterResult> = {
 
 		const containers: StartedTestContainer[] = [];
 		const nodes: RedisClusterNode[] = [];
-		const logThrowers: Array<(error: unknown) => never> = [];
+		const nodeLogReaders: Array<{ alias: string; getLogs: () => string }> = [];
 
 		try {
+			const external = ctx?.external ?? false;
+			const announceHostname = external
+				? (await getContainerRuntimeClient()).info.containerRuntime.host
+				: undefined;
+			const allocatedExternalPorts: number[] = [];
+
 			for (let index = 1; index <= DEFAULT_CLUSTER_NODE_COUNT; index++) {
 				const alias = `${NODE_HOSTNAME_PREFIX}-${index}`;
-				const { consumer, throwWithLogs } = createSilentLogConsumer();
-				logThrowers.push(throwWithLogs);
+				const { consumer, getLogs } = createSilentLogConsumer();
+				nodeLogReaders.push({ alias, getLogs });
+
+				// In external/local-dev mode, host n8n clients follow CLUSTER SLOTS and MOVED
+				// without a NAT map. Match each node's internal client port to its mapped host
+				// port and advertise the runtime host via hostname endpoint mode, while keeping
+				// node-to-node cluster bus gossip on internal Docker IPs and a fixed bus port.
+				let internalPort = REDIS_PORT;
+				if (external) {
+					internalPort = await getPort({
+						exclude: [REDIS_CLUSTER_BUS_PORT, ...allocatedExternalPorts],
+					});
+					allocatedExternalPorts.push(internalPort);
+				}
+
+				const exposedPort = external ? { container: internalPort, host: internalPort } : REDIS_PORT;
+				const command = buildRedisClusterServerCommand(
+					external
+						? {
+								port: internalPort,
+								clusterBusPort: REDIS_CLUSTER_BUS_PORT,
+								announceHostname,
+							}
+						: { port: REDIS_PORT },
+				);
 
 				const container = await new GenericContainer(TEST_CONTAINER_IMAGES.redis)
 					.withNetwork(network)
 					.withNetworkAliases(alias)
-					.withExposedPorts(REDIS_PORT)
-					.withCommand(buildRedisClusterServerCommand(REDIS_PORT))
+					.withExposedPorts(exposedPort)
+					.withCommand(command)
 					.withWaitStrategy(
 						Wait.forAll([
 							Wait.forListeningPorts(),
@@ -633,9 +748,9 @@ export const redisCluster: Service<RedisClusterResult> = {
 					index,
 					alias,
 					ip,
-					internalPort: REDIS_PORT,
+					internalPort,
 					host: container.getHost(),
-					mappedPort: container.getMappedPort(REDIS_PORT),
+					mappedPort: container.getMappedPort(internalPort),
 				});
 			}
 
@@ -655,26 +770,33 @@ export const redisCluster: Service<RedisClusterResult> = {
 				);
 			}
 
-			await waitForClusterReady(nodes);
+			await waitForClusterReady(nodes, external);
 
 			return {
 				container: containers[0],
 				containers,
-				meta: { nodes },
+				meta: { nodes, external },
 			};
 		} catch (error: unknown) {
 			if (!ctx?.registerContainer) {
 				await Promise.allSettled(containers.map(async (container) => await container.stop()));
 			}
-			const lastThrower = logThrowers.at(-1);
-			if (lastThrower) {
-				return lastThrower(error);
+			const formattedLogs = formatNodeStartupLogs(
+				nodeLogReaders.map(({ alias, getLogs }) => ({ alias, logs: getLogs() })),
+			);
+			if (formattedLogs) {
+				console.error(`\n${formattedLogs}\n`);
 			}
 			throw error;
 		}
 	},
 
 	env(result: RedisClusterResult, external?: boolean): Record<string, string> {
+		if (external && !result.meta.external) {
+			throw new Error(
+				'Redis Cluster was started for container networking; start it with external: true to expose host-reachable cluster endpoints',
+			);
+		}
 		return {
 			// In container mode, EXECUTIONS_MODE is set by the stack based on worker count.
 			// In external/local mode, redisCluster implies the user wants queue mode.

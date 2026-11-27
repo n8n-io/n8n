@@ -7,15 +7,18 @@ import {
 	buildRedisClusterServerCommand,
 	findSlotOwnerNode,
 	formatClusterNodes,
+	formatNodeStartupLogs,
 	isClusterInfoHealthy,
 	isClusterTopologyComplete,
 	parseBullJobCounterValue,
 	parseClusterInfo,
 	parseClusterSlots,
 	parseMovedError,
+	redisCluster,
 	toClusterHashTag,
 	validateClusterNodeCount,
 	type RedisClusterNode,
+	type RedisClusterResult,
 	type RedisClusterSlotRange,
 } from '../services/redis-cluster';
 import type { StartContext } from '../services/types';
@@ -263,11 +266,16 @@ describe('findSlotOwnerNode', () => {
 		expect(findSlotOwnerNode(16383, SAMPLE_SLOT_RANGES, SAMPLE_NODES)).toBe(SAMPLE_NODES[2]);
 	});
 
-	test('matches primaries announced by network alias', () => {
+	test('matches primaries announced by network alias or host-mapped endpoint', () => {
 		const aliasRanges: RedisClusterSlotRange[] = [
 			{ start: 0, end: 16383, master: { host: 'redis-cluster-2', port: 6379 } },
 		];
 		expect(findSlotOwnerNode(100, aliasRanges, SAMPLE_NODES)).toBe(SAMPLE_NODES[1]);
+
+		const hostRanges: RedisClusterSlotRange[] = [
+			{ start: 0, end: 16383, master: { host: 'localhost', port: 32773 } },
+		];
+		expect(findSlotOwnerNode(100, hostRanges, SAMPLE_NODES)).toBe(SAMPLE_NODES[2]);
 	});
 
 	test('throws for out-of-range slots or unknown primary endpoints', () => {
@@ -329,7 +337,7 @@ describe('parseBullJobCounterValue', () => {
 
 describe('buildRedisClusterServerCommand', () => {
 	test('enables cluster mode with ephemeral storage on the requested port', () => {
-		const cmd = buildRedisClusterServerCommand(7000);
+		const cmd = buildRedisClusterServerCommand({ port: 7000 });
 		expect(cmd).toEqual([
 			'redis-server',
 			'--port',
@@ -349,5 +357,133 @@ describe('buildRedisClusterServerCommand', () => {
 			'--save',
 			'',
 		]);
+	});
+
+	test('configures explicit bus port and hostname announcements for external mode', () => {
+		const cmd = buildRedisClusterServerCommand({
+			port: 60001,
+			clusterBusPort: 16379,
+			announceHostname: 'localhost',
+		});
+		expect(cmd).toEqual([
+			'redis-server',
+			'--port',
+			'60001',
+			'--bind',
+			'0.0.0.0',
+			'--protected-mode',
+			'no',
+			'--cluster-enabled',
+			'yes',
+			'--cluster-config-file',
+			'nodes.conf',
+			'--cluster-node-timeout',
+			'5000',
+			'--appendonly',
+			'no',
+			'--save',
+			'',
+			'--cluster-port',
+			'16379',
+			'--cluster-announce-hostname',
+			'localhost',
+			'--cluster-preferred-endpoint-type',
+			'hostname',
+		]);
+
+		expect(
+			buildRedisClusterServerCommand({
+				port: 35001,
+				clusterBusPort: 16379,
+				announceHostname: '127.0.0.1',
+			}),
+		).toContain('127.0.0.1');
+	});
+
+	test.each([
+		{ scenario: 'port is out of range', options: { port: 0 }, pattern: /Invalid Redis port/ },
+		{
+			scenario: 'high port lacks explicit bus port',
+			options: { port: 55536 },
+			pattern: /pass clusterBusPort explicitly/,
+		},
+		{
+			scenario: 'bus port is out of range',
+			options: { port: 6379, clusterBusPort: 70000 },
+			pattern: /Invalid Redis cluster bus port/,
+		},
+		{
+			scenario: 'bus port collides with client port',
+			options: { port: 16379, clusterBusPort: 16379 },
+			pattern: /must differ from client port/,
+		},
+		{
+			scenario: 'announce hostname is empty',
+			options: { port: 6379, announceHostname: '  ' },
+			pattern: /Invalid Redis cluster announce hostname/,
+		},
+		{
+			scenario: 'announce hostname contains IPv6 colon',
+			options: { port: 6379, announceHostname: '::1' },
+			pattern: /Invalid Redis cluster announce hostname/,
+		},
+	])('rejects invalid command options: $scenario', ({ options, pattern }) => {
+		expect(() => buildRedisClusterServerCommand(options)).toThrow(pattern);
+	});
+});
+
+describe('formatNodeStartupLogs', () => {
+	test('formats logs from all nodes and skips empty entries', () => {
+		const formatted = formatNodeStartupLogs([
+			{ alias: 'redis-cluster-1', logs: 'node 1 booted\ncluster failed' },
+			{ alias: 'redis-cluster-2', logs: '   \n  ' },
+			{ alias: 'redis-cluster-3', logs: 'node 3 booted' },
+		]);
+
+		expect(formatted).toBe(
+			[
+				'--- Container Logs (redis-cluster-1) ---',
+				'node 1 booted',
+				'cluster failed',
+				'---------------------',
+				'--- Container Logs (redis-cluster-3) ---',
+				'node 3 booted',
+				'---------------------',
+			].join('\n'),
+		);
+	});
+
+	test('returns an empty string when no node emitted logs', () => {
+		expect(
+			formatNodeStartupLogs([
+				{ alias: 'redis-cluster-1', logs: '' },
+				{ alias: 'redis-cluster-2', logs: '  ' },
+			]),
+		).toBe('');
+	});
+});
+
+describe('redisCluster.env external-mode guard', () => {
+	const makeResult = (external?: boolean) =>
+		({
+			meta: { nodes: SAMPLE_NODES, ...(external !== undefined ? { external } : {}) },
+		}) as RedisClusterResult;
+
+	test('returns external host-mapped env when started with external: true', () => {
+		expect(redisCluster.env?.(makeResult(true), true)).toEqual({
+			EXECUTIONS_MODE: 'queue',
+			QUEUE_BULL_REDIS_CLUSTER_NODES: 'localhost:32771,localhost:32772,localhost:32773',
+			N8N_CACHE_ENABLED: 'true',
+			N8N_CACHE_BACKEND: 'redis',
+		});
+	});
+
+	test('rejects external env generation when started for container networking only', () => {
+		expect(() => redisCluster.env?.(makeResult(false), true)).toThrow(
+			/start it with external: true/,
+		);
+		expect(() => redisCluster.env?.(makeResult(undefined), true)).toThrow(
+			/start it with external: true/,
+		);
 	});
 });
