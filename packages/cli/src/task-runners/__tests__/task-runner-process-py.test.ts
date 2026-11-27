@@ -92,6 +92,16 @@ describe('PyTaskRunnerProcess', () => {
 				expect(logger.warn).not.toHaveBeenCalled();
 			});
 
+			it('should forward a zero-padded integer without the padding', async () => {
+				process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = '0'.repeat(5000) + '30';
+
+				await taskRunnerProcess.start();
+
+				const { env } = spawnMock.mock.calls[0][2] as SpawnOptions;
+				expect(env!.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT).toBe('30');
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+
 			it('should not set the value when it is unset', async () => {
 				await taskRunnerProcess.start();
 
