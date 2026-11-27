@@ -5,9 +5,8 @@ import {
 	type ProjectTypeAccessResponse,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Patch, ProjectScope, Put, RestController } from '@n8n/decorators';
-import { NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 
 import { CredentialTypes } from '@/credential-types';
@@ -31,7 +30,6 @@ export class CredentialTypePolicyProjectController {
 		private readonly service: TypeAvailabilityPolicyService,
 		private readonly typeUsageRepository: TypeUsageRepository,
 		private readonly credentialTypes: CredentialTypes,
-		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	@Get('/project')
@@ -57,14 +55,9 @@ export class CredentialTypePolicyProjectController {
 	async getProjectAccess(
 		req: AuthenticatedRequest<{ projectId: string }>,
 	): Promise<ProjectTypeAccessResponse> {
-		const { projectId } = req.params;
-		// See `TypeAvailabilityPolicyProjectController.getProjectAccess`.
-		const [found] = await this.projectRepository.findExistingIds([projectId]);
-		if (!found) throw new NotFoundError(`Project not found: ${projectId}`);
-
 		return await this.service.getProjectAccess(
 			CREDENTIAL_TYPES_KIND,
-			projectId,
+			req.params.projectId,
 			Object.keys(this.credentialTypes.getKnownTypes()),
 		);
 	}

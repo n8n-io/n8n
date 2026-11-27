@@ -2203,6 +2203,33 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(result).toMatchObject({ instanceVersion: 7, projectVersion: 0 });
 		});
 
+		it('throws ProjectNotFoundError for an unknown project, before reading a scope', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([]);
+
+			await expect(service.getProjectAccess(KIND, PROJECT_ID, [SLACK])).rejects.toThrow(
+				ProjectNotFoundError,
+			);
+			expect(scopeRepository.findScopeByKindAndProject).not.toHaveBeenCalled();
+		});
+
+		it('reports the instance rows for a personal project', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([{ id: PROJECT_ID, type: 'personal' }]);
+			givenScopes(
+				{
+					rules: [{ id: 'deny-slack', action: 'deny', selector: { kind: 'name', value: SLACK } }],
+					version: 7,
+				},
+				null,
+			);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [SLACK]);
+
+			expect(result).toMatchObject({ instanceVersion: 7, projectVersion: 0 });
+			expect(result.types).toEqual([
+				expect.objectContaining({ name: SLACK, access: 'deny', scope: 'instance' }),
+			]);
+		});
+
 		it('reads the database, not the snapshot', async () => {
 			givenScopes({ rules: [] }, { rules: [] });
 

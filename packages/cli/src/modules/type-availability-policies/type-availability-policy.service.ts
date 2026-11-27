@@ -244,11 +244,16 @@ export class TypeAvailabilityPolicyService {
 	private async assertTeamProject(projectId: string | null): Promise<void> {
 		if (projectId === null) return;
 
-		const [project] = await this.projectRepository.findTypesByIds([projectId]);
-		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+		const project = await this.findExistingProject(projectId);
 		if (project.type !== 'team') {
 			throw new BadRequestError(PERSONAL_PROJECT_POLICY);
 		}
+	}
+
+	private async findExistingProject(projectId: string) {
+		const [project] = await this.projectRepository.findTypesByIds([projectId]);
+		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+		return project;
 	}
 
 	/**
@@ -1046,6 +1051,8 @@ export class TypeAvailabilityPolicyService {
 	 * A type has a row when `listTypes` lists it for the instance policy alone or for the project
 	 * policy alone, so a project rule on a hidden type or a tool variant keeps a row to undo it.
 	 * Each scope is listed with its own rules, because rule ids are unique only in one scope.
+	 *
+	 * A personal project gets the instance rows, like `getEffectivePolicy`, not the write error.
 	 */
 	async getProjectAccess(
 		kind: string,
@@ -1053,6 +1060,8 @@ export class TypeAvailabilityPolicyService {
 		typeNames: readonly string[],
 		listTypes: ListTypes = (types) => types,
 	): Promise<ProjectTypeAccessResponse> {
+		await this.findExistingProject(projectId);
+
 		const [instance, project] = await Promise.all([
 			this.getEffectivePolicy(kind, null),
 			this.getEffectivePolicy(kind, projectId),

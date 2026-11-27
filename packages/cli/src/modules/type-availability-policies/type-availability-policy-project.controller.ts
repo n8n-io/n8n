@@ -5,9 +5,8 @@ import {
 	type ProjectTypeAccessResponse,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Patch, ProjectScope, Put, RestController } from '@n8n/decorators';
-import { NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 
 import { NodeTypes } from '@/node-types';
@@ -34,7 +33,6 @@ export class TypeAvailabilityPolicyProjectController {
 		private readonly nodeTypeUsageService: NodeTypeUsageService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly listedNodeTypes: ListedNodeTypes,
-		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	@Get('/project')
@@ -57,14 +55,9 @@ export class TypeAvailabilityPolicyProjectController {
 	async getProjectAccess(
 		req: AuthenticatedRequest<{ projectId: string }>,
 	): Promise<ProjectTypeAccessResponse> {
-		const { projectId } = req.params;
-		// A global scope passes the project check for any id, so an unknown id gets here.
-		const [found] = await this.projectRepository.findExistingIds([projectId]);
-		if (!found) throw new NotFoundError(`Project not found: ${projectId}`);
-
 		return await this.service.getProjectAccess(
 			NODE_TYPES_KIND,
-			projectId,
+			req.params.projectId,
 			Object.keys(this.nodeTypes.getKnownTypes()),
 			await this.listedNodeTypes.filter(),
 		);

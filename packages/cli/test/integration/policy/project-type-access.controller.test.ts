@@ -159,6 +159,20 @@ describe('GET /projects/:projectId/<kind>/project/access gating', () => {
 	);
 
 	test.each([NODE_KIND_ROUTE, CREDENTIAL_KIND_ROUTE])(
+		'%s reads a personal project for an owner, with project version 0',
+		async (kindRoute) => {
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(projectEditor.id);
+
+			const response = await readAccess(kindRoute, owner, personalProject.id);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.projectVersion).toBe(0);
+		},
+	);
+
+	test.each([NODE_KIND_ROUTE, CREDENTIAL_KIND_ROUTE])(
 		'%s returns 403, not 404, to a project admin for a project that does not exist',
 		async (kindRoute) => {
 			expect((await readAccess(kindRoute, projectAdmin, 'does-not-exist')).statusCode).toBe(403);
