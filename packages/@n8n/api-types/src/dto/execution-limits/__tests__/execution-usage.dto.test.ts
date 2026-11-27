@@ -113,6 +113,14 @@ describe('toExecutionUsage', () => {
 		const result = toExecutionUsage(source, 10);
 
 		expect(Object.keys(result).sort()).toEqual([...DTO_KEYS].sort());
+		expect(result).toEqual({
+			periodUnit: 'week',
+			periodStart: '2026-11-23',
+			resetsAt: '2026-11-30T00:00:00.000Z',
+			maxExecutions: 10,
+			workflowExecutions: 5,
+			remaining: 5,
+		});
 	});
 });
 
