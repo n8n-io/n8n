@@ -11,6 +11,7 @@ export {
 	type WorkflowToolCheck,
 	type WorkflowToolDescription,
 	type WorkflowToolInputSchema,
+	type WorkflowToolListItem,
 	type WorkflowToolRefusal,
 	type WorkflowToolRunOptions,
 	type WorkflowToolRunResult,

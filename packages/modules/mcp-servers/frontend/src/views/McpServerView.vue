@@ -22,6 +22,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import McpServerContentsTab from '../components/McpServerContentsTab.vue';
 import McpServerDescriptionEdit from '../components/McpServerDescriptionEdit.vue';
 import RenameMcpServerDialog from '../components/RenameMcpServerDialog.vue';
 import { useMcpServerUrl } from '../composables/useMcpServerUrl';
@@ -295,10 +296,12 @@ async function onBreadcrumbSelected(item: PathItem) {
 					@update:model-value="onSelectTab"
 				/>
 			</header>
-			<div
+			<McpServerContentsTab
 				v-if="selectedTab === MCP_SERVER_VIEW"
+				:key="serverId"
 				:class="$style.panel"
-				data-test-id="mcp-server-contents"
+				:project-id="projectId"
+				:server-id="serverId"
 			/>
 			<div v-else :class="$style.panel" data-test-id="mcp-server-connections" />
 

@@ -7045,5 +7045,26 @@ describe('TelemetryEventRelay', () => {
 				thread_id: undefined,
 			});
 		});
+
+		it('tracks a tool that a builder added, with the user id and the source', () => {
+			mcpEventService.emit('mcp-server-tool-added', {
+				serverId: 'server-1',
+				userId: 'user-1',
+				source: 'ui',
+				toolKind: 'workflow',
+				isAiDraft: false,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_ADDED_TOOL_TO_CUSTOM_MCP_SERVER,
+				{
+					server_id: 'server-1',
+					user_id: 'user-1',
+					source: 'ui',
+					tool_kind: 'workflow',
+					is_ai_draft: false,
+				},
+			);
+		});
 	});
 });

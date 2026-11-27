@@ -1,6 +1,7 @@
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+import { McpServerToolsController } from '../controllers/mcp-server-tools.controller';
 import { McpServersListController } from '../controllers/mcp-servers-list.controller';
 import { McpServersController } from '../controllers/mcp-servers.controller';
 
@@ -23,6 +24,17 @@ describe('McpServersController route access scopes', () => {
 			expect(route.accessScope).toBeDefined();
 			expect(route.accessScope?.globalOnly).toBe(false);
 			expect(route.accessScope?.scope.startsWith('mcpServer:')).toBe(true);
+		},
+	);
+});
+
+describe('McpServerToolsController route access scopes', () => {
+	// The picker is part of the editor, so its read route also needs `update`.
+	it.each(routesOf(McpServerToolsController))(
+		'$handlerName is gated by a project-scoped mcpServer:update check',
+		({ route }) => {
+			expect(route.skipAuth).toBeFalsy();
+			expect(route.accessScope).toEqual({ scope: 'mcpServer:update', globalOnly: false });
 		},
 	);
 });

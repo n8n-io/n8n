@@ -62,7 +62,12 @@ const BUILDER: Scope[] = [
 ];
 const VIEWER: Scope[] = ['mcpServer:read', 'mcpServer:list'];
 
-const renderComponent = createComponentRenderer(McpServerView);
+// The Contents tab loads the tools. Its own test covers it.
+const renderComponent = createComponentRenderer(McpServerView, {
+	global: {
+		stubs: { McpServerContentsTab: { template: '<div data-test-id="mcp-server-contents" />' } },
+	},
+});
 
 async function renderPage(scopes: Scope[] = BUILDER, readOnly = false) {
 	capabilityRegistry.provide(capabilities.projectPermissions, {

@@ -428,6 +428,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'app-bindings-changed': (event) => this.appBindingsChanged(event),
 			'mcp-server-created': (event) => this.mcpServerCreated(event),
 			'mcp-server-deleted': (event) => this.mcpServerDeleted(event),
+			'mcp-server-tool-added': (event) => this.mcpServerToolAdded(event),
 		});
 	}
 
@@ -654,6 +655,24 @@ export class TelemetryEventRelay extends EventRelay {
 			user_id: userId,
 			source,
 			thread_id: threadId,
+		});
+	}
+
+	private mcpServerToolAdded({
+		serverId,
+		userId,
+		source,
+		threadId,
+		toolKind,
+		isAiDraft,
+	}: RelayEventMap['mcp-server-tool-added']) {
+		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_ADDED_TOOL_TO_CUSTOM_MCP_SERVER, {
+			server_id: serverId,
+			user_id: userId,
+			source,
+			thread_id: threadId,
+			tool_kind: toolKind,
+			is_ai_draft: isAiDraft,
 		});
 	}
 

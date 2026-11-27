@@ -17,6 +17,7 @@ export class McpServersModule implements ModuleInterface {
 		Container.set(WorkflowToolPort, adapters.workflows);
 		await import('./controllers/mcp-servers.controller.js');
 		await import('./controllers/mcp-servers-list.controller.js');
+		await import('./controllers/mcp-server-tools.controller.js');
 	}
 
 	async entities() {

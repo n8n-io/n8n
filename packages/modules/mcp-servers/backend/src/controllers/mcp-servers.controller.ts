@@ -11,6 +11,7 @@ import {
 	RestController,
 } from '@n8n/decorators';
 
+import { McpServerToolsService } from '../services/mcp-server-tools.service';
 import { CustomMcpServersFlagGate } from '../services/custom-mcp-servers-flag-gate';
 import { McpServersService } from '../services/mcp-servers.service';
 
@@ -24,6 +25,7 @@ type ServerRequest = AuthenticatedRequest<{ projectId: string; serverId: string 
 export class McpServersController {
 	constructor(
 		private readonly service: McpServersService,
+		private readonly toolsService: McpServerToolsService,
 		private readonly flagGate: CustomMcpServersFlagGate,
 	) {}
 
@@ -52,11 +54,14 @@ export class McpServersController {
 		return await this.service.slugAvailability(query.slug);
 	}
 
+	/** One server with its tools. Each tool says if it is broken, and why. */
 	@Get('/:serverId')
 	@ProjectScope('mcpServer:read')
 	async get(req: ServerRequest) {
 		await this.flagGate.assertEnabled();
-		return await this.service.get(req.params.projectId, req.params.serverId);
+		const { projectId, serverId } = req.params;
+		const server = await this.service.get(projectId, serverId);
+		return { ...server, tools: await this.toolsService.listTools(projectId, server.id) };
 	}
 
 	@Patch('/:serverId')
