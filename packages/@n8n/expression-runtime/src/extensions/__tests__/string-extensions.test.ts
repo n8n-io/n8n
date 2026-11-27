@@ -57,6 +57,9 @@ describe('removeTags', () => {
 		['<!-- note -->text', 'text'],
 		['<?xml version="1.0"?><a>x</a>', 'x'],
 		['<élan>x</élan>', 'x'],
+		['<_id>idhere</_id>', 'idhere'],
+		['<:x>y</:x>', 'y'],
+		['<ns:tag>y</ns:tag>', 'y'],
 		['trailing <b', 'trailing '],
 		['<b>bold</b> < 100', 'bold < 100'],
 	])('should remove the tags from %s', (input, expected) => {
@@ -72,6 +75,7 @@ describe('removeTags', () => {
 		'<< 3',
 		'<>',
 		'<%= name %>',
+		'price <€50 today',
 	])('should keep the text %s', (input) => {
 		expect(removeTags(input)).toBe(input);
 	});
