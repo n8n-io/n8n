@@ -6,7 +6,7 @@ import { InvalidLeaseKindOptionsError } from '@n8n/leases';
 import type { Lease, LeaseKindOptions, LeaseProvider, LeaseSource, LeaseStatus } from '@n8n/leases';
 
 import type { LeaseTransaction } from './durable-lease.service';
-import { LeaseSessionManager } from './lease-session-manager';
+import { LeaseSessionManager, type SessionClock } from './lease-session-manager';
 import { assertLeaseTimings } from './lease-timings';
 
 export interface DatabaseLeaseProviderDeps {
@@ -15,6 +15,7 @@ export interface DatabaseLeaseProviderDeps {
 	sessions: LeaseSessionRepository;
 	hostId: string;
 	bootId: string;
+	clock: SessionClock;
 	logger: Logger;
 }
 
@@ -51,10 +52,12 @@ export class DatabaseLeaseProvider implements LeaseProvider<LeaseTransaction> {
 			kind,
 			leaseSeconds,
 			renewSeconds: config.renewSeconds,
+			marginSeconds: config.marginSeconds,
 			hostId: this.deps.hostId,
 			bootId: this.deps.bootId,
 			kinds: this.deps.kinds,
 			sessions: this.deps.sessions,
+			clock: this.deps.clock,
 			logger: this.deps.logger,
 		});
 		this.managers.set(kind, manager);
