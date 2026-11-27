@@ -514,6 +514,9 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					attribution: agentAttribution,
 					rootCause: agentRootCause,
 					...(agentResult.incomplete ? { incomplete: true } : {}),
+					...(agentResult.expectationResults
+						? { scenarioExpectationResults: agentResult.expectationResults }
+						: {}),
 					execErrors: agentResult.agentEvalResult?.errors ?? [],
 					buildDurationMs,
 					...buildSpendFields,

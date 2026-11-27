@@ -77,6 +77,37 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.executionScenarioResults.map((r) => r.success)).toEqual([true, true]);
 	});
 
+	it('folds the expectation verdicts of each agent scenario row into the case units', () => {
+		const cases = [withFile('agent-case', [scenario('s1'), scenario('s2')])];
+		const s1Verdict = { expectation: 's1 › Quotes the price', pass: true, reason: 'quoted' };
+		const s2Verdict = { expectation: 's2 › Recalls the order', pass: false, reason: 'forgot' };
+		const rows = [
+			row(
+				{ testCaseFile: 'agent-case', scenarioName: 's1', _iteration: 0 },
+				{ buildSuccess: true, passed: true, scenarioExpectationResults: [s1Verdict] },
+			),
+			row(
+				{ testCaseFile: 'agent-case', scenarioName: 's2', _iteration: 0 },
+				{ buildSuccess: true, passed: false, scenarioExpectationResults: [s2Verdict] },
+			),
+		];
+
+		const [[tc]] = reshapeLangSmithRuns(
+			rows,
+			cases,
+			1,
+			new Map(),
+			new Map([['0:agent-case', [verdict]]]),
+			'http://localhost:5678',
+		);
+
+		expect(tc.buildExpectationResults).toEqual([verdict, s1Verdict, s2Verdict]);
+		expect(tc.executionScenarioResults.map((r) => r.expectationResults)).toEqual([
+			[s1Verdict],
+			[s2Verdict],
+		]);
+	});
+
 	it('retains the structured agent artifact from a target row', () => {
 		const cases = [withFile('agent-case', [scenario('s1')])];
 		const agentArtifact = {

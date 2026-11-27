@@ -86,6 +86,10 @@ const targetOutputSchema = z.object({
 	incomplete: z.boolean().optional(),
 	// `.catch` so one malformed field can't void the whole row in `safeParse`.
 	expectationResults: expectationResultsSchema.optional().catch(undefined),
+	/** This row's own Agent scenario expectation verdicts, keyed `<scenario> ›
+	 *  <expectation>` (AGENT-1666). Unlike `expectationResults`, which repeats the
+	 *  case's verdicts on every row, each row carries only its scenario's. */
+	scenarioExpectationResults: expectationResultsSchema.optional().catch(undefined),
 	execErrors: z.array(z.string()).default([]),
 	evalResult: z.unknown().optional(),
 	agentEvalResult: z.unknown().optional(),
@@ -190,6 +194,17 @@ export function parseTargetOutput(raw: unknown): TargetOutput | undefined {
 			: undefined,
 		buildTrace: isBuildTrace(parsed.data.buildTrace) ? parsed.data.buildTrace : undefined,
 	};
+}
+
+/** The case's expectation units for one iteration: its build expectations, then
+ *  each Agent scenario's own (already keyed by scenario). Undefined when none. */
+function withScenarioExpectations(
+	buildVerdicts: BuildExpectationResult[] | undefined,
+	scenarioResults: ExecutionScenarioResult[],
+): BuildExpectationResult[] | undefined {
+	const scenarioVerdicts = scenarioResults.flatMap((result) => result.expectationResults ?? []);
+	if (scenarioVerdicts.length === 0) return buildVerdicts;
+	return [...(buildVerdicts ?? []), ...scenarioVerdicts];
 }
 
 /**
@@ -348,6 +363,9 @@ export function reshapeLangSmithRuns(
 					attribution: output.attribution,
 					rootCause: output.rootCause,
 					...(output.incomplete ? { incomplete: true } : {}),
+					...(output.scenarioExpectationResults
+						? { expectationResults: output.scenarioExpectationResults }
+						: {}),
 				});
 			}
 
@@ -375,7 +393,10 @@ export function reshapeLangSmithRuns(
 			const buildKey = `${String(iter)}:${fileSlug}`;
 			// Thread-less (MCP) builds stash their transcript under the build key.
 			const transcript = transcriptByThreadId.get(threadId ?? buildKey);
-			const buildExpectationResults = buildExpectationsByKey.get(buildKey);
+			const buildExpectationResults = withScenarioExpectations(
+				buildExpectationsByKey.get(buildKey),
+				executionScenarioResults,
+			);
 			runResults.push({
 				testCase,
 				fileSlug,
