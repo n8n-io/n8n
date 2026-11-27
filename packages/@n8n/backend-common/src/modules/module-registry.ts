@@ -54,10 +54,12 @@ export class ModuleRegistry {
 		'external-secrets',
 		'community-packages',
 		'data-table',
-		// oauth-server precedes mcp: the mcp module registers its protected
-		// resource with the oauth-server module's registry on init.
+		// oauth-server precedes mcp and mcp-servers: mcp registers a protected
+		// resource with the oauth-server module's registry on init, and the
+		// custom MCP servers runtime will do the same.
 		'oauth-server',
 		'mcp',
+		'mcp-servers',
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		'mcp-discovery',
 		// EOF Experiment cleanup

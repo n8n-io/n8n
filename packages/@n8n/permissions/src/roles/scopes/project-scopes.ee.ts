@@ -12,6 +12,12 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'app:update',
 	'app:delete',
 	'app:list',
+	'mcpServer:create',
+	'mcpServer:read',
+	'mcpServer:update',
+	'mcpServer:delete',
+	'mcpServer:list',
+	'mcpServer:connect',
 	'agent:create',
 	'agent:read',
 	'agent:export',
@@ -105,6 +111,12 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'app:update',
 	'app:delete',
 	'app:list',
+	'mcpServer:create',
+	'mcpServer:read',
+	'mcpServer:update',
+	'mcpServer:delete',
+	'mcpServer:list',
+	'mcpServer:connect',
 	'agent:create',
 	'agent:read',
 	'agent:export',
@@ -177,6 +189,12 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'app:update',
 	'app:delete',
 	'app:list',
+	'mcpServer:create',
+	'mcpServer:read',
+	'mcpServer:update',
+	'mcpServer:delete',
+	'mcpServer:list',
+	'mcpServer:connect',
 	'agent:create',
 	'agent:read',
 	'agent:export',
@@ -247,6 +265,9 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'app:read',
 	'app:list',
+	'mcpServer:read',
+	'mcpServer:list',
+	'mcpServer:connect',
 	'agent:read',
 	'agent:export',
 	'agent:list',
@@ -276,4 +297,8 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'projectSkill:read',
 ];
 
-export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];
+export const PROJECT_CHAT_USER_SCOPES: Scope[] = [
+	'agent:execute',
+	'workflow:execute-chat',
+	'mcpServer:connect',
+];

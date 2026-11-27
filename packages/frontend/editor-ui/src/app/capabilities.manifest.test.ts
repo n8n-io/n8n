@@ -357,6 +357,22 @@ describe('registerShellCapabilities', () => {
 		});
 	});
 
+	describe('custom MCP servers flag', () => {
+		it.each([
+			['test', true],
+			['control', false],
+			[true, false],
+			[undefined, false],
+		])('reads the variant %j of the flag as %j', (variant, expected) => {
+			registerShellCapabilities();
+			const posthog = mockedStore(usePostHog);
+			posthog.getVariant.mockReturnValue(variant);
+
+			expect(capabilityRegistry.use(capabilities.customMcpServersEnabled)()).toBe(expected);
+			expect(posthog.getVariant).toHaveBeenCalledWith('155_custom_mcp_servers');
+		});
+	});
+
 	describe('tag names', () => {
 		it('reads the names from the tags store', () => {
 			registerShellCapabilities();

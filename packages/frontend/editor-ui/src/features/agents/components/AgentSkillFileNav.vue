@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { parseAgentSkillWorkflowMentions, type SkillWorkflowMention } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
+import { VIEWS } from '@/app/constants';
+import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { AgentSkill } from '@/features/agents/types';
+import SkillWorkflowMentionPicker from './SkillWorkflowMentionPicker.vue';
 import SkillDiffCount from './skillVersions/SkillDiffCount.vue';
 import type {
 	FileChange,
@@ -28,11 +34,15 @@ const props = withDefaults(
 		invalidPaths?: string[];
 		/** Compare mode: lines added and removed in each file, keyed by path. */
 		changeCounts?: Record<string, FileChange>;
+		mentionProjectId?: string;
+		mentionProjectName?: string;
 	}>(),
 	{
 		addReferenceDisabled: false,
 		readOnly: false,
 		invalidPaths: () => [],
+		mentionProjectId: undefined,
+		mentionProjectName: undefined,
 	},
 );
 
@@ -40,12 +50,30 @@ const emit = defineEmits<{
 	select: [path: string];
 	'add-reference': [];
 	'remove-reference': [path: string];
+	'add-workflow': [mention: SkillWorkflowMention];
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
+const posthog = usePostHog();
 const references = computed(() =>
 	(props.skill.references ?? []).map(({ path }) => ({ path, change: props.changeCounts?.[path] })),
 );
+const workflowMentionsEnabled = computed(() =>
+	posthog.isVariantEnabled(
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+	),
+);
+const addWorkflowOpen = ref(false);
+const mentionedWorkflows = computed(() => parseAgentSkillWorkflowMentions(props.skill));
+const mentionedWorkflowIds = computed(() =>
+	mentionedWorkflows.value.map(({ workflowId }) => workflowId),
+);
+
+function workflowUrl(workflowId: string) {
+	return router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId } }).href;
+}
 
 function isInvalid(path: string) {
 	return props.invalidPaths.includes(path);
@@ -166,6 +194,51 @@ function testIdForPath(path: string) {
 				/>
 			</div>
 		</div>
+
+		<div v-if="workflowMentionsEnabled" :class="$style.section" data-testid="agent-skill-workflows">
+			<div :class="$style.sectionHeader">
+				<N8nText size="small" color="text-light" :class="$style.sectionTitle">
+					{{ i18n.baseText('agents.builder.skills.workflowMentions.title') }}
+				</N8nText>
+				<SkillWorkflowMentionPicker
+					v-if="!props.readOnly"
+					v-model:open="addWorkflowOpen"
+					mode="button"
+					:project-id="props.mentionProjectId"
+					:project-name="props.mentionProjectName"
+					:mentioned-workflow-ids="mentionedWorkflowIds"
+					@select="emit('add-workflow', $event)"
+				/>
+			</div>
+			<N8nText
+				v-if="mentionedWorkflows.length === 0"
+				size="small"
+				color="text-light"
+				:class="$style.sectionTitle"
+			>
+				{{ i18n.baseText('agents.builder.skills.workflowMentions.empty') }}
+			</N8nText>
+			<div
+				v-for="workflow in mentionedWorkflows"
+				:key="workflow.workflowId"
+				:class="[$style.item, $style.workflow]"
+				data-testid="agent-skill-workflow-item"
+			>
+				<a
+					:href="workflowUrl(workflow.workflowId)"
+					target="_blank"
+					rel="noopener"
+					:class="$style.workflowLink"
+					data-testid="agent-skill-workflow-link"
+					data-attr="agent-skill-workflow-link"
+				>
+					<N8nIcon icon="workflow" :size="16" :class="$style.icon" />
+					<N8nText size="medium" :class="$style.path">{{
+						workflow.name || workflow.workflowId
+					}}</N8nText>
+				</a>
+			</div>
+		</div>
 	</nav>
 </template>
 
@@ -264,6 +337,28 @@ function testIdForPath(path: string) {
 	margin-left: auto;
 	margin-right: var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+.workflow {
+	cursor: default;
+
+	&:hover {
+		background: transparent;
+	}
+}
+
+.workflowLink {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	color: inherit;
+	text-decoration: none;
+
+	&:hover .path {
+		text-decoration: underline;
+	}
 }
 
 .invalidIcon {

@@ -481,6 +481,7 @@ describe('AgentChatPanel', () => {
 			showAttachButton: boolean;
 			interactionExtensions: readonly AgentsChatInteractionExtension[];
 			disabled: boolean;
+			inputDraft: string;
 		}> = {},
 		attachTo?: HTMLElement,
 		slots?: Record<string, string | ((props: Record<string, unknown>) => unknown)>,
@@ -3523,6 +3524,70 @@ describe('AgentChatPanel', () => {
 			[file],
 			expect.any(Function),
 			undefined,
+		);
+		wrapper.unmount();
+	});
+
+	it('sends an outside message on the first call when inputDraft is controlled by the parent', async () => {
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel({ inputDraft: '' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Summarise the tickets that came in this morning');
+		await flushPromises();
+
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+			'Summarise the tickets that came in this morning',
+			undefined,
+			expect.any(Function),
+			undefined,
+		);
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(wrapper.emitted('update:inputDraft')?.at(-1)).toEqual(['']);
+		wrapper.unmount();
+	});
+
+	it('preserves a newer user draft typed while an outside message is awaiting acceptance', async () => {
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		messagesMock.value = [
+			{
+				id: 'existing-1',
+				role: 'user',
+				content: 'Earlier message',
+			},
+		];
+		const wrapper = mountPanel({ inputDraft: '' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Handed off prompt');
+		await flushPromises();
+
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+			'Handed off prompt',
+			undefined,
+			expect.any(Function),
+			undefined,
+		);
+		const onAccepted = sendMessageMock.mock.lastCall?.[2];
+		expect(onAccepted).toBeTypeOf('function');
+
+		const draftEventsBeforeAccept = wrapper.emitted('update:inputDraft')?.length ?? 0;
+		await wrapper.setProps({ inputDraft: 'User typed something new' });
+		onAccepted?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(wrapper.emitted('update:inputDraft')).toHaveLength(draftEventsBeforeAccept);
+		expect(wrapper.emitted('update:inputDraft')).not.toContainEqual(['']);
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe(
+			'User typed something new',
 		);
 		wrapper.unmount();
 	});

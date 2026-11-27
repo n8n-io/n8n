@@ -1254,14 +1254,13 @@ describe('SettingsSkillsView', () => {
 
 	describe('edit', () => {
 		it.each([
-			['instance', true, true, false, false],
-			['project', true, true, true, true],
-			['instance', false, true, true, undefined],
-			['project', true, false, true, undefined],
+			['instance', true, false, false],
+			['instance', true, true, true],
+			['project', true, true, true],
+			['project', false, true, undefined],
 		] as const)(
-			'shows availability in the table and modal behind the Assistant flag (%s, flag %s, Assistant on %s)',
-			async (scope, enabled, assistantOn, availableToAssistant, expected) => {
-				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(enabled);
+			'shows availability in the table and modal while the Assistant is on (%s, Assistant on %s)',
+			async (scope, assistantOn, availableToAssistant, expected) => {
 				mockedStore(useSettingsStore).moduleSettings = {
 					'instance-ai': { enabled: assistantOn },
 				} as never;

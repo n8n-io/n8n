@@ -139,6 +139,14 @@ export class ExecutionsPage extends BasePage {
 		return this.getStatusSelect().getByRole('combobox');
 	}
 
+	getFilterStartDateInput(): Locator {
+		return this.getFilterForm().getByPlaceholder('Earliest');
+	}
+
+	getFilterEndDateInput(): Locator {
+		return this.getFilterForm().getByPlaceholder('Latest');
+	}
+
 	getStatusOption(status: string): Locator {
 		return this.getVisiblePopoverOption(status);
 	}

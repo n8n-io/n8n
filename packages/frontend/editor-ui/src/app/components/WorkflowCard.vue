@@ -524,7 +524,7 @@ async function unpublishWorkflow() {
 		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 		data: {
 			workflowId: props.data.id,
-			versionName: props.data.name,
+			workflowName: props.data.name,
 			eventBus: unpublishEventBus,
 		},
 	});

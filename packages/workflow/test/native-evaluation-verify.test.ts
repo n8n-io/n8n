@@ -3,7 +3,7 @@
 import { createPairedItemPagination } from './fixtures/paired-item-pagination';
 import * as Helpers from './helpers';
 import type * as NativeEvaluation from '../src/expressions/native-evaluation';
-import { canVerifyNatively, nativeSkeleton } from '../src/expressions/native-evaluation/verify';
+import { canVerifyNatively, nativeSkeleton } from '../src/expressions/native-evaluation';
 import type { IDataObject } from '../src/interfaces';
 import { createRunExecutionData } from '../src/run-execution-data-factory';
 import type { Workflow } from '../src/workflow';

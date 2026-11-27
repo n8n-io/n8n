@@ -83,6 +83,9 @@ jobs:
   e2e:
     name: E2E on the pc twin
     needs: [prepare-docker, generate-matrix]
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-artifact

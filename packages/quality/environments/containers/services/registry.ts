@@ -1,3 +1,4 @@
+import { azurite, createAzuriteHelper } from './azurite';
 import { cadvisor } from './cadvisor';
 import { cloudflared } from './cloudflared';
 import { createEnginePostgresHelper, enginePostgres } from './engine-postgres';
@@ -18,6 +19,7 @@ import { postgres, createPostgresHelper } from './postgres';
 import { postgresExporter } from './postgres-exporter';
 import { proxy, createProxyHelper } from './proxy';
 import { redis } from './redis';
+import { createRedisClusterHelper, redisCluster } from './redis-cluster';
 import { sandbox } from './sandbox';
 import { taskRunner } from './task-runner';
 import { tracing, createTracingHelper } from './tracing';
@@ -32,6 +34,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	postgres,
 	enginePostgres,
 	redis,
+	redisCluster,
 	mailpit,
 	gitea,
 	keycloak,
@@ -48,6 +51,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	kafka,
 	mysql: mysqlService,
 	localstack,
+	azurite,
 	vault,
 	kent,
 	postgresExporter,
@@ -68,7 +72,9 @@ export const helperFactories: Partial<HelperFactories> = {
 	proxy: createProxyHelper,
 	kafka: createKafkaHelper,
 	localstack: createLocalStackHelper,
+	azurite: createAzuriteHelper,
 	vault: createVaultHelper,
 	kent: createKentHelper,
 	npmRegistry: createNpmRegistryHelper,
+	redisCluster: createRedisClusterHelper,
 };

@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ICredentialResolver } from '@n8n/decorators';
+import { CredentialResolverDataNotFoundError, type ICredentialResolver } from '@n8n/decorators';
 import type { Cipher } from 'n8n-core';
 import type {
 	ICredentialContext,
@@ -422,6 +422,98 @@ describe('DynamicCredentialStorageService', () => {
 					}),
 				);
 			});
+		});
+	});
+	describe('discardRejectedOAuthTokenData', () => {
+		const credentialContext = createMockCredentialContext();
+		const handle = {
+			configuration: { prefix: 'test' },
+			resolverName: 'test-resolver',
+			resolverId: 'resolver-456',
+		};
+		let resolver: Mocked<ICredentialResolver>;
+
+		beforeEach(() => {
+			resolver = { ...createMockResolver(), deleteSecret: vi.fn() };
+			mockResolverRepository.findOneBy.mockResolvedValue(createMockResolverEntity());
+			mockResolverRegistry.getResolverByTypename.mockReturnValue(resolver);
+			mockCipher.decryptV2.mockResolvedValue('{"prefix":"test"}');
+		});
+
+		it('deletes the stored token when its refresh token is the rejected one', async () => {
+			resolver.getSecret.mockResolvedValue({
+				oauthTokenData: { access_token: 'old', refresh_token: 'rejected-refresh' },
+			});
+
+			await service.discardRejectedOAuthTokenData(
+				createMockCredentialMetadata(),
+				'rejected-refresh',
+				credentialContext,
+				undefined,
+				'exec-1',
+			);
+
+			expect(resolver.getSecret).toHaveBeenCalledWith(
+				'cred-123',
+				credentialContext,
+				handle,
+				'exec-1',
+			);
+			expect(resolver.deleteSecret).toHaveBeenCalledWith(
+				'cred-123',
+				credentialContext,
+				handle,
+				'exec-1',
+			);
+		});
+
+		it('keeps a token that was stored after the rejected one', async () => {
+			resolver.getSecret.mockResolvedValue({
+				oauthTokenData: { access_token: 'new', refresh_token: 'new-refresh' },
+			});
+
+			await service.discardRejectedOAuthTokenData(
+				createMockCredentialMetadata(),
+				'rejected-refresh',
+				credentialContext,
+			);
+
+			expect(resolver.deleteSecret).not.toHaveBeenCalled();
+		});
+
+		it('does nothing when no token is stored for the caller', async () => {
+			resolver.getSecret.mockRejectedValue(new CredentialResolverDataNotFoundError());
+
+			await service.discardRejectedOAuthTokenData(
+				createMockCredentialMetadata(),
+				'rejected-refresh',
+				credentialContext,
+			);
+
+			expect(resolver.deleteSecret).not.toHaveBeenCalled();
+		});
+
+		it('does nothing when the credential is not resolvable', async () => {
+			await service.discardRejectedOAuthTokenData(
+				createMockCredentialMetadata({ isResolvable: false }),
+				'rejected-refresh',
+				credentialContext,
+			);
+
+			expect(mockResolverRepository.findOneBy).not.toHaveBeenCalled();
+			expect(resolver.getSecret).not.toHaveBeenCalled();
+		});
+
+		it('does nothing when the resolver cannot delete', async () => {
+			mockResolverRegistry.getResolverByTypename.mockReturnValue(createMockResolver());
+
+			await service.discardRejectedOAuthTokenData(
+				createMockCredentialMetadata(),
+				'rejected-refresh',
+				credentialContext,
+			);
+
+			expect(resolver.getSecret).not.toHaveBeenCalled();
 		});
 	});
 });
