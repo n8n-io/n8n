@@ -31,7 +31,8 @@ export interface PlanHydratorDeps {
 	tenant: string;
 	upstream: McpCaller;
 	gym: McpCaller;
-	readTools: ReadonlySet<string>;
+	// Only a tool that this accepts can reach the real service.
+	readTools: { has(tool: string): boolean };
 	// Plan format and service part, see hydration-prompts.ts.
 	instructions: string;
 	llm: PlanLlm;

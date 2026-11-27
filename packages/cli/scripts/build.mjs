@@ -1,5 +1,5 @@
 import path from 'path';
-import { writeFileSync, readFileSync, rmSync, existsSync, mkdirSync } from 'fs';
+import { writeFileSync, readFileSync, rmSync, existsSync, mkdirSync, copyFileSync } from 'fs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import shell from 'shelljs';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
@@ -21,6 +21,7 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 generateUserManagementEmailTemplates();
 generateTimezoneData();
 copyAgentIntegrationAssets();
+copyMcpGuardVendorFiles();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
@@ -145,6 +146,23 @@ function bundleSpec(sourcePath, distPath) {
 	}
 	if (!existsSync(distPath)) {
 		throw new Error(`redocly did not write the bundle for ${sourcePath} to ${distPath}`);
+	}
+}
+
+function copyMcpGuardVendorFiles() {
+	// tsc emits no non-TS files. The mcp-guard reads its vendor files from next to the compiled code.
+	const sourceDir = path.resolve(ROOT_DIR, 'src', 'modules', 'mcp-guard', 'vendors');
+	const destinationDir = path.resolve(ROOT_DIR, 'dist', 'modules', 'mcp-guard', 'vendors');
+	// Find the files with fast-glob and copy them one by one. A glob that the shell copy expands
+	// does not match a Windows path.
+	const files = glob.sync('*.md', { cwd: sourceDir });
+	// Without a vendor file the guard fails at run time, so fail the build.
+	if (files.length === 0) {
+		throw new Error(`Could not find the mcp-guard vendor files in ${sourceDir}`);
+	}
+	mkdirSync(destinationDir, { recursive: true });
+	for (const file of files) {
+		copyFileSync(path.join(sourceDir, file), path.join(destinationDir, file));
 	}
 }
 

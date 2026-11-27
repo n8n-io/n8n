@@ -10,6 +10,8 @@ import { NodeTypes } from '@/node-types';
 import type { NonEmptyViolations } from '@/policy/policy-violation.error';
 
 import { AgentFileBridge } from '../../agent-file-bridge.service';
+import { withChatScope } from '../../../mcp-guard/chat-scope';
+import type { HydrationModel } from '../../../mcp-guard/hydration-llm';
 import { resolveNodeTool } from '../node-tool-factory';
 
 const violation = (overrides: Partial<PolicyViolation> = {}): PolicyViolation => ({
@@ -540,5 +542,38 @@ describe('resolveNodeTool → $fromAI argument named files', () => {
 		expect(executeInline).toHaveBeenCalledWith(
 			expect.objectContaining({ inputData: [{ json: { files: 'a.txt,b.txt' } }] }),
 		);
+	});
+});
+
+describe('resolveNodeTool → mcp-guard request guard', () => {
+	const model: HydrationModel = { resolve: async () => ({}) as never };
+
+	const run = async (guardModel?: HydrationModel) => {
+		let additionalData: Record<string, unknown> | undefined;
+		const executeInline = vi.fn(async (request: Record<string, unknown>) => {
+			additionalData = {};
+			(request.configureAdditionalData as ((a: unknown) => void) | undefined)?.(additionalData);
+			return { status: 'success', data: [] };
+		});
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+			guardModel,
+		});
+
+		await withChatScope(
+			'chat1',
+			async () => await tool.handler!({ input: 'x' }, {} as never),
+			'a1',
+		);
+		return additionalData;
+	};
+
+	it('sets a request guard on the execution of the node when the context has a guard model', async () => {
+		expect(typeof (await run(model))?.nodeRequestGuard).toBe('function');
+	});
+
+	it('sets no request guard when the context has no guard model', async () => {
+		expect((await run(undefined))?.nodeRequestGuard).toBeUndefined();
 	});
 });

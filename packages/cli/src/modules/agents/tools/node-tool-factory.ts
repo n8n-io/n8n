@@ -17,6 +17,9 @@ import { z } from 'zod';
 import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypesProviderMissingError, NodeTypesProxy } from '@n8n/backend-services';
 
+import { currentAgentId, currentChatId } from '../../mcp-guard/chat-scope';
+import { createNodeRequestGuard } from '../../mcp-guard/node-request-guard';
+import type { HydrationModel } from '../../mcp-guard/hydration-llm';
 import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
 import { toPolicyRefusalResult } from './policy-refusal';
@@ -28,6 +31,11 @@ export interface NodeToolFactoryContext {
 	projectId: string;
 	/** Owner of the files that the tool returns. Absent for inline agents. */
 	agentId?: string;
+	/**
+	 * Set for a test chat when the mcp-guard is on. The node runs as guarded: its network calls go to
+	 * the guard, not to the real service. Absent on every other path.
+	 */
+	guardModel?: HydrationModel;
 	/** Eval-only additionalData decoration — absent on every production path. */
 	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
 }
@@ -162,13 +170,22 @@ export async function resolveNodeTool(
 	// so hint lookup and request attribution key on the same identifier the
 	// model calls.
 	const instrument = ctx.instrumentToolAdditionalData;
-	const instrumentedExecution = instrument
-		? {
-				nodeName: sanitizedName,
-				configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) =>
-					instrument(additionalData, { toolName: sanitizedName, toolKind: 'node' }),
-			}
-		: {};
+	const guardModel = ctx.guardModel;
+	// A test chat guards the requests of the node. Only this node execution gets the guard.
+	const configureAdditionalData = (additionalData: IWorkflowExecuteAdditionalData) => {
+		instrument?.(additionalData, { toolName: sanitizedName, toolKind: 'node' });
+		if (guardModel) {
+			additionalData.nodeRequestGuard = createNodeRequestGuard({
+				model: guardModel,
+				chatId: currentChatId(),
+				agentId: currentAgentId(),
+			});
+		}
+	};
+	const instrumentedExecution =
+		instrument || guardModel
+			? { ...(instrument && { nodeName: sanitizedName }), configureAdditionalData }
+			: {};
 
 	const { schema, acceptsFiles } = await resolveInputSchema(toolSchema, ctx);
 	const built = new Tool(sanitizedName)

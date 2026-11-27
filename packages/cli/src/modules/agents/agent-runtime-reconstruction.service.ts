@@ -21,6 +21,7 @@ import {
 	isMcpGuardActive,
 	withMcpGuard,
 } from '../mcp-guard/mcp-guard-fetch';
+import type { HydrationModel } from '../mcp-guard/hydration-llm';
 import { wrapToolForApproval } from '@n8n/agents/tool';
 import { isRecord } from '@n8n/utils/is-record';
 import { actionNeedsApproval } from './integrations/integration-tool-definitions';
@@ -293,6 +294,8 @@ interface ToolRunIdentity {
 	delegatingAgentId?: string;
 	supportsHitl: boolean;
 	backgroundTasksEnabled: boolean;
+	/** The model of the agent, for the guard of its node tools. Set for a guarded test chat only. */
+	guardModel?: HydrationModel;
 }
 
 /**
@@ -1043,7 +1046,16 @@ export class AgentRuntimeReconstructionService {
 			previewChat,
 			supportsHitl,
 			runtimeProfile,
+			instrumentation,
+			credentialProvider,
 		} = options;
+		// Test chat only, when enabled: the network calls of node tools go through the guard.
+		// An evaluation run sets its own handler for node tools (and MCP), so the guard stays off for it.
+		const guardActive = isMcpGuardActive(
+			runType,
+			instrumentation?.mcpFetch !== undefined ||
+				instrumentation?.configureToolAdditionalData !== undefined,
+		);
 		const canResume = supportsHitl ?? runtimeProfile === 'top-level';
 		return {
 			projectId,
@@ -1069,6 +1081,13 @@ export class AgentRuntimeReconstructionService {
 			// interactive turn to hand a receipt to. Everyone else handles waits
 			// the legacy way.
 			backgroundTasksEnabled: backgroundTasksEnabled && canResume,
+			guardModel: guardActive
+				? {
+						// The hydration uses the model of the agent under test.
+						resolve: async () => await resolveModelConfig(options.config, credentialProvider),
+						fetch: createAiProxyFetch(this.outboundHttp),
+					}
+				: undefined,
 		};
 	}
 
@@ -1274,6 +1293,7 @@ export class AgentRuntimeReconstructionService {
 					projectId: runIdentity.projectId,
 					agentId: runIdentity.agentId,
 					instrumentToolAdditionalData,
+					guardModel: runIdentity.guardModel,
 				});
 			}
 			return null;
