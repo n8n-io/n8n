@@ -1,0 +1,33 @@
+.agents/skills/ui-review/references/accessibility.md
+  s_7a70b9a06537d7::t_66ddd8fdf8c3cb 7-8,10-14,16,25-29,35
+.agents/skills/ui-review/references/color.md
+  s_7a70b9a06537d7::t_cbbeb23b340999 1-10
+.agents/skills/ui-review/SKILL.md
+  s_7a70b9a06537d7::t_0dcaad551d6c99 7,14,23-24
+.agents/skills/ui-review/references/visual.md
+  s_7a70b9a06537d7::t_c750ddb8f656dc 9-10,12,21
+.agents/skills/ui-review/references/components.md
+  s_7a70b9a06537d7::t_05f98ceb3a2218 3,9,20,29
+.agents/skills/ui-review/references/type.md
+  s_7a70b9a06537d7::t_068f698063cd6a 3,8,11-12,15,17,31
+.agents/skills/ui-review/references/layout.md
+  s_7a70b9a06537d7::t_292f9bee46031a 3,7-8,11-12,18,20
+.agents/skills/ui-review/references/motion.md
+  s_7a70b9a06537d7::t_95e3d50656a848 7,9,11-12,15,21,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "036605d27da5e935b8ad224a6af1cf3c7e9a8320",
+  "prompts": {},
+  "sessions": {
+    "s_7a70b9a06537d7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a2188e-2a24-76fe-a1a2-7969c1e2a10c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

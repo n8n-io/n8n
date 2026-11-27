@@ -1,0 +1,19 @@
+packages/cli/test/integration/modules/runtime-credentials-scrub.integration.test.ts
+  s_55c9c16466c150::t_6cb2de323885b7 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1bfb017c049d350ed9476eca48d7833142949cb",
+  "prompts": {},
+  "sessions": {
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

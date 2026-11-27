@@ -1,0 +1,27 @@
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_1a3b6572805f97::t_245c913384a9e2 775,779-780,787
+packages/cli/src/execution-lifecycle/restore-binary-data-id.ts
+  s_1a3b6572805f97::t_245c913384a9e2 99,102-106,108
+packages/cli/src/binary-data/unassigned-binary-data-backfill.service.ts
+  s_1a3b6572805f97::t_245c913384a9e2 11-14,80-82,95-96,178,184-185
+packages/cli/test/integration/unassigned-binary-data-backfill.test.ts
+  s_1a3b6572805f97::t_245c913384a9e2 87-91,169,179,186-190,199,207-208,210-211,297-298,300,302-306,308,313,316,318-322,330-331,333-334,336-337
+packages/cli/src/binary-data/unassigned-binary-data-backfill.task.ts
+  s_1a3b6572805f97::t_245c913384a9e2 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "25a101758a3fe0fe34ceec31f1f311dd1f7ba55d",
+  "prompts": {},
+  "sessions": {
+    "s_1a3b6572805f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "197b7d45-f2ec-48eb-9390-e0472d670832",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
