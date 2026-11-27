@@ -187,7 +187,13 @@ const operationInputSchema = z
 		node: nodeInputSchema.optional().describe('For addNode.'),
 		parameters: z.record(z.string(), z.unknown()).optional().describe('For updateNodeParameters.'),
 		replace: z.boolean().optional().describe('For updateNodeParameters; default false.'),
-		path: z.string().min(2).optional().describe('For setNodeParameter; JSON Pointer path.'),
+		path: z
+			.string()
+			.min(2)
+			.optional()
+			.describe(
+				'For setNodeParameter; JSON Pointer relative to node parameters (e.g. "/options/timeout"). May also start with "/parameters" (e.g. "/parameters/jsCode"), unless "parameters" is a declared parameter of the node.',
+			),
 		value: z.unknown().optional().describe('For setNodeParameter.'),
 		oldName: z.string().optional().describe('For renameNode.'),
 		newName: z.string().optional().describe('For renameNode or updateNodeGroup.'),
@@ -1236,6 +1242,18 @@ export const createUpdateWorkflowTool = (
 				const result = applyOperations(
 					toWorkflowSlice(existingWorkflow, { includeTags: hasTagOperations }),
 					strictOperations,
+					{
+						isTopLevelParameter: (node, parameterName) => {
+							try {
+								return nodeTypes
+									.getByNameAndVersion(node.type, node.typeVersion)
+									.description.properties.some((property) => property.name === parameterName);
+							} catch (error) {
+								if (error instanceof UnrecognizedNodeTypeError) return undefined;
+								throw error;
+							}
+						},
+					},
 				);
 
 				if (!result.success) {
