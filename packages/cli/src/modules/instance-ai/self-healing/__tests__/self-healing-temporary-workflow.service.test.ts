@@ -13,6 +13,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { ResourceOwnerService } from '@/services/resource-owner.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { SelfHealingTemporaryWorkflowRepository } from '../database/self-healing-temporary-workflow.repository';
@@ -28,6 +29,7 @@ const executions = mock<ExecutionPersistence>();
 const executionService = mock<ExecutionService>();
 const logger = mock<Logger>();
 const users = mock<UserRepository>();
+const resourceOwners = mock<ResourceOwnerService>();
 const service = new SelfHealingTemporaryWorkflowService(
 	workflows,
 	finder,
@@ -37,6 +39,7 @@ const service = new SelfHealingTemporaryWorkflowService(
 	executionService,
 	logger,
 	users,
+	resourceOwners,
 );
 const user = mock<User>({ id: 'user', disabled: false });
 const graph: WorkflowSuggestionGraph = {
@@ -157,6 +160,22 @@ it('uses the current user and role for access and policy checks', async () => {
 		kind: 'user',
 		user: currentUser,
 	});
+});
+
+it('makes the owner for a new workflow in the project the owner of the copy', async () => {
+	const ctx = mock<OperationContext>();
+	transactions.run.mockImplementation(async (_, work) => await work(ctx));
+	resourceOwners.ownerForNewResource.mockResolvedValue('resolved-owner');
+
+	const temporary = await service.create(input);
+
+	expect(resourceOwners.ownerForNewResource).toHaveBeenCalledWith(
+		user,
+		baseline.projectId,
+		'workflow',
+		ctx,
+	);
+	expect(temporary.ownerUserId).toBe('resolved-owner');
 });
 
 it('retains the marker when execution data cleanup fails', async () => {

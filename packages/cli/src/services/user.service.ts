@@ -29,6 +29,7 @@ import {
 import { Container, Service } from '@n8n/di';
 import {
 	getGlobalScopes,
+	IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
 	isBuiltInRole,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
@@ -41,6 +42,7 @@ import { validate as uuidValidate } from 'uuid';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
+import { ResourceOwnerService } from './resource-owner.service';
 import { ServiceAccountUsageProxy } from './service-account-usage-proxy.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -99,6 +101,7 @@ export class UserService {
 		private readonly scimSwitchReader: ScimSwitchReader,
 		private readonly txRunner: TransactionRunner,
 		private readonly serviceAccountUsage: ServiceAccountUsageProxy,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	/** Updates the profile or password of a person. A service account id is a no-op. */
@@ -391,7 +394,7 @@ export class UserService {
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
 	}
 
-	async changeUserRole(user: User, newRole: RoleChangeRequestDto) {
+	async changeUserRole(user: User, newRole: RoleChangeRequestDto, actor?: User) {
 		// Check that new role exists
 		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
 
@@ -407,7 +410,7 @@ export class UserService {
 			);
 		}
 
-		await this.userRepository.manager.transaction(async (trx) => {
+		await this.userRepository.runInTransaction({}, async (trx, ctx) => {
 			await trx.update(User, { id: user.id }, { role: { slug: newRole.newRoleName } });
 
 			const isAdminRole = (roleName: string) => {
@@ -447,6 +450,15 @@ export class UserService {
 						userId: user.id,
 						projectId: relation.projectId,
 					});
+					await this.resourceOwnerService.reassignOwnedBy(
+						{
+							userId: user.id,
+							projectId: relation.projectId,
+							actor,
+							reason: 'member-removed',
+						},
+						ctx,
+					);
 				}
 
 				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
@@ -488,10 +500,28 @@ export class UserService {
 					{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
 				);
 			}
+
+			await this.reassignResourcesOfFormerImplicitMember(user, newRole.newRoleName, actor, ctx);
 		});
 
 		// Invalidate ownership cache for the user to ensure their new permissions are reflected in subsequent requests
 		await this.ownershipService.invalidateProjectOwnerCacheByUserId(user.id);
+	}
+
+	private async reassignResourcesOfFormerImplicitMember(
+		user: User,
+		newRoleSlug: string,
+		actor: User | undefined,
+		ctx: OperationContext,
+	) {
+		const isImplicitMember = (roleSlug: string) =>
+			IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS.includes(roleSlug);
+		if (!isImplicitMember(user.role.slug) || isImplicitMember(newRoleSlug)) return;
+
+		await this.resourceOwnerService.reassignOwnedBy(
+			{ userId: user.id, actor, reason: 'role-changed' },
+			ctx,
+		);
 	}
 
 	/**
@@ -795,6 +825,10 @@ export class UserService {
 				personalProjectToDelete.id,
 				ctx,
 			);
+			await this.resourceOwnerService.reassignOwnedBy(
+				{ userId: userToDelete.id, actor: actorUser ?? undefined, reason: 'user-deleted' },
+				ctx,
+			);
 			await this.userRepository.deleteAccount(userToDelete.id, personalProjectToDelete.id, ctx);
 		});
 
@@ -844,7 +878,7 @@ export class UserService {
 			);
 		}
 
-		await this.changeUserRole(targetUser, payload);
+		await this.changeUserRole(targetUser, payload, actor);
 
 		this.eventService.emit('user-changed-role', {
 			userId: actor.id,

@@ -81,6 +81,7 @@ describe('Instance AI writes outside the bound project (integration)', () => {
 			created.id,
 		);
 		expect(owningProject?.id).toBe(boundProject.id);
+		expect((await storedWorkflow(created.id)).ownerUserId).toBe(member.id);
 	});
 
 	it('updates a workflow from the bound project', async () => {

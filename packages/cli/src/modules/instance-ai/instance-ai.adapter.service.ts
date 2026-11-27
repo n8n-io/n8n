@@ -238,6 +238,7 @@ import {
 	NodeResourceExplorerService,
 } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 
 import { TagService } from '@/services/tag.service';
 import { createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
@@ -537,6 +538,8 @@ export class InstanceAiAdapterService {
 		// Optional for the same reason as the other services above: existing tests
 		// construct this class positionally, and this must stay the last parameter.
 		private readonly aiPreferenceService?: AiPreferenceService,
+		// Optional for the same positional-construction reason as above.
+		private readonly resourceOwnerService?: ResourceOwnerService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -1238,6 +1241,7 @@ export class InstanceAiAdapterService {
 			collaborationService,
 			policyEnforcementService,
 			workflowDependencyQueryService,
+			resourceOwnerService,
 		} = this;
 		const logger = this.logger;
 		const maxExecutionTimeout = this.globalConfig.executions.maxTimeout;
@@ -1908,6 +1912,9 @@ export class InstanceAiAdapterService {
 				const saved = await workflowRepository.runInTransaction(
 					{ policyCleared: cleared },
 					async (transactionManager, ctx) => {
+						newWorkflow.ownerUserId =
+							(await resourceOwnerService?.ownerForNewResource(user, projectId, 'workflow', ctx)) ??
+							null;
 						const workflow = await workflowRepository.createContent(newWorkflow, ctx);
 						await sharedWorkflowRepository.makeOwner([workflow.id], projectId, transactionManager);
 						if (options?.markAsAiTemporary && !markers) {

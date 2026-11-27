@@ -101,6 +101,23 @@ export type ProjectSummary = {
 	name: string;
 };
 
+export type OwnerChangeReason =
+	| 'manual'
+	| 'move'
+	| 'member-removed'
+	| 'role-changed'
+	| 'user-deleted'
+	| 'import';
+
+type OwnerChangedEvent = {
+	/** The user who caused the change. `null` when no user caused it. */
+	user: UserLike | null;
+	projectId: string;
+	previousOwnerUserId: string | null;
+	newOwnerUserId: string | null;
+	reason: OwnerChangeReason;
+};
+
 type ModuleEventMap = DataTableEventMap & AppEventMap;
 
 export type RelayEventMap = ModuleEventMap & {
@@ -241,6 +258,8 @@ export type RelayEventMap = ModuleEventMap & {
 		/** Login of the service account that acted. Absent for people and outside a request. */
 		loginId?: string;
 	};
+
+	'workflow-owner-changed': OwnerChangedEvent & { workflowId: string };
 
 	'workflow-saved': {
 		user: UserLike;
@@ -1464,6 +1483,8 @@ export type RelayEventMap = ModuleEventMap & {
 		/** Login of the service account that acted. Absent for people and outside a request. */
 		loginId?: string;
 	};
+
+	'agent-owner-changed': OwnerChangedEvent & { agentId: string };
 
 	// #region Instance Policies
 

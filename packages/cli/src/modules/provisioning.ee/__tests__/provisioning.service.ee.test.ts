@@ -35,6 +35,9 @@ const userRepository = mock<UserRepository>();
 const userService = mock<UserService>();
 const entityManager = mock<EntityManager>();
 const projectRepository = mock<ProjectRepository>({ manager: entityManager });
+projectRepository.runInTransaction.mockImplementation(
+	async (ctx, fn) => await entityManager.transaction(async (em) => await fn(em, ctx)),
+);
 const projectService = mock<ProjectService>();
 const eventService = mock<EventService>();
 
@@ -61,6 +64,7 @@ const provisioningService = new ProvisioningService(
 	roleMappingRuleRepository,
 	roleResolverService,
 	roleMappingRuleService,
+	mock(),
 );
 
 describe('ProvisioningService', () => {

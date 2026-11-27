@@ -66,6 +66,7 @@ import {
 import { findPolicyViolations } from '@/policy/policy-violation.error';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 import { stripToolSuffix } from '@/utils';
 
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -152,6 +153,7 @@ export class EnterpriseWorkflowService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	async shareWithProjects(
@@ -1263,7 +1265,7 @@ export class EnterpriseWorkflowService {
 			)
 			.map((workflow) => workflow.id);
 
-		await this.workflowRepository.manager.transaction(async (trx) => {
+		await this.workflowRepository.runInTransaction({}, async (trx, ctx) => {
 			for (const workflow of workflows) {
 				// Remove all sharings
 				await trx.remove(workflow.shared);
@@ -1277,6 +1279,13 @@ export class EnterpriseWorkflowService {
 					}),
 				);
 			}
+
+			await this.resourceOwnerService.reconcileAfterMove(
+				user,
+				movedWorkflowIds,
+				destinationProject.id,
+				ctx,
+			);
 		});
 
 		// Update workflow project cache entries

@@ -45,6 +45,7 @@ import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 import { TagService } from '@/services/tag.service';
 import {
 	BadRequestError,
@@ -189,6 +190,7 @@ export class AgentsService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
 		private readonly agentServiceAccount: AgentServiceAccountService,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	/**
@@ -351,12 +353,18 @@ export class AgentsService {
 	}
 
 	private async insertAgent(
-		agent: Agent,
+		agent: ProjectAgent,
 		skillRefs: AgentSkillRefs,
 		options: DraftAgentCreateOptions,
 	) {
 		return await this.transactionRunner.run({}, async (ctx) => {
 			await this.agentServiceAccount.assignToNewAgent(agent, ctx);
+			agent.ownerUserId = await this.resourceOwnerService.ownerForNewResource(
+				options.actor.kind === 'user' ? options.actor.user : undefined,
+				agent.projectId,
+				'agent',
+				ctx,
+			);
 			// Insert-only: a reused client id must not overwrite the winning draft.
 			await this.agentRepository.insertNew(agent, ctx);
 			if (options.tagIds !== undefined) {
@@ -491,6 +499,12 @@ export class AgentsService {
 		);
 		const importedSkillRefs = await Container.get(TransactionRunner).run({}, async (ctx) => {
 			await this.agentServiceAccount.assignToNewAgent(agent, ctx);
+			agent.ownerUserId = await this.resourceOwnerService.ownerForNewResource(
+				user,
+				projectId,
+				'agent',
+				ctx,
+			);
 			try {
 				await this.agentRepository.insertNew(agent, ctx);
 			} catch (error) {

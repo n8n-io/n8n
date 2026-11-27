@@ -402,6 +402,7 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 		tools: first.tools,
 		availableInMCP: true,
 		activeVersionId: null,
+		ownerUserId: owner.id,
 	});
 	const importedSkills = await Container.get(AgentSkillRefsService).readDraft(saved, {});
 	expect(importedSkills.skillRefs).toEqual(first.config!.skills);

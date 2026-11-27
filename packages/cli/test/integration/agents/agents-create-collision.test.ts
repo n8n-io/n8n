@@ -6,12 +6,19 @@
  */
 
 import { TelemetryProxy } from '@n8n/backend-services';
-import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	linkUserToProject,
+	mockInstance,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 
+import { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
@@ -19,7 +26,7 @@ import { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 
-import { createOwner } from '../shared/db/users';
+import { createMember, createOwner } from '../shared/db/users';
 
 // Nothing here is policed, so the actor only has to be well formed.
 const actor = { kind: 'user', user: { id: 'user-1' } } as const;
@@ -54,6 +61,28 @@ describe('AgentsService.create — client-minted id', () => {
 			name: 'Fresh Agent',
 			projectId: project.id,
 		});
+	});
+
+	it('makes the creating user or the draft creator the owner, or the project admin when nobody creates', async () => {
+		const admin = await createMember();
+		const editor = await createMember();
+		const project = await createTeamProject(undefined, admin);
+		await linkUserToProject(editor, project, 'project:editor');
+
+		const created = await agentsService.create(project.id, 'Created Agent', {
+			actor: { kind: 'user', user: editor },
+			user: editor,
+		});
+		const seeded = await Container.get(AgentDraftService).createDraft(
+			editor,
+			project.id,
+			'Seeded Agent',
+		);
+		const drafted = await agentsService.create(project.id, 'Drafted Agent', { actor });
+
+		expect(created.ownerUserId).toBe(editor.id);
+		expect((await agentRepo.findOneByOrFail({ id: seeded.agentId })).ownerUserId).toBe(editor.id);
+		expect(drafted.ownerUserId).toBe(admin.id);
 	});
 
 	it('drops other agents task references when creating with a server-assigned id', async () => {

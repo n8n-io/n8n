@@ -49,6 +49,9 @@ describe('ProjectService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const projectRepository = mock<ProjectRepository>({ manager });
 	const projectRelationRepository = mock<ProjectRelationRepository>({ manager });
+	projectRelationRepository.runInTransaction.mockImplementation(
+		async (ctx, fn) => await manager.transaction(async (em) => await fn(em, ctx)),
+	);
 	const roleService = mock<RoleService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const folderRepository = mock<FolderRepository>();
@@ -85,6 +88,7 @@ describe('ProjectService', () => {
 		transactions,
 		mock(), // agentsConfig
 		mock(), // serviceAccountProjects
+		mock(), // resourceOwnerService
 	);
 
 	beforeEach(() => {
