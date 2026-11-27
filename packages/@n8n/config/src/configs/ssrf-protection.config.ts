@@ -82,7 +82,7 @@ export class SsrfProtectionConfig {
 	 * On by default: n8n blocks outbound requests to private or internal
 	 * addresses on behalf of untrusted input (a URL pasted into the HTTP Request
 	 * node, a workflow imported from a URL, an OAuth/discovery endpoint). Opt out
-	 * with N8N_SSRF_PROTECTION_ENABLED=false, then use the allow-lists below to
+	 * with N8N_SSRF_PROTECTION_ENABLED=false, or use the allow-lists below to
 	 * re-open the specific internal hosts you still need.
 	 *
 	 * Requests to fixed, n8n-owned or operator-configured destinations (the
