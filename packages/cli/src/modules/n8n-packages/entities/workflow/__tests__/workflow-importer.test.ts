@@ -7,6 +7,7 @@ import type {
 	WorkflowCreateBatchContext,
 	WorkflowCreationService,
 } from '@/workflows/workflow-creation.service';
+import type { ResourceOwnerService } from '@/services/resource-owner.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -35,6 +36,9 @@ const bindings: PackageImportBindings = {
 };
 
 const user = mock<User>({ id: 'user-1' });
+const resourceOwnerService = mock<ResourceOwnerService>({
+	applyImportedOwner: async () => ({ ownerUnmatched: false }),
+});
 const ctx: OperationContext = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
 const context = {
 	user,
@@ -60,6 +64,7 @@ describe('WorkflowImporter.apply', () => {
 			workflowCreationService,
 			workflowService,
 			mock<WorkflowFinderService>(),
+			resourceOwnerService,
 		);
 		const batchContext = mock<WorkflowCreateBatchContext>();
 		const createEntity = makeWorkflow('source-create');
@@ -152,6 +157,7 @@ describe('WorkflowImporter.apply', () => {
 			workflowCreationService,
 			workflowService,
 			mock<WorkflowFinderService>(),
+			resourceOwnerService,
 		);
 		const existing = makeWorkflow('existing');
 		const plan: WorkflowImportPlan = {
@@ -193,6 +199,7 @@ describe('WorkflowImporter.apply', () => {
 			workflowCreationService,
 			mock<WorkflowService>(),
 			mock<WorkflowFinderService>(),
+			resourceOwnerService,
 		);
 		const source = makeWorkflow('source');
 		const deepestWorkflow = JSON.stringify({
@@ -275,6 +282,7 @@ describe('WorkflowImporter.apply', () => {
 			mock<WorkflowCreationService>(),
 			workflowService,
 			mock<WorkflowFinderService>(),
+			resourceOwnerService,
 		);
 		const existing = Object.assign(makeWorkflow('existing'), { isArchived: true });
 		const entity = Object.assign(makeWorkflow('source'), { isArchived: true, name: 'New name' });
@@ -337,6 +345,7 @@ describe('WorkflowImporter.apply', () => {
 				mock<WorkflowCreationService>(),
 				workflowService,
 				mock<WorkflowFinderService>(),
+				resourceOwnerService,
 			);
 			const archive = transition === 'archive';
 			const existing = Object.assign(makeWorkflow('existing'), { isArchived: !archive });
@@ -383,6 +392,7 @@ describe('WorkflowImporter.apply', () => {
 			mock<WorkflowCreationService>(),
 			workflowService,
 			mock<WorkflowFinderService>(),
+			resourceOwnerService,
 		);
 		const existing = Object.assign(makeWorkflow('existing'), { isArchived: true });
 		const plan: WorkflowImportPlan = {
@@ -421,6 +431,7 @@ describe('WorkflowImporter.plan', () => {
 			mock<WorkflowCreationService>(),
 			mock<WorkflowService>(),
 			finder,
+			resourceOwnerService,
 		);
 		const existing = Object.assign(makeWorkflow('existing'), { isArchived: true });
 		const entity = Object.assign(makeWorkflow('source'), { isArchived: true });
@@ -462,6 +473,7 @@ describe('WorkflowImporter.plan', () => {
 			mock<WorkflowCreationService>(),
 			mock<WorkflowService>(),
 			finder,
+			resourceOwnerService,
 		);
 		const existing = Object.assign(makeWorkflow('existing'), { isArchived: false });
 		const entity = Object.assign(makeWorkflow('source'), { isArchived: true });
@@ -521,6 +533,7 @@ describe('WorkflowImporter.plan', () => {
 				mock<WorkflowCreationService>(),
 				mock<WorkflowService>(),
 				mock<WorkflowFinderService>(),
+				resourceOwnerService,
 			);
 			const existing = Object.assign(makeWorkflow('existing'), {
 				parentFolder: { id: 'old-folder' },

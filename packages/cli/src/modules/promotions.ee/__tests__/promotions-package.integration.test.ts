@@ -845,6 +845,7 @@ describe('Promote and Apply', () => {
 			{ name: 'Process order', nodes: [], connections: {} },
 			project,
 		);
+		await Container.get(WorkflowRepository).update(workflow.id, { ownerUserId: owner.id });
 
 		const result = await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: false,
@@ -886,6 +887,14 @@ describe('Promote and Apply', () => {
 		await expect(
 			readFile(path.join(inspectionDir, 'n8n', workflowEntry.target, 'workflow.json')),
 		).resolves.toBeDefined();
+		expect(
+			jsonParse(
+				await readFile(
+					path.join(inspectionDir, 'n8n', workflowEntry.target, 'workflow-metadata.json'),
+					'utf-8',
+				),
+			),
+		).toMatchObject({ ownerEmail: owner.email });
 		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
 		expect(result.counts.workflows).toBe(1);
 		expect(manifest.agents).toBeUndefined();

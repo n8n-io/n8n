@@ -1,6 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { IWorkflowDb, Project, SharedCredentials } from '@n8n/db';
+import type { Project, SharedCredentials, WorkflowEntity } from '@n8n/db';
 import {
 	FolderRepository,
 	ProjectRelationRepository,
@@ -57,6 +57,7 @@ import type {
 } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 
 @Service()
 export class SourceControlExportService {
@@ -84,6 +85,7 @@ export class SourceControlExportService {
 		instanceSettings: InstanceSettings,
 		private readonly dataTableRepository: DataTableRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -144,9 +146,10 @@ export class SourceControlExportService {
 	}
 
 	private async writeExportableWorkflowsToExportFolder(
-		workflowsToBeExported: IWorkflowDb[],
+		workflowsToBeExported: WorkflowEntity[],
 		owners: Record<string, RemoteResourceOwner>,
 	) {
+		const ownerEmails = await this.resourceOwnerService.findOwnerEmails(workflowsToBeExported);
 		await Promise.all(
 			workflowsToBeExported.map(async (workflow) => {
 				const fileName = this.getWorkflowPath(workflow.id);
@@ -160,6 +163,7 @@ export class SourceControlExportService {
 					triggerCount: workflow.triggerCount,
 					versionId: workflow.versionId,
 					owner: owners[workflow.id],
+					ownerEmail: ownerEmails.get(workflow.id) ?? null,
 					parentFolderId: workflow.parentFolder?.id ?? null,
 					isArchived: workflow.isArchived,
 					nodeGroups: workflow.nodeGroups ?? [],

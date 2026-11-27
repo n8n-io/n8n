@@ -60,6 +60,7 @@ import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.se
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { isUniqueConstraintError } from '@/response-helper';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
@@ -199,6 +200,7 @@ export class SourceControlImportService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 		private readonly workflowIndexService: WorkflowIndexService,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -996,6 +998,8 @@ export class SourceControlImportService {
 			targetOwnerProject,
 		});
 
+		await this.applyExportedOwner(id, !existingWorkflow, importedWorkflow.ownerEmail, userId);
+
 		// Now publish the workflow if needed (after history is saved)
 		if (shouldPublishAfterImport) {
 			const publishResult = await this.publishWorkflow(id, versionId, userId);
@@ -1013,6 +1017,23 @@ export class SourceControlImportService {
 				publishingErrorDetails: finalPublishingErrorDetails,
 			}),
 		};
+	}
+
+	private async applyExportedOwner(
+		workflowId: string,
+		isNew: boolean,
+		ownerEmail: unknown,
+		userId: string,
+	) {
+		if (ownerEmail === undefined) return;
+
+		const user = await this.userRepository.findByIdWithRole(userId);
+		await this.resourceOwnerService.applyImportedOwner(
+			user ?? undefined,
+			{ type: 'workflow', id: workflowId, isNew },
+			typeof ownerEmail === 'string' ? ownerEmail : null,
+			{},
+		);
 	}
 
 	private async parseWorkflowFromFile(file: string): Promise<IWorkflowToImport> {

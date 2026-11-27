@@ -60,6 +60,7 @@ export const serializedAgentMetadataSchema = z
 	.object({
 		versionId: z.string().min(1).nullable(),
 		publishedVersionId: z.string().min(1).nullable(),
+		ownerEmail: z.string().nullable().optional(),
 	})
 	.strict();
 

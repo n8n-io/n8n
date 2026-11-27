@@ -284,6 +284,7 @@ export interface ExportPackageRequest {
 	includeTags?: boolean;
 	/** Whether folder exports include archived workflows and project exports include archived workflows and agents. Explicit ids always export. */
 	includeArchived?: boolean;
+	includeUserReferences?: boolean;
 	dependencyPolicy?: ExportDependencyPolicy;
 	versionPolicy?: ExportVersionPolicy;
 	credentialExportPolicy?: CredentialExportPolicy;
@@ -598,6 +599,8 @@ export interface ImportedWorkflowSummary {
 	status: 'created' | 'updated' | 'skipped';
 	/** Set when the update also moved the workflow to another folder (`layoutConflictPolicy=follow-package`). */
 	moved?: true;
+	/** Set when no valid owner in the target project has the email of the source owner. */
+	ownerUnmatched?: true;
 }
 
 export interface ImportedAgentSummary {
@@ -609,6 +612,8 @@ export interface ImportedAgentSummary {
 	status: 'created' | 'updated' | 'skipped';
 	publishing: PublishingOutcome;
 	channels: ImportedAgentChannel[];
+	/** Set when no valid owner in the target project has the email of the source owner. */
+	ownerUnmatched?: true;
 }
 
 export interface ImportStatusCounts {

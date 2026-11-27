@@ -7,7 +7,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
+import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
@@ -15,7 +15,7 @@ import { TarPackageReader } from '@/modules/n8n-packages/io/tar/tar-package-read
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { createFolder } from '@test-integration/db/folders';
 
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import { createMember, createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -269,6 +269,29 @@ describe('POST /n8n-packages/export', () => {
 				`projects/${segment}/workflows/daily-report-${workflow.id}/workflow.json`,
 			]),
 		);
+	});
+
+	test('writes the owner email when the request includes user references', async () => {
+		const project = await createTeamProject('Export project', owner);
+		const workflow = await createWorkflow({ name: 'Daily Report' }, project);
+		const member = await createMember();
+		await Container.get(WorkflowRepository).update(workflow.id, { ownerUserId: member.id });
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/export')
+			.buffer(true)
+			.parse((res, callback) => {
+				const chunks: Buffer[] = [];
+				res.on('data', (chunk: Buffer) => chunks.push(chunk));
+				res.on('end', () => callback(null, Buffer.concat(chunks)));
+			})
+			.send({ workflowIds: [workflow.id], includeUserReferences: true });
+
+		expect(response.statusCode).toBe(200);
+		const reader = new TarPackageReader(response.body, new PackageImportConfig());
+		const [{ target }] = (await reader.readManifest()).workflows!;
+		const metadata = await reader.readFile(`${target}/workflow-metadata.json`);
+		expect(JSON.parse(metadata.toString())).toMatchObject({ ownerEmail: member.email });
 	});
 
 	// The request DTO is strict, so acceptance proves `includeTags` is a declared field.

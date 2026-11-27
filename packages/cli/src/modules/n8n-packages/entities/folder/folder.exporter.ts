@@ -22,6 +22,7 @@ export interface FolderExportRequest {
 	includeTags: boolean;
 	versionPolicy: ExportVersionPolicy;
 	includeArchived: boolean;
+	includeUserReferences?: boolean;
 	/**
 	 * Directory the folder tree is written under. Empty for a top-level folder
 	 * export (`folders/...`); a project exporter passes `projects/<slug>-<id>` so
@@ -227,6 +228,7 @@ export class FolderExporter {
 			workflowIds: selected,
 			includeTags: request.includeTags,
 			versionPolicy: request.versionPolicy,
+			includeUserReferences: request.includeUserReferences,
 			basePrefix,
 		});
 	}

@@ -39,6 +39,7 @@ export function instancePromotionExportRequest({
 		includeTags: true,
 		// Archived workflows travel too, so the target archives them instead of removing them.
 		includeArchived: true,
+		includeUserReferences: true,
 		// personal projects are excluded, so a team workflow calling a personal
 		// sub-workflow blocks the whole promotion; intended for now, see LIGO-1089
 		dependencyPolicy: ExportDependencyPolicy.Fail,
@@ -60,6 +61,7 @@ export async function exportInstancePackage(
 			projectIds: [projectId],
 			includeAgents: false,
 			includeArchived: true,
+			includeUserReferences: true,
 			includeTags: true,
 			includeVariableValues: true,
 			versionPolicy: ExportVersionPolicy.Latest,

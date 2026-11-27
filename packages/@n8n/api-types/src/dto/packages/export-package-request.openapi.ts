@@ -47,4 +47,9 @@ export const exportPackageRequestFieldDocs = {
 			'Whether folder exports include archived workflows and project exports include archived workflows and agents. When `false` (default) they are left out. When `true` they travel with `isArchived: true` and are archived on import. Workflows listed in `workflowIds` and agents listed in `agentIds` always export, also when archived.',
 		example: false,
 	},
+	includeUserReferences: {
+		description:
+			'Whether the package includes references to n8n users. A user reference identifies a person by email address. Today the package includes the email address of the owner of each exported workflow and agent, and the importing instance uses it to set the owner. The package never includes user accounts. The default is `false`, because an email address is personal data. Promotions always include user references.',
+		example: false,
+	},
 } satisfies Record<string, ZodOpenAPIMetadata>;

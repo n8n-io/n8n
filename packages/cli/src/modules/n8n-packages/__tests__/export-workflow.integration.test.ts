@@ -83,8 +83,16 @@ describe('workflow package export', () => {
 		service = Container.get(N8nPackagesService);
 	});
 
-	async function exportSingleWorkflow(user: User, workflowId: string) {
-		const { stream } = await service.exportPackage({ user, workflowIds: [workflowId] });
+	async function exportSingleWorkflow(
+		user: User,
+		workflowId: string,
+		includeUserReferences?: boolean,
+	) {
+		const { stream } = await service.exportPackage({
+			user,
+			workflowIds: [workflowId],
+			includeUserReferences,
+		});
 		return await readExport(stream);
 	}
 
@@ -165,6 +173,21 @@ describe('workflow package export', () => {
 				versionId: workflow.versionId,
 				publishedVersionId: workflow.versionId,
 			});
+		});
+
+		it('writes the owner email beside the workflow when asked, so a new owner does not change workflow.json', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const workflow = await createWorkflow({ name: 'My Workflow' }, project);
+			const before = await exportSingleWorkflow(owner, workflow.id, true);
+			const target = before.manifest.workflows![0].target;
+
+			await Container.get(WorkflowRepository).update(workflow.id, { ownerUserId: owner.id });
+			const after = await exportSingleWorkflow(owner, workflow.id, true);
+
+			expect(workflowMetadataJson(before.entries, target)).toHaveProperty('ownerEmail', null);
+			expect(workflowMetadataJson(after.entries, target)).toHaveProperty('ownerEmail', owner.email);
+			expect(workflowFile(after.entries, target)).toBe(workflowFile(before.entries, target));
 		});
 
 		it('exports an explicitly listed archived workflow under the default', async () => {

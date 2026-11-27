@@ -24,6 +24,7 @@ vi.mock('node:fs/promises');
 import { captor, mock } from 'vitest-mock-extended';
 
 import type { DataTableRepository } from '@n8n/backend-module-data-table';
+import type { ResourceOwnerService } from '@/services/resource-owner.service';
 
 import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee';
 import { SourceControlExportService } from '../source-control-export.service.ee';
@@ -64,6 +65,9 @@ describe('SourceControlExportService', () => {
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 		dataTableRepository,
 		projectRelationRepository,
+		mock<ResourceOwnerService>({
+			findOwnerEmails: async () => new Map([['wf-1', 'owner@test.com']]),
+		}),
 	);
 
 	const personalProject = mock<Project>({ type: 'personal', id: 'personal-1', name: 'Personal' });
@@ -808,6 +812,7 @@ describe('SourceControlExportService', () => {
 					projectName: 'Personal',
 					personalEmail: 'user@test.com',
 				},
+				ownerEmail: 'owner@test.com',
 			});
 		});
 

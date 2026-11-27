@@ -71,6 +71,9 @@ export function toImportedWorkflowSummaries(
 			publishing: result?.publishing ?? { state: 'unchanged' },
 			status,
 			...(moveToFolderId !== undefined ? { moved: true as const } : {}),
+			...(outcome.status !== 'skipped' && outcome.ownerUnmatched
+				? { ownerUnmatched: true as const }
+				: {}),
 		};
 	});
 }
@@ -152,6 +155,7 @@ function toImportedAgentSummary({
 	status,
 	publishing,
 	channels,
+	ownerUnmatched,
 }: AgentImportOutcome): ImportedAgentSummary {
 	return {
 		sourceAgentId,
@@ -162,6 +166,7 @@ function toImportedAgentSummary({
 		status,
 		publishing,
 		channels,
+		...(ownerUnmatched ? { ownerUnmatched: true as const } : {}),
 	};
 }
 

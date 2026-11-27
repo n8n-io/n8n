@@ -10,6 +10,7 @@ import {
 import {
 	ProjectRelationRepository,
 	WorkflowRepository,
+	type Person,
 	type Project,
 	type User,
 	type WorkflowEntity,
@@ -37,8 +38,8 @@ describe('ResourceOwnerService', () => {
 
 	let instanceOwner: User;
 	let projectAdmin: User;
-	let editor: User;
-	let outsider: User;
+	let editor: Person;
+	let outsider: Person;
 	let project: Project;
 
 	const ownerOf = async (workflow: WorkflowEntity) =>
@@ -337,6 +338,126 @@ describe('ResourceOwnerService', () => {
 			);
 
 			expect(await ownerOf(workflow)).toBe(otherAdmin.id);
+		});
+	});
+
+	describe('findOwnerEmails', () => {
+		it('gives the email of each owner, and null for a resource without an owner', async () => {
+			const owned = await createOwnedWorkflow(editor.id);
+			const unowned = await createOwnedWorkflow(null);
+
+			expect(
+				await service.findOwnerEmails([
+					{ id: owned.id, ownerUserId: editor.id },
+					{ id: unowned.id, ownerUserId: null },
+				]),
+			).toEqual(
+				new Map([
+					[owned.id, editor.email],
+					[unowned.id, null],
+				]),
+			);
+		});
+	});
+
+	describe('applyImportedOwner', () => {
+		const applyTo = async (
+			workflow: WorkflowEntity,
+			isNew: boolean,
+			ownerEmail: string | null | undefined,
+		) =>
+			await service.applyImportedOwner(
+				projectAdmin,
+				{ type: 'workflow', id: workflow.id, isNew },
+				ownerEmail,
+				{},
+			);
+
+		it('gives a new resource to the member with the exported email', async () => {
+			const workflow = await createOwnedWorkflow(projectAdmin.id);
+
+			const result = await applyTo(workflow, true, editor.email.toUpperCase());
+
+			expect(result).toEqual({ ownerUnmatched: false });
+			expect(await ownerOf(workflow)).toBe(editor.id);
+			expect(emit).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['a person who is not a member', () => outsider.email],
+			['nobody on this instance', () => 'unknown@example.com'],
+		])('gives a new resource to the importing user when the email is of %s', async (_, email) => {
+			const workflow = await createOwnedWorkflow(null);
+
+			const result = await applyTo(workflow, true, email());
+
+			expect(result).toEqual({ ownerUnmatched: true });
+			expect(await ownerOf(workflow)).toBe(projectAdmin.id);
+		});
+
+		it('keeps an owner who is still valid on an existing resource', async () => {
+			const workflow = await createOwnedWorkflow(projectAdmin.id);
+
+			const result = await applyTo(workflow, false, editor.email);
+
+			expect(result).toEqual({ ownerUnmatched: false });
+			expect(await ownerOf(workflow)).toBe(projectAdmin.id);
+			expect(emit).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['no owner', () => null],
+			['an owner who is not a member', () => outsider.id],
+		])('replaces %s on an existing resource and emits one event', async (_, currentOwner) => {
+			const workflow = await createOwnedWorkflow(currentOwner());
+
+			await applyTo(workflow, false, editor.email);
+
+			expect(await ownerOf(workflow)).toBe(editor.id);
+			expect(emit.mock.calls).toEqual([
+				[
+					'workflow-owner-changed',
+					{
+						user: projectAdmin,
+						workflowId: workflow.id,
+						projectId: project.id,
+						previousOwnerUserId: currentOwner(),
+						newOwnerUserId: editor.id,
+						reason: 'import',
+					},
+				],
+			]);
+		});
+
+		it('gives a resource to the importing user when the export had no owner', async () => {
+			const workflow = await createOwnedWorkflow(null);
+
+			const result = await applyTo(workflow, false, null);
+
+			expect(result).toEqual({ ownerUnmatched: false });
+			expect(await ownerOf(workflow)).toBe(projectAdmin.id);
+		});
+
+		it('changes nothing when the export has no owner email field', async () => {
+			const workflow = await createOwnedWorkflow(null);
+
+			const result = await applyTo(workflow, false, undefined);
+
+			expect(result).toEqual({ ownerUnmatched: false });
+			expect(await ownerOf(workflow)).toBeNull();
+		});
+
+		it('sets the owner of an imported agent', async () => {
+			const agent = await createOwnedAgent(null);
+
+			await service.applyImportedOwner(
+				projectAdmin,
+				{ type: 'agent', id: agent.id, isNew: true },
+				editor.email,
+				{},
+			);
+
+			expect((await agentRepository.findOneByOrFail({ id: agent.id })).ownerUserId).toBe(editor.id);
 		});
 	});
 });

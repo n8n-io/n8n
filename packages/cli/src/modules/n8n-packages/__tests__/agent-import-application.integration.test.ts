@@ -585,6 +585,25 @@ it('saves a changed project skill as a new version unless the Agents are skipped
 	await deleteSkill(skill.id);
 });
 
+it('gives a new Agent to the member with the exported email, and reports an email without a match', async () => {
+	const member = await createMember();
+	await linkUserToProject(member, project, 'project:editor');
+	const input = fixture();
+	const [matched, unmatched] = input.manifest.agents;
+	Object.assign(input.files[`${matched.target}/agent-metadata.json`] as object, {
+		ownerEmail: member.email,
+	});
+	Object.assign(input.files[`${unmatched.target}/agent-metadata.json`] as object, {
+		ownerEmail: 'unknown@example.com',
+	});
+
+	const { result } = await importSelected(input);
+
+	expect((await agents.findOneByOrFail({ id: matched.id })).ownerUserId).toBe(member.id);
+	expect((await agents.findOneByOrFail({ id: unmatched.id })).ownerUserId).toBe(owner.id);
+	expect(result.agents.map(({ ownerUnmatched }) => ownerUnmatched)).toEqual([undefined, true]);
+});
+
 it('fails the Agent save when a kept skill was deleted after planning', async () => {
 	const input = fixture();
 	input.manifest.agents.splice(1);

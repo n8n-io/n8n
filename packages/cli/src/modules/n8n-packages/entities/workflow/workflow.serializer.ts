@@ -54,11 +54,12 @@ const serializePayload = definePackageSerializationPayload<
 
 /** The same decisions from the metadata file's side. */
 type WorkflowMetadataKeyHandling = Record<
-	Exclude<keyof WorkflowPackageKeyHandling, 'versionId' | 'activeVersionId'>,
+	Exclude<keyof WorkflowPackageKeyHandling, 'versionId' | 'activeVersionId' | 'ownerUserId'>,
 	'exclude'
 > & {
 	versionId: 'copy';
 	activeVersionId: 'transform';
+	ownerUserId: 'transform';
 };
 
 const serializeMetadataPayload = definePackageSerializationPayload<
@@ -110,11 +111,15 @@ export class WorkflowSerializer {
 		return copy;
 	}
 
-	serializeMetadata(workflow: WorkflowEntity): SerializedWorkflowMetadata {
+	serializeMetadata(
+		workflow: WorkflowEntity,
+		ownerEmail?: string | null,
+	): SerializedWorkflowMetadata {
 		return serializedWorkflowMetadataSchema.parse(
 			serializeMetadataPayload({
 				versionId: workflow.versionId,
 				publishedVersionId: workflow.activeVersionId,
+				...(ownerEmail !== undefined ? { ownerEmail } : {}),
 			}),
 		);
 	}

@@ -110,6 +110,13 @@ export default class PackageExport extends BaseCommand {
 			default: 'false',
 			aliases: ['include-archived'],
 		})(),
+		includeUserReferences: Flags.option({
+			description:
+				'Whether the package includes references to n8n users: today the email address of the owner of each exported workflow and agent, which the importing instance uses to set the owner (off by default, because an email address is personal data)',
+			options: ['true', 'false'] as const,
+			default: 'false',
+			aliases: ['include-user-references'],
+		})(),
 	};
 
 	async run(): Promise<void> {
@@ -124,6 +131,7 @@ export default class PackageExport extends BaseCommand {
 		const versionPolicy = flags.versionPolicy;
 		const credentialExportPolicy = flags.credentialExportPolicy;
 		const includeArchived = flags.includeArchived === 'true';
+		const includeUserReferences = flags.includeUserReferences === 'true';
 
 		const hasLooseSelection = agentIds.length > 0 || workflowIds.length > 0 || folderIds.length > 0;
 		if (projectIds.length > 0 && hasLooseSelection) {
@@ -149,6 +157,7 @@ export default class PackageExport extends BaseCommand {
 								versionPolicy,
 								credentialExportPolicy,
 								...(includeArchived ? { includeArchived } : {}),
+								...(includeUserReferences ? { includeUserReferences } : {}),
 							}
 						: {
 								...(agentIds.length > 0 ? { agentIds } : {}),
@@ -160,6 +169,7 @@ export default class PackageExport extends BaseCommand {
 								versionPolicy,
 								credentialExportPolicy,
 								...(includeArchived ? { includeArchived } : {}),
+								...(includeUserReferences ? { includeUserReferences } : {}),
 							},
 				);
 			} catch (error) {
