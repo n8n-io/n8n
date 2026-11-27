@@ -44,8 +44,8 @@ export const LINEAR_PROFILE: GuardServiceProfile = {
 	defaultGymMcpUrl: 'http://127.0.0.1:8080/mcp',
 	readTools: LINEAR_READ_TOOLS,
 	writeTools: LINEAR_WRITE_TOOLS,
-	credentialKind: 'mcp_oauth',
-	credentialField: 'access_token',
+	credentialKind: 'user_oauth',
+	credentialField: 'oauthTokenData.access_token',
 	placeholderSeed: {
 		world_version: 1,
 		native: {
@@ -80,9 +80,9 @@ export const NOTION_PROFILE: GuardServiceProfile = {
 	defaultGymMcpUrl: 'http://127.0.0.1:8081/mcp',
 	readTools: NOTION_READ_TOOLS,
 	writeTools: NOTION_WRITE_TOOLS,
-	// The raw MCP bearer. Only an OAuth bearer may create pages without a parent.
-	credentialKind: 'mcp_oauth',
-	credentialField: 'access_token',
+	// The Notion API key of the gym credential.
+	credentialKind: 'notionApi',
+	credentialField: 'apiKey',
 	placeholderSeed: { world_version: 1, persona: { name: 'Guard', email: 'guard@unknown.invalid' } },
 	lookups: notionLookups,
 	keepParents: true,

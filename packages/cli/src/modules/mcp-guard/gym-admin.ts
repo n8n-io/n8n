@@ -75,9 +75,13 @@ export class GymAdmin {
 	}
 
 	async tenantExists(tenant: string): Promise<boolean> {
-		const res = await this.call('GET', '/_sim/v1/tenants');
-		const tenants = isRecord(res) && Array.isArray(res.tenants) ? res.tenants : [];
-		return tenants.some((t) => isRecord(t) && t.tenant === tenant);
+		try {
+			await this.call('GET', `/_sim/v1/tenants/${tenant}`);
+			return true;
+		} catch (error) {
+			if (error instanceof Error && error.message.includes(' 404 ')) return false;
+			throw error;
+		}
 	}
 
 	async deleteTenant(tenant: string): Promise<void> {

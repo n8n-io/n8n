@@ -82,9 +82,19 @@ describe('GymAdmin', () => {
 	});
 
 	it('should tell if a tenant exists', async () => {
-		fetchMock.mockImplementation(async () => reply(200, { tenants: [{ tenant: 't1' }] }));
+		fetchMock.mockImplementation(async (url) =>
+			String(url).endsWith('/t1') ? reply(200, {}) : reply(404, { error: 'tenant_not_found' }),
+		);
 		const admin = new GymAdmin('http://gym:9090');
 		expect(await admin.tenantExists('t1')).toBe(true);
 		expect(await admin.tenantExists('t2')).toBe(false);
+		expect(fetchMock.mock.calls[0][0]).toBe('http://gym:9090/_sim/v1/tenants/t1');
+	});
+
+	it('should rethrow when the gym fails while it looks up a tenant', async () => {
+		fetchMock.mockImplementation(async () => reply(500, 'boom'));
+		await expect(new GymAdmin('http://gym:9090').tenantExists('t1')).rejects.toBeInstanceOf(
+			OperationalError,
+		);
 	});
 });
