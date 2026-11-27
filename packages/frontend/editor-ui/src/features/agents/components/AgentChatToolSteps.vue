@@ -251,8 +251,8 @@ function toolStepGuardrailStop(tc: ToolCall) {
 	return parseGuardrailStop(tc);
 }
 
-/** A guardrail stop carries the same blue the stop callout uses, not danger. */
-const GUARDRAIL_STOP_ICON_COLOR = '--guardrail-stop-blue';
+/** A guardrail stop carries the callout's shared info blue, not danger. */
+const GUARDRAIL_STOP_ICON_COLOR = '--icon-color--info';
 
 function toolStepErrorIcon(tc: ToolCall) {
 	if (toolStepRefusal(tc)) return 'lock';
@@ -556,8 +556,6 @@ function hasActiveToolCall(): boolean {
 <style module>
 .toolSteps {
 	margin: 0 0 var(--spacing--sm);
-	/* The stop callout's blue, shared with the step's error icon via inheritance. */
-	--guardrail-stop-blue: #3b82f6;
 }
 
 .fixCallout {

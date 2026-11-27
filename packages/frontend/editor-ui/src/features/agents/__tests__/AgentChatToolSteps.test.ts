@@ -257,7 +257,7 @@ describe('AgentChatToolSteps', () => {
 		// The step's icon is the blue crosshair, not the danger triangle.
 		const warning = wrapper.get('[data-testid="tool-step-warning"]');
 		expect(warning.attributes('data-error-icon')).toBe('crosshair');
-		expect(warning.attributes('data-error-icon-color')).toBe('--guardrail-stop-blue');
+		expect(warning.attributes('data-error-icon-color')).toBe('--icon-color--info');
 		// Standalone: the step's danger callout stays away, so nothing nests it.
 		expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
 		// A guardrail stops by design: no repair action and no fix aggregation.

@@ -34,14 +34,13 @@ const label = computed(() =>
 </template>
 
 <style module lang="scss">
-/* The guardrail-blue theme: a pale blue surface with a medium blue border,
-   icon, and darker blue text, on top of the info callout's layout. Scoped
-   here until a second surface wants it; then it moves to the design system
-   as a named callout theme. */
+/* The guardrail-blue theme, built from the shared semantic info palette so
+   light and dark modes both stay blue. Scoped here until a second surface
+   wants it; then it moves to the design system as a named callout theme. */
 .blue {
-	--callout--border-color--info: #3b82f6;
-	--callout--color--background--info: #eff6ff;
-	--callout--color--text--info: #1d4ed8;
-	--callout--icon-color--info: #3b82f6;
+	--callout--border-color--info: var(--border-color--info);
+	--callout--color--background--info: var(--background--info);
+	--callout--color--text--info: var(--text-color--info);
+	--callout--icon-color--info: var(--icon-color--info);
 }
 </style>
