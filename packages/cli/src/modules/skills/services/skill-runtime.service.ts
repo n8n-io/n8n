@@ -19,7 +19,9 @@ import {
 	type SkillRef,
 	type SkillTarget,
 } from '../utils/skill-content';
+import { withSkillWorkflowMentionHint } from '../utils/skill-workflow-mention-hint';
 import { SkillAccessService } from './skill-access.service';
+import { WorkflowsInSkillsFlagGate } from './workflows-in-skills-flag-gate';
 
 /**
  * What agents and n8n Assistant read to run skills. Agent reads have no permission check:
@@ -32,6 +34,7 @@ export class SkillRuntimeService {
 		private readonly skillRepository: SkillRepository,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly skillAccess: SkillAccessService,
+		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
 	async listForAssistant(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
@@ -58,7 +61,8 @@ export class SkillRuntimeService {
 			description: version.description,
 			versionId: version.id,
 			version: version.version,
-			instructions: version.instructions,
+			instructions: (await this.withWorkflowMentionHint({ instructions: version.instructions }))
+				.instructions,
 			frontmatter: version.frontmatter,
 			files: files.map(({ path }) => ({ path })),
 		};
@@ -78,7 +82,20 @@ export class SkillRuntimeService {
 			path,
 		);
 		if (!row || !(await this.canReadForAssistant(context, row.skill, projectId))) return null;
-		return { skillId, versionId, path: row.file.path, content: row.file.content };
+		return {
+			skillId,
+			versionId,
+			path: row.file.path,
+			content: (await this.withWorkflowMentionHint({ instructions: row.file.content }))
+				.instructions,
+		};
+	}
+
+	async withWorkflowMentionHint<T extends Pick<AgentSkill, 'instructions' | 'references'>>(
+		skill: T,
+	): Promise<T> {
+		if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return skill;
+		return withSkillWorkflowMentionHint(skill);
 	}
 
 	/**

@@ -1,3 +1,4 @@
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent } from 'vue';
@@ -6,6 +7,10 @@ import SkillWorkflowMentionPicker from '@/features/agents/components/SkillWorkfl
 import { SKILL_WORKFLOW_MENTION_PAGE_SIZE } from '@/features/agents/composables/useSkillWorkflowMentionSearch';
 
 const searchWorkflows = vi.hoisted(() => vi.fn());
+const track = vi.hoisted(() => vi.fn());
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
 vi.mock('@/app/stores/workflowsList.store', () => ({
 	useWorkflowsListStore: () => ({ searchWorkflows }),
 }));
@@ -70,6 +75,7 @@ describe('SkillWorkflowMentionPicker', () => {
 	beforeEach(() => {
 		searchWorkflows.mockReset();
 		highlightFirstItem.mockReset();
+		track.mockReset();
 	});
 
 	it('lists the workflows of the project under a group label', async () => {
@@ -249,6 +255,30 @@ describe('SkillWorkflowMentionPicker', () => {
 		expect(wrapper.emitted('select')).toEqual([[{ workflowId: 'wf1', name: 'Weekly report' }]]);
 	});
 
+	it.each([
+		{
+			name: 'with the + button in an instance skill',
+			props: {},
+			payload: { source: 'button', scope: 'instance', project_id: undefined },
+		},
+		{
+			name: 'with @ in a project skill',
+			props: { mode: 'typed', projectId: 'p1' },
+			payload: { source: 'typed', scope: 'project', project_id: 'p1' },
+		},
+	])('tracks a workflow added $name', async ({ props, payload }) => {
+		searchWorkflows.mockResolvedValue([{ id: 'wf1', name: 'Weekly report' }]);
+		const { menu } = mountPicker(props);
+		await flushPromises();
+
+		menu().vm.$emit('select', 'wf1');
+
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_ADDED_SKILL_WORKFLOW_MENTION,
+			payload,
+		);
+	});
+
 	it('loads the next page from the show more row', async () => {
 		searchWorkflows.mockResolvedValue(workflowPage(SKILL_WORKFLOW_MENTION_PAGE_SIZE));
 		const { wrapper, menu } = mountPicker();
@@ -267,6 +297,7 @@ describe('SkillWorkflowMentionPicker', () => {
 			}),
 		);
 		expect(wrapper.emitted('select')).toBeUndefined();
+		expect(track).not.toHaveBeenCalled();
 	});
 
 	it('shows an error message when the workflows cannot load', async () => {

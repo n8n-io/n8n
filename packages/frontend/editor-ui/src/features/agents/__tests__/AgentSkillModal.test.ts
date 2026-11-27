@@ -1,4 +1,5 @@
 import { AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, ref, type PropType } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -42,18 +43,24 @@ vi.mock('@n8n/i18n', () => {
 });
 
 const apiCreateSpy = vi.fn();
-const { listAttachableSkills, getSkillDetail, listSkillVersions, getSkillVersion } = vi.hoisted(
-	() => ({
-		listAttachableSkills: vi.fn(),
-		getSkillDetail: vi.fn(),
-		listSkillVersions: vi.fn(),
-		getSkillVersion: vi.fn(),
-	}),
-);
+const {
+	listAttachableSkills,
+	getSkillDetail,
+	getAgentSkillWorkflowAccess,
+	listSkillVersions,
+	getSkillVersion,
+} = vi.hoisted(() => ({
+	listAttachableSkills: vi.fn(),
+	getSkillDetail: vi.fn(),
+	getAgentSkillWorkflowAccess: vi.fn(),
+	listSkillVersions: vi.fn(),
+	getSkillVersion: vi.fn(),
+}));
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: (...args: unknown[]) => apiCreateSpy(...args),
 	listAttachableSkills,
 	getSkillDetail,
+	getAgentSkillWorkflowAccess,
 	listSkillVersions,
 	getSkillVersion,
 }));
@@ -287,6 +294,14 @@ const SAVED_SKILL: AgentSkill = {
 	description: 'Write clear customer-facing copy.',
 	instructions: 'Keep it short.',
 };
+
+const callableWorkflows = (ids: string[]) =>
+	ids.map((id) => ({
+		id,
+		nodes: [{ type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, name: 'Start' }],
+		activeVersionId: 'v1',
+		settings: {},
+	}));
 
 describe('AgentSkillModal', () => {
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
@@ -1403,6 +1418,122 @@ describe('AgentSkillModal', () => {
 
 			expect(queryByTestId('agent-skill-preview')).not.toBeInTheDocument();
 			expect(getByTestId('agent-skill-picker')).toBeVisible();
+		});
+
+		describe('workflows outside the agent project', () => {
+			const mentioningDetail = () => ({
+				...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
+				skill: {
+					name: 'Support tone',
+					description: 'Use for support',
+					instructions: 'Run [Report](n8n://workflow/wf1) and [Archive](n8n://workflow/wf2).',
+				},
+			});
+
+			function enableWorkflowsInSkills() {
+				mockedStore(usePostHog).isVariantEnabled = vi.fn(
+					(name: string, variant: string) =>
+						name === WORKFLOWS_IN_SKILLS_EXPERIMENT.name &&
+						variant === WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+				);
+				mockedStore(useWorkflowsListStore).searchWorkflows = vi
+					.fn()
+					.mockResolvedValue(callableWorkflows(['wf1', 'wf2']));
+			}
+
+			it('warns in the preview about each workflow that the agent project cannot use', async () => {
+				enableWorkflowsInSkills();
+				listAttachableSkills.mockResolvedValue([projectSkill]);
+				getSkillDetail.mockResolvedValue(mentioningDetail());
+				getAgentSkillWorkflowAccess.mockResolvedValue({ outsideProjectWorkflowIds: ['wf2'] });
+				const { findByTestId, findAllByTestId, getByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+				});
+
+				await fireEvent.click(await findByTestId('agent-skill-picker-row-open'));
+
+				const warnings = await findAllByTestId('agent-skill-workflow-warnings');
+				expect(warnings).toHaveLength(1);
+				expect(warnings[0]).toHaveAttribute(
+					'aria-label',
+					'agents.builder.validation.issue.tool.workflow.notInProject Archive',
+				);
+				expect(getAgentSkillWorkflowAccess).toHaveBeenCalledWith(
+					expect.anything(),
+					'p1',
+					'a1',
+					'tone',
+				);
+				expect(getByTestId('agent-skill-preview-add')).toBeEnabled();
+			});
+
+			it('does not ask for the workflows outside the project while the flag is off', async () => {
+				listAttachableSkills.mockResolvedValue([projectSkill]);
+				getSkillDetail.mockResolvedValue(mentioningDetail());
+				const { findByTestId, queryByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+				});
+
+				await fireEvent.click(await findByTestId('agent-skill-picker-row-open'));
+				await findByTestId('agent-skill-preview');
+
+				expect(getAgentSkillWorkflowAccess).not.toHaveBeenCalled();
+				expect(queryByTestId('agent-skill-workflow-warnings')).not.toBeInTheDocument();
+			});
+
+			it('warns about each workflow that the agent project cannot use in an attached skill', async () => {
+				enableWorkflowsInSkills();
+				getSkillDetail.mockResolvedValue(mentioningDetail());
+				getAgentSkillWorkflowAccess.mockResolvedValue({ outsideProjectWorkflowIds: ['wf2'] });
+				const { findAllByTestId } = renderModal({
+					skillRefsEnabled: true,
+					skillId: 'tone',
+					skill: mentioningDetail().skill,
+				});
+
+				const warnings = await findAllByTestId('agent-skill-workflow-warnings');
+				expect(warnings).toHaveLength(1);
+				expect(warnings[0]).toHaveAttribute(
+					'aria-label',
+					'agents.builder.validation.issue.tool.workflow.notInProject Archive',
+				);
+				expect(getAgentSkillWorkflowAccess).toHaveBeenCalledWith(
+					expect.anything(),
+					'p1',
+					'a1',
+					'tone',
+				);
+			});
+
+			it('does not ask for the workflows outside the project for a skill without an agent', async () => {
+				enableWorkflowsInSkills();
+				getSkillDetail.mockResolvedValue(mentioningDetail());
+				const { findAllByTestId, queryByTestId } = renderModal({
+					skillId: 'tone',
+					skill: mentioningDetail().skill,
+					settings: {},
+				});
+
+				expect(await findAllByTestId('agent-skill-workflow-item')).toHaveLength(2);
+				expect(getAgentSkillWorkflowAccess).not.toHaveBeenCalled();
+				expect(queryByTestId('agent-skill-workflow-warnings')).not.toBeInTheDocument();
+			});
+
+			it('does not ask for the workflows outside the project of an attached skill while the flag is off', async () => {
+				getSkillDetail.mockResolvedValue(mentioningDetail());
+				const { findByTestId, queryByTestId } = renderModal({
+					skillRefsEnabled: true,
+					skillId: 'tone',
+					skill: mentioningDetail().skill,
+				});
+
+				await findByTestId('agent-skill-file-nav');
+
+				expect(getAgentSkillWorkflowAccess).not.toHaveBeenCalled();
+				expect(queryByTestId('agent-skill-workflow-warnings')).not.toBeInTheDocument();
+			});
 		});
 
 		it('stays on the picker when the preview cannot load', async () => {
@@ -3154,6 +3285,85 @@ describe('Compare mode', () => {
 			createdAt: '2026-10-20T11:07:00.000Z',
 			skill: version === 1 ? v1 : v2,
 		}));
+	});
+
+	it('shows no outside-project warning while it compares versions', async () => {
+		mockedStore(usePostHog).isVariantEnabled = vi.fn(
+			(name: string, variant: string) =>
+				name === WORKFLOWS_IN_SKILLS_EXPERIMENT.name &&
+				variant === WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		);
+		mockedStore(useWorkflowsListStore).searchWorkflows = vi
+			.fn()
+			.mockResolvedValue(callableWorkflows(['wf1', 'wf2']));
+		const mentioning = (skill: AgentSkill) => ({
+			...skill,
+			instructions: `${skill.instructions} Run [Archive](n8n://workflow/wf2).`,
+		});
+		getSkillVersion.mockImplementation(async (_context: unknown, _id: string, version: number) => ({
+			id: `v${version}`,
+			version,
+			createdBy: null,
+			createdAt: '2026-10-20T11:07:00.000Z',
+			skill: mentioning(version === 1 ? v1 : v2),
+		}));
+		getAgentSkillWorkflowAccess.mockResolvedValue({ outsideProjectWorkflowIds: ['wf2'] });
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: mentioning(v2),
+			skillId: 'tone',
+			skillRefsEnabled: true,
+			latestVersion: 2,
+		});
+
+		expect(await findByTestId('agent-skill-workflow-warnings')).toBeInTheDocument();
+
+		await userEvent.click(getByTestId('agent-skill-versions-button'));
+		await userEvent.click(await findByTestId('skill-version-compare-1'));
+
+		expect(await findByTestId('skill-version-diff')).toBeInTheDocument();
+		expect(getByTestId('agent-skill-workflow-item')).toHaveTextContent('Archive');
+		expect(queryByTestId('agent-skill-workflow-warnings')).not.toBeInTheDocument();
+	});
+
+	it('shows no outside-project warning while it shows a different version', async () => {
+		mockedStore(usePostHog).isVariantEnabled = vi.fn(
+			(name: string, variant: string) =>
+				name === WORKFLOWS_IN_SKILLS_EXPERIMENT.name &&
+				variant === WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		);
+		mockedStore(useWorkflowsListStore).searchWorkflows = vi
+			.fn()
+			.mockResolvedValue(callableWorkflows(['wf1', 'wf2']));
+		const mentioning = (skill: AgentSkill) => ({
+			...skill,
+			instructions: `${skill.instructions} Run [Archive](n8n://workflow/wf2).`,
+		});
+		getSkillVersion.mockImplementation(async (_context: unknown, _id: string, version: number) => ({
+			id: `v${version}`,
+			version,
+			createdBy: null,
+			createdAt: '2026-10-20T11:07:00.000Z',
+			skill: mentioning(version === 1 ? v1 : v2),
+		}));
+		getAgentSkillWorkflowAccess.mockResolvedValue({ outsideProjectWorkflowIds: ['wf2'] });
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: mentioning(v2),
+			skillId: 'tone',
+			skillRefsEnabled: true,
+			latestVersion: 2,
+		});
+
+		expect(await findByTestId('agent-skill-workflow-warnings')).toBeInTheDocument();
+
+		await userEvent.click(getByTestId('agent-skill-versions-button'));
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+
+		expect(await findByTestId('agent-skill-viewing-version')).toBeInTheDocument();
+		expect(queryByTestId('agent-skill-workflow-warnings')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('agent-skill-version-done'));
+
+		expect(await findByTestId('agent-skill-workflow-warnings')).toBeInTheDocument();
 	});
 
 	it('compares a version from the panel with the version the editor shows, and leaves with Done', async () => {

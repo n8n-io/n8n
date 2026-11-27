@@ -1996,7 +1996,7 @@ import type {
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
-import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate, WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
@@ -8681,6 +8681,21 @@ describe('resolveExperimentGates', () => {
 		},
 	);
 
+	it.each([true, false])('reads workflows in skills %s from its flag gate', async (enabled) => {
+		const getFeatureFlags = vi.fn().mockResolvedValue({});
+		getFeatureFlagForInstance.mockReset().mockResolvedValue(false);
+		const isEnabled = vi.fn().mockResolvedValue(enabled);
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) =>
+			token === WorkflowsInSkillsFlagGate
+				? { isEnabled }
+				: { getFeatureFlags, getFeatureFlagForInstance, isEnabledForFlags: () => false },
+		);
+
+		const gates = await createAdapter().resolveExperimentGates(user);
+
+		expect(gates.workflowsInSkillsEnabled).toBe(enabled ? true : undefined);
+	});
+
 	it('keeps the shipped surfaces on when user flag evaluation fails', async () => {
 		const getFeatureFlags = stubContainer(allEnabled);
 		getFeatureFlags.mockRejectedValue(new Error('PostHog failed'));
@@ -10071,11 +10086,16 @@ describe('createContext — skill service wiring', () => {
 
 			service.createContext(mockUser, { threadId: 'thread-1', assistantSkillsEnabled });
 
-			expect(createService).toHaveBeenCalledWith(mockUser, assistantSkillsEnabled, undefined);
+			expect(createService).toHaveBeenCalledWith(
+				mockUser,
+				assistantSkillsEnabled,
+				undefined,
+				undefined,
+			);
 		},
 	);
 
-	it('passes skill sources on to the skills adapter', () => {
+	it('passes skill sources and workflows in skills on to the skills adapter', () => {
 		const createService = vi.fn().mockReturnValue(mock<InstanceAiSkillService>());
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) {
@@ -10092,9 +10112,13 @@ describe('createContext — skill service wiring', () => {
 		});
 		const service = createAdapterWithGatewayMock(vi.fn());
 
-		service.createContext(mockUser, { threadId: 'thread-1', skillSourcesEnabled: true });
+		service.createContext(mockUser, {
+			threadId: 'thread-1',
+			skillSourcesEnabled: true,
+			workflowsInSkillsEnabled: true,
+		});
 
-		expect(createService).toHaveBeenCalledWith(mockUser, false, true);
+		expect(createService).toHaveBeenCalledWith(mockUser, false, true, true);
 	});
 });
 

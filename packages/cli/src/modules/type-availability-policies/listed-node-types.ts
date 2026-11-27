@@ -7,33 +7,30 @@ import type { PolicyRule } from './policy-rule.types';
 
 type ListedType = { readonly name: string; readonly matchedRuleId: string | null };
 
-/** Picks the types an admin page lists, from what the instance policy decides for each type. */
-export type ListTypes = <T extends ListedType>(
-	types: T[],
-	instanceRules: readonly PolicyRule[],
-) => T[];
+/** Picks the types an admin page lists, from what one scope's policy alone decides for each type. */
+export type ListTypes = <T extends ListedType>(types: T[], rules: readonly PolicyRule[]) => T[];
 
 type ResolveBaseName = (name: string) => { baseName: string; isSyntheticTool: boolean };
 
 /**
- * The node types that the instance policy page lists. Two kinds of type get no row unless a rule
- * of their own decides them, because the admin must see that rule to undo it:
+ * The node types that a policy page lists. Two kinds of type get no row unless a rule of their own
+ * decides them, because the admin must see that rule to undo it:
  * - a generated tool variant has the access of its base;
  * - a hidden type is not something an admin picks.
  *
- * `matchedRuleId` must come from the instance policy, and `instanceRules` from the same read.
+ * `matchedRuleId` must come from one scope's policy alone, and `rules` from the same read.
  */
 export function listedNodeTypes<T extends ListedType>(
 	types: readonly T[],
 	options: {
 		resolveBaseName: ResolveBaseName;
 		hiddenTypes: ReadonlySet<string>;
-		instanceRules: readonly PolicyRule[];
+		rules: readonly PolicyRule[];
 	},
 ): T[] {
 	const matchedRuleIdByName = new Map(types.map((type) => [type.name, type.matchedRuleId]));
 	const nameRuleIds = new Set(
-		options.instanceRules.flatMap((rule) => (rule.selector.kind === 'name' ? [rule.id] : [])),
+		options.rules.flatMap((rule) => (rule.selector.kind === 'name' ? [rule.id] : [])),
 	);
 
 	return types.filter((type) => {
@@ -57,11 +54,11 @@ export class ListedNodeTypes {
 	async filter(): Promise<ListTypes> {
 		const hiddenTypes = await this.hiddenNodeTypes.get();
 
-		return (types, instanceRules) =>
+		return (types, rules) =>
 			listedNodeTypes(types, {
 				resolveBaseName: (name) => this.nodeTypes.resolveBaseName(name),
 				hiddenTypes,
-				instanceRules,
+				rules,
 			});
 	}
 }

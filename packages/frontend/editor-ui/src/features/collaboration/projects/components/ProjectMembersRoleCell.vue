@@ -5,7 +5,7 @@ import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { ProjectMemberData } from '../projects.types';
-import RoleSelectDropdown from '@/features/roles/components/RoleSelectDropdown.vue';
+import { RoleSelectDropdown } from '@n8n/frontend-module-roles';
 
 const props = defineProps<{
 	data: ProjectMemberData;

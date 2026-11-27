@@ -49,6 +49,13 @@ const skillScope = z
 
 const skillId = z.string().describe('The skill. Its name and text are never reported');
 
+const workflowMentionCount = z
+	.number()
+	.optional()
+	.describe(
+		'Workflows that the skill mentions as `n8n://workflow/` links, in SKILL.md and in its reference files. Each workflow counts once',
+	);
+
 const skillProjectId = z
 	.string()
 	.optional()
@@ -462,7 +469,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_SKILL: {
 		name: 'User created skill',
 		description:
-			'A skill was created from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the data migration or an agent duplicate, reports nothing.',
+			'A skill was created from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the data migration or an agent duplicate, reports nothing. `workflow_mention_count` is present only when the workflows in skills flag is on.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,
@@ -471,12 +478,13 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			source: skillSource,
 			method: skillMethod,
 			...skillOrigin,
+			workflow_mention_count: workflowMentionCount,
 		}),
 	},
 	USER_UPDATED_SKILL: {
 		name: 'User updated skill',
 		description:
-			'A save stored a new version of a skill. A save with unchanged content stores no version and reports nothing, also when it moves the skill. Reports the scope after the save.',
+			'A save stored a new version of a skill. A save with unchanged content stores no version and reports nothing, also when it moves the skill. Reports the scope after the save. The workflow mention properties are present only when the workflows in skills flag is on.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,
@@ -485,6 +493,29 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			source: skillSource,
 			version: z.number().describe('The number of the version this save stored'),
 			scope_changed: z.boolean().describe('Whether the same save moved the skill to another scope'),
+			workflow_mention_count: workflowMentionCount,
+			workflow_mentions_added: z
+				.number()
+				.optional()
+				.describe('Workflows that this version mentions and the previous version did not'),
+			workflow_mentions_removed: z
+				.number()
+				.optional()
+				.describe('Workflows that the previous version mentioned and this version does not'),
+		}),
+	},
+	USER_ADDED_SKILL_WORKFLOW_MENTION: {
+		name: 'User added skill workflow mention',
+		description:
+			'A user picked a workflow in the skill editor, which adds a workflow mention to the skill text. Fires when the mention is inserted, before the save, so a mention that the user deletes or does not save still counts. Fires only when the workflows in skills flag is on.',
+		properties: z.object({
+			source: z
+				.enum(['typed', 'button'])
+				.describe(
+					'`typed` is the picker that an at sign opens. `button` is the + button of the Workflows section',
+				),
+			scope: skillScope,
+			project_id: skillProjectId,
 		}),
 	},
 	USER_VIEWED_RECOMMENDED_SKILLS: {
