@@ -48,6 +48,7 @@ import { createExecutionCustomData } from './utils/custom-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
+import { omitHiddenFilterRightValues } from './utils/omit-hidden-filter-right-values';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
@@ -551,11 +552,17 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const { additionalKeys } = this;
 
 		let returnData;
+		const valueToResolve = omitHiddenFilterRightValues(
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			value,
+			parameterName,
+			node,
+			nodeType,
+		);
 
 		try {
 			returnData = workflow.expression.getParameterValue(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				value,
+				valueToResolve,
 				runExecutionData,
 				runIndex,
 				itemIndex,
