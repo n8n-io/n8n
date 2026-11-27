@@ -1,0 +1,92 @@
+operationId: createSkill
+tags:
+  - Skill
+summary: Create a skill
+description: |-
+  Create an instance skill, or a skill in a project you have access to. A project skill needs projectId. A name that another skill in the same scope uses fails with 409.
+
+  Requires the `skill:create` API key scope.
+x-required-scope: skill:create
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          description:
+            type: string
+            minLength: 1
+            maxLength: 1024
+          instructions:
+            type: string
+            maxLength: 65536
+          references:
+            type: array
+            items:
+              type: object
+              properties:
+                path:
+                  type: string
+                  minLength: 1
+                  maxLength: 512
+                content:
+                  type: string
+                isBinary:
+                  type: boolean
+                  enum:
+                    - true
+              required:
+                - path
+                - content
+              additionalProperties: false
+            maxItems: 500
+          scope:
+            type: string
+            enum:
+              - project
+              - instance
+          projectId:
+            type: string
+            nullable: true
+            minLength: 1
+            maxLength: 36
+          availableToAssistant:
+            type: boolean
+          availableToMCP:
+            type: boolean
+        required:
+          - name
+          - description
+          - instructions
+          - scope
+        additionalProperties: false
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/skillPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

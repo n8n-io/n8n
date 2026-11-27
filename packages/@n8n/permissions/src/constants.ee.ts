@@ -142,7 +142,7 @@ export const API_KEY_RESOURCES = {
 		'delete',
 	] as const,
 	aiPreference: ['read', 'list', 'create', 'update', 'delete'] as const,
-	skill: ['create', 'update'] as const,
+	skill: ['read', 'list', 'create', 'update', 'delete'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	workflow: [
 		...DEFAULT_OPERATIONS,

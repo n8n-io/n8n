@@ -47,6 +47,21 @@
 		"POST /ai-preferences": {
 			"status": "gap"
 		},
+		"GET /skills": {
+			"status": "gap"
+		},
+		"GET /skills/{skillId}": {
+			"status": "gap"
+		},
+		"POST /skills": {
+			"status": "gap"
+		},
+		"PUT /skills/{skillId}": {
+			"status": "gap"
+		},
+		"DELETE /skills/{skillId}": {
+			"status": "gap"
+		},
 		"GET /roles": {
 			"status": "gap"
 		},

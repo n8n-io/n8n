@@ -7,6 +7,7 @@ import {
 	type CreateSkillDto,
 	type ListSkillAgentsQueryDto,
 	type ListSkillsQueryDto,
+	type SkillCreateMethod,
 	type SkillAgentOption,
 	type SkillDetail,
 	type SkillListCollapsedSource,
@@ -122,6 +123,15 @@ function assertUnchangedSince(
 			'The skill was changed somewhere else. Reload to get the latest version.',
 		);
 	}
+}
+
+function createMethodOf(
+	source: SkillTelemetrySource,
+	method: SkillCreateMethod | undefined,
+): SkillTelemetryMethod {
+	if (source === 'ui') return method ?? 'manual';
+	if (source === 'api') return 'api';
+	return 'ai';
 }
 
 function assertHasInstructions(skill: AgentSkill): void {
@@ -456,10 +466,7 @@ export class SkillService {
 		payload: CreateSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillDetail> {
-		if (
-			payload.availableToAssistant !== undefined &&
-			!(await this.assistantSkillsFlagGate.isEnabled())
-		) {
+		if (payload.availableToAssistant && !(await this.assistantSkillsFlagGate.isEnabled())) {
 			throw new UserError("The n8n Assistant can't use skills on this instance.");
 		}
 		const target = await this.skillAccess.resolveCreateTarget(user, payload);
@@ -487,10 +494,14 @@ export class SkillService {
 			user.id,
 			[{ id, ...target }],
 			source,
-			source === 'ui' ? (payload.method ?? 'manual') : 'ai',
+			createMethodOf(source, payload.method),
 		);
-		// No second access check: a custom role can create skills it cannot read later.
-		const [skill] = await this.skillRepository.findByIds([id]);
+		return await this.getAfterWrite(user, id);
+	}
+
+	/** No second access check: a custom role can create or move skills it cannot read later. */
+	async getAfterWrite(user: User, skillId: string): Promise<SkillDetail> {
+		const [skill] = await this.skillRepository.findByIds([skillId]);
 		if (!skill) throw new NotFoundError('Skill not found');
 		return await this.toDetail(user, skill);
 	}
@@ -509,10 +520,7 @@ export class SkillService {
 			keepUnnamedBinaryFiles?: boolean;
 		} = {},
 	): Promise<SkillSaveResponse> {
-		if (
-			payload.availableToAssistant !== undefined &&
-			!(await this.assistantSkillsFlagGate.isEnabled())
-		) {
+		if (payload.availableToAssistant && !(await this.assistantSkillsFlagGate.isEnabled())) {
 			throw new NotFoundError('Skill not found');
 		}
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'update');

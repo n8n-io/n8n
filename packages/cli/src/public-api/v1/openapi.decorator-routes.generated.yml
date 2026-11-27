@@ -414,6 +414,18 @@ paths:
       $ref: ./handlers/settings/spec/paths/getSecurityPolicy.generated.yml
     put:
       $ref: ./handlers/settings/spec/paths/updateSecurityPolicy.generated.yml
+  /skills:
+    get:
+      $ref: ./handlers/skills/spec/paths/listSkills.generated.yml
+    post:
+      $ref: ./handlers/skills/spec/paths/createSkill.generated.yml
+  /skills/{skillId}:
+    get:
+      $ref: ./handlers/skills/spec/paths/getSkill.generated.yml
+    put:
+      $ref: ./handlers/skills/spec/paths/updateSkill.generated.yml
+    delete:
+      $ref: ./handlers/skills/spec/paths/deleteSkill.generated.yml
   /settings/sso/oidc:
     get:
       $ref: ./handlers/settings/spec/paths/getOidcConfiguration.generated.yml

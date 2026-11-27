@@ -1,0 +1,71 @@
+type: object
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  description:
+    type: string
+  scope:
+    type: string
+    enum:
+      - project
+      - instance
+  projectId:
+    type: string
+    nullable: true
+  source:
+    type: string
+    enum:
+      - ui
+      - agent
+      - mcp
+      - assistant
+      - import
+      - github
+      - api
+  latestVersion:
+    type: number
+  availableToAssistant:
+    type: boolean
+  availableToMCP:
+    type: boolean
+  createdAt:
+    type: string
+  updatedAt:
+    type: string
+  instructions:
+    type: string
+  references:
+    type: array
+    items:
+      type: object
+      properties:
+        path:
+          type: string
+        content:
+          type: string
+        isBinary:
+          type: boolean
+          enum:
+            - true
+      required:
+        - path
+        - content
+  skillHash:
+    type: string
+required:
+  - id
+  - name
+  - description
+  - scope
+  - projectId
+  - source
+  - latestVersion
+  - availableToAssistant
+  - availableToMCP
+  - createdAt
+  - updatedAt
+  - instructions
+  - references
+  - skillHash
