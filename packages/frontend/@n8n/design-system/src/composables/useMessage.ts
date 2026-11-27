@@ -11,6 +11,19 @@ type AdditionalConfirmOptions = {
 	confirmationCheckboxMessage?: ElMessageBoxOptions['message'];
 };
 
+/**
+ * Mount message boxes inside the topmost open dialog. The dialog's focus trap,
+ * outside-click and Escape handling then treat the message box as part of the dialog.
+ */
+function withDialogHost<T extends ElMessageBoxOptions>(config: T): T {
+	if (config.appendTo || typeof document === 'undefined') return config;
+	const dialogs = document.querySelectorAll<HTMLElement>(
+		'[role="dialog"][data-state="open"]:not(.el-message-box)',
+	);
+	const host = dialogs.item(dialogs.length - 1);
+	return host ? { ...config, appendTo: host } : config;
+}
+
 export function useMessage() {
 	const handleCancelOrClose = (e: Action | Error): Action => {
 		if (e instanceof Error) throw e;
@@ -37,11 +50,13 @@ export function useMessage() {
 		};
 
 		if (typeof configOrTitle === 'string') {
-			return await MessageBox.alert(sanitizeIfString(message), configOrTitle, resolvedConfig).catch(
-				handleCancelOrClose,
-			);
+			return await MessageBox.alert(
+				sanitizeIfString(message),
+				configOrTitle,
+				withDialogHost(resolvedConfig),
+			).catch(handleCancelOrClose);
 		}
-		return await MessageBox.alert(sanitizeIfString(message), resolvedConfig).catch(
+		return await MessageBox.alert(sanitizeIfString(message), withDialogHost(resolvedConfig)).catch(
 			handleCancelOrClose,
 		);
 	}
@@ -101,11 +116,13 @@ export function useMessage() {
 			return await MessageBox.confirm(
 				content,
 				sanitizeIfString(configOrTitle),
-				resolvedConfig,
+				withDialogHost(resolvedConfig),
 			).catch(handleCancelOrClose);
 		}
 
-		return await MessageBox.confirm(content, resolvedConfig).catch(handleCancelOrClose);
+		return await MessageBox.confirm(content, withDialogHost(resolvedConfig)).catch(
+			handleCancelOrClose,
+		);
 	}
 
 	async function prompt(
@@ -124,10 +141,10 @@ export function useMessage() {
 			return await MessageBox.prompt(
 				sanitizeIfString(message),
 				sanitizeIfString(configOrTitle),
-				resolvedConfig,
+				withDialogHost(resolvedConfig),
 			).catch(handleCancelOrClosePrompt);
 		}
-		return await MessageBox.prompt(sanitizeIfString(message), resolvedConfig).catch(
+		return await MessageBox.prompt(sanitizeIfString(message), withDialogHost(resolvedConfig)).catch(
 			handleCancelOrClosePrompt,
 		);
 	}

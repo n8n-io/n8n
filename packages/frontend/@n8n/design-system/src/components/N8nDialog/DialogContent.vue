@@ -131,6 +131,11 @@ function handleInteractOutside(e: Event) {
 }
 
 function handleEscapeKeyDown(event: KeyboardEvent) {
+	// Escape inside a message box mounted in this dialog closes only the message box.
+	if (event.target instanceof Element && event.target.closest('.el-message-box')) {
+		event.preventDefault();
+		return;
+	}
 	if (!props.closeOnEscape) {
 		event.preventDefault();
 	}

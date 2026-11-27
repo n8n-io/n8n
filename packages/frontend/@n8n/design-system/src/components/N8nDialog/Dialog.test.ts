@@ -15,6 +15,7 @@ import {
 	N8nDialogTitle,
 } from './index';
 import { OVERLAY_LAYER_SELECTOR } from '../../constants';
+import { useMessage } from '../../composables/useMessage';
 
 // Helper to render the simplified N8nDialog component
 const renderDialog = (
@@ -811,6 +812,46 @@ describe('N8nDialog', () => {
 			await user.click(getByTestId('dialog-trigger'));
 
 			expect(getByRole('dialog')).toBeInTheDocument();
+		});
+	});
+	describe('interaction with useMessage', () => {
+		it('keeps focus in a message box and closes only the message box on Escape', async () => {
+			const user = userEvent.setup();
+			const escapeHandler = vi.fn();
+			const { getByTestId, getByRole } = render({
+				components: { N8nDialog, N8nDialogHeader, N8nDialogTitle },
+				setup() {
+					const isOpen = ref(false);
+					return { isOpen, escapeHandler };
+				},
+				template: `
+					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
+					<N8nDialog v-model:open="isOpen" @escape-key-down="escapeHandler">
+						<N8nDialogHeader><N8nDialogTitle>Parent Dialog</N8nDialogTitle></N8nDialogHeader>
+					</N8nDialog>
+				`,
+			});
+
+			await user.click(getByTestId('dialog-trigger'));
+			const parentDialog = getByRole('dialog', { name: 'Parent Dialog' });
+
+			const pending = useMessage().confirm('Discard changes?', 'Close without saving?', {
+				confirmButtonText: 'Keep Editing',
+				cancelButtonText: 'Close',
+			});
+			const messageBox = await waitFor(() =>
+				getByRole('dialog', { name: 'Close without saving?' }),
+			);
+			expect(parentDialog.contains(messageBox)).toBe(true);
+
+			for (let i = 0; i < 4; i++) {
+				await user.tab();
+				expect(messageBox.contains(document.activeElement)).toBe(true);
+			}
+
+			await user.keyboard('{Escape}');
+			await expect(pending).resolves.toBe('close');
+			expect(getByRole('dialog', { name: 'Parent Dialog' })).toBeInTheDocument();
 		});
 	});
 });
