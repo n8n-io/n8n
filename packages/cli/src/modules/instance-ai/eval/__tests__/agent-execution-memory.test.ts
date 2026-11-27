@@ -377,4 +377,42 @@ describe('EvalAgentExecutionService with memory (AGENT-1666)', () => {
 			expect.objectContaining({ tool: 'recall_memory', mocked: false, interceptedRequests: [] }),
 		]);
 	});
+
+	it("refuses a later turn whose agentRun differs from the one the resource's world was made with", async () => {
+		const service = buildService();
+		generate.mockResolvedValue(reply('Noted.'));
+		await service.executeWithLlmMock('agent-1', user, {
+			...turn(THREAD_A, 'user-a', 'Hi'),
+			agentRun: { keepMemory: true },
+		});
+
+		const result = await service.executeWithLlmMock('agent-1', user, {
+			...turn(THREAD_A, 'user-a', 'Again', 2),
+			agentRun: { keepMemory: true, configOverrides: { instructions: 'Be brief.' } },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.errors.join(' ')).toContain('agentRun');
+		expect(generate).toHaveBeenCalledTimes(1);
+	});
+
+	it('accepts a later turn with the same agentRun, whatever its key order', async () => {
+		const service = buildService();
+		generate.mockResolvedValue(reply('Noted.'));
+		const overrides = { instructions: 'Be brief.', name: 'Order agent' };
+		await service.executeWithLlmMock('agent-1', user, {
+			...turn(THREAD_A, 'user-a', 'Hi'),
+			agentRun: { keepMemory: true, configOverrides: overrides },
+		});
+
+		const result = await service.executeWithLlmMock('agent-1', user, {
+			...turn(THREAD_A, 'user-a', 'Again', 2),
+			agentRun: {
+				configOverrides: { name: 'Order agent', instructions: 'Be brief.' },
+				keepMemory: true,
+			},
+		});
+
+		expect(result.success).toBe(true);
+	});
 });

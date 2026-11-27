@@ -18,6 +18,7 @@ import type {
 	InstanceAiEvalAgentToolCallRecord,
 	InstanceAiEvalInterceptedRequest,
 	InstanceAiEvalAgentMemoryTask,
+	InstanceAiEvalAgentRunOptions,
 	InstanceAiEvalAgentSideCallUsage,
 } from '@n8n/api-types';
 import { TOOL_CATALOG_CALL_TOOL_NAME } from '@n8n/api-types';
@@ -122,6 +123,8 @@ interface EvalAgentWorld {
 	memoryOn: boolean;
 	/** Every thread of this resource so far, for the memory snapshot. */
 	threadIds: Set<string>;
+	/** The agentRun the world was prepared with, as `agentRunKey`. */
+	agentRunKey: string;
 }
 
 type AgentInput = string | AgentMessage[];
@@ -144,6 +147,24 @@ function endedMemoryTask(event: MemoryTaskEvent): InstanceAiEvalAgentMemoryTask 
 	if (event.type !== 'failed') return undefined;
 	const error = event.error instanceof Error ? event.error.message : String(event.error);
 	return { taskKind, outcome: 'failed', error };
+}
+
+/** JSON with sorted object keys, so equal values give equal text. */
+function canonicalJson(value: unknown): string {
+	if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+	if (typeof value !== 'object' || value === null) return JSON.stringify(value) ?? 'null';
+	const entries = Object.entries(value)
+		.filter(([, entry]) => entry !== undefined)
+		.sort(([a], [b]) => a.localeCompare(b));
+	return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(',')}}`;
+}
+
+/** Compares memory variants: `keepMemory: false` is the same as leaving it out. */
+function agentRunKey(agentRun: InstanceAiEvalAgentRunOptions | undefined): string {
+	return canonicalJson({
+		keepMemory: agentRun?.keepMemory === true,
+		configOverrides: agentRun?.configOverrides ?? null,
+	});
 }
 
 function sideCallUsageOf(report: SideCallUsageReport): InstanceAiEvalAgentSideCallUsage {
@@ -334,7 +355,9 @@ export class EvalAgentExecutionService {
 		turn: InstanceAiEvalAgentThreadTurn,
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		const thread = this.threads.thread(turn.threadId);
-		const refusal = this.threadRefusal(agentId, user, turn, thread);
+		const refusal =
+			this.threadRefusal(agentId, user, turn, thread) ??
+			this.agentRunRefusal(turn.resourceId, options.agentRun);
 		if (refusal) return this.errorResult(refusal);
 		if (thread && turn.final && turn.message === undefined) return this.releaseThread(turn, thread);
 
@@ -456,6 +479,16 @@ export class EvalAgentExecutionService {
 		return `Eval thread ${turn.threadId} is at turn ${String(thread.turns)}, so the next turn is ${String(next)}, not ${String(turn.expectedTurn)}`;
 	}
 
+	/** A resource's world runs one memory variant: a turn must send the same agentRun. */
+	private agentRunRefusal(
+		resourceId: string,
+		agentRun: InstanceAiEvalAgentRunOptions | undefined,
+	): string | undefined {
+		const world = this.threads.world(resourceId);
+		if (!world || world.agentRunKey === agentRunKey(agentRun)) return undefined;
+		return `Resource id ${resourceId} was made with another agentRun (keepMemory, configOverrides); send the same agentRun on every turn, or use a new resource id for another variant`;
+	}
+
 	/** Why a thread turn cannot run, or undefined when it can. */
 	private threadRefusal(
 		agentId: string,
@@ -561,6 +594,7 @@ export class EvalAgentExecutionService {
 			evidence,
 			memoryOn: config.memory?.enabled === true,
 			threadIds: new Set(),
+			agentRunKey: agentRunKey(options.agentRun),
 		};
 	}
 
