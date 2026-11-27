@@ -20,7 +20,17 @@ describe('draftAgentVerdict', () => {
 	it('lets a seeded Agent run when its declared credential has a real key', () => {
 		vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
 
-		expect(draftAgentVerdict(artifact(seeded), [{ type: 'anthropicApi' }], seeded)).toBeUndefined();
+		expect(
+			draftAgentVerdict(artifact(seeded), [{ type: 'anthropicApi', realModelKey: true }], seeded),
+		).toBeUndefined();
+	});
+
+	it('says the eval has no real key for an authored Anthropic credential, which keeps a placeholder', () => {
+		vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
+
+		expect(draftAgentVerdict(artifact(seeded), [{ type: 'anthropicApi' }], seeded)?.execError).toBe(
+			'No real key for anthropicApi',
+		);
 	});
 
 	it('says the eval has no real key when the declared credential is a placeholder', () => {

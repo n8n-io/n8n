@@ -10,7 +10,7 @@ import { PROVIDER_OUTAGE_ROOT_CAUSE } from '../harness/transient-error';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type { BuildOrchestrator, CachedBuild, LaneState } from '../run/build-orchestrator';
 import { createCasePipeline, type CasePipelineDeps } from '../run/case-pipeline';
-import type { WorkflowTestCase } from '../types';
+import type { TestCaseCredential, WorkflowTestCase } from '../types';
 
 // Characterization tests for the per-row execution pipeline extracted in
 // TRUST-261: sentinel / build-fail / agent / workflow dispatch, transient
@@ -673,7 +673,7 @@ describe('createCasePipeline', () => {
 		// its provider's type, and the builder sees only declared credentials. With
 		// none declared, the Agent cannot run whatever the builder does.
 		const lowTier = (model: string) => ({ modelsByDifficulty: { low: { model, credential: '' } } });
-		const seededCase = (credentials: Array<{ type: string }> = [], subAgents?: object) => ({
+		const seededCase = (credentials: TestCaseCredential[] = [], subAgents?: object) => ({
 			...scenarioCase(['happy-path']),
 			credentials,
 			seed: {
@@ -751,7 +751,7 @@ describe('createCasePipeline', () => {
 
 		it('runs when the case declares a credential of the model provider', async () => {
 			const { lane } = await runWith({
-				testCase: seededCase([{ type: 'anthropicApi' }]),
+				testCase: seededCase([{ type: 'anthropicApi', realModelKey: true }]),
 				createdAgentIds: ['agent-1'],
 				model: 'anthropic/claude-sonnet-5-5',
 			});
@@ -764,7 +764,7 @@ describe('createCasePipeline', () => {
 			vi.stubEnv('N8N_AI_ANTHROPIC_KEY', '');
 
 			const { output, lane } = await runWith({
-				testCase: seededCase([{ type: 'anthropicApi' }]),
+				testCase: seededCase([{ type: 'anthropicApi', realModelKey: true }]),
 				createdAgentIds: ['agent-1'],
 				model: 'anthropic/claude-sonnet-5-5',
 			});
@@ -790,7 +790,7 @@ describe('createCasePipeline', () => {
 			};
 
 			const { output, lane } = await runWith({
-				testCase: seededCase([{ type: 'anthropicApi' }]),
+				testCase: seededCase([{ type: 'anthropicApi', realModelKey: true }]),
 				createdAgentIds: ['agent-1'],
 				model: 'anthropic/claude-sonnet-5-5',
 				resolutions: [resolution],
@@ -818,7 +818,7 @@ describe('createCasePipeline', () => {
 			};
 
 			const { output, lane } = await runWith({
-				testCase: seededCase([{ type: 'anthropicApi' }]),
+				testCase: seededCase([{ type: 'anthropicApi', realModelKey: true }]),
 				createdAgentIds: ['agent-1'],
 				model: 'anthropic/claude-sonnet-5-5',
 				resolutions: [resolution],
@@ -842,7 +842,10 @@ describe('createCasePipeline', () => {
 
 		it('checks a seeded sub-agent model the same way', async () => {
 			const { output, lane } = await runWith({
-				testCase: seededCase([{ type: 'anthropicApi' }], lowTier('openai/gpt-4.1-nano')),
+				testCase: seededCase(
+					[{ type: 'anthropicApi', realModelKey: true }],
+					lowTier('openai/gpt-4.1-nano'),
+				),
 				createdAgentIds: ['agent-1'],
 				model: 'anthropic/claude-sonnet-5-5',
 				subAgents: lowTier('openai/gpt-4.1-nano'),
@@ -855,7 +858,10 @@ describe('createCasePipeline', () => {
 
 		it('never blames the framework for a sub-agent model the builder changed', async () => {
 			const { lane } = await runWith({
-				testCase: seededCase([{ type: 'anthropicApi' }], lowTier('openai/gpt-4.1-nano')),
+				testCase: seededCase(
+					[{ type: 'anthropicApi', realModelKey: true }],
+					lowTier('openai/gpt-4.1-nano'),
+				),
 				createdAgentIds: ['agent-1'],
 				model: 'anthropic/claude-sonnet-5-5',
 				subAgents: lowTier('xai/grok-4'),

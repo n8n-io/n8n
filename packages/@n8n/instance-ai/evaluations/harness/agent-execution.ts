@@ -39,7 +39,7 @@ import type {
 } from '../types';
 import type { CaseSeed } from './schema';
 import type { AgentModelResolution } from '../credentials/model-resolver';
-import { hasRealCredentialKey } from '../credentials/seeder';
+import { credentialGetsRealKey } from '../credentials/seeder';
 
 /** LLM credential types the eval seeder can create (credentials/seeder.ts). */
 const LLM_CREDENTIAL_TYPES = new Set(['openAiApi', 'googlePalmApi']);
@@ -159,7 +159,7 @@ function slotCredentialVerdict(
 			execError: 'Seeded Agent model has no declared credential',
 		};
 	}
-	if (declared.some((c) => hasRealCredentialKey(c.type))) return undefined;
+	if (declared.some(credentialGetsRealKey)) return undefined;
 	const type = declared[0].type;
 	return {
 		attribution: 'framework_issue',

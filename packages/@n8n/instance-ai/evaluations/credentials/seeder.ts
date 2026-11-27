@@ -20,6 +20,8 @@ interface CredentialTemplate {
 	defaultName: string;
 	/** Env vars holding a real token, in preference order. Unset or empty: placeholder. */
 	envVars?: readonly string[];
+	/** Real token only for a credential the own-model resolver added (`realModelKey`). */
+	realKeyOnlyForModels?: true;
 	buildData: (token: string) => Record<string, unknown>;
 }
 
@@ -194,11 +196,13 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		// The CI dispatcher sends EVAL_ANTHROPIC_API_KEY as ANTHROPIC_API_KEY; a local
 		// .env.eval only has the server's key.
 		envVars: ['ANTHROPIC_API_KEY', 'N8N_AI_ANTHROPIC_KEY'],
+		realKeyOnlyForModels: true,
 		buildData: (key) => ({ apiKey: key, url: 'https://api.anthropic.com' }),
 	},
 	openRouterApi: {
 		defaultName: '[eval] OpenRouter',
 		envVars: ['EVAL_OPENROUTER_API_KEY'],
+		realKeyOnlyForModels: true,
 		buildData: (key) => ({ apiKey: key, url: 'https://openrouter.ai/api/v1' }),
 	},
 	groqApi: {
@@ -239,6 +243,18 @@ export function hasRealCredentialKey(credentialType: string): boolean {
 	return realToken(CREDENTIAL_TEMPLATES[credentialType]) !== undefined;
 }
 
+/** True when a declared credential will be created with a real token. */
+export function credentialGetsRealKey(credential: TestCaseCredential): boolean {
+	const template = CREDENTIAL_TEMPLATES[credential.type];
+	if (template?.realKeyOnlyForModels && !credential.realModelKey) return false;
+	return realToken(template) !== undefined;
+}
+
+function tokenFor(template: CredentialTemplate, realModelKey: boolean | undefined): string {
+	if (template.realKeyOnlyForModels && !realModelKey) return PLACEHOLDER_TOKEN;
+	return realToken(template) ?? PLACEHOLDER_TOKEN;
+}
+
 export interface CreatedCredential {
 	id: string;
 	name: string;
@@ -268,6 +284,8 @@ export async function createOneCredential(
 		blank?: boolean;
 		/** The build's project. Absent: the caller's personal project. */
 		projectId?: string;
+		/** A resolver-added model credential (`TestCaseCredential.realModelKey`). */
+		realModelKey?: boolean;
 	},
 ): Promise<CreatedCredential> {
 	if (credentialType === 'httpTemplatedCustomAuth') {
@@ -286,7 +304,7 @@ export async function createOneCredential(
 	usedNames.set(base, count);
 	const resolvedName = count > 1 ? `${base} #${count}` : base;
 
-	const token = realToken(template) ?? PLACEHOLDER_TOKEN;
+	const token = tokenFor(template, options?.realModelKey);
 	options?.logger?.verbose(
 		`  Creating credential ${resolvedName} (${credentialType})${options.blank ? ' [blank]' : ''}`,
 	);
@@ -404,6 +422,7 @@ export async function createDeclaredCredentials(
 			logger,
 			...(decl.description !== undefined ? { description: decl.description } : {}),
 			...(decl.blank ? { blank: true } : {}),
+			...(decl.realModelKey ? { realModelKey: true } : {}),
 			...(options?.projectId !== undefined ? { projectId: options.projectId } : {}),
 		});
 		options?.onCreated?.(cred.id);

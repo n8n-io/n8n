@@ -444,13 +444,20 @@ export function resolveDirectRunAgentModels<T extends ResolvableCase>(
 	return resolveCaseAgentModels(testCase, available, options);
 }
 
+/** Declare each credential type the resolved models need, and mark the one the
+ *  restore binds (the first of its type) for the real model key. */
 function withCredentialTypes(
 	declared: TestCaseCredential[] | undefined,
 	resolutions: AgentModelResolution[],
 ): TestCaseCredential[] {
-	const credentials = [...(declared ?? [])];
-	for (const type of new Set(resolutions.flatMap((r) => r.credentialTypes))) {
-		if (!credentials.some((c) => c.type === type)) credentials.push({ type });
+	const needed = new Set(resolutions.flatMap((r) => r.credentialTypes));
+	const credentials = (declared ?? []).map((credential, index, all) =>
+		needed.has(credential.type) && all.findIndex((c) => c.type === credential.type) === index
+			? { ...credential, realModelKey: true as const }
+			: credential,
+	);
+	for (const type of needed) {
+		if (!credentials.some((c) => c.type === type)) credentials.push({ type, realModelKey: true });
 	}
 	return credentials;
 }

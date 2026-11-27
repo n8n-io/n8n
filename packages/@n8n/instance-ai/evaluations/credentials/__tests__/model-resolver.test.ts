@@ -424,10 +424,11 @@ describe('resolveCaseAgentModels', () => {
 			'openrouter/x-ai/grok-4',
 			'anthropic/claude-sonnet-5-5',
 		]);
+		// Only credentials the resolver binds models to get real model keys.
 		expect(resolved.credentials).toEqual([
 			{ type: 'slackApi' },
-			{ type: 'anthropicApi', name: 'Mine' },
-			{ type: 'openRouterApi' },
+			{ type: 'anthropicApi', name: 'Mine', realModelKey: true },
+			{ type: 'openRouterApi', realModelKey: true },
 		]);
 		expect(resolutions.map((r) => r.modelResolution)).toEqual(['openrouter-same', 'comparable']);
 		expect(resolved.tags).toEqual(['agent-runtime', 'model-fallback']);
@@ -453,7 +454,7 @@ describe('resolveDirectRunAgentModels', () => {
 		);
 
 		expect(resolutions.map((r) => r.modelResolution)).toEqual(['openrouter-same']);
-		expect(testCase.credentials).toEqual([{ type: 'openRouterApi' }]);
+		expect(testCase.credentials).toEqual([{ type: 'openRouterApi', realModelKey: true }]);
 	});
 
 	it('leaves a case the assistant builds unchanged', () => {

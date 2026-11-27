@@ -239,7 +239,13 @@ export interface ExecutionScenario {
 export type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
 
 /** Seeded credentials use the case schema. The push verifies that the suite retains each field. */
-export type TestCaseCredential = NonNullable<EvalTestCaseInput['credentials']>[number];
+export type TestCaseCredential = NonNullable<EvalTestCaseInput['credentials']>[number] & {
+	/** Set by the own-model resolver (credentials/model-resolver.ts), never authored:
+	 *  this credential backs a seeded Agent's model in a direct run, so it gets the
+	 *  real model key. Every other Anthropic or OpenRouter credential keeps a
+	 *  placeholder, so assistant-built baselines don't move. */
+	realModelKey?: true;
+};
 
 export interface WorkflowTestCase {
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
