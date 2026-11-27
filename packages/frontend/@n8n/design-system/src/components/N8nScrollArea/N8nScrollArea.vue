@@ -259,15 +259,21 @@ defineExpose({
 
 .scrollAreaRoot {
 	position: relative;
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
 	width: 100%;
-	height: 100%;
+	height: var(--scroll-area--height, 100%);
+	/* A flex parent can shrink this below its content. The viewport then scrolls. */
+	min-height: 0;
 	contain: layout style;
 }
 
 .viewport {
 	width: 100%;
-	height: 100%;
+	flex: 1 1 auto;
+	min-height: 0;
+	height: auto;
 	border-radius: inherit;
 	overflow-anchor: none;
 }
@@ -308,6 +314,7 @@ $fade-size: var(--scroll-area--fade-size, var(--spacing--sm));
 }
 
 .scrollbar {
+	position: absolute;
 	display: flex;
 	user-select: none;
 	touch-action: none;

@@ -241,6 +241,7 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 	display: flex;
 	flex-direction: column;
 	max-height: calc(100dvh - var(--spacing--lg));
+	overflow: hidden;
 
 	border-radius: var(--radius--lg);
 	background-color: light-dark(var(--background--surface), var(--background--subtle));
@@ -333,11 +334,6 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 	height: 100%;
 	max-width: calc(100dvw - var(--spacing--lg));
 	max-height: calc(100dvh - var(--spacing--lg));
-
-	[data-slot='dialog-body'] {
-		flex: 1 1 auto;
-		overflow: auto;
-	}
 }
 </style>
 
@@ -347,7 +343,9 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
    That closes a CodeMirror suggestion list without applying the selected value,
    and the list cannot scroll. */
 .el-popper,
-.cm-tooltip {
+.cm-tooltip,
+[data-test-id='select-content'],
+[role='listbox'] {
 	pointer-events: auto;
 }
 </style>
