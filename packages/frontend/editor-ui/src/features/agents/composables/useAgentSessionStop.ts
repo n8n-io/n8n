@@ -16,11 +16,11 @@ export function useAgentSessionStop(
 	const { canExecute } = useAgentPermissions(projectId);
 	const stoppingSessionIds = ref(new Set<string>());
 
-	async function stop(threadId: string): Promise<boolean> {
+	async function stop(threadId: string, targetAgentId = toValue(agentId)): Promise<boolean> {
 		if (!canExecute.value || stoppingSessionIds.value.has(threadId)) return false;
 		stoppingSessionIds.value.add(threadId);
 		try {
-			await stopSession(rootStore.restApiContext, toValue(projectId), toValue(agentId), threadId);
+			await stopSession(rootStore.restApiContext, toValue(projectId), targetAgentId, threadId);
 			return true;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('agentSessions.showError.stop'));

@@ -17,8 +17,10 @@ const { listThreads, listPreviewThreads } = vi.hoisted(() => ({
 
 vi.mock('../composables/useAgentThreadsApi', async (importOriginal) => ({
 	...(await importOriginal()),
-	listThreads: (...args: Parameters<typeof listThreadsApi>) =>
-		args[3].previewOnly ? listPreviewThreads(...args) : listThreads(...args),
+	listThreads: (...args: Parameters<typeof listThreadsApi>) => {
+		if (args[3].previewOnly) return listPreviewThreads(...args);
+		return listThreads(...args);
+	},
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({

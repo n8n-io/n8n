@@ -1,9 +1,12 @@
+import type { AgentAttentionFlag } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	defaultAgentSessionFilters,
 	listThreads,
+	listAttentionFlags,
+	dismissAttentionFlags as dismissAttentionFlagsApi,
 	getThreadDetail as getThreadDetailApi,
 	deleteThread as deleteThreadApi,
 	exportThreadToLangSmith as exportThreadToLangSmithApi,
@@ -19,6 +22,9 @@ const AUTO_REFRESH_INTERVAL_MS = 5_000;
 
 export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	const threads = ref<AgentExecutionThread[]>([]);
+	const attentionFlags = ref<AgentAttentionFlag[]>([]);
+	let latestAttentionFlagsRequestId = 0;
+	let attentionFlagsTarget: string | null = null;
 	const previewThreads = ref<AgentExecutionThread[]>([]);
 	const previewLoading = ref(false);
 	const nextCursor = ref<string | null>(null);
@@ -50,8 +56,48 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	) {
 		await Promise.all([
 			fetchHistoryThreads(projectId, agentId, options),
+			fetchAttentionFlags(projectId, agentId),
 			fetchPreviewThreads(projectId, agentId),
 		]);
+	}
+
+	/** Fetches unreviewed session errors. A failure here must not block the session list. */
+	async function fetchAttentionFlags(projectId: string, agentId: string) {
+		const target = `${projectId}:${agentId}`;
+		if (attentionFlagsTarget !== target) attentionFlags.value = [];
+		attentionFlagsTarget = target;
+		const requestId = ++latestAttentionFlagsRequestId;
+		try {
+			const rootStore = useRootStore();
+			const flags = await listAttentionFlags(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				'session-error',
+			);
+			if (requestId !== latestAttentionFlagsRequestId) return;
+			attentionFlags.value = flags;
+		} catch {
+			/** Keep the last result. Users without agent:update get a 403. The next refresh retries. */
+		}
+	}
+
+	async function dismissAttentionFlags(
+		projectId: string,
+		agentId: string,
+		flags: AgentAttentionFlag[],
+	) {
+		if (flags.length === 0) return;
+		const rootStore = useRootStore();
+		await dismissAttentionFlagsApi(rootStore.restApiContext, projectId, agentId, {
+			type: 'session-error',
+			flagIds: flags.map(({ id }) => id),
+		});
+		if (attentionFlagsTarget !== `${projectId}:${agentId}`) return;
+		const dismissedIds = new Set(flags.map(({ id }) => id));
+		/** Discard an in-flight list response that could still hold the dismissed flags. */
+		latestAttentionFlagsRequestId++;
+		attentionFlags.value = attentionFlags.value.filter(({ id }) => !dismissedIds.has(id));
 	}
 
 	async function fetchPreviewThreads(projectId: string, agentId: string) {
@@ -110,6 +156,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		if (currentProjectId !== projectId || currentAgentId !== agentId) return;
 		await Promise.all([
 			refreshHistoryThreads(projectId, agentId),
+			fetchAttentionFlags(projectId, agentId),
 			fetchPreviewThreads(projectId, agentId).catch(() => {
 				// The next refresh retries failed Preview requests.
 			}),
@@ -274,6 +321,9 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		previewThreads.value = [];
 		previewLoading.value = false;
 		previewTarget = null;
+		attentionFlags.value = [];
+		attentionFlagsTarget = null;
+		latestAttentionFlagsRequestId++;
 		latestPreviewRequestId++;
 		nextCursor.value = null;
 		loading.value = false;
@@ -285,6 +335,8 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 
 	return {
 		threads,
+		attentionFlags,
+		dismissAttentionFlags,
 		previewThreads,
 		previewLoading,
 		nextCursor,

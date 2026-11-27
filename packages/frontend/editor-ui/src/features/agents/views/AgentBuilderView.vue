@@ -49,6 +49,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
+import { useAgentAttentionFlags } from '@/features/agents/composables/useAgentAttentionFlags';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -150,6 +151,8 @@ import {
 import {
 	AGENT_CONFIG_WRITE_KEY,
 	AGENT_BUILDER_STANDALONE_KEY,
+	AGENT_SESSION_ASSISTANT_KEY,
+	OPEN_AGENT_PREVIEW_KEY,
 	type AgentConfigWrite,
 } from '../components/agentBuilderInjectionKeys';
 import AgentBuilderChatMode from '../components/AgentBuilderChatMode.vue';
@@ -1117,8 +1120,10 @@ const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('ve
 const previewChatPage = useTemplateRef<InstanceType<typeof AgentTestChatPage>>('previewChatPage');
 const previewDock = useTemplateRef<InstanceType<typeof AgentTestDock>>('previewDock');
 const executionsCount = computed(() => sessionsStore.threads.length);
+const { count: sessionErrorCount } = useAgentAttentionFlags(projectId, agentId);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
+	failedSessionCount: sessionErrorCount,
 	routeBacked: computed(() => !isArtifactMode.value),
 });
 
@@ -1330,6 +1335,7 @@ async function onDeletePreviewSession(sessionId: string) {
 async function onOpenPreview(
 	source?: InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW>['source'],
 	expectedTarget?: { projectId: string; agentId: string },
+	preferredSessionId?: string,
 ): Promise<boolean> {
 	if (!isBuilt.value || (!isArtifactMode.value && !canExecuteAgent.value) || chatModeBusy.value)
 		return false;
@@ -1354,9 +1360,9 @@ async function onOpenPreview(
 		return false;
 	}
 	if (isArtifactMode.value) {
-		openArtifactPreview();
+		openArtifactPreview(preferredSessionId);
 	} else {
-		await openPreview();
+		await openPreview(preferredSessionId);
 	}
 	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW, {
 		agent_id: agentId.value,
@@ -1986,7 +1992,23 @@ const runConfigWrite: AgentConfigWrite = async (write) => {
 		}
 	}
 };
+provide(AGENT_SESSION_ASSISTANT_KEY, {
+	isAvailable: computed(() => !isArtifactMode.value && instanceAiReady.value),
+	async handoff(params) {
+		/** A child session can target a different Agent. The panel guards the current route. */
+		if (params.projectId !== projectId.value) return false;
+		return await handoffToAssistantPanel(
+			buildInstanceAiAgentPreviewHandoffContext(params),
+			params.initialDraft,
+		);
+	},
+});
 provide(AGENT_CONFIG_WRITE_KEY, runConfigWrite);
+provide(OPEN_AGENT_PREVIEW_KEY, {
+	open: (sessionId?: string) => onOpenPreview(undefined, undefined, sessionId),
+	isRunnable: computed(() => agent.value?.isRunnable === true),
+	validationIssues: computed(() => configValidation.value?.issues ?? []),
+});
 
 async function flushAutosave(): Promise<AutosaveResult> {
 	return await flushAutosaveLoops();

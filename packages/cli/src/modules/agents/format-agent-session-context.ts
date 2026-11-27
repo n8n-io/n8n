@@ -104,7 +104,7 @@ function formatTimelineEvent(
 }
 
 function formatExecution(execution: AgentSessionTurn, limits: ValueLimits): string {
-	const headerParts = [`status=${execution.status}`];
+	const headerParts = [`id=${execution.id}`, `status=${execution.status}`];
 	if (execution.model) headerParts.push(`model=${execution.model}`);
 	headerParts.push(`duration=${execution.duration}ms`);
 	if (execution.totalTokens !== null) headerParts.push(`tokens=${execution.totalTokens}`);

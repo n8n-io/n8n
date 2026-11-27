@@ -2114,10 +2114,16 @@ describe('AgentExecutionService', () => {
 			);
 			agentExecutionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
 				new Map([
-					[recoveredThread.id, 'success'],
-					[cleanThread.id, 'success'],
-					[runningThread.id, 'running'],
-					[errorThread.id, 'error'],
+					[recoveredThread.id, { status: 'success', timeline: null }],
+					[cleanThread.id, { status: 'success', timeline: null }],
+					[
+						runningThread.id,
+						{
+							status: 'running',
+							timeline: [{ type: 'reasoning', content: 'Private reasoning', timestamp: 1 }],
+						},
+					],
+					[errorThread.id, { status: 'error', timeline: null }],
 				]),
 			);
 
@@ -2134,12 +2140,14 @@ describe('AgentExecutionService', () => {
 					id: cleanThread.id,
 					failureSummary: null,
 					status: 'succeeded',
+					latestActivity: null,
 					canContinueInPreview: false,
 				}),
 				expect.objectContaining({
 					id: runningThread.id,
 					failureSummary: null,
 					status: 'running',
+					latestActivity: { type: 'reasoning' },
 					canContinueInPreview: false,
 				}),
 				expect.objectContaining({ id: emptyThread.id, failureSummary: null, status: null }),

@@ -7,7 +7,7 @@ type Translate = (key: BaseTextKey, options?: { interpolate: Record<string, stri
 
 export function handoffContextKey(context: InstanceAiHandoffContext): string {
 	if (context.source === 'agent-preview') {
-		return `${context.source}:${context.agentId}:${context.threadId}:${context.executionId ?? ''}`;
+		return `${context.source}:${context.agentId}:${context.threadId}:${context.executionId ?? ''}:${context.threadIds?.join(',') ?? ''}`;
 	}
 
 	if (context.source === 'setup-panel-execute') {
@@ -42,6 +42,16 @@ export function formatAgentPreviewContextLabel(
 	t: Translate,
 	artifactName?: string,
 ): string {
+	/**
+	 * `threadId` only names the first session of a multi-session handoff, so its
+	 * title would suggest that the chip carries that one session.
+	 */
+	if (context.threadIds && context.threadIds.length > 1) {
+		return t('instanceAi.artifactsPanel.context.agentPreviewSessions', {
+			interpolate: { count: String(context.threadIds.length) },
+		});
+	}
+
 	const carriedName = context.agentName?.trim();
 	const carriedTitle = context.sessionTitle?.trim();
 

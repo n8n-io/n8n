@@ -20,6 +20,9 @@ const effectiveIconSize = computed(function getEffectiveIconSize(): IconSize {
 		case 'large':
 		case 'xlarge':
 			return 'xlarge';
+		case 'xsmall':
+		case 'xxsmall':
+			return 'small';
 		default:
 			return 'medium';
 	}
