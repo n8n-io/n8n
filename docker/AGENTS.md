@@ -75,7 +75,9 @@ a multi-arch manifest for each tag.
 1. Change `DHI_REF`, `DEBIAN_DHI_REF`, `NODE_VERSION`, `BUILDER_IMAGE`, and
    `DEBIAN_BUILDER_IMAGE`. Master publishes the new bases (`n8nio/base`),
    `n8nio/node-pc:*-dev`, and `n8nio/node-patched:*-dev`. CI reads
-   `NODE_VERSION`, so no workflow changes.
+   `NODE_VERSION`, so no workflow changes. For a newer patch of the same
+   minor, `sec-base-image-refresh.yml` opens this PR
+   (`build: Update Node to <version>`) when every pin publishes the patch.
 2. Pin `RUNTIME_IMAGE`, `DEBIAN_RUNTIME_IMAGE`, `N8N_BUILDER_IMAGE`, and
    `PC_BUILDER_IMAGE`.
 
