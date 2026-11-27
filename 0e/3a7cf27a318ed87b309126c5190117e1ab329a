@@ -1,0 +1,36 @@
+packages/workflow/src/expression.ts
+  s_14807a50d287da::t_7682750ec2e84d 877-880
+  s_14807a50d287da::t_b4a65adac74c36 333-335,344-353,355,357-360
+  s_14807a50d287da::t_aca6740f756f86 8,340-341,921-924
+  h_32d8cd6a0d6aad 354,356
+  s_14807a50d287da::t_1eff2fbc6f5373 14-15,336-339,342-343,874-876,896-898,902-904,917
+  s_14807a50d287da::t_1aceee6182060d 870-873,881-895,899-901,905-916,918-920,925-928
+packages/workflow/vitest.config.ts
+  ai_agent 21
+packages/workflow/test/expression-standalone-resolver.test.ts
+  s_14807a50d287da::t_aca6740f756f86 1-6,92-95
+  s_14807a50d287da::t_cec338511630eb 9-60,114-166,168-170
+  s_14807a50d287da::t_b557f2a3e8473d 7,90-91,96,98,104,106,109-110
+  s_14807a50d287da::t_1eff2fbc6f5373 8,61-89,97,99-103,105,107-108,111-113,167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0e3a7cf27a318ed87b309126c5190117e1ab329a",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_14807a50d287da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e12fb81-4a06-4d8e-90db-fdd5463b88f8",
+        "model": "unknown"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
