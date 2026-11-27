@@ -300,9 +300,10 @@ found, no supported trigger, not published) show behind a warning icon instead.
 
 Only project skills can use workflows. In an instance skill, the add workflow
 button stays visible but is disabled, with the note `Workflows work only in
-project skills.` Typing `@` does not open the workflow list. When a skill
-mentions workflows, the scope menu disables the other scopes, with a note that
-tells the user to remove the workflows first.
+project skills.` Typing `@` does not open the workflow list. When a saved
+project skill mentions workflows, the scope menu disables the other scopes,
+with a note that tells the user to remove the workflows first. The saved scope
+stays enabled.
 
 ## Modal patterns
 
