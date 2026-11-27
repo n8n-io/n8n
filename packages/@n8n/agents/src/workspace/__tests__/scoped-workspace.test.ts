@@ -136,4 +136,48 @@ describe('createScopedWorkspace', () => {
 
 		expect(workspace.sandbox?.executeCommand).toBeUndefined();
 	});
+
+	it('resolves every path in writeFiles inside the workspace root', async () => {
+		const writeFiles = vi.fn(async () => {});
+		const filesystem = createFilesystem({ writeFiles });
+		const workspace = createScopedWorkspace(new Workspace({ filesystem }), root);
+		const abortSignal = new AbortController().signal;
+
+		await workspace.filesystem?.writeFiles?.(
+			[
+				{ path: 'src/workflow.ts', content: 'code' },
+				{ path: `${root}/chunks/a.ts`, content: Buffer.from('chunk') },
+			],
+			{ abortSignal },
+		);
+
+		expect(writeFiles).toHaveBeenCalledWith(
+			[
+				{ path: `${root}/src/workflow.ts`, content: 'code' },
+				{ path: `${root}/chunks/a.ts`, content: Buffer.from('chunk') },
+			],
+			{ abortSignal },
+		);
+	});
+
+	it('rejects writeFiles when any path is outside the workspace root', async () => {
+		const writeFiles = vi.fn(async () => {});
+		const filesystem = createFilesystem({ writeFiles });
+		const workspace = createScopedWorkspace(new Workspace({ filesystem }), root);
+
+		await expect(
+			workspace.filesystem?.writeFiles?.([
+				{ path: 'src/workflow.ts', content: 'ok' },
+				{ path: '../agent-2/secret.ts', content: 'nope' },
+			]),
+		).rejects.toThrow('is outside the workspace root');
+		expect(writeFiles).not.toHaveBeenCalled();
+	});
+
+	it('omits writeFiles when the wrapped filesystem does not implement it', () => {
+		const filesystem = createFilesystem();
+		const workspace = createScopedWorkspace(new Workspace({ filesystem }), root);
+
+		expect(workspace.filesystem?.writeFiles).toBeUndefined();
+	});
 });

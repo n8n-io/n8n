@@ -332,4 +332,47 @@ describe('createLazyRuntimeWorkspace', () => {
 			message: 'Agent run was aborted',
 		});
 	});
+
+	it('forwards writeFiles to the resolved filesystem when it supports batching', async () => {
+		const { workspace, filesystem } = createMockWorkspace();
+		const writeFiles = vi.fn(async () => {});
+		filesystem.writeFiles = writeFiles;
+		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const abortSignal = new AbortController().signal;
+		const files = [
+			{ path: '/workspace/a.ts', content: 'a' },
+			{ path: '/workspace/b.ts', content: 'b' },
+		];
+
+		await lazyWorkspace.filesystem!.writeFiles!(files, { abortSignal });
+
+		expect(writeFiles).toHaveBeenCalledWith(files, { abortSignal });
+		expect(filesystem.writeFile).not.toHaveBeenCalled();
+	});
+
+	it('falls back to parallel recursive writeFile calls when the resolved filesystem lacks writeFiles', async () => {
+		const { workspace, filesystem } = createMockWorkspace();
+		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const abortSignal = new AbortController().signal;
+
+		await lazyWorkspace.filesystem!.writeFiles!(
+			[
+				{ path: '/workspace/a.ts', content: 'a' },
+				{ path: '/workspace/b.ts', content: 'b' },
+			],
+			{ abortSignal },
+		);
+
+		expect(filesystem.writeFile).toHaveBeenCalledTimes(2);
+		expect(filesystem.writeFile).toHaveBeenCalledWith('/workspace/a.ts', 'a', {
+			recursive: true,
+			abortSignal,
+		});
+		expect(filesystem.writeFile).toHaveBeenCalledWith('/workspace/b.ts', 'b', {
+			recursive: true,
+			abortSignal,
+		});
+	});
 });

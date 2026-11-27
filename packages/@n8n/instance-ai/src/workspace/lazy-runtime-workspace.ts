@@ -274,6 +274,36 @@ class LazyRuntimeFilesystem extends BaseFilesystem {
 		);
 	}
 
+	async writeFiles(
+		files: Array<{ path: string; content: FileContent }>,
+		options?: AbortableOptions,
+	): Promise<void> {
+		const bytes = files.reduce((sum, file) => sum + sandboxFileBytes(file.content), 0);
+		await traceSandboxOperation(
+			'write-files',
+			{
+				kind: 'io',
+				inputs: { fileCount: files.length, bytes },
+			},
+			async () => {
+				const filesystem = await this.getFilesystem(options?.abortSignal);
+				if (filesystem.writeFiles) {
+					await filesystem.writeFiles(files, options);
+					return;
+				}
+				await Promise.all(
+					files.map(
+						async ({ path, content }) =>
+							await filesystem.writeFile(path, content, {
+								recursive: true,
+								abortSignal: options?.abortSignal,
+							}),
+					),
+				);
+			},
+		);
+	}
+
 	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {
 		await traceSandboxOperation(
 			'append-file',
