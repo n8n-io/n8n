@@ -152,6 +152,7 @@ describe('workflow_execution table (integration)', () => {
 			parent: null,
 			lifecycleEventSubscription: { kind: 'all' },
 			finishedAt: null,
+			deadline: null,
 		});
 	});
 

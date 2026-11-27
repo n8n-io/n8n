@@ -188,6 +188,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.addSelect(parentLinkSql('execution'), 'parent')
 			.addSelect('execution.lifecycle_event_subscription', 'lifecycleEventSubscription')
 			.addSelect('execution.finished_at', 'finishedAt')
+			.addSelect('execution.deadline', 'deadline')
 			.where('execution.id = :id', { id })
 			.getRawOne();
 		if (!row) throw new ExecutionNotFoundError(id);
@@ -205,6 +206,34 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		const row = await this.repo.findOne({ select: { id: true, deadline: true }, where: { id } });
 		if (!row) throw new ExecutionNotFoundError(id);
 		return row.deadline;
+	}
+
+	async findExecutionsPastDeadline(at: Date, limit: number): Promise<string[]> {
+		// Served by the partial index on `deadline` for rows that have not ended.
+		const rows = await this.repo.find({
+			select: { id: true },
+			where: {
+				status: In(['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[]),
+				deadline: LessThanOrEqual(at),
+			},
+			order: { deadline: 'ASC' },
+			take: limit,
+		});
+		return rows.map(({ id }) => id);
+	}
+
+	async nextDeadline(): Promise<Date | null> {
+		// Served by the same partial index, so this stays a cheap read.
+		const row = await this.repo
+			.createQueryBuilder('execution')
+			.select('MIN(execution.deadline)', 'next')
+			.where('execution.status IN (:...statuses)', {
+				statuses: ['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[],
+			})
+			// Repeats the index predicate, so the planner can use the partial index.
+			.andWhere('execution.deadline IS NOT NULL')
+			.getRawOne<{ next: Date | null }>();
+		return row?.next ?? null;
 	}
 
 	async transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean> {

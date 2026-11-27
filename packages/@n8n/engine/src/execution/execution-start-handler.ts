@@ -20,6 +20,8 @@ export class ExecutionStartHandler {
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
+		/** Told the deadline of each execution this handler claims, so a timeout fires on time. */
+		private readonly onDeadline: (deadline: Date) => void = () => {},
 	) {}
 
 	async handle(event: ExecutionEnqueuedEvent): Promise<void> {
@@ -32,6 +34,7 @@ export class ExecutionStartHandler {
 		if (!claimed) return;
 
 		const execution = await this.executionStore.loadExecution(event.executionId);
+		if (execution.deadline !== null) this.onDeadline(execution.deadline);
 
 		// This worker won the claim, so it is the one that announces the start.
 		// After the load, because the ids it carries save consumers a round trip.

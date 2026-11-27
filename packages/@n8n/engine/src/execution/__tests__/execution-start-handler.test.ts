@@ -40,6 +40,8 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		cancelExecution: vi.fn().mockResolvedValue(null),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		loadDeadline: vi.fn().mockResolvedValue(null),
+		findExecutionsPastDeadline: vi.fn().mockResolvedValue([]),
+		nextDeadline: vi.fn().mockResolvedValue(null),
 		findStaleQueuedExecutions: vi.fn(),
 		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
@@ -102,6 +104,7 @@ function record(graph: WorkflowGraph, overrides: Partial<ExecutionRecord> = {}):
 		responseExpectation: { kind: 'none' },
 		parent: null,
 		finishedAt: null,
+		deadline: null,
 		...overrides,
 	};
 }
