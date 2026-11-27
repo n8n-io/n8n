@@ -5,6 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { useWorkflowImport } from './useWorkflowImport';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { VIEWS } from '@/app/constants';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const mockResetWorkspace = vi.hoisted(() => vi.fn());
 const mockInitializeWorkspace = vi.hoisted(() =>
@@ -131,5 +132,50 @@ describe('useWorkflowImport', () => {
 		expect(mockInitializeWorkspace).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'real-workflow-id' }),
 		);
+	});
+
+	it('should load credential types before import when a node extends a credential', async () => {
+		const callOrder: string[] = [];
+		const credentialsStore = useCredentialsStore();
+		vi.mocked(credentialsStore.fetchCredentialTypes).mockImplementation(async () => {
+			callOrder.push('fetchCredentialTypes');
+		});
+		mockInitializeWorkspace.mockImplementationOnce(async () => {
+			callOrder.push('initialize');
+			return { workflowDocumentStore: { id: 'mock-store', setConnections: vi.fn() } };
+		});
+
+		const storeRef = shallowRef(null);
+		const { importWorkflowExact } = useWorkflowImport(storeRef);
+
+		await importWorkflowExact({
+			workflow: createWorkflowData({
+				nodes: [
+					{
+						id: '1',
+						name: 'VirusTotal',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [0, 0],
+						parameters: {},
+						extendsCredential: 'virusTotalApi',
+					},
+				],
+			}),
+		});
+
+		expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
+		expect(callOrder).toEqual(['fetchCredentialTypes', 'initialize']);
+	});
+
+	it('should not load credential types when no node needs them', async () => {
+		const credentialsStore = useCredentialsStore();
+
+		const storeRef = shallowRef(null);
+		const { importWorkflowExact } = useWorkflowImport(storeRef);
+
+		await importWorkflowExact({ workflow: createWorkflowData() });
+
+		expect(credentialsStore.fetchCredentialTypes).not.toHaveBeenCalled();
 	});
 });
