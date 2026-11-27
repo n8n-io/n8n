@@ -282,6 +282,53 @@ describe('LmChatOpenRouter', () => {
 			});
 		});
 
+		describe('app attribution options', () => {
+			const getConfiguration = async (appAttribution: Record<string, unknown>) => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'anthropic/claude-sonnet-4-20250514';
+					if (paramName === 'options') return { appAttribution };
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				const callArgs = MockedChatOpenAI.mock.calls[0][0];
+				expect(callArgs).not.toHaveProperty('appAttribution');
+				return callArgs?.configuration;
+			};
+
+			it('should send referer, title and hidden visibility headers', async () => {
+				const configuration = await getConfiguration({
+					appUrl: 'https://wf-1.n8n.example.com',
+					appTitle: 'n8n: My Workflow',
+				});
+
+				expect(configuration?.defaultHeaders).toEqual({
+					'HTTP-Referer': 'https://wf-1.n8n.example.com',
+					'X-OpenRouter-Title': 'n8n: My Workflow',
+					'X-OpenRouter-App-Visibility': 'hidden',
+				});
+			});
+
+			it('should not send the visibility header when hideFromRankings is false', async () => {
+				const configuration = await getConfiguration({
+					appUrl: 'https://wf-1.n8n.example.com',
+					hideFromRankings: false,
+				});
+
+				expect(configuration?.defaultHeaders).toEqual({
+					'HTTP-Referer': 'https://wf-1.n8n.example.com',
+				});
+			});
+
+			it('should not send headers when appUrl is empty', async () => {
+				const configuration = await getConfiguration({ appTitle: 'n8n: My Workflow' });
+
+				expect(configuration?.defaultHeaders).toBeUndefined();
+			});
+		});
+
 		describe('reasoning effort', () => {
 			const setupWithOptions = (model: string, options: Record<string, unknown>) => {
 				const ctx = setupMockContext();
