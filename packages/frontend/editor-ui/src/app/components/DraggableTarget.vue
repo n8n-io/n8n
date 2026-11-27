@@ -16,7 +16,7 @@ type Props = {
 const props = withDefaults(defineProps<Props>(), {
 	disabled: false,
 	sticky: false,
-	stickyOffset: () => [0, 0],
+	stickyOffset: (): XYPosition => [0, 0],
 	stickyOrigin: 'top-left',
 });
 
