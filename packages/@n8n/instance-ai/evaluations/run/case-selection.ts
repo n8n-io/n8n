@@ -8,6 +8,7 @@
 import type { CliArgs } from '../cli/args';
 import { unsupportedMcpBuildSetupFields } from '../cli/mcp-builder';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { pendingAgentRunFields } from '../harness/agent-run-schema';
 import { resolveEvalPromptVersion } from '../harness/prompt-version';
 import type { EvalLogger } from '../harness/logger';
 import {
@@ -22,6 +23,7 @@ export function selectCases(
 	logger: EvalLogger,
 ): { testCasesWithFiles: WorkflowTestCaseWithFile[]; prebuiltManifest?: PrebuiltManifest } {
 	let testCasesWithFiles = loaded;
+	warnPendingAgentRunFields(loaded, logger);
 	const prebuiltManifest = args.prebuiltWorkflows
 		? loadPrebuiltManifest(args.prebuiltWorkflows)
 		: undefined;
@@ -115,4 +117,16 @@ export function selectCases(
 		for (const { testCase } of testCasesWithFiles) resolveEvalPromptVersion(testCase);
 	}
 	return { testCasesWithFiles, prebuiltManifest };
+}
+
+/** The contract is pinned ahead of N3/N4, so these fields load but do nothing yet.
+ *  Warn per case rather than reject, so cases can be authored now. */
+function warnPendingAgentRunFields(cases: WorkflowTestCaseWithFile[], logger: EvalLogger): void {
+	for (const { testCase, fileSlug } of cases) {
+		const pending = pendingAgentRunFields(testCase);
+		if (pending.length === 0) continue;
+		logger.warn(
+			`${fileSlug}: ${pending.join(', ')} ignored — multi-turn runs (userTurns, sessions) and memory (keepMemory, configOverrides) are not implemented yet (AGENT-1666). The case runs single-turn with memory stripped.`,
+		);
+	}
 }

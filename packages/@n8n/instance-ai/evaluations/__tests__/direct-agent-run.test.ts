@@ -294,6 +294,22 @@ describe('prepareDirectAgentRun', () => {
 			expect(tables.map((table: { name: string }) => table.name)).toEqual(['Price list']);
 		});
 
+		it('sends the seed table rows to the restore, which inserts them', async () => {
+			const rows = [{ sku: 'A-1' }, { sku: 'B-2' }];
+			const { mocks } = await prepareWith(
+				directCase({
+					seed: {
+						mode: 'inline',
+						agents: [agentWithTableTool],
+						dataTables: [{ ...priceList, rows }],
+					},
+				}),
+			);
+
+			const [, , , tables] = mocks.restoreThread.mock.calls[0];
+			expect(tables[0].rows).toEqual(rows);
+		});
+
 		it('fills the restored table from a scenario seed table of the same name', async () => {
 			const { build, mocks } = await prepareWith(
 				tableCase([

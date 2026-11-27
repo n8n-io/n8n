@@ -23,6 +23,7 @@ import {
 	extractSetupCardRequests,
 	extractSetupWizardOutcome,
 } from '../outcome/transcript-from-events';
+import { findSeedTableRowIssues, SeedTableRowsSchema } from './seed-table-rows';
 import type { ConversationTurn, TranscriptStep, TranscriptTurn } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -63,19 +64,28 @@ const SeedProjectSchema = z.object({
 		.refine((name) => name.trim() === name, { message: 'project name must be trimmed' }),
 });
 
-const SeedDataTableSchema = z.object({
-	/** The table's id as it appears in the trace — the value baked into the
-	 *  seed workflow's data-table node. Rewritten to the recreated table's id on
-	 *  restore (the server generates a fresh id; it can't be pinned). */
-	id: z.string().min(1),
-	name: z.string().min(1),
-	columns: z.array(
-		z.object({ name: z.string().min(1), type: z.enum(['string', 'number', 'boolean', 'date']) }),
-	),
-	// Schema only — rows are intentionally not seeded (the table exists empty,
-	// which is all the workflow node needs). Real rows are the highest-PII part
-	// of a trace and are kept out of the eval instance entirely.
-});
+const SeedDataTableSchema = z
+	.object({
+		/** The table's id as it appears in the trace — the value baked into the
+		 *  seed workflow's data-table node. Rewritten to the recreated table's id on
+		 *  restore (the server generates a fresh id; it can't be pinned). */
+		id: z.string().min(1),
+		name: z.string().min(1),
+		columns: z.array(
+			z.object({ name: z.string().min(1), type: z.enum(['string', 'number', 'boolean', 'date']) }),
+		),
+		/** Optional SYNTHETIC rows, keyed by column name, inserted by the restore
+		 *  (AGENT-1665). Omitted: the table exists empty. Never real rows: those are
+		 *  the highest-PII part of a trace, and a replay seed never carries them. */
+		rows: SeedTableRowsSchema,
+	})
+	// Checked at load: a cell for an undeclared column, or of the wrong type, would
+	// otherwise fail the restore mid-run as a 400 that reads like an infra fault.
+	.superRefine((table, ctx) => {
+		for (const issue of findSeedTableRowIssues(table)) {
+			ctx.addIssue({ code: z.ZodIssueCode.custom, ...issue });
+		}
+	});
 
 /** A content block. Only `type` is ours to require — the block shapes belong to
  *  the agent's message store, so an unrecognised one is accepted and simply not

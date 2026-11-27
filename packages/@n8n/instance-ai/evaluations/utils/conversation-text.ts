@@ -5,6 +5,7 @@ import {
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
+import { agentUnderTestIndex, isDirectAgentRun, type AgentRun } from '../harness/agent-run-schema';
 import type { CaseSeed } from '../harness/schema';
 import type {
 	ConversationTurn,
@@ -62,9 +63,15 @@ function attachedResourceNote(
  * falls back to naming the attachment — otherwise it labels as '' in every report.
  */
 export function caseDisplayPrompt(
-	testCase: { conversation?: ConversationTurn[]; seed?: CaseSeed },
+	testCase: {
+		conversation?: ConversationTurn[];
+		seed?: CaseSeed;
+		description?: string;
+		agentRun?: AgentRun;
+	},
 	transcript?: TranscriptTurn[],
 ): string {
+	if (isDirectAgentRun(testCase)) return directRunLabel(testCase);
 	const authored = testCase.conversation?.[0]?.text;
 	if (authored) return authored;
 	const liveTurn = transcript?.find((t) => !t.seeded && t.userMessage)?.userMessage;
@@ -72,6 +79,18 @@ export function caseDisplayPrompt(
 	const { seed } = testCase;
 	if (seed?.mode === 'replay') return `[seeded] thread ${seed.threadId.slice(0, 8)}`;
 	return attachedResourceNote(testCase.conversation?.[0], seed);
+}
+
+/** A direct Agent run has no conversation: its description, else the Agent under test. */
+function directRunLabel(testCase: {
+	seed?: CaseSeed;
+	description?: string;
+	agentRun?: AgentRun;
+}): string {
+	if (testCase.description) return testCase.description;
+	const seedAgents = testCase.seed?.mode === 'inline' ? testCase.seed.agents : [];
+	const agent = seedAgents[agentUnderTestIndex(testCase.agentRun, seedAgents)];
+	return agent ? `[agent: ${agent.config.name}]` : '';
 }
 
 /**
