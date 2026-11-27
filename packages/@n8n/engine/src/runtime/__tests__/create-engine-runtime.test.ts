@@ -28,6 +28,7 @@ const fakeQueue = <T>() => ({
 	publish: vi.fn(async (_message: T) => {}),
 	start: vi.fn(),
 	stop: vi.fn(async () => {}),
+	size: vi.fn(async () => 0),
 });
 
 vi.mock('../../retention', async (importOriginal) => {
@@ -309,7 +310,9 @@ describe('createEngineRuntime', () => {
 
 	it('runs on the queues the host gives it', async () => {
 		const executionId = generateId();
-		vi.spyOn(TypeOrmExecutionStore.prototype, 'createExecution').mockResolvedValue();
+		vi.spyOn(TypeOrmExecutionStore.prototype, 'createExecution').mockResolvedValue({
+			errorExecutionAlreadyExists: false,
+		});
 		// Lets the wait sweeper publish to the step queue without a database.
 		vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null);
 		vi.spyOn(TypeOrmStepStore.prototype, 'resumeDueSteps')
@@ -574,7 +577,7 @@ describe('createEngineRuntime', () => {
 		await stopping;
 	});
 
-	it.each([Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 1.5])(
+	it.each([Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 1.5, undefined as unknown as number])(
 		'refuses a staleness threshold of %s',
 		(queuedMs) => {
 			expect(() =>
@@ -589,6 +592,19 @@ describe('createEngineRuntime', () => {
 			).toThrow('The staleness threshold "queuedMs" must be a positive whole number');
 		},
 	);
+
+	it('refuses an error workflow wait that is set but not a positive whole number', () => {
+		expect(() =>
+			createEngineRuntime({
+				dataSource: fakeDataSource(),
+				admittance: new AllowAllAdmittance(),
+				identityVerifier,
+				responseSender,
+				queues: createInMemoryWorkQueues(),
+				staleness: { queuedMs: 1, runningStepMs: 60_000, errorWorkflowPendingMs: 0 },
+			}),
+		).toThrow('The staleness threshold "errorWorkflowPendingMs" must be a positive whole number');
+	});
 
 	it('accepts positive whole staleness thresholds', () => {
 		expect(() =>

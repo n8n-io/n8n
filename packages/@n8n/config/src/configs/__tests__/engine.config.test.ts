@@ -84,6 +84,16 @@ describe('EngineConfig', () => {
 		expect(Container.get(EngineConfig).roles).toBe('api,orchestrator');
 	});
 
+	it('should serve data plane metrics on port 9464 by default', () => {
+		expect(Container.get(EngineConfig).metricsPort).toBe(9464);
+	});
+
+	it('should read the data plane metrics port', () => {
+		process.env.N8N_ENGINE_METRICS_PORT = '9999';
+
+		expect(Container.get(EngineConfig).metricsPort).toBe(9999);
+	});
+
 	it('should host the data plane in-process by default', () => {
 		expect(Container.get(EngineConfig).mode).toBe('in-process');
 	});

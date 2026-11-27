@@ -17,7 +17,7 @@ import { useRestrictReviewStore } from '../restrict-review/restrict-review.store
 const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
-	saveInstancePolicy: vi.fn(),
+	setInstanceTypeAccess: vi.fn(),
 	fetchNodeTypeUsage: vi.fn(),
 	fetchCredentialTypeUsage: vi.fn(),
 }));
@@ -138,10 +138,10 @@ describe('NodeTypeAccessDialog', () => {
 					})
 				: access(kind, { notionApi: 'deny', notionOAuth2Api: 'allow' }),
 		);
-		mocks.saveInstancePolicy.mockImplementation(async (_context, _kind, policy) => ({
+		mocks.setInstanceTypeAccess.mockImplementation(async () => ({
 			scopeId: null,
-			rules: policy.rules,
-			defaultAction: policy.defaultAction,
+			rules: [],
+			defaultAction: 'allow',
 			version: 2,
 			warnings: [],
 		}));
@@ -296,16 +296,9 @@ describe('NodeTypeAccessDialog', () => {
 
 		await fireEvent.click(notionOAuth);
 
-		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
-		expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'credential', {
-			rules: [
-				{
-					id: expect.any(String),
-					action: 'deny',
-					selector: { kind: 'name', value: 'notionOAuth2Api' },
-				},
-			],
-			defaultAction: 'allow',
+		await waitFor(() => expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1));
+		expect(mocks.setInstanceTypeAccess).toHaveBeenCalledWith(expect.anything(), 'credential', {
+			changes: [{ type: 'notionOAuth2Api', access: 'deny' }],
 			version: 1,
 		});
 	});
@@ -342,7 +335,7 @@ describe('NodeTypeAccessDialog', () => {
 
 	it('shows the chosen access while the save runs, and the saved access again when it fails', async () => {
 		const save = createDeferredPromise<never>();
-		mocks.saveInstancePolicy.mockReturnValue(save.promise);
+		mocks.setInstanceTypeAccess.mockReturnValue(save.promise);
 		const { getByTestId } = await setup('n8n-nodes-base.notion');
 		const notionOAuth = () =>
 			within(getByTestId('node-type-access-related-credential')).getAllByTestId(
@@ -375,47 +368,12 @@ describe('NodeTypeAccessDialog', () => {
 		expect(queryByTestId('node-type-access-empty')).not.toBeInTheDocument();
 	});
 
-	it('keeps the rule that decides for the Tool variant when the node changes', async () => {
-		mocks.fetchNodeTypeUsage.mockResolvedValue({});
-		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
-		const denyNotionTool = {
-			id: 'deny-notion-tool',
-			action: 'deny',
-			selector: { kind: 'name', value: 'n8n-nodes-base.notionTool' },
-		};
-		mocks.fetchInstancePolicy.mockImplementation(async (_context, kind: string) => ({
-			scopeId: null,
-			rules: kind === 'node' ? [denyNotionTool] : [],
-			defaultAction: 'allow',
-			version: 1,
-		}));
-		const { getByTestId } = await setup('n8n-nodes-base.notion');
-
-		await fireEvent.click(
-			within(getByTestId('node-type-access-node')).getByTestId('type-access-select'),
-		);
-
-		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
-		expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
-			rules: [
-				denyNotionTool,
-				{
-					id: expect.any(String),
-					action: 'deny',
-					selector: { kind: 'name', value: 'n8n-nodes-base.notion' },
-				},
-			],
-			defaultAction: 'allow',
-			version: 1,
-		});
-	});
-
 	it('keeps showing the latest choice when an earlier save on the same row ends', async () => {
 		mocks.fetchNodeTypeUsage.mockResolvedValue({});
 		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		const firstSave = createDeferredPromise<unknown>();
 		const secondSave = createDeferredPromise<unknown>();
-		mocks.saveInstancePolicy
+		mocks.setInstanceTypeAccess
 			.mockReturnValueOnce(firstSave.promise)
 			.mockReturnValueOnce(secondSave.promise);
 		const { getByTestId } = await setup('n8n-nodes-base.notion');
@@ -423,7 +381,7 @@ describe('NodeTypeAccessDialog', () => {
 			within(getByTestId('node-type-access-node')).getByTestId('type-access-select');
 
 		await fireEvent.click(nodeSelect());
-		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
+		await waitFor(() => expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1));
 		await fireEvent.click(nodeSelect());
 		expect(nodeSelect()).toHaveAttribute('data-value', 'allow');
 
@@ -438,7 +396,7 @@ describe('NodeTypeAccessDialog', () => {
 			version: 2,
 			warnings: [],
 		});
-		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(2));
 
 		expect(nodeSelect()).toHaveAttribute('data-value', 'allow');
 	});
@@ -464,7 +422,7 @@ describe('NodeTypeAccessDialog', () => {
 		review.resolve(false);
 		await waitFor(() => expect(review.request).toBeNull());
 		expect(nodeSelect()).toHaveAttribute('data-value', 'allow');
-		expect(mocks.saveInstancePolicy).not.toHaveBeenCalled();
+		expect(mocks.setInstanceTypeAccess).not.toHaveBeenCalled();
 	});
 
 	it('shows that a restriction waits for the usage counts', async () => {
@@ -480,7 +438,7 @@ describe('NodeTypeAccessDialog', () => {
 
 		counts.resolve({});
 		await waitFor(() => expect(nodeSelect()).toHaveAttribute('data-loading', 'false'));
-		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
+		await waitFor(() => expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1));
 	});
 
 	it('restricts a node type in use when the admin confirms', async () => {
@@ -493,16 +451,9 @@ describe('NodeTypeAccessDialog', () => {
 		await waitFor(() => expect(review.request).not.toBeNull());
 		review.resolve(true);
 
-		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
-		expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
-			rules: [
-				{
-					id: expect.any(String),
-					action: 'deny',
-					selector: { kind: 'name', value: 'n8n-nodes-base.notion' },
-				},
-			],
-			defaultAction: 'allow',
+		await waitFor(() => expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1));
+		expect(mocks.setInstanceTypeAccess).toHaveBeenCalledWith(expect.anything(), 'node', {
+			changes: [{ type: 'n8n-nodes-base.notion', access: 'deny' }],
 			version: 1,
 		});
 	});

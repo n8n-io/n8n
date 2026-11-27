@@ -19,7 +19,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
-import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/engine-lifecycle-event-subscriptions';
+import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/lifecycle-events/engine-lifecycle-event-subscriptions';
 import {
 	EngineDidNotAdmitError,
 	type EngineDataPlaneProxyService,

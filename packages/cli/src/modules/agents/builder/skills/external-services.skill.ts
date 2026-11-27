@@ -129,8 +129,7 @@ The \`integrations\` array controls how the target agent is triggered.
 - ${INITIAL_BUILD_NOTE} Instead of \`agent_builder_configure_channel\`: after
   \`agent-context({ type: "integrations" })\` returns the matching type, add
   \`{ "type": "<integrationType>", "credentialId": "" }\` to \`integrations\`
-  in your single initial config write (include a minimal valid draft
-  \`settings\` object for telegram) so the channel appears in the agent panel
+  in your single initial config write (omit \`settings\`) so the channel appears in the agent panel
   as needing setup. If the config is already written, \`agent_builder_patch_config\` (with
   the \`configHash\` from your latest config read or write) adding it to
   \`/integrations/-\` instead. Pass
@@ -139,6 +138,13 @@ The \`integrations\` array controls how the target agent is triggered.
   call \`agent_builder_configure_channel\` again after \`agent_builder_finish_setup\` handles the card. If
   skipped, list it in the closing setup checklist pointing at the channel
   chip in the agent panel.
+- The telegram channel card asks for the access mode and allowed users, also
+  when the user wants private access. Do not ask for Telegram user IDs or
+  usernames in questions. When a \`send_dm\` task needs the user
+  ID, create that task after \`agent_builder_finish_setup\`. Call
+  \`agent-context({ type: "config" })\` and take the ID from
+  \`config.integrations[].settings.allowedUsers\`. Ask for the ID only when
+  that list has no numeric ID.
 - Preserve existing chat integrations unless the user asked to remove them.
 - To remove an existing chat integration, call \`agent-context({ type: "config" })\` and inspect
   \`config.integrations\`.

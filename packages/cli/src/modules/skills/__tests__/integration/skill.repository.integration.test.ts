@@ -1,4 +1,3 @@
-import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { PostHogClient } from '@n8n/backend-services';
 import {
@@ -25,9 +24,9 @@ import {
 	type SkillVisibility,
 } from '../../database/repositories/skill.repository';
 import { Skill } from '../../database/entities/skill.entity';
-import { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
 import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import { SkillService } from '../../services/skill.service';
+import { SkillsGate } from '../../services/skills-gate';
 import type { AssistantSkillContext } from '../../utils/skill-content';
 import * as fixtures from '../../testing';
 
@@ -47,7 +46,7 @@ const content = (overrides: Partial<SkillContent> = {}): SkillContent => ({
 });
 
 describe('SkillRepository', () => {
-	const postHog = mockInstance(PostHogClient);
+	mockInstance(PostHogClient);
 	let skills: SkillRepository;
 	let skillRuntime: SkillRuntimeService;
 	let owner: User;
@@ -79,7 +78,7 @@ describe('SkillRepository', () => {
 	/** The Assistant reads as `InstanceAiSkillsService` gates them. */
 	const assistantSkills = {
 		readSkill: async (context: AssistantSkillContext, skillId: string, versionId?: string) =>
-			(await Container.get(AssistantSkillsFlagGate).isEnabled())
+			Container.get(SkillsGate).isEnabled
 				? await skillRuntime.readForAssistant(context, skillId, versionId)
 				: null,
 		readFile: async (
@@ -88,16 +87,10 @@ describe('SkillRepository', () => {
 			versionId: string,
 			path: string,
 		) =>
-			(await Container.get(AssistantSkillsFlagGate).isEnabled())
+			Container.get(SkillsGate).isEnabled
 				? await skillRuntime.readFileForAssistant(context, skillId, versionId, path)
 				: null,
 	};
-
-	beforeEach(() => {
-		postHog.getFeatureFlagForInstance.mockImplementation(
-			async (flag) => flag === ASSISTANT_SKILLS_FLAG,
-		);
-	});
 
 	afterEach(async () => {
 		// Agent rows cascade to their history, pins and dependency rows.
@@ -261,9 +254,6 @@ describe('SkillRepository', () => {
 				'references/guide.md',
 			),
 		).toBeNull();
-		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
-		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toBeNull();
-		postHog.getFeatureFlagForInstance.mockResolvedValue(true);
 		await skills.setAssistantAvailability(id, false, {});
 		expect(await assistantSkills.readFile(context, id, v1, 'references/guide.md')).toBeNull();
 		expect(await assistantSkills.readSkill(context, id, v1)).toBeNull();

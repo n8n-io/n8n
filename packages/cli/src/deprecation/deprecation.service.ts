@@ -202,6 +202,19 @@ export class DeprecationService {
 				value !== undefined && ['false', '0'].includes(value.toLowerCase()),
 		},
 		{
+			envVar: 'N8N_SCHEDULER_SYSTEM_TASKS_ENABLED',
+			message: `Durable system tasks are now on by default. ${SAFE_TO_REMOVE}`,
+			checkValue: (value?: string) =>
+				value !== undefined && !['false', '0'].includes(value.toLowerCase()),
+		},
+		{
+			envVar: 'N8N_SCHEDULER_SYSTEM_TASKS_ENABLED',
+			message:
+				'The in-process system task timers are deprecated and will be removed in a future version, together with this variable. Remove this variable to run system tasks on the durable scheduler, which is the default.',
+			checkValue: (value?: string) =>
+				value !== undefined && ['false', '0'].includes(value.toLowerCase()),
+		},
+		{
 			envVar: 'N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER',
 			message: `The "Skip Durable Scheduler" option of the Schedule Trigger node no longer exists. Schedule Triggers use the durable scheduler only when the workflow publication service is enabled; otherwise they remain on the in-memory scheduler. To run all schedules on the in-memory scheduler when the workflow publication service is enabled, set N8N_SCHEDULER_ENABLED=false. ${SAFE_TO_REMOVE}`,
 		},

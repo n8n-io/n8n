@@ -1,6 +1,7 @@
 import { Role, RoleRepository, Scope, ScopeRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope as ScopeType } from '@n8n/permissions';
+import { DataSource } from '@n8n/typeorm';
 
 import { RoleCacheService } from '@n8n/backend-services';
 
@@ -66,7 +67,7 @@ export async function createCustomRoleWithScopeSlugs(
 	const scopeRepository = Container.get(ScopeRepository);
 
 	// Find existing scopes by their slugs
-	const scopes = await scopeRepository.findByList(scopeSlugs);
+	const scopes = await scopeRepository.findByList(scopeSlugs, {});
 
 	if (scopes.length !== scopeSlugs.length) {
 		const missingScopes = scopeSlugs.filter((slug) => !scopes.some((scope) => scope.slug === slug));
@@ -86,7 +87,7 @@ export async function createCustomRoleWithScopeSlugs(
  * Creates a test scope with given parameters
  */
 export async function createScope(overrides: Partial<Scope> = {}): Promise<Scope> {
-	const scopeRepository = Container.get(ScopeRepository);
+	const scopeRepository = Container.get(DataSource).getRepository(Scope);
 
 	const defaultScope: Partial<Scope> = {
 		slug: `test:scope:${Math.random().toString(36).substring(7)}` as ScopeType,
@@ -169,7 +170,7 @@ export async function removeAllRoleScopes(): Promise<void> {
  */
 export async function cleanupRolesAndScopes(): Promise<void> {
 	const roleRepository = Container.get(RoleRepository);
-	const scopeRepository = Container.get(ScopeRepository);
+	const scopeRepository = Container.get(DataSource).getRepository(Scope);
 
 	// Delete test roles (excluding system roles for safety)
 	const testRoles = await roleRepository

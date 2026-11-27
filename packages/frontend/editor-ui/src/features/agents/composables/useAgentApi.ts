@@ -10,6 +10,8 @@ import type {
 	AgentChatListResponse,
 	AgentChatMessagesResponse,
 	AgentSessionFilesResponse,
+	GenerateAgentTestScenariosDto,
+	GenerateAgentTestScenariosResponse,
 	SystemAgentThreadSummary,
 	SystemAgentThreadsResponse,
 	AgentChatQueueResponse,
@@ -36,6 +38,7 @@ import type {
 	AgentSkillAvailability,
 	AgentsSettingsDto,
 	AgentSkillMutationResponse,
+	AgentSkillWorkflowAccessResponse,
 	AgentTaskConfig,
 	AgentTaskDto,
 	AgentIntegrationSettings,
@@ -897,6 +900,19 @@ export const createAgentSkill = async (
 	);
 };
 
+export const getAgentSkillWorkflowAccess = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	skillId: string,
+): Promise<AgentSkillWorkflowAccessResponse> => {
+	return await makeRestApiRequest<AgentSkillWorkflowAccessResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/skill-workflow-access/${skillId}`,
+	);
+};
+
 export const updateAgentSkill = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -1223,6 +1239,20 @@ export const clearTestChatMessages = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
+export const generateAgentTestScenarios = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: Partial<GenerateAgentTestScenariosDto> = {},
+): Promise<GenerateAgentTestScenariosResponse> => {
+	return await makeRestApiRequest<GenerateAgentTestScenariosResponse>(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/test-scenarios`,
+		payload,
 	);
 };
 

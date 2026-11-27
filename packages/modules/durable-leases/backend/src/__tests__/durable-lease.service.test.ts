@@ -41,6 +41,7 @@ describe('DurableLeaseService', () => {
 		kinds.insertIfMissing.mockResolvedValue();
 		sessions = mockInstance(LeaseSessionRepository);
 		sessions.insertSession.mockResolvedValue();
+		sessions.renewLive.mockResolvedValue(true);
 		sessions.deleteSession.mockResolvedValue();
 	});
 

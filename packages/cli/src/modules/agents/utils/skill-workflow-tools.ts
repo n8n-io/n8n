@@ -9,11 +9,11 @@ import {
 import { extractAgentWorkflowRefs } from './extract-agent-workflow-refs';
 
 export type SkillWorkflowTool = {
-	skillId: string;
+	skillIds: string[];
 	tool: AgentJsonWorkflowToolConfig & { workflowId: string };
 };
 
-type MentionedWorkflows = Map<string, { name: string; skillId: string; skillName: string }>;
+type MentionedWorkflows = Map<string, { name: string; skillIds: string[]; skillName: string }>;
 
 type WorkflowsByName = ReadonlyMap<string, { id: string }>;
 
@@ -50,8 +50,12 @@ function findMentionedWorkflows(
 		const texts = [skill.instructions, ...(skill.references ?? []).map((file) => file.content)];
 		for (const text of texts) {
 			for (const { workflowId, name } of parseSkillWorkflowMentions(text)) {
-				if (mentioned.has(workflowId)) continue;
-				mentioned.set(workflowId, { name, skillId: ref.id, skillName: skill.name });
+				const known = mentioned.get(workflowId);
+				if (!known) {
+					mentioned.set(workflowId, { name, skillIds: [ref.id], skillName: skill.name });
+				} else if (!known.skillIds.includes(ref.id)) {
+					known.skillIds.push(ref.id);
+				}
 			}
 		}
 	}
@@ -76,8 +80,8 @@ function toSkillWorkflowTools(
 	return [...mentioned]
 		.filter(([workflowId]) => !attached.has(workflowId))
 		.filter(([workflowId]) => !takenNames.has(`workflow_${workflowId}`))
-		.map(([workflowId, { name, skillId, skillName }]) => ({
-			skillId,
+		.map(([workflowId, { name, skillIds, skillName }]) => ({
+			skillIds,
 			tool: {
 				type: 'workflow',
 				workflowId,
@@ -103,9 +107,9 @@ export function withSkillWorkflowTools(
 	config: AgentJsonConfig,
 	skills: Record<string, AgentSkill>,
 	workflowsByName: WorkflowsByName = new Map(),
-): AgentJsonConfig {
+): { config: AgentJsonConfig; skillIdsByWorkflowId: Map<string, string[]> } {
 	const mentioned = findMentionedWorkflows(config, skills);
-	if (mentioned.size === 0) return config;
+	if (mentioned.size === 0) return { config, skillIdsByWorkflowId: new Map() };
 
 	const directTools = (config.tools ?? []).map((tool) => {
 		if (tool.type !== 'workflow') return tool;
@@ -120,6 +124,11 @@ export function withSkillWorkflowTools(
 		mentioned,
 		directWorkflowIds(config, workflowsByName),
 		configuredToolNames(config),
-	).map(({ tool }) => tool);
-	return { ...config, tools: [...directTools, ...skillTools] };
+	);
+	return {
+		config: { ...config, tools: [...directTools, ...skillTools.map(({ tool }) => tool)] },
+		skillIdsByWorkflowId: new Map(
+			skillTools.map(({ skillIds, tool }) => [tool.workflowId, skillIds]),
+		),
+	};
 }

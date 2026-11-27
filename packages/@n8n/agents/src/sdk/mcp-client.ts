@@ -1,15 +1,17 @@
+import { withMcpHttpStatus } from '../runtime/mcp/http-error';
 import { McpConnection } from '../runtime/mcp/mcp-connection';
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
 import type { McpConnectionFailedEvent, McpServerConfig, McpVerifyResult } from '../types/sdk/mcp';
 import type { BuiltTool } from '../types/sdk/tool';
 
-function formatErrorWithCause(error: unknown): string {
-	const stringify = (obj: unknown) => (obj instanceof Error ? obj.message : String(obj));
-	if (!(error instanceof Error)) return stringify(error);
+async function formatErrorWithCause(error: unknown): Promise<string> {
+	const stringify = async (obj: unknown) =>
+		await withMcpHttpStatus(obj, obj instanceof Error ? obj.message : String(obj));
+	if (!(error instanceof Error)) return await stringify(error);
 
-	const messages: string[] = [error.message];
+	const messages: string[] = [await stringify(error)];
 	if (error.cause) {
-		messages.push(stringify(error.cause));
+		messages.push(await stringify(error.cause));
 	}
 
 	return messages.join('. ');
@@ -177,9 +179,15 @@ export class McpClient {
 		for (let i = 0; i < results.length; i++) {
 			const result = results[i];
 			if (result.status === 'rejected') {
+				const message =
+					result.reason instanceof Error ? result.reason.message : String(result.reason);
+				let error = await withMcpHttpStatus(result.reason, message);
+				if (error === message && result.reason instanceof Error) {
+					error = await withMcpHttpStatus(result.reason.cause, message);
+				}
 				errors.push({
 					server: this.configs[i].name,
-					error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+					error,
 				});
 			} else {
 				servers.push(result.value);
@@ -232,7 +240,7 @@ export class McpClient {
 			const result = settled[i];
 			if (result.status === 'rejected') {
 				const config = this.configs[i];
-				const error = formatErrorWithCause(result.reason);
+				const error = await formatErrorWithCause(result.reason);
 				failures.push({ server: config.name, error });
 				// The transport may have opened before listTools threw; tear it
 				// down so we don't keep an unusable connection alive for the run.

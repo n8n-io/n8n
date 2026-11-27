@@ -14,7 +14,6 @@ import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
 
 export const SKILLS_MAX_PAGE_SIZE = 100;
-export const ASSISTANT_SKILLS_FLAG = '130_attach_skills_to_assistant';
 export const MCP_SKILLS_EXTENSION_FLAG = '128_mcp_skills_extension';
 export const WORKFLOWS_IN_SKILLS_FLAG = '152_workflows_in_skills';
 export const WORKFLOWS_IN_SKILLS_ENABLED_VARIANT = 'variant';
