@@ -327,8 +327,9 @@ project that resets to allow-all keeps its rows, and so keeps `hasPolicy: true`.
 project's rows of both kinds in one transaction, with the same two permission scopes. The project
 then follows the instance policy. Each version must match the current version of its kind, and a
 kind with no row is at version 0. A stale version fails with 409 and deletes nothing. A project
-with no row of either kind fails with 404. The route also deletes each attached document that no
-other scope uses. A document that another scope uses stays.
+with no row of either kind fails with 404. The attachments of the rows go with them. The attached
+documents stay, also a document that no other scope uses: only `DELETE /policies/:policyId`
+deletes a document.
 
 The counts are counts of types, not of rules, over the types the instance policy page lists:
 

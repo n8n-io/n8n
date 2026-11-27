@@ -508,10 +508,10 @@ async function getProjectPolicy(kind: 'node' | 'credential', projectId: string) 
 	return response.body.data as { scopeId: string | null; version: number; rules: unknown[] };
 }
 
-async function attachedPolicyIds(scopeId: string) {
+async function attachedPolicyIds(scopeId: string, kind: 'node' | 'credential' = 'node') {
 	const response = await testServer
 		.authAgentFor(owner)
-		.get(`/node-type-policies/scopes/${scopeId}/attachments`)
+		.get(`/${kind}-type-policies/scopes/${scopeId}/attachments`)
 		.expect(200);
 	const { attachments, version } = response.body.data as {
 		attachments: Array<{ policyId: string }>;
@@ -636,49 +636,57 @@ describe('DELETE /project-policies/:projectId', () => {
 		});
 	});
 
-	test('deletes the documents that only the project used', async () => {
+	test('keeps the documents of both kinds and removes their attachments', async () => {
 		const project = await createTeamProject('Documents');
-		const { scopeId } = await putProjectPolicy('node', project.id, [deny('p1', SLACK)]);
-		const [policyId] = (await attachedPolicyIds(scopeId)).policyIds;
+		const node = await putProjectPolicy('node', project.id, [deny('p1', SLACK)]);
+		const credential = await putProjectPolicy('credential', project.id, [deny('c1', 'slackApi')]);
+		const [nodePolicyId] = (await attachedPolicyIds(node.scopeId)).policyIds;
+		const [credentialPolicyId] = (await attachedPolicyIds(credential.scopeId, 'credential'))
+			.policyIds;
 
-		await deleteProjectPolicy(project.id, { node: 1, credential: 0 }).expect(200);
+		await deleteProjectPolicy(project.id, { node: 1, credential: 1 }).expect(200);
 
+		// A document that is still attached cannot be deleted (409), so 200 proves the cascade.
 		await testServer
 			.authAgentFor(owner)
-			.get(`/node-type-policies/policies/${policyId}`)
-			.expect(404);
+			.delete(`/node-type-policies/policies/${nodePolicyId}`)
+			.expect(200);
+		await testServer
+			.authAgentFor(owner)
+			.delete(`/credential-type-policies/policies/${credentialPolicyId}`)
+			.expect(200);
 	});
 
-	test('keeps a document that another scope still uses', async () => {
-		const project = await createTeamProject('Shared');
+	test('keeps a library document that only the project used', async () => {
+		const project = await createTeamProject('Library');
 		const { scopeId } = await putProjectPolicy('node', project.id, [deny('p1', SLACK)]);
-		const [projectPolicyId] = (await attachedPolicyIds(scopeId)).policyIds;
-		const instance = await testServer
+		const library = await testServer
 			.authAgentFor(owner)
-			.put('/node-type-policies/instance')
-			.send({ rules: [], defaultAction: 'allow', version: 0 })
+			.post('/node-type-policies/policies')
+			.send({ rules: [deny('l1', NOTION)] })
 			.expect(200);
-		const instanceScopeId: string = instance.body.data.scopeId;
-		const instanceAttachments = await attachedPolicyIds(instanceScopeId);
+		const libraryPolicyId: string = library.body.data.policy.id;
+		const attachments = await attachedPolicyIds(scopeId);
 		await testServer
 			.authAgentFor(owner)
-			.put(`/node-type-policies/scopes/${instanceScopeId}/attachments`)
+			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
 			.send({
 				attachments: [
-					{ policyId: instanceAttachments.policyIds[0], priority: 0, isFloor: false },
-					{ policyId: projectPolicyId, priority: 1, isFloor: false },
+					{ policyId: attachments.policyIds[0], priority: 0, isFloor: false },
+					{ policyId: libraryPolicyId, priority: 1, isFloor: false },
 				],
-				version: instanceAttachments.version,
+				version: attachments.version,
 			})
 			.expect(200);
+		const { version } = await getProjectPolicy('node', project.id);
 
-		await deleteProjectPolicy(project.id, { node: 1, credential: 0 }).expect(200);
+		await deleteProjectPolicy(project.id, { node: version, credential: 0 }).expect(200);
 
-		await testServer
+		const kept = await testServer
 			.authAgentFor(owner)
-			.get(`/node-type-policies/policies/${projectPolicyId}`)
+			.get(`/node-type-policies/policies/${libraryPolicyId}`)
 			.expect(200);
-		expect((await attachedPolicyIds(instanceScopeId)).policyIds).toContain(projectPolicyId);
+		expect(kept.body.data.rules).toEqual([deny('l1', NOTION)]);
 	});
 
 	test('accepts version 0 for a kind the project has no policy for', async () => {

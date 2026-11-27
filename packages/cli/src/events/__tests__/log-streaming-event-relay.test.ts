@@ -5131,13 +5131,7 @@ describe('LogStreamingEventRelay', () => {
 				{
 					event: 'node-type-policy-document-deleted',
 					auditName: 'n8n.audit.node-type-policy.document.deleted',
-					payload: {
-						updatedBy: 'sa-1',
-						kind: 'node',
-						policyId: 'policy-1',
-						origin: 'document-api',
-						before: policy,
-					},
+					payload: { updatedBy: 'sa-1', kind: 'node', policyId: 'policy-1', before: policy },
 				},
 				{
 					event: 'node-type-policy-scope-deleted',

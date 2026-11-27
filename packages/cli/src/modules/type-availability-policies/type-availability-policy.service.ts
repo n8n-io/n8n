@@ -525,15 +525,14 @@ export class TypeAvailabilityPolicyService {
 			updatedBy,
 			kind: existing.kind,
 			policyId,
-			origin: 'document-api',
 			before: { rules: existing.rules, version: existing.version },
 			loginId: loginIdOf(ctx),
 		});
 	}
 
 	/**
-	 * Deletes a project's scope of each kind, so the project follows the instance policy again,
-	 * and each attached document that no other scope uses. A document another scope uses stays.
+	 * Deletes a project's scope of each kind, so the project follows the instance policy again.
+	 * The attached documents stay: only an explicit document delete removes a document.
 	 * Both kinds go in one transaction, so a stale version of either one deletes nothing.
 	 * A kind without a scope is expected at `UNCONFIGURED_VERSION`, the version a read returns.
 	 */
@@ -576,24 +575,7 @@ export class TypeAvailabilityPolicyService {
 				await this.scopeRepository.deleteScope(scope.id, tx);
 			}
 
-			// Scopes before documents, the order every write path keeps. The document lock makes a
-			// concurrent attach wait, so the check below cannot miss it.
-			const policyIds = [
-				...new Set([...attachmentsByScope.values()].flat().map((a) => a.policyId)),
-			];
-			const deletedDocuments: TypeAvailabilityPolicy[] = [];
-			for (const policy of await this.policyRepository.findManyByIds(policyIds, tx, true)) {
-				const stillAttached = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
-					policy.id,
-					tx,
-				);
-				if (stillAttached.length > 0) continue;
-
-				await this.policyRepository.deletePolicy(policy.id, tx);
-				deletedDocuments.push(policy);
-			}
-
-			return { scopes, attachmentsByScope, deletedDocuments };
+			return { scopes, attachmentsByScope };
 		});
 
 		await this.snapshot.refreshAfterWrite();
@@ -609,17 +591,6 @@ export class TypeAvailabilityPolicyService {
 					version: scope.version,
 					attachments: result.attachmentsByScope.get(scope.id) ?? [],
 				},
-				loginId: loginIdOf(ctx),
-			});
-		}
-
-		for (const document of result.deletedDocuments) {
-			this.eventService.emit('node-type-policy-document-deleted', {
-				updatedBy,
-				kind: document.kind,
-				policyId: document.id,
-				origin: 'project-policy-delete',
-				before: { rules: document.rules, version: document.version },
 				loginId: loginIdOf(ctx),
 			});
 		}

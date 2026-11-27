@@ -1308,7 +1308,6 @@ describe('TelemetryEventRelay', () => {
 				updatedBy: 'user123',
 				kind: 'node-types',
 				policyId: 'policy-1',
-				origin: 'document-api',
 				before: { rules: [denyRule, allowPackageRule], version: 3 },
 			};
 
@@ -1323,18 +1322,6 @@ describe('TelemetryEventRelay', () => {
 					previous_rule_count: 2,
 				}),
 			);
-		});
-
-		it('should not report a document deleted with a project policy', () => {
-			eventService.emit('node-type-policy-document-deleted', {
-				updatedBy: 'user123',
-				kind: 'node-types',
-				policyId: 'policy-1',
-				origin: 'project-policy-delete',
-				before: { rules: [denyRule], version: 3 },
-			});
-
-			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 
 		it('should list the blocked types when the policy allows by default', () => {

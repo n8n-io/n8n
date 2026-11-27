@@ -830,7 +830,6 @@ describe('TypeAvailabilityPolicyService', () => {
 				updatedBy: 'user-1',
 				kind: KIND,
 				policyId: existing.id,
-				origin: 'document-api',
 				before: { rules: existing.rules, version: existing.version },
 			});
 		});
@@ -851,8 +850,8 @@ describe('TypeAvailabilityPolicyService', () => {
 			version: 2,
 		});
 		const nodeDocument = makePolicy({ id: 'policy-node', kind: NODE_TYPES_KIND });
-		const sharedDocument = makePolicy({
-			id: 'policy-shared',
+		const credentialDocument = makePolicy({
+			id: 'policy-credential',
 			kind: CREDENTIAL_TYPES_KIND,
 			rules: [],
 		});
@@ -877,12 +876,8 @@ describe('TypeAvailabilityPolicyService', () => {
 			attachmentRepository.listAttachmentsForScopes.mockResolvedValue(
 				new Map([
 					[nodeScope.id, [attachment(nodeDocument)]],
-					[credentialScope.id, [attachment(sharedDocument)]],
+					[credentialScope.id, [attachment(credentialDocument)]],
 				]),
-			);
-			policyRepository.findManyByIds.mockResolvedValue([nodeDocument, sharedDocument]);
-			attachmentRepository.listScopeIdsAttachedToPolicy.mockImplementation(async (policyId) =>
-				policyId === sharedDocument.id ? ['scope-instance'] : [],
 			);
 		};
 
@@ -913,7 +908,6 @@ describe('TypeAvailabilityPolicyService', () => {
 					ConflictError,
 				);
 				expect(scopeRepository.deleteScope).not.toHaveBeenCalled();
-				expect(policyRepository.deletePolicy).not.toHaveBeenCalled();
 				expect(snapshot.refreshAfterWrite).not.toHaveBeenCalled();
 				expect(eventService.emit).not.toHaveBeenCalled();
 			},
@@ -936,7 +930,6 @@ describe('TypeAvailabilityPolicyService', () => {
 		it('expects version 0 for a kind with no scope', async () => {
 			arrangeScopes(nodeScope, null);
 			attachmentRepository.listAttachmentsForScopes.mockResolvedValue(new Map());
-			policyRepository.findManyByIds.mockResolvedValue([]);
 
 			await expect(
 				service.deleteProjectPolicy(
@@ -955,7 +948,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(scopeRepository.deleteScope).toHaveBeenCalledWith(nodeScope.id, ROOT);
 		});
 
-		it('locks both scopes, then deletes them and only the documents no other scope uses', async () => {
+		it('locks both scopes, then deletes them and keeps their documents', async () => {
 			arrangeBothKinds();
 
 			await service.deleteProjectPolicy(
@@ -970,17 +963,11 @@ describe('TypeAvailabilityPolicyService', () => {
 			]);
 			expect(scopeRepository.deleteScope).toHaveBeenCalledWith(nodeScope.id, ROOT);
 			expect(scopeRepository.deleteScope).toHaveBeenCalledWith(credentialScope.id, ROOT);
-			expect(policyRepository.findManyByIds).toHaveBeenCalledWith(
-				[nodeDocument.id, sharedDocument.id],
-				ROOT,
-				true,
-			);
-			expect(policyRepository.deletePolicy).toHaveBeenCalledTimes(1);
-			expect(policyRepository.deletePolicy).toHaveBeenCalledWith(nodeDocument.id, ROOT);
+			expect(policyRepository.deletePolicy).not.toHaveBeenCalled();
 			expect(snapshot.refreshAfterWrite).toHaveBeenCalledTimes(1);
 		});
 
-		it('emits a scope event per scope and a document event per deleted document', async () => {
+		it('emits a scope event per deleted scope, with its attachments', async () => {
 			arrangeBothKinds();
 
 			await service.deleteProjectPolicy(
@@ -989,7 +976,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				'user-1',
 			);
 
-			expect(eventService.emit).toHaveBeenCalledTimes(3);
+			expect(eventService.emit).toHaveBeenCalledTimes(2);
 			expect(eventService.emit).toHaveBeenCalledWith('node-type-policy-scope-deleted', {
 				updatedBy: 'user-1',
 				kind: NODE_TYPES_KIND,
@@ -1002,14 +989,11 @@ describe('TypeAvailabilityPolicyService', () => {
 				kind: CREDENTIAL_TYPES_KIND,
 				projectId: PROJECT_ID,
 				scopeId: credentialScope.id,
-				before: { defaultAction: 'allow', version: 2, attachments: [attachment(sharedDocument)] },
-			});
-			expect(eventService.emit).toHaveBeenCalledWith('node-type-policy-document-deleted', {
-				updatedBy: 'user-1',
-				kind: NODE_TYPES_KIND,
-				policyId: nodeDocument.id,
-				origin: 'project-policy-delete',
-				before: { rules: nodeDocument.rules, version: nodeDocument.version },
+				before: {
+					defaultAction: 'allow',
+					version: 2,
+					attachments: [attachment(credentialDocument)],
+				},
 			});
 		});
 	});
@@ -1886,7 +1870,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			},
 			{
 				write: 'deleteProjectPolicy',
-				events: ['node-type-policy-scope-deleted', 'node-type-policy-document-deleted'],
+				events: ['node-type-policy-scope-deleted'],
 				act: async (ctx) => {
 					scopeRepository.findScopeByKindAndProject.mockImplementation(async (kind) =>
 						kind === NODE_TYPES_KIND ? makeScope({ projectId: 'project-1', version: 1 }) : null,
@@ -1896,8 +1880,6 @@ describe('TypeAvailabilityPolicyService', () => {
 							['scope-1', [{ policyId: 'policy-1', rules: [], priority: 0, isFloor: false }]],
 						]),
 					);
-					policyRepository.findManyByIds.mockResolvedValue([makePolicy()]);
-					attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
 					return await service.deleteProjectPolicy(
 						'project-1',
 						{ [NODE_TYPES_KIND]: 1, [CREDENTIAL_TYPES_KIND]: 0 },
