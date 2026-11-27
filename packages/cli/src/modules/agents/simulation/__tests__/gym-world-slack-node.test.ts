@@ -14,6 +14,7 @@ import { mock } from 'vitest-mock-extended';
 import { NodeTypes } from '@/node-types';
 import { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import { SimulationSession } from '../simulation-session';
 import {
@@ -43,6 +44,7 @@ describe('a Slack tool in a test chat on the Gym backend', () => {
 		logger,
 		mockInstance(PolicyEnforcementService),
 		mockInstance(CredentialAccessRepository),
+		mockInstance(DeprecatedNodesValidationService),
 	);
 	const slackVersion = 2.3;
 	const slackNodeType = new Slack().getNodeType(slackVersion);
