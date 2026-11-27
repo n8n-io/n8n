@@ -30,6 +30,7 @@ const EXTRACTED_MODULES = [
 	{ group: '@/features/settings/apiKeys', package: '@n8n/frontend-module-api-keys' },
 	// Not a feature, but it left the shell with the API keys feature.
 	{ group: '@/app/components/scopes', package: '@n8n/frontend-module-api-keys' },
+	{ group: '@/features/roles', package: '@n8n/frontend-module-roles' },
 ];
 
 // One representative path per block in `oxlint.config.mts` that sets the rule, plus

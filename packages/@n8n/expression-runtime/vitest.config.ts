@@ -18,6 +18,7 @@ const ENGINE_AWARE = [
 	'**/replaced-builtins.test.ts',
 	'**/to-ascii.test.ts',
 	'**/extract-url-path.test.ts',
+	'**/lazy-libraries.test.ts',
 ];
 
 export default defineConfig({

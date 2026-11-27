@@ -302,6 +302,7 @@ export class AssistantTurnEnvironmentFactory {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			skillSourcesEnabled,
+			workflowsInSkillsEnabled,
 			preferencesNoteVariant,
 			customMcpServersEnabled,
 		} = gates;
@@ -349,6 +350,7 @@ export class AssistantTurnEnvironmentFactory {
 			assistantSkillsEnabled,
 			skillSourcesEnabled,
 			customMcpServersEnabled,
+			workflowsInSkillsEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),

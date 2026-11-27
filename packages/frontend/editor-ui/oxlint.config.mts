@@ -39,6 +39,11 @@ const extractedFeatures = [
 		message:
 			'apiKeys is the @n8n/frontend-module-api-keys package. The shell registers a module through src/app/modules.manifest.ts.',
 	},
+	{
+		group: ['@/features/roles', '@/features/roles/*'],
+		message:
+			'roles is the @n8n/frontend-module-roles package. The shell registers a module through src/app/modules.manifest.ts.',
+	},
 ];
 
 /**
