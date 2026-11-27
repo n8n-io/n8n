@@ -143,7 +143,12 @@ describe('execution start (integration)', () => {
 	it('is idempotent across duplicate execution:enqueued deliveries', async () => {
 		const { executionStore, stepStore } = stores();
 		const publish = vi.fn();
-		const queue: WorkQueue<OrchestrationMessage> = { publish, start: vi.fn(), stop: vi.fn() };
+		const queue: WorkQueue<OrchestrationMessage> = {
+			publish,
+			start: vi.fn(),
+			stop: vi.fn(),
+			size: vi.fn(),
+		};
 		const handler = new ExecutionStartHandler(
 			executionStore,
 			stepStore,

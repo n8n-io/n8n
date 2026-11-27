@@ -11,7 +11,7 @@ import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.
 const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
-	saveInstancePolicy: vi.fn(),
+	setInstanceTypeAccess: vi.fn(),
 	showError: vi.fn(),
 	showMessage: vi.fn(),
 }));
@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../type-availability-policies.api', () => ({
 	fetchInstancePolicy: mocks.fetchInstancePolicy,
 	fetchInstanceAccess: mocks.fetchInstanceAccess,
-	saveInstancePolicy: mocks.saveInstancePolicy,
+	setInstanceTypeAccess: mocks.setInstanceTypeAccess,
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -129,12 +129,12 @@ describe('useInstancePolicy', () => {
 	it('says that the policy changed when it changed after the load', async () => {
 		const instancePolicy = setup(['nodeTypePolicy:manage']);
 		await instancePolicy.load();
-		mocks.saveInstancePolicy.mockRejectedValue(
+		mocks.setInstanceTypeAccess.mockRejectedValue(
 			new ResponseError('Policy scope has changed', { httpStatusCode: 409 }),
 		);
 		mocks.fetchInstancePolicy.mockResolvedValue(policy(2));
 
-		const result = await instancePolicy.save('node', (current) => current);
+		const result = await instancePolicy.setAccess('node', 'a', 'deny');
 
 		expect(result.status).toBe('changed');
 		expect(mocks.showMessage).toHaveBeenCalledWith(
@@ -146,14 +146,14 @@ describe('useInstancePolicy', () => {
 	it('says once that the policy changed when several saves were queued', async () => {
 		const instancePolicy = setup(['nodeTypePolicy:manage']);
 		await instancePolicy.load();
-		mocks.saveInstancePolicy.mockRejectedValue(
+		mocks.setInstanceTypeAccess.mockRejectedValue(
 			new ResponseError('Policy scope has changed', { httpStatusCode: 409 }),
 		);
 		mocks.fetchInstancePolicy.mockResolvedValue(policy(2));
 
 		await Promise.all([
-			instancePolicy.save('node', (current) => current),
-			instancePolicy.save('node', (current) => current),
+			instancePolicy.setAccess('node', 'a', 'deny'),
+			instancePolicy.setAccess('node', 'a', 'deny'),
 		]);
 
 		expect(mocks.showMessage).toHaveBeenCalledTimes(1);
@@ -163,13 +163,13 @@ describe('useInstancePolicy', () => {
 	it('explains a policy that the page cannot edit, without the server message', async () => {
 		const instancePolicy = setup(['nodeTypePolicy:manage']);
 		await instancePolicy.load();
-		mocks.saveInstancePolicy.mockRejectedValue(
+		mocks.setInstanceTypeAccess.mockRejectedValue(
 			new ResponseError('Cannot replace the policy of a scope with 2 attached documents', {
 				httpStatusCode: 409,
 			}),
 		);
 
-		const result = await instancePolicy.save('node', (current) => current);
+		const result = await instancePolicy.setAccess('node', 'a', 'deny');
 
 		expect(result.status).toBe('notEditable');
 		expect(mocks.showMessage).toHaveBeenCalledWith(
@@ -186,15 +186,15 @@ describe('useInstancePolicy', () => {
 	it('explains a policy that the page cannot edit only once', async () => {
 		const instancePolicy = setup(['nodeTypePolicy:manage']);
 		await instancePolicy.load();
-		mocks.saveInstancePolicy.mockRejectedValue(
+		mocks.setInstanceTypeAccess.mockRejectedValue(
 			new ResponseError('Cannot replace the policy', { httpStatusCode: 409 }),
 		);
 
 		await Promise.all([
-			instancePolicy.save('node', (current) => current),
-			instancePolicy.save('node', (current) => current),
+			instancePolicy.setAccess('node', 'a', 'deny'),
+			instancePolicy.setAccess('node', 'a', 'deny'),
 		]);
-		await instancePolicy.save('node', (current) => current);
+		await instancePolicy.setAccess('node', 'a', 'deny');
 
 		expect(mocks.showMessage).toHaveBeenCalledTimes(1);
 		expect(instancePolicy.notEditable.node).toBe(true);
@@ -204,9 +204,9 @@ describe('useInstancePolicy', () => {
 		const error = new ResponseError('Invalid rule', { httpStatusCode: 400 });
 		const instancePolicy = setup(['nodeTypePolicy:manage']);
 		await instancePolicy.load();
-		mocks.saveInstancePolicy.mockRejectedValue(error);
+		mocks.setInstanceTypeAccess.mockRejectedValue(error);
 
-		await instancePolicy.save('node', (current) => current);
+		await instancePolicy.setAccess('node', 'a', 'deny');
 
 		expect(mocks.showError).toHaveBeenCalledWith(error, 'Could not save the policy');
 		expect(mocks.showMessage).not.toHaveBeenCalled();
@@ -215,66 +215,28 @@ describe('useInstancePolicy', () => {
 	it('shows nothing after a successful save', async () => {
 		const instancePolicy = setup(['nodeTypePolicy:manage']);
 		await instancePolicy.load();
-		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
+		mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
 
-		await instancePolicy.save('node', (current) => current);
+		await instancePolicy.setAccess('node', 'a', 'deny');
 
 		expect(mocks.showError).not.toHaveBeenCalled();
 		expect(mocks.showMessage).not.toHaveBeenCalled();
 	});
 
-	describe('setAccess', () => {
-		const SLACK = 'n8n-nodes-base.slack';
-		const toolRule = {
-			id: 'deny-tool',
-			action: 'deny' as const,
-			selector: { kind: 'name' as const, value: `${SLACK}Tool` },
-		};
-		const packageRule = {
-			id: 'deny-package',
-			action: 'deny' as const,
-			selector: { kind: 'package' as const, value: 'n8n-nodes-base' },
-		};
-		const newRule = {
-			id: expect.any(String),
-			action: 'allow',
-			selector: { kind: 'name', value: SLACK },
-		};
-
-		const arrange = (accessVersion: number) => {
-			mocks.fetchInstancePolicy.mockResolvedValue({ ...policy(1), rules: [toolRule, packageRule] });
-			mocks.fetchInstanceAccess.mockResolvedValue({
-				scopeId: 'scope-1',
-				version: accessVersion,
-				defaultAction: 'allow',
-				types: [{ name: SLACK, access: 'deny', matchedRuleId: packageRule.id }],
-			});
-		};
-
-		it('puts the name rule before the rule that decides the type now', async () => {
-			arrange(1);
+	describe('setAccessMany', () => {
+		it('sends the access of each type in one write, with the loaded version', async () => {
+			mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
 			const instancePolicy = setup(['nodeTypePolicy:manage']);
 			await instancePolicy.load();
 
-			await instancePolicy.setAccess('node', SLACK, 'allow');
+			await instancePolicy.setAccessMany('node', ['a', 'b'], 'deny');
 
-			expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
-				rules: [toolRule, newRule, packageRule],
-				defaultAction: 'allow',
-				version: 1,
-			});
-		});
-
-		it('puts the name rule first when the access was read for another policy version', async () => {
-			arrange(0);
-			const instancePolicy = setup(['nodeTypePolicy:manage']);
-			await instancePolicy.load();
-
-			await instancePolicy.setAccess('node', SLACK, 'allow');
-
-			expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
-				rules: [newRule, toolRule, packageRule],
-				defaultAction: 'allow',
+			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
+			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledWith(expect.anything(), 'node', {
+				changes: [
+					{ type: 'a', access: 'deny' },
+					{ type: 'b', access: 'deny' },
+				],
 				version: 1,
 			});
 		});
@@ -283,10 +245,10 @@ describe('useInstancePolicy', () => {
 	it('shows an error when a save succeeds but the access cannot be read', async () => {
 		const instancePolicy = setup(['nodeTypePolicy:manage']);
 		await instancePolicy.load();
-		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
+		mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
 		mocks.fetchInstanceAccess.mockRejectedValue(new Error('offline'));
 
-		const result = await instancePolicy.save('node', (current) => current);
+		const result = await instancePolicy.setAccess('node', 'a', 'deny');
 
 		expect(result.status).toBe('saved');
 		expect(mocks.showError).toHaveBeenCalledWith(
@@ -298,13 +260,13 @@ describe('useInstancePolicy', () => {
 	it('shows an error when the policy changed and the access of the new policy cannot be read', async () => {
 		const instancePolicy = setup(['nodeTypePolicy:manage']);
 		await instancePolicy.load();
-		mocks.saveInstancePolicy.mockRejectedValue(
+		mocks.setInstanceTypeAccess.mockRejectedValue(
 			new ResponseError('Policy scope has changed', { httpStatusCode: 409 }),
 		);
 		mocks.fetchInstancePolicy.mockResolvedValue(policy(2));
 		mocks.fetchInstanceAccess.mockRejectedValue(new Error('offline'));
 
-		const result = await instancePolicy.save('node', (current) => current);
+		const result = await instancePolicy.setAccess('node', 'a', 'deny');
 
 		expect(result).toEqual({ status: 'changed', accessError: new Error('offline') });
 		expect(mocks.showError).toHaveBeenCalledWith(

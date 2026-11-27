@@ -309,15 +309,14 @@ test.describe(
 
 				// Get positions after insertion
 				const codePositionAfter = await n8n.canvas.getNodePosition(CODE_NODE_DISPLAY_NAME);
-				const agentPosition = await n8n.canvas.getNodePosition(AGENT_NODE_NAME);
+				const agentBox = await n8n.canvas.getNodeBoundingBox(AGENT_NODE_NAME);
 
 				// Code node should have moved to the right
 				expect(codePositionAfter.x).toBeGreaterThan(codePositionBefore.x);
 
 				// AI Agent node should be positioned between trigger and code (not overlapping)
-				// AI Agent is 256px wide, so its right edge should be left of code node
-				// Agent position is top-left, so right edge is agentPosition.x + 256
-				const agentRightEdge = agentPosition.x + 256;
+				// Use the rendered width of the AI Agent: it is 224 wide on the canvas, and the view is zoomed
+				const agentRightEdge = agentBox.x + agentBox.width;
 				expect(agentRightEdge).toBeLessThan(codePositionAfter.x);
 			});
 
@@ -331,7 +330,7 @@ test.describe(
 
 				await n8n.canvas.clickZoomToFitButton();
 
-				// Move code node far to the right to create space for AI Agent (which is 256px wide)
+				// Move code node far to the right to create space for AI Agent (which is 224 wide)
 				await n8n.canvas.dragNodeToRelativePosition(CODE_NODE_DISPLAY_NAME, 500, 0);
 
 				// Get code node position before insertion

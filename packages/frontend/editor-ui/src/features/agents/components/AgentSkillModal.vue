@@ -11,6 +11,7 @@ import {
 	AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	formatSkillWorkflowMention,
+	MCP_SKILLS_EXTENSION_FLAG,
 	skillNameKey,
 	type AgentSkillAvailability,
 	type ProjectIcon,
@@ -582,6 +583,13 @@ const selectedScopeSkill = computed(() => {
 		projectIcon: selectedScope.value?.projectIcon ?? saved?.projectIcon ?? null,
 	};
 });
+const mentionsInInstanceSkill = computed(() => selectedScopeSkill.value.scope === 'instance');
+const mentionsAvailableToMcp = computed(() =>
+	showAvailableToMCP.value
+		? availableToMCP.value
+		: posthog.isFeatureEnabled(MCP_SKILLS_EXTENSION_FLAG) &&
+			skillAccess.value?.availableToMCP === true,
+);
 const mentionProjectId = computed(() => selectedScopeSkill.value.projectId ?? undefined);
 const mentionProjectName = computed(() =>
 	mentionProjectId.value ? (selectedScopeSkill.value.projectName ?? undefined) : undefined,
@@ -1766,6 +1774,9 @@ function onRemove() {
 						:skill="comparedSkill"
 						:selected-path="selectedPath"
 						:change-counts="diffCounts"
+						:instance-skill="mentionsInInstanceSkill"
+						:available-to-mcp="mentionsAvailableToMcp"
+						:agent-context="!!props.data.agentId"
 						read-only
 						@select="selectedPath = $event"
 					/>
@@ -1785,6 +1796,9 @@ function onRemove() {
 						:invalid-paths="visibleInvalidReferencePaths"
 						:mention-project-id="mentionProjectId"
 						:mention-project-name="mentionProjectName"
+						:instance-skill="mentionsInInstanceSkill"
+						:available-to-mcp="mentionsAvailableToMcp"
+						:agent-context="!!props.data.agentId"
 						@add-workflow="onAddWorkflow"
 						@add-reference="onAddReference"
 						@remove-reference="onRemoveReference"

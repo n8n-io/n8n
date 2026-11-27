@@ -184,6 +184,7 @@ packages/cli/src/modules/instance-ai/                   @n8n-io/ai-assistant
 packages/modules/self-healing/                         @n8n-io/ai-assistant
 packages/modules/inbox/                                @n8n-io/ligo
 packages/modules/promotions/                           @n8n-io/ligo
+packages/modules/api-keys/                             @n8n-io/frontend
 
 # CLI controllers
 packages/cli/src/controllers/auth.controller.ts         						@n8n-io/iam

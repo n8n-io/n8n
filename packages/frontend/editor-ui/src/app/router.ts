@@ -64,8 +64,6 @@ const SettingsUsersView = async () =>
 const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
-const SettingsApiView = async () =>
-	await import('@/features/settings/apiKeys/views/SettingsApiView.vue');
 const SetupView = async () => await import('@/features/core/auth/views/SetupView.vue');
 const SigninView = async () => await import('@/features/core/auth/views/SigninView.vue');
 const SignupView = async () => await import('@/features/core/auth/views/SignupView.vue');
@@ -848,22 +846,6 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'resolvers',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'api',
-				name: VIEWS.API_SETTINGS,
-				component: SettingsApiView,
-				meta: {
-					middleware: ['authenticated'],
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'api',
 							};
 						},
 					},

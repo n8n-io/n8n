@@ -28,6 +28,7 @@ const fakeQueue = <T>() => ({
 	publish: vi.fn(async (_message: T) => {}),
 	start: vi.fn(),
 	stop: vi.fn(async () => {}),
+	size: vi.fn(async () => 0),
 });
 
 vi.mock('../../retention', async (importOriginal) => {
