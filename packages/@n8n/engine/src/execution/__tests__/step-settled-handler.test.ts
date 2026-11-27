@@ -115,6 +115,7 @@ function makeStepStore(
 		outputSources: null,
 		waitDeclaration: null,
 		resumeCause: null,
+		attempt: 1,
 		...step,
 	};
 	const summariesByKey = Object.fromEntries(summaries.map((s) => [stepKeyId(s), s]));
@@ -135,6 +136,7 @@ function makeStepStore(
 		renewQueuedStep: vi.fn(),
 		findStaleRunningSteps: vi.fn().mockResolvedValue([]),
 		failStaleRunningStep: vi.fn(),
+		requeueStaleRunningStep: vi.fn(),
 		findStaleSettledSteps: vi.fn().mockResolvedValue([]),
 		renewSettledStep: vi.fn(),
 		acknowledgeSettledStep: vi.fn().mockResolvedValue(undefined),
@@ -866,6 +868,7 @@ describe('StepSettledHandler sub-executions', () => {
 			outputSources: null,
 			waitDeclaration: null,
 			resumeCause: null,
+			attempt: 1,
 		};
 	}
 

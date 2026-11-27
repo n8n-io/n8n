@@ -27,6 +27,7 @@ import {
 } from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
+import { NodeTypes } from '@/node-types';
 import {
 	EngineDataPlaneProxyService,
 	isStartRefusedBeforeSave,
@@ -92,6 +93,7 @@ export class EngineV2Dispatcher {
 		private readonly pushRegistry: EngineV2PushRegistry,
 		private readonly payloadFiles: EngineV2PayloadFiles,
 		private readonly manualRunPlanner: EngineV2ManualRunPlanner,
+		private readonly nodeTypes: NodeTypes,
 	) {}
 
 	/**
@@ -251,6 +253,7 @@ export class EngineV2Dispatcher {
 			triggerOutputs: trigger.outputs,
 			allowNonTriggerRoot: plan !== undefined,
 			pinData: this.resolvePinData(data),
+			nodeTypes: this.nodeTypes,
 		});
 		const seededSteps = await this.toSeededSteps(plan);
 

@@ -69,6 +69,7 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		renewQueuedStep: vi.fn(),
 		findStaleRunningSteps: vi.fn().mockResolvedValue([]),
 		failStaleRunningStep: vi.fn(),
+		requeueStaleRunningStep: vi.fn(),
 		findStaleSettledSteps: vi.fn().mockResolvedValue([]),
 		renewSettledStep: vi.fn(),
 		acknowledgeSettledStep: vi.fn(),

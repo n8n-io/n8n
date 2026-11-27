@@ -4,7 +4,7 @@ import {
 	type WorkflowSnapshot,
 } from '@n8n/backend-services';
 import type { TriggerOutputs, WorkflowDocument, WorkflowGraph } from '@n8n/engine';
-import type { INodeExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
+import type { INodeExecutionData, INodeTypes, IPinData, IWorkflowBase } from 'n8n-workflow';
 
 /** The part of an engine start that describes the workflow to run. */
 export interface EngineWorkflowPayload {
@@ -26,6 +26,7 @@ export async function toEngineWorkflowPayload({
 	triggerOutputs,
 	allowNonTriggerRoot = false,
 	pinData,
+	nodeTypes,
 }: {
 	workflowData: IWorkflowBase;
 	/** The workflow the graph is built from, when a plan rewrote it. */
@@ -36,14 +37,21 @@ export async function toEngineWorkflowPayload({
 	triggerName?: string;
 	triggerOutputs: INodeExecutionData[][];
 	allowNonTriggerRoot?: boolean;
+	/** For the idempotency annotation of each node, which the graph records. */
+	nodeTypes: INodeTypes;
 }): Promise<EngineWorkflowPayload> {
 	// Lazily imported: a top-level import would pull the v1 step executor and
 	// its dependencies into every n8n process, including ones with the module off.
-	const { V1WorkflowConverter, toStepOutputs } = await import('@n8n/node-engine-compatibility');
+	const { V1WorkflowConverter, createIdempotencyResolver, toStepOutputs } = await import(
+		'@n8n/node-engine-compatibility'
+	);
 	const slots = toStepOutputs(triggerOutputs);
 
 	return {
-		graph: new V1WorkflowConverter().convert(graphSource, triggerName, { allowNonTriggerRoot }),
+		graph: new V1WorkflowConverter().convert(graphSource, triggerName, {
+			allowNonTriggerRoot,
+			isIdempotent: createIdempotencyResolver(nodeTypes),
+		}),
 		workflow: toWorkflowDocument(workflowData, pinData),
 		// The wire schema rejects an empty array; `null` is how "no slots" is sent.
 		triggerOutputs: slots.length === 0 ? null : slots,

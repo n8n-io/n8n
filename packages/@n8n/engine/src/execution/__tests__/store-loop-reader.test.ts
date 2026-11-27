@@ -37,6 +37,7 @@ function completed(nodeId: string, iteration: number, outputs: StepSlots): StepR
 		outputSources: null,
 		waitDeclaration: null,
 		resumeCause: null,
+		attempt: 1,
 	};
 }
 

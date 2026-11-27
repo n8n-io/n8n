@@ -39,9 +39,9 @@ const wait = { resumeBinding: 'step' as const };
 
 function resolveAfterSuspend(stepStore: StepStore, suspended: { resolve: () => void }) {
 	const suspendStep = stepStore.suspendStep.bind(stepStore);
-	vi.spyOn(stepStore, 'suspendStep').mockImplementation(async (id, declaration) => {
+	vi.spyOn(stepStore, 'suspendStep').mockImplementation(async (id, attempt, declaration) => {
 		try {
-			return await suspendStep(id, declaration);
+			return await suspendStep(id, attempt, declaration);
 		} finally {
 			suspended.resolve();
 		}

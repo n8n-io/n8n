@@ -113,7 +113,7 @@ export class StepReadyHandler {
 			// claimed. Settle the row here, where both facts are known, so no
 			// cancelled execution keeps a `running` step. Nothing is announced: the
 			// step never ran, like the ones the cancellation sweep settles.
-			await this.stepStore.cancelStep(step.id);
+			await this.stepStore.cancelStep(step.id, step.attempt);
 			return;
 		}
 
@@ -123,9 +123,12 @@ export class StepReadyHandler {
 
 		// Decided outside the `try` below on purpose. Its errors are the engine's
 		// own bookkeeping, not the node's, so they leave the step `running`
-		// instead of recording it failed. In the future one of these resolves that:
-		// - Reconciliation (CAT-2938) taking over the step and retrying it for transient errors
-		// - Internal consistency checks (CAT-3930) detecting a misconfigured graph and failing the execution
+		// instead of recording it failed. The reconciliation sweeper then fails
+		// the step after the running threshold. For an idempotent node it first
+		// queues the step again, also when the error is permanent, so the same
+		// error repeats until the attempt limit.
+		// In the future, internal consistency checks (CAT-3930) detect a
+		// misconfigured graph and fail the execution.
 		const dispatch = await this.dispatchFor(step, node, execution);
 
 		// Only a failure to run the step fails it. A store error propagates instead —
@@ -170,17 +173,23 @@ export class StepReadyHandler {
 
 		let recorded: boolean;
 		if (run.kind === 'outputs') {
-			recorded = await this.stepStore.completeStep(event.stepId, run.outputs, run.outputSources);
+			recorded = await this.stepStore.completeStep(
+				event.stepId,
+				step.attempt,
+				run.outputs,
+				run.outputSources,
+			);
 		} else if (run.kind === 'wait') {
-			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
+			recorded = await this.stepStore.suspendStep(event.stepId, step.attempt, run.wait);
 		} else {
-			recorded = await this.stepStore.failStep(event.stepId, run.error);
+			recorded = await this.stepStore.failStep(event.stepId, step.attempt, run.error);
 		}
 
-		// Recording is a CAS on `running`, so losing it means something else took the
-		// step over while we ran — announce only outcomes we actually wrote, and let
-		// whoever holds it now announce theirs. The reconciliation sweeper does this
-		// when it fails a step that is `running` past its `stale_after` time.
+		// Recording is a CAS on `running` and on the attempt, so losing it means
+		// something else took the step over while we ran. Announce only outcomes we
+		// actually wrote, and let whoever holds it now announce theirs. The
+		// reconciliation sweeper does this to a step that is `running` past its
+		// `stale_after` time: it fails the step, or it queues the step again.
 		//
 		// A wait in an ended execution is not recorded either: `suspendStep` cancels
 		// the step.
@@ -226,7 +235,7 @@ export class StepReadyHandler {
 	): Promise<void> {
 		// A CAS on `running`: losing it means something else took the step over, or
 		// the execution has ended.
-		const recorded = await this.stepStore.suspendStep(event.stepId, {
+		const recorded = await this.stepStore.suspendStep(event.stepId, step.attempt, {
 			subExecutionId: subExecution.executionId,
 		});
 		if (!recorded) return;
