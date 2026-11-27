@@ -79,8 +79,9 @@ export const coloringStateField = StateField.define<DecorationSet>({
 	update(colorings, transaction) {
 		try {
 			const isSynthetic = transaction.annotation(ignoreUpdateAnnotation) === true;
+			const isComposition = transaction.isUserEvent('input.type.compose');
 			if (!transaction.changes.empty) {
-				if (isSynthetic) {
+				if (isSynthetic || isComposition) {
 					colorings = colorings.map(transaction.changes);
 					// Clean up zero-length decorations left behind by the synthetic insert/delete
 					if (colorings.size > 0) {
@@ -101,8 +102,9 @@ export const coloringStateField = StateField.define<DecorationSet>({
 
 			for (const txEffect of transaction.effects) {
 				if (txEffect.is(coloringStateEffects.removeColorEffect)) {
+					if (txEffect.value.from === txEffect.value.to) continue;
 					colorings = colorings.update({
-						filter: (from, to) => txEffect.value.from !== from && txEffect.value.to !== to,
+						filter: (from, to) => to <= txEffect.value.from || from >= txEffect.value.to,
 					});
 				}
 
@@ -128,10 +130,13 @@ export const coloringStateField = StateField.define<DecorationSet>({
 	},
 });
 
-function addColor(view: EditorView, segments: Resolvable[]) {
-	const effects: Array<StateEffect<unknown>> = segments.map(({ from, to, kind, state }) =>
-		coloringStateEffects.addColorEffect.of({ from, to, kind, state }),
-	);
+function updateColors(view: EditorView, plaintext: Plaintext[], resolvables: Resolvable[]) {
+	const effects: Array<StateEffect<unknown>> = [
+		...plaintext.map(({ from, to }) => coloringStateEffects.removeColorEffect.of({ from, to })),
+		...resolvables.map(({ from, to, kind, state }) =>
+			coloringStateEffects.addColorEffect.of({ from, to, kind, state }),
+		),
+	];
 
 	if (effects.length === 0) return;
 
@@ -142,18 +147,12 @@ function addColor(view: EditorView, segments: Resolvable[]) {
 	view.dispatch({ effects });
 }
 
+function addColor(view: EditorView, segments: Resolvable[]) {
+	updateColors(view, [], segments);
+}
+
 function removeColor(view: EditorView, segments: Plaintext[]) {
-	const effects: Array<StateEffect<unknown>> = segments.map(({ from, to }) =>
-		coloringStateEffects.removeColorEffect.of({ from, to }),
-	);
-
-	if (effects.length === 0) return;
-
-	if (!view.state.field(coloringStateField, false)) {
-		effects.push(StateEffect.appendConfig.of([coloringStateField, resolvablesTheme]));
-	}
-
-	view.dispatch({ effects });
+	updateColors(view, segments, []);
 }
 
 const resolvableStyle = syntaxHighlighting(
@@ -170,6 +169,7 @@ const resolvableStyle = syntaxHighlighting(
 );
 
 export const highlighter = {
+	updateColors,
 	addColor,
 	removeColor,
 	resolvableStyle,

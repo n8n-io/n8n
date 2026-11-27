@@ -195,8 +195,7 @@ export const useExpressionEditor = ({
 
 	function updateHighlighting(): void {
 		if (!editor.value) return;
-		highlighter.removeColor(editor.value, plaintextSegments.value);
-		highlighter.addColor(editor.value, resolvableSegments.value);
+		highlighter.updateColors(editor.value, plaintextSegments.value, resolvableSegments.value);
 	}
 
 	function updateSelection(viewUpdate: ViewUpdate) {
