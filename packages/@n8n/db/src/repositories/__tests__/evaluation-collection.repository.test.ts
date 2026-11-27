@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import type { DataSource, EntityManager } from '@n8n/typeorm';
+import { type DataSource, type EntityManager, In } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -99,6 +99,38 @@ describe('EvaluationCollectionRepository', () => {
 		});
 	});
 
+	describe('getDetailByIdAndWorkflowId', () => {
+		it('scopes the lookup to id and workflowId and returns runs ordered by createdAt ascending', async () => {
+			const collection = { id: 'col-1', workflowId: 'wf-1' } as EvaluationCollection;
+			const runs = [{ id: 'tr-1' }, { id: 'tr-2' }] as TestRun[];
+			entityManager.findOne.mockResolvedValueOnce(collection);
+			entityManager.find.mockResolvedValueOnce(runs);
+
+			const result = await repo.getDetailByIdAndWorkflowId('col-1', 'wf-1', {});
+
+			expect(result).toEqual({ collection, runs });
+			expect(entityManager.findOne).toHaveBeenCalledWith(EvaluationCollection, {
+				where: { id: 'col-1', workflowId: 'wf-1' },
+			});
+			expect(entityManager.find).toHaveBeenCalledWith(TestRun, {
+				where: { collectionId: 'col-1' },
+				order: { createdAt: 'ASC' },
+			});
+		});
+
+		it('returns null without loading runs when the collection does not exist', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			const result = await repo.getDetailByIdAndWorkflowId('col-missing', 'wf-1', {});
+
+			expect(result).toBeNull();
+			expect(entityManager.findOne).toHaveBeenCalledWith(EvaluationCollection, {
+				where: { id: 'col-missing', workflowId: 'wf-1' },
+			});
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('addRunsToCollection', () => {
 		it('updates TestRun.collectionId in bulk by id', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 2, generatedMaps: [], raw: [] });
@@ -107,6 +139,7 @@ describe('EvaluationCollectionRepository', () => {
 
 			const callArgs = entityManager.update.mock.calls[0];
 			expect(callArgs?.[0]).toBe(TestRun);
+			expect(callArgs?.[1]).toEqual({ id: In(['tr-a', 'tr-b']) });
 			expect(callArgs?.[2]).toEqual({ collectionId: 'col-1' });
 		});
 
@@ -163,6 +196,13 @@ describe('EvaluationCollectionRepository', () => {
 			const result = await repo.deleteByIdAndWorkflowId('col-1', 'wf-1', {});
 
 			expect(result).toEqual({ deleted: true, runsUnlinked: 4 });
+			expect(entityManager.findOne).toHaveBeenCalledWith(EvaluationCollection, {
+				where: { id: 'col-1', workflowId: 'wf-1' },
+			});
+			expect(entityManager.count).toHaveBeenCalledWith(TestRun, {
+				where: { collectionId: 'col-1' },
+			});
+			expect(entityManager.delete).toHaveBeenCalledWith(EvaluationCollection, { id: 'col-1' });
 		});
 
 		it('returns { deleted: false } without touching delete when the collection does not exist', async () => {
@@ -171,6 +211,9 @@ describe('EvaluationCollectionRepository', () => {
 			const result = await repo.deleteByIdAndWorkflowId('col-missing', 'wf-1', {});
 
 			expect(result).toEqual({ deleted: false, runsUnlinked: 0 });
+			expect(entityManager.findOne).toHaveBeenCalledWith(EvaluationCollection, {
+				where: { id: 'col-missing', workflowId: 'wf-1' },
+			});
 			expect(entityManager.delete).not.toHaveBeenCalled();
 		});
 	});

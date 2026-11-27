@@ -258,10 +258,11 @@ describe('EvaluationCollectionService', () => {
 		});
 
 		it('attaches existing runs and schedules new runs for missing versions', async () => {
-			await service.createCollection(
+			const { record } = await service.createCollection(
 				user,
 				'wf-1',
 				makePayload({
+					description: 'Baseline comparison',
 					versions: [
 						{ workflowVersionId: 'wfv-1', existingTestRunId: 'tr-existing' },
 						{ workflowVersionId: 'wfv-2' },
@@ -270,6 +271,17 @@ describe('EvaluationCollectionService', () => {
 			);
 
 			expect(collectionRepo.createCollection).toHaveBeenCalledTimes(1);
+			expect(collectionRepo.createCollection).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: 'My collection',
+					description: 'Baseline comparison',
+					workflowId: 'wf-1',
+					evaluationConfigId: 'cfg-1',
+					createdById: 'user-1',
+				}),
+				{},
+			);
+			expect(record.description).toBe('Baseline comparison');
 			expect(collectionRepo.addRunsToCollection).toHaveBeenCalledWith(
 				expect.any(String),
 				['tr-existing'],
@@ -298,6 +310,10 @@ describe('EvaluationCollectionService', () => {
 				}),
 			);
 
+			expect(collectionRepo.createCollection).toHaveBeenCalledWith(
+				expect.objectContaining({ description: null }),
+				{},
+			);
 			expect(workflowHistoryService.snapshotCurrent).toHaveBeenCalledTimes(1);
 			expect(workflowHistoryService.snapshotCurrent).toHaveBeenCalledWith('wf-1');
 			expect(testRunnerService.startTestRun).toHaveBeenCalledWith(
