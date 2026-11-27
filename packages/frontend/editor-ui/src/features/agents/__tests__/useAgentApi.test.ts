@@ -386,6 +386,15 @@ describe('useAgentApi', () => {
 				`${url}?threadId=th%2F1`,
 			);
 		});
+		it('asks for the unredacted file after a reveal', () => {
+			const url = getChatAttachmentUrl(restApiContext, 'p1', 'a1', 'att-1');
+			expect(getChatAttachmentUrl(restApiContext, 'p1', 'a1', 'att-1', 'chat', 'th-1', true)).toBe(
+				`${url}?threadId=th-1&redactExecutionData=false`,
+			);
+			expect(
+				getChatAttachmentUrl(restApiContext, 'p1', 'a1', 'att-1', 'chat', undefined, true),
+			).toBe(`${url}?redactExecutionData=false`);
+		});
 	});
 
 	describe('getSessionFiles', () => {

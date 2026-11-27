@@ -446,7 +446,7 @@ describe('SystemAgentChatController', () => {
 				'thread-1',
 				'project-1',
 				AGENT_ID,
-				'user-1',
+				expect.objectContaining({ ipAddress: '', userAgent: '' }),
 			);
 			expect(memoryTrace.getThreadMemory).toHaveBeenCalledWith({
 				agentId: AGENT_ID,

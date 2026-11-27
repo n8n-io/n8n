@@ -44,6 +44,7 @@ import {
 import { UserService } from '@/services/user.service';
 
 import { createMember, createOwner } from '../shared/db/users';
+import { asReader } from '@/modules/agents/__tests__/test-utils/thread-reader';
 
 const INSTANCE_AGENT_ID = 'test-instance-assistant';
 
@@ -187,7 +188,7 @@ describe('Agent memory on user deletion', () => {
 					scope.threadId,
 					before.projectId,
 					before.agentId,
-					admin.id,
+					asReader(admin.id),
 				),
 			).toBeNull();
 			const sources = await store.episodic.getEntrySources([entry.id]);
@@ -221,7 +222,7 @@ describe('Agent memory on user deletion', () => {
 					scope.threadId,
 					before.projectId,
 					before.agentId,
-					admin.id,
+					asReader(admin.id),
 				),
 			).not.toBeNull();
 			expect(destroy).not.toHaveBeenCalled();
@@ -321,7 +322,7 @@ describe('Agent memory on user deletion', () => {
 				kept.scope.threadId,
 				keptThread.projectId,
 				kept.agentId,
-				admin.id,
+				asReader(admin.id),
 			);
 			expect(detail?.executions).toHaveLength(1);
 			expect(detail?.executions[0].author).toEqual({ id: user.id, name: 'Test member' });
@@ -392,7 +393,7 @@ describe('Agent memory on user deletion', () => {
 				audit.id,
 				audit.projectId,
 				audit.agentId,
-				admin.id,
+				asReader(admin.id),
 			),
 		).not.toBeNull();
 		for (const ref of refs) {

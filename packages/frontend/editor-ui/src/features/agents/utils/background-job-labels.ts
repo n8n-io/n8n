@@ -39,13 +39,24 @@ export function backgroundJobTimelineLabelKey(key: string): BaseTextKey | undefi
 	}
 }
 
+/**
+ * The title of a background job. The server blanks the title of a job that a
+ * redacted turn started, so a hidden-data label stands in for it.
+ */
+export function backgroundJobTitle(
+	title: string,
+	i18n: Pick<ReturnType<typeof useI18n>, 'baseText'>,
+): string {
+	return title.trim() ? title : i18n.baseText('agentSessions.timeline.dataHidden');
+}
+
 export function backgroundJobResultLabel(
 	job: AgentBackgroundJobSignal['tasks'][number],
 	i18n: Pick<ReturnType<typeof useI18n>, 'baseText'>,
 ): string {
 	return i18n.baseText('agents.chat.backgroundTasks.result', {
 		interpolate: {
-			title: job.title,
+			title: backgroundJobTitle(job.title, i18n),
 			status: i18n.baseText(BACKGROUND_JOB_STATUS_LABEL_KEYS[job.status]),
 		},
 	});

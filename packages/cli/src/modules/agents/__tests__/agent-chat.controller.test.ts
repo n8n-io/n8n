@@ -10,7 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { FileNotFoundError } from 'n8n-core';
 
-import { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
+import type { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -938,7 +938,7 @@ describe('AgentChatController chat message history', () => {
 			activeExecutionId: null,
 		});
 		expect(agentsService.getConversationHistory).toHaveBeenCalledWith({
-			userId: 'user-1',
+			reader: expect.objectContaining({ user: expect.objectContaining({ id: 'user-1' }) }),
 			threadId: 'thread-1',
 			projectId: 'project-1',
 			agentId: 'agent-1',

@@ -25,6 +25,22 @@ vi.mock('../components/AgentChatMessageAttachments.vue', () => ({
 
 enableAutoUnmount(afterEach);
 
+describe('SessionBackgroundTaskItem title', () => {
+	it.each(['running', 'completed'] as const)(
+		'shows a hidden-data label for a %s task without a title',
+		(status) => {
+			const wrapper = mount(SessionBackgroundTaskItem, {
+				global: { plugins: [i18nInstance] },
+				props: {
+					item: backgroundTasksToTimelineItems([{ ...task, title: '', status }])[0],
+					selected: false,
+				},
+			});
+			expect(wrapper.text()).toContain('Data hidden');
+		},
+	);
+});
+
 describe('SessionBackgroundTaskItem files', () => {
 	it('shows the files of a job with the session thread for the download URL', () => {
 		const wrapper = mount(SessionBackgroundTaskItem, {

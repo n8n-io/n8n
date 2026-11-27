@@ -1207,6 +1207,7 @@ export const getSessionFiles = async (
 /**
  * Builds the download/thumbnail URL for a chat attachment on either channel.
  * Give `threadId` for a sub-agent session: its files belong to the root agent.
+ * Set `revealExecutionData` after the reader revealed the redacted turns of the thread.
  */
 export const getChatAttachmentUrl = (
 	context: IRestApiContext,
@@ -1215,8 +1216,14 @@ export const getChatAttachmentUrl = (
 	attachmentId: string,
 	channel: AgentChatChannel = 'chat',
 	threadId?: string,
-): string =>
-	`${agentChatBaseUrl(context, projectId, agentId, channel)}/attachments/${encodeURIComponent(attachmentId)}${threadId ? `?threadId=${encodeURIComponent(threadId)}` : ''}`;
+	revealExecutionData = false,
+): string => {
+	const params = new URLSearchParams();
+	if (threadId) params.set('threadId', threadId);
+	if (revealExecutionData) params.set('redactExecutionData', 'false');
+	const query = params.toString();
+	return `${agentChatBaseUrl(context, projectId, agentId, channel)}/attachments/${encodeURIComponent(attachmentId)}${query ? `?${query}` : ''}`;
+};
 
 export const getTestChatMessages = async (
 	context: IRestApiContext,

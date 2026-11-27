@@ -6,6 +6,8 @@ import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
 import { defineComponent, inject, reactive, ref } from 'vue';
 import { createPinia } from 'pinia';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { ResponseError } from '@n8n/rest-api-client';
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants/modals';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentBudgetNoticeCard from '../components/AgentBudgetNoticeCard.vue';
 import { AGENT_ATTACHMENT_URL_KEY } from '../components/agentChatInjectionKeys';
@@ -16,6 +18,7 @@ const getThreadDetail = vi.fn();
 const resumeTaskApproval = vi.fn();
 const showError = vi.fn();
 const track = vi.fn();
+const confirm = vi.fn();
 const backgroundJobs = ref<AgentBackgroundJobDto[]>([]);
 const respondToApproval = vi.fn<(payload: AgentChatResumeDto) => Promise<void>>();
 const approvalJob: AgentBackgroundJobDto = {
@@ -46,6 +49,10 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ pushRef: 'session-xyz', restApiContext: { baseUrl: '/rest' } }),
+}));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm }),
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -856,6 +863,121 @@ describe('AgentSessionTimelinePanel', () => {
 			await flushPromises();
 
 			expect(wrapper.find(budgetCard).exists()).toBe(true);
+		});
+	});
+
+	describe('redacted turns', () => {
+		const redactedExecution = {
+			...keyboardExecution,
+			timeline: [
+				{
+					type: 'text',
+					content: '',
+					redacted: true,
+					timestamp: Date.parse('2026-08-03T12:00:01.000Z'),
+				},
+			],
+			redaction: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+		} satisfies ThreadDetail['executions'][number];
+		const redactedDetail: ThreadDetail = { ...detail, executions: [redactedExecution] };
+		const notice = '[data-test-id="agent-session-redacted-notice"]';
+		const revealButton = '[data-test-id="agent-session-reveal-data"]';
+
+		it('shows no notice when no turn is redacted', async () => {
+			getThreadDetail.mockResolvedValue({ ...detail, executions: [keyboardExecution] });
+			const wrapper = mountPanel();
+			await flushPromises();
+
+			expect(wrapper.find(notice).exists()).toBe(false);
+		});
+
+		it('shows a notice without a reveal action when a turn cannot be revealed', async () => {
+			getThreadDetail.mockResolvedValue({
+				...detail,
+				executions: [
+					redactedExecution,
+					{
+						...redactedExecution,
+						id: 'execution-2',
+						redaction: { ...redactedExecution.redaction, canReveal: false },
+					},
+				],
+			});
+			const wrapper = mountPanel();
+			await flushPromises();
+
+			expect(wrapper.find(notice).text()).toContain(
+				'Some agent replies are hidden because a workflow this agent used redacts its execution data.',
+			);
+			expect(wrapper.find(revealButton).exists()).toBe(false);
+		});
+
+		it('loads the thread again with the data revealed after confirmation', async () => {
+			getThreadDetail.mockResolvedValue(redactedDetail);
+			confirm.mockResolvedValue(MODAL_CONFIRM);
+			const wrapper = mountPanel(
+				{},
+				{
+					stubs: {
+						SessionTimelineTable: defineComponent({
+							setup: () => ({ build: inject(AGENT_ATTACHMENT_URL_KEY) }),
+							template: '<a data-test-id="attachment-url" :href="build?.(\'f-1\')" />',
+						}),
+					},
+				},
+			);
+			await flushPromises();
+
+			getThreadDetail.mockResolvedValue({ ...detail, executions: [keyboardExecution] });
+			await wrapper.get(revealButton).trigger('click');
+			await flushPromises();
+
+			expect(confirm).toHaveBeenCalledOnce();
+			expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't1', undefined, {
+				revealExecutionData: true,
+			});
+			expect(wrapper.find(notice).exists()).toBe(false);
+			expect(wrapper.get('[data-test-id="attachment-url"]').attributes('href')).toContain(
+				'redactExecutionData=false',
+			);
+
+			emitPush();
+			await flushPromises();
+			expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't1', undefined, {
+				revealExecutionData: true,
+			});
+		});
+
+		it('keeps the data hidden when the reader cancels the confirmation', async () => {
+			getThreadDetail.mockResolvedValue(redactedDetail);
+			confirm.mockResolvedValue(MODAL_CANCEL);
+			const wrapper = mountPanel();
+			await flushPromises();
+
+			await wrapper.get(revealButton).trigger('click');
+			await flushPromises();
+
+			expect(getThreadDetail).toHaveBeenCalledTimes(1);
+			expect(wrapper.find(notice).exists()).toBe(true);
+		});
+
+		it('shows an error and keeps the redacted view when the reveal fails', async () => {
+			getThreadDetail.mockResolvedValue(redactedDetail);
+			confirm.mockResolvedValue(MODAL_CONFIRM);
+			const wrapper = mountPanel();
+			await flushPromises();
+
+			const error = new ResponseError('Forbidden', { httpStatusCode: 403 });
+			getThreadDetail.mockRejectedValueOnce(error);
+			await wrapper.get(revealButton).trigger('click');
+			await flushPromises();
+
+			expect(showError).toHaveBeenCalledWith(error, 'Failed to reveal execution data');
+			expect(wrapper.find(notice).exists()).toBe(true);
+
+			emitPush();
+			await flushPromises();
+			expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't1', undefined);
 		});
 	});
 });

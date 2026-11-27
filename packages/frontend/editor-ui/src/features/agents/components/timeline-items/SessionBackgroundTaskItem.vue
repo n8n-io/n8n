@@ -10,6 +10,7 @@ import { useI18n } from '@n8n/i18n';
 import { formatTimelineTime } from '../../utils/timeline-time';
 import type { TimelineItem } from '../../session-timeline.types';
 import { backgroundTaskPresentation } from '../../utils/background-task-timeline';
+import { backgroundJobTitle } from '../../utils/background-job-labels';
 
 const props = defineProps<{
 	item: TimelineItem;
@@ -33,9 +34,10 @@ const statusLabel = computed(
 );
 const label = computed(() => {
 	if (!task.value) return '';
-	if (task.value.status === 'running') return task.value.title;
+	const title = backgroundJobTitle(task.value.title, i18n);
+	if (task.value.status === 'running') return title;
 	return i18n.baseText('agentSessions.timeline.backgroundTaskStatus', {
-		interpolate: { title: task.value.title, status: statusLabel.value ?? '' },
+		interpolate: { title, status: statusLabel.value ?? '' },
 	});
 });
 const time = computed(() => formatTimelineTime(props.item.timestamp));

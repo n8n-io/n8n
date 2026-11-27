@@ -2,6 +2,7 @@ import type {
 	AgentExecutionStatus,
 	AgentMessageAuthor,
 	AgentPersistedMessageDto,
+	AgentTurnRedactionDto,
 } from '@n8n/api-types';
 import {
 	DateTimeColumn,
@@ -18,6 +19,8 @@ import type { AgentExecutionFailureSummary } from '../utils/execution-failure-su
 
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 
+export type AgentTurnRedactionInfo = AgentTurnRedactionDto;
+
 /**
  * One runtime execution within a session. Message references identify its
  * inputs and outputs. These columns store run state and legacy input copies.
@@ -31,6 +34,8 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	inputMessageIds?: string[];
 	inputMessages?: AgentPersistedMessageDto[];
 	stopReport?: boolean;
+	/** Read projection. Set when the turn is redacted for the reader. */
+	redaction?: AgentTurnRedactionInfo;
 
 	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })

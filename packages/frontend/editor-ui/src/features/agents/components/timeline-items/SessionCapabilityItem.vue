@@ -97,6 +97,16 @@ const error = computed((): string | undefined => {
 	return timelineItemErrorMessage(props.item) || i18n.baseText('agentSessions.timeline.toolError');
 });
 
+/** Workflow rows link to the full execution, which can show the data to readers who may reveal it. */
+const redactedMessage = computed((): string | undefined => {
+	if (!props.item.redacted) return undefined;
+	return i18n.baseText(
+		props.item.kind === 'workflow'
+			? 'agentSessions.workflowLog.outputRedacted'
+			: 'agentSessions.timeline.toolDataRedacted',
+	);
+});
+
 const errorTooltip = computed(() => (error.value ? truncate(error.value, 160) : ''));
 
 const time = computed(() => formatTimelineTime(props.item.timestamp));
@@ -168,6 +178,16 @@ const { isOpen } = useTimelineItemExpansion({
 							</span>
 						</template>
 						{{ label }}
+						<N8nTooltip v-if="item.redacted" placement="top">
+							<template #content>{{ i18n.baseText('agentSessions.timeline.dataHidden') }}</template>
+							<N8nIcon
+								icon="lock"
+								size="small"
+								:class="$style.redactedIcon"
+								:aria-label="i18n.baseText('agentSessions.timeline.dataHidden')"
+								data-test-id="timeline-tool-redacted-icon"
+							/>
+						</N8nTooltip>
 						<template v-if="canExpand" #suffix>
 							<N8nAiActivityStepChevron :open="isOpen" />
 						</template>
@@ -185,6 +205,16 @@ const { isOpen } = useTimelineItemExpansion({
 							{{ i18n.baseText('agentSessions.timeline.input') }}
 						</N8nText>
 						<ToolDataBlock data-test-id="timeline-tool-input" :value="item.toolInput" />
+					</N8nAiActivityStepResultSection>
+					<N8nAiActivityStepResultSection v-if="redactedMessage" :class="$style.toolSection">
+						<N8nText
+							step="xs"
+							color="text-light"
+							:class="$style.redactedMessage"
+							data-test-id="timeline-tool-data-redacted"
+						>
+							{{ redactedMessage }}
+						</N8nText>
 					</N8nAiActivityStepResultSection>
 					<N8nAiActivityStepResultSection v-if="error" :class="$style.toolSection">
 						<N8nCallout theme="danger" :class="$style.errorCallout">
@@ -311,6 +341,15 @@ const { isOpen } = useTimelineItemExpansion({
 
 .executionButton {
 	padding-top: var(--spacing--xs);
+}
+
+.redactedIcon {
+	color: var(--text-color--subtler);
+	margin-inline-start: var(--spacing--4xs);
+}
+
+.redactedMessage {
+	margin-top: var(--spacing--xs);
 }
 
 .errorCallout {
