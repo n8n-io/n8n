@@ -7,8 +7,12 @@ export type WorkflowSettingsLayout = {
 	rowLayout: ComputedRef<WorkflowSettingsRowLayout>;
 };
 
-/** Below this container width, a row puts its control under its title. */
-const VERTICAL_LAYOUT_MAX_WIDTH = 600;
+/**
+ * Below this container width, a row puts its control under its title.
+ * Stay beside the title inside the workflow settings dialog.
+ * A narrower container stacks the control under the title.
+ */
+const VERTICAL_LAYOUT_MAX_WIDTH = 520;
 
 export function useWorkflowSettingsLayout(
 	container: Ref<HTMLElement | null | undefined>,

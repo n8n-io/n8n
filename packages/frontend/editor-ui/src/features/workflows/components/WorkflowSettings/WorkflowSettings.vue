@@ -1991,9 +1991,25 @@ onBeforeUnmount(() => {
 @use '@/app/css/variables' as *;
 
 .workflow-settings {
+	/* One step tighter than the settings-page defaults. The dialog is dense. */
+	--settings-section-gap: var(--spacing--lg);
+	--settings-section-header-gap: var(--spacing--xs);
+	/* Each row is a label column and a control column of equal width. */
+	--settings-row--info-flex: 1 1 0;
+	--settings-row--action-flex: 1 1 0;
+	--settings-row--action-justify: flex-start;
+	/* One step shorter than the default row, with a little padding around the control. */
+	--settings-row--min-height: var(--height--3xl);
+	--settings-row--padding-block: var(--spacing--2xs);
+	--settings-row--text-padding-block: 0;
 	font-size: var(--font-size--sm);
 	display: flex;
 	flex-direction: column;
+}
+
+.workflow-settings :global([data-slot='settings-row-action'] > *) {
+	width: 100%;
+	min-width: 0;
 }
 
 .row-title--disabled {

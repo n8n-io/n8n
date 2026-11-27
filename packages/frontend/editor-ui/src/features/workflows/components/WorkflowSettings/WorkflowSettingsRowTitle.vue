@@ -29,9 +29,17 @@ const i18n = useI18n();
 			<template v-else>{{ title }}</template>
 		</N8nText>
 		<slot />
-		<N8nTooltip v-if="tooltip || $slots.tooltip" as-child placement="top" :enterable="true">
+		<N8nTooltip
+			v-if="tooltip || $slots.tooltip"
+			as-child
+			placement="top-start"
+			:enterable="true"
+			content-class="workflow-settings-tooltip"
+		>
 			<template #content>
-				<slot name="tooltip">{{ tooltip }}</slot>
+				<span :class="$style.tooltipBody">
+					<slot name="tooltip">{{ tooltip }}</slot>
+				</span>
 			</template>
 			<!-- A button, so that keyboard focus opens the tooltip. -->
 			<button
@@ -61,6 +69,19 @@ const i18n = useI18n();
 .text {
 	min-width: 0;
 	overflow-wrap: anywhere;
+}
+
+.tooltipBody {
+	display: block;
+	text-align: start;
+}
+
+:global(.n8n-tooltip.workflow-settings-tooltip) {
+	max-width: 280px;
+	align-items: flex-start;
+	justify-content: flex-start;
+	text-align: start;
+	padding: var(--spacing--2xs) var(--spacing--xs);
 }
 
 // To keep the list quiet, the help icon is hidden until the pointer is on the title area,

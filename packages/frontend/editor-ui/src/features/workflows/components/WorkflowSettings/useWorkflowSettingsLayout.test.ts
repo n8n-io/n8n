@@ -21,8 +21,9 @@ describe('useWorkflowSettingsLayout', () => {
 	it.each([
 		[1, 'vertical'],
 		[320, 'vertical'],
-		[599, 'vertical'],
-		[600, 'horizontal'],
+		[519, 'vertical'],
+		[520, 'horizontal'],
+		[599, 'horizontal'],
 		[1200, 'horizontal'],
 	] as const)('uses for a container width of %i the %s layout', (width, expected) => {
 		mockContainerWidth(width);
