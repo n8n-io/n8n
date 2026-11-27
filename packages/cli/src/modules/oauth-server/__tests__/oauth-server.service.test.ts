@@ -1890,6 +1890,28 @@ describe('OAuthServerService', () => {
 		});
 	});
 
+	describe('revokeVirtualClients', () => {
+		it('passes the client IDs and the context to the repository', async () => {
+			const ctx = mock<OperationContext>();
+			const clientIds = ['https://sales.apps.example.com/_n8n/auth/app-1/callback'];
+			oauthClientRepository.removeVirtualClients.mockResolvedValue(1);
+
+			await service.revokeVirtualClients(clientIds, ctx);
+
+			expect(oauthClientRepository.removeVirtualClients).toHaveBeenCalledExactlyOnceWith(
+				clientIds,
+				ctx,
+			);
+		});
+
+		it('propagates a repository failure', async () => {
+			const error = new Error('Database unavailable');
+			oauthClientRepository.removeVirtualClients.mockRejectedValue(error);
+
+			await expect(service.revokeVirtualClients(['client'], {})).rejects.toBe(error);
+		});
+	});
+
 	describe('revokeToken', () => {
 		it('should revoke access token when type hint is access_token', async () => {
 			const client = {

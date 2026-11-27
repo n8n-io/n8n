@@ -1,3 +1,4 @@
+import { CreateAppDto } from '@n8n/api-types';
 import {
 	AppHostService,
 	AppsConfig,
@@ -100,14 +101,16 @@ test('a new app with the ID and namespace of a deleted app has no consents or to
 	const project = await createTeamProject('Apps', owner);
 	const app = await apps.createApp(
 		project.id,
-		{ name: 'Sales', namespace: 'sales' },
+		CreateAppDto.parse({ name: 'Sales', namespace: 'sales' }),
 		{ id: appId },
 	);
 	await grantAccess(app, owner);
 	expect(await grantRowsFor(app)).toBe(6);
 
 	await apps.deleteApp(project.id, appId);
-	await apps.createApp(project.id, { name: 'Sales', namespace: 'sales' }, { id: appId });
+	await apps.createApp(project.id, CreateAppDto.parse({ name: 'Sales', namespace: 'sales' }), {
+		id: appId,
+	});
 
 	expect(await grantRowsFor(app)).toBe(0);
 });
@@ -116,7 +119,7 @@ test('a namespace change removes the consents and tokens of the old namespace', 
 	const project = await createTeamProject('Apps', owner);
 	const app = await apps.createApp(
 		project.id,
-		{ name: 'Sales', namespace: 'sales' },
+		CreateAppDto.parse({ name: 'Sales', namespace: 'sales' }),
 		{ id: appId },
 	);
 	await grantAccess(app, owner);
@@ -131,10 +134,13 @@ test('a project deletion removes the consents and tokens of its apps', async () 
 	const kept = await createTeamProject('Other apps', owner);
 	const app = await apps.createApp(
 		project.id,
-		{ name: 'Sales', namespace: 'sales' },
+		CreateAppDto.parse({ name: 'Sales', namespace: 'sales' }),
 		{ id: appId },
 	);
-	const other = await apps.createApp(kept.id, { name: 'Support', namespace: 'support' });
+	const other = await apps.createApp(
+		kept.id,
+		CreateAppDto.parse({ name: 'Support', namespace: 'support' }),
+	);
 	await grantAccess(app, owner);
 	await grantAccess(other, owner);
 
@@ -152,7 +158,7 @@ test.each([
 	const personalProject = await getPersonalProject(member);
 	const app = await apps.createApp(
 		personalProject.id,
-		{ name: 'Sales', namespace: 'sales' },
+		CreateAppDto.parse({ name: 'Sales', namespace: 'sales' }),
 		{ id: appId },
 	);
 	await grantAccess(app, member);
