@@ -5,7 +5,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { UnexpectedError } from '../../common';
-import { TypeOrmExecutionStore, TypeOrmStepStore, type EngineStores } from '../../database';
+import {
+	createStores,
+	TypeOrmExecutionStore,
+	TypeOrmStepStore,
+	type EngineStores,
+} from '../../database';
 import { generateId } from '../../database/generate-id';
 import { noopExecutionFilesDeleter } from '../../dependencies';
 import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
@@ -236,6 +241,68 @@ describe('createEngineRuntime', () => {
 		});
 
 		expect(build).toHaveBeenCalledOnce();
+	});
+
+	it('wraps its stores once with the host instrumentation and runs on the result', async () => {
+		const executionId = generateId();
+		const wrapped = createStores(fakeDataSource());
+		const createExecution = vi
+			.spyOn(wrapped.executionStore, 'createExecution')
+			.mockResolvedValue({ errorExecutionAlreadyExists: false });
+		const cancelExecution = vi
+			.spyOn(wrapped.executionStore, 'cancelExecution')
+			.mockResolvedValue(null);
+		vi.spyOn(wrapped.stepStore, 'nextWaitDeadline').mockResolvedValue(null);
+		const resumeDueSteps = vi.spyOn(wrapped.stepStore, 'resumeDueSteps').mockResolvedValue([]);
+		const wrapStores = vi.fn((_stores: EngineStores) => wrapped);
+		const externalDependencies = vi.fn((_stores: EngineStores) => ({}));
+		const engine = createEngineRuntime({
+			dataSource: fakeDataSource(),
+			admittance: new AllowAllAdmittance(),
+			identityVerifier,
+			responseSender,
+			waitSweepIntervalMs: 1,
+			queues: { orchestration: fakeQueue<OrchestrationMessage>(), step: fakeQueue<StepMessage>() },
+			externalDependencies,
+			instrumentation: { wrapStores },
+		});
+		engine.start();
+
+		try {
+			await request(engine.app)
+				.post('/api/workflow-executions')
+				.set('Authorization', `Bearer ${token}`)
+				.send({
+					workflowId: 'wf-1',
+					graph: { nodes: [{ id: 'trigger', name: 'Trigger', type: 'trigger' }], edges: [] },
+					workflow: {},
+					executionId,
+					callerContext: { hostMode: 'trigger' },
+				})
+				.expect(201);
+			await request(engine.app)
+				.post(`/api/workflow-executions/${executionId}/cancel`)
+				.set('Authorization', `Bearer ${token}`);
+			await vi.waitFor(() => expect(resumeDueSteps).toHaveBeenCalled());
+		} finally {
+			await engine.stop();
+		}
+
+		expect(wrapStores).toHaveBeenCalledOnce();
+		expect(createExecution).toHaveBeenCalledOnce();
+		expect(cancelExecution).toHaveBeenCalledOnce();
+		const [given] = externalDependencies.mock.calls[0];
+		expect(given.executionStore).toBe(wrapped.executionStore);
+		expect(given.stepStore).toBe(wrapped.stepStore);
+		expect(given.executionViewStore).toBe(wrapped.executionViewStore);
+	});
+
+	it.each(ENGINE_ROLES)('wraps the stores when it runs only the %s role', (role) => {
+		const wrapStores = vi.fn((stores: EngineStores) => stores);
+
+		runtime({ roles: [role], instrumentation: { wrapStores } });
+
+		expect(wrapStores).toHaveBeenCalledOnce();
 	});
 
 	it('stops the batching publisher it builds for a host lifecycle event callback', async () => {

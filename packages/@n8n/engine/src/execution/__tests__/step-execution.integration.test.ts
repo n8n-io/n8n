@@ -123,6 +123,14 @@ describe('step execution (integration)', () => {
 			responseSender: noopExecutionResponseSender,
 			waitSweepIntervalMs,
 			queues: createInMemoryWorkQueues({ concurrency }),
+			// The spies below sit on the wrappers, so a handler that bypasses them never resolves the run.
+			instrumentation: {
+				wrapStores: (stores) => ({
+					executionStore: Object.create(stores.executionStore),
+					stepStore: Object.create(stores.stepStore),
+					executionViewStore: Object.create(stores.executionViewStore),
+				}),
+			},
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
