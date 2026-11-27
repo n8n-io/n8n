@@ -518,6 +518,291 @@ export function displayParameterPath(
 	);
 }
 
+type ExpectedDisplayPrimitiveType = 'boolean' | 'string' | 'number';
+
+type DisplayOptionEvaluation = 'shown' | 'hidden' | 'uncertain';
+
+function findDeclaredProperties(
+	properties: INodeProperties[] | undefined,
+	propertyName: string,
+): INodeProperties[] {
+	if (!properties?.length) {
+		return [];
+	}
+
+	const normalized = propertyName.startsWith('/') ? propertyName.slice(1) : propertyName;
+	const segments = normalized.split('.');
+	let current: INodeProperties[] = properties;
+
+	for (let i = 0; i < segments.length; i++) {
+		const segment = segments[i];
+		const matches = current.filter((p) => p.name === segment);
+		if (matches.length === 0) {
+			return [];
+		}
+		if (i === segments.length - 1) {
+			return matches;
+		}
+		const next: INodeProperties[] = [];
+		for (const match of matches) {
+			if (match.type === 'collection' && Array.isArray(match.options)) {
+				for (const option of match.options) {
+					if ('type' in option) {
+						next.push(option);
+					}
+				}
+			}
+		}
+		if (next.length === 0) {
+			return [];
+		}
+		current = next;
+	}
+
+	return [];
+}
+
+function addPrimitiveType(types: Set<ExpectedDisplayPrimitiveType>, value: unknown): void {
+	if (typeof value === 'boolean') types.add('boolean');
+	else if (typeof value === 'string') types.add('string');
+	else if (typeof value === 'number') types.add('number');
+}
+
+function getConditionExpectedTypes(conditions: Array<NodeParameterValue | DisplayCondition>): {
+	types: Set<ExpectedDisplayPrimitiveType>;
+	hasExists: boolean;
+} {
+	const types = new Set<ExpectedDisplayPrimitiveType>();
+	let hasExists = false;
+
+	for (const condition of conditions) {
+		if (
+			typeof condition === 'boolean' ||
+			typeof condition === 'string' ||
+			typeof condition === 'number'
+		) {
+			addPrimitiveType(types, condition);
+			continue;
+		}
+
+		if (isRecord(condition) && isRecord(condition._cnd)) {
+			const [key, targetValue] = Object.entries(condition._cnd)[0] ?? [];
+			if (key === 'eq' || key === 'not') {
+				addPrimitiveType(types, targetValue);
+			} else if (
+				key === 'gte' ||
+				key === 'lte' ||
+				key === 'gt' ||
+				key === 'lt' ||
+				key === 'between'
+			) {
+				types.add('number');
+			} else if (
+				key === 'includes' ||
+				key === 'startsWith' ||
+				key === 'endsWith' ||
+				key === 'regex'
+			) {
+				types.add('string');
+			} else if (key === 'exists') {
+				hasExists = true;
+			}
+		}
+	}
+
+	return { types, hasExists };
+}
+
+function getDeclaredExpectedTypes(
+	declaredProperties: INodeProperties[],
+): Set<ExpectedDisplayPrimitiveType> {
+	const types = new Set<ExpectedDisplayPrimitiveType>();
+
+	for (const property of declaredProperties) {
+		switch (property.type) {
+			case 'boolean':
+				types.add('boolean');
+				break;
+			case 'number':
+				types.add('number');
+				break;
+			case 'string':
+			case 'color':
+			case 'dateTime':
+			case 'json':
+			case 'credentialsSelect':
+			case 'credentials':
+			case 'workflowSelector':
+			case 'agentSelector':
+				types.add('string');
+				break;
+			case 'options':
+			case 'multiOptions':
+				if (Array.isArray(property.options)) {
+					for (const option of property.options) {
+						if ('value' in option) {
+							addPrimitiveType(types, option.value);
+						}
+					}
+				}
+				break;
+			default:
+				break;
+		}
+	}
+
+	return types;
+}
+
+function isUncertainPrimitiveValue(
+	value: unknown,
+	expectedTypes: Set<ExpectedDisplayPrimitiveType>,
+	hasExists: boolean,
+	ruleKind: 'show' | 'hide',
+): boolean {
+	if (typeof value === 'string') {
+		if (ruleKind === 'hide' && isExpression(value)) {
+			return true;
+		}
+		return expectedTypes.size > 0 && !expectedTypes.has('string');
+	}
+
+	if (typeof value === 'boolean') {
+		return expectedTypes.size > 0 && !expectedTypes.has('boolean');
+	}
+
+	if (typeof value === 'number') {
+		if (Number.isNaN(value)) {
+			return true;
+		}
+		return expectedTypes.size > 0 && !expectedTypes.has('number');
+	}
+
+	if (value === null) {
+		return !(hasExists && expectedTypes.size === 0);
+	}
+
+	return true;
+}
+
+function isUncertainDisplayCondition(
+	parameters: INodeParameters,
+	propertyName: string,
+	conditions: Array<NodeParameterValue | DisplayCondition>,
+	nodeTypeDescription: INodeTypeDescription,
+	ruleKind: 'show' | 'hide',
+): boolean {
+	if (propertyName === '@version' || propertyName === '@tool' || propertyName === '@feature') {
+		return false;
+	}
+
+	const rawValue: unknown =
+		propertyName.charAt(0) === '/'
+			? get(parameters, propertyName.slice(1))
+			: get(parameters, propertyName);
+
+	const declaredProperties = findDeclaredProperties(nodeTypeDescription.properties, propertyName);
+	const { types: conditionTypes, hasExists } = getConditionExpectedTypes(conditions);
+	const expectedTypes = new Set<ExpectedDisplayPrimitiveType>([
+		...getDeclaredExpectedTypes(declaredProperties),
+		...conditionTypes,
+	]);
+
+	if (rawValue === undefined) {
+		if (!expectedTypes.has('boolean')) {
+			return false;
+		}
+		if (ruleKind === 'show') {
+			return checkConditions(conditions, [false]);
+		}
+		return checkConditions(conditions, [undefined]) !== checkConditions(conditions, [false]);
+	}
+
+	const allowsMulti = declaredProperties.some((p) => p.type === 'multiOptions');
+	if (allowsMulti) {
+		if (!Array.isArray(rawValue)) {
+			return true;
+		}
+		return rawValue.some((item) =>
+			isUncertainPrimitiveValue(item, expectedTypes, hasExists, ruleKind),
+		);
+	}
+
+	if (Array.isArray(rawValue)) {
+		return true;
+	}
+
+	const allowsResourceLocator = declaredProperties.some((p) => p.type === 'resourceLocator');
+	if (allowsResourceLocator && isRecord(rawValue) && rawValue.__rl) {
+		const rlValue = rawValue.value;
+		if (rlValue === undefined) {
+			return false;
+		}
+		return isUncertainPrimitiveValue(rlValue, expectedTypes, hasExists, ruleKind);
+	}
+
+	return isUncertainPrimitiveValue(rawValue, expectedTypes, hasExists, ruleKind);
+}
+
+/**
+ * Evaluates a credential or credential-selector parameter's `displayOptions`.
+ * Returns `'uncertain'` when `displayParameter` hides the entry while a
+ * discriminator holds an unexpected value type that runtime code could still
+ * interpret as active (for example, a non-boolean truthy value on a boolean
+ * parameter).
+ */
+function evaluateCredentialDisplayOptions(
+	parameters: INodeParameters,
+	parameter: INodeProperties | INodeCredentialDescription,
+	node: Pick<INode, 'typeVersion'>,
+	nodeTypeDescription: INodeTypeDescription,
+): DisplayOptionEvaluation {
+	if (displayParameter(parameters, parameter, node, nodeTypeDescription)) {
+		return 'shown';
+	}
+
+	const displayOptions = parameter.displayOptions;
+	if (!displayOptions) {
+		return 'hidden';
+	}
+
+	if (displayOptions.show) {
+		for (const [propertyName, conditions] of Object.entries(displayOptions.show)) {
+			if (!conditions) continue;
+			if (
+				isUncertainDisplayCondition(
+					parameters,
+					propertyName,
+					conditions,
+					nodeTypeDescription,
+					'show',
+				)
+			) {
+				return 'uncertain';
+			}
+		}
+	}
+
+	if (displayOptions.hide) {
+		for (const [propertyName, conditions] of Object.entries(displayOptions.hide)) {
+			if (!conditions) continue;
+			if (
+				isUncertainDisplayCondition(
+					parameters,
+					propertyName,
+					conditions,
+					nodeTypeDescription,
+					'hide',
+				)
+			) {
+				return 'uncertain';
+			}
+		}
+	}
+
+	return 'hidden';
+}
+
 /**
  * Returns the credential types a node actively uses given its current configuration,
  * or `null` when the active set cannot be determined statically. A credential type is
@@ -528,10 +813,10 @@ export function displayParameterPath(
  *   declaring them in the node type description.
  *
  * Returns `null` when the node type description is unavailable, a credential-type
- * parameter is an expression (it only resolves at runtime), or evaluating the
- * configuration throws. Callers must fall back conservatively for their use case:
- * treat all referenced credentials as active when validating, and clean nothing
- * when removing stale entries.
+ * parameter is an expression or non-string value, a `displayOptions` discriminator
+ * holds an unexpected value type, or evaluating the configuration throws. Callers
+ * must fall back conservatively for their use case: treat all referenced credentials
+ * as active when validating, and clean nothing when removing stale entries.
  */
 export function getActiveCredentialTypes(
 	node: INode,
@@ -566,7 +851,16 @@ export function getActiveCredentialTypes(
 		const activeTypes = new Set<string>();
 
 		for (const credentialDescription of nodeTypeDescription.credentials ?? []) {
-			if (displayParameter(parameters, credentialDescription, node, nodeTypeDescription)) {
+			const displayState = evaluateCredentialDisplayOptions(
+				parameters,
+				credentialDescription,
+				node,
+				nodeTypeDescription,
+			);
+			if (displayState === 'uncertain') {
+				return null;
+			}
+			if (displayState === 'shown') {
 				activeTypes.add(credentialDescription.name);
 			}
 		}
@@ -574,7 +868,7 @@ export function getActiveCredentialTypes(
 		const { nodeCredentialType, genericAuthType } = parameters;
 		for (const paramName of ['nodeCredentialType', 'genericAuthType'] as const) {
 			const paramValue = paramName === 'nodeCredentialType' ? nodeCredentialType : genericAuthType;
-			if (typeof paramValue !== 'string' || !paramValue) {
+			if (paramValue === undefined || paramValue === null || paramValue === '') {
 				continue;
 			}
 
@@ -587,17 +881,25 @@ export function getActiveCredentialTypes(
 			const paramDescription = (nodeTypeDescription.properties ?? []).find(
 				(p) => p.name === paramName,
 			);
-			if (
-				paramDescription &&
-				!displayParameter(parameters, paramDescription, node, nodeTypeDescription)
-			) {
-				continue;
+			if (paramDescription) {
+				const displayState = evaluateCredentialDisplayOptions(
+					parameters,
+					paramDescription,
+					node,
+					nodeTypeDescription,
+				);
+				if (displayState === 'uncertain') {
+					return null;
+				}
+				if (displayState === 'hidden') {
+					continue;
+				}
 			}
 
 			// Checked after the hidden check: a hidden parameter holds no active value,
 			// expression or not, so a leftover expression must not make the whole node
 			// indeterminable and block cleanup.
-			if (isExpression(paramValue)) {
+			if (typeof paramValue !== 'string' || isExpression(paramValue)) {
 				return null;
 			}
 

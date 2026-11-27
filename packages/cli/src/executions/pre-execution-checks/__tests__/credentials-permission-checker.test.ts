@@ -916,6 +916,126 @@ describe('CredentialsPermissionChecker', () => {
 			});
 		});
 
+		describe('with a boolean display option on a credential', () => {
+			const sslCredentialId = 'ssl-cred';
+			const description = {
+				credentials: [
+					{
+						name: 'httpSslAuth',
+						required: true,
+						displayOptions: { show: { provideSslCertificates: [true] } },
+					},
+				],
+				properties: [
+					{
+						displayName: 'SSL Certificates',
+						name: 'provideSslCertificates',
+						type: 'boolean',
+						default: false,
+					},
+				],
+			};
+
+			const makeSslNode = (parameters: INode['parameters']): INode => ({
+				id: 'node-7',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters,
+				credentials: {
+					httpSslAuth: { id: sslCredentialId, name: 'SSL Certificates' },
+				},
+			});
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockReturnValue({ description } as never);
+				credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
+			});
+
+			it.each([1, 0, 'true', 'false', {}, [], [false], { __rl: true, value: false }, null])(
+				'should check the credential when provideSslCertificates is %p',
+				async (value) => {
+					sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+					const node = makeSslNode({
+						provideSslCertificates: value,
+					} as unknown as INode['parameters']);
+
+					await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+						'Node "HTTP Request" does not have access to the credential',
+					);
+
+					expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+						[teamProject.id],
+						[sslCredentialId],
+					);
+				},
+			);
+
+			it('should allow execution when provideSslCertificates is non-boolean and the credential is accessible', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+					sslCredentialId,
+				]);
+				const node = makeSslNode({
+					provideSslCertificates: 1,
+				} as unknown as INode['parameters']);
+
+				await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[sslCredentialId],
+				);
+			});
+
+			it('should skip the credential when provideSslCertificates is false or omitted', async () => {
+				const falseNode = makeSslNode({ provideSslCertificates: false });
+				const omittedNode = makeSslNode({});
+
+				await expect(permissionChecker.check(workflowId, [falseNode])).resolves.not.toThrow();
+				await expect(permissionChecker.check(workflowId, [omittedNode])).resolves.not.toThrow();
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
+			});
+
+			it('should check the credential when provideSslCertificates is true', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+				const node = makeSslNode({ provideSslCertificates: true });
+
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "HTTP Request" does not have access to the credential',
+				);
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[sslCredentialId],
+				);
+			});
+
+			it('should return the credential id from getCredentialIdsForNodes for non-boolean values', () => {
+				expect(
+					permissionChecker.getCredentialIdsForNodes([
+						makeSslNode({ provideSslCertificates: 1 } as unknown as INode['parameters']),
+					]),
+				).toEqual([sslCredentialId]);
+				expect(
+					permissionChecker.getCredentialIdsForNodes([
+						makeSslNode({ provideSslCertificates: 'true' } as unknown as INode['parameters']),
+					]),
+				).toEqual([sslCredentialId]);
+				expect(
+					permissionChecker.getCredentialIdsForNodes([
+						makeSslNode({ provideSslCertificates: {} } as unknown as INode['parameters']),
+					]),
+				).toEqual([sslCredentialId]);
+				expect(
+					permissionChecker.getCredentialIdsForNodes([
+						makeSslNode({ provideSslCertificates: false }),
+					]),
+				).toEqual([]);
+			});
+		});
+
 		it('should fall back to checking all credentials if node type cannot be resolved', async () => {
 			nodeTypes.getByNameAndVersion.mockImplementation(() => {
 				throw new Error('Unknown node type');
