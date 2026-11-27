@@ -12,7 +12,7 @@ import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { Registry } from 'prom-client';
+import promClient from 'prom-client';
 
 import * as CrashJournal from '@/crash-journal';
 import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
@@ -484,6 +484,11 @@ describe('Engine', () => {
 	});
 
 	describe('metrics', () => {
+		// The command registers the Node.js default metrics on the global registry.
+		afterEach(() => {
+			promClient.register.clear();
+		});
+
 		/** The registry the command handed to the runtime. */
 		const registryGivenToRuntime = () =>
 			vi.mocked(runtime.init).mock.calls.at(-1)?.[0].metricsRegistry;
@@ -495,14 +500,14 @@ describe('Engine', () => {
 			expect(registryGivenToRuntime()).toBeUndefined();
 		});
 
-		it('serves the registry it gives the engine on N8N_ENGINE_HOST and N8N_ENGINE_METRICS_PORT', async () => {
+		it('serves the global registry, which it also gives the engine, on N8N_ENGINE_HOST and N8N_ENGINE_METRICS_PORT', async () => {
 			metricsConfig.enable = true;
 			Object.assign(engineConfig, { host: '::', metricsPort: 9464 });
 
 			await createEngine().init();
 
 			const registry = registryGivenToRuntime();
-			expect(registry).toBeInstanceOf(Registry);
+			expect(registry).toBe(promClient.register);
 			expect(startEngineMetricsServer).toHaveBeenCalledExactlyOnceWith(registry, {
 				host: '::',
 				port: 9464,
@@ -545,7 +550,9 @@ describe('Engine', () => {
 
 			await createEngine().init();
 
-			expect(await registryGivenToRuntime()?.getMetricsAsJSON()).toEqual([]);
+			expect(
+				promClient.register.getSingleMetric('n8n_nodejs_eventloop_lag_seconds'),
+			).toBeUndefined();
 		});
 
 		it('closes the metrics server when the data plane stops', async () => {

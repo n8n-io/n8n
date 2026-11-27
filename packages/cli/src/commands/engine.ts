@@ -111,7 +111,7 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 			step: engineConfig.stepConcurrency,
 		});
 
-		const metricsRegistry = await this.createMetricsRegistry();
+		const metricsRegistry = await this.prepareMetricsRegistry();
 		// Before the engine takes work: a crash exit loses a message the queue
 		// handed out, so a taken port must stop the boot first.
 		if (metricsRegistry) await this.startMetricsServer(metricsRegistry, engineConfig, logger);
@@ -130,17 +130,18 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	/**
-	 * This process runs no control plane metrics, so it serves a registry of its
-	 * own on a separate port.
+	 * The global registry, so the metrics that shared code registers there, such
+	 * as the expression engine's, show on this process's endpoint too. This
+	 * process runs no control plane metrics service, so it registers the Node.js
+	 * default metrics itself.
 	 */
-	private async createMetricsRegistry(): Promise<Registry | undefined> {
+	private async prepareMetricsRegistry(): Promise<Registry | undefined> {
 		const { enable, prefix, includeDefaultMetrics } = Container.get(PrometheusMetricsConfig);
 		if (!enable) return undefined;
 
 		const promClient = await import('prom-client');
-		const registry = new promClient.Registry();
-		if (includeDefaultMetrics) promClient.collectDefaultMetrics({ prefix, register: registry });
-		return registry;
+		if (includeDefaultMetrics) promClient.collectDefaultMetrics({ prefix });
+		return promClient.register;
 	}
 
 	private async startMetricsServer(
