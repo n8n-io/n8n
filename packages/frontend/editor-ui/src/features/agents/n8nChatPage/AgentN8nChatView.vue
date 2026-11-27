@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onScopeDispose, provide, ref, useTemplateRef, watch } from 'vue';
+import { computed, onScopeDispose, provide, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import type { AgentN8nChatAgentDetails } from '@n8n/api-types';
 import { N8nEmptyState, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
@@ -23,7 +23,6 @@ import AgentPersonalisationIcon from '../components/AgentPersonalisationIcon.vue
 import N8nChatPageLayout from './components/N8nChatPageLayout.vue';
 import N8nChatThreadHistory from './components/N8nChatThreadHistory.vue';
 import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
-import { consumePendingN8nChatMessage, type PendingN8nChatMessage } from './pendingN8nChatMessage';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import { firstMessageTitle } from '@/features/ai/instanceAi/instanceAi.threadRuntime';
 
@@ -82,16 +81,10 @@ const mintedSessionId = ref<string>();
 const continueSessionId = computed(() => props.agentThreadId || mintedSessionId.value);
 const isNewSession = computed(() => !props.agentThreadId);
 
-const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
-
-// Hand-off from the Assistant picker. Consumed per `agentId` because `RouterView`
-// reuses this view across agents.
-let pendingMessage: PendingN8nChatMessage | undefined;
 watch(
 	() => props.agentId,
 	async (id) => {
 		if (!id) return;
-		pendingMessage = consumePendingN8nChatMessage(id);
 		await loadAgent(id);
 	},
 	{ immediate: true },
@@ -108,12 +101,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-watch(panel, (current) => {
-	if (!current || !pendingMessage || props.agentThreadId) return;
-	current.sendMessageFromOutside(pendingMessage.text, pendingMessage.files);
-	pendingMessage = undefined;
-});
 
 // The same recent-threads list the sidebar shows, so both name the open chat the same way.
 // A thread outside the newest page (e.g. opened directly by URL) is missing here until
@@ -232,7 +219,6 @@ const agentPageRoute = computed(() => {
 		/>
 		<AgentChatPanel
 			v-else-if="agent"
-			ref="panel"
 			:project-id="projectId"
 			:agent-id="agentId"
 			mode="inline"
@@ -267,6 +253,7 @@ const agentPageRoute = computed(() => {
 					</div>
 					<N8nText
 						v-if="agent.description"
+						:class="$style.description"
 						color="text-light"
 						data-testid="agent-n8n-chat-description"
 					>
@@ -297,10 +284,17 @@ const agentPageRoute = computed(() => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
+	justify-content: safe center;
+	overflow-y: auto;
 	padding-bottom: var(--spacing--lg);
 	gap: var(--spacing--3xs);
 	text-align: center;
+}
+
+.description {
+	max-inline-size: min(100%, 65ch);
+	text-wrap: pretty;
+	overflow-wrap: anywhere;
 }
 
 .nameRow {

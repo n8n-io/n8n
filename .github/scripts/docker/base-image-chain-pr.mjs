@@ -4,14 +4,17 @@
  * own images.
  *
  * A refresh PR that changes DHI_REF or DEBIAN_DHI_REF makes master publish a
- * new n8nio/base, and a second PR pins it (see docker/AGENTS.md). The script
- * reads the images that the publishing commit tagged, and updates their pins
- * in docker/docker-bake.hcl.
+ * new n8nio/base, and a second PR pins it (see docker/AGENTS.md). The Node PR
+ * also changes NODE_VERSION, so master also publishes n8nio/node-pc and
+ * n8nio/node-patched. The script reads the images that the publishing commit
+ * tagged, and updates their pins in docker/docker-bake.hcl. For the Node PR, one
+ * PR pins the images of both workflows when both published, so the Alpine and
+ * the Debian images move to the new Node together.
  *
  * Usage: node base-image-chain-pr.mjs --workflow <file> --sha <commit>
  *   --subject <commit subject> --run-url <url> --body <file> [--any-commit]
- * Writes changed=true|false and title=<PR title> to $GITHUB_OUTPUT, and the PR
- * body to $GITHUB_STEP_SUMMARY.
+ * Writes changed=true|false, title=<PR title> and branch=<PR branch> to
+ * $GITHUB_OUTPUT, and the PR body to $GITHUB_STEP_SUMMARY.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -19,8 +22,9 @@ import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
+import { readNodeVersion } from '../resolve-node-version.mjs';
 import { readPin } from './base-image-candidates.mjs';
-import { updatePins } from './base-image-pin-pr.mjs';
+import { GROUPS, updatePins } from './base-image-pin-pr.mjs';
 
 const BAKE_FILE = 'docker/docker-bake.hcl';
 
@@ -42,19 +46,39 @@ export const CHAIN = {
 			},
 		],
 	},
+	'build-node-pc-image.yml': {
+		title: 'build: Pin the Node builder images that master published',
+		pins: (hcl, sha) => [
+			{ name: 'N8N_BUILDER_IMAGE', tag: `n8nio/node-patched:${readNodeVersion(hcl)}-${sha}-dev` },
+			{ name: 'PC_BUILDER_IMAGE', tag: `n8nio/node-pc:${readNodeVersion(hcl)}-${sha}-dev` },
+		],
+	},
 };
 
-/** The titles of the refresh PRs. Only their merge commits continue a chain. */
-export const REFRESH_TITLES = [
-	'build: Update base image digests with fewer OS findings',
-	'build: Update base image digests that need a review',
-];
+/**
+ * The titles of the refresh PRs, also the Node PR (`build: Update Node to <version>`).
+ * Only their merge commits continue a chain.
+ */
+export const REFRESH_TITLES = Object.values(GROUPS);
 
 export const isRefreshCommit = (subject) =>
 	REFRESH_TITLES.some((title) => subject.startsWith(title));
 
-/** The master commit in the tag of a pin that n8n published, or null. */
-export const commitOf = (ref) => /-([0-9a-f]{40})@/.exec(ref)?.[1] ?? null;
+/** The merge of the Node PR, which changes the inputs of every chain workflow. */
+export const isNodeCommit = (subject) => subject.startsWith(`${GROUPS.node} `);
+
+/** The branch of the chain PR of one workflow. */
+export const chainBranchOf = (workflow) =>
+	`base-image-refresh/chain-${workflow.replace(/\.yml$/, '')}`;
+
+/** The chain PR of the Node PR: one PR for the images of every chain workflow. */
+export const NODE_CHAIN = {
+	title: 'build: Pin the images of the Node update that master published',
+	branch: 'base-image-refresh/chain-node',
+};
+
+/** The master commit in the tag of a pin that n8n published (`-<sha>@` or `-<sha>-dev@`), or null. */
+export const commitOf = (ref) => /-([0-9a-f]{40})(?:-dev)?@/.exec(ref)?.[1] ?? null;
 
 /**
  * The pins to change. `publishedHcl` is the bake file at `sha`: the tags use
@@ -78,10 +102,31 @@ export async function planPins(hcl, workflow, sha, { publishedHcl = hcl, resolve
 	return changes;
 }
 
+/**
+ * The pins of the Node PR at `sha`: the images of every chain workflow. While
+ * one workflow has not published yet, `missing` lists its tags and there is no
+ * change, so the next workflow run opens the PR.
+ */
+export async function planNodeChain(hcl, sha, { publishedHcl = hcl, resolve, contains }) {
+	const missing = Object.values(CHAIN)
+		.flatMap(({ pins }) => pins(publishedHcl, sha))
+		.map(({ tag }) => tag)
+		.filter((tag) => !resolve(tag));
+	if (missing.length > 0) return { changes: [], missing };
+	const changes = [];
+	for (const workflow of Object.keys(CHAIN)) {
+		changes.push(...(await planPins(hcl, workflow, sha, { publishedHcl, resolve, contains })));
+	}
+	return { changes, missing };
+}
+
 /** The Markdown body of the chain PR. */
-export function renderBody(changes, { runUrl }) {
+export function renderBody(changes, { runUrl, node = false }) {
+	const intro = node
+		? `Master published the images of the Node update ([publish run](${runUrl})). This PR pins them together, so the Alpine and the Debian images move to the new Node at once, as \`docker/AGENTS.md\` describes.`
+		: `Master published new images of the base image chain ([publish run](${runUrl})). This PR pins them, as \`docker/AGENTS.md\` describes.`;
 	return [
-		`Master published new images of the base image chain ([publish run](${runUrl})). This PR pins them, as \`docker/AGENTS.md\` describes.`,
+		intro,
 		'',
 		'| Pin | From | To |',
 		'| --- | --- | --- |',
@@ -170,23 +215,37 @@ async function main() {
 		throw new Error('--workflow, --sha <full commit SHA> and --body are required');
 	}
 
+	const node = !values['any-commit'] && isNodeCommit(values.subject);
+	const { title, branch } = node
+		? NODE_CHAIN
+		: { title: CHAIN[values.workflow].title, branch: chainBranchOf(values.workflow) };
 	let changes = [];
-	if (values['any-commit'] || isRefreshCommit(values.subject)) {
+	if (node || values['any-commit'] || isRefreshCommit(values.subject)) {
 		const hcl = readFileSync(BAKE_FILE, 'utf8');
-		changes = await planPins(hcl, values.workflow, values.sha, {
-			publishedHcl: await bakeFileAt(values.sha),
-			resolve: resolveDigest,
-			contains,
-		});
+		// Each workflow run of the Node PR checks the same tags, so resolve each tag once.
+		const digests = new Map();
+		const resolve = (tag) => {
+			if (!digests.has(tag)) digests.set(tag, resolveDigest(tag));
+			return digests.get(tag);
+		};
+		const deps = { publishedHcl: await bakeFileAt(values.sha), resolve, contains };
+		if (node) {
+			const plan = await planNodeChain(hcl, values.sha, deps);
+			changes = plan.changes;
+			if (plan.missing.length > 0)
+				console.log(`The Node update waits for: ${plan.missing.join(', ')}`);
+		} else {
+			changes = await planPins(hcl, values.workflow, values.sha, deps);
+		}
 		if (changes.length > 0) {
 			writeFileSync(BAKE_FILE, updatePins(hcl, changes));
-			const body = renderBody(changes, { runUrl: values['run-url'] });
+			const body = renderBody(changes, { runUrl: values['run-url'], node });
 			writeFileSync(values.body, body);
 			if (process.env.GITHUB_STEP_SUMMARY)
 				appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## The chain PR\n\n${body}`);
 		}
 		console.log(
-			`${values.workflow}: ${changes.map((change) => change.source).join(', ') || 'no pin to change'}`,
+			`${node ? 'Node update' : values.workflow}: ${changes.map((change) => change.source).join(', ') || 'no pin to change'}`,
 		);
 	} else {
 		console.log(`Skip: ${values.sha} is not the merge of a refresh PR.`);
@@ -195,7 +254,7 @@ async function main() {
 	if (process.env.GITHUB_OUTPUT) {
 		appendFileSync(
 			process.env.GITHUB_OUTPUT,
-			`changed=${changes.length > 0}\ntitle=${CHAIN[values.workflow].title}\n`,
+			`changed=${changes.length > 0}\ntitle=${title}\nbranch=${branch}\n`,
 		);
 	}
 }

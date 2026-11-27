@@ -59,8 +59,9 @@ export class ExecutionLimitsService {
 	/**
 	 * The limits that apply to an execution of this project. Reads memory only, so it is safe
 	 * at every execution start. `null` means that this process has not loaded the limits yet.
+	 * A `null` project has the instance limit only.
 	 */
-	getApplicableLimits(projectId: string): ApplicableLimits | null {
+	getApplicableLimits(projectId: string | null): ApplicableLimits | null {
 		return this.snapshot.read(projectId);
 	}
 

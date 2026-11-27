@@ -39,6 +39,7 @@ describe('PyTaskRunnerProcess', () => {
 
 	describe('start', () => {
 		beforeEach(() => {
+			logger.scoped.mockReturnValue(logger);
 			taskRunnerProcess = new PyTaskRunnerProcess(logger, runnerConfig, authService, mock());
 			authService.createGrantToken.mockResolvedValue('grantToken');
 		});
@@ -60,6 +61,68 @@ describe('PyTaskRunnerProcess', () => {
 				expect.objectContaining({
 					[envVar]: 'custom value',
 				}),
+			);
+		});
+
+		describe('N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT', () => {
+			const originalValue = process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
+
+			beforeEach(() => {
+				delete process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
+			});
+
+			afterAll(() => {
+				if (originalValue !== undefined) {
+					process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = originalValue;
+				}
+			});
+
+			afterEach(() => {
+				delete process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
+				logger.warn.mockClear();
+			});
+
+			it('should forward a positive integer', async () => {
+				process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = '30';
+
+				await taskRunnerProcess.start();
+
+				const { env } = spawnMock.mock.calls[0][2] as SpawnOptions;
+				expect(env!.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT).toBe('30');
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('should forward a zero-padded integer without the padding', async () => {
+				process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = '0'.repeat(5000) + '30';
+
+				await taskRunnerProcess.start();
+
+				const { env } = spawnMock.mock.calls[0][2] as SpawnOptions;
+				expect(env!.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT).toBe('30');
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('should not set the value when it is unset', async () => {
+				await taskRunnerProcess.start();
+
+				const { env } = spawnMock.mock.calls[0][2] as SpawnOptions;
+				expect(env!.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT).toBeUndefined();
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+
+			test.each(['0', '-5', '1.5', 'abc', '', '1'.repeat(400)])(
+				'should not forward %j and should log a warning',
+				async (value) => {
+					process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = value;
+
+					await taskRunnerProcess.start();
+
+					const { env } = spawnMock.mock.calls[0][2] as SpawnOptions;
+					expect(env!.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT).toBeUndefined();
+					expect(logger.warn).toHaveBeenCalledWith(
+						expect.stringContaining('N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT'),
+					);
+				},
 			);
 		});
 

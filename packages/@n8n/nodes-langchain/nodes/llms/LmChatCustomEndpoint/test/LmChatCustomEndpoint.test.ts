@@ -1,3 +1,4 @@
+import { openAiTokensUsageParser } from '@n8n/ai-utilities';
 import { ChatOpenAI, ChatOpenAICompletions } from '@langchain/openai';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
@@ -235,6 +236,15 @@ describe('LmChatCustomEndpoint', () => {
 
 			expect(MockedChatOpenAICompletions).not.toHaveBeenCalled();
 			expect(constructorArgs()).toMatchObject({ useResponsesApi: true });
+		});
+
+		it('uses the OpenAI usage parser so Responses usage is not estimated', async () => {
+			await node.supplyData.call(contextWith(RESPONSES), 0);
+
+			const callbacks = constructorArgs().callbacks as Array<{
+				options?: { tokensUsageParser?: unknown };
+			}>;
+			expect(callbacks[0]?.options?.tokensUsageParser).toBe(openAiTokensUsageParser);
 		});
 
 		it.each([['chatCompletions'], ['responses']])(

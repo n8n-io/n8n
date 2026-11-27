@@ -1,9 +1,11 @@
 import { Chroma } from '@langchain/community/vectorstores/chroma';
+import type { Embeddings } from '@langchain/core/embeddings';
 import { ChromaClient, CloudClient } from 'chromadb';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import * as ChromaNode from './VectorStoreChromaDB.node';
+import { createInsertContext } from '../../../test/vectorStoreInsert';
 import type { MockedClass } from 'vitest';
 
 // Mock external modules
@@ -27,34 +29,16 @@ vi.mock('@langchain/community/vectorstores/chroma', () => {
 	return { Chroma, __state: state };
 });
 
-vi.mock('@n8n/ai-utilities', () => ({
-	createVectorStoreNode: (config: {
-		getVectorStoreClient: (...args: unknown[]) => unknown;
-		populateVectorStore: (...args: unknown[]) => unknown;
-		methods: {
-			listSearch: {
-				chromaCollectionsSearch: (
-					this: ISupplyDataFunctions,
-				) => Promise<{ results: Array<{ name: string; value: string }> }>;
-			};
+vi.mock('@n8n/ai-utilities', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/ai-utilities')>();
+	const createVectorStoreNode: typeof actual.createVectorStoreNode = (config) =>
+		class extends actual.createVectorStoreNode(config) {
+			async getVectorStoreClient(...args: Parameters<typeof config.getVectorStoreClient>) {
+				return await config.getVectorStoreClient(...args);
+			}
 		};
-	}) =>
-		class BaseNode {
-			async getVectorStoreClient(...args: unknown[]) {
-				return config.getVectorStoreClient.apply(config, args);
-			}
-			async populateVectorStore(...args: unknown[]) {
-				return config.populateVectorStore.apply(config, args);
-			}
-			async chromaCollectionsSearch(...args: unknown[]) {
-				return await config.methods.listSearch.chromaCollectionsSearch.apply(
-					this as any,
-					args as any,
-				);
-			}
-		},
-	metadataFilterField: {},
-}));
+	return { ...actual, createVectorStoreNode };
+});
 vi.mock('../shared/descriptions', () => ({ chromaCollectionRLC: {} }));
 
 const MockChromaClient = ChromaClient as MockedClass<typeof ChromaClient>;
@@ -182,65 +166,39 @@ describe('VectorStoreChromaDB.node', () => {
 		});
 	});
 
-	describe('populateVectorStore', () => {
-		it('should populate vector store and clear collection if requested', async () => {
-			const mockEmbeddings = {};
-			const mockDocuments = [{ pageContent: 'test', metadata: {} }];
+	it.each([
+		[1, true],
+		[1.1, true],
+		[1.1, false],
+	])('inserts with version %s and clear=%s', async (version, clearCollection) => {
+		const documents = [
+			{ pageContent: 'first', metadata: {} },
+			{ pageContent: 'second', metadata: {} },
+		];
+		const context = createInsertContext(
+			version,
+			{
+				chromaCollection: { mode: 'list', value: 'test-collection' },
+				authentication: 'chromaSelfHostedApi',
+				options: { clearCollection },
+			},
+			mock<Embeddings>(),
+			documents,
+			selfHostedCredentials,
+		);
 
-			MockChroma.fromDocuments = vi.fn().mockResolvedValue(undefined);
+		await new ChromaNode.VectorStoreChromaDB().execute.call(context);
 
-			const context = {
-				getCredentials: vi.fn().mockResolvedValue(selfHostedCredentials),
-				getNodeParameter: vi.fn((name: string) => {
-					if (name === 'chromaCollection') return 'test-collection';
-					if (name === 'options') return { clearCollection: true };
-					if (name === 'authentication') return 'chromaSelfHostedApi';
-					return undefined;
-				}),
-				getNode: () => ({
-					name: 'VectorStoreChromaDB',
-					credentials: { chromaSelfHostedApi: {} },
-				}),
-				logger: dataFunctions.logger,
-			} as never;
-
-			const node = new ChromaNode.VectorStoreChromaDB();
-			await (node as any).populateVectorStore(context, mockEmbeddings, mockDocuments, 0);
-
-			expect(MockChromaClient).toHaveBeenCalled();
-			expect(mockChromaClientInstance.deleteCollection).toHaveBeenCalledWith({
-				name: 'test-collection',
-			});
-			expect(MockChroma.fromDocuments).toHaveBeenCalled();
-		});
-
-		it('should not clear collection if not requested', async () => {
-			const mockEmbeddings = {};
-			const mockDocuments = [{ pageContent: 'test', metadata: {} }];
-
-			MockChroma.fromDocuments = vi.fn().mockResolvedValue(undefined);
-
-			const context = {
-				getCredentials: vi.fn().mockResolvedValue(selfHostedCredentials),
-				getNodeParameter: vi.fn((name: string) => {
-					if (name === 'chromaCollection') return 'test-collection';
-					if (name === 'options') return { clearCollection: false };
-					if (name === 'authentication') return 'chromaSelfHostedApi';
-					return undefined;
-				}),
-				getNode: () => ({
-					name: 'VectorStoreChromaDB',
-					credentials: { chromaSelfHostedApi: {} },
-				}),
-				logger: dataFunctions.logger,
-			} as never;
-
-			const node = new ChromaNode.VectorStoreChromaDB();
-			await (node as any).populateVectorStore(context, mockEmbeddings, mockDocuments, 0);
-
-			expect(mockChromaClientInstance.deleteCollection).not.toHaveBeenCalled();
-			expect(MockChroma.fromDocuments).toHaveBeenCalled();
-		});
+		const { deleteCollection } = mockChromaClientInstance;
+		if (clearCollection) {
+			expect(deleteCollection).toHaveBeenCalledExactlyOnceWith({ name: 'test-collection' });
+			expect(deleteCollection).toHaveBeenCalledBefore(vi.mocked(Chroma.fromDocuments));
+		} else {
+			expect(deleteCollection).not.toHaveBeenCalled();
+		}
+		expect(vi.mocked(Chroma.fromDocuments).mock.calls.map(([batch]) => batch)).toEqual(
+			version === 1 ? [documents] : [[documents[0]], [documents[1]]],
+		);
 	});
 
 	describe('listSearch', () => {
@@ -261,7 +219,7 @@ describe('VectorStoreChromaDB.node', () => {
 			} as never;
 
 			const node = new ChromaNode.VectorStoreChromaDB();
-			const result = await (node as any).chromaCollectionsSearch.call(context);
+			const result = await node.methods?.listSearch?.chromaCollectionsSearch.call(context);
 
 			expect(result).toEqual({
 				results: [
@@ -288,7 +246,7 @@ describe('VectorStoreChromaDB.node', () => {
 
 			const node = new ChromaNode.VectorStoreChromaDB();
 
-			await expect((node as any).chromaCollectionsSearch.call(context)).rejects.toThrow(
+			await expect(node.methods?.listSearch?.chromaCollectionsSearch.call(context)).rejects.toThrow(
 				'Authentication failed',
 			);
 		});

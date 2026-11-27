@@ -31,10 +31,11 @@ const props = withDefaults(
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { menuItems, disconnectedConnectionCount, refreshSkills } = useInstanceAiInputMenuItems(
-	() => emit('attachFiles'),
-	() => props.projectId,
-);
+const { menuItems, disconnectedConnectionCount, refreshSkills, handleSubMenuToggle, handleSearch } =
+	useInstanceAiInputMenuItems(
+		() => emit('attachFiles'),
+		() => props.projectId,
+	);
 
 const tooltip = computed(() => {
 	if (props.disabled && props.isStreaming) {
@@ -124,13 +125,18 @@ const menuAnchor = useTemplateRef<HTMLElement>('menuAnchor');
 				</div>
 			</template>
 		</N8nPopover>
+		<!-- The "Open" submenu can list 40 resources. The same cap as the preview tab picker
+		makes them scroll under the search field. -->
 		<N8nDropdownMenu
 			:model-value="isOpen"
 			:items="menuItems"
 			placement="top-start"
+			sub-menu-max-height="320px"
 			:disabled="props.disabled"
 			data-test-id="instance-ai-input-menu"
 			@select="handleSelect"
+			@search="handleSearch"
+			@submenu:toggle="handleSubMenuToggle"
 			@update:model-value="handleUpdateDropdownModelValue"
 		>
 			<template #trigger>

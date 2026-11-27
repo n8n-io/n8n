@@ -129,30 +129,41 @@ function copyOfSmallJsonContainer(
 	return copy;
 }
 
-/** A copy of small JSON data, and its size. */
+/** A copy of small JSON data, and the characters that its walk counted. */
 export interface SmallJsonCopy {
-	/** Holds only plain objects, arrays, and JSON primitives. */
+	/**
+	 * Holds only plain objects, arrays, and JSON primitives. Undefined when the
+	 * value is not small JSON data.
+	 */
 	copy: unknown;
-	/** The characters that the walk counted. See NODE_CHARS. */
+	/**
+	 * The characters that the walk counted, at most `maxChars`. See NODE_CHARS.
+	 * For a value that is not small JSON data, the count until the walk stopped.
+	 * It leaves out the work to list the keys of an object, so a charge of it
+	 * limits repeated walks but does not bound the work.
+	 */
 	chars: number;
 }
 
 /**
  * A copy of a value, when JSON carries the value without loss in at most
- * `maxChars` characters. Undefined for any other value. The copy holds what each
- * key reads as, in plain objects and arrays, so it never holds a host proxy.
+ * `maxChars` characters. The copy holds what each key reads as, in plain objects
+ * and arrays, so it never holds a host proxy.
  *
- * Undefined for data that holds undefined, a non-finite number, -0, a Date, a class
+ * No copy for data that holds undefined, a non-finite number, -0, a Date, a class
  * instance, an array subclass, a function, an accessor, a symbol key, a key that
  * is not enumerable, a sparse or keyed array, a framing key, or more than
- * MAX_DEPTH levels. Undefined when a proxy trap throws.
+ * MAX_DEPTH levels. No copy when a proxy trap throws.
  */
-export function smallJsonCopy(value: unknown, maxChars: number): SmallJsonCopy | undefined {
+export function smallJsonCopy(value: unknown, maxChars: number): SmallJsonCopy {
 	const budget = { remaining: maxChars };
+	let copy: unknown;
 	try {
-		const copy = copyOfSmallJsonValue(value, budget, 0);
-		return copy === NOT_SMALL ? undefined : { copy, chars: maxChars - budget.remaining };
+		copy = copyOfSmallJsonValue(value, budget, 0);
 	} catch {
-		return undefined;
+		copy = NOT_SMALL;
 	}
+	// The spend that stops a walk can go past the limit by a whole string.
+	const chars = Math.min(maxChars, maxChars - budget.remaining);
+	return { copy: copy === NOT_SMALL ? undefined : copy, chars };
 }

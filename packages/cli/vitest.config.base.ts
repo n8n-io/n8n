@@ -66,6 +66,14 @@ const alias = {
 		__dirname,
 		'../modules/workflow-builder/backend/src/index.ts',
 	),
+	'@n8n/backend-module-mcp-servers/module': path.resolve(
+		__dirname,
+		'../modules/mcp-servers/backend/src/mcp-servers.module.ts',
+	),
+	'@n8n/backend-module-mcp-servers': path.resolve(
+		__dirname,
+		'../modules/mcp-servers/backend/src/index.ts',
+	),
 	'@n8n/mcp-apps/server': path.resolve(__dirname, '../@n8n/mcp-apps/src/server/index.ts'),
 	'@n8n/telemetry': path.resolve(__dirname, '../@n8n/telemetry/src'),
 	'@': path.resolve(__dirname, 'src'),

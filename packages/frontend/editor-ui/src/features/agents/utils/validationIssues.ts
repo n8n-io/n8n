@@ -34,11 +34,18 @@ export function hasBlockingIssues(issues: AgentConfigValidationIssue[]): boolean
 	return issues.some((issue) => !isWarningIssue(issue));
 }
 
+const SKILL_WORKFLOW_ISSUE_PATH = /^skills\..+\.workflows\.([^.]+)$/;
+
+export function skillWorkflowIdOfIssue(issue: AgentConfigValidationIssue): string | undefined {
+	return SKILL_WORKFLOW_ISSUE_PATH.exec(issue.path)?.[1];
+}
+
 /**
  * The unpublished workflow tools behind a config validation, for the modal the
  * builder shows instead of a failing publish request. The issue's
  * `capability.id` is the workflow's display name; `capability.index` locates
- * the tool config for its stable workflow id.
+ * the tool config for its stable workflow id. A workflow that a skill mentions
+ * has no index, so its id comes from the issue path.
  */
 export function unpublishedWorkflowTools(
 	issues: AgentConfigValidationIssue[],
@@ -51,7 +58,7 @@ export function unpublishedWorkflowTools(
 			const workflowTool = tool?.type === 'workflow' ? tool : undefined;
 			return {
 				name: workflowTool?.workflow ?? issue.capability.id ?? '',
-				workflowId: workflowTool?.workflowId,
+				workflowId: workflowTool?.workflowId ?? skillWorkflowIdOfIssue(issue),
 			};
 		})
 		.filter((workflow) => workflow.name !== '');
