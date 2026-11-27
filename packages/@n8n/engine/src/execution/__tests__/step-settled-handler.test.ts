@@ -23,6 +23,7 @@ import {
 	type StepStore,
 	type StepSummary,
 } from '../step-store';
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 
 /**
  * trigger -> a -> {b (out 0), c (out 1)} -> m. So `a` fans out across two output
@@ -166,11 +167,11 @@ function makeStepStore(
 }
 
 function makeStepQueue(): WorkQueue<StepMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
+	return fakeWorkQueue();
 }
 
 function makeOrchestrationQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
+	return fakeWorkQueue();
 }
 
 /** A publisher fake; tests that care assert on `publish`. */

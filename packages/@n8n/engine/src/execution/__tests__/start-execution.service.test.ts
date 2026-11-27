@@ -16,6 +16,7 @@ import type {
 } from '../execution.types';
 import { StartExecutionService, type InvalidParentLinkReason } from '../start-execution.service';
 import { StepNotFoundError, type StepRecord, type StepStore } from '../step-store';
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 
 const sampleGraph: WorkflowGraph = {
 	nodes: [{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} }],
@@ -30,7 +31,7 @@ const sampleWorkflow: WorkflowDocument = {
 };
 
 function makeQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
+	return fakeWorkQueue();
 }
 
 function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {

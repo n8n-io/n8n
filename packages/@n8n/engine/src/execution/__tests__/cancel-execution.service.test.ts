@@ -14,6 +14,7 @@ import {
 } from '../execution-store';
 import type { ExecutionStatus } from '../execution.types';
 import type { StepStore } from '../step-store';
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 
 const execution: ExecutionRecord = {
 	id: 'exec-1',
@@ -69,12 +70,7 @@ function makeService(executionStore: ExecutionStore) {
 		send: vi.fn(),
 		stop: vi.fn(),
 	};
-	const stepQueue: WorkQueue<StepMessage> = {
-		publish: vi.fn(),
-		start: vi.fn(),
-		stop: vi.fn(),
-		size: vi.fn(),
-	};
+	const stepQueue: WorkQueue<StepMessage> = fakeWorkQueue();
 	const service = new CancelExecutionService(
 		executionStore,
 		stepStore,

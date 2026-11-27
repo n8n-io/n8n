@@ -17,12 +17,8 @@ import {
 	LifecycleEventPublisherFactory,
 	noopLifecycleEventPublisher,
 } from '../../lifecycle-events';
-import {
-	InMemoryWorkQueue,
-	type OrchestrationMessage,
-	type StepMessage,
-	type WorkQueue,
-} from '../../queue';
+import { InMemoryWorkQueue, type OrchestrationMessage, type StepMessage } from '../../queue';
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import type { CancelExecutionService } from '../cancel-execution.service';
 import { ExecutionStartHandler } from '../execution-start-handler';
@@ -142,13 +138,8 @@ describe('execution start (integration)', () => {
 
 	it('is idempotent across duplicate execution:enqueued deliveries', async () => {
 		const { executionStore, stepStore } = stores();
-		const publish = vi.fn();
-		const queue: WorkQueue<OrchestrationMessage> = {
-			publish,
-			start: vi.fn(),
-			stop: vi.fn(),
-			size: vi.fn(),
-		};
+		const queue = fakeWorkQueue<OrchestrationMessage>();
+		const { publish } = queue;
 		const handler = new ExecutionStartHandler(
 			executionStore,
 			stepStore,

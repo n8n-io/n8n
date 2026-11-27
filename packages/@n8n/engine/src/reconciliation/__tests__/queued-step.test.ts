@@ -4,6 +4,7 @@ import type { StepStore } from '../../execution';
 import type { StepMessage, WorkQueue } from '../../queue';
 import { QueuedStepDetector } from '../queued-step-detector';
 import { QueuedStepRepair } from '../queued-step-repair';
+import { fakeWorkQueue } from '../../queue/__tests__/fake-work-queue';
 
 const at = new Date('2026-01-01T00:10:00.000Z');
 const staleAfter = new Date('2026-01-01T00:00:00.000Z');
@@ -17,7 +18,7 @@ function makeStepStore() {
 }
 
 function makeStepQueue(): WorkQueue<StepMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
+	return fakeWorkQueue();
 }
 
 describe('QueuedStepDetector', () => {
