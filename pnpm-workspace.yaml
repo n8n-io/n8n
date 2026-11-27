@@ -253,7 +253,7 @@ catalog:
   mermaid: ^11.17.0
   mime-types: 3.0.2
   mocha: ^11.8.0
-  moment-timezone: 0.5.48
+  moment-timezone: 0.6.5
   mqtt-packet: 9.0.0
   ms: 2.1.3
   mysql2: 3.23.1
