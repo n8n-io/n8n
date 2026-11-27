@@ -1182,7 +1182,6 @@ onBeforeUnmount(() => {
 												<span>{{ option.value }}</span>
 												<N8nBadge
 													v-if="option.badge"
-													:class="$style.logicBadge"
 													size="xxsmall"
 													:variant="executionLogicBadgeVariant(option.key)"
 												>
@@ -2249,17 +2248,5 @@ onBeforeUnmount(() => {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	min-width: 0;
-}
-
-/* One step under the smallest badge size: 16px tall, 10px text. */
-.logicBadge:global(.n8n-badge) {
-	--n8n-badge--height: var(--height--3xs);
-	--n8n-badge--padding-inline-start: var(--spacing--3xs);
-	--n8n-badge--padding-inline-end: var(--spacing--3xs);
-}
-
-.logicBadge :global(.n8n-text) {
-	font-size: var(--font-size--3xs);
-	line-height: var(--line-height--sm);
 }
 </style>
