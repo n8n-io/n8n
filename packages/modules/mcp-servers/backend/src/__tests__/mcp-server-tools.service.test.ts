@@ -2,11 +2,11 @@ import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 
-import type { McpServerTool } from '../mcp-server-tool.entity';
-import type { McpServerToolRepository } from '../mcp-server-tool.repository';
-import { McpServerToolsService } from '../mcp-server-tools.service';
-import type { McpServer } from '../mcp-server.entity';
-import type { McpServerRepository } from '../mcp-server.repository';
+import type { McpServerTool } from '../database/entities/mcp-server-tool.entity';
+import type { McpServerToolRepository } from '../database/repositories/mcp-server-tool.repository';
+import { McpServerToolsService } from '../services/mcp-server-tools.service';
+import type { McpServer } from '../database/entities/mcp-server.entity';
+import type { McpServerRepository } from '../database/repositories/mcp-server.repository';
 import type { TextDraftPort } from '../tools/text-draft-port';
 import type { WorkflowToolListItem, WorkflowToolPort } from '../tools/workflow-tool-port';
 
@@ -64,7 +64,7 @@ describe('McpServerToolsService.findCandidates', () => {
 		expect(ports.check).toHaveBeenCalledTimes(10);
 	});
 
-	it('leaves out the workflows that cannot be a tool, and counts them', async () => {
+	it('leaves out the workflows that cannot be a tool or are already tools, and counts only the first', async () => {
 		const { service } = setup(
 			[workflow('a', 'Alpha'), workflow('b', 'Bravo'), workflow('c', 'Charlie')],
 			['b'],
@@ -76,7 +76,34 @@ describe('McpServerToolsService.findCandidates', () => {
 		expect(page.candidates).toEqual([
 			{ workflowId: 'a', name: 'Alpha', description: null, reason: null },
 		]);
-		expect(page).toMatchObject({ unusable: 2, more: false });
+		expect(page).toMatchObject({ unusable: 1, more: false });
+	});
+
+	it('leaves out a tool whose workflow the project no longer owns', async () => {
+		const { service, ports } = setup([workflow('a', 'Alpha')], [], ['a']);
+		ports.check.mockResolvedValue({ callable: false, reason: 'not_found' });
+
+		const page = await service.findCandidates(PROJECT_ID, SERVER_ID, {
+			limit: 10,
+			includeUnusable: true,
+		});
+
+		expect(page.candidates).toEqual([]);
+	});
+
+	it('stops after 200 checks and says that more workflows exist', async () => {
+		const unpublished = Array.from({ length: 500 }, (_, i) =>
+			workflow(`w-${i}`, `Workflow ${String(i).padStart(3, '0')}`),
+		);
+		const { service, ports } = setup(
+			unpublished,
+			unpublished.map(({ workflowId }) => workflowId),
+		);
+
+		const page = await service.findCandidates(PROJECT_ID, SERVER_ID, { limit: 1 });
+
+		expect(ports.check).toHaveBeenCalledTimes(200);
+		expect(page).toMatchObject({ candidates: [], unusable: 200, more: true });
 	});
 
 	it('lists the workflows that cannot be a tool, with the reason, on request', async () => {

@@ -110,6 +110,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `list_data_tables`, `get_data_table_schema`, `query_data_table` | single-purpose |
 | `change_data_tables` | 8 change actions in one batch |
 | `list_projects`, `list_tags`, `tag_workflow`, `cleanup_test_executions`, `list_folders`, `create_folder`, `delete_folder`, `move_workflow_to_folder` | single-purpose |
+| `create_app`, `list_apps`, `get_app`, `open_app`, `list_app_bindings`, `bind_app_resource`, `unbind_app_resource`, `commit_app`, `discard_app_changes` | single-purpose |
 | `workflow_builder_executions` | 8 |
 | `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
 | `mcp-servers` | 4 |
@@ -120,7 +121,6 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
 | `skills` | 5 (8 when Skill Sync is on) |
-| `apps` | 6 |
 | `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `import-files`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
@@ -340,9 +340,7 @@ of guessable by comparing per-scope counts.
 `folder` (`{ id, name, path }`) is the workflow's folder with its root-relative
 path (`Clients/Acme`). Folder names cannot contain `/`, so `path` is
 unambiguous. Absent for root-level workflows, and absent on every row
-while folder exploration is off for the run (PostHog flag
-`110_instance_ai_folder_exploration`, force-on via
-`N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED`).
+while folder exploration is off for the run.
 
 `folderResolution` (`{ requested, reason, candidates }`) is present only when a
 requested folder did not resolve. `workflows` is then empty on purpose, and
@@ -1524,22 +1522,31 @@ The system prompt carries the judgment of *when* to call it (see
 
 ---
 
-## `apps` *(conditional)*
+## App tools *(conditional)*
 
 Build n8n Apps. Present only when the apps module is active, the run has a
 bound project and the sandbox is available. The adapter wires `appService`, and
-the turn setup removes it without a sandbox, so the tool, the `app-builder`
-skill and the `<app-targets>` block share one gate. Deferred: the tool is in the
-default `tools` tool group, which the skill lists in `recommended_tool_groups`.
+the turn setup removes it without a sandbox, so the tools, the `app-builder`
+skill and the `<app-targets>` block share one gate. Deferred: the tools are in
+the `apps` tool group, which the skill lists in `recommended_tool_groups`.
 
-| Action | Scope | Description |
-|--------|-------|-------------|
-| `create` | `app:create` | Create an app in the bound project and open it. The first app of a thread uses the pending app id from thread metadata |
-| `list` | `app:list` | Apps of the bound project (at most 50), optionally filtered by name |
-| `get` | `app:read` | App state |
-| `open` | `app:read` | Put the draft source into `apps/<appId>` in the sandbox workspace. Keeps a folder that is already open |
-| `commit` | `app:update` | Save the folder as one version and wait for its build |
-| `discard` | `app:read` | Replace the folder with the current draft. Keeps `node_modules` |
+| Tool | Scope | Description |
+|------|-------|-------------|
+| `create_app` | `app:create` | Suspend with an editable blueprint. After approval, create the app in the bound project. Does not open it. The first app of a thread uses the pending app id from thread metadata |
+| `list_apps` | `app:list` | Apps of the bound project (at most 50), optionally filtered by name |
+| `get_app` | `app:read` | App state |
+| `open_app` | `app:read` | Put the draft source into `apps/<appId>` in the sandbox workspace. Keeps a folder that is already open |
+| `list_app_bindings` | `app:read` | The bindings of the draft, with resource names and generated `types` |
+| `bind_app_resource` | `app:update` | Add a binding, or replace the binding with the same key. Saves a new version |
+| `unbind_app_resource` | `app:update` | Remove a binding by its key. Saves a new version |
+| `commit_app` | `app:update` | Save the folder as one version and wait for its build |
+| `discard_app_changes` | `app:read` | Replace the folder with the current draft. Keeps `node_modules` |
+
+Only `create_app` suspends. The plan card shows the app title only. When the
+namespace is too long for the instance, n8n cuts it. When the namespace is taken, n8n
+uses the next free numbered namespace (`todos-2`, `todos-3` and so on), within
+the namespace length limit of the instance. When all of them are taken, the tool
+returns an error result.
 
 The model edits the folder with the workspace tools and runs `npm ci` and
 `npm run build` there before it commits. The source moves in and out of the
@@ -1550,12 +1557,12 @@ commit is based on that version, so a draft that changed since then fails the
 commit with a conflict and the folder stays. A commit leaves out
 `node_modules` and `dist`, and n8n builds the version again.
 
-`create` and every commit add the app to the thread metadata key
-`instanceAiAppTargets`. Reads and opens do not. A thread can build several
+`create_app`, `open_app`, `commit_app` and every binding change add the app to
+the thread metadata key `instanceAiAppTargets`. Reads and `discard_app_changes` do not. A thread can build several
 apps. On each user turn the `<app-targets>` block names these apps. They also
 report the app as an `app` artifact through `onArtifactChanged`, so the thread
-shows the app's tab. The `create` and commit results include `app` (`id`,
-`name`, `projectId`) for the frontend.
+shows the app's tab. The `create_app` and `commit_app` results include `app`
+(`id`, `name`, `projectId`) for the frontend.
 
 Errors return `{ error }`.
 
@@ -1679,6 +1686,9 @@ The `type` field selects one lookup. Supported values are `agents`, `config-sche
 return one body at a time. Session lookup supports status, origin, date, and
 cursor filters.
 
+For a `skill` lookup, use `referencePaths` to read text files. If a file has
+`nextOffset`, pass it as `referenceOffset` with only that path in `referencePaths`.
+
 By default, a `session` lookup returns a compact transcript. Long values are
 cut and the oldest turns of a long session are left out. Set
 `maxToolValueLength` to get every turn with complete text, in pages. Each tool
@@ -1711,6 +1721,10 @@ a `delete` that the user has no permission for, before it asks for approval.
 For `update`, pass the `skillHash` that `get` returns as `baseSkillHash`. The
 tool marks its output as untrusted data, because other users can write skill
 content. The tool does not attach a skill to an Agent.
+
+The `get` action limits how much reference text it returns. Use `referencePath`
+to read an omitted file. If a file has `nextOffset`, pass it as `referenceOffset`
+with the same `referencePath`.
 
 When Skill Sync is on, `list-sources` lists visible sources and their update
 counts. `discover-source` previews a public GitHub link and reports the check

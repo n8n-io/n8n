@@ -7,7 +7,7 @@ import { createInstanceRedisWorkQueues } from '../work-queue/redis-work-queues';
 
 vi.mock('@n8n/engine', { spy: true });
 
-const publisher = { lpush: vi.fn(), rpush: vi.fn() };
+const publisher = { lpush: vi.fn(), rpush: vi.fn(), llen: vi.fn() };
 
 mockInstance(GlobalConfig, { redis: { prefix: 'acme' } });
 const redisClientService = mockInstance(RedisClientService);
@@ -34,11 +34,17 @@ describe('createInstanceRedisWorkQueues', () => {
 		});
 	});
 
-	it('opens each consuming connection as a work queue consumer of this instance', async () => {
-		await createInstanceRedisWorkQueues(publisher, mockLogger(), { orchestration: 1, step: 1 });
+	it('opens a consuming connection as a work queue consumer of this instance when a queue starts', async () => {
+		const { queues } = await createInstanceRedisWorkQueues(publisher, mockLogger(), {
+			orchestration: 1,
+			step: 1,
+		});
+		expect(redisClientService.createClient).not.toHaveBeenCalled();
+
+		queues.step.start(async () => {});
+		await queues.step.stop();
 
 		expect(redisClientService.createClient.mock.calls).toEqual([
-			[{ type: 'work-queue-consumer(n8n)' }],
 			[{ type: 'work-queue-consumer(n8n)' }],
 		]);
 	});

@@ -296,7 +296,7 @@ If the user asks for a blocked operation, explain that the instance is in read-o
  * the bullet after it names only the instance-level server and the trigger.
  */
 function getCustomMcpServersBullet(): string {
-	return '- **To build an MCP server from workflows, use a custom MCP server.** When the user asks to build, create, or change an MCP server, or to serve workflows as tools to AI clients, run `custom-mcp-servers` through `call_tool` (tool group `custom_mcp_servers`). A custom MCP server belongs to a project and serves the workflows that the user chooses as tools, with the n8n sign-in. Do not build an MCP Server Trigger workflow for this unless the user names that node. The next rule applies only when the user wants to connect a client to n8n and does not ask for a custom MCP server.\n';
+	return '- **To build an MCP server from workflows, use a custom MCP server.** When the user asks to build, create, or change an MCP server, or to serve workflows as tools to AI clients, run `custom-mcp-servers` through `call_tool` (tool group `custom_mcp_servers`). A custom MCP server belongs to a project and serves the workflows that the user chooses as tools, with the n8n sign-in. Do not build an MCP Server Trigger workflow for this unless the user names that node. The next rule about two MCP servers does not cover custom MCP servers: when the user names a custom MCP server, or a URL that ends in `/mcp-servers/<slug>`, use `custom-mcp-servers` to find the server and its URL, and do not ask which of the two servers the user means.\n';
 }
 
 function getLimitedModeSection(parameterValuesHidden?: boolean): string {

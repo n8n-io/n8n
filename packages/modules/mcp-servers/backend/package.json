@@ -50,7 +50,6 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/typeorm": "workspace:*",
     "@n8n/utils": "workspace:*",
-    "express": "catalog:",
     "uuid": "catalog:"
   },
   "devDependencies": {

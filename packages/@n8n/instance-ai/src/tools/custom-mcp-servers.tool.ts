@@ -3,6 +3,7 @@ import {
 	MCP_SERVER_DESCRIPTION_MAX_LENGTH,
 	MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH,
 	mcpServerNameSchema,
+	mcpServerSlugFromName,
 	mcpServerSlugSchema,
 	mcpServerToolNameSchema,
 	type McpServerResponse,
@@ -248,7 +249,11 @@ async function withApproval<T extends object>(
 	if (grantable && resumeData?.approved && resumeData.scope === 'session') {
 		await context.grantSessionToolApproval?.(sessionGrantKey(action));
 	}
-	return { success: true, ...(await run()) };
+	const result = await run();
+	// The editor reloads an open server page on this stamp. A new server is on no open page.
+	return action === 'create'
+		? { success: true, ...result }
+		: { success: true, serverMutated: true, ...result };
 }
 
 function requireService(context: InstanceAiContext): InstanceAiCustomMcpServerService {
@@ -448,7 +453,9 @@ async function handleGenerate(
 		async () => {
 			const result = await service.generateTool(toRef(input), input.toolId, input.field);
 			// The Assistant can turn off between the card and the approval.
-			if (result.status === 'not_available') throw new Error(DRAFTS_NOT_AVAILABLE);
+			if (result.status === 'not_available') {
+				return { success: false, refused: true, reason: DRAFTS_NOT_AVAILABLE };
+			}
 			return { tool: toolSummary(result.tool) };
 		},
 	);
@@ -538,18 +545,27 @@ export function createCustomMcpServersTool(context: InstanceAiContext) {
 					}
 					case 'create': {
 						const { action: _action, ...create } = input;
+						// The slug is part of the card, so a name that gives no slug fails before it.
+						const slug = create.slug ?? mcpServerSlugFromName(create.name);
+						if (!slug) {
+							return {
+								success: false,
+								refused: true,
+								reason:
+									'The name has no letters or digits that a URL can use. Pass a slug, for example "sales-tools".',
+							};
+						}
 						return await withApproval(
 							context,
 							ctx,
 							'create',
 							input.projectId,
 							async () => ({
-								message:
-									'Create a custom MCP server. AI clients can connect to it after you add tools.',
+								message: `Create a custom MCP server at the URL /mcp-servers/${slug}. The URL never changes. AI clients can connect to it after you add tools.`,
 								resourceName: input.name,
 								severity: 'info',
 							}),
-							async () => ({ server: summary(await service.create(create)) }),
+							async () => ({ server: summary(await service.create({ ...create, slug })) }),
 						);
 					}
 					case 'update':

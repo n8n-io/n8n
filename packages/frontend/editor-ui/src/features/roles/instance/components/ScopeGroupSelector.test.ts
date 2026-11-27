@@ -36,14 +36,14 @@ describe('ScopeGroupSelector', () => {
 		customMcpServersEnabled.mockReturnValue(flag);
 		const { queryByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
 
-		expect(queryByTestId('scope-option-mcpServer-use')).not.toBeInTheDocument();
+		expect(queryByTestId('scope-option-mcpServer-view')).not.toBeInTheDocument();
 		expect(queryByTestId('scope-option-mcpServer-manage')).not.toBeInTheDocument();
 	});
 
 	it('shows MCP server options when the module is active and the flag is on', () => {
 		const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
 
-		expect(getByTestId('scope-option-mcpServer-use')).toBeInTheDocument();
+		expect(getByTestId('scope-option-mcpServer-view')).toBeInTheDocument();
 		expect(getByTestId('scope-option-mcpServer-manage')).toBeInTheDocument();
 	});
 

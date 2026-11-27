@@ -2,6 +2,7 @@ import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { AgentApprovalRouteSchema, AgentHitlConfigurationSchema } from './agent-hitl.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
@@ -298,6 +299,7 @@ export const McpServerConfigSchema = z
 			.describe(
 				'Optional read/write category permissions with exact-name tool overrides. Omission allows all tools without approval',
 			),
+		approvalRoute: AgentApprovalRouteSchema.optional(),
 		connectionTimeoutMs: z
 			.number()
 			.int()
@@ -377,6 +379,7 @@ export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
 ]);
 
 const CustomToolJsonConfigSchema = z.object({
+	approvalRoute: AgentApprovalRouteSchema.optional(),
 	type: z.literal('custom'),
 	enabled: z.boolean().optional(),
 	id: z
@@ -414,6 +417,7 @@ export const WorkflowToolInputFieldSchema = z.discriminatedUnion('mode', [
 
 export const WorkflowToolJsonConfigSchema = z
 	.object({
+		approvalRoute: AgentApprovalRouteSchema.optional(),
 		type: z.literal('workflow'),
 		enabled: z.boolean().optional(),
 		workflowId: z.string().min(1).optional().describe("The workflow's stable ID."),
@@ -436,6 +440,7 @@ export const WorkflowToolJsonConfigSchema = z
 
 export const NodeToolJsonConfigSchema = z
 	.object({
+		approvalRoute: AgentApprovalRouteSchema.optional(),
 		type: z.literal('node'),
 		enabled: z.boolean().optional(),
 		name: z.string().min(1),
@@ -560,7 +565,7 @@ const modelToolGuardrailShape = {
 /**
  * A guardrail running before or after the referenced tools. Pattern kinds
  * run locally; model kinds call a model with an optional prompt and
- * threshold.
+ * threshold; the workflow kind runs a check workflow before the call.
  */
 export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 	z.object({
@@ -598,16 +603,44 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 		...toolGuardrailBaseShape,
 		...modelToolGuardrailShape,
 	}),
+	z.object({
+		kind: z.literal('workflow'),
+		...toolGuardrailBaseShape,
+		/** The check workflow, run before each covered call. */
+		workflowId: z.string().min(1),
+	}),
 ]);
+
+export const AGENT_SANDBOX_EGRESS_POLICIES = ['disabled', 'opt-in', 'opt-out'] as const;
+export type AgentSandboxEgressPolicy = (typeof AGENT_SANDBOX_EGRESS_POLICIES)[number];
+
+/**
+ * Resolves whether outbound internet access is enabled for an Agent sandbox.
+ * The instance policy acts as a hard ceiling when set to `disabled`.
+ */
+export function resolveAgentSandboxEgressEnabled(
+	policy: AgentSandboxEgressPolicy,
+	agentSetting?: boolean,
+): boolean {
+	if (policy === 'disabled') return false;
+	if (policy === 'opt-in') return agentSetting === true;
+	return agentSetting !== false;
+}
+
+export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
 
 /**
  * Unrefined agent config object shape. Use for schema derivation only
  * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
  * {@link AgentJsonConfigSchema} instead.
  */
-export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
-
 export const AgentJsonConfigBaseSchema = z.object({
+	hitlConfigurations: z
+		.array(AgentHitlConfigurationSchema)
+		.refine((entries) => new Set(entries.map(({ id }) => id)).size === entries.length, {
+			message: 'Human review IDs must be unique',
+		})
+		.optional(),
 	name: z.string().min(1).max(128),
 	/** An empty string is a deliberate clear of a previously stored value. */
 	description: z.string().trim().max(AGENT_DESCRIPTION_MAX_LENGTH).optional(),
@@ -691,6 +724,12 @@ export const AgentJsonConfigBaseSchema = z.object({
 				.describe(
 					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
 				),
+			sandboxEgress: z
+				.boolean()
+				.optional()
+				.describe(
+					'Whether the agent sandbox can access the public internet. Do not set unless the user explicitly asks.',
+				),
 			guardrails: z
 				.object({
 					budget: BudgetGuardrailConfigSchema.optional(),
@@ -717,6 +756,16 @@ export const AgentJsonConfigBaseSchema = z.object({
 										code: z.ZodIssueCode.custom,
 										path: [index, 'entities'],
 										message: 'Select at least one PII entity or set type to "all"',
+									});
+								}
+								// The workflow kind registers before-only, so an
+								// after-stage check workflow cannot run: reject the
+								// config instead of silently dropping the hook.
+								if (guardrail.kind === 'workflow' && guardrail.stage === 'after') {
+									ctx.addIssue({
+										code: z.ZodIssueCode.custom,
+										path: [index, 'stage'],
+										message: 'A workflow guardrail cannot run after a tool call',
 									});
 								}
 							}

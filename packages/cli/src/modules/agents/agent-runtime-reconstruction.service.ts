@@ -1,3 +1,4 @@
+import { getAgentRuntimeDefinitionHash } from './utils/agent-config-hash';
 import {
 	createWriteTodosTool,
 	raceWithAbort,
@@ -15,6 +16,9 @@ import {
 	ModelConfig,
 	type Workspace,
 } from '@n8n/agents';
+import { wrapToolForApproval } from '@n8n/agents/tool';
+import { isRecord } from '@n8n/utils/is-record';
+import { actionNeedsApproval } from './integrations/integration-tool-definitions';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel } from 'ai';
 import {
@@ -27,6 +31,7 @@ import {
 	buildProxyHeaders,
 	hasChannelRuntime,
 	isCredentialAgentIntegration,
+	type AgentApprovalRoute,
 	type AgentIntegrationConfig,
 	type AgentToolGuardrailConfig,
 	type AgentToolGuardrailKind,
@@ -35,6 +40,7 @@ import {
 	type AgentJsonMcpServerConfig,
 	type AgentJsonMemoryConfig,
 	type AgentJsonToolConfig,
+	type AgentSkill,
 	type SubAgentRunPolicy,
 	type SubAgentSource,
 	type SubAgentTaskDifficulty,
@@ -45,7 +51,7 @@ import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { UserError } from '@n8n/errors';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -63,6 +69,7 @@ import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/ut
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
 import { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
+import { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { EmbeddingProviderOptions } from '@/modules/knowledge/vector-stores/embedding-credential';
 import { WorkflowRunner } from '@/workflow-runner';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
@@ -116,10 +123,17 @@ import {
 	createReadBinaryDataTool,
 	READ_BINARY_DATA_TOOL_NAME,
 } from './tools/read-binary-data.tool';
-import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
-import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
+import type { WorkflowToolContext, WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
+import {
+	findWorkflowToolWorkflow,
+	findWorkflowToolWorkflows,
+} from './tools/workflow-tool-workflow-resolver';
+import type { AgentDecisionWorkflowService } from './approval/agent-decision-workflow.service';
+import { withApprovalDescription } from './approval/approval-description';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
+import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
+import { withSkillWorkflowTools } from './utils/skill-workflow-tools';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 import {
 	AgentSandboxFilesService,
@@ -154,6 +168,11 @@ export interface ReconstructedAgentRuntime {
 	 * same way the run's model is. Absent when no model kind is configured.
 	 */
 	guardrailModel?: LanguageModel;
+	/**
+	 * The callable-workflow machinery that `workflow`-kind guardrail checks
+	 * run with. Absent when no workflow guardrail is configured.
+	 */
+	guardrailWorkflowContext?: WorkflowToolContext;
 }
 
 export interface SubAgentDelegationConfig {
@@ -162,6 +181,9 @@ export interface SubAgentDelegationConfig {
 }
 
 export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
+	supportsHitl?: boolean;
+	allowBackgroundTasks?: boolean;
+	allowPlanTools?: boolean;
 	config: AgentJsonConfig;
 	memoryOwnerAgentId: string;
 	projectId: string;
@@ -245,6 +267,7 @@ interface RuntimeDependencies
 		| 'unavailableTools'
 	> {
 	agent: RuntimeAgent;
+	toolCodeByName: AgentRuntimeAssets['toolCodeByName'];
 	agentId: string;
 	workflowToolExecutionMode: WorkflowToolExecutionMode;
 	parentAgentIdForDelegation: string;
@@ -392,6 +415,13 @@ function isModelBasedKind(guardrail: AgentToolGuardrailConfig): boolean {
 	return MODEL_BASED_KINDS.has(guardrail.kind);
 }
 
+/** A `workflow`-kind guardrail needs the callable-workflow machinery on the runtime. */
+function hasWorkflowGuardrail(config: AgentJsonConfig): boolean {
+	return (
+		config.config?.guardrails?.tools?.some((guardrail) => guardrail.kind === 'workflow') === true
+	);
+}
+
 @Service()
 export class AgentRuntimeReconstructionService {
 	constructor(
@@ -417,6 +447,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly sandboxFiles: AgentSandboxFilesService,
+		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -450,7 +481,11 @@ export class AgentRuntimeReconstructionService {
 		if (!agentEntity.schema) {
 			throw new UserError('Agent has no JSON config.');
 		}
-		let config = toAgentDocument(agentEntity.schema, skillRefs);
+		let config = await this.withSkillWorkflowTools(
+			toAgentDocument(agentEntity.schema, skillRefs),
+			skills,
+			agentEntity.projectId,
+		);
 
 		// Published/integration runs have no interactive n8n user and keep
 		// today's project-scoped trust boundary. When a user is present (in-app
@@ -559,12 +594,11 @@ export class AgentRuntimeReconstructionService {
 				continue;
 			}
 			const access = await this.checkToolAccess(ref, projectId, user, canExecute, loadUsableIds);
-			if (access && 'reason' in access) {
+			if ('reason' in access) {
 				unavailable.push(access);
 				continue;
 			}
 			filtered.push(ref);
-			if (!access) continue;
 			keptGatedTool = true;
 			for (const id of access.credentialIds) grantedCredentialIds.add(id);
 			for (const id of access.workflowIds) grantedWorkflowIds.add(id);
@@ -618,7 +652,7 @@ export class AgentRuntimeReconstructionService {
 		user: User,
 		canExecute: boolean,
 		loadUsableIds: () => Promise<Set<string>>,
-	): Promise<UserToolAccessSnapshot | UnavailableTool | undefined> {
+	): Promise<UserToolAccessSnapshot | UnavailableTool> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
 			toolType: ref.type,
@@ -651,7 +685,7 @@ export class AgentRuntimeReconstructionService {
 
 		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId);
 		// Missing workflows stay in the list so the tool factory can return a stub.
-		if (!workflow) return undefined;
+		if (!workflow) return { credentialIds: [], workflowIds: [] };
 		const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
 			workflow.id,
 			user,
@@ -721,7 +755,10 @@ export class AgentRuntimeReconstructionService {
 	async reconstructFromResolvedSource(
 		params: ReconstructAgentRuntimeParams,
 	): Promise<ReconstructedAgentRuntime> {
-		let config = params.config;
+		let config =
+			params.runtimeProfile === 'inline'
+				? params.config
+				: await this.withSkillWorkflowTools(params.config, params.skills, params.projectId);
 		let unavailableTools: UnavailableTool[] = [];
 		if (params.user && config.tools?.length) {
 			// Sub-agent runtimes are built per delegation and never cached, so the
@@ -744,10 +781,29 @@ export class AgentRuntimeReconstructionService {
 		return await this.reconstructRuntime({
 			...params,
 			config,
-			credentialIntegrations: [],
+			credentialIntegrations: params.credentialIntegrations ?? [],
 			subAgentDelegation,
 			unavailableTools,
 		});
+	}
+
+	private async withSkillWorkflowTools(
+		config: AgentJsonConfig,
+		skills: Record<string, AgentSkill>,
+		projectId: string,
+	): Promise<AgentJsonConfig> {
+		if (!config.skills?.length || !(await this.workflowsInSkillsFlagGate.isEnabled())) {
+			return config;
+		}
+		const legacyRefs = extractAgentWorkflowRefs(config).filter(
+			(ref) => ref.workflowId === undefined,
+		);
+		const legacyWorkflows = await findWorkflowToolWorkflows(
+			this.workflowRepository,
+			legacyRefs,
+			projectId,
+		);
+		return withSkillWorkflowTools(config, skills, legacyWorkflows);
 	}
 
 	private async reconstructRuntime(
@@ -789,6 +845,13 @@ export class AgentRuntimeReconstructionService {
 			if (options.abortSignal?.aborted) void this.closeCancelledRuntime(runtime.agent);
 			throw error;
 		}
+		const guardrailWorkflowContext = hasWorkflowGuardrail(options.config)
+			? await this.buildWorkflowToolContext(
+					this.toolRunIdentity(options, backgroundTasksEnabled),
+					options.instrumentation?.configureToolAdditionalData,
+					options.user,
+				)
+			: undefined;
 		return {
 			agent: runtime.agent,
 			toolRegistry: buildToolRegistry(runtime.resolvedTools),
@@ -803,6 +866,7 @@ export class AgentRuntimeReconstructionService {
 				? { toolGuardrails: options.config.config.guardrails.tools }
 				: {}),
 			...(runtime.guardrailModel !== undefined ? { guardrailModel: runtime.guardrailModel } : {}),
+			...(guardrailWorkflowContext !== undefined ? { guardrailWorkflowContext } : {}),
 		};
 	}
 
@@ -860,10 +924,30 @@ export class AgentRuntimeReconstructionService {
 		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
 		const aiMcpFetch = createAiMcpFetch(this.outboundHttp);
 		const webSearchFetch = createWebSearchFetch(this.outboundHttp);
-		const buildMcpClient = this.makeMcpClientFactory(options, aiMcpFetch, mcpServerAttributions);
+		const needsDecisionWorkflows =
+			(options.supportsHitl ?? options.runtimeProfile === 'top-level') &&
+			[...(config.tools ?? []), ...(config.mcpServers ?? [])].some(
+				({ approvalRoute }) => approvalRoute?.type === 'configuration',
+			);
+		let decisionWorkflows: AgentDecisionWorkflowService | undefined;
+		if (needsDecisionWorkflows) {
+			const { AgentDecisionWorkflowService } = await import(
+				'./approval/agent-decision-workflow.service.js'
+			);
+			decisionWorkflows = Container.get(AgentDecisionWorkflowService);
+		}
+		const wrapApproval = (tool: BuiltTool, route: AgentApprovalRoute | undefined) =>
+			this.wrapConfiguredApproval(tool, route, options, decisionWorkflows);
+		const buildMcpClient = this.makeMcpClientFactory(
+			options,
+			aiMcpFetch,
+			mcpServerAttributions,
+			wrapApproval,
+		);
 		const modelFetch = instrumentation?.modelFetch ?? aiProxyFetch;
 		const guardrailModel = await this.resolveGuardrailModel(config, credentialProvider, modelFetch);
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
+			wrapApproval: (tool, ref) => wrapApproval(tool, ref.approvalRoute),
 			toolExecutor,
 			credentialProvider,
 			resolveTool: async (ref) => {
@@ -931,6 +1015,17 @@ export class AgentRuntimeReconstructionService {
 		backgroundTasksEnabled: boolean,
 		unavailable: UnavailableTool[],
 	): ToolResolver {
+		return this.makeToolResolver(
+			this.toolRunIdentity(options, backgroundTasksEnabled),
+			options.instrumentation,
+			unavailable,
+		);
+	}
+
+	private toolRunIdentity(
+		options: RuntimeReconstructionOptions,
+		backgroundTasksEnabled: boolean,
+	): ToolRunIdentity {
 		const {
 			projectId,
 			workflowToolExecutionMode = 'manual',
@@ -942,37 +1037,78 @@ export class AgentRuntimeReconstructionService {
 			previewChat,
 			supportsHitl,
 			runtimeProfile,
-			instrumentation,
 		} = options;
 		const canResume = supportsHitl ?? runtimeProfile === 'top-level';
-		return this.makeToolResolver(
-			{
-				projectId,
-				workflowToolExecutionMode,
-				// Production runs execute published workflow versions, test runs the drafts.
-				usePublishedWorkflowVersion: runType === 'production',
-				agentId: memoryOwnerAgentId,
-				integrationType,
-				userId: attributionUserId ?? user?.id,
-				previewChat,
-				publishedN8nChat:
-					runType === 'production' &&
-					integrationType === N8N_CHAT_INTEGRATION_TYPE &&
-					attributionUserId !== undefined,
-				...workflowToolAttribution(options),
-				// Sub-agent checkpoints are rejected on resume and inline agents have no
-				// checkpoint storage, so neither can be woken again.
-				supportsHitl: canResume,
-				// Only an interactive top-level agent backgrounds waiting workflows: a
-				// child's job would nest under its own thread, where no check/cancel
-				// tools exist; a top-level agent invoked as a workflow step
-				// (supportsHitl false) or by a task (allowBackgroundTasks false) has no
-				// interactive turn to hand a receipt to. Everyone else handles waits
-				// the legacy way.
-				backgroundTasksEnabled: backgroundTasksEnabled && canResume,
-			},
-			instrumentation,
-			unavailable,
+		return {
+			projectId,
+			workflowToolExecutionMode,
+			// Production runs execute published workflow versions, test runs the drafts.
+			usePublishedWorkflowVersion: runType === 'production',
+			agentId: memoryOwnerAgentId,
+			integrationType,
+			userId: attributionUserId ?? user?.id,
+			previewChat,
+			publishedN8nChat:
+				runType === 'production' &&
+				integrationType === N8N_CHAT_INTEGRATION_TYPE &&
+				attributionUserId !== undefined,
+			...workflowToolAttribution(options),
+			// Sub-agent checkpoints are rejected on resume and inline agents have no
+			// checkpoint storage, so neither can be woken again.
+			supportsHitl: canResume,
+			// Only an interactive top-level agent backgrounds waiting workflows: a
+			// child's job would nest under its own thread, where no check/cancel
+			// tools exist; a top-level agent invoked as a workflow step
+			// (supportsHitl false) or by a task (allowBackgroundTasks false) has no
+			// interactive turn to hand a receipt to. Everyone else handles waits
+			// the legacy way.
+			backgroundTasksEnabled: backgroundTasksEnabled && canResume,
+		};
+	}
+
+	private wrapConfiguredApproval(
+		tool: BuiltTool,
+		route: AgentApprovalRoute | undefined,
+		options: RuntimeReconstructionOptions,
+		decisionWorkflows: AgentDecisionWorkflowService | undefined,
+	): BuiltTool {
+		const effective = route;
+		if (!effective || effective.type === 'conversation') {
+			return withApprovalDescription(wrapToolForApproval(tool, { requireApproval: true }));
+		}
+		// A review suspends the run. Do not start one that the caller cannot resume.
+		if (!(options.supportsHitl ?? options.runtimeProfile === 'top-level')) {
+			return {
+				...tool,
+				handler: async () => {
+					throw new UserError(
+						'Human review needs a run that can pause, such as Message an Agent version 4',
+					);
+				},
+			};
+		}
+		if (!decisionWorkflows)
+			throw new UnexpectedError('Configured Agent approval service is unavailable');
+		return withApprovalDescription(
+			decisionWorkflows.wrap(
+				tool,
+				effective,
+				options.config,
+				{
+					agentId: options.memoryOwnerAgentId,
+					projectId: options.projectId,
+					published: options.runType === 'production',
+					integrations: options.credentialIntegrations,
+					integrationType: options.integrationType,
+					userId: options.attributionUserId ?? options.user?.id,
+					previewChat: options.previewChat,
+					publishedN8nChat:
+						options.runType === 'production' &&
+						options.integrationType === N8N_CHAT_INTEGRATION_TYPE &&
+						options.attributionUserId !== undefined,
+				},
+				options.toolCodeByName,
+			),
 		);
 	}
 
@@ -980,11 +1116,13 @@ export class AgentRuntimeReconstructionService {
 		options: RuntimeReconstructionOptions,
 		aiMcpFetch: ReturnType<typeof createAiMcpFetch>,
 		mcpServerAttributions: Map<string, string>,
+		wrapApproval: (tool: BuiltTool, route: AgentApprovalRoute | undefined) => BuiltTool,
 	) {
 		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation, runtimeProfile } =
 			options;
 		return async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
+				wrapApproval: (tool) => wrapApproval(tool, server.approvalRoute),
 				credentialProvider,
 				// Inline agents have no checkpoint storage, and their schema rejects approval policies.
 				nonInterrupting: runtimeProfile === 'inline',
@@ -1128,6 +1266,33 @@ export class AgentRuntimeReconstructionService {
 		instrumentToolAdditionalData: AgentRuntimeInstrumentation['configureToolAdditionalData'],
 		unavailable: UnavailableTool[],
 	) {
+		const { resolveWorkflowTool, buildUnavailableWorkflowTool } = await import(
+			'./tools/workflow-tool-factory.js'
+		);
+		const context = await this.buildWorkflowToolContext(runIdentity, instrumentToolAdditionalData);
+		try {
+			return await resolveWorkflowTool(ref, context);
+		} catch (error) {
+			// A missing or incompatible workflow costs the agent one tool call, not
+			// the whole run: the stub keeps the tool listed and reports the reason.
+			if (!(error instanceof CallableWorkflowUnavailableError)) throw error;
+			unavailable.push({
+				toolName: toolRefName(ref),
+				toolType: 'workflow',
+				reason: error.reason,
+				message: error.message,
+			});
+			return buildUnavailableWorkflowTool(ref, context);
+		}
+	}
+
+	/** The callable-workflow machinery a workflow tool or guardrail check runs with. */
+	private async buildWorkflowToolContext(
+		runIdentity: ToolRunIdentity,
+		instrumentToolAdditionalData?: AgentRuntimeInstrumentation['configureToolAdditionalData'],
+		/** Interactive user. Absent for published and integration runs. */
+		workflowAccessUser?: User,
+	): Promise<WorkflowToolContext> {
 		const {
 			projectId,
 			workflowToolExecutionMode,
@@ -1142,10 +1307,7 @@ export class AgentRuntimeReconstructionService {
 			supportsHitl,
 			backgroundTasksEnabled,
 		} = runIdentity;
-		const { resolveWorkflowTool, buildUnavailableWorkflowTool } = await import(
-			'./tools/workflow-tool-factory.js'
-		);
-		const context = {
+		return {
 			workflowLoader: Container.get(CallableWorkflowLoader),
 			executor: this.ephemeralNodeExecutor,
 			workflowRunner: await getWorkflowRunner(),
@@ -1164,21 +1326,23 @@ export class AgentRuntimeReconstructionService {
 			delegatingAgentId,
 			supportsHitl,
 			backgroundTasksEnabled,
+			...(workflowAccessUser && {
+				canExecuteWorkflow: async (workflowId: string) => {
+					if (
+						!(await userHasScopes(workflowAccessUser, ['workflow:execute'], false, {
+							projectId,
+						}))
+					) {
+						return false;
+					}
+					return Boolean(
+						await this.workflowFinderService.findWorkflowForUser(workflowId, workflowAccessUser, [
+							'workflow:execute',
+						]),
+					);
+				},
+			}),
 		};
-		try {
-			return await resolveWorkflowTool(ref, context);
-		} catch (error) {
-			// A missing or incompatible workflow costs the agent one tool call, not
-			// the whole run: the stub keeps the tool listed and reports the reason.
-			if (!(error instanceof CallableWorkflowUnavailableError)) throw error;
-			unavailable.push({
-				toolName: toolRefName(ref),
-				toolType: 'workflow',
-				reason: error.reason,
-				message: error.message,
-			});
-			return buildUnavailableWorkflowTool(ref, context);
-		}
 	}
 
 	private async injectRuntimeDependencies(params: RuntimeDependencies): Promise<void> {
@@ -1199,7 +1363,16 @@ export class AgentRuntimeReconstructionService {
 		// Inline agents have no entity for checkpoint or attachment rows.
 		if (runtimeProfile === 'inline') return;
 		if (!agent.hasCheckpointStorage()) {
-			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
+			agent.checkpoint(
+				this.n8nCheckpointStorage.getStorage(
+					agentId,
+					getAgentRuntimeDefinitionHash(
+						config,
+						params.toolCodeByName,
+						params.credentialIntegrations,
+					),
+				),
+			);
 		}
 		const provider = getProviderPrefix(config.model);
 		agent.fileStore(this.agentChatAttachmentService.getFileStore({ agentId, projectId }, provider));
@@ -1277,11 +1450,20 @@ export class AgentRuntimeReconstructionService {
 			);
 		}
 		try {
-			const { workspace, handle } = await this.agentWorkspaceService.getAgentWorkspace(
-				projectId,
-				agentId,
-				sandboxPrincipalHash,
-			);
+			const sandboxEgress = params.config.config?.sandboxEgress;
+			const { workspace, handle } =
+				sandboxEgress !== undefined
+					? await this.agentWorkspaceService.getAgentWorkspace(
+							projectId,
+							agentId,
+							sandboxPrincipalHash,
+							{ sandboxEgress },
+						)
+					: await this.agentWorkspaceService.getAgentWorkspace(
+							projectId,
+							agentId,
+							sandboxPrincipalHash,
+						);
 			throwIfAborted(params.abortSignal);
 			await this.attachWorkspaceTools(params, workspace);
 			return handle;
@@ -1321,15 +1503,24 @@ export class AgentRuntimeReconstructionService {
 		});
 		for (const descriptor of descriptors) {
 			agent.tool(integrationTool(createIntegrationContextTool({ descriptor, queryExecutor })));
+			const actionTool = integrationTool(
+				createIntegrationActionTool({
+					descriptor,
+					projectId,
+					messageContextStore,
+					actionExecutor,
+				}),
+			);
 			agent.tool(
-				integrationTool(
-					createIntegrationActionTool({
-						descriptor,
-						messageContextStore,
-						actionExecutor,
-						projectId,
-					}),
-				),
+				descriptor.approval
+					? withApprovalDescription(actionTool, (input) => {
+							if (!isRecord(input)) return false;
+							const action = descriptor.actionToolDefinitions.find(
+								(entry) => entry.name === input.action,
+							)?.name;
+							return action !== undefined && actionNeedsApproval(descriptor.approval, action);
+						})
+					: actionTool,
 			);
 		}
 		for (const tool of createConversationTools({
@@ -1470,12 +1661,15 @@ export class AgentRuntimeReconstructionService {
 		}
 		agent.tool(createMarkSessionFailedTool());
 		if (!backgroundTasksEnabled) return;
-		agent.volatileInstructionsProvider(async ({ persistence }) => {
-			if (!persistence?.threadId) return undefined;
+		// Append updates as context cues instead of volatile system instructions so the
+		// conversation prompt cache stays valid when background jobs settle mid-turn.
+		agent.contextCueProvider(async ({ persistence, sentCueIds }) => {
+			if (!persistence?.threadId) return [];
 			const { AgentWakeService } = await import('./background/agent-wake.service.js');
-			return await Container.get(AgentWakeService).getBackgroundUpdates(
+			return await Container.get(AgentWakeService).getBackgroundUpdateCues(
 				persistence.threadId,
 				persistence.resourceId,
+				sentCueIds,
 			);
 		});
 	}

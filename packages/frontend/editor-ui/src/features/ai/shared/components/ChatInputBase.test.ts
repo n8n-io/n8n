@@ -119,7 +119,7 @@ describe('ChatInputBase', () => {
 	});
 
 	it('switches Stop independently of composer tools when requested', async () => {
-		const { getByTestId, queryByTestId, rerender, emitted } = renderComponent({
+		const { getByTestId, queryByTestId, getByText, rerender, emitted } = renderComponent({
 			props: makeProps({
 				isStreaming: true,
 				canSubmit: false,
@@ -137,11 +137,12 @@ describe('ChatInputBase', () => {
 		expect(getByTestId('chat-input-voice-button')).toHaveAccessibleDescription(
 			'Stop the response to dictate',
 		);
-		expect(
-			document.getElementById(
-				getByTestId('chat-input-voice-button').getAttribute('aria-describedby')!,
-			),
-		).toBeVisible();
+		// Screen readers get the reason, but it does not show under the input.
+		expect(getByText('Stop the response to dictate')).toHaveStyle({
+			position: 'absolute',
+			width: '1px',
+			overflow: 'hidden',
+		});
 
 		await rerender({ isStreaming: false, showStopButton: true });
 		expect(getByTestId('instance-ai-stop-button')).toBeEnabled();

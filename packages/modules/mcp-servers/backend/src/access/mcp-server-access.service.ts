@@ -1,7 +1,7 @@
 import {
 	mcpServerPersonSchema,
 	mcpServerSchema,
-	type McpServerBlock as McpServerBlockResponse,
+	type McpServerBlockResponse,
 	type McpServerConnectionsResponse,
 	type McpServerPerson,
 } from '@n8n/api-types';
@@ -10,10 +10,10 @@ import { isPerson, TransactionRunner, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError, UnexpectedError } from '@n8n/errors';
 
-import type { McpServerBlock } from '../mcp-server-block.entity';
+import type { McpServerBlock } from '../database/entities/mcp-server-block.entity';
 import type { McpServerActor } from '../mcp-server-events';
-import type { McpServer } from '../mcp-server.entity';
-import { McpServerRepository } from '../mcp-server.repository';
+import type { McpServer } from '../database/entities/mcp-server.entity';
+import { McpServerRepository } from '../database/repositories/mcp-server.repository';
 import { McpServerProtectedResource } from '../runtime/mcp-server-protected-resource';
 import { McpServerBlockRepository } from './mcp-server-block.repository';
 import { McpServerConnectionRepository } from './mcp-server-connection.repository';

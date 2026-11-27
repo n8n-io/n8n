@@ -272,11 +272,11 @@ describe('QuickJsBridge error origin', () => {
 	it('should record a failed callback cleanup and keep its error', () => {
 		const cleanupError = new RangeError('cleanup failed');
 		const internals = bridge as unknown as {
-			createCallbackHandles(resolver: unknown): Array<{ dispose(): void }>;
+			createCallbackHandles(resolver: unknown, budget: unknown): Array<{ dispose(): void }>;
 		};
 		const createCallbackHandles = internals.createCallbackHandles.bind(bridge);
-		vi.spyOn(internals, 'createCallbackHandles').mockImplementationOnce((resolver) => {
-			const handles = createCallbackHandles(resolver);
+		vi.spyOn(internals, 'createCallbackHandles').mockImplementationOnce((resolver, budget) => {
+			const handles = createCallbackHandles(resolver, budget);
 			const [first] = handles;
 			const dispose = first.dispose.bind(first);
 			first.dispose = () => {
@@ -354,6 +354,74 @@ describe('QuickJsBridge workflow data', () => {
 				$json: { profile: { name: 'from host' } },
 			}),
 		).toBe('from host');
+	});
+
+	it.each([
+		{
+			label: 'a batched read',
+			code: 'return this.$json.rows.map(function (r) { return r; });',
+			$json: { rows: [1, 2, 'fail'] },
+		},
+		{ label: 'a single read', code: 'return typeof this.$json.box;', $json: { box: { fail: 1 } } },
+	])('stops the evaluation when the guest cannot build the value of $label', async (testCase) => {
+		const bridge = await newBridge();
+		const vm = bridge['vm']!;
+		// Fails like the guest JSON parser at the memory limit, for a value that holds "fail".
+		vm.unwrapResult(
+			vm.evalCode(`
+				var unwrap = globalThis.__unwrapFromHost;
+				globalThis.__unwrapFromHost = function (json, holdsSentinel) {
+					if (json.indexOf('fail') !== -1) throw new InternalError('out of memory');
+					return unwrap(json, holdsSentinel);
+				};
+			`),
+		).dispose();
+
+		expect(() => bridge.execute(testCase.code, { $json: testCase.$json })).toThrow(
+			MemoryLimitError,
+		);
+	});
+
+	it('stops the evaluation when the guest cannot build a date', async () => {
+		const bridge = await newBridge();
+		const vm = bridge['vm']!;
+		// Fails like the guest at the memory limit, for this one date only.
+		vm.unwrapResult(
+			vm.evalCode(`
+				var HostDate = Date;
+				globalThis.Date = function (time) {
+					if (time === 1234) throw new InternalError('out of memory');
+					return arguments.length ? new HostDate(time) : new HostDate();
+				};
+				globalThis.Date.prototype = HostDate.prototype;
+				globalThis.Date.now = HostDate.now;
+				globalThis.Date.UTC = HostDate.UTC;
+				globalThis.Date.parse = HostDate.parse;
+			`),
+		).dispose();
+
+		expect(() =>
+			bridge.execute('return typeof this.$json.when;', { $json: { when: new Date(1234) } }),
+		).toThrow(MemoryLimitError);
+	});
+
+	it.each([
+		{ label: 'a marker key', $json: { a: { __isDate: true, __isoString: 'text' }, b: 1 } },
+		{
+			label: 'a boxed primitive marker key',
+			$json: { a: { __isBoxedPrimitive: 'string', __value: 'text' }, b: 1 },
+		},
+		{ label: 'a metadata key', $json: { __isObject: true, __keys: ['x'], __length: 3 } },
+		{ label: 'a __proto__ key', $json: JSON.parse('{"__proto__": {"a": 1}, "b": 2}') as object },
+		{ label: 'a marker key as text', $json: { text: '__isDate', b: 1 } },
+		{ label: 'a Date', $json: { at: new Date(0), b: 1 } },
+		{ label: 'undefined', $json: { a: undefined, list: [undefined, 1] } },
+		{ label: 'NaN', $json: { nan: NaN, b: 1 } },
+		{ label: 'an escape key', $json: { __isEscaped: 1, b: 2 } },
+	])('returns a small item with $label as the same data', async ({ $json }) => {
+		const bridge = await newBridge();
+
+		expect(bridge.execute('return this.$json;', { $json })).toStrictEqual($json);
 	});
 
 	it('reads a host symbol as undefined and frees the runtime', async () => {
@@ -600,6 +668,606 @@ describe('QuickJsBridge string transfer', () => {
 			expect(callFunction).toHaveBeenCalledTimes(1);
 		} finally {
 			callFunction.mockRestore();
+		}
+	});
+});
+
+describe('QuickJsBridge cycle guard', () => {
+	it('should return values nested 400 levels deep in Map, Set and class instances', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const depthOf = (value: unknown, next: (current: unknown) => unknown): number => {
+				let depth = 0;
+				for (let current = next(value); current !== undefined; current = next(current)) {
+					depth++;
+				}
+				return depth;
+			};
+
+			const maps = bridge.execute(
+				'let o = new Map([["v", 1]]); for (let i = 0; i < 400; i++) { o = new Map([["n", o]]); } return o;',
+				{},
+			);
+			expect(depthOf(maps, (current) => (current as Map<string, unknown>).get('n'))).toBe(400);
+
+			const sets = bridge.execute(
+				'let o = new Set(); for (let i = 0; i < 400; i++) { o = new Set([o]); } return o;',
+				{},
+			);
+			expect(depthOf(sets, (current) => [...(current as Set<unknown>)][0])).toBe(400);
+
+			const instances = bridge.execute(
+				'function Node(next) { this.next = next; } let o = new Node(); for (let i = 0; i < 400; i++) { o = new Node(o); } return o;',
+				{},
+			);
+			expect(depthOf(instances, (current) => (current as { next?: unknown }).next)).toBe(400);
+		} finally {
+			await bridge.dispose();
+		}
+	});
+
+	it('should return cyclic values inside Map, Set and Error without breaking or failing dispose', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const selfMap = bridge.execute('const m = new Map(); m.set("self", m); return m;', {}) as Map<
+				string,
+				unknown
+			>;
+			expect(selfMap.get('self')).toBe(selfMap);
+
+			const selfSet = bridge.execute(
+				'const s = new Set(); s.add(s); return s;',
+				{},
+			) as Set<unknown>;
+			expect(selfSet.has(selfSet)).toBe(true);
+
+			const errInMap = bridge.execute(
+				'const e = new Error("loop"); e.self = e; return new Map([["e", e]]);',
+				{},
+			) as Map<string, Error & { self: unknown }>;
+			const innerErr = errInMap.get('e')!;
+			expect(innerErr).toBeInstanceOf(Error);
+			expect(innerErr.self).toBe(innerErr);
+
+			const errWithMap = bridge.execute(
+				'const e = new Error("loop"); const m = new Map([["e", e]]); e.m = m; return e;',
+				{},
+			) as Error & { m: Map<string, Error & { m: unknown }> };
+			expect(errWithMap).toBeInstanceOf(Error);
+			expect(errWithMap.m.get('e')).toBe(errWithMap);
+			expect(errWithMap.m.get('e')?.m).toBe(errWithMap.m);
+
+			// The runtime stays healthy for subsequent expressions on the same bridge.
+			expect(bridge.execute('return 1 + 1;', {})).toBe(2);
+		} finally {
+			await expect(bridge.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should preserve Error identity across Map, Set, nested objects, and cause cycles', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const errAsMapKey = bridge.execute(
+				'const e = new Error("key"); const m = new Map([[e, 42]]); e.m = m; return e;',
+				{},
+			) as Error & { m: Map<unknown, number> };
+			expect(errAsMapKey).toBeInstanceOf(Error);
+			expect(errAsMapKey.m.get(errAsMapKey)).toBe(42);
+
+			const errWithSet = bridge.execute(
+				'const e = new Error("set"); const s = new Set([e]); e.s = s; return e;',
+				{},
+			) as Error & { s: Set<unknown> };
+			expect(errWithSet).toBeInstanceOf(Error);
+			expect(errWithSet.s.has(errWithSet)).toBe(true);
+			expect(errWithSet.s.size).toBe(1);
+
+			const nestedErr = bridge.execute(
+				'const e = new Error("nested"); const m = new Map([["e", e]]); e.m = m; return { e };',
+				{},
+			) as { e: Error & { m: Map<string, unknown> } };
+			expect(nestedErr.e).toBeInstanceOf(Error);
+			expect(nestedErr.e.m.get('e')).toBe(nestedErr.e);
+
+			const mapBeforeErr = bridge.execute(
+				`
+				const e = new TypeError("before");
+				e.code = 42;
+				Object.defineProperty(e, "hidden", { value: 9 });
+				const m = new Map([["e", e]]);
+				e.m = m;
+				return { m, e };
+				`,
+				{},
+			) as { m: Map<string, unknown>; e: TypeError & { code: number; m: Map<string, unknown> } };
+			expect(mapBeforeErr.e).toBeInstanceOf(TypeError);
+			expect(mapBeforeErr.m.get('e')).toBe(mapBeforeErr.e);
+			expect(mapBeforeErr.e.m).toBe(mapBeforeErr.m);
+			expect(mapBeforeErr.e.code).toBe(42);
+			expect(Object.getOwnPropertyDescriptor(mapBeforeErr.e, 'hidden')).toMatchObject({
+				value: 9,
+				enumerable: false,
+			});
+			expect(typeof mapBeforeErr.e.stack).toBe('string');
+
+			const causeCycle = bridge.execute(
+				`
+				const inner = new Error("inner");
+				const outer = new Error("outer", { cause: inner });
+				inner.m = new Map([["outer", outer], ["inner", inner]]);
+				return outer;
+				`,
+				{},
+			) as Error & { cause: Error & { m: Map<string, unknown> } };
+			expect(causeCycle.cause.m.get('outer')).toBe(causeCycle);
+			expect(causeCycle.cause.m.get('inner')).toBe(causeCycle.cause);
+
+			const repeatedErr = bridge.execute(
+				'const e = new Error("shared"); const m = new Map([["e", e]]); e.m = m; return { a: e, b: e };',
+				{},
+			) as { a: Error & { m: Map<string, unknown> }; b: Error };
+			expect(repeatedErr.a).toBe(repeatedErr.b);
+			expect(repeatedErr.a.m.get('e')).toBe(repeatedErr.a);
+
+			const errWithToJson = bridge.execute(
+				'const e = new Error("json"); e.m = new Map([["e", e]]); e.toJSON = function() { return { m: this.m }; }; return e;',
+				{},
+			) as Error & { m: Map<string, unknown>; toJSON: () => { m: Map<string, unknown> } };
+			expect(errWithToJson.m.get('e')).toBe(errWithToJson);
+			expect(errWithToJson.toJSON().m.get('e')).toBe(errWithToJson);
+		} finally {
+			await expect(bridge.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should keep own __proto__ keys on cyclic objects inside a Map', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const result = bridge.execute(
+				'const o = JSON.parse(\'{"__proto__":{"flag":1},"kept":2}\'); o.self = o; return new Map([["k", o]]);',
+				{},
+			) as Map<string, Record<string, unknown>>;
+			const value = result.get('k')!;
+
+			expect(Object.hasOwn(value, '__proto__')).toBe(true);
+			expect(Object.getOwnPropertyDescriptor(value, '__proto__')?.value).toStrictEqual({ flag: 1 });
+			expect(value.flag).toBeUndefined();
+			expect(value.kept).toBe(2);
+			expect(value.self).toBe(value);
+		} finally {
+			await bridge.dispose();
+		}
+	});
+
+	it('should keep cyclic Map and Set transfer working after built-in method replacements', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			bridge.execute(
+				`
+				const m = new Map();
+				m.set("self", m);
+				const s = new Set();
+				s.add(s);
+				globalThis.__cyclicMap = m;
+				globalThis.__cyclicSet = s;
+				Map.prototype.get.call = function () { throw new Error("replaced"); };
+				Map.prototype.get = function () { throw new Error("replaced"); };
+				Map.prototype.set = function () { throw new Error("replaced"); };
+				Map.prototype.forEach = function () { throw new Error("replaced"); };
+				Set.prototype.add = function () { throw new Error("replaced"); };
+				Set.prototype.forEach = function () { throw new Error("replaced"); };
+				return "ok";
+				`,
+				{},
+			);
+
+			const mapResult = bridge.execute('return globalThis.__cyclicMap;', {}) as Map<
+				string,
+				unknown
+			>;
+			const setResult = bridge.execute('return globalThis.__cyclicSet;', {}) as Set<unknown>;
+
+			expect(mapResult).toBeInstanceOf(Map);
+			expect(mapResult.get('self')).toBe(mapResult);
+			expect(setResult).toBeInstanceOf(Set);
+			expect(setResult.has(setResult)).toBe(true);
+		} finally {
+			await expect(bridge.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should keep a value that a Map holds twice after an array iterator replacement', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const result = bridge.execute(
+				`
+				const date = new Date(0);
+				const m = new Map();
+				m.set("a", date);
+				m.set("b", date);
+				Array.prototype[Symbol.iterator] = function () {
+					return { next: () => ({ done: true }) };
+				};
+				return m;
+				`,
+				{},
+			) as Map<string, unknown>;
+
+			expect(result.get('a')).toBeInstanceOf(Date);
+			expect(result.get('b')).toBe(result.get('a'));
+		} finally {
+			await bridge.dispose();
+		}
+	});
+
+	it('should keep boxed values in a Map after an array iterator replacement', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const result = bridge.execute(
+				`
+				const m = new Map();
+				m.set("number", new Number(7));
+				m.set("string", new String("x"));
+				m.set("boolean", new Boolean(true));
+				m.set("bigint", Object(10n));
+				Array.prototype[Symbol.iterator] = function () {
+					return { next: () => ({ done: true }) };
+				};
+				return m;
+				`,
+				{},
+			) as Map<string, object>;
+
+			expect(result.get('number')?.valueOf()).toBe(7);
+			expect(result.get('string')?.valueOf()).toBe('x');
+			expect(result.get('boolean')?.valueOf()).toBe(true);
+			expect(result.get('bigint')?.valueOf()).toBe(10n);
+		} finally {
+			await bridge.dispose();
+		}
+	});
+
+	it('should return objects and errors after an array iterator replacement', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const result = bridge.execute(
+				`
+					const error = new TypeError("bad");
+					error.code = 5;
+					const result = { plain: { a: 1, b: [1, 2] }, error };
+					Array.prototype[Symbol.iterator] = function () {
+						return { next: () => ({ done: true }) };
+					};
+					return result;
+				`,
+				{},
+			) as { plain: unknown; error: Error & { code?: number } };
+
+			expect(result.plain).toEqual({ a: 1, b: [1, 2] });
+			expect(result.error).toBeInstanceOf(TypeError);
+			expect(result.error.message).toBe('bad');
+			expect(result.error.code).toBe(5);
+		} finally {
+			await bridge.dispose();
+		}
+	});
+
+	it('should return undefined for host-call plain object and array cycles without breaking the runtime', async () => {
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => new QuickJsBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 16,
+			poolSize: 1,
+		});
+		await evaluator.initialize();
+		const execution = {};
+		await evaluator.acquire(execution);
+
+		try {
+			const cyc: Record<string, unknown> = { a: 1 };
+			cyc.self = cyc;
+			const arr: unknown[] = [1];
+			arr.push(arr);
+			const keyedByItem = Object.assign([1] as unknown[], { tag: 'x' });
+			keyedByItem.push(keyedByItem);
+			const keyedByProp = Object.assign([1] as unknown[], { self: null as unknown });
+			keyedByProp.self = keyedByProp;
+			const escapedCyc: Record<string, unknown> = { __isMap: true, __entries: [] };
+			escapedCyc.self = escapedCyc;
+			const escapedBoxedCyc: Record<string, unknown> = {
+				__isBoxedPrimitive: 'string',
+				__value: 'fake',
+			};
+			escapedBoxedCyc.self = escapedBoxedCyc;
+			const mapWithCyc = new Map<string, unknown>([['k', cyc]]);
+
+			const plainObjData = { $input: { first: () => ({ json: { cyc, n: 5 } }) } };
+			const plainArrData = { $input: { first: () => ({ json: { arr, n: 5 } }) } };
+			const keyedItemData = { $input: { first: () => ({ json: { keyedByItem } }) } };
+			const keyedPropData = { $input: { first: () => ({ json: { keyedByProp } }) } };
+			const escapedData = { $input: { first: () => ({ json: { escapedCyc } }) } };
+			const escapedBoxedData = { $input: { first: () => ({ json: { escapedBoxedCyc } }) } };
+			const mixedData = { $input: { first: () => ({ json: { mapWithCyc, cyc } }) } };
+
+			expect(evaluator.evaluate('{{ $input.first().json.cyc }}', plainObjData, execution)).toBe(
+				undefined,
+			);
+			expect(evaluator.evaluate('{{ $input.first().json }}', plainObjData, execution)).toBe(
+				undefined,
+			);
+			expect(evaluator.evaluate('{{ $input.first().json.arr }}', plainArrData, execution)).toBe(
+				undefined,
+			);
+			expect(
+				evaluator.evaluate('{{ $input.first().json.keyedByItem }}', keyedItemData, execution),
+			).toBe(undefined);
+			expect(
+				evaluator.evaluate('{{ $input.first().json.keyedByProp }}', keyedPropData, execution),
+			).toBe(undefined);
+			expect(
+				evaluator.evaluate('{{ $input.first().json.escapedCyc }}', escapedData, execution),
+			).toBe(undefined);
+			expect(
+				evaluator.evaluate(
+					'{{ $input.first().json.escapedBoxedCyc }}',
+					escapedBoxedData,
+					execution,
+				),
+			).toBe(undefined);
+			expect(evaluator.evaluate('{{ $input.first().json.cyc }}', mixedData, execution)).toBe(
+				undefined,
+			);
+
+			// The runtime did not break or restart, so the next expression runs immediately.
+			expect(evaluator.evaluate('{{ 1 + 1 }}', {}, execution)).toBe(2);
+		} finally {
+			await evaluator.release(execution);
+			await expect(evaluator.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should still transfer host-call shared acyclic values and Map-mediated cycles', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const sharedObj = { a: 1, bad: NaN };
+			const sharedArr = [1, 2];
+			const sharedKeyed = Object.assign([1], { tag: 'x' });
+			const sharedDate = new Date('2025-01-01T00:00:00.000Z');
+			const sharedBoxedStr = Object('ab') as object;
+			const sharedBoxedNum = Object(-0) as object;
+			const sharedBoxedBool = Object(false) as object;
+			const sharedBoxedBigInt = Object(1n) as object;
+			const sharedEscaped = { __isMap: true, keep: 3 };
+			const objWithMapCycle: Record<string, unknown> = { a: 1 };
+			objWithMapCycle.m = new Map([['o', objWithMapCycle]]);
+
+			const json = {
+				o1: sharedObj,
+				o2: sharedObj,
+				a1: sharedArr,
+				a2: sharedArr,
+				k1: sharedKeyed,
+				k2: sharedKeyed,
+				d1: sharedDate,
+				d2: sharedDate,
+				bs1: sharedBoxedStr,
+				bs2: sharedBoxedStr,
+				bn1: sharedBoxedNum,
+				bn2: sharedBoxedNum,
+				bb1: sharedBoxedBool,
+				bb2: sharedBoxedBool,
+				bi1: sharedBoxedBigInt,
+				bi2: sharedBoxedBigInt,
+				e1: sharedEscaped,
+				e2: sharedEscaped,
+				objWithMapCycle,
+			};
+			const data = { $input: { first: () => ({ json }) } };
+
+			const shared = bridge.execute(
+				`
+				const j = this.$input.first().json;
+				return {
+					sameObj: j.o1 === j.o2 && Number.isNaN(j.o1.bad),
+					sameArr: j.a1 === j.a2,
+					sameKeyed: j.k1 === j.k2 && j.k1.tag === 'x',
+					sameDate: j.d1 === j.d2 && j.d1 instanceof Date,
+					sameBoxedStr: j.bs1 === j.bs2 && j.bs1 instanceof String && j.bs1.valueOf() === 'ab',
+					sameBoxedNum: j.bn1 === j.bn2 && j.bn1 instanceof Number && Object.is(j.bn1.valueOf(), -0),
+					sameBoxedBool: j.bb1 === j.bb2 && j.bb1 instanceof Boolean && j.bb1.valueOf() === false,
+					sameBoxedBigInt: j.bi1 === j.bi2 && j.bi1 instanceof BigInt && j.bi1.valueOf() === 1n,
+					sameEscaped: j.e1 === j.e2 && j.e1.__isMap === true && j.e1.keep === 3,
+				};
+				`,
+				data,
+			);
+			expect(shared).toStrictEqual({
+				sameObj: true,
+				sameArr: true,
+				sameKeyed: true,
+				sameDate: true,
+				sameBoxedStr: true,
+				sameBoxedNum: true,
+				sameBoxedBool: true,
+				sameBoxedBigInt: true,
+				sameEscaped: true,
+			});
+
+			const cyclicThroughMap = bridge.execute(
+				'return this.$input.first().json.objWithMapCycle;',
+				data,
+			) as { a: number; m: Map<string, unknown> };
+			expect(cyclicThroughMap.a).toBe(1);
+			expect(cyclicThroughMap.m).toBeInstanceOf(Map);
+			expect(cyclicThroughMap.m.get('o')).toBeDefined();
+		} finally {
+			await expect(bridge.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should reject a cyclic plain object or array extracted from a host Map or Set without breaking the runtime', async () => {
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => new QuickJsBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 16,
+			poolSize: 1,
+		});
+		await evaluator.initialize();
+		const execution = {};
+		await evaluator.acquire(execution);
+
+		try {
+			const cycObj: Record<string, unknown> = { a: 1 };
+			cycObj.self = cycObj;
+			const cycArr: unknown[] = [1];
+			cycArr.push(cycArr);
+			const json = {
+				mapWithObj: new Map<string, unknown>([['k', cycObj]]),
+				setWithArr: new Set<unknown>([cycArr]),
+			};
+			const hostData = { $input: { first: () => ({ json }) } };
+
+			// Returning the collection itself or reading acyclic fields still works.
+			const returnedMap = evaluator.evaluate(
+				'{{ $input.first().json.mapWithObj }}',
+				hostData,
+				execution,
+			) as Map<string, Record<string, unknown>>;
+			expect(returnedMap.get('k')).toBeDefined();
+			expect(returnedMap.get('k')?.self).toBe(returnedMap.get('k'));
+			expect(
+				evaluator.evaluate('{{ $input.first().json.mapWithObj.get("k").a }}', hostData, execution),
+			).toBe(1);
+
+			for (const expr of [
+				'{{ $input.first().json.mapWithObj.get("k") }}',
+				'{{ $input.first()?.json.mapWithObj.get("k") }}',
+				'{{ [...$input.first().json.setWithArr][0] }}',
+			]) {
+				let thrown: unknown;
+				try {
+					evaluator.evaluate(expr, hostData, execution);
+				} catch (error) {
+					thrown = error;
+				}
+				expect(thrown).toBeInstanceOf(Error);
+				expect(thrown).not.toBeInstanceOf(HostCallError);
+				expect((thrown as Error).message).toMatch(/Maximum call stack size exceeded/);
+				// The runtime stays healthy for the next expression (no RuntimeRestartingError).
+				expect(evaluator.evaluate('{{ 1 + 1 }}', {}, execution)).toBe(2);
+			}
+		} finally {
+			await evaluator.release(execution);
+			await expect(evaluator.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should not keep seen-map state across vm.dump() for large plain-object arrays near the memory limit', async () => {
+		const bridge = new QuickJsBridge({ timeout: 30_000, memoryLimit: 16 });
+		await bridge.initialize();
+		try {
+			const result = bridge.execute(
+				'return Array.from({ length: 205_000 }, (_, i) => ({ i }));',
+				{},
+			);
+			expect(Array.isArray(result)).toBe(true);
+			expect((result as Array<{ i: number }>).length).toBe(205_000);
+			expect((result as Array<{ i: number }>)[204_999]).toStrictEqual({ i: 204_999 });
+		} finally {
+			await expect(bridge.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should keep fields on mutually referencing Errors returned at separate positions', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const mutual = bridge.execute(
+				`
+				const a = new Error('a');
+				const b = new Error('b');
+				a.child = b;
+				b.parent = a;
+				return [a, b];
+				`,
+				{},
+			) as [
+				Error & { child?: Error & { parent?: unknown } },
+				Error & { parent?: Error & { child?: unknown } },
+			];
+			expect(mutual[0]).toBeInstanceOf(Error);
+			expect(mutual[0].message).toBe('a');
+			expect(mutual[0].child?.message).toBe('b');
+			expect(mutual[0].child?.parent).toBeUndefined();
+			expect(mutual[1]).toBeInstanceOf(Error);
+			expect(mutual[1].message).toBe('b');
+			expect(mutual[1].parent).toBeInstanceOf(Error);
+			expect(mutual[1].parent?.message).toBe('a');
+			expect(mutual[1].parent?.child).toBeUndefined();
+
+			const causeLoop = bridge.execute(
+				`
+				const c = new Error('c');
+				const e = new Error('e', { cause: c });
+				c.back = e;
+				return [e, c];
+				`,
+				{},
+			) as [
+				Error & { cause?: Error & { back?: unknown } },
+				Error & { back?: Error & { cause?: unknown } },
+			];
+			expect(causeLoop[0].cause?.message).toBe('c');
+			expect(causeLoop[0].cause?.back).toBeUndefined();
+			expect(causeLoop[1].back).toBeInstanceOf(Error);
+			expect(causeLoop[1].back?.message).toBe('e');
+			expect(causeLoop[1].back?.cause).toBeUndefined();
+
+			const threeCycle = bridge.execute(
+				`
+				const a = new Error('a');
+				const b = new Error('b');
+				const c = new Error('c');
+				a.next = b;
+				b.next = c;
+				c.next = a;
+				return [a, b, c];
+				`,
+				{},
+			) as Array<Error & { next?: Error & { next?: Error } }>;
+			expect(threeCycle[0].next?.next?.message).toBe('c');
+			expect(threeCycle[1].next?.next?.message).toBe('a');
+			expect(threeCycle[2].next?.next?.message).toBe('b');
+
+			const siblingDiamond = bridge.execute(
+				`
+				const a = new Error('a');
+				const b = new Error('b');
+				const c = new Error('c');
+				const d = new Error('d');
+				a.first = { b };
+				b.d = d;
+				d.back = b;
+				a.second = c;
+				c.d = d;
+				return [a, c];
+				`,
+				{},
+			) as [
+				Error & { first: { b: Error & { d: Error } }; second: Error & { d: Error } },
+				Error & { d: Error & { back?: Error } },
+			];
+			expect(siblingDiamond[0].first.b.d).toBe(siblingDiamond[0].second.d);
+			expect(siblingDiamond[1].d.back?.message).toBe('b');
+		} finally {
+			await expect(bridge.dispose()).resolves.toBeUndefined();
 		}
 	});
 });

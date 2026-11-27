@@ -271,6 +271,38 @@ describe('useQuickConnect()', () => {
 			});
 		});
 
+		describe('getQuickConnectOptionForContext()', () => {
+			it('returns node-scoped option when nodeType is given', () => {
+				const { getQuickConnectOptionForContext } = useQuickConnect();
+
+				expect(
+					getQuickConnectOptionForContext('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
+				).toEqual(quickConnectOptionData);
+			});
+
+			it('returns undefined when the node package does not match', () => {
+				const { getQuickConnectOptionForContext } = useQuickConnect();
+
+				expect(
+					getQuickConnectOptionForContext('googleSheetsOAuth2Api', 'other-package.googleSheets'),
+				).toBe(undefined);
+			});
+
+			it('matches by credential type on node-less surfaces', () => {
+				const { getQuickConnectOptionForContext } = useQuickConnect();
+
+				expect(getQuickConnectOptionForContext('googleSheetsOAuth2Api', undefined)).toEqual(
+					quickConnectOptionData,
+				);
+			});
+
+			it('returns undefined on node-less surfaces when nothing matches', () => {
+				const { getQuickConnectOptionForContext } = useQuickConnect();
+
+				expect(getQuickConnectOptionForContext('non-matching', undefined)).toBe(undefined);
+			});
+		});
+
 		describe('getQuickConnectOptionByPackageName()', () => {
 			it('returns correct option for configured package', () => {
 				const { getQuickConnectOptionByPackageName } = useQuickConnect();
@@ -315,6 +347,24 @@ describe('useQuickConnect()', () => {
 					source: 'node_type',
 					credential_type: 'googleSheetsOAuth2Api',
 					node_type: 'n8n-nodes-base.googleSheets',
+				});
+			});
+
+			it('tracks null node_type on node-less surfaces', async () => {
+				const { connect } = useQuickConnect();
+				const telemetry = useTelemetry();
+
+				await connect({
+					credentialTypeName: 'googleSheetsOAuth2Api',
+					nodeType: undefined,
+					source: 'credential_type',
+					serviceName: 'Google',
+				});
+
+				expect(telemetry.track).toHaveBeenCalledWith('User clicked quick connect button', {
+					source: 'credential_type',
+					credential_type: 'googleSheetsOAuth2Api',
+					node_type: null,
 				});
 			});
 
@@ -447,6 +497,41 @@ describe('useQuickConnect()', () => {
 							},
 							'project-123',
 						);
+						expect(result).toEqual(mockCredential);
+					});
+
+					it('creates credential without a node type on node-less surfaces', async () => {
+						const mockPopup = {
+							open: vi.fn(),
+						};
+						mockPineconeConnectPopup.mockImplementation(({ onConnect }) => {
+							// Simulate user connecting and providing API key
+							setTimeout(() => onConnect({ key: 'test-api-key-123' }), 0);
+							return mockPopup;
+						});
+
+						const mockCredential = {
+							id: 'cred-123',
+							name: 'Pinecone API',
+							type: 'pineconeApi',
+						};
+						mockCreateNewCredential.mockResolvedValue(mockCredential);
+
+						const { connect } = useQuickConnect();
+						const result = await connect({
+							credentialTypeName: 'pineconeApi',
+							nodeType: undefined,
+							source: 'credential_type',
+							serviceName: 'Pinecone',
+						});
+
+						expect(mockPineconeConnectPopup).toHaveBeenCalledWith({
+							onConnect: expect.any(Function),
+							onCancel: expect.any(Function),
+							integrationId: 'test-integration-id',
+						});
+						expect(mockPopup.open).toHaveBeenCalled();
+						expect(mockCreateNewCredential).toHaveBeenCalled();
 						expect(result).toEqual(mockCredential);
 					});
 

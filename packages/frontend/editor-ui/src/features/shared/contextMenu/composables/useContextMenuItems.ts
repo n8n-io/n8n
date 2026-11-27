@@ -9,9 +9,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
-import { CANVAS_NODE_CONTEXT_FLAG } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { getEmptyGroupAnchor, NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
@@ -94,7 +92,6 @@ export function useContextMenuItems(
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 	const focusedNodesStore = useFocusedNodesStore();
-	const posthog = usePostHog();
 	const { resolveGroupableNodeIds, isSubworkflowConversionDisabled } = useSelectionValidation();
 	const groupView = injectContextMenuGroupView();
 	const i18n = useI18n();
@@ -363,10 +360,7 @@ export function useContextMenuItems(
 		].filter(Boolean) as Item[];
 
 		const addToChatAction: Item | null =
-			!onlyStickies &&
-			nodes.length >= 1 &&
-			posthog.isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG) &&
-			instanceAi.value
+			!onlyStickies && nodes.length >= 1 && instanceAi.value
 				? {
 						id: 'add_nodes_to_chat',
 						icon: 'sparkles',

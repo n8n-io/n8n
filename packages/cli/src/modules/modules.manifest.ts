@@ -44,4 +44,5 @@ export const packagedModules: PackagedModules = {
 		});
 		return await import('@n8n/backend-module-mcp-servers/module');
 	},
+	'durable-leases': async () => await import('@n8n/backend-module-durable-leases/module'),
 };

@@ -34,6 +34,10 @@ export interface AgentsChatInteractionRenderer {
  * tool step, and shows the host component in place of the default output
  * section when the step opens.
  *
+ * An extension can also render a footer for a finished tool call
+ * (`matchToolFooter` and `toolFooterComponent`). The chat keeps the default
+ * tool step, and shows the host component after the tool steps of the message.
+ *
  * An extension can also render host events (`matchHostEvent`,
  * `hostEventComponent` and `hostEventPlacement`). The placement sets where the
  * assistant message shows the event. See `AgentsChatHostEventPlacement`.
@@ -80,6 +84,13 @@ export interface AgentsChatInteractionExtension<TInput = unknown> {
 	 * or `ToolDataViews` so the label row looks like the default one.
 	 */
 	toolOutputComponent?: Component;
+	/**
+	 * True when the host renders a footer for this tool call. The chat asks only
+	 * for finished calls that it shows as default tool steps.
+	 */
+	matchToolFooter?(toolCall: ToolCall): boolean;
+	/** Renders a matched tool footer. It gets the finished call as the `toolCall` prop. */
+	toolFooterComponent?: Component;
 	/** True when this extension handles the host event. Usually a check on `event.name`. */
 	matchHostEvent?(event: AgentsChatHostEvent): boolean;
 	/**
@@ -127,7 +138,7 @@ export interface AgentsChatHostEventRenderer {
 	toolCallId?: string;
 }
 
-/** A host component that renders the result of one finished tool call. */
+/** A host component that renders the result or the footer of one finished tool call. */
 export interface AgentsChatToolResultRenderer {
 	key: string;
 	component: Component;
@@ -189,6 +200,23 @@ export function findToolOutputRenderer(
 	return extensions.find(
 		(extension) => extension.toolOutputComponent && extension.matchToolOutput?.(toolCall),
 	)?.toolOutputComponent;
+}
+
+/**
+ * The first host extension that renders a footer for `toolCall`, or
+ * `undefined` when the call has no footer. Calls that run, wait for the user,
+ * fail, were canceled or have no output yet never have a footer.
+ */
+export function findToolFooterRenderer(
+	toolCall: ToolCall,
+	extensions: readonly AgentsChatInteractionExtension[],
+): AgentsChatToolResultRenderer | undefined {
+	if (!isFinishedToolCall(toolCall)) return undefined;
+	const extension = extensions.find(
+		(ext) => ext.toolFooterComponent && ext.matchToolFooter?.(toolCall),
+	);
+	if (!extension?.toolFooterComponent) return undefined;
+	return { key: extension.key, component: extension.toolFooterComponent };
 }
 
 /**

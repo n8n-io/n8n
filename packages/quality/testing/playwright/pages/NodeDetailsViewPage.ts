@@ -611,17 +611,25 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async changeInputRunSelector(value: string) {
-		const selector = this.inputPanel.getRunSelector();
-		await selector.click();
-		await this.getVisiblePopoverOption(value).click();
+		await this.selectRun(this.inputPanel, value);
 		await this.expectInputRunSelectorValue(value);
 	}
 
 	async changeOutputRunSelector(value: string) {
-		const selector = this.outputPanel.getRunSelector();
-		await selector.click();
-		await this.getVisiblePopoverOption(value).click();
+		await this.selectRun(this.outputPanel, value);
 		await this.expectOutputRunSelectorValue(value);
+	}
+
+	private async selectRun(panel: RunDataPanel, value: string) {
+		const input = panel.getRunSelectorInput();
+		await panel.getRunSelector().click();
+		await expect(input).toHaveAttribute('aria-expanded', 'true');
+		const listboxId = await input.getAttribute('aria-controls');
+		if (!listboxId) throw new Error('The run selector has no associated listbox');
+		await this.page
+			.locator(`[id=${JSON.stringify(listboxId)}]`)
+			.getByRole('option', { name: value, includeHidden: true })
+			.click();
 	}
 
 	// Run-selector updates can land asynchronously (notably cross-panel via

@@ -1,22 +1,33 @@
 import { Logger } from '@n8n/backend-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { Delete, Get, Post, RootLevelController } from '@n8n/decorators';
+import {
+	createIpRateLimit,
+	Delete,
+	Get,
+	Options,
+	Post,
+	RootLevelController,
+} from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Request, Response } from 'express';
 
 import { McpServerConnectionRecorder } from '../access/mcp-server-connection-recorder';
-import type { McpServer } from '../mcp-server.entity';
+import type { McpServer } from '../database/entities/mcp-server.entity';
+import { McpServersConfig } from '../mcp-servers.config';
 import { MCP_SERVERS_PATH, McpServerProtectedResource } from './mcp-server-protected-resource';
 import type { McpServerCaller } from './mcp-server-runtime.service';
 import { McpServerRuntimeService } from './mcp-server-runtime.service';
 
 type RuntimeRequest = Request<{ slug: string }>;
 
-const routeOptions = { skipAuth: true, usesTemplates: true } as const;
-
-function bearerToken(req: Request): string {
-	const header = req.headers.authorization ?? '';
-	return header.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : '';
-}
+// The routes skip the n8n session and take a bearer token, so they get an IP rate limit, as the
+// instance MCP does.
+const routeOptions = {
+	skipAuth: true,
+	usesTemplates: true,
+	ipRateLimit: createIpRateLimit(Container.get(McpServersConfig).rateLimit),
+} as const;
 
 /**
  * The MCP endpoint of each custom server: MCP over streamable HTTP, with no session and no SSE.
@@ -41,7 +52,7 @@ export class McpServerRuntimeController {
 			return;
 		}
 
-		const admitted = await this.runtime.admit(server, bearerToken(req), req.ip ?? '');
+		const admitted = await this.runtime.admit(server, req);
 		if (!admitted.ok) {
 			const status = admitted.reason === 'insufficient_scope' ? 403 : 401;
 			res.set('WWW-Authenticate', await this.runtime.challenge(admitted));
@@ -53,8 +64,12 @@ export class McpServerRuntimeController {
 		await this.recordUse(server, caller);
 
 		try {
-			const { createMcpHandler } = await import('@modelcontextprotocol/server');
-			const { toNodeHandler } = await import('@modelcontextprotocol/node');
+			const { createMcpHandler } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
+				async () => await import('@modelcontextprotocol/server'),
+			);
+			const { toNodeHandler } = await lazyImport<typeof import('@modelcontextprotocol/node')>(
+				async () => await import('@modelcontextprotocol/node'),
+			);
 			const handler = createMcpHandler(
 				async () => await this.runtime.createServer(server, caller),
 				{ legacy: 'stateless', onerror: (error) => this.logError(error) },
@@ -70,6 +85,14 @@ export class McpServerRuntimeController {
 				});
 			}
 		}
+	}
+
+	/** The CORS preflight of a browser-based MCP client. */
+	@Options('/:slug', routeOptions)
+	preflight(_req: RuntimeRequest, res: Response) {
+		this.setCorsHeaders(res);
+		res.header('Access-Control-Max-Age', '86400');
+		res.status(204).end();
 	}
 
 	/** The endpoint keeps no session, so it has no stream to offer and nothing to end. */
@@ -112,7 +135,7 @@ export class McpServerRuntimeController {
 
 	private setCorsHeaders(res: Response) {
 		res.header('Access-Control-Allow-Origin', '*');
-		res.header('Access-Control-Allow-Methods', 'POST');
+		res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
 		res.header(
 			'Access-Control-Allow-Headers',
 			'Content-Type, Authorization, MCP-Protocol-Version, Mcp-Method, Mcp-Name',

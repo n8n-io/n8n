@@ -365,6 +365,7 @@ describe('AgentPublishService', () => {
 			expect.objectContaining({ versionId }),
 			[],
 			expect.anything(),
+			person,
 		);
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
@@ -617,6 +618,7 @@ describe('AgentPublishService', () => {
 			target,
 			agent.integrations,
 			expect.anything(),
+			person,
 		);
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 		expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();

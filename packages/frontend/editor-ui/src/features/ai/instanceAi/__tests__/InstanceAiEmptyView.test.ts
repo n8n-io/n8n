@@ -100,6 +100,8 @@ const {
 	appSettingsStoreMock: {
 		isCloudDeployment: false,
 		settings: { releaseChannel: 'stable' },
+		// The input menu reads it to decide whether to show skills.
+		isModuleActive: (_name: string) => false,
 	},
 	agentsN8nChatVariant: { value: undefined as string | undefined },
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({

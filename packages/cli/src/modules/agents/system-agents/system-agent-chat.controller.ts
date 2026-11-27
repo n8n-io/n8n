@@ -27,6 +27,8 @@ import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentChatRelayService } from '../agent-chat-relay.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import { AgentExecutionService } from '../agent-execution.service';
+import { AgentMemoryTraceService } from '../agent-memory-trace.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -37,6 +39,7 @@ import { SYSTEM_CHAT_SOURCE, systemChatFileScope } from '../utils/agent-thread-a
 import { isOlderChatHistoryPage, parseChatHistoryPage } from '../utils/chat-history-page';
 import { ownCheckpoint, threadMessagesResponse } from '../utils/messages-envelope';
 import { parseThreadListLimit } from '../utils/parse-thread-list-limit';
+import { toThreadDetailResponse } from '../utils/thread-detail-response';
 import { SystemAgentExecutionService } from './system-agent-execution.service';
 
 /**
@@ -62,6 +65,8 @@ export class SystemAgentChatController {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly attachments: AgentChatAttachmentService,
 		private readonly memory: N8nMemory,
+		private readonly executionService: AgentExecutionService,
+		private readonly memoryTrace: AgentMemoryTraceService,
 	) {}
 
 	/**
@@ -107,6 +112,8 @@ export class SystemAgentChatController {
 	 * matches the title, and `cursor` is the `nextCursor` of the previous page.
 	 * It checks thread ownership only, like a stop: the list shows a thread in a
 	 * project that the user can no longer read, but opening it runs the floor.
+	 * The list shows the title and the first message of the thread. The user
+	 * wrote that message, and the title is generated from it.
 	 */
 	@Get('/:agentId/threads')
 	async listThreads(
@@ -121,9 +128,14 @@ export class SystemAgentChatController {
 			...(cursor ? { before: decodeThreadCursor(cursor) } : {}),
 		});
 		const last = page.threads.at(-1);
-		const metadata = await this.memory.getThreadsMetadata(page.threads.map(({ id }) => id));
+		const [metadata, previews] = await Promise.all([
+			this.memory.getThreadsMetadata(page.threads.map(({ id }) => id)),
+			this.executionService.findFirstMessagePreviews(page.threads),
+		]);
 		return {
-			data: page.threads.map((thread) => toThreadSummary(thread, metadata.get(thread.id))),
+			data: page.threads.map((thread) =>
+				toThreadSummary(thread, metadata.get(thread.id), previews.get(thread.id)),
+			),
 			nextCursor: page.hasMore && last ? encodeThreadCursor(last) : null,
 		};
 	}
@@ -135,8 +147,37 @@ export class SystemAgentChatController {
 	): Promise<SystemAgentThreadSummary> {
 		const { agentId, threadId } = req.params;
 		const thread = await this.systemAgents.getUsableThread(agentId, req.user, threadId);
-		const metadata = await this.memory.getThreadsMetadata([thread.id]);
-		return toThreadSummary(thread, metadata.get(thread.id));
+		const [metadata, previews] = await Promise.all([
+			this.memory.getThreadsMetadata([thread.id]),
+			this.executionService.findFirstMessagePreviews([thread]),
+		]);
+		return toThreadSummary(thread, metadata.get(thread.id), previews.get(thread.id));
+	}
+
+	/**
+	 * The session timeline of one of the user's own threads with the agent:
+	 * the thread, its executions and its memory trace. Opening it runs the
+	 * access floor. The project route of the timeline loads project agents only.
+	 */
+	@Get('/:agentId/threads/:threadId/detail')
+	async getThreadDetail(req: AuthenticatedRequest<{ agentId: string; threadId: string }>) {
+		const { agentId, threadId } = req.params;
+		const { projectId } = await this.systemAgents.getUsableThread(agentId, req.user, threadId);
+		const detail = await this.executionService.getThreadDetail(
+			threadId,
+			projectId,
+			agentId,
+			req.user.id,
+		);
+		if (!detail) throw new NotFoundError('Session not found');
+		const memory = await this.memoryTrace.getThreadMemory({
+			agentId,
+			projectId,
+			userId: req.user.id,
+			threadId,
+			executions: detail.executions,
+		});
+		return toThreadDetailResponse(detail, { userId: req.user.id, isSystemAgent: true, memory });
 	}
 
 	/** Rename one of the user's own threads with the agent. Renaming runs the access floor. */
@@ -431,10 +472,12 @@ export class SystemAgentChatController {
 function toThreadSummary(
 	thread: AgentExecutionThread,
 	metadata: Record<string, unknown> | undefined,
+	firstMessage: string | undefined,
 ): SystemAgentThreadSummary {
 	return {
 		id: thread.id,
 		title: thread.title,
+		firstMessage: firstMessage ?? null,
 		updatedAt: thread.updatedAt.toISOString(),
 		projectId: thread.projectId,
 		...(metadata ? { metadata } : {}),

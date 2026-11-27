@@ -9,7 +9,7 @@ import {
 	getAgentValidationIssueInterpolation,
 	resolveAgentValidationIssueMessageKey,
 } from '../utils/agentValidationIssueMessages';
-import { isWarningIssue } from '../utils/validationIssues';
+import { isWarningIssue, skillWorkflowIdOfIssue } from '../utils/validationIssues';
 
 const props = withDefaults(
 	defineProps<{
@@ -37,6 +37,7 @@ const PUBLISH_REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	incompatible_nodes: 'agents.publish.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
 	no_supported_trigger: 'agents.publish.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
 	not_published: 'agents.publish.issue.tool.workflow.notPublished' as BaseTextKey,
+	not_in_project: 'agents.publish.issue.tool.workflow.notInProject' as BaseTextKey,
 	azure_classic_endpoint:
 		'agents.publish.issue.agent.credential.azureClassicEndpoint' as BaseTextKey,
 	restricted_by_inline_tool: 'agents.publish.issue.restrictedByInlineTool' as BaseTextKey,
@@ -144,6 +145,7 @@ const PUBLISH_SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 
 const CAPABILITY_KEYS: Record<AgentCapabilityKind, BaseTextKey> = {
 	agent: 'agents.chat.misconfigured.missing.agent' as BaseTextKey,
+	humanReview: 'agents.hitl.title',
 	channel: 'agents.builder.triggers.title' as BaseTextKey,
 	tool: 'agents.chat.misconfigured.missing.tools' as BaseTextKey,
 	mcpServer: 'agents.chat.misconfigured.missing.mcpServers' as BaseTextKey,
@@ -156,7 +158,7 @@ const CAPABILITY_KEYS: Record<AgentCapabilityKind, BaseTextKey> = {
 
 function isPreviewIssue(issue: AgentConfigValidationIssue): boolean {
 	if (issue.capability.kind === 'channel' || issue.capability.kind === 'task') return false;
-	if (isWarningIssue(issue)) return false;
+	if (isWarningIssue(issue) || skillWorkflowIdOfIssue(issue)) return false;
 
 	// Fixed URLs are required for publishing, but the draft preview can still run.
 	return !(issue.code === 'invalid_value' && issue.path.endsWith('.node.nodeParameters.url'));
@@ -223,6 +225,7 @@ function actionIssueMessage(
 	pathSpecificKeys: Record<string, BaseTextKey>,
 	specificIssueKeys: Record<string, BaseTextKey>,
 ): string {
+	if (skillWorkflowIdOfIssue(issue) && !issue.reason) return issueMessage(issue);
 	const { kind, toolType } = issue.capability;
 	const pathKey = previewPathKey(issue);
 	const key =

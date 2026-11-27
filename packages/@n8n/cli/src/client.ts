@@ -11,6 +11,7 @@ import type {
 	PromotionPreview,
 } from '@n8n/api-types/dist/dto/promotions/promotion-preview.dto';
 import type { CreateProjectPublicDto } from '@n8n/api-types/dist/dto/project/project-public.dto';
+import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_CLI } from '@n8n/constants';
 
 export interface PaginatedResponse<T> {
 	data: T[];
@@ -237,6 +238,7 @@ export class N8nClient {
 			'Content-Type': 'application/json',
 			Accept: 'application/json',
 			'User-Agent': 'n8n-cli',
+			[N8N_CLIENT_HEADER]: N8N_CLIENT_N8N_CLI,
 		});
 		this.debug = options.debug;
 	}
@@ -367,6 +369,14 @@ export class N8nClient {
 
 	async listPromotionProviders(limit?: number) {
 		return await this.paginate<Record<string, unknown>>('/promotions/providers', {}, limit);
+	}
+
+	async getPromotionSettings() {
+		return await this.get<Record<string, unknown>>('/promotions/settings');
+	}
+
+	async updatePromotionSettings(body: unknown) {
+		return await this.patch<Record<string, unknown>>('/promotions/settings', body);
 	}
 
 	async getPromotionProvider(id: string) {
@@ -541,6 +551,20 @@ export class N8nClient {
 			confirmDestructiveChanges,
 			expectedPreviewRevision,
 		});
+	}
+
+	// ─── Promotion reviews ─────────────────────────────────────────
+
+	async listPromotionReviews(state?: 'open' | 'closed', limit?: number) {
+		return await this.paginate<Record<string, unknown>>(
+			'/promotions/reviews',
+			state ? { state } : {},
+			limit,
+		);
+	}
+
+	async getPromotionReview(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/reviews/${id}`);
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────

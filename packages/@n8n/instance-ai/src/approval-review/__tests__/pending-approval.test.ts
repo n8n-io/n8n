@@ -137,9 +137,15 @@ describe('routeApproval', () => {
 		);
 	});
 
-	it('always asks before a custom MCP server is deleted, and lets the judge decide other changes', () => {
+	it('always asks before a custom MCP server or one of its tools is removed, and lets the judge decide other changes', () => {
 		expect(
 			routeApproval({ toolName: 'custom-mcp-servers', args: { action: 'delete', serverId: 's1' } }),
+		).toBe('always-ask');
+		expect(
+			routeApproval({
+				toolName: 'custom-mcp-servers',
+				args: { action: 'remove-tool', serverId: 's1', toolId: 't1' },
+			}),
 		).toBe('always-ask');
 		expect(
 			routeApproval({

@@ -138,9 +138,6 @@ export interface Adapter {
 	wait(pageId: string, options: WaitOptions): Promise<number>;
 	waitForCompletion<T>(pageId: string, action: () => Promise<T>): Promise<T>;
 	// State
-	getCookies(pageId: string, url?: string): Promise<Cookie[]>;
-	setCookies(pageId: string, cookies: Cookie[]): Promise<void>;
-	clearCookies(pageId: string): Promise<void>;
 	getStorage(pageId: string, kind: 'local' | 'session'): Promise<Record<string, string>>;
 	setStorage(
 		pageId: string,
@@ -237,17 +234,6 @@ export interface NetworkEntry {
 	timestamp: number;
 }
 
-export interface Cookie {
-	name: string;
-	value: string;
-	domain?: string;
-	path?: string;
-	expires?: number;
-	httpOnly?: boolean;
-	secure?: boolean;
-	sameSite?: 'Strict' | 'Lax' | 'None';
-}
-
 // ---------------------------------------------------------------------------
 // Adapter option types
 // ---------------------------------------------------------------------------
@@ -279,7 +265,6 @@ export interface WaitOptions {
 	selector?: string;
 	url?: string;
 	loadState?: 'load' | 'domcontentloaded' | 'networkidle';
-	predicate?: string;
 	text?: string;
 	timeoutMs?: number;
 }

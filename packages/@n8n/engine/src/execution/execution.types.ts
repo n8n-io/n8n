@@ -68,6 +68,16 @@ export interface ParentLink {
 }
 
 /**
+ * The failed execution that an error execution reports on. Only
+ * the engine's own error start sets it: a caller over HTTP cannot claim one.
+ * The workflow id is stored too, because the source row can be pruned first.
+ */
+export interface ErrorSourceLink {
+	executionId: string;
+	workflowId: string;
+}
+
+/**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
  * at birth: the step was considered and decided against (no live input), so it
  * never runs. `waiting` is the other extreme: the step ran, but it produced no
@@ -99,10 +109,22 @@ export function isSettledStatus(status: StepStatus): status is SettledStepStatus
 }
 
 /**
+ * The settled statuses that have a `step:settled` message on the orchestration
+ * queue. A `cancelled` step has no message, because its execution already ended.
+ */
+export const ANNOUNCED_STEP_STATUSES = ['completed', 'failed', 'skipped'] as const;
+
+export type AnnouncedStepStatus = (typeof ANNOUNCED_STEP_STATUSES)[number];
+
+export function isAnnouncedStatus(status: StepStatus): status is AnnouncedStepStatus {
+	return (ANNOUNCED_STEP_STATUSES as readonly StepStatus[]).includes(status);
+}
+
+/**
  * A step's data on one side of a connection, indexed by slot: outputs by
  * output slot, inputs by input slot. An edge copies one output slot into one
- * input slot; the engine understands the slot structure and nothing below it —
- * a slot's contents are opaque and step-type-specific.
+ * input slot. A slot's contents are step-type-specific. Several live edges
+ * into one input slot must each deliver a list: the engine concatenates them.
  *
  * `null` marks a slot without data: on outputs, the step didn't fire the slot
  * (a branch not taken); on inputs, nothing arrived (a dead edge). `[]` is not
@@ -111,23 +133,28 @@ export function isSettledStatus(status: StepStatus): status is SettledStepStatus
 export type StepSlots = JsonValue[];
 
 /**
- * Where `itemCount` items of a step's output slot came from: another step's
- * output slot, read from `offset`. A loop node emits items it did not make, so
- * it states their origin in engine terms. The v1 shim translates this into
- * paired items. Every other step type states nothing.
+ * Where `itemCount` consecutive items came from: another step's output slot,
+ * read from `offset`. The v1 shim translates this into paired items.
  */
-export interface StepOutputSource {
+export interface ItemSource {
+	/** The node of the source step. */
 	nodeId: string;
+	/** The output slot of the source step. */
 	outputIndex: number;
 	/** The iteration of the source step. */
 	iteration: number;
 	/** The index of the first item in the source slot. */
 	offset: number;
+	/** How many consecutive items come from this source; 1 for a value that is not a list. */
 	itemCount: number;
 }
 
-/** Per output slot, in item order, the sources that fill it; `null` for a slot the step did not fill. */
-export type StepOutputSources = Array<StepOutputSource[] | null>;
+/**
+ * Per output slot, in item order, the sources that fill it; `null` for a slot
+ * the step did not fill. A loop node emits items it did not make, so it states
+ * their origin in engine terms. Every other step type states nothing.
+ */
+export type StepOutputSources = Array<ItemSource[] | null>;
 
 /**
  * The trigger step's outputs, supplied by whoever starts the execution: one

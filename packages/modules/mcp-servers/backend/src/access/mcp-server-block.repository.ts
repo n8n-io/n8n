@@ -7,7 +7,7 @@ import {
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-import { McpServerBlock } from '../mcp-server-block.entity';
+import { McpServerBlock } from '../database/entities/mcp-server-block.entity';
 
 class McpServerBlockTable extends BaseRepository<McpServerBlock> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {

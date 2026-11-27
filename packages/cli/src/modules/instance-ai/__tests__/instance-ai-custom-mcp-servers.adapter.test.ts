@@ -132,6 +132,15 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 			},
 		);
 
+		it('throws with the flag off, before the scope check, so no card shows', async () => {
+			flagGate.assertEnabled.mockRejectedValue(new Error('Not found'));
+
+			await expect(createService().assertCanWrite('project-1', 'create')).rejects.toThrow(
+				'Not found',
+			);
+			expect(access.resolveProjectId).not.toHaveBeenCalled();
+		});
+
 		it('throws when the user has no scope in the project', async () => {
 			access.resolveProjectId.mockRejectedValue(
 				new Error('User does not have the required permissions in this project'),
@@ -215,7 +224,7 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 
 		await expect(createService().delete({ serverId: SERVER_ID })).rejects.toThrow('Not found');
 
-		expect(flagGate.assertEnabled).toHaveBeenCalledWith(user);
+		expect(flagGate.assertEnabled).toHaveBeenCalledWith();
 		expect(servers.delete).not.toHaveBeenCalled();
 	});
 
@@ -284,6 +293,7 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 			'project-1',
 			SERVER_ID,
 			TOOL_ID,
+			actor,
 			'description',
 		);
 		expect(tools.removeTool).toHaveBeenCalledWith('project-1', SERVER_ID, TOOL_ID);

@@ -32,7 +32,7 @@ These local tools stay eager when they are attached:
 - `workspace_str_replace_file`
 - `workspace_edit_files`
 - `workspace_execute_command`
-- `load_skill`
+- `load_skill`: loads attached skill instructions or a linked text file by its path relative to the skill folder. For a linked file over 72 KiB, pass the `offset` from the truncation note to read the next part. The tool truncates instructions over 72 KiB and does not page them.
 - `mark_session_failed`
 - `create_plan`
 - `read_plan`
@@ -80,6 +80,8 @@ each child's selected model. There is no feature flag or Agent Builder setting.
 ## Workspace and knowledge tools
 
 Attach condition: The sandbox is on and the agent is not an inline agent. The runtime attaches them through `agent.workspace(...)` in `attachWorkspaceAndKnowledge`. A delegated sub-agent gets the same tools scoped to its own folder in the parent workspace.
+
+When sandbox egress is disabled by the instance policy (`N8N_AGENTS_AI_SANDBOX_EGRESS_POLICY`) or the agent's `config.sandboxEgress` setting, the workspace instructions state that outbound network access is disabled. This applies to parent agents and delegated sub-agents. When egress is enabled, the instructions omit this note.
 
 Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/src/workspace/tools/).
 
@@ -130,6 +132,7 @@ Files in `outputs/` become conversation files with source `sandbox`. A turn that
 - Slack user and channel searches read up to five directory pages of 200 entries per call. They stop when a page has matches or the directory ends. If five pages have no matches and more remain, the tool returns `CONTEXT_SEARCH_INCOMPLETE` and `nextQuery` to continue. Only a completed search returns a successful empty list.
 - Slack user and channel searches return `nextCursor` when more results remain. The cursor retains unused matches from the current page and binds the search criteria and filters. Keep the same search inputs when you continue. Use `get_channel_info` when the channel ID is known.
 - Teams and Linear user searches use platform filters. They return a continuation cursor when the platform has another page.
+- Actions that need approval require a short `__approvalDescription` from the model. The runtime shows this description in the request unless caller settings redact approval details, and removes it from the action inputs. Actions that do not need approval do not require this field.
 - Source: [`integrations/integration-tool-factory.ts`](./integrations/integration-tool-factory.ts).
 
 ### `do_not_respond`

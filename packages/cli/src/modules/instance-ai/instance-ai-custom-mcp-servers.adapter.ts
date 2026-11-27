@@ -25,7 +25,7 @@ export interface CustomMcpServerProjectAccess {
  * The CLI side of the Assistant tool `custom-mcp-servers`. It calls the module services that the
  * REST controllers call, after the same flag check and the same project scope. Both read the scope
  * from `MCP_SERVER_ACTION_SCOPES`. Each event has the source "assistant". The host wires the
- * service only for a user with the flag variant `test`.
+ * service only when the flag variant of the instance is `test`.
  */
 @Service()
 export class InstanceAiCustomMcpServersAdapterService {
@@ -45,7 +45,7 @@ export class InstanceAiCustomMcpServersAdapterService {
 			);
 			// As the REST routes do on each request: the gates of a turn are read once, and an
 			// approval can resume after the flag changed.
-			await Container.get(CustomMcpServersFlagGate).assertEnabled(user);
+			await Container.get(CustomMcpServersFlagGate).assertEnabled();
 			return {
 				servers: Container.get(McpServersService),
 				tools: Container.get(McpServerToolsService),
@@ -100,7 +100,9 @@ export class InstanceAiCustomMcpServersAdapterService {
 					workflowIds,
 				);
 			},
+			// The flag check first: with the flag off, no card shows for a write that would fail.
 			assertCanWrite: async (projectId, change) => {
+				await services();
 				await writeProject(MCP_SERVER_ACTION_SCOPES[change], projectId);
 			},
 			create: async ({ projectId, name, slug, description }) => {
@@ -169,6 +171,7 @@ export class InstanceAiCustomMcpServersAdapterService {
 					await writeProject(MCP_SERVER_ACTION_SCOPES.draftTool, projectId),
 					serverId,
 					toolId,
+					actor,
 					field,
 				);
 			},

@@ -1,7 +1,12 @@
 import fc from 'fast-check';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INode,
+	INodeParameterResourceLocator,
+} from 'n8n-workflow';
 import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import {
@@ -17,6 +22,7 @@ import {
 	extractDatabaseMentionRLC,
 	extractPageId,
 	formatBlocks,
+	getCurrentPageId,
 	getPageId,
 	notionApiRequest,
 	notionApiRequestAllItems,
@@ -182,6 +188,41 @@ describe('Test Notion', () => {
 				const result = extractPageId(extractIdFromUrl(page));
 				expect(result).toBe(testId);
 			}
+		});
+
+		test.each([
+			['undefined', undefined],
+			['null', null],
+			['an incomplete resourceLocator object', { __rl: true, mode: 'url' }],
+			['a number', 12345],
+			['an empty string', ''],
+		])('should return an empty string when input is %s', (_, input) => {
+			expect(extractPageId(input)).toBe('');
+		});
+	});
+
+	describe('getCurrentPageId', () => {
+		test('should extract page ID from the current pageId parameter', () => {
+			const pageId = '4eb10d5001254b7faaa831d72d9445aa';
+			const getCurrentNodeParameter = vi.fn(() => `https://www.notion.com/My-Page-${pageId}`);
+			const context = { getCurrentNodeParameter } as unknown as ILoadOptionsFunctions;
+
+			expect(getCurrentPageId.call(context)).toBe(pageId);
+			expect(getCurrentNodeParameter).toHaveBeenCalledWith('pageId', { extractValue: true });
+		});
+
+		test.each([
+			['undefined', undefined],
+			['null', null],
+			['an incomplete resourceLocator object', { __rl: true, mode: 'url' }],
+			['a number', 12345],
+			['an empty string', ''],
+		])('should return an empty string when pageId parameter resolves to %s', (_, pageId) => {
+			const context = {
+				getCurrentNodeParameter: vi.fn(() => pageId),
+			} as unknown as ILoadOptionsFunctions;
+
+			expect(getCurrentPageId.call(context)).toBe('');
 		});
 	});
 });

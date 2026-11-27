@@ -1,7 +1,7 @@
 import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 
-import type { McpServer } from '../mcp-server.entity';
+import type { McpServer } from '../database/entities/mcp-server.entity';
 import { OAuthClientNamePort } from '../tools/oauth-client-name-port';
 import { McpServerConnectionRepository } from './mcp-server-connection.repository';
 

@@ -662,7 +662,10 @@ export class AssistantTurnInputBuilder {
 		const service = context.customMcpServerService;
 		if (!target || !service) return '';
 		try {
-			const server = await service.get({ serverId: target.serverId, projectId: target.projectId });
+			const server = await service.getServer({
+				serverId: target.serverId,
+				projectId: target.projectId,
+			});
 			return buildMcpServerTargetBlock(server);
 		} catch (error) {
 			// The server can be gone, or the user can have lost access. The turn runs without it.

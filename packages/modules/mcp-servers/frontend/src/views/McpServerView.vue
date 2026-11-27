@@ -14,7 +14,6 @@ import {
 	N8nEmptyState,
 	N8nHeading,
 	N8nIconButton,
-	N8nInlineTextEdit,
 	N8nLoading,
 	N8nTabs,
 	N8nText,
@@ -33,6 +32,7 @@ import McpServerAssistantPanel from '../components/McpServerAssistantPanel.vue';
 import McpServerConnectionsTab from '../components/McpServerConnectionsTab.vue';
 import McpServerContentsTab from '../components/McpServerContentsTab.vue';
 import { useMcpServerConnections } from '../composables/useMcpServerConnections';
+import McpServerDescriptionEdit from '../components/McpServerDescriptionEdit.vue';
 import RenameMcpServerDialog from '../components/RenameMcpServerDialog.vue';
 import { useMcpServerUrl } from '../composables/useMcpServerUrl';
 import { deleteMcpServer, getMcpServer, updateMcpServer } from '../mcp-servers.api';
@@ -56,6 +56,8 @@ const projectId = computed(() => String(route.params.projectId));
 const serverId = computed(() => String(route.params.serverId));
 const permissions = computed(() => getMcpServerPermissions(projectId.value));
 const connections = useMcpServerConnections(projectId, serverId);
+/** The Assistant on this page changes the server, so a project viewer does not get it. */
+const canUseAssistant = computed(() => assistant.available.value && permissions.value.canUpdate);
 
 const server = ref<McpServerResponse | null>(null);
 const loading = ref(true);
@@ -138,6 +140,12 @@ function applyResponse(response: McpServerResponse) {
 /** `silent` keeps the page in place while it loads, for a change from the Assistant. */
 async function load({ silent = false } = {}) {
 	const isLatest = latestFetch.next();
+	// Another server: drop the old one and its dialogs, so no action reaches the wrong server.
+	if (server.value?.id !== serverId.value) {
+		server.value = null;
+		renameOpen.value = false;
+		deleteOpen.value = false;
+	}
 	if (!silent) loading.value = true;
 	notFound.value = false;
 	try {
@@ -146,8 +154,10 @@ async function load({ silent = false } = {}) {
 		server.value = response;
 	} catch (error) {
 		if (!isLatest()) return;
-		server.value = null;
-		if (error instanceof ResponseError && error.httpStatusCode === 404) {
+		const missing = error instanceof ResponseError && error.httpStatusCode === 404;
+		// A failed reload after an Assistant change keeps the page, and the panel, in place.
+		if (!silent || missing) server.value = null;
+		if (missing) {
 			notFound.value = true;
 		} else {
 			toast.showError(error, i18n.baseText('mcpServers.server.load.error'));
@@ -203,8 +213,19 @@ function closeAssistant() {
 }
 
 async function onAssistantChanged() {
+	const name = server.value?.name ?? '';
+	await load({ silent: true });
+	if (notFound.value) {
+		// The Assistant deleted the server: the page ends as after a delete from the menu.
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('mcpServers.delete.success', { interpolate: { name } }),
+		});
+		await router.push({ name: MCP_SERVERS_LIST_VIEW });
+		return;
+	}
 	contentsRefreshKey.value++;
-	await Promise.all([load({ silent: true }), connections.load()]);
+	await connections.load();
 }
 
 async function onSelectTab(tab: string) {
@@ -229,10 +250,12 @@ function onTitleDoubleClick() {
 }
 
 async function onRename(name: string) {
+	const current = server.value;
+	if (!current) return;
 	renaming.value = true;
 	try {
 		applyResponse(
-			await updateMcpServer(rootStore.restApiContext, projectId.value, serverId.value, { name }),
+			await updateMcpServer(rootStore.restApiContext, current.projectId, current.id, { name }),
 		);
 		renameOpen.value = false;
 		toast.showMessage({ type: 'success', title: i18n.baseText('mcpServers.rename.success') });
@@ -244,9 +267,11 @@ async function onRename(name: string) {
 }
 
 async function onDescription(description: string) {
+	const current = server.value;
+	if (!current) return;
 	try {
 		applyResponse(
-			await updateMcpServer(rootStore.restApiContext, projectId.value, serverId.value, {
+			await updateMcpServer(rootStore.restApiContext, current.projectId, current.id, {
 				description,
 			}),
 		);
@@ -256,11 +281,12 @@ async function onDescription(description: string) {
 }
 
 async function onDelete() {
-	if (!server.value) return;
-	const name = server.value.name;
+	const current = server.value;
+	if (!current) return;
 	deleting.value = true;
+	const { name } = current;
 	try {
-		await deleteMcpServer(rootStore.restApiContext, projectId.value, serverId.value);
+		await deleteMcpServer(rootStore.restApiContext, current.projectId, current.id);
 		deleteOpen.value = false;
 		toast.showMessage({
 			type: 'success',
@@ -324,13 +350,12 @@ async function onBreadcrumbSelected(item: PathItem) {
 							>
 								{{ server.name }}
 							</N8nHeading>
-							<N8nInlineTextEdit
+							<McpServerDescriptionEdit
 								v-if="permissions.canUpdate"
+								:key="server.id"
 								:model-value="server.description"
 								:placeholder="i18n.baseText('mcpServers.server.description.placeholder')"
 								:max-length="MCP_SERVER_DESCRIPTION_MAX_LENGTH"
-								:max-width="640"
-								:class="$style.description"
 								data-test-id="mcp-server-description"
 								@update:model-value="onDescription"
 							/>
@@ -366,7 +391,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 						</div>
 						<div :class="$style.actions">
 							<N8nButton
-								v-if="assistant.available.value"
+								v-if="canUseAssistant"
 								variant="outline"
 								size="small"
 								icon="n8n-assistant"
@@ -431,10 +456,9 @@ async function onBreadcrumbSelected(item: PathItem) {
 					:cancel-label="i18n.baseText('generic.cancel')"
 					action-variant="destructive"
 					:loading="deleting"
-					data-test-id="delete-mcp-server-dialog"
-					@update:open="deleteOpen = $event"
+					@update:open="!deleting && (deleteOpen = $event)"
 					@action="onDelete"
-					@cancel="deleteOpen = false"
+					@cancel="!deleting && (deleteOpen = false)"
 				/>
 			</template>
 		</div>
@@ -506,6 +530,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 
 .description {
 	color: var(--text-color--subtler);
+	white-space: pre-wrap;
 }
 
 .actions {

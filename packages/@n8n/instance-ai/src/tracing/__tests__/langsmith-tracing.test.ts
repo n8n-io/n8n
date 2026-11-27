@@ -2085,6 +2085,58 @@ describe('createInstanceAiTraceContext', () => {
 		});
 	});
 
+	it.each([
+		['the live trace', 'live'],
+		['the replay recording', 'record'],
+	] as const)('passes the suspend options to the native suspend in %s', async (_label, mode) => {
+		const tracing =
+			mode === 'live'
+				? await createInstanceAiTraceContext({
+						threadId: 'thread-1',
+						messageGroupId: 'group-1',
+						messageId: 'message-1',
+						runId: 'run-1',
+						userId: 'user-1',
+						input: { message: 'Publish the agent' },
+					})
+				: createTraceReplayOnlyContext();
+		if (!tracing) throw new Error('Expected a trace context');
+		if (mode === 'live') await startForegroundActor(tracing);
+		else {
+			tracing.replayMode = 'record';
+			tracing.traceWriter = new TraceWriter('record-suspend-options');
+		}
+
+		const options = {
+			continuation: { revision: 3 },
+			resumeSchema: { type: 'object' as const },
+		};
+		const tool: BuiltTool = {
+			name: 'publish-tool',
+			description: 'Asks before it publishes.',
+			suspendSchema: {},
+			handler: async (_input, context) => {
+				if (!('suspend' in context) || typeof context.suspend !== 'function') {
+					throw new Error('Expected interruptible tool context');
+				}
+				return await context.suspend({ message: 'Publish?' }, options);
+			},
+		};
+		const wrapped = tracing.wrapTools(createToolRegistry([['publish-tool', tool]]), {
+			agentRole: 'orchestrator',
+		});
+		const wrappedTool = wrapped.get('publish-tool');
+		if (!isExecutableTool(wrappedTool)) throw new Error('Wrapped tool is not executable');
+
+		const nativeSuspend = vi.fn(async () => await Promise.resolve(undefined as never));
+		const run = async () =>
+			await executeTool(wrappedTool, {}, { resumeData: undefined, suspend: nativeSuspend });
+		if (mode === 'live') await tracing.withActiveSpan(tracing.orchestratorRun, run);
+		else await run();
+
+		expect(nativeSuspend).toHaveBeenCalledWith({ message: 'Publish?' }, options);
+	});
+
 	it('records suspend calls before the native suspend interrupts execution', async () => {
 		const writer = new TraceWriter('record-interrupted-suspend');
 		const tracing = createTraceReplayOnlyContext();

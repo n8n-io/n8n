@@ -8,7 +8,7 @@
 variable "NODE_VERSION" { default = "26.13.0" }
 
 # n8nio/base builds on these. The tag of each base is the Node version of its
-# DHI ref. The Node 24 base also supplies the node-patched-24 runtime.
+# DHI ref. The Node 24 base supplies the 1.x runtime image.
 variable "DHI_REF" {
   default = "dhi.io/node:26.13.0-alpine3.24-dev@sha256:3e61a81f5d83780aff01cb2d8f2251698bf3fe7d522bef71a9656fa93333b504"
 }
@@ -34,33 +34,21 @@ variable "RUNTIME_IMAGE" {
   default = "n8nio/base:26.13.0-c86615646b167060211ad428f021f59099b62284@sha256:02079402e2a7f33a41e8bf8943a2f6a08b45fd7a749abafaa20ef44bf4b6fd76"
 }
 variable "DEBIAN_RUNTIME_IMAGE" {
-  default = "n8nio/base:26.13.0-debian-b23a3454e958998b052277c130ee6f9f027427f0@sha256:cbdcf28cd718a9a3c8490cd2ee80dd61869e19e3a663ab0f7b762eb5e7ee2f4a"
+  default = "n8nio/base:26.13.0-debian-b81d2d875b7643cee7242f234b8d853cbea3ad58@sha256:4ba00ab3af5b3925b03e76f7211dfbb150addf21b60702ce9d463f52d6105a75"
 }
 
-# Published by build-node-pc-image.yml on master.
+# Published by build-node-pc-image.yml on master. The n8n image compiles native
+# addons in these images and copies their compiled Node onto RUNTIME_IMAGE.
 variable "N8N_BUILDER_IMAGE" {
   default = "n8nio/node-patched:26.13.0-6484e2d8092f46c7ce7a4fbd97847ba3cb539e72-dev@sha256:2bb25015cc92814809410aaab21ad5696a901a2f58c9bce6ed5faeafe4fd5f15"
 }
-variable "N8N_RUNTIME_IMAGE" {
-  default = "n8nio/node-patched:26.13.0-6484e2d8092f46c7ce7a4fbd97847ba3cb539e72@sha256:c1ae64f56f1e54ef84bcd9e6205a8d167a929ae1e0f057bc6b8949ccdaa2212c"
-}
-
-# Published by build-node-pc-image.yml on master.
 variable "PC_BUILDER_IMAGE" {
   default = "n8nio/node-pc:26.13.0-c191db3de7f8187af3f35a59c2a1ca6833c66afc-dev@sha256:c1ff9dd826920453d5ab67cb3daaa4b3efb5270cf45d65b7f393bee7c4ff1857"
 }
-variable "PC_RUNTIME_IMAGE" {
-  default = "n8nio/node-pc:26.13.0-c191db3de7f8187af3f35a59c2a1ca6833c66afc@sha256:757a7ca4022a4a2aebdc6e1f07e9d08016e446994aed1c8473922df54a14eb01"
-}
 
-# Inputs of n8nio/node-patched for the 1.x image. NODE_24_RUNTIME_IMAGE pins
-# the Node 24 base that master published. Keep this input on n8nio/base after
-# the 1.x Dockerfile switches its RUNTIME_IMAGE to n8nio/node-patched.
+# Input of n8nio/node-patched for the 1.x image.
 # build-node-pc-image.yml publishes node-patched on master.
 variable "NODE_24_VERSION" { default = "24.22.3" }
-variable "NODE_24_RUNTIME_IMAGE" {
-  default = "n8nio/base:24.22.1-c4188d049e9d3b3e9ed6337439fa1cb134979925@sha256:711f03f1f2cfaa3bc0bc65bdf9dbd0cd929d8e4620fcdb5729b53b51d85578f2"
-}
 
 # Other base images. The runners take their Python version from the image tag.
 variable "ALPINE_IMAGE" {
@@ -72,10 +60,10 @@ variable "PYTHON_IMAGE" {
 # Debian 13, the release of the distroless runtime. That image runs the glibc
 # of this Python image.
 variable "DEBIAN_PYTHON_IMAGE" {
-  default = "python:3.13.18-slim-trixie@sha256:ae14d4ce8771606477a81446e7ef429edd6762305fc50c84507c1041fa8285d1"
+  default = "python:3.13.18-slim-trixie@sha256:7249d5587b78209a006dc4a3b5340678f84ea729239193aa559962cd8c1fce50"
 }
 variable "DISTROLESS_BASE_IMAGE" {
-  default = "gcr.io/distroless/cc-debian13:latest@sha256:e1f5543d45a2cd7c02a5b43dda5f0ff30729b4832113759d01ed39b0b152cddb"
+  default = "gcr.io/distroless/cc-debian13:latest@sha256:e8343d4a7da8bb210df0c3ea29de38bbadbba6c773bed0cd8bde506fca3a5c44"
 }
 
 variable "N8N_VERSION" { default = "snapshot" }
@@ -134,8 +122,9 @@ target "n8n" {
   dockerfile = "docker/images/n8n/Dockerfile"
   tags       = tags(N8N_TAGS, "${IMAGE_BASE_NAME}:${IMAGE_TAG}")
   args = {
-    BUILDER_IMAGE = N8N_BUILDER_IMAGE
-    RUNTIME_IMAGE = N8N_RUNTIME_IMAGE
+    BUILDER_IMAGE              = N8N_BUILDER_IMAGE
+    RUNTIME_IMAGE              = RUNTIME_IMAGE
+    ENABLE_POINTER_COMPRESSION = "false"
   }
 }
 
@@ -143,9 +132,9 @@ target "n8n-pc" {
   inherits = ["n8n"]
   tags     = tags(N8N_PC_TAGS, "${IMAGE_BASE_NAME}:${IMAGE_TAG}-pc")
   args = {
-    BUILDER_IMAGE     = PC_BUILDER_IMAGE
-    RUNTIME_IMAGE     = PC_RUNTIME_IMAGE
-    IMAGE_DESCRIPTION = "Workflow Automation Tool (pointer-compressed variant, internal to n8n Cloud, no support or stability guarantees)"
+    BUILDER_IMAGE              = PC_BUILDER_IMAGE
+    ENABLE_POINTER_COMPRESSION = "true"
+    IMAGE_DESCRIPTION          = "Workflow Automation Tool (pointer-compressed variant, internal to n8n Cloud, no support or stability guarantees)"
   }
 }
 
@@ -227,19 +216,19 @@ target "base-node-24" {
   tags     = ["n8nio/base:${dhi_node_version(NODE_24_DHI_REF)}"]
 }
 
-# build-node-pc-image.yml builds the runtime and dev stages of all Node
-# source builds and sets the tags.
+# build-node-pc-image.yml builds the dev stage of all Node source builds and
+# sets the tags. None of these depend on RUNTIME_IMAGE, so OS base refreshes
+# do not recompile Node.
 target "node-pc" {
   inherits   = ["_context"]
   dockerfile = "docker/images/node-pc/Dockerfile"
-  target     = "runtime"
+  target     = "dev"
   args = {
     NODE_VERSION               = NODE_VERSION
     ALPINE_IMAGE               = ALPINE_IMAGE
-    RUNTIME_IMAGE              = RUNTIME_IMAGE
     ENABLE_POINTER_COMPRESSION = "true"
   }
-  tags = ["n8nio/node-pc:${NODE_VERSION}"]
+  tags = ["n8nio/node-pc:${NODE_VERSION}-dev"]
 }
 
 # Stock-configured Node 24 with the same V8 patches, for the 1.x image.
@@ -247,10 +236,9 @@ target "node-patched-24" {
   inherits = ["node-pc"]
   args = {
     NODE_VERSION               = NODE_24_VERSION
-    RUNTIME_IMAGE              = NODE_24_RUNTIME_IMAGE
     ENABLE_POINTER_COMPRESSION = "false"
   }
-  tags = ["n8nio/node-patched:${NODE_24_VERSION}"]
+  tags = ["n8nio/node-patched:${NODE_24_VERSION}-dev"]
 }
 
 # Stock-configured Node 26 with the same V8 patches, for the release images.
@@ -259,7 +247,7 @@ target "node-patched-26" {
   args = {
     ENABLE_POINTER_COMPRESSION = "false"
   }
-  tags = ["n8nio/node-patched:${NODE_VERSION}"]
+  tags = ["n8nio/node-patched:${NODE_VERSION}-dev"]
 }
 
 group "default" { targets = ["n8n", "runners"] }

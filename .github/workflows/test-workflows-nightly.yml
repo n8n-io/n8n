@@ -16,6 +16,10 @@ on:
         type: string
         default: 'master'
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   run_workflow_tests:
     name: Run Workflow Tests

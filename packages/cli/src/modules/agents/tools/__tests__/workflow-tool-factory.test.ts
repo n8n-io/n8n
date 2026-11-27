@@ -29,6 +29,7 @@ import {
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
 import { AgentBackgroundJobService } from '../../background/agent-background-job.service';
+import { withSkillWorkflowTools } from '../../utils/skill-workflow-tools';
 import { InstrumentedRunUnsupportedError } from '../instrumented-run-guard';
 import {
 	executeWorkflow,
@@ -1079,6 +1080,17 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		expect(executionData?.parentAgentRun).toEqual(expect.objectContaining({ previewChat: true }));
 	});
 
+	it.each([true, false])(
+		'keeps the runtime choice when a task workflow waits (published=%s)',
+		async (published) => {
+			const executionData = await runToolWith(
+				{ agentId: 'agent-1', integrationType: 'task', usePublishedWorkflowVersion: published },
+				agentCtx,
+			);
+			expect(executionData?.parentAgentRun).toMatchObject({ integrationType: 'task', published });
+		},
+	);
+
 	it('stamps the production n8n Chat marker so the wake-up uses the published runtime', async () => {
 		const executionData = await runToolWith(
 			{
@@ -1222,7 +1234,13 @@ describe('workflow tool → binary output', () => {
 
 		expect(bridge.adoptFromItems).toHaveBeenCalledWith(
 			[binaryItem],
-			{ agentId: 'agent-1', projectId: 'p1', threadId: 't-1', resourceId: 'draft-chat:user-1' },
+			expect.objectContaining({
+				agentId: 'agent-1',
+				projectId: 'p1',
+				threadId: 't-1',
+				resourceId: 'draft-chat:user-1',
+				workflowId: workflow.id,
+			}),
 			expect.any(Map),
 			expect.any(Set),
 		);
@@ -1703,10 +1721,13 @@ describe('workflow tool → file input', () => {
 			{ data: 'aid-1' },
 			{ projectId: 'p1', threadId: 't-1' },
 		);
-		const { pinData } = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		const { pinData } = runData;
 		const [triggerItems] = Object.values(pinData ?? {});
 		expect(triggerItems[0].binary).toEqual(binary);
 		expect(triggerItems[0].json).not.toHaveProperty('files');
+		expect(runData.binaryDataAccess).toEqual(['fs:x']);
+		expect(runData.executionData?.binaryDataAccess).toEqual(['fs:x']);
 	});
 
 	it('passes the input files to adoptFromItems, so an unchanged file keeps its ID', async () => {
@@ -1814,5 +1835,57 @@ describe('workflow tool → file input', () => {
 		const stored = bridge.adoptFromItems.mock.calls[0][2];
 		expect(stored?.get('fs:x')).toEqual(inputFile);
 		expect(output).toMatchObject({ data: { Edit: [{ binary: { data: 'aid-1' } }] } });
+	});
+});
+
+describe('workflow tool → workflow that a skill mentions', () => {
+	beforeEach(() => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi
+				.fn()
+				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
+		} as unknown as ExecutionPersistence);
+	});
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('builds a tool that runs the workflow of a link in the skill body', async () => {
+		const config = withSkillWorkflowTools(
+			{
+				name: 'Agent',
+				model: 'anthropic/claude-sonnet-5-5',
+				instructions: 'Be helpful',
+				skills: [{ type: 'skill', id: 'skill-1' }],
+			},
+			{
+				'skill-1': {
+					name: 'Lookup',
+					description: 'Looks up a customer',
+					instructions: 'Call [Lookup workflow](n8n://workflow/wf-1) first.',
+				},
+			},
+		);
+		const [descriptor] = config.tools ?? [];
+		if (descriptor?.type !== 'workflow') throw new Error('Expected a workflow tool');
+		const workflowLoader = mock<CallableWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		const tool = await resolveWorkflowTool(
+			descriptor,
+			buildContext(run, { workflowLoader, projectId: 'project-1' }),
+		);
+		await tool.handler?.({}, {} as never);
+
+		expect(tool.name).toBe('workflow_wf-1');
+		expect(tool.description).toContain('Workflow ID: wf-1.');
+		expect(workflowLoader.loadWorkflow).toHaveBeenCalledWith(
+			'project-1',
+			{ workflowId: 'wf-1', workflowName: 'Lookup workflow' },
+			{ usePublishedVersion: false },
+		);
+		expect(run).toHaveBeenCalledTimes(1);
 	});
 });

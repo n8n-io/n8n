@@ -5,28 +5,28 @@ const events = TELEMETRY_EVENT.CUSTOM_MCP_SERVERS;
 const builderEvents = [
 	events.USER_CREATED_CUSTOM_MCP_SERVER,
 	events.USER_ADDED_TOOL_TO_CUSTOM_MCP_SERVER,
+	events.USER_DRAFTED_TOOL_OF_CUSTOM_MCP_SERVER,
 	events.USER_BLOCKED_PERSON_FROM_CUSTOM_MCP_SERVER,
 	events.USER_RESTORED_ACCESS_TO_CUSTOM_MCP_SERVER,
 	events.USER_DELETED_CUSTOM_MCP_SERVER,
 ];
 const clientEvents = [
 	events.USER_CONNECTED_TO_CUSTOM_MCP_SERVER,
-	events.CUSTOM_MCP_SERVER_TOOL_CALLED,
+	events.USER_CALLED_CUSTOM_MCP_SERVER_TOOL,
 ];
 const backendEvents = [...builderEvents, ...clientEvents];
-// The editor sends these. It identifies the person itself, and the share page also works without
-// a sign-in, so they have no `user_id`.
+// The share page also works without a sign-in, so these events can have no `user_id`.
 const sharePageEvents = [
 	events.USER_VIEWED_MCP_SERVER_SHARE_PAGE,
 	events.USER_CLICKED_CLIENT_ON_MCP_SERVER_SHARE_PAGE,
 ];
 
 describe('custom MCP server events', () => {
-	it('has the seven backend events of the build spec and the two share page events', () => {
+	it('has the seven backend events of the build spec, the draft event, and the two share page events', () => {
 		expect(Object.values(events)).toEqual(
 			expect.arrayContaining([...backendEvents, ...sharePageEvents]),
 		);
-		expect(Object.keys(events)).toHaveLength(9);
+		expect(Object.keys(events)).toHaveLength(10);
 	});
 
 	it.each(backendEvents.map((event) => [event.name, event]))(
@@ -66,6 +66,18 @@ describe('custom MCP server events', () => {
 				server_id: 'server-1',
 				signed_in: false,
 				can_connect: false,
+				result: 'found',
+			}),
+		).toBeNull();
+	});
+
+	it('accepts a share page view that finds no server, without a server id', () => {
+		expect(
+			getEventValidationError(events.USER_VIEWED_MCP_SERVER_SHARE_PAGE, {
+				user_id: 'user-1',
+				signed_in: true,
+				can_connect: false,
+				result: 'not_found',
 			}),
 		).toBeNull();
 	});
@@ -80,9 +92,29 @@ describe('custom MCP server events', () => {
 		).not.toBeNull();
 	});
 
+	it('accepts a draft for one field, and refuses an unknown status', () => {
+		const draft = {
+			server_id: 'server-1',
+			user_id: 'user-1',
+			field: 'toolName',
+			status: 'drafted',
+			source: 'ui',
+		};
+
+		expect(
+			getEventValidationError(events.USER_DRAFTED_TOOL_OF_CUSTOM_MCP_SERVER, draft),
+		).toBeNull();
+		expect(
+			getEventValidationError(events.USER_DRAFTED_TOOL_OF_CUSTOM_MCP_SERVER, {
+				...draft,
+				status: 'timeout',
+			}),
+		).not.toBeNull();
+	});
+
 	it('accepts a tool call from a client', () => {
 		expect(
-			getEventValidationError(events.CUSTOM_MCP_SERVER_TOOL_CALLED, {
+			getEventValidationError(events.USER_CALLED_CUSTOM_MCP_SERVER_TOOL, {
 				server_id: 'server-1',
 				user_id: 'user-1',
 				client_name: 'Claude Code',

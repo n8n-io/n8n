@@ -40,6 +40,11 @@
 			"reason": "Per-project worker-pool config; scoped to the deleted project and dropped via FK cascade."
 		},
 		{
+			"name": "ProjectWorkflowReviewSettings",
+			"path": "packages/@n8n/db/src/entities/project-workflow-review-settings.ee.ts",
+			"reason": "Per-project workflow review config; scoped to the deleted project and dropped via FK cascade."
+		},
+		{
 			"name": "RoleMappingRule",
 			"path": "packages/@n8n/db/src/entities/role-mapping-rule.ts",
 			"reason": "SSO role-mapping config attached to the project, not user data."
@@ -71,8 +76,8 @@
 		},
 		{
 			"name": "McpServer",
-			"path": "packages/modules/mcp-servers/backend/src/mcp-server.entity.ts",
-			"reason": "Custom MCP servers stay in their source project. The project FK cascade deletes the servers, their tools, connections, and blocks."
+			"path": "packages/modules/mcp-servers/backend/src/database/entities/mcp-server.entity.ts",
+			"reason": "Custom MCP servers stay in their source project. The project FK cascade deletes the servers, their tools, connections, and blocks. A user delete removes the personal project and its servers, also when the workflows move to another user."
 		},
 		{
 			"name": "AgentExecutionThread",

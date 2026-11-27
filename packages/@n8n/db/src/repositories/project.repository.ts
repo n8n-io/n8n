@@ -11,6 +11,11 @@ import { type OperationContext, TransactionRunner } from '../services/transactio
 import { chunkIds } from '../utils/chunk-ids';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
+/** A team project as the project policy list shows it. */
+export type TeamProjectWithMemberCount = Pick<Project, 'id' | 'name' | 'icon'> & {
+	memberCount: number;
+};
+
 export class ProjectIdConflictError extends UserError {
 	constructor() {
 		super('A project with this ID already exists');
@@ -231,6 +236,41 @@ export class ProjectRepository extends BaseRepository<Project> {
 
 	async findTeamProjects(): Promise<Project[]> {
 		return await this.findBy({ type: 'team' });
+	}
+
+	/**
+	 * Every team project, or only the one with `projectId` when it is given. Members count every
+	 * project relation, people and service accounts alike.
+	 */
+	async findTeamProjectsWithMemberCount(projectId?: string): Promise<TeamProjectWithMemberCount[]> {
+		const projects = await this.find({
+			where: { type: 'team', ...(projectId !== undefined && { id: projectId }) },
+			select: ['id', 'name', 'icon'],
+			order: { name: 'ASC' },
+		});
+		if (projects.length === 0) return [];
+
+		const query = this.manager
+			.createQueryBuilder(ProjectRelation, 'relation')
+			.select('relation.projectId', 'projectId')
+			.addSelect('COUNT(relation.userId)', 'memberCount')
+			.innerJoin('relation.project', 'project')
+			.where('project.type = :type', { type: 'team' });
+		if (projectId !== undefined) query.andWhere('project.id = :projectId', { projectId });
+
+		const counts = await query
+			.groupBy('relation.projectId')
+			.getRawMany<{ projectId: string; memberCount: string | number }>();
+		const memberCountByProject = new Map(
+			counts.map((row) => [row.projectId, Number(row.memberCount)]),
+		);
+
+		return projects.map(({ id, name, icon }) => ({
+			id,
+			name,
+			icon,
+			memberCount: memberCountByProject.get(id) ?? 0,
+		}));
 	}
 
 	async findTeamProjectsExcluding(excludedProjectIds: string[]): Promise<Project[]> {

@@ -8,6 +8,8 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
 	async init() {
+		const { registerApprovalRuntime } = await import('./approval/register-approval-runtime.js');
+		registerApprovalRuntime();
 		const { FolderContentService } = await import('@/services/folder-content.service.js');
 		const { AgentFolderService } = await import('./agent-folder.service.js');
 		Container.get(FolderContentService).register('agent', Container.get(AgentFolderService));
@@ -35,6 +37,7 @@ export class AgentsModule implements ModuleInterface {
 
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
+		await import('./agent-attention-flags.controller.js');
 		await import('./agents.controller.js');
 		await import('./agents-settings.controller.js');
 		await import('./agents-config.controller.js');
@@ -44,8 +47,10 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-memory.controller.js');
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
+		await import('./agent-test-run.controller.js');
 		await import('./system-agents/system-agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
+		await import('./approval/agent-hitl-channels.controller.js');
 		await import('./integrations/platforms/webhook/webhook-channel.controller.js');
 		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-teams-integrations.controller.js');
@@ -270,6 +275,7 @@ export class AgentsModule implements ModuleInterface {
 		const config = Container.get(AgentsConfig);
 		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
+		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		const { KnowledgeAvailabilityService } = await import(
 			'@/modules/knowledge/knowledge-availability.service.js'
 		);
@@ -279,6 +285,8 @@ export class AgentsModule implements ModuleInterface {
 			enabled: await Container.get(AgentsSettingsService).getEnabled(),
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
+			sandboxEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
+			sandboxEgressPolicy: config.sandboxEgressPolicy,
 			proxyEnabled,
 		};
 	}
@@ -297,6 +305,7 @@ export class AgentsModule implements ModuleInterface {
 			'./entities/agent-execution-message-link.entity.js'
 		);
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
+		const { AgentAttentionFlagEntity } = await import('./entities/agent-attention-flag.entity.js');
 		const { AgentThreadGrant } = await import('./entities/agent-thread-grant.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
 		const { AgentMessageQueue } = await import('./entities/agent-message-queue.entity.js');
@@ -352,6 +361,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentMessageEntity,
 			AgentExecutionMessageLink,
 			AgentExecutionThread,
+			AgentAttentionFlagEntity,
 			AgentThreadGrant,
 			AgentExecution,
 			AgentMessageQueue,

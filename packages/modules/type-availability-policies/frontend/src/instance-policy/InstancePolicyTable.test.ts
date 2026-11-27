@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
 import { findPopupItem, MENU_ITEM, OPTION, popupLabels } from '../__tests__/popups';
+import { accessFilter } from '../__tests__/table';
 
 const row = (
 	name: string,
@@ -19,6 +20,7 @@ const row = (
 	access,
 	matchedRuleId: null,
 	editable,
+	checking: false,
 	icon: { type: 'icon', name: 'key-round' },
 	usage,
 });
@@ -40,14 +42,19 @@ const renderTable = createComponentRenderer(InstancePolicyTable);
 const setup = (rows = ROWS) =>
 	renderTable({
 		pinia: createTestingPinia(),
-		props: { rows, loading: false, searchPlaceholder: 'Search credentials' },
+		props: {
+			rows,
+			loading: false,
+			searchPlaceholder: 'Search credentials',
+			noMatchText: 'No credentials match your search or filter',
+		},
 	});
 
 const accessTrigger = (getByTestId: (id: string) => HTMLElement, name: string) =>
 	getByTestId(`instance-policy-access-${name}`);
 
 const openFilter = async (getByRole: (role: string, options?: object) => HTMLElement) =>
-	await userEvent.click(getByRole('combobox', { name: 'Filter by access' }));
+	await userEvent.click(accessFilter(getByRole));
 
 const rowNames = (container: HTMLElement) =>
 	Array.from(container.querySelectorAll<HTMLTableRowElement>('tbody tr'), (tableRow) =>
@@ -100,7 +107,7 @@ describe('InstancePolicyTable', () => {
 	it('sorts on the Access column', async () => {
 		const { getByTestId, getByRole } = setup();
 
-		await userEvent.click(getByRole('columnheader', { name: /Access/ }));
+		await userEvent.click(getByRole('button', { name: 'Access' }));
 
 		await waitFor(() =>
 			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
@@ -114,8 +121,8 @@ describe('InstancePolicyTable', () => {
 	it('keeps the names A to Z inside each access group when the Access sort is reversed', async () => {
 		const { getByTestId, getByRole } = setup([...ROWS, row('zoomApi', 'Zoom API', 'deny')]);
 
-		await userEvent.click(getByRole('columnheader', { name: /Access/ }));
-		await userEvent.click(getByRole('columnheader', { name: /Access/ }));
+		await userEvent.click(getByRole('button', { name: 'Access' }));
+		await userEvent.click(getByRole('button', { name: 'Access' }));
 
 		await waitFor(() =>
 			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
@@ -124,6 +131,53 @@ describe('InstancePolicyTable', () => {
 				'Airtable API',
 				'Notion API',
 			]),
+		);
+	});
+
+	it('sorts from the keyboard, from the column headers that follow the access filter', async () => {
+		const { container, getByTestId, getByRole } = setup();
+		const filter = getByRole('combobox', { name: 'Filter by access' });
+		const firstRow = getByTestId('instance-policy-open-airtableApi');
+		const follows = (a: Node, b: Node) =>
+			Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+		// The tab order is the DOM order. jsdom cannot tab from the filter: the select sets a disabled
+		// attribute on its trigger, which user-event skips. So the test lists what Tab reaches between.
+		const reachedBetween = Array.from(
+			container.querySelectorAll<HTMLElement>(
+				'button, input, select, textarea, a[href], [tabindex]',
+			),
+		).filter(
+			(element) => element.tabIndex >= 0 && follows(filter, element) && follows(element, firstRow),
+		);
+		const headers = ['Name', 'Access', 'Projects', 'Uses', 'Workflows', 'Active workflows'];
+		expect(reachedBetween).toEqual(headers.map((name) => getByRole('button', { name })));
+
+		getByRole('button', { name: 'Name' }).focus();
+		await userEvent.tab();
+		expect(getByRole('button', { name: 'Access' })).toHaveFocus();
+
+		await userEvent.keyboard('{Enter}');
+		await waitFor(() =>
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+				'Airtable API',
+				'Notion API',
+				'Bitly API',
+			]),
+		);
+		expect(getByRole('columnheader', { name: 'Access' })).toHaveAttribute('aria-sort', 'ascending');
+
+		await userEvent.keyboard(' ');
+		await waitFor(() =>
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+				'Bitly API',
+				'Airtable API',
+				'Notion API',
+			]),
+		);
+		expect(getByRole('columnheader', { name: 'Access' })).toHaveAttribute(
+			'aria-sort',
+			'descending',
 		);
 	});
 
@@ -139,7 +193,7 @@ describe('InstancePolicyTable', () => {
 		];
 
 		const clickWorkflows = async (getByRole: (role: string, options?: object) => HTMLElement) =>
-			await userEvent.click(getByRole('columnheader', { name: /^Workflows/ }));
+			await userEvent.click(getByRole('button', { name: 'Workflows' }));
 
 		it('sorts the counts from low to high, with names A to Z for equal counts and unknown usage last', async () => {
 			const { getByTestId, getByRole } = setup(USAGE_ROWS);
@@ -241,7 +295,7 @@ describe('InstancePolicyTable', () => {
 		await userEvent.click(accessTrigger(getByTestId, 'airtableApi'));
 		await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted'));
 
-		expect(emitted('change')).toEqual([['airtableApi', 'deny']]);
+		expect(emitted('change')).toEqual([['airtableApi', 'deny', 'Airtable API']]);
 	});
 
 	it('emits open for a click on a row, but not for a click on its Access menu', async () => {
@@ -337,8 +391,92 @@ describe('InstancePolicyTable', () => {
 		await userEvent.click(accessTrigger(getByTestId, 'airtableApi'));
 		await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted'));
 
-		expect(emitted('change')).toEqual([['airtableApi', 'deny']]);
+		expect(emitted('change')).toEqual([['airtableApi', 'deny', 'Airtable API']]);
 		expect(emitted('open')).toBeUndefined();
+	});
+
+	describe('focus when the rows change', () => {
+		it('moves the focus to the access filter when the focused row leaves the filter', async () => {
+			const { getByTestId, queryByTestId, getByRole, rerender } = setup();
+			await openFilter(getByRole);
+			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+			getByTestId('instance-policy-open-bitlyApi').focus();
+
+			await rerender({ rows: [row('bitlyApi', 'Bitly API', 'allow'), ...ROWS.slice(1)] });
+
+			expect(queryByTestId('instance-policy-open-bitlyApi')).not.toBeInTheDocument();
+			await waitFor(() => expect(accessFilter(getByRole)).toHaveFocus());
+		});
+
+		it('keeps the focus on the search box while the search changes the rows', async () => {
+			const { getByTestId, getByPlaceholderText } = setup();
+			const searchBox = getByPlaceholderText('Search credentials');
+
+			await userEvent.type(searchBox, 'notion');
+
+			await waitFor(() =>
+				expect(rowNames(getByTestId('instance-policy-table'))).toEqual(['Notion API']),
+			);
+			expect(searchBox).toHaveFocus();
+		});
+
+		it('keeps the focus on a row that stays in the table', async () => {
+			const { getByTestId, rerender } = setup();
+			const airtableButton = getByTestId('instance-policy-open-airtableApi');
+			airtableButton.focus();
+
+			await rerender({ rows: ROWS.filter(({ name }) => name !== 'bitlyApi') });
+
+			expect(airtableButton).toHaveFocus();
+		});
+
+		it('keeps the focus on a row that moves when the table is sorted by access', async () => {
+			const rows = [...ROWS, row('zoomApi', 'Zoom API')];
+			const { getByTestId, getByRole, rerender } = setup(rows);
+			await userEvent.click(getByRole('button', { name: 'Access' }));
+			getByTestId('instance-policy-open-airtableApi').focus();
+
+			await rerender({
+				rows: rows.map((item) =>
+					item.name === 'airtableApi' ? { ...item, access: 'deny' } : item,
+				),
+			});
+
+			await waitFor(() =>
+				expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+					'Notion API',
+					'Zoom API',
+					'Airtable API',
+					'Bitly API',
+				]),
+			);
+			expect(getByTestId('instance-policy-open-airtableApi')).toHaveFocus();
+		});
+
+		it('does not move the focus of a control that is not a row', async () => {
+			const { getByTestId, rerender } = setup(paginationRows(30));
+			getByTestId('pagination-next').focus();
+
+			// With ten rows or fewer, the table shows no pagination.
+			await rerender({ rows: paginationRows(5) });
+
+			expect(document.activeElement).toBe(document.body);
+		});
+
+		it('does not move a focus that is outside the table', async () => {
+			const { rerender } = setup();
+			const outside = document.createElement('button');
+			document.body.appendChild(outside);
+			try {
+				outside.focus();
+
+				await rerender({ rows: [] });
+
+				expect(outside).toHaveFocus();
+			} finally {
+				outside.remove();
+			}
+		});
 	});
 
 	it('asks for the details of a read-only row when the admin clicks its access', async () => {
@@ -347,5 +485,75 @@ describe('InstancePolicyTable', () => {
 		await userEvent.click(getByTestId('instance-policy-access-slackApi'));
 
 		expect(emitted('open')).toEqual([['slackApi']]);
+	});
+
+	describe('no match', () => {
+		const noMatch = (queryByTestId: (id: string) => HTMLElement | null) =>
+			queryByTestId('instance-policy-no-match');
+
+		it('does not show the message when rows match', () => {
+			const { queryByTestId } = setup();
+
+			expect(noMatch(queryByTestId)).not.toBeInTheDocument();
+		});
+
+		it('shows the message when the search matches no row', async () => {
+			const { getByPlaceholderText, getByTestId } = setup();
+
+			await fireEvent.update(getByPlaceholderText('Search credentials'), 'zzz');
+
+			expect(getByTestId('instance-policy-no-match')).toHaveTextContent(
+				'No credentials match your search or filter',
+			);
+		});
+
+		it('shows the message when an access change takes the last row out of the filter', async () => {
+			const { getByRole, getByTestId, rerender } = setup();
+			await openFilter(getByRole);
+			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+
+			await rerender({ rows: ROWS.map((typeRow) => ({ ...typeRow, access: 'allow' })) });
+
+			expect(getByTestId('instance-policy-no-match')).toBeInTheDocument();
+		});
+
+		it('does not show the message during the first load', async () => {
+			const { getByPlaceholderText, queryByTestId, rerender } = setup([]);
+			await rerender({ loading: true });
+			await fireEvent.update(getByPlaceholderText('Search credentials'), 'zzz');
+
+			expect(noMatch(queryByTestId)).not.toBeInTheDocument();
+		});
+
+		it('keeps the message, with no skeleton rows, while the access reloads after a save', async () => {
+			const { getByPlaceholderText, getByTestId, rerender } = setup();
+			await fireEvent.update(getByPlaceholderText('Search credentials'), 'zzz');
+
+			await rerender({ loading: true });
+
+			expect(getByTestId('instance-policy-no-match')).toBeInTheDocument();
+			expect(getByTestId('instance-policy-table').querySelector('.el-skeleton')).toBeNull();
+		});
+
+		it('clears the search and the filter, and puts the focus on the search box', async () => {
+			const { getByPlaceholderText, getByRole, getByTestId, queryByTestId } = setup();
+			const searchBox = getByPlaceholderText('Search credentials');
+			await openFilter(getByRole);
+			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+			await fireEvent.update(searchBox, 'Notion');
+
+			getByRole('button', { name: 'Clear search and filter' }).focus();
+			await userEvent.keyboard('{Enter}');
+
+			expect(noMatch(queryByTestId)).not.toBeInTheDocument();
+			expect(searchBox).toHaveValue('');
+			expect(getByRole('combobox', { name: 'Filter by access' })).toHaveTextContent('All (3)');
+			expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+				'Airtable API',
+				'Bitly API',
+				'Notion API',
+			]);
+			expect(searchBox).toHaveFocus();
+		});
 	});
 });

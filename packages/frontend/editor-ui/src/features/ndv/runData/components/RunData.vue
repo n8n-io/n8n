@@ -33,7 +33,6 @@ import {
 	CORE_NODES_CATEGORY,
 	DATA_EDITING_DOCS_URL,
 	DATA_PINNING_DOCS_URL,
-	HTML_NODE_TYPE,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
@@ -92,7 +91,6 @@ import {
 	N8nBlockUi,
 	N8nButton,
 	N8nCallout,
-	N8nHtmlPreview,
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
@@ -583,19 +581,27 @@ const binaryData = computed(() => {
 		.getBinaryData(runDataOfNode, currentOutputIndex.value)
 		.filter((data) => Boolean(data && Object.keys(data).length));
 });
-const inputHtml = computed(() => String(inputData.value[0]?.json?.html ?? ''));
 
 const { availableDisplayModes, displayModeToAutoSelect, getAvailableDisplayMode } =
 	useRunDataDisplayModes({ node, pane: () => props.paneType, data: unfilteredInputData });
-/**
- * The mode to render. A registered mode that cannot render this data falls back to
- * the pane default. The fallback is not saved, so the stored choice stays for other nodes.
- */
-const activeDisplayMode = computed<IRunDataDisplayMode>(() =>
-	isBuiltInDisplayMode(props.displayMode) || getAvailableDisplayMode(props.displayMode)
+const pickedOnThisNode = ref(false);
+const automaticDisplayMode = computed<IRunDataDisplayMode | undefined>(() => {
+	if (displayModeToAutoSelect.value) return displayModeToAutoSelect.value.id;
+	if (hasBinaryData.value) return 'binary';
+	if (hasParsedAiContent.value) return 'ai';
+	return undefined;
+});
+function isDisplayModeAvailable(mode: IRunDataDisplayMode): boolean {
+	if (mode === 'binary') return hasBinaryData.value;
+	if (mode === 'ai') return hasParsedAiContent.value;
+	return isBuiltInDisplayMode(mode) || !!getAvailableDisplayMode(mode);
+}
+const activeDisplayMode = computed<IRunDataDisplayMode>(() => {
+	if (!pickedOnThisNode.value && automaticDisplayMode.value) return automaticDisplayMode.value;
+	return isDisplayModeAvailable(props.displayMode)
 		? props.displayMode
-		: PANE_DEFAULT_DISPLAY_MODE[props.paneType],
-);
+		: PANE_DEFAULT_DISPLAY_MODE[props.paneType];
+});
 const activeRenderer = computed(() => getAvailableDisplayMode(activeDisplayMode.value));
 // Text typed in another mode must not filter or hide a mode that cannot search
 const activeSearch = computed(() =>
@@ -810,10 +816,18 @@ watch(node, (newNode, prevNode) => {
 	init();
 });
 
+watch(automaticDisplayMode, () => {
+	pickedOnThisNode.value = false;
+});
+
+watch(
+	activeDisplayMode,
+	(mode) => ndvStore.value.setNDVPanelShownDisplayMode({ pane: props.paneType, mode }),
+	{ immediate: true },
+);
+
 watch([hasNodeRun, isTrimmedManualExecutionDataItem], () => {
-	if (props.paneType === 'output') {
-		setDisplayMode();
-	} else {
+	if (props.paneType === 'input') {
 		// InputPanel relies on the outputIndex to check if we have data
 		outputIndex.value = determineInitialOutputIndex();
 	}
@@ -841,14 +855,6 @@ watch(jsonData, (data: IDataObject[], prevData: IDataObject[]) => {
 	showPinDataDiscoveryTooltip(data);
 });
 
-watch(binaryData, (newData, prevData) => {
-	if (newData.length && !prevData.length && activeDisplayMode.value !== 'binary') {
-		switchToBinary();
-	} else if (!newData.length && activeDisplayMode.value === 'binary') {
-		onDisplayModeChange('table');
-	}
-});
-
 watch(currentOutputIndex, (branchIndex: number) => {
 	ndvStore.value.setNDVBranchIndex({
 		pane: props.paneType,
@@ -859,17 +865,6 @@ watch(currentOutputIndex, (branchIndex: number) => {
 watch(search, (newSearch) => {
 	emit('search', newSearch);
 });
-
-// Switch to AI display mode if it's most suitable
-watch(
-	hasParsedAiContent,
-	(hasAiContent) => {
-		if (hasAiContent && activeDisplayMode.value !== 'ai') {
-			emit('displayModeChange', 'ai');
-		}
-	},
-	{ immediate: true },
-);
 
 onMounted(() => {
 	init();
@@ -1298,6 +1293,7 @@ function onPageSizeChange(newPageSize: number) {
 
 function onDisplayModeChange(newDisplayMode: IRunDataDisplayMode) {
 	const previous = activeDisplayMode.value;
+	pickedOnThisNode.value = true;
 	emit('displayModeChange', newDisplayMode);
 
 	if (!userEnabledShowData.value) updateShowData();
@@ -1444,17 +1440,9 @@ function init() {
 		outputTypes = NodeHelpers.getConnectionTypes(outputs);
 	}
 	connectionType.value = outputTypes.length === 0 ? NodeConnectionTypes.Main : outputTypes[0];
-	if (binaryData.value.length > 0) {
-		emit('displayModeChange', 'binary');
-	} else if (activeDisplayMode.value === 'binary') {
-		emit('displayModeChange', 'schema');
-	}
+	pickedOnThisNode.value = false;
 
 	pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
-
-	if (props.paneType === 'output') {
-		setDisplayMode();
-	}
 }
 
 function closeBinaryDataDisplay() {
@@ -1532,20 +1520,6 @@ function enableNode() {
 		};
 
 		workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
-	}
-}
-
-const shouldDisplayHtml = computed(
-	() =>
-		node.value?.type === HTML_NODE_TYPE &&
-		node.value.parameters.operation === 'generateHtmlTemplate',
-);
-
-function setDisplayMode() {
-	if (shouldDisplayHtml.value) {
-		emit('displayModeChange', 'html');
-	} else if (displayModeToAutoSelect.value) {
-		emit('displayModeChange', displayModeToAutoSelect.value.id);
 	}
 }
 
@@ -1667,8 +1641,6 @@ defineExpose({ enterEditMode });
 					:compact="props.compact"
 					:value="activeDisplayMode"
 					:has-binary-data="binaryData.length > 0"
-					:pane-type="paneType"
-					:node-generates-html="shouldDisplayHtml"
 					:has-renderable-data="hasParsedAiContent"
 					:registered-display-modes="availableDisplayModes"
 					@change="onDisplayModeChange"
@@ -2287,11 +2259,6 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
-			<N8nHtmlPreview
-				v-else-if="hasNodeRun && isPaneTypeOutput && activeDisplayMode === 'html'"
-				:html="inputHtml"
-			/>
-
 			<Suspense v-else-if="hasNodeRun && activeDisplayMode === 'ai'">
 				<LazyRunDataAi
 					render-type="rendered"
@@ -2336,7 +2303,6 @@ defineExpose({ enterEditMode });
 				hasNodeRun &&
 				!hasRunError &&
 				activeDisplayMode !== 'binary' &&
-				activeDisplayMode !== 'html' &&
 				!activeRenderer &&
 				dataCount > pageSize &&
 				!isSchemaView &&
@@ -2474,7 +2440,7 @@ defineExpose({ enterEditMode });
 	justify-content: space-between;
 	align-items: center;
 	min-height: 30px;
-	--tabs--arrow-buttons--color: var(--run-data--color--background);
+	--n8n-tabs--arrow-buttons--color: var(--run-data--color--background);
 }
 
 .itemsCount {

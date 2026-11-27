@@ -1,0 +1,50 @@
+{
+	"name": "CET-1212 waiting child",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": { "inputSource": "passthrough" },
+			"id": "child-trigger",
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "capture-resume-url",
+							"name": "resumeUrl",
+							"value": "={{ $execution.resumeUrl }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "child-capture-url",
+			"name": "Capture Resume URL",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [220, 0]
+		},
+		{
+			"parameters": { "resume": "webhook", "options": {} },
+			"id": "child-wait",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [440, 0],
+			"webhookId": "cet-1212-child-wait"
+		}
+	],
+	"connections": {
+		"When Executed by Another Workflow": {
+			"main": [[{ "node": "Capture Resume URL", "type": "main", "index": 0 }]]
+		},
+		"Capture Resume URL": { "main": [[{ "node": "Wait", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

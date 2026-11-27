@@ -4,6 +4,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor, within } from '@testing-library/vue';
+import { useRoute } from 'vue-router';
 
 import McpServerShareView from './McpServerShareView.vue';
 
@@ -13,21 +14,31 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock('../mcp-servers.api', () => api);
 
+const route = vi.hoisted(() => ({
+	params: { slug: 'sales-tools' },
+	fullPath: '/mcp-share/sales-tools',
+}));
+
 const usersStore = vi.hoisted(() => ({ currentUser: null as { id: string } | null }));
 vi.mock('@n8n/stores/users.store', () => ({ useUsersStore: () => usersStore }));
 
 const track = vi.hoisted(() => vi.fn());
 vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
-	useRoute: () => ({ params: { slug: 'sales-tools' }, fullPath: '/mcp-share/sales-tools' }),
-	useRouter: () => ({
-		resolve: (to: { query?: { redirect?: string } }) => ({
-			href: `/signin?redirect=${to.query?.redirect ?? ''}`,
+// A reactive route, so the page sees a change of the slug.
+vi.mock('vue-router', async (importOriginal) => {
+	const { reactive } = await import('vue');
+	const live = reactive(route);
+	return {
+		...(await importOriginal()),
+		useRoute: () => live,
+		useRouter: () => ({
+			resolve: (to: { query?: { redirect?: string } }) => ({
+				href: `/signin?redirect=${to.query?.redirect ?? ''}`,
+			}),
 		}),
-	}),
-}));
+	};
+});
 
 const SERVER_URL = 'https://acme.n8n.cloud/mcp-servers/sales-tools';
 
@@ -56,6 +67,7 @@ async function renderPage() {
 }
 
 beforeEach(() => {
+	route.params.slug = 'sales-tools';
 	usersStore.currentUser = null;
 	api.getMcpServerShare.mockReset();
 	api.getMcpServerPublicShare.mockReset();
@@ -92,19 +104,6 @@ describe('McpServerShareView', () => {
 			expect(screen.getByTestId('mcp-share-sign-in')).toHaveAttribute(
 				'href',
 				`/signin?redirect=${encodeURIComponent('/mcp-share/sales-tools')}`,
-			);
-		});
-
-		it('records the page view', async () => {
-			await renderPage();
-
-			expect(track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_VIEWED_MCP_SERVER_SHARE_PAGE,
-				{
-					server_id: publicShare.id,
-					signed_in: false,
-					can_connect: false,
-				},
 			);
 		});
 	});
@@ -148,6 +147,41 @@ describe('McpServerShareView', () => {
 		expect(screen.getByTestId('mcp-share-who')).toHaveTextContent('Only Maya Lind can connect.');
 	});
 
+	it('names no one when the owner of a personal project has no name', async () => {
+		api.getMcpServerPublicShare.mockResolvedValue({
+			...publicShare,
+			projectType: 'personal',
+			projectName: null,
+		});
+
+		await renderPage();
+
+		const who = screen.getByTestId('mcp-share-who');
+		expect(who).toHaveTextContent('Only the owner of this personal project can connect.');
+		expect(who.querySelector('strong')).toBeNull();
+	});
+
+	it('loads the other server when the slug changes on the same page', async () => {
+		api.getMcpServerPublicShare.mockResolvedValueOnce(publicShare).mockResolvedValueOnce({
+			...publicShare,
+			id: '0190a8d6-4a2e-7000-8000-000000000002',
+			slug: 'support-tools',
+			name: 'Support tools',
+			serverUrl: 'https://acme.n8n.cloud/mcp-servers/support-tools',
+		});
+		await renderPage();
+
+		useRoute().params.slug = 'support-tools';
+
+		await waitFor(() =>
+			expect(screen.getByTestId('mcp-share-name')).toHaveTextContent('Support tools'),
+		);
+		expect(api.getMcpServerPublicShare).toHaveBeenLastCalledWith(
+			expect.anything(),
+			'support-tools',
+		);
+	});
+
 	it('shows "not found" for an unknown server', async () => {
 		api.getMcpServerPublicShare.mockRejectedValue(
 			new ResponseError('Not found', { httpStatusCode: 404 }),
@@ -156,6 +190,16 @@ describe('McpServerShareView', () => {
 		renderComponent();
 
 		expect(await screen.findByTestId('mcp-share-not-found')).toBeInTheDocument();
+	});
+
+	it('shows "not found" and sends no request for a slug that is not a server slug', async () => {
+		route.params.slug = '../../some-route';
+
+		renderComponent();
+
+		expect(await screen.findByTestId('mcp-share-not-found')).toBeInTheDocument();
+		expect(api.getMcpServerPublicShare).not.toHaveBeenCalled();
+		expect(api.getMcpServerShare).not.toHaveBeenCalled();
 	});
 
 	describe('client buttons', () => {
@@ -196,6 +240,28 @@ describe('McpServerShareView', () => {
 			expect(track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CLICKED_CLIENT_ON_MCP_SERVER_SHARE_PAGE,
 				{ server_id: publicShare.id, client: 'cursor', method: 'deep_link' },
+			);
+		});
+
+		// `null`: the server URL at the top of the page, the first copy field.
+		it.each([
+			[null, 0, 'any', 'copy_url'],
+			['mcp-share-command-claude-code', 0, 'claude-code', 'copy_command'],
+			['mcp-share-command-codex', 0, 'codex', 'copy_command'],
+			['mcp-share-command-codex', 1, 'codex', 'copy_sign_in_command'],
+			['mcp-share-command-gemini-cli', 0, 'gemini-cli', 'copy_command'],
+			['mcp-share-steps-chatgpt', 0, 'chatgpt', 'copy_url'],
+			['mcp-share-steps-other', 0, 'other', 'copy_url'],
+		])('records a copy in %s (field %i) as %s with %s', async (testId, index, client, method) => {
+			const user = userEvent.setup();
+			await renderPage();
+			const scope = testId ? within(screen.getByTestId(testId)) : screen;
+
+			await user.click(scope.getAllByTestId('copy-input-button')[index]);
+
+			expect(track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CLICKED_CLIENT_ON_MCP_SERVER_SHARE_PAGE,
+				{ server_id: publicShare.id, client, method },
 			);
 		});
 

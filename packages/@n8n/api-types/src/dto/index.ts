@@ -455,6 +455,7 @@ export {
 	PutCredentialTypeProjectPolicyDto,
 	PutProjectPolicyDto,
 } from './type-availability-policies/put-project-policy.dto';
+export { CreateProjectPolicyDto } from './type-availability-policies/create-project-policy.dto';
 export {
 	CreateCredentialTypePolicyDocumentDto,
 	CreatePolicyDocumentDto,
@@ -464,6 +465,11 @@ export {
 	UpdatePolicyDocumentDto,
 } from './type-availability-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './type-availability-policies/replace-attachments.dto';
+export {
+	SetInstanceTypeAccessDto,
+	SetProjectTypeAccessDto,
+	type TypeAccessChange,
+} from './type-availability-policies/set-type-access.dto';
 export {
 	CredentialTypePolicyAttachmentsPublicDto,
 	CredentialTypePolicyDocumentListPublicDto,
@@ -727,6 +733,19 @@ export {
 	type WorkflowReviewRequestList,
 } from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
+export {
+	UpdateProjectWorkflowReviewSettingsDto,
+	type ProjectWorkflowReviewSettingsResponse,
+} from './workflow-reviews/update-project-workflow-review-settings.dto';
+export {
+	ListWorkflowReviewInstanceSettingsQueryDto,
+	type WorkflowReviewInstanceSettingsList,
+	type WorkflowReviewInstanceSettingsProject,
+} from './workflow-reviews/list-workflow-review-instance-settings-query.dto';
+export {
+	UpdateWorkflowReviewInstanceSettingsDto,
+	type WorkflowReviewInstanceSettingsResponse,
+} from './workflow-reviews/update-workflow-review-instance-settings.dto';
 export type { WorkflowReviewInboxItem } from './workflow-reviews/list-workflow-review-inbox.dto';
 export { ListInboxQueryDto } from './inbox/list-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
@@ -894,28 +913,33 @@ export {
 	ListPromotionReviewsQueryDto,
 	PromotionReviewDetailsRequestDto,
 	PromotionReviewListPublicDto,
+	PromotionReviewPublicDto,
 	promotionReviewChangesSchema,
+	promotionReviewItemSchema,
+	promotionReviewRemoteErrorSchema,
 	promotionReviewWarningSchema,
 	promotionReviewResultSchema,
-	promotionReviewListPublicSchema,
 	gitLabRemoteReviewIdSchema,
 	parseRemoteReviewId,
 	promotionRemoteReviewIdSchemas,
 	promotionReviewStateSchema,
-	promotionReviewSummarySchema,
 	promotionReviewTabSchema,
 	promotionReviewTypeSchema,
 	type PromotionReviewChanges,
+	type PromotionReviewItem,
 	type PromotionReviewOutcome,
 	type PromotionReviewWarning,
 	type PromotionReviewResult,
-	type PromotionReviewRemote,
 	type PromotionReviewRemoteError,
 	type PromotionReviewState,
-	type PromotionReviewSummary,
 	type PromotionReviewType,
 	type PromotionReviewTab,
 } from './promotions/promotion-review.dto';
+export {
+	PromotionSettingsPublicDto,
+	UpdatePromotionSettingsDto,
+	type PromotionSettings,
+} from './promotions/promotion-settings.dto';
 
 export {
 	ScimConfigPatchDto,

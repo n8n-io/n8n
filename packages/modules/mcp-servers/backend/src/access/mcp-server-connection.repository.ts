@@ -7,7 +7,7 @@ import {
 import { Service } from '@n8n/di';
 import { DataSource, LessThan } from '@n8n/typeorm';
 
-import { McpServerConnection } from '../mcp-server-connection.entity';
+import { McpServerConnection } from '../database/entities/mcp-server-connection.entity';
 
 class McpServerConnectionTable extends BaseRepository<McpServerConnection> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {

@@ -36,6 +36,16 @@ describe('getMcpClientCatalog with a server name', () => {
 		expect(JSON.parse(atob(params.get('config')!))).toEqual({ url: SERVER_URL });
 	});
 
+	it('should keep a "+" of the Cursor config when the link is parsed', () => {
+		// The base64 of this URL has a "+", which a query string reads as a space.
+		const url = 'https://acme.app.n8n.cloud/mcp-servers/~~~';
+		const link = clientsOf(getMcpClientCatalog(url)).get('cursor')!.deepLink!;
+		const params = new URL(link.replace('cursor://', 'https://cursor.test/')).searchParams;
+
+		expect(btoa(JSON.stringify({ url }))).toContain('+');
+		expect(JSON.parse(atob(params.get('config')!))).toEqual({ url });
+	});
+
 	it('should name the server in the VS Code deep link', () => {
 		const encoded = clients.get('vscode')!.deepLink!.replace('vscode:mcp/install?', '');
 		expect(JSON.parse(decodeURIComponent(encoded))).toEqual({

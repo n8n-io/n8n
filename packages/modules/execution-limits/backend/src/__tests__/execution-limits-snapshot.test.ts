@@ -48,6 +48,12 @@ describe('ExecutionLimitsSnapshot', () => {
 		expect(snapshot.read('other')).toEqual({ ...LIMITED, projectMaxExecutions: null });
 	});
 
+	it('gives only the instance limit to a run with no project', async () => {
+		await snapshot.reload();
+
+		expect(snapshot.read(null)).toEqual({ ...LIMITED, projectMaxExecutions: null });
+	});
+
 	it('has nothing to read until a load succeeds', async () => {
 		settingsStore.read.mockRejectedValueOnce(new Error('database is down'));
 
@@ -93,6 +99,46 @@ describe('ExecutionLimitsSnapshot', () => {
 			periodUnit: 'month',
 			instanceMaxExecutions: null,
 			projectMaxExecutions: null,
+		});
+	});
+
+	describe('readLimitedScopes', () => {
+		it('is null before a load', () => {
+			expect(snapshot.readLimitedScopes()).toBeNull();
+		});
+
+		it('reflects the period unit and which scopes have a limit', async () => {
+			await snapshot.reload();
+
+			expect(snapshot.readLimitedScopes()).toEqual({
+				periodUnit: 'week',
+				hasInstanceLimit: true,
+				limitedProjectIds: new Set(['limited']),
+			});
+
+			settingsStore.read.mockResolvedValue(DEFAULT_EXECUTION_LIMIT_SETTINGS);
+			projectLimitRepository.findAll.mockResolvedValue([]);
+			await snapshot.reload();
+
+			expect(snapshot.readLimitedScopes()).toEqual({
+				periodUnit: 'month',
+				hasInstanceLimit: false,
+				limitedProjectIds: new Set(),
+			});
+		});
+
+		it('gives a new object at each successful load only', async () => {
+			await snapshot.reload();
+			const first = snapshot.readLimitedScopes();
+			expect(snapshot.readLimitedScopes()).toBe(first);
+
+			settingsStore.read.mockRejectedValueOnce(new Error('database is down'));
+			await snapshot.reload();
+			expect(snapshot.readLimitedScopes()).toBe(first);
+
+			await snapshot.reload();
+			expect(snapshot.readLimitedScopes()).not.toBe(first);
+			expect(snapshot.readLimitedScopes()).toEqual(first);
 		});
 	});
 

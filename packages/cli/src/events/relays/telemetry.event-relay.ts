@@ -433,6 +433,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'mcp-server-connected': (event) => this.mcpServerConnected(event),
 			'mcp-server-person-blocked': (event) => this.mcpServerPersonBlocked(event),
 			'mcp-server-access-restored': (event) => this.mcpServerAccessRestored(event),
+			'mcp-server-share-viewed': (event) => this.mcpServerShareViewed(event),
+			'mcp-server-tool-drafted': (event) => this.mcpServerToolDrafted(event),
 		});
 	}
 
@@ -668,7 +670,6 @@ export class TelemetryEventRelay extends EventRelay {
 		source,
 		threadId,
 		toolKind,
-		isAiDraft,
 	}: RelayEventMap['mcp-server-tool-added']) {
 		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_ADDED_TOOL_TO_CUSTOM_MCP_SERVER, {
 			server_id: serverId,
@@ -676,7 +677,6 @@ export class TelemetryEventRelay extends EventRelay {
 			source,
 			thread_id: threadId,
 			tool_kind: toolKind,
-			is_ai_draft: isAiDraft,
 		});
 	}
 
@@ -688,7 +688,7 @@ export class TelemetryEventRelay extends EventRelay {
 		status,
 		durationMs,
 	}: RelayEventMap['mcp-server-tool-called']) {
-		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.CUSTOM_MCP_SERVER_TOOL_CALLED, {
+		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CALLED_CUSTOM_MCP_SERVER_TOOL, {
 			server_id: serverId,
 			user_id: userId,
 			client_name: clientName,
@@ -744,6 +744,42 @@ export class TelemetryEventRelay extends EventRelay {
 				restored_user_id: restoredUserId,
 				source,
 				thread_id: threadId,
+			},
+		);
+	}
+
+	private mcpServerShareViewed({
+		serverId,
+		userId,
+		canConnect,
+		result,
+	}: RelayEventMap['mcp-server-share-viewed']) {
+		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_VIEWED_MCP_SERVER_SHARE_PAGE, {
+			server_id: serverId,
+			user_id: userId,
+			signed_in: userId !== undefined,
+			can_connect: canConnect,
+			result,
+		});
+	}
+
+	private mcpServerToolDrafted({
+		serverId,
+		userId,
+		source,
+		threadId,
+		field,
+		status,
+	}: RelayEventMap['mcp-server-tool-drafted']) {
+		this.telemetry.track(
+			TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_DRAFTED_TOOL_OF_CUSTOM_MCP_SERVER,
+			{
+				server_id: serverId,
+				user_id: userId,
+				source,
+				thread_id: threadId,
+				field,
+				status,
 			},
 		);
 	}
@@ -1004,6 +1040,7 @@ export class TelemetryEventRelay extends EventRelay {
 		rulesAfter,
 		shadowWarningCount,
 		notLoadedWarningCount,
+		origin,
 	}: RelayEventMap['node-type-policy-saved']) {
 		if (!isPolicyKind(kind)) return;
 
@@ -1030,6 +1067,7 @@ export class TelemetryEventRelay extends EventRelay {
 				shadow_warning_count: shadowWarningCount,
 				not_loaded_warning_count: notLoadedWarningCount,
 				version: after.version,
+				origin: origin ?? 'save',
 			},
 		);
 	}

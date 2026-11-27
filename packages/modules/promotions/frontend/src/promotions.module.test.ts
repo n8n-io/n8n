@@ -3,7 +3,10 @@ import {
 	capabilities,
 	capabilityRegistry,
 	type EnvironmentsSettings,
+	type ProjectContext,
+	type ProjectPermissions,
 } from '@n8n/frontend-module-sdk';
+import type { Project } from '@n8n/rest-api-client';
 import type { Scope } from '@n8n/permissions';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createTestingPinia } from '@pinia/testing';
@@ -53,7 +56,15 @@ const setup = ({
 	activeModules = ['promotions'],
 	environmentsVersion = 'v2',
 	scopes = ['promotions:promote', 'promotions:apply'] as Scope[],
-}: { activeModules?: string[]; environmentsVersion?: 'v1' | 'v2'; scopes?: Scope[] } = {}) => {
+	projectScopes = {} as Record<string, Scope[]>,
+	openProject = null as Pick<Project, 'id' | 'scopes'> | null,
+}: {
+	activeModules?: string[];
+	environmentsVersion?: 'v1' | 'v2';
+	scopes?: Scope[];
+	projectScopes?: Record<string, Scope[]>;
+	openProject?: Pick<Project, 'id' | 'scopes'> | null;
+} = {}) => {
 	createTestingPinia({ stubActions: false });
 
 	capabilityRegistry.provide(
@@ -63,7 +74,17 @@ const setup = ({
 				activeModules.includes('promotions') && environmentsVersion === 'v2',
 		}),
 	);
-	// Project scopes stay empty, as in the app, where the frontend does not load them.
+	capabilityRegistry.provide(
+		capabilities.projectContext,
+		mock<ProjectContext>({ currentProject: () => openProject as Project | null }),
+	);
+	// As in the app: the instance scopes plus the scopes of the role in that project.
+	capabilityRegistry.provide(
+		capabilities.projectPermissions,
+		mock<ProjectPermissions>({
+			scopesFor: (projectId) => [...scopes, ...(projectScopes[projectId] ?? [])],
+		}),
+	);
 	useRBACStore().setGlobalScopes(scopes);
 };
 
@@ -144,6 +165,26 @@ describe('PromotionsModule preview routes', () => {
 			});
 		},
 	);
+
+	it('opens the promote preview only for projects where the role can promote', async () => {
+		// The project list loaded before an admin let the role of p3 promote. The open p3 knows it.
+		setup({
+			scopes: [],
+			projectScopes: { p1: ['promotions:promote'] },
+			openProject: { id: 'p3', scopes: ['promotions:promote'] },
+		});
+		const router = createTestRouter();
+
+		await router.push('/projects/p2/promotions/promote');
+		expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+
+		await router.push('/projects/p1/promotions/promote');
+		expect(router.currentRoute.value.name).toBe(PROMOTION_PREVIEW_VIEWS.promote);
+
+		await router.push('/home');
+		await router.push('/projects/p3/promotions/promote');
+		expect(router.currentRoute.value.name).toBe(PROMOTION_PREVIEW_VIEWS.promote);
+	});
 
 	it('leads users who cannot apply changes home', async () => {
 		setup({ scopes: ['promotions:promote'] });

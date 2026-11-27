@@ -1,14 +1,18 @@
+import { runInNewContext } from 'node:vm';
 import { describe, it, expect, vi } from 'vitest';
 
+import { errorToSentinel, rebuildErrorValue } from '../error-transfer';
 import { __prepareForTransfer } from '../serialize';
 import type { SentinelDecoder, TransferSentinel } from '../transfer';
 import {
+	isBoxedPrimitive,
 	isEscapedTransferValue,
 	isOpaqueTransferValue,
 	isPlainObject,
 	isStructuredCloneBuiltin,
 	isTransferSentinel,
 	transferTypeOf,
+	unboxPrimitive,
 	ERROR_SENTINEL_KEY,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_FRAMING_KEYS,
@@ -89,6 +93,66 @@ describe('transfer framing', () => {
 			expect(isStructuredCloneBuiltin(new Error('x'))).toBe(true);
 			expect(isStructuredCloneBuiltin(new ArrayBuffer(1))).toBe(true);
 			expect(isStructuredCloneBuiltin(new Uint8Array(1))).toBe(true);
+			expect(isStructuredCloneBuiltin(Object('ab') as object)).toBe(true);
+			expect(isStructuredCloneBuiltin(Object(5) as object)).toBe(true);
+			expect(isStructuredCloneBuiltin(Object(true) as object)).toBe(true);
+			expect(isStructuredCloneBuiltin(Object(1n) as object)).toBe(true);
+		});
+
+		it('should unbox real boxed primitives including subclasses and cross-realm values', () => {
+			class SubString extends String {}
+			class SubNumber extends Number {}
+			class SubBoolean extends Boolean {}
+
+			const mutated = Object.assign(Object('ab') as object, {
+				valueOf: () => 'fake',
+				[Symbol.toStringTag]: 'Fake',
+			});
+
+			expect(unboxPrimitive(Object('ab') as object)).toBe('ab');
+			expect(unboxPrimitive(Object('') as object)).toBe('');
+			expect(unboxPrimitive(Object(5) as object)).toBe(5);
+			expect(Object.is(unboxPrimitive(Object(-0) as object), -0)).toBe(true);
+			expect(Number.isNaN(unboxPrimitive(Object(NaN) as object))).toBe(true);
+			expect(unboxPrimitive(Object(Infinity) as object)).toBe(Infinity);
+			expect(unboxPrimitive(Object(-Infinity) as object)).toBe(-Infinity);
+			expect(unboxPrimitive(Object(true) as object)).toBe(true);
+			expect(unboxPrimitive(Object(false) as object)).toBe(false);
+			expect(unboxPrimitive(Object(1n) as object)).toBe(1n);
+			expect(unboxPrimitive(Object(0n) as object)).toBe(0n);
+			expect(unboxPrimitive(new SubString('sub'))).toBe('sub');
+			expect(unboxPrimitive(new SubNumber(7))).toBe(7);
+			expect(unboxPrimitive(new SubBoolean(false))).toBe(false);
+			expect(unboxPrimitive(mutated)).toBe('ab');
+			expect(unboxPrimitive(runInNewContext('new String("xr")') as object)).toBe('xr');
+			expect(unboxPrimitive(runInNewContext('new Number(9)') as object)).toBe(9);
+			expect(unboxPrimitive(runInNewContext('new Boolean(false)') as object)).toBe(false);
+			expect(unboxPrimitive(runInNewContext('Object(2n)') as object)).toBe(2n);
+		});
+
+		it('should reject objects that mimic a boxed primitive without its internal slot', () => {
+			for (const candidate of [
+				{},
+				Object.create(null) as object,
+				Object.create(String.prototype) as object,
+				Object.create(Number.prototype) as object,
+				Object.create(Boolean.prototype) as object,
+				Object.create(BigInt.prototype) as object,
+				{ [Symbol.toStringTag]: 'String' },
+				{ [Symbol.toStringTag]: 'Number' },
+				{ [Symbol.toStringTag]: 'Boolean' },
+				{ [Symbol.toStringTag]: 'BigInt' },
+				new Proxy(Object('ab') as object, {}),
+			]) {
+				expect(isBoxedPrimitive(candidate)).toBe(false);
+				expect(unboxPrimitive(candidate)).toBeUndefined();
+				expect(isStructuredCloneBuiltin(candidate)).toBe(false);
+			}
+
+			const { proxy: revoked, revoke } = Proxy.revocable({}, {});
+			revoke();
+			expect(isBoxedPrimitive(revoked)).toBe(false);
+			expect(unboxPrimitive(revoked)).toBeUndefined();
 		});
 	});
 
@@ -287,6 +351,44 @@ describe('the round trip through both walks', () => {
 		expect(result.row).toEqual({ n: 1 });
 	});
 
+	it('should copy an array that holds its own map key', () => {
+		const withFunction: unknown[] = [1, 2];
+		Object.assign(withFunction, { map: () => [99] });
+		const withNumber: unknown[] = [1, 2];
+		Object.assign(withNumber, { map: 17 });
+
+		expect(roundTrip(withFunction)).toEqual([1, 2]);
+		expect(roundTrip(withNumber)).toEqual([1, 2]);
+	});
+
+	it('should copy an array that holds its own constructor key', () => {
+		const value: unknown[] = [1, 2];
+		Object.assign(value, { constructor: 17 });
+
+		expect(roundTrip(value)).toEqual([1, 2]);
+	});
+
+	it('should copy an array of a subclass as a plain array', () => {
+		class Rows extends Array<number> {}
+		Object.defineProperty(Rows, Symbol.species, { value: Object });
+		const value = new Rows();
+		value.push(1, 2);
+
+		const result = roundTrip(value);
+
+		expect(Array.isArray(result)).toBe(true);
+		expect(result).toEqual([1, 2]);
+	});
+
+	it('should not read the map key of an array', () => {
+		const value: unknown[] = [1, 2];
+		const readMap = vi.fn(() => Array.prototype.map);
+		Object.defineProperty(value, 'map', { get: readMap });
+
+		expect(roundTrip(value)).toEqual([1, 2]);
+		expect(readMap).not.toHaveBeenCalled();
+	});
+
 	it('should keep the holes of a sparse array across both walks', () => {
 		const value = new Array<unknown>(3);
 		value[0] = 1;
@@ -316,6 +418,39 @@ describe('the round trip through both walks', () => {
 });
 
 describe('__prepareForTransfer', () => {
+	it('rejects plain object and array cycles before the native stack is exhausted', () => {
+		// An unguarded walk fails with the same error, but only after thousands of reads.
+		let reads = 0;
+		const object = {
+			get self() {
+				reads++;
+				return object;
+			},
+		};
+		const array: unknown[] = [];
+		array.push({
+			get list() {
+				reads++;
+				return array;
+			},
+		});
+
+		expect(() => __prepareForTransfer(object)).toThrow('Maximum call stack size exceeded');
+		expect(() => __prepareForTransfer(array)).toThrow('Maximum call stack size exceeded');
+		expect(reads).toBeLessThan(100);
+		expect(__prepareForTransfer({ value: 42 })).toStrictEqual({ value: 42 });
+	});
+
+	it('preserves deep acyclic results and repeated children on the guarded path', () => {
+		const child = { value: 1 };
+		let value: unknown = { left: child, right: child };
+		for (let depth = 0; depth < 100; depth++) {
+			value = { next: [value] };
+		}
+
+		expect(__prepareForTransfer(value)).toStrictEqual(value);
+	});
+
 	it('prepares a shared object once', () => {
 		const shared = { a: 1 };
 
@@ -344,5 +479,117 @@ describe('__prepareForTransfer', () => {
 		const prepared = __prepareForTransfer(error) as { __props: unknown };
 
 		expect(prepared.__props).toStrictEqual({ self: undefined });
+	});
+
+	it('reports each encoded Error and its sentinel when onEncodeError is given', () => {
+		const inner = new Error('inner');
+		const outer = new Error('outer', { cause: inner });
+		const recorded = new Map<Error, object>();
+
+		const prepared = __prepareForTransfer(outer, {
+			onEncodeError: (error, sentinel) => {
+				recorded.set(error, sentinel);
+			},
+		}) as { __cause: object };
+
+		expect(recorded.get(outer)).toBe(prepared);
+		expect(recorded.get(inner)).toBe(prepared.__cause);
+	});
+
+	it('skips reporting nested Error markers truncated by an enclosing open object', () => {
+		const a = new Error('a') as Error & { child?: Error };
+		const b = new Error('b') as Error & { parent?: Error };
+		a.child = b;
+		b.parent = a;
+		const recorded: Array<[Error, object]> = [];
+
+		const prepared = __prepareForTransfer([a, b], {
+			onEncodeError: (error, sentinel) => {
+				recorded.push([error, sentinel]);
+			},
+		}) as [object, object];
+
+		expect(recorded).toStrictEqual([
+			[a, prepared[0]],
+			[b, prepared[1]],
+		]);
+	});
+
+	it('skips reporting a sibling Error that reuses a truncated cached object', () => {
+		const a = new Error('a') as Error & { first?: unknown; second?: unknown };
+		const b = new Error('b') as Error & { d?: unknown };
+		const c = new Error('c') as Error & { d?: unknown };
+		const d = new Error('d') as Error & { back?: unknown };
+		b.d = d;
+		d.back = b;
+		c.d = d;
+		a.first = { b };
+		a.second = c;
+		const recorded: Error[] = [];
+
+		__prepareForTransfer([a, c], {
+			onEncodeError: (error) => {
+				recorded.push(error);
+			},
+		});
+
+		expect(recorded).toStrictEqual([b, a, d, c]);
+	});
+
+	it('rejects a plain cycle when the options give no onPlainCycle', () => {
+		let reads = 0;
+		const object = {
+			get self() {
+				reads++;
+				return object;
+			},
+		};
+
+		expect(() => __prepareForTransfer(object, { onEncodeError: () => {} })).toThrow(RangeError);
+		expect(reads).toBeLessThan(100);
+	});
+
+	it('calls onPlainCycle when a plain object or array refers to itself outside an Error', () => {
+		const obj: Record<string, unknown> = { a: 1 };
+		obj.self = obj;
+		const arr: unknown[] = [1];
+		arr.push(arr);
+		const onPlainCycle = (): never => {
+			throw new Error('plain cycle');
+		};
+
+		expect(() => __prepareForTransfer(obj, { onPlainCycle })).toThrow('plain cycle');
+		expect(() => __prepareForTransfer(arr, { onPlainCycle })).toThrow('plain cycle');
+
+		// Shared acyclic plain objects are still allowed and not treated as cycles.
+		const shared = { x: 1 };
+		expect(__prepareForTransfer({ left: shared, right: shared }, { onPlainCycle })).toStrictEqual({
+			left: { x: 1 },
+			right: { x: 1 },
+		});
+	});
+
+	it('invokes onCreate in rebuildErrorValue before decoding children', () => {
+		const sentinel = errorToSentinel(
+			Object.assign(new Error('loop'), { marker: 'self' }),
+			(v) => v,
+		);
+		let created: Error | undefined;
+
+		const rebuilt = rebuildErrorValue(
+			sentinel,
+			(child) => {
+				if (child && typeof child === 'object' && 'marker' in child) {
+					return { self: created };
+				}
+				return child;
+			},
+			(error) => {
+				created = error;
+			},
+		) as Error & { self?: unknown };
+
+		expect(created).toBe(rebuilt);
+		expect(rebuilt.self).toBe(rebuilt);
 	});
 });

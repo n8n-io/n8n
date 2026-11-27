@@ -9,6 +9,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
+| [public.agent_attention_flags](public.agent_attention_flags.md) | 5 |  | BASE TABLE |
 | [public.agent_background_job](public.agent_background_job.md) | 28 |  | BASE TABLE |
 | [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
 | [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
@@ -25,7 +26,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
 | [public.agent_execution_statistics](public.agent_execution_statistics.md) | 2 |  | BASE TABLE |
 | [public.agent_execution_statistics_delta](public.agent_execution_statistics_delta.md) | 2 |  | BASE TABLE |
-| [public.agent_execution_threads](public.agent_execution_threads.md) | 20 |  | BASE TABLE |
+| [public.agent_execution_threads](public.agent_execution_threads.md) | 21 |  | BASE TABLE |
 | [public.agent_file_grants](public.agent_file_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 11 |  | BASE TABLE |
@@ -141,6 +142,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.project_pool_settings](public.project_pool_settings.md) | 4 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
+| [public.project_workflow_review_settings](public.project_workflow_review_settings.md) | 5 |  | BASE TABLE |
 | [public.promotion_environment](public.promotion_environment.md) | 9 |  | BASE TABLE |
 | [public.promotion_environment_project](public.promotion_environment_project.md) | 5 |  | BASE TABLE |
 | [public.promotion_provider](public.promotion_provider.md) | 8 |  | BASE TABLE |
@@ -165,7 +167,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.shared_knowledge_collection](public.shared_knowledge_collection.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
 | [public.skill](public.skill.md) | 8 |  | BASE TABLE |
-| [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
+| [public.skill_file](public.skill_file.md) | 6 |  | BASE TABLE |
 | [public.skill_source](public.skill_source.md) | 15 |  | BASE TABLE |
 | [public.skill_source_link](public.skill_source_link.md) | 14 |  | BASE TABLE |
 | [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
@@ -230,6 +232,7 @@ erDiagram
 
 "public.activity_event" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.activity_event" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.agent_attention_flags" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;sessionId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_background_job" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;callerExecutionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_background_job" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;sourceExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
@@ -435,6 +438,7 @@ erDiagram
 "public.project_relation" }o--|| "public.role" : "FOREIGN KEY (role) REFERENCES role(slug)"
 "public.project_secrets_provider_access" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_secrets_provider_access" }o--|| "public.secrets_provider_connection" : "FOREIGN KEY (#quot;secretsProviderConnectionId#quot;) REFERENCES secrets_provider_connection(id) ON DELETE CASCADE"
+"public.project_workflow_review_settings" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.promotion_environment" }o--|| "public.promotion_provider" : "FOREIGN KEY (#quot;providerId#quot;) REFERENCES promotion_provider(id) ON DELETE RESTRICT"
 "public.promotion_environment_project" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.promotion_environment_project" }o--|| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE CASCADE"
@@ -550,6 +554,13 @@ erDiagram
   varchar_32_ resourceType
   integer typeVersion
   uuid userId FK
+}
+"public.agent_attention_flags" {
+  timestamp_3__with_time_zone createdAt
+  uuid id
+  varchar_128_ sessionId FK
+  varchar_32_ type
+  timestamp_3__with_time_zone updatedAt
 }
 "public.agent_background_job" {
   integer callerExecutionId FK
@@ -750,6 +761,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
   varchar_128_ id
+  boolean isTestChat
   uuid ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
@@ -1899,6 +1911,13 @@ erDiagram
   integer secretsProviderConnectionId FK
   timestamp_3__with_time_zone updatedAt
 }
+"public.project_workflow_review_settings" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ projectId FK
+  boolean requiredByInstance
+  boolean requiredByProject
+  timestamp_3__with_time_zone updatedAt
+}
 "public.promotion_environment" {
   timestamp_3__with_time_zone createdAt
   varchar_16_ direction
@@ -2134,6 +2153,7 @@ erDiagram
 "public.skill_file" {
   text content
   timestamp_3__with_time_zone createdAt
+  boolean isBinary
   varchar_512_ path
   uuid skillVersionId FK
   timestamp_3__with_time_zone updatedAt

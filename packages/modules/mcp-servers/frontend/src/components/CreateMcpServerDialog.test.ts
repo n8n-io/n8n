@@ -2,6 +2,7 @@ import type { McpServerResponse } from '@n8n/api-types';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import type { Scope } from '@n8n/permissions';
+import { ResponseError } from '@n8n/rest-api-client';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
@@ -16,10 +17,16 @@ const api = vi.hoisted(() => ({
 vi.mock('../mcp-servers.api', () => api);
 
 const push = vi.hoisted(() => vi.fn());
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
-	useRouter: () => ({ push }),
-}));
+const router = vi.hoisted(() => ({ route: undefined as { fullPath: string } | undefined }));
+vi.mock('vue-router', async (importOriginal) => {
+	const { reactive } = await import('vue');
+	router.route = reactive({ fullPath: '/projects/project-1/mcp-servers' });
+	return {
+		...(await importOriginal()),
+		useRoute: () => router.route,
+		useRouter: () => ({ push }),
+	};
+});
 
 const server: McpServerResponse = {
 	id: '0190a8d6-4a2e-7000-8000-000000000001',
@@ -62,6 +69,28 @@ describe('CreateMcpServerDialog', () => {
 		vi.clearAllMocks();
 	});
 
+	it('keeps Create available when the URL check fails, and says so', async () => {
+		api.checkMcpServerSlug.mockRejectedValue(new Error('Network error'));
+		setUp();
+		await renderDialog();
+
+		await userEvent.type(screen.getByTestId('create-mcp-server-name'), 'Sales tools');
+
+		expect(await screen.findByTestId('create-mcp-server-slug-unchecked')).toHaveTextContent(
+			'n8n checks it again when you create the server',
+		);
+		expect(screen.getByTestId('create-mcp-server-submit')).toBeEnabled();
+	});
+
+	it('closes when the page changes, so it never creates in the project of an old page', async () => {
+		setUp();
+		await renderDialog();
+
+		router.route!.fullPath = '/projects/project-2/mcp-servers';
+
+		await waitFor(() => expect(useCreateMcpServerDialog().state.open).toBe(false));
+	});
+
 	it('makes the slug from the name and shows the server URL', async () => {
 		setUp();
 		await renderDialog();
@@ -82,6 +111,19 @@ describe('CreateMcpServerDialog', () => {
 		await userEvent.type(screen.getByTestId('create-mcp-server-name'), 'Sales tools');
 
 		expect(screen.getByTestId('create-mcp-server-slug')).toHaveValue('my-slug');
+	});
+
+	it.each([
+		['abc!!', 'abc-', '/mcp-servers/abc'],
+		['!!!', '', '/mcp-servers/marketing-tools'],
+	])('shows in the slug field only what the slug keeps from %j', async (typed, field, url) => {
+		setUp();
+		await renderDialog();
+
+		await userEvent.type(screen.getByTestId('create-mcp-server-slug'), typed);
+
+		expect(screen.getByTestId('create-mcp-server-slug')).toHaveValue(field);
+		expect(screen.getByTestId('create-mcp-server-url')).toHaveTextContent(url);
 	});
 
 	it.each([
@@ -124,6 +166,38 @@ describe('CreateMcpServerDialog', () => {
 			params: { projectId: 'project-1', serverId: server.id },
 		});
 		expect(useCreateMcpServerDialog().state.open).toBe(false);
+	});
+
+	it('marks the URL as taken when the create answers 409, and keeps the dialog open', async () => {
+		api.createMcpServer.mockRejectedValue(new ResponseError('Conflict', { httpStatusCode: 409 }));
+		setUp();
+		await renderDialog();
+
+		await userEvent.type(screen.getByTestId('create-mcp-server-name'), 'Sales tools');
+		await waitFor(() => expect(screen.getByTestId('create-mcp-server-submit')).toBeEnabled());
+		await userEvent.click(screen.getByTestId('create-mcp-server-submit'));
+
+		await waitFor(() =>
+			expect(screen.getByTestId('create-mcp-server-slug-error')).toHaveTextContent(
+				'This URL is already taken.',
+			),
+		);
+		expect(screen.getByTestId('create-mcp-server-submit')).toBeDisabled();
+		expect(useCreateMcpServerDialog().state.open).toBe(true);
+		expect(push).not.toHaveBeenCalled();
+	});
+
+	it('asks for a URL when the name has no Latin letter or digit', async () => {
+		setUp();
+		await renderDialog();
+
+		await userEvent.type(screen.getByTestId('create-mcp-server-name'), '日本語');
+
+		expect(screen.getByTestId('create-mcp-server-slug-error')).toHaveTextContent(
+			'The URL needs at least one Latin letter or digit.',
+		);
+		expect(screen.getByTestId('create-mcp-server-submit')).toBeDisabled();
+		expect(api.checkMcpServerSlug).not.toHaveBeenCalled();
 	});
 
 	it('blocks the create in a project where the person cannot create servers', async () => {

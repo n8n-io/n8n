@@ -39,7 +39,7 @@ function createEngineProcess(key: string, concurrency = 1, blockTimeoutSeconds =
 	const consumer = new Redis(container.getConnectionUrl());
 	const queue = new RedisWorkQueue<ContractMessage>({
 		publisher,
-		consumer,
+		openConsumer: () => consumer,
 		key,
 		parse: parseContractMessage,
 		logger: silentLogger,
@@ -117,6 +117,7 @@ describe('RedisWorkQueue (integration)', () => {
 		}
 
 		const next = startProcess(key, 1);
+		expect(await next.queue.size()).toBe(2);
 		const nextReceived: number[] = [];
 		next.queue.start(async ({ n }) => {
 			nextReceived.push(n);

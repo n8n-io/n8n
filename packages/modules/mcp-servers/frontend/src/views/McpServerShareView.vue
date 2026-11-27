@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { McpServerShare } from '@n8n/api-types';
+import { mcpServerSlugSchema, type McpServerShare } from '@n8n/api-types';
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	N8nButton,
@@ -23,7 +24,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
-import { computed, markRaw, onMounted, ref, type Component } from 'vue';
+import { computed, markRaw, ref, watch, type Component } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -61,6 +62,7 @@ const share = ref<McpServerShare | null>(null);
 const state = ref<'loading' | 'ready' | 'notFound' | 'error'>('loading');
 
 const slug = computed(() => String(route.params.slug ?? ''));
+const latestFetch = useLatestFetch();
 const signedIn = computed(() => !!usersStore.currentUser);
 
 /**
@@ -69,25 +71,35 @@ const signedIn = computed(() => !!usersStore.currentUser);
  * would send a signed-in person to "Session expired".
  */
 async function load() {
+	const isLatest = latestFetch.next();
+	// Another slug in the same page: drop the old server at once.
+	share.value = null;
+	state.value = 'loading';
+	// vue-router decodes the param, so a crafted link could point the request at another route.
+	if (!mcpServerSlugSchema.safeParse(slug.value).success) {
+		state.value = 'notFound';
+		documentTitle.set(i18n.baseText('mcpServers.share.title'));
+		return;
+	}
 	try {
-		share.value = signedIn.value
+		const response = signedIn.value
 			? await getMcpServerShare(rootStore.restApiContext, slug.value)
 			: await getMcpServerPublicShare(rootStore.restApiContext, slug.value);
+		if (!isLatest()) return;
+		share.value = response;
 		state.value = 'ready';
+		// The backend sends the page view, also for a person who is not signed in.
 		documentTitle.set(share.value.name);
-		telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_VIEWED_MCP_SERVER_SHARE_PAGE, {
-			server_id: share.value.id,
-			signed_in: signedIn.value,
-			can_connect: share.value.canConnect,
-		});
 	} catch (error) {
+		if (!isLatest()) return;
 		state.value =
 			error instanceof ResponseError && error.httpStatusCode === 404 ? 'notFound' : 'error';
 		documentTitle.set(i18n.baseText('mcpServers.share.title'));
 	}
 }
 
-onMounted(load);
+// The router reuses this page for another slug, so a slug change loads again.
+watch(slug, load, { immediate: true });
 
 const clients = computed(() => {
 	if (!share.value) return new Map<McpClientId, McpClientSetup>();
@@ -174,10 +186,10 @@ function trackClient(client: McpClientId | 'any' | 'other', method: ClientMethod
 							scope="global"
 						>
 							<template #project>
-								<strong>{{ share.projectName }}</strong>
+								<strong :class="$style.emphasis">{{ share.projectName }}</strong>
 							</template>
 							<template #owner>
-								<strong>{{ share.projectName }}</strong>
+								<strong :class="$style.emphasis">{{ share.projectName }}</strong>
 							</template>
 						</I18nT>
 						<template v-else>
@@ -253,7 +265,12 @@ function trackClient(client: McpClientId | 'any' | 'other', method: ClientMethod
 							<N8nText size="small" color="text-light">
 								{{ i18n.baseText('mcpServers.share.command.signIn.codex') }}
 							</N8nText>
-							<N8nCopyInput :value="client.authCommand" :label="client.name" size="medium" />
+							<N8nCopyInput
+								:value="client.authCommand"
+								:label="client.name"
+								size="medium"
+								@copy="trackClient(client.id, 'copy_sign_in_command')"
+							/>
 						</template>
 						<N8nText v-else-if="client.id === 'claude-code'" size="small" color="text-light">
 							{{ i18n.baseText('mcpServers.share.command.signIn.claudeCode') }}
@@ -398,6 +415,11 @@ function trackClient(client: McpClientId | 'any' | 'other', method: ClientMethod
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+// The base style of `strong` is the medium weight, too close to the regular text to show.
+.emphasis {
+	font-weight: var(--font-weight--bold);
 }
 
 .brandIcon {

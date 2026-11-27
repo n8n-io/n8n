@@ -1011,7 +1011,38 @@ describe('TelemetryEventRelay', () => {
 					shadow_warning_count: 2,
 					not_loaded_warning_count: 1,
 					version: 1,
+					origin: 'save',
 				},
+			);
+		});
+
+		it('should track the create of an empty project policy with its origin', () => {
+			eventService.emit('node-type-policy-saved', {
+				updatedBy: 'user123',
+				kind: 'credential-types',
+				projectId: 'project-1',
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'allow', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [],
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
+				origin: 'add-project-policy',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
+				expect.objectContaining({
+					kind: 'credential-types',
+					scope: 'project',
+					project_id: 'project-1',
+					default_action: 'allow',
+					is_first_write: true,
+					rule_count: 0,
+					blocked_type_count: 0,
+					origin: 'add-project-policy',
+				}),
 			);
 		});
 
@@ -2236,6 +2267,11 @@ describe('TelemetryEventRelay', () => {
 				descriptionLength: 0,
 				publicApi: 'n8n_node',
 				expected: { public_api: true, public_api_client: 'n8n_node' },
+			},
+			{
+				descriptionLength: 0,
+				publicApi: 'n8n_cli',
+				expected: { public_api: true, public_api_client: 'n8n_cli' },
 			},
 			{
 				descriptionLength: 18,
@@ -7016,7 +7052,6 @@ describe('TelemetryEventRelay', () => {
 				userId: 'user-1',
 				source: 'ui',
 				toolKind: 'workflow',
-				isAiDraft: false,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
@@ -7026,8 +7061,61 @@ describe('TelemetryEventRelay', () => {
 					user_id: 'user-1',
 					source: 'ui',
 					tool_kind: 'workflow',
-					is_ai_draft: false,
 				},
+			);
+		});
+
+		it('tracks a tool draft, with the field and the status', () => {
+			mcpEventService.emit('mcp-server-tool-drafted', {
+				serverId: 'server-1',
+				userId: 'user-1',
+				source: 'ui',
+				field: 'both',
+				status: 'invalid_answer',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_DRAFTED_TOOL_OF_CUSTOM_MCP_SERVER,
+				{
+					server_id: 'server-1',
+					user_id: 'user-1',
+					source: 'ui',
+					thread_id: undefined,
+					field: 'both',
+					status: 'invalid_answer',
+				},
+			);
+		});
+
+		it.each([
+			[
+				'a signed-in person',
+				{ serverId: 'server-1', userId: 'user-1', canConnect: true, result: 'found' },
+				{
+					server_id: 'server-1',
+					user_id: 'user-1',
+					signed_in: true,
+					can_connect: true,
+					result: 'found',
+				},
+			],
+			[
+				'a person who is not signed in, on a link that finds no server',
+				{ canConnect: false, result: 'not_found' },
+				{
+					server_id: undefined,
+					user_id: undefined,
+					signed_in: false,
+					can_connect: false,
+					result: 'not_found',
+				},
+			],
+		] as const)('tracks a share page view of %s', (_case, payload, properties) => {
+			mcpEventService.emit('mcp-server-share-viewed', payload);
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_VIEWED_MCP_SERVER_SHARE_PAGE,
+				properties,
 			);
 		});
 
@@ -7042,7 +7130,7 @@ describe('TelemetryEventRelay', () => {
 			});
 
 			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
-				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.CUSTOM_MCP_SERVER_TOOL_CALLED,
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CALLED_CUSTOM_MCP_SERVER_TOOL,
 				{
 					server_id: 'server-1',
 					user_id: 'user-1',

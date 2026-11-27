@@ -6,7 +6,7 @@ import type {
 } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
-import { executeTool } from '../../__tests__/tool-test-utils';
+import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, InstanceAiCustomMcpServerService } from '../../types';
 import { createCustomMcpServersTool } from '../custom-mcp-servers.tool';
 
@@ -163,10 +163,25 @@ describe('custom-mcp-servers tool', () => {
 			expect(suspend).toHaveBeenCalledWith(
 				expect.objectContaining({
 					resourceName: 'Marketing Tools',
-					message: 'Create a custom MCP server. AI clients can connect to it after you add tools.',
+					message:
+						'Create a custom MCP server at the URL /mcp-servers/marketing-tools. The URL never changes. AI clients can connect to it after you add tools.',
 					severity: 'info',
 				}),
 			);
+		});
+
+		it('refuses without a card when the name gives no slug', async () => {
+			const suspend = vi.fn();
+
+			const result = await executeTool(
+				createCustomMcpServersTool(createContext(service)),
+				{ ...input, name: 'マーケティング' },
+				suspendCtx(suspend),
+			);
+
+			expect(result).toMatchObject({ success: false, refused: true });
+			expect(suspend).not.toHaveBeenCalled();
+			expect(service.assertCanWrite).not.toHaveBeenCalled();
 		});
 
 		it('creates the server after the approval', async () => {
@@ -179,9 +194,11 @@ describe('custom-mcp-servers tool', () => {
 			expect(service.create).toHaveBeenCalledWith({
 				projectId: 'project-1',
 				name: 'Marketing Tools',
+				slug: 'marketing-tools',
 				description: 'Tools for the campaign team',
 			});
 			expect(result).toMatchObject({ success: true, server: { id: SERVER_ID } });
+			expect(result).not.toHaveProperty('serverMutated');
 		});
 
 		it('creates nothing when the user denies', async () => {
@@ -242,6 +259,9 @@ describe('custom-mcp-servers tool', () => {
 			[{ action: 'update', serverId: SERVER_ID, name: 'Other' }, 'update'],
 			[{ action: 'remove-tool', serverId: SERVER_ID, toolId: TOOL_ID }, 'update'],
 			[{ action: 'create', name: 'Sales Tools' }, 'create'],
+			[{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['workflow-1'] }, 'update'],
+			[{ action: 'update-tool', serverId: SERVER_ID, toolId: TOOL_ID, toolName: 'x_y' }, 'update'],
+			[{ action: 'generate', serverId: SERVER_ID, toolId: TOOL_ID }, 'update'],
 		])('shows no card when the user cannot make the change: %j', async (input, change) => {
 			service.assertCanWrite.mockRejectedValue(
 				new Error('User does not have the required permissions in this project'),
@@ -317,7 +337,7 @@ describe('custom-mcp-servers tool', () => {
 			);
 
 			expect(service.delete).toHaveBeenCalledWith({ serverId: SERVER_ID, projectId: 'project-1' });
-			expect(result).toEqual({ success: true, serverId: SERVER_ID });
+			expect(result).toEqual({ success: true, serverMutated: true, serverId: SERVER_ID });
 		});
 
 		it('deletes without asking when an admin always allows it', async () => {
@@ -494,6 +514,7 @@ describe('custom-mcp-servers tool', () => {
 			]);
 			expect(result).toMatchObject({
 				success: true,
+				serverMutated: true,
 				tools: [{ id: TOOL_ID, toolName: 'get_campaign_stats' }],
 			});
 		});
@@ -544,7 +565,7 @@ describe('custom-mcp-servers tool', () => {
 			{ serverId: SERVER_ID, projectId: undefined },
 			TOOL_ID,
 		);
-		expect(result).toEqual({ success: true, toolId: TOOL_ID });
+		expect(result).toEqual({ success: true, serverMutated: true, toolId: TOOL_ID });
 	});
 
 	it('asks before each removal, even after "Allow for this chat"', async () => {
@@ -666,14 +687,58 @@ describe('custom-mcp-servers tool', () => {
 			expect(suspend).not.toHaveBeenCalled();
 		});
 
-		it('fails when AI drafts turned off between the card and the approval', async () => {
+		it('refuses when AI drafts turned off between the card and the approval', async () => {
 			service.generateTool.mockResolvedValue({ status: 'not_available', tool });
 
 			await expect(
 				executeTool(createCustomMcpServersTool(createContext(service)), input, resumeCtx(true)),
-			).rejects.toThrow(
-				'AI drafts are not available for this user. Write the text with update-tool.',
-			);
+			).resolves.toMatchObject({
+				success: false,
+				refused: true,
+				reason: 'AI drafts are not available for this user. Write the text with update-tool.',
+			});
+		});
+	});
+
+	describe('input schema', () => {
+		const tool = createCustomMcpServersTool(createContext(createService()));
+
+		it.each([
+			{ action: 'list' },
+			{ action: 'get', serverId: SERVER_ID },
+			{ action: 'create', name: 'Sales Tools', slug: 'sales-tools', description: 'For sales' },
+			{ action: 'update', serverId: SERVER_ID, name: 'Sales' },
+			{ action: 'delete', serverId: SERVER_ID },
+			{
+				action: 'tool-candidates',
+				serverId: SERVER_ID,
+				query: 'lead',
+				limit: 10,
+				includeUnusable: true,
+			},
+			{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['workflow-1'] },
+			{ action: 'update-tool', serverId: SERVER_ID, toolId: TOOL_ID, toolName: 'get_leads' },
+			{ action: 'generate', serverId: SERVER_ID, toolId: TOOL_ID, field: 'description' },
+			{ action: 'remove-tool', serverId: SERVER_ID, toolId: TOOL_ID },
+		])('accepts the action $action', (input) => {
+			expect(parseToolInput(tool, input).success).toBe(true);
+		});
+
+		it.each([
+			['an unknown action', { action: 'connect', serverId: SERVER_ID }],
+			['a get without a server', { action: 'get' }],
+			['a slug with capitals', { action: 'create', name: 'Sales', slug: 'Sales' }],
+			[
+				'a tool name with a dash',
+				{ action: 'update-tool', serverId: SERVER_ID, toolId: TOOL_ID, toolName: 'get-leads' },
+			],
+			[
+				'an unknown field to generate',
+				{ action: 'generate', serverId: SERVER_ID, toolId: TOOL_ID, field: 'name' },
+			],
+			['a limit over 100', { action: 'tool-candidates', serverId: SERVER_ID, limit: 101 }],
+		])('refuses %s', (_case, input) => {
+			expect(parseToolInput(tool, input).success).toBe(false);
 		});
 	});
 });

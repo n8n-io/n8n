@@ -1,4 +1,4 @@
-import type { McpServerBlock, McpServerConnectionsResponse } from '@n8n/api-types';
+import type { McpServerBlockResponse, McpServerConnectionsResponse } from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -11,7 +11,7 @@ import { listMcpServerConnections } from '../mcp-servers.api';
  * The blocked people who have no client on the server, for example after a block through the
  * Assistant. The tab shows each of them as one row.
  */
-export function blocksWithoutClient(data: McpServerConnectionsResponse): McpServerBlock[] {
+export function blocksWithoutClient(data: McpServerConnectionsResponse): McpServerBlockResponse[] {
 	const connected = new Set(data.connections.map((connection) => connection.userId));
 	return data.blocks.filter((block) => !connected.has(block.userId));
 }

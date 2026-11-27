@@ -1,6 +1,7 @@
 import type { DropdownMenuContentProps } from 'reka-ui';
 import type { InjectionKey, Ref } from 'vue';
 
+import type { IconSize } from '../../types';
 import type { IconOrEmoji } from '../N8nIconPicker/types';
 
 /** Injection key for passing portalTarget to nested DropdownMenuItem sub-menus */
@@ -94,6 +95,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	label: string;
 	/** Icon or emoji displayed before the label */
 	icon?: IconOrEmoji;
+	/** Size of the leading icon. */
+	iconSize?: IconSize;
 	/** Whether the item is disabled */
 	disabled?: boolean;
 	/** Whether to show a separator above the item */
@@ -130,6 +133,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	data?: D;
 	/** Whether this item should be rendered as a destructive action (e.g. delete) */
 	destructive?: boolean;
+	/** Tooltip shown while the pointer is over a regular item (not section headers, checkboxes, or sub-menu triggers), such as the reason it is disabled. */
+	hoverTooltip?: string;
 };
 
 export interface DropdownMenuProps<T = string, D = never> {
@@ -180,7 +185,7 @@ export interface DropdownMenuProps<T = string, D = never> {
 	/** Select whether search focus stays inside the menu or in an external text control. */
 	searchMode?: DropdownMenuSearchMode;
 	/** Text control that owns focus when searchMode is external. */
-	externalFocusTarget?: HTMLInputElement | HTMLTextAreaElement | null;
+	externalFocusTarget?: HTMLElement | null;
 	/** Search input placeholder */
 	searchPlaceholder?: string;
 	/** Debounce delay in ms for search event */

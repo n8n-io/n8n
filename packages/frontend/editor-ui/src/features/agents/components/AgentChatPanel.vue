@@ -57,7 +57,6 @@ import type {
 	ChatMessageQueueItem,
 } from '@/features/ai/shared/components/chatMessageQueue.types';
 import { useAttachmentPreviews } from '@/features/ai/shared/composables/useAttachmentPreviews';
-import InstanceAiResourceChip from '@/features/ai/instanceAi/components/InstanceAiResourceChip.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import {
 	findTailOpenInteractive,
@@ -190,6 +189,8 @@ const props = withDefaults(
 		disabled?: boolean;
 		/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
 		thinkingLabel?: string;
+		/** Replaces the generic "Session stopped" of a stopped turn. The Assistant sets it. */
+		stoppedLabel?: string;
 	}>(),
 	{
 		visible: true,
@@ -243,6 +244,8 @@ const emit = defineEmits<{
 	];
 	/** Each event of the chat stream, as received. A host can keep them for a debug export. */
 	'stream-event': [event: AgentSseEvent];
+	/** The user removed the card of a staged chip. The panel already dropped the chip. */
+	'composer-attachment-removed': [id: string];
 	/**
 	 * The chat posts a new message now, before the server answers, so a refused
 	 * send emits this too. Typed text that cancels an open card emits this, but
@@ -266,14 +269,11 @@ defineSlots<{
 	/** Content docked above the composer, for example a checklist. */
 	'above-input'?: () => unknown;
 	/**
-	 * Chips at the start of the composer attachment strip. The default content
-	 * shows the chips from `addComposerAttachment`. A host that renders its own
-	 * chips gets them, and a function to remove one, as slot props.
+	 * Chips that the host draws above the attachment cards, for example chips
+	 * with `hostRendered`. The panel shows the other staged chips as cards, in
+	 * one group with the files.
 	 */
-	'composer-attachments'?: (props: {
-		chips: AgentChatComposerChip[];
-		removeChip: (id: string) => void;
-	}) => unknown;
+	'composer-attachments'?: () => unknown;
 	/**
 	 * Controls at the start of the composer footer. `disabled` is true while the
 	 * composer does not take input, as for the built-in attach button.
@@ -484,8 +484,8 @@ function onChatInputKeydown(event: KeyboardEvent) {
 		!event.isComposing &&
 		event.keyCode !== IME_COMPOSITION_KEYCODE &&
 		!event.repeat &&
-		attachedFiles.value.length > 0 &&
-		removingFiles.value.size === 0
+		hasAttachmentCards.value &&
+		removingAttachments.value.size === 0
 	) {
 		event.preventDefault();
 		event.stopPropagation();
@@ -741,7 +741,9 @@ const backgroundJobRows = computed(() =>
 			label: locale.baseText(
 				job.kind === 'workflow'
 					? 'agents.chat.backgroundTasks.workflow'
-					: 'agents.chat.backgroundTasks.subagent',
+					: job.kind === 'approval'
+						? 'agents.chat.backgroundTasks.approvalFor'
+						: 'agents.chat.backgroundTasks.subagent',
 				{ interpolate: { title: job.title } },
 			),
 			indicator,
@@ -780,17 +782,8 @@ const backgroundElapsed = computed(() => {
 });
 
 const attachedFiles = ref<File[]>([]);
-const removingFiles = ref(new Set<File>());
-
-/** Clear stale removal state only after the draft file list changes. */
-watch(
-	() => [...attachedFiles.value],
-	(files) => {
-		for (const file of removingFiles.value) {
-			if (!files.includes(file)) removingFiles.value.delete(file);
-		}
-	},
-);
+/** Files and chip ids whose card plays its removal. */
+const removingAttachments = ref(new Set<File | string>());
 
 const { previewUrl } = useAttachmentPreviews(() => attachedFiles.value);
 const draftFileKeys = new WeakMap<File, number>();
@@ -807,7 +800,22 @@ function draftFileKey(file: File): number {
 
 /** Host chips need text or files before the message can be sent. */
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
-const composerChips = computed(() => composerAttachments.value.map(({ chip }) => chip));
+const cardChips = computed(() =>
+	composerAttachments.value.map(({ chip }) => chip).filter((chip) => !chip.hostRendered),
+);
+const hasAttachmentCards = computed(
+	() => cardChips.value.length > 0 || attachedFiles.value.length > 0,
+);
+
+/** Clear stale removal state only after the draft files or chips change. */
+watch(
+	() => [...attachedFiles.value, ...cardChips.value.map(({ id }) => id)],
+	(items) => {
+		for (const item of removingAttachments.value) {
+			if (!items.includes(item)) removingAttachments.value.delete(item);
+		}
+	},
+);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
 const attachmentGroupRef =
 	useTemplateRef<InstanceType<typeof N8nAttachmentGroup>>('attachmentGroupRef');
@@ -1109,7 +1117,7 @@ const budgetIncreasePending = ref(false);
 const isRetrying = ref(false);
 const isSubmissionBlocked = computed(
 	() =>
-		removingFiles.value.size > 0 ||
+		removingAttachments.value.size > 0 ||
 		isRetrying.value ||
 		!!editingQueueId.value ||
 		isPreparingToSend.value ||
@@ -1417,7 +1425,16 @@ function captureTarget(): () => boolean {
 		props.continueSessionId === target.continueSessionId;
 }
 
-async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
+function shouldClearSubmittedDraft(text: string, staleControlledDraft?: string): boolean {
+	if (inputText.value.trim() === text) return true;
+	return staleControlledDraft !== undefined && inputText.value === staleControlledDraft;
+}
+
+async function submitDraft(
+	text: string,
+	files: File[],
+	options: { staleControlledDraft?: string } = {},
+): Promise<SubmitResult> {
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
 	// Taken before any await, so a user send made while this hand-off runs cannot claim it.
@@ -1431,7 +1448,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	if (composerResume) {
 		const result = await resume(composerResume, () => {
 			if (!isCurrentTarget()) return;
-			if (inputText.value.trim() === text) inputText.value = '';
+			if (shouldClearSubmittedDraft(text, options.staleControlledDraft)) inputText.value = '';
 			consumeQueuedExternalMessage(text);
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
@@ -1444,7 +1461,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		emitMessageSending({ text, files: [] });
 		const result = await cancelAndSteer(text, () => {
 			if (!isCurrentTarget()) return;
-			if (inputText.value.trim() === text) inputText.value = '';
+			if (shouldClearSubmittedDraft(text, options.staleControlledDraft)) inputText.value = '';
 			consumeQueuedExternalMessage(text);
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
@@ -1455,6 +1472,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		text,
 		files,
 		fromComposer: true,
+		staleControlledDraft: options.staleControlledDraft,
 		handoffPreview: ownedHandoffPreview,
 		clientContext: ownedClientContext,
 	});
@@ -1468,6 +1486,8 @@ interface SendRequest {
 	 * send clears the composer. A host send leaves the composer to the user.
 	 */
 	fromComposer: boolean;
+	/** Controlled draft value before handoff, so an un-flushed `v-model` echo still clears. */
+	staleControlledDraft?: string;
 	/** The bubble a hand-off installed before it was sent. */
 	handoffPreview?: ChatMessage;
 	/** Sent with this message only, on top of the `clientContext` prop. */
@@ -1479,6 +1499,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 		text,
 		files,
 		fromComposer,
+		staleControlledDraft,
 		handoffPreview: ownedHandoffPreview,
 		clientContext: ownedClientContext,
 	} = request;
@@ -1533,7 +1554,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 			queueExpanded.value = false;
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 			if (!fromComposer) return;
-			if (inputText.value.trim() === text) inputText.value = '';
+			if (shouldClearSubmittedDraft(text, staleControlledDraft)) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
 			composerAttachments.value = composerAttachments.value.filter(
 				(attachment) => !sentAttachments.includes(attachment),
@@ -1630,11 +1651,17 @@ async function submitQueuedExternalMessage() {
 	// An empty text is still a send when files are staged with it.
 	if (message === undefined || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
 
+	const isCurrentTarget = captureTarget();
 	submittingQueuedExternalMessage = true;
 	let result: SubmitResult = 'rejected';
+	const wroteDraft = !handoffPreview;
+	const staleControlledDraft =
+		wroteDraft && props.inputDraft !== undefined ? inputText.value : undefined;
 	try {
-		inputText.value = message;
-		result = await onSubmit();
+		if (wroteDraft) inputText.value = message;
+		result = await submitDraft(message.trim(), [...attachedFiles.value], {
+			staleControlledDraft,
+		});
 	} finally {
 		submittingQueuedExternalMessage = false;
 	}
@@ -1647,6 +1674,9 @@ async function submitQueuedExternalMessage() {
 		firstMessagePreview.value = undefined;
 		// The files stay in the composer as the user's draft now.
 		externalAttachedFiles = [];
+		if (!wroteDraft && isCurrentTarget() && !inputText.value.trim()) {
+			inputText.value = message;
+		}
 	}
 	if (
 		queuedExternalMessage !== undefined &&
@@ -1742,6 +1772,11 @@ function addComposerAttachment(
 
 function removeComposerAttachment(id: string) {
 	composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
+}
+
+function handleChipRemove(id: string) {
+	removeComposerAttachment(id);
+	emit('composer-attachment-removed', id);
 }
 
 // Session files: every channel has the list route.
@@ -2068,45 +2103,26 @@ onBeforeUnmount(() => {
 								"
 							/>
 						</template>
-						<template
-							v-if="
-								attachedFiles.length > 0 ||
-								composerAttachments.length > 0 ||
-								$slots['composer-attachments']
-							"
-							#attachments
-						>
-							<div
-								v-if="composerAttachments.length > 0 || $slots['composer-attachments']"
-								:class="$style.attachmentsStrip"
-							>
-								<slot
-									name="composer-attachments"
-									:chips="composerChips"
-									:remove-chip="removeComposerAttachment"
-								>
-									<InstanceAiResourceChip
-										v-for="chip in composerChips"
-										:key="chip.id"
-										:label="chip.label"
-										:icon="chip.icon"
-										removable
-										:remove-label="
-											locale.baseText('agents.chat.composer.removeChip', {
-												interpolate: { label: chip.label },
-											})
-										"
-										test-id="agent-chat-composer-chip"
-										remove-test-id="agent-chat-composer-chip-remove"
-										@remove="removeComposerAttachment(chip.id)"
-									/>
-								</slot>
+						<template v-if="hasAttachmentCards || $slots['composer-attachments']" #attachments>
+							<div v-if="$slots['composer-attachments']" :class="$style.attachmentsStrip">
+								<slot name="composer-attachments" />
 							</div>
 							<N8nAttachmentGroup
-								v-if="attachedFiles.length > 0"
+								v-if="hasAttachmentCards"
 								ref="attachmentGroupRef"
 								:class="$style.attachmentGroup"
 							>
+								<N8nAttachment
+									v-for="chip in cardChips"
+									:key="chip.id"
+									:file-name="chip.label"
+									:icon="chip.icon"
+									:is-removable="true"
+									data-test-id="agent-chat-composer-chip"
+									@remove-start="removingAttachments.add(chip.id)"
+									@remove="handleChipRemove(chip.id)"
+									@remove-end="removingAttachments.delete(chip.id)"
+								/>
 								<N8nAttachment
 									v-for="file in attachedFiles"
 									:key="draftFileKey(file)"
@@ -2115,9 +2131,9 @@ onBeforeUnmount(() => {
 									:size-bytes="file.size"
 									:src="previewUrl(file)"
 									:is-removable="true"
-									@remove-start="removingFiles.add(file)"
+									@remove-start="removingAttachments.add(file)"
 									@remove="handleFileRemove(file)"
-									@remove-end="removingFiles.delete(file)"
+									@remove-end="removingAttachments.delete(file)"
 								/>
 							</N8nAttachmentGroup>
 						</template>
@@ -2272,6 +2288,7 @@ onBeforeUnmount(() => {
 				:loading-older-messages="isLoadingOlderMessages"
 				:load-older-messages-failed="loadOlderMessagesFailed"
 				:thinking-label="props.thinkingLabel"
+				:stopped-label="props.stoppedLabel"
 				:task-trace-route="
 					continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 				"
@@ -2336,6 +2353,8 @@ onBeforeUnmount(() => {
 .scrollArea {
 	flex: 1;
 	min-height: 0;
+	// Centers the scroll button over the input, which a host panel can move.
+	--n8n-chat-scroll-area--x-offset--end: var(--agent-chat-reserved-end, 0);
 }
 
 .centeredEmpty {
@@ -2353,18 +2372,21 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	width: 100%;
+	// Same as the messages: centers in the space that a host panel leaves.
+	width: calc(100% - var(--agent-chat-reserved-end, 0px));
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
+	position: relative;
+	left: calc(var(--agent-chat-reserved-end, 0px) / -2);
 }
 
 .backgroundJobs {
 	min-width: 0;
 
-	--ai-activity-step--height: auto;
-	--ai-activity-step--min-height: var(--height--xl);
-	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
-	--ai-activity-step--color: var(--text-color);
+	--n8n-ai-activity-step--height: auto;
+	--n8n-ai-activity-step--min-height: var(--height--xl);
+	--n8n-ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
+	--n8n-ai-activity-step--color: var(--text-color);
 	background: var(--background--surface);
 	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--xs);

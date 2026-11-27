@@ -366,7 +366,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			autoCutLimit: options.autoCutLimit ?? undefined,
 			alpha: options.alpha ?? undefined,
 			queryProperties: options.queryProperties,
-			maxVectorDistance: options.maxVectorDistance || undefined,
+			maxVectorDistance: options.maxVectorDistance ?? undefined,
 			fusionType: options.fusionType,
 			hybridExplainScore: options.hybridExplainScore ?? false,
 		};

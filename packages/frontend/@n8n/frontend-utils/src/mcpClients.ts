@@ -91,7 +91,7 @@ url = "${serverUrl}"`;
 	// `{"url": …}` in a `config` query param, VS Code a URL-encoded JSON object.
 	const cursorDeepLink = `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(
 		name,
-	)}&config=${btoa(JSON.stringify({ url: serverUrl }))}`;
+	)}&config=${encodeURIComponent(btoa(JSON.stringify({ url: serverUrl })))}`;
 	const vscodeDeepLink = `vscode:mcp/install?${encodeURIComponent(
 		JSON.stringify({ name, type: 'http', url: serverUrl }),
 	)}`;

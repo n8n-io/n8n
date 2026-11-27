@@ -22,7 +22,7 @@ describe('SlackIntegration', () => {
 	const adapterConstructor = vi.fn();
 
 	beforeEach(() => {
-		integration = new SlackIntegration(mock<AgentRepository>());
+		integration = new SlackIntegration(mock<AgentRepository>(), mock());
 		adapterConstructor.mockReset();
 		mockedLoadSlackAdapter.mockReset();
 		mockedLoadSlackAdapter.mockResolvedValue({
@@ -221,7 +221,7 @@ describe('SlackIntegration', () => {
 		agentRepository.findByIntegrationCredential.mockResolvedValue([
 			{ id: 'other-agent', name: 'Other Agent' },
 		] as never);
-		integration = new SlackIntegration(agentRepository);
+		integration = new SlackIntegration(agentRepository, mock());
 
 		await expect(
 			integration.onBeforeConnect({

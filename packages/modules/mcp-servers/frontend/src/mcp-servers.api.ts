@@ -1,6 +1,6 @@
 import type {
 	CreateMcpServerDto,
-	McpServerBlock,
+	McpServerBlockResponse,
 	McpServerConnectionsResponse,
 	McpServerDetailResponse,
 	McpServerResponse,
@@ -147,7 +147,7 @@ export async function getMcpServerShare(
 	context: IRestApiContext,
 	slug: string,
 ): Promise<McpServerShare> {
-	return await makeRestApiRequest(context, 'GET', `/mcp-servers/share/${slug}`);
+	return await makeRestApiRequest(context, 'GET', `/mcp-servers/share/${encodeURIComponent(slug)}`);
 }
 
 /** The share page with no sign-in. It never has the description or the tools. */
@@ -155,7 +155,11 @@ export async function getMcpServerPublicShare(
 	context: IRestApiContext,
 	slug: string,
 ): Promise<McpServerSharePublic> {
-	return await makeRestApiRequest(context, 'GET', `/mcp-servers/share/${slug}/public`);
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/mcp-servers/share/${encodeURIComponent(slug)}/public`,
+	);
 }
 
 /** Each person and client that connected, and the blocked people. */
@@ -173,7 +177,7 @@ export async function blockMcpServerUser(
 	projectId: string,
 	serverId: string,
 	userId: string,
-): Promise<McpServerBlock> {
+): Promise<McpServerBlockResponse> {
 	return await makeRestApiRequest(context, 'POST', `${serverPath(projectId, serverId)}/blocks`, {
 		userId,
 	});

@@ -22,9 +22,9 @@ function setup() {
 }
 
 describe('WorkflowToolAdapter', () => {
-	it('reports a callable workflow without giving the workflow to the module', async () => {
+	it('reports a callable workflow', async () => {
 		const { runner, adapter } = setup();
-		runner.check.mockResolvedValue({ callable: true, workflow: new WorkflowEntity() });
+		runner.check.mockResolvedValue({ callable: true });
 
 		await expect(adapter.check(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual({ callable: true });
 		expect(runner.check).toHaveBeenCalledWith(PROJECT_ID, WORKFLOW_ID);
@@ -62,6 +62,21 @@ describe('WorkflowToolAdapter', () => {
 		await adapter.list(PROJECT_ID, ['w-2', 'w-9']);
 
 		expect(workflows.findByIds).toHaveBeenCalledWith(['w-2'], expect.anything());
+	});
+
+	it('describes the workflow with the input schema of the runner', async () => {
+		const { runner, adapter } = setup();
+		const description = {
+			callable: true as const,
+			name: 'Get pipeline summary',
+			description: null,
+			inputSchema: { type: 'object' as const, additionalProperties: true },
+			nodeNames: ['When Executed by Another Workflow'],
+		};
+		runner.describe.mockResolvedValue(description);
+
+		await expect(adapter.describe(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual(description);
+		expect(runner.describe).toHaveBeenCalledWith(PROJECT_ID, WORKFLOW_ID);
 	});
 
 	it('runs the workflow through the shared runner, with the wait of the caller', async () => {

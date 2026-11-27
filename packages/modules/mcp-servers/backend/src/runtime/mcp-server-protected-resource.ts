@@ -16,9 +16,9 @@ import {
 import type { Scope } from '@n8n/permissions';
 
 import { McpServerBlockRepository } from '../access/mcp-server-block.repository';
-import { CustomMcpServersFlagGate } from '../custom-mcp-servers-flag-gate';
-import type { McpServer } from '../mcp-server.entity';
-import { McpServerRepository } from '../mcp-server.repository';
+import { CustomMcpServersFlagGate } from '../services/custom-mcp-servers-flag-gate';
+import type { McpServer } from '../database/entities/mcp-server.entity';
+import { McpServerRepository } from '../database/repositories/mcp-server.repository';
 
 /** The path of the runtime endpoint, after the instance base URL. */
 export const MCP_SERVERS_PATH = '/mcp-servers';
@@ -100,7 +100,7 @@ export class McpServerProtectedResource implements ProtectedResourceResolver {
 	async findServer(slug: string): Promise<McpServer | null> {
 		if (!mcpServerSlugSchema.safeParse(slug).success) return null;
 		const server = await this.servers.findBySlug(slug);
-		if (!server || !(await this.flag.isEnabledForInstance())) return null;
+		if (!server || !(await this.flag.isEnabled())) return null;
 		return server;
 	}
 
@@ -116,7 +116,8 @@ export class McpServerProtectedResource implements ProtectedResourceResolver {
 	): Promise<ConsentRefusal | undefined> {
 		const [withProject] = await this.servers.withProjects([server]);
 		if (!withProject) return undefined;
-		const projectName = withProject.project.name;
+		// The name of a personal project holds the email of its owner, so the screen gets no name.
+		const projectName = withProject.project.type === 'team' ? withProject.project.name : undefined;
 		if (await this.blocks.isBlocked(server.id, user.id)) return { reason: 'blocked', projectName };
 		const role = await this.projectRelations.findProjectRole({
 			userId: user.id,

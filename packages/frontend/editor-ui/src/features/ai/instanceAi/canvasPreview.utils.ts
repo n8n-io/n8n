@@ -401,7 +401,8 @@ const SKILL_WRITE_ACTIONS = new Set(['create', 'update']);
 
 const UNTRUSTED_DATA_PATTERN = /^<untrusted_data\b[^>]*>\n([\s\S]*)\n<\/untrusted_data>$/;
 
-function unwrapUntrustedToolResult(result: unknown): unknown {
+/** The tool result inside the `<untrusted_data>` wrapper of a tool with `untrustedOutput()`. */
+export function unwrapUntrustedToolResult(result: unknown): unknown {
 	if (!isRecord(result) || result.type !== 'content' || !Array.isArray(result.value)) {
 		return result;
 	}
@@ -474,11 +475,11 @@ export function getLatestSkillArtifactResult(
 	return getLatestToolArtifactResult(turns, getSkillArtifactFromToolCall);
 }
 
-/** Name of the n8n Assistant tool that builds n8n Apps. */
-export const APPS_TOOL_NAME = 'apps';
-
-/** `get` and `open` only read the app. */
-const APP_WRITE_ACTIONS = new Set(['create', 'commit']);
+/** The app tools whose result is a created or committed app. */
+const APP_WRITE_TOOL_NAMES = new Set<string>([
+	SHARED_BUILDER_TOOL_NAMES.CREATE_APP,
+	SHARED_BUILDER_TOOL_NAMES.COMMIT_APP,
+]);
 
 export interface AppArtifact {
 	appId: string;
@@ -486,11 +487,9 @@ export interface AppArtifact {
 	projectId: string;
 }
 
-/** The app that a finished `apps` call created or committed. */
+/** The app that a finished `create_app` or `commit_app` call created or committed. */
 export function getAppArtifactFromToolCall(tc: ArtifactToolCall): AppArtifact | undefined {
-	if (tc.toolName !== APPS_TOOL_NAME || tc.isLoading) return undefined;
-	const action = tc.args?.action;
-	if (typeof action !== 'string' || !APP_WRITE_ACTIONS.has(action)) return undefined;
+	if (!APP_WRITE_TOOL_NAMES.has(tc.toolName) || tc.isLoading) return undefined;
 	const result = unwrapUntrustedToolResult(tc.result);
 	if (!isRecord(result) || !isRecord(result.app)) return undefined;
 	const { id, name, projectId } = result.app;
@@ -500,7 +499,28 @@ export function getAppArtifactFromToolCall(tc: ArtifactToolCall): AppArtifact | 
 	return { appId: id, name, projectId };
 }
 
-/** The latest app that the assistant created or committed with the `apps` tool. */
+const APP_TARGET_TOOL_NAMES = new Set<string>([
+	SHARED_BUILDER_TOOL_NAMES.OPEN_APP,
+	SHARED_BUILDER_TOOL_NAMES.BIND_APP_RESOURCE,
+	SHARED_BUILDER_TOOL_NAMES.UNBIND_APP_RESOURCE,
+	SHARED_BUILDER_TOOL_NAMES.COMMIT_APP,
+	SHARED_BUILDER_TOOL_NAMES.DISCARD_APP_CHANGES,
+]);
+
+/** Whether a turn that the agent still works on created the app or works on it with the app tools. */
+export function isAppInLiveTurn(turns: readonly ArtifactTurn[], appId: string): boolean {
+	return turns.some(
+		(turn) =>
+			turn.isLive &&
+			turn.toolCalls.some(
+				(tc) =>
+					getAppArtifactFromToolCall(tc)?.appId === appId ||
+					(APP_TARGET_TOOL_NAMES.has(tc.toolName) && tc.args.appId === appId),
+			),
+	);
+}
+
+/** The latest app that the assistant created or committed with the app tools. */
 export function getLatestAppArtifactResult(
 	turns: readonly ArtifactTurn[],
 ): ToolArtifactResult<AppArtifact> | undefined {

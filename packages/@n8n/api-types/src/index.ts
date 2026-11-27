@@ -25,6 +25,7 @@ export * from './node-type-availability';
 export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
 export type * from './instance-type-access';
+export type * from './project-policies';
 export type * from './type-usage';
 export type * from './transfer-preview';
 export type * from './transfer-result';
@@ -181,6 +182,7 @@ export {
 	projectIdParamSchema,
 	promotionDirectionParamSchema,
 	promotionEnvironmentIdParamSchema,
+	promotionReviewIdParamSchema,
 	promotionProviderIdParamSchema,
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
@@ -467,7 +469,6 @@ export {
 	confirmationInputTypeSchema,
 	appBlueprintSchema,
 	appBlueprintResumeSchema,
-	appBlueprintErrorsSchema,
 	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
 	mcpConnectServerSchema,
@@ -503,7 +504,6 @@ export {
 	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	CANVAS_NODE_CONTEXT_FLAG,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
@@ -516,10 +516,7 @@ export {
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
 	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
-	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
-	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	instanceContextSurfaceSchema,
 	instanceContextReachSchema,
@@ -644,7 +641,6 @@ export type {
 	InstanceAiRunLimitMeta,
 	AppBlueprint,
 	AppBlueprintResume,
-	AppBlueprintErrors,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -1081,7 +1077,6 @@ export {
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
 export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
-export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_NODE } from './constants/client';
 
 export {
 	agentPublishSendTargetSchema,
@@ -1164,3 +1159,23 @@ export {
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,
 } from './schemas/execution-limit-settings.schema';
+
+export {
+	AGENT_SAFE_TESTING_FLAG,
+	toolCallRouteSchema,
+	toolCallReasonSchema,
+	toolCallSimulationSchema,
+	agentChatModeSchema,
+	type AgentChatMode,
+	toolTestKindSchema,
+	toolTestCapabilitySchema,
+} from './schemas/agent-safe-testing.schema';
+export type {
+	ToolCallRoute,
+	ToolCallReason,
+	ToolCallSimulation,
+	ToolTestability,
+	ToolTestKind,
+	ToolTestCapability,
+	AgentTestRunToolsResponse,
+} from './schemas/agent-safe-testing.schema';

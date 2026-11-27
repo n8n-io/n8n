@@ -1,6 +1,6 @@
 import type {
-	McpServerBlock,
-	McpServerConnection,
+	McpServerBlockResponse,
+	McpServerConnectionResponse,
 	McpServerConnectionsResponse,
 	McpServerResponse,
 } from '@n8n/api-types';
@@ -46,7 +46,7 @@ function connection(
 	person: typeof TOM,
 	clientName: string,
 	oauthClientId = clientName,
-): McpServerConnection {
+): McpServerConnectionResponse {
 	return {
 		...person,
 		oauthClientId,
@@ -56,7 +56,7 @@ function connection(
 	};
 }
 
-function block(person: typeof TOM): McpServerBlock {
+function block(person: typeof TOM): McpServerBlockResponse {
 	return { ...person, blockedById: 'user-builder', blockedAt: '2026-11-25T10:00:00.000Z' };
 }
 

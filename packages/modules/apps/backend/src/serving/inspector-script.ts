@@ -12,11 +12,12 @@ const INSPECTOR_SOURCE = String.raw`function (editorOrigin, messageSource) {
 	host.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2147483647;contain:layout style;';
 	var shadow = host.attachShadow({ mode: 'open' });
 	var style = document.createElement('style');
+	// The brand pink. The script runs inside the app, so it can't use the n8n CSS tokens.
 	style.textContent = [
-		'.box { position: fixed; display: none; box-sizing: border-box; border: 2px solid #ff6d5a; border-radius: 3px; }',
-		'.box.hover { background: rgba(255, 109, 90, 0.12); }',
+		'.box { position: fixed; display: none; box-sizing: border-box; border: 2px solid oklch(78.07% 0.136 5.02); border-radius: 3px; }',
+		'.box.hover { background: oklch(78.07% 0.136 5.02 / 0.12); }',
 		'.label { position: absolute; left: -2px; max-width: 260px; padding: 2px 6px; overflow: hidden; border-radius: 3px;',
-		'background: #ff6d5a; color: #fff; font: 600 11px/16px system-ui, sans-serif; white-space: nowrap; text-overflow: ellipsis; }',
+		'background: oklch(78.07% 0.136 5.02); color: #1f1f1f; font: 600 11px/16px system-ui, sans-serif; white-space: nowrap; text-overflow: ellipsis; }',
 	].join('\n');
 	shadow.append(style);
 

@@ -21,10 +21,10 @@ export class McpServersModule implements ModuleInterface {
 		Container.set(TextDraftPort, adapters.textDrafts);
 		Container.set(OAuthClientNamePort, adapters.clients);
 		Container.set(RefreshTokenPort, adapters.refreshTokens);
-		await import('./mcp-servers.controller.js');
-		await import('./mcp-servers-list.controller.js');
-		await import('./mcp-server-tools.controller.js');
-		await import('./mcp-server-share.controller.js');
+		await import('./controllers/mcp-servers.controller.js');
+		await import('./controllers/mcp-servers-list.controller.js');
+		await import('./controllers/mcp-server-tools.controller.js');
+		await import('./controllers/mcp-server-share.controller.js');
 		await import('./access/mcp-server-access.controller.js');
 		await import('./runtime/mcp-server-runtime.controller.js');
 		const { ProtectedResourceRegistry } = await import('@n8n/backend-services/auth');
@@ -37,10 +37,12 @@ export class McpServersModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { McpServer } = await import('./mcp-server.entity.js');
-		const { McpServerTool } = await import('./mcp-server-tool.entity.js');
-		const { McpServerConnection } = await import('./mcp-server-connection.entity.js');
-		const { McpServerBlock } = await import('./mcp-server-block.entity.js');
+		const { McpServer } = await import('./database/entities/mcp-server.entity.js');
+		const { McpServerTool } = await import('./database/entities/mcp-server-tool.entity.js');
+		const { McpServerConnection } = await import(
+			'./database/entities/mcp-server-connection.entity.js'
+		);
+		const { McpServerBlock } = await import('./database/entities/mcp-server-block.entity.js');
 		return [McpServer, McpServerTool, McpServerConnection, McpServerBlock];
 	}
 }

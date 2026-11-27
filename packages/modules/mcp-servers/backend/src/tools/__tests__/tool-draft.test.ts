@@ -50,6 +50,16 @@ describe('buildToolDraftPrompt', () => {
 		expect(prompt).toContain('"description"');
 		expect(prompt).not.toContain('"toolName"');
 	});
+
+	it('asks for a text that differs from the current one, for "Generate"', () => {
+		const prompt = buildToolDraftPrompt(SOURCE, {
+			field: 'toolName',
+			current: { toolName: 'get_campaign', description: 'Old text.' },
+		});
+
+		expect(prompt).toContain('The current tool name: get_campaign');
+		expect(prompt).toMatch(/must differ from the current text/);
+	});
 });
 
 describe('parseToolDraftAnswer', () => {

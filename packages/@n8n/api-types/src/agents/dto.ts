@@ -1,3 +1,4 @@
+import { AgentHitlOptionsQuerySchema } from './agent-hitl.schema';
 import { jsonParse } from 'n8n-workflow';
 import { z, type ZodRawShape } from 'zod';
 
@@ -30,6 +31,7 @@ import {
 	createAgentSkillSchema,
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
+import { agentChatModeSchema } from '../schemas/agent-safe-testing.schema';
 import { alsoNullable } from '../dto/openapi-nullable';
 import { workflowParentFolderPublicSchema } from '../dto/workflows/workflow-public.dto';
 import {
@@ -176,11 +178,22 @@ export class ListAgentSessionsQueryDto extends Z.class({
 	scope: z.enum(['all', 'mine']).optional(),
 	updatedAfter: z.coerce.date().optional(),
 	updatedBefore: z.coerce.date().optional(),
+	/** Comma-separated session IDs, or repeated query parameters. An empty list matches nothing. */
+	sessionIds: z.preprocess(
+		(value) =>
+			typeof value === 'string'
+				? value
+						.split(',')
+						.map((id) => id.trim())
+						.filter(Boolean)
+				: value,
+		z.array(z.string().min(1).max(128)).max(500).optional(),
+	),
 }) {}
 
 export type AgentSessionQueryFilters = Pick<
 	ListAgentSessionsQueryDto,
-	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
+	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly' | 'sessionIds'
 >;
 
 export class ListAgentMemoryEntriesQueryDto extends Z.class({
@@ -192,10 +205,22 @@ export class ListAgentMemoryEntriesQueryDto extends Z.class({
 	sourceFacetId: z.string().min(1).max(255).optional(),
 }) {}
 
-/** Cross-agent n8n Chat thread list: cursor + limit only, no status/origin/scope filters. */
+const threadCursorTimestamp = z.string().datetime();
+
+/** Cross-agent n8n Chat thread list: no status, origin, or scope filters. */
 export class ListN8nChatThreadsQueryDto extends Z.class({
-	// The cursor is a thread's `updatedAt` ISO string (see `paginateByUpdatedAt`).
-	cursor: z.string().datetime().optional(),
+	// New cursors add the thread ID to break ties at the same update time.
+	cursor: z
+		.string()
+		.refine((cursor) => {
+			const [timestamp, ...idParts] = cursor.split('|');
+			return (
+				threadCursorTimestamp.safeParse(timestamp).success &&
+				(idParts.length === 0 || idParts.join('|') !== '') &&
+				!cursor.includes('\0')
+			);
+		}, 'Invalid session cursor')
+		.optional(),
 	limit: z.string().optional(),
 	/** Filters threads to one agent. */
 	agentId: z.string().min(1).max(128).optional(),
@@ -343,6 +368,15 @@ export class CreateAgentPublicDto extends Z.class(
 		}).optional(),
 		tools: z.record(createAgentToolEntrySchema).optional(),
 		availableInMCP: z.boolean().optional(),
+	},
+	{ strict: true },
+) {}
+
+export class PublishAgentPublicDto extends Z.class(
+	{
+		versionId: z.string().min(1).optional().openapi({
+			description: 'The saved version to publish. Omit this field to publish the current draft.',
+		}),
 	},
 	{ strict: true },
 ) {}
@@ -805,6 +839,20 @@ const agentChatMessageShape = {
 	 * shape and validates it. Project agents ignore it.
 	 */
 	clientContext: z.record(z.unknown()).optional(),
+	/**
+	 * Only the preview chat has test runs. Every other surface accepts `live` and rejects
+	 * `test`, so a message that asked for a test run fails instead of running live.
+	 */
+	mode: z.literal('live').optional(),
+};
+
+const agentPreviewChatMessageShape = {
+	...agentChatMessageShape,
+	/**
+	 * `test` starts a test run (safe testing flag on). A chat that is already a test run
+	 * stays one. Absent or `live` runs the draft against real services.
+	 */
+	mode: agentChatModeSchema.optional(),
 };
 
 /** Rules that every chat message DTO applies on top of its shape. */
@@ -821,6 +869,11 @@ const hasSessionForMessageId = {
 
 const agentChatMessageSchema = z
 	.object(agentChatMessageShape)
+	.refine(hasMessageContent.check, hasMessageContent.options)
+	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
+
+const agentPreviewChatMessageSchema = z
+	.object(agentPreviewChatMessageShape)
 	.refine(hasMessageContent.check, hasMessageContent.options)
 	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
 
@@ -884,6 +937,25 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 }
 
 /**
+ * A message in the agent preview chat, the only surface with test runs. Same as
+ * {@link AgentChatMessageDto}, but `mode` can be `test`. Validate via `parse`/`safeParse`,
+ * for the same reason as `AgentChatMessageDto`.
+ */
+export class AgentPreviewChatMessageDto extends Z.class(agentPreviewChatMessageShape) {
+	constructor(data: z.infer<typeof agentPreviewChatMessageSchema>) {
+		super(agentPreviewChatMessageSchema.parse(data));
+	}
+
+	static override safeParse(data: unknown) {
+		return agentPreviewChatMessageSchema.safeParse(data);
+	}
+
+	static override parse(data: unknown) {
+		return agentPreviewChatMessageSchema.parse(data);
+	}
+}
+
+/**
  * The chat message of a system agent. Same as {@link AgentChatMessageDto},
  * but the session ID must be a lowercase UUID and the message has a maximum
  * length. Validate via `parse`/`safeParse`, for the same reason as
@@ -936,6 +1008,10 @@ export class AgentChatResumeDto extends Z.class({
 	// know about). Each interactive tool validates its own resume payload via
 	// `.resume(schema)`.
 	resumeData: z.unknown(),
+}) {}
+
+export class GenerateAgentTestScenariosDto extends Z.class({
+	previousScenarios: z.array(z.string().trim().min(1).max(300)).max(20).optional(),
 }) {}
 
 const agentConnectIntegrationShape = {
@@ -1071,3 +1147,5 @@ export class AgentChatCancelDto extends Z.class({
 export class AgentTaskCancellationDto extends Z.class({
 	planId: z.string().uuid().toLowerCase().nullable(),
 }) {}
+
+export class AgentHitlOptionsQueryDto extends Z.class(AgentHitlOptionsQuerySchema.shape) {}

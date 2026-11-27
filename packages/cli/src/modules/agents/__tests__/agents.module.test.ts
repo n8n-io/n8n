@@ -9,7 +9,9 @@ import { AiService } from '@/services/ai.service';
 import { FolderContentService } from '@/services/folder-content.service';
 import {
 	AgentProjectLookupProxy,
+	ExecutionRetentionService,
 	FavoriteResourceResolverRegistry,
+	WorkflowProjectService,
 	ExecutionDataJsonStore,
 } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
@@ -62,6 +64,10 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
  * executes.
  */
 function setUpContainerForInit() {
+	const executionRetention = mock<ExecutionRetentionService>();
+	const workflowProjects = mock<WorkflowProjectService>();
+	Container.set(ExecutionRetentionService, executionRetention);
+	Container.set(WorkflowProjectService, workflowProjects);
 	Container.set(FolderContentService, mock<FolderContentService>());
 	Container.set(AgentFolderService, mock<AgentFolderService>());
 	Container.set(SandboxSettingsService, mock<SandboxSettingsService>());
@@ -121,6 +127,8 @@ function setUpContainerForInit() {
 	);
 
 	return {
+		executionRetention,
+		workflowProjects,
 		serviceAccountProjects,
 		agentServiceAccountService,
 		registry,
@@ -179,32 +187,47 @@ describe('AgentsModule', () => {
 				isKnowledgeActive: true,
 				proxyEnabled: false,
 				knowledgeBaseEnabled: true,
+				sandboxEgressPolicy: 'disabled' as const,
 			},
 			{
 				isSandboxEnabled: false,
 				isKnowledgeActive: true,
 				proxyEnabled: true,
 				knowledgeBaseEnabled: false,
+				sandboxEgressPolicy: 'opt-in' as const,
 			},
 			{
 				isSandboxEnabled: true,
 				isKnowledgeActive: false,
 				proxyEnabled: true,
 				knowledgeBaseEnabled: false,
+				sandboxEgressPolicy: 'opt-out' as const,
 			},
 		])(
-			'reports knowledgeBaseEnabled=$knowledgeBaseEnabled for sandbox=$isSandboxEnabled and knowledge module=$isKnowledgeActive, independent of proxy=$proxyEnabled',
-			async ({ isSandboxEnabled, isKnowledgeActive, proxyEnabled, knowledgeBaseEnabled }) => {
-				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [] }));
+			'reports knowledgeBaseEnabled=$knowledgeBaseEnabled, sandboxEnabled=$isSandboxEnabled, sandboxEgressPolicy=$sandboxEgressPolicy for sandbox=$isSandboxEnabled and knowledge module=$isKnowledgeActive, independent of proxy=$proxyEnabled',
+			async ({
+				isSandboxEnabled,
+				isKnowledgeActive,
+				proxyEnabled,
+				knowledgeBaseEnabled,
+				sandboxEgressPolicy,
+			}) => {
+				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [], sandboxEgressPolicy }));
 				Container.set(
 					KnowledgeAvailabilityService,
 					makeKnowledgeAvailabilityService({ isSandboxEnabled, isKnowledgeActive }),
+				);
+				Container.set(
+					SandboxSettingsService,
+					mock<SandboxSettingsService>({ isAgentSandboxEnabled: () => isSandboxEnabled }),
 				);
 				Container.set(AiService, mock<AiService>({ isProxyEnabled: () => proxyEnabled }));
 
 				const settings = await module.settings();
 
 				expect(settings.knowledgeBaseEnabled).toBe(knowledgeBaseEnabled);
+				expect(settings.sandboxEnabled).toBe(isSandboxEnabled);
+				expect(settings.sandboxEgressPolicy).toBe(sandboxEgressPolicy);
 				expect(settings.proxyEnabled).toBe(proxyEnabled);
 			},
 		);
@@ -269,6 +292,21 @@ describe('AgentsModule', () => {
 			await module.init();
 
 			expect(serviceAccountUsageProxy.register).toHaveBeenCalledWith(serviceAccountUsage);
+		});
+
+		it('registers the approval retention and private owner policies', async () => {
+			const { executionRetention, workflowProjects } = setUpContainerForInit();
+
+			await module.init();
+
+			expect(executionRetention.register).toHaveBeenCalledWith(
+				'agent-approvals',
+				expect.any(Function),
+			);
+			expect(workflowProjects.registerPrivateOwner).toHaveBeenCalledWith(
+				'agent-approvals',
+				expect.any(Function),
+			);
 		});
 	});
 });

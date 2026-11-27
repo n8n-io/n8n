@@ -16,6 +16,7 @@ import type {
 	SubAgentChunkPayload,
 	SubAgentCompletedPayload,
 	SubAgentStartedPayload,
+	ToolApprovalEventPayload,
 } from '../runtime/event';
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
@@ -175,6 +176,7 @@ export type StreamChunk = ContentMetadata &
 		// `message` is reserved for sub-agent / app-defined `CustomAgentMessage`
 		| { type: 'message'; message: AgentMessage }
 		| ({ type: 'subagent-started' } & SubAgentStartedPayload)
+		| ({ type: 'tool-approval' } & ToolApprovalEventPayload)
 		| ({ type: 'subagent-completed' } & SubAgentCompletedPayload)
 		| ({ type: 'subagent-chunk' } & SubAgentChunkPayload)
 		| {
@@ -233,6 +235,13 @@ export interface SideCallUsageReport {
 	cost?: number;
 	/** Stable per-LLM-call id, generated once at the call site for idempotent billing. */
 	reportId: string;
+}
+
+/** A title that title generation stored on a thread. */
+export interface ThreadTitleUpdate {
+	threadId: string;
+	title: string;
+	emoji?: string;
 }
 
 export interface AgentInputBoundary {
@@ -306,6 +315,12 @@ export interface ExecutionOptions {
 	 * Best-effort: a host failure here must not break the run.
 	 */
 	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
+	/**
+	 * Called when title generation has stored a title on the thread. The title
+	 * call runs beside the agent loop, so this can come before the run ends.
+	 * Best-effort: a host failure here does not break the run.
+	 */
+	onThreadTitle?: (update: ThreadTitleUpdate) => void | Promise<void>;
 	/** Thread allowances supplied for this execution. Not stored in checkpoints. */
 	approvalContext?: ToolApprovalContext;
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
@@ -329,6 +344,8 @@ export interface ExecutionOptions {
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
+	/** The `titleText` of the run, so that a resumed run titles the same text. */
+	titleText?: string;
 }
 
 export interface NativeToolDeferralConfig {

@@ -29,8 +29,8 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref, useTemplateRef, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 import { useCreateMcpServerDialog } from '../composables/useCreateMcpServerDialog';
 import { useMcpServerUrl } from '../composables/useMcpServerUrl';
@@ -39,6 +39,7 @@ import { MCP_SERVER_VIEW } from '../mcp-servers.constants';
 import { getMcpServerPermissions } from '../mcp-servers.permissions';
 
 const i18n = useI18n();
+const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
 const toast = useToast();
@@ -57,6 +58,7 @@ const slug = ref('');
 const slugEdited = ref(false);
 const description = ref('');
 const availability = ref<McpServerSlugAvailability | null>(null);
+const slugCheckFailed = ref(false);
 const saving = ref(false);
 
 /** On a project page the project is fixed. On Overview the builder picks it. */
@@ -66,6 +68,10 @@ const canCreateInProject = computed(
 );
 const finalSlug = computed(() => mcpServerSlugFromName(slug.value));
 const slugError = computed(() => {
+	// A name with no Latin letter or digit, such as "日本語", makes no slug.
+	if (name.value.trim() !== '' && finalSlug.value === '') {
+		return i18n.baseText('mcpServers.create.url.empty');
+	}
 	if (availability.value?.reason === 'taken') return i18n.baseText('mcpServers.create.url.taken');
 	if (availability.value?.reason === 'reserved') {
 		return i18n.baseText('mcpServers.create.url.reserved');
@@ -76,7 +82,7 @@ const canSubmit = computed(
 	() =>
 		name.value.trim() !== '' &&
 		canCreateInProject.value &&
-		availability.value?.available === true &&
+		(availability.value?.available === true || slugCheckFailed.value) &&
 		!saving.value,
 );
 
@@ -92,19 +98,35 @@ watch(
 		slugEdited.value = false;
 		description.value = '';
 		availability.value = null;
+		slugCheckFailed.value = false;
 	},
 	{ immediate: true },
+);
+
+// The dialog state outlives the page. A navigation closes it, so it never creates the server in
+// the project of a page that is gone.
+watch(
+	() => route.fullPath,
+	() => {
+		if (dialog.state.open) dialog.close();
+	},
 );
 
 watch(name, (value) => {
 	if (!slugEdited.value) slug.value = mcpServerSlugFromName(value);
 });
 
-function onSlugInput(value: string) {
+async function onSlugInput(value: string) {
 	// The input also echoes a value that the name wrote. Only a different value is an edit.
 	if (value === slug.value) return;
 	slugEdited.value = true;
-	slug.value = mcpServerSlugInput(value);
+	const cleaned = mcpServerSlugInput(value);
+	// An unchanged slug does not render again, so the input keeps the dropped characters.
+	if (cleaned === slug.value) {
+		slug.value = value;
+		await nextTick();
+	}
+	slug.value = cleaned;
 }
 
 async function checkSlug() {
@@ -116,7 +138,8 @@ async function checkSlug() {
 		const result = await checkMcpServerSlug(rootStore.restApiContext, id, value);
 		if (isLatest()) availability.value = result;
 	} catch {
-		// The create call checks the slug again, so a failed check only keeps the button off.
+		// The create call checks the slug again, so Create stays available.
+		if (isLatest()) slugCheckFailed.value = true;
 	}
 }
 
@@ -128,6 +151,7 @@ const checkSlugDebounced = debounce(checkSlug, {
 watch([finalSlug, projectId], async () => {
 	latestCheck.invalidate();
 	availability.value = null;
+	slugCheckFailed.value = false;
 	await checkSlugDebounced();
 });
 
@@ -216,9 +240,11 @@ async function onCreate() {
 				:label="i18n.baseText('mcpServers.create.name')"
 				:bold="false"
 				size="small"
+				input-name="create-mcp-server-name"
 				:class="$style.field"
 			>
 				<N8nInput
+					id="create-mcp-server-name"
 					ref="nameInput"
 					v-model="name"
 					:placeholder="i18n.baseText('mcpServers.create.name.placeholder')"
@@ -232,9 +258,11 @@ async function onCreate() {
 				:label="i18n.baseText('mcpServers.create.url')"
 				:bold="false"
 				size="small"
+				input-name="create-mcp-server-slug"
 				:class="$style.field"
 			>
 				<N8nInput
+					id="create-mcp-server-slug"
 					:model-value="slug"
 					:placeholder="i18n.baseText('mcpServers.create.url.placeholder')"
 					:maxlength="MCP_SERVER_SLUG_MAX_LENGTH"
@@ -255,6 +283,15 @@ async function onCreate() {
 			>
 				{{ slugError }}
 			</N8nText>
+			<N8nText
+				v-else-if="slugCheckFailed"
+				size="small"
+				color="text-light"
+				:class="$style.helper"
+				data-test-id="create-mcp-server-slug-unchecked"
+			>
+				{{ i18n.baseText('mcpServers.create.url.checkFailed') }}
+			</N8nText>
 			<N8nText v-else size="small" color="text-light" :class="$style.helper">
 				{{ i18n.baseText('mcpServers.create.url.hint') }}
 			</N8nText>
@@ -263,9 +300,11 @@ async function onCreate() {
 				:label="i18n.baseText('mcpServers.create.descriptionField')"
 				:bold="false"
 				size="small"
+				input-name="create-mcp-server-description"
 				:class="$style.field"
 			>
 				<N8nInput
+					id="create-mcp-server-description"
 					v-model="description"
 					type="textarea"
 					:rows="3"

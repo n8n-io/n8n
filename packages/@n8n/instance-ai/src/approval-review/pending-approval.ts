@@ -87,12 +87,15 @@ function isSkillActionRequiringReview(
 	);
 }
 
-/** A deleted custom MCP server cuts off every AI client that uses it. */
-function isCustomMcpServerDelete(approval: Pick<PendingApproval, 'toolName' | 'args'>): boolean {
+/**
+ * A deleted custom MCP server cuts off every AI client that uses it, and a removed tool breaks
+ * the clients that call it. Both always ask the user.
+ */
+function isCustomMcpServerRemoval(approval: Pick<PendingApproval, 'toolName' | 'args'>): boolean {
 	return (
 		approval.toolName === DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS &&
 		isRecord(approval.args) &&
-		approval.args.action === 'delete'
+		(approval.args.action === 'delete' || approval.args.action === 'remove-tool')
 	);
 }
 
@@ -136,7 +139,7 @@ export function routeApproval(
 	if (
 		ALWAYS_ASK_TOOLS.has(approval.toolName) ||
 		isSkillActionRequiringReview(approval) ||
-		isCustomMcpServerDelete(approval)
+		isCustomMcpServerRemoval(approval)
 	) {
 		return 'always-ask';
 	}

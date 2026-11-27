@@ -1397,6 +1397,19 @@ describe('InstanceAiChatPanel', () => {
 			} as InstanceAiMessage;
 		}
 
+		/** A tool result as it reaches the editor: the tool declares `untrustedOutput()`. */
+		function untrusted(result: Record<string, unknown>) {
+			return {
+				type: 'content',
+				value: [
+					{
+						type: 'text',
+						text: `<untrusted_data source="tool:custom-mcp-servers">\n${JSON.stringify(result)}\n</untrusted_data>`,
+					},
+				],
+			};
+		}
+
 		function mountServerPanel(runtime = makeThread()) {
 			store.getOrCreateRuntime.mockReturnValue(runtime);
 			store.getThreadMetadata.mockReturnValue(serverMetadata);
@@ -1458,7 +1471,7 @@ describe('InstanceAiChatPanel', () => {
 				serverToolCall(
 					'tc-add',
 					{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['w1'] },
-					{ success: true, tools: [] },
+					untrusted({ success: true, serverMutated: true, tools: [] }),
 				),
 			);
 			await flushPromises();
@@ -1466,24 +1479,40 @@ describe('InstanceAiChatPanel', () => {
 			expect(wrapper.emitted('subject-changed')).toHaveLength(1);
 		});
 
-		it('does not tell the host about reads, denied changes, or other servers', async () => {
+		it.each([
+			[
+				'a read',
+				() =>
+					serverToolCall(
+						'tc-get',
+						{ action: 'get', serverId: SERVER_ID },
+						untrusted({ server: {} }),
+					),
+			],
+			[
+				'a denied change',
+				() =>
+					serverToolCall(
+						'tc-denied',
+						{ action: 'update', serverId: SERVER_ID, name: 'New' },
+						untrusted({ success: false, denied: true }),
+					),
+			],
+			[
+				'a change of another server',
+				() =>
+					serverToolCall(
+						'tc-other',
+						{ action: 'remove-tool', serverId: 'other-server', toolId: 't1' },
+						untrusted({ success: true, serverMutated: true, toolId: 't1' }),
+					),
+			],
+		])('does not tell the host about %s', async (_case, message) => {
 			const runtime = makeThread();
 			const wrapper = mountServerPanel(runtime);
 			await flushPromises();
 
-			runtime.messages.push(
-				serverToolCall('tc-get', { action: 'get', serverId: SERVER_ID }, { server: {} }),
-				serverToolCall(
-					'tc-denied',
-					{ action: 'update', serverId: SERVER_ID, name: 'New' },
-					{ success: false, denied: true },
-				),
-				serverToolCall(
-					'tc-other',
-					{ action: 'remove-tool', serverId: 'other-server', toolId: 't1' },
-					{ success: true, toolId: 't1' },
-				),
-			);
+			runtime.messages.push(message());
 			await flushPromises();
 
 			expect(wrapper.emitted('subject-changed')).toBeUndefined();
@@ -1495,10 +1524,61 @@ describe('InstanceAiChatPanel', () => {
 				serverToolCall(
 					'tc-old',
 					{ action: 'update', serverId: SERVER_ID, description: 'Old' },
-					{ success: true, server: {} },
+					untrusted({ success: true, serverMutated: true, server: {} }),
 				),
 			);
 			const wrapper = mountServerPanel(runtime);
+			await flushPromises();
+
+			expect(wrapper.emitted('subject-changed')).toBeUndefined();
+		});
+
+		it('tells the host about each change when approvals finish out of order', async () => {
+			const runtime = makeThread();
+			const wrapper = mountServerPanel(runtime);
+			await flushPromises();
+			runtime.messages.push(
+				serverToolCall(
+					'tc-first',
+					{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['w1'] },
+					undefined,
+				),
+				serverToolCall(
+					'tc-second',
+					{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['w2'] },
+					undefined,
+				),
+			);
+			const [first, second] = runtime.messages.map((message) => message.agentTree!.toolCalls[0]);
+			first.isLoading = true;
+			second.isLoading = true;
+			await flushPromises();
+
+			second.result = untrusted({ success: true, serverMutated: true, tools: [] });
+			second.isLoading = false;
+			await flushPromises();
+			first.result = untrusted({ success: true, serverMutated: true, tools: [] });
+			first.isLoading = false;
+			await flushPromises();
+
+			expect(wrapper.emitted('subject-changed')).toHaveLength(2);
+		});
+
+		it('does not replay the changes that the history loads in one tick', async () => {
+			const runtime = makeThread();
+			runtime.isHydratingThread = true;
+			const wrapper = mountServerPanel(runtime);
+			await flushPromises();
+
+			// History loading sets the messages and ends hydration in the same tick.
+			runtime.messages.push(
+				serverToolCall(
+					'tc-old',
+					{ action: 'update', serverId: SERVER_ID, description: 'Old' },
+					untrusted({ success: true, serverMutated: true, server: {} }),
+				),
+			);
+			runtime.isHydratingThread = false;
 			await flushPromises();
 
 			expect(wrapper.emitted('subject-changed')).toBeUndefined();
@@ -1513,12 +1593,32 @@ describe('InstanceAiChatPanel', () => {
 			const prefill = {
 				text: 'Build out the server.',
 				prefillType: 'mcp_server_build_prompt' as const,
+				prefillId: 'build-prompt-1',
 			};
 
 			wrapper.vm.setPrefill(prefill);
 			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
 
 			expect(getPendingComposerDraft('thread-2')).toEqual(prefill);
+		});
+
+		it('drops a queued pre-fill when the subject changes before the thread opens', async () => {
+			store.getThreadMetadata.mockReturnValue(undefined);
+			const wrapper = mount(InstanceAiChatPanel, {
+				props: { subject: serverSubject, launch: serverLaunch },
+				global: { stubs: panelStubs },
+			});
+
+			wrapper.vm.setPrefill({
+				text: 'Build out the server.',
+				prefillType: 'mcp_server_build_prompt' as const,
+			});
+			await wrapper.setProps({ subject: { ...serverSubject, id: 'other-server' } });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+
+			for (const [threadId] of wrapper.emitted('update:threadId') ?? []) {
+				expect(getPendingComposerDraft(threadId as string)).toBeNull();
+			}
 		});
 
 		it('shows the subject row of the host', async () => {

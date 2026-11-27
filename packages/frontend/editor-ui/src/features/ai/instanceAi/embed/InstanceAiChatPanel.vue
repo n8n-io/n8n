@@ -43,6 +43,7 @@ import {
 } from '@/features/agents/composables/useAgentApi';
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { getThreadDisplayTitle } from '../instanceAi.threadRuntime';
+import { formatThreadTitle } from '@/features/agents/utils/thread-title';
 import { provideThread, useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import {
@@ -74,7 +75,7 @@ import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from '../components/InstanceAiConversation.vue';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
-import { getLatestMcpServerMutation } from './mcpServerMutations';
+import { getMcpServerMutations } from './mcpServerMutations';
 import {
 	INSTANCE_AI_EMBED_SUBJECT_KEY,
 	threadTargetsSubject,
@@ -303,15 +304,28 @@ function flushQueuedHandoff(threadId: string) {
 	stashHandoff(threadId, queued);
 }
 
-/** A pre-fill that the host set before the panel had a thread. */
-const queuedPrefill = ref<PendingComposerDraft | null>(null);
+/** A pre-fill that the host set before the panel had a thread, with the subject it is for. */
+const queuedPrefill = ref<{ draft: PendingComposerDraft; subjectKey: string } | null>(null);
+
+function subjectKeyOf(subject: InstanceAiEmbedSubject): string {
+	return `${subject.type}:${subject.projectId ?? ''}:${subject.id}`;
+}
+
+// A pre-fill for one subject must not reach the thread of the next subject.
+watch(
+	() => subjectKeyOf(props.subject),
+	() => {
+		queuedPrefill.value = null;
+	},
+);
 
 /** The conversation of the thread reads the stash when it mounts. */
 function flushQueuedPrefill(threadId: string) {
-	const draft = queuedPrefill.value;
-	if (!draft) return;
+	const queued = queuedPrefill.value;
+	if (!queued) return;
 	queuedPrefill.value = null;
-	stashPendingComposerDraft(threadId, draft);
+	if (queued.subjectKey !== subjectKeyOf(props.subject)) return;
+	stashPendingComposerDraft(threadId, queued.draft);
 }
 
 /** Every path that discovers a thread id routes through here so a queued
@@ -364,7 +378,14 @@ function setPrefill(prefill: InstanceAiPrefillPayload) {
 		conversation.setPrefill(prefill);
 		return;
 	}
-	queuedPrefill.value = { text: prefill.text, prefillType: prefill.prefillType };
+	queuedPrefill.value = {
+		draft: {
+			text: prefill.text,
+			prefillType: prefill.prefillType,
+			...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+		},
+		subjectKey: subjectKeyOf(props.subject),
+	};
 	if (activeThreadId.value) flushQueuedPrefill(activeThreadId.value);
 }
 
@@ -699,7 +720,9 @@ const currentThreadTitle = computed<string | undefined>(() => {
 	const threadId = activeThreadId.value;
 	if (!threadId) return undefined;
 	if (isAgentThread.value) {
-		return assistantAgentThreadsStore.threadsById.get(threadId)?.title ?? undefined;
+		const thread = assistantAgentThreadsStore.threadsById.get(threadId);
+		// The generated title, else the first message until the title arrives.
+		return thread ? formatThreadTitle(thread, '') || undefined : undefined;
 	}
 	const summary = store.threads.find((thread) => thread.id === threadId);
 	const runtime = store.getRuntime(threadId);
@@ -723,20 +746,32 @@ const ThreadScope = defineComponent({
 		const working = useIsAgentWorking(runtime);
 		watch(working, (value) => emit('update:working', value), { immediate: true });
 		useAgentMutationRefresh(runtime);
-		const serverMutation = computed(() =>
+		const serverMutations = computed(() =>
 			props.subject.type === 'mcpServer'
-				? getLatestMcpServerMutation(runtime.artifactTurns, props.subject.id)
-				: undefined,
+				? getMcpServerMutations(runtime.artifactTurns, props.subject.id)
+				: [],
 		);
-		watch(serverMutation, (toolCallId) => {
-			// A thread that loads its history replays old changes, which the host already shows.
-			if (toolCallId && !runtime.isHydratingThread) emit('subject-changed');
-		});
+		const seenServerMutations = new Set<string>();
+		let seededServerMutations = false;
+		watch(
+			serverMutations,
+			(toolCallIds) => {
+				const unseen = toolCallIds.filter((toolCallId) => !seenServerMutations.has(toolCallId));
+				for (const toolCallId of unseen) seenServerMutations.add(toolCallId);
+				// The changes of the history are already on the page: the thread at mount, and the
+				// messages that hydration loads. `sync` sees the hydrating flag before it turns off.
+				if (unseen.length > 0 && seededServerMutations && !runtime.isHydratingThread) {
+					emit('subject-changed');
+				}
+				seededServerMutations = true;
+			},
+			{ immediate: true, flush: 'sync' },
+		);
 		const buildingArtifactIds = useBuildingArtifactIds(runtime);
 		watch(
 			() => buildingArtifactIds.value.has(props.subject.id),
 			(value) => scopeEmit('update:building', value),
-			{ immediate: true },
+			{ immediate: true, flush: 'sync' },
 		);
 		return () =>
 			h(

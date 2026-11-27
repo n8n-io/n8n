@@ -5,15 +5,10 @@ import {
 	CreateAppDto,
 	ListAppsQueryDto,
 	SetAppBindingsDto,
-	AI_ASSISTANT_AT_MENTIONS_FLAG,
-	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
@@ -26,9 +21,6 @@ import {
 	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
-	ASSISTANT_SKILLS_FLAG,
-	CUSTOM_MCP_SERVERS_FLAG,
-	CUSTOM_MCP_SERVERS_FLAG_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -43,6 +35,7 @@ import {
 	NodeTypesProxy,
 	PostHogClient,
 	TelemetryProxy,
+	WorkflowPublishGuardProxy,
 	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -191,6 +184,7 @@ import {
 	UserError,
 } from '@n8n/errors';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
@@ -270,6 +264,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { isAgentsAccessEnabled } from './agents-access';
+import { appNamespaceCandidates } from './app-namespace-candidates';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import {
 	isEngineV2ExecutionUnsettled,
@@ -450,16 +445,14 @@ export interface InstanceAiFeatureFlags {
 	setupPanelVariant?: 'control' | 'variant';
 	/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 	nodeUsageEnabled: boolean;
-	/** Node attachments from either the canvas or Assistant mentions rollout. */
+	/** Node attachments from the canvas and from Assistant mentions. */
 	nodeContextEnabled: boolean;
-	/** Per-user folder-exploration gate, passed into `createContext`. Fails
-	 *  closed with every other gate: `getFeatureFlags` never throws, it
-	 *  returns `{}` on a PostHog outage. */
+	/** Folder attribution and folder scoping on the workflows list tool. */
 	folderExplorationEnabled: boolean;
 	credentialDescriptionsEnabled: boolean;
 	/** Approval modes: the Manual and Auto selector, and Auto for users without a saved choice. */
 	approvalModesEnabled: boolean;
-	/** Shared activity recording and retrieval use the same instance gate. */
+	/** The activity reader: its tool, the context block, and the skill about both. Off with the activity log. */
 	instanceContextEnabled: boolean;
 	assistantSkillsEnabled: boolean;
 	skillSourcesEnabled?: boolean;
@@ -629,6 +622,8 @@ export class InstanceAiAdapterService {
 			onHelperUsage?: InstanceAiContext['onHelperUsage'];
 			/** Transport for those utility LLM calls. */
 			modelFetch?: FetchFn;
+			/** Unlabeled transport for non-LLM utility fetches such as the models.dev catalog. */
+			catalogFetch?: FetchFn;
 			/** Effective data-sharing setting for this run. Absent → the env value. */
 			allowSendingParameterValues?: boolean;
 		},
@@ -658,6 +653,7 @@ export class InstanceAiAdapterService {
 			utilityModelId,
 			onHelperUsage,
 			modelFetch,
+			catalogFetch,
 			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
 
@@ -698,6 +694,7 @@ export class InstanceAiAdapterService {
 			...(utilityModelId ? { utilityModelId } : {}),
 			...(onHelperUsage ? { onHelperUsage } : {}),
 			modelFetch,
+			...(catalogFetch ? { catalogFetch } : {}),
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,
@@ -867,23 +864,26 @@ export class InstanceAiAdapterService {
 		}
 	}
 
+	/**
+	 * Reads the flag for the instance, as the server routes do. So the tool is in the chat only
+	 * when its calls can work.
+	 */
+	private async isCustomMcpServersEnabled(): Promise<boolean> {
+		try {
+			if (!Container.get(ModuleRegistry).isActive('mcp-servers')) return false;
+			const { CustomMcpServersFlagGate } = await import('@n8n/backend-module-mcp-servers');
+			return await Container.get(CustomMcpServersFlagGate).isEnabled();
+		} catch {
+			return false;
+		}
+	}
+
 	/** Resolves experiment assignments. */
 	async resolveExperimentGates(user: User): Promise<InstanceAiFeatureFlags> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
-		let instanceContextEnabled = false;
-		let assistantSkillsEnabled = false;
 		let skillSourcesEnabled = false;
 		try {
-			const postHog = Container.get(PostHogClient);
-			const [userFlags, instanceFlag, assistantSkillsFlag] = await Promise.allSettled([
-				postHog.getFeatureFlags(user),
-				postHog.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
-				postHog.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG),
-			]);
-			if (userFlags.status === 'fulfilled') flags = userFlags.value;
-			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
-			assistantSkillsEnabled =
-				assistantSkillsFlag.status === 'fulfilled' && assistantSkillsFlag.value === true;
+			flags = await Container.get(PostHogClient).getFeatureFlags(user);
 			// Reuse the assignments already fetched for this turn.
 			skillSourcesEnabled = Container.get(SkillSyncFlagGate).isEnabledForFlags(flags);
 		} catch {
@@ -907,15 +907,12 @@ export class InstanceAiAdapterService {
 				? { setupPanelVariant }
 				: {}),
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
-			nodeContextEnabled:
-				flags[CANVAS_NODE_CONTEXT_FLAG] === true || flags[AI_ASSISTANT_AT_MENTIONS_FLAG] === true,
-			folderExplorationEnabled:
-				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
-				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+			nodeContextEnabled: true,
+			folderExplorationEnabled: true,
 			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
-			customMcpServersEnabled: flags[CUSTOM_MCP_SERVERS_FLAG] === CUSTOM_MCP_SERVERS_FLAG_VARIANT,
-			instanceContextEnabled,
-			assistantSkillsEnabled,
+			customMcpServersEnabled: await this.isCustomMcpServersEnabled(),
+			instanceContextEnabled: this.globalConfig.activityLog.enabled,
+			assistantSkillsEnabled: true,
 			...(skillSourcesEnabled ? { skillSourcesEnabled } : {}),
 			...(typeof preferencesNoteVariant === 'string' ? { preferencesNoteVariant } : {}),
 		};
@@ -1817,6 +1814,29 @@ export class InstanceAiAdapterService {
 				await notifyWorkflowUpdated(workflowId);
 
 				return { activeVersionId: wf.activeVersionId };
+			},
+
+			async getPublishReviewBlock(workflowId: string, versionId?: string) {
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:publish',
+				]);
+				if (!workflow) throw new WorkflowNotFoundError(workflowId);
+				// The publish refuses archived workflows with its own error, and they cannot go to review.
+				if (workflow.isArchived) return undefined;
+
+				const targetVersionId = versionId ?? workflow.versionId;
+				// Same as the publish: the live version goes live again without the review rules.
+				if (targetVersionId === workflow.activeVersionId) return undefined;
+
+				try {
+					await Container.get(WorkflowPublishGuardProxy).assertCanPublish(workflowId, {
+						versionId: targetVersionId,
+					});
+					return undefined;
+				} catch (error) {
+					if (error instanceof WorkflowPublishBlockedError) return error.details.reason;
+					throw error;
+				}
 			},
 
 			async unpublish(workflowId: string) {
@@ -3836,17 +3856,21 @@ export class InstanceAiAdapterService {
 		return {
 			createApp: async ({ name, namespace, visibility, id }) => {
 				const { apps } = await services('app:create');
-				try {
-					return await apps.createApp(
-						projectId,
-						CreateAppDto.parse({ name, namespace, visibility }),
-						{ id, actor },
-					);
-				} catch (error) {
-					// The namespace is the only unique field that the user picks.
-					if (error instanceof ConflictError) throw new AppNamespaceTakenError(namespace);
-					throw error;
+				// The user doesn't see the namespace on the plan card, so a taken
+				// namespace moves on to the next numbered one instead of failing.
+				for (const candidate of appNamespaceCandidates(namespace, apps.maxNamespaceLength())) {
+					try {
+						return await apps.createApp(
+							projectId,
+							CreateAppDto.parse({ name, namespace: candidate, visibility }),
+							{ id, actor },
+						);
+					} catch (error) {
+						// The namespace is the only unique field that the Assistant picks.
+						if (!(error instanceof ConflictError)) throw error;
+					}
 				}
+				throw new AppNamespaceTakenError(namespace);
 			},
 			listApps: async ({ name }) => {
 				const { apps } = await services('app:list');

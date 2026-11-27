@@ -65,13 +65,17 @@ export {
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
 export { InstanceCredentialAssignmentRepository } from './instance-credential-assignment.repository';
 export { AgentExecutionStatisticsRepository } from './agent-execution-statistics.repository';
+export { LeaseKindRepository } from './lease-kind.repository';
+export { LeaseSessionRepository, type NewLeaseSession } from './lease-session.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectPoolSettingsRepository } from './project-pool-settings.repository.ee';
+export { ProjectWorkflowReviewSettingsRepository } from './project-workflow-review-settings.repository.ee';
 export { ProjectRelationRepository } from './project-relation.repository';
 export {
 	ProjectRepository,
 	ProjectIdConflictError,
 	type ProjectListOptions,
+	type TeamProjectWithMemberCount,
 } from './project.repository';
 export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';
@@ -104,7 +108,11 @@ export { TestCaseExecutionRepository } from './test-case-execution.repository.ee
 export { TestRunRepository, type TestRunSummary } from './test-run.repository.ee';
 export { VariablesRepository } from './variables.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';
-export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
+export {
+	WorkflowStatisticsRepository,
+	type FirstOccurrenceRow,
+	type WorkflowStatisticsIncrement,
+} from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';

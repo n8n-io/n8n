@@ -1,3 +1,4 @@
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { getWorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
@@ -13,7 +14,6 @@ import {
 	type IRunExecutionData,
 	type IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { ActiveExecutions } from '@/active-executions';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
@@ -48,7 +48,7 @@ export type CallableWorkflowRefusal =
 type CallableTrigger = ReturnType<typeof detectTriggerNode>;
 
 export type CallableWorkflowCheck =
-	| { callable: true; workflow: WorkflowEntity }
+	| { callable: true }
 	| { callable: false; reason: CallableWorkflowRefusal };
 
 /** A JSON schema of the tool input. It always describes an object. */
@@ -82,7 +82,8 @@ export type CallableWorkflowStartedRun = {
 	executionId: string;
 	/**
 	 * Settles when the execution finishes, also after the wait ended. A caller
-	 * with its own run cap holds its slot until then.
+	 * with its own run cap holds its slot until then. A run that reaches a Wait
+	 * node settles it too, and the part that resumes later is not counted.
 	 */
 	finished: Promise<void>;
 } & (
@@ -111,6 +112,12 @@ const OPEN_INPUT_SCHEMA: CallableWorkflowInputSchema = {
 /**
  * Loads, checks, describes, and runs the published version of a project
  * workflow that another feature calls as a tool, such as a custom MCP server.
+ *
+ * `AppWorkflowAdapter` keeps its own copy of this path in the MVP, with its own
+ * run cap. The copies differ: here a stop during the wait gives `canceled` and
+ * a run checks that the project owns the workflow. Apps throws on a stop and
+ * checks the owner only when it binds the workflow. Move Apps onto this runner
+ * after the MVP.
  */
 @Service()
 export class CallableWorkflowRunner {
@@ -130,15 +137,14 @@ export class CallableWorkflowRunner {
 	) {}
 
 	async check(projectId: string, workflowId: string): Promise<CallableWorkflowCheck> {
-		const checked = await this.load(projectId, workflowId);
-		return 'reason' in checked
-			? { callable: false, reason: checked.reason }
-			: { callable: true, workflow: checked.workflow };
+		const checked = await this.load(projectId, workflowId, { preview: true });
+		// The entity stays in the runner, so a caller cannot hand it to its module.
+		return 'reason' in checked ? { callable: false, reason: checked.reason } : { callable: true };
 	}
 
 	/** The name and the description are not versioned. The inputs come from the published version. */
 	async describe(projectId: string, workflowId: string): Promise<CallableWorkflowDescription> {
-		const checked = await this.load(projectId, workflowId);
+		const checked = await this.load(projectId, workflowId, { preview: true });
 		if ('reason' in checked) return { callable: false, reason: checked.reason };
 		const { workflow, trigger } = checked;
 		return {
@@ -160,7 +166,7 @@ export class CallableWorkflowRunner {
 		input: unknown,
 		options: CallableWorkflowRunOptions,
 	): Promise<CallableWorkflowRunResult> {
-		const checked = await this.load(projectId, workflowId);
+		const checked = await this.load(projectId, workflowId, { preview: false });
 		if ('reason' in checked) return { status: 'refused', reason: checked.reason };
 		const { workflow, trigger } = checked;
 
@@ -176,7 +182,9 @@ export class CallableWorkflowRunner {
 		if (!release) return { status: 'busy' };
 		let executionId: string;
 		try {
-			executionId = await this.workflowRunner.run(toRunData(workflow, trigger.node, parsed.data));
+			executionId = await this.workflowRunner.run(
+				toRunData(workflow, projectId, trigger.node, parsed.data),
+			);
 		} catch (error) {
 			release();
 			throw error;
@@ -203,7 +211,7 @@ export class CallableWorkflowRunner {
 	/** Returns a release function, or `null` when the limit is full. */
 	private claimRunSlot(): (() => void) | null {
 		const max = this.workflowsConfig.callableMaxConcurrentRuns;
-		if (max > 0 && this.inFlight >= max) return null;
+		if (max !== -1 && this.inFlight >= max) return null;
 		this.inFlight++;
 		return () => {
 			this.inFlight--;
@@ -240,10 +248,14 @@ export class CallableWorkflowRunner {
 		}
 	}
 
-	/** Loads the published version and runs every check that does not need the input. */
+	/**
+	 * Loads the published version and runs every check that does not need the input. A preview
+	 * (`check`, `describe`) does not log a policy denial, because nothing runs.
+	 */
 	private async load(
 		projectId: string,
 		workflowId: string,
+		{ preview }: { preview: boolean },
 	): Promise<
 		{ workflow: WorkflowEntity; trigger: CallableTrigger } | { reason: CallableWorkflowRefusal }
 	> {
@@ -269,11 +281,17 @@ export class CallableWorkflowRunner {
 		const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
 		if (incompatibility) return { reason: incompatibility.reason };
 
-		try {
-			await this.subworkflowPolicyChecker.checkForProject(workflow, projectId);
-		} catch (error) {
-			if (error instanceof SubworkflowPolicyDenialError) return { reason: 'not_callable' };
-			throw error;
+		if (preview) {
+			if (!(await this.subworkflowPolicyChecker.isCallableByProject(workflow, projectId))) {
+				return { reason: 'not_callable' };
+			}
+		} else {
+			try {
+				await this.subworkflowPolicyChecker.checkForProject(workflow, projectId);
+			} catch (error) {
+				if (error instanceof SubworkflowPolicyDenialError) return { reason: 'not_callable' };
+				throw error;
+			}
 		}
 
 		return { workflow, trigger: detectTriggerNode(workflow) };
@@ -282,7 +300,9 @@ export class CallableWorkflowRunner {
 
 function toInputJsonSchema(trigger: CallableTrigger): CallableWorkflowInputSchema {
 	if (listWorkflowInputFields(trigger.node).length === 0) return OPEN_INPUT_SCHEMA;
-	const generated: unknown = zodToJsonSchema(inferInputSchema(trigger.node, trigger.triggerType));
+	const generated: unknown = zodSchemaToJsonSchema(
+		inferInputSchema(trigger.node, trigger.triggerType),
+	);
 	if (!isRecord(generated) || !isRecord(generated.properties)) return OPEN_INPUT_SCHEMA;
 	const { properties, required, additionalProperties } = generated;
 	return {
@@ -298,21 +318,18 @@ function toInputJsonSchema(trigger: CallableTrigger): CallableWorkflowInputSchem
 
 function toRunData(
 	workflow: WorkflowEntity,
+	projectId: string,
 	triggerNode: INode,
 	input: IDataObject,
 ): IWorkflowExecutionDataProcess {
 	const pinData: IPinData = { [triggerNode.name]: [{ json: input }] };
 	return {
 		executionMode: 'integrated',
-		workflowData: {
-			...workflow,
-			// A run that ends before the wait starts is read back from the execution row.
-			settings: {
-				...workflow.settings,
-				saveDataSuccessExecution: 'all',
-				saveDataErrorExecution: 'all',
-			},
-		},
+		// Queue mode sends the job to the worker pool of the project, and lifecycle events name it.
+		projectId,
+		// The owner's save settings stay. A failed run that is not saved and that ends before the
+		// wait reads back as `unknown`.
+		workflowData: workflow,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
 		pinData,
 		executionData: createRunExecutionData({
@@ -351,13 +368,17 @@ function toRunOutcome(
 ): RunOutcome {
 	const normalised = normaliseExecutionStatus(status);
 	if (normalised === 'success') {
-		// The items of the last node, from all of its main outputs.
+		// The items of the node that ran last, from all of its main outputs. In a loop, that node
+		// is not always the last key of `runData`.
 		const runData = data?.resultData?.runData;
-		const lastNodeItems = runData ? Object.values(collectResultData(runData, false))[0] : undefined;
+		const lastNode = data?.resultData?.lastNodeExecuted;
+		const source =
+			runData && lastNode && runData[lastNode] ? { [lastNode]: runData[lastNode] } : runData;
+		const lastNodeItems = source ? Object.values(collectResultData(source, false))[0] : undefined;
 		return { status: 'success', output: Array.isArray(lastNodeItems) ? lastNodeItems : [] };
 	}
 	if (normalised === 'error') {
-		const failedNode = nodes.find((node) => node.name === data?.resultData.lastNodeExecuted);
+		const failedNode = nodes.find((node) => node.name === data?.resultData?.lastNodeExecuted);
 		return {
 			status: 'error',
 			error: {

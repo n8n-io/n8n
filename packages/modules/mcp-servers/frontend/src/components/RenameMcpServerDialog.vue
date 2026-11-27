@@ -55,16 +55,23 @@ function onRename() {
 
 <template>
 	<N8nDialog
-		v-model:open="open"
+		:open="open"
 		:header="i18n.baseText('mcpServers.rename.title')"
 		:aria-description="i18n.baseText('mcpServers.rename.ariaDescription')"
 		size="small"
 		data-test-id="rename-mcp-server-dialog"
+		@update:open="(value: boolean) => !saving && (open = value)"
 		@open-auto-focus="onOpenAutoFocus"
 	>
 		<N8nDialogBody>
-			<N8nInputLabel :label="i18n.baseText('mcpServers.rename.name')" :bold="false" size="small">
+			<N8nInputLabel
+				:label="i18n.baseText('mcpServers.rename.name')"
+				:bold="false"
+				size="small"
+				input-name="rename-mcp-server-name"
+			>
 				<N8nInput
+					id="rename-mcp-server-name"
 					ref="nameInput"
 					v-model="value"
 					:maxlength="MCP_SERVER_NAME_MAX_LENGTH"
@@ -77,7 +84,12 @@ function onRename() {
 			</N8nText>
 		</N8nDialogBody>
 		<N8nDialogFooter>
-			<N8nButton variant="ghost" :label="i18n.baseText('generic.cancel')" @click="open = false" />
+			<N8nButton
+				variant="ghost"
+				:label="i18n.baseText('generic.cancel')"
+				:disabled="saving"
+				@click="open = false"
+			/>
 			<N8nButton
 				variant="solid"
 				:label="i18n.baseText('mcpServers.rename.submit')"

@@ -1,8 +1,8 @@
 import type { EventService } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 
-import type { McpServerConnection } from '../../mcp-server-connection.entity';
-import type { McpServer } from '../../mcp-server.entity';
+import type { McpServerConnection } from '../../database/entities/mcp-server-connection.entity';
+import type { McpServer } from '../../database/entities/mcp-server.entity';
 import type { OAuthClientNamePort } from '../../tools/oauth-client-name-port';
 import { McpServerConnectionRecorder } from '../mcp-server-connection-recorder';
 import type { McpServerConnectionRepository } from '../mcp-server-connection.repository';
