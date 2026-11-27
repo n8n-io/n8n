@@ -587,11 +587,6 @@ function hasPreview(finding: SkillScanFinding): boolean {
 /* A link in the notice has the color of the notice, in the warning theme and the danger theme. */
 .findings .findingLink {
 	color: inherit;
-
-	/* The underline stays, so the link still reads as a link. It gets thicker on hover. */
-	&:hover {
-		text-decoration-thickness: calc(var(--border-width) * 2);
-	}
 }
 
 .skipped {
