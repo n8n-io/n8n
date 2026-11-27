@@ -696,7 +696,7 @@ Runs on push to `master`:
 ```
 Push to master
 ├─ build-and-format (Blacksmith: build, then format check; populate master cache)
-├─ unit-test (matrix: Node 24.22.2, 26.13.0)
+├─ unit-test (matrix: Node 24.22.2, and `NODE_VERSION` of `docker/docker-bake.hcl`)
 │   └─ Coverage only on 24.22.2
 ├─ lint
 ├─ performance (CodSpeed benchmarks)
@@ -790,11 +790,15 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '26.13.0'
+  node-version:        # default: NODE_VERSION of docker/docker-bake.hcl
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
 ```
+
+The Node version comes from `NODE_VERSION` in `docker/docker-bake.hcl`, through
+`resolve-node-version.mjs`, unless the job sets `node-version`. A Node update
+changes that line only, and CI runs the Node of the images.
 
 The pnpm version comes from the `packageManager` field in the root
 `package.json`, through `resolve-pnpm-version.mjs`. There is no version input to
@@ -943,6 +947,7 @@ Scripts in `.github/scripts/`:
 | `link-check/check-report.mjs` | Decide which lychee failures are broken links | `test-link-check-weekly.yml` |
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
+| `resolve-node-version.mjs` | Publish the Node version of a job: the requested one, or `NODE_VERSION` of `docker/docker-bake.hcl`. Its test fails when a workflow or action pins a full version of the same Node major | `setup-nodejs` action, `util-probe-npm-oidc-exchange.yml` |
 | `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `find-last-green-commit.mjs` | Newest PR commit that passed the current workflow, for incremental PR runs | `ci-pull-requests.yml` |
