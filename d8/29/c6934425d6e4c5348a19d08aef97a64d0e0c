@@ -1,0 +1,27 @@
+packages/cli/src/modules/provisioning.ee/role-resolver.service.ee.ts
+  h_32d8cd6a0d6aad 149,151
+  s_14807a50d287da::t_b557f2a3e8473d 4-9,150
+packages/cli/src/modules/provisioning.ee/__tests__/role-resolver.service.ee.test.ts
+  s_14807a50d287da::t_b557f2a3e8473d 3,762-813
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d829c6934425d6e4c5348a19d08aef97a64d0e0c",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_14807a50d287da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e12fb81-4a06-4d8e-90db-fdd5463b88f8",
+        "model": "unknown"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

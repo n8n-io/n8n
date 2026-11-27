@@ -1,0 +1,26 @@
+packages/workflow/src/errors/index.ts
+  s_14807a50d287da::t_1eff2fbc6f5373 44
+packages/workflow/src/errors/expression-engine.error.ts
+  s_14807a50d287da::t_1eff2fbc6f5373 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9154b43fa43da24414829d02fe9a92e01b3ef30f",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_14807a50d287da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e12fb81-4a06-4d8e-90db-fdd5463b88f8",
+        "model": "unknown"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
