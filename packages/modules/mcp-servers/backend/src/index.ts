@@ -4,3 +4,14 @@ export { McpServer } from './database/entities/mcp-server.entity';
 export { McpServerTool } from './database/entities/mcp-server-tool.entity';
 export { McpServerConnection } from './database/entities/mcp-server-connection.entity';
 export { McpServerBlock } from './database/entities/mcp-server-block.entity';
+export {
+	McpServerToolAdapters,
+	WorkflowToolPort,
+	type WorkflowToolCheck,
+	type WorkflowToolDescription,
+	type WorkflowToolInputSchema,
+	type WorkflowToolRefusal,
+	type WorkflowToolRunOptions,
+	type WorkflowToolRunResult,
+	type WorkflowToolStartedRun,
+} from './tools/workflow-tool-port';
