@@ -11,9 +11,8 @@ const HOSTNAME = 'azurite';
 const BLOB_PORT = 10000;
 const DEFAULT_PROTOCOL = 'http' as const;
 const DEFAULT_ACCOUNT_NAME = 'devstoreaccount1';
-// Well-known public Azurite development storage key (not a secret).
-const DEFAULT_ACCOUNT_KEY =
-	'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==';
+// Local emulator test key configured via AZURITE_ACCOUNTS (not a secret).
+const DEFAULT_ACCOUNT_KEY = Buffer.from('test').toString('base64');
 const MAX_CONTAINER_NAME_LENGTH = 63;
 const CONTAINER_NAME_PATTERN = /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/;
 const MAX_DELETE_CONCURRENCY = 20;
@@ -89,7 +88,7 @@ export function isAzureNotFound(error: unknown): boolean {
 /**
  * Validate an Azure Blob container name against Azure Storage naming rules.
  */
-export function validateContainerName(containerName: string): void {
+export function validateBlobContainerName(containerName: string): void {
 	if (!CONTAINER_NAME_PATTERN.test(containerName) || containerName.includes('--')) {
 		throw new Error(
 			`Invalid Azure Blob container name '${containerName}'. Use 3-63 lowercase letters, digits, or single hyphens; start and end with a letter or digit.`,
@@ -100,7 +99,7 @@ export function validateContainerName(containerName: string): void {
 /**
  * Build a valid Azure Blob container name with a random suffix for isolation on reused containers.
  */
-export function formatContainerName(
+export function formatBlobContainerName(
 	prefix = 'n8n-test',
 	suffix = randomBytes(4).toString('hex'),
 ): string {
@@ -120,7 +119,7 @@ export function formatContainerName(
 		.replace(/-+$/, '');
 	const base = sanitizedPrefix || 'container';
 	const containerName = `${base}-${sanitizedSuffix}`;
-	validateContainerName(containerName);
+	validateBlobContainerName(containerName);
 	return containerName;
 }
 
@@ -167,7 +166,7 @@ export function buildN8nAzureBlobEnv(
 		N8N_EXTERNAL_STORAGE_AZURE_ENDPOINT: config.endpoint,
 	};
 	if (containerName !== undefined) {
-		validateContainerName(containerName);
+		validateBlobContainerName(containerName);
 		env.N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME = containerName;
 	}
 	return env;
@@ -189,6 +188,9 @@ export const azurite: Service<AzuriteResult> = {
 				.withNetwork(network)
 				.withNetworkAliases(HOSTNAME)
 				.withExposedPorts(BLOB_PORT)
+				.withEnvironment({
+					AZURITE_ACCOUNTS: `${DEFAULT_ACCOUNT_NAME}:${DEFAULT_ACCOUNT_KEY}`,
+				})
 				.withCommand([
 					'azurite-blob',
 					'--blobHost',
@@ -295,20 +297,20 @@ export class AzureBlobClient {
 
 	/** Create a blob container. Succeeds if the container already exists. */
 	async createContainer(containerName: string): Promise<void> {
-		validateContainerName(containerName);
+		validateBlobContainerName(containerName);
 		await this.client.getContainerClient(containerName).createIfNotExists();
 	}
 
 	/** Create a blob container with a random suffix to isolate tests on reused Azurite containers. */
 	async createUniqueContainer(prefix = 'n8n-test'): Promise<string> {
-		const containerName = formatContainerName(prefix);
+		const containerName = formatBlobContainerName(prefix);
 		await this.createContainer(containerName);
 		return containerName;
 	}
 
 	/** Return whether a blob container exists. */
 	async containerExists(containerName: string): Promise<boolean> {
-		validateContainerName(containerName);
+		validateBlobContainerName(containerName);
 		return await this.client.getContainerClient(containerName).exists();
 	}
 
@@ -330,7 +332,7 @@ export class AzureBlobClient {
 		body: string | Buffer | Uint8Array,
 		options: { contentType?: string; metadata?: Record<string, string> } = {},
 	): Promise<void> {
-		validateContainerName(containerName);
+		validateBlobContainerName(containerName);
 		const payload =
 			typeof body === 'string'
 				? Buffer.from(body, 'utf8')
@@ -348,7 +350,7 @@ export class AzureBlobClient {
 
 	/** Download a blob as a Buffer. */
 	async downloadBlob(containerName: string, blobName: string): Promise<Buffer> {
-		validateContainerName(containerName);
+		validateBlobContainerName(containerName);
 		return await this.client
 			.getContainerClient(containerName)
 			.getBlockBlobClient(blobName)
@@ -362,7 +364,7 @@ export class AzureBlobClient {
 
 	/** Return whether a blob exists in a container. */
 	async blobExists(containerName: string, blobName: string): Promise<boolean> {
-		validateContainerName(containerName);
+		validateBlobContainerName(containerName);
 		return await this.client
 			.getContainerClient(containerName)
 			.getBlockBlobClient(blobName)
@@ -371,7 +373,7 @@ export class AzureBlobClient {
 
 	/** List all blobs in a container across all pages. */
 	async listBlobs(containerName: string, prefix?: string): Promise<AzureBlobSummary[]> {
-		validateContainerName(containerName);
+		validateBlobContainerName(containerName);
 		const blobs: AzureBlobSummary[] = [];
 		const containerClient = this.client.getContainerClient(containerName);
 
@@ -392,7 +394,7 @@ export class AzureBlobClient {
 
 	/** Delete a single blob. Ignores missing blobs or containers during cleanup. */
 	async deleteBlob(containerName: string, blobName: string): Promise<void> {
-		validateContainerName(containerName);
+		validateBlobContainerName(containerName);
 		try {
 			await this.client
 				.getContainerClient(containerName)
@@ -408,7 +410,7 @@ export class AzureBlobClient {
 
 	/** Delete blobs in bounded concurrent batches. Ignores missing blobs or containers. */
 	async deleteBlobs(containerName: string, blobNames: string[]): Promise<void> {
-		validateContainerName(containerName);
+		validateBlobContainerName(containerName);
 		if (blobNames.length === 0) return;
 
 		for (let i = 0; i < blobNames.length; i += MAX_DELETE_CONCURRENCY) {
@@ -421,7 +423,7 @@ export class AzureBlobClient {
 
 	/** Remove all blobs from a container. Ignores missing containers. */
 	async emptyContainer(containerName: string): Promise<void> {
-		validateContainerName(containerName);
+		validateBlobContainerName(containerName);
 		try {
 			const blobs = await this.listBlobs(containerName);
 			await this.deleteBlobs(
@@ -438,7 +440,7 @@ export class AzureBlobClient {
 
 	/** Delete a blob container and all of its blobs. Ignores missing containers. */
 	async deleteContainer(containerName: string): Promise<void> {
-		validateContainerName(containerName);
+		validateBlobContainerName(containerName);
 		await this.client.getContainerClient(containerName).deleteIfExists();
 	}
 

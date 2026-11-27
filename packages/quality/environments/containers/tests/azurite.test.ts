@@ -5,16 +5,16 @@ import {
 	buildAzuriteConnectionString,
 	buildAzuriteEndpoint,
 	buildN8nAzureBlobEnv,
-	formatContainerName,
+	formatBlobContainerName,
 	isAzureNotFound,
-	validateContainerName,
+	validateBlobContainerName,
 } from '../services/azurite';
 
 describe('container name validation and generation', () => {
 	test.each(['abc', 'n8n-test-1', 'a-b', 'a'.repeat(63)])(
 		'accepts valid Azure Blob container name: %s',
 		(name) => {
-			expect(() => validateContainerName(name)).not.toThrow();
+			expect(() => validateBlobContainerName(name)).not.toThrow();
 		},
 	);
 
@@ -30,24 +30,24 @@ describe('container name validation and generation', () => {
 		'double--hyphen',
 		'$web',
 	])('rejects invalid Azure Blob container name: %s', (name) => {
-		expect(() => validateContainerName(name)).toThrow(/Invalid Azure Blob container name/);
+		expect(() => validateBlobContainerName(name)).toThrow(/Invalid Azure Blob container name/);
 	});
 
 	test('normalizes arbitrary prefixes and collapses repeated separators', () => {
-		expect(formatContainerName('My__Test  Stack!', 'AB12')).toBe('my-test-stack-ab12');
-		expect(formatContainerName('a--b..c', '1234')).toBe('a-b-c-1234');
-		expect(formatContainerName('---!!!---', 'abc123')).toBe('container-abc123');
+		expect(formatBlobContainerName('My__Test  Stack!', 'AB12')).toBe('my-test-stack-ab12');
+		expect(formatBlobContainerName('a--b..c', '1234')).toBe('a-b-c-1234');
+		expect(formatBlobContainerName('---!!!---', 'abc123')).toBe('container-abc123');
 	});
 
 	test('truncates long prefixes to fit the 63-character Azure limit without trailing hyphens', () => {
-		const containerName = formatContainerName(`${'a'.repeat(53)}-tail`, '12345678');
+		const containerName = formatBlobContainerName(`${'a'.repeat(53)}-tail`, '12345678');
 
 		expect(containerName.length).toBeLessThanOrEqual(63);
 		expect(containerName).toBe(`${'a'.repeat(53)}-12345678`);
 	});
 
 	test('rejects suffixes without alphanumeric characters', () => {
-		expect(() => formatContainerName('n8n-test', '---')).toThrow(/suffix/i);
+		expect(() => formatBlobContainerName('n8n-test', '---')).toThrow(/suffix/i);
 	});
 });
 
@@ -175,6 +175,8 @@ describe('AzuriteHelper', () => {
 		const withoutPath = new AzuriteHelper('http://127.0.0.1:10000');
 		expect(withoutPath.endpoint).toBe('http://127.0.0.1:10000/devstoreaccount1');
 		expect(withoutPath.accountName).toBe('devstoreaccount1');
+		expect(withoutPath.accountKey).toBe(Buffer.from('test').toString('base64'));
+		expect(withoutPath.connectionString).toContain(`AccountKey=${withoutPath.accountKey};`);
 		expect(() => withoutPath.getN8nAzureBlobEnv('Invalid_Container')).toThrow(
 			/Invalid Azure Blob container name/,
 		);

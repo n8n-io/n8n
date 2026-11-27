@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { formatContainerName } from 'n8n-containers/services/azurite';
+import { formatBlobContainerName } from 'n8n-containers/services/azurite';
 
 import { assertN8nImage, runDeploymentCell } from './probe';
 
@@ -15,7 +15,7 @@ test(
 			'N8N_LICENSE_ACTIVATION_KEY or N8N_LICENSE_CERT is required for Azure Blob binary data storage',
 		).toBe(true);
 
-		const containerName = formatContainerName('n8n-env09-binary');
+		const containerName = formatBlobContainerName('n8n-env09-binary');
 
 		await runDeploymentCell({
 			stack: {

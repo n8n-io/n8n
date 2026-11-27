@@ -1,7 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { expect, test } from '@playwright/test';
 import flatted from 'flatted';
-import { formatContainerName } from 'n8n-containers/services/azurite';
+import { formatBlobContainerName } from 'n8n-containers/services/azurite';
 import type { N8NStack } from 'n8n-containers/stack';
 
 import { assertN8nImage, runDeploymentCell } from './probe';
@@ -153,7 +153,7 @@ test(
 			'N8N_LICENSE_ACTIVATION_KEY or N8N_LICENSE_CERT is required for Azure Blob execution data storage',
 		).toBe(true);
 
-		const containerName = formatContainerName('n8n-env13-execution');
+		const containerName = formatBlobContainerName('n8n-env13-execution');
 
 		await runDeploymentCell({
 			stack: {
