@@ -34,7 +34,7 @@ jobs:
       - name: Reject standalone prereleases
         if: contains(github.event.pull_request.body, '<!-- release-prerelease -->')
         run: |
-          echo "::error::Standalone prereleases are no longer supported. Create a new release PR."
+          echo '::error::A retired standalone prerelease was merged. Do not retry this run. Ask the release owner to recover the release branch.'
           exit 1
 
       - name: Setup Node.js

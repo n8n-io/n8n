@@ -691,6 +691,15 @@ jobs:
     if: always()
     runs-on: ubuntu-slim
     steps:
+      - name: Reject retired standalone prereleases
+        if: >-
+          github.event_name == 'pull_request' &&
+          startsWith(github.base_ref, 'release/') &&
+          contains(github.event.pull_request.body, '<!-- release-prerelease -->')
+        run: |
+          echo '::error::Close this standalone prerelease PR and create a normal release PR.'
+          exit 1
+
       - name: Checkout CI filter
         if: needs.pr-policy.outputs.skip-ci != 'true'
         uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0

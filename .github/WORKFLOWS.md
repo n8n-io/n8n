@@ -610,16 +610,18 @@ can continue without that check.
 
 1. Record the current `master` SHA and the `stable` and `beta` tag targets. Keep the
    v2 beta version for the v2 maintenance handoff.
-2. Finish the final sync. Stop the old sync workflow and confirm no sync or
-   standalone prerelease is in flight. Merge `3.x` into `master` with the
-   `n8n@3.4.1` tag in its history.
+2. Finish the final sync and stop the old sync workflow. Check for open PRs that
+   target `3.x` and retarget or close them. Close any open standalone prerelease
+   PRs without merging them. Confirm no sync or standalone prerelease is in flight.
+   Merge `3.x` into `master` with the `n8n@3.4.1` tag in its history.
 3. Verify the published `3.4.1` n8n and runner images and smoke-test the installer.
    Dispatch **Release: Create Minor Release PR** on `master`. If the cadence guard
    reports a minor release in the same UTC week, dispatch with `force: true` for
    this planned cutover.
-4. Verify that `3.5.0` reaches `beta`/`next` and `3.4.1` reaches `stable`/`latest`.
-   Check both image registries, GitHub Releases, the Cloud release record, and
-   the Public API schema. Do not rebuild `3.4.1` to promote it.
+4. Verify that the Git `beta` and `stable` tags point to the same commits as
+   `n8n@3.5.0` and `n8n@3.4.1`, respectively. Check `beta`/`next` and
+   `stable`/`latest` in both image registries. Check GitHub Releases, the Cloud
+   release record, and the Public API schema. Do not rebuild `3.4.1` to promote it.
 
 The old standalone prerelease mode is no longer available. Experimental releases
 still use **Release: Create Experiment PR**.
