@@ -661,7 +661,8 @@ export class WorkflowRunner {
 			data.executionMode,
 			data.source,
 			this.resolvePinData(data),
-			data.projectId,
+			// On an error workflow run, this is the project of the workflow that failed, not the owner.
+			data.executionMode === 'error' ? undefined : data.projectId,
 		);
 	}
 

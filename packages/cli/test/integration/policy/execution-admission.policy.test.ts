@@ -6,6 +6,7 @@
  */
 import {
 	createActiveWorkflow,
+	createTeamProject,
 	createWorkflow,
 	getWorkflowSharing,
 	testDb,
@@ -464,6 +465,32 @@ describe('error workflow', () => {
 
 		expect(contextFor(errorWorkflow.id)?.mode).toBe('error');
 		await expectNoRun(errorWorkflow.id);
+	});
+	test("evaluates the error workflow in its own project, not the failed workflow's", async () => {
+		const failedProject = await createTeamProject('Failed project', owner);
+		const failed = await createWorkflow(
+			{ name: 'Failed elsewhere', ...createSimpleWorkflowFixture() } as unknown as IWorkflowDb,
+			failedProject,
+		);
+		const errorWorkflow = await createActiveWorkflow(
+			{
+				name: 'Error workflow elsewhere',
+				...createErrorWorkflowFixture(),
+				settings: { callerPolicy: 'any' },
+			} as unknown as IWorkflowDb,
+			owner,
+		);
+		deniedWorkflowIds.add(errorWorkflow.id);
+		const [errorSharing] = await getWorkflowSharing(errorWorkflow);
+
+		await workflowExecutionService.executeErrorWorkflow(
+			errorWorkflow.id,
+			{ workflow: { id: failed.id, name: failed.name } },
+			failedProject,
+		);
+
+		expect(contextFor(errorWorkflow.id)?.projectId).toBe(errorSharing.projectId);
+		expect(errorSharing.projectId).not.toBe(failedProject.id);
 	});
 });
 
