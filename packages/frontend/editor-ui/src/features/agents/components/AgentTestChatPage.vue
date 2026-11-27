@@ -33,6 +33,7 @@ const props = withDefaults(
 		showTestScenarios?: boolean;
 		scheduleTestDisabledReason?: string;
 		scheduleTestValidationIssues?: AgentConfigValidationIssue[];
+		scheduleTestRunning?: boolean;
 		placeholder?: string;
 		composerHeight?: string;
 		canSendToAssistant?: boolean;
@@ -146,6 +147,7 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				:increase-budget="increaseBudget"
 				:schedule-test-disabled-reason="scheduleTestDisabledReason"
 				:schedule-test-validation-issues="scheduleTestValidationIssues"
+				:schedule-test-running="scheduleTestRunning"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@usage-updated="emit('usage-updated', $event)"
 				@session-created="emit('session-created', $event)"

@@ -194,6 +194,8 @@ const props = withDefaults(
 		scheduleTestDisabledReason?: string;
 		/** The problems that keep the agent from running, for the Run again tooltip. */
 		scheduleTestValidationIssues?: AgentConfigValidationIssue[];
+		/** Run again is loading the schedule and opening its new session. */
+		scheduleTestRunning?: boolean;
 		/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
 		thinkingLabel?: string;
 		/** Replaces the generic "Session stopped" of a stopped turn. The Assistant sets it. */
@@ -2082,6 +2084,7 @@ onBeforeUnmount(() => {
 						:class="$style.scheduleTestNotice"
 						:run-again-disabled-reason="scheduleTestDisabledReason"
 						:run-again-validation-issues="scheduleTestValidationIssues"
+						:run-again-loading="scheduleTestRunning"
 						@run-again="runScheduleTestAgain"
 						@chat="emit('schedule-test-chat')"
 					/>

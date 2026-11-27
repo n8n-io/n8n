@@ -10,6 +10,8 @@ defineProps<{
 	runAgainDisabledReason?: string;
 	/** The problems that keep the agent from running, as the Test button lists them. */
 	runAgainValidationIssues?: AgentConfigValidationIssue[];
+	/** Run again is starting a new test. A second click does nothing. */
+	runAgainLoading?: boolean;
 }>();
 
 const emit = defineEmits<{ 'run-again': []; chat: [] }>();
@@ -44,6 +46,7 @@ const locale = useI18n();
 					icon="flask-conical"
 					:disabled="!!runAgainDisabledReason"
 					focusable-when-disabled
+					:loading="runAgainLoading"
 					data-testid="agent-schedule-test-run-again"
 					data-attr="agent-schedule-test-run-again"
 					@click="emit('run-again')"

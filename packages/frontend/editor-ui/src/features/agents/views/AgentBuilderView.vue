@@ -1388,8 +1388,10 @@ async function onPreviewTask(
 ) {
 	const target = { projectId: projectId.value, agentId: agentId.value };
 	if (!(await onOpenPreview(source, target))) return;
-	// The user picked a session or started a chat while Preview opened.
+	// The user picked a session or started a chat, or a newer test started, while Preview opened.
 	if (choice !== sessionChoice) return;
+	// This test now owns the session choice: an older pending test stops here.
+	sessionChoice++;
 
 	// Reset first so the same objective can be tested more than once.
 	taskPreviewPrompt.value = undefined;
@@ -1402,13 +1404,29 @@ async function onPreviewTask(
 	};
 }
 
+const isRunningScheduleTestAgain = ref(false);
+
 /** Tests the schedule of a schedule test session again, with its saved objective. */
 async function onRunScheduleTestAgain(taskId: string) {
+	if (isRunningScheduleTestAgain.value) return;
+	isRunningScheduleTestAgain.value = true;
+	try {
+		await runScheduleTestAgain(taskId);
+	} finally {
+		isRunningScheduleTestAgain.value = false;
+	}
+}
+
+async function runScheduleTestAgain(taskId: string) {
 	const target = { projectId: projectId.value, agentId: agentId.value };
-	// The user can pick another session or start a chat while the tasks load.
+	// While the tasks load, the user can pick a session, start a chat or another test,
+	// or go back to another session. Preview is open, so the session ID shows each one.
 	const choice = sessionChoice;
+	const sessionId = effectiveSessionId.value;
 	const isStale = () =>
-		isStaleAgentTarget(target.projectId, target.agentId) || choice !== sessionChoice;
+		isStaleAgentTarget(target.projectId, target.agentId) ||
+		choice !== sessionChoice ||
+		effectiveSessionId.value !== sessionId;
 	let task;
 	try {
 		const tasks = await getAgentTasks(rootStore.restApiContext, target.projectId, target.agentId);
@@ -3801,6 +3819,7 @@ useKeybindings({
 					:initial-prompt="taskPreviewPrompt"
 					:schedule-test-disabled-reason="testModeDisabledReason"
 					:schedule-test-validation-issues="testValidationIssues"
+					:schedule-test-running="isRunningScheduleTestAgain"
 					:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
@@ -3959,6 +3978,7 @@ useKeybindings({
 							:show-test-scenarios="showTestScenariosEmptyState"
 							:schedule-test-disabled-reason="testModeDisabledReason"
 							:schedule-test-validation-issues="testValidationIssues"
+							:schedule-test-running="isRunningScheduleTestAgain"
 							:can-delete-session="canDeletePreviewSession"
 							:is-deleting-session="isDeletingSession"
 							:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"

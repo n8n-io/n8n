@@ -63,6 +63,7 @@ const props = withDefaults(
 		showTestScenarios?: boolean;
 		scheduleTestDisabledReason?: string;
 		scheduleTestValidationIssues?: AgentConfigValidationIssue[];
+		scheduleTestRunning?: boolean;
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		canDeleteSession?: boolean;
@@ -352,6 +353,7 @@ defineExpose({ clearBudgetStops });
 				:show-test-scenarios="props.showTestScenarios"
 				:schedule-test-disabled-reason="props.scheduleTestDisabledReason"
 				:schedule-test-validation-issues="props.scheduleTestValidationIssues"
+				:schedule-test-running="props.scheduleTestRunning"
 				:can-send-to-assistant="props.canSendToAssistant"
 				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"

@@ -757,6 +757,7 @@ const commonStubs = {
 			'effectiveSessionId',
 			'newSession',
 			'initialPrompt',
+			'scheduleTestRunning',
 			'canSendToAssistant',
 			'dismissedFixToolCallIds',
 			'beforeSend',
@@ -2970,6 +2971,61 @@ describe('AgentBuilderView — preview routing', () => {
 				TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
 				{ agent_id: 'a1', source: 'schedule_rerun' },
 			);
+		});
+
+		const inboxTask = {
+			id: 'task-1',
+			name: 'Inbox digest',
+			objective: 'Summarize the inbox',
+			cronExpression: '0 9 * * *',
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		};
+
+		it('starts one test when Run again is clicked twice', async () => {
+			const tasks = Promise.withResolvers<unknown[]>();
+			getAgentTasksMock.mockReturnValue(tasks.promise);
+			const preview = await openPreview();
+			const loadsBefore = getAgentTasksMock.mock.calls.length;
+
+			preview.vm.$emit('schedule-test-run-again', 'task-1');
+			await nextTick();
+			expect(preview.props('scheduleTestRunning')).toBe(true);
+			preview.vm.$emit('schedule-test-run-again', 'task-1');
+			tasks.resolve([inboxTask]);
+			await flushPromises();
+
+			expect(getAgentTasksMock.mock.calls.length - loadsBefore).toBe(1);
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
+				{ agent_id: 'a1', source: 'schedule_rerun' },
+			);
+			expect(preview.props('scheduleTestRunning')).toBe(false);
+		});
+
+		it('drops Run again when the route moves to another session while the schedule loads', async () => {
+			localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+			routeQuery.continueSessionId = 'thread-1';
+			fetchedSessionThreads.push(
+				{ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' },
+				{ id: 'thread-2', updatedAt: '2026-01-02T00:00:00Z' },
+			);
+			const tasks = Promise.withResolvers<unknown[]>();
+			getAgentTasksMock.mockReturnValue(tasks.promise);
+			const wrapper = await renderView();
+			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+			expect(preview.props('effectiveSessionId')).toBe('thread-1');
+
+			preview.vm.$emit('schedule-test-run-again', 'task-1');
+			// Back or forward in the browser.
+			routeQuery.continueSessionId = 'thread-2';
+			await flushPromises();
+			expect(preview.props('effectiveSessionId')).toBe('thread-2');
+			tasks.resolve([inboxTask]);
+			await flushPromises();
+
+			expect(preview.props('effectiveSessionId')).toBe('thread-2');
+			expect(preview.props('initialPrompt')).toBeUndefined();
 		});
 
 		it('drops Run again when the user picks another session while the schedule loads', async () => {
