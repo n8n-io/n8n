@@ -24,7 +24,7 @@ test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: detached sub-workflow finishes before the worker exits',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	async () => {
 		const harness = await HarnessStack.start({
 			name: 'detached-sub',

@@ -22,7 +22,7 @@ test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: a job whose run rejects no longer holds the drain',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	async () => {
 		const harness = await HarnessStack.start({
 			name: 'rejected-run',

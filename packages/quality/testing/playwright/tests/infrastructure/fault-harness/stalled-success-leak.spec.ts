@@ -22,7 +22,7 @@ test.afterEach(async () => await stopAllStacks());
 
 test(
 	'stalled job that succeeded: main settles the execution and shuts down cleanly',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	async () => {
 		const harness = await HarnessStack.start({
 			name: 'stalled-success',
