@@ -15,7 +15,7 @@ export class HttpRequest extends VersionedNodeType {
 			group: ['output'],
 			subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
 			description: 'Makes an HTTP request and returns the response data',
-			defaultVersion: 4.5,
+			defaultVersion: 4.6,
 			builderHint: {
 				searchHint:
 					'Prefer dedicated integration nodes over HTTP Request — n8n has 400+ dedicated nodes (e.g. Gmail, Slack, Google Sheets, Notion, OpenAI, HubSpot, Jira, etc.) with built-in authentication, pre-configured parameters, better error handling, and easier maintenance. Only use HTTP Request when no dedicated node exists for the service, the user explicitly requests it, accessing a custom/internal API, or the dedicated node does not support the specific operation needed.',
@@ -32,6 +32,7 @@ export class HttpRequest extends VersionedNodeType {
 			4.3: new HttpRequestV3(baseDescription),
 			4.4: new HttpRequestV3(baseDescription),
 			4.5: new HttpRequestV3(baseDescription),
+			4.6: new HttpRequestV3(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

@@ -981,6 +981,145 @@ describe('HttpRequestV3', () => {
 
 			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
 		});
+
+		describe('Autodetect with a JSON content type', () => {
+			const setupAutodetect = (
+				typeVersion: number,
+				fullResponse: boolean,
+				pagination?: unknown,
+			) => {
+				(executeFunctions.getNode as Mock).mockReturnValue({
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion,
+				});
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation(
+					(paramName: string, _itemIndex: number, fallback: unknown) => {
+						switch (paramName) {
+							case 'method':
+								return 'GET';
+							case 'url':
+								return baseUrl;
+							case 'authentication':
+								return 'none';
+							case 'options':
+								return { ...options, response: { response: { fullResponse } } };
+							case 'options.pagination.pagination':
+								return pagination ?? fallback;
+							case 'options.response.response.fullResponse':
+								return fullResponse;
+							default:
+								return fallback;
+						}
+					},
+				);
+			};
+
+			const mockJsonResponse = (body: string) => {
+				(executeFunctions.helpers.request as Mock).mockResolvedValue({
+					statusCode: 200,
+					headers: { 'content-type': 'application/json' },
+					body: Buffer.from(body),
+				});
+			};
+
+			const mockResolvedPage = (body: string) => {
+				(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+					{
+						statusCode: 200,
+						headers: { 'content-type': 'application/json' },
+						body,
+						__bodyResolved: true,
+					},
+				]);
+			};
+
+			const pagination = {
+				paginationMode: 'responseContainsNextURL',
+				nextURL: '={{ $response.body?.next }}',
+				paginationCompleteWhen: 'other',
+				completeExpression: '={{ !$response.body?.next }}',
+				limitPagesFetched: false,
+				requestInterval: 0,
+			};
+
+			it.each([
+				['"ordinary string"', 'ordinary string'],
+				['"42"', '42'],
+				['"true"', 'true'],
+				['"{\\"a\\":1}"', '{"a":1}'],
+				['42', 42],
+				['{"a":1}', { a: 1 }],
+			])('should keep the JSON value of body %s in version 4.6', async (body, expected) => {
+				setupAutodetect(4.6, true);
+				mockJsonResponse(body);
+
+				const result = await node.execute.call(executeFunctions);
+
+				expect(result[0][0].json.body).toStrictEqual(expected);
+			});
+
+			it.each([
+				['"ordinary string"', 'ordinary string'],
+				['"42"', '42'],
+				['42', 42],
+			])(
+				'should output the JSON value of body %s without the full response in version 4.6',
+				async (body, expected) => {
+					setupAutodetect(4.6, false);
+					mockJsonResponse(body);
+
+					const result = await node.execute.call(executeFunctions);
+
+					expect(result).toStrictEqual([[{ json: expected, pairedItem: { item: 0 } }]]);
+				},
+			);
+
+			it.each([true, false])(
+				'should reject a JSON string body in version 4.5 (fullResponse: %s)',
+				async (fullResponse) => {
+					setupAutodetect(4.5, fullResponse);
+					mockJsonResponse('"ordinary string"');
+
+					await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+						'Response body is not valid JSON. Change "Response Format" to "Text"',
+					);
+				},
+			);
+
+			it('should parse a JSON string body again in version 4.5', async () => {
+				setupAutodetect(4.5, true);
+				mockJsonResponse('"42"');
+
+				const result = await node.execute.call(executeFunctions);
+
+				expect(result[0][0].json.body).toBe(42);
+			});
+
+			it.each([4.5, 4.6])(
+				'should parse a body that the pagination helper resolved in version %s',
+				async (typeVersion) => {
+					setupAutodetect(typeVersion, true, pagination);
+					mockResolvedPage('{"a":1}');
+
+					const result = await node.execute.call(executeFunctions);
+
+					expect(result[0][0].json.body).toStrictEqual({ a: 1 });
+				},
+			);
+
+			it.each([4.5, 4.6])(
+				'should reject a resolved body that is not JSON in version %s',
+				async (typeVersion) => {
+					setupAutodetect(typeVersion, false, pagination);
+					mockResolvedPage('ordinary string');
+
+					await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+						'Response body is not valid JSON. Change "Response Format" to "Text"',
+					);
+				},
+			);
+		});
 	});
 
 	describe('Continued request errors', () => {
