@@ -1743,6 +1743,48 @@ describe('Test MySql V2, operations', () => {
 				]);
 			});
 
+			it('should return an error item in single mode when the database of the first item is empty', async () => {
+				const nodeParameters = insertParameters('single');
+				const runQueries = vi.fn(async () => []);
+
+				const result = await insert.execute.call(
+					createDatabaseExpressionContext(nodeParameters, [undefined, 'b', 'c'], true),
+					items,
+					runQueries,
+					nodeParameters.options as IDataObject,
+				);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].json.message).toBe('The Database value did not resolve to a name');
+				expect(result[0].pairedItem).toEqual({ item: 0 });
+				expect(runQueries).not.toHaveBeenCalled();
+			});
+
+			it.each(['single', 'independently', 'transaction'])(
+				'should return error items in %s mode when the table contains a database name',
+				async (queryBatching) => {
+					const nodeParameters = {
+						...insertParameters(queryBatching),
+						database: otherDatabase,
+						table: { __rl: true, value: 'crm.orders', mode: 'name' },
+					};
+					const runQueries = vi.fn(async () => []);
+
+					const result = await insert.execute.call(
+						createMockExecuteFunction(nodeParameters, mySqlMockNode, true),
+						items,
+						runQueries,
+						nodeParameters.options as IDataObject,
+					);
+
+					expect(result.map(({ pairedItem }) => pairedItem)).toEqual(
+						queryBatching === 'single' ? [{ item: 0 }] : [{ item: 0 }, { item: 1 }, { item: 2 }],
+					);
+					expect(result[0].json.message).toBe('The Table value already contains a database name');
+					expect(runQueries).not.toHaveBeenCalled();
+				},
+			);
+
 			it('should keep the table of the first item when the database is empty', async () => {
 				const nodeParameters = insertParameters('independently');
 				const runQueries = vi.fn(async () => []);

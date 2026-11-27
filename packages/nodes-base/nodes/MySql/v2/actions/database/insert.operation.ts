@@ -131,32 +131,32 @@ export async function execute(
 	const dataMode = this.getNodeParameter('dataMode', 0) as string;
 	const queryBatching = (nodeOptions.queryBatching as QueryMode) || BATCH_MODE.SINGLE;
 
-	// The read at index 0 stays for compatibility with saved workflows.
-	// With a Database expression, the per-item modes read the name for each item instead.
-	const table = databasePerItem && queryBatching !== BATCH_MODE.SINGLE ? '' : getTableName(this, 0);
-
 	const queries: QueryWithValues[] = [];
 
 	if (queryBatching === BATCH_MODE.SINGLE) {
-		if (databasePerItem) {
-			for (let i = 1; i < items.length; i++) {
-				try {
-					if (getTableName(this, i) !== table) {
-						throw new NodeOperationError(
-							this.getNode(),
-							'The Database or Table value is not the same for all items',
-							{
-								itemIndex: i,
-								description:
-									'Set Options > Query Batching to Independent or Transaction to insert each item into its own table',
-							},
-						);
-					}
-				} catch (error) {
-					if (!this.continueOnFail()) throw error;
-					// No query runs, so the error item is the only output.
-					return [prepareErrorItem(items[i].json, error as NodeOperationError, i)];
+		let table = '';
+		// Without a Database expression, only index 0 is read, for compatibility with saved workflows.
+		const tableReads = databasePerItem ? items.length : 1;
+		for (let i = 0; i < tableReads; i++) {
+			try {
+				const itemTable = getTableName(this, i);
+				if (i === 0) {
+					table = itemTable;
+				} else if (itemTable !== table) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Database or Table value is not the same for all items',
+						{
+							itemIndex: i,
+							description:
+								'Set Options > Query Batching to Independent or Transaction to insert each item into its own table',
+						},
+					);
 				}
+			} catch (error) {
+				if (!this.continueOnFail()) throw error;
+				// No query runs, so the error item is the only output.
+				return [prepareErrorItem(items[i].json, error as NodeOperationError, i)];
 			}
 		}
 
@@ -219,7 +219,8 @@ export async function execute(
 	} else {
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const itemTable = databasePerItem ? getTableName(this, i) : table;
+				// Without a Database expression, index 0 is read, for compatibility with saved workflows.
+				const itemTable = getTableName(this, databasePerItem ? i : 0);
 				let columns: string[] = [];
 				let insertItem: IDataObject = {};
 
