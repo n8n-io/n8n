@@ -943,6 +943,72 @@ describe('EvalThreadRestoreService', () => {
 				});
 			});
 
+			const memoryAgent = (episodicCredential: string) => {
+				const agent = seedAgent();
+				return {
+					...agent,
+					config: {
+						...agent.config,
+						model: 'anthropic/claude-sonnet-5-5',
+						credential: '[redacted]',
+						memory: {
+							enabled: true,
+							storage: 'n8n' as const,
+							observationalMemory: {
+								observerModel: { model: 'anthropic/claude-haiku-5-5', credential: '[redacted]' },
+								reflectorModel: { model: 'openrouter/x-ai/grok-4', credential: '[redacted]' },
+							},
+							episodicMemory: {
+								enabled: true as const,
+								credential: episodicCredential,
+								reflectorModel: { model: 'anthropic/claude-haiku-5-5', credential: '[redacted]' },
+							},
+						},
+					},
+				};
+			};
+			const bindByType = async (types: string[]) => {
+				if (types.includes('anthropicApi')) return [credential('cred-anthropic')];
+				if (types.includes('openRouterApi')) return [credential('cred-openrouter')];
+				if (types.includes('openAiApi')) return [credential('cred-openai')];
+				return [];
+			};
+
+			it.each(['managed', '[redacted]'])(
+				'binds every memory model, and the %s embedding credential, to the project credentials',
+				async (episodicCredential) => {
+					credentialsRepo.findByTypesInProject.mockImplementation(bindByType);
+
+					await service.restoreAgents([memoryAgent(episodicCredential)], 'project-1', evalUser);
+
+					const [, , , options] = agentsService.createDraft.mock.calls[0];
+					expect(options?.schema).toMatchObject({
+						credential: 'cred-anthropic',
+						memory: {
+							observationalMemory: {
+								observerModel: { credential: 'cred-anthropic' },
+								reflectorModel: { credential: 'cred-openrouter' },
+							},
+							episodicMemory: {
+								credential: 'cred-openai',
+								reflectorModel: { credential: 'cred-anthropic' },
+							},
+						},
+					});
+				},
+			);
+
+			it('keeps the embedding credential blank when the project has no OpenAI credential', async () => {
+				credentialsRepo.findByTypesInProject.mockImplementation(async (types) =>
+					types.includes('openAiApi') ? [] : await bindByType(types),
+				);
+
+				await service.restoreAgents([memoryAgent('managed')], 'project-1', evalUser);
+
+				const [, , , options] = agentsService.createDraft.mock.calls[0];
+				expect(options?.schema).toMatchObject({ memory: { episodicMemory: { credential: '' } } });
+			});
+
 			it('keeps the blank when the allowlist admits none of the candidates', async () => {
 				credentialsRepo.findByTypesInProject.mockResolvedValue([credential('cred-openai')]);
 
