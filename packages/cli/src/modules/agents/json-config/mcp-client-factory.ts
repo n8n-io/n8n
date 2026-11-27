@@ -102,6 +102,8 @@ export interface BuildMcpClientDeps {
 	oauthService: OauthService;
 	projectId: string;
 	proxyFetch: CustomFetch;
+	/** Maximum time to wait for a tool call of this server. The MCP SDK default (60s) applies when omitted. */
+	callTimeoutMs?: number;
 	/**
 	 * Set in a test run or an eval. This fetch answers every request of the server, so the client
 	 * resolves no credential, sends no auth header and never refreshes a token: a made-up 401
@@ -269,12 +271,16 @@ function toSdkServerConfig(
 	server: AgentJsonMcpServerConfig,
 	deps: Pick<
 		BuildMcpClientDeps,
-		'onConnectionFailed' | 'onToolCallSettled' | 'nonInterrupting' | 'wrapApproval'
+		| 'onConnectionFailed'
+		| 'onToolCallSettled'
+		| 'nonInterrupting'
+		| 'wrapApproval'
+		| 'callTimeoutMs'
 	>,
 	connection: Pick<McpServerConfig, 'url' | 'transport' | 'fetch'>,
 ): McpServerConfig {
 	const { toolPermissions } = server;
-	const { onConnectionFailed, onToolCallSettled, nonInterrupting } = deps;
+	const { onConnectionFailed, onToolCallSettled, nonInterrupting, callTimeoutMs } = deps;
 	return {
 		name: server.name,
 		...connection,
@@ -284,6 +290,7 @@ function toSdkServerConfig(
 		}),
 		...(nonInterrupting && { configureToolsNonInterrupting: true }),
 		...(onToolCallSettled !== undefined && { onToolCallSettled }),
+		...(callTimeoutMs !== undefined && { callTimeoutMs }),
 		...(server.connectionTimeoutMs !== undefined && {
 			connectionTimeoutMs: server.connectionTimeoutMs,
 		}),

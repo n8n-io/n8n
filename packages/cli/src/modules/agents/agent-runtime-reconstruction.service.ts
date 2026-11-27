@@ -16,6 +16,11 @@ import {
 	ModelConfig,
 	type Workspace,
 } from '@n8n/agents';
+import {
+	GUARDED_CALL_TIMEOUT_MS,
+	isMcpGuardActive,
+	withMcpGuard,
+} from '../mcp-guard/mcp-guard-fetch';
 import { wrapToolForApproval } from '@n8n/agents/tool';
 import { isRecord } from '@n8n/utils/is-record';
 import { actionNeedsApproval } from './integrations/integration-tool-definitions';
@@ -101,6 +106,7 @@ import { N8nMemory } from './integrations/n8n-memory';
 import {
 	buildFromJson,
 	buildProviderToolsForModel,
+	resolveModelConfig,
 	type MemoryFactory,
 	type ToolResolver,
 } from './json-config/from-json-config';
@@ -1120,6 +1126,11 @@ export class AgentRuntimeReconstructionService {
 	) {
 		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation, runtimeProfile } =
 			options;
+		const guardActive = isMcpGuardActive(
+			options.runType,
+			instrumentation?.mcpFetch !== undefined,
+			options.previewChat,
+		);
 		return async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				wrapApproval: (tool) => wrapApproval(tool, server.approvalRoute),
@@ -1128,7 +1139,16 @@ export class AgentRuntimeReconstructionService {
 				nonInterrupting: runtimeProfile === 'inline',
 				oauthService: this.oauthService,
 				projectId,
-				proxyFetch: aiMcpFetch,
+				// A guarded call can wait for a hydration. Give every call of the chat more time than the MCP SDK default.
+				...(guardActive && { callTimeoutMs: GUARDED_CALL_TIMEOUT_MS }),
+				// Test chat only, when enabled: Linear and Notion MCP go through the read-only guard.
+				proxyFetch: guardActive
+					? withMcpGuard(aiMcpFetch, memoryOwnerAgentId, {
+							// The hydration agent uses the model of the agent under test.
+							resolve: async () => await resolveModelConfig(options.config, credentialProvider),
+							fetch: createAiProxyFetch(this.outboundHttp),
+						})
+					: aiMcpFetch,
 				// A test run or an eval answers MCP itself: no stored credential is read and no
 				// token is refreshed.
 				simulatedFetch: instrumentation?.mcpFetch?.(server.name),
