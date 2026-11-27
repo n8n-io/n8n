@@ -2,7 +2,7 @@ import { ElMessageBox } from 'element-plus';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isVNode } from 'vue';
 
-import { hasActiveMessageBox, useMessage } from './useMessage';
+import { hasActiveMessageBox, isEscapeConsumedByMessageBox, useMessage } from './useMessage';
 
 vi.mock('element-plus', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('element-plus')>();
@@ -172,5 +172,255 @@ describe('useMessage', () => {
 		await vi.waitFor(() => {
 			expect(hasActiveMessageBox.value).toBe(false);
 		});
+	});
+
+	it('cleans up active state when a caller-provided appendTo container is removed while pending', async () => {
+		const customTarget = document.createElement('div');
+		document.body.appendChild(customTarget);
+
+		let resolveConfirm!: (value: string) => void;
+		mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
+			const layer = config.appendTo as HTMLElement;
+			const overlay = document.createElement('div');
+			layer.appendChild(overlay);
+			return await new Promise<string>((resolve) => {
+				resolveConfirm = resolve;
+			});
+		});
+
+		try {
+			const pending = useMessage().confirm('Continue?', 'Confirm', {
+				appendTo: customTarget,
+			});
+			expect(hasActiveMessageBox.value).toBe(true);
+			expect(customTarget.childElementCount).toBe(1);
+
+			customTarget.remove();
+			await vi.waitFor(() => {
+				expect(hasActiveMessageBox.value).toBe(false);
+			});
+			expect(customTarget.childElementCount).toBe(0);
+
+			// Settling later must remain a safe no-op.
+			resolveConfirm('confirm');
+			await expect(pending).resolves.toBe('confirm');
+			expect(hasActiveMessageBox.value).toBe(false);
+		} finally {
+			customTarget.remove();
+		}
+	});
+
+	it('cleans up active state when an ancestor of the appendTo container is removed while pending', async () => {
+		const ancestor = document.createElement('div');
+		const customTarget = document.createElement('div');
+		customTarget.id = 'nested-message-box-root';
+		ancestor.appendChild(customTarget);
+		document.body.appendChild(ancestor);
+
+		mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
+			const layer = config.appendTo as HTMLElement;
+			layer.appendChild(document.createElement('div'));
+			return await new Promise(() => {});
+		});
+
+		try {
+			void useMessage().confirm('Continue?', 'Confirm', {
+				appendTo: '#nested-message-box-root',
+			});
+			expect(hasActiveMessageBox.value).toBe(true);
+
+			ancestor.remove();
+			await vi.waitFor(() => {
+				expect(hasActiveMessageBox.value).toBe(false);
+			});
+			expect(customTarget.childElementCount).toBe(0);
+		} finally {
+			ancestor.remove();
+		}
+	});
+
+	it('cleans up active state when a shadow host containing the appendTo container is removed', async () => {
+		const shadowHost = document.createElement('div');
+		document.body.appendChild(shadowHost);
+		const shadowRoot = shadowHost.attachShadow({ mode: 'open' });
+		const shadowTarget = document.createElement('div');
+		shadowRoot.appendChild(shadowTarget);
+
+		mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
+			const layer = config.appendTo as HTMLElement;
+			layer.appendChild(document.createElement('div'));
+			return await new Promise(() => {});
+		});
+
+		try {
+			void useMessage().confirm('Continue?', 'Confirm', {
+				appendTo: shadowTarget,
+			});
+			expect(hasActiveMessageBox.value).toBe(true);
+			expect(shadowTarget.childElementCount).toBe(1);
+
+			shadowHost.remove();
+			await vi.waitFor(() => {
+				expect(hasActiveMessageBox.value).toBe(false);
+			});
+			expect(shadowTarget.childElementCount).toBe(0);
+		} finally {
+			shadowHost.remove();
+		}
+	});
+
+	it('falls back to document.body when appendTo is a detached element', async () => {
+		const detachedTarget = document.createElement('div');
+
+		mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
+			const layer = config.appendTo as HTMLElement;
+			expect(document.body.contains(layer)).toBe(true);
+			expect(detachedTarget.contains(layer)).toBe(false);
+			return 'confirm';
+		});
+
+		await expect(
+			useMessage().confirm('Continue?', 'Confirm', {
+				appendTo: detachedTarget,
+			}),
+		).resolves.toBe('confirm');
+		expect(hasActiveMessageBox.value).toBe(false);
+	});
+
+	it('keeps active state during unrelated DOM mutations and cleans up only when all boxes end', async () => {
+		const customTarget = document.createElement('div');
+		document.body.appendChild(customTarget);
+
+		let resolveBodyBox!: (value: string) => void;
+		mockedBox.confirm
+			.mockImplementationOnce(async () => await new Promise(() => {}))
+			.mockImplementationOnce(
+				async () =>
+					await new Promise<string>((resolve) => {
+						resolveBodyBox = resolve;
+					}),
+			);
+
+		try {
+			void useMessage().confirm('First?', 'First', { appendTo: customTarget });
+			const secondPending = useMessage().confirm('Second?', 'Second');
+			expect(hasActiveMessageBox.value).toBe(true);
+
+			// Unrelated DOM churn must not prematurely clear active state.
+			const sibling = document.createElement('div');
+			document.body.appendChild(sibling);
+			sibling.remove();
+			await Promise.resolve();
+			expect(hasActiveMessageBox.value).toBe(true);
+
+			// Removing only the first container must leave active state on for the second box.
+			customTarget.remove();
+			await vi.waitFor(() => {
+				expect(customTarget.childElementCount).toBe(0);
+			});
+			expect(hasActiveMessageBox.value).toBe(true);
+
+			resolveBodyBox('confirm');
+			await expect(secondPending).resolves.toBe('confirm');
+			expect(hasActiveMessageBox.value).toBe(false);
+		} finally {
+			customTarget.remove();
+		}
+	});
+
+	it('marks Escape events that start while a message box is active even after it settles', async () => {
+		let resolveConfirm!: (value: string) => void;
+		mockedBox.confirm.mockImplementation(
+			async () =>
+				await new Promise<string>((resolve) => {
+					resolveConfirm = resolve;
+				}),
+		);
+
+		const pending = useMessage().confirm('Discard changes?', 'Close without saving?');
+		expect(hasActiveMessageBox.value).toBe(true);
+
+		const escapeEvent = new KeyboardEvent('keydown', {
+			key: 'Escape',
+			bubbles: false,
+			cancelable: true,
+		});
+		document.dispatchEvent(escapeEvent);
+
+		resolveConfirm('close');
+		await expect(pending).resolves.toBe('close');
+		expect(hasActiveMessageBox.value).toBe(false);
+
+		// Simulates a browser running promise callbacks between document and window listeners.
+		expect(isEscapeConsumedByMessageBox(escapeEvent)).toBe(true);
+		expect(
+			isEscapeConsumedByMessageBox(
+				new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+			),
+		).toBe(false);
+	});
+
+	it('keeps the host layer mounted until a leaving overlay vanishes, then cleans up', async () => {
+		let resolveConfirm!: (value: string) => void;
+		let layerEl!: HTMLElement;
+		let overlayEl!: HTMLDivElement;
+
+		mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
+			layerEl = config.appendTo as HTMLElement;
+			overlayEl = document.createElement('div');
+			overlayEl.className = 'el-overlay is-message-box';
+			layerEl.appendChild(overlayEl);
+			return await new Promise<string>((resolve) => {
+				resolveConfirm = resolve;
+			});
+		});
+
+		const pending = useMessage().confirm('Discard changes?', 'Close without saving?');
+		expect(hasActiveMessageBox.value).toBe(true);
+
+		// Simulate Vue Transition adding the leave-active class before the promise settles.
+		overlayEl.classList.add('fade-in-linear-leave-active');
+		resolveConfirm('confirm');
+		await expect(pending).resolves.toBe('confirm');
+
+		// Active modal state clears immediately while the fading overlay stays in the DOM.
+		expect(hasActiveMessageBox.value).toBe(false);
+		expect(document.body.contains(layerEl)).toBe(true);
+		expect(layerEl.contains(overlayEl)).toBe(true);
+		expect(layerEl.style.pointerEvents).toBe('none');
+
+		// Once Element Plus's onVanish removes the overlay, the host layer tears down.
+		overlayEl.remove();
+		await vi.waitFor(() => {
+			expect(document.body.contains(layerEl)).toBe(false);
+		});
+	});
+
+	it('cleans up a leaving overlay via fallback timer if it never vanishes', async () => {
+		vi.useFakeTimers();
+		try {
+			let resolveConfirm!: (value: string) => void;
+			let layerEl!: HTMLElement;
+
+			mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
+				layerEl = config.appendTo as HTMLElement;
+				const overlayEl = document.createElement('div');
+				overlayEl.className = 'el-overlay is-message-box fade-in-linear-leave-active';
+				layerEl.appendChild(overlayEl);
+				return await new Promise<string>((resolve) => {
+					resolveConfirm = resolve;
+				});
+			});
+
+			const pending = useMessage().confirm('Discard changes?', 'Close without saving?');
+			resolveConfirm('confirm');
+			await expect(pending).resolves.toBe('confirm');
+
+			expect(document.body.contains(layerEl)).toBe(true);
+			vi.advanceTimersByTime(600);
+			expect(document.body.contains(layerEl)).toBe(false);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

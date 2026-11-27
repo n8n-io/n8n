@@ -2,7 +2,7 @@
 import { DialogContent, DialogTitle, DialogDescription } from 'reka-ui';
 import { computed, provide, useCssModule } from 'vue';
 
-import { hasActiveMessageBox } from '../../composables/useMessage';
+import { hasActiveMessageBox, isEscapeConsumedByMessageBox } from '../../composables/useMessage';
 import N8nVisuallyHidden from '../N8nVisuallyHidden';
 import N8nDialogClose from './DialogClose.vue';
 import { dialogCloseButtonKey } from './dialogContext';
@@ -136,7 +136,7 @@ function handleInteractOutside(e: Event) {
 }
 
 function handleEscapeKeyDown(event: KeyboardEvent) {
-	if (hasActiveMessageBox.value) {
+	if (isEscapeConsumedByMessageBox(event)) {
 		event.preventDefault();
 		return;
 	}

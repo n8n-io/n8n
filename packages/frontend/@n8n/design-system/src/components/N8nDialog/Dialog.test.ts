@@ -920,5 +920,113 @@ describe('N8nDialog', () => {
 			});
 			expect(escapeHandler).toHaveBeenCalledOnce();
 		});
+
+		it('blocks the same Escape event on the parent dialog even when promise settlement runs before the window listener', async () => {
+			const user = userEvent.setup();
+			const escapeHandler = vi.fn();
+
+			const { getByTestId, getByRole, queryByRole } = render({
+				components: {
+					N8nDialog,
+					N8nDialogHeader,
+					N8nDialogTitle,
+				},
+				setup() {
+					const isOpen = ref(false);
+					return { isOpen, escapeHandler };
+				},
+				template: `
+					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
+					<N8nDialog v-model:open="isOpen" @escape-key-down="escapeHandler">
+						<N8nDialogHeader>
+							<N8nDialogTitle>Parent Dialog</N8nDialogTitle>
+						</N8nDialogHeader>
+					</N8nDialog>
+				`,
+			});
+
+			await user.click(getByTestId('dialog-trigger'));
+			expect(getByRole('dialog', { name: 'Parent Dialog' })).toBeInTheDocument();
+
+			const pendingConfirm = useMessage().confirm('Delete this item?', 'Delete Item?', {
+				confirmButtonText: 'Delete',
+				cancelButtonText: 'Cancel',
+			});
+
+			await waitFor(() => {
+				expect(getByRole('dialog', { name: 'Delete Item?' })).toBeInTheDocument();
+			});
+
+			// Simulate a browser microtask checkpoint between Element Plus's document listener
+			// and Reka's window listener for the same Escape event.
+			const escapeEvent = new KeyboardEvent('keydown', {
+				key: 'Escape',
+				bubbles: false,
+				cancelable: true,
+			});
+			document.dispatchEvent(escapeEvent);
+			await expect(pendingConfirm).resolves.toBe('close');
+
+			// Now deliver the same Escape event to Reka's window listener after active state cleared.
+			window.dispatchEvent(escapeEvent);
+			expect(escapeEvent.defaultPrevented).toBe(true);
+			expect(escapeHandler).not.toHaveBeenCalled();
+			expect(getByRole('dialog', { name: 'Parent Dialog' })).toBeInTheDocument();
+
+			// A new Escape event closes the parent dialog normally.
+			await user.keyboard('{Escape}');
+			await waitFor(() => {
+				expect(queryByRole('dialog', { name: 'Parent Dialog' })).not.toBeInTheDocument();
+			});
+			expect(escapeHandler).toHaveBeenCalledOnce();
+		});
+
+		it('restores parent dialog interactivity when a custom appendTo container is removed while a message box is open', async () => {
+			const user = userEvent.setup();
+			const customContainer = document.createElement('div');
+			document.body.appendChild(customContainer);
+
+			try {
+				const { getByTestId, getByRole, queryByRole } = renderDialog();
+
+				await user.click(getByTestId('dialog-trigger'));
+				const parentDialog = getByRole('dialog', { name: 'Test Dialog Title' });
+				expect(parentDialog.className).not.toContain('behindMessageBox');
+
+				const pendingConfirm = useMessage().confirm(
+					'Are you sure you want to discard changes?',
+					'Close without saving?',
+					{
+						appendTo: customContainer,
+						confirmButtonText: 'Keep Editing',
+						cancelButtonText: 'Close',
+					},
+				);
+
+				const confirmDialog = await waitFor(() =>
+					getByRole('dialog', { name: 'Close without saving?', hidden: true }),
+				);
+				expect(customContainer.contains(confirmDialog)).toBe(true);
+				expect(parentDialog.className).toContain('behindMessageBox');
+
+				// Removing the caller-provided appendTo container must release the background dialog.
+				customContainer.remove();
+
+				await waitFor(() => {
+					expect(parentDialog.className).not.toContain('behindMessageBox');
+				});
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				await user.tab();
+				expect(parentDialog.contains(document.activeElement)).toBe(true);
+
+				await user.keyboard('{Escape}');
+				await waitFor(() => {
+					expect(queryByRole('dialog', { name: 'Test Dialog Title' })).not.toBeInTheDocument();
+				});
+				await expect(pendingConfirm).resolves.toBe('close');
+			} finally {
+				customContainer.remove();
+			}
+		});
 	});
 });

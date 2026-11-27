@@ -124,14 +124,29 @@ test.describe(
 			const configTypeCombobox = credentialModal.getFieldCombobox('configurationType');
 			const connectionStringOption = credentialModal.getVisibleDropdownOption('Connection String');
 
-			// Direct pointer clicks at the background combobox coordinates must be blocked by the overlay.
+			// Direct pointer clicks at the background combobox coordinates must be intercepted by
+			// the confirmation overlay rather than reaching the credential modal.
 			const comboboxBox = await configTypeCombobox.boundingBox();
 			expect(comboboxBox).not.toBeNull();
-			await n8n.page.mouse.click(
-				comboboxBox!.x + comboboxBox!.width / 2,
-				comboboxBox!.y + comboboxBox!.height / 2,
+			const clickX = comboboxBox!.x + comboboxBox!.width / 2;
+			const clickY = comboboxBox!.y + comboboxBox!.height / 2;
+
+			const hitInsideCredentialModal = await credentialModal.container.evaluate(
+				(modal, coords) => {
+					const hitTarget = document.elementFromPoint(coords.x, coords.y);
+					return hitTarget !== null && modal.contains(hitTarget);
+				},
+				{ x: clickX, y: clickY },
 			);
+			expect(
+				hitInsideCredentialModal,
+				'The confirmation overlay must cover the background Configuration Type combobox',
+			).toBe(false);
+
+			await n8n.page.mouse.click(clickX, clickY);
 			await expect(confirmDialog).toBeVisible();
+			await expect(configTypeCombobox).not.toBeFocused();
+			await expect(configTypeCombobox).not.toHaveAttribute('aria-expanded', 'true');
 			await expect(connectionStringOption).toBeHidden();
 
 			// Keyboard Tab and ArrowDown must stay inside the confirmation dialog even after clicking the overlay.
@@ -160,6 +175,38 @@ test.describe(
 				escapedConfirmationDialog,
 				'Keyboard focus must remain trapped inside the Close without saving confirmation dialog',
 			).toBe(false);
+		});
+
+		test('dismisses only the confirmation dialog on Escape without triggering parent dialog close', async ({
+			n8n,
+		}) => {
+			await n8n.credentials.getUnsavedChangesKeepEditingButton().click();
+			await expect(n8n.credentials.getUnsavedChangesDialog()).toBeHidden();
+			await expect(n8n.credentials.credentialModal.getModal()).toBeVisible();
+
+			// Open Delete Credential confirmation over the dirty credential modal.
+			await n8n.credentials.credentialModal.deleteCredential();
+			const deleteDialog = n8n.credentials.getDeleteCredentialDialog();
+			await expect(deleteDialog).toBeVisible();
+
+			// A single Escape must dismiss only the confirmation dialog without reaching the parent modal.
+			await n8n.page.keyboard.press('Escape');
+			await expect(deleteDialog).toBeHidden();
+			await expect(n8n.credentials.credentialModal.getModal()).toBeVisible();
+			await expect(n8n.credentials.getUnsavedChangesDialog()).toBeHidden();
+
+			// A second Escape reaches the parent credential modal normally and prompts to close.
+			await n8n.page.keyboard.press('Escape');
+			await expect(n8n.credentials.getUnsavedChangesDialog()).toBeVisible();
+
+			// Choosing Keep Editing restores editing interactivity.
+			await n8n.credentials.getUnsavedChangesKeepEditingButton().click();
+			await expect(n8n.credentials.getUnsavedChangesDialog()).toBeHidden();
+			await n8n.credentials.credentialModal.selectFieldOption(
+				'configurationType',
+				'Connection String',
+			);
+			await expect(n8n.credentials.credentialModal.getFieldInput('connectionString')).toBeVisible();
 		});
 	},
 );
