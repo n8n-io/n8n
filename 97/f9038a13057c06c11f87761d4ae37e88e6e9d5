@@ -1,0 +1,129 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_55c9c16466c150::t_f691e868d9a233 957-970
+packages/@n8n/api-types/src/dto/runtime-credential-rule/runtime-credential-rule-public.dto.ts
+  s_55c9c16466c150::t_62b96b8b27fe67 1-122
+packages/@n8n/api-types/src/index.ts
+  s_55c9c16466c150::t_85a800f8451b2c 186
+packages/@n8n/api-types/src/schemas/credential-response.schema.ts
+  s_55c9c16466c150::t_271155e64cd6cc 14-15
+packages/@n8n/api-types/src/schemas/public-api-path-params.schema.ts
+  s_55c9c16466c150::t_b5a34e8e59eae7 91-94
+packages/@n8n/permissions/src/constants.ee.ts
+  s_55c9c16466c150::t_50ef8e499e8df7 190
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_55c9c16466c150::t_b69598ba7d534b 126,207,295
+packages/@n8n/permissions/src/roles/__tests__/credential-type-policy-scope.test.ts
+  s_55c9c16466c150::t_591ccc79357e94 62,101,104-110
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_af367323ed1620::t_7991966d7b98df 150
+packages/cli/src/credentials/__tests__/runtime-rule-alias.test.ts
+  s_af367323ed1620::t_24cf151f874b9f 1-37
+packages/cli/src/modules/runtime-credentials/__tests__/project-runtime-credential-rules.service.test.ts
+  s_af367323ed1620::t_26f304e148d06a 1-77
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credential-rules.service.test.ts
+  s_af367323ed1620::t_9242afbf0b0ac6 74-132
+packages/cli/src/modules/runtime-credentials/project-runtime-credential-rules.controller.ts
+  s_55c9c16466c150::t_42c1c803523baf 1-25
+packages/cli/src/modules/runtime-credentials/project-runtime-credential-rules.service.ts
+  s_55c9c16466c150::t_58446da633fc31 1-58
+packages/cli/src/modules/type-availability-policies/__tests__/request-fed-credential-type-policy.test.ts
+  s_af367323ed1620::t_0526fafa799053 210-243
+packages/cli/src/public-api/v1/__tests__/openapi-tags.test.ts
+  s_af367323ed1620::t_1412a0b37ccc77 53
+packages/cli/src/public-api/v1/controllers/runtime-credential-rules.public.controller.ts
+  s_55c9c16466c150::t_9be0ad59c318f7 1-220
+packages/cli/src/public-api/v1/openapi.yml
+  s_55c9c16466c150::t_286533e019a82a 103-106
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_55c9c16466c150::t_832d83dc8f9e16 599-631
+packages/cli/src/credentials/credentials.controller.ts
+  s_20346091a15b4d::t_13749104b1a61d 44,140,159-163,218
+packages/cli/src/credentials/runtime-rule-alias.ts
+  s_af367323ed1620::t_7c741a287db315 1-18
+packages/cli/src/modules/runtime-credentials/runtime-credential-rules.service.ts
+  s_af367323ed1620::t_cbf0bd3457216e 3,41-44,94-117
+packages/cli/src/modules/runtime-credentials/runtime-credentials.module.ts
+  s_fb82a065416c26::t_87c161439d9b78 22
+packages/cli/src/modules/type-availability-policies/request-fed-credential-type-policy.ts
+  s_fb82a065416c26::t_c1f5f7807514b1 30-49,51-52,57,59-64
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_20346091a15b4d::t_4a121ba9f27eaa 47,98
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_fb82a065416c26::t_6c0288aa8aaa52 26,29
+packages/cli/src/public-api/v1/controllers/request-fed-credential-type-policies.public.controller.ts
+  s_55c9c16466c150::t_3d6737de9491d6 1-184
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/deleteCredential.generated.yml
+  s_55c9c16466c150::t_d7c1ee2b90ad68 39-41
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/listProjectRuntimeCredentialRules.generated.yml
+  s_55c9c16466c150::t_b6d5231741b673 1-82
+packages/cli/src/public-api/v1/handlers/request-fed-credential-type-policies/spec/paths/getRequestFedCredentialTypeInstancePolicy.generated.yml
+  s_55c9c16466c150::t_5876befe26ad95 1-26
+packages/cli/src/public-api/v1/handlers/request-fed-credential-type-policies/spec/paths/getRequestFedCredentialTypeProjectPolicy.generated.yml
+  s_55c9c16466c150::t_2c1ce60d04c577 1-33
+packages/cli/src/public-api/v1/handlers/request-fed-credential-type-policies/spec/paths/putRequestFedCredentialTypeInstancePolicy.generated.yml
+  s_55c9c16466c150::t_b3b40af358807f 1-110
+packages/cli/src/public-api/v1/handlers/request-fed-credential-type-policies/spec/paths/putRequestFedCredentialTypeProjectPolicy.generated.yml
+  s_55c9c16466c150::t_7b96e0b27610e0 1-115
+packages/cli/src/public-api/v1/handlers/runtime-credential-rules/spec/paths/checkRuntimeCredentialRuleImpact.generated.yml
+  s_55c9c16466c150::t_4aeb714955bdb2 1-85
+packages/cli/src/public-api/v1/handlers/runtime-credential-rules/spec/paths/createRuntimeCredentialRule.generated.yml
+  s_55c9c16466c150::t_0c2d8a99ddedb7 1-73
+packages/cli/src/public-api/v1/handlers/runtime-credential-rules/spec/paths/deleteRuntimeCredentialRule.generated.yml
+  s_55c9c16466c150::t_ac58d7b1f19476 1-31
+packages/cli/src/public-api/v1/handlers/runtime-credential-rules/spec/paths/getRuntimeCredentialRule.generated.yml
+  s_55c9c16466c150::t_b20734a3108bb2 1-33
+packages/cli/src/public-api/v1/handlers/runtime-credential-rules/spec/paths/listRuntimeCredentialRules.generated.yml
+  s_55c9c16466c150::t_c6990466735092 1-84
+packages/cli/src/public-api/v1/handlers/runtime-credential-rules/spec/paths/replaceRuntimeCredentialRule.generated.yml
+  s_55c9c16466c150::t_a830bae2cca590 1-83
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_55c9c16466c150::t_c96a808cee306d 381-390,416-433
+packages/cli/src/public-api/v1/shared/spec/schemas/credentialPublicDto.generated.yml
+  s_55c9c16466c150::t_aadab75e741682 17-19
+packages/cli/src/public-api/v1/shared/spec/schemas/runtimeCredentialRulePublicDto.generated.yml
+  s_55c9c16466c150::t_cf504217288f64 1-43
+packages/cli/test/integration/modules/project-runtime-credential-rules.integration.test.ts
+  s_55c9c16466c150::t_d906ba50ed49a5 1-158
+packages/cli/test/integration/public-api/runtime-credential-rules.test.ts
+  s_55c9c16466c150::t_fa5d04672aab2c 1-472
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97f9038a13057c06c11f87761d4ae37e88e6e9d5",
+  "prompts": {},
+  "sessions": {
+    "s_20346091a15b4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3236747fcf28f33c",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_fb82a065416c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aed29e7bbdb0d8f1f",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

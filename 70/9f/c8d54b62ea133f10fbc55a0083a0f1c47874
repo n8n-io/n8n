@@ -1,0 +1,18 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/AgentN8nChatView.vue
+  h_23d60aac2fe72e 270,301-302,308-313
+packages/quality/testing/playwright/pages/InstanceAiPage.ts
+  h_23d60aac2fe72e 106-113
+packages/quality/testing/playwright/tests/e2e/agents/agent-chat-description.spec.ts
+  h_23d60aac2fe72e 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "709fc8d54b62ea133f10fbc55a0083a0f1c47874",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
