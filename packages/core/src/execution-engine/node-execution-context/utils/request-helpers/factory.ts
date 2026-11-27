@@ -122,7 +122,7 @@ export const getRequestHelperFunctions = (
 		): Promise<any> {
 			return await httpRequestWithAuthentication.call(
 				this,
-				resolveManagedCredentialType(node, credentialsType),
+				resolveManagedCredentialType(credentialsType),
 				requestOptions,
 				workflow,
 				node,
@@ -178,7 +178,7 @@ export const getRequestHelperFunctions = (
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestWithAuthentication.call(
 				this,
-				resolveManagedCredentialType(node, credentialsType),
+				resolveManagedCredentialType(credentialsType),
 				requestOptions,
 				workflow,
 				node,
@@ -197,7 +197,7 @@ export const getRequestHelperFunctions = (
 		): Promise<any> {
 			const requestOptions = toLegacyRequestOptions(requestOptionsWithTarget);
 			// requestWithAuthentication runs the eval mock itself.
-			const resolvedOAuth1Type = resolveManagedCredentialType(node, credentialsType);
+			const resolvedOAuth1Type = resolveManagedCredentialType(credentialsType);
 			if (resolvedOAuth1Type !== credentialsType) {
 				// oxlint-disable-next-line typescript/no-deprecated
 				return await requestWithAuthentication.call(
@@ -233,7 +233,7 @@ export const getRequestHelperFunctions = (
 		): Promise<any> {
 			const requestOptions = toLegacyRequestOptions(requestOptionsWithTarget);
 			// requestWithAuthentication runs the eval mock itself.
-			const resolvedOAuth2Type = resolveManagedCredentialType(node, credentialsType);
+			const resolvedOAuth2Type = resolveManagedCredentialType(credentialsType);
 			if (resolvedOAuth2Type !== credentialsType) {
 				// oxlint-disable-next-line typescript/no-deprecated
 				return await requestWithAuthentication.call(

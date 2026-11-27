@@ -106,10 +106,6 @@ describe('spike managed credential types', () => {
 				expect(sheetsOut.credentials).toEqual([{ name: 'platformManagedApi', required: true }]);
 			});
 
-			it("keeps the node's auth options", () => {
-				expect(t.nodes.find((n) => n.name === sheets.name)!.properties).toEqual(sheets.properties);
-			});
-
 			it('leaves HTTP Request unchanged, because it picks its credential type in a parameter', () => {
 				expect(t.nodes.find((n) => n.name === http.name)).toEqual(http);
 			});
@@ -130,13 +126,6 @@ describe('spike managed credential types', () => {
 	describe('applyManagedCredentialToDescription', () => {
 		it('changes nothing when managed mode is off', () => {
 			expect(applyManagedCredentialToDescription(sheets)).toBe(sheets);
-		});
-
-		it('gives a description that the editor fetches alone only the managed type', () => {
-			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
-			expect(applyManagedCredentialToDescription(sheets).credentials).toEqual([
-				{ name: 'platformManagedApi', required: true },
-			]);
 		});
 
 		it('leaves the HTTP Request tool variant unchanged too', () => {

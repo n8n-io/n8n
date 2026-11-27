@@ -416,8 +416,9 @@ describe('NodeExecutionContext', () => {
 				delete process.env.N8N_MANAGED_CREDENTIAL_TYPE;
 			});
 
-			it("reads the stored managed credential and gives the node its own type's fields with no secret", async () => {
+			it("reads the stored managed credential and gives the node only its own type's fields, with no secret", async () => {
 				const { ctx, credentialsHelper, additionalData } = managedContext();
+				credentialsHelper.getDecrypted.mockResolvedValue({ accessToken: 'xoxb-stored' });
 
 				await expect(ctx['_getCredentials']('slackApi')).resolves.toEqual({ accessToken: '' });
 				expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
@@ -430,13 +431,6 @@ describe('NodeExecutionContext', () => {
 					undefined,
 					undefined,
 				);
-			});
-
-			it("never passes the stored managed data into the node's own fields", async () => {
-				const { ctx, credentialsHelper } = managedContext();
-				credentialsHelper.getDecrypted.mockResolvedValue({ accessToken: 'xoxb-stored' });
-
-				await expect(ctx['_getCredentials']('slackApi')).resolves.toEqual({ accessToken: '' });
 			});
 
 			it('returns the managed credential unchanged when the managed type is requested', async () => {

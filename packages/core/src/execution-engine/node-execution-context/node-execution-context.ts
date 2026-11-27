@@ -332,7 +332,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		}
 	}
 
-	/** SPIKE (API-663): the node still reads its own type's fields, so give it those with no secret. */
+	/** Spike (API-663): the node still reads its own type's fields, so give it those with no secret. */
 	private withRequestedTypeFields<T extends object>(requestedType: string): T {
 		return fillManagedPlaceholders(
 			this.additionalData.credentialsHelper.getCredentialsProperties(requestedType),
@@ -388,7 +388,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		options?: IGetDecryptedCredentialsOptions,
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
-		const type = resolveManagedCredentialType(node, requestedType);
+		const type = resolveManagedCredentialType(requestedType);
 		if (type !== requestedType) this.assertCredentialUsableByNode(requestedType, node.type);
 
 		// Eval bypass: only mock when the node is fully unconfigured, so nodes
@@ -426,7 +426,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		// fullAccess bypass that HTTP Request and its tool variants enjoy.
 		this.assertCredentialUsableByNode(type, node.type);
 
-		// SPIKE (API-663): the node's own description lists only its own types, not the managed one.
+		// Spike (API-663): the node's own description lists only its own types, not the managed one.
 		const isManaged = type === getManagedCredentialType();
 
 		const nodeCredentialDescription =

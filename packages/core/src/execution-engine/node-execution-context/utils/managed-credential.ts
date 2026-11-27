@@ -1,11 +1,11 @@
-import type { ICredentialDataDecryptedObject, INode, INodeProperties } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, INodeProperties } from 'n8n-workflow';
 
-// SPIKE (API-663): read from env so the spike needs no config class.
+// Spike (API-663): read from env so the spike needs no config class.
 export function getManagedCredentialType(): string | undefined {
 	return process.env.N8N_MANAGED_CREDENTIAL_TYPE || undefined;
 }
 
-export function resolveManagedCredentialType(_node: INode, requestedType: string): string {
+export function resolveManagedCredentialType(requestedType: string): string {
 	return getManagedCredentialType() ?? requestedType;
 }
 

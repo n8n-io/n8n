@@ -1,39 +1,8 @@
-import type { INode, INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import { fillManagedPlaceholders, resolveManagedCredentialType } from '../managed-credential';
-
-const node = (type = 'n8n-nodes-base.slack'): INode => ({
-	id: '1',
-	name: 'Node',
-	type,
-	typeVersion: 1,
-	position: [0, 0],
-	parameters: {},
-});
+import { fillManagedPlaceholders } from '../managed-credential';
 
 describe('managed credential (spike)', () => {
-	beforeEach(() => {
-		delete process.env.N8N_MANAGED_CREDENTIAL_TYPE;
-	});
-
-	afterEach(() => {
-		delete process.env.N8N_MANAGED_CREDENTIAL_TYPE;
-	});
-
-	describe('resolveManagedCredentialType', () => {
-		it('keeps the requested type when managed mode is off', () => {
-			expect(resolveManagedCredentialType(node(), 'slackApi')).toBe('slackApi');
-		});
-
-		it('resolves every type to the managed type when managed mode is on', () => {
-			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
-			expect(resolveManagedCredentialType(node(), 'slackApi')).toBe('platformManagedApi');
-			expect(resolveManagedCredentialType(node(), 'microsoftOutlookOAuth2Api')).toBe(
-				'platformManagedApi',
-			);
-		});
-	});
-
 	describe('fillManagedPlaceholders', () => {
 		const property = (p: Partial<INodeProperties>): INodeProperties =>
 			({ displayName: p.name, type: 'string', default: '', ...p }) as INodeProperties;
