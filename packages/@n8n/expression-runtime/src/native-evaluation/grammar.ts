@@ -1,7 +1,7 @@
-import type { namedTypes } from 'ast-types';
+import type { namedTypes } from '@n8n/tournament';
 import { DateTime } from 'luxon';
 
-import { ExpressionExtensions } from '../../extensions';
+import { EXTENSION_OBJECTS } from '../extensions/extend';
 
 // The closed subset grammar, its operator and method allowlists, and the
 // limits the parser and the evaluator share. See index.ts for the overview.
@@ -281,7 +281,7 @@ const EXCLUDED_EXTENSIONS = new Set([
 	'extractUrlPath',
 ]);
 export const EXTENSION_METHODS: ReadonlySet<string> = new Set(
-	ExpressionExtensions.filter((extension) => extension.typeName !== 'Date')
+	EXTENSION_OBJECTS.filter((extension) => extension.typeName !== 'Date')
 		.flatMap((extension) => Object.keys(extension.functions))
 		.filter((name) => !EXCLUDED_EXTENSIONS.has(name)),
 );
