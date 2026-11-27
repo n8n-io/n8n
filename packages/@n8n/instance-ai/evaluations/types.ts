@@ -16,7 +16,7 @@ import type { z } from 'zod';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
-import type { AgentRun, AgentUserTurns } from './harness/agent-run-schema';
+import type { AgentRun, AgentSession, AgentUserTurns } from './harness/agent-run-schema';
 import type { EvalAttribution } from './harness/attribution';
 import type { CaseSeed, ConversationTurnSchema, EvalTestCaseInput } from './harness/schema';
 
@@ -230,7 +230,9 @@ export interface ExecutionScenario {
 	/** AGENT-1666: the simulated user's goal and turn cap. Agent runs only. */
 	userTurns?: AgentUserTurns;
 	/** AGENT-1666: one thread per session, same user. Agent runs only. */
-	sessions?: AgentUserTurns[];
+	sessions?: AgentSession[];
+	/** Separate graded statements about the Agent run. Required in direct mode. */
+	expectations?: string[];
 }
 
 export type ConversationTurn = z.infer<typeof ConversationTurnSchema>;

@@ -61,7 +61,10 @@ const ExecutionScenarioSchema = z.object({
 	name: z.string().min(1),
 	description: z.string(),
 	dataSetup: z.string(),
-	successCriteria: z.string(),
+	/** Required outside direct mode (checked at case level, where the mode is
+	 *  known). In direct mode it is an ungraded summary; `expectations` are graded.
+	 *  Omitted ⇒ '' after parsing, so every consumer still reads a string. */
+	successCriteria: z.string().optional(),
 	requires: z.string().optional(),
 	/** Typed data tables to seed before this scenario executes (TRUST-311).
 	 *  Unlike free-text `dataSetup`, this declares each column's type, so a string
@@ -286,7 +289,7 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 			c.seed?.mode === 'replay' || c.conversation !== undefined || c.agentRun?.mode === 'direct',
 		{
 			message:
-				'a case needs a conversation, a seed with mode: replay (which supplies the live turn from the trace), or agentRun.mode direct',
+				'a case needs a conversation, or a seed with mode: replay (which supplies the live turn from the trace) — or agentRun.mode direct, which has none',
 		},
 	)
 	// A direct Agent run skips the assistant turn, so every assistant-only field
@@ -417,7 +420,29 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 					'a case needs at least one executionScenario, or a process/outcome expectation to grade it',
 			});
 		}
-	});
+	})
+	// Last, after every check has seen the raw case: an omitted `successCriteria`
+	// (allowed in direct mode only) becomes '', so consumers keep reading a string.
+	.transform(withSuccessCriteriaDefaults);
+
+type ParsedScenario = NonNullable<EvalTestCaseInput['executionScenarios']>[number];
+
+/** The case after parsing: every scenario carries a `successCriteria` string. */
+type ParsedEvalTestCase = Omit<EvalTestCaseInput, 'executionScenarios'> & {
+	executionScenarios?: Array<ParsedScenario & { successCriteria: string }>;
+};
+
+function withSuccessCriteriaDefaults(c: EvalTestCaseInput): ParsedEvalTestCase {
+	const { executionScenarios, ...rest } = c;
+	if (!executionScenarios) return rest;
+	return {
+		...c,
+		executionScenarios: executionScenarios.map((scenario) => ({
+			...scenario,
+			successCriteria: scenario.successCriteria ?? '',
+		})),
+	};
+}
 
 // Inferred from the pre-`.refine()` object schema, not `EvalTestCaseSchema`.
 // `.refine()` doesn't alter the inferred type, so this is identical — but resolving

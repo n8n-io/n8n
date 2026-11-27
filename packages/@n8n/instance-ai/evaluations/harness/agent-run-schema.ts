@@ -78,10 +78,23 @@ export const AgentUserTurnsSchema = z
 
 export type AgentUserTurns = z.infer<typeof AgentUserTurnsSchema>;
 
-export const AgentSessionsSchema = z.array(AgentUserTurnsSchema).min(1).max(MAX_SESSIONS);
+/** Separate pass/fail statements about one Agent run, like a workflow case's
+ *  outcomeExpectations. A scenario passes only if all of them hold. */
+export const AgentExpectationsSchema = z.array(z.string().min(1));
+
+/** A session may grade what happened in it, e.g. recall in a later session. */
+export const AgentSessionSchema = AgentUserTurnsSchema.extend({
+	expectations: AgentExpectationsSchema.optional(),
+}).strict();
+
+export type AgentSession = z.infer<typeof AgentSessionSchema>;
+
+export const AgentSessionsSchema = z.array(AgentSessionSchema).min(1).max(MAX_SESSIONS);
 
 /** The scenario fields only an Agent run reads. */
 export const agentScenarioFields = {
+	/** Required (≥1, here or on a session) in direct mode. */
+	expectations: AgentExpectationsSchema.optional(),
 	/** AGENT-1666: omitted = a single opening message, as today. */
 	userTurns: AgentUserTurnsSchema.optional(),
 	/** AGENT-1666: one thread per session, all for the same user (episodic memory). */
@@ -113,8 +126,34 @@ export interface CaseIssue {
 export interface AgentRunCaseView {
 	agentRun?: AgentRun;
 	seed?: { mode: string; agents?: Array<{ id: string }> } & Partial<Record<string, unknown>>;
-	executionScenarios?: Array<Partial<Record<'userTurns' | 'sessions', unknown>>>;
+	executionScenarios?: AgentScenarioView[];
 	[key: string]: unknown;
+}
+
+/** A scenario as the contract checks and the judge bridge see it. */
+export interface AgentScenarioView {
+	successCriteria?: string;
+	userTurns?: unknown;
+	expectations?: string[];
+	sessions?: Array<Partial<AgentSession>>;
+}
+
+/** Every expectation of a scenario: its own, then each session's, in order. */
+export function scenarioExpectations(scenario: AgentScenarioView): string[] {
+	return [
+		...(scenario.expectations ?? []),
+		...(scenario.sessions ?? []).flatMap((session) => session.expectations ?? []),
+	];
+}
+
+/** Bridge until AGENT-1666 grades each expectation on its own: the judge gets
+ *  them as one bulleted criterion, after `successCriteria` when it has one. */
+export function scenarioJudgeCriteria(scenario: AgentScenarioView): string {
+	const expectations = scenarioExpectations(scenario);
+	const summary = scenario.successCriteria ?? '';
+	if (expectations.length === 0) return summary;
+	const list = ['All of these must hold:', ...expectations.map((e) => `- ${e}`)].join('\n');
+	return summary ? `${summary}\n\n${list}` : list;
 }
 
 function isPresent(value: unknown): boolean {
@@ -173,12 +212,14 @@ function scenarioTurnIssues(c: AgentRunCaseView): CaseIssue[] {
 	return (c.executionScenarios ?? []).flatMap((scenario, index): CaseIssue[] => {
 		const hasTurns = scenario.userTurns !== undefined;
 		const hasSessions = scenario.sessions !== undefined;
-		if (!hasTurns && !hasSessions) return [];
+		const hasExpectations = scenario.expectations !== undefined;
+		if (!hasTurns && !hasSessions && !hasExpectations) return [];
 		if (!c.agentRun) {
 			return [
 				{
 					path: ['executionScenarios', index],
-					message: 'userTurns and sessions drive an Agent run — they need agentRun on the case',
+					message:
+						'userTurns, sessions and expectations drive an Agent run — they need agentRun on the case',
 				},
 			];
 		}
@@ -192,15 +233,40 @@ function scenarioTurnIssues(c: AgentRunCaseView): CaseIssue[] {
 	});
 }
 
+/** Direct runs are graded by expectations; `successCriteria` is only a summary. */
+function scenarioExpectationIssues(c: AgentRunCaseView): CaseIssue[] {
+	return (c.executionScenarios ?? []).flatMap((scenario, index) =>
+		scenarioExpectations(scenario).length > 0
+			? []
+			: [
+					{
+						path: ['executionScenarios', index, 'expectations'],
+						message:
+							'agentRun.mode direct grades each scenario by its expectations — add at least one, on the scenario or on a session',
+					},
+				],
+	);
+}
+
+/** Outside direct mode `successCriteria` is what gets graded, so it stays required. */
+function successCriteriaIssues(c: AgentRunCaseView): CaseIssue[] {
+	return (c.executionScenarios ?? []).flatMap((scenario, index) =>
+		scenario.successCriteria === undefined
+			? [{ path: ['executionScenarios', index, 'successCriteria'], message: 'Required' }]
+			: [],
+	);
+}
+
 /** Every way a case breaks the agent runtime contract. Empty when it holds. */
 export function findAgentRunIssues(c: AgentRunCaseView): CaseIssue[] {
 	const turnIssues = scenarioTurnIssues(c);
-	if (c.agentRun?.mode !== 'direct') return turnIssues;
+	if (c.agentRun?.mode !== 'direct') return [...successCriteriaIssues(c), ...turnIssues];
 	return [
 		...assistantOnlyIssues(c),
 		...seedIssues(c),
 		...agentRefIssues(c),
 		...scenarioCountIssues(c),
+		...scenarioExpectationIssues(c),
 		...turnIssues,
 	];
 }

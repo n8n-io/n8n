@@ -45,6 +45,7 @@ function scenario(name: string, extra: Record<string, unknown> = {}) {
 		description: 'd',
 		dataSetup: `The user asks about ${name}.`,
 		successCriteria: 'The agent answers.',
+		expectations: ['Answers the question'],
 		...extra,
 	};
 }

@@ -14,6 +14,7 @@ import {
 import { isRecord } from '@n8n/utils/is-record';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { scenarioJudgeCriteria } from './agent-run-schema';
 import { agentHandler } from './artifacts/agent-handler';
 import { attributionForScenario, type EvalAttribution } from './attribution';
 import type { EvalLogger } from './logger';
@@ -227,7 +228,7 @@ export async function executeAgentScenario(
 	const scenarioChecklist: ChecklistItem[] = [
 		{
 			id: 1,
-			description: scenario.successCriteria,
+			description: scenarioJudgeCriteria(scenario),
 			category: 'execution',
 			strategy: 'llm',
 		},

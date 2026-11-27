@@ -1,3 +1,4 @@
+import { scenarioJudgeCriteria } from '../harness/agent-run-schema';
 import { EvalTestCaseSchema } from '../harness/schema';
 
 // The case contract shared with lang-tracer (AGENT-1665/1666): `agentRun` on the
@@ -31,6 +32,7 @@ function directCase(overrides: Record<string, unknown> = {}): Record<string, unk
 				description: 'asks for a refund',
 				dataSetup: 'The user asks for a refund on order 42.',
 				successCriteria: 'The agent explains the refund policy.',
+				expectations: ['Quotes the 14-day refund window'],
 			},
 		],
 		...overrides,
@@ -181,6 +183,7 @@ describe('scenario userTurns and sessions', () => {
 		description: 'asks for a refund',
 		dataSetup: 'The user asks for a refund on order 42.',
 		successCriteria: 'The agent explains the refund policy.',
+		expectations: ['Quotes the 14-day refund window'],
 	};
 
 	it('defaults maxTurns to 6', () => {
@@ -248,5 +251,110 @@ describe('scenario userTurns and sessions', () => {
 		});
 
 		expect(messages.some((m) => m.includes('agentRun'))).toBe(true);
+	});
+});
+
+describe('scenario expectations', () => {
+	const base = {
+		name: 'refund',
+		description: 'asks for a refund',
+		dataSetup: 'The user asks for a refund on order 42.',
+	};
+
+	it('accepts a direct-mode scenario graded by expectations alone', () => {
+		const parsed = EvalTestCaseSchema.parse(
+			directCase({
+				executionScenarios: [{ ...base, expectations: ['Quotes the refund window'] }],
+			}),
+		);
+
+		expect(parsed.executionScenarios?.[0].expectations).toEqual(['Quotes the refund window']);
+		expect(parsed.executionScenarios?.[0].successCriteria).toBe('');
+	});
+
+	it('accepts expectations that live only on a session', () => {
+		const parsed = EvalTestCaseSchema.parse(
+			directCase({
+				executionScenarios: [
+					{
+						...base,
+						sessions: [
+							{ goal: 'give the order' },
+							{ goal: 'ask again', expectations: ['Recalls it'] },
+						],
+					},
+				],
+			}),
+		);
+
+		expect(parsed.executionScenarios?.[0].sessions?.[1].expectations).toEqual(['Recalls it']);
+	});
+
+	it('rejects a direct-mode scenario with no expectation anywhere', () => {
+		const messages = issueMessages(
+			directCase({ executionScenarios: [{ ...base, successCriteria: 'Explains the policy' }] }),
+		);
+
+		expect(messages.some((m) => m.includes('expectation'))).toBe(true);
+	});
+
+	it('rejects an empty expectation', () => {
+		expect(
+			issueMessages(directCase({ executionScenarios: [{ ...base, expectations: [''] }] })),
+		).not.toEqual([]);
+	});
+
+	it('still requires successCriteria on an assistant case', () => {
+		const parsed = EvalTestCaseSchema.safeParse({
+			conversation: [{ role: 'user', text: 'build a thing' }],
+			complexity: 'simple',
+			tags: [],
+			executionScenarios: [base],
+		});
+
+		expect(parsed.success).toBe(false);
+		expect(parsed.error?.issues.map((issue) => issue.path.join('.'))).toContain(
+			'executionScenarios.0.successCriteria',
+		);
+	});
+
+	it('rejects expectations on a case that is not a direct Agent run', () => {
+		const messages = issueMessages({
+			conversation: [{ role: 'user', text: 'build a thing' }],
+			complexity: 'simple',
+			tags: [],
+			executionScenarios: [{ ...base, successCriteria: 'works', expectations: ['a'] }],
+		});
+
+		expect(messages.some((m) => m.includes('agentRun'))).toBe(true);
+	});
+});
+
+describe('scenarioJudgeCriteria', () => {
+	const scenario = { successCriteria: 'Handles the refund well.' };
+
+	it('lists the expectations after the success criteria', () => {
+		expect(
+			scenarioJudgeCriteria({ ...scenario, expectations: ['Quotes the window', 'Offers a link'] }),
+		).toBe(
+			'Handles the refund well.\n\nAll of these must hold:\n- Quotes the window\n- Offers a link',
+		);
+	});
+
+	it('includes the expectations of every session', () => {
+		expect(
+			scenarioJudgeCriteria({
+				successCriteria: '',
+				expectations: ['Greets the user'],
+				sessions: [
+					{ goal: 'g', maxTurns: 6 },
+					{ goal: 'g', maxTurns: 6, expectations: ['Recalls the order'] },
+				],
+			}),
+		).toBe('All of these must hold:\n- Greets the user\n- Recalls the order');
+	});
+
+	it('leaves a scenario without expectations unchanged', () => {
+		expect(scenarioJudgeCriteria(scenario)).toBe('Handles the refund well.');
 	});
 });
