@@ -79,18 +79,12 @@ describe('ExecutionLimitsSnapshot', () => {
 		expect(snapshot.read('limited')).toEqual({ ...LIMITED, projectMaxExecutions: null });
 	});
 
-	it('keeps the loaded limits when a settings read fails', async () => {
+	it.each([
+		['settings', () => settingsStore.read],
+		['policy', () => policyRepository.findProjectLimits],
+	])('keeps the loaded limits when a %s read fails', async (_, read) => {
 		await snapshot.reload();
-		settingsStore.read.mockRejectedValueOnce(new Error('database is down'));
-
-		await snapshot.reload();
-
-		expect(snapshot.read('limited')).toEqual(LIMITED);
-	});
-
-	it('keeps the loaded limits when a policy read fails', async () => {
-		await snapshot.reload();
-		policyRepository.findProjectLimits.mockRejectedValueOnce(new Error('database is down'));
+		read().mockRejectedValueOnce(new Error('database is down'));
 
 		await snapshot.reload();
 

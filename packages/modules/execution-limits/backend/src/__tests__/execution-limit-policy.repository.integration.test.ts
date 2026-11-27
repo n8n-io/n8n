@@ -10,9 +10,6 @@ import { assignPolicyToProject, insertPolicy } from './policy-rows';
 describe('ExecutionLimitPolicyRepository', () => {
 	let repository: ExecutionLimitPolicyRepository;
 
-	const sortByProject = <T extends { projectId: string }>(rows: T[]) =>
-		[...rows].sort((a, b) => a.projectId.localeCompare(b.projectId));
-
 	beforeAll(async () => {
 		await testModules.loadModules(['execution-limits'], {
 			'execution-limits': async () => await import('../execution-limits.module.js'),
@@ -43,8 +40,9 @@ describe('ExecutionLimitPolicyRepository', () => {
 
 			const limits = await repository.findProjectLimits({});
 
-			expect(sortByProject(limits)).toEqual(
-				sortByProject([
+			expect(limits).toHaveLength(2);
+			expect(limits).toEqual(
+				expect.arrayContaining([
 					{ projectId: first.id, maxExecutions: 40 },
 					{ projectId: second.id, maxExecutions: 40 },
 				]),
@@ -69,15 +67,6 @@ describe('ExecutionLimitPolicyRepository', () => {
 				.insert({ policyId: groupPolicyId, group: 'newProjects' });
 
 			expect(await repository.findProjectLimits({})).toEqual([]);
-		});
-
-		it('returns a number for the maximum', async () => {
-			const project = await createTeamProject();
-			await assignPolicyToProject(await insertPolicy({ maxExecutions: 7 }), project.id);
-
-			const [limit] = await repository.findProjectLimits({});
-
-			expect(typeof limit.maxExecutions).toBe('number');
 		});
 	});
 });

@@ -90,7 +90,7 @@ describe('ExecutionLimitsService', () => {
 			expect(await readAuditRows()).toHaveLength(1);
 		});
 
-		it('reads a row that an older version saved with a default project limit', async () => {
+		const saveRowOfOlderVersion = async () =>
 			await Container.get(SettingsRepository).upsertByKey(
 				'features.executionLimits',
 				JSON.stringify({
@@ -101,6 +101,9 @@ describe('ExecutionLimitsService', () => {
 				false,
 				{},
 			);
+
+		it('reads a row that an older version saved with a default project limit', async () => {
+			await saveRowOfOlderVersion();
 
 			const settings = await service.getSettings();
 
@@ -109,16 +112,7 @@ describe('ExecutionLimitsService', () => {
 		});
 
 		it('saves a change on top of a row that has a default project limit, without that key', async () => {
-			await Container.get(SettingsRepository).upsertByKey(
-				'features.executionLimits',
-				JSON.stringify({
-					periodUnit: 'week',
-					instanceMaxExecutions: 1000,
-					defaultProjectMaxExecutions: 50,
-				}),
-				false,
-				{},
-			);
+			await saveRowOfOlderVersion();
 
 			const saved = await service.updateSettings({ instanceMaxExecutions: 500 }, USER_ID);
 
