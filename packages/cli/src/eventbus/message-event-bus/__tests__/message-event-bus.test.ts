@@ -240,4 +240,52 @@ describe('MessageEventBus.initialize', () => {
 			);
 		});
 	});
+
+	describe('replayUnsent', () => {
+		const unsent = () => [
+			new EventMessageWorkflow({ eventName: 'n8n.workflow.started', payload: {} }),
+			new EventMessageWorkflow({ eventName: 'n8n.workflow.success', payload: {} }),
+		];
+
+		it('sends the unsent messages from the logs once, and not during initialize', async () => {
+			const messages = unsent();
+			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+				unsentMessages: messages,
+				unfinishedExecutions: {},
+			});
+			const bus = buildBus(buildGlobalConfig());
+			const listener = vi.fn();
+			bus.on('message', listener);
+
+			await bus.initialize({});
+
+			expect(listener).not.toHaveBeenCalled();
+			expect(mockedWriter.putMessage).not.toHaveBeenCalled();
+
+			await bus.replayUnsent();
+			await bus.replayUnsent();
+
+			expect(listener.mock.calls.map(([msg]) => msg)).toEqual(messages);
+			expect(mockedWriter.putMessage).toHaveBeenCalledTimes(messages.length);
+		});
+
+		it('confirms the replayed messages when no destination listens', async () => {
+			const messages = unsent();
+			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+				unsentMessages: messages,
+				unfinishedExecutions: {},
+			});
+			const bus = buildBus(buildGlobalConfig());
+
+			await bus.initialize({});
+			await bus.replayUnsent();
+
+			for (const { id } of messages) {
+				expect(mockedWriter.confirmMessageSent).toHaveBeenCalledWith(id, {
+					id: '0',
+					name: 'eventBus',
+				});
+			}
+		});
+	});
 });

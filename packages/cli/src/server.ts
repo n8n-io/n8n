@@ -316,6 +316,7 @@ export class Server extends AbstractServer {
 		Container.get(LogStreamingEventRelay).init();
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
+		await eventBus.replayUnsent();
 
 		// ----------------------------------------
 		// Workflow Indexing Setup

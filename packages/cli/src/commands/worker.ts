@@ -147,7 +147,11 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		await Container.get(MessageEventBus).send(
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
+
+		const eventBus = Container.get(MessageEventBus);
+		await eventBus.replayUnsent();
+		await eventBus.send(
 			new EventMessageGeneric({
 				eventName: 'n8n.worker.started',
 				payload: {
@@ -155,8 +159,6 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 				},
 			}),
 		);
-
-		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		// Re-register pubsub event handlers after modules have been initialized
 		// As modules can add new event handlers we need to make sure they are registered

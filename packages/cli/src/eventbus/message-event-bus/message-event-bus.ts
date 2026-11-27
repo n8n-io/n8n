@@ -54,6 +54,8 @@ export interface MessageEventBusInitializeOptions {
 export class MessageEventBus extends EventEmitter {
 	private isInitialized = false;
 
+	private startupReplay: EventMessageTypes[] = [];
+
 	logWriter: MessageEventBusLogWriter;
 
 	constructor(
@@ -73,7 +75,7 @@ export class MessageEventBus extends EventEmitter {
 	 * Needs to be called once at startup to set the event bus instance up. Will launch the event log writer and,
 	 * if configured to do so, the previously stored event destinations.
 	 *
-	 * Will check for unsent event messages in the previous log files once at startup and try to re-send them.
+	 * Will check for unsent event messages in the previous log files once at startup and keep them for `replayUnsent()`.
 	 *
 	 * Sets `isInitialized` to `true` once finished.
 	 */
@@ -150,6 +152,17 @@ export class MessageEventBus extends EventEmitter {
 				this.emitMessageWithCallback('message', unsentMsg);
 			}
 		}
+	}
+
+	/**
+	 * Sends the unsent messages that `initialize()` found in the event logs.
+	 * Call it after the modules are initialized: `send()` confirms a message at once
+	 * when no destination listens yet, so an earlier replay would never deliver it.
+	 */
+	async replayUnsent() {
+		const messages = this.startupReplay;
+		this.startupReplay = [];
+		await this.send(messages);
 	}
 
 	async close() {
@@ -274,7 +287,7 @@ export class MessageEventBus extends EventEmitter {
 
 	/**
 	 * Does the following at startup:
-	 * - checks for unsent messages in the log files and tries to resend them
+	 * - checks for unsent messages in the log files and keeps them for `replayUnsent()`
 	 * - cycles event logs and start the logging to a fresh file
 	 * - checks for unfinished executions (executions for which we have events in the log files,
 	 *   but no final execution event) and tries to recover them if needed
@@ -286,7 +299,7 @@ export class MessageEventBus extends EventEmitter {
 			`Start logging into ${this.logWriter?.getLogFileName() ?? 'unknown filename'} `,
 		);
 		this.logWriter?.startLogging();
-		await this.send(unsentAndUnfinished.unsentMessages);
+		this.startupReplay = unsentAndUnfinished.unsentMessages;
 
 		const unfinishedExecutionIds = await this.collectUnfinishedExecutionIds(
 			unsentAndUnfinished.unfinishedExecutions,

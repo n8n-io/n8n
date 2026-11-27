@@ -156,6 +156,21 @@ describe('Webhook', () => {
 			);
 		});
 
+		it('should replay unsent events after the modules initialize', async () => {
+			const webhook = createWebhook();
+
+			await webhook.init();
+
+			// @ts-expect-error - Accessing protected property for testing
+			const initModulesMock = webhook.moduleRegistry.initModules as Mock;
+			const replayUnsentMock = Container.get(MessageEventBus).replayUnsent as Mock;
+
+			expect(replayUnsentMock).toHaveBeenCalledTimes(1);
+			expect(initModulesMock.mock.invocationCallOrder[0]).toBeLessThan(
+				replayUnsentMock.mock.invocationCallOrder[0],
+			);
+		});
+
 		it('should register pubsub event handlers again after the modules initialize', async () => {
 			const webhook = createWebhook();
 
