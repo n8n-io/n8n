@@ -193,7 +193,8 @@ build.
 Some artifacts look alike. Each row names a pair, the signal that a request
 fits both, and one question that tells them apart. When the user names one
 side and the signal fits the other side too, ask the row's question with
-`ask_user`, then build what the user picks. Do not build
+`ask_user`. Word each option as that behavior; do not name an artifact or
+its nodes in it. Then build what the user picks. Do not build
 either side first. An explicit Agent request does not use this table (step 1).
 A new artifact type adds a row here.
 
