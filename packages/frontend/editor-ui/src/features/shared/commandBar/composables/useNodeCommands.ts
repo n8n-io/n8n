@@ -1,4 +1,5 @@
 import { type Component, computed } from 'vue';
+import { isHitlToolType } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -56,10 +57,13 @@ export function useNodeCommands(): CommandGroup {
 		!workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
 
 	// Restricted types stay listed, like in the nodes panel: greyed, locked, last, and inert.
+	// HITL tools work only on an Agent's ai_tool input, so exclude them from add-node results.
 	const mergedNodes = computed(() => {
 		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
 		const nodeTypes = nodeTypesStore.visibleNodeTypes;
-		const nodes = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials).mergedNodes;
+		const nodes = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials).mergedNodes.filter(
+			(node) => !isHitlToolType(node.name),
+		);
 		const restricted = new Set(nodes.filter((node) => isNodeItemRestricted(node.name)));
 		return [...nodes.filter((node) => !restricted.has(node)), ...restricted];
 	});

@@ -788,5 +788,75 @@ describe('useNodeCommands', () => {
 				expect(findIndistinguishableDuplicates(query, name)).toEqual([]);
 			},
 		);
+
+		it('should exclude HITL tool variants from add-node results while keeping base and AI tool nodes', () => {
+			setVisibleNodeTypes([
+				createRegularNodeType(
+					'n8n-nodes-base.gmail',
+					'Gmail',
+					'file:gmail.svg',
+					'Consume the Gmail API',
+				),
+				createHitlToolNodeType('n8n-nodes-base.gmail', 'Gmail', 'file:gmail.svg'),
+				createAiToolNodeType(
+					'n8n-nodes-base.gmail',
+					'Gmail',
+					'file:gmail.svg',
+					'Consume the Gmail API',
+				),
+				createRegularNodeType(
+					'@n8n/n8n-nodes-langchain.chat',
+					'Chat',
+					'file:chat.svg',
+					'Send a message into the chat',
+				),
+				createHitlToolNodeType('@n8n/n8n-nodes-langchain.chat', 'Chat', 'file:chat.svg'),
+			]);
+
+			expect(searchNodeIds('gmail')).toEqual(['n8n-nodes-base.gmail', 'n8n-nodes-base.gmailTool']);
+			expect(searchNodeIds('chat')).toEqual(['@n8n/n8n-nodes-langchain.chat']);
+			expect(searchNodeIds('')).toEqual([
+				'n8n-nodes-base.gmail',
+				'n8n-nodes-base.gmailTool',
+				'@n8n/n8n-nodes-langchain.chat',
+			]);
+		});
+
+		it('should not list a policy-restricted HITL tool variant in add-node results', () => {
+			setVisibleNodeTypes([
+				createRegularNodeType(
+					'n8n-nodes-base.gmail',
+					'Gmail',
+					'file:gmail.svg',
+					'Consume the Gmail API',
+				),
+				createHitlToolNodeType('n8n-nodes-base.gmail', 'Gmail', 'file:gmail.svg'),
+			]);
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.gmailHitlTool': 'instance' });
+
+			expect(searchNodeIds('gmail')).toEqual(['n8n-nodes-base.gmail']);
+		});
+
+		it('should still list an existing HITL tool node that is already in the workflow', () => {
+			setVisibleNodeTypes([
+				createRegularNodeType(
+					'n8n-nodes-base.gmail',
+					'Gmail',
+					'file:gmail.svg',
+					'Consume the Gmail API',
+				),
+				createHitlToolNodeType('n8n-nodes-base.gmail', 'Gmail', 'file:gmail.svg'),
+			]);
+			setWorkflowNodes([
+				{ id: 'hitl-node-1', name: 'Approve via Gmail', type: 'n8n-nodes-base.gmailHitlTool' },
+			]);
+
+			const { items } = searchNodes({ query: 'gmail' });
+
+			expect(items.map((item) => [item.id, item.section])).toEqual([
+				['hitl-node-1', IN_WORKFLOW_SECTION],
+				['n8n-nodes-base.gmail', ADD_NODE_SECTION],
+			]);
+		});
 	});
 });
