@@ -12,8 +12,8 @@ third-party secret and adds it to each outbound request. n8n must hold none.
   way as custom nodes.
 - **One credential of that type for the whole instance.** The platform creates it once, as a
   global credential, so that every project can use it. It holds no secret.
-- **Every node uses it.** The editor offers only this credential type, and selects the one
-  credential automatically. The credential field is the normal picker.
+- **Every node uses it.** Each node's credential field accepts only this type, and the editor
+  selects the one credential automatically. The credential field is the normal picker.
 - **Nodes run unchanged.** When a node asks for its own type, for example "Slack API", n8n
   gives it that type's fields with empty secrets. Address fields get their default or a
   placeholder.
@@ -94,7 +94,7 @@ cd packages/cli && pnpm test src/__tests__/spike-managed-credential-types.test.t
 | File | Change |
 |---|---|
 | `spike/api-663/managed-credential/` | Example managed credential type |
-| `packages/cli/src/spike-managed-credential-types.ts` | In managed mode, every node's credential list is the managed type, and the editor gets only that type |
+| `packages/cli/src/spike-managed-credential-types.ts` | In managed mode, every node's credential list is the managed type |
 | `packages/core/.../node-execution-context.ts` | Any node can use the managed credential. It gets its own type's fields with empty secrets |
 | `packages/core/.../utils/managed-credential.ts` | Fills those fields with defaults and placeholders |
 | `packages/core/.../request-helpers/factory.ts` | Auth helpers and OAuth paths authenticate with the managed type |

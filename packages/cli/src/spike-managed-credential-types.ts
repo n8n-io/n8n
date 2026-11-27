@@ -3,8 +3,8 @@ import type { Types } from 'n8n-core';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 /**
- * Spike (API-663): in managed mode every node uses the managed credential, and the editor
- * offers only the managed type. Node code is unchanged; core swaps the type at runtime.
+ * Spike (API-663): in managed mode every node uses the managed credential. Node code is
+ * unchanged; core swaps the type at runtime.
  */
 export function applyManagedCredentialToTypes(types: Types): void {
 	const managedType = process.env.N8N_MANAGED_CREDENTIAL_TYPE;
@@ -16,7 +16,6 @@ export function applyManagedCredentialToTypes(types: Types): void {
 	}
 
 	types.nodes = types.nodes.map((description) => withManagedCredential(description, managedType));
-	types.credentials = types.credentials.filter(({ name }) => name === managedType);
 }
 
 /** Spike (API-663): the same change for one description that the editor fetches on its own. */

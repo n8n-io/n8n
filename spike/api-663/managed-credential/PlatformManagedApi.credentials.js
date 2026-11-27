@@ -1,6 +1,7 @@
 'use strict';
 
-// Loaded through N8N_CUSTOM_EXTENSIONS. N8N_MANAGED_CREDENTIAL_TYPE must match `name`.
+// Loaded through N8N_CUSTOM_EXTENSIONS. Set N8N_MANAGED_CREDENTIAL_TYPE to `name` so that every
+// node uses this credential. Without it, each node accepts only its own credential types.
 class PlatformManagedApi {
 	name = 'platformManagedApi';
 	displayName = 'Managed by platform';

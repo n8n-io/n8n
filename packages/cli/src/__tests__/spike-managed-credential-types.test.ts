@@ -97,8 +97,8 @@ describe('spike managed credential types', () => {
 				applyManagedCredentialToTypes(t);
 			});
 
-			it('sends only the managed credential type to the editor', () => {
-				expect(t.credentials.map((c) => c.name)).toEqual(['platformManagedApi']);
+			it('keeps every credential type, because the platform controls who creates credentials', () => {
+				expect(t.credentials.map((c) => c.name)).toEqual(['slackApi', 'platformManagedApi']);
 			});
 
 			it('lets nodes ask only for the managed type', () => {
