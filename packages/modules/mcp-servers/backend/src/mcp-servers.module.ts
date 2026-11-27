@@ -1,5 +1,6 @@
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 
 /**
  * Custom MCP servers: a builder puts workflows of a project on a server, and people of the
@@ -8,6 +9,14 @@ import { BackendModule } from '@n8n/decorators';
  */
 @BackendModule({ name: 'mcp-servers', instanceTypes: ['main'] })
 export class McpServersModule implements ModuleInterface {
+	async init() {
+		const { McpServerToolAdapters, WorkflowToolPort } = await import(
+			'./tools/workflow-tool-port.js'
+		);
+		const adapters = Container.get(McpServerToolAdapters).resolve();
+		Container.set(WorkflowToolPort, adapters.workflows);
+	}
+
 	async entities() {
 		const { McpServer } = await import('./database/entities/mcp-server.entity.js');
 		const { McpServerTool } = await import('./database/entities/mcp-server-tool.entity.js');
