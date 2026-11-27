@@ -20,7 +20,7 @@ import {
 import { MCP_SCOPE_GROUPS } from '@n8n/frontend-module-mcp';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import ScopesSelector from '@/app/components/scopes/ScopesSelector.vue';
+import { ScopesSelector } from '@n8n/frontend-module-api-keys';
 
 const consentStore = useConsentStore();
 

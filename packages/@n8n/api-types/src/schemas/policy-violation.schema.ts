@@ -5,6 +5,7 @@ export const POLICY_VIOLATION_KIND = {
 	nodeTypeUnavailable: 'node-type-unavailable',
 	credentialTypeUnavailable: 'credential-type-unavailable',
 	nodeTypeDeprecated: 'node-type-deprecated',
+	executionLimit: 'execution-limit',
 } as const;
 
 /** The `subjectType` values n8n emits today. The schema stays open to others. */
@@ -51,6 +52,15 @@ export const policyViolationSchema = z.object({
 
 	/** The project can lift this block with its own allow rule. Absent means it cannot. */
 	optInAvailable: z.boolean().optional(),
+
+	/** The maximum that was reached, for a violation about a count. */
+	limit: z.number().optional(),
+
+	/** The count when the check ran. It can be above `limit`, because counts arrive late. */
+	usage: z.number().optional(),
+
+	/** ISO 8601 time when the count starts again from zero. */
+	resetsAt: z.string().optional(),
 });
 
 export type PolicyViolation = z.infer<typeof policyViolationSchema>;

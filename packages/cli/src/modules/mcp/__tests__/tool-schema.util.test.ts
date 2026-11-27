@@ -1,6 +1,13 @@
+import { zodToDraft202012 } from '@n8n/ai-utilities/json-schema';
 import { z } from 'zod';
 
 import { shapeToStandardSchema } from '../tool-schema.util';
+
+// Pass through to the real conversion, so the tests can count the calls.
+vi.mock('@n8n/ai-utilities/json-schema', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/ai-utilities/json-schema')>();
+	return { ...actual, zodToDraft202012: vi.fn(actual.zodToDraft202012) };
+});
 
 describe('shapeToStandardSchema', () => {
 	const schema = shapeToStandardSchema({
@@ -119,6 +126,50 @@ describe('shapeToStandardSchema', () => {
 				maxItems: 2,
 				description: 'For setNodePosition.',
 			},
+		});
+	});
+
+	// The MCP server is rebuilt on every request, and most tool shapes are
+	// module-level constants. The conversion must run once for each shape, and
+	// only when a client reads the JSON Schema.
+	describe('JSON Schema conversion', () => {
+		const options = { target: 'draft-2020-12' } as const;
+
+		beforeEach(() => {
+			vi.mocked(zodToDraft202012).mockClear();
+		});
+
+		it('does not convert the shape until the JSON Schema is read', async () => {
+			const bridged = shapeToStandardSchema({ limit: z.number().int().min(1) });
+
+			expect(await bridged['~standard'].validate({ limit: 2 })).toEqual({ value: { limit: 2 } });
+			expect(await bridged['~standard'].validate({ limit: 0 })).toHaveProperty('issues');
+			expect(zodToDraft202012).not.toHaveBeenCalled();
+
+			bridged['~standard'].jsonSchema.input(options);
+
+			expect(zodToDraft202012).toHaveBeenCalledTimes(1);
+		});
+
+		it('converts a shape once when each request bridges it again', () => {
+			const shape = { query: z.string().optional() };
+			const first = shapeToStandardSchema(shape)['~standard'].jsonSchema;
+			const second = shapeToStandardSchema(shape)['~standard'].jsonSchema;
+
+			const json = first.input(options);
+
+			expect(first.output(options)).toBe(json);
+			expect(second.input(options)).toBe(json);
+			expect(second.output(options)).toBe(json);
+			expect(zodToDraft202012).toHaveBeenCalledTimes(1);
+		});
+
+		it('converts different shape objects separately', () => {
+			const first = shapeToStandardSchema({ query: z.string() })['~standard'].jsonSchema;
+			const second = shapeToStandardSchema({ query: z.string() })['~standard'].jsonSchema;
+
+			expect(second.input(options)).not.toBe(first.input(options));
+			expect(zodToDraft202012).toHaveBeenCalledTimes(2);
 		});
 	});
 });

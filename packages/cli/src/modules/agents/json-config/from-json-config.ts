@@ -337,12 +337,15 @@ function getProviderToolPrefix(toolName: string): string | undefined {
 }
 
 function buildInstructions(config: AgentJsonConfig, options: BuildFromJsonOptions): string {
-	const policies = [
+	const name = config.name.trim();
+	return [
+		name ? `Your name is ${JSON.stringify(name)}.` : undefined,
+		config.instructions.trimEnd(),
 		config.config?.webSearch?.enabled === true ? WEB_SEARCH_POLICY_INSTRUCTION : undefined,
 		options.previewChat === true ? PREVIEW_SELF_MODIFICATION_POLICY : undefined,
-	].filter((policy) => policy !== undefined);
-	if (policies.length === 0) return config.instructions;
-	return [config.instructions.trimEnd(), ...policies].join('\n\n');
+	]
+		.filter(Boolean)
+		.join('\n\n');
 }
 
 /**
@@ -474,10 +477,11 @@ function getConfiguredSkillSource(
 		seen.add(ref.id);
 		const skill = skills[ref.id];
 		if (!skill) throw new Error(`Skill "${ref.id}" not found in stored skill bodies`);
-		const linkedFiles = linkedFilesForSkill(skill);
+		const textFiles = (skill.references ?? []).filter((file) => !file.isBinary);
+		const linkedFiles = linkedFilesForSkill(textFiles);
 		referencesBySkillId.set(
 			ref.id,
-			new Map((skill.references ?? []).map((reference) => [reference.path, reference])),
+			new Map(textFiles.map((reference) => [reference.path, reference])),
 		);
 		configured.push({
 			id: ref.id,
@@ -506,9 +510,11 @@ function getConfiguredSkillSource(
 	};
 }
 
-function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
+function linkedFilesForSkill(
+	files: NonNullable<AgentSkill['references']>,
+): RuntimeSkillLinkedFiles {
 	return {
-		references: (skill.references ?? []).map((reference) => ({
+		references: files.map((reference) => ({
 			path: reference.path,
 			bytes: Buffer.byteLength(reference.content, 'utf8'),
 			sha256: createHash('sha256').update(reference.content).digest('hex'),

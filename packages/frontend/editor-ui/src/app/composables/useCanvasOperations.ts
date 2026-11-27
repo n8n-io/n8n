@@ -46,7 +46,6 @@ import {
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	NO_OP_NODE_TYPE,
 	STICKY_NODE_TYPE,
-	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
 } from '@/app/constants';
 import {
@@ -107,6 +106,7 @@ import {
 	getNodesGroupSize,
 	PUSH_NODES_OFFSET,
 	HORIZONTAL_NODE_STEP,
+	NODE_X_SPACING,
 	type NextNodeSlotFan,
 	getNodeSizeFromPorts,
 	isPositionBlocked,
@@ -118,7 +118,7 @@ import {
 	getAgentNodeHandleOffset,
 	isAgentNodeV2,
 } from '@/features/agents/utils/agentNode';
-import type { Connection } from '@vue-flow/core';
+import type { Connection, Rect } from '@vue-flow/core';
 import type {
 	IConnection,
 	IConnections,
@@ -1851,41 +1851,6 @@ export function useCanvasOperations() {
 					(output) => output === NodeConnectionTypes.Main,
 				);
 
-				if (lastInteractedWithNodeConnection) {
-					// When clicking the plus button of a node edge / connection
-					// Compute the y offset for the new node based on the number of main outputs of the source node
-					// and shift the downstream nodes accordingly
-
-					// Calculate actual node size for the new node being inserted
-					// Configurable nodes (like AI Agent) have non-main inputs and are wider
-					// Use nodeTypeDescription.inputs directly since the node isn't in the workflow yet
-					// If inputs is a string (expression), it's a dynamic node like AI Agent which is configurable
-					let isNewNodeConfigurable = false;
-					if (typeof nodeTypeDescription.inputs === 'string') {
-						// Dynamic inputs (expression string) indicates AI/configurable nodes
-						isNewNodeConfigurable = true;
-					} else if (Array.isArray(nodeTypeDescription.inputs)) {
-						const nodeInputTypes = NodeHelpers.getConnectionTypes(nodeTypeDescription.inputs);
-						isNewNodeConfigurable =
-							nodeInputTypes.filter((input) => input !== NodeConnectionTypes.Main).length > 0;
-					}
-					const newNodeSize: [number, number] = isNewNodeConfigurable
-						? CONFIGURABLE_NODE_SIZE
-						: DEFAULT_NODE_SIZE;
-					// Calculate shift margin: base horizontal step plus extra width for configurable nodes
-					// For standard nodes: HORIZONTAL_NODE_STEP (224, matches auto-layout)
-					// For configurable nodes: HORIZONTAL_NODE_STEP + (configurable width - default width)
-					const extraWidth = isNewNodeConfigurable
-						? CONFIGURABLE_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]
-						: 0;
-					const shiftMargin = HORIZONTAL_NODE_STEP + extraWidth;
-
-					shiftDownstreamNodesPosition(lastInteractedWithNode.value.name, shiftMargin, {
-						trackHistory: true,
-						nodeSize: newNodeSize,
-					});
-				}
-
 				let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
 				try {
 					// It fails when the outputs are an expression. As those nodes have
@@ -1940,16 +1905,36 @@ export function useCanvasOperations() {
 					// We want to place the new node directly to the right of the last interacted with node.
 
 					// If a node is active then add the new node directly after the current one.
-					// When inserting via edge plus button, keep Y aligned to preserve vertical line.
+					// A node inserted on a main connection goes on the row of the source output,
+					// the same row as a node added from that output. The connection target does
+					// not set the row.
+					const insertConnection =
+						connectionType === NodeConnectionTypes.Main
+							? lastInteractedWithNodeConnection
+							: undefined;
 					position = getNextNodeSlotAfter({
 						source: lastInteractedWithNodeObject,
 						sourceTypeDescription: lastInteractedWithNodeTypeDescription,
 						node: { ...node, position: lastInteractedWithNodeObject.position },
 						nodeTypeDescription,
-						fan: lastInteractedWithNodeConnection
-							? undefined
-							: { index: connectionIndex, count: lastInteractedWithNodeMainOutputs.length },
+						fan:
+							lastInteractedWithNodeConnection && !insertConnection
+								? undefined
+								: { index: connectionIndex, count: lastInteractedWithNodeMainOutputs.length },
 					});
+
+					if (insertConnection) {
+						// Make room for the final rectangle of the new node
+						const [width, height] = getNodePlacementSize(
+							{ ...node, position },
+							nodeTypeDescription,
+						);
+						shiftDownstreamNodesPosition(lastInteractedWithNode.value.name, {
+							insertRect: { x: position[0], y: position[1], width, height },
+							margin: width + NODE_X_SPACING,
+							trackHistory: true,
+						});
+					}
 				}
 			}
 		}
@@ -2088,7 +2073,8 @@ export function useCanvasOperations() {
 	 * Determines which nodes and sticky notes need to be moved or stretched when inserting a new node.
 	 *
 	 * Algorithm:
-	 * 1. Find regular nodes that overlap with or are to the right of insertion area
+	 * 1. Find regular nodes that overlap with or are to the right of insertion area,
+	 *    and nodes that block the new node at any height
 	 * 2. Add downstream connected nodes and the sub-nodes of each node that moves,
 	 *    except sub-nodes that also feed a node that stays
 	 * 3. Classify sticky notes based on:
@@ -2124,6 +2110,9 @@ export function useCanvasOperations() {
 			const nodeRightEdge = node.position[0] + getNodePlacementSize(node)[0];
 			return nodeRightEdge > insertX || node.position[0] >= insertX;
 		};
+
+		const insertRect = { x: insertX, y: insertY, width: nodeSize[0], height: nodeSize[1] };
+		const blocksInsert = (node: INodeUi) => isPositionBlocked(insertRect, getNodeRect(node));
 
 		/** Checks if a node is fully contained within a sticky note's bounds */
 		const isNodeInsideSticky = (
@@ -2180,11 +2169,13 @@ export function useCanvasOperations() {
 		};
 
 		// Step 1: Find initial candidates - nodes that overlap with or are to the right of insertion
-		// A node overlaps if its right edge extends into the insertion area
+		// A node overlaps if its right edge extends into the insertion area. A tall node can
+		// block the new node from outside the similar-Y band, so it moves too. A node that
+		// ends left of the insertion stays, because a shift would move it into the new node.
 		const initialCandidates = allNodes.filter((node) => {
 			if (node.type === STICKY_NODE_TYPE) return false;
 			if (node.name === sourceNodeName) return false;
-			return isSimilarY(node) && overlapsInsertX(node);
+			return (isSimilarY(node) || blocksInsert(node)) && overlapsInsertX(node);
 		});
 
 		// Step 2: Add all downstream connected nodes from initial candidates
@@ -2387,32 +2378,24 @@ export function useCanvasOperations() {
 
 	/**
 	 * Moves downstream nodes when inserting a node between existing nodes.
-	 * Only moves nodes if there isn't enough space for the new node.
+	 * Only moves nodes if there isn't enough space for the new node at `insertRect`,
+	 * its final rectangle. The nodes that move, move right by `margin`.
 	 * Sticky notes that overlap the insertion area are stretched instead of moved.
 	 * Stickies at the insertion point are repositioned behind the new node.
 	 */
 	function shiftDownstreamNodesPosition(
 		sourceNodeName: string,
-		margin: number,
 		{
+			insertRect,
+			margin,
 			trackHistory = false,
-			nodeSize = DEFAULT_NODE_SIZE,
-		}: { trackHistory?: boolean; nodeSize?: [number, number] },
+		}: { insertRect: Rect; margin: number; trackHistory?: boolean },
 	) {
 		const sourceNode = workflowDocumentStore.value.getNodeByName(sourceNodeName);
 		if (!sourceNode) return;
 
-		// Calculate insertion position (to the right of source node)
-		// HORIZONTAL_NODE_STEP matches the next-node slot only after a default-width
-		// node, so widen it for the agent card
-		let insertOffset = HORIZONTAL_NODE_STEP;
-		if (isAgentNodeV2(sourceNode)) {
-			insertOffset += DEFAULT_AGENT_WIDTH - DEFAULT_NODE_SIZE[0];
-		}
-		const insertPosition: XYPosition = [
-			sourceNode.position[0] + insertOffset,
-			sourceNode.position[1],
-		];
+		const insertPosition: XYPosition = [insertRect.x, insertRect.y];
+		const nodeSize: [number, number] = [insertRect.width, insertRect.height];
 
 		// Get all nodes except source and stickies
 		const nodesToCheck = workflowDocumentStore.value.allNodes.filter(
@@ -3358,19 +3341,28 @@ export function useCanvasOperations() {
 						nodeNames.add(newName);
 					}
 
-					// Generate new webhookId
-					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-						const previousWebhookId = node.webhookId;
-						const pathMatchedWebhookId = node.parameters.path === previousWebhookId;
-						const optionsPathMatchedWebhookId =
-							(node.parameters.options as IDataObject)?.path === previousWebhookId;
+					// A caller that keeps node ids is restoring the nodes as they were, so only then does the webhookId stay.
+					if (regenerateIds && node.webhookId) {
+						// Whether a type declares webhooks does not change between versions, so the newest description will do.
+						const nodeTypeDescription =
+							nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
+							nodeTypesStore.getNodeType(node.type);
 
-						nodeHelpers.assignWebhookId(node);
+						if (nodeTypeDescription?.webhooks?.length) {
+							const previousWebhookId = node.webhookId;
+							node.parameters = node.parameters ?? {};
+							const parameters = node.parameters as IDataObject;
+							const pathMatchedWebhookId = parameters.path === previousWebhookId;
+							const optionsPathMatchedWebhookId =
+								(parameters.options as IDataObject)?.path === previousWebhookId;
 
-						if (pathMatchedWebhookId) {
-							node.parameters.path = node.webhookId;
-						} else if (optionsPathMatchedWebhookId) {
-							(node.parameters.options as IDataObject).path = node.webhookId;
+							nodeHelpers.assignWebhookId(node);
+
+							if (pathMatchedWebhookId) {
+								parameters.path = node.webhookId;
+							} else if (optionsPathMatchedWebhookId) {
+								(parameters.options as IDataObject).path = node.webhookId;
+							}
 						}
 					}
 

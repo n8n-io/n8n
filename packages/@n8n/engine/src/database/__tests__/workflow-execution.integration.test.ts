@@ -1,7 +1,7 @@
 import type { DataSource, Repository } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import postgresVersions from 'n8n-containers/postgres-versions.json';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { ExecutionNotFoundError, ParentExecutionEndedError } from '../../execution/execution-store';
 import type { NewExecutionRecord } from '../../execution/execution-store';
@@ -11,6 +11,7 @@ import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowSeededStep } from '../entities/workflow-seeded-step.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
+import { AddErrorWorkflowColumnsToWorkflowExecution1795132800000 } from '../migrations/1795132800000-AddErrorWorkflowColumnsToWorkflowExecution';
 import { TypeOrmExecutionStore } from '../typeorm-execution-store';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 
@@ -112,6 +113,7 @@ describe('workflow_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			workflow: sampleWorkflow,
 			parent: null,
+			errorSource: null,
 			createdAt: expect.any(Date) as Date,
 			updatedAt: expect.any(Date) as Date,
 			finishedAt,
@@ -172,6 +174,8 @@ describe('workflow_execution table (integration)', () => {
 				callerContext: { hostMode: 'manual' },
 				responseExpectation: { kind: 'none' },
 				parent: null,
+				errorSource: null,
+				resolveErrorWorkflowOnFailure: false,
 				lifecycleEventSubscription,
 			});
 
@@ -465,6 +469,8 @@ describe('workflow_execution table (integration)', () => {
 			callerContext: { hostMode: 'manual' },
 			responseExpectation: { kind: 'none' },
 			parent: null,
+			errorSource: null,
+			resolveErrorWorkflowOnFailure: false,
 		});
 
 		// Only the keys asked for, and nothing for a key that was never seeded.
@@ -622,24 +628,30 @@ describe('workflow_execution table (integration)', () => {
 			]);
 		});
 
-		it('renewQueuedExecution moves the time forward once for one observed value', async () => {
-			const store = stalenessStore();
-			const id = generateId();
-			await store.createExecution(newRecord(id));
-			const observed = await loadStaleAfter(id);
-			if (!observed) throw new Error('expected a stale_after value');
+		it.each([
+			{ elapsedMs: 0, expectedAdvanceMs: 1 },
+			{ elapsedMs: 20_000, expectedAdvanceMs: 20_000 },
+		])(
+			'renewQueuedExecution moves the deadline forward once for one observed value after $elapsedMs ms',
+			async ({ elapsedMs, expectedAdvanceMs }) => {
+				const store = stalenessStore();
+				const id = generateId();
+				const now = Date.now();
+				const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+				onTestFinished(() => {
+					clock.mockRestore();
+				});
 
-			const before = Date.now();
-			expect(await store.renewQueuedExecution(id, observed)).toBe(true);
-			const after = Date.now();
+				await store.createExecution(newRecord(id));
+				const observed = await loadStaleAfter(id);
+				if (!observed) throw new Error('expected a stale_after value');
+				clock.mockReturnValue(now + elapsedMs);
 
-			const renewed = await loadStaleAfter(id);
-			expect(renewed?.getTime()).toBeGreaterThanOrEqual(before + staleness.queuedMs);
-			expect(renewed?.getTime()).toBeLessThanOrEqual(after + staleness.queuedMs);
-			// a second caller that read the same value changes nothing
-			expect(await store.renewQueuedExecution(id, observed)).toBe(false);
-			expect(await loadStaleAfter(id)).toEqual(renewed);
-		});
+				expect(await store.renewQueuedExecution(id, observed)).toBe(true);
+				expect(await store.renewQueuedExecution(id, observed)).toBe(false);
+				expect(await loadStaleAfter(id)).toEqual(new Date(observed.getTime() + expectedAdvanceMs));
+			},
+		);
 
 		it('renewQueuedExecution changes nothing once the execution left queued', async () => {
 			const store = stalenessStore();
@@ -661,6 +673,224 @@ describe('workflow_execution table (integration)', () => {
 
 			expect(index.indexdef).toContain('(stale_after)');
 			expect(index.indexdef).toContain("WHERE ((status)::text = 'queued'");
+		});
+	});
+
+	describe('error workflow columns', () => {
+		const staleness = { queuedMs: 10_000, runningStepMs: 50_000, errorWorkflowPendingMs: 30_000 };
+
+		function errorStore(): TypeOrmExecutionStore {
+			return new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution), staleness);
+		}
+
+		async function loadRow(id: string): Promise<WorkflowExecution> {
+			return await dataSource.getRepository(WorkflowExecution).findOneOrFail({ where: { id } });
+		}
+
+		/** A failed execution that expects an error workflow, with its marker set. */
+		async function failedSource(store: TypeOrmExecutionStore): Promise<string> {
+			const id = generateId();
+			await store.createExecution({
+				...newRecord(id),
+				status: 'running',
+				resolveErrorWorkflowOnFailure: true,
+			});
+			await store.finishExecution(id, 'failed');
+			return id;
+		}
+
+		function errorRecord(sourceId: string): NewExecutionRecord {
+			return {
+				...newRecord(generateId()),
+				errorSource: { executionId: sourceId, workflowId: 'wf-8' },
+			};
+		}
+
+		it('finishExecution sets the marker when an execution that expects an error workflow fails', async () => {
+			const store = errorStore();
+			const id = generateId();
+			await store.createExecution({
+				...newRecord(id),
+				status: 'running',
+				resolveErrorWorkflowOnFailure: true,
+			});
+
+			const before = Date.now();
+			await store.finishExecution(id, 'failed');
+			const after = Date.now();
+
+			const dueAt = (await loadRow(id)).errorWorkflowDueAt;
+			expect(dueAt?.getTime()).toBeGreaterThanOrEqual(before + staleness.errorWorkflowPendingMs);
+			expect(dueAt?.getTime()).toBeLessThanOrEqual(after + staleness.errorWorkflowPendingMs);
+		});
+
+		it.each([
+			{ resolveErrorWorkflowOnFailure: false, end: 'failed' },
+			{ resolveErrorWorkflowOnFailure: true, end: 'completed' },
+			{ resolveErrorWorkflowOnFailure: true, end: 'cancelled' },
+		] as const)(
+			'sets no marker for resolveErrorWorkflowOnFailure $resolveErrorWorkflowOnFailure and an end of $end',
+			async ({ resolveErrorWorkflowOnFailure, end }) => {
+				const store = errorStore();
+				const id = generateId();
+				await store.createExecution({
+					...newRecord(id),
+					status: 'running',
+					resolveErrorWorkflowOnFailure,
+				});
+
+				const ended =
+					end === 'cancelled'
+						? await store.cancelExecution(id)
+						: await store.finishExecution(id, end);
+
+				expect(ended).not.toBeNull();
+				expect((await loadRow(id)).errorWorkflowDueAt).toBeNull();
+			},
+		);
+
+		it('createExecution stores the error source, clears the marker of the source, and the views report the link', async () => {
+			const store = errorStore();
+			const sourceId = await failedSource(store);
+			expect((await loadRow(sourceId)).errorWorkflowDueAt).not.toBeNull();
+			const record = errorRecord(sourceId);
+
+			expect(await store.createExecution(record)).toEqual({ errorExecutionAlreadyExists: false });
+
+			expect((await loadRow(sourceId)).errorWorkflowDueAt).toBeNull();
+			const viewStore = new TypeOrmExecutionViewStore(
+				dataSource.getRepository(WorkflowExecution),
+				dataSource.getRepository(WorkflowStepExecution),
+			);
+			expect((await viewStore.loadExecutionView(record.id)).errorSource).toEqual(
+				record.errorSource,
+			);
+			expect((await viewStore.loadExecutionView(sourceId)).errorSource).toBeNull();
+		});
+
+		it('createExecution keeps updated_at of the source when it clears the marker', async () => {
+			const store = errorStore();
+			const sourceId = await failedSource(store);
+			// A time in the past, so a write that sets `updated_at` to now changes it.
+			const endedAt = new Date('2026-01-01T00:00:00.000Z');
+			await dataSource
+				.getRepository(WorkflowExecution)
+				.update({ id: sourceId }, { updatedAt: () => `'${endedAt.toISOString()}'::timestamptz` });
+
+			await store.createExecution(errorRecord(sourceId));
+
+			const source = await loadRow(sourceId);
+			expect(source.errorWorkflowDueAt).toBeNull();
+			expect(source.updatedAt).toEqual(endedAt);
+		});
+
+		it('createExecution throws for an error execution whose id another execution has, and keeps the marker', async () => {
+			const store = errorStore();
+			const sourceId = await failedSource(store);
+			const takenId = generateId();
+			await store.createExecution(newRecord(takenId));
+
+			await expect(
+				store.createExecution({ ...errorRecord(sourceId), id: takenId }),
+			).rejects.toThrow('duplicate key');
+
+			expect((await loadRow(sourceId)).errorWorkflowDueAt).not.toBeNull();
+		});
+
+		it('createExecution writes one error execution when two starts race for the same source', async () => {
+			const store = errorStore();
+			const sourceId = await failedSource(store);
+
+			const results = await Promise.all([
+				store.createExecution(errorRecord(sourceId)),
+				store.createExecution(errorRecord(sourceId)),
+			]);
+
+			expect(results.map((result) => result.errorExecutionAlreadyExists).sort()).toEqual([
+				false,
+				true,
+			]);
+			const errorExecutions = await dataSource
+				.getRepository(WorkflowExecution)
+				.find({ where: { errorSourceExecutionId: sourceId } });
+			expect(errorExecutions).toHaveLength(1);
+			expect((await loadRow(sourceId)).errorWorkflowDueAt).toBeNull();
+		});
+
+		it.each([
+			{
+				constraint: 'chk_workflow_execution_one_link',
+				columns: {
+					parentExecutionId: generateId(),
+					parentStepId: generateId(),
+					parentAwaited: false,
+					errorSourceExecutionId: generateId(),
+					errorSourceWorkflowId: 'wf-8',
+				},
+			},
+			{
+				constraint: 'chk_workflow_execution_error_source',
+				columns: { errorSourceExecutionId: generateId(), errorSourceWorkflowId: null },
+			},
+		])('the schema rejects a row that breaks $constraint', async ({ constraint, columns }) => {
+			// Straight to the table: the store checks the parent before it writes.
+			const repo = dataSource.getRepository(WorkflowExecution);
+			await expect(
+				repo.save(
+					repo.create({
+						id: generateId(),
+						workflowId: 'wf-8',
+						status: 'queued',
+						mode: 'production',
+						callerContext: { hostMode: 'error' },
+						responseExpectation: { kind: 'none' },
+						graph: { nodes: [], edges: [] },
+						workflow: {},
+						...columns,
+					}),
+				),
+			).rejects.toThrow(constraint);
+		});
+
+		it('the migration of the error workflow columns changes a table that has rows, in both directions', async () => {
+			const store = errorStore();
+			const sourceId = await failedSource(store);
+			const errorId = generateId();
+			await store.createExecution({ ...errorRecord(sourceId), id: errorId });
+			const schemaObjects = async (): Promise<string[]> => {
+				const rows: Array<{ name: string }> = await dataSource.query(
+					`SELECT column_name AS name FROM information_schema.columns
+					 WHERE table_name = 'workflow_execution'
+					   AND column_name IN ('error_source_execution_id', 'error_source_workflow_id',
+					                       'resolve_error_workflow_on_failure', 'error_workflow_due_at')
+					 UNION ALL
+					 SELECT indexname FROM pg_indexes
+					 WHERE indexname IN ('idx_workflow_execution_error_source_execution_id',
+					                     'idx_workflow_execution_error_workflow_due_at')
+					 UNION ALL
+					 SELECT conname FROM pg_constraint
+					 WHERE conname IN ('chk_workflow_execution_error_source', 'chk_workflow_execution_one_link')`,
+				);
+				return rows.map((row) => row.name).sort();
+			};
+			const migration = new AddErrorWorkflowColumnsToWorkflowExecution1795132800000();
+			const queryRunner = dataSource.createQueryRunner();
+			await queryRunner.connect();
+			try {
+				await migration.down(queryRunner);
+				expect(await schemaObjects()).toEqual([]);
+			} finally {
+				// The other tests need the schema of the newest migration.
+				await migration.up(queryRunner);
+				await queryRunner.release();
+			}
+
+			expect(await schemaObjects()).toHaveLength(8);
+			// The rows stay. The columns come back empty, with the default for the flag.
+			const source = await loadRow(sourceId);
+			expect(source.resolveErrorWorkflowOnFailure).toBe(false);
+			expect(source.errorWorkflowDueAt).toBeNull();
+			expect((await loadRow(errorId)).errorSourceExecutionId).toBeNull();
 		});
 	});
 
@@ -717,6 +947,8 @@ function newRecord(id: string): NewExecutionRecord {
 		callerContext: { hostMode: 'integrated' },
 		responseExpectation: { kind: 'none' },
 		parent: null,
+		errorSource: null,
+		resolveErrorWorkflowOnFailure: false,
 	};
 }
 

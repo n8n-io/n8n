@@ -303,7 +303,6 @@ export {
 	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
-	threadTargetsAgent,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
 export type {

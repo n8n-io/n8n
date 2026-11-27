@@ -29,6 +29,7 @@ import { useDynamicCredentials } from '@/features/resolvers/composables/useDynam
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { PROMOTIONS_SETTINGS_VIEW } from '@n8n/frontend-module-promotions';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import {
 	canManageInstanceAi,
 	canMessageInstanceAi,
@@ -63,8 +64,6 @@ const SettingsUsersView = async () =>
 const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
-const SettingsApiView = async () =>
-	await import('@/features/settings/apiKeys/views/SettingsApiView.vue');
 const SetupView = async () => await import('@/features/core/auth/views/SetupView.vue');
 const SigninView = async () => await import('@/features/core/auth/views/SigninView.vue');
 const SignupView = async () => await import('@/features/core/auth/views/SignupView.vue');
@@ -122,6 +121,8 @@ const ResourceCenterView = async () =>
 
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
+const WorkflowReviewInstanceSettingsView = async () =>
+	await import('@/features/settings/security/WorkflowReviewInstanceSettingsView.vue');
 
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
@@ -717,6 +718,34 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'security/workflow-reviews/project-requirements',
+				name: VIEWS.SECURITY_WORKFLOW_REVIEW_INSTANCE_SETTINGS,
+				component: WorkflowReviewInstanceSettingsView,
+				beforeEnter: () =>
+					useWorkflowReviewsFeature().isWorkflowReviewsEnabled.value || {
+						name: VIEWS.SECURITY_SETTINGS,
+					},
+				meta: {
+					middleware: ['authenticated', 'enterprise', 'rbac'],
+					middlewareOptions: {
+						enterprise: {
+							feature: EnterpriseEditionFeature.WorkflowReviews,
+						},
+						rbac: {
+							scope: ['securitySettings:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'security',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'users',
 				name: VIEWS.USERS_SETTINGS,
 				component: SettingsUsersView,
@@ -948,22 +977,6 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'project-roles',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'api',
-				name: VIEWS.API_SETTINGS,
-				component: SettingsApiView,
-				meta: {
-					middleware: ['authenticated'],
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'api',
 							};
 						},
 					},

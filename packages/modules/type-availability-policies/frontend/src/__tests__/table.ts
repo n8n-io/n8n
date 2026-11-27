@@ -1,17 +1,29 @@
 import { within } from '@testing-library/vue';
 
 type GetByTestId = (id: string) => HTMLElement;
+export type GetByRole = (role: string, options?: object) => HTMLElement;
+
+/** The trigger of the access filter of the instance policy table. */
+export const accessFilter = (getByRole: GetByRole) =>
+	getByRole('combobox', { name: 'Filter by access' });
+
+/** The select checkbox of a row of the instance policy table, found by the display name. */
+export const rowCheckbox = (getByRole: GetByRole, name: string) =>
+	getByRole('checkbox', { name: `Select ${name}` });
 
 /** Cell lookups in the instance policy table, for the row of `defaultName` unless a name is given. */
 export function policyTableCells(defaultName: string) {
 	const accessCell = (getByTestId: GetByTestId, name = defaultName) =>
 		getByTestId(`instance-policy-access-${name}`);
 
-	/** Projects, Uses, Workflows and Active workflows. The cells before them are Name and Access. */
+	/**
+	 * Projects, Uses, Workflows and Active workflows. The cells before them are the select checkbox,
+	 * Name and Access.
+	 */
 	const usageCells = (getByTestId: GetByTestId, name = defaultName) =>
 		within(accessCell(getByTestId, name).closest('tr') as HTMLElement)
 			.getAllByRole('cell')
-			.slice(2)
+			.slice(3)
 			.map((cell) => cell.textContent?.trim());
 
 	return { accessCell, usageCells };

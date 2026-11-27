@@ -14,16 +14,35 @@ import {
 } from '@/features/agents/components/skillMermaidRenderer';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
+import { saveAs } from 'file-saver';
+
+vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 const track = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 
 vi.mock('@/features/agents/components/skillMermaidRenderer', { spy: true });
 const uiStore = reactive({ appliedTheme: 'light' });
 vi.mock('@/app/stores/ui.store', () => ({ useUIStore: () => uiStore }));
+const workflowMentionsFlag = vi.hoisted(() => ({ enabled: false }));
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({
+		isVariantEnabled: (name: string, variant: string) =>
+			name === '152_workflows_in_skills' &&
+			variant === (workflowMentionsFlag.enabled ? 'variant' : 'control'),
+	}),
+}));
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		resolve: ({ params }: { params: { workflowId: string } }) => ({
+			href: `/base/workflow/${params.workflowId}`,
+		}),
+	}),
+}));
 
 enableAutoUnmount(afterEach);
 beforeEach(() => {
 	uiStore.appliedTheme = 'light';
+	workflowMentionsFlag.enabled = false;
 });
 
 vi.mock('@n8n/i18n', () => ({
@@ -64,6 +83,31 @@ const N8nFormInputStub = defineComponent({
 });
 
 describe('AgentSkillViewer', () => {
+	it('shows script files as plain text and offers binary assets for download', async () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main body',
+				references: [
+					{ path: 'scripts/example.js', content: 'const label = "<b>Example</b>";' },
+					{ path: 'assets/logo.png', content: 'AP8K', isBinary: true },
+				],
+			},
+			selectedPath: 'scripts/example.js',
+		});
+
+		expect(wrapper.get('pre').text()).toBe('const label = "<b>Example</b>";');
+		await wrapper.setProps({ selectedPath: 'assets/logo.png' });
+		expect(wrapper.text()).not.toContain('AP8K');
+		await wrapper.get('button').trigger('click');
+		expect(saveAs).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'logo.png', size: 3 }),
+			'logo.png',
+		);
+	});
+
 	it('renames the selected reference without changing its directory', async () => {
 		const wrapper = mountViewer({
 			skill: {
@@ -167,6 +211,38 @@ describe('AgentSkillViewer', () => {
 		const checkbox = wrapper.find('[data-testid="agent-skill-instructions-text"] input');
 		expect(checkbox.attributes('type')).toBe('checkbox');
 		expect(checkbox.attributes('disabled')).toBeDefined();
+	});
+
+	it('links a workflow mention in a read-only skill to the workflow', () => {
+		workflowMentionsFlag.enabled = true;
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Report',
+				description: 'Send the report',
+				instructions: 'Run [Weekly report](n8n://workflow/wf1).',
+			},
+		});
+
+		const text = wrapper.find('[data-testid="agent-skill-instructions-text"]');
+		expect(text.find('a').attributes('href')).toBe('/base/workflow/wf1');
+		expect(text.find('a').text()).toBe('Weekly report');
+		expect(text.classes().join(' ')).toContain('workflowChips');
+	});
+
+	it('keeps the mention link unchanged in a read-only skill when the flag is off', () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Report',
+				description: 'Send the report',
+				instructions: 'Run [Weekly report](n8n://workflow/wf1).',
+			},
+		});
+
+		const text = wrapper.find('[data-testid="agent-skill-instructions-text"]');
+		expect(text.find('a').attributes('href')).not.toContain('/workflow/');
+		expect(text.classes().join(' ')).not.toContain('workflowChips');
 	});
 
 	it('shows a read-only reference as text', () => {
@@ -620,6 +696,109 @@ describe('AgentSkillViewer', () => {
 			`Skills can have up to ${AGENT_SKILL_REFERENCE_MAX_COUNT.toLocaleString()} reference files.`,
 		);
 		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([false]);
+	});
+});
+
+describe('AgentSkillViewer relative links', () => {
+	const skill = {
+		name: 'Research',
+		description: 'Use for research',
+		instructions: [
+			'[Bare](reference/guide.md)',
+			'[Dot](./reference/degraded/fallback.md)',
+			'[Outside](../other/SKILL.md)',
+			'[Missing](reference/none.md)',
+			'[Web](https://example.com/docs)',
+		].join('\n\n'),
+		references: [
+			{
+				path: 'reference/degraded/fallback.md',
+				content: '[Up](../guide.md) [Main](../../SKILL.md)',
+			},
+			{ path: 'reference/guide.md', content: '# Guide' },
+		],
+	};
+
+	async function clickLink(
+		wrapper: ReturnType<typeof mountViewer>,
+		text: string,
+		init?: MouseEventInit,
+	) {
+		const link = wrapper.findAll('a').find((anchor) => anchor.text() === text);
+		const event = new MouseEvent('click', { bubbles: true, cancelable: true, ...init });
+		link?.element.dispatchEvent(event);
+		await wrapper.vm.$nextTick();
+		return { link, event };
+	}
+
+	it.each([
+		['a bare link', 'SKILL.md', 'Bare', 'reference/guide.md'],
+		['a ./ link', 'SKILL.md', 'Dot', 'reference/degraded/fallback.md'],
+		['a ../ link from a nested file', 'reference/degraded/fallback.md', 'Up', 'reference/guide.md'],
+		['a link back to SKILL.md', 'reference/degraded/fallback.md', 'Main', 'SKILL.md'],
+	])('selects the linked file for %s and stays on the page', async (_case, from, text, path) => {
+		const wrapper = mountViewer({ readOnly: true, skill, selectedPath: from });
+		const { link, event } = await clickLink(wrapper, text);
+
+		expect(link?.exists()).toBe(true);
+		expect(wrapper.emitted('select:path')).toEqual([[path]]);
+		expect(event.defaultPrevented).toBe(true);
+	});
+
+	it.each([
+		['a file outside the skill', 'Outside'],
+		['a file that the skill does not have', 'Missing'],
+	])('selects nothing and stays on the page for a link to %s', async (_case, text) => {
+		const wrapper = mountViewer({ readOnly: true, skill });
+		const { link, event } = await clickLink(wrapper, text);
+
+		expect(link?.exists()).toBe(true);
+		expect(wrapper.emitted('select:path')).toBeUndefined();
+		expect(event.defaultPrevented).toBe(true);
+	});
+
+	it('leaves a web link to the browser', async () => {
+		const wrapper = mountViewer({ readOnly: true, skill });
+		const { link, event } = await clickLink(wrapper, 'Web');
+
+		expect(link?.attributes('href')).toBe('https://example.com/docs');
+		expect(wrapper.emitted('select:path')).toBeUndefined();
+		expect(event.defaultPrevented).toBe(false);
+	});
+
+	it.each(['metaKey', 'ctrlKey', 'shiftKey', 'altKey'])(
+		'leaves a file link to the browser when clicked with %s',
+		async (modifier) => {
+			const wrapper = mountViewer({ readOnly: true, skill });
+			const { link, event } = await clickLink(wrapper, 'Bare', { [modifier]: true });
+
+			expect(link?.exists()).toBe(true);
+			expect(wrapper.emitted('select:path')).toBeUndefined();
+			expect(event.defaultPrevented).toBe(false);
+		},
+	);
+
+	it('resolves relative links again when two selected files have the same Markdown', async () => {
+		const content = '[Guide](guide.md)';
+		const wrapper = mountViewer({
+			readOnly: true,
+			selectedPath: 'a/index.md',
+			skill: {
+				...skill,
+				references: [
+					{ path: 'a/index.md', content },
+					{ path: 'b/index.md', content },
+					{ path: 'a/guide.md', content: 'First guide' },
+					{ path: 'b/guide.md', content: 'Second guide' },
+				],
+			},
+		});
+
+		await clickLink(wrapper, 'Guide');
+		await wrapper.setProps({ selectedPath: 'b/index.md' });
+		await clickLink(wrapper, 'Guide');
+
+		expect(wrapper.emitted('select:path')).toEqual([['a/guide.md'], ['b/guide.md']]);
 	});
 });
 

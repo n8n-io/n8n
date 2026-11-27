@@ -1,26 +1,34 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import {
 	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
+	AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
+	replaceSkillWorkflowMentionUrls,
 } from '@n8n/api-types';
-import {
-	N8nFormInput,
-	N8nInputLabel,
-	N8nMarkdown,
-	N8nMarkdownEditor,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nFormInput, N8nButton, N8nInputLabel, N8nMarkdown, N8nText } from '@n8n/design-system';
 import type { IValidator, Validatable } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { saveAs } from 'file-saver';
+import { base64ToFile } from '@/app/utils/fileUtils';
+import {
+	readSkillFileLink,
+	resolveSkillFileLink,
+	skillFileLinkPlugin,
+} from '@/features/agents/utils/skillFileLinks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { Rule, RuleGroup } from '@/Interface';
+import { VIEWS } from '@/app/constants';
+import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { AgentSkill, AgentSkillReference } from '../types';
+import AgentSkillMarkdownEditor from './AgentSkillMarkdownEditor.vue';
 import AgentSkillMermaidDiagram from './AgentSkillMermaidDiagram.vue';
 import type { SkillMermaidResult } from './skillMermaidRenderer';
 
@@ -37,12 +45,16 @@ const props = withDefaults(
 		errors?: Partial<Record<keyof AgentSkill, string>>;
 		selectedPath?: string;
 		showValidationWarnings?: boolean;
+		mentionProjectId?: string;
+		mentionProjectName?: string;
 	}>(),
 	{
 		disabled: false,
 		readOnly: false,
 		selectedPath: SKILL_FILE,
 		showValidationWarnings: false,
+		mentionProjectId: undefined,
+		mentionProjectName: undefined,
 	},
 );
 
@@ -53,7 +65,31 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+
+// A relative link in SKILL.md or in a Markdown file opens the linked file in this view.
+const readOnlyMarkdownPlugins = computed(() => {
+	const fromPath = props.selectedPath;
+	const paths = (props.skill.references ?? []).map((reference) => reference.path);
+	return [skillFileLinkPlugin((href) => resolveSkillFileLink(href, fromPath, paths))];
+});
+
+function onReadOnlyLinkClick(link: HTMLAnchorElement, event: MouseEvent) {
+	if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+		return;
+	const { handled, path } = readSkillFileLink(link.getAttribute('href'));
+	if (!handled) return;
+	event.preventDefault();
+	if (path !== undefined) emit('select:path', path);
+}
 const telemetry = useTelemetry();
+const router = useRouter();
+const posthog = usePostHog();
+const workflowMentionsEnabled = computed(() =>
+	posthog.isVariantEnabled(
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+		WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+	),
+);
 const description = ref(props.skill.description);
 const referenceFileName = ref('');
 const formValidation = reactive({
@@ -87,11 +123,13 @@ const instructionsValid = computed(
 	() => Boolean((props.skill.instructions ?? '').trim()) && !instructionsError.value,
 );
 const referenceLength = (reference: AgentSkillReference) => reference.content.length;
+const referenceLimit = (reference: AgentSkillReference) =>
+	reference.isBinary
+		? AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH
+		: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH;
 const invalidReferences = computed(() =>
 	(props.skill.references ?? []).filter(
-		(reference) =>
-			!reference.content.trim() ||
-			referenceLength(reference) > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+		(reference) => referenceLength(reference) > referenceLimit(reference),
 	),
 );
 const totalReferenceLength = computed(() =>
@@ -135,6 +173,31 @@ const isSkillFileSelected = computed(() => props.selectedPath === SKILL_FILE);
 const selectedReference = computed(() =>
 	(props.skill.references ?? []).find((reference) => reference.path === props.selectedPath),
 );
+function withWorkflowMentionLinks(content: string) {
+	if (!workflowMentionsEnabled.value) return content;
+	return replaceSkillWorkflowMentionUrls(
+		content,
+		(workflowId) => router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId } }).href,
+	);
+}
+const selectedReferenceCanRename = computed(
+	() =>
+		!!selectedReference.value &&
+		!selectedReference.value.isBinary &&
+		/^references\/[A-Za-z0-9 _-]+\.md$/.test(selectedReference.value.path),
+);
+const selectedReferenceIsMarkdown = computed(() => /\.(md|markdown)$/i.test(props.selectedPath));
+const selectedReferenceIsEditable = computed(
+	() => selectedReferenceIsMarkdown.value && !selectedReference.value?.isBinary,
+);
+
+function downloadBinaryFile() {
+	const file = selectedReference.value;
+	if (!file?.isBinary) return;
+	const name = file.path.split('/').at(-1) ?? file.path;
+	saveAs(base64ToFile(file.content, name, 'application/octet-stream'), name);
+}
+
 const selectedReferenceCharacterCount = computed(() =>
 	i18n.baseText('agents.builder.skills.references.characterCount' as BaseTextKey, {
 		interpolate: {
@@ -149,9 +212,7 @@ const selectedReferenceCharacterCount = computed(() =>
 const selectedReferenceError = computed(() => {
 	const reference = selectedReference.value;
 	if (!reference) return '';
-	if (!reference.content.trim())
-		return i18n.baseText('agents.builder.skills.references.contentRequired');
-	if (referenceLength(reference) > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH) {
+	if (referenceLength(reference) > referenceLimit(reference)) {
 		return i18n.baseText('agents.builder.skills.references.contentMaxLength', {
 			interpolate: { max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString() },
 		});
@@ -165,15 +226,10 @@ const referencesError = computed(() => {
 	// Name the file, so the user knows which reference blocks the save.
 	const [first] = invalidReferences.value;
 	if (!first) return i18n.baseText('agents.builder.skills.references.invalidSummary');
-	if (!first.content.trim()) {
-		return i18n.baseText('agents.builder.skills.references.emptyFile', {
-			interpolate: { path: first.path },
-		});
-	}
 	return i18n.baseText('agents.builder.skills.references.tooLongFile', {
 		interpolate: {
 			path: first.path,
-			max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString(),
+			max: referenceLimit(first).toLocaleString(),
 		},
 	});
 });
@@ -322,9 +378,8 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 
 <template>
 	<div :class="$style.panel" data-testid="agent-skill-viewer">
-		<template v-if="props.readOnly">
+		<template v-if="props.readOnly && isSkillFileSelected">
 			<N8nInputLabel
-				v-if="isSkillFileSelected"
 				:class="$style.readOnlyField"
 				:label="i18n.baseText('agents.builder.skills.description.label')"
 				size="medium"
@@ -339,23 +394,18 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 				>
 			</N8nInputLabel>
 			<N8nInputLabel
-				v-if="isSkillFileSelected || selectedReference"
 				:class="$style.readOnlyField"
-				:label="
-					isSkillFileSelected
-						? i18n.baseText('agents.builder.skills.instructions.label')
-						: selectedReference?.path
-				"
+				:label="i18n.baseText('agents.builder.skills.instructions.label')"
 				size="medium"
 				color="text-light"
 			>
 				<N8nMarkdown
-					:class="$style.readOnlyMarkdown"
+					:class="[$style.readOnlyMarkdown, workflowMentionsEnabled && $style.workflowChips]"
 					:options="READ_ONLY_MARKDOWN_OPTIONS"
-					:content="isSkillFileSelected ? props.skill.instructions : selectedReference?.content"
-					:data-testid="
-						isSkillFileSelected ? 'agent-skill-instructions-text' : 'agent-skill-reference-text'
-					"
+					:plugins="readOnlyMarkdownPlugins"
+					:content="withWorkflowMentionLinks(props.skill.instructions)"
+					data-testid="agent-skill-instructions-text"
+					@markdown-click="onReadOnlyLinkClick"
 				>
 					<template #code-block="{ code, language }">
 						<AgentSkillMermaidDiagram
@@ -371,8 +421,52 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 				</N8nMarkdown>
 			</N8nInputLabel>
 		</template>
+		<N8nInputLabel
+			v-else-if="selectedReference && (props.readOnly || !selectedReferenceIsEditable)"
+			:class="$style.readOnlyField"
+			:label="selectedReference.path"
+			size="medium"
+			color="text-light"
+		>
+			<template v-if="selectedReference.isBinary">
+				<N8nText size="small">{{ i18n.baseText('agents.builder.skills.files.binary') }}</N8nText>
+				<N8nButton
+					variant="outline"
+					size="small"
+					icon="download"
+					:class="$style.download"
+					@click="downloadBinaryFile"
+				>
+					{{ i18n.baseText('agents.builder.skills.files.download') }}
+				</N8nButton>
+			</template>
+			<N8nMarkdown
+				v-else-if="selectedReferenceIsMarkdown"
+				:class="[$style.readOnlyMarkdown, workflowMentionsEnabled && $style.workflowChips]"
+				:options="READ_ONLY_MARKDOWN_OPTIONS"
+				:plugins="readOnlyMarkdownPlugins"
+				:content="withWorkflowMentionLinks(selectedReference.content)"
+				data-testid="agent-skill-reference-text"
+				@markdown-click="onReadOnlyLinkClick"
+			>
+				<template #code-block="{ code, language }">
+					<AgentSkillMermaidDiagram
+						v-if="language.toLowerCase() === 'mermaid'"
+						:code="code"
+						@render-start="onDiagramRenderStart"
+						@render-end="onDiagramRenderEnd"
+					>
+						<pre :class="$style.codeBlock"><code>{{ code }}</code></pre>
+					</AgentSkillMermaidDiagram>
+					<pre v-else :class="$style.codeBlock"><code>{{ code }}</code></pre>
+				</template>
+			</N8nMarkdown>
+			<pre v-else :class="$style.readOnlyText" data-testid="agent-skill-reference-text">{{
+				selectedReference.content
+			}}</pre>
+		</N8nInputLabel>
 
-		<template v-else-if="isSkillFileSelected">
+		<template v-else-if="!props.readOnly && isSkillFileSelected">
 			<!-- A form-level notice, above the fields, so it does not read as an error of the first one. -->
 			<N8nText
 				v-if="referencesError"
@@ -410,13 +504,15 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 					:required="true"
 					size="small"
 				>
-					<N8nMarkdownEditor
+					<AgentSkillMarkdownEditor
 						:class="$style.editor"
 						:container-class="$style.resizable"
 						:model-value="props.skill.instructions ?? ''"
 						:placeholder="i18n.baseText('agents.builder.skills.instructions.placeholder')"
 						show-toolbar="floating"
 						:disabled="props.disabled"
+						:mention-project-id="props.mentionProjectId"
+						:mention-project-name="props.mentionProjectName"
 						max-height="none"
 						data-testid="agent-skill-instructions-editor"
 						@update:model-value="onInstructionsInput"
@@ -436,8 +532,8 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 			</div>
 		</template>
 
-		<template v-else-if="selectedReference">
-			<div :class="$style.field">
+		<template v-else-if="!props.readOnly && selectedReference">
+			<div v-if="selectedReferenceCanRename" :class="$style.field">
 				<N8nFormInput
 					:model-value="referenceFileName"
 					:label="i18n.baseText('agents.builder.skills.references.name.label')"
@@ -455,18 +551,20 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 					@validate="onReferenceNameValidate"
 				/>
 			</div>
+			<N8nText v-else size="small" color="text-light">{{ selectedReference.path }}</N8nText>
 			<N8nInputLabel
 				:class="$style.editorLabel"
 				:label="i18n.baseText('agents.builder.skills.references.content.label')"
-				:required="true"
 				size="small"
 			>
-				<N8nMarkdownEditor
+				<AgentSkillMarkdownEditor
 					:class="[$style.editor, $style.referenceEditor]"
 					:model-value="selectedReference.content"
 					:placeholder="i18n.baseText('agents.builder.skills.references.content.placeholder')"
 					show-toolbar="floating"
 					:disabled="props.disabled"
+					:mention-project-id="props.mentionProjectId"
+					:mention-project-name="props.mentionProjectName"
 					max-height="none"
 					data-testid="agent-skill-reference-editor"
 					@update:model-value="onReferenceInput"
@@ -488,6 +586,8 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 </template>
 
 <style lang="scss" module>
+@use './workflowMentionChip' as *;
+
 .panel {
 	display: flex;
 	flex-direction: column;
@@ -507,6 +607,11 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 	margin: 0;
 	line-height: var(--line-height--xl);
 	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.download {
+	align-self: flex-start;
 }
 
 .panel .readOnlyMarkdown {
@@ -542,6 +647,10 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 		display: inline;
 		line-height: inherit;
 	}
+}
+
+.workflowChips :global(a[href*='/workflow/']) {
+	@include workflow-mention-chip;
 }
 
 .codeBlock {

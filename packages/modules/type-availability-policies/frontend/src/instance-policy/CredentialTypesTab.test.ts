@@ -15,13 +15,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CredentialTypesTab from './CredentialTypesTab.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
 import type { InstancePolicy } from '../type-availability-policies.api';
-import { findPopupItem, MENU_ITEM } from '../__tests__/popups';
-import { policyTableCells } from '../__tests__/table';
+import { findPopupItem, MENU_ITEM, OPTION } from '../__tests__/popups';
+import { accessFilter, policyTableCells, rowCheckbox } from '../__tests__/table';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
-	saveInstancePolicy: vi.fn(),
+	setInstanceTypeAccess: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
 	fetchCredentialTypeSummaries: vi.fn(),
 	fetchCredentialTypeUsage: vi.fn(),
@@ -39,11 +39,6 @@ const policy = (
 	version: number,
 	rules: InstancePolicy<'credential'>['rules'] = [],
 ): InstancePolicy<'credential'> => ({ scopeId: 'scope-1', rules, defaultAction: 'allow', version });
-
-const EXISTING_RULES: InstancePolicy<'credential'>['rules'] = [
-	{ id: 'notion', action: 'deny', selector: { kind: 'name', value: 'notionApi' } },
-	{ id: 'oauth2', action: 'deny', selector: { kind: 'extends', value: 'oAuth2Api' } },
-];
 
 const access = (
 	version: number,
@@ -159,9 +154,11 @@ describe('CredentialTypesTab', () => {
 		await waitFor(() => expect(usageCells(getByTestId)).toEqual(['1', '3', '2', '1']));
 	});
 
-	it('saves a rule for only the changed credential type', async () => {
-		mocks.fetchInstancePolicy.mockResolvedValue(policy(1, EXISTING_RULES));
-		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
+	it('sends the access of only the changed credential type', async () => {
+		// No workflow uses the type, so the change applies with no review.
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
+		mocks.fetchInstancePolicy.mockResolvedValue(policy(1));
+		mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
 		const { findByText, getByTestId } = await setup(() =>
 			mocks.fetchInstanceAccess.mockResolvedValueOnce(access(1)).mockResolvedValue(
 				access(2, [
@@ -175,16 +172,12 @@ describe('CredentialTypesTab', () => {
 		await restrictBitly(getByTestId);
 
 		await waitFor(() =>
-			expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'credential', {
-				defaultAction: 'allow',
+			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledWith(expect.anything(), 'credential', {
+				changes: [{ type: 'bitlyApi', access: 'deny' }],
 				version: 1,
-				rules: [
-					...EXISTING_RULES,
-					{ id: expect.any(String), action: 'deny', selector: { kind: 'name', value: 'bitlyApi' } },
-				],
 			}),
 		);
-		expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
+		expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
 		expect(mocks.fetchInstancePolicy).not.toHaveBeenCalledWith(expect.anything(), 'node');
 		// The change applies at once: no dialog asks the admin to confirm it.
 		expect(document.querySelector('[role="dialog"],[role="alertdialog"]')).toBeNull();
@@ -193,8 +186,41 @@ describe('CredentialTypesTab', () => {
 		expect(accessCell(getByTestId)).toHaveTextContent('Restricted');
 	});
 
+	it('moves the focus to the access filter when a changed row leaves the filter', async () => {
+		mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
+		const { findByText, getByTestId, queryByTestId, getByRole } = await setup();
+		await findByText('Bitly API');
+		const filter = accessFilter(getByRole);
+		await userEvent.click(filter);
+		await userEvent.click(await findPopupItem(OPTION, 'Allowed (1)'));
+		const counts = createDeferredPromise<CredentialTypeUsageResponse>();
+		mocks.fetchCredentialTypeUsage.mockReturnValue(counts.promise);
+
+		await restrictBitly(getByTestId);
+		await waitFor(() => expect(accessCell(getByTestId)).toHaveFocus());
+		counts.resolve({});
+
+		await waitFor(() => expect(filter).toHaveFocus());
+		expect(queryByTestId('instance-policy-open-bitlyApi')).not.toBeInTheDocument();
+	});
+
+	it('keeps the focus in the row when a changed row stays in the table', async () => {
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
+		mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
+		const { findByText, getByTestId } = await setup();
+		await findByText('Bitly API');
+
+		await restrictBitly(getByTestId);
+
+		await waitFor(() => expect(accessCell(getByTestId)).toHaveTextContent('Restricted'));
+		await waitFor(() => expect(accessCell(getByTestId)).toHaveFocus());
+	});
+
 	it('shows the saved value again when the save fails', async () => {
-		mocks.saveInstancePolicy.mockRejectedValue(new ResponseError('boom', { httpStatusCode: 500 }));
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
+		mocks.setInstanceTypeAccess.mockRejectedValue(
+			new ResponseError('boom', { httpStatusCode: 500 }),
+		);
 		const { findByText, getByTestId } = await setup();
 		await findByText('Bitly API');
 
@@ -206,7 +232,10 @@ describe('CredentialTypesTab', () => {
 	});
 
 	it('loads the access list again when the policy changed after the page loaded', async () => {
-		mocks.saveInstancePolicy.mockRejectedValue(new ResponseError('stale', { httpStatusCode: 409 }));
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
+		mocks.setInstanceTypeAccess.mockRejectedValue(
+			new ResponseError('stale', { httpStatusCode: 409 }),
+		);
 		mocks.fetchInstancePolicy.mockResolvedValueOnce(policy(1)).mockResolvedValue(policy(5));
 		const { findByText, getByTestId } = await setup(() =>
 			mocks.fetchInstanceAccess
@@ -222,11 +251,12 @@ describe('CredentialTypesTab', () => {
 		// After the save, the store reads the access list again.
 		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
 		await waitFor(() => expect(accessCell(getByTestId)).toHaveTextContent('Restricted'));
-		expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
+		expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
 	});
 
 	it('shows the saved value again when the page cannot edit the policy', async () => {
-		mocks.saveInstancePolicy.mockRejectedValue(
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
+		mocks.setInstanceTypeAccess.mockRejectedValue(
 			new ResponseError('several documents', { httpStatusCode: 409 }),
 		);
 		const { findByText, getByTestId } = await setup();
@@ -265,11 +295,12 @@ describe('CredentialTypesTab', () => {
 	});
 
 	it('keeps rows editable when the default action leaves types open to project opt-in', async () => {
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		mocks.fetchInstanceAccess.mockResolvedValue(
 			access(1, [{ name: 'bitlyApi', access: 'delegate', matchedRuleId: null }]),
 		);
 
-		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
+		mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
 		const { findByText, getByTestId } = await setup();
 		await findByText('Bitly API');
 
@@ -277,18 +308,30 @@ describe('CredentialTypesTab', () => {
 		await restrictBitly(getByTestId);
 
 		await waitFor(() =>
-			expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(
+			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledWith(
 				expect.anything(),
 				'credential',
-				expect.objectContaining({
-					rules: [
-						expect.objectContaining({
-							action: 'deny',
-							selector: { kind: 'name', value: 'bitlyApi' },
-						}),
-					],
-				}),
+				expect.objectContaining({ changes: [{ type: 'bitlyApi', access: 'deny' }] }),
 			),
 		);
+	});
+
+	it('allows the selected credential types at once with no review, then clears the selection', async () => {
+		mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
+		const { findByRole, getByRole, getByTestId, queryByTestId } = await setup();
+		// Waits for the rows to render.
+		await findByRole('checkbox', { name: 'Select Bitly API' });
+		await userEvent.click(rowCheckbox(getByRole, 'Bitly API'));
+		await userEvent.click(rowCheckbox(getByRole, 'Notion API'));
+
+		await userEvent.click(getByTestId('policy-bulk-allow'));
+
+		await waitFor(() => expect(queryByTestId('selected-items-info')).not.toBeInTheDocument());
+		expect(accessCell(getByTestId, 'notionApi')).toHaveTextContent('Allowed');
+		// Bitly API is already allowed, so the save leaves it out.
+		expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
+		expect(mocks.setInstanceTypeAccess.mock.calls[0][2].changes).toEqual([
+			{ type: 'notionApi', access: 'allow' },
+		]);
 	});
 });

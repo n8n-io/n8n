@@ -32,6 +32,7 @@ import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import PromotionGitHostSelect from '../components/PromotionGitHostSelect.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
+import { usePromotionRequireApproval } from '../composables/usePromotionRequireApproval';
 import { ENVIRONMENTS_PLAN_DOCS_URL, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
 import {
 	createPromotionEnvironment,
@@ -63,6 +64,8 @@ const documentTitle = useDocumentTitle({
 	releaseChannel: useSettingsStore().settings.releaseChannel,
 });
 const { canConnect, connect } = usePromotionCheckout();
+// The form still saves the environment's own setting, so it applies again when the lock goes.
+const { isAlwaysRequired: isReviewLocked } = usePromotionRequireApproval();
 
 const overview = { name: PROMOTIONS_SETTINGS_VIEW };
 
@@ -486,14 +489,23 @@ onBeforeRouteLeave(() => {
 
 							<N8nCheckbox
 								v-if="direction === 'promote'"
-								v-model="form.createBranchOnPromotion"
-								:disabled="isSaving"
+								:model-value="isReviewLocked === true || form.createBranchOnPromotion"
+								:disabled="isSaving || isReviewLocked === true"
 								data-test-id="promotion-environment-create-branch"
+								@update:model-value="form.createBranchOnPromotion = $event"
 							>
 								<template #label>
 									{{ i18n.baseText(createBranchLabelKey) }}
 									<N8nText :class="$style.hint" size="small" color="text-light">
 										{{ i18n.baseText(`${createBranchLabelKey}.description`) }}
+									</N8nText>
+									<N8nText
+										v-if="isReviewLocked"
+										:class="$style.hint"
+										size="small"
+										color="text-light"
+									>
+										{{ i18n.baseText('settings.promotions.environment.form.createBranch.locked') }}
 									</N8nText>
 								</template>
 							</N8nCheckbox>
@@ -528,6 +540,7 @@ onBeforeRouteLeave(() => {
 			:open="dialogOpen"
 			:type="pickedType"
 			:provider-id="loaded ? providerId : undefined"
+			:environment-id="loaded?.id"
 			@update:open="onDialogOpenChange"
 			@saved="onProviderSaved"
 		/>

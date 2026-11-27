@@ -11,25 +11,20 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function mockApplySync(returnValue: unknown = undefined) {
-	return vi.fn().mockReturnValue(returnValue);
-}
-
 /** Create mock callbacks that createDeepLazyProxy expects. */
 function createMockCallbacks(
 	overrides: {
-		getValueAtPath?: ReturnType<typeof vi.fn>;
-		getArrayElement?: ReturnType<typeof vi.fn>;
+		getValueAtPath?: ReturnType<typeof vi.fn<(path: string[]) => unknown>>;
+		getArrayElement?: ReturnType<typeof vi.fn<(path: string[], index: number) => unknown>>;
 	} = {},
 ) {
-	const getValueAtPath = overrides.getValueAtPath ?? mockApplySync();
-	const getArrayElement = overrides.getArrayElement ?? mockApplySync();
+	const getValueAtPath = overrides.getValueAtPath ?? vi.fn<(path: string[]) => unknown>();
+	const getArrayElement =
+		overrides.getArrayElement ?? vi.fn<(path: string[], index: number) => unknown>();
 	// A host that does not batch: one item for an array read, no field for a read of
 	// every field. The proxy reads every field from 0 and array items in order from 1.
 	const readBatch = vi.fn((path: string[], start: number) =>
-		start > 0
-			? (getArrayElement as (...args: unknown[]) => unknown)(path, start)
-			: { __n8nType: 'HostData', __value: {} },
+		start > 0 ? getArrayElement(path, start) : { __n8nType: 'HostData', __value: {} },
 	);
 
 	const callbacks = {
@@ -674,6 +669,111 @@ describe('createDeepLazyProxy', () => {
 			});
 		});
 	});
+
+	// -----------------------------------------------------------------------
+	// 12. Boxed primitive metadata (lazy own fields)
+	// -----------------------------------------------------------------------
+
+	describe('boxed primitive metadata', () => {
+		it('resolves own fields lazily and caches each read', () => {
+			const boxed = Object('ab') as object;
+			mocks.getValueAtPath.mockImplementation((path: string[]) => {
+				const key = path[path.length - 1];
+				if (key === 'tagged') {
+					return {
+						__isBoxed: true,
+						__value: boxed,
+						__keys: ['meta', 'other'],
+						__hiddenKeys: ['secret'],
+					};
+				}
+				if (key === 'meta') return 42;
+				if (key === 'secret') return 'hidden';
+				return undefined;
+			});
+
+			const p = proxy(['$json']);
+			const value = p.tagged;
+
+			expect(value).toBe(boxed);
+			expect(value instanceof String).toBe(true);
+			expect(Object.keys(value)).toEqual(['0', '1', 'meta', 'other']);
+			expect('secret' in value).toBe(true);
+			expect(mocks.getValueAtPath).toHaveBeenCalledTimes(1);
+
+			expect(value.meta).toBe(42);
+			expect(value.meta).toBe(42);
+			expect(value.secret).toBe('hidden');
+			expect(Object.keys(value)).toEqual(['0', '1', 'meta', 'other']);
+			expect(mocks.getValueAtPath).toHaveBeenCalledTimes(3);
+			expect(mocks.getValueAtPath).toHaveBeenLastCalledWith(['$json', 'tagged', 'secret']);
+		});
+
+		it('throws an error sentinel only when the failing field is read and does not cache it', () => {
+			const sentinel = { __isError: true, name: 'ExpressionError', message: 'boom' };
+			const boxed = Object('ab') as object;
+			mocks.getValueAtPath.mockImplementation((path: string[]) => {
+				const key = path[path.length - 1];
+				if (key === 'tagged') return { __isBoxed: true, __value: boxed, __keys: ['ok', 'bad'] };
+				if (key === 'ok') return 1;
+				if (key === 'bad') return sentinel;
+				return undefined;
+			});
+
+			const p = proxy(['$json']);
+			const value = p.tagged;
+
+			expect(value + '!').toBe('ab!');
+			expect(value.ok).toBe(1);
+			expect(() => value.bad).toThrow();
+			expect(() => value.bad).toThrow();
+			expect(
+				mocks.getValueAtPath.mock.calls.filter((call) => call[0].at(-1) === 'bad'),
+			).toHaveLength(2);
+		});
+
+		it('handles writes, deletes, prototype receivers, and frozen boxed primitives', () => {
+			const boxed = Object(5) as object;
+			mocks.getValueAtPath.mockImplementation((path: string[]) => {
+				const key = path[path.length - 1];
+				if (key === 'n') return { __isBoxed: true, __value: boxed, __keys: ['a', 'b', 'c', 'd'] };
+				if (key === 'c') return 'from-host';
+				if (key === 'd') return 'frozen-read';
+				return undefined;
+			});
+
+			const p = proxy(['$json']);
+			const value = p.n;
+
+			// Write without reading the host field
+			value.a = 'local';
+			expect(value.a).toBe('local');
+
+			// Delete without reading the host field
+			delete value.b;
+			expect('b' in value).toBe(false);
+
+			// Prototype-chain write lands on the child, not the boxed target
+			const child = Object.create(value) as { c: unknown };
+			child.c = 'on-child';
+			expect(child.c).toBe('on-child');
+			expect(value.c).toBe('from-host');
+
+			// Writing through a frozen child does not mutate the boxed target
+			const frozenChild = Object.freeze(Object.create(value)) as { d: unknown };
+			expect(() => {
+				frozenChild.d = 'ignored';
+			}).not.toThrow();
+
+			// Reading an unread field after Object.freeze does not throw on redefine
+			Object.freeze(value);
+			expect(value.d).toBe('frozen-read');
+			expect(value.d).toBe('frozen-read');
+			expect(mocks.getValueAtPath.mock.calls.filter((call) => call[0].at(-1) === 'd')).toHaveLength(
+				1,
+			);
+		});
+	});
 });
 
 describe('createDeepLazyProxy batched reads', () => {
@@ -940,6 +1040,67 @@ describe('createDeepLazyProxy batched reads', () => {
 			expect('other' in rows[1]).toBe(true);
 		});
 
+		it.each([1, 2])(
+			'asks for whole items after a read in full of item %i with some fields',
+			(index) => {
+				const callbacks = createCallbacks();
+				callbacks.getArrayElement.mockReturnValue(objectOf(['id', 'name']));
+				callbacks.getValueAtPath.mockImplementation((path: string[]) =>
+					path.length === 3 ? objectOf(['id', 'name']) : 'x',
+				);
+				callbacks.readBatch.mockImplementation((path: string[]) =>
+					hostData(path.length === 2 ? [{ id: 1 }, { id: 2 }] : { id: 1, name: 'n' }),
+				);
+				const rows = arrayProxy(callbacks, 10);
+				void rows[0].id;
+				void rows[1];
+				JSON.stringify(rows[index]);
+				void rows[3];
+
+				expect(callbacks.readBatch.mock.calls.at(-1)).toEqual([
+					['$json', 'rows'],
+					3,
+					1,
+					WHOLE_VALUES,
+				]);
+			},
+		);
+
+		it('asks for fields by name after a read in full of a nested object of an item', () => {
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockReturnValue(objectOf(['id', 'address']));
+			callbacks.getValueAtPath.mockReturnValue(objectOf(['city']));
+			callbacks.readBatch.mockImplementation((path: string[]) =>
+				hostData(path.length === 2 ? [{}] : { city: 'x' }),
+			);
+			const rows = arrayProxy(callbacks, 10);
+			JSON.stringify(rows[0].address);
+			void rows[1];
+
+			expect(callbacks.readBatch.mock.calls.at(-1)).toEqual([['$json', 'rows'], 1, 0, ['address']]);
+		});
+
+		it('reads every field of an item one time when the expression lists its keys again', () => {
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockReturnValue(objectOf(['id', 'blob']));
+			callbacks.getValueAtPath.mockReturnValue('blob');
+			callbacks.readBatch
+				.mockReturnValueOnce(hostData({ id: 0 }))
+				.mockReturnValueOnce(objectOf(['id', 'blob']))
+				.mockReturnValue(hostData({ id: 1, blob: 'blob' }));
+			const rows = arrayProxy(callbacks, 10);
+			JSON.stringify(rows[0]);
+			const row = rows[1];
+			Object.keys(row);
+			void row.id;
+			const hostReads = callbacks.getValueAtPath.mock.calls.length;
+			Object.keys(row);
+
+			expect(row.blob).toBe('blob');
+			expect(callbacks.readBatch).toHaveBeenCalledTimes(3);
+			expect(callbacks.getValueAtPath).toHaveBeenCalledTimes(hostReads);
+		});
+
 		it('asks for small rows after a read of two items of the first row', () => {
 			const callbacks = createCallbacks();
 			callbacks.getArrayElement.mockImplementation((path: string[]) =>
@@ -1168,7 +1329,7 @@ describe('createDeepLazyProxy batched reads', () => {
 			item.c = 3;
 
 			expect({ ...item }).toEqual({ a: 1, b: 2, c: 3 });
-			expect(callbacks.readBatch).toHaveBeenCalledTimes(1);
+			expect(callbacks.readBatch.mock.calls).toEqual([[['$json'], 0, 0, SMALL_VALUES]]);
 			expect(callbacks.getValueAtPath).not.toHaveBeenCalled();
 		});
 

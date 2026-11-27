@@ -373,6 +373,28 @@ describe.each(bridges)('$label item data', ({ create }) => {
 		expect(lastRowRead).toBeLessThan(100);
 	});
 
+	it('reads a field with a name over the small size by name', () => {
+		const name = 'n'.repeat(BATCH_READ_LIMITS.smallValueChars + 1);
+		const $json = { rows: rowsOf(20).map((row) => ({ ...row, [name]: row.id })) };
+		const code = `return $json.rows.map(function (r) { return r.${name}; });`;
+
+		expect(evaluate(code, $json)).toStrictEqual(evaluatePlain(code, $json));
+	});
+
+	it('reads a field that a batched read leaves out with a read of one value', () => {
+		const meta = Object.fromEntries(
+			Array.from({ length: 2000 }, (_, index) => [`key${index}`, index]),
+		);
+		const $json = { rows: rowsOf(30).map((row, index) => ({ ...row, at: new Date(index), meta })) };
+		const code = 'return $json.rows.map(function (r) { return [r.id, r.at, r.meta.key5]; });';
+		const resolve = vi.spyOn(HostDataResolver.prototype, 'resolve');
+
+		expect(evaluate(code, $json)).toStrictEqual(evaluatePlain(code, $json));
+		const paths = resolve.mock.calls.map(([path]) => path.join('.'));
+		// Each row reads `at` and `meta` alone.
+		expect(paths.filter((path) => /^\$json\.rows\.\d+\.(at|meta)$/.test(path))).toHaveLength(60);
+	});
+
 	it('never calls a getter of the item data more than a read of one field does', () => {
 		const read = vi.fn(() => 'computed');
 		const rows = rowsOf(10).map((row) =>

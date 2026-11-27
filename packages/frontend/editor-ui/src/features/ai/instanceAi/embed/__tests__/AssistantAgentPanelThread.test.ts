@@ -31,8 +31,6 @@ const {
 	sendMessageFromOutside,
 	setDraft,
 	clearDraftIfMatches,
-	stagedChips,
-	removeChip,
 	telemetryTrack,
 	chatMessages,
 	expectSetupResult,
@@ -41,8 +39,6 @@ const {
 	sendMessageFromOutside: vi.fn(),
 	setDraft: vi.fn(),
 	clearDraftIfMatches: vi.fn(),
-	stagedChips: { current: [] as Array<{ id: string; label: string }> },
-	removeChip: vi.fn(),
 	telemetryTrack: vi.fn(),
 	chatMessages: { current: undefined as Ref<ChatMessage[]> | undefined },
 	expectSetupResult: { current: undefined as ((save: PendingSetupSave) => void) | undefined },
@@ -72,17 +68,25 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 			});
 			return () => {
 				panelProps.current = { ...attrs };
-				return h(
-					'div',
-					{ 'data-test-id': 'agent-chat-panel-stub' },
-					slots['composer-attachments']?.({ chips: stagedChips.current, removeChip }),
-				);
+				return h('div', { 'data-test-id': 'agent-chat-panel-stub' }, [
+					slots['composer-attachments']?.(),
+					slots['footer-start']?.({ disabled: false }),
+				]);
 			};
 		},
 	}),
 }));
 
 vi.mock('../../composables/useAgentMutationRefresh', () => ({ useAgentMutationRefresh: vi.fn() }));
+
+// The real selector reads the settings store, which has its own tests.
+vi.mock('@/features/ai/instanceAi/components/ApprovalModeSelector.vue', () => ({
+	default: defineComponent({
+		props: { threadId: { type: String, default: undefined } },
+		setup: (props) => () =>
+			h('div', { 'data-test-id': 'approval-mode-selector-stub', 'data-thread-id': props.threadId }),
+	}),
+}));
 
 type AcceptMessage = (payload: { clientContext?: Record<string, unknown> }) => void;
 
@@ -133,10 +137,17 @@ describe('AssistantAgentPanelThread', () => {
 		sendMessageFromOutside.mockReset();
 		setDraft.mockReset();
 		clearDraftIfMatches.mockReset();
-		removeChip.mockReset();
 		telemetryTrack.mockReset();
-		stagedChips.current = [];
 		clearPendingHandoffContext('thread-1');
+	});
+
+	it('shows the approval mode selector and the actions that Auto mode approved', async () => {
+		const wrapper = await render();
+
+		const selector = wrapper.find('[data-test-id="approval-mode-selector-stub"]');
+		expect(selector.attributes('data-thread-id')).toBe('thread-1');
+		const extensions = panelProps.current['interaction-extensions'] as Array<{ key: string }>;
+		expect(extensions.map((extension) => extension.key)).toContain('assistant_auto_approval');
 	});
 
 	it('passes the preview ref to the composer without reading its frames', async () => {
@@ -224,16 +235,10 @@ describe('AssistantAgentPanelThread', () => {
 
 	it('shows an agent preview hand-off as a chip, and drops it when the user removes the chip', async () => {
 		stashPendingHandoffContext('thread-1', preview);
-		stagedChips.current = [{ id: 'nodes-1', label: 'Slack' }];
 		const wrapper = await render();
 
 		const chip = wrapper.find('[data-test-id="instance-ai-handoff-context-chip"]');
 		expect(chip.text()).toContain('Support agent session');
-		// The other chips of the composer stay.
-		const staged = wrapper.find('[data-test-id="agent-chat-composer-chip"]');
-		expect(staged.text()).toContain('Slack');
-		await staged.find('[data-test-id="agent-chat-composer-chip-remove"]').trigger('click');
-		expect(removeChip).toHaveBeenCalledWith('nodes-1');
 
 		await chip.find('[data-test-id="instance-ai-handoff-context-chip-dismiss"]').trigger('click');
 

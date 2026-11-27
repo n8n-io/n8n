@@ -10,15 +10,16 @@ import { waitFor, within } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useInstancePolicyStore } from './instance-policy.store';
+import { useRestrictReviewStore } from './restrict-review/restrict-review.store';
 import NodeTypesTab from './NodeTypesTab.vue';
 import { findPopupItem, MENU_ITEM } from '../__tests__/popups';
-import { policyTableCells } from '../__tests__/table';
+import { policyTableCells, rowCheckbox, type GetByRole } from '../__tests__/table';
 import type { InstancePolicy, NodeTypeSummary } from '../type-availability-policies.api';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
-	saveInstancePolicy: vi.fn(),
+	setInstanceTypeAccess: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
 	fetchNodeTypeSummaries: vi.fn(),
 	fetchNodeTypeUsage: vi.fn(),
@@ -34,7 +35,6 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 const SLACK = 'n8n-nodes-base.slack';
 const SLACK_TRIGGER = 'n8n-nodes-base.slackTrigger';
-const HIDDEN = 'n8n-nodes-base.internalThing';
 const NOT_LOADED = 'n8n-nodes-base.notLoaded';
 
 const summary = (displayName: string, fields: Partial<NodeTypeSummary> = {}): NodeTypeSummary => ({
@@ -46,7 +46,6 @@ const summary = (displayName: string, fields: Partial<NodeTypeSummary> = {}): No
 const SUMMARIES = new Map([
 	[SLACK, summary('Slack', { icon: 'fa:slack' })],
 	[SLACK_TRIGGER, summary('Slack Trigger')],
-	[HIDDEN, summary('Internal thing', { hidden: true })],
 ]);
 
 const policy = (
@@ -59,7 +58,6 @@ const access = (
 	types: InstanceTypeAccessResponse['types'] = [
 		{ name: SLACK, access: 'allow', matchedRuleId: null },
 		{ name: SLACK_TRIGGER, access: 'allow', matchedRuleId: null },
-		{ name: HIDDEN, access: 'allow', matchedRuleId: null },
 		{ name: NOT_LOADED, access: 'deny', matchedRuleId: 'rule-1' },
 	],
 ): InstanceTypeAccessResponse => ({ scopeId: 'scope-1', version, defaultAction: 'allow', types });
@@ -113,77 +111,6 @@ describe('NodeTypesTab', () => {
 		expect(mocks.fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'node');
 	});
 
-	it('gives no row to a hidden node type', async () => {
-		const { findByText, queryByText } = await setup();
-		await findByText('Slack');
-
-		expect(queryByText('Internal thing')).not.toBeInTheDocument();
-		expect(queryByText(HIDDEN)).not.toBeInTheDocument();
-	});
-
-	it('gives a row to a hidden node type that a name rule decides, so the admin can undo the rule', async () => {
-		mocks.fetchInstancePolicy.mockResolvedValue(
-			policy(1, [{ id: 'rule-1', action: 'deny', selector: { kind: 'name', value: HIDDEN } }]),
-		);
-		mocks.fetchInstanceAccess.mockResolvedValue(
-			access(1, [
-				{ name: SLACK, access: 'allow', matchedRuleId: null },
-				{ name: HIDDEN, access: 'deny', matchedRuleId: 'rule-1' },
-			]),
-		);
-		const { findByText, getByTestId } = await setup();
-
-		expect(await findByText('Internal thing')).toBeInTheDocument();
-		expect(accessCell(getByTestId, HIDDEN)).toHaveTextContent('Restricted');
-	});
-
-	it('keeps the row of a hidden node type while the access list reloads after a change', async () => {
-		const hiddenRule = (id: string, action: 'allow' | 'deny') => ({
-			id,
-			action,
-			selector: { kind: 'name' as const, value: HIDDEN },
-		});
-		mocks.fetchInstancePolicy.mockResolvedValue(policy(1, [hiddenRule('rule-1', 'deny')]));
-		mocks.saveInstancePolicy.mockResolvedValue({
-			...policy(2, [hiddenRule('rule-2', 'allow')]),
-			warnings: [],
-		});
-		const reload = createDeferredPromise<InstanceTypeAccessResponse>();
-		const { findByText, getByTestId, queryByText } = await setup(() =>
-			mocks.fetchInstanceAccess
-				.mockResolvedValueOnce(
-					access(1, [{ name: HIDDEN, access: 'deny', matchedRuleId: 'rule-1' }]),
-				)
-				.mockReturnValue(reload.promise),
-		);
-		await findByText('Internal thing');
-
-		await userEvent.click(accessCell(getByTestId, HIDDEN));
-		await userEvent.click(await findPopupItem(MENU_ITEM, 'Allowed'));
-
-		// After the save, the store reads the access list again.
-		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
-		expect(queryByText('Internal thing')).toBeInTheDocument();
-	});
-
-	it('gives no row to a hidden node type that a package rule decides', async () => {
-		mocks.fetchInstancePolicy.mockResolvedValue(
-			policy(1, [
-				{ id: 'deny-base', action: 'deny', selector: { kind: 'package', value: 'n8n-nodes-base' } },
-			]),
-		);
-		mocks.fetchInstanceAccess.mockResolvedValue(
-			access(1, [
-				{ name: SLACK, access: 'deny', matchedRuleId: 'deny-base' },
-				{ name: HIDDEN, access: 'deny', matchedRuleId: 'deny-base' },
-			]),
-		);
-		const { findByText, queryByText } = await setup();
-		await findByText('Slack');
-
-		expect(queryByText('Internal thing')).not.toBeInTheDocument();
-	});
-
 	it('shows the name of a node type that the editor did not load', async () => {
 		const { findByText, getByTestId } = await setup();
 
@@ -198,7 +125,6 @@ describe('NodeTypesTab', () => {
 
 		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalled());
 		expect(queryByText(SLACK)).not.toBeInTheDocument();
-		expect(queryByText(HIDDEN)).not.toBeInTheDocument();
 
 		summaries.resolve(SUMMARIES);
 		expect(await findByText('Slack')).toBeInTheDocument();
@@ -213,8 +139,9 @@ describe('NodeTypesTab', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
-	it('restricts a node type at once', async () => {
-		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
+	it('restricts a node type that no workflow uses at once', async () => {
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
+		mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
 		const { findByText, getByTestId } = await setup(() =>
 			mocks.fetchInstanceAccess.mockResolvedValueOnce(access(1)).mockResolvedValue(
 				access(2, [
@@ -228,12 +155,9 @@ describe('NodeTypesTab', () => {
 		await restrict(getByTestId);
 
 		await waitFor(() =>
-			expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
-				defaultAction: 'allow',
+			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledWith(expect.anything(), 'node', {
+				changes: [{ type: SLACK, access: 'deny' }],
 				version: 1,
-				rules: [
-					{ id: expect.any(String), action: 'deny', selector: { kind: 'name', value: SLACK } },
-				],
 			}),
 		);
 		// The change applies at once: no dialog asks the admin to confirm it.
@@ -245,44 +169,11 @@ describe('NodeTypesTab', () => {
 		expect(accessCell(getByTestId, SLACK_TRIGGER)).toHaveTextContent('Allowed');
 	});
 
-	it('keeps a rule on a Tool variant in front when it allows the node type', async () => {
-		const denySlackTool = {
-			id: 'deny-slack-tool',
-			action: 'deny' as const,
-			selector: { kind: 'name' as const, value: `${SLACK}Tool` },
-		};
-		const denyBasePackage = {
-			id: 'deny-base',
-			action: 'deny' as const,
-			selector: { kind: 'package' as const, value: 'n8n-nodes-base' },
-		};
-		mocks.fetchInstancePolicy.mockResolvedValue(policy(1, [denySlackTool, denyBasePackage]));
-		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
-		const { findByText, getByTestId } = await setup(() =>
-			mocks.fetchInstanceAccess.mockResolvedValue(
-				access(1, [{ name: SLACK, access: 'deny', matchedRuleId: denyBasePackage.id }]),
-			),
-		);
-		await findByText('Slack');
-
-		await userEvent.click(accessCell(getByTestId));
-		await userEvent.click(await findPopupItem(MENU_ITEM, 'Allowed'));
-
-		await waitFor(() =>
-			expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
-				defaultAction: 'allow',
-				version: 1,
-				rules: [
-					denySlackTool,
-					{ id: expect.any(String), action: 'allow', selector: { kind: 'name', value: SLACK } },
-					denyBasePackage,
-				],
-			}),
-		);
-	});
-
 	it('loads the access list again when the policy changed after the page loaded', async () => {
-		mocks.saveInstancePolicy.mockRejectedValue(new ResponseError('stale', { httpStatusCode: 409 }));
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
+		mocks.setInstanceTypeAccess.mockRejectedValue(
+			new ResponseError('stale', { httpStatusCode: 409 }),
+		);
 		mocks.fetchInstancePolicy.mockResolvedValueOnce(policy(1)).mockResolvedValue(policy(5));
 		const { findByText, getByTestId } = await setup(() =>
 			mocks.fetchInstanceAccess
@@ -298,7 +189,7 @@ describe('NodeTypesTab', () => {
 		await waitFor(() =>
 			expect(accessCell(getByTestId, SLACK_TRIGGER)).toHaveTextContent('Restricted'),
 		);
-		expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
+		expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
 	});
 
 	it('shows a node type that a rule leaves open to project opt-in as read-only', async () => {
@@ -319,5 +210,81 @@ describe('NodeTypesTab', () => {
 
 		expect(accessCell(getByTestId)).toHaveAccessibleName('Access of Slack');
 		expect(accessCell(getByTestId, SLACK_TRIGGER)).toHaveAccessibleName('Access of Slack Trigger');
+	});
+
+	describe('bulk change', () => {
+		// The rows are read-only until the access loads.
+		const selectBoth = async (getByRole: GetByRole) => {
+			await waitFor(() => expect(rowCheckbox(getByRole, 'Slack')).toBeEnabled());
+			await userEvent.click(rowCheckbox(getByRole, 'Slack'));
+			await userEvent.click(rowCheckbox(getByRole, 'Slack Trigger'));
+		};
+
+		it('restricts the selection in one save after one review, then clears the selection', async () => {
+			mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
+			const { getByRole, getByTestId, queryByTestId } = await setup();
+			await selectBoth(getByRole);
+
+			await userEvent.click(getByTestId('policy-bulk-restrict'));
+			const review = useRestrictReviewStore();
+			await waitFor(() =>
+				expect(review.bulkRequest?.items.map(({ name }) => name)).toEqual([SLACK]),
+			);
+			review.resolve(true);
+
+			await waitFor(() => expect(queryByTestId('selected-items-info')).not.toBeInTheDocument());
+			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
+			expect(mocks.setInstanceTypeAccess.mock.calls[0][2].changes).toEqual([
+				{ type: SLACK, access: 'deny' },
+				{ type: SLACK_TRIGGER, access: 'deny' },
+			]);
+		});
+
+		it('keeps the selection and changes nothing when the admin cancels the review', async () => {
+			const { getByRole, getByTestId } = await setup();
+			await selectBoth(getByRole);
+
+			await userEvent.click(getByTestId('policy-bulk-restrict'));
+			const review = useRestrictReviewStore();
+			await waitFor(() => expect(review.bulkRequest).not.toBeNull());
+			review.resolve(false);
+
+			await waitFor(() =>
+				expect(getByTestId('policy-bulk-restrict')).not.toHaveAttribute('aria-disabled'),
+			);
+			expect(within(getByTestId('selected-items-info')).getByText('2 rows selected')).toBeVisible();
+			expect(mocks.setInstanceTypeAccess).not.toHaveBeenCalled();
+		});
+
+		it('keeps the selection and says so when the policy changed after the page loaded', async () => {
+			mocks.setInstanceTypeAccess.mockRejectedValue(
+				new ResponseError('Policy scope has changed', { httpStatusCode: 409 }),
+			);
+			const { getByRole, getByTestId } = await setup();
+			await selectBoth(getByRole);
+			mocks.fetchInstancePolicy.mockResolvedValue(policy(2));
+			// Another admin restricted Slack, so the row shows the access that the tab read again.
+			mocks.fetchInstanceAccess.mockResolvedValue(
+				access(2, [
+					{ name: SLACK, access: 'deny', matchedRuleId: 'other-admin' },
+					{ name: SLACK_TRIGGER, access: 'allow', matchedRuleId: null },
+					{ name: NOT_LOADED, access: 'deny', matchedRuleId: 'rule-1' },
+				]),
+			);
+			const accessReads = mocks.fetchInstanceAccess.mock.calls.length;
+
+			await userEvent.click(getByTestId('policy-bulk-restrict'));
+			await waitFor(() => expect(useRestrictReviewStore().bulkRequest).not.toBeNull());
+			useRestrictReviewStore().resolve(true);
+
+			await waitFor(() =>
+				expect(mocks.showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'warning' }),
+				),
+			);
+			expect(mocks.fetchInstanceAccess.mock.calls.length).toBeGreaterThan(accessReads);
+			await waitFor(() => expect(accessCell(getByTestId)).toHaveTextContent('Restricted'));
+			expect(within(getByTestId('selected-items-info')).getByText('2 rows selected')).toBeVisible();
+		});
 	});
 });

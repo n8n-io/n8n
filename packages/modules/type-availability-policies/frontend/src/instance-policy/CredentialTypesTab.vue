@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, onMounted, shallowRef } from 'vue';
+import { computed, onMounted, shallowRef, useTemplateRef } from 'vue';
 
 import { credentialTypeIcon, FALLBACK_TYPE_ICON } from './credentialTypeIcon';
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
@@ -19,7 +19,8 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
 const instancePolicy = useInstancePolicy();
-const { types, loading, changeAccess } = useInstanceTypeAccess('credential');
+const { types, loading, changeAccess, selection, bulkBusy, bulkChange } =
+	useInstanceTypeAccess('credential');
 
 const typeSummaries = shallowRef(new Map<string, CredentialTypeSummary>());
 
@@ -56,17 +57,28 @@ async function loadSummaries() {
 onMounted(async () => {
 	await Promise.all([loadSummaries(), instancePolicy.loadUsage('credential')]);
 });
+
+const table = useTemplateRef<InstanceType<typeof InstancePolicyTable>>('table');
+
+defineExpose({ returnFocus: (name: string | undefined) => table.value?.returnFocus(name) });
 </script>
 
 <template>
 	<InstancePolicyTable
+		ref="table"
+		v-model:selection="selection"
 		:rows="rows"
+		:bulk-busy="bulkBusy"
 		:loading="loading"
 		:search-placeholder="
 			i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.search.credential')
 		"
+		:no-match-text="
+			i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noMatch.credential')
+		"
 		data-test-id="credential-types-tab"
 		@change="changeAccess"
+		@bulk-change="bulkChange"
 		@open="(name) => emit('open', name)"
 	>
 		<template #toolbar-start>

@@ -54,6 +54,10 @@ export interface GraphEdge {
 }
 
 export interface WorkflowGraph {
+	/**
+	 * The order decides how the items of several edges into one input slot
+	 * concatenate: see `compareByConcatenationOrder`.
+	 */
 	nodes: GraphNode[];
 	edges: GraphEdge[];
 }

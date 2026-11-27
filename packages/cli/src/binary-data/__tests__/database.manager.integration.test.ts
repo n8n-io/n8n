@@ -337,3 +337,63 @@ it('should throw FileTooLargeError when copying oversized file by path', async (
 		await rm(tempDir, { recursive: true, force: true });
 	}
 });
+
+describe('assignToExecution', () => {
+	const findSourceId = async (fileId: string) =>
+		(await repository.findSourceByFileId(fileId))?.sourceId;
+
+	it('should assign a file stored without an execution ID', async () => {
+		const { fileId } = await dbManager.store(
+			{ type: 'execution', workflowId, executionId: '' },
+			buffer,
+			{},
+		);
+		expect(await findSourceId(fileId)).toBe('temp');
+
+		await dbManager.assignToExecution([fileId], executionId);
+
+		expect(await findSourceId(fileId)).toBe(executionId);
+	});
+
+	it('should leave a file of another execution unchanged', async () => {
+		const { fileId } = await dbManager.store(
+			{ type: 'execution', workflowId, executionId: 'other-execution' },
+			buffer,
+			{},
+		);
+
+		await dbManager.assignToExecution([fileId], executionId);
+
+		expect(await findSourceId(fileId)).toBe('other-execution');
+	});
+
+	it('should leave a file of another source type unchanged', async () => {
+		const { fileId } = await dbManager.store(
+			{
+				type: 'custom',
+				pathSegments: ['chat-hub', 'temp'],
+				sourceType: 'chat_message_attachment',
+				sourceId: 'temp',
+			},
+			buffer,
+			{},
+		);
+
+		await dbManager.assignToExecution([fileId], executionId);
+
+		expect(await repository.findSourceByFileId(fileId)).toEqual({
+			sourceType: 'chat_message_attachment',
+			sourceId: 'temp',
+		});
+	});
+
+	it('should leave unlisted files unchanged', async () => {
+		const location = { type: 'execution', workflowId, executionId: '' } as const;
+		const listed = await dbManager.store(location, buffer, {});
+		const unlisted = await dbManager.store(location, buffer, {});
+
+		await dbManager.assignToExecution([listed.fileId], executionId);
+
+		expect(await findSourceId(unlisted.fileId)).toBe('temp');
+	});
+});

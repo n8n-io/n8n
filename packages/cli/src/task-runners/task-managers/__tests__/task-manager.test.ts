@@ -1,5 +1,6 @@
 import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
+import { UserError } from '@n8n/errors';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import type { ErrorReporter } from 'n8n-core';
@@ -192,8 +193,38 @@ describe('TaskRequester', () => {
 				]);
 			});
 
-			it('sends error if method throws', async () => {
-				const error = new Error('Test error');
+			it('sends the error message if method throws', async () => {
+				const error = new UserError('This binary data is not available to the current workflow.');
+				const mockTask = mock<Task>({
+					taskId: 'taskId',
+					data: {
+						executeFunctions: {
+							helpers: {
+								assertBinaryData: vi.fn().mockRejectedValue(error),
+							},
+						},
+					},
+				});
+				instance.tasks.set('taskId', mockTask);
+
+				await instance.handleRpc('taskId', 'callId', 'helpers.assertBinaryData', []);
+
+				expect(instance.sentMessages).toEqual([
+					{
+						callId: 'callId',
+						data: expect.objectContaining({
+							message: 'This binary data is not available to the current workflow.',
+							name: 'UserError',
+						}),
+						status: 'error',
+						taskId: 'taskId',
+						type: 'requester:rpcresponse',
+					},
+				]);
+			});
+
+			it('preserves a non-Error value if method rejects with one', async () => {
+				const error = { code: 'ERR_TEST' };
 				const mockTask = mock<Task>({
 					taskId: 'taskId',
 					data: {

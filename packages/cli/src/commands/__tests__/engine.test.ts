@@ -3,13 +3,16 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, PrometheusMetricsConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
+import { CommandMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { WorkQueuePublisherClient } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import promClient from 'prom-client';
 
 import * as CrashJournal from '@/crash-journal';
 import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
@@ -18,7 +21,9 @@ import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { startEngineMetricsServer } from '@/modules/engine-v2/engine-metrics-server';
 import { EngineMtls } from '@/modules/engine-v2/engine-mtls';
+import { parseEngineRoles } from '@/modules/engine-v2/engine-roles';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
 import { ExecutionChannelSender } from '@/modules/engine-v2/execution-channel/execution-channel-sender';
 import { LifecycleEventChannelSender } from '@/modules/engine-v2/execution-channel/lifecycle-event-sender';
@@ -34,6 +39,13 @@ import { Engine } from '../engine';
 
 vi.mock('@/crash-journal');
 vi.mock('@/modules/engine-v2/work-queue/redis-work-queues', { spy: true });
+const metricsServer = vi.hoisted(() => ({
+	close: vi.fn((done?: (error?: Error) => void) => done?.()),
+	closeAllConnections: vi.fn(),
+}));
+vi.mock('@/modules/engine-v2/engine-metrics-server', () => ({
+	startEngineMetricsServer: vi.fn(async () => metricsServer),
+}));
 
 const dbConnection = mockInstance(DbConnection);
 const encryptionBootstrap = mockInstance(EncryptionBootstrapService);
@@ -41,6 +53,7 @@ const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 loadNodesAndCredentials.init.mockResolvedValue(undefined);
 loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
 const runtime = mockInstance(EngineV2Runtime);
+const metricsConfig = mockInstance(PrometheusMetricsConfig);
 const taskRunnerModule = mockInstance(TaskRunnerModule);
 const binaryDataConfig = mockInstance(BinaryDataConfig, { mode: 'filesystem' });
 const binaryDataService = mockInstance(BinaryDataService);
@@ -104,8 +117,10 @@ describe('Engine', () => {
 			tlsInsecureAllowPlainHttp: true,
 			orchestrationConcurrency: 1,
 			stepConcurrency: 1,
+			roles: '',
 		});
 		useTls(false);
+		Object.assign(metricsConfig, { enable: false, prefix: 'n8n_', includeDefaultMetrics: true });
 	});
 
 	afterEach(() => {
@@ -121,8 +136,10 @@ describe('Engine', () => {
 		}
 	};
 
-	const createEngine = () => {
+	const createEngine = (flags: { roles?: string } = {}) => {
 		const engine = new Engine();
+		// @ts-expect-error - Overriding readonly property for testing
+		engine.flags = flags;
 		// @ts-expect-error - Overriding readonly property for testing
 		engine.globalConfig = {
 			executions: { mode: 'regular' },
@@ -187,25 +204,59 @@ describe('Engine', () => {
 			}
 		});
 
-		it('refuses to boot without the shared secret', async () => {
-			engineConfig.authSecret = '';
+		it.each([
+			{ flag: undefined, role: 'api' },
+			{ flag: 'api', role: 'api' },
+			{ flag: 'step-worker', role: 'step-worker' },
+			{ flag: 'orchestrator,step-worker', role: 'step-worker' },
+		])(
+			'refuses to boot --roles=$flag without the shared secret, naming the $role role',
+			async ({ flag, role }) => {
+				engineConfig.authSecret = '';
 
-			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_AUTH_SECRET');
-		});
+				await expect(createEngine({ roles: flag }).init()).rejects.toThrow(
+					`The ${role} role needs N8N_ENGINE_AUTH_SECRET`,
+				);
+			},
+		);
 
-		it('refuses to boot without the control plane address', async () => {
-			engineConfig.controlPlaneBaseUrl = '';
+		it.each([undefined, 'step-worker', 'api,step-worker'])(
+			'refuses to boot --roles=%s without the control plane address',
+			async (flag) => {
+				engineConfig.controlPlaneBaseUrl = '';
 
-			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_CONTROL_PLANE_BASE_URL');
-		});
+				await expect(createEngine({ roles: flag }).init()).rejects.toThrow(
+					'The step-worker role needs N8N_ENGINE_CONTROL_PLANE_BASE_URL',
+				);
+			},
+		);
 
-		it('refuses to boot over plain HTTP without the opt-out', async () => {
-			engineConfig.tlsInsecureAllowPlainHttp = false;
+		it.each([
+			{ flag: 'orchestrator', withSecret: false },
+			{ flag: 'api', withSecret: true },
+			{ flag: 'api,orchestrator', withSecret: true },
+		])(
+			'boots --roles=$flag without the control plane address (shared secret set: $withSecret)',
+			async ({ flag, withSecret }) => {
+				if (!withSecret) engineConfig.authSecret = '';
+				engineConfig.controlPlaneBaseUrl = '';
 
-			await expect(createEngine().init()).rejects.toThrow(
-				'N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP',
-			);
-		});
+				await createEngine({ roles: flag }).init();
+
+				expect(runtime.init).toHaveBeenCalled();
+			},
+		);
+
+		it.each(['api', 'orchestrator', 'step-worker'])(
+			'refuses to boot --roles=%s over plain HTTP without the opt-out',
+			async (flag) => {
+				engineConfig.tlsInsecureAllowPlainHttp = false;
+
+				await expect(createEngine({ roles: flag }).init()).rejects.toThrow(
+					'N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP',
+				);
+			},
+		);
 
 		it('refuses an http control plane address when TLS is on', async () => {
 			useTls(true);
@@ -213,6 +264,14 @@ describe('Engine', () => {
 			await expect(createEngine().init()).rejects.toThrow(
 				'N8N_ENGINE_CONTROL_PLANE_BASE_URL must start with https://',
 			);
+		});
+
+		it('ignores an http control plane address when TLS is on and no role dials it', async () => {
+			useTls(true);
+
+			await createEngine({ roles: 'api,orchestrator' }).init();
+
+			expect(runtime.init).toHaveBeenCalled();
 		});
 
 		it('never opens, migrates or reads the control plane database', async () => {
@@ -229,11 +288,70 @@ describe('Engine', () => {
 			expect(CrashJournal.init).not.toHaveBeenCalled();
 		});
 
-		it('loads the nodes and starts the task runner module', async () => {
-			await createEngine().init();
+		describe('roles', () => {
+			let initExpressionEngine: MockInstance<typeof Expression.initExpressionEngine>;
 
-			expect(loadNodesAndCredentials.init).toHaveBeenCalled();
-			expect(taskRunnerModule.start).toHaveBeenCalled();
+			beforeEach(() => {
+				initExpressionEngine = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+			});
+
+			afterEach(() => {
+				initExpressionEngine.mockRestore();
+			});
+
+			it('runs the roles that N8N_ENGINE_ROLES names', async () => {
+				engineConfig.roles = 'orchestrator';
+
+				await createEngine().init();
+
+				expect(runtime.init).toHaveBeenCalledWith(
+					expect.objectContaining({ roles: ['orchestrator'] }),
+				);
+			});
+
+			it.each([undefined, 'step-worker', 'api,step-worker'])(
+				'loads the nodes and starts the expression engine and the code execution backend with --roles=%s',
+				async (flag) => {
+					await createEngine({ roles: flag }).init();
+
+					expect(loadNodesAndCredentials.init).toHaveBeenCalled();
+					expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
+					expect(initExpressionEngine).toHaveBeenCalled();
+					expect(taskRunnerModule.start).toHaveBeenCalled();
+				},
+			);
+
+			it.each(['api', 'orchestrator', 'api,orchestrator'])(
+				'loads no nodes and starts neither the expression engine nor the code execution backend with --roles=%s',
+				async (flag) => {
+					await createEngine({ roles: flag }).init();
+
+					expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
+					expect(loadNodesAndCredentials.postProcessLoaders).not.toHaveBeenCalled();
+					expect(initExpressionEngine).not.toHaveBeenCalled();
+					expect(taskRunnerModule.start).not.toHaveBeenCalled();
+				},
+			);
+
+			it('refuses to boot with an unknown role in N8N_ENGINE_ROLES before it starts anything', async () => {
+				engineConfig.roles = 'worker';
+
+				await expect(createEngine().init()).rejects.toThrow(
+					'Unknown engine role in N8N_ENGINE_ROLES: worker',
+				);
+				expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
+				expect(redisClientService.createClient).not.toHaveBeenCalled();
+				expect(taskRunnerModule.start).not.toHaveBeenCalled();
+				expect(runtime.init).not.toHaveBeenCalled();
+			});
+
+			it('names every engine role and the environment variable in the help text of --roles', () => {
+				const flagsSchema = Container.get(CommandMetadata).get('engine')?.flagsSchema;
+				const allRoles = parseEngineRoles(undefined);
+
+				expect(flagsSchema?.shape.roles.description).toContain(allRoles.join(', '));
+				expect(flagsSchema?.shape.roles.description).toContain('N8N_ENGINE_ROLES');
+			});
 		});
 
 		it('sends execution responses and lifecycle events over Redis', async () => {
@@ -244,6 +362,7 @@ describe('Engine', () => {
 				responseSender: expect.any(ExecutionChannelSender),
 				lifecycleEventSender: expect.any(LifecycleEventChannelSender),
 				queues: expect.anything(),
+				roles: expect.anything(),
 			});
 		});
 
@@ -361,6 +480,88 @@ describe('Engine', () => {
 				expect(objectStoreService.init).not.toHaveBeenCalled();
 				expect(binaryDataService.setManager).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('metrics', () => {
+		// The command registers the Node.js default metrics on the global registry.
+		afterEach(() => {
+			promClient.register.clear();
+		});
+
+		const registryGivenToRuntime = () =>
+			vi.mocked(runtime.init).mock.calls.at(-1)?.[0].metricsRegistry;
+
+		it('starts no metrics server and gives the engine no registry when N8N_METRICS is off', async () => {
+			await createEngine().init();
+
+			expect(startEngineMetricsServer).not.toHaveBeenCalled();
+			expect(registryGivenToRuntime()).toBeUndefined();
+		});
+
+		it('serves the global registry, which it also gives the engine, on N8N_ENGINE_HOST and N8N_ENGINE_METRICS_PORT', async () => {
+			metricsConfig.enable = true;
+			Object.assign(engineConfig, { host: '::', metricsPort: 9999 });
+
+			await createEngine().init();
+
+			const registry = registryGivenToRuntime();
+			expect(registry).toBe(promClient.register);
+			expect(startEngineMetricsServer).toHaveBeenCalledExactlyOnceWith(registry, {
+				host: '::',
+				port: 9999,
+				logger: expect.anything(),
+			});
+		});
+
+		it('refuses to boot, naming N8N_ENGINE_METRICS_PORT, when the metrics port is taken', async () => {
+			metricsConfig.enable = true;
+			const listenError = new Error('listen EADDRINUSE: address already in use');
+			vi.mocked(startEngineMetricsServer).mockRejectedValueOnce(listenError);
+
+			await expect(createEngine().init()).rejects.toMatchObject({
+				message: expect.stringContaining('N8N_ENGINE_METRICS_PORT'),
+				cause: listenError,
+			});
+			expect(runtime.init).not.toHaveBeenCalled();
+		});
+
+		it('registers the Node.js default metrics under N8N_METRICS_PREFIX', async () => {
+			Object.assign(metricsConfig, { enable: true, prefix: 'custom_' });
+
+			await createEngine().init();
+
+			expect(
+				registryGivenToRuntime()?.getSingleMetric('custom_nodejs_eventloop_lag_seconds'),
+			).toBeDefined();
+		});
+
+		it('leaves the Node.js default metrics out when N8N_METRICS_INCLUDE_DEFAULT_METRICS is off', async () => {
+			Object.assign(metricsConfig, { enable: true, includeDefaultMetrics: false });
+
+			await createEngine().init();
+
+			expect(
+				promClient.register.getSingleMetric('n8n_nodejs_eventloop_lag_seconds'),
+			).toBeUndefined();
+		});
+
+		it('closes the metrics server when the data plane stops', async () => {
+			metricsConfig.enable = true;
+			const engine = createEngine();
+			await engine.init();
+			await startAndStopWorkQueues();
+			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			try {
+				// @ts-expect-error - Accessing protected method for testing
+				await engine.stopProcess();
+
+				expect(metricsServer.close).toHaveBeenCalledTimes(1);
+				expect(metricsServer.closeAllConnections).toHaveBeenCalledTimes(1);
+				expect(exit).toHaveBeenCalledExactlyOnceWith();
+			} finally {
+				exit.mockRestore();
+			}
 		});
 	});
 

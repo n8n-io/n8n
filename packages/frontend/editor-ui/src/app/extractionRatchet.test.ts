@@ -27,6 +27,9 @@ const EXTRACTED_MODULES = [
 	{ group: '@/features/settings/otel', package: '@n8n/frontend-module-otel' },
 	{ group: '@/features/execution/insights', package: '@n8n/frontend-module-insights' },
 	{ group: '@/features/ai/mcpAccess', package: '@n8n/frontend-module-mcp' },
+	{ group: '@/features/settings/apiKeys', package: '@n8n/frontend-module-api-keys' },
+	// Not a feature, but it left the shell with the API keys feature.
+	{ group: '@/app/components/scopes', package: '@n8n/frontend-module-api-keys' },
 ];
 
 // One representative path per block in `oxlint.config.mts` that sets the rule, plus

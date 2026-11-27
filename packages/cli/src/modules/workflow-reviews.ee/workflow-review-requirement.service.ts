@@ -27,8 +27,9 @@ export class WorkflowReviewRequirementService {
 		if (policy.alwaysRequired === true) return 'instance';
 		if (!project) return null;
 
-		return (await this.projectSettingsRepository.isRequiredByProject(project.id, {}))
-			? 'project'
-			: null;
+		const { requiredByInstance, requiredByProject } =
+			await this.projectSettingsRepository.getRequirements(project.id, {});
+		if (requiredByInstance) return 'instance';
+		return requiredByProject ? 'project' : null;
 	}
 }

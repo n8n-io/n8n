@@ -25,6 +25,8 @@ vi.mock('../../composables/useInstanceAiInputMenuItems', async () => {
 			menuItems: ref([{ id: 'action', label: 'Action', data: { action } }]),
 			disconnectedConnectionCount: ref(0),
 			refreshSkills,
+			handleSubMenuToggle: vi.fn(),
+			handleSearch: vi.fn(),
 		}),
 	};
 });

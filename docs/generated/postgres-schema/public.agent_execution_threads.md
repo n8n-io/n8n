@@ -9,7 +9,8 @@
 | agentName | varchar(255) |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | emoji | varchar(8) |  | true |  |  |  |
-| id | varchar(128) |  | false | [public.agent_execution](public.agent_execution.md) [public.agent_message_queue](public.agent_message_queue.md) [public.agent_plan](public.agent_plan.md) [public.agent_thread_grants](public.agent_thread_grants.md) |  |  |
+| id | varchar(128) |  | false | [public.agent_attention_flags](public.agent_attention_flags.md) [public.agent_execution](public.agent_execution.md) [public.agent_message_queue](public.agent_message_queue.md) [public.agent_plan](public.agent_plan.md) [public.agent_thread_grants](public.agent_thread_grants.md) |  |  |
+| isTestChat | boolean | false | false |  |  | True for a test chat: its tool calls go to a simulation, not to real services. |
 | ownerId | uuid |  | true |  | [public.user](public.user.md) | User who started this private session |
 | parentAgentId | varchar(36) |  | true |  |  | Saved agent id of the parent that delegated this subagent run. |
 | parentThreadId | varchar(128) |  | true |  |  | Parent session thread id that delegated this subagent run. |
@@ -40,6 +41,7 @@
 | agent_execution_threads_agentName_not_null | n | NOT NULL "agentName" |
 | agent_execution_threads_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_execution_threads_id_not_null | n | NOT NULL id |
+| agent_execution_threads_isTestChat_not_null | n | NOT NULL "isTestChat" |
 | agent_execution_threads_projectId_not_null | n | NOT NULL "projectId" |
 | agent_execution_threads_sessionNumber_not_null | n | NOT NULL "sessionNumber" |
 | agent_execution_threads_totalCompletionTokens_not_null | n | NOT NULL "totalCompletionTokens" |
@@ -64,6 +66,7 @@
 erDiagram
 
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_attention_flags" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;sessionId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_plan" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
@@ -79,6 +82,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
   varchar_128_ id
+  boolean isTestChat
   uuid ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
@@ -115,6 +119,13 @@ erDiagram
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
+}
+"public.agent_attention_flags" {
+  timestamp_3__with_time_zone createdAt
+  uuid id
+  varchar_128_ sessionId FK
+  varchar_32_ type
+  timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution" {
   boolean acceptsSteering

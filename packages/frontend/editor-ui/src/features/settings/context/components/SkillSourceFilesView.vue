@@ -10,13 +10,21 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nCallout, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 
-import { useSkillSourceReasons } from '../skills.utils';
+import {
+	SKIPPED_FILE_RULES,
+	useSkillSourceReasons,
+} from '@/features/settings/context/skills.utils';
 
 const props = defineProps<{ skill: DiscoveredSkill; diffFiles?: SkillUpdateFile[] }>();
 
 const i18n = useI18n();
 const styles = useCssModule();
 const { ruleText } = useSkillSourceReasons();
+const statusLabels: Record<NonNullable<SkillUpdateFile['status']>, BaseTextKey> = {
+	added: 'settings.context.skills.updates.fileAdded',
+	removed: 'settings.context.skills.updates.fileRemoved',
+	modified: 'agents.builder.skills.versions.fileModified',
+};
 
 type Segment = { text: string; finding?: SkillScanFinding };
 type Line = { number: number; segments: Segment[] };
@@ -56,14 +64,15 @@ function fileUrl(path: string): string {
 /** The skipped files, each with why n8n leaves it out. */
 const skippedFiles = computed(() =>
 	props.skill.skippedFiles.map((path) => {
-		const unstorable = findings.value.some(
-			(finding) => finding.rule === 'file_unstorable' && finding.file === path,
+		const finding = findings.value.find(
+			({ file, rule }) => file === path && SKIPPED_FILE_RULES.has(rule),
 		);
+		// A plain skipped file needs no reason. The other rules say why n8n leaves the file out.
+		const rule = finding?.rule ?? 'file_skipped';
 		return {
 			path,
-			label: unstorable
-				? `${pathInSource(path)} · ${ruleText('file_unstorable')}`
-				: pathInSource(path),
+			label:
+				rule === 'file_skipped' ? pathInSource(path) : `${pathInSource(path)} · ${ruleText(rule)}`,
 		};
 	}),
 );
@@ -160,6 +169,8 @@ const reviewFiles = computed<SkillUpdateFile[]>(
 			path: file.path,
 			before: file.text,
 			after: file.text,
+			beforeIsBinary: file.isBinary ? true : undefined,
+			afterIsBinary: file.isBinary ? true : undefined,
 		})),
 );
 
@@ -169,17 +180,22 @@ const files = computed(() =>
 			(finding) => finding.file === file.path && finding.location,
 		);
 
-		const lines: Line[] = props.diffFiles
-			? []
-			: file.after.split('\n').map((text, index) => ({
-					number: index + 1,
-					segments: segmentsOf(
-						text,
-						marks.filter((finding) => finding.location?.line === index + 1),
-					),
-				}));
+		const lines: Line[] =
+			props.diffFiles || file.afterIsBinary
+				? []
+				: file.after.split('\n').map((text, index) => ({
+						number: index + 1,
+						segments: segmentsOf(
+							text,
+							marks.filter((finding) => finding.location?.line === index + 1),
+						),
+					}));
 		return {
 			...file,
+			hasBinary: file.beforeIsBinary || file.afterIsBinary,
+			hasText:
+				(file.status !== 'added' && !file.beforeIsBinary) ||
+				(file.status !== 'removed' && !file.afterIsBinary),
 			marks,
 			lines,
 		};
@@ -335,11 +351,7 @@ function hasPreview(finding: SkillScanFinding): boolean {
 						pathInSource(file.path)
 					}}</N8nText>
 					<N8nText v-if="file.status" size="small">{{
-						i18n.baseText(
-							file.status === 'added'
-								? 'settings.context.skills.updates.fileAdded'
-								: 'settings.context.skills.updates.fileRemoved',
-						)
+						i18n.baseText(statusLabels[file.status])
 					}}</N8nText>
 					<N8nLink
 						v-if="file.status !== 'removed'"
@@ -350,7 +362,16 @@ function hasPreview(finding: SkillScanFinding): boolean {
 						{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
 					</N8nLink>
 				</header>
-				<pre v-if="!diffFiles" :class="$style.text"><code><span
+				<N8nText v-if="file.hasBinary" size="small" :class="$style.binary">
+					{{
+						i18n.baseText(
+							file.hasText
+								? 'agents.builder.skills.versions.binarySide'
+								: 'agents.builder.skills.files.binary',
+						)
+					}}
+				</N8nText>
+				<pre v-if="!diffFiles && file.lines.length" :class="$style.text"><code><span
 				v-for="line in file.lines"
 				:key="line.number"
 				:data-line="line.number"
@@ -365,7 +386,7 @@ function hasPreview(finding: SkillScanFinding): boolean {
 				data-test-id="skill-source-finding-mark"
 			>{{ segment.text }}</mark><template v-else>{{ segment.text }}</template></template></span></span></code></pre>
 				<NodeDiff
-					v-if="diffFiles"
+					v-if="diffFiles && file.hasText"
 					v-finding-marks="file.marks"
 					:class="$style.diff"
 					:old-string="file.before"
@@ -522,6 +543,11 @@ function hasPreview(finding: SkillScanFinding): boolean {
 	min-width: 0;
 	overflow-wrap: anywhere;
 	font-family: var(--font-family--monospace);
+}
+
+.binary {
+	display: block;
+	padding: var(--spacing--2xs) var(--spacing--xs);
 }
 
 .text {

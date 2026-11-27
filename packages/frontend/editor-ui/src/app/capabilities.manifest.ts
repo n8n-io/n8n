@@ -9,6 +9,7 @@ import type {
 import type { IWorkflowSettings, ModalKey } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useModalPrefetch } from '@/app/composables/usePrefetchModals';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createWorkflowDocumentId,
@@ -32,6 +33,7 @@ import { useAppAssistantHandoff } from '@/features/ai/instanceAi/composables/use
 import { mcpDiscoverySettings } from '@/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscoverySettings';
 // EOF Experiment cleanup
 import { mcpPreferencesEntryPoints } from '@/experiments/mcpPreferencesEntryPoints/mcpPreferencesEntryPoints';
+import { customMcpServersEnabled } from '@/experiments/customMcpServers/customMcpServersEnabled';
 
 /**
  * Shell actions that a module calls but cannot import — the counterpart to
@@ -45,6 +47,10 @@ const modalOpeners = {
 	openModal: (name: ModalKey) => useUIStore().openModal(name),
 	openModalWithData: (payload: { name: ModalKey; data: Record<string, unknown> }) =>
 		useUIStore().openModalWithData(payload),
+};
+
+const modalCloser = {
+	closeModal: (name: ModalKey) => useUIStore().closeModal(name),
 };
 
 const syncWorkflowMcpAccess = (workflowIds: string[], availableInMCP: boolean) => {
@@ -171,7 +177,7 @@ const tagNames = {
 	nameOf: (id: string) => useTagsStore().tagsById[id]?.name,
 };
 
-// The stores skip a load only after it ends, so callers that start together share one load. It
+// The stores share a load that runs, so callers that start together send one request per type list. This promise
 // waits for both requests, also after one fails, so a retry does not repeat a request that still runs.
 let typeDescriptionsLoad: Promise<void> | undefined;
 
@@ -199,6 +205,8 @@ const typeDescriptions = {
 
 export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.modalOpeners, modalOpeners);
+	capabilityRegistry.provide(capabilities.modalCloser, modalCloser);
+	capabilityRegistry.provide(capabilities.modalPrefetch, useModalPrefetch);
 	capabilityRegistry.provide(capabilities.projectPermissions, projectPermissions);
 	capabilityRegistry.provide(capabilities.workflowMcpAccessSync, syncWorkflowMcpAccess);
 	capabilityRegistry.provide(capabilities.mcpExposeAllOffer, mcpExposeAllOffer);
@@ -210,6 +218,7 @@ export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.typeDescriptions, typeDescriptions);
 	capabilityRegistry.provide(capabilities.createAppAssistantHandoff, useAppAssistantHandoff);
 	capabilityRegistry.provide(capabilities.appsFeedbackFormUrl, appsFeedbackFormUrl);
+	capabilityRegistry.provide(capabilities.customMcpServersEnabled, customMcpServersEnabled);
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	capabilityRegistry.provide(capabilities.mcpDiscoverySettings, mcpDiscoverySettings);
 	// EOF Experiment cleanup

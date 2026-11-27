@@ -1,10 +1,5 @@
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-} from 'n8n-workflow';
+import { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from '@n8n/api-types';
+import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 /**
  * TELEMETRY EVENTS - backend
@@ -93,15 +88,7 @@ export const MCP_GET_MIGRATION_FINDINGS_TOOL_NAME = 'get_migration_findings';
 export const MCP_MIGRATE_WORKFLOW_TOOL_NAME = 'migrate_workflow';
 export const MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME = 'set_migration_finding_status';
 
-/**
- * Triggers supported in production mode for MCP execution
- */
-export const SUPPORTED_PRODUCTION_MCP_TRIGGERS = {
-	[SCHEDULE_TRIGGER_NODE_TYPE]: 'Schedule Trigger',
-	[WEBHOOK_NODE_TYPE]: 'Webhook Trigger',
-	[FORM_TRIGGER_NODE_TYPE]: 'Form Trigger',
-	[CHAT_TRIGGER_NODE_TYPE]: 'Chat Trigger',
-};
+export { SUPPORTED_PRODUCTION_MCP_TRIGGERS };
 
 /**
  * All triggers supported for MCP (production + manual mode)

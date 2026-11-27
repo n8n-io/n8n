@@ -15,7 +15,9 @@ const SUPPORTED_TRIGGER_TYPES = new Set<string>(SUPPORTED_WORKFLOW_TOOL_TRIGGERS
  * sync prevents the UI from offering bindings for a trigger the runtime
  * ignores (e.g. an Execute Workflow Trigger placed after a Chat Trigger).
  */
-export function detectWorkflowToolTrigger(workflow: IWorkflowDb | undefined): INode | undefined {
+export function detectWorkflowToolTrigger(
+	workflow: Pick<IWorkflowDb, 'nodes'> | undefined,
+): INode | undefined {
 	if (!workflow) return undefined;
 	return (workflow.nodes ?? []).find((node) => SUPPORTED_TRIGGER_TYPES.has(node.type));
 }

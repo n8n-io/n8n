@@ -32,6 +32,7 @@ import {
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { assistantAnsweredQuestionsExtension } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
+import { assistantAutoApprovalExtension } from '@/features/ai/instanceAi/assistantAgent/assistantAutoApproval';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
 import {
 	ASSISTANT_PREFERENCE_CARDS,
@@ -39,6 +40,7 @@ import {
 	useAssistantPreferenceCards,
 } from '../assistantAgent/assistantPreferenceCards';
 import { assistantSharedFilesExtension } from '../assistantAgent/assistantSharedFiles';
+import { provideAssistantArtifactCards } from '@/features/ai/instanceAi/assistantAgent/assistantArtifactCards';
 import { useAssistantAgentFeedback } from '../assistantAgent/useAssistantAgentFeedback';
 import {
 	useAssistantAgentMessageTelemetry,
@@ -50,6 +52,7 @@ import {
 	useAssistantAgentSetupSavedTelemetry,
 } from '../assistantAgent/useAssistantAgentSetupSavedTelemetry';
 import { useAssistantArtifactThread } from '../assistantAgent/useAssistantArtifactThread';
+import ApprovalModeSelector from '@/features/ai/instanceAi/components/ApprovalModeSelector.vue';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import InstanceAiResourceChip from '../components/InstanceAiResourceChip.vue';
 import { useAgentMutationRefresh } from '../composables/useAgentMutationRefresh';
@@ -209,7 +212,8 @@ function setPrefill(prefill: InstanceAiPrefillPayload): void {
 
 function onSessionCreated(): void {
 	isNewSession.value = false;
-	void threadsStore.loadThread(props.threadId);
+	const firstMessage = panel.value?.messages.find((message) => message.role === 'user')?.content;
+	void threadsStore.loadThread(props.threadId, firstMessage || undefined);
 	emit('session-created');
 }
 
@@ -257,8 +261,10 @@ watch(
 const interactionExtensions = [
 	assistantConfirmationExtension,
 	assistantAnsweredQuestionsExtension,
+	assistantAutoApprovalExtension,
 	assistantPreferenceCardExtension,
 	assistantSharedFilesExtension,
+	provideAssistantArtifactCards(thread),
 ];
 
 provide(
@@ -338,7 +344,7 @@ defineExpose({
 				@rate="feedback.rate(executionId, $event)"
 			/>
 		</template>
-		<template v-if="handoffChip" #composer-attachments="{ chips, removeChip }">
+		<template v-if="handoffChip" #composer-attachments>
 			<InstanceAiResourceChip
 				:label="handoffChip.label"
 				:icon="handoffChip.icon"
@@ -348,23 +354,12 @@ defineExpose({
 				removable
 				@remove="dismissHandoff"
 			/>
-			<!-- The slot replaces the default chips, so render them too. -->
-			<InstanceAiResourceChip
-				v-for="chip in chips"
-				:key="chip.id"
-				:label="chip.label"
-				:icon="chip.icon"
-				removable
-				:remove-label="
-					i18n.baseText('agents.chat.composer.removeChip', { interpolate: { label: chip.label } })
-				"
-				test-id="agent-chat-composer-chip"
-				remove-test-id="agent-chat-composer-chip-remove"
-				@remove="removeChip(chip.id)"
-			/>
 		</template>
 		<template v-if="slots['composer-start']" #composer-start>
 			<slot name="composer-start" />
+		</template>
+		<template #footer-start>
+			<ApprovalModeSelector :thread-id="props.threadId" />
 		</template>
 		<template v-if="slots['composer-footer']" #composer-footer>
 			<slot name="composer-footer" />

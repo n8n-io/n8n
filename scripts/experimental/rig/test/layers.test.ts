@@ -2,12 +2,22 @@ import { mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ensureLayerFile, managedConflicts, resolveLayer } from '../src/commands/layers';
+import {
+	ensureLayerFile,
+	generatedSecretWarning,
+	managedConflicts,
+	resolveLayer,
+} from '../src/commands/layers';
+import { secretOverrideChecks } from '../src/commands/doctor';
 import { parseTopology, saveTopology, type TopologyInput } from '../src/config/env-yaml';
 import { envsDir, globalSecretsFile, profileFile } from '../src/config/paths';
 import { PRESETS } from '../src/config/presets';
 import { diffResolved } from '../src/env/resolve';
 import { envPaths, RigEnv } from '../src/environment';
+import { writeLicense } from '../src/licenses';
+import { topologyWarnings } from '../src/topology/validate';
+
+const LICENSE_KEY = '0b2c5a8e-1f3d-4c6b-9a7e-2d4f6b8c0e1a';
 
 function makeEnv(name: string, input: Omit<TopologyInput, 'name'> = {}): RigEnv {
 	const paths = envPaths(name);
@@ -72,6 +82,72 @@ describe('secrets', () => {
 		expect(trace.get('LICENSE')?.map((s) => s.layer)).toEqual(['secrets', 'secrets']);
 	});
 
+	it('should let more specific layers win over the secrets', () => {
+		write(globalSecretsFile(), 'OPENAI_API_KEY=global\nANTHROPIC_API_KEY=global\n');
+		write(profileFile('ai'), 'OPENAI_API_KEY=profile\nANTHROPIC_API_KEY=profile\n');
+		const env = makeEnv('s', { ...PRESETS.queue.topology, profiles: ['ai'] });
+		write(env.paths.secrets, 'ANTHROPIC_API_KEY=env\n');
+		write(env.paths.layerFile('worker-1'), 'OPENAI_API_KEY=worker-1\n');
+		const [main, worker] = env.processes();
+
+		expect(env.resolve(main).env).toMatchObject({
+			OPENAI_API_KEY: 'profile',
+			ANTHROPIC_API_KEY: 'env',
+		});
+		expect(env.resolve(worker).env.OPENAI_API_KEY).toBe('worker-1');
+	});
+
+	it('should warn when a layer overrides a generated secret', () => {
+		const env = makeEnv('s');
+		write(env.paths.secrets, 'N8N_ENCRYPTION_KEY=generated\n');
+		expect(generatedSecretWarning(env, 'shared', 'N8N_ENCRYPTION_KEY')).toMatch(
+			/A value in env\/shared\.env overrides it\. n8n then cannot read the credentials/,
+		);
+		expect(generatedSecretWarning(env, 'secrets', 'N8N_ENCRYPTION_KEY')).toBeUndefined();
+		expect(generatedSecretWarning(env, 'shared', 'OPENAI_API_KEY')).toBeUndefined();
+	});
+
+	it('should apply the license after the global secrets and before the profiles', () => {
+		writeLicense('prod', {
+			kind: 'activation-key',
+			value: LICENSE_KEY,
+			tenantId: '1',
+			serverUrl: 'https://license.example.com',
+		});
+		write(globalSecretsFile(), 'N8N_LICENSE_TENANT_ID=9\nN8N_LICENSE_SERVER_URL=global\n');
+		write(profileFile('staging'), 'N8N_LICENSE_SERVER_URL=https://staging.example.com\n');
+		const env = makeEnv('l', { license: 'prod', profiles: ['staging'] });
+		write(env.paths.layerFile('main'), 'N8N_LICENSE_TENANT_ID=3\n');
+		const main = env.component('main-1');
+		if (!main) throw new Error('no main');
+
+		const { env: resolved, trace } = env.resolve(main);
+		expect(resolved).toMatchObject({
+			N8N_LICENSE_ACTIVATION_KEY: LICENSE_KEY,
+			N8N_LICENSE_TENANT_ID: '3',
+			N8N_LICENSE_SERVER_URL: 'https://staging.example.com',
+		});
+		expect(trace.get('N8N_LICENSE_TENANT_ID')?.map((s) => s.layer)).toEqual([
+			'secrets',
+			'license',
+			'role',
+		]);
+		expect(trace.get('N8N_LICENSE_ACTIVATION_KEY')?.at(-1)?.label).toMatch(
+			/licenses\/prod\.env:1$/,
+		);
+	});
+
+	it('should not give the license to direct runners', () => {
+		writeLicense('prod', { kind: 'activation-key', value: LICENSE_KEY, tenantId: '1' });
+		const env = makeEnv('l', {
+			license: 'prod',
+			runners: { mode: 'external', via: 'direct', languages: ['js'] },
+		});
+		const runner = env.components().find((c) => c.kind === 'runner');
+		if (!runner) throw new Error('no runner');
+		expect(env.resolve(runner).env.N8N_LICENSE_ACTIVATION_KEY).toBeUndefined();
+	});
+
 	it('should create secret files with mode 0600', () => {
 		const env = makeEnv('s');
 		expect(statSync(ensureLayerFile(env, 'global-secrets')).mode & 0o777).toBe(0o600);
@@ -105,5 +181,63 @@ describe('managedConflicts', () => {
 				value: expect.stringContaining('task-runner-python'),
 			},
 		]);
+	});
+});
+
+describe('secretOverrideChecks', () => {
+	it('should warn when a layer overrides a value of secrets.env', () => {
+		write(globalSecretsFile(), 'OPENAI_API_KEY=global\n');
+		const env = makeEnv('d');
+		write(env.paths.secrets, 'N8N_ENCRYPTION_KEY=generated\n');
+		write(env.paths.layerFile('shared'), 'N8N_ENCRYPTION_KEY=old\nOPENAI_API_KEY=layer\n');
+
+		const checks = secretOverrideChecks(env);
+		expect(checks.map((c) => c.detail)).toEqual([
+			'N8N_ENCRYPTION_KEY in env/shared.env:1 overrides secrets.env:1',
+		]);
+		expect(checks[0].hint).toContain('rig generated N8N_ENCRYPTION_KEY');
+	});
+});
+
+describe('secretOverrideChecks with engine v2', () => {
+	it('should not report the engine-v2 module that rig adds as a layer override', () => {
+		const env = makeEnv('e', { ...PRESETS['enginev2-local'].topology });
+		write(env.paths.secrets, 'N8N_ENABLED_MODULES=insights\n');
+		expect(secretOverrideChecks(env)).toEqual([]);
+	});
+});
+
+describe('license warnings', () => {
+	function warningsOf(env: RigEnv): string[] {
+		const main = env.component('main-1');
+		if (!main || main.kind !== 'process') throw new Error('no main');
+		return topologyWarnings(env.topology, env.resolve(main));
+	}
+
+	it('should warn when the license of the environment does not exist', () => {
+		const env = makeEnv('w', { license: 'gone' });
+		expect(warningsOf(env)).toEqual([expect.stringContaining('License "gone" does not exist.')]);
+	});
+
+	it('should warn when multi-main has no license', () => {
+		const env = makeEnv('w', { ...PRESETS['multi-main'].topology });
+		expect(warningsOf(env)).toEqual([expect.stringContaining('Multi-main needs a license.')]);
+	});
+
+	it('should warn when another layer sets the license key of the other kind', () => {
+		writeLicense('prod', { kind: 'activation-key', value: LICENSE_KEY, tenantId: '1' });
+		write(globalSecretsFile(), 'N8N_LICENSE_CERT=abc\n');
+		const env = makeEnv('w', { ...PRESETS['multi-main'].topology, license: 'prod' });
+		expect(warningsOf(env)).toEqual([
+			expect.stringMatching(
+				/^N8N_LICENSE_CERT comes from .*secrets\.env:1, not from license "prod"/,
+			),
+		]);
+	});
+
+	it('should not warn for a valid license setup', () => {
+		writeLicense('prod', { kind: 'activation-key', value: LICENSE_KEY, tenantId: '1' });
+		const env = makeEnv('w', { ...PRESETS['multi-main'].topology, license: 'prod' });
+		expect(warningsOf(env)).toEqual([]);
 	});
 });

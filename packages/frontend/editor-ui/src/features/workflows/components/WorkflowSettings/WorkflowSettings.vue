@@ -70,6 +70,12 @@ import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings
 import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import WorkflowCustomTelemetryTags from '@/features/workflows/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
+import {
+	confirmEngineV2Switch,
+	findEngineV2Issues,
+	hasBlockingGroup,
+} from '@n8n/frontend-module-engine-v2';
+import { useOpenEngineV2Findings } from '@/app/composables/useOpenEngineV2Findings';
 
 import { ElCol, ElRow } from 'element-plus';
 
@@ -261,8 +267,16 @@ const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('r
 const isEngineTypeSettingVisible = computed(() => settingsStore.isModuleActive('engine-v2'));
 
 const engineTypeOptions = computed(() => [
-	{ key: 'v1', value: i18n.baseText('workflowSettings.engineType.v1') },
-	{ key: 'v2', value: i18n.baseText('workflowSettings.engineType.v2') },
+	{
+		key: 'v1',
+		value: i18n.baseText('workflowSettings.engineType.v1'),
+		description: i18n.baseText('workflowSettings.engineType.v1.description'),
+	},
+	{
+		key: 'v2',
+		value: i18n.baseText('workflowSettings.engineType.v2'),
+		description: i18n.baseText('workflowSettings.engineType.v2.description'),
+	},
 ]);
 
 // The backend runs a workflow without `engineType` on v1. Show that as v1, but write the
@@ -282,6 +296,45 @@ const isEngineTypeChangePendingPublish = computed(() => {
 	if (!activeVersion) return false;
 	return pickVersionedSettings(activeVersion.settings).engineType !== engineType.value;
 });
+
+const openEngineV2Findings = useOpenEngineV2Findings();
+
+// The engine v2 findings of the workflow with the settings that Save would send, whatever the
+// selected engine. So the confirmation counts the issues that the saved workflow would have.
+const engineV2Issues = computed(() => {
+	if (!isEngineTypeSettingVisible.value) return [];
+	return findEngineV2Issues({
+		nodes: workflowDocumentStore.value.allNodes,
+		connections: workflowDocumentStore.value.connectionsBySourceNode,
+		settings: settingsToSave(),
+	});
+});
+
+// A select change, not a watch: loading the settings also writes `engineType`, and that must
+// not ask anything.
+async function onEngineTypeChange(value: 'v1' | 'v2') {
+	const previous = workflowSettings.value.engineType;
+	engineType.value = value;
+	if (value !== 'v2' || previous === 'v2' || engineV2Issues.value.length === 0) return;
+
+	const confirmed = await confirmEngineV2Switch({
+		count: engineV2Issues.value.length,
+		hasBlocking: hasBlockingGroup(engineV2Issues.value),
+		hasPublishedVersion: !!workflowDocumentStore.value.activeVersion,
+	});
+
+	if (!confirmed) {
+		// Restore the exact value, so Save sends what it would have sent without the change.
+		if (previous === undefined) delete workflowSettings.value.engineType;
+		else workflowSettings.value.engineType = previous;
+		return;
+	}
+
+	const hasIssues = engineV2Issues.value.length > 0;
+	if ((await saveSettings()) && hasIssues) {
+		await openEngineV2Findings(workflowId.value);
+	}
+}
 
 const isExecutionLogicSettingVisible = computed(
 	() => !(isEngineTypeSettingVisible.value && engineType.value === 'v2'),
@@ -718,8 +771,37 @@ const saveCustomTelemetryTags = async (customTelemetryTags: ICustomTelemetryTag[
 	}
 };
 
-const saveSettings = async () => {
-	if (hasCustomTelemetryTagErrors.value) return;
+/**
+ * Floor-locked redaction channels are display-only: the coercion watch forces the locked
+ * select(s) to "redact" for clarity, but that must never be persisted as the workflow's own
+ * choice. Rebuild the saved policy from the stored value for floor-locked channels and the
+ * current selection for editable ones. (ENT-35)
+ */
+function redactionPolicyToSave(): WorkflowSettings.RedactionPolicy | undefined {
+	const original = policyToChannels(originalRedactionPolicy.value ?? 'none');
+	const production = isProductionRedactionLockedByFloor.value
+		? original.production
+		: redactProductionData.value === 'redact';
+	const manual = isManualRedactionLockedByFloor.value
+		? original.manual
+		: redactManualData.value === 'redact';
+	// Preserve the original value verbatim (including `undefined`) when nothing the user could
+	// edit changed, so we never send a below-floor *change* the backend rejects under enforcement.
+	const unchanged = production === original.production && manual === original.manual;
+	return unchanged ? originalRedactionPolicy.value : channelsToPolicy({ production, manual });
+}
+
+/** A copy of the settings as Save sends them, without the checks and messages of Save. */
+function settingsToSave(): IWorkflowSettings {
+	return {
+		...workflowSettings.value,
+		...(isRedactionSettingVisible.value && { redactionPolicy: redactionPolicyToSave() }),
+	};
+}
+
+/** Saves the settings and closes the modal. Returns true only when the save succeeds. */
+const saveSettings = async (): Promise<boolean> => {
+	if (hasCustomTelemetryTagErrors.value) return false;
 
 	// Set that the active state should be changed
 	const data: WorkflowDataUpdate & { settings: IWorkflowSettings } = {
@@ -737,7 +819,7 @@ const saveSettings = async () => {
 			i18n.baseText('workflowSettings.showError.saveSettings1.title'),
 			{ message: i18n.baseText('workflowSettings.showError.saveSettings1.message') + ':' },
 		);
-		return;
+		return false;
 	}
 
 	if (
@@ -758,7 +840,7 @@ const saveSettings = async () => {
 			i18n.baseText('workflowSettings.showError.saveSettings2.title'),
 			{ message: i18n.baseText('workflowSettings.showError.saveSettings2.message') + ':' },
 		);
-		return;
+		return false;
 	}
 	delete data.settings.maxExecutionTimeout;
 
@@ -770,24 +852,8 @@ const saveSettings = async () => {
 		data.settings.credentialResolverId = '';
 	}
 
-	// Floor-locked redaction channels are display-only: the coercion watch forces the locked
-	// select(s) to "redact" for clarity, but that must never be persisted as the workflow's own
-	// choice. Rebuild the saved policy from the stored value for floor-locked channels and the
-	// current selection for editable ones. (ENT-35)
 	if (isRedactionSettingVisible.value) {
-		const original = policyToChannels(originalRedactionPolicy.value ?? 'none');
-		const production = isProductionRedactionLockedByFloor.value
-			? original.production
-			: redactProductionData.value === 'redact';
-		const manual = isManualRedactionLockedByFloor.value
-			? original.manual
-			: redactManualData.value === 'redact';
-		// Preserve the original value verbatim (including `undefined`) when nothing the user could
-		// edit changed, so we never send a below-floor *change* the backend rejects under enforcement.
-		const unchanged = production === original.production && manual === original.manual;
-		data.settings.redactionPolicy = unchanged
-			? originalRedactionPolicy.value
-			: channelsToPolicy({ production, manual });
+		data.settings.redactionPolicy = redactionPolicyToSave();
 	}
 
 	isLoading.value = true;
@@ -799,7 +865,7 @@ const saveSettings = async () => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));
 		isLoading.value = false;
-		return;
+		return false;
 	}
 
 	// Get the settings without the defaults set for local workflow settings
@@ -851,6 +917,8 @@ const saveSettings = async () => {
 			duration: 0,
 		});
 	}
+
+	return true;
 };
 
 const toggleTimeout = () => {
@@ -1098,18 +1166,24 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
-							v-model="engineType"
+							:model-value="engineType"
 							size="medium"
 							:disabled="isWorkflowSettingsReadOnly"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-engine-type-select"
+							@update:model-value="onEngineTypeChange"
 						>
 							<N8nOption
 								v-for="option in engineTypeOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"
-							/>
+							>
+								<div class="list-option">
+									<div class="option-headline">{{ option.value }}</div>
+									<div class="option-description">{{ option.description }}</div>
+								</div>
+							</N8nOption>
 						</N8nSelect>
 					</ElCol>
 				</ElRow>

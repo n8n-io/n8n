@@ -195,6 +195,17 @@ describe('handleInsertOperation', () => {
 		]);
 	});
 
+	it.each([0, -1, 1.5, Infinity])('rejects batch size %s before setup', async (batchSize) => {
+		mockArgs.beforeInsert = vi.fn();
+		mockContext.getNodeParameter.mockImplementation(createNodeParameterMock(batchSize));
+
+		await expect(handleInsertOperation(mockContext, mockArgs, mockEmbeddings)).rejects.toThrow(
+			'Embedding Batch Size must be a positive integer',
+		);
+		expect(mockArgs.beforeInsert).not.toHaveBeenCalled();
+		expect(mockArgs.populateVectorStore).not.toHaveBeenCalled();
+	});
+
 	it('should not call beforeInsert when there are no documents to insert', async () => {
 		mockArgs.beforeInsert = vi.fn().mockResolvedValue(undefined);
 		mockContext.getInputData.mockReturnValue([]);

@@ -1,4 +1,5 @@
 import {
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 	agentSkillSchema,
 	type SkillLinkReviewReason,
@@ -16,7 +17,7 @@ import type { SkillContent } from './skill-content-hash';
 import { extractSkillLinks, linkReviewReason } from './skill-link-review-policy';
 import { SKILL_MD } from './skill-md';
 import { codePointOf, HIDDEN_PATTERN, locate, skillMdText } from './skill-text';
-import { isScriptFile } from './skipped-files';
+import { isScriptFile, isTextFile } from './skipped-files';
 import type { SkillSourceFidelityWarning } from '../sources/skill-source-client';
 
 /**
@@ -29,8 +30,11 @@ const FRONTMATTER_MAX_LENGTH = 16_384;
 export type SkillScanInput = {
 	content: SkillContent;
 	skippedFiles: string[];
-	/** The skipped files that n8n cannot store, such as a reference with a NUL character. */
+	/** The skipped files that n8n cannot store. */
 	unstorableFiles?: string[];
+	oversizedFiles?: string[];
+	/** The skipped files that fit alone, but not within the limits of one skill. */
+	overLimitFiles?: string[];
 	fidelity: SkillSourceFidelityWarning[];
 	/** The content of the latest version. Null at import. */
 	previous: SkillContent | null;
@@ -149,43 +153,48 @@ function emptyDetail(issue: ZodIssue): string | undefined {
 	const [field, , part] = issue.path;
 	if (field === 'name') return 'The name is empty.';
 	if (field === 'description') return 'The description is empty.';
-	if (field === 'references' && part === 'content') return 'The reference file is empty.';
 	if (field === 'references' && part === 'path') return 'The reference file has no path.';
 	return undefined;
 }
 
-/**
- * A skill keeps only SKILL.md and `references/*.md`. The SKILL.md reader leaves out every other
- * file, scripts and binaries included, so n8n never stores or runs them. The user sees the list,
- * and a left-out script or code file needs review.
- */
+/** The user sees why a file was left out. A missing script or code file needs review. */
 export function listSkippedFiles({
 	skippedFiles,
 	unstorableFiles = [],
+	oversizedFiles = [],
+	overLimitFiles = [],
 }: SkillScanInput): SkillScanFinding[] {
-	return skippedFiles.map((file) =>
-		unstorableFiles.includes(file)
-			? {
-					rule: 'file_unstorable',
-					severity: 'info',
-					file,
-					detail: 'n8n leaves this file out. It has a NUL character, which n8n cannot store.',
-				}
-			: isScriptFile(file)
-				? {
-						rule: 'file_skipped',
-						severity: 'needs_review',
-						file,
-						detail:
-							'n8n leaves this script out. A skill that runs it can stop working. A skill keeps only SKILL.md and references/*.md.',
-					}
-				: {
-						rule: 'file_skipped',
-						severity: 'info',
-						file,
-						detail: 'n8n leaves this file out. A skill keeps only SKILL.md and references/*.md.',
-					},
-	);
+	const unstorable = new Set(unstorableFiles);
+	const oversized = new Set(oversizedFiles);
+	const overLimit = new Set(overLimitFiles);
+	return skippedFiles.map((file) => {
+		const severity = isScriptFile(file) ? 'needs_review' : 'info';
+		if (unstorable.has(file)) {
+			return {
+				rule: 'file_unstorable',
+				severity,
+				file,
+				detail: 'n8n cannot store this file path.',
+			};
+		}
+		if (oversized.has(file)) {
+			return {
+				rule: 'file_too_large',
+				severity,
+				file,
+				detail: 'The file is over the size limit of 1 MiB for one file.',
+			};
+		}
+		if (overLimit.has(file)) {
+			return {
+				rule: 'file_over_skill_limit',
+				severity,
+				file,
+				detail: `n8n left this file out. A skill keeps at most ${AGENT_SKILL_REFERENCE_MAX_COUNT} files and ${AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / (1024 * 1024)} MiB of file content.`,
+			};
+		}
+		return { rule: 'file_skipped', severity, file, detail: 'n8n left this file out.' };
+	});
 }
 
 export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
@@ -201,6 +210,57 @@ export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 				file,
 				detail: `${found.length} invisible or control characters. The first is ${codePointOf(found[0])}.`,
 				...(first ? { location: first.locate(index, index + found[0].length) } : {}),
+			},
+		];
+	});
+}
+
+export function findScriptChanges({ content, previous }: SkillScanInput): SkillScanFinding[] {
+	const before = new Map(previous?.files.map((file) => [file.path, file]));
+	return content.files.flatMap(({ path, content: text, isBinary }) => {
+		// A text file that starts with `#!` is a script, whatever its name and folder are.
+		const isScript = isScriptFile(path) || path.startsWith('scripts/');
+		if (!isScript && (isBinary || !text.startsWith('#!'))) return [];
+		const old = before.get(path);
+		if (old?.content === text && old.isBinary === isBinary) return [];
+		return [
+			{
+				rule: 'script_file',
+				severity: 'needs_review',
+				file: path,
+				detail: 'Review this script before you use the skill.',
+			},
+		];
+	});
+}
+
+/** Text file types. A file with one of these names that is not UTF-8 text is not what it claims. */
+/** `#!` as Base64. A file that starts with it is a script for the operating system. */
+const SHEBANG_BASE64 = /^Iy[E-H]/;
+
+/**
+ * The scanner reads text only, so the rules for hidden characters and links do not see a
+ * binary file. The reviewer learns of each new or changed binary file. One that has a text or
+ * script name, or starts like a script, needs review: another tool can still read it as text.
+ */
+export function findUnscannedBinaryFiles({
+	content,
+	previous,
+}: SkillScanInput): SkillScanFinding[] {
+	const before = new Map(previous?.files.map((file) => [file.path, file]));
+	return content.files.flatMap(({ path, content: base64, isBinary }) => {
+		if (!isBinary) return [];
+		const old = before.get(path);
+		if (old?.isBinary && old.content === base64) return [];
+		const looksLikeText = isTextFile(path) || isScriptFile(path) || SHEBANG_BASE64.test(base64);
+		return [
+			{
+				rule: 'binary_file',
+				severity: looksLikeText ? 'needs_review' : 'info',
+				file: path,
+				detail: looksLikeText
+					? 'n8n did not check this file, because it is not UTF-8 text. Its name or its start says that it is text or a script. Agents cannot read it.'
+					: 'n8n did not check this binary file. Agents cannot read it.',
 			},
 		];
 	});
@@ -380,15 +440,17 @@ function textsByFile(content: SkillContent): Array<{ file: string; texts: ScanTe
 				inSkillMd(content.instructions, md.instructions),
 			],
 		},
-		...content.files.map((file) => ({
-			file: file.path,
-			texts: [
-				{
-					text: file.content,
-					locate: (start: number, end: number) => locate(file.content, start, end),
-				},
-			],
-		})),
+		...content.files
+			.filter((file) => !file.isBinary)
+			.map((file) => ({
+				file: file.path,
+				texts: [
+					{
+						text: file.content,
+						locate: (start: number, end: number) => locate(file.content, start, end),
+					},
+				],
+			})),
 	];
 }
 

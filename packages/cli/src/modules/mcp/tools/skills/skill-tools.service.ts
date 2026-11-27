@@ -3,11 +3,15 @@ import {
 	CreateSkillDto,
 	discoverPublicSkillSourceSchema,
 	ListSkillsQueryDto,
+	projectSkillDetailsForModel,
+	skillReferenceReadError,
 	SaveSkillDto,
 	SKILLS_MAX_PAGE_SIZE,
+	skillReferenceReadShape,
 	skillScopeSchema,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillReferenceRead,
 } from '@n8n/api-types';
 import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
@@ -15,7 +19,6 @@ import { Service } from '@n8n/di';
 import { z } from 'zod';
 
 import {
-	AssistantSkillsFlagGate,
 	SkillService,
 	SkillSourceService,
 	SkillSyncFlagGate,
@@ -80,15 +83,15 @@ type SearchSkillsInput = z.infer<z.ZodObject<typeof searchSkillsInput>>;
 type CreateSkillInput = z.infer<z.ZodObject<typeof createSkillInput>>;
 type UpdateSkillInput = z.infer<z.ZodObject<typeof updateSkillInput>>;
 
-type SkillAvailabilityFlags = { assistantSkillsEnabled: boolean; mcpSkillsEnabled: boolean };
+type SkillAvailabilityFlags = { mcpSkillsEnabled: boolean };
 
-function withAvailabilityInputs<
-	T extends { availableToAssistant: z.ZodTypeAny; availableToMCP: z.ZodTypeAny },
->(shape: T, { assistantSkillsEnabled, mcpSkillsEnabled }: SkillAvailabilityFlags) {
-	const { availableToAssistant, availableToMCP, ...rest } = shape;
+function withAvailabilityInputs<T extends { availableToMCP: z.ZodTypeAny }>(
+	shape: T,
+	{ mcpSkillsEnabled }: SkillAvailabilityFlags,
+) {
+	const { availableToMCP, ...rest } = shape;
 	return {
 		...rest,
-		...(assistantSkillsEnabled ? { availableToAssistant } : {}),
 		...(mcpSkillsEnabled ? { availableToMCP } : {}),
 	};
 }
@@ -101,7 +104,7 @@ function summary(item: SkillListItem, flags: SkillAvailabilityFlags) {
 		scope: item.scope,
 		projectId: item.projectId,
 		projectName: item.projectName,
-		...(flags.assistantSkillsEnabled ? { availableToAssistant: item.availableToAssistant } : {}),
+		availableToAssistant: item.availableToAssistant,
 		...(flags.mcpSkillsEnabled ? { availableToMCP: item.availableToMCP } : {}),
 		latestVersion: item.latestVersion,
 		usedByAgents: item.usedByAgents,
@@ -113,10 +116,14 @@ function summary(item: SkillListItem, flags: SkillAvailabilityFlags) {
 	};
 }
 
-function details(detail: SkillDetail, flags: SkillAvailabilityFlags) {
+function details(
+	detail: SkillDetail,
+	flags: SkillAvailabilityFlags,
+	reference?: SkillReferenceRead,
+) {
 	return {
 		...summary(detail, flags),
-		skill: detail.skill,
+		...projectSkillDetailsForModel(detail.skill, reference),
 		skillHash: detail.skillHash,
 		usedBy: detail.usedBy,
 		syncedFrom: detail.syncedFrom,
@@ -128,7 +135,6 @@ export class McpSkillToolsService {
 	constructor(
 		private readonly telemetry: TelemetryProxy,
 		private readonly skillService: SkillService,
-		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 		private readonly skillSourceService: SkillSourceService,
 		private readonly skillSyncFlagGate: SkillSyncFlagGate,
 	) {}
@@ -138,10 +144,7 @@ export class McpSkillToolsService {
 		user: User,
 		mcpSkillsEnabled: boolean,
 	): Promise<void> {
-		const flags = {
-			assistantSkillsEnabled: await this.assistantSkillsFlagGate.isEnabled(),
-			mcpSkillsEnabled,
-		};
+		const flags = { mcpSkillsEnabled };
 		registerTool({
 			name: 'search_n8n_skills',
 			config: {
@@ -176,8 +179,8 @@ export class McpSkillToolsService {
 			name: 'get_skill',
 			config: {
 				description:
-					'Read a skill with its instructions, references, skillHash and the Agents that use it.',
-				inputSchema: skillIdInput,
+					'Read a skill with its instructions, reference paths, bounded text content, skillHash and the Agents that use it. Read omitted paths separately with referencePath. Binary files show only metadata.',
+				inputSchema: { ...skillIdInput, ...skillReferenceReadShape },
 				annotations: {
 					title: 'Get Skill',
 					readOnlyHint: true,
@@ -186,10 +189,12 @@ export class McpSkillToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ skillId }) =>
-				await this.run(user, 'get_skill', { skillId }, async () =>
-					details(await this.skillService.get(user, skillId), flags),
-				),
+			handler: async ({ skillId, ...reference }) =>
+				await this.run(user, 'get_skill', { skillId }, async () => {
+					const error = skillReferenceReadError(reference);
+					if (error) return { ok: false, skillId, error };
+					return details(await this.skillService.get(user, skillId), flags, reference);
+				}),
 		});
 
 		registerTool({
@@ -232,7 +237,7 @@ export class McpSkillToolsService {
 			name: 'update_skill',
 			config: {
 				description:
-					'Update a skill. Content changes create a new version. Pass only the fields to change.',
+					'Update a skill. Pass only the fields to change. Content changes create a new version. `references` replaces the text files. Read all parts of the files you want to keep before replacing them. A binary file that you do not name stays in the skill.',
 				inputSchema: withAvailabilityInputs(updateSkillInput, flags),
 				annotations: {
 					title: 'Update Skill',
@@ -250,6 +255,7 @@ export class McpSkillToolsService {
 							skillId,
 							SaveSkillDto.parse(update),
 							'mcp',
+							{ keepUnnamedBinaryFiles: true },
 						);
 						return saved;
 					} catch (error) {

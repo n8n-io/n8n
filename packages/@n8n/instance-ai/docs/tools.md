@@ -340,9 +340,7 @@ of guessable by comparing per-scope counts.
 `folder` (`{ id, name, path }`) is the workflow's folder with its root-relative
 path (`Clients/Acme`). Folder names cannot contain `/`, so `path` is
 unambiguous. Absent for root-level workflows, and absent on every row
-while folder exploration is off for the run (PostHog flag
-`110_instance_ai_folder_exploration`, force-on via
-`N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED`).
+while folder exploration is off for the run.
 
 `folderResolution` (`{ requested, reason, candidates }`) is present only when a
 requested folder did not resolve. `workflows` is then empty on purpose, and
@@ -1544,8 +1542,11 @@ the `apps` tool group, which the skill lists in `recommended_tool_groups`.
 | `commit_app` | `app:update` | Save the folder as one version and wait for its build |
 | `discard_app_changes` | `app:read` | Replace the folder with the current draft. Keeps `node_modules` |
 
-Only `create_app` suspends. A namespace that is taken shows the blueprint again
-with a field error, instead of an error result.
+Only `create_app` suspends. The plan card shows the app title only. When the
+namespace is too long for the instance, n8n cuts it. When the namespace is taken, n8n
+uses the next free numbered namespace (`todos-2`, `todos-3` and so on), within
+the namespace length limit of the instance. When all of them are taken, the tool
+returns an error result.
 
 The model edits the folder with the workspace tools and runs `npm ci` and
 `npm run build` there before it commits. The source moves in and out of the
@@ -1685,6 +1686,9 @@ The `type` field selects one lookup. Supported values are `agents`, `config-sche
 return one body at a time. Session lookup supports status, origin, date, and
 cursor filters.
 
+For a `skill` lookup, use `referencePaths` to read text files. If a file has
+`nextOffset`, pass it as `referenceOffset` with only that path in `referencePaths`.
+
 By default, a `session` lookup returns a compact transcript. Long values are
 cut and the oldest turns of a long session are left out. Set
 `maxToolValueLength` to get every turn with complete text, in pages. Each tool
@@ -1717,6 +1721,10 @@ a `delete` that the user has no permission for, before it asks for approval.
 For `update`, pass the `skillHash` that `get` returns as `baseSkillHash`. The
 tool marks its output as untrusted data, because other users can write skill
 content. The tool does not attach a skill to an Agent.
+
+The `get` action limits how much reference text it returns. Use `referencePath`
+to read an omitted file. If a file has `nextOffset`, pass it as `referenceOffset`
+with the same `referencePath`.
 
 When Skill Sync is on, `list-sources` lists visible sources and their update
 counts. `discover-source` previews a public GitHub link and reports the check

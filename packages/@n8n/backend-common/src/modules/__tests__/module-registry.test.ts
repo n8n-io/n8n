@@ -37,11 +37,17 @@ describe('eligibleModules', () => {
 		const eligible = Container.get(ModuleRegistry).eligibleModules;
 		expect(eligible).not.toContain('engine-v2');
 		expect(eligible).not.toContain('execution-ledger');
+		expect(eligible).not.toContain('durable-leases');
 	});
 
 	it('should include execution-ledger when N8N_ENABLED_MODULES names it', () => {
 		process.env.N8N_ENABLED_MODULES = 'execution-ledger';
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain('execution-ledger');
+	});
+
+	it('should include durable-leases when N8N_ENABLED_MODULES names it', () => {
+		process.env.N8N_ENABLED_MODULES = 'durable-leases';
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain('durable-leases');
 	});
 
 	it('should include policy-infrastructure by default', () => {
@@ -128,6 +134,18 @@ describe('eligibleModules', () => {
 		});
 	});
 
+	it('should initialize custom MCP servers by default, after the OAuth server', () => {
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		expect(eligible).toContain('mcp-servers');
+		expect(eligible.indexOf('oauth-server')).toBeLessThan(eligible.indexOf('mcp-servers'));
+		expect(eligible.indexOf('inbound-auth-core')).toBeLessThan(eligible.indexOf('mcp-servers'));
+	});
+
+	it('should not initialize custom MCP servers when they are disabled via env var', () => {
+		process.env.N8N_DISABLED_MODULES = 'mcp-servers';
+		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('mcp-servers');
+	});
+
 	it('should initialize knowledge before agents', () => {
 		const eligible = Container.get(ModuleRegistry).eligibleModules;
 		expect(eligible.indexOf('knowledge')).toBeLessThan(eligible.indexOf('agents'));
@@ -143,6 +161,7 @@ describe('eligibleModules', () => {
 			'data-table',
 			'oauth-server',
 			'mcp',
+			'mcp-servers',
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			'mcp-discovery',
 			// EOF Experiment cleanup
@@ -192,6 +211,7 @@ describe('eligibleModules', () => {
 			'data-table',
 			'oauth-server',
 			'mcp',
+			'mcp-servers',
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			'mcp-discovery',
 			// EOF Experiment cleanup

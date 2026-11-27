@@ -2,6 +2,7 @@ import { AgentsConfig } from '@n8n/config';
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
 import type { CredentialsFinderService, EventService, TelemetryProxy } from '@n8n/backend-services';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { Mocked } from 'vitest';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
@@ -24,7 +25,6 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { runInBuilderTelemetrySession } from '../builder/builder-telemetry-session';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
@@ -300,6 +300,33 @@ describe('AgentConfigService', () => {
 				configPreparation.prepareDefinition(agentId, definition, projectId, user),
 			).rejects.toThrow('Credential "missing-credential"');
 			expect(nodeToolAiGatewayService.assignManagedCredentials).not.toHaveBeenCalled();
+		});
+
+		it('rejects a guardrail check workflow that does not exist', async () => {
+			const { configPreparation, credentialsService } = makeService();
+			const finder = mock<WorkflowFinderService>();
+			finder.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+			finder.findExistingWorkflowIds.mockResolvedValue(new Set());
+			Container.set(WorkflowFinderService, finder);
+			const definition: CompleteAgentDefinition = {
+				name: baseConfig.name,
+				config: {
+					...baseConfig,
+					config: {
+						guardrails: {
+							tools: [{ kind: 'workflow', id: 'check_1', workflowId: 'wf-missing' }],
+						},
+					},
+				},
+				tools: {},
+				tasks: new Map(),
+			};
+			vi.spyOn(configPreparation, 'validateDefinition').mockResolvedValue(definition);
+			mockAccessibleCredentials(credentialsService, ['model-credential']);
+
+			await expect(
+				configPreparation.prepareDefinition(agentId, definition, projectId, user),
+			).rejects.toThrow('Workflow "wf-missing" is missing or inaccessible.');
 		});
 	});
 

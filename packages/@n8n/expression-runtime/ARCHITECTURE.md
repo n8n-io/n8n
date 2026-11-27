@@ -64,6 +64,23 @@ The architecture is split into three distinct layers:
 
 **Bundle**: IIFE format for both isolated-vm and QuickJS
 
+### Value transfer
+
+`src/runtime/prepare-object.ts` encodes each supported value type. It delegates child
+values to the caller. It does not own traversal state.
+
+`src/runtime/serialize.ts` prepares results for isolated-vm. It copies arrays with an
+index loop. After 32 nested containers, it switches to the guarded traversal in
+`src/runtime/prepare-transfer.ts`. This threshold starts cycle detection. It does not
+set a maximum result depth. A plain cycle raises an error before it can exhaust
+the native stack. Error traversal keeps its own cache and cycle rules.
+
+`src/runtime/quickjs-transfer.ts` installs the QuickJS result encoder and host-value
+decoder. These functions use the runtime bundle, so TypeScript checks them.
+Only QuickJS calls the installer. `src/bridge/quickjs-value-transfer.ts` owns the
+host side of the JSON transport. Both sides register a container before they
+decode its children. This preserves references through collections.
+
 ### Layer 2: Bridge (Host Process)
 
 **Location**: Runs in the host process
@@ -323,6 +340,14 @@ packages/@n8n/expression-runtime/
 **Portability**: The backend uses isolated-vm. The browser uses QuickJS in WASM. The abstract bridge allows adding new environments without changing other layers.
 
 **Testing**: Integration tests use `IsolatedVmBridge` directly (see `src/__tests__/integration.test.ts`).
+
+### 5. Why Do Extension Functions Not Call the Host?
+
+**Limits**: The time limit and the memory limit of an evaluation apply to the code that runs in the isolate. The work of a host function runs in the host process, outside these limits. On isolated-vm, the time limit does not stop an expression on time while it calls synchronous host functions in a loop.
+
+**Rule**: An extension function does all its work in the runtime bundle. Host functions only read workflow data, and each call does a small, bounded quantity of work.
+
+**Example**: `extractUrlPath()` uses a URL parser in the bundle (`src/extensions/url-pathname.ts`) and does not call `new URL()` on the host. The isolate has no `URL` class. The parser does not do the IDNA validation of the host name, because the IDNA tables are too large for the bundle. Thus its result differs from `new URL()` for some host names that are not ASCII.
 
 ## Known Limitations
 

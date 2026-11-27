@@ -5,7 +5,7 @@ import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, type TransactionRunner, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -105,7 +105,7 @@ describe('AgentSkillsService', () => {
 		projectScopeService.getProjectIds.mockResolvedValue([projectId]);
 		skillAccess = mock<SkillAccessService>();
 		// The real rule, on top of the mocked permission checks.
-		const realAccess = new SkillAccessService(mock(), projectScopeService);
+		const realAccess = new SkillAccessService(mock(), projectScopeService, mock(), mock(), mock());
 		skillAccess.canCreate.mockImplementation(
 			async (...args) => await realAccess.canCreate(...args),
 		);
@@ -269,6 +269,18 @@ describe('AgentSkillsService', () => {
 			await expect(
 				service.createAndAttachSkills(agentId, projectId, [skill], context),
 			).rejects.toThrow('Agent has no JSON config yet.');
+			expect(skillRefs.createSkills).not.toHaveBeenCalled();
+		});
+
+		it('refuses a batch that mentions a workflow the user cannot read', async () => {
+			givenAgent({ schema: baseConfig });
+			skillAccess.assertCanReadMentionedWorkflows.mockRejectedValue(new UserError('No access'));
+			const mentioning = { ...skill, instructions: 'Run [Report](n8n://workflow/wf1).' };
+
+			await expect(
+				service.createAndAttachSkills(agentId, projectId, [mentioning], context),
+			).rejects.toThrow('No access');
+			expect(skillAccess.assertCanReadMentionedWorkflows).toHaveBeenCalledWith(user, mentioning);
 			expect(skillRefs.createSkills).not.toHaveBeenCalled();
 		});
 
@@ -441,6 +453,98 @@ describe('AgentSkillsService', () => {
 			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
 
+		describe('files of an update', () => {
+			const guide = { path: 'references/guide.md', content: 'Old.' };
+			const script = { path: 'scripts/run.py', content: 'print(1)' };
+			const logo = { path: 'assets/logo.png', content: 'AP8=', isBinary: true as const };
+			const newGuide = { ...guide, content: 'New.' };
+
+			// A model reads no binary content, and the builder prompt says to send Markdown only.
+			it.each([
+				['builder', [logo, newGuide, script]],
+				['mcp', [logo, newGuide]],
+				['user', [newGuide]],
+			] as const)('from %s saves the files %j', async (modifiedBy, references) => {
+				const stored = { ...skill, references: [logo, guide, script] };
+				skillRefs.bodies.skill_a = stored;
+				givenAgent({
+					schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+					skills: { skill_a: stored },
+				});
+
+				await service.updateSkill(
+					agentId,
+					projectId,
+					'skill_a',
+					{ references: [newGuide] },
+					{ user, modifiedBy },
+				);
+
+				expect(skillService.saveTrusted).toHaveBeenCalledWith(
+					'skill_a',
+					expect.objectContaining({ references }),
+					'user-1',
+					{},
+				);
+			});
+
+			it('keeps the files that are not Markdown when the builder sends no files', async () => {
+				const stored = { ...skill, references: [logo, guide, script] };
+				skillRefs.bodies.skill_a = stored;
+				givenAgent({
+					schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+					skills: { skill_a: stored },
+				});
+
+				await service.updateSkill(
+					agentId,
+					projectId,
+					'skill_a',
+					{ references: undefined },
+					{ user, modifiedBy: 'builder' },
+				);
+
+				expect(skillService.saveTrusted).toHaveBeenCalledWith(
+					'skill_a',
+					expect.objectContaining({ references: [logo, script] }),
+					'user-1',
+					{},
+				);
+			});
+
+			it.each([
+				['builder', [guide]],
+				['mcp', [guide, script]],
+			] as const)(
+				'does not unpin a pinned skill on a no-op %s update that omits binary or non-Markdown files',
+				async (modifiedBy, sentReferences) => {
+					const pinId = 'skill-version-1';
+					// Stored references are in path order: assets/logo.png < references/guide.md < scripts/run.py.
+					const stored = { ...skill, references: [logo, guide, script] };
+					skillRefs.bodies.skill_a = stored;
+					givenAgent({
+						schema: {
+							...baseConfig,
+							skills: [{ type: 'skill', id: 'skill_a', versionId: pinId }],
+						},
+						skills: { skill_a: stored },
+					});
+
+					const result = await service.updateSkill(
+						agentId,
+						projectId,
+						'skill_a',
+						{ references: [...sentReferences] },
+						{ user, modifiedBy },
+					);
+
+					expect(result.skill).toEqual(stored);
+					expect(skillRefs.unpinDraftRef).not.toHaveBeenCalled();
+					expect(skillService.saveTrusted).not.toHaveBeenCalled();
+				},
+			);
+		});
+
 		it('saves the next version with the skill edit permission, then refreshes the agents that follow it', async () => {
 			const agent = givenAgent({
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
@@ -603,6 +707,22 @@ describe('AgentSkillsService', () => {
 			await expect(
 				service.updateSkill(agentId, projectId, 'skill_a', { instructions: 'New.' }, context),
 			).rejects.toThrow(ForbiddenError);
+			expect(skillService.saveTrusted).not.toHaveBeenCalled();
+		});
+
+		it('refuses a save that mentions a workflow the user cannot read, and checks it against the shown version', async () => {
+			givenAgent({ schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] } });
+			skillAccess.assertCanReadMentionedWorkflows.mockRejectedValue(new UserError('No access'));
+			const instructions = 'Use [A](n8n://workflow/a).';
+
+			await expect(
+				service.updateSkill(agentId, projectId, 'skill_a', { instructions }, context),
+			).rejects.toThrow('No access');
+			expect(skillAccess.assertCanReadMentionedWorkflows).toHaveBeenCalledWith(
+				user,
+				{ ...skill, instructions },
+				skill,
+			);
 			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
 

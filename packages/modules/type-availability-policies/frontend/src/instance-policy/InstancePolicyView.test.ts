@@ -3,25 +3,32 @@ import type { Scope } from '@n8n/permissions';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { nextTick, reactive } from 'vue';
 
 import InstancePolicyView from './InstancePolicyView.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
+import { accessFilter } from '../__tests__/table';
+import { useRestrictReviewStore } from './restrict-review/restrict-review.store';
 import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
-const { route, push, replace, fetchInstancePolicy, fetchInstanceAccess } = vi.hoisted(() => ({
-	route: { query: {} as Record<string, string> },
-	push: vi.fn(),
-	replace: vi.fn(),
-	fetchInstancePolicy: vi.fn(),
-	fetchInstanceAccess: vi.fn(),
-}));
+const { route, push, replace, track, fetchInstancePolicy, fetchInstanceAccess } = vi.hoisted(
+	() => ({
+		route: { query: {} as Record<string, string> },
+		track: vi.fn(),
+		push: vi.fn(),
+		replace: vi.fn(),
+		fetchInstancePolicy: vi.fn(),
+		fetchInstanceAccess: vi.fn(),
+	}),
+);
 
 vi.mock('../type-availability-policies.api', () => ({
 	fetchInstancePolicy,
-	saveInstancePolicy: vi.fn(),
+	setInstanceTypeAccess: vi.fn(),
 	fetchInstanceAccess,
 	fetchCredentialTypeSummaries: vi.fn(
 		async () => new Map([['bitlyApi', { displayName: 'Bitly API' }]]),
@@ -33,23 +40,40 @@ vi.mock('../type-availability-policies.api', () => ({
 	fetchNodeTypeUsage: vi.fn(async () => ({})),
 }));
 
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+
+// Reactive, so that a test can change the query of a mounted page.
+const reactiveRoute = reactive(route);
+
 vi.mock('vue-router', () => ({
-	useRoute: () => route,
+	useRoute: () => reactiveRoute,
 	useRouter: () => ({ push, replace }),
 }));
 
+// Closes as the real dialog does: it asks to close, then announces where the focus returns.
+const closeDialog = {
+	close(this: { $emit: (event: string, ...args: unknown[]) => void }) {
+		this.$emit('update:open', false);
+		this.$emit('closeAutoFocus', new Event('focusScope.autoFocusOnUnmount', { cancelable: true }));
+	},
+};
+
 const nodeTypeAccessDialogStub = {
 	props: ['open', 'nodeType'],
-	emits: ['update:open'],
+	emits: ['update:open', 'closeAutoFocus'],
+	methods: closeDialog,
 	template:
-		'<button data-test-id="node-type-access-dialog" :data-node-type="nodeType" @click="$emit(\'update:open\', false)" />',
+		'<button data-test-id="node-type-access-dialog" :data-node-type="nodeType" @click="close" />',
 };
 
 const credentialTypeAccessDialogStub = {
 	props: ['open', 'credentialType'],
-	emits: ['update:open'],
+	emits: ['update:open', 'closeAutoFocus'],
+	methods: closeDialog,
 	template:
-		'<button data-test-id="credential-type-access-dialog" :data-credential-type="credentialType" @click="$emit(\'update:open\', false)" />',
+		'<button data-test-id="credential-type-access-dialog" :data-credential-type="credentialType" @click="close" />',
 };
 
 const renderView = createComponentRenderer(InstancePolicyView, {
@@ -395,5 +419,161 @@ describe('InstancePolicyView', () => {
 		await fireEvent.click(getByTestId('node-type-access-dialog'));
 
 		expect(replace).toHaveBeenCalledWith({ query: { tab: 'node' } });
+	});
+
+	describe('focus when the dialog closes', () => {
+		const NODE_DIALOG = { tab: 'node', details: 'n8n-nodes-base.notion' };
+		const NOTION_ROW = 'instance-policy-open-n8n-nodes-base.notion';
+		// The focus is inside the open dialog when it closes.
+		const closeFromInside = async (dialog: HTMLElement) => {
+			dialog.focus();
+			await fireEvent.click(dialog);
+		};
+
+		it('returns the focus to the row of the type', async () => {
+			const { getByTestId, findByTestId } = setup(BOTH_SCOPES, NODE_DIALOG);
+			const rowButton = await findByTestId(NOTION_ROW);
+
+			await closeFromInside(getByTestId('node-type-access-dialog'));
+
+			expect(rowButton).toHaveFocus();
+		});
+
+		it('moves the focus to the access filter when the row is not in the table', async () => {
+			const { getByTestId, getByRole, findByTestId, getByPlaceholderText, queryByTestId } = setup(
+				BOTH_SCOPES,
+				NODE_DIALOG,
+			);
+			await findByTestId(NOTION_ROW);
+			await fireEvent.update(getByPlaceholderText('Search nodes'), 'no match');
+			expect(queryByTestId(NOTION_ROW)).not.toBeInTheDocument();
+
+			await closeFromInside(getByTestId('node-type-access-dialog'));
+
+			expect(accessFilter(getByRole)).toHaveFocus();
+		});
+
+		it('returns the focus on the Credentials tab too', async () => {
+			const { getByTestId, findByTestId } = setup(BOTH_SCOPES, {
+				tab: 'credential',
+				details: 'bitlyApi',
+			});
+			const rowButton = await findByTestId('instance-policy-open-bitlyApi');
+
+			await closeFromInside(getByTestId('credential-type-access-dialog'));
+
+			expect(rowButton).toHaveFocus();
+		});
+	});
+
+	it('cancels the reviews of the access dialog when the dialog closes', async () => {
+		setup(BOTH_SCOPES, { tab: 'node', details: 'n8n-nodes-base.notion' });
+		const cancelAll = vi.spyOn(useRestrictReviewStore(), 'cancelAll');
+
+		reactiveRoute.query = { tab: 'node' };
+		await nextTick();
+
+		expect(cancelAll).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the reviews of the table when an access dialog opens', async () => {
+		setup(BOTH_SCOPES, { tab: 'node' });
+		const cancelAll = vi.spyOn(useRestrictReviewStore(), 'cancelAll');
+
+		reactiveRoute.query = { tab: 'node', details: 'n8n-nodes-base.notion' };
+		await nextTick();
+
+		expect(cancelAll).not.toHaveBeenCalled();
+	});
+
+	it('cancels the open review and each review that still loads when the admin leaves', () => {
+		const { unmount } = setup();
+		const cancelAll = vi.spyOn(useRestrictReviewStore(), 'cancelAll');
+
+		unmount();
+
+		expect(cancelAll).toHaveBeenCalledTimes(1);
+	});
+
+	describe('telemetry', () => {
+		const openedEvent = TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_OPENED_TYPE_ACCESS_DIALOG;
+
+		it('reports a dialog that a link opens once the server lists the type', async () => {
+			setup(BOTH_SCOPES, { tab: 'credential', details: 'airtableApi' });
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(openedEvent, {
+					kind: 'credential-types',
+					type_name: 'airtableApi',
+					source: 'link',
+					current_access: 'allow',
+				}),
+			);
+			expect(track).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not report a link to a type that the server does not list', async () => {
+			setup(BOTH_SCOPES, { tab: 'credential', details: 'unknownApi' });
+
+			await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } }));
+			expect(track).not.toHaveBeenCalledWith(openedEvent, expect.anything());
+		});
+
+		it('reports a dialog that a click in the table opens', async () => {
+			replace.mockImplementationOnce(({ query }: { query: Record<string, string> }) => {
+				reactiveRoute.query = query;
+			});
+			fetchInstanceAccess.mockResolvedValue({
+				scopeId: null,
+				version: 0,
+				defaultAction: 'allow',
+				types: [{ name: 'n8n-nodes-base.notion', access: 'deny', matchedRuleId: 'rule-1' }],
+			});
+			const { findByText } = setup(BOTH_SCOPES, { tab: 'node' });
+
+			await fireEvent.click(await findByText('Notion'));
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(openedEvent, {
+					kind: 'node-types',
+					type_name: 'n8n-nodes-base.notion',
+					source: 'table',
+					current_access: 'deny',
+				}),
+			);
+			expect(track).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports each opening of the same type, and a link after a table click as a link', async () => {
+			const followReplace = ({ query }: { query: Record<string, string> }) => {
+				reactiveRoute.query = query;
+			};
+			replace.mockImplementationOnce(followReplace).mockImplementationOnce(followReplace);
+			fetchInstanceAccess.mockResolvedValue(credentialAccess(['bitlyApi', 'airtableApi']));
+			const { findByTestId } = setup(BOTH_SCOPES, { tab: 'credential' });
+
+			await fireEvent.click(await findByTestId('instance-policy-open-bitlyApi'));
+			await waitFor(() => expect(track).toHaveBeenCalledTimes(1));
+			reactiveRoute.query = { tab: 'credential' };
+			await nextTick();
+			await fireEvent.click(await findByTestId('instance-policy-open-bitlyApi'));
+			await waitFor(() => expect(track).toHaveBeenCalledTimes(2));
+			reactiveRoute.query = { tab: 'credential', details: 'airtableApi' };
+
+			await waitFor(() => expect(track).toHaveBeenCalledTimes(3));
+			expect(track.mock.calls.map(([, { type_name, source }]) => [type_name, source])).toEqual([
+				['bitlyApi', 'table'],
+				['bitlyApi', 'table'],
+				['airtableApi', 'link'],
+			]);
+		});
+
+		it('does not report a link that only the access of an earlier visit lists', async () => {
+			fetchInstanceAccess.mockResolvedValue(credentialAccess([]));
+			await setupAfterEarlierVisit({ tab: 'credential', details: 'bitlyApi' });
+
+			await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } }));
+			expect(track).not.toHaveBeenCalledWith(openedEvent, expect.anything());
+		});
 	});
 });

@@ -1,16 +1,20 @@
+import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { EngineConfig } from '@n8n/config';
+import type { EngineConfig, ExecutionsConfig, PrometheusMetricsConfig } from '@n8n/config';
+import { readPoolStats } from '@n8n/db';
 import {
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
+	SharedSecretIdentityVerifier,
 	type EngineWorkQueues,
 	type ExecutionResponseSender,
 } from '@n8n/engine';
 import type { V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
 import type { BinaryDataService } from 'n8n-core';
 import type { DataTableProxyProvider } from 'n8n-workflow';
+import { Registry } from 'prom-client';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -18,13 +22,13 @@ import type { CredentialsHelper } from '@/credentials-helper';
 import type { NodeTypesProxy } from '@n8n/backend-services';
 
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
-import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
-import type { EngineCredentialsClient } from '../engine-credentials-client';
-import type { EngineSubWorkflowClient } from '../engine-sub-workflow-client';
+import type { EngineControlPlaneTransport } from '../control-plane/engine-control-plane-transport';
+import type { EngineCredentialsClient } from '../credentials/engine-credentials-client';
+import type { EngineWorkflowResolveClient } from '../workflow-resolve/engine-workflow-resolve-client';
 import type { EngineMtls } from '../engine-mtls';
 import { EngineV2Runtime } from '../engine-v2.runtime';
-import { RemoteCredentialsHelper } from '../remote-credentials-helper';
-import { RemoteDataTableProxyProvider } from '../remote-data-table-proxy-provider';
+import { RemoteCredentialsHelper } from '../credentials/remote-credentials-helper';
+import { RemoteDataTableProxyProvider } from '../data-tables/remote-data-table-proxy-provider';
 
 // Hoisted so the `vi.mock` factories below, which vitest lifts above the imports,
 // can close over them.
@@ -34,7 +38,6 @@ const mocks = vi.hoisted(() => {
 		initialize: vi.fn(async () => {
 			dataSource.isInitialized = true;
 		}),
-		runMigrations: vi.fn(async () => []),
 		destroy: vi.fn(async () => {
 			dataSource.isInitialized = false;
 		}),
@@ -95,6 +98,7 @@ const mocks = vi.hoisted(() => {
 		v1StepExecutor,
 		stepDataLoader,
 		createDataSource: vi.fn((_url: string, _options?: unknown) => dataSource),
+		runMigrations: vi.fn(async (_dataSource: unknown) => {}),
 		createServer: vi.fn((_app: unknown) => httpServer),
 		createEngineRuntime: vi.fn((_options: unknown) => engine),
 		createEngineStepDataLoader: vi.fn((_executionStore: unknown, _stepStore: unknown) => {
@@ -112,6 +116,7 @@ vi.mock('@n8n/engine', async (importOriginal) => ({
 	AllowAllAdmittance: vi.fn(),
 	SharedSecretIdentityVerifier: vi.fn(),
 	createDataSource: mocks.createDataSource,
+	runMigrations: mocks.runMigrations,
 	createEngineRuntime: mocks.createEngineRuntime,
 	mintResumeToken: vi.fn((_secret: string, executionId: string) => `token-for-${executionId}`),
 	mintStepBoundResumeToken: vi.fn(() => 'step-bound-token'),
@@ -121,6 +126,10 @@ vi.mock('@n8n/engine', async (importOriginal) => ({
 vi.mock('@n8n/node-engine-compatibility', () => ({
 	createEngineStepDataLoader: mocks.createEngineStepDataLoader,
 	V1StepExecutor: mocks.V1StepExecutor,
+}));
+vi.mock('@n8n/db', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/db')>()),
+	readPoolStats: vi.fn(() => ({ active: 1, idle: 2, waiting: 3 })),
 }));
 
 describe('EngineV2Runtime', () => {
@@ -140,7 +149,7 @@ describe('EngineV2Runtime', () => {
 	let credentialsClient: EngineCredentialsClient;
 	let transport: EngineControlPlaneTransport;
 	let dataTablesHttp: HttpRequestClient;
-	let subWorkflowClient: EngineSubWorkflowClient;
+	let workflowResolveClient: EngineWorkflowResolveClient;
 	const credentialsHelper = mock<CredentialsHelper>();
 	const credentialTypes = mock<CredentialTypes>();
 	const additionalDataBuilder = mock<EngineAdditionalDataBuilder>();
@@ -153,19 +162,32 @@ describe('EngineV2Runtime', () => {
 		queues: mock<EngineWorkQueues>(),
 	});
 
-	const newRuntime = (databaseUrl = 'postgres://engine', config: Partial<EngineConfig> = {}) =>
+	const newRuntime = (
+		databaseUrl = 'postgres://engine',
+		config: Partial<EngineConfig> = {},
+		executions: Partial<ExecutionsConfig> = {},
+		logger: Logger = mockLogger(),
+		metrics: Partial<PrometheusMetricsConfig> = {},
+	) =>
 		new EngineV2Runtime(
 			engineConfig(databaseUrl, config),
+			mock<ExecutionsConfig>({
+				pruneData: true,
+				pruneDataMaxAge: 336,
+				pruneDataMaxCount: 10_000,
+				...executions,
+			}),
 			{ enabled: false, createServer: mocks.createServer } as unknown as EngineMtls,
 			nodeTypes,
-			mockLogger(),
+			logger,
 			credentialsClient,
 			transport,
-			subWorkflowClient,
+			workflowResolveClient,
 			credentialsHelper,
 			credentialTypes,
 			additionalDataBuilder,
 			binaryDataService,
+			mock<PrometheusMetricsConfig>({ prefix: 'n8n_', includeDbPoolMetrics: true, ...metrics }),
 		);
 
 	const stepContext = {
@@ -197,7 +219,7 @@ describe('EngineV2Runtime', () => {
 		credentialsClient = mock<EngineCredentialsClient>();
 		dataTablesHttp = mock<HttpRequestClient>();
 		transport = mock<EngineControlPlaneTransport>({ forScope: vi.fn(() => dataTablesHttp) });
-		subWorkflowClient = mock<EngineSubWorkflowClient>();
+		workflowResolveClient = mock<EngineWorkflowResolveClient>();
 		additionalDataBuilder.build.mockImplementation(
 			(_context, helper, dataTableProxyProvider) =>
 				({
@@ -219,9 +241,24 @@ describe('EngineV2Runtime', () => {
 
 			expect(mocks.createDataSource).toHaveBeenCalledWith('postgres://engine', expect.anything());
 			expect(mocks.dataSource.initialize).toHaveBeenCalled();
-			expect(mocks.dataSource.runMigrations).toHaveBeenCalled();
+			expect(mocks.runMigrations).toHaveBeenCalledWith(mocks.dataSource);
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
 				expect.objectContaining({ dataSource: mocks.dataSource }),
+			);
+		});
+
+		it('logs before it migrates, because the migration waits while another engine process holds the lock', async () => {
+			const scopedLogger = mock<Logger>();
+			const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
+
+			await newRuntime('postgres://engine', {}, {}, logger).init(initOptions());
+
+			const logged = scopedLogger.info.mock.calls.findIndex(([message]) =>
+				message.includes('migration lock'),
+			);
+			expect(logged).not.toBe(-1);
+			expect(scopedLogger.info.mock.invocationCallOrder[logged]).toBeLessThan(
+				mocks.runMigrations.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -245,6 +282,59 @@ describe('EngineV2Runtime', () => {
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
 				expect.objectContaining({ queues: options.queues }),
 			);
+		});
+
+		it('passes the roles it is given to the engine', async () => {
+			await newRuntime().init({ ...initOptions(), roles: ['orchestrator'] });
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ roles: ['orchestrator'] }),
+			);
+		});
+
+		it('leaves the roles to the engine default when it is given none', async () => {
+			await newRuntime().init(initOptions());
+
+			const [options] = mocks.createEngineRuntime.mock.calls[0] as [{ roles?: unknown }];
+			expect(options.roles).toBeUndefined();
+		});
+
+		it.each([
+			{ roles: undefined, verifies: true },
+			{ roles: ['api'] as const, verifies: true },
+			{ roles: ['api', 'step-worker'] as const, verifies: true },
+			{ roles: ['orchestrator'] as const, verifies: false },
+			{ roles: ['orchestrator', 'step-worker'] as const, verifies: false },
+		])(
+			'with roles $roles, gives the engine an identity verifier: $verifies',
+			async ({ roles, verifies }) => {
+				await newRuntime().init({ ...initOptions(), roles });
+
+				const [options] = mocks.createEngineRuntime.mock.calls[0] as [
+					{ identityVerifier?: unknown },
+				];
+				expect(options.identityVerifier !== undefined).toBe(verifies);
+				expect(SharedSecretIdentityVerifier).toHaveBeenCalledTimes(verifies ? 1 : 0);
+			},
+		);
+
+		it('maps EXECUTIONS_DATA_MAX_AGE and EXECUTIONS_DATA_PRUNE_MAX_COUNT to the retention policy', async () => {
+			await newRuntime(
+				'postgres://engine',
+				{},
+				{ pruneDataMaxAge: 24, pruneDataMaxCount: 500 },
+			).init(initOptions());
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ retention: { maxAgeMs: 86_400_000, maxCount: 500 } }),
+			);
+		});
+
+		it('maps EXECUTIONS_DATA_PRUNE=false to no retention policy', async () => {
+			await newRuntime('postgres://engine', {}, { pruneData: false }).init(initOptions());
+
+			const options = mocks.createEngineRuntime.mock.calls[0][0] as { retention?: unknown };
+			expect(options.retention).toBeUndefined();
 		});
 
 		it('starts the engine', async () => {
@@ -369,15 +459,15 @@ describe('EngineV2Runtime', () => {
 			await newRuntime().init(initOptions());
 			externalDependencies({ executionStore: {}, stepStore: {} });
 			const request = { workflowId: 'sub-execution' };
-			vi.mocked(subWorkflowClient.resolve).mockResolvedValue({
+			vi.mocked(workflowResolveClient.resolve).mockResolvedValue({
 				workflowId: 'sub-execution',
 			} as never);
 
 			const resolved = await mocks.V1StepExecutor.mock.calls[0][0].resolveSubWorkflow(request);
 
 			expect(resolved).toEqual({ workflowId: 'sub-execution' });
-			expect(subWorkflowClient.resolve).toHaveBeenCalledExactlyOnceWith(
-				request,
+			expect(workflowResolveClient.resolve).toHaveBeenCalledExactlyOnceWith(
+				{ kind: 'sub-workflow', ...request },
 				expect.any(AbortSignal),
 			);
 		});
@@ -460,7 +550,7 @@ describe('EngineV2Runtime', () => {
 		});
 
 		it('closes the connection when migrations fail', async () => {
-			mocks.dataSource.runMigrations.mockRejectedValueOnce(new Error('migration failed'));
+			mocks.runMigrations.mockRejectedValueOnce(new Error('migration failed'));
 
 			await expect(newRuntime().init(initOptions())).rejects.toThrow('migration failed');
 
@@ -503,6 +593,48 @@ describe('EngineV2Runtime', () => {
 			mocks.engine.stop.mockRejectedValueOnce(new Error('stop failed'));
 
 			await expect(newRuntime().init(initOptions())).rejects.toThrow('listen failed');
+		});
+	});
+
+	describe('metrics', () => {
+		const valueOf = async (registry: Registry, name: string) =>
+			(await registry.getSingleMetric(name)?.get())?.values[0]?.value;
+
+		it('reports the data plane pool on the registry it is given', async () => {
+			const registry = new Registry();
+
+			await newRuntime('postgres://engine', { databasePoolSize: 25 }).init({
+				...initOptions(),
+				metricsRegistry: registry,
+			});
+
+			expect(await valueOf(registry, 'n8n_engine_db_pool_requests_pending')).toBe(3);
+			expect(await valueOf(registry, 'n8n_engine_db_pool_connections_max')).toBe(25);
+			expect(readPoolStats).toHaveBeenCalledWith(mocks.dataSource);
+		});
+
+		it('reports no pool when N8N_METRICS_INCLUDE_DB_POOL_METRICS is off', async () => {
+			const registry = new Registry();
+
+			await newRuntime('postgres://engine', {}, {}, mockLogger(), {
+				includeDbPoolMetrics: false,
+			}).init({ ...initOptions(), metricsRegistry: registry });
+
+			expect(await registry.getMetricsAsJSON()).toEqual([]);
+		});
+
+		it('registers the pool again when init runs after a rollback', async () => {
+			const registry = new Registry();
+			const runtime = newRuntime();
+			mocks.listen.error = new Error('listen failed');
+			await expect(runtime.init({ ...initOptions(), metricsRegistry: registry })).rejects.toThrow(
+				'listen failed',
+			);
+			mocks.listen.error = undefined;
+
+			await runtime.init({ ...initOptions(), metricsRegistry: registry });
+
+			expect(await valueOf(registry, 'n8n_engine_db_pool_connections_max')).toBe(10);
 		});
 	});
 

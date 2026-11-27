@@ -14,6 +14,7 @@ import {
 import {
 	logsCommand,
 	openCommand,
+	panesCommand,
 	restartCommand,
 	runCommand,
 	servicesCommand,
@@ -28,7 +29,9 @@ import {
 	psqlCommand,
 	redisCliCommand,
 } from './commands/tools';
+import { licenseCommand } from './commands/license';
 import { profileCommand } from './commands/profile';
+import { secretsCommand } from './commands/secrets';
 import { RigError } from './errors';
 import { runningVersion } from './meta';
 import { printError } from './ui/output';
@@ -54,9 +57,12 @@ const rig = defineCommand({
 		status: statusCommand,
 		logs: logsCommand,
 		open: openCommand,
+		panes: panesCommand,
 		services: servicesCommand,
 		env: envCommand,
 		profile: profileCommand,
+		license: licenseCommand,
+		secrets: secretsCommand,
 		exec: execCommand,
 		print: printCommand,
 		psql: psqlCommand,

@@ -2,13 +2,15 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import {
+	createProjectPolicy,
 	fetchCredentialTypeSummaries,
 	fetchCredentialTypeUsage,
 	fetchInstanceAccess,
 	fetchInstancePolicy,
 	fetchNodeTypeSummaries,
 	fetchNodeTypeUsage,
-	saveInstancePolicy,
+	fetchProjectPolicies,
+	setInstanceTypeAccess,
 } from './type-availability-policies.api';
 
 const { makeRestApiRequest, get } = vi.hoisted(() => ({
@@ -43,15 +45,36 @@ describe('instance policy requests', () => {
 	});
 
 	it.each([
-		['node', '/node-type-policies/instance'],
-		['credential', '/credential-type-policies/instance'],
-	] as const)('saves the %s policy to %s with its version', async (kind, endpoint) => {
-		await saveInstancePolicy(context, kind, { rules: [], defaultAction: 'deny', version: 3 });
+		['node', '/node-type-policies/instance/access'],
+		['credential', '/credential-type-policies/instance/access'],
+	] as const)(
+		'sends the access changes of the %s types to %s with the version',
+		async (kind, endpoint) => {
+			const body = { changes: [{ type: 'a', access: 'deny' as const }], version: 3 };
 
-		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'PUT', endpoint, {
-			rules: [],
-			defaultAction: 'deny',
-			version: 3,
+			await setInstanceTypeAccess(context, kind, body);
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'PATCH', endpoint, body);
+		},
+	);
+});
+
+describe('project policy requests', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('reads the team projects with their policy state', async () => {
+		await fetchProjectPolicies(context);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'GET', '/project-policies');
+	});
+
+	it('adds a policy to one project', async () => {
+		await createProjectPolicy(context, 'project-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'POST', '/project-policies', {
+			projectId: 'project-1',
 		});
 	});
 });

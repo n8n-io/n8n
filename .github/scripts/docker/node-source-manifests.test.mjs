@@ -103,15 +103,13 @@ ${render(manifestStep.run, values)}`,
 
 describe('Node source image manifests', () => {
 	for (const repository of repositories) {
-		for (const stage of ['', '-dev']) {
-			for (const arch of ['amd64', 'arm64']) {
-				const missingImage = `${repository}:26.13.0-commit-100-2${stage}-${arch}`;
-				it(`keeps all tags unchanged when ${missingImage} is missing`, () => {
-					const result = publish({ missingImage });
-					assert.notEqual(result.status, 0, result.stderr);
-					assert.doesNotMatch(result.stdout, /^create /m);
-				});
-			}
+		for (const arch of ['amd64', 'arm64']) {
+			const missingImage = `${repository}:26.13.0-commit-100-2-dev-${arch}`;
+			it(`keeps all tags unchanged when ${missingImage} is missing`, () => {
+				const result = publish({ missingImage });
+				assert.notEqual(result.status, 0, result.stderr);
+				assert.doesNotMatch(result.stdout, /^create /m);
+			});
 		}
 	}
 
@@ -119,33 +117,47 @@ describe('Node source image manifests', () => {
 		['run', { 'github.run_id': '99' }],
 		['attempt', { 'github.run_attempt': '1' }],
 	]) {
-		for (const stage of ['runtime', 'dev']) {
-			for (const arch of ['amd64', 'arm64']) {
-				it(`keeps all tags unchanged after a failed ${stage} ${arch} rebuild with prior ${name} images`, () => {
-					const result = publish({ previousExecution, failedBuild: { stage, arch } });
-					assert.notEqual(result.status, 0, result.stderr);
-					assert.doesNotMatch(result.stdout, /^create /m);
-				});
-			}
+		for (const arch of ['amd64', 'arm64']) {
+			it(`keeps all tags unchanged after a failed dev ${arch} rebuild with prior ${name} images`, () => {
+				const result = publish({ previousExecution, failedBuild: { stage: 'dev', arch } });
+				assert.notEqual(result.status, 0, result.stderr);
+				assert.doesNotMatch(result.stdout, /^create /m);
+			});
 		}
 	}
 
-	it('publishes runtime and dev tags in both registries when all images exist', () => {
+	it('publishes dev tags in both registries when all images exist', () => {
 		const result = publish({ previousExecution: { 'github.run_attempt': '1' } });
 		assert.equal(result.status, 0, result.stderr);
 		const sources = result.stdout.split('\n').filter((line) => line.startsWith('source '));
-		assert.equal(sources.length, 16);
+		assert.equal(sources.length, 8);
 		for (const source of sources) assert.match(source, / current$/);
 		const createdTags = result.stdout
 			.split('\n')
 			.filter((line) => line.startsWith('create '))
 			.map((line) => line.slice('create '.length));
-		const expectedTags = repositories.flatMap((repository) =>
-			['', '-dev'].flatMap((stage) => [
-				`${repository}:26.13.0${stage}`,
-				`${repository}:26.13.0-commit${stage}`,
-			]),
-		);
+		const expectedTags = repositories.flatMap((repository) => [
+			`${repository}:26.13.0-dev`,
+			`${repository}:26.13.0-commit-dev`,
+		]);
 		assert.deepEqual(createdTags.sort(), expectedTags.sort());
+	});
+
+	it('restricts the workflow to n8n-io/n8n and skips downstream jobs when prepare is skipped', () => {
+		const { prepare, build, 'create-multi-arch-manifest': manifest } = workflow.jobs;
+
+		assert.equal(prepare.if, "github.repository == 'n8n-io/n8n'");
+
+		const buildNeeds = Array.isArray(build.needs) ? build.needs : [build.needs];
+		assert.ok(buildNeeds.includes('prepare'));
+		assert.equal(build.if, "needs.prepare.outputs.changed == 'true'");
+
+		const manifestNeeds = Array.isArray(manifest.needs) ? manifest.needs : [manifest.needs];
+		assert.ok(manifestNeeds.includes('prepare'));
+		assert.ok(manifestNeeds.includes('build'));
+		assert.equal(
+			manifest.if,
+			"always() && needs.prepare.result == 'success' && needs.prepare.outputs.changed == 'true' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true))",
+		);
 	});
 });

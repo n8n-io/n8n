@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 import { registerShellCapabilities } from './capabilities.manifest';
 
 import { ABOUT_MODAL_KEY } from '@/app/constants/modals';
+import { useModalPrefetch } from '@/app/composables/usePrefetchModals';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -111,6 +112,22 @@ describe('registerShellCapabilities', () => {
 		capabilityRegistry.use(capabilities.modalOpeners).openModalWithData(payload);
 
 		expect(uiStore.openModalWithData).toHaveBeenCalledWith(payload);
+	});
+
+	it('forwards closeModal to the UI store', () => {
+		registerShellCapabilities();
+		const uiStore = useUIStore();
+
+		capabilityRegistry.use(capabilities.modalCloser).closeModal(ABOUT_MODAL_KEY);
+
+		expect(uiStore.closeModal).toHaveBeenCalledWith(ABOUT_MODAL_KEY);
+	});
+
+	// The shell owns the prefetch, so its preload-error handler sees a module's prefetch too.
+	it('provides the shell modal prefetch', () => {
+		registerShellCapabilities();
+
+		expect(capabilityRegistry.use(capabilities.modalPrefetch)).toBe(useModalPrefetch);
 	});
 
 	// Dev HMR re-evaluates the manifest, so a second registration must not warn. The
@@ -354,6 +371,22 @@ describe('registerShellCapabilities', () => {
 			mockedStore(usePostHog).getFeatureFlagPayload.mockReturnValue({ url: 'https://example.com' });
 
 			expect(capabilityRegistry.use(capabilities.appsFeedbackFormUrl)()).toBeUndefined();
+		});
+	});
+
+	describe('custom MCP servers flag', () => {
+		it.each([
+			['test', true],
+			['control', false],
+			[true, false],
+			[undefined, false],
+		])('reads the variant %j of the flag as %j', (variant, expected) => {
+			registerShellCapabilities();
+			const posthog = mockedStore(usePostHog);
+			posthog.getVariant.mockReturnValue(variant);
+
+			expect(capabilityRegistry.use(capabilities.customMcpServersEnabled)()).toBe(expected);
+			expect(posthog.getVariant).toHaveBeenCalledWith('155_custom_mcp_servers');
 		});
 	});
 
