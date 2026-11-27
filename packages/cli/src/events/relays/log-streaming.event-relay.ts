@@ -218,8 +218,11 @@ export class LogStreamingEventRelay extends EventRelay {
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 			'redaction-enforcement-updated': (event) => this.redactionEnforcementUpdated(event),
 			'public-api-rate-limit-updated': (event) => this.publicApiRateLimitUpdated(event),
+			'promotion-settings-updated': (event) => this.promotionSettingsUpdated(event),
 			'project-workflow-review-settings-updated': (event) =>
 				this.projectWorkflowReviewSettingsUpdated(event),
+			'project-workflow-review-required-by-instance-updated': (event) =>
+				this.projectWorkflowReviewRequiredByInstanceUpdated(event),
 			'workflow-review-requested': (event) => this.workflowReviewRequested(event),
 			'workflow-review-version-updated': (event) => this.workflowReviewVersionUpdated(event),
 			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
@@ -1653,6 +1656,12 @@ export class LogStreamingEventRelay extends EventRelay {
 				// Telemetry-only signal. The audit trail for redaction enforcement
 				// is emitted separately via 'redaction-enforcement-updated'.
 				break;
+			case 'promotions_who_can_promote':
+			case 'promotions_who_can_approve':
+			case 'promotions_who_can_apply':
+				// Telemetry-only signal. The audit trail is emitted separately via
+				// 'promotion-settings-updated'.
+				break;
 			case 'workflow_reviews':
 				void this.eventBus.sendAuditEvent({
 					eventName: value
@@ -1707,6 +1716,19 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
+	@Redactable()
+	private promotionSettingsUpdated({
+		user,
+		before,
+		after,
+		loginId,
+	}: RelayEventMap['promotion-settings-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.promotion-settings.updated',
+			payload: { ...user, before, after, ...(loginId !== undefined && { loginId }) },
+		});
+	}
+
 	// #endregion
 
 	// #region Workflow Reviews
@@ -1721,6 +1743,20 @@ export class LogStreamingEventRelay extends EventRelay {
 			eventName: requiredByProject
 				? 'n8n.audit.workflow-reviews.project-approval-required.enabled'
 				: 'n8n.audit.workflow-reviews.project-approval-required.disabled',
+			payload: { ...user, projectId },
+		});
+	}
+
+	@Redactable()
+	private projectWorkflowReviewRequiredByInstanceUpdated({
+		user,
+		projectId,
+		requiredByInstance,
+	}: RelayEventMap['project-workflow-review-required-by-instance-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: requiredByInstance
+				? 'n8n.audit.workflow-reviews.project-approval-required-by-instance.enabled'
+				: 'n8n.audit.workflow-reviews.project-approval-required-by-instance.disabled',
 			payload: { ...user, projectId },
 		});
 	}

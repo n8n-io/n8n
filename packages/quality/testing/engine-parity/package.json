@@ -19,7 +19,10 @@
     "@n8n/workflow-engine-check": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "fast-check": "catalog:",
-    "n8n-workflow": "workspace:*"
+    "n8n-core": "workspace:*",
+    "n8n-nodes-base": "workspace:*",
+    "n8n-workflow": "workspace:*",
+    "uuid": "catalog:"
   },
   "devDependencies": {
     "@n8n/oxlint-config": "workspace:*",

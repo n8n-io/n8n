@@ -6,11 +6,23 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
-import type { AgentResource } from '../types';
+import type { AgentJsonConfig, AgentResource } from '../types';
+import type {
+	SetupTask,
+	SetupTaskId,
+} from '../components/AgentSetupTasks/agentSetupTasks.registry';
+import AgentSetupTasks from '../components/AgentSetupTasks/AgentSetupTasks.vue';
 
 const track = vi.fn();
+const triggerRedesignEnabled = vi.hoisted(() => ({ value: false }));
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
+}));
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({
+		isFeatureEnabled: () => triggerRedesignEnabled.value,
+		isVariantEnabled: () => triggerRedesignEnabled.value,
+	}),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ pushRef: 'session-xyz' }),
@@ -198,6 +210,9 @@ async function mountColumn(
 		canEditAgent: boolean;
 		isPreviewOpen: boolean;
 		agent: AgentResource | null;
+		localConfig: AgentJsonConfig;
+		tasks: Array<SetupTask<SetupTaskId>>;
+		hidePreviewButton: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -214,7 +229,7 @@ async function mountColumn(
 				{ label: 'Sessions', value: 'sessions' },
 				{ label: 'Settings', value: 'settings' },
 			],
-			localConfig: {
+			localConfig: overrides.localConfig ?? {
 				name: 'Agent',
 				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help the user.',
@@ -231,6 +246,8 @@ async function mountColumn(
 			connectedTriggers: [],
 			canEditAgent: overrides.canEditAgent ?? true,
 			isPreviewOpen: overrides.isPreviewOpen,
+			tasks: overrides.tasks,
+			hidePreviewButton: overrides.hidePreviewButton,
 			executionsDescription: '',
 		},
 		global: {
@@ -245,6 +262,7 @@ async function mountColumn(
 					props: ['showModel', 'showInstructions'],
 					emits: ['update:config'],
 				},
+				AgentSetupTasks: true,
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
 			},
@@ -255,6 +273,35 @@ async function mountColumn(
 describe('AgentBuilderEditorColumn', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		triggerRedesignEnabled.value = false;
+	});
+
+	it('places setup tasks beside Test Agent and forwards task actions', async () => {
+		const task: SetupTask<SetupTaskId> = {
+			id: 'add-tool',
+			titleKey: 'agents.builder.setupTasks.addTool',
+			required: false,
+			state: 'todo',
+			visible: true,
+			action: { labelKey: 'agents.builder.setupTasks.addTool', target: { kind: 'tool' } },
+		};
+		const wrapper = await mountColumn({ tasks: [task] });
+		const actions = wrapper.get('[data-testid="agent-identity-actions"]');
+		const setupTasks = actions.getComponent(AgentSetupTasks);
+		expect(setupTasks.props('tasks')).toEqual([task]);
+		expect(actions.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(true);
+
+		setupTasks.vm.$emit('action', task);
+		expect(wrapper.emitted('setup-task-action')).toEqual([[task]]);
+
+		await wrapper.setProps({ hidePreviewButton: true });
+		expect(actions.findComponent(AgentSetupTasks).exists()).toBe(true);
+		expect(actions.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(false);
+
+		await wrapper.setProps({ tasks: undefined });
+		expect(actions.findComponent(AgentSetupTasks).exists()).toBe(false);
+		await wrapper.setProps({ tasks: [] });
+		expect(actions.findComponent(AgentSetupTasks).exists()).toBe(false);
 	});
 
 	it.each([
@@ -538,21 +585,34 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(tabsRule.find('[data-testid="agent-header-tabs"]').exists()).toBe(true);
 	});
 
-	it('renders named Agent tab cards', async function rendersNamedCards() {
-		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
-		const panels = wrapper.findAllComponents({ name: 'AgentPanel' });
+	it.each([false, true])(
+		'renders named Agent tab cards with trigger redesign %s',
+		async (enabled) => {
+			triggerRedesignEnabled.value = enabled;
+			const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
+			const panels = wrapper.findAllComponents({ name: 'AgentPanel' });
 
-		expect(
-			panels.map(function getPanelHeader(panel) {
-				return panel.props('header');
-			}),
-		).toEqual([
-			'agents.builder.skills.title',
-			'agents.builder.triggers.title',
-			'agents.builder.capabilities.title',
-			'agents.builder.memory.title',
-		]);
-	});
+			expect(
+				panels.map(function getPanelHeader(panel) {
+					return panel.props('header');
+				}),
+			).toEqual(
+				enabled
+					? [
+							'agents.builder.triggers.title',
+							'agents.builder.skills.title',
+							'agents.builder.capabilities.title',
+							'agents.builder.memory.title',
+						]
+					: [
+							'agents.builder.skills.title',
+							'agents.builder.triggers.title',
+							'agents.builder.capabilities.title',
+							'agents.builder.memory.title',
+						],
+			);
+		},
+	);
 
 	it.each([true, false])(
 		'handles preview clicks from the Triggers card when runnable is %s',
@@ -663,5 +723,21 @@ describe('AgentBuilderEditorColumn', () => {
 			capabilities.element.compareDocumentPosition(memory.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it('gives the skills section the attached tools and forwards skill opens from capabilities', async () => {
+		const tools: AgentJsonConfig['tools'] = [
+			{ type: 'workflow', workflow: 'Send report', workflowId: 'wf-1' },
+		];
+		const wrapper = await mountColumn({
+			localConfig: { name: 'Agent', model: '', instructions: '', tools },
+		});
+		await flushPromises();
+
+		expect(wrapper.getComponent({ name: 'AgentSkillsSection' }).props('tools')).toEqual(tools);
+
+		wrapper.getComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('open-skill', 'skill-1');
+
+		expect(wrapper.emitted('open-skill')).toEqual([['skill-1']]);
 	});
 });

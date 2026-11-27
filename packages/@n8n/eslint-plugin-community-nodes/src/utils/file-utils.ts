@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { TSESTree } from '@typescript-eslint/typescript-estree';
 import { parse, simpleTraverse, AST_NODE_TYPES } from '@typescript-eslint/typescript-estree';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
@@ -69,22 +70,17 @@ interface PackageJsonN8n {
 	[key: string]: unknown;
 }
 
-function isValidPackageJson(obj: unknown): obj is { n8n?: PackageJsonN8n } {
-	return typeof obj === 'object' && obj !== null;
-}
-
-function readPackageJsonRaw(packageJsonPath: string): Record<string, unknown> | null {
+export function readJsonObject(filePath: string): Record<string, unknown> | null {
 	try {
-		const content = readFileSync(packageJsonPath, 'utf8');
-		const parsed: unknown = JSON.parse(content);
-		return isValidPackageJson(parsed) ? parsed : null;
+		const parsed: unknown = JSON.parse(readFileSync(filePath, 'utf8'));
+		return isRecord(parsed) ? parsed : null;
 	} catch {
 		return null;
 	}
 }
 
-function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
-	const parsed = readPackageJsonRaw(packageJsonPath);
+export function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
+	const parsed = readJsonObject(packageJsonPath);
 	if (parsed) {
 		const n8n = parsed.n8n;
 		return typeof n8n === 'object' && n8n !== null ? (n8n as PackageJsonN8n) : {};
@@ -100,7 +96,7 @@ function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
  */
 export function readPackageJsonDevDependencies(packageJsonPath: string | null): Set<string> {
 	if (!packageJsonPath) return new Set();
-	const parsed = readPackageJsonRaw(packageJsonPath);
+	const parsed = readJsonObject(packageJsonPath);
 	if (!parsed) return new Set();
 	const devDeps = parsed.devDependencies;
 	if (typeof devDeps !== 'object' || devDeps === null) return new Set();

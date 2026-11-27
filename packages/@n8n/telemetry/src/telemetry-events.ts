@@ -4,6 +4,7 @@ import { APPS_TELEMETRY } from './events/apps';
 import { AUTH_TELEMETRY } from './events/auth';
 import { CONTEXT_TELEMETRY } from './events/context';
 import { CREDENTIALS_TELEMETRY } from './events/credentials';
+import { CUSTOM_MCP_SERVERS_TELEMETRY } from './events/custom-mcp-servers';
 import { EXPRESSIONS_TELEMETRY } from './events/expressions';
 import { INSTANCE_TELEMETRY } from './events/instance';
 import { INSTANCE_AI_TELEMETRY } from './events/instance-ai';
@@ -32,6 +33,7 @@ export const TELEMETRY_EVENT = {
 	AUTH: AUTH_TELEMETRY,
 	CREDENTIALS: CREDENTIALS_TELEMETRY,
 	CONTEXT: CONTEXT_TELEMETRY,
+	CUSTOM_MCP_SERVERS: CUSTOM_MCP_SERVERS_TELEMETRY,
 	EXPRESSIONS: EXPRESSIONS_TELEMETRY,
 	INSTANCE: INSTANCE_TELEMETRY,
 	INSTANCE_AI: INSTANCE_AI_TELEMETRY,

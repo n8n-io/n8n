@@ -35,15 +35,14 @@ const INVISIBLE_RENDER_HINTS = new Set(['data-table', 'eval-setup']);
 const TAIL_NARRATION_MAX_LENGTH = 200;
 
 /**
- * How long the transcript must stay quiet before the activity indicator shows.
+ * How long the transcript must stay quiet before the typing indicator shows.
  *
- * Short silences are normal — the tail of a streamed answer, a run wrapping up
- * after its last token — and calling those "Thinking" is noise on every reply.
- * A real stall is an order of magnitude longer: a provider that buffers tool
- * calls goes quiet for 10s on a 4.5KB write and ~53s on a 20KB one (INS-1224).
+ * Short silences are normal: the tail of a streamed answer, or a run that ends
+ * after its last token. A real stall is much longer. A provider that buffers
+ * tool calls can go quiet for 10s to 53s (INS-1224).
  *
- * A threshold rather than a signal, because the client cannot tell the two
- * apart on its own; the server knowing it is mid-generation would replace this.
+ * The client cannot tell the two apart, so a threshold is used. A server
+ * signal for "mid-generation" would replace it.
  */
 export const ACTIVITY_INDICATOR_DELAY_MS = 5_000;
 

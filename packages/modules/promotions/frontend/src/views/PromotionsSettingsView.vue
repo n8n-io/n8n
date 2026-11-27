@@ -26,6 +26,7 @@ import {
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { nextTick, onMounted, reactive, ref, type ComponentPublicInstance } from 'vue';
@@ -34,6 +35,7 @@ import { useRouter } from 'vue-router';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
+import PromotionProjectAccessRows from '../components/PromotionProjectAccessRows.vue';
 import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
@@ -41,6 +43,7 @@ import {
 	ENVIRONMENTS_PLAN_DOCS_URL,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
 	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
+	PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE,
 } from '../promotions.constants';
 import {
 	deletePromotionEnvironment,
@@ -57,6 +60,9 @@ const message = useMessage();
 const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const showProjectAccess =
+	PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE.length > 0 &&
+	useRBACStore().hasScope('securitySettings:manage');
 const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const { next: nextLoad } = useLatestFetch();
 const { connectErrors, canConnect, connect } = usePromotionCheckout();
@@ -277,6 +283,14 @@ async function remove(environment: PromotionEnvironment) {
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
+		<N8nSettingsSection
+			v-if="showProjectAccess"
+			:title="i18n.baseText('settings.promotions.projectAccess.title')"
+			:description="i18n.baseText('settings.promotions.projectAccess.description')"
+			data-test-id="promotion-project-access-section"
+		>
+			<PromotionProjectAccessRows :settings="PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE" />
 		</N8nSettingsSection>
 		<N8nText
 			v-if="canSwitchBack"

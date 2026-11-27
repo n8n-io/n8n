@@ -187,32 +187,47 @@ describe('AgentsModule', () => {
 				isKnowledgeActive: true,
 				proxyEnabled: false,
 				knowledgeBaseEnabled: true,
+				sandboxEgressPolicy: 'disabled' as const,
 			},
 			{
 				isSandboxEnabled: false,
 				isKnowledgeActive: true,
 				proxyEnabled: true,
 				knowledgeBaseEnabled: false,
+				sandboxEgressPolicy: 'opt-in' as const,
 			},
 			{
 				isSandboxEnabled: true,
 				isKnowledgeActive: false,
 				proxyEnabled: true,
 				knowledgeBaseEnabled: false,
+				sandboxEgressPolicy: 'opt-out' as const,
 			},
 		])(
-			'reports knowledgeBaseEnabled=$knowledgeBaseEnabled for sandbox=$isSandboxEnabled and knowledge module=$isKnowledgeActive, independent of proxy=$proxyEnabled',
-			async ({ isSandboxEnabled, isKnowledgeActive, proxyEnabled, knowledgeBaseEnabled }) => {
-				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [] }));
+			'reports knowledgeBaseEnabled=$knowledgeBaseEnabled, sandboxEnabled=$isSandboxEnabled, sandboxEgressPolicy=$sandboxEgressPolicy for sandbox=$isSandboxEnabled and knowledge module=$isKnowledgeActive, independent of proxy=$proxyEnabled',
+			async ({
+				isSandboxEnabled,
+				isKnowledgeActive,
+				proxyEnabled,
+				knowledgeBaseEnabled,
+				sandboxEgressPolicy,
+			}) => {
+				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [], sandboxEgressPolicy }));
 				Container.set(
 					KnowledgeAvailabilityService,
 					makeKnowledgeAvailabilityService({ isSandboxEnabled, isKnowledgeActive }),
+				);
+				Container.set(
+					SandboxSettingsService,
+					mock<SandboxSettingsService>({ isAgentSandboxEnabled: () => isSandboxEnabled }),
 				);
 				Container.set(AiService, mock<AiService>({ isProxyEnabled: () => proxyEnabled }));
 
 				const settings = await module.settings();
 
 				expect(settings.knowledgeBaseEnabled).toBe(knowledgeBaseEnabled);
+				expect(settings.sandboxEnabled).toBe(isSandboxEnabled);
+				expect(settings.sandboxEgressPolicy).toBe(sandboxEgressPolicy);
 				expect(settings.proxyEnabled).toBe(proxyEnabled);
 			},
 		);

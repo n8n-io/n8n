@@ -371,6 +371,14 @@ export class N8nClient {
 		return await this.paginate<Record<string, unknown>>('/promotions/providers', {}, limit);
 	}
 
+	async getPromotionSettings() {
+		return await this.get<Record<string, unknown>>('/promotions/settings');
+	}
+
+	async updatePromotionSettings(body: unknown) {
+		return await this.patch<Record<string, unknown>>('/promotions/settings', body);
+	}
+
 	async getPromotionProvider(id: string) {
 		return await this.get<Record<string, unknown>>(`/promotions/providers/${id}`);
 	}
@@ -543,6 +551,20 @@ export class N8nClient {
 			confirmDestructiveChanges,
 			expectedPreviewRevision,
 		});
+	}
+
+	// ─── Promotion reviews ─────────────────────────────────────────
+
+	async listPromotionReviews(state?: 'open' | 'closed', limit?: number) {
+		return await this.paginate<Record<string, unknown>>(
+			'/promotions/reviews',
+			state ? { state } : {},
+			limit,
+		);
+	}
+
+	async getPromotionReview(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/reviews/${id}`);
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────

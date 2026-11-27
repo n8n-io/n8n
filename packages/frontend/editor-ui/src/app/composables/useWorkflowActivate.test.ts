@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import type { PushMessage } from '@n8n/api-types';
 import { useWorkflowActivate } from './useWorkflowActivate';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
@@ -96,11 +97,18 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 const mockSettingsImpl = vi.hoisted(() => ({
 	isWorkflowPublicationServiceEnabled: false,
 	isMultiMain: false,
+	settings: { workflowReviews: { enabled: false, alwaysRequired: false } },
 	setWorkflowReviewsPolicy: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => mockSettingsImpl),
+}));
+
+const mockFetchWorkflowReviewRequests = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
+	fetchWorkflowReviewRequests: mockFetchWorkflowReviewRequests,
 }));
 
 const mockOpenModal = vi.hoisted(() => vi.fn());
@@ -274,11 +282,16 @@ describe('useWorkflowActivate', () => {
 			expect(mockSetActiveState).not.toHaveBeenCalled();
 		});
 
-		it('requires approval in the editor when the server refuses an unreviewed version', async () => {
+		it('keeps the instance policy and refreshes the review status after a review_required rejection', async () => {
 			const refusal = Object.assign(new Error('No approved review'), {
 				meta: { reason: 'review_required', versionId: VERSION_ID, validationError: true },
 			});
 			mockPublishWorkflow.mockRejectedValueOnce(refusal);
+			mockFetchWorkflowReviewRequests.mockResolvedValueOnce({
+				count: 0,
+				data: [],
+				reviewRequiredBy: 'instance',
+			});
 
 			const { publishWorkflow } = useWorkflowActivate();
 			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
@@ -286,8 +299,11 @@ describe('useWorkflowActivate', () => {
 			expect(result).toEqual({ success: false, errorHandled: true });
 			expect(mockSettingsImpl.setWorkflowReviewsPolicy).toHaveBeenCalledWith({
 				enabled: true,
-				alwaysRequired: true,
+				alwaysRequired: false,
 			});
+			await vi.waitFor(() =>
+				expect(useWorkflowReviewStatusStore().reviewRequiredBy(WORKFLOW_ID)).toBe('instance'),
+			);
 			expect(mockCloseModal).toHaveBeenCalledWith(WORKFLOW_PUBLISH_MODAL_KEY);
 			expect(mockCloseModal).toHaveBeenCalledWith(WORKFLOW_HISTORY_PUBLISH_MODAL_KEY);
 			expect(mockShowError).toHaveBeenCalled();

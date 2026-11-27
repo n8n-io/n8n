@@ -224,6 +224,24 @@ describe('AgentRequirementsExtractor', () => {
 		]);
 	});
 
+	it('includes a workflow guardrail check workflow', () => {
+		const snapshot = prepare({
+			name: 'Support',
+			model: 'openai/gpt-4o',
+			credential: 'model-credential',
+			instructions: '',
+			config: {
+				guardrails: {
+					tools: [{ kind: 'workflow', id: 'check_1', workflowId: 'check-workflow' }],
+				},
+			},
+		});
+
+		expect(extractor.extract(snapshot).workflows).toEqual([
+			{ ...source, referencedWorkflowId: 'check-workflow', origin: 'top-level' },
+		]);
+	});
+
 	it('rejects a workflow tool without an ID', () => {
 		const snapshot = prepare({
 			name: 'Draft',

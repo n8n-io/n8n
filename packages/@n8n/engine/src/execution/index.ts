@@ -15,6 +15,7 @@ export type {
 	ExecutionMode,
 	ExecutionStatus,
 	ExecutorWaitDeclaration,
+	ErrorSourceLink,
 	ParentLink,
 	StepError,
 	StepKey,
@@ -22,7 +23,7 @@ export type {
 	ResumeBinding,
 	ResumeCause,
 	StepSlots,
-	StepOutputSource,
+	ItemSource,
 	StepOutputSources,
 	StepStatus,
 	SeededSteps,
@@ -32,6 +33,7 @@ export type {
 } from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
 export type {
+	CreateExecutionResult,
 	ExecutionRecord,
 	ExecutionStore,
 	NewExecutionRecord,
@@ -54,6 +56,7 @@ export type {
 	NewStepRecord,
 	StaleQueuedStep,
 	StaleRunningStep,
+	StaleSettledStep,
 	StepRecord,
 	StepStore,
 	StepSummary,

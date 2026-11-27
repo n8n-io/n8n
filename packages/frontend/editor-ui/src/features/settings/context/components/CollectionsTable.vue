@@ -4,14 +4,13 @@ import type { KnowledgeCollectionDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { N8nActionToggle, N8nBadge, N8nDataTableServer, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji, TableHeader } from '@n8n/design-system';
-import { getResourcePermissions } from '@n8n/permissions';
-import { useRBACStore } from '@n8n/stores/rbac.store';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
+import { useCollectionPermissions } from '@/features/settings/context/composables/useCollectionPermissions';
 
 type HomeProject = KnowledgeCollectionDto['homeProject'];
 type CollectionAction = 'edit' | 'delete';
@@ -29,33 +28,14 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+	open: [collection: KnowledgeCollectionDto];
 	edit: [collection: KnowledgeCollectionDto];
 	delete: [collection: KnowledgeCollectionDto];
 }>();
 
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
-const rbacStore = useRBACStore();
-
-function projectScopes(projectId: string) {
-	const personal = projectsStore.personalProject;
-	if (personal?.id === projectId) {
-		return personal.scopes;
-	}
-
-	return projectsStore.myProjects.find((project) => project.id === projectId)?.scopes;
-}
-
-// The server checks `agent:update` in the home project, or the global scope of an instance owner.
-function canChange(collection: KnowledgeCollectionDto): boolean {
-	const hasGlobalScope = rbacStore.hasScope('agent:update');
-	if (hasGlobalScope) {
-		return true;
-	}
-
-	const scopes = projectScopes(collection.homeProject.id);
-	return getResourcePermissions(scopes).agent?.update === true;
-}
+const { canChange } = useCollectionPermissions();
 
 const rowActions = computed<CollectionActionItem[]>(() => [
 	{ value: 'edit', label: i18n.baseText('settings.context.collections.actions.edit') },
@@ -72,6 +52,10 @@ function onAction(collection: KnowledgeCollectionDto, action: CollectionAction) 
 	} else {
 		emit('delete', collection);
 	}
+}
+
+function onRowClick(_event: MouseEvent, payload: { item: KnowledgeCollectionDto }) {
+	emit('open', payload.item);
 }
 
 function projectLabel(project: HomeProject): string {
@@ -162,6 +146,8 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 			:items-length="props.collections.length"
 			:loading="props.loading"
 			:pagination="false"
+			:row-props="{ class: $style.row }"
+			@click:row="onRowClick"
 		>
 			<template v-if="props.showEmpty" #cover>
 				<slot name="empty" />
@@ -169,9 +155,12 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 
 			<template #[`item.name`]="{ item }">
 				<div :class="$style.collection">
-					<N8nText size="medium" color="text-dark" data-test-id="collection-name">
-						{{ item.name }}
-					</N8nText>
+					<!-- A button, so that keyboard users can open the collection too. -->
+					<button type="button" :class="$style.open" @click.stop="emit('open', item)">
+						<N8nText size="medium" color="text-dark" data-test-id="collection-name">
+							{{ item.name }}
+						</N8nText>
+					</button>
 					<N8nText
 						size="small"
 						color="text-light"
@@ -225,9 +214,9 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 				</N8nText>
 			</template>
 
-			<!-- A row the user cannot change has no menu. -->
+			<!-- A row the user cannot change has no menu. A click on the menu does not open the row. -->
 			<template #[`item.actions`]="{ item }">
-				<div v-if="canChange(item)" :class="$style.actions">
+				<div v-if="canChange(item)" :class="$style.actions" @click.stop>
 					<N8nActionToggle
 						:actions="rowActions"
 						:aria-label="i18n.baseText('node.moreActions')"
@@ -247,6 +236,16 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 	gap: var(--spacing--5xs);
 	padding-block: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.open {
+	align-self: flex-start;
+	max-width: 100%;
+	padding: 0;
+	border: none;
+	background: none;
+	text-align: start;
+	cursor: pointer;
 }
 
 // Line clamping needs the text element itself, not a wrapper.
@@ -282,5 +281,9 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 .actions {
 	display: flex;
 	justify-content: flex-end;
+}
+
+.row {
+	cursor: pointer;
 }
 </style>

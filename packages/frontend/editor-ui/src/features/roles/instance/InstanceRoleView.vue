@@ -13,6 +13,7 @@ import { useRouter } from 'vue-router';
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
 import { useRoleDeleteGuard } from '../composables/useRoleDeleteGuard';
 import { useRoleDeletion } from '../composables/useRoleDeletion';
+import { useHiddenRoleResources, withoutHiddenScopes } from '../composables/useHiddenRoleResources';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
 import InstanceRoleAssignmentsTab from './InstanceRoleAssignmentsTab.vue';
 import DeleteInstanceRoleModal from './components/DeleteInstanceRoleModal.vue';
@@ -24,6 +25,7 @@ import {
 } from './instanceRoleScopes';
 
 const rolesStore = useRolesStore();
+const hiddenResources = useHiddenRoleResources();
 const router = useRouter();
 const { deleteBlockedReason } = useRoleDeleteGuard();
 const { showMessage, showError } = useToast();
@@ -73,6 +75,9 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 // (clicking copies the options they grant in full, see `getPresetScopes`).
 // Chat is not: none of its scopes is an option the editor exposes.
 const PRESET_ROLE_SLUGS: readonly string[] = [GLOBAL_MEMBER_ROLE_SLUG, GLOBAL_ADMIN_ROLE_SLUG];
+// A preset leaves out the options of hidden resources, as a new role does.
+const presetScopesOf = (roleScopes: readonly string[]) =>
+	withoutHiddenScopes(getPresetScopes(roleScopes), hiddenResources.value);
 const presetRoles = computed(() =>
 	PRESET_ROLE_SLUGS.flatMap((slug) =>
 		rolesStore.processedInstanceRoles.filter((r) => r.systemRole && r.slug === slug),
@@ -90,7 +95,10 @@ const sameScopeSet = (a: readonly string[], b: readonly string[]) => {
 const activePresetSlug = computed(
 	() =>
 		presetRoles.value.find((preset) =>
-			sameScopeSet(getPresetScopes(preset.scopes), form.value.scopes),
+			sameScopeSet(
+				presetScopesOf(preset.scopes),
+				withoutHiddenScopes(form.value.scopes, hiddenResources.value),
+			),
 		)?.slug ?? null,
 );
 
@@ -117,7 +125,7 @@ function setPreset(slug: string) {
 	// the editor does not expose (e.g. chatHub agents) and partial option subsets
 	// (Member holds four of the five Tags scopes); both are left out, so the
 	// form never shows a half-checked box the user could not set themselves.
-	form.value.scopes = getPresetScopes(preset.scopes);
+	form.value.scopes = presetScopesOf(preset.scopes);
 }
 
 async function createInstanceRole() {

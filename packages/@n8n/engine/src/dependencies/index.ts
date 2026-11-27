@@ -1,3 +1,4 @@
+export { noopExecutionFilesDeleter } from './external-dependencies';
 export type {
 	ExecutionFilesDeleter,
 	ExecutionLocation,
@@ -7,5 +8,6 @@ export type {
 	SubExecutionMode,
 	StepExecutionContext,
 	StepExecutionRequest,
+	StepInputSources,
 	StepExecutionResult,
 } from './external-dependencies';

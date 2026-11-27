@@ -37,6 +37,7 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
+import { injectOpenResource } from '@/features/ai/instanceAi/openResourceContext';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { useSkillsStore } from '@/features/settings/context/skills.store';
@@ -873,50 +874,78 @@ describe('InstanceAiThreadView', () => {
 		);
 	});
 
-	it('offers a resource picker in the header while no tabs are open, and opens the picked resource', async () => {
-		const user = userEvent.setup();
-		const { findByTestId, queryAllByTestId } = renderView({
-			props: { threadId: 'thread-1' },
+	describe('opening a resource from the composer', () => {
+		// Stands in for the "+" menu: it shows the item only when the view provides the context.
+		const OpenResourceInputStub = defineComponent({
+			setup(_props, { expose }) {
+				const openResource = injectOpenResource();
+				// The conversation focuses its composer after a tab opens.
+				expose({ focus: () => {} });
+				return () =>
+					openResource?.isAvailable()
+						? h('button', {
+								'data-test-id': 'input-open-resource',
+								'data-project-id': openResource.projectId(),
+								onClick: () =>
+									openResource.open({
+										type: 'workflow',
+										id: 'wf-picked',
+										name: 'Picked workflow',
+										icon: 'workflow',
+										projectId: 'thread-project',
+									}),
+							})
+						: null;
+			},
 		});
-		// The header toggle opens the preview. The tab bar has its own, which closes it.
-		const headerToggles = () =>
-			queryAllByTestId('instance-ai-artifacts-preview-toggle').filter(
-				(toggle) => toggle.getAttribute('aria-pressed') === 'false',
+		const renderWithOpenResource = (props: { threadId: string }) =>
+			renderView({
+				props,
+				global: { stubs: { ...defaultViewStubs, InstanceAiInput: OpenResourceInputStub } },
+			});
+
+		it('shows no open-resource button or preview toggle in the header while no tabs are open', async () => {
+			const { findByTestId, queryByTestId, queryAllByTestId } = renderWithOpenResource({
+				threadId: 'thread-1',
+			});
+
+			await findByTestId('input-open-resource');
+			expect(queryByTestId('instance-ai-open-resource')).toBeNull();
+			// The tab bar has its own toggle, which closes the preview. The header one opens it.
+			expect(
+				queryAllByTestId('instance-ai-artifacts-preview-toggle').filter(
+					(toggle) => toggle.getAttribute('aria-pressed') === 'false',
+				),
+			).toHaveLength(0);
+		});
+
+		it('opens the resource that the composer picks in a preview tab', async () => {
+			const user = userEvent.setup();
+			const { findByTestId } = renderWithOpenResource({ threadId: 'thread-1' });
+
+			const button = await findByTestId('input-open-resource');
+			expect(button).toHaveAttribute('data-project-id', 'thread-project');
+			await user.click(button);
+
+			expect(await findByTestId('instance-ai-workflow-preview-stub')).toHaveAttribute(
+				'data-workflow-id',
+				'wf-picked',
 			);
+		});
 
-		const picker = await findByTestId('instance-ai-open-resource-picker');
-		expect(picker).toHaveAttribute('data-project-id', 'thread-project');
-		expect(headerToggles()).toHaveLength(0);
+		it('does not offer to open a resource until the stored tabs load', async () => {
+			vi.mocked(fetchThreadTabs).mockReturnValueOnce(new Promise(() => {}));
+			const { queryByTestId } = renderWithOpenResource({ threadId: 'thread-1' });
+			await flushPromises();
 
-		await user.click(picker);
-
-		expect(await findByTestId('instance-ai-workflow-preview-stub')).toHaveAttribute(
-			'data-workflow-id',
-			'wf-picked',
-		);
+			expect(queryByTestId('input-open-resource')).toBeNull();
+		});
 	});
 
-	it('shows no resource picker until the stored tabs load', async () => {
-		const user = userEvent.setup();
-		vi.mocked(fetchThreadTabs).mockReturnValueOnce(new Promise(() => {}));
-		const { findAllByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		const toggles = await findAllByTestId('instance-ai-artifacts-preview-toggle');
-		expect(queryByTestId('instance-ai-open-resource-picker')).toBeNull();
-		const toggle = toggles.find((toggle) => toggle.getAttribute('aria-pressed') === 'false')!;
-		expect(toggle).toHaveAttribute('aria-disabled', 'true');
-		expect(toggle).not.toBeDisabled();
-		toggle.focus();
-		expect(toggle).toHaveFocus();
-		await user.keyboard('{Enter} ');
-		await user.click(toggle);
-		expect(toggle).toHaveAttribute('aria-pressed', 'false');
-	});
-
-	it('shows the preview toggle, not the picker, while tabs are open', async () => {
+	it('shows the preview toggle in the header while tabs are open', async () => {
 		seedWorkflowArtifact();
 		const user = userEvent.setup();
-		const { findByTestId, getAllByTestId, queryByTestId } = renderView({
+		const { findByTestId, getAllByTestId } = renderView({
 			props: { threadId: 'thread-1' },
 		});
 		await findByTestId('instance-ai-workflow-preview-stub');
@@ -926,12 +955,10 @@ describe('InstanceAiThreadView', () => {
 		);
 		await user.click(closeToggle!);
 
-		expect(queryByTestId('instance-ai-open-resource-picker')).toBeNull();
-		expect(
-			getAllByTestId('instance-ai-artifacts-preview-toggle').some(
-				(toggle) => toggle.getAttribute('aria-pressed') === 'false',
-			),
-		).toBe(true);
+		const openToggle = getAllByTestId('instance-ai-artifacts-preview-toggle').find(
+			(toggle) => toggle.getAttribute('aria-pressed') === 'false',
+		);
+		expect(openToggle).toBeEnabled();
 	});
 
 	it('uses the message-circle-plus icon for the new chat button', function () {
@@ -3060,22 +3087,34 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-workflow-draft-preview-stub')).toBeNull();
 		});
 
-		it('shows a thinking word of the thread in the status bar', async () => {
+		/** A streaming run whose only entry is reasoning, so its thinking step is active. */
+		function streamReasoning() {
+			stageNewWorkflow();
+			const run = thread.messages[1];
+			run.agentTree!.toolCalls = [];
+			run.agentTree!.timeline = [{ type: 'reasoning', content: 'Checking the request.' }];
+			thread.messages = [...thread.messages];
+			thread.isStreaming = true;
+		}
+
+		it('shows a thinking word of the thread in the thinking step of the run', async () => {
 			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
 				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
 			);
-			// The last word of the general list.
+			/** The last word of the general list. */
 			const random = vi.spyOn(Math, 'random').mockReturnValue(0.999);
 			onTestFinished(() => random.mockRestore());
-			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			thread.isStreaming = true;
+			streamReasoning();
 
-			const bar = await findByTestId('instance-ai-status-bar');
-			expect(bar).toHaveTextContent('Tracing the connections');
+			const step = await findByTestId('instance-ai-thinking-block');
+			await vi.waitFor(() => expect(step).toHaveTextContent('Tracing the connections'));
+			/** The thinking step shows the live activity, so the run activity row stays hidden. */
+			expect(queryByTestId('instance-ai-run-activity')).toBeNull();
 		});
 
-		it('shows "Thinking" in the status bar in the control arm', async () => {
+		it('shows the first sentence, not a thinking word, in the control arm', async () => {
 			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
 				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'control' : undefined,
 			);
@@ -3083,11 +3122,11 @@ describe('InstanceAiThreadView', () => {
 			onTestFinished(() => random.mockRestore());
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			thread.isStreaming = true;
+			streamReasoning();
 
-			const bar = await findByTestId('instance-ai-status-bar');
-			expect(bar).toHaveTextContent('Thinking');
-			expect(bar).not.toHaveTextContent('Tracing the connections');
+			const step = await findByTestId('instance-ai-thinking-block');
+			await vi.waitFor(() => expect(step).toHaveTextContent('Checking the request.'));
+			expect(step).not.toHaveTextContent('Tracing the connections');
 		});
 
 		it('shows no staging canvas in the control arm', async () => {

@@ -52,6 +52,51 @@ function childWithOutput(
 	return child;
 }
 
+const REVERSED: INode = {
+	id: 'reversed',
+	name: 'Reversed',
+	type: 'n8n-nodes-base.sort',
+	typeVersion: 1,
+	position: [0, 200],
+	parameters: {
+		sortFieldsUi: { sortField: [{ fieldName: 'id', order: 'descending' }] },
+		options: {},
+	},
+};
+
+/** `secondInput` ends with a Merge of two branches. `secondOutput` ends after a false branch. */
+function childWithLastNodeOn(kind: 'secondInput' | 'secondOutput'): IWorkflowBase {
+	const child = definition('ado-5857-child.json');
+	const start = requiredNode(child, 'Start');
+	const last = requiredNode(child, 'Last');
+	last.parameters = {};
+	if (kind === 'secondInput') {
+		last.type = 'n8n-nodes-base.merge';
+		last.typeVersion = 3.2;
+		child.nodes = [start, REVERSED, last];
+		child.connections = {
+			Start: {
+				main: [
+					[
+						{ node: 'Last', type: 'main', index: 0 },
+						{ node: 'Reversed', type: 'main', index: 0 },
+					],
+				],
+			},
+			Reversed: { main: [[{ node: 'Last', type: 'main', index: 1 }]] },
+		};
+	} else {
+		last.type = 'n8n-nodes-base.noOp';
+		last.typeVersion = 1;
+		child.nodes = [start, requiredNode(child, 'Upper IF'), last];
+		child.connections = {
+			Start: { main: [[{ node: 'Upper IF', type: 'main', index: 0 }]] },
+			'Upper IF': { main: [[], [{ node: 'Last', type: 'main', index: 0 }]] },
+		};
+	}
+	return child;
+}
+
 function resumeUrlFrom(data: IRunExecutionData): string {
 	const url = data.resultData.runData['Resume URL'][0].data?.main?.[0]?.[0].json.resumeUrl;
 	if (typeof url !== 'string') throw new Error('Missing child resume URL');
@@ -96,10 +141,9 @@ test.describe(
 	'Sub-workflow output contract',
 	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	() => {
-		// TODO(CET-315): the child's branches converge on one input, which engine v2
-		// refuses. Engine v2 does not run `each` mode at all.
+		// Engine v2 does not run `each` mode at all.
 		for (const { mode, engine } of [
-			{ mode: 'once', engine: '@engine:v2-pending' },
+			{ mode: 'once', engine: '@engine:v2' },
 			{ mode: 'each', engine: '@engine:v1-only' },
 		]) {
 			test(`returns the reported false-branch items in ${mode} mode ${engine}`, async ({ api }) => {
@@ -135,8 +179,24 @@ test.describe(
 			});
 		}
 
-		// TODO(CET-315): the child's branches converge on one input, which engine v2 refuses.
-		test('keeps the v1.2 output contract for an existing workflow @engine:v2-pending', async ({
+		for (const { kind, ids } of [
+			{ kind: 'secondInput', ids: [55, 56, 57, 57, 56, 55] },
+			{ kind: 'secondOutput', ids: [56, 57] },
+		] as const) {
+			test(`returns parent item links when the last node is on a ${kind}`, async ({ api }) => {
+				const child = await api.workflows.importWorkflowFromDefinition(childWithLastNodeOn(kind));
+				await api.workflows.activate(child.workflowId, child.createdWorkflow.versionId!);
+				const parent = await publishParent(api, child.workflowId);
+				await api.webhooks.trigger(`/webhook/${parent.webhookPath}`);
+				expect(await output(api, parent.workflowId)).toEqual(
+					ids.map((id) => ({ id, parentId: id })),
+				);
+			});
+		}
+
+		// Engine v1 runs "Upper terminal" once for each branch that feeds it, and engine v2
+		// runs it once on the items of all of them, so the v1.2 contract returns other items.
+		test('keeps the v1.2 output contract for an existing workflow @engine:v1-only', async ({
 			api,
 		}) => {
 			const childDefinition = definition('ado-5857-child.json');

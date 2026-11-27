@@ -15,6 +15,7 @@ export type {
 	EvaluatorConfig,
 	WorkflowData,
 	EvaluateOptions,
+	ExpressionEvaluationOutcome,
 	ExecuteOptions,
 	RuntimeBridge,
 	BridgeConfig,

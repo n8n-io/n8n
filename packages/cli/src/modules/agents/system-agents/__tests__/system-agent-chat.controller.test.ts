@@ -41,6 +41,7 @@ function setup() {
 	const memory = mock<N8nMemory>();
 	memory.getThreadsMetadata.mockResolvedValue(new Map());
 	const executionService = mock<AgentExecutionService>();
+	executionService.findFirstMessagePreviews.mockResolvedValue(new Map());
 	const memoryTrace = mock<AgentMemoryTraceService>();
 	systemAgents.getUsableThread.mockResolvedValue(thread);
 	systemAgents.findUsableThread.mockResolvedValue(thread);
@@ -293,7 +294,7 @@ describe('SystemAgentChatController', () => {
 			}) as AgentExecutionThread;
 
 		it('lists a page of the threads of the user with the agent as summaries', async () => {
-			const { controller, systemAgents, memory } = setup();
+			const { controller, systemAgents, memory, executionService } = setup();
 			systemAgents.listThreads.mockResolvedValue({
 				threads: [
 					listed('thread-1', '2026-10-19T10:00:00.000Z'),
@@ -302,6 +303,9 @@ describe('SystemAgentChatController', () => {
 				hasMore: false,
 			});
 			memory.getThreadsMetadata.mockResolvedValue(new Map([['thread-1', { emoji: '🤖' }]]));
+			executionService.findFirstMessagePreviews.mockResolvedValue(
+				new Map([['thread-2', 'Build a rain alert']]),
+			);
 
 			const result = await listThreads(controller, AGENT_ID, { limit: '5' });
 
@@ -312,6 +316,7 @@ describe('SystemAgentChatController', () => {
 					{
 						id: 'thread-1',
 						title: 'Chat thread-1',
+						firstMessage: null,
 						updatedAt: '2026-10-19T10:00:00.000Z',
 						projectId: 'project-1',
 						metadata: { emoji: '🤖' },
@@ -319,6 +324,7 @@ describe('SystemAgentChatController', () => {
 					{
 						id: 'thread-2',
 						title: 'Chat thread-2',
+						firstMessage: 'Build a rain alert',
 						updatedAt: '2026-10-19T09:00:00.000Z',
 						projectId: 'project-1',
 					},
@@ -394,6 +400,7 @@ describe('SystemAgentChatController', () => {
 			expect(result).toEqual({
 				id: 'thread-1',
 				title: 'First chat',
+				firstMessage: null,
 				updatedAt: '2026-10-19T10:00:00.000Z',
 				projectId: 'project-1',
 				metadata: { emoji: '🤖' },

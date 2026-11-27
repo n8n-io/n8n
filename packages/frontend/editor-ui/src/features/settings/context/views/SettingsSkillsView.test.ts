@@ -613,10 +613,9 @@ describe('SettingsSkillsView', () => {
 	it('sorts on the server and turns the order around instead of clearing it', async () => {
 		skillsStore.skills = [skill()];
 		skillsStore.count = 1;
-		const { container } = renderView();
+		const { getByRole } = renderView();
 		await new Promise(process.nextTick);
-		const header = (title: string) =>
-			[...container.querySelectorAll('thead th')].find((th) => th.textContent?.includes(title))!;
+		const header = (title: string) => getByRole('button', { name: title });
 
 		await userEvent.click(header('Skill'));
 		await waitFor(() =>
@@ -1255,14 +1254,13 @@ describe('SettingsSkillsView', () => {
 
 	describe('edit', () => {
 		it.each([
-			['instance', true, true, false, false],
-			['project', true, true, true, true],
-			['instance', false, true, true, undefined],
-			['project', true, false, true, undefined],
+			['instance', true, false, false],
+			['instance', true, true, true],
+			['project', true, true, true],
+			['project', false, true, undefined],
 		] as const)(
-			'shows availability in the table and modal behind the Assistant flag (%s, flag %s, Assistant on %s)',
-			async (scope, enabled, assistantOn, availableToAssistant, expected) => {
-				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(enabled);
+			'shows availability in the table and modal while the Assistant is on (%s, Assistant on %s)',
+			async (scope, assistantOn, availableToAssistant, expected) => {
 				mockedStore(useSettingsStore).moduleSettings = {
 					'instance-ai': { enabled: assistantOn },
 				} as never;

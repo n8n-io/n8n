@@ -33,8 +33,8 @@ function dataTableTab(id: string): ArtifactTab {
 
 const UPDATED_AT = '2026-09-24T10:00:00.000Z';
 
-function workflowRow(id: string, activeVersionId: string | null = null) {
-	return { id, name: `Workflow ${id}`, updatedAt: UPDATED_AT, activeVersionId };
+function workflowRow(id: string, activeVersionId: string | null = null, isArchived = false) {
+	return { id, name: `Workflow ${id}`, updatedAt: UPDATED_AT, activeVersionId, isArchived };
 }
 
 function dataTableRow(id: string, columnCount: number) {
@@ -79,17 +79,18 @@ describe('useArtifactTabSummaries', () => {
 		expect(mocks.searchWorkflows).toHaveBeenCalledTimes(1);
 		expect(mocks.searchWorkflows).toHaveBeenCalledWith({
 			ids: ['wf-1', 'wf-2'],
-			select: ['id', 'name', 'updatedAt', 'activeVersionId'],
+			select: ['id', 'name', 'updatedAt', 'activeVersionId', 'isArchived'],
 			options: { includeScopes: false },
 		});
 	});
 
-	it('stores the edited time and publish status of each workflow', async () => {
+	it('stores the edited time, publish status, and archive state of each workflow', async () => {
 		mocks.searchWorkflows.mockResolvedValue([
-			workflowRow('wf-1', 'version-1'),
-			workflowRow('wf-2', null),
+			workflowRow('wf-1', 'version-1', false),
+			workflowRow('wf-2', null, false),
+			workflowRow('wf-3', null, true),
 		]);
-		const { getSummary } = setup([workflowTab('wf-1'), workflowTab('wf-2')]);
+		const { getSummary } = setup([workflowTab('wf-1'), workflowTab('wf-2'), workflowTab('wf-3')]);
 		await flushPromises();
 
 		expect(getSummary(workflowTab('wf-1'))).toEqual({
@@ -97,12 +98,21 @@ describe('useArtifactTabSummaries', () => {
 			type: 'workflow',
 			name: 'Workflow wf-1',
 			published: true,
+			isArchived: false,
 		});
 		expect(getSummary(workflowTab('wf-2'))).toEqual({
 			updatedAt: UPDATED_AT,
 			type: 'workflow',
 			name: 'Workflow wf-2',
 			published: false,
+			isArchived: false,
+		});
+		expect(getSummary(workflowTab('wf-3'))).toEqual({
+			updatedAt: UPDATED_AT,
+			type: 'workflow',
+			name: 'Workflow wf-3',
+			published: false,
+			isArchived: true,
 		});
 	});
 

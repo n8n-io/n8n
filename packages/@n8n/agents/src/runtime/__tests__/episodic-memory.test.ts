@@ -489,12 +489,26 @@ describe('getEpisodicMemoryScope', () => {
 		).toBeNull();
 	});
 
-	it('turns episodic memory off when the carried scope is malformed', () => {
+	it('turns episodic memory off when the carried scope is malformed or mixes disabled with scope IDs', () => {
 		expect(
 			getEpisodicMemoryScope({
 				resourceId: 'integration:slack:U1',
 				threadId: 'thread-1',
 				hostMetadata: { [EPISODIC_SCOPE_METADATA_KEY]: { writeScopeId: '' } },
+			}),
+		).toBeNull();
+
+		expect(
+			getEpisodicMemoryScope({
+				resourceId: 'integration:slack:U1',
+				threadId: 'thread-1',
+				hostMetadata: {
+					[EPISODIC_SCOPE_METADATA_KEY]: {
+						disabled: true,
+						writeScopeId: 'slack:T1:C1',
+						readScopeIds: ['slack:T1:C1'],
+					},
+				},
 			}),
 		).toBeNull();
 	});

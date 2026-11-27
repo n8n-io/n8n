@@ -46,6 +46,7 @@
 		{ "path": "../modules/code-sandbox/backend/tsconfig.build.json" },
 		{ "path": "../modules/execution-limits/backend/tsconfig.build.json" },
 		{ "path": "../modules/insights/backend/tsconfig.build.json" },
+		{ "path": "../modules/mcp-servers/backend/tsconfig.build.json" },
 		{ "path": "../modules/quick-connect/backend/tsconfig.build.json" },
 		{ "path": "../modules/workflow-builder/backend/tsconfig.build.json" },
 		{ "path": "../@n8n/backend-test-utils/tsconfig.build.json" },
@@ -53,6 +54,7 @@
 		{ "path": "../@n8n/di/tsconfig.build.json" },
 		{ "path": "../@n8n/nodes-langchain/tsconfig.build.json" },
 		{ "path": "../@n8n/permissions/tsconfig.build.json" },
-		{ "path": "../@n8n/scheduler/tsconfig.build.json" }
+		{ "path": "../@n8n/scheduler/tsconfig.build.json" },
+		{ "path": "../modules/durable-leases/backend/tsconfig.build.json" }
 	]
 }

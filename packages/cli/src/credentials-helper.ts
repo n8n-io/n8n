@@ -908,6 +908,47 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	/**
+	 * Removes the caller's stored token of a per-user credential after the provider
+	 * rejected its refresh token. The pre-run check then reports the credential as
+	 * missing, and the next webhook call answers with a connect link.
+	 * Shared credentials keep their token: the owner reconnects them in the editor.
+	 */
+	async discardRejectedOauthTokenData(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		rejectedRefreshToken: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<void> {
+		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+
+		const resolverId =
+			credentialsEntity.resolverId ??
+			this.dynamicCredentialsProxy.getEffectiveResolverId(additionalData.workflowSettings);
+
+		if (
+			!credentialsEntity.isResolvable ||
+			!resolverId ||
+			!additionalData.executionContext?.credentials
+		) {
+			return;
+		}
+
+		await this.dynamicCredentialsProxy.discardRejectedOAuthTokenDataIfNeeded(
+			{
+				id: credentialsEntity.id,
+				name: credentialsEntity.name,
+				type: credentialsEntity.type,
+				isResolvable: credentialsEntity.isResolvable,
+				resolverId,
+			},
+			rejectedRefreshToken,
+			additionalData.executionContext,
+			additionalData.workflowSettings,
+			additionalData.executionId,
+		);
+	}
+
+	/**
 	 * Updates credential's oauth token data in the database
 	 */
 	async updateCredentialsOauthTokenData(
