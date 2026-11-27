@@ -28,7 +28,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { isChatNode } from '@/app/utils/aiUtils';
-import type { ThreadRuntime } from '../instanceAi.store';
+import type { ArtifactThread } from '../artifactThread';
 import { getExecutionResultsByWorkflow } from '../canvasPreview.utils';
 
 export interface SetupPanelExecutionResult {
@@ -40,7 +40,7 @@ export interface SetupPanelExecutionResult {
 
 export function useSetupPanelExecution(options: {
 	workflowId: MaybeRefOrGetter<string | undefined>;
-	thread: Pick<ThreadRuntime, 'id' | 'artifactTurns' | 'sendMessage' | 'rememberManualExecution'>;
+	thread: Pick<ArtifactThread, 'id' | 'artifactTurns' | 'sendMessage' | 'rememberManualExecution'>;
 }) {
 	const rootStore = useRootStore();
 	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();

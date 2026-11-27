@@ -1,5 +1,6 @@
 import type {
 	InstanceAiHandoffContext,
+	InstanceAiSetupItem,
 	InstanceAiWorkflowAttachment,
 	TaskList,
 } from '@n8n/api-types';
@@ -7,6 +8,7 @@ import { inject, provide, type InjectionKey } from 'vue';
 
 import type { createArtifactPreviewMemory } from './artifactPreviewMemory';
 import type { ArtifactTurn } from './artifactTurns';
+import type { SetupPanelMetadataStore } from './composables/useSetupPanelActions';
 import { useThread } from './instanceAi.store';
 import type { PendingHandoff } from './instanceAi.threadRuntime';
 import type { InstanceAiMessageAuthorship } from './prefills';
@@ -38,6 +40,14 @@ export interface ArtifactThread extends ArtifactPreviewMemory {
 	isHydratingThread: boolean;
 	isStreaming: boolean;
 	isSendingMessage: boolean;
+	/** A card waits for the user to answer. */
+	isAwaitingConfirmation: boolean;
+	/** The latest setup checklist of each workflow, from the `setup-items` events. */
+	setupItemsByWorkflowId: Record<string, InstanceAiSetupItem[]>;
+	/** The workflow of the latest setup announcement. */
+	latestSetupWorkflowId: string | undefined;
+	/** Where the setup panel saves credential choices. The current runtime uses its thread store. */
+	setupMetadataStore?: SetupPanelMetadataStore;
 	/** The artifact of the active preview tab, which the next message is about. */
 	activeArtifactId: string | undefined;
 	currentTasks: TaskList | null;

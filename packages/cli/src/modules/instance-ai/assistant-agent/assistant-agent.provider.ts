@@ -44,6 +44,7 @@ import type {
 	SystemAgentTurnOutcome,
 	SystemAgentUserStopScope,
 } from '@/modules/agents/system-agents/system-agent.types';
+import { SystemAgentTurnEventsService } from '@/modules/agents/system-agents/system-agent-turn-events.service';
 import { TelemetryProxy } from '@n8n/backend-services';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
@@ -111,6 +112,9 @@ import {
 /** The model input of a message that has files but no text. */
 export const FILES_ONLY_MESSAGE =
 	'The user attached file(s) without a message. Inspect the first file and give a short summary. Use parse-file for a file that you cannot read directly.';
+
+/** The turns that the chat loads first. The setup panel reads its checklists from them. */
+const EARLIER_SETUP_ITEMS_TURN_LIMIT = 20;
 
 type FormattedTurnError = NonNullable<
 	Awaited<ReturnType<NonNullable<SystemAgentTurnHandle['formatError']>>>
@@ -182,6 +186,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly telemetry: TelemetryProxy,
 		private readonly runDebug: AssistantRunDebugService,
+		private readonly turnEvents: SystemAgentTurnEventsService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -645,16 +650,18 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		setupRoute: AssistantWorkflowSetupRoute,
 	): AssistantTurnRuntime {
 		const lease = turn.workspace;
+		const eventBus = new AssistantEventSink(
+			turn,
+			this.logger,
+			trace ? (event) => trace.observeEvent(event) : undefined,
+		);
+		let earlierSetupItems: Promise<unknown[]> | undefined;
 		return {
 			memory: turn.memory,
 			resourceId: turn.resourceId,
 			temporaryWorkflowMarkers: createThreadTemporaryWorkflowMarkers(turn.memory, turn.thread.id),
 			getProjectId: async () => turn.thread.projectId,
-			eventBus: new AssistantEventSink(
-				turn,
-				this.logger,
-				trace ? (event) => trace.observeEvent(event) : undefined,
-			),
+			eventBus,
 			// Keeps the trace open until the observer and reflector of the turn finish.
 			...(trace?.context.onMemoryTaskEvent
 				? { onMemoryTaskEvent: trace.context.onMemoryTaskEvent }
@@ -679,7 +686,25 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				runId: options.runId,
 				threadId: turn.thread.id,
 			}),
-			readSetupItemsSnapshots: async () => [],
+			// A merge builds on the checklists of earlier turns, and an unchanged one is not sent again.
+			readSetupItemsSnapshots: async () => {
+				earlierSetupItems ??= this.turnEvents
+					.readRecentHostEvents(
+						ASSISTANT_AGENT_ID,
+						turn.user,
+						turn.thread.id,
+						'setup-items',
+						EARLIER_SETUP_ITEMS_TURN_LIMIT,
+					)
+					.catch((error: unknown) => {
+						this.logger.warn('Failed to read the setup checklists of earlier turns', {
+							threadId: turn.thread.id,
+							error: getErrorMessage(error),
+						});
+						return [];
+					});
+				return eventBus.setupItemsSnapshots(await earlierSetupItems);
+			},
 			// The setup panel announces the checklist without suspending the turn.
 			markWorkflowSetupHandled: async (workflowId) =>
 				await setupRoute.markWorkflowSetupHandled(workflowId),

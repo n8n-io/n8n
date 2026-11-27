@@ -151,9 +151,20 @@ function applyDeltaToNodes(nodes: INodeUi[], delta: NodesDelta): 'changed' | 'no
 	return sawTarget ? 'noop' : 'dropped';
 }
 
+/** The thread metadata where the panel keeps credential choices for the agent. */
+export interface SetupPanelMetadataStore {
+	getThreadMetadata(): Record<string, unknown> | undefined;
+	setThreadMetadata(metadata: Record<string, unknown> | undefined): void;
+	/** Merges `metadata` into the stored metadata. */
+	updateThreadMetadata(metadata: Record<string, unknown>): Promise<unknown>;
+	fetchThreadMetadata(): Promise<Record<string, unknown> | undefined>;
+}
+
 /** Save credential choices before applying setup values through a guarded workflow PATCH. */
 export function useSetupPanelActions(options: {
 	threadId: string;
+	/** Defaults to the thread store of the current runtime. */
+	metadataStore?: SetupPanelMetadataStore;
 	/** The thread's active artifact workflow — same source as `useSetupPanelState`. */
 	workflowId: MaybeRefOrGetter<string | undefined>;
 	isAgentBuilding: MaybeRefOrGetter<boolean>;
@@ -174,6 +185,14 @@ export function useSetupPanelActions(options: {
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
 	const instanceAiStore = useInstanceAiStore();
+	const metadataStore: SetupPanelMetadataStore = options.metadataStore ?? {
+		getThreadMetadata: () => instanceAiStore.getThreadMetadata(options.threadId),
+		setThreadMetadata: (metadata) => instanceAiStore.setThreadMetadata(options.threadId, metadata),
+		updateThreadMetadata: async (metadata) =>
+			await updateThreadMetadata(rootStore.restApiContext, options.threadId, metadata),
+		fetchThreadMetadata: async () =>
+			(await fetchThread(rootStore.restApiContext, options.threadId)).thread.metadata,
+	};
 	const credentialsStore = useCredentialsStore();
 
 	const activeApplyCount = ref(0);
@@ -186,7 +205,7 @@ export function useSetupPanelActions(options: {
 		const workflowId = toValue(options.workflowId);
 		if (!workflowId) return [];
 		return readPendingInstanceAiSetupCredentialSelections(
-			instanceAiStore.getThreadMetadata(options.threadId),
+			metadataStore.getThreadMetadata(),
 			workflowId,
 		).map(({ itemId, selection }): CredentialBind => {
 			const cached = pendingCredentialBinds.get(itemId);
@@ -211,9 +230,9 @@ export function useSetupPanelActions(options: {
 	});
 
 	async function persistMetadata(metadata: Record<string, unknown>) {
-		await updateThreadMetadata(rootStore.restApiContext, options.threadId, metadata);
-		instanceAiStore.setThreadMetadata(options.threadId, {
-			...instanceAiStore.getThreadMetadata(options.threadId),
+		await metadataStore.updateThreadMetadata(metadata);
+		metadataStore.setThreadMetadata({
+			...metadataStore.getThreadMetadata(),
 			...metadata,
 		});
 	}
@@ -421,21 +440,21 @@ export function useSetupPanelActions(options: {
 		applyingDeltas.set(delta, workflowId);
 		try {
 			if (delta.credentialBinds.length > 0) {
-				const before = instanceAiStore.getThreadMetadata(options.threadId);
-				const { thread } = await fetchThread(rootStore.restApiContext, options.threadId);
-				const current = instanceAiStore.getThreadMetadata(options.threadId);
+				const before = metadataStore.getThreadMetadata();
+				const fetchedMetadata = await metadataStore.fetchThreadMetadata();
+				const current = metadataStore.getThreadMetadata();
 				// Keep choices saved locally while the server read was in flight.
-				instanceAiStore.setThreadMetadata(options.threadId, {
+				metadataStore.setThreadMetadata({
 					...current,
 					...Object.fromEntries(
-						Object.entries(thread.metadata ?? {}).filter(([key]) =>
+						Object.entries(fetchedMetadata ?? {}).filter(([key]) =>
 							isEqual(before?.[key], current?.[key]),
 						),
 					),
 				});
 				const pendingIds = new Set(
 					readPendingInstanceAiSetupCredentialSelections(
-						instanceAiStore.getThreadMetadata(options.threadId),
+						metadataStore.getThreadMetadata(),
 						workflowId,
 					).map(({ selection }) => selection.selectionId),
 				);

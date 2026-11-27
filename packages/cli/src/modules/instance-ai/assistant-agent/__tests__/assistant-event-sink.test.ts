@@ -35,6 +35,31 @@ describe('AssistantEventSink', () => {
 		);
 	});
 
+	it('returns the latest setup checklist that the chat accepted for each workflow', () => {
+		const { sink, emitHostEvent } = createSink();
+		const setupItems = (workflowId: string, items: unknown[]) =>
+			({
+				type: 'setup-items',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload: { workflowId, items },
+			}) as unknown as InstanceAiEvent;
+		const slack = { id: 'slack', kind: 'credential', credentialType: 'slackApi' };
+
+		sink.publish('thread-1', setupItems('wf-1', []));
+		sink.publish('thread-1', setupItems('wf-2', [slack]));
+		sink.publish('thread-1', setupItems('wf-1', [slack]));
+		emitHostEvent.mockImplementation(() => {
+			throw new Error('too large');
+		});
+		sink.publish('thread-1', setupItems('wf-2', []));
+
+		expect(sink.setupItemsSnapshots()).toEqual([
+			{ workflowId: 'wf-2', items: [slack] },
+			{ workflowId: 'wf-1', items: [slack] },
+		]);
+	});
+
 	it('keeps an auto-approval as a host event keyed by its tool call', () => {
 		const { sink, emitHostEvent } = createSink();
 		const payload = {

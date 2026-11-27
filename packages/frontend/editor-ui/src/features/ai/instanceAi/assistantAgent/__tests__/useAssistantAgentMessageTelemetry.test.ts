@@ -124,6 +124,26 @@ describe('useAssistantAgentMessageTelemetry', () => {
 		]);
 	});
 
+	it('reports the setup panel state, except on the message that reports a panel run', () => {
+		const setupContext = {
+			workflow_id: 'wf-1',
+			pending_credential_count: 1,
+			pending_parameter_count: 2,
+		};
+		const telemetry = useAssistantAgentMessageTelemetry('thread-1', () => setupContext);
+		telemetry.expectHostSend({
+			text: 'I ran the workflow',
+			authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
+		});
+
+		telemetry.trackSend(sending('I ran the workflow'));
+		telemetry.trackSend(sending('Connect Slack'));
+
+		const [panelRun, typed] = telemetryTrack.mock.calls.map(([, props]) => props);
+		expect(panelRun).not.toHaveProperty('workflow_id');
+		expect(typed).toMatchObject({ ...setupContext, thread_id: 'thread-1' });
+	});
+
 	it('reports the authorship and mentions of a host send once', () => {
 		const telemetry = useAssistantAgentMessageTelemetry('thread-1');
 		const mentionCounts = { ...EMPTY_ASSISTANT_MENTION_COUNTS, workflow: 1, total: 1 };

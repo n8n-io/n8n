@@ -28,7 +28,6 @@ import {
 	getThreadDisplayTitle,
 	threadTargetsAgent,
 } from './instanceAi.threadRuntime';
-import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from './useCanvasPreview';
 import { provideOpenResource } from './openResourceContext';
 import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
@@ -57,6 +56,7 @@ import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.vue';
+import { useSetupPanelWorkflow } from '@/features/ai/instanceAi/composables/useSetupPanelWorkflow';
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiTestAgentPreviewPanel from './components/InstanceAiTestAgentPreviewPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
@@ -93,7 +93,6 @@ import { useTestAgentPreviewFlag } from '@/features/agents/composables/useTestAg
 const props = defineProps<{ threadId: string }>();
 
 const store = useInstanceAiStore();
-const settingsStore = useInstanceAiSettingsStore();
 const appSettingsStore = useSettingsStore();
 const thread = provideThread(props.threadId);
 useAssistantAwayTelemetry({
@@ -374,30 +373,14 @@ watch(
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
-// Early setup announcements can arrive before the first workflow artifact.
-const setupPanelWorkflowId = computed(() => {
-	if (!settingsStore.isInstanceAiSetupPanelEnabled) return undefined;
-	const active = preview.activeWorkflowId.value;
-	if (preview.activeTabId.value) return active ?? undefined;
-	let latest: string | undefined;
-	for (const entry of thread.producedArtifacts.values()) {
-		if (entry.type === 'workflow') latest = entry.id;
-	}
-	return latest ?? thread.latestSetupWorkflowId;
-});
-const setupPanelProjectId = computed(() =>
-	setupPanelWorkflowId.value
-		? thread.producedArtifacts.get(setupPanelWorkflowId.value)?.projectId
-		: undefined,
-);
-const setupOverlapHeight = ref(0);
 const setupPanelRef = useTemplateRef<InstanceType<typeof InstanceAiSetupPanel>>('setupPanel');
-onUnmounted(
-	thread.registerSetupChatTelemetryContext(() => {
-		const context = setupPanelRef.value?.getChatTelemetryContext();
-		return context?.workflow_id === setupPanelWorkflowId.value ? context : undefined;
-	}),
-);
+const {
+	workflowId: setupPanelWorkflowId,
+	projectId: setupPanelProjectId,
+	readChatTelemetryContext: readSetupChatTelemetryContext,
+} = useSetupPanelWorkflow(thread, preview, setupPanelRef);
+const setupOverlapHeight = ref(0);
+onUnmounted(thread.registerSetupChatTelemetryContext(readSetupChatTelemetryContext));
 
 const agentReturnContext = useAgentReturnContextStore().consumePendingArtifactReturn();
 const agentReturnWorkflowId = agentReturnContext?.workflowId;

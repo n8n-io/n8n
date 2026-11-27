@@ -3,6 +3,7 @@ import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionService } from '../../agent-execution.service';
+import type { AgentExecution } from '../../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import type { TimelineEvent } from '../../execution-recorder';
 import type { SystemAgentExecutionService } from '../system-agent-execution.service';
@@ -73,5 +74,28 @@ describe('SystemAgentTurnEventsService', () => {
 			service.readHostEvent(AGENT_ID, user, THREAD_ID, EXECUTION_ID, 'trace'),
 		).rejects.toThrow(NotFoundError);
 		expect(agentExecutions.findExecutionTimeline).not.toHaveBeenCalled();
+	});
+
+	it('returns the events with the name from the first history page, oldest first', async () => {
+		agentExecutions.getThreadDetailPage.mockResolvedValue({
+			thread: mock<AgentExecutionThread>(),
+			executions: [
+				{ timeline },
+				{ timeline: null },
+				{ timeline: [{ type: 'host-event', name: 'status', payload: { step: 3 }, timestamp: 5 }] },
+			] as AgentExecution[],
+			hasOlder: false,
+		});
+
+		await expect(
+			service.readRecentHostEvents(AGENT_ID, user, THREAD_ID, 'status', 20),
+		).resolves.toEqual([{ step: 1 }, { step: 2 }, { step: 3 }]);
+		expect(agentExecutions.getThreadDetailPage).toHaveBeenCalledWith(
+			THREAD_ID,
+			'project-1',
+			AGENT_ID,
+			'user-1',
+			{ limit: 20 },
+		);
 	});
 });

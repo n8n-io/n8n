@@ -1,4 +1,8 @@
-import type { AssistantThreadTabsResponse, AssistantThreadTabsState } from '@n8n/api-types';
+import type {
+	AssistantSetupCredentialMetadataResponse,
+	AssistantThreadTabsResponse,
+	AssistantThreadTabsState,
+} from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -22,4 +26,25 @@ export async function saveAssistantAgentThreadTabs(
 	state: AssistantThreadTabsState,
 ): Promise<AssistantThreadTabsResponse> {
 	return await makeRestApiRequest(context, 'PUT', `/assistant/threads/${threadId}/tabs`, state);
+}
+
+/** The credential choices that the setup panel saved in the thread metadata. */
+export async function fetchAssistantAgentSetupCredentials(
+	context: IRestApiContext,
+	threadId: string,
+): Promise<AssistantSetupCredentialMetadataResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/assistant/threads/${threadId}/setup-credentials`,
+	);
+}
+
+export async function saveAssistantAgentSetupCredentials(
+	context: IRestApiContext,
+	threadId: string,
+	metadata: Record<string, unknown>,
+): Promise<AssistantSetupCredentialMetadataResponse> {
+	const url = `/assistant/threads/${threadId}/setup-credentials`;
+	return await makeRestApiRequest(context, 'PATCH', url, { metadata });
 }

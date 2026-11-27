@@ -3,23 +3,36 @@ import {
 	AssistantAgentTargetRequestDto,
 	AssistantPreferenceCardEditRequestDto,
 	AssistantPreferenceCardUndoRequestDto,
+	AssistantSetupCredentialMetadataRequestDto,
 	AssistantThreadTabsRequestDto,
 	InstanceAiPersistPendingAgentRequest,
+	isInstanceAiSetupCredentialMetadataKey,
 	type AssistantAgentTargetsResponse,
 	type AssistantPreferenceCardEditResponse,
 	type AssistantPreferenceCardsResponse,
 	type AssistantPreferenceCardUndoResponse,
+	type AssistantSetupCredentialMetadataResponse,
 	type AssistantThreadTabsResponse,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, GlobalScope, Param, Post, Put, RestController } from '@n8n/decorators';
+import { Body, Get, GlobalScope, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
+
+import { SystemAgentThreadMetadataService } from '@/modules/agents/system-agents/system-agent-thread-metadata.service';
 
 import { AssistantAgentFeedbackService } from './assistant-agent-feedback.service';
 import { AssistantAgentTargetsService } from './assistant-agent-targets.service';
 import { AssistantPreferenceCardsService } from './assistant-preference-cards.service';
 import { AssistantThreadCreditsService } from './assistant-thread-credits.service';
 import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
+import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
+
+/** The setup credential keys of a thread metadata. The thread keeps other keys for the runtime. */
+function setupCredentialMetadata(metadata: Record<string, unknown> | undefined) {
+	return Object.fromEntries(
+		Object.entries(metadata ?? {}).filter(([key]) => isInstanceAiSetupCredentialMetadataKey(key)),
+	);
+}
 
 /**
  * Routes that only the Assistant agent uses: the n8n Assistant on the Agents
@@ -39,6 +52,7 @@ export class AssistantAgentController {
 		private readonly agentTargets: AssistantAgentTargetsService,
 		private readonly preferenceCards: AssistantPreferenceCardsService,
 		private readonly feedback: AssistantAgentFeedbackService,
+		private readonly threadMetadata: SystemAgentThreadMetadataService,
 	) {}
 
 	@Get('/threads/:threadId/credits')
@@ -73,6 +87,40 @@ export class AssistantAgentController {
 		const state = { ...payload };
 		await this.threadTabs.saveState(req.user, threadId, state);
 		return { state };
+	}
+
+	/** The credential choices that the setup panel saved for the agent to apply. */
+	@Get('/threads/:threadId/setup-credentials')
+	@GlobalScope('instanceAi:message')
+	async getSetupCredentials(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<AssistantSetupCredentialMetadataResponse> {
+		const { metadata } = await this.threadMetadata.readThread(
+			ASSISTANT_AGENT_ID,
+			req.user,
+			threadId,
+		);
+		return { metadata: setupCredentialMetadata(metadata) };
+	}
+
+	/** Save credential choices of the setup panel, which the agent applies with its next build. */
+	@Patch('/threads/:threadId/setup-credentials')
+	@GlobalScope('instanceAi:message')
+	async saveSetupCredentials(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: AssistantSetupCredentialMetadataRequestDto,
+	): Promise<AssistantSetupCredentialMetadataResponse> {
+		const metadata = await this.threadMetadata.patch(
+			ASSISTANT_AGENT_ID,
+			req.user,
+			threadId,
+			(current) => ({ ...current, ...payload.metadata }),
+		);
+		return { metadata: setupCredentialMetadata(metadata) };
 	}
 
 	/** The preference cards of the thread that the user edited or undid. */

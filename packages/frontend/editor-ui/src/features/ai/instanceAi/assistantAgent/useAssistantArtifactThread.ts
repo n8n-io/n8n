@@ -5,7 +5,8 @@ import type {
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { computed, reactive, type DeepReadonly } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, reactive, shallowRef, type DeepReadonly } from 'vue';
 
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -13,9 +14,15 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createArtifactPreviewMemory } from '../artifactPreviewMemory';
 import type { ArtifactSendMessageOptions, ArtifactThread } from '../artifactThread';
 import type { InstanceAiMessageAuthorship } from '../prefills';
+import type { SetupPanelMetadataStore } from '../composables/useSetupPanelActions';
 import { useResourceRegistry } from '../useResourceRegistry';
 import {
+	fetchAssistantAgentSetupCredentials,
+	saveAssistantAgentSetupCredentials,
+} from './assistantAgentTabs.api';
+import {
 	findArchivedAssistantWorkflowIds,
+	findLatestAssistantSetupItems,
 	findLatestAssistantTasks,
 	toAssistantArtifactTurns,
 } from './assistantArtifactTurns';
@@ -53,6 +60,7 @@ interface UseAssistantArtifactThreadOptions {
  */
 export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOptions) {
 	const workflowsListStore = useWorkflowsListStore();
+	const rootStore = useRootStore();
 	const i18n = useI18n();
 
 	const artifactTurns = computed(() =>
@@ -62,7 +70,36 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 		),
 	);
 	const currentTasks = computed(() => findLatestAssistantTasks(options.messages()));
+	const setupItemsByWorkflowId = computed(() => findLatestAssistantSetupItems(options.messages()));
+	const latestSetupWorkflowId = computed(
+		() => artifactTurns.value.findLast((turn) => turn.announcedWorkflowId)?.announcedWorkflowId,
+	);
 	const isHydratingThread = computed(() => options.isLoadingHistory());
+	// The credential choices of the setup panel. The agent reads them from the thread metadata.
+	const setupMetadata = shallowRef<Record<string, unknown>>();
+	let setupMetadataRequested = false;
+	const setupMetadataStore: SetupPanelMetadataStore = {
+		getThreadMetadata: () => {
+			// Load the stored choices once, when the panel first reads them. Local writes win.
+			if (!setupMetadataRequested) {
+				setupMetadataRequested = true;
+				void fetchAssistantAgentSetupCredentials(rootStore.restApiContext, options.threadId)
+					.then(({ metadata }) => (setupMetadata.value = { ...metadata, ...setupMetadata.value }))
+					.catch(() => {});
+			}
+			return setupMetadata.value;
+		},
+		setThreadMetadata: (metadata) => (setupMetadata.value = metadata),
+		updateThreadMetadata: async (metadata) =>
+			await saveAssistantAgentSetupCredentials(
+				rootStore.restApiContext,
+				options.threadId,
+				metadata,
+			),
+		fetchThreadMetadata: async () =>
+			(await fetchAssistantAgentSetupCredentials(rootStore.restApiContext, options.threadId))
+				.metadata,
+	};
 
 	const archivedWorkflowIds = computed(() => findArchivedAssistantWorkflowIds(options.messages()));
 
@@ -91,6 +128,10 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 		isStreaming: computed(() => options.isStreaming()),
 		// The chat streams as soon as it accepts a message.
 		isSendingMessage: false,
+		isAwaitingConfirmation: computed(() => options.isAwaitingUser?.() ?? false),
+		setupItemsByWorkflowId,
+		latestSetupWorkflowId,
+		setupMetadataStore,
 		activeArtifactId: computed(() => options.activeArtifactId?.()),
 		currentTasks,
 		// The editor snapshot seeds only current-runtime threads. The preview fetches the workflow.

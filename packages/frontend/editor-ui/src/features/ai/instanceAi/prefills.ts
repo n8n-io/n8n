@@ -46,6 +46,11 @@ export type InstanceAiMessageAuthorship =
 			promptModified?: boolean;
 	  };
 
+/** The setup panel reports its own runs. These messages do not carry the panel's state. */
+export function isSetupPanelRunReport(authorship: InstanceAiMessageAuthorship): boolean {
+	return authorship.kind === 'prefill' && authorship.prefillType === 'handoff_setup_panel_execute';
+}
+
 /**
  * Every suggestion catalog intersects its own insert payload with this, so a
  * new catalog that forgets to say which pre-fill type its entries are fails

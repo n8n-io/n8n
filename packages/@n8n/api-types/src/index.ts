@@ -841,7 +841,9 @@ export type {
 export {
 	instanceAiSetupCredentialSelectionKey,
 	instanceAiSetupCredentialAppliedKey,
+	isInstanceAiSetupCredentialMetadataKey,
 	readPendingInstanceAiSetupCredentialSelections,
+	type AssistantSetupCredentialMetadataResponse,
 	type InstanceAiSetupCredentialSelection,
 } from './schemas/instance-ai-setup-credential-selection';
 

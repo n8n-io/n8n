@@ -1,9 +1,11 @@
 import {
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
+	isSafeObjectKey,
 	setupItemsPayloadSchema,
 	tasksUpdatePayloadSchema,
 	unwrapToolCatalogCall,
 	workflowsArchivedPayloadSchema,
+	type InstanceAiSetupItem,
 	type TaskList,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -108,6 +110,26 @@ export function findArchivedAssistantWorkflowIds(messages: ReadonlyChatMessages)
 		}
 	}
 	return workflowIds;
+}
+
+/** The latest setup checklist of each workflow, from the `setup-items` host events. */
+export function findLatestAssistantSetupItems(
+	messages: ReadonlyChatMessages,
+): Record<string, InstanceAiSetupItem[]> {
+	const result: Record<string, InstanceAiSetupItem[]> = {};
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const events = messages[i].hostEvents ?? [];
+		for (let j = events.length - 1; j >= 0; j--) {
+			if (events[j].name !== 'setup-items') continue;
+			const parsed = setupItemsPayloadSchema.safeParse(events[j].payload);
+			if (!parsed.success) continue;
+			const { workflowId, items } = parsed.data;
+			if (isSafeObjectKey(workflowId) && !Object.hasOwn(result, workflowId)) {
+				result[workflowId] = items;
+			}
+		}
+	}
+	return result;
 }
 
 /** The latest workflow of the turn's `setup-items` host events. */

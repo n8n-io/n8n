@@ -57,6 +57,7 @@ export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 export { TrackPageHideEventRequestDto } from './telemetry/track-page-hide-event-request.dto';
 export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
+export { AssistantSetupCredentialMetadataRequestDto } from './assistant/assistant-setup-credential-metadata-request.dto';
 export { AssistantAgentTargetRequestDto } from './assistant/assistant-agent-target-request.dto';
 export { AssistantAgentFeedbackRequestDto } from './assistant/assistant-agent-feedback-request.dto';
 export {

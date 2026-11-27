@@ -1,5 +1,9 @@
 import { ModelStreamStallError, type Workspace } from '@n8n/agents';
-import { ASSISTANT_TRACE_EVENT, ASSISTANT_WORKFLOWS_ARCHIVED_EVENT } from '@n8n/api-types';
+import {
+	ASSISTANT_TRACE_EVENT,
+	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
+	type InstanceAiEvent,
+} from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User, UserRepository } from '@n8n/db';
@@ -14,6 +18,7 @@ import type {
 	SystemAgentSandboxFiles,
 	SystemAgentStartTurn,
 } from '@/modules/agents/system-agents/system-agent.types';
+import type { SystemAgentTurnEventsService } from '@/modules/agents/system-agents/system-agent-turn-events.service';
 import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
@@ -109,6 +114,8 @@ function setup() {
 	const telemetry = mock<TelemetryProxy>();
 	const runDebug = mock<AssistantRunDebugService>();
 	runDebug.stepHooksForTurn.mockReturnValue(undefined);
+	const turnEvents = mock<SystemAgentTurnEventsService>();
+	turnEvents.readRecentHostEvents.mockResolvedValue([]);
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -126,8 +133,10 @@ function setup() {
 		turnOverrides,
 		telemetry,
 		runDebug,
+		turnEvents,
 	);
 	return {
+		turnEvents,
 		userRepository,
 		provider,
 		telemetry,
@@ -380,6 +389,62 @@ describe('AssistantAgentProvider', () => {
 				id: 'wf-1',
 				name: 'Digest',
 			});
+		});
+
+		it('reads back the setup checklists of earlier turns under the ones of this turn', async () => {
+			const { provider, turnEnvironment, turnEvents } = setup();
+			const slack = {
+				id: 'wf-1:credential:slackApi',
+				kind: 'credential',
+				credentialType: 'slackApi',
+			};
+			turnEvents.readRecentHostEvents.mockResolvedValue([
+				{ workflowId: 'wf-1', items: [] },
+				{ workflowId: 'wf-2', items: [] },
+			]);
+			await provider.prepareTurn(startTurn());
+
+			const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+			runtime.eventBus.publish('thread-1', {
+				type: 'setup-items',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload: { workflowId: 'wf-1', items: [slack] },
+			} as InstanceAiEvent);
+
+			await expect(runtime.readSetupItemsSnapshots()).resolves.toEqual([
+				{ workflowId: 'wf-2', items: [] },
+				{ workflowId: 'wf-1', items: [slack] },
+			]);
+			expect(turnEvents.readRecentHostEvents).toHaveBeenCalledWith(
+				'assistant',
+				user,
+				'thread-1',
+				'setup-items',
+				20,
+			);
+		});
+
+		it('reads back the checklists of this turn when earlier turns cannot be read', async () => {
+			const { provider, turnEnvironment, turnEvents, logger } = setup();
+			turnEvents.readRecentHostEvents.mockRejectedValue(new Error('db down'));
+			await provider.prepareTurn(startTurn());
+
+			const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+			runtime.eventBus.publish('thread-1', {
+				type: 'setup-items',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload: { workflowId: 'wf-1', items: [] },
+			} as InstanceAiEvent);
+
+			await expect(runtime.readSetupItemsSnapshots()).resolves.toEqual([
+				{ workflowId: 'wf-1', items: [] },
+			]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to read the setup checklists of earlier turns',
+				{ threadId: 'thread-1', error: 'db down' },
+			);
 		});
 
 		it('logs and continues when the artifact tab cannot be stored', async () => {

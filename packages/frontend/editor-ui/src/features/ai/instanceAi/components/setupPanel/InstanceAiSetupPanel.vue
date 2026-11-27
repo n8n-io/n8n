@@ -43,7 +43,7 @@ import { useCredentialOAuth } from '@/features/credentials/composables/useCreden
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
-import { useThread } from '../../instanceAi.store';
+import { useArtifactThread } from '../../artifactThread';
 import { useSetupPanelState, type SetupPanelRow } from '../../composables/useSetupPanelState';
 import { useSetupPanelExecution } from '../../composables/useSetupPanelExecution';
 import {
@@ -76,7 +76,7 @@ provide(ResourceLocatorDropdownTeleportedKey, true);
 
 const i18n = useI18n();
 const toast = useToast();
-const thread = useThread();
+const thread = useArtifactThread();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
@@ -151,6 +151,7 @@ watch(
 
 const actions = useSetupPanelActions({
 	threadId: thread.id,
+	metadataStore: thread.setupMetadataStore,
 	workflowId: () => props.workflowId,
 	workflowNodes,
 	isAgentBuilding,

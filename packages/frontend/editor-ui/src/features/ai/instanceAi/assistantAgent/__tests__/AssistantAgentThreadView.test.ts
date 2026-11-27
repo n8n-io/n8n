@@ -37,7 +37,10 @@ import {
 	type AgentToolStepLabeler,
 } from '@/features/agents/components/agentChatInjectionKeys';
 import { mockedStore } from '@/__tests__/utils';
-import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT,
+	INSTANCE_AI_SETUP_PANEL_EXPERIMENT,
+} from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 
 import {
@@ -241,6 +244,15 @@ vi.mock('../../components/InstanceAiWorkflowPreview.vue', async () => {
 		}),
 	};
 });
+
+// The real setup panel reads the workflow and credential stores, and has its own tests.
+vi.mock('../../components/setupPanel/InstanceAiSetupPanel.vue', () => ({
+	default: defineComponent({
+		props: { workflowId: { type: String, required: true } },
+		setup: (props) => () =>
+			h('div', { 'data-test-id': 'setup-panel-stub', 'data-workflow-id': props.workflowId }),
+	}),
+}));
 
 // The real draft preview renders a canvas, which has its own tests.
 vi.mock('../../components/InstanceAiWorkflowDraftPreview.vue', () => ({
@@ -1129,6 +1141,28 @@ describe('AssistantAgentThreadView', () => {
 		await flushPromises();
 
 		expect(appPreviewProps.current?.['refresh-key']).toBe(Number(firstKey) + 1);
+	});
+
+	it('shows the setup panel for the workflow that the agent announced', async () => {
+		mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+			name === INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name
+				? INSTANCE_AI_SETUP_PANEL_EXPERIMENT.variant
+				: undefined,
+		);
+		const payload = { workflowId: 'wf-1', items: [] };
+		chatMessages.value = [
+			{
+				id: 'a-1',
+				role: 'assistant',
+				content: '',
+				hostEvents: [{ id: 'e', name: 'setup-items', payload }],
+			},
+		];
+		const { findByTestId } = renderView({
+			props: { threadId: 'thread-1', projectId: 'project-1' },
+		});
+
+		expect(await findByTestId('setup-panel-stub')).toHaveAttribute('data-workflow-id', 'wf-1');
 	});
 
 	describe('credits and limited mode', () => {

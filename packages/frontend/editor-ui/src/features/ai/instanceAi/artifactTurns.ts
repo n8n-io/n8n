@@ -14,6 +14,8 @@ export interface ArtifactToolCall {
 	result?: unknown;
 	error?: string;
 	isLoading: boolean;
+	/** Set only where the call order is not the time order, as with sub-agent calls. */
+	completedAt?: string;
 }
 
 /** One message of the thread. */

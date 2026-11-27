@@ -6,10 +6,10 @@ import {
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
-import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
+import type { InstanceAiSetupItem } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
-import type { ArtifactTurn } from '../artifactTurns';
+import { artifactToolCalls, type ArtifactTurn } from '../artifactTurns';
 import { isAgentEditingWorkflow } from '../canvasPreview.utils';
 
 export interface SetupPanelRow {
@@ -19,11 +19,10 @@ export interface SetupPanelRow {
 }
 
 /**
- * Thread state the setup panel reads. Structurally satisfied by `useThread()`;
+ * Thread state the setup panel reads. Structurally satisfied by `ArtifactThread`;
  * kept narrow so tests can pass a plain reactive stub.
  */
 export interface SetupPanelThreadSource {
-	messages: ReadonlyArray<{ agentTree?: InstanceAiAgentNode }>;
 	artifactTurns: readonly ArtifactTurn[];
 	setupItemsByWorkflowId: Record<string, InstanceAiSetupItem[]>;
 }
@@ -85,33 +84,25 @@ export function useSetupPanelState(options: {
 		if (!id || !Object.hasOwn(thread.setupItemsByWorkflowId, id)) return [];
 		return thread.setupItemsByWorkflowId[id];
 	});
-	// Reads the agent tree, not the artifact turns: it compares `completedAt`,
-	// and only the current runtime mounts this panel.
 	const isAwaitingFirstBuild = computed(() => {
 		const id = toValue(options.workflowId);
 		let pending = false;
 		let latestCompletedAt: string | undefined;
-		function visit(node: InstanceAiAgentNode) {
-			for (const call of node.toolCalls) {
-				if (!isRecord(call.result) || call.result.success !== true || call.result.workflowId !== id)
-					continue;
-				const earlySetup =
-					resolveBuilderToolName(call.toolName, call.args.action) ===
-						SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS && call.result.preBuild === true;
-				if (
-					!earlySetup &&
-					call.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
-					call.toolName !== REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW
-				)
-					continue;
-				if (latestCompletedAt && call.completedAt && call.completedAt < latestCompletedAt) continue;
-				pending = earlySetup;
-				latestCompletedAt = call.completedAt;
-			}
-			for (const child of node.children) visit(child);
-		}
-		for (const message of thread.messages) {
-			if (message.agentTree) visit(message.agentTree);
+		for (const call of artifactToolCalls(thread.artifactTurns)) {
+			if (!isRecord(call.result) || call.result.success !== true || call.result.workflowId !== id)
+				continue;
+			const earlySetup =
+				resolveBuilderToolName(call.toolName, call.args.action) ===
+					SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS && call.result.preBuild === true;
+			if (
+				!earlySetup &&
+				call.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
+				call.toolName !== REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW
+			)
+				continue;
+			if (latestCompletedAt && call.completedAt && call.completedAt < latestCompletedAt) continue;
+			pending = earlySetup;
+			latestCompletedAt = call.completedAt;
 		}
 		return pending;
 	});
