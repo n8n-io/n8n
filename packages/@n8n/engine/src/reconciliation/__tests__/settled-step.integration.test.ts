@@ -94,6 +94,8 @@ describe('settled step with no message (integration)', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
 			parent: null,
+			errorSource: null,
+			resolveErrorWorkflowOnFailure: false,
 		});
 		const created = await stepStore.createSteps(executionId, records);
 		const stepIds = Object.fromEntries(created.map(({ id, nodeId }) => [nodeId, id]));

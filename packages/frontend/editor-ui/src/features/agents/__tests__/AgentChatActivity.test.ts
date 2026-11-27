@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed } from 'vue';
@@ -7,6 +7,8 @@ import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-avai
 import type { PolicyViolation } from '@n8n/api-types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import AgentChatActivity from '../components/AgentChatActivity.vue';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { AGENT_TOOL_STEP_LABEL_KEY } from '../components/agentChatInjectionKeys';
 import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
@@ -210,6 +212,22 @@ describe('AgentChatActivity', () => {
 		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
 			false,
 		);
+	});
+
+	it('names the workflow tool of a skill after its workflow', async () => {
+		const posthogStore = usePostHog();
+		vi.mocked(posthogStore.isVariantEnabled).mockReturnValue(true);
+		vi.mocked(useWorkflowsListStore().searchWorkflows).mockResolvedValue([
+			{ id: 'chatwf1', name: 'Lucky code' },
+		] as Awaited<ReturnType<ReturnType<typeof useWorkflowsListStore>['searchWorkflows']>>);
+
+		const wrapper = mountSteps([
+			{ tool: 'workflow_chatwf1', toolCallId: 'tc-skill', state: TOOL_CALL_STATE.DONE },
+		]);
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('Lucky code');
+		expect(wrapper.text()).not.toContain('Workflow chatwf1');
 	});
 
 	it('keeps other guardrail refusals visible as tool errors', () => {

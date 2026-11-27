@@ -1,7 +1,10 @@
+import type { IRunDataDisplayMode } from '@/Interface';
+
 export type InputPanel = {
 	nodeName?: string;
 	run?: number;
 	branch?: number;
+	shownDisplayMode?: IRunDataDisplayMode;
 	data: {
 		isEmpty: boolean;
 	};
@@ -10,6 +13,7 @@ export type InputPanel = {
 export type OutputPanel = {
 	run?: number;
 	branch?: number;
+	shownDisplayMode?: IRunDataDisplayMode;
 	data: {
 		isEmpty: boolean;
 	};

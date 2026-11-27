@@ -7,7 +7,6 @@ import { DataSource as Connection } from '@n8n/typeorm';
 import assert from 'assert';
 import { randomString } from 'n8n-workflow';
 import path from 'node:path';
-import { vi } from 'vitest';
 
 export const testDbPrefix = 'n8n_test_';
 let isInitialized = false;
@@ -59,10 +58,12 @@ export async function init() {
 	const sqliteTemplate = dbType === 'sqlite' ? process.env.N8N_TEST_SQLITE_TEMPLATE : undefined;
 	if (sqliteTemplate) {
 		// Some test files mock `fs`, so use the real module.
+		const { vi } = await import('vitest');
 		const fs = await vi.importActual<typeof import('node:fs')>('node:fs');
 		// An existing file keeps its data, as it does without a template.
 		const databasePath = getSqliteDatabasePath();
 		if (!fs.existsSync(databasePath)) {
+			await fs.promises.mkdir(path.dirname(databasePath), { recursive: true });
 			await fs.promises.copyFile(sqliteTemplate, databasePath);
 			fromTemplate = true;
 		}
@@ -239,7 +240,11 @@ type EntityName =
 	| 'AgentExecutionStatisticsDelta'
 	| 'ExecutionLedgerEntity'
 	| 'ExecutionLedgerParkedEntity'
-	| 'ExecutionLimitAudit';
+	| 'ExecutionLimitAudit'
+	| 'McpServer'
+	| 'McpServerTool'
+	| 'McpServerConnection'
+	| 'McpServerBlock';
 
 /**
  * Truncate specific DB tables in a test DB.

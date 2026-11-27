@@ -20,7 +20,12 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from './RunData.vue';
 import { STORES } from '@n8n/stores';
-import { MODAL_CONFIRM, SET_NODE_TYPE, TRIMMED_RUN_DATA_FILL_DELAY } from '@/app/constants';
+import {
+	MODAL_CONFIRM,
+	OPEN_AI_CHAT_MODEL_NODE_TYPE,
+	SET_NODE_TYPE,
+	TRIMMED_RUN_DATA_FILL_DELAY,
+} from '@/app/constants';
 import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecutions.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -321,12 +326,56 @@ describe('RunData', () => {
 			});
 		});
 
-		it('selects a mode that sets autoSelect in the output pane', async () => {
+		it('shows a mode that sets autoSelect in the output pane without saving it', async () => {
 			runDataDisplayModeRegistry.register(map({ autoSelect: true }));
 
-			const { emitted } = render({ defaultRunItems: items, displayMode: 'table' });
+			const { emitted, findByTestId } = render({ defaultRunItems: items, displayMode: 'table' });
 
-			await waitFor(() => expect(emitted('displayModeChange')).toContainEqual(['map']));
+			expect(await findByTestId('fake-map-view')).toBeInTheDocument();
+			expect(ndvStore.output.shownDisplayMode).toBe('map');
+			expect(emitted('displayModeChange')).toBeUndefined();
+		});
+
+		it('saves and shows the mode that the user picks on a node with an automatic mode', async () => {
+			runDataDisplayModeRegistry.register(map({ autoSelect: true }));
+
+			const { emitted, findByTestId, queryByTestId } = render({
+				defaultRunItems: items,
+				displayMode: 'table',
+			});
+			await findByTestId('fake-map-view');
+
+			await userEvent.click(await findByTestId('radio-button-table'));
+
+			expect(emitted('displayModeChange')).toEqual([['table']]);
+			await waitFor(() => expect(queryByTestId('fake-map-view')).not.toBeInTheDocument());
+			expect(ndvStore.output.shownDisplayMode).toBe('table');
+		});
+
+		it('shows the automatic mode again when another node opens', async () => {
+			runDataDisplayModeRegistry.register(map({ autoSelect: true }));
+			const otherNode = { ...nodes[0], id: '2' };
+
+			const { findByTestId, queryByTestId, rerender } = render({
+				defaultRunItems: items,
+				displayMode: 'table',
+			});
+			await userEvent.click(await findByTestId('radio-button-table'));
+			await waitFor(() => expect(queryByTestId('fake-map-view')).not.toBeInTheDocument());
+
+			await rerender({ node: otherNode });
+
+			expect(await findByTestId('fake-map-view')).toBeInTheDocument();
+		});
+
+		it('shows a new automatic mode after the user picked a mode on this node', async () => {
+			const { findByTestId, rerender } = render({ defaultRunItems: items, displayMode: 'table' });
+			await userEvent.click(await findByTestId('radio-button-json'));
+			await rerender({ displayMode: 'json' });
+
+			runDataDisplayModeRegistry.register(map({ autoSelect: true }));
+
+			expect(await findByTestId('fake-map-view')).toBeInTheDocument();
 		});
 
 		it('offers, auto-selects and renders the HTML module for an HTML node', async () => {
@@ -342,7 +391,7 @@ describe('RunData', () => {
 				json: { html: `<h1>Item ${index}</h1>` },
 			}));
 
-			const { emitted, findByTestId, container, queryByTestId, rerender } = render({
+			const { emitted, findByTestId, container, queryByTestId } = render({
 				defaultRunItems: htmlItems,
 				workflowNodes: [{ ...htmlNode }],
 				node: htmlNode,
@@ -350,9 +399,7 @@ describe('RunData', () => {
 			});
 
 			expect(await findByTestId('radio-button-html')).toHaveTextContent('HTML');
-			await waitFor(() => expect(emitted('displayModeChange')).toContainEqual(['html']));
-
-			await rerender({ displayMode: 'html' });
+			expect(emitted('displayModeChange')).toBeUndefined();
 
 			await waitFor(() =>
 				expect(container.querySelector('iframe.__html-display')).toHaveAttribute(
@@ -618,7 +665,7 @@ describe('RunData', () => {
 	});
 
 	it('should render pagination with binary data on non-binary tab', async () => {
-		const { getByTestId } = render({
+		const { getByTestId, findByTestId } = render({
 			defaultRunItems: Array.from({ length: 26 }).map((_, i) => ({
 				json: {
 					data: {
@@ -636,7 +683,75 @@ describe('RunData', () => {
 			})),
 			displayMode: 'json',
 		});
+		await userEvent.click(await findByTestId('radio-button-json'));
 		expect(getByTestId('ndv-data-pagination')).toBeInTheDocument();
+	});
+
+	describe('automatic built-in display modes', () => {
+		const binaryItem = {
+			json: {},
+			binary: { data: { fileName: 'test.txt', mimeType: 'text/plain', data: '' } },
+		};
+
+		it('shows binary data without saving the binary mode', async () => {
+			const { emitted, findByTestId } = render({
+				defaultRunItems: [binaryItem],
+				displayMode: 'table',
+			});
+
+			expect(await findByTestId('ndv-binary-data_0')).toBeInTheDocument();
+			expect(ndvStore.output.shownDisplayMode).toBe('binary');
+			expect(emitted('displayModeChange')).toBeUndefined();
+		});
+
+		it('shows the pane default when the saved binary mode has no binary data', async () => {
+			const { emitted, findByTestId } = render({
+				defaultRunItems: [{ json: { id: 1 } }],
+				displayMode: 'binary',
+			});
+
+			expect(await findByTestId('radio-button-table')).toHaveAttribute('data-state', 'checked');
+			expect(ndvStore.output.shownDisplayMode).toBe('table');
+			expect(emitted('displayModeChange')).toBeUndefined();
+		});
+
+		it('shows the pane default when the saved rendered mode has no AI content', async () => {
+			const { emitted, findByTestId } = render({
+				defaultRunItems: [{ json: { id: 1 } }],
+				displayMode: 'ai',
+			});
+
+			expect(await findByTestId('radio-button-table')).toHaveAttribute('data-state', 'checked');
+			expect(ndvStore.output.shownDisplayMode).toBe('table');
+			expect(emitted('displayModeChange')).toBeUndefined();
+		});
+
+		it('shows AI content without saving the rendered mode', async () => {
+			const modelNode = {
+				...nodes[0],
+				type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+				typeVersion: 1,
+			} as INodeUi;
+
+			const { emitted, findByTestId } = render({
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						source: [null],
+						data: { ai_languageModel: [[{ json: { response: { messages: ['Hello'] } } }]] },
+					},
+				],
+				workflowNodes: [{ ...modelNode }],
+				node: modelNode,
+				displayMode: 'table',
+			});
+
+			expect(await findByTestId('radio-button-ai')).toHaveAttribute('data-state', 'checked');
+			expect(ndvStore.output.shownDisplayMode).toBe('ai');
+			expect(emitted('displayModeChange')).toBeUndefined();
+		});
 	});
 
 	it('should render sub-execution link in header', async () => {

@@ -14,6 +14,8 @@ import {
 	type AgentChatMessagesResponse,
 	type AgentChatQueueResponse,
 	AgentChatResumeDto,
+	GenerateAgentTestScenariosDto,
+	type GenerateAgentTestScenariosResponse,
 	N8N_CHAT_INTEGRATION_TYPE,
 } from '@n8n/api-types';
 import { AgentsConfig } from '@n8n/config';
@@ -58,6 +60,7 @@ import { messagesToDto } from './agent-message-mapper';
 import type { FlushableResponse } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
+import { AgentTestScenariosService } from './agent-test-scenarios.service';
 import { AgentsService } from './agents.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
@@ -91,6 +94,7 @@ export class AgentChatController {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly chatRelay: AgentChatRelayService,
 		private readonly plans: AgentPlanService,
+		private readonly agentTestScenariosService: AgentTestScenariosService,
 	) {}
 
 	private async requireProductionChat(agentId: string, projectId: string): Promise<void> {
@@ -1207,5 +1211,21 @@ export class AgentChatController {
 		}
 		await this.agentTestChatService.clearTestChatMessages(agentId, req.user.id);
 		return { ok: true };
+	}
+
+	@Post('/:agentId/chat/test-scenarios')
+	@ProjectScope('agent:execute')
+	async generateTestScenarios(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: unknown,
+		@Body payload: GenerateAgentTestScenariosDto,
+	): Promise<GenerateAgentTestScenariosResponse> {
+		const { projectId, agentId } = req.params;
+		return await this.agentTestScenariosService.generateTestScenarios(
+			req.user,
+			projectId,
+			agentId,
+			payload,
+		);
 	}
 }

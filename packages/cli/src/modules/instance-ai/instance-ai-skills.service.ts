@@ -8,9 +8,9 @@ import {
 	type AssistantSkillContent,
 	type AssistantSkillContext,
 	type AssistantSkillFileContent,
-	AssistantSkillsFlagGate,
 	type AssistantSkillSummary,
 	SkillRuntimeService,
+	SkillsGate,
 } from '@/modules/skills';
 
 import {
@@ -86,12 +86,12 @@ const SKILL_GATES: ReadonlyArray<{
 @Service()
 export class InstanceAiSkillsService implements AssistantSkillReader {
 	constructor(
-		private readonly assistantSkillsGate: AssistantSkillsFlagGate,
+		private readonly skillsGate: SkillsGate,
 		private readonly skillRuntime: SkillRuntimeService,
 	) {}
 
 	async isEnabled(): Promise<boolean> {
-		return await this.assistantSkillsGate.isEnabled();
+		return this.skillsGate.isEnabled;
 	}
 
 	async listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {

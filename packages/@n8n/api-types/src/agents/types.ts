@@ -709,6 +709,11 @@ export interface AgentChatMessagesResponse {
 	nextCursor?: string | null;
 }
 
+/** Suggested starter prompts returned by the test-chat scenario generator. */
+export interface GenerateAgentTestScenariosResponse {
+	scenarios: string[];
+}
+
 /**
  * One agent as the n8n chat page lists it.
  *

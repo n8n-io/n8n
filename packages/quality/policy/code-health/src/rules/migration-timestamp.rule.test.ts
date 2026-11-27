@@ -118,6 +118,20 @@ describe('MigrationTimestampRule', () => {
 			expect(ordering!.message).toContain('1784000000000');
 		});
 
+		it('does not flag a sub-floor migration added to a release branch', async () => {
+			writeMigration(tmpDir, COMMON_DIR, '1700000000000-Pre-existing.ts');
+			writeMigration(tmpDir, COMMON_DIR, '1777000000000-BackportedFirst.ts');
+			const newlyAdded = writeMigration(tmpDir, COMMON_DIR, '1750000000000-BackportedSecond.ts');
+
+			const violations = await rule.analyze({
+				rootDir: tmpDir,
+				addedFiles: [newlyAdded],
+				baseBranch: 'release-candidate/2.50.x',
+			});
+
+			expect(violations).toHaveLength(0);
+		});
+
 		it('does NOT flag a historical sub-max file even when other files are added', async () => {
 			writeMigration(tmpDir, COMMON_DIR, '1700000000000-Old.ts');
 			writeMigration(tmpDir, COMMON_DIR, '1750000000000-AlsoOld.ts');

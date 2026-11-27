@@ -31,6 +31,7 @@ export const INSTANCE_RESOURCE_ORDER: InstanceResource[] = [
 	'credential',
 	'project',
 	'app',
+	'mcpServer',
 	'insights',
 ];
 
@@ -45,6 +46,7 @@ export const INSTANCE_RESOURCE_LABEL_KEYS: Record<InstanceResource, BaseTextKey>
 	credential: 'instanceRoles.resource.credential',
 	project: 'instanceRoles.resource.project',
 	app: 'instanceRoles.resource.app',
+	mcpServer: 'instanceRoles.resource.mcpServer',
 	insights: 'instanceRoles.resource.insights',
 };
 
@@ -122,6 +124,10 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 	app: {
 		View: 'instanceRoles.description.app.view',
 		Manage: 'instanceRoles.description.app.manage',
+	},
+	mcpServer: {
+		View: 'instanceRoles.description.mcpServer.view',
+		Manage: 'instanceRoles.description.mcpServer.manage',
 	},
 	insights: { View: 'instanceRoles.description.insights.view' },
 };
@@ -496,10 +502,25 @@ export const TOTAL_INSTANCE_PERMISSIONS = INSTANCE_SCOPE_GROUP_LIST.reduce(
 	0,
 );
 
-/** Count how many permission options a saved flat scope list grants, implied options included. */
-export function countGrantedInstancePermissions(scopes: readonly string[]): number {
+/** Number of permission options the editor shows when the `hidden` resources are hidden. */
+export function countInstancePermissions(hidden: ReadonlySet<string> = new Set()): number {
+	return INSTANCE_SCOPE_GROUP_LIST.filter((group) => !hidden.has(group.resource)).reduce(
+		(sum, group) => sum + group.options.length,
+		0,
+	);
+}
+
+/**
+ * Count how many permission options a saved flat scope list grants, implied options included.
+ * The options of `hidden` resources do not count, because the editor does not show them.
+ */
+export function countGrantedInstancePermissions(
+	scopes: readonly string[],
+	hidden: ReadonlySet<string> = new Set(),
+): number {
 	let count = 0;
 	for (const group of INSTANCE_SCOPE_GROUP_LIST) {
+		if (hidden.has(group.resource)) continue;
 		for (const option of group.options) {
 			if (resolveOptionState(option, group.options, scopes) === 'checked') count++;
 		}

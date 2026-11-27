@@ -61,6 +61,7 @@
     "@n8n/frontend-module-insights": "workspace:*",
     "@n8n/frontend-module-instance-registry": "workspace:*",
     "@n8n/frontend-module-mcp": "workspace:*",
+    "@n8n/frontend-module-mcp-servers": "workspace:*",
     "@n8n/frontend-module-otel": "workspace:*",
     "@n8n/frontend-module-promotions": "workspace:*",
     "@n8n/frontend-module-sdk": "workspace:*",

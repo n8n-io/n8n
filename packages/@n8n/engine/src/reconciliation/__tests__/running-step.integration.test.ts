@@ -88,6 +88,8 @@ describe('running step with no worker (integration)', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
 			parent: null,
+			errorSource: null,
+			resolveErrorWorkflowOnFailure: false,
 		});
 		const created = await stepStore.createSteps(executionId, [
 			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [[{ json: {} }]] },

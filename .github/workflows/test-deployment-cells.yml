@@ -99,6 +99,7 @@ jobs:
     permissions:
       contents: read
       packages: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -169,6 +170,14 @@ jobs:
         with:
           build-command: pnpm turbo run build --filter=n8n-workflow...
 
+      - name: Authenticate with Currents
+        if: vars.CURRENTS_OIDC_POLICY_ID != ''
+        env:
+          CURRENTS_OIDC_POLICY_ID: ${{ vars.CURRENTS_OIDC_POLICY_ID }}
+        run: |
+          KEY=$(pnpm --silent --filter=n8n-playwright exec currents ci auth get-record-key --oidc-provider github-actions)
+          echo "CURRENTS_RECORD_KEY=$KEY" >> "$GITHUB_ENV"
+
       - name: Login to GHCR
         uses: ./.github/actions/docker-registry-login
         with:
@@ -189,7 +198,6 @@ jobs:
         env:
           SPECS: ${{ matrix.specs }}
           REDIS_IMAGE: ${{ matrix.redis_image }}
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
         run: |
@@ -204,7 +212,10 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
+<<<<<<< HEAD
           name: deployment-cells-master-${{ matrix.arch }}-${{ matrix.group }}-${{ github.run_attempt }}
+=======
+          name: deployment-cells-${{ needs.resolve.outputs.channel }}-${{ matrix.arch }}-${{ matrix.group }}-${{ github.run_attempt }}
           path: |
             packages/quality/testing/playwright/test-results/
             packages/quality/testing/playwright/playwright-report/
@@ -212,16 +223,86 @@ jobs:
           if-no-files-found: ignore
 
       - name: Cancel Currents run if workflow is cancelled
-        if: cancelled()
+        if: ${{ cancelled() && env.CURRENTS_RECORD_KEY != '' }}
+        run: pnpm --filter=n8n-playwright exec currents run cancel || true
+
+      - name: Revoke Currents OIDC credential
+        if: ${{ always() && env.CURRENTS_RECORD_KEY != '' }}
+        run: pnpm --filter=n8n-playwright exec currents ci auth revoke || true
+
+  upgrade:
+    name: 3.x · amd64 · upgrade
+    needs: resolve
+    if: needs.resolve.outputs.channel == '3.x'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    env:
+      NODE_OPTIONS: '--max-old-space-size=6144'
+      DEPLOYMENT_CHANNEL: ${{ needs.resolve.outputs.channel }}
+      DEPLOYMENT_ARCH: amd64
+      # Always pass both image env vars explicitly: parseImage() cannot derive
+      # a runners tag when TEST_IMAGE_N8N is pinned by @sha256:... digest.
+      TEST_IMAGE_N8N: ${{ needs.resolve.outputs.n8n }}
+      TEST_IMAGE_TASK_RUNNER: ${{ needs.resolve.outputs.runners }}
+      TEST_IMAGE_N8N_UPGRADE_FROM: ${{ needs.resolve.outputs.n8n_stable }}
+      CURRENTS_PROJECT_ID: 'tlfUav'
+      CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=n8n-workflow...
+
+      - name: Authenticate with Currents
+        if: vars.CURRENTS_OIDC_POLICY_ID != ''
         env:
-          CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          CURRENTS_OIDC_POLICY_ID: ${{ vars.CURRENTS_OIDC_POLICY_ID }}
         run: |
-          if [ -n "$CURRENTS_API_KEY" ]; then
-            curl --location --request PUT \
-              "https://api.currents.dev/v1/runs/cancel-ci/github" \
-              --header "Authorization: Bearer $CURRENTS_API_KEY" \
-              --header "Content-Type: application/json" \
-              --data "{\"githubRunId\": \"${GITHUB_RUN_ID}\", \"githubRunAttempt\": \"${GITHUB_RUN_ATTEMPT}\"}"
-          fi
+          KEY=$(pnpm --silent --filter=n8n-playwright exec currents ci auth get-record-key --oidc-provider github-actions)
+          echo "CURRENTS_RECORD_KEY=$KEY" >> "$GITHUB_ENV"
+
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: true
+
+      - name: Pull pinned images
+        run: |
+          set -euo pipefail
+          docker pull --quiet "$TEST_IMAGE_N8N"
+          docker pull --quiet "$TEST_IMAGE_N8N_UPGRADE_FROM"
+
+      - name: Run upgrade deployment cell
+        run: |
+          set -euo pipefail
+          pnpm --filter=n8n-playwright test:deployment tests/deployment/upgrade-2x-to-3x.spec.ts
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: deployment-cells-3.x-amd64-upgrade-${{ github.run_attempt }}
+>>>>>>> 5970521c47a7dea4b32f6ac4655b64e33b65ed4c
+          path: |
+            packages/quality/testing/playwright/test-results/
+            packages/quality/testing/playwright/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Cancel Currents run if workflow is cancelled
+        if: ${{ cancelled() && env.CURRENTS_RECORD_KEY != '' }}
+        run: pnpm --filter=n8n-playwright exec currents run cancel || true
+
+      - name: Revoke Currents OIDC credential
+        if: ${{ always() && env.CURRENTS_RECORD_KEY != '' }}
+        run: pnpm --filter=n8n-playwright exec currents ci auth revoke || true

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { PromotionRepository } from '@n8n/api-types';
-import { N8nButton, N8nNotice, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nNotice, N8nOption, N8nSelect, N8nSpinner } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useCssModule, watch } from 'vue';
 
 import { usePromotionGitHostDiscovery } from '../composables/usePromotionGitHostDiscovery';
 
@@ -23,6 +23,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 const { options, search, loading, error, onSearch, cancel, retry } =
 	usePromotionGitHostDiscovery(props);
 const selectedRepository = ref<PromotionRepository>();
@@ -57,6 +58,13 @@ const visibleOptions = computed(() => {
 	return [selected, ...options.value];
 });
 
+// Only the first load replaces the list with a loading message. Later loads keep the list at
+// its size and dim it, so the dropdown does not resize on every search.
+const refreshing = computed(() => loading.value && options.value.length > 0);
+const popperClass = computed(() =>
+	[$style.popper, refreshing.value && $style.refreshing].join(' '),
+);
+
 function select(value: string) {
 	const option = visibleOptions.value.find((item) => item.value === value);
 	cancel();
@@ -67,6 +75,10 @@ function select(value: string) {
 		emit('selected', option.repository);
 	}
 }
+
+// Without a remote method, Element Plus filters the loaded options by label on every keystroke.
+// That hides them before the server answers. The discovery composable does the search instead.
+function skipLocalFilter() {}
 
 function onInput(event: Event) {
 	// Dropdown close events must not clear the search used by retry.
@@ -80,9 +92,11 @@ function onInput(event: Event) {
 			:id="inputId"
 			:model-value="modelValue"
 			:disabled="unavailable"
-			:loading="loading"
+			:loading="loading && !refreshing"
+			:popper-class="popperClass"
 			filterable
 			remote
+			:remote-method="skipLocalFilter"
 			remote-show-suffix
 			:placeholder="
 				i18n.baseText(
@@ -95,6 +109,16 @@ function onInput(event: Event) {
 			:no-match-text="emptyMessage"
 			@update:model-value="select"
 		>
+			<template v-if="loading && !refreshing" #empty>
+				<div
+					:class="$style.loading"
+					role="status"
+					:aria-label="i18n.baseText('generic.loading')"
+					data-test-id="promotion-git-host-loading"
+				>
+					<N8nSpinner type="dots" />
+				</div>
+			</template>
 			<N8nOption
 				v-for="option in visibleOptions"
 				:key="`${option.value}:${option.label}`"
@@ -131,6 +155,25 @@ function onInput(event: Event) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+// The dropdown is teleported to the body, so these rules target the Element Plus class names.
+.popper {
+	// Open at full size instead of growing in.
+	&:global(.el-zoom-in-top-enter-active),
+	&:global(.el-zoom-in-top-leave-active) {
+		transition: none;
+	}
+}
+
+.loading {
+	display: flex;
+	justify-content: center;
+	padding-block: var(--spacing--xs);
+}
+
+.refreshing :global(.el-select-dropdown__item) {
+	opacity: 0.5;
 }
 
 .srOnly {

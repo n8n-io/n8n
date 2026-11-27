@@ -36,7 +36,7 @@ import {
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { executeErrorWorkflow } from './execute-error-workflow';
-import { restoreBinaryDataId } from './restore-binary-data-id';
+import { assignDatabaseFilesToExecution, restoreBinaryDataId } from './restore-binary-data-id';
 import { saveExecutionProgress } from './save-execution-progress';
 import {
 	determineFinalExecutionStatus,
@@ -317,7 +317,9 @@ function toMinimalTaskMetadata(taskData: ITaskData): Omit<ITaskData, 'data'> {
 		const { subNodeExecutionData: ___, ...safeMetadata } = metadata;
 		result.metadata = safeMetadata;
 	}
-	if (error) result.redactedError = redactExecutionError(error);
+	if (error) {
+		result.redactedError = redactExecutionError(error);
+	}
 	return result;
 }
 
@@ -414,8 +416,9 @@ function hookFunctionsPush(
 				nodeName,
 				userId: pushRefUserId,
 			});
-			if (!memoryStoppedExecutions.isStopped(executionId))
+			if (!memoryStoppedExecutions.isStopped(executionId)) {
 				sendMetadata(toMinimalTaskMetadata(data));
+			}
 			return;
 		}
 
@@ -688,6 +691,9 @@ function hookFunctionsSave(
 				this.workflowData.id,
 				binaryDataService,
 			);
+		} else {
+			// Not for a sub-execution: its run data refers to files of its parent.
+			await assignDatabaseFilesToExecution(fullRunData, this.executionId);
 		}
 
 		const isManualMode = this.mode === 'manual';
@@ -886,6 +892,8 @@ function hookFunctionsSaveWorker(
 		});
 		runsEndedBySave.delete(fullRunData);
 
+		await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
+
 		const { parentExecution } = fullRunData.data;
 		if (parentExecution) {
 			await duplicateBinaryDataToParent(
@@ -894,6 +902,9 @@ function hookFunctionsSaveWorker(
 				this.workflowData.id,
 				binaryDataService,
 			);
+		} else {
+			// Not for a sub-execution: its run data refers to files of its parent.
+			await assignDatabaseFilesToExecution(fullRunData, this.executionId);
 		}
 
 		const isManualMode = this.mode === 'manual';
