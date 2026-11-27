@@ -40,6 +40,16 @@ describe('startEngineMetricsServer', () => {
 		expect(response.text).toContain('test_gauge 7');
 	});
 
+	it('ignores the query string of a scrape', async () => {
+		const response = await request(server).get('/metrics?x=1');
+
+		expect(response.status).toBe(200);
+	});
+
+	it('listens on the host it is given', () => {
+		expect(server.address()).toMatchObject({ address: '127.0.0.1' });
+	});
+
 	it.each([
 		['GET', '/'],
 		['GET', '/healthz'],

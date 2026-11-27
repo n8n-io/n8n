@@ -109,10 +109,10 @@ describe('EngineV2Module', () => {
 		});
 
 		it.each([
-			{ enable: true, registry: promClient.register },
-			{ enable: false, registry: undefined },
+			{ enable: true, registry: promClient.register, given: 'the global metrics registry' },
+			{ enable: false, registry: undefined, given: 'no metrics registry' },
 		])(
-			'gives the in-process engine the global metrics registry only when N8N_METRICS is $enable',
+			'gives the in-process engine $given when N8N_METRICS is $enable',
 			async ({ enable, registry }) => {
 				mockInstance(PrometheusMetricsConfig, { enable });
 

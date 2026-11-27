@@ -501,7 +501,7 @@ describe('Engine', () => {
 
 		it('serves the global registry, which it also gives the engine, on N8N_ENGINE_HOST and N8N_ENGINE_METRICS_PORT', async () => {
 			metricsConfig.enable = true;
-			Object.assign(engineConfig, { host: '::', metricsPort: 9464 });
+			Object.assign(engineConfig, { host: '::', metricsPort: 9999 });
 
 			await createEngine().init();
 
@@ -509,28 +509,20 @@ describe('Engine', () => {
 			expect(registry).toBe(promClient.register);
 			expect(startEngineMetricsServer).toHaveBeenCalledExactlyOnceWith(registry, {
 				host: '::',
-				port: 9464,
+				port: 9999,
 				logger: expect.anything(),
 			});
 		});
 
-		it('starts the metrics server before the engine takes work', async () => {
-			metricsConfig.enable = true;
-
-			await createEngine().init();
-
-			expect(vi.mocked(startEngineMetricsServer).mock.invocationCallOrder[0]).toBeLessThan(
-				vi.mocked(runtime.init).mock.invocationCallOrder[0],
-			);
-		});
-
 		it('refuses to boot, naming N8N_ENGINE_METRICS_PORT, when the metrics port is taken', async () => {
 			metricsConfig.enable = true;
-			vi.mocked(startEngineMetricsServer).mockRejectedValueOnce(
-				new Error('listen EADDRINUSE: address already in use'),
-			);
+			const listenError = new Error('listen EADDRINUSE: address already in use');
+			vi.mocked(startEngineMetricsServer).mockRejectedValueOnce(listenError);
 
-			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_METRICS_PORT');
+			await expect(createEngine().init()).rejects.toMatchObject({
+				message: expect.stringContaining('N8N_ENGINE_METRICS_PORT'),
+				cause: listenError,
+			});
 			expect(runtime.init).not.toHaveBeenCalled();
 		});
 
@@ -565,6 +557,7 @@ describe('Engine', () => {
 				await engine.stopProcess();
 
 				expect(metricsServer.close).toHaveBeenCalledTimes(1);
+				expect(metricsServer.closeAllConnections).toHaveBeenCalledTimes(1);
 				expect(exit).toHaveBeenCalledExactlyOnceWith();
 			} finally {
 				exit.mockRestore();
