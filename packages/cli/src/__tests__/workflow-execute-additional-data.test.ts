@@ -271,7 +271,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				executeWorkflow(
 					mock<IExecuteWorkflowInfo>(),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+					mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 				),
 			).rejects.toThrow('blocked');
 
