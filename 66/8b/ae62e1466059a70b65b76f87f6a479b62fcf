@@ -1,0 +1,36 @@
+.github/workflows/test-deployment-cells.yml
+  h_8a472ace01776f 149,163,176-201,230-231,236-238,243,249-251
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionPreviewDocument.test.ts
+  h_8a472ace01776f 5,29,33,50,123,240-284
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionPreviewDocument.ts
+  h_8a472ace01776f 7,97-99,179,197
+packages/quality/environments/containers/test-containers.ts
+  h_8a472ace01776f 28,100-102
+packages/quality/environments/containers/tests/stack.test.ts
+  h_8a472ace01776f 200-225,227-229,380-389,391-398,400,402,408,435
+packages/quality/testing/playwright/tests/deployment/README.md
+  h_8a472ace01776f 12-16,22,26-37,46-50,58,60,66-67,69-71
+packages/quality/testing/playwright/tests/deployment/cloud-image-pair.spec.ts
+  h_8a472ace01776f 3-8,10-38
+packages/quality/testing/playwright/tests/deployment/probe.ts
+  h_8a472ace01776f 15-16,76,114-121,802-805,815,822,836-861,979
+packages/quality/testing/playwright/tests/deployment/queue-cell-helpers.ts
+  h_8a472ace01776f 1,3-5,128-296
+packages/quality/testing/playwright/tests/deployment/redis-7.spec.ts
+  h_8a472ace01776f 1-20
+packages/quality/testing/playwright/tests/deployment/standard-image-pair.spec.ts
+  h_8a472ace01776f 1-33
+packages/quality/testing/playwright/tests/deployment/valkey.spec.ts
+  h_8a472ace01776f 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "668bae62e1466059a70b65b76f87f6a479b62fcf",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

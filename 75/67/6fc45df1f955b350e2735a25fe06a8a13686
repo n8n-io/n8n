@@ -1,0 +1,126 @@
+packages/@n8n/db/src/entities/runtime-credential-rule.ts
+  s_55c9c16466c150::t_6427a789bebd1b 26-28
+  s_55c9c16466c150::t_2d7049c68ebef5 1-25,29
+packages/@n8n/backend-services/src/services/__tests__/runtime-credential-proxy.service.test.ts
+  s_55c9c16466c150::t_06d3e01bbd511a 10-15,19-21,36,38,48-49,60-61,65-71,80-82,84-89
+  s_55c9c16466c150::t_ef2b78ab462efb 83,90
+  s_55c9c16466c150::t_c8d2bbad1ecb5e 16-18,91-108
+  s_55c9c16466c150::t_09e646ef304caf 62-64,72-79
+packages/@n8n/db/src/repositories/index.ts
+  s_55c9c16466c150::t_d752154d0b49b7 82-86
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_55c9c16466c150::t_754f0ce8929fb9 68
+packages/@n8n/backend-services/src/services/runtime-credential-proxy.service.ts
+  s_55c9c16466c150::t_4f50582f58f55e 2-7,14-15,18-20,22-24,57-59,61-65,71,77,81-82,85,89
+  s_55c9c16466c150::t_6a376d247d2053 16-17,21,33-34,60,66-70,83-84
+  s_55c9c16466c150::t_de5cd1ea4038be 25-27,30-32
+  s_55c9c16466c150::t_26e4ab8cefbefa 35-37
+  s_55c9c16466c150::t_8540545da0e51f 72-76
+  s_55c9c16466c150::t_fddc11a067bf23 78-80
+  s_55c9c16466c150::t_b13e46b2ed146a 86-88
+  s_16993190805102::t_c1200bc424ed86 28-29
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_55c9c16466c150::t_aff87490cb3ef9 19
+  s_55c9c16466c150::t_8bbfbd7a8f0e52 2263-2336
+  s_55c9c16466c150::t_97ab7fee5c915f 2262,2337-2338
+packages/@n8n/db/src/repositories/runtime-credential-rule.repository.ts
+  s_55c9c16466c150::t_d752154d0b49b7 1-16,18-20,22-69,72
+  s_55c9c16466c150::t_6427a789bebd1b 17,21,70-71
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_55c9c16466c150::t_754f0ce8929fb9 42
+packages/@n8n/api-types/src/dto/runtime-credential-rule/runtime-credential-rule.dto.ts
+  s_55c9c16466c150::t_0e44517148cf8d 66-68
+  s_55c9c16466c150::t_1644a8bf29c178 1-65,69-98
+packages/@n8n/db/src/migrations/common/1795006844318-CreateRuntimeCredentialRuleTable.ts
+  s_55c9c16466c150::t_d33ed7f2b6354b 1-32
+packages/@n8n/permissions/src/scope-information.ts
+  s_55c9c16466c150::t_754f0ce8929fb9 137-141
+packages/@n8n/api-types/src/dto/index.ts
+  s_55c9c16466c150::t_56225abe21077e 949
+  s_55c9c16466c150::t_1644a8bf29c178 946-948,950-951
+  s_55c9c16466c150::t_61bbc1d4e318cc 952-956
+packages/@n8n/db/src/migrations/common/1795020741941-AddAllowedDomainsToRuntimeCredentialRule.ts
+  s_55c9c16466c150::t_111c3ef304a46e 3-21
+  s_55c9c16466c150::t_f4754fecf8e212 1-2,22-23
+packages/@n8n/permissions/src/constants.ee.ts
+  s_55c9c16466c150::t_754f0ce8929fb9 43-44
+packages/@n8n/db/src/migrations/sqlite/1794995238085-AddIsRuntimeToCredentials.ts
+  s_55c9c16466c150::t_1eef408e129117 1-7
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_55c9c16466c150::t_35539ab06283dc 110-128
+  s_55c9c16466c150::t_eb6c99885e9473 453,773
+packages/@n8n/db/src/migrations/common/1794995238085-AddIsRuntimeToCredentials.ts
+  s_55c9c16466c150::t_1eef408e129117 3-4,6-15,18-19
+  s_55c9c16466c150::t_fe098fbd46ad82 1-2,5,16-17,20-21
+packages/@n8n/db/src/entities/credentials-entity.ts
+  s_55c9c16466c150::t_1eef408e129117 76-82
+packages/@n8n/api-types/src/dto/runtime-credential-rule/runtime-credential-rule-impact.dto.ts
+  s_55c9c16466c150::t_45521c87d6fe07 1-26
+docs/generated/sqlite-schema/README.md
+  s_55c9c16466c150::t_05c26e58228e19 72,150,1189,1191,1196,1928-1938
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_55c9c16466c150::t_0dcc609c988d9f 82,84,89
+docs/generated/sqlite-schema/chat_hub_agents.md
+  s_55c9c16466c150::t_c0d49ec7ee5204 81,83,88
+docs/generated/sqlite-schema/chat_hub_sessions.md
+  s_55c9c16466c150::t_a7ffc80123da3c 100,102,107
+docs/generated/sqlite-schema/credential_dependency.md
+  s_55c9c16466c150::t_ca3ad1c2620ff2 61,63,68
+docs/generated/sqlite-schema/credentials_entity.md
+  s_55c9c16466c150::t_321d300a32c374 9,25,27,32,38,78,80,85
+docs/generated/sqlite-schema/dynamic_credential_entry.md
+  s_55c9c16466c150::t_3d5ffa7460ae97 68,70,75
+docs/generated/sqlite-schema/dynamic_credential_resolver.md
+  s_55c9c16466c150::t_89bb3550b16980 64,66,71
+docs/generated/sqlite-schema/dynamic_credential_user_entry.md
+  s_55c9c16466c150::t_eced17067bc0eb 70,72,77
+docs/generated/sqlite-schema/instance_ai_mcp_registry_connections.md
+  s_55c9c16466c150::t_fcc7b95c598ffd 69,71,76
+docs/generated/sqlite-schema/instance_credential_assignment.md
+  s_55c9c16466c150::t_e7f2ef41ef80a2 59,61,66
+docs/generated/sqlite-schema/runtime_credential_rule.md
+  s_55c9c16466c150::t_304f177879f89e 1-62
+docs/generated/sqlite-schema/shared_credentials.md
+  s_55c9c16466c150::t_b68357a627edc6 63,65,70
+docs/generated/sqlite-schema/skill_source.md
+  s_55c9c16466c150::t_caca47915f05e7 107,109,114
+packages/@n8n/api-types/src/schemas/credential-response.schema.ts
+  s_55c9c16466c150::t_f9441dc08c8fc4 13
+packages/@n8n/backend-services/src/pubsub/pubsub.types.ts
+  s_55c9c16466c150::t_a31bbaa57e8cd5 49,152
+packages/@n8n/db/src/entities/index.ts
+  s_55c9c16466c150::t_385e72bad92b41 63,185,280
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_55c9c16466c150::t_1f100e97557b08 71
+packages/@n8n/permissions/src/roles/__tests__/credential-type-policy-scope.test.ts
+  s_55c9c16466c150::t_2d9d50dc585078 84-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "75676fc45df1f955b350e2735a25fe06a8a13686",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_16993190805102": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a21cbb5488c2c3240",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/test/integration/resource-owner.service.test.ts
+  s_c2acdaa2547ceb::t_1698e002125114 215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e8469dde11995b2bec2e2d86bd89ca073543e0cc",
+  "prompts": {},
+  "sessions": {
+    "s_c2acdaa2547ceb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3853d88a-98c9-45e1-afe3-c53837fbb2dd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

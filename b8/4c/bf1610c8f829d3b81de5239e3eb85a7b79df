@@ -1,0 +1,30 @@
+packages/@n8n/cli/docs/commands/promotions.md
+  s_d8f20fc9febbf2::t_96f92be98ffd83 494-496
+  s_d8f20fc9febbf2::t_8178a287616698 399-401,493,512-513
+packages/@n8n/cli/src/commands/promotion-environment/apply.ts
+  s_d8f20fc9febbf2::t_844ad1518f3018 17
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_d8f20fc9febbf2::t_844ad1518f3018 98
+packages/@n8n/cli/src/commands/promotion-environment/list-apply-changes.ts
+  s_d8f20fc9febbf2::t_844ad1518f3018 8
+packages/@n8n/cli/src/commands/promotion-environment/apply-continue.ts
+  s_d8f20fc9febbf2::t_844ad1518f3018 17
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  ai_agent 277-279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b84cbf1610c8f829d3b81de5239e3eb85a7b79df",
+  "prompts": {},
+  "sessions": {
+    "s_d8f20fc9febbf2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b7b4e2e-8874-41a4-9843-3743bd02a84c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

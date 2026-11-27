@@ -1,0 +1,84 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/utiles-trigger.test.ts
+  s_aa3b34db078565::t_70573a70d548e4 24,575-578,580-588,590-593,595-619,621-637,641-642
+  s_aa3b34db078565::t_1588292ce526fe 594,643-645
+  s_aa3b34db078565::t_86caf53853a380 620
+  s_aa3b34db078565::t_bd8e3bf1a46762 579,589
+  s_942868657d3112::t_aa3d755b0d5494 639-640
+  s_942868657d3112::t_fb070be9666943 638
+packages/nodes-base/nodes/Microsoft/Teams/MicrosoftTeamsTrigger.node.ts
+  s_793e8cb0da2ab2::t_5658f0abcd26a8 26,560,566
+  s_aa3b34db078565::t_86caf53853a380 562-565
+  s_942868657d3112::t_df9b8574d15e8b 559,561,567-570
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/MicrosoftTeamTrigger.test.ts
+  s_4079a9bac71dc6::t_f59a4db5c5537d 1429-1432,1437-1446,1452-1476,1478-1553,1612-1613
+  s_aa3b34db078565::t_5cd5ad7f90237e 1427
+  s_942868657d3112::t_529aadfcd696de 1575-1578,1605-1608
+  s_942868657d3112::t_7d98a82aeb5837 1447-1451
+  s_942868657d3112::t_d9f0275fb81546 1477
+  s_942868657d3112::t_fb070be9666943 1579
+  s_942868657d3112::t_b75b1aaac34271 1554,1556-1574,1580-1604,1609-1611
+  s_942868657d3112::t_2ff5658b069007 1555
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/types.ts
+  s_793e8cb0da2ab2::t_52bfbf20c22503 13
+  s_942868657d3112::t_1e53cc0f4b471b 14-15
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils-trigger.ts
+  s_793e8cb0da2ab2::t_991bf49ad814c1 568-572,578-582,584-587,594-598,600-603
+  s_aa3b34db078565::t_86caf53853a380 573-574,588-593
+  s_942868657d3112::t_0d221af094e1e0 583
+  s_942868657d3112::t_1afa10342aa4a1 575-577
+  s_942868657d3112::t_578c223efee986 599
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/message-filters.test.ts
+  s_a1606af512b4c5::t_3ab21694774338 1-30,32-102,110-131,139-160,167-454,456-519,521-544
+  s_a1606af512b4c5::t_37c54c0d276307 31,103-109,132-138,161-166,455,520
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/message-filters.ts
+  s_a1606af512b4c5::t_37c54c0d276307 31,125-130
+  s_a1606af512b4c5::t_91f2a90f646d04 1-30,32-124,131-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cfb6dca9fe3b5ec9fa9fd3b73051f098d85fd038",
+  "prompts": {},
+  "sessions": {
+    "s_4079a9bac71dc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b8f8a9f-aea9-4ea4-9101-dbca7509e2f6",
+        "model": "unknown"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_793e8cb0da2ab2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fba1db41-bb58-41d2-94db-e1d6175aca41",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_942868657d3112": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5fa79d46-03e4-4183-98f8-f6200f4205a9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_a1606af512b4c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69a76138-1b70-41be-949e-c341e494dda3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_aa3b34db078565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1f42448-52fd-4597-860d-0b0632c5490b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
