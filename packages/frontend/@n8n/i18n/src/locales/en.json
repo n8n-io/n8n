@@ -2603,7 +2603,7 @@
 	"mcpServers.tools.broken.callout.incompatible_nodes": "The workflow uses a node that cannot run as a tool. Calls return an error until you remove the node.",
 	"mcpServers.tools.broken.callout.caller_policy": "The workflow settings do not allow calls from other workflows. Calls return an error until you change the settings.",
 	"mcpServers.picker.title": "Add workflows",
-	"mcpServers.picker.description": "Workflows that this project owns. A workflow that another project shares with this project cannot be a tool. Each tool must be published and start with the trigger \"When Executed by Another Workflow\".",
+	"mcpServers.picker.description": "Workflows that this project owns. A workflow that another project shares with this project cannot be a tool. Each tool must be published and start with the trigger \"When Executed by Another Workflow\". A workflow that cannot be a tool shows the reason.",
 	"mcpServers.picker.search": "Search",
 	"mcpServers.picker.noMatches": "No matches",
 	"mcpServers.picker.noDescription": "No description",

@@ -36,7 +36,7 @@ function tool(overrides: Partial<McpServerToolResponse> = {}): McpServerToolResp
 		id: '0190a8d6-4a2e-7000-8000-0000000000a1',
 		serverId: SERVER_ID,
 		kind: 'workflow',
-		targetId: 'wf-1',
+		targetId: 'wf-5',
 		toolName: 'get_campaign_numbers',
 		description: 'Numbers of a campaign.',
 		draftSource: 'defaults',
@@ -67,6 +67,7 @@ const candidates: McpServerToolCandidate[] = [
 	{ workflowId: 'wf-2', name: 'Draft only', description: null, reason: 'not_published' },
 	{ workflowId: 'wf-3', name: 'Manual start', description: null, reason: 'missing_trigger' },
 	{ workflowId: 'wf-4', name: 'Closed', description: null, reason: 'caller_policy' },
+	{ workflowId: 'wf-7', name: 'Has a form', description: null, reason: 'incompatible_nodes' },
 	{ workflowId: 'wf-5', name: 'Old one', description: null, reason: 'already_added' },
 	{ workflowId: 'wf-6', name: 'Escalate to on-call', description: null, reason: null },
 ];
@@ -116,6 +117,9 @@ describe('McpServerContentsTab', () => {
 			);
 			expect(texts.find((text) => text.includes('Closed'))).toContain(
 				'Its settings do not allow calls from other workflows',
+			);
+			expect(texts.find((text) => text.includes('Has a form'))).toContain(
+				'Uses a node that cannot run as a tool',
 			);
 			expect(texts.find((text) => text.includes('Old one'))).toContain('Already added');
 		});
@@ -253,7 +257,7 @@ describe('McpServerContentsTab', () => {
 
 			const link = getByTestId('mcp-tool-row-source-link');
 			expect(link).toHaveTextContent('From workflow');
-			expect(link.closest('a') ?? link).toHaveAttribute('href', '/workflow/wf-1');
+			expect(link.closest('a') ?? link).toHaveAttribute('href', '/workflow/wf-5');
 		});
 
 		it('removes a tool from its menu', async () => {
@@ -280,6 +284,71 @@ describe('McpServerContentsTab', () => {
 					message: expect.objectContaining({ children: 'get_campaign_numbers' }),
 				}),
 			);
+		});
+	});
+
+	describe('two fields that save at the same time', () => {
+		function deferred<T>() {
+			let resolve!: (value: T) => void;
+			let reject!: (error: unknown) => void;
+			const promise = new Promise<T>((res, rej) => {
+				resolve = res;
+				reject = rej;
+			});
+			return { promise, resolve, reject };
+		}
+
+		it('keeps the text of the other field when a save of one field ends', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			const nameSave = deferred<McpServerToolResponse>();
+			api.updateTool.mockReturnValueOnce(nameSave.promise);
+			const { findByTestId, getByTestId } = render();
+
+			await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+			const name = getByTestId('mcp-tool-row-name-input');
+			await userEvent.clear(name);
+			await userEvent.type(name, 'campaign_numbers');
+			await fireEvent.blur(name);
+			const description = getByTestId('mcp-tool-row-description-input');
+			await userEvent.clear(description);
+			await userEvent.type(description, 'Still typing');
+
+			nameSave.resolve(tool({ toolName: 'campaign_numbers', draftSource: 'edited' }));
+			await nameSave.promise;
+			await new Promise((resolve) => setTimeout(resolve));
+
+			expect(getByTestId('mcp-tool-row-name-input')).toHaveValue('campaign_numbers');
+			expect(getByTestId('mcp-tool-row-description-input')).toHaveValue('Still typing');
+		});
+
+		it('keeps a saved name when a later save of the description fails', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			const nameSave = deferred<McpServerToolResponse>();
+			const descriptionSave = deferred<McpServerToolResponse>();
+			api.updateTool
+				.mockReturnValueOnce(nameSave.promise)
+				.mockReturnValueOnce(descriptionSave.promise);
+			const { findByTestId, getByTestId } = render();
+
+			await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+			const name = getByTestId('mcp-tool-row-name-input');
+			await userEvent.clear(name);
+			await userEvent.type(name, 'campaign_numbers');
+			await fireEvent.blur(name);
+			const description = getByTestId('mcp-tool-row-description-input');
+			await userEvent.clear(description);
+			await userEvent.type(description, 'New text.');
+			await fireEvent.blur(description);
+
+			nameSave.resolve(tool({ toolName: 'campaign_numbers', draftSource: 'edited' }));
+			await waitFor(() =>
+				expect(getByTestId('mcp-tool-row-name-input')).toHaveValue('campaign_numbers'),
+			);
+			descriptionSave.reject(new Error('Server error'));
+
+			await waitFor(() => expect(toast.showError).toHaveBeenCalledTimes(1));
+			expect(getByTestId('mcp-tool-row-name-input')).toHaveValue('campaign_numbers');
+			expect(getByTestId('mcp-tool-row-description-input')).toHaveValue('Numbers of a campaign.');
 		});
 	});
 

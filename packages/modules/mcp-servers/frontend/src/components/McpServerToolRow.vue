@@ -40,12 +40,21 @@ const expanded = ref(props.initiallyExpanded ?? false);
 const toolName = ref(props.tool.toolName);
 const description = ref(props.tool.description);
 
-// A save or a failed save gives a new tool object, so the fields show what the server has.
+// The fields that wait for a save. A save or a failed save gives a new tool object.
+const saving = new Set<'toolName' | 'description'>();
+
+// A new tool object resets a field that waited for a save, or that the builder did not change.
+// A field that the builder changes while the other field saves keeps its text.
 watch(
 	() => props.tool,
-	(tool) => {
-		toolName.value = tool.toolName;
-		description.value = tool.description;
+	(tool, previous) => {
+		if (saving.has('toolName') || toolName.value === previous.toolName) {
+			toolName.value = tool.toolName;
+		}
+		if (saving.has('description') || description.value === previous.description) {
+			description.value = tool.description;
+		}
+		saving.clear();
 	},
 );
 
@@ -66,12 +75,14 @@ function onMenu(action: string) {
 
 function saveName() {
 	if (nameInvalid.value || toolName.value === props.tool.toolName) return;
+	saving.add('toolName');
 	emit('update', { toolName: toolName.value });
 }
 
 function saveDescription() {
 	const value = description.value.trim();
 	if (value === props.tool.description) return;
+	saving.add('description');
 	emit('update', { description: value });
 }
 </script>

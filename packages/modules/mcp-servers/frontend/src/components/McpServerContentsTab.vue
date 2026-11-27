@@ -108,8 +108,10 @@ async function onUpdate(tool: McpServerToolResponse, changes: UpdateMcpServerToo
 			await updateTool(rootStore.restApiContext, props.projectId, props.serverId, tool.id, changes),
 		);
 	} catch (error) {
-		// A new object resets the fields of the row to the saved text.
-		replaceTool({ ...tool });
+		// A new object resets the field to the saved text. The current tool keeps the result of
+		// another save that ended while this one ran.
+		const current = server.value?.tools.find(({ id }) => id === tool.id) ?? tool;
+		replaceTool({ ...current });
 		toast.showError(error, i18n.baseText('mcpServers.tools.saveError'));
 	}
 }
