@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.afterReply.test.ts
+  h_8a472ace01776f 1,3-4,51-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26574572e68fd7dc0d44572635f69502cfbbc152",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
