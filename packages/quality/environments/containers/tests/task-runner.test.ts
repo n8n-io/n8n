@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
+import { engineTaskRunner } from '../services/engine-task-runner';
 import { taskRunner } from '../services/task-runner';
 import type { StartContext } from '../services/types';
 
@@ -43,4 +44,21 @@ describe('task runner service', () => {
 	])('dials the task broker of %o at %s', (topology, taskBrokerUri) => {
 		expect(taskRunner.getOptions?.(context(topology))).toEqual({ taskBrokerUri });
 	});
+});
+
+describe('engine task runner service', () => {
+	test.each([
+		[false, 'http://proj-n8n-engine:5679'],
+		[true, 'http://proj-n8n-engine-step-worker:5679'],
+	])(
+		'dials the task broker of the engine container that runs steps: split roles %s, broker %s',
+		(splitEngineRoles, taskBrokerUri) => {
+			const ctx = {
+				projectName: 'proj',
+				config: { engine: 'container', splitEngineRoles },
+			} as unknown as StartContext;
+
+			expect(engineTaskRunner.getOptions?.(ctx)).toEqual({ taskBrokerUri });
+		},
+	);
 });

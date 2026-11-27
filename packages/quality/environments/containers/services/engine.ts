@@ -3,8 +3,9 @@
  *
  * `in-process` enables the `engine-v2` backend module, so the data plane runs
  * inside the main container. `container` starts a separate `n8n engine`
- * container as the data plane and runs the main in remote mode. The engine
- * container has no control plane database access.
+ * container as the data plane and runs the main in remote mode, or one
+ * container per engine role with `splitEngineRoles`. The engine containers
+ * have no control plane database access.
  *
  * Two functions build the env, one per plane:
  * - `applyEngineEnv`: the main (control plane), in both modes.
@@ -147,6 +148,35 @@ export function engineHostname(projectName: string): string {
 	return `${projectName}-n8n-engine`;
 }
 
+// Copy of `ENGINE_ROLES` in `@n8n/engine/src/runtime/create-engine-runtime.ts`,
+// which this package does not depend on: add a new role here too.
+const ENGINE_ROLES = ['api', 'orchestrator', 'step-worker'] as const;
+type EngineRole = (typeof ENGINE_ROLES)[number];
+
+/** The `api` role keeps the engine hostname: the main dials it and the engine certificate names it. */
+function engineRoleHostname(projectName: string, role: EngineRole): string {
+	if (role === 'api') return engineHostname(projectName);
+	return `${engineHostname(projectName)}-${role}`;
+}
+
+/** The `n8n engine` containers of `container` mode: one with every role, or one per role. */
+export function engineContainers(
+	projectName: string,
+	splitRoles: boolean,
+): Array<{ name: string; command: string[] }> {
+	if (!splitRoles) return [{ name: engineHostname(projectName), command: ['engine'] }];
+	return ENGINE_ROLES.map((role) => ({
+		name: engineRoleHostname(projectName, role),
+		command: ['engine', `--roles=${role}`],
+	}));
+}
+
+/** Only the `step-worker` role starts the task broker. */
+export function engineTaskBrokerHostname(projectName: string, splitRoles: boolean): string {
+	if (splitRoles) return engineRoleHostname(projectName, 'step-worker');
+	return engineHostname(projectName);
+}
+
 /**
  * The network aliases of the mains, main 1 first. The engine dials the control
  * plane server of main 1: every main runs one on the shared database, so one is
@@ -160,15 +190,20 @@ function mainHostnames(projectName: string, mains: number): string[] {
 /**
  * Refuses a stack that engine v2 cannot run on. `createN8NStack` calls this
  * before it starts a container, so the run fails in a second instead of after
- * a Postgres boot. No-op when `engine` is unset.
+ * a Postgres boot. No-op when `engine` and `splitEngineRoles` are unset.
  */
 export function assertEngineSupported({
 	engine,
+	splitEngineRoles,
 	mains,
 	workers,
 	webhooks,
 	usePostgres,
-}: EngineTopology & { usePostgres: boolean }): void {
+}: EngineTopology & { splitEngineRoles?: boolean; usePostgres: boolean }): void {
+	if (splitEngineRoles && engine !== 'container') {
+		throw new Error(`splitEngineRoles needs \`engine: 'container'\`: got engine: ${engine}`);
+	}
+
 	if (!engine) return;
 
 	// The `engine-v2` module runs on mains only, so a webhook process would not

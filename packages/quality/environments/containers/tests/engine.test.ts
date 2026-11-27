@@ -9,6 +9,7 @@ import {
 	ENGINE_SHARED_STORAGE_PATH,
 	ENGINE_TLS_ENV,
 	engineContainerEnv,
+	engineContainers,
 } from '../services/engine';
 import { redis } from '../services/redis';
 import type { FileToMount, StartContext } from '../services/types';
@@ -428,6 +429,43 @@ describe('engineContainerEnv', () => {
 	});
 });
 
+describe('engineContainers', () => {
+	test('starts one engine container with every role by default', () => {
+		expect(engineContainers(projectName, false)).toEqual([
+			{ name: 'proj-n8n-engine', command: ['engine'] },
+		]);
+	});
+
+	test('starts one engine container per role when the roles are split', () => {
+		expect(engineContainers(projectName, true)).toEqual([
+			{ name: 'proj-n8n-engine', command: ['engine', '--roles=api'] },
+			{ name: 'proj-n8n-engine-orchestrator', command: ['engine', '--roles=orchestrator'] },
+			{ name: 'proj-n8n-engine-step-worker', command: ['engine', '--roles=step-worker'] },
+		]);
+	});
+
+	test('gives the api container the host the main dials and the engine certificate names', () => {
+		const env = { ...postgresEnv };
+		applyEngineEnv(env, {
+			engine: 'container',
+			mains: 1,
+			workers: 0,
+			webhooks: 0,
+			...engineOptions,
+		});
+		const engineCert = new X509Certificate(
+			createEngineTlsFiles(projectName, 1).engine.find(
+				(file) => file.target === ENGINE_TLS_ENV.N8N_ENGINE_TLS_CERT_FILE,
+			)?.content ?? '',
+		);
+
+		const [api] = engineContainers(projectName, true);
+
+		expect(new URL(env.N8N_ENGINE_BASE_URL).hostname).toBe(api.name);
+		expect(engineCert.subjectAltName).toBe(`DNS:${api.name}`);
+	});
+});
+
 describe('assertEngineSupported', () => {
 	// `createN8NStack` calls this for every stack, so the no-op keeps the stacks
 	// that do not run engine v2 starting at all.
@@ -439,6 +477,35 @@ describe('assertEngineSupported', () => {
 				workers: 1,
 				webhooks: 1,
 				usePostgres: false,
+			}),
+		).not.toThrow();
+	});
+
+	test.each([undefined, 'in-process'] as const)(
+		'rejects split engine roles without container engine mode: engine %s',
+		(engine) => {
+			expect(() =>
+				assertEngineSupported({
+					engine,
+					splitEngineRoles: true,
+					mains: 1,
+					workers: 0,
+					webhooks: 0,
+					usePostgres: true,
+				}),
+			).toThrow(/splitEngineRoles needs `engine: 'container'`/);
+		},
+	);
+
+	test('accepts split engine roles in container engine mode with several mains and a worker', () => {
+		expect(() =>
+			assertEngineSupported({
+				engine: 'container',
+				splitEngineRoles: true,
+				mains: 2,
+				workers: 1,
+				webhooks: 0,
+				usePostgres: true,
 			}),
 		).not.toThrow();
 	});

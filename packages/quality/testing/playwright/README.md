@@ -261,9 +261,13 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 ### Engine v2 parity
 
 The `engine-v2:e2e` project runs the regular `tests/e2e` specs against a stack
-that runs engine v2 in its own container (`containerConfig.engine:
-'container'`, Postgres, two mains in multi-main, one worker). Each main runs the
-`engine-v2` module in remote mode and dials the engine over the stack network.
+that runs engine v2 in its own containers (`containerConfig.engine:
+'container'`, Postgres, two mains in multi-main, one worker). With
+`containerConfig.splitEngineRoles: true`, the engine runs as one container per
+role: `api` serves the mains, `orchestrator` runs the orchestration queue, and
+`step-worker` runs the nodes and hosts the task broker. Each main runs the
+`engine-v2` module in remote mode and dials the `api` container over the stack
+network.
 The worker runs only what stays on the legacy engine, because the mains send
 manual runs to workers in multi-main.
 The engine container runs `n8n engine`, has no `DB_*` env and no encryption
@@ -301,8 +305,10 @@ specs that engine v2 does not run yet:
 pnpm --filter=n8n-playwright test:container:engine-v2:e2e tests/e2e/api/manual-run-outcome.spec.ts
 ```
 
-For a local stack with the engine: `pnpm --filter n8n-containers stack --engine`.
-Add `--mains 2 --workers 1` for the topology of the project.
+For a local stack with one engine container per role:
+`pnpm --filter n8n-containers stack --split-engine-roles`. Add
+`--mains 2 --workers 1` for the topology of the project. For one engine
+container with every role, use `--engine` instead.
 
 ### Worker Isolation (Fresh Database)
 

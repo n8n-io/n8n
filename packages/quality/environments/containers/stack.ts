@@ -203,6 +203,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		webhooks = 0,
 		postgres: usePostgresConfig = false,
 		engine,
+		splitEngineRoles,
 		sharedStorage,
 		env = {},
 		unsetEnv,
@@ -236,7 +237,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const needsLoadBalancer = mains > 1 || webhooks > 0 || pathPrefix !== undefined;
 	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
 
-	assertEngineSupported({ engine, mains, workers, webhooks, usePostgres });
+	assertEngineSupported({ engine, splitEngineRoles, mains, workers, webhooks, usePostgres });
 
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	// Derived from the project name, not random, so a rerun with the same name
@@ -476,6 +477,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				unsetEnv,
 				usePostgres,
 				engine,
+				splitEngineRoles,
 				engineAuthSecret,
 				engineTlsFiles,
 				baseUrl: needsLoadBalancer ? undefined : baseUrl,
@@ -728,8 +730,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						engine,
 						engineAuthSecret,
 						engineTlsFiles,
-						// The engine container is not replaced: it keeps running against the
-						// new main.
+						// The engine containers are not replaced: they keep running against
+						// the new main.
 						reuseEngine: true,
 						baseUrl,
 						// The same host port keeps `baseUrl` valid across the swap.

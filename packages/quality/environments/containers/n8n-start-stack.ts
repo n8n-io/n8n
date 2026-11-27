@@ -60,6 +60,8 @@ ${colors.yellow}Options:${colors.reset}
   --services <list> Comma-separated services (e.g. postgres,redis,mailpit,proxy,kafka)
   --postgres        Use PostgreSQL instead of SQLite
   --engine          Run engine v2 in its own container (implies --postgres, not for --services-only)
+  --split-engine-roles
+                    Run each engine role in its own container (implies --engine)
   --queue           Enable queue mode (requires PostgreSQL)
   --source-control  Enable source control (Git) container for testing
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
@@ -153,6 +155,7 @@ async function main() {
 			'services-only': { type: 'boolean' },
 			postgres: { type: 'boolean' },
 			engine: { type: 'boolean' },
+			'split-engine-roles': { type: 'boolean' },
 			queue: { type: 'boolean' },
 			services: { type: 'string' },
 			'source-control': { type: 'boolean' },
@@ -181,6 +184,8 @@ async function main() {
 	}
 
 	const servicesOnly = values['services-only'] ?? false;
+	const splitEngineRoles = values['split-engine-roles'] ?? false;
+	const useEngine = Boolean(values.engine) || splitEngineRoles;
 
 	// Build services array from CLI flags
 	const validServiceNames = new Set(Object.keys(SERVICE_REGISTRY));
@@ -206,8 +211,8 @@ async function main() {
 
 	// Build configuration
 	const config: N8NConfig = {
-		postgres: Boolean(values.postgres || values.engine),
-		...(values.engine ? { engine: 'container' as const } : {}),
+		postgres: Boolean(values.postgres) || useEngine,
+		...(useEngine ? { engine: 'container' as const, splitEngineRoles } : {}),
 		services,
 		projectName:
 			values.name ??
@@ -247,13 +252,14 @@ async function main() {
 		if (values.queue || values.mains || values.workers) {
 			log.warn('Performance plans use SQLite only. Queue mode ignored.');
 		}
-		if (values.engine) {
+		if (useEngine) {
 			log.warn('Performance plans use SQLite only. Engine v2 ignored.');
 		}
 
 		config.resourceQuota = plan;
 		config.postgres = false; // Force SQLite for performance plans
 		delete config.engine; // Engine v2 needs Postgres
+		delete config.splitEngineRoles;
 		config.mains = 1; // Force single instance for performance plans
 		config.workers = 0;
 
@@ -284,7 +290,7 @@ async function main() {
 			log.error('No services specified. Use flags like --postgres, --redis, --mailpit, etc.');
 			process.exit(1);
 		}
-		if (values.engine) {
+		if (useEngine) {
 			// TODO(CAT-4579): write the engine env into `.env` and make the flag work here.
 			log.warn('Services-only mode starts no n8n. Engine v2 ignored.');
 		}
@@ -480,7 +486,10 @@ function displayConfig(config: N8NConfig) {
 	log.info(`Mode: ${modeStr}`);
 
 	const enabledFeatures: string[] = [];
-	if (config.engine) enabledFeatures.push(`Engine v2 (${config.engine})`);
+	if (config.engine) {
+		const roles = config.splitEngineRoles ? ', one container per role' : '';
+		enabledFeatures.push(`Engine v2 (${config.engine}${roles})`);
+	}
 	if (services.includes('gitea')) enabledFeatures.push('Source Control (Gitea)');
 	if (services.includes('keycloak')) enabledFeatures.push('OIDC (Keycloak)');
 	if (services.includes('victoriaLogs')) enabledFeatures.push('Observability');

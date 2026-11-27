@@ -24,6 +24,10 @@ pnpm stack --queue
 # Multi-main cluster
 pnpm stack --mains 2 --workers 1
 
+# Engine v2 in its own container, or one container per engine role
+pnpm stack --engine
+pnpm stack --split-engine-roles
+
 # Cloud plan simulation
 pnpm stack --plan starter
 
@@ -438,7 +442,7 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `azurite` | ✓ | Azure Blob Storage emulator (Azurite) |
 | `proxy` | - | HTTP proxy (MockServer) |
 | `taskRunner` | - | External task runner |
-| `engineTaskRunner` | - | External task runner for the engine container (auto-starts with `engine: 'container'`) |
+| `engineTaskRunner` | - | External task runner for the engine container, or the `step-worker` container with `splitEngineRoles` (auto-starts with `engine: 'container'`) |
 | `loadBalancer` | - | Caddy for multi-main, webhook processors, or a path prefix |
 | `cloudflared` | - | Cloudflare Tunnel for public webhook URLs |
 | `litellm` | - | OpenAI-compatible AI gateway (LiteLLM) with four logins |

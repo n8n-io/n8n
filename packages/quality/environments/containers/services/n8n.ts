@@ -18,7 +18,7 @@ import {
 	ENGINE_PORT,
 	ENGINE_SHARED_STORAGE_PATH,
 	engineContainerEnv,
-	engineHostname,
+	engineContainers,
 	type EngineMode,
 } from './engine';
 import type { FileToMount, StackConfig } from './types';
@@ -86,12 +86,14 @@ export interface N8NInstancesOptions {
 	unsetEnv?: string[];
 	usePostgres: boolean;
 	engine?: EngineMode;
+	/** One engine container per role. `container` engine mode only. */
+	splitEngineRoles?: boolean;
 	engineAuthSecret?: string;
 	/** Per-plane TLS files from `createEngineTlsFiles`. `container` engine mode only. */
 	engineTlsFiles?: Record<'main' | 'engine', FileToMount[]>;
 	/**
-	 * In `container` engine mode, do not start an engine: one from an earlier
-	 * call is still running. `replaceN8N` sets this when it swaps the main.
+	 * In `container` engine mode, do not start the engine containers: those from
+	 * an earlier call are still running. `replaceN8N` sets this when it swaps the main.
 	 */
 	reuseEngine?: boolean;
 	baseUrl?: string;
@@ -229,6 +231,7 @@ interface InstanceConfig {
 	instanceNumber: number;
 	networkAlias?: string;
 	hostPort?: number;
+	command?: string[];
 }
 
 interface SharedConfig {
@@ -299,7 +302,7 @@ async function createContainer(
 	shared: SharedConfig,
 	diagnostics: N8NStartupDiagnostics,
 ): Promise<ContainerStartResult> {
-	const { name, role, instanceNumber, networkAlias, hostPort } = instance;
+	const { name, role, instanceNumber, networkAlias, hostPort, command } = instance;
 	const {
 		projectName,
 		environment,
@@ -462,8 +465,8 @@ async function createContainer(
 		container = container.withCommand(['worker']);
 	} else if (role === 'webhook') {
 		container = container.withCommand(['webhook']);
-	} else if (role === 'engine') {
-		container = container.withCommand(['engine']);
+	} else if (command) {
+		container = container.withCommand(command);
 	}
 
 	try {
@@ -510,6 +513,7 @@ export async function createN8NInstances(
 		n8nContainer,
 		startupTimeoutMs,
 		engine,
+		splitEngineRoles = false,
 		engineTlsFiles,
 		reuseEngine = false,
 	} = options;
@@ -628,14 +632,15 @@ export async function createN8NInstances(
 			}),
 		),
 		...(engine === 'container' && !reuseEngine
-			? [
-					{
-						name: engineHostname(projectName),
-						role: 'engine' as const,
-						instanceNumber: 1,
-						networkAlias: engineHostname(projectName),
-					},
-				]
+			? engineContainers(projectName, splitEngineRoles).map(
+					({ name, command }, i): InstanceConfig => ({
+						name,
+						role: 'engine',
+						instanceNumber: i + 1,
+						networkAlias: name,
+						command,
+					}),
+				)
 			: []),
 	];
 
