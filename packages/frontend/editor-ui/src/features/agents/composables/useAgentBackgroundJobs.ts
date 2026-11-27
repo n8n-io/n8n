@@ -25,12 +25,17 @@ interface BackgroundJobsTarget {
 	active: MaybeRefOrGetter<boolean>;
 	channel?: MaybeRefOrGetter<AgentChatChannel>;
 	receivedJobs?: MaybeRefOrGetter<AgentBackgroundJobSignal['tasks']>;
+	/** The reader revealed the redacted turns of the thread, so job titles load unredacted. */
+	revealExecutionData?: MaybeRefOrGetter<boolean>;
 }
 
 const MAX_RETRIES = 2;
 
 export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 	const rootStore = useRootStore();
+	/** Extra arguments of the job requests after a reveal. */
+	const revealOptions = (): [] | [{ revealExecutionData: true }] =>
+		toValue(target.revealExecutionData) ? [{ revealExecutionData: true }] : [];
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
 	const group = ref<AgentBackgroundJobsResponse>({ tasks: [] });
@@ -94,6 +99,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 				agentId,
 				threadId,
 				toValue(target.channel),
+				...revealOptions(),
 			);
 			if (isCurrent()) {
 				group.value = {
@@ -178,6 +184,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 				toValue(target.agentId),
 				threadId,
 				toValue(target.channel),
+				...revealOptions(),
 			);
 			if (!disposed && generation === requestGeneration) group.value = result;
 		} catch (error) {
@@ -227,6 +234,10 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 			if (enabled) refresh();
 		},
 		{ immediate: true },
+	);
+	watch(
+		() => Boolean(toValue(target.revealExecutionData)),
+		() => refresh(),
 	);
 	watch(
 		() => pushStore.isConnected,

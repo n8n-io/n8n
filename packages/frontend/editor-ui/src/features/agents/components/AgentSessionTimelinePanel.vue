@@ -139,6 +139,7 @@ const { allJobs, respondToApproval } = useAgentBackgroundJobs({
 	threadId: () => props.threadId,
 	channel: () => props.channel ?? 'chat',
 	active: true,
+	revealExecutionData: () => revealed.value,
 });
 
 async function respondToBackgroundApproval(payload: AgentChatResumeDto) {

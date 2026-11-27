@@ -468,6 +468,60 @@ describe('AgentChatController background tasks', () => {
 		expect(response.tasks.find(({ id }) => id === 'job-after')?.files).toBeUndefined();
 	});
 
+	it('asks for a reveal of the background tasks when the query asks for it', async () => {
+		const { controller, agentsService, agentExecutionService, backgroundJobService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		agentExecutionService.findRedactionStart.mockResolvedValue(undefined);
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([]);
+
+		await controller.getBackgroundJobs({
+			...request,
+			query: { redactExecutionData: 'false' },
+		} as never);
+
+		expect(agentExecutionService.findRedactionStart).toHaveBeenCalledWith(
+			'thread-1',
+			'project-1',
+			'agent-1',
+			expect.objectContaining({ user: request.user, revealExecutionData: true }),
+		);
+	});
+
+	it('leaves out the content of redacted jobs in a production n8n Chat thread', async () => {
+		const { controller, agentsService, agentExecutionService, backgroundJobService } =
+			makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
+		agentExecutionService.findRedactionStart.mockResolvedValue({
+			startedAt: new Date('2026-09-09T10:00:30Z'),
+			redaction: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: false },
+			executionIds: new Set(['execution-1']),
+		});
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([
+			{
+				id: 'job-after',
+				kind: 'workflow',
+				title: 'HIDDEN-TITLE',
+				status: 'completed',
+				createdAt: new Date('2026-09-09T10:01:00Z'),
+				notifiedAt: new Date('2026-09-09T10:01:10Z'),
+			},
+		] as never);
+
+		const response = await controller.getProductionBackgroundJobs(request as never);
+
+		expect(JSON.stringify(response)).not.toContain('HIDDEN-TITLE');
+		expect(agentExecutionService.findRedactionStart).toHaveBeenCalledWith(
+			'thread-1',
+			'project-1',
+			'agent-1',
+			expect.objectContaining({ user: request.user }),
+		);
+	});
+
 	it('returns current group statuses without consuming results', async () => {
 		const { controller, agentsService, agentExecutionService, backgroundJobService } =
 			makeController();

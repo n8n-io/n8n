@@ -989,17 +989,24 @@ export const getNewSkillName = async (
 	return name;
 };
 
+/** Set `revealExecutionData` after the reader revealed the redacted turns of the thread. */
 export const getAgentBackgroundJobs = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	threadId: string,
 	channel: AgentChatChannel = 'chat',
+	options: { revealExecutionData?: boolean } = {},
 ): Promise<AgentBackgroundJobsResponse> => {
+	const path = `${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/background-tasks`;
+	if (!options.revealExecutionData) {
+		return await makeRestApiRequest<AgentBackgroundJobsResponse>(context, 'GET', path);
+	}
 	return await makeRestApiRequest<AgentBackgroundJobsResponse>(
 		context,
 		'GET',
-		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/background-tasks`,
+		path,
+		revealQuery(true),
 	);
 };
 
@@ -1025,11 +1032,14 @@ export const stopAgentBackgroundJobs = async (
 	agentId: string,
 	threadId: string,
 	channel: AgentChatChannel = 'chat',
+	options: { revealExecutionData?: boolean } = {},
 ): Promise<AgentBackgroundJobsResponse> => {
+	// The response lists the jobs, so a revealed thread asks for the jobs unredacted.
+	const query = options.revealExecutionData ? '?redactExecutionData=false' : '';
 	return await makeRestApiRequest<AgentBackgroundJobsResponse>(
 		context,
 		'POST',
-		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/background-tasks/stop`,
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/background-tasks/stop${query}`,
 	);
 };
 

@@ -545,7 +545,12 @@ export class AgentChatController {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
 		await this.requireProductionThread(attachment.threadId, projectId, agentId, req.user.id);
-		await this.assertThreadFileReadable(attachment, projectId, agentId, threadReaderFromRequest(req));
+		await this.assertThreadFileReadable(
+			attachment,
+			projectId,
+			agentId,
+			threadReaderFromRequest(req),
+		);
 		await this.chatRelay.streamAttachment(attachment, res);
 	}
 
@@ -687,7 +692,9 @@ export class AgentChatController {
 		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
 
 		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
-		return this.mapBackgroundJobsToDto(jobs);
+		return this.mapBackgroundJobsToDto(
+			await this.withoutRedactedJobContent(jobs, threadId, projectId, agentId, req),
+		);
 	}
 
 	@Post('/:agentId/n8n-chat/:threadId/background-tasks/stop')
@@ -706,7 +713,9 @@ export class AgentChatController {
 			productionChatMemoryResourceId(req.user.id),
 		);
 		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
-		return this.mapBackgroundJobsToDto(jobs);
+		return this.mapBackgroundJobsToDto(
+			await this.withoutRedactedJobContent(jobs, threadId, projectId, agentId, req),
+		);
 	}
 
 	@Post('/:agentId/n8n-chat/:threadId/background-tasks/resume')
@@ -878,18 +887,32 @@ export class AgentChatController {
 		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId, {
 			includePaused: true,
 		});
+		return this.mapBackgroundJobsToDto(
+			await this.withoutRedactedJobContent(jobs, threadId, projectId, agentId, req),
+		);
+	}
+
+	/**
+	 * The jobs of a thread for the reader of the request, without the content of
+	 * the jobs that redacted turns started. `redactExecutionData=false` in the
+	 * query asks for a reveal, which the redaction service checks and audits.
+	 */
+	private async withoutRedactedJobContent<T extends Parameters<typeof withoutJobContentFrom>[0]>(
+		jobs: T[],
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		req: AuthenticatedRequest,
+	): Promise<T[]> {
 		const redactionStart = await this.agentExecutionService.findRedactionStart(
 			threadId,
 			projectId,
 			agentId,
 			threadReaderFromRequest(req),
 		);
-
-		return this.mapBackgroundJobsToDto(
-			redactionStart
-				? jobs.map((job) => withoutJobContentFrom(job, redactionStart.startedAt))
-				: jobs,
-		);
+		return redactionStart
+			? jobs.map((job) => withoutJobContentFrom(job, redactionStart.startedAt))
+			: jobs;
 	}
 
 	private mapBackgroundJobsToDto(
