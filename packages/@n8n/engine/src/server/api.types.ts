@@ -72,6 +72,11 @@ export interface ExecutionSnapshot {
 	createdAt: string;
 	updatedAt: string;
 	finishedAt: string | null;
+	/**
+	 * When the engine cancels the execution if it has not ended, or `null`. A
+	 * cancelled execution that finished at or after it timed out.
+	 */
+	deadline: string | null;
 	/** Only set when the request asked for steps. Oldest first. */
 	steps?: StepDetail[];
 	/** Only set when the request asked for steps. `null` for a top-level execution. */

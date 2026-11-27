@@ -133,6 +133,7 @@ export function toExecutionSnapshot(
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
 		finishedAt: record.finishedAt?.toISOString() ?? null,
+		deadline: record.deadline?.toISOString() ?? null,
 		// Absent unless the request asked for steps, which a caller cannot tell
 		// from an execution that ran none.
 		...('steps' in record

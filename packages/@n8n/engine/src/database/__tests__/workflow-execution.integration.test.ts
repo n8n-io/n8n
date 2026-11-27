@@ -117,6 +117,7 @@ describe('workflow_execution table (integration)', () => {
 			createdAt: expect.any(Date) as Date,
 			updatedAt: expect.any(Date) as Date,
 			finishedAt,
+			deadline: null,
 		});
 	});
 
