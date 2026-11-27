@@ -14,6 +14,7 @@ import { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import {
 	SOURCE_CONTROL_GIT_FOLDER,
+	SOURCE_CONTROL_LAST_SYNCED_COMMIT_DB_KEY,
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_SSH_KEY_NAME,
@@ -22,6 +23,9 @@ import { generateSshKeyPair, isSourceControlLicensed } from './source-control-he
 import { SourceControlConfig } from './source-control.config';
 import type { KeyPairType } from './types/key-pair-type';
 import { SourceControlPreferences } from './types/source-control-preferences';
+
+// A full SHA-1 or SHA-256 commit hash. The value reaches git arguments.
+const COMMIT_HASH_PATTERN = /^([0-9a-f]{40}|[0-9a-f]{64})$/;
 
 @Service()
 export class SourceControlPreferencesService {
@@ -322,6 +326,45 @@ export class SourceControlPreferencesService {
 			}
 		}
 		return this.sourceControlPreferences;
+	}
+
+	/**
+	 * Stores the commit that the database last synced with, in a row of its own. A separate row
+	 * is one atomic write that cannot overwrite a preference change from another main instance.
+	 * It needs no reload broadcast either: a reload resets the git service of the other mains,
+	 * which can break a sync that runs there. All mains read the row from the database.
+	 */
+	async setLastSyncedCommit(commit: string): Promise<void> {
+		if (!COMMIT_HASH_PATTERN.test(commit)) {
+			throw new UnexpectedError('The last synced commit must be a full commit hash');
+		}
+		try {
+			await this.settingsRepository.upsertByKey(
+				SOURCE_CONTROL_LAST_SYNCED_COMMIT_DB_KEY,
+				commit,
+				false,
+				{},
+			);
+		} catch (error) {
+			throw new UnexpectedError('Failed to save the last synced commit', { cause: error });
+		}
+	}
+
+	/**
+	 * Returns the stored commit, or undefined when there is none. A failed read or a stored value
+	 * that is not a commit hash throws. The caller must then refuse the push, not allow it.
+	 */
+	async getLastSyncedCommit(): Promise<string | undefined> {
+		const row = await this.settingsRepository.findByKey(SOURCE_CONTROL_LAST_SYNCED_COMMIT_DB_KEY);
+		if (!row?.value) return undefined;
+		if (!COMMIT_HASH_PATTERN.test(row.value)) {
+			throw new UnexpectedError('The stored last synced commit is not a commit hash');
+		}
+		return row.value;
+	}
+
+	async clearLastSyncedCommit(): Promise<void> {
+		await this.settingsRepository.delete({ key: SOURCE_CONTROL_LAST_SYNCED_COMMIT_DB_KEY });
 	}
 
 	/**

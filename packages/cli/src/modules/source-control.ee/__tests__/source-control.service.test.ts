@@ -11,6 +11,7 @@ import type { CommitResult, PullResult, PushResult } from 'simple-git';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { ForbiddenError } from '@n8n/errors';
+import { SourceControlRemoteAheadError } from '../source-control-remote-ahead.error';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
@@ -77,11 +78,17 @@ describe('SourceControlService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		// A push or pull stores the synced commit. Keep the unit tests away from the settings table.
+		vi.spyOn(preferencesService, 'setLastSyncedCommit').mockResolvedValue(undefined);
 		vi.spyOn(sourceControlService, 'sanityCheck').mockResolvedValue(undefined);
 		// Reset mock implementations
 		mockStatusService.getStatus.mockReset();
 		// The pull iterates this result, so an unmocked `undefined` would throw.
 		sourceControlImportService.importCredentialsFromWorkFolder.mockResolvedValue([]);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	describe('pushWorkfolder', () => {
@@ -645,6 +652,278 @@ describe('SourceControlService', () => {
 			// Verify resetBranch was called with HEAD (no commit to undo)
 			expect(gitService.resetBranch).toHaveBeenCalledWith({ hard: true, target: 'HEAD' });
 		});
+
+		describe('remote ahead check', () => {
+			const user = mock<User>();
+			const conflictingWorkflow: SourceControlledFile = {
+				id: 'wf-1',
+				name: 'Workflow 1',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: true,
+				file: 'workflows/wf-1.json',
+				updatedAt: new Date().toISOString(),
+			};
+
+			// The check runs after the status, so a rejected push still needs one.
+			const arrangeStatusOnly = () => {
+				mockStatusService.getStatus.mockResolvedValueOnce([conflictingWorkflow]);
+				(isContainedWithin as Mock).mockReturnValue(true);
+			};
+
+			const arrangePushableStatus = () => {
+				const exportResult = mock<ExportResult>({ missingIds: [] });
+				mockStatusService.getStatus.mockResolvedValueOnce([conflictingWorkflow]);
+				(isContainedWithin as Mock).mockReturnValue(true);
+				sourceControlExportService.rmFilesFromExportFolder.mockResolvedValueOnce(new Set());
+				sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValueOnce(exportResult);
+				sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce(
+					exportResult,
+				);
+				sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValueOnce(
+					exportResult,
+				);
+				sourceControlExportService.exportTagsToWorkFolder.mockResolvedValueOnce(exportResult);
+				gitService.push.mockResolvedValueOnce(mock<PushResult>());
+			};
+
+			it('rejects the push before any export or commit when the remote is ahead', async () => {
+				arrangeStatusOnly();
+				gitService.isRemoteAhead.mockResolvedValueOnce(true);
+
+				await expect(
+					sourceControlService.pushWorkfolder(user, {
+						fileNames: [{ id: 'wf-1', type: 'workflow' }],
+						acceptConflicts: true,
+					}),
+				).rejects.toBeInstanceOf(SourceControlRemoteAheadError);
+
+				expect(gitService.fetch).toHaveBeenCalled();
+				expect(sourceControlExportService.exportWorkflowsToWorkFolder).not.toHaveBeenCalled();
+				expect(gitService.commit).not.toHaveBeenCalled();
+				expect(gitService.push).not.toHaveBeenCalled();
+			});
+
+			it('checks the remote after the status, which fast-forwards the work folder', async () => {
+				const callOrder: string[] = [];
+				mockStatusService.getStatus.mockImplementationOnce(async () => {
+					callOrder.push('status');
+					return [conflictingWorkflow];
+				});
+				(isContainedWithin as Mock).mockReturnValue(true);
+				gitService.isRemoteAhead.mockImplementationOnce(async () => {
+					callOrder.push('check');
+					return true;
+				});
+
+				await expect(
+					sourceControlService.pushWorkfolder(user, {
+						fileNames: [{ id: 'wf-1', type: 'workflow' }],
+						acceptConflicts: true,
+					}),
+				).rejects.toBeInstanceOf(SourceControlRemoteAheadError);
+
+				expect(callOrder).toEqual(['status', 'check']);
+			});
+
+			it('skips the check and pushes with force when `force` is set', async () => {
+				arrangePushableStatus();
+
+				await sourceControlService.pushWorkfolder(user, {
+					fileNames: [{ id: 'wf-1', type: 'workflow' }],
+					force: true,
+				});
+
+				expect(gitService.isRemoteAhead).not.toHaveBeenCalled();
+				expect(gitService.push).toHaveBeenCalledWith(expect.objectContaining({ force: true }));
+			});
+
+			it('pushes conflicting files without a forced push when `acceptConflicts` is set', async () => {
+				gitService.isRemoteAhead.mockResolvedValueOnce(false);
+				arrangePushableStatus();
+
+				const result = await sourceControlService.pushWorkfolder(user, {
+					fileNames: [{ id: 'wf-1', type: 'workflow' }],
+					acceptConflicts: true,
+				});
+
+				expect(result.statusCode).toBe(200);
+				expect(gitService.push).toHaveBeenCalledWith(expect.objectContaining({ force: false }));
+			});
+
+			describe('last synced commit', () => {
+				const syncedSha = 'a'.repeat(40);
+
+				it('compares the remote with the stored commit', async () => {
+					arrangeStatusOnly();
+					vi.spyOn(preferencesService, 'getLastSyncedCommit').mockResolvedValue(syncedSha);
+					gitService.isRemoteAhead.mockResolvedValueOnce(true);
+
+					await expect(
+						sourceControlService.pushWorkfolder(user, {
+							fileNames: [{ id: 'wf-1', type: 'workflow' }],
+							acceptConflicts: true,
+						}),
+					).rejects.toBeInstanceOf(SourceControlRemoteAheadError);
+
+					expect(gitService.isRemoteAhead).toHaveBeenCalledWith(expect.any(String), syncedSha);
+				});
+
+				it('falls back to the local HEAD when no commit is stored', async () => {
+					arrangeStatusOnly();
+					gitService.isRemoteAhead.mockResolvedValueOnce(true);
+
+					await expect(
+						sourceControlService.pushWorkfolder(user, {
+							fileNames: [{ id: 'wf-1', type: 'workflow' }],
+							acceptConflicts: true,
+						}),
+					).rejects.toBeInstanceOf(SourceControlRemoteAheadError);
+
+					expect(gitService.isRemoteAhead).toHaveBeenCalledWith(expect.any(String), undefined);
+				});
+
+				it('refuses the push when the stored commit cannot be read', async () => {
+					arrangePushableStatus();
+					vi.spyOn(preferencesService, 'getLastSyncedCommit').mockRejectedValue(
+						new Error('db down'),
+					);
+
+					await expect(
+						sourceControlService.pushWorkfolder(user, {
+							fileNames: [{ id: 'wf-1', type: 'workflow' }],
+							acceptConflicts: true,
+						}),
+					).rejects.toThrow('db down');
+
+					expect(gitService.isRemoteAhead).not.toHaveBeenCalled();
+					expect(sourceControlExportService.exportWorkflowsToWorkFolder).not.toHaveBeenCalled();
+					expect(gitService.push).not.toHaveBeenCalled();
+				});
+
+				it('stores the pushed commit after a successful push', async () => {
+					gitService.isRemoteAhead.mockResolvedValueOnce(false);
+					gitService.getHeadCommit.mockResolvedValueOnce('pushed-sha');
+					arrangePushableStatus();
+
+					await sourceControlService.pushWorkfolder(user, {
+						fileNames: [{ id: 'wf-1', type: 'workflow' }],
+						acceptConflicts: true,
+					});
+
+					expect(preferencesService.setLastSyncedCommit).toHaveBeenCalledWith('pushed-sha');
+				});
+
+				it('does not fail a successful push when storing the commit fails', async () => {
+					gitService.isRemoteAhead.mockResolvedValueOnce(false);
+					gitService.getHeadCommit.mockResolvedValueOnce('pushed-sha');
+					vi.spyOn(preferencesService, 'setLastSyncedCommit').mockRejectedValue(
+						new Error('db down'),
+					);
+					arrangePushableStatus();
+
+					const result = await sourceControlService.pushWorkfolder(user, {
+						fileNames: [{ id: 'wf-1', type: 'workflow' }],
+						acceptConflicts: true,
+					});
+
+					expect(result.statusCode).toBe(200);
+					expect(gitService.resetBranch).not.toHaveBeenCalledWith(
+						expect.objectContaining({ target: expect.stringContaining('origin/') }),
+					);
+				});
+
+				it('does not store a commit when the push is rejected', async () => {
+					gitService.isRemoteAhead.mockResolvedValueOnce(false);
+					gitService.getHeadCommit.mockResolvedValue('head-sha');
+					arrangePushableStatus();
+					gitService.push.mockReset();
+					gitService.push.mockRejectedValueOnce(new Error('rejected'));
+
+					await expect(
+						sourceControlService.pushWorkfolder(user, {
+							fileNames: [{ id: 'wf-1', type: 'workflow' }],
+							acceptConflicts: true,
+						}),
+					).rejects.toThrow('rejected');
+
+					expect(preferencesService.setLastSyncedCommit).not.toHaveBeenCalled();
+				});
+
+				it('reports the remote-ahead error when a commit arrives after the check', async () => {
+					gitService.isRemoteAhead.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+					arrangePushableStatus();
+					gitService.push.mockReset();
+					gitService.push.mockRejectedValueOnce(new Error('non-fast-forward'));
+
+					await expect(
+						sourceControlService.pushWorkfolder(user, {
+							fileNames: [{ id: 'wf-1', type: 'workflow' }],
+							acceptConflicts: true,
+						}),
+					).rejects.toBeInstanceOf(SourceControlRemoteAheadError);
+				});
+
+				it('keeps the push error when the remote is not ahead after the failure', async () => {
+					gitService.isRemoteAhead.mockResolvedValue(false);
+					arrangePushableStatus();
+					gitService.push.mockReset();
+					gitService.push.mockRejectedValueOnce(new Error('auth failed'));
+
+					await expect(
+						sourceControlService.pushWorkfolder(user, {
+							fileNames: [{ id: 'wf-1', type: 'workflow' }],
+							acceptConflicts: true,
+						}),
+					).rejects.toThrow('auth failed');
+				});
+
+				it('keeps the push error when the re-check itself fails', async () => {
+					gitService.isRemoteAhead.mockResolvedValueOnce(false);
+					arrangePushableStatus();
+					gitService.push.mockReset();
+					gitService.push.mockRejectedValueOnce(new Error('network down'));
+					gitService.fetch.mockResolvedValueOnce(undefined as never);
+					gitService.fetch.mockRejectedValueOnce(new Error('fetch failed'));
+
+					await expect(
+						sourceControlService.pushWorkfolder(user, {
+							fileNames: [{ id: 'wf-1', type: 'workflow' }],
+							acceptConflicts: true,
+						}),
+					).rejects.toThrow('network down');
+				});
+
+				it('does not re-check after a failed forced push', async () => {
+					arrangePushableStatus();
+					gitService.push.mockReset();
+					gitService.push.mockRejectedValueOnce(new Error('forced push failed'));
+
+					await expect(
+						sourceControlService.pushWorkfolder(user, {
+							fileNames: [{ id: 'wf-1', type: 'workflow' }],
+							force: true,
+						}),
+					).rejects.toThrow('forced push failed');
+
+					expect(gitService.isRemoteAhead).not.toHaveBeenCalled();
+				});
+			});
+
+			it('returns the file conflict response when neither flag is set', async () => {
+				gitService.isRemoteAhead.mockResolvedValueOnce(false);
+				mockStatusService.getStatus.mockResolvedValueOnce([conflictingWorkflow]);
+				(isContainedWithin as Mock).mockReturnValue(true);
+
+				const result = await sourceControlService.pushWorkfolder(user, {
+					fileNames: [{ id: 'wf-1', type: 'workflow' }],
+				});
+
+				expect(result.statusCode).toBe(409);
+				expect(gitService.push).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('pullWorkfolder', () => {
@@ -682,6 +961,42 @@ describe('SourceControlService', () => {
 					workflowReviewRequestId: 'review-1',
 				},
 			});
+		});
+
+		it('stores the pulled commit after a successful pull', async () => {
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+			gitService.getHeadCommit.mockResolvedValueOnce('pulled-sha');
+
+			await sourceControlService.pullWorkfolder(mock<User>({ id: 'user-1' }), {
+				force: true,
+				autoPublish: 'none',
+			});
+
+			expect(preferencesService.setLastSyncedCommit).toHaveBeenCalledWith('pulled-sha');
+		});
+
+		it('does not store a commit when the pull stops on conflicts', async () => {
+			mockStatusService.getStatus.mockResolvedValueOnce([
+				{
+					id: 'wf-1',
+					name: 'Workflow 1',
+					type: 'workflow',
+					status: 'modified',
+					location: 'remote',
+					conflict: true,
+					file: 'workflows/wf-1.json',
+					updatedAt: new Date().toISOString(),
+				},
+			]);
+
+			const result = await sourceControlService.pullWorkfolder(mock<User>({ id: 'user-1' }), {
+				force: false,
+				autoPublish: 'none',
+			});
+
+			expect(result.statusCode).toBe(409);
+			expect(preferencesService.setLastSyncedCommit).not.toHaveBeenCalled();
 		});
 
 		it('passes the public API client to the pull status check', async () => {
@@ -1259,6 +1574,7 @@ describe('SourceControlService', () => {
 		beforeEach(() => {
 			// Common mock setup
 			preferencesService.setPreferences = vi.fn().mockResolvedValue(undefined);
+			preferencesService.clearLastSyncedCommit = vi.fn().mockResolvedValue(undefined);
 			sourceControlExportService.deleteRepositoryFolder.mockResolvedValue(undefined);
 			preferencesService.deleteHttpsCredentials = vi.fn().mockResolvedValue(undefined);
 			preferencesService.deleteKeyPair = vi.fn().mockResolvedValue(undefined);
@@ -1287,6 +1603,7 @@ describe('SourceControlService', () => {
 				branchColor: SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
 				connectionType: 'https',
 			});
+			expect(preferencesService.clearLastSyncedCommit).toHaveBeenCalled();
 			expect(result).toEqual(preferencesService.sourceControlPreferences);
 		});
 
@@ -1604,6 +1921,7 @@ describe('SourceControlService', () => {
 			setPreferencesSpy = vi
 				.spyOn(preferencesService, 'setPreferences')
 				.mockResolvedValue(preferencesService.getPreferences());
+			vi.spyOn(preferencesService, 'clearLastSyncedCommit').mockResolvedValue(undefined);
 		});
 
 		afterEach(() => {
@@ -1618,6 +1936,8 @@ describe('SourceControlService', () => {
 				branchName: 'feature-branch',
 				connected: true,
 			});
+			// The stored commit belongs to the previous branch.
+			expect(preferencesService.clearLastSyncedCommit).toHaveBeenCalled();
 			// The checkout must happen before the preference write is persisted.
 			expect(gitService.setBranch.mock.invocationCallOrder[0]).toBeLessThan(
 				setPreferencesSpy.mock.invocationCallOrder[0],

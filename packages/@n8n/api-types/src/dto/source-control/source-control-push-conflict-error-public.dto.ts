@@ -5,5 +5,6 @@ import { Z } from '../../zod-class';
 
 export class SourceControlPushConflictErrorPublicDto extends Z.class({
 	message: z.string(),
-	conflicts: z.array(SourceControlledFileSchema),
+	/** Only present when files have unresolved conflicts. A remote-ahead 409 has no file list. */
+	conflicts: z.array(SourceControlledFileSchema).optional(),
 }) {}

@@ -105,6 +105,79 @@ describe('SourceControlGitService Git synchronization', () => {
 		await rm(testFolder, { force: true, recursive: true, maxRetries: 3, retryDelay: 100 });
 	});
 
+	describe('stale push', () => {
+		const commitInWorktree = async (message: string) => {
+			const git = gitService.git!;
+			await git.addConfig('user.name', 'n8n test');
+			await git.addConfig('user.email', 'n8n@example.com');
+			await writeFile(path.join(worktreeFolder, 'local.json'), `{"message":"${message}"}\n`);
+			await git.add(['local.json']);
+			await git.commit(message);
+		};
+
+		it('reports the remote as ahead after another clone pushes', async () => {
+			expect(await gitService.isRemoteAhead('main')).toBe(false);
+
+			await writeFile(tagsPath(), '{"version":2}\n');
+			await publish('Remote change');
+			await gitService.fetch();
+
+			expect(await gitService.isRemoteAhead('main')).toBe(true);
+		});
+
+		it('does not report the remote as ahead for local-only commits', async () => {
+			await commitInWorktree('Local change');
+			await gitService.fetch();
+
+			expect(await gitService.isRemoteAhead('main')).toBe(false);
+		});
+
+		it('compares the remote with a given commit after the work folder was fast-forwarded', async () => {
+			// The status call fast-forwards the work folder, so HEAD alone cannot show unsynced commits.
+			const syncedSha = await gitService.getHeadCommit();
+			await writeFile(tagsPath(), '{"version":2}\n');
+			await publish('Remote change');
+			await gitService.fetch();
+			await gitService.git!.merge(['--ff-only', 'origin/main']);
+
+			expect(await gitService.isRemoteAhead('main')).toBe(false);
+			expect(await gitService.isRemoteAhead('main', syncedSha)).toBe(true);
+		});
+
+		it('counts an unknown commit as ahead, so that the instance has to pull', async () => {
+			const unknown = '0'.repeat(40);
+			await gitService.fetch();
+
+			expect(await gitService.isRemoteAhead('main', unknown)).toBe(true);
+			// Also when the work folder is already at the remote tip.
+			expect(await gitService.isRemoteAhead('main')).toBe(false);
+			expect(await gitService.isRemoteAhead('main', unknown)).toBe(true);
+		});
+
+		it('returns the commit that HEAD points at', async () => {
+			const expected = (await gitService.git!.revparse(['HEAD'])).trim();
+
+			expect(await gitService.getHeadCommit()).toBe(expected);
+		});
+
+		it('returns false when the remote branch does not exist', async () => {
+			expect(await gitService.isRemoteAhead('missing-branch')).toBe(false);
+		});
+
+		it('rejects a normal push and keeps the remote commit reachable', async () => {
+			await writeFile(tagsPath(), '{"version":2}\n');
+			await publish('Remote change');
+			const remoteSha = (await publisherGit.revparse(['HEAD'])).trim();
+			await commitInWorktree('Local change');
+
+			await expect(gitService.push({ branch: 'main', force: false })).rejects.toThrow();
+
+			const verifier = path.join(testFolder, 'verifier');
+			await simpleGit().clone(path.join(testFolder, 'remote.git'), verifier, ['--branch', 'main']);
+			expect((await simpleGit(verifier).revparse(['HEAD'])).trim()).toBe(remoteSha);
+		});
+	});
+
 	it('should update only after the managed tree passes validation', async () => {
 		await writeFile(tagsPath(), '{"version":2}\n');
 		await publish('Update regular entry');

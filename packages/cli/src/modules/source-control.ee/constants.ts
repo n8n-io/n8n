@@ -1,4 +1,5 @@
 export const SOURCE_CONTROL_PREFERENCES_DB_KEY = 'features.sourceControl';
+export const SOURCE_CONTROL_LAST_SYNCED_COMMIT_DB_KEY = 'features.sourceControl.lastSyncedCommit';
 export const SOURCE_CONTROL_GIT_FOLDER = 'git';
 export const SOURCE_CONTROL_GIT_KEY_COMMENT = 'n8n deploy key';
 export const SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER = 'workflows';

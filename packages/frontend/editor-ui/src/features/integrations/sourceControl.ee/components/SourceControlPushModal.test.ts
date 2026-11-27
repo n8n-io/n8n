@@ -4,7 +4,9 @@ import { createComponentRenderer } from '@/__tests__/render';
 import SourceControlPushModal from './SourceControlPushModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { SOURCE_CONTROL_PUSH_REMOTE_AHEAD_REASON } from '@n8n/api-types';
 import type { SourceControlledFile } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useSourceControlStore } from '../sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
@@ -63,14 +65,16 @@ vi.mock('@/app/composables/useLoadingService', () => ({
 	}),
 }));
 
+const toastMock = vi.hoisted(() => ({
+	showMessage: vi.fn(),
+	showError: vi.fn(),
+	showSuccess: vi.fn(),
+	showToast: vi.fn(),
+	clear: vi.fn(),
+}));
+
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({
-		showMessage: vi.fn(),
-		showError: vi.fn(),
-		showSuccess: vi.fn(),
-		showToast: vi.fn(),
-		clear: vi.fn(),
-	}),
+	useToast: () => toastMock,
 }));
 
 let telemetry: ReturnType<typeof useTelemetry>;
@@ -609,9 +613,80 @@ describe('SourceControlPushModal', () => {
 				commitMessage,
 				// All files including credentials should be pushed (credentials now selected by default)
 				fileNames: expect.arrayContaining(status),
-				force: true,
+				acceptConflicts: true,
 			}),
 		);
+	});
+
+	describe('rejected push', () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'variables',
+				name: 'variables',
+				type: 'variables',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/variables.json',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+		];
+
+		const submitPush = async () => {
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+			const { getByTestId, getByText } = renderModal({
+				pinia,
+				props: { data: { eventBus, status } },
+			});
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+			await waitFor(() => {
+				expect(getByTestId('source-control-push-modal-commit')).toBeInTheDocument();
+			});
+			await userEvent.type(getByTestId('source-control-push-modal-commit'), 'commit message');
+			await userEvent.click(getByTestId('source-control-push-modal-submit'));
+		};
+
+		beforeEach(() => {
+			toastMock.showMessage.mockClear();
+			toastMock.showError.mockClear();
+		});
+
+		it('should show the pull-first message when the remote is ahead', async () => {
+			sourceControlStore.pushWorkfolder.mockRejectedValue(
+				new ResponseError('remote ahead', {
+					httpStatusCode: 409,
+					errorCode: 409,
+					meta: { reason: SOURCE_CONTROL_PUSH_REMOTE_AHEAD_REASON },
+				}),
+			);
+
+			await submitPush();
+			expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledTimes(1);
+
+			await waitFor(() => {
+				expect(toastMock.showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'error',
+						message: expect.stringContaining('Pull the changes first'),
+					}),
+				);
+			});
+			expect(toastMock.showError).not.toHaveBeenCalled();
+		});
+
+		it('should show the generic error for other push failures', async () => {
+			const error = new ResponseError('boom', { httpStatusCode: 400 });
+			sourceControlStore.pushWorkfolder.mockRejectedValue(error);
+
+			await submitPush();
+
+			await waitFor(() => {
+				expect(toastMock.showError).toHaveBeenCalledWith(error, expect.any(String));
+			});
+			expect(toastMock.showMessage).not.toHaveBeenCalled();
+		});
 	});
 
 	it('should allow selecting currentWorkflow and enable commit', async () => {
@@ -1265,7 +1340,7 @@ describe('SourceControlPushModal', () => {
 						expect.objectContaining({ id: 'dt-2', type: 'datatable' }),
 						expect.objectContaining({ id: 'variables', type: 'variables' }),
 					]),
-					force: true,
+					acceptConflicts: true,
 				}),
 			);
 		});
@@ -1353,7 +1428,7 @@ describe('SourceControlPushModal', () => {
 					fileNames: expect.arrayContaining([
 						expect.objectContaining({ id: 'dt-1', type: 'datatable' }),
 					]),
-					force: true,
+					acceptConflicts: true,
 				}),
 			);
 

@@ -237,6 +237,21 @@ describe('useSourceControlStore', () => {
 			);
 			expect(sourceControlStore.state.commitMessage).toBe(data.commitMessage);
 		});
+
+		it('should pass acceptConflicts to the API without forcing the push', async () => {
+			const mockPushWorkfolder = vi.mocked(vcApi.pushWorkfolder);
+			mockPushWorkfolder.mockResolvedValue({ files: [], commit: null });
+
+			await sourceControlStore.pushWorkfolder({
+				commitMessage: 'Test commit',
+				fileNames: [],
+				acceptConflicts: true,
+			});
+
+			const [, body] = mockPushWorkfolder.mock.calls[0];
+			expect(body.acceptConflicts).toBe(true);
+			expect(body.force).toBeUndefined();
+		});
 	});
 
 	describe('pullWorkfolder', () => {
