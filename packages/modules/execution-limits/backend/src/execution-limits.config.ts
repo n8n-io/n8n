@@ -1,13 +1,20 @@
+import type { ExecutionLimitPeriodUnit } from '@n8n/api-types';
 import { Config, Env } from '@n8n/config';
 import { z } from 'zod';
 
-export const USAGE_RETENTION_DAYS_DEFAULT = 400;
+const USAGE_RETENTION_DAYS_DEFAULT = 400;
 
-/** The longest limit period is one month, and its days must stay countable. */
-export const USAGE_RETENTION_DAYS_MIN = 31;
+const LONGEST_PERIOD_DAYS = {
+	day: 1,
+	week: 7,
+	month: 31,
+} satisfies Record<ExecutionLimitPeriodUnit, number>;
+
+/** The days of the current period must stay countable, for each period unit. */
+const USAGE_RETENTION_DAYS_MIN = Math.max(...Object.values(LONGEST_PERIOD_DAYS));
 
 /** About 100 years. A much larger value gives a cutoff that is not a valid date. */
-export const USAGE_RETENTION_DAYS_MAX = 36_500;
+const USAGE_RETENTION_DAYS_MAX = 36_500;
 
 const retentionDaysSchema = z.coerce
 	.number()
