@@ -96,67 +96,15 @@ Other `editor-ui` timing constants are in `@/app/constants/durations`.
 
 ## Node types and credential types
 
-After sign-in, the editor starts to load the node types and the credential types, but it does not wait for them.
-On the first render, the stores can be empty: `getNodeType()` returns `null`, `allNodeTypes` is `[]`,
-`getCredentialTypeByName()` returns `undefined`, `allCredentialTypes` is `[]` and `isNodeTypeUnavailable()` returns `false`.
-If a component reads the types and does not wait for them:
+Startup does not wait for the node types or the credential types, so their stores can be empty on the first render.
+A component that reads them must wait with the composable for the types that the getter reads:
 
-- A computed or template read shows empty or fallback data until the load ends.
-- A one-time read (in `setup`, `onMounted` or an init function) keeps the wrong value.
-- A non-null assertion, for example `getNodeType(name)!`, can crash the component.
+- Node types: `useNodeTypesLoad()` from `@/app/composables/useNodeTypesLoad`.
+- Credential types: `useCredentialTypesLoad()` from `@/features/credentials/composables/useCredentialTypesLoad`.
+- Some getters read both, for example `isCredentialTypeTestable` and `getNodeType()` for a credential-only node. Use both composables.
 
-Wait with the composable that matches what the getter reads:
-
-| Getter | Composable |
-| --- | --- |
-| Node-type getters of `useNodeTypesStore()`, for example `getNodeType`, `allNodeTypes` and `isTriggerNode` | `useNodeTypesLoad()` from `@/app/composables/useNodeTypesLoad` |
-| Credential-type getters of `useCredentialsStore()`: `getCredentialTypeByName`, `allCredentialTypes`, `credentialTypesById`, `httpOnlyCredentialTypes`, `getScopesByCredentialType` and `getCredentialTypesNodeDescriptions` | `useCredentialTypesLoad()` from `@/features/credentials/composables/useCredentialTypesLoad` |
-| `getCredentialsByType` of `useCredentialsStore()`. It returns `[]` until the credential types load. | `useCredentialTypesLoad()` |
-| `allUsableCredentialsForNode` of `useCredentialsStore()`. It reads the node types, not the credential types. | `useNodeTypesLoad()` |
-| `isCredentialTypeTestable` of `useCredentialsStore()`. It reads both. | Both |
-
-A credential-only node type has a name that starts with `n8n-creds-base.`.
-The store builds it from the HTTP Request node type and a credential type.
-For such a name, `getNodeType()` returns `null` until both types load, and `isNodeTypeUnavailable()` can return `true`.
-Code that reads credential-only node types needs both composables.
-
-The credentials list is a different load. Neither composable loads it.
-
-Both composables take no arguments and return:
-
-- `isLoaded`: computed, `true` when the store holds the types.
-- `isLoading`: computed, `true` when the types are not in the store and the load has not ended.
-- `error`: readonly, the error of the load that this call joined, or `undefined`.
-- `whenLoaded()`: resolves when the load succeeds. It rejects with the load error.
-- `whenSettled()`: resolves when the load ends, also when it fails. It never rejects.
-
-Each call starts the shared load of the store, or joins the load that runs, so all callers send one request.
-When the store already holds the types, a call sends no request.
-The composables use no lifecycle hooks, so you can call them in other composables and in async functions.
-A call does not retry a failed load. A new call sends a new request.
-
-```typescript
-// Show a loading state until the node types load.
-const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
-
-// Wait before a one-time read, for example to fill defaults.
-const credentialTypes = useCredentialTypesLoad();
-onMounted(async () => {
-	await credentialTypes.whenSettled(); // Or whenLoaded(), which rejects when the load fails.
-	if (!credentialTypes.isLoaded.value) return;
-	fillDefaults(credentialsStore.getCredentialTypeByName(type));
-});
-```
-
-The workflow editor shows a loading view in place of its main view until the node types and the credential types load.
-A view that renders only in that main view does not need a composable. The demo preview waits only for the node types.
-The editor header, sidebar, logs panel and floating buttons render at once, so the wait does not cover them.
-If a load fails, the editor shows an error and renders with empty stores.
-Some editor components also render on other pages, for example the canvas in n8n Assistant previews and the parameter inputs on the agent pages.
-The command bar renders on each page after sign-in, except the demo view and canvas-only mode. If you are not sure, use the composable. It sends no extra request.
-
-Do not call `nodeTypesStore.getNodeTypes()` or `credentialsStore.fetchCredentialTypes(true)` to wait for the types.
-They load the types again on each call.
+Both return `isLoading`, `isLoaded`, `error`, `whenLoaded()` and `whenSettled()`, and share one request between callers.
+Do not wait with `getNodeTypes()` or `fetchCredentialTypes(true)`. They load the types again on each call.
 
 ## Tests and analytics attributes
 
