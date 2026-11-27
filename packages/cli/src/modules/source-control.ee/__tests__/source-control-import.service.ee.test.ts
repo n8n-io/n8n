@@ -3909,130 +3909,66 @@ describe('SourceControlImportService', () => {
 				]);
 			});
 
-			it('does not prune a variable that an earlier project import moved to another project', async () => {
-				// Upstream moved var1 from project1 to project2; the target project's file
-				// arrives before the source project's file.
-				variablesRepository.find.mockImplementation(async (options?: unknown) => {
-					const projectId = (options as { where?: { project?: { id?: string } } } | undefined)
-						?.where?.project?.id;
-					if (projectId === 'project1') {
-						// By prune time var1 has moved to project2, so project1 holds nothing.
-						return [];
+			it.each([
+				['target', ['project2', 'project1']],
+				['source', ['project1', 'project2']],
+			])(
+				'keeps a variable moved between projects when the %s project file comes first',
+				async (_, fileOrder) => {
+					const variableProjects = new Map<string, string>([['var1', 'project1']]);
+					variablesRepository.upsert.mockImplementation(async (row: unknown) => {
+						const { id, project } = row as { id: string; project?: { id: string } | null };
+						if (project) variableProjects.set(id, project.id);
+						return { identifiers: [], generatedMaps: [], raw: [] };
+					});
+					variablesRepository.find.mockImplementation(async (options?: unknown) => {
+						const projectId = (options as { where?: { project?: { id?: string } } } | undefined)
+							?.where?.project?.id;
+						return [...variableProjects]
+							.filter(([, pid]) => projectId === undefined || pid === projectId)
+							.map(([id]) => mock<Variables>({ id }));
+					});
+					variableService.deleteByIds.mockImplementation(async (ids: string[]) => {
+						ids.forEach((id) => variableProjects.delete(id));
+					});
+
+					const projectFiles: Record<string, object> = {
+						project1: {
+							id: 'project1',
+							name: 'Team Project 1',
+							type: 'team',
+							owner: { type: 'team', teamId: 'project1' },
+						},
+						project2: {
+							id: 'project2',
+							name: 'Team Project 2',
+							type: 'team',
+							owner: { type: 'team', teamId: 'project2' },
+							variableStubs: [{ id: 'var1', key: 'VAR1', value: '', type: 'string' }],
+						},
+					};
+					const candidates = fileOrder.map((id) =>
+						mock<SourceControlledFile>({ file: `/mock/team-${id}.json`, id }),
+					);
+					fileOrder.forEach((id) =>
+						fsReadFile.mockResolvedValueOnce(JSON.stringify(projectFiles[id])),
+					);
+					projectRepository.findOne.mockResolvedValue(null);
+					projectRelationRepository.findOne.mockResolvedValue(null);
+
+					await service.importTeamProjectsFromWorkFolder(candidates, mockPullingUserId);
+
+					for (const [ids] of variableService.deleteByIds.mock.calls) {
+						expect(ids).not.toContain('var1');
 					}
-					if (projectId === 'project2') {
-						// var1 belongs to project2 once project2's import has run.
-						return [
-							mock<Variables>({
-								id: 'var1',
-								key: 'VAR1',
-								project: mock<Project>({ id: 'project2' }),
-							}),
-						];
-					}
-					// importVariables' {select:['id']} probe: var1 exists the whole time.
-					return [mock<Variables>({ id: 'var1', key: 'VAR1' })];
-				});
-
-				const projectData1 = {
-					id: 'project1',
-					name: 'Team Project 1',
-					type: 'team',
-					owner: { type: 'team', teamId: 'project1' },
-				};
-				const projectData2 = {
-					id: 'project2',
-					name: 'Team Project 2',
-					type: 'team',
-					owner: { type: 'team', teamId: 'project2' },
-					variableStubs: [{ id: 'var1', key: 'VAR1', value: '', type: 'string' }],
-				};
-				const candidates = [
-					mock<SourceControlledFile>({ file: '/mock/team-project2.json', id: 'project2' }),
-					mock<SourceControlledFile>({ file: '/mock/team-project1.json', id: 'project1' }),
-				];
-				fsReadFile
-					.mockResolvedValueOnce(JSON.stringify(projectData2))
-					.mockResolvedValueOnce(JSON.stringify(projectData1));
-				projectRepository.findOne.mockResolvedValue(null);
-				projectRelationRepository.findOne.mockResolvedValue(null);
-
-				await service.importTeamProjectsFromWorkFolder(candidates, mockPullingUserId);
-
-				// The move to project2 wins over project1's stub-less file: var1 must survive.
-				expect(variableService.deleteByIds).not.toHaveBeenCalledWith(
-					expect.arrayContaining(['var1']),
-				);
-				// The same-id upsert keeps the instance-local value (sync placeholder is '').
-				const var1Upserts = variablesRepository.upsert.mock.calls.filter(
-					(call) => (call[0] as { id?: string })?.id === 'var1',
-				);
-				expect(var1Upserts.length).toBe(1);
-				expect((var1Upserts[0][0] as { value?: string }).value).toBeUndefined();
-			});
-
-			it('does not prune a moved variable when its source project is processed before its target project', async () => {
-				// Upstream moved var1 from project1 (source) to project2 (target); this time
-				// the source project's file arrives FIRST. An in-loop prune would delete var1
-				// while it still lives in project1, and the target import would recreate it
-				// empty — the post-loop prune with the cross-import stub guard prevents both.
-				variablesRepository.find.mockImplementation(async (options?: unknown) => {
-					const projectId = (options as { where?: { project?: { id?: string } } } | undefined)
-						?.where?.project?.id;
-					if (projectId === 'project1') {
-						// By prune time var1 has moved to project2, so project1 holds nothing.
-						return [];
-					}
-					if (projectId === 'project2') {
-						// var1 belongs to project2 once project2's import has run.
-						return [
-							mock<Variables>({
-								id: 'var1',
-								key: 'VAR1',
-								project: mock<Project>({ id: 'project2' }),
-							}),
-						];
-					}
-					// importVariables' {select:['id']} probe: var1 exists the whole time.
-					return [mock<Variables>({ id: 'var1', key: 'VAR1' })];
-				});
-
-				const projectData1 = {
-					id: 'project1',
-					name: 'Team Project 1',
-					type: 'team',
-					owner: { type: 'team', teamId: 'project1' },
-				};
-				const projectData2 = {
-					id: 'project2',
-					name: 'Team Project 2',
-					type: 'team',
-					owner: { type: 'team', teamId: 'project2' },
-					variableStubs: [{ id: 'var1', key: 'VAR1', value: '', type: 'string' }],
-				};
-				const candidates = [
-					mock<SourceControlledFile>({ file: '/mock/team-project1.json', id: 'project1' }),
-					mock<SourceControlledFile>({ file: '/mock/team-project2.json', id: 'project2' }),
-				];
-				fsReadFile
-					.mockResolvedValueOnce(JSON.stringify(projectData1))
-					.mockResolvedValueOnce(JSON.stringify(projectData2));
-				projectRepository.findOne.mockResolvedValue(null);
-				projectRelationRepository.findOne.mockResolvedValue(null);
-
-				await service.importTeamProjectsFromWorkFolder(candidates, mockPullingUserId);
-
-				// The source project must not prune the variable away before its target
-				// project imports it.
-				expect(variableService.deleteByIds).not.toHaveBeenCalledWith(
-					expect.arrayContaining(['var1']),
-				);
-				// The value survives the move: the same-id upsert leaves it untouched.
-				const var1Upserts = variablesRepository.upsert.mock.calls.filter(
-					(call) => (call[0] as { id?: string })?.id === 'var1',
-				);
-				expect(var1Upserts.length).toBe(1);
-				expect((var1Upserts[0][0] as { value?: string }).value).toBeUndefined();
-			});
+					expect(variableProjects.get('var1')).toBe('project2');
+					const var1Upserts = variablesRepository.upsert.mock.calls.filter(
+						(call) => (call[0] as { id?: string }).id === 'var1',
+					);
+					expect(var1Upserts).toHaveLength(1);
+					expect((var1Upserts[0][0] as { value?: string }).value).toBeUndefined();
+				},
+			);
 
 			it('keeps pruning the remaining projects when one project prune fails', async () => {
 				// Both projects import fine; project1's prune blows up (find rejects). The
