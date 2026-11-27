@@ -1,0 +1,31 @@
+packages/@n8n/db/src/migrations/common/1795778326729-AddIsRuntimeToCredentials.ts
+  s_af367323ed1620::t_8113fa024b4a46 5
+packages/@n8n/db/src/migrations/common/1795778326730-CreateRuntimeCredentialRuleTable.ts
+  s_af367323ed1620::t_06d84876ca5718 5
+packages/@n8n/db/src/migrations/common/1795778326731-AddAllowedDomainsToRuntimeCredentialRule.ts
+  s_af367323ed1620::t_63eaf5c809a26e 5
+packages/@n8n/db/src/migrations/sqlite/1795778326729-AddIsRuntimeToCredentials.ts
+  s_af367323ed1620::t_254d44be9b3389 1,5
+packages/cli/test/migration/1795778326729-add-is-runtime-to-credentials.test.ts
+  s_af367323ed1620::t_88d1651695d630 13
+packages/cli/test/migration/1795778326730-create-runtime-credential-rule-table.test.ts
+  s_af367323ed1620::t_f932fd1ac1d84f 13
+packages/cli/test/migration/1795778326731-add-allowed-domains-to-runtime-credential-rule.test.ts
+  s_af367323ed1620::t_44f1f8a0b8ea74 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3e83ff1538aebcfab873c176ad664a19adb7988f",
+  "prompts": {},
+  "sessions": {
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
