@@ -1,0 +1,14 @@
+packages/quality/environments/containers/HELM-TESTING.md
+  h_52a137d26d774c 141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6e94e59cbaa20e607df0ce67a69c4eae6210933",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

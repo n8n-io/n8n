@@ -1,0 +1,54 @@
+docs/backend/runtime-credentials.md
+  s_55c9c16466c150::t_aa34067fdf30d0 150-151
+  s_55c9c16466c150::t_a541c66ab61ee0 1-149,153-383
+  s_55c9c16466c150::t_127e19779e3ac1 152,384-402
+packages/cli/docs/adr/ADR-20261118-keep-runtime-credentials-separate-from-dynamic-credentials.md
+  s_55c9c16466c150::t_4759a6ae185366 1-58
+packages/cli/docs/adr/ADR-20261118-lock-stub-credentials-against-user-changes.md
+  s_55c9c16466c150::t_82957376bf888b 1-53
+packages/cli/docs/adr/ADR-20261118-match-request-values-by-key-path-with-linear-time-globs.md
+  s_55c9c16466c150::t_8c39fc51085a3a 1-62
+packages/cli/docs/adr/ADR-20261118-govern-request-fed-credential-types-with-a-policy-kind.md
+  s_55c9c16466c150::t_071b5c2ade21c2 1-63
+  s_55c9c16466c150::t_488626ad11317a 64
+packages/cli/docs/adr/ADR-20261118-overlay-the-request-value-when-n8n-resolves-a-stub-credential.md
+  s_55c9c16466c150::t_ed295f7a9c1728 1-17,21-62
+  s_55c9c16466c150::t_4c2485d134f50d 18-20
+packages/cli/docs/adr/ADR-20261118-feed-a-request-value-to-a-credential-without-verifying-it.md
+  s_55c9c16466c150::t_d036f43ffe78a7 1-64
+packages/cli/docs/adr/ADR-20261118-create-one-stub-credential-for-each-rule-at-startup.md
+  s_55c9c16466c150::t_e475a833f84641 1-61
+packages/cli/docs/adr/ADR-20261118-require-a-matching-trigger-before-publishing-a-workflow-with-a-stub.md
+  s_55c9c16466c150::t_73796aef49309b 1-46
+packages/cli/docs/adr/ADR-20261118-limit-run-time-secrets-to-allowed-domains-with-credential-fields.md
+  s_55c9c16466c150::t_5afe9951978e36 1-68
+packages/cli/docs/adr/ADR-20261118-store-rules-in-the-environment-and-the-database.md
+  s_55c9c16466c150::t_00d1a9cdf0c0f1 1-55
+packages/core/docs/adr/ADR-20261118-clear-request-values-after-the-node-configured-hooks-run.md
+  s_55c9c16466c150::t_51b77b329afc9e 1-62
+docs/backend/credentials.md
+  s_55c9c16466c150::t_845c5b0ec3693e 23-26
+packages/cli/docs/adr/ADR-20261118-scrub-run-time-values-from-node-output-by-value.md
+  s_55c9c16466c150::t_b34bb367548d7f 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0bd67c4cce1b1d6ec884a09c2e493ab57da6696",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

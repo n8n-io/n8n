@@ -1,0 +1,22 @@
+.github/CLAUDE.md
+  h_52a137d26d774c 12
+.github/DEVELOPING_V3.md
+  h_52a137d26d774c 1,3-5,7-10,12,14-16,18-25,27,29-31,33-35,37-39
+.github/WORKFLOWS.md
+  h_52a137d26d774c 543,558,571,573-575,580-586,593,642-647,1082,1389
+AGENTS.md
+  h_52a137d26d774c 47-49
+packages/quality/environments/containers/HELM-TESTING.md
+  h_52a137d26d774c 141-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fdefcb8cc1b8b227ca5b5b344d6bd4cbc96d4f57",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

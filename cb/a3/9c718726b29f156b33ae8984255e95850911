@@ -1,0 +1,19 @@
+packages/cli/test/integration/unassigned-binary-data-backfill.test.ts
+  s_1a3b6572805f97::t_245c913384a9e2 87-91,160,170,177-181,190,198-199,201-202,288-289,291,293-297,299,304,307,309-313,321-322,324-325,327-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cba39c718726b29f156b33ae8984255e95850911",
+  "prompts": {},
+  "sessions": {
+    "s_1a3b6572805f97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "197b7d45-f2ec-48eb-9390-e0472d670832",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

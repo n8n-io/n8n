@@ -1,0 +1,62 @@
+docs/generated/postgres-schema/README.md
+  h_8a472ace01776f 751
+docs/generated/postgres-schema/public.agent_attention_flags.md
+  h_8a472ace01776f 54
+docs/generated/postgres-schema/public.agent_execution.md
+  h_8a472ace01776f 162
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  h_8a472ace01776f 13,44,85
+docs/generated/postgres-schema/public.agent_history.md
+  h_8a472ace01776f 112
+docs/generated/postgres-schema/public.agent_message_queue.md
+  h_8a472ace01776f 120
+docs/generated/postgres-schema/public.agent_plan.md
+  h_8a472ace01776f 104
+docs/generated/postgres-schema/public.agent_thread_grants.md
+  h_8a472ace01776f 49
+docs/generated/postgres-schema/public.agents.md
+  h_8a472ace01776f 259
+docs/generated/postgres-schema/public.project.md
+  h_8a472ace01776f 139
+docs/generated/postgres-schema/public.user.md
+  h_8a472ace01776f 188
+docs/generated/sqlite-schema/README.md
+  h_8a472ace01776f 732
+docs/generated/sqlite-schema/agent_attention_flags.md
+  h_8a472ace01776f 61
+docs/generated/sqlite-schema/agent_execution.md
+  h_8a472ace01776f 166
+docs/generated/sqlite-schema/agent_execution_threads.md
+  h_8a472ace01776f 9,24,84
+docs/generated/sqlite-schema/agent_history.md
+  h_8a472ace01776f 119
+docs/generated/sqlite-schema/agent_message_queue.md
+  h_8a472ace01776f 123
+docs/generated/sqlite-schema/agent_plan.md
+  h_8a472ace01776f 109
+docs/generated/sqlite-schema/agent_thread_grants.md
+  h_8a472ace01776f 58
+docs/generated/sqlite-schema/agents.md
+  h_8a472ace01776f 258
+docs/generated/sqlite-schema/project.md
+  h_8a472ace01776f 145
+docs/generated/sqlite-schema/user.md
+  h_8a472ace01776f 192
+packages/@n8n/db/src/migrations/common/1795698661898-AddTestChatToAgentExecutionThreads.ts
+  h_8a472ace01776f 11,13-15,18,27
+packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts
+  h_8a472ace01776f 28
+packages/cli/test/migration/1795698661898-add-test-chat-to-agent-execution-threads.test.ts
+  h_8a472ace01776f 62,65,103,115,120,133,144,150,160,167,169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "970c0ef1dcdea5a1ba7570f6f533441295cf0d91",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+.github/scripts/docker/base-image-chain-pr.test.mjs
+  s_2b69d7a96666fb::t_8b335f7fe5dbeb 62,64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f7fdfc846bcefce4f5d76c2097165936c650ffce",
+  "prompts": {},
+  "sessions": {
+    "s_2b69d7a96666fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1063df0-2d04-47d9-a930-0f013f1da21e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

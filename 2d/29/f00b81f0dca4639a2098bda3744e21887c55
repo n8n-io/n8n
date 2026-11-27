@@ -1,0 +1,277 @@
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_55c9c16466c150::t_37c0360d502953 77,96
+  s_55c9c16466c150::t_e3ccd4b7b9ba68 301-302
+packages/cli/src/modules/type-availability-policies/type-availability-policies.module.ts
+  s_55c9c16466c150::t_2a77e8a435cab6 29-30,61-64
+  s_55c9c16466c150::t_f8af3d61e4eebf 65-66
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credential-stub.seeder.test.ts
+  s_55c9c16466c150::t_cf611ecabb108b 2-23,25-83
+  s_55c9c16466c150::t_e3ef4d87ce41ed 1,24
+packages/cli/src/modules/type-availability-policies/constants.ts
+  s_55c9c16466c150::t_754f0ce8929fb9 15-27
+packages/cli/src/modules/runtime-credentials/runtime-credentials.schemas.ts
+  s_55c9c16466c150::t_3e9b4755b26286 4-31,43-44
+  s_16993190805102::t_52ac589711d666 1
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_55c9c16466c150::t_53d83455c12ac2 712-715,725-728,738-741
+  s_55c9c16466c150::t_5d8d0146962144 1,12,683-711,716-724,729-737,742-748
+  s_55c9c16466c150::t_e0563aa4f42404 749-750
+packages/cli/test/migration/1795006844318-create-runtime-credential-rule-table.test.ts
+  s_55c9c16466c150::t_f4490e9b29b26b 1-208
+packages/cli/test/integration/modules/runtime-credentials-hook-order.integration.test.ts
+  s_55c9c16466c150::t_8e0c9d32b31e50 49-61
+  s_55c9c16466c150::t_452da3d81f5371 1-48,62-246
+packages/cli/src/modules/runtime-credentials/runtime-credential-rules.service.ts
+  s_55c9c16466c150::t_e0636ec4dfa133 8
+  s_55c9c16466c150::t_47345b8c94e761 1-7,9-140
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_55c9c16466c150::t_6a376d247d2053 551-556
+  s_55c9c16466c150::t_65926171fa7a1c 4-5,525-550,557-562
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credential-rule-impact.service.test.ts
+  s_55c9c16466c150::t_73b2c947edfeb3 1-109
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credentials.module.test.ts
+  s_55c9c16466c150::t_ef2b78ab462efb 2,5,27-28,31,34
+  s_55c9c16466c150::t_e0636ec4dfa133 4,29-30,33
+packages/cli/src/modules/agents/__tests__/agents-credential-provider.test.ts
+  s_55c9c16466c150::t_46e7e0deb611d6 58,245
+packages/cli/src/events/maps/relay.event-map.ts
+  s_55c9c16466c150::t_9ed244d86f939e 649-662
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_55c9c16466c150::t_9ed244d86f939e 99
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-result.service.integration.test.ts
+  s_55c9c16466c150::t_794be936b02e6d 116
+packages/cli/src/credentials/credentials.controller.ts
+  s_55c9c16466c150::t_5a806a0b86b561 352-353,532-533,600
+  s_55c9c16466c150::t_1597bb71f1b529 601
+packages/cli/test/integration/modules/runtime-credential-allowed-domains.integration.test.ts
+  s_55c9c16466c150::t_653b0e9a446f78 1-187
+packages/cli/src/modules/runtime-credentials/runtime-credential-rules.controller.ts
+  s_55c9c16466c150::t_7f99de673a3996 47-57
+  s_55c9c16466c150::t_ca4c81b0c31afc 1-6
+  s_55c9c16466c150::t_a4715c39bdece3 21
+  s_55c9c16466c150::t_bda86252736afe 26-29
+  s_55c9c16466c150::t_47345b8c94e761 7-20,22-25,30-46,58-82
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_55c9c16466c150::t_e0636ec4dfa133 1371-1410
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credentials-access.service.test.ts
+  s_55c9c16466c150::t_ef2b78ab462efb 84-87,96-97,102,105-106,110-111,113,117,120,123-125,127,129,134,137,141,143,146-147,149-155,175,214
+  s_55c9c16466c150::t_ff454bdb61463f 98-99
+  s_55c9c16466c150::t_b9c982ddf69932 2,6-7,20-21,82-83,88-95,100-101,103-104,107-109,112,114-116,118-119,121-122,126,128,130-133,135-136,138-140,142,144-145,148,156-158,170,177,187,196,203,216
+  s_55c9c16466c150::t_05e15f21f759a8 159-161,167-169
+  s_55c9c16466c150::t_292e43cf004ca0 171-174
+  s_55c9c16466c150::t_f94cddf9dea21e 176
+  s_55c9c16466c150::t_f2d353a04e0391 178-180,184-186
+  s_55c9c16466c150::t_1f12774f188cab 188-190,193-195
+  s_55c9c16466c150::t_67761fd74119e6 197-202
+  s_55c9c16466c150::t_bc68b350a5f29f 204-206,211-213
+  s_55c9c16466c150::t_292b00a1f401fb 215
+  s_55c9c16466c150::t_82a203dba19a8c 217
+  s_16993190805102::t_78f3374dbe6fa5 162-166,181-183,191-192,207-210
+packages/cli/src/modules/type-availability-policies/request-fed-credential-type-policy.ts
+  s_55c9c16466c150::t_2a77e8a435cab6 1-47
+packages/cli/src/credentials/__tests__/credentials.service.ee.test.ts
+  s_55c9c16466c150::t_60725f2a7c7898 136,278,322,349
+  s_55c9c16466c150::t_e0636ec4dfa133 14,16,55-67,146-165
+  s_55c9c16466c150::t_0b6dfb060ceff9 166
+packages/cli/src/modules/type-availability-policies/type-availability-policy.service.ts
+  s_55c9c16466c150::t_754f0ce8929fb9 29,171
+packages/cli/src/credentials/credentials.service.ts
+  s_55c9c16466c150::t_f4d04543a52c02 201-203,243,760,1074,1157-1166,1184,1241,1577,1636,1696,1720-1721,1749
+  s_55c9c16466c150::t_d9bab35252ba0a 1750
+packages/cli/src/modules/runtime-credentials/runtime-credential-rule-impact.service.ts
+  s_55c9c16466c150::t_65b73d49b8a2b0 1-63
+packages/cli/src/modules/runtime-credentials/runtime-credentials.service.ts
+  s_55c9c16466c150::t_3e9b4755b26286 17-18,68,70-74,95,103,135-136,139,141-143,162-163
+  s_55c9c16466c150::t_35539ab06283dc 5,19-24,137-138,140,144-145,149-155
+  s_55c9c16466c150::t_4e93fdc741bd05 2-3,14,34-40,46,66-67,69,76-93,96-102,104-134
+  s_55c9c16466c150::t_09e646ef304caf 146-148
+  s_55c9c16466c150::t_6eaab21af521f0 75
+  s_55c9c16466c150::t_b7fce85de461c3 94
+packages/cli/test/integration/modules/runtime-credential-rule-impact.integration.test.ts
+  s_55c9c16466c150::t_665d455337bd52 1-136
+packages/cli/test/integration/modules/runtime-credential-stubs.integration.test.ts
+  s_55c9c16466c150::t_ba767d8b8f9f84 1-119
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credentials.service.test.ts
+  s_55c9c16466c150::t_ef2b78ab462efb 10,192-193,196-215
+  s_55c9c16466c150::t_893871eaa29b1b 6-7,17,21-131,264
+  s_55c9c16466c150::t_4f132ab9a93660 166-191,194-195,216-263
+  s_55c9c16466c150::t_45a42f715a7116 265
+packages/cli/src/modules/runtime-credentials/runtime-credential-stub.seeder.ts
+  s_55c9c16466c150::t_dd19489f778e80 1-3,5-8,14-32,34-36,49,54,64,67-68
+  s_55c9c16466c150::t_e0636ec4dfa133 9-13,37-48,50-53,55-56,58-63,65-66
+  s_55c9c16466c150::t_c3cc1df17d1283 4,33,57
+packages/cli/test/integration/modules/runtime-credentials-pinned.integration.test.ts
+  s_55c9c16466c150::t_32c0dfba26ab66 1-234
+packages/cli/src/modules/type-availability-policies/package-resolver.ts
+  s_55c9c16466c150::t_754f0ce8929fb9 4,50
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_55c9c16466c150::t_dc286f846f0de9 1817,1825
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_55c9c16466c150::t_899850a77c2723 5967-5968,5970-6010,6012-6016,6018-6049,6051-6091
+  s_55c9c16466c150::t_f05ae11cc72d8a 54-57,6050
+  s_55c9c16466c150::t_e0636ec4dfa133 3898-3909,5969,6011,6017
+  s_55c9c16466c150::t_83394b12fae3ea 6092
+packages/cli/src/modules/type-availability-policies/request-fed-credential-type-policy-instance.controller.ts
+  s_55c9c16466c150::t_754f0ce8929fb9 1-31,36-200
+  s_55c9c16466c150::t_2a77e8a435cab6 32-35
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_55c9c16466c150::t_9ed244d86f939e 2008-2026
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_55c9c16466c150::t_a8c98c0a3044ae 3815
+  s_55c9c16466c150::t_ef2b78ab462efb 3706
+  s_55c9c16466c150::t_517da417fa3a6d 3675-3705,3709-3710,3789,3847-3877,3939-3952
+  s_55c9c16466c150::t_dc286f846f0de9 3574
+  s_55c9c16466c150::t_1dd3ad7dd9ad5f 53,3788,3793,3795-3796,3798-3800,3835,3838,3878-3880,3890-3917,3929-3938
+  s_55c9c16466c150::t_49fbe4fef48789 3803,3881-3889,3918-3928
+  s_55c9c16466c150::t_e2238536b659a5 3711-3787,3816,3830,3844-3846
+  s_55c9c16466c150::t_fd24c101cef073 7,20,3707-3708,3790-3792,3794,3797,3801-3802,3804-3814,3817-3829,3831-3834,3836-3837,3839-3843,3953-3954
+packages/cli/src/modules/source-control.ee/source-control-export.service.ee.ts
+  s_55c9c16466c150::t_c7b42e6abb87f6 539
+  s_55c9c16466c150::t_206ae1ba9a5b75 533-538
+packages/cli/src/modules/runtime-credentials/runtime-credentials-access.service.ts
+  s_55c9c16466c150::t_40db725034ce17 101-107
+  s_55c9c16466c150::t_53d83455c12ac2 110-113
+  s_55c9c16466c150::t_e0d17ddd1a890d 2,4-9,14-19,22-25,41,52,56,60-66,70-72,74-75,78,80-81,83-87,89-93,95-98,100,108-109,114-117
+  s_55c9c16466c150::t_6a376d247d2053 58-59,67-69,73,76-77,79,82,88,94,99
+  s_55c9c16466c150::t_18c7f614d546b2 42-44,49-51
+  s_55c9c16466c150::t_20a4d7d8035574 53-55
+  s_55c9c16466c150::t_d32071c042b409 57
+  s_16993190805102::t_da022c9ef7aea7 45-48
+packages/cli/src/modules/n8n-packages/entities/credential/credential.serializer.ts
+  s_55c9c16466c150::t_40db725034ce17 23
+packages/cli/src/credentials-helper.ts
+  s_55c9c16466c150::t_8a46e3fd519457 688-701
+  s_55c9c16466c150::t_df7cd29f32dc14 666-676
+  s_55c9c16466c150::t_6a376d247d2053 681-685
+  s_55c9c16466c150::t_720dbbd0703ed2 687,702-722
+  s_55c9c16466c150::t_e99ed4f3faa43e 723-724
+  s_55c9c16466c150::t_ea8a517ed61b7d 665
+  s_55c9c16466c150::t_bb141cc3bda3c1 677-680
+  s_55c9c16466c150::t_c8f99e0e2a2779 686
+  s_55c9c16466c150::t_470b155da47660 725
+  s_16993190805102::t_028737f7361018 9-10,982-985
+packages/cli/src/commands/import/credentials.ts
+  s_55c9c16466c150::t_40db725034ce17 562
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion-actions.service.integration.test.ts
+  s_55c9c16466c150::t_794be936b02e6d 87
+packages/cli/src/modules/runtime-credentials/__tests__/rule-impact-matcher.test.ts
+  s_55c9c16466c150::t_2f239f32f17e52 1-168
+packages/cli/src/modules/runtime-credentials/path-traversal.ts
+  s_55c9c16466c150::t_dc7136241f18e1 50
+  s_55c9c16466c150::t_817dad5b9a0f5b 5-6,8-9,13,22,24,26-30,32-33,35,41-44,49,51-88,92,95-108,110,113-118
+packages/cli/src/modules/source-control.ee/__tests__/source-control-export.service.test.ts
+  s_55c9c16466c150::t_4c75feb3cab6bf 102
+  s_55c9c16466c150::t_fd3a65683cd179 150-169,229,289,352,391,437
+packages/cli/test/integration/modules/runtime-credential-stub-visibility.integration.test.ts
+  s_55c9c16466c150::t_c564bc279600ab 194
+  s_55c9c16466c150::t_8b0212677adea4 206
+  s_55c9c16466c150::t_0189c918098f14 225-228
+  s_55c9c16466c150::t_141abccd2f01ae 1-111,114-193,195-205,212-224,229-365
+  s_55c9c16466c150::t_2b493ff1932a11 112-113
+  s_55c9c16466c150::t_b1ebb6d1211249 207-211
+packages/cli/src/credentials/credentials.service.ee.ts
+  s_55c9c16466c150::t_c7b42e6abb87f6 215-217,250
+  s_55c9c16466c150::t_f4d04543a52c02 51
+  s_55c9c16466c150::t_282b9c9bfc6645 15,25
+  s_55c9c16466c150::t_8867b046eb3e44 251-252
+packages/cli/src/modules/runtime-credentials/__tests__/path-traversal.test.ts
+  s_55c9c16466c150::t_1ecd4cf016132b 156-201
+packages/cli/test/integration/shared/types.ts
+  s_55c9c16466c150::t_8e0c9d32b31e50 85
+packages/cli/src/modules/workflow-reviews.ee/__tests__/support/workflow-review-test-data.ts
+  s_55c9c16466c150::t_794be936b02e6d 59
+packages/cli/src/modules/runtime-credentials/rule-impact-matcher.ts
+  s_55c9c16466c150::t_6e057814a45241 145
+  s_55c9c16466c150::t_ea2508e047a8b3 1-17,19-80,85-88,90,92-123,127-144,146-292
+  s_55c9c16466c150::t_452a44a0885811 18
+  s_55c9c16466c150::t_92fccdae3ca9fe 81-84,89,91
+  s_55c9c16466c150::t_a069b6d3ab8383 124-126
+packages/cli/src/modules/runtime-credentials/README.md
+  s_55c9c16466c150::t_ed30442c07fb2d 1-10
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credential-usage-audit.service.test.ts
+  s_55c9c16466c150::t_9ed244d86f939e 2-54
+  s_55c9c16466c150::t_c760fada713af6 1
+packages/cli/src/modules/runtime-credentials/runtime-credential-usage-audit.service.ts
+  s_55c9c16466c150::t_9ed244d86f939e 2-47
+  s_55c9c16466c150::t_a11b1af8933973 1
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_55c9c16466c150::t_9ed244d86f939e 157,973-976
+  s_55c9c16466c150::t_e745d44659936a 977-979
+packages/cli/src/modules/runtime-credentials/runtime-credentials.module.ts
+  s_55c9c16466c150::t_dd19489f778e80 18-20
+  s_55c9c16466c150::t_999d13969a4ad7 14-16,21
+packages/cli/src/modules/type-availability-policies/request-fed-credential-type-policy-project.controller.ts
+  s_55c9c16466c150::t_2a77e8a435cab6 11-13,15
+  s_55c9c16466c150::t_754f0ce8929fb9 1-10,14,16-62
+packages/cli/src/modules/type-availability-policies/__tests__/request-fed-credential-type-policy-instance.controller.test.ts
+  s_55c9c16466c150::t_b5306f70a3acbe 1-40
+packages/cli/src/modules/type-availability-policies/__tests__/request-fed-credential-type-policy-project.controller.test.ts
+  s_55c9c16466c150::t_ade2b91e6691d1 1-40
+packages/cli/src/modules/type-availability-policies/__tests__/request-fed-credential-type-policy.test.ts
+  s_55c9c16466c150::t_c7b71c8aac518a 1-218
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policies.module.test.ts
+  s_55c9c16466c150::t_8fe6e8095909dc 15,72-73,132-141
+packages/cli/src/public-api/v1/controllers/__tests__/credentials.public.controller.test.ts
+  s_55c9c16466c150::t_d252dd2abf0a1b 6,34,42,120-152
+packages/cli/src/workflow-execute-additional-data.ts
+  s_55c9c16466c150::t_54dbf948204632 1097-1101
+packages/cli/test/integration/modules/runtime-credential-rules.integration.test.ts
+  s_55c9c16466c150::t_70831d2815c494 1-308
+packages/cli/test/integration/modules/runtime-credentials-scrub.integration.test.ts
+  s_55c9c16466c150::t_0eb505f90cbbaf 1-265
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credentials-context-hook.test.ts
+  s_55c9c16466c150::t_4685219fbaf1c1 6-9,12-29,38,40,44-48,51,54,65-95,99-100
+packages/cli/src/modules/runtime-credentials/runtime-credentials-context-hook.ts
+  s_55c9c16466c150::t_3b7c33539fec05 9,11-21,38-43,47-56,62,68-99
+packages/cli/src/workflows/workflow.service.ts
+  s_55c9c16466c150::t_2bb2f628a0163b 1401,2318-2334
+packages/cli/test/migration/1794995238085-add-is-runtime-to-credentials.test.ts
+  s_4f8be112ee2a31::t_3094f052d16e44 1-157
+packages/cli/test/migration/1795020741941-add-allowed-domains-to-runtime-credential-rule.test.ts
+  s_a0fedfc873f53b::t_ee40d564d2f065 1-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d29f00b81f0dca4639a2098bda3744e21887c55",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_16993190805102": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a21cbb5488c2c3240",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_4f8be112ee2a31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6c2aebe16ead862",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_a0fedfc873f53b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a46fb0b6ade2850b4",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_e3ba92c7ef9d8c::t_0d6ac8c664b8e7 253
+packages/@n8n/instance-ai/src/stream/assistant-usage.ts
+  s_e3ba92c7ef9d8c::t_0821989778fe17 225-226
+packages/@n8n/instance-ai/src/stream/__tests__/assistant-usage.test.ts
+  s_e3ba92c7ef9d8c::t_fb22d64cb1c85d 120
+  s_e3ba92c7ef9d8c::t_a11d202cf8495a 93-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "517c8cfd986d68e5997c4251bfb4cd60efeb48e8",
+  "prompts": {},
+  "sessions": {
+    "s_e3ba92c7ef9d8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3cdab638-9118-47a5-9f25-130f139d8827",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

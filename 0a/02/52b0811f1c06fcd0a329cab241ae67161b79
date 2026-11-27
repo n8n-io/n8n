@@ -1,0 +1,27 @@
+packages/quality/efficiency/microbenchmarks/scripts/expression-matrix/run.mjs
+  s_60f650f71970d8::t_d355fe9b24e496 44-48,55-58
+packages/quality/efficiency/microbenchmarks/scripts/expression-matrix/cases-transfer.mjs
+  s_60f650f71970d8::t_d355fe9b24e496 93
+packages/quality/efficiency/microbenchmarks/scripts/expression-matrix/cases-general.mjs
+  s_60f650f71970d8::t_d355fe9b24e496 71
+packages/quality/efficiency/microbenchmarks/scripts/expression-matrix/run-case.mjs
+  s_60f650f71970d8::t_d355fe9b24e496 48,73-74,119-120,124,138-139
+packages/quality/efficiency/microbenchmarks/scripts/expression-matrix/report.mjs
+  s_60f650f71970d8::t_d355fe9b24e496 23,68,74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0a0252b0811f1c06fcd0a329cab241ae67161b79",
+  "prompts": {},
+  "sessions": {
+    "s_60f650f71970d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eebcb9f4-5a11-4834-93a6-75b6974780d2",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

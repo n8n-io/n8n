@@ -1,0 +1,14 @@
+packages/testing/playwright/tests/ui/13-pinning.spec.ts
+  h_52a137d26d774c 212-214,216-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88915557db4566b5fe76bea3c0526713c79d19a6",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

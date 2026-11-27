@@ -1,0 +1,27 @@
+packages/@n8n/agents/src/__tests__/workspace/workspace-tools.test.ts
+  s_e3ba92c7ef9d8c::t_7a7431c4d32917 4,116-124
+packages/@n8n/agents/src/index.ts
+  s_e3ba92c7ef9d8c::t_8234091cb6bb22 550
+packages/@n8n/agents/src/workspace/index.ts
+  s_e3ba92c7ef9d8c::t_95708785631de5 13-17
+packages/@n8n/agents/src/workspace/tools/workspace-tools.ts
+  s_e3ba92c7ef9d8c::t_0dac7c8956f7ef 35-55
+packages/@n8n/instance-ai/src/stream/__tests__/assistant-usage.test.ts
+  s_e3ba92c7ef9d8c::t_cc3ff697771062 14-19,93-98,128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a9430f67bbd6626556a0b1184d2782ba3ad59628",
+  "prompts": {},
+  "sessions": {
+    "s_e3ba92c7ef9d8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3cdab638-9118-47a5-9f25-130f139d8827",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

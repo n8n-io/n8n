@@ -1,0 +1,35 @@
+packages/@n8n/n8n-node-codegen/src/generate.ts
+  s_9886ced23eff9d::t_7af9d9d3c28ecb 5-6
+  s_9886ced23eff9d::t_fd557c1b83ef7e 31-35
+packages/@n8n/n8n-node-codegen/src/overrides.ts
+  s_9886ced23eff9d::t_9e0163f1a82bdb 19
+packages/@n8n/n8n-node-codegen/src/__tests__/fixtures.ts
+  s_9886ced23eff9d::t_d0f0643fa6496a 66-67
+  s_9886ced23eff9d::t_842fb89b52cde7 1,38-65,68-76
+packages/@n8n/n8n-node-codegen/src/__tests__/contract.test.ts
+  s_9886ced23eff9d::t_beef2d613811b3 243-250
+  s_9886ced23eff9d::t_d028a84853b3dd 2,4-16,25,29
+packages/@n8n/n8n-node-codegen/src/__tests__/build-properties.test.ts
+  s_9886ced23eff9d::t_f9a24f43075024 331-334
+  s_9886ced23eff9d::t_d0f0643fa6496a 298
+  s_9886ced23eff9d::t_f583649f2957e9 20
+  s_9886ced23eff9d::t_a98034b99d6ec9 47
+  s_9886ced23eff9d::t_0569de292e51a0 364
+  s_9886ced23eff9d::t_138598dd3addda 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dc26939379df1dfc5dc24adae35db5db7acfb5a6",
+  "prompts": {},
+  "sessions": {
+    "s_9886ced23eff9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec80c238-585d-41bb-9823-3c0fe51209c5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}
