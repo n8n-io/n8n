@@ -5,6 +5,8 @@ const toSentenceCase = stringExtensions.functions.toSentenceCase as (value: stri
 
 const toFloat = stringExtensions.functions.toFloat as (value: string) => number;
 
+const removeTags = stringExtensions.functions.removeTags as (value: string) => string;
+
 describe('toSentenceCase', () => {
 	it.each([
 		[
@@ -45,5 +47,46 @@ describe('toFloat', () => {
 
 	it('should not accept a symbol that is not in the list', () => {
 		expect(() => toFloat('Rb5')).toThrow();
+	});
+});
+
+describe('removeTags', () => {
+	it.each([
+		['<b>bold</b>, <a>link</a>', 'bold, link'],
+		['<p class="x">Hi</p><br/>there', 'Hithere'],
+		['<!-- note -->text', 'text'],
+		['<?xml version="1.0"?><a>x</a>', 'x'],
+		['<élan>x</élan>', 'x'],
+		['trailing <b', 'trailing '],
+		['<b>bold</b> < 100', 'bold < 100'],
+	])('should remove the tags from %s', (input, expected) => {
+		expect(removeTags(input)).toBe(expected);
+	});
+
+	it.each([
+		'price < 100 USD',
+		'a<2 and b>1',
+		'x <= y',
+		'I <3 you',
+		'a < b and c > d',
+		'<< 3',
+		'<>',
+		'<%= name %>',
+	])('should keep the text %s', (input) => {
+		expect(removeTags(input)).toBe(input);
+	});
+
+	it.each([
+		['<<b>script>alert(1)<</b>/script>', 'script>alert(1)/script>'],
+		['<<img>img src=x onerror=alert(1)>', 'img src=x onerror=alert(1)>'],
+	])('should not leave a tag in the output of %s', (input, expected) => {
+		expect(removeTags(input)).toBe(expected);
+	});
+
+	it('should handle a long run of less-than signs in linear time', () => {
+		const input = '<'.repeat(100_000) + ' ';
+		const start = performance.now();
+		expect(removeTags(input)).toBe(input);
+		expect(performance.now() - start).toBeLessThan(1000);
 	});
 });
