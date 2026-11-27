@@ -3,6 +3,40 @@
 Frontend feature module. Consumed from source by the editor-ui shell through
 `src/app/modules.manifest.ts`; there is no build step and no `dist`.
 
+This module holds the "n8n API" settings page (`/settings/api`), its key table and the
+modal that creates, edits and shows API keys.
+
+## This module is never active
+
+No backend module has the id `api-keys`. API keys are a service in `packages/cli`. So
+`settingsStore.isModuleActive('api-keys')` is always false. The shell hides some surfaces
+of an inactive module, so this module does not use them:
+
+- The route has no `'custom'` middleware. The module availability check does not run, and
+  the page opens for every signed-in user, as before the extraction.
+- The descriptor has no `settingsPages`. The shell keeps the "n8n API" sidebar link in
+  `editor-ui/src/app/composables/useSettingsItems.ts`. The link shows when the public API
+  is enabled.
+
+Do not add `'custom'`, `settingsPages`, `pushHandlers` or `placeholderPage` to the
+descriptor. If you do, the page disappears for all users. `src/api-keys.module.test.ts`
+and the shell's `moduleInitializer.test.ts` fail first.
+
+## Shell actions
+
+The modal opens, closes and prefetches through capabilities that the shell provides:
+`modalOpeners`, `modalCloser` and `modalPrefetch`. In a test, provide a stub for each one
+and call `capabilityRegistry.clear()` after each test.
+
+## Public entry
+
+The shell imports the descriptor from `@n8n/frontend-module-api-keys/api-keys.module`.
+The package root exports `ScopesSelector` and the scope utils for the MCP OAuth consent
+screen in the shell (`editor-ui/src/app/views/OAuthConsentView.vue`).
+
+This is a known debt. A module must not import another module. If the consent screen
+moves into the `mcp` module, first move `ScopesSelector` to a shared package.
+
 Read the full guide at `packages/@n8n/module-cli/frontend-module-guide.md`. It gives the
 descriptor contract, the registration points and the known problems. This README gives a
 summary only.
