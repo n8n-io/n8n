@@ -6,6 +6,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { configure, fireEvent, screen, waitFor, within } from '@testing-library/vue';
@@ -414,6 +416,84 @@ describe('AgentSkillModal', () => {
 				instructions: 'Research',
 			},
 		});
+	});
+
+	it('shows the current names of mentioned workflows without a change to save', async () => {
+		mockedStore(usePostHog).isVariantEnabled = vi.fn(
+			(name: string, variant: string) =>
+				name === '152_workflows_in_skills' && variant === 'variant',
+		);
+		mockedStore(useWorkflowsListStore).searchWorkflows = vi
+			.fn()
+			.mockResolvedValue([{ id: 'wf1', name: 'Weekly report' }]);
+		const { getByTestId } = renderModal({
+			skillId: 'skill-1',
+			skill: {
+				name: 'Report',
+				description: 'Send the report',
+				instructions: 'Run [Old name](n8n://workflow/wf1).',
+			},
+		});
+
+		await waitFor(() =>
+			expect(getByTestId('agent-skill-instructions-editor')).toHaveValue(
+				'Run [Weekly report](n8n://workflow/wf1).',
+			),
+		);
+		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+	});
+
+	it('adds a workflow from the sidebar on a new line at the end of SKILL.md', async () => {
+		mockedStore(usePostHog).isVariantEnabled = vi.fn(
+			(name: string, variant: string) =>
+				name === '152_workflows_in_skills' && variant === 'variant',
+		);
+		mockedStore(useWorkflowsListStore).searchWorkflows = vi
+			.fn()
+			.mockResolvedValue([{ id: 'wf2', name: 'Archive' }]);
+		const { getByTestId } = renderModal({
+			realMenu: true,
+			skillId: 'skill-1',
+			skill: { name: 'Report', description: 'Send the report', instructions: 'Run it.\n' },
+		});
+
+		await userEvent.click(getByTestId('skill-workflow-mention-button'));
+		await userEvent.click(await screen.findByRole('menuitem', { name: /Archive/ }));
+
+		expect(getByTestId('agent-skill-instructions-editor')).toHaveValue(
+			'Run it.\n\n[Archive](n8n://workflow/wf2)',
+		);
+		expect(getByTestId('agent-skill-workflow-item')).toHaveTextContent('Archive');
+	});
+
+	it('adds a workflow from the sidebar to the open reference file', async () => {
+		mockedStore(usePostHog).isVariantEnabled = vi.fn(
+			(name: string, variant: string) =>
+				name === '152_workflows_in_skills' && variant === 'variant',
+		);
+		mockedStore(useWorkflowsListStore).searchWorkflows = vi
+			.fn()
+			.mockResolvedValue([{ id: 'wf2', name: 'Archive' }]);
+		const { getByTestId } = renderModal({
+			realMenu: true,
+			skillId: 'skill-1',
+			skill: {
+				name: 'Report',
+				description: 'Send the report',
+				instructions: 'Run it.',
+				references: [{ path: 'references/steps.md', content: 'Step one.' }],
+			},
+		});
+
+		await userEvent.click(getByTestId('agent-skill-reference-nav-item-references-steps-md'));
+		await userEvent.click(getByTestId('skill-workflow-mention-button'));
+		await userEvent.click(await screen.findByRole('menuitem', { name: /Archive/ }));
+
+		expect(getByTestId('agent-skill-reference-editor')).toHaveValue(
+			'Step one.\n\n[Archive](n8n://workflow/wf2)',
+		);
+		await userEvent.click(getByTestId('agent-skill-file-nav-item'));
+		expect(getByTestId('agent-skill-instructions-editor')).toHaveValue('Run it.');
 	});
 
 	// The Agent Skills format allows descriptions of up to 1024 characters.

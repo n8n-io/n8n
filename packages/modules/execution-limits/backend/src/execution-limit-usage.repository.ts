@@ -9,7 +9,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
-import { DataSource, type ObjectLiteral } from '@n8n/typeorm';
+import { DataSource, LessThan, type ObjectLiteral } from '@n8n/typeorm';
 
 import { ExecutionLimitInstanceUsage } from './execution-limit-instance-usage.entity';
 import type { InstanceUsageDelta, UsageDeltas } from './execution-limit-usage.deltas';
@@ -127,6 +127,23 @@ export class ExecutionLimitUsageRepository {
 			ctx,
 		);
 		return new Map(rows.map((row) => [row.projectId, toTotals(row)]));
+	}
+
+	/**
+	 * Deletes the rows of the UTC days before `cutoffDay`, in the two usage tables.
+	 * The day `cutoffDay` stays.
+	 */
+	async deleteUsageBefore(
+		cutoffDay: string,
+		ctx: OperationContext,
+	): Promise<{ projectRows: number; instanceRows: number }> {
+		const before = { day: LessThan(cutoffDay) };
+		const project = await this.projectTable.managerFor(ctx).delete(ExecutionLimitUsage, before);
+		const instance = await this.instanceTable
+			.managerFor(ctx)
+			.delete(ExecutionLimitInstanceUsage, before);
+
+		return { projectRows: project.affected ?? 0, instanceRows: instance.affected ?? 0 };
 	}
 
 	private escapedName(entity: new () => ObjectLiteral): string {

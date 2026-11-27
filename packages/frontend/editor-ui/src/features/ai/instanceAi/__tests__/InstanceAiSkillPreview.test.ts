@@ -1,6 +1,8 @@
 import { SKILL_NAME_TAKEN_MESSAGE, type SkillDetail } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useSkillsStore } from '@/features/settings/context/skills.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import * as api from '@/features/settings/context/skills.api';
 import { ResponseError } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
@@ -100,6 +102,31 @@ describe('InstanceAiSkillPreview', () => {
 		expect(queryByRole('button', { name: /cancel|close|open in skills/i })).not.toBeInTheDocument();
 		expect(queryByTestId('agent-skill-versions-button')).not.toBeInTheDocument();
 		expect(queryByTestId('agent-skill-header-menu')).not.toBeInTheDocument();
+	});
+
+	it('lists the workflows of the skill project when the user adds a workflow', async () => {
+		const { pinia } = setup();
+		vi.mocked(api.getSkill).mockResolvedValue({
+			...detail,
+			scope: 'project',
+			projectId: 'project-1',
+			projectName: 'Ops',
+		});
+		usePostHog().isVariantEnabled = vi.fn(
+			(name: string, variant: string) =>
+				name === '152_workflows_in_skills' && variant === 'variant',
+		);
+		const workflowsListStore = useWorkflowsListStore();
+		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([]);
+		const { findByTestId } = renderComponent({ pinia });
+
+		await userEvent.click(await findByTestId('skill-workflow-mention-button'));
+
+		await waitFor(() =>
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'project-1' }),
+			),
+		);
 	});
 
 	it('disables Save skill until a field changes and disables it again after reverting', async () => {

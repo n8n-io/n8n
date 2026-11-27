@@ -183,7 +183,7 @@ export interface DropdownMenuProps<T = string, D = never> {
 	/** Select whether search focus stays inside the menu or in an external text control. */
 	searchMode?: DropdownMenuSearchMode;
 	/** Text control that owns focus when searchMode is external. */
-	externalFocusTarget?: HTMLInputElement | HTMLTextAreaElement | null;
+	externalFocusTarget?: HTMLElement | null;
 	/** Search input placeholder */
 	searchPlaceholder?: string;
 	/** Debounce delay in ms for search event */

@@ -61,6 +61,7 @@ function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 		isTableHoverOnboarded: false,
 		setHighlightDraggables: vi.fn(),
 		setNDVPanelDataIsEmpty: vi.fn(),
+		setNDVPanelShownDisplayMode: vi.fn(),
 		setNDVBranchIndex: vi.fn(),
 	};
 }
@@ -196,6 +197,7 @@ describe('ParameterInput.vue', () => {
 			isTableHoverOnboarded: false,
 			setHighlightDraggables: vi.fn(),
 			setNDVPanelDataIsEmpty: vi.fn(),
+			setNDVPanelShownDisplayMode: vi.fn(),
 			setNDVBranchIndex: vi.fn(),
 		};
 		mockNodeTypesState = {

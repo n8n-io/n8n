@@ -30,6 +30,7 @@ import {
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from './useCanvasPreview';
+import { provideOpenResource } from './openResourceContext';
 import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
 import { getCurrentTurn } from './assistantTurn';
 import { CloudBrowserTasksKey, useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
@@ -59,7 +60,6 @@ import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.v
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiTestAgentPreviewPanel from './components/InstanceAiTestAgentPreviewPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
-import InstanceAiResourcePicker from './components/InstanceAiResourcePicker.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from './components/InstanceAiConversation.vue';
 // Experiment cleanup: remove with openWorkflowInAssistant.
@@ -458,10 +458,12 @@ provide(
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.openTabs.value.length > 0);
-// Wait for the stored tabs: a resource opened before they load replaces them.
-const showOpenResourcePicker = computed(
-	() => preview.tabsLoaded.value && !preview.isPreviewVisible.value && !hasPreviewTabs.value,
-);
+provideOpenResource({
+	projectId: () => thread.projectId,
+	isAvailable: () => preview.tabsLoaded.value,
+	excludedTabs: () => preview.openTabs.value.filter(isArtifactTab),
+	open: preview.openTab,
+});
 const artifactsPanelTransitionGate = useTransitionGate({
 	isBlocked: () => thread.isHydratingThread,
 });
@@ -914,35 +916,9 @@ function handleNewThreadClick() {
 								</N8nTooltip>
 							</span>
 						</Transition>
-						<!-- With no tabs to show, the toggle opens a resource in a new tab. -->
-						<InstanceAiResourcePicker
-							v-if="showOpenResourcePicker && thread.projectId"
-							:project-id="thread.projectId"
-							:excluded-tabs="preview.openTabs.value.filter(isArtifactTab)"
-							placement="bottom-end"
-							content-test-id="instance-ai-open-resource-picker"
-							@select="preview.openTab"
-						>
-							<template #trigger>
-								<N8nTooltip
-									:content="i18n.baseText('instanceAi.artifactsPanel.openResource')"
-									placement="bottom"
-									:show-after="TOOLTIP_DELAY_MS"
-									as-child
-								>
-									<N8nIconButton
-										icon="square-plus"
-										variant="ghost"
-										size="small"
-										icon-size="large"
-										data-test-id="instance-ai-open-resource"
-										:aria-label="i18n.baseText('instanceAi.artifactsPanel.openResource')"
-									/>
-								</N8nTooltip>
-							</template>
-						</InstanceAiResourcePicker>
-						<Transition v-else name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
-							<span v-if="!preview.isPreviewVisible.value">
+						<!-- With no tab open, the "+" menu of the composer opens a resource. -->
+						<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
+							<span v-if="hasPreviewTabs && !preview.isPreviewVisible.value">
 								<N8nTooltip
 									as-child
 									:content="artifactsPreviewToggleLabel"
@@ -957,8 +933,6 @@ function handleNewThreadClick() {
 										data-test-id="instance-ai-artifacts-preview-toggle"
 										:aria-label="artifactsPreviewToggleLabel"
 										:aria-pressed="preview.isPreviewVisible.value"
-										:disabled="!hasPreviewTabs"
-										focusable-when-disabled
 										@click="toggleArtifactsPreview"
 									/>
 								</N8nTooltip>

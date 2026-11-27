@@ -93,6 +93,7 @@ function onInstructionsUpdate(instructions: string) {
 			agent-id=""
 			:is-published="false"
 			:sections="['tools', 'skills']"
+			:show-skill-workflows="false"
 			@add-tool="actions?.onOpenAddToolModal"
 			@open-tool="actions?.onOpenToolFromList"
 			@remove-tool="actions?.onRemoveTool"

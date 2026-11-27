@@ -224,7 +224,7 @@ export class TypeORMObservationLogStore
 	}
 
 	async getCursor(observationScopeId: string): Promise<ObservationCursor | null> {
-		const entity = await this.observationCursorRepo.findOneBy({ observationScopeId });
+		const entity = await this.observationCursorRepo.findForThread(observationScopeId, {});
 
 		if (!entity) return null;
 
@@ -238,7 +238,7 @@ export class TypeORMObservationLogStore
 	}
 
 	async setCursor(cursor: ObservationCursor): Promise<void> {
-		await this.observationCursorRepo.upsert(
+		await this.observationCursorRepo.upsertForThread(
 			{
 				observationScopeId: cursor.observationScopeId,
 				lastObservedMessageId: cursor.lastObservedMessageId,
@@ -247,26 +247,25 @@ export class TypeORMObservationLogStore
 				// Leave the stored working set alone when the caller did not write one.
 				...(cursor.workingSet !== undefined && { workingSet: cursor.workingSet }),
 			},
-			{
-				conflictPaths: ['observationScopeId'],
-				skipUpdateIfNoValuesChanged: false,
-			},
+			{},
 		);
 	}
 
 	async getResumeState(observationScopeId: string): Promise<ObservationResumeState | null> {
-		const entity = await this.observationCursorRepo.findOneBy({ observationScopeId });
+		const entity = await this.observationCursorRepo.findForThread(observationScopeId, {});
 		return entity ? fromObservationResumeColumns(observationScopeId, entity) : null;
 	}
 
 	async saveResumeState(state: ObservationResumeState): Promise<void> {
 		const { observationScopeId } = state;
-		const entity = await this.observationCursorRepo.findOneBy({ observationScopeId });
+		const entity = await this.observationCursorRepo.findForThread(observationScopeId, {});
 		if (!entity) return;
 		// Keep updatedAt: the Observer commit matches the cursor row on it.
-		await this.observationCursorRepo.update(
-			{ observationScopeId, updatedAt: entity.updatedAt },
-			{ ...toObservationResumeColumns(state), updatedAt: entity.updatedAt },
+		await this.observationCursorRepo.updateResumeStateForThread(
+			observationScopeId,
+			entity.updatedAt,
+			toObservationResumeColumns(state),
+			{},
 		);
 	}
 

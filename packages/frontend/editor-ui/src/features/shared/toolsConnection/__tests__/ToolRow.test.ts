@@ -10,6 +10,7 @@ import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	TOOL_ICON_AVATAR_RENDERER_KEY,
 	type AgentConnectionItem,
+	type CollectionConnectionItem,
 	type McpServerConnectionItem,
 	type NodeConnectionItem,
 	type ServiceConnectionItem,
@@ -101,6 +102,68 @@ const baseService: ServiceConnectionItem = {
 };
 
 describe('ToolRow', () => {
+	describe('collection rows', () => {
+		const collection: CollectionConnectionItem = {
+			id: 'collection:support',
+			kind: 'collection',
+			collectionId: 'support',
+			title: 'Customer support',
+			description: 'Refunds and pricing',
+			status: 'none',
+			attached: false,
+			summary: '3 files',
+		};
+
+		function renderCollection(item: CollectionConnectionItem) {
+			return renderRow({
+				props: { item, connectLabel: 'Add collection', connectAriaLabel: 'Add Customer support' },
+				pinia: createTestingPinia(),
+			});
+		}
+
+		it('adds a collection that is not on the agent', async () => {
+			const { getByRole, getByTestId, emitted } = renderCollection(collection);
+
+			const add = getByRole('button', { name: 'Add Customer support' });
+			expect(add).toHaveTextContent('Add collection');
+			await userEvent.click(add);
+
+			expect(emitted('connect')).toEqual([[collection]]);
+			expect(getByTestId('tools-connection-row-summary')).toHaveTextContent('3 files');
+		});
+
+		it('shows an added collection with a Remove action', async () => {
+			const added = { ...collection, attached: true };
+			const { getByTestId, emitted } = renderCollection(added);
+
+			expect(getByTestId('tools-connection-row-added')).toHaveTextContent('Added');
+			await userEvent.click(getByTestId('tools-connection-row-remove'));
+
+			expect(emitted('disconnect')).toEqual([[added]]);
+			expect(emitted('open-detail')).toBeUndefined();
+		});
+
+		it('moves focus to Remove when a focused add button turns into added', async () => {
+			const { getByTestId, rerender } = renderCollection(collection);
+
+			getByTestId('tools-connection-row-attach').focus();
+			await userEvent.keyboard('{Enter}');
+			await rerender({ item: { ...collection, attached: true } });
+
+			await waitFor(() => expect(getByTestId('tools-connection-row-remove')).toHaveFocus());
+		});
+
+		it('moves focus to Add when a focused Remove button turns into Add', async () => {
+			const { getByTestId, rerender } = renderCollection({ ...collection, attached: true });
+
+			getByTestId('tools-connection-row-remove').focus();
+			await userEvent.keyboard('{Enter}');
+			await rerender({ item: collection });
+
+			await waitFor(() => expect(getByTestId('tools-connection-row-attach')).toHaveFocus());
+		});
+	});
+
 	describe('skill rows', () => {
 		const skill: SkillConnectionItem = {
 			id: 'skill:tone',
@@ -131,6 +194,13 @@ describe('ToolRow', () => {
 			await userEvent.click(add);
 
 			expect(emitted('connect')).toEqual([[skill]]);
+		});
+
+		it('draws no icon on a skill row, also in a picker that does not set iconless', () => {
+			const { container } = renderSkill(skill);
+
+			expect(container.querySelector('[data-row-kind="skill"]')?.className).toMatch(/rowIconless/);
+			expect(container.querySelector('[data-test-id="tools-connection-row-main"] svg')).toBeNull();
 		});
 
 		it('shows an added skill as static text with no action', () => {

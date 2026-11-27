@@ -760,6 +760,18 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return chain;
 	}
 
+	/** `undefined` when the thread does not exist yet: its first turn creates it. */
+	async findTestChatState(threadId: string): Promise<{ testChat: boolean } | undefined> {
+		const thread = await this.findOne({ select: ['testChat'], where: { id: threadId } });
+		return thread ? { testChat: thread.testChat } : undefined;
+	}
+
+	/** Returns false when the thread does not exist. */
+	async markTestChat(threadId: string): Promise<boolean> {
+		const result = await this.update({ id: threadId }, { testChat: true });
+		return (result.affected ?? 0) > 0;
+	}
+
 	async findProjectId(threadId: string): Promise<string | null> {
 		const thread = await this.findOne({ select: ['projectId'], where: { id: threadId } });
 		return thread?.projectId ?? null;
