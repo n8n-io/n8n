@@ -36,6 +36,9 @@ import type { ResponseExpectation } from '../../response-channel';
 @Index('idx_workflow_execution_error_workflow_due_at', ['errorWorkflowDueAt'], {
 	where: 'error_workflow_due_at IS NOT NULL',
 })
+@Index('idx_workflow_execution_deadline', ['deadline'], {
+	where: "deadline IS NOT NULL AND status IN ('queued', 'running', 'waiting')",
+})
 export class WorkflowExecution {
 	@PrimaryColumn('uuid')
 	id!: string;
@@ -101,6 +104,14 @@ export class WorkflowExecution {
 	 */
 	@Column({ name: 'error_workflow_due_at', type: 'timestamptz', precision: 3, nullable: true })
 	errorWorkflowDueAt!: Date | null;
+
+	/**
+	 * When the engine cancels the execution if it has not ended. The host sets
+	 * it at start, and `null` means no timeout. It stays after the end, so the
+	 * read can tell a timeout from a manual cancel.
+	 */
+	@Column({ name: 'deadline', type: 'timestamptz', precision: 3, nullable: true })
+	deadline!: Date | null;
 
 	/** Which lifecycle events (if any) the caller subscribes to. `null` means none. */
 	@Column('jsonb', { name: 'lifecycle_event_subscription', nullable: true })
