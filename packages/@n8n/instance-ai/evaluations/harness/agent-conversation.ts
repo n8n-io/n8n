@@ -18,7 +18,12 @@ import { isRecord } from '@n8n/utils/is-record';
 import { randomUUID } from 'node:crypto';
 
 import type { ExecutionScenario, TranscriptStep, TranscriptTurn } from '../types';
-import type { AgentUserProxy, AgentUserTurn } from '../utils/user-proxy/agent-user';
+import type {
+	AgentUserContext,
+	AgentUserProxy,
+	AgentUserReply,
+	AgentUserTurn,
+} from '../utils/user-proxy/agent-user';
 
 /** One thread the simulated user drives toward `goal`. `opening`: who writes the
  *  thread's first message — the seed (generated from the data setup, as a
@@ -122,6 +127,27 @@ async function releaseWorld(
 	}
 }
 
+/**
+ * The simulated user's next message, or undefined when it is done. A failed
+ * simulated user is the harness's problem, not the Agent's: the run is not
+ * graded.
+ */
+async function askUser(
+	user: AgentUserProxy,
+	userContext: AgentUserContext,
+): Promise<string | undefined> {
+	let reply: AgentUserReply;
+	try {
+		reply = await user.nextMessage(userContext);
+	} catch (error) {
+		reply = { kind: 'error', error: error instanceof Error ? error.message : String(error) };
+	}
+	if (reply.kind === 'error') {
+		throw new Error(`FRAMEWORK ISSUE: the simulated user failed — ${reply.error}`);
+	}
+	return reply.kind === 'message' ? reply.message : undefined;
+}
+
 async function runSession(
 	plan: AgentSessionPlan,
 	last: boolean,
@@ -130,7 +156,7 @@ async function runSession(
 ): Promise<AgentConversationSession> {
 	const session: AgentConversationSession = { threadId: randomUUID(), goal: plan.goal, turns: [] };
 	const nextMessage = async () =>
-		await context.user.nextMessage({
+		await askUser(context.user, {
 			goal: plan.goal,
 			dataSetup: context.dataSetup,
 			transcript: userTurnsOf(session.turns),

@@ -99,7 +99,12 @@ function turnCalls(calls: ExecuteCall[]): ExecuteCall[] {
 /** A simulated user that sends the given messages, then declares done. */
 function scriptedUser(messages: string[]): AgentUserProxy {
 	const queue = [...messages];
-	return { nextMessage: vi.fn().mockImplementation(async () => queue.shift()) };
+	return {
+		nextMessage: vi.fn().mockImplementation(async () => {
+			const message = queue.shift();
+			return message === undefined ? { kind: 'done' } : { kind: 'message', message };
+		}),
+	};
 }
 
 const base: ExecutionScenario = {
@@ -201,6 +206,26 @@ describe('executeAgentScenario: multi-turn runs', () => {
 			expectedTurn: 3,
 			final: true,
 		});
+	});
+
+	it('fails as a framework issue when the simulated user errors', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue({
+			nextMessage: vi.fn().mockResolvedValue({ kind: 'error', error: 'rate limited' }),
+		});
+
+		await expect(
+			run({ ...base, userTurns: { goal: 'Track it', maxTurns: 3 } }, []),
+		).rejects.toThrow(/FRAMEWORK ISSUE: .*simulated user.*rate limited/);
+	});
+
+	it('fails as a framework issue when the simulated user rejects', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue({
+			nextMessage: vi.fn().mockRejectedValue(new Error('socket hang up')),
+		});
+
+		await expect(
+			run({ ...base, userTurns: { goal: 'Track it', maxTurns: 3 } }, []),
+		).rejects.toThrow(/FRAMEWORK ISSUE: .*simulated user.*socket hang up/);
 	});
 
 	it('stops at maxTurns even when the simulated user has more to say', async () => {

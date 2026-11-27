@@ -37,9 +37,15 @@ export interface AgentUserContext {
 	earlierSessions: AgentUserTurn[][];
 }
 
+/** What the simulated user does next. `error`: no usable decision (the model
+ *  call failed or returned nothing valid), which is not the same as done. */
+export type AgentUserReply =
+	| { kind: 'message'; message: string }
+	| { kind: 'done' }
+	| { kind: 'error'; error: string };
+
 export interface AgentUserProxy {
-	/** The user's next message, or undefined when the user is done. */
-	nextMessage(context: AgentUserContext): Promise<string | undefined>;
+	nextMessage(context: AgentUserContext): Promise<AgentUserReply>;
 }
 
 export interface AgentUserProxyConfig {
@@ -51,9 +57,12 @@ export function createAgentUserProxy(config: AgentUserProxyConfig = {}): AgentUs
 	return {
 		async nextMessage(context) {
 			const decision = await decide(buildAgentUserPrompt(context), config);
-			if (decision?.action !== 'send_message') return undefined;
+			if ('error' in decision) return { kind: 'error', error: decision.error };
+			if (decision.action === 'declare_done') return { kind: 'done' };
 			const message = decision.message.trim();
-			return message.length > 0 ? message : undefined;
+			return message.length > 0
+				? { kind: 'message', message }
+				: { kind: 'error', error: 'the simulated user sent an empty message' };
 		},
 	};
 }
@@ -61,21 +70,19 @@ export function createAgentUserProxy(config: AgentUserProxyConfig = {}): AgentUs
 async function decide(
 	prompt: string,
 	config: AgentUserProxyConfig,
-): Promise<AgentUserDecision | undefined> {
-	const agent = createEvalAgent('eval-agent-user-proxy', {
-		...(config.modelId ? { model: config.modelId } : {}),
-		instructions: AGENT_USER_SYSTEM_PROMPT,
-		cache: true,
-	}).structuredOutput(agentUserDecisionSchema);
+): Promise<AgentUserDecision | { error: string }> {
 	try {
+		const agent = createEvalAgent('eval-agent-user-proxy', {
+			...(config.modelId ? { model: config.modelId } : {}),
+			instructions: AGENT_USER_SYSTEM_PROMPT,
+			cache: true,
+		}).structuredOutput(agentUserDecisionSchema);
 		const result = await agent.generate(prompt);
 		const parsed = agentUserDecisionSchema.safeParse(result.structuredOutput);
-		if (!parsed.success) config.logger?.warn('[agent-user] no usable decision; ending the session');
-		return parsed.success ? parsed.data : undefined;
+		return parsed.success ? parsed.data : { error: 'the simulated user gave no usable decision' };
 	} catch (error) {
-		config.logger?.warn(
-			`[agent-user] decision failed: ${error instanceof Error ? error.message : String(error)}`,
-		);
-		return undefined;
+		const message = error instanceof Error ? error.message : String(error);
+		config.logger?.warn(`[agent-user] decision failed: ${message}`);
+		return { error: `the simulated user's model call failed: ${message}` };
 	}
 }
