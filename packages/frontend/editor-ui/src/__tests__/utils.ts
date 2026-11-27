@@ -56,7 +56,9 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 };
 
 export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
-	// A dialog marks the page inert. The legacy menu is portaled onto that page.
+	// The Element Plus menu is portaled onto the page. A Reka dialog sets pointer-events: none
+	// on that page, so user-event cannot click the menu. Remove both assignments when these
+	// controls use Reka.
 	document.body.style.pointerEvents = 'auto';
 	await userEvent.click(within(dropdownTriggerParent).getByRole('combobox'));
 	const selectTrigger = dropdownTriggerParent.querySelector(
