@@ -1,0 +1,20 @@
+.github/WORKFLOWS.md
+  h_52a137d26d774c 609-627,743-748
+.github/workflows/release-create-pr.yml
+  h_52a137d26d774c 155
+.github/workflows/release-publish-post-release.yml
+  h_52a137d26d774c 97
+.github/workflows/release-publish.yml
+  h_52a137d26d774c 11,34,37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cae8c1801e9f240d3f16ae52a17998c610558310",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

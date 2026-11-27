@@ -1,0 +1,20 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ae69bebd6af63a::t_0bd6a33928465a 10521
+  s_ae69bebd6af63a::t_9a417beb238d2a 10520
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1e239d78ea2a2aeb47cb9f969f48cd5baffa16b5",
+  "prompts": {},
+  "sessions": {
+    "s_ae69bebd6af63a": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1795623764720",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

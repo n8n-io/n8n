@@ -1,0 +1,14 @@
+packages/@n8n/ai-utilities/src/utils/failed-attempt-handler/n8nDefaultFailedAttemptHandler.ts
+  h_23d60aac2fe72e 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a21a2e98fc7b6a1c6b6621bd469c8aa62817c6a",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
