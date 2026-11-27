@@ -93,19 +93,39 @@ export function provenIds(...sources: unknown[]): Set<string> {
 	return found;
 }
 
+const TOKEN_CHAR = /[A-Za-z0-9_-]/;
+
+/** True when the text holds the value as a whole token, not as a part of a longer id. */
+function holdsWholeToken(text: string | undefined, value: string): boolean {
+	if (!text) return false;
+	for (let at = text.indexOf(value); at !== -1; at = text.indexOf(value, at + 1)) {
+		const before = text[at - 1];
+		const after = text[at + value.length];
+		if (!(before && TOKEN_CHAR.test(before)) && !(after && TOKEN_CHAR.test(after))) return true;
+	}
+	return false;
+}
+
 /**
  * Removes the id and data_source_id of a plan that are not a UUID of the real data. A model
  * invents an id when the real result has none, and the gym refuses a bad id. Without an id the
  * gym makes one. Ids of the real data stay, so the objects keep their real ids.
  */
-export function dropUnprovenIds(value: unknown, proven: ReadonlySet<string>): unknown {
-	if (Array.isArray(value)) return value.map((v) => dropUnprovenIds(v, proven));
+export function dropUnprovenIds(
+	value: unknown,
+	proven: ReadonlySet<string>,
+	// Text of the real data, for a vendor whose ids are no UUIDs. An `id` that it shows stays.
+	opaqueSource?: string,
+): unknown {
+	if (Array.isArray(value)) return value.map((v) => dropUnprovenIds(v, proven, opaqueSource));
 	if (value === null || typeof value !== 'object') return value;
 	const out: Record<string, unknown> = {};
 	for (const [k, v] of Object.entries(value)) {
 		const isId = ID_KEYS.has(k) && typeof v === 'string';
-		if (isId && !(WHOLE_UUID.test(v) && proven.has(squash(v)))) continue;
-		out[k] = dropUnprovenIds(v, proven);
+		const realOpaque =
+			k === 'id' && typeof v === 'string' && v.length >= 5 && holdsWholeToken(opaqueSource, v);
+		if (isId && !realOpaque && !(WHOLE_UUID.test(v) && proven.has(squash(v)))) continue;
+		out[k] = dropUnprovenIds(v, proven, opaqueSource);
 	}
 	return out;
 }

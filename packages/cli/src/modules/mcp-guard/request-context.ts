@@ -6,6 +6,8 @@ import { UnexpectedError } from '@n8n/errors';
 export interface RequestContext {
 	authorization?: string;
 	origin: string;
+	// The secret that the profile took out of the path of this request.
+	pathSecret?: string;
 	// Aborts when the guarded call takes too long. A model call of the hydration stops with it.
 	signal?: AbortSignal;
 }

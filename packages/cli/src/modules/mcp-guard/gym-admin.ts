@@ -44,7 +44,8 @@ export class GymAdmin {
 			// The tenant exists from an earlier server run. The guard's memory of it is gone.
 			// Start it again, so the gym data matches the guard's seeded set.
 			if (!(error instanceof Error) || !error.message.includes(' 409 ')) throw error;
-			await this.deleteTenant(tenant);
+			// Not `deleteTenant`: a subclass counts holders there, and this caller still needs the tenant.
+			await this.call('DELETE', `/_sim/v1/tenants/${tenant}`);
 			await create();
 		}
 	}
@@ -83,6 +84,14 @@ export class GymAdmin {
 			throw error;
 		}
 	}
+
+	/** Changes when the guard forgets a tenant. A run made before the change has a stale credential. */
+	tenantEpoch(_tenant: string): number {
+		return 0;
+	}
+
+	/** Drops what the guard remembers of a tenant that the gym lost. The gym keeps nothing here. */
+	forgetTenant(_tenant: string): void {}
 
 	async deleteTenant(tenant: string): Promise<void> {
 		await this.call('DELETE', `/_sim/v1/tenants/${tenant}`);

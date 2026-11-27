@@ -6,6 +6,7 @@ import { UnexpectedError } from '@n8n/errors';
 
 import type { McpCaller } from './mcp-upstream';
 import type { CapturedRequest } from './network';
+import { REDACTED_SECRET } from './path-secret';
 
 /**
  * The hydration code is written for tools: a name, args, a result. An HTTP request is turned into one,
@@ -17,18 +18,29 @@ export interface HttpToolArgs extends Record<string, unknown> {
 	path: string;
 	query?: Record<string, string | string[]>;
 	body?: unknown;
+	// Type of a body that is no JSON, such as `multipart/related; boundary=x`. The body is then text of one byte per character.
+	contentType?: string;
 }
 
 // Parts of a path that carry no meaning for a tool name.
 const NOISE_SEGMENTS: ReadonlySet<string> = new Set(['users', 'me', 'gmail', 'api']);
-const VERSION_SEGMENT = /^v\d+$/;
-// An id has a digit and is not a short word.
-export const looksLikeId = (segment: string): boolean => segment.length >= 8 && /\d/.test(segment);
+// `v1`, `v2`, and `v1.0` (Microsoft Graph).
+const VERSION_SEGMENT = /^v\d+(?:\.\d+)*$/;
+// An id has a digit and is not a short word. A very long segment is an id too: no path word is that
+// long, and a long id (Microsoft Graph) can hold no digit.
+const LONG_ID_LENGTH = 40;
+export const looksLikeId = (segment: string): boolean =>
+	segment.length >= LONG_ID_LENGTH || (segment.length >= 8 && /\d/.test(segment));
 
 function describePath(method: string, pathname: string): string {
 	const segments = pathname.split('/').filter((s) => s !== '');
 	const nouns = segments.filter(
-		(s) => !looksLikeId(s) && !VERSION_SEGMENT.test(s) && !NOISE_SEGMENTS.has(s),
+		(s) =>
+			!looksLikeId(s) &&
+			!VERSION_SEGMENT.test(s) &&
+			!NOISE_SEGMENTS.has(s) &&
+			!s.includes(REDACTED_SECRET) &&
+			!s.includes('@'),
 	);
 	if (method === 'GET' || method === 'HEAD') {
 		const last = segments[segments.length - 1];
@@ -38,18 +50,26 @@ function describePath(method: string, pathname: string): string {
 	return `${method.toLowerCase()}_${nouns.join('_') || 'root'}`;
 }
 
-function parseBody(body: Buffer | undefined): unknown {
-	if (!body || body.length === 0) return undefined;
-	const text = body.toString('utf8');
+// A header value with a line break would add a header.
+const isSafeContentType = (type: string): boolean => type !== '' && !/[\r\n]/.test(type);
+
+function parseBody(
+	body: Buffer | undefined,
+	contentType: string | undefined,
+): { body?: unknown; contentType?: string } {
+	if (!body || body.length === 0) return {};
 	try {
-		return JSON.parse(text) as unknown;
+		return { body: JSON.parse(body.toString('utf8')) as unknown };
 	} catch {
-		return text;
+		// A body that is no JSON (an upload) keeps its type and its bytes. Text of one byte per character holds them.
+		return contentType && isSafeContentType(contentType)
+			? { body: body.toString('latin1'), contentType }
+			: { body: body.toString('utf8') };
 	}
 }
 
 export function toToolCall(
-	req: Pick<CapturedRequest, 'method' | 'url' | 'body'>,
+	req: Pick<CapturedRequest, 'method' | 'url' | 'body'> & Partial<Pick<CapturedRequest, 'headers'>>,
 	readShaped: boolean,
 ): { name: string; args: HttpToolArgs } {
 	const method = req.method.toUpperCase();
@@ -58,7 +78,10 @@ export function toToolCall(
 		const known = query[key];
 		query[key] = known === undefined ? value : [...(Array.isArray(known) ? known : [known]), value];
 	}
-	const body = parseBody(req.body);
+	const { body, contentType } = parseBody(
+		req.body,
+		Object.entries(req.headers ?? {}).find(([name]) => name.toLowerCase() === 'content-type')?.[1],
+	);
 	return {
 		name: `${readShaped ? 'read' : 'write'}_${describePath(method, req.url.pathname)}`,
 		args: {
@@ -66,6 +89,7 @@ export function toToolCall(
 			path: req.url.pathname,
 			...(Object.keys(query).length > 0 && { query }),
 			...(body !== undefined && { body }),
+			...(contentType !== undefined && { contentType }),
 		},
 	};
 }
@@ -120,7 +144,19 @@ export function fromToolArgs(
 	let body: Buffer | undefined;
 	if (method !== 'GET' && method !== 'HEAD' && args.body !== undefined) {
 		if (typeof args.body === 'string') {
-			body = Buffer.from(args.body);
+			const type = args.contentType;
+			if (typeof type === 'string' && isSafeContentType(type)) {
+				// Latin-1 holds one byte for each character. A wider character would be cut without a sign.
+				if (Array.from(args.body).some((char) => char.charCodeAt(0) > 0xff)) {
+					throw new UnexpectedError(
+						'mcp-guard: a body with a content type must hold one byte for each character',
+					);
+				}
+				body = Buffer.from(args.body, 'latin1');
+				out['content-type'] = type;
+			} else {
+				body = Buffer.from(args.body);
+			}
 		} else {
 			body = Buffer.from(JSON.stringify(args.body));
 			out['content-type'] = 'application/json';
@@ -186,7 +222,7 @@ const NOT_FORWARDED: ReadonlySet<string> = new Set([
 	'transfer-encoding',
 	'accept-encoding',
 ]);
-const NO_BODY_STATUS: ReadonlySet<number> = new Set([204, 205, 304]);
+export const NO_BODY_STATUS: ReadonlySet<number> = new Set([204, 205, 304]);
 
 /**
  * Sends a captured request to the gym. The gym finds the vendor by the Host header, so the request

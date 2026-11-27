@@ -12,12 +12,15 @@ vi.mock('../network', () => ({
 const model: HydrationModel = { resolve: async () => ({}) as never };
 
 function setup(tenantExists = true, gymUrl = 'http://127.0.0.1:8083') {
+	const epoch = { value: 0 };
 	const admin = {
+		tenantEpoch: vi.fn((_t: string) => epoch.value),
 		createTenant: vi.fn(async (_t: string) => {}),
 		seed: vi.fn(async (..._a: unknown[]) => ({})),
 		issueMcpCredential: vi.fn(async (..._a: unknown[]) => 'tenant-token'),
 		tenantExists: vi.fn(async (_t: string) => tenantExists),
 		deleteTenant: vi.fn(async (_t: string) => {}),
+		forgetTenant: vi.fn((_t: string) => {}),
 	};
 	const registry = new HttpRunRegistry({
 		profile: GMAIL_PROFILE,
@@ -25,7 +28,7 @@ function setup(tenantExists = true, gymUrl = 'http://127.0.0.1:8083') {
 		admin: admin as unknown as GymAdmin,
 		gymUrl,
 	});
-	return { registry, admin };
+	return { registry, admin, epoch };
 }
 
 describe('HttpRunRegistry', () => {
@@ -39,6 +42,25 @@ describe('HttpRunRegistry', () => {
 		expect(admin.issueMcpCredential).toHaveBeenCalledWith(
 			'guard-agent1-chat1',
 			'gmail',
+			'google_oauth',
+			'oauthTokenData.access_token',
+		);
+	});
+
+	it('asks the gym for the service name of the profile when it differs from the file name', async () => {
+		const { admin } = setup();
+		const registry = new HttpRunRegistry({
+			profile: { ...GMAIL_PROFILE, gymService: 'google-gmail' },
+			vendor: loadVendorKnowledge('gmail'),
+			admin: admin as unknown as GymAdmin,
+			gymUrl: 'http://127.0.0.1:8083',
+		});
+
+		await registry.getOrCreate('agent-x', model);
+
+		expect(admin.issueMcpCredential).toHaveBeenCalledWith(
+			'guard-agent-x',
+			'google-gmail',
 			'google_oauth',
 			'oauthTokenData.access_token',
 		);
@@ -74,6 +96,45 @@ describe('HttpRunRegistry', () => {
 		await registry.getOrCreate('agent-a', model);
 
 		expect(admin.createTenant).toHaveBeenCalledTimes(2);
+	});
+
+	it('forgets the tenant before it builds the run again', async () => {
+		const { registry, admin } = setup(false);
+
+		await registry.getOrCreate('agent-a', model);
+		await registry.getOrCreate('agent-a', model);
+
+		expect(admin.forgetTenant).toHaveBeenCalledTimes(1);
+	});
+
+	it('gives the tenant back when the setup fails after the tenant was made', async () => {
+		const { registry, admin } = setup();
+		admin.issueMcpCredential.mockRejectedValueOnce(new Error('no credential'));
+
+		await expect(registry.getOrCreate('agent-a', model)).rejects.toThrow('no credential');
+
+		expect(admin.deleteTenant).toHaveBeenCalledTimes(1);
+	});
+
+	it('builds the run again, without a second forget, when another vendor made the tenant again', async () => {
+		const { registry, admin, epoch } = setup(true);
+		await registry.getOrCreate('agent-a', model);
+
+		epoch.value = 1;
+		await registry.getOrCreate('agent-a', model);
+
+		expect(admin.createTenant).toHaveBeenCalledTimes(2);
+		expect(admin.forgetTenant).not.toHaveBeenCalled();
+	});
+
+	it('does not release a lease for a run of an older epoch', async () => {
+		const { registry, admin, epoch } = setup(true);
+		await registry.getOrCreate('agent-a', model);
+		epoch.value = 1;
+
+		await registry.delete('agent-a');
+
+		expect(admin.deleteTenant).not.toHaveBeenCalled();
 	});
 
 	it('cleans a tenant name', async () => {
@@ -136,5 +197,23 @@ describe('HttpRunRegistry', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it('uses one tenant for the vendors of the same chat, and seeds and signs in each of them', async () => {
+		const { registry, admin } = setup();
+		const other = new HttpRunRegistry({
+			profile: { ...GMAIL_PROFILE, name: 'other' },
+			vendor: loadVendorKnowledge('gmail'),
+			admin: admin as unknown as GymAdmin,
+			gymUrl: 'http://127.0.0.1:8083',
+		});
+
+		const a = await registry.getOrCreate('agent-a-chat-1', model);
+		const b = await other.getOrCreate('agent-a-chat-1', model);
+
+		expect(a.tenant).toBe('guard-agent-a-chat-1');
+		expect(b.tenant).toBe('guard-agent-a-chat-1');
+		expect(admin.seed).toHaveBeenCalledTimes(2);
+		expect(admin.issueMcpCredential).toHaveBeenCalledTimes(2);
 	});
 });

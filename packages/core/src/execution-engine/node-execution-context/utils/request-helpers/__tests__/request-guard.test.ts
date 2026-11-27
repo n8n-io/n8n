@@ -109,6 +109,24 @@ describe('request guard of a node execution', () => {
 			expect(requestLegacy).not.toHaveBeenCalled();
 		});
 
+		it('tells the guard that a legacy request wants a binary answer', async () => {
+			const guard = vi.fn(async () => ({
+				statusCode: 200,
+				headers: {},
+				body: Buffer.from([1, 2]),
+			}));
+
+			await proxyRequestToAxios(undefined, additionalDataWith(guard), node, {
+				uri: 'https://api.example.test/file',
+				encoding: null,
+			});
+
+			expect(guard).toHaveBeenCalledWith(
+				expect.objectContaining({ encoding: 'arraybuffer' }),
+				node,
+			);
+		});
+
 		it('fails like a legacy request when the guard answers with an error status', async () => {
 			const guard = vi.fn(async () => ({ statusCode: 502, headers: {}, body: 'down' }));
 

@@ -61,7 +61,7 @@ describe('HttpGuardRouter', () => {
 	it('refuses another Google API on the same host', async () => {
 		const { router, upstream, gym } = setup();
 
-		const res = await router.handle(request('GET', '/drive/v3/files'));
+		const res = await router.handle(request('GET', '/tasks/v1/users/@me/lists'));
 
 		expect(res.status).toBe(403);
 		expect(upstream.callTool).not.toHaveBeenCalled();
@@ -82,6 +82,22 @@ describe('HttpGuardRouter', () => {
 		expect(hydrator.hydrateWrite).not.toHaveBeenCalled();
 		expect(hydrator.noteWrite).toHaveBeenCalledTimes(1);
 	});
+
+	it.each([204, 205, 304])(
+		'answers a write of the gym with status %i and no body',
+		async (status) => {
+			const { router, gym } = setup();
+			gym.callTool.mockResolvedValueOnce({
+				content: [{ type: 'text', text: '' }],
+				_meta: { status, contentType: 'application/json' },
+			});
+
+			const res = await router.handle(request('DELETE', `${LIST}/${ID}`));
+
+			expect(res.status).toBe(status);
+			expect(await res.text()).toBe('');
+		},
+	);
 
 	it.each(['PUT', 'PATCH', 'DELETE', 'POST'])(
 		'never lets a %s reach the real service',
@@ -308,5 +324,110 @@ describe('HttpGuardRouter', () => {
 		const res = await router.handle(request('DELETE', `${LIST}/${ID}`));
 		expect(res.status).toBe(204);
 		expect(await res.text()).toBe('');
+	});
+});
+
+describe('HttpGuardRouter with ids of another vendor', () => {
+	it('skips the real read for an id that a router of the same tenant made', async () => {
+		const gymIds = new Set<string>(['1gymMade0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2xyz']);
+		const { router, upstream, gym } = setup({ gymIds });
+
+		await router.handle(request('GET', `${LIST}/1gymMade0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2xyz`));
+
+		expect(upstream.callTool).not.toHaveBeenCalled();
+		expect(gym.callTool).toHaveBeenCalledTimes(1);
+	});
+
+	it('writes the ids that it made into the shared set', async () => {
+		const gymIds = new Set<string>();
+		const { router, gym } = setup({ gymIds });
+		gym.callTool.mockResolvedValueOnce(result({ id: 'newGymObject123456' }));
+
+		await router.handle(request('POST', `${LIST}/send`, { raw: 'abc' }));
+
+		expect(gymIds.has('newGymObject123456')).toBe(true);
+	});
+});
+
+describe('HttpGuardRouter real read failures', () => {
+	it.each([403, 500, 503])('returns a %i of the real read to the node', async (status) => {
+		const { router, upstream, gym, hydrator } = setup();
+		upstream.callTool.mockResolvedValueOnce(result({ error: 'failed' }, status));
+
+		const res = await router.handle(request('GET', LIST));
+
+		expect(res.status).toBe(status);
+		expect(gym.callTool).not.toHaveBeenCalled();
+		expect(hydrator.hydrate).not.toHaveBeenCalled();
+	});
+
+	it('leaves a 404 of the real read to the gym, for an id that only the gym knows', async () => {
+		const { router, upstream, gym } = setup();
+		upstream.callTool.mockResolvedValueOnce(result({ error: 'not found' }, 404));
+
+		const res = await router.handle(request('GET', `${LIST}/${ID}`));
+
+		expect(res.status).toBe(200);
+		expect(gym.callTool).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('HttpGuardRouter with real ids', () => {
+	const REAL = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms';
+	const MADE = '1gymMade0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2xyz';
+	const withRealIds = { ...GMAIL_PROFILE, opaqueIds: true };
+
+	it('does not take an id of a read answer as an id of the gym', async () => {
+		const { router, upstream, gym } = setup({ profile: withRealIds });
+		gym.callTool.mockResolvedValue(result({ id: REAL }));
+		await router.handle(request('GET', LIST));
+		upstream.callTool.mockClear();
+
+		await router.handle(request('GET', `${LIST}/${REAL}`));
+
+		expect(upstream.callTool).toHaveBeenCalledTimes(1);
+	});
+
+	it('takes an id of a write answer as an id of the gym, also in a path with a range', async () => {
+		const { router, upstream, gym, hydrator } = setup({ profile: withRealIds });
+		gym.callTool.mockResolvedValue(result({ spreadsheetId: MADE }));
+		await router.handle(request('POST', `${LIST}/send`, { raw: 'abc' }));
+		upstream.callTool.mockClear();
+
+		await router.handle(request('GET', `${LIST}/${MADE}/Sheet1!A1:C10`));
+
+		expect(upstream.callTool).not.toHaveBeenCalled();
+		expect(hydrator.hydrate).not.toHaveBeenCalled();
+	});
+});
+
+describe('HttpGuardRouter ids with encoded characters', () => {
+	it('answers a read of an id of the gym from the gym only, also when the path encodes the id', async () => {
+		const { router, upstream, gym } = setup();
+		const gymId = 'AAMkAGym+Id/with+chars0123456789012345678901234567890';
+		gym.callTool.mockResolvedValueOnce(result({ id: gymId, parentFolderId: 'folderid0123456789' }));
+		await router.handle(request('POST', '/gmail/v1/users/me/drafts', {}));
+
+		await router.handle(request('GET', `/gmail/v1/users/me/messages/${encodeURIComponent(gymId)}`));
+
+		expect(upstream.callTool).not.toHaveBeenCalled();
+	});
+
+	it('records the parent folder id of an answer of the gym as an id of the gym', async () => {
+		const { router, upstream, gym } = setup();
+		gym.callTool.mockResolvedValueOnce(result({ id: 'a', parentFolderId: 'folderid0123456789' }));
+		await router.handle(request('POST', '/gmail/v1/users/me/drafts', {}));
+
+		await router.handle(request('GET', '/gmail/v1/users/me/labels/folderid0123456789'));
+
+		expect(upstream.callTool).not.toHaveBeenCalled();
+	});
+
+	it('keeps a path with a broken escape as it is', async () => {
+		const { router, upstream } = setup();
+
+		await router.handle(request('GET', '/gmail/v1/users/me/messages/1a1f32cf%ZZ'));
+
+		expect(upstream.callTool).toHaveBeenCalledTimes(1);
 	});
 });

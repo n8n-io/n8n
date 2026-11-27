@@ -63,6 +63,15 @@ export class SeededEntities {
 	// Ids of objects that the gym made itself, for example the issue that an agent created.
 	private readonly held = new Set<string>();
 
+	/** Forgets everything, for a tenant that the gym lost. */
+	clear(): void {
+		this.seeded.clear();
+		this.refs.clear();
+		this.byKey.clear();
+		this.shallow.clear();
+		this.held.clear();
+	}
+
 	/** Notes ids that the gym holds, so a plan does not seed another object under them. */
 	hold(ids: string[]): void {
 		for (const id of ids) this.held.add(id.toLowerCase());

@@ -1,18 +1,24 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { looksLikeId, type HttpToolArgs } from './http-tool-caller';
+import type { PathSecretPattern } from './path-secret';
 
 /** What the guard needs to run one HTTP vendor on a gym. The instructions are in `vendors/<name>.md`. */
 export interface HttpVendorProfile {
 	// Name of the vendor file.
 	name: string;
-	// Local gym addresses. Env vars override them, see http-guard.service.ts.
-	defaultAdminUrl: string;
-	defaultGymUrl: string;
+	// The service name that the gym knows, when it differs from the vendor file name.
+	gymService?: string;
+	// True when the real ids are no UUIDs (Google ids). The hydration then keeps an id that the real
+	// data shows word for word, so the agent can use the real id in the gym.
+	opaqueIds?: boolean;
 	// How the gym issues a bearer, and where the bearer sits in its answer.
 	credentialKind: string;
 	credentialField: string;
 	// The gym issues a credential only for a tenant with an account. Seed one placeholder.
 	placeholderSeed: unknown;
+	// Set when the API puts a secret in the URL path. The guard removes the secret from the path at once.
+	// The real reads get it back, and the gym path gets the token of the tenant.
+	pathSecret?: PathSecretPattern;
 	// Adds fields to a real JSON answer that the model needs to copy it (decoded text, flat headers).
 	enrich?: (json: unknown) => unknown;
 	// Last change to an overlay, after the checks. Code adds data here that the real data does not hold.
@@ -132,8 +138,6 @@ export function withMailbox(overlay: Record<string, unknown>): Record<string, un
 
 export const GMAIL_PROFILE: HttpVendorProfile = {
 	name: 'gmail',
-	defaultAdminUrl: 'http://127.0.0.1:9093',
-	defaultGymUrl: 'http://127.0.0.1:8083',
 	credentialKind: 'google_oauth',
 	credentialField: 'oauthTokenData.access_token',
 	placeholderSeed: {

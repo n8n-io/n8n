@@ -106,6 +106,71 @@ describe('fromToolArgs', () => {
 	});
 });
 
+describe('a body that is no JSON', () => {
+	const BOUNDARY = 'b123';
+	const MULTIPART = Buffer.concat([
+		Buffer.from(
+			`--${BOUNDARY}\r\nContent-Type: application/json\r\n\r\n{"name":"n.txt"}\r\n--${BOUNDARY}\r\n`,
+		),
+		Buffer.from('Content-Type: application/octet-stream\r\n\r\n'),
+		Buffer.from([0x00, 0xff, 0x80, 0x7f]),
+		Buffer.from(`\r\n--${BOUNDARY}--\r\n`),
+	]);
+	const upload = (headers: Record<string, string>) => ({
+		method: 'POST',
+		url: new URL('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'),
+		headers,
+		body: MULTIPART,
+	});
+
+	it('keeps the content type and the bytes of an upload', () => {
+		const { args } = toToolCall(
+			upload({ 'content-type': `multipart/related; boundary=${BOUNDARY}` }),
+			false,
+		);
+
+		const rebuilt = fromToolArgs('https://www.googleapis.com', args, {});
+
+		expect(args.contentType).toBe(`multipart/related; boundary=${BOUNDARY}`);
+		expect(rebuilt.headers['content-type']).toBe(`multipart/related; boundary=${BOUNDARY}`);
+		expect(rebuilt.body?.equals(MULTIPART)).toBe(true);
+	});
+
+	it('finds the content type with any letter case', () => {
+		const { args } = toToolCall(upload({ 'Content-Type': 'multipart/related; boundary=x' }), false);
+
+		expect(args.contentType).toBe('multipart/related; boundary=x');
+	});
+
+	it('sets no content type for a JSON body', () => {
+		const { args } = toToolCall(
+			req('POST', 'https://x.test/p', { a: 1 }, { 'content-type': 'application/json' }),
+			false,
+		);
+
+		expect(args.contentType).toBeUndefined();
+		expect(args.body).toEqual({ a: 1 });
+	});
+
+	it('keeps a text body as text when the request has no content type', () => {
+		const { args } = toToolCall(upload({}), false);
+
+		expect(args.contentType).toBeUndefined();
+		expect(typeof args.body).toBe('string');
+	});
+
+	it('ignores a content type with a line break', () => {
+		const rebuilt = fromToolArgs(
+			'https://x.test',
+			{ method: 'POST', path: '/p', body: 'x', contentType: 'text/plain\r\nx-evil: 1' },
+			{},
+		);
+
+		expect(rebuilt.headers['content-type']).toBeUndefined();
+		expect(rebuilt.headers['x-evil']).toBeUndefined();
+	});
+});
+
 describe('fromToolArgs path check', () => {
 	it.each([
 		'/gmail/v1/%2e%2e/drive/v3/files',
@@ -367,5 +432,47 @@ describe('http tool caller edge cases', () => {
 		} finally {
 			await new Promise((resolve) => server.close(resolve));
 		}
+	});
+});
+
+describe('Microsoft Graph paths', () => {
+	it('drops the v1.0 and the mailbox address from the tool name', () => {
+		const call = toToolCall(
+			req('GET', 'https://graph.microsoft.com/v1.0/users/bob@x.test/messages'),
+			true,
+		);
+
+		expect(call.name).toBe('read_list_messages');
+	});
+
+	it('treats a long text without a digit as an id', () => {
+		const text = 'AAMkAGVmMDEzMTMLTZmYWUtNdkNChMDZiLTUGYOTZhYmYOABGAAAAAAAiQAbcdefghij'.replace(
+			/\d/g,
+			'x',
+		);
+		expect(/\d/.test(text)).toBe(false);
+		const call = toToolCall(
+			req('GET', `https://graph.microsoft.com/v1.0/me/messages/${text}`),
+			true,
+		);
+
+		expect(call.name).toBe('read_get_messages');
+	});
+
+	it('refuses a body with a content type that holds a character wider than one byte', () => {
+		expect(() =>
+			fromToolArgs(
+				'https://x.test',
+				{ method: 'POST', path: '/p', body: '日本', contentType: 'text/plain' },
+				{},
+			),
+		).toThrow('one byte');
+		expect(
+			fromToolArgs(
+				'https://x.test',
+				{ method: 'POST', path: '/p', body: 'caf\u00e9', contentType: 'text/plain' },
+				{},
+			).body,
+		).toEqual(Buffer.from([0x63, 0x61, 0x66, 0xe9]));
 	});
 });

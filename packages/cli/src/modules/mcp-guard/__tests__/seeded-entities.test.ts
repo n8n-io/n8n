@@ -179,4 +179,22 @@ describe('SeededEntities', () => {
 			});
 		});
 	});
+
+	it('forgets recorded and held entities after clear, so a new tenant is hydrated again', () => {
+		const seeded = new SeededEntities();
+		const overlay = { world_version: 1, native: { linear: { teams: [team] } } };
+		seeded.record(overlay);
+		seeded.hold(['madebygym1']);
+		expect(seeded.knows(['madebygym1'])).toBe(true);
+		expect(seeded.dedupe(overlay)).not.toEqual(overlay);
+
+		seeded.clear();
+
+		expect(seeded.knows(['madebygym1'])).toBe(false);
+		expect(seeded.dedupe(overlay)).toEqual(overlay);
+		// The shallow marks are gone too, so a list can seed the entity again.
+		seeded.record({ native: { linear: { teams: [team] } } }, true);
+		seeded.clear();
+		expect(seeded.dedupe(overlay, true)).toEqual(overlay);
+	});
 });
