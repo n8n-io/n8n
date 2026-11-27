@@ -101,6 +101,30 @@ async function runnerSetup(): Promise<Pick<TopologyInput, 'runners'>> {
 	return { runners: { mode: 'external', via: choice, languages } };
 }
 
+/** Every slot, with its editor port and the environments that use it. */
+export function slotChoices(used: Map<number, string[]>): Array<Choice<number>> {
+	return Array.from({ length: MAX_SLOT + 1 }, (_, slot) => {
+		const sharing = used.get(slot);
+		const port = `editor on port ${5678 + 1000 * slot}`;
+		return {
+			value: slot,
+			label: slot === 0 ? 'Slot 0 (default ports)' : `Slot ${slot}`,
+			hint: sharing ? `${port}, used by ${sharing.join(', ')}: not at the same time` : port,
+		};
+	});
+}
+
+/**
+ * The lowest free slot that is not slot 0, so the default ports stay free for
+ * other tools, for example `pnpm dev`. Slot 0 when it is the only free slot.
+ */
+export function preferredSlot(used: Map<number, string[]>): number {
+	const free = Array.from({ length: MAX_SLOT + 1 }, (_, slot) => slot).filter(
+		(slot) => !used.has(slot),
+	);
+	return free.find((slot) => slot > 0) ?? free[0] ?? 1;
+}
+
 function freeName(base: string): string {
 	if (!existsSync(envPaths(base).envYaml)) return base;
 	for (let i = 2; ; i++) {
@@ -165,25 +189,7 @@ export async function wizard(givenName?: string): Promise<TopologyInput | undefi
 	]);
 	if (mail) topology.mail = { provider: 'mailpit' };
 	const used = slotsInUse();
-	const sharing = used.get(0);
-	if (sharing) {
-		const slot = Array.from({ length: MAX_SLOT + 1 }, (_, i) => i).find((s) => !used.has(s));
-		const choices: Array<Choice<number>> = [
-			{
-				value: 0,
-				label: 'Default ports (slot 0)',
-				hint: `same as ${sharing.join(', ')}: they cannot run at the same time`,
-			},
-		];
-		if (slot !== undefined) {
-			choices.push({
-				value: slot,
-				label: `Own ports (slot ${slot})`,
-				hint: `runs next to other environments, editor on port ${5678 + 1000 * slot}`,
-			});
-		}
-		topology.slot = await select('Ports', choices, slot ?? 0);
-	}
+	topology.slot = await select('Ports', slotChoices(used), preferredSlot(used));
 	const name =
 		givenName ??
 		(await ask('Environment name', {

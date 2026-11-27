@@ -13,6 +13,7 @@ import {
 	portsOf,
 	processComponents,
 } from '../src/topology/components';
+import { preferredSlot, slotChoices } from '../src/commands/wizard';
 import { freeSlot, parseSlot } from '../src/topology/slots';
 
 afterEach(() => {
@@ -65,5 +66,38 @@ describe('port slots', () => {
 		expect(parseSlot('4', 'new')).toBe(4);
 		expect(() => parseSlot('10', 'new')).toThrow('Invalid slot');
 		expect(() => parseSlot('', 'new')).toThrow('Invalid slot');
+	});
+});
+
+describe('wizard ports', () => {
+	it('should prefer the lowest free slot that is not slot 0', () => {
+		expect(preferredSlot(new Map())).toBe(1);
+		expect(preferredSlot(new Map([[0, ['a']]]))).toBe(1);
+		expect(
+			preferredSlot(
+				new Map([
+					[1, ['a']],
+					[2, ['b']],
+				]),
+			),
+		).toBe(3);
+	});
+
+	it('should use slot 0 when it is the only free slot', () => {
+		const used = new Map(Array.from({ length: 9 }, (_, i) => [i + 1, [`e${i + 1}`]]));
+		expect(preferredSlot(used)).toBe(0);
+		used.set(0, ['e0']);
+		expect(preferredSlot(used)).toBe(1);
+	});
+
+	it('should list every slot with its editor port and the environments that use it', () => {
+		const choices = slotChoices(new Map([[2, ['a', 'b']]]));
+		expect(choices).toHaveLength(10);
+		expect(choices[0]).toEqual({
+			value: 0,
+			label: 'Slot 0 (default ports)',
+			hint: 'editor on port 5678',
+		});
+		expect(choices[2].hint).toBe('editor on port 7678, used by a, b: not at the same time');
 	});
 });
