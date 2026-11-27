@@ -18,10 +18,12 @@ watch(
 	async (isPending) => {
 		if (!isPending || !store.consumeAssistantButtonHighlight()) return;
 		clearTimeout(hideTimer);
-		// Remove the class for one render, so a minimize during a highlight replays it.
+		// Remove the class for one painted frame, so a minimize during a highlight
+		// replays the CSS animation.
 		if (isHighlighted.value) {
 			isHighlighted.value = false;
 			await nextTick();
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 		}
 		isHighlighted.value = true;
 		hideTimer = setTimeout(() => {

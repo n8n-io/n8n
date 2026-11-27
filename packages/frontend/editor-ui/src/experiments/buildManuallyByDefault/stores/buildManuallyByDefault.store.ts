@@ -5,6 +5,7 @@ import { STORES } from '@n8n/stores';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
@@ -91,6 +92,8 @@ export const useBuildManuallyByDefaultStore = defineStore(
 
 		async function refreshConnectedMcpClients() {
 			if (!isComposerVariant.value) return;
+			// Hide the row again while this check runs, so an old answer never shows.
+			mcpClientState.value = 'unknown';
 			if (settingsStore.moduleSettings.mcp?.mcpAccessEnabled !== true) {
 				mcpClientState.value = 'none';
 				return;
@@ -107,13 +110,14 @@ export const useBuildManuallyByDefaultStore = defineStore(
 		// Set when the composer minimizes, read once by the canvas Assistant button.
 		const isAssistantButtonHighlightPending = ref(false);
 
-		function composerPayload<T extends Record<string, unknown>>(payload?: T) {
+		// Keeps the payload type, so each registry event checks its own properties.
+		function composerPayload<const T extends ITelemetryTrackProperties>(payload: T) {
 			return getExperimentTelemetryPayload(EXPERIMENT, EXPERIMENT.canvasComposer, payload);
 		}
 
 		function trackComposerShown() {
 			if (!isComposerVariant.value) return;
-			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.EMPTY_CANVAS_COMPOSER_SHOWN, composerPayload());
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.EMPTY_CANVAS_COMPOSER_SHOWN, composerPayload({}));
 		}
 
 		function trackComposerPromptSent(prompt: string) {
@@ -129,7 +133,7 @@ export const useBuildManuallyByDefaultStore = defineStore(
 			isAssistantButtonHighlightPending.value = true;
 			telemetry.track(
 				TELEMETRY_EVENT.INSTANCE_AI.EMPTY_CANVAS_COMPOSER_MINIMIZED,
-				composerPayload(),
+				composerPayload({}),
 			);
 		}
 
@@ -139,7 +143,7 @@ export const useBuildManuallyByDefaultStore = defineStore(
 			isAssistantButtonHighlightPending.value = false;
 			telemetry.track(
 				TELEMETRY_EVENT.INSTANCE_AI.CANVAS_ASSISTANT_BUTTON_TIP_SHOWN,
-				composerPayload(),
+				composerPayload({}),
 			);
 			return true;
 		}

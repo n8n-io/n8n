@@ -168,6 +168,18 @@ describe('buildManuallyByDefault store', () => {
 			expect(store.showConnectRow).toBe(false);
 		});
 
+		it('hides the row again while a new check runs', async () => {
+			mockFetchOAuthClientsPreview.mockResolvedValueOnce([]);
+			const store = useBuildManuallyByDefaultStore();
+			await store.refreshConnectedMcpClients();
+			expect(store.showConnectRow).toBe(true);
+
+			mockFetchOAuthClientsPreview.mockReturnValue(new Promise(() => {}));
+			void store.refreshConnectedMcpClients();
+
+			expect(store.showConnectRow).toBe(false);
+		});
+
 		it('hides the row when the user has a connected client', async () => {
 			mockFetchOAuthClientsPreview.mockResolvedValue([{ id: 'client' }]);
 			const store = useBuildManuallyByDefaultStore();
