@@ -954,3 +954,17 @@ export {
 	type RuntimeCredentialRuleImpact,
 	type RuntimeCredentialRuleImpactWorkflow,
 } from './runtime-credential-rule/runtime-credential-rule-impact.dto';
+export {
+	CreateRuntimeCredentialRulePublicDto,
+	ProjectRuntimeCredentialRuleListPublicDto,
+	ReplaceRuntimeCredentialRulePublicDto,
+	RuntimeCredentialRuleImpactPublicDto,
+	RuntimeCredentialRuleListPublicDto,
+	RuntimeCredentialRuleListQueryPublicDto,
+	RuntimeCredentialRulePublicDto,
+	runtimeCredentialRuleAccessSchema,
+	runtimeCredentialRuleBlockedBySchema,
+	type ProjectRuntimeCredentialRule,
+	type RuntimeCredentialRuleAccess,
+	type RuntimeCredentialRuleBlockedBy,
+} from './runtime-credential-rule/runtime-credential-rule-public.dto';

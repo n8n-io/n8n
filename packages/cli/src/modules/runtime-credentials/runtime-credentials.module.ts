@@ -19,6 +19,7 @@ export class RuntimeCredentialsModule implements ModuleInterface {
 		await Container.get(RuntimeCredentialStubSeeder).seed();
 
 		await import('./runtime-credential-rules.controller.js');
+		await import('./project-runtime-credential-rules.controller.js');
 		await import('./runtime-credentials-context-hook.js');
 		await import('./runtime-credentials.config.js');
 		const { RuntimeCredentialsAccessService } = await import(

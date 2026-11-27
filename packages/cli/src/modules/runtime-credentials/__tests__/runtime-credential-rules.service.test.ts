@@ -71,4 +71,63 @@ describe('RuntimeCredentialRulesService target validation', () => {
 
 		expect(validator.getError).not.toHaveBeenCalled();
 	});
+
+	describe('replace', () => {
+		const storedRule = { nodeType: '*', path: 'p', credentialType: 'oAuth2Api' };
+
+		beforeEach(() => {
+			repository.findByAlias.mockResolvedValue({
+				alias: 'a',
+				credentialType: 'oAuth2Api',
+			} as never);
+			rulesService.getCredentialRules.mockReturnValue([['a', storedRule]]);
+			validator.getError.mockReturnValue(undefined);
+		});
+
+		it('writes every editable value and clears an absent transform and allowedDomains', async () => {
+			await service.replace('a', { nodeType: 'n8n-nodes-base.webhook', path: 'headers.x' });
+
+			expect(repository.updateByAlias).toHaveBeenCalledWith(
+				'a',
+				{
+					nodeType: 'n8n-nodes-base.webhook',
+					path: 'headers.x',
+					transform: null,
+					allowedDomains: null,
+				},
+				{},
+			);
+		});
+
+		it('accepts the immutable fields of a GET body when they match', async () => {
+			await expect(
+				service.replace('a', {
+					nodeType: '*',
+					path: 'p',
+					alias: 'a',
+					credentialType: 'oAuth2Api',
+					source: 'database',
+					stubCredentialId: 'runtime-x',
+				}),
+			).resolves.toBeDefined();
+		});
+
+		it('rejects a different alias or credential type', async () => {
+			await expect(service.replace('a', { nodeType: '*', path: 'p', alias: 'b' })).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(
+				service.replace('a', { nodeType: '*', path: 'p', credentialType: 'slackApi' }),
+			).rejects.toThrow('credentialType of a rule cannot change');
+			expect(repository.updateByAlias).not.toHaveBeenCalled();
+		});
+
+		it('rejects a rule from the environment', async () => {
+			rulesService.isEnvironmentRule.mockReturnValue(true);
+
+			await expect(service.replace('a', { nodeType: '*', path: 'p' })).rejects.toThrow(
+				'comes from the environment',
+			);
+		});
+	});
 });

@@ -596,6 +596,39 @@
 		},
 		"PUT /credential-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
+		},
+		"GET /runtime-credential-rules": {
+			"status": "gap"
+		},
+		"POST /runtime-credential-rules": {
+			"status": "gap"
+		},
+		"POST /runtime-credential-rules/impact": {
+			"status": "gap"
+		},
+		"GET /runtime-credential-rules/{ruleAlias}": {
+			"status": "gap"
+		},
+		"PUT /runtime-credential-rules/{ruleAlias}": {
+			"status": "gap"
+		},
+		"DELETE /runtime-credential-rules/{ruleAlias}": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/runtime-credential-rules": {
+			"status": "gap"
+		},
+		"GET /request-fed-credential-type-policies/instance": {
+			"status": "gap"
+		},
+		"PUT /request-fed-credential-type-policies/instance": {
+			"status": "gap"
+		},
+		"GET /request-fed-credential-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"PUT /request-fed-credential-type-policies/projects/{projectId}": {
+			"status": "gap"
 		}
 	}
 }

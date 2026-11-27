@@ -100,6 +100,10 @@ tags:
     x-displayName: Role Mapping Rules
     x-parent: AccessAndOrganization
     description: Operations about identity-provider role-mapping rules
+  - name: RuntimeCredentialRule
+    x-displayName: Run-time Credential Rules
+    x-parent: InstanceSettings
+    description: Preview. Breaking changes may still occur without a major version bump.
   - name: SecurityPolicy
     x-displayName: Security Policy
     x-parent: InstanceSettings
