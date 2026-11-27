@@ -98,26 +98,14 @@ jobs:
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
-      # Reuse browsers baked into the machine image when the Playwright pin matches;
-      # otherwise fall back to the workspace cache path (absolute so nested pnpm
-      # invocations do not double-nest it).
-      - name: Resolve Playwright browsers
-        id: preinstalled-browsers
+      - name: Install Browsers
         run: |
-          EXPECTED="$(tr -d '[:space:]' < packages/quality/testing/playwright/.playwright-version)"
-          BAKED_DIR="/opt/playwright-browsers"
-          if [ -f "$BAKED_DIR/.playwright-version" ] \
-            && [ "$(tr -d '[:space:]' < "$BAKED_DIR/.playwright-version")" = "$EXPECTED" ]; then
-            echo "PLAYWRIGHT_BROWSERS_PATH=$BAKED_DIR" >> "$GITHUB_ENV"
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "Using preinstalled Playwright browsers (${EXPECTED}) at ${BAKED_DIR}"
+          if [ "$(cat /opt/playwright-browsers/.playwright-version 2>/dev/null)" = "$(cat packages/quality/testing/playwright/.playwright-version)" ]; then
+            echo "PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers" >> "$GITHUB_ENV"
           else
             echo "PLAYWRIGHT_BROWSERS_PATH=$GITHUB_WORKSPACE/packages/quality/testing/playwright/.playwright-browsers" >> "$GITHUB_ENV"
+            pnpm turbo run install-browsers --filter=n8n-playwright
           fi
-
-      - name: Install Browsers
-        if: steps.preinstalled-browsers.outputs.ready != 'true'
-        run: pnpm turbo run install-browsers --filter=n8n-playwright
 
       - name: Load n8n image from cache
         if: ${{ inputs.test-mode == 'docker-artifact' }}

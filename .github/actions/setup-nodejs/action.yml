@@ -49,59 +49,25 @@ runs:
       shell: bash
       run: node .github/scripts/resolve-pnpm-version.mjs
 
-    # Machine images bake the pinned Node, pnpm, and SafeChain binaries into the
-    # VM rootfs. Detect matching versions so we skip redundant cache restores
-    # while falling back to the cache/download path on standard runners or after
-    # a version bump.
-    - name: Detect preinstalled tools
+    # Skip cache restores when the machine image already bakes the pinned versions.
+    - name: Check preinstalled tools
       id: preinstalled
       shell: bash
       env:
-        EXPECTED_PNPM_VERSION: ${{ steps.pnpm-version.outputs.version }}
-        EXPECTED_NODE_VERSION: ${{ inputs.node-version }}
-        EXPECTED_SAFE_CHAIN_VERSION: '1.5.29'
+        PNPM_VERSION: ${{ steps.pnpm-version.outputs.version }}
+        NODE_VERSION: ${{ inputs.node-version }}
       run: |
-        pnpm_ready=false
-        node_ready=false
-        safe_chain_ready=false
-
-        if [ -r /opt/bmi-manifest.env ]; then
-          # shellcheck disable=SC1091
-          . /opt/bmi-manifest.env
+        if [ "$(pnpm --version 2>/dev/null)" = "$PNPM_VERSION" ]; then
+          echo "pnpm=true" >> "$GITHUB_OUTPUT"
+          echo "PNPM_HOME=$(dirname "$(command -v pnpm)")" >> "$GITHUB_ENV"
         fi
-
-        PNPM_BIN="$(command -v pnpm || true)"
-        if [ -n "$PNPM_BIN" ] && { [ "${BMI_DEFAULT_PNPM:-}" = "$EXPECTED_PNPM_VERSION" ] || [ "$(pnpm --version 2>/dev/null || true)" = "$EXPECTED_PNPM_VERSION" ]; }; then
-          pnpm_ready=true
-          echo "pnpm-ready=true" >> "$GITHUB_OUTPUT"
-          if [ "$RUNNER_OS" != "Windows" ]; then
-            PNPM_DEST="${PNPM_HOME:-$HOME/setup-pnpm}"
-            mkdir -p "$PNPM_DEST"
-            if [ ! -x "$PNPM_DEST/pnpm" ] && [ "$PNPM_BIN" != "$PNPM_DEST/pnpm" ]; then
-              ln -sf "$(readlink -f "$PNPM_BIN")" "$PNPM_DEST/pnpm"
-            fi
-            echo "PNPM_HOME=$PNPM_DEST" >> "$GITHUB_ENV"
-          fi
-        fi
-
-        NODE_DIR="/opt/hostedtoolcache/node/${EXPECTED_NODE_VERSION}/x64"
-        if [ "$RUNNER_OS" = "Linux" ] && [ "$RUNNER_ARCH" = "X64" ] \
-          && [ -f "${NODE_DIR}.complete" ] && [ -x "${NODE_DIR}/bin/node" ]; then
-          node_ready=true
-          echo "node-ready=true" >> "$GITHUB_OUTPUT"
-        fi
-
-        SAFE_CHAIN_BIN="$HOME/.safe-chain/bin/safe-chain"
-        if [ -x "$SAFE_CHAIN_BIN" ] && { [ "${BMI_SAFE_CHAIN_VERSION:-}" = "$EXPECTED_SAFE_CHAIN_VERSION" ] || "$SAFE_CHAIN_BIN" -v 2>/dev/null | grep -Fq "Current safe-chain version: ${EXPECTED_SAFE_CHAIN_VERSION}"; }; then
-          safe_chain_ready=true
-          echo "safe-chain-ready=true" >> "$GITHUB_OUTPUT"
-        fi
-
-        echo "Preinstalled tools (${BMI_IMAGE:-standard} ${BMI_BASE:-host}): pnpm=${pnpm_ready} node=${node_ready} safe-chain=${safe_chain_ready}"
+        [ -f "/opt/hostedtoolcache/node/${NODE_VERSION}/x64.complete" ] && echo "node=true" >> "$GITHUB_OUTPUT"
+        "$HOME/.safe-chain/bin/safe-chain" -v 2>/dev/null | grep -Fq "Current safe-chain version: 1.5.29" && echo "safe-chain=true" >> "$GITHUB_OUTPUT"
+        true
 
     # Windows cannot activate a POSIX home path from the restored cache.
     - name: Restore pnpm executable
-      if: runner.os != 'Windows' && steps.preinstalled.outputs.pnpm-ready != 'true'
+      if: runner.os != 'Windows' && steps.preinstalled.outputs.pnpm != 'true'
       id: cache-pnpm-exe
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -110,7 +76,7 @@ runs:
 
     - name: Setup pnpm
       id: setup-pnpm
-      if: steps.preinstalled.outputs.pnpm-ready != 'true' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      if: steps.preinstalled.outputs.pnpm != 'true' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
       continue-on-error: true
       uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
       with:
@@ -126,7 +92,7 @@ runs:
 
     # Cache hits restore files but not the per-job environment.
     - name: Activate cached pnpm executable
-      if: steps.preinstalled.outputs.pnpm-ready != 'true' && steps.cache-pnpm-exe.outputs.cache-hit == 'true'
+      if: steps.preinstalled.outputs.pnpm != 'true' && steps.cache-pnpm-exe.outputs.cache-hit == 'true'
       shell: bash
       run: |
         PNPM_DEST="$HOME/setup-pnpm"
@@ -148,7 +114,7 @@ runs:
 
     # Save before later job failures can prevent cache creation.
     - name: Save pnpm executable
-      if: runner.os != 'Windows' && steps.preinstalled.outputs.pnpm-ready != 'true' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      if: runner.os != 'Windows' && steps.preinstalled.outputs.pnpm != 'true' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/setup-pnpm
@@ -167,7 +133,7 @@ runs:
     # quietly takes over. Caching the parent version dir captures the marker
     # alongside the toolchain. Key bumped to v2 to invalidate stale entries.
     - name: Restore Node.js Toolcache
-      if: runner.os == 'Linux' && runner.arch == 'X64' && steps.preinstalled.outputs.node-ready != 'true'
+      if: runner.os == 'Linux' && runner.arch == 'X64' && steps.preinstalled.outputs.node != 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: /opt/hostedtoolcache/node/${{ inputs.node-version }}
@@ -240,7 +206,7 @@ runs:
     # radius across jobs, retry covers the first-job-per-key case where the
     # CDN must be hit. Keep the version in sync with the download step below.
     - name: Restore Aikido SafeChain Binary
-      if: steps.preinstalled.outputs.safe-chain-ready != 'true'
+      if: steps.preinstalled.outputs.safe-chain != 'true'
       id: cache-safe-chain
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -252,7 +218,7 @@ runs:
     # script also runs `setup-ci`, so on a cache miss this both downloads AND
     # activates; the Activate step below then re-runs `setup-ci` idempotently.
     - name: Download Aikido SafeChain
-      if: steps.preinstalled.outputs.safe-chain-ready != 'true' && steps.cache-safe-chain.outputs.cache-hit != 'true'
+      if: steps.preinstalled.outputs.safe-chain != 'true' && steps.cache-safe-chain.outputs.cache-hit != 'true'
       run: |
         VERSION="1.5.29"
         EXPECTED_SHA256="e9bfa05430bca0efcf26e5a0f06d09b9da8cc21de2e0ffab03f512dde649ebbe"
