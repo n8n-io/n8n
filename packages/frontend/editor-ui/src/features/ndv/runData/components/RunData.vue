@@ -145,6 +145,7 @@ type Props = {
 	disableDisplayModeSelection?: boolean;
 	disableEdit?: boolean;
 	disablePin?: boolean;
+	readOnly?: boolean;
 	compact?: boolean;
 	showActionsOnHover?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
@@ -311,6 +312,7 @@ const hasBinaryData = computed(() => binaryData.value?.length > 0);
 const hasNoData = computed(() => !rawInputData.value.length && !pinnedData.hasData.value);
 const isReadOnly = computed(
 	() =>
+		props.readOnly ||
 		isReadOnlyRoute.value ||
 		readOnlyEnv.value ||
 		isArchivedWorkflow.value ||
@@ -1049,6 +1051,8 @@ function pinDataDiscoveryComplete() {
 }
 
 function enterEditMode({ origin }: EnterEditModeArgs) {
+	if (isReadOnly.value) return;
+
 	const inputData = pinnedData.data.value
 		? clearJsonKey(pinnedData.data.value)
 		: executionDataToJson(rawInputData.value);
@@ -1109,7 +1113,7 @@ function onClickCancelEdit() {
 }
 
 async function onClickSaveEdit() {
-	if (!node.value) {
+	if (!node.value || isReadOnly.value) {
 		return;
 	}
 
@@ -1118,7 +1122,7 @@ async function onClickSaveEdit() {
 	toast.clearAllStickyNotifications();
 
 	// Saving output edits pins the result — same adoption boundary as the pin icon.
-	if (!(await confirmPinningAiSimulatedData())) {
+	if (!(await confirmPinningAiSimulatedData()) || isReadOnly.value) {
 		return;
 	}
 
@@ -1160,7 +1164,7 @@ async function confirmPinningAiSimulatedData(): Promise<boolean> {
 }
 
 async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSource }) {
-	if (!node.value) {
+	if (!node.value || isReadOnly.value) {
 		return;
 	}
 
@@ -1185,7 +1189,7 @@ async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSo
 		return;
 	}
 
-	if (!(await confirmPinningAiSimulatedData())) {
+	if (!(await confirmPinningAiSimulatedData()) || isReadOnly.value) {
 		return;
 	}
 
@@ -1582,7 +1586,7 @@ defineExpose({ enterEditMode });
 			data-test-id="ndv-pinned-data-callout"
 		>
 			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
-			<span v-if="!isReadOnlyRoute && !isArchivedWorkflow && !readOnlyEnv" class="ml-4xs">
+			<span v-if="!isReadOnly" class="ml-4xs">
 				<N8nLink
 					theme="secondary"
 					size="small"
@@ -1664,13 +1668,7 @@ defineExpose({ enterEditMode });
 				<N8nIconButton
 					variant="outline"
 					size="small"
-					v-if="
-						!props.disableEdit &&
-						canPinData &&
-						!isReadOnlyRoute &&
-						!readOnlyEnv &&
-						!isExecutionRedacted
-					"
+					v-if="!props.disableEdit && canPinData && !isReadOnly && !isExecutionRedacted"
 					v-show="!editMode.enabled"
 					:title="i18n.baseText('runData.editOutput')"
 					:circle="false"
@@ -1703,6 +1701,7 @@ defineExpose({ enterEditMode });
 						variant="solid"
 						class="ml-2xs"
 						:label="i18n.baseText('runData.editor.save')"
+						:disabled="isReadOnly"
 						@click="onClickSaveEdit"
 					/>
 				</div>
@@ -1883,7 +1882,7 @@ defineExpose({ enterEditMode });
 					{{ i18n.baseText('runData.trimmedData.corrupted') }}
 				</N8nText>
 				<N8nButton
-					v-if="pinnedData.hasData.value"
+					v-if="pinnedData.hasData.value && !isReadOnly"
 					class="mt-s"
 					size="small"
 					data-test-id="ndv-trimmed-corrupted-unpin"

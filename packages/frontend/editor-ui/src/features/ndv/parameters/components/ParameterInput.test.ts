@@ -37,7 +37,7 @@ import type {
 	WorkflowListResource,
 } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { ExpressionLocalResolveContextSymbol, VIEWS } from '@/app/constants';
 import { parameterInputRegistry } from '@n8n/frontend-module-sdk';
 import type { PropType } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -119,7 +119,7 @@ vi.mock('vue-router', () => {
 				href: '/projects/1/folders/1',
 			}),
 		}),
-		useRoute: () => ({}),
+		useRoute: () => ({ name: VIEWS.WORKFLOW, meta: {}, params: {} }),
 		RouterLink: vi.fn(),
 	};
 });

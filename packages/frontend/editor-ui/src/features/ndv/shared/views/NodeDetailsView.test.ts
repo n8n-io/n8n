@@ -4,7 +4,13 @@ import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import NodeDetailsView from '@/features/ndv/shared/views/NodeDetailsView.vue';
-import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE, STICKY_NODE_TYPE, VIEWS } from '@/app/constants';
+import {
+	MANUAL_TRIGGER_NODE_TYPE,
+	MODAL_CONFIRM,
+	SET_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	VIEWS,
+} from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -23,6 +29,12 @@ import {
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { computed, shallowRef } from 'vue';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+
+const { confirmMock } = vi.hoisted(() => ({ confirmMock: vi.fn() }));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: confirmMock }),
+}));
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -280,6 +292,32 @@ describe('NodeDetailsView', () => {
 				expect(ndvStore.activeNodeName).toBeNull();
 			});
 		});
+
+		test.each(['before closing', 'during confirmation'])(
+			'does not save output edits when the workflow becomes read-only %s',
+			async (timing) => {
+				const { getByTestId, rerender } = renderComponent({ activeNodeName: 'Set' });
+				const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
+				ndvStore.setOutputPanelEditModeEnabled(true);
+				ndvStore.setOutputPanelEditModeValue(JSON.stringify([{ message: 'Edited output' }]));
+
+				if (timing === 'before closing') {
+					await rerender({ readOnly: true });
+				} else {
+					confirmMock.mockImplementationOnce(async () => {
+						await rerender({ readOnly: true });
+						return MODAL_CONFIRM;
+					});
+				}
+
+				await userEvent.click(getByTestId('ndv-close-button'));
+
+				await waitFor(() => expect(ndvStore.activeNodeName).toBeNull());
+				expect(ndvStore.outputPanelEditMode.enabled).toBe(false);
+				expect(workflowDocumentStoreRef.value.pinnedDataByNodeName.Set).toBeUndefined();
+				expect(confirmMock).toHaveBeenCalledTimes(timing === 'before closing' ? 0 : 1);
+			},
+		);
 
 		test('should emit renameNode when node name is edited', async () => {
 			const user = userEvent.setup();
