@@ -1,5 +1,5 @@
 {
-  "name": "@n8n/test-rig",
+  "name": "@n8n/fault-harness",
   "private": true,
   "version": "0.1.0",
   "description": "Runs n8n stacks under test control: in-process hooks, signals and probes",

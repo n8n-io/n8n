@@ -27,7 +27,7 @@ let servicePath: string;
 const children: ChildProcessWithoutNullStreams[] = [];
 
 beforeEach(() => {
-	root = mkdtempSync(join(tmpdir(), 'test-rig-preload-'));
+	root = mkdtempSync(join(tmpdir(), 'fault-harness-preload-'));
 	controlDir = join(root, 'control');
 	servicePath = join(root, 'node_modules', FILE);
 	mkdirSync(join(servicePath, '..'), { recursive: true });
@@ -55,10 +55,10 @@ const settle = async (name, fn) => {
 		env: {
 			PATH: process.env.PATH,
 			NODE_OPTIONS: preloadNodeOptions(),
-			TEST_RIG_HOOKS: JSON.stringify(hooks),
-			TEST_RIG_HOOK_DIR: controlDir,
-			TEST_RIG_HOOK_POLL_MS: '5',
-			TEST_RIG_HOOK_MAX_PAUSE_MS: '5000',
+			FAULT_HARNESS_HOOKS: JSON.stringify(hooks),
+			FAULT_HARNESS_HOOK_DIR: controlDir,
+			FAULT_HARNESS_HOOK_POLL_MS: '5',
+			FAULT_HARNESS_HOOK_MAX_PAUSE_MS: '5000',
 		},
 	});
 	children.push(child);

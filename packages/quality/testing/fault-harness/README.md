@@ -1,21 +1,21 @@
-# Test rig
+# Fault harness
 
-`@n8n/test-rig` runs a real n8n stack in Docker under test control. Use it when a bug depends on timing between processes, for example a worker that gets SIGTERM while it holds a job. A test can pause any method inside a running n8n process. It can then signal, freeze or restart containers, and read Postgres, Redis and the logs.
+`@n8n/fault-harness` runs a real n8n stack in Docker under test control. Use it when a bug depends on timing between processes, for example a worker that gets SIGTERM while it holds a job. A test can pause any method inside a running n8n process. It can then signal, freeze or restart containers, and read Postgres, Redis and the logs.
 
-The rig needs no change to n8n. It works on released images and on local builds.
+The harness needs no change to n8n. It works on released images and on local builds.
 
 ## Set up
 
-From the repository root, install and build the packages the rig depends on:
+From the repository root, install and build the packages the harness depends on:
 
 ```bash
 pnpm install
-pnpm turbo build --filter='@n8n/test-rig^...' > build.log 2>&1
+pnpm turbo build --filter='@n8n/fault-harness^...' > build.log 2>&1
 ```
 
 ## How it works
 
-The rig builds on the `n8n-containers` stacks. It loads a preload script into every n8n process through `NODE_OPTIONS`. The preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container. It reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`.
+The harness builds on the `n8n-containers` stacks. It loads a preload script into every n8n process through `NODE_OPTIONS`. The preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container. It reads hits from `[fault-harness]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`.
 
 ### Hook specs
 

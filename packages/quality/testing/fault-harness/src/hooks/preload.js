@@ -1,16 +1,16 @@
 // @ts-check
 // Loaded into n8n through NODE_OPTIONS as a data URL, so it can use Node built-ins only.
-// Hook points come from the TEST_RIG_HOOKS env var (JSON list); see README.md for the format.
+// Hook points come from the FAULT_HARNESS_HOOKS env var (JSON list); see README.md for the format.
 (() => {
 	const fs = process.getBuiltinModule('node:fs');
 	const path = process.getBuiltinModule('node:path');
 	const Module = /** @type {any} */ (process.getBuiltinModule('node:module'));
 	const { AsyncLocalStorage } = process.getBuiltinModule('node:async_hooks');
 
-	const CONTROL_DIR = process.env.TEST_RIG_HOOK_DIR || '/tmp/test-rig-hooks';
-	const POLL_MS = Number(process.env.TEST_RIG_HOOK_POLL_MS || 10);
-	const MAX_PAUSE_MS = Number(process.env.TEST_RIG_HOOK_MAX_PAUSE_MS || 120000);
-	const TAG = '[test-rig]';
+	const CONTROL_DIR = process.env.FAULT_HARNESS_HOOK_DIR || '/tmp/fault-harness-hooks';
+	const POLL_MS = Number(process.env.FAULT_HARNESS_HOOK_POLL_MS || 10);
+	const MAX_PAUSE_MS = Number(process.env.FAULT_HARNESS_HOOK_MAX_PAUSE_MS || 120000);
+	const TAG = '[fault-harness]';
 
 	/**
 	 * @typedef {{ file: string, target: string, method: string }} MethodRef
@@ -32,9 +32,9 @@
 	/** @type {Hook[]} */
 	let hooks = [];
 	try {
-		hooks = JSON.parse(process.env.TEST_RIG_HOOKS || '[]');
+		hooks = JSON.parse(process.env.FAULT_HARNESS_HOOKS || '[]');
 	} catch (error) {
-		log('invalid', 'TEST_RIG_HOOKS', { reason: /** @type {Error} */ (error).message });
+		log('invalid', 'FAULT_HARNESS_HOOKS', { reason: /** @type {Error} */ (error).message });
 	}
 
 	fs.mkdirSync(CONTROL_DIR, { recursive: true });

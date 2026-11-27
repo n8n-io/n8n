@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import type { Container } from '../process';
 import { waitForLog } from '../process';
 
-export const HOOK_DIR = '/tmp/test-rig-hooks';
-const LOG_TAG = '[test-rig]';
+export const HOOK_DIR = '/tmp/fault-harness-hooks';
+const LOG_TAG = '[fault-harness]';
 
 /** NODE_OPTIONS that loads the hook preload without a file mount, as a base64 data URL. */
 export function preloadNodeOptions(): string {
