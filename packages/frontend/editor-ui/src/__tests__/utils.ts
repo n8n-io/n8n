@@ -56,6 +56,8 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 };
 
 export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
+	// A dialog marks the page inert. The legacy menu is portaled onto that page.
+	document.body.style.pointerEvents = 'auto';
 	await userEvent.click(within(dropdownTriggerParent).getByRole('combobox'));
 	const selectTrigger = dropdownTriggerParent.querySelector(
 		'.select-trigger[aria-describedby]',
@@ -65,6 +67,7 @@ export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
 	const selectDropdownId = selectTrigger.getAttribute('aria-describedby');
 	const selectDropdown = document.getElementById(selectDropdownId as string) as HTMLElement;
 	await waitFor(() => expect(selectDropdown).toBeInTheDocument());
+	selectDropdown.style.pointerEvents = 'auto';
 
 	return selectDropdown.querySelectorAll('.el-select-dropdown__item');
 };
