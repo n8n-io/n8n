@@ -14,6 +14,12 @@
 		"GET /agents/{agentId}": {
 			"status": "gap"
 		},
+		"GET /agents/{agentId}/versions": {
+			"status": "gap"
+		},
+		"GET /agents/{agentId}/versions/{versionId}": {
+			"status": "gap"
+		},
 		"POST /agents": {
 			"status": "gap"
 		},

@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 import { ExecutionLimitAudit } from '../execution-limit-audit.entity';
 import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
+import { ExecutionLimitUsagePruningTask } from '../execution-limit-usage-pruning.task';
 import { ExecutionUsageCache } from '../execution-usage-cache';
 import { ExecutionLimitsModule } from '../execution-limits.module';
 import { ExecutionLimitsService } from '../execution-limits.service';
@@ -139,6 +140,12 @@ describe('ExecutionLimitsModule', () => {
 			ExecutionLimitUsage,
 			ExecutionLimitInstanceUsage,
 			ExecutionLimitAudit,
+		]);
+	});
+
+	it('declares the usage pruning task', async () => {
+		expect(await new ExecutionLimitsModule().systemTasks()).toEqual([
+			ExecutionLimitUsagePruningTask,
 		]);
 	});
 });

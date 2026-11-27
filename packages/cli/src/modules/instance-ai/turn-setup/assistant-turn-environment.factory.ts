@@ -22,7 +22,6 @@ import {
 	createWorkflowDraftPublisher,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
-	threadTargetsAgent,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
@@ -117,8 +116,6 @@ export interface AssistantTurnEnvironmentParams {
 	instanceContextGates?: InstanceContextGates;
 	experimentGates?: InstanceAiFeatureFlags;
 	tracing?: InstanceAiTraceContext;
-	/** The message attaches an agent, as the Agent Builder panel does before it binds its thread. */
-	attachesAgent?: boolean;
 }
 
 export type AssistantProxyRunConfig = Awaited<
@@ -305,6 +302,7 @@ export class AssistantTurnEnvironmentFactory {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			skillSourcesEnabled,
+			workflowsInSkillsEnabled,
 			preferencesNoteVariant,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
@@ -350,6 +348,7 @@ export class AssistantTurnEnvironmentFactory {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			skillSourcesEnabled,
+			workflowsInSkillsEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),
@@ -377,12 +376,7 @@ export class AssistantTurnEnvironmentFactory {
 		// Auto mode reviews an approval before its card shows. Manual mode keeps every card,
 		// and keeps a user's MCP settings as they are. In Auto, a user's MCP settings can only
 		// make the admin's stricter, so an admin's Ask first still reaches the review.
-		// Auto mode is not part of the Agent Builder: a thread that builds or edits an agent
-		// keeps every card.
-		const buildsAgent = params.attachesAgent === true || threadTargetsAgent(thread?.metadata);
-		const approvalMode = buildsAgent
-			? 'manual'
-			: this.approvalModeService.resolveMode(user, gates.approvalModesEnabled);
+		const approvalMode = this.approvalModeService.resolveMode(user, gates.approvalModesEnabled);
 		if (gates.approvalModesEnabled) context.approvalMode = approvalMode;
 		context.enforceAdminMcpPermissions = approvalMode === 'auto';
 		if (approvalMode === 'auto') {

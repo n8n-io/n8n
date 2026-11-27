@@ -6,8 +6,8 @@
  * cannot change it. A digest signed before its push would pass the 24-hour
  * gate early. We accept this: the signature follows the push by seconds.
  * Docker Official Images have no signature. For them, the SLSA provenance
- * must name the docker-library builder and source, and Docker Hub gives the
- * push time of the tag.
+ * must name the docker-library builder and the source of the image, and
+ * Docker Hub gives the push time of the tag.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -23,6 +23,9 @@ const DISTROLESS_IDENTITY = [
 ];
 
 const DOCKER_LIBRARY = 'https://github.com/docker-library';
+
+/** The source of a Docker Official Image that docker-library builds from another repository. */
+const OFFICIAL_SOURCES = { node: 'https://github.com/nodejs/docker-node.git#' };
 
 export function publisherOf(repository) {
 	if (repository.startsWith('dhi.io/')) return 'dhi';
@@ -42,7 +45,7 @@ export function signatureTime(verified, digest) {
 
 /** Returns why the SLSA provenance of a Docker Official Image is wrong, or null when it is correct. */
 export function checkProvenance(provenance, repository, platforms) {
-	const source = `${DOCKER_LIBRARY}/${repository}.git#`;
+	const source = OFFICIAL_SOURCES[repository] ?? `${DOCKER_LIBRARY}/${repository}.git#`;
 	for (const platform of platforms) {
 		const slsa = provenance?.[platform]?.SLSA;
 		const builder = slsa?.builder?.id ?? slsa?.runDetails?.builder?.id;

@@ -253,7 +253,7 @@ catalog:
   mermaid: ^11.17.0
   mime-types: 3.0.2
   mocha: ^11.8.0
-  moment-timezone: 0.5.48
+  moment-timezone: 0.6.5
   mqtt-packet: 9.0.0
   ms: 2.1.3
   mysql2: 3.23.1
@@ -326,6 +326,7 @@ catalogMode: strict
 
 catalogs:
   e2e:
+    '@currents/cmd': 3.4.0
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
     '@playwright/test': 1.62.1

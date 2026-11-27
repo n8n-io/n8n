@@ -9,10 +9,10 @@ import { VIEWS } from '@/app/constants';
 import {
 	countGrantedInstancePermissions,
 	countInstancePermissions,
-} from '@/features/roles/instance/instanceRoleScopes';
-import { useHiddenRoleResources } from '@/features/roles/composables/useHiddenRoleResources';
-import RoleSelectDropdown from '@/features/roles/components/RoleSelectDropdown.vue';
-import CustomRolesUpgradeModal from '@/features/roles/components/CustomRolesUpgradeModal.vue';
+	CustomRolesUpgradeModal,
+	RoleSelectDropdown,
+	useHiddenRoleResources,
+} from '@n8n/frontend-module-roles';
 
 const props = withDefaults(
 	defineProps<{

@@ -24,9 +24,13 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
+import { readNodeVersion } from '../resolve-node-version.mjs';
+import { readPin } from './base-image-candidates.mjs';
 import {
 	CHAIN,
+	NODE_CHAIN,
 	bakeFileAt,
+	chainBranchOf,
 	contains,
 	github,
 	isRefreshCommit,
@@ -42,6 +46,13 @@ export const WAIT_MS = 2 * DAY_MS;
 const REFRESH_BRANCH = 'base-image-refresh/';
 export const DAILY_BRANCH = `${REFRESH_BRANCH}daily`;
 export const REVIEW_BRANCH = `${REFRESH_BRANCH}review`;
+export const NODE_BRANCH = `${REFRESH_BRANCH}node`;
+
+/** The branch of the PR that pins a ready result. */
+export const branchOf = (result) =>
+	({ daily: DAILY_BRANCH, review: REVIEW_BRANCH, node: NODE_BRANCH })[
+		result.group ?? (result.autoMerge ? 'daily' : 'review')
+	];
 
 /** The run summary lists all the findings. An alert lists the first ones. */
 const MAX_LISTED = 10;
@@ -60,14 +71,45 @@ const unique = (findings) => [
 ];
 
 /**
- * The alerts of one run, and the state for the next run. `state` is the state
- * of the last run, or an empty object. `prs` are the open refresh PRs, and
- * `chains` the newest publish of each chain workflow (see collectChains).
+ * The Node pins and the images that n8n builds from them. The tag of each
+ * starts with its Node version. The Alpine images run the Node of
+ * N8N_BUILDER_IMAGE and PC_BUILDER_IMAGE, the Debian images the Node of
+ * DEBIAN_RUNTIME_IMAGE.
  */
-export function planAlerts(results, state, { now, manual = false, actor, prs = [], chains = [] }) {
+export const NODE_VERSION_PINS = [
+	'DHI_REF',
+	'DEBIAN_DHI_REF',
+	'BUILDER_IMAGE',
+	'DEBIAN_BUILDER_IMAGE',
+	'RUNTIME_IMAGE',
+	'DEBIAN_RUNTIME_IMAGE',
+	'N8N_BUILDER_IMAGE',
+	'PC_BUILDER_IMAGE',
+];
+
+/** The Node pins whose tag is not on NODE_VERSION. */
+export function nodeMismatch(hcl) {
+	const version = readNodeVersion(hcl);
+	const lagging = NODE_VERSION_PINS.filter(
+		(name) => !readPin(hcl, name).tag.startsWith(`${version}-`),
+	);
+	return { version, lagging };
+}
+
+/**
+ * The alerts of one run, and the state for the next run. `state` is the state
+ * of the last run, or an empty object. `prs` are the open refresh PRs,
+ * `chains` the newest publish of each chain workflow (see collectChains), and
+ * `node` the Node pins that are not on NODE_VERSION (see nodeMismatch).
+ */
+export function planAlerts(
+	results,
+	state,
+	{ now, manual = false, actor, prs = [], chains = [], node = null },
+) {
 	const iso = new Date(now).toISOString();
 	const lastAlert = state.lastAlert ?? {};
-	const next = { findings: {}, noPublishTime: {}, lastAlert: {} };
+	const next = { findings: {}, noPublishTime: {}, nodeCheckFailed: 0, lastAlert: {} };
 	const alerts = [];
 
 	// Repeats an alert every 7 days while its cause stays.
@@ -84,7 +126,8 @@ export function planAlerts(results, state, { now, manual = false, actor, prs = [
 	for (const result of results) {
 		const { source } = result;
 
-		if (result.status === 'unverified') {
+		// A Node pin that waits for another Node pin gets no alert of its own.
+		if (result.status === 'unverified' && !result.heldBy) {
 			const error = result.publisher?.error ? `: ${result.publisher.error}` : '';
 			alerts.push(
 				`\`${source}\`: the publisher check failed for \`${digestOf(result.newest)}…\`${error}. The refresh opens no PR for it.`,
@@ -92,7 +135,7 @@ export function planAlerts(results, state, { now, manual = false, actor, prs = [
 		}
 
 		// Count by source: the newest digest can change from run to run.
-		if (result.status === 'no-publish-time') {
+		if (result.status === 'no-publish-time' && !result.heldBy) {
 			const runs = (state.noPublishTime?.[source] ?? 0) + 1;
 			next.noPublishTime[source] = runs;
 			if (runs >= 2 && due(`no-publish-time ${source}`)) {
@@ -102,9 +145,19 @@ export function planAlerts(results, state, { now, manual = false, actor, prs = [
 			}
 		}
 
+		// One failed request is common. The Node patch waits, so alert after 2 runs.
+		if (result.status === 'node-check-failed') {
+			next.nodeCheckFailed = (state.nodeCheckFailed ?? 0) + 1;
+			if (next.nodeCheckFailed >= 2 && due('node-check-failed')) {
+				alerts.push(
+					`The refresh could not check for a Node patch for ${next.nodeCheckFailed} runs: ${result.error}. It opens no Node PR until it can.`,
+				);
+			}
+		}
+
 		if (result.status === 'ready' && result.gateSkipped && manual) {
 			alerts.push(
-				`\`${source}\`: a manual run${actor ? ` by @${actor}` : ''} skipped the 24-hour gate for \`${digestOf(result.newest)}…\`. The pin is in the review PR.`,
+				`\`${source}\`: a manual run${actor ? ` by @${actor}` : ''} skipped the 24-hour gate for \`${digestOf(result.newest)}…\`. The pin is in the ${result.group === 'node' ? 'Node' : 'review'} PR.`,
 			);
 		}
 
@@ -155,7 +208,7 @@ export function planAlerts(results, state, { now, manual = false, actor, prs = [
 		const open = now - Date.parse(pr.createdAt);
 		const days = Math.floor(open / DAY_MS);
 		if (open < WAIT_MS) continue;
-		if (pr.branch === REVIEW_BRANCH && due(`open ${pr.number}`)) {
+		if ((pr.branch === REVIEW_BRANCH || pr.branch === NODE_BRANCH) && due(`open ${pr.number}`)) {
 			alerts.push(`${link} waits for a review. It is open for ${days} days.`);
 		} else if (pr.branch === DAILY_BRANCH && due(`open ${pr.number}`)) {
 			alerts.push(`${link} is open for ${days} days without a merge.`);
@@ -170,6 +223,20 @@ export function planAlerts(results, state, { now, manual = false, actor, prs = [
 		);
 	}
 
+	// A Node update moves the pins in two steps (the Node PR, then its chain PR),
+	// so a mismatch is normal for some hours. After 48 hours a chain stopped, or a
+	// person changed only some pins: the Alpine and the Debian images can run
+	// different Node versions.
+	if (node?.lagging?.length > 0) {
+		next.nodeMismatchSince = state.nodeMismatchSince ?? iso;
+		const open = now - Date.parse(next.nodeMismatchSince);
+		if (open >= WAIT_MS && due(`node-mismatch ${node.version}`)) {
+			alerts.push(
+				`\`NODE_VERSION\` is \`${node.version}\`, but ${node.lagging.map((name) => `\`${name}\``).join(', ')} still use another Node version after ${Math.floor(open / DAY_MS)} days. The Alpine and the Debian images can run different Node versions. Check the chain PR of the Node update and \`build-node-pc-image.yml\` on master.`,
+			);
+		}
+	}
+
 	return { alerts, state: next };
 }
 
@@ -181,10 +248,10 @@ const json = async (path) => await (await github(path, 'application/vnd.github+j
 const REFRESH_BRANCHES = [
 	DAILY_BRANCH,
 	REVIEW_BRANCH,
+	NODE_BRANCH,
 	`${REFRESH_BRANCH}rebuild`,
-	...Object.keys(CHAIN).map(
-		(workflow) => `${REFRESH_BRANCH}chain-${workflow.replace(/\.yml$/, '')}`,
-	),
+	...Object.keys(CHAIN).map(chainBranchOf),
+	NODE_CHAIN.branch,
 ];
 
 /** The open refresh PRs, with the names of their failed checks. */
@@ -307,6 +374,7 @@ async function main() {
 		actor: values.actor,
 		prs: await collect('refresh PRs', collectPullRequests),
 		chains: await collect('chains', () => collectChains(hcl)),
+		node: await collect('Node pins', async () => nodeMismatch(hcl)),
 	});
 	alerts.push(...failures);
 	writeFileSync(values['state-out'], `${JSON.stringify(next, null, 2)}\n`);

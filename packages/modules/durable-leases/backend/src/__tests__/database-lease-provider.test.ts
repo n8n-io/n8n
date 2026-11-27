@@ -7,6 +7,7 @@ import type { LeaseKindOptions } from '@n8n/leases';
 import { mock } from 'vitest-mock-extended';
 
 import { DatabaseLeaseProvider } from '../database-lease-provider';
+import type { SessionClock } from '../lease-session-manager';
 
 describe('DatabaseLeaseProvider', () => {
 	const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -23,10 +24,12 @@ describe('DatabaseLeaseProvider', () => {
 
 	beforeEach(() => {
 		vi.useFakeTimers();
+		const clock: SessionClock = { monotonicMs: () => 0, wallMs: () => 1_800_000_000_000 };
 		kinds = mock<LeaseKindRepository>();
 		kinds.insertIfMissing.mockResolvedValue();
 		sessions = mock<LeaseSessionRepository>();
 		sessions.insertSession.mockResolvedValue();
+		sessions.renewLive.mockResolvedValue(true);
 		sessions.deleteSession.mockResolvedValue();
 		provider = new DatabaseLeaseProvider({
 			config,
@@ -34,6 +37,7 @@ describe('DatabaseLeaseProvider', () => {
 			sessions,
 			hostId: 'host-1',
 			bootId: 'boot-1',
+			clock,
 			logger: mock<Logger>(),
 		});
 	});
@@ -71,17 +75,20 @@ describe('DatabaseLeaseProvider', () => {
 	});
 
 	it('rejects the registration and keeps no session when the first session insert fails', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(1);
 		sessions.insertSession.mockRejectedValueOnce(new Error('database unavailable'));
 
 		await expect(provider.registerHolder('test-kind', options, hold)).rejects.toThrow(
 			'database unavailable',
 		);
+		await vi.advanceTimersByTimeAsync(3 * 5 * 1000 * 1.1);
 
 		expect(sessions.insertSession).toHaveBeenCalledTimes(1);
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
 	it('starts a session with the retried lease length when a failed registration is retried', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
 		sessions.insertSession.mockRejectedValueOnce(new Error('database unavailable'));
 		await expect(provider.registerHolder('test-kind', options, hold)).rejects.toThrow(
 			'database unavailable',
@@ -90,10 +97,47 @@ describe('DatabaseLeaseProvider', () => {
 		await expect(
 			provider.registerHolder('test-kind', { ...options, leaseSeconds: 30 }, hold),
 		).resolves.toBeUndefined();
+		await vi.advanceTimersByTimeAsync(2 * 5 * 1000);
 
 		const [, inserted] = insertedSessions();
 		expect(sessions.insertSession).toHaveBeenCalledTimes(2);
 		expect(inserted.leaseDurationSeconds).toBe(30);
+		expect(sessions.renewLive).toHaveBeenCalledTimes(2);
+		for (const [id, leaseSeconds] of sessions.renewLive.mock.calls) {
+			expect(id).toBe(inserted.id);
+			expect(leaseSeconds).toBe(30);
+		}
+	});
+
+	it('waits on stop for the delete of a session that a failed registration left', async () => {
+		let finishInsert!: () => void;
+		sessions.insertSession.mockImplementationOnce(
+			async () => await new Promise<void>((resolve) => (finishInsert = resolve)),
+		);
+		const registering = expect(provider.registerHolder('test-kind', options, hold)).rejects.toThrow(
+			'did not finish within the lease length',
+		);
+		await vi.advanceTimersByTimeAsync(20 * 1000);
+		await registering;
+
+		let finishDelete!: () => void;
+		sessions.deleteSession.mockImplementationOnce(
+			async () => await new Promise<void>((resolve) => (finishDelete = resolve)),
+		);
+		let stopped = false;
+		const stopping = provider.stop().then(() => {
+			stopped = true;
+		});
+		finishInsert();
+		await vi.advanceTimersByTimeAsync(0);
+
+		const [inserted] = insertedSessions();
+		expect(sessions.deleteSession).toHaveBeenCalledWith(inserted.id, {});
+		expect(stopped).toBe(false);
+
+		finishDelete();
+		await stopping;
+		expect(stopped).toBe(true);
 	});
 
 	it('starts no session for a kind that registers after stop', async () => {

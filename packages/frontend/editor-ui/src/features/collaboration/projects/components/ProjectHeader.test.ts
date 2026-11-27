@@ -42,6 +42,14 @@ vi.mock('vue-router', async () => {
 	};
 });
 
+const mcpServers = vi.hoisted(() => ({ enabled: true, openCreateMcpServerDialog: vi.fn() }));
+vi.mock('@/experiments/customMcpServers/customMcpServersEnabled', () => ({
+	customMcpServersEnabled: () => mcpServers.enabled,
+}));
+vi.mock('@n8n/frontend-module-mcp-servers', () => ({
+	openCreateMcpServerDialog: mcpServers.openCreateMcpServerDialog,
+}));
+
 const trackClickedNewAgent = vi.fn();
 vi.mock('@/features/agents/composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({
@@ -706,6 +714,31 @@ describe('ProjectHeader', () => {
 			const appId = createAppMock.mock.calls.at(-1)?.[0]?.appId;
 			expect(appId).toEqual(expect.any(String));
 			expect(createAppMock).toHaveBeenCalledWith({ projectId: project.id, appId });
+		});
+
+		it('opens the create dialog of MCP servers when mcpServer is the main action', async () => {
+			mcpServers.enabled = true;
+			const project = createTestProject({ scopes: ['mcpServer:create'] });
+			projectsStore.currentProject = project;
+			const { getByTestId } = renderComponent({ props: { mainButton: 'mcpServer' } });
+
+			await userEvent.click(getByTestId('add-resource-mcpServer'));
+
+			expect(mcpServers.openCreateMcpServerDialog).toHaveBeenCalledWith(project.id);
+		});
+
+		it('falls back to the workflow button when custom MCP servers are off', () => {
+			mcpServers.enabled = false;
+			projectsStore.currentProject = createTestProject({
+				scopes: ['workflow:create', 'mcpServer:create'],
+			});
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { mainButton: 'mcpServer' },
+			});
+
+			expect(getByTestId('add-resource-workflow')).toBeInTheDocument();
+			expect(queryByTestId('add-resource-mcpServer')).not.toBeInTheDocument();
 		});
 
 		it('should render workflow button as main by default', () => {
