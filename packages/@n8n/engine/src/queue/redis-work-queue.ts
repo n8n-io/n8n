@@ -114,7 +114,6 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 		await this.publisher.lpush(this.key, JSON.stringify(message));
 	}
 
-	/** A fetch removes the message from the list, so a running message is not counted. */
 	async size(): Promise<number> {
 		return await this.publisher.llen(this.key);
 	}
