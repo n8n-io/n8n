@@ -221,7 +221,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 		[
 			'every thread of an app visitor',
 			'app:app-1:user:user-1',
-			expect.stringMatching(/^parent-agent-1:app:app-1:user:user-1:\d{4}-\d{2}-\d{2}$/),
+			expect.stringMatching(/^parent-agent-1:app-visitor:[\w-]{43}:\d{4}-\d{2}-\d{2}$/),
 		],
 		['the parent thread', 'resource-1', 'parent-thread-1'],
 	])('charges the child to the root session bucket of %s', async (_, resourceId, expectedKey) => {

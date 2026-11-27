@@ -15,6 +15,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
+import { createHash } from 'node:crypto';
 
 import { AgentBudgetAlertService } from './agent-budget-alert.service';
 import { isAppVisitorMemoryResourceId } from './utils/agent-memory-scope';
@@ -28,13 +29,16 @@ import {
  * Ledger key of the session cap. It is the root thread id, except for an app
  * visitor: a visitor can start a new thread at any time, so the cap covers all
  * of the visitor's threads with the agent for one UTC day.
+ * The visitor part is hashed, so the key fits the 128-character ledger column
+ * for every agent id length that the agents table allows.
  */
 export function budgetSessionKey(
 	scope: { agentId: string; threadId: string; resourceId?: string },
 	now: Date = new Date(),
 ): string {
 	if (!isAppVisitorMemoryResourceId(scope.resourceId)) return scope.threadId;
-	return `${scope.agentId}:${scope.resourceId}:${now.toISOString().slice(0, 10)}`;
+	const visitor = createHash('sha256').update(scope.resourceId).digest('base64url');
+	return `${scope.agentId}:app-visitor:${visitor}:${now.toISOString().slice(0, 10)}`;
 }
 
 /** Past this many buffered calls the oldest drops, so a long outage cannot grow memory. */

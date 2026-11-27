@@ -104,7 +104,12 @@ function response() {
 function setup({
 	host = 'published',
 	agentMaxConcurrentTurnsPerVisitor = 2,
-}: { host?: 'published' | 'preview'; agentMaxConcurrentTurnsPerVisitor?: number } = {}) {
+	agentTurnsPerVisitorPerHour = 100,
+}: {
+	host?: 'published' | 'preview';
+	agentMaxConcurrentTurnsPerVisitor?: number;
+	agentTurnsPerVisitorPerHour?: number;
+} = {}) {
 	const auth = mock<AppAuthService>();
 	auth.admit.mockResolvedValue({
 		ok: true,
@@ -144,7 +149,7 @@ function setup({
 		mock<AppsConfig>({
 			agentMaxConcurrentTurns: 20,
 			agentMaxConcurrentTurnsPerVisitor,
-			agentTurnsPerVisitorPerHour: 100,
+			agentTurnsPerVisitorPerHour,
 		}),
 	);
 	const controller = new AppRuntimeController(
@@ -840,6 +845,29 @@ describe('AppRuntimeController', () => {
 				const next = response();
 				await controller.chat(chatRequest(), next);
 				expect(next.flushHeaders).toHaveBeenCalled();
+			});
+
+			it('does not count a refused turn toward the hourly limit', async () => {
+				const { controller, agents } = setup({ agentTurnsPerVisitorPerHour: 1 });
+				agents.chat.mockRejectedValueOnce(
+					new AppRuntimeError(409, 'run_in_progress', 'The agent is waiting for an answer.'),
+				);
+				async function* turn(): AsyncGenerator<AgentSseEvent> {
+					yield { type: 'done', sessionId };
+				}
+				agents.chat.mockImplementation(async () => ({ events: turn() }));
+
+				const refused = response();
+				await controller.chat(chatRequest(), refused);
+				expect(refused.status).toHaveBeenCalledWith(409);
+
+				const accepted = response();
+				await controller.chat(chatRequest(), accepted);
+				expect(accepted.flushHeaders).toHaveBeenCalled();
+
+				const overLimit = response();
+				await controller.chat(chatRequest(), overLimit);
+				expect(overLimit.status).toHaveBeenCalledWith(429);
 			});
 
 			it('counts a resumed turn against the visitor limit', async () => {

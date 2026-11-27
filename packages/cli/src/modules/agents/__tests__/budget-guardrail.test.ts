@@ -341,7 +341,7 @@ describe('budgetSessionKey', () => {
 		const first = budgetSessionKey({ agentId: 'agent-1', threadId: 'thread-1', resourceId }, day);
 		const second = budgetSessionKey({ agentId: 'agent-1', threadId: 'thread-2', resourceId }, day);
 
-		expect(first).toBe('agent-1:app:app-1:user:user-1:2026-11-27');
+		expect(first).toMatch(/^agent-1:app-visitor:[\w-]{43}:2026-11-27$/);
 		expect(second).toBe(first);
 	});
 
@@ -349,7 +349,10 @@ describe('budgetSessionKey', () => {
 		const scope = { agentId: 'agent-1', threadId: 'thread-1', resourceId: 'app:app-1:user:user-1' };
 		const nextDay = new Date('2026-11-28T00:00:00.000Z');
 
-		expect(budgetSessionKey(scope, nextDay)).toBe('agent-1:app:app-1:user:user-1:2026-11-28');
+		const next = budgetSessionKey(scope, nextDay);
+
+		expect(next).toMatch(/^agent-1:app-visitor:[\w-]{43}:2026-11-28$/);
+		expect(next).not.toBe(budgetSessionKey(scope, day));
 	});
 
 	it('keeps the key of another agent or visitor apart', () => {
@@ -364,10 +367,11 @@ describe('budgetSessionKey', () => {
 		);
 	});
 
-	it('fits the ledger key column for the longest app visitor key', () => {
+	it('fits the ledger key column for the longest agent id', () => {
 		const uuid = '0190a8d6-4a2e-4000-8000-000000000001';
+		// The agents table allows a 36-character id.
 		const key = budgetSessionKey(
-			{ agentId: 'aBcDeFgHiJkLmNoP', threadId: 'thread-1', resourceId: `app:${uuid}:user:${uuid}` },
+			{ agentId: uuid, threadId: 'thread-1', resourceId: `app:${uuid}:user:${uuid}` },
 			day,
 		);
 

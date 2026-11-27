@@ -2885,7 +2885,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		[
 			'every thread of an app visitor',
 			'app:app-1:user:user-1',
-			expect.stringMatching(/^agent-1:app:app-1:user:user-1:\d{4}-\d{2}-\d{2}$/),
+			expect.stringMatching(/^agent-1:app-visitor:[\w-]{43}:\d{4}-\d{2}-\d{2}$/),
 		],
 		['the thread of an integration chat', 'platform-user-1', 'thread-1'],
 	])('keys the session cost cap on %s', async (_, resourceId, expectedKey) => {
@@ -2942,7 +2942,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		await budgetHook.before({} as never);
 
 		expect(Container.get(AgentSpendLedger).read).toHaveBeenCalledWith(
-			expect.stringMatching(/^agent-1:app:app-1:user:user-1:\d{4}-\d{2}-\d{2}$/),
+			expect.stringMatching(/^agent-1:app-visitor:[\w-]{43}:\d{4}-\d{2}-\d{2}$/),
 		);
 	});
 

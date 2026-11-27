@@ -56,7 +56,7 @@ import { AppPreviewService } from '../preview/app-preview.service';
 import { AppHostService, type AppHostKind } from '../serving/app-host.service';
 import type { AppVersion } from '../versions/app-version.entity';
 import { AppVersionRepository } from '../versions/app-version.repository';
-import { AppAgentTurnLimiter } from './app-agent-turn-limiter';
+import { AppAgentTurnLimiter, type AppAgentTurnSlot } from './app-agent-turn-limiter';
 
 export const APP_RUNTIME_MAX_BODY_BYTES = 1024 * 1024;
 const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
@@ -500,20 +500,22 @@ export class AppRuntimeController {
 		const abortController = new AbortController();
 		res.once('close', () => abortController.abort());
 
-		let release = () => {};
+		let slot: AppAgentTurnSlot | undefined;
 		try {
 			let turn: AppAgentTurn;
 			try {
 				const { ctx, open } = prepare(abortController.signal);
-				release = this.agentTurns.claim(ctx);
+				slot = this.agentTurns.claim(ctx);
 				turn = await open();
 			} catch (error) {
+				// The turn did not start, so it does not count toward the hourly limit.
+				slot?.refund();
 				this.sendError(res, error);
 				return;
 			}
 			await this.sendEvents(res, turn);
 		} finally {
-			release();
+			slot?.release();
 		}
 	}
 
