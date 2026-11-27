@@ -1,5 +1,6 @@
 import { ContextOverflowError } from '@langchain/core/errors';
 import { classifyRateLimitError } from '@langchain/core/utils/async_caller';
+import { isRecord } from '@n8n/utils/is-record';
 
 const STATUS_NO_RETRY = [
 	400, // Bad Request
