@@ -167,9 +167,11 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			for (const execution of needsCheck) {
 				if (
 					this.hasDynamicCredentials(execution) &&
-					this.isOwnDynamicCredentialsExecution(execution, options.user.id)
+					this.isOwnDynamicCredentialsExecution(execution, options.user.id) &&
+					!credentialCheck.deleted.has(execution)
 				) {
-					// Owner of a dyncred execution skips the scope check.
+					// Owner of a dyncred execution skips the scope check, unless a deleted
+					// credential is involved: then only `execution:reveal` grants access.
 					continue;
 				}
 				if (!revealableIds.has(execution.workflowId)) {
@@ -212,7 +214,8 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			const userCanReveal = enforceCredentialUsabilityRedaction
 				? false
 				: hasDynCreds
-					? isOwnDynCreds
+					? isOwnDynCreds &&
+						(!enforceDeletedCredentialRedaction || revealableIds.has(execution.workflowId))
 					: enforceDeletedCredentialRedaction
 						? revealableIds.has(execution.workflowId)
 						: policyAllowsReveal || revealableIds.has(execution.workflowId);

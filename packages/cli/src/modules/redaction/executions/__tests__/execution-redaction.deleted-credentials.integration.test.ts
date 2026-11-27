@@ -185,6 +185,57 @@ describe('ExecutionRedactionService with deleted credentials (integration)', () 
 		).rejects.toThrow(ScopeForbiddenError);
 	});
 
+	describe('on a run that the viewer made with a dynamic credential', () => {
+		/** Marks the run as one that `user` made with a dynamic credential. */
+		const ranBy = (execution: RedactableExecution, user: User) => {
+			execution.data.executionData!.runtimeData = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual',
+				usesDynamicCredentials: true,
+				executedByUserId: user.id,
+			};
+			return execution;
+		};
+
+		it('still requires the reveal scope', async () => {
+			// The editor is not a member of the credential's project, so before the
+			// deletion this run was redacted for them and they could not reveal it.
+			const deletedId = await createDeletedCredential();
+			const project = await createTeamProject('Workflow home', owner);
+			await linkUserToProject(editor, project, 'project:editor');
+			const workflow = await createWorkflow({}, project);
+
+			const execution = await redaction.processExecution(
+				ranBy(executionUsing(workflow.id, deletedId), editor),
+				{ user: editor },
+			);
+			expect(execution.data.redactionInfo).toMatchObject({
+				reason: 'credential_deleted',
+				canReveal: false,
+			});
+
+			await expect(
+				redaction.processExecution(ranBy(executionUsing(workflow.id, deletedId), editor), {
+					user: editor,
+					redactExecutionData: false,
+				}),
+			).rejects.toThrow(ScopeForbiddenError);
+		});
+
+		it('lets the user reveal it when they have the reveal scope', async () => {
+			const deletedId = await createDeletedCredential();
+			const workflow = await createWorkflow({}, owner);
+
+			const execution = await redaction.processExecution(
+				ranBy(executionUsing(workflow.id, deletedId), owner),
+				{ user: owner, redactExecutionData: false },
+			);
+
+			expect(outputOf(execution)).toEqual(OUTPUT);
+		});
+	});
+
 	it('keeps an existing credential the viewer cannot use as the reason, and lists only that one', async () => {
 		const deletedId = await createDeletedCredential();
 		const otherProject = await createTeamProject('Other credential home');
