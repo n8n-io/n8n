@@ -27,17 +27,27 @@ describe('resolveModel', () => {
 	});
 
 	it.each([
-		['xai/grok-4', 'openrouter/x-ai/grok-4'],
-		['mistral/mistral-large-2411', 'openrouter/mistralai/mistral-large-2411'],
+		['xai/grok-4.7', 'openrouter/x-ai/grok-4.7'],
+		['mistral/mistral-large-2512', 'openrouter/mistralai/mistral-large-2512'],
 		['deepseek/deepseek-chat', 'openrouter/deepseek/deepseek-chat'],
+		['deepseek/deepseek-reasoner', 'openrouter/deepseek/deepseek-r1-0528'],
 		['groq/openai/gpt-oss-120b', 'openrouter/openai/gpt-oss-120b'],
+		[
+			'groq/meta-llama/Llama-4-Scout-17B-16E-Instruct',
+			'openrouter/meta-llama/llama-4-scout-17b-16e-instruct',
+		],
 		['nvidia/meta/llama-3.1-70b-instruct', 'openrouter/meta-llama/llama-3.1-70b-instruct'],
-		['moonshotai/kimi-k2', 'openrouter/moonshotai/kimi-k2'],
-		['alibaba/qwen3-max', 'openrouter/qwen/qwen3-max'],
-		['minimax/minimax-m2', 'openrouter/minimax/minimax-m2'],
-		['cohere/command-a-03-2025', 'openrouter/cohere/command-a-03-2025'],
-		['vercel/anthropic/claude-sonnet-4', 'openrouter/anthropic/claude-sonnet-4'],
+		['nvidia/deepseek-ai/deepseek-v3.2', 'openrouter/deepseek/deepseek-v3.2'],
+		['moonshotai/kimi-k2.6', 'openrouter/moonshotai/kimi-k2.6'],
+		['moonshotai/kimi-k2-0711-preview', 'openrouter/moonshotai/kimi-k2'],
+		['moonshotai/kimi-k2-0905-preview', 'openrouter/moonshotai/kimi-k2-0905'],
+		['alibaba/qwen3-32b', 'openrouter/qwen/qwen3-32b'],
+		['minimax/minimax-m2.7', 'openrouter/minimax/minimax-m2.7'],
+		['cohere/command-a-03-2025', 'openrouter/cohere/command-a'],
+		['cohere/command-r-08-2024', 'openrouter/cohere/command-r-08-2024'],
+		['vercel/anthropic/claude-sonnet-4.6', 'openrouter/anthropic/claude-sonnet-4.6'],
 		['google/gemini-2.5-pro', 'openrouter/google/gemini-2.5-pro'],
+		['google/gemini-4-hydrogen', 'openrouter/google/gemini-4-hydrogen'],
 		['google-vertex/gemini-2.5-flash', 'openrouter/google/gemini-2.5-flash'],
 		['openai/gpt-5-mini', 'openrouter/openai/gpt-5-mini'],
 		['anthropic/claude-sonnet-4-5', 'openrouter/anthropic/claude-sonnet-4.5'],
@@ -90,6 +100,27 @@ describe('resolveModel', () => {
 		});
 	});
 
+	describe('with the OpenRouter model list', () => {
+		const listed = new Set(['openrouter/x-ai/grok-4.7', 'openrouter/anthropic/claude-sonnet-5.5']);
+
+		it('routes a model OpenRouter lists', () => {
+			expect(
+				resolveModel('xai/grok-4.7', keys('openRouterApi'), { openRouterModels: listed }).kind,
+			).toBe('openrouter-same');
+		});
+
+		it('maps a model OpenRouter does not list to a comparable one', () => {
+			expect(
+				resolveModel('anthropic/claude-3-5-sonnet-20241022', keys('openRouterApi'), {
+					openRouterModels: listed,
+				}),
+			).toMatchObject({
+				kind: 'comparable',
+				actualModel: 'openrouter/anthropic/claude-sonnet-5.5',
+			});
+		});
+	});
+
 	it('prefers the provider key over OpenRouter', () => {
 		expect(resolveModel('openai/gpt-5-mini', keys('openAiApi', 'openRouterApi')).kind).toBe(
 			'direct',
@@ -127,17 +158,17 @@ describe('resolveModel', () => {
 		});
 	});
 
-	it.each([
-		['google/gemini-4-hydrogen', 'anthropic/claude-sonnet-5-5'],
-		['google/gemini-flash-lite-latest', 'anthropic/claude-haiku-5-5'],
-	])('maps %s, which has no fixed OpenRouter id, to a comparable model', (model, comparable) => {
-		expect(resolveModel(model, keys('anthropicApi', 'openRouterApi'))).toEqual({
-			kind: 'comparable',
-			originalModel: model,
-			actualModel: comparable,
-			credentialType: 'anthropicApi',
-		});
-	});
+	it.each([['google/gemini-flash-lite-latest', 'anthropic/claude-haiku-5-5']])(
+		'maps %s, which has no fixed OpenRouter id, to a comparable model',
+		(model, comparable) => {
+			expect(resolveModel(model, keys('anthropicApi', 'openRouterApi'))).toEqual({
+				kind: 'comparable',
+				originalModel: model,
+				actualModel: comparable,
+				credentialType: 'anthropicApi',
+			});
+		},
+	);
 
 	it('runs a free OpenRouter variant as its paid twin, which is not rate-limited', () => {
 		expect(

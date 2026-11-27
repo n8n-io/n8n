@@ -18,6 +18,8 @@ import { BUILD_ONLY_SCENARIO_NAME, roundRobinCaseRows } from './rows';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { runWithConcurrency } from '../harness/cleanup';
 import type { MultiRunEvaluation, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
+import { availableModelCredentialTypes } from '../credentials/model-resolver';
+import { openRouterModelsForRun } from '../credentials/openrouter-models';
 
 export interface DirectRunConfig extends Omit<EvalSessionConfig, 'wrap'> {
 	/** Sink for per-iteration results as reshape produces them, so an abort in
@@ -58,7 +60,12 @@ export async function runDirect(config: DirectRunConfig): Promise<{
 		`Running ${String(testCasesWithFiles.length)} test case(s) with ${String(totalScenarios)} scenario(s) × ${String(args.iterations)} iteration(s) across ${String(lanes.length)} lane(s)`,
 	);
 
-	const session = createEvalSession({ ...config, wrap: (_name, _laneNum, fn) => fn });
+	const openRouterModels = await openRouterModelsForRun(availableModelCredentialTypes(), logger);
+	const session = createEvalSession({
+		...config,
+		openRouterModels,
+		wrap: (_name, _laneNum, fn) => fn,
+	});
 
 	const rows = [
 		...expandWithIterations(

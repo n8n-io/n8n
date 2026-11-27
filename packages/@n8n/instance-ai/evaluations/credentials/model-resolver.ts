@@ -30,6 +30,7 @@ import {
 	OPENROUTER_VENDOR_ALIASES,
 	OPENROUTER_VENDOR_BY_PROVIDER,
 	NO_OPENROUTER_TWIN,
+	OPENROUTER_MODEL_OVERRIDES,
 	OPENROUTER_FREE_SUFFIX,
 	SMALL_MODEL_TOKENS,
 	type ModelTier,
@@ -102,11 +103,21 @@ export function availableModelCredentialTypes(): ReadonlySet<string> {
 // One model
 // ---------------------------------------------------------------------------
 
-export function resolveModel(model: string, available: ReadonlySet<string>): ModelResolution {
+/** What else the resolver knows. `openRouterModels`: OpenRouter's model list
+ *  (`openrouter/<id>`); when set, a twin it doesn't list counts as none. */
+export interface ModelResolverOptions {
+	openRouterModels?: ReadonlySet<string>;
+}
+
+export function resolveModel(
+	model: string,
+	available: ReadonlySet<string>,
+	options: ModelResolverOptions = {},
+): ModelResolution {
 	return (
 		claudeOnAnthropic(model, available) ??
 		directRoute(model, available) ??
-		openRouterRoute(model, available) ??
+		openRouterRoute(model, available, options.openRouterModels) ??
 		comparableModel(model, available)
 	);
 }
@@ -125,9 +136,14 @@ function directRoute(model: string, available: ReadonlySet<string>) {
 	return type ? route('direct', model, model, type) : undefined;
 }
 
-function openRouterRoute(model: string, available: ReadonlySet<string>) {
+function openRouterRoute(
+	model: string,
+	available: ReadonlySet<string>,
+	openRouterModels?: ReadonlySet<string>,
+) {
 	const twin = available.has('openRouterApi') ? openRouterTwin(model) : undefined;
-	return twin ? route('openrouter-same', model, twin, 'openRouterApi') : undefined;
+	if (!twin || (openRouterModels && !openRouterModels.has(twin))) return undefined;
+	return route('openrouter-same', model, twin, 'openRouterApi');
 }
 
 function route(
@@ -171,6 +187,8 @@ function comparableModel(model: string, available: ReadonlySet<string>): ModelRe
 /** The same model's OpenRouter id, or undefined when OpenRouter has no twin. */
 function openRouterTwin(model: string): string | undefined {
 	if (NO_OPENROUTER_TWIN.some((pattern) => pattern.test(model))) return undefined;
+	const override = OPENROUTER_MODEL_OVERRIDES[model.toLowerCase()];
+	if (override) return override;
 	const claude = claudeName(model);
 	if (claude && !model.startsWith('openrouter/')) return openRouterId('anthropic', claude);
 	const { provider, model: name } = splitModelId(model);
@@ -191,7 +209,8 @@ function isFreeVariant(model: string): boolean {
 }
 
 function openRouterId(vendor: string, name: string): string {
-	return `openrouter/${vendor}/${vendor === 'anthropic' ? openRouterClaudeName(name) : name}`;
+	const id = `${vendor}/${vendor === 'anthropic' ? openRouterClaudeName(name) : name}`;
+	return `openrouter/${id.toLowerCase()}`;
 }
 
 /** Anthropic ids use dashes and a date; OpenRouter uses a dotted version and no
@@ -250,10 +269,11 @@ function memoryModelSlots(memory: AgentJsonConfig['memory']): ModelSlotRef[] {
 export function resolveAgentConfigModels(
 	input: AgentJsonConfig,
 	available: ReadonlySet<string>,
+	options: ModelResolverOptions = {},
 ): { config: AgentJsonConfig; resolution: AgentModelResolution } {
 	const config = structuredClone(input);
 	const slots: SlotModelResolution[] = modelSlots(config).map(({ slot, target }) => {
-		const resolved = resolveModel(target.model, available);
+		const resolved = resolveModel(target.model, available, options);
 		if (resolved.kind !== 'skipped') target.model = resolved.actualModel;
 		return { slot, ...resolved };
 	});
@@ -391,12 +411,13 @@ type ResolvableCase = Pick<WorkflowTestCase, 'seed' | 'credentials' | 'tags' | '
 export function resolveCaseAgentModels<T extends ResolvableCase>(
 	testCase: T,
 	available: ReadonlySet<string>,
+	options: ModelResolverOptions = {},
 ): { testCase: T; resolutions: AgentModelResolution[] } {
 	const seed = testCase.seed;
 	if (seed?.mode !== 'inline' || seed.agents.length === 0) return { testCase, resolutions: [] };
 	const resolved = seed.agents.map((agent) => ({
 		agent,
-		...resolveAgentConfigModels(agent.config, available),
+		...resolveAgentConfigModels(agent.config, available, options),
 	}));
 	const resolutions = resolved.map((r) => r.resolution);
 	const agents = resolved.map(({ agent, config }) => ({ ...agent, config }));
@@ -417,9 +438,10 @@ export function resolveCaseAgentModels<T extends ResolvableCase>(
 export function resolveDirectRunAgentModels<T extends ResolvableCase>(
 	testCase: T,
 	available: ReadonlySet<string>,
+	options: ModelResolverOptions = {},
 ): { testCase: T; resolutions: AgentModelResolution[] } {
 	if (!isDirectAgentRun(testCase)) return { testCase, resolutions: [] };
-	return resolveCaseAgentModels(testCase, available);
+	return resolveCaseAgentModels(testCase, available, options);
 }
 
 function withCredentialTypes(

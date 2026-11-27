@@ -35,6 +35,8 @@ import type { EvalLogger } from '../harness/logger';
 import type { PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { ensureExamplesVisible, syncDataset } from '../langsmith/dataset-sync';
 import type { MultiRunEvaluation, WorkflowTestCase } from '../types';
+import { availableModelCredentialTypes } from '../credentials/model-resolver';
+import { openRouterModelsForRun } from '../credentials/openrouter-models';
 
 export interface RunConfig {
 	args: CliArgs;
@@ -111,7 +113,9 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 	// Shared per-run assembly (lanes → allocator → build orchestrator → case
 	// pipeline). The traceable() hook around the lane functions is the only
 	// LangSmith-aware piece; span names and shape are unchanged.
+	const openRouterModels = await openRouterModelsForRun(availableModelCredentialTypes(), logger);
 	const session = createEvalSession({
+		openRouterModels,
 		args,
 		lanes,
 		logger,

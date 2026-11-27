@@ -79,6 +79,8 @@ export interface EvalSessionConfig {
 	mcpBuildLogDir?: string;
 	mcpBuildSpend: McpBuildSpend[];
 	wrap: TraceWrap;
+	/** OpenRouter's model list (`openrouterModelsForRun`), when it could be read. */
+	openRouterModels?: ReadonlySet<string>;
 }
 
 export interface ResolvedSideBand {
@@ -143,7 +145,9 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 	const agentModelResolutionsByFileSlug = new Map<string, AgentModelResolution[]>();
 	const availableModelKeys = availableModelCredentialTypes();
 	for (const { testCase, fileSlug } of testCasesWithFiles) {
-		const resolved = resolveDirectRunAgentModels(testCase, availableModelKeys);
+		const resolved = resolveDirectRunAgentModels(testCase, availableModelKeys, {
+			openRouterModels: config.openRouterModels,
+		});
 		testCaseByFileSlug.set(fileSlug, resolved.testCase);
 		slugByTestCase.set(testCase, fileSlug);
 		if (resolved.resolutions.length > 0) {

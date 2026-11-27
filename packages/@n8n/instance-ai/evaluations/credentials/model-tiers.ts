@@ -47,11 +47,21 @@ export const OPENROUTER_VENDOR_ALIASES: Readonly<Record<string, string>> = {
 	xai: 'x-ai',
 	mistral: 'mistralai',
 	alibaba: 'qwen',
+	'deepseek-ai': 'deepseek',
 };
 
-/** Models OpenRouter has no fixed id for. `-latest` aliases move under the
- *  provider's feet; preview codenames are not listed. They go to the tier table. */
-export const NO_OPENROUTER_TWIN: readonly RegExp[] = [/-latest$/, /(?:^|\/)gemini-4-hydrogen$/];
+/** Models OpenRouter has no fixed id for: `-latest` aliases move under the
+ *  provider's feet. They go to the tier table. */
+export const NO_OPENROUTER_TWIN: readonly RegExp[] = [/-latest$/];
+
+/** Provider ids whose OpenRouter id is not the naming rule's. Checked against
+ *  GET https://openrouter.ai/api/v1/models on 2026-11-27. */
+export const OPENROUTER_MODEL_OVERRIDES: Readonly<Record<string, string>> = {
+	'deepseek/deepseek-reasoner': 'openrouter/deepseek/deepseek-r1-0528',
+	'moonshotai/kimi-k2-0711-preview': 'openrouter/moonshotai/kimi-k2',
+	'moonshotai/kimi-k2-0905-preview': 'openrouter/moonshotai/kimi-k2-0905',
+	'cohere/command-a-03-2025': 'openrouter/cohere/command-a',
+};
 
 /** OpenRouter's free variants are heavily rate-limited, so a run uses the paid twin. */
 export const OPENROUTER_FREE_SUFFIX = ':free';
