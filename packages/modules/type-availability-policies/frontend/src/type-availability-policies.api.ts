@@ -91,7 +91,6 @@ export async function createProjectPolicy(
 
 export type ProjectPolicyVersions = DeleteProjectPolicyQueryDto;
 
-/** A kind without a project policy reads as version 0, which is the version a delete expects. */
 export async function fetchProjectPolicyVersions(
 	context: IRestApiContext,
 	projectId: string,

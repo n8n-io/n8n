@@ -54,7 +54,7 @@ The project policy page reads the version of each kind when it opens. "Delete po
 menu sends these versions to `DELETE /project-policies/:projectId`. A 409 means another admin
 changed the policy: nothing is deleted, and the page reads the policy and the versions again. A
 404 means another admin deleted it first: the page opens the landing page. If the admin left the
-page while the delete ran, the page does not navigate or read again. The action is off while the
+page while the delete ran, the page still shows the result, but it does not navigate or read again. The action is off while the
 versions are not read, while a delete runs, and when the project has no policy.
 
 ```bash

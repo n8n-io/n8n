@@ -3089,7 +3089,7 @@
 	"typeAvailabilityPolicies.projectPolicy.delete.success.title": "{name} policy deleted",
 	"typeAvailabilityPolicies.projectPolicy.delete.success.message": "The projects follow the instance policy again.",
 	"typeAvailabilityPolicies.projectPolicy.delete.changed.title": "The policy changed",
-	"typeAvailabilityPolicies.projectPolicy.delete.changed.message": "Another admin changed this policy, so nothing was deleted. The page shows the new policy.",
+	"typeAvailabilityPolicies.projectPolicy.delete.changed.message": "Another admin changed this policy, so nothing was deleted.",
 	"typeAvailabilityPolicies.projectPolicy.delete.notFound.title": "The project has no policy",
 	"typeAvailabilityPolicies.projectPolicy.delete.notFound.message": "Another admin already deleted it. The project follows the instance policy.",
 	"typeAvailabilityPolicies.projectPolicy.delete.error": "Could not delete the policy",

@@ -77,13 +77,12 @@ async function openDeleteItem(view: ReturnType<typeof renderWithScopes>) {
 	return await findPopupItem(MENU_ITEM, 'Delete policy');
 }
 
-/** Opens the menu once the versions are read, so "Delete policy" is on, and picks it. */
+/** "Delete policy" turns on only after the versions are read, so this waits for that first. */
 async function confirmDelete(
 	view: ReturnType<typeof renderWithScopes>,
 	answer: 'confirm' | 'cancel' = 'confirm',
 ) {
 	confirm.mockResolvedValue(answer);
-	await waitFor(() => expect(fetchProjectPolicyVersions).toHaveBeenCalled());
 	const item = await openDeleteItem(view);
 	await waitFor(() => expect(item).not.toHaveAttribute('data-disabled'));
 	await userEvent.click(item);
@@ -265,22 +264,29 @@ describe('ProjectPolicyView', () => {
 			const view = renderWithScopes();
 			await confirmDelete(view);
 
-			await waitFor(() => expect(fetchProjectPolicyVersions).toHaveBeenCalledTimes(2));
+			await waitFor(() =>
+				expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Could not load the policy'),
+			);
 
 			expect(await openDeleteItem(view)).toHaveAttribute('data-disabled');
 		});
 
-		it('does not reload a page that the admin left when another admin changed the policy', async () => {
+		it('says that nothing was deleted but does not reload a page that the admin left', async () => {
 			const request = deferDelete();
 			await confirmDelete(renderWithScopes());
 			await waitFor(() => expect(deleteProjectPolicy).toHaveBeenCalled());
 
 			route.params.teamProjectId = 'other';
 			request.reject(new ResponseError('changed', { httpStatusCode: 409 }));
-			await new Promise((resolve) => setTimeout(resolve));
 
+			await waitFor(() =>
+				expect(showMessage).toHaveBeenCalledWith({
+					type: 'warning',
+					title: 'The policy changed',
+					message: 'Another admin changed this policy, so nothing was deleted.',
+				}),
+			);
 			expect(fetchProjectPolicies).toHaveBeenCalledTimes(1);
-			expect(showMessage).not.toHaveBeenCalled();
 			expect(fetchProjectPolicyVersions).toHaveBeenCalledTimes(1);
 		});
 
@@ -294,6 +300,8 @@ describe('ProjectPolicyView', () => {
 			expect(showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({ type: 'warning', title: 'The project has no policy' }),
 			);
+			expect(fetchProjectPolicies).toHaveBeenCalledTimes(1);
+			expect(fetchProjectPolicyVersions).toHaveBeenCalledTimes(1);
 		});
 
 		it('stays where the admin went when the policy was already deleted', async () => {

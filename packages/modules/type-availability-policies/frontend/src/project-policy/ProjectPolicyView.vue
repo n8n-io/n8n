@@ -128,12 +128,12 @@ function onDeleteError(error: unknown, deletedProjectId: string) {
 	const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
 
 	if (status === 409) {
-		if (!isStillOn(deletedProjectId)) return;
 		toast.showMessage({
 			type: 'warning',
 			title: i18n.baseText('typeAvailabilityPolicies.projectPolicy.delete.changed.title'),
 			message: i18n.baseText('typeAvailabilityPolicies.projectPolicy.delete.changed.message'),
 		});
+		if (!isStillOn(deletedProjectId)) return;
 		versions.value = null;
 		void load();
 		void loadVersions();
