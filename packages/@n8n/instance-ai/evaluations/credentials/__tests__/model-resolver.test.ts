@@ -436,6 +436,34 @@ describe('resolveCaseAgentModels', () => {
 		expect(resolved.tags).toEqual(['agent-runtime', 'model-fallback']);
 	});
 
+	it('refuses a case that declares two credentials of a type a model or embeddings binds to', () => {
+		const episodic = baseConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: { enabled: true, credential: 'managed' },
+			},
+		});
+
+		expect(() =>
+			resolveCaseAgentModels(
+				seededCase([episodic], [{ type: 'openAiApi' }, { type: 'openAiApi', name: 'Second' }]),
+				keys('anthropicApi', 'openAiApi'),
+			),
+		).toThrow(
+			'The case declares 2 openAiApi credentials. The restore binds a model or embedding credential only when exactly one of its type is declared, so remove the extra one.',
+		);
+	});
+
+	it('accepts two credentials of a type no model binds to', () => {
+		expect(() =>
+			resolveCaseAgentModels(
+				seededCase([baseConfig()], [{ type: 'slackApi' }, { type: 'slackApi', name: 'Second' }]),
+				keys('anthropicApi'),
+			),
+		).not.toThrow();
+	});
+
 	it('leaves a case without seeded agents unchanged', () => {
 		const testCase: Pick<WorkflowTestCase, 'seed' | 'credentials' | 'tags'> = { tags: ['x'] };
 

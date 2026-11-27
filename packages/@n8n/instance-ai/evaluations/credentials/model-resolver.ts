@@ -412,6 +412,16 @@ function withEmbeddingSkip(
 	return { ...resolution, skip: { kind: 'no-embedding-key', reason } };
 }
 
+/** The restore binds a model or the embeddings only to the one credential of
+ *  its type; with two it binds neither, and the run fails far from the cause. */
+function assertAtMostOneDeclared(declared: TestCaseCredential[], type: string): void {
+	const count = declared.filter((credential) => credential.type === type).length;
+	if (count <= 1) return;
+	throw new Error(
+		`The case declares ${String(count)} ${type} credentials. The restore binds a model or embedding credential only when exactly one of its type is declared, so remove the extra one.`,
+	);
+}
+
 /** Declare each credential type the resolved models need, and mark the one the
  *  restore binds (the first of its type) for the real model key. */
 function withCredentialTypes(
@@ -419,6 +429,7 @@ function withCredentialTypes(
 	resolutions: AgentModelResolution[],
 ): TestCaseCredential[] {
 	const needed = new Set(resolutions.flatMap((r) => r.credentialTypes));
+	for (const type of needed) assertAtMostOneDeclared(declared ?? [], type);
 	const credentials = (declared ?? []).map((credential, index, all) =>
 		needed.has(credential.type) && all.findIndex((c) => c.type === credential.type) === index
 			? { ...credential, realModelKey: true as const }

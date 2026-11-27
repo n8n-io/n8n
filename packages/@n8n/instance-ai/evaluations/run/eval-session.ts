@@ -145,9 +145,11 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 	const agentModelResolutionsByFileSlug = new Map<string, AgentModelResolution[]>();
 	const availableModelKeys = availableModelCredentialTypes();
 	for (const { testCase, fileSlug } of testCasesWithFiles) {
-		const resolved = resolveDirectRunAgentModels(testCase, availableModelKeys, {
-			openRouterModels: config.openRouterModels,
-		});
+		const resolved = resolveForSession(fileSlug, () =>
+			resolveDirectRunAgentModels(testCase, availableModelKeys, {
+				openRouterModels: config.openRouterModels,
+			}),
+		);
 		testCaseByFileSlug.set(fileSlug, resolved.testCase);
 		slugByTestCase.set(testCase, fileSlug);
 		if (resolved.resolutions.length > 0) {
@@ -366,5 +368,15 @@ function logModelResolutions(
 		const line = `  [model] ${fileSlug}: ${describeModelResolution(resolution)}`;
 		if (resolution.modelResolution === 'direct') logger.verbose(line);
 		else logger.info(line);
+	}
+}
+
+/** A case the resolver refuses fails the run at load, naming the case. */
+function resolveForSession<T>(fileSlug: string, resolve: () => T): T {
+	try {
+		return resolve();
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new Error(`Case ${fileSlug}: ${message}`);
 	}
 }
