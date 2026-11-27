@@ -73,4 +73,29 @@ describe('renderBindingTypes', () => {
 		);
 		expect(output).not.toContain('gone');
 	});
+
+	it('types the inputs of a node operation and leaves its output unknown', () => {
+		const output = renderBindingTypes([
+			{
+				key: 'availability',
+				kind: 'nodeOperation',
+				node: {
+					nodeType: 'n8n-nodes-base.googleCalendar',
+					nodeTypeVersion: 1.3,
+					nodeParameters: { operation: 'availability' },
+				},
+				name: 'Google Calendar: Availability',
+				input: {
+					type: 'object',
+					properties: { from: { type: 'string' } },
+					required: ['from'],
+					additionalProperties: false,
+				},
+			},
+		]);
+
+		expect(output).toContain('\t\tnodeOperations: {');
+		expect(output).toContain('availability: { input: { from: string }; output: unknown };');
+		expect(output).not.toContain('agents: {\n\t\t\tavailability');
+	});
 });

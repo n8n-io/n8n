@@ -274,7 +274,11 @@ export class EphemeralNodeExecutor {
 		return verified;
 	}
 
-	private validateNodeForExecution(
+	/**
+	 * Throws a `UserError` when the node cannot run outside a workflow: a denied or
+	 * trigger node, a node that is not usable as a tool, or a wait operation.
+	 */
+	validateNodeForExecution(
 		nodeType: string,
 		typeVersion: number,
 		nodeParameters: INodeParameters,

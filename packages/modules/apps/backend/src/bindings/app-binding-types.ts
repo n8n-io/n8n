@@ -74,6 +74,7 @@ export function renderBindingTypes(bindings: AppDescribedBinding[]): string {
 	const workflows: string[] = [];
 	const tables: string[] = [];
 	const agents: string[] = [];
+	const nodeOperations: string[] = [];
 
 	for (const binding of bindings) {
 		if (binding.missing) continue;
@@ -86,8 +87,11 @@ export function renderBindingTypes(bindings: AppDescribedBinding[]): string {
 			tables.push(
 				`${key}: { row: ${jsonSchemaToTs(binding.row)}; permissions: ${JSON.stringify(binding.permissions)} };`,
 			);
-		} else {
+		} else if (binding.kind === 'agent') {
 			agents.push(`${key}: { permissions: ${JSON.stringify(binding.permissions)} };`);
+		} else if (binding.kind === 'nodeOperation') {
+			// The node output has no schema before a run, so the app reads it as `unknown`.
+			nodeOperations.push(`${key}: { input: ${jsonSchemaToTs(binding.input)}; output: unknown };`);
 		}
 	}
 
@@ -103,6 +107,7 @@ export function renderBindingTypes(bindings: AppDescribedBinding[]): string {
 		section('workflows', workflows),
 		section('tables', tables),
 		section('agents', agents),
+		section('nodeOperations', nodeOperations),
 		'\t}',
 		'}',
 		'',
