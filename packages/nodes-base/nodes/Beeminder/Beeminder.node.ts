@@ -1094,7 +1094,7 @@ async function executeDatapointCreate(
 
 	const options = context.getNodeParameter('additionalFields', itemIndex);
 	if (options.timestamp) {
-		options.timestamp = moment.tz(options.timestamp, timezone).unix();
+		options.timestamp = moment.tz(options.timestamp as string, timezone).unix();
 	}
 
 	validateNodeParameters(
@@ -1152,7 +1152,7 @@ async function executeDatapointUpdate(
 	assertParamIsString('datapointId', datapointId, context.getNode());
 	const options = context.getNodeParameter('updateFields', itemIndex);
 	if (options.timestamp) {
-		options.timestamp = moment.tz(options.timestamp, timezone).unix();
+		options.timestamp = moment.tz(options.timestamp as string, timezone).unix();
 	}
 
 	validateNodeParameters(
@@ -1395,7 +1395,7 @@ async function executeGoalUpdate(
 		options.roadall = jsonParse(options.roadall);
 	}
 	if ('goaldate' in options && options.goaldate) {
-		options.goaldate = moment.tz(options.goaldate, timezone).unix();
+		options.goaldate = moment.tz(options.goaldate as string, timezone).unix();
 	}
 	validateNodeParameters(
 		options,
@@ -1524,7 +1524,7 @@ async function executeUserOperations(
 	if (operation === 'get') {
 		const options = context.getNodeParameter('additionalFields', itemIndex);
 		if (options.diff_since) {
-			options.diff_since = moment.tz(options.diff_since, timezone).unix();
+			options.diff_since = moment.tz(options.diff_since as string, timezone).unix();
 		}
 		validateNodeParameters(
 			options,
