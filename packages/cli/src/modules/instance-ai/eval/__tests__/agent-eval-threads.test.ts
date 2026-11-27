@@ -1,4 +1,6 @@
-import { EvalAgentThreadStore } from '../agent-eval-threads';
+import type { AgentMessage } from '@n8n/agents';
+
+import { EvalAgentThreadStore, planThreadTurn } from '../agent-eval-threads';
 
 const HOUR = 60 * 60 * 1000;
 const MAX_ENTRIES = 500;
@@ -62,5 +64,40 @@ describe('EvalAgentThreadStore', () => {
 		expect(store.thread('t-1')).toBeUndefined();
 		expect(store.world('r-2')).toBeDefined();
 		expect(store.thread('t-2')).toBeDefined();
+	});
+});
+
+const ids = { threadId: 'thread-1', resourceId: 'eval-user-1' };
+const earlier: AgentMessage[] = [
+	{ role: 'user', content: [{ type: 'text', text: 'Hi' }] },
+	{ role: 'assistant', content: [{ type: 'text', text: 'Hello' }] },
+];
+const next: AgentMessage = { role: 'user', content: [{ type: 'text', text: 'My order?' }] };
+
+describe('planThreadTurn', () => {
+	it('replays the stored messages before the new one when memory is off', () => {
+		const plan = planThreadTurn({
+			memoryOn: false,
+			...ids,
+			history: earlier,
+			userMessage: 'My order?',
+		});
+
+		expect(plan.input).toEqual([...earlier, next]);
+		expect(plan.persistence).toBeUndefined();
+		expect(plan.keepsHistory).toBe(true);
+	});
+
+	it('sends only the new message with persistence when memory is on', () => {
+		const plan = planThreadTurn({
+			memoryOn: true,
+			...ids,
+			history: earlier,
+			userMessage: 'My order?',
+		});
+
+		expect(plan.input).toEqual([next]);
+		expect(plan.persistence).toEqual(ids);
+		expect(plan.keepsHistory).toBe(false);
 	});
 });

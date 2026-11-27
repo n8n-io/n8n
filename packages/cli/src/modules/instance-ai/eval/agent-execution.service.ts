@@ -5,6 +5,8 @@ import {
 	type Agent as RuntimeAgent,
 	type AgentMessage,
 	type GenerateResult,
+	type MemoryTaskEvent,
+	type SideCallUsageReport,
 } from '@n8n/agents';
 import type {
 	AgentJsonConfig,
@@ -15,6 +17,8 @@ import type {
 	InstanceAiEvalAgentSkippedFeature,
 	InstanceAiEvalAgentToolCallRecord,
 	InstanceAiEvalInterceptedRequest,
+	InstanceAiEvalAgentMemoryTask,
+	InstanceAiEvalAgentSideCallUsage,
 } from '@n8n/api-types';
 import { TOOL_CATALOG_CALL_TOOL_NAME } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -29,7 +33,8 @@ import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evalua
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
-import { EvalAgentThreadStore, type EvalAgentThread } from './agent-eval-threads';
+import { EvalAgentMemoryReader } from './agent-eval-memory-reader';
+import { EvalAgentThreadStore, planThreadTurn, type EvalAgentThread } from './agent-eval-threads';
 import { createAgentModelTurnRecorder } from './agent-model-turn-recorder';
 import { generateAgentScenarioSeed } from './agent-scenario-seed';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
@@ -60,8 +65,10 @@ function effectiveToolName(toolName: string, input: unknown): string {
 //   - MCP servers, the fallback web_search tool, and configured sub-agents
 //     are served by dedicated mocks/seams (see mcp-mock-fetch, web-search-mock
 //     and AgentRuntimeInstrumentation); features the mock layer can't serve
-//     yet (memory, vector stores, SSE-transport MCP, chat integrations) are
-//     pruned from a config copy and reported as `skippedFeatures`.
+//     yet (vector stores, SSE-transport MCP, chat integrations; memory unless
+//     the request keeps it) are pruned from a config copy and reported as
+//     `skippedFeatures`. Kept memory runs for real: worker models, embeddings,
+//     and the runtime's own thread history (AGENT-1666).
 // The runtime is built UNCACHED (never through AgentRuntimeCacheService) so an
 // instrumented runtime can never leak into a normal chat run.
 // ---------------------------------------------------------------------------
@@ -111,12 +118,42 @@ interface EvalAgentWorld {
 	seed: InstanceAiEvalAgentScenarioSeed;
 	instrumentation: RuntimeInstrumentation;
 	evidence: { current: AgentRunEvidence };
+	/** The prepared config keeps memory: the runtime keeps the threads (AGENT-1666). */
+	memoryOn: boolean;
+	/** Every thread of this resource so far, for the memory snapshot. */
+	threadIds: Set<string>;
 }
 
 type AgentInput = string | AgentMessage[];
 
-function userTextMessage(text: string): AgentMessage {
-	return { role: 'user', content: [{ type: 'text', text }] };
+/** A thread turn with memory on: the runtime loads and stores the thread itself. */
+interface MemoryTurn {
+	agentId: string;
+	persistence: { threadId: string; resourceId: string };
+	/** Wait for background memory work before responding (`awaitMemory`). */
+	awaitMemory: boolean;
+	/** Memory tasks that ended during the turn. */
+	tasks: InstanceAiEvalAgentMemoryTask[];
+}
+
+/** A terminal memory task event as the judge sees it; undefined for queued/started. */
+function endedMemoryTask(event: MemoryTaskEvent): InstanceAiEvalAgentMemoryTask | undefined {
+	const { taskKind } = event.task;
+	if (event.type === 'completed') return { taskKind, outcome: 'completed' };
+	if (event.type === 'skipped') return { taskKind, outcome: 'skipped', error: event.reason };
+	if (event.type !== 'failed') return undefined;
+	const error = event.error instanceof Error ? event.error.message : String(event.error);
+	return { taskKind, outcome: 'failed', error };
+}
+
+function sideCallUsageOf(report: SideCallUsageReport): InstanceAiEvalAgentSideCallUsage {
+	return {
+		task: report.task,
+		model: report.model,
+		inputTokens: report.usage.promptTokens,
+		outputTokens: report.usage.completionTokens,
+		...(report.cost !== undefined ? { cost: report.cost } : {}),
+	};
 }
 
 /**
@@ -285,9 +322,10 @@ export class EvalAgentExecutionService {
 	}
 
 	/**
-	 * One turn of a multi-turn run. The thread's earlier messages are replayed
-	 * before the new one, and the world is shared by every thread of the same
-	 * resource id. A failed turn is not added to the thread.
+	 * One turn of a multi-turn run. With memory off, the thread's earlier
+	 * messages are replayed before the new one; with memory on, the runtime
+	 * keeps the thread (`planThreadTurn`). The world is shared by every thread
+	 * of the same resource id. A failed turn is not added to the thread.
 	 */
 	private async executeThreadTurn(
 		agentId: string,
@@ -304,15 +342,49 @@ export class EvalAgentExecutionService {
 		if ('error' in world) return world.error;
 
 		const userMessage = turn.message ?? world.seed.openingMessage;
-		const input = [...(thread?.messages ?? []), userTextMessage(userMessage)];
-		const { output, threadMessages } = await this.runTurn(world, input, options);
+		const plan = planThreadTurn({
+			memoryOn: world.memoryOn,
+			threadId: turn.threadId,
+			resourceId: turn.resourceId,
+			history: thread?.messages ?? [],
+			userMessage,
+		});
+		world.threadIds.add(turn.threadId);
+		const memoryTurn = plan.persistence && {
+			agentId,
+			persistence: plan.persistence,
+			awaitMemory: options.awaitMemory === true,
+			tasks: [],
+		};
+		const { output, threadMessages } = await this.runTurn(world, plan.input, options, memoryTurn);
 		const turns = (thread?.turns ?? 0) + 1;
 		if (threadMessages) {
-			this.saveThread(turn, { agentId, userId: user.id }, [...input, ...threadMessages], turns);
+			const messages = plan.keepsHistory ? [...plan.input, ...threadMessages] : [];
+			this.saveThread(turn, { agentId, userId: user.id }, messages, turns);
 		}
+		// Read before a final turn drops the world, so its thread ids are still known.
+		const memory = memoryTurn && (await this.memoryState(world, memoryTurn));
 		if (threadMessages && turn.final) this.threads.dropResource(turn.resourceId);
 		const echo = { threadId: turn.threadId, resourceId: turn.resourceId, turn: turns, userMessage };
-		return { ...output, thread: echo };
+		return { ...output, thread: echo, ...(memory ? { memory } : {}) };
+	}
+
+	/** What the Agent's memory holds for the resource after the turn. Best-effort. */
+	private async memoryState(world: EvalAgentWorld, memoryTurn: MemoryTurn) {
+		const { agentId, persistence, tasks } = memoryTurn;
+		const reader = Container.get(EvalAgentMemoryReader);
+		try {
+			const [stored, pendingCandidates] = await Promise.all([
+				reader.read(agentId, persistence.resourceId, [...world.threadIds]),
+				reader.pendingCandidateCount(agentId, persistence.resourceId),
+			]);
+			return { ...stored, pendingCandidates, tasks };
+		} catch (error) {
+			this.logger.warn('[EvalAgentMock] Reading the eval Agent memory failed', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
 	}
 
 	/** A final request with no message: forget the resource, run nothing. */
@@ -480,7 +552,16 @@ export class EvalAgentExecutionService {
 			mockHandler,
 			evidence,
 		);
-		return { agentId, userId: user.id, preparation, seed, instrumentation, evidence };
+		return {
+			agentId,
+			userId: user.id,
+			preparation,
+			seed,
+			instrumentation,
+			evidence,
+			memoryOn: config.memory?.enabled === true,
+			threadIds: new Set(),
+		};
 	}
 
 	private newEvidence(): AgentRunEvidence {
@@ -496,6 +577,7 @@ export class EvalAgentExecutionService {
 		world: EvalAgentWorld,
 		input: AgentInput,
 		options: InstanceAiEvalAgentExecutionRequest,
+		memoryTurn?: MemoryTurn,
 	) {
 		const evidence = this.newEvidence();
 		world.evidence.current = evidence;
@@ -505,7 +587,7 @@ export class EvalAgentExecutionService {
 			world.seed,
 			evidence,
 			input,
-			options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+			{ timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS, memoryTurn },
 		);
 	}
 
@@ -627,10 +709,11 @@ export class EvalAgentExecutionService {
 		seed: InstanceAiEvalAgentScenarioSeed,
 		evidence: AgentRunEvidence,
 		input: AgentInput,
-		timeoutMs: number,
+		{ timeoutMs, memoryTurn }: { timeoutMs: number; memoryTurn?: MemoryTurn },
 	): Promise<{ output: InstanceAiEvalAgentExecutionResult; threadMessages?: AgentMessage[] }> {
 		const { config, skippedFeatures } = preparation;
 		const { recorder, toolLedger, credentialHelpers } = evidence;
+		const deadline = Date.now() + timeoutMs;
 		const budgetSignal = AbortSignal.timeout(timeoutMs);
 		let agent: RuntimeAgent;
 		try {
@@ -654,12 +737,22 @@ export class EvalAgentExecutionService {
 			config.config?.maxIterations ?? DEFAULT_MAX_ITERATIONS,
 			MAX_ITERATIONS_CAP,
 		);
+		const sideCalls: InstanceAiEvalAgentSideCallUsage[] = [];
+		if (memoryTurn) this.observeMemoryTasks(agent, memoryTurn);
 		let run: AgentRunOutput;
+		let memoryError: string | undefined;
 		try {
 			run = await this.generateWithAutoApprovals(agent, input, {
 				abortSignal: budgetSignal,
 				maxIterations,
+				...(memoryTurn ? { persistence: memoryTurn.persistence } : {}),
+				onSideCallUsage: (report) => {
+					sideCalls.push(sideCallUsageOf(report));
+				},
 			});
+			// Same agent, before it is closed: the next request builds a new runtime.
+			if (memoryTurn?.awaitMemory)
+				memoryError = await this.memoryNotSettled(agent, memoryTurn, deadline);
 		} catch (error) {
 			// Flush so the failure result carries the recorded response bodies too.
 			await recorder.flush();
@@ -676,10 +769,42 @@ export class EvalAgentExecutionService {
 			if (budgetSignal.aborted) void this.closeRuntime(agent);
 			else await this.closeRuntime(agent);
 		}
-		const output = this.executionResult(run, preparation, seed, evidence);
+		const output = withTurnExtras(this.executionResult(run, preparation, seed, evidence), {
+			sideCalls,
+			memoryError,
+		});
 		return output.success
 			? { output, threadMessages: threadMessagesOf(run, output.finalText) }
 			: { output };
+	}
+
+	/** Record the memory tasks that end during the turn. */
+	private observeMemoryTasks(agent: RuntimeAgent, memoryTurn: MemoryTurn): void {
+		agent.memoryTaskObserver((event) => {
+			const ended = endedMemoryTask(event);
+			if (ended) memoryTurn.tasks.push(ended);
+		});
+	}
+
+	/**
+	 * Wait for the turn's background memory work, then check no flagged memory
+	 * is left pending (an episodic task skipped on a held lock leaves them).
+	 * The reason the next session could not rely on memory, or undefined.
+	 */
+	private async memoryNotSettled(
+		agent: RuntimeAgent,
+		{ agentId, persistence }: MemoryTurn,
+		deadline: number,
+	): Promise<string | undefined> {
+		try {
+			await agent.waitForBackgroundTasks({ timeoutMs: Math.max(1, deadline - Date.now()) });
+		} catch (error) {
+			return `memory not settled: ${error instanceof Error ? error.message : String(error)}`;
+		}
+		const reader = Container.get(EvalAgentMemoryReader);
+		const pending = await reader.pendingCandidateCount(agentId, persistence.resourceId);
+		if (pending === 0) return undefined;
+		return `memory not settled: ${String(pending)} flagged memories are still pending for ${persistence.resourceId}`;
 	}
 
 	private async closeRuntime(agent: RuntimeAgent) {
@@ -709,7 +834,12 @@ export class EvalAgentExecutionService {
 	private async generateWithAutoApprovals(
 		agent: RuntimeAgent,
 		input: AgentInput,
-		options: { abortSignal: AbortSignal; maxIterations: number },
+		options: {
+			abortSignal: AbortSignal;
+			maxIterations: number;
+			persistence?: MemoryTurn['persistence'];
+			onSideCallUsage: (report: SideCallUsageReport) => void;
+		},
 	): Promise<AgentRunOutput> {
 		const autoApprovedToolNames = new Set<string>();
 		const segmentToolCalls: NonNullable<GenerateResult['toolCalls']> = [];
@@ -891,6 +1021,21 @@ export class EvalAgentExecutionService {
 			),
 		};
 	}
+}
+
+/** Add the turn's side-call usage, and fail it when memory did not settle. */
+function withTurnExtras(
+	output: InstanceAiEvalAgentExecutionResult,
+	{
+		sideCalls,
+		memoryError,
+	}: { sideCalls: InstanceAiEvalAgentSideCallUsage[]; memoryError?: string },
+): InstanceAiEvalAgentExecutionResult {
+	return {
+		...output,
+		...(sideCalls.length > 0 ? { sideCallUsage: sideCalls } : {}),
+		...(memoryError ? { success: false, errors: [...output.errors, memoryError] } : {}),
+	};
 }
 
 // ---------------------------------------------------------------------------

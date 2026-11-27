@@ -3282,6 +3282,35 @@ export interface InstanceAiEvalAgentThreadEcho {
 	userMessage: string;
 }
 
+/** A background memory task that ended during the turn. */
+export interface InstanceAiEvalAgentMemoryTask {
+	taskKind: 'observer' | 'reflector' | 'episodic';
+	outcome: 'completed' | 'skipped' | 'failed';
+	error?: string;
+}
+
+/** What an eval Agent's memory holds for the simulated user after a turn (AGENT-1666). */
+export interface InstanceAiEvalAgentMemoryState {
+	/** Active observations of every thread of the resource, oldest first. */
+	observations: Array<{ threadId: string; marker: string; text: string }>;
+	/** Active episodic memory entries of the resource, oldest first. */
+	episodicEntries: Array<{ content: string; createdAt: string }>;
+	/** Flagged memories not yet turned into entries. */
+	pendingCandidates: number;
+	/** Memory tasks that ended during this turn. */
+	tasks: InstanceAiEvalAgentMemoryTask[];
+}
+
+/** One model call made beside the agent loop: title, observer, reflector, episodic. */
+export interface InstanceAiEvalAgentSideCallUsage {
+	task: 'title' | 'observer' | 'reflector' | 'episodic';
+	model: string;
+	inputTokens: number;
+	outputTokens: number;
+	/** USD, when the model has known pricing. */
+	cost?: number;
+}
+
 export interface InstanceAiEvalAgentExecutionResult {
 	runId: string;
 	/** The run completed without framework/model errors. Tool-level errors live on toolCalls[].error. */
@@ -3304,6 +3333,10 @@ export interface InstanceAiEvalAgentExecutionResult {
 	/** The memory config the run used, after `agentRun.keepMemory` and
 	 *  `configOverrides`. Absent: memory was off (stripped or never set). */
 	memoryConfig?: AgentJsonConfig['memory'];
+	/** Set on a thread turn with memory on: the stored memory after the turn. */
+	memory?: InstanceAiEvalAgentMemoryState;
+	/** Side-call model usage reported during the turn. Not in `usage`. */
+	sideCallUsage?: InstanceAiEvalAgentSideCallUsage[];
 }
 
 export class InstanceAiEvalAgentExecutionRequest extends Z.class({
@@ -3324,6 +3357,13 @@ export class InstanceAiEvalAgentExecutionRequest extends Z.class({
 	thread: instanceAiEvalAgentThreadTurnSchema.optional(),
 	/** Memory and config variants of the run (AGENT-1666). Omitted: memory stripped. */
 	agentRun: instanceAiEvalAgentRunOptionsSchema.optional(),
+	/**
+	 * With memory on and `thread` set: before responding, wait for the turn's
+	 * background memory work (observer, reflector, episodic) to finish, and fail
+	 * the turn with "memory not settled" if flagged memories are still pending.
+	 * The harness sets it on the last turn of every session but the final one.
+	 */
+	awaitMemory: z.boolean().optional(),
 }) {}
 
 export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
