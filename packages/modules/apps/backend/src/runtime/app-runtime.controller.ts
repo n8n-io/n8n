@@ -56,6 +56,7 @@ import { AppPreviewService } from '../preview/app-preview.service';
 import { AppHostService, type AppHostKind } from '../serving/app-host.service';
 import type { AppVersion } from '../versions/app-version.entity';
 import { AppVersionRepository } from '../versions/app-version.repository';
+import { AppAgentTurnLimiter } from './app-agent-turn-limiter';
 
 export const APP_RUNTIME_MAX_BODY_BYTES = 1024 * 1024;
 const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
@@ -100,6 +101,12 @@ export interface AppRuntimeRequest<P = Record<string, string>> extends Request<P
 type KeyRequest = AppRuntimeRequest<{ key: string }>;
 type RunRequest = AppRuntimeRequest<{ key: string; executionId: string }>;
 
+/** A resolved agent request. `open` starts the turn after the turn limits admit it. */
+interface AgentTurnRequest {
+	ctx: AppCallContext;
+	open: () => Promise<AppAgentTurn>;
+}
+
 async function run(handler: RequestHandler, req: Request, res: Response) {
 	await new Promise<void>((resolve, reject) => {
 		void handler(req, res, (error?: unknown) => (error ? reject(ensureError(error)) : resolve()));
@@ -137,6 +144,7 @@ export class AppRuntimeController {
 		private readonly agents: AppAgentPort,
 		private readonly logger: Logger,
 		private readonly events: EventService,
+		private readonly agentTurns: AppAgentTurnLimiter,
 	) {}
 
 	/** App hosts bypass the main server middleware, so this parses cookies and bodies itself. */
@@ -267,21 +275,29 @@ export class AppRuntimeController {
 
 	@Post('/agents/:key/chat', routeOptions)
 	async chat(req: KeyRequest, res: Response) {
-		await this.stream(res, async (signal) => {
+		await this.stream(res, (signal) => {
 			const { ctx, binding } = this.resolve(req, 'agent', 'chat');
 			const body = parse(appAgentChatRequestSchema, req.body, 'The message is invalid.');
-			const turn = await this.agents.chat(ctx, binding.agentId, body, signal);
-			this.interacted(req, 'agent_message');
-			return turn;
+			return {
+				ctx,
+				open: async () => {
+					const turn = await this.agents.chat(ctx, binding.agentId, body, signal);
+					this.interacted(req, 'agent_message');
+					return turn;
+				},
+			};
 		});
 	}
 
 	@Post('/agents/:key/chat/resume', routeOptions)
 	async resume(req: KeyRequest, res: Response) {
-		await this.stream(res, async (signal) => {
+		await this.stream(res, (signal) => {
 			const { ctx, binding } = this.resolve(req, 'agent', 'chat');
 			const body = parse(appAgentResumeRequestSchema, req.body, 'The resume request is invalid.');
-			return await this.agents.resume(ctx, binding.agentId, body, signal);
+			return {
+				ctx,
+				open: async () => await this.agents.resume(ctx, binding.agentId, body, signal),
+			};
 		});
 	}
 
@@ -476,19 +492,32 @@ export class AppRuntimeController {
 		}
 	}
 
-	/** Refusals answer as JSON before the stream opens. Failures inside the run become SSE `error` events. */
-	private async stream(res: Response, open: (signal: AbortSignal) => Promise<AppAgentTurn>) {
+	/**
+	 * Refusals answer as JSON before the stream opens. Failures inside the run become SSE `error` events.
+	 * The turn slot is held until the run stops, including after the visitor disconnects.
+	 */
+	private async stream(res: Response, prepare: (signal: AbortSignal) => AgentTurnRequest) {
 		const abortController = new AbortController();
 		res.once('close', () => abortController.abort());
 
-		let turn: AppAgentTurn;
+		let release = () => {};
 		try {
-			turn = await open(abortController.signal);
-		} catch (error) {
-			this.sendError(res, error);
-			return;
+			let turn: AppAgentTurn;
+			try {
+				const { ctx, open } = prepare(abortController.signal);
+				release = this.agentTurns.claim(ctx);
+				turn = await open();
+			} catch (error) {
+				this.sendError(res, error);
+				return;
+			}
+			await this.sendEvents(res, turn);
+		} finally {
+			release();
 		}
+	}
 
+	private async sendEvents(res: Response, turn: AppAgentTurn) {
 		res.status(200).set({
 			'Content-Type': 'text/event-stream; charset=UTF-8',
 			'Cache-Control': 'no-cache, no-transform',

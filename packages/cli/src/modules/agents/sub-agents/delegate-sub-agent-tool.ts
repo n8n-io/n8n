@@ -13,6 +13,7 @@ import type { BudgetGuardrailConfig, SubAgentRunPolicy, SubAgentSource } from '@
 import { ResponseError, OperationalError, UserError } from '@n8n/errors';
 
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
+import { budgetSessionKey } from '../budget-guardrail';
 import { resolveSandboxFileRefs } from '../agent-sandbox-files.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { hostMetadataExecutionId } from '../types/agent-queued-message';
@@ -111,7 +112,10 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 					...runContext,
 					...(parentEpisodicScope !== undefined ? { parentEpisodicScope } : {}),
 					planTask: readPlanTaskContext(request.parentHostMetadata),
-					...rootBudgetSession(runContext, parentBudget, request.parentThreadId),
+					...rootBudgetSession(runContext, parentBudget, {
+						threadId: request.parentThreadId,
+						resourceId: request.parentResourceId,
+					}),
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }
 						: {}),
@@ -144,7 +148,10 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 			const context = {
 				...runContext,
 				planTask: readPlanTaskContext(request.parentHostMetadata),
-				...rootBudgetSession(runContext, parentBudget, request.parentThreadId),
+				...rootBudgetSession(runContext, parentBudget, {
+					threadId: request.parentThreadId,
+					resourceId: request.parentResourceId,
+				}),
 				...(request.parentExecutionCounter !== undefined
 					? { executionCounter: request.parentExecutionCounter }
 					: {}),
@@ -200,10 +207,11 @@ function positiveSessionCap(budget: BudgetGuardrailConfig | undefined): number |
 	return cap;
 }
 
+/** A child of the root run spends from the root's session bucket, so its spend counts against the same cap. */
 function rootBudgetSession(
 	runContext: SubAgentRunContext,
 	parentBudget: BudgetGuardrailConfig | undefined,
-	parentThreadId: string | undefined,
+	parent: { threadId?: string; resourceId?: string },
 ): Pick<SubAgentRunContext, 'rootSessionId' | 'rootSessionCapUsd' | 'budgetForwarded'> {
 	if (runContext.budgetForwarded) {
 		const cap = runContext.rootSessionCapUsd;
@@ -214,7 +222,14 @@ function rootBudgetSession(
 		};
 	}
 	return {
-		rootSessionId: parentThreadId,
+		rootSessionId:
+			parent.threadId === undefined
+				? undefined
+				: budgetSessionKey({
+						agentId: runContext.parentAgentId,
+						threadId: parent.threadId,
+						resourceId: parent.resourceId,
+					}),
 		rootSessionCapUsd: positiveSessionCap(parentBudget),
 		budgetForwarded: true,
 	};

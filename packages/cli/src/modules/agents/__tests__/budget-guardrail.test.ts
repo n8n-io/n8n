@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import { classifyGatewayError } from '../utils/gateway-error-classifier';
 
 import { AgentBudgetAlertService } from '../agent-budget-alert.service';
-import { withBudgetGuardrail } from '../budget-guardrail';
+import { budgetSessionKey, withBudgetGuardrail } from '../budget-guardrail';
 
 /** Ledger for these tests. `add` ignores a repeated `callId`. */
 function spendLedger(): SpendLedger {
@@ -319,5 +319,58 @@ describe('withBudgetGuardrail', () => {
 		);
 
 		expect(budgetAlert.notifyMonthlyThreshold).not.toHaveBeenCalled();
+	});
+});
+
+describe('budgetSessionKey', () => {
+	const day = new Date('2026-11-27T23:59:00.000Z');
+
+	it.each([
+		['a Preview chat', 'draft-chat:user-1'],
+		['an integration chat', 'integration:slack:U1'],
+		['a task run', 'task:task-1'],
+		['a run without a resource', undefined],
+	])('uses the root thread for %s', (_, resourceId) => {
+		expect(budgetSessionKey({ agentId: 'agent-1', threadId: 'thread-1', resourceId }, day)).toBe(
+			'thread-1',
+		);
+	});
+
+	it('uses one key for every thread of an app visitor on one UTC day', () => {
+		const resourceId = 'app:app-1:user:user-1';
+		const first = budgetSessionKey({ agentId: 'agent-1', threadId: 'thread-1', resourceId }, day);
+		const second = budgetSessionKey({ agentId: 'agent-1', threadId: 'thread-2', resourceId }, day);
+
+		expect(first).toBe('agent-1:app:app-1:user:user-1:2026-11-27');
+		expect(second).toBe(first);
+	});
+
+	it('starts a new app visitor key on the next UTC day', () => {
+		const scope = { agentId: 'agent-1', threadId: 'thread-1', resourceId: 'app:app-1:user:user-1' };
+		const nextDay = new Date('2026-11-28T00:00:00.000Z');
+
+		expect(budgetSessionKey(scope, nextDay)).toBe('agent-1:app:app-1:user:user-1:2026-11-28');
+	});
+
+	it('keeps the key of another agent or visitor apart', () => {
+		const key = (agentId: string, resourceId: string) =>
+			budgetSessionKey({ agentId, threadId: 'thread-1', resourceId }, day);
+
+		expect(key('agent-2', 'app:app-1:user:user-1')).not.toBe(
+			key('agent-1', 'app:app-1:user:user-1'),
+		);
+		expect(key('agent-1', 'app:app-1:user:user-2')).not.toBe(
+			key('agent-1', 'app:app-1:user:user-1'),
+		);
+	});
+
+	it('fits the ledger key column for the longest app visitor key', () => {
+		const uuid = '0190a8d6-4a2e-4000-8000-000000000001';
+		const key = budgetSessionKey(
+			{ agentId: 'aBcDeFgHiJkLmNoP', threadId: 'thread-1', resourceId: `app:${uuid}:user:${uuid}` },
+			day,
+		);
+
+		expect(key.length).toBeLessThanOrEqual(128);
 	});
 });

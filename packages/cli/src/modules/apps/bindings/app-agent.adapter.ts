@@ -18,6 +18,7 @@ import { Container, Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 
 import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
+import { appVisitorMemoryResourceId } from '@/modules/agents/utils/agent-memory-scope';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 /** `integrationType` and execution `source` of turns that an app starts. */
@@ -247,9 +248,9 @@ export class AppAgentAdapter extends AppAgentPort {
 		);
 	}
 
-	/** One thread per app, visitor, and session. */
+	/** One thread per app, visitor, and session. The resource is the visitor, which also keys the session cost cap. */
 	private memoryScope(ctx: AppCallContext, bound: BoundAgent, sessionId: string) {
-		const resourceId = `app:${ctx.appId}:user:${ctx.userId}`;
+		const resourceId = appVisitorMemoryResourceId(ctx.appId, ctx.userId);
 		return { threadId: `${bound.agentId}:${resourceId}:${sessionId}`, resourceId };
 	}
 

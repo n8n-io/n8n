@@ -2881,6 +2881,71 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(hooks.filter((hook) => hook.after)).toHaveLength(1);
 	});
 
+	it.each([
+		[
+			'every thread of an app visitor',
+			'app:app-1:user:user-1',
+			expect.stringMatching(/^agent-1:app:app-1:user:user-1:\d{4}-\d{2}-\d{2}$/),
+		],
+		['the thread of an integration chat', 'platform-user-1', 'thread-1'],
+	])('keys the session cost cap on %s', async (_, resourceId, expectedKey) => {
+		const { service, runtimeCacheService } = makeService();
+		const runtime = {
+			...makeRuntime([{ type: 'finish', finishReason: 'stop' }]),
+			budget: { enabled: true, sessionCostCapUsd: 1 },
+		};
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForChatPublished({
+				agentId,
+				projectId,
+				message: 'Hello',
+				memory: { threadId: 'thread-1', resourceId },
+				integrationType: 'app',
+				sandboxPrincipalHash: integrationPrincipalHash,
+			}),
+		);
+
+		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
+		const budgetHook = options.guardrails?.hooks?.find((hook) => hook.after);
+		await budgetHook?.before?.({} as never);
+
+		expect(Container.get(AgentSpendLedger).read).toHaveBeenCalledWith(expectedKey);
+	});
+
+	it('keys the session cost cap of a resumed app turn on the visitor', async () => {
+		const { service, runtimeCacheService, checkpointStorage } = makeService();
+		const runtime = makeRuntime(undefined, undefined, { enabled: true, sessionCostCapUsd: 1 });
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: makeCheckpoint({}, { threadId: 'thread-1', resourceId: 'app:app-1:user:user-1' }),
+		});
+
+		await collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { approved: true },
+				usePublishedVersion: true,
+				integrationType: 'app',
+				source: 'app',
+			}),
+		);
+
+		const options = runtime.agent.resume.mock.calls[0]?.[2] as ExecutionOptions | undefined;
+		const budgetHook = options?.guardrails?.hooks?.find((hook) => hook.after);
+		if (!budgetHook?.before) throw new Error('Expected a budget guardrail hook');
+		await budgetHook.before({} as never);
+
+		expect(Container.get(AgentSpendLedger).read).toHaveBeenCalledWith(
+			expect.stringMatching(/^agent-1:app:app-1:user:user-1:\d{4}-\d{2}-\d{2}$/),
+		);
+	});
+
 	it('attaches the tool guardrails saved on the published runtime to the turn', async () => {
 		const { service, agentRepository, runtimeCacheService, executionService } = makeService();
 		agentRepository.isN8nChatPublished.mockResolvedValue(true);

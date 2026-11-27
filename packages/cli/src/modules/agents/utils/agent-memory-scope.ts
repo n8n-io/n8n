@@ -55,6 +55,15 @@ export function isIntegrationMemoryResourceId(
 	return resourceId?.startsWith(INTEGRATION_MEMORY_RESOURCE_PREFIX) === true;
 }
 
+/** One visitor of one app. Every session of the visitor shares it. */
+export function appVisitorMemoryResourceId(appId: string, userId: string): string {
+	return `app:${appId}:user:${userId}`;
+}
+
+export function isAppVisitorMemoryResourceId(resourceId: string | undefined): resourceId is string {
+	return resourceId?.startsWith('app:') === true;
+}
+
 export function taskRunMemoryResourceId(taskId: string): string {
 	return `task:${taskId}`;
 }
