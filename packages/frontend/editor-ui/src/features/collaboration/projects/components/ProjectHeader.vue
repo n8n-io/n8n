@@ -73,7 +73,7 @@ async function onToggleProjectFavorite() {
 const projectPages = useProjectPages();
 
 const props = defineProps<
-	SlotProjectHeaderProps & { excludedCreateActions?: Array<'agent' | 'folder'> }
+	SlotProjectHeaderProps & { disableAgentCreation?: boolean; hideFolderCreation?: boolean }
 >();
 
 const emit = defineEmits<{
@@ -248,7 +248,7 @@ const createAgentButton = computed(() => ({
 	value: ACTION_TYPES.AGENT,
 	label: i18n.baseText('projects.header.create.agent'),
 	size: 'mini' as const,
-	disabled: !canCreateAgent.value,
+	disabled: props.disableAgentCreation || !canCreateAgent.value,
 }));
 
 const canCreateApp = computed(
@@ -285,10 +285,7 @@ const createSelfHealingButton = computed(() => ({
 }));
 
 const selectedMainButtonType = computed(() => {
-	if (
-		props.mainButton === ACTION_TYPES.AGENT &&
-		(!settingsStore.isAgentsEnabled || props.excludedCreateActions?.includes(ACTION_TYPES.AGENT))
-	) {
+	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isAgentsEnabled) {
 		return ACTION_TYPES.WORKFLOW;
 	}
 	if (props.mainButton === ACTION_TYPES.APP && !settingsStore.isAppsEnabled) {
@@ -360,7 +357,7 @@ const menu = computed(() => {
 		});
 	}
 
-	if (showFolders.value) {
+	if (showFolders.value && !props.hideFolderCreation) {
 		items.push({
 			value: ACTION_TYPES.FOLDER,
 			label: i18n.baseText('projects.header.create.folder'),
@@ -388,7 +385,7 @@ const menu = computed(() => {
 		items.push({
 			value: ACTION_TYPES.AGENT,
 			label: i18n.baseText('projects.header.create.agent'),
-			disabled: !canCreateAgent.value,
+			disabled: createAgentButton.value.disabled,
 		});
 	}
 
@@ -400,9 +397,7 @@ const menu = computed(() => {
 		});
 	}
 
-	return items.filter(
-		({ value }) => !props.excludedCreateActions?.some((action) => action === value),
-	);
+	return items;
 });
 
 const showProjectIcon = computed(() => {

@@ -149,13 +149,6 @@ const canFilterByFolder = computed(() =>
 );
 const showFolders = computed(() => canFilterByFolder.value && canReadAgent.value);
 
-const excludedCreateActions = computed(() => {
-	const excluded: Array<'agent' | 'folder'> = [];
-	if (!canListAgents.value || !canCreateAgent.value) excluded.push('agent');
-	if (!canListAgents.value || !showFolders.value) excluded.push('folder');
-	return excluded;
-});
-
 // Exposure covers both arms: control users see the default empty state, test users
 // the templates intro. The source mirrors the layout's empty-state condition, so a
 // filtered list never counts, and includes the variant so a late flag or Instance AI
@@ -536,7 +529,8 @@ onMounted(async () => {
 			<template #header>
 				<ProjectHeader
 					main-button="agent"
-					:excluded-create-actions="excludedCreateActions"
+					:disable-agent-creation="!canListAgents || !canCreateAgent"
+					:hide-folder-creation="!canListAgents || !showFolders"
 					@create-folder="createFolder"
 				>
 					<InsightsSummary

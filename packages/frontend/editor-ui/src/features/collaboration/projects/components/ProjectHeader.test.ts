@@ -83,7 +83,7 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="action-agent" @click="$emit('action', 'agent')">Agent</button>
 			<button data-test-id="action-app" @click="$emit('action', 'app')">App</button>
 			<div data-test-id="add-resource-actions" >
-				<button v-for="action in $props.actions" :key="action.value" :data-test-id="'menu-' + action.value"></button>
+				<button v-for="action in $props.actions" :key="action.value" :data-test-id="'menu-' + action.value" :disabled="action.disabled" @click="$emit('action', action.value)"></button>
 			</div>
 		</div>
 	`,
@@ -846,19 +846,29 @@ describe('ProjectHeader', () => {
 			expect(getByTestId('add-resource-agent')).toBeEnabled();
 		});
 
-		it('omits the agent create action from both the main button and menu when excluded', () => {
+		it('keeps Create agent disabled while permitted dropdown actions still work', async () => {
 			settingsStore.isAgentsEnabled = true;
 			const project = createTestProject({ scopes: ['workflow:create', 'agent:create'] });
 			projectsStore.currentProject = project;
 			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
 
 			const { getByTestId, queryByTestId } = renderComponent({
-				props: { mainButton: 'agent', excludedCreateActions: ['agent'] },
+				props: { mainButton: 'agent', disableAgentCreation: true },
 			});
 
-			expect(queryByTestId('add-resource-agent')).not.toBeInTheDocument();
+			expect(getByTestId('add-resource-agent')).toBeDisabled();
+			expect(queryByTestId('add-resource-workflow')).not.toBeInTheDocument();
 			expect(queryByTestId('menu-agent')).not.toBeInTheDocument();
-			expect(getByTestId('add-resource-workflow')).toBeEnabled();
+			expect(getByTestId('menu-credential')).toBeDisabled();
+			const workflowAction = getByTestId('menu-workflow');
+			expect(workflowAction).toBeEnabled();
+			await userEvent.click(workflowAction);
+			expect(mockPush).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: VIEWS.NEW_WORKFLOW,
+					query: expect.objectContaining({ projectId: project.id }),
+				}),
+			);
 		});
 
 		it('should disable agent create button when no scope allows it', () => {

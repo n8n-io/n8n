@@ -211,6 +211,7 @@ vi.mock('@/app/components/layouts/ResourcesListLayout.vue', async () => {
 			},
 			template: `
 				<div data-test-id="resources-list-layout">
+					<slot name="header" />
 					<div data-test-id="resources-refreshing">{{ String(resourcesRefreshing) }}</div>
 					<div data-test-id="resources-total">{{ totalItems }}</div>
 					<slot v-if="$slots.unavailable" name="unavailable" />
@@ -279,7 +280,11 @@ const mountView = async () => {
 				},
 				AgentFolderToolbar: true,
 				AgentFolderDialog: true,
-				ProjectHeader: { template: '<div><slot /></div>' },
+				ProjectHeader: {
+					name: 'ProjectHeader',
+					props: ['mainButton', 'disableAgentCreation'],
+					template: '<div><slot /></div>',
+				},
 				InsightsSummary: true,
 				N8nEmptyState: {
 					props: ['heading', 'description'],
@@ -1008,7 +1013,6 @@ describe('AgentsListView — empty state templates', () => {
 		'shows a permission state instead of creation actions with templates enabled: %s',
 		async (showTemplates) => {
 			listableProjects.value = ['project-2'];
-			agentCreateAllowed.value = false;
 			templatesEnabled.value = showTemplates;
 			foldersEnabled.value = true;
 			mocks.routeFolderId = 'folder-1';
@@ -1018,6 +1022,10 @@ describe('AgentsListView — empty state templates', () => {
 
 			expect(wrapper.text()).toContain('agents.list.noPermission.heading');
 			expect(wrapper.text()).toContain('agents.list.noPermission.description');
+			expect(wrapper.getComponent({ name: 'ProjectHeader' }).props()).toMatchObject({
+				mainButton: 'agent',
+				disableAgentCreation: true,
+			});
 			expect(wrapper.find('[data-test-id="agents-list-intro"]').exists()).toBe(false);
 			expect(wrapper.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(false);
 			expect(mocks.listAgentsPage).not.toHaveBeenCalled();
@@ -1050,6 +1058,9 @@ describe('AgentsListView — empty state templates', () => {
 		const wrapper = await mountView();
 
 		expect(wrapper.text()).toContain('agents.list.empty.readOnly.heading');
+		expect(wrapper.getComponent({ name: 'ProjectHeader' }).props('disableAgentCreation')).toBe(
+			true,
+		);
 		expect(wrapper.find('[data-test-id="agents-list-intro"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(false);
 		expect(trackTemplatesExposure).not.toHaveBeenCalled();
