@@ -34,12 +34,12 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { NodeTypesProxy } from '@n8n/backend-services';
 
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
-import { EngineControlPlaneTransport } from './engine-control-plane-transport';
-import { EngineCredentialsClient } from './engine-credentials-client';
-import { EngineWorkflowResolveClient } from './engine-workflow-resolve-client';
+import { EngineControlPlaneTransport } from './control-plane/engine-control-plane-transport';
+import { EngineCredentialsClient } from './credentials/engine-credentials-client';
+import { EngineWorkflowResolveClient } from './workflow-resolve/engine-workflow-resolve-client';
 import { EngineMtls } from './engine-mtls';
-import { RemoteCredentialsHelper } from './remote-credentials-helper';
-import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
+import { RemoteCredentialsHelper } from './credentials/remote-credentials-helper';
+import { RemoteDataTableProxyProvider } from './data-tables/remote-data-table-proxy-provider';
 
 export interface EngineV2RuntimeOptions {
 	/** The data plane end of the execution channel for responses. */

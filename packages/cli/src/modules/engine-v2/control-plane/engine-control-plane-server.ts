@@ -9,15 +9,15 @@ import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
 
 import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-auth.middleware';
-import { EngineCredentialsController } from './engine-credentials.controller';
-import { EngineDataTablesController } from './engine-data-tables.controller';
-import { EngineMtls } from './engine-mtls';
+import { EngineCredentialsController } from '../credentials/engine-credentials.controller';
+import { EngineDataTablesController } from '../data-tables/engine-data-tables.controller';
+import { EngineMtls } from '../engine-mtls';
 import {
 	CREDENTIALS_RESOLVE_PATH,
 	DATA_TABLES_CALL_PATH,
 	WORKFLOWS_RESOLVE_PATH,
-} from './engine-v2.constants';
-import { EngineWorkflowResolveController } from './engine-workflow-resolve.controller';
+} from '../engine-v2.constants';
+import { EngineWorkflowResolveController } from '../workflow-resolve/engine-workflow-resolve.controller';
 
 /**
  * Provides services for the engine in the data plane: credentials, data tables,

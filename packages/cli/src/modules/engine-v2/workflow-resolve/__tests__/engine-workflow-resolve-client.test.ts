@@ -2,7 +2,7 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { OperationalError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
+import type { EngineControlPlaneTransport } from '../../control-plane/engine-control-plane-transport';
 import { EngineWorkflowResolveClient } from '../engine-workflow-resolve-client';
 import type {
 	ResolvedErrorWorkflow,

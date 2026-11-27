@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import type { ActionScope } from '@n8n/engine';
 import { mintActionToken } from '@n8n/engine';
 
-import { EngineMtls } from './engine-mtls';
+import { EngineMtls } from '../engine-mtls';
 
 /**
  * Builds the HTTP clients that call the control plane server.

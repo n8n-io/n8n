@@ -11,7 +11,7 @@ import {
 	EngineV2LifecycleSubscriptions,
 	type LifecycleEventReceiver,
 } from '../engine-lifecycle-event-subscriptions';
-import { SUBSCRIBE_TIMEOUT_MS } from '../webhook-response/webhook-response-registry.service';
+import { SUBSCRIBE_TIMEOUT_MS } from '../../webhook-response/webhook-response-registry.service';
 
 const completed: LifecycleEvent = {
 	type: 'execution:completed',

@@ -10,10 +10,10 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
 import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { RedisClientService } from '@n8n/backend-services';
 
-import { EngineControlPlaneServer } from '../engine-control-plane-server';
+import { EngineControlPlaneServer } from '../control-plane/engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
 import { EngineMtls } from '../engine-mtls';
-import { EngineV2LifecycleSubscriptions } from '../engine-lifecycle-event-subscriptions';
+import { EngineV2LifecycleSubscriptions } from '../lifecycle-events/engine-lifecycle-event-subscriptions';
 import { EngineV2Module } from '../engine-v2.module';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { ExecutionChannelReceiver } from '../execution-channel/execution-channel-receiver';

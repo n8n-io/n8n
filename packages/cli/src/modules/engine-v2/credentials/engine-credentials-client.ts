@@ -3,10 +3,10 @@ import { Service } from '@n8n/di';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { OperationalError } from '@n8n/errors';
 
-import { EngineControlPlaneTransport } from './engine-control-plane-transport';
+import { EngineControlPlaneTransport } from '../control-plane/engine-control-plane-transport';
 import { isResolveCredentialResponse } from './engine-credentials.contract';
 import type { ResolveCredentialRequest } from './engine-credentials.contract';
-import { CREDENTIALS_RESOLVE_PATH } from './engine-v2.constants';
+import { CREDENTIALS_RESOLVE_PATH } from '../engine-v2.constants';
 
 /**
  * Asks the control plane server for the decrypted data of one credential.

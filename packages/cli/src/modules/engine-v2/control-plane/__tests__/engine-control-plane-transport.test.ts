@@ -4,7 +4,7 @@ import { InvalidActionTokenError, verifyActionToken } from '@n8n/engine';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
-import type { EngineMtls } from '../engine-mtls';
+import type { EngineMtls } from '../../engine-mtls';
 
 const authSecret = 'a'.repeat(32);
 

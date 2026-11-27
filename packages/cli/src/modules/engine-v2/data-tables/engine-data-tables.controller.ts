@@ -5,7 +5,7 @@ import { BadRequestError } from '@n8n/errors';
 
 import { dataTableCallRequestSchema } from './engine-data-tables.contract';
 import { EngineDataTablesService } from './engine-data-tables.service';
-import { DATA_TABLES_CALL_REFUSED_STATUS } from './engine-v2.constants';
+import { DATA_TABLES_CALL_REFUSED_STATUS } from '../engine-v2.constants';
 
 /**
  * Serves `POST /internal/data-tables/call` for the engine v2 data plane.
