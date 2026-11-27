@@ -1601,6 +1601,35 @@ describe('WorkflowSettingsVue', () => {
 			);
 		});
 
+		it('should show the execution logic badges and their variants', async () => {
+			workflowDocumentStore.setSettings({ binaryMode: BINARY_MODE_COMBINED });
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+
+			const expectedBadges = [
+				{ label: 'Legacy', variant: 'subtle' },
+				{ label: 'Recommended', variant: 'success' },
+				{ label: 'Experimental', variant: 'warning' },
+			] as const;
+
+			expect(dropdownItems).toHaveLength(expectedBadges.length);
+			expectedBadges.forEach(({ label, variant }, index) => {
+				const option = dropdownItems[index];
+				if (!option) {
+					throw new Error(`Missing execution logic option ${label}`);
+				}
+				const badge = within(option as HTMLElement)
+					.getByText(label)
+					.closest('.n8n-badge');
+				expect(badge).toHaveClass(variant);
+			});
+		});
+
 		it('should set binaryMode to separate when selecting v0', async () => {
 			workflowDocumentStore.setSettings({ executionOrder: 'v1', binaryMode: BINARY_MODE_COMBINED });
 
