@@ -4,10 +4,12 @@ import { FoldStepRegistry } from '@n8n/db';
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { InstanceSettings } from 'n8n-core';
 
 import { ExecutionLimitAudit } from '../execution-limit-audit.entity';
 import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
+import { ExecutionUsageCache } from '../execution-usage-cache';
 import { ExecutionLimitsModule } from '../execution-limits.module';
 import { ExecutionLimitsSnapshot } from '../execution-limits-snapshot';
 import { ProjectExecutionLimit } from '../project-execution-limit.entity';
@@ -15,9 +17,13 @@ import { ProjectExecutionLimit } from '../project-execution-limit.entity';
 describe('ExecutionLimitsModule', () => {
 	let registry: FoldStepRegistry;
 	let licenseState: ReturnType<typeof mockInstance<LicenseState>>;
+	let usageCache: ReturnType<typeof mockInstance<ExecutionUsageCache>>;
 
 	beforeEach(() => {
 		licenseState = mockInstance(LicenseState);
+		usageCache = mockInstance(ExecutionUsageCache);
+		mockInstance(ExecutionLimitsSnapshot);
+		mockInstance(InstanceSettings, { instanceType: 'main' });
 		registry = new FoldStepRegistry();
 		Container.set(FoldStepRegistry, registry);
 		// The repository of the step reads the manager when it is built.
@@ -42,7 +48,24 @@ describe('ExecutionLimitsModule', () => {
 
 		expect(registry.getAll().map((step) => step.name)).toEqual(['execution_limit_usage']);
 		expect(snapshot.start).not.toHaveBeenCalled();
+		expect(usageCache.start).not.toHaveBeenCalled();
 	});
+
+	it.each([
+		['worker', 0],
+		['main', 1],
+		['webhook', 1],
+	] as const)(
+		'on a %s instance starts the usage cache %i times when licensed',
+		async (instanceType, calls) => {
+			licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
+			mockInstance(InstanceSettings, { instanceType });
+
+			await new ExecutionLimitsModule().init();
+
+			expect(usageCache.start).toHaveBeenCalledTimes(calls);
+		},
+	);
 
 	it('loads the limits on init, before the process takes work', async () => {
 		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);

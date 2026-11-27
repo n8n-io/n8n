@@ -8221,6 +8221,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../../core
     devDependencies:
       '@n8n/backend-test-utils':
         specifier: workspace:*
