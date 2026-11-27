@@ -9,8 +9,17 @@ import { parityNodeTypes } from './node-registry';
 import type { EngineRunner, RawOutcome } from './runner';
 import { CASE_TIMEOUT_MS, TimeoutError, withTimeout } from './runner';
 
+/**
+ * The trigger items, each paired with the trigger input of the same index.
+ * Engine v1 gives trigger output this lineage when the trigger runs. Engine v2
+ * gets the items as trigger outputs and does not run the trigger, so the
+ * runners set the lineage for both engines.
+ */
 export function toExecutionData(items: IrItem[]): INodeExecutionData[] {
-	return items.map((item) => ({ json: jsonParse<IDataObject>(JSON.stringify(item.json)) }));
+	return items.map((item, index) => ({
+		json: jsonParse<IDataObject>(JSON.stringify(item.json)),
+		pairedItem: { item: index },
+	}));
 }
 
 /**
