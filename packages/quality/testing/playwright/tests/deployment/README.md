@@ -36,6 +36,11 @@ TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly \
 TEST_IMAGE_REDIS=valkey/valkey:9.2.1-alpine \
 pnpm --filter n8n-playwright test:deployment tests/deployment/valkey.spec.ts
 
+# ENV-16: queue mode against a 3-node Redis Cluster
+TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly \
+TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly \
+pnpm --filter n8n-playwright test:deployment tests/deployment/redis-cluster.spec.ts
+
 # PLT-04: standalone SQLite upgrade from 2.x stable to 3.x nightly (3.x channel only)
 TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:v3-nightly \
 TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:v3-nightly \
@@ -53,6 +58,7 @@ To test the `3.x` channel, replace `nightly` with `v3-nightly` (`v3-nightly`, `v
 | `CRT-01` (`amd64`), `CRT-01`/`IMG-04`/`IMG-08` (`arm64`) | `cloud-image-pair.spec.ts` | Pointer-compressed `-pc` image (for example `ghcr.io/n8n-io/n8n:nightly-pc`) | Distroless runner (for example `ghcr.io/n8n-io/runners:nightly-distroless`) | `runCodeNodes({ python: true })` (JS + Python Code nodes), distroless runner, image architecture, V8 pointer compression enabled |
 | `DEP-05` | `redis-7.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`), `runWebhook()` + `runCodeNodes()`, `INFO server` reports engine `redis` and major version `7`, Bull job counter advances |
 | `DEP-06` | `valkey.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`) with `TEST_IMAGE_REDIS=valkey/valkey:9.2.1-alpine`, `runWebhook()` + `runCodeNodes()`, `INFO server` reports engine `valkey` and major version `9`, Bull job counter advances |
+| `ENV-16` | `redis-cluster.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`, `services: ['redisCluster']`), `runWebhook()`, all 3 cluster nodes healthy across 16384 slots, `MOVED` redirect and cluster slot routing on `{bull}:jobs:id`, main and worker process execution via Redis cluster client |
 | `PLT-04` (`3.x` channel) | `upgrade-2x-to-3x.spec.ts` | 3.x standard image (for example `ghcr.io/n8n-io/n8n:v3-nightly`) | Internal (`N8N_RUNNERS_MODE=internal`) | Boots standalone SQLite on `TEST_IMAGE_N8N_UPGRADE_FROM` (2.x stable), seeds workflow, credential, execution, active webhook, and filesystem binary file in `~/.n8n/binaryData`, upgrades via `replaceN8N()`, verifies `binaryData/` renamed to `storage/`, and confirms all seeded state and webhook still work |
 
 ## Parameters
@@ -76,6 +82,7 @@ To test the `3.x` channel, replace `nightly` with `v3-nightly` (`v3-nightly`, `v
 | `cloud-image-pair.spec.ts` | `@cell:CRT-01` (`amd64`) and `@cell:CRT-01`/`@cell:IMG-04`/`@cell:IMG-08` (`arm64`) spec for `-pc` n8n with the distroless task runner |
 | `redis-7.spec.ts` | `@cell:DEP-05` spec for queue mode against pinned Redis 7 |
 | `valkey.spec.ts` | `@cell:DEP-06` spec for queue mode against pinned Valkey |
+| `redis-cluster.spec.ts` | `@cell:ENV-16` spec for queue mode against a 3-node Redis Cluster |
 | `upgrade-2x-to-3x.spec.ts` | `@cell:PLT-04` spec for standalone SQLite 2.x stable to 3.x nightly upgrade |
 
 ## CI

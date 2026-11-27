@@ -8227,6 +8227,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../../core
     devDependencies:
       '@n8n/backend-test-utils':
         specifier: workspace:*
@@ -10231,6 +10234,9 @@ importers:
       get-port:
         specifier: ^7.1.0
         version: 7.1.0
+      ioredis:
+        specifier: 5.3.2
+        version: 5.3.2(supports-color@8.1.1)
       kafkajs:
         specifier: 'catalog:'
         version: 2.2.4

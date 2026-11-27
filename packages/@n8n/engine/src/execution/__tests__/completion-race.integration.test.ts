@@ -93,6 +93,8 @@ async function setup(dataSource: DataSource, graph: WorkflowGraph, queued: strin
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		parent: null,
+		errorSource: null,
+		resolveErrorWorkflowOnFailure: false,
 		lifecycleEventSubscription: { kind: 'all' },
 	});
 	await stepStore.createSteps(executionId, [
