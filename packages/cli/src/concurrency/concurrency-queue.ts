@@ -49,7 +49,8 @@ export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 
 			this.capacity++;
 
-			this.resolveNext();
+			// Removing a waiter does not free a running slot. The next waiter
+			// must only be released when an active execution calls dequeue().
 		}
 	}
 
