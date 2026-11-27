@@ -10,6 +10,8 @@ vi.mock('../../src/utils/eval-agents', () => ({
 
 import { createEvalAgent } from '../../src/utils/eval-agents';
 import { verifyBuildExpectations } from '../build-expectations/verifier';
+import { AGENT_RUNTIME_EXPECTATIONS_VERIFY_PROMPT } from '../system-prompts/agent-runtime-expectations-verify';
+import { BUILD_EXPECTATIONS_VERIFY_PROMPT } from '../system-prompts/build-expectations-verify';
 import type { ConversationMetrics, TranscriptTurn } from '../types';
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
@@ -345,5 +347,52 @@ describe('verifyBuildExpectations', () => {
 		const [buildBlock] = messages[0].content;
 		expect(buildBlock.text).toContain('(no workflow built)');
 		expect(buildBlock.text).not.toContain('## Agent');
+	});
+
+	describe("with subject 'agent-runtime'", () => {
+		function judgeOk(): GenerateMock {
+			const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+				structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+			});
+			mockJudge(generate);
+			return generate;
+		}
+
+		it('judges with the agent-runtime instructions, and the builder keeps its own', async () => {
+			judgeOk();
+			await verifyBuildExpectations(['quotes the price'], {
+				transcript: TRANSCRIPT,
+				subject: 'agent-runtime',
+			});
+			await verifyBuildExpectations(['asked first'], { transcript: TRANSCRIPT });
+
+			const [runtimeCall, builderCall] = mockCreateEvalAgent.mock.calls;
+			expect(runtimeCall?.[1].instructions).toBe(AGENT_RUNTIME_EXPECTATIONS_VERIFY_PROMPT);
+			expect(builderCall?.[1].instructions).toBe(BUILD_EXPECTATIONS_VERIFY_PROMPT);
+		});
+
+		it('sends the Agent context and the transcript, without the workflow, metrics, or token sections', async () => {
+			const generate = judgeOk();
+
+			await verifyBuildExpectations(['quotes the price'], {
+				transcript: TRANSCRIPT,
+				artifactContext: '## Agent under test\n\nSupport agent',
+				subject: 'agent-runtime',
+			});
+
+			const [messages] = generate.mock.calls[0] as [
+				Array<{ content: Array<{ text: string; providerOptions?: unknown }> }>,
+				unknown,
+			];
+			const [agentBlock, conversationBlock] = messages[0].content;
+			expect(agentBlock.text).toBe('## Agent under test\n\nSupport agent');
+			expect(agentBlock.providerOptions).toEqual({});
+			const sent = JSON.stringify(messages);
+			expect(conversationBlock.text).toContain('User: #general');
+			expect(conversationBlock.text).toContain('0. quotes the price');
+			expect(sent).not.toContain('(no workflow built)');
+			expect(sent).not.toContain('ground truth');
+			expect(sent).not.toContain('(no run debug captured)');
+		});
 	});
 });

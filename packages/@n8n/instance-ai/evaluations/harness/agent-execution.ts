@@ -347,13 +347,6 @@ async function verifyAgentChecklist(
 	};
 }
 
-/** Tells the shared expectations judge (written for the builder) what it is reading. */
-const AGENT_RUN_JUDGE_NOTE = [
-	'## What was tested',
-	'',
-	'This is a runtime test of the n8n Agent described below, not a build. No workflow was built, by design. In the expectations, "the agent" means this Agent. The conversation transcript is between a simulated user and this Agent. A new session is a new chat thread with the same user.',
-].join('\n');
-
 function keyedVerdict(
 	unit: AgentExpectationUnit,
 	verdict: BuildExpectationResult | undefined,
@@ -395,14 +388,10 @@ async function gradeAgentExpectations(
 	transcript: TranscriptTurn[],
 	artifact: VerificationArtifact,
 ): Promise<AgentScenarioVerdict> {
-	const artifactContext = [
-		AGENT_RUN_JUDGE_NOTE,
-		artifact.workflowContext,
-		artifact.scenarioContext,
-	].join('\n\n');
+	const artifactContext = [artifact.workflowContext, artifact.scenarioContext].join('\n\n');
 	const verdicts = await verifyBuildExpectations(
 		units.map((unit) => unit.text),
-		{ transcript, artifactContext },
+		{ transcript, artifactContext, subject: 'agent-runtime' },
 	);
 	const results = units.map((unit, index) => keyedVerdict(unit, verdicts[index]));
 	const checklist = units.map(

@@ -67,12 +67,14 @@ export function buildAssertionsBlock(assertions: string[]): string {
 export async function judgeExpectations(
 	messages: Message[],
 	assertions: string[],
+	/** System prompt. Defaults to the builder's expectations prompt. */
+	instructions: string = BUILD_EXPECTATIONS_VERIFY_PROMPT,
 ): Promise<BuildExpectationResult[]> {
 	if (assertions.length === 0) return [];
 
 	for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt++) {
 		const agent = createEvalAgent('eval-build-expectations-verifier', {
-			instructions: BUILD_EXPECTATIONS_VERIFY_PROMPT,
+			instructions,
 			cache: true,
 			model: JUDGE_MODEL,
 			judge: true,

@@ -360,6 +360,16 @@ describe('executeAgentScenario: per-expectation grading', () => {
 		expect(verifyChecklist).not.toHaveBeenCalled();
 	});
 
+	it('asks the judge for an agent-runtime verdict', async () => {
+		vi.mocked(verifyBuildExpectations).mockResolvedValue(verdicts(true, true));
+
+		await run(graded, []);
+
+		expect(vi.mocked(verifyBuildExpectations).mock.calls[0]?.[1]).toMatchObject({
+			subject: 'agent-runtime',
+		});
+	});
+
 	it('fails the scenario when any expectation fails', async () => {
 		vi.mocked(verifyBuildExpectations).mockResolvedValue(verdicts(true, false));
 
