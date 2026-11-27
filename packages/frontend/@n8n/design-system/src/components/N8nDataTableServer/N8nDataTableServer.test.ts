@@ -76,6 +76,20 @@ describe('N8nDataTableServer', () => {
 		});
 	});
 
+	it('renders the header slot of a column in place of its title', () => {
+		const slotName = 'header.id' as `header.${string}`;
+		const { container } = render(N8nDataTableServer<Item>, {
+			props: { items, headers, itemsLength: items.length },
+			slots: { [slotName]: () => '🍌 header' },
+		});
+
+		const titles = Array.from(container.querySelectorAll('thead th'), (th) =>
+			th.textContent?.trim(),
+		);
+		expect(titles[0]).toBe('🍌 header');
+		expect(titles.slice(1)).toEqual(headers.slice(1).map((header) => header.title));
+	});
+
 	it('uses the server page count when a source exceeds the page size', async () => {
 		const { getByTestId, getByRole } = render(N8nDataTableServer<Item>, {
 			props: {

@@ -10,7 +10,7 @@ import {
 	fetchNodeTypeSummaries,
 	fetchNodeTypeUsage,
 	fetchProjectPolicies,
-	saveInstancePolicy,
+	setInstanceTypeAccess,
 } from './type-availability-policies.api';
 
 const { makeRestApiRequest, get } = vi.hoisted(() => ({
@@ -45,17 +45,18 @@ describe('instance policy requests', () => {
 	});
 
 	it.each([
-		['node', '/node-type-policies/instance'],
-		['credential', '/credential-type-policies/instance'],
-	] as const)('saves the %s policy to %s with its version', async (kind, endpoint) => {
-		await saveInstancePolicy(context, kind, { rules: [], defaultAction: 'deny', version: 3 });
+		['node', '/node-type-policies/instance/access'],
+		['credential', '/credential-type-policies/instance/access'],
+	] as const)(
+		'sends the access changes of the %s types to %s with the version',
+		async (kind, endpoint) => {
+			const body = { changes: [{ type: 'a', access: 'deny' as const }], version: 3 };
 
-		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'PUT', endpoint, {
-			rules: [],
-			defaultAction: 'deny',
-			version: 3,
-		});
-	});
+			await setInstanceTypeAccess(context, kind, body);
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'PATCH', endpoint, body);
+		},
+	);
 });
 
 describe('project policy requests', () => {
