@@ -52,7 +52,7 @@ const relations: Array<[projectId: string, user: UserName, role: string, created
 
 const cases: Array<[rule: string, resource: Resource, owner: UserName | null]> = [
 	[
-		'the personal project owner before a publisher',
+		'the personal project owner when no publisher is a member',
 		{ projectId: 'personal-alice', publications: [['dave', 'activated']] },
 		'alice',
 	],

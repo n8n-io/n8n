@@ -43,6 +43,6 @@ describe.each(['workflow:manageOwner', 'agent:manageOwner'] as const)('%s scope'
 	});
 });
 
-it('applies workflow:manageOwner only through the home project of a workflow', () => {
+it('grants workflow:manageOwner to the workflow owner role', () => {
 	expect(WORKFLOW_SHARING_OWNER_SCOPES).toContain('workflow:manageOwner');
 });

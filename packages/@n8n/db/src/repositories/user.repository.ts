@@ -256,11 +256,6 @@ export class UserRepository extends BaseRepository<User> {
 		return [...new Set(users.map(({ id }) => id))];
 	}
 
-	/**
-	 * Find the user that owns the personal project that owns the workflow.
-	 *
-	 * Returns null if the workflow does not exist or is owned by a team project.
-	 */
 	async findInstanceOwnerId(ctx: OperationContext) {
 		const instanceOwner = await this.managerFor(ctx).findOne(User, {
 			select: { id: true },
@@ -269,6 +264,11 @@ export class UserRepository extends BaseRepository<User> {
 		return instanceOwner?.id ?? null;
 	}
 
+	/**
+	 * Find the user that owns the personal project that owns the workflow.
+	 *
+	 * Returns null if the workflow does not exist or is owned by a team project.
+	 */
 	async findPersonalOwnerForWorkflow(workflowId: string): Promise<User | null> {
 		return await this.findOne({
 			where: {

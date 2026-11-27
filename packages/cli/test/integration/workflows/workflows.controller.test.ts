@@ -176,10 +176,15 @@ describe('POST /workflows', () => {
 	};
 
 	test('should make the creating user the owner', async () => {
-		const response = await authOwnerAgent.post('/workflows').send(makeWorkflow());
+		const project = await createTeamProject(undefined, anotherMember);
+		await linkUserToProject(member, project, 'project:editor');
+
+		const response = await authMemberAgent
+			.post('/workflows')
+			.send({ ...makeWorkflow(), projectId: project.id });
 
 		const stored = await workflowRepository.findOneByOrFail({ id: response.body.data.id });
-		expect(stored.ownerUserId).toBe(owner.id);
+		expect(stored.ownerUserId).toBe(member.id);
 	});
 
 	test('should store pin data for node in workflow', async () => {

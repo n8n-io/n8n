@@ -29,6 +29,7 @@ const agents: OwnedTable = {
 	publishHistoryKey: 'agentId',
 };
 
+// Irreversible: after this runs, users also set owners, and a down() cannot tell those apart from backfilled owners.
 export class BackfillOwnerUserIdOnWorkflowsAndAgents1794915015737 implements IrreversibleMigration {
 	async up(ctx: MigrationContext) {
 		for (const table of [workflows, agents]) {
