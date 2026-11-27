@@ -39,7 +39,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import { ManualExecutionCancelledError, createRunExecutionData } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, UserError } from '@n8n/errors';
 import type PCancelable from 'p-cancelable';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -1708,6 +1708,34 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 		});
 
+		// Regression test for CET-178: a missing sub-workflow is a user error, so
+		// executeWorkflow must throw a non-reportable UserError that names the ID.
+		it.each<WorkflowExecuteMode>(['manual', 'chat'])(
+			'throws a UserError naming the missing sub-workflow ID in %s mode without starting a sub-execution',
+			async (executionMode) => {
+				activeExecutions.add.mockClear();
+				workflowRepository.get.mockResolvedValueOnce(null);
+
+				const promise = executeWorkflow(
+					{ id: 'deleted-workflow-id' },
+					mock<IWorkflowExecuteAdditionalData>({ rootExecutionMode: undefined }),
+					mockExecuteOptions({
+						loadedWorkflowData: undefined,
+						loadedRunData: undefined,
+						executionMode,
+						parentWorkflowId: 'parent-123',
+					}),
+				);
+
+				await expect(promise).rejects.toBeInstanceOf(UserError);
+				await expect(promise).rejects.toMatchObject({
+					shouldReport: false,
+					message: expect.stringContaining('deleted-workflow-id'),
+				});
+				expect(activeExecutions.add).not.toHaveBeenCalled();
+			},
+		);
+
 		describe('cancellation from the parent', () => {
 			// A child run that stays in flight until the test finishes it.
 			const startPendingChild = () => {
@@ -2219,12 +2247,18 @@ describe('WorkflowExecuteAdditionalData', () => {
 			globalConfig.tags.disabled = false;
 		});
 
-		it('should throw error when workflow does not exist', async () => {
-			workflowRepository.get.mockResolvedValue(null);
+		// Regression test for CET-178: a missing sub-workflow is a user error, so it
+		// must throw a non-reportable UserError that names the workflow ID.
+		it('should throw a UserError naming the workflow ID when workflow does not exist', async () => {
+			workflowRepository.get.mockResolvedValueOnce(null);
 
-			await expect(
-				getPublishedWorkflowData({ id: 'non-existent' }, 'parent-workflow-id'),
-			).rejects.toThrow('Workflow does not exist');
+			const promise = getPublishedWorkflowData({ id: 'non-existent' }, 'parent-workflow-id');
+
+			await expect(promise).rejects.toBeInstanceOf(UserError);
+			await expect(promise).rejects.toMatchObject({
+				shouldReport: false,
+				message: expect.stringContaining('non-existent'),
+			});
 		});
 
 		it('should use provided workflow code when id is not provided', async () => {
@@ -2418,6 +2452,34 @@ describe('WorkflowExecuteAdditionalData', () => {
 			// Should use draft nodes/connections even without active version
 			expect(result.nodes).toEqual(draftNodes);
 			expect(result.connections).toEqual(draftConnections);
+		});
+
+		// Regression test for CET-178: a missing sub-workflow is a user error, so it
+		// must throw a non-reportable UserError that names the workflow ID.
+		it('should throw a UserError naming the workflow ID when workflow does not exist', async () => {
+			workflowRepository.get.mockResolvedValueOnce(null);
+
+			const promise = getDraftWorkflowData({ id: 'missing-workflow-id' }, 'parent-workflow-id');
+
+			await expect(promise).rejects.toBeInstanceOf(UserError);
+			await expect(promise).rejects.toMatchObject({
+				shouldReport: false,
+				message: expect.stringContaining('missing-workflow-id'),
+			});
+		});
+
+		// Regression test for CET-178: an expression that resolves to an empty string
+		// reaches fetchWorkflowData and must throw a non-reportable UserError.
+		it('should throw a UserError when the workflow ID is empty', async () => {
+			workflowRepository.get.mockResolvedValueOnce(null);
+			onTestFinished(() => {
+				workflowRepository.get.mockReset();
+			});
+
+			const promise = getDraftWorkflowData({ id: '' }, 'parent-workflow-id');
+
+			await expect(promise).rejects.toBeInstanceOf(UserError);
+			await expect(promise).rejects.toMatchObject({ shouldReport: false });
 		});
 	});
 
