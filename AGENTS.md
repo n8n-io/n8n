@@ -44,8 +44,9 @@ frontend, and extensible node-based workflow engine.
   engineer could challenge in 12 months, say so in one line and let the
   human decide. Read [docs/adr/README.md](docs/adr/README.md) before you
   write one. CI enforces its conventions
-- **Developing v3 features:** land normal feature work on `master` behind an
-  opt-in flag; introduce breaking changes only on the `3.x` branch. See
+- **Developing on v3:** after cutover, target `master` for new work. Use maintenance
+  branches only for approved backports. Check the release plan before introducing
+  breaking changes. See
   [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
 - The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
   error messages, prompts). Only internal identifiers, i18n keys, telemetry, and

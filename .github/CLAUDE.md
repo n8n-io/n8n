@@ -9,7 +9,7 @@ This folder contains n8n's GitHub Actions infrastructure.
 | File/Folder | Purpose |
 |-------------|---------|
 | `WORKFLOWS.md` | Complete CI/CD documentation |
-| `DEVELOPING_V3.md` | How to develop v3 features (master + 3.x branch model, opt-in flags) |
+| `DEVELOPING_V3.md` | Development on `master` after the v3 cutover, feature flags, and test images |
 | `workflows/` | GitHub Actions workflows |
 | `actions/` | Reusable composite actions |
 | `scripts/` | Release & Docker automation |

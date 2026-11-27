@@ -540,8 +540,7 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │                                                                            │
 │  Inputs:                                                                   │
 │  ├─ release-type: patch │ minor │ major │ experimental │ premajor          │
-│  ├─ base-branch: default master                                            │
-│  └─ prerelease: skip release channel and branch maintenance                │
+│  └─ base-branch: default master                                            │
 │                          │                                                 │
 │                          ▼                                                 │
 │  STAGE 2: CI Validation                                                    │
@@ -556,7 +555,7 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │  ├─ publish-to-npm                                                         │
 │  │   ├─ trim-fe-packageJson.js ───▶ Strip devDeps                          │
 │  │   ├─ ensure-provenance-fields.mjs ───▶ Add license fields               │
-│  │   └─ npm publish (tag: rc or latest)                                    │
+│  │   └─ Publish public packages with the release track's npm tag           │
 │  ├─ publish-to-docker-hub ────────▶ docker-build-push.yml                  │
 │  │   ├─ Build the application once on amd64                                │
 │  │   ├─ Build/push images on native amd64 + arm64 runners                  │
@@ -569,24 +568,29 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │  └─ trigger-release-note (stable only)                                     │
 │                          │                                                 │
 │                          ▼                                                 │
-│  STAGE 4: Channel Promotion (optional)                                     │
+│  STAGE 4: Docker Channel Promotion                                         │
 │  ──────────────────────────────────────                                    │
-│  Trigger: Manual release-push-to-channel.yml                               │
-│  ├─ beta ─────▶ npm tags: next, beta                                       │
-│  └─ stable ───▶ npm tags: latest, stable                                   │
+│  release-publish-post-release.yml calls release-push-to-channel.yml        │
+│  ├─ beta ─────▶ Docker Hub and GHCR tags: beta, next                        │
+│  └─ stable ───▶ Docker Hub and GHCR tags: stable, latest                    │
 │                                                                            │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### npm `latest` promotion
+The n8n v3 application ships as Docker images. The `n8n` npm package is private
+on v3; the publish job still publishes public libraries and developer tools.
+`release-push-to-channel.yml` updates the n8n and runner aliases in both registries.
+It does not move npm tags. In a normal minor release, the new version enters
+`beta` and the previous beta moves to `stable`.
+
+### npm `latest` for public packages
 
 `release-set-stable-npm-packages-to-latest.yml` sets npm `latest` from the Git
 `stable` tag for public `@n8n/*` packages, `n8n-core`, `n8n-editor-ui`,
 `n8n-nodes-base`, and `n8n-workflow`. The three standalone packages
 `@n8n/create-node`, `@n8n/eslint-plugin-community-nodes`, and
 `@n8n/scan-community-package` follow npm `beta` when available and do not
-downgrade a newer `latest`. The channel promotion workflow manages `n8n@latest`
-separately.
+downgrade a newer `latest`. This workflow does not publish the v3 application.
 
 ### Release PR verification
 
@@ -634,6 +638,12 @@ namespaces. Minor and patch releases continue to bump only changed packages and
 their dependents.
 
 ### Recovering a failed release
+
+The npm-based procedure below applies to releases that publish the `n8n` package.
+It does not apply to the Docker-only v3 application. For v3, inspect the original
+run, Git tag, GitHub release, and versioned Docker images in both registries before
+retrying failed jobs. If recovery requires a new version, confirm the procedure with
+the release owner. Do not bypass the npm check just because the v3 package is private.
 
 If the pipeline publishes `n8n@X.Y.Z` to npm and then fails, that version is
 burned — npm versions are immutable. Recovery depends on how far it got:
@@ -1069,8 +1079,7 @@ on "Expected". The routes that skip the evaluation are in the shared workflow's
 `ownership-checks/actions/required-reviews/evaluate.mjs` file. An
 exempt PR reports `success`. Only heads in this repository can match a route,
 so the shared workflow still evaluates a fork branch with a matching name.
-Add a route only when somebody already reviewed every commit that it carries, as with
-`sync/master-to-3x -> 3.x`: its commits landed on `master` first.
+Add a route only when somebody already reviewed every commit that it carries.
 
 The shared workflow reads OWNERS from `master` only, never from the base branch
 or the PR. Thus, a PR cannot lift its own review requirement. A retarget
@@ -1377,8 +1386,7 @@ working tree is touched, so the branch is left exactly as it was, that job **fai
 green runs hiding a stalled branch) and `#alerts-security` gets a run link — while the other
 branch still syncs. Recovery is deliberate: merge the public base into the branch locally,
 resolve, push, then re-run the workflow — and that resolution then lives in the merge commit
-instead of being re-litigated on every later run. The sync never resolves a conflict itself,
-unlike `util-sync-master-to-3x.yml`.
+instead of causing the same conflict in later runs. The sync does not resolve conflicts.
 
 See **[`../AGENTS.md`](../AGENTS.md)** ("Security Fix Hygiene") for the naming rules that
 keep the vulnerability out of public branch names, commits, and test descriptions.
