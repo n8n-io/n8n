@@ -539,8 +539,9 @@ const formatTimeoutCap = (capSeconds: number) => {
 			interpolate: { first: parts[0], second: parts[1] },
 		});
 	}
+	// This branch is only hours, minutes, and seconds. The separators stay in the translation.
 	return i18n.baseText('workflowSettings.timeoutMaximum.list', {
-		interpolate: { items: parts.slice(0, -1).join(', '), last: parts[parts.length - 1] },
+		interpolate: { first: parts[0], second: parts[1], third: parts[2] },
 	});
 };
 
@@ -554,19 +555,23 @@ const executionTimeoutTooltip = computed(() => {
 });
 
 // The cap is one total. Each field stops at the time still available.
+// A loaded value above that cap stays in range. The field must not rewrite it on blur.
 const timeoutFieldMax = computed(() => {
 	const cap = executionTimeoutCapSeconds.value;
-	const { hours, minutes } = timeoutHMS.value;
+	const { hours, minutes, seconds } = timeoutHMS.value;
 	if (cap === undefined) {
 		return { hours: undefined, minutes: TIMEOUT_FIELD_MAX, seconds: TIMEOUT_FIELD_MAX };
 	}
 
-	const maxHours = Math.floor(cap / 3600);
-	const maxMinutes = Math.min(
-		TIMEOUT_FIELD_MAX,
-		Math.max(0, Math.floor((cap - hours * 3600) / 60)),
+	const maxHours = Math.max(hours, Math.floor(cap / 3600));
+	const maxMinutes = Math.max(
+		minutes,
+		Math.min(TIMEOUT_FIELD_MAX, Math.max(0, Math.floor((cap - hours * 3600) / 60))),
 	);
-	const maxSeconds = Math.min(TIMEOUT_FIELD_MAX, Math.max(0, cap - hours * 3600 - minutes * 60));
+	const maxSeconds = Math.max(
+		seconds,
+		Math.min(TIMEOUT_FIELD_MAX, Math.max(0, cap - hours * 3600 - minutes * 60)),
+	);
 	return { hours: maxHours, minutes: maxMinutes, seconds: maxSeconds };
 });
 
@@ -591,9 +596,11 @@ const clampTimeout = (value: ITimeoutHMS): ITimeoutHMS => {
 	return { hours, minutes, seconds };
 };
 
-const setTheTimeout = (key: string, value: string | number | null | undefined) => {
+const setTheTimeout = (key: keyof ITimeoutHMS, value: string | number | null | undefined) => {
 	const parsed = typeof value === 'number' ? value : value ? parseInt(value, 10) : 0;
 	const time = Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0;
+	// A blur emits the current value again. Leave the other parts unchanged.
+	if (timeoutHMS.value[key] === time) return;
 
 	timeoutHMS.value = clampTimeout({
 		...timeoutHMS.value,
@@ -1137,7 +1144,9 @@ onMounted(async () => {
 		workflowSettings.value.credentialResolverId = undefined;
 	}
 
-	timeoutHMS.value = clampTimeout(convertToHMS(workflowSettingsData.executionTimeout));
+	// Keep a saved timeout that is above the instance cap. Save reports that value.
+	// A clamp here changes the timeout when the user saves another setting.
+	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
 	isLoading.value = false;
 
 	void externalHooks.run('workflowSettings.dialogVisibleChanged', {

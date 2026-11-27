@@ -6124,7 +6124,7 @@
 	"workflowSettings.timeoutMaximum.second": "1 second",
 	"workflowSettings.timeoutMaximum.seconds": "{count} seconds",
 	"workflowSettings.timeoutMaximum.pair": "{first} and {second}",
-	"workflowSettings.timeoutMaximum.list": "{items}, and {last}",
+	"workflowSettings.timeoutMaximum.list": "{first}, {second}, and {third}",
 	"workflowSettings.helpTexts.executionTimeoutToggle": "Whether to cancel workflow execution after a defined time",
 	"workflowSettings.helpTexts.saveDataErrorExecution": "Whether to save data of executions that fail",
 	"workflowSettings.helpTexts.saveDataSuccessExecution": "Whether to save data of executions that finish successfully",

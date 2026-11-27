@@ -607,6 +607,25 @@ describe('WorkflowSettingsVue', () => {
 			});
 		});
 
+		it('lists every unit of the instance maximum in the timeout tooltip', async () => {
+			useRootStore().setMaxExecutionTimeout(3723);
+			workflowDocumentStore.setSettings({ executionTimeout: 60 });
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const help = within(getByTestId('workflow-settings-timeout-form')).getByRole('button', {
+				name: 'More info about Timeout After',
+			});
+			await hoverTooltipTrigger(help);
+
+			await waitFor(() => {
+				expect(getTooltip()).toHaveTextContent(
+					'How long the workflow should wait before timing out. The maximum is 1 hour, 2 minutes, and 3 seconds.',
+				);
+			});
+		});
+
 		it('keeps the fields within the instance maximum', async () => {
 			useRootStore().setMaxExecutionTimeout(3600);
 
@@ -631,6 +650,38 @@ describe('WorkflowSettingsVue', () => {
 					settings: expect.objectContaining({ executionTimeout: 3600 }),
 				}),
 			);
+		});
+
+		it('keeps a stored timeout above the instance maximum and rejects the save', async () => {
+			useRootStore().setMaxExecutionTimeout(3600);
+			workflowDocumentStore.setSettings({ executionTimeout: 7323 });
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			const form = getByTestId('workflow-settings-timeout-form');
+			expect(getTimeoutInput(form, 'hours')).toHaveValue('2');
+			expect(getTimeoutInput(form, 'minutes')).toHaveValue('2');
+			expect(getTimeoutInput(form, 'seconds')).toHaveValue('3');
+
+			await userEvent.click(getTimeoutInput(form, 'hours'));
+			await userEvent.tab();
+			await userEvent.tab();
+
+			expect(getTimeoutInput(form, 'hours')).toHaveValue('2');
+			expect(getTimeoutInput(form, 'minutes')).toHaveValue('2');
+			expect(getTimeoutInput(form, 'seconds')).toHaveValue('3');
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(toast.showError).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Maximum Timeout is: 1 hours, 0 minutes, 0 seconds',
+				}),
+				'Problem saving settings',
+				expect.anything(),
+			);
+			expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('rejects a timeout of zero and does not save', async () => {
