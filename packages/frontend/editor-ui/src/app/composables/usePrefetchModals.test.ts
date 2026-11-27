@@ -334,7 +334,8 @@ describe('usePrefetchModals', () => {
 			expect(isModalPrefetchRunning()).toBe(false);
 		});
 
-		it('prefers the shell loader for a shell key', async () => {
+		it('prefers the shell loader when a module registers the same key', async () => {
+			modalRegistry.register({ key: WORKFLOW_SETTINGS_MODAL_KEY, component: moduleLoader });
 			renderModulePage([WORKFLOW_SETTINGS_MODAL_KEY]);
 
 			await runNextIdle();

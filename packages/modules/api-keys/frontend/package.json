@@ -34,7 +34,6 @@
     "change-case": "catalog:",
     "element-plus": "catalog:frontend",
     "luxon": "catalog:",
-    "n8n-workflow": "workspace:*",
     "pinia": "catalog:frontend",
     "reka-ui": "^2.5.0",
     "vue": "catalog:frontend",
