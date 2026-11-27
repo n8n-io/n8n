@@ -118,6 +118,8 @@ export const overrides = {
 	getPromotionProviderRepositories: { exclude: 'Not reviewed yet' },
 	getPromotionProviderRepositoryBranches: { exclude: 'Not reviewed yet' },
 	getPromotionProviders: { exclude: 'Not reviewed yet' },
+	getPromotionReview: { exclude: 'Not reviewed yet' },
+	getPromotionReviews: { exclude: 'Not reviewed yet' },
 	getPromotionSettings: { exclude: 'Not reviewed yet' },
 	getRateLimitSettings: { exclude: 'Not reviewed yet' },
 	getRole: { exclude: 'Not reviewed yet' },

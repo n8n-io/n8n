@@ -13,6 +13,7 @@ import { EvaluationCollectionRepository, EvaluationConfigRepository } from '@n8n
 import { Service } from '@n8n/di';
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { Telemetry } from '@/telemetry';
 
 import { runMetricScales } from '../metric-scales';
@@ -107,6 +108,13 @@ export class EvalInsightsService {
 			throw new ForbiddenError('AI Assistant license required for eval-collection insights');
 		}
 
+		// The insights are built from case inputs and outputs, which come from run
+		// data. A custom project role can hold `workflow:read` without `execution:read`.
+		// Check before the cache lookup so a cached envelope is not served either.
+		if (!(await userHasScopes(user, ['execution:read'], false, { workflowId }))) {
+			throw new NotFoundError('Collection not found');
+		}
+
 		const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(collectionId, workflowId);
 		if (!detail) {
 			throw new NotFoundError('Collection not found');
@@ -128,6 +136,7 @@ export class EvalInsightsService {
 		const config = await this.evalConfigRepo.findByIdAndWorkflowId(
 			detail.collection.evaluationConfigId,
 			workflowId,
+			{},
 		);
 		// Default scales from the current config (name-based heuristic when gone).
 		// Each run overrides these with its own frozen snapshot below, so a later

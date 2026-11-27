@@ -1,3 +1,4 @@
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { getWorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
@@ -13,7 +14,6 @@ import {
 	type IRunExecutionData,
 	type IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { ActiveExecutions } from '@/active-executions';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
@@ -80,7 +80,8 @@ export type CallableWorkflowStartedRun = {
 	executionId: string;
 	/**
 	 * Settles when the execution finishes, also after the wait ended. A caller
-	 * with its own run cap holds its slot until then.
+	 * with its own run cap holds its slot until then. A run that reaches a Wait
+	 * node settles it too, and the part that resumes later is not counted.
 	 */
 	finished: Promise<void>;
 } & (
@@ -178,7 +179,9 @@ export class CallableWorkflowRunner {
 		if (!release) return { status: 'busy' };
 		let executionId: string;
 		try {
-			executionId = await this.workflowRunner.run(toRunData(workflow, trigger.node, parsed.data));
+			executionId = await this.workflowRunner.run(
+				toRunData(workflow, projectId, trigger.node, parsed.data),
+			);
 		} catch (error) {
 			release();
 			throw error;
@@ -205,7 +208,7 @@ export class CallableWorkflowRunner {
 	/** Returns a release function, or `null` when the limit is full. */
 	private claimRunSlot(): (() => void) | null {
 		const max = this.workflowsConfig.callableMaxConcurrentRuns;
-		if (max > 0 && this.inFlight >= max) return null;
+		if (max !== -1 && this.inFlight >= max) return null;
 		this.inFlight++;
 		return () => {
 			this.inFlight--;
@@ -294,7 +297,9 @@ export class CallableWorkflowRunner {
 
 function toInputJsonSchema(trigger: CallableTrigger): CallableWorkflowInputSchema {
 	if (listWorkflowInputFields(trigger.node).length === 0) return OPEN_INPUT_SCHEMA;
-	const generated: unknown = zodToJsonSchema(inferInputSchema(trigger.node, trigger.triggerType));
+	const generated: unknown = zodSchemaToJsonSchema(
+		inferInputSchema(trigger.node, trigger.triggerType),
+	);
 	if (!isRecord(generated) || !isRecord(generated.properties)) return OPEN_INPUT_SCHEMA;
 	const { properties, required, additionalProperties } = generated;
 	return {
@@ -310,18 +315,18 @@ function toInputJsonSchema(trigger: CallableTrigger): CallableWorkflowInputSchem
 
 function toRunData(
 	workflow: WorkflowEntity,
+	projectId: string,
 	triggerNode: INode,
 	input: IDataObject,
 ): IWorkflowExecutionDataProcess {
 	const pinData: IPinData = { [triggerNode.name]: [{ json: input }] };
 	return {
 		executionMode: 'integrated',
-		workflowData: {
-			...workflow,
-			// Only a run that fails to start ends before the wait, and it is read back from its
-			// execution row. A success comes from memory, so the owner's success setting stays.
-			settings: { ...workflow.settings, saveDataErrorExecution: 'all' },
-		},
+		// Queue mode sends the job to the worker pool of the project, and lifecycle events name it.
+		projectId,
+		// The owner's save settings stay. A failed run that is not saved and that ends before the
+		// wait reads back as `unknown`.
+		workflowData: workflow,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
 		pinData,
 		executionData: createRunExecutionData({
@@ -360,13 +365,17 @@ function toRunOutcome(
 ): RunOutcome {
 	const normalised = normaliseExecutionStatus(status);
 	if (normalised === 'success') {
-		// The items of the last node, from all of its main outputs.
+		// The items of the node that ran last, from all of its main outputs. In a loop, that node
+		// is not always the last key of `runData`.
 		const runData = data?.resultData?.runData;
-		const lastNodeItems = runData ? Object.values(collectResultData(runData, false))[0] : undefined;
+		const lastNode = data?.resultData?.lastNodeExecuted;
+		const source =
+			runData && lastNode && runData[lastNode] ? { [lastNode]: runData[lastNode] } : runData;
+		const lastNodeItems = source ? Object.values(collectResultData(source, false))[0] : undefined;
 		return { status: 'success', output: Array.isArray(lastNodeItems) ? lastNodeItems : [] };
 	}
 	if (normalised === 'error') {
-		const failedNode = nodes.find((node) => node.name === data?.resultData.lastNodeExecuted);
+		const failedNode = nodes.find((node) => node.name === data?.resultData?.lastNodeExecuted);
 		return {
 			status: 'error',
 			error: {

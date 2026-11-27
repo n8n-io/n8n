@@ -158,7 +158,7 @@ function emitTextLikeChunk(
 /** Map tool chunks to SSE events. */
 function emitToolChunk(
 	chunk: Extract<
-		StreamChunk,
+		AgentExecutionStreamChunk,
 		{
 			type:
 				| 'tool-input-start'
@@ -219,6 +219,7 @@ function emitToolChunk(
 				output: toolResultOutputForSse(chunk.output, chunk.isError),
 				...(chunk.isError !== undefined && { isError: chunk.isError }),
 				...(toolResultChunk.canceled !== undefined && { canceled: toolResultChunk.canceled }),
+				...(toolResultChunk.simulation && { simulation: toolResultChunk.simulation }),
 			});
 			break;
 		}

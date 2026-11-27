@@ -94,6 +94,8 @@ async function seed(waits: Partial<Record<'wait-a' | 'wait-b', WaitDeclaration>>
 		workflow: { nodes: [] },
 		triggerOutputs: null,
 		parent: null,
+		errorSource: null,
+		resolveErrorWorkflowOnFailure: false,
 		callerContext: { hostMode: 'webhook' },
 		responseExpectation: { kind: 'none' },
 	});

@@ -1,4 +1,8 @@
-import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
+import type {
+	ExpressionEvaluationOutcome,
+	IExpressionEvaluator,
+	ObservabilityProvider,
+} from '@n8n/expression-runtime';
 import {
 	classifyExpressionError,
 	errorOriginOf,
@@ -16,13 +20,13 @@ import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
-import { evaluateNatively } from './expressions/native-evaluation';
-import type { NativeFallbackReason } from './expressions/native-evaluation/evaluator';
 import {
 	canVerifyNatively,
+	evaluateNatively,
 	NativeVerifier,
+	type NativeFallbackReason,
 	type NativeVerifyMismatch,
-} from './expressions/native-evaluation/verify';
+} from './expressions/native-evaluation';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -41,7 +45,8 @@ const isSyntaxError = (error: unknown): error is SyntaxError =>
 const isExpressionError = (error: unknown): error is ExpressionError =>
 	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
 
-export type { NativeVerifyMismatch } from './expressions/native-evaluation/verify';
+export type { NativeVerifyMismatch } from './expressions/native-evaluation';
+export type { ExpressionEvaluationOutcome } from '@n8n/expression-runtime';
 
 const JSON_STRING_OR_SEPARATOR = /"(?:[^"\\]|\\.)*"|:|,(?=")/g;
 
@@ -59,14 +64,6 @@ const isTypeError = (error: unknown): error is TypeError =>
 setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
-
-/**
- * What one engine did with one expression. `errorClass` names the failure without its message.
- * `errorOrigin` tells where a QuickJS failure started, when the bridge knows it.
- */
-export type ExpressionEvaluationOutcome =
-	| { ok: true; value: unknown }
-	| { ok: false; error: unknown; errorClass: string; errorOrigin?: string };
 
 export interface ExpressionShadowContext {
 	/** The expression after `extendSyntax`, as the engines receive it. */
@@ -413,6 +410,7 @@ export class Expression {
 					verifySample,
 					options.reportNativeVerifyMismatch,
 					options.canReportNativeVerifyMismatch,
+					LoggerProxy,
 				)
 			: undefined;
 		if (verifySample > 0 && this.nativeEvaluation) {
@@ -634,7 +632,7 @@ export class Expression {
 		canReportMismatch?: () => boolean,
 	): void {
 		this.nativeVerifier = reportMismatch
-			? new NativeVerifier(sample, reportMismatch, canReportMismatch)
+			? new NativeVerifier(sample, reportMismatch, canReportMismatch, LoggerProxy)
 			: undefined;
 	}
 	private static shouldVerifyNative(expression: string): boolean {

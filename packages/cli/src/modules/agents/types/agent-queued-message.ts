@@ -1,5 +1,9 @@
 import type { EpisodicScopeDecision, JSONObject, SerializableAgentState } from '@n8n/agents';
-import type { AgentMessageAuthor, AgentMessageIntegrationOrigin } from '@n8n/api-types';
+import type {
+	AgentChatMode,
+	AgentMessageAuthor,
+	AgentMessageIntegrationOrigin,
+} from '@n8n/api-types';
 import type { Author } from 'chat';
 import type {
 	BridgeExecutionContext,
@@ -35,6 +39,8 @@ export interface QueuedUserChatMessage extends QueuedMessageInput {
 	hidden?: boolean;
 	/** Set only by the Stop service. This turn cannot accept steering. */
 	stopReportId?: string;
+	/** Preview chat only: `test` asks for a test run. Absent means live. */
+	mode?: AgentChatMode;
 }
 
 /**
@@ -87,6 +93,8 @@ export type AgentQueueDispatch =
 			kind: QueuedUserChatMessage['kind'];
 			options?: Record<string, unknown>;
 			stopReportId?: string;
+			/** Kept with the dispatch: losing it would run a requested test run live. */
+			mode?: QueuedUserChatMessage['mode'];
 	  }
 	| (Omit<
 			QueuedIntegrationMessage,

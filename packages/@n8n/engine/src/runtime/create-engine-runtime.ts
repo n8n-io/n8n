@@ -41,6 +41,8 @@ import {
 	ReconciliationSweeper,
 	RunningStepDetector,
 	RunningStepRepair,
+	SettledStepDetector,
+	SettledStepRepair,
 } from '../reconciliation';
 import type { ExecutionResponseSender } from '../response-channel';
 import { RetentionSweeper } from '../retention';
@@ -212,6 +214,7 @@ export function createEngineRuntime({
 			lifecycleEventPublisherFactory,
 			responseSender,
 			cancelExecution,
+			logger,
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
@@ -232,6 +235,11 @@ export function createEngineRuntime({
 				reconciliationIntervalMs,
 				DEFAULT_RECONCILIATION_BATCH_SIZE,
 			),
+			new SettledStepDetector(
+				stepStore,
+				reconciliationIntervalMs,
+				DEFAULT_RECONCILIATION_BATCH_SIZE,
+			),
 		],
 		{
 			'execution-queued-no-message': new QueuedExecutionRepair(executionStore, orchestrationQueue),
@@ -242,6 +250,7 @@ export function createEngineRuntime({
 				orchestrationQueue,
 				lifecycleEventPublisherFactory,
 			),
+			'step-settled-no-message': new SettledStepRepair(stepStore, orchestrationQueue),
 		},
 		logger,
 	);
@@ -305,6 +314,8 @@ export function createEngineRuntime({
 		sweepers.push(reconciliationSweeper);
 		// Only here: the role with the fewest replicas, so fewer processes race to delete the same rows.
 		if (retentionSweeper) sweepers.push(retentionSweeper);
+		if (retention) logger.info('Execution retention is on', { ...retention });
+		else logger.info('Execution retention is off');
 	}
 	if (runs.has('step-worker')) {
 		workers.push(stepWorker);

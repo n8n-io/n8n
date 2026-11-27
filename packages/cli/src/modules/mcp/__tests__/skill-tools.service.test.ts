@@ -10,7 +10,6 @@ import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import {
-	type AssistantSkillsFlagGate,
 	SkillNameTakenError,
 	type SkillService,
 	type SkillSourceService,
@@ -83,16 +82,9 @@ describe('McpSkillToolsService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	const telemetry = mock<TelemetryProxy>();
 	const skillService = mock<SkillService>();
-	const rollout = mock<AssistantSkillsFlagGate>();
 	const skillSources = mock<SkillSourceService>();
 	const skillSyncGate = mock<SkillSyncFlagGate>();
-	const service = new McpSkillToolsService(
-		telemetry,
-		skillService,
-		rollout,
-		skillSources,
-		skillSyncGate,
-	);
+	const service = new McpSkillToolsService(telemetry, skillService, skillSources, skillSyncGate);
 	let tools: Map<string, Handler>;
 
 	const callTool = async (name: string, input: Record<string, unknown>) => {
@@ -103,7 +95,6 @@ describe('McpSkillToolsService', () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		rollout.isEnabled.mockResolvedValue(true);
 		skillSyncGate.isEnabled.mockResolvedValue(true);
 		tools = new Map();
 		const registerTool: RegisterToolFn = (tool) => {
@@ -157,28 +148,6 @@ describe('McpSkillToolsService', () => {
 			parameters: { scope: 'instance' },
 			results: { success: true },
 		});
-	});
-
-	it('hides Assistant availability from MCP when its flag is off', async () => {
-		rollout.isEnabled.mockResolvedValue(false);
-		const registered: Array<Parameters<RegisterToolFn>[0]> = [];
-		await service.registerTools(
-			(tool) => {
-				registered.push(tool);
-				tools.set(tool.name, tool.handler as unknown as Handler);
-			},
-			user,
-			true,
-		);
-		for (const name of ['create_skill', 'update_skill']) {
-			expect(registered.find((tool) => tool.name === name)?.config.inputSchema).not.toHaveProperty(
-				'availableToAssistant',
-			);
-		}
-		skillService.get.mockResolvedValue(detail);
-		expect(
-			(await callTool('get_skill', { skillId: 'skill_a' })).structuredContent,
-		).not.toHaveProperty('availableToAssistant');
 	});
 
 	it('hides MCP availability when the MCP skills extension is off', async () => {

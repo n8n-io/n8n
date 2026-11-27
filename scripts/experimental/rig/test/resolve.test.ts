@@ -39,20 +39,22 @@ function setup(input: Omit<TopologyInput, 'name'>) {
 }
 
 describe('resolveProcessEnv', () => {
-	it('should apply layers in order: default < managed < shared < role < component < secrets < one-off', () => {
+	it('should apply layers in order: default < managed < secrets < shared < role < component < one-off', () => {
 		const { ctx, byName } = setup(PRESETS.queue.topology);
 		layer('shared', 'N8N_LOG_LEVEL=warn\nA=shared\nB=shared\nC=shared\n');
 		layer('worker', 'N8N_LOG_LEVEL=debug\nB=role\n');
 		layer('worker-1', 'C=component\n');
-		writeFileSync(paths.secrets, 'C=secret\n');
+		writeFileSync(paths.secrets, 'C=secret\nD=secret\n');
 
 		const worker = resolveProcessEnv({ ...ctx, oneOff: { A: 'one-off' } }, byName('worker-1'));
 		expect(worker.env).toMatchObject({
 			N8N_LOG_LEVEL: 'debug',
 			A: 'one-off',
 			B: 'role',
-			C: 'secret',
+			C: 'component',
+			D: 'secret',
 		});
+		expect(worker.trace.get('C')?.map((s) => s.layer)).toEqual(['secrets', 'shared', 'component']);
 		expect(worker.trace.get('N8N_LOG_LEVEL')?.map((s) => s.layer)).toEqual([
 			'default',
 			'shared',

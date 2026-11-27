@@ -1,11 +1,6 @@
 import { z } from 'zod';
 
-import type {
-	PromotionReviewRemoteError,
-	PromotionReviewState,
-	PromotionReviewSummary,
-	PromotionReviewType,
-} from './dto/promotions/promotion-review.dto';
+import type { PromotionReviewItem } from './dto/promotions/promotion-review.dto';
 import type { WorkflowReviewInboxItem } from './dto/workflow-reviews/list-workflow-review-inbox.dto';
 import type { SelfHealingResultDetail } from './self-healing-results';
 
@@ -36,28 +31,7 @@ export type InboxSelfHealingItem = Pick<
 	workflowName: string;
 };
 
-export type InboxPromotionReviewItem = {
-	type: 'promotion_review';
-	id: string;
-	state: InboxState;
-	reviewState: PromotionReviewState;
-	/** The Git host of the review, such as GitLab. */
-	reviewType: PromotionReviewType;
-	title: string | null;
-	webUrl: string | null;
-	branchName: string | null;
-	environmentName: string | null;
-	requester: PromotionReviewSummary['createdBy'];
-	approver: PromotionReviewSummary['approvedBy'];
-	remoteError: PromotionReviewRemoteError | null;
-	/** The merge request head on the host. It differs from runCommitSha after a push on the host. */
-	headCommitSha: string | null;
-	/** The commit n8n pushed in the newest run. */
-	runCommitSha: string | null;
-	hasConflicts: boolean;
-	createdAt: string;
-	updatedAt: string;
-};
+export type InboxPromotionReviewItem = PromotionReviewItem & { type: 'promotion_review' };
 
 export type InboxItem = InboxWorkflowReviewItem | InboxSelfHealingItem | InboxPromotionReviewItem;
 

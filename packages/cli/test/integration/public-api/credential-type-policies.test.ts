@@ -1,5 +1,10 @@
 import { EventService } from '@n8n/backend-services';
-import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -879,5 +884,30 @@ describe('credential type policies public API extends rules', () => {
 		);
 		expect(readAttachments.statusCode).toBe(200);
 		expect(readAttachments.body).toEqual(attachments.body);
+	});
+});
+
+describe('credential type policies public API: team projects only', () => {
+	test('PUT for a personal project is rejected with 400 and writes nothing', async () => {
+		const personalProject = await getPersonalProject(owner);
+		const agent = testServer.publicApiAgentFor(owner);
+
+		const response = await agent
+			.put(projectRoute(personalProject.id))
+			.send({ rules: [], defaultAction: 'deny', version: 0 });
+
+		expect(response.statusCode).toBe(400);
+
+		const unchanged = await agent.get(projectRoute(personalProject.id));
+		expect(unchanged.body.version).toBe(0);
+	});
+
+	test('PUT for an unknown project is rejected with 404', async () => {
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.put(projectRoute('unknown-project-id'))
+			.send({ rules: [], defaultAction: 'deny', version: 0 });
+
+		expect(response.statusCode).toBe(404);
 	});
 });

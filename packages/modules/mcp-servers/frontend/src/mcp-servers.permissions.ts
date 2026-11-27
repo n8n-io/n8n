@@ -14,8 +14,8 @@ export function getMcpServerPermissions(projectId: string) {
 	return {
 		canList: Boolean(mcpServer?.list),
 		canRead: Boolean(mcpServer?.read),
-		canCreate: Boolean(mcpServer?.create),
-		canUpdate: Boolean(mcpServer?.update),
-		canDelete: Boolean(mcpServer?.delete),
+		canCreate: !permissions.isReadOnly() && Boolean(mcpServer?.create),
+		canUpdate: !permissions.isReadOnly() && Boolean(mcpServer?.update),
+		canDelete: !permissions.isReadOnly() && Boolean(mcpServer?.delete),
 	};
 }

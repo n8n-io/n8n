@@ -4,12 +4,17 @@ import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 
 import { RigError } from '../errors';
+import { LICENSE_NAME_PATTERN } from './env-yaml';
 import { expandHome, globalConfigFile } from './paths';
 
 export const LAUNCHER_VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
 
 export const CONTAINER_RUNTIMES = ['docker', 'podman'] as const;
 export type ContainerRuntime = (typeof CONTAINER_RUNTIMES)[number];
+
+/** Where rig keeps the key that encrypts secrets.env, or `off` for plaintext. */
+export const SECRETS_BACKENDS = ['keychain', 'secret-service', 'file', 'off'] as const;
+export type SecretsBackend = (typeof SECRETS_BACKENDS)[number];
 
 const globalConfigSchema = z
 	.object({
@@ -36,6 +41,23 @@ const globalConfigSchema = z
 			})
 			.strict()
 			.default({}),
+		secrets: z
+			.object({
+				/** rig sets it on the first use. Change it with `rig secrets use`, which moves the key. */
+				backend: z.enum(SECRETS_BACKENDS).optional(),
+			})
+			.strict()
+			.default({}),
+		license: z
+			.object({
+				/** The stored license that `rig create` uses when you give none. */
+				default: z
+					.string()
+					.regex(LICENSE_NAME_PATTERN, 'use lowercase letters, digits, - and _')
+					.optional(),
+			})
+			.strict()
+			.default({}),
 	})
 	.strict();
 
@@ -48,6 +70,7 @@ export const GLOBAL_CONFIG_KEYS = [
 	'container.runtime',
 	'browser',
 	'editor',
+	'license.default',
 ] as const;
 
 /** Keys whose values are paths. `rig config set` expands `~` and makes them absolute. */
@@ -106,6 +129,8 @@ export function getGlobalConfigValue(
 			return config.browser;
 		case 'editor':
 			return config.editor;
+		case 'license.default':
+			return config.license.default;
 	}
 }
 
@@ -131,6 +156,8 @@ export function setGlobalConfigValue(
 			return { ...config, browser: value };
 		case 'editor':
 			return { ...config, editor: value };
+		case 'license.default':
+			return { ...config, license: { ...config.license, default: value } };
 	}
 }
 

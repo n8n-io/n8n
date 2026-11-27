@@ -84,6 +84,26 @@ describe('useRunActivity', () => {
 		expect(activity?.label).toBeTruthy();
 	});
 
+	it.each([
+		{ role: 'workflow-builder', kind: 'builder' as const, title: 'Building workflow' },
+		{ role: 'researcher', title: 'Researching' },
+	])('tracks an active $role after its assistant message finishes', (overrides) => {
+		const child = agent({
+			...overrides,
+			agentId: 'child',
+			toolCalls: [call('search_nodes', { queries: ['http'] })],
+		});
+		const messages = [
+			message(agent({ status: 'completed', children: [child] }), false),
+			message(agent({ status: 'completed' }), false),
+		];
+
+		expect(useRunActivity()(messages)).toEqual({
+			label: overrides.title,
+			detail: 'Searching for http',
+		});
+	});
+
 	it('is thinking when no tool runs', () => {
 		expect(useRunActivity()([message(agent())])).toEqual({ label: 'Thinking', generic: true });
 	});

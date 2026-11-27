@@ -27,6 +27,7 @@ import type { PrometheusRouteMetricsService } from '../prometheus/route-metrics.
 import type { PrometheusSchedulerMetricsService } from '../prometheus/scheduler-metrics.service';
 import type { PrometheusSsrfMetricsService } from '../prometheus/ssrf-metrics.service';
 import type { PrometheusExecutionLedgerMetricsService } from '../prometheus/execution-ledger-metrics.service';
+import type { PrometheusExecutionLimitsMetricsService } from '../prometheus/execution-limits-metrics.service';
 import type { PrometheusMemoryGuardMetricsService } from '../prometheus/memory-guard-metrics.service';
 import type { PrometheusSystemTaskMetricsService } from '../prometheus/system-task-metrics.service';
 import type { PrometheusTokenExchangeMetricsService } from '../prometheus/token-exchange-metrics.service';
@@ -71,6 +72,7 @@ describe('PrometheusMetricsService', () => {
 	let systemTask: Mocked<PrometheusSystemTaskMetricsService>;
 	let memoryGuard: Mocked<PrometheusMemoryGuardMetricsService>;
 	let executionLedger: Mocked<PrometheusExecutionLedgerMetricsService>;
+	let executionLimits: Mocked<PrometheusExecutionLimitsMetricsService>;
 	const databaseIndependentRoutes = mock<DatabaseIndependentRoutes>();
 
 	let service: PrometheusMetricsService;
@@ -106,6 +108,7 @@ describe('PrometheusMetricsService', () => {
 			systemTask,
 			memoryGuard,
 			executionLedger,
+			executionLimits,
 			databaseIndependentRoutes,
 		);
 
@@ -148,6 +151,7 @@ describe('PrometheusMetricsService', () => {
 		systemTask = mock<PrometheusSystemTaskMetricsService>({ enabled: true });
 		memoryGuard = mock<PrometheusMemoryGuardMetricsService>({ enabled: true });
 		executionLedger = mock<PrometheusExecutionLedgerMetricsService>({ enabled: true });
+		executionLimits = mock<PrometheusExecutionLimitsMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -188,6 +192,7 @@ describe('PrometheusMetricsService', () => {
 			expect(systemTask.init).toHaveBeenCalledWith(app);
 			expect(memoryGuard.init).toHaveBeenCalledWith(app);
 			expect(executionLedger.init).toHaveBeenCalledWith(app);
+			expect(executionLimits.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {

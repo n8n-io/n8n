@@ -1,5 +1,4 @@
 import type { ProjectType } from '@n8n/api-types';
-import { randomUUID } from 'node:crypto';
 import {
 	BaseRepository,
 	isUniqueConstraintError,
@@ -10,6 +9,7 @@ import {
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { DataSource, In, IsNull } from '@n8n/typeorm';
+import { v7 as uuidv7 } from 'uuid';
 
 import { McpServer } from '../entities/mcp-server.entity';
 
@@ -44,7 +44,7 @@ export class McpServerRepository {
 
 	async create(row: NewMcpServer, ctx: OperationContext = {}): Promise<McpServer> {
 		const manager = this.table.managerFor(ctx);
-		const server = manager.create(McpServer, { ...row, id: randomUUID(), deletedAt: null });
+		const server = manager.create(McpServer, { ...row, id: uuidv7(), deletedAt: null });
 		try {
 			await manager.insert(McpServer, server);
 		} catch (error) {
