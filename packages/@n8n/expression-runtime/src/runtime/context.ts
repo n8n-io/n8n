@@ -6,7 +6,9 @@ import { extendedFunctions } from '../extensions/function-extensions';
 import { __sanitize, createSafeErrorSubclass, ExpressionError } from './safe-globals';
 import {
 	createDeepLazyProxy,
+	createLazyBoxedPrimitive,
 	isArrayMetadata,
+	isBoxedMetadata,
 	isObjectMetadata,
 	readHostResult,
 	throwIfErrorSentinel,
@@ -461,6 +463,10 @@ export function buildContext(
 		}
 		if (isObjectMetadata(value)) {
 			target[key] = createDeepLazyProxy([key], { kind: 'object', keys: value.__keys }, callbacks);
+			return true;
+		}
+		if (isBoxedMetadata(value)) {
+			target[key] = createLazyBoxedPrimitive([key], value, callbacks);
 			return true;
 		}
 

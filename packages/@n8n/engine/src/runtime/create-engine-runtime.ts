@@ -11,6 +11,7 @@ import type { ExternalDependencies } from '../dependencies';
 import {
 	assertValidStalenessThresholds,
 	CancelExecutionService,
+	ExecutionFileCleanup,
 	ExecutionQueryService,
 	ExecutionStartHandler,
 	OrchestrationWorker,
@@ -40,8 +41,12 @@ import {
 	ReconciliationSweeper,
 	RunningStepDetector,
 	RunningStepRepair,
+	SettledStepDetector,
+	SettledStepRepair,
 } from '../reconciliation';
 import type { ExecutionResponseSender } from '../response-channel';
+import { RetentionSweeper } from '../retention';
+import type { ExecutionRetentionPolicy } from '../retention';
 import { createEngineServer, type EngineServerDeps } from '../server';
 
 /** The parts of the engine that a process can run. */
@@ -51,10 +56,10 @@ export type EngineRole = (typeof ENGINE_ROLES)[number];
 export interface EngineRuntimeOptions {
 	/**
 	 * The roles this process runs. Defaults to all of them. `api` serves `/api`,
-	 * `orchestrator` consumes the orchestration queue and runs reconciliation,
-	 * and `step-worker` consumes the step queue and runs the wait sweeper. Every
-	 * role serves `/healthz`. Only processes on shared queues can split the roles
-	 * between them.
+	 * `orchestrator` consumes the orchestration queue and runs reconciliation and
+	 * the retention sweeper, and `step-worker` consumes the step queue and runs
+	 * the wait sweeper. Every role serves `/healthz`. Only processes on shared
+	 * queues can split the roles between them.
 	 */
 	roles?: readonly EngineRole[];
 	/** The data plane database, already initialized and migrated. */
@@ -102,6 +107,12 @@ export interface EngineRuntimeOptions {
 	 * connections.
 	 */
 	queues: EngineWorkQueues;
+	/**
+	 * Which ended executions the engine deletes, with their files. No default:
+	 * absent, the engine deletes nothing, so no host deletes data by omission.
+	 * The orchestrator role runs the sweeper. Needs `deleteExecutionFiles`.
+	 */
+	retention?: ExecutionRetentionPolicy;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -138,6 +149,7 @@ export function createEngineRuntime({
 	queues,
 	staleness,
 	reconciliationIntervalMs = DEFAULT_RECONCILIATION_INTERVAL_MS,
+	retention,
 }: EngineRuntimeOptions): EngineRuntime {
 	// An empty value is how an unset environment variable usually arrives.
 	const resumeSecret = givenResumeSecret || undefined;
@@ -202,6 +214,7 @@ export function createEngineRuntime({
 			lifecycleEventPublisherFactory,
 			responseSender,
 			cancelExecution,
+			logger,
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
@@ -222,6 +235,11 @@ export function createEngineRuntime({
 				reconciliationIntervalMs,
 				DEFAULT_RECONCILIATION_BATCH_SIZE,
 			),
+			new SettledStepDetector(
+				stepStore,
+				reconciliationIntervalMs,
+				DEFAULT_RECONCILIATION_BATCH_SIZE,
+			),
 		],
 		{
 			'execution-queued-no-message': new QueuedExecutionRepair(executionStore, orchestrationQueue),
@@ -232,9 +250,23 @@ export function createEngineRuntime({
 				orchestrationQueue,
 				lifecycleEventPublisherFactory,
 			),
+			'step-settled-no-message': new SettledStepRepair(stepStore, orchestrationQueue),
 		},
 		logger,
 	);
+	let retentionSweeper: RetentionSweeper | undefined;
+	if (retention !== undefined) {
+		// Refused here: without a deleter the sweeper would delete the rows and keep the files.
+		if (!dependencies.deleteExecutionFiles) {
+			throw new UnexpectedError('Execution retention needs a file deleter');
+		}
+		retentionSweeper = new RetentionSweeper(
+			executionStore,
+			new ExecutionFileCleanup(dependencies.deleteExecutionFiles, logger),
+			retention,
+			logger,
+		);
+	}
 	// One start path for every execution: the API and a step's sub-execution both admit
 	// and validate here, and only this path can set a parent link.
 	const startExecution = new StartExecutionService(
@@ -275,11 +307,15 @@ export function createEngineRuntime({
 	const { app } = createEngineServer(apiDeps);
 
 	const workers: Array<OrchestrationWorker | StepWorker> = [];
-	const sweepers: Array<ReconciliationSweeper | WaitSweeper> = [];
+	const sweepers: Array<ReconciliationSweeper | WaitSweeper | RetentionSweeper> = [];
 	if (runs.has('orchestrator')) {
 		workers.push(orchestrationWorker);
 		// Not with the step worker: it repairs what a crashed step worker leaves behind.
 		sweepers.push(reconciliationSweeper);
+		// Only here: the role with the fewest replicas, so fewer processes race to delete the same rows.
+		if (retentionSweeper) sweepers.push(retentionSweeper);
+		if (retention) logger.info('Execution retention is on', { ...retention });
+		else logger.info('Execution retention is off');
 	}
 	if (runs.has('step-worker')) {
 		workers.push(stepWorker);
@@ -301,8 +337,8 @@ export function createEngineRuntime({
 			// dropped from an in-memory queue, and stays in a Redis queue for the
 			// next consumer.
 
-			// The sweepers stop first: they feed the queues, so nothing lands
-			// there after the workers have drained.
+			// The wait and reconciliation sweepers stop first: they feed the queues, so
+			// nothing lands there after the workers have drained.
 			await Promise.all(sweepers.map(async (sweeper) => await sweeper.stop()));
 			await Promise.all(workers.map(async (worker) => await worker.stop()));
 			// After the workers are quiet, so the last events still reach the host.

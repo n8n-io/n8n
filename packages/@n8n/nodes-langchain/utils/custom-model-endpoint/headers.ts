@@ -32,6 +32,49 @@ function getLoginHeader(login: LoginMethod): Record<string, string> {
 	}
 }
 
+/**
+ * A switch, so a login added later stops compiling here rather than passing quietly. The
+ * built header goes in beside the raw value, because a gateway can echo either one, but
+ * only when the value is there: with the field blank the header is the bare scheme word,
+ * and filtering `Bearer ` would take it out of the gateway's own advice.
+ */
+function loginSecrets(login: LoginMethod): string[] {
+	const sent = () => Object.values(getLoginHeader(login));
+
+	switch (login.type) {
+		case 'bearer':
+			return login.token ? [login.token, ...sent()] : [];
+		case 'header':
+			return login.key ? [login.key, ...sent()] : [];
+		case 'basic':
+			return login.password ? [login.password, ...sent()] : [];
+		case 'oauth2':
+			return login.clientSecret ? [login.clientSecret, oauth2BasicCredentials(login)] : [];
+		case 'none':
+			return [];
+	}
+}
+
+/** What `Headers.set` strips on the way out. `String.trim` is wider and would also take
+ * a no-break space, which is sent, leaving the listed value and the sent value different. */
+const HTTP_WHITESPACE = /^[ \t\r\n]+|[ \t\r\n]+$/g;
+
+export function asSent(value: string): string {
+	return value.replace(HTTP_WHITESPACE, '');
+}
+
+/**
+ * Every value of the credential that must not reach the user in an error, spelled the way
+ * the gateway receives it, because that is the only spelling it can echo.
+ */
+export function credentialSecrets(
+	endpoint: Pick<EndpointCredential, 'login' | 'gatewayHeaders'>,
+): string[] {
+	return [...loginSecrets(endpoint.login), ...Object.values(endpoint.gatewayHeaders)]
+		.map(asSent)
+		.filter((value) => value.length > 0);
+}
+
 export function toHeaderRecord(headers: IDataObject | undefined): Record<string, string> {
 	return Object.fromEntries(
 		Object.entries(headers ?? {})

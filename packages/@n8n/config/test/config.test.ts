@@ -554,7 +554,9 @@ describe('GlobalConfig', () => {
 			ownerSettleSeconds: 300,
 		},
 		leases: {
-			enabled: false,
+			leaseSeconds: 20,
+			renewSeconds: 5,
+			marginSeconds: 5,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -793,6 +795,7 @@ describe('GlobalConfig', () => {
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
+			sandboxEgressPolicy: 'opt-in',
 			maxGeneratedFileSizeMb: 50,
 			maxGeneratedFileCount: 100,
 			maxGeneratedTotalMb: 500,

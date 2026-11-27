@@ -14,6 +14,7 @@ import { LogStreamingModule } from '@/features/integrations/logStreaming.ee/modu
 import { TypeAvailabilityPoliciesModule } from '@n8n/frontend-module-type-availability-policies';
 import { AppsModule } from '@n8n/frontend-module-apps';
 import { EngineV2Module } from '@n8n/frontend-module-engine-v2';
+import { HtmlDisplayModeModule } from '@n8n/frontend-module-html-display-mode';
 
 /**
  * The static list is the design, not a placeholder (design §9). n8n self-hosted
@@ -47,4 +48,5 @@ export const modules: FrontendModuleDescription[] = [
 	LogStreamingModule,
 	AppsModule,
 	EngineV2Module,
+	HtmlDisplayModeModule,
 ];

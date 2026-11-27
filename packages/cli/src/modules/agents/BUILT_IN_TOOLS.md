@@ -81,6 +81,8 @@ each child's selected model. There is no feature flag or Agent Builder setting.
 
 Attach condition: The sandbox is on and the agent is not an inline agent. The runtime attaches them through `agent.workspace(...)` in `attachWorkspaceAndKnowledge`. A delegated sub-agent gets the same tools scoped to its own folder in the parent workspace.
 
+When sandbox egress is disabled by the instance policy (`N8N_AGENTS_AI_SANDBOX_EGRESS_POLICY`) or the agent's `config.sandboxEgress` setting, the workspace instructions state that outbound network access is disabled. This applies to parent agents and delegated sub-agents. When egress is enabled, the instructions omit this note.
+
 Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/src/workspace/tools/).
 
 | Tool | Purpose |

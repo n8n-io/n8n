@@ -220,7 +220,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getStatusBar(): Locator {
-		return this.container.getByTestId('instance-ai-status-bar');
+		return this.container.getByTestId('instance-ai-run-activity');
 	}
 
 	/** "Working in the background..." indicator — visible when orchestrator is done but child agents still building. */

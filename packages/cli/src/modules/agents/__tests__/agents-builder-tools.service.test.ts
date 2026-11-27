@@ -2252,6 +2252,7 @@ describe('AgentsBuilderToolsService', () => {
 			expect(toolNamed(name).description).toContain('agent-builder-target-skills');
 			expect(toolNamed(name).systemInstruction).toBeUndefined();
 		}
+		expect(toolNamed(BUILDER_TOOLS.CREATE_SKILLS).description).toContain('attachableToAgentId');
 	});
 
 	describe('agent_builder_create_skills tool', () => {

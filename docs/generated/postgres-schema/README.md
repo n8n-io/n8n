@@ -9,6 +9,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
+| [public.agent_attention_flags](public.agent_attention_flags.md) | 5 |  | BASE TABLE |
 | [public.agent_background_job](public.agent_background_job.md) | 28 |  | BASE TABLE |
 | [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
 | [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
@@ -25,7 +26,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
 | [public.agent_execution_statistics](public.agent_execution_statistics.md) | 2 |  | BASE TABLE |
 | [public.agent_execution_statistics_delta](public.agent_execution_statistics_delta.md) | 2 |  | BASE TABLE |
-| [public.agent_execution_threads](public.agent_execution_threads.md) | 20 |  | BASE TABLE |
+| [public.agent_execution_threads](public.agent_execution_threads.md) | 21 |  | BASE TABLE |
 | [public.agent_file_grants](public.agent_file_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 11 |  | BASE TABLE |
@@ -227,6 +228,7 @@ erDiagram
 
 "public.activity_event" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.activity_event" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.agent_attention_flags" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;sessionId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_background_job" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;callerExecutionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_background_job" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;sourceExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
@@ -540,6 +542,13 @@ erDiagram
   integer typeVersion
   uuid userId FK
 }
+"public.agent_attention_flags" {
+  timestamp_3__with_time_zone createdAt
+  uuid id
+  varchar_128_ sessionId FK
+  varchar_32_ type
+  timestamp_3__with_time_zone updatedAt
+}
 "public.agent_background_job" {
   integer callerExecutionId FK
   varchar_36_ childExecutionId
@@ -739,6 +748,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
   varchar_128_ id
+  boolean isTestChat
   uuid ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId

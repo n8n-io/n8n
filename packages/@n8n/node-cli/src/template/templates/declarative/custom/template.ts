@@ -1,4 +1,5 @@
 import { camelCase, capitalCase, pascalCase } from 'change-case';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { addCredentialToNode, updateCredentialAst, updateNodeAst } from './ast';
@@ -64,6 +65,13 @@ async function renameNode(
 
 	const nodes = [`dist/nodes/${newClassName}/${newClassName}.node.js`];
 	await setNodesPackageJson(destinationPath, nodes);
+
+	// The codex `node` is the package name and the node's `name`, which
+	// updateNodeAst just set from the class name
+	const codexPath = path.resolve(newNodeDir, `${newClassName}.node.json`);
+	const codex = JSON.parse(await fs.readFile(codexPath, 'utf-8')) as Record<string, unknown>;
+	codex.node = `${nodeName}.${camelCase(newClassName)}`;
+	await writeFileSafe(codexPath, `${JSON.stringify(codex, null, '\t')}\n`);
 }
 
 async function addCredential(data: TemplateData<CustomTemplateConfig>, project: Project) {

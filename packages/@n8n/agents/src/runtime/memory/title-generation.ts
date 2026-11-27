@@ -6,6 +6,7 @@ import type {
 	ModelConfig,
 	PromptCachingConfig,
 	SideCallUsageReport,
+	ThreadTitleUpdate,
 	TokenUsage,
 } from '../../types/sdk/agent';
 import type { AgentDbMessage } from '../../types/sdk/message';
@@ -233,7 +234,7 @@ function firstUserText(turnDelta: AgentDbMessage[]): string | undefined {
 /**
  * Generate a title and emoji for a thread if it doesn't already have one.
  *
- * Designed to run fire-and-forget after the agent response is complete.
+ * Designed to run in the background, beside the agent loop of the run.
  * All errors are caught and logged — title generation failures never
  * block or break the agent response.
  */
@@ -259,9 +260,12 @@ export async function generateThreadTitle(opts: {
 	 * add the USD cost to the execution and thread totals. Best-effort.
 	 */
 	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
+	/** Host callback that receives the title once it is stored. Best-effort. */
+	onThreadTitle?: (update: ThreadTitleUpdate) => void | Promise<void>;
 	/** Agent prompt-caching config, used to resolve Anthropic cache-write pricing for the title model. */
 	promptCaching?: PromptCachingConfig;
 }): Promise<void> {
+	let stored: ThreadTitleUpdate | undefined;
 	try {
 		const thread = await opts.memory.getThread(opts.threadId);
 		if (thread?.title) return;
@@ -316,8 +320,15 @@ export async function generateThreadTitle(opts: {
 			title,
 			...(metadata ? { metadata } : {}),
 		});
+		stored = { threadId: opts.threadId, title, ...(emoji ? { emoji } : {}) };
 	} catch (error) {
 		logger.warn('Failed to generate thread title', { error });
+	}
+	if (!stored || !opts.onThreadTitle) return;
+	try {
+		await opts.onThreadTitle(stored);
+	} catch (error) {
+		logger.warn('Failed to report the thread title to the host', { error });
 	}
 }
 

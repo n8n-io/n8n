@@ -2683,10 +2683,10 @@ describe('header and footer', () => {
 		expect(mcpItem()).toBeChecked();
 		assistantItem().focus();
 		await userEvent.keyboard('{Enter}');
-		await openMenu();
+		expect(queryByRole('menu')).toBeInTheDocument();
 		expect(assistantItem()).toBeChecked();
 		await userEvent.click(mcpItem());
-		await openMenu();
+		expect(queryByRole('menu')).toBeInTheDocument();
 		expect(mcpItem()).not.toBeChecked();
 		await userEvent.keyboard('{Escape}');
 		await userEvent.click(getByTestId('agent-skill-create-save'));

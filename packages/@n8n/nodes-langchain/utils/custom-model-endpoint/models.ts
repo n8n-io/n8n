@@ -1,5 +1,4 @@
 import { UserError } from '@n8n/errors';
-import { isRecord } from '@n8n/utils/is-record';
 import {
 	NodeApiError,
 	type ILoadOptionsFunctions,
@@ -10,37 +9,11 @@ import {
 
 import { clientErrorMessage } from './error-handling';
 import { createCustomModelEndpointConfig, pickCredentialType } from './gateway-config';
+import { modelIdsIn } from './model-list';
 import type { EndpointCredential } from './types';
 
 const NO_LIST_HINT = 'Switch Model to "By ID" and type the model ID that your gateway expects.';
 const MODEL_LIST_TIMEOUT_MS = 30_000;
-
-function idOf(entry: unknown): string | undefined {
-	if (typeof entry === 'string') return entry;
-	if (isRecord(entry) && typeof entry.id === 'string') return entry.id;
-	return undefined;
-}
-
-/**
- * OpenAI answers `{ data: [{ id }] }`; gateways that trim it answer a bare array. Anything else
- * is a shape this does not know, which is not the same as a gateway that lists no models.
- */
-function modelIdsIn(body: unknown): string[] | undefined {
-	const entries = Array.isArray(body)
-		? body
-		: isRecord(body) && Array.isArray(body.data)
-			? body.data
-			: undefined;
-	if (entries === undefined) return undefined;
-
-	const ids = entries.flatMap((entry) => {
-		const id = idOf(entry);
-		return id ? [id] : [];
-	});
-	// Entries that none of them names a model is a shape this does not know either,
-	// unlike the empty list of a gateway that publishes no models.
-	return entries.length > 0 && ids.length === 0 ? undefined : ids;
-}
 
 export async function listGatewayModels(
 	node: INode,
@@ -67,8 +40,9 @@ export async function listGatewayModels(
 		method: 'GET',
 		signal: deadline,
 	}).catch(whenDeadlinePassed);
-	// The body is the second place the gateway can stall: the headers can arrive and
-	// the body never finish, which aborts here rather than above.
+	// The body is the second place the gateway can stall: the headers can arrive and the
+	// body never finish. The transport reads it to filter, so the deadline fires in the
+	// call above and this await resolves what it already holds.
 	const text = await response.text().catch(whenDeadlinePassed);
 	const httpCode = String(response.status);
 

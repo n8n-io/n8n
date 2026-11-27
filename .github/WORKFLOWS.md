@@ -180,13 +180,45 @@ These only run if specific files changed:
 | `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db.yml`               | any        |
 | `packages/frontend/@n8n/storybook/**`, design-system, chat             | `release-storybook.yml` | master     |
 | `docs/backend/**`, `packages/@n8n/backend-docs-site/**`                | `release-docs-backend.yml` (PR preview, master deploys to n8n-backend-docs.pages.dev) | master     |
-| `docker/docker-bake.hcl`, `docker/images/n8n-base/Dockerfile`, `docker/images/n8n-base/Dockerfile.debian`, `.github/scripts/docker/base-debian-smoke-check.mjs`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-base-image.yml` (builds only the bases whose inputs changed; publishes on master only) | any        |
-| `docker/docker-bake.hcl`, `docker/images/node-pc/**`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-node-pc-image.yml` (builds pointer-compressed Node 26 as `n8nio/node-pc` and stock-configured Node 24 and 26 as `n8nio/node-patched` only when their own inputs changed; publishes from master only; a `workflow_dispatch` on master with `push: true` always builds and publishes all three variants) | any        |
+| `docker/docker-bake.hcl`, `docker/images/n8n-base/Dockerfile`, `docker/images/n8n-base/Dockerfile.debian`, `.github/scripts/docker/base-debian-smoke-check.mjs`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-base-image.yml` (a push builds only the bases whose inputs changed; a `workflow_dispatch` builds all bases, or only the bake `targets` that it names; publishes from master only) | any        |
+| `docker/docker-bake.hcl`, `docker/images/node-pc/**`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-node-pc-image.yml` (builds compiled `-dev` images for pointer-compressed Node 26 as `n8nio/node-pc` and stock-configured Node 24 and 26 as `n8nio/node-patched` only when their own inputs changed; independent of `RUNTIME_IMAGE`; publishes from master only; a `workflow_dispatch` on master with `push: true` always builds and publishes all three variants) | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/quality/efficiency/scale/benchmark/**`                       | `build-benchmark-image.yml` | master     |
 | `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts`, `packages/@n8n/agents/src/**` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 | `docker/get-n8n.sh`, `docker/get-n8n-compose.yml`, `docker/test-get-n8n.sh` | `test-get-n8n.yml`          | any        |
+
+### Pushes to an open PR
+
+A push to an open PR tests only the commits after the newest PR commit that
+passed `ci-pull-requests.yml`. `find-last-green-commit.mjs` finds that commit.
+`ci-filter` then uses the diff from that commit, not the whole PR, for the path
+filters, the test scoping and the E2E selection. On an incremental run, lint
+and typecheck compare the same commit with the PR head (`TURBO_SCM_BASE` and
+`TURBO_SCM_HEAD`), not with the merge commit, which also holds the base-branch
+changes since that commit. In all other runs, they compare the whole PR with
+the base branch, as before.
+
+`ci-filter` tests the whole PR when one of these is true:
+
+- The event is not a push to an open PR (`opened`, `reopened`, merge queue).
+- No earlier PR commit passed CI.
+- The earlier commit is not an ancestor of the head (force push or rebase).
+- The new commits include a merge, for example from master.
+- The merge base changed, for example because the PR now targets another branch.
+- The PR has the `force-full-ci` label. The script reads the label from the
+  API, so a "Re-run all jobs" after you add the label tests the whole PR.
+
+**Why:** a small fix, such as one line in a test, ran all E2E shards and DB
+legs again because an earlier commit had changed runtime code. The earlier
+commits passed CI against an older base branch. The merge queue runs the unit,
+integration and DB tests, lint and typecheck for the whole PR on the latest
+base branch, so that gap closes before the merge. The queue does not run E2E, so an
+E2E spec runs again only when the new commits select it.
+
+**Coverage:** an incremental run collects coverage only for the files that the
+new commits change. Codecov still calculates patch coverage over the whole PR,
+but for that push only the lines in those files have coverage data.
 
 ### On PR Review
 
@@ -667,7 +699,7 @@ Push to master
 ├─ unit-test (matrix: Node 24.22.2, 26.13.0)
 │   └─ Coverage only on 24.22.2
 ├─ lint
-├─ (performance: CodSpeed benchmarks, paused until the plugin supports Vitest 5)
+├─ performance (CodSpeed benchmarks)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -681,12 +713,14 @@ Push to master
 | Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private  |
 | Daily 03:00               | `sec-sync-bundle-branches.yml`    | Merge the base into `bundle/*` |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
+| After nightly Docker builds | `test-deployment-cells.yml` (`workflow_run`) | Nightly deployment compatibility cells against published `master` and `3.x` images (Currents project `tlfUav`) |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Browser performance and idle memory baselines |
 | Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
+| Daily 02:00               | `sec-base-image-refresh.yml`      | Find base image digests that remove fixable OS findings, open the pin PRs, build `n8nio/base` again when a package that it installs has a fix, alert `#updates-security`, and publish the Trivy report of the released images |
 | Daily 03:00               | `test-e2e-helm.yml`               | n8n build on the public Helm chart |
 | Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
 | Daily 04:30               | `test-image-efficiency.yml`       | Image size and layer waste with Dive |
@@ -730,6 +764,13 @@ can promote too via the `force_rc` dispatch input, several times a day: each pub
 claims the next free `v3-rc-<date>.N` as its immutable tag and moves the floating `v3-rc`
 and `v3-rc-<date>` onto it. The counter is derived by probing the registry, and the job
 is serialized on a `v3-rc-tagging` concurrency group so two runs can't claim one number.
+
+`test-deployment-cells.yml` ("Test: Deployment cells") runs via `workflow_run` after
+scheduled `Docker: Build and Push` runs (`master`) and after `Build: v3 Nightly Docker Images`
+runs (`3.x`), and supports manual `workflow_dispatch` with a `channel` selector. It resolves
+and pins the published GHCR image digests, runs API-only Playwright deployment cells in
+`packages/quality/testing/playwright/tests/deployment/` with 0 retries, and reports to the
+separate `n8n-nightly-compatibility` Currents project (`tlfUav`).
 
 See **[`DEVELOPING_V3.md`](./DEVELOPING_V3.md)** for the full model.
 
@@ -785,6 +826,8 @@ once new-disk retention works.
 inputs:
   script:        # path of the module, relative to the repository root
   github-token:  # token for the Octokit client, also exported as GITHUB_TOKEN
+outputs:
+  result:        # the string that main() returns, empty when it returns nothing
 ```
 
 Runs one `.github/scripts` module through `actions/github-script`. That action
@@ -874,9 +917,17 @@ Scripts in `.github/scripts/`:
 | `docker/edit-image-native-smoke-check.mjs`| Verify the Edit Image v2 bindings load and draw text with the image's Arial font | `docker-build-smoke.yml`|
 | `docker/native-addons-smoke-check.mjs`| Verify isolated-vm and sqlite3 work in the built image, and that it has no build toolchain | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
+| `docker/get-manifest-digests.mjs`| Resolve multi-arch manifest digests for attestation and pinned deployment cells | `docker-build-push.yml`, `test-deployment-cells.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
 | `docker/base-debian-smoke-check.mjs`| Verify the Debian base image contract (tools, no package manager, fonts, global npm modules) on amd64 and arm64 | `build-base-image.yml`|
 | `docker/bake-inputs-changed.mjs`| Decide whether an image must build: compare its resolved bake inputs and Dockerfile between two commits | `build-base-image.yml`, `build-node-pc-image.yml`|
+| `docker/base-image-candidates.mjs`| Find the newest digest of each upstream base image pin and keep it when a Trivy scan shows that it removes fixable OS findings of any severity. A candidate is ready when its publisher is verified and it is at least 24 hours old. A manual run skips the age check. When the tag has no fix, the moving tag of its line shows whether a newer patch needs a version update | `sec-base-image-refresh.yml`|
+| `docker/base-image-publisher.mjs`| Verify the publisher of a base image digest (cosign for DHI and distroless, SLSA provenance for Docker Official Images) and read its publication time | `sec-base-image-refresh.yml`|
+| `docker/base-image-pin-pr.mjs`| Update the pins of the ready candidates in `docker/docker-bake.hcl` and write the PR body: one daily PR, and one review PR without auto-merge for digests that add a package. A preview run shows the PRs in the job summary and opens none | `sec-base-image-refresh.yml`|
+| `docker/base-image-alerts.mjs`| Plan the Slack alerts of a refresh run: a failed publisher check, a publish time missing for 2 runs, a version update, a finding of any severity fixable for 7 days without a new digest, a manual run that skipped the 24-hour gate, a refresh PR with failed checks, a daily or review PR open for 48 hours, and a chain that stops for 48 hours after master published its images. An artifact keeps the state from run to run, and an alert repeats every 7 days | `sec-base-image-refresh.yml`|
+| `docker/base-image-report.mjs`| Scan each variant of the released images (the versions of the `stable` and `beta` Git tags, and the newest `n8n@3.*` tag) and of the nightly image of its line for fixable OS findings of any severity, and give each finding the status of its fix: `fix-merged`, `pr-open`, `in-24h-gate`, `publisher-check-failed`, `no-publish-time`, `version-update`, `no-upstream-fix`, or `needs-rebuild`. Uploads one public JSON for each image (14 days) | `sec-base-image-refresh.yml`|
+| `docker/base-image-chain-pr.mjs`| After master publishes `n8nio/base` from the merge of a refresh PR, pin the new images (the second PR of the chain in `docker/AGENTS.md`). A pin never moves back to an older master commit | `sec-base-image-refresh.yml` (on `workflow_run` of `build-base-image.yml`)|
+| `docker/base-image-rebuild.mjs`| Build `n8nio/base` again when a package that it installs on top of the DHI image has a fix. A finding of the pinned base that the pinned DHI image does not have comes from such a package. The package manager of the DHI image checks that its repository has a version with the fix, and only then the script dispatches `build-base-image.yml` for that base. No rebuild while a refresh PR or a chain PR builds the base anyway, or for the same findings within 7 days. A later run scans the rebuilt base, and pins it in the rebuild PR when it has fewer findings and is at least 24 hours old. Alerts when the rebuild fails or does not reduce the findings | `sec-base-image-refresh.yml`|
 | `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
 
 ### Node CLI Scripts
@@ -894,6 +945,7 @@ Scripts in `.github/scripts/`:
 | `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
 | `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
+| `find-last-green-commit.mjs` | Newest PR commit that passed the current workflow, for incremental PR runs | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `glob.mjs`              | Builtin-only glob matcher for changed-file paths (`**`, `*`, dot segments) | `quality/check-pr-size.mjs` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
