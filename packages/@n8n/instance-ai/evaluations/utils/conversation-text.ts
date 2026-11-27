@@ -231,7 +231,10 @@ export function transcriptAsText(
 	return transcript
 		.map((turn, i) => {
 			// No seeded label: the judge evaluates the whole conversation as one.
-			const lines: string[] = [`### Turn ${String(i + 1)}${turnUsageSuffix(turn, usageMap)}`];
+			const lines: string[] = [
+				...(turn.heading ? [turn.heading] : []),
+				`### Turn ${String(i + 1)}${turnUsageSuffix(turn, usageMap)}`,
+			];
 			if (turn.userMessage) lines.push(`User: ${turn.userMessage}`);
 			for (const step of turn.steps) {
 				const line = describeStep(step);

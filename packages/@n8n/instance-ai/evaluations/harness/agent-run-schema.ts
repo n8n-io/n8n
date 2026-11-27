@@ -51,18 +51,12 @@ export function agentUnderTestIndex(
 	return seedAgents.findIndex((agent) => agent.id === wanted);
 }
 
-/** Contract fields that load today but do nothing until N3 (multi-turn) and N4
- *  (memory) land. Named so the run can warn instead of failing silently. */
-export function pendingAgentRunFields(testCase: {
-	agentRun?: AgentRun;
-	executionScenarios?: Array<Partial<Record<'userTurns' | 'sessions', unknown>>>;
-}): string[] {
-	const scenarios = testCase.executionScenarios ?? [];
+/** Contract fields that load today but do nothing until N4 (memory) lands.
+ *  Named so the run can warn instead of failing silently. */
+export function pendingAgentRunFields(testCase: { agentRun?: AgentRun }): string[] {
 	const pending: Array<[string, boolean]> = [
 		['keepMemory', testCase.agentRun?.keepMemory === true],
 		['configOverrides', testCase.agentRun?.configOverrides !== undefined],
-		['userTurns', scenarios.some((scenario) => scenario.userTurns !== undefined)],
-		['sessions', scenarios.some((scenario) => scenario.sessions !== undefined)],
 	];
 	return pending.filter(([, set]) => set).map(([field]) => field);
 }
@@ -154,14 +148,38 @@ export function scenarioExpectations(scenario: AgentScenarioView): string[] {
 	];
 }
 
-/** Bridge until AGENT-1666 grades each expectation on its own: the judge gets
- *  them as one bulleted criterion, after `successCriteria` when it has one. */
-export function scenarioJudgeCriteria(scenario: AgentScenarioView): string {
-	const expectations = scenarioExpectations(scenario);
-	const summary = scenario.successCriteria ?? '';
-	if (expectations.length === 0) return summary;
-	const list = ['All of these must hold:', ...expectations.map((e) => `- ${e}`)].join('\n');
-	return summary ? `${summary}\n\n${list}` : list;
+/** One graded expectation of an Agent scenario. `key` names the unit in pass
+ *  rates and the baseline comparison; `text` is what the judge reads. */
+export interface AgentExpectationUnit {
+	key: string;
+	text: string;
+}
+
+/** Separates the parts of an expectation unit key. */
+export const EXPECTATION_KEY_SEPARATOR = ' › ';
+
+/**
+ * Every expectation of a scenario as its own unit: the scenario's, then each
+ * session's. Keyed `<scenario> › <expectation>`, and `<scenario> › session <n>
+ * › <expectation>` for a session's, so the same text in two scenarios or two
+ * sessions stays two units.
+ */
+export function agentExpectationUnits(
+	scenario: AgentScenarioView & { name: string },
+): AgentExpectationUnit[] {
+	const join = (...parts: string[]) => parts.join(EXPECTATION_KEY_SEPARATOR);
+	const own = (scenario.expectations ?? []).map((text) => ({
+		key: join(scenario.name, text),
+		text,
+	}));
+	const perSession = (scenario.sessions ?? []).flatMap((session, index) => {
+		const label = `session ${String(index + 1)}`;
+		return (session.expectations ?? []).map((text) => ({
+			key: join(scenario.name, label, text),
+			text: `In ${label}: ${text}`,
+		}));
+	});
+	return [...own, ...perSession];
 }
 
 /** `false` turns a flag off, which is the same as leaving it out. */

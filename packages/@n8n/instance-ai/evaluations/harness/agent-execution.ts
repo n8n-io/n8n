@@ -10,13 +10,25 @@ import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	getAgentModelProviderCredentialTypes,
 	type InstanceAiEvalAgentExecutionResult,
+	type InstanceAiEvalAgentThreadTurn,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { scenarioJudgeCriteria } from './agent-run-schema';
+import {
+	agentSessionPlans,
+	conversationTranscript,
+	mergeConversationResult,
+	runAgentConversation,
+	singleTurnTranscript,
+} from './agent-conversation';
+import { agentExpectationUnits, type AgentExpectationUnit } from './agent-run-schema';
 import { agentHandler } from './artifacts/agent-handler';
-import { attributionForScenario, type EvalAttribution } from './attribution';
+import {
+	attributionForExpectation,
+	attributionForScenario,
+	type EvalAttribution,
+} from './attribution';
 import type { EvalLogger } from './logger';
 import { writeScenarioVerificationSnapshot, type VerificationArtifact } from './scenario-execution';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
@@ -26,17 +38,22 @@ import {
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
 } from './transient-error';
-import { verifyChecklist } from '../checklist/verifier';
+import { verifyBuildExpectations } from '../build-expectations/verifier';
+import { verifyChecklist, type VerifierAttemptDebug } from '../checklist/verifier';
 import type { N8nClient } from '../clients/n8n-client';
 import type {
 	AgentArtifact,
 	ArtifactRef,
+	BuildExpectationResult,
 	BuildTrace,
 	ChecklistItem,
+	ChecklistResult,
 	ExecutionScenarioResult,
 	ExecutionScenario,
 	TestCaseCredential,
+	TranscriptTurn,
 } from '../types';
+import { createAgentUserProxy } from '../utils/user-proxy/agent-user';
 import type { CaseSeed } from './schema';
 import { agentModelSlots, AgentModelSlotsViewSchema } from '../credentials/agent-model-slots';
 import type { AgentModelResolution } from '../credentials/model-resolver';
@@ -222,11 +239,198 @@ export async function fetchAgentScenarioContext(
 	}
 }
 
+/** What one Agent scenario run needs to reach the server. */
+interface AgentTurnTarget {
+	agentId: string;
+	projectId: string;
+	scenario: ExecutionScenario;
+	timeoutMs?: number;
+	logger: EvalLogger;
+}
+
+/** One request to the agent eval endpoint, with the in-band transient-abort
+ *  retry the workflow path uses. `thread` makes it a turn of a thread. */
+async function executeAgentTurn(
+	client: N8nClient,
+	target: AgentTurnTarget,
+	thread?: InstanceAiEvalAgentThreadTurn,
+): Promise<InstanceAiEvalAgentExecutionResult> {
+	const { agentId, projectId, scenario, timeoutMs, logger } = target;
+	const send = async () =>
+		await client.executeAgentWithLlmMock(agentId, projectId, scenario.dataSetup, timeoutMs, thread);
+	let evalResult = await send();
+	for (
+		let attempt = 1;
+		!evalResult.success &&
+		isTransientExecutionAbort(evalResult.errors) &&
+		attempt < MAX_EXEC_ATTEMPTS;
+		attempt++
+	) {
+		logger.warn(
+			`    [${scenario.name}] agent execution aborted by transient DB error (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}: ${evalResult.errors.join('; ')}); retrying`,
+		);
+		await delay(500 * attempt);
+		evalResult = await send();
+	}
+	return evalResult;
+}
+
+/** The scenario's run: one request, or a conversation of turns and sessions. */
+async function runAgentScenarioTurns(
+	client: N8nClient,
+	target: AgentTurnTarget,
+): Promise<{ evalResult: InstanceAiEvalAgentExecutionResult; transcript?: TranscriptTurn[] }> {
+	const plans = agentSessionPlans(target.scenario);
+	if (!plans) return { evalResult: await executeAgentTurn(client, target) };
+	const conversation = await runAgentConversation({
+		plans,
+		dataSetup: target.scenario.dataSetup,
+		user: createAgentUserProxy({ logger: target.logger }),
+		executeTurn: async (thread) => await executeAgentTurn(client, target, thread),
+	});
+	return {
+		evalResult: mergeConversationResult(conversation),
+		transcript: conversationTranscript(conversation),
+	};
+}
+
+/** How a scenario was graded, and what the verifier snapshot records. */
+interface AgentScenarioVerdict {
+	passed: boolean;
+	incomplete: boolean;
+	reasoning: string;
+	failureCategory?: string;
+	rootCause?: string;
+	expectationResults?: BuildExpectationResult[];
+	snapshot: {
+		result: ChecklistResult | undefined;
+		verificationResults: ChecklistResult[];
+		verifierAttempts: VerifierAttemptDebug[];
+		verifierInput: { checklist: ChecklistItem[]; artifact: VerificationArtifact };
+	};
+}
+
+/** A scenario without expectations (an assistant-built Agent) is graded on its
+ *  `successCriteria` by the checklist verifier, as before. */
+async function verifyAgentChecklist(
+	scenario: ExecutionScenario,
+	artifact: VerificationArtifact,
+): Promise<AgentScenarioVerdict> {
+	const checklist: ChecklistItem[] = [
+		{ id: 1, description: scenario.successCriteria, category: 'execution', strategy: 'llm' },
+	];
+	const verification = await verifyChecklist(checklist, artifact);
+	const [result] = verification.results;
+	const attemptErrors = verification.attempts
+		.map((a) => a.error)
+		.filter((e): e is string => e !== null);
+	return {
+		passed: result?.pass ?? false,
+		incomplete: result === undefined,
+		reasoning:
+			result?.reasoning ??
+			`No verification result — verifier exhausted all attempts${attemptErrors.length > 0 ? ` (${attemptErrors.join('; ')})` : ''}`,
+		failureCategory: result?.failureCategory ?? (result ? undefined : 'verification_failure'),
+		rootCause: result?.rootCause,
+		snapshot: {
+			result,
+			verificationResults: verification.results,
+			verifierAttempts: verification.attempts,
+			verifierInput: { checklist, artifact },
+		},
+	};
+}
+
+/** Tells the shared expectations judge (written for the builder) what it is reading. */
+const AGENT_RUN_JUDGE_NOTE = [
+	'## What was tested',
+	'',
+	'This is a runtime test of the n8n Agent described below, not a build. No workflow was built, by design. In the expectations, "the agent" means this Agent. The conversation transcript is between a simulated user and this Agent. A new session is a new chat thread with the same user.',
+].join('\n');
+
+function keyedVerdict(
+	unit: AgentExpectationUnit,
+	verdict: BuildExpectationResult | undefined,
+): BuildExpectationResult {
+	const graded = verdict ?? { pass: false, reason: 'No verdict from the judge', incomplete: true };
+	const attribution = attributionForExpectation(graded);
+	return {
+		...graded,
+		expectation: unit.key,
+		...(attribution ? { attribution } : {}),
+	};
+}
+
+/** All expectations hold: pass. One fails: fail. Otherwise any without a verdict: ungraded. */
+function scenarioOutcome(results: BuildExpectationResult[]) {
+	const failed = results.filter((r) => !r.pass && !r.incomplete);
+	const ungraded = results.filter((r) => r.incomplete);
+	if (failed.length > 0) {
+		const reasons = failed.map((r) => `${r.expectation}: ${r.reason}`).join('; ');
+		return { passed: false, incomplete: false, reasoning: `Failed expectations — ${reasons}` };
+	}
+	if (ungraded.length > 0) {
+		const names = ungraded.map((r) => r.expectation).join('; ');
+		return { passed: false, incomplete: true, reasoning: `No verdict for: ${names}` };
+	}
+	return {
+		passed: true,
+		incomplete: false,
+		reasoning: `All ${String(results.length)} expectations hold.`,
+	};
+}
+
+/**
+ * Grade each expectation as its own unit with the shared expectations judge,
+ * against the whole transcript (every session) and the run's tool calls.
+ */
+async function gradeAgentExpectations(
+	units: AgentExpectationUnit[],
+	transcript: TranscriptTurn[],
+	artifact: VerificationArtifact,
+): Promise<AgentScenarioVerdict> {
+	const artifactContext = [
+		AGENT_RUN_JUDGE_NOTE,
+		artifact.workflowContext,
+		artifact.scenarioContext,
+	].join('\n\n');
+	const verdicts = await verifyBuildExpectations(
+		units.map((unit) => unit.text),
+		{ transcript, artifactContext },
+	);
+	const results = units.map((unit, index) => keyedVerdict(unit, verdicts[index]));
+	const checklist = units.map(
+		(unit, id): ChecklistItem => ({
+			id,
+			description: unit.key,
+			category: 'execution',
+			strategy: 'llm',
+		}),
+	);
+	return {
+		...scenarioOutcome(results),
+		expectationResults: results,
+		snapshot: {
+			result: undefined,
+			verificationResults: results.map((r, id) => ({
+				id,
+				pass: r.pass,
+				reasoning: r.reason,
+				strategy: 'llm',
+			})),
+			verifierAttempts: [],
+			verifierInput: { checklist, artifact },
+		},
+	};
+}
+
 /**
  * Execute one scenario against a built first-class Agent and verify the
  * result — the agent-artifact counterpart of runScenario. The agent reasons
  * with its real model; its tools' outbound HTTP is served by the mock layer and
  * its Data Table tools read the real table, seeded with the scenario's rows first.
+ * A scenario with `userTurns` or `sessions` runs as a conversation; one with
+ * `expectations` is graded per expectation and passes only if all of them hold.
  */
 export async function executeAgentScenario(
 	client: N8nClient,
@@ -254,81 +458,40 @@ export async function executeAgentScenario(
 
 	const execStart = Date.now();
 	const agentProjectId = projectId ?? (await client.getPersonalProjectId());
-	let evalResult = await client.executeAgentWithLlmMock(
-		agentId,
-		agentProjectId,
-		scenario.dataSetup,
-		timeoutMs,
-	);
-	// Same in-band transient-abort retry as the workflow path.
-	for (
-		let attempt = 1;
-		!evalResult.success &&
-		isTransientExecutionAbort(evalResult.errors) &&
-		attempt < MAX_EXEC_ATTEMPTS;
-		attempt++
-	) {
-		logger.warn(
-			`    [${scenario.name}] agent execution aborted by transient DB error (attempt ${String(attempt)}/${String(MAX_EXEC_ATTEMPTS)}: ${evalResult.errors.join('; ')}); retrying`,
-		);
-		await delay(500 * attempt);
-		evalResult = await client.executeAgentWithLlmMock(
-			agentId,
-			agentProjectId,
-			scenario.dataSetup,
-			timeoutMs,
-		);
-	}
+	const target = { agentId, projectId: agentProjectId, scenario, timeoutMs, logger };
+	const run = await runAgentScenarioTurns(client, target);
+	const evalResult = run.evalResult;
 	// Killed for time, not by the builder — throw so the timeout path classifies it.
 	throwIfServerBudgetStop(evalResult);
 	throwIfFrameworkIssue(evalResult);
+	const transcript = run.transcript ?? singleTurnTranscript(evalResult);
 
 	const execMs = Date.now() - execStart;
 
 	logger.info(
-		`    [${scenario.name}] agent exec=${String(Math.round(execMs / 1000))}s (${String(evalResult.toolCalls.length)} tool calls, ${String(evalResult.modelTurns.length)} model turns)`,
+		`    [${scenario.name}] agent exec=${String(Math.round(execMs / 1000))}s (${String(transcript.length)} user turn(s), ${String(evalResult.toolCalls.length)} tool calls, ${String(evalResult.modelTurns.length)} model turns)`,
 	);
 
 	const verifyStart = Date.now();
 	const artifact = buildAgentVerificationArtifact(scenario, agentContext, evalResult);
-
-	const scenarioChecklist: ChecklistItem[] = [
-		{
-			id: 1,
-			description: scenarioJudgeCriteria(scenario),
-			category: 'execution',
-			strategy: 'llm',
-		},
-	];
-
-	const verification = await verifyChecklist(scenarioChecklist, artifact);
-	const verificationResults = verification.results;
-
+	const units = agentExpectationUnits(scenario);
+	const verdict =
+		units.length > 0
+			? await gradeAgentExpectations(units, transcript, artifact)
+			: await verifyAgentChecklist(scenario, artifact);
 	const verifyMs = Date.now() - verifyStart;
-	const passed = verificationResults.length > 0 && verificationResults[0].pass;
-	const result = verificationResults[0];
+	const { passed, incomplete, reasoning, failureCategory, rootCause } = verdict;
+
 	await writeScenarioVerificationSnapshot({
 		testCaseName: testCaseName ?? `agent-${agentId}`,
 		scenarioName: scenario.name,
 		workflowId: `agent:${agentId}`,
 		passed,
-		result,
-		verificationResults,
-		verifierAttempts: verification.attempts,
-		verifierInput: { checklist: scenarioChecklist, artifact },
+		...verdict.snapshot,
 		buildTrace,
 		logger,
 		outputDir,
 	});
-	const incomplete = verificationResults.length === 0;
-	const attemptErrors = verification.attempts
-		.map((a) => a.error)
-		.filter((e): e is string => e !== null);
-	const reasoning =
-		result?.reasoning ??
-		`No verification result — verifier exhausted all attempts${attemptErrors.length > 0 ? ` (${attemptErrors.join('; ')})` : ''}`;
-	const failureCategory = result?.failureCategory ?? (result ? undefined : 'verification_failure');
-	const rootCause = result?.rootCause;
 	const attribution = attributionForScenario({ passed, incomplete, failureCategory });
 
 	const categoryLabel = failureCategory ? ` [${failureCategory}]` : '';
@@ -350,6 +513,7 @@ export async function executeAgentScenario(
 		failureCategory,
 		attribution,
 		rootCause,
+		...(verdict.expectationResults ? { expectationResults: verdict.expectationResults } : {}),
 		...(incomplete ? { incomplete: true } : {}),
 	};
 }

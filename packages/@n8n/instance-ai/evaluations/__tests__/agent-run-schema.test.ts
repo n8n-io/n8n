@@ -1,4 +1,4 @@
-import { scenarioJudgeCriteria } from '../harness/agent-run-schema';
+import { agentExpectationUnits } from '../harness/agent-run-schema';
 import { EvalTestCaseSchema } from '../harness/schema';
 
 // The case contract shared with lang-tracer (AGENT-1665/1666): `agentRun` on the
@@ -367,31 +367,24 @@ describe('scenario expectations', () => {
 	});
 });
 
-describe('scenarioJudgeCriteria', () => {
-	const scenario = { successCriteria: 'Handles the refund well.' };
+describe('agentExpectationUnits', () => {
+	it('keys each expectation by its scenario, and a session expectation by its session too', () => {
+		const units = agentExpectationUnits({
+			name: 'refund',
+			expectations: ['Greets the user'],
+			sessions: [
+				{ goal: 'g', maxTurns: 6 },
+				{ goal: 'g', maxTurns: 6, expectations: ['Recalls the order'] },
+			],
+		});
 
-	it('lists the expectations after the success criteria', () => {
-		expect(
-			scenarioJudgeCriteria({ ...scenario, expectations: ['Quotes the window', 'Offers a link'] }),
-		).toBe(
-			'Handles the refund well.\n\nAll of these must hold:\n- Quotes the window\n- Offers a link',
-		);
+		expect(units).toEqual([
+			{ key: 'refund › Greets the user', text: 'Greets the user' },
+			{ key: 'refund › session 2 › Recalls the order', text: 'In session 2: Recalls the order' },
+		]);
 	});
 
-	it('includes the expectations of every session', () => {
-		expect(
-			scenarioJudgeCriteria({
-				successCriteria: '',
-				expectations: ['Greets the user'],
-				sessions: [
-					{ goal: 'g', maxTurns: 6 },
-					{ goal: 'g', maxTurns: 6, expectations: ['Recalls the order'] },
-				],
-			}),
-		).toBe('All of these must hold:\n- Greets the user\n- Recalls the order');
-	});
-
-	it('leaves a scenario without expectations unchanged', () => {
-		expect(scenarioJudgeCriteria(scenario)).toBe('Handles the refund well.');
+	it('has no units for a scenario without expectations', () => {
+		expect(agentExpectationUnits({ name: 'refund', successCriteria: 'ok' })).toEqual([]);
 	});
 });

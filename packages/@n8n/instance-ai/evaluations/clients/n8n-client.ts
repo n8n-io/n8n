@@ -12,7 +12,9 @@ import {
 	type AgentConfigResponse,
 	type InstanceAiConfirmRequest,
 	type InstanceAiRichMessagesResponse,
+	type InstanceAiEvalAgentExecutionRequest,
 	type InstanceAiEvalAgentExecutionResult,
+	type InstanceAiEvalAgentThreadTurn,
 	type InstanceAiEvalExecutionResult,
 	type InstanceAiRunDebugResponse,
 	type InstanceAiEvalThreadMemoryResponse,
@@ -1476,9 +1478,15 @@ export class N8nClient {
 		projectId: string,
 		scenarioHints?: string,
 		timeoutMs: number = 120_000,
+		/** A turn of a multi-turn run (AGENT-1666). Omitted: single-shot, as before. */
+		thread?: InstanceAiEvalAgentThreadTurn,
 	): Promise<InstanceAiEvalAgentExecutionResult> {
-		const body: { projectId: string; scenarioHints?: string; timeoutMs?: number } = { projectId };
+		const body: Pick<
+			InstanceAiEvalAgentExecutionRequest,
+			'projectId' | 'scenarioHints' | 'timeoutMs' | 'thread'
+		> = { projectId };
 		if (scenarioHints) body.scenarioHints = scenarioHints;
+		if (thread) body.thread = thread;
 		const serverBudgetMs = serverBudgetFor(timeoutMs);
 		body.timeoutMs = serverBudgetMs;
 

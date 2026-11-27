@@ -233,6 +233,17 @@ describe('caseDisplayPrompt', () => {
 });
 
 describe('transcriptAsText', () => {
+	it('puts a turn heading before the turn, so sessions read as separate threads', () => {
+		const transcript: TranscriptTurn[] = [
+			{ heading: '## Session 1', userMessage: 'hi', steps: [] },
+			{ userMessage: 'still here', steps: [] },
+			{ heading: '## Session 2', userMessage: 'back again', steps: [] },
+		];
+		const lines = transcriptAsText(transcript).split('\n');
+		expect(lines.indexOf('## Session 2')).toBe(lines.indexOf('User: back again') - 2);
+		expect(lines[0]).toBe('## Session 1');
+	});
+
 	it('surfaces tool-call args and result so the judge sees what each call did', () => {
 		const transcript: TranscriptTurn[] = [
 			{

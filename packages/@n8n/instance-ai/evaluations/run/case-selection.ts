@@ -119,14 +119,14 @@ export function selectCases(
 	return { testCasesWithFiles, prebuiltManifest };
 }
 
-/** The contract is pinned ahead of N3/N4, so these fields load but do nothing yet.
- *  Warn per case rather than reject, so cases can be authored now. */
+/** The contract is pinned ahead of N4, so the memory fields load but do nothing
+ *  yet. Warn per case rather than reject, so cases can be authored now. */
 function warnPendingAgentRunFields(cases: WorkflowTestCaseWithFile[], logger: EvalLogger): void {
 	for (const { testCase, fileSlug } of cases) {
 		const pending = pendingAgentRunFields(testCase);
 		if (pending.length === 0) continue;
 		logger.warn(
-			`${fileSlug}: ${pending.join(', ')} ignored — multi-turn runs (userTurns, sessions) and memory (keepMemory, configOverrides) are not implemented yet (AGENT-1666). The case runs single-turn with memory stripped.`,
+			`${fileSlug}: ${pending.join(', ')} ignored — memory (keepMemory, configOverrides) is not implemented yet (AGENT-1666). The case runs with memory stripped.`,
 		);
 	}
 }
