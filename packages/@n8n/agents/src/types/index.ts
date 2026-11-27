@@ -242,6 +242,7 @@ export type {
 	GuardrailModelCallContext,
 	GuardrailToolCallContext,
 	GuardrailDecision,
+	GuardrailModelCallDecision,
 	GuardrailNotice,
 	GuardrailStop,
 	GuardrailToolCallOutcome,

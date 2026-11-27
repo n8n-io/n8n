@@ -410,6 +410,22 @@ describe('AgentGuardrailModal', () => {
 		expect(savedConfig(wrapper)).toEqual(KEYWORDS_ENTRY);
 	});
 
+	it('preserves the saved stage on an unchanged edit, and drops it on a kind switch', async () => {
+		const staged: AgentToolGuardrailConfig = { ...KEYWORDS_ENTRY, stage: 'before' };
+
+		const edit = mountModal({ guardrail: staged });
+		await saveButton(edit).trigger('click');
+		expect(savedConfig(edit)).toEqual(staged);
+
+		// A kind switch leaves the stage unset, so the new kind's preset applies.
+		const switched = mountModal({ guardrail: staged });
+		await pickKind(switched, 'secretKeys');
+		await saveButton(switched).trigger('click');
+		const afterSwitch = savedConfig(switched);
+		expect(afterSwitch.kind).toBe('secretKeys');
+		expect('stage' in afterSwitch).toBe(false);
+	});
+
 	it('keeps the id while a rename changes only the name', async () => {
 		const wrapper = mountModal({ guardrail: KEYWORDS_ENTRY });
 

@@ -256,6 +256,8 @@ function onModalRemove() {
 			:guardrail="editingGuardrail"
 			:kind="createKind"
 			:tools="tools"
+			:review-configurations="config?.hitlConfigurations ?? []"
+			:project-id="projectId"
 			:existing-ids="guardrails.map((guardrail) => guardrail.id)"
 			:disabled="disabled"
 			@update:open="modalOpen = $event"

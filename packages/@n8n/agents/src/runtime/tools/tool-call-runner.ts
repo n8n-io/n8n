@@ -178,8 +178,10 @@ export class ToolCallRunner {
 				return await this.toolError(params, new GuardrailStopError('before', stop.code));
 			}
 		}
-		// A before-stage redact rewrote the input inside the context
-		const effectiveInput = (guardCtx?.input ?? input) as typeof input;
+		// A before-stage redact rewrote the input inside the context. The
+		// context wins whenever it exists, so a redaction to `null` or
+		// `undefined` is preserved instead of falling back to the original.
+		const effectiveInput = (guardCtx !== undefined ? guardCtx.input : input) as typeof input;
 
 		if (shouldEmitToolExecutionStart(builtTool, resumeData)) {
 			this.eventBus.emit({
@@ -248,7 +250,7 @@ export class ToolCallRunner {
 		}
 
 		if (isSuspendedToolResult(toolResult)) {
-			return await this.buildSuspendedOutcome(params, builtTool, toolResult);
+			return await this.buildSuspendedOutcome(params, builtTool, toolResult, input);
 		}
 
 		return await this.buildSuccessOutcome(params, builtTool, input, toolResult);
@@ -519,6 +521,7 @@ export class ToolCallRunner {
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
 		toolResult: SuspendedToolResult,
+		input: JSONValue,
 	): Promise<ToolCallOutcome> {
 		if (builtTool.suspendSchema) {
 			const parseResult = await parseWithSchema(builtTool.suspendSchema, toolResult.payload);
@@ -539,6 +542,9 @@ export class ToolCallRunner {
 		}
 		return {
 			outcome: 'suspended',
+			// The input the tool received, redactions included, so the
+			// suspension persists the redacted input instead of the original.
+			input,
 			payload: toolResult.payload,
 			resumeSchema,
 			...(toolResult.continuation !== undefined ? { continuation: toolResult.continuation } : {}),

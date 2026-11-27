@@ -47,10 +47,24 @@ describe('redactMatches', () => {
 		expect(masked).toBe('unchanged');
 	});
 
+	it('masks every casing of a matched keyword, not only the reported one', () => {
+		const masked = redactMatches('The Secret plan and a secret key', [
+			result({ matchedKeywords: ['Secret'] }),
+		]);
+		expect(masked).toBe('The <KEYWORD> plan and a <KEYWORD> key');
+	});
+
 	it('treats regex metacharacters literally', () => {
 		const masked = redactMatches('Key a.b*c present', [
 			result({ maskEntities: { SECRET: ['a.b*c'] } }),
 		]);
 		expect(masked).toBe('Key <SECRET> present');
+	});
+
+	it('masks a literal __proto__ keyword', () => {
+		const masked = redactMatches('value __proto__ and secret', [
+			result({ matchedKeywords: ['__proto__'] }),
+		]);
+		expect(masked).toBe('value <KEYWORD> and secret');
 	});
 });

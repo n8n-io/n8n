@@ -12,7 +12,7 @@ const stop = (code: string): GuardrailDecision => ({ action: 'stop', code });
 
 function makeHook(overrides: Partial<ModelGuardrail> = {}) {
 	return {
-		before: vi.fn<NonNullable<ModelGuardrail['before']>>().mockResolvedValue(allow),
+		before: vi.fn<NonNullable<ModelGuardrail['before']>>().mockResolvedValue({ action: 'allow' }),
 		after: vi.fn<NonNullable<ModelGuardrail['after']>>().mockResolvedValue(undefined),
 		beforeTool: vi.fn<NonNullable<ModelGuardrail['beforeTool']>>().mockResolvedValue(allow),
 		afterTool: vi.fn<NonNullable<ModelGuardrail['afterTool']>>().mockResolvedValue(undefined),

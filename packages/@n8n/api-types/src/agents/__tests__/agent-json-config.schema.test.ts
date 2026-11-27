@@ -1,5 +1,6 @@
 import {
 	AgentJsonConfigSchema,
+	RunnableAgentJsonConfigSchema,
 	findToolGuardrailRefIssues,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
@@ -1129,6 +1130,27 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 			},
 		});
 		expect(result.success).toBe(true);
+	});
+
+	it('rejects a dangling review reference on a runnable config too', () => {
+		const result = RunnableAgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			credential: 'cred-1',
+			config: {
+				guardrails: {
+					tools: [
+						{
+							...baseGuardrail,
+							kind: 'keywords',
+							keywords: ['a'],
+							response: 'review',
+							reviewConfigurationId: 'config-missing',
+						},
+					],
+				},
+			},
+		});
+		expect(result.success).toBe(false);
 	});
 });
 

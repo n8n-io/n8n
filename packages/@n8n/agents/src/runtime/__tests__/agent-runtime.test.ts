@@ -25,11 +25,7 @@ import type {
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { ExecutionOptions, GenerateResult, StreamChunk } from '../../types/sdk/agent';
-import type {
-	GuardrailDecision,
-	GuardrailsOptions,
-	ModelGuardrail,
-} from '../../types/sdk/guardrail';
+import type { GuardrailsOptions, ModelGuardrail } from '../../types/sdk/guardrail';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import { stripHydratedFileData } from '../../types/sdk/message';
 import type {
@@ -1915,7 +1911,10 @@ describe('AgentRuntime — guardrails', () => {
 		streamText.mockReset();
 	});
 
-	const stopDecision = (code: string): GuardrailDecision => ({ action: 'stop', code });
+	const stopDecision = (code: string): { action: 'stop'; code: string } => ({
+		action: 'stop',
+		code,
+	});
 
 	type GuardrailSpies = {
 		[K in keyof Required<ModelGuardrail>]: MockedFunction<NonNullable<ModelGuardrail[K]>>;
@@ -2265,6 +2264,59 @@ describe('AgentRuntime — guardrails', () => {
 		// The model sees the rewritten result, not the raw handler output.
 		expect(JSON.stringify(secondModelCall?.messages)).toContain('<REDACTED_RESULT>');
 		expect(JSON.stringify(secondModelCall?.messages)).not.toContain('echoed');
+	});
+
+	it('runs a resumed suspension with the before-stage redacted input', async () => {
+		const handlerInputs: unknown[] = [];
+		const suspendTool: BuiltTool = {
+			...makeInterruptibleTool(),
+			handler: async (input: unknown, ctx: unknown) => {
+				const { suspend, resumeData } = ctx as InterruptibleToolContext;
+				handlerInputs.push(input);
+				if (!resumeData) {
+					return await suspend({ question: 'approve?' });
+				}
+				return { approved: true };
+			},
+		};
+		const hook = makeGuardrail({
+			beforeTool: vi.fn<NonNullable<ModelGuardrail['beforeTool']>>().mockResolvedValue({
+				action: 'redact',
+				code: 'guardrail.redact',
+				value: { question: '<KEYWORD>' },
+			}),
+		});
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+		const first = await runtime.generate('needs approval', { guardrails: guardrailsOption(hook) });
+
+		// The tool received the rewritten input, and the suspension persists
+		// that input, not the original the model sent.
+		expect(handlerInputs[0]).toEqual({ question: '<KEYWORD>' });
+		expect(first.pendingSuspend![0]).toMatchObject({
+			toolName: 'approve',
+			input: { question: '<KEYWORD>' },
+		});
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		await runtime.resume(
+			'generate',
+			{ approved: true },
+			{
+				runId: first.pendingSuspend![0].runId,
+				toolCallId: 'tc-1',
+			},
+		);
+
+		// The resumed call skips the before hooks, so the persisted redacted
+		// input is what reaches the tool.
+		expect(handlerInputs[1]).toEqual({ question: '<KEYWORD>' });
+		expect(hook.beforeTool).toHaveBeenCalledTimes(1);
 	});
 
 	it.each([false, true])('checks approval once with native deferral %s', async (native) => {

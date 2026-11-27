@@ -836,16 +836,16 @@ export const AgentJsonConfigBaseSchema = z.object({
 		.optional(),
 });
 
-export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine((config, ctx) => {
-	if (config.credential?.trim() && isDraftAgentConfig(config)) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			path: ['credential'],
-			message: 'A credential requires a model to be set',
-		});
-	}
-	// A review-response guardrail routes through a human-review configuration
-	// of the same agent, so the referenced id must exist on the document.
+/**
+ * A review-response guardrail routes through a human-review configuration of
+ * the same agent, so the referenced id must exist on the document. Shared by
+ * the draft and runnable schemas: a runnable or sub-agent config must not
+ * carry a dangling reference either.
+ */
+function checkReviewConfigurationReferences(
+	config: z.infer<typeof AgentJsonConfigBaseSchema>,
+	ctx: z.RefinementCtx,
+): void {
 	const configurationIds = new Set((config.hitlConfigurations ?? []).map(({ id }) => id));
 	for (const [index, guardrail] of (config.config?.guardrails?.tools ?? []).entries()) {
 		if (guardrail.reviewConfigurationId && !configurationIds.has(guardrail.reviewConfigurationId)) {
@@ -856,6 +856,17 @@ export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine((conf
 			});
 		}
 	}
+}
+
+export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine((config, ctx) => {
+	if (config.credential?.trim() && isDraftAgentConfig(config)) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ['credential'],
+			message: 'A credential requires a model to be set',
+		});
+	}
+	checkReviewConfigurationReferences(config, ctx);
 });
 
 export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
@@ -863,7 +874,7 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 	credential: z.string().refine((value) => value.trim().length > 0, {
 		message: 'Credential is required',
 	}),
-});
+}).superRefine(checkReviewConfigurationReferences);
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 

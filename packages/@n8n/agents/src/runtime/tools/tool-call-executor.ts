@@ -246,10 +246,25 @@ export class ToolCallExecutor {
 		}
 		const outcome = result.value;
 		switch (outcome.outcome) {
-			case 'suspended':
-				batch.suspensions.push(this.buildToolCallSuspension(call, outcome));
-				batch.pending[call.toolCallId] = this.buildPendingToolCall(call, outcome, ctx.runId);
+			case 'suspended': {
+				// A dispatched call suspends under the dispatcher's identity:
+				// the checkpoint re-runs the dispatcher on resume, so its own
+				// input must stay on the record for the dispatch to resolve.
+				// The redacted-input carry therefore applies to direct calls
+				// only; a dispatched call that was redacted before suspending
+				// keeps the original dispatcher input.
+				const suspendedOutcome = resolveToolCallTarget(ctx.toolMap, call.toolName, call.input)
+					?.dispatchedBy
+					? { ...outcome, input: undefined }
+					: outcome;
+				batch.suspensions.push(this.buildToolCallSuspension(call, suspendedOutcome));
+				batch.pending[call.toolCallId] = this.buildPendingToolCall(
+					call,
+					suspendedOutcome,
+					ctx.runId,
+				);
 				return true;
+			}
 			case 'success':
 			case 'cancelled':
 				this.appendCompletedToolCall(call, outcome, batch.results);
@@ -273,7 +288,9 @@ export class ToolCallExecutor {
 		return {
 			toolCallId: call.toolCallId,
 			toolName: call.toolName,
-			input: call.input,
+			// The outcome's input is the one the tool received, after any
+			// before-stage redaction; the call's is the original.
+			input: outcome.input ?? call.input,
 			payload: outcome.payload,
 			resumeSchema: outcome.resumeSchema,
 		};
@@ -288,7 +305,9 @@ export class ToolCallExecutor {
 			suspended: true,
 			toolCallId: call.toolCallId,
 			toolName: call.toolName,
-			input: call.input,
+			// Persist the redacted input: a resumed call skips the before
+			// hooks, so the original would reach the tool after resume.
+			input: outcome.input ?? call.input,
 			suspendPayload: outcome.payload,
 			resumeSchema: outcome.resumeSchema,
 			...(outcome.continuation !== undefined ? { continuation: outcome.continuation } : {}),

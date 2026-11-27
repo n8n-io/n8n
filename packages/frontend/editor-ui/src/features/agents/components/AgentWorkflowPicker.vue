@@ -11,7 +11,10 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { AGENT_DECISION_TRIGGER_NODE_TYPE } from '@n8n/api-types';
+import {
+	AGENT_DECISION_TRIGGER_NODE_TYPE,
+	getGuardrailCheckWorkflowIncompatibilityReason,
+} from '@n8n/api-types';
 
 import { VIEWS } from '@/app/constants';
 import { useAgentToolCatalog } from '../composables/useAgentToolCatalog';
@@ -48,13 +51,17 @@ onMounted(async () => {
 const sourceWorkflows = computed(() => {
 	if (!props.forGuardrailCheck) return availableWorkflows.value;
 	const seen = new Set(availableWorkflows.value.map((workflow) => workflow.id));
+	// The decision-trigger extras must pass the same compatibility check the
+	// backend validation applies, so the picker cannot offer a check workflow
+	// that saving or publishing would reject.
 	const decisionWorkflows = projectWorkflows.value.filter(
 		(workflow) =>
 			!workflow.isArchived &&
 			!seen.has(workflow.id) &&
 			(workflow.nodes ?? []).some(
 				(node) => node.type === AGENT_DECISION_TRIGGER_NODE_TYPE && !node.disabled,
-			),
+			) &&
+			getGuardrailCheckWorkflowIncompatibilityReason(workflow) === null,
 	);
 	return [...availableWorkflows.value, ...decisionWorkflows];
 });

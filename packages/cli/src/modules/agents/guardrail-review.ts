@@ -14,7 +14,6 @@ import type { ActiveExecutions } from '@/active-executions';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 
-import { AgentChannelHitlService } from './approval/agent-channel-hitl.service';
 import { buildApprovalArgs } from './execution-recorder';
 import { executeWorkflow } from './tools/workflow-tool-factory';
 
@@ -101,19 +100,25 @@ export class ToolGuardrailReviewService {
 			});
 			return;
 		}
-		const workflow =
-			configuration.method === 'channel'
-				? await Container.get(AgentChannelHitlService).prepareWorkflow(
-						configuration,
-						context.integrations,
-						context.projectId,
-						context.agentId,
-					)
-				: await this.loader.loadWorkflow(
-						context.projectId,
-						{ workflowId: configuration.workflowId, workflowName: configuration.name },
-						{ usePublishedVersion: context.published },
-					);
+		if (configuration.method === 'channel') {
+			// The only channel delivery the HITL surface offers is a
+			// send-and-wait approval card, and its buttons only work for real
+			// approval jobs this path never creates — so a channel review would
+			// deliver a card with dead buttons and leave the child execution
+			// waiting until timeout. A notify-only channel destination needs
+			// per-platform nodes from the approval owners; until then, routing
+			// skips the channel rather than sending a broken card.
+			this.logger.warn(
+				'A guardrail review did not route: channel review destinations are not supported yet',
+				{ agentId: context.agentId, guardrailKind: guardrail.kind },
+			);
+			return;
+		}
+		const workflow = await this.loader.loadWorkflow(
+			context.projectId,
+			{ workflowId: configuration.workflowId, workflowName: configuration.name },
+			{ usePublishedVersion: context.published },
+		);
 		if (!workflow) {
 			this.logger.warn('A guardrail review did not route: the review workflow is unavailable', {
 				agentId: context.agentId,
@@ -136,14 +141,12 @@ export class ToolGuardrailReviewService {
 			payload.stage === 'before' ? 'tool input' : 'tool result'
 		} for ${ctx.toolName}: ${JSON.stringify(payload.matchDetails)}`;
 		// The execution runs on its own: nothing resumes the tool call on its
-		// completion, so a channel message's buttons only acknowledge the
-		// review.
+		// completion, so the review informs and never gates.
 		const { WorkflowRunner } = await import('@/workflow-runner.js');
 		void executeWorkflow(
 			workflow,
 			trigger,
 			{
-				...(configuration.method === 'channel' ? { message: description } : {}),
 				requestId: `${ctx.runId}:${ctx.toolCallId}:${guardrail.id}`,
 				agentId: context.agentId,
 				toolName: ctx.toolName,
@@ -157,7 +160,6 @@ export class ToolGuardrailReviewService {
 				activeExecutions: this.activeExecutions,
 				projectId: context.projectId,
 				executionMode: context.published ? 'integrated' : 'manual',
-				...(configuration.method === 'channel' ? { executionProjectId: context.projectId } : {}),
 			},
 		).catch((error) =>
 			this.logger.warn('A guardrail review workflow failed', {

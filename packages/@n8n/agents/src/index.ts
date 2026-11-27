@@ -9,6 +9,7 @@ export type {
 	GuardrailDecision,
 	GuardrailModelCallContext,
 	GuardrailModelCallSource,
+	GuardrailModelCallDecision,
 	GuardrailNotice,
 	GuardrailStop,
 	GuardrailToolCallContext,

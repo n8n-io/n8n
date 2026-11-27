@@ -48,6 +48,13 @@ export type ToolCallOutcome =
 			payload: unknown;
 			resumeSchema: JSONSchema7;
 			continuation?: JSONValue;
+			/**
+			 * The input the tool actually received, after any before-stage
+			 * guardrail redaction. The executor persists it with the
+			 * suspension, so a resumed call keeps the redacted input instead
+			 * of the original.
+			 */
+			input?: JSONValue;
 	  }
 	| {
 			outcome: 'cancelled';

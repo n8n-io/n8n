@@ -276,9 +276,17 @@ function responseField<K extends AgentToolGuardrailKind>(kind: K) {
 
 function buildConfig(): AgentToolGuardrailConfig {
 	// The id is stable across edits; a create derives it from the name.
+	// An edit of the same kind keeps the saved stage: dropping it would
+	// silently broaden or narrow the guardrail's enforcement. A kind switch
+	// leaves the stage unset, so the kind's preset scope applies.
+	const stage =
+		props.guardrail && props.guardrail.kind === selectedKind.value && props.guardrail.stage
+			? { stage: props.guardrail.stage }
+			: {};
 	const shared = {
 		id:
 			props.guardrail?.id ?? slugifyGuardrailId(name.value, selectedKind.value, props.existingIds),
+		...stage,
 		...(name.value.trim() ? { name: name.value.trim() } : {}),
 		...(response.value === 'review' && reviewConfigurationId.value
 			? { reviewConfigurationId: reviewConfigurationId.value }
