@@ -71,6 +71,7 @@ describe('Agent memory on user deletion', () => {
 		await Container.get(SystemAgentRegistrationService).register({
 			agentId: INSTANCE_AGENT_ID,
 			name: 'Assistant',
+			authorizeUser: async () => true,
 			authorize: async () => true,
 			prepareTurn: vi.fn(),
 			workspace: { acquire: async () => undefined, destroy },

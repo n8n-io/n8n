@@ -669,6 +669,7 @@ describe('AgentMessageQueueConsumer', () => {
 			const provider = {
 				agentId: 'agent',
 				name: 'System Agent',
+				authorizeUser: vi.fn(async () => true),
 				authorize: vi.fn(async () => authorized),
 				prepareTurn: vi.fn(),
 			} satisfies SystemAgentProvider;

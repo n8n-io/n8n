@@ -32,6 +32,7 @@ describe('SystemAgentRegistrationService', () => {
 		const provider = {
 			agentId: 'other-agent',
 			name: 'Other Agent',
+			authorizeUser: vi.fn(async () => true),
 			authorize: vi.fn(async () => true),
 			prepareTurn: vi.fn(),
 		} satisfies SystemAgentProvider;

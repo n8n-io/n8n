@@ -25,6 +25,7 @@ describe('System agent queue access before the first execution', () => {
 	const provider: SystemAgentProvider = {
 		agentId: AGENT_ID,
 		name: 'Test System Agent',
+		authorizeUser: async () => true,
 		authorize: async () => true,
 		prepareTurn: async () => {
 			throw new Error('The queue consumer does not run in this test');

@@ -25,6 +25,7 @@ import { setupTestServer } from '../shared/utils';
 const provider: SystemAgentProvider = {
 	agentId: ASSISTANT_AGENT_ID,
 	name: 'n8n Assistant',
+	authorizeUser: async () => true,
 	authorize: async () => true,
 	prepareTurn: async () => {
 		throw new Error('No turn runs in this test');

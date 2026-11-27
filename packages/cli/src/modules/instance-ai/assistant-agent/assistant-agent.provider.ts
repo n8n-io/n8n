@@ -195,6 +195,11 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		return hasGlobalScope(user, 'instanceAi:message') && this.settingsService.isAgentEnabled();
 	}
 
+	/** The Assistant adds no project checks to the floor. */
+	async authorize(): Promise<boolean> {
+		return true;
+	}
+
 	async chatTurnOptions(
 		_user: User,
 		_thread: SystemAgentTurn['thread'],

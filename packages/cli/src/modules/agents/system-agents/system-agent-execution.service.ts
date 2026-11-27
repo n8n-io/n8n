@@ -48,7 +48,7 @@ import {
 	SYSTEM_CHAT_SOURCE,
 	systemChatFileScope,
 } from '../utils/agent-thread-access';
-import { canUseSystemAgent, isSystemAgentAvailableTo } from './system-agent-access';
+import { canUseSystemAgent } from './system-agent-access';
 import { SystemAgentHostEventChannel } from './system-agent-host-events';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
@@ -297,7 +297,7 @@ export class SystemAgentExecutionService {
 	): Promise<AgentExecutionThreadKeysetPage> {
 		const provider = this.getProvider(agentId);
 		// Refuse with "not found", like `assertCanUse`.
-		if (!(await isSystemAgentAvailableTo(provider, user))) {
+		if (!(await provider.authorizeUser(user))) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 		return await this.threadRepository.findOwnedHistoryPage(

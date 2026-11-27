@@ -289,6 +289,7 @@ describe('Agent service accounts', () => {
 			await Container.get(SystemAgentRegistrationService).register({
 				agentId,
 				name: 'Assistant',
+				authorizeUser: async () => true,
 				authorize: async () => true,
 				prepareTurn: vi.fn(),
 			});

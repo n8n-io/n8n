@@ -364,12 +364,12 @@ export interface SystemAgentProvider<TLease = unknown> {
 	 * continues a conversation runs them, and so does the thread list. Stop and
 	 * delete do not, so that a user can always clean up their own threads.
 	 */
-	authorizeUser?(user: User): Promise<boolean>;
+	authorizeUser(user: User): Promise<boolean>;
 	/**
 	 * Agent-specific access checks for the user in the working project. The
 	 * runtime calls this only after its floor check and `authorizeUser` passed.
 	 */
-	authorize?(user: User, projectId: string): Promise<boolean>;
+	authorize(user: User, projectId: string): Promise<boolean>;
 	prepareTurn(turn: SystemAgentTurn<TLease>): Promise<SystemAgentTurnHandle>;
 	/**
 	 * The user-facing text and code of an error that `prepareTurn` threw. The
