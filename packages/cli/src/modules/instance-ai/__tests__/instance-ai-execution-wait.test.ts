@@ -1,8 +1,4 @@
-import {
-	ENGINE_V2_POLL_INTERVAL_MS,
-	pollEngineV2Execution,
-	waitForEngineV2Execution,
-} from '../instance-ai-execution-wait';
+import { ENGINE_V2_POLL_INTERVAL_MS, pollEngineV2Execution } from '../instance-ai-execution-wait';
 
 /** Returns each status in turn, then the last one forever. */
 function statusSequence(...statuses: Array<string | undefined>) {
@@ -10,7 +6,9 @@ function statusSequence(...statuses: Array<string | undefined>) {
 	return vi.fn(async () => statuses[Math.min(call++, statuses.length - 1)]);
 }
 
-describe('waitForEngineV2Execution', () => {
+const stalledRead = () => vi.fn(async () => await new Promise<string>(() => {}));
+
+describe('pollEngineV2Execution', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 	});
@@ -19,125 +17,79 @@ describe('waitForEngineV2Execution', () => {
 		vi.useRealTimers();
 	});
 
-	it('completes once the execution settles, without a stop', async () => {
+	it('reports a settled execution once its status settles', async () => {
 		const readStatus = statusSequence('new', 'running', 'success');
-		const stop = vi.fn();
 
-		const outcome = waitForEngineV2Execution({ readStatus, stop, timeoutMs: 60_000 });
+		const outcome = pollEngineV2Execution({ readStatus, timeoutMs: 60_000 });
 		await vi.advanceTimersByTimeAsync(ENGINE_V2_POLL_INTERVAL_MS * 3);
 
-		await expect(outcome).resolves.toEqual({ kind: 'completed' });
+		await expect(outcome).resolves.toBe('settled');
 		expect(readStatus).toHaveBeenCalledTimes(3);
-		expect(stop).not.toHaveBeenCalled();
 	});
 
 	it.each(['error', 'canceled', 'waiting'])('treats the %s status as settled', async (status) => {
-		const stop = vi.fn();
-
 		await expect(
-			waitForEngineV2Execution({ readStatus: statusSequence(status), stop, timeoutMs: 1_000 }),
-		).resolves.toEqual({ kind: 'completed' });
-		expect(stop).not.toHaveBeenCalled();
+			pollEngineV2Execution({ readStatus: statusSequence(status), timeoutMs: 1_000 }),
+		).resolves.toBe('settled');
 	});
 
-	it('stops the execution when the time runs out', async () => {
-		const stop = vi.fn().mockResolvedValue(undefined);
-
-		const outcome = waitForEngineV2Execution({
+	it('reports the timeout', async () => {
+		const outcome = pollEngineV2Execution({
 			readStatus: statusSequence('running'),
-			stop,
-			timeoutMs: 1_000,
+			timeoutMs: 500,
 		});
-		await vi.advanceTimersByTimeAsync(1_500);
+		await vi.advanceTimersByTimeAsync(1_000);
 
-		await expect(outcome).resolves.toEqual({
-			kind: 'cancelled',
-			reason: 'timeout',
-			message: 'Execution timed out after 1000ms and was cancelled',
-		});
-		expect(stop).toHaveBeenCalledTimes(1);
+		await expect(outcome).resolves.toBe('timeout');
 	});
 
 	it('keeps polling while the execution is not readable yet', async () => {
 		const readStatus = statusSequence(undefined, undefined, 'success');
 
-		const outcome = waitForEngineV2Execution({ readStatus, stop: vi.fn(), timeoutMs: 60_000 });
+		const outcome = pollEngineV2Execution({ readStatus, timeoutMs: 60_000 });
 		await vi.advanceTimersByTimeAsync(ENGINE_V2_POLL_INTERVAL_MS * 3);
 
-		await expect(outcome).resolves.toEqual({ kind: 'completed' });
+		await expect(outcome).resolves.toBe('settled');
 	});
 
-	it('stops the execution when the signal aborts, without waiting for the next poll', async () => {
+	it.each([
+		['between two reads', () => statusSequence('running')],
+		['during a stalled read', stalledRead],
+	])('reports the abort when the signal aborts %s', async (_name, createReadStatus) => {
 		const controller = new AbortController();
-		const stop = vi.fn().mockResolvedValue(undefined);
+
+		const outcome = pollEngineV2Execution({
+			readStatus: createReadStatus(),
+			timeoutMs: 60_000,
+			abortSignal: controller.signal,
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		controller.abort();
+		await vi.advanceTimersByTimeAsync(0);
+
+		await expect(outcome).resolves.toBe('abort');
+	});
+
+	it('reports the abort at once when the signal aborted before the poll', async () => {
 		const readStatus = statusSequence('running');
 
-		const outcome = waitForEngineV2Execution({
-			readStatus,
-			stop,
-			timeoutMs: 60_000,
-			abortSignal: controller.signal,
-		});
-		await vi.advanceTimersByTimeAsync(0);
-		controller.abort();
-		await vi.advanceTimersByTimeAsync(0);
-
-		await expect(outcome).resolves.toEqual({
-			kind: 'cancelled',
-			reason: 'abort',
-			message: 'Execution was cancelled',
-		});
-		expect(stop).toHaveBeenCalledTimes(1);
-	});
-
-	it('stops at once when the signal aborted before the wait', async () => {
-		const controller = new AbortController();
-		controller.abort();
-		const stop = vi.fn().mockResolvedValue(undefined);
-
 		await expect(
-			waitForEngineV2Execution({
-				readStatus: statusSequence('running'),
-				stop,
-				timeoutMs: 60_000,
-				abortSignal: controller.signal,
-			}),
-		).resolves.toMatchObject({ kind: 'cancelled', reason: 'abort' });
-		expect(stop).toHaveBeenCalledTimes(1);
+			pollEngineV2Execution({ readStatus, timeoutMs: 60_000, abortSignal: AbortSignal.abort() }),
+		).resolves.toBe('abort');
+		expect(readStatus).not.toHaveBeenCalled();
 	});
 
-	it('stops the execution when the time runs out during a stalled read', async () => {
-		const stop = vi.fn().mockResolvedValue(undefined);
-		const readStatus = vi.fn(async () => await new Promise<string>(() => {}));
+	it('reports the timeout during a stalled read', async () => {
+		const readStatus = stalledRead();
 
-		const outcome = waitForEngineV2Execution({ readStatus, stop, timeoutMs: 1_000 });
+		const outcome = pollEngineV2Execution({ readStatus, timeoutMs: 1_000 });
 		await vi.advanceTimersByTimeAsync(1_000);
 
-		await expect(outcome).resolves.toMatchObject({ kind: 'cancelled', reason: 'timeout' });
+		await expect(outcome).resolves.toBe('timeout');
 		expect(readStatus).toHaveBeenCalledTimes(1);
-		expect(stop).toHaveBeenCalledTimes(1);
 	});
 
-	it('stops the execution when the signal aborts during a stalled read', async () => {
-		const controller = new AbortController();
-		const stop = vi.fn().mockResolvedValue(undefined);
-		const readStatus = vi.fn(async () => await new Promise<string>(() => {}));
-
-		const outcome = waitForEngineV2Execution({
-			readStatus,
-			stop,
-			timeoutMs: 60_000,
-			abortSignal: controller.signal,
-		});
-		await vi.advanceTimersByTimeAsync(0);
-		controller.abort();
-		await vi.advanceTimersByTimeAsync(0);
-
-		await expect(outcome).resolves.toMatchObject({ kind: 'cancelled', reason: 'abort' });
-		expect(stop).toHaveBeenCalledTimes(1);
-	});
-
-	it('ignores a stalled read that rejects after the wait gave up', async () => {
+	it('ignores a stalled read that rejects after the poll gave up', async () => {
 		let rejectRead: (error: Error) => void = () => {};
 		const readStatus = vi.fn(
 			async () =>
@@ -146,9 +98,9 @@ describe('waitForEngineV2Execution', () => {
 				}),
 		);
 
-		const outcome = waitForEngineV2Execution({ readStatus, stop: vi.fn(), timeoutMs: 1_000 });
+		const outcome = pollEngineV2Execution({ readStatus, timeoutMs: 1_000 });
 		await vi.advanceTimersByTimeAsync(1_000);
-		await expect(outcome).resolves.toMatchObject({ kind: 'cancelled', reason: 'timeout' });
+		await expect(outcome).resolves.toBe('timeout');
 
 		// An unhandled rejection here would fail the test run.
 		rejectRead(new Error('data plane went away'));
@@ -156,42 +108,10 @@ describe('waitForEngineV2Execution', () => {
 	});
 
 	it('passes on an error from a read that ends before the deadline', async () => {
-		const stop = vi.fn();
 		const readStatus = vi.fn().mockRejectedValue(new Error('data plane error'));
 
-		await expect(waitForEngineV2Execution({ readStatus, stop, timeoutMs: 1_000 })).rejects.toThrow(
+		await expect(pollEngineV2Execution({ readStatus, timeoutMs: 1_000 })).rejects.toThrow(
 			'data plane error',
 		);
-		expect(stop).not.toHaveBeenCalled();
-	});
-
-	it('reports the cancellation when the stop fails because the run settled first', async () => {
-		const stop = vi.fn().mockRejectedValue(new Error('already finished'));
-
-		const outcome = waitForEngineV2Execution({
-			readStatus: statusSequence('running'),
-			stop,
-			timeoutMs: 500,
-		});
-		await vi.advanceTimersByTimeAsync(1_000);
-
-		await expect(outcome).resolves.toMatchObject({ kind: 'cancelled', reason: 'timeout' });
-	});
-});
-
-describe('pollEngineV2Execution', () => {
-	it('reports the timeout without a stop', async () => {
-		vi.useFakeTimers();
-		try {
-			const outcome = pollEngineV2Execution({
-				readStatus: statusSequence('running'),
-				timeoutMs: 500,
-			});
-			await vi.advanceTimersByTimeAsync(1_000);
-
-			await expect(outcome).resolves.toBe('timeout');
-		} finally {
-			vi.useRealTimers();
-		}
 	});
 });

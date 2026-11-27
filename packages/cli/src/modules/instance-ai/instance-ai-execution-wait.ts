@@ -95,6 +95,12 @@ export async function waitForInstanceAiExecution(args: {
 export const ENGINE_V2_POLL_INTERVAL_MS = 250;
 
 /**
+ * The data plane client sets no request timeout of its own, so a stalled data
+ * plane must not hold up a tool call.
+ */
+export const ENGINE_V2_CALL_TIMEOUT_MS = 5_000;
+
+/**
  * Whether an engine v2 execution can still change, by its v1 status. A waiting
  * run counts as settled, as in v1: it leaves `ActiveExecutions` when it waits.
  */
@@ -103,8 +109,9 @@ export const isEngineV2ExecutionUnsettled = (status: string | undefined) =>
 
 /**
  * Polls an engine v2 execution until it settles, the time runs out, or the
- * signal aborts. A v2 run never registers in `ActiveExecutions`, and the engine
- * sends the control plane no end-of-run signal, so polling is the only option.
+ * signal aborts. A v2 run never registers in `ActiveExecutions`. The data
+ * plane sends lifecycle events only for a run that had a listener when it
+ * started. So the caller polls for a run that it did not start in the same call.
  *
  * `readStatus` returns `undefined` when the execution is not (yet) readable.
  * The poll continues until the timeout in that case.
@@ -151,34 +158,4 @@ async function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promis
 	} finally {
 		signal.removeEventListener('abort', onAbort);
 	}
-}
-
-/**
- * Waits for an engine v2 execution that the adapter started. It stops the run
- * on a timeout or an abort, as {@link waitForInstanceAiExecution} does for v1.
- */
-export async function waitForEngineV2Execution(args: {
-	readStatus: () => Promise<string | undefined>;
-	stop: () => Promise<void>;
-	timeoutMs: number;
-	abortSignal?: AbortSignal;
-}): Promise<ExecutionWaitOutcome> {
-	const { stop, timeoutMs } = args;
-	const outcome = await pollEngineV2Execution(args);
-	if (outcome === 'settled') return { kind: 'completed' };
-
-	try {
-		await stop();
-	} catch {
-		// The run can settle between the last read and the stop.
-	}
-
-	return {
-		kind: 'cancelled',
-		reason: outcome,
-		message:
-			outcome === 'abort'
-				? 'Execution was cancelled'
-				: `Execution timed out after ${timeoutMs}ms and was cancelled`,
-	};
 }
