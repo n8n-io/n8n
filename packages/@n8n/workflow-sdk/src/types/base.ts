@@ -108,6 +108,8 @@ export interface WorkflowSettings {
 	saveExecutionProgress?: boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+	/** The engine that runs the workflow. A workflow without an engine runs on `v1`. */
+	engineType?: 'v1' | 'v2';
 	callerPolicy?: 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	callerIds?: string;
 	/** Allow additional settings fields */
@@ -157,27 +159,58 @@ export interface IConnections {
  * Minimal node-info shape needed to resolve a node's error-output index.
  * Accepts either a NodeJSON or a GraphNode instance config, so callers on
  * both import and export paths can hand theirs off without conversion.
+ * Without `typeVersion`, the latest node version is assumed.
  */
 interface ErrorIndexNodeInfo {
 	name?: string;
 	type: string;
+	typeVersion?: number;
 	parameters?: IDataObject;
+}
+
+function readOption(value: unknown, key: string): unknown {
+	return typeof value === 'object' && value !== null ? Reflect.get(value, key) : undefined;
+}
+
+function countSwitchRules(parameters: IDataObject | undefined): number | undefined {
+	const rules = parameters?.rules;
+	const rulesArray = readOption(rules, 'values') ?? readOption(rules, 'rules');
+	return Array.isArray(rulesArray) ? rulesArray.length : undefined;
+}
+
+/**
+ * Count the outputs of a Switch node, as each node version defines them:
+ * - V1 always has 4 outputs.
+ * - V2 and V3 in expression mode have `outputsAmount` (V2) or `numberOutputs`
+ *   (V3) outputs, 4 by default.
+ * - V2 in rules mode has one output for each rule, no rules by default.
+ * - V3 in rules mode has one output for each rule (one rule by default), plus
+ *   one when `options.fallbackOutput` is `'extra'`.
+ */
+function countSwitchOutputs(parameters: IDataObject | undefined, typeVersion = 3): number {
+	if (typeVersion < 2) return 4;
+	const isV2 = typeVersion < 3;
+
+	if (parameters?.mode === 'expression') {
+		const amount = parameters[isV2 ? 'outputsAmount' : 'numberOutputs'];
+		return typeof amount === 'number' ? amount : 4;
+	}
+
+	const rulesCount = countSwitchRules(parameters) ?? (isV2 ? 0 : 1);
+	const hasFallbackOutput = !isV2 && readOption(parameters?.options, 'fallbackOutput') === 'extra';
+	return hasFallbackOutput ? rulesCount + 1 : rulesCount;
 }
 
 /**
  * Resolve the output index at which a node's error pin should live in the
- * modern (main[n]) format. Kept in sync with the NODE_SEMANTICS table in
- * codegen/semantic-registry.ts — the rule is always `natural output count`,
- * with 1 as the fallback for community / unknown nodes.
+ * modern (main[n]) format. The serializer, the codegen and the validators
+ * share this rule. The rule is always `natural output count`, with 1 as the
+ * fallback for community / unknown nodes.
  */
-export function resolveErrorOutputIndex(type: string, parameters?: IDataObject): number {
+export function resolveErrorOutputIndex(node: ErrorIndexNodeInfo): number {
+	const { type, parameters, typeVersion } = node;
 	if (type === 'n8n-nodes-base.if') return 2; // trueBranch + falseBranch
-	if (type === 'n8n-nodes-base.switch') {
-		const rules = parameters?.rules as { rules?: unknown[]; values?: unknown[] } | undefined;
-		const rulesArray = rules?.rules ?? rules?.values;
-		const numCases = Array.isArray(rulesArray) ? rulesArray.length : 4;
-		return numCases + 1; // cases + fallback
-	}
+	if (type === 'n8n-nodes-base.switch') return countSwitchOutputs(parameters, typeVersion);
 	if (type === 'n8n-nodes-base.splitInBatches') return 2; // done + loop
 	if (type === 'n8n-nodes-base.merge') return 1; // single output
 	return 1;
@@ -221,7 +254,7 @@ export function foldLegacyErrorConnections(
 		if (!Array.isArray(errorTargets) || errorTargets.length === 0) continue;
 
 		const node = nodeLookup.get(nodeName);
-		const targetIndex = node ? resolveErrorOutputIndex(node.type, node.parameters) : 1;
+		const targetIndex = node ? resolveErrorOutputIndex(node) : 1;
 
 		const main = Array.isArray(nodeConns.main) ? nodeConns.main : [];
 		// Pad any missing earlier output slots with empty arrays so the error

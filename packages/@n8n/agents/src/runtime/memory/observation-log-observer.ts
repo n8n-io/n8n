@@ -1,7 +1,9 @@
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
+import { escapeXmlAttribute } from '@n8n/utils/string/escape-xml';
 
 import { renderObservationLog } from './observation-log-renderer';
 import { reportSideCallUsage } from './forward-usage';
+import { outputTokenCounter } from './measured-tokens';
 import { messageToText } from './message-text';
 import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
@@ -36,6 +38,9 @@ const BULLET_PATTERN =
  */
 const NON_DETAIL_PATTERN =
 	/^(?:```|NO_OBSERVATIONS$|(?:[*-]\s+)?(?:[A-Z_]+\s+\(\d{2}:\d{2}\)|(?:COMPLET|CRITIC|IMPORTAN|INFO)[A-Z]*\b))/u;
+// Each tag is alone on its line, so a tag that an observation only mentions is not a block.
+const WORKING_SET_PATTERN =
+	/^[ \t]*<working-set>[ \t]*(?:\r?\n|(?![\s\S]))([\s\S]*?)(?:^[ \t]*<\/working-set>[ \t]*$|(?![\s\S]))/mu;
 const DEFAULT_MAX_SERIALIZED_CHARS = 2_000;
 const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
@@ -112,6 +117,11 @@ export interface RunObservationLogObserverOpts {
 	 */
 	maxBatchTokens?: number;
 	/**
+	 * Largest working set, in tokens. A larger one is dropped and the previous
+	 * one is kept. Any size when undefined.
+	 */
+	maxWorkingSetTokens?: number;
+	/**
 	 * Receives the observer model call's usage the moment it resolves, before
 	 * any parsing or persistence. Forwarding it here (rather than only on the
 	 * success return) keeps a billed observer call priced even when later
@@ -174,6 +184,24 @@ export function parseObservationLogMarkdown(markdown: string): ParseObservationL
 	}
 
 	return { entries, skippedLines };
+}
+
+/**
+ * Splits the `<working-set>` block from the Observer output. The rest holds
+ * the observation bullets. An unclosed block runs to the end of the output.
+ * A tag inside a line stays in the observations.
+ */
+export function extractWorkingSet(markdown: string): {
+	observations: string;
+	workingSet: string | undefined;
+} {
+	const match = WORKING_SET_PATTERN.exec(markdown);
+	if (!match) return { observations: markdown, workingSet: undefined };
+	const observations = (
+		markdown.slice(0, match.index) + markdown.slice(match.index + match[0].length)
+	).trim();
+	const workingSet = match[1].trim();
+	return { observations, workingSet: workingSet || undefined };
 }
 
 /** Joins a detail line onto one line, so the rendered log keeps one entry per line. */
@@ -261,14 +289,29 @@ export async function runObservationLogObserver(
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
 	const observable = await takeBatch(settled, opts.maxBatchTokens, tokenCounter);
 	const moreToObserve = observable.length < settled.length;
-	const input = await prepareObserverInput(opts, observable, tokenCounter);
+	const input = await prepareObserverInput(
+		opts,
+		observable,
+		tokenCounter,
+		storedCursor?.workingSet ?? null,
+	);
 	const observeResult = await opts.observe(input);
-	const markdown = typeof observeResult === 'string' ? observeResult : observeResult.text;
+	const output = typeof observeResult === 'string' ? observeResult : observeResult.text;
 	const usage = typeof observeResult === 'string' ? undefined : observeResult.usage;
 	const model = typeof observeResult === 'string' ? undefined : observeResult.model;
 	reportSideCallUsage(opts.onUsage, model, usage);
 
-	const prepared = await prepareObservationEntries(markdown, input.now, tokenCounter, opts);
+	const outputTokens = outputTokenCounter(output, usage, tokenCounter);
+	const { observations, workingSet: written } = extractWorkingSet(output);
+	// A reply with only a working set has no new observations.
+	const markdown = observations === '' && written ? 'NO_OBSERVATIONS' : observations;
+	const prepared = await prepareObservationEntries(markdown, input.now, outputTokens, opts);
+	const workingSet = await chooseWorkingSet(
+		written,
+		storedCursor?.workingSet ?? null,
+		outputTokens,
+		opts.maxWorkingSetTokens,
+	);
 	const result = {
 		status: 'ran' as const,
 		observationsWritten: 0,
@@ -294,6 +337,7 @@ export async function runObservationLogObserver(
 				lastObservedMessageId: lastMessage.id,
 				lastObservedAt: lastMessage.createdAt,
 				updatedAt: input.now,
+				workingSet,
 			},
 			entries: prepared.entries,
 		})) === 'committed';
@@ -302,6 +346,22 @@ export async function runObservationLogObserver(
 		observationsWritten: committed ? prepared.entries.length : 0,
 		cursorAdvanced: committed,
 	};
+}
+
+/**
+ * The working set to keep: the new one, or the previous one when the Observer
+ * wrote none or wrote one over the limit.
+ */
+async function chooseWorkingSet(
+	written: string | undefined,
+	previous: string | null,
+	tokenCounter: TokenCounter,
+	maxTokens: number | undefined,
+): Promise<string | null> {
+	if (!written) return previous;
+	const text = redactText(written).text;
+	if (maxTokens !== undefined && (await tokenCounter(text)) > maxTokens) return previous;
+	return text;
 }
 
 /** The longest prefix of `messages` that fits `maxTokens`, and at least one message. */
@@ -323,6 +383,7 @@ async function prepareObserverInput(
 	opts: RunObservationLogObserverOpts,
 	observable: AgentDbMessage[],
 	tokenCounter: TokenCounter,
+	workingSet: string | null,
 ): Promise<ObservationLogObserverInput> {
 	const guardedMessages = await Promise.all(
 		observable.map(async (message) => await guardObserverToolResults(message, tokenCounter)),
@@ -346,6 +407,7 @@ async function prepareObserverInput(
 		transcriptTokenCount: tokenCount,
 		observationLogTail,
 		renderedObservationLogTail: renderObservationLog(observationLogTail),
+		workingSet,
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
 		modelFetch: opts.modelFetch,
@@ -526,14 +588,6 @@ function safeJsonStringify(value: unknown): string {
 	} catch {
 		return JSON.stringify('[unserializable]');
 	}
-}
-
-function escapeXmlAttribute(value: string): string {
-	return value
-		.replace(/&/g, '&amp;')
-		.replace(/"/g, '&quot;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;');
 }
 
 export function wrapUntrustedObserverData(content: string, source: string): string {

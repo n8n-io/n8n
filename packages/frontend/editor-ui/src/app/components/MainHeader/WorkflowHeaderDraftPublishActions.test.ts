@@ -1,4 +1,7 @@
-import type { WorkflowReviewRequestForWorkflow } from '@n8n/api-types';
+import type {
+	WorkflowReviewRequestForWorkflow,
+	WorkflowReviewRequirementLevel,
+} from '@n8n/api-types';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
@@ -26,6 +29,11 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import {
+	describeEngineV2Block,
+	type EngineCompatibilityReason,
+} from '@n8n/frontend-module-engine-v2';
+import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
@@ -192,17 +200,42 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	const setWorkflowReviewGates = ({
 		licensed = true,
 		instanceEnabled = true,
+		alwaysRequired = false,
 	}: Partial<{
 		licensed: boolean;
 		instanceEnabled: boolean;
+		alwaysRequired: boolean;
 	}> = {}) => {
 		settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 			[EnterpriseEditionFeature.WorkflowReviews]: licensed,
 		});
 		settingsStore.settings = {
 			...settingsStore.settings,
-			workflowReviews: { enabled: instanceEnabled },
+			workflowReviews: { enabled: instanceEnabled, alwaysRequired },
 		};
+	};
+
+	/** The level the server reports for the workflow, seeded before the first render. */
+	const setServerReviewRequirement = async (
+		reviewRequiredBy: WorkflowReviewRequirementLevel | null,
+	) => {
+		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+			count: 0,
+			data: [],
+			reviewRequiredBy,
+		});
+		await useWorkflowReviewStatusStore().fetchStatus(defaultWorkflowProps.id);
+	};
+
+	const setHomeProjectType = (type: 'personal' | 'team') => {
+		workflowDocumentStore.setHomeProject({
+			id: `${type}-project`,
+			name: `${type} project`,
+			type,
+			icon: null,
+			createdAt: '',
+			updatedAt: '',
+		});
 	};
 
 	beforeEach(async () => {
@@ -215,6 +248,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		settingsStore.settings = {
 			...settingsStore.settings,
 			workflowReviews: { enabled: false },
+			useWorkflowPublicationService: false,
 		};
 		useUsersStore().currentUserId = 'user-1';
 		localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_REVIEW_REQUIRED_BY_WORKFLOW('user-1'));
@@ -223,7 +257,11 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, false);
 		// The testing pinia is shared across this file, so reset the review status to
 		// "fetched, no open review" between tests.
-		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({ count: 0, data: [] });
+		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+			count: 0,
+			data: [],
+			reviewRequiredBy: null,
+		});
 		await useWorkflowReviewStatusStore().fetchStatus(defaultWorkflowProps.id);
 
 		const nodeTypesStore = useNodeTypesStore();
@@ -238,8 +276,11 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('1'));
 		workflowDocumentStore.setVersionData({ versionId: 'version-1', name: null, description: null });
 		workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+		workflowDocumentStore.setHomeProject(null);
+		workflowDocumentStore.setPublicationStatus({ status: 'idle' });
 		uiStore.markStateClean();
 		collaborationStore.shouldBeReadOnly = false;
+		collaborationStore.isCurrentUserWriter = false;
 
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
@@ -377,6 +418,289 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
 			expect(getByTestId('workflow-active-version-info')).toBeInTheDocument();
 		});
+
+		// Regression tests for IAM-1890: users without workflow:publish must see the
+		// real publish state indicator (green, yellow, or red), not a hard-coded green dot.
+		describe('indicator state without workflow:publish permission', () => {
+			const noPublishPermissionProps = {
+				...defaultWorkflowProps,
+				workflowPermissions: {
+					...defaultWorkflowProps.workflowPermissions,
+					update: true,
+					publish: false,
+				},
+			};
+
+			const nodeWithBlockingIssues: INodeUi = {
+				id: 'http-1',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [200, 0],
+				parameters: {},
+				disabled: false,
+				issues: { parameters: { url: ['Parameter "URL" is required.'] } },
+			};
+
+			beforeEach(() => {
+				workflowDocumentStore.setNodes([triggerNode]);
+				workflowDocumentStore.setConnections({});
+				projectsStore.currentProject = createTestProject({
+					id: 'team-project-id',
+					type: ProjectTypes.Team,
+				});
+				uiStore.markStateClean();
+			});
+
+			afterEach(() => {
+				workflowDocumentStore.setNodes([]);
+				workflowDocumentStore.setConnections({});
+				projectsStore.currentProject = null;
+			});
+
+			it('should show published (green) indicator when current version matches published version', () => {
+				workflowDocumentStore.setVersionData({
+					versionId: 'v1',
+					name: null,
+					description: null,
+				});
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'v1',
+					activeVersion: createMockActiveVersion('v1'),
+				});
+
+				const { getByTestId, getByText } = renderComponent({
+					props: noPublishPermissionProps,
+				});
+
+				expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+					'aria-disabled',
+					'true',
+				);
+				expect(getByText("You don't have permission to publish this workflow")).toBeInTheDocument();
+
+				const indicator = getByTestId('workflow-active-version-indicator');
+				expect(indicator.className).toMatch(/indicatorPublished/);
+				expect(indicator.className).not.toMatch(/indicatorChanges|indicatorIssues/);
+			});
+
+			it('should show changes (yellow) indicator when current version differs from published version', () => {
+				workflowDocumentStore.setVersionData({
+					versionId: 'v2',
+					name: null,
+					description: null,
+				});
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'v1',
+					activeVersion: createMockActiveVersion('v1'),
+				});
+
+				const { getByTestId, getByText } = renderComponent({
+					props: noPublishPermissionProps,
+				});
+
+				expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+					'aria-disabled',
+					'true',
+				);
+				expect(getByText("You don't have permission to publish this workflow")).toBeInTheDocument();
+
+				const indicator = getByTestId('workflow-active-version-indicator');
+				expect(indicator.className).toMatch(/indicatorChanges/);
+				expect(indicator.className).not.toMatch(/indicatorPublished/);
+			});
+
+			it('should show changes (yellow) indicator when published workflow has unsaved changes', () => {
+				workflowDocumentStore.setVersionData({
+					versionId: 'v1',
+					name: null,
+					description: null,
+				});
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'v1',
+					activeVersion: createMockActiveVersion('v1'),
+				});
+				uiStore.markStateDirty();
+
+				const { getByTestId, getByText } = renderComponent({
+					props: noPublishPermissionProps,
+				});
+
+				expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+					'aria-disabled',
+					'true',
+				);
+				expect(getByText("You don't have permission to publish this workflow")).toBeInTheDocument();
+
+				const indicator = getByTestId('workflow-active-version-indicator');
+				expect(indicator.className).toMatch(/indicatorChanges/);
+				expect(indicator.className).not.toMatch(/indicatorPublished/);
+			});
+
+			it('should show issues (red) indicator when published workflow has publish-blocking node issues', () => {
+				workflowDocumentStore.setNodes([triggerNode, nodeWithBlockingIssues]);
+				workflowDocumentStore.setConnections({
+					[triggerNode.name]: {
+						main: [[{ node: nodeWithBlockingIssues.name, type: 'main', index: 0 }]],
+					},
+				});
+				workflowDocumentStore.setVersionData({
+					versionId: 'v1',
+					name: null,
+					description: null,
+				});
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'v1',
+					activeVersion: createMockActiveVersion('v1'),
+				});
+
+				expect(workflowDocumentStore.hasPublishBlockingIssues).toBe(true);
+
+				const { getByTestId, getByText } = renderComponent({
+					props: noPublishPermissionProps,
+				});
+
+				expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+					'aria-disabled',
+					'true',
+				);
+				expect(getByText("You don't have permission to publish this workflow")).toBeInTheDocument();
+
+				const indicator = getByTestId('workflow-active-version-indicator');
+				expect(indicator.className).toMatch(/indicatorIssues/);
+				expect(indicator.className).not.toMatch(/indicatorPublished/);
+			});
+
+			it('should show changes (yellow) indicator when published workflow has no activatable trigger', () => {
+				workflowDocumentStore.setNodes([]);
+				workflowDocumentStore.setVersionData({
+					versionId: 'v1',
+					name: null,
+					description: null,
+				});
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'v1',
+					activeVersion: createMockActiveVersion('v1'),
+				});
+
+				const { getByTestId, getByText } = renderComponent({
+					props: noPublishPermissionProps,
+				});
+
+				expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+					'aria-disabled',
+					'true',
+				);
+				expect(getByText("You don't have permission to publish this workflow")).toBeInTheDocument();
+
+				const indicator = getByTestId('workflow-active-version-indicator');
+				expect(indicator.className).toMatch(/indicatorChanges/);
+				expect(indicator.className).not.toMatch(/indicatorPublished/);
+			});
+
+			it('should preserve personal space restriction tooltip alongside indicator state', () => {
+				projectsStore.currentProject = createTestProject({
+					id: 'personal-project-id',
+					type: ProjectTypes.Personal,
+				});
+				workflowDocumentStore.setVersionData({
+					versionId: 'v2',
+					name: null,
+					description: null,
+				});
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'v1',
+					activeVersion: createMockActiveVersion('v1'),
+				});
+
+				const { getByTestId, getByText } = renderComponent({
+					props: noPublishPermissionProps,
+				});
+
+				expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+					'aria-disabled',
+					'true',
+				);
+				expect(
+					getByText(
+						'Workflow publishing is disabled in personal spaces. Move the workflow to a team space to activate',
+					),
+				).toBeInTheDocument();
+
+				const indicator = getByTestId('workflow-active-version-indicator');
+				expect(indicator.className).toMatch(/indicatorChanges/);
+				expect(indicator.className).not.toMatch(/indicatorPublished/);
+			});
+
+			it.each([
+				{ status: 'partial' as const, expectedClass: /indicatorPartial/ },
+				{ status: 'failed' as const, expectedClass: /indicatorIssues/ },
+			])(
+				'should show $status publication indicator while keeping publish disabled',
+				({ status, expectedClass }) => {
+					settingsStore.$patch((state) => {
+						state.settings = {
+							...state.settings,
+							useWorkflowPublicationService: true,
+						};
+					});
+					workflowDocumentStore.setVersionData({
+						versionId: 'v1',
+						name: null,
+						description: null,
+					});
+					workflowDocumentStore.setActiveState({
+						activeVersionId: 'v1',
+						activeVersion: createMockActiveVersion('v1'),
+					});
+					workflowDocumentStore.setPublicationStatus({ status });
+
+					const { getByTestId, getByText } = renderComponent({
+						props: noPublishPermissionProps,
+					});
+
+					expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+						'aria-disabled',
+						'true',
+					);
+					expect(
+						getByText("You don't have permission to publish this workflow"),
+					).toBeInTheDocument();
+
+					const indicator = getByTestId('workflow-active-version-indicator');
+					expect(indicator.className).toMatch(expectedClass);
+					expect(indicator.className).not.toMatch(/indicatorPublished/);
+				},
+			);
+
+			it('should show publishing spinner while keeping publish disabled when status is publishing', () => {
+				settingsStore.$patch((state) => {
+					state.settings = {
+						...state.settings,
+						useWorkflowPublicationService: true,
+					};
+				});
+				workflowDocumentStore.setVersionData({
+					versionId: 'v1',
+					name: null,
+					description: null,
+				});
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'v1',
+					activeVersion: createMockActiveVersion('v1'),
+				});
+				workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+
+				const { getByTestId, queryByTestId, getByText } = renderComponent({
+					props: noPublishPermissionProps,
+				});
+
+				expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+				expect(getByText('Publishing…')).toBeInTheDocument();
+				expect(getByTestId('publishing-spinner')).toBeInTheDocument();
+				expect(queryByTestId('workflow-active-version-indicator')).not.toBeInTheDocument();
+			});
+		});
 	});
 
 	describe('Publish button visibility', () => {
@@ -408,7 +732,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			});
 
 			expect(getByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		it('should be visible when user has only workflow:publish permission', () => {
@@ -575,6 +902,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		const seedOpenReview = (overrides: Partial<WorkflowReviewRequestForWorkflow> = {}) => {
 			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
 				count: 1,
+				reviewRequiredBy: null,
 				data: [
 					{
 						id: 'req-1',
@@ -867,7 +1195,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			});
 
 			expect(getByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 	});
 
@@ -883,8 +1214,193 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { queryByTestId } = renderComponent();
 
-			expect(queryByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(queryByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
+
+		it('should give a disabled Publish menu item the reason as a tooltip', async () => {
+			workflowDocumentStore.setNodes([]);
+			uiStore.markStateDirty();
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('version-menu-button'));
+
+			const publishItem = getByTestId('version-menu-item-publish');
+			expect(publishItem).toHaveClass('is-disabled');
+			// The tooltip stub of the tests renders its content as an attribute.
+			expect(publishItem.parentElement).toHaveAttribute(
+				'content',
+				'This workflow has no trigger nodes that require publishing',
+			);
+		});
+
+		it('should give an enabled Publish menu item no tooltip even when the button has one', async () => {
+			setupEnabledPublishButton();
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-1',
+				activeVersion: createMockActiveVersion('version-1'),
+			});
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-2',
+				name: null,
+				description: null,
+			});
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('version-menu-button'));
+
+			const publishItem = getByTestId('version-menu-item-publish');
+			expect(publishItem).not.toHaveClass('is-disabled');
+			expect(publishItem.parentElement).not.toHaveAttribute('content');
+		});
+
+		it.each([
+			{
+				name: 'someone else is editing the workflow',
+				isCurrentUserWriter: false,
+				reason: 'This workflow is read-only while someone else is editing it',
+			},
+			{
+				name: 'the current user is editing the workflow in another tab',
+				isCurrentUserWriter: true,
+				reason: "You're editing this workflow in another tab",
+			},
+		])(
+			'should explain collaboration read-only on the disabled Publish menu item when $name even with pending changes',
+			async ({ isCurrentUserWriter, reason }) => {
+				setupEnabledPublishButton();
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'version-1',
+					activeVersion: createMockActiveVersion('version-1'),
+				});
+				workflowDocumentStore.setVersionData({
+					versionId: 'version-2',
+					name: null,
+					description: null,
+				});
+				collaborationStore.shouldBeReadOnly = true;
+				collaborationStore.isCurrentUserWriter = isCurrentUserWriter;
+
+				const { getByTestId } = renderComponent();
+
+				await userEvent.click(getByTestId('version-menu-button'));
+
+				const publishItem = getByTestId('version-menu-item-publish');
+				expect(publishItem).toHaveClass('is-disabled');
+				expect(publishItem.parentElement).toHaveAttribute('content', reason);
+			},
+		);
+
+		it.each([
+			{
+				decision: 'pending' as const,
+				reason: 'This version is already waiting for review',
+			},
+			{
+				decision: 'changes_requested' as const,
+				reason: 'Make the requested changes before you submit again',
+			},
+		])(
+			'should explain the open review state ($decision) on the disabled Publish menu item when it holds the saved version',
+			async ({ decision, reason }) => {
+				setWorkflowReviewGates({ alwaysRequired: true });
+				setHomeProjectType('team');
+				setupEnabledPublishButton();
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'version-0',
+					activeVersion: createMockActiveVersion('version-0'),
+				});
+				workflowDocumentStore.setVersionData({
+					versionId: 'version-1',
+					name: null,
+					description: null,
+				});
+				vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+					count: 1,
+					data: [
+						{
+							id: 'req-1',
+							state: 'open',
+							decision,
+							workflowVersionId: 'version-1',
+							workflowVersionName: null,
+							description: null,
+							createdAt: '2026-07-20T10:00:00.000Z',
+							updatedAt: '2026-07-20T10:00:00.000Z',
+							decisionBy: null,
+							viewerCanOpen: true,
+						},
+					],
+					reviewRequiredBy: 'instance',
+				});
+
+				const { getByTestId } = renderComponent();
+
+				await waitFor(() =>
+					expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+						'aria-disabled',
+						'true',
+					),
+				);
+
+				await userEvent.click(getByTestId('version-menu-button'));
+
+				const publishItem = getByTestId('version-menu-item-publish');
+				expect(publishItem).toHaveClass('is-disabled');
+				expect(publishItem.parentElement).toHaveAttribute('content', reason);
+			},
+		);
+
+		it('should explain when a published workflow has no changes on the disabled Publish menu item', async () => {
+			setupEnabledPublishButton();
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-1',
+				activeVersion: createMockActiveVersion('version-1'),
+			});
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('version-menu-button'));
+
+			const publishItem = getByTestId('version-menu-item-publish');
+			expect(publishItem).toHaveClass('is-disabled');
+			expect(publishItem.parentElement).toHaveAttribute('content', 'No changes to publish');
+		});
+
+		it.each(['failed', 'partial'] as const)(
+			'should show the publish-blocking reason instead of retry text when %s publication is not publishable',
+			async (status) => {
+				useSettingsStore().$patch((state) => {
+					state.settings = { ...state.settings, useWorkflowPublicationService: true };
+				});
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'version-1',
+					activeVersion: createMockActiveVersion('version-1'),
+				});
+				workflowDocumentStore.setNodes([]);
+				workflowDocumentStore.setPublicationStatus({ status });
+
+				const { getByTestId } = renderComponent();
+
+				await userEvent.click(getByTestId('version-menu-button'));
+
+				const publishItem = getByTestId('version-menu-item-publish');
+				expect(publishItem).toHaveClass('is-disabled');
+				expect(publishItem.parentElement).toHaveAttribute(
+					'content',
+					'This workflow has no trigger nodes that require publishing',
+				);
+			},
+		);
 
 		it('should show publish button disabled when trigger node is disabled', () => {
 			workflowDocumentStore.setNodes([{ ...triggerNode, disabled: true }]);
@@ -897,7 +1413,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		it('should name the restricted node before its parameter issues', () => {
@@ -927,7 +1446,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, getByText, queryByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(
 				getByText(/An administrator blocked 'HTTP Request' on this instance/),
 			).toBeInTheDocument();
@@ -959,7 +1481,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, getByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(getByText(restrictionText)).toBeInTheDocument();
 		});
 
@@ -973,7 +1498,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		it('should disable publish when the restricted node is disabled', () => {
@@ -981,7 +1509,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, getByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(getByText(restrictionText)).toBeInTheDocument();
 		});
 
@@ -1011,7 +1542,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, getByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(getByText(/Restricted on this instance: 'Slack'\./)).toBeInTheDocument();
 			expect(getByText(/Restricted in this project: 'Jira'\./)).toBeInTheDocument();
 		});
@@ -1220,7 +1754,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId, getByText } = renderComponent();
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(getByText(/Only Alice Chen can run or publish with it/)).toBeInTheDocument();
 		});
 
@@ -1263,7 +1800,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				global: { stubs: tooltipStubs },
 			});
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 			expect(getByText(/Only Alice Chen can run or publish with it/)).toBeInTheDocument();
 		});
 
@@ -1304,6 +1844,191 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
+		});
+	});
+
+	describe('Engine v2 compatibility', () => {
+		const blockingReason: EngineCompatibilityReason = {
+			code: 'TRIGGER_EXTERNAL_IDENTITY',
+			kind: 'temporary',
+			severity: 'blocking',
+			nodeId: triggerNode.id,
+			nodeName: triggerNode.name,
+			message: 'Engine v2 cannot run this trigger yet.',
+		};
+		const warningReason: EngineCompatibilityReason = {
+			...blockingReason,
+			severity: 'warning',
+		};
+
+		const setEngineV2Gate = ({ moduleActive = true, engineType = 'v2' as 'v1' | 'v2' } = {}) => {
+			settingsStore.settings = {
+				...settingsStore.settings,
+				activeModules: moduleActive ? ['engine-v2'] : [],
+			};
+			workflowDocumentStore.mergeSettings({ engineType });
+		};
+
+		const seedOpenReview = () => {
+			setWorkflowReviewGates();
+			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+				count: 1,
+				reviewRequiredBy: null,
+				data: [
+					{
+						id: 'req-1',
+						state: 'open',
+						decision: 'pending',
+						workflowVersionId: 'version-0',
+						workflowVersionName: null,
+						description: null,
+						createdAt: '2026-07-20T10:00:00.000Z',
+						updatedAt: '2026-07-20T10:00:00.000Z',
+						decisionBy: null,
+						viewerCanOpen: true,
+					},
+				],
+			});
+		};
+
+		beforeEach(() => {
+			workflowDocumentStore.setNodes([triggerNode]);
+		});
+
+		afterEach(() => {
+			settingsStore.settings = { ...settingsStore.settings, activeModules: [] };
+			workflowDocumentStore.setSettings({});
+		});
+
+		it('should disable publish and give the reason for a never-published workflow', () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(getByText(describeEngineV2Block())).toBeInTheDocument();
+		});
+
+		it('should disable publish and give the reason for a published workflow with changes', () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-0',
+				activeVersion: createMockActiveVersion('version-0'),
+			});
+			uiStore.markStateDirty();
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(getByText(describeEngineV2Block())).toBeInTheDocument();
+		});
+
+		// The NDV, the command bar and the shortcut publish through the event bus,
+		// which never sees the button's disabled state.
+		it('should stop a publish command from the event bus', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
+			renderComponent();
+			nodeViewEventBus.emit('publishWorkflow');
+			await waitFor(() => expect(mockShowMessage).toHaveBeenCalled());
+
+			expect(openModalSpy).not.toHaveBeenCalledWith(
+				expect.objectContaining({ name: WORKFLOW_PUBLISH_MODAL_KEY }),
+			);
+			expect(mockSaveCurrentWorkflow).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				title: describeEngineV2Block(),
+				type: 'warning',
+			});
+		});
+
+		it('should keep publish enabled and open the modal for a warning only', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [warningReason] });
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
+			const { getByTestId, queryByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(queryByText(describeEngineV2Block())).not.toBeInTheDocument();
+
+			nodeViewEventBus.emit('publishWorkflow');
+			await waitFor(() =>
+				expect(openModalSpy).toHaveBeenCalledWith(
+					expect.objectContaining({ name: WORKFLOW_PUBLISH_MODAL_KEY }),
+				),
+			);
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['the engine-v2 module is off', { moduleActive: false }],
+			['the workflow runs on engine v1', { engineType: 'v1' as const }],
+		])('should change nothing when %s', async (_case, gate) => {
+			setEngineV2Gate(gate);
+			const { checkWorkflow } = mockEngineV2Compatibility({ reasons: [blockingReason] });
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
+			const { getByTestId, queryByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(queryByText(describeEngineV2Block())).not.toBeInTheDocument();
+			expect(checkWorkflow).not.toHaveBeenCalled();
+
+			nodeViewEventBus.emit('publishWorkflow');
+			await waitFor(() =>
+				expect(openModalSpy).toHaveBeenCalledWith(
+					expect.objectContaining({ name: WORKFLOW_PUBLISH_MODAL_KEY }),
+				),
+			);
+		});
+
+		it('should disable Submit changes with Publish for a blocking reason', async () => {
+			seedOpenReview();
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			const { findByTestId, getByTestId } = renderComponent();
+			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(getByTestId('workflow-review-submit-changes-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+		});
+
+		it('should keep Submit changes enabled for a warning only', async () => {
+			seedOpenReview();
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [warningReason] });
+
+			const { findByTestId, getByTestId } = renderComponent();
+			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+
+			expect(getByTestId('workflow-review-submit-changes-button')).not.toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 	});
 
@@ -1382,6 +2107,67 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const unpublishItem = getByTestId('version-menu-item-unpublish');
 			expect(unpublishItem).toBeInTheDocument();
 			expect(unpublishItem).toHaveClass('is-disabled');
+		});
+
+		it.each([
+			{
+				name: 'the workflow is not published',
+				arrange: () =>
+					workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null }),
+				props: {},
+				reason: "This workflow isn't published",
+			},
+			{
+				name: 'someone else is editing the workflow',
+				arrange: () => {
+					collaborationStore.shouldBeReadOnly = true;
+				},
+				props: {},
+				reason: 'This workflow is read-only while someone else is editing it',
+			},
+			{
+				name: 'the current user is editing the workflow in another tab',
+				arrange: () => {
+					collaborationStore.shouldBeReadOnly = true;
+					collaborationStore.isCurrentUserWriter = true;
+				},
+				props: {},
+				reason: "You're editing this workflow in another tab",
+			},
+			{
+				name: 'the user lacks the unpublish permission',
+				arrange: () => {},
+				props: {
+					workflowPermissions: { ...defaultWorkflowProps.workflowPermissions, unpublish: false },
+				},
+				reason: "You don't have permission to unpublish this workflow",
+			},
+		])('should give Unpublish the reason as a tooltip when $name', async (scenario) => {
+			setupEnabledPublishButton();
+			scenario.arrange();
+
+			const { getByTestId } = renderComponent({
+				props: { ...defaultWorkflowProps, ...scenario.props },
+			});
+
+			await userEvent.click(getByTestId('version-menu-button'));
+			const unpublishItem = getByTestId('version-menu-item-unpublish');
+
+			expect(unpublishItem).toHaveClass('is-disabled');
+			// The tooltip stub of the tests renders its content as an attribute.
+			expect(unpublishItem.parentElement).toHaveAttribute('content', scenario.reason);
+		});
+
+		it('should give Unpublish no tooltip when it is available', async () => {
+			setupEnabledPublishButton();
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('version-menu-button'));
+			const unpublishItem = getByTestId('version-menu-item-unpublish');
+
+			expect(unpublishItem).not.toHaveClass('is-disabled');
+			expect(unpublishItem.parentElement).not.toHaveAttribute('content');
 		});
 	});
 
@@ -1504,10 +2290,243 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 	});
 
+	describe('When the instance or the project requires approval', () => {
+		const choiceDialogName = 'New: Submit for review before publishing';
+
+		it.each([
+			{ level: 'instance', alwaysRequired: true },
+			{ level: 'project', alwaysRequired: false },
+		] as const)(
+			'offers Submit for review for a team project workflow and opens the submit dialog ($level)',
+			async ({ level, alwaysRequired }) => {
+				const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+				setWorkflowReviewGates({ alwaysRequired });
+				await setServerReviewRequirement(level);
+				setHomeProjectType('team');
+				setupEnabledPublishButton();
+
+				const { getByTestId, findByTestId, findByRole, queryByRole } = renderComponent();
+				const publishButton = getByTestId('workflow-open-publish-modal-button');
+				expect(publishButton).toHaveTextContent('Submit for review');
+
+				await userEvent.click(getByTestId('version-menu-button'));
+				expect(await findByTestId('version-menu-item-publish')).toHaveTextContent(
+					'Submit for review',
+				);
+				await userEvent.keyboard('{Escape}');
+
+				await userEvent.click(publishButton);
+
+				expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
+				expect(queryByRole('dialog', { name: choiceDialogName })).not.toBeInTheDocument();
+				expect(openModalSpy).not.toHaveBeenCalled();
+			},
+		);
+
+		it('offers Submit for review when the saved version is not the live version', async () => {
+			setWorkflowReviewGates({ alwaysRequired: true });
+			await setServerReviewRequirement('instance');
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-0',
+				activeVersion: createMockActiveVersion('version-0'),
+			});
+
+			const { getByTestId, findByRole } = renderComponent();
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).toHaveTextContent('Submit for review');
+
+			await userEvent.click(publishButton);
+
+			expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
+		});
+
+		it('offers Publish to retry a live version whose publication failed', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			setWorkflowReviewGates({ alwaysRequired: true });
+			await setServerReviewRequirement('instance');
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+			useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, true);
+			useSettingsStore().$patch((state) => {
+				state.settings = { ...state.settings, useWorkflowPublicationService: true };
+			});
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-1',
+				activeVersion: createMockActiveVersion('version-1'),
+			});
+			workflowDocumentStore.setPublicationStatus({ status: 'failed' });
+
+			const { getByTestId } = renderComponent();
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).toHaveTextContent('Publish');
+
+			await userEvent.click(publishButton);
+
+			expect(openModalSpy).toHaveBeenCalledWith({ name: WORKFLOW_PUBLISH_MODAL_KEY, data: {} });
+		});
+
+		it('offers Publish for an approved version whose publication after the approval failed', async () => {
+			setWorkflowReviewGates({ alwaysRequired: true });
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-0',
+				activeVersion: createMockActiveVersion('version-0'),
+			});
+			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+				count: 1,
+				data: [
+					{
+						id: 'req-1',
+						state: 'closed',
+						decision: 'approved',
+						workflowVersionId: 'version-1',
+						workflowVersionName: null,
+						description: null,
+						createdAt: '2026-07-20T10:00:00.000Z',
+						updatedAt: '2026-07-20T10:00:00.000Z',
+						decisionBy: null,
+						viewerCanOpen: true,
+					},
+				],
+				reviewRequiredBy: 'instance',
+			});
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('workflow-open-publish-modal-button')).toHaveTextContent('Publish'),
+			);
+		});
+
+		it('shows Review required on and locked with the reason for a published team workflow', async () => {
+			setWorkflowReviewGates({ alwaysRequired: false });
+			await setServerReviewRequirement('project');
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-1',
+				activeVersion: createMockActiveVersion('version-1'),
+			});
+
+			const { getByTestId, findByRole, findByText } = renderComponent();
+			await userEvent.click(getByTestId('version-menu-button'));
+
+			const reviewItem = await findByRole('menuitemcheckbox', { name: /Review required/ });
+			expect(reviewItem).toHaveAttribute('aria-checked', 'true');
+			expect(reviewItem).toHaveAttribute('aria-disabled', 'true');
+			await userEvent.hover(reviewItem.parentElement!);
+			expect(await findByText('This policy is set by your project admin.')).toBeInTheDocument();
+		});
+
+		it('refetches the requirement on Publish and opens the submit dialog when the project now requires approval', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			setWorkflowReviewGates({ alwaysRequired: false });
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+			useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, false);
+
+			const { getByTestId, findByRole } = renderComponent();
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			await vi.waitFor(() => expect(fetchWorkflowReviewRequests).toHaveBeenCalled());
+			expect(publishButton).toHaveTextContent('Publish');
+
+			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+				count: 0,
+				data: [],
+				reviewRequiredBy: 'project',
+			});
+			await userEvent.click(publishButton);
+
+			expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
+			expect(openModalSpy).not.toHaveBeenCalled();
+		});
+
+		it('ignores a second Publish click while the review status loads', async () => {
+			setWorkflowReviewGates({ alwaysRequired: false });
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+
+			const { getByTestId, findByRole } = renderComponent();
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			await vi.waitFor(() => expect(fetchWorkflowReviewRequests).toHaveBeenCalled());
+			vi.mocked(fetchWorkflowReviewRequests).mockClear();
+
+			let resolveFetch!: (value: Awaited<ReturnType<typeof fetchWorkflowReviewRequests>>) => void;
+			vi.mocked(fetchWorkflowReviewRequests).mockReturnValue(
+				new Promise((resolve) => (resolveFetch = resolve)),
+			);
+			await userEvent.click(publishButton);
+			await userEvent.click(publishButton);
+			resolveFetch({ count: 0, data: [], reviewRequiredBy: 'project' });
+
+			expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
+			expect(fetchWorkflowReviewRequests).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			{ label: 'always required', alwaysRequired: true },
+			{ label: 'when configured', alwaysRequired: false },
+		])(
+			'offers Publish and no review controls for a personal space workflow ($label)',
+			async ({ alwaysRequired }) => {
+				const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+				setWorkflowReviewGates({ alwaysRequired });
+				setHomeProjectType('personal');
+				setupEnabledPublishButton();
+
+				const { getByTestId, queryByTestId, queryByRole } = renderComponent();
+				const publishButton = getByTestId('workflow-open-publish-modal-button');
+				expect(publishButton).toHaveTextContent('Publish');
+
+				await userEvent.click(getByTestId('version-menu-button'));
+				expect(queryByTestId('workflow-review-required-toggle')).not.toBeInTheDocument();
+				expect(queryByTestId('workflow-review-status-pill')).not.toBeInTheDocument();
+				await userEvent.keyboard('{Escape}');
+
+				await userEvent.click(publishButton);
+
+				expect(queryByRole('dialog', { name: choiceDialogName })).not.toBeInTheDocument();
+				expect(openModalSpy).toHaveBeenCalledWith({ name: WORKFLOW_PUBLISH_MODAL_KEY, data: {} });
+			},
+		);
+
+		it('keeps the review controls for a personal space workflow with an open review', async () => {
+			setWorkflowReviewGates({ alwaysRequired: true });
+			setHomeProjectType('personal');
+			setupEnabledPublishButton();
+			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+				count: 1,
+				reviewRequiredBy: null,
+				data: [
+					{
+						id: 'req-1',
+						state: 'open',
+						decision: 'pending',
+						workflowVersionId: 'version-0',
+						workflowVersionName: null,
+						description: null,
+						createdAt: '2026-07-20T10:00:00.000Z',
+						updatedAt: '2026-07-20T10:00:00.000Z',
+						decisionBy: null,
+						viewerCanOpen: true,
+					},
+				],
+			});
+
+			const { findByTestId } = renderComponent();
+
+			expect(await findByTestId('workflow-review-status-pill')).toBeInTheDocument();
+		});
+	});
+
 	describe('Review status banner', () => {
 		const seedLatestReview = (overrides: Partial<WorkflowReviewRequestForWorkflow> = {}) => {
 			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
 				count: 1,
+				reviewRequiredBy: null,
 				data: [
 					{
 						id: 'req-1',
@@ -1665,8 +2684,14 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { findByTestId, getByTestId } = renderComponent({ props: defaultWorkflowProps });
 			await userEvent.click(await findByTestId('workflow-review-status-pill'));
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
-			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(getByTestId('workflow-review-submit-changes-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		it('disables Submit changes with Publish for a restricted node type', async () => {
@@ -1692,8 +2717,14 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { findByTestId, getByTestId } = renderComponent({ props: defaultWorkflowProps });
 			await userEvent.click(await findByTestId('workflow-review-status-pill'));
 
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
-			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+			expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
+			expect(getByTestId('workflow-review-submit-changes-button')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		// The parity has to hold in the enabled direction too, or the assertions above
@@ -1814,7 +2845,10 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 				const { getByTestId } = renderComponent();
 
-				expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+				expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+					'aria-disabled',
+					'true',
+				);
 			},
 		);
 

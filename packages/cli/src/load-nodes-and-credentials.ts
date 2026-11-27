@@ -46,7 +46,11 @@ import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
-import { getParameterDefaults } from '@/output-schema-parameter-defaults';
+import {
+	CredentialTypeConflictError,
+	formatCredentialTypeConflicts,
+} from '@/errors/response-errors/credential-type-conflict.error';
+import { defaultDiscriminators, getParameterDefaults } from '@/output-schema-parameter-defaults';
 import { createAiTools, createHitlTools } from '@/tool-generation';
 
 @Service()
@@ -126,6 +130,7 @@ export class LoadNodesAndCredentials {
 			}
 			try {
 				await loader.loadAll();
+				this.assertNoCredentialTypeConflicts(loader, false);
 				this.loaders[loader.packageName] = loader;
 			} catch (error) {
 				this.logger.error(`Failed to load package "${loader.packageName}"`, {
@@ -292,13 +297,13 @@ export class LoadNodesAndCredentials {
 		resource?: string;
 		operation?: string;
 	}): string | undefined {
-		const nodePath = this.known.nodes[node]?.sourcePath;
-		if (!nodePath) {
+		const nodeDir = this.outputSchemaNodeDir(node, Number(version));
+		if (!nodeDir) {
 			return undefined;
 		}
 
 		return resolveOutputSchemaPath({
-			nodeDir: path.dirname(nodePath),
+			nodeDir,
 			version,
 			resource,
 			operation,
@@ -313,25 +318,40 @@ export class LoadNodesAndCredentials {
 	 */
 	createOutputSchemaLookup(): OutputSchemaLookup {
 		return ({ type, typeVersion, resource, operation, hasOutputParser, parameters }) => {
-			const nodePath = this.known.nodes[type]?.sourcePath;
-			if (!nodePath) return undefined;
+			const nodeDir = this.outputSchemaNodeDir(type, typeVersion);
+			if (!nodeDir) return undefined;
 
-			const nodeType = this.tryGetVersionedNodeType(type, typeVersion);
+			const properties = this.tryGetVersionedNodeType(type, typeVersion)?.description.properties;
+			const discriminators = defaultDiscriminators(properties, { resource, operation });
 
 			return loadOutputSchema({
-				nodeDir: path.dirname(nodePath),
+				nodeDir,
 				version: typeVersion,
-				resource,
-				operation,
+				...discriminators,
 				versionFallback: true,
 				variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
 				parameters,
-				parameterDefaults: getParameterDefaults(nodeType?.description.properties, {
-					resource,
-					operation,
-				}),
+				parameterDefaults: getParameterDefaults(properties, discriminators),
 			});
 		};
+	}
+
+	/**
+	 * The folder that holds a node's `__schema__`: its source folder, or the
+	 * `schemaPath` it declares (relative to the package's `dist/nodes`), so two
+	 * nodes that share a source folder can keep separate schemas.
+	 */
+	private outputSchemaNodeDir(type: string, version: number): string | undefined {
+		const nodePath = this.known.nodes[type]?.sourcePath;
+		if (!nodePath) return undefined;
+
+		const sourceDir = path.dirname(nodePath);
+		const schemaPath = this.tryGetVersionedNodeType(type, version)?.description.schemaPath;
+		const nodesRoot = nodePath.match(/^(.*[\\/]dist[\\/]nodes)[\\/]/)?.[1];
+		if (!schemaPath || !nodesRoot) return sourceDir;
+
+		const schemaDir = path.join(nodesRoot, schemaPath);
+		return isContainedWithin(nodesRoot, schemaDir) ? schemaDir : sourceDir;
 	}
 
 	/** Schema previews are best-effort, so a node that cannot load just has no variants. */
@@ -360,13 +380,23 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
-	async loadPackage(packageName: string) {
+	/**
+	 * @param options.rejectCredentialTypeConflicts Throw on a credential type conflict
+	 * instead of logging it. Only for a version that a user asks to install: a package
+	 * that is already installed must keep loading, so existing workflows keep running.
+	 */
+	async loadPackage(
+		packageName: string,
+		options: { rejectCredentialTypeConflicts?: boolean } = {},
+	) {
 		const finalNodeUnpackedPath = path.join(
 			this.instanceSettings.nodesDownloadDir,
 			'node_modules',
 			packageName,
 		);
-		return await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
+		return await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath, {
+			credentialTypeConflicts: options.rejectCredentialTypeConflicts ? 'reject' : 'warn',
+		});
 	}
 
 	async unloadPackage(packageName: string) {
@@ -582,6 +612,7 @@ export class LoadNodesAndCredentials {
 	private async runDirectoryLoader<T extends DirectoryLoader>(
 		constructor: Class<T, ConstructorParameters<typeof DirectoryLoader>>,
 		dir: string,
+		options: { credentialTypeConflicts?: 'reject' | 'warn' } = {},
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
 		if (loader instanceof PackageDirectoryLoader && loader.packageName in this.loaders) {
@@ -592,8 +623,38 @@ export class LoadNodesAndCredentials {
 			);
 		}
 		await loader.loadAll();
+		if (options.credentialTypeConflicts) {
+			this.assertNoCredentialTypeConflicts(loader, options.credentialTypeConflicts === 'reject');
+		}
 		this.loaders[loader.packageName] = loader;
 		return loader;
+	}
+
+	/**
+	 * Credential types live in one flat namespace (unlike node types, which are
+	 * prefixed with the package name). A second definition replaces the first, so
+	 * reject the package that comes later, or log a warning when it must keep loading.
+	 * @param {boolean} [throwOnConflict=true] Whether to throw an error if a conflict is detected
+	 */
+	private assertNoCredentialTypeConflicts(loader: NodeLoader, throwOnConflict = true) {
+		const conflicts: Record<string, string> = {};
+
+		for (const credentialType of Object.keys(loader.known.credentials)) {
+			const owner = Object.values(this.loaders).find(
+				(other) =>
+					other.packageName !== loader.packageName &&
+					Object.hasOwn(other.known.credentials, credentialType),
+			);
+			if (owner) conflicts[credentialType] = owner.packageName;
+		}
+
+		if (Object.keys(conflicts).length === 0) return;
+
+		if (throwOnConflict) throw new CredentialTypeConflictError(loader.packageName, conflicts);
+
+		this.logger.warn(
+			`Package "${loader.packageName}" declares credential types that already exist: ${formatCredentialTypeConflicts(conflicts)}. The definitions from "${loader.packageName}" replace the existing ones. Ask the package author to rename them.`,
+		);
 	}
 
 	async postProcessLoaders() {

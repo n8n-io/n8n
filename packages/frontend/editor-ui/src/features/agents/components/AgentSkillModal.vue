@@ -8,7 +8,9 @@ import {
 	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+	AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	formatSkillWorkflowMention,
 	skillNameKey,
 	type AgentSkillAvailability,
 	type ProjectIcon,
@@ -18,6 +20,7 @@ import {
 	type SkillSyncedFrom,
 	type SkillUsedBy,
 	type SkillVersionDetail,
+	type SkillWorkflowMention,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -44,6 +47,8 @@ import { parseScope } from '@/features/settings/context/skills.utils';
 import { sourceLineOf } from '@/features/settings/context/skillSourceReview.utils';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
@@ -53,6 +58,7 @@ import {
 } from '@/experiments/recommendedSkills/recommendedSkills';
 import { useRecommendedSkillsExperiment } from '@/experiments/recommendedSkills/useRecommendedSkillsExperiment';
 import { useRecommendedSkillLoader } from '@/experiments/recommendedSkills/useRecommendedSkillLoader';
+import RecommendedSkillSource from '@/experiments/recommendedSkills/components/RecommendedSkillSource.vue';
 import type {
 	SkillConnectionItem,
 	ToolCategoryKey,
@@ -60,6 +66,7 @@ import type {
 } from '@/features/shared/toolsConnection/types';
 import { getSkillDetail, listAttachableSkills } from '../composables/useAgentApi';
 import { useSkillVersions } from '../composables/useSkillVersions';
+import { useSkillWorkflowMentionNames } from '@/features/agents/composables/useSkillWorkflowMentionNames';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
 import {
@@ -235,6 +242,17 @@ function toFormSkill(source: AgentSkill | undefined): AgentSkill {
 
 const initialSkill = ref<AgentSkill>(toFormSkill(props.data.skill));
 const skill = ref<AgentSkill>(cloneDeep(initialSkill.value));
+const posthog = usePostHog();
+const { refreshWorkflowMentionNames } = useSkillWorkflowMentionNames();
+
+async function refreshMentionNames() {
+	const loaded = initialSkill.value;
+	const refreshed = await refreshWorkflowMentionNames(loaded);
+	if (refreshed === loaded || initialSkill.value !== loaded || !isEqual(skill.value, loaded))
+		return;
+	initialSkill.value = refreshed;
+	skill.value = cloneDeep(refreshed);
+}
 const submitted = ref(false);
 const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
@@ -371,6 +389,9 @@ const pickerCategories = computed<ToolCategoryKey[]>(() =>
 		? ['all', 'project', 'global', 'recommended']
 		: ['all', 'project', 'global'],
 );
+const recommendedSkillByPickerItemId = new Map(
+	RECOMMENDED_SKILLS.map((recommended) => [`recommended:${recommended.id}`, recommended]),
+);
 const pickerItemsWithRecommended = computed<SkillConnectionItem[]>(() =>
 	showRecommendedSkills.value
 		? [
@@ -442,7 +463,14 @@ const canStopSyncing = computed(
 const isStoppingSync = ref(false);
 
 async function onStopSyncing() {
-	if (!props.data.skillId || !props.data.onStopSyncing || isStoppingSync.value) return;
+	if (
+		!canStopSyncing.value ||
+		!props.data.skillId ||
+		!props.data.onStopSyncing ||
+		isStoppingSync.value ||
+		isSaving.value
+	)
+		return;
 	isStoppingSync.value = true;
 	try {
 		await props.data.onStopSyncing(props.data.skillId);
@@ -554,6 +582,10 @@ const selectedScopeSkill = computed(() => {
 		projectIcon: selectedScope.value?.projectIcon ?? saved?.projectIcon ?? null,
 	};
 });
+const mentionProjectId = computed(() => selectedScopeSkill.value.projectId ?? undefined);
+const mentionProjectName = computed(() =>
+	mentionProjectId.value ? (selectedScopeSkill.value.projectName ?? undefined) : undefined,
+);
 const showScopeBadge = computed(
 	() =>
 		isFormStep.value &&
@@ -630,6 +662,7 @@ const headerMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
 			icon: { type: 'icon', value: 'sparkles' },
 			checkbox: true,
 			checked: availableToAssistant.value,
+			keepOpen: true,
 			disabled: editorLocked.value,
 			class: $style.menuItem,
 			testId: 'agent-skill-menu-assistant',
@@ -642,6 +675,7 @@ const headerMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
 			icon: { type: 'icon', value: 'mcp' },
 			checkbox: true,
 			checked: availableToMCP.value,
+			keepOpen: true,
 			disabled: editorLocked.value,
 			class: $style.menuItem,
 			testId: 'agent-skill-menu-mcp',
@@ -661,6 +695,25 @@ const headerMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
 				class: $style.menuItem,
 			})),
 		});
+	}
+	if (syncedFrom.value) {
+		items.push({
+			id: 'openInGithub',
+			label: i18n.baseText('settings.context.skills.synced.openInGithub'),
+			icon: { type: 'icon', value: 'external-link' },
+			class: $style.menuItem,
+			testId: 'agent-skill-open-in-github',
+		});
+		if (canStopSyncing.value) {
+			items.push({
+				id: 'stopSyncing',
+				label: i18n.baseText('settings.context.skills.stopSyncing.action'),
+				icon: { type: 'icon', value: 'unlink' },
+				disabled: isSaving.value || isStoppingSync.value,
+				class: $style.menuItem,
+				testId: 'agent-skill-stop-syncing',
+			});
+		}
 	}
 	if (isEditing.value && (props.data.onDelete || showAttachToggle.value)) {
 		items.push({
@@ -684,6 +737,14 @@ const menuSwitchTestIds: Record<string, string> = {
 };
 
 function onHeaderMenuSelect(action: string) {
+	if (action === 'openInGithub' && syncedFrom.value) {
+		window.open(syncedFrom.value.webUrl, '_blank', 'noopener,noreferrer');
+		return;
+	}
+	if (action === 'stopSyncing') {
+		void onStopSyncing();
+		return;
+	}
 	if (action === 'assistant' && showAssistantToggle.value && !editorLocked.value) {
 		availableToAssistant.value = !availableToAssistant.value;
 		return;
@@ -816,20 +877,19 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 			interpolate: { max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString() },
 		});
 	}
-	if (skill.value.references?.some((reference) => !reference.content.trim())) {
-		errors.references = i18n.baseText('agents.builder.skills.references.invalidSummary');
-	}
 
 	return errors;
 });
 
-/** Reference files that block a save: empty, or longer than the limit. */
+/** Files that block a save because their content is over the limit. */
 const invalidReferencePaths = computed(() =>
 	(skill.value.references ?? [])
 		.filter(
 			(reference) =>
-				!reference.content.trim() ||
-				reference.content.length > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+				reference.content.length >
+				(reference.isBinary
+					? AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH
+					: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH),
 		)
 		.map((reference) => reference.path),
 );
@@ -983,6 +1043,15 @@ onMounted(() => {
 		if (showRecommendedSkills.value) trackRecommendedSkillsShown('agent_skill_modal');
 	}
 	if (props.data.skillId && props.data.skillRefsEnabled) void loadSkillAccess(props.data.skillId);
+	if (
+		isEditing.value &&
+		posthog.isVariantEnabled(
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		)
+	) {
+		void refreshMentionNames();
+	}
 });
 
 const showAssistantToggle = computed(
@@ -1178,6 +1247,28 @@ function onSkillUpdate(updates: Partial<AgentSkill>) {
 	) {
 		selectedPath.value = SKILL_FILE;
 	}
+}
+
+function appendOnNewLine(text: string, mention: SkillWorkflowMention) {
+	const trimmed = text.trimEnd();
+	return `${trimmed}${trimmed ? '\n\n' : ''}${formatSkillWorkflowMention(mention)}`;
+}
+
+function onAddWorkflow(mention: SkillWorkflowMention) {
+	const references = skill.value.references ?? [];
+	const openReference = references.find(({ path }) => path === selectedPath.value);
+	if (openReference && !openReference.isBinary && /\.(md|markdown)$/i.test(openReference.path)) {
+		onSkillUpdate({
+			references: references.map((reference) =>
+				reference === openReference
+					? { ...reference, content: appendOnNewLine(reference.content, mention) }
+					: reference,
+			),
+		});
+		return;
+	}
+	onSkillUpdate({ instructions: appendOnNewLine(skill.value.instructions, mention) });
+	selectedPath.value = SKILL_FILE;
 }
 
 function normalizeSkill(skill: AgentSkill): AgentSkill {
@@ -1505,7 +1596,14 @@ function onRemove() {
 				@connect="onPickerItemAttach"
 				@open-detail="onPickerItemPreview"
 				@create="onPickerCreate"
-			/>
+			>
+				<template #row-footer="{ item }">
+					<RecommendedSkillSource
+						:skill="recommendedSkillByPickerItemId.get(item.id)"
+						:class="$style.recommendedSkillSource"
+					/>
+				</template>
+			</ToolsConnectionModal>
 		</div>
 		<div
 			v-if="step === 'preview' && previewSkill"
@@ -1546,29 +1644,6 @@ function onRemove() {
 						</template>
 					</I18nT>
 				</N8nText>
-				<div :class="$style.syncedActions">
-					<N8nButton
-						variant="ghost"
-						size="small"
-						:href="syncedFrom.webUrl"
-						target="_blank"
-						data-testid="agent-skill-open-in-github"
-					>
-						<template #icon><N8nIcon icon="external-link" :size="16" /></template>
-						{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
-					</N8nButton>
-					<N8nButton
-						v-if="canStopSyncing"
-						variant="ghost"
-						size="small"
-						:disabled="isSaving || isStoppingSync"
-						data-testid="agent-skill-stop-syncing"
-						@click="onStopSyncing"
-					>
-						<template #icon><N8nIcon icon="unlink" :size="16" /></template>
-						{{ i18n.baseText('settings.context.skills.stopSyncing.action') }}
-					</N8nButton>
-				</div>
 			</div>
 			<N8nCallout
 				v-else-if="data.readOnly"
@@ -1708,6 +1783,9 @@ function onRemove() {
 						:add-reference-disabled="!canAddReference"
 						:read-only="editorLocked || !!viewedVersion"
 						:invalid-paths="visibleInvalidReferencePaths"
+						:mention-project-id="mentionProjectId"
+						:mention-project-name="mentionProjectName"
+						@add-workflow="onAddWorkflow"
 						@add-reference="onAddReference"
 						@remove-reference="onRemoveReference"
 						@select="selectedPath = $event"
@@ -1718,9 +1796,11 @@ function onRemove() {
 						:skill="displayedSkill"
 						:selected-path="selectedPath"
 						:disabled="editorLocked"
-						:read-only="(cannotEdit && !isPinned) || !!viewedVersion"
+						:read-only="cannotEdit || skillAccessFailed || !!viewedVersion"
 						:errors="visibleErrors"
 						:show-validation-warnings="submitted || openedWithMissingContent"
+						:mention-project-id="mentionProjectId"
+						:mention-project-name="mentionProjectName"
 						@select:path="selectedPath = $event"
 						@update:skill="onSkillUpdate"
 						@update:valid="onValidUpdate"
@@ -1873,13 +1953,17 @@ function onRemove() {
 	margin-bottom: var(--spacing--md);
 }
 
-/* The header menu, as the design: grey icons and check mark, a red Delete when it is allowed. */
+/* Keep normal menu icons neutral. Mark the modal's Delete label and icon in red. */
 .menuItem :global(svg) {
 	color: var(--color--text--tint-1);
 }
 
 .deleteItem:not([data-disabled]) {
-	color: var(--color--danger);
+	color: var(--text-color--danger);
+
+	:global(svg) {
+		color: var(--icon-color--danger) !important;
+	}
 }
 
 .menuSwitchRow {
@@ -1959,13 +2043,6 @@ function onRemove() {
 	overflow-wrap: anywhere;
 }
 
-.syncedActions {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-	margin-left: auto;
-}
-
 .compareSelect {
 	width: calc(var(--spacing--3xl) + var(--spacing--xs));
 }
@@ -2016,6 +2093,10 @@ function onRemove() {
 		border-right: none;
 		border-bottom: var(--border);
 	}
+}
+
+.recommendedSkillSource {
+	padding-top: var(--spacing--5xs);
 }
 
 @media (max-width: 480px) {

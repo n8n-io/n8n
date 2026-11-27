@@ -11,10 +11,11 @@ export function targetSkillsSkill(): RuntimeSkill {
 		id: 'agent-builder-target-skills',
 		name: 'Agent Builder Target Skills',
 		description:
-			'Use when creating or editing target-agent skills: the user asks for skills, the agent has two or more separate jobs with their own procedures, or an existing skill needs a change; not for an agent with one job, builder guidance, or universal target-agent instructions.',
+			'Use when creating or editing target-agent skills: the user asks for skills, the agent has two or more separate jobs with their own procedures, or an existing skill needs a change; not for creating skills for a one-job agent, attaching an existing skill without edits, builder guidance, or universal target-agent instructions.',
 		recommendedToolGroups: ['agents'],
 		allowedTools: [
 			'agent-context',
+			'skills',
 			'agent_builder_update_skill',
 			'agent_builder_create_skills',
 			'ask_user',
@@ -44,8 +45,12 @@ instructions.
 
 ## Don't use when:
 
-- The target agent has one job. Put its rules and steps in the main
-  instructions, even when they run to several paragraphs.
+- The target agent has one job and no existing skill needs a change. Do not
+  create a new skill: attach a matching existing skill in \`skills\` if one
+  exists, or put the agent's rules and steps in the main instructions, even when
+  they run to several paragraphs.
+- You only need to attach an existing matching skill without creating or editing
+  a skill; add its ref in \`skills\` using \`agent-builder-config\`.
 - The behavior is the target agent's identity, overall purpose, or a rule that
   truly applies to every operation; keep that in the main instructions.
 - The request changes only a tool, integration, model, or memory setting and
@@ -83,8 +88,9 @@ vague skill.
 ## Workflow
 
 - Classify requested behavior before writing: identity, overall purpose,
-  universal rules, and the procedure of a single-job agent stay in main
-  instructions; each separate job of a multi-job agent becomes a skill.
+  universal rules, and the procedure of a single-job agent (when no existing
+  attachable skill matches) stay in main instructions; each separate job of a
+  multi-job agent becomes a skill.
 - Call \`agent-context({ type: "config" })\` and use its \`skills\` refs as the authoritative set of
   skills attached to the target agent.
 - Call \`agent-context({ type: "skills" })\` once and compare its metadata with the attached ids from
@@ -94,8 +100,9 @@ vague skill.
 - For a field removal or rename, read every attached skill body, even when its
   description does not mention the field. Call \`agent-context({ type: "skill", skillId: "<id>" })\` for
   every attached id. Its default response includes reference paths and sizes
-  but omits reference content; pass every listed path in \`referencePaths\` so
-  you can search all attached skill content.
+  but omits reference content. Read text paths in batches of up to 20 in \`referencePaths\`.
+  When the result has \`omittedReferencePaths\`, read the skill again with those paths.
+  When a file has \`nextOffset\`, read that path alone with \`referenceOffset\` set to that value.
 - Call \`agent-context({ type: "skill", skillId: "<id>" })\` only for the relevant attached skill for
   other skill work. Follow its reference paths and sizes; request reference
   content when the change needs it.
@@ -110,8 +117,8 @@ vague skill.
   \`baseSkillHash\`.
   Do not create a replacement skill. Pass \`null\` for \`references\` to remove
   all references; do not pass an empty array. The skill can be shared with other
-  agents: an update saves its next version for every agent that uses it. When replacing \`references\`, first read the content of every existing
-  reference that must be preserved, because the field is replaced as a whole.
+  agents: an update saves its next version for every agent that uses it. Before replacing \`references\`,
+  read all parts of every file you want to keep. Confirm that each page has the same \`skillHash\`.
 - Before you update any attached skill because a field was removed or renamed,
   use \`ask_user\` to get explicit confirmation for the
   skill changes. Builder context does not show who else uses a skill, so treat
@@ -119,7 +126,20 @@ vague skill.
   following the latest version will use. If the user does not clearly confirm,
   leave the skill unchanged and explain the remaining mismatch and lost
   behavior.
-- Only call \`agent_builder_create_skills\` when no attached skill owns the capability. Fill the
+- Before creating a new skill, search existing skills that the target agent can
+  attach by calling
+  \`skills({ action: "list", attachableToAgentId: "<agentId>" })\`. Omit \`query\`
+  on the first call so you do not miss a matching skill with a different name;
+  use \`query\` or \`skip\` only when \`count\` exceeds the returned page. Call
+  \`skills({ action: "get", skillId: "<id>" })\` if a candidate's description is
+  not enough to confirm a match. Skip any id already in \`config.skills\`. If an
+  unattached matching skill covers the need, attach it instead of creating a
+  duplicate: append \`{ "type": "skill", "id": "<id>" }\` to \`/skills/-\` with
+  \`agent_builder_patch_config\` (or add \`/skills\` if missing), or include it
+  with every existing ref from the latest config in \`skills\` on
+  \`agent_builder_write_config\`.
+- Only call \`agent_builder_create_skills\` when neither an attached skill nor an
+  existing attachable skill owns the capability. Fill the
   domain detail you need, deriving missing detail from the goal as stated
   assumptions so each description and applicable body section is concrete.
 - Write each skill's \`description\` as the routing contract and \`instructions\`
@@ -151,6 +171,9 @@ vague skill.
 - Omit fields you cannot fill confidently. Do not invent tool names or file paths.
 - Scripts are not supported in this phase. Do not pass scripts or non-markdown
   linked files to \`agent_builder_create_skills\` or \`agent_builder_update_skill\`.
+- In \`agent_builder_update_skill\`, \`references\` replaces the Markdown files of the
+  skill. Pass every Markdown file that stays. The scripts, binary files, and other
+  files of the skill stay as they are.
 
 ## Rules
 
@@ -165,6 +188,10 @@ vague skill.
 
 ## Gotchas
 
+- Always search existing attachable skills with
+  \`skills({ action: "list", attachableToAgentId })\` before calling
+  \`agent_builder_create_skills\`, and attach a matching skill instead of creating
+  a duplicate.
 - \`agent_builder_create_skills\` already attaches its skills; do not add a second ref for the
   same id with \`agent_builder_patch_config\`.
 - \`agent_builder_update_skill\` edits the existing body in place and needs no config patch.

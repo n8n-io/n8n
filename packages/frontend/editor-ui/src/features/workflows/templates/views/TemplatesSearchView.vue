@@ -246,8 +246,8 @@ const onLoadMore = async () => {
 		});
 	} catch (e) {
 		toast.showMessage({
-			title: 'Error',
-			message: 'Could not load more workflows',
+			title: i18n.baseText('error'),
+			message: i18n.baseText('templates.loadMoreWorkflowsError'),
 			type: 'error',
 		});
 	} finally {

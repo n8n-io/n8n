@@ -9,7 +9,10 @@ import RoleHoverPopover from './RoleHoverPopover.vue';
 import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { TOTAL_PROJECT_PERMISSIONS } from '@/features/roles/project/projectRoleScopes';
+import {
+	TOTAL_PROJECT_PERMISSIONS,
+	UI_VISIBLE_SCOPES,
+} from '@/features/roles/project/projectRoleScopes';
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn(),
@@ -97,10 +100,27 @@ describe('RoleHoverPopover', () => {
 			expect(getByText('Admin')).toBeInTheDocument();
 		});
 
-		it('should display permission count', () => {
+		const scopeCountOf = (resource: string) =>
+			[...UI_VISIBLE_SCOPES].filter((scope) => scope.startsWith(`${resource}:`)).length;
+
+		it('should display permission count, without the scopes of hidden resources', () => {
 			const { getByText } = renderComponent();
 
-			expect(getByText(`3/${TOTAL_PROJECT_PERMISSIONS} permissions`)).toBeInTheDocument();
+			const total =
+				TOTAL_PROJECT_PERMISSIONS -
+				scopeCountOf('app') -
+				scopeCountOf('mcpServer') -
+				scopeCountOf('projectSkill');
+			expect(getByText(`3/${total} permissions`)).toBeInTheDocument();
+		});
+
+		it('should count the scopes of a resource once its feature is on', () => {
+			settingsStore.isAppsEnabled = true;
+			const { getByText } = renderComponent();
+
+			const total =
+				TOTAL_PROJECT_PERMISSIONS - scopeCountOf('mcpServer') - scopeCountOf('projectSkill');
+			expect(getByText(`3/${total} permissions`)).toBeInTheDocument();
 		});
 
 		it('should display role description when available', () => {

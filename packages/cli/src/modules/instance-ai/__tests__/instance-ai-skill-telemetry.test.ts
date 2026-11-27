@@ -1,4 +1,4 @@
-import { createRuntimeSkillSource, extendRuntimeSkillSource } from '@n8n/agents';
+import { createRuntimeSkillSource } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { suspendedInstanceContextSchema } from '@n8n/instance-ai';
 
@@ -128,32 +128,8 @@ describe('Assistant Hub skill telemetry', () => {
 		});
 	});
 
-	it('keeps carry-forward, refresh, revocation, and temporary failure distinct', () => {
-		const { skills, telemetry } = setup();
-		const usage = [
-			{ skillId: runtimeId, version: 'v1', kind: 'carried' as const },
-			{ skillId: runtimeId, version: 'v2', kind: 'refreshed' as const },
-			{ skillId: `hub-${'c'.repeat(64)}`, kind: 'revoked' as const },
-			{ skillId: `hub-${'d'.repeat(64)}`, kind: 'unavailable' as const },
-		];
-		skills.onContext?.(usage);
-		skills.onContext?.(usage);
-		expect(telemetry.snapshot()).toMatchObject({
-			hub_skill_carried_count: 1,
-			hub_skill_carried_ids: ['skill-1'],
-			hub_skill_refresh_count: 1,
-			hub_skill_refreshed_ids: ['skill-1'],
-			hub_skill_revocation_count: 1,
-			hub_skill_unavailable_count: 1,
-			hub_skill_attempt_count: 0,
-		});
-	});
-
 	it('retains deduplication through a checkpoint and a rebound runtime', () => {
 		const { skills, telemetry } = setup();
-		const extended = extendRuntimeSkillSource(skills, [
-			{ id: 'extra', name: 'extra', description: 'extra', instructions: 'extra' },
-		]);
 		telemetry.observe(call('first'));
 		telemetry.observe(result('first', { success: true }));
 		expect(telemetry.snapshot().hub_skill_snapshot_sequence).toBe(1);
@@ -170,7 +146,6 @@ describe('Assistant Hub skill telemetry', () => {
 		resumed.bind(skills);
 		resumed.observe(call('first'));
 		resumed.observe(result('first', { success: true }));
-		extended.onContext?.([{ skillId: runtimeId, version: 'v1', kind: 'carried' }]);
 		resumed.observe(call('second'));
 		resumed.observe(result('second', { success: false }));
 		expect(resumed.snapshot()).toMatchObject({
@@ -178,7 +153,6 @@ describe('Assistant Hub skill telemetry', () => {
 			hub_skill_attempt_count: 2,
 			hub_skill_load_count: 1,
 			hub_skill_failure_count: 1,
-			hub_skill_carried_count: 0,
 		});
 	});
 });

@@ -38,6 +38,9 @@ describe('classifyScope', () => {
 		['sourceControl:pull', 'write'],
 		['sourceControl:push', 'write'],
 		['sourceControl:read', 'read'],
+		['promotions:readEnvironments', 'read'],
+		['promotions:readReviews', 'read'],
+		['promotions:manageEnvironments', 'write'],
 		['communityPackage:install', 'write'],
 		['dataTableRow:upsert', 'write'],
 	] as Array<[ApiKeyScope, string]>)('classifies %s as %s', (scope, expected) => {

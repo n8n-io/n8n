@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { Agent as RuntimeAgent } from '@n8n/agents';
 import type { AgentToolGuardrailConfig } from '@n8n/api-types';
+import type { LanguageModel } from 'ai';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -18,7 +19,9 @@ import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.servic
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
+import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
 import { createAgentSkillRefsService, storedRunSource } from './test-utils/stored-agent-config';
+import { SimulationSession } from '../simulation/simulation-session';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -131,6 +134,36 @@ describe('AgentRuntimeCacheService', () => {
 		expect(runtime.toolGuardrails).toBe(toolGuardrails);
 	});
 
+	it('carries the guardrail model from the reconstruction onto the cached runtime', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const guardrailModel = {} as LanguageModel;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
+			...makeRuntime(),
+			guardrailModel,
+		});
+
+		const runtime = await service.getRuntime({ agentId, projectId });
+
+		expect(runtime.guardrailModel).toBe(guardrailModel);
+	});
+
+	it('carries the guardrail workflow context from the reconstruction onto the cached runtime', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const guardrailWorkflowContext = { projectId: 'project-1' } as unknown as WorkflowToolContext;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
+			...makeRuntime(),
+			guardrailWorkflowContext,
+		});
+
+		const runtime = await service.getRuntime({ agentId, projectId });
+
+		expect(runtime.guardrailWorkflowContext).toBe(guardrailWorkflowContext);
+	});
+
 	it('keeps task runtimes separate and disables their background tools', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const agent = makeAgent();
@@ -159,6 +192,37 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			{ allowBackgroundTasks: false },
 		);
+	});
+
+	it('builds a test chat its own runtime with the simulation instrumentation', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(makeRuntime())
+			.mockResolvedValueOnce(makeRuntime())
+			.mockResolvedValueOnce(makeRuntime());
+		const world = {
+			worldId: 'world-1',
+			backend: 'llm-mock' as const,
+			handleRequest: vi.fn(),
+			save: () => ({}),
+		};
+		const session = new SimulationSession({ testChatId: 'chat-1', world, capabilities: [] });
+		const otherSession = new SimulationSession({ testChatId: 'chat-2', world, capabilities: [] });
+
+		const live = await service.getRuntime({ agentId, projectId });
+		const simulated = await service.getRuntime({ agentId, projectId, simulation: session });
+		const sameChat = await service.getRuntime({ agentId, projectId, simulation: session });
+		const otherChat = await service.getRuntime({ agentId, projectId, simulation: otherSession });
+
+		expect(simulated).not.toBe(live);
+		expect(sameChat).toBe(simulated);
+		expect(otherChat).not.toBe(simulated);
+		const instrumentation = reconstructionService.reconstructFromAgentEntity.mock.calls[1][5];
+		expect(instrumentation?.toolCallInterceptor).toBe(session.interceptor);
+		expect(instrumentation?.configureToolAdditionalData).toBeInstanceOf(Function);
+		expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0][5]).toBeUndefined();
 	});
 
 	it('defers closing an expired runtime until its active lease is released', async () => {

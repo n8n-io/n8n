@@ -1,5 +1,7 @@
+import type { FolderService } from '@/services/folder.service';
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
+import type { AgentApprovalCleanupService } from '@/modules/agents/approval/agent-approval-cleanup.service';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
 import {
@@ -7,6 +9,7 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	type ListAgentsOptions,
 } from '@n8n/api-types';
+import type { LicenseState } from '@n8n/backend-common';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { GlobalConfig } from '@n8n/config';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
@@ -24,6 +27,7 @@ import type {
 import { mockLogger } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_MEMBER_ROLE,
+	type Folder,
 	type ProjectRelationRepository,
 	type TagEntity,
 	type TransactionRunner,
@@ -168,6 +172,21 @@ function makeService() {
 	);
 
 	const agentServiceAccount = mock<AgentServiceAccountService>();
+	const approvalCleanup = mock<AgentApprovalCleanupService>();
+	const folderService = mock<FolderService>();
+	const licenseState = mock<LicenseState>();
+	licenseState.isFoldersLicensed.mockReturnValue(true);
+	// Like the real service: the cleanup runs after the work of the account moved, then the agent row goes.
+	agentServiceAccount.deleteForAgent.mockImplementation(
+		async (agent, _actor, _transferId, _ctx, cleanUp) => {
+			await cleanUp();
+			if (agent.projectId) {
+				await agentRepository.removeAfterApprovalCleanup(agent.id, agent.projectId, {});
+			} else {
+				await agentRepository.deleteById(agent.id, {});
+			}
+		},
+	);
 	const service = new AgentsService(
 		mockLogger(),
 		agentRepository,
@@ -192,13 +211,18 @@ function makeService() {
 		setupCompletion,
 		n8nChatFlag,
 		mock<AgentDefinitionService>(),
+		approvalCleanup,
 		globalConfig,
 		tagService,
+		folderService,
+		licenseState,
 		agentServiceAccount,
 	);
 
 	return {
 		service,
+		folderService,
+		licenseState,
 		n8nChatFlag,
 		telemetry,
 		setupCompletion,
@@ -224,6 +248,7 @@ function makeService() {
 		globalConfig,
 		tagService,
 		agentServiceAccount,
+		approvalCleanup,
 	};
 }
 
@@ -272,6 +297,98 @@ describe('AgentsService', () => {
 			projectScopeService.hasScopes.mockResolvedValue(false);
 
 			await expect(service.resolveOwningProjectId(user, projectId)).rejects.toThrow(ForbiddenError);
+		});
+	});
+
+	it('reports a workflow folder as not found when listing Agent summaries', async () => {
+		const { service, folderService, agentRepository } = makeService();
+		folderService.getFoldersByIds.mockResolvedValue([mock<Folder>({ resourceType: 'workflow' })]);
+
+		await expect(
+			service.findSummariesInProjects(null, { parentFolderId: 'folder-1' }),
+		).rejects.toThrow(NotFoundError);
+
+		expect(agentRepository.findSummariesByProjectIds).not.toHaveBeenCalled();
+	});
+
+	describe('folder license', () => {
+		it('rejects creation in a folder without a folder license', async () => {
+			const { service, agentRepository, folderService, licenseState } = makeService();
+			licenseState.isFoldersLicensed.mockReturnValue(false);
+
+			await expect(
+				service.create(projectId, 'Support Agent', { actor, parentFolderId: 'folder-1' }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(folderService.validateDestination).not.toHaveBeenCalled();
+			expect(agentRepository.create).not.toHaveBeenCalled();
+		});
+
+		it.each([undefined, null])(
+			'allows root creation with folder membership %s',
+			async (parentFolderId) => {
+				const { service, agentRepository, licenseState } = makeService();
+				licenseState.isFoldersLicensed.mockReturnValue(false);
+				mockCreateReturning(agentRepository, makeAgent());
+
+				const result = await service.create(projectId, 'Support Agent', { actor, parentFolderId });
+
+				expect(result.parentFolderId).toBeNull();
+			},
+		);
+
+		it('validates the destination before licensed folder creation', async () => {
+			const { service, agentRepository, folderService } = makeService();
+			mockCreateReturning(agentRepository, makeAgent());
+
+			await service.create(projectId, 'Support Agent', { actor, parentFolderId: 'folder-1' });
+
+			expect(folderService.validateDestination).toHaveBeenCalledWith(
+				'folder-1',
+				projectId,
+				'agent',
+			);
+		});
+
+		it.each([
+			{ source: null, destination: 'folder-1' },
+			{ source: 'folder-1', destination: null },
+			{ source: 'folder-1', destination: 'folder-2' },
+		])(
+			'rejects a move from $source to $destination without a folder license',
+			async ({ source, destination }) => {
+				const { service, agentRepository, folderService, licenseState } = makeService();
+				licenseState.isFoldersLicensed.mockReturnValue(false);
+				agentRepository.findByIdAndProjectId.mockResolvedValue(
+					makeAgent({ parentFolderId: source }),
+				);
+
+				await expect(service.move(agentId, projectId, destination)).rejects.toThrow(ForbiddenError);
+
+				expect(folderService.validateDestination).not.toHaveBeenCalled();
+				expect(agentRepository.moveToFolder).not.toHaveBeenCalled();
+			},
+		);
+
+		it('allows root-only import placement without a folder license', async () => {
+			const { service, agentRepository, licenseState } = makeService();
+			licenseState.isFoldersLicensed.mockReturnValue(false);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ parentFolderId: null }));
+			agentRepository.moveToFolder.mockResolvedValue(true);
+
+			await expect(service.move(agentId, projectId, null)).resolves.toBe(true);
+
+			expect(agentRepository.moveToFolder).toHaveBeenCalledWith(agentId, projectId, null);
+		});
+
+		it('does not move an Agent outside the requested project', async () => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.move(agentId, projectId, 'folder-1')).resolves.toBe(false);
+
+			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledWith(agentId, projectId);
+			expect(agentRepository.moveToFolder).not.toHaveBeenCalled();
 		});
 	});
 
@@ -583,6 +700,7 @@ describe('AgentsService', () => {
 			id: agentId,
 			name: 'Support Agent',
 			projectId,
+			parentFolderId: null,
 			schema: {
 				name: 'Support Agent',
 				model: '',
@@ -636,7 +754,7 @@ describe('AgentsService', () => {
 			actor,
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				integrations,
 			},
@@ -677,7 +795,7 @@ describe('AgentsService', () => {
 			actor,
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage refunds.',
 				tools: [{ type: 'custom', id: 'refund_tool' }],
 			},
@@ -706,7 +824,7 @@ describe('AgentsService', () => {
 			skillCreator,
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				skills: [{ type: 'skill', id: 'skill_abc' }],
 			},
@@ -741,7 +859,7 @@ describe('AgentsService', () => {
 			actor,
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				skills: skillRefs,
 			},
@@ -771,7 +889,7 @@ describe('AgentsService', () => {
 				actor,
 				schema: {
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Triage tickets.',
 					integrations: [
 						{ type: 'telegram', credentialId: 'cred-telegram-1' },
@@ -885,7 +1003,7 @@ describe('AgentsService', () => {
 				actor,
 				schema: {
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Triage tickets.',
 				},
 				user,
@@ -895,7 +1013,7 @@ describe('AgentsService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId: saved.id });
 			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
-				expect.objectContaining({ event_version: '3', model: 'anthropic/claude-sonnet-4-5' }),
+				expect.objectContaining({ event_version: '3', model: 'anthropic/claude-sonnet-5-5' }),
 			);
 		});
 
@@ -918,7 +1036,7 @@ describe('AgentsService', () => {
 				actor,
 				schema: {
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Triage tickets.',
 					integrations: [{ type: 'slack', credentialId: 'cred-slack-1' }],
 				},
@@ -1043,7 +1161,7 @@ describe('AgentsService', () => {
 				name: 'Support Triage',
 				schema: {
 					name: 'Support Triage',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Hi',
 				},
 				integrations: [],
@@ -1126,9 +1244,9 @@ describe('AgentsService', () => {
 
 		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(projectId, agentId);
 		expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
-			agentRepository.remove.mock.invocationCallOrder[0],
+			agentRepository.removeAfterApprovalCleanup.mock.invocationCallOrder[0],
 		);
-		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentRepository.removeAfterApprovalCleanup).toHaveBeenCalledWith(agentId, projectId, {});
 		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(agentId, {
 			type: 'slack',
 			credentialId: 'slack-1',
@@ -1156,7 +1274,7 @@ describe('AgentsService', () => {
 
 		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
 		expect(eventService.emit.mock.invocationCallOrder[0]).toBeGreaterThan(
-			agentRepository.remove.mock.invocationCallOrder[0],
+			agentRepository.removeAfterApprovalCleanup.mock.invocationCallOrder[0],
 		);
 	});
 
@@ -1170,7 +1288,7 @@ describe('AgentsService', () => {
 			projectId,
 		});
 		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
-		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentRepository.removeAfterApprovalCleanup).toHaveBeenCalledWith(agentId, projectId, {});
 	});
 
 	it('does not emit agent-deleted when the agent is missing', async () => {
@@ -1190,7 +1308,7 @@ describe('AgentsService', () => {
 		testChatService.clearAllTestChatMessages.mockRejectedValue(new Error('memory down'));
 
 		await expect(service.delete(agentId, user, projectId)).resolves.toMatchObject({ id: agentId });
-		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentRepository.removeAfterApprovalCleanup).toHaveBeenCalledWith(agentId, projectId, {});
 		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
@@ -1201,7 +1319,7 @@ describe('AgentsService', () => {
 		await expect(
 			service.delete(agentId, user, projectId, { requireArchived: true }),
 		).rejects.toThrow('Agent must be archived before it can be deleted.');
-		expect(agentRepository.remove).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
 		await expect(
@@ -1214,10 +1332,10 @@ describe('AgentsService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
 		await expect(service.delete(agentId, user, projectId)).resolves.toBeNull();
-		expect(agentRepository.remove).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
 	});
 
-	it('removes the service account into the agent project before any cleanup', async () => {
+	it('moves the work of the service account into the agent project before any cleanup', async () => {
 		const { service, agentRepository, agentKnowledgeService, agentServiceAccount } = makeService();
 		const agent = makeAgent({ identityId: 'sa-1' });
 		agentRepository.findById.mockResolvedValue(agent);
@@ -1226,7 +1344,13 @@ describe('AgentsService', () => {
 
 		await service.delete(agentId, user, undefined, {}, ctx);
 
-		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(agent, user, projectId, ctx);
+		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(
+			agent,
+			user,
+			projectId,
+			ctx,
+			expect.any(Function),
+		);
 		expect(agentServiceAccount.deleteForAgent.mock.invocationCallOrder[0]).toBeLessThan(
 			agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0],
 		);
@@ -1239,7 +1363,7 @@ describe('AgentsService', () => {
 
 		await expect(service.delete(agentId, user, projectId)).rejects.toThrow('transfer blocked');
 		expect(agentKnowledgeService.deleteAllFilesForAgent).not.toHaveBeenCalled();
-		expect(agentRepository.remove).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
 	});
 
 	it('does not remove a service account when the delete needs an archived agent', async () => {
@@ -1250,6 +1374,63 @@ describe('AgentsService', () => {
 			service.delete(agentId, user, projectId, { requireArchived: true }),
 		).rejects.toThrow('Agent must be archived before it can be deleted.');
 		expect(agentServiceAccount.deleteForAgent).not.toHaveBeenCalled();
+	});
+
+	it('cleans up approvals with the agent owner before it removes the agent', async () => {
+		const { service, agentRepository, approvalCleanup } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ approvalWorkflowId: 'owner-1' }),
+		);
+
+		await service.delete(agentId, user, projectId);
+
+		expect(approvalCleanup.cleanupAgent).toHaveBeenCalledWith(agentId, projectId, 'owner-1');
+		expect(approvalCleanup.cleanupAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			agentRepository.removeAfterApprovalCleanup.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('checks approval blockers before it starts account deletion', async () => {
+		const { service, agentRepository, approvalCleanup, agentServiceAccount } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: 'sa-1' }));
+
+		await service.delete(agentId, user, projectId);
+
+		expect(approvalCleanup.assertCanCleanupAgent).toHaveBeenCalledWith(agentId);
+		expect(approvalCleanup.assertCanCleanupAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			approvalCleanup.cleanupAgent.mock.invocationCallOrder[0],
+		);
+		expect(approvalCleanup.cleanupAgent.mock.invocationCallOrder[0]).toBeGreaterThan(
+			agentServiceAccount.deleteForAgent.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('keeps the service account when approval cleanup loses a race', async () => {
+		const { service, agentRepository, approvalCleanup, agentKnowledgeService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: 'sa-1' }));
+		approvalCleanup.cleanupAgent.mockRejectedValue(new ConflictError('resumed'));
+
+		await expect(service.delete(agentId, user, projectId)).rejects.toThrow('resumed');
+		expect(agentKnowledgeService.deleteAllFilesForAgent).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
+	});
+
+	it('keeps the agent and its service account when an approval blocks cleanup', async () => {
+		const {
+			service,
+			agentRepository,
+			approvalCleanup,
+			agentServiceAccount,
+			agentKnowledgeService,
+		} = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: 'sa-1' }));
+		approvalCleanup.assertCanCleanupAgent.mockRejectedValue(new ConflictError('still stopping'));
+
+		await expect(service.delete(agentId, user, projectId)).rejects.toThrow('still stopping');
+		expect(agentServiceAccount.deleteForAgent).not.toHaveBeenCalled();
+		expect(approvalCleanup.cleanupAgent).not.toHaveBeenCalled();
+		expect(agentKnowledgeService.deleteAllFilesForAgent).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
 	});
 
 	describe('findByIdForUser', () => {
@@ -1521,7 +1702,7 @@ describe('AgentsService', () => {
 				activeVersion: {
 					schema: {
 						name: 'Support',
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						instructions: 'published instructions',
 						personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
 						description: 'Answers billing questions.',
@@ -1796,7 +1977,7 @@ describe('AgentsService', () => {
 					name: 'Support Agent',
 					schema: {
 						name: 'Support Agent',
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						instructions: 'Help the user.',
 						tools: [
 							{ type: 'custom', id: 'c1' },
@@ -1834,7 +2015,7 @@ describe('AgentsService', () => {
 			expect(summary).toEqual({
 				id: agentId,
 				name: 'Support Agent',
-				model: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+				model: { provider: 'anthropic', model: 'claude-sonnet-5-5' },
 				channels: [{ type: 'slack' }, { type: 'telegram' }],
 				tools: [
 					{ type: 'custom', name: 'Refund tool' },
@@ -1881,7 +2062,7 @@ describe('AgentsService', () => {
 					name: 'Partial Agent',
 					schema: {
 						name: 'Partial Agent',
-						model: 'claude-sonnet-4-5',
+						model: 'claude-sonnet-5-5',
 						instructions: 'Help the user.',
 						tools: [
 							{ type: 'custom', id: 'c-missing' },
@@ -1896,7 +2077,7 @@ describe('AgentsService', () => {
 
 			const summary = await service.getCapabilitySummary(agentId, projectId);
 
-			expect(summary.model).toEqual({ provider: '', model: 'claude-sonnet-4-5' });
+			expect(summary.model).toEqual({ provider: '', model: 'claude-sonnet-5-5' });
 			expect(summary.tools).toEqual([
 				{ type: 'custom', name: 'c-missing' },
 				{ type: 'workflow', name: 'wf-2' },

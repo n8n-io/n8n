@@ -8,10 +8,12 @@ import {
 	createAgent,
 	deleteN8nChatThread,
 	deleteSystemAgentThread,
+	generateAgentTestScenarios,
 	getAgentBackgroundJobs,
 	getAgentBudgetSpend,
 	getAgentChatQueue,
 	getAgentTaskCancellation,
+	getIntegrationAccount,
 	getN8nChatAgent,
 	getN8nChatThread,
 	removeAgentQueuedMessage,
@@ -48,6 +50,21 @@ const restApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
 describe('useAgentApi', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('getIntegrationAccount', () => {
+		it('requests the account of the integration type with GET', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ botName: 'bot' });
+
+			await expect(
+				getIntegrationAccount(restApiContext, 'project-1', 'agent-1', 'slack/x'),
+			).resolves.toEqual({ botName: 'bot' });
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/project-1/agents/v2/agent-1/integrations/slack%2Fx/account',
+			);
+		});
 	});
 
 	describe('listAttachableSkills', () => {
@@ -220,6 +237,25 @@ describe('useAgentApi', () => {
 			]);
 		});
 
+		it('reads a page of chat messages, with the cursor only when set', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue({ messages: [], openSuspensions: [] });
+
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1');
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1', 'chat', {
+				limit: 20,
+			});
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1', 'chat', {
+				limit: 20,
+				cursor: 'cursor-1',
+			});
+
+			expect(vi.mocked(makeRestApiRequest).mock.calls.map((call) => call.slice(3))).toEqual([
+				[],
+				[{ limit: '20' }],
+				[{ limit: '20', cursor: 'cursor-1' }],
+			]);
+		});
+
 		it('lists a page of system-agent threads, with the cursor and search only when set', async () => {
 			vi.mocked(makeRestApiRequest).mockResolvedValue({ data: [], nextCursor: null });
 
@@ -378,6 +414,18 @@ describe('useAgentApi', () => {
 				'/projects/p1/agents/v2/a1/n8n-chat/th-1/files',
 			);
 		});
+
+		it('lists the files of a system agent session on the system route, without a project', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ files: [] });
+
+			await getSessionFiles(restApiContext, 'p1', 'assistant', 'th-1', 'system');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/agents/system/assistant/chat/th-1/files',
+			);
+		});
 	});
 
 	describe('getChatMessages', () => {
@@ -392,6 +440,24 @@ describe('useAgentApi', () => {
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2/agent-1/chat/agent-1%3Achat%3Abot-1-2%231/messages',
+			);
+		});
+	});
+
+	describe('generateAgentTestScenarios', () => {
+		it('posts to the test-scenarios endpoint with encoded identifiers and optional previousScenarios', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ scenarios: ['Scenario 1'] });
+
+			const result = await generateAgentTestScenarios(restApiContext, 'project/1', 'agent/1', {
+				previousScenarios: ['Old scenario'],
+			});
+
+			expect(result).toEqual({ scenarios: ['Scenario 1'] });
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'POST',
+				'/projects/project%2F1/agents/v2/agent%2F1/chat/test-scenarios',
+				{ previousScenarios: ['Old scenario'] },
 			);
 		});
 	});
@@ -594,7 +660,7 @@ describe('useAgentApi', () => {
 		it('posts the initial config and reserved agent id', async () => {
 			const config: AgentJsonConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 			};
 
@@ -616,7 +682,7 @@ describe('useAgentApi', () => {
 		it('fetches the source agent, then creates a clone with the new name', async () => {
 			const sourceConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 			} as unknown as AgentJsonConfig;
 			const sourceAgent = {
@@ -664,7 +730,7 @@ describe('useAgentApi', () => {
 		it('copies channels without their credential so the clone opens as drafts', async () => {
 			const sourceConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				integrations: [
 					{ type: 'telegram', credentialId: 'cred-telegram-1' },

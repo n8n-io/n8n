@@ -1,4 +1,5 @@
 import {
+	APP_TOOL_NAME_BY_ACTION,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
 	type InstanceAiAgentPreviewHandoffContext,
@@ -23,6 +24,9 @@ import { z } from 'zod';
  */
 
 export const AUTO_FOLLOW_UP_MESSAGE = '(continue)';
+
+export const CLOUD_BROWSER_TASK_COMPLETED_OPEN_TAG = '<cloud-browser-task-completed>';
+export const CLOUD_BROWSER_TASK_COMPLETED_CLOSE_TAG = '</cloud-browser-task-completed>';
 
 /**
  * Legacy hand-off wrapper. New turns encode resource attachments as the leading
@@ -104,7 +108,7 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<thread-context>\n[\s\S]*?\n<\/thread-context>|<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<workflow-test-request>\n[\s\S]*?\n<\/workflow-test-request>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<migration-report-context>\n[\s\S]*?\n<\/migration-report-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>|<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>)(?:\n\n|$)/;
+	/^(?:<thread-context>\n[\s\S]*?\n<\/thread-context>|<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<workflow-test-request>\n[\s\S]*?\n<\/workflow-test-request>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<migration-report-context>\n[\s\S]*?\n<\/migration-report-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>|<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>|<cloud-browser-task-completed>\n[\s\S]*?\n<\/cloud-browser-task-completed>)(?:\n\n|$)/;
 
 /**
  * Captures the leading JSON line inside a thread-artifacts block (hand-off
@@ -146,6 +150,7 @@ const TRAILING_CONTEXT_BLOCKS = [
 	'past-conversations',
 	'ai-preferences',
 	'onboarding-answer',
+	'run-stopped',
 ].map(trailingBlockRegex);
 
 /** Strip each trailing block once, in whatever order they were composed. */
@@ -182,11 +187,11 @@ export function buildAppTargetsBlock(
 	if (apps.length === 0 && !hasPendingApp) return '';
 	return [
 		APP_TARGETS_OPEN_TAG,
-		'This conversation builds these n8n Apps. Load `app-builder` and pass the matching `appId` to the `apps` tool.',
+		`This conversation builds these n8n Apps. Load \`app-builder\` and pass the matching \`appId\` to the app tools, for example \`${APP_TOOL_NAME_BY_ACTION.open}\`.`,
 		...apps.map(({ id, name }) => `- App ${sanitisePromptText(name)} (appId: \`${id}\`)`),
 		...(hasPendingApp
 			? [
-					'- A new app that the user opened. It has no row yet. Create it with the `apps` tool action `create`.',
+					`- A new app that the user opened. It has no row yet. Create it with \`${APP_TOOL_NAME_BY_ACTION.create}\`.`,
 				]
 			: []),
 		APP_TARGETS_CLOSE_TAG,
@@ -377,6 +382,21 @@ export function buildOnboardingAnswerMessage(answers: OnboardingAnswer[]): strin
 				]
 			: []),
 		'</onboarding-answer>',
+	].join('\n');
+}
+
+/**
+ * Tells the agent that the user stopped its last reply. Without it, a later run (for example one
+ * that reports a finished background task) sees the request as unanswered and resumes it. It rides
+ * a hidden user turn, like the onboarding answers.
+ */
+export function buildRunStoppedMessage(): string {
+	return [
+		AUTO_FOLLOW_UP_MESSAGE,
+		'',
+		'<run-stopped>',
+		'The user stopped your previous reply. Do not continue the work of that reply unless the user asks again.',
+		'</run-stopped>',
 	].join('\n');
 }
 
@@ -606,7 +626,13 @@ export function buildThreadArtifactsBlock(
 			: '';
 	}
 
+	// The execution that each workflow tab shows. A handed-off execution replaces it.
 	const executionByWorkflowId = new Map<string, string>();
+	for (const artifact of previewArtifacts) {
+		if (artifact.type === 'workflow' && artifact.executionId) {
+			executionByWorkflowId.set(artifact.id, artifact.executionId);
+		}
+	}
 	for (const attachment of resourceAttachments) {
 		if (attachment.type === 'workflow' && attachment.executionId) {
 			executionByWorkflowId.set(attachment.id, attachment.executionId);

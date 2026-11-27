@@ -152,4 +152,39 @@ describe('NodeCreation', () => {
 
 		expect(queryByTestId('command-bar-button')).not.toBeInTheDocument();
 	});
+
+	describe('content above the toolbar', () => {
+		const closed = { nodeViewScale: 1, createNodeActive: false, focusPanelActive: false };
+		const aboveToolbar = { 'above-toolbar': '<div data-test-id="above-toolbar-content" />' };
+
+		it('renders the toolbar alone in its column when the host passes nothing', () => {
+			const { getByTestId } = renderComponent({ pinia, props: closed });
+
+			const column = getByTestId('canvas-toolbar-column');
+			expect(column.children).toHaveLength(1);
+			expect(column).toContainElement(getByTestId('node-creator-plus-button'));
+		});
+
+		it('renders the content first in the same column as the toolbar', () => {
+			const { getByTestId } = renderComponent({ pinia, props: closed, slots: aboveToolbar });
+
+			const column = getByTestId('canvas-toolbar-column');
+			const content = getByTestId('above-toolbar-content');
+			const plus = getByTestId('node-creator-plus-button');
+			expect(column.firstElementChild).toBe(content);
+			expect(column).toContainElement(plus);
+			expect(content.compareDocumentPosition(plus) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		});
+
+		it('keeps the content while the node creator is open', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				pinia,
+				props: { ...closed, createNodeActive: true },
+				slots: aboveToolbar,
+			});
+
+			expect(getByTestId('above-toolbar-content')).toBeInTheDocument();
+			expect(queryByTestId('node-creator-plus-button')).not.toBeInTheDocument();
+		});
+	});
 });

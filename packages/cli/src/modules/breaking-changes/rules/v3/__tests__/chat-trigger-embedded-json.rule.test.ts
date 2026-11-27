@@ -89,8 +89,11 @@ describe('ChatTriggerEmbeddedJsonRule', () => {
 		it('should recommend updating the embedded chat', async () => {
 			const recommendations = await rule.getRecommendations([]);
 
-			expect(recommendations).toHaveLength(1);
-			expect(recommendations[0].action).toContain('embedded chat');
+			expect(recommendations.map((r) => r.action)).toEqual([
+				'Update a pinned @n8n/chat widget',
+				'Update a custom chat client',
+			]);
+			expect(recommendations[1].description).toContain('heartbeat-ack');
 		});
 	});
 

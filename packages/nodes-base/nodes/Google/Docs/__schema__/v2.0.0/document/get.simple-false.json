@@ -1,0 +1,602 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"body": {
+			"properties": {
+				"content": {
+					"items": {
+						"additionalProperties": true,
+						"properties": {
+							"endIndex": {
+								"type": "number"
+							},
+							"paragraph": {
+								"additionalProperties": true,
+								"properties": {
+									"elements": {
+										"items": {
+											"additionalProperties": true,
+											"properties": {
+												"endIndex": {
+													"type": "number"
+												},
+												"startIndex": {
+													"type": "number"
+												},
+												"textRun": {
+													"properties": {
+														"content": {
+															"type": "string"
+														},
+														"textStyle": {
+															"additionalProperties": true,
+															"properties": {
+																"bold": {
+																	"type": "boolean"
+																},
+																"fontSize": {
+																	"properties": {
+																		"magnitude": {
+																			"type": "number"
+																		},
+																		"unit": {
+																			"type": "string"
+																		}
+																	},
+																	"type": "object"
+																},
+																"foregroundColor": {
+																	"properties": {
+																		"color": {
+																			"properties": {
+																				"rgbColor": {
+																					"properties": {
+																						"blue": {
+																							"type": "number"
+																						},
+																						"green": {
+																							"type": "number"
+																						},
+																						"red": {
+																							"type": "number"
+																						}
+																					},
+																					"type": "object"
+																				}
+																			},
+																			"type": "object"
+																		}
+																	},
+																	"type": "object"
+																}
+															},
+															"type": "object"
+														}
+													},
+													"type": "object"
+												}
+											},
+											"type": "object"
+										},
+										"type": "array"
+									},
+									"paragraphStyle": {
+										"additionalProperties": true,
+										"properties": {
+											"direction": {
+												"type": "string"
+											},
+											"keepWithNext": {
+												"type": "boolean"
+											},
+											"namedStyleType": {
+												"type": "string"
+											},
+											"spaceAbove": {
+												"properties": {
+													"magnitude": {
+														"type": "number"
+													},
+													"unit": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											},
+											"spaceBelow": {
+												"properties": {
+													"magnitude": {
+														"type": "number"
+													},
+													"unit": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							},
+							"sectionBreak": {
+								"properties": {
+									"sectionStyle": {
+										"properties": {
+											"columnSeparatorStyle": {
+												"type": "string"
+											},
+											"contentDirection": {
+												"type": "string"
+											},
+											"sectionType": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							},
+							"startIndex": {
+								"type": "number"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"commentsViewMode": {
+			"type": "string"
+		},
+		"documentId": {
+			"type": "string"
+		},
+		"documentStyle": {
+			"additionalProperties": true,
+			"properties": {
+				"background": {
+					"properties": {
+						"color": {
+							"type": "object"
+						}
+					},
+					"type": "object"
+				},
+				"documentFormat": {
+					"properties": {
+						"documentMode": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"marginBottom": {
+					"properties": {
+						"magnitude": {
+							"type": "number"
+						},
+						"unit": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"marginFooter": {
+					"properties": {
+						"magnitude": {
+							"type": "number"
+						},
+						"unit": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"marginHeader": {
+					"properties": {
+						"magnitude": {
+							"type": "number"
+						},
+						"unit": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"marginLeft": {
+					"properties": {
+						"magnitude": {
+							"type": "number"
+						},
+						"unit": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"marginRight": {
+					"properties": {
+						"magnitude": {
+							"type": "number"
+						},
+						"unit": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"marginTop": {
+					"properties": {
+						"magnitude": {
+							"type": "number"
+						},
+						"unit": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"pageNumberStart": {
+					"type": "number"
+				},
+				"pageSize": {
+					"properties": {
+						"height": {
+							"properties": {
+								"magnitude": {
+									"type": "number"
+								},
+								"unit": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"width": {
+							"properties": {
+								"magnitude": {
+									"type": "number"
+								},
+								"unit": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						}
+					},
+					"type": "object"
+				},
+				"useCustomHeaderFooterMargins": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"namedStyles": {
+			"properties": {
+				"styles": {
+					"items": {
+						"properties": {
+							"namedStyleType": {
+								"type": "string"
+							},
+							"paragraphStyle": {
+								"properties": {
+									"alignment": {
+										"type": "string"
+									},
+									"avoidWidowAndOrphan": {
+										"type": "boolean"
+									},
+									"borderBetween": {
+										"properties": {
+											"color": {
+												"type": "object"
+											},
+											"dashStyle": {
+												"type": "string"
+											},
+											"padding": {
+												"properties": {
+													"unit": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											},
+											"width": {
+												"properties": {
+													"unit": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									},
+									"borderBottom": {
+										"properties": {
+											"color": {
+												"type": "object"
+											},
+											"dashStyle": {
+												"type": "string"
+											},
+											"padding": {
+												"additionalProperties": true,
+												"properties": {
+													"unit": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											},
+											"width": {
+												"additionalProperties": true,
+												"properties": {
+													"unit": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									},
+									"borderLeft": {
+										"properties": {
+											"color": {
+												"type": "object"
+											},
+											"dashStyle": {
+												"type": "string"
+											},
+											"padding": {
+												"properties": {
+													"unit": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											},
+											"width": {
+												"properties": {
+													"unit": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									},
+									"borderRight": {
+										"properties": {
+											"color": {
+												"type": "object"
+											},
+											"dashStyle": {
+												"type": "string"
+											},
+											"padding": {
+												"properties": {
+													"unit": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											},
+											"width": {
+												"properties": {
+													"unit": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									},
+									"borderTop": {
+										"properties": {
+											"color": {
+												"type": "object"
+											},
+											"dashStyle": {
+												"type": "string"
+											},
+											"padding": {
+												"properties": {
+													"unit": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											},
+											"width": {
+												"properties": {
+													"unit": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									},
+									"direction": {
+										"type": "string"
+									},
+									"indentEnd": {
+										"properties": {
+											"unit": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"indentFirstLine": {
+										"properties": {
+											"unit": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"indentStart": {
+										"properties": {
+											"unit": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"keepLinesTogether": {
+										"type": "boolean"
+									},
+									"keepWithNext": {
+										"type": "boolean"
+									},
+									"lineSpacing": {
+										"type": "number"
+									},
+									"namedStyleType": {
+										"type": "string"
+									},
+									"pageBreakBefore": {
+										"type": "boolean"
+									},
+									"shading": {
+										"properties": {
+											"backgroundColor": {
+												"type": "object"
+											}
+										},
+										"type": "object"
+									},
+									"spaceAbove": {
+										"properties": {
+											"magnitude": {
+												"type": "number"
+											},
+											"unit": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"spaceBelow": {
+										"properties": {
+											"magnitude": {
+												"type": "number"
+											},
+											"unit": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"spacingMode": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"textStyle": {
+								"properties": {
+									"backgroundColor": {
+										"type": "object"
+									},
+									"baselineOffset": {
+										"type": "string"
+									},
+									"bold": {
+										"type": "boolean"
+									},
+									"fontSize": {
+										"properties": {
+											"magnitude": {
+												"type": "number"
+											},
+											"unit": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"foregroundColor": {
+										"properties": {
+											"color": {
+												"properties": {
+													"rgbColor": {
+														"properties": {
+															"blue": {
+																"type": "number"
+															},
+															"green": {
+																"type": "number"
+															},
+															"red": {
+																"type": "number"
+															}
+														},
+														"type": "object"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									},
+									"italic": {
+										"type": "boolean"
+									},
+									"smallCaps": {
+										"type": "boolean"
+									},
+									"strikethrough": {
+										"type": "boolean"
+									},
+									"underline": {
+										"type": "boolean"
+									},
+									"weightedFontFamily": {
+										"properties": {
+											"fontFamily": {
+												"type": "string"
+											},
+											"weight": {
+												"type": "number"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"revisionId": {
+			"type": "string"
+		},
+		"suggestionsViewMode": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -278,7 +278,10 @@ export class CrateDb implements INodeType {
 		const db = pgp({
 			...config,
 			// Return date/timestamp columns as strings so node output stays JSON-safe
-			...(this.getNode().typeVersion >= 1.1 ? { types: getDateAsStringTypeParsers(pgp) } : {}),
+			...(this.getNode().typeVersion >= 1.1
+				? // CrateDB sends a UTC value, so the zoneless reading would strip a real offset, ENT-882
+					{ types: getDateAsStringTypeParsers(pgp, { legacyUtcTimestamps: true }) }
+				: {}),
 		});
 
 		let returnItems: INodeExecutionData[] = [];

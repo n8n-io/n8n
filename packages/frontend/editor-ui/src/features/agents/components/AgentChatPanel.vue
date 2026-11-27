@@ -25,8 +25,10 @@ import {
 	N8nText,
 	N8nTooltip,
 	type IconName,
+	N8nChatScrollArea,
+	type ChatScrollAreaExposed,
 } from '@n8n/design-system';
-import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
+import { createReusableTemplate, useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
 	type AgentChatQueueItem,
@@ -55,7 +57,6 @@ import type {
 	ChatMessageQueueItem,
 } from '@/features/ai/shared/components/chatMessageQueue.types';
 import { useAttachmentPreviews } from '@/features/ai/shared/composables/useAttachmentPreviews';
-import InstanceAiResourceChip from '@/features/ai/instanceAi/components/InstanceAiResourceChip.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import {
 	findTailOpenInteractive,
@@ -155,12 +156,19 @@ const props = withDefaults(
 		 */
 		clientContext?: () => Record<string, unknown> | undefined;
 		/**
+		 * The resources that a sent message shows, from the client context it
+		 * sends. The `user-message-references` slot renders them.
+		 */
+		messageReferences?: (clientContext: Record<string, unknown> | undefined) => unknown[];
+		/**
 		 * Replaces the default composer placeholder. The placeholders for an open
 		 * question card and for a non-empty queue still take priority.
 		 */
 		placeholder?: string;
 		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
+		/** The most characters the composer accepts. Without it, the composer default applies. */
+		maxLength?: number;
 		/**
 		 * Shows the attach button of the composer. A host that opens the file
 		 * picker from its own `footer-start` menu sets this to false and calls
@@ -173,6 +181,16 @@ const props = withDefaults(
 		 * list is read once, when the panel is set up.
 		 */
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
+		/**
+		 * Disables the composer, for example when the host knows the server would
+		 * refuse the turn. Cards that wait for an answer stay usable. Host sends are
+		 * not blocked; use `beforeSend` to refuse them.
+		 */
+		disabled?: boolean;
+		/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
+		thinkingLabel?: string;
+		/** Replaces the generic "Session stopped" of a stopped turn. The Assistant sets it. */
+		stoppedLabel?: string;
 	}>(),
 	{
 		visible: true,
@@ -189,11 +207,13 @@ const props = withDefaults(
 		budgetCards: false,
 		increaseBudget: undefined,
 		clientContext: undefined,
+		messageReferences: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
 		acceptedMimeTypes: undefined,
 		attachButtonIcon: 'paperclip',
 		interactionExtensions: () => [],
+		disabled: false,
 	},
 );
 
@@ -224,6 +244,8 @@ const emit = defineEmits<{
 	];
 	/** Each event of the chat stream, as received. A host can keep them for a debug export. */
 	'stream-event': [event: AgentSseEvent];
+	/** The user removed the card of a staged chip. The panel already dropped the chip. */
+	'composer-attachment-removed': [id: string];
 	/**
 	 * The chat posts a new message now, before the server answers, so a refused
 	 * send emits this too. Typed text that cancels an open card emits this, but
@@ -247,14 +269,11 @@ defineSlots<{
 	/** Content docked above the composer, for example a checklist. */
 	'above-input'?: () => unknown;
 	/**
-	 * Chips at the start of the composer attachment strip. The default content
-	 * shows the chips from `addComposerAttachment`. A host that renders its own
-	 * chips gets them, and a function to remove one, as slot props.
+	 * Chips that the host draws above the attachment cards, for example chips
+	 * with `hostRendered`. The panel shows the other staged chips as cards, in
+	 * one group with the files.
 	 */
-	'composer-attachments'?: (props: {
-		chips: AgentChatComposerChip[];
-		removeChip: (id: string) => void;
-	}) => unknown;
+	'composer-attachments'?: () => unknown;
 	/**
 	 * Controls at the start of the composer footer. `disabled` is true while the
 	 * composer does not take input, as for the built-in attach button.
@@ -270,6 +289,8 @@ defineSlots<{
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 	/** Content below the composer. */
 	'input-footer'?: () => unknown;
+	/** The `references` of a user message, for example mentioned workflows. */
+	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
 	/** Content below the composer or an approval card. */
 	'composer-footer'?: () => unknown;
 }>();
@@ -293,6 +314,9 @@ const {
 	isReorderingQueue,
 	isSubmitting,
 	isLoadingHistory,
+	hasOlderMessages,
+	loadOlderMessages,
+	getFullHistory,
 	isStreaming,
 	isStreamAttached,
 	refresh,
@@ -327,6 +351,7 @@ const {
 	budgetCards: props.budgetCards,
 	interactionExtensions: props.interactionExtensions,
 	onStreamEvent: (event) => emit('stream-event', event),
+	messageReferences: (clientContext) => props.messageReferences?.(clientContext) ?? [],
 });
 
 provide(
@@ -402,7 +427,10 @@ async function loadChatAttachmentFile(attachment: ChatMessageAttachment): Promis
 }
 
 async function startQueueEdit(item: AgentChatQueueItem) {
-	if (hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) return;
+	// A disabled composer could not send the message again, so it stays queued.
+	if (props.disabled || hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) {
+		return;
+	}
 	queueExpanded.value = true;
 	const target = {
 		projectId: props.projectId,
@@ -456,8 +484,8 @@ function onChatInputKeydown(event: KeyboardEvent) {
 		!event.isComposing &&
 		event.keyCode !== IME_COMPOSITION_KEYCODE &&
 		!event.repeat &&
-		attachedFiles.value.length > 0 &&
-		removingFiles.value.size === 0
+		hasAttachmentCards.value &&
+		removingAttachments.value.size === 0
 	) {
 		event.preventDefault();
 		event.stopPropagation();
@@ -713,7 +741,9 @@ const backgroundJobRows = computed(() =>
 			label: locale.baseText(
 				job.kind === 'workflow'
 					? 'agents.chat.backgroundTasks.workflow'
-					: 'agents.chat.backgroundTasks.subagent',
+					: job.kind === 'approval'
+						? 'agents.chat.backgroundTasks.approvalFor'
+						: 'agents.chat.backgroundTasks.subagent',
 				{ interpolate: { title: job.title } },
 			),
 			indicator,
@@ -752,17 +782,8 @@ const backgroundElapsed = computed(() => {
 });
 
 const attachedFiles = ref<File[]>([]);
-const removingFiles = ref(new Set<File>());
-
-/** Clear stale removal state only after the draft file list changes. */
-watch(
-	() => [...attachedFiles.value],
-	(files) => {
-		for (const file of removingFiles.value) {
-			if (!files.includes(file)) removingFiles.value.delete(file);
-		}
-	},
-);
+/** Files and chip ids whose card plays its removal. */
+const removingAttachments = ref(new Set<File | string>());
 
 const { previewUrl } = useAttachmentPreviews(() => attachedFiles.value);
 const draftFileKeys = new WeakMap<File, number>();
@@ -779,7 +800,22 @@ function draftFileKey(file: File): number {
 
 /** Host chips need text or files before the message can be sent. */
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
-const composerChips = computed(() => composerAttachments.value.map(({ chip }) => chip));
+const cardChips = computed(() =>
+	composerAttachments.value.map(({ chip }) => chip).filter((chip) => !chip.hostRendered),
+);
+const hasAttachmentCards = computed(
+	() => cardChips.value.length > 0 || attachedFiles.value.length > 0,
+);
+
+/** Clear stale removal state only after the draft files or chips change. */
+watch(
+	() => [...attachedFiles.value, ...cardChips.value.map(({ id }) => id)],
+	(items) => {
+		for (const item of removingAttachments.value) {
+			if (!items.includes(item)) removingAttachments.value.delete(item);
+		}
+	},
+);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
 const attachmentGroupRef =
 	useTemplateRef<InstanceType<typeof N8nAttachmentGroup>>('attachmentGroupRef');
@@ -790,6 +826,17 @@ const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 
 function focusInput(options?: FocusOptions) {
 	if (props.visible) chatInput.value?.focus(options);
+}
+
+/** Moves focus to the card that the run waits on, for a host that points the user to it. */
+function focusOpenInteraction() {
+	if (hasOpenApproval.value) {
+		approvalCards.value?.querySelector<HTMLElement>('button')?.focus();
+		return;
+	}
+	// An open question is the last card of the transcript, and the composer answers it.
+	scrollArea.value?.scrollToBottom();
+	focusInput();
 }
 
 let forceFocusPending = true;
@@ -967,8 +1014,13 @@ const hasDraft = computed(
 	() => inputText.value.trim().length > 0 || attachedFiles.value.length > 0,
 );
 const isPreparingToSend = ref(false);
-/** The composer takes no input while a send starts or a queued message moves back into it. */
-const isComposerBlocked = computed(() => isPreparingToSend.value || !!editingQueueId.value);
+/**
+ * The composer takes no input while the host disables it, a send starts, or a
+ * queued message moves back into it.
+ */
+const isComposerBlocked = computed(
+	() => props.disabled || isPreparingToSend.value || !!editingQueueId.value,
+);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
 let submittingQueuedExternalMessage = false;
@@ -1065,7 +1117,7 @@ const budgetIncreasePending = ref(false);
 const isRetrying = ref(false);
 const isSubmissionBlocked = computed(
 	() =>
-		removingFiles.value.size > 0 ||
+		removingAttachments.value.size > 0 ||
 		isRetrying.value ||
 		!!editingQueueId.value ||
 		isPreparingToSend.value ||
@@ -1209,6 +1261,83 @@ const isCenteredEmpty = computed(
 		(!isStreaming.value || isLoadingNewChat.value),
 );
 
+/** The input renders under the centered empty state or in the scroll area overlay. Only one copy is mounted. */
+const [DefineInput, ReuseInput] = createReusableTemplate();
+
+const scrollArea = useTemplateRef<ChatScrollAreaExposed>('scrollArea');
+
+/** The user wants to see the reply to their own message, so follow it even after a scroll up. */
+watch(
+	[() => displayedMessages.value.length, () => displayedMessages.value.at(-1)?.id],
+	([length, lastId], [previousLength, previousLastId]) => {
+		if (length <= (previousLength ?? 0)) return;
+		/** Older messages loaded above the last one. The last message did not change. */
+		if (previousLength && lastId === previousLastId) return;
+		if (displayedMessages.value[length - 1]?.role !== CHAT_MESSAGE_ROLE.USER) return;
+		scrollArea.value?.scrollToBottom();
+	},
+	{ flush: 'post' },
+);
+
+const isLoadingOlderMessages = ref(false);
+/** Stops a failed load from retrying in a loop. The retry button allows a new try. */
+const loadOlderMessagesFailed = ref(false);
+
+/** Loads the next older page when the scroll area reaches the top. */
+async function onLoadOlderMessages() {
+	if (!hasOlderMessages.value || isLoadingOlderMessages.value || loadOlderMessagesFailed.value) {
+		return;
+	}
+	isLoadingOlderMessages.value = true;
+	try {
+		await loadOlderMessages();
+	} catch {
+		loadOlderMessagesFailed.value = true;
+	} finally {
+		isLoadingOlderMessages.value = false;
+	}
+}
+
+/** A new thread starts without the failure of the previous one. */
+watch(
+	() => props.continueSessionId,
+	() => {
+		loadOlderMessagesFailed.value = false;
+	},
+);
+
+function onRetryLoadOlderMessages() {
+	loadOlderMessagesFailed.value = false;
+	void onLoadOlderMessages();
+}
+
+/**
+ * The scroll area stays mounted when the chat changes. Jump to the bottom so
+ * the scroll state of the previous chat does not apply to the new one.
+ */
+watch(
+	[() => props.projectId, () => props.agentId, () => props.continueSessionId],
+	() => scrollArea.value?.scrollToBottom(),
+	{ flush: 'post' },
+);
+
+/**
+ * The first send moves the composer from the centered empty state into the
+ * scroll area, which mounts a new input. Keep focus on the new input.
+ */
+watch(
+	isCenteredEmpty,
+	async (centered, wasCentered) => {
+		if (centered || !wasCentered) return;
+		const composer: unknown = chatInput.value?.$el;
+		if (!(composer instanceof Element) || !composer.contains(document.activeElement)) return;
+		await nextTick();
+		if (disposed) return;
+		focusInput({ preventScroll: true });
+	},
+	{ flush: 'pre' },
+);
+
 watch(isStreaming, (v) => emit('update:streaming', v));
 watch(
 	() => messages.value.find((message) => message.role === CHAT_MESSAGE_ROLE.USER)?.content,
@@ -1296,7 +1425,16 @@ function captureTarget(): () => boolean {
 		props.continueSessionId === target.continueSessionId;
 }
 
-async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
+function shouldClearSubmittedDraft(text: string, staleControlledDraft?: string): boolean {
+	if (inputText.value.trim() === text) return true;
+	return staleControlledDraft !== undefined && inputText.value === staleControlledDraft;
+}
+
+async function submitDraft(
+	text: string,
+	files: File[],
+	options: { staleControlledDraft?: string } = {},
+): Promise<SubmitResult> {
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
 	// Taken before any await, so a user send made while this hand-off runs cannot claim it.
@@ -1310,7 +1448,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	if (composerResume) {
 		const result = await resume(composerResume, () => {
 			if (!isCurrentTarget()) return;
-			if (inputText.value.trim() === text) inputText.value = '';
+			if (shouldClearSubmittedDraft(text, options.staleControlledDraft)) inputText.value = '';
 			consumeQueuedExternalMessage(text);
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
@@ -1323,7 +1461,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		emitMessageSending({ text, files: [] });
 		const result = await cancelAndSteer(text, () => {
 			if (!isCurrentTarget()) return;
-			if (inputText.value.trim() === text) inputText.value = '';
+			if (shouldClearSubmittedDraft(text, options.staleControlledDraft)) inputText.value = '';
 			consumeQueuedExternalMessage(text);
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
@@ -1334,6 +1472,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		text,
 		files,
 		fromComposer: true,
+		staleControlledDraft: options.staleControlledDraft,
 		handoffPreview: ownedHandoffPreview,
 		clientContext: ownedClientContext,
 	});
@@ -1347,6 +1486,8 @@ interface SendRequest {
 	 * send clears the composer. A host send leaves the composer to the user.
 	 */
 	fromComposer: boolean;
+	/** Controlled draft value before handoff, so an un-flushed `v-model` echo still clears. */
+	staleControlledDraft?: string;
 	/** The bubble a hand-off installed before it was sent. */
 	handoffPreview?: ChatMessage;
 	/** Sent with this message only, on top of the `clientContext` prop. */
@@ -1358,6 +1499,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 		text,
 		files,
 		fromComposer,
+		staleControlledDraft,
 		handoffPreview: ownedHandoffPreview,
 		clientContext: ownedClientContext,
 	} = request;
@@ -1412,7 +1554,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 			queueExpanded.value = false;
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 			if (!fromComposer) return;
-			if (inputText.value.trim() === text) inputText.value = '';
+			if (shouldClearSubmittedDraft(text, staleControlledDraft)) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
 			composerAttachments.value = composerAttachments.value.filter(
 				(attachment) => !sentAttachments.includes(attachment),
@@ -1509,11 +1651,17 @@ async function submitQueuedExternalMessage() {
 	// An empty text is still a send when files are staged with it.
 	if (message === undefined || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
 
+	const isCurrentTarget = captureTarget();
 	submittingQueuedExternalMessage = true;
 	let result: SubmitResult = 'rejected';
+	const wroteDraft = !handoffPreview;
+	const staleControlledDraft =
+		wroteDraft && props.inputDraft !== undefined ? inputText.value : undefined;
 	try {
-		inputText.value = message;
-		result = await onSubmit();
+		if (wroteDraft) inputText.value = message;
+		result = await submitDraft(message.trim(), [...attachedFiles.value], {
+			staleControlledDraft,
+		});
 	} finally {
 		submittingQueuedExternalMessage = false;
 	}
@@ -1526,6 +1674,9 @@ async function submitQueuedExternalMessage() {
 		firstMessagePreview.value = undefined;
 		// The files stay in the composer as the user's draft now.
 		externalAttachedFiles = [];
+		if (!wroteDraft && isCurrentTarget() && !inputText.value.trim()) {
+			inputText.value = message;
+		}
 	}
 	if (
 		queuedExternalMessage !== undefined &&
@@ -1537,8 +1688,9 @@ async function submitQueuedExternalMessage() {
 	}
 }
 
-function getConversationMarkdown(): string {
-	return messages.value
+/** The whole conversation, also the older turns that the chat did not load. */
+async function getConversationMarkdown(): Promise<string> {
+	return (await getFullHistory())
 		.filter((message) => message.content.trim().length > 0)
 		.map((message) => {
 			const speaker = message.role === CHAT_MESSAGE_ROLE.USER ? 'User' : 'Agent';
@@ -1622,16 +1774,16 @@ function removeComposerAttachment(id: string) {
 	composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
 }
 
-// Session files: the preview chat and n8n Chat have the list route.
-const sessionFilesChannel = computed(() =>
-	props.channel === 'chat' || props.channel === 'n8n-chat' ? props.channel : undefined,
-);
+function handleChipRemove(id: string) {
+	removeComposerAttachment(id);
+	emit('composer-attachment-removed', id);
+}
+
+// Session files: every channel has the list route.
 const posthog = usePostHog();
 const showSessionFilesToggle = computed(
 	() =>
-		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true &&
-		sessionFilesChannel.value !== undefined &&
-		Boolean(props.continueSessionId),
+		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true && Boolean(props.continueSessionId),
 );
 const sessionFilesOpen = ref(false);
 const sessionFiles = ref<AgentSessionFile[]>([]);
@@ -1651,8 +1803,8 @@ function sessionFileHref(fileId: string) {
 
 async function loadSessionFiles() {
 	const threadId = props.continueSessionId;
-	const channel = sessionFilesChannel.value;
-	if (!threadId || !channel) return;
+	const { channel } = props;
+	if (!threadId) return;
 	sessionFilesLoading.value = true;
 	sessionFilesError.value = false;
 	try {
@@ -1719,6 +1871,9 @@ defineExpose({
 	isSubmitting: computed(() => isSubmitting.value),
 	/** The chat waits for the user to answer a card, such as an approval or a question. A waiting card does not count, because the workflow resumes the run. */
 	isAwaitingUserAnswer: computed(() => hasOpenInteraction.value && !hasOpenWaitCard.value),
+	/** The card that the chat waits on is an approval. */
+	isAwaitingUserApproval: computed(() => hasOpenApproval.value),
+	focusOpenInteraction,
 	/** The chat shows a card that the run waits on, including a waiting card. */
 	hasOpenInteraction: computed(() => hasOpenInteraction.value),
 	/** The chat streams, cannot take a send, or waits for the user to answer a card. */
@@ -1746,6 +1901,289 @@ onBeforeUnmount(() => {
 			{ [$style.centeredEmpty]: isCenteredEmpty },
 		]"
 	>
+		<DefineInput>
+			<div :class="$style.inputArea">
+				<slot name="above-input" />
+				<SessionFilesList
+					v-if="sessionFilesOpen"
+					:files="sessionFiles"
+					:file-href="sessionFileHref"
+					:loading="sessionFilesLoading"
+					:error="sessionFilesError"
+				/>
+				<div
+					v-if="showBackgroundJobs"
+					ref="backgroundJobCard"
+					:class="$style.backgroundJobs"
+					data-testid="agent-background-jobs"
+				>
+					<N8nAiActivityStepGroup
+						:key="continueSessionId"
+						:label="backgroundTitle"
+						full-width
+						content-position="above"
+					>
+						<template #prefix>
+							<N8nIcon
+								:icon="backgroundInProgress ? 'loader-circle' : 'circle'"
+								:spin="backgroundInProgress"
+								size="small"
+								:class="{ [$style.jobSpinner]: backgroundInProgress }"
+								aria-hidden="true"
+							/>
+						</template>
+						<template #header-trailing>
+							<span
+								:class="$style.jobTimer"
+								aria-live="off"
+								data-testid="agent-background-jobs-timer"
+								>{{ backgroundElapsed }}</span
+							>
+						</template>
+						<div :class="$style.backgroundJobDetails">
+							<ul :class="$style.backgroundJobList">
+								<li v-for="job in backgroundJobRows" :key="job.id">
+									<span
+										role="img"
+										:aria-label="job.indicator.label"
+										:title="job.indicator.label"
+										:class="[
+											$style.jobStatus,
+											{ [$style.jobWaiting]: job.indicator.icon === 'circle' },
+										]"
+										:data-status="job.status"
+									>
+										<N8nIcon
+											:icon="job.indicator.icon"
+											:spin="job.indicator.icon === 'loader-circle'"
+											size="small"
+											:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
+										/>
+									</span>
+									<span :class="$style.jobLabel">{{ job.label }}</span>
+									<N8nText
+										v-if="job.stopping || job.stopped"
+										:class="$style.jobProgress"
+										size="small"
+										color="text-light"
+										aria-hidden="true"
+									>
+										{{ job.indicator.label }}
+									</N8nText>
+								</li>
+							</ul>
+							<div :class="$style.backgroundJobActions">
+								<N8nLink
+									v-if="continueSessionId && capabilities.traceLinks"
+									:to="backgroundTraceRoute"
+									theme="text"
+									size="small"
+									underline
+									data-testid="agent-background-jobs-trace"
+								>
+									<span :class="$style.jobTraceLabel">
+										<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
+										{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
+									</span>
+								</N8nLink>
+								<N8nButton
+									v-if="canStopBackgroundJobs || tasksStopping"
+									ref="backgroundJobStopButton"
+									variant="ghost"
+									size="small"
+									:class="$style.jobStopButton"
+									:disabled="stopDisabled"
+									data-testid="agent-background-jobs-stop"
+									@click="stopTasks"
+								>
+									<span :class="$style.jobTraceLabel">
+										<N8nIcon icon="filled-square" size="small" aria-hidden="true" />
+										{{ backgroundStopLabel }}
+									</span>
+								</N8nButton>
+							</div>
+						</div>
+					</N8nAiActivityStepGroup>
+				</div>
+				<div v-if="hasPendingApprovals">
+					<AgentChatPlan
+						v-if="currentPlan && showPlanCard && planStopActive"
+						v-model:expanded="planExpanded"
+						:plan="currentPlan"
+						:trace-route="
+							continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+						"
+						v-bind="planCardProps"
+						@stop="stopTasks"
+					/>
+					<div ref="approvalCards" :class="$style.approvalCards" data-testid="agent-chat-approvals">
+						<ToolApprovalCard
+							v-if="pendingApproval"
+							:key="pendingApproval.toolCallId"
+							:input="pendingApproval.input"
+							:agent-name="agentConfig?.name"
+							:tools="agentConfig?.tools"
+							@submit="
+								resume({
+									runId: pendingApproval.runId,
+									toolCallId: pendingApproval.toolCallId,
+									resumeData: $event,
+								})
+							"
+						/>
+						<ToolApprovalCard
+							v-else-if="backgroundApproval"
+							:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
+							:input="backgroundApproval.input"
+							:task-title="backgroundApproval.title"
+							:agent-name="agentConfig?.name"
+							:tools="agentConfig?.tools"
+							:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"
+							@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
+						/>
+						<slot name="composer-start" />
+					</div>
+				</div>
+				<div v-else :class="$style.composer">
+					<ChatInputBase
+						ref="chatInput"
+						v-model="inputText"
+						:block-canvas-shortcuts="false"
+						:placeholder="chatPlaceholder"
+						:placeholder-preview="
+							!hasOpenInteractiveQuestion && queuedMessages.length === 0
+								? props.placeholderPreview
+								: undefined
+						"
+						:composer-height="composerHeight"
+						:max-length="maxLength"
+						:is-streaming="false"
+						:show-stop-button="showStop"
+						show-voice
+						:show-attach="showAttach"
+						:show-attach-button="false"
+						:accepted-mime-types="acceptedMimeTypes"
+						:can-submit="!props.disabled && !isSubmissionBlocked && hasDraft"
+						:disabled="isComposerBlocked"
+						data-testid="chat-input"
+						@submit="onSubmit"
+						@stop="stopGenerating"
+						@files-selected="handleFilesSelected"
+						@files-rejected="handleFilesRejected"
+						@keydown="onChatInputKeydown"
+					>
+						<template #above>
+							<ChatMessageQueue
+								v-if="displayedQueueRows.length"
+								:displayed-items="queueDisplayItems"
+								:expanded="queueExpanded"
+								:is-reordering="isReorderingQueue"
+								:can-edit="!props.disabled && !hasDraft && !isSubmissionBlocked"
+								:steer-action="queueSteerAction"
+								:can-steer="canSteer"
+								:can-drag-queue-item="canDragQueueItem"
+								:is-queue-item-busy="isDisplayedQueueItemBusy"
+								:can-drop-queue-item="canDropQueueItem"
+								@update:expanded="queueExpanded = $event"
+								@drag-start="startQueueDrag"
+								@drag-end="endQueueDrag"
+								@steer="steerQueuedMessage"
+								@edit="editQueuedMessage"
+								@remove="removeQueuedMessage"
+							/>
+							<AgentChatPlan
+								v-else-if="currentPlan && showPlanCard"
+								v-model:expanded="planExpanded"
+								v-bind="planCardProps"
+								@stop="stopTasks"
+								:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
+								:plan="currentPlan"
+								:trace-route="
+									continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+								"
+							/>
+						</template>
+						<template v-if="hasAttachmentCards || $slots['composer-attachments']" #attachments>
+							<div v-if="$slots['composer-attachments']" :class="$style.attachmentsStrip">
+								<slot name="composer-attachments" />
+							</div>
+							<N8nAttachmentGroup
+								v-if="hasAttachmentCards"
+								ref="attachmentGroupRef"
+								:class="$style.attachmentGroup"
+							>
+								<N8nAttachment
+									v-for="chip in cardChips"
+									:key="chip.id"
+									:file-name="chip.label"
+									:icon="chip.icon"
+									:is-removable="true"
+									data-test-id="agent-chat-composer-chip"
+									@remove-start="removingAttachments.add(chip.id)"
+									@remove="handleChipRemove(chip.id)"
+									@remove-end="removingAttachments.delete(chip.id)"
+								/>
+								<N8nAttachment
+									v-for="file in attachedFiles"
+									:key="draftFileKey(file)"
+									:file-name="file.name"
+									:mime-type="file.type"
+									:size-bytes="file.size"
+									:src="previewUrl(file)"
+									:is-removable="true"
+									@remove-start="removingAttachments.add(file)"
+									@remove="handleFileRemove(file)"
+									@remove-end="removingAttachments.delete(file)"
+								/>
+							</N8nAttachmentGroup>
+						</template>
+						<template #footer-start>
+							<slot name="composer-start" />
+							<N8nTooltip
+								v-if="showAttach && showAttachButton"
+								as-child
+								:content="locale.baseText('chatInputBase.button.attach')"
+								placement="top"
+							>
+								<N8nIconButton
+									variant="ghost"
+									:icon="attachButtonIcon"
+									icon-size="large"
+									:disabled="isComposerBlocked"
+									focusable-when-disabled
+									:aria-label="locale.baseText('chatInputBase.button.attach')"
+									data-test-id="chat-input-attach-button"
+									@click.stop="chatInput?.openFilePicker()"
+								/>
+							</N8nTooltip>
+							<!-- Before the files toggle: a host menu such as the Assistant "+" menu replaces the attach button. -->
+							<slot name="footer-start" :disabled="isComposerBlocked" />
+							<N8nTooltip
+								v-if="showSessionFilesToggle"
+								:content="locale.baseText('agents.chat.sessionFiles.title')"
+								placement="top"
+							>
+								<N8nIconButton
+									variant="ghost"
+									:icon="sessionFilesOpen ? 'folder-open' : 'folder'"
+									icon-size="large"
+									:aria-label="locale.baseText('agents.chat.sessionFiles.title')"
+									:aria-expanded="sessionFilesOpen"
+									data-test-id="agent-session-files-toggle"
+									@click.stop="toggleSessionFiles"
+								/>
+							</N8nTooltip>
+						</template>
+						<template v-if="$slots['composer-actions']" #right-actions>
+							<slot name="composer-actions" />
+						</template>
+					</ChatInputBase>
+					<slot name="input-footer" />
+				</div>
+				<slot name="composer-footer" />
+			</div>
+		</DefineInput>
+
 		<N8nCallout v-if="fatalError" theme="danger" :class="$style.errorBanner" slim>
 			<div :class="$style.errorBannerBody">
 				<span :class="$style.errorBannerTitle">
@@ -1804,357 +2242,90 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
-		<template
-			v-if="
-				displayedMessages.length === 0 &&
-				((!isStreaming && !isLoadingHistory) || isLoadingNewChat) &&
-				!stopNotice &&
-				!preparingSummary &&
-				!summaryMissing &&
-				!$slots['inline-offers']
-			"
-		>
+		<template v-if="isCenteredEmpty">
 			<slot name="empty-state">
 				<AgentChatEmptyState :agent-config="agentConfig" :icon="emptyStateIcon" />
 			</slot>
+			<ReuseInput />
 		</template>
-		<AgentChatMessageList
+		<N8nChatScrollArea
 			v-else
-			:messages="displayedMessages"
-			:preparing-summary="preparingSummary"
-			:summary-missing="summaryMissing"
-			:messaging-state="displayedMessagingState"
-			:project-id="projectId"
-			:agent-id="agentId"
-			:session-id="continueSessionId"
-			:can-send-to-assistant="canSendToAssistant"
-			:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
-			:can-increase-budget="canIncreaseBudget"
-			:budget-increase-pending="budgetIncreasePending"
-			:retry-message-id="retryMessageId"
-			:retry-disabled="retryDisabled"
-			:task-trace-route="
-				continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
-			"
-			@retry="retryMessage"
-			@resume="resume"
-			@send-to-assistant="emit('send-to-assistant', $event)"
-			@open-build="emit('open-build')"
-			@increase-budget="onIncreaseBudget"
+			ref="scrollArea"
+			:class="$style.scrollArea"
+			:loading-older="isLoadingOlderMessages"
+			@load-older="onLoadOlderMessages"
 		>
-			<template v-if="$slots['message-actions']" #message-actions="actionProps">
-				<slot name="message-actions" v-bind="actionProps" />
-			</template>
-			<!-- Host offers end the transcript, so they share its column and scroll with it. -->
-			<template v-if="stopNotice || $slots['inline-offers']" #status>
-				<AgentChatTaskStopNotice
-					v-if="stopNotice"
-					:status="stopNotice"
-					:retry-disabled="stopDisabled"
-					:trace-route="
-						continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
-					"
-					@retry="stopTasks"
-				/>
-				<slot name="inline-offers" />
-			</template>
-		</AgentChatMessageList>
-
-		<div :class="$style.inputArea">
-			<slot name="above-input" />
-			<SessionFilesList
-				v-if="sessionFilesOpen"
-				:files="sessionFiles"
-				:file-href="sessionFileHref"
-				:loading="sessionFilesLoading"
-				:error="sessionFilesError"
-			/>
-			<div
-				v-if="showBackgroundJobs"
-				ref="backgroundJobCard"
-				:class="$style.backgroundJobs"
-				data-testid="agent-background-jobs"
+			<template
+				v-if="
+					displayedMessages.length === 0 &&
+					((!isStreaming && !isLoadingHistory) || isLoadingNewChat) &&
+					!stopNotice &&
+					!preparingSummary &&
+					!summaryMissing &&
+					!$slots['inline-offers']
+				"
 			>
-				<N8nAiActivityStepGroup
-					:key="continueSessionId"
-					:label="backgroundTitle"
-					full-width
-					content-position="above"
+				<slot name="empty-state">
+					<AgentChatEmptyState :agent-config="agentConfig" :icon="emptyStateIcon" />
+				</slot>
+			</template>
+			<AgentChatMessageList
+				v-else
+				:messages="displayedMessages"
+				:preparing-summary="preparingSummary"
+				:summary-missing="summaryMissing"
+				:messaging-state="displayedMessagingState"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:session-id="continueSessionId"
+				:can-send-to-assistant="canSendToAssistant"
+				:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
+				:can-increase-budget="canIncreaseBudget"
+				:budget-increase-pending="budgetIncreasePending"
+				:retry-message-id="retryMessageId"
+				:retry-disabled="retryDisabled"
+				:has-older-messages="hasOlderMessages"
+				:loading-older-messages="isLoadingOlderMessages"
+				:load-older-messages-failed="loadOlderMessagesFailed"
+				:thinking-label="props.thinkingLabel"
+				:stopped-label="props.stoppedLabel"
+				:task-trace-route="
+					continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+				"
+				@retry="retryMessage"
+				@resume="resume"
+				@send-to-assistant="emit('send-to-assistant', $event)"
+				@open-build="emit('open-build')"
+				@increase-budget="onIncreaseBudget"
+				@retry-load-older="onRetryLoadOlderMessages"
+			>
+				<template v-if="$slots['message-actions']" #message-actions="actionProps">
+					<slot name="message-actions" v-bind="actionProps" />
+				</template>
+				<template
+					v-if="$slots['user-message-references']"
+					#user-message-references="referenceProps"
 				>
-					<template #prefix>
-						<N8nIcon
-							:icon="backgroundInProgress ? 'loader-circle' : 'circle'"
-							:spin="backgroundInProgress"
-							size="small"
-							:class="{ [$style.jobSpinner]: backgroundInProgress }"
-							aria-hidden="true"
-						/>
-					</template>
-					<template #header-trailing>
-						<span
-							:class="$style.jobTimer"
-							aria-live="off"
-							data-testid="agent-background-jobs-timer"
-							>{{ backgroundElapsed }}</span
-						>
-					</template>
-					<div :class="$style.backgroundJobDetails">
-						<ul :class="$style.backgroundJobList">
-							<li v-for="job in backgroundJobRows" :key="job.id">
-								<span
-									role="img"
-									:aria-label="job.indicator.label"
-									:title="job.indicator.label"
-									:class="[
-										$style.jobStatus,
-										{ [$style.jobWaiting]: job.indicator.icon === 'circle' },
-									]"
-									:data-status="job.status"
-								>
-									<N8nIcon
-										:icon="job.indicator.icon"
-										:spin="job.indicator.icon === 'loader-circle'"
-										size="small"
-										:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
-									/>
-								</span>
-								<span :class="$style.jobLabel">{{ job.label }}</span>
-								<N8nText
-									v-if="job.stopping || job.stopped"
-									:class="$style.jobProgress"
-									size="small"
-									color="text-light"
-									aria-hidden="true"
-								>
-									{{ job.indicator.label }}
-								</N8nText>
-							</li>
-						</ul>
-						<div :class="$style.backgroundJobActions">
-							<N8nLink
-								v-if="continueSessionId && capabilities.traceLinks"
-								:to="backgroundTraceRoute"
-								theme="text"
-								size="small"
-								underline
-								data-testid="agent-background-jobs-trace"
-							>
-								<span :class="$style.jobTraceLabel">
-									<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
-									{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
-								</span>
-							</N8nLink>
-							<N8nButton
-								v-if="canStopBackgroundJobs || tasksStopping"
-								ref="backgroundJobStopButton"
-								variant="ghost"
-								size="small"
-								:class="$style.jobStopButton"
-								:disabled="stopDisabled"
-								data-testid="agent-background-jobs-stop"
-								@click="stopTasks"
-							>
-								<span :class="$style.jobTraceLabel">
-									<N8nIcon icon="filled-square" size="small" aria-hidden="true" />
-									{{ backgroundStopLabel }}
-								</span>
-							</N8nButton>
-						</div>
-					</div>
-				</N8nAiActivityStepGroup>
-			</div>
-			<div v-if="hasPendingApprovals">
-				<AgentChatPlan
-					v-if="currentPlan && showPlanCard && planStopActive"
-					v-model:expanded="planExpanded"
-					:plan="currentPlan"
-					:trace-route="
-						continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
-					"
-					v-bind="planCardProps"
-					@stop="stopTasks"
-				/>
-				<div ref="approvalCards" :class="$style.approvalCards" data-testid="agent-chat-approvals">
-					<ToolApprovalCard
-						v-if="pendingApproval"
-						:key="pendingApproval.toolCallId"
-						:input="pendingApproval.input"
-						:agent-name="agentConfig?.name"
-						:tools="agentConfig?.tools"
-						@submit="
-							resume({
-								runId: pendingApproval.runId,
-								toolCallId: pendingApproval.toolCallId,
-								resumeData: $event,
-							})
+					<slot name="user-message-references" v-bind="referenceProps" />
+				</template>
+				<!-- Host offers end the transcript, so they share its column and scroll with it. -->
+				<template v-if="stopNotice || $slots['inline-offers']" #status>
+					<AgentChatTaskStopNotice
+						v-if="stopNotice"
+						:status="stopNotice"
+						:retry-disabled="stopDisabled"
+						:trace-route="
+							continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 						"
+						@retry="stopTasks"
 					/>
-					<ToolApprovalCard
-						v-else-if="backgroundApproval"
-						:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
-						:input="backgroundApproval.input"
-						:task-title="backgroundApproval.title"
-						:agent-name="agentConfig?.name"
-						:tools="agentConfig?.tools"
-						:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"
-						@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
-					/>
-					<slot name="composer-start" />
-				</div>
-			</div>
-			<div v-else :class="$style.composer">
-				<ChatInputBase
-					ref="chatInput"
-					v-model="inputText"
-					:block-canvas-shortcuts="false"
-					:placeholder="chatPlaceholder"
-					:placeholder-preview="
-						!hasOpenInteractiveQuestion && queuedMessages.length === 0
-							? props.placeholderPreview
-							: undefined
-					"
-					:composer-height="composerHeight"
-					:is-streaming="false"
-					:show-stop-button="showStop"
-					show-voice
-					:show-attach="showAttach"
-					:show-attach-button="false"
-					:accepted-mime-types="acceptedMimeTypes"
-					:can-submit="!isSubmissionBlocked && hasDraft"
-					:disabled="isComposerBlocked"
-					data-testid="chat-input"
-					@submit="onSubmit"
-					@stop="stopGenerating"
-					@files-selected="handleFilesSelected"
-					@files-rejected="handleFilesRejected"
-					@keydown="onChatInputKeydown"
-				>
-					<template #above>
-						<ChatMessageQueue
-							v-if="displayedQueueRows.length"
-							:displayed-items="queueDisplayItems"
-							:expanded="queueExpanded"
-							:is-reordering="isReorderingQueue"
-							:can-edit="!hasDraft && !isSubmissionBlocked"
-							:steer-action="queueSteerAction"
-							:can-steer="canSteer"
-							:can-drag-queue-item="canDragQueueItem"
-							:is-queue-item-busy="isDisplayedQueueItemBusy"
-							:can-drop-queue-item="canDropQueueItem"
-							@update:expanded="queueExpanded = $event"
-							@drag-start="startQueueDrag"
-							@drag-end="endQueueDrag"
-							@steer="steerQueuedMessage"
-							@edit="editQueuedMessage"
-							@remove="removeQueuedMessage"
-						/>
-						<AgentChatPlan
-							v-else-if="currentPlan && showPlanCard"
-							v-model:expanded="planExpanded"
-							v-bind="planCardProps"
-							@stop="stopTasks"
-							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
-							:plan="currentPlan"
-							:trace-route="
-								continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
-							"
-						/>
-					</template>
-					<template
-						v-if="
-							attachedFiles.length > 0 ||
-							composerAttachments.length > 0 ||
-							$slots['composer-attachments']
-						"
-						#attachments
-					>
-						<div
-							v-if="composerAttachments.length > 0 || $slots['composer-attachments']"
-							:class="$style.attachmentsStrip"
-						>
-							<slot
-								name="composer-attachments"
-								:chips="composerChips"
-								:remove-chip="removeComposerAttachment"
-							>
-								<InstanceAiResourceChip
-									v-for="chip in composerChips"
-									:key="chip.id"
-									:label="chip.label"
-									:icon="chip.icon"
-									removable
-									:remove-label="
-										locale.baseText('agents.chat.composer.removeChip', {
-											interpolate: { label: chip.label },
-										})
-									"
-									test-id="agent-chat-composer-chip"
-									remove-test-id="agent-chat-composer-chip-remove"
-									@remove="removeComposerAttachment(chip.id)"
-								/>
-							</slot>
-						</div>
-						<N8nAttachmentGroup
-							v-if="attachedFiles.length > 0"
-							ref="attachmentGroupRef"
-							:class="$style.attachmentGroup"
-						>
-							<N8nAttachment
-								v-for="file in attachedFiles"
-								:key="draftFileKey(file)"
-								:file-name="file.name"
-								:mime-type="file.type"
-								:size-bytes="file.size"
-								:src="previewUrl(file)"
-								:is-removable="true"
-								@remove-start="removingFiles.add(file)"
-								@remove="handleFileRemove(file)"
-								@remove-end="removingFiles.delete(file)"
-							/>
-						</N8nAttachmentGroup>
-					</template>
-					<template #footer-start>
-						<slot name="composer-start" />
-						<N8nTooltip
-							v-if="showAttach && showAttachButton"
-							:content="locale.baseText('chatInputBase.button.attach')"
-							placement="top"
-						>
-							<N8nIconButton
-								variant="ghost"
-								:icon="attachButtonIcon"
-								icon-size="large"
-								:disabled="isComposerBlocked"
-								:aria-label="locale.baseText('chatInputBase.button.attach')"
-								data-test-id="chat-input-attach-button"
-								@click.stop="chatInput?.openFilePicker()"
-							/>
-						</N8nTooltip>
-						<N8nTooltip
-							v-if="showSessionFilesToggle"
-							:content="locale.baseText('agents.chat.sessionFiles.title')"
-							placement="top"
-						>
-							<N8nIconButton
-								variant="ghost"
-								:icon="sessionFilesOpen ? 'folder-open' : 'folder'"
-								icon-size="large"
-								:aria-label="locale.baseText('agents.chat.sessionFiles.title')"
-								:aria-expanded="sessionFilesOpen"
-								data-test-id="agent-session-files-toggle"
-								@click.stop="toggleSessionFiles"
-							/>
-						</N8nTooltip>
-						<slot name="footer-start" :disabled="isComposerBlocked" />
-					</template>
-					<template v-if="$slots['composer-actions']" #right-actions>
-						<slot name="composer-actions" />
-					</template>
-				</ChatInputBase>
-				<slot name="input-footer" />
-			</div>
-			<slot name="composer-footer" />
-		</div>
+					<slot name="inline-offers" />
+				</template>
+			</AgentChatMessageList>
+			<template #input>
+				<ReuseInput />
+			</template>
+		</N8nChatScrollArea>
 	</aside>
 </template>
 
@@ -2179,6 +2350,13 @@ onBeforeUnmount(() => {
 	min-width: 0;
 }
 
+.scrollArea {
+	flex: 1;
+	min-height: 0;
+	// Centers the scroll button over the input, which a host panel can move.
+	--n8n-chat-scroll-area--x-offset--end: var(--agent-chat-reserved-end, 0);
+}
+
 .centeredEmpty {
 	justify-content: center;
 }
@@ -2194,18 +2372,21 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	width: 100%;
+	// Same as the messages: centers in the space that a host panel leaves.
+	width: calc(100% - var(--agent-chat-reserved-end, 0px));
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
+	position: relative;
+	left: calc(var(--agent-chat-reserved-end, 0px) / -2);
 }
 
 .backgroundJobs {
 	min-width: 0;
 
-	--ai-activity-step--height: auto;
-	--ai-activity-step--min-height: var(--height--xl);
-	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
-	--ai-activity-step--color: var(--text-color);
+	--n8n-ai-activity-step--height: auto;
+	--n8n-ai-activity-step--min-height: var(--height--xl);
+	--n8n-ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
+	--n8n-ai-activity-step--color: var(--text-color);
 	background: var(--background--surface);
 	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--xs);

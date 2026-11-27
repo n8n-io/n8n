@@ -1,0 +1,22 @@
+{
+	"properties": {
+		"data": {
+			"properties": {
+				"fileId": {
+					"type": "string"
+				},
+				"message": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"sessionId": {
+			"type": "string"
+		},
+		"windowId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

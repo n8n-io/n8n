@@ -2,11 +2,12 @@ import type { ObservationCursor, ObservationLogBatch } from '@n8n/agents';
 import { getPersonalProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 
 import { createOwner } from '@test-integration/db/users';
 
 import { InstanceAiObservationRepository } from '../instance-ai-observation.repository';
-import { InstanceAiObservationCursorRepository } from '../instance-ai-observation-cursor.repository';
+import { InstanceAiObservationCursor } from '../../entities/instance-ai-observation-cursor.entity';
 import { InstanceAiThreadRepository } from '../instance-ai-thread.repository';
 import { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
 import { InstanceAiObservation } from '../../entities/instance-ai-observation.entity';
@@ -42,7 +43,7 @@ describe('InstanceAiObservationRepository', () => {
 	afterEach(async () => {
 		// Not in the shared truncate list; a module table cleans up through its repository.
 		await repository.delete({});
-		await Container.get(InstanceAiObservationCursorRepository).delete({});
+		await Container.get(DataSource).getRepository(InstanceAiObservationCursor).delete({});
 	});
 
 	afterAll(async () => {
@@ -152,6 +153,23 @@ describe('InstanceAiObservationRepository', () => {
 				updatedAt: new Date(now.getTime() + 1),
 			});
 			expect(await memory.getObservationLog(input)).toEqual(rows);
+		});
+
+		it('stores the working set and matches the next writer on position only', async () => {
+			const first = batch();
+			first.nextCursor.workingSet = 'Plan\n- [ ] Ship it';
+			expect(await memory.commitObservationLogBatch(first)).toBe('committed');
+			const cursor = await memory.getCursor(THREAD);
+			expect(cursor?.workingSet).toBe('Plan\n- [ ] Ship it');
+
+			// A different working set in the expected cursor must still match.
+			const next = batch({ ...cursor!, workingSet: 'stale working set' });
+			next.nextCursor.lastObservedMessageId = 'm3';
+			next.nextCursor.lastObservedAt = new Date(3);
+			next.nextCursor.workingSet = 'Plan\n- [x] Ship it';
+
+			expect(await memory.commitObservationLogBatch(next)).toBe('committed');
+			expect((await memory.getCursor(THREAD))?.workingSet).toBe('Plan\n- [x] Ship it');
 		});
 
 		it.each([false, true])(

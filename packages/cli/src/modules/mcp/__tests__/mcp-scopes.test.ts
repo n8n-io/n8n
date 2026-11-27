@@ -1,6 +1,5 @@
 import { Container } from '@n8n/di';
 import type { Mock } from 'vitest';
-import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import {
 	EventService,
@@ -45,6 +44,7 @@ import {
 import { McpConfig } from '../mcp.config';
 import { McpService } from '../mcp.service';
 import type { McpFeatureFlags } from '../mcp.service';
+import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -58,7 +58,8 @@ import { RuleRegistry } from '@/modules/breaking-changes/breaking-changes.rule-r
 import { MigrationFindingQueryService } from '@/modules/breaking-changes/query/migration-finding-query.service';
 import { MigrationFindingSyncService } from '@/modules/breaking-changes/sync/migration-finding-sync.service';
 import { MigrationFindingTriageService } from '@/modules/breaking-changes/triage/migration-finding-triage.service';
-import { SkillService, SkillsGate } from '@/modules/skills';
+import { SkillService, SkillSourceService, SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -81,6 +82,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 
 import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
@@ -166,13 +168,22 @@ describe('getAllowedToolNames', () => {
 
 	it('grants only the read skill tools with skill:read', () => {
 		expect(getAllowedToolNames(['skill:read'])).toEqual(
-			new Set(['search_n8n_skills', 'get_skill']),
+			new Set(['search_n8n_skills', 'get_skill', 'list_skill_sources']),
 		);
 	});
 
 	it('grants the read skill tools with skill:write too', () => {
 		expect(getAllowedToolNames(['skill:write'])).toEqual(
-			new Set(['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill']),
+			new Set([
+				'create_skill',
+				'update_skill',
+				'delete_skill',
+				'search_n8n_skills',
+				'get_skill',
+				'list_skill_sources',
+				'discover_skill_source',
+				'import_skills_from_source',
+			]),
 		);
 	});
 
@@ -226,6 +237,7 @@ describe('McpService scope enforcement', () => {
 		instanceAiActive = false,
 		breakingChangesActive = false,
 		agentsActive = false,
+		activityLogEnabled = true,
 		postHogClient = mockInstance(PostHogClient),
 	}: {
 		builderEnabled?: boolean;
@@ -233,6 +245,7 @@ describe('McpService scope enforcement', () => {
 		instanceAiActive?: boolean;
 		breakingChangesActive?: boolean;
 		agentsActive?: boolean;
+		activityLogEnabled?: boolean;
 		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
@@ -246,6 +259,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(CredentialsFinderService),
 			mockInstance(ActiveExecutions),
 			mockInstance(GlobalConfig, {
+				activityLog: { enabled: activityLogEnabled, retentionDays: 0, maxEntries: 1_000 },
 				endpoints: {
 					...new EndpointsConfig(),
 					webhook: '/webhook',
@@ -293,7 +307,9 @@ describe('McpService scope enforcement', () => {
 							(agentsActive && name === 'agents') ||
 							(breakingChangesActive && name === 'breaking-changes'),
 					),
-				settings: { get: () => undefined } as unknown as ModuleRegistry['settings'],
+				settings: {
+					get: (name: string) => (name === 'mcp' ? { preferencesEnabled: true } : undefined),
+				} as unknown as ModuleRegistry['settings'],
 			}),
 			mockInstance(EventService),
 			mockInstance(FolderService),
@@ -302,11 +318,13 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ExecutionRedactionServiceProxy),
 			mockInstance(InstanceWriteAccessService),
 			mockInstance(McpPreferencesNoteService),
+			mockInstance(WorkflowPublicationStatusService),
 		);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockInstance(SkillsGate, { isEnabled: false });
+		mockInstance(AiPreferenceSettingsService, { isEnabled: true });
 	});
 
 	it.each([false, true])(
@@ -431,7 +449,9 @@ describe('McpService scope enforcement', () => {
 		'registers the skill tools only while the skills gate is on: %s',
 		async (skillsEnabled) => {
 			mockInstance(SkillService);
+			mockInstance(SkillSourceService);
 			mockInstance(SkillsGate, { isEnabled: skillsEnabled });
+			mockInstance(SkillSyncFlagGate).isEnabled.mockResolvedValue(true);
 			const server = await buildService({
 				builderEnabled: false,
 				agentsActive: true,
@@ -456,6 +476,8 @@ describe('McpService scope enforcement', () => {
 		'declares the skills extension with %s',
 		async (_, skillsEnabled, skillsExtensionEnabled, grantedScopes, declared) => {
 			mockInstance(SkillService);
+			mockInstance(SkillSourceService);
+			mockInstance(SkillSyncFlagGate).isEnabled.mockResolvedValue(false);
 			mockInstance(SkillsGate, { isEnabled: skillsEnabled });
 			const server = await buildService({ builderEnabled: false }).getServer(
 				user,
@@ -470,28 +492,25 @@ describe('McpService scope enforcement', () => {
 		},
 	);
 
-	it.each([true, false])(
-		'sets all context tools and the resource from the shared flag override: %s',
-		async (enabled) => {
-			mockInstance(InstanceContextService);
-			mockInstance(WorkflowDependencyQueryService);
-			const config = mockInstance(GlobalConfig, {
-				diagnostics: { enabled: false },
-				featureFlags: { override: { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: enabled } },
-			});
-			const service = buildService({
-				instanceAiActive: true,
-				postHogClient: new PostHogClient(mockInstance(InstanceSettings), config),
-			});
+	it('registers all context tools and the resource without telemetry', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+		const config = mockInstance(GlobalConfig, {
+			diagnostics: { enabled: false },
+			featureFlags: { override: {} },
+		});
+		const service = buildService({
+			instanceAiActive: true,
+			postHogClient: new PostHogClient(mockInstance(InstanceSettings), config),
+		});
 
-			const flags = await service.resolveFeatureFlags(user);
-			const server = await service.getServer(user, flags);
+		const flags = await service.resolveFeatureFlags(user);
+		const server = await service.getServer(user, flags);
 
-			const registered = getRegisteredToolNames(server);
-			for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered.has(name)).toBe(enabled);
-			expect(getRegisteredResourceUris(server).has(INSTANCE_CONTEXT_RESOURCE_URI)).toBe(enabled);
-		},
-	);
+		const registered = getRegisteredToolNames(server);
+		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered.has(name)).toBe(true);
+		expect(getRegisteredResourceUris(server).has(INSTANCE_CONTEXT_RESOURCE_URI)).toBe(true);
+	});
 
 	/**
 	 * Node usage reads the dependency index, which belongs to no module, so it does not follow the
@@ -511,6 +530,22 @@ describe('McpService scope enforcement', () => {
 
 		expect(indexBound).toEqual(['get_node_usage', 'get_dependencies']);
 		for (const name of indexBound) expect(registered).toContain(name);
+		for (const name of ACTIVITY_LOG_TOOLS) expect(registered).not.toContain(name);
+		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
+	});
+
+	it('keeps the index tools but drops the activity tools when the activity log is off', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({
+			instanceAiActive: true,
+			activityLogEnabled: false,
+		}).getServer(user, mcpFeatureFlags({ instanceContextEnabled: true }));
+
+		const registered = getRegisteredToolNames(server);
+		expect(registered).toContain('get_node_usage');
+		expect(registered).toContain('get_dependencies');
 		for (const name of ACTIVITY_LOG_TOOLS) expect(registered).not.toContain(name);
 		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
 	});
@@ -685,6 +720,24 @@ describe('McpService scope enforcement', () => {
 			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
 		});
 
+		it('registers no preference tool and drops the instructions while preferences are off', async () => {
+			mockInstance(AiPreferenceSettingsService, { isEnabled: false });
+			const server = await buildService().getServer(user, mcpFeatureFlags());
+			const registered = getRegisteredToolNames(server);
+			const instructions =
+				(server as unknown as { server: { _instructions?: string } }).server._instructions ?? '';
+
+			expect(
+				[
+					'get_user_preferences',
+					'save_user_preference',
+					'update_user_preference',
+					'undo_user_preference',
+				].filter((name) => registered.has(name)),
+			).toEqual([]);
+			expect(instructions).not.toContain('get_user_preferences');
+		});
+
 		it('is not a builder tool, so it stays out of the builder-gated set', () => {
 			expect(BUILDER_TOOLS.has('get_user_preferences')).toBe(false);
 		});
@@ -752,6 +805,27 @@ describe('McpService scope enforcement', () => {
 		expect(registered).not.toContain('move_workflows_to_folder');
 		expect(registered).toContain('search_projects');
 	});
+
+	it.each([false, true])(
+		'gates Agent move registration on the folder license: %s',
+		async (foldersLicensed) => {
+			mockInstance(McpAgentToolsService, {
+				registerTools: vi.fn((registerTool) => {
+					for (const name of ['move_agent', 'create_agent']) {
+						registerTool({ name, config: {}, handler: vi.fn() });
+					}
+				}),
+			});
+			const server = await buildService({ foldersLicensed, agentsActive: true }).getServer(
+				user,
+				mcpFeatureFlags(),
+			);
+			const registered = getRegisteredToolNames(server);
+
+			expect(registered.has('move_agent')).toBe(foldersLicensed);
+			expect(registered).toContain('create_agent');
+		},
+	);
 
 	it('registers all tools when no scopes are provided (API keys, legacy tokens)', async () => {
 		const service = buildService();

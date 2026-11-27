@@ -36,6 +36,7 @@ import { isZodSchema } from '../../utils/zod';
 import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import { stringifyError } from '../loop/runtime-helpers';
+import { withMcpHttpStatus } from '../mcp/http-error';
 import type { AgentMessageList } from '../model/message-list';
 import type { AgentEventBus } from '../state/event-bus';
 import type { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
@@ -69,6 +70,18 @@ function getToolResumeJsonSchema(
 	const resolvedSchema = resumeSchemaOverride ?? tool.resumeSchema;
 	if (!resolvedSchema) return undefined;
 	return isZodSchema(resolvedSchema) ? zodSchemaToJsonSchema(resolvedSchema) : resolvedSchema;
+}
+
+/**
+ * The tool name and input that a call asked for, before a former name or
+ * `call_tool` resolved it. The input keeps fields such as `action`.
+ */
+function requestedCall(toolName: string, input: JSONValue): { name: string; input: JSONValue } {
+	const isObject = typeof input === 'object' && input !== null && !Array.isArray(input);
+	if (toolName !== CALL_TOOL_TOOL_NAME || !isObject || typeof input.tool !== 'string') {
+		return { name: toolName, input };
+	}
+	return { name: input.tool, input: input.arguments ?? {} };
 }
 
 /** Execute one tool call and keep its result, cancellation, and lifecycle events together. */
@@ -106,18 +119,24 @@ export class ToolCallRunner {
 		// models then call them by that name. Invalid input returns the schema.
 		const target = resolveToolCallTarget(toolMap, toolName, callParams.input);
 
-		if (!target) {
-			const hint = toolMap.has(CALL_TOOL_TOOL_NAME)
-				? ` Find the right name with ${FIND_TOOLS_TOOL_NAME} (query), then run it with ${CALL_TOOL_TOOL_NAME}.`
-				: '';
-			return await this.toolError(callParams, new Error(`Tool ${toolName} not found.${hint}`));
-		}
+		if (!target) return await this.toolNotFound(callParams, toolName);
 		// A dispatcher (the tool catalog's call_tool) hands the call to the tool it
 		// names. That tool's schema, approval, and suspension then apply.
 		const builtTool = target.tool;
-		const params: ProcessToolCallParams = target.dispatchedBy
-			? { ...callParams, input: target.input as JSONValue }
-			: callParams;
+		const requested = requestedCall(toolName, callParams.input);
+		const resumeOnly = requested.name === builtTool.name ? undefined : builtTool.legacyResumeOnly;
+		// Former names of this tool are for stored calls only. A new call fails as unknown.
+		if (resumeOnly && !callParams.previouslySuspended) {
+			return await this.toolNotFound(callParams, requested.name);
+		}
+		const params: ProcessToolCallParams = resumeOnly
+			? {
+					...callParams,
+					input: resumeOnly.convert(requested.name, requested.input),
+				}
+			: target.dispatchedBy
+				? { ...callParams, input: target.input as JSONValue }
+				: callParams;
 
 		// Already settled by the AI SDK (e.g. provider-executed tools): emit the
 		// lifecycle end and skip re-execution.
@@ -305,7 +324,9 @@ export class ToolCallRunner {
 			result: error,
 			isError: true,
 		});
-		const errorText = stringifyError(error);
+		const errorText = builtTool?.mcpTool
+			? await withMcpHttpStatus(error, stringifyError(error))
+			: stringifyError(error);
 		const guardedError = await guardToolErrorForModel(
 			builtTool?.outputTrust === 'untrusted'
 				? protectUntrustedToolError(errorText, builtTool)
@@ -380,6 +401,16 @@ export class ToolCallRunner {
 		};
 	}
 
+	private async toolNotFound(
+		params: ProcessToolCallParams,
+		toolName: string,
+	): Promise<ToolCallOutcome> {
+		const hint = params.toolMap.has(CALL_TOOL_TOOL_NAME)
+			? ` Find the right name with ${FIND_TOOLS_TOOL_NAME} (query), then run it with ${CALL_TOOL_TOOL_NAME}.`
+			: '';
+		return await this.toolError(params, new Error(`Tool ${toolName} not found.${hint}`));
+	}
+
 	/** Validate input against the tool's input schema (if any). */
 	private async validateToolInput(
 		params: ProcessToolCallParams,
@@ -434,16 +465,12 @@ export class ToolCallRunner {
 			resolvedTelemetry,
 			async () =>
 				await raceWithAbort(async () => {
-					const result = await executeTool(
-						input,
-						builtTool,
-						resumeData,
-						resolvedTelemetry,
-						toolCallId,
-						{
+					const run = async () => {
+						// An interceptor can await before it calls `run`; the run may be aborted by then.
+						abortSignal?.throwIfAborted();
+						return await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
 							runId,
 							persistence,
-							...(this.deps.loadSkill ? { loadSkill: this.deps.loadSkill } : {}),
 							emitEvent: (event) => this.eventBus.emit(event),
 							abortSignal,
 							executionCounter,
@@ -453,8 +480,13 @@ export class ToolCallRunner {
 							resumeSchema,
 							onSuspend,
 							onGuardrailNotice: params.guardrails?.onNotice,
-						},
-					);
+						});
+					};
+					const interceptor = this.deps.toolCallInterceptor;
+					// Guard the result the model receives, also when an interceptor replaces it.
+					const result = interceptor
+						? await interceptor({ tool: builtTool, toolCallId, input }, run)
+						: await run();
 					// Final result only: a call that suspended reports once,
 					// after resume. The after-stage check runs inside the span
 					// so a refused result is recorded as the refusal, never as

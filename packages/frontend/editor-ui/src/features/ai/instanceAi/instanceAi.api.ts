@@ -5,6 +5,7 @@ import type {
 	InstanceAiAttachment,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
+	InstanceAiCloudBrowserLiveViewResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
@@ -106,6 +107,57 @@ export async function postCancelTask(
 	taskId: string,
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', `/instance-ai/chat/${threadId}/tasks/${taskId}/cancel`);
+}
+
+/**
+ * GET /instance-ai/chat/:threadId/tasks/:taskId/cloud-browser-live-view
+ * The live view of a cloud browser task. The link lets anyone who has it control the browser,
+ * so keep it in memory only.
+ */
+export async function fetchCloudBrowserLiveView(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+): Promise<InstanceAiCloudBrowserLiveViewResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-live-view`,
+	);
+}
+
+/**
+ * POST /instance-ai/chat/:threadId/tasks/:taskId/cloud-browser-take-over
+ * The user takes control of a cloud browser task's browser. The agent's calls wait for them.
+ */
+export async function postCloudBrowserTakeOver(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-take-over`,
+	);
+}
+
+/**
+ * POST /instance-ai/chat/:threadId/tasks/:taskId/cloud-browser-return-control
+ * The user gives the browser back to the agent, with what they changed.
+ */
+export async function postCloudBrowserReturnControl(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+	note?: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-return-control`,
+		note ? { note } : {},
+	);
 }
 
 /**

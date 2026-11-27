@@ -1,0 +1,227 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"_links": {
+			"additionalProperties": true,
+			"properties": {
+				"changePassword": {
+					"properties": {
+						"href": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"changeRecoveryQuestion": {
+					"properties": {
+						"href": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"deactivate": {
+					"properties": {
+						"href": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"expirePassword": {
+					"properties": {
+						"href": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"forgotPassword": {
+					"properties": {
+						"href": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"resetFactors": {
+					"properties": {
+						"href": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"resetPassword": {
+					"properties": {
+						"href": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"schema": {
+					"properties": {
+						"href": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"self": {
+					"properties": {
+						"href": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"suspend": {
+					"properties": {
+						"href": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"type": {
+					"properties": {
+						"href": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"activated": {
+			"type": "string"
+		},
+		"created": {
+			"type": "string"
+		},
+		"credentials": {
+			"additionalProperties": true,
+			"properties": {
+				"password": {
+					"type": "object"
+				},
+				"provider": {
+					"properties": {
+						"name": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"lastLogin": {
+			"type": ["null", "string"]
+		},
+		"lastUpdated": {
+			"type": "string"
+		},
+		"passwordChanged": {
+			"type": "string"
+		},
+		"profile": {
+			"additionalProperties": true,
+			"properties": {
+				"department": {
+					"type": "string"
+				},
+				"displayName": {
+					"type": "string"
+				},
+				"division": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"employeeNumber": {
+					"type": "string"
+				},
+				"firstName": {
+					"type": "string"
+				},
+				"lastName": {
+					"type": "string"
+				},
+				"login": {
+					"type": "string"
+				},
+				"manager": {
+					"type": "string"
+				},
+				"managerId": {
+					"type": "string"
+				},
+				"mobilePhone": {
+					"type": ["null", "string"]
+				},
+				"organization": {
+					"type": "string"
+				},
+				"secondEmail": {
+					"type": ["null", "string"]
+				},
+				"title": {
+					"type": "string"
+				},
+				"userType": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"status": {
+			"type": "string"
+		},
+		"statusChanged": {
+			"type": "string"
+		},
+		"type": {
+			"properties": {
+				"id": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

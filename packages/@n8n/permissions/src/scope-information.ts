@@ -30,6 +30,30 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'List apps',
 		description: 'List apps in a project.',
 	},
+	'mcpServer:create': {
+		displayName: 'Create MCP server',
+		description: 'Create custom MCP servers in a project.',
+	},
+	'mcpServer:read': {
+		displayName: 'View MCP server',
+		description: 'View custom MCP servers, their tools, and their connections.',
+	},
+	'mcpServer:update': {
+		displayName: 'Edit MCP server',
+		description: 'Edit custom MCP servers, their tools, and the people who are blocked.',
+	},
+	'mcpServer:delete': {
+		displayName: 'Delete MCP server',
+		description: 'Delete custom MCP servers.',
+	},
+	'mcpServer:list': {
+		displayName: 'List MCP servers',
+		description: 'List custom MCP servers in a project.',
+	},
+	'mcpServer:connect': {
+		displayName: 'Connect to MCP server',
+		description: 'Connect an AI client to custom MCP servers of a project.',
+	},
 	'aiPreference:read': {
 		displayName: 'Read AI Preferences',
 		description:
@@ -214,43 +238,29 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage project roles',
 		description: 'Allows creating, editing, and deleting project role definitions.',
 	},
-	'promotions:create': {
-		displayName: 'Create promotion setup',
-		description: 'Allows creating promotion providers and environments.',
-	},
-	'promotions:read': {
-		displayName: 'Read promotion setup',
+	'promotions:manageProviders': {
+		displayName: 'Manage promotion providers',
 		description:
-			'Allows reading promotion providers, environments, the projects linked to each environment, and the Apply package projects that are missing on this instance.',
+			'Allows creating, updating and deleting promotion providers, and listing the repositories and branches that a provider can reach.',
 	},
-	'promotions:update': {
-		displayName: 'Update promotion setup',
-		description: 'Allows updating promotion providers and environments.',
+	'promotions:readProviders': {
+		displayName: 'Read promotion providers',
+		description: 'Allows listing and reading promotion providers.',
 	},
-	'promotions:delete': {
-		displayName: 'Delete promotion setup',
-		description: 'Allows deleting promotion providers and environments.',
+	'promotions:manageEnvironments': {
+		displayName: 'Manage promotion environments',
+		description:
+			'Allows creating, updating and deleting promotion environments, connecting this instance to them, and adding and removing their projects.',
 	},
-	'promotions:list': {
-		displayName: 'List promotion setup',
-		description: 'Allows listing promotion providers and environments.',
-	},
-	'promotions:discover': {
-		displayName: 'Discover promotion locations',
-		description: 'Allows listing the locations that a promotion provider can reach.',
-	},
-	'promotions:connect': {
-		displayName: 'Connect promotion environment',
-		description: 'Allows connecting this instance to a promotion environment and disconnecting it.',
+	'promotions:readEnvironments': {
+		displayName: 'Read promotion environments',
+		description:
+			'Allows listing and reading promotion environments, the projects linked to each environment, and the Apply package projects that are missing on this instance.',
 	},
 	'promotions:promote': {
 		displayName: 'Promote',
 		description:
 			'Allows previewing and promoting changes from team projects to a promotion environment.',
-	},
-	'promotions:manageProjects': {
-		displayName: 'Manage promotion environment projects',
-		description: 'Allows adding projects to and removing projects from a promotion environment.',
 	},
 	'promotions:apply': {
 		displayName: 'Apply',

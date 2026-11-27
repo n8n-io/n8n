@@ -1,10 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import type { WorkQueue } from '../work-queue.types';
 
 export interface ContractMessage {
 	n: number;
 }
+
+const contractMessageSchema = z.object({ n: z.number() });
+
+/** For adapters that send messages across a process boundary. */
+export const parseContractMessage = (value: unknown): ContractMessage =>
+	contractMessageSchema.parse(value);
 
 export interface WorkQueueUnderTest {
 	queue: WorkQueue<ContractMessage>;
@@ -156,6 +163,7 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 
 			expect(gated.started).toHaveLength(concurrency);
 			expect(gated.maxInFlight()).toBe(concurrency);
+			expect(await queue.size()).toBe(10 - concurrency);
 
 			gated.releaseAll();
 			await eventually(() => {
@@ -262,6 +270,18 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 			await settleBriefly();
 
 			expect(gated.started).toHaveLength(1);
+		});
+
+		it('counts the messages that no handler has taken', async () => {
+			const queue = await build(1);
+			await publishAll(queue, [1, 2, 3]);
+			expect(await queue.size()).toBe(3);
+
+			const gated = gatedHandler();
+			queue.start(gated.handler);
+			await eventually(() => expect(gated.started).toHaveLength(1));
+
+			expect(await queue.size()).toBe(2);
 		});
 
 		it('resolves stop when no consumer ever started', async () => {

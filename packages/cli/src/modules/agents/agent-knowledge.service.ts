@@ -1,7 +1,9 @@
-import type { AgentFileDto } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import type { AgentFileDto, AgentKnowledgeCollectionDto } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { KnowledgeCollectionCatalogService } from '@/modules/knowledge/collections/knowledge-collection-catalog.service';
+import { KnowledgeFileCleanupService } from '@/modules/knowledge/files/knowledge-file-cleanup.service';
 import {
 	KnowledgeFileService,
 	type KnowledgeWriteRunner,
@@ -31,7 +33,8 @@ export class AgentKnowledgeService {
 		private readonly knowledgeRetrievalService: KnowledgeRetrievalService,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
-		private readonly logger: Logger,
+		private readonly knowledgeFileCleanupService: KnowledgeFileCleanupService,
+		private readonly collectionCatalogService: KnowledgeCollectionCatalogService,
 	) {}
 
 	async uploadFiles(
@@ -68,22 +71,44 @@ export class AgentKnowledgeService {
 		return await this.knowledgeFileService.deleteFile(scope, fileId, this.writeFence(projectId));
 	}
 
-	/**
-	 * Cleanup for the agent and project deletion cascades. With the knowledge
-	 * module off its entity is not registered, so the rows cannot be read: the
-	 * database cascade still removes them with the agent, but their stored bytes
-	 * stay (see the knowledge module AGENTS.md).
-	 */
+	async listCollections(
+		user: User,
+		agentId: string,
+		projectId: string,
+	): Promise<AgentKnowledgeCollectionDto[]> {
+		await this.scopeFor(agentId, projectId);
+		return await this.collectionCatalogService.listForAgent(user, projectId, agentId);
+	}
+
+	async addCollection(user: User, agentId: string, projectId: string, collectionId: string) {
+		await this.scopeFor(agentId, projectId, { forWrite: true });
+		await this.collectionCatalogService.addAgent(
+			user,
+			{ projectId, collectionId },
+			agentId,
+			this.writeFence(projectId),
+		);
+	}
+
+	async removeCollection(user: User, agentId: string, projectId: string, collectionId: string) {
+		await this.scopeFor(agentId, projectId, { forWrite: true });
+		await this.collectionCatalogService.removeAgent(
+			user,
+			{ projectId, collectionId },
+			agentId,
+			this.writeFence(projectId),
+		);
+	}
+
+	/** Cleans up files before the agent or project deletion cascades remove their references. */
 	async deleteAllFilesForAgent(projectId: string, agentId: string): Promise<void> {
+		const scope: KnowledgeConsumerScope = { kind: 'agent', projectId, agentId };
 		if (!this.knowledgeAvailabilityService.isModuleActive()) {
-			this.logger.warn(
-				'Knowledge module is inactive, so the stored knowledge file bytes of the deleted agent are kept',
-				{ agentId },
-			);
+			await this.knowledgeFileCleanupService.deleteStoredBytes(scope);
 			return;
 		}
 
-		await this.knowledgeFileService.deleteAll({ kind: 'agent', projectId, agentId });
+		await this.knowledgeFileService.deleteAll(scope);
 	}
 
 	/** Best-effort passthrough for agent/project deletion; never throws. */

@@ -1,0 +1,42 @@
+{
+	"properties": {
+		"added_at": {
+			"type": "string"
+		},
+		"archived_at": {},
+		"description": {
+			"type": ["null", "string"]
+		},
+		"id": {
+			"type": "string"
+		},
+		"is_archived": {
+			"type": "boolean"
+		},
+		"is_collapsed": {
+			"type": "boolean"
+		},
+		"is_deleted": {
+			"type": "boolean"
+		},
+		"name": {
+			"type": "string"
+		},
+		"order_key": {
+			"type": "string"
+		},
+		"project_id": {
+			"type": "string"
+		},
+		"section_order": {
+			"type": "number"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"user_id": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

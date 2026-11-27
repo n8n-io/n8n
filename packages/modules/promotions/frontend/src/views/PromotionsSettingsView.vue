@@ -11,6 +11,7 @@ import {
 	N8nEmptyState,
 	N8nEnterpriseReadinessBadge,
 	N8nExternalLink,
+	N8nIcon,
 	N8nLoading2,
 	N8nPreviewBadge,
 	N8nSettingsLayout,
@@ -25,6 +26,7 @@ import {
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { nextTick, onMounted, reactive, ref, type ComponentPublicInstance } from 'vue';
@@ -33,7 +35,7 @@ import { useRouter } from 'vue-router';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
-import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
+import PromotionProjectAccessRows from '../components/PromotionProjectAccessRows.vue';
 import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
@@ -41,6 +43,7 @@ import {
 	ENVIRONMENTS_PLAN_DOCS_URL,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
 	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
+	PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE,
 } from '../promotions.constants';
 import {
 	deletePromotionEnvironment,
@@ -49,6 +52,7 @@ import {
 	fetchPromotionEnvironments,
 	type PromotionEnvironment,
 } from '../promotionsSettings.api';
+import { promotionDirectionIcon } from '../promotionsSettings.utils';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -56,6 +60,9 @@ const message = useMessage();
 const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const showProjectAccess =
+	PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE.length > 0 &&
+	useRBACStore().hasScope('securitySettings:manage');
 const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const { next: nextLoad } = useLatestFetch();
 const { connectErrors, canConnect, connect } = usePromotionCheckout();
@@ -74,7 +81,7 @@ const {
 const environments = ref<Partial<Record<PromotionDirection, PromotionEnvironment>>>({});
 const isInitialLoading = ref(true);
 const loadError = ref(false);
-const busy = reactive(new Map<string, 'retry' | 'remove'>());
+const busy = reactive(new Map<string, 'connect' | 'remove'>());
 const addButtons: Partial<Record<PromotionDirection, Element | ComponentPublicInstance | null>> =
 	{};
 
@@ -103,9 +110,16 @@ onMounted(async () => {
 	await Promise.all([load(), loadProtection()]);
 });
 
-async function retry(environment: PromotionEnvironment) {
-	busy.set(environment.id, 'retry');
-	if (await connect(environment.id)) await load();
+async function testConnection(environment: PromotionEnvironment) {
+	busy.set(environment.id, 'connect');
+	if (await connect(environment.id)) {
+		toast.showMessage({
+			title: i18n.baseText('settings.promotions.environment.toast.connected', {
+				interpolate: { name: environment.name },
+			}),
+			type: 'success',
+		});
+	}
 	busy.delete(environment.id);
 }
 
@@ -145,7 +159,6 @@ async function remove(environment: PromotionEnvironment) {
 		toast.showError(error, i18n.baseText('settings.promotions.provider.toast.error.delete'));
 	}
 	connectErrors.delete(environment.id);
-	invalidateInstancePromotionConnection();
 	await load();
 	busy.delete(environment.id);
 	toast.showMessage({
@@ -211,7 +224,7 @@ async function remove(environment: PromotionEnvironment) {
 							:connect-error="connectErrors.get(environments[direction].id)"
 							:can-connect="canConnect"
 							:data-test-id="`promotion-environment-card-${direction}`"
-							@retry="retry(environments[direction])"
+							@connect="testConnection(environments[direction])"
 							@edit="
 								router.push({
 									name: PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
@@ -220,11 +233,23 @@ async function remove(environment: PromotionEnvironment) {
 							"
 							@remove="remove(environments[direction])"
 						/>
-						<div v-else :class="$style.column">
-							<N8nSettingsRow
-								:title="i18n.baseText(`settings.promotions.environments.${direction}.title`)"
-								:show-divider="false"
-							/>
+						<div v-else :class="[$style.column, $style.emptyColumn]">
+							<N8nSettingsRow :show-divider="false">
+								<template #info>
+									<div
+										:style="{ display: 'flex', alignItems: 'center', gap: 'var(--spacing--2xs)' }"
+									>
+										<N8nIcon
+											:icon="promotionDirectionIcon[direction]"
+											color="text-dark"
+											size="small"
+										/>
+										<N8nText bold size="medium" color="text-dark">
+											{{ i18n.baseText(`settings.promotions.environments.${direction}.title`) }}
+										</N8nText>
+									</div>
+								</template>
+							</N8nSettingsRow>
 							<div :class="$style.empty">
 								<N8nButton
 									:ref="(button) => (addButtons[direction] = button)"
@@ -258,6 +283,14 @@ async function remove(environment: PromotionEnvironment) {
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
+		<N8nSettingsSection
+			v-if="showProjectAccess"
+			:title="i18n.baseText('settings.promotions.projectAccess.title')"
+			:description="i18n.baseText('settings.promotions.projectAccess.description')"
+			data-test-id="promotion-project-access-section"
+		>
+			<PromotionProjectAccessRows :settings="PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE" />
 		</N8nSettingsSection>
 		<N8nText
 			v-if="canSwitchBack"
@@ -325,11 +358,19 @@ async function remove(environment: PromotionEnvironment) {
 	cursor: pointer;
 }
 
+// The minimum height gives the empty column room, so the button sits in the middle of the
+// space below the title.
+.emptyColumn {
+	min-height: calc(var(--spacing--4xl) + var(--spacing--sm));
+}
+
 .empty {
 	display: flex;
 	flex: 1;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing--lg) var(--spacing--sm);
+	// The title row has its own bottom padding. The bottom padding here moves the button up,
+	// so it centers in the space below the title text.
+	padding: 0 var(--spacing--sm) var(--spacing--lg);
 }
 </style>

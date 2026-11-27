@@ -222,6 +222,8 @@ const config: KnipConfig = {
 				'n8n-core',
 				// Manual `pnpm exec playwright-cli` runs; .gitignore lists its .playwright-cli dir.
 				'@playwright/cli',
+				// Invoked in CI workflows via `pnpm --filter=n8n-playwright exec currents`.
+				'@currents/cmd',
 			],
 		}),
 	},

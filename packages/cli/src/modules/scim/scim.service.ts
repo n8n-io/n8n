@@ -12,8 +12,7 @@ import { Service } from '@n8n/di';
 import { GLOBAL_MEMBER_ROLE_SLUG, GLOBAL_OWNER_ROLE_SLUG, hasGlobalScope } from '@n8n/permissions';
 import { randomString } from 'n8n-workflow';
 
-import { EventService, UrlService } from '@n8n/backend-services';
-import { PasswordUtility } from '@/services/password.utility';
+import { EventService, UrlService, PasswordUtility } from '@n8n/backend-services';
 
 import { ScimUserRepository } from './database/scim-user.repository';
 import { ScimDeprovisioningService } from './scim-deprovisioning.service';

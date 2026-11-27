@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { LockedError } from '@n8n/errors';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { FolderService } from '@/services/folder.service';
 
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import type { AgentDefaultModelResolverService } from '../agent-default-model-resolver.service';
@@ -57,7 +58,10 @@ function makeController({
 		agentPublishService,
 		skillRefs,
 	);
-	const agentResponseMapper = new AgentResponseMapper(agentRunnableStateService);
+	const agentResponseMapper = new AgentResponseMapper(
+		agentRunnableStateService,
+		mock<FolderService>(),
+	);
 
 	return {
 		controller: new AgentsController(
@@ -245,7 +249,7 @@ describe('AgentsController create', () => {
 		const tools = { tool1: { code: 'return []', descriptor: { name: 'Lookup' } } };
 		const schema = {
 			name: 'Source Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Triage tickets.',
 			integrations: [{ type: 'slack', credentialId: 'cred-slack-1' }],
 		};
@@ -266,7 +270,7 @@ describe('AgentsController create', () => {
 			'project-1',
 			'Source Agent Copy',
 			expect.objectContaining({
-				schema: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+				schema: expect.objectContaining({ model: 'anthropic/claude-sonnet-5-5' }),
 				skills,
 				tools,
 				user: { id: 'user-1' },
@@ -285,7 +289,7 @@ describe('AgentsController create', () => {
 		const { controller, agentsService } = makeCreateController('agent-copy');
 		const schema = {
 			name: 'Source Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Triage tickets.',
 		};
 

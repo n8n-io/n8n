@@ -2,8 +2,10 @@ import {
 	CreatePolicyDocumentDto,
 	PutInstancePolicyDto,
 	ReplaceAttachmentsDto,
+	SetInstanceTypeAccessDto,
 	UpdatePolicyDocumentDto,
 	type InstanceTypeAccessResponse,
+	type NodeTypeUsageResponse,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -26,6 +28,8 @@ import { NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 
 import { NODE_TYPES_KIND } from './constants';
+import { ListedNodeTypes } from './listed-node-types';
+import { NodeTypeUsageService } from './node-type-usage.service';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
 /**
@@ -39,6 +43,8 @@ export class TypeAvailabilityPolicyInstanceController {
 	constructor(
 		private readonly service: TypeAvailabilityPolicyService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypeUsageService: NodeTypeUsageService,
+		private readonly listedNodeTypes: ListedNodeTypes,
 	) {}
 
 	@Get('/instance')
@@ -62,7 +68,40 @@ export class TypeAvailabilityPolicyInstanceController {
 		return await this.service.getInstanceAccess(
 			NODE_TYPES_KIND,
 			Object.keys(this.nodeTypes.getKnownTypes()),
+			await this.listedNodeTypes.filter(),
 		);
+	}
+
+	@Patch('/instance/access')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('nodeTypePolicy:manage')
+	async setInstanceAccess(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: SetInstanceTypeAccessDto,
+	) {
+		const result = await this.service.setTypeAccess(
+			NODE_TYPES_KIND,
+			null,
+			dto.changes,
+			dto.version,
+			req.user.id,
+		);
+
+		return {
+			scopeId: result.scopeId,
+			rules: result.rules,
+			defaultAction: result.defaultAction,
+			version: result.version,
+			warnings: result.warnings,
+		};
+	}
+
+	@Get('/usage')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('nodeTypePolicy:manage')
+	async getUsage(): Promise<NodeTypeUsageResponse> {
+		return await this.nodeTypeUsageService.getUsage(null);
 	}
 
 	@Put('/instance')

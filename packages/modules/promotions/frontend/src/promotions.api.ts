@@ -5,11 +5,13 @@ import type {
 	PromoteSelectionRequestDto,
 	PromoteSelectionResultDto,
 	PromotionDirection,
+	PromotionInstanceApplyPreview,
 	PromotionPreview,
 	PromotionResourceDetails,
 	PromotionResourceDetailsRequestDto,
 	PromotionReviewChanges,
 	PromotionReviewDetailsRequestDto,
+	PromotionSettings,
 } from '@n8n/api-types';
 import type { IRestApiContext, PublicApiContext } from '@n8n/rest-api-client';
 import { makePublicApiRequest, makeRestApiRequest } from '@n8n/rest-api-client';
@@ -36,6 +38,31 @@ export async function getPromotionResourceDetails(
 		context,
 		'POST',
 		`/promotions/projects/${projectId}/changes/${direction}/details`,
+		payload,
+	);
+}
+
+/** The preview of a whole-instance Apply from an instance Apply environment. */
+export async function getPromotionEnvironmentChanges(
+	context: PublicApiContext,
+	environmentId: string,
+): Promise<PromotionInstanceApplyPreview> {
+	return await makePublicApiRequest(
+		context,
+		'GET',
+		`/promotions/environments/${environmentId}/changes`,
+	);
+}
+
+export async function getPromotionEnvironmentDetails(
+	context: PublicApiContext,
+	environmentId: string,
+	payload: PromotionResourceDetailsRequestDto,
+): Promise<PromotionResourceDetails> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		`/promotions/environments/${environmentId}/changes/details`,
 		payload,
 	);
 }
@@ -99,4 +126,16 @@ export async function continueApplyProjectSelection(
 		`/promotions/projects/${projectId}/apply/continue`,
 		payload,
 	);
+}
+
+export async function getPromotionSettings(context: PublicApiContext): Promise<PromotionSettings> {
+	return await makePublicApiRequest(context, 'GET', '/promotions/settings');
+}
+
+/** Sends only the changed settings, so another admin's newer change to the others stays. */
+export async function updatePromotionSettings(
+	context: PublicApiContext,
+	changes: Partial<PromotionSettings>,
+): Promise<PromotionSettings> {
+	return await makePublicApiRequest(context, 'PATCH', '/promotions/settings', changes);
 }

@@ -90,6 +90,7 @@ export class EvaluationCollectionService {
 		const config = await this.evalConfigRepo.findByIdAndWorkflowId(
 			input.evaluationConfigId,
 			workflowId,
+			{},
 		);
 		if (!config) {
 			throw new NotFoundError('EvaluationConfig not found for this workflow');
@@ -249,6 +250,7 @@ export class EvaluationCollectionService {
 			const config = await this.evalConfigRepo.findByIdAndWorkflowId(
 				collection.evaluationConfigId,
 				workflowId,
+				{},
 			);
 			if (!config) {
 				throw new BadRequestError(
@@ -495,7 +497,11 @@ export class EvaluationCollectionService {
 		workflowId: string,
 		evaluationConfigId: string,
 	): Promise<EvalVersionsResponse> {
-		const config = await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId);
+		const config = await this.evalConfigRepo.findByIdAndWorkflowId(
+			evaluationConfigId,
+			workflowId,
+			{},
+		);
 		if (!config) {
 			throw new NotFoundError('EvaluationConfig not found for this workflow');
 		}

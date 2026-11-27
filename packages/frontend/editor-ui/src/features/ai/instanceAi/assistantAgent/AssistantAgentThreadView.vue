@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import type {
-	AgentJsonConfig,
-	AgentSseEvent,
-	InstanceAiAttachment,
-	InstanceAiHandoffContext,
-	InstanceAiNodesAttachment,
-	InstanceAiWorkflowAttachment,
+import {
+	EXTENDED_PROMPT_MAX_LENGTH,
+	type AgentJsonConfig,
+	type AgentSseEvent,
+	type AssistantAgentTargetsState,
+	type InstanceAiAttachment,
+	type InstanceAiHandoffContext,
+	type InstanceAiNodesAttachment,
+	type InstanceAiResourceAttachment,
+	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -13,6 +16,7 @@ import { useAssistantAwayTelemetry } from '../composables/useAssistantAwayTeleme
 import { getCurrentTurn } from '../assistantTurn';
 import {
 	N8nActionDropdown,
+	N8nChatRating,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nTabsRoot,
@@ -23,15 +27,24 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useElementSize } from '@vueuse/core';
-import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { isString } from '@/app/utils/typeGuards';
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
+import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
+import AssistantAtMentionPicker from '@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue';
+import type { WorkflowArtifactReference } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 
 import { provideArtifactAgentTargets } from '../artifactAgentTargets';
 import { provideArtifactThread } from '../artifactThread';
+import { useAssistantCreditsStore } from '../assistantCredits.store';
 import ApprovalModeSelector from '../components/ApprovalModeSelector.vue';
+import AttachmentPreview from '../components/AttachmentPreview.vue';
+import InstanceAiCanvasRunOverlay from '../components/InstanceAiCanvasRunOverlay.vue';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
@@ -39,9 +52,18 @@ import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview
 import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
-import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
+import InstanceAiWorkflowDraftPreview from '../components/InstanceAiWorkflowDraftPreview.vue';
+import { useDraftWorkflowPreview } from '../composables/useDraftWorkflowPreview';
+import { useToolLabel } from '../toolLabels';
+import {
+	AGENT_CHAT_MARKDOWN_HOST_KEY,
+	AGENT_TOOL_STEP_LABEL_KEY,
+} from '@/features/agents/components/agentChatInjectionKeys';
+import { useArtifactLinks } from '@/features/ai/instanceAi/artifactLinks';
+import { isRecord } from '@n8n/utils/is-record';
+import LimitedModeNotice from '../components/LimitedModeNotice.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from '../components/InstanceAiWorkflowPreview.vue';
@@ -52,6 +74,8 @@ import {
 	usePreviewPanelWidth,
 	usePreviewToggle,
 } from '../composables/useArtifactsLayout';
+import { useTransitionGate } from '../useTransitionGate';
+import { useCreditWarningBanner } from '../composables/useCreditWarningBanner';
 import type { AgentTestHandoffParams } from '../composables/useInstanceAiAgentTestHandoff';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
@@ -65,14 +89,19 @@ import {
 	getPendingWorkflowAttachment,
 	type PendingFirstMessage,
 } from '../composables/useInstanceAiHandoff';
-import { INSTANCE_AI_VIEW } from '../constants';
+import {
+	INSTANCE_AI_APP_ID_QUERY,
+	INSTANCE_AI_THREAD_SESSION_VIEW,
+	INSTANCE_AI_VIEW,
+} from '../constants';
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { firstMessageTitle, threadTargetsAgent } from '../instanceAi.threadRuntime';
+import { getAppTargetsFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { buildThreadArtifactsContext } from '../threadArtifacts';
-import { useCanvasPreview } from '../useCanvasPreview';
+import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
+import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from '../useCanvasPreview';
+import { provideOpenResource } from '@/features/ai/instanceAi/openResourceContext';
 import { toAgentPreviewComposerAttachment } from './assistantAgentPreviewHandoff';
 import {
 	fetchAssistantAgentThreadTabs,
@@ -88,11 +117,26 @@ import {
 	getAssistantAgentLaunch,
 	type PendingAssistantAgentMessage,
 } from './assistantAgentThreads';
+import { assistantAnsweredQuestionsExtension } from './assistantAnsweredQuestions';
 import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
+import { assistantCodeToolResultExtension } from './assistantCodeToolResults';
+import {
+	ASSISTANT_PREFERENCE_CARDS,
+	assistantPreferenceCardExtension,
+	useAssistantPreferenceCards,
+} from './assistantPreferenceCards';
+import { assistantSharedFilesExtension } from './assistantSharedFiles';
+import { provideAssistantArtifactCards } from './assistantArtifactCards';
+import { assistantToolResultTableExtension } from './assistantToolResultTables';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
+import {
+	mentionChipId,
+	readMessageReferences,
+	toMentionComposerAttachment,
+} from './assistantMentionAttachments';
 import {
 	countSentNodes,
 	readNodesAttachment,
@@ -107,9 +151,13 @@ import {
 	ASSISTANT_AGENT_SETUP_SAVED,
 	useAssistantAgentSetupSavedTelemetry,
 } from './useAssistantAgentSetupSavedTelemetry';
+import { useAssistantAgentMentions } from './useAssistantAgentMentions';
 import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
+import { useAssistantAgentFeedback } from './useAssistantAgentFeedback';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
+import { useAssistantWorkflowDrafts } from './useAssistantWorkflowDrafts';
+import { formatThreadTitle } from '@/features/agents/utils/thread-title';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
 
@@ -126,6 +174,7 @@ provide(ASSISTANT_AGENT_PROJECT_ID, props.projectId);
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const identity = useN8nAssistantIdentity();
@@ -173,24 +222,24 @@ function readPendingHandoff() {
 	const fromEmptyView = consumePendingAssistantAgentMessage(props.threadId);
 	const fromHandoff = consumePendingFirstMessage(props.threadId);
 	const firstMessage = firstMessageOf(fromEmptyView, fromHandoff);
-	const workflow = getPendingWorkflowAttachment(props.threadId);
+	// The handed-off workflow shows as a composer chip, so the user sees it and can remove it.
+	const workflowChip = getPendingWorkflowAttachment(props.threadId) ?? undefined;
 	const draft = getPendingComposerDraft(props.threadId);
 	const nodes = consumePendingDraftAttachment(props.threadId);
 	const context = fromHandoff?.context ?? getPendingHandoffContext(props.threadId) ?? undefined;
-	const references: InstanceAiAttachment[] = [
-		...(firstMessage?.references ?? []),
-		...(workflow ? [workflow] : []),
-	];
+	const references: InstanceAiAttachment[] = firstMessage?.references ?? [];
 	return {
 		firstMessage,
 		draft,
 		nodes,
 		context,
 		references,
+		workflowChip,
 		// The preview opens the handed-off workflow before the first message.
-		workflow: references.find(
-			(reference): reference is InstanceAiWorkflowAttachment => reference.type === 'workflow',
-		),
+		workflow:
+			references.find(
+				(reference): reference is InstanceAiWorkflowAttachment => reference.type === 'workflow',
+			) ?? workflowChip,
 	};
 }
 
@@ -208,6 +257,8 @@ function clientContext(): Record<string, unknown> {
 		browserUseAvailable: settingsStore.isBrowserUseAvailable,
 		...(pendingReferences.length > 0 ? { attachments: pendingReferences } : {}),
 		...(pendingHandoffContext ? { context: pendingHandoffContext } : {}),
+		// The server binds the subject on the first turn. Until then, every send carries it.
+		...(launch?.subject && isNewSession.value ? { subject: launch.subject } : {}),
 		...threadArtifactsContext(),
 	};
 }
@@ -222,7 +273,8 @@ function threadArtifactsContext(): Record<string, unknown> {
 	const threadArtifacts = buildThreadArtifactsContext(
 		thread.producedArtifacts.values(),
 		activeId,
-		preview.openTabs.value,
+		preview.openTabs.value.filter(isSavedArtifactTab),
+		createDisplayedExecutionReader(thread.artifactTurns, thread.getRememberedManualExecution),
 	);
 	return threadArtifacts ? { threadArtifacts } : {};
 }
@@ -238,19 +290,54 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 			runtime: 'agents',
 		});
 	}
+	// A mentioned workflow shows only now that the message is sent, not when it
+	// was picked. The first mention is the one shown, as on the current runtime.
+	const mentioned = mentions.firstSentMentionedWorkflow(
+		readMessageReferences(clientContext?.attachments),
+	);
+	if (mentioned) {
+		preview.openTab({ id: mentioned.id, type: 'workflow', name: mentioned.name, icon: 'workflow' });
+	}
 	pendingReferences = [];
 	pendingHandoffContext = undefined;
 }
 
-const interactionExtensions = [
-	assistantConfirmationExtension,
-	assistantAutoApprovalExtension,
-	...assistantHostEventExtensions,
-];
+/** The resources that a sent message shows: the ones its client context attaches. */
+function messageReferences(context: Record<string, unknown> | undefined): unknown[] {
+	return readMessageReferences(context?.attachments);
+}
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 
+provide(
+	ASSISTANT_PREFERENCE_CARDS,
+	useAssistantPreferenceCards({
+		threadId: props.threadId,
+		projectId: props.projectId,
+		messages: () => panel.value?.messages ?? [],
+	}),
+);
+
+// --- Credits ---
+// The InstanceAiView parent loads the balance, and a push event keeps it current.
+const creditsStore = useAssistantCreditsStore();
+const creditBanner = useCreditWarningBanner(() => creditsStore.isLowCredits);
+const { goToUpgrade } = usePageRedirectionHelper();
+
+/**
+ * The server refuses a turn when no credits are left. The composer is disabled
+ * then, and this also refuses host sends, such as a hand-off or Fix with AI.
+ */
+function assertCreditsAvailable(): void {
+	if (creditsStore.isOutOfCredits) throw new Error('No Assistant credits are left');
+}
+
 const trace = useAssistantAgentTrace({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+
+const feedback = useAssistantAgentFeedback({
 	threadId: props.threadId,
 	messages: () => panel.value?.messages ?? [],
 });
@@ -264,12 +351,15 @@ const turnTelemetry = useAssistantAgentTurnTelemetry({
 });
 
 function onMessageSending(message: AssistantAgentSendingMessage): void {
-	turnTelemetry.trackSubmit(messageTelemetry.trackSend(message));
+	mentions.close();
+	const sent = readMessageReferences(message.clientContext?.attachments);
+	turnTelemetry.trackSubmit(messageTelemetry.trackSend(message, mentions.sentMentionCounts(sent)));
 }
 
 function onStreamEvent(event: AgentSseEvent): void {
 	trace.recordEvent(event);
 	turnTelemetry.handleStreamEvent(event);
+	workflowDrafts.handleStreamEvent(event);
 }
 
 const setupSavedTelemetry = useAssistantAgentSetupSavedTelemetry({
@@ -280,6 +370,10 @@ provide(ASSISTANT_AGENT_SETUP_SAVED, setupSavedTelemetry.expectResult);
 
 watch(panel, (current) => {
 	if (!current) return;
+	if (handoff.workflowChip) {
+		const { chip, clientContextPatch } = toMentionComposerAttachment(handoff.workflowChip);
+		current.addComposerAttachment(chip, clientContextPatch);
+	}
 	if (handoff.firstMessage) {
 		messageTelemetry.expectHostSend(handoff.firstMessage);
 		current.sendMessageFromOutside(handoff.firstMessage.text, handoff.firstMessage.files);
@@ -302,8 +396,13 @@ function onSessionCreated(): void {
 	finishLaunch();
 	// The thread exists once the server accepts its first message. Show it in the lists
 	// now, not only after the first reply ends.
-	void threadsStore.loadThread(props.threadId);
+	void threadsStore.loadThread(props.threadId, firstUserMessageText());
 	void agentTargets.refresh();
+}
+
+/** The first message that the user sent in this thread, as the panel shows it. */
+function firstUserMessageText(): string | undefined {
+	return panel.value?.messages.find((message) => message.role === 'user')?.content || undefined;
 }
 
 // A finished turn can add the thread to the lists, or give it a title.
@@ -327,11 +426,62 @@ provideArtifactAgentTargets(agentTargets.agentTargets);
 // Set from the preview tabs below, which need the thread first.
 const activeArtifactId = ref<string>();
 
+// The preview shows the subject of a new thread until the server has its bindings, which the
+// first message writes. Only a saved resource: a pending one needs a thread that the server knows.
+const launchSubject = launch?.subject?.pending ? undefined : launch?.subject;
+const projectAndName = ({ projectId, name }: { projectId: string; name?: string }) => ({
+	projectId,
+	...(name ? { name } : {}),
+});
+
+// The agent of the launch subject. The server state replaces it once it loads.
+const launchAgentTargets: AssistantAgentTargetsState | null =
+	launchSubject?.type === 'agent'
+		? {
+				bound: { agentId: launchSubject.id, ...projectAndName(launchSubject) },
+				pending: null,
+				targets: [],
+				previewSession: null,
+			}
+		: null;
+
+// The Agent Builder panel attaches its agent to each message it sends, so the
+// agent that the thread builds is not a reference that the user chose.
+const threadAgentIds = computed(() => {
+	const targets = agentTargets.state.value ?? launchAgentTargets;
+	return new Set([targets?.bound?.agentId, targets?.pending?.agentId].filter(isString));
+});
+
+/** The references that a user message shows, without the agent of the thread. */
+function shownReferences(message: ChatMessage): InstanceAiResourceAttachment[] {
+	return readMessageReferences(message.references).filter(
+		(reference) => reference.type !== 'agent' || !threadAgentIds.value.has(reference.id),
+	);
+}
+
+// The apps of the thread metadata, and the app of the launch subject.
+const appTargets = computed(() => {
+	const targets = getAppTargetsFromThreadMetadata(
+		threadsStore.threadsById.get(props.threadId)?.metadata,
+	);
+	if (launchSubject?.type !== 'app') return targets;
+	if (targets.some(({ appId }) => appId === launchSubject.id)) return targets;
+	return [...targets, { appId: launchSubject.id, ...projectAndName(launchSubject) }];
+});
+// An app page opens its chat with `?appId=`. Only an app of this thread opens.
+const requestedAppId = computed(() => {
+	const appId = route.query[INSTANCE_AI_APP_ID_QUERY];
+	return typeof appId === 'string' && appTargets.value.some((target) => target.appId === appId)
+		? appId
+		: undefined;
+});
+
 const thread = useAssistantArtifactThread({
 	threadId: props.threadId,
 	projectId: props.projectId,
 	messages: () => panel.value?.messages ?? [],
 	isStreaming: () => panel.value?.isStreaming ?? false,
+	isAwaitingUser: () => panel.value?.isAwaitingUserAnswer ?? false,
 	// Until the chat mounts, its history is not known, so a past build does not open the preview.
 	isLoadingHistory: () => panel.value?.isLoadingHistory ?? true,
 	// The hand-off context, for example a credential to set up, goes with this message only.
@@ -344,14 +494,53 @@ const thread = useAssistantArtifactThread({
 		);
 	},
 	pendingWorkflowAttachment: handoff.workflow,
-	agentTargets: () => agentTargets.state.value,
+	agentTargets: () => agentTargets.state.value ?? launchAgentTargets,
+	appTargets: () => appTargets.value,
 	activeArtifactId: () => activeArtifactId.value,
 });
 provideArtifactThread(thread);
 
+const interactionExtensions = [
+	assistantConfirmationExtension,
+	assistantAnsweredQuestionsExtension,
+	assistantAutoApprovalExtension,
+	assistantPreferenceCardExtension,
+	...assistantHostEventExtensions,
+	assistantToolResultTableExtension,
+	assistantCodeToolResultExtension,
+	assistantSharedFilesExtension,
+	provideAssistantArtifactCards(thread),
+];
+
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const isAwaitingUser = () => panel.value?.isAwaitingUserAnswer ?? false;
+// A run that waits on a card can end its stream, but the build is not over.
+const isAgentRunning = () =>
+	(panel.value?.isStreaming || panel.value?.isSubmitting || isAwaitingUser()) ?? false;
+const workflowDrafts = useAssistantWorkflowDrafts({
+	liveRunId: () => thread.artifactTurns.find((turn) => turn.isLive)?.id,
+});
+const draftPreview = useDraftWorkflowPreview({
+	threadId: () => props.threadId,
+	turns: () => thread.artifactTurns,
+	workflowDrafts: () => workflowDrafts.drafts.value,
+	dismissWorkflowDrafts: workflowDrafts.dismiss,
+	isRunning: isAgentRunning,
+	isAwaitingUser,
+	isAwaitingApproval: () => panel.value?.isAwaitingUserApproval ?? false,
+});
+// The tool steps of the chat name what a node lookup or a workflow source write works on.
+const { getSpecificToolLabel } = useToolLabel();
+provide(AGENT_TOOL_STEP_LABEL_KEY, (toolName, input) =>
+	getSpecificToolLabel(toolName, isRecord(input) ? input : undefined),
+);
+// EOF Experiment cleanup
+
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
+	initialAgentId: () => launchAgentTargets?.bound?.agentId,
+	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
 	tabsStorage: {
 		// A new thread has no stored tabs, and the server does not know it before its first message.
 		load: async () =>
@@ -362,20 +551,78 @@ const preview = useCanvasPreview({
 			await saveAssistantAgentThreadTabs(rootStore.restApiContext, props.threadId, state);
 		},
 	},
+	...draftPreview.canvasOptions,
 });
+
+const canvasRunState = draftPreview.useCanvasRunState(preview);
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAppPreview', preview.openAppPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
+provideOpenResource({
+	projectId: () => props.projectId,
+	// A resource opened before the stored tabs load replaces them, and the history can open
+	// tabs for past builds, so the item waits for both.
+	isAvailable: () => preview.tabsLoaded.value && !thread.isHydratingThread,
+	excludedTabs: () => preview.openTabs.value.filter(isArtifactTab),
+	open: preview.openTab,
+});
+// Links to the resources of the thread open in the preview, as in the current Assistant.
+provide(AGENT_CHAT_MARKDOWN_HOST_KEY, {
+	resources: () => [...thread.resourceNameIndex.values()],
+	linkableResources: () => [...thread.producedArtifacts.values()],
+	artifactLinks: useArtifactLinks(),
+});
+watch(
+	[requestedAppId, () => preview.tabsLoaded.value],
+	([appId, tabsLoaded]) => {
+		if (appId && tabsLoaded) preview.openAppPreview(appId);
+	},
+	{ immediate: true },
+);
 
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
+
+// --- Mentions ---
+const mentionPicker =
+	useTemplateRef<InstanceType<typeof AssistantAtMentionPicker>>('mentionPicker');
+const mentionArtifacts = computed<WorkflowArtifactReference[]>(() =>
+	[...thread.producedArtifacts.values()]
+		.filter((artifact) => artifact.type === 'workflow' && artifact.archived !== true)
+		.map(({ id, name }) => ({ id, name })),
+);
+const mentionActiveWorkflowId = computed(() => {
+	const activeId = activeArtifactId.value;
+	return activeId && thread.producedArtifacts.get(activeId)?.type === 'workflow'
+		? activeId
+		: undefined;
+});
+const mentions = useAssistantAgentMentions({
+	threadId: props.threadId,
+	projectId: () => props.projectId,
+	panel: () => panel.value,
+	picker: () => mentionPicker.value,
+	artifacts: () => mentionArtifacts.value,
+	reservedAttachmentCount: () => pendingReferences.length,
+	isBlocked: () => panel.value?.isSubmitting ?? true,
+});
+// The picker opens over the whole composer, like the menu of the current runtime.
+const mentionInput = computed(() =>
+	mentions.menuOpen.value ? panel.value?.getInputElement() : null,
+);
+const mentionReference = computed(
+	() => mentionInput.value?.closest<HTMLElement>('[data-testid="chat-input"]') ?? null,
+);
 
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
-		activeArtifactId.value = previewVisible ? tabId : undefined;
+		const isDraft = preview.openTabs.value.some(
+			(tab) => tab.id === tabId && isArtifactTab(tab) && tab.draft,
+		);
+		activeArtifactId.value = previewVisible && !isDraft ? tabId : undefined;
 	},
 	{ immediate: true },
 );
@@ -388,6 +635,8 @@ const activeFixWithAiOffer = computed(() => {
 	const run = failedRun.value;
 	if (!run || run.executionId === dismissedExecutionId.value) return null;
 	if (panel.value?.isBusy) return null;
+	// The send would be refused, so the offer comes back once credits do.
+	if (creditsStore.isOutOfCredits) return null;
 	return { ...run, workflowName: thread.producedArtifacts.get(run.workflowId)?.name };
 });
 
@@ -517,16 +766,28 @@ function handleAgentPreviewAssistantHandoff(params: AgentTestHandoffParams): voi
 const { previewToggleLabel, togglePreview } = usePreviewToggle(preview);
 
 // --- Header ---
-// The stored title, else the first user message, as in the Assistant runtime view.
+// As in the sidebar: the generated title, else the first user message until the title
+// arrives. The panel has the message before the thread summary loads. A thread with no
+// messages has no title, so the header does not flash the placeholder.
 const threadTitle = computed(() => {
-	const title = threadsStore.threadsById.get(props.threadId)?.title;
-	if (title) return title;
-	const firstUserMessage = panel.value?.messages.find((message) => message.role === 'user');
-	return firstUserMessage?.content ? firstMessageTitle(firstUserMessage.content) : undefined;
+	const thread = threadsStore.threadsById.get(props.threadId);
+	const firstMessage = thread?.firstMessage ?? firstUserMessageText();
+	if (!thread?.title && !firstMessage) return undefined;
+	return formatThreadTitle(
+		{ title: thread?.title ?? null, firstMessage },
+		i18n.baseText('commandBar.instanceAi.newThread'),
+	);
 });
 
 function startNewThread(): void {
 	void router.push({ name: INSTANCE_AI_VIEW });
+}
+
+function viewSessionTrace(): void {
+	void router.push({
+		name: INSTANCE_AI_THREAD_SESSION_VIEW,
+		params: { threadId: props.threadId },
+	});
 }
 
 // --- Layout ---
@@ -542,6 +803,10 @@ function togglePreviewExpanded(): void {
 const isArtifactsPanelInLayout = computed(
 	() => threadAreaWidth.value >= MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
+// With the preview open, the chat is too narrow to keep the panel beside it.
+const isArtifactsPanelPinned = computed(
+	() => isArtifactsPanelInLayout.value && !preview.isPreviewVisible.value,
+);
 // A loading thread shows the panel too, so its loading state shows in place.
 const canShowArtifactsPanel = computed(
 	() =>
@@ -549,14 +814,21 @@ const canShowArtifactsPanel = computed(
 		preview.openTabs.value.length > 0 ||
 		thread.isHydratingThread,
 );
-const { showArtifactsPanel, artifactsPanelToggleLabel, toggleArtifactsPanel } =
-	useArtifactsPanelToggle({
-		isInLayout: () => isArtifactsPanelInLayout.value,
-		canShow: () => canShowArtifactsPanel.value,
-		isPreviewVisible: () => preview.isPreviewVisible.value,
-		panelSlot: useTemplateRef<HTMLElement>('artifactsPanelSlot'),
-		toggleSelector: '[data-test-id="assistant-agent-artifacts-panel-toggle"]',
-	});
+const {
+	showArtifactsPanel,
+	artifactsPanelToggleLabel,
+	toggleArtifactsPanel,
+	closeArtifactsPanelOverChat,
+} = useArtifactsPanelToggle({
+	isInLayout: () => isArtifactsPanelInLayout.value,
+	canShow: () => canShowArtifactsPanel.value,
+	isPreviewVisible: () => preview.isPreviewVisible.value,
+	canRevealOverPreview: true,
+	panelSlot: useTemplateRef<HTMLElement>('artifactsPanelSlot'),
+	toggleSelector: '[data-test-id="assistant-agent-artifacts-panel-toggle"]',
+});
+// A pick from the panel over the chat opens a tab, so the panel has done its job.
+watch(() => preview.activeTabId.value, closeArtifactsPanelOverChat);
 
 const {
 	previewMinWidth,
@@ -565,6 +837,50 @@ const {
 	isPreviewResizeEnabled,
 	handlePreviewResize,
 } = usePreviewPanelWidth({ threadAreaWidth, isExpanded: () => isPreviewExpanded.value });
+
+// --- Panel motion ---
+// Panels appear in place while a thread loads, so a restored layout does not animate.
+const panelTransitionGate = useTransitionGate({ isBlocked: () => thread.isHydratingThread });
+const arePanelTransitionsEnabled = panelTransitionGate.isEnabled;
+// While the preview opens or closes, the artifacts panel only fades, so the motions do not compete.
+const isPreviewPanelTransitioning = ref(false);
+const artifactsPanelTransitionName = computed(() => {
+	if (isPreviewPanelTransitioning.value) return 'assistant-agent-artifacts-panel-fade';
+	// Over the chat, the panel opens from the list button like a dropdown.
+	return isArtifactsPanelPinned.value
+		? 'assistant-agent-artifacts-panel-slide'
+		: 'assistant-agent-artifacts-panel-dropdown';
+});
+const workflowPreview =
+	useTemplateRef<InstanceType<typeof InstanceAiWorkflowPreview>>('workflowPreview');
+
+watch(
+	() => preview.isPreviewVisible.value,
+	(visible, wasVisible) => {
+		if (visible !== wasVisible)
+			isPreviewPanelTransitioning.value = arePanelTransitionsEnabled.value;
+	},
+	{ flush: 'sync' },
+);
+watch(
+	() => thread.isHydratingThread,
+	(isHydrating) => {
+		if (isHydrating) panelTransitionGate.suppress();
+		else panelTransitionGate.suppressUntilStableRender();
+	},
+);
+onMounted(() => panelTransitionGate.enableAfterStableRender());
+
+function onPreviewPanelAfterEnter(): void {
+	isPreviewPanelTransitioning.value = false;
+	// The canvas fitted its view while the panel was still narrow, so it fits again at full width.
+	workflowPreview.value?.requestFitView();
+}
+
+function onPreviewPanelAfterLeave(): void {
+	isPreviewPanelTransitioning.value = false;
+	isPreviewExpanded.value = false;
+}
 
 // --- Canvas nodes ---
 // "Add to chat" on the preview canvas stages the nodes in the Assistant store. Move them to
@@ -609,21 +925,26 @@ watch(
 	},
 );
 
+/** The staged nodes chips. The panel shows the other chips as cards. */
 const stagedNodes = computed(() =>
 	(panel.value?.composerAttachments ?? []).flatMap((staged) => {
-		const attachment = readNodesAttachment(staged);
-		return attachment ? [{ id: staged.chip.id, attachment }] : [];
+		const nodes = readNodesAttachment(staged);
+		return nodes ? [{ id: staged.chip.id, nodes }] : [];
 	}),
 );
+
+/** A removed handoff workflow must not come back when the page reloads. */
+function onComposerChipRemoved(chipId: string): void {
+	mentions.handleChipRemoved(chipId);
+	if (handoff.workflowChip && chipId === mentionChipId(handoff.workflowChip)) {
+		clearPendingWorkflowAttachment(props.threadId);
+	}
+}
 
 /** The user removed some of the nodes from a chip. */
 function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 	const { chip, clientContextPatch } = toNodesComposerAttachment(attachment, []);
 	panel.value?.addComposerAttachment(chip, clientContextPatch);
-}
-
-function removeStagedNodes(chipId: string): void {
-	panel.value?.removeComposerAttachment(chipId);
 }
 </script>
 
@@ -638,6 +959,24 @@ function removeStagedNodes(chipId: string): void {
 				:aria-hidden="isAgentTestDockOpen || undefined"
 			>
 				<template #actions>
+					<!-- A debug tool, so it shows with the debug flag only. A new thread has no turns
+					to show until its first message starts the session. -->
+					<N8nTooltip
+						v-if="trace.isEnabled && !isNewSession"
+						:content="i18n.baseText('agents.builder.preview.viewSession')"
+						placement="bottom"
+						:show-after="TOOLTIP_DELAY_MS"
+					>
+						<N8nIconButton
+							icon="list-tree"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('agents.builder.preview.viewSession')"
+							data-test-id="assistant-agent-view-session"
+							@click="viewSessionTrace"
+						/>
+					</N8nTooltip>
 					<N8nTooltip
 						:content="i18n.baseText('instanceAi.thread.new')"
 						placement="bottom"
@@ -672,7 +1011,7 @@ function removeStagedNodes(chipId: string): void {
 						</template>
 					</N8nActionDropdown>
 					<N8nTooltip
-						v-if="canShowArtifactsPanel && !preview.isPreviewVisible.value"
+						v-if="canShowArtifactsPanel"
 						:content="artifactsPanelToggleLabel"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
@@ -688,40 +1027,9 @@ function removeStagedNodes(chipId: string): void {
 							@click="toggleArtifactsPanel"
 						/>
 					</N8nTooltip>
-					<!-- With no tabs to show, the toggle opens a resource in a new tab. It waits for
-					the history, which can open tabs for past builds. -->
-					<InstanceAiResourcePicker
-						v-if="
-							!thread.isHydratingThread &&
-							!preview.isPreviewVisible.value &&
-							preview.openTabs.value.length === 0
-						"
-						:project-id="props.projectId"
-						:excluded-tabs="preview.openTabs.value"
-						placement="bottom-end"
-						content-test-id="assistant-agent-open-resource-picker"
-						@select="preview.openTab"
-					>
-						<template #trigger>
-							<N8nTooltip
-								:content="i18n.baseText('instanceAi.artifactsPanel.openResource')"
-								placement="bottom"
-								:show-after="TOOLTIP_DELAY_MS"
-								as-child
-							>
-								<N8nIconButton
-									icon="square-plus"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="assistant-agent-open-resource"
-									:aria-label="i18n.baseText('instanceAi.artifactsPanel.openResource')"
-								/>
-							</N8nTooltip>
-						</template>
-					</InstanceAiResourcePicker>
+					<!-- With no tab open, the "+" menu of the composer opens a resource. -->
 					<N8nTooltip
-						v-else-if="!preview.isPreviewVisible.value"
+						v-if="preview.openTabs.value.length > 0 && !preview.isPreviewVisible.value"
 						:content="previewToggleLabel"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
@@ -734,7 +1042,6 @@ function removeStagedNodes(chipId: string): void {
 							data-test-id="assistant-agent-preview-toggle"
 							:aria-label="previewToggleLabel"
 							:aria-pressed="false"
-							:disabled="preview.openTabs.value.length === 0"
 							@click="togglePreview"
 						/>
 					</N8nTooltip>
@@ -742,11 +1049,24 @@ function removeStagedNodes(chipId: string): void {
 			</InstanceAiViewHeader>
 
 			<div
-				:class="$style.contentArea"
+				:class="[
+					$style.contentArea,
+					{
+						[$style.contentAreaWithPinnedArtifacts]: showArtifactsPanel && isArtifactsPanelPinned,
+						[$style.contentAreaAnimated]: arePanelTransitionsEnabled,
+					},
+				]"
 				:inert="isAgentTestDockOpen || undefined"
 				:aria-hidden="isAgentTestDockOpen || undefined"
 			>
-				<div :class="$style.chatColumn">
+				<div
+					:class="$style.chatColumn"
+					@keydown.capture="mentions.handleKeydown"
+					@pointerdown.capture="mentions.handlePointerDown"
+					@click.capture="mentions.handleCaretMove"
+					@keyup.capture="mentions.handleCaretMove"
+					@select.capture="mentions.handleCaretMove"
+				>
 					<AgentChatPanel
 						ref="panel"
 						:project-id="props.projectId"
@@ -760,15 +1080,24 @@ function removeStagedNodes(chipId: string): void {
 						agent-status="production"
 						:connected-triggers="[]"
 						channel="system"
+						:thinking-label="draftPreview.thinkingWord.value"
+						:stopped-label="i18n.baseText('instanceAi.agentTree.stoppedByUser')"
 						:client-context="clientContext"
+						:message-references="messageReferences"
+						:input-draft="mentions.draft.value"
 						:interaction-extensions="interactionExtensions"
 						:show-attach-button="false"
+						:max-length="EXTENDED_PROMPT_MAX_LENGTH"
+						:disabled="creditsStore.isOutOfCredits"
+						:before-send="assertCreditsAvailable"
 						@stream-event="onStreamEvent"
 						@session-created="onSessionCreated"
 						@message-sending="onMessageSending"
 						@draft-cleared="messageTelemetry.setPrefill(null)"
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
+						@update:input-draft="mentions.handleTextChange"
+						@composer-attachment-removed="onComposerChipRemoved"
 					>
 						<!-- Passed only with an offer, so the chat keeps its empty state and spacing. -->
 						<template v-if="activeFixWithAiOffer" #inline-offers>
@@ -780,14 +1109,64 @@ function removeStagedNodes(chipId: string): void {
 								@dismiss="dismissFixWithAiOffer"
 							/>
 						</template>
+						<template #above-input>
+							<LimitedModeNotice />
+							<CreditWarningBanner
+								v-if="creditsStore.isOutOfCredits || creditBanner.visible.value"
+								:credits-remaining="creditsStore.creditsRemaining"
+								:credits-quota="creditsStore.creditsQuota"
+								:message="
+									creditsStore.isOutOfCredits
+										? i18n.baseText('instanceAi.error.outOfCredits.title')
+										: undefined
+								"
+								:dismissible="!creditsStore.isOutOfCredits"
+								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+								@dismiss="creditBanner.dismiss()"
+							/>
+						</template>
+						<template #message-actions="{ executionId }">
+							<N8nChatRating
+								v-if="feedback.isRateable(executionId)"
+								:rating="feedback.ratingOf(executionId)"
+								@rate="feedback.rate(executionId, $event)"
+							/>
+						</template>
+						<!-- Nodes chips can drop single nodes, so they are not cards. -->
 						<template v-if="stagedNodes.length > 0" #composer-attachments>
 							<NodesAttachmentChips
-								v-for="{ id, attachment } in stagedNodes"
+								v-for="{ id, nodes } in stagedNodes"
 								:key="id"
-								:attachment="attachment"
+								:attachment="nodes"
 								is-removable
 								@update:attachment="updateStagedNodes"
-								@remove-all="removeStagedNodes(id)"
+								@remove-all="mentions.handleChipRemoved(id)"
+							/>
+						</template>
+						<template #user-message-references="{ message }">
+							<AttachmentPreview
+								v-for="(reference, index) in shownReferences(message)"
+								:key="index"
+								:attachment="reference"
+								:is-removable="false"
+							/>
+						</template>
+						<template v-if="mentions.isEnabled.value" #composer-actions>
+							<AssistantAtMentionPicker
+								ref="mentionPicker"
+								:model-value="mentions.menuOpen.value"
+								:query="mentions.query.value"
+								:project-id="props.projectId"
+								:artifacts="mentionArtifacts"
+								:active-workflow-id="mentionActiveWorkflowId"
+								:excluded-keys="mentions.excludedKeys.value"
+								:excluded-workflow-ids="mentions.excludedWorkflowIds.value"
+								:input-element="mentionInput"
+								:reference="mentionReference"
+								:disabled="!mentions.canUseMentions.value"
+								@update:model-value="mentions.handleMenuOpenChange"
+								@select="mentions.handleSelect"
+								@empty-search="mentions.handleEmptySearch"
 							/>
 						</template>
 						<!-- The Assistant "+" menu replaces the attach button: files, connectors and browser use. -->
@@ -797,122 +1176,153 @@ function removeStagedNodes(chipId: string): void {
 								:project-id="props.projectId"
 								@attach-files="panel?.openFilePicker()"
 							/>
-							<!-- A thread that builds an agent always runs in Manual mode. -->
-							<ApprovalModeSelector
-								v-if="!threadTargetsAgent(threadsStore.threadsById.get(props.threadId)?.metadata)"
-								:thread-id="props.threadId"
-							/>
+							<ApprovalModeSelector :thread-id="props.threadId" />
 						</template>
 					</AgentChatPanel>
 				</div>
 
-				<div
-					v-if="showArtifactsPanel"
-					ref="artifactsPanelSlot"
-					:class="[
-						$style.artifactsPanelSlot,
-						{ [$style.artifactsPanelSlotOverlay]: !isArtifactsPanelInLayout },
-					]"
-					data-test-id="assistant-agent-artifacts-panel"
-				>
-					<InstanceAiArtifactsPanel />
-				</div>
+				<Transition :name="artifactsPanelTransitionName" :css="arePanelTransitionsEnabled">
+					<div
+						v-if="showArtifactsPanel"
+						ref="artifactsPanelSlot"
+						:class="[
+							$style.artifactsPanelSlot,
+							{ [$style.artifactsPanelSlotOverlay]: !isArtifactsPanelPinned },
+						]"
+						data-test-id="assistant-agent-artifacts-panel"
+					>
+						<InstanceAiArtifactsPanel />
+					</div>
+				</Transition>
 			</div>
 		</div>
 
-		<div
-			v-show="preview.isPreviewVisible.value"
-			:class="[$style.canvasArea, { [$style.canvasAreaExpanded]: isPreviewExpanded }]"
-			:style="isPreviewExpanded ? undefined : { width: `${previewPanelWidth}px` }"
-			data-test-id="assistant-agent-preview-panel"
+		<Transition
+			name="assistant-agent-preview-panel"
+			:css="arePanelTransitionsEnabled"
+			@after-enter="onPreviewPanelAfterEnter"
+			@after-leave="onPreviewPanelAfterLeave"
 		>
-			<N8nResizeWrapper
-				:width="previewPanelWidth"
-				:min-width="previewMinWidth"
-				:max-width="previewMaxWidth"
-				:supported-directions="['left']"
-				:is-resizing-enabled="isPreviewResizeEnabled"
-				:grid-size="8"
-				@resize="handlePreviewResize"
+			<div
+				v-show="preview.isPreviewVisible.value"
+				:class="[$style.canvasArea, { [$style.canvasAreaExpanded]: isPreviewExpanded }]"
+				:style="isPreviewExpanded ? undefined : { width: `${previewPanelWidth}px` }"
+				data-test-id="assistant-agent-preview-panel"
 			>
-				<N8nTabsRoot
-					:model-value="preview.activeTabId.value"
-					orientation="horizontal"
-					:class="$style.previewPanel"
-					@update:model-value="preview.selectTab"
+				<N8nResizeWrapper
+					:width="previewPanelWidth"
+					:min-width="previewMinWidth"
+					:max-width="previewMaxWidth"
+					:supported-directions="['left']"
+					:is-resizing-enabled="isPreviewResizeEnabled"
+					:grid-size="8"
+					@resize="handlePreviewResize"
 				>
-					<InstanceAiPreviewTabBar
-						:tabs="preview.openTabs.value"
-						:active-tab-id="preview.activeTabId.value"
-						:is-expanded="isPreviewExpanded"
-						:preview-toggle-label="previewToggleLabel"
-						:project-id="props.projectId"
-						@toggle-preview="togglePreview"
-						@toggle-expanded="togglePreviewExpanded"
-						@close-tab="preview.closeTab"
-						@open-tab="preview.openTab"
-						@reorder-tab="preview.reorderTab"
-					/>
-					<div :class="$style.previewContent">
-						<InstanceAiWorkflowPreview
-							v-if="preview.isPreviewVisible.value && preview.activeWorkflowId.value"
-							:key="preview.activeWorkflowId.value"
-							:class="$style.previewSlot"
-							:workflow-id="preview.activeWorkflowId.value"
-							:refresh-key="preview.workflowRefreshKey.value"
-							:execution-result="preview.activeWorkflowExecutionResult.value"
-							@workflow-failures="handleWorkflowFailures"
-							@workflow-succeeded="handleWorkflowSucceeded"
+					<N8nTabsRoot
+						:model-value="preview.activeTabId.value"
+						orientation="horizontal"
+						:class="$style.previewPanel"
+						@update:model-value="preview.selectTab"
+					>
+						<InstanceAiPreviewTabBar
+							:tabs="preview.openTabs.value"
+							:active-tab-id="preview.activeTabId.value"
+							:is-expanded="isPreviewExpanded"
+							:preview-toggle-label="previewToggleLabel"
+							:project-id="props.projectId"
+							@toggle-preview="togglePreview"
+							@toggle-expanded="togglePreviewExpanded"
+							@close-tab="preview.closeTab"
+							@open-tab="preview.openTab"
+							@reorder-tab="preview.reorderTab"
 						/>
-						<InstanceAiDataTablePreview
-							v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
-							:class="$style.previewSlot"
-							:data-table-id="preview.activeDataTableId.value"
-							:project-id="preview.activeDataTableProjectId.value"
-							:refresh-key="preview.dataTableRefreshKey.value"
-						/>
-						<InstanceAiAppPreview
-							v-if="preview.isPreviewVisible.value && preview.activeApp.value"
-							:class="$style.previewSlot"
-							:project-id="preview.activeApp.value.projectId"
-							:app-id="preview.activeApp.value.id"
-							:refresh-key="preview.appRefreshKey.value"
-							@deleted="preview.closeTab"
-						/>
-						<InstanceAiAgentPreview
-							v-if="
-								preview.isPreviewVisible.value &&
-								preview.activeAgentId.value &&
-								preview.activeAgentProjectId.value
-							"
-							:class="$style.previewSlot"
-							:agent-id="preview.activeAgentId.value"
-							:project-id="preview.activeAgentProjectId.value"
-							:preview-session-id="activeAgentPreviewSessionId"
-							:preview-open="isAgentTestDockOpen"
-							:preview-chat-target="agentPreviewChatTarget"
-							:pending="preview.activeAgentPending.value"
-							@preview-open-change="handleAgentTestDockOpenChange"
-							@assistant-handoff="handleAgentPreviewAssistantHandoff"
-						/>
-						<!-- Retain each open skill's draft while another artifact is visible. -->
-						<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">
-							<InstanceAiSkillPreview
-								v-if="preview.isPreviewVisible.value && preview.activeSkillId.value === tab.id"
+						<div :class="$style.previewContent">
+							<InstanceAiWorkflowPreview
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowId.value"
+								ref="workflowPreview"
+								:key="preview.activeWorkflowId.value"
 								:class="$style.previewSlot"
-								:skill-id="tab.id"
-								:refresh-key="preview.skillRefreshKey.value"
+								:workflow-id="preview.activeWorkflowId.value"
+								:refresh-key="preview.workflowRefreshKey.value"
+								:execution-result="preview.activeWorkflowExecutionResult.value"
+								@workflow-failures="handleWorkflowFailures"
+								@workflow-succeeded="handleWorkflowSucceeded"
+								@workflow-loaded="workflowDrafts.dismiss"
 							/>
-						</KeepAlive>
-					</div>
-				</N8nTabsRoot>
-			</N8nResizeWrapper>
-		</div>
+							<InstanceAiWorkflowDraftPreview
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
+								:key="preview.activeWorkflowDraft.value.filePath"
+								:class="$style.previewSlot"
+								:draft="preview.activeWorkflowDraft.value"
+								:building="isAgentRunning()"
+							/>
+							<InstanceAiCanvasRunOverlay
+								v-if="canvasRunState"
+								:state="canvasRunState"
+								@focus-chat="panel?.focusOpenInteraction()"
+							/>
+							<InstanceAiDataTablePreview
+								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
+								:class="$style.previewSlot"
+								:data-table-id="preview.activeDataTableId.value"
+								:project-id="preview.activeDataTableProjectId.value"
+								:refresh-key="preview.dataTableRefreshKey.value"
+							/>
+							<InstanceAiAppPreview
+								v-if="preview.isPreviewVisible.value && preview.activeApp.value"
+								:class="$style.previewSlot"
+								:project-id="preview.activeApp.value.projectId"
+								:app-id="preview.activeApp.value.id"
+								:refresh-key="preview.appRefreshKey.value"
+								:assistant-working="preview.isActiveAppInLiveTurn.value"
+								@deleted="preview.closeTab"
+							/>
+							<InstanceAiAgentPreview
+								v-if="
+									preview.isPreviewVisible.value &&
+									preview.activeAgentId.value &&
+									preview.activeAgentProjectId.value
+								"
+								:class="$style.previewSlot"
+								:agent-id="preview.activeAgentId.value"
+								:project-id="preview.activeAgentProjectId.value"
+								:preview-session-id="activeAgentPreviewSessionId"
+								:preview-open="isAgentTestDockOpen"
+								:preview-chat-target="agentPreviewChatTarget"
+								:pending="preview.activeAgentPending.value"
+								@preview-open-change="handleAgentTestDockOpenChange"
+								@assistant-handoff="handleAgentPreviewAssistantHandoff"
+							/>
+							<!-- Retain each open skill's draft while another artifact is visible. -->
+							<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">
+								<InstanceAiSkillPreview
+									v-if="preview.isPreviewVisible.value && preview.activeSkillId.value === tab.id"
+									:class="$style.previewSlot"
+									:skill-id="tab.id"
+									:refresh-key="preview.skillRefreshKey.value"
+								/>
+							</KeepAlive>
+						</div>
+					</N8nTabsRoot>
+				</N8nResizeWrapper>
+			</div>
+		</Transition>
 	</div>
 </template>
 
 <style lang="scss" module>
+// Registered, so the chat can animate the space that the pinned artifacts panel takes.
+@property --agent-chat-reserved-end {
+	syntax: '<length>';
+	inherits: true;
+	initial-value: 0;
+}
+
 .container {
+	// The timing of the panel motion, as in the current Assistant.
+	--assistant-agent-panel-transition-duration: calc(var(--duration--snappy) + 80ms);
+	--assistant-agent-panel-transition-easing: var(--easing--ease-in-out);
+
 	position: relative;
 	display: flex;
 	flex: 1;
@@ -931,13 +1341,34 @@ function removeStagedNodes(chipId: string): void {
 }
 
 .contentArea {
+	--assistant-agent-artifacts-panel-width: 280px;
+
 	position: relative;
 	display: flex;
 	flex: 1;
 	min-height: 0;
 }
 
+// The panel floats over the chat, so the chat scrollbar stays at the edge of the view.
+// The chat keeps its messages and its input clear of the panel.
+.contentAreaWithPinnedArtifacts {
+	--agent-chat-reserved-end: var(--assistant-agent-artifacts-panel-width);
+}
+
+// The messages and the input move aside together with the pinned panel.
+.contentAreaAnimated {
+	transition: --agent-chat-reserved-end var(--assistant-agent-panel-transition-duration)
+		var(--assistant-agent-panel-transition-easing);
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
+}
+
 .chatColumn {
+	// No top padding, so the fade of the messages ends at the input, not above it.
+	--agent-chat-input-padding: 0 var(--spacing--sm) var(--spacing--xs);
+
 	display: flex;
 	flex-direction: column;
 	flex: 1;
@@ -946,17 +1377,20 @@ function removeStagedNodes(chipId: string): void {
 }
 
 .artifactsPanelSlot {
-	display: flex;
-	flex-shrink: 0;
-	overflow: hidden;
-}
-
-// A narrow view shows the panel over the chat.
-.artifactsPanelSlotOverlay {
 	position: absolute;
 	top: 0;
 	right: 0;
 	z-index: 4;
+	display: flex;
+	// Only as tall as the panel, so the chat below the panel still scrolls.
+	max-height: 100%;
+	overflow: hidden;
+	// Keeps the transparent right padding of the panel off the chat scrollbar.
+	clip-path: inset(0 var(--spacing--2xs) 0 0);
+}
+
+// A narrow view shows the panel over the chat with a gap above the input.
+.artifactsPanelSlotOverlay {
 	max-height: calc(100% - var(--spacing--sm));
 }
 
@@ -989,5 +1423,115 @@ function removeStagedNodes(chipId: string): void {
 .previewSlot {
 	position: absolute;
 	inset: 0;
+}
+</style>
+
+<style lang="scss">
+// Transitions, not the keyframes of the motion mixins: the mixins file adds all its
+// keyframes to this stylesheet, and a transition reverses from where it is.
+
+// The preview opens from the right edge and pushes the chat aside.
+.assistant-agent-preview-panel-enter-active,
+.assistant-agent-preview-panel-leave-active {
+	transition:
+		width var(--assistant-agent-panel-transition-duration)
+			var(--assistant-agent-panel-transition-easing),
+		min-width var(--assistant-agent-panel-transition-duration)
+			var(--assistant-agent-panel-transition-easing),
+		opacity var(--assistant-agent-panel-transition-duration)
+			var(--assistant-agent-panel-transition-easing),
+		transform var(--assistant-agent-panel-transition-duration)
+			var(--assistant-agent-panel-transition-easing);
+	overflow: hidden;
+
+	// Without motion, the panel only fades.
+	@media (prefers-reduced-motion: reduce) {
+		transition: opacity var(--assistant-agent-panel-transition-duration) linear;
+	}
+}
+
+.assistant-agent-preview-panel-enter-from,
+.assistant-agent-preview-panel-leave-to {
+	width: 0 !important;
+	min-width: 0 !important;
+	opacity: 0;
+	transform: translateX(var(--spacing--sm));
+
+	@media (prefers-reduced-motion: reduce) {
+		transform: none;
+	}
+}
+
+// The artifacts panel slides in from the right edge and leaves the same way.
+.assistant-agent-artifacts-panel-slide-enter-active,
+.assistant-agent-artifacts-panel-slide-leave-active {
+	transition:
+		opacity var(--assistant-agent-panel-transition-duration) var(--easing--ease-out),
+		transform var(--assistant-agent-panel-transition-duration) var(--easing--ease-out);
+}
+
+.assistant-agent-artifacts-panel-slide-leave-active {
+	pointer-events: none;
+}
+
+.assistant-agent-artifacts-panel-slide-enter-from,
+.assistant-agent-artifacts-panel-slide-leave-to {
+	opacity: 0;
+	transform: translateX(100%);
+}
+
+// Over the chat, the panel opens from the list button above its top right corner, like a
+// dropdown. A transition, so a quick second click reverses it from where it is.
+.assistant-agent-artifacts-panel-dropdown-enter-active,
+.assistant-agent-artifacts-panel-dropdown-leave-active {
+	transform-origin: top right;
+	transition:
+		opacity var(--duration--snappy) var(--easing--ease-out),
+		transform var(--duration--snappy) var(--easing--ease-out);
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: opacity var(--duration--snappy) linear;
+	}
+}
+
+.assistant-agent-artifacts-panel-dropdown-leave-active {
+	pointer-events: none;
+}
+
+.assistant-agent-artifacts-panel-dropdown-enter-from,
+.assistant-agent-artifacts-panel-dropdown-leave-to {
+	opacity: 0;
+	transform: scale(0.96);
+
+	@media (prefers-reduced-motion: reduce) {
+		transform: none;
+	}
+}
+
+// While the preview opens or closes, and without motion, the artifacts panel only fades.
+.assistant-agent-artifacts-panel-fade-enter-active,
+.assistant-agent-artifacts-panel-fade-leave-active {
+	transition: opacity var(--assistant-agent-panel-transition-duration) linear;
+}
+
+.assistant-agent-artifacts-panel-fade-leave-active {
+	pointer-events: none;
+}
+
+.assistant-agent-artifacts-panel-fade-enter-from,
+.assistant-agent-artifacts-panel-fade-leave-to {
+	opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.assistant-agent-artifacts-panel-slide-enter-active,
+	.assistant-agent-artifacts-panel-slide-leave-active {
+		transition: opacity var(--assistant-agent-panel-transition-duration) linear;
+	}
+
+	.assistant-agent-artifacts-panel-slide-enter-from,
+	.assistant-agent-artifacts-panel-slide-leave-to {
+		transform: none;
+	}
 }
 </style>

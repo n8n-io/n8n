@@ -3,7 +3,13 @@ import '@/zod-alias-support';
 
 import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
+import {
+	AuthRolesService,
+	DbConnection,
+	DeploymentKeyRepository,
+	FoldStepRegistry,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
 import http from 'node:http';
@@ -31,11 +37,21 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
+import { Push } from '@/push';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
-import { JwtService, NodeTypesProxy, PostHogClient, RoleCacheService } from '@n8n/backend-services';
+import {
+	JwtService,
+	NodeTypesProxy,
+	PostHogClient,
+	PushProxy,
+	RoleCacheService,
+} from '@n8n/backend-services';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
+const aiPreferenceSettingsService = mockInstance(AiPreferenceSettingsService);
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
 
@@ -138,6 +154,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 		// Re-register all mocks
 		Container.set(AuthRolesService, authRolesService);
+		Container.set(AiPreferenceSettingsService, aiPreferenceSettingsService);
 		Container.set(RoleCacheService, roleCacheService);
 		Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 		Container.set(DbConnection, dbConnection);
@@ -161,6 +178,7 @@ describe('Start - AuthRolesService initialization', () => {
 			mockInstance(WorkflowFailureNotificationEventRelay),
 		);
 		Container.set(MessageEventBus, mockInstance(MessageEventBus));
+		Container.set(Push, mockInstance(Push));
 		Container.set(CommunityPackagesConfig, mockInstance(CommunityPackagesConfig));
 		Container.set(CommunityPackagesService, communityPackagesService);
 		Container.set(TaskRunnerModule, taskRunnerModule);
@@ -174,6 +192,8 @@ describe('Start - AuthRolesService initialization', () => {
 			mockInstance(BinaryDataConfig, { initialize: vi.fn().mockResolvedValue(undefined) }),
 		);
 		Container.set(PollJobProvider, pollJobProvider);
+		Container.set(WorkflowStatisticsRepository, mockInstance(WorkflowStatisticsRepository));
+		Container.set(WorkflowStatisticsService, mockInstance(WorkflowStatisticsService));
 
 		start = new Start();
 		// @ts-expect-error - Accessing protected property for testing
@@ -234,6 +254,43 @@ describe('Start - AuthRolesService initialization', () => {
 			expect(roleCacheService.refreshCache.mock.invocationCallOrder[0]).toBeGreaterThan(
 				authRolesService.init.mock.invocationCallOrder[0],
 			);
+		});
+
+		it('should register the push service on the push proxy before the modules initialize', async () => {
+			setupInstanceSettings('main', false, false);
+			const push = Container.get(Push);
+			const pushProxy = mockInstance(PushProxy);
+			const initModules = vi.fn().mockResolvedValue(undefined);
+			// @ts-expect-error - Accessing protected property for testing
+			start.moduleRegistry = { initModules };
+
+			await start.init();
+
+			expect(pushProxy.registerProvider).toHaveBeenCalledWith(push);
+			expect(pushProxy.registerProvider.mock.invocationCallOrder[0]).toBeLessThan(
+				initModules.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should register the workflow statistics fold step before the modules initialize', async () => {
+			setupInstanceSettings('main', false, false);
+			const initModules = vi.fn().mockImplementation(async () => {
+				const names = Container.get(FoldStepRegistry)
+					.getAll()
+					.map(({ name }) => name);
+				expect(names).toContain('workflow_statistics');
+			});
+			// @ts-expect-error - Accessing protected property for testing
+			start.moduleRegistry = { initModules };
+
+			await start.init();
+
+			expect(initModules).toHaveBeenCalledTimes(1);
+			expect(
+				Container.get(FoldStepRegistry)
+					.getAll()
+					.map(({ name }) => name),
+			).toEqual(['workflow_statistics']);
 		});
 
 		it('should register node types on the node types proxy before the modules initialize', async () => {
@@ -335,6 +392,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 			// @ts-expect-error - Accessing private method for testing
 			expect(start.initInstanceSettingsLoader).toHaveBeenCalledTimes(1);
+			expect(aiPreferenceSettingsService.init).toHaveBeenCalledTimes(1);
 		});
 
 		it('should NOT initialize instance settings loader when instanceType is not main', async () => {
@@ -344,6 +402,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 			// @ts-expect-error - Accessing private method for testing
 			expect(start.initInstanceSettingsLoader).not.toHaveBeenCalled();
+			expect(aiPreferenceSettingsService.init).not.toHaveBeenCalled();
 		});
 	});
 

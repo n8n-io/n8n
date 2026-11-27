@@ -1,4 +1,9 @@
-import { CalendarDateTime } from '@internationalized/date';
+import {
+	type CalendarDate,
+	CalendarDateTime,
+	getLocalTimeZone,
+	today,
+} from '@internationalized/date';
 import userEvent from '@testing-library/user-event';
 import { render } from '@testing-library/vue';
 
@@ -66,6 +71,42 @@ describe('N8nDateRangePicker', () => {
 			calendar.querySelectorAll('[data-reka-date-field-segment]:not([data-segment="literal"])')
 				.length,
 		).toBe(10);
+	});
+
+	describe('selected range', () => {
+		it('marks the range endpoints so the endpoint styling applies to them', async () => {
+			const day = today(getLocalTimeZone());
+			const start = day.set({ day: 10 });
+			const end = day.set({ day: 16 });
+
+			const { container } = render(DateRangePicker, {
+				props: { modelValue: { start, end } },
+			});
+			const calendar = await openCalendarPopover(container);
+
+			const cellFor = (date: CalendarDate) =>
+				calendar.querySelector(
+					`[data-reka-calendar-cell-trigger][data-value="${date.toString()}"]`,
+				);
+
+			const startCell = cellFor(start);
+			const endCell = cellFor(end);
+			const middleCell = cellFor(day.set({ day: 13 }));
+
+			// The endpoint contrast rule targets .CalendarCellTrigger cells with these
+			// data attributes. jsdom does not apply the style block, so assert the selector
+			// target instead of the resolved colour.
+			expect(startCell).toHaveClass('CalendarCellTrigger');
+			expect(startCell).toHaveAttribute('data-selection-start', 'true');
+			expect(startCell).not.toHaveAttribute('data-selection-end');
+			expect(endCell).toHaveClass('CalendarCellTrigger');
+			expect(endCell).toHaveAttribute('data-selection-end', 'true');
+			expect(endCell).not.toHaveAttribute('data-selection-start');
+			expect(middleCell).toHaveClass('CalendarCellTrigger');
+			expect(middleCell).toHaveAttribute('data-selected', 'true');
+			expect(middleCell).not.toHaveAttribute('data-selection-start');
+			expect(middleCell).not.toHaveAttribute('data-selection-end');
+		});
 	});
 
 	describe('hideInputs prop', () => {

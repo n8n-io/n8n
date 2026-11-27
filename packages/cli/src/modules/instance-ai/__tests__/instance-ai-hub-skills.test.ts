@@ -4,7 +4,6 @@ import {
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 } from '@n8n/agents';
-import type { InstanceAiEvent } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -79,8 +78,6 @@ describe('Assistant Hub runtime skills', () => {
 		else provider.isEnabled.mockResolvedValue(false);
 		const { source } = await load(provider, builtIns);
 		expect(source.registry).toEqual(builtIns.registry);
-		expect(source.shouldAppendSkillUpdates?.('hub-previously-loaded')).toBe(true);
-		expect(source.shouldAppendSkillUpdates?.(builtIn.id)).toBe(false);
 		expect(await source.loadSkill('hub-previously-loaded')).toBeNull();
 		if (flag === 'unavailable') {
 			expect(source.dynamicCatalog?.skillIds).toEqual([]);
@@ -92,6 +89,22 @@ describe('Assistant Hub runtime skills', () => {
 		}
 		expect(provider.listSkills).not.toHaveBeenCalled();
 		expect(provider.readSkill).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ flag: 'on', expected: true },
+		{ flag: 'off', expected: true },
+		{ flag: 'unavailable', expected: false },
+	])('checks loaded Hub skills for updates when the flag is $flag', async ({ flag, expected }) => {
+		const builtIns = createRuntimeSkillSource([builtIn]);
+		const provider = providerFor([content()]);
+		if (flag === 'unavailable') provider.isEnabled.mockRejectedValue(new Error('Unavailable'));
+		if (flag === 'off') provider.isEnabled.mockResolvedValue(false);
+		const { source } = await load(provider, builtIns);
+
+		// A failed Hub list must not report every loaded Hub skill as removed.
+		expect(source.shouldAppendSkillUpdates?.('hub-previously-loaded')).toBe(expected);
+		expect(source.shouldAppendSkillUpdates?.(builtIn.id)).toBe(false);
 	});
 
 	it.each([
@@ -116,7 +129,7 @@ describe('Assistant Hub runtime skills', () => {
 			],
 		});
 		const provider = providerFor([saved, content({ id: 'unselected' })]);
-		const { source, mapSkillEventForDisplay } = await load(provider);
+		const { source } = await load(provider);
 		const [entry] = hubEntries(source);
 		expect(source.dynamicCatalog?.skillIds).toEqual(hubEntries(source).map(({ id }) => id));
 		expect(source.dynamicCatalog?.notice).toContain('Load by exact skillId');
@@ -126,30 +139,12 @@ describe('Assistant Hub runtime skills', () => {
 		expect(provider.readSkill).not.toHaveBeenCalled();
 
 		const tool = createSkillLoadTool(source);
-		const call: InstanceAiEvent = {
-			type: 'tool-call',
-			runId: 'run-1',
-			agentId: 'assistant',
-			payload: { toolCallId: 'load-1', toolName: 'load_skill', args: { skillId: entry.id } },
-		};
-		expect(mapSkillEventForDisplay?.(call)).toBe(call);
-		const activation = await tool.handler?.({ skillId: entry.id }, { loadSkill: source.loadSkill });
-		const event: InstanceAiEvent = {
-			type: 'tool-result',
-			runId: call.runId,
-			agentId: call.agentId,
-			payload: { toolCallId: 'load-1', result: activation },
-		};
-		const originalEvent = structuredClone(event);
-		expect(mapSkillEventForDisplay?.(event)).toMatchObject({
-			payload: { result: { content: expect.stringContaining(saved.instructions) } },
-		});
+		const activation = await tool.handler?.({ skillId: entry.id }, {});
 		expect(activation).toMatchObject({
-			success: true,
-			content: expect.stringContaining(saved.instructions),
-			linkedFiles: { references: saved.files.map(({ path }) => ({ path })) },
+			type: 'content',
+			value: [{ type: 'text', text: expect.stringContaining(saved.instructions) }],
 		});
-		expect(event).toEqual(originalEvent);
+		for (const { path } of saved.files) expect(JSON.stringify(activation)).toContain(path);
 		expect(JSON.stringify(activation)).not.toContain('Detailed guide.');
 		expect(provider.readFile).not.toHaveBeenCalled();
 		expect(
@@ -163,48 +158,6 @@ describe('Assistant Hub runtime skills', () => {
 			'references/guide.md',
 		);
 		expect(await source.loadSkill(builtIn.id)).toMatchObject(builtIn);
-	});
-
-	it.each([
-		'built-in',
-		'unloaded',
-		'version mismatch',
-		'reference',
-		'failed',
-		'other tool',
-		'other agent',
-	])('preserves %s results in the display stream', async (scenario) => {
-		const provider = providerFor([content()]);
-		const { source, mapSkillEventForDisplay } = await load(provider);
-		const [entry] = hubEntries(source);
-		if (scenario !== 'unloaded') await source.loadSkill(entry.id);
-		mapSkillEventForDisplay?.({
-			type: 'tool-call',
-			runId: 'run-1',
-			agentId: 'assistant',
-			payload: {
-				toolCallId: 'load-1',
-				toolName: scenario === 'other tool' ? 'skills' : 'load_skill',
-				args: { skillId: entry.id },
-			},
-		});
-		const event: InstanceAiEvent = {
-			type: 'tool-result',
-			runId: 'run-1',
-			agentId: scenario === 'other agent' ? 'custom-agent' : 'assistant',
-			payload: {
-				toolCallId: 'load-1',
-				result: {
-					success: scenario !== 'failed',
-					skillId: scenario === 'built-in' ? builtIn.id : entry.id,
-					hash: scenario === 'version mismatch' ? 'other-version' : entry.hash,
-					content: 'Original output.',
-					...(scenario === 'reference' ? { filePath: 'references/guide.md' } : {}),
-				},
-			},
-		};
-		expect(mapSkillEventForDisplay?.(event)).toBe(event);
-		expect(provider.readSkill).toHaveBeenCalledTimes(scenario === 'unloaded' ? 0 : 1);
 	});
 
 	it('retains the selected version for instructions and references throughout the turn', async () => {
@@ -275,7 +228,7 @@ describe('Assistant Hub runtime skills', () => {
 	it.each([
 		['empty instructions', { instructions: ' ' }],
 		['oversized instructions', { instructions: 'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES / 2) }],
-		['unsupported file', { files: [{ path: 'scripts/run.py', content: 'print(1)' }] }],
+		['invalid file path', { files: [{ path: '../run.py', content: 'print(1)' }] }],
 		['invalid path', { files: [{ path: 'references/a\0.md', content: 'Guide.' }] }],
 	] satisfies Array<[string, Partial<SavedSkill>]>)(
 		'rejects %s on activation',
@@ -400,14 +353,27 @@ describe('Assistant Hub runtime skills', () => {
 		expect(source.getLoadError?.(entry.id)).toBeUndefined();
 	});
 
-	it.each([0, 1])('enforces the reference UTF-8 limit with %i extra bytes', async (extra) => {
-		const body = 'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES / 2) + 'a'.repeat(extra);
-		const { source } = await load(
-			providerFor([content({ files: [{ path: 'references/guide.md', content: body }] })]),
-		);
-		const file = await source.loadFile?.(hubEntries(source)[0].id, 'references/guide.md');
-		if (extra) expect(file).toBeNull();
-		else expect(file?.bytes).toBe(RUNTIME_SKILL_MAX_OUTPUT_BYTES);
+	it('loads a large reference from its original path and caps the tool response by bytes', async () => {
+		const body = 'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES / 2) + 'a';
+		const path = 'reference/degraded/guide.md';
+		const { source } = await load(providerFor([content({ files: [{ path, content: body }] })]));
+		const skillId = hubEntries(source)[0].id;
+		expect(await source.loadFile?.(skillId, path)).toMatchObject({
+			filePath: path,
+			content: body,
+			bytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES + 1,
+		});
+		const tool = createSkillLoadTool(source);
+		expect(await tool.handler?.({ skillId, filePath: path }, {})).toMatchObject({
+			success: true,
+			filePath: path,
+			bytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES + 1,
+			content: `${body.slice(0, -1)}\n\n[... output truncated to ${RUNTIME_SKILL_MAX_OUTPUT_BYTES / 1024} KB. To read the next part, call load_skill with the same filePath and offset ${RUNTIME_SKILL_MAX_OUTPUT_BYTES} ...]`,
+		});
+		// The offset from the note returns the rest of the file.
+		expect(
+			await tool.handler?.({ skillId, filePath: path, offset: RUNTIME_SKILL_MAX_OUTPUT_BYTES }, {}),
+		).toMatchObject({ success: true, content: 'a' });
 	});
 
 	it('reads only registered Hub paths and delegates built-in references', async () => {
@@ -516,7 +482,7 @@ describe('Hub load telemetry outcomes', () => {
 				agentId: 'orchestrator-1',
 				payload: { toolCallId: key, toolName: 'load_skill', args },
 			});
-			const result = await tool.handler?.(args, { loadSkill: source.loadSkill });
+			const result = await tool.handler?.(args, {});
 			telemetry.observe({
 				type: 'tool-result',
 				runId: 'run-1',

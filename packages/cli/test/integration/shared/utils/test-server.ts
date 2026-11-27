@@ -249,6 +249,7 @@ export const setupTestServer = ({
 
 					case 'ai-preferences':
 						await import('@/controllers/ai-preference.controller.js');
+						await import('@/controllers/ai-preference-settings.controller.js');
 						break;
 
 					case 'instance-ai':
@@ -431,6 +432,13 @@ export const setupTestServer = ({
 					case 'mcp':
 						await import('@/modules/mcp/mcp.module.js');
 						break;
+
+					case 'mcp-servers': {
+						// The manifest also registers the tool adapters that the module needs at init.
+						const { packagedModules } = await import('@/modules/modules.manifest.js');
+						await packagedModules['mcp-servers']?.();
+						break;
+					}
 
 					case 'module-settings':
 						await import('@/controllers/module-settings.controller.js');

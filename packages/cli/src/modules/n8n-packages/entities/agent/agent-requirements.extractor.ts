@@ -1,7 +1,10 @@
 import { Service } from '@n8n/di';
 import { getStaticSubworkflowId } from 'n8n-workflow';
 
-import { extractAgentWorkflowRefs } from '@/modules/agents/utils/extract-agent-workflow-refs';
+import {
+	extractAgentWorkflowRefs,
+	extractGuardrailCheckWorkflowIds,
+} from '@/modules/agents/utils/extract-agent-workflow-refs';
 
 import type { AgentExportRequirements, PreparedAgentExport } from './agent-export.types';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
@@ -40,6 +43,10 @@ export class AgentRequirementsExtractor {
 				return tool.workflowId;
 			}),
 		);
+		for (const id of extractGuardrailCheckWorkflowIds(config)) workflowIds.add(id);
+		for (const interaction of config?.hitlConfigurations ?? []) {
+			if (interaction.method === 'workflow') workflowIds.add(interaction.workflowId);
+		}
 		for (const node of nodes) {
 			const id = getStaticSubworkflowId(node);
 			if (id) workflowIds.add(id);

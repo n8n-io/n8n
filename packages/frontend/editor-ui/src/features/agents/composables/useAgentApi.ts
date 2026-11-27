@@ -1,6 +1,7 @@
 import type { AgentTaskCancellationState } from '@n8n/api-types';
 import type {
 	AgentPlanSnapshotDto,
+	AgentKnowledgeCollectionDto,
 	AgentApproval,
 	AgentBudgetSpend,
 	AgentBackgroundJobsResponse,
@@ -9,6 +10,8 @@ import type {
 	AgentChatListResponse,
 	AgentChatMessagesResponse,
 	AgentSessionFilesResponse,
+	GenerateAgentTestScenariosDto,
+	GenerateAgentTestScenariosResponse,
 	SystemAgentThreadSummary,
 	SystemAgentThreadsResponse,
 	AgentChatQueueResponse,
@@ -24,6 +27,7 @@ import type {
 	AgentMemorySourceFacetsDto,
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
+	AgentIntegrationAccountResponse,
 	AgentWebhookUrlResponse,
 	AgentWhatsAppVerifyTokenResponse,
 	AgentJsonVectorStoreConfig,
@@ -132,6 +136,8 @@ export type ListAgentsOptions = {
 		ids?: string[];
 		availableInMCP?: boolean;
 		includeArchived?: boolean;
+		parentFolderId?: string | null;
+		includeDescendants?: boolean;
 	};
 };
 
@@ -198,7 +204,7 @@ export const listN8nChatAgents = async (
 	});
 };
 
-/** Options for {@link listN8nChatThreads}. `cursor` is a thread's `updatedAt` ISO string. */
+/** Options for {@link listN8nChatThreads}. Pass the previous page's `nextCursor` unchanged. */
 export type ListN8nChatThreadsOptions = {
 	limit: number;
 	cursor?: string;
@@ -313,6 +319,7 @@ export const createAgent = async (
 	 *  `skills` to seed a full agent in a duplicate operation). */
 	options: {
 		id?: string;
+		parentFolderId?: string | null;
 		config?: AgentJsonConfig;
 		schema?: AgentJsonConfig;
 		tools?: Record<string, CustomToolEntry>;
@@ -325,6 +332,7 @@ export const createAgent = async (
 		`/projects/${projectId}/agents/v2`,
 		{
 			name,
+			...(options.parentFolderId !== undefined ? { parentFolderId: options.parentFolderId } : {}),
 			...(options.config ? { config: options.config } : {}),
 			...(options.id ? { id: options.id } : {}),
 			...(options.schema ? { schema: options.schema } : {}),
@@ -355,9 +363,21 @@ export const duplicateAgent = async (
 		integration.type === 'n8n_chat' ? integration : { ...integration, credentialId: '' },
 	);
 	return await createAgent(context, projectId, name, {
+		parentFolderId: agent.parentFolderId,
 		schema: { ...rest, name, integrations: draftIntegrations },
 		tools: agent.tools,
 		skills: agent.skills,
+	});
+};
+
+export const moveAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	parentFolderId: string | null,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/agents/v2/${agentId}/move`, {
+		parentFolderId,
 	});
 };
 
@@ -484,6 +504,19 @@ export const getIntegrationStatus = async (
 	);
 };
 
+export const getIntegrationAccount = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	type: string,
+): Promise<AgentIntegrationAccountResponse> => {
+	return await makeRestApiRequest<AgentIntegrationAccountResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/${encodeURIComponent(type)}/account`,
+	);
+};
+
 export const getAgentWebhookUrl = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -572,6 +605,45 @@ export const runAgentTask = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}/run`,
+	);
+};
+
+/** The collections that the agent's project can use, each marked as added to this agent or not. */
+export const listAgentKnowledgeCollections = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentKnowledgeCollectionDto[]> => {
+	return await makeRestApiRequest<AgentKnowledgeCollectionDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/knowledge-collections`,
+	);
+};
+
+export const addAgentKnowledgeCollection = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	collectionId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'PUT',
+		`/projects/${projectId}/agents/v2/${agentId}/knowledge-collections/${collectionId}`,
+	);
+};
+
+export const removeAgentKnowledgeCollection = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	collectionId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/knowledge-collections/${collectionId}`,
 	);
 };
 
@@ -1027,18 +1099,24 @@ export const steerAgentQueuedMessage = async (
 	);
 };
 
+/**
+ * The messages of a chat thread. Without `page`, the response holds the whole
+ * thread. With `page`, it holds the newest `limit` turns before `cursor`.
+ */
 export const getChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	threadId: string,
 	channel: AgentChatChannel = 'chat',
+	page?: { limit: number; cursor?: string },
 ): Promise<AgentChatMessagesResponse> => {
-	return await makeRestApiRequest<AgentChatMessagesResponse>(
-		context,
-		'GET',
-		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/messages`,
-	);
+	const path = `${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/messages`;
+	if (!page) return await makeRestApiRequest<AgentChatMessagesResponse>(context, 'GET', path);
+	return await makeRestApiRequest<AgentChatMessagesResponse>(context, 'GET', path, {
+		limit: String(page.limit),
+		...(page.cursor !== undefined ? { cursor: page.cursor } : {}),
+	});
 };
 
 /** One of the user's own threads with a system agent. Rejects with a 404 for any other thread. */
@@ -1098,13 +1176,13 @@ export const deleteSystemAgentThread = async (
 	);
 };
 
-/** Files of a preview or n8n Chat session, for the session files list. */
+/** Files of a preview, n8n Chat or system agent session, for the session files list. */
 export const getSessionFiles = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	threadId: string,
-	channel: 'chat' | 'n8n-chat' = 'chat',
+	channel: AgentChatChannel = 'chat',
 ): Promise<AgentSessionFilesResponse> =>
 	await makeRestApiRequest<AgentSessionFilesResponse>(
 		context,
@@ -1147,6 +1225,20 @@ export const clearTestChatMessages = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
+export const generateAgentTestScenarios = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: Partial<GenerateAgentTestScenariosDto> = {},
+): Promise<GenerateAgentTestScenariosResponse> => {
+	return await makeRestApiRequest<GenerateAgentTestScenariosResponse>(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/test-scenarios`,
+		payload,
 	);
 };
 

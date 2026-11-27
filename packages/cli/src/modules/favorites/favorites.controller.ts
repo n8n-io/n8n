@@ -22,7 +22,7 @@ export class FavoritesController {
 
 	@Post('/')
 	async addFavorite(req: AuthenticatedRequest, _res: unknown, @Body body: AddFavoriteDto) {
-		return await this.favoritesService.addFavorite(req.user.id, body.resourceId, body.resourceType);
+		return await this.favoritesService.addFavorite(req.user, body.resourceId, body.resourceType);
 	}
 
 	@Delete('/:resourceType/:resourceId')

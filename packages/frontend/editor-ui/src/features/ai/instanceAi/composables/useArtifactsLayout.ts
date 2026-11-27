@@ -24,6 +24,8 @@ interface UseArtifactsPanelToggleOptions {
 	/** Whether the thread has anything for the panel to show. */
 	canShow: () => boolean;
 	isPreviewVisible: () => boolean;
+	/** With the preview open, the toggle shows the panel over the chat, as in a narrow view. */
+	canRevealOverPreview?: boolean;
 	/** Hides the panel without changing the user's choice, for example during onboarding. */
 	isHidden?: () => boolean;
 	panelSlot: Readonly<ShallowRef<HTMLElement | null>>;
@@ -33,20 +35,22 @@ interface UseArtifactsPanelToggleOptions {
 
 /**
  * A wide view keeps the artifacts panel beside the chat until the user hides it.
- * A narrow view shows it over the chat only when the user asks for it.
+ * A narrow view, or a view with the preview open, shows it over the chat only when
+ * the user asks for it.
  */
 export function useArtifactsPanelToggle(options: UseArtifactsPanelToggleOptions) {
 	const i18n = useI18n();
 	const isDismissedInLayout = ref(false);
 	const isRevealed = ref(false);
 
-	const showArtifactsPanel = computed(
-		() =>
-			options.canShow() &&
-			!options.isHidden?.() &&
-			!options.isPreviewVisible() &&
-			(options.isInLayout() ? !isDismissedInLayout.value : isRevealed.value),
-	);
+	/** The panel shows over the chat, so it opens only on request and a click outside closes it. */
+	const isOverChat = () => !options.isInLayout() || options.isPreviewVisible();
+
+	const showArtifactsPanel = computed(() => {
+		if (!options.canShow() || options.isHidden?.()) return false;
+		if (options.isPreviewVisible() && !options.canRevealOverPreview) return false;
+		return isOverChat() ? isRevealed.value : !isDismissedInLayout.value;
+	});
 
 	const artifactsPanelToggleLabel = computed(() =>
 		i18n.baseText(
@@ -57,11 +61,12 @@ export function useArtifactsPanelToggle(options: UseArtifactsPanelToggleOptions)
 	);
 
 	function toggleArtifactsPanel(): void {
-		if (!options.canShow() || options.isPreviewVisible()) return;
-		if (options.isInLayout()) {
-			isDismissedInLayout.value = showArtifactsPanel.value;
-		} else {
+		if (!options.canShow()) return;
+		if (options.isPreviewVisible() && !options.canRevealOverPreview) return;
+		if (isOverChat()) {
 			isRevealed.value = !showArtifactsPanel.value;
+		} else {
+			isDismissedInLayout.value = showArtifactsPanel.value;
 		}
 	}
 
@@ -74,11 +79,11 @@ export function useArtifactsPanelToggle(options: UseArtifactsPanelToggleOptions)
 		isRevealed.value = false;
 		isDismissedInLayout.value = false;
 	});
-	// The preview replaces the panel, so closing the preview does not bring back a panel over the chat.
+	// A panel over the chat belongs to one layout. Opening or closing the preview closes it.
 	watch(
 		options.isPreviewVisible,
-		(visible) => {
-			if (visible) isRevealed.value = false;
+		() => {
+			isRevealed.value = false;
 		},
 		{ flush: 'sync' },
 	);
@@ -87,13 +92,23 @@ export function useArtifactsPanelToggle(options: UseArtifactsPanelToggleOptions)
 	onClickOutside(
 		options.panelSlot,
 		() => {
-			if (options.isInLayout()) return;
+			if (!isOverChat()) return;
 			isRevealed.value = false;
 		},
 		{ ignore: [options.toggleSelector, '.n8n-tooltip'] },
 	);
 
-	return { showArtifactsPanel, artifactsPanelToggleLabel, toggleArtifactsPanel };
+	/** Closes the panel when it shows over the chat. A panel beside the chat stays. */
+	function closeArtifactsPanelOverChat(): void {
+		isRevealed.value = false;
+	}
+
+	return {
+		showArtifactsPanel,
+		artifactsPanelToggleLabel,
+		toggleArtifactsPanel,
+		closeArtifactsPanelOverChat,
+	};
 }
 
 /**

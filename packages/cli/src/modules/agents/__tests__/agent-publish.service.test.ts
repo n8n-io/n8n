@@ -61,7 +61,7 @@ const byBuilder = { by: 'builder', trigger: 'explicit' } as const;
 
 const schema: AgentJsonConfig = {
 	name: 'Support Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help users',
 };
 
@@ -365,6 +365,7 @@ describe('AgentPublishService', () => {
 			expect.objectContaining({ versionId }),
 			[],
 			expect.anything(),
+			person,
 		);
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
@@ -617,6 +618,7 @@ describe('AgentPublishService', () => {
 			target,
 			agent.integrations,
 			expect.anything(),
+			person,
 		);
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 		expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();

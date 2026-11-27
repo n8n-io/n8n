@@ -1,4 +1,10 @@
-import type { JsonValue, StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type {
+	JsonValue,
+	StepExecutionResult,
+	StepInputSources,
+	StepSlots,
+	WorkflowGraph,
+} from '@n8n/engine';
 import { mintApprovalCallback, stepErrorDetails } from '@n8n/engine';
 import {
 	parseHitlCallbackReference,
@@ -43,6 +49,7 @@ function linked(slots: StepSlots): StepSlots {
 	);
 }
 import { V1WorkflowConverter } from '../v1-workflow-converter';
+import { realNodeTypes, splitOutNode } from './acceptance-fixtures';
 import {
 	items,
 	noSubWorkflows,
@@ -188,6 +195,53 @@ describe('V1StepExecutor', () => {
 		const graph = graphWith('test.echoParam', { message: 'solo' });
 		const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', []));
 		expect(result.outputs).toEqual([[{ json: { message: 'solo' } }]]);
+	});
+
+	it('keeps an empty first input empty when another input has items', async () => {
+		// ┌────────┐  ┌───────────┐  ┌───────────┐ i0 ┌───────┐
+		// │ Manual ├─►│ SplitOut1 ├┬►│ SplitOut2 ├───►│       │
+		// └────────┘  └───────────┘│ └───────────┘    │ Merge │
+		//                          └─────────────────►│       │
+		//                                          i1 └───────┘
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+					splitOutNode('s1', 'SplitOut1', 'list'),
+					splitOutNode('s2', 'SplitOut2', 'n'),
+					{
+						id: 'm',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3,
+						parameters: {},
+					},
+				],
+				{
+					Manual: { main: [[{ node: 'SplitOut1', type: 'main', index: 0 }]] },
+					SplitOut1: {
+						main: [
+							[
+								{ node: 'SplitOut2', type: 'main', index: 0 },
+								{ node: 'Merge', type: 'main', index: 1 },
+							],
+						],
+					},
+					SplitOut2: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				},
+			),
+		);
+		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
+			nodeTypes: realNodeTypes,
+			additionalDataFactory: testAdditionalDataFactory,
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+		});
+
+		// SplitOut2 made no items, so the engine marks its edge into Merge dead.
+		const result = await executor.execute(stepRequest(graph, 'm', [null, ...items({ list: 0 })]));
+
+		expect(result.outputs).toEqual([[expect.objectContaining({ json: { list: 0 } })]]);
 	});
 
 	it('rejects non-v1-node steps', async () => {
@@ -449,6 +503,156 @@ describe('V1StepExecutor', () => {
 			const graph = expressionWorkflow({ message: '={{ $prevNode.name }}' });
 			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'b', items({})));
 			expect(result.outputs).toEqual([[{ json: { message: 'A' } }]]);
+		});
+
+		describe('a slot fed by two edges', () => {
+			// Manual fans out to A and B, which both feed N's only input.
+			const convergingWorkflow = (nType: string, nParameters: IDataObject = {}) =>
+				converter.convert(
+					v1Workflow(
+						[
+							{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+							{ id: 'a', name: 'A', type: 'test.echoParam' },
+							{ id: 'b', name: 'B', type: 'test.echoParam' },
+							{ id: 'n', name: 'N', type: nType, parameters: nParameters },
+						],
+						{
+							Manual: {
+								main: [
+									[
+										{ node: 'A', type: 'main', index: 0 },
+										{ node: 'B', type: 'main', index: 0 },
+									],
+								],
+							},
+							A: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+							B: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+						},
+					),
+				);
+			// A's item links to the trigger's first item, B's to its second.
+			const outputsByNodeId: Record<string, StepSlots> = {
+				t: items({ seed: 1 }, { seed: 2 }),
+				a: [[{ json: { message: 'from-A' }, pairedItem: { item: 0 } }]],
+				b: [[{ json: { message: 'from-B' }, pairedItem: { item: 1 } }]],
+			};
+			const inputs: StepSlots = [
+				[{ json: { message: 'from-A' } }, { json: { message: 'from-B' } }],
+			];
+			const inputSources: StepInputSources = [
+				[
+					{ nodeId: 'a', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 },
+					{ nodeId: 'b', outputIndex: 0, iteration: 0, offset: 0, itemCount: 1 },
+				],
+			];
+
+			it('resolves $(...).item through the edge that fed each item', async () => {
+				const graph = convergingWorkflow('test.echoParam', {
+					message: "={{ $('Manual').item.json.seed }}",
+				});
+
+				const result = await testStepExecutor(graph, outputsByNodeId).execute(
+					stepRequest(graph, 'n', inputs, inputSources),
+				);
+
+				expect(result.outputs).toEqual([[{ json: { message: 1 } }, { json: { message: 2 } }]]);
+			});
+
+			it('resolves $(...).item through a later edge when the first edge is dead', async () => {
+				const graph = convergingWorkflow('test.echoParam', {
+					message: "={{ $('Manual').item.json.seed }}",
+				});
+				const { a: _deadEdge, ...onlyB } = outputsByNodeId;
+
+				const result = await testStepExecutor(graph, onlyB).execute(
+					stepRequest(graph, 'n', [[{ json: { message: 'from-B' } }]], [[inputSources[0][1]]]),
+				);
+
+				expect(result.outputs).toEqual([[{ json: { message: 2 } }]]);
+			});
+
+			describe('$prevNode', () => {
+				// B's connections come first, but A comes first in node order.
+				const edgesListedBFirst = converter.convert(
+					v1Workflow(
+						[
+							{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+							{ id: 'a', name: 'A', type: 'test.echoParam' },
+							{ id: 'b', name: 'B', type: 'test.echoParam' },
+							{
+								id: 'n',
+								name: 'N',
+								type: 'test.echoParam',
+								parameters: { message: '={{ $prevNode.name }}' },
+							},
+						],
+						{
+							Manual: {
+								main: [
+									[
+										{ node: 'B', type: 'main', index: 0 },
+										{ node: 'A', type: 'main', index: 0 },
+									],
+								],
+							},
+							B: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+							A: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+						},
+					),
+				);
+
+				it('names the first source in node order, not in edge order', async () => {
+					const result = await testStepExecutor(edgesListedBFirst, outputsByNodeId).execute(
+						stepRequest(edgesListedBFirst, 'n', inputs, inputSources),
+					);
+
+					expect(result.outputs).toEqual([
+						[{ json: { message: 'A' } }, { json: { message: 'A' } }],
+					]);
+				});
+
+				it('names the first live source when the first edge is dead', async () => {
+					const { a: _deadEdge, ...onlyB } = outputsByNodeId;
+
+					const result = await testStepExecutor(edgesListedBFirst, onlyB).execute(
+						stepRequest(
+							edgesListedBFirst,
+							'n',
+							[[{ json: { message: 'from-B' } }]],
+							[[inputSources[0][1]]],
+						),
+					);
+
+					expect(result.outputs).toEqual([[{ json: { message: 'B' } }]]);
+				});
+			});
+
+			it('links output items from every edge to their own source', async () => {
+				const graph = convergingWorkflow('test.linksToInput');
+
+				const result = await testStepExecutor(graph, outputsByNodeId).execute(
+					stepRequest(graph, 'n', inputs, inputSources),
+				);
+
+				expect(result.outputs).toEqual([
+					[
+						{
+							json: { message: 'from-A' },
+							pairedItem: {
+								item: 0,
+								sourceOverwrite: { previousNode: 'A', previousNodeOutput: 0, previousNodeRun: 0 },
+							},
+						},
+						{
+							json: { message: 'from-B' },
+							pairedItem: {
+								item: 0,
+								sourceOverwrite: { previousNode: 'B', previousNodeOutput: 0, previousNodeRun: 0 },
+							},
+						},
+					],
+				]);
+			});
 		});
 
 		it('rejects a reference to an unexecuted node', async () => {

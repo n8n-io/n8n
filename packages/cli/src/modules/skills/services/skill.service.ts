@@ -1,12 +1,12 @@
 import {
 	hasSkillInstructions,
+	SaveSkillDto,
 	SKILL_INSTRUCTIONS_REQUIRED_MESSAGE,
 	skillNameKey,
 	type AgentSkill,
 	type CreateSkillDto,
 	type ListSkillAgentsQueryDto,
 	type ListSkillsQueryDto,
-	type SaveSkillDto,
 	type SkillAgentOption,
 	type SkillDetail,
 	type SkillListCollapsedSource,
@@ -46,6 +46,8 @@ import {
 } from '../database/repositories/skill.repository';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
 import { SkillSyncedError } from '../errors/skill-synced.error';
+import { SkillSourceClientRegistry } from '../sources/skill-source-client-registry.service';
+import { skillSourceRepositoryKey } from '../sources/skill-source-client';
 import {
 	isSameSkillTarget,
 	skillScopeOf,
@@ -57,6 +59,8 @@ import {
 	withTrimmedName,
 	type LatestSkill,
 	type McpSkillContent,
+	type McpSkillFile,
+	type McpSkillListItem,
 	type ResolvedSkillRow,
 	type SkillMoveOptions,
 	type SkillSaveResult,
@@ -64,9 +68,9 @@ import {
 	type SkillUpdate,
 } from '../utils/skill-content';
 import { compareSkillFilePaths, skillContentHash } from '../utils/skill-content-hash';
-import { skillGroupPage } from '../utils/skill-group-page';
+import { skillGroupPage, type SkillSourceGroup } from '../utils/skill-group-page';
 import { getSkillHash } from '../utils/skill-hash';
-import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
+import { withUnsentSkillFiles } from '../utils/skill-model-update';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
@@ -96,7 +100,12 @@ const LIST_SORTS: Record<SkillSortOption, SkillListSort> = {
 };
 
 function toMcpSkillContent(row: ResolvedSkillRow): McpSkillContent {
-	return { id: row.skill.id, projectId: row.skill.projectId, skill: toAgentSkill(row) };
+	return {
+		id: row.skill.id,
+		projectId: row.skill.projectId,
+		versionId: row.version.id,
+		skill: toAgentSkill(row),
+	};
 }
 
 function assertUnchangedSince(
@@ -151,16 +160,18 @@ export class SkillService {
 		private readonly skillAccess: SkillAccessService,
 		private readonly skillRuntime: SkillRuntimeService,
 		private readonly skillsTelemetry: SkillsTelemetry,
-		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 		private readonly syncedFrom: SkillSyncedFromService,
 		private readonly sourceRepository: SkillSourceRepository,
 		private readonly skillSyncFlagGate: SkillSyncFlagGate,
+		private readonly sourceClients: SkillSourceClientRegistry,
 	) {}
 
 	// ---------------------------------------------------------------- user actions
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
-		if (query.groupBy === 'source') await this.skillSyncFlagGate.assertEnabled(user);
+		if (query.groupBy === 'source' || query.sourceIds) {
+			await this.skillSyncFlagGate.assertEnabled(user);
+		}
 		if (query.attachableTo !== undefined && (query.scope || query.projectId || query.agentId)) {
 			throw new UserError('Filter by attachableTo alone, without scope, projectId or agentId.');
 		}
@@ -181,6 +192,7 @@ export class SkillService {
 			attachableToProjectId,
 			usedBySkillIds,
 			createdById: query.createdById,
+			sourceIds: query.sourceIds,
 			search: query.search,
 			sort: query.sortBy && LIST_SORTS[query.sortBy],
 		};
@@ -197,6 +209,7 @@ export class SkillService {
 				count: page.count,
 				data: await this.toListItems(user, page.skills),
 				collapsedSources: page.collapsedSources,
+				sourceRanges: page.sourceRanges,
 				page: page.page,
 				pageCount: page.pageCount,
 			};
@@ -217,33 +230,79 @@ export class SkillService {
 		take: number | undefined,
 		focusSourceId?: string,
 	) {
-		let groups = await this.skillRepository.findSourceGroupSizes(visibility, match);
-		// Empty sources remain manageable in the unfiltered list.
-		if (
-			!match.search &&
-			!match.scope &&
-			!match.projectId &&
+		// Source searches and selections keep empty sources. Skill filters require a matching skill.
+		const includeEmptySources =
 			!match.createdById &&
 			!match.usedBySkillIds &&
-			!match.attachableToProjectId
-		) {
-			const sources = await this.sourceRepository.findVisibleSources(visibility.projectIds);
-			const counts = new Map(groups.map((group) => [group.sourceId, group.count]));
-			groups = sources
-				.sort((a, b) => a.identityKey.localeCompare(b.identityKey) || a.id.localeCompare(b.id))
-				.map((source) => ({ sourceId: source.id, count: counts.get(source.id) ?? 0 }));
-			const localCount = counts.get(null);
-			if (localCount) groups.push({ sourceId: null, count: localCount });
-		}
-		const page = skillGroupPage(groups, collapsed, pageIndex, take, focusSourceId);
-		const sourceIds = page.groups
-			.filter((group) => group.count > 0 && !collapsed.has(group.sourceId))
-			.map((group) => group.sourceId);
+			!match.attachableToProjectId &&
+			(Boolean(match.search || match.sourceIds) || (!match.scope && !match.projectId));
+		const sources = (
+			await this.sourceRepository.findVisibleSourcesForGrouping(visibility.projectIds)
+		).filter(
+			(source) =>
+				(!match.sourceIds || match.sourceIds.includes(source.id)) &&
+				(!match.projectId || source.projectId === match.projectId) &&
+				(!match.scope || skillScopeOf(source) === match.scope),
+		);
+		const search = match.search?.toLowerCase();
+		const searchSourceIds = search
+			? sources
+					.filter((source) =>
+						this.sourceClients
+							.get(source.type)
+							?.describe(source.locator)
+							.label.toLowerCase()
+							.includes(search),
+					)
+					.map((source) => source.id)
+			: undefined;
+		const groupedMatch = { ...match, searchSourceIds };
+		const counts = new Map(
+			(await this.skillRepository.findSourceGroupSizes(visibility, groupedMatch)).map((group) => [
+				group.sourceId,
+				group.count,
+			]),
+		);
+		const groups: SkillSourceGroup[] = sources
+			.filter(
+				(source) =>
+					counts.has(source.id) ||
+					(includeEmptySources && (!search || searchSourceIds?.includes(source.id))),
+			)
+			.map((source) => {
+				const identity = this.sourceClients.get(source.type)?.identity(source.locator);
+				return {
+					id: source.id,
+					repository: identity ? skillSourceRepositoryKey(identity) : source.type,
+					path: identity?.path ?? '',
+				};
+			})
+			.sort(
+				(a, b) =>
+					a.repository.localeCompare(b.repository) ||
+					a.path.localeCompare(b.path) ||
+					a.id.localeCompare(b.id),
+			)
+			.map(({ id }) => ({ sourceId: id, count: counts.get(id) ?? 0 }));
+		const localCount = counts.get(null);
+		if (localCount) groups.push({ sourceId: null, count: localCount });
+		const page = skillGroupPage(groups, pageIndex, take, focusSourceId);
+		const openGroups = page.groups.filter(
+			(group) => group.take > 0 && !collapsed.has(group.sourceId),
+		);
 		const [sourceSkills, localSkills] = await Promise.all([
-			this.skillRepository.findVisibleSourceSkills(visibility, match, sourceIds),
+			this.skillRepository.findVisibleSourceSkills(
+				visibility,
+				groupedMatch,
+				openGroups.map((group) => group.sourceId),
+				{
+					skip: openGroups[0]?.skip ?? 0,
+					take: openGroups.reduce((total, group) => total + group.take, 0),
+				},
+			),
 			page.localTake > 0
 				? this.skillRepository.findVisibleSlice(visibility, {
-						...match,
+						...groupedMatch,
 						withoutSource: true,
 						skip: page.localSkip,
 						take: page.localTake,
@@ -255,7 +314,7 @@ export class SkillService {
 		for (const group of page.groups) {
 			if (group.count === 0 || collapsed.has(group.sourceId)) {
 				collapsedSources.push({ sourceId: group.sourceId, index, skillCount: group.count });
-			} else index += group.count;
+			} else index += group.take;
 		}
 		return {
 			skills: [...sourceSkills, ...localSkills],
@@ -263,6 +322,14 @@ export class SkillService {
 			page: page.page,
 			pageCount: page.pageCount,
 			collapsedSources,
+			sourceRanges: page.groups
+				.filter((group) => group.take > 0)
+				.map((group) => ({
+					sourceId: group.sourceId,
+					start: group.skip + 1,
+					end: group.skip + group.take,
+					total: group.count,
+				})),
 		};
 	}
 
@@ -282,24 +349,35 @@ export class SkillService {
 		});
 	}
 
-	/** One page of the latest saved versions the user may list, for the MCP skills extension. */
+	/**
+	 * One page of the latest saved versions the user may list, for the MCP skills extension.
+	 * Reads no content for a version that `isKnown` accepts, so a repeated list reads no files.
+	 */
 	async listForMcp(
 		user: User,
 		skip: number,
 		take: number,
-	): Promise<{ count: number; skills: McpSkillContent[] }> {
+		isKnown: (versionId: string) => boolean = () => false,
+	): Promise<{ count: number; skills: McpSkillListItem[] }> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
 		const page = await this.skillRepository.findVisiblePage(visibilityOf(projectIds), {
 			skip,
 			take,
 			availableToMCP: true,
 		});
-		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
+		const versionIds = await this.skillRepository.findLatestVersionIds(
+			page.skills.map((skill) => skill.id),
+		);
+		const rows = await this.skillRepository.findVersionsByIds(
+			[...versionIds.values()].filter((versionId) => !isKnown(versionId)),
+		);
 		return {
 			count: page.count,
 			skills: page.skills.flatMap((skill) => {
-				const row = rows.get(skill.id);
-				return row ? [toMcpSkillContent(row)] : [];
+				const versionId = versionIds.get(skill.id);
+				if (!versionId) return [];
+				const row = rows.get(versionId);
+				return [{ id: skill.id, versionId, ...(row ? { content: toMcpSkillContent(row) } : {}) }];
 			}),
 		};
 	}
@@ -314,8 +392,40 @@ export class SkillService {
 		) {
 			return null;
 		}
-		const content = toMcpSkillContent(row);
-		// The origin is only for telemetry: a failed lookup must not break the read.
+		return { ...toMcpSkillContent(row), ...(await this.mcpOriginOf(skillId)) };
+	}
+
+	/**
+	 * One file of the latest saved version, for an MCP resource read. Reads the content of this
+	 * file only, so a client that reads every file of a skill does not load the skill each time.
+	 */
+	async readFileForMcp(user: User, skillId: string, path: string): Promise<McpSkillFile | null> {
+		const [skill] = await this.skillRepository.findByIds([skillId]);
+		if (
+			!skill ||
+			!skill.availableToMCP ||
+			!(await this.skillAccess.canAccess(user, skill, 'read'))
+		) {
+			return null;
+		}
+		const found = await this.skillRepository.findLatestFile(skillId, path);
+		if (!found) return null;
+		const { name, file } = found;
+		return {
+			id: skillId,
+			projectId: skill.projectId,
+			name,
+			file: {
+				path: file.path,
+				content: file.content,
+				...(file.isBinary ? { isBinary: true as const } : {}),
+			},
+			...(await this.mcpOriginOf(skillId)),
+		};
+	}
+
+	/** The origin is only for telemetry: a failed lookup must not break the read. */
+	private async mcpOriginOf(skillId: string): Promise<Pick<McpSkillContent, 'origin'>> {
 		const synced = await this.sourceRepository.findSyncedFrom(skillId).catch((error: unknown) => {
 			this.logger.warn('Could not find the source of a synced skill', {
 				skillId,
@@ -323,9 +433,8 @@ export class SkillService {
 			});
 			return null;
 		});
-		if (!synced) return content;
+		if (!synced) return {};
 		return {
-			...content,
 			origin: { provider: synced.type, access: synced.credentialId ? 'credential' : 'public' },
 		};
 	}
@@ -345,12 +454,6 @@ export class SkillService {
 		payload: CreateSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillDetail> {
-		if (
-			payload.availableToAssistant !== undefined &&
-			!(await this.assistantSkillsFlagGate.isEnabled())
-		) {
-			throw new UserError("The n8n Assistant can't use skills on this instance.");
-		}
 		const target = await this.skillAccess.resolveCreateTarget(user, payload);
 		const input = {
 			checkNameTaken: true,
@@ -390,15 +493,24 @@ export class SkillService {
 		skillId: string,
 		payload: SaveSkillDto,
 		source: SkillTelemetrySource = 'ui',
+		options: {
+			/**
+			 * For a caller that reads binary files without their content, such as a model. Its
+			 * `references` replace the text files, and the binary files that it does not name stay.
+			 */
+			keepUnnamedBinaryFiles?: boolean;
+		} = {},
 	): Promise<SkillSaveResponse> {
-		if (
-			payload.availableToAssistant !== undefined &&
-			!(await this.assistantSkillsFlagGate.isEnabled())
-		) {
-			throw new NotFoundError('Skill not found');
-		}
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'update');
 		const { scope, projectId, availableToAssistant, availableToMCP, ...update } = payload;
+		if (options.keepUnnamedBinaryFiles && update.references) {
+			const references = await this.withStoredBinaryFiles(skillId, update.references);
+			const result = SaveSkillDto.schema.shape.references.safeParse(references);
+			if (!result.success) {
+				throw new UserError(`Invalid skill files: ${result.error.issues[0].message}`);
+			}
+			update.references = references;
+		}
 		const target = scope
 			? await this.skillAccess.resolveCreateTarget(user, { scope, projectId })
 			: undefined;
@@ -451,6 +563,19 @@ export class SkillService {
 			);
 		}
 		return { id: skillId, ...saved, skillHash: getSkillHash(saved.skill) };
+	}
+
+	private async withStoredBinaryFiles(
+		skillId: string,
+		references: NonNullable<AgentSkill['references']>,
+	): Promise<NonNullable<AgentSkill['references']>> {
+		const latest = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
+		const stored = (latest?.files ?? []).map((file) => ({
+			path: file.path,
+			content: file.content,
+			...(file.isBinary ? { isBinary: true as const } : {}),
+		}));
+		return withUnsentSkillFiles(stored, references);
 	}
 
 	/** Every saved version of the skill, newest first, so the first one is the latest. Needs read access. */
@@ -868,6 +993,7 @@ export class SkillService {
 		ctx: OperationContext = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
+			await this.sourceRepository.invalidateSourceForSkill(skillId, txCtx);
 			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 			if (!skill) throw new NotFoundError('Skill not found');
 			await this.skillRepository.lockForEdit([skillId], txCtx);

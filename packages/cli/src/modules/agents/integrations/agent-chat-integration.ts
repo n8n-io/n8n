@@ -1,5 +1,7 @@
+import type { ChannelHitlDefinition } from './channel-hitl';
 import {
 	AgentIntegrationConfig,
+	type AgentIntegrationAccountResponse,
 	type AgentIntegrationDisconnectWarning,
 	type AgentMessageAuthor,
 	type AgentMessageIntegrationOrigin,
@@ -23,6 +25,7 @@ import {
 	resolveIntegrationContextQueryDefinitions,
 } from './integration-tool-definitions';
 import type {
+	ConversationToolName,
 	IntegrationAction,
 	IntegrationActionDefinition,
 	IntegrationActionParams,
@@ -287,6 +290,8 @@ export type SettleActionMessage = (params: SettleActionMessageParams) => Promise
  * The concrete subclasses live under `./platforms/`.
  */
 export abstract class AgentChatIntegration {
+	readonly hitl: ChannelHitlDefinition = { supported: false };
+
 	/** Platform identifier (`'slack'`, `'telegram'`, …). */
 	abstract readonly type: string;
 
@@ -374,6 +379,16 @@ export abstract class AgentChatIntegration {
 	/** Side-effecting actions exposed through the generated integration action tool. */
 	get actions(): IntegrationAction[] {
 		return this.actionToolDefinitions.map((definition) => definition.name);
+	}
+
+	/**
+	 * Eager conversation tools use the channel's existing action handlers.
+	 * New channels declare the silence action to opt in.
+	 */
+	get conversationTools(): ConversationToolName[] {
+		const tools: ConversationToolName[] = [];
+		if (this.actions.includes('do_not_respond')) tools.push('do_not_respond');
+		return tools;
 	}
 
 	/**
@@ -491,6 +506,15 @@ export abstract class AgentChatIntegration {
 		input: OriginInput,
 		origin: AgentMessageIntegrationOrigin,
 	): Promise<OriginNames | undefined>;
+
+	/**
+	 * Looks up the bot name and workspaces of a credential for display labels.
+	 * The caller caches the result and treats a rejection as "unknown".
+	 * Channels without a mention model leave this undefined.
+	 */
+	describeAccount?(
+		credential: Record<string, unknown>,
+	): Promise<AgentIntegrationAccountResponse | undefined>;
 
 	/**
 	 * Decides who owns the episodic memories of an incoming chat turn. Every

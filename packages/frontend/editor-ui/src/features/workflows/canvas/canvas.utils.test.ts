@@ -4,10 +4,12 @@ import {
 	createCanvasConnectionHandleString,
 	createCanvasConnectionId,
 	createEmptyCanvasRenderData,
+	getMainHandleOffset,
 	insertSpacersBetweenEndpoints,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
+	nodeNeedsCredentialSetup,
 	parseCanvasConnectionHandleString,
 	resolveCanonicalConnection,
 	shouldIgnoreCanvasShortcut,
@@ -1004,6 +1006,27 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 	});
 });
 
+describe('getMainHandleOffset', () => {
+	it.each([
+		[96, 48],
+		[160, 80],
+		[80, 40],
+	])('should put the handles of a %s px high node at half its height', (height, expected) => {
+		expect(getMainHandleOffset(height, false)).toBe(expected);
+	});
+
+	it.each([
+		[128, 64],
+		[206, 96],
+		[356, 176],
+	])(
+		'should put the handle of a %s px high agent card on the grid line nearest its center',
+		(height, expected) => {
+			expect(getMainHandleOffset(height, true)).toBe(expected);
+		},
+	);
+});
+
 describe('checkOverlap', () => {
 	it('should return true when nodes overlap', () => {
 		const node1 = { x: 0, y: 0, width: 10, height: 10 };
@@ -1243,5 +1266,49 @@ describe('computeNodeDisplaySize', () => {
 		expect(
 			displaySize([AiLanguageModel, AiMemory, AiTool, AiOutputParser], [AiTool], configurable),
 		).toEqual({ width: 224, height: 96 });
+	});
+});
+
+describe('nodeNeedsCredentialSetup', () => {
+	const credentialIssue = { notionApi: ['Credentials for Notion are not set.'] };
+
+	function nodeWith(overrides: Partial<INodeUi>): INodeUi {
+		return { ...createTestNode({ id: 'a', name: 'Alpha' }), ...overrides } as INodeUi;
+	}
+
+	it('is true when the only issue is a credential without an id', () => {
+		expect(nodeNeedsCredentialSetup(nodeWith({ issues: { credentials: credentialIssue } }))).toBe(
+			true,
+		);
+	});
+
+	it.each([
+		['the node is missing', undefined],
+		['the node has no credential issues', nodeWith({ issues: {} })],
+		[
+			'the node also has parameter issues',
+			nodeWith({
+				issues: {
+					credentials: credentialIssue,
+					parameters: { pageId: ['Parameter "Page" is required.'] },
+				},
+			}),
+		],
+		[
+			'the credential is already selected',
+			nodeWith({
+				issues: { credentials: credentialIssue },
+				credentials: { notionApi: { id: '1', name: 'Notion account' } },
+			}),
+		],
+		[
+			'the credential is managed by Gateway credits',
+			nodeWith({
+				issues: { credentials: credentialIssue },
+				credentials: { notionApi: { id: null, name: '', __aiGatewayManaged: true } },
+			}),
+		],
+	])('is false when %s', (_, node) => {
+		expect(nodeNeedsCredentialSetup(node)).toBe(false);
 	});
 });

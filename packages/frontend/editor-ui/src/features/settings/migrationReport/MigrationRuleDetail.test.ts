@@ -1175,11 +1175,13 @@ describe('MigrationRuleDetail', () => {
 			});
 		});
 
-		it('should show "never run" for workflows never executed', async () => {
+		it('should show "never run" in warning colour for workflows never executed', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
 			await waitFor(() => {
-				expect(screen.getByText('never run')).toBeInTheDocument();
+				expect(
+					screen.getByText('never run').closest('[data-test-id="migration-workflow-last-run"]'),
+				).toHaveClass('warning');
 			});
 		});
 
@@ -1595,7 +1597,7 @@ describe('MigrationRuleDetail', () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await waitFor(() => expect(sortInput()).toHaveValue('Sort by most runs'));
 
-			await userEvent.click(screen.getByRole('columnheader', { name: /Owner/ }));
+			await userEvent.click(screen.getByRole('button', { name: 'Owner' }));
 
 			await waitFor(() => expect(sortInput()).toHaveValue(''));
 		});

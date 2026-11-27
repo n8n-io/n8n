@@ -15,6 +15,7 @@ export type {
 	ExecutionMode,
 	ExecutionStatus,
 	ExecutorWaitDeclaration,
+	ErrorSourceLink,
 	ParentLink,
 	StepError,
 	StepKey,
@@ -22,6 +23,8 @@ export type {
 	ResumeBinding,
 	ResumeCause,
 	StepSlots,
+	ItemSource,
+	StepOutputSources,
 	StepStatus,
 	SeededSteps,
 	TriggerOutputs,
@@ -30,9 +33,12 @@ export type {
 } from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
 export type {
+	CreateExecutionResult,
 	ExecutionRecord,
 	ExecutionStore,
 	NewExecutionRecord,
+	PrunableExecution,
+	PrunableExecutionQuery,
 	StaleQueuedExecution,
 } from './execution-store';
 export type {
@@ -43,10 +49,14 @@ export type {
 	StepView,
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
+export { announceStepFailed } from './step-events';
+export { validateStepContext } from './validate-step-context';
 export type {
 	DueStep,
 	NewStepRecord,
 	StaleQueuedStep,
+	StaleRunningStep,
+	StaleSettledStep,
 	StepRecord,
 	StepStore,
 	StepSummary,

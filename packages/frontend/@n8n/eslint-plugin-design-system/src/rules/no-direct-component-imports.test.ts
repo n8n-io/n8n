@@ -8,6 +8,7 @@ import {
 	wrappedComponentBans,
 	type WrappedComponentBan,
 } from './wrapped-component-bans.js';
+import { wrappedModuleBans, type WrappedModuleBan } from './wrapped-module-bans.js';
 
 const ruleTester = new RuleTester();
 
@@ -61,6 +62,7 @@ const dialogBan = requireBan('reka-ui', 'Dialog');
 const dateRangeBan = requireBan('reka-ui', 'DateRangePicker');
 const toggleBan = requireBan('reka-ui', 'Toggle');
 const menuBan = requireBan('element-plus', 'ElMenu');
+const tabsBan = requireBan('element-plus', 'ElTabs');
 const radioBan = requireBan('reka-ui', 'RadioGroup');
 
 const paginationWrapper =
@@ -320,6 +322,21 @@ ruleTester.run('no-direct-component-imports', NoDirectComponentImportsRule, {
 			errors: [error('RadioGroupRoot', radioBan), error('RadioGroupItem', radioBan)],
 		},
 		{
+			name: 'element-plus tabs point at N8nTabs',
+			code: "import { ElTabs, ElTabPane } from 'element-plus';",
+			errors: [error('ElTabs', tabsBan), error('ElTabPane', tabsBan)],
+		},
+		{
+			name: 'deep element-plus tabs path',
+			code: "import Tabs from 'element-plus/es/components/tabs';",
+			errors: [error('element-plus/es/components/tabs', tabsBan)],
+		},
+		{
+			name: 'deep element-plus tab-pane path',
+			code: "import Pane from 'element-plus/es/components/tab-pane';",
+			errors: [error('element-plus/es/components/tab-pane', tabsBan)],
+		},
+		{
 			name: 'element-plus radio stays a direct primitive import',
 			code: "import { ElRadio, ElRadioGroup } from 'element-plus';",
 			errors: [
@@ -362,6 +379,11 @@ vueRuleTester.run('no-direct-component-imports templates', NoDirectComponentImpo
 			code: template('<el-menu><ElMenu /></el-menu>'),
 		},
 		{
+			name: 'tabs template tags in the allowed wrapper path',
+			filename: wrapperFile('components/N8nTabs', 'Tabs.vue'),
+			code: template('<el-tabs><ElTabPane /></el-tabs>'),
+		},
+		{
 			name: 'reka radio imports in the allowed wrapper path',
 			filename: radioWrapper,
 			code: "<script>import { RadioGroupRoot, injectRadioGroupRootContext } from 'reka-ui';</script>",
@@ -398,6 +420,18 @@ vueRuleTester.run('no-direct-component-imports templates', NoDirectComponentImpo
 			errors: [error('injectRadioGroupRootContext', radioBan)],
 		},
 		{
+			name: 'kebab-case tabs template tag',
+			filename: 'Component.vue',
+			code: template('<el-tabs><el-tab-pane /></el-tabs>'),
+			errors: [error('el-tabs', tabsBan), error('el-tab-pane', tabsBan)],
+		},
+		{
+			name: 'PascalCase tabs template tag',
+			filename: 'Component.vue',
+			code: template('<ElTabs><ElTabPane /></ElTabs>'),
+			errors: [error('ElTabs', tabsBan), error('ElTabPane', tabsBan)],
+		},
+		{
 			name: 'kebab-case radio template tag',
 			filename: 'Component.vue',
 			code: template('<el-radio />'),
@@ -421,3 +455,181 @@ vueRuleTester.run('no-direct-component-imports templates', NoDirectComponentImpo
 		},
 	],
 });
+
+const chartsBan = wrappedModuleBans.find((ban) => ban.library === 'vue-chartjs');
+if (chartsBan === undefined) throw new Error('Missing vue-chartjs module ban');
+
+const moduleError = (ban: WrappedModuleBan) => ({
+	messageId: 'noDirectWrappedModuleImport' as const,
+	data: { library: ban.library, entry: ban.entry },
+});
+
+const chartsEntry = wrapperFile('charts', 'index.ts');
+const chartsEntryWindowsPath =
+	'C:\\repo\\packages\\frontend\\@n8n\\design-system\\src\\charts\\index.ts';
+const editorChart = '/repo/packages/frontend/editor-ui/src/features/x/Chart.vue';
+
+ruleTester.run('no-direct-component-imports wrapped modules', NoDirectComponentImportsRule, {
+	valid: [
+		...wrappedModuleBans.flatMap((ban) =>
+			ban.allowedFolders.map((folder) => ({
+				name: `${ban.library} allowed in ${folder}`,
+				code: `import { createTypedChart } from '${ban.library}';\nimport type * as Lib from '${ban.library}';\nexport type { ChartComponentRef } from '${ban.library}';`,
+				filename: wrapperFile(folder, 'index.ts'),
+			})),
+		),
+		{
+			name: 'the entry folder with windows separators',
+			code: "import { createTypedChart } from 'vue-chartjs';",
+			filename: chartsEntryWindowsPath,
+		},
+		{
+			name: 'type query import in the entry folder',
+			code: "type Ref = import('vue-chartjs').ChartComponentRef;",
+			filename: chartsEntry,
+		},
+		{
+			name: 'type query import of another package',
+			code: "type Data = import('chart.js').ChartData;",
+			filename: editorChart,
+		},
+		{
+			name: 'dynamic import in the entry folder',
+			code: "const lib = await import('vue-chartjs');",
+			filename: chartsEntry,
+		},
+		{
+			name: 'the design-system entry',
+			code: "import { Bar, Line, type ChartComponentRef } from '@n8n/design-system/charts';",
+			filename: editorChart,
+		},
+		{
+			name: 'a package whose name only starts with the library name',
+			code: "import { thing } from 'vue-chartjs-extra';",
+			filename: editorChart,
+		},
+		{
+			name: 'chart.js itself stays available for types and plugins',
+			code: "import { type ChartData, Filler } from 'chart.js';",
+			filename: editorChart,
+		},
+		{
+			name: 'a dynamic import with a computed source',
+			code: 'const lib = await import(name);',
+			filename: editorChart,
+		},
+	],
+	invalid: [
+		...wrappedModuleBans.map((ban) => ({
+			name: `${ban.library} named import outside the entry`,
+			code: `import { Bar } from '${ban.library}';`,
+			filename: editorChart,
+			errors: [moduleError(ban)],
+		})),
+		{
+			name: 'aliased import',
+			code: "import { Line as LineChart } from 'vue-chartjs';",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'type-only import',
+			code: "import type { ChartComponentRef } from 'vue-chartjs';",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'inline type specifier',
+			code: "import { type ChartComponentRef } from 'vue-chartjs';",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'default import',
+			code: "import Lib from 'vue-chartjs';",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'namespace import',
+			code: "import * as Lib from 'vue-chartjs';",
+			errors: [moduleError(chartsBan)],
+		},
+		{ name: 'side-effect import', code: "import 'vue-chartjs';", errors: [moduleError(chartsBan)] },
+		{
+			name: 'subpath import',
+			code: "import { Bar } from 'vue-chartjs/dist/index.js';",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'named re-export',
+			code: "export { Bar } from 'vue-chartjs';",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'type re-export',
+			code: "export type { ChartComponentRef } from 'vue-chartjs';",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'star re-export',
+			code: "export * from 'vue-chartjs';",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'dynamic import',
+			code: "const lib = await import('vue-chartjs');",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'type query import',
+			code: "type Ref = import('vue-chartjs').ChartComponentRef;",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'type query import of a subpath',
+			code: "let chart: import('vue-chartjs/dist/index.js').ChartComponentRef;",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'import equals require',
+			code: "import Lib = require('vue-chartjs');",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'export import equals require',
+			code: "export import Lib = require('vue-chartjs');",
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'a design-system file outside the entry folder',
+			code: "import { Bar } from 'vue-chartjs';",
+			filename: wrapperFile('components/N8nCard', 'Card.vue'),
+			errors: [moduleError(chartsBan)],
+		},
+		{
+			name: 'a folder name that only starts with the entry folder name',
+			code: "import { Bar } from 'vue-chartjs';",
+			filename: wrapperFile('charts-legacy', 'index.ts'),
+			errors: [moduleError(chartsBan)],
+		},
+	],
+});
+
+vueRuleTester.run(
+	'no-direct-component-imports wrapped modules in vue files',
+	NoDirectComponentImportsRule,
+	{
+		valid: [
+			{
+				name: 'a vue file in the entry folder',
+				filename: wrapperFile('charts', 'Chart.vue'),
+				code: '<script setup lang="ts">import { Bar } from \'vue-chartjs\';</script>',
+			},
+		],
+		invalid: [
+			{
+				name: 'a script setup import in a product component',
+				filename: editorChart,
+				code: '<script setup lang="ts">import { Line } from \'vue-chartjs\';</script>',
+				errors: [moduleError(chartsBan)],
+			},
+		],
+	},
+);
