@@ -48,7 +48,7 @@ jobs:
 
   required-reviews:
     if: github.event_name != 'workflow_run'
-    uses: n8n-io/github-actions/.github/workflows/ownership-checks.yml@565cebcd8f10f91c5164219e827c30b6f9d46708 # v1.1.0
+    uses: n8n-io/github-actions/.github/workflows/ownership-checks.yml@4491aa163937339ee377d848fc56c12e2da220ea # v1.3.0
     permissions:
       id-token: write
       pull-requests: read

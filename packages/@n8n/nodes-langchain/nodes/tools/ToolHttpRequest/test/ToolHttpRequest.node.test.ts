@@ -293,6 +293,56 @@ describe('ToolHttpRequest', () => {
 			);
 		});
 
+		it('should read Digest Auth credentials from the httpDigestAuth credential', async () => {
+			helpers.httpRequest.mockResolvedValue({
+				body: 'Hello World',
+				headers: {
+					'content-type': 'text/plain',
+				},
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://httpbin.org/text/plain';
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpDigestAuth';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+
+			// The node only has the credential the user selected, so any other type is not found.
+			executeFunctions.getCredentials.mockImplementation(async (type: string) => {
+				if (type !== 'httpDigestAuth') throw new Error('Credentials not found');
+				return { user: 'username', password: 'password' };
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+
+			const res = await (response as N8nTool).invoke({});
+
+			expect(res).toEqual('Hello World');
+
+			expect(helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					auth: {
+						username: 'username',
+						password: 'password',
+						sendImmediately: false,
+					},
+				}),
+			);
+		});
+
 		it.each(['genericCredentialType', 'predefinedCredentialType'])(
 			'should send both Multiple Headers Auth headers and keep request headers with %s',
 			async (authentication) => {

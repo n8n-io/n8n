@@ -26,6 +26,7 @@ import {
 	type N8NStartupDiagnostics,
 } from './services/n8n';
 import type { PostgresHelper } from './services/postgres';
+import { assertCompatibleRedisServices } from './services/redis-cluster';
 import { helperFactories, services } from './services/registry';
 import type { TaskRunnerResult } from './services/task-runner';
 import type {
@@ -224,6 +225,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	if (userHomeHostDir && (mains > 1 || workers > 0 || webhooks > 0)) {
 		throw new Error('userHomeHostDir supports single-main stacks only (one shared home)');
 	}
+
+	assertCompatibleRedisServices(enabledServices);
 
 	const log = createElapsedLogger('stack');
 

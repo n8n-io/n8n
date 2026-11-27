@@ -13,7 +13,7 @@ export interface ClosableWorkQueueConsumerClient extends WorkQueueConsumerClient
 }
 
 export interface RedisWorkQueuesOptions {
-	/** Both queues publish over it. The caller owns it and closes it. */
+	/** Both queues share it. The caller owns it and closes it. */
 	publisher: WorkQueuePublisherClient;
 	/** Opens a new connection. It is called once for each queue that starts, because a blocking pop holds its connection. */
 	createConsumer: () => ClosableWorkQueueConsumerClient;

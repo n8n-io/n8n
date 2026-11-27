@@ -358,4 +358,32 @@ describe('SubworkflowPolicyChecker', () => {
 			await expect(checker.isCallAllowed(subworkflow, parentWorkflowId)).resolves.toBe(true);
 		});
 	});
+
+	describe('isCallableByProject', () => {
+		it('should allow a workflow owned by the caller project', async () => {
+			const projectId = uuid();
+			const subworkflow = mock<Workflow>({
+				id: 'subworkflow-id',
+				settings: { callerPolicy: 'workflowsFromSameOwner' },
+			});
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(mock<Project>({ id: projectId }));
+
+			await expect(checker.isCallableByProject(subworkflow, projectId)).resolves.toBe(true);
+		});
+
+		it.each(['none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const)(
+			'should return false for the `%s` caller policy of another project, without throwing or logging',
+			async (callerPolicy) => {
+				const subworkflow = mock<Workflow>({ id: 'subworkflow-id', settings: { callerPolicy } });
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(
+					mock<Project>({ id: uuid(), type: 'team' }),
+				);
+				const logDenial = vi.spyOn(checker as never, 'logDenial');
+
+				await expect(checker.isCallableByProject(subworkflow, uuid())).resolves.toBe(false);
+				expect(logDenial).not.toHaveBeenCalled();
+				expect(accessService.hasReadAccess).not.toHaveBeenCalled();
+			},
+		);
+	});
 });

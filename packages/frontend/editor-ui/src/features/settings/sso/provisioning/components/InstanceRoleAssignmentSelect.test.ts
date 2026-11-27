@@ -58,15 +58,12 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/features/roles/components/RoleHoverPopover.vue', () => ({
-	default: { name: 'RoleHoverPopover', template: '<div><slot /></div>' },
-}));
-vi.mock('@/features/roles/components/RoleContactAdminModal.vue', () => ({
-	default: { name: 'RoleContactAdminModal', template: '<div />' },
-}));
-vi.mock('@/features/roles/components/CustomRolesUpgradeModal.vue', () => ({
-	default: { name: 'CustomRolesUpgradeModal', template: '<div />' },
-}));
+// Stub out heavy sub-components that rely on router / dialogs.
+const roleComponentStubs = {
+	RoleHoverPopover: { template: '<div><slot /></div>' },
+	RoleContactAdminModal: { template: '<div />' },
+	CustomRolesUpgradeModal: { template: '<div />' },
+};
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn(),
@@ -107,6 +104,7 @@ const renderSelect = (props: { modelValue?: string; allowBlockAccess?: boolean }
 				},
 			},
 		}),
+		global: { stubs: roleComponentStubs },
 	})({ props: { modelValue: 'global:member', ...props } });
 
 describe('InstanceRoleAssignmentSelect', () => {

@@ -14,6 +14,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 	const scopesByProjectId = ref<Record<string, Scope[]>>({});
 	const scopesByResourceId = ref<Record<Resource, Record<string, Scope[]>>>({
 		app: {},
+		mcpServer: {},
 		agent: {},
 		aiAssistant: {},
 		aiPreference: {},

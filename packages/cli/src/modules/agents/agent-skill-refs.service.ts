@@ -394,6 +394,22 @@ export class AgentSkillRefsService {
 		);
 	}
 
+	async assertCanReadNewSkillMentions(
+		refs: AgentSkillRefs,
+		bodies: Record<string, AgentSkill>,
+		creator: User | null,
+	): Promise<void> {
+		if (!refs?.length || creator === null) return;
+		const found = await this.skillRuntime.findTargets(
+			refs.map((ref) => ref.id),
+			{},
+		);
+		for (const ref of refs) {
+			if (found.has(ref.id) || !Object.hasOwn(bodies, ref.id)) continue;
+			await this.skillAccess.assertCanReadMentionedWorkflows(creator, bodies[ref.id]);
+		}
+	}
+
 	/**
 	 * Create with a config (duplicate, import, eval seeding). A ref to a stored skill
 	 * stays a ref. A ref with a body but no stored skill gets a new skill in the agent's

@@ -611,7 +611,7 @@ onBeforeMount(() => {
 
 	&:last-of-type {
 		input {
-			padding-left: 0;
+			padding-left: var(--spacing--2xs);
 		}
 
 		.el-input__prefix {

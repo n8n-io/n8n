@@ -10,6 +10,7 @@ import {
 	versionRow,
 	resetSkillMocks,
 } from './test-utils/skill-services';
+import { SKILL_WORKFLOW_MENTION_HINT } from '../utils/skill-workflow-mention-hint';
 import type {
 	AssistantSkillContext,
 	AssistantSkillSummary,
@@ -22,7 +23,8 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 }));
 
 describe('SkillRuntimeService', () => {
-	const { skills, usage, txRunner, projectScope, runtime } = createSkillServices();
+	const { skills, usage, txRunner, projectScope, workflowsInSkillsGate, runtime } =
+		createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner }));
@@ -142,6 +144,30 @@ describe('SkillRuntimeService', () => {
 			});
 		});
 
+		it('adds the workflow hint to instructions that mention a workflow when the flag is on', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+			row.version.instructions = 'Run [Report](n8n://workflow/wf-1).';
+
+			expect((await runtime.readForAssistant(context, 'skill-1'))?.instructions).toBe(
+				`Run [Report](n8n://workflow/wf-1).\n\n${SKILL_WORKFLOW_MENTION_HINT}`,
+			);
+		});
+
+		it('keeps instructions without a workflow mention when the flag is on', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+
+			expect((await runtime.readForAssistant(context, 'skill-1'))?.instructions).toBe('Be brief.');
+		});
+
+		it('keeps instructions that mention a workflow when the flag is off', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(false);
+			row.version.instructions = 'Run [Report](n8n://workflow/wf-1).';
+
+			expect((await runtime.readForAssistant(context, 'skill-1'))?.instructions).toBe(
+				'Run [Report](n8n://workflow/wf-1).',
+			);
+		});
+
 		it('returns the path of each saved file without its content', async () => {
 			row = versionRow(row.skill, 1, { id: 'version-1' }, [
 				{ path: 'ref.md', content: 'Reference' },
@@ -190,6 +216,22 @@ describe('SkillRuntimeService', () => {
 				path: 'references/guide.md',
 				content: 'Guide.',
 			});
+		});
+
+		it('adds the workflow hint to a reference that mentions a workflow when the flag is on', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+			skills.findAssistantSkillFile.mockResolvedValue({
+				skill: row.skill,
+				file: mock<SkillFile>({
+					path: 'references/run.md',
+					content: 'Run [Report](n8n://workflow/wf-1).',
+				}),
+			});
+
+			expect(
+				(await runtime.readFileForAssistant(context, 'skill-1', 'version-1', 'references/run.md'))
+					?.content,
+			).toBe(`Run [Report](n8n://workflow/wf-1).\n\n${SKILL_WORKFLOW_MENTION_HINT}`);
 		});
 
 		it('allows instance skills without project access', async () => {

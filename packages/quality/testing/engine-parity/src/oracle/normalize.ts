@@ -101,3 +101,16 @@ export function normalize(raw: RawOutcome, parityCase: ParityCase): Outcome | un
 		runOrder: runOrder(raw.runData),
 	};
 }
+
+/** JSON with sorted keys, so that equal items give equal strings. */
+export function canonical(value: unknown): string {
+	return JSON.stringify(value, (_key, entry: unknown) =>
+		isRecord(entry)
+			? Object.fromEntries(
+					Object.keys(entry)
+						.sort()
+						.map((key) => [key, entry[key]]),
+				)
+			: entry,
+	);
+}

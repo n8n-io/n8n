@@ -12,6 +12,7 @@ describe('AgentsSkillsController route access scopes', () => {
 	it.each([
 		['listSkills', 'agent:read'],
 		['getSkill', 'agent:read'],
+		['getSkillWorkflowAccess', 'agent:read'],
 		['createSkill', 'agent:update'],
 		['updateSkill', 'agent:update'],
 		['deleteSkill', 'agent:update'],

@@ -108,7 +108,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Get the promotion settings')
 	@ApiDescription(
 		BETA_NOTE +
-			'Returns who can promote, approve, and apply in their own projects. Instance owners and admins can always do all three.',
+			'Returns who can promote, approve, and apply in their own projects, and whether every promote needs a review. Instance owners and admins can always promote, approve, and apply.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionSettingsPublicDto)
@@ -124,7 +124,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Update the promotion settings')
 	@ApiDescription(
 		BETA_NOTE +
-			'Changes who can promote, approve, and apply in their own projects. Send only the settings to change. A setting that you leave out keeps its value. Each setting gives its scopes to the project admin and project editor roles. Custom project roles keep their own scopes.',
+			'Changes who can promote, approve, and apply in their own projects, and whether every promote needs a review. Send only the settings to change. A setting that you leave out keeps its value. Each who-can setting gives its scopes to the project admin and project editor roles. Custom project roles keep their own scopes. When requireApproval is alwaysRequired, every promote pushes a new branch. With a gitlab provider, it also opens a merge request. With a git provider, n8n cannot see the review and cannot stop direct pushes.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionSettingsPublicDto)
@@ -610,7 +610,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Promote all team projects')
 	@ApiDescription(
 		BETA_NOTE +
-			"Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. A workflow or folder on the branch that moved to another team project is refused with 400 while its old project still exists, because Apply can't move it between projects. Requires a Promote environment with instance scope. Only instance owners and admins can promote all team projects. Another operation on the same environment returns 423.",
+			"Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. When the requireApproval setting is alwaysRequired, it always pushes a new branch, whatever the environment setting is. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. A workflow or folder on the branch that moved to another team project is refused with 400 while its old project still exists, because Apply can't move it between projects. Requires a Promote environment with instance scope. Only instance owners and admins can promote all team projects. Another operation on the same environment returns 423.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotePackageResultDto)
@@ -818,7 +818,7 @@ export class PromotionsPublicController {
 	@ApiSummary("Beta: Promote a selection of a project's workflows and folders")
 	@ApiDescription(
 		BETA_NOTE +
-			"Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment). Optionally send expectedPreviewRevision with the revision of the reviewed Promote preview. Status `preview-changed` means the project on this instance or its branch changed since that review, and nothing was pushed. Status `promoted` includes counts and git. Inspect status before reading counts. Instance owners and admins can always promote. Project admins and editors can promote their project when the whoCanPromote setting allows their role. Another operation on the same environment returns 423.",
+			"Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment). Optionally send expectedPreviewRevision with the revision of the reviewed Promote preview. Status `preview-changed` means the project on this instance or its branch changed since that review, and nothing was pushed. Status `promoted` includes counts and git. Inspect status before reading counts. When the requireApproval setting is alwaysRequired, the push always goes to a new branch, whatever the environment setting is. Instance owners and admins can always promote. Project admins and editors can promote their project when the whoCanPromote setting allows their role. Another operation on the same environment returns 423.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromoteSelectionResultDto)

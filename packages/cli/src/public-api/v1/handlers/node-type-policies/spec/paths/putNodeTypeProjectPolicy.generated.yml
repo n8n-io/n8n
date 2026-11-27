@@ -5,7 +5,7 @@ summary: "Preview: Replace a project's node type policy"
 description: |-
   **Preview** — breaking changes may still occur without major version bump.
 
-  Sets the project's default action and replaces the rules of its single policy document, creating both on first write. The `delegate` action is not accepted at project scope. `version` must equal the version last read; a stale value is rejected with 409, as is a project document that is shared with another scope.
+  Sets the project's default action and replaces the rules of its single policy document, creating both on first write. Only a team project can have a policy; a personal project is rejected with 400. The `delegate` action is not accepted at project scope. `version` must equal the version last read; a stale value is rejected with 409, as is a project document that is shared with another scope.
 
   Requires the `nodeTypePolicy:manage` API key scope.
 x-required-scope: nodeTypePolicy:manage
@@ -92,6 +92,8 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
     $ref: ../../../../shared/spec/responses/conflict.yml
   '415':

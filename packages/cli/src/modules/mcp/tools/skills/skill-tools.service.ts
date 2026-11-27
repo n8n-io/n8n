@@ -6,6 +6,7 @@ import {
 	projectSkillDetailsForModel,
 	skillReferenceReadError,
 	SaveSkillDto,
+	SKILL_WORKFLOW_MENTION_HINT,
 	SKILLS_MAX_PAGE_SIZE,
 	skillReferenceReadShape,
 	skillScopeSchema,
@@ -19,12 +20,12 @@ import { Service } from '@n8n/di';
 import { z } from 'zod';
 
 import {
-	AssistantSkillsFlagGate,
 	SkillService,
 	SkillSourceService,
 	SkillSyncFlagGate,
 	skillSourceReasonOf,
 	toSkillToolRefusal,
+	WorkflowsInSkillsFlagGate,
 } from '@/modules/skills';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -80,19 +81,31 @@ const updateSkillInput = {
 	),
 } satisfies z.ZodRawShape;
 
+const createSkillInputWithWorkflowHint = {
+	...createSkillInput,
+	skill: createSkillInput.skill.extend({
+		instructions: createSkillInput.skill.shape.instructions.describe(SKILL_WORKFLOW_MENTION_HINT),
+	}),
+};
+
+const updateSkillInputWithWorkflowHint = {
+	...updateSkillInput,
+	instructions: updateSkillInput.instructions.describe(SKILL_WORKFLOW_MENTION_HINT),
+};
+
 type SearchSkillsInput = z.infer<z.ZodObject<typeof searchSkillsInput>>;
 type CreateSkillInput = z.infer<z.ZodObject<typeof createSkillInput>>;
 type UpdateSkillInput = z.infer<z.ZodObject<typeof updateSkillInput>>;
 
-type SkillAvailabilityFlags = { assistantSkillsEnabled: boolean; mcpSkillsEnabled: boolean };
+type SkillAvailabilityFlags = { mcpSkillsEnabled: boolean };
 
-function withAvailabilityInputs<
-	T extends { availableToAssistant: z.ZodTypeAny; availableToMCP: z.ZodTypeAny },
->(shape: T, { assistantSkillsEnabled, mcpSkillsEnabled }: SkillAvailabilityFlags) {
-	const { availableToAssistant, availableToMCP, ...rest } = shape;
+function withAvailabilityInputs<T extends { availableToMCP: z.ZodTypeAny }>(
+	shape: T,
+	{ mcpSkillsEnabled }: SkillAvailabilityFlags,
+) {
+	const { availableToMCP, ...rest } = shape;
 	return {
 		...rest,
-		...(assistantSkillsEnabled ? { availableToAssistant } : {}),
 		...(mcpSkillsEnabled ? { availableToMCP } : {}),
 	};
 }
@@ -105,7 +118,7 @@ function summary(item: SkillListItem, flags: SkillAvailabilityFlags) {
 		scope: item.scope,
 		projectId: item.projectId,
 		projectName: item.projectName,
-		...(flags.assistantSkillsEnabled ? { availableToAssistant: item.availableToAssistant } : {}),
+		availableToAssistant: item.availableToAssistant,
 		...(flags.mcpSkillsEnabled ? { availableToMCP: item.availableToMCP } : {}),
 		latestVersion: item.latestVersion,
 		usedByAgents: item.usedByAgents,
@@ -136,9 +149,9 @@ export class McpSkillToolsService {
 	constructor(
 		private readonly telemetry: TelemetryProxy,
 		private readonly skillService: SkillService,
-		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 		private readonly skillSourceService: SkillSourceService,
 		private readonly skillSyncFlagGate: SkillSyncFlagGate,
+		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
 	async registerTools(
@@ -146,10 +159,8 @@ export class McpSkillToolsService {
 		user: User,
 		mcpSkillsEnabled: boolean,
 	): Promise<void> {
-		const flags = {
-			assistantSkillsEnabled: await this.assistantSkillsFlagGate.isEnabled(),
-			mcpSkillsEnabled,
-		};
+		const workflowsInSkillsEnabled = await this.workflowsInSkillsFlagGate.isEnabled();
+		const flags = { mcpSkillsEnabled };
 		registerTool({
 			name: 'search_n8n_skills',
 			config: {
@@ -206,7 +217,10 @@ export class McpSkillToolsService {
 			name: 'create_skill',
 			config: {
 				description: 'Create a skill.',
-				inputSchema: withAvailabilityInputs(createSkillInput, flags),
+				inputSchema: withAvailabilityInputs(
+					workflowsInSkillsEnabled ? createSkillInputWithWorkflowHint : createSkillInput,
+					flags,
+				),
 				annotations: {
 					title: 'Create Skill',
 					readOnlyHint: false,
@@ -243,7 +257,10 @@ export class McpSkillToolsService {
 			config: {
 				description:
 					'Update a skill. Pass only the fields to change. Content changes create a new version. `references` replaces the text files. Read all parts of the files you want to keep before replacing them. A binary file that you do not name stays in the skill.',
-				inputSchema: withAvailabilityInputs(updateSkillInput, flags),
+				inputSchema: withAvailabilityInputs(
+					workflowsInSkillsEnabled ? updateSkillInputWithWorkflowHint : updateSkillInput,
+					flags,
+				),
 				annotations: {
 					title: 'Update Skill',
 					readOnlyHint: false,
