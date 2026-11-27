@@ -280,6 +280,7 @@ export class RuntimeContextBuilder {
 			supportsSplitSystemMessages(this.config.model),
 			splitModelId(this.modelId).provider,
 			this.replayReasoningScope(),
+			this.modelId,
 		);
 		const preparedMessages =
 			this.nativeToolDeferral?.prepareMessages?.(messages, tools.aiTools, tools.searchToolName) ??

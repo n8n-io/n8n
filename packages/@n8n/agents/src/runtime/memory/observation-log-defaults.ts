@@ -211,6 +211,7 @@ export function createObservationLogObserveFn(
 			model: createModel(model, input.modelFetch, input.telemetry),
 			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
+			...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
 			maxRetries: options.maxRetries ?? DEFAULT_OBSERVATION_LOG_OBSERVER_MAX_RETRIES,
 			...buildFunctionIdHeaders(input.functionId, 'memory-observer'),
 			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-observer' }),

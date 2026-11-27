@@ -149,7 +149,12 @@ export class StreamSink implements RunOutputSink<void> {
 	 */
 	getAbortSnapshot(): AgentMessage | undefined {
 		if (!this.partialText) return undefined;
-		return { role: 'assistant', content: [{ type: 'text', text: this.partialText }] };
+		const model = this.services.modelId !== 'unknown' ? this.services.modelId : undefined;
+		return {
+			role: 'assistant',
+			content: [{ type: 'text', text: this.partialText }],
+			...(model ? { model } : {}),
+		};
 	}
 
 	/**

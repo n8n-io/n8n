@@ -2,6 +2,7 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { ModelMessage, SystemModelMessage } from 'ai';
 
 import { toAiMessages } from './messages';
+import { sanitizeForeignModelMessages } from './model-compatibility';
 import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
 import { detectLoadedSkills } from '../../skills/loaded-skills';
 import type { SerializedMessageList } from '../../types/runtime/message-list';
@@ -44,6 +45,14 @@ function prependNotes(messages: ModelMessage[], notes: string): void {
 			: first.content;
 	messages[0] = { ...first, content: [{ type: 'text', text: notes }, ...parts] };
 }
+
+/**
+ * Synthetic user message appended when fallback foreign-model sanitization
+ * degrades a trailing tool turn into an assistant message, preventing
+ * assistant-prefill rejections on providers that disallow them.
+ */
+export const MODEL_SWITCH_CONTINUATION_REMINDER =
+	'<system-reminder>Earlier tool results were summarized above after a model change. Continue answering from the available context. Do not mention this transition to the user.</system-reminder>';
 
 export type LlmContext = {
 	system: SystemModelMessage | SystemModelMessage[];
@@ -365,17 +374,25 @@ export class AgentMessageList {
 		splitSystemMessages = true,
 		providerId?: string,
 		replayReasoning?: ReasoningReplayScope,
+		targetModelId?: string,
 	): LlmContext {
-		const messages = toAiMessages(
-			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
-			providerId,
-			replayReasoning,
-		);
+		const llmMessages = filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages()));
+		const sanitized = targetModelId
+			? sanitizeForeignModelMessages(llmMessages, targetModelId)
+			: llmMessages;
+		const messages = toAiMessages(sanitized, providerId, replayReasoning);
 		// A masked window may be empty or start mid-exchange; anchor it with a
 		// synthetic user message so the model call stays valid.
 		if (this.observationMaskBoundary && messages[0]?.role !== 'user') {
 			messages.unshift({ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER });
 		}
+
+		// Degrading a trailing cross-provider tool turn into text can leave the
+		// conversation ending with an assistant message, which some models reject.
+		if (sanitized !== llmMessages && messages.at(-1)?.role === 'assistant') {
+			messages.push({ role: 'user', content: MODEL_SWITCH_CONTINUATION_REMINDER });
+		}
+
 		const logInMessage =
 			this.observationLogPlacement === 'message' && this.observationLogMemory?.trim();
 		if (logInMessage) prependNotes(messages, logInMessage);

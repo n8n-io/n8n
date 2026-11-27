@@ -218,6 +218,11 @@ export interface Message {
 	name?: string;
 	providerOptions?: ProviderOptions;
 	origin?: MessageOrigin;
+	/**
+	 * Canonical `provider/model` ID that produced this message.
+	 * Metadata only — never sent to the model.
+	 */
+	model?: string;
 }
 
 export interface AgentMessageBase {
