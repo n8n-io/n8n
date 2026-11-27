@@ -51,7 +51,8 @@ describe('ExecutionLimitsModule', () => {
 		expect(Container.get(ModuleMetadata).get('execution-limits')?.licenseFlag).toBeUndefined();
 	});
 
-	it('registers the fold step and controller but does not load the limits when unlicensed', async () => {
+	// By class name for the check: importing it here would register it and make the test vacuous.
+	it('registers the fold step, controller and limit check and starts the caches when unlicensed', async () => {
 		const controllerMetadata = new ControllerRegistryMetadata();
 		Container.set(ControllerRegistryMetadata, controllerMetadata);
 		licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
@@ -69,37 +70,26 @@ describe('ExecutionLimitsModule', () => {
 		expect(
 			controllerMetadata.getControllerMetadata(ExecutionLimitsController as never).basePath,
 		).toBe('/execution-limits');
-		expect(snapshot.start).not.toHaveBeenCalled();
-		expect(usageCache.start).not.toHaveBeenCalled();
-	});
-
-	// By class name: importing the check here would register it and make the test vacuous.
-	it('registers the execution limit check when licensed', async () => {
-		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
-
-		await new ExecutionLimitsModule().init();
-
 		expect(registeredCheckNames()).toContain('ExecutionLimitPolicyCheck');
+		expect(snapshot.start).toHaveBeenCalledTimes(1);
+		expect(usageCache.start).toHaveBeenCalledTimes(1);
 	});
 
 	it.each([
 		['worker', 0],
 		['main', 1],
 		['webhook', 1],
-	] as const)(
-		'on a %s instance starts the usage cache %i times when licensed',
-		async (instanceType, calls) => {
-			licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
-			mockInstance(InstanceSettings, { instanceType });
+	] as const)('on a %s instance starts the usage cache %i times', async (instanceType, calls) => {
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
+		mockInstance(InstanceSettings, { instanceType });
 
-			await new ExecutionLimitsModule().init();
+		await new ExecutionLimitsModule().init();
 
-			expect(usageCache.start).toHaveBeenCalledTimes(calls);
-		},
-	);
+		expect(usageCache.start).toHaveBeenCalledTimes(calls);
+	});
 
 	it('loads the limits on init, before the process takes work', async () => {
-		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
 		const snapshot = mockInstance(ExecutionLimitsSnapshot);
 		let finishStart = () => {};
 		snapshot.start.mockReturnValue(new Promise<void>((resolve) => (finishStart = resolve)));

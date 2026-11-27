@@ -6,7 +6,9 @@ import { Container } from '@n8n/di';
 
 /**
  * Has no licence flag: usage is counted before a licence or a limit exists, so a new
- * limit sees the earlier runs of its period. `init` stops after that step when unlicensed.
+ * limit sees the earlier runs of its period. `init` wires every part at boot and each
+ * licensed part checks the licence on each call, so runtime licence changes take effect
+ * without a restart.
  */
 @BackendModule({ name: 'execution-limits' })
 export class ExecutionLimitsModule implements ModuleInterface {
@@ -16,10 +18,10 @@ export class ExecutionLimitsModule implements ModuleInterface {
 
 		Container.get(FoldStepRegistry).register(Container.get(ExecutionLimitUsageFoldStep));
 
-		// Loaded before the licence check so an unlicensed instance returns 403 instead of 404.
+		// Loaded even when unlicensed so an unlicensed instance returns 403 instead of 404.
 		await import('./execution-limits.controller.js');
 
-		// Registered without a licence: a limit set under an earlier licence still exists,
+		// Registered even when unlicensed: a limit set under an earlier licence still exists,
 		// and the licence can change while n8n runs.
 		const hooks = Container.get(ProjectMutationHooksProxy);
 		hooks.registerProvider({
@@ -39,8 +41,6 @@ export class ExecutionLimitsModule implements ModuleInterface {
 				await Container.get(ExecutionLimitsService).applyDefaultLimitToNewProject(projectId);
 			},
 		});
-
-		if (!Container.get(LicenseState).isExecutionLimitsLicensed()) return;
 
 		// Loaded before the process takes work, so the first read already has the limits.
 		const { ExecutionLimitsSnapshot } = await import('./execution-limits-snapshot.js');
