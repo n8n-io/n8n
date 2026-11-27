@@ -129,7 +129,7 @@ describe('credentials in overrides', () => {
 					},
 				},
 			},
-			'memory.observationalMemory.observerModel.credential',
+			'memory.observationalMemory.observerModel',
 		],
 	])('rejects %s, which the restore would not rebind', (_label, overrides, path) => {
 		const result = applyAgentConfigOverrides(seeded, overrides);
@@ -137,5 +137,34 @@ describe('credentials in overrides', () => {
 		expect(result.success).toBe(false);
 		expect(!result.success && result.error).toContain(path);
 		expect(agentConfigOverrideError(seeded, overrides)).toContain(path);
+	});
+});
+
+describe('model overrides', () => {
+	it.each([
+		['the agent model', { model: 'openai/gpt-5' }, 'model'],
+		[
+			'an observer model',
+			{ memory: { observationalMemory: { observerModel: { model: 'openai/gpt-5' } } } },
+			'memory.observationalMemory.observerModel',
+		],
+		[
+			'an episodic reflector model',
+			{ memory: { episodicMemory: { reflectorModel: { model: 'openai/gpt-5' } } } },
+			'memory.episodicMemory.reflectorModel',
+		],
+	])('rejects %s, which the model resolver would not see', (_label, overrides, path) => {
+		const result = applyAgentConfigOverrides(seeded, overrides);
+
+		expect(result.success).toBe(false);
+		expect(!result.success && result.error).toContain(path);
+	});
+
+	it('still accepts other memory settings', () => {
+		expect(
+			applyAgentConfigOverrides(seeded, {
+				memory: { observationalMemory: { observerThresholdTokens: 2000 } },
+			}).success,
+		).toBe(true);
 	});
 });

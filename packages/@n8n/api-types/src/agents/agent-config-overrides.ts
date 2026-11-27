@@ -36,34 +36,38 @@ function unknownOverridePaths(override: unknown, parsed: unknown, prefix = ''): 
 	});
 }
 
-/** Credential references: `credential`, `credentialId`, and the like. */
-const CREDENTIAL_KEY = /^credential/i;
+/** Keys the eval restore binds: credentials (`credential`, `credentialId`, …)
+ *  and models (`model`, `observerModel`, `reflectorModel`, …). */
+function isRestoreBoundKey(key: string): boolean {
+	return /^credential/i.test(key) || key === 'model' || /Model$/.test(key);
+}
 
-/** Dotted paths of override keys that name a credential. */
-function credentialOverridePaths(override: unknown, prefix = ''): string[] {
+/** Dotted paths of override keys that name a credential or a model. */
+function restoreBoundOverridePaths(override: unknown, prefix = ''): string[] {
 	if (!isPlainObject(override)) return [];
 	return Object.entries(override).flatMap(([key, value]) => {
 		const path = prefix ? `${prefix}.${key}` : key;
-		return CREDENTIAL_KEY.test(key) ? [path] : credentialOverridePaths(value, path);
+		return isRestoreBoundKey(key) ? [path] : restoreBoundOverridePaths(value, path);
 	});
 }
 
 /**
- * The eval restore binds the seeded config's credentials to real ones; an
- * override is applied after it, so a credential it names would stay unbound.
+ * The eval restore binds the seeded config's credentials to real ones and
+ * resolves its models to ones the eval can run; an override is applied after
+ * it, so a credential or model it names would skip both.
  */
-function credentialOverrideError(overrides: AgentConfigOverrides): string | undefined {
-	const credentials = credentialOverridePaths(overrides);
-	if (credentials.length === 0) return undefined;
-	return `Overrides cannot set credentials (${credentials.join(', ')}): set them on the seeded Agent config and keep its memory with keepMemory`;
+function restoreBoundOverrideError(overrides: AgentConfigOverrides): string | undefined {
+	const paths = restoreBoundOverridePaths(overrides);
+	if (paths.length === 0) return undefined;
+	return `Overrides cannot set credentials or models (${paths.join(', ')}): set them on the seeded Agent config and keep its memory with keepMemory`;
 }
 
 function mergeAndValidate(
 	config: unknown,
 	overrides: AgentConfigOverrides,
 ): AgentConfigOverrideResult {
-	const credentialError = credentialOverrideError(overrides);
-	if (credentialError) return { success: false, error: credentialError };
+	const boundError = restoreBoundOverrideError(overrides);
+	if (boundError) return { success: false, error: boundError };
 	const parsed = AgentJsonConfigSchema.safeParse(deepMerge(config, overrides));
 	if (!parsed.success) {
 		return { success: false, error: formatAgentConfigZodError(parsed.error) };

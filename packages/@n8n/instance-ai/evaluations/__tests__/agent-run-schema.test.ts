@@ -162,6 +162,23 @@ describe('agentRun case contract', () => {
 		expect(messages).toEqual([expect.stringContaining('memory.episodicMemory.credential')]);
 	});
 
+	it('rejects configOverrides that set a worker model: models go through the resolver at restore', () => {
+		const messages = issueMessages(
+			directCase({
+				seed: memorySeed,
+				agentRun: {
+					mode: 'direct',
+					keepMemory: true,
+					configOverrides: {
+						memory: { observationalMemory: { observerModel: { model: 'openai/gpt-5' } } },
+					},
+				},
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('memory.observationalMemory.observerModel')]);
+	});
+
 	it('rejects configOverrides that is not an object', () => {
 		expect(
 			issueMessages(directCase({ agentRun: { mode: 'direct', configOverrides: 'memory' } })),

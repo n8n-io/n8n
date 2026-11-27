@@ -246,6 +246,14 @@ describe('AgentEvaluationService', () => {
 			expect(result.error).toContain('memory.episodicMemory.credential');
 		});
 
+		it('rejects configOverrides that set a model', async () => {
+			const { service } = setup({ ...baseConfig, memory });
+			const result = await service.prepare(user, 'proj-1', 'agent-1', {
+				configOverrides: { model: 'openai/gpt-5' },
+			});
+			expect(result.error).toContain('credentials or models (model)');
+		});
+
 		it('rejects configOverrides that do not give a valid Agent config', async () => {
 			const { service, reconstruction } = setup({ ...baseConfig, memory });
 			const result = await service.prepare(user, 'proj-1', 'agent-1', {
