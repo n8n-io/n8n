@@ -502,6 +502,7 @@ async function removeFile(fileId: string) {
 		<DeleteCollectionDialog
 			v-if="deletingCollection"
 			:collection="deletingCollection"
+			:agents="agents"
 			@close="closeDeleteDialog"
 			@deleted="onDeleted"
 		/>

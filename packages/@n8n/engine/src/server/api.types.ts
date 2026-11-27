@@ -1,4 +1,5 @@
 import type {
+	ErrorSourceLink,
 	ExecutionMode,
 	ExecutionStatus,
 	ParentLink,
@@ -66,6 +67,8 @@ export interface ExecutionSnapshot {
 	workflow: WorkflowDocument;
 	/** The parent link, or `null` for a top-level execution. */
 	parent: ParentLink | null;
+	/** The execution this error execution reports on, or `null`. */
+	errorSource: ErrorSourceLink | null;
 	createdAt: string;
 	updatedAt: string;
 	finishedAt: string | null;

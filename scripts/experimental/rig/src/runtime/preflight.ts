@@ -50,7 +50,7 @@ export async function preflight(
 	if (env.topology.engineTls) ensureEngineTls(env.paths, (message) => ui.info(message));
 
 	const main = env.processes().find((c) => c.name === 'main-1');
-	for (const warning of topologyWarnings(env.topology, main ? env.resolve(main).env : undefined)) {
+	for (const warning of topologyWarnings(env.topology, main ? env.resolve(main) : undefined)) {
 		ui.warn(warning);
 	}
 

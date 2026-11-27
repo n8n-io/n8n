@@ -1,4 +1,5 @@
 import type { ExecutionLedgerMetricsEventMap } from '@n8n/backend-module-execution-ledger';
+import type { ExecutionLimitsMetricsEventMap } from '@n8n/backend-module-execution-limits';
 import type {} from '@n8n/backend-services';
 
 import type { AgentMetricsEventMap } from './maps/agent-metrics.event-map';
@@ -25,5 +26,6 @@ declare module '@n8n/backend-services' {
 			WorkflowPublicationMetricsEventMap,
 			PollTriggerMetricsEventMap,
 			SystemTaskMetricsEventMap,
-			ExecutionLedgerMetricsEventMap {}
+			ExecutionLedgerMetricsEventMap,
+			ExecutionLimitsMetricsEventMap {}
 }

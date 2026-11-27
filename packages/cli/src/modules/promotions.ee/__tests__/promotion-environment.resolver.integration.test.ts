@@ -16,6 +16,7 @@ import { PromotionEnvironmentProjectRepository } from '../database/repositories/
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
+import { PromotionSettingsService } from '../promotion-settings.service';
 
 let providerRepository: PromotionProviderRepository;
 let environmentRepository: PromotionEnvironmentRepository;
@@ -41,6 +42,7 @@ beforeAll(async () => {
 		environmentRepository,
 		linkRepository,
 		Container.get(ProjectRepository),
+		Container.get(PromotionSettingsService),
 	);
 });
 

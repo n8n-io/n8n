@@ -4,11 +4,12 @@ name: 'Security: Base Image Refresh'
 # images, and opens the pin PRs. See .github/scripts/docker/base-image-candidates.mjs.
 
 on:
+  # Monday to Friday, so no PR or alert waits over the weekend.
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '0 2 * * 1-5'
   # Master published our own images, so the next pin PR of a chain is due.
   workflow_run:
-    workflows: ['Build: Base Image']
+    workflows: ['Build: Base Image', 'Build: Node PC Image']
     types: [completed]
     branches: [master]
   workflow_dispatch:
@@ -154,6 +155,33 @@ jobs:
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
 
+      - name: Reset the bake file again
+        run: git checkout -- docker/docker-bake.hcl
+
+      # A newer Node patch changes NODE_VERSION and all Node pins in one PR, so
+      # the Alpine and the Debian images stay aligned. CI reads NODE_VERSION.
+      - name: Prepare the Node PR
+        id: node
+        run: |
+          node .github/scripts/docker/base-image-pin-pr.mjs --candidates base-image-candidates.json \
+            --group node --body node-pr.md
+
+      - name: Open the Node PR
+        if: steps.node.outputs.changed == 'true' && steps.mode.outputs.preview == 'false'
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          add-paths: docker/docker-bake.hcl
+          commit-message: ${{ steps.node.outputs.title }}
+          title: ${{ steps.node.outputs.title }}
+          body-path: node-pr.md
+          branch: base-image-refresh/node
+          base: master
+          labels: ${{ env.PR_LABELS }}
+          delete-branch: true
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
       - name: Upload candidates
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -163,6 +191,7 @@ jobs:
             base-image-candidates.json
             daily-pr.md
             review-pr.md
+            node-pr.md
           if-no-files-found: ignore
           retention-days: 14
 
@@ -435,7 +464,6 @@ jobs:
         run: |
           node .github/scripts/docker/base-image-chain-pr.mjs --workflow "$(basename "$RUN_PATH")" \
             --sha "$RUN_SHA" --subject="${RUN_MESSAGE%%$'\n'*}" --run-url "$RUN_URL" --body chain-pr.md
-          echo "branch=base-image-refresh/chain-$(basename "$RUN_PATH" .yml)" >> "$GITHUB_OUTPUT"
 
       # A preview shows the chain PR for the last publish of the base, and opens none.
       - name: Preview the chain PR

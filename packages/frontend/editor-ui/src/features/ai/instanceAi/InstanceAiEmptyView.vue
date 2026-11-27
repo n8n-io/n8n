@@ -8,13 +8,11 @@ import { useRoute, useRouter } from 'vue-router';
 import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import type {
-	AgentChatListItem,
 	InstanceAiAttachment,
 	InstanceAiFileAttachment,
 	InstanceAiThreadSource,
 	InstanceAiThreadSubject,
 } from '@n8n/api-types';
-import { acceptedMimeTypesFromCapabilities } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -113,13 +111,7 @@ import {
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 import { useAgentsN8nChatVariant } from '@/features/agents/composables/useAgentsN8nChatFlag';
-import { AGENT_N8N_CHAT_VIEW } from '@/features/agents/constants';
 import N8nChatAgentSection from '@/features/agents/n8nChatPage/components/N8nChatAgentSection.vue';
-import N8nChatAgentPicker from '@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue';
-import {
-	discardPendingN8nChatMessage,
-	stashPendingN8nChatMessage,
-} from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import {
 	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	clearAssistantAgentLaunch,
@@ -216,16 +208,12 @@ const {
 	variant: workflowPreviewsAboveAssistantVariant,
 } = useWorkflowPreviewsAboveAssistantExperiment();
 // EOF Experiment cleanup
-// Variant A replaces the empty state with an agent picker, variant B with a
-// "Chat with [agent]" picker — both force the default layout and win over
-// every other empty-state experiment.
-const { isVariantA: isAgentsN8nChatVariantA, isVariantB: isAgentsN8nChatVariantB } =
-	useAgentsN8nChatVariant();
+// Variant A replaces the workflow preview with an agent picker. It forces the
+// default layout and wins over every other empty-state experiment.
+const { isVariantA: isAgentsN8nChatVariantA } = useAgentsN8nChatVariant();
 const forcesDefaultEmptyLayout = computed(
-	() => isCreatingApp.value || isAgentsN8nChatVariantA.value || isAgentsN8nChatVariantB.value,
+	() => isCreatingApp.value || isAgentsN8nChatVariantA.value,
 );
-// Variant B's picker selection: null is n8n Assistant, matching its own v-model contract.
-const selectedChatAgent = ref<AgentChatListItem | null>(null);
 // Experiment cleanup (124_workflow_previews_above_assistant)
 const showWorkflowPreviewsAboveAssistant = computed(
 	() => isWorkflowPreviewsAboveAssistantEnabled.value && !forcesDefaultEmptyLayout.value,
@@ -551,20 +539,6 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		return { placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY };
 	}
 
-	// Variant B shows its own "Chat with" picker above; the composer only gets
-	// suggestions while n8n Assistant (not an agent) is the current selection.
-	if (isAgentsN8nChatVariantB.value) {
-		if (selectedChatAgent.value) return {};
-		return {
-			suggestions: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
-			suggestionsComponent: WorkflowPreviewSuggestions,
-			suggestionsComponentProps: {
-				label: i18n.baseText('agents.n8nChatPage.picker.tryAskingAssistant'),
-			},
-			suggestionCatalogVersion: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
-		};
-	}
-
 	if (showProactiveStarter.value) {
 		return {};
 	}
@@ -667,26 +641,6 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 	return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
 });
 
-// Variant B always overrides the placeholder with who is selected, agent or Assistant.
-const n8nChatPickerPlaceholder = computed(() =>
-	i18n.baseText('agents.n8nChatPage.picker.placeholder', {
-		interpolate: { name: selectedChatAgent.value?.name ?? i18n.baseText('instanceAi.view.title') },
-	}),
-);
-// An agent chat does not need the workflow builder, so a selected agent keeps the composer usable.
-const isComposerAvailable = computed(
-	() => settingsStore.isWorkflowBuilderAvailable || !!selectedChatAgent.value,
-);
-// Mentions only make sense against the Assistant, so they're off while an agent is selected.
-const inputMentionsEnabled = computed(() => mentionsEnabled.value && !selectedChatAgent.value);
-// An agent can't use connectors or computer/browser use, so the composer offers only the file
-// types its model accepts; n8n Assistant keeps the full "+" menu.
-const composerAttachOnlyMimeTypes = computed(() =>
-	selectedChatAgent.value
-		? acceptedMimeTypesFromCapabilities(selectedChatAgent.value.attachments)
-		: undefined,
-);
-
 // The Assistant agent accepts only the files it can read. Check them on drop, not at send.
 const composerAcceptedMimeTypes = computed(() =>
 	settingsStore.newThreadsUseAssistantAgent ? ASSISTANT_AGENT_ACCEPTED_MIME_TYPES : undefined,
@@ -698,11 +652,6 @@ watch(chatInputRef, () => {
 	composerHasContent.value = false;
 });
 const isStartingThread = ref(false);
-// Blocks switching the recipient while a send targeting the current one is being
-// prepared (e.g. a file still encoding), so it cannot land with the wrong agent.
-const isChatAgentPickerDisabled = computed(
-	() => isStartingThread.value || !!chatInputRef.value?.isPreparingSubmission,
-);
 
 watch(
 	() => route.query[INSTANCE_AI_PROJECT_ID_QUERY],
@@ -713,12 +662,6 @@ watch(
 		selectedProject.value = resolveInitialProjectId();
 	},
 );
-
-// Variant B: the project dropdown follows the picked agent's project, and goes
-// back to the entry project when the user switches back to the Assistant.
-watch(selectedChatAgent, (agent) => {
-	selectedProject.value = agent ? agent.project.id : resolveInitialProjectId();
-});
 
 const emptyLayoutRef = useTemplateRef<HTMLElement>('emptyLayout');
 const centeredInputRef = useTemplateRef<HTMLElement>('centeredInput');
@@ -781,34 +724,6 @@ async function handleSubmit(
 	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
-	if (selectedChatAgent.value) {
-		const agentId = selectedChatAgent.value.id;
-		// Resource attachments (workflow/agent/nodes references) don't apply to an
-		// agent's own n8n Chat page, only binary files do.
-		const fileAttachments = (attachments ?? []).filter(
-			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
-		);
-		const files = fileAttachments.map((attachment) =>
-			base64ToFile(attachment.data, attachment.fileName, attachment.mimeType),
-		);
-		// Nothing the agent can take (e.g. only resource references): keep the draft.
-		if (!message.trim() && files.length === 0) {
-			restoreDraftAfterFailedSubmit(restoreDraft);
-			return;
-		}
-		const pendingMessage = { agentId, text: message, files };
-		stashPendingN8nChatMessage(pendingMessage);
-		const failure = await router.push({ name: AGENT_N8N_CHAT_VIEW, params: { agentId } });
-		// A blocked or cancelled navigation must not leave the hand-off for a later
-		// visit. Only discard and restore the draft if the slot still holds this
-		// submission: a second submit made while this push was pending already
-		// replaced it, and that one must not lose its stash or its draft.
-		if (failure && discardPendingN8nChatMessage(pendingMessage)) {
-			restoreDraftAfterFailedSubmit(restoreDraft);
-		}
-		return;
-	}
-
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
@@ -1068,13 +983,7 @@ async function handleWorkflowPreviewExampleUse(
 					/>
 				</div>
 				<!-- EOF Experiment cleanup -->
-				<N8nChatAgentPicker
-					v-if="isAgentsN8nChatVariantB && !isCreatingApp"
-					v-model="selectedChatAgent"
-					:project-id="selectedProject"
-					:disabled="isChatAgentPickerDisabled"
-				/>
-				<InstanceAiEmptyState v-else :title-key="emptyStateTitleKey" :show-title-icon="true" />
+				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
 				<div
 					ref="centeredInput"
 					:class="[
@@ -1104,17 +1013,15 @@ async function handleWorkflowPreviewExampleUse(
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
-					<WorkflowBuilderUnavailableNotice v-if="!isComposerAvailable" />
+					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<LimitedModeNotice />
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
 						:is-out-of-credits="isOutOfCredits"
-						:is-workflow-builder-available="isComposerAvailable"
-						:mentions-enabled="inputMentionsEnabled"
+						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+						:mentions-enabled="mentionsEnabled"
 						:mention-project-id="selectedProject"
-						:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
-						:attach-only-mime-types="composerAttachOnlyMimeTypes"
 						:accepted-mime-types="composerAcceptedMimeTypes"
 						v-bind="
 							// Experiment cleanup (124_workflow_previews_above_assistant)
@@ -1127,8 +1034,7 @@ async function handleWorkflowPreviewExampleUse(
 						@workflow-preview="handleWorkflowPreview"
 						@content-change="composerHasContent = $event"
 					>
-						<!-- Variant B can start an Agent chat, where Assistant approval modes don't apply. -->
-						<template v-if="!selectedChatAgent" #footer-after-menu>
+						<template #footer-after-menu>
 							<ApprovalModeSelector />
 						</template>
 						<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
@@ -1149,10 +1055,9 @@ async function handleWorkflowPreviewExampleUse(
 					/>
 					<!-- EOF Experiment cleanup -->
 				</div>
-				<!-- Variant A shows the agent picker here instead of the workflow preview;
-				variant B drops the preview canvas entirely (hover preview stays off). -->
+				<!-- Variant A shows the agent picker here instead of the workflow preview. -->
 				<N8nChatAgentSection v-if="isAgentsN8nChatVariantA && !isCreatingApp" />
-				<Transition v-else-if="!isAgentsN8nChatVariantB" name="workflow-preview-fade">
+				<Transition v-else name="workflow-preview-fade">
 					<div
 						v-if="
 							!showWorkflowPreviewsAboveAssistant && // Experiment cleanup (124_workflow_previews_above_assistant)

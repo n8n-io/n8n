@@ -73,6 +73,7 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from '../components/InstanceAiConversation.vue';
+import ApprovalModeSelector from '@/features/ai/instanceAi/components/ApprovalModeSelector.vue';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
 import {
@@ -730,6 +731,7 @@ const ThreadScope = defineComponent({
 					...(slots.empty ? { empty: slots.empty } : {}),
 					...(slots['composer-start'] ? { 'composer-start': slots['composer-start'] } : {}),
 					...(slots['composer-footer'] ? { 'composer-footer': slots['composer-footer'] } : {}),
+					'composer-controls': () => h(ApprovalModeSelector, { threadId: scopeProps.threadId }),
 				},
 			);
 	},

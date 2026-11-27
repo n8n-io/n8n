@@ -113,6 +113,8 @@ async function saveSkill({
 			:data="{
 				skillId: detail.id,
 				skill: detail.skill,
+				projectId: detail.scope === 'project' ? (detail.projectId ?? undefined) : undefined,
+				projectLabel: detail.projectName ?? undefined,
 				readOnly: !detail.canEdit || isLoading,
 				syncedFrom: detail.syncedFrom ?? undefined,
 				onConfirm: saveSkill,

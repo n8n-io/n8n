@@ -122,6 +122,10 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [lease_kind](lease_kind.md) | 7 |  | table |
 | [lease_session](lease_session.md) | 7 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
+| [mcp_server](mcp_server.md) | 9 |  | table |
+| [mcp_server_block](mcp_server_block.md) | 4 |  | table |
+| [mcp_server_connection](mcp_server_connection.md) | 6 |  | table |
+| [mcp_server_tool](mcp_server_tool.md) | 11 |  | table |
 | [migration_finding](migration_finding.md) | 10 |  | table |
 | [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
 | [migration_workflow_owner](migration_workflow_owner.md) | 7 |  | table |
@@ -384,6 +388,15 @@ erDiagram
 "knowledge_vector_store" }o--|| "knowledge_collection" : "FOREIGN KEY (knowledgeCollectionId) REFERENCES knowledge_collection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "lease" |o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "lease_session" }o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"mcp_server" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server_block" }o--o| "user" : "FOREIGN KEY (blockedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"mcp_server_block" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server_block" |o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server_connection" |o--|| "oauth_clients" : "FOREIGN KEY (oauthClientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server_connection" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server_connection" |o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"mcp_server_tool" }o--|| "mcp_server" : "FOREIGN KEY (serverId) REFERENCES mcp_server (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "migration_finding" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "migration_workflow_owner" }o--o| "user" : "FOREIGN KEY (assignedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "migration_workflow_owner" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -1712,6 +1725,44 @@ erDiagram
   varchar_50_ status
   datetime_3_ updatedAt
   varchar_50_ version
+}
+"mcp_server" {
+  datetime_3_ createdAt
+  varchar createdById FK
+  datetime_3_ deletedAt
+  TEXT description
+  varchar id PK
+  varchar_128_ name
+  varchar_36_ projectId FK
+  varchar_128_ slug
+  datetime_3_ updatedAt
+}
+"mcp_server_block" {
+  datetime_3_ blockedAt
+  varchar blockedById FK
+  varchar serverId PK
+  varchar userId PK
+}
+"mcp_server_connection" {
+  varchar_255_ clientName
+  datetime_3_ firstUsedAt
+  datetime_3_ lastUsedAt
+  varchar oauthClientId PK
+  varchar serverId PK
+  varchar userId PK
+}
+"mcp_server_tool" {
+  datetime_3_ createdAt
+  TEXT description
+  varchar_16_ draftSource
+  varchar id PK
+  varchar_16_ kind
+  INTEGER position
+  varchar serverId FK
+  varchar_36_ targetId
+  TEXT toolData
+  varchar_64_ toolName
+  datetime_3_ updatedAt
 }
 "migration_finding" {
   datetime_3_ createdAt

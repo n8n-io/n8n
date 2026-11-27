@@ -8,11 +8,12 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { VIEWS } from '@/app/constants';
 import {
-	TOTAL_INSTANCE_PERMISSIONS,
 	countGrantedInstancePermissions,
-} from '@/features/roles/instance/instanceRoleScopes';
-import RoleSelectDropdown from '@/features/roles/components/RoleSelectDropdown.vue';
-import CustomRolesUpgradeModal from '@/features/roles/components/CustomRolesUpgradeModal.vue';
+	countInstancePermissions,
+	CustomRolesUpgradeModal,
+	RoleSelectDropdown,
+	useHiddenRoleResources,
+} from '@n8n/frontend-module-roles';
 
 const {
 	disabled = false,
@@ -41,7 +42,10 @@ const systemRoles = computed(() =>
 );
 const customRoles = computed(() => rolesStore.customInstanceRoles);
 
-const permissionCountFor = (role: Role) => countGrantedInstancePermissions(role.scopes ?? []);
+const hiddenResources = useHiddenRoleResources();
+const totalPermissions = computed(() => countInstancePermissions(hiddenResources.value));
+const permissionCountFor = (role: Role) =>
+	countGrantedInstancePermissions(role.scopes ?? [], hiddenResources.value);
 
 // "Block access" is an access outcome, not a role, so it renders as a terminal
 // option below the role groups rather than as one of them. Only shown when the
@@ -72,7 +76,7 @@ const upgradeModalVisible = ref(false);
 			variant="default"
 			:disabled="disabled"
 			:permission-count-fn="permissionCountFor"
-			:total-permissions="TOTAL_INSTANCE_PERMISSIONS"
+			:total-permissions="totalPermissions"
 			:edit-route-name="VIEWS.INSTANCE_ROLE_SETTINGS"
 			:view-route-name="VIEWS.INSTANCE_ROLE_VIEW"
 			:from-view="VIEWS.SSO_SETTINGS"

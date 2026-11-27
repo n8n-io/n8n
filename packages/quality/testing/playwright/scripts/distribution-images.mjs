@@ -15,6 +15,7 @@ const CAPABILITY_SERVICES = {
 };
 
 const SERVICE_IMAGES = {
+	azurite: ['azurite'],
 	cadvisor: ['cadvisor'],
 	cloudflared: ['cloudflared'],
 	gitea: ['gitea'],
@@ -34,6 +35,7 @@ const SERVICE_IMAGES = {
 	postgresExporter: ['postgresExporter'],
 	proxy: ['mockserver'],
 	redis: ['redis'],
+	redisCluster: ['redis'],
 	sandbox: ['sandboxApi', 'sandboxRunner', 'sandboxSandbox'],
 	taskRunner: ['taskRunner'],
 	tracing: ['jaeger', 'n8nTracer'],

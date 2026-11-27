@@ -7,6 +7,15 @@ import { shellAliases } from '@n8n/frontend-vite-config';
 
 export const appAliases = (editorUiDir: string): Alias[] => [
 	{ find: '@', replacement: resolve(editorUiDir, 'src') },
+	// The native evaluator runs in the browser unchanged. This must precede the stub below,
+	// which matches the sub-path too.
+	{
+		find: '@n8n/expression-runtime/native-evaluation',
+		replacement: resolve(
+			editorUiDir,
+			'../../@n8n/expression-runtime/src/native-evaluation/index.ts',
+		),
+	},
 	// Stub out @n8n/expression-runtime for browser build (it pulls in isolated-vm, a Node.js-only native module)
 	{
 		find: '@n8n/expression-runtime',

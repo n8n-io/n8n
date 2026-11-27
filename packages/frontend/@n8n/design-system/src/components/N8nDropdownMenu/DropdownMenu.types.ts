@@ -133,6 +133,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	data?: D;
 	/** Whether this item should be rendered as a destructive action (e.g. delete) */
 	destructive?: boolean;
+	/** Tooltip shown while the pointer is over a regular item (not section headers, checkboxes, or sub-menu triggers), such as the reason it is disabled. */
+	hoverTooltip?: string;
 };
 
 export interface DropdownMenuProps<T = string, D = never> {
@@ -183,7 +185,7 @@ export interface DropdownMenuProps<T = string, D = never> {
 	/** Select whether search focus stays inside the menu or in an external text control. */
 	searchMode?: DropdownMenuSearchMode;
 	/** Text control that owns focus when searchMode is external. */
-	externalFocusTarget?: HTMLInputElement | HTMLTextAreaElement | null;
+	externalFocusTarget?: HTMLElement | null;
 	/** Search input placeholder */
 	searchPlaceholder?: string;
 	/** Debounce delay in ms for search event */
