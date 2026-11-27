@@ -13,8 +13,8 @@ vi.mock('ws');
 describe('TestRunner', () => {
 	let runner: TestRunner;
 
-	const newTestRunner = (opts: Partial<TaskRunnerOpts> = {}) =>
-		new TestRunner({
+	const newTestRunner = (opts: Partial<TaskRunnerOpts> = {}) => {
+		const testRunner = new TestRunner({
 			taskType: 'test-task',
 			runnerId: '',
 			maxConcurrency: 5,
@@ -33,6 +33,9 @@ describe('TestRunner', () => {
 			},
 			...opts,
 		});
+		testRunner.connect();
+		return testRunner;
+	};
 
 	afterEach(() => {
 		runner?.clearIdleTimer();
@@ -41,6 +44,26 @@ describe('TestRunner', () => {
 	describe('constructor', () => {
 		afterEach(() => {
 			vi.clearAllMocks();
+		});
+
+		it('should not open a connection to the broker before connect is called', () => {
+			const unconnected = new TestRunner({
+				taskType: 'test-task',
+				runnerId: '',
+				maxConcurrency: 5,
+				idleTimeout: 0,
+				grantToken: 'test-token',
+				maxPayloadSize: 1024,
+				taskBrokerUri: 'http://localhost:8080',
+				timezone: 'America/New_York',
+				taskTimeout: 60,
+				gracefulShutdownTimeout: 30,
+				shutdownForceKillMargin: 10,
+				healthcheckServer: { enabled: false, host: 'localhost', port: 8081 },
+			});
+
+			expect(unconnected.ws).toBeUndefined();
+			expect(WebSocket).not.toHaveBeenCalled();
 		});
 
 		it('should correctly construct WebSocket URI with provided taskBrokerUri', () => {
