@@ -160,6 +160,7 @@ describe('WorkflowIndexService', () => {
 						}),
 					]),
 				}),
+				{},
 			);
 		});
 
@@ -214,6 +215,7 @@ describe('WorkflowIndexService', () => {
 						}),
 					]),
 				}),
+				{},
 			);
 		});
 
@@ -239,6 +241,7 @@ describe('WorkflowIndexService', () => {
 						}),
 					]),
 				}),
+				{},
 			);
 		});
 
@@ -289,6 +292,7 @@ describe('WorkflowIndexService', () => {
 						}),
 					]),
 				}),
+				{},
 			);
 		});
 
@@ -314,6 +318,7 @@ describe('WorkflowIndexService', () => {
 						}),
 					]),
 				}),
+				{},
 			);
 		});
 
@@ -347,6 +352,7 @@ describe('WorkflowIndexService', () => {
 						}),
 					]),
 				}),
+				{},
 			);
 		});
 
@@ -388,6 +394,7 @@ describe('WorkflowIndexService', () => {
 						}),
 					]),
 				}),
+				{},
 			);
 		});
 
@@ -606,6 +613,7 @@ describe('WorkflowIndexService', () => {
 						}),
 					]),
 				}),
+				{},
 			);
 
 			// Verify only the placeholder exists (exactly 1 dependency)
@@ -641,6 +649,7 @@ describe('WorkflowIndexService', () => {
 						}),
 					]),
 				}),
+				{},
 			);
 
 			// Verify only the placeholder exists (exactly 1 dependency)
@@ -679,6 +688,7 @@ describe('WorkflowIndexService', () => {
 						}),
 					]),
 				}),
+				{},
 			);
 			// Should NOT contain the draft node type
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
@@ -690,6 +700,7 @@ describe('WorkflowIndexService', () => {
 						}),
 					]),
 				}),
+				{},
 			);
 		});
 
@@ -714,6 +725,7 @@ describe('WorkflowIndexService', () => {
 						}),
 					]),
 				}),
+				{},
 			);
 		});
 
@@ -734,6 +746,7 @@ describe('WorkflowIndexService', () => {
 				expect.objectContaining({
 					publishedVersionId: null,
 				}),
+				{},
 			);
 		});
 	});
@@ -832,10 +845,12 @@ describe('WorkflowIndexService', () => {
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
 				'workflow-123',
 				expect.any(Object),
+				{},
 			);
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
 				'workflow-456',
 				expect.any(Object),
+				{},
 			);
 		});
 
@@ -897,6 +912,7 @@ describe('WorkflowIndexService', () => {
 				expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
 					`workflow-${i}`,
 					expect.any(Object),
+					{},
 				);
 			}
 		});

@@ -421,7 +421,7 @@ export class SelfHealingAgentService {
 		if (targets.size > MAX_SUB_WORKFLOW_TARGETS) {
 			return { refusal: 'This run has reached the maximum number of sub-workflows.' };
 		}
-		if (!(await this.dependencies.isCalledBy(workflowId, callerVersionIds))) {
+		if (!(await this.dependencies.isCalledBy(workflowId, callerVersionIds, {}))) {
 			return {
 				refusal: 'No published version of a workflow that this run can change calls this workflow.',
 			};

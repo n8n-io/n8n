@@ -353,7 +353,7 @@ export class SelfHealingResultService {
 		const visited = new Set([workflowId]);
 		let frontier = [workflowId];
 		for (let depth = 0; depth < MAX_HIERARCHY_DEPTH && frontier.length > 0; depth++) {
-			const found = await this.dependencies.findWorkflowCalls(frontier);
+			const found = await this.dependencies.findWorkflowCalls(frontier, {});
 			const owners = await this.ownership.findOwnerProjectsByWorkflowIds(
 				found.map(({ calledWorkflowId }) => calledWorkflowId),
 			);

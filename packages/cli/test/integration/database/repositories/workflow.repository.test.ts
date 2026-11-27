@@ -7,7 +7,9 @@ import {
 	setActiveVersion,
 } from '@n8n/backend-test-utils';
 import {
+	DataSource,
 	WorkflowRepository,
+	WorkflowDependency,
 	WorkflowDependencyRepository,
 	WorkflowDependencies,
 	WORKFLOW_DEPENDENCY_INDEX_VERSION,
@@ -317,7 +319,11 @@ describe('WorkflowRepository', () => {
 				dependencyKey: 'cred-123',
 				dependencyInfo: null,
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow2.id, dependencies2);
+			await workflowDependencyRepository.updateDependenciesForWorkflow(
+				workflow2.id,
+				dependencies2,
+				{},
+			);
 
 			// Workflow 3: Has up-to-date dependencies
 			const workflow3 = await createWorkflow({ versionCounter: 15, nodes: [] });
@@ -327,7 +333,11 @@ describe('WorkflowRepository', () => {
 				dependencyKey: 'n8n-nodes-base.httpRequest',
 				dependencyInfo: null,
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow3.id, dependencies3);
+			await workflowDependencyRepository.updateDependenciesForWorkflow(
+				workflow3.id,
+				dependencies3,
+				{},
+			);
 
 			//
 			// ACT
@@ -353,15 +363,17 @@ describe('WorkflowRepository', () => {
 
 			// Indexed at the current version counter, but by an older indexer version.
 			const outdatedWorkflow = await createWorkflow({ versionCounter: 3, nodes: [] });
-			await workflowDependencyRepository.insert({
-				workflowId: outdatedWorkflow.id,
-				workflowVersionId: 3,
-				publishedVersionId: null,
-				dependencyType: 'nodeType',
-				dependencyKey: 'n8n-nodes-base.httpRequest',
-				dependencyInfo: null,
-				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
-			});
+			await Container.get(DataSource)
+				.getRepository(WorkflowDependency)
+				.insert({
+					workflowId: outdatedWorkflow.id,
+					workflowVersionId: 3,
+					publishedVersionId: null,
+					dependencyType: 'nodeType',
+					dependencyKey: 'n8n-nodes-base.httpRequest',
+					dependencyInfo: null,
+					indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+				});
 
 			// Indexed by the current indexer version.
 			const currentWorkflow = await createWorkflow({ versionCounter: 3, nodes: [] });
@@ -374,6 +386,7 @@ describe('WorkflowRepository', () => {
 			await workflowDependencyRepository.updateDependenciesForWorkflow(
 				currentWorkflow.id,
 				dependencies,
+				{},
 			);
 
 			//
@@ -427,15 +440,17 @@ describe('WorkflowRepository', () => {
 
 			// Published rows exist, but an older indexer version wrote them.
 			const outdatedWorkflow = await createActiveWorkflow();
-			await workflowDependencyRepository.insert({
-				workflowId: outdatedWorkflow.id,
-				workflowVersionId: 1,
-				publishedVersionId: outdatedWorkflow.activeVersionId,
-				dependencyType: 'nodeType',
-				dependencyKey: 'n8n-nodes-base.httpRequest',
-				dependencyInfo: null,
-				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
-			});
+			await Container.get(DataSource)
+				.getRepository(WorkflowDependency)
+				.insert({
+					workflowId: outdatedWorkflow.id,
+					workflowVersionId: 1,
+					publishedVersionId: outdatedWorkflow.activeVersionId,
+					dependencyType: 'nodeType',
+					dependencyKey: 'n8n-nodes-base.httpRequest',
+					dependencyInfo: null,
+					indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+				});
 
 			// Published rows exist at the current indexer version.
 			const currentWorkflow = await createActiveWorkflow();
@@ -452,6 +467,7 @@ describe('WorkflowRepository', () => {
 			await workflowDependencyRepository.updateDependenciesForWorkflow(
 				currentWorkflow.id,
 				dependencies,
+				{},
 			);
 
 			//

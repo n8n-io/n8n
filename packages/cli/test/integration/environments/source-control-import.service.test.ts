@@ -13,6 +13,7 @@ import {
 import {
 	type CredentialsEntity,
 	CredentialsRepository,
+	DataSource,
 	type Folder,
 	generateNanoId,
 	type Project,
@@ -25,6 +26,7 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 	WorkflowHistoryRepository,
+	WorkflowDependency,
 	WorkflowDependencyRepository,
 } from '@n8n/db';
 import {
@@ -2497,11 +2499,13 @@ describe('SourceControlImportService', () => {
 				const importingUser = await getGlobalOwner();
 				const workflowIndexService = Container.get(WorkflowIndexService);
 				const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+				const workflowDependencyRawRepo =
+					Container.get(DataSource).getRepository(WorkflowDependency);
 				const oldCredentialId = 'old-credential-x';
 				const newCredentialId = 'new-credential-y';
 
 				const draftCredentialKeys = async (workflowId: string) => {
-					const deps = await workflowDependencyRepository.find({ where: { workflowId } });
+					const deps = await workflowDependencyRawRepo.find({ where: { workflowId } });
 					return deps
 						.filter((d) => d.dependencyType === 'credentialId' && d.publishedVersionId === null)
 						.map((d) => d.dependencyKey)
@@ -2516,7 +2520,7 @@ describe('SourceControlImportService', () => {
 					},
 					importingUser,
 				);
-				await workflowDependencyRepository.removeDependenciesForWorkflow(localWorkflow.id);
+				await workflowDependencyRepository.removeDependenciesForWorkflow(localWorkflow.id, {});
 				await workflowIndexService.updateIndexForDraft(localWorkflow);
 				expect(await draftCredentialKeys(localWorkflow.id)).toEqual([oldCredentialId]);
 

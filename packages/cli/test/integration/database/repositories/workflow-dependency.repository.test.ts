@@ -7,20 +7,24 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import {
+	DataSource,
 	SharedWorkflowRepository,
+	TransactionRunner,
+	WorkflowDependency,
 	WorkflowDependencyRepository,
 	WorkflowDependencies,
 	WorkflowRepository,
 	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 } from '@n8n/db';
 import { GlobalConfig } from '@n8n/config';
-import { DataSource } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Repository } from '@n8n/typeorm';
 
 import { createMember, createOwner } from '../../shared/db/users';
 
 describe('WorkflowDependencyRepository', () => {
 	let workflowDependencyRepository: WorkflowDependencyRepository;
+	let rawRepository: Repository<WorkflowDependency>;
 
 	const isPostgres = process.env.DB_TYPE === 'postgresdb';
 
@@ -28,6 +32,7 @@ describe('WorkflowDependencyRepository', () => {
 		Container.get(GlobalConfig).database.postgresdb.poolSize = 4;
 		await testDb.init();
 		workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+		rawRepository = Container.get(DataSource).getRepository(WorkflowDependency);
 	});
 
 	beforeEach(async () => {
@@ -63,13 +68,14 @@ describe('WorkflowDependencyRepository', () => {
 			const result = await workflowDependencyRepository.updateDependenciesForWorkflow(
 				workflow.id,
 				dependencies,
+				{},
 			);
 
 			//
 			// ASSERT
 			//
 			expect(result).toBe(true);
-			const savedDependencies = await workflowDependencyRepository.find({
+			const savedDependencies = await rawRepository.find({
 				where: { workflowId: workflow.id },
 				order: { dependencyType: 'ASC' },
 			});
@@ -105,7 +111,11 @@ describe('WorkflowDependencyRepository', () => {
 				dependencyKey: 'cred-old',
 				dependencyInfo: null,
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, initialDeps);
+			await workflowDependencyRepository.updateDependenciesForWorkflow(
+				workflow.id,
+				initialDeps,
+				{},
+			);
 
 			// Create new dependencies with version 2
 			const updatedDeps = new WorkflowDependencies(workflow.id, 2);
@@ -126,13 +136,14 @@ describe('WorkflowDependencyRepository', () => {
 			const result = await workflowDependencyRepository.updateDependenciesForWorkflow(
 				workflow.id,
 				updatedDeps,
+				{},
 			);
 
 			//
 			// ASSERT
 			//
 			expect(result).toBe(true);
-			const savedDependencies = await workflowDependencyRepository.find({
+			const savedDependencies = await rawRepository.find({
 				where: { workflowId: workflow.id },
 				order: { dependencyType: 'ASC' },
 			});
@@ -156,7 +167,7 @@ describe('WorkflowDependencyRepository', () => {
 				dependencyKey: 'cred-new',
 				dependencyInfo: null,
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, newerDeps);
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, newerDeps, {});
 
 			// Try to update with older version 1
 			const olderDeps = new WorkflowDependencies(workflow.id, 1);
@@ -172,13 +183,14 @@ describe('WorkflowDependencyRepository', () => {
 			const result = await workflowDependencyRepository.updateDependenciesForWorkflow(
 				workflow.id,
 				olderDeps,
+				{},
 			);
 
 			//
 			// ASSERT
 			//
 			expect(result).toBe(false);
-			const savedDependencies = await workflowDependencyRepository.find({
+			const savedDependencies = await rawRepository.find({
 				where: { workflowId: workflow.id },
 			});
 			expect(savedDependencies).toHaveLength(1);
@@ -193,7 +205,7 @@ describe('WorkflowDependencyRepository', () => {
 			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
 
 			// Seed rows directly, as an older indexer version would have written them.
-			await workflowDependencyRepository.insert({
+			await rawRepository.insert({
 				workflowId: workflow.id,
 				workflowVersionId: 1,
 				publishedVersionId: null,
@@ -216,13 +228,14 @@ describe('WorkflowDependencyRepository', () => {
 			const result = await workflowDependencyRepository.updateDependenciesForWorkflow(
 				workflow.id,
 				sameVersionDeps,
+				{},
 			);
 
 			//
 			// ASSERT
 			//
 			expect(result).toBe(true);
-			const savedDependencies = await workflowDependencyRepository.find({
+			const savedDependencies = await rawRepository.find({
 				where: { workflowId: workflow.id },
 			});
 			expect(savedDependencies).toHaveLength(1);
@@ -240,7 +253,7 @@ describe('WorkflowDependencyRepository', () => {
 			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
 
 			// Rows an older indexer version wrote for a newer workflow version.
-			await workflowDependencyRepository.insert({
+			await rawRepository.insert({
 				workflowId: workflow.id,
 				workflowVersionId: 5,
 				publishedVersionId: null,
@@ -263,13 +276,14 @@ describe('WorkflowDependencyRepository', () => {
 			const result = await workflowDependencyRepository.updateDependenciesForWorkflow(
 				workflow.id,
 				staleDeps,
+				{},
 			);
 
 			//
 			// ASSERT
 			//
 			expect(result).toBe(false);
-			const savedDependencies = await workflowDependencyRepository.find({
+			const savedDependencies = await rawRepository.find({
 				where: { workflowId: workflow.id },
 			});
 			expect(savedDependencies).toHaveLength(1);
@@ -288,7 +302,7 @@ describe('WorkflowDependencyRepository', () => {
 			// An import can move the version counter below the version older rows recorded.
 			await Container.get(WorkflowRepository).update(workflow.id, { versionCounter: 3 });
 
-			await workflowDependencyRepository.insert({
+			await rawRepository.insert({
 				workflowId: workflow.id,
 				workflowVersionId: 5,
 				publishedVersionId: null,
@@ -311,13 +325,14 @@ describe('WorkflowDependencyRepository', () => {
 			const result = await workflowDependencyRepository.updateDependenciesForWorkflow(
 				workflow.id,
 				currentDeps,
+				{},
 			);
 
 			//
 			// ASSERT
 			//
 			expect(result).toBe(true);
-			const savedDependencies = await workflowDependencyRepository.find({
+			const savedDependencies = await rawRepository.find({
 				where: { workflowId: workflow.id },
 			});
 			expect(savedDependencies).toHaveLength(1);
@@ -359,11 +374,11 @@ describe('WorkflowDependencyRepository', () => {
 			// ASSERT
 			//
 			await Promise.all([
-				workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, depsVersion1),
-				workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, depsVersion2),
+				workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, depsVersion1, {}),
+				workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, depsVersion2, {}),
 			]);
 
-			const savedDependencies = await workflowDependencyRepository.find({
+			const savedDependencies = await rawRepository.find({
 				where: { workflowId: workflow.id },
 			});
 			expect(savedDependencies).toHaveLength(1);
@@ -384,12 +399,16 @@ describe('WorkflowDependencyRepository', () => {
 					dependencyKey: 'cred',
 					dependencyInfo: null,
 				});
-				await workflowDependencyRepository.updateDependenciesForWorkflow(workflowId, dependencies);
+				await workflowDependencyRepository.updateDependenciesForWorkflow(
+					workflowId,
+					dependencies,
+					{},
+				);
 			};
 			await add(caller.id, 'child');
 			await add(other.id, 'other-child');
 
-			expect(await workflowDependencyRepository.findWorkflowCalls([caller.id])).toEqual([
+			expect(await workflowDependencyRepository.findWorkflowCalls([caller.id], {})).toEqual([
 				{ callerWorkflowId: caller.id, calledWorkflowId: 'child' },
 			]);
 		});
@@ -401,20 +420,24 @@ describe('WorkflowDependencyRepository', () => {
 			const add = async (dependencyKey: string, publishedVersionId: string | null) => {
 				const dependencies = new WorkflowDependencies(workflow.id, 1, publishedVersionId);
 				dependencies.add({ dependencyType: 'workflowCall', dependencyKey, dependencyInfo: null });
-				await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
+				await workflowDependencyRepository.updateDependenciesForWorkflow(
+					workflow.id,
+					dependencies,
+					{},
+				);
 			};
 			await add('old-child', 'old-version');
 			await add('draft-child', null);
 			await add('child', 'current-version');
 
-			expect(await workflowDependencyRepository.isCalledBy('child', ['current-version'])).toBe(
+			expect(await workflowDependencyRepository.isCalledBy('child', ['current-version'], {})).toBe(
 				true,
 			);
-			expect(await workflowDependencyRepository.isCalledBy('old-child', ['current-version'])).toBe(
-				false,
-			);
 			expect(
-				await workflowDependencyRepository.isCalledBy('draft-child', ['current-version']),
+				await workflowDependencyRepository.isCalledBy('old-child', ['current-version'], {}),
+			).toBe(false);
+			expect(
+				await workflowDependencyRepository.isCalledBy('draft-child', ['current-version'], {}),
 			).toBe(false);
 		});
 
@@ -426,9 +449,13 @@ describe('WorkflowDependencyRepository', () => {
 				dependencyKey: 'cred',
 				dependencyInfo: null,
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
+			await workflowDependencyRepository.updateDependenciesForWorkflow(
+				workflow.id,
+				dependencies,
+				{},
+			);
 
-			expect(await workflowDependencyRepository.isCalledBy('cred', ['current-version'])).toBe(
+			expect(await workflowDependencyRepository.isCalledBy('cred', ['current-version'], {})).toBe(
 				false,
 			);
 		});
@@ -449,16 +476,17 @@ describe('WorkflowDependencyRepository', () => {
 				dependencyKey: 'cred-published',
 				dependencyInfo: null,
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, draft);
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, published);
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, draft, {});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, published, {});
 
 			const result =
 				await workflowDependencyRepository.removePublishedDependenciesForUnpublishedWorkflow(
 					workflow.id,
+					{},
 				);
 
 			expect(result).toBe(true);
-			const remaining = await workflowDependencyRepository.find({
+			const remaining = await rawRepository.find({
 				where: { workflowId: workflow.id },
 			});
 			expect(remaining).toHaveLength(1);
@@ -477,15 +505,16 @@ describe('WorkflowDependencyRepository', () => {
 				dependencyKey: 'cred-published',
 				dependencyInfo: null,
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, published);
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, published, {});
 
 			const result =
 				await workflowDependencyRepository.removePublishedDependenciesForUnpublishedWorkflow(
 					workflow.id,
+					{},
 				);
 
 			expect(result).toBe(false);
-			const remaining = await workflowDependencyRepository.find({
+			const remaining = await rawRepository.find({
 				where: { workflowId: workflow.id },
 			});
 			expect(remaining.filter((row) => row.publishedVersionId !== null)).toHaveLength(1);
@@ -496,7 +525,7 @@ describe('WorkflowDependencyRepository', () => {
 
 			it('should wait for the update instead of deadlocking', async () => {
 				const dataSource = Container.get(DataSource);
-				const table = dataSource.driver.escape(workflowDependencyRepository.metadata.tableName);
+				const table = dataSource.driver.escape(rawRepository.metadata.tableName);
 				const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
 
 				const oldPublished = new WorkflowDependencies(workflow.id, 1, 'v1');
@@ -505,7 +534,11 @@ describe('WorkflowDependencyRepository', () => {
 					dependencyKey: 'cred-y',
 					dependencyInfo: null,
 				});
-				await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, oldPublished);
+				await workflowDependencyRepository.updateDependenciesForWorkflow(
+					workflow.id,
+					oldPublished,
+					{},
+				);
 
 				await dataSource.query(`CREATE FUNCTION pause_dependency_writer() RETURNS trigger LANGUAGE plpgsql AS $$
 						BEGIN
@@ -544,6 +577,7 @@ describe('WorkflowDependencyRepository', () => {
 					writer = workflowDependencyRepository.updateDependenciesForWorkflow(
 						workflow.id,
 						newPublished,
+						{},
 					);
 					await waitForLockWaiters(
 						`SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND objid = ${PAUSE_WRITER} AND NOT granted`,
@@ -551,6 +585,7 @@ describe('WorkflowDependencyRepository', () => {
 
 					cleanup = workflowDependencyRepository.removePublishedDependenciesForUnpublishedWorkflow(
 						workflow.id,
+						{},
 					);
 					await waitForLockWaiters(
 						`SELECT count(*) FROM pg_stat_activity
@@ -570,7 +605,7 @@ describe('WorkflowDependencyRepository', () => {
 					await dataSource.query('DROP FUNCTION pause_dependency_writer()');
 				}
 
-				const remaining = await workflowDependencyRepository.find({
+				const remaining = await rawRepository.find({
 					where: { workflowId: workflow.id },
 				});
 				expect(remaining).toHaveLength(0);
@@ -595,18 +630,25 @@ describe('WorkflowDependencyRepository', () => {
 				dependencyKey: 'node-1',
 				dependencyInfo: null,
 			});
-			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
+			await workflowDependencyRepository.updateDependenciesForWorkflow(
+				workflow.id,
+				dependencies,
+				{},
+			);
 
 			//
 			// ACT
 			//
-			const result = await workflowDependencyRepository.removeDependenciesForWorkflow(workflow.id);
+			const result = await workflowDependencyRepository.removeDependenciesForWorkflow(
+				workflow.id,
+				{},
+			);
 
 			//
 			// ASSERT
 			//
 			expect(result).toBe(true);
-			const remainingDeps = await workflowDependencyRepository.find({
+			const remainingDeps = await rawRepository.find({
 				where: { workflowId: workflow.id },
 			});
 			expect(remainingDeps).toHaveLength(0);
@@ -621,12 +663,50 @@ describe('WorkflowDependencyRepository', () => {
 			//
 			// ACT
 			//
-			const result = await workflowDependencyRepository.removeDependenciesForWorkflow(workflow.id);
+			const result = await workflowDependencyRepository.removeDependenciesForWorkflow(
+				workflow.id,
+				{},
+			);
 
 			//
 			// ASSERT
 			//
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('transaction participation', () => {
+		it('should share an active TransactionRunner transaction across writes and reads', async () => {
+			const transactionRunner = Container.get(TransactionRunner);
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+			const dependencies = new WorkflowDependencies(workflow.id, 1, 'pub-v1');
+			dependencies.add({
+				dependencyType: 'workflowCall',
+				dependencyKey: 'child-wf',
+				dependencyInfo: null,
+			});
+
+			const abortError = new Error('rollback');
+			await expect(
+				transactionRunner.run({}, async (ctx) => {
+					await workflowDependencyRepository.updateDependenciesForWorkflow(
+						workflow.id,
+						dependencies,
+						ctx,
+					);
+
+					expect(await workflowDependencyRepository.findWorkflowCalls([workflow.id], ctx)).toEqual([
+						{ callerWorkflowId: workflow.id, calledWorkflowId: 'child-wf' },
+					]);
+					expect(await workflowDependencyRepository.isCalledBy('child-wf', ['pub-v1'], ctx)).toBe(
+						true,
+					);
+
+					throw abortError;
+				}),
+			).rejects.toThrow(abortError);
+
+			expect(await workflowDependencyRepository.findWorkflowCalls([workflow.id], {})).toEqual([]);
 		});
 	});
 });
@@ -708,7 +788,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 			//
 			// ACT
 			//
-			const result = await repository.countNodeTypeUsage(member, readerScope, 50);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 50, {});
 
 			//
 			// ASSERT
@@ -736,6 +816,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 				member,
 				{ ...readerScope, projectId: first.id },
 				50,
+				{},
 			);
 
 			expect(result.workflowsInScope).toBe(1);
@@ -749,7 +830,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 
 			await seedWorkflow(project, [SLACK, SLACK, SLACK]);
 
-			const result = await repository.countNodeTypeUsage(member, readerScope, 50);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 50, {});
 
 			expect(result.nodeTypes).toEqual([{ nodeType: SLACK, workflowCount: 1 }]);
 		});
@@ -762,7 +843,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 			await seedWorkflow(project, [ANTHROPIC]);
 			await seedWorkflow(project, [OPENAI], { isArchived: true });
 
-			const result = await repository.countNodeTypeUsage(member, readerScope, 50);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 50, {});
 
 			expect(result.workflowsInScope).toBe(1);
 			expect(result.nodeTypes).toEqual([{ nodeType: ANTHROPIC, workflowCount: 1 }]);
@@ -778,9 +859,9 @@ describe('WorkflowDependencyRepository node usage', () => {
 			// what the draft says the workflow currently contains.
 			const published = new WorkflowDependencies(workflow.id, 2, 'published-version-id');
 			published.add({ dependencyType: 'nodeType', dependencyKey: OPENAI, dependencyInfo: null });
-			await repository.updateDependenciesForWorkflow(workflow.id, published);
+			await repository.updateDependenciesForWorkflow(workflow.id, published, {});
 
-			const result = await repository.countNodeTypeUsage(member, readerScope, 50);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 50, {});
 
 			expect(result.nodeTypes).toEqual([{ nodeType: ANTHROPIC, workflowCount: 1 }]);
 		});
@@ -793,7 +874,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 			await seedWorkflow(first, [ANTHROPIC]);
 			await seedWorkflow(second, [OPENAI]);
 
-			const result = await repository.countNodeTypeUsage(owner, readerScope, 50);
+			const result = await repository.countNodeTypeUsage(owner, readerScope, 50, {});
 
 			expect(result.workflowsInScope).toBe(2);
 			expect(result.nodeTypes).toEqual([
@@ -807,7 +888,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 			const someoneElses = await createTeamProject('someone-elses');
 			await seedWorkflow(someoneElses, [ANTHROPIC]);
 
-			const result = await repository.countNodeTypeUsage(member, readerScope, 50);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 50, {});
 
 			expect(result).toEqual({ workflowsInScope: 0, nodeTypes: [], truncated: false });
 		});
@@ -823,8 +904,8 @@ describe('WorkflowDependencyRepository node usage', () => {
 			await seedWorkflow(project, [OPENAI]);
 			await seedWorkflow(project, [SLACK]);
 
-			const capped = await repository.countNodeTypeUsage(member, readerScope, 2);
-			const complete = await repository.countNodeTypeUsage(member, readerScope, 50);
+			const capped = await repository.countNodeTypeUsage(member, readerScope, 2, {});
+			const complete = await repository.countNodeTypeUsage(member, readerScope, 50, {});
 
 			expect(capped.nodeTypes).toHaveLength(2);
 			expect(capped.truncated).toBe(true);
@@ -844,7 +925,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 			await seedWorkflow(project, [ANTHROPIC]);
 			await seedWorkflow(project, [OPENAI]);
 
-			const result = await repository.countNodeTypeUsage(member, readerScope, 1);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 1, {});
 
 			expect(result.nodeTypes).toEqual([{ nodeType: ANTHROPIC, workflowCount: 2 }]);
 			expect(result.truncated).toBe(true);
@@ -871,7 +952,13 @@ describe('WorkflowDependencyRepository node usage', () => {
 				updatedAt: new Date('2030-01-01T00:00:00.000Z'),
 			});
 
-			const rows = await repository.findWorkflowsUsingNodeType(member, readerScope, ANTHROPIC, 10);
+			const rows = await repository.findWorkflowsUsingNodeType(
+				member,
+				readerScope,
+				ANTHROPIC,
+				10,
+				{},
+			);
 
 			expect(rows.map((row) => row.name)).toEqual(['newer', 'older']);
 			expect(rows[0].workflowId).toBe(newer.id);
@@ -887,7 +974,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 			await seedWorkflow(project, [SLACK]);
 			await seedWorkflow(project, [SLACK]);
 
-			const rows = await repository.findWorkflowsUsingNodeType(member, readerScope, SLACK, 2);
+			const rows = await repository.findWorkflowsUsingNodeType(member, readerScope, SLACK, 2, {});
 
 			expect(rows).toHaveLength(2);
 		});
@@ -907,6 +994,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 
 			const workflowRepository = Container.get(WorkflowRepository);
 			const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
+			const rawDependencyRepository = Container.get(DataSource).getRepository(WorkflowDependency);
 
 			// Built directly rather than through `createWorkflow` so the seed stays a few bulk
 			// inserts instead of 1,200 round trips per table.
@@ -951,10 +1039,10 @@ describe('WorkflowDependencyRepository node usage', () => {
 					dependencyInfo: null,
 					indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION,
 				})),
-				async (chunk) => await repository.insert(chunk),
+				async (chunk) => await rawDependencyRepository.insert(chunk),
 			);
 
-			const result = await repository.countNodeTypeUsage(member, readerScope, 50);
+			const result = await repository.countNodeTypeUsage(member, readerScope, 50, {});
 
 			expect(result.workflowsInScope).toBe(workflowCount);
 			expect(result.nodeTypes).toEqual([

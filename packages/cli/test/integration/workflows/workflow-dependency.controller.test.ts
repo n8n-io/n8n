@@ -7,8 +7,9 @@ import {
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
 import { ModuleRegistry } from '@n8n/backend-common';
-import { ProjectRepository, WorkflowDependencyRepository, type User } from '@n8n/db';
+import { DataSource, ProjectRepository, WorkflowDependency, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Repository } from '@n8n/typeorm';
 
 import { createAgent } from '@test-integration/db/agents';
 
@@ -30,7 +31,7 @@ import * as utils from '../shared/utils';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 let testServer: ReturnType<typeof utils.setupTestServer>;
-let depRepo: WorkflowDependencyRepository;
+let depRepo: Repository<WorkflowDependency>;
 let agentDepRepo: AgentCredentialDependencyRepository;
 let agentWorkflowDepRepo: AgentWorkflowDependencyRepository;
 let agentHistoryRepo: AgentHistoryRepository;
@@ -54,7 +55,7 @@ testServer = utils.setupTestServer({
 });
 
 beforeAll(() => {
-	depRepo = Container.get(WorkflowDependencyRepository);
+	depRepo = Container.get(DataSource).getRepository(WorkflowDependency);
 	agentDepRepo = Container.get(AgentCredentialDependencyRepository);
 	agentWorkflowDepRepo = Container.get(AgentWorkflowDependencyRepository);
 	agentHistoryRepo = Container.get(AgentHistoryRepository);

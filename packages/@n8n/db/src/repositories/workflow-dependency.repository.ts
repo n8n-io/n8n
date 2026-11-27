@@ -2,18 +2,19 @@ import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import {
 	DataSource,
-	EntityManager,
 	In,
 	IsNull,
 	LessThan,
 	LessThanOrEqual,
-	Repository,
 	Not,
+	type EntityManager,
 } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type { User } from '../entities';
 import { WorkflowDependency, WorkflowEntity, WORKFLOW_DEPENDENCY_INDEX_VERSION } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 /**
  * Which workflows an aggregate over the index may span. The roles come from the caller
@@ -58,26 +59,35 @@ export class WorkflowDependencies {
 	}
 }
 
+class WorkflowDependencyTable extends BaseRepository<WorkflowDependency> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowDependency, dataSource.manager, transactionRunner);
+	}
+}
+
 @Service()
-export class WorkflowDependencyRepository extends Repository<WorkflowDependency> {
+export class WorkflowDependencyRepository {
+	private readonly table: WorkflowDependencyTable;
+
 	constructor(
 		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {
-		super(WorkflowDependency, dataSource.manager);
+		this.table = new WorkflowDependencyTable(dataSource, transactionRunner);
 	}
 
-	async isCalledBy(workflowId: string, publishedVersionIds: string[]) {
-		return await this.existsBy({
+	async isCalledBy(workflowId: string, publishedVersionIds: string[], ctx: OperationContext) {
+		return await this.table.managerFor(ctx).existsBy(WorkflowDependency, {
 			publishedVersionId: In(publishedVersionIds),
 			dependencyType: 'workflowCall',
 			dependencyKey: workflowId,
 		});
 	}
 
-	async findWorkflowCalls(callerWorkflowIds: string[]) {
-		const rows = await this.find({
+	async findWorkflowCalls(callerWorkflowIds: string[], ctx: OperationContext) {
+		const rows = await this.table.managerFor(ctx).find(WorkflowDependency, {
 			where: { workflowId: In(callerWorkflowIds), dependencyType: 'workflowCall' },
 			select: ['workflowId', 'dependencyKey'],
 		});
@@ -91,6 +101,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		resourceIds: string[],
 		incomingTypes: Array<WorkflowDependency['dependencyType']>,
 		includeOutgoing: boolean,
+		ctx: OperationContext,
 	): Promise<
 		Array<
 			Pick<
@@ -99,7 +110,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			>
 		>
 	> {
-		return await this.find({
+		return await this.table.managerFor(ctx).find(WorkflowDependency, {
 			where: [
 				...(includeOutgoing
 					? [
@@ -134,12 +145,13 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		user: User,
 		scope: NodeUsageScope,
 		limit: number,
+		ctx: OperationContext,
 	): Promise<{
 		workflowsInScope: number;
 		nodeTypes: Array<{ nodeType: string; workflowCount: number }>;
 		truncated: boolean;
 	}> {
-		const rows = await this.buildScopedDependencyQuery(user, scope)
+		const rows = await this.buildScopedDependencyQuery(user, scope, ctx)
 			.andWhere('dependency.dependencyType = :dependencyType', { dependencyType: 'nodeType' })
 			.select('dependency.dependencyKey', 'nodeType')
 			// DISTINCT because three HTTP Request nodes in one workflow are one user of the type,
@@ -158,7 +170,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		// Two queries, not one transaction: the counts and the denominator can disagree by a
 		// workflow if one is written between them. Reading both here still beats making every
 		// caller pair them up, and the drift is a row, not a wrong shape.
-		const workflowsInScope = await this.countWorkflowsInScope(user, scope);
+		const workflowsInScope = await this.countWorkflowsInScope(user, scope, ctx);
 
 		return {
 			workflowsInScope,
@@ -175,8 +187,12 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	 * `workflowIndexed` placeholder row, so counting index rows without a type filter counts
 	 * workflows; one not yet indexed is absent from the numerator and the denominator alike.
 	 */
-	async countWorkflowsInScope(user: User, scope: NodeUsageScope): Promise<number> {
-		const total = await this.buildScopedDependencyQuery(user, scope)
+	async countWorkflowsInScope(
+		user: User,
+		scope: NodeUsageScope,
+		ctx: OperationContext,
+	): Promise<number> {
+		const total = await this.buildScopedDependencyQuery(user, scope, ctx)
 			.select('COUNT(DISTINCT dependency.workflowId)', 'total')
 			.getRawOne<{ total: number | string }>();
 
@@ -195,8 +211,9 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		scope: NodeUsageScope,
 		nodeType: string,
 		limit: number,
+		ctx: OperationContext,
 	): Promise<Array<{ workflowId: string; name: string; updatedAt: Date }>> {
-		const rows = await this.buildScopedDependencyQuery(user, scope)
+		const rows = await this.buildScopedDependencyQuery(user, scope, ctx)
 			.andWhere('dependency.dependencyType = :dependencyType', { dependencyType: 'nodeType' })
 			.andWhere('dependency.dependencyKey = :nodeType', { nodeType })
 			.select('dependency.workflowId', 'workflowId')
@@ -224,7 +241,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	 * thing here to drift into a leak — and keeps the scope out of the bind parameters, so the query
 	 * does not grow with the estate.
 	 */
-	private buildScopedDependencyQuery(user: User, scope: NodeUsageScope) {
+	private buildScopedDependencyQuery(user: User, scope: NodeUsageScope, ctx: OperationContext) {
 		const readable = this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(user, {
 			projectRoles: scope.projectRoles,
 			workflowRoles: scope.workflowRoles,
@@ -232,7 +249,9 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 
 		return (
-			this.createQueryBuilder('dependency')
+			this.table
+				.managerFor(ctx)
+				.createQueryBuilder(WorkflowDependency, 'dependency')
 				.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = dependency.workflowId')
 				// Draft rows describe what a workflow currently contains; what someone is building is a
 				// better statement of preference than what happens to be published.
@@ -254,8 +273,9 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	async updateDependenciesForWorkflow(
 		workflowId: string,
 		dependencies: WorkflowDependencies,
+		ctx: OperationContext,
 	): Promise<boolean> {
-		return await this.manager.transaction(async (tx) => {
+		return await this.table.runInTransaction(ctx, async (tx) => {
 			return await this.executeUpdate(workflowId, dependencies, tx);
 		});
 	}
@@ -313,7 +333,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 
 		if (!hasData) {
 			// There's no existing data, so we can safely insert the new dependencies.
-			const entities = dependencies.dependencies.map((dep) => this.create(dep));
+			const entities = dependencies.dependencies.map((dep) => tx.create(WorkflowDependency, dep));
 			// NOTE: we cast to any[] because TypeORM doesn't like the JSON column.
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			await tx.insert(WorkflowDependency, entities as any[]);
@@ -338,8 +358,8 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	 * @param workflowId The ID of the workflow
 	 * @returns Whether any dependencies were removed
 	 */
-	async removeDependenciesForWorkflow(workflowId: string): Promise<boolean> {
-		return await this.manager.transaction(async (tx) => {
+	async removeDependenciesForWorkflow(workflowId: string, ctx: OperationContext): Promise<boolean> {
+		return await this.table.runInTransaction(ctx, async (tx) => {
 			const deleteResult = await tx.delete(WorkflowDependency, { workflowId });
 
 			return (
@@ -350,8 +370,11 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
-	async removePublishedDependenciesForUnpublishedWorkflow(workflowId: string): Promise<boolean> {
-		return await this.manager.transaction(async (tx) => {
+	async removePublishedDependenciesForUnpublishedWorkflow(
+		workflowId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		return await this.table.runInTransaction(ctx, async (tx) => {
 			await this.lockWorkflowRow(workflowId, tx);
 			const workflow = await tx.findOne(WorkflowEntity, {
 				select: { id: true, activeVersionId: true },
@@ -368,8 +391,12 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
-	async findUnpublishedWorkflowIdsWithPublishedDependencies(): Promise<string[]> {
-		const rows = await this.createQueryBuilder('dependency')
+	async findUnpublishedWorkflowIdsWithPublishedDependencies(
+		ctx: OperationContext,
+	): Promise<string[]> {
+		const rows = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder(WorkflowDependency, 'dependency')
 			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = dependency.workflowId')
 			.where('dependency.publishedVersionId IS NOT NULL')
 			.andWhere('workflow.activeVersionId IS NULL')
@@ -392,14 +419,14 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		if (this.databaseConfig.type === 'sqlite') return;
 
 		const placeholder = this.databaseConfig.type === 'postgresdb' ? '$1' : '?';
-		const tableName = this.getTableName('workflow_entity');
+		const tableName = this.getTableName(tx, 'workflow_entity');
 		await tx.query(`SELECT id FROM ${tableName} WHERE id = ${placeholder} FOR UPDATE`, [
 			workflowId,
 		]);
 	}
 
-	private getTableName(name: string): string {
+	private getTableName(tx: EntityManager, name: string): string {
 		const { tablePrefix } = this.databaseConfig;
-		return this.manager.connection.driver.escape(`${tablePrefix}${name}`);
+		return tx.connection.driver.escape(`${tablePrefix}${name}`);
 	}
 }
