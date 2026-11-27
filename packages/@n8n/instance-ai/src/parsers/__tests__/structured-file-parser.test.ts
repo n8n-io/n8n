@@ -742,6 +742,57 @@ describe('paginateTextContent', () => {
 		expect(singleCharPage.content).toBe('😀');
 		expect(singleCharPage.nextStartChar).toBe(4);
 	});
+
+	it('handles empty text and exact MAX_RESULT_CHARS boundaries', () => {
+		expect(paginateTextContent('')).toEqual({
+			content: '',
+			totalChars: 0,
+			truncated: false,
+		});
+
+		const exact = 'a'.repeat(MAX_RESULT_CHARS);
+		const exactPage = paginateTextContent(exact);
+		expect(exactPage.content.length).toBe(MAX_RESULT_CHARS);
+		expect(exactPage.truncated).toBe(false);
+		expect(exactPage.nextStartChar).toBeUndefined();
+
+		const overByOne = `${exact}z`;
+		const first = paginateTextContent(overByOne);
+		expect(first.content.length).toBe(MAX_RESULT_CHARS);
+		expect(first.truncated).toBe(true);
+		expect(first.nextStartChar).toBe(MAX_RESULT_CHARS);
+
+		const second = paginateTextContent(overByOne, { startChar: first.nextStartChar });
+		expect(second.content).toBe('z');
+		expect(second.truncated).toBe(false);
+		expect(second.nextStartChar).toBeUndefined();
+	});
+
+	it('clamps negative startChar to 0 and non-positive maxChars to 1', () => {
+		expect(paginateTextContent('abcdef', { startChar: -10, maxChars: 0 })).toEqual({
+			content: 'a',
+			totalChars: 6,
+			truncated: true,
+			nextStartChar: 1,
+		});
+	});
+
+	it('handles lone surrogates and CRLF line endings without stalling or loss', () => {
+		const text = 'a\uD800b\r\nc\uDC00d';
+		let startChar: number | undefined = 0;
+		const chunks: string[] = [];
+
+		while (startChar !== undefined) {
+			const page = paginateTextContent(text, { startChar, maxChars: 2 });
+			chunks.push(page.content);
+			if (page.nextStartChar !== undefined) {
+				expect(page.nextStartChar).toBeGreaterThan(startChar);
+			}
+			startChar = page.nextStartChar;
+		}
+
+		expect(chunks.join('')).toBe(text);
+	});
 });
 
 describe('extractPlainTextContent', () => {
@@ -908,5 +959,62 @@ describe('parseJsonAttachment', () => {
 		expect(() =>
 			parseJsonAttachment(makeJsonAttachment('[{"__proto__": "bad", "name": "Alice"}]'), 0, {}),
 		).toThrow('Dangerous key "__proto__"');
+		expect(() =>
+			parseJsonAttachment(makeJsonAttachment('[{"constructor": "bad", "name": "Alice"}]'), 0, {}),
+		).toThrow('Dangerous key "constructor"');
+	});
+
+	it('paginates flat tabular JSON arrays with startRow/maxRows and enforces budgets', () => {
+		const rows = Array.from({ length: 30 }, (_, i) => ({ name: `user-${i}`, index: i }));
+		const att = makeJsonAttachment(JSON.stringify(rows));
+
+		const first = parseJsonAttachment(att, 0, { maxRows: 10 });
+		expect(first.totalRows).toBe(30);
+		expect(first.returnedRows).toBe(10);
+		expect(first.truncated).toBe(true);
+		expect(first.nextStartRow).toBe(10);
+		expect(first.content).toBeUndefined();
+
+		const last = parseJsonAttachment(att, 0, { startRow: 25, maxRows: 10 });
+		expect(last.returnedRows).toBe(5);
+		expect(last.truncated).toBe(false);
+		expect(last.nextStartRow).toBeUndefined();
+
+		// Cell budget enforcement still applies on tabular JSON arrays.
+		const wideRows = Array.from({ length: 60 }, () => {
+			const row: Record<string, string> = {};
+			for (let c = 0; c < MAX_COLUMNS; c++) {
+				row[`c${c}`] = 'v';
+			}
+			return row;
+		});
+		const budgeted = parseJsonAttachment(makeJsonAttachment(JSON.stringify(wideRows)), 0, {
+			maxRows: 60,
+		});
+		expect(budgeted.returnedRows * MAX_COLUMNS).toBeLessThanOrEqual(MAX_CELLS_PER_CALL);
+		expect(budgeted.truncated).toBe(true);
+		expect(budgeted.warnings?.some((w) => w.includes('cell budget'))).toBe(true);
+	});
+
+	it('returns empty content when startChar is past totalChars on non-tabular JSON', () => {
+		const raw = JSON.stringify({ ok: true });
+		const page = parseJsonAttachment(makeJsonAttachment(raw), 0, { startChar: raw.length + 10 });
+
+		expect(page.content).toBe('');
+		expect(page.totalChars).toBe(raw.length);
+		expect(page.truncated).toBe(false);
+		expect(page.nextStartChar).toBeUndefined();
+	});
+
+	it('returns non-tabular JSON objects containing constructor/prototype keys safely as raw text', () => {
+		const raw = JSON.stringify({
+			files: [{ path: 'ast.ts', symbols: { constructor: 'ClassCtor', prototype: 'Proto' } }],
+		});
+		const page = parseJsonAttachment(makeJsonAttachment(raw), 0, {});
+
+		expect(page.format).toBe('json');
+		expect(page.totalRows).toBe(0);
+		expect(page.content).toBe(raw);
+		expect(page.truncated).toBe(false);
 	});
 });

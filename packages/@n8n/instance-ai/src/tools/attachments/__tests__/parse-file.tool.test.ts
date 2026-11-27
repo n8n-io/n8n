@@ -1,10 +1,11 @@
-import { MAX_RESULT_CHARS } from '../../../parsers/structured-file-parser';
+import { MAX_DECODED_SIZE_BYTES, MAX_RESULT_CHARS } from '../../../parsers/structured-file-parser';
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext, InstanceAiStoredFile } from '../../../types';
 import {
 	createParseFileTool,
 	createParseStoredFileTool,
 	parseFileInputSchema,
+	parseFileOutputSchema,
 	parseStoredFileInputSchema,
 } from '../parse-file.tool';
 
@@ -305,6 +306,64 @@ describe('createParseFileTool', () => {
 			expect(parseFileInputSchema.safeParse({ maxChars: MAX_RESULT_CHARS + 1 }).success).toBe(
 				false,
 			);
+		});
+
+		it('returns empty content without error when startChar is past totalChars', async () => {
+			const text = 'short note';
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ type: 'file', data: toBase64(text), mimeType: 'text/plain', fileName: 'notes.txt' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20, startChar: 100 },
+				{} as never,
+			);
+
+			expect(parseFileOutputSchema.safeParse(result).success).toBe(true);
+			expect(result.error).toBeUndefined();
+			expect(result.content).toBe('');
+			expect(result.totalChars).toBe(text.length);
+			expect(result.truncated).toBe(false);
+			expect(result.nextStartChar).toBeUndefined();
+		});
+
+		it('supports format overrides between text and json', async () => {
+			const brokenJson = '{not valid json but readable as text';
+			const context = createMockContext({
+				currentUserAttachments: [
+					{
+						type: 'file',
+						data: toBase64(brokenJson),
+						mimeType: 'application/json',
+						fileName: 'broken.json',
+					},
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = await executeTool(
+				tool,
+				{
+					attachmentIndex: 0,
+					format: 'text',
+					hasHeader: true,
+					startRow: 0,
+					maxRows: 20,
+					maxChars: 15,
+				},
+				{} as never,
+			);
+
+			expect(parseFileOutputSchema.safeParse(result).success).toBe(true);
+			expect(result.error).toBeUndefined();
+			expect(result.format).toBe('text');
+			expect(result.content).toBe(brokenJson.slice(0, 15));
+			expect(result.truncated).toBe(true);
+			expect(result.nextStartChar).toBe(15);
 		});
 	});
 
@@ -656,13 +715,120 @@ describe('createParseStoredFileTool', () => {
 	});
 
 	it('rejects a file over the size limit without loading its bytes', async () => {
-		const big = storedFile('big.csv', 'text/csv', Buffer.from('a,b'), 10 * 1024 * 1024 + 1);
+		const big = storedFile('big.csv', 'text/csv', Buffer.from('a,b'), MAX_DECODED_SIZE_BYTES + 1);
 		const tool = createParseStoredFileTool(readerFor({ 'file-1': big }));
 
 		const result = await executeTool(tool, { fileId: 'file-1', ...defaults }, {} as never);
 
+		expect(parseFileOutputSchema.safeParse(result).success).toBe(true);
 		expect(result.error).toBeDefined();
 		expect(result.rows).toEqual([]);
 		expect(big.readContent).not.toHaveBeenCalled();
+	});
+
+	it('rejects a stored file whose actual bytes exceed MAX_DECODED_SIZE_BYTES despite smaller metadata size', async () => {
+		const oversizedBuffer = Buffer.alloc(MAX_DECODED_SIZE_BYTES + 1, 0x61);
+		const lying = storedFile('lied.json', 'application/json', oversizedBuffer, 128);
+		const tool = createParseStoredFileTool(readerFor({ 'file-1': lying }));
+
+		const result = await executeTool(tool, { fileId: 'file-1', ...defaults }, {} as never);
+
+		expect(parseFileOutputSchema.safeParse(result).success).toBe(true);
+		expect(result.fileId).toBe('file-1');
+		expect(result.error).toMatch(/exceeds maximum size/);
+		expect(lying.readContent).toHaveBeenCalledTimes(1);
+	});
+
+	it('preserves fileId when startChar is at or past totalChars', async () => {
+		const json = JSON.stringify({ key: 'value' });
+		const tool = createParseStoredFileTool(
+			readerFor({
+				'file-1': storedFile('obj.json', 'application/json', Buffer.from(json)),
+			}),
+		);
+
+		const result = await executeTool(
+			tool,
+			{ fileId: 'file-1', ...defaults, startChar: json.length + 50 },
+			{} as never,
+		);
+
+		expect(parseFileOutputSchema.safeParse(result).success).toBe(true);
+		expect(result.error).toBeUndefined();
+		expect(result.fileId).toBe('file-1');
+		expect(result.content).toBe('');
+		expect(result.totalChars).toBe(json.length);
+		expect(result.truncated).toBe(false);
+		expect(result.nextStartChar).toBeUndefined();
+	});
+
+	it('paginates stored HTML, PDF, and DOCX files while preserving fileId and format metadata', async () => {
+		mockPdfGetText.mockReset().mockResolvedValue({ text: 'Stored PDF body text', total: 4 });
+		mockPdfDestroy.mockReset().mockResolvedValue(undefined);
+		mockDocxExtractRawText
+			.mockReset()
+			.mockResolvedValue({ value: 'Stored DOCX body text', messages: [] });
+
+		const tool = createParseStoredFileTool(
+			readerFor({
+				'f-html': storedFile(
+					'doc.html',
+					'text/html',
+					Buffer.from(
+						'<html><head><title>Doc</title></head><body><p>Stored HTML body text</p></body></html>',
+					),
+				),
+				'f-pdf': storedFile('doc.pdf', 'application/pdf', Buffer.from('pdf-bytes')),
+				'f-docx': storedFile(
+					'doc.docx',
+					'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+					Buffer.from('docx-bytes'),
+				),
+			}),
+		);
+
+		const htmlPage = await executeTool(
+			tool,
+			{ fileId: 'f-html', ...defaults, maxChars: 11 },
+			{} as never,
+		);
+		expect(parseFileOutputSchema.safeParse(htmlPage).success).toBe(true);
+		expect(htmlPage).toMatchObject({
+			fileId: 'f-html',
+			format: 'html',
+			title: 'Doc',
+			content: 'Stored HTML',
+			truncated: true,
+			nextStartChar: 11,
+		});
+
+		const pdfPage = await executeTool(
+			tool,
+			{ fileId: 'f-pdf', ...defaults, startChar: 7, maxChars: 8 },
+			{} as never,
+		);
+		expect(parseFileOutputSchema.safeParse(pdfPage).success).toBe(true);
+		expect(pdfPage).toMatchObject({
+			fileId: 'f-pdf',
+			format: 'pdf',
+			pages: 4,
+			content: 'PDF body',
+			truncated: true,
+			nextStartChar: 15,
+		});
+
+		const docxPage = await executeTool(
+			tool,
+			{ fileId: 'f-docx', ...defaults, startChar: 7, maxChars: 100 },
+			{} as never,
+		);
+		expect(parseFileOutputSchema.safeParse(docxPage).success).toBe(true);
+		expect(docxPage).toMatchObject({
+			fileId: 'f-docx',
+			format: 'docx',
+			content: 'DOCX body text',
+			truncated: false,
+		});
+		expect(docxPage.nextStartChar).toBeUndefined();
 	});
 });
