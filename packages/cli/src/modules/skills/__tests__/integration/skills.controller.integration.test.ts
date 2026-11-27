@@ -1,8 +1,11 @@
+import { WORKFLOWS_IN_SKILLS_ENABLED_VARIANT, WORKFLOWS_IN_SKILLS_FLAG } from '@n8n/api-types';
 import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
+	createWorkflow,
 	linkUserToProject,
 	mockInstance,
+	shareWorkflowWithProjects,
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
@@ -33,7 +36,7 @@ beforeAll(async () => {
 
 describe('SkillsController', () => {
 	const server = setupTestServer({ endpointGroups: ['ai'] });
-	mockInstance(PostHogClient);
+	const postHog = mockInstance(PostHogClient);
 	let ownerPerson: Person;
 	let memberUser: User;
 	let editorUser: User;
@@ -1044,6 +1047,49 @@ describe('SkillsController', () => {
 				.patch(`/skills/${id}`)
 				.send({ scope: 'agent', baseSkillHash: skillHash })
 				.expect(400);
+		});
+	});
+
+	describe('workflow mentions', () => {
+		it('refuses a mention of a workflow that the author cannot read, and accepts it after a share', async () => {
+			postHog.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+				flag === WORKFLOWS_IN_SKILLS_FLAG ? WORKFLOWS_IN_SKILLS_ENABLED_VARIANT : false,
+			);
+			const workflow = await createWorkflow({ name: 'Owner report' }, ownerPerson);
+			const skill = {
+				...body,
+				name: 'Mentions owner report',
+				instructions: `Run [Owner report](n8n://workflow/${workflow.id}).`,
+			};
+
+			const { body: refused } = await editor
+				.post('/skills')
+				.send({ scope: 'project', projectId: project.id, skill })
+				.expect(400);
+			expect(refused.message).toContain(`Workflow "${workflow.id}"`);
+
+			await shareWorkflowWithProjects(workflow, [{ project }]);
+			await editor
+				.post('/skills')
+				.send({ scope: 'project', projectId: project.id, skill })
+				.expect(200);
+		});
+
+		it('refuses an owner mention of a workflow that does not exist', async () => {
+			postHog.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+				flag === WORKFLOWS_IN_SKILLS_FLAG ? WORKFLOWS_IN_SKILLS_ENABLED_VARIANT : false,
+			);
+			const skill = {
+				...body,
+				name: 'Mentions missing workflow',
+				instructions: 'Run [Gone](n8n://workflow/missingWorkflow1).',
+			};
+
+			const { body: refused } = await owner
+				.post('/skills')
+				.send({ scope: 'instance', skill })
+				.expect(400);
+			expect(refused.message).toContain('Workflow "missingWorkflow1"');
 		});
 	});
 

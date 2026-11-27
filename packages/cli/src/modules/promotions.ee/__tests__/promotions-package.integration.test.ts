@@ -3,6 +3,7 @@ import {
 	applyPackageResultSchema,
 	type ApplyPackageResultDto,
 	type ContinueApplyPackageDto,
+	type PromoteSelectionResultDto,
 	type PromotionProviderType,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
@@ -55,6 +56,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { SimpleGit } from 'simple-git';
+import { onTestFinished } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '@/credential-types';
@@ -108,6 +110,7 @@ import { PromotionCredentialSelectionService } from '../promotion-credential-sel
 import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
+import { PromotionSettingsService } from '../promotion-settings.service';
 import { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
@@ -226,7 +229,12 @@ beforeEach(async () => {
 		instanceSettings,
 	);
 	service = new PromotionsService(
-		new PromotionEnvironmentResolver(environmentRepository, linkRepository, projectRepository),
+		new PromotionEnvironmentResolver(
+			environmentRepository,
+			linkRepository,
+			projectRepository,
+			Container.get(PromotionSettingsService),
+		),
 		new PromotionProvidersService(
 			providerRepository,
 			environmentRepository,
@@ -3457,34 +3465,33 @@ describe('Promote a project selection — branch effects', () => {
 		);
 	});
 
-	it('pushes a branched selection to a new branch and leaves the base untouched', async () => {
+	it('pushes a selection to a new branch while approval is always required, also through an API key, and to the base branch again when configured', async () => {
 		const remote = await createRemote();
-		const environments = await createInstanceEnvironments(
-			remote.bareDir,
-			{ apply: 'main', promote: 'main' },
-			true,
-		);
+		// The environment itself pushes to the base branch.
+		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.promote.id, owner);
 
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
-		// A full promote seeds a branch. Merge it into the base, so a later selection
-		// has a package to build on.
-		const full = await service.promote(environments.promote.id, owner, {
-			commitMessage: 'Full promote',
-			force: true,
+		const baseCommit = (await exportPackageToRemote(remote)).git.commitSha;
+
+		const settings = Container.get(PromotionSettingsService);
+		onTestFinished(async () => {
+			await settings.update(owner, { requireApproval: 'whenConfigured' });
 		});
-		await createFixtureGit(remote.bareDir).raw([
-			'update-ref',
-			'refs/heads/main',
-			full.git.commitSha,
-		]);
-		const baseCommit = full.git.commitSha;
+		await settings.update(owner, { requireApproval: 'alwaysRequired' });
 
 		const w3 = await createWorkflow({ name: 'w3', nodes: [], connections: {} }, project);
-		const result = await service.promoteProjectSelection(project.id, owner, {
-			workflowIds: [w3.id],
-			commitMessage: 'Add w3',
-		});
+		const agent = testServer.publicApiAgentFor(
+			await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
+		);
+		const promoteW3 = async () =>
+			await agent
+				.post(`/promotions/projects/${project.id}/promote`)
+				.send({ workflowIds: [w3.id], commitMessage: 'Add w3' });
+
+		const response = await promoteW3();
+		expect(response.status, JSON.stringify(response.body)).toBe(200);
+		const result = response.body as PromoteSelectionResultDto;
 		expectPushed(result);
 
 		const remoteGit = createFixtureGit(remote.bareDir);
@@ -3502,6 +3509,13 @@ describe('Promote a project selection — branch effects', () => {
 		expect(workflowIds).toContain(w3.id);
 		for (const w of workflows) expect(workflowIds).toContain(w.id);
 		expect(result.counts.workflows).toBe(1);
+
+		// Back to "When configured": the environment pushes to its base branch again.
+		await settings.update(owner, { requireApproval: 'whenConfigured' });
+		const direct = (await promoteW3()).body as PromoteSelectionResultDto;
+		expectPushed(direct);
+		expect(direct.git.branchName).toBe('main');
+		expect((await remoteGit.revparse(['main'])).trim()).toBe(direct.git.commitSha);
 	});
 
 	it('updates only the selected workflow, leaving others untouched', async () => {

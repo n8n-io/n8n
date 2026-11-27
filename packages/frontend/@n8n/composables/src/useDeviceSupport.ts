@@ -16,7 +16,9 @@ export function useDeviceSupport() {
 	const isIOs = ref(
 		userAgent.value.includes('iphone') ||
 			userAgent.value.includes('ipad') ||
-			userAgent.value.includes('ipod'),
+			userAgent.value.includes('ipod') ||
+			// iPadOS desktop mode reports a Macintosh user agent with multi-touch support.
+			(userAgent.value.includes('macintosh') && navigator.maxTouchPoints > 1),
 	);
 	const isAndroidOs = ref(userAgent.value.includes('android'));
 	const isMacOs = ref(userAgent.value.includes('macintosh') || isIOs.value);
