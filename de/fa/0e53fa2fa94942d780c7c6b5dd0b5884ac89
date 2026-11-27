@@ -1,0 +1,56 @@
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  ai_agent 112-126
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_3947e7a7645066::t_ec1d4fe524411c 502,530
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/prepareApplyCredentials.generated.yml
+  ai_agent 8,27,30-43,46
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_3947e7a7645066::t_cce9a63afddb71 1014-1023
+packages/@n8n/api-types/src/dto/index.ts
+  s_3947e7a7645066::t_fd6bcfbcc45511 884
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_3947e7a7645066::t_fd6bcfbcc45511 1107,1123,1132,1135-1136,1159
+packages/modules/promotions/frontend/src/composables/usePreparedApplyCredentials.ts
+  s_3947e7a7645066::t_c053ce68d35f94 3,5-10,13-16,26,28-30,33-37,40-53,56-69,72-73,75,79
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_3947e7a7645066::t_1636b9539163d0 75-76,78,190,192-193,199,201-213
+  s_3947e7a7645066::t_edd849a6b3853b 69,74,77
+packages/frontend/editor-ui/src/Interface.ts
+  s_3947e7a7645066::t_cce9a63afddb71 725-726
+packages/modules/promotions/frontend/src/components/preview/PromotionPreparedCredentials.vue
+  s_3947e7a7645066::t_689a2684e84c54 6,8,10-12,16,19-21,32-33,37,41,44-47,51,56-57,60-64,67-82,122-126
+  s_3947e7a7645066::t_a647f51c40858f 58
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_3947e7a7645066::t_a647f51c40858f 115-118
+  s_3947e7a7645066::t_7cf5fe215e09b2 24,85-103,105,113-114,119,274,612,618-623
+packages/modules/promotions/frontend/src/promotions.api.ts
+  s_3947e7a7645066::t_edd849a6b3853b 155,159,165
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_3947e7a7645066::t_fd6bcfbcc45511 99-102
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3947e7a7645066::t_fd6bcfbcc45511 9,918,926,932
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_3947e7a7645066::t_fd6bcfbcc45511 248-263
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_3947e7a7645066::t_14d4e8fbe6be15 528,551,653-662
+packages/frontend/@n8n/frontend-module-sdk/src/types/capability.ts
+  s_3947e7a7645066::t_cce9a63afddb71 124-125
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3947e7a7645066::t_a647f51c40858f 11609-11610,11613,11615
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "defa0e53fa2fa94942d780c7c6b5dd0b5884ac89",
+  "prompts": {},
+  "sessions": {
+    "s_3947e7a7645066": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6c1ad71-79f0-424f-bcac-75282364c349",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

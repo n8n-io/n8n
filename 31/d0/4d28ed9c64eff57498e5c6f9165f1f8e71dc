@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.test.ts
+  s_bb8f69a095e985::t_b7e93872b537d7 100,103-106
+  s_bb8f69a095e985::t_39cb4419d8704b 152-164
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_bb8f69a095e985::t_7e2270746c9a22 1570
+  s_bb8f69a095e985::t_cfaead148fb167 1871
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "31d04d28ed9c64eff57498e5c6f9165f1f8e71dc",
+  "prompts": {},
+  "sessions": {
+    "s_bb8f69a095e985": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9db09c06-46b9-4e35-9db3-db392ca41687",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

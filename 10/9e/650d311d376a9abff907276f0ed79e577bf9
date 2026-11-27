@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_dfe3f914c8bb46::t_642c3462b36c8d 1105-1106
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_642c3462b36c8d 11-12,57,92-97
+  s_dfe3f914c8bb46::t_df722e851b4173 98-101,178
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_dfe3f914c8bb46::t_642c3462b36c8d 364-371
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_dfe3f914c8bb46::t_642c3462b36c8d 308-313,750-754,837-861
+  s_dfe3f914c8bb46::t_88e2d0ee924326 862-863
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_d1e59546e6a82b 549-556,558-559,562,567-601,611,648,685
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "109e650d311d376a9abff907276f0ed79e577bf9",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

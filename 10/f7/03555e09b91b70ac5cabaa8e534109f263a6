@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.test.ts
+  s_bb8f69a095e985::t_9f4bbe1cc07087 2475
+  s_bb8f69a095e985::t_3d73646b1a31d6 614-625
+  s_bb8f69a095e985::t_21a5e0c8ddd932 2300
+  s_bb8f69a095e985::t_68fe587e43d6d1 2270
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_bb8f69a095e985::t_1c8541bd468252 175
+  s_bb8f69a095e985::t_c773006820cb03 1572
+  s_bb8f69a095e985::t_1b55bf13488b33 1873
+  s_bb8f69a095e985::t_5fe453d46dc125 148
+packages/frontend/editor-ui/src/features/ndv/panel/components/OutputPanel.vue
+  s_bb8f69a095e985::t_36ddb1adf5d356 312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "10f703555e09b91b70ac5cabaa8e534109f263a6",
+  "prompts": {},
+  "sessions": {
+    "s_bb8f69a095e985": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9db09c06-46b9-4e35-9db3-db392ca41687",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
