@@ -6999,4 +6999,72 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(entry, properties);
 		});
 	});
+
+	describe('custom MCP server events', () => {
+		// The init tests register a second relay on the shared emitter, so this block uses its own.
+		const mcpEventService = new EventService();
+
+		beforeAll(async () => {
+			await new TelemetryEventRelay(
+				mcpEventService,
+				telemetry,
+				license,
+				licenseState,
+				globalConfig,
+				instanceSettings,
+				binaryDataConfig,
+				workflowRepository,
+				nodeTypes,
+				sharedWorkflowRepository,
+				projectRelationRepository,
+				credentialsRepository,
+				dynamicCredentialsProxy,
+				dbConnection,
+				loadNodesAndCredentials,
+				postHogClient,
+				ownershipService,
+			).init();
+		});
+
+		it.each([
+			['mcp-server-created', TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CREATED_CUSTOM_MCP_SERVER],
+			['mcp-server-deleted', TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_DELETED_CUSTOM_MCP_SERVER],
+		] as const)('should track on `%s` event with the user and the source', (eventName, entry) => {
+			mcpEventService.emit(eventName, {
+				serverId: 'server-1',
+				projectId: 'p-1',
+				userId: 'user-1',
+				source: 'ui',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(entry, {
+				server_id: 'server-1',
+				project_id: 'p-1',
+				user_id: 'user-1',
+				source: 'ui',
+				thread_id: undefined,
+			});
+		});
+
+		it('tracks a tool that a builder added, with the user id and the source', () => {
+			mcpEventService.emit('mcp-server-tool-added', {
+				serverId: 'server-1',
+				userId: 'user-1',
+				source: 'ui',
+				toolKind: 'workflow',
+				isAiDraft: false,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_ADDED_TOOL_TO_CUSTOM_MCP_SERVER,
+				{
+					server_id: 'server-1',
+					user_id: 'user-1',
+					source: 'ui',
+					tool_kind: 'workflow',
+					is_ai_draft: false,
+				},
+			);
+		});
+	});
 });

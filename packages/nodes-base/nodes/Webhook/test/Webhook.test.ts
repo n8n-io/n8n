@@ -2,7 +2,7 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { Request, Response } from 'express';
 import fs from 'fs/promises';
 import { mock } from 'vitest-mock-extended';
-import type { INodeProperties, IWebhookFunctions } from 'n8n-workflow';
+import type { INodeProperties, IWebhookFunctions, NodeParameterValueType } from 'n8n-workflow';
 
 import { Webhook } from '../Webhook.node';
 
@@ -81,6 +81,7 @@ describe('Test Webhook Node', () => {
 			nodeHelpers: mock(),
 		});
 		context.getNodeParameter.calledWith('options').mockReturnValue({});
+		context.getNodeParameter.calledWith('authentication', 'none').mockReturnValue('none');
 		context.getNode.calledWith().mockReturnValue({
 			type: 'n8n-nodes-base.webhook',
 			typeVersion: 1.1,
@@ -130,6 +131,7 @@ describe('Test Webhook Node', () => {
 			context.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'options') return {};
 				if (paramName === 'responseMode') return 'streaming';
+				if (paramName === 'authentication') return 'none';
 				return undefined;
 			});
 			req.headers = {};
@@ -165,6 +167,7 @@ describe('Test Webhook Node', () => {
 			context.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'options') return {};
 				if (paramName === 'responseMode') return 'onReceived';
+				if (paramName === 'authentication') return 'none';
 				return undefined;
 			});
 
@@ -397,6 +400,7 @@ describe('Test Webhook Node', () => {
 				if (paramName === 'options') return runtimeOptions;
 				if (paramName === 'responseMode') return 'onReceived';
 				if (paramName === 'httpMethod') return 'POST';
+				if (paramName === 'authentication') return 'none';
 				return undefined;
 			});
 
@@ -486,5 +490,102 @@ describe('Test Webhook Node', () => {
 			expect(res.writeHead).toHaveBeenCalledWith(403);
 			expect(context.evaluateExpression).not.toHaveBeenCalled();
 		});
+	});
+
+	describe('authentication', () => {
+		const node = new Webhook();
+		let context: ReturnType<typeof mock<IWebhookFunctions>>;
+		let req: ReturnType<typeof mock<Request>>;
+		let res: ReturnType<typeof mock<Response>>;
+
+		const setup = (authentication?: string) => {
+			context = mock<IWebhookFunctions>({ nodeHelpers: mock(), logger: mock() });
+			req = mock<Request>();
+			res = mock<Response>();
+
+			context.getRequestObject.mockReturnValue(req);
+			context.getResponseObject.mockReturnValue(res);
+			context.getHeaderData.mockReturnValue({});
+			context.getChildNodes.mockReturnValue([]);
+			context.getNode.mockReturnValue({
+				id: 'webhook-1',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2,
+				position: [0, 0],
+				parameters: {
+					httpMethod: 'POST',
+					path: 'test-path',
+					...(authentication !== undefined ? { authentication } : {}),
+				},
+			});
+			context.getNodeWebhookUrl
+				.calledWith('default')
+				.mockReturnValue('https://n8n.test/webhook/test-path');
+			context.getMode.mockReturnValue('webhook');
+			context.getNodeParameter.mockImplementation(
+				(paramName: string, fallbackValue?: NodeParameterValueType | object) => {
+					if (paramName === 'options') return {};
+					if (paramName === 'responseMode') return 'onReceived';
+					if (paramName === 'httpMethod') return 'POST';
+					if (paramName === 'authentication') return authentication ?? fallbackValue;
+					return fallbackValue;
+				},
+			);
+
+			req.headers = {};
+			req.params = {};
+			req.query = {};
+			req.method = 'POST';
+			req.body = { message: 'hello' };
+			Object.defineProperty(req, 'ips', { value: [], configurable: true });
+			Object.defineProperty(req, 'ip', { value: '127.0.0.1', configurable: true });
+			res.writeHead.mockImplementation(() => res);
+			res.end.mockImplementation(() => res);
+		};
+
+		afterEach(() => vi.clearAllMocks());
+
+		it.each([
+			['explicit "none"', 'none'],
+			['omitted parameter defaulting to "none"', undefined],
+		])('should return workflowData when authentication is %s', async (_label, authentication) => {
+			setup(authentication);
+
+			const result = await node.webhook(context);
+
+			expect(res.writeHead).not.toHaveBeenCalled();
+			expect(res.end).not.toHaveBeenCalled();
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('should return 500 without workflowData when basicAuth has no credentials configured', async () => {
+			setup('basicAuth');
+			context.getCredentials.mockRejectedValue(new Error('No credentials'));
+
+			const result = await node.webhook(context);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(res.writeHead).toHaveBeenCalledWith(500, expect.any(Object));
+			expect(res.end).toHaveBeenCalled();
+		});
+
+		// CAP-729
+		it.each(['unsupportedMode', 'BasicAuth'])(
+			'should return 500 without workflowData when authentication mode "%s" is unsupported',
+			async (authentication) => {
+				setup(authentication);
+				context.getCredentials.mockResolvedValue({
+					user: 'admin',
+					password: 'password',
+				});
+
+				const result = await node.webhook(context);
+
+				expect(result).toEqual({ noWebhookResponse: true });
+				expect(res.writeHead).toHaveBeenCalledWith(500, expect.any(Object));
+				expect(res.end).toHaveBeenCalled();
+			},
+		);
 	});
 });

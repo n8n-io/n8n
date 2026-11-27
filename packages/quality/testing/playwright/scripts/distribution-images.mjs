@@ -15,6 +15,7 @@ const CAPABILITY_SERVICES = {
 };
 
 const SERVICE_IMAGES = {
+	azurite: ['azurite'],
 	cadvisor: ['cadvisor'],
 	cloudflared: ['cloudflared'],
 	gitea: ['gitea'],

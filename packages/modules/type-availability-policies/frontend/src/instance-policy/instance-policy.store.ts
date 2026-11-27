@@ -1,4 +1,4 @@
-import type { InstanceTypeAccessResponse } from '@n8n/api-types';
+import type { InstanceTypeAccessResponse, TypeAccessChange } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -11,9 +11,8 @@ import {
 	fetchInstancePolicy,
 	fetchInstanceAccess,
 	fetchNodeTypeUsage,
-	saveInstancePolicy,
+	setInstanceTypeAccess,
 	type InstancePolicy,
-	type InstancePolicyContent,
 	type PolicyRuleWarnings,
 } from '../type-availability-policies.api';
 import {
@@ -209,15 +208,16 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 	}
 
 	/**
-	 * Saves the policy that `update` makes from the current policy. `update` runs when the save
-	 * starts, after the earlier saves of the same kind, so that it builds on their result.
+	 * Gives each type in `changes` its access, in one write of the policy. The write sends the
+	 * version when it starts, after the earlier writes of the same kind, so that it builds on their
+	 * result. The server places the rules.
 	 */
-	async function save<K extends RestrictedTypeKind>(
-		kind: K,
-		update: (policy: InstancePolicy<K>) => InstancePolicyContent<K>,
+	async function setAccess(
+		kind: RestrictedTypeKind,
+		changes: readonly TypeAccessChange[],
 	): Promise<InstancePolicySaveResult> {
 		const generation = generations[kind];
-		const run = saveQueues[kind].then(async () => await runSave(kind, update, generation));
+		const run = saveQueues[kind].then(async () => await runSave(kind, changes, generation));
 		// A rejected save must not block the saves after it.
 		saveQueues[kind] = run.catch(() => undefined);
 		const result = await run;
@@ -228,9 +228,9 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		return accessError === null ? result : { ...result, accessError };
 	}
 
-	async function runSave<K extends RestrictedTypeKind>(
-		kind: K,
-		update: (policy: InstancePolicy<K>) => InstancePolicyContent<K>,
+	async function runSave(
+		kind: RestrictedTypeKind,
+		changes: readonly TypeAccessChange[],
 		generation: number,
 	): Promise<InstancePolicySaveResult> {
 		if (generation !== generations[kind]) return { status: 'dropped' };
@@ -242,8 +242,8 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		}
 
 		try {
-			const result = await saveInstancePolicy(rootStore.restApiContext, kind, {
-				...update(current),
+			const result = await setInstanceTypeAccess(rootStore.restApiContext, kind, {
+				changes: [...changes],
 				version: current.version,
 			});
 			accept(kind, result);
@@ -290,6 +290,6 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		loadUsage,
 		loadMissingUsage,
 		usageOf,
-		save,
+		setAccess,
 	};
 });

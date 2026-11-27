@@ -23,6 +23,7 @@ import type { Skill } from '../database/entities/skill.entity';
 import { SkillSyncedError } from '../errors/skill-synced.error';
 import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
 import { getSkillHash } from '../utils/skill-hash';
+import { SKILL_WORKFLOW_MENTION_HINT } from '../utils/skill-workflow-mention-hint';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
@@ -45,6 +46,7 @@ describe('SkillService', () => {
 		users,
 		links,
 		skillSyncGate,
+		workflowsInSkillsGate,
 		service,
 	} = createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
@@ -955,6 +957,26 @@ describe('SkillService', () => {
 			).rejects.toThrow(NotFoundError);
 			expect(telemetry.created).toHaveBeenCalled();
 		});
+
+		it('create checks the workflow mentions before it writes', async () => {
+			vi.spyOn(access, 'resolveCreateTarget').mockResolvedValue({ projectId: PROJECT });
+			const checkMentions = vi
+				.spyOn(access, 'assertCanReadMentionedWorkflows')
+				.mockRejectedValue(new UserError('No access'));
+			const createTrusted = vi.spyOn(service, 'createTrusted');
+			const skill = {
+				name: 'Brand voice',
+				description: 'Write in our voice',
+				instructions: 'Use [A](n8n://workflow/a).',
+			};
+
+			await expect(
+				service.create(user, { scope: 'project', projectId: PROJECT, skill }),
+			).rejects.toThrow('No access');
+
+			expect(checkMentions).toHaveBeenCalledWith(user, skill);
+			expect(createTrusted).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('update', () => {
@@ -982,6 +1004,69 @@ describe('SkillService', () => {
 
 			expect(setAvailability).toHaveBeenCalledWith('skill_a', true, skill, TX_CTX);
 			expect(telemetry.updated).toHaveBeenCalledWith('user-1', skill, 'ui', 2, false);
+		});
+
+		it('checks the workflow mentions against the latest version before it saves', async () => {
+			const skill = skillRow('skill_a', { projectId: PROJECT });
+			const latest = versionRow(skill, 2, { instructions: 'Use [A](n8n://workflow/a).' });
+			skills.findLatestSaved.mockResolvedValue(new Map([['skill_a', latest]]));
+			vi.spyOn(access, 'requireAccess').mockResolvedValue(skill);
+			const checkMentions = vi
+				.spyOn(access, 'assertCanReadMentionedWorkflows')
+				.mockRejectedValue(new UserError('No access'));
+			const save = vi.spyOn(service, 'saveTrusted');
+
+			await expect(
+				service.update(user, 'skill_a', {
+					instructions: 'Use [A](n8n://workflow/a) and [B](n8n://workflow/b).',
+					baseSkillHash: getSkillHash(toAgentSkill(latest)),
+				}),
+			).rejects.toThrow('No access');
+
+			expect(checkMentions).toHaveBeenCalledWith(
+				user,
+				{
+					instructions: 'Use [A](n8n://workflow/a) and [B](n8n://workflow/b).',
+					references: undefined,
+				},
+				toAgentSkill(latest),
+			);
+			expect(save).not.toHaveBeenCalled();
+		});
+
+		it('refuses a stale base with the conflict before the mention check and the save', async () => {
+			const skill = skillRow('skill_a', { projectId: PROJECT });
+			skills.findLatestSaved.mockResolvedValue(new Map([['skill_a', versionRow(skill, 2)]]));
+			vi.spyOn(access, 'requireAccess').mockResolvedValue(skill);
+			const checkMentions = vi.spyOn(access, 'assertCanReadMentionedWorkflows');
+			const save = vi.spyOn(service, 'saveTrusted');
+
+			await expect(
+				service.update(user, 'skill_a', {
+					instructions: 'Use [B](n8n://workflow/b).',
+					baseSkillHash: 'stale',
+				}),
+			).rejects.toThrow(ConflictError);
+
+			expect(checkMentions).not.toHaveBeenCalled();
+			expect(save).not.toHaveBeenCalled();
+		});
+
+		it('does not check workflow mentions when the content stays the same', async () => {
+			const skill = skillRow('skill_a', { projectId: PROJECT });
+			vi.spyOn(access, 'requireAccess').mockResolvedValue(skill);
+			const checkMentions = vi.spyOn(access, 'assertCanReadMentionedWorkflows');
+			vi.spyOn(service, 'saveTrusted').mockResolvedValue({
+				created: false,
+				versionId: 'skill_a-v2',
+				version: 2,
+				skill: toAgentSkill(versionRow(skill, 2)),
+				followingAgentIds: [],
+			});
+
+			await service.update(user, 'skill_a', { name: 'New name', baseSkillHash: 'hash' });
+
+			expect(checkMentions).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1301,6 +1386,59 @@ describe('SkillService', () => {
 
 		it('does not read a missing skill', async () => {
 			expect(await service.readForMcp(user, 'missing')).toBeNull();
+		});
+
+		describe('a skill that mentions a workflow', () => {
+			const mentioning = 'Run [Report](n8n://workflow/wf-1).';
+
+			function useSkill(
+				instructions: string,
+				files: Array<{ path: string; content: string }> = [],
+			) {
+				const row = versionRow(
+					skillRow('skill-4', { projectId: 'project-1' }),
+					1,
+					{ instructions },
+					files,
+				);
+				row.skill.availableToMCP = true;
+				projectScope.getProjectIds.mockResolvedValue(['project-1']);
+				skills.findLatestSaved.mockResolvedValue(new Map([['skill-4', row]]));
+				skills.findLatestVersionIds.mockResolvedValue(new Map([['skill-4', row.version.id]]));
+				skills.findVersionsByIds.mockResolvedValue(new Map([[row.version.id, row]]));
+				skills.findVisiblePage.mockResolvedValue({ skills: [row.skill], count: 1 });
+			}
+
+			it('adds the workflow hint to the instructions when the flag is on', async () => {
+				workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+				useSkill(mentioning);
+				const expected = `${mentioning}\n\n${SKILL_WORKFLOW_MENTION_HINT}`;
+
+				expect((await service.readForMcp(user, 'skill-4'))?.skill.instructions).toBe(expected);
+				expect((await service.listForMcp(user, 0, 50)).skills[0].content?.skill.instructions).toBe(
+					expected,
+				);
+			});
+
+			it('keeps the instructions when the flag is off', async () => {
+				workflowsInSkillsGate.isEnabled.mockResolvedValue(false);
+				useSkill(mentioning);
+
+				expect((await service.readForMcp(user, 'skill-4'))?.skill.instructions).toBe(mentioning);
+				expect((await service.listForMcp(user, 0, 50)).skills[0].content?.skill.instructions).toBe(
+					mentioning,
+				);
+			});
+
+			it('adds the workflow hint to the instructions when only a reference mentions a workflow', async () => {
+				workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+				useSkill('Be brief.', [{ path: 'references/run.md', content: mentioning }]);
+
+				const skill = (await service.listForMcp(user, 0, 50)).skills[0].content?.skill;
+
+				expect(skill?.instructions).toBe(`Be brief.\n\n${SKILL_WORKFLOW_MENTION_HINT}`);
+				expect(skill?.references).toEqual([{ path: 'references/run.md', content: mentioning }]);
+			});
 		});
 
 		describe('the origin of a synced skill', () => {

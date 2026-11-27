@@ -67,8 +67,6 @@ import {
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 } from '@/features/settings/communityNodes/communityNodes.constants';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
-import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import ModalRoot from '@/app/components/ModalRoot.vue';
 import NpsSurvey from '@/app/components/NpsSurvey.vue';
 import type { WorkflowVersionFormModalData } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
@@ -80,9 +78,6 @@ import { lazyModalLoaders } from '@/app/modals/lazyModals';
 
 const AboutModal = defineAsyncComponent(lazyModalLoaders[ABOUT_MODAL_KEY]);
 const ActivationModal = defineAsyncComponent(lazyModalLoaders[WORKFLOW_ACTIVE_MODAL_KEY]);
-const ApiKeyCreateOrEditModal = defineAsyncComponent(
-	lazyModalLoaders[API_KEY_CREATE_OR_EDIT_MODAL_KEY],
-);
 const NewAssistantSessionModal = defineAsyncComponent(
 	lazyModalLoaders[NEW_ASSISTANT_SESSION_MODAL],
 );
@@ -186,29 +181,6 @@ const TrialIntroModal = defineAsyncComponent(lazyModalLoaders[TRIAL_INTRO_MODAL_
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CredentialEdit :modal-name="modalName" :mode="mode" :active-id="activeId" />
-			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="API_KEY_CREATE_OR_EDIT_MODAL_KEY">
-			<template
-				#default="{
-					modalName,
-					data: { mode, activeId, rotatedApiKey },
-				}: {
-					modalName: string;
-					data: {
-						mode: 'new' | 'edit';
-						activeId: string;
-						rotatedApiKey?: ApiKeyWithRawValue | null;
-					};
-				}"
-			>
-				<ApiKeyCreateOrEditModal
-					:modal-name="modalName"
-					:mode="mode"
-					:active-id="activeId"
-					:rotated-api-key="rotatedApiKey"
-				/>
 			</template>
 		</ModalRoot>
 

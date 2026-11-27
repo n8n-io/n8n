@@ -1,0 +1,90 @@
+operationId: listAgentVersions
+tags:
+  - Agent
+summary: Retrieve agent version history
+description: |-
+  Returns a paginated list of saved agent versions for an agent. The response is one cursor page: read the next page with the cursor query parameter.
+
+  Requires the `agent:read` API key scope.
+x-required-scope: agent:read
+parameters:
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - schema:
+      type: string
+    required: true
+    description: The ID of the agent.
+    name: agentId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  versionId:
+                    type: string
+                  agentId:
+                    type: string
+                  name:
+                    type: string
+                    nullable: true
+                  description:
+                    type: string
+                    nullable: true
+                  author:
+                    type: string
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  isActive:
+                    type: boolean
+                  isCurrent:
+                    type: boolean
+                  lastPublished:
+                    type: object
+                    properties:
+                      author:
+                        type: string
+                      createdAt:
+                        type: string
+                      isLegacy:
+                        type: boolean
+                    required:
+                      - author
+                      - createdAt
+                      - isLegacy
+                required:
+                  - versionId
+                  - agentId
+                  - name
+                  - description
+                  - author
+                  - createdAt
+                  - updatedAt
+                  - isActive
+                  - isCurrent
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

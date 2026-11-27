@@ -739,18 +739,6 @@ describe('AssistantAgentProvider', () => {
 				);
 			}
 
-			it('keeps every approval card on the first turn of an agent subject', async () => {
-				const { provider, turnEnvironment } = setup();
-				const { turn } = agentTurn({ id: 'agent-1' });
-
-				await provider.prepareTurn(turn);
-
-				expect(turnEnvironment.create).toHaveBeenCalledWith(
-					expect.objectContaining({ attachesAgent: true }),
-					expect.anything(),
-				);
-			});
-
 			it('does not bind an agent that is only attached to the message', async () => {
 				const { provider } = setup();
 				const { turn, written } = turnWithMetadata(

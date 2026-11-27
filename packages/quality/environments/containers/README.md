@@ -160,6 +160,9 @@ Set `platform` to select a Docker image platform, such as `linux/arm64`.
 Set `image` to a platform-specific tag or digest that is available on the Docker daemon.
 The stack does not pull the image when `platform` is set, because that pull can change a tag that other stacks use.
 
+Set `entrypoint` and `command` to override the image `ENTRYPOINT` and `CMD`.
+Worker and webhook containers append their subcommand (`worker`, `webhook`) to `command`.
+
 ```typescript
 test.use({
   capability: {
@@ -435,6 +438,7 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `tracing` | ✓ | Jaeger for distributed tracing |
 | `kafka` | ✓ | Kafka broker for message queue testing |
 | `localstack` | ✓ | AWS emulator for Secrets Manager and S3 |
+| `azurite` | ✓ | Azure Blob Storage emulator (Azurite) |
 | `proxy` | - | HTTP proxy (MockServer) |
 | `taskRunner` | - | External task runner |
 | `engineTaskRunner` | - | External task runner for the engine container (auto-starts with `engine: 'container'`) |

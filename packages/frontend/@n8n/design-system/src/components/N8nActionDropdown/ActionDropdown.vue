@@ -59,6 +59,7 @@ const toMenuItem = (
 	icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
 	iconSize: props.iconSize,
 	disabled: item.disabled,
+	hoverTooltip: item.tooltip,
 	divided: item.divided,
 	checked: item.checked,
 	destructive: item.variant === 'destructive',

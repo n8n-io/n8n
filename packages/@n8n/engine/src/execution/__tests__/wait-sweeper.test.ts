@@ -8,7 +8,7 @@ import { WaitSweeper } from '../wait-sweeper';
 const SWEEP_MS = 1_000;
 
 function makeStepQueue(): WorkQueue<StepMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
 }
 
 function makeLogger(): EngineLogger {

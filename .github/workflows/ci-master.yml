@@ -13,7 +13,7 @@ permissions:
 jobs:
   build-and-format:
     name: Build & format
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-bmi-n8n
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -40,12 +40,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [24.22.2, 26.13.0]
+        node: [24, 26]
     with:
       ref: ${{ github.sha }}
-      nodeVersion: ${{ matrix.node-version }}
-      collectCoverage: ${{ matrix.node-version == '24.22.2' }}
-      warmPrCache: ${{ matrix.node-version == '26.13.0' }}
+      # Empty uses NODE_VERSION of docker/docker-bake.hcl (Node 26).
+      nodeVersion: ${{ matrix.node == 24 && '24.22.2' || '' }}
+      collectCoverage: ${{ matrix.node == 24 }}
+      warmPrCache: ${{ matrix.node == 26 }}
     secrets: inherit
 
   lint:

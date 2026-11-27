@@ -231,7 +231,7 @@ const props = withDefaults(
 	},
 );
 
-const { isMobileDevice, controlKeyCode } = useDeviceSupport();
+const { isMobileDevice, isTouchDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -329,10 +329,19 @@ const classes = computed(() => ({
  * Panning and Selection key bindings
  */
 
+const isTouchPanningDevice = isMobileDevice || isTouchDevice;
+
 // @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
-const panningKeyCode = ref<string[] | true>(isMobileDevice ? true : [' ', controlKeyCode]);
-const panningMouseButton = ref<number[] | true>(isMobileDevice ? true : [1]);
-const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : true);
+const desktopPanningKeyCode = [' ', controlKeyCode];
+// On touch devices, pan-on-drag and pan-on-scroll are always active.
+// Keep panActivationKeyCode null and zoomActivationKeyCode on controlKeyCode
+// so wheel scroll pans and trackpad pinch zooms.
+const panningKeyCode = ref<string[] | null>(isTouchPanningDevice ? null : desktopPanningKeyCode);
+const zoomActivationKeyCode = ref<string[]>(
+	isTouchPanningDevice ? [controlKeyCode] : desktopPanningKeyCode,
+);
+const panningMouseButton = ref<number[] | true>(isTouchPanningDevice ? true : [1]);
+const selectionKeyCode = ref<string | true | null>(isTouchPanningDevice ? 'Shift' : true);
 const isInPanningMode = ref(false);
 
 function switchToPanningMode() {
@@ -342,16 +351,22 @@ function switchToPanningMode() {
 }
 
 function switchToSelectionMode() {
+	if (isTouchPanningDevice) return;
+
 	selectionKeyCode.value = true;
 	panningMouseButton.value = [1];
 	isInPanningMode.value = false;
 }
 
-onKeyDown(panningKeyCode.value, switchToPanningMode, {
-	dedupe: true,
-});
+// Keep panning active on touch devices; desktop key listeners must not
+// replace panOnDrag with a mouse-button array that rejects TouchEvent.
+if (!isTouchPanningDevice) {
+	onKeyDown(desktopPanningKeyCode, switchToPanningMode, {
+		dedupe: true,
+	});
 
-onKeyUp(panningKeyCode.value, switchToSelectionMode);
+	onKeyUp(desktopPanningKeyCode, switchToSelectionMode);
+}
 
 /**
  * Rename node key bindings
@@ -2079,7 +2094,7 @@ defineExpose({
 		:min-zoom="0"
 		:max-zoom="experimentalNdvStore.isZoomedViewEnabled ? experimentalNdvStore.maxCanvasZoom : 4"
 		:selection-key-code="selectionKeyCode"
-		:zoom-activation-key-code="panningKeyCode"
+		:zoom-activation-key-code="zoomActivationKeyCode"
 		:pan-activation-key-code="panningKeyCode"
 		:disable-keyboard-a11y="true"
 		:delete-key-code="null"

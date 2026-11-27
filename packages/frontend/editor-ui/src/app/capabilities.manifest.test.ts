@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 import { registerShellCapabilities } from './capabilities.manifest';
 
 import { ABOUT_MODAL_KEY } from '@/app/constants/modals';
+import { useModalPrefetch } from '@/app/composables/usePrefetchModals';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -111,6 +112,22 @@ describe('registerShellCapabilities', () => {
 		capabilityRegistry.use(capabilities.modalOpeners).openModalWithData(payload);
 
 		expect(uiStore.openModalWithData).toHaveBeenCalledWith(payload);
+	});
+
+	it('forwards closeModal to the UI store', () => {
+		registerShellCapabilities();
+		const uiStore = useUIStore();
+
+		capabilityRegistry.use(capabilities.modalCloser).closeModal(ABOUT_MODAL_KEY);
+
+		expect(uiStore.closeModal).toHaveBeenCalledWith(ABOUT_MODAL_KEY);
+	});
+
+	// The shell owns the prefetch, so its preload-error handler sees a module's prefetch too.
+	it('provides the shell modal prefetch', () => {
+		registerShellCapabilities();
+
+		expect(capabilityRegistry.use(capabilities.modalPrefetch)).toBe(useModalPrefetch);
 	});
 
 	// Dev HMR re-evaluates the manifest, so a second registration must not warn. The

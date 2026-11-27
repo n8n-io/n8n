@@ -1,7 +1,9 @@
 import mysql2 from 'mysql2/promise';
+import type { Mock } from 'vitest';
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IGetNodeParameterOptions,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
@@ -931,6 +933,25 @@ describe('Test MySql V2, operations', () => {
 			);
 		});
 
+		it('should look up the unique columns in the chosen database', async () => {
+			const pool = createCatalogPool();
+			const connectionQuerySpy = vi.spyOn(fakeConnection, 'query');
+
+			await runSelect(
+				{
+					...baseParameters,
+					database: { __rl: true, mode: 'name', value: 'other_db' },
+					startAfter: { values: { column: 'id', value: '' } },
+				},
+				pool,
+			);
+
+			expect(pool.query).toHaveBeenCalledWith('SHOW INDEX FROM `other_db`.`test_table`');
+			expect(connectionQuerySpy).toHaveBeenCalledWith(
+				'SELECT * FROM `other_db`.`test_table` ORDER BY `id` ASC LIMIT 2',
+			);
+		});
+
 		it.each(['name', 'does_not_exist'])(
 			'should throw when the cursor column "%s" is not unique',
 			async (column) => {
@@ -1484,5 +1505,322 @@ describe('Test MySql V2, operations', () => {
 
 		// Successful query came from item 1 — its pairedItem must reference item 1, not 0
 		expect(result[1].pairedItem).toEqual({ item: 1 });
+	});
+
+	describe('database parameter', () => {
+		const table = { __rl: true, value: 'test_table', mode: 'list' };
+		const otherDatabase = { __rl: true, mode: 'name', value: 'other_db' };
+		const valuesToSend = { values: [{ column: 'id', value: '2' }] };
+		const item = (index: number): INodeExecutionData => ({
+			json: { id: index },
+			pairedItem: { item: index },
+		});
+		const queriesOf = (runQueries: Mock) =>
+			(runQueries.mock.calls[0][0] as Array<{ query: string }>).map(({ query }) => query);
+
+		// Answers one parameter by item index, as a per-item expression does
+		const createPerItemContext = (
+			nodeParameters: IDataObject,
+			name: string,
+			valueOf: (itemIndex: number, options?: IGetNodeParameterOptions) => unknown,
+			continueBool = false,
+		) => {
+			const context = createMockExecuteFunction(nodeParameters, mySqlMockNode, continueBool);
+			const getNodeParameter = context.getNodeParameter.bind(context) as (
+				...args: unknown[]
+			) => unknown;
+			context.getNodeParameter = ((
+				parameterName: string,
+				itemIndex: number,
+				fallbackValue?: unknown,
+				options?: IGetNodeParameterOptions,
+			) =>
+				parameterName === name
+					? valueOf(itemIndex, options)
+					: getNodeParameter(
+							parameterName,
+							itemIndex,
+							fallbackValue,
+							options,
+						)) as IExecuteFunctions['getNodeParameter'];
+			return context;
+		};
+
+		const createDatabaseExpressionContext = (
+			nodeParameters: IDataObject,
+			databases: Array<string | undefined>,
+			continueBool = false,
+		) =>
+			createPerItemContext(
+				nodeParameters,
+				'database',
+				(itemIndex, options) =>
+					options?.rawExpressions ? '={{ $json.db }}' : databases[itemIndex],
+				continueBool,
+			);
+
+		it.each([
+			{
+				operation: deleteTable,
+				parameters: { deleteCommand: 'drop' },
+				expected: 'DROP TABLE IF EXISTS `other_db`.`test_table`',
+			},
+			{
+				operation: insert,
+				parameters: { dataMode: 'defineBelow', valuesToSend },
+				expected: 'INSERT   INTO `other_db`.`test_table` (`id`) VALUES (?)',
+			},
+			{
+				operation: select,
+				parameters: {},
+				expected: 'SELECT * FROM `other_db`.`test_table`',
+			},
+			{
+				operation: update,
+				parameters: {
+					dataMode: 'defineBelow',
+					columnToMatchOn: 'id',
+					valuesToSend: { values: [{ column: 'name', value: 'a' }] },
+				},
+				expected: 'UPDATE `other_db`.`test_table` SET `name` = ? WHERE `id` = ?',
+			},
+			{
+				operation: upsert,
+				parameters: { dataMode: 'defineBelow', columnToMatchOn: 'id', valuesToSend },
+				expected: 'INSERT INTO `other_db`.`test_table`(`id`) VALUES(?) ON DUPLICATE KEY UPDATE',
+			},
+		])(
+			'should qualify the table with the database: $expected',
+			async ({ operation, parameters, expected }) => {
+				const nodeParameters: IDataObject = {
+					table,
+					database: otherDatabase,
+					options: {},
+					...parameters,
+				};
+				const runQueries = vi.fn(async () => []);
+
+				await operation.execute.call(
+					createMockExecuteFunction(nodeParameters, mySqlMockNode),
+					emptyInputItems,
+					runQueries,
+					{},
+					createFakePool(fakeConnection),
+				);
+
+				expect(queriesOf(runQueries)).toEqual([expect.stringContaining(expected)]);
+			},
+		);
+
+		it('deleteTable, should throw when the database is set and the table is empty', async () => {
+			const nodeParameters: IDataObject = {
+				table: { __rl: true, value: '', mode: 'name' },
+				database: otherDatabase,
+				deleteCommand: 'truncate',
+				options: {},
+			};
+			const runQueries = vi.fn(async () => []);
+
+			await expect(
+				deleteTable.execute.call(
+					createMockExecuteFunction(nodeParameters, mySqlMockNode),
+					emptyInputItems,
+					runQueries,
+				),
+			).rejects.toThrow('The Table value did not resolve to a name');
+			expect(runQueries).not.toHaveBeenCalled();
+		});
+
+		describe('insert', () => {
+			const insertParameters = (queryBatching: string): IDataObject => ({
+				table,
+				dataMode: 'defineBelow',
+				valuesToSend,
+				options: { queryBatching },
+			});
+			const items = [item(0), item(1), item(2)];
+
+			it('should insert each item into its own database in independent mode', async () => {
+				const nodeParameters = insertParameters('independently');
+				const runQueries = vi.fn(async () => []);
+
+				const result = await insert.execute.call(
+					createDatabaseExpressionContext(nodeParameters, ['a', undefined, 'c'], true),
+					items,
+					runQueries,
+					nodeParameters.options as IDataObject,
+				);
+
+				expect(runQueries).toHaveBeenCalledWith([
+					{
+						query: 'INSERT   INTO `a`.`test_table` (`id`) VALUES (?);',
+						values: ['2'],
+						itemIndex: 0,
+					},
+					{
+						query: 'INSERT   INTO `c`.`test_table` (`id`) VALUES (?);',
+						values: ['2'],
+						itemIndex: 2,
+					},
+				]);
+				expect(result).toHaveLength(1);
+				expect(result[0].json.message).toBe('The Database value did not resolve to a name');
+				expect(result[0].pairedItem).toEqual({ item: 1 });
+			});
+
+			it('should return an error item when the database of the first item is empty', async () => {
+				const nodeParameters = insertParameters('independently');
+				const runQueries = vi.fn(async () => []);
+
+				const result = await insert.execute.call(
+					createDatabaseExpressionContext(nodeParameters, [undefined, 'b', 'c'], true),
+					items,
+					runQueries,
+					nodeParameters.options as IDataObject,
+				);
+
+				expect(runQueries).toHaveBeenCalledWith([
+					expect.objectContaining({ query: 'INSERT   INTO `b`.`test_table` (`id`) VALUES (?);' }),
+					expect.objectContaining({ query: 'INSERT   INTO `c`.`test_table` (`id`) VALUES (?);' }),
+				]);
+				expect(result).toHaveLength(1);
+				expect(result[0].pairedItem).toEqual({ item: 0 });
+			});
+
+			it('should throw in single mode when the database differs between items', async () => {
+				const nodeParameters = insertParameters('single');
+				const runQueries = vi.fn(async () => []);
+
+				const error = await insert.execute
+					.call(
+						createDatabaseExpressionContext(nodeParameters, ['a', 'b', 'c']),
+						items,
+						runQueries,
+						nodeParameters.options as IDataObject,
+					)
+					.catch((e: unknown) => e);
+
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).message).toBe(
+					'The Database or Table value is not the same for all items',
+				);
+				expect((error as NodeOperationError).context.itemIndex).toBe(1);
+				expect(runQueries).not.toHaveBeenCalled();
+			});
+
+			it('should return an error item in single mode when continueOnFail is true', async () => {
+				const nodeParameters = insertParameters('single');
+				const runQueries = vi.fn(async () => []);
+
+				const result = await insert.execute.call(
+					createDatabaseExpressionContext(nodeParameters, ['a', 'b', 'c'], true),
+					items,
+					runQueries,
+					nodeParameters.options as IDataObject,
+				);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].json.message).toBe(
+					'The Database or Table value is not the same for all items',
+				);
+				expect(result[0].pairedItem).toEqual({ item: 1 });
+				expect(runQueries).not.toHaveBeenCalled();
+			});
+
+			it('should send one query in single mode when every item has the same database', async () => {
+				const nodeParameters = insertParameters('single');
+				const runQueries = vi.fn(async () => []);
+
+				await insert.execute.call(
+					createDatabaseExpressionContext(nodeParameters, ['a', 'a', 'a']),
+					items,
+					runQueries,
+					nodeParameters.options as IDataObject,
+				);
+
+				expect(queriesOf(runQueries)).toEqual([
+					'INSERT   INTO `a`.`test_table` (`id`) VALUES (?),(?),(?)',
+				]);
+			});
+
+			it('should return an error item in single mode when the database of the first item is empty', async () => {
+				const nodeParameters = insertParameters('single');
+				const runQueries = vi.fn(async () => []);
+
+				const result = await insert.execute.call(
+					createDatabaseExpressionContext(nodeParameters, [undefined, 'b', 'c'], true),
+					items,
+					runQueries,
+					nodeParameters.options as IDataObject,
+				);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].json.message).toBe('The Database value did not resolve to a name');
+				expect(result[0].pairedItem).toEqual({ item: 0 });
+				expect(runQueries).not.toHaveBeenCalled();
+			});
+
+			it.each(['single', 'independently', 'transaction'])(
+				'should return error items in %s mode when the table contains a database name',
+				async (queryBatching) => {
+					const nodeParameters: IDataObject = {
+						...insertParameters(queryBatching),
+						database: otherDatabase,
+						table: { __rl: true, value: 'crm.orders', mode: 'name' },
+					};
+					const runQueries = vi.fn(async () => []);
+
+					const result = await insert.execute.call(
+						createMockExecuteFunction(nodeParameters, mySqlMockNode, true),
+						items,
+						runQueries,
+						nodeParameters.options as IDataObject,
+					);
+
+					expect(result.map(({ pairedItem }) => pairedItem)).toEqual(
+						queryBatching === 'single' ? [{ item: 0 }] : [{ item: 0 }, { item: 1 }, { item: 2 }],
+					);
+					expect(result[0].json.message).toBe('The Table value already contains a database name');
+					expect(runQueries).not.toHaveBeenCalled();
+				},
+			);
+
+			it('should resolve the table once when the database is not an expression', async () => {
+				const nodeParameters = insertParameters('independently');
+				const runQueries = vi.fn(async () => []);
+				let reads = 0;
+
+				await insert.execute.call(
+					createPerItemContext(nodeParameters, 'table', () => `table_${reads++}`),
+					items,
+					runQueries,
+					nodeParameters.options as IDataObject,
+				);
+
+				expect(queriesOf(runQueries)).toEqual([
+					'INSERT   INTO `table_0` (`id`) VALUES (?);',
+					'INSERT   INTO `table_0` (`id`) VALUES (?);',
+					'INSERT   INTO `table_0` (`id`) VALUES (?);',
+				]);
+			});
+
+			it('should keep the table of the first item when the database is empty', async () => {
+				const nodeParameters = insertParameters('independently');
+				const runQueries = vi.fn(async () => []);
+
+				await insert.execute.call(
+					createPerItemContext(nodeParameters, 'table', (itemIndex) => `table_${itemIndex}`),
+					items,
+					runQueries,
+					nodeParameters.options as IDataObject,
+				);
+
+				expect(queriesOf(runQueries)).toEqual([
+					'INSERT   INTO `table_0` (`id`) VALUES (?);',
+					'INSERT   INTO `table_0` (`id`) VALUES (?);',
+					'INSERT   INTO `table_0` (`id`) VALUES (?);',
+				]);
+			});
+		});
 	});
 });

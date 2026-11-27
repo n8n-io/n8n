@@ -22,7 +22,7 @@ describe('MCP server DTOs', () => {
 		'sales--tools',
 		'sales_tools',
 		'../x',
-		'a'.repeat(129),
+		'a'.repeat(65),
 	])('rejects the slug %j', (slug) => {
 		expect(CreateMcpServerDto.safeParse({ name: 'Sales tools', slug }).success).toBe(false);
 	});
@@ -50,6 +50,19 @@ describe('MCP server DTOs', () => {
 		expect(AddMcpServerToolsDto.safeParse({ workflowIds: ['wf-1', 'wf-2'] }).success).toBe(true);
 		expect(AddMcpServerToolsDto.safeParse({ workflowIds: [] }).success).toBe(false);
 		expect(AddMcpServerToolsDto.safeParse({ workflowIds: ['w'.repeat(37)] }).success).toBe(false);
+	});
+
+	it('adds tools from at most 100 workflows, each with an id', () => {
+		const ids = (count: number) => Array.from({ length: count }, (_, i) => `wf-${i}`);
+
+		expect(AddMcpServerToolsDto.safeParse({ workflowIds: ids(100) }).success).toBe(true);
+		expect(AddMcpServerToolsDto.safeParse({ workflowIds: ids(101) }).success).toBe(false);
+		expect(AddMcpServerToolsDto.safeParse({ workflowIds: [''] }).success).toBe(false);
+	});
+
+	it('accepts a tool description of at most 2000 characters', () => {
+		expect(UpdateMcpServerToolDto.safeParse({ description: 'a'.repeat(2000) }).success).toBe(true);
+		expect(UpdateMcpServerToolDto.safeParse({ description: 'a'.repeat(2001) }).success).toBe(false);
 	});
 
 	it('drafts both fields, or one field for a "Generate" button', () => {

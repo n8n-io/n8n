@@ -24,6 +24,11 @@ TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly-pc \
 TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly-distroless \
 pnpm --filter n8n-playwright test:deployment tests/deployment/cloud-image-pair.spec.ts
 
+# CRT-02: Cloud launch settings (user 1000:1000, direct /usr/local/bin/node /usr/local/bin/n8n)
+TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly-pc \
+TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly-distroless \
+pnpm --filter n8n-playwright test:deployment tests/deployment/cloud-launch-settings.spec.ts
+
 # DEP-05: queue mode against pinned Redis 7
 TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly \
 TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly \
@@ -35,6 +40,16 @@ TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly \
 TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly \
 TEST_IMAGE_REDIS=valkey/valkey:9.2.1-alpine \
 pnpm --filter n8n-playwright test:deployment tests/deployment/valkey.spec.ts
+
+# ENV-09: Azure Blob binary data storage against Azurite (requires license env)
+TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly \
+TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly \
+pnpm --filter n8n-playwright test:deployment tests/deployment/azure-binary-storage.spec.ts
+
+# ENV-13: Azure Blob execution data storage against Azurite (requires license env)
+TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly \
+TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly \
+pnpm --filter n8n-playwright test:deployment tests/deployment/azure-execution-storage.spec.ts
 
 # ENV-16: queue mode against a 3-node Redis Cluster
 TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly \
@@ -56,8 +71,11 @@ To test the `3.x` channel, replace `nightly` with `v3-nightly` (`v3-nightly`, `v
 | `IMG-01`/`IMG-05` (`amd64`), `IMG-02`/`IMG-06` (`arm64`) | `standard-image-pair.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | `runCodeNodes({ python: true })` (JS + Python Code nodes), n8n and runner image refs and architecture, standard runner label and user `runner` |
 | `IMG-07` | `task-runner-distroless.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Distroless runner (for example `ghcr.io/n8n-io/runners:nightly-distroless`) | `runCodeNodes({ python: true })` (JS + Python Code nodes), n8n image ref and architecture, distroless runner label, architecture, and nonroot user `65532:65532` |
 | `CRT-01` (`amd64`), `CRT-01`/`IMG-04`/`IMG-08` (`arm64`) | `cloud-image-pair.spec.ts` | Pointer-compressed `-pc` image (for example `ghcr.io/n8n-io/n8n:nightly-pc`) | Distroless runner (for example `ghcr.io/n8n-io/runners:nightly-distroless`) | `runCodeNodes({ python: true })` (JS + Python Code nodes), distroless runner, image architecture, V8 pointer compression enabled |
+| `CRT-02` | `cloud-launch-settings.spec.ts` | Pointer-compressed `-pc` image (for example `ghcr.io/n8n-io/n8n:nightly-pc`) | Distroless runner (for example `ghcr.io/n8n-io/runners:nightly-distroless`) | `runWebhook()` + `runCodeNodes({ python: true })`, user `1000:1000`, direct `/usr/local/bin/node` entrypoint with `/usr/local/bin/n8n` command (PID 1), `NODE_PATH=/usr/local/lib/node_modules`, distroless runner, V8 pointer compression enabled |
 | `DEP-05` | `redis-7.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`), `runWebhook()` + `runCodeNodes()`, `INFO server` reports engine `redis` and major version `7`, Bull job counter advances |
 | `DEP-06` | `valkey.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`) with `TEST_IMAGE_REDIS=valkey/valkey:9.2.1-alpine`, `runWebhook()` + `runCodeNodes()`, `INFO server` reports engine `valkey` and major version `9`, Bull job counter advances |
+| `ENV-09` | `azure-binary-storage.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`, `services: ['azurite']`, `N8N_DEFAULT_BINARY_DATA_MODE=azure`), `roundTripBinary()` + `readExecution()`, uploaded and worker-written binary blobs verified in Azurite |
+| `ENV-13` | `azure-execution-storage.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Standalone SQLite (`services: ['azurite']`, `N8N_EXECUTION_DATA_STORAGE_MODE=azure`), `runWebhook()` + `readExecution()`, execution bundle blob verified in Azurite, SQLite records `storedAt="az"` with zero `execution_data` rows |
 | `ENV-16` | `redis-cluster.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`, `services: ['redisCluster']`), `runWebhook()`, all 3 cluster nodes healthy across 16384 slots, `MOVED` redirect and cluster slot routing on `{bull}:jobs:id`, main and worker process execution via Redis cluster client |
 | `PLT-04` (`3.x` channel) | `upgrade-2x-to-3x.spec.ts` | 3.x standard image (for example `ghcr.io/n8n-io/n8n:v3-nightly`) | Internal (`N8N_RUNNERS_MODE=internal`) | Boots standalone SQLite on `TEST_IMAGE_N8N_UPGRADE_FROM` (2.x stable), seeds workflow, credential, execution, active webhook, and filesystem binary file in `~/.n8n/binaryData`, upgrades via `replaceN8N()`, verifies `binaryData/` renamed to `storage/`, and confirms all seeded state and webhook still work |
 
@@ -80,8 +98,11 @@ To test the `3.x` channel, replace `nightly` with `v3-nightly` (`v3-nightly`, `v
 | `standard-image-pair.spec.ts` | `@cell:IMG-01`/`@cell:IMG-05` (`amd64`) and `@cell:IMG-02`/`@cell:IMG-06` (`arm64`) spec for standard n8n with the standard task runner |
 | `task-runner-distroless.spec.ts` | `@cell:IMG-07` spec for standard n8n with the distroless task runner |
 | `cloud-image-pair.spec.ts` | `@cell:CRT-01` (`amd64`) and `@cell:CRT-01`/`@cell:IMG-04`/`@cell:IMG-08` (`arm64`) spec for `-pc` n8n with the distroless task runner |
+| `cloud-launch-settings.spec.ts` | `@cell:CRT-02` spec for Cloud container launch settings (`1000:1000`, `/usr/local/bin/node`, `/usr/local/bin/n8n`, `NODE_PATH`) |
 | `redis-7.spec.ts` | `@cell:DEP-05` spec for queue mode against pinned Redis 7 |
 | `valkey.spec.ts` | `@cell:DEP-06` spec for queue mode against pinned Valkey |
+| `azure-binary-storage.spec.ts` | `@cell:ENV-09` spec for Azure Blob binary data storage against Azurite |
+| `azure-execution-storage.spec.ts` | `@cell:ENV-13` spec for Azure Blob execution data storage against Azurite |
 | `redis-cluster.spec.ts` | `@cell:ENV-16` spec for queue mode against a 3-node Redis Cluster |
 | `upgrade-2x-to-3x.spec.ts` | `@cell:PLT-04` spec for standalone SQLite 2.x stable to 3.x nightly upgrade |
 

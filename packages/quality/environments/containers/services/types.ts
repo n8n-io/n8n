@@ -26,6 +26,7 @@ export const SERVICE_NAMES = [
 	'ngrok',
 	'mysql',
 	'localstack',
+	'azurite',
 	'vault',
 	'kent',
 	'postgresExporter',
@@ -149,6 +150,10 @@ export interface StackConfig {
 		tmpfs?: Record<string, string>;
 		/** Docker platform, for example `linux/arm64`. Requires a matching local image. */
 		platform?: string;
+		/** Override the container entrypoint (Docker `Entrypoint`). */
+		entrypoint?: string[];
+		/** Override the container command (Docker `Cmd`). Worker and webhook roles append their subcommand. */
+		command?: string[];
 	};
 }
 

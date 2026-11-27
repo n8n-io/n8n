@@ -62,7 +62,10 @@ import type { AgentSkillRefs } from './json-config/agent-document';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
-import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
+import {
+	findReadableUnarchivedWorkflowIds,
+	findWorkflowToolWorkflows,
+} from './tools/workflow-tool-workflow-resolver';
 import {
 	extractAgentWorkflowRefs,
 	extractGuardrailCheckWorkflowIds,
@@ -462,8 +465,8 @@ export class AgentValidationService {
 				.filter((workflowId) => !workflowsByReference.has(workflowId)),
 			user,
 		);
-		for (const { skillId, tool } of unattached) {
-			const path = `skills.${skillId}.workflows.${tool.workflowId}`;
+		for (const { skillIds, tool } of unattached) {
+			const path = `skills.${skillIds[0]}.workflows.${tool.workflowId}`;
 			const workflow = workflowsByReference.get(tool.workflowId);
 			const isAvailable = workflow !== undefined && !workflow.isArchived;
 			const capability: AgentConfigValidationIssue['capability'] = {
@@ -490,17 +493,13 @@ export class AgentValidationService {
 		workflowIds: string[],
 		user: User | undefined,
 	): Promise<Set<string>> {
-		if (!user || workflowIds.length === 0) return new Set();
-		const readableIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+		if (!user) return new Set();
+		return await findReadableUnarchivedWorkflowIds(
+			this.workflowFinderService,
+			this.workflowRepository,
 			workflowIds,
 			user,
-			['workflow:read'],
 		);
-		if (readableIds.size === 0) return new Set();
-		const workflows = await this.workflowRepository.findByIds([...readableIds], {
-			fields: ['isArchived'],
-		});
-		return new Set(workflows.filter(({ isArchived }) => !isArchived).map(({ id }) => id));
 	}
 
 	private async prefetchReferenceLookups(
