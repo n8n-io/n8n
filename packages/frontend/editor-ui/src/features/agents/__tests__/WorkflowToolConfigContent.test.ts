@@ -127,6 +127,10 @@ function setProjectWorkflows(workflows: Array<ReturnType<typeof workflow>>) {
 	mockedStore(useWorkflowsListStore).searchWorkflows = vi.fn().mockResolvedValue(workflows);
 }
 
+function setTargetSettings(settings: Record<string, unknown>) {
+	mockedStore(useWorkflowsListStore).fetchWorkflow = vi.fn().mockResolvedValue({ settings });
+}
+
 function lastEmit(emitted: (event: string) => unknown[] | undefined, event: string) {
 	return (emitted(event) as unknown[][] | undefined)?.at(-1)?.[0];
 }
@@ -136,6 +140,7 @@ describe('WorkflowToolConfigContent', () => {
 		vi.clearAllMocks();
 		createTestingPinia({ stubActions: false });
 		setProjectWorkflows([workflow('Notify Sales'), workflow('Invoice Sender')]);
+		setTargetSettings({});
 	});
 
 	it('emits valid=true when target, name and description are set', () => {
@@ -401,6 +406,37 @@ describe('WorkflowToolConfigContent', () => {
 
 		expect(await findByTestId('agent-workflow-tool-target-unpublished')).toBeTruthy();
 		expect(queryByTestId('agent-workflow-tool-target-unusable')).toBeNull();
+	});
+
+	describe('redaction hint', () => {
+		it.each(['all', 'non-manual', 'manual-only'])(
+			'shows a hint when the target workflow has the %s redaction policy',
+			async (redactionPolicy) => {
+				setTargetSettings({ redactionPolicy });
+				const { findByTestId } = renderComponent({ props: { initialRef: createRef() } });
+
+				expect((await findByTestId('agent-workflow-tool-target-redacted')).textContent).toContain(
+					'agents.toolConfig.workflow.target.redacted',
+				);
+				expect(mockedStore(useWorkflowsListStore).fetchWorkflow).toHaveBeenCalledWith(
+					'Notify Sales',
+				);
+			},
+		);
+
+		it.each([{ redactionPolicy: 'none' }, {}])(
+			'shows no hint for the workflow settings %o',
+			async (settings) => {
+				setTargetSettings(settings);
+				const { queryByTestId } = renderComponent({ props: { initialRef: createRef() } });
+
+				await waitFor(() =>
+					expect(mockedStore(useWorkflowsListStore).fetchWorkflow).toHaveBeenCalled(),
+				);
+				await nextTick();
+				expect(queryByTestId('agent-workflow-tool-target-redacted')).toBeNull();
+			},
+		);
 	});
 
 	describe('workflow input bindings', () => {

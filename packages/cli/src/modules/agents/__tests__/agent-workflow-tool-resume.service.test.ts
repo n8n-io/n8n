@@ -517,6 +517,8 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 			{ status: 'completed', result: '{"Set":[{"ok":true}]}', error: null },
 			ctx.runData.data.resultData.runData,
 			subWorkflowConnections(),
+			undefined,
+			false,
 		);
 	});
 
@@ -542,6 +544,8 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 			{ status: 'failed', result: null, error: 'boom' },
 			ctx.runData.data.resultData.runData,
 			subWorkflowConnections(),
+			undefined,
+			false,
 		);
 	});
 

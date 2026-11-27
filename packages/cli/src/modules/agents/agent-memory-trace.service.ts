@@ -42,7 +42,8 @@ function recalledEntryIds(traceOutput: unknown): string[] | undefined {
 function collectMemoryToolCalls(executions: AgentExecution[]): MemoryToolCalls {
 	const calls: MemoryToolCalls = { recalls: new Map(), flagToolCallIds: [] };
 	for (const event of executions.flatMap((execution) => execution.timeline ?? [])) {
-		if (event.type !== 'tool-call' || !event.success || event.canceled) continue;
+		// A redacted call keeps its name, but its memory content is hidden from the reader.
+		if (event.type !== 'tool-call' || !event.success || event.canceled || event.redacted) continue;
 		if (event.name === FLAG_MEMORY_TOOL_NAME) calls.flagToolCallIds.push(event.toolCallId);
 		if (event.name !== RECALL_MEMORY_TOOL_NAME) continue;
 		const entryIds = recalledEntryIds(event.traceOutput);

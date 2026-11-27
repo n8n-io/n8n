@@ -1542,6 +1542,31 @@ describe('settleWorkflowJobByExecutionId', () => {
 		);
 	});
 
+	it('keeps only the settlement result of a paused job whose run redacts its data', async () => {
+		const { service, jobRepository } = setup();
+		jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(
+			makeWorkflowJob({ pauseRequestId: 'stop-1' }),
+		);
+
+		await service.settleWorkflowJobByExecutionId(
+			'exec-1',
+			{ status: 'cancelled', result: null },
+			{
+				Send: [{ data: { main: [[{ json: { sent: true } }]] } } as never],
+				Wait: [{ data: { main: [[]] } } as never],
+			},
+			undefined,
+			undefined,
+			true,
+		);
+
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+			'wf-job-1',
+			{ status: 'cancelled', result: null },
+			undefined,
+		);
+	});
+
 	it('settles the running job tracking the execution', async () => {
 		const { service, jobRepository } = setup();
 		jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(makeWorkflowJob());

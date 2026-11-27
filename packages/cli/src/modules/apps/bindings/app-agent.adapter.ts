@@ -210,7 +210,8 @@ export class AppAgentAdapter extends AppAgentPort {
 			threadId,
 			projectId: bound.projectId,
 			agentId: bound.agentId,
-			userId: resourceId,
+			// The app visitor reads their own session; the replies are its designed output.
+			reader: { sessionEndUserId: resourceId },
 		});
 		const checkpoint = await services.checkpoints.findSuspendedForThread(bound.agentId, threadId);
 		return services.withOpenSuspensions(history?.messages ?? [], checkpoint, {

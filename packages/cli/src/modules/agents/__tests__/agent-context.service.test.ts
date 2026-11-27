@@ -648,7 +648,7 @@ describe('AgentContextService', () => {
 			'thread-1',
 			'project-1',
 			'agent-1',
-			user.id,
+			{ user },
 		);
 
 		agentExecutionService.getThreadDetail.mockResolvedValue(null);
@@ -731,7 +731,7 @@ describe('AgentContextService', () => {
 			'thread-1',
 			'project-1',
 			'agent-1',
-			user.id,
+			{ user },
 		);
 		vi.mocked(userHasScopes).mockResolvedValue(false);
 		await expect(service.readSession(user, 'project-1', 'agent-1', 'thread-1')).rejects.toThrow(

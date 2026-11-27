@@ -312,6 +312,7 @@ export function convertDbMessages(
 		const hostEvents: AgentsChatHostEvent[] = [];
 		let status: ChatMessage['status'];
 		const failed = msg.executionStatus === 'error' || msg.executionStatus === 'interrupted';
+		const redacted = msg.redaction?.isRedacted === true;
 		if (failed) status = CHAT_MESSAGE_STATUS.ERROR;
 		else if (msg.executionStatus === 'running') status = CHAT_MESSAGE_STATUS.STREAMING;
 
@@ -389,6 +390,8 @@ export function convertDbMessages(
 					output = undefined;
 				}
 
+				// The server puts a fallback error on a failed call of a redacted turn. It is not the real error.
+				if (redacted) output = undefined;
 				const call = resolveToolCatalogCall(part.toolName, part.input);
 				const toolCall: ToolCall = {
 					tool: call.tool,
@@ -402,6 +405,7 @@ export function convertDbMessages(
 					...(part.suspendPayload !== undefined && { suspendPayload: part.suspendPayload }),
 					...(part.childTrace && { childProgress: part.childTrace }),
 					displaySummary: summariseToolCall(call.tool, output, call.input),
+					...(redacted && { redacted: true }),
 				};
 				toolCalls.push(toolCall);
 				attachments.push(...newReplyAttachments(attachments, toolCall));
@@ -443,6 +447,7 @@ export function convertDbMessages(
 				? { backgroundJobSignal: msg.backgroundTaskSignal }
 				: {}),
 			...(Number.isFinite(createdAt) && { createdAt }),
+			...(redacted && { redacted: true }),
 		};
 		setMessageInteractives(chatMessage, interactives);
 		result.push(chatMessage);

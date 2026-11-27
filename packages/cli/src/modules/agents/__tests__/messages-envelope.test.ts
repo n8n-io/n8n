@@ -433,4 +433,61 @@ describe('threadMessagesResponse', () => {
 			nextCursor: 'cursor-1',
 		});
 	});
+
+	describe('with a redacted history', () => {
+		it('should not merge checkpoint tool input into a redacted turn', () => {
+			const checkpoint = {
+				persistence: { resourceId: 'slack:channel' },
+				pendingToolCalls: {
+					'call-2': {
+						toolCallId: 'call-2',
+						runId: 'run-1',
+						suspended: true,
+						toolName: 'send_email',
+						suspendPayload: { type: 'question', text: 'Send HIDDEN-VALUE?' },
+					},
+				},
+				messageList: {
+					inputIds: [],
+					responseIds: [],
+					messages: [
+						{
+							id: 'checkpoint-1',
+							role: 'assistant',
+							content: [
+								{ type: 'text', text: 'Found HIDDEN-VALUE' },
+								{
+									type: 'tool-call',
+									toolCallId: 'call-2',
+									toolName: 'send_email',
+									input: { body: 'HIDDEN-VALUE' },
+								},
+							],
+						},
+					],
+				},
+			} as unknown as SerializableAgentState;
+			const messages = [
+				{
+					id: 'execution-1:assistant',
+					role: 'assistant',
+					content: [{ type: 'tool-call', toolCallId: 'call-2', toolName: 'send_email' }],
+					redaction: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: false },
+				},
+			] as AgentPersistedMessageDto[];
+
+			const response = threadMessagesResponse(
+				{
+					messages,
+					activeExecutionId: null,
+					redaction: { isRedacted: true, canReveal: false },
+				},
+				checkpoint,
+			);
+
+			expect(JSON.stringify(response)).not.toContain('HIDDEN-VALUE');
+			expect(response.messages).toEqual(messages);
+			expect(response.openSuspensions).toEqual([{ toolCallId: 'call-2', runId: 'run-1' }]);
+		});
+	});
 });

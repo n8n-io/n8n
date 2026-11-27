@@ -217,6 +217,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	/** Stops a second load of the same page while one runs. */
 	let isLoadingOlderMessages = false;
 	const hasOlderMessages = computed(() => olderMessagesCursor.value !== null);
+	/**
+	 * Set when a turn of the loaded history is redacted for the reader. A
+	 * redacted turn also redacts the turns after it, so the newest page tells
+	 * this for the whole thread.
+	 */
+	const historyRedaction = ref<AgentChatMessagesResponse['redaction'] | null>(null);
+	/** The reader revealed the redacted turns. Later loads of the thread keep the reveal. */
+	const revealExecutionData = ref(false);
+	/** Extra arguments of `getChatMessages` and `getSessionFiles` after a reveal. */
+	const revealOptions = (): [] | [{ revealExecutionData: true }] =>
+		revealExecutionData.value ? [{ revealExecutionData: true }] : [];
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
 	let disposed = false;
@@ -267,9 +278,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function refreshHistory({
 		clearOnNotFound = false,
 		silent = false,
+		rethrow = false,
 	}: {
 		clearOnNotFound?: boolean;
 		silent?: boolean;
+		/** Rejects with the request error instead of reporting it. */
+		rethrow?: boolean;
 	} = {}): Promise<boolean> {
 		if (disposed) return false;
 		const continueId = params.continueSessionId?.value ?? acceptedSessionId.value;
@@ -278,11 +292,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const version = ++historyVersion;
 		const streamAtStart = streamVersion;
 		const isCurrent = () => !disposed && target === targetKey() && version === historyVersion;
+		const revealed = revealExecutionData.value;
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
 			let openSuspensions: AgentBuilderOpenSuspension[] = [];
 			let runningExecutionId: string | null | undefined;
 			let nextCursor: string | null = null;
+			let redaction: AgentChatMessagesResponse['redaction'] | null = null;
 			if (continueId) {
 				const envelope = await getChatMessages(
 					rootStore.restApiContext,
@@ -291,11 +307,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					continueId,
 					channel.value,
 					{ limit: HISTORY_PAGE_SIZE },
+					...revealOptions(),
 				);
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 				runningExecutionId = envelope.activeExecutionId;
 				nextCursor = envelope.nextCursor ?? null;
+				redaction = envelope.redaction ?? null;
 			} else if (!capabilities.value.previewHistory) {
 				// A fresh n8n Chat has no default thread to fall back to (unlike the
 				// builder's single test chat) — nothing to load until the first
@@ -311,6 +329,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 				runningExecutionId = envelope.activeExecutionId;
+				// The test chat route takes no reveal, so it offers none.
+				redaction = envelope.redaction ? { ...envelope.redaction, canReveal: false } : null;
 			}
 			if (!isCurrent()) return false;
 			if (continueId) acknowledgeSessionCreation(continueId);
@@ -338,6 +358,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					hasLoadedOlderPages = false;
 				}
 				if (hasRun) earlySend.value = undefined;
+				historyRedaction.value = redaction;
 				isRecovering.value = false;
 				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
 				if (isCancelling.value) reconcileStop();
@@ -349,7 +370,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			return true;
 		} catch (error) {
 			if (!isCurrent()) return false;
+			if (rethrow) throw error;
 			const status = (error as { httpStatusCode?: number } | null)?.httpStatusCode;
+			// A later turn can use a workflow that the reader cannot reveal. Load the redacted view again.
+			if (status === 403 && revealed && revealExecutionData.value) {
+				setRevealExecutionData(false);
+				return await refreshHistory({ clearOnNotFound, silent });
+			}
 			if (status === 404) {
 				if (!isStreamOpen.value && streamAtStart === streamVersion && !activeExecutionId.value) {
 					isRecovering.value = false;
@@ -398,6 +425,37 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return applyOpenSuspensions(convertDbMessages(envelope.messages, extensions), [], extensions);
 	}
 
+	/**
+	 * Load the history again with the redacted turns revealed. The server
+	 * rejects the reveal when the reader cannot reveal every redacted turn.
+	 */
+	async function revealHistory(): Promise<boolean> {
+		const target = targetKey();
+		const hadOlderPages = hasLoadedOlderPages;
+		setRevealExecutionData(true);
+		try {
+			await refreshHistory({ rethrow: true });
+			return true;
+		} catch (error) {
+			if (target !== targetKey()) return false;
+			// The failed request changed no messages, so the loaded older pages still match.
+			revealExecutionData.value = false;
+			hasLoadedOlderPages = hadOlderPages;
+			showError(error, locale.baseText('ndv.redacted.revealError'));
+			return false;
+		}
+	}
+
+	/**
+	 * The loaded older pages were read with the previous flag. The next refresh
+	 * drops them, so the reader can load them again with the new flag.
+	 */
+	function setRevealExecutionData(value: boolean): void {
+		if (revealExecutionData.value === value) return;
+		revealExecutionData.value = value;
+		hasLoadedOlderPages = false;
+	}
+
 	function resetOlderMessages(): void {
 		olderMessagesCursor.value = null;
 		hasLoadedOlderPages = false;
@@ -413,9 +471,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		if (cursor === null || !threadId || disposed || isLoadingOlderMessages) return;
 		const target = targetKey();
-		// A refresh that drops the older pages, or a new target, makes this page stale.
+		const revealed = revealExecutionData.value;
+		// A refresh that drops the older pages, a new target, or a reveal change makes this page stale.
 		const isCurrent = () =>
-			!disposed && target === targetKey() && olderMessagesCursor.value === cursor;
+			!disposed &&
+			target === targetKey() &&
+			olderMessagesCursor.value === cursor &&
+			revealed === revealExecutionData.value;
 		isLoadingOlderMessages = true;
 		try {
 			const envelope = await getChatMessages(
@@ -425,6 +487,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				threadId,
 				channel.value,
 				{ limit: HISTORY_PAGE_SIZE, cursor },
+				...revealOptions(),
 			);
 			if (!isCurrent()) return;
 			const loadedIds = new Set(messages.value.map((message) => message.id));
@@ -450,13 +513,23 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function getFullHistory(): Promise<ChatMessage[]> {
 		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		if (olderMessagesCursor.value === null || !threadId) return messages.value;
-		const envelope = await getChatMessages(
-			rootStore.restApiContext,
-			params.projectId.value,
-			params.agentId.value,
-			threadId,
-			channel.value,
-		);
+		const envelope = revealExecutionData.value
+			? await getChatMessages(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+					threadId,
+					channel.value,
+					undefined,
+					{ revealExecutionData: true },
+				)
+			: await getChatMessages(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+					threadId,
+					channel.value,
+				);
 		const thread = toOlderMessages(envelope);
 		// The loaded messages can be newer than the response, for example a live reply.
 		const loadedExecutionIds = new Set(messages.value.map((message) => message.executionId));
@@ -705,6 +778,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		detachStream();
 		messages.value = [];
 		resetOlderMessages();
+		historyRedaction.value = null;
+		revealExecutionData.value = false;
 		earlySend.value = undefined;
 		queuedMessages.value = [];
 		removingQueueIds.value.clear();
@@ -2249,6 +2324,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		isLoadingHistory,
 		hasOlderMessages,
 		loadOlderMessages,
+		historyRedaction,
+		revealExecutionData,
+		revealHistory,
 		getFullHistory,
 		messages,
 		isStreaming,

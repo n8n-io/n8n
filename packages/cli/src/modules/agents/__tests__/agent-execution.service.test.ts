@@ -32,6 +32,7 @@ import { MARK_SESSION_FAILED_TOOL_NAME } from '../tools/mark-session-failed.tool
 import { MAX_ITERATIONS_STOPPED_MESSAGE } from '../utils/fatal-session-outcome';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 import type { SystemAgentProvider } from '../system-agents/system-agent.types';
+import { asReader, passthroughThreadRedaction } from './test-utils/thread-reader';
 
 const previewAccess = { accessScope: 'user' as const, ownerId: 'user-1' };
 
@@ -133,6 +134,7 @@ describe('AgentExecutionService', () => {
 
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentExecutionRepository.findRunningByThread.mockResolvedValue([]);
+		agentExecutionRepository.findChildrenByParentIds.mockResolvedValue([]);
 		agentExecutionRepository.touchRunning.mockResolvedValue(true);
 		queueRepository.findActive.mockResolvedValue(null);
 		queueRepository.findHead.mockResolvedValue(null);
@@ -174,6 +176,7 @@ describe('AgentExecutionService', () => {
 			attentionFlags,
 			integrationMessageContext,
 			executionMetrics,
+			passthroughThreadRedaction(),
 		);
 	});
 
@@ -1068,6 +1071,7 @@ describe('AgentExecutionService', () => {
 				attentionFlags,
 				integrationMessageContext,
 				executionMetrics,
+				passthroughThreadRedaction(),
 			);
 
 			const record = makeMessageRecord({
@@ -1178,6 +1182,7 @@ describe('AgentExecutionService', () => {
 					attentionFlags,
 					integrationMessageContext,
 					executionMetrics,
+					passthroughThreadRedaction(),
 				);
 
 				const record = makeMessageRecord({
@@ -1991,6 +1996,7 @@ describe('AgentExecutionService', () => {
 				attentionFlags,
 				integrationMessageContext,
 				executionMetrics,
+				passthroughThreadRedaction(),
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
@@ -2087,7 +2093,7 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('getThreads', () => {
-		it('returns composite statuses and aggregated failure summaries', async () => {
+		it('returns composite statuses and aggregated failure summaries without the error text', async () => {
 			const recoveredThread = makeThread({ id: 'thread-recovered' });
 			const cleanThread = makeThread({ id: 'thread-clean', accessScope: 'project', ownerId: null });
 			const runningThread = makeThread({ id: 'thread-running', parentThreadId: 'parent' });
@@ -2126,7 +2132,11 @@ describe('AgentExecutionService', () => {
 			expect(result.threads).toEqual([
 				expect.objectContaining({
 					id: recoveredThread.id,
-					failureSummary,
+					// The list leaves out the error text.
+					failureSummary: {
+						...failureSummary,
+						latest: { ...failureSummary.latest, message: null },
+					},
 					status: 'succeeded',
 					canContinueInPreview: true,
 				}),
@@ -2524,7 +2534,12 @@ describe('AgentExecutionService', () => {
 				new Map([['execution-1', [message]]]),
 			);
 
-			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
+			const result = await service.getThreadDetail(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				asReader('user-1'),
+			);
 
 			expect(result?.executions[0].inputMessages?.[0].content).toEqual([
 				{
@@ -2576,7 +2591,12 @@ describe('AgentExecutionService', () => {
 				]),
 			);
 
-			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
+			const result = await service.getThreadDetail(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				asReader('user-1'),
+			);
 
 			expect(readMessageReferences).toHaveBeenCalledExactlyOnceWith(modelContent);
 			expect(result?.executions[0].inputMessages?.[0].references).toEqual([
@@ -2596,7 +2616,12 @@ describe('AgentExecutionService', () => {
 				agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
 				agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue(executions);
 
-				const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
+				const result = await service.getThreadDetail(
+					'thread-1',
+					'project-1',
+					'agent-1',
+					asReader('user-1'),
+				);
 
 				expect(result).toEqual({ thread, executions });
 			},
@@ -2614,7 +2639,12 @@ describe('AgentExecutionService', () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
 			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([execution]);
 
-			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
+			const result = await service.getThreadDetail(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				asReader('user-1'),
+			);
 
 			expect(result?.executions[0]?.timeline).toEqual(partial);
 		});
@@ -2654,7 +2684,12 @@ describe('AgentExecutionService', () => {
 				new Map([['execution-2', { timeline: [fsEvent], version: 1 }]]),
 			);
 
-			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
+			const result = await service.getThreadDetail(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				asReader('user-1'),
+			);
 
 			expect(agentExecutionLogStore.readMany).toHaveBeenCalledWith([
 				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-2', storedAt: 'fs' },
@@ -2673,7 +2708,12 @@ describe('AgentExecutionService', () => {
 			agentExecutionLogStore.hasLocation.mockReturnValue(true);
 			agentExecutionLogStore.readMany.mockRejectedValue(new Error('fs read failed'));
 
-			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
+			const result = await service.getThreadDetail(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				asReader('user-1'),
+			);
 
 			expect(result).not.toBeNull();
 			expect(result!.executions[0].timeline).toBeNull();
@@ -2689,7 +2729,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
 
 			await expect(
-				service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1'),
+				service.getThreadDetail('thread-1', 'project-1', 'agent-1', asReader('user-1')),
 			).resolves.toBeNull();
 			expect(agentExecutionRepository.findByThreadIdOrdered).not.toHaveBeenCalled();
 		});
@@ -2771,6 +2811,7 @@ describe('AgentExecutionService', () => {
 		beforeEach(() => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
 			messageRepository.continuesExecution.mockResolvedValue(false);
+			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([]);
 		});
 
 		it('returns the newest turns oldest first, and reports older turns', async () => {
@@ -2784,7 +2825,7 @@ describe('AgentExecutionService', () => {
 				'thread-1',
 				'project-1',
 				'agent-1',
-				'user-1',
+				asReader('user-1'),
 				{ limit: 2 },
 			);
 
@@ -2808,7 +2849,7 @@ describe('AgentExecutionService', () => {
 				'thread-1',
 				'project-1',
 				'agent-1',
-				'user-1',
+				asReader('user-1'),
 				{ limit: 2, before },
 			);
 
@@ -2840,7 +2881,7 @@ describe('AgentExecutionService', () => {
 				'thread-1',
 				'project-1',
 				'agent-1',
-				'user-1',
+				asReader('user-1'),
 				{ limit: 2 },
 			);
 
@@ -2869,7 +2910,7 @@ describe('AgentExecutionService', () => {
 				'thread-1',
 				'project-1',
 				'agent-1',
-				'user-1',
+				asReader('user-1'),
 				{ limit: 2 },
 			);
 
@@ -2888,7 +2929,9 @@ describe('AgentExecutionService', () => {
 			);
 
 			await expect(
-				service.getThreadDetailPage('thread-1', 'project-1', 'agent-1', 'user-1', { limit: 2 }),
+				service.getThreadDetailPage('thread-1', 'project-1', 'agent-1', asReader('user-1'), {
+					limit: 2,
+				}),
 			).resolves.toBeNull();
 			expect(agentExecutionRepository.findByThreadIdNewestFirst).not.toHaveBeenCalled();
 		});

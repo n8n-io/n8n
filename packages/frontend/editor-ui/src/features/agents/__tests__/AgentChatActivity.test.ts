@@ -708,6 +708,27 @@ describe('AgentChatActivity', () => {
 		).toBe(false);
 	});
 
+	it('shows a redacted call as hidden data without its input, output or an error', () => {
+		const wrapper = mountSteps(
+			[
+				{
+					tool: 'lookup',
+					toolCallId: 'tc-redacted',
+					state: TOOL_CALL_STATE.ERROR,
+					redacted: true,
+				},
+			],
+			{ canFixWithAssistant: true, executionId: 'exec-1' },
+		);
+
+		expect(wrapper.text()).toContain('agentSessions.timeline.dataHidden');
+		expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+		expect(wrapper.text()).not.toContain('agents.chat.toolError.generic');
+		expect(
+			wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
+		).toBe(false);
+	});
+
 	it('shows a generic error when the failed tool output is empty', () => {
 		const wrapper = mountSteps([
 			{

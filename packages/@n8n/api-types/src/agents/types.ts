@@ -532,6 +532,20 @@ export interface PersistedChildTrace {
 }
 
 /**
+ * Why an agent turn is redacted for the reader. A turn is redacted when a
+ * workflow tool that it or an earlier turn of the thread ran redacts its
+ * execution data for the reader. A redacted turn keeps its structure and tool
+ * names, without model text or tool data.
+ */
+export interface AgentTurnRedactionDto {
+	isRedacted: true;
+	/** The reason of the source execution, e.g. `workflow_redaction_policy`. */
+	reason: string;
+	/** Whether the reader can reveal the turn. */
+	canReveal: boolean;
+}
+
+/**
  * A file that a workflow or node tool returned. The tool output lists these
  * in its `files` field. The model sees only this metadata, not the bytes.
  */
@@ -625,6 +639,11 @@ export interface AgentPersistedMessageDto {
 	executionError?: string;
 	/** ISO timestamp of when this turn was recorded. Absent on older history. */
 	createdAt?: string;
+	/**
+	 * Set when the turn of this message is redacted for the reader. The
+	 * message then holds no model text and no tool data.
+	 */
+	redaction?: AgentTurnRedactionDto;
 }
 
 export interface AgentBuilderOpenSuspension {
@@ -707,6 +726,12 @@ export interface AgentChatMessagesResponse {
 	 * An omitted value means that the response holds the whole thread.
 	 */
 	nextCursor?: string | null;
+	/**
+	 * Set when a turn in the response is redacted for the reader. `canReveal`
+	 * is true when the reader can reveal every redacted turn, with
+	 * `redactExecutionData=false` in the query.
+	 */
+	redaction?: { isRedacted: true; canReveal: boolean };
 }
 
 /** Suggested starter prompts returned by the test-chat scenario generator. */

@@ -6,6 +6,9 @@ import type {
 	PushMessage,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
+import { ResponseError } from '@n8n/rest-api-client';
+import { useConfirmRevealData } from '@/features/agents/composables/useConfirmRevealData';
+import AgentRedactedTurnsNotice from '@/features/agents/components/AgentRedactedTurnsNotice.vue';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import type {
@@ -24,6 +27,7 @@ import {
 	sessionBounds,
 	isSubAgentTimelineItem,
 	itemStatusFilterKey,
+	threadRedactionState,
 } from '@/features/agents/session-timeline.utils';
 import { timelineColors } from '@/features/agents/session-timeline.styles';
 import { useAgentBackgroundJobs } from '@/features/agents/composables/useAgentBackgroundJobs';
@@ -88,6 +92,14 @@ const sessionsStore = useAgentSessionsStore();
 const pushStore = usePushConnectionStore();
 const rootStore = useRootStore();
 const documentVisibility = useDocumentVisibility();
+const { confirmReveal } = useConfirmRevealData();
+
+/**
+ * The reader revealed the redacted turns of this thread. Later loads of the
+ * same thread keep the reveal, so a refresh does not hide the data again.
+ */
+const revealed = ref(false);
+const revealing = ref(false);
 
 // Attachments and output files download through the chat routes of the thread.
 // The fallback of the attachment list uses the project routes, which load project agents only.
@@ -99,6 +111,7 @@ provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
 		attachmentId,
 		props.channel ?? 'chat',
 		props.threadId,
+		revealed.value,
 	),
 );
 
@@ -222,6 +235,28 @@ async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: num
 }
 
 const bounds = computed(() => sessionBounds(items.value));
+
+const redactionState = computed(() => threadRedactionState(executions.value));
+
+async function revealData() {
+	if (revealing.value) return;
+	const identity = threadIdentity();
+
+	const confirmed = await confirmReveal();
+	if (!confirmed || identity !== threadIdentity()) return;
+
+	revealing.value = true;
+	revealed.value = true;
+	try {
+		await fetchThreadDetail(false, { throwOnError: true });
+	} catch (error) {
+		if (identity !== threadIdentity()) return;
+		revealed.value = false;
+		toast.showError(error, i18n.baseText('ndv.redacted.revealError'));
+	} finally {
+		revealing.value = false;
+	}
+}
 
 function labelForKey(key: string): string {
 	const backgroundJobKey = backgroundJobTimelineLabelKey(key);
@@ -399,6 +434,8 @@ function loadThreadDetail() {
 	searchQuery.value = '';
 	selectTimelineItem(null);
 	loading.value = true;
+	revealed.value = false;
+	revealing.value = false;
 	emit('loaded', null);
 	refreshPending = false;
 	startThreadDetailRequest(true);
@@ -408,20 +445,19 @@ function threadIdentity(): string {
 	return `${props.projectId}:${props.agentId}:${props.threadId}`;
 }
 
-async function fetchThreadDetail(initial: boolean) {
+async function fetchThreadDetail(initial: boolean, options: { throwOnError?: boolean } = {}) {
 	const currentProjectId = props.projectId;
 	const currentAgentId = props.agentId;
 	const currentThreadId = props.threadId;
 	const identity = threadIdentity();
 	const requestId = ++threadDetailRequestId;
+	const revealExecutionData = revealed.value;
 
 	try {
-		const result = await sessionsStore.getThreadDetail(
-			currentProjectId,
-			currentAgentId,
-			currentThreadId,
-			props.channel,
-		);
+		const args = [currentProjectId, currentAgentId, currentThreadId, props.channel] as const;
+		const result = revealExecutionData
+			? await sessionsStore.getThreadDetail(...args, { revealExecutionData })
+			: await sessionsStore.getThreadDetail(...args);
 		if (requestId !== threadDetailRequestId || identity !== threadIdentity()) {
 			return;
 		}
@@ -441,6 +477,18 @@ async function fetchThreadDetail(initial: boolean) {
 		emit('loaded', result);
 	} catch (error) {
 		if (requestId !== threadDetailRequestId) return;
+		if (options.throwOnError) throw error;
+		// A later turn can use a workflow that the reader cannot reveal. Load the redacted view again.
+		if (
+			revealExecutionData &&
+			error instanceof ResponseError &&
+			error.httpStatusCode === 403 &&
+			identity === threadIdentity()
+		) {
+			revealed.value = false;
+			refreshPending = true;
+			return;
+		}
 		if (initial) toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 	} finally {
 		if (initial && requestId === threadDetailRequestId) loading.value = false;
@@ -542,6 +590,13 @@ useKeybindings({
 				@update="(next) => (selectedFilters = next)"
 			/>
 		</div>
+		<div v-if="!loading && redactionState.isRedacted" :class="$style.notice">
+			<AgentRedactedTurnsNotice
+				:can-reveal="redactionState.canReveal"
+				:revealing="revealing"
+				@reveal="revealData"
+			/>
+		</div>
 		<SessionTimelineChart
 			v-if="!loading"
 			:items="items"
@@ -618,6 +673,12 @@ useKeybindings({
 }
 .searchInput {
 	box-shadow: var(--shadow--xs);
+}
+
+.notice {
+	width: 100%;
+	max-width: var(--n8n-session-panel--container-width, none);
+	margin: 0 auto;
 }
 
 .section {

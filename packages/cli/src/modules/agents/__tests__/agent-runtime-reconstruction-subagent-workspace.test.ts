@@ -1,3 +1,4 @@
+import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type * as agents from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
@@ -90,6 +91,7 @@ function makeService(sandboxFilesEnabled = true) {
 			isEnabled: vi.fn().mockResolvedValue(sandboxFilesEnabled),
 		}),
 		mock<WorkflowsInSkillsFlagGate>(),
+		mock<ExecutionRedactionServiceProxy>(),
 	);
 
 	return { service, workspaceService };

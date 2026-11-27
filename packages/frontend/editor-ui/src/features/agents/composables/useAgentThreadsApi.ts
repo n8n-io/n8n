@@ -7,6 +7,7 @@ import type {
 	AgentSessionStatus,
 	AgentSessionStopResponse,
 	AgentThreadMemoryDto,
+	AgentTurnRedactionDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -123,6 +124,8 @@ export interface AgentExecution {
 	source: string | null;
 	finishReason: string | null;
 	guardrailCode: string | null;
+	/** Set when the turn is redacted for the reader. Its timeline then holds no model text or tool data. */
+	redaction?: AgentTurnRedactionDto | null;
 }
 
 export interface ThreadDetail {
@@ -175,11 +178,18 @@ export const getThreadDetail = async (
 	agentId: string,
 	threadId: string,
 	channel: AgentChatChannel = 'chat',
+	options: { revealExecutionData?: boolean } = {},
 ): Promise<ThreadDetail> => {
 	const path =
 		channel === 'system'
 			? `/agents/system/${encodeURIComponent(agentId)}/threads/${encodeURIComponent(threadId)}/detail`
 			: `${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}`;
+	// The server audits each reveal and rejects it when the reader cannot reveal every redacted turn.
+	if (options.revealExecutionData) {
+		return await makeRestApiRequest<ThreadDetail>(context, 'GET', path, {
+			redactExecutionData: 'false',
+		});
+	}
 	return await makeRestApiRequest<ThreadDetail>(context, 'GET', path);
 };
 

@@ -28,11 +28,13 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
+	IWorkflowSettings,
 	RelatedAgentRun,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
 	createRunExecutionData,
+	isExecutionOutputRedacted,
 	isTerminalExecutionStatus,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	TimeoutExecutionCancelledError,
@@ -492,7 +494,10 @@ export async function executeWorkflow(
 
 		const result =
 			completedRun && context.executionMode === 'integrated'
-				? formatResult(executionId, completedRun.status, completedRun.data, allOutputs)
+				? formatResult(executionId, completedRun.status, completedRun.data, allOutputs, {
+						mode: completedRun.mode,
+						settings: workflow.settings,
+					})
 				: await extractResult(executionId, allOutputs);
 		if (instrumented && result.status === 'waiting') {
 			await stopInstrumentedRun(executionId, workflow.id, 'paused');
@@ -586,14 +591,38 @@ async function withWorkflowCancellation<T>(
 // 5. extractResult
 // ---------------------------------------------------------------------------
 
+/**
+ * The agent is the caller of the workflow, so it gets the workflow's response:
+ * the last node's output. `allOutputs` adds the output of every node, which is
+ * not part of the response, so a run that redacts its execution data ignores it.
+ */
+function allowsAllOutputs(
+	allOutputs: boolean,
+	data: IRun['data'] | undefined,
+	source: { mode: WorkflowExecuteMode; settings?: IWorkflowSettings },
+): boolean {
+	return allOutputs && !isExecutionOutputRedacted(data, source.settings, source.mode);
+}
+
+/** The mode and settings that decide whether a loaded execution redacts its data. */
+function outputSource(execution: {
+	mode: WorkflowExecuteMode;
+	workflowData?: { settings?: IWorkflowSettings };
+}): { mode: WorkflowExecuteMode; settings?: IWorkflowSettings } {
+	return { mode: execution.mode, settings: execution.workflowData?.settings };
+}
+
 function formatResult(
 	executionId: string,
 	status: string | undefined,
 	data: IRun['data'] | undefined,
 	allOutputs: boolean,
+	source: { mode: WorkflowExecuteMode; settings?: IWorkflowSettings },
 ): WorkflowToolExecutionResult {
 	const runData = data?.resultData?.runData;
-	const items = runData ? collectResultItems(runData, allOutputs) : {};
+	const items = runData
+		? collectResultItems(runData, allowsAllOutputs(allOutputs, data, source))
+		: {};
 	const resultData = toResultData(items);
 	const hasBinary = Object.values(items).some((nodeItems) => nodeItems.some((item) => item.binary));
 	const normalisedStatus = normaliseExecutionStatus(status);
@@ -623,7 +652,13 @@ export async function extractResult(
 		return { executionId, status: 'unknown' };
 	}
 
-	return formatResult(executionId, execution.status, execution.data, allOutputs);
+	return formatResult(
+		executionId,
+		execution.status,
+		execution.data,
+		allOutputs,
+		outputSource(execution),
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -827,7 +862,13 @@ async function backgroundWaitingExecution(
 				return await settleOutcomeUnknown(jobService, agentRun.threadId, jobId, result.executionId);
 			}
 
-			const fresh = formatResult(result.executionId, full.status, full.data, allOutputs);
+			const fresh = formatResult(
+				result.executionId,
+				full.status,
+				full.data,
+				allOutputs,
+				outputSource(full),
+			);
 			// The job row keeps the last node's output for completed runs only,
 			// matching the settle hook's projection.
 			const settlementStatus = settlementStatusForExecution(rawStatus);

@@ -144,3 +144,46 @@ describe('SessionCapabilityItem output files', () => {
 		expect(files.attributes('data-thread-id')).toBe('child');
 	});
 });
+
+describe('SessionCapabilityItem redacted data', () => {
+	it('shows the tool name and a hidden-data note instead of input and output', async () => {
+		const wrapper = renderItem({
+			redacted: true,
+			toolInput: undefined,
+			toolOutput: undefined,
+			toolOutcome: 'success',
+		});
+		expect(wrapper.text()).toContain('http');
+		expect(wrapper.find('[data-test-id="timeline-tool-redacted-icon"]').exists()).toBe(true);
+
+		await wrapper.get('button').trigger('click');
+
+		expect(wrapper.get('[data-test-id="timeline-tool-data-redacted"]').text()).toBe(
+			'Input and output are hidden because a workflow this agent used redacts its execution data.',
+		);
+		expect(wrapper.find('[data-test-id="timeline-tool-input"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="timeline-tool-output"]').exists()).toBe(false);
+	});
+
+	it('uses the workflow copy for a redacted workflow tool', async () => {
+		const wrapper = renderItem({
+			kind: 'workflow',
+			workflowName: 'Lookup',
+			redacted: true,
+			toolInput: undefined,
+			toolOutcome: 'success',
+		});
+		await wrapper.get('button').trigger('click');
+
+		expect(wrapper.get('[data-test-id="timeline-tool-data-redacted"]').text()).toContain(
+			'this workflow redacts its execution data',
+		);
+	});
+
+	it('shows no hidden-data note for a tool that is not redacted', async () => {
+		const wrapper = renderItem({ toolOutcome: 'success' });
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.find('[data-test-id="timeline-tool-data-redacted"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="timeline-tool-redacted-icon"]').exists()).toBe(false);
+	});
+});

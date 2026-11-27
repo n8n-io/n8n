@@ -105,6 +105,7 @@ import type { SimulationSession } from './simulation/simulation-session';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import type { AgentExecution } from './entities/agent-execution.entity';
 import { encodeChatHistoryCursor, type ChatHistoryPageRequest } from './utils/chat-history-page';
+import type { ThreadReader } from './agent-thread-redaction.service';
 
 /** Written on a manual task run so a later approval can rebuild that starter's runtime. */
 const TASK_RUN_STARTER_USER_KEY = 'n8nTaskRunStarterUserId';
@@ -117,7 +118,7 @@ function taskRunStarterUserId(hostMetadata: JSONObject | undefined): string | un
 /** User-visible history of a chat thread, or of one page of its turns. */
 export type ConversationHistory = Pick<
 	AgentChatMessagesResponse,
-	'messages' | 'activeExecutionId' | 'nextCursor'
+	'messages' | 'activeExecutionId' | 'nextCursor' | 'redaction'
 >;
 
 export interface AgentMemoryScope {
@@ -459,17 +460,18 @@ export class AgentExecutionOrchestratorService {
 		threadId: string;
 		projectId: string;
 		agentId: string;
-		userId: string;
+		/** Who reads the history. Turns that used redacted workflow data are redacted for an n8n user. */
+		reader: ThreadReader;
 		/** One page of turns. Without it, the history holds the whole thread. */
 		page?: ChatHistoryPageRequest;
 	}): Promise<ConversationHistory | null> {
-		const { threadId, projectId, agentId, userId, page } = params;
+		const { threadId, projectId, agentId, reader, page } = params;
 		if (page) {
 			const detail = await this.agentExecutionService.getThreadDetailPage(
 				threadId,
 				projectId,
 				agentId,
-				userId,
+				reader,
 				page,
 			);
 			if (!detail) return null;
@@ -483,17 +485,26 @@ export class AgentExecutionOrchestratorService {
 			threadId,
 			projectId,
 			agentId,
-			userId,
+			reader,
 		);
 		if (!detail) return null;
 		return this.toConversationHistory(detail.executions);
 	}
 
 	private toConversationHistory(executions: AgentExecution[]): ConversationHistory {
+		const redacted = executions.flatMap(({ redaction }) => (redaction ? [redaction] : []));
 		return {
 			messages: executionsToMessagesDto(executions),
 			activeExecutionId:
 				executions.findLast((execution) => execution.status === 'running')?.id ?? null,
+			...(redacted.length > 0
+				? {
+						redaction: {
+							isRedacted: true,
+							canReveal: redacted.every(({ canReveal }) => canReveal),
+						},
+					}
+				: {}),
 		};
 	}
 

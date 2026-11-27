@@ -70,6 +70,7 @@ type EndpointGroup =
 	| 'mcp-servers';
 
 type ModuleName =
+	| 'agents'
 	| 'inbox'
 	| 'insights'
 	| 'external-secrets'

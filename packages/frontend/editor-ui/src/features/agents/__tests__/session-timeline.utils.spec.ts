@@ -15,6 +15,7 @@ import {
 	executionErrorLabel,
 	executionErrorMessage,
 	threadTokenBreakdownOf,
+	threadRedactionState,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -1447,5 +1448,65 @@ describe('guardrail stop copy', () => {
 
 		expect(executionErrorLabel(stop, i18n)).toBe('agentSessions.timeline.guardrailStop.label');
 		expect(executionErrorMessage(stop, i18n)).toBe(messageKey);
+	});
+});
+
+describe('redacted turns', () => {
+	const redaction = { isRedacted: true as const, reason: 'workflow_redaction_policy' };
+
+	it('marks the agent and tool items of a redacted turn', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					{ type: 'reasoning', content: '', timestamp: 10, redacted: true },
+					toolCallEvent({
+						kind: 'workflow',
+						name: 'lookup',
+						workflowId: 'wf-1',
+						workflowExecutionId: 'ex-1',
+						endTime: 200,
+						success: true,
+						redacted: true,
+					}),
+					{ type: 'text', content: '', timestamp: 300, redacted: true },
+				],
+				{ redaction: { ...redaction, canReveal: true } },
+			),
+		]);
+
+		expect(items.map(({ kind }) => kind)).toEqual(['workflow', 'agent']);
+		expect(items[0]).toMatchObject({
+			redacted: true,
+			toolName: 'lookup',
+			workflowId: 'wf-1',
+			workflowExecutionId: 'ex-1',
+			toolInput: undefined,
+			toolOutput: undefined,
+		});
+		expect(items[1]).toMatchObject({ kind: 'agent', content: '', redacted: true });
+	});
+
+	it('leaves items of other turns unmarked', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'text', content: 'Hello', timestamp: 10 }]),
+		]);
+		expect(items[0].redacted).toBeUndefined();
+	});
+
+	it('allows a reveal only when every redacted turn can be revealed', () => {
+		expect(threadRedactionState([exec({})])).toEqual({ isRedacted: false, canReveal: false });
+		expect(
+			threadRedactionState([
+				exec({}),
+				exec({ redaction: { ...redaction, canReveal: true } }),
+				exec({ redaction: { ...redaction, canReveal: true } }),
+			]),
+		).toEqual({ isRedacted: true, canReveal: true });
+		expect(
+			threadRedactionState([
+				exec({ redaction: { ...redaction, canReveal: true } }),
+				exec({ redaction: { ...redaction, canReveal: false } }),
+			]),
+		).toEqual({ isRedacted: true, canReveal: false });
 	});
 });

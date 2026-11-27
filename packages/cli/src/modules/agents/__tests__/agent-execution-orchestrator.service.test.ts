@@ -96,6 +96,7 @@ import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 import type { SimulationSessionService } from '../simulation/simulation-session.service';
 import type { SimulationSession } from '../simulation/simulation-session';
+import { asReader } from './test-utils/thread-reader';
 
 // Draft runs check `agent:read`; these tests run as a user who holds it.
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -4434,7 +4435,12 @@ describe('AgentExecutionOrchestratorService', () => {
 		} as never);
 
 		await expect(
-			service.getConversationHistory({ threadId: 'thread-1', projectId, agentId, userId }),
+			service.getConversationHistory({
+				threadId: 'thread-1',
+				projectId,
+				agentId,
+				reader: asReader(userId),
+			}),
 		).resolves.toEqual({
 			activeExecutionId: null,
 			messages: [
@@ -4471,7 +4477,12 @@ describe('AgentExecutionOrchestratorService', () => {
 			],
 		} as never);
 		await expect(
-			service.getConversationHistory({ threadId: 'thread-1', projectId, agentId, userId }),
+			service.getConversationHistory({
+				threadId: 'thread-1',
+				projectId,
+				agentId,
+				reader: asReader(userId),
+			}),
 		).resolves.toEqual({ messages: [], activeExecutionId: 'execution-1' });
 	});
 
@@ -4491,7 +4502,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			threadId: 'thread-1',
 			projectId,
 			agentId,
-			userId,
+			reader: asReader(userId),
 			page: { limit: 2 },
 		});
 
@@ -4499,7 +4510,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			'thread-1',
 			projectId,
 			agentId,
-			userId,
+			{ user: expect.objectContaining({ id: userId }) },
 			{ limit: 2 },
 		);
 		expect(executionService.getThreadDetail).not.toHaveBeenCalled();
@@ -4519,7 +4530,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			threadId: 'thread-1',
 			projectId,
 			agentId,
-			userId,
+			reader: asReader(userId),
 			page: { limit: 2 },
 		});
 

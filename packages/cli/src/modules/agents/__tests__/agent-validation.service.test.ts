@@ -1317,6 +1317,50 @@ describe('AgentValidationService — structured issues', () => {
 		},
 	);
 
+	it.each([
+		['all', true],
+		['none', false],
+	] as const)(
+		'warns about allOutputs on a workflow tool with redaction policy %s: %s',
+		async (redactionPolicy, warns) => {
+			const { service, agentRepository, workflowRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					...runnableConfig,
+					tools: [
+						{ type: 'workflow', workflow: 'My Workflow', workflowId: 'wf-1', allOutputs: true },
+					],
+				}),
+			);
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					activeVersionId: 'v1',
+					nodes: [executeWorkflowTriggerNode],
+					settings: { redactionPolicy },
+				},
+			] as never);
+
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			);
+
+			const warning = {
+				code: 'workflow_outputs_redacted',
+				capability: { kind: 'tool', id: 'My Workflow', index: 0, toolType: 'workflow' },
+			};
+			if (warns) {
+				expect(result.warnings).toEqual([warning]);
+			} else {
+				expect(result.warnings).toBeUndefined();
+			}
+			expect(result.issues.filter((i) => i.path.startsWith('tools.0'))).toEqual([]);
+		},
+	);
+
 	it('reports no guardrail issue when every guardrail ref resolves', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(

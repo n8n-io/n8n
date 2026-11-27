@@ -1,3 +1,4 @@
+import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type * as agents from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
 import {
@@ -162,6 +163,7 @@ function makeService(overrides: {
 	workflowFinderService?: ReturnType<typeof mock<WorkflowFinderService>>;
 	workflowRepository?: ReturnType<typeof mock<WorkflowRepository>>;
 	credentialsService?: ReturnType<typeof mock<CredentialsService>>;
+	executionRedaction?: ReturnType<typeof mock<ExecutionRedactionServiceProxy>>;
 }) {
 	const secureRuntime = mock<AgentSecureRuntime>();
 	secureRuntime.createToolExecutor.mockReturnValue(mock<ToolExecutor>());
@@ -176,6 +178,7 @@ function makeService(overrides: {
 	const workflowRepository = overrides.workflowRepository ?? mock<WorkflowRepository>();
 	const credentialsService = overrides.credentialsService ?? mock<CredentialsService>();
 	const workflowsInSkillsFlagGate = mock<WorkflowsInSkillsFlagGate>();
+	const executionRedaction = overrides.executionRedaction ?? mock<ExecutionRedactionServiceProxy>();
 
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
@@ -201,6 +204,7 @@ function makeService(overrides: {
 		makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
 		workflowsInSkillsFlagGate,
+		executionRedaction,
 	);
 
 	return {
@@ -715,6 +719,97 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		expect(result.userToolAccessSnapshot).toEqual({
 			credentialIds: ['cred-1'],
 			workflowIds: ['wf-1'],
+			workflowToolExecutionMode: 'manual',
+		});
+	});
+
+	describe('with a workflow that redacts its execution data', () => {
+		/** Marks every processed execution as redacted, with the given reveal right. */
+		function redactingProxy(canReveal: boolean) {
+			const executionRedaction = mock<ExecutionRedactionServiceProxy>();
+			executionRedaction.processExecutions.mockImplementation(async (executions) => {
+				for (const execution of executions) {
+					execution.data.redactionInfo = {
+						isRedacted: true,
+						reason: 'workflow_redaction_policy',
+						canReveal,
+					};
+				}
+			});
+			return executionRedaction;
+		}
+
+		function accessibleWorkflow() {
+			const workflowRepository = mock<WorkflowRepository>();
+			workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+				mock<WorkflowEntity>({ id: 'wf-1', settings: { redactionPolicy: 'all' }, nodes: [] }),
+			);
+			const workflowFinderService = mock<WorkflowFinderService>();
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				mock<Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>>>({
+					id: 'wf-1',
+					settings: { redactionPolicy: 'all' },
+					nodes: [],
+				}),
+			);
+			return { workflowRepository, workflowFinderService };
+		}
+
+		it('should drop the workflow tool for a user who cannot reveal its data', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const executionRedaction = redactingProxy(false);
+			const { service } = makeService({ ...accessibleWorkflow(), executionRedaction });
+
+			await service.reconstructFromAgentEntity(
+				makeAgentEntity([workflowTool, customTool]),
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				testUser,
+				undefined,
+				'integrated',
+			);
+
+			expect(toolNamesPassedToBuildFromJson()).toEqual(['custom_tool']);
+			const [[standIns, options]] = executionRedaction.processExecutions.mock.calls;
+			expect(standIns).toEqual([
+				expect.objectContaining({ mode: 'integrated', workflowId: 'wf-1' }),
+			]);
+			expect(options).toEqual({ user: testUser });
+		});
+
+		it('should keep the workflow tool for a user who can reveal its data', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const { service } = makeService({
+				...accessibleWorkflow(),
+				executionRedaction: redactingProxy(true),
+			});
+
+			await service.reconstructFromAgentEntity(
+				makeAgentEntity([workflowTool]),
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				testUser,
+			);
+
+			expect(toolNamesPassedToBuildFromJson()).toEqual(['Lookup customer']);
+		});
+
+		it('should refuse a cached runtime when the user can no longer reveal the workflow data', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const { service } = makeService({
+				...accessibleWorkflow(),
+				executionRedaction: redactingProxy(false),
+			});
+
+			await expect(
+				service.userStillHasToolAccess(
+					{ credentialIds: [], workflowIds: ['wf-1'], workflowToolExecutionMode: 'manual' },
+					projectId,
+					testUser,
+				),
+			).resolves.toBe(false);
 		});
 	});
 
@@ -1326,7 +1421,11 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		);
 
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['Get code']);
-		expect(result.userToolAccessSnapshot).toEqual({ credentialIds: [], workflowIds: [] });
+		expect(result.userToolAccessSnapshot).toEqual({
+			credentialIds: [],
+			workflowIds: [],
+			workflowToolExecutionMode: 'manual',
+		});
 	});
 
 	it('adds no tool while the flag is off', async () => {

@@ -256,6 +256,28 @@ describe('useAgentApi', () => {
 			]);
 		});
 
+		it('asks for unredacted chat messages after a reveal', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue({ messages: [], openSuspensions: [] });
+
+			await getChatMessages(restApiContext, 'p1', 'a1', 'th-1', 'chat', undefined, {
+				revealExecutionData: true,
+			});
+			await getChatMessages(
+				restApiContext,
+				'p1',
+				'a1',
+				'th-1',
+				'chat',
+				{ limit: 20 },
+				{ revealExecutionData: true },
+			);
+
+			expect(vi.mocked(makeRestApiRequest).mock.calls.map((call) => call.slice(3))).toEqual([
+				[{ redactExecutionData: 'false' }],
+				[{ limit: '20', redactExecutionData: 'false' }],
+			]);
+		});
+
 		it('lists a page of system-agent threads, with the cursor and search only when set', async () => {
 			vi.mocked(makeRestApiRequest).mockResolvedValue({ data: [], nextCursor: null });
 
@@ -386,6 +408,16 @@ describe('useAgentApi', () => {
 				`${url}?threadId=th%2F1`,
 			);
 		});
+
+		it('asks for the unredacted file after a reveal', () => {
+			const url = getChatAttachmentUrl(restApiContext, 'p1', 'a1', 'att-1');
+			expect(getChatAttachmentUrl(restApiContext, 'p1', 'a1', 'att-1', 'chat', 'th-1', true)).toBe(
+				`${url}?threadId=th-1&redactExecutionData=false`,
+			);
+			expect(
+				getChatAttachmentUrl(restApiContext, 'p1', 'a1', 'att-1', 'chat', undefined, true),
+			).toBe(`${url}?redactExecutionData=false`);
+		});
 	});
 
 	describe('getSessionFiles', () => {
@@ -424,6 +456,21 @@ describe('useAgentApi', () => {
 				restApiContext,
 				'GET',
 				'/agents/system/assistant/chat/th-1/files',
+			);
+		});
+
+		it('asks for the unredacted files after a reveal', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ files: [] });
+
+			await getSessionFiles(restApiContext, 'p1', 'a1', 'th-1', 'chat', {
+				revealExecutionData: true,
+			});
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/p1/agents/v2/a1/chat/th-1/files',
+				{ redactExecutionData: 'false' },
 			);
 		});
 	});

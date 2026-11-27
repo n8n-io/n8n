@@ -178,6 +178,7 @@ export function useAgentActivityItems(options: {
 	}
 
 	function toolStepMetadata(tc: ToolCall): string[] {
+		if (tc.redacted) return [i18n.baseText('agentSessions.timeline.dataHidden')];
 		if (isCanceledToolCall(tc)) return [i18n.baseText('agentSessions.status.cancelled')];
 
 		if (isDelegateSubAgentTool(tc.tool)) {
@@ -195,6 +196,14 @@ export function useAgentActivityItems(options: {
 	}
 
 	function toolStepView(tc: ToolCall): ToolStepDisplay {
+		if (tc.redacted) {
+			return {
+				label: [toolStepLabel(tc), ...toolStepMetadata(tc)].join(' · '),
+				details: i18n.baseText('agentSessions.timeline.toolDataRedacted'),
+				hasRawData: false,
+				expandable: true,
+			};
+		}
 		const isCompact = tc.state === TOOL_CALL_STATE.DONE && isCompactToolName(tc.tool, tc.output);
 		const details = isCompact ? '' : (getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '');
 		const metadata = toolStepMetadata(tc);
@@ -208,7 +217,8 @@ export function useAgentActivityItems(options: {
 	}
 
 	function toolStepError(tc: ToolCall): string | undefined {
-		if (isCanceledToolCall(tc)) return undefined;
+		// The server removes the error of a redacted call, so there is no message to show.
+		if (tc.redacted || isCanceledToolCall(tc)) return undefined;
 
 		if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
 		if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;

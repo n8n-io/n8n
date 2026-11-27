@@ -10,7 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { FileNotFoundError } from 'n8n-core';
 
-import { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
+import type { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -427,6 +427,45 @@ describe('AgentChatController background tasks', () => {
 				sizeBytes: 3,
 			},
 		]);
+	});
+
+	it('leaves out the approval payload and files of jobs from turns that are redacted for the reader', async () => {
+		const { controller, agentsService, agentExecutionService, backgroundJobService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		agentExecutionService.findRedactionStart.mockResolvedValue({
+			startedAt: new Date('2026-09-09T10:00:30Z'),
+			redaction: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: false },
+			executionIds: new Set(['execution-1']),
+		});
+		const file = { fileId: 'file-1', fileName: 'report.txt', mimeType: 'text/plain', sizeBytes: 4 };
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([
+			{
+				id: 'job-before',
+				kind: 'workflow',
+				title: 'Before',
+				status: 'completed',
+				createdAt: new Date('2026-09-09T10:00:00Z'),
+				notifiedAt: new Date('2026-09-09T10:00:10Z'),
+				files: [file],
+			},
+			{
+				id: 'job-after',
+				kind: 'approval',
+				title: 'After',
+				status: 'suspended',
+				createdAt: new Date('2026-09-09T10:01:00Z'),
+				approval: { toolCallId: 'call-1', suspendPayload: { text: 'HIDDEN-VALUE' } },
+				files: [file],
+			},
+		] as never);
+
+		const response = await controller.getBackgroundJobs(request as never);
+
+		expect(JSON.stringify(response)).not.toContain('HIDDEN-VALUE');
+		expect(response.tasks.find(({ id }) => id === 'job-before')?.files).toEqual([file]);
+		expect(response.tasks.find(({ id }) => id === 'job-after')?.files).toBeUndefined();
 	});
 
 	it('returns current group statuses without consuming results', async () => {
@@ -938,7 +977,7 @@ describe('AgentChatController chat message history', () => {
 			activeExecutionId: null,
 		});
 		expect(agentsService.getConversationHistory).toHaveBeenCalledWith({
-			userId: 'user-1',
+			reader: expect.objectContaining({ user: expect.objectContaining({ id: 'user-1' }) }),
 			threadId: 'thread-1',
 			projectId: 'project-1',
 			agentId: 'agent-1',

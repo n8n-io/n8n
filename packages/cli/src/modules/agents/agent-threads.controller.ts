@@ -9,6 +9,7 @@ import { AgentExecutionOrchestratorService } from './agent-execution-orchestrato
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentMemoryTraceService } from './agent-memory-trace.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
+import { threadReaderFromRequest } from './agent-thread-redaction.service';
 import { AgentSessionStopService } from './agent-session-stop.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { parseThreadListLimit } from './utils/parse-thread-list-limit';
@@ -59,7 +60,7 @@ export class AgentThreadsController {
 			threadId,
 			projectId,
 			agentId,
-			req.user.id,
+			threadReaderFromRequest(req),
 		);
 		if (!result) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);

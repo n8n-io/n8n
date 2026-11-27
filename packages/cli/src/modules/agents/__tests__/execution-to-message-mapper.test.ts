@@ -744,4 +744,22 @@ describe('execution-to-message-mapper', () => {
 			},
 		]);
 	});
+
+	it('keeps an assistant message with the redaction for a redacted turn without content', () => {
+		const redaction = {
+			isRedacted: true as const,
+			reason: 'workflow_redaction_policy',
+			canReveal: false,
+		};
+
+		const messages = executionsToMessagesDto([
+			execution({
+				status: 'success',
+				timeline: [{ type: 'text', content: '', timestamp: 1, redacted: true }],
+				redaction,
+			}),
+		]);
+
+		expect(messages.at(-1)).toMatchObject({ role: 'assistant', content: [], redaction });
+	});
 });
