@@ -1,0 +1,24 @@
+.github/workflows/ci-pull-requests.yml
+  h_52a137d26d774c 719
+.github/workflows/ci-restrict-private-merges.yml
+  h_52a137d26d774c 8,26,29-36,45-46,58-59,91-92,94
+.github/workflows/sec-publish-fix.yml
+  h_52a137d26d774c 6,10-14,38-43,45-47,54,60
+.github/workflows/sec-sync-bundle-branches.yml
+  h_52a137d26d774c 3-4,44,46-47
+.github/workflows/sec-sync-public-to-private.yml
+  h_52a137d26d774c 102-126,140,145,156-159
+.github/workflows/sec-sync-retarget-prs.yml
+  h_52a137d26d774c 2,37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93e5f191d8e1dd043e2ff783ea9d699984cde8b7",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

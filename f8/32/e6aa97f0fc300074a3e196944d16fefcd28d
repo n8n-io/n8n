@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.ts
+  s_cdb57a7f77a0ea::t_c064dea909143d 92
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_cdb57a7f77a0ea::t_cab1b448fd1575 559,621-622
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_cdb57a7f77a0ea::t_5f81a0432b8533 1984
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionListItem.vue
+  s_cdb57a7f77a0ea::t_852f58a0848518 336
+  s_cdb57a7f77a0ea::t_b6451430d995d2 12,288,294
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_cdb57a7f77a0ea::t_99c1fb39e8a6aa 81-89,120,126-130,223-224,280-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f832e6aa97f0fc300074a3e196944d16fefcd28d",
+  "prompts": {},
+  "sessions": {
+    "s_cdb57a7f77a0ea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a219d9-2338-71f6-8a19-6933d6821aae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
