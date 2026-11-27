@@ -39,11 +39,16 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve Node.js version
+        id: node-version
+        if: matrix.safe_chain == false
+        run: node .github/scripts/resolve-node-version.mjs
+
       - name: Set up Node.js
         if: matrix.safe_chain == false
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: '26.13.0'
+          node-version: ${{ steps.node-version.outputs.version }}
 
       - name: Resolve pnpm version
         id: pnpm-version

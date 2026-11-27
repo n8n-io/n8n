@@ -74,7 +74,8 @@ a multi-arch manifest for each tag.
 
 1. Change `DHI_REF`, `DEBIAN_DHI_REF`, `NODE_VERSION`, `BUILDER_IMAGE`, and
    `DEBIAN_BUILDER_IMAGE`. Master publishes the new bases (`n8nio/base`),
-   `n8nio/node-pc:*-dev`, and `n8nio/node-patched:*-dev`.
+   `n8nio/node-pc:*-dev`, and `n8nio/node-patched:*-dev`. CI reads
+   `NODE_VERSION`, so no workflow changes.
 2. Pin `RUNTIME_IMAGE`, `DEBIAN_RUNTIME_IMAGE`, `N8N_BUILDER_IMAGE`, and
    `PC_BUILDER_IMAGE`.
 

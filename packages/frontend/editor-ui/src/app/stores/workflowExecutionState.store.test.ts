@@ -20,6 +20,7 @@ import {
 	injectWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
 import {
+	createExecutionPreviewDocumentId,
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
@@ -37,6 +38,7 @@ import {
 	type ExecutionSummary,
 } from 'n8n-workflow';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
+import { WAIT_NODE_TYPE } from '@/app/constants';
 
 function makeExecution(overrides: Partial<IExecutionResponse> = {}): IExecutionResponse {
 	return createTestWorkflowExecutionResponse({
@@ -201,6 +203,71 @@ describe('workflowExecutionState.store', () => {
 			expect(store.activeExecutionId).toBe('exec-active');
 			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-9'));
 			expect(executionDataStore.execution?.id).toBe('exec-9');
+		});
+	});
+
+	describe('waiting execution display in debug mode', () => {
+		const waitNode = createTestNode({
+			id: 'wait-node',
+			name: 'Wait',
+			type: WAIT_NODE_TYPE,
+			parameters: { resume: 'webhook' },
+		});
+		const waitTill = new Date('2030-01-01T00:00:00.000Z');
+
+		function makeWaitingExecution(id: string) {
+			return {
+				...makeExecution({
+					id,
+					status: 'waiting',
+					workflowData: createTestWorkflow({ nodes: [waitNode] }),
+					data: createRunExecutionData({
+						waitTill,
+						resultData: {
+							lastNodeExecuted: waitNode.name,
+							runData: {
+								Trigger: [createTestTaskData({ data: { main: [[{ json: { value: 1 } }]] } })],
+								Wait: [createTestTaskData({ executionStatus: 'waiting' })],
+							},
+						},
+					}),
+				}),
+				waitTill,
+			};
+		}
+
+		it('hides the imported waiting indicator without changing run data or the execution preview', () => {
+			const editor = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+			const preview = useWorkflowExecutionStateStore(createExecutionPreviewDocumentId('wf-1'));
+			const execution = makeWaitingExecution('imported-exec');
+			editor.setWorkflowExecutionData(execution);
+			preview.setWorkflowExecutionData(execution);
+			expect(editor.activeExecutionWaitingByNodeId.get(waitNode.id)?.value).toBeTruthy();
+
+			editor.setIsInDebugMode(true);
+
+			expect(editor.activeExecutionWaitingByNodeId.get(waitNode.id)?.value).toBeUndefined();
+			expect(editor.activeExecutionRunData?.Trigger).toEqual(
+				execution.data?.resultData.runData.Trigger,
+			);
+			expect(preview.activeExecutionWaitingByNodeId.get(waitNode.id)?.value).toBe(
+				'The node is waiting for an incoming webhook call',
+			);
+		});
+
+		it('shows the waiting indicator when a new manual run reaches the Wait node after import', () => {
+			const editor = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+			editor.setWorkflowExecutionData(makeWaitingExecution('imported-exec'));
+			editor.setIsInDebugMode(true);
+			expect(editor.activeExecutionWaitingByNodeId.get(waitNode.id)?.value).toBeUndefined();
+
+			editor.setWorkflowExecutionData(makeExecution({ id: IN_PROGRESS_EXECUTION_ID }));
+			editor.promotePendingExecution('new-exec');
+			editor.setWorkflowExecutionData(makeWaitingExecution('new-exec'));
+
+			expect(editor.activeExecutionWaitingByNodeId.get(waitNode.id)?.value).toBe(
+				'The node is waiting for an incoming webhook call',
+			);
 		});
 	});
 

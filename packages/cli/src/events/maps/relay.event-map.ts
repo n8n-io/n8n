@@ -1,6 +1,7 @@
 import type { AppEventMap } from '@n8n/backend-module-apps';
 import type { DataTableEventMap } from '@n8n/backend-module-data-table';
 import type { ExecutionLimitsEventMap } from '@n8n/backend-module-execution-limits';
+import type { McpServerEventMap } from '@n8n/backend-module-mcp-servers';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -105,7 +106,7 @@ export type ProjectSummary = {
 	name: string;
 };
 
-type ModuleEventMap = DataTableEventMap & AppEventMap & ExecutionLimitsEventMap;
+type ModuleEventMap = DataTableEventMap & AppEventMap & ExecutionLimitsEventMap & McpServerEventMap;
 
 export type RelayEventMap = ModuleEventMap & {
 	// #region Lifecycle

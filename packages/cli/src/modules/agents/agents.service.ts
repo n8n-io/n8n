@@ -74,6 +74,7 @@ import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { Agent, type ProjectAgent } from './entities/agent.entity';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { N8nChatFlagService } from './integrations/platforms/n8n-chat/n8n-chat-flag.service';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
@@ -1080,6 +1081,8 @@ export class AgentsService {
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
+		await this.removeDeletedAgentIntegrations(agent, actor);
+
 		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, agentProjectId);
 
 		this.eventService.emit('agent-deleted', { agentId, projectId: agentProjectId });
@@ -1206,6 +1209,34 @@ export class AgentsService {
 				agentId,
 				error: error instanceof Error ? error.message : error,
 			});
+		}
+	}
+
+	private async removeDeletedAgentIntegrations(agent: ProjectAgent, actor: User): Promise<void> {
+		const registry = Container.get(ChatIntegrationRegistry);
+		for (const integration of agent.integrations ?? []) {
+			try {
+				const warning = await registry.get(integration.type)?.onRemove?.({
+					agentId: agent.id,
+					projectId: agent.projectId,
+					credentialId: integration.credentialId,
+					user: actor,
+					deleteExternalResource: true,
+				});
+				if (warning) {
+					this.logger.warn('Integration cleanup left resources behind on agent delete', {
+						agentId: agent.id,
+						type: integration.type,
+						warning,
+					});
+				}
+			} catch (error) {
+				this.logger.warn('Failed to remove integration on agent delete', {
+					agentId: agent.id,
+					type: integration.type,
+					error: error instanceof Error ? error.message : error,
+				});
+			}
 		}
 	}
 

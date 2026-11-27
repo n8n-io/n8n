@@ -20,11 +20,15 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "dependencies": {
+    "@n8n/api-types": "workspace:*",
+    "@n8n/composables": "workspace:*",
     "@n8n/design-system": "workspace:*",
     "@n8n/frontend-constants": "workspace:*",
     "@n8n/frontend-module-sdk": "workspace:*",
     "@n8n/i18n": "workspace:*",
     "@n8n/permissions": "workspace:*",
+    "@n8n/rest-api-client": "workspace:*",
+    "@n8n/stores": "workspace:*",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend"
   },

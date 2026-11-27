@@ -11,6 +11,7 @@ import type {
 	PolicyEffectiveWriteResultPublicDto,
 	ProjectPoliciesResponse,
 	ProjectPolicySummary,
+	SetInstanceTypeAccessDto,
 	SubWorkflowPolicyCheckResponse,
 	WorkflowTransferPreview,
 } from '@n8n/api-types';
@@ -37,11 +38,6 @@ export type InstancePolicyWriteResult<K extends RestrictedTypeKind> = InstancePo
 	warnings: PolicyRuleWarnings;
 };
 
-export type InstancePolicyContent<K extends RestrictedTypeKind> = Pick<
-	InstancePolicy<K>,
-	'rules' | 'defaultAction'
->;
-
 const INSTANCE_POLICY_ENDPOINT = {
 	node: '/node-type-policies/instance',
 	credential: '/credential-type-policies/instance',
@@ -54,17 +50,22 @@ export async function fetchInstancePolicy<K extends RestrictedTypeKind>(
 	return await makeRestApiRequest(context, 'GET', INSTANCE_POLICY_ENDPOINT[kind]);
 }
 
-/** Fails with 409 when `version` is not the current version of the policy. */
-export async function saveInstancePolicy<K extends RestrictedTypeKind>(
+/**
+ * Gives each type in `changes` its access in one write, so either all of them change or none
+ * does. The server places the rules. Fails with 409 when `version` is not the current version of
+ * the policy.
+ */
+export async function setInstanceTypeAccess<K extends RestrictedTypeKind>(
 	context: IRestApiContext,
 	kind: K,
-	policy: InstancePolicyContent<K> & { version: number },
+	body: SetInstanceTypeAccessDto,
 ): Promise<InstancePolicyWriteResult<K>> {
-	return await makeRestApiRequest(context, 'PUT', INSTANCE_POLICY_ENDPOINT[kind], {
-		rules: policy.rules,
-		defaultAction: policy.defaultAction,
-		version: policy.version,
-	});
+	return await makeRestApiRequest(
+		context,
+		'PATCH',
+		`${INSTANCE_POLICY_ENDPOINT[kind]}/access`,
+		body,
+	);
 }
 
 export async function fetchInstanceAccess(

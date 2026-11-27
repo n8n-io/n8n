@@ -256,7 +256,7 @@ describe('RoleRepository', () => {
 			expect(foundRole).toBeNull();
 
 			// Verify scopes still exist (should not cascade delete)
-			const foundScopes = await scopeRepository.findByList([readScope.slug, writeScope.slug]);
+			const foundScopes = await scopeRepository.findByList([readScope.slug, writeScope.slug], {});
 			expect(foundScopes).toHaveLength(2);
 		});
 	});
