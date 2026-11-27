@@ -366,6 +366,8 @@ watch(
 					<N8nSelect
 						v-model="form.projectId"
 						size="large"
+						filterable
+						:no-match-text="i18n.baseText('settings.context.collections.modal.project.noMatch')"
 						:teleported="false"
 						data-test-id="collection-project-select"
 					>
