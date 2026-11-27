@@ -345,6 +345,9 @@ function assertCreditsAvailable(): void {
 let sendsStashedFirstMessage = false;
 
 function beforeSend(): void {
+	// Checked first, so a send refused for credits keeps the hand-off message for a
+	// later send or a reload.
+	assertCreditsAvailable();
 	if (sendsStashedFirstMessage) {
 		sendsStashedFirstMessage = false;
 		// Claim it only now, so a copy of this view that is removed before it sends
@@ -353,7 +356,6 @@ function beforeSend(): void {
 			throw new Error('The hand-off message was sent already');
 		}
 	}
-	assertCreditsAvailable();
 }
 
 const trace = useAssistantAgentTrace({

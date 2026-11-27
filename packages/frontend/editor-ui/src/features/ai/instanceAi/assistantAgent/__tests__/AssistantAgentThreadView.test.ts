@@ -2306,6 +2306,22 @@ describe('AssistantAgentThreadView', () => {
 			await expect(beforeSend()).resolves.toBeUndefined();
 		});
 
+		it('keeps a handed-off opening message that is refused for credits, and claims it at the next send', async () => {
+			const creditsStore = useAssistantCreditsStore();
+			creditsStore.creditsQuota = 100;
+			creditsStore.creditsClaimed = 100;
+			stashTemplateMessage();
+			await renderNewThread();
+			const beforeSend = currentBeforeSend();
+
+			await expect(beforeSend()).rejects.toThrow();
+			expect(readPendingFirstMessage('thread-new')).not.toBeNull();
+
+			creditsStore.creditsQuota = 200;
+			await expect(beforeSend()).resolves.toBeUndefined();
+			expect(readPendingFirstMessage('thread-new')).toBeNull();
+		});
+
 		it('keeps a handed-off workflow and draft until the server accepts the first message', async () => {
 			stashPendingWorkflowAttachment('thread-new', { type: 'workflow', id: 'wf-7' });
 			stashPendingComposerDraft('thread-new', {
