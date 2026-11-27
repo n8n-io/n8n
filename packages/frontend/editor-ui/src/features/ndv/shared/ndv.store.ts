@@ -358,6 +358,17 @@ function defineNDVStore(id: NDVStoreId) {
 			}
 		};
 
+		const setNDVPanelShownDisplayMode = (params: {
+			pane: NodePanelType;
+			mode: IRunDataDisplayMode;
+		}): void => {
+			if (params.pane === 'input') {
+				input.value.shownDisplayMode = params.mode;
+			} else {
+				output.value.shownDisplayMode = params.mode;
+			}
+		};
+
 		const setNDVPanelDataIsEmpty = (params: { panel: NodePanelType; isEmpty: boolean }): void => {
 			if (params.panel === 'input') {
 				input.value.data.isEmpty = params.isEmpty;
@@ -461,6 +472,7 @@ function defineNDVStore(id: NDVStoreId) {
 			setHoveringItem,
 			setNDVBranchIndex,
 			setNDVPanelDataIsEmpty,
+			setNDVPanelShownDisplayMode,
 			setMappingOnboarded,
 			setTableHoverOnboarded,
 			setAutocompleteOnboarded,

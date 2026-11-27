@@ -141,4 +141,25 @@ describe('renderBody', () => {
 		);
 		assert.doesNotMatch(body, /less than 24 hours old/);
 	});
+
+	it('explains a patch update and pins the exact tag', () => {
+		const result = {
+			...ready('DHI_REF', false, [platform('linux/amd64', [finding('CVE-1', 'libssl3')])]),
+			pinned: `dhi.io/node:26.13.0-alpine3.24-dev@${digest('a')}`,
+			newest: `dhi.io/node:26.13.1-alpine3.24-dev@${digest('b')}`,
+			versionBump: { from: '26.13.0-alpine3.24-dev', to: '26.13.1-alpine3.24-dev' },
+		};
+		const body = renderBody([result], { group: 'review', runUrl });
+		assert.match(
+			body,
+			/This pin updates the version from `26\.13\.0-alpine3\.24-dev` to `26\.13\.1-alpine3\.24-dev`/,
+		);
+		assert.match(body, /Only the OS packages change/);
+		assert.match(body, /`NODE_VERSION`/);
+		const hcl = `variable "DHI_REF" {\n  default = "${result.pinned}"\n}\n`;
+		assert.match(
+			updatePins(hcl, [result]),
+			/default = "dhi\.io\/node:26\.13\.1-alpine3\.24-dev@sha256:b+"/,
+		);
+	});
 });

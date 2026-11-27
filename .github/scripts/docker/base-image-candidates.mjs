@@ -9,7 +9,8 @@
  * removes at least one finding. A candidate is ready when its publisher is
  * verified and it is at least 24 hours old (see applyGate). When no digest of
  * the tag removes a finding, the moving tag of the line shows whether a newer
- * patch does (see classifyNoFix).
+ * patch does (see classifyNoFix). For DHI_REF, that patch becomes a candidate
+ * on its exact tag. For the other sources, a person updates the version.
  *
  * Usage: node base-image-candidates.mjs [--out <file>] [--skip-gate]
  * Needs docker buildx, trivy, cosign, and a login to each private registry
@@ -122,14 +123,55 @@ export function movingTagOf(tag) {
 }
 
 /**
- * Classifies a source whose newest digest leaves fixable findings. When the
- * moving tag points to a newer patch that removes a finding, a person must
- * update the version. Otherwise the upstream has no fix yet.
+ * The pins whose newer patch gets a pin PR, not only an alert. The Alpine n8n
+ * images replace the Node of the DHI image with the Node that they compile from
+ * NODE_VERSION, so its patch changes the OS packages only. The Debian images
+ * run the Node of DEBIAN_DHI_REF, so its patch stays a person's decision: it
+ * would move their Node away from the other images.
  */
-export function classifyNoFix(result, moving) {
-	if (moving?.platforms.some((platform) => platform.removed.length > 0))
-		return { ...result, status: 'version-update', versionUpdate: moving };
-	return { ...result, status: 'no-upstream-fix' };
+export const PATCH_UPDATES = new Set(['DHI_REF']);
+
+/**
+ * The tags of the next patches of a pinned tag: 26.13.0-x -> 26.13.1-x, 26.13.2-x, ...
+ * A Node minor gets a few patches, and the window starts at the current pin.
+ * Past the window, the source keeps the version-update alert.
+ */
+export function nextPatchTags(tag, count = 20) {
+	const match = /^(\d+\.\d+)\.(\d+)(-.+)?$/.exec(tag);
+	if (!match) return [];
+	return Array.from(
+		{ length: count },
+		(_, index) => `${match[1]}.${Number(match[2]) + index + 1}${match[3] ?? ''}`,
+	);
+}
+
+/**
+ * The exact tag that has the digest of the moving tag, or null. `resolve`
+ * returns the digest of a tag, or null when the tag does not exist.
+ */
+export function exactTagOf(tag, digest, resolve) {
+	return nextPatchTags(tag).find((candidate) => resolve(candidate) === digest) ?? null;
+}
+
+/**
+ * Classifies a source whose newest digest leaves fixable findings. When the
+ * moving tag points to a newer patch that removes a finding, `patch` (see
+ * PATCH_UPDATES) makes that patch a candidate. Otherwise a person must update the
+ * version. When no newer patch removes a finding, the upstream has no fix yet.
+ */
+export function classifyNoFix(result, moving, patch = null) {
+	if (!moving?.platforms.some((platform) => platform.removed.length > 0))
+		return { ...result, status: 'no-upstream-fix' };
+	if (patch) {
+		return {
+			...result,
+			status: 'candidate',
+			newest: patch.ref,
+			platforms: patch.platforms,
+			versionBump: patch.versionBump,
+		};
+	}
+	return { ...result, status: 'version-update', versionUpdate: moving };
 }
 
 export const GATE_MS = 24 * 60 * 60 * 1000;
@@ -138,8 +180,8 @@ export const GATE_MS = 24 * 60 * 60 * 1000;
  * Applies the publisher check, the 24-hour gate and the package-set rule to a
  * candidate. A digest is ready when its publisher is verified and it is at
  * least 24 hours old. A manual run skips the gate. A digest that adds a
- * package, or that skipped the gate, is ready without auto-merge, so that a
- * person reviews it.
+ * package, that skipped the gate, or that updates the version is ready without
+ * auto-merge, so that a person reviews it.
  */
 export function applyGate(candidate, publisher, { now, skipGate }) {
 	const checked = { ...candidate, publisher };
@@ -149,7 +191,21 @@ export function applyGate(candidate, publisher, { now, skipGate }) {
 		return { ...checked, status: publisher.publishedAt ? 'in-24h-gate' : 'no-publish-time' };
 	}
 	const addsPackage = candidate.platforms.some((platform) => platform.addedPackages.length > 0);
-	return { ...checked, status: 'ready', autoMerge: !addsPackage && !gated, gateSkipped: gated };
+	const autoMerge = !addsPackage && !gated && !candidate.versionBump;
+	return { ...checked, status: 'ready', autoMerge, gateSkipped: gated };
+}
+
+/**
+ * The digest of a tag, or null when the registry does not give one. A missing
+ * patch tag is the common case. On any other error the source keeps its
+ * version-update alert, so a person still sees the newer patch.
+ */
+function findDigest(repository, tag) {
+	try {
+		return resolveDigest(repository, tag);
+	} catch {
+		return null;
+	}
 }
 
 function resolveDigest(repository, tag) {
@@ -237,6 +293,13 @@ export function renderSummary(results) {
 			);
 		}
 	}
+	const bumps = results
+		.filter((result) => result.versionBump)
+		.map(
+			(result) =>
+				`- \`${result.source}\`: \`${result.versionBump.from}\` → \`${result.versionBump.to}\` (${result.status}).`,
+		);
+	if (bumps.length > 0) lines.push('', '### Patch updates', '', ...bumps);
 	if (notes.length > 0) lines.push('', '### Needs a person', '', ...notes);
 	if (errors.length > 0) lines.push('', '### Publisher errors', '', ...errors);
 	return `${lines.join('\n')}\n`;
@@ -262,10 +325,8 @@ async function main() {
 				return { platform, pinned, newest };
 			});
 			let result = evaluateSource(pin, newestDigest, scans);
-			if (result.status === 'candidate') {
-				const publisher = await verifyPublisher(pin, newestDigest, PLATFORMS);
-				result = applyGate(result, publisher, { now: Date.now(), skipGate: values['skip-gate'] });
-			} else if (result.status === 'no-fix') {
+			let candidateDigest = newestDigest;
+			if (result.status === 'no-fix') {
 				// A pinned tag can freeze on its patch. The moving tag of the line shows a newer patch.
 				const movingTag = movingTagOf(pin.tag);
 				let movingDigest = null;
@@ -275,20 +336,40 @@ async function main() {
 					// Not every line publishes a moving tag. The source stays no-upstream-fix.
 					console.log(`${name}: no moving tag ${pin.repository}:${movingTag}`);
 				}
-				const moving =
-					movingDigest && movingDigest !== newestDigest
-						? {
-								ref: `${pin.repository}:${movingTag}@${movingDigest}`,
-								platforms: scans.map(({ platform, newest }) => ({
-									platform,
-									...compareScans(
-										newest,
-										scan(`${pin.repository}@${movingDigest}`, platform, workDir),
-									),
-								})),
-							}
+				let moving = null;
+				let patch = null;
+				if (movingDigest && movingDigest !== newestDigest) {
+					const movingScans = scans.map(({ platform }) =>
+						scan(`${pin.repository}@${movingDigest}`, platform, workDir),
+					);
+					moving = {
+						ref: `${pin.repository}:${movingTag}@${movingDigest}`,
+						platforms: scans.map(({ platform, newest }, index) => ({
+							platform,
+							...compareScans(newest, movingScans[index]),
+						})),
+					};
+					const exactTag = PATCH_UPDATES.has(name)
+						? exactTagOf(pin.tag, movingDigest, (tag) => findDigest(pin.repository, tag))
 						: null;
-				result = classifyNoFix(result, moving);
+					if (exactTag) {
+						patch = {
+							ref: `${pin.repository}:${exactTag}@${movingDigest}`,
+							// The PR replaces the pinned digest, so it compares with the pinned scans.
+							platforms: scans.map(({ platform, pinned }, index) => ({
+								platform,
+								...compareScans(pinned, movingScans[index]),
+							})),
+							versionBump: { from: pin.tag, to: exactTag },
+						};
+						candidateDigest = movingDigest;
+					}
+				}
+				result = classifyNoFix(result, moving, patch);
+			}
+			if (result.status === 'candidate') {
+				const publisher = await verifyPublisher(pin, candidateDigest, PLATFORMS);
+				result = applyGate(result, publisher, { now: Date.now(), skipGate: values['skip-gate'] });
 			}
 			console.log(`${name}: ${result.status} (${result.newest})`);
 			results.push(result);

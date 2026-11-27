@@ -48,6 +48,12 @@ describe('ExecutionLimitsSnapshot', () => {
 		expect(snapshot.read('other')).toEqual({ ...LIMITED, projectMaxExecutions: null });
 	});
 
+	it('gives only the instance limit to a run with no project', async () => {
+		await snapshot.reload();
+
+		expect(snapshot.read(null)).toEqual({ ...LIMITED, projectMaxExecutions: null });
+	});
+
 	it('has nothing to read until a load succeeds', async () => {
 		settingsStore.read.mockRejectedValueOnce(new Error('database is down'));
 

@@ -340,9 +340,7 @@ of guessable by comparing per-scope counts.
 `folder` (`{ id, name, path }`) is the workflow's folder with its root-relative
 path (`Clients/Acme`). Folder names cannot contain `/`, so `path` is
 unambiguous. Absent for root-level workflows, and absent on every row
-while folder exploration is off for the run (PostHog flag
-`110_instance_ai_folder_exploration`, force-on via
-`N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED`).
+while folder exploration is off for the run.
 
 `folderResolution` (`{ requested, reason, candidates }`) is present only when a
 requested folder did not resolve. `workflows` is then empty on purpose, and

@@ -46,7 +46,7 @@ const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
 	[PROJECT_EDITOR_ROLE_SLUG]: 'Create, edit, and delete workflows, credentials, and executions',
 	[PROJECT_VIEWER_ROLE_SLUG]: 'Read-only access to workflows, credentials, and executions',
 	[PROJECT_CHAT_USER_ROLE_SLUG]:
-		'Chat-only access to chatting with workflows that have n8n Chat enabled',
+		'Chat with workflows that have n8n Chat enabled, and connect AI clients to MCP servers',
 	'credential:user': 'Credential User',
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',
