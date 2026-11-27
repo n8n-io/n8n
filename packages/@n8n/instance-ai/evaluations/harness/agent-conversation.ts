@@ -50,6 +50,8 @@ export interface AgentConversationSession {
 export interface AgentConversation {
 	resourceId: string;
 	sessions: AgentConversationSession[];
+	/** The scenario declares `sessions`, so the transcript marks each one, even a single one. */
+	usesSessions: boolean;
 }
 
 export type ExecuteAgentTurn = (
@@ -100,7 +102,9 @@ export async function runAgentConversation(input: {
 		if (session.turns.some((turn) => !turn.result.success)) break;
 	}
 	await releaseWorld(sessions, context);
-	return { resourceId: context.resourceId, sessions };
+	// Only `sessions` plans open with the simulated user's message (agentSessionPlans).
+	const usesSessions = input.plans.some((plan) => plan.opening === 'user');
+	return { resourceId: context.resourceId, sessions, usesSessions };
 }
 
 /**
@@ -278,9 +282,9 @@ function stepsOf(result: InstanceAiEvalAgentExecutionResult): TranscriptStep[] {
 	return [...toolSteps, { kind: 'agent-text', text: result.finalText }];
 }
 
-/** The judge's transcript. Each session starts with a heading when there are several. */
+/** The judge's transcript. Each session of a `sessions` scenario starts with a heading. */
 export function conversationTranscript(conversation: AgentConversation): TranscriptTurn[] {
-	const marked = conversation.sessions.length > 1;
+	const marked = conversation.usesSessions;
 	return conversation.sessions.flatMap((session, sessionIndex) =>
 		session.turns.map(
 			(turn, turnIndex): TranscriptTurn => ({

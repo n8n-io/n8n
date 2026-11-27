@@ -313,6 +313,24 @@ describe('executeAgentScenario: multi-turn runs', () => {
 		]);
 	});
 
+	it('marks the session even when the scenario has only one', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['I need dinner ideas']));
+
+		await run({ ...base, sessions: [{ goal: 'Order dinner', maxTurns: 1 }] }, []);
+
+		const transcript = vi.mocked(verifyBuildExpectations).mock.calls[0]?.[1].transcript ?? [];
+		expect(transcript[0]?.heading).toEqual(expect.stringContaining('Session 1'));
+	});
+
+	it('adds no session heading to a userTurns scenario', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser([]));
+
+		await run({ ...base, userTurns: { goal: 'Track it', maxTurns: 1 } }, []);
+
+		const transcript = vi.mocked(verifyBuildExpectations).mock.calls[0]?.[1].transcript ?? [];
+		expect(transcript[0]?.heading).toBeUndefined();
+	});
+
 	it('keeps the single-shot request unchanged when the scenario has no turns or sessions', async () => {
 		const calls: ExecuteCall[] = [];
 
