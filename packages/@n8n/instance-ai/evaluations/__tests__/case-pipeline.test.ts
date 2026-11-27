@@ -1,3 +1,4 @@
+import { AgentRunError } from '../harness/agent-conversation';
 import type { InstanceAiEvalLlmUsage } from '@n8n/api-types';
 
 import { EvalUsageMeter, recordEvalUsage } from '../../src/utils/eval-usage';
@@ -644,6 +645,59 @@ describe('createCasePipeline', () => {
 		expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
 	});
 
+	it('records the turns an agent run got through before it failed', async () => {
+		const lane = makeLane();
+		vi.mocked(lane.tracedExecuteAgent).mockRejectedValue(
+			new AgentRunError('FRAMEWORK ISSUE: the simulated user failed — rate limited', 2),
+		);
+		const build = okBuild({
+			workflowId: undefined,
+			workflowJsons: [],
+			transcript: [] as never,
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const pipeline = createCasePipeline(
+			makeDeps(makeOrchestrator({ build, lane, buildDurationMs: 3 })),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({ attribution: 'framework_issue', agentTurnCount: 2 });
+		expect(output.execDurationMs).toEqual(expect.any(Number));
+	});
+
+	it('records no turns for a direct case whose setup threw', async () => {
+		const lane = makeLane();
+		const orchestrator = makeOrchestrator({ build: okBuild(), lane, buildDurationMs: 1 });
+		vi.mocked(orchestrator.getOrBuild).mockRejectedValue(new Error('restore exploded'));
+		const directCase = { ...scenarioCase(['happy-path']), agentRun: { mode: 'direct' as const } };
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, { testCaseByFileSlug: new Map([['case-a', directCase]]) }),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({ failureCategory: 'framework_issue', agentTurnCount: 0 });
+	});
+
+	it('records no turns for an agent run that failed before its first turn', async () => {
+		const lane = makeLane();
+		vi.mocked(lane.tracedExecuteAgent).mockRejectedValue(new Error('restore failed'));
+		const build = okBuild({
+			workflowId: undefined,
+			workflowJsons: [],
+			transcript: [] as never,
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const pipeline = createCasePipeline(
+			makeDeps(makeOrchestrator({ build, lane, buildDurationMs: 3 })),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output.agentTurnCount).toBe(0);
+	});
+
 	it('carries the agent scenario expectation verdicts and turn count on its row', async () => {
 		const lane = makeLane();
 		const verdict = { expectation: 'happy-path › Quotes the price', pass: false, reason: 'no' };
@@ -696,6 +750,7 @@ describe('createCasePipeline', () => {
 			agentId: 'agent-1',
 			attribution: 'framework_issue',
 			failureCategory: 'framework_issue',
+			agentTurnCount: 0,
 		});
 		expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
 	});

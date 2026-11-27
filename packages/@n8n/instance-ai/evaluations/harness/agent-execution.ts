@@ -22,6 +22,7 @@ import {
 	mergeConversationResult,
 	runAgentConversation,
 	singleTurnTranscript,
+	withTurnCount,
 } from './agent-conversation';
 import { agentExpectationUnits, type AgentExpectationUnit } from './agent-run-schema';
 import { agentHandler } from './artifacts/agent-handler';
@@ -456,9 +457,13 @@ export async function executeAgentScenario(
 	const target = { agentId, projectId: agentProjectId, scenario, timeoutMs, logger };
 	const run = await runAgentScenarioTurns(client, target);
 	const evalResult = run.evalResult;
-	// Killed for time, not by the builder — throw so the timeout path classifies it.
-	throwIfServerBudgetStop(evalResult);
-	throwIfFrameworkIssue(evalResult);
+	try {
+		// Killed for time, not by the builder — throw so the timeout path classifies it.
+		throwIfServerBudgetStop(evalResult);
+		throwIfFrameworkIssue(evalResult);
+	} catch (error) {
+		throw withTurnCount(error, run.turnCount);
+	}
 	const transcript = run.transcript ?? singleTurnTranscript(evalResult);
 
 	const execMs = Date.now() - execStart;

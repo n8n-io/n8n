@@ -24,6 +24,7 @@ import {
 	findAgentArtifactRef,
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
+import { AgentRunError } from '../harness/agent-conversation';
 import { isDirectAgentRun, isExpectationGraded } from '../harness/agent-run-schema';
 import { buildFailedOnInfra, harnessFault } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
@@ -85,6 +86,11 @@ const SILENT_LOGGER: EvalLogger = {
 	error() {},
 	isVerbose: false,
 };
+
+/** Turns that got a reply before an Agent run failed: 0 unless the run says otherwise. */
+function turnsBeforeError(error: unknown): number {
+	return error instanceof AgentRunError ? error.turnCount : 0;
+}
 
 export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 	const {
@@ -165,6 +171,13 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		return await next;
 	}
 
+	/** An Agent row that ended in an error still records its turn count. */
+	const agentTurnFields = (inputs: ScenarioRowInputs, error: unknown) => {
+		const testCase = testCaseByFileSlug.get(inputs.testCaseFile);
+		const agentRow = error instanceof AgentRunError || (testCase && isDirectAgentRun(testCase));
+		return agentRow ? { agentTurnCount: turnsBeforeError(error) } : {};
+	};
+
 	/** A scenario graded by expectations is not a scored unit; its row says so on
 	 *  every outcome, so the baseline fetch can skip it too. */
 	const markExpectationGraded = (inputs: ScenarioRowInputs, output: TargetOutput): TargetOutput => {
@@ -204,6 +217,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				attribution: classified.attribution,
 				rootCause: classified.rootCause,
 				execErrors: [message],
+				...agentTurnFields(inputs, error),
 				buildDurationMs: 0,
 				execDurationMs: 0,
 				nodeCount: 0,
@@ -298,6 +312,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				failureCategory: 'framework_issue',
 				attribution: 'framework_issue',
 				execErrors: [fault.reason],
+				...(agentRef ? { agentTurnCount: 0 } : {}),
 				buildDurationMs,
 				...buildSpendFields,
 				execDurationMs: 0,
@@ -427,6 +442,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					attribution: draft.attribution,
 					...(draft.incomplete ? { incomplete: true } : {}),
 					execErrors: [draft.execError],
+					agentTurnCount: 0,
 					buildDurationMs,
 					...buildSpendFields,
 					execDurationMs: 0,
@@ -449,6 +465,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					failureCategory: 'framework_issue',
 					attribution: 'framework_issue',
 					execErrors: [NO_SEED_MAPPING_REASON],
+					agentTurnCount: 0,
 					buildDurationMs,
 					...buildSpendFields,
 					execDurationMs: 0,
@@ -501,6 +518,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 							failureCategory: 'framework_issue',
 							attribution: 'framework_issue',
 							execErrors: [errorMessage],
+							agentTurnCount: turnsBeforeError(error),
 							buildDurationMs,
 							...buildSpendFields,
 							execDurationMs: Date.now() - agentExecStart,

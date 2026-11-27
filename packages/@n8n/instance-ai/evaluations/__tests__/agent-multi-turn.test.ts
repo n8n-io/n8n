@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { verifyBuildExpectations } from '../build-expectations/verifier';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient } from '../clients/n8n-client';
+import { AgentRunError } from '../harness/agent-conversation';
 import { executeAgentScenario } from '../harness/agent-execution';
 import type { EvalLogger } from '../harness/logger';
 import type { BuildExpectationResult, ExecutionScenario, TranscriptTurn } from '../types';
@@ -216,6 +217,21 @@ describe('executeAgentScenario: multi-turn runs', () => {
 		await expect(
 			run({ ...base, userTurns: { goal: 'Track it', maxTurns: 3 } }, []),
 		).rejects.toThrow(/FRAMEWORK ISSUE: .*simulated user.*rate limited/);
+	});
+
+	it('reports how many turns ran when the conversation fails part way', async () => {
+		const nextMessage = vi
+			.fn()
+			.mockResolvedValueOnce({ kind: 'message', message: 'Make it express' })
+			.mockResolvedValueOnce({ kind: 'error', error: 'rate limited' });
+		vi.mocked(createAgentUserProxy).mockReturnValue({ nextMessage });
+
+		const failure = await run({ ...base, userTurns: { goal: 'Track it', maxTurns: 5 } }, []).catch(
+			(error: unknown) => error,
+		);
+
+		expect(failure).toBeInstanceOf(AgentRunError);
+		expect(failure).toMatchObject({ turnCount: 2 });
 	});
 
 	it('fails as a framework issue when the simulated user rejects', async () => {

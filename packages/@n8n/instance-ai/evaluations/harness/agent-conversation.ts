@@ -54,6 +54,26 @@ export interface AgentConversation {
 	usesSessions: boolean;
 }
 
+/** An Agent run that failed after `turnCount` turns got a reply. Keeps the
+ *  original message, which the pipeline classifies (FRAMEWORK ISSUE, timeouts). */
+export class AgentRunError extends Error {
+	constructor(
+		message: string,
+		readonly turnCount: number,
+		options?: { cause?: unknown },
+	) {
+		super(message, options);
+		this.name = 'AgentRunError';
+	}
+}
+
+/** `error` as an AgentRunError that records `turnCount`. */
+export function withTurnCount(error: unknown, turnCount: number): AgentRunError {
+	if (error instanceof AgentRunError) return error;
+	const message = error instanceof Error ? error.message : String(error);
+	return new AgentRunError(message, turnCount, { cause: error });
+}
+
 export type ExecuteAgentTurn = (
 	thread: InstanceAiEvalAgentThreadTurn,
 ) => Promise<InstanceAiEvalAgentExecutionResult>;
@@ -95,11 +115,20 @@ export async function runAgentConversation(input: {
 }): Promise<AgentConversation> {
 	const context: ConversationContext = { ...input, resourceId: newEvalResourceId() };
 	const sessions: AgentConversationSession[] = [];
-	for (const [index, plan] of input.plans.entries()) {
-		const last = index === input.plans.length - 1;
-		const session = await runSession(plan, last, sessions, context);
-		sessions.push(session);
-		if (session.turns.some((turn) => !turn.result.success)) break;
+	try {
+		for (const [index, plan] of input.plans.entries()) {
+			const earlier = [...sessions];
+			const session: AgentConversationSession = {
+				threadId: randomUUID(),
+				goal: plan.goal,
+				turns: [],
+			};
+			sessions.push(session);
+			await runSession(plan, index === input.plans.length - 1, session, earlier, context);
+			if (session.turns.some((turn) => !turn.result.success)) break;
+		}
+	} catch (error) {
+		throw withTurnCount(error, countTurns(sessions));
 	}
 	await releaseWorld(sessions, context);
 	// Only `sessions` plans open with the simulated user's message (agentSessionPlans).
@@ -152,13 +181,14 @@ async function askUser(
 	return reply.kind === 'message' ? reply.message : undefined;
 }
 
+/** Run one session, adding each turn to `session` as it gets a reply. */
 async function runSession(
 	plan: AgentSessionPlan,
 	last: boolean,
+	session: AgentConversationSession,
 	earlier: AgentConversationSession[],
 	context: ConversationContext,
-): Promise<AgentConversationSession> {
-	const session: AgentConversationSession = { threadId: randomUUID(), goal: plan.goal, turns: [] };
+): Promise<void> {
 	const nextMessage = async () =>
 		await askUser(context.user, {
 			goal: plan.goal,
@@ -168,7 +198,7 @@ async function runSession(
 		});
 	const fromUser = plan.opening === 'user';
 	let message = fromUser ? await nextMessage() : undefined;
-	if (fromUser && message === undefined) return session;
+	if (fromUser && message === undefined) return;
 	while (session.turns.length < plan.maxTurns) {
 		const expectedTurn = session.turns.length + 1;
 		const final = last && expectedTurn === plan.maxTurns;
@@ -181,7 +211,6 @@ async function runSession(
 		message = await nextMessage();
 		if (message === undefined) break;
 	}
-	return session;
 }
 
 async function runTurn(
@@ -232,7 +261,11 @@ function sumOptional(values: Array<number | undefined>): number | undefined {
 
 /** User messages sent across every session. */
 export function conversationTurnCount(conversation: AgentConversation): number {
-	return conversation.sessions.reduce((count, session) => count + session.turns.length, 0);
+	return countTurns(conversation.sessions);
+}
+
+function countTurns(sessions: AgentConversationSession[]): number {
+	return sessions.reduce((count, session) => count + session.turns.length, 0);
 }
 
 /**
