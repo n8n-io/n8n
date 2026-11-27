@@ -1,9 +1,11 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import { isMcpAiGatewayAuthentication, type INode } from 'n8n-workflow';
+import { isMcpAiGatewayAuthentication, type IDataObject, type INode } from 'n8n-workflow';
 import type { AiGatewayConfigDto, AiGatewayUsageEntry } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { isRecord } from '@n8n/utils/is-record';
 
 import {
 	getGatewayConfig,
@@ -78,8 +80,47 @@ export function usesFreeCreditsLabel(
 	return hasEverToppedUp !== true && (balance === undefined || balance > 0);
 }
 
+// On trial and free plans, the gateway hides the premium models of these nodes.
+const PREMIUM_MODEL_NODE_TYPES = new Set([
+	'@n8n/n8n-nodes-langchain.openAi',
+	'@n8n/n8n-nodes-langchain.anthropic',
+	'@n8n/n8n-nodes-langchain.googleGemini',
+	'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+	'@n8n/n8n-nodes-langchain.lmChatAnthropic',
+	'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+	'@n8n/n8n-nodes-langchain.lmOpenAi',
+	'@n8n/n8n-nodes-langchain.openAiAssistant',
+]);
+
+const TRIAL_REQUEST_COST_LIMIT_CODE = 'trial_request_cost_limit';
+// Some node error wrappers drop the gateway error code, but all keep the gateway message.
+const TRIAL_REQUEST_COST_LIMIT_MESSAGE = 'over your Gateway credits limit';
+
+/** Whether the gateway rejected a trial request because its estimated cost is over the limit. */
+export function isGatewayTrialRequestCostLimitError(error: {
+	description?: string | null;
+	context?: IDataObject;
+	messages?: string[];
+}): boolean {
+	const data = error.context?.data;
+	if (isRecord(data) && isRecord(data.error) && data.error.code === TRIAL_REQUEST_COST_LIMIT_CODE) {
+		return true;
+	}
+
+	const messages = Array.isArray(error.messages) ? error.messages : [];
+	return [error.description, ...messages].some(
+		(text) => typeof text === 'string' && text.includes(TRIAL_REQUEST_COST_LIMIT_MESSAGE),
+	);
+}
+
 export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
+
+	const isTrialOrFreePlan = computed(() => {
+		const planGroup = settingsStore.settings.license?.planGroup;
+		return planGroup === 'trial' || planGroup === 'free';
+	});
 
 	const config = ref<AiGatewayConfigDto | null>(null);
 	const balance = ref<number | undefined>(undefined);
@@ -247,6 +288,14 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		return Object.values(node.credentials).some((cred) => cred.__aiGatewayManaged === true);
 	}
 
+	function hasHiddenPremiumModels(node: INode | null): boolean {
+		return (
+			isTrialOrFreePlan.value &&
+			hasGatewayManagedCredential(node) &&
+			PREMIUM_MODEL_NODE_TYPES.has(stripToolSuffix(node.type))
+		);
+	}
+
 	function isNodePropertyHidden(node: INode | null, propertyName: string): boolean {
 		if (!hasGatewayManagedCredential(node)) return false;
 
@@ -309,5 +358,6 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		isActionOptionVisible,
 		isNodePropertyHidden,
 		hasGatewayManagedCredential,
+		hasHiddenPremiumModels,
 	};
 });

@@ -11,6 +11,7 @@ import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type {
 	IDataObject,
 	INodeProperties,
@@ -29,6 +30,8 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
+import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
+import { isGatewayTrialRequestCostLimitError } from '@/app/stores/aiGateway.store';
 import {
 	N8nInlineAskAssistantButton,
 	N8nButton,
@@ -60,6 +63,8 @@ const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const { openUpgrade: openAiGatewayUpgrade } = useAiGatewayTopUp();
 
 const executionId = computed(() => workflowExecutionStateStore.value.activeExecution?.id);
 
@@ -167,6 +172,10 @@ const isAskAssistantAvailable = computed(() => {
 const isInstanceAiHandoffAvailable = computed(
 	() =>
 		chatPanelStore.isEditableCanvasView && instanceAi.value && !!instanceAiCapability.openWorkflow,
+);
+
+const isAiGatewayRequestLimitError = computed(() =>
+	isGatewayTrialRequestCostLimitError(props.error),
 );
 
 const assistantAlreadyAsked = computed(() => {
@@ -515,6 +524,14 @@ async function onInstanceAiHandoffClick() {
 					class="node-error-view__button"
 					data-test-id="node-error-view-open-node-button"
 					@click="onOpenErrorNodeDetailClick"
+				/>
+			</div>
+			<div v-if="isAiGatewayRequestLimitError && usersStore.isInstanceOwner">
+				<N8nButton
+					:label="i18n.baseText('generic.upgrade')"
+					class="node-error-view__button"
+					data-test-id="node-error-view-ai-gateway-upgrade-button"
+					@click="openAiGatewayUpgrade('requestLimit')"
 				/>
 			</div>
 			<div

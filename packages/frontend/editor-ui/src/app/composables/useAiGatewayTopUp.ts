@@ -11,6 +11,9 @@ export type AiGatewayTopUpSource = 'settings_page' | 'credential_selector' | 'ag
 
 export type AiGatewayTopUpVariant = 'member' | 'memberTrial' | 'ownerTrial';
 
+/** A gateway limit of trial and free plans that a paid plan removes. */
+export type AiGatewayUpgradeReason = 'premiumModels' | 'requestLimit';
+
 export function useAiGatewayTopUp() {
 	const uiStore = useUIStore();
 	const usersStore = useUsersStore();
@@ -53,5 +56,14 @@ export function useAiGatewayTopUp() {
 		});
 	}
 
-	return { openTopUp };
+	/** Opens the upgrade modal for the Instance Owner. Other users cannot upgrade. */
+	function openUpgrade(reason: AiGatewayUpgradeReason): void {
+		if (!usersStore.isInstanceOwner) return;
+		uiStore.openModalWithData({
+			name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+			data: { variant: 'ownerTrial', reason },
+		});
+	}
+
+	return { openTopUp, openUpgrade };
 }

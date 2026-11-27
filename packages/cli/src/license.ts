@@ -31,6 +31,7 @@ const MIN_DEVICE_FINGERPRINT_LENGTH = 32;
 export type FeatureReturnType = Partial<
 	{
 		planName: string;
+		planGroup: string;
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
 >;
 

@@ -67,6 +67,12 @@ vi.mock('@n8n/i18n', () => ({
 	},
 }));
 
+const usersStore = vi.hoisted(() => ({ isInstanceOwner: false }));
+
+vi.mock('@n8n/stores/users.store', () => ({
+	useUsersStore: () => usersStore,
+}));
+
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		getNodeType: (type: string) => {
@@ -521,6 +527,39 @@ describe('getExecutionErrorToastConfiguration', () => {
 		expect(result).toEqual({
 			title: 'Problem executing workflow',
 			message: 'Execution error.Details: Something broke',
+		});
+	});
+
+	describe('gateway trial request cost limit', () => {
+		const gatewayLimitError = executionErrorFactory({
+			name: 'NodeOperationError',
+			message: 'Forbidden - perhaps check your credentials?',
+			description:
+				'Request is over your Gateway credits limit for trial plan. This execution was estimated to cost over the $0.50 limit.',
+			functionality: 'configuration-node',
+			node: { name: 'OpenAI Chat Model' },
+		});
+
+		it('links to the upgrade modal for the owner', () => {
+			usersStore.isInstanceOwner = true;
+
+			const result = getExecutionErrorToastConfiguration({ error: gatewayLimitError });
+
+			expect(result).toEqual({
+				title: 'aiGateway.requestLimit.toast.title',
+				message: 'aiGateway.requestLimit.toast.message',
+			});
+		});
+
+		it('asks other users to contact the owner', () => {
+			usersStore.isInstanceOwner = false;
+
+			const result = getExecutionErrorToastConfiguration({ error: gatewayLimitError });
+
+			expect(result).toEqual({
+				title: 'aiGateway.requestLimit.toast.title',
+				message: 'aiGateway.requestLimit.toast.message.member',
+			});
 		});
 	});
 });
