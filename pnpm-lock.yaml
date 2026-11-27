@@ -864,6 +864,9 @@ catalogs:
       specifier: 3.23.3
       version: 3.23.3
   e2e:
+    '@currents/cmd':
+      specifier: 3.4.0
+      version: 3.4.0
     '@currents/playwright':
       specifier: ^2.0.0
       version: 2.0.0
@@ -10464,6 +10467,9 @@ importers:
       '@axe-core/playwright':
         specifier: ^4.13.0
         version: 4.13.0(playwright-core@1.62.1)
+      '@currents/cmd':
+        specifier: catalog:e2e
+        version: 3.4.0(supports-color@8.1.1)
       '@currents/playwright':
         specifier: catalog:e2e
         version: 2.0.0(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
@@ -12369,6 +12375,11 @@ packages:
     peerDependencies:
       commander: ~13.1.0
 
+  '@commander-js/extra-typings@14.0.0':
+    resolution: {integrity: sha512-hIn0ncNaJRLkZrxBIp5AsW/eXEHNKYQBh0aPdoUqNgD+Io3NIykQqpKFyKcuasZhicGaEZJX/JBSIkZ4e5x8Dg==}
+    peerDependencies:
+      commander: ~14.0.0
+
   '@confluentinc/kafka-javascript@1.9.1':
     resolution: {integrity: sha512-Qc7IZGSiWb9PVcfGwhMDmVcn0fj4V2jZjJ7r1ObNdnu1JSFY1yMZvINS4QY9dAI00S7Ng6EE2zIaEQ7UrVDrPw==}
     engines: {node: '>=18.0.0'}
@@ -12404,13 +12415,25 @@ packages:
     resolution: {integrity: sha512-6V0+8vw/GmH92URQ/Ki12FPhoB3nqaQUJE+5xgbFbB5ok0OXYK5jCQsQQoyR3BzCddHsCpyCFRnIcI1PSOVYkQ==}
     engines: {node: '>=14'}
 
+  '@currents/cmd@3.4.0':
+    resolution: {integrity: sha512-/s5wAN5X1UX1bBVlgiwP+wNjeeSR67o6sJtjA3wjJ16RjcdkpeVbCXjajAfQTPKuLSiUNcwlzS+rGcsa47PC3g==}
+    engines: {node: '>=22.13'}
+    hasBin: true
+
   '@currents/commit-info@1.0.1-beta.0':
     resolution: {integrity: sha512-gkn8E3UC+F4/fCla7QAGMGgGPzxZUL9bU9+4I+KZf9PtCU3DdQCdy7a+er2eg4ewfUzZ2Ic1HcfnHuPkuLPKIw==}
     engines: {node: '>=6'}
 
+  '@currents/commit-info@3.0.0':
+    resolution: {integrity: sha512-eGc3f816w4fvqCQaKJRYOWohX7HS1TleE10qOfEQa7jh34jHfgE0vmbg+vcC0wfW92j+iJaN4kgsbaFNMP8VTQ==}
+
   '@currents/playwright@2.0.0':
     resolution: {integrity: sha512-ai/qoXb0i0WU0tO6JJWwEJvPcC72Ldl7sRlkgbHiEiHTiaDBt1d09rdDBvwcS3p/TtqSZ4C3GDsk9dovLd5hZg==}
     hasBin: true
+
+  '@currents/rules@0.1.0':
+    resolution: {integrity: sha512-VmNYE2vsFdHCYAvNCDirjuOGV8AYiFNgyTbS1QitN9k8Kaqv7vovEi70/dBf2g/pSRfwL2vkxqMN8ddyXMWAag==}
+    engines: {node: '>=18.17'}
 
   '@dabh/diagnostics@2.0.3':
     resolution: {integrity: sha512-hrlQOIi7hAfzsMqlGSFyVucrx38O+j6wiGOf//H2ecvIEqYN4ADBSS2iLMh5UFyDunCNniUIPk/q3riFv45xRA==}
@@ -27909,6 +27932,13 @@ packages:
   yauzl@2.10.0:
     resolution: {integrity: sha512-p4a9I6X6nu6IhoGmBqAcbJy1mlC4j27vEPZX9F4L4/vZT3Lyq1VkFHw/V/PUcB9Buo+DG3iHkT0x3Qya58zc3g==}
 
+  yauzl@3.4.0:
+    resolution: {integrity: sha512-jIH9yLR9wqr0wOS0TpBvo/g/2UgZH5qePVbjgRliiF0BYvOZyaBknKsF+x9Iht0O6sqgnB93rCICdOZFecJuDw==}
+    engines: {node: '>=12'}
+
+  yazl@3.3.1:
+    resolution: {integrity: sha512-BbETDVWG+VcMUle37k5Fqp//7SDOK2/1+T7X8TD96M3D9G8jK5VLUdQVdVjGi8im7FGkazX7kk5hkU8X4L5Bng==}
+
   yjs@13.6.29:
     resolution: {integrity: sha512-kHqDPdltoXH+X4w1lVmMtddE3Oeqq48nM40FD5ojTd8xYhQpzIDcfE2keMSU5bAgRPJBe225WTUdyUgj1DtbiQ==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
@@ -30874,6 +30904,10 @@ snapshots:
     dependencies:
       commander: 13.1.0
 
+  '@commander-js/extra-typings@14.0.0(commander@14.0.3)':
+    dependencies:
+      commander: 14.0.3
+
   '@confluentinc/kafka-javascript@1.9.1(patch_hash=c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003)(encoding@0.1.13)(supports-color@8.1.1)':
     dependencies:
       '@mapbox/node-pre-gyp': 2.0.3(encoding@0.1.13)(supports-color@8.1.1)
@@ -30902,6 +30936,25 @@ snapshots:
 
   '@ctrl/tinycolor@4.3.0': {}
 
+  '@currents/cmd@3.4.0(supports-color@8.1.1)':
+    dependencies:
+      '@commander-js/extra-typings': 14.0.0(commander@14.0.3)
+      '@currents/commit-info': 3.0.0(supports-color@8.1.1)
+      '@currents/rules': 0.1.0
+      commander: 14.0.3
+      debug: 4.4.3(supports-color@8.1.1)
+      dotenv: 17.4.2
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
+      proxy-from-env: 2.1.0
+      semver: 7.7.3
+      tinyglobby: 0.2.17
+      undici: 7.30.1
+      xml2js: 0.6.2(patch_hash=3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3)
+      yauzl: 3.4.0
+      yazl: 3.3.1
+    transitivePeerDependencies:
+      - supports-color
+
   '@currents/commit-info@1.0.1-beta.0(supports-color@8.1.1)':
     dependencies:
       bluebird: 3.5.5
@@ -30910,6 +30963,12 @@ snapshots:
       execa: 1.0.0
       lazy-ass: 1.6.0
       ramda: 0.26.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@currents/commit-info@3.0.0(supports-color@8.1.1)':
+    dependencies:
+      debug: 4.4.3(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -30954,6 +31013,11 @@ snapshots:
       - bufferutil
       - supports-color
       - utf-8-validate
+
+  '@currents/rules@0.1.0':
+    dependencies:
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
+      safe-regex2: 5.1.1
 
   '@dabh/diagnostics@2.0.3':
     dependencies:
@@ -48834,6 +48898,14 @@ snapshots:
     dependencies:
       buffer-crc32: 0.2.13
       fd-slicer: 1.1.0
+
+  yauzl@3.4.0:
+    dependencies:
+      pend: 1.2.0
+
+  yazl@3.3.1:
+    dependencies:
+      buffer-crc32: 1.0.0
 
   yjs@13.6.29:
     dependencies:
