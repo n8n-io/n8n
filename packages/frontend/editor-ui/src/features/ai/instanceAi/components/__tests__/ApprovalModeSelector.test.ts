@@ -40,12 +40,12 @@ describe('ApprovalModeSelector', () => {
 		expect(queryByTestId('instance-ai-approval-mode-selector')).not.toBeInTheDocument();
 	});
 
-	it('asks for the preferences again when it mounts after a failed load', () => {
+	it('loads the preferences when it mounts', () => {
 		const { pinia, store } = setup({ approvalMode: 'manual', approvalModesAvailable: false });
 
 		renderComponent({ pinia });
 
-		expect(store.fetchPreferencesAfterFailure).toHaveBeenCalledTimes(1);
+		expect(store.ensurePreferences).toHaveBeenCalledTimes(1);
 	});
 
 	it('shows the current mode on a button that names the setting', () => {

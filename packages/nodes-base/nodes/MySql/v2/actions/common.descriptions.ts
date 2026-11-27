@@ -48,6 +48,9 @@ export const tableRLC: INodeProperties = {
 	default: { mode: 'list', value: '' },
 	required: true,
 	description: 'The table you want to work on',
+	typeOptions: {
+		loadOptionsDependsOn: ['database.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',
@@ -64,6 +67,33 @@ export const tableRLC: INodeProperties = {
 			name: 'name',
 			type: 'string',
 			placeholder: 'table_name',
+		},
+	],
+};
+
+export const databaseRLC: INodeProperties = {
+	displayName: 'Database',
+	name: 'database',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	description:
+		'The database that contains the table. Leave empty to use the database of the credential.',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Leave empty to use the credential database',
+			typeOptions: {
+				searchListMethod: 'searchDatabases',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'Name',
+			name: 'name',
+			type: 'string',
+			placeholder: 'database_name',
 		},
 	],
 };
@@ -146,7 +176,7 @@ export const optionsCollection: INodeProperties = {
 				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getColumnsMultiOptions',
-				loadOptionsDependsOn: ['table.value'],
+				loadOptionsDependsOn: ['database.value', 'table.value'],
 			},
 			default: [],
 			displayOptions: {
@@ -287,7 +317,7 @@ export const selectRowsFixedCollection: INodeProperties = {
 					placeholder: 'e.g. ID',
 					typeOptions: {
 						loadOptionsMethod: 'getColumns',
-						loadOptionsDependsOn: ['schema.value', 'table.value'],
+						loadOptionsDependsOn: ['database.value', 'table.value'],
 					},
 				},
 				{
@@ -341,7 +371,7 @@ export const sortFixedCollection: INodeProperties = {
 					default: '',
 					typeOptions: {
 						loadOptionsMethod: 'getColumns',
-						loadOptionsDependsOn: ['schema.value', 'table.value'],
+						loadOptionsDependsOn: ['database.value', 'table.value'],
 					},
 				},
 				{
@@ -394,7 +424,7 @@ export const startAfterFixedCollection: INodeProperties = {
 					default: '',
 					typeOptions: {
 						loadOptionsMethod: 'getColumns',
-						loadOptionsDependsOn: ['schema.value', 'table.value'],
+						loadOptionsDependsOn: ['database.value', 'table.value'],
 					},
 				},
 				{
