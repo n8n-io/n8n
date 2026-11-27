@@ -332,14 +332,19 @@ const classes = computed(() => ({
 const isTouchPanningDevice = isMobileDevice || isTouchDevice;
 
 // @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
-const panningKeyCode = ref<string[] | true>(isTouchPanningDevice ? true : [' ', controlKeyCode]);
+const desktopPanningKeyCode = [' ', controlKeyCode];
+// On touch devices, pan-on-drag and pan-on-scroll are always active.
+// Keep panActivationKeyCode null and zoomActivationKeyCode on controlKeyCode
+// so wheel scroll pans and trackpad pinch zooms.
+const panningKeyCode = ref<string[] | null>(isTouchPanningDevice ? null : desktopPanningKeyCode);
+const zoomActivationKeyCode = ref<string[]>(
+	isTouchPanningDevice ? [controlKeyCode] : desktopPanningKeyCode,
+);
 const panningMouseButton = ref<number[] | true>(isTouchPanningDevice ? true : [1]);
 const selectionKeyCode = ref<string | true | null>(isTouchPanningDevice ? 'Shift' : true);
 const isInPanningMode = ref(false);
 
 function switchToPanningMode() {
-	if (isTouchPanningDevice) return;
-
 	selectionKeyCode.value = null;
 	panningMouseButton.value = [0, 1];
 	isInPanningMode.value = true;
@@ -353,14 +358,14 @@ function switchToSelectionMode() {
 	isInPanningMode.value = false;
 }
 
-// Panning stays active on touch devices. Passing `true` to onKeyDown/onKeyUp
-// matches every keystroke and replaces panOnDrag with a mouse-button array.
+// Keep panning active on touch devices; desktop key listeners must not
+// replace panOnDrag with a mouse-button array that rejects TouchEvent.
 if (!isTouchPanningDevice) {
-	onKeyDown(panningKeyCode.value, switchToPanningMode, {
+	onKeyDown(desktopPanningKeyCode, switchToPanningMode, {
 		dedupe: true,
 	});
 
-	onKeyUp(panningKeyCode.value, switchToSelectionMode);
+	onKeyUp(desktopPanningKeyCode, switchToSelectionMode);
 }
 
 /**
@@ -2089,7 +2094,7 @@ defineExpose({
 		:min-zoom="0"
 		:max-zoom="experimentalNdvStore.isZoomedViewEnabled ? experimentalNdvStore.maxCanvasZoom : 4"
 		:selection-key-code="selectionKeyCode"
-		:zoom-activation-key-code="panningKeyCode"
+		:zoom-activation-key-code="zoomActivationKeyCode"
 		:pan-activation-key-code="panningKeyCode"
 		:disable-keyboard-a11y="true"
 		:delete-key-code="null"

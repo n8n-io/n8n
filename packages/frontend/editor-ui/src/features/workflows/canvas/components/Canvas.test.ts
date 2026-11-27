@@ -2834,9 +2834,108 @@ describe('Canvas', () => {
 			expect(getViewport()).toEqual({ x: 250, y: 150, zoom: 1 });
 			expect(dragAfterKey.defaultPrevented).toBe(true);
 
+			// Two-finger trackpad scroll / mouse wheel pans without zooming.
+			const wheelEvent = new WheelEvent('wheel', {
+				deltaX: 40,
+				deltaY: 60,
+				clientX: 100,
+				clientY: 100,
+				bubbles: true,
+				cancelable: true,
+			});
+			pane.dispatchEvent(wheelEvent);
+			expect(wheelEvent.defaultPrevented).toBe(true);
+			expect(getViewport()).toEqual({ x: 230, y: 120, zoom: 1 });
+
 			const pinchAfterKey = performPinchZoom(pane);
 			expect(getViewport().zoom).toBeCloseTo(1.5, 5);
 			expect(pinchAfterKey.defaultPrevented).toBe(true);
+		});
+
+		it('pans on wheel scroll and zooms on Meta+wheel or trackpad pinch on iPad in desktop mode', async () => {
+			userAgentSpy.mockReturnValue(
+				'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+			);
+			window.matchMedia = vi.fn((query: string) => ({
+				matches: query === '(any-pointer: coarse)' || query === '(any-pointer: fine)',
+				media: query,
+				onchange: null,
+				addListener: vi.fn(),
+				removeListener: vi.fn(),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+				dispatchEvent: vi.fn(),
+			})) as unknown as typeof window.matchMedia;
+
+			const { container } = renderComponent({
+				props: {
+					nodes: [createCanvasNodeElement()],
+					initialViewport: { x: 0, y: 0, zoom: 1 },
+				},
+			});
+
+			const pane = container.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			const { getViewport } = useVueFlow(canvasId);
+			await waitFor(() => expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 }));
+
+			// Plain wheel scroll pans the canvas while keeping zoom at 1.
+			const panWheel = new WheelEvent('wheel', {
+				deltaX: 40,
+				deltaY: 60,
+				clientX: 100,
+				clientY: 100,
+				bubbles: true,
+				cancelable: true,
+			});
+			pane.dispatchEvent(panWheel);
+			expect(panWheel.defaultPrevented).toBe(true);
+			expect(getViewport()).toEqual({ x: -20, y: -30, zoom: 1 });
+
+			// Holding Meta (controlKeyCode on iPadOS) switches wheel to zoom.
+			await fireEvent.keyDown(document, { key: 'Meta', code: 'MetaLeft', metaKey: true });
+			const metaWheel = new WheelEvent('wheel', {
+				deltaY: -100,
+				clientX: 100,
+				clientY: 100,
+				metaKey: true,
+				bubbles: true,
+				cancelable: true,
+			});
+			pane.dispatchEvent(metaWheel);
+			expect(metaWheel.defaultPrevented).toBe(true);
+			const zoomedAfterMeta = getViewport().zoom;
+			expect(zoomedAfterMeta).toBeGreaterThan(1);
+
+			// Releasing Meta returns wheel to panning without changing zoom.
+			await fireEvent.keyUp(document, { key: 'Meta', code: 'MetaLeft' });
+			const viewportBeforeSecondPan = { ...getViewport() };
+			const panAfterMeta = new WheelEvent('wheel', {
+				deltaX: 20,
+				deltaY: 40,
+				clientX: 100,
+				clientY: 100,
+				bubbles: true,
+				cancelable: true,
+			});
+			pane.dispatchEvent(panAfterMeta);
+			expect(getViewport().x).not.toBe(viewportBeforeSecondPan.x);
+			expect(getViewport().y).not.toBe(viewportBeforeSecondPan.y);
+			expect(getViewport().zoom).toBeCloseTo(zoomedAfterMeta, 5);
+
+			// Trackpad pinch (wheel with ctrlKey: true) zooms the canvas.
+			const trackpadPinch = new WheelEvent('wheel', {
+				deltaY: -20,
+				clientX: 100,
+				clientY: 100,
+				ctrlKey: true,
+				bubbles: true,
+				cancelable: true,
+			});
+			pane.dispatchEvent(trackpadPinch);
+			expect(trackpadPinch.defaultPrevented).toBe(true);
+			expect(getViewport().zoom).toBeGreaterThan(zoomedAfterMeta);
 		});
 
 		it('keeps touch panning and pinch-to-zoom working on touch-only devices in desktop mode after keystrokes', async () => {
