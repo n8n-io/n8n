@@ -138,10 +138,12 @@ An n8n setup defines one n8n runtime configuration with Docker Compose. The setu
 | Setup | Description |
 | --- | --- |
 | `sqlite` | Single main with SQLite |
+| `sqlite-ledger` | The `sqlite` setup with the `execution-ledger` module on. Compare its results with `sqlite` to see the effect of the execution ledger |
 | `postgres` | Single main with PostgreSQL |
 | `postgres-native-evaluation` | The `postgres` setup with native expression evaluation on the `vm` engine. Compare its results with `postgres` to see the effect of native evaluation |
 | `scaling-single-main` | Queue mode with one main and two workers |
 | `scaling-multi-main` | Queue mode with two mains behind a load balancer and two workers. Needs an n8n license |
+| `scaling-multi-main-ledger` | The `scaling-multi-main` setup with the `execution-ledger` module on. Compare its results with `scaling-multi-main` to see the effect of the execution ledger. Needs an n8n license |
 | `engine-v2` | One main (control plane) and two engine v2 data planes behind a load balancer. Does not run task runners |
 
 All setups except `engine-v2` run task runners in external mode.

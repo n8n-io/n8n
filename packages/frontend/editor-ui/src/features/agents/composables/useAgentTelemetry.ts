@@ -15,7 +15,7 @@ export type AgentCreateSource =
 	| 'empty_state_prompt'
 	| 'empty_state_template'
 	| 'command_bar';
-export type N8nChatAgentSource = 'card' | 'library' | 'dropdown';
+export type N8nChatAgentSource = 'card' | 'library';
 export type N8nChatHint = 'channel_chip' | 'new_chat_sidebar';
 export type KnowledgeUploadClientFailureReason = Extract<
 	InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD>,
