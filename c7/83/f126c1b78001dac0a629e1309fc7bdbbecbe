@@ -1,0 +1,55 @@
+packages/@n8n/cli/src/commands/promotion-environment/apply.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 3-12,17,22,30,36-46
+packages/@n8n/cli/src/commands/promotion-environment/list-apply-changes.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 1-35
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 4-7,59-63
+  s_8c36c9c5d188b9::t_e22044ccb1263e 3,64
+packages/@n8n/cli/src/client.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 9-12,172,468-481,488,493
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 241-246,249-251,256-257,259-260,350-351,356-359
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 23,44,55-59,64,130-133,155-163
+  s_8c36c9c5d188b9::t_4c73a455d873a0 164
+packages/@n8n/cli/src/commands/promotion-environment/expected-source.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 64
+packages/@n8n/cli/src/commands/promotion-environment/list-changes.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 71,79-88
+  s_8c36c9c5d188b9::t_dad44853602e40 89-90
+packages/@n8n/cli/docs/commands/promotions.md
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 360-395,445-446,454,458-459,465,494-496,503-509,519-522,528-531,533,535-536,538,540
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 45-46,158-163,167,209-219,342-347,351,358,373-378,577,586,612-621
+  s_8c36c9c5d188b9::t_3888b1a5747d49 622-623
+packages/@n8n/cli/src/index.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 50,130
+packages/@n8n/cli/src/commands/promotion-environment/apply-continue.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 3-12,17,21,29,47-53
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 4-7,53-57
+  s_8c36c9c5d188b9::t_6601bf2887af49 3,58
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 85,89,92,95-97,99,108-110,112
+packages/@n8n/cli/README.md
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 64
+packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
+  s_8c36c9c5d188b9::t_9e08cb45fd9c52 4-5,75,85,151-230
+  s_8c36c9c5d188b9::t_b30e9f39babd74 231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c783f126c1b78001dac0a629e1309fc7bdbbecbe",
+  "prompts": {},
+  "sessions": {
+    "s_8c36c9c5d188b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ea71-d887-7a72-ba0e-0816b9fee853",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

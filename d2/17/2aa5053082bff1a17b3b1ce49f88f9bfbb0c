@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/__tests__/agent-test-run.controller.test.ts
+  h_8a472ace01776f 148
+packages/cli/src/modules/agents/simulation/__tests__/held-action-commit.service.test.ts
+  h_8a472ace01776f 154,219,268,317,357,394,421,474,509,536,560
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session-binding.test.ts
+  h_8a472ace01776f 464-480
+packages/cli/src/modules/agents/simulation/held-action-commit.service.ts
+  h_8a472ace01776f 66
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  h_8a472ace01776f 73-77,82,86-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2172aa5053082bff1a17b3b1ce49f88f9bfbb0c",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

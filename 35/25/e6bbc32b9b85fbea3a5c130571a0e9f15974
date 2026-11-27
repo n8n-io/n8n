@@ -1,0 +1,21 @@
+packages/nodes-base/utils/workflow-backtracking.test.ts
+  s_2af1b8b5be2fb9::t_9496fc06d61c50 338,531-552,556-599,601-603,606-612
+  s_2af1b8b5be2fb9::t_6062eb096bcf44 600,604-605
+  s_2af1b8b5be2fb9::t_8f5d1134d45d4b 553-555
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3525e6bbc32b9b85fbea3a5c130571a0e9f15974",
+  "prompts": {},
+  "sessions": {
+    "s_2af1b8b5be2fb9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c5f58343-b3e3-4dbf-8e38-8edb6c8706d7",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

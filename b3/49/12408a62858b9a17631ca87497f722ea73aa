@@ -1,0 +1,37 @@
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_d842348d080092::t_21136cdd429c94 196-197,1620-1632
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-publish-guard.integration.test.ts
+  s_d842348d080092::t_05a6fc52278df1 1-7,543-606
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-project-settings.controller.ts
+  s_d842348d080092::t_430f63dce6eee0 1-37
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_d842348d080092::t_21136cdd429c94 171-172
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-project-settings.service.ts
+  s_d842348d080092::t_430f63dce6eee0 1-52
+packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
+  s_d842348d080092::t_430f63dce6eee0 12
+packages/cli/src/events/maps/relay.event-map.ts
+  s_d842348d080092::t_21136cdd429c94 1510-1515
+packages/@n8n/api-types/src/dto/workflow-reviews/update-project-workflow-review-settings.dto.ts
+  s_d842348d080092::t_a6b6f4215fafbf 1-11
+packages/@n8n/api-types/src/dto/index.ts
+  s_d842348d080092::t_a6b6f4215fafbf 701-704
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_d842348d080092::t_46b92046077800 3763-3781
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b34912408a62858b9a17631ca87497f722ea73aa",
+  "prompts": {},
+  "sessions": {
+    "s_d842348d080092": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5ff11ea-ea68-4dce-b3b9-094b483d7df4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

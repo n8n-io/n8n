@@ -1,0 +1,52 @@
+packages/@n8n/api-types/src/schemas/instance-ai-approval.schema.ts
+  h_23d60aac2fe72e 131
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  h_23d60aac2fe72e 225-227
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  h_23d60aac2fe72e 5,42,178-183,346,356
+packages/@n8n/instance-ai/src/approval-review/pending-approval.ts
+  h_23d60aac2fe72e 72-73
+packages/@n8n/instance-ai/src/tools/__tests__/archive-agent.tool.test.ts
+  h_23d60aac2fe72e 1-68
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  h_23d60aac2fe72e 576-595
+packages/@n8n/instance-ai/src/tools/archive-agent.tool.ts
+  h_23d60aac2fe72e 1-47
+packages/@n8n/instance-ai/src/tools/index.ts
+  h_23d60aac2fe72e 85-87,272-279
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  h_23d60aac2fe72e 70,198,213
+packages/@n8n/instance-ai/src/types.ts
+  h_23d60aac2fe72e 1733-1738,1880-1881
+packages/cli/src/modules/agents/AGENTS.md
+  h_23d60aac2fe72e 13
+packages/cli/src/modules/agents/__tests__/agent-archive.service.test.ts
+  h_23d60aac2fe72e 1-119
+packages/cli/src/modules/agents/agent-archive.service.ts
+  h_23d60aac2fe72e 1-61
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-agent.factory.test.ts
+  h_23d60aac2fe72e 6-7,9-18,39-124
+packages/cli/src/modules/instance-ai/turn-setup/assistant-agent.factory.ts
+  h_23d60aac2fe72e 22,113,189-200
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_23d60aac2fe72e 9040,9472-9474
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/approvalDetails.test.ts
+  h_23d60aac2fe72e 459-462
+packages/frontend/editor-ui/src/features/ai/instanceAi/approvalDetails.ts
+  h_23d60aac2fe72e 117-120,463-464
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.test.ts
+  h_23d60aac2fe72e 73-74,93
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.ts
+  h_23d60aac2fe72e 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3484375ba872eb2db660d5edc58f69b55dbc9cc3",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

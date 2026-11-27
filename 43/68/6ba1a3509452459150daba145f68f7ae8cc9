@@ -1,0 +1,21 @@
+packages/cli/src/hooks-api/__tests__/contract/v1-ownership.contract.integration.test.ts
+  s_9374d2205860c8::t_7af91db0450f55 9
+pnpm-lock.yaml
+  s_9374d2205860c8::t_a7a2ae2819c588 3317,3320
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "43686ba1a3509452459150daba145f68f7ae8cc9",
+  "prompts": {},
+  "sessions": {
+    "s_9374d2205860c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85fd60fa-7475-4ca7-b753-d29e2e0aa4f5",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

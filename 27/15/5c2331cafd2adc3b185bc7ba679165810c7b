@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Microsoft/Sql/test/utils.test.ts
+  s_301f65a0ad74e3::t_132a8892a587d8 14
+  s_301f65a0ad74e3::t_da92d73b0e38d0 645-676
+packages/nodes-base/nodes/Microsoft/Sql/test/MicrosoftSql.node.test.ts
+  s_301f65a0ad74e3::t_d620d98a3aaafb 5
+  s_301f65a0ad74e3::t_5643f87d05de8b 86-111
+packages/nodes-base/nodes/Microsoft/Sql/MicrosoftSql.node.ts
+  s_301f65a0ad74e3::t_779b97914e97aa 13
+  s_301f65a0ad74e3::t_0d3c8ce924abe6 294-296
+  s_301f65a0ad74e3::t_c309b9b1617bc2 24
+packages/nodes-base/nodes/Microsoft/Sql/GenericFunctions.ts
+  s_301f65a0ad74e3::t_4bca0405268d0a 138-142,145-152
+  s_301f65a0ad74e3::t_13929de784e7e1 143-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27155c2331cafd2adc3b185bc7ba679165810c7b",
+  "prompts": {},
+  "sessions": {
+    "s_301f65a0ad74e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9109a47d-86a5-4da4-a9f6-37c52281cae7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

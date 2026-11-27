@@ -1,0 +1,19 @@
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_bc361d9d6c0744::t_2f94076203a023 700-734
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2c3d4c3241f5d9ebd397f426ddec1401e05f39d",
+  "prompts": {},
+  "sessions": {
+    "s_bc361d9d6c0744": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6480b4a0-d3d2-4d24-a9bd-2dc7e311dd31",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

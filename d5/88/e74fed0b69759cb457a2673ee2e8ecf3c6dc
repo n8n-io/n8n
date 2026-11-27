@@ -1,0 +1,92 @@
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_4a494bfdece475::t_87d22554e4012d 174-227
+packages/cli/src/modules/n8n-packages/__tests__/n8n-packages.service.test.ts
+  s_4a494bfdece475::t_87d22554e4012d 1-134
+  s_4a494bfdece475::t_9c41c9e1e5c67d 1-134
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_4a494bfdece475::t_87d22554e4012d 51-52,94-98,141-152,158,242
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_4a494bfdece475::t_87d22554e4012d 104-109,316-322,330-335,374-382
+  s_4a494bfdece475::t_6da7dbab6ea917 383-384
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_4a494bfdece475::t_87d22554e4012d 78,88,273-381
+  s_4a494bfdece475::t_1841b2e0e297cb 382-383
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_4a494bfdece475::t_87d22554e4012d 8-15,21,49,152
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_4a494bfdece475::t_87d22554e4012d 140-151,370,540-541,598,601,766-767
+  s_4a494bfdece475::t_d718ae585b0d88 768
+  s_4a494bfdece475::t_bee792693998a2 140-151,540-541,598,601
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_4a494bfdece475::t_87d22554e4012d 286-291,325-330,333-337,388-391,430-436,441
+  s_4a494bfdece475::t_6a2025760336e0 325-330,333-337,388-391,441
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_4a494bfdece475::t_87d22554e4012d 163-164
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_4a494bfdece475::t_87d22554e4012d 246,289,306-307,325,390,398,403-413,417,423-429
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_4a494bfdece475::t_87d22554e4012d 25,64-74,93-115
+  s_4a494bfdece475::t_56eaa303a2240b 116-118
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_4a494bfdece475::t_87d22554e4012d 182-214
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode.ts
+  s_4a494bfdece475::t_87d22554e4012d 16-29
+  s_4a494bfdece475::t_ec2c7153d624d7 15
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_4a494bfdece475::t_87d22554e4012d 16-21
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  s_4a494bfdece475::t_87d22554e4012d 79-96
+  s_3c463a4b4147a8::t_10661294e788f0 79-96
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-missing-mode.test.ts
+  s_4a494bfdece475::t_87d22554e4012d 1-5,174-197
+  s_4a494bfdece475::t_7c7aedd1a8edb9 198
+packages/cli/src/workflows/workflow.service.ts
+  s_4a494bfdece475::t_87d22554e4012d 172-176,640,680-685,722
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_4a494bfdece475::t_87d22554e4012d 305-339
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_4a494bfdece475::t_87d22554e4012d 575-579,805-812
+  s_4a494bfdece475::t_0b334a643abfba 813-814
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_4a494bfdece475::t_87d22554e4012d 137-154
+  s_3c463a4b4147a8::t_d1c2f52981c9c7 137-154
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_4a494bfdece475::t_87d22554e4012d 389-391
+packages/cli/src/workflow-helpers.ts
+  s_4a494bfdece475::t_87d22554e4012d 279-283,376-377
+  s_4a494bfdece475::t_f444fd7a16bcd2 378-379
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_4a494bfdece475::t_87d22554e4012d 46-50,88,178-182
+  s_4a494bfdece475::t_23809e7b774c33 183-184
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_4a494bfdece475::t_87d22554e4012d 1272-1318
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_4a494bfdece475::t_87d22554e4012d 3,124-125,186-274
+  s_4a494bfdece475::t_ea40a067be023d 275-276
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_4a494bfdece475::t_e94222446f5ba4 2285-2288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d588e74fed0b69759cb457a2673ee2e8ecf3c6dc",
+  "prompts": {},
+  "sessions": {
+    "s_3c463a4b4147a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86121cb9-37d8-4c50-8dd5-a1674afa2bca",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

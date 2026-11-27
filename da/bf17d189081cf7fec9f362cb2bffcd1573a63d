@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_59270bcc1c75b9::t_1f3b6a55c4d3dd 319-320
+  s_b86bd8b73ec329::t_a020e2c18f382e 41,465-470,472-474,476-479,491-493,500,504-507,114,212,216,326,338
+  s_b86bd8b73ec329::t_5db4c5dd860139 108,124
+  s_b86bd8b73ec329::t_f3fdcb09ce8659 8-10,44-45,65,67,103,106-107,110-113,121,133,170-176,178,190-211,213-215,217-218,220-223,226-227,233-235,321,323-325,337,339,446,484,490,512,519,538
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_b86bd8b73ec329::t_8272be99d81754 20-27
+  s_b86bd8b73ec329::t_bceac25538bc19 41-45,29,33,35,40
+  s_b86bd8b73ec329::t_6c864afc02202e 28,30-32
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderDropdown.test.ts
+  s_b86bd8b73ec329::t_22d4bc51a2a9e6 22
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b86bd8b73ec329::t_df89f74b26e0ae 1010
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dabf17d189081cf7fec9f362cb2bffcd1573a63d",
+  "prompts": {},
+  "sessions": {
+    "s_59270bcc1c75b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f0208db-1247-4519-b410-1b1bf7dfc1ff",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

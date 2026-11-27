@@ -1,0 +1,25 @@
+packages/modules/promotions/frontend/src/promotions.module.ts
+  s_cfb06e423e7532::t_0b89677946aaf1 30-38,63-64
+  s_cfb06e423e7532::t_97f6a67f8c655d 5
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_cfb06e423e7532::t_0b89677946aaf1 358
+  s_cfb06e423e7532::t_97f6a67f8c655d 359-367
+packages/modules/promotions/frontend/src/promotions.module.test.ts
+  s_cfb06e423e7532::t_0b89677946aaf1 117,121,123,125-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef64aa08a7f1190877565d452f9743a68cd01180",
+  "prompts": {},
+  "sessions": {
+    "s_cfb06e423e7532": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd87b83b-832e-4462-acfd-6d1f13a18aff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

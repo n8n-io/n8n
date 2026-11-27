@@ -1,0 +1,61 @@
+packages/@n8n/api-types/src/index.ts
+  s_a88340529c4722::t_b670e3748282a3 1093-1113
+packages/@n8n/api-types/src/schemas/__tests__/agent-safe-testing.schema.test.ts
+  s_a88340529c4722::t_8901af6467ef2b 1-20
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_a88340529c4722::t_4b46ad65d0589d 1-97
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_a88340529c4722::t_61b9567c040e3a 925-952
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_a88340529c4722::t_8d89c1b21a4016 888-928
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_a88340529c4722::t_b68a51463b66c8 806,827,833-835,902,1219-1223,1225,1227-1229,1429-1436
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_a88340529c4722::t_5b12a9080433a6 1,45-46,53-54,78-89
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_a88340529c4722::t_f49a0c12995204 139-144,283-285,297,377,382-388,531-532
+packages/cli/src/modules/agents/simulation/__tests__/node-network-imports.test.ts
+  s_a88340529c4722::t_14bb2c49e4b2c9 1-249
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_a88340529c4722::t_06bf7b60b1a537 1-58
+packages/cli/src/modules/agents/simulation/__tests__/outbound-redaction.test.ts
+  s_a88340529c4722::t_fd56e689dd03aa 1-117
+packages/cli/src/modules/agents/simulation/__tests__/simulated-write-sends-nothing.test.ts
+  s_a88340529c4722::t_59517abd1af1ac 1-192
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_a88340529c4722::t_b79a58fda000cd 1-593
+packages/cli/src/modules/agents/simulation/__tests__/test-run-credentials-helper.test.ts
+  s_a88340529c4722::t_30ee6a03c55d2c 1-60
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_a88340529c4722::t_000d56ab9192ff 1-74
+packages/cli/src/modules/agents/simulation/outbound-redaction.ts
+  s_a88340529c4722::t_1bc1df38388726 1-81
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_a88340529c4722::t_6070888e2e1c4a 1-407
+packages/cli/src/modules/agents/simulation/test-run-credentials-helper.ts
+  s_a88340529c4722::t_50b433e9c5ba31 1-79
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_a88340529c4722::t_f526e9fa6a1c29 1-98
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_a88340529c4722::t_5ab8478f0fa5e5 368
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_a88340529c4722::t_450ccab4eda28b 1206-1207,1224-1239
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_a88340529c4722::t_50abdf6db37901 20-21,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3d2b4cfd01114c1c6393eb5abbd39088e0081c1",
+  "prompts": {},
+  "sessions": {
+    "s_a88340529c4722": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f32cad09-c2ae-42bb-971a-14c0acd9e1ec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

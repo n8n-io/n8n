@@ -1,0 +1,21 @@
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  s_d27402c363ecec::t_37db2dc704b919 81
+packages/@n8n/expression-runtime/src/__tests__/replaced-builtins.test.ts
+  s_d27402c363ecec::t_c34437cffc4f1d 118-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f308c06bda0914f5e9e6c34a8ea9b8d3fe02ca84",
+  "prompts": {},
+  "sessions": {
+    "s_d27402c363ecec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "565e9910-cae9-4e7e-a38a-86e3948bb832",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

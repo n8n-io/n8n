@@ -1,0 +1,55 @@
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_450cf68b0d8430::t_dd6b113023c0ba 2,598-607,611-735
+  s_450cf68b0d8430::t_66310c9f918edb 608-610
+  s_450cf68b0d8430::t_24bd3d7ab71d18 736
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_450cf68b0d8430::t_78f37fa8e47961 1,81-82
+  s_11ad25b66a6e8f::t_3d892cccb704a8 28
+  s_11ad25b66a6e8f::t_94d2ba18273b7b 16-22,29
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_450cf68b0d8430::t_277d362dfd6f0b 89-90,274-276
+  s_450cf68b0d8430::t_78f37fa8e47961 10-15,183,197,206,362-365,367-374
+packages/@n8n/api-types/src/index.ts
+  s_450cf68b0d8430::t_78f37fa8e47961 1126,1136
+packages/@n8n/api-types/src/schemas/__tests__/agent-safe-testing.schema.test.ts
+  s_450cf68b0d8430::t_277d362dfd6f0b 1-5,12-13,26-27,32-41,45-61
+  s_450cf68b0d8430::t_66310c9f918edb 28-31
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_450cf68b0d8430::t_66310c9f918edb 8,696-698,700
+  s_450cf68b0d8430::t_dd6b113023c0ba 674-695,699,701-714
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_450cf68b0d8430::t_78f37fa8e47961 45-58,72,91-94
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session-binding.test.ts
+  s_11ad25b66a6e8f::t_8dbc6ea6945d1a 92-97
+  s_11ad25b66a6e8f::t_08c41b8f581faa 1-91,98-412
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_11ad25b66a6e8f::t_72df48500b2da0 82,128-133,146-151,169-174,198-203,231-236
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_11ad25b66a6e8f::t_94d2ba18273b7b 1-2,50,68-69,71,74,77,83-84,89-91,96-122,141-150,161,188,199,279,380-387,389,400-405,416-417
+  s_11ad25b66a6e8f::t_3d892cccb704a8 191-198,406-415
+  s_11ad25b66a6e8f::t_ee96b26663fa63 418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2991aee09eca4dac0338bd68394acb3641806a32",
+  "prompts": {},
+  "sessions": {
+    "s_11ad25b66a6e8f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1fa3b-0644-7569-8d36-8acba50c5bb4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_450cf68b0d8430": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1fa3b-0658-74e5-b539-af145efc13b8",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

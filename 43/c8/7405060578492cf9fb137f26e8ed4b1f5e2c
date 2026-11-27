@@ -1,0 +1,78 @@
+packages/cli/src/modules/skills/database/repositories/skill-source.repository.ts
+  s_bc27ac3adda411::t_5259d08f0d365c 355-360
+  s_bc27ac3adda411::t_94b4cb35291074 351-354,361-364
+packages/cli/src/modules/skills/controllers/skill-source.controller.ts
+  s_bc27ac3adda411::t_94b4cb35291074 8,67-71
+packages/frontend/editor-ui/src/features/settings/context/catalog/SkillCatalog.test.ts
+  s_bc27ac3adda411::t_5259d08f0d365c 10-26,65-77
+  s_bc27ac3adda411::t_ec86c6a49358aa 6
+  s_bc27ac3adda411::t_5de3dac52b2ffb 3-5,7-9,48,51,55-56,58-60,63-64,78
+  s_bc27ac3adda411::t_a01a33842f032d 57
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_bc27ac3adda411::t_5259d08f0d365c 40-42,167-169,1629-1632,1634-1639,1641-1646
+  s_bc27ac3adda411::t_4c5dce4e5ea16a 1633,1640
+  s_bc27ac3adda411::t_5de3dac52b2ffb 20,33,43,1602,1607-1608,1618-1628
+packages/frontend/editor-ui/src/features/settings/context/catalog/skillCatalog.ts
+  s_bc27ac3adda411::t_794c6b4605d3f3 14-15
+packages/frontend/editor-ui/src/features/settings/context/catalog/README.md
+  s_bc27ac3adda411::t_79747d0a54bf3e 4-5,9-11,80
+  s_bc27ac3adda411::t_4c5dce4e5ea16a 6-7,81-82
+packages/frontend/editor-ui/src/features/settings/context/catalog/SkillCatalogDetail.vue
+  s_bc27ac3adda411::t_e7949e30715516 28-57,59-64,66-74,78-80,89-92,94-98,102-104,106-117,122-124,126-128,130-132,135-137,140-143,147-149,156-185
+  s_bc27ac3adda411::t_794c6b4605d3f3 1-27,58,65,75-77,81-88,93,99-101,105,118-121,125,129,133-134,138-139,144-146,150-155,186
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_bc27ac3adda411::t_064ac40320a468 156-157,159-160,637,1122-1123
+  s_bc27ac3adda411::t_e7949e30715516 177-184,226-230
+  s_bc27ac3adda411::t_3c6804d9fb8f21 158,1059
+  s_bc27ac3adda411::t_794c6b4605d3f3 185,1371-1372,1374
+packages/@n8n/api-types/src/skills/skill-sources.schema.ts
+  s_bc27ac3adda411::t_94b4cb35291074 59-63,357-358
+  s_bc27ac3adda411::t_5259d08f0d365c 245-248
+packages/cli/src/modules/skills/services/skill-source.service.ts
+  s_bc27ac3adda411::t_94b4cb35291074 8,227-233,239-245,249-263,314,319
+  s_bc27ac3adda411::t_5259d08f0d365c 211-214,234-238,246-248,339-344
+packages/frontend/editor-ui/src/features/settings/context/skills.api.ts
+  s_bc27ac3adda411::t_94b4cb35291074 25,168
+  s_bc27ac3adda411::t_5259d08f0d365c 169-178
+packages/frontend/editor-ui/src/features/settings/context/catalog/SkillCatalog.vue
+  s_bc27ac3adda411::t_a01a33842f032d 2,37-42
+  s_bc27ac3adda411::t_794c6b4605d3f3 3-5,31,35-36,46,55-60
+  s_bc27ac3adda411::t_65c899d1afacf2 124-145,207-218,235
+  s_bc27ac3adda411::t_e7949e30715516 27-30,32-34,43-45,47-54,255-257
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceConnectDialog.vue
+  s_bc27ac3adda411::t_e7949e30715516 1001-1007
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_bc27ac3adda411::t_5259d08f0d365c 42-44,1183-1186
+  s_bc27ac3adda411::t_5de3dac52b2ffb 41,278,1177-1182,1187-1190
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_bc27ac3adda411::t_794c6b4605d3f3 43,364,368,974,1802
+  s_bc27ac3adda411::t_e7949e30715516 369-371,975-982,1794-1801
+packages/frontend/editor-ui/src/features/settings/context/catalog/SkillCatalogDetail.test.ts
+  s_bc27ac3adda411::t_84e25071bda532 1-15,25-27,31-41,45-50,54-62,66-70,94-95,99-102
+  s_bc27ac3adda411::t_5259d08f0d365c 16-24,28-30,42-44,51-53,63-65,71-93,96-98
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_bc27ac3adda411::t_794c6b4605d3f3 11480-11491
+packages/cli/src/modules/skills/__tests__/integration/skill-source.controller.integration.test.ts
+  s_bc27ac3adda411::t_0735a0b88089eb 177-178
+  s_bc27ac3adda411::t_5259d08f0d365c 140-143,146-150,163-166,172-176,179-189,193-195
+  s_bc27ac3adda411::t_84e25071bda532 162
+  s_bc27ac3adda411::t_5de3dac52b2ffb 5-6,134,139,144-145,151-161,167-169,171,190-192
+  s_bc27ac3adda411::t_f3b58974c59397 135-138
+  s_bc27ac3adda411::t_4c5dce4e5ea16a 170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "43c87405060578492cf9fb137f26e8ed4b1f5e2c",
+  "prompts": {},
+  "sessions": {
+    "s_bc27ac3adda411": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e944-3dbf-7aa3-9124-352b45e22dd3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

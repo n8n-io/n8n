@@ -1,0 +1,23 @@
+packages/cli/src/modules/promotions.ee/promotion-credential-selection.service.ts
+  ai_agent 9-10,27,29,40
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  ai_agent 3251,3257,3260-3269,3275-3279
+packages/cli/src/modules/promotions.ee/__tests__/promotion-credential-selection.service.test.ts
+  s_c51b71bedc600f::t_02a1af8243c93a 15,53-54,67-72,84-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "928e96d73f1b29379cafce6174a73783884b46b3",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

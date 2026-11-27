@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Webhook/test/hidden-auth-headers.test.ts
+  s_d7d0a81b33d5c6::t_12f74a40024d93 8-12
+  s_d7d0a81b33d5c6::t_790bd600a33f55 181
+  s_d7d0a81b33d5c6::t_2d2d437fc2d56d 70-71
+  s_d7d0a81b33d5c6::t_9b90fee43edc6a 159-175,180,182-200
+  s_d7d0a81b33d5c6::t_a74554a1a0a4e5 26-27
+  s_d7d0a81b33d5c6::t_99ae2b85a8185a 176-179
+  s_d7d0a81b33d5c6::t_efba63ad8c97ce 226-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "807a937f4be275aef4a0d46d124cf0971b87bc61",
+  "prompts": {},
+  "sessions": {
+    "s_d7d0a81b33d5c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2fb3262-6ea3-4416-83c3-76f9f4cd7d8b",
+        "model": "unknown"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

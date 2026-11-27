@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/delight/CanvasDelight.test.ts
+  s_c33bde4687101e::t_ea30ab90ab0156 6,86,116-143
+  s_c33bde4687101e::t_c4e4167142ea5d 144-145
+packages/frontend/editor-ui/src/features/workflows/canvas/components/delight/stickyNoteDeletion.ts
+  s_c33bde4687101e::t_ea30ab90ab0156 1-3,7-15,17-29
+  s_c33bde4687101e::t_8723f7ede91eed 4-6
+  s_c33bde4687101e::t_07e9ccaad346cd 16
+packages/frontend/editor-ui/src/features/workflows/canvas/components/delight/CanvasOrigamiEffect.vue
+  s_c33bde4687101e::t_8723f7ede91eed 228,239-247,250-266,269-275
+  s_c33bde4687101e::t_ea30ab90ab0156 9,54,58,73,137,148-150,222-227,229-238,248-249,267-268,276
+  s_c33bde4687101e::t_1d2a63189c3ad5 277
+demos/canvas-delight/README.md
+  s_c33bde4687101e::t_07e9ccaad346cd 14,77-78
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_c33bde4687101e::t_ea30ab90ab0156 1174,1309,1744
+  s_c33bde4687101e::t_dbfd0e66395e76 2
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeStickyNote.vue
+  s_c33bde4687101e::t_ea30ab90ab0156 121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4e05e04dc4ad1feefd524c46aa0a5092f008864",
+  "prompts": {},
+  "sessions": {
+    "s_c33bde4687101e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edf6-ffe6-77f0-898f-eea7d7b98df2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

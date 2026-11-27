@@ -1,0 +1,32 @@
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGrid.test.ts
+  s_74d64b3f874ae2::t_3cd5004f75be00 15-25,536
+  s_74d64b3f874ae2::t_5fd1444c8bbf14 2,785,787,789
+  s_74d64b3f874ae2::t_199b3ec381fa6e 1,3,5,10-11,13,74-85,89-104,114,454-462,467-535,537-600,602-620,622-636,638-764,784,786,788,793-794,796
+  s_74d64b3f874ae2::t_3105335297cf93 463-466
+  s_74d64b3f874ae2::t_71b486c90f0742 7,86-88,601,621,637,790-792
+  s_74d64b3f874ae2::t_75795af27c9233 765-783,795
+  s_74d64b3f874ae2::t_5bc46e5a86dd3b 14
+packages/frontend/@n8n/design-system/src/components/N8nDataGrid/DataGridLoadingIndicator.test.ts
+  s_74d64b3f874ae2::t_75795af27c9233 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "504cf2adb5e6e161bc0ba5ccd2c9213c88c499ff",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_74d64b3f874ae2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bcf6478d-a88f-473e-b22e-6b13b235969e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

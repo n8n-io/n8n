@@ -1,0 +1,27 @@
+packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.service.test.ts
+  s_3327c391716409::t_2c8afda79462a4 30
+packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.test.ts
+  s_3327c391716409::t_d796175b63632c 196-197,345,347-349,352-376
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_3327c391716409::t_e6cecfbce6490b 3074-3100,3110
+packages/cli/src/modules/promotions.ee/apply-dependency-check.ts
+  s_3327c391716409::t_147f4d49896574 50-51,97,103,128,131-134
+packages/cli/src/modules/promotions.ee/package-references.ts
+  s_3327c391716409::t_72dc542516d439 35-36,115-117,123,126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d7d6dbc2a8a8690f27448d24ff70272abc68c40",
+  "prompts": {},
+  "sessions": {
+    "s_3327c391716409": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a174dd5fb72a34706",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

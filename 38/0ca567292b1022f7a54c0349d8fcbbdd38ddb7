@@ -1,0 +1,14 @@
+spike/code-sandbox/scripts/direct-pass.mjs
+  h_8fb27e0cdf6d1e 12,316-368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "380ca567292b1022f7a54c0349d8fcbbdd38ddb7",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

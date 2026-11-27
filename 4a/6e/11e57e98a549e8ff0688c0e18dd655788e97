@@ -1,0 +1,16 @@
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  h_f8b427917eda26 316
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsTabs.vue
+  h_f8b427917eda26 157,189-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a6e11e57e98a549e8ff0688c0e18dd655788e97",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

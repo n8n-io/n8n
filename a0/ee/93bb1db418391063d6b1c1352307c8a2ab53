@@ -1,0 +1,91 @@
+packages/frontend/@n8n/frontend-module-sdk/src/types/component.ts
+  s_d631470ae9ad8c::t_e4a506dcec436b 24-25,41,97-104,121-126
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d631470ae9ad8c::t_78d47c04a77d4f 138,4947-4948,11176,11230,11329,11336,11341-11344,11347,11370,11420,11434-11438,11462-11464
+packages/frontend/editor-ui/src/app/componentSlots.manifest.ts
+  s_d631470ae9ad8c::t_7c708545f834ad 2-5,39
+packages/modules/inbox/frontend/src/promotions/PromotionReviewDetail.test.ts
+  s_d631470ae9ad8c::t_ffc5380d717d38 395-467
+packages/modules/inbox/frontend/src/promotions/PromotionReviewDetail.vue
+  s_d631470ae9ad8c::t_0e123c74d08855 51-57,60-68,76-79,81-84,269,309-310,349-351
+packages/modules/promotions/frontend/src/__tests__/bindings.fixtures.ts
+  s_d631470ae9ad8c::t_d8557c6dba9d11 7,106,108-117
+packages/modules/promotions/frontend/src/__tests__/missingDependencies.fixtures.ts
+  s_d631470ae9ad8c::t_1fbdd9348f0bf7 60,68,83,93,97-106,133,143
+packages/modules/promotions/frontend/src/components/ApplyUnresolvedDialog.test.ts
+  s_d631470ae9ad8c::t_4e30196672bf27 1-102
+packages/modules/promotions/frontend/src/components/ApplyUnresolvedDialog.vue
+  s_d631470ae9ad8c::t_e8ddf7ff367619 1-76
+packages/modules/promotions/frontend/src/components/PromoteInstanceDialog.test.ts
+  s_d631470ae9ad8c::t_15bbb98512905c 1,7,13,33-36,41,167,174-175,178,196,199-206,208,210-214,217-218,225-375
+packages/modules/promotions/frontend/src/components/PromoteInstanceDialog.vue
+  s_d631470ae9ad8c::t_b20d88a21dbae0 6,20,22,48-51,53,56-76,81-82,86-108,141-142,161-167,170-173,178-184,214-217,225-236,238-244,272-276,296-302
+packages/modules/promotions/frontend/src/components/PromoteSelectionDialog.test.ts
+  s_d631470ae9ad8c::t_c6bac32cce6239 4,6-10,29,34-89
+packages/modules/promotions/frontend/src/components/PromoteSelectionDialog.vue
+  s_d631470ae9ad8c::t_617737190b8591 2,16,18-29,43-52,54-59,75-78,93,104-107,121-125
+packages/modules/promotions/frontend/src/components/PromotionMissingDependencyList.vue
+  s_d631470ae9ad8c::t_e0edcf2ceabc8c 13-15,44-52,73
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_d631470ae9ad8c::t_6585d84b54a40e 47-50,53-58,288,292,399-405,499-516,523-524,550,640,747,759,778,789,798,800-801,815,825,833
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.test.ts
+  s_d631470ae9ad8c::t_6718a6599b3303 13,16-22,147-219
+packages/modules/promotions/frontend/src/components/preview/PromotionWorkflowLinks.vue
+  s_d631470ae9ad8c::t_c374f776afd0ab 12-13,35-46,51
+packages/modules/promotions/frontend/src/components/review/PromotionReviewChanges.test.ts
+  s_d631470ae9ad8c::t_30a0b048eafa8f 7-10,57-66,85
+packages/modules/promotions/frontend/src/components/review/PromotionReviewChanges.vue
+  s_d631470ae9ad8c::t_12037badbc7282 14,28,59,61,63,66-67,74-78,88-93
+packages/modules/promotions/frontend/src/components/review/PromotionReviewIssues.test.ts
+  s_d631470ae9ad8c::t_eaec283e4985a4 1-277
+packages/modules/promotions/frontend/src/components/review/PromotionReviewIssues.vue
+  s_d631470ae9ad8c::t_21f0b516cce152 1-72
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.test.ts
+  s_d631470ae9ad8c::t_f5564580f5edb0 5,7-8,11,23,27,44,49-64,68,82,93-185
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_d631470ae9ad8c::t_5b8d3303ea9cfa 30-31,60-76,88,93-94,111,114-119,182-188,197,199-201,229-230,233,250-251,254
+packages/modules/promotions/frontend/src/composables/usePromotionOutcome.ts
+  s_d631470ae9ad8c::t_fae56d5a41fc9b 9-14,16,37,69,91-100,104
+packages/modules/promotions/frontend/src/composables/usePromotionPreviewLabels.ts
+  s_d631470ae9ad8c::t_ec4cd2e37b2881 83,96-99
+packages/modules/promotions/frontend/src/index.ts
+  s_d631470ae9ad8c::t_bdda9331ef0d4b 12-14
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_d631470ae9ad8c::t_f171e300dd9b84 14,21,190,232-253,258,261-265,278-316
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_d631470ae9ad8c::t_49c844ef34fb5b 50-52,126-127,133-135,147-165,206,280
+packages/modules/promotions/frontend/src/promotionResult.ts
+  s_d631470ae9ad8c::t_6436e580587238 4,40-53,57-63,67-69,77,134-147
+packages/modules/promotions/frontend/src/promotionReviewChanges.ts
+  s_d631470ae9ad8c::t_c309987bfcb7f3 1-21
+packages/modules/promotions/frontend/src/promotions.types.ts
+  s_d631470ae9ad8c::t_c0a24fe94fddd3 3,14-15
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_d631470ae9ad8c::t_cc5b1e234b7611 16,26,45,366-370,674-678,707-711,732-736,816-822,839-844,1000,1309,1334,1455,1459,1463-1480,1482-1578,1581,1583-1584,1593-1684,1760,1768,1785-1786,1842,1844,1849-1852,1900-1908,2035,2038,2041-2044,2050-2061,2063,2066-2081,2086-2111,2113-2119,2125-2152,2317,2319-2323,2325-2353,2355-2358,2361-2393,2395-2396,2398-2408,2410,2412-2449,2453-2454,2456,2458-2476,2479-2481,2483-2654,2658-2661,2665-2744,2748-2788,2809-2810,2813,2815,2818,2825,2829-2833,2838-2862,2915,2918,2922,2924-2926,2930-2947,2950-2970,2986-3066,3076,3083-3084,3087-3091
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_d631470ae9ad8c::t_344891bc726365 30,43,91-92,94-96,110-114,119-133,152,295,306,344-345,352-356,358-366,378,396-397,666,669-674
+packages/quality/testing/playwright/pages/n8nPage.ts
+  s_d631470ae9ad8c::t_6e24f260cfe1fa 38,106,198
+packages/quality/testing/playwright/pages/promotion-preview-page.ts
+  s_d631470ae9ad8c::t_9c4533d3d8f189 1-91
+packages/quality/testing/playwright/services/promotions-api-helper.ts
+  s_d631470ae9ad8c::t_a0700d50f65f77 7-9,11,49-60,89-96
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-missing-dependencies.spec.ts
+  s_d631470ae9ad8c::t_2fbbf540caaaf6 1-307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a0ee93bb1db418391063d6b1c1352307c8a2ab53",
+  "prompts": {},
+  "sessions": {
+    "s_d631470ae9ad8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3fc331d9f3b15ead",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceConnectDialog.vue
+  s_bc27ac3adda411::t_2c8e79ef56c7ff 22,784-785
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_bc27ac3adda411::t_2c8e79ef56c7ff 11498-11503
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_bc27ac3adda411::t_7b5512c8f85002 7,907-911
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_bc27ac3adda411::t_7b5512c8f85002 1180,1188-1192,1199-1257
+packages/frontend/editor-ui/src/features/settings/context/catalog/SkillCatalogDetail.test.ts
+  s_bc27ac3adda411::t_e06fbacec8e129 79-81,84-86,107-109
+  s_bc27ac3adda411::t_25172bb34fd50e 6-7,61-78,82-83,87-106,110-113
+packages/frontend/editor-ui/src/features/settings/context/catalog/SkillCatalogDetail.vue
+  s_bc27ac3adda411::t_e06fbacec8e129 157-162
+  s_bc27ac3adda411::t_2c8e79ef56c7ff 4,6,30,37-54,163-164
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceConnectDialog.test.ts
+  s_bc27ac3adda411::t_2c8e79ef56c7ff 941,945,948,964,968,970
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ecc752c8e2232f1efce086c2f8886ac34a1dfb59",
+  "prompts": {},
+  "sessions": {
+    "s_bc27ac3adda411": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e944-3dbf-7aa3-9124-352b45e22dd3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

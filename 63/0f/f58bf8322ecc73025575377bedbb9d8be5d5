@@ -1,0 +1,72 @@
+.agents/specs/rig.md
+  h_8fb27e0cdf6d1e 9,35,83-85,104-107,145-148,153-155,163,249-253,506-514,694,703-704,708-711,717-732,737-755,787,801-802,831,833-836,856-857,893-907,948-956
+packages/quality/environments/rig/README.md
+  h_8fb27e0cdf6d1e 13-31,34-36,39-59,184-186,202-206
+packages/quality/environments/rig/bin/rig.mjs
+  h_8fb27e0cdf6d1e 22-28
+packages/quality/environments/rig/package.json
+  h_8fb27e0cdf6d1e 11,38
+packages/quality/environments/rig/src/cli.ts
+  h_8fb27e0cdf6d1e 3,29,31-32,38,61-63,75-80,87,89
+packages/quality/environments/rig/src/commands/common.ts
+  h_8fb27e0cdf6d1e 10,95,139
+packages/quality/environments/rig/src/commands/doctor.ts
+  h_8fb27e0cdf6d1e 1-407
+packages/quality/environments/rig/src/commands/env-browse.ts
+  h_8fb27e0cdf6d1e 28,269,273
+packages/quality/environments/rig/src/commands/lifecycle.ts
+  h_8fb27e0cdf6d1e 31,48,78,173,199,201,203,212
+packages/quality/environments/rig/src/commands/running.ts
+  h_8fb27e0cdf6d1e 26,266,321
+packages/quality/environments/rig/src/commands/self.ts
+  h_8fb27e0cdf6d1e 1-148
+packages/quality/environments/rig/src/commands/tools.ts
+  h_8fb27e0cdf6d1e 10,143,148-159
+packages/quality/environments/rig/src/config/env-yaml.ts
+  h_8fb27e0cdf6d1e 58-61
+packages/quality/environments/rig/src/config/global-config.ts
+  h_8fb27e0cdf6d1e 9-10,15,17-21,25-26,33-36,58-62,75-78,90-93,99
+packages/quality/environments/rig/src/env-catalog/extract.ts
+  h_8fb27e0cdf6d1e 2-3,5-48,92,99,115-116,143,151-152,165,183
+packages/quality/environments/rig/src/environment.ts
+  h_8fb27e0cdf6d1e 16,19,29,69-70,76,87,92,96-107,116-117
+packages/quality/environments/rig/src/launcher/binary.ts
+  h_8fb27e0cdf6d1e 2-14,17-18,20,22-74,77,90-94,96-100,102,104,112-126,128-129,132-252
+packages/quality/environments/rig/src/runtime/preflight.ts
+  h_8fb27e0cdf6d1e 8,16,28
+packages/quality/environments/rig/src/runtime/session.ts
+  h_8fb27e0cdf6d1e 13,117,124,215,249,435,492
+packages/quality/environments/rig/src/runtime/supervisor.ts
+  h_8fb27e0cdf6d1e 12,26,81,83,105,116,120,123
+packages/quality/environments/rig/src/self/build-info.ts
+  h_8fb27e0cdf6d1e 1-59
+packages/quality/environments/rig/src/self/delegate.ts
+  h_8fb27e0cdf6d1e 1-73
+packages/quality/environments/rig/src/self/install.ts
+  h_8fb27e0cdf6d1e 1-231
+packages/quality/environments/rig/src/services/tunnel.ts
+  h_8fb27e0cdf6d1e 10,51
+packages/quality/environments/rig/src/source.ts
+  h_8fb27e0cdf6d1e 5,7,42-70,72-75,77-79
+packages/quality/environments/rig/test/self.test.ts
+  h_8fb27e0cdf6d1e 1-124
+packages/quality/environments/rig/test/source.test.ts
+  h_8fb27e0cdf6d1e 1-128
+packages/quality/environments/rig/tsconfig.json
+  h_8fb27e0cdf6d1e 6-8
+packages/quality/environments/rig/tsdown.config.ts
+  h_8fb27e0cdf6d1e 1-50
+pnpm-lock.yaml
+  h_8fb27e0cdf6d1e 9745-9746,45527-45541,47258-47276,47278-47283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "630ff58bf8322ecc73025575377bedbb9d8be5d5",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

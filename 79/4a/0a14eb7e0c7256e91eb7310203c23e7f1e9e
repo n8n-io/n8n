@@ -1,0 +1,14 @@
+pnpm-lock.yaml
+  h_52a137d26d774c 16914
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "794a0a14eb7e0c7256e91eb7310203c23e7f1e9e",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

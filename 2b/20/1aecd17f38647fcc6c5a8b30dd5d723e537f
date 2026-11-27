@@ -1,0 +1,108 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalRouteSelect.vue
+  s_dfe3f914c8bb46::t_c398a76829aada 204
+  s_dfe3f914c8bb46::t_559f7e18788894 58,131-140,142-156
+  s_dfe3f914c8bb46::t_0578b251450c45 5-6,10-12,35-41,43,45,64-68,70-71,76-80,85-93,95-100,103-104,110-125,127-129,157-167,169,175,181-186,188-191,194-203,205-216
+  s_dfe3f914c8bb46::t_e3eda652f6dc29 55
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigForm.test.ts
+  s_dfe3f914c8bb46::t_3b0fcfec70a11a 150,185,187
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_dfe3f914c8bb46::t_559f7e18788894 520
+  s_dfe3f914c8bb46::t_4c7127ffaff63a 453,465-471,532
+  s_dfe3f914c8bb46::t_49137abb0cc40a 33,336
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_dfe3f914c8bb46::t_4c7127ffaff63a 441-451,453-462,464-492,494-503,581-582
+packages/frontend/editor-ui/src/features/agents/components/AgentChipRow.vue
+  s_dfe3f914c8bb46::t_0578b251450c45 23,43
+  s_dfe3f914c8bb46::t_60d834aeda0117 44-49
+packages/frontend/editor-ui/src/features/agents/utils/approvalDestination.ts
+  s_dfe3f914c8bb46::t_853c6daa0721aa 1-10
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_dfe3f914c8bb46::t_103bebf59316e9 329,341-345,347-356
+  s_dfe3f914c8bb46::t_5d04738d236fad 346
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_4c7127ffaff63a 670-672
+  s_dfe3f914c8bb46::t_c94af586fb2ce0 296,655-669,673-676,687-690
+packages/frontend/editor-ui/src/features/shared/toolsConnection/McpToolPermissionsEditor.vue
+  s_dfe3f914c8bb46::t_559f7e18788894 174,261,293-307
+  s_dfe3f914c8bb46::t_91b057ffbba3c1 308-309
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentRegistryMcpConfigForm.test.ts
+  s_dfe3f914c8bb46::t_c398a76829aada 18-21,146-147,153-154,206,216,222
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_88edffbe56fbc0 1-2,4,33,35-41,43-44,61,67,78-82,85-86,93-96,100-104,106,109-110,113-119,121-123,126-128,131,134-138,141-154,156-161,163,166-171,174-176,178,180,182-192,194,197-217,219,221,224-242,245-255,257,259,261,263-266,268-269,273-278,280-293,298,300,305-315,318-358,361-368,370-394
+  s_dfe3f914c8bb46::t_d217c7b6ec7bfc 46-47,52-53,57,88-90,92,272,294-297,299,301-304
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_559f7e18788894 2-3,5-10,31,36,40-41,44-45,48,50,57-58,61-62,10271,10355
+  s_dfe3f914c8bb46::t_b5d097e8250aea 4
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlPanel.vue
+  s_dfe3f914c8bb46::t_0578b251450c45 2-4,38-40,130
+  s_dfe3f914c8bb46::t_103bebf59316e9 89-95,97-110,112,114,116-123,125-128
+packages/frontend/editor-ui/src/features/agents/components/AgentBudgetPanel.vue
+  s_dfe3f914c8bb46::t_103bebf59316e9 16,112-117,127-138,143-148,296-305
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlConfigurationModal.vue
+  s_dfe3f914c8bb46::t_0578b251450c45 3,5-6,8-10,13,18,28-33,35,37,42-50,53-55,57,59-60,62-64,66-69,74-75,77-81,83,89-102,104,122-124,139-167,176
+  s_dfe3f914c8bb46::t_559f7e18788894 70-71
+  s_dfe3f914c8bb46::t_ee773ec40106f0 107-108,110-119,126-136,172,187-190,192-193,195-206,209-210,213-218,221-224,226-227
+  s_dfe3f914c8bb46::t_4158b51228e1a2 2,73,121,125,138,178,180,182,185-186
+packages/frontend/editor-ui/src/features/agents/components/AgentGuardrailsSection.vue
+  s_dfe3f914c8bb46::t_103bebf59316e9 30,180-222,224-228,230-254,256-257,265,267,269-282,286,390-394
+packages/frontend/editor-ui/src/features/agents/components/AgentPanelDisclosure.vue
+  s_dfe3f914c8bb46::t_103bebf59316e9 1-69
+packages/frontend/editor-ui/src/features/agents/components/AgentPillField.vue
+  s_dfe3f914c8bb46::t_559f7e18788894 23-24,60,67,114,116,138,144,168
+  s_dfe3f914c8bb46::t_8ffb968e2b3ee8 169-179
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_dfe3f914c8bb46::t_203a90d69789a2 602
+  s_dfe3f914c8bb46::t_e8a2976f693c10 751
+  s_dfe3f914c8bb46::t_0cefe56b61a93a 167,607-609,620,623-624,628,658-659,663
+packages/frontend/editor-ui/src/features/agents/components/AgentRegistryMcpConfigForm.vue
+  s_dfe3f914c8bb46::t_559f7e18788894 2-3,10,43-45,190-207
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigWorkflowContent.vue
+  s_dfe3f914c8bb46::t_4c7127ffaff63a 3,74-86,90-96
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalDestinationMenu.vue
+  s_dfe3f914c8bb46::t_26c06c1ce12d1a 2,54-70,72-73,98,115-118,120,140,142-143,145-171,173-195,198-201,203-207,209-215,218,220,223-226,228-233,236,243-244,248,252-253,256,258-259,270,286-287,334,420,458-459,494-496,498-500
+  s_dfe3f914c8bb46::t_559f7e18788894 26,42-46,327-333,343,373-374
+  s_dfe3f914c8bb46::t_c398a76829aada 339,425-431,535
+  s_dfe3f914c8bb46::t_6c8cd7d81b88d7 71,250-251,257
+  s_dfe3f914c8bb46::t_b5d097e8250aea 87-96,106-108,433,438,455
+  s_dfe3f914c8bb46::t_853c6daa0721aa 1,3-25,27-41,47-53,74-86,99,102-104,109-114,119,127-130,132,134-139,141,144,172,196-197,202,208,216-217,219,221-222,227,234-235,237-242,245-247,249,254-255,260-269,271-285,288-326,335-338,342,344-372,375-419,421-424,432,434-437,439-454,456-457,460-493,501,503,506-534,536-545
+  s_dfe3f914c8bb46::t_c5874a806ea7dd 97,100-101
+  s_dfe3f914c8bb46::t_4f5b97dbde0101 121-126,131,133
+  s_dfe3f914c8bb46::t_234d3e89a30bba 105,340-341,502,504-505
+packages/frontend/editor-ui/src/features/agents/composables/useCreateApprovalWorkflow.ts
+  s_dfe3f914c8bb46::t_853c6daa0721aa 1-4,7-19,29-59,61-65,67,70-87
+  s_dfe3f914c8bb46::t_66d703b5c20588 5-6,20-28,60,66,68-69
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlPanel.test.ts
+  s_dfe3f914c8bb46::t_203a90d69789a2 3,27,42-54,92
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentApprovalRouteSelect.test.ts
+  s_dfe3f914c8bb46::t_f6aba6d1fa67d5 1,6,43,47-48,50-55,61,64-65,67-68,71-73,76-85,87
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBudgetPanel.test.ts
+  s_dfe3f914c8bb46::t_34b1270df27578 51,117-134
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentGuardrailsSection.test.ts
+  s_dfe3f914c8bb46::t_73d3192b8ff37d 165,168,405-421,429
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_dfe3f914c8bb46::t_528c124a359cb9 97-101,114-121,162,164-168,170,173,179-180,182
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlToolsSelect.vue
+  s_dfe3f914c8bb46::t_bed8283b535dce 88
+packages/frontend/editor-ui/src/features/agents/components/AgentPanel.vue
+  s_dfe3f914c8bb46::t_bebd141a50efc4 45-46
+packages/frontend/editor-ui/src/features/agents/composables/useAgentRegistryMcpConfig.test.ts
+  s_dfe3f914c8bb46::t_e25607b99f103e 170-205
+packages/frontend/editor-ui/src/features/agents/composables/useAgentRegistryMcpConfig.ts
+  s_dfe3f914c8bb46::t_0b52b24c16affa 276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b201aecd17f38647fcc6c5a8b30dd5d723e537f",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

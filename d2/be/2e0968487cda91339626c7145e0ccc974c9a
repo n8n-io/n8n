@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Mindee/v2/GenericFunctions.ts
+  s_537a80d39c6e34::t_f127df19543203 16-30,39,189-193,196,237-239
+packages/nodes-base/nodes/Mindee/v2/MindeeV2.node.ts
+  s_537a80d39c6e34::t_f127df19543203 5,10,17,19,26-41,127,141,156,174,204,208-227,267-271
+packages/nodes-base/nodes/Mindee/v2/test/GenericFunctions.test.ts
+  s_537a80d39c6e34::t_95784269302704 1,6-12,135,148-160,226-261
+packages/nodes-base/nodes/Mindee/v2/test/MindeeV2.execute.test.ts
+  s_537a80d39c6e34::t_95784269302704 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2be2e0968487cda91339626c7145e0ccc974c9a",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_537a80d39c6e34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d11b10e-2cd9-4bf1-b7fb-8308eb1ca1da",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

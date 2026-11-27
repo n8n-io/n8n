@@ -1,0 +1,16 @@
+packages/cli/src/modules/agents/simulation/__tests__/tool-action-classifier.test.ts
+  h_8a472ace01776f 316-337
+packages/cli/src/modules/agents/simulation/tool-action-classifier.ts
+  h_8a472ace01776f 231-233,236-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e14052a40f2a80de92aeeb085602a1d864b0bc34",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

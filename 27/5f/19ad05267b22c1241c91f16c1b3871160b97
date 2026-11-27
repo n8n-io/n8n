@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderDropdown.vue
+  s_b86bd8b73ec329::t_6c45b1bc4ac8fd 5,25,36,47-55
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderDialog.vue
+  s_b86bd8b73ec329::t_6c45b1bc4ac8fd 257,279
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderDialog.test.ts
+  s_b86bd8b73ec329::t_22d4bc51a2a9e6 60,64,149
+  s_b86bd8b73ec329::t_663dae7b922a58 44-53
+  s_b86bd8b73ec329::t_6c45b1bc4ac8fd 156
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderDropdown.test.ts
+  s_b86bd8b73ec329::t_22d4bc51a2a9e6 10-32,51-72
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_b86bd8b73ec329::t_6c45b1bc4ac8fd 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "275f19ad05267b22c1241c91f16c1b3871160b97",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

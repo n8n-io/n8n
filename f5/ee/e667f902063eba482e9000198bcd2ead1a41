@@ -1,0 +1,28 @@
+packages/cli/src/webhooks/webhook-helpers.ts
+  h_8fb27e0cdf6d1e 1371-1373
+packages/quality/environments/containers/n8n-start-stack.ts
+  h_8fb27e0cdf6d1e 74,223-224
+packages/quality/environments/containers/services/engine.ts
+  h_8fb27e0cdf6d1e 64,69-70,94-98,100,137-138,143-144,149-156,167-168,170,173-177,181-189,227,231-237,255,277-281,296,304
+packages/quality/environments/containers/services/n8n.ts
+  h_8fb27e0cdf6d1e 171,174-181
+packages/quality/environments/containers/stack.ts
+  h_8fb27e0cdf6d1e 173,184
+packages/quality/environments/containers/tests/engine.test.ts
+  h_8fb27e0cdf6d1e 31,42,51,59,67,77,85,93,106-112,133-139,153-159,191-197,206,217,226,232-246,250-257,264-293,299,306,311,315-317,323,331,336-338,342,347-359,361,371-372,376-378,391-392,396,405,415,428-434,453,490-498
+packages/quality/testing/playwright/README.md
+  h_8fb27e0cdf6d1e 269-276,306
+packages/quality/testing/playwright/playwright-projects.ts
+  h_8fb27e0cdf6d1e 255,258-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f5eee667f902063eba482e9000198bcd2ead1a41",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

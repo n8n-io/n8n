@@ -1,0 +1,26 @@
+packages/cli/src/modules/promotions.ee/promotion-settings.service.ts
+  s_4006eb47313af5::t_9cf4ae742e01e2 3,29,48-57
+packages/modules/promotions/frontend/src/components/PromotionProjectAccessRows.test.ts
+  s_4006eb47313af5::t_3fd96f0650b4dc 36-37,74-76
+  s_4006eb47313af5::t_9cf4ae742e01e2 63-73,77-78
+packages/@n8n/cli/src/__tests__/promotion-command-wiring.test.ts
+  s_4006eb47313af5::t_9cf4ae742e01e2 167-172
+packages/modules/promotions/frontend/src/components/PromotionProjectAccessRows.vue
+  s_4006eb47313af5::t_9cf4ae742e01e2 86-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "76dfa722e048842dc20d3057e40e2fe075fc1efe",
+  "prompts": {},
+  "sessions": {
+    "s_4006eb47313af5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4b87b7b-bf41-4a79-9b64-c8a13ed7b5dc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

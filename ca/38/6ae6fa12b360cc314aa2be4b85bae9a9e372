@@ -1,0 +1,21 @@
+packages/frontend/@n8n/frontend-module-sdk/src/types/runDataDisplayMode.ts
+  s_4367c29be9a1f1::t_a3553545d327f1 31,84-85
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_4367c29be9a1f1::t_a3553545d327f1 263-264,270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca386ae6fa12b360cc314aa2be4b85bae9a9e372",
+  "prompts": {},
+  "sessions": {
+    "s_4367c29be9a1f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8991c965-9f30-4180-a501-051ae3861442",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jani Jez <jani.jez@n8n.io>"
+    }
+  }
+}

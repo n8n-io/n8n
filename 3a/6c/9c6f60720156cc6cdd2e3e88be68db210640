@@ -1,0 +1,153 @@
+packages/@n8n/api-types/src/inbox.ts
+  s_08511cb88e9f38::t_02e6bd7d623716 34-45
+packages/@n8n/db/src/migrations/common/1795291851380-AddProjectIdToPromotionReview.ts
+  s_08511cb88e9f38::t_befa3abd5da073 1-3,21-22,26-27
+  s_08511cb88e9f38::t_e6f4b1999a5595 4-20,23-25
+packages/modules/inbox/frontend/src/promotions/PromotionReviewDetail.test.ts
+  s_08511cb88e9f38::t_179b8f5fce8ba3 38-39,172-176,278-282,284-286
+packages/modules/promotions/frontend/src/components/PromotionPreviewBadges.test.ts
+  s_08511cb88e9f38::t_a90614d8a5a220 133
+packages/cli/src/modules/promotions.ee/promotion-review-inbox.service.ts
+  s_08511cb88e9f38::t_fe2a59890cbe93 64,67,283-286,289,630-646
+  s_08511cb88e9f38::t_506476790ee55c 205,287-288,293,318,320,629,648-649,651-656,732,735,737,739,743-744
+  s_08511cb88e9f38::t_990b6fb78ffe31 615-619
+  s_08511cb88e9f38::t_3f44b4ae042ec8 402,460
+  s_08511cb88e9f38::t_f656f9106610be 179,192,195,352,409,510-513
+  s_08511cb88e9f38::t_e2e3a9a9e98872 7,27,32,40,65-66,68-77,111,128-130,133-134,143,145,165,178,180,182,186-187,189-191,193-194,196-204,206-234,282,290-292,296,317,319,325,343,355,395,410,501,514,516,518-519,521,526,531-533,607-614,620-628,647
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_08511cb88e9f38::t_84fd8cf8d4bdcf 548,551,554-556,581
+packages/modules/promotions/frontend/src/components/preview/PromotionReviewBlocker.vue
+  s_08511cb88e9f38::t_3ba304f7565726 9-13,20
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-changes.integration.test.ts
+  s_08511cb88e9f38::t_abb28337ef2b35 293-294,296,305-309,311-321
+  s_08511cb88e9f38::t_8927faaaa04aa4 2-8,23,30,40,225-226,295,297-304,310
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_08511cb88e9f38::t_bf27ff6a6e581f 54,115
+packages/modules/promotions/frontend/src/composables/usePromotionChangeCount.test.ts
+  s_08511cb88e9f38::t_a90614d8a5a220 45
+packages/modules/inbox/frontend/src/components/InboxList.test.ts
+  s_08511cb88e9f38::t_f969fc6710a443 292-293
+packages/cli/src/modules/promotions.ee/promotion-review-gate.service.ts
+  s_08511cb88e9f38::t_eaa95f8c7b515f 7,59-72,82
+  s_08511cb88e9f38::t_8e7c5ede63bcdd 39-40
+  s_08511cb88e9f38::t_3bc6533e70abeb 54
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_08511cb88e9f38::t_b60077173b292f 166,356-378
+  s_08511cb88e9f38::t_9d3c4276a2c514 379-380
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_08511cb88e9f38::t_b651083764d6e4 144,4907
+packages/cli/src/modules/promotions.ee/promotion-review-changes.service.ts
+  s_08511cb88e9f38::t_51b637f8441b6e 68-69,109,125,133,167-168,282-284,286-293
+  s_08511cb88e9f38::t_8e7c5ede63bcdd 285
+  s_08511cb88e9f38::t_fba6c8c7dd2f98 13
+  s_08511cb88e9f38::t_b60077173b292f 29
+  s_08511cb88e9f38::t_ba782cc0a62ae3 136-137,139,142,146,161-163
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_08511cb88e9f38::t_3bc6533e70abeb 53
+packages/modules/inbox/frontend/src/promotions/PromotionReviewDetail.vue
+  s_08511cb88e9f38::t_864b35c7cee105 79-81,109
+  s_08511cb88e9f38::t_8e7c5ede63bcdd 107-108,256,259,279
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.controller.test.ts
+  s_08511cb88e9f38::t_fb3029ead63483 16-20
+  s_08511cb88e9f38::t_12dd4493720fbe 22,24
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review.repository.integration.test.ts
+  s_08511cb88e9f38::t_1e88e910d5cd74 65-66,74,128,209-210,215,227,329,342,350,356
+packages/@n8n/db/src/migrations/sqlite/1795291851380-AddProjectIdToPromotionReview.ts
+  s_08511cb88e9f38::t_77b8ef4a8a07d6 1-6
+packages/modules/inbox/frontend/src/views/InboxView.test.ts
+  s_08511cb88e9f38::t_f969fc6710a443 813-814
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_08511cb88e9f38::t_f4c18a036b102b 342,356-357,396,616
+packages/@n8n/cli/docs/commands/promotions.md
+  s_08511cb88e9f38::t_9f69a488e95e3e 36-39
+packages/modules/promotions/frontend/src/promotions.constants.ts
+  s_08511cb88e9f38::t_6d72719e7909e8 21,26,29
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-gate.service.test.ts
+  s_08511cb88e9f38::t_d9b14c7783ccc1 3,62,73,82,93,95,98,100,116,124,136,151,153,156,170
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_08511cb88e9f38::t_f4c18a036b102b 26-27,60,87,101,103-106
+packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
+  s_08511cb88e9f38::t_99002bb0ef7fe5 144
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_08511cb88e9f38::t_d9b14c7783ccc1 68-72
+  s_08511cb88e9f38::t_c5ede3e8c703d7 87,90
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_08511cb88e9f38::t_70989b94ec8770 103-106
+  s_08511cb88e9f38::t_d8f40029500ca8 102
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_08511cb88e9f38::t_3ba304f7565726 434-438
+packages/cli/src/modules/promotions.ee/promotion-reviews.controller.ts
+  s_08511cb88e9f38::t_2c80e7f07db2cd 10,16-19,51,55
+packages/cli/test/integration/promotion-review-inbox.test.ts
+  s_08511cb88e9f38::t_2b236fb858352b 231-237,429-430
+  s_08511cb88e9f38::t_c02ccfc24d6ecc 470-471
+  s_08511cb88e9f38::t_2a22f5bb003bd6 1,3-4,8,20,25,145-149,151,155,158,166,193,196-205,268,377,549-559,562-564,566,580,582-588,608-610,613-618,621,639-640,646-649,655,658,676-677,688-710,858-862,867,878,882,905-906,909,911,914
+  s_08511cb88e9f38::t_554623347a27be 577-578,581,904,908,912-913
+  s_08511cb88e9f38::t_7806e68574de3d 194-195
+  s_08511cb88e9f38::t_2e64ddb4ede94a 206-207
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_08511cb88e9f38::t_e079b4b11c2870 1083,1121,1499,1544
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-review.repository.ts
+  s_08511cb88e9f38::t_453b614660d531 141-145
+  s_08511cb88e9f38::t_f656f9106610be 30-33,38
+  s_08511cb88e9f38::t_81a98be6029f06 176-178,180-181
+  s_08511cb88e9f38::t_76151be546a5ad 159-163
+  s_08511cb88e9f38::t_8c04974d6a6df9 12,15-18
+  s_08511cb88e9f38::t_3519b74c5fd058 19
+packages/cli/src/modules/promotions.ee/database/entities/promotion-review.entity.ts
+  s_08511cb88e9f38::t_4d1b0f007bf0fc 44-52
+  s_08511cb88e9f38::t_e98ba0697725d6 26
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_08511cb88e9f38::t_3bc6533e70abeb 115-116,118
+  s_08511cb88e9f38::t_1a263ad8530460 117
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_08511cb88e9f38::t_987d68a64d7775 920
+packages/modules/inbox/frontend/src/inbox.routes.test.ts
+  s_08511cb88e9f38::t_a90614d8a5a220 118-119
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-inbox.service.test.ts
+  s_08511cb88e9f38::t_d9b14c7783ccc1 36
+docs/generated/postgres-schema/README.md
+  s_08511cb88e9f38::t_b503ff88798171 133,406,1756
+docs/generated/postgres-schema/public.project.md
+  s_08511cb88e9f38::t_c34f9a6014da44 12,57,259-271
+docs/generated/postgres-schema/public.promotion_environment.md
+  s_08511cb88e9f38::t_997acc4b27b44e 79
+docs/generated/postgres-schema/public.promotion_review.md
+  s_08511cb88e9f38::t_dde26cda40a358 14,28,42,54,64,108-118
+docs/generated/postgres-schema/public.promotion_run.md
+  s_08511cb88e9f38::t_375afc9c2be2ba 95
+docs/generated/postgres-schema/public.user.md
+  s_08511cb88e9f38::t_c878f39d86813d 441
+docs/generated/sqlite-schema/README.md
+  s_08511cb88e9f38::t_28dc13d3286012 133,389,1742
+docs/generated/sqlite-schema/project.md
+  s_08511cb88e9f38::t_53ada5cd847d2a 23,63,265-277
+docs/generated/sqlite-schema/promotion_environment.md
+  s_08511cb88e9f38::t_12f0da6162f063 82
+docs/generated/sqlite-schema/promotion_review.md
+  s_08511cb88e9f38::t_5743ff17af959a 9,25,39,50,62,72,116-126
+docs/generated/sqlite-schema/promotion_run.md
+  s_08511cb88e9f38::t_79f273d8de606b 103
+docs/generated/sqlite-schema/user.md
+  s_08511cb88e9f38::t_290abf6225f465 445
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_08511cb88e9f38::t_5fa3faa77b12f1 92-94,98
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionReviews.generated.yml
+  s_08511cb88e9f38::t_ac762949eac363 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3a6c9c6f60720156cc6cdd2e3e88be68db210640",
+  "prompts": {},
+  "sessions": {
+    "s_08511cb88e9f38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e8420ae5-a5d7-4889-9de3-38a037189a85",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/workflowTests/components/testRow.module.scss
+  s_e214e69ba1c23e::t_8febb5340f27dc 1-32
+packages/frontend/editor-ui/src/features/workflowTests/components/WorkflowTestTree.vue
+  s_e214e69ba1c23e::t_8febb5340f27dc 109,132
+packages/frontend/editor-ui/src/features/workflowTests/components/WorkflowTestsCallers.vue
+  s_e214e69ba1c23e::t_860726bae9c69c 4-11,48,121-132,135-137,146,155,157,159-171,173-174,191-192,198-202,205-206,212,218-219,223,228-232
+packages/frontend/editor-ui/src/features/workflowTests/components/WorkflowTestResultRow.vue
+  s_e214e69ba1c23e::t_8febb5340f27dc 120,129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1ed29b367517d655a6ea0b52eea732e635451b86",
+  "prompts": {},
+  "sessions": {
+    "s_e214e69ba1c23e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3288dc-0c71-4e65-bb28-f8ed9e52afb6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
