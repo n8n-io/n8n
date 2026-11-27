@@ -46,7 +46,7 @@ test.describe(
 			await n8n.start.fromHome();
 			await n8n.instanceAi.gotoAgentChat(agent.id);
 
-			const description = n8n.instanceAi.getAgentChatDescription();
+			const description = n8n.instanceAi.agentChatEmptyState.getDescription();
 			await expect(description).toHaveText(text);
 			await n8n.page.evaluate(async () => {
 				await document.fonts.ready;

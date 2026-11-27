@@ -2,6 +2,7 @@ import { expect, type Locator, type Page, type Response } from '@playwright/test
 
 import { BasePage } from './BasePage';
 import { hoverToReveal } from '../utils/retry-utils';
+import { AgentChatEmptyState } from './components/agent-chat-empty-state';
 import { CredentialModal } from './components/CredentialModal';
 import { InstanceAiSidebar } from './components/InstanceAiSidebar';
 import { InstanceAiWorkflowSetup } from './components/InstanceAiWorkflowSetup';
@@ -10,6 +11,7 @@ export class InstanceAiPage extends BasePage {
 	readonly sidebar: InstanceAiSidebar;
 	readonly workflowSetup: InstanceAiWorkflowSetup;
 	readonly credentialModal: CredentialModal;
+	readonly agentChatEmptyState: AgentChatEmptyState;
 
 	constructor(page: Page) {
 		super(page);
@@ -18,6 +20,9 @@ export class InstanceAiPage extends BasePage {
 			page.getByTestId('instance-ai-workflow-setup'),
 		);
 		this.credentialModal = CredentialModal.fromPage(page);
+		this.agentChatEmptyState = new AgentChatEmptyState(
+			page.locator('[data-testid="agent-n8n-chat-empty-state"]'),
+		);
 	}
 
 	private get container(): Locator {
@@ -105,10 +110,6 @@ export class InstanceAiPage extends BasePage {
 
 	async gotoAgentChat(agentId: string): Promise<void> {
 		await this.page.goto(`/assistant/agents/${agentId}`);
-	}
-
-	getAgentChatDescription(): Locator {
-		return this.page.locator('[data-testid="agent-n8n-chat-description"]');
 	}
 
 	/** Thread id of the conversation currently open, read from the URL. */
