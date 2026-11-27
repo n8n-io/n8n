@@ -658,7 +658,13 @@ describe('SelfHealingInvestigationService', () => {
 		investigations.listUnfinished.mockResolvedValue([investigation]);
 		events.getRunFinish.mockResolvedValue({ status: 'interrupted', reason: 'crash_interrupted' });
 		await service.reconcile();
+		expect(events.lastFactAt).toHaveBeenCalledWith(investigation.threadId, investigation.runId, {});
 		expect(sweeper.sweepRun).toHaveBeenCalledWith(investigation.threadId, investigation.runId);
+		expect(events.getRunFinish).toHaveBeenCalledWith(
+			investigation.threadId,
+			investigation.runId,
+			{},
+		);
 		expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id);
 		expect(results.complete).not.toHaveBeenCalled();
 	});
@@ -671,10 +677,26 @@ describe('SelfHealingInvestigationService', () => {
 		expect(investigations.finishWithoutResult).not.toHaveBeenCalled();
 	});
 
+	it('leaves an investigation claimed when the sweeper does not record a run finish', async () => {
+		investigations.listUnfinished.mockResolvedValue([investigation]);
+		events.getRunFinish.mockResolvedValue(null);
+		await service.reconcile();
+		expect(events.lastFactAt).toHaveBeenCalledWith(investigation.threadId, investigation.runId, {});
+		expect(sweeper.sweepRun).toHaveBeenCalledWith(investigation.threadId, investigation.runId);
+		expect(eventLog.flush).toHaveBeenCalledWith(investigation.threadId);
+		expect(events.getRunFinish).toHaveBeenCalledWith(
+			investigation.threadId,
+			investigation.runId,
+			{},
+		);
+		expect(investigations.finishWithoutResult).not.toHaveBeenCalled();
+	});
+
 	it('releases a claim when the process stopped before creating the private thread', async () => {
 		investigations.listUnfinished.mockResolvedValue([investigation]);
 		events.lastFactAt.mockResolvedValue(null);
 		await service.reconcile();
+		expect(events.lastFactAt).toHaveBeenCalledWith(investigation.threadId, investigation.runId, {});
 		expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id);
 		expect(sweeper.sweepRun).not.toHaveBeenCalled();
 	});

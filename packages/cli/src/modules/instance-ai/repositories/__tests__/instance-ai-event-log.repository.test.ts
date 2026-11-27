@@ -279,4 +279,52 @@ describe('InstanceAiEventLogRepository', () => {
 			await expect(repo.getLastAppliedPreferences('thread-1', {})).resolves.toBeUndefined();
 		});
 	});
+
+	describe('payloadAt', () => {
+		it('reads the raw payload for an exact thread and sequence, or null when missing', async () => {
+			entityManager.findOne.mockResolvedValueOnce({
+				payload: '{"type":"run-start"}',
+			} as InstanceAiEventLogEntry);
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			await expect(repo.payloadAt('thread-1', 3, {})).resolves.toBe('{"type":"run-start"}');
+			expect(entityManager.findOne).toHaveBeenCalledWith(InstanceAiEventLogEntry, {
+				where: { threadId: 'thread-1', seq: 3 },
+			});
+			await expect(repo.payloadAt('thread-1', 4, {})).resolves.toBeNull();
+		});
+	});
+
+	describe('findUnfinishedRuns / findUnfinishedRunsForThread', () => {
+		const createUnfinishedRunsQueryBuilder = (rows: Array<{ threadId: string; runId: string }>) => {
+			const qb = {
+				select: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				distinct: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				getRawMany: vi.fn().mockResolvedValue(rows),
+			};
+			entityManager.createQueryBuilder.mockReturnValueOnce(qb as never);
+			return qb;
+		};
+
+		it('queries unfinished runs across all threads without a thread filter', async () => {
+			const expected = [{ threadId: 'thread-1', runId: 'run-1' }];
+			const qb = createUnfinishedRunsQueryBuilder(expected);
+
+			await expect(repo.findUnfinishedRuns({})).resolves.toEqual(expected);
+			expect(entityManager.createQueryBuilder).toHaveBeenCalledWith(InstanceAiEventLogEntry, 'e');
+			expect(qb.andWhere).toHaveBeenCalledTimes(1);
+		});
+
+		it('scopes unfinished runs to a single thread when requested', async () => {
+			const expected = [{ threadId: 'thread-1', runId: 'run-2' }];
+			const qb = createUnfinishedRunsQueryBuilder(expected);
+
+			await expect(repo.findUnfinishedRunsForThread('thread-1', {})).resolves.toEqual(expected);
+			expect(entityManager.createQueryBuilder).toHaveBeenCalledWith(InstanceAiEventLogEntry, 'e');
+			expect(qb.andWhere).toHaveBeenCalledWith('e.threadId = :threadId', { threadId: 'thread-1' });
+		});
+	});
 });
