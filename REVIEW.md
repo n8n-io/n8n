@@ -11,6 +11,7 @@ Applies to: changed `.vue`, `.scss` and `.css` files. Skip this rule when the pu
 Use the skill in `.agents/skills/ui-review/SKILL.md`. Read it and every file in `.agents/skills/ui-review/references/` before you start.
 
 - Report each finding that breaks a rule of a reference, and quote that rule.
-- A finding with a score of 80 or more is Important. Every other finding is a Nit.
-- Report a finding with a score below 80 too. The skill tells you to leave those out. For a review, this file wins.
+- A finding with a score of 80 or more is Important.
+- A finding with a score from 50 to 79 is a Nit. The skill tells you to leave those out. For a review, this file wins.
+- Leave out a finding with a score below 50.
 - Do not use the report format of the skill, and do not put the score into the finding.
