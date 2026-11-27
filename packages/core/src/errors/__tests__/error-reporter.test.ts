@@ -5,7 +5,7 @@ import { captureException, init, withIsolationScope } from '@sentry/node';
 import type { NodeOptions } from '@sentry/node';
 import { AxiosError } from 'axios';
 import { ApplicationError, ExpressionError, NodeOperationError } from 'n8n-workflow';
-import { BaseError } from '@n8n/errors';
+import { BaseError, UnexpectedError, UserError } from '@n8n/errors';
 import type { INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -357,6 +357,8 @@ describe('ErrorReporter', () => {
 	});
 
 	describe('error', () => {
+		class BaseErrorStub extends BaseError {}
+
 		let error: ApplicationError;
 		let logger: Logger;
 		let errorReporter: ErrorReporter;
@@ -377,7 +379,63 @@ describe('ErrorReporter', () => {
 		it('should exclude stack trace for warning-level `ApplicationError`', () => {
 			error.level = 'warning';
 			errorReporter.error(error);
-			expect(logger.error).toHaveBeenCalledWith('Test error', metadata);
+			expect(logger.warn).toHaveBeenCalledWith('Test error', metadata);
+		});
+
+		it.each([
+			{ level: 'info' as const, method: 'info' as const },
+			{ level: 'warning' as const, method: 'warn' as const },
+			{ level: 'error' as const, method: 'error' as const },
+			{ level: 'fatal' as const, method: 'error' as const },
+		])(
+			'should log a $level-level error and its cause chain with logger.$method',
+			({ level, method }) => {
+				const cause = new Error('root cause');
+				const outer = new BaseErrorStub('outer', { level, cause });
+
+				errorReporter.error(outer);
+
+				expect(logger[method]).toHaveBeenCalledTimes(2);
+				expect(logger[method]).toHaveBeenNthCalledWith(
+					2,
+					`root cause\n${cause.stack}\n`,
+					undefined,
+				);
+				for (const other of ['info', 'warn', 'error'] as const) {
+					if (other !== method) expect(logger[other]).not.toHaveBeenCalled();
+				}
+			},
+		);
+
+		it('should log a `UserError` at info level', () => {
+			errorReporter.error(new UserError('user mistake'));
+			expect(logger.info).toHaveBeenCalledWith('user mistake', undefined);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should log a warning-level `NodeOperationError` at warn level', () => {
+			errorReporter.error(new NodeOperationError(mock<INode>(), 'node failed'));
+			expect(logger.warn).toHaveBeenCalled();
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should log a generic `Error` reported with `warn()` at warn level', () => {
+			const warning = new Error('warning');
+			errorReporter.warn(warning);
+			expect(logger.warn).toHaveBeenCalledWith(`warning\n${warning.stack}\n`, undefined);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should prefer a non-error level from the reporting options over the error level', () => {
+			errorReporter.error(new UnexpectedError('unexpected'), { level: 'info' });
+			expect(logger.info).toHaveBeenCalledTimes(1);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should use the error level when the reporting options level is `error`', () => {
+			errorReporter.error(new UserError('user mistake'), { level: 'error' });
+			expect(logger.info).toHaveBeenCalledTimes(1);
+			expect(logger.error).not.toHaveBeenCalled();
 		});
 
 		it.each([true, undefined])(
