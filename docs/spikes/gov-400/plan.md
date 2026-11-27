@@ -277,3 +277,39 @@ What the proof shows:
 - Retention that deletes a row before the feed reads it.
 - Telemetry now receives `workflow-post-execute` for v2 runs with an empty node list. The telemetry team must decide if that is correct.
 - The workflow settings for redaction are not in the feed yet.
+
+## Result 2: started items and the ledger writer
+
+The second PoC adds two items to the pull feed of option A.
+
+- **Engine:** a second read API, `POST /api/workflow-executions/started`. It returns the runs that the data plane started by itself after a cursor on `(created_at, id)`. It uses the existing index on `(created_at, id)`. Each item has the stable event key `<id>:started`, the workflow, the caller context and the parent link. Today the filter is `parent_execution_id IS NOT NULL`, so it covers sub-workflow runs.
+- **Control plane:** a ledger feed on the leader main (`EngineV2LedgerFeed`). It reads the started feed and the ended feed. It writes `started` rows for sub-workflow runs and `ended` rows for all runs, with `origin: 'v2'`. The rows of a page and the cursor commit in one transaction. Thus a crash or a failed write repeats no row and skips no row. The ledger itself does not drop a repeated row: it has no unique key, and `eventId` is a new uuid v7 for each write.
+- **Project of a sub-workflow run:** a sub-execution copies the caller context of its parent, so the project in the item is the project of the parent. The writer ignores it for a sub-workflow run and looks up the owner project of the workflow, as on v1. The proof puts the sub-workflow in a second project and checks this.
+
+Engine change in this step: 131 lines in 8 files, all on the read path, no migration. With the first PoC, the engine change is 322 lines in 8 files. Control-plane change in this step: 176 lines in 4 files, plus an optional `origin` on the ledger facts (2 files).
+
+### Proof
+
+The proof (`packages/cli/test/integration/engine-v2-ledger-feed.integration.test.ts`) runs the real engine runtime in the test process, with the engine database and the control-plane database in one Postgres test container. It uses the real ledger row writer of the `execution-ledger` module. Each parent run calls one sub-workflow and waits for it. Every tenth parent run fails after the sub-workflow ends. Each scenario sends runs for 10 seconds. The feed polls every 250 ms with a settle window of 1 second. In the outage scenario, the feed stops for 2 seconds, and the first page after the restart fails half way through its write. The full results are in `ledger-feed-result.json`.
+
+| Scenario | Parent runs per second (asked, done) | Runs (parent + sub) | `started` rows missed, repeated | `ended` rows missed, repeated | Delay to the `ended` row, p50 and p95 | Delay to the `started` row, p50 and p95 |
+|---|---|---|---|---|---|---|
+| Low | 20, 19 | 199 + 199 | 0, 0 | 0, 0 | 1,124 ms, 1,244 ms | 1,124 ms, 1,226 ms |
+| Medium | 100, 87 | 999 + 999 | 0, 0 | 0, 0 | 1,153 ms, 1,248 ms | 1,137 ms, 1,241 ms |
+| High | 400, 91 | 3,998 + 3,998 | 0, 0 | 0, 0 | 1,162 ms, 1,244 ms | 1,149 ms, 1,239 ms |
+| Medium, the control plane is down for 2 seconds | 100, 84 | 999 + 999 | 0, 0 | 0, 0 | 1,196 ms, 3,634 ms | 1,194 ms, 2,917 ms |
+
+What the proof shows:
+
+- **No row is missed and no row is repeated, for `started` and `ended`, in all four scenarios.** This includes the outage and the failed write.
+- **The delay is the settle window plus one poll.** The p50 is about 1.1 seconds with a settle window of 1 second. The production default of the settle window is 5 seconds, so the delay is then about 5 seconds. The outage adds its length to the p95.
+- **The engine is the bottleneck, not the feed.** One process runs about 90 parent runs per second, which is about 180 executions per second.
+- The delay is measured from the time in the `eventId` (uuid v7, set when the row is written) minus `occurredAt` (the end or the start of the run).
+
+### Not done or not tested in Result 2
+
+- **Error workflow runs.** v2 has no error workflow start in the code today, so the started feed has no rule for them. When the data plane starts error workflows, the feed must also return them. The item needs a marker, because they have no parent link.
+- **The `started` row of a top-level run.** The control plane writes it after the `201`. This is part of the GOV-401 PoC.
+- **Leader handover.** Two leaders that poll at the same time can both write a page. The cursor read is not locked.
+- **Redis.** The proof uses in-memory work queues, as the in-process engine does. The ledger path does not use Redis.
+- **A separate engine process, clock skew, retention.** The same gaps as in the first result.

@@ -1,0 +1,62 @@
+[
+  {
+    "scenario": "low",
+    "runs / s asked": 20,
+    "runs / s done": 19,
+    "parent runs": 199,
+    "sub-workflow runs": 199,
+    "started rows missed": 0,
+    "started rows repeated": 0,
+    "ended rows missed": 0,
+    "ended rows repeated": 0,
+    "ended delay p50 ms": 1124,
+    "ended delay p95 ms": 1244,
+    "started delay p50 ms": 1124,
+    "started delay p95 ms": 1226
+  },
+  {
+    "scenario": "medium",
+    "runs / s asked": 100,
+    "runs / s done": 87,
+    "parent runs": 999,
+    "sub-workflow runs": 999,
+    "started rows missed": 0,
+    "started rows repeated": 0,
+    "ended rows missed": 0,
+    "ended rows repeated": 0,
+    "ended delay p50 ms": 1153,
+    "ended delay p95 ms": 1248,
+    "started delay p50 ms": 1137,
+    "started delay p95 ms": 1241
+  },
+  {
+    "scenario": "high",
+    "runs / s asked": 400,
+    "runs / s done": 91,
+    "parent runs": 3998,
+    "sub-workflow runs": 3998,
+    "started rows missed": 0,
+    "started rows repeated": 0,
+    "ended rows missed": 0,
+    "ended rows repeated": 0,
+    "ended delay p50 ms": 1162,
+    "ended delay p95 ms": 1244,
+    "started delay p50 ms": 1149,
+    "started delay p95 ms": 1239
+  },
+  {
+    "scenario": "medium, control plane down 2 s",
+    "runs / s asked": 100,
+    "runs / s done": 84,
+    "parent runs": 999,
+    "sub-workflow runs": 999,
+    "started rows missed": 0,
+    "started rows repeated": 0,
+    "ended rows missed": 0,
+    "ended rows repeated": 0,
+    "ended delay p50 ms": 1196,
+    "ended delay p95 ms": 3634,
+    "started delay p50 ms": 1194,
+    "started delay p95 ms": 2917
+  }
+]
