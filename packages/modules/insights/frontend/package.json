@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-insights",
-  "version": "0.11.6",
+  "version": "0.11.7",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
