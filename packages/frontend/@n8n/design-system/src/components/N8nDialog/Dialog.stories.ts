@@ -34,7 +34,7 @@ const meta = {
 	argTypes: {
 		size: {
 			control: { type: 'select' },
-			options: ['small', 'medium', 'large', 'xlarge', '2xlarge', 'fit', 'full', 'cover'],
+			options: ['small', 'medium', 'large', 'xlarge', '2xlarge', '3xlarge', 'fit', 'full', 'cover'],
 		},
 	},
 } satisfies Meta<typeof N8nDialog>;
