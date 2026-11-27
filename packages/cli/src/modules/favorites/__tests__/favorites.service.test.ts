@@ -55,14 +55,12 @@ describe('FavoritesService', () => {
 	const projectScopeService = mock<ProjectScopeService>();
 	const folderFinderService = mock<FolderFinderService>();
 	const dataTableResolver = {
-		readScope: 'dataTable:read',
+		globalReadScope: 'dataTable:read',
 		findMeta: vi.fn<FavoriteResourceResolver['findMeta']>(),
-		findProjectId: vi.fn<FavoriteResourceResolver['findProjectId']>(),
 	} satisfies FavoriteResourceResolver;
 	const agentResolver = {
-		readScope: 'agent:read',
+		globalReadScope: 'agent:read',
 		findMeta: vi.fn<FavoriteResourceResolver['findMeta']>(),
-		findProjectId: vi.fn<FavoriteResourceResolver['findProjectId']>(),
 	} satisfies FavoriteResourceResolver;
 	const resolverRegistry = new FavoriteResourceResolverRegistry();
 	resolverRegistry.register('dataTable', dataTableResolver);
@@ -690,7 +688,9 @@ describe('FavoritesService', () => {
 			it('should create favorite when resource exists and user has read scope in its project', async () => {
 				const user = makeUser();
 				const favorite = mock<UserFavorite>();
-				resolver.findProjectId.mockResolvedValue('proj1');
+				resolver.findMeta.mockResolvedValue(
+					new Map([['res1', { name: 'Res', projectId: 'proj1' }]]),
+				);
 				projectScopeService.hasScopes.mockResolvedValue(true);
 				repo.findOne.mockResolvedValue(null);
 				repo.count.mockResolvedValue(0);
@@ -699,9 +699,9 @@ describe('FavoritesService', () => {
 
 				const result = await service.addFavorite(user, 'res1', resourceType);
 
-				expect(resolver.findProjectId).toHaveBeenCalledWith('res1');
+				expect(resolver.findMeta).toHaveBeenCalledWith(['res1']);
 				expect(projectScopeService.hasScopes).toHaveBeenCalledWith(user, 'proj1', [
-					resolver.readScope,
+					resolver.globalReadScope,
 				]);
 				expect(repo.create).toHaveBeenCalledWith({
 					userId: 'user1',
@@ -713,20 +713,22 @@ describe('FavoritesService', () => {
 			});
 
 			it('should throw NotFoundError when resource does not exist', async () => {
-				resolver.findProjectId.mockResolvedValue(null);
+				resolver.findMeta.mockResolvedValue(new Map());
 
 				await expect(service.addFavorite(makeUser(), 'res1', resourceType)).rejects.toThrow(
 					NotFoundError,
 				);
 
-				expect(resolver.findProjectId).toHaveBeenCalledWith('res1');
+				expect(resolver.findMeta).toHaveBeenCalledWith(['res1']);
 				expect(projectScopeService.hasScopes).not.toHaveBeenCalled();
 				expect(repo.save).not.toHaveBeenCalled();
 			});
 
 			it('should throw NotFoundError when user lacks read scope in the resource project', async () => {
 				const user = makeUser();
-				resolver.findProjectId.mockResolvedValue('proj-other');
+				resolver.findMeta.mockResolvedValue(
+					new Map([['res1', { name: 'Res', projectId: 'proj-other' }]]),
+				);
 				projectScopeService.hasScopes.mockResolvedValue(false);
 
 				await expect(service.addFavorite(user, 'res1', resourceType)).rejects.toThrow(
@@ -734,7 +736,7 @@ describe('FavoritesService', () => {
 				);
 
 				expect(projectScopeService.hasScopes).toHaveBeenCalledWith(user, 'proj-other', [
-					resolver.readScope,
+					resolver.globalReadScope,
 				]);
 				expect(repo.save).not.toHaveBeenCalled();
 			});

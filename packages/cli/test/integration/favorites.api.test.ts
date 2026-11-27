@@ -42,7 +42,7 @@ describe('POST /favorites', () => {
 
 	beforeEach(async () => {
 		await Container.get(UserFavoriteRepository).clear();
-		await Container.get(AgentRepository).clear();
+		await Container.get(AgentRepository).delete({});
 		await testDb.truncate([
 			'DataTable',
 			'Folder',

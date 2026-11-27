@@ -172,7 +172,7 @@ export class FavoritesService {
 		const resolver = this.resourceResolvers.get(resourceType);
 		if (!resolver) return result;
 
-		const hasGlobalAccess = hasGlobalScope(user, resolver.readScope);
+		const hasGlobalAccess = hasGlobalScope(user, resolver.globalReadScope);
 		const meta = await resolver.findMeta(resourceIds);
 
 		for (const [id, resourceMeta] of meta) {
@@ -213,22 +213,19 @@ export class FavoritesService {
 	async addFavorite(user: User, resourceId: string, resourceType: FavoriteResourceType) {
 		await this.assertResourceAccessible(user, resourceId, resourceType);
 
+		const userId = user.id;
 		const existing = await this.userFavoriteRepository.findOne({
-			where: { userId: user.id, resourceId, resourceType },
+			where: { userId, resourceId, resourceType },
 		});
 
 		if (existing) return existing;
 
-		const count = await this.userFavoriteRepository.count({ where: { userId: user.id } });
+		const count = await this.userFavoriteRepository.count({ where: { userId } });
 		if (count >= this.MAX_FAVORITES) {
 			throw new BadRequestError(`Favorites limit of ${this.MAX_FAVORITES} reached`);
 		}
 
-		const favorite = this.userFavoriteRepository.create({
-			userId: user.id,
-			resourceId,
-			resourceType,
-		});
+		const favorite = this.userFavoriteRepository.create({ userId, resourceId, resourceType });
 		return await this.userFavoriteRepository.save(favorite);
 	}
 
@@ -299,10 +296,11 @@ export class FavoritesService {
 		const resolver = this.resourceResolvers.get(resourceType);
 		if (!resolver) return false;
 
-		const projectId = await resolver.findProjectId(resourceId);
+		const meta = await resolver.findMeta([resourceId]);
+		const projectId = meta.get(resourceId)?.projectId;
 		if (!projectId) return false;
 
-		return await this.projectScopeService.hasScopes(user, projectId, [resolver.readScope]);
+		return await this.projectScopeService.hasScopes(user, projectId, [resolver.globalReadScope]);
 	}
 
 	async removeFavorite(userId: string, resourceId: string, resourceType: FavoriteResourceType) {
