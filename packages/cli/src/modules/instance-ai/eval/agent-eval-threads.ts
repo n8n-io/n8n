@@ -29,7 +29,7 @@ interface Entry<T> {
 	lastUsedAt: number;
 }
 
-/** A map whose entries expire when idle, oldest first when full. */
+/** A map whose entries expire when idle; when full, the least recently used goes first. */
 class IdleMap<T> {
 	private readonly entries = new Map<string, Entry<T>>();
 
@@ -37,7 +37,9 @@ class IdleMap<T> {
 		this.evict(now);
 		const entry = this.entries.get(key);
 		if (!entry) return undefined;
-		entry.lastUsedAt = now;
+		// Re-insert so iteration order is least recently used first.
+		this.entries.delete(key);
+		this.entries.set(key, { value: entry.value, lastUsedAt: now });
 		return entry.value;
 	}
 
