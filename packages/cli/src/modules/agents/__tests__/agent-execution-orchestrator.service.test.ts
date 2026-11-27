@@ -661,6 +661,7 @@ describe('background approvals', () => {
 				workflowToolExecutionMode: published ? 'integrated' : 'manual',
 			}),
 		);
+		expect(runner.resume.mock.calls[0][2]).not.toHaveProperty('outputReader');
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 	});
 
@@ -722,6 +723,8 @@ describe('background approvals', () => {
 				runType: 'production',
 				workflowToolExecutionMode: 'integrated',
 				user: undefined,
+				// The chat user reads the result, so the resumed child checks its workflow tools for them.
+				outputReader: user,
 			}),
 		);
 	});

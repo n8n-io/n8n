@@ -386,6 +386,35 @@ describe('AgentRuntimeCacheService', () => {
 		}
 	});
 
+	it('rebuilds an n8n Chat runtime when the output reader re-check fails', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			const { service, agentRepository, reconstructionService, userRepository } = makeService();
+			userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'chat-user' }));
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			const snapshot = { credentialIds: [], workflowIds: ['wf-1'] };
+			const originalRuntime = { ...makeRuntime(), userToolAccessSnapshot: snapshot };
+			const rebuiltRuntime = makeRuntime();
+			reconstructionService.reconstructFromAgentEntity
+				.mockResolvedValueOnce(originalRuntime)
+				.mockResolvedValueOnce(rebuiltRuntime);
+			reconstructionService.outputReaderStillSeesWorkflowOutputs.mockRejectedValue(
+				new Error('database unavailable'),
+			);
+			const params = { agentId, projectId, outputReaderUserId: 'chat-user' };
+
+			const first = await service.getRuntime(params);
+			service.releaseRuntimeLease(first.agent);
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+			const second = await service.getRuntime(params);
+
+			expect(second.agent).toBe(rebuiltRuntime.agent);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('does not build an n8n Chat runtime when the chatting user no longer exists', async () => {
 		const { service, agentRepository, reconstructionService, userRepository } = makeService();
 		userRepository.findByIdWithRole.mockResolvedValue(null);

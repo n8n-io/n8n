@@ -297,13 +297,15 @@ export class AgentRuntimeCacheService {
 				if (stillGranted) runtime.toolAccessCheckedAt = Date.now();
 				return stillGranted;
 			} catch (error) {
-				// Availability over freshness: a failing re-check must not take down
-				// the chat — serve the cached runtime and retry next interval.
-				runtime.toolAccessCheckedAt = Date.now();
 				this.logger.warn('[AgentRuntimeCacheService] Failed to re-check tool access', {
 					agentId: runtime.agentId,
 					error: error instanceof Error ? error.message : String(error),
 				});
+				// An output reader runtime is rebuilt, so its workflow tools are checked again.
+				if (!user) return false;
+				// Availability over freshness: a failing re-check must not take down
+				// the chat — serve the cached runtime and retry next interval.
+				runtime.toolAccessCheckedAt = Date.now();
 				return true;
 			}
 		})();

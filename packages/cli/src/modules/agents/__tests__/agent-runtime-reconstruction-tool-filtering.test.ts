@@ -16,8 +16,10 @@ import type {
 	PersonRepository,
 	User,
 	WorkflowEntity,
+	WorkflowHistory,
 	WorkflowRepository,
 } from '@n8n/db';
+import type { INode } from 'n8n-workflow';
 import { Container } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -635,10 +637,11 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			testUser,
 		);
 
-		expect(workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith(projectId, {
-			workflowId: 'wf-1',
-			workflowName: 'Lookup customer',
-		});
+		expect(workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith(
+			projectId,
+			{ workflowId: 'wf-1', workflowName: 'Lookup customer' },
+			{ withActiveVersion: false },
+		);
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', testUser, [
 			'workflow:execute',
 		]);
@@ -813,6 +816,63 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 					testUser,
 				),
 			).resolves.toBe(false);
+		});
+
+		it('should pin a checked workflow tool to its workflow id', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const { service } = makeService({
+				...accessibleWorkflow(),
+				executionRedaction: redactingProxy(true),
+			});
+
+			await service.reconstructFromAgentEntity(
+				makeAgentEntity([{ type: 'workflow', workflow: 'Lookup customer' }]),
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				testUser,
+			);
+
+			const [config] = buildFromJsonMock.mock.calls.at(-1) as [AgentJsonConfig];
+			expect(config.tools).toEqual([expect.objectContaining({ workflowId: 'wf-1' })]);
+		});
+
+		it('should check a legacy manual-only policy as all, with the nodes of the active version', async () => {
+			const executionRedaction = redactingProxy(true);
+			const workflowRepository = mock<WorkflowRepository>();
+			const activeNodes = [mock<INode>({ name: 'Published' })];
+			workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+				mock<WorkflowEntity>({
+					id: 'wf-1',
+					settings: { redactionPolicy: 'manual-only' },
+					nodes: [],
+					activeVersion: mock<WorkflowHistory>({ nodes: activeNodes }),
+				}),
+			);
+			const { service } = makeService({ workflowRepository, executionRedaction });
+
+			await service.reconstructFromAgentEntity(
+				makeAgentEntity([workflowTool]),
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				undefined,
+				undefined,
+				'integrated',
+				undefined,
+				{ outputReader: testUser },
+			);
+
+			expect(workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith(
+				projectId,
+				expect.anything(),
+				{ withActiveVersion: true },
+			);
+			const [[standIns]] = executionRedaction.processExecutions.mock.calls;
+			expect(standIns[0].workflowData).toEqual({
+				settings: { redactionPolicy: 'all' },
+				nodes: activeNodes,
+			});
 		});
 
 		it('should drop the workflow tool for the output reader of a run without a user', async () => {
@@ -1587,7 +1647,7 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		expect(toolNamesPassedToBuildFromJson()).toEqual([]);
 	});
 
-	it('keeps a missing mentioned workflow and rechecks project access later', async () => {
+	it('leaves out a missing mentioned workflow for a user', async () => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 		const workflowRepository = mock<WorkflowRepository>();
 		workflowRepository.findOneByAgentToolReference.mockResolvedValue(null);
@@ -1602,12 +1662,9 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 			testUser,
 		);
 
-		expect(toolNamesPassedToBuildFromJson()).toEqual(['Get code']);
-		expect(result.userToolAccessSnapshot).toEqual({
-			credentialIds: [],
-			workflowIds: [],
-			workflowToolExecutionMode: 'manual',
-		});
+		// A missing workflow is not checked, so a workflow created later must not take its place.
+		expect(toolNamesPassedToBuildFromJson()).toEqual([]);
+		expect(result.userToolAccessSnapshot).toBeUndefined();
 	});
 
 	it('adds no tool while the flag is off', async () => {

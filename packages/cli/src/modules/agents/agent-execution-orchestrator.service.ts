@@ -865,6 +865,8 @@ export class AgentExecutionOrchestratorService {
 				runType: resume.usePublishedVersion ? 'production' : 'test',
 				workflowToolExecutionMode: resume.usePublishedVersion ? 'integrated' : 'manual',
 				user: credentialUser,
+				// n8n Chat: the chatting user reads the result, so the child checks its workflow tools for them.
+				...(scope.runtime.outputReaderUserId ? { outputReader: config.user } : {}),
 			},
 		);
 		return true;

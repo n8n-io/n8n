@@ -402,6 +402,21 @@ function toolRefName(ref: AgentJsonToolConfig): string {
 	return ref.type === 'workflow' ? (ref.name ?? ref.workflow) : ref.name;
 }
 
+/** Pin a checked workflow tool to its workflow id, so a renamed or new workflow cannot take its place. */
+function withCheckedWorkflow(ref: AgentJsonToolConfig, workflowId: string | undefined) {
+	return ref.type === 'workflow' && workflowId ? { ...ref, workflowId } : ref;
+}
+
+/** A workflow tool whose workflow is missing. A runtime built for a user leaves it out. */
+function missingWorkflow(ref: Extract<AgentJsonToolConfig, { type: 'workflow' }>): UnavailableTool {
+	return {
+		toolName: toolRefName(ref),
+		toolType: ref.type,
+		reason: 'not_found',
+		message: `Workflow "${ref.workflow}" not found`,
+	};
+}
+
 /** Ids that workflow tools stamp for log attribution. The run does not act as the account. */
 function workflowToolAttribution({
 	agentServiceAccountId,
@@ -627,8 +642,14 @@ export class AgentRuntimeReconstructionService {
 				filtered.push(ref);
 				continue;
 			}
-			const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId);
-			if (workflow && (await this.isWorkflowOutputHiddenFrom(workflow, reader, mode))) {
+			const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId, {
+				withActiveVersion: mode === 'integrated',
+			});
+			if (!workflow) {
+				unavailable.push(missingWorkflow(ref));
+				continue;
+			}
+			if (await this.isWorkflowOutputHiddenFrom(workflow, reader, mode)) {
 				unavailable.push({
 					toolName: toolRefName(ref),
 					toolType: ref.type,
@@ -637,8 +658,8 @@ export class AgentRuntimeReconstructionService {
 				});
 				continue;
 			}
-			filtered.push(ref);
-			if (workflow) workflowIds.push(workflow.id);
+			filtered.push(withCheckedWorkflow(ref, workflow.id));
+			workflowIds.push(workflow.id);
 		}
 		return {
 			tools: filtered,
@@ -725,7 +746,7 @@ export class AgentRuntimeReconstructionService {
 				unavailable.push(access);
 				continue;
 			}
-			filtered.push(ref);
+			filtered.push(withCheckedWorkflow(ref, access.workflowIds[0]));
 			keptGatedTool = true;
 			for (const id of access.credentialIds) grantedCredentialIds.add(id);
 			for (const id of access.workflowIds) grantedWorkflowIds.add(id);
@@ -812,9 +833,10 @@ export class AgentRuntimeReconstructionService {
 			return { credentialIds, workflowIds: [] };
 		}
 
-		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId);
-		// Missing workflows stay in the list so the tool factory can return a stub.
-		if (!workflow) return { credentialIds: [], workflowIds: [] };
+		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId, {
+			withActiveVersion: mode === 'integrated',
+		});
+		if (!workflow) return missingWorkflow(ref);
 		const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
 			workflow.id,
 			user,
@@ -842,14 +864,24 @@ export class AgentRuntimeReconstructionService {
 	 * the instance floor applies.
 	 */
 	private async isWorkflowOutputHiddenFrom(
-		workflow: Pick<WorkflowEntity, 'id' | 'settings' | 'nodes'>,
+		workflow: Pick<WorkflowEntity, 'id' | 'settings' | 'nodes'> &
+			Partial<Pick<WorkflowEntity, 'activeVersion'>>,
 		user: User,
 		mode: WorkflowToolExecutionMode,
 	): Promise<boolean> {
+		const settings = workflow.settings ?? {};
 		const standIn: RedactableExecution = {
 			mode,
 			workflowId: workflow.id,
-			workflowData: { settings: workflow.settings ?? {}, nodes: workflow.nodes },
+			workflowData: {
+				// A run records a legacy `manual-only` policy as `all`.
+				settings:
+					settings.redactionPolicy === 'manual-only'
+						? { ...settings, redactionPolicy: 'all' }
+						: settings,
+				// A published run uses the nodes of the active version.
+				nodes: (mode === 'integrated' && workflow.activeVersion?.nodes) || workflow.nodes,
+			},
 			data: { resultData: { runData: {} } },
 			dataTooLargeToDisplay: true,
 		};
