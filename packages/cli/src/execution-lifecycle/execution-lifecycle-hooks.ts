@@ -1032,7 +1032,9 @@ export function getLifecycleHooksForSubExecutions(
  * execution and carry no transient top-level fields, so fall back to the copy
  * kept in `manualData`.
  */
-function resolveSuppressErrorWorkflow(data: IWorkflowExecutionDataProcess): boolean | undefined {
+export function resolveSuppressErrorWorkflow(
+	data: IWorkflowExecutionDataProcess,
+): boolean | undefined {
 	return data.suppressErrorWorkflow ?? data.executionData?.manualData?.suppressErrorWorkflow;
 }
 
