@@ -34,6 +34,7 @@ import type {
 } from './Select.types';
 import N8nSelectItem from './SelectItem.vue';
 import Icon from '../../../components/N8nIcon/Icon.vue';
+import type { IconSize } from '../../../types/icon';
 
 defineOptions({ inheritAttrs: false });
 
@@ -102,6 +103,17 @@ const sizes: Record<SelectSizes, string> = {
 	xlarge: $style.xlarge,
 };
 const size = computed(() => sizes[props.size]);
+
+// Two icon sizes below the field text, so the chevron stays lighter than the label.
+// 8px continues the 2px icon scale below xsmall. No smaller named size exists.
+const chevronSizes: Record<SelectSizes, IconSize | number> = {
+	mini: 8,
+	small: 8,
+	medium: 'xsmall',
+	large: 'xsmall',
+	xlarge: 'small',
+};
+const chevronSize = computed(() => chevronSizes[props.size]);
 
 const variantClasses: Record<SelectVariants, string | undefined> = {
 	default: undefined,
@@ -409,6 +421,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				icon="chevron-down"
 				:class="$style.trailingIcon"
 				color="text-light"
+				:size="chevronSize"
 				aria-hidden="true"
 			/>
 		</SelectTrigger>

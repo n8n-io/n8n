@@ -228,6 +228,25 @@ describe('v2/components/Combobox', () => {
 			});
 			expect(wrapper.getByTestId('combobox').className).toContain(expected);
 		});
+
+		test.each([
+			[undefined, '10px'],
+			['mini', '8px'],
+			['small', '8px'],
+			['medium', '10px'],
+			['large', '10px'],
+			['xlarge', '12px'],
+		] as const)('size %s uses a %s chevron', (size, width) => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Option 1'),
+					size,
+				},
+			});
+			const chevron = wrapper.getByTestId('combobox').querySelector('[data-icon="chevron-down"]');
+			expect(chevron).toHaveAttribute('width', width);
+			expect(chevron).toHaveAttribute('height', width);
+		});
 	});
 
 	describe('item types', () => {

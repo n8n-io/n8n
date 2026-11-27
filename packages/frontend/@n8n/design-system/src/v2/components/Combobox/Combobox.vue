@@ -15,6 +15,7 @@ import {
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nSpinner from '@n8n/design-system/components/N8nSpinner/Spinner.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
+import type { IconSize } from '@n8n/design-system/types/icon';
 import { useScrollEdges } from '@n8n/design-system/composables/useScrollEdges';
 
 import { N8nTagsInput2, TagsInputInput, type TagsInputValue } from '../TagsInput';
@@ -263,6 +264,17 @@ const sizes: Record<ComboboxSizes, string> = {
 
 const sizeClass = computed(() => sizes[props.size]);
 
+// Two icon sizes below the field text, so the chevron stays lighter than the label.
+// 8px continues the 2px icon scale below xsmall. No smaller named size exists.
+const chevronSizes: Record<ComboboxSizes, IconSize | number> = {
+	mini: 8,
+	small: 8,
+	medium: 'xsmall',
+	large: 'xsmall',
+	xlarge: 'small',
+};
+const chevronSize = computed(() => chevronSizes[props.size]);
+
 function getDisplayValue(value: unknown): string {
 	if (value === undefined || value === null) {
 		return '';
@@ -472,7 +484,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 						:aria-label="t('combobox.showPopup')"
 						@mousedown.prevent
 					>
-						<Icon icon="chevron-down" :class="$style.trailingIcon" />
+						<Icon icon="chevron-down" :class="$style.trailingIcon" :size="chevronSize" />
 					</button>
 				</ComboboxTrigger>
 			</template>
