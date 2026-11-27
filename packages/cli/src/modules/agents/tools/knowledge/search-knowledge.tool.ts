@@ -34,11 +34,7 @@ const MODEL_OUTPUT_SEARCH_TEXT_CHARS = 240;
 const MODEL_OUTPUT_READ_TEXT_BUDGET = 6_000;
 const MODEL_OUTPUT_READ_RANGE_MIN_CHARS = 800;
 
-/**
- * What the model needs to know about knowledge collections. Added to the tool
- * descriptions only while collections are on, so that the tools of an agent
- * without collections read as they did before.
- */
+// Added to the descriptions only while collections are on, so that the tools read as before without them.
 const FIND_FILES_COLLECTIONS_HINT =
 	'Knowledge files are the files uploaded to this agent and the files of its knowledge collections. A file of a collection has the file value `<collection>/<name>`, where `<collection>` is the directory of the collection; a pattern like `<collection>/*` lists the files of one collection. The first page of a result also lists every collection under `collections`, with its directory, name, description and file count: read them to decide which collection a question calls for.';
 const SEARCH_TEXT_COLLECTIONS_HINT =
@@ -209,7 +205,6 @@ function toFindKnowledgeFilesModelOutput(output: unknown): unknown {
 		returnedFiles: files.length,
 		offset: output.offset,
 		hasMore: output.hasMore,
-		// The catalog of the collections of the agent, when it has any.
 		...(output.collections
 			? {
 					collections: output.collections.map(({ dir, name, description, fileCount }) => ({
@@ -357,7 +352,7 @@ export function createKnowledgeRetrievalTools({
 	retriever: KnowledgeRetriever;
 	/** Called when each call starts. The returned function gets the size of the output that the model gets. */
 	startToolCall: (runId: string | undefined, call: KnowledgeToolCall) => FinishKnowledgeToolCall;
-	/** Whether the descriptions tell the model about knowledge collections. */
+	/** Adds the collection hints to the descriptions. */
 	collectionsEnabled?: boolean;
 }) {
 	const findFilesTool = new Tool('find_file')

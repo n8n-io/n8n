@@ -62,7 +62,6 @@ interface KnowledgeMirrorRuntime extends KnowledgeSandboxHandle {
 
 interface KnowledgeFileLookup {
 	files: KnowledgeFileReference[];
-	/** The collections the scope can search. Empty while collections are off. */
 	collections: KnowledgeCollectionReference[];
 	byPath: Map<string, KnowledgeFileReference>;
 	byFileId: Map<string, KnowledgeFileReference>;
@@ -159,7 +158,7 @@ export class KnowledgeMirrorService {
 
 		const targets = this.resolveSearchTargets(validatedRequest, references);
 		if (validatedRequest.path !== undefined && targets.length === 0) {
-			// Every path named a collection without files, so there is nothing to search.
+			// Every path named a collection without files.
 			return emptySearchKnowledgeTextResult(outputMode, limit);
 		}
 
@@ -185,9 +184,8 @@ export class KnowledgeMirrorService {
 		const references = await this.loadKnowledgeFileLookup(scope);
 		const limit = validatedRequest.limit ?? DEFAULT_FIND_FILES_LIMIT;
 		const offset = validatedRequest.offset ?? 0;
-		// The catalog is listed only for a scope with collections, so the result of an
-		// agent without them is unchanged, and only on the first page: a later page
-		// of the same list would repeat it for nothing.
+		// The catalog goes on the first page only, and only when the scope has
+		// collections, so an agent without them keeps the result of before.
 		const catalog =
 			offset === 0 && references.collections.length > 0
 				? { collections: references.collections }
@@ -390,7 +388,7 @@ export class KnowledgeMirrorService {
 
 		const stagingDir = `${runtime.paths.stagingDir}/${stagingId}`;
 		await runtime.filesystem.mkdir(stagingDir, { recursive: true });
-		// The files of a collection are staged in the directory of their collection, as in the mirror.
+		// One directory per collection, as in the mirror.
 		for (const dir of getKnowledgeMirrorDirs(files.map((file) => file.file))) {
 			await runtime.filesystem.mkdir(`${stagingDir}/${dir}`, { recursive: true });
 		}
@@ -428,11 +426,8 @@ export class KnowledgeMirrorService {
 	}
 
 	/**
-	 * The files of the agent at the root of the mirror, then the files of its
-	 * collections, one directory for each collection. The two sets cannot
-	 * collide: a file name has an extension, so it holds a `.`, and a collection
-	 * directory is a slug, which never does. `validateUploadMetadata` keeps
-	 * the first half true, `slugFromName` the second.
+	 * Own files at the root, collection files under the slug of their collection.
+	 * The two cannot collide: a file name holds a `.`, a slug never does.
 	 */
 	private async loadKnowledgeFileLookup(
 		scope: KnowledgeConsumerScope,
@@ -530,12 +525,9 @@ export class KnowledgeMirrorService {
 	}
 
 	/**
-	 * The targets of a scoped search, relative to the mirror: the `file` value
-	 * of a file, or the directory of a collection, which stands for every file
-	 * of the collection. A collection without files has no directory in the
-	 * mirror, so it adds no target. A file whose collection directory is also
-	 * a target is left out: rg walks each target on its own, so it would
-	 * search the file twice and report every match twice.
+	 * A path is a `file` value or the directory of a collection, which stands
+	 * for its files. A file whose directory is also a target is left out: rg
+	 * would search it twice.
 	 */
 	private resolveSearchTargets(
 		request: SearchKnowledgeTextRequest,
@@ -546,7 +538,7 @@ export class KnowledgeMirrorService {
 			references.collections.map((collection) => [collection.dir, collection.fileCount]),
 		);
 		for (const path of request.path ?? []) {
-			// Models often write a directory with a trailing slash, as in `handbook/`.
+			// Models often write a directory as `handbook/`.
 			const directory = parseKnowledgeFilePath(path.endsWith('/') ? path.slice(0, -1) : path);
 			const collectionFileCount = fileCountByDir.get(directory);
 			if (collectionFileCount !== undefined) {

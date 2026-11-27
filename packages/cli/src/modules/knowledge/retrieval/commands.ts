@@ -71,7 +71,7 @@ type RipgrepJsonEvent = z.infer<typeof ripgrepJsonEventSchema>;
 type RipgrepContentEvent = Extract<RipgrepJsonEvent, { type: 'match' | 'context' }>;
 type RipgrepEncodedText = z.infer<typeof ripgrepEncodedTextSchema>;
 
-/** `scopedTargets` are mirror-relative file paths or collection directories, which rg searches recursively. */
+/** A scoped target is a mirror-relative file path or a collection directory. */
 export function buildSearchKnowledgeTextCommand(
 	request: SearchKnowledgeTextRequest,
 	scopedTargets: string[],
@@ -561,7 +561,6 @@ export function buildScopedKnowledgeShellCommand(
 	return `bash -o pipefail -c ${quoteShellArg(scopedCommand)}`;
 }
 
-/** The collection directories of the mirror paths, without the root, in order of first use. */
 export function getKnowledgeMirrorDirs(mirrorPaths: string[]): string[] {
 	return [
 		...new Set(mirrorPaths.flatMap((mirrorPath) => getKnowledgeMirrorPathDir(mirrorPath) ?? [])),
@@ -572,9 +571,8 @@ export function getKnowledgeMirrorDirs(mirrorPaths: string[]): string[] {
  * Finalizes a mirror sync: moves `toCopy` names from their already-uploaded
  * per-sync staging path into place, removes `toDelete` names, and rewrites the
  * manifest to `manifestFiles`. The staging + `mv` sequence means a search
- * running concurrently never sees a partially-written file. A file of a
- * collection lives in the directory of its collection; the directory is made
- * before the move and removed after the delete once it is empty.
+ * running concurrently never sees a partially-written file. A collection
+ * directory is made before the move and removed after the delete once empty.
  */
 export function buildMirrorFinalizeCommand(
 	toCopy: string[],
@@ -603,7 +601,7 @@ export function buildMirrorFinalizeCommand(
 		commands.push(`rm -f ${targets.join(' ')}`);
 	}
 
-	// A directory that still holds files of its collection stays; `rmdir` only removes an empty one.
+	// `rmdir` removes only an empty directory.
 	for (const dir of getKnowledgeMirrorDirs(toDelete)) {
 		commands.push(`{ rmdir ${quoteShellArg(`${paths.filesDir}/${dir}`)} 2>/dev/null || true; }`);
 	}

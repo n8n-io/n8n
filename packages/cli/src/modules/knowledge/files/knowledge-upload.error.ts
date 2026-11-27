@@ -22,10 +22,7 @@ export class KnowledgeUploadError extends BadRequestError {
 	}
 }
 
-/**
- * The error of a file whose extension is not allowed. The upload middleware and
- * `KnowledgeFileService.validateUploadMetadata` raise the same one.
- */
+/** Raised by the upload middleware and by `KnowledgeFileService.validateUploadMetadata`. */
 export function knowledgeFileTypeError(): KnowledgeUploadError {
 	return new KnowledgeUploadError(
 		'Only CSV, PDF, Markdown, and TXT files are allowed',

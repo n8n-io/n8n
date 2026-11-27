@@ -116,11 +116,7 @@ export class KnowledgeCollectionRepository {
 		return await this.table.managerFor(ctx).existsBy(KnowledgeCollection, { slug });
 	}
 
-	/**
-	 * The shared collections that the agent can search, by name. In Phase 1 an
-	 * agent can search a collection when it has the collection and its project
-	 * owns it. The agent link alone gives no access.
-	 */
+	/** Phase 1 rule: the agent has the collection and its project owns it. The link alone gives no access. */
 	async findSearchableByAgent(
 		agentId: string,
 		projectId: string,
@@ -132,7 +128,7 @@ export class KnowledgeCollectionRepository {
 			.getMany();
 	}
 
-	/** Whether the agent can search at least one shared collection. Same rule as `findSearchableByAgent`. */
+	/** Same rule as `findSearchableByAgent`. */
 	async hasSearchableByAgent(
 		agentId: string,
 		projectId: string,
@@ -141,7 +137,7 @@ export class KnowledgeCollectionRepository {
 		return await this.searchableByAgentQuery(agentId, projectId, ctx).getExists();
 	}
 
-	/** Whether a shared collection that the agent can search has a file. Same rule as `findSearchableByAgent`. */
+	/** Same rule as `findSearchableByAgent`, with at least one file. */
 	async hasSearchableFileByAgent(
 		agentId: string,
 		projectId: string,

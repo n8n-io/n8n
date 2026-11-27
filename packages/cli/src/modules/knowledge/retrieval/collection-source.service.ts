@@ -18,14 +18,8 @@ export interface KnowledgeCollectionSource {
 const EMPTY_SOURCE: KnowledgeCollectionSource = { collections: [], files: [] };
 
 /**
- * Loads the collections that a consumer scope can search, with their files.
- * Every call reads the database, so a change to a collection, or to the
- * collections of the agent, reaches the next search or read. The files of a
- * collection live in one directory of the mirror, named after its slug, so
- * that file names of different collections do not collide.
- *
- * While collections are off, the scope has no collections: an agent then
- * searches only its own files.
+ * The collections that a scope can search, with their files. Reads the
+ * database on every call, so a change reaches the next search or read.
  */
 @Service()
 export class KnowledgeCollectionSourceService {
@@ -49,11 +43,7 @@ export class KnowledgeCollectionSourceService {
 		return await this.collectionRepository.hasSearchableByAgent(scope.agentId, scope.projectId, {});
 	}
 
-	/**
-	 * Whether a collection that the scope can search has a file, so there is
-	 * something to mirror. The sandbox lifecycle asks this; the tools ask
-	 * `hasCollections`, because an empty collection still gets the tools.
-	 */
+	/** Whether a collection that the scope can search has a file. The sandbox needs one; the tools do not. */
 	async hasCollectionFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
 		if (!(await this.availabilityService.isCollectionsEnabled())) {
 			return false;
@@ -115,11 +105,7 @@ export class KnowledgeCollectionSourceService {
 		};
 	}
 
-	/**
-	 * The server derives every slug, so a slug is a valid path segment. A row
-	 * changed by hand is skipped, with a warning, so that it cannot stop the
-	 * retrieval of the other knowledge of the agent.
-	 */
+	/** Only a slug changed by hand fails. Skip it, so that one row cannot stop the retrieval of the rest. */
 	private hasMirrorableSlug(collection: KnowledgeCollection, scope: KnowledgeConsumerScope) {
 		try {
 			assertKnowledgePathSegment(collection.slug, 'knowledge collection slug');
@@ -135,7 +121,6 @@ export class KnowledgeCollectionSourceService {
 	}
 }
 
-/** Undefined for a row whose stored name cannot be a file name (see `tryKnowledgeContentFileName`). */
 function toFileReference(file: KnowledgeFile, dir: string): KnowledgeFileReference | undefined {
 	const name = tryKnowledgeContentFileName(file.name);
 	if (name === undefined) return undefined;

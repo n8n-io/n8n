@@ -136,11 +136,7 @@ export class KnowledgeFileService {
 				});
 			});
 
-		// Refresh the mirror while a file is left to mirror, so the deleted file leaves it.
-		// Delete the sandbox when none is left. The agent's own files and the files of its
-		// collections both count. A collection without files does not: it keeps the tools
-		// attached, but no tool call needs a sandbox then (`findFiles` reads the database,
-		// `searchText` returns early).
+		// A collection without files keeps the tools, but no tool call needs a sandbox then.
 		const hasFilesToMirror =
 			(await this.fileRepository.hasFilesForAgent(scope.agentId, {})) ||
 			(await this.collectionSourceService.hasCollectionFiles(scope));
@@ -287,12 +283,9 @@ export class KnowledgeFileService {
 	}
 
 	/**
-	 * Rejects a file that cannot be stored: a name or a MIME type that is too
-	 * long for its column, an unsafe name, or a name without an allowed
-	 * extension. The upload middleware checks the extension first, but the
-	 * mirror relies on it (a file of the agent and a collection directory
-	 * never collide because a file name holds a `.`), so the services check
-	 * it too, for a caller that does not go through multer.
+	 * The middleware checks the extension too, but the mirror relies on it (a
+	 * file name holds a `.`, a collection directory never does), so a caller
+	 * that skips multer must not get past it either.
 	 */
 	validateUploadMetadata(files: Express.Multer.File[]) {
 		for (const file of files) {

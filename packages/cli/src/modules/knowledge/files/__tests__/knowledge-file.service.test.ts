@@ -390,8 +390,7 @@ describe('KnowledgeFileService', () => {
 		expect(fileStore.write).not.toHaveBeenCalled();
 	});
 
-	// The mirror keeps the files of the agent next to the directories of its
-	// collections, and tells them apart by the `.` of the extension.
+	// The mirror tells a file of the agent from a collection directory by the `.` of the extension.
 	it('rejects uploads whose file name has no allowed extension, without the middleware', async () => {
 		await expect(
 			service.uploadFiles(scope, [makeMulterFile({ originalname: 'handbook' })], writeFence),

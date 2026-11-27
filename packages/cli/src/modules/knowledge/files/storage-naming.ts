@@ -50,13 +50,9 @@ export function assertKnowledgePathSegment(segment: string, label: string): void
 	}
 }
 
-/** A mirror path has at most a collection directory and a file name. */
+/** A collection directory and a file name. */
 const MAX_MIRROR_PATH_SEGMENTS = 2;
 
-/**
- * A mirror path is the name of a file of the agent, or `<dir>/<name>` for a
- * file of a collection. Each segment is checked on its own.
- */
 export function assertKnowledgeMirrorPath(mirrorPath: string, label: string): void {
 	const segments = mirrorPath.split('/');
 	if (segments.length > MAX_MIRROR_PATH_SEGMENTS) {
@@ -67,7 +63,7 @@ export function assertKnowledgeMirrorPath(mirrorPath: string, label: string): vo
 	}
 }
 
-/** The directory of a mirror path, or undefined for a file at the root of the mirror. */
+/** Undefined for a file at the root of the mirror. */
 export function getKnowledgeMirrorPathDir(mirrorPath: string): string | undefined {
 	const separator = mirrorPath.indexOf('/');
 	return separator === -1 ? undefined : mirrorPath.slice(0, separator);
@@ -98,11 +94,9 @@ export function toKnowledgeContentFileName(originalFileName: string): string {
 }
 
 /**
- * The content file name of a stored name, or undefined when the stored name
- * cannot be one. Every upload runs `toKnowledgeContentFileName` before the
- * row is written, so only a row changed by hand gets here with such a name.
- * The read paths skip that row, so that it cannot stop the retrieval of the
- * other knowledge of the agent.
+ * Undefined for a stored name that cannot be a file name. Every upload checks
+ * the name before the row is written, so only a row changed by hand fails.
+ * The read paths skip it, so that one row cannot stop the retrieval of the rest.
  */
 export function tryKnowledgeContentFileName(storedName: string): string | undefined {
 	try {

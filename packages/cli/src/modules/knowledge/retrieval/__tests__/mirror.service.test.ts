@@ -104,7 +104,7 @@ function makeSandboxProviderProxy(
 	return provider;
 }
 
-/** A collection source without collections, the state of an agent while collections are off. */
+/** Defaults to no collections, as while collections are off. */
 function makeCollectionSourceService(
 	source: KnowledgeCollectionSource = { collections: [], files: [] },
 ): ReturnType<typeof mock<KnowledgeCollectionSourceService>> {

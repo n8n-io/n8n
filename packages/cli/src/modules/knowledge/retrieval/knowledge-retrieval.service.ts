@@ -31,10 +31,8 @@ export class KnowledgeRetrievalService implements KnowledgeRetriever {
 	) {}
 
 	/**
-	 * True when the scope has files of its own, or a collection it can search.
-	 * A collection counts also while it is empty, so that a file added to it
-	 * later reaches the agent without a change to the agent. This gates the
-	 * tools; the sandbox follows the files to mirror (`hasFilesToMirror`).
+	 * An empty collection counts: the tools attach once per runtime, so a file
+	 * added to it later must reach the agent without a change to the agent.
 	 */
 	async hasFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
 		return (
@@ -43,11 +41,7 @@ export class KnowledgeRetrievalService implements KnowledgeRetriever {
 		);
 	}
 
-	/**
-	 * Boots the sandbox of the scope ahead of use. A scope without a file to
-	 * mirror needs no sandbox: a collection without files gets the tools, but
-	 * a search or read of it never reaches the sandbox.
-	 */
+	/** Boots the sandbox ahead of use. Without a file to mirror, no search or read reaches a sandbox. */
 	async warmSandbox(scope: KnowledgeConsumerScope): Promise<void> {
 		if (!(await this.hasFilesToMirror(scope))) {
 			return;
@@ -56,7 +50,6 @@ export class KnowledgeRetrievalService implements KnowledgeRetriever {
 		await this.sandboxProviderProxy.warm(scope);
 	}
 
-	/** Files of the scope's own, or a file in a collection it can search. An empty collection does not count. */
 	private async hasFilesToMirror(scope: KnowledgeConsumerScope): Promise<boolean> {
 		return (
 			(await this.fileRepository.hasFilesForAgent(scope.agentId, {})) ||
