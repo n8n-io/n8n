@@ -57,7 +57,7 @@ export class EngineConfig {
 	 * endpoint instead.
 	 */
 	@Env('N8N_ENGINE_METRICS_PORT')
-	metricsPort: number = 5678;
+	metricsPort: number = 9464;
 
 	/**
 	 * Base URL the control plane dials to reach the engine.
