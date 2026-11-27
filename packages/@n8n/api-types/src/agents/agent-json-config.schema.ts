@@ -210,6 +210,13 @@ export const NodeConfigSchema = z.object({
 });
 
 /**
+ * A chat model node that supplies the model of the agent, such as a community
+ * node. `model` stays the id of the model, and `credential` holds the credential
+ * of the node.
+ */
+export const AgentModelNodeSchema = NodeConfigSchema.omit({ credentials: true });
+
+/**
  * A ref to a skill. A skill has no on/off state: a ref is attached or it is
  * not. `versionId` pins the ref of a saved agent to one saved version of the
  * skill. Without it, the agent draft runs the latest saved version.
@@ -630,6 +637,7 @@ export const AgentJsonConfigBaseSchema = z.object({
 	description: z.string().trim().max(AGENT_DESCRIPTION_MAX_LENGTH).optional(),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
+	modelNode: AgentModelNodeSchema.optional(),
 	instructions: z.string(),
 	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),
@@ -820,6 +828,7 @@ export type AgentJsonTaskConfig = z.infer<typeof AgentJsonTaskConfigSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 export type AgentPersonalisationConfig = z.infer<typeof AgentPersonalisationConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
+export type AgentModelNodeConfig = z.infer<typeof AgentModelNodeSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
 export type SubAgentTaskDifficulty = z.infer<typeof SubAgentTaskDifficultySchema>;

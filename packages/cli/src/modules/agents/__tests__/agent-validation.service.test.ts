@@ -306,6 +306,85 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
+	describe('model node', () => {
+		const modelNodeConfig: AgentJsonConfig = {
+			...runnableConfig,
+			model: 'community/n8n-nodes-eurouter.eUrouterChatModel/mistral-small',
+			credential: 'eurouter-main',
+			modelNode: {
+				nodeType: 'n8n-nodes-eurouter.eUrouterChatModel',
+				nodeTypeVersion: 1,
+				nodeParameters: { model: 'mistral-small' },
+			},
+		};
+
+		function chatModelNodeType(outputs: readonly string[] = ['ai_languageModel']) {
+			return {
+				description: { outputs, credentials: [{ name: 'eUrouterApi', required: true }] },
+			} as unknown as ReturnType<NodeTypesProxy['getByNameAndVersion']>;
+		}
+
+		it('accepts the credential that the model node declares', async () => {
+			const { service, agentRepository, nodeTypes } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(modelNodeConfig));
+			nodeTypes.getByNameAndVersion.mockReturnValue(chatModelNodeType());
+
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'eurouter-main', type: 'eUrouterApi' }]),
+			);
+
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledWith(
+				'n8n-nodes-eurouter.eUrouterChatModel',
+				1,
+			);
+			expect(result.issues).toEqual([]);
+		});
+
+		it('flags a credential that the model node does not declare', async () => {
+			const { service, agentRepository, nodeTypes } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(modelNodeConfig));
+			nodeTypes.getByNameAndVersion.mockReturnValue(chatModelNodeType());
+
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'eurouter-main', type: 'openAiApi' }]),
+			);
+
+			expect(result.issues).toEqual([
+				expect.objectContaining({ code: 'incompatible_credential', path: 'credential' }),
+			]);
+		});
+
+		it.each([
+			[
+				'is not installed',
+				() => {
+					throw new Error('Unrecognized node type');
+				},
+			],
+			['does not supply a language model', () => chatModelNodeType(['main'])],
+		])('flags a model node that %s', async (_, getNodeType) => {
+			const { service, agentRepository, nodeTypes } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(modelNodeConfig));
+			nodeTypes.getByNameAndVersion.mockImplementation(getNodeType);
+
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'eurouter-main', type: 'eUrouterApi' }]),
+			);
+
+			expect(result.issues).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ code: 'missing_reference', path: 'modelNode.nodeType' }),
+				]),
+			);
+		});
+	});
+
 	it('accepts Azure OpenAI and AWS Bedrock credentials paired with their own provider models', async () => {
 		const { service, agentRepository } = makeService();
 

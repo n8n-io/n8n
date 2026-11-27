@@ -94,6 +94,12 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['theme', 'slim', 'icon'],
 		template: '<div v-bind="$attrs" data-testid="n8n-callout"><slot /></div>',
 	},
+	N8nButton: {
+		name: 'N8nButton',
+		props: ['label', 'variant', 'size'],
+		emits: ['click'],
+		template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ label }}</button>',
+	},
 	N8nIconButton: {
 		name: 'N8nIconButton',
 		props: ['icon', 'size', 'variant', 'title', 'text'],
@@ -150,6 +156,19 @@ vi.mock('../composables/useModelCatalog', () => ({
 		getDefaultModelForPicker: getDefaultModelForPickerMock,
 		isLoading: ref(false),
 	}),
+}));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: (name: string) =>
+			name === 'n8n-nodes-eurouter.eUrouterChatModel'
+				? { name, displayName: 'EUrouter Chat Model' }
+				: null,
+	}),
+}));
+
+vi.mock('@/app/components/NodeIcon.vue', () => ({
+	default: { name: 'NodeIcon', props: ['nodeType', 'size'], template: '<span />' },
 }));
 
 vi.mock('../components/AgentModelSelector.vue', () => ({
@@ -341,6 +360,47 @@ describe('AgentInfoPanel', () => {
 			);
 		},
 	);
+
+	describe('model node', () => {
+		const modelNodeConfig: AgentJsonConfig = {
+			name: 'Support agent',
+			model: 'community/n8n-nodes-eurouter.eUrouterChatModel/mistral-small',
+			credential: 'eurouter-credential',
+			instructions: 'Help users.',
+			modelNode: {
+				nodeType: 'n8n-nodes-eurouter.eUrouterChatModel',
+				nodeTypeVersion: 1,
+				nodeParameters: { model: 'mistral-small' },
+			},
+		};
+
+		it('shows the chat model node and its model instead of the picker', () => {
+			const wrapper = mountModelPanel(modelNodeConfig);
+
+			const row = wrapper.find('[data-testid="agent-model-node"]');
+			expect(row.text()).toContain('EUrouter Chat Model');
+			expect(row.text()).toContain('mistral-small');
+			expect(wrapper.findComponent({ name: 'AgentModelSelector' }).exists()).toBe(false);
+		});
+
+		it('replaces the chat model node when a built-in model is picked', async () => {
+			const wrapper = mountModelPanel(modelNodeConfig);
+
+			await wrapper.find('[data-testid="agent-model-node-change"]').trigger('click');
+			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+				provider: 'anthropic',
+				model: 'claude-3-haiku',
+			});
+			await wrapper.vm.$nextTick();
+
+			const changes = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+			expect(changes).toMatchObject({
+				model: 'anthropic/claude-3-haiku',
+				credential: 'credential-1',
+			});
+			expect(changes).toHaveProperty('modelNode', undefined);
+		});
+	});
 
 	it('forwards the model selector\'s own "auto" source through to update:config', async () => {
 		const config: AgentJsonConfig = {

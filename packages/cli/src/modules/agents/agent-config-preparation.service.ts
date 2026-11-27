@@ -516,6 +516,14 @@ export class AgentConfigPreparationService {
 			);
 		}
 
+		// A model node belongs to the model it supplies. A write that picks another
+		// model without a node, such as a built-in model, drops the stored node.
+		if (
+			decomposedSchema.modelNode === undefined &&
+			decomposedSchema.model !== previousSchema?.model
+		) {
+			delete nextSchema.modelNode;
+		}
 		// Trimmed by the schema; an empty string clears the stored value.
 		if (decomposedSchema.description === '') delete nextSchema.description;
 		// Agents no longer use a separate deployment name. Older configs still
@@ -655,6 +663,7 @@ export function assertHumanReviewSettingsAllowed(
 
 const OPTIONAL_SCHEMA_FIELDS = [
 	'credential',
+	'modelNode',
 	'description',
 	'personalisation',
 	'memory',

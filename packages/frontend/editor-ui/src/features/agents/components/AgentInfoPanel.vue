@@ -7,7 +7,13 @@ import AgentPanel from './AgentPanel.vue';
  */
 import { computed, ref, useId, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { N8nCallout, N8nIconButton, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nIconButton,
+	N8nMarkdownEditor,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -34,6 +40,8 @@ import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
 import { normalizeReasoningForModelChange } from '../utils/reasoning';
 import AgentModelSelector from './AgentModelSelector.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -136,6 +144,22 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 	};
 });
 
+const nodeTypesStore = useNodeTypesStore();
+// A chat model node, such as a community node, supplies the model instead of a
+// built-in provider. The picker lists only built-in providers.
+const modelNode = computed(() => {
+	const node = props.config?.modelNode;
+	if (!node) return null;
+	const nodeType = nodeTypesStore.getNodeType(node.nodeType, node.nodeTypeVersion);
+	const model = node.nodeParameters?.model;
+	return {
+		nodeType,
+		name: nodeType?.displayName ?? node.nodeType,
+		model: typeof model === 'string' ? model : null,
+	};
+});
+const showBuiltInPicker = ref(false);
+
 function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' = 'user') {
 	const credentialId = effectiveCredentials.value?.[selection.provider];
 	if (!credentialId) {
@@ -169,6 +193,8 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 		{
 			model,
 			credential: credentialId,
+			// A built-in model replaces the chat model node.
+			modelNode: undefined,
 			...webSearchChanges,
 			...promptCachingChanges,
 			...reasoningChanges,
@@ -288,7 +314,28 @@ defineExpose({ focusInstructions, focusModel });
 							{{ i18n.baseText('agents.builder.agent.model.description') }}
 						</N8nText>
 					</div>
+					<div
+						v-if="modelNode && !showBuiltInPicker"
+						:class="$style.modelNode"
+						data-testid="agent-model-node"
+					>
+						<NodeIcon v-if="modelNode.nodeType" :node-type="modelNode.nodeType" :size="16" />
+						<N8nText step="sm" bold>{{ modelNode.name }}</N8nText>
+						<N8nText v-if="modelNode.model" step="sm" color="text-light">
+							{{ modelNode.model }}
+						</N8nText>
+						<N8nButton
+							v-if="!props.disabled"
+							variant="ghost"
+							size="small"
+							:class="$style.modelNodeChange"
+							:label="i18n.baseText('agents.builder.agent.model.node.useBuiltIn')"
+							data-testid="agent-model-node-change"
+							@click="showBuiltInPicker = true"
+						/>
+					</div>
 					<AgentModelSelector
+						v-else
 						ref="modelSelector"
 						:disabled="props.disabled"
 						:selected-model="selectedAgent"
@@ -401,6 +448,20 @@ defineExpose({ focusInstructions, focusModel });
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	user-select: none;
+}
+
+.modelNode {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-height: var(--spacing--xl);
+	padding: 0 var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius);
+}
+
+.modelNodeChange {
+	margin-left: auto;
 }
 
 .defaultHint {
