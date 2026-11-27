@@ -15,6 +15,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/vue';
 import type { VNode } from 'vue';
@@ -187,6 +188,17 @@ describe('SettingsSkillsView', () => {
 		await userEvent.click(within(select).getAllByRole('combobox')[0]);
 		await userEvent.click(await screen.findByRole('option', { name: optionText }));
 	}
+
+	it.each([true, false])(
+		'shows the enterprise readiness badge only on the enterprise plan (%s)',
+		async (enterprise) => {
+			mockedStore(useSettingsStore).isEnterprisePlan = enterprise;
+			const view = renderView();
+			await new Promise(process.nextTick);
+
+			expect(!!view.queryByTestId('skills-enterprise-readiness-badge')).toBe(enterprise);
+		},
+	);
 
 	it('loads the first page of 10 skills on mount', async () => {
 		renderView();
@@ -601,10 +613,9 @@ describe('SettingsSkillsView', () => {
 	it('sorts on the server and turns the order around instead of clearing it', async () => {
 		skillsStore.skills = [skill()];
 		skillsStore.count = 1;
-		const { container } = renderView();
+		const { getByRole } = renderView();
 		await new Promise(process.nextTick);
-		const header = (title: string) =>
-			[...container.querySelectorAll('thead th')].find((th) => th.textContent?.includes(title))!;
+		const header = (title: string) => getByRole('button', { name: title });
 
 		await userEvent.click(header('Skill'));
 		await waitFor(() =>
@@ -1243,14 +1254,13 @@ describe('SettingsSkillsView', () => {
 
 	describe('edit', () => {
 		it.each([
-			['instance', true, true, false, false],
-			['project', true, true, true, true],
-			['instance', false, true, true, undefined],
-			['project', true, false, true, undefined],
+			['instance', true, false, false],
+			['instance', true, true, true],
+			['project', true, true, true],
+			['project', false, true, undefined],
 		] as const)(
-			'shows availability in the table and modal behind the Assistant flag (%s, flag %s, Assistant on %s)',
-			async (scope, enabled, assistantOn, availableToAssistant, expected) => {
-				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(enabled);
+			'shows availability in the table and modal while the Assistant is on (%s, Assistant on %s)',
+			async (scope, assistantOn, availableToAssistant, expected) => {
 				mockedStore(useSettingsStore).moduleSettings = {
 					'instance-ai': { enabled: assistantOn },
 				} as never;
@@ -1681,15 +1691,47 @@ describe('SettingsSkillsView', () => {
 			`,
 		};
 
-		function enableSkillSync() {
+		function enableSkillSync({ switchOn = true, managedByEnv = false } = {}) {
 			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
 				(flag) => String(flag) === SKILL_SYNC_FLAG,
+			);
+			mockedStore(useSettingsStore).moduleSettings = {
+				skills: { skillSyncEnabled: switchOn, skillSyncManagedByEnv: managedByEnv },
+			};
+		}
+
+		async function openSkillSyncSettings(view: ReturnType<typeof renderView>) {
+			await userEvent.click(view.getByTestId('skill-sync-settings-button'));
+			return await view.findByTestId('skill-sync-settings');
+		}
+
+		function allowSkillSyncManage(allowed = true) {
+			mockedStore(useRBACStore).hasScope.mockImplementation(
+				(scope) => allowed && scope === 'skill:manage',
 			);
 		}
 
 		function renderWithDialogStub() {
 			return renderView({ global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub } } });
 		}
+
+		it('shows only the settings button above the recommended-skills empty state', async () => {
+			enableSkillSync({ switchOn: false });
+			allowSkillSyncManage();
+			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
+				String(flag) === RECOMMENDED_SKILLS_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			mockedStore(usePostHog).isVariantEnabled.mockImplementation(
+				(flag, expected) => flag === RECOMMENDED_SKILLS_EXPERIMENT.name && expected === 'variant',
+			);
+			const view = renderWithDialogStub();
+
+			await view.findByTestId('skills-recommended-empty-state');
+			expect(view.queryByTestId('skills-search')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skills-create-menu-button')).not.toBeInTheDocument();
+			const settings = await openSkillSyncSettings(view);
+			expect(within(settings).getByTestId('skill-sync-enable-toggle')).toBeEnabled();
+		});
 
 		it('offers "Connect to GitHub" first in the "Create skills" menu when the flag is on', async () => {
 			enableSkillSync();
@@ -1706,6 +1748,129 @@ describe('SettingsSkillsView', () => {
 			]);
 			await userEvent.click(await view.findByTestId('skills-create-github'));
 			expect(await view.findByTestId('connect-dialog-stub')).toBeInTheDocument();
+		});
+
+		describe('switch', () => {
+			it('shows the switch to an admin while the flag is on', async () => {
+				enableSkillSync();
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				expect(view.getByTestId('skill-sync-settings-button')).toHaveAttribute(
+					'aria-label',
+					'Skill settings',
+				);
+				expect(view.queryByTestId('skill-sync-settings')).not.toBeInTheDocument();
+
+				const settings = await openSkillSyncSettings(view);
+
+				expect(settings).toHaveTextContent('Skill Sync');
+				expect(view.getByTestId('skill-sync-enable-toggle')).not.toBeDisabled();
+			});
+
+			it('hides the switch from a user without the manage scope', async () => {
+				enableSkillSync();
+				allowSkillSyncManage(false);
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				expect(view.queryByTestId('skill-sync-settings-button')).not.toBeInTheDocument();
+			});
+
+			it('hides the switch while the flag is off', async () => {
+				mockedStore(useSettingsStore).moduleSettings = {
+					skills: { skillSyncEnabled: true, skillSyncManagedByEnv: false },
+				};
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				expect(view.queryByTestId('skill-sync-settings-button')).not.toBeInTheDocument();
+			});
+
+			it('hides "Connect to GitHub" and the sources while the switch is off', async () => {
+				enableSkillSync({ switchOn: false });
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				await userEvent.click(view.getByTestId('skills-create-menu-button'));
+
+				await view.findByTestId('skills-create-manual');
+				expect(view.queryByTestId('skills-create-github')).not.toBeInTheDocument();
+				expect(skillsStore.fetchSources).not.toHaveBeenCalled();
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.not.objectContaining({ groupBy: 'source' }),
+				);
+			});
+
+			it('saves the switch', async () => {
+				enableSkillSync();
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				await openSkillSyncSettings(view);
+				await userEvent.click(view.getByTestId('skill-sync-enable-toggle'));
+
+				expect(skillsStore.setSkillSyncEnabled).toHaveBeenCalledWith(false);
+			});
+
+			it('shows an error when the save fails', async () => {
+				enableSkillSync();
+				allowSkillSyncManage();
+				const error = new Error('nope');
+				skillsStore.setSkillSyncEnabled.mockRejectedValue(error);
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				await openSkillSyncSettings(view);
+				await userEvent.click(view.getByTestId('skill-sync-enable-toggle'));
+
+				await waitFor(() =>
+					expect(showErrorMock).toHaveBeenCalledWith(
+						error,
+						'Could not save the Skill Sync setting',
+					),
+				);
+				expect(view.getByTestId('skill-sync-enable-toggle')).not.toBeDisabled();
+			});
+
+			it('falls back to the plain list when another admin turned Skill Sync off', async () => {
+				enableSkillSync();
+				const settingsStore = mockedStore(useSettingsStore);
+				settingsStore.getModuleSettings.mockImplementation(async () => {
+					settingsStore.moduleSettings = {
+						skills: { skillSyncEnabled: false, skillSyncManagedByEnv: false },
+					};
+				});
+				skillsStore.fetchSkills.mockImplementation(async (query) => {
+					if (query?.groupBy === 'source') throw new Error('Not found');
+					return { data: [], count: 0, page: 1, pageCount: 1 };
+				});
+				skillsStore.fetchSources.mockRejectedValue(new Error('Not found'));
+				renderWithDialogStub();
+
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.not.objectContaining({ groupBy: 'source' }),
+					),
+				);
+				expect(showErrorMock).not.toHaveBeenCalled();
+			});
+
+			it('locks the switch while env manages it', async () => {
+				enableSkillSync({ managedByEnv: true });
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				await openSkillSyncSettings(view);
+
+				expect(view.getByTestId('skill-sync-enable-toggle')).toBeDisabled();
+				expect(view.getByText('Managed via environment variables')).toBeInTheDocument();
+			});
 		});
 
 		it('reloads the list and names the imported and failed skills', async () => {

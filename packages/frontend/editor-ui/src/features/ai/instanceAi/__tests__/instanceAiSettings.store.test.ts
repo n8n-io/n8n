@@ -5,6 +5,7 @@ import type { FrontendModuleSettings } from '@n8n/api-types';
 import { usePostHog } from '@/app/stores/posthog.store';
 import {
 	INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT,
+	MODEL_TRAINING_OPT_OUT_EXPERIMENT,
 	INSTANCE_AI_SETUP_PANEL_EXPERIMENT,
 } from '@/app/constants/experiments';
 
@@ -303,6 +304,22 @@ describe('useInstanceAiSettingsStore', () => {
 
 			expect(store.newThreadsUseAssistantAgent).toBe(false);
 		});
+	});
+
+	describe('isModelTrainingOptOutAvailable', () => {
+		it.each([
+			{ proxyEnabled: true, flag: true, expected: true },
+			{ proxyEnabled: true, flag: false, expected: false },
+			{ proxyEnabled: false, flag: true, expected: false },
+		])(
+			'is $expected when proxyEnabled is $proxyEnabled and the flag is $flag',
+			({ proxyEnabled, flag, expected }) => {
+				setModuleSettings(settingsStore, { proxyEnabled });
+				usePostHog().overrides[MODEL_TRAINING_OPT_OUT_EXPERIMENT.name] = { value: flag };
+
+				expect(store.isModelTrainingOptOutAvailable).toBe(expected);
+			},
+		);
 	});
 
 	describe('settings persistence', () => {
@@ -665,17 +682,28 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.approvalMode).toBe('manual');
 		});
 
-		it('loads the preferences again only after a failed load', async () => {
+		it('loads the preferences until a load succeeds', async () => {
 			mockFetchUserPreferences
 				.mockRejectedValueOnce(new Error('offline'))
 				.mockResolvedValue({ approvalMode: 'auto', approvalModesAvailable: true });
 
-			await store.fetchPreferences();
-			await store.fetchPreferencesAfterFailure();
-			await store.fetchPreferencesAfterFailure();
+			await store.ensurePreferences();
+			await store.ensurePreferences();
+			await store.ensurePreferences();
 
 			expect(mockFetchUserPreferences).toHaveBeenCalledTimes(2);
 			expect(store.approvalModesAvailable).toBe(true);
+		});
+
+		it('sends one request for loads that overlap', async () => {
+			mockFetchUserPreferences.mockResolvedValue({
+				approvalMode: 'auto',
+				approvalModesAvailable: true,
+			});
+
+			await Promise.all([store.fetchPreferences(), store.ensurePreferences()]);
+
+			expect(mockFetchUserPreferences).toHaveBeenCalledTimes(1);
 		});
 	});
 });

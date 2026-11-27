@@ -18,8 +18,8 @@ import { aiPreferenceTargetOf } from '@n8n/api-types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useContextStore } from '@/features/settings/context/context.store';
 
-import { useThread } from '../instanceAi.store';
 import { resolvePreferenceCard, resolvePreferenceRejection } from '../preferenceCard.utils';
+import { usePreferenceCardHost } from '../preferenceCardHost';
 import { preferenceSavedLabel } from '../preferenceScope.utils';
 import PreferenceEditModal from './PreferenceEditModal.vue';
 
@@ -41,7 +41,7 @@ const isUnconfirmed = computed(() => rejection.value?.reason === 'interrupted');
 
 const projectsStore = useProjectsStore();
 const contextStore = useContextStore();
-const thread = useThread();
+const host = usePreferenceCardHost();
 
 /**
  * The card's fact says where its own last write put the row. A move made on the settings
@@ -95,7 +95,7 @@ const rowLabel = computed(() => {
 		live?.scope ?? fact.scope,
 		live?.projectId ?? null,
 		projectsStore.myProjects,
-		thread.projectId,
+		host.projectId(),
 	);
 });
 
@@ -132,6 +132,7 @@ watch(
 	([value, readOnly]) => {
 		if (reportedSeen.value || !value || readOnly) return;
 		reportedSeen.value = true;
+		if (host.claimSeenReport?.(props.toolCall.toolCallId) === false) return;
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_SAW_PREFERENCE_CARD, {
 			// What the card shows, which is the row when it is known. Reporting the fact would
 			// name a scope the person on the screen is not looking at.
@@ -215,7 +216,7 @@ watch(
 </template>
 
 <style lang="scss" module>
-/* Same row as "Finished thinking" (AiThinkingBlock.vue): one muted line, an
+/* Same row as "Finished thinking" (AiActivityThinkingStep.vue): one muted line, an
    inline chevron, and no surface of its own. */
 .header {
 	display: inline-flex;
@@ -245,7 +246,7 @@ watch(
 	white-space: nowrap;
 }
 
-/* Same content rule as the thinking traces (AiThinkingBlock.vue): inline text with
+/* Same content rule as the thinking traces (AiActivityThinkingStep.vue): inline text with
    a left rule, and no surface of its own. */
 .card {
 	display: flex;
@@ -256,7 +257,7 @@ watch(
 	margin-left: var(--spacing--xs);
 }
 
-/* The same color the thinking trace above it uses for its text (ThinkingBlock.vue). */
+/* The same color the thinking trace above it uses for its text (AiActivityThinkingStep.vue). */
 .text {
 	color: var(--color--text--tint-1);
 }

@@ -875,6 +875,41 @@ describe('JobProcessor', () => {
 		);
 	});
 
+	it('should restore persisted binary grants for a reconstructed manual execution', async () => {
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				mode: 'manual',
+				workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+				data: createRunExecutionData({
+					binaryDataAccess: ['binary-id'],
+					executionData: null,
+				}),
+			}),
+		);
+		const manualExecutionService = createManualExecutionServiceMock();
+		const jobProcessor = new JobProcessor(
+			logger,
+			mock(),
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+			mock(),
+		);
+
+		await jobProcessor.processJob(
+			mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } }),
+		);
+
+		expect([
+			...(vi.mocked(manualExecutionService.runManually).mock.calls[0][0].binaryDataAccess ?? []),
+		]).toEqual(['binary-id']);
+	});
+
 	it('should set restartExecutionId on additionalData when provided in job data', async () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const execution = mock<IExecutionResponse>({
@@ -912,6 +947,44 @@ describe('JobProcessor', () => {
 		);
 
 		expect(additionalData.restartExecutionId).toBe(restartExecutionId);
+	});
+
+	it('should restore the root execution mode on additionalData from the execution data', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const execution = mock<IExecutionResponse>({
+			mode: 'manual',
+			workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+			data: mock<IRunExecutionData>({
+				resultData: { runData: {} },
+				executionData: undefined,
+				rootExecutionMode: 'manual',
+			}),
+		});
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(execution);
+
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		const manualExecutionService = createManualExecutionServiceMock();
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+			mock(),
+		);
+
+		await jobProcessor.processJob(
+			mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } }),
+		);
+
+		expect(additionalData.rootExecutionMode).toBe('manual');
 	});
 
 	it('should rehydrate the manual-execution identity onto additionalData from job data', async () => {
@@ -1337,6 +1410,7 @@ describe('JobProcessor', () => {
 				mcpType: 'trigger',
 				sessionId: 'session-tool',
 				messageId: 'msg-tool',
+				toolName: 'test-tool',
 				workerId: 'worker-host-123',
 			});
 		});

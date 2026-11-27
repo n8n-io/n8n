@@ -56,7 +56,12 @@ const sessionIdleTimeoutMinutes = z.number().int().positive().nullable().optiona
 
 export const AgentTelegramSettingsSchema = z
 	.object({
-		accessMode: z.enum(AGENT_TELEGRAM_ACCESS_MODES),
+		// Builders read this description in the config schema reference.
+		accessMode: z
+			.enum(AGENT_TELEGRAM_ACCESS_MODES)
+			.describe(
+				'The channel setup asks the user for this and allowedUsers. Omit settings when you add the channel',
+			),
 		allowedUsers: z
 			.array(
 				z

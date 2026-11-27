@@ -1011,7 +1011,38 @@ describe('TelemetryEventRelay', () => {
 					shadow_warning_count: 2,
 					not_loaded_warning_count: 1,
 					version: 1,
+					origin: 'save',
 				},
+			);
+		});
+
+		it('should track the create of an empty project policy with its origin', () => {
+			eventService.emit('node-type-policy-saved', {
+				updatedBy: 'user123',
+				kind: 'credential-types',
+				projectId: 'project-1',
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'allow', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [],
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
+				origin: 'add-project-policy',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
+				expect.objectContaining({
+					kind: 'credential-types',
+					scope: 'project',
+					project_id: 'project-1',
+					default_action: 'allow',
+					is_first_write: true,
+					rule_count: 0,
+					blocked_type_count: 0,
+					origin: 'add-project-policy',
+				}),
 			);
 		});
 
@@ -2238,6 +2269,11 @@ describe('TelemetryEventRelay', () => {
 				expected: { public_api: true, public_api_client: 'n8n_node' },
 			},
 			{
+				descriptionLength: 0,
+				publicApi: 'n8n_cli',
+				expected: { public_api: true, public_api_client: 'n8n_cli' },
+			},
+			{
 				descriptionLength: 18,
 				publicApi: 'other',
 				expected: { public_api: true, public_api_client: 'other' },
@@ -2715,6 +2751,35 @@ describe('TelemetryEventRelay', () => {
 				fields_changed: ['metadata', 'loginEnabled'],
 				public_api: false,
 			});
+		});
+
+		it('should track on `provisioning-settings-updated` event', () => {
+			eventService.emit('provisioning-settings-updated', {
+				user: { id: 'user123', email: 'user@example.com', role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				authenticationMethod: 'saml',
+				assignmentMethod: 'instance_and_project_roles',
+				roleMappingMethod: 'n8n_rule_mapping',
+				instanceRuleCount: 2,
+				projectRuleCount: 1,
+			});
+
+			const [, properties] = telemetry.track.mock.calls.find(
+				([event]) =>
+					(event as unknown) === TELEMETRY_EVENT.PROVISIONING.USER_UPDATED_PROVISIONING_SETTINGS,
+			)!;
+			expect(properties).toEqual({
+				user_id: 'user123',
+				authentication_method: 'saml',
+				assignment_method: 'instance_and_project_roles',
+				role_mapping_method: 'n8n_rule_mapping',
+				instance_rule_count: 2,
+				project_rule_count: 1,
+			});
+			expect(
+				TELEMETRY_EVENT.PROVISIONING.USER_UPDATED_PROVISIONING_SETTINGS.getValidationError(
+					properties,
+				),
+			).toBeNull();
 		});
 	});
 
@@ -6498,6 +6563,29 @@ describe('TelemetryEventRelay', () => {
 			).toBeNull();
 		});
 
+		it('should track a review a user closed with the closer and the reviewed version', () => {
+			eventService.emit('workflow-review-closed-by-user', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-1',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_CLOSED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_CLOSED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
 		it('should track a comment on a review, never its body', () => {
 			eventService.emit('workflow-review-comment-created', {
 				user: { id: 'user123' },
@@ -6864,6 +6952,8 @@ describe('TelemetryEventRelay', () => {
 					projectId: 'project-1',
 					versionId: 'v-2',
 					userId: 'user-1',
+					threadId: 'thread-1',
+					source: 'assistant',
 					workflowCount: 1,
 					dataTableCount: 2,
 					agentCount: 0,
@@ -6876,6 +6966,8 @@ describe('TelemetryEventRelay', () => {
 					project_id: 'project-1',
 					version_id: 'v-2',
 					user_id: 'user-1',
+					thread_id: 'thread-1',
+					source: 'assistant',
 					workflow_count: 1,
 					data_table_count: 2,
 					agent_count: 0,

@@ -36,12 +36,14 @@ export interface SeededNode {
  * What a manual run sends to the data plane beyond a plain run from the
  * trigger: the workflow trimmed to the nodes the run needs, the node the graph
  * is rooted at, that node's outputs, and the nodes recorded as done at start.
+ * `runData` is the run data the run starts from; the editor shows it as-is.
  */
 export interface ManualRunPlan {
 	workflow: IWorkflowBase;
 	triggerName: string;
 	triggerOutputs: INodeExecutionData[][];
 	seeded: SeededNode[];
+	runData: IRunData;
 }
 
 /** v1's payload for a manual run with no trigger data: one slot, one empty item. */
@@ -127,6 +129,7 @@ export class EngineV2ManualRunPlanner {
 			triggerName: root.name,
 			triggerOutputs: this.triggerOutputs(root, data, runData, pinData),
 			seeded,
+			runData,
 		};
 	}
 

@@ -278,7 +278,8 @@ export class SubAgentRunner {
 		// Same versioning model as sub-workflows and "Message an Agent": test runs
 		// resolve the child's current draft, production runs its published version.
 		// A resume carries the pinned versionId it started with, which wins either way.
-		const runtimeSource = await this.sourceResolver.resolveForRuntime(
+		// The service account id stays out of `runtimeSource`, so a background snapshot never saves it.
+		const { agentServiceAccountId, ...runtimeSource } = await this.sourceResolver.resolveForRuntime(
 			operation.type === 'run' ? operation.request.source : operation.source,
 			{
 				projectId: context.projectId,
@@ -367,6 +368,7 @@ export class SubAgentRunner {
 				runType: context.runType,
 				workflowToolExecutionMode: context.workflowToolExecutionMode,
 				parentAgentIdForDelegation: context.parentAgentId,
+				...(agentServiceAccountId ? { agentServiceAccountId } : {}),
 				rootSessionId: context.rootSessionId,
 				rootSessionCapUsd: context.rootSessionCapUsd,
 				budgetForwarded: context.budgetForwarded,
@@ -839,6 +841,9 @@ function createHostMetadata(
 					runtimeSnapshot: JSON.stringify(runtimeSource),
 					difficulty: context.selfDelegationDifficulty,
 					sharedWorkspace: context.parentWorkspaceHandle !== undefined,
+					...(context.parentWorkspaceHandle !== undefined
+						? { sharedWorkspaceEgress: context.parentWorkspaceHandle.egressEnabled }
+						: {}),
 					messageContext: context.parentMessageContext ?? null,
 				}),
 			),

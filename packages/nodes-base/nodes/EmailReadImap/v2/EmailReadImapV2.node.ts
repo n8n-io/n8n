@@ -247,10 +247,12 @@ export class EmailReadImapV2 implements INodeType {
 		if (node.typeVersion <= 2) {
 			// before v 2.1 staticData.lastMessageUid was never set, preserve that behavior
 			staticData.lastMessageUid = undefined;
+			staticData.pendingMessageUids = undefined;
 		}
 
 		if (options.trackLastMessageId === false) {
 			staticData.lastMessageUid = undefined;
+			staticData.pendingMessageUids = undefined;
 		}
 
 		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
@@ -278,8 +280,7 @@ export class EmailReadImapV2 implements INodeType {
 				numEmails,
 			});
 
-			// Create a fresh copy to avoid accumulating filters across calls
-			const currentSearchCriteria = [...searchCriteria];
+			let newMailWindow: SearchCriteria | undefined;
 
 			/**
 			 * Only process new emails:
@@ -302,13 +303,14 @@ export class EmailReadImapV2 implements INodeType {
 				 * - You can check if UIDs changed in the above example
 				 * by checking UIDValidity.
 				 */
-				currentSearchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
+				newMailWindow = ['UID', `${staticData.lastMessageUid as number}:*`];
 			} else if (node.typeVersion > 2 && options.trackLastMessageId !== false) {
-				currentSearchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
+				newMailWindow = ['SINCE', activatedAt.toFormat('dd-LLL-yyyy')];
 			}
 
 			this.logger.debug('Querying for new messages on node "EmailReadImap"', {
-				searchCriteria: currentSearchCriteria,
+				searchCriteria,
+				newMailWindow,
 			});
 
 			try {
@@ -317,7 +319,8 @@ export class EmailReadImapV2 implements INodeType {
 					async () =>
 						await getNewEmails.call(this, {
 							imapConnection: conn,
-							searchCriteria: currentSearchCriteria,
+							searchCriteria,
+							newMailWindow,
 							postProcessAction,
 							onEmailBatch: async (returnData: INodeExecutionData[]) => {
 								if (returnData.length) {
@@ -336,13 +339,18 @@ export class EmailReadImapV2 implements INodeType {
 			}
 		};
 
-		const connection = await ImapSimple.connect(toImapCredentials(credentials), {
-			mailbox,
-			interval:
-				options.forceReconnect === undefined
-					? undefined
-					: (options.forceReconnect as number) * 1000 * 60,
-		});
+		let connection: ImapSimple;
+		try {
+			connection = await ImapSimple.connect(toImapCredentials(credentials), {
+				mailbox,
+				interval:
+					options.forceReconnect === undefined
+						? undefined
+						: (options.forceReconnect as number) * 1000 * 60,
+			});
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), error as Error);
+		}
 
 		connection.onArrival(async ({ count }) => await fetchNewEmails(connection, count));
 

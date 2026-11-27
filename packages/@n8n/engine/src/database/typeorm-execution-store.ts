@@ -1,17 +1,35 @@
-import { In, LessThanOrEqual, type EntityManager, type Repository } from '@n8n/typeorm';
+import {
+	In,
+	IsNull,
+	LessThanOrEqual,
+	Not,
+	type EntityManager,
+	type Repository,
+} from '@n8n/typeorm';
 
 import { WorkflowSeededStep, type WorkflowExecution } from './entities';
+import { toErrorSourceColumns } from './error-source-columns';
+import { KEEP_UPDATED_AT } from './keep-updated-at';
 import { parentLinkSql, toParentColumns } from './parent-link-columns';
 import {
 	ExecutionNotFoundError,
 	ParentExecutionEndedError,
+	type CreateExecutionResult,
 	type ExecutionRecord,
 	type ExecutionStore,
 	type NewExecutionRecord,
+	type PrunableExecution,
+	type PrunableExecutionQuery,
 	type StaleQueuedExecution,
 } from '../execution/execution-store';
-import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
 import {
+	DEFAULT_STALENESS_THRESHOLDS,
+	nextQueuedStaleAfter,
+	errorWorkflowPendingMs,
+	type StalenessThresholds,
+} from '../execution/staleness';
+import {
+	ENDED_EXECUTION_STATUSES,
 	isEndedExecutionStatus,
 	LIVE_EXECUTION_STATUSES,
 	stepKeyId,
@@ -39,24 +57,79 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		return status === 'queued' ? new Date(Date.now() + this.staleness.queuedMs) : null;
 	}
 
-	async createExecution({ seededSteps, parent, ...record }: NewExecutionRecord): Promise<void> {
+	async createExecution({
+		seededSteps,
+		parent,
+		errorSource,
+		...record
+	}: NewExecutionRecord): Promise<CreateExecutionResult> {
 		const execution = this.repo.create({
 			...record,
 			...toParentColumns(parent),
+			...toErrorSourceColumns(errorSource),
 			finishedAt: null,
 			staleAfter: this.staleAfterFor(record.status),
 		});
 		const seeded = Object.entries(seededSteps ?? {}).flatMap(([nodeId, passes]) =>
 			passes.map((outputs, iteration) => ({ executionId: record.id, nodeId, iteration, outputs })),
 		);
-		await this.repo.manager.transaction(async (manager) => {
+		return await this.repo.manager.transaction(async (manager) => {
 			if (parent) await this.holdParentNotEnded(manager, parent.executionId);
 			// The cast is needed because the insert payload type recurses into the
 			// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
 			// NOTE: prefer insert to save for performance reasons.
-			await manager.insert(this.repo.target, execution as InsertValues);
+			if (errorSource) {
+				const inserted = await this.insertErrorExecution(manager, execution as InsertValues);
+				// Cleared even when another start won, so a stray marker cannot outlive it.
+				// The source has ended, so the write keeps its `updated_at`.
+				await manager.update(
+					this.repo.target,
+					{ id: errorSource.executionId, errorWorkflowDueAt: Not(IsNull()) },
+					{ errorWorkflowDueAt: null, ...KEEP_UPDATED_AT },
+				);
+				if (!inserted) return { errorExecutionAlreadyExists: true };
+			} else {
+				await manager.insert(this.repo.target, execution as InsertValues);
+			}
 			if (seeded.length > 0) await manager.insert(WorkflowSeededStep, seeded);
+			return { errorExecutionAlreadyExists: false };
 		});
+	}
+
+	/**
+	 * Inserts an error execution unless its source already has an error execution.
+	 * The unique index on the source decides, so two concurrent starts cannot
+	 * both insert. Only a conflict on that index is ignored: an id that another
+	 * execution already has still throws, so the marker of the source stays.
+	 */
+	private async insertErrorExecution(
+		manager: EntityManager,
+		execution: InsertValues,
+	): Promise<boolean> {
+		const result = await manager
+			.createQueryBuilder()
+			.insert()
+			.into(this.repo.target)
+			.values(execution)
+			// Deprecated, but `orIgnore` takes no conflict target and `orUpdate` cannot do nothing.
+			// oxlint-disable-next-line typescript/no-deprecated
+			.onConflict(
+				'(error_source_execution_id) WHERE error_source_execution_id IS NOT NULL DO NOTHING',
+			)
+			.returning('id')
+			.execute();
+		return Array.isArray(result.raw) && result.raw.length > 0;
+	}
+
+	/**
+	 * The marker value that the write which fails an execution sets: a time for
+	 * an execution with `resolve_error_workflow_on_failure`, `NULL` for any other. SQL,
+	 * so the flag is read in the same statement as the status change.
+	 */
+	private errorWorkflowDueSql(): () => string {
+		const dueAt = new Date(Date.now() + errorWorkflowPendingMs(this.staleness)).toISOString();
+		return () =>
+			`CASE WHEN resolve_error_workflow_on_failure THEN '${dueAt}'::timestamptz ELSE NULL END`;
 	}
 
 	/**
@@ -142,7 +215,11 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		const finishedAt = new Date();
 		const result = await this.repo.update(
 			{ id, status: In([...LIVE_EXECUTION_STATUSES]) },
-			{ status, finishedAt },
+			{
+				status,
+				finishedAt,
+				...(status === 'failed' ? { errorWorkflowDueAt: this.errorWorkflowDueSql() } : {}),
+			},
 		);
 		return result.affected === 1 ? { finishedAt } : null;
 	}
@@ -170,7 +247,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	async renewQueuedExecution(id: string, staleAfter: Date): Promise<boolean> {
 		const result = await this.repo.update(
 			{ id, status: 'queued', staleAfter },
-			{ staleAfter: this.staleAfterFor('queued') },
+			{ staleAfter: nextQueuedStaleAfter(staleAfter, Date.now(), this.staleness.queuedMs) },
 		);
 		return result.affected === 1;
 	}
@@ -217,5 +294,88 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 				AND e.status IS DISTINCT FROM CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END`,
 			[id],
 		);
+	}
+
+	async findPrunableExecutions({
+		maxAgeMs,
+		countCutoff,
+		limit,
+		after,
+	}: PrunableExecutionQuery): Promise<PrunableExecution[]> {
+		const pastMaxAge = "execution.finished_at < now() - interval '1 millisecond' * :maxAgeMs";
+		// Served by the partial index on `(finished_at, id)` for ended rows.
+		const qb = this.repo
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.addSelect('execution.workflow_id', 'workflowId')
+			.addSelect('execution.finished_at', 'finishedAt')
+			.where('execution.finished_at IS NOT NULL');
+		if (countCutoff) {
+			qb.andWhere(
+				`(${pastMaxAge} OR (execution.finished_at, execution.id) <= (:cutoffFinishedAt, :cutoffId))`,
+				{ maxAgeMs, cutoffFinishedAt: countCutoff.finishedAt, cutoffId: countCutoff.id },
+			)
+				// Bounds the index scan, which the OR above cannot.
+				.andWhere(
+					"execution.finished_at <= GREATEST(now() - interval '1 millisecond' * :maxAgeMs, :cutoffFinishedAt)",
+				);
+		} else {
+			qb.andWhere(pastMaxAge, { maxAgeMs });
+		}
+		qb.andWhere('execution.status IN (:...ended)', { ended: ENDED_EXECUTION_STATUSES })
+			// A cancel does not stop a running step, and that step can still write.
+			.andWhere(
+				`NOT EXISTS (
+					SELECT 1 FROM workflow_step_execution step
+					WHERE step.execution_id = execution.id
+						AND step.status IN ('queued', 'running', 'waiting')
+				)`,
+			)
+			// The waiting parent step still reads the result of this execution.
+			.andWhere(
+				`NOT EXISTS (
+					SELECT 1 FROM workflow_step_execution parent_step
+					WHERE execution.parent_awaited
+						AND parent_step.id = execution.parent_step_id
+						AND parent_step.execution_id = execution.parent_execution_id
+						AND parent_step.status = 'waiting'
+				)`,
+			);
+		if (after) {
+			qb.andWhere('(execution.finished_at, execution.id) > (:afterFinishedAt, :afterId)', {
+				afterFinishedAt: after.finishedAt,
+				afterId: after.id,
+			});
+		}
+		return await qb
+			.orderBy('execution.finished_at')
+			.addOrderBy('execution.id')
+			.limit(limit)
+			.getRawMany<PrunableExecution>();
+	}
+
+	async findRetentionCountCutoff(
+		maxCount: number,
+	): Promise<Pick<PrunableExecution, 'id' | 'finishedAt'> | undefined> {
+		return await this.repo
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.addSelect('execution.finished_at', 'finishedAt')
+			// Only an ended execution has a finish time.
+			.where('execution.finished_at IS NOT NULL')
+			.orderBy('execution.finished_at', 'DESC')
+			.addOrderBy('execution.id', 'DESC')
+			.offset(maxCount)
+			.limit(1)
+			.getRawOne<Pick<PrunableExecution, 'id' | 'finishedAt'>>();
+	}
+
+	async deleteEndedExecutions(ids: string[]): Promise<number> {
+		if (ids.length === 0) return 0;
+		const result = await this.repo.delete({
+			id: In(ids),
+			status: In([...ENDED_EXECUTION_STATUSES]),
+		});
+		return result.affected ?? 0;
 	}
 }

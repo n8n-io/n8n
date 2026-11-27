@@ -19,6 +19,7 @@ import type {
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentConfigValidationIssueCode,
+	AgentToolOutputFile,
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
@@ -32,6 +33,12 @@ import type {
 	SkillListResponse,
 	SkillSaveResponse,
 	SkillScope,
+	ConnectPublicSkillSource,
+	DiscoverPublicSkillSource,
+	PublicSkillSourceDiscovery,
+	PublicSkillSourceImportCheck,
+	SkillSourceConnectResponse,
+	SkillSourceListItem,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiApprovalMode,
@@ -44,6 +51,9 @@ import type {
 	McpToolPermissions,
 	McpToolCallRequest,
 	McpToolCallResult,
+	WorkflowReviewBlockedDetails,
+	InstanceAiAgentFeedbackCategory,
+	InstanceAiAgentFeedbackSeverity,
 } from '@n8n/api-types';
 import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
@@ -53,6 +63,7 @@ import type {
 	INodeTypes,
 	ITaskData,
 	NodeConnectionType,
+	WorkflowEngineType,
 } from 'n8n-workflow';
 import type { z } from 'zod';
 
@@ -89,6 +100,7 @@ import type {
 	WorkflowVerificationEvidence,
 	WorkflowTriggerVerificationProgress,
 } from './workflow-loop/workflow-loop-state';
+import type { WorkflowDraftPublisher } from './tools/workflows/workflow-draft-publisher';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -622,6 +634,14 @@ export interface InstanceAiWorkflowService {
 		options?: { versionId?: string; name?: string; description?: string },
 	): Promise<{ activeVersionId: string }>;
 	unpublish(workflowId: string): Promise<void>;
+	/**
+	 * The workflow review rule that blocks publishing this version (the draft when omitted), or
+	 * undefined when the version may go live. Absent when the host has no review rules.
+	 */
+	getPublishReviewBlock?(
+		workflowId: string,
+		versionId?: string,
+	): Promise<WorkflowReviewBlockedDetails['reason'] | undefined>;
 	/** List version history for a workflow (metadata only, no nodes/connections). */
 	listVersions?(
 		workflowId: string,
@@ -1240,8 +1260,30 @@ export interface InstanceAiPreferenceService {
 	): void;
 }
 
+/** One report from the `send_feedback` tool. */
+export interface InstanceAiAgentFeedback {
+	category: InstanceAiAgentFeedbackCategory;
+	severity: InstanceAiAgentFeedbackSeverity;
+	summary: string;
+	toolName?: string;
+	threadId?: string;
+	runId?: string;
+}
+
+export interface InstanceAiAgentFeedbackService {
+	/** Records the report for the n8n team. Nothing replies to it. */
+	send(feedback: InstanceAiAgentFeedback): void;
+}
+
 export interface InstanceAiSkillService {
 	assistantSkillsEnabled: boolean;
+	sources?: {
+		list(): Promise<SkillSourceListItem[]>;
+		discover(input: DiscoverPublicSkillSource): Promise<PublicSkillSourceDiscovery>;
+		/** What an import of the selection does, before the user approves it. Stores nothing. */
+		checkImport(input: ConnectPublicSkillSource): Promise<PublicSkillSourceImportCheck>;
+		connect(input: ConnectPublicSkillSource): Promise<SkillSourceConnectResponse>;
+	};
 	list(options: {
 		query?: string;
 		scope?: SkillScope;
@@ -1707,13 +1749,65 @@ export interface InstanceAiStoredFile {
 	fileName: string;
 	mimeType: string;
 	sizeBytes: number;
+	/** Checks that storage still has the bytes, without loading them. */
+	hasContent(): Promise<boolean>;
 	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
 	readContent(): Promise<Buffer | undefined>;
+}
+
+/** A conversation file, as the chat shows it. */
+export type InstanceAiConversationFile = AgentToolOutputFile;
+
+/** The sandbox files feature of the host: conversation files in and out of the sandbox. */
+export interface InstanceAiSandboxFiles {
+	/** Most bytes that one `import-files` call copies, for all files together. */
+	maxImportBytes: number;
+	/**
+	 * Copy conversation files into `inputs/` of the sandbox. Each key is a path
+	 * relative to `inputs/`, each value a fileId. The host checks every file,
+	 * path and the cap before the first write. Throws when a check or the copy
+	 * fails. The message is for the model, and for a failed copy it names the
+	 * files that were copied before it.
+	 */
+	importFiles(
+		files: Record<string, string>,
+		abortSignal?: AbortSignal,
+	): Promise<InstanceAiImportedFile[]>;
+	/**
+	 * Store one file of `outputs/` as a conversation file, or give the stored
+	 * file when its name and bytes did not change. `path` is relative to `outputs/`.
+	 * Throws when the file is missing or over a storage cap. The message is for the model.
+	 */
+	storeOutput(path: string, abortSignal?: AbortSignal): Promise<InstanceAiConversationFile>;
+}
+
+/** A conversation file that the host copied into the sandbox. */
+export type InstanceAiImportedFile = AgentToolOutputFile & {
+	/** Path relative to the workspace root, e.g. `inputs/sales.csv`. */
+	path: string;
+};
+
+/** A file in the list of the thread's files. */
+export interface InstanceAiListedFile extends InstanceAiConversationFile {
+	/** `upload`: the user attached it. `sandbox`: it came from `outputs/` of the sandbox. */
+	origin: 'upload' | 'sandbox';
+	/** ISO date and time when n8n stored the file. */
+	createdAt: string;
 }
 
 export interface InstanceAiStoredFileReader {
 	/** Gives `undefined` when the thread has no such file. */
 	read(fileId: string): Promise<InstanceAiStoredFile | undefined>;
+	/**
+	 * The files of the thread, newest first. `read` finds each listed file.
+	 * The host sets it only when the sandbox files feature is on.
+	 */
+	list?(): Promise<InstanceAiListedFile[]>;
+	/**
+	 * Whether the model of the turn can see a file of this type. The runtime
+	 * attaches only these types to the model input. `view-file` needs it.
+	 */
+	canView?(mimeType: string): boolean;
 }
 
 // ── Context bundle ───────────────────────────────────────────────────────────
@@ -1723,6 +1817,14 @@ export type InstanceAiChangedArtifact = Pick<
 	InstanceAiThreadArtifact,
 	'type' | 'id' | 'name' | 'projectId'
 >;
+
+/** The workflow engine setup of the instance. */
+export interface InstanceAiEngineSetup {
+	/** True when the `engine-v2` module is active, so the instance can run workflows on engine v2. */
+	engineV2Available: boolean;
+	/** The engine that a new workflow gets when it is saved without `settings.engineType`. */
+	newWorkflowEngine: WorkflowEngineType;
+}
 
 export interface InstanceAiContext {
 	/** Instance-wide gate for credential description output and guidance. */
@@ -1755,8 +1857,10 @@ export interface InstanceAiContext {
 	 * utility calls use `modelId`.
 	 */
 	utilityModelId?: ModelConfig;
-	/** Transport for those utility LLM calls. It carries no run labels. */
+	/** Transport for those utility LLM calls. It carries run labels when request labels are enabled. */
 	modelFetch?: FetchFn;
+	/** Unlabeled transport for non-LLM utility fetches such as the models.dev catalog. */
+	catalogFetch?: FetchFn;
 	/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
 	onHelperUsage?: HelperUsageHook;
 	workflowService: InstanceAiWorkflowService;
@@ -1781,6 +1885,8 @@ export interface InstanceAiContext {
 	/** Present only when saved preferences are enabled for this user; its
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
+	/** Present when the host can record agent feedback; its absence hides `send_feedback`. */
+	agentFeedbackService?: InstanceAiAgentFeedbackService;
 	skillService?: InstanceAiSkillService;
 	appService?: InstanceAiAppService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
@@ -1845,6 +1951,11 @@ export interface InstanceAiContext {
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];
+	/**
+	 * The workflow engine setup of the instance. The host resolves it when it builds the
+	 * context. Absent means that new workflows run on engine v1.
+	 */
+	engineSetup?: InstanceAiEngineSetup;
 	/** Domain access tracker for HITL gating of fetch-url and similar tools. */
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
@@ -1870,6 +1981,8 @@ export interface InstanceAiContext {
 	 * paths stay in effect.
 	 */
 	setupItemsEmitter?: SetupItemsEmitter;
+	/** Shows each compiled workflow on the canvas before the build saves it. Present only while the draft preview gate is on. */
+	workflowDraftPublisher?: WorkflowDraftPublisher;
 	/**
 	 * Setup panel v2: the setup tool announced a workflow's final checklist
 	 * instead of suspending, so the host must treat that build's setup as
@@ -1917,6 +2030,11 @@ export interface InstanceAiContext {
 	 * and files from earlier messages stay readable.
 	 */
 	storedFiles?: InstanceAiStoredFileReader;
+	/**
+	 * Moves conversation files in and out of the sandbox. The host sets it only
+	 * when the sandbox files feature is on, so its presence is the gate.
+	 */
+	sandboxFiles?: InstanceAiSandboxFiles;
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
 	/** Optional telemetry sink for domain tools. */
@@ -2065,14 +2183,13 @@ export interface InstanceAiMemoryConfig {
 		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 	};
 	/**
-	 * Generate a title for a thread that has none, after the first turn. The
-	 * runtime reports the usage of the title call through `onSideCallUsage`.
+	 * Generate a title for a thread that has none. The title call runs beside the
+	 * first turn, and the run does not wait for it. The runtime reports the usage
+	 * of the title call through `onSideCallUsage`.
 	 */
 	titleGeneration?: {
 		/** Model for the title call. Defaults to the agent's model. */
 		model?: ModelConfig;
-		/** Saves the title before the run ends, instead of after it in the background. */
-		sync?: boolean;
 	};
 }
 
@@ -2121,6 +2238,8 @@ export interface ServiceProxyConfig {
 	 * transparently refreshed during long-running agent turns.
 	 */
 	getAuthHeaders: () => Promise<Record<string, string>>;
+	/** Tags added to every span exported through the LangSmith proxy. Other proxies ignore them. */
+	traceTags?: string[];
 }
 
 // ── LangSmith tracing ────────────────────────────────────────────────────────

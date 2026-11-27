@@ -1,0 +1,34 @@
+{
+	"properties": {
+		"@odata.context": {
+			"type": "string"
+		},
+		"chatType": {
+			"type": "string"
+		},
+		"createdDateTime": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"isHiddenForAllMembers": {
+			"type": "boolean"
+		},
+		"lastUpdatedDateTime": {
+			"type": "string"
+		},
+		"onlineMeetingInfo": {},
+		"tenantId": {
+			"type": "string"
+		},
+		"topic": {
+			"type": ["null", "string"]
+		},
+		"viewpoint": {},
+		"webUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

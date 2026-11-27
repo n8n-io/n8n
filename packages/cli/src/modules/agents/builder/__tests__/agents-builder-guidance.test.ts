@@ -13,12 +13,24 @@ describe('builder guidance', () => {
 		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-target-skills');
 		const skillTools = [
 			'agent-context',
+			'skills',
 			'agent_builder_update_skill',
 			'agent_builder_create_skills',
 		];
 
 		expect(skill?.recommendedToolGroups).toEqual(['agents']);
 		expect(skill?.allowedTools).toEqual(expect.arrayContaining(skillTools));
+		expect(skill?.description).toContain('attaching an existing skill without edits');
+		expect(skill?.instructions).toContain('attachableToAgentId');
+		expect(skill?.instructions).toContain('every existing ref from the latest config');
+	});
+
+	it('tells the config skill to search attachable skills before creating new ones', () => {
+		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-config');
+
+		expect(skill?.instructions).toContain('attachableToAgentId');
+		expect(skill?.instructions).toContain('every existing ref from the latest');
+		expect(skill?.instructions).toContain('replaces the stored list');
 	});
 
 	it('tells the builder to preserve fallback web search on model-only changes', () => {

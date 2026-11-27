@@ -1744,6 +1744,101 @@ describe('CredentialsHelper', () => {
 		});
 	});
 
+	describe('discardRejectedOauthTokenData', () => {
+		const nodeCredentials: INodeCredentialsDetails = { id: 'cred-789', name: 'Acme OAuth2' };
+		const executionContext = {
+			version: 1,
+			establishedAt: Date.now(),
+			source: 'webhook' as const,
+			credentials: 'encrypted-credential-context',
+		};
+		const workflowSettings = { credentialResolverId: 'workflow-resolver-123' };
+
+		const credentialEntity = (overrides: Partial<CredentialsEntity> = {}) =>
+			({
+				id: 'cred-789',
+				name: 'Acme OAuth2',
+				type: 'oAuth2Api',
+				data: cipher.encryptWithInstanceKey({ clientId: 'client' }),
+				isResolvable: true,
+				resolverId: 'resolver-123',
+				usageScope: 'project',
+				...overrides,
+			}) as CredentialsEntity;
+
+		let discardSpy: MockInstance;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			discardSpy = vi
+				.spyOn(dynamicCredentialProxy, 'discardRejectedOAuthTokenDataIfNeeded')
+				.mockResolvedValue(undefined);
+		});
+
+		afterEach(() => {
+			discardSpy.mockRestore();
+		});
+
+		test('discards the caller token of a resolvable credential', async () => {
+			credentialsRepository.findOneByOrFail.mockResolvedValue(credentialEntity());
+
+			await credentialsHelper.discardRejectedOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				'rejected-refresh',
+				{
+					executionContext,
+					workflowSettings,
+					executionId: 'exec-1',
+				} as IWorkflowExecuteAdditionalData,
+			);
+
+			expect(discardSpy).toHaveBeenCalledWith(
+				{
+					id: 'cred-789',
+					name: 'Acme OAuth2',
+					type: 'oAuth2Api',
+					isResolvable: true,
+					resolverId: 'resolver-123',
+				},
+				'rejected-refresh',
+				executionContext,
+				workflowSettings,
+				'exec-1',
+			);
+			expect(credentialsRepository.update).not.toHaveBeenCalled();
+		});
+
+		test('keeps the token of a shared credential', async () => {
+			credentialsRepository.findOneByOrFail.mockResolvedValue(
+				credentialEntity({ isResolvable: false, resolverId: null }),
+			);
+
+			await credentialsHelper.discardRejectedOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				'rejected-refresh',
+				{ executionContext, workflowSettings } as IWorkflowExecuteAdditionalData,
+			);
+
+			expect(discardSpy).not.toHaveBeenCalled();
+			expect(credentialsRepository.update).not.toHaveBeenCalled();
+		});
+
+		test('does nothing without a caller in the execution context', async () => {
+			credentialsRepository.findOneByOrFail.mockResolvedValue(credentialEntity());
+
+			await credentialsHelper.discardRejectedOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				'rejected-refresh',
+				{ workflowSettings } as IWorkflowExecuteAdditionalData,
+			);
+
+			expect(discardSpy).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('updateCredentialsOauthTokenData after the credential was read', () => {
 		const nodeCredentials: INodeCredentialsDetails = { id: 'cred-cas', name: 'Acme OAuth2' };
 		const additionalData = {} as IWorkflowExecuteAdditionalData;
@@ -3222,6 +3317,28 @@ describe('CredentialsHelper', () => {
 
 			expect(mockTokenRequest).toHaveBeenCalledTimes(2);
 			expect(refreshed).toMatchObject({ accessToken: 'TOKEN_2' });
+		});
+
+		test('mints a token for the request only when the node carries no credentials', async () => {
+			// A credential test passes the node without credentials: the posted values may
+			// differ from the stored credential, so nothing is written back.
+			credentials.accessToken = 'CACHED';
+			const refreshed = await credentialsHelper.preAuthentication(
+				helpers,
+				credentials,
+				'salesforceJwtApi',
+				{ ...node, credentials: undefined },
+				true,
+			);
+
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
+			expect(refreshed).toMatchObject({
+				accessToken: 'TOKEN_1',
+				instanceUrl: 'https://acme.my.salesforce.com',
+			});
+			expect(credentials.accessToken).toBe('TOKEN_1');
+			expect(getSpy).not.toHaveBeenCalled();
+			expect(updateSpy).not.toHaveBeenCalled();
 		});
 	});
 	describe('preAuthentication domain restrictions', () => {

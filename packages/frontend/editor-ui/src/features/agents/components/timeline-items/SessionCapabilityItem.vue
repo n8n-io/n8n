@@ -10,7 +10,6 @@ import {
 	N8nAnimatedCollapsibleContent,
 	N8nButton,
 	N8nCallout,
-	N8nCodeBlock,
 	N8nIcon,
 	N8nSpinner,
 	N8nText,
@@ -22,6 +21,8 @@ import { jsonParse } from 'n8n-workflow';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import ToolDataBlock from '@/features/ai/shared/components/ToolDataBlock/ToolDataBlock.vue';
+import { formatToolData } from '@/features/ai/shared/components/ToolDataBlock/toolData.utils';
 import { useTimelineItemExpansion } from '../../composables/useTimelineItemExpansion';
 import type { TimelineItem } from '../../session-timeline.types';
 import {
@@ -100,17 +101,6 @@ const errorTooltip = computed(() => (error.value ? truncate(error.value, 160) : 
 
 const time = computed(() => formatTimelineTime(props.item.timestamp));
 
-function stringifyJson(value: unknown): string {
-	if (typeof value === 'string') {
-		try {
-			return JSON.stringify(JSON.parse(value), null, 2);
-		} catch {
-			return value;
-		}
-	}
-	return JSON.stringify(value, null, 2) ?? String(value);
-}
-
 const outputFiles = computed(() => {
 	const output = props.item.toolOutput;
 	return getToolOutputAttachments(
@@ -121,8 +111,8 @@ const outputFiles = computed(() => {
 const searchableText = computed((): string => {
 	return [
 		label.value,
-		props.item.toolInput !== undefined ? stringifyJson(props.item.toolInput) : '',
-		props.item.toolOutput !== undefined ? stringifyJson(props.item.toolOutput) : '',
+		props.item.toolInput !== undefined ? formatToolData(props.item.toolInput).text : '',
+		props.item.toolOutput !== undefined ? formatToolData(props.item.toolOutput).text : '',
 	].join('\n');
 });
 
@@ -194,12 +184,7 @@ const { isOpen } = useTimelineItemExpansion({
 						<N8nText step="xs" color="text-light" bold :class="$style.toolTitle">
 							{{ i18n.baseText('agentSessions.timeline.input') }}
 						</N8nText>
-						<N8nCodeBlock
-							data-test-id="timeline-tool-input"
-							:code="stringifyJson(item.toolInput)"
-							language="json"
-							:class="$style.toolCode"
-						/>
+						<ToolDataBlock data-test-id="timeline-tool-input" :value="item.toolInput" />
 					</N8nAiActivityStepResultSection>
 					<N8nAiActivityStepResultSection v-if="error" :class="$style.toolSection">
 						<N8nCallout theme="danger" :class="$style.errorCallout">
@@ -213,12 +198,7 @@ const { isOpen } = useTimelineItemExpansion({
 						<N8nText step="xs" color="text-light" bold :class="$style.toolTitle">
 							{{ i18n.baseText('agentSessions.timeline.output') }}
 						</N8nText>
-						<N8nCodeBlock
-							data-test-id="timeline-tool-output"
-							:code="stringifyJson(item.toolOutput)"
-							language="json"
-							:class="$style.toolCode"
-						/>
+						<ToolDataBlock data-test-id="timeline-tool-output" :value="item.toolOutput" />
 					</N8nAiActivityStepResultSection>
 					<N8nAiActivityStepResultSection v-if="fullExecutionHref" :class="$style.toolSection">
 						<div :class="$style.executionButton">
@@ -250,7 +230,7 @@ const { isOpen } = useTimelineItemExpansion({
 
 <style module lang="scss">
 .step .activityButton {
-	--ai-activity-step--padding: var(--spacing--2xs);
+	--n8n-ai-activity-step--padding: var(--spacing--2xs);
 	--button--color--background-hover: var(--background--hover);
 	--button--color--background-active: var(--background--active);
 }
@@ -258,15 +238,15 @@ const { isOpen } = useTimelineItemExpansion({
 .step {
 	margin-inline: var(--spacing--2xs);
 
-	--ai-activity-step--color: var(--text-color--subtle);
+	--n8n-ai-activity-step--color: var(--text-color--subtle);
 }
 
 .failed {
-	--ai-activity-step--color: var(--color--text--danger);
+	--n8n-ai-activity-step--color: var(--color--text--danger);
 }
 
 .interrupted {
-	--ai-activity-step--color: var(--text-color--disabled);
+	--n8n-ai-activity-step--color: var(--text-color--disabled);
 
 	button:hover {
 		color: var(--text-color--disabled);
@@ -331,10 +311,6 @@ const { isOpen } = useTimelineItemExpansion({
 
 .executionButton {
 	padding-top: var(--spacing--xs);
-}
-
-.toolCode {
-	background-color: var(--background--surface);
 }
 
 .errorCallout {

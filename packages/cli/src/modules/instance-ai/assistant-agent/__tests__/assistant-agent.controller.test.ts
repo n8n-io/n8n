@@ -1,6 +1,11 @@
 import {
+	AssistantAgentFeedbackRequestDto,
 	AssistantAgentTargetRequestDto,
+	AssistantPreferenceCardEditRequestDto,
+	AssistantPreferenceCardUndoRequestDto,
 	AssistantThreadTabsRequestDto,
+	type AiPreferenceDto,
+	type AssistantPreferenceCard,
 	InstanceAiPersistPendingAgentRequest,
 	type AssistantAgentTargetsState,
 	type AssistantThreadTabsState,
@@ -13,7 +18,9 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { AssistantAgentController } from '../assistant-agent.controller';
+import type { AssistantAgentFeedbackService } from '../assistant-agent-feedback.service';
 import type { AssistantAgentTargetsService } from '../assistant-agent-targets.service';
+import type { AssistantPreferenceCardsService } from '../assistant-preference-cards.service';
 import type { AssistantThreadCreditsService } from '../assistant-thread-credits.service';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
 
@@ -23,7 +30,15 @@ describe('AssistantAgentController', () => {
 	const threadTabs = mock<AssistantThreadTabsService>();
 	const threadCredits = mock<AssistantThreadCreditsService>();
 	const agentTargets = mock<AssistantAgentTargetsService>();
-	const controller = new AssistantAgentController(threadTabs, threadCredits, agentTargets);
+	const preferenceCards = mock<AssistantPreferenceCardsService>();
+	const feedback = mock<AssistantAgentFeedbackService>();
+	const controller = new AssistantAgentController(
+		threadTabs,
+		threadCredits,
+		agentTargets,
+		preferenceCards,
+		feedback,
+	);
 
 	const user = mock<User>({ id: 'user-1' });
 	const req = mock<AuthenticatedRequest>({ user });
@@ -53,6 +68,10 @@ describe('AssistantAgentController', () => {
 			getAgentTargets: '/threads/:threadId/agent-targets',
 			bindAgentTarget: '/threads/:threadId/agent-target',
 			persistPendingAgent: '/threads/:threadId/agent',
+			getPreferenceCards: '/threads/:threadId/preference-cards',
+			undoPreference: '/threads/:threadId/preferences/:preferenceId/undo',
+			editPreference: '/threads/:threadId/preferences/:preferenceId/edit',
+			submitFeedback: '/threads/:threadId/feedback',
 		};
 		for (const [handler, path] of Object.entries(paths)) {
 			expect(metadata.routes.get(handler)?.path).toBe(path);
@@ -90,6 +109,58 @@ describe('AssistantAgentController', () => {
 			threadCredits.getTotal.mockRejectedValue(new NotFoundError('Session not found'));
 
 			await expect(controller.getThreadCredits(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('preference cards', () => {
+		const card: AssistantPreferenceCard = {
+			toolCallId: 'tc-1',
+			preferenceId: 'pref-1',
+			state: 'undone',
+		};
+
+		it('returns the stored cards of the thread', async () => {
+			preferenceCards.getCards.mockResolvedValue({ 'tc-1': card });
+
+			await expect(controller.getPreferenceCards(req, res, THREAD_ID)).resolves.toEqual({
+				cards: { 'tc-1': card },
+			});
+			expect(preferenceCards.getCards).toHaveBeenCalledWith(user, THREAD_ID);
+		});
+
+		it('undoes the preference of a card and returns the stored card', async () => {
+			preferenceCards.undo.mockResolvedValue(card);
+			const payload = new AssistantPreferenceCardUndoRequestDto({ toolCallId: 'tc-1' });
+
+			await expect(
+				controller.undoPreference(req, res, THREAD_ID, 'pref-1', payload),
+			).resolves.toEqual({ card });
+			expect(preferenceCards.undo).toHaveBeenCalledWith(user, THREAD_ID, 'pref-1', payload);
+		});
+
+		it('edits the preference of a card and returns the row and the stored card', async () => {
+			const response = {
+				preference: mock<AiPreferenceDto>({ id: 'pref-1' }),
+				card: { ...card, state: 'edited' as const, content: 'Short replies.' },
+			};
+			preferenceCards.edit.mockResolvedValue(response);
+			const payload = new AssistantPreferenceCardEditRequestDto({
+				toolCallId: 'tc-1',
+				content: 'Short replies.',
+			});
+
+			await expect(controller.editPreference(req, res, THREAD_ID, 'pref-1', payload)).resolves.toBe(
+				response,
+			);
+			expect(preferenceCards.edit).toHaveBeenCalledWith(user, THREAD_ID, 'pref-1', payload);
+		});
+
+		it('rejects a thread that the user cannot use', async () => {
+			preferenceCards.getCards.mockRejectedValue(new NotFoundError('Session not found'));
+
+			await expect(controller.getPreferenceCards(req, res, THREAD_ID)).rejects.toThrow(
+				NotFoundError,
+			);
 		});
 	});
 
@@ -181,6 +252,25 @@ describe('AssistantAgentController', () => {
 				THREAD_ID,
 				payload,
 				'push-1',
+			);
+		});
+	});
+
+	describe('submitFeedback', () => {
+		const payload = new AssistantAgentFeedbackRequestDto({ executionId: 'exec-1', rating: 'up' });
+
+		it('sends the rating of the turn', async () => {
+			await expect(controller.submitFeedback(req, res, THREAD_ID, payload)).resolves.toEqual({
+				ok: true,
+			});
+			expect(feedback.submit).toHaveBeenCalledWith(user, THREAD_ID, payload);
+		});
+
+		it('rejects a thread that the user cannot use', async () => {
+			feedback.submit.mockRejectedValue(new NotFoundError('Session not found'));
+
+			await expect(controller.submitFeedback(req, res, THREAD_ID, payload)).rejects.toThrow(
+				NotFoundError,
 			);
 		});
 	});

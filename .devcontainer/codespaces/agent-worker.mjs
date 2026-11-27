@@ -22,16 +22,17 @@ const SLACK_TEXT_LIMIT = 3900;
 
 export function openCodeConfig(environment) {
 	const config = {
-		provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
+		providers: { openrouter: { settings: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
 	};
 	if (environment.FLAKY_MCP_URL && environment.FLAKY_MCP_TOKEN) {
 		config.mcp = {
-			flaky: {
-				type: 'remote',
-				url: environment.FLAKY_MCP_URL,
-				enabled: true,
-				oauth: false,
-				headers: { Authorization: 'Bearer {env:FLAKY_MCP_TOKEN}' },
+			servers: {
+				flaky: {
+					type: 'remote',
+					url: environment.FLAKY_MCP_URL,
+					oauth: false,
+					headers: { Authorization: 'Bearer {env:FLAKY_MCP_TOKEN}' },
+				},
 			},
 		};
 	}
@@ -117,7 +118,9 @@ function stopProcessTree(child, signal) {
 }
 
 function eventError(event) {
-	return event.error?.data?.message ?? event.error?.message ?? event.error?.name;
+	return (
+		event.error?.data?.message ?? event.error?.message ?? event.error?.name ?? event.error?.type
+	);
 }
 
 export function runOpenCode(
@@ -318,9 +321,10 @@ export async function startSlackProgress(
 
 	return {
 		event(event) {
-			if (!event.part?.id) return;
+			const partId = event.part?.partID ?? event.part?.id;
+			if (!partId) return;
 			if (event.type === 'tool_use') {
-				tools.set(event.part.id, {
+				tools.set(partId, {
 					status: event.part.state?.status,
 					title: event.part.state?.title || event.part.tool,
 				});

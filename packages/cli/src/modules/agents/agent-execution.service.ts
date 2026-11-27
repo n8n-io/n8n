@@ -1,3 +1,4 @@
+import type { Thread } from '@n8n/agents';
 import type {
 	AgentExecutionStatus,
 	AgentMessageAuthor,
@@ -20,6 +21,7 @@ import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { ConflictError, OperationalError, UnexpectedError } from '@n8n/errors';
 
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
+import { AgentAttentionFlagRepository } from './repositories/agent-attention-flag.repository';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type {
 	AgentRunTelemetryType,
@@ -223,6 +225,7 @@ export class AgentExecutionService {
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
+		private readonly attentionFlags: AgentAttentionFlagRepository,
 		private readonly integrationMessageContext: IntegrationMessageContextService,
 		private readonly metrics: AgentExecutionMetrics,
 	) {}
@@ -704,7 +707,7 @@ export class AgentExecutionService {
 			duration: record.duration,
 		});
 		if (this.executionsNeedingTitleSync.has(executionId)) {
-			await this.syncTitleFromMemory(threadId, agentId);
+			await this.syncTitleFromMemory(params);
 		}
 	}
 
@@ -732,27 +735,58 @@ export class AgentExecutionService {
 	}
 
 	/**
-	 * Try to read the title from the SDK memory thread and sync it to our execution thread.
-	 * The SDK's titleGeneration runs fire-and-forget after the first message,
-	 * so the title is typically available by the second message.
+	 * Store a generated title on a thread that has none, and tell the open lists.
+	 * The SDK reports the title as soon as it is stored, which can be mid-turn.
+	 * Best-effort: a failure must not break the turn.
 	 */
-	private async syncTitleFromMemory(threadId: string, agentId: string): Promise<void> {
+	async applyGeneratedTitle(
+		{ projectId, agentId, threadId }: { projectId: string; agentId: string; threadId: string },
+		title: string,
+		emoji: string | null,
+	): Promise<void> {
 		try {
-			const memoryThread = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
-			if (memoryThread?.title) {
-				const emoji =
-					memoryThread.metadata && typeof memoryThread.metadata.emoji === 'string'
-						? memoryThread.metadata.emoji
-						: null;
-				await this.agentExecutionThreadRepository.setGeneratedTitle(
-					threadId,
-					memoryThread.title,
-					emoji,
-				);
-			}
+			const applied = await this.agentExecutionThreadRepository.setGeneratedTitle(
+				threadId,
+				title,
+				emoji,
+			);
+			if (!applied) return;
+			this.executionUpdateBroadcaster.notifyThreadTitleUpdated({
+				projectId,
+				agentId,
+				threadId,
+				title,
+				...(emoji && { emoji }),
+			});
+		} catch (error) {
+			this.logger.warn('Failed to store the generated thread title', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Copy the title from the SDK memory thread to the execution thread when the
+	 * execution ends. Workflow-invoked and sub-agent runs do not report titles
+	 * through `onThreadTitle`, so this is their only path to the thread list. For
+	 * chat turns, it retries a live title write that failed.
+	 */
+	private async syncTitleFromMemory(params: RecordMessageParams): Promise<void> {
+		const { projectId, agentId, threadId } = params;
+		let memoryThread: Thread | null;
+		try {
+			memoryThread = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
 		} catch {
 			// Memory thread may not exist (agent without memory configured) — ignore
+			return;
 		}
+		if (!memoryThread?.title) return;
+		const emoji =
+			memoryThread.metadata && typeof memoryThread.metadata.emoji === 'string'
+				? memoryThread.metadata.emoji
+				: null;
+		await this.applyGeneratedTitle({ projectId, agentId, threadId }, memoryThread.title, emoji);
 	}
 
 	/**
@@ -945,7 +979,11 @@ export class AgentExecutionService {
 				agentIds,
 				options,
 			);
-		return { data: threads.map(toN8nChatThreadSummary), nextCursor };
+		const previews = await this.findFirstMessagePreviews(threads);
+		return {
+			data: threads.map((thread) => toN8nChatThreadSummary(thread, previews.get(thread.id))),
+			nextCursor,
+		};
 	}
 
 	/**
@@ -964,7 +1002,28 @@ export class AgentExecutionService {
 			agentIds,
 			threadId,
 		);
-		return thread ? toN8nChatThreadSummary(thread) : null;
+		if (!thread) return null;
+		const previews = await this.findFirstMessagePreviews([thread]);
+		return toN8nChatThreadSummary(thread, previews.get(thread.id));
+	}
+
+	/**
+	 * A short preview of the first visible user message of each thread. Thread
+	 * lists show it until the thread has a title. One query for the whole page:
+	 * the lists do not load the thread history.
+	 */
+	async findFirstMessagePreviews(
+		threads: Array<Pick<AgentExecutionThread, 'id' | 'agentName'>>,
+	): Promise<Map<string, string>> {
+		const messages = await this.agentExecutionRepository.findFirstUserMessageByThreadIds(
+			threads.map(({ id }) => id),
+		);
+		const previews = new Map<string, string>();
+		for (const { id, agentName } of threads) {
+			const preview = toFirstMessagePreview(messages.get(id) ?? null, agentName);
+			if (preview) previews.set(id, preview);
+		}
+		return previews;
 	}
 
 	/** How many of the user's own n8n Chat threads reference each agent, for the usage sort. */
@@ -981,8 +1040,8 @@ export class AgentExecutionService {
 	): Promise<ThreadListItem[]> {
 		if (threads.length === 0) return [];
 		const threadIds = threads.map((t) => t.id);
-		const [messageMap, sourceMap, failureSummaryMap, latestStatusMap] = await Promise.all([
-			this.agentExecutionRepository.findFirstUserMessageByThreadIds(threadIds),
+		const [previews, sourceMap, failureSummaryMap, latestStatusMap] = await Promise.all([
+			this.findFirstMessagePreviews(threads),
 			this.agentExecutionRepository.findFirstSourceByThreadIds(threadIds),
 			this.agentExecutionRepository.findFailureSummariesByThreadIds(threadIds),
 			this.agentExecutionRepository.findLatestStatusesByThreadIds(threadIds),
@@ -999,7 +1058,7 @@ export class AgentExecutionService {
 					source,
 					this.systemAgents.has(thread.agentId),
 				),
-				firstMessage: cleanUserMessage(messageMap.get(t.id) ?? null, t.agentName),
+				firstMessage: previews.get(t.id) ?? null,
 				source,
 				failureSummary: failureSummaryMap.get(t.id) ?? null,
 				status: toSessionStatus(latestStatusMap.get(t.id)),
@@ -1022,7 +1081,7 @@ export class AgentExecutionService {
 		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
-		await this.hydrateExecutionInputs(executions, thread.agentName);
+		await this.hydrateExecutionInputs(executions, thread.agentName, agentId);
 		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions };
 	}
@@ -1063,9 +1122,25 @@ export class AgentExecutionService {
 		}
 		executions.reverse();
 
-		await this.hydrateExecutionInputs(executions, thread.agentName);
+		await this.hydrateExecutionInputs(executions, thread.agentName, agentId);
 		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions, hasOlder: older !== undefined };
+	}
+
+	/**
+	 * The timeline of one execution of a thread, also when it moved to blob
+	 * storage. `null` when the thread has no execution with this id, or the
+	 * execution has no readable timeline. Does not check access to the thread.
+	 */
+	async findExecutionTimeline(
+		agentId: string,
+		threadId: string,
+		executionId: string,
+	): Promise<TimelineEvent[] | null> {
+		const execution = await this.agentExecutionRepository.findExecution(executionId);
+		if (execution?.threadId !== threadId) return null;
+		await this.hydrateTimelines(agentId, threadId, [execution]);
+		return execution.timeline;
 	}
 
 	/**
@@ -1081,8 +1156,11 @@ export class AgentExecutionService {
 	private async hydrateExecutionInputs(
 		executions: AgentExecution[],
 		agentName: string,
+		agentId: string,
 	): Promise<void> {
 		const inputs = await this.messageRepository.findExecutionInputs(executions.map(({ id }) => id));
+		// A system agent can read the resources of a message from its stored model input.
+		const provider = this.systemAgents.get(agentId);
 		const seen = new Set<string>();
 
 		for (const execution of executions) {
@@ -1100,6 +1178,11 @@ export class AgentExecutionService {
 				if (message.origin?.hidden) continue;
 				const dto = this.inputMessageToDto(message, execution.id, agentName);
 				if (!dto) continue;
+				const references =
+					message.modelContent && provider?.readMessageReferences
+						? provider.readMessageReferences(message.modelContent)
+						: [];
+				if (references.length > 0) dto.references = references;
 				execution.inputMessages.push(dto);
 			}
 			const parts = execution.inputMessages.flatMap(({ content }) => content);
@@ -1228,6 +1311,38 @@ export class AgentExecutionService {
 		return await this.canUseUnrecordedThread(threadId, agentId, draftChatMemoryResourceId(userId));
 	}
 
+	/**
+	 * Classify an existing draft thread in one lookup: unusable, non-preview draft
+	 * (such as task, system agent, MCP, or Instance AI), or Preview Chat.
+	 * Skips the first-source query whenever the thread cannot be a Preview Chat thread.
+	 */
+	async classifyExistingDraftThread(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<{ usable: boolean; previewChat: boolean }> {
+		const thread = await this.findThreadById(threadId);
+		if (
+			!thread ||
+			!threadBelongsTo(thread, projectId, agentId, userId) ||
+			!canUseTopLevelDraftThread(thread, userId)
+		) {
+			return { usable: false, previewChat: false };
+		}
+
+		if (thread.taskId !== null || this.systemAgents.has(thread.agentId)) {
+			return { usable: true, previewChat: false };
+		}
+
+		const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
+
+		return {
+			usable: true,
+			previewChat: canContinueThreadInPreview(thread, userId, sources.get(threadId), false),
+		};
+	}
+
 	async canUseProductionChatThread(
 		threadId: string,
 		projectId: string,
@@ -1340,13 +1455,17 @@ export class AgentExecutionService {
 				const finalized = await this.txRunner.run({}, async (ctx) => {
 					if (!(await this.agentExecutionThreadRepository.lockById(params.threadId, ctx)))
 						return false;
-					return await this.agentExecutionRepository.updateIfRunning(
+					const updated = await this.agentExecutionRepository.updateIfRunning(
 						executionId,
 						terminalValues,
 						undefined,
 						ctx,
 						record.totalCost ?? undefined,
 					);
+					if (updated && status === 'error') {
+						await this.attentionFlags.flagSession(params.threadId, 'session-error', ctx);
+					}
+					return updated;
 				});
 				if (!finalized) {
 					throw new OperationalError('Agent execution is no longer running', {
@@ -1572,6 +1691,21 @@ export function toSessionStatus(
 	return latestStatus;
 }
 
+/** Lists truncate the preview again for display. This cap only keeps the responses small. */
+const FIRST_MESSAGE_PREVIEW_MAX_CHARS = 200;
+
+function toFirstMessagePreview(message: string | null, agentName: string): string | null {
+	const cleaned = cleanUserMessage(message, agentName)?.replace(/\s+/g, ' ');
+	if (!cleaned) return null;
+	// Cut by code points, so an emoji at the cut does not become a lone surrogate.
+	const chars = Array.from(cleaned);
+	if (chars.length <= FIRST_MESSAGE_PREVIEW_MAX_CHARS) return cleaned;
+	return `${chars
+		.slice(0, FIRST_MESSAGE_PREVIEW_MAX_CHARS - 1)
+		.join('')
+		.trimEnd()}…`;
+}
+
 function cleanUserMessage(message: string | null, agentName: string): string | null {
 	if (message === null) return null;
 	const cleaned = message
@@ -1613,7 +1747,10 @@ function isApprovalSuspension(event: TimelineEvent): boolean {
 
 /** Maps a thread (with `agent` and `agent.activeVersion` loaded) to the
  *  cross-agent n8n Chat thread list shape. */
-function toN8nChatThreadSummary(thread: AgentExecutionThread): AgentN8nChatThreadSummary {
+function toN8nChatThreadSummary(
+	thread: AgentExecutionThread,
+	firstMessage: string | undefined,
+): AgentN8nChatThreadSummary {
 	// The callers narrow `agentIds` to chat-reachable project agents.
 	if (!isProjectAgent(thread.agent)) {
 		throw new UnexpectedError(`Thread ${thread.id} does not belong to a project agent`);
@@ -1621,6 +1758,7 @@ function toN8nChatThreadSummary(thread: AgentExecutionThread): AgentN8nChatThrea
 	return {
 		id: thread.id,
 		title: thread.title,
+		firstMessage: firstMessage ?? null,
 		updatedAt: thread.updatedAt.toISOString(),
 		agent: { ...toAgentRef(thread.agent), projectId: thread.agent.projectId },
 	};

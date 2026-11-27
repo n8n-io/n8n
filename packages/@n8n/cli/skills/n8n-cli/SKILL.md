@@ -280,6 +280,13 @@ n8n-cli promotion-environment apply-selection <projectId> -w <workflowId> \
 # Exit 3: the source or the preview changed since the review. Review again.
 ```
 
+Read the promotion reviews of your Inbox (key scope `promotions:readReviews`):
+
+```bash
+n8n-cli promotion-review list --state=open          # webUrl is the merge request link
+n8n-cli promotion-review get <reviewId> --json      # reviewState, branchName, requester, approver
+```
+
 Environment JSON for step 2 (`promote.json`; `apply.json` uses `"direction":"apply"`
 and `"settings":{"schemaVersion":1,"branchName":"main"}`):
 
@@ -355,8 +362,16 @@ Key points:
   with `promote-selection`, `apply`, `apply-continue`, `apply-selection`, and
   `apply-selection-continue`. Take it from `list-apply-changes` for a whole-instance
   Apply and from `list-changes <projectId> <promote|apply>` for a selection.
-- API key scopes for this group are named `promotions:*`. `promote` also needs
-  `variable:list` when the workflows reference variables.
+- API key scopes for this group are named `promotions:*`:
+  - `promotion-provider create`, `update`, `delete`, `list-repositories` and
+    `list-branches` need `manageProviders`. `promotion-provider list` and `get`
+    need `readProviders`.
+  - `promotion-environment create`, `update`, `delete`, `connect`,
+    `disconnect`, `add-project` and `remove-project` need `manageEnvironments`.
+    `promotion-environment list`, `get`, `list-projects` and
+    `list-missing-projects` need `readEnvironments`.
+  - Preview and promote commands need only `promote`. Preview, apply and
+    continue commands need only `apply`.
 
 ## Other
 

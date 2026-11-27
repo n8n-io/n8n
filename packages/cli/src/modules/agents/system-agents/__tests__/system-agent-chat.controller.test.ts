@@ -8,13 +8,17 @@ import type { AgentChatAttachmentService } from '../../agent-chat-attachment.ser
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import { AgentChatRelayService } from '../../agent-chat-relay.service';
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
+import type { AgentExecutionService } from '../../agent-execution.service';
+import type { AgentMemoryTraceService } from '../../agent-memory-trace.service';
 import type { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { FlushableResponse } from '../../agent-sse-stream';
 import { AgentTurnAlreadyRunningError } from '../../agent-turn-already-running.error';
 import type { AgentChatAttachment } from '../../entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
+import type { AgentExecution } from '../../entities/agent-execution.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../../integrations/n8n-memory';
+import { SYSTEM_CHAT_SOURCE } from '../../utils/agent-thread-access';
 import { SystemAgentChatController } from '../system-agent-chat.controller';
 import type { SystemAgentExecutionService } from '../system-agent-execution.service';
 
@@ -36,6 +40,9 @@ function setup() {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const memory = mock<N8nMemory>();
 	memory.getThreadsMetadata.mockResolvedValue(new Map());
+	const executionService = mock<AgentExecutionService>();
+	executionService.findFirstMessagePreviews.mockResolvedValue(new Map());
+	const memoryTrace = mock<AgentMemoryTraceService>();
 	systemAgents.getUsableThread.mockResolvedValue(thread);
 	systemAgents.findUsableThread.mockResolvedValue(thread);
 	systemAgents.resourceIdFor.mockImplementation(({ id }) => `system-chat:${id}`);
@@ -49,6 +56,8 @@ function setup() {
 		checkpointStorage,
 		attachments,
 		memory,
+		executionService,
+		memoryTrace,
 	);
 	return {
 		controller,
@@ -60,6 +69,8 @@ function setup() {
 		checkpointStorage,
 		attachments,
 		memory,
+		executionService,
+		memoryTrace,
 	};
 }
 
@@ -283,7 +294,7 @@ describe('SystemAgentChatController', () => {
 			}) as AgentExecutionThread;
 
 		it('lists a page of the threads of the user with the agent as summaries', async () => {
-			const { controller, systemAgents, memory } = setup();
+			const { controller, systemAgents, memory, executionService } = setup();
 			systemAgents.listThreads.mockResolvedValue({
 				threads: [
 					listed('thread-1', '2026-10-19T10:00:00.000Z'),
@@ -292,6 +303,9 @@ describe('SystemAgentChatController', () => {
 				hasMore: false,
 			});
 			memory.getThreadsMetadata.mockResolvedValue(new Map([['thread-1', { emoji: '🤖' }]]));
+			executionService.findFirstMessagePreviews.mockResolvedValue(
+				new Map([['thread-2', 'Build a rain alert']]),
+			);
 
 			const result = await listThreads(controller, AGENT_ID, { limit: '5' });
 
@@ -302,6 +316,7 @@ describe('SystemAgentChatController', () => {
 					{
 						id: 'thread-1',
 						title: 'Chat thread-1',
+						firstMessage: null,
 						updatedAt: '2026-10-19T10:00:00.000Z',
 						projectId: 'project-1',
 						metadata: { emoji: '🤖' },
@@ -309,6 +324,7 @@ describe('SystemAgentChatController', () => {
 					{
 						id: 'thread-2',
 						title: 'Chat thread-2',
+						firstMessage: 'Build a rain alert',
 						updatedAt: '2026-10-19T09:00:00.000Z',
 						projectId: 'project-1',
 					},
@@ -384,6 +400,7 @@ describe('SystemAgentChatController', () => {
 			expect(result).toEqual({
 				id: 'thread-1',
 				title: 'First chat',
+				firstMessage: null,
 				updatedAt: '2026-10-19T10:00:00.000Z',
 				projectId: 'project-1',
 				metadata: { emoji: '🤖' },
@@ -396,6 +413,78 @@ describe('SystemAgentChatController', () => {
 
 			await expect(
 				controller.getThread(request({ agentId: AGENT_ID, threadId: 'other' })),
+			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('getThreadDetail', () => {
+		const ownedThread = {
+			...thread,
+			agentId: AGENT_ID,
+			ownerId: 'user-1',
+			accessScope: 'user',
+			owner: null,
+		} as unknown as AgentExecutionThread;
+		const executions = [
+			{ id: 'execution-1', source: null },
+			{ id: 'execution-2', source: SYSTEM_CHAT_SOURCE },
+		] as AgentExecution[];
+		const threadMemory = { recalls: {}, flags: {} };
+
+		it('returns the timeline of a usable thread in its working project', async () => {
+			const { controller, systemAgents, executionService, memoryTrace } = setup();
+			systemAgents.getUsableThread.mockResolvedValue(ownedThread);
+			executionService.getThreadDetail.mockResolvedValue({ thread: ownedThread, executions });
+			memoryTrace.getThreadMemory.mockResolvedValue(threadMemory);
+
+			const result = await controller.getThreadDetail(
+				request({ agentId: AGENT_ID, threadId: 'thread-1' }),
+			);
+
+			expect(systemAgents.getUsableThread).toHaveBeenCalledWith(AGENT_ID, user, 'thread-1');
+			expect(executionService.getThreadDetail).toHaveBeenCalledWith(
+				'thread-1',
+				'project-1',
+				AGENT_ID,
+				'user-1',
+			);
+			expect(memoryTrace.getThreadMemory).toHaveBeenCalledWith({
+				agentId: AGENT_ID,
+				projectId: 'project-1',
+				userId: 'user-1',
+				threadId: 'thread-1',
+				executions,
+			});
+			expect(result).toEqual({
+				thread: {
+					id: 'thread-1',
+					projectId: 'project-1',
+					agentId: AGENT_ID,
+					source: SYSTEM_CHAT_SOURCE,
+					canContinueInPreview: false,
+				},
+				executions,
+				memory: threadMemory,
+			});
+		});
+
+		it('refuses a thread that the user cannot use', async () => {
+			const { controller, systemAgents, executionService } = setup();
+			systemAgents.getUsableThread.mockRejectedValue(new NotFoundError('Session not found'));
+
+			await expect(
+				controller.getThreadDetail(request({ agentId: AGENT_ID, threadId: 'other' })),
+			).rejects.toThrow(NotFoundError);
+			expect(executionService.getThreadDetail).not.toHaveBeenCalled();
+		});
+
+		it('refuses a thread without detail', async () => {
+			const { controller, systemAgents, executionService } = setup();
+			systemAgents.getUsableThread.mockResolvedValue(ownedThread);
+			executionService.getThreadDetail.mockResolvedValue(null);
+
+			await expect(
+				controller.getThreadDetail(request({ agentId: AGENT_ID, threadId: 'thread-1' })),
 			).rejects.toThrow(NotFoundError);
 		});
 	});
@@ -454,7 +543,7 @@ describe('SystemAgentChatController', () => {
 	});
 
 	describe('attachments', () => {
-		it('looks up the attachment in the memory resource of the user and the system chat source', async () => {
+		it('looks up the file in the memory resource of the user, from the system chat sources', async () => {
 			const { controller, attachments } = setup();
 			attachments.getForSystemAgent.mockResolvedValue(mock<AgentChatAttachment>());
 
@@ -466,7 +555,8 @@ describe('SystemAgentChatController', () => {
 			expect(attachments.getForSystemAgent).toHaveBeenCalledWith('att-1', {
 				agentId: AGENT_ID,
 				resourceId: 'system-chat:user-1',
-				source: 'system_chat',
+				// Uploads, and the files that the sandbox stored for the chat.
+				sources: ['system_chat', 'sandbox'],
 			});
 		});
 
@@ -500,6 +590,57 @@ describe('SystemAgentChatController', () => {
 
 			expect(systemAgents.getUsableThread).toHaveBeenCalledWith(AGENT_ID, user, 'thread-1');
 			expect(chatRelay.streamAttachment).toHaveBeenCalledWith(attachment, expect.anything());
+		});
+	});
+
+	describe('session files', () => {
+		it('lists the files of a usable thread in the scope of the download route', async () => {
+			const { controller, attachments, systemAgents } = setup();
+			const files = [
+				{
+					fileId: 'file-1',
+					fileName: 'report.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 3,
+					source: 'sandbox',
+					createdAt: '2026-11-18T10:00:00.000Z',
+				},
+			];
+			attachments.listForSystemAgentThread.mockResolvedValue(files);
+
+			const result = await controller.getSessionFiles(
+				request({ agentId: AGENT_ID, threadId: 'thread-1' }),
+			);
+
+			expect(result).toEqual({ files });
+			expect(systemAgents.findUsableThread).toHaveBeenCalledWith(AGENT_ID, user, 'thread-1');
+			expect(attachments.listForSystemAgentThread).toHaveBeenCalledWith('thread-1', {
+				agentId: AGENT_ID,
+				resourceId: 'system-chat:user-1',
+				sources: ['system_chat', 'sandbox'],
+			});
+		});
+
+		it('gives no files for a new session that has no thread yet', async () => {
+			const { controller, attachments, systemAgents } = setup();
+			systemAgents.findUsableThread.mockResolvedValue(null);
+
+			const result = await controller.getSessionFiles(
+				request({ agentId: AGENT_ID, threadId: 'new-thread' }),
+			);
+
+			expect(result).toEqual({ files: [] });
+			expect(attachments.listForSystemAgentThread).not.toHaveBeenCalled();
+		});
+
+		it('refuses a thread that the user cannot use', async () => {
+			const { controller, attachments, systemAgents } = setup();
+			systemAgents.findUsableThread.mockRejectedValue(new NotFoundError('Session not found'));
+
+			await expect(
+				controller.getSessionFiles(request({ agentId: AGENT_ID, threadId: 'thread-1' })),
+			).rejects.toThrow(NotFoundError);
+			expect(attachments.listForSystemAgentThread).not.toHaveBeenCalled();
 		});
 	});
 	it('resumes a run through the execution service and closes the stream', async () => {

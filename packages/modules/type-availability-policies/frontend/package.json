@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-type-availability-policies",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
@@ -28,6 +28,7 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
+    "@n8n/telemetry": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@vueuse/core": "catalog:frontend",
     "n8n-workflow": "workspace:*",

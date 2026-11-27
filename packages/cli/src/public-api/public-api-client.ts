@@ -1,7 +1,7 @@
-import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_NODE } from '@n8n/api-types';
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_CLI, N8N_CLIENT_N8N_NODE } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 
-export type PublicApiClient = 'editor_ui' | 'n8n_node' | 'other';
+export type PublicApiClient = 'editor_ui' | 'n8n_node' | 'n8n_cli' | 'other';
 
 /** The client behind a public API call, or `false` when no public API route was used. */
 export type PublicApiCaller = PublicApiClient | false;
@@ -18,6 +18,7 @@ export type PublicApiRequest<
 const TELEMETRY_CLIENT_BY_HEADER_VALUE = new Map<string, PublicApiClient>([
 	[N8N_CLIENT_EDITOR_UI, 'editor_ui'],
 	[N8N_CLIENT_N8N_NODE, 'n8n_node'],
+	[N8N_CLIENT_N8N_CLI, 'n8n_cli'],
 ]);
 
 export function resolvePublicApiClient(header: string | string[] | undefined): PublicApiClient {

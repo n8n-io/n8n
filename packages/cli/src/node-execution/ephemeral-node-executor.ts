@@ -31,6 +31,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { findPolicyViolations, type NonEmptyViolations } from '@/policy/policy-violation.error';
 import { stripToolSuffix, withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import {
 	isUnsupportedEphemeralNodeOperation,
@@ -39,6 +40,7 @@ import {
 
 /** Minimal tool shape for constructing an in-memory single-node execution. */
 export type EphemeralWorkflowToolLike = {
+	binaryDataAccess?: string[];
 	projectId: string;
 	nodeType: string;
 	nodeTypeVersion: number;
@@ -51,6 +53,7 @@ export type EphemeralWorkflowToolLike = {
 };
 
 export interface InlineNodeExecutionRequest {
+	binaryDataAccess?: string[];
 	nodeType: string;
 	nodeTypeVersion: number;
 	nodeParameters: INodeParameters;
@@ -72,6 +75,8 @@ export interface NodeExecutionResult {
 	status: 'success' | 'error';
 	data: INodeExecutionData[];
 	error?: string;
+	/** Binary IDs that this execution may return to its caller. */
+	binaryDataAccess?: string[];
 	/** Set when a policy refused the run. */
 	violations?: NonEmptyViolations;
 }
@@ -167,6 +172,7 @@ export class EphemeralNodeExecutor {
 		private readonly logger: Logger,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly credentialAccessRepository: CredentialAccessRepository,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	/**
@@ -304,8 +310,11 @@ export class EphemeralNodeExecutor {
 	/**
 	 * Every node run goes through `executeNodeDirectly` or `withSupplyDataTool`, so both call
 	 * this. Not a `WorkflowRunner` run, so `workflowExecuteBefore` never polices it.
+	 * It also refuses deprecated nodes, as saving a workflow does.
 	 */
 	private async enforceRunPolicy(node: INode, projectId: string) {
+		this.deprecatedNodesValidationService.validateAgentTool(node);
+
 		await this.policyEnforcementService.enforceWorkflowStart(
 			{ workflow: { id: null, name: node.name, nodes: [node], artifactKind: 'agent' }, projectId },
 			{ kind: 'system', reason: 'execution' },
@@ -344,6 +353,7 @@ export class EphemeralNodeExecutor {
 		}
 		tool.configureAdditionalData?.(additionalData);
 		const runExecutionData = createEmptyRunExecutionData();
+		runExecutionData.binaryDataAccess = tool.binaryDataAccess;
 		const inputData: ITaskDataConnections = { main: [inputItems] };
 		const executeData: IExecuteData = { node, data: inputData, source: null };
 		const mode = 'internal' as const;
@@ -406,7 +416,9 @@ export class EphemeralNodeExecutor {
 					return { status: 'success', data: output[0] };
 				},
 			);
-			return executionResult;
+			return parts.runExecutionData.binaryDataAccess?.length
+				? { ...executionResult, binaryDataAccess: parts.runExecutionData.binaryDataAccess }
+				: executionResult;
 		} catch (error) {
 			const result = errorResult(error);
 			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: result.error });
@@ -493,6 +505,7 @@ export class EphemeralNodeExecutor {
 				: { ...fromNames, ...fromDetails };
 
 		const tool: EphemeralWorkflowToolLike = {
+			binaryDataAccess: request.binaryDataAccess,
 			projectId: request.projectId,
 			nodeType: request.nodeType,
 			nodeTypeVersion: request.nodeTypeVersion,

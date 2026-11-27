@@ -5,6 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { getActivePinia, setActivePinia } from 'pinia';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { retry, mockedStore } from '@/__tests__/utils';
 import { mockRestrictedCredentialTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
@@ -467,6 +468,109 @@ describe('CredentialEdit', () => {
 		await retry(() => expect(queryByTestId('credential-save-button')).toBeInTheDocument());
 	});
 
+	test('defaults a new credential to quick connect mode on node-less surfaces', async () => {
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalStateById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: { sharing: true, externalSecrets: false },
+						templates: { host: '' },
+					},
+				},
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.moduleSettings['quick-connect'] = {
+			options: [
+				{
+					packageName: '@n8n/n8n-nodes-langchain',
+					credentialType: 'pineconeApi',
+					text: 'Connect to Pinecone in one click',
+					quickConnectType: 'pinecone',
+					config: { integrationId: 'test-integration-id' },
+				},
+			],
+		};
+
+		const credStore = useCredentialsStore(pinia);
+		credStore.state.credentialTypes = {
+			pineconeApi: {
+				name: 'pineconeApi',
+				displayName: 'Pinecone API',
+				properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+			} as ICredentialType,
+		};
+
+		const { getByTestId } = renderComponent({
+			props: {
+				activeId: 'pineconeApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+
+		await retry(() => expect(getByTestId('quick-connect-modal-button')).toBeInTheDocument());
+	});
+
+	test('keeps manual mode for a new credential when no quick connect option is configured', async () => {
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalStateById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: { sharing: true, externalSecrets: false },
+						templates: { host: '' },
+					},
+				},
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+
+		const credStore = useCredentialsStore(pinia);
+		credStore.state.credentialTypes = {
+			pineconeApi: {
+				name: 'pineconeApi',
+				displayName: 'Pinecone API',
+				properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+			} as ICredentialType,
+		};
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				activeId: 'pineconeApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+
+		await retry(() => expect(queryByTestId('quick-connect-modal-button')).not.toBeInTheDocument());
+	});
+
 	test('hides the save button when credentialId exists and there are no unsaved changes', async () => {
 		const { queryByTestId } = renderComponent({
 			props: {
@@ -632,6 +736,105 @@ describe('CredentialEdit', () => {
 					.length,
 			).toBeGreaterThan(0),
 		);
+	});
+
+	describe('credential types in edit mode', () => {
+		// createTestingPinia makes its pinia the active one; the tests after these ones
+		// read stores from the renderer's pinia, so hand it back afterwards.
+		let rendererPinia: ReturnType<typeof getActivePinia>;
+
+		beforeEach(() => {
+			rendererPinia = getActivePinia();
+		});
+
+		afterEach(() => {
+			if (rendererPinia) setActivePinia(rendererPinia);
+		});
+
+		const typeWithDefault = {
+			name: 'defaultsApi',
+			displayName: 'Defaults API',
+			properties: [{ displayName: 'Region', name: 'region', type: 'string', default: 'eu' }],
+		} as ICredentialType;
+
+		const setupStores = () => {
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.UI]: {
+						modalStateById: { [CREDENTIAL_EDIT_MODAL_KEY]: { open: true } },
+					},
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: { sharing: true, externalSecrets: false },
+							templates: { host: '' },
+						},
+					},
+				},
+			});
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValue(
+				createCredentialResponse({ id: 'cred-defaults', type: typeWithDefault.name }),
+			);
+			return { credentialsStore, pinia };
+		};
+
+		test('loads the credential only after the credential types are in the store', async () => {
+			const { credentialsStore, pinia } = setupStores();
+			const { promise, resolve } = Promise.withResolvers<void>();
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(promise);
+
+			renderComponent({
+				props: { activeId: 'cred-defaults', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false));
+			expect(credentialsStore.getCredentialData).not.toHaveBeenCalled();
+
+			credentialsStore.state.credentialTypes = { [typeWithDefault.name]: typeWithDefault };
+			resolve();
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(screen.getByDisplayValue('eu')).toBeInTheDocument());
+		});
+
+		test('does not load the credential when the modal closes while the types load', async () => {
+			const { credentialsStore, pinia } = setupStores();
+			const { promise, resolve } = Promise.withResolvers<void>();
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(promise);
+
+			renderComponent({
+				props: { activeId: 'cred-defaults', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+			await retry(() => expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false));
+
+			mockedStore(useUIStore).modalsById = {
+				[CREDENTIAL_EDIT_MODAL_KEY]: { open: false },
+			} as never;
+			resolve();
+			await new Promise((r) => setTimeout(r, 0));
+
+			expect(credentialsStore.getCredentialData).not.toHaveBeenCalled();
+		});
+
+		test('still loads the credential when the credential types fail to load', async () => {
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			const { credentialsStore, pinia } = setupStores();
+			credentialsStore.fetchCredentialTypes.mockRejectedValueOnce(new Error('credential types'));
+			const onInitializeError = vi.fn();
+			mockedStore(useUIStore).modalsById = {
+				[CREDENTIAL_EDIT_MODAL_KEY]: { open: true, showAuthSelector: false, onInitializeError },
+			} as never;
+
+			renderComponent({
+				props: { activeId: 'cred-defaults', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			expect(onInitializeError).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('dependency pill', () => {

@@ -2,6 +2,7 @@ import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 
 import { AiNodePackageJsonRule } from './ai-node-package-json.js';
 import { ClassNameMatchesFilenameRule } from './class-name-matches-filename.js';
+import { CodexNodeNameRule } from './codex-node-name.js';
 import { CredClassFieldIconMissingRule } from './cred-class-field-icon-missing.js';
 import { CredClassOAuth2NamingRule } from './cred-class-oauth2-naming.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
@@ -57,6 +58,7 @@ import { WebhookLifecycleCompleteRule } from './webhook-lifecycle-complete.js';
 export const rules = {
 	'ai-node-package-json': AiNodePackageJsonRule,
 	'class-name-matches-filename': ClassNameMatchesFilenameRule,
+	'codex-node-name': CodexNodeNameRule,
 	'no-restricted-globals': NoRestrictedGlobalsRule,
 	'no-restricted-imports': NoRestrictedImportsRule,
 	'credential-password-field': CredentialPasswordFieldRule,

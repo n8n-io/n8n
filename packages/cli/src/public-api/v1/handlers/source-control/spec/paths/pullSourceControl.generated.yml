@@ -122,6 +122,7 @@ responses:
                     enum:
                       - review_pending
                       - changes_requested
+                      - review_required
                       - insufficient_api_key_scope
                       - insufficient_permissions
                   workflowReviewRequestId:
@@ -159,6 +160,12 @@ responses:
                           type: string
                         optInAvailable:
                           type: boolean
+                        limit:
+                          type: number
+                        usage:
+                          type: number
+                        resetsAt:
+                          type: string
                       required:
                         - kind
                         - checkId
@@ -283,6 +290,7 @@ responses:
                     enum:
                       - review_pending
                       - changes_requested
+                      - review_required
                       - insufficient_api_key_scope
                       - insufficient_permissions
                   workflowReviewRequestId:
@@ -320,6 +328,12 @@ responses:
                           type: string
                         optInAvailable:
                           type: boolean
+                        limit:
+                          type: number
+                        usage:
+                          type: number
+                        resetsAt:
+                          type: string
                       required:
                         - kind
                         - checkId

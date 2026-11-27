@@ -56,7 +56,10 @@ function dataPropsOf(
 ): Pick<ErrorValueSentinel, '__props' | '__nonEnumerableKeys'> {
 	const props: Record<string, unknown> = {};
 	const nonEnumerableKeys: string[] = [];
-	for (const [key, descriptor] of objectEntries(getOwnPropertyDescriptors(error))) {
+	const entries = objectEntries(getOwnPropertyDescriptors(error));
+	for (let i = 0; i < entries.length; i++) {
+		const key = entries[i][0];
+		const descriptor = entries[i][1];
 		if (descriptor.enumerable || !BUILT_IN_ERROR_KEYS.has(key)) {
 			try {
 				const value: unknown = reflectGet(error, key);
@@ -123,10 +126,19 @@ export function errorToSentinel(error: Error, encodeChild: Encode): ErrorValueSe
 	};
 }
 
-/** Rebuild an Error from a marker. `decodeChild` rebuilds the values inside it. */
-export function rebuildErrorValue(sentinel: ErrorValueSentinel, decodeChild: Encode): Error {
+/**
+ * Rebuild an Error from a marker. `decodeChild` rebuilds the values inside it.
+ * When given, `onCreate` runs before `decodeChild` so cycles back to the Error
+ * resolve to the same instance.
+ */
+export function rebuildErrorValue(
+	sentinel: ErrorValueSentinel,
+	decodeChild: Encode,
+	onCreate?: (error: Error) => void,
+): Error {
 	const ErrorClass = STANDARD_ERRORS.get(sentinel.__name) ?? Error;
 	const error = new ErrorClass(typeof sentinel.__message === 'string' ? sentinel.__message : '');
+	onCreate?.(error);
 	const decoded = decodeChild(sentinel.__props);
 	const props = typeof decoded === 'object' && decoded !== null ? decoded : {};
 
@@ -153,8 +165,8 @@ export function rebuildErrorValue(sentinel: ErrorValueSentinel, decodeChild: Enc
 				if (keys.length === 0 || typeof json !== 'object' || json === null) return json;
 				// Refresh direct fields. Keep omitted fields out and calculated values as captured.
 				const result = { ...json };
-				for (const key of keys) {
-					defineOwnValue(result, key, reflectGet(this, key));
+				for (let i = 0; i < keys.length; i++) {
+					defineOwnValue(result, keys[i], reflectGet(this, keys[i]));
 				}
 				return result;
 			},

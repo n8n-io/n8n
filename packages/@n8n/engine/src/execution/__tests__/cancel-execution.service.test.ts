@@ -47,6 +47,9 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
 		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
+		findPrunableExecutions: vi.fn(),
+		findRetentionCountCutoff: vi.fn(),
+		deleteEndedExecutions: vi.fn(),
 		...overrides,
 	};
 }
@@ -66,7 +69,12 @@ function makeService(executionStore: ExecutionStore) {
 		send: vi.fn(),
 		stop: vi.fn(),
 	};
-	const stepQueue: WorkQueue<StepMessage> = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	const stepQueue: WorkQueue<StepMessage> = {
+		publish: vi.fn(),
+		start: vi.fn(),
+		stop: vi.fn(),
+		size: vi.fn(),
+	};
 	const service = new CancelExecutionService(
 		executionStore,
 		stepStore,

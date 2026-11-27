@@ -17,7 +17,6 @@ vi.mock('@n8n/instance-ai', async () => {
 		resolvePromptProfile: profiles.resolvePromptProfile,
 		MAX_STEPS: profiles.MAX_STEPS,
 		createThreadApprovalContext: profiles.createThreadApprovalContext,
-		threadTargetsAgent: profiles.threadTargetsAgent,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		SELF_HEALING_PROFILE_VERSION: profiles.SELF_HEALING_PROFILE_VERSION,
@@ -25,6 +24,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
 		setTraceModelId: vi.fn(),
+		setTraceApprovalMode: vi.fn(),
 		modelIdTraceMetadata: (modelId: unknown) =>
 			typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
 		modelConfigId: (config: unknown) =>
@@ -265,6 +265,7 @@ import {
 	isQuotaExhaustedError,
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
+	setTraceApprovalMode,
 	emitAgentSnapshotTraceEvent,
 	carryAgentBuildRunState,
 	threadProvenanceMetadata,
@@ -702,7 +703,10 @@ type TerminalGuardOrderServiceInternals = {
 			signal: AbortSignal;
 			abortController: AbortController;
 			tracing?: InstanceAiTraceContext;
-			orchestrationContext?: { tracing?: unknown };
+			orchestrationContext?: {
+				tracing?: unknown;
+				domainContext?: Pick<InstanceAiContext, 'approvalMode'>;
+			};
 			resumeExecutionToken?: symbol;
 			messageGroupId?: string;
 			resumeTracing?: InstanceAiTraceContext;
@@ -997,6 +1001,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
+				draftWorkflowPreviewEnabled: false,
 				nodeUsageEnabled: !instanceContextEnabled,
 				nodeContextEnabled: false,
 				folderExplorationEnabled: false,
@@ -1349,6 +1354,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveExperimentGates: vi.fn().mockResolvedValue({
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
+				draftWorkflowPreviewEnabled: false,
 				conciseStyleEnabled: concise,
 				nodeUsageEnabled: false,
 				nodeContextEnabled: false,
@@ -3463,6 +3469,41 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			user_id: 'user-1',
 			model_id: 'anthropic/claude-sonnet-4-6',
 		});
+	});
+
+	it('records the approval mode of the suspended run in the trace of its resume', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const resumeTracing = {
+			actorRun: { id: 'resume-actor' },
+			withActiveSpan: vi.fn(
+				async (_run: unknown, callback: () => Promise<unknown>) => await callback(),
+			),
+		} as unknown as InstanceAiTraceContext;
+		mockClaimedResumeResult({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: emptyWorkSummary(),
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				tracing: resumeTracing,
+				orchestrationContext: { domainContext: { approvalMode: 'auto' } },
+			},
+		);
+
+		expect(setTraceApprovalMode).toHaveBeenCalledWith(resumeTracing, 'auto');
 	});
 
 	it('terminates the run visibly when a resume fails before the claim', async () => {
@@ -7195,7 +7236,7 @@ describe('getThreadMemory', () => {
 			cursor: { lastObservedMessageId: 'm137', lastObservedAt: '2020-01-01T00:00:00.000Z' },
 		});
 		expect(service.observationRepo.findActiveForThread).toHaveBeenCalledWith('thread-1');
-		expect(service.observationCursorRepo.findForThread).toHaveBeenCalledWith('thread-1');
+		expect(service.observationCursorRepo.findForThread).toHaveBeenCalledWith('thread-1', {});
 	});
 
 	it('returns a null cursor and no rows when the observer never ran', async () => {
@@ -7280,6 +7321,7 @@ describe('InstanceAiService — instance-context turn event', () => {
 		expect(trackedRows(service)).toEqual([
 			expect.objectContaining({
 				surface: 'aia',
+				runtime: 'instance-ai',
 				instance_context_enabled: false,
 				block_state: 'absent',
 				absence_reason: 'disabled',

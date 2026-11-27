@@ -1,4 +1,5 @@
 import {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	SKILL_SYNC_FLAG,
 	type SkillListItem,
 	type SkillSourceUpdates,
@@ -33,19 +34,23 @@ import { SkillSourceLink } from '../../database/entities/skill-source-link.entit
 import { SkillSourceCheckTask } from '../../services/skill-source-check.task';
 import { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
 import type { SkillUsage } from '../../services/skill-usage.contracts';
+import { SkillSourceBackoff } from '../../services/skill-source-backoff';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillService } from '../../services/skill.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
+import { SkillRepository } from '../../database/repositories/skill.repository';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
+import { SKILL_PREVIEW_MAX_LENGTH } from '../../utils/skill-preview';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
 
 const REPO = 'https://github.com/acme/skills';
+const FOLDER = `${REPO}/tree/main/skills`;
 
 const skillMd = (name: string, body = `Follow ${name}.`, description = `${name} description`) =>
 	`---\nname: ${name}\ndescription: ${description}\n---\n\n${body}\n`;
@@ -97,7 +102,7 @@ describe('Skill source checks', () => {
 		await db().delete(SkillSourceConnection, {});
 		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
 		// The rate limit budget lives in memory on the service, so one test's limit stays there.
-		(Reflect.get(sync(), 'backoff') as Map<string, unknown>).clear();
+		(Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<string, unknown>).clear();
 		Reflect.get(sync(), 'commits').clear();
 		github.start();
 		github.push('acme/skills', FILES);
@@ -109,20 +114,20 @@ describe('Skill source checks', () => {
 		vi.useRealTimers();
 	});
 
-	/** Imports every skill of the repository into the team, and answers their ids by name. */
-	const importAll = async (onlyNames?: string[]) => {
+	/** Imports the selected skills into the team, and returns their IDs by name. */
+	const importAll = async (onlyNames?: string[], url = REPO) => {
 		const scope = { scope: 'project', projectId: team.id };
 		const discovery = (
 			await editor
 				.post('/skill-sources/discover')
-				.send({ url: REPO, ...scope })
+				.send({ url, ...scope })
 				.expect(200)
 		).body.data as SkillSourceDiscovery;
 		const { imported, sourceId } = (
 			await editor
 				.post('/skill-sources')
 				.send({
-					url: REPO,
+					url,
 					...scope,
 					skillKeys: discovery.skills
 						.filter(({ name }) => !onlyNames || (name && onlyNames.includes(name)))
@@ -180,6 +185,55 @@ describe('Skill source checks', () => {
 				.expect(status);
 		const sources = async (): Promise<SkillSourceListItem[]> =>
 			(await editor.get('/skill-sources').expect(200)).body.data;
+
+		it.each([false, true])(
+			'keeps sibling source updates within each folder (legacy source: %s)',
+			async (legacy) => {
+				const first = await importAll(['docx'], `${FOLDER}/docx`);
+				if (legacy) {
+					await db().update(
+						SkillSourceConnection,
+						{ id: first.sourceId },
+						{ identityKey: 'github:github.com/acme/skills' },
+					);
+				}
+				const second = await importAll(['xlsx'], `${FOLDER}/xlsx`);
+				pushChange({
+					'skills/docx/SKILL.md': skillMd('docx', 'Updated document instructions.'),
+					'skills/xlsx/SKILL.md': skillMd('xlsx', 'Updated spreadsheet instructions.'),
+					'skills/pdf/SKILL.md': skillMd('pdf'),
+				});
+				for (const [sourceId, skillId, instructions] of [
+					[first.sourceId, first.docx, 'Updated document instructions.'],
+					[second.sourceId, second.xlsx, 'Updated spreadsheet instructions.'],
+				]) {
+					await age(sourceId);
+					const checked = await checkNow(editor, skillId);
+					expect(checked.data.newSkillsFound).toBe(0);
+					const link = await linkOf(skillId);
+					expect(link).toMatchObject({
+						sourceId,
+						state: 'update_available',
+						pendingContent: { instructions },
+					});
+					const reviewed = await review(sourceId);
+					expect(reviewed.newSkills).toEqual([]);
+					expect((await sourceOf(sourceId)).unlinkedSkills).toEqual([]);
+					await editor
+						.post(`/skill-sources/${sourceId}/updates/accept`)
+						.send({
+							updates: reviewed.updates.map(({ skillId, contentHash, baseVersionId }) => ({
+								skillId,
+								contentHash,
+								baseVersionId,
+							})),
+						})
+						.expect(200);
+					expect((await findLatestSkillVersion(skillId))?.instructions).toBe(instructions);
+					expect((await linkOf(skillId)).state).toBe('up_to_date');
+				}
+			},
+		);
 
 		it('checks new skills, stores metadata only, and imports them into the source scope with links', async () => {
 			const { sourceId } = await importAll();
@@ -357,6 +411,45 @@ describe('Skill source checks', () => {
 			});
 		});
 
+		it('keeps an oversized skill hidden when switching from tarball to folder reads', async () => {
+			const { sourceId } = await importAll();
+			const content = 'pdf'.padEnd(1024 * 1024 + 1, 'x');
+			pushChange({ 'skills/pdf/SKILL.md': content });
+			await sync().checkAll();
+			const [hidden] = (await review(sourceId)).newSkills!;
+			expect(hidden.check?.verdict).toBe('blocked');
+			await act(sourceId, { skippedNewSkills: [hidden] });
+			const { key, contentHash } = hidden;
+			const { archives } = github.requests;
+			expect(archives).toBeGreaterThan(0);
+			expect(github.requests.trees).toBe(0);
+
+			// Before folder reads used the Trees API, they used the same tarball reader as root links.
+			const { locator } = await sourceOf(sourceId);
+			await db().update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{ locator: { ...locator, path: 'skills' } },
+			);
+
+			pushChange({ 'README.md': 'A source change without a skill change.' });
+			await sync().checkAll();
+			expect((await sources())[0].newSkillsAvailable).toBe(0);
+			expect((await review(sourceId)).newSkills).toEqual([
+				expect.objectContaining({ key, contentHash, skipped: true }),
+			]);
+			expect(github.requests.archives).toBe(archives);
+			expect(github.requests.trees).toBeGreaterThan(0);
+
+			pushChange({ 'skills/pdf/SKILL.md': `${content}!` });
+			await sync().checkAll();
+			expect((await sources())[0].newSkillsAvailable).toBe(1);
+			const [skill] = (await review(sourceId)).newSkills!;
+			expect(skill).toMatchObject({ key, skipped: false, check: { verdict: 'blocked' } });
+			await act(sourceId, { skippedNewSkills: [skill] });
+			expect((await sources())[0].newSkillsAvailable).toBe(0);
+		});
+
 		it('imports an initial omission through explicit review without an upstream change', async () => {
 			const { sourceId } = await importAll(['docx']);
 			expect((await sourceOf(sourceId)).unlinkedSkills).toEqual([
@@ -426,6 +519,26 @@ describe('Skill source checks', () => {
 				.send({ updates: [], newSkills: [skill], reviewedWarnings: true })
 				.expect(200);
 			expect((await sourceOf(sourceId)).unlinkedSkills).toEqual([]);
+		});
+
+		it('preserves binary files when accepting a synced update', async () => {
+			const { sourceId, docx } = await importAll();
+			const path = 'assets/logo.png';
+			const bytes = 'PNG\0data';
+			pushChange({ [`skills/docx/${path}`]: bytes });
+			await sync().checkAll();
+			const { skillId, contentHash, baseVersionId } = (await review(sourceId)).updates[0];
+			await editor
+				.post(`/skill-sources/${sourceId}/updates/accept`)
+				.send({ updates: [{ skillId, contentHash, baseVersionId }] })
+				.expect(200);
+
+			const detail = await Container.get(SkillService).get(memberUser, docx);
+			expect(detail.skill.references).toContainEqual({
+				path,
+				content: Buffer.from(bytes).toString('base64'),
+				isBinary: true,
+			});
 		});
 
 		describe.each(['success', 'failure'] as const)('review telemetry on %s', (status) => {
@@ -740,27 +853,113 @@ describe('Skill source checks', () => {
 			expect((await linkOf(docx)).pendingContentHash).not.toBeNull();
 		});
 
-		it('requires acknowledgment for warnings and never accepts blocked content', async () => {
-			const { sourceId, docx } = await importAll();
-			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'Visit https://new.example.com/docs') });
+		it.each([
+			{ url: REPO, content: '---\ninvalid: [yaml\n---' },
+			{ url: FOLDER, content: 'x'.repeat(1024 * 1024 + 1) },
+		])(
+			'requires acknowledgment for warnings and never accepts blocked content ($url)',
+			async ({ url, content }) => {
+				const { sourceId, docx } = await importAll(undefined, url);
+				pushChange({
+					'skills/docx/SKILL.md': skillMd('docx', 'Visit https://new.example.com/docs'),
+				});
+				await sync().checkAll();
+				const reviewed = await review(sourceId);
+				expect(reviewed.updates[0].check.verdict).toBe('needs_review');
+				expect((await accept(sourceId, reviewed, 422)).body.meta.reason).toBe('review_required');
+				await accept(sourceId, reviewed, 200, true);
+				const longInstructions = 'Read this line.\n'
+					.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH / 8)
+					.trimEnd();
+				pushChange({ 'skills/docx/SKILL.md': skillMd('docx', longInstructions) });
+				await sync().checkAll();
+				await db().update(
+					SkillSourceLink,
+					{ skillId: docx },
+					{
+						pendingScan: {
+							verdict: 'blocked',
+							findings: [
+								{
+									rule: 'over_limit',
+									severity: 'blocked',
+									file: 'SKILL.md',
+									detail: 'Instructions are too long.',
+								},
+							],
+						},
+					},
+				);
+				const oversized = await review(sourceId);
+				expect(oversized.updates[0].check.verdict).toBe('blocked');
+				expect(oversized.updates[0].check.findings[0].limit).toEqual({
+					field: 'instructions',
+					max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+					current: longInstructions.length,
+				});
+				// The review shows a cut preview and no diff, so the row has no counts.
+				expect(oversized.updates[0].changes).toEqual({ added: 0, removed: 0 });
+				const preview = await editor
+					.get(`/skill-sources/${sourceId}/updates/${docx}`)
+					.query({
+						contentHash: oversized.updates[0].contentHash,
+						baseVersionId: oversized.updates[0].baseVersionId,
+					})
+					.expect(200);
+				expect(preview.body.data.files).toEqual([]);
+				expect(preview.body.data.preview.previewTruncated).toBe(true);
+				expect(preview.body.data.preview.previewFiles[0].text).toContain('Read this line.');
+				expect(preview.body.data.preview.previewFiles[0].text.length).toBeLessThanOrEqual(
+					SKILL_PREVIEW_MAX_LENGTH,
+				);
+				expect((await accept(sourceId, oversized, 422, true)).body.meta.reason).toBe(
+					'blocked_by_check',
+				);
+				pushChange({ 'skills/docx/SKILL.md': content });
+				await sync().checkAll();
+				const blocked = await review(sourceId);
+				expect(blocked.updates[0].check.verdict).toBe('blocked');
+				expect((await accept(sourceId, blocked, 422, true)).body.meta.reason).toBe(
+					'blocked_by_check',
+				);
+				const update = blocked.updates[0];
+				const detail = await editor
+					.get(`/skill-sources/${sourceId}/updates/${docx}`)
+					.query({ contentHash: update.contentHash, baseVersionId: update.baseVersionId })
+					.expect(200);
+				expect(detail.body.data.files).toEqual([]);
+			},
+		);
+
+		it.each([
+			{ case: 'a name over the limit', name: 'a'.repeat(129), body: 'Updated docx.' },
+			{
+				case: 'a taken name',
+				name: 'xlsx',
+				body: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
+			},
+		])('keeps the saved name on a blocked update with $case', async ({ name, body }) => {
+			const { sourceId } = await importAll();
+			pushChange({ 'skills/docx/SKILL.md': skillMd(name, body, 'docx description') });
 			await sync().checkAll();
-			const reviewed = await review(sourceId);
-			expect(reviewed.updates[0].check.verdict).toBe('needs_review');
-			expect((await accept(sourceId, reviewed, 422)).body.meta.reason).toBe('review_required');
-			await accept(sourceId, reviewed, 200, true);
-			pushChange({ 'skills/docx/SKILL.md': '---\ninvalid: [yaml\n---' });
+
+			const [update] = (await review(sourceId)).updates;
+
+			expect(update.check.verdict).toBe('blocked');
+			expect(update).toMatchObject({ name: 'docx', nameClash: null });
+		});
+
+		it('counts the changed lines of a blocked update that fits the review', async () => {
+			const { sourceId } = await importAll(['docx']);
+			pushChange({
+				'skills/docx/SKILL.md': skillMd('a'.repeat(129), 'Updated docx.', 'docx description'),
+			});
 			await sync().checkAll();
-			const blocked = await review(sourceId);
-			expect(blocked.updates[0].check.verdict).toBe('blocked');
-			expect((await accept(sourceId, blocked, 422, true)).body.meta.reason).toBe(
-				'blocked_by_check',
-			);
-			const update = blocked.updates[0];
-			const detail = await editor
-				.get(`/skill-sources/${sourceId}/updates/${docx}`)
-				.query({ contentHash: update.contentHash, baseVersionId: update.baseVersionId })
-				.expect(200);
-			expect(detail.body.data.files).toEqual([]);
+
+			const [update] = (await review(sourceId)).updates;
+
+			expect(update.check.verdict).toBe('blocked');
+			expect(update.changes.added).toBeGreaterThan(0);
 		});
 
 		it('reviews and saves all stored content and its revision without another remote request', async () => {
@@ -1032,7 +1231,7 @@ describe('Skill source checks', () => {
 
 			await sync().checkAll();
 
-			expect(github.requests).toEqual({ refs: 1, archives: 0 });
+			expect(github.requests).toEqual({ refs: 1, archives: 0, trees: 0, files: 0 });
 			expect(await linkOf(docx)).toMatchObject({
 				state: 'up_to_date',
 				baseRevision: before.baseRevision,
@@ -1105,6 +1304,28 @@ describe('Skill source checks', () => {
 
 			await sync().checkAll();
 
+			expect(await linkOf(docx)).toMatchObject({ state: 'up_to_date', pendingContentHash: null });
+			expect(updateFound).not.toHaveBeenCalled();
+		});
+
+		// Before n8n kept every file, it stored `references/*.md` without a byte order mark and
+		// with LF line endings. The check must hash such a file the same way, or each synced
+		// skill with CRLF files gets one update that changes line endings only.
+		it('shows no update for a skill whose Markdown reference has a BOM and CRLF', async () => {
+			github.push('acme/skills', {
+				...FILES,
+				'skills/docx/references/guide.md': '\uFEFFLine 1\r\nLine 2\r\n',
+			});
+			const updateFound = vi.spyOn(Container.get(SkillsTelemetry), 'updateFound');
+			const { docx } = await importAll();
+			const stored = (await Container.get(SkillRepository).findLatestSaved([docx])).get(docx);
+			pushChange({ 'README.md': '# Changed\n' });
+
+			await sync().checkAll();
+
+			expect(stored?.files).toEqual([
+				expect.objectContaining({ path: 'references/guide.md', content: 'Line 1\nLine 2\n' }),
+			]);
 			expect(await linkOf(docx)).toMatchObject({ state: 'up_to_date', pendingContentHash: null });
 			expect(updateFound).not.toHaveBeenCalled();
 		});
@@ -1341,7 +1562,10 @@ describe('Skill source checks', () => {
 			await importAll();
 			github.failWith = { status: 429, headers: { 'retry-after': '600' } };
 			await sync().checkAll();
-			const backoff = Reflect.get(sync(), 'backoff') as Map<string, unknown>;
+			const backoff = Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<
+				string,
+				unknown
+			>;
 			const until = backoff.get('public:github');
 
 			await sync().checkAll();
@@ -1655,7 +1879,7 @@ describe('Skill source checks', () => {
 
 			await sync().checkAll();
 
-			expect(github.requests).toEqual({ refs: 1, archives: 0 });
+			expect(github.requests).toEqual({ refs: 1, archives: 0, trees: 0, files: 0 });
 			expect((await sourceOf(sourceId)).probeCursor).toBe(current.probeCursor);
 		});
 

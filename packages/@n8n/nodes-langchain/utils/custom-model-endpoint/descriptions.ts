@@ -12,6 +12,35 @@ export const SEARCH_ALIASES = [
 	'APIM',
 ];
 
+export const CHAT_COMPLETIONS_FORMAT = 'chatCompletions';
+export const RESPONSES_FORMAT = 'responses';
+
+const onlyChatCompletions = { show: { '/apiFormat': [CHAT_COMPLETIONS_FORMAT] } };
+const onlyResponses = { show: { '/apiFormat': [RESPONSES_FORMAT] } };
+
+export const apiFormatField: INodeProperties = {
+	displayName: 'API Format',
+	name: 'apiFormat',
+	type: 'options',
+	// Other fields are shown and hidden on this, and displayOptions cannot resolve an expression
+	noDataExpression: true,
+	options: [
+		{ name: 'Chat Completions', value: CHAT_COMPLETIONS_FORMAT },
+		{ name: 'Responses', value: RESPONSES_FORMAT },
+	],
+	default: CHAT_COMPLETIONS_FORMAT,
+	description: 'Which API of your gateway to call',
+};
+
+export const responsesFormatNotice: INodeProperties = {
+	displayName:
+		'Check that your gateway serves /responses. The OpenAI built-in tools are not available here, and a tool definition in Extra Body uses the flat Responses shape.',
+	name: 'notice',
+	type: 'notice',
+	default: '',
+	displayOptions: { show: { apiFormat: [RESPONSES_FORMAT] } },
+};
+
 /** By ID is the default: a gateway does not have to answer `GET /models`. */
 export const modelField: INodeProperties = {
 	displayName: 'Model',
@@ -79,6 +108,7 @@ export const requestHeaderFields: INodeProperties[] = [
 	},
 ];
 
+/** Shared so a change to a gateway option reaches both nodes. */
 const sharedOptions: INodeProperties[] = [
 	{
 		displayName: 'Frequency Penalty',
@@ -86,6 +116,7 @@ const sharedOptions: INodeProperties[] = [
 		type: 'number',
 		default: 0,
 		typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+		displayOptions: onlyChatCompletions,
 		description:
 			"Positive values penalise tokens by how often they have appeared, lowering the model's tendency to repeat a line",
 	},
@@ -94,8 +125,17 @@ const sharedOptions: INodeProperties[] = [
 		name: 'maxTokens',
 		type: 'number',
 		default: -1,
+		displayOptions: onlyChatCompletions,
 		description:
 			'The cap on the tokens generated. Sent as max_completion_tokens for a reasoning model and as max_tokens otherwise. Use Extra Body to force a different field.',
+	},
+	{
+		displayName: 'Max Output Tokens',
+		name: 'maxOutputTokens',
+		type: 'number',
+		default: -1,
+		displayOptions: onlyResponses,
+		description: 'The cap on the tokens generated, sent as max_output_tokens',
 	},
 	{
 		displayName: 'Max Retries',
@@ -110,8 +150,23 @@ const sharedOptions: INodeProperties[] = [
 		type: 'number',
 		default: 0,
 		typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+		displayOptions: onlyChatCompletions,
 		description:
 			"Positive values penalise tokens that have appeared at all, raising the model's tendency to change subject",
+	},
+	{
+		displayName: 'Reasoning Summary',
+		name: 'reasoningSummary',
+		type: 'options',
+		default: 'auto',
+		displayOptions: onlyResponses,
+		options: [
+			{ name: 'Auto', value: 'auto' },
+			{ name: 'Concise', value: 'concise' },
+			{ name: 'Detailed', value: 'detailed' },
+		],
+		description:
+			'Ask a reasoning model to summarise its reasoning. Not every model or gateway serves one.',
 	},
 	{
 		displayName: 'Sampling Temperature',
@@ -126,6 +181,7 @@ const sharedOptions: INodeProperties[] = [
 		name: 'seed',
 		type: 'number',
 		default: 0,
+		displayOptions: onlyChatCompletions,
 		description: 'Ask the provider to sample deterministically. Not every provider honours it.',
 	},
 	{
@@ -134,7 +190,16 @@ const sharedOptions: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. END,STOP',
+		displayOptions: onlyChatCompletions,
 		description: 'Comma-separated strings that end the answer when the model produces one',
+	},
+	{
+		displayName: 'Store Response',
+		name: 'storeResponse',
+		type: 'boolean',
+		default: false,
+		displayOptions: onlyResponses,
+		description: 'Whether the gateway may keep the response, so a later call can refer to it',
 	},
 	{
 		displayName: 'Timeout',
@@ -152,7 +217,28 @@ const sharedOptions: INodeProperties[] = [
 		description:
 			'Nucleus sampling: 0.5 considers half of the likelihood-weighted options. Change this or the temperature, not both.',
 	},
+	{
+		displayName: 'Truncation',
+		name: 'truncation',
+		type: 'options',
+		default: 'auto',
+		displayOptions: onlyResponses,
+		options: [
+			{ name: 'Auto', value: 'auto' },
+			{ name: 'Disabled', value: 'disabled' },
+		],
+		description:
+			'What to do when the conversation outgrows the context window. Auto drops items from the middle, Disabled fails the request.',
+	},
 ];
+
+/**
+ * For a node that sends Chat Completions alone. The Responses options are shown on
+ * `/apiFormat`, which only the sub-node offers, so anywhere else they are dead weight.
+ */
+export const chatCompletionsOptions: INodeProperties[] = sharedOptions.filter(
+	(option) => !option.displayOptions?.show?.['/apiFormat']?.includes(RESPONSES_FORMAT),
+);
 
 export const chatModelOptions: INodeProperties = {
 	displayName: 'Options',

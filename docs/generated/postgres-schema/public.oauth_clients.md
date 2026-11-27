@@ -8,7 +8,7 @@
 | clientSecretExpiresAt | bigint |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | grantTypes | json |  | false |  |  |  |
-| id | varchar |  | false | [public.oauth_access_tokens](public.oauth_access_tokens.md) [public.oauth_authorization_codes](public.oauth_authorization_codes.md) [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) [public.oauth_user_consents](public.oauth_user_consents.md) |  |  |
+| id | varchar |  | false | [public.mcp_server_connection](public.mcp_server_connection.md) [public.oauth_access_tokens](public.oauth_access_tokens.md) [public.oauth_authorization_codes](public.oauth_authorization_codes.md) [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) [public.oauth_user_consents](public.oauth_user_consents.md) |  |  |
 | isFirstParty | boolean | false | false |  |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | redirectUris | json |  | false |  |  |  |
@@ -40,6 +40,7 @@
 ```mermaid
 erDiagram
 
+"public.mcp_server_connection" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;oauthClientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.oauth_access_tokens" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.oauth_authorization_codes" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.oauth_refresh_tokens" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
@@ -56,6 +57,14 @@ erDiagram
   json redirectUris
   varchar_255_ tokenEndpointAuthMethod
   timestamp_3__with_time_zone updatedAt
+}
+"public.mcp_server_connection" {
+  varchar_255_ clientName
+  timestamp_3__with_time_zone firstUsedAt
+  timestamp_3__with_time_zone lastUsedAt
+  varchar oauthClientId FK
+  uuid serverId FK
+  uuid userId FK
 }
 "public.oauth_access_tokens" {
   varchar clientId FK

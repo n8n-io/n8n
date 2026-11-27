@@ -48,6 +48,7 @@ import type * as ChatModelValidationMod from './tools/workflows/chat-model-valid
 import type * as WorkflowValidationWarningsMod from './tools/workflows/workflow-validation-warnings';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
+import type * as ApprovalReviewEventMod from './tracing/approval-review-event';
 import type * as BuilderMetricEventMod from './tracing/builder-metric-event';
 import type * as BuilderToolsMod from './tools/orchestration/builder-tools';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
@@ -112,6 +113,9 @@ const loadTraceReplay = lazyModule(
 );
 const loadAgentSnapshotEvent = lazyModule(
 	() => require('./tracing/agent-snapshot-event') as typeof AgentSnapshotEventMod,
+);
+const loadApprovalReviewEvent = lazyModule(
+	() => require('./tracing/approval-review-event') as typeof ApprovalReviewEventMod,
 );
 const loadBuilderMetricEvent = lazyModule(
 	() => require('./tracing/builder-metric-event') as typeof BuilderMetricEventMod,
@@ -299,8 +303,6 @@ export {
 	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
-	threadTargetsAgent,
-	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
 export type {
@@ -353,6 +355,9 @@ export const snapshotAgent: typeof BuilderToolsMod.snapshotAgent = lazyFunction(
 	() => loadBuilderTools().snapshotAgent,
 );
 
+export const emitApprovalReviewTraceEvent: typeof ApprovalReviewEventMod.emitApprovalReviewTraceEvent =
+	lazyFunction(() => loadApprovalReviewEvent().emitApprovalReviewTraceEvent);
+
 export const emitBuilderMetric: typeof BuilderMetricEventMod.emitBuilderMetric = lazyFunction(
 	() => loadBuilderMetricEvent().emitBuilderMetric,
 );
@@ -387,6 +392,10 @@ export const setTracePromptVersion: typeof LangsmithTracingMod.setTracePromptVer
 
 export const setTraceModelId: typeof LangsmithTracingMod.setTraceModelId = lazyFunction(
 	() => loadLangsmithTracing().setTraceModelId,
+);
+
+export const setTraceApprovalMode: typeof LangsmithTracingMod.setTraceApprovalMode = lazyFunction(
+	() => loadLangsmithTracing().setTraceApprovalMode,
 );
 
 export const modelIdTraceMetadata: typeof LangsmithTracingMod.modelIdTraceMetadata = lazyFunction(
@@ -600,6 +609,10 @@ export declare const suspendedInstanceContextSchema: typeof InstanceContextState
 export type { HubSkillTelemetryState } from './runtime/instance-context-state';
 export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
 export {
+	createWorkflowDraftPublisher,
+	type WorkflowDraftPublisher,
+} from './tools/workflows/workflow-draft-publisher';
+export {
 	formatWorkflowSetupStateNote,
 	observeWorkflowSetupStates,
 } from './tools/workflows/setup-panel-state';
@@ -755,6 +768,7 @@ export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRunt
 export type {
 	InstanceAiChangedArtifact,
 	InstanceAiContext,
+	InstanceAiEngineSetup,
 	InstanceAiToolRegistry,
 	InstanceAiWorkflowService,
 	InstanceAiExecutionService,
@@ -773,6 +787,8 @@ export type {
 	InstanceAiActivityExpansion,
 	InstanceAiActivityService,
 	InstanceAiPreferenceService,
+	InstanceAiAgentFeedback,
+	InstanceAiAgentFeedbackService,
 	InstanceAiPreferenceWriteResult,
 	InstanceAiPreferenceWriteRejection,
 	InstanceAiSavedPreference,
@@ -857,6 +873,9 @@ export type {
 	AgentSessionSummary,
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
+	InstanceAiConversationFile,
+	InstanceAiImportedFile,
+	InstanceAiSandboxFiles,
 	InstanceAiStoredFile,
 	InstanceAiStoredFileReader,
 	InstanceAiSkillService,

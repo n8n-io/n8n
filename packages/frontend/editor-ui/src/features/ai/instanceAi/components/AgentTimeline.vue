@@ -7,7 +7,6 @@ import {
 	type InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
 import {
 	buildTimelineBlocks,
@@ -15,24 +14,28 @@ import {
 	extractBuiltAgentArtifacts,
 	extractBuiltWorkflowArtifacts,
 	isStreamingTimelineEntry,
+	ACTIVITY_INDICATOR_DELAY_MS,
 	type ArtifactInfo,
 	type TimelineBlock,
 } from '../agentTimeline.utils';
 import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import { formatArtifactMetadata } from '@/features/ai/instanceAi/artifactCardMetadata';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useThread } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
+import { toAnsweredQuestionsToolCall } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
 import ArtifactCard from './ArtifactCard.vue';
 import InstanceAiAppBlueprint from './InstanceAiAppBlueprint.vue';
 import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
 import PreferenceCard from './PreferenceCard.vue';
 import TaskChecklist from './TaskChecklist.vue';
-import ThinkingBlock from './ThinkingBlock.vue';
-import TimelineActivityIndicator from './TimelineActivityIndicator.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
+import { AiActivityTrace } from '../../shared/components/AiActivityTrace';
+import AiTypingIndicator from '../../shared/components/AiTypingIndicator.vue';
+import { useInstanceAiActivityItems } from '../composables/useInstanceAiActivityItems';
+import { useQuietPeriod } from '../composables/useQuietPeriod';
 
-const i18n = useI18n();
 const thread = useThread();
 const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
 
@@ -40,50 +43,6 @@ const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
 function resolveArtifactName(artifact: ArtifactInfo): string {
 	const entry = thread.producedArtifacts.get(artifact.resourceId);
 	return entry?.name ?? artifact.name;
-}
-
-function formatRelativeTime(isoTime: string): string {
-	const diffMs = Date.now() - new Date(isoTime).getTime();
-	const diffMin = Math.floor(diffMs / 60_000);
-	if (diffMin < 1) {
-		return i18n.baseText('instanceAi.artifactCard.updatedJustNow');
-	}
-	const diffHours = Math.floor(diffMin / 60);
-	if (diffHours < 1) {
-		const key =
-			diffMin === 1 ? 'instanceAi.artifactCard.minute' : 'instanceAi.artifactCard.minutes';
-		const time = i18n.baseText(key, {
-			interpolate: { count: `${diffMin}` },
-		});
-		return i18n.baseText('instanceAi.artifactCard.updatedAgo', { interpolate: { time } });
-	}
-	const key = diffHours === 1 ? 'instanceAi.artifactCard.hour' : 'instanceAi.artifactCard.hours';
-	const time = i18n.baseText(key, {
-		interpolate: { count: `${diffHours}` },
-	});
-	return i18n.baseText('instanceAi.artifactCard.updatedAgo', { interpolate: { time } });
-}
-
-function formatCreatedDate(isoTime: string): string {
-	const date = new Date(isoTime);
-	const day = date.getDate();
-	const month = date.toLocaleString('en', { month: 'long' });
-	return i18n.baseText('instanceAi.artifactCard.createdAt', {
-		interpolate: { date: `${day} ${month}` },
-	});
-}
-
-function formatArtifactMetadata(artifact: ArtifactInfo): string {
-	const parts: string[] = [];
-
-	if (artifact.completedAt) {
-		parts.push(formatRelativeTime(artifact.completedAt));
-		parts.push(formatCreatedDate(artifact.completedAt));
-	} else {
-		parts.push(i18n.baseText('instanceAi.artifactCard.updatedJustNow'));
-	}
-
-	return parts.join(' │ ');
 }
 
 const props = withDefaults(
@@ -121,6 +80,24 @@ const preferencesEnabled = computed(() => isContextPreferencesEnabled());
 
 const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
 
+const { activityItems } = useInstanceAiActivityItems(() => props.agentNode);
+
+/**
+ * Changes whenever the run visibly advances: a new run, a new timeline entry,
+ * or more text in the tail entry. The tail entry keeps its identity while it
+ * streams, so the entries alone cannot show progress.
+ */
+const progressToken = computed(() => {
+	const entries = timelineEntries.value;
+	const tail = entries.at(-1);
+	const tailSize =
+		tail && (tail.type === 'text' || tail.type === 'reasoning') ? tail.content.length : 0;
+	return `${thread.activeRunId}:${entries.length}:${tailSize}`;
+});
+
+/** Short pauses are normal, so the typing dots wait for a real silence. */
+const isQuiet = useQuietPeriod(() => progressToken.value, ACTIVITY_INDICATOR_DELAY_MS);
+
 /** Index tool calls by ID for O(1) lookup and proper reactivity tracking. */
 const toolCallsById = computed(() => {
 	const map: Record<string, InstanceAiToolCallState> = {};
@@ -137,20 +114,6 @@ const childrenById = computed(() => {
 		map[child.agentId] = child;
 	}
 	return map;
-});
-
-/**
- * Changes whenever the run visibly advances: a new run, a new timeline entry,
- * or the tail entry growing. Drives the activity indicator's clock — an
- * entry-derived key can't, because the tail entry's identity is stable while
- * its content streams.
- */
-const progressToken = computed(() => {
-	const entries = timelineEntries.value;
-	const tail = entries.at(-1);
-	const tailSize =
-		tail && (tail.type === 'text' || tail.type === 'reasoning') ? tail.content.length : 0;
-	return `${thread.activeRunId}:${entries.length}:${tailSize}`;
 });
 
 const renderBlocks = computed(() =>
@@ -308,7 +271,7 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 						:resource-id="item.artifact.resourceId"
 						:project-id="item.artifact.projectId"
 						:archived="thread.producedArtifacts.get(item.artifact.resourceId)?.archived"
-						:metadata="formatArtifactMetadata(item.artifact)"
+						:metadata="formatArtifactMetadata(item.artifact.completedAt)"
 					/>
 					<TimelineTextSegment
 						v-else
@@ -321,15 +284,17 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 			</div>
 			<template v-else>
 				<template v-for="block in [group.block]" :key="block.key">
-					<!-- Collapsible thinking trace: reasoning + narration + tool calls -->
-					<template v-if="block.type === 'thinking'">
-						<ThinkingBlock
-							:agent-node="props.agentNode"
-							:entries="block.entries"
-							:active="block.active"
-							:awaiting-input="block.active && thread.isAwaitingConfirmation"
-						/>
-					</template>
+					<!-- Thinking, then the tool calls and notices of the block -->
+					<AiActivityTrace
+						v-if="block.type === 'thinking'"
+						:items="
+							activityItems({
+								entries: block.entries,
+								active: block.active,
+								awaitingInput: block.active && thread.isAwaitingConfirmation,
+							})
+						"
+					/>
 
 					<TaskChecklist v-else-if="block.type === 'tasks'" :tasks="props.agentNode.tasks" />
 
@@ -351,7 +316,6 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 						:request-id="block.toolCall.confirmation.requestId"
 						:input-thread-id="block.toolCall.confirmation.inputThreadId"
 						:blueprint="resolveAppBlueprint(block.toolCall)!"
-						:errors="block.toolCall.confirmation.appBlueprintErrors"
 						:failed="hasAppCreateError(block.toolCall)"
 						:read-only="isCardReadOnly(block.toolCall)"
 						:expired="block.toolCall.confirmation.expired"
@@ -359,7 +323,7 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 
 					<!-- Answered questions (read-only after resolution) -->
 					<template v-else-if="block.type === 'questions'">
-						<AnsweredQuestions :tool-call="block.toolCall" />
+						<AnsweredQuestions :tool-call="toAnsweredQuestionsToolCall(block.toolCall)" />
 					</template>
 
 					<!-- A preference the assistant saved: edit or undo it from the latest turn -->
@@ -372,9 +336,9 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 					/>
 
 					<!-- The run is live but a committed answer settled the block behind it -->
-					<TimelineActivityIndicator
-						v-else-if="block.type === 'activity' && !thread.isAwaitingConfirmation"
-						:progress-token="progressToken"
+					<AiTypingIndicator
+						v-else-if="block.type === 'activity' && isQuiet && !thread.isAwaitingConfirmation"
+						:class="$style.typingIndicator"
 					/>
 
 					<!-- Child agent — flat section -->
@@ -388,19 +352,23 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 </template>
 
 <style lang="scss" module>
+.typingIndicator {
+	margin-top: var(--spacing--xs);
+}
+
 .timeline {
 	/** Keep the activity rail extension equal to the gap between blocks. */
-	--n8n--ai-activity-step-gap: var(--spacing--2xs);
+	--n8n-ai-activity-step--gap: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
-	gap: var(--n8n--ai-activity-step-gap);
+	gap: var(--n8n-ai-activity-step--gap);
 }
 
 .answerGroup {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	margin-block: calc(var(--spacing--sm) - var(--n8n--ai-activity-step-gap));
+	margin-block: calc(var(--spacing--sm) - var(--n8n-ai-activity-step--gap));
 
 	&:first-child {
 		margin-top: 0;

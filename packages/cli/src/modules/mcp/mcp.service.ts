@@ -4,7 +4,6 @@ import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	MIGRATION_REPORT_TARGET_VERSION,
 } from '@n8n/api-types';
 import { getN8nVersion, LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -47,7 +46,6 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { SkillsGate } from '@/modules/skills';
-import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
@@ -80,6 +78,7 @@ import {
 import { FOLDER_FEATURE_TOOLS, getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
+	areMcpPreferencesAvailable,
 	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
@@ -173,7 +172,7 @@ export type McpAppsResolution = {
 	variant: McpAppsTelemetryVariant;
 };
 
-/** User experience gates and the shared instance activity gate. */
+/** User experience gates and the instance context gate. */
 export type McpFeatureFlags = {
 	credentialDescriptionsEnabled?: boolean;
 	mcpApps: McpAppsResolution;
@@ -308,21 +307,17 @@ export class McpService {
 	}
 	// EOF Experiment cleanup
 
-	/** Resolves user experience flags and the shared activity gate. */
+	/** Resolves user experience flags. */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
 		const { mcpAppsEnabled } = this.globalConfig.endpoints;
 
-		const [userFlags, instanceFlag] = await Promise.allSettled([
-			this.postHogClient.getFeatureFlags(user),
-			this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
-		]);
-		const flags = userFlags.status === 'fulfilled' ? userFlags.value : {};
+		const flags = await this.postHogClient.getFeatureFlags(user).catch((): FeatureFlags => ({}));
 		const preferencesNoteFlag = flags[MCP_EMPTY_PREFERENCES_NOTE_FLAG];
 
 		return {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
-			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
+			instanceContextEnabled: true,
 			skillsExtensionEnabled: flags[MCP_SKILLS_EXTENSION_FLAG] === true,
 			preferencesNoteVariant:
 				typeof preferencesNoteFlag === 'string' ? preferencesNoteFlag : 'unassigned',
@@ -545,7 +540,7 @@ export class McpService {
 		const contextToolsAllowed = allowedToolNames?.has(GET_INSTANCE_CONTEXT_TOOL_NAME) ?? true;
 		// Gates the sentence and the preference tools below, which also go through
 		// `registerIfAllowed`. No RBAC check: a user's own preferences need no scope.
-		const preferencesEnabled = Container.get(AiPreferenceSettingsService).isEnabled;
+		const preferencesEnabled = areMcpPreferencesAvailable(this.moduleRegistry);
 		const userPreferencesInstructionsEnabled =
 			preferencesEnabled && (allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
 		// The same rationale again: only a caller whose role and grant reach the report is
@@ -564,6 +559,7 @@ export class McpService {
 					isInstanceContextEnabled:
 						featureFlags.instanceContextEnabled &&
 						this.moduleRegistry.isActive('instance-ai') &&
+						this.globalConfig.activityLog.enabled &&
 						contextToolsAllowed,
 					isBuilderEnabled: builderInstructionsEnabled,
 					isN8nConnectAvailable: n8nConnectAvailable,
@@ -616,6 +612,7 @@ export class McpService {
 			this.workflowFinderService,
 			this.telemetry,
 			this.executionRedactionServiceProxy,
+			this.executionsConfig.maxDisplaySize,
 		);
 		registerIfAllowed(getExecutionTool);
 
@@ -754,7 +751,8 @@ export class McpService {
 
 			// The activity reader belongs to the `instance-ai` module, so it is resolved lazily and
 			// only when that module is active — an instance with the surface off never builds it.
-			if (this.moduleRegistry.isActive('instance-ai')) {
+			// With the activity log off there is nothing to read.
+			if (this.moduleRegistry.isActive('instance-ai') && this.globalConfig.activityLog.enabled) {
 				const { InstanceContextService } = await import(
 					'@/modules/instance-ai/instance-context.service.js'
 				);

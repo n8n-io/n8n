@@ -6,8 +6,10 @@ import { SsrfProtectionService } from '@n8n/backend-network';
 import {
 	CodeExecutionBackend,
 	EventService,
+	ExecutionLedger,
 	UrlService,
 	RuntimeCredentialProxyService,
+	toEndedFactsFromRun,
 	WorkflowPublishedDataService,
 	toCodeTaskRequest,
 	WorkflowVersionedSettingsService,
@@ -51,6 +53,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	ManualExecutionCancelledError,
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
@@ -68,6 +71,7 @@ import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-ex
 import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-agent-stream';
 
 import { ActiveExecutions } from '@/active-executions';
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
@@ -93,6 +97,7 @@ export function getRunData(
 	workflowData: IWorkflowBase,
 	inputData?: INodeExecutionData[],
 	parentExecution?: RelatedExecution,
+	binaryDataAccess?: string[],
 ): IWorkflowExecutionDataProcess {
 	const mode = 'integrated';
 
@@ -117,6 +122,7 @@ export function getRunData(
 	});
 
 	const runExecutionData = createRunExecutionData({
+		binaryDataAccess,
 		executionData: {
 			nodeExecutionStack,
 		},
@@ -124,6 +130,7 @@ export function getRunData(
 	});
 
 	return {
+		binaryDataAccess,
 		executionMode: mode,
 		executionData: runExecutionData,
 		workflowData,
@@ -352,13 +359,16 @@ export async function executeWorkflow(
 				));
 
 	const runData =
-		options.loadedRunData ?? getRunData(workflowData, options.inputData, options.parentExecution);
+		options.loadedRunData ??
+		getRunData(workflowData, options.inputData, options.parentExecution, options.binaryDataAccess);
 
 	if (runData.executionData) {
 		runData.executionData.subWorkflowOutput ??= getSubWorkflowOutputPolicy(
 			workflowData.nodes,
 			options.returnLastRunOnly ?? false,
 		);
+		runData.executionData.rootExecutionMode ??=
+			additionalData.rootExecutionMode ?? options.executionMode;
 	}
 
 	try {
@@ -371,13 +381,13 @@ export async function executeWorkflow(
 		throw PreExecuteBlockedError.unwrap(error);
 	}
 
-	const executionId = await activeExecutions.add(runData);
-
 	const { OwnershipService } = await import('@/services/ownership.service.js');
 	const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
 		Container.get(OwnershipService),
 		workflowData.id,
 	);
+
+	const executionId = await activeExecutions.add({ ...runData, projectId });
 
 	Container.get(EventService).emit('workflow-executed', {
 		user: additionalData.userId ? { id: additionalData.userId } : undefined,
@@ -520,6 +530,24 @@ export async function executeAgent(
 					}),
 				};
 
+	// A guardrail check execution must not re-enter the agent it guards: the
+	// nested turn would run the same check workflow again before its tool
+	// calls, without bound. Best-effort — an unreadable execution record
+	// allows the call.
+	if (additionalData.getRunExecutionData) {
+		const { GUARDRAIL_CHECK_FOR_KEY } = await import(
+			'@/modules/agents/tools/workflow-guardrail-check.js'
+		);
+		const runData = await Promise.resolve(additionalData.getRunExecutionData(executionId)).catch(
+			() => undefined,
+		);
+		if (runData?.resultData?.metadata?.[GUARDRAIL_CHECK_FOR_KEY] === source.agentId) {
+			throw new UserError(
+				'This agent is already running this workflow as a guardrail check. Remove the "Message an Agent" call to this agent from the guardrail check workflow.',
+			);
+		}
+	}
+
 	const result = await agentWorkflowExecutionService.executeForWorkflow(
 		source.agentId,
 		message,
@@ -601,6 +629,29 @@ export function buildSubWorkflowOutput(
 		return mergeRunsPerBranch(runs);
 	}
 	return WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null];
+}
+
+/**
+ * Stop an awaited sub-workflow when its parent is cancelled.
+ *
+ * Returns a function that removes the listener.
+ */
+function cancelWithParent(parentSignal: AbortSignal | undefined, executionId: string) {
+	if (!parentSignal) return () => {};
+
+	const stop = () =>
+		Container.get(ActiveExecutions).stopExecution(
+			executionId,
+			new ManualExecutionCancelledError(executionId),
+		);
+
+	if (parentSignal.aborted) {
+		stop();
+		return () => {};
+	}
+
+	parentSignal.addEventListener('abort', stop, { once: true });
+	return () => parentSignal.removeEventListener('abort', stop);
 }
 
 async function startExecution(
@@ -755,6 +806,8 @@ async function startExecution(
 			additionalData.rootExecutionMode ?? options.executionMode;
 		// Propagate the eval run id so sub-workflows of an eval run expose `$evaluation.runId`
 		additionalDataIntegrated.evaluationRunId = additionalData.evaluationRunId;
+		// A simulated-services eval run sends its sub-workflows' requests to the sim server too
+		additionalDataIntegrated.evalEgressProxy = additionalData.evalEgressProxy;
 		if (additionalData.httpResponse) {
 			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
 		}
@@ -784,7 +837,14 @@ async function startExecution(
 		// The engine marks its own early failures once it has started.
 		blockedReason = undefined;
 		activeExecutions.attachWorkflowExecution(executionId, execution);
-		data = await execution;
+		const stopWithParent = options.doNotWaitToFinish
+			? () => {}
+			: cancelWithParent(options.abortSignal, executionId);
+		try {
+			data = await execution;
+		} finally {
+			stopWithParent();
+		}
 	} catch (error) {
 		const executionError = error as ExecutionError;
 		const fullRunData = Container.get(FailedRunFactory).generateFailedExecutionFromError(
@@ -815,6 +875,19 @@ async function startExecution(
 		}
 
 		activeExecutions.finalizeExecution(executionId, fullRunData);
+
+		// The engine's own save may have finished the run already. Only the write that did records `ended`.
+		const saveFailure = async () => {
+			const { ended } = await Container.get(ExecutionPersistence).saveExecutionOutcome(
+				executionId,
+				fullExecutionData,
+			);
+			const executionLedger = Container.get(ExecutionLedger);
+			if (!ended || !executionLedger.isEnabled) return;
+
+			const facts = toEndedFactsFromRun({ executionId, workflow: workflowData, run: fullRunData });
+			if (facts) void executionLedger.recordEnded(facts);
+		};
 
 		// Nothing else records this failure, and a detached caller never sees the error.
 		const logUnrecordedFailure = (recordError: unknown) =>
@@ -847,16 +920,10 @@ async function startExecution(
 							workflowId: workflowData.id,
 							error: hookError,
 						});
-						await Container.get(ExecutionPersistence).updateExistingExecution(
-							executionId,
-							fullExecutionData,
-						);
+						await saveFailure();
 					});
 			} else {
-				await Container.get(ExecutionPersistence).updateExistingExecution(
-					executionId,
-					fullExecutionData,
-				);
+				await saveFailure();
 			}
 		} catch (recordError) {
 			logUnrecordedFailure(recordError);
@@ -981,8 +1048,23 @@ export async function getBase({
 	const variables = await WorkflowHelpers.getVariables(workflowId, projectId);
 
 	const eventService = Container.get(EventService);
+	const grantedBinaryDataIds = new Set<string>();
 
 	const additionalData: IWorkflowExecuteAdditionalData = {
+		binaryDataAccess: {
+			grant: (binaryDataId) => grantedBinaryDataIds.add(binaryDataId),
+			isGranted: (binaryDataId) => grantedBinaryDataIds.has(binaryDataId),
+			async isAllowed(binaryDataId, executingWorkflowId, grantedIds) {
+				if (grantedBinaryDataIds.has(binaryDataId) || grantedIds?.includes(binaryDataId)) {
+					return true;
+				}
+
+				return await Container.get(BinaryDataAccessService).isOwnedByWorkflow(
+					executingWorkflowId,
+					binaryDataId,
+				);
+			},
+		},
 		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,

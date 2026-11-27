@@ -15,7 +15,9 @@
     "test:unit": "pnpm bundle-spec && vitest run"
   },
   "dependencies": {
+    "@n8n/utils": "workspace:*",
     "pluralize": "catalog:",
+    "title-case": "catalog:",
     "yaml": "catalog:"
   },
   "devDependencies": {
@@ -25,6 +27,7 @@
     "@redocly/cli": "catalog:",
     "@types/node": "catalog:",
     "@types/pluralize": "catalog:",
+    "n8n-workflow": "workspace:*",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "tsx": "catalog:",

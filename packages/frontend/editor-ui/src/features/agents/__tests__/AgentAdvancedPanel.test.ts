@@ -4,6 +4,7 @@ import { mount } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
 import type * as VueUse from '@vueuse/core';
 
+import type { AgentSandboxEgressPolicy } from '@n8n/api-types';
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
 import AgentWebSearchSection from '../components/AgentWebSearchSection.vue';
 import type { ProviderCatalog } from '../composables/useAgentApi';
@@ -22,6 +23,20 @@ const projectsStoreState = vi.hoisted(() => ({
 	myProjects: [] as MockProject[],
 }));
 
+const settingsStoreState = vi.hoisted(() => ({
+	moduleSettings: {
+		agents: {
+			sandboxEnabled: false,
+			sandboxEgressPolicy: 'disabled' as AgentSandboxEgressPolicy,
+		},
+	} as {
+		agents?: {
+			sandboxEnabled?: boolean;
+			sandboxEgressPolicy?: AgentSandboxEgressPolicy;
+		};
+	},
+}));
+
 vi.mock('../composables/useModelCatalog', () => ({
 	useModelCatalog: () => ({
 		catalog: modelCatalog,
@@ -37,6 +52,9 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.advanced.reasoning.unsupportedHint':
 					'This model does not support reasoning',
 				'agents.builder.advanced.reasoning.noModelHint': 'No model selected',
+				'agents.builder.advanced.sandboxEgress.hint':
+					'Send and receive information over the public internet',
+				'agents.builder.advanced.sandboxEgress.disabledHint': 'Disabled at the instance level',
 				'nodeCredentials.createNew': 'Create new credential',
 				'nodeCredentials.createNew.permissionDenied':
 					'Your current role does not allow you to create credentials',
@@ -72,6 +90,10 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openNewCredential: openNewCredentialMock }),
+}));
+
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => settingsStoreState,
 }));
 
 vi.mock('../components/AgentMemoryModelSetting.vue', () => ({
@@ -188,9 +210,9 @@ function makeCatalog(): ProviderCatalog {
 			id: 'aws-bedrock',
 			name: 'AWS Bedrock',
 			models: {
-				'anthropic.claude-sonnet-4-5-v1:0': {
-					id: 'anthropic.claude-sonnet-4-5-v1:0',
-					name: 'Claude Sonnet 4.5',
+				'anthropic.claude-sonnet-5-5': {
+					id: 'anthropic.claude-sonnet-5-5',
+					name: 'Claude Sonnet 5.5',
 					reasoning: true,
 					toolCall: true,
 				},
@@ -221,6 +243,9 @@ describe('AgentAdvancedPanel', () => {
 		projectsStoreState.currentProject = { id: 'project-1', scopes: CREDENTIAL_CREATE_SCOPES };
 		projectsStoreState.personalProject = null;
 		projectsStoreState.myProjects = [];
+		settingsStoreState.moduleSettings = {
+			agents: { sandboxEnabled: false, sandboxEgressPolicy: 'disabled' },
+		};
 	});
 
 	it('renders the advanced section without a collapsible heading', () => {
@@ -274,7 +299,7 @@ describe('AgentAdvancedPanel', () => {
 
 	it('shows the reasoning toggle when the selected model supports reasoning', () => {
 		const config = makeConfig({
-			model: 'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
+			model: 'aws-bedrock/anthropic.claude-sonnet-5-5',
 		});
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config, projectId: 'project-1' },
@@ -488,9 +513,9 @@ describe('AgentAdvancedPanel', () => {
 	});
 
 	it.each([
-		'anthropic/claude-sonnet-4-5',
-		'openrouter/anthropic/claude-sonnet-4.5',
-		'google-vertex/claude-sonnet-4-5',
+		'anthropic/claude-sonnet-5-5',
+		'openrouter/anthropic/claude-sonnet-5.5',
+		'google-vertex/claude-sonnet-5-5',
 	])('shows a default 1h cache duration for %s', async (model) => {
 		const config = makeConfig({ model });
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -534,7 +559,7 @@ describe('AgentAdvancedPanel', () => {
 
 	it('shows prompt caching as off and hides the cache duration when the config turned it off', () => {
 		const config = makeConfig({
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			config: { promptCaching: { enabled: false, anthropic: { ttl: '5m' } } },
 		});
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -549,7 +574,7 @@ describe('AgentAdvancedPanel', () => {
 
 	it('keeps the Anthropic cache duration when the user turns prompt caching back on', async () => {
 		const config = makeConfig({
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			config: { promptCaching: { enabled: false, anthropic: { ttl: '5m' } } },
 		});
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -576,9 +601,9 @@ describe('AgentAdvancedPanel', () => {
 	});
 
 	it.each([
-		'anthropic/claude-sonnet-4-5',
-		'openrouter/anthropic/claude-sonnet-4.5',
-		'google-vertex/claude-sonnet-4-5',
+		'anthropic/claude-sonnet-5-5',
+		'openrouter/anthropic/claude-sonnet-5.5',
+		'google-vertex/claude-sonnet-5-5',
 	])('saves the selected cache duration for %s', (model) => {
 		const config = makeConfig({ model });
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -714,5 +739,111 @@ describe('AgentAdvancedPanel', () => {
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
 		expect(last.config?.toolCallConcurrency).toBe(5);
+	});
+
+	describe('sandbox internet access', () => {
+		it('hides the sandbox internet access setting when sandboxes are disabled on the instance', () => {
+			settingsStoreState.moduleSettings = {
+				agents: { sandboxEnabled: false, sandboxEgressPolicy: 'opt-in' },
+			};
+
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: { config: makeConfig() },
+				global: { stubs: globalStubs },
+			});
+
+			expect(wrapper.find('[data-testid="agent-sandbox-egress-row"]').exists()).toBe(false);
+		});
+
+		it('hides the sandbox internet access setting when agents module settings are absent', () => {
+			settingsStoreState.moduleSettings = {};
+
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: { config: makeConfig() },
+				global: { stubs: globalStubs },
+			});
+
+			expect(wrapper.find('[data-testid="agent-sandbox-egress-row"]').exists()).toBe(false);
+		});
+
+		it('shows the toggle disabled and off with an instance-level hint when policy is disabled', async () => {
+			settingsStoreState.moduleSettings = {
+				agents: { sandboxEnabled: true, sandboxEgressPolicy: 'disabled' },
+			};
+
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: { config: makeConfig({ config: { sandboxEgress: true } }) },
+				global: { stubs: globalStubs },
+			});
+
+			const toggle = findStubComponent(wrapper, 'agent-sandbox-egress-toggle');
+			expect(toggle.exists()).toBe(true);
+			expect(toggle.props('modelValue')).toBe(false);
+			expect(toggle.props('disabled')).toBe(true);
+			expect(wrapper.find('[data-testid="agent-sandbox-egress-hint"]').text()).toBe(
+				'Disabled at the instance level',
+			);
+
+			await wrapper.find('[data-testid="agent-sandbox-egress-toggle"]').trigger('click');
+			expect(wrapper.emitted('update:config')).toBeUndefined();
+		});
+
+		it('defaults to off under opt-in policy and emits sandboxEgress when toggled', async () => {
+			settingsStoreState.moduleSettings = {
+				agents: { sandboxEnabled: true, sandboxEgressPolicy: 'opt-in' },
+			};
+
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: { config: makeConfig({ config: { maxIterations: 25 } }) },
+				global: { stubs: globalStubs },
+			});
+
+			const toggle = findStubComponent(wrapper, 'agent-sandbox-egress-toggle');
+			expect(toggle.props('modelValue')).toBe(false);
+			expect(toggle.props('disabled')).toBe(false);
+			expect(wrapper.find('[data-testid="agent-sandbox-egress-hint"]').text()).toBe(
+				'Send and receive information over the public internet',
+			);
+
+			await wrapper.find('[data-testid="agent-sandbox-egress-toggle"]').trigger('click');
+			expect(wrapper.emitted('update:config')).toEqual([
+				[{ config: { maxIterations: 25, sandboxEgress: true } }],
+			]);
+		});
+
+		it('defaults to on under opt-out policy and emits false when turned off', async () => {
+			settingsStoreState.moduleSettings = {
+				agents: { sandboxEnabled: true, sandboxEgressPolicy: 'opt-out' },
+			};
+
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: { config: makeConfig({ config: { maxIterations: 25 } }) },
+				global: { stubs: globalStubs },
+			});
+
+			const toggle = findStubComponent(wrapper, 'agent-sandbox-egress-toggle');
+			expect(toggle.props('modelValue')).toBe(true);
+			expect(toggle.props('disabled')).toBe(false);
+
+			await wrapper.find('[data-testid="agent-sandbox-egress-toggle"]').trigger('click');
+			expect(wrapper.emitted('update:config')).toEqual([
+				[{ config: { maxIterations: 25, sandboxEgress: false } }],
+			]);
+		});
+
+		it('disables the toggle when the panel is read-only even under opt-in policy', () => {
+			settingsStoreState.moduleSettings = {
+				agents: { sandboxEnabled: true, sandboxEgressPolicy: 'opt-in' },
+			};
+
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: { config: makeConfig(), disabled: true },
+				global: { stubs: globalStubs },
+			});
+
+			expect(findStubComponent(wrapper, 'agent-sandbox-egress-toggle').props('disabled')).toBe(
+				true,
+			);
+		});
 	});
 });

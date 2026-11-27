@@ -4,7 +4,7 @@ import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { MAX_PREVIEW_EXECUTIONS_IN_MEMORY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@n8n/composables/useToast';
+import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
@@ -94,6 +94,9 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 	 */
 	let previewWorkflowId: string | undefined;
 
+	/** The error toast this preview showed last. */
+	let executionErrorToast: NotificationHandle | undefined;
+
 	/**
 	 * Marks an execution as most-recently-used. `Set` preserves insertion order
 	 * but `add()` is a no-op for an existing key, so re-add it to move it to the
@@ -173,7 +176,7 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 		title: string,
 		message: Parameters<typeof toast.showMessage>[0]['message'],
 	) {
-		toast.showMessage({
+		executionErrorToast = toast.showMessage({
 			title,
 			message,
 			type: 'error',
@@ -191,6 +194,7 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 		isLoading.value = true;
 		loadError.value = null;
 		dismissWorkflowErrorNudge();
+		executionErrorToast?.close();
 
 		try {
 			const data =

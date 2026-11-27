@@ -8,6 +8,7 @@
  */
 export const {
 	assign,
+	create: objectCreate,
 	defineProperty,
 	entries: objectEntries,
 	getOwnPropertyDescriptor,
@@ -15,8 +16,26 @@ export const {
 	getPrototypeOf,
 	hasOwn,
 	is: sameValue,
+	isExtensible,
 	keys: objectKeys,
+	prototype: objectPrototype,
 } = Object;
+
+export const { isPrototypeOf, toString: objectToString } = objectPrototype;
+
+export const stringPrototype: object = String.prototype;
+export const stringValueOf: (this: unknown) => string = String.prototype.valueOf;
+
+export const numberPrototype: object = Number.prototype;
+export const numberValueOf: (this: unknown) => number = Number.prototype.valueOf;
+
+export const booleanPrototype: object = Boolean.prototype;
+export const booleanValueOf: (this: unknown) => boolean = Boolean.prototype.valueOf;
+
+export const bigIntPrototype: object | undefined =
+	typeof BigInt === 'function' ? BigInt.prototype : undefined;
+export const bigIntValueOf: ((this: unknown) => bigint) | undefined =
+	typeof BigInt === 'function' ? BigInt.prototype.valueOf : undefined;
 
 export const { from: arrayFrom, isArray } = Array;
 
@@ -24,4 +43,10 @@ export const { isView: isArrayBufferView } = ArrayBuffer;
 
 export const { isInteger } = Number;
 
-export const { get: reflectGet } = Reflect;
+export const { apply: reflectApply, get: reflectGet } = Reflect;
+
+export const NativeMap = Map;
+export const { delete: mapDelete, get: mapGet, has: mapHas, set: mapSet } = Map.prototype;
+
+export const NativeSet = Set;
+export const { delete: setDelete, add: setAdd, has: setHas } = Set.prototype;

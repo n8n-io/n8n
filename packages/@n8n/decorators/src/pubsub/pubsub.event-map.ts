@@ -63,6 +63,7 @@ export type PubSubCommandMap = {
 	};
 	'reload-agents-settings': never;
 	'reload-mcp-settings': never;
+	'reload-skill-sync-settings': never;
 	'reload-ai-preference-settings': never;
 
 	// #region Community packages
@@ -185,6 +186,11 @@ export type PubSubCommandMap = {
 
 	'relay-agent-background-tasks-update': {
 		data: PushPayload<'agentBackgroundTasksUpdated'>;
+		userIds: string[];
+	};
+
+	'relay-agent-thread-title-update': {
+		data: PushPayload<'agentThreadTitleUpdated'>;
 		userIds: string[];
 	};
 

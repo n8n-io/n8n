@@ -36,6 +36,7 @@ import { isZodSchema } from '../../utils/zod';
 import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import { stringifyError } from '../loop/runtime-helpers';
+import { withMcpHttpStatus } from '../mcp/http-error';
 import type { AgentMessageList } from '../model/message-list';
 import type { AgentEventBus } from '../state/event-bus';
 import type { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
@@ -323,7 +324,9 @@ export class ToolCallRunner {
 			result: error,
 			isError: true,
 		});
-		const errorText = stringifyError(error);
+		const errorText = builtTool?.mcpTool
+			? await withMcpHttpStatus(error, stringifyError(error))
+			: stringifyError(error);
 		const guardedError = await guardToolErrorForModel(
 			builtTool?.outputTrust === 'untrusted'
 				? protectUntrustedToolError(errorText, builtTool)
@@ -462,13 +465,10 @@ export class ToolCallRunner {
 			resolvedTelemetry,
 			async () =>
 				await raceWithAbort(async () => {
-					const result = await executeTool(
-						input,
-						builtTool,
-						resumeData,
-						resolvedTelemetry,
-						toolCallId,
-						{
+					const run = async () => {
+						// An interceptor can await before it calls `run`; the run may be aborted by then.
+						abortSignal?.throwIfAborted();
+						return await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
 							runId,
 							persistence,
 							emitEvent: (event) => this.eventBus.emit(event),
@@ -480,8 +480,13 @@ export class ToolCallRunner {
 							resumeSchema,
 							onSuspend,
 							onGuardrailNotice: params.guardrails?.onNotice,
-						},
-					);
+						});
+					};
+					const interceptor = this.deps.toolCallInterceptor;
+					// Guard the result the model receives, also when an interceptor replaces it.
+					const result = interceptor
+						? await interceptor({ tool: builtTool, toolCallId, input }, run)
+						: await run();
 					// Final result only: a call that suspended reports once,
 					// after resume. The after-stage check runs inside the span
 					// so a refused result is recorded as the refusal, never as

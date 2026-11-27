@@ -5,6 +5,7 @@ import { N8nSandboxServiceSandbox } from '../../../workspace/sandbox/n8n-sandbox
 
 const mockMkdir = vi.fn();
 const mockWriteFile = vi.fn();
+const mockWriteFiles = vi.fn();
 const mockReadFile = vi.fn();
 const mockStat = vi.fn();
 const mockCreateSandbox = vi.fn();
@@ -26,6 +27,7 @@ vi.mock('@n8n/sandbox-client', () => {
 		SandboxClient: class {
 			mkdir = mockMkdir;
 			writeFile = mockWriteFile;
+			writeFiles = mockWriteFiles;
 			readFile = mockReadFile;
 			stat = mockStat;
 			createSandbox = mockCreateSandbox;
@@ -49,6 +51,7 @@ describe('N8nSandboxFilesystem', () => {
 		vi.clearAllMocks();
 		mockMkdir.mockResolvedValue(undefined);
 		mockWriteFile.mockResolvedValue(undefined);
+		mockWriteFiles.mockResolvedValue(undefined);
 		mockReadFile.mockResolvedValue(Buffer.from('file content'));
 		mockGetSandbox.mockResolvedValue({ id: 'sb-test' });
 		mockCreateSandbox.mockResolvedValue({ id: 'sb-test', createdAt: 1700000000 });
@@ -74,6 +77,21 @@ describe('N8nSandboxFilesystem', () => {
 			'hello',
 			true,
 		);
+	});
+
+	it('uploads every file in one request with writeFiles', async () => {
+		const filesystem = createFilesystem();
+		const files = [
+			{ path: '/workspace/a.txt', content: 'a' },
+			{ path: '/workspace/nested/b.txt', content: Buffer.from('b') },
+		];
+
+		await filesystem.writeFiles(files);
+
+		expect(mockWriteFiles).toHaveBeenCalledTimes(1);
+		expect(mockWriteFiles).toHaveBeenCalledWith('sb-test', files);
+		expect(mockMkdir).not.toHaveBeenCalled();
+		expect(mockWriteFile).not.toHaveBeenCalled();
 	});
 
 	it('returns string content when readFile is called with utf8 encoding', async () => {
@@ -131,7 +149,7 @@ describe('N8nSandboxFilesystem', () => {
 
 		await filesystem.writeFile('/workspace/file.txt', 'hello');
 
-		expect(mockCreateSandbox).toHaveBeenCalledWith({ id: 'sb-test' });
+		expect(mockCreateSandbox).toHaveBeenCalledWith({ id: 'sb-test', egress: 'public' });
 		expect(mockWriteFile).toHaveBeenCalledTimes(2);
 	});
 

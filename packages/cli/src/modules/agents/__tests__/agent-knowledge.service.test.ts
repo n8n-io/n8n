@@ -1,6 +1,5 @@
-import type { Logger } from '@n8n/backend-common';
-import type { OperationContext, Transaction } from '@n8n/db';
-import { NotFoundError } from '@n8n/errors';
+import type { OperationContext, Transaction, User } from '@n8n/db';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -8,6 +7,8 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+import type { KnowledgeCollectionCatalogService } from '@/modules/knowledge/collections/knowledge-collection-catalog.service';
+import type { KnowledgeFileCleanupService } from '@/modules/knowledge/files/knowledge-file-cleanup.service';
 import type {
 	KnowledgeFileService,
 	KnowledgeFileUploadResult,
@@ -60,7 +61,8 @@ describe('AgentKnowledgeService', () => {
 	let knowledgeFileService: Mocked<KnowledgeFileService>;
 	let knowledgeRetrievalService: Mocked<KnowledgeRetrievalService>;
 	let projectDeletion: Mocked<AgentProjectDeletionRepository>;
-	let logger: Mocked<Logger>;
+	let knowledgeFileCleanupService: Mocked<KnowledgeFileCleanupService>;
+	let collectionCatalogService: Mocked<KnowledgeCollectionCatalogService>;
 	let service: AgentKnowledgeService;
 
 	function makeService(
@@ -72,7 +74,8 @@ describe('AgentKnowledgeService', () => {
 			knowledgeRetrievalService,
 			knowledgeAvailabilityService,
 			projectDeletion,
-			logger,
+			knowledgeFileCleanupService,
+			collectionCatalogService,
 		);
 	}
 
@@ -86,7 +89,8 @@ describe('AgentKnowledgeService', () => {
 		projectDeletion.withWritableProject.mockImplementation(
 			async (_projectId, write, ctx = {}) => await write(ctx),
 		);
-		logger = mock<Logger>();
+		knowledgeFileCleanupService = mock<KnowledgeFileCleanupService>();
+		collectionCatalogService = mock<KnowledgeCollectionCatalogService>();
 		service = makeService();
 	});
 
@@ -158,6 +162,7 @@ describe('AgentKnowledgeService', () => {
 		await expect(service.deleteAllFilesForAgent(projectId, agentId)).resolves.toBeUndefined();
 
 		expect(knowledgeFileService.deleteAll).toHaveBeenCalledWith(scope);
+		expect(knowledgeFileCleanupService.deleteStoredBytes).not.toHaveBeenCalled();
 	});
 
 	it('destroys the knowledge sandbox on request', async () => {
@@ -240,20 +245,84 @@ describe('AgentKnowledgeService', () => {
 			expect(knowledgeRetrievalService.warmSandbox).not.toHaveBeenCalled();
 		});
 
-		it('keeps the stored blobs on agent deletion and warns, because the file entity is not registered', async () => {
+		it('deletes stored bytes without the file entity before the agent deletion cascade', async () => {
 			await service.deleteAllFilesForAgent(projectId, agentId);
 
 			expect(knowledgeFileService.deleteAll).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('Knowledge module is inactive'),
-				{ agentId },
-			);
+			expect(knowledgeFileCleanupService.deleteStoredBytes).toHaveBeenCalledWith(scope);
 		});
 
 		it('still destroys the sandbox, which needs no module entity', async () => {
 			await service.destroyKnowledgeSandbox(projectId, agentId);
 
 			expect(knowledgeRetrievalService.destroySandbox).toHaveBeenCalledWith(scope);
+		});
+	});
+
+	describe('collections', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const collectionRef = { projectId, collectionId: 'collection-1' };
+
+		it('lists the collections of an agent of the project', async () => {
+			const collections = [
+				{ id: 'collection-1', name: 'Docs', description: 'd', fileCount: 1, usedByAgent: true },
+			];
+			collectionCatalogService.listForAgent.mockResolvedValue(collections);
+
+			await expect(service.listCollections(user, agentId, projectId)).resolves.toEqual(collections);
+			expect(collectionCatalogService.listForAgent).toHaveBeenCalledWith(user, projectId, agentId);
+		});
+
+		it('answers not found for an agent that is not in the project', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.listCollections(user, agentId, projectId)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(collectionCatalogService.listForAgent).not.toHaveBeenCalled();
+		});
+
+		describe.each([
+			['addCollection', 'addAgent'],
+			['removeCollection', 'removeAgent'],
+		] as const)('%s', (method, catalogMethod) => {
+			it('writes through the project-deletion fence', async () => {
+				const ctx: OperationContext = { trx: mock<Transaction>() };
+				projectDeletion.withWritableProject.mockImplementation(
+					async (_projectId, write) => await write(ctx),
+				);
+				collectionCatalogService[catalogMethod].mockImplementation(
+					async (_user, _ref, _agentId, writeFence) => {
+						await expect(writeFence(async (writeCtx) => writeCtx)).resolves.toBe(ctx);
+					},
+				);
+
+				await service[method](user, agentId, projectId, 'collection-1');
+
+				expect(collectionCatalogService[catalogMethod]).toHaveBeenCalledWith(
+					user,
+					collectionRef,
+					agentId,
+					expect.any(Function),
+				);
+				expect(projectDeletion.withWritableProject).toHaveBeenCalledWith(
+					projectId,
+					expect.any(Function),
+				);
+			});
+
+			it('refuses an archived agent and writes nothing', async () => {
+				agentRepository.findByIdAndProjectId.mockResolvedValue({
+					id: agentId,
+					projectId,
+					isArchived: true,
+				} as never);
+
+				await expect(service[method](user, agentId, projectId, 'collection-1')).rejects.toThrow(
+					BadRequestError,
+				);
+				expect(collectionCatalogService[catalogMethod]).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

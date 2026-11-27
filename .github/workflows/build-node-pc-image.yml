@@ -1,10 +1,12 @@
 name: 'Build: Node PC Image'
 
-# Publishes the Node runtimes that n8n compiles from source:
+# Publishes the compiled Node `-dev` images that n8n builds from source:
 #   n8nio/node-pc      - pointer-compressed Node 26, consumed by the n8n `-pc`
 #                        image variant
 #   n8nio/node-patched - stock-configured Node 24 and 26 with the same V8
 #                        patches, for the 1.x and release images
+# The n8n image compiles native addons in these images and copies their compiled
+# Node onto n8nio/base, so OS base refreshes do not recompile Node.
 # Compiling Node from source is too slow under QEMU, so each architecture
 # builds on its native runner and a manifest job stitches the per-arch images,
 # following docker-build-push.yml.
@@ -40,6 +42,7 @@ jobs:
   # an image only when its own inputs (its bake target, the Dockerfile and the
   # files it copies in) changed. `images` lists the images to build.
   prepare:
+    if: github.repository == 'n8n-io/n8n'
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.images.outputs.changed }}
@@ -148,28 +151,6 @@ jobs:
           dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push runtime target
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/node-pc/Dockerfile
-          target: runtime
-          platforms: ${{ matrix.platform.name }}
-          build-args: ${{ env.BUILD_ARGS }}
-          provenance: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
-          sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
-          push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ matrix.platform.arch }}
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.platform.arch }}
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ env.STAGING_TAG }}-${{ matrix.platform.arch }}
-            ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ matrix.platform.arch }}
-            ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.platform.arch }}
-            ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ env.STAGING_TAG }}-${{ matrix.platform.arch }}
-          no-cache: true
-
-      # No no-cache here: reuses the compile layers from the runtime build
-      # above, so Node compiles once per architecture
       - name: Build and push dev target
         uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
@@ -188,12 +169,13 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-dev-${{ matrix.platform.arch }}
             ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.platform.arch }}
             ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ env.STAGING_TAG }}-dev-${{ matrix.platform.arch }}
+          no-cache: true
 
-  # Each image checks all runtime and dev inputs from this run and attempt.
+  # Each image checks both architecture inputs from this run and attempt.
   # A failed build for another image does not block publication.
   create-multi-arch-manifest:
     needs: [prepare, build]
-    if: always() && needs.prepare.outputs.changed == 'true' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true))
+    if: always() && needs.prepare.result == 'success' && needs.prepare.outputs.changed == 'true' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true))
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -219,24 +201,19 @@ jobs:
             "${{ secrets.DOCKER_USERNAME }}/${{ matrix.image.repo }}"
             "ghcr.io/${{ github.repository_owner }}/${{ matrix.image.repo }}"
           )
-          # A dev build can fail after it pushed the runtime image.
           for REPO in "${REPOS[@]}"; do
-            for DEV in "" "-dev"; do
-              for ARCH in amd64 arm64; do
-                docker buildx imagetools inspect "$REPO:$NODE_VERSION-$STAGING_TAG$DEV-$ARCH" > /dev/null
-              done
+            for ARCH in amd64 arm64; do
+              docker buildx imagetools inspect "$REPO:$NODE_VERSION-$STAGING_TAG-dev-$ARCH" > /dev/null
             done
           done
           for REPO in "${REPOS[@]}"; do
-            for DEV in "" "-dev"; do
-              AMD64="$REPO:$NODE_VERSION-$STAGING_TAG$DEV-amd64"
-              ARM64="$REPO:$NODE_VERSION-$STAGING_TAG$DEV-arm64"
-              for TAG in \
-                "$REPO:$NODE_VERSION$DEV" \
-                "$REPO:$NODE_VERSION-${{ github.sha }}$DEV" \
-              ; do
-                echo "Creating manifest $TAG"
-                docker buildx imagetools create --tag "$TAG" "$AMD64" "$ARM64"
-              done
+            AMD64="$REPO:$NODE_VERSION-$STAGING_TAG-dev-amd64"
+            ARM64="$REPO:$NODE_VERSION-$STAGING_TAG-dev-arm64"
+            for TAG in \
+              "$REPO:$NODE_VERSION-dev" \
+              "$REPO:$NODE_VERSION-${{ github.sha }}-dev" \
+            ; do
+              echo "Creating manifest $TAG"
+              docker buildx imagetools create --tag "$TAG" "$AMD64" "$ARM64"
             done
           done

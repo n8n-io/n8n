@@ -80,14 +80,14 @@ import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
-import InstanceAiStatusBar from './InstanceAiStatusBar.vue';
+import InstanceAiRunActivity from './InstanceAiRunActivity.vue';
 import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
 import LimitedModeNotice from './LimitedModeNotice.vue';
 import AgentSection from './AgentSection.vue';
 import { useStopBrowserTasksPrompt } from '../composables/useStopBrowserTasksPrompt';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builderAgents';
-import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
+import { AiActivityThinkingStep } from '../../shared/components/AiActivityTrace';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 
 const props = withDefaults(
@@ -475,6 +475,30 @@ watch([chatInputRef, () => props.autofocus], ([input, autofocus], [, previousAut
 		else focusChatInputIfFocusIsIdle();
 	});
 });
+
+const inlineConfirmationsRef = useTemplateRef<HTMLElement>('inlineConfirmations');
+const floatingConfirmationRef = useTemplateRef<HTMLElement>('floatingConfirmation');
+// A text field first, so the user can type the answer at once. Then the actions of a card,
+// before a focusable region such as the details of an approval.
+const CONFIRMATION_CONTROLS = [
+	'textarea',
+	'input:not([type="hidden"])',
+	'[role="toolbar"] button:not([disabled])',
+	'[tabindex="0"]',
+	'button:not([disabled])',
+];
+
+/** Moves focus to the card that the run waits on. The browser scrolls it into view. */
+function focusPendingConfirmation() {
+	const card = floatingConfirmationRef.value ?? inlineConfirmationsRef.value;
+	for (const selector of CONFIRMATION_CONTROLS) {
+		const control = card?.querySelector<HTMLElement>(selector);
+		if (control) {
+			control.focus();
+			return;
+		}
+	}
+}
 
 watch(hasFloatingConfirmation, (isFloating) => {
 	if (isFloating) return;
@@ -869,6 +893,7 @@ function resetScroll() {
 
 defineExpose({
 	focus: () => chatInputRef.value?.focus(),
+	focusPendingConfirmation,
 	isDirty,
 	applyHandoff,
 	dismissPendingComposerContext,
@@ -945,7 +970,7 @@ defineExpose({
 						role="assistant"
 						data-test-id="instance-ai-onboarding-thinking"
 					>
-						<AiThinkingBlock
+						<AiActivityThinkingStep
 							:segments="[]"
 							:active="true"
 							:activity-label="
@@ -970,7 +995,9 @@ defineExpose({
 						 gateway resource-decision, continue) render in
 						 the chat flow. Floating-eligible items take over the chat
 						 input slot below instead - see `hasFloatingConfirmation`. -->
-				<InstanceAiConfirmationPanel kind="inline" />
+				<div ref="inlineConfirmations" :class="$style.inlineConfirmations">
+					<InstanceAiConfirmationPanel kind="inline" />
+				</div>
 
 				<slot name="inline-offers" />
 
@@ -978,7 +1005,7 @@ defineExpose({
 						 conversation flow — below any pending questions/confirmations
 						 and not pinned above the input — so it trails the active
 						 content and scrolls away when reading back. -->
-				<InstanceAiStatusBar />
+				<InstanceAiRunActivity />
 			</div>
 
 			<!-- Extra scroll space for a host panel that overlays the messages above the input. -->
@@ -1057,7 +1084,9 @@ defineExpose({
 								</template>
 							</N8nPopover>
 							<Transition name="input-swap">
-								<InstanceAiConfirmationPanel v-if="hasFloatingConfirmation" kind="floating" />
+								<div v-if="hasFloatingConfirmation" ref="floatingConfirmation">
+									<InstanceAiConfirmationPanel kind="floating" />
+								</div>
 							</Transition>
 							<!-- Hidden, not unmounted, so the unsent draft survives the confirmation. -->
 							<Transition name="input-swap">
@@ -1217,6 +1246,11 @@ defineExpose({
 // the cross-fade.
 .inputSwap {
 	position: relative;
+}
+
+// Only marks where the inline cards are. It adds no box to the chat flow.
+.inlineConfirmations {
+	display: contents;
 }
 
 // The onboarding greeting's paragraphs rise one after the other while `greetingPhase` is set.

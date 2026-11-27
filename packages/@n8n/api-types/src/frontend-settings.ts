@@ -1,5 +1,6 @@
 import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
+import type { AgentSandboxEgressPolicy } from './agents/agent-json-config.schema';
 import type {
 	ChatHubLLMProvider,
 	ChatHubSemanticSearchSettings,
@@ -265,6 +266,8 @@ export interface FrontendSettings {
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
+		/** Whether n8n may train models on this instance's Assistant traces. */
+		allowModelTraining: boolean;
 	};
 	aiPreferences: {
 		enabled: boolean;
@@ -359,6 +362,12 @@ export type FrontendModuleSettings = {
 		serverUrl?: string;
 		/** Whether newly created workflows are auto-exposed to MCP. */
 		autoExposeNewWorkflows: boolean;
+		preferencesEnabled: boolean;
+	};
+
+	skills?: {
+		skillSyncEnabled: boolean;
+		skillSyncManagedByEnv: boolean;
 	};
 
 	/**
@@ -467,6 +476,10 @@ export type FrontendModuleSettings = {
 		 * `N8N_AGENTS_AI_SANDBOX_ENABLED` opt-in.
 		 */
 		knowledgeBaseEnabled: boolean;
+		/** Whether Agent sandboxes are enabled on this instance. */
+		sandboxEnabled?: boolean;
+		/** Instance-level outbound internet policy for Agent sandboxes (`N8N_AGENTS_AI_SANDBOX_EGRESS_POLICY`). */
+		sandboxEgressPolicy?: AgentSandboxEgressPolicy;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
 	};

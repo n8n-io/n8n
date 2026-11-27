@@ -347,6 +347,14 @@ export abstract class ICredentialsHelper {
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void>;
 
+	/** Called when the OAuth2 provider rejects a refresh token. */
+	discardRejectedOauthTokenData?(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		rejectedRefreshToken: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<void>;
+
 	abstract getCredentialsProperties(type: string): INodeProperties[];
 }
 
@@ -601,6 +609,7 @@ export type IHttpRequestMethods =
 	| 'MOVE'
 	| 'COPY'
 	| 'REPORT'
+	| 'SEARCH'
 	| 'HEAD';
 
 export type IgnoreStatusErrorConfig = {
@@ -961,7 +970,7 @@ export interface BinaryHelperFunctions {
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
-	getBinaryPath(binaryDataId: string): string;
+	getBinaryPath(binaryDataId: string): Promise<string>;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
 	createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: string): string;
 	getBinaryMetadata(binaryDataId: string): Promise<{
@@ -1626,6 +1635,8 @@ export interface IPollFunctions
 	 * runs out, return what it has, and leave the rest to the next poll.
 	 */
 	getPollBudgetMs(): number;
+	/** Marks this poll as fetching in bounded batches, so it keeps its cursor when its run is refused. */
+	declareBoundedPoll?(): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
@@ -2921,6 +2932,36 @@ export interface INodeIssues {
 	[key: string]: undefined | boolean | INodeIssueObjectProperty;
 }
 
+/** Result of `carryOverNodeParameters`. */
+export interface NodeParametersCarryOver {
+	/** Parameters to save on the node for the target version. Most default values are left out. */
+	parameters: INodeParameters;
+	/**
+	 * Values that the target version cannot keep.
+	 * `name` is a display label, for example `options.compression` or `rules.values[0].kind`.
+	 * Do not use it as a lodash path, because a saved key can contain a dot. Use `path`.
+	 * The values are raw user data. Do not log them.
+	 */
+	setAside: Array<{
+		name: string;
+		path: Array<string | number>;
+		displayName: string;
+		value: NodeParameterValueType;
+	}>;
+	/**
+	 * Untouched top-level parameters whose default is different in the target version.
+	 * `name` is the top-level parameter name.
+	 */
+	changedDefaults: Array<{
+		name: string;
+		displayName: string;
+		oldDefault: NodeParameterValueType;
+		newDefault: NodeParameterValueType;
+	}>;
+	/** Parameter issues of the node in the target version. */
+	issues: INodeIssues | null;
+}
+
 export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
@@ -3657,8 +3698,20 @@ export interface RelatedAgentRun {
 	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.
+	 * Workflow log events report it as `agentRunUserId`.
 	 */
 	userId?: string;
+	/**
+	 * The agent's service account (`agents.identityId`), for attribution in workflow
+	 * log events only: the execution does not run as this account. Set only when
+	 * agent service accounts are enabled and the agent has one.
+	 */
+	agentServiceAccountId?: string;
+	/**
+	 * For a tool run of a sub-agent, the top-level agent that delegated to it.
+	 * Attribution only. Set only together with `agentServiceAccountId`.
+	 */
+	delegatingAgentId?: string;
 }
 
 type SubNodeExecutionDataAction = {
@@ -3938,6 +3991,8 @@ export type ExecutionTracingContext = {
 };
 
 export interface IWorkflowExecutionDataProcess {
+	/** Binary IDs validated by a trusted execution entry point. */
+	binaryDataAccess?: string[];
 	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
@@ -4045,6 +4100,7 @@ export interface IWorkflowExecutionDataProcess {
 }
 
 export interface ExecuteWorkflowOptions {
+	binaryDataAccess?: string[];
 	node?: INode;
 	parentWorkflowId: string;
 	inputData?: INodeExecutionData[];
@@ -4056,6 +4112,8 @@ export interface ExecuteWorkflowOptions {
 	parentExecution?: RelatedExecution;
 	executionMode?: WorkflowExecuteMode;
 	returnLastRunOnly?: boolean; // Forces the caller to receive only the items from the terminal node's final run.
+	/** Aborts when the calling execution is cancelled, so an awaited sub-workflow stops with it. */
+	abortSignal?: AbortSignal;
 }
 
 export type AiEvent =
@@ -4105,6 +4163,11 @@ export interface AiAgentRequest {
 }
 
 export interface IWorkflowExecuteAdditionalData {
+	binaryDataAccess?: {
+		grant(binaryDataId: string): void;
+		isGranted(binaryDataId: string): boolean;
+		isAllowed(binaryDataId: string, workflowId: string, grantedIds?: string[]): Promise<boolean>;
+	};
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
@@ -4732,6 +4795,10 @@ export interface IUserSettings {
 	mcpPreferencesNote?: {
 		impressions: number;
 		lastShownAt?: number;
+	};
+	assistantPreferencesNote?: {
+		impressions: number;
+		lastShownAt: number;
 	};
 }
 

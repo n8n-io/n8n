@@ -1,5 +1,6 @@
 import type {
 	CallerContext,
+	ItemSource,
 	SubExecutionResumeCause,
 	ExecutionMode,
 	StepSlots,
@@ -21,9 +22,8 @@ import type { ResponseEmitter, ResponseExpectation } from '../response-channel';
  * the interfaces below.
  *
  * `inputs` and `outputs` are `StepSlots` (`JsonValue[]`), not `unknown`: the
- * engine routes data slot to slot and persists it to a `jsonb` column, so it
- * owns exactly one level of structure — the slot list — and anything crossing
- * this seam must survive a JSON round-trip. A slot's contents are
+ * engine routes data slot to slot and persists it to a `jsonb` column, so
+ * anything crossing this seam must survive a JSON round-trip. A slot's contents are
  * step-type-specific (for `v1-node`, the items of one v1 connection, i.e. one
  * element of `INodeExecutionData[][]`); keeping them opaque is what keeps this
  * package free of `n8n-workflow` / `n8n-core`.
@@ -49,12 +49,21 @@ export interface StepExecutionContext {
 	responseExpectation: ResponseExpectation;
 }
 
+/**
+ * Per input slot, in item order, the sources of the live edges that fed it.
+ * Empty for a slot no live edge fed. Several edges into one slot concatenate,
+ * so an executor that links items to their origin reads this.
+ */
+export type StepInputSources = ItemSource[][];
+
 /** A single step handed to an executor. */
 export interface StepExecutionRequest {
 	/** The graph node to run; `node.config` is the step-type-specific payload. */
 	node: GraphNode;
 	/** Input slots gathered from predecessor steps; slot contents are opaque. */
 	inputs: StepSlots;
+	/** Where the items of each slot in `inputs` came from. */
+	inputSources: StepInputSources;
 	context: StepExecutionContext;
 	/**
 	 * Response emitter allows the step executor to send messages to the control
@@ -157,6 +166,9 @@ export interface ExecutionLocation {
  */
 export type ExecutionFilesDeleter = (execution: ExecutionLocation) => Promise<void>;
 
+/** File deleter for a host that writes no binary files. */
+export const noopExecutionFilesDeleter: ExecutionFilesDeleter = async () => {};
+
 export interface ExternalDependencies {
 	/** Executes `v1-node` steps — supplied by the host in integrated mode. */
 	v1StepExecutor?: IStepExecutor;
@@ -164,8 +176,8 @@ export interface ExternalDependencies {
 	lifecycleEventCallback?: LifecycleEventCallback;
 	/**
 	 * Deletes the binary files of a pruned execution. The engine has no store of
-	 * its own, so the host that owns the store deletes them. A host that runs no
-	 * `v1-node` steps writes no files and can omit it.
+	 * its own, so the host that owns the store deletes them. Required when
+	 * retention is on. A host that writes no files passes `noopExecutionFilesDeleter`.
 	 */
 	deleteExecutionFiles?: ExecutionFilesDeleter;
 }

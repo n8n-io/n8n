@@ -82,7 +82,7 @@ export { default as N8nColorPicker } from './N8nColorPicker';
 export { default as N8nCopyInput } from './N8nCopyInput';
 export { default as N8nDatatable } from './N8nDatatable';
 export { default as N8nEmptyState, N8nEmptyStateIconCards } from './N8nEmptyState';
-export type { EmptyStateCardIcon, EmptyStateIconCards } from './N8nEmptyState';
+export type { EmptyStateCardIcon, EmptyStateIconCards, EmptyStateSize } from './N8nEmptyState';
 export { default as N8nExternalLink } from './N8nExternalLink';
 export { default as N8nFloatingWindow } from './N8nFloatingWindow';
 export { default as N8nFormBox } from './N8nFormBox';
@@ -100,6 +100,7 @@ export {
 	updatedIconSet,
 } from './N8nIcon';
 export { default as N8nIconButton } from './N8nIconButton';
+export { default as N8nIconTextButton } from './IconTextButton';
 export { default as N8nInlineAskAssistantButton } from './InlineAskAssistantButton';
 export { default as N8nInfoAccordion } from './N8nInfoAccordion';
 export type { IAccordionItem } from './N8nInfoAccordion';
@@ -180,6 +181,8 @@ export type {
 	ChatActionReadAloudStatus,
 	ChatActionsProps,
 } from './N8nChatActions/ChatActions.types';
+export { default as N8nChatRating } from './N8nChatRating/ChatRating.vue';
+export type { ChatRatingValue } from './N8nChatRating/ChatRating.types';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nSegmentControl } from './N8nSegmentControl';
@@ -187,6 +190,8 @@ export type { SegmentControlProps, SegmentControlSize, SegmentOption } from './N
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
+export { default as N8nSidebar } from './N8nSidebar';
+export type { SidebarProps, SidebarSide } from './N8nSidebar';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nStatusDot } from './N8nStatusDot';

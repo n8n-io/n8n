@@ -57,6 +57,7 @@ export const STORES = {
 	EXPERIMENT_CREDENTIALS_APP_SELECTION: 'credentialsAppSelection',
 	EXPERIMENT_SURFACE_MCP_TO_NEW_CLOUD_USERS: 'surfaceMcpToNewCloudUsers',
 	EXPERIMENT_EXPOSE_ALL_WORKFLOWS_TO_MCP: 'exposeAllWorkflowsToMcp',
+	EXPERIMENT_MCP_PREFERENCES_ENTRY_POINTS: 'mcpPreferencesEntryPoints',
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	EXPERIMENT_MCP_DISCOVERY: 'surfaceMcpToClaudeTrialUsers',
 	// EOF Experiment cleanup

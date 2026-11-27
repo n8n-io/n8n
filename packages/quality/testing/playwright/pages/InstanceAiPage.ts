@@ -1,7 +1,8 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Locator, type Page, type Response } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { hoverToReveal } from '../utils/retry-utils';
+import { AgentChatEmptyState } from './components/agent-chat-empty-state';
 import { CredentialModal } from './components/CredentialModal';
 import { InstanceAiSidebar } from './components/InstanceAiSidebar';
 import { InstanceAiWorkflowSetup } from './components/InstanceAiWorkflowSetup';
@@ -10,6 +11,7 @@ export class InstanceAiPage extends BasePage {
 	readonly sidebar: InstanceAiSidebar;
 	readonly workflowSetup: InstanceAiWorkflowSetup;
 	readonly credentialModal: CredentialModal;
+	readonly agentChatEmptyState: AgentChatEmptyState;
 
 	constructor(page: Page) {
 		super(page);
@@ -18,6 +20,9 @@ export class InstanceAiPage extends BasePage {
 			page.getByTestId('instance-ai-workflow-setup'),
 		);
 		this.credentialModal = CredentialModal.fromPage(page);
+		this.agentChatEmptyState = new AgentChatEmptyState(
+			page.locator('[data-testid="agent-n8n-chat-empty-state"]'),
+		);
 	}
 
 	private get container(): Locator {
@@ -101,6 +106,10 @@ export class InstanceAiPage extends BasePage {
 
 	async gotoThread(threadId: string): Promise<void> {
 		await this.page.goto(`/assistant/${threadId}`);
+	}
+
+	async gotoAgentChat(agentId: string): Promise<void> {
+		await this.page.goto(`/assistant/agents/${agentId}`);
 	}
 
 	/** Thread id of the conversation currently open, read from the URL. */
@@ -220,7 +229,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getStatusBar(): Locator {
-		return this.container.getByTestId('instance-ai-status-bar');
+		return this.container.getByTestId('instance-ai-run-activity');
 	}
 
 	/** "Working in the background..." indicator — visible when orchestrator is done but child agents still building. */
@@ -286,15 +295,13 @@ export class InstanceAiPage extends BasePage {
 		await this.getChatInput().press('ArrowRight');
 	}
 
-	// Scoped to the composer: a sent message renders the same chips for its attachments.
+	// Scoped to the composer: a sent message renders the same cards for its attachments.
 	getComposerWorkflowChip(name: string | RegExp): Locator {
 		return this.getComposer().getByTestId('attachment-preview-resource').filter({ hasText: name });
 	}
 
 	getComposerWorkflowRemoveButton(name: string | RegExp): Locator {
-		return this.getComposerWorkflowChip(name).getByRole('button', {
-			name: 'Remove workflow context',
-		});
+		return this.getComposerWorkflowChip(name).getByTestId('attachment-remove');
 	}
 
 	getComposerNodeChip(name: string | RegExp): Locator {
@@ -454,6 +461,10 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewCanvas().getByTestId('execute-workflow-button');
 	}
 
+	getPreviewRunWorkflowButtonSpinner(): Locator {
+		return this.getPreviewRunWorkflowButton().locator('.n8n-spinner');
+	}
+
 	async runPreviewWorkflow(): Promise<void> {
 		const runButton = this.getPreviewRunWorkflowButton();
 		const approvalButton = this.getConfirmApproveButton();
@@ -479,6 +490,55 @@ export class InstanceAiPage extends BasePage {
 			await approvalButton.dispatchEvent('click');
 		} else {
 			await runButton.click();
+		}
+	}
+
+	async runPreviewWorkflowAndWaitForCompletion(timeout = 30_000): Promise<void> {
+		const completedExecutionIds = new Set<string>();
+		const onResponse = (response: Response) => {
+			if (response.request().method() !== 'GET' || !response.ok()) return;
+			const match = response.url().match(/\/rest\/executions\/([^/?#]+)/);
+			if (match) completedExecutionIds.add(match[1]);
+		};
+		this.page.on('response', onResponse);
+
+		try {
+			const runResponsePromise = this.page.waitForResponse(
+				(response) =>
+					response.url().includes('/rest/workflows/') &&
+					response.url().includes('/run') &&
+					response.request().method() === 'POST',
+				{ timeout: 120_000 },
+			);
+
+			await this.runPreviewWorkflow();
+
+			const runResponse = await runResponsePromise;
+			const payload: unknown = await runResponse.json().catch(() => undefined);
+			const executionId =
+				typeof payload === 'object' &&
+				payload !== null &&
+				'data' in payload &&
+				typeof payload.data === 'object' &&
+				payload.data !== null &&
+				'executionId' in payload.data &&
+				typeof payload.data.executionId === 'string'
+					? payload.data.executionId
+					: undefined;
+
+			if (executionId && !completedExecutionIds.has(executionId)) {
+				await this.page.waitForResponse(
+					(response) =>
+						response.url().includes(`/rest/executions/${executionId}`) &&
+						response.request().method() === 'GET' &&
+						response.ok(),
+					{ timeout },
+				);
+			}
+
+			await expect(this.getPreviewRunWorkflowButtonSpinner()).toBeHidden({ timeout });
+		} finally {
+			this.page.off('response', onResponse);
 		}
 	}
 

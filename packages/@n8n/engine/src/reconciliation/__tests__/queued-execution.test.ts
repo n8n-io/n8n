@@ -22,11 +22,14 @@ function makeExecutionStore(): ExecutionStore {
 		renewQueuedExecution: vi.fn().mockResolvedValue(true),
 		refreshLiveStatus: vi.fn(),
 		loadLiveSubExecutionIds: vi.fn(),
+		findPrunableExecutions: vi.fn(),
+		findRetentionCountCutoff: vi.fn(),
+		deleteEndedExecutions: vi.fn(),
 	};
 }
 
 function makeOrchestrationQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
 }
 
 describe('QueuedExecutionDetector', () => {

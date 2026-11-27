@@ -2,7 +2,9 @@
 import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import AgentFolderDialog, { type AgentFolderAction } from '../components/AgentFolderDialog.vue';
 import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
+import { useAgentSetupHeaderExperiment } from '@/experiments/agentSetupHeader/useAgentSetupHeaderExperiment';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
+import { useAgentsInvocationStepExperiment } from '@/experiments/agentsInvocationStep/useAgentsInvocationStepExperiment';
 import {
 	ref,
 	computed,
@@ -35,6 +37,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	addMissingAgentPersonalisation,
+	isDraftIntegration,
 	type AgentSkillAvailability,
 	type InstanceAiHandoffContext,
 	type PushMessage,
@@ -83,6 +86,7 @@ import type {
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
+import { useAgentTestScenariosExperiment } from '@/experiments/agentTestScenarios/useAgentTestScenariosExperiment';
 import { useAgentsN8nChatFlag } from '../composables/useAgentsN8nChatFlag';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { useAgentArchive } from '../composables/useAgentArchive';
@@ -255,6 +259,7 @@ const pushConnectionStore = usePushConnectionStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
+const { shouldShow: showTestScenariosEmptyState } = useAgentTestScenariosExperiment();
 const { trackClickedTraceDetailsFromTestPanel } = useAgentTelemetry();
 const instanceAiAvailable = useInstanceAiAvailable();
 const instanceAiReady = useInstanceAiReady();
@@ -1027,9 +1032,18 @@ let configEditRevision = 0;
 function markConfigDraftEdited() {
 	configEditRevision += 1;
 }
+const agentsInvocationStepExperiment = useAgentsInvocationStepExperiment();
 const connectedTriggers = ref<string[]>([]);
 const isPublishReady = ref(false);
 const setupChecklistContext = computed(() => {
+	const connectedChannelIds = (localConfig.value?.integrations ?? [])
+		.filter((integration) => !isDraftIntegration(integration))
+		.map((integration) => integration.type);
+
+	const enabledScheduleCount = (localConfig.value?.tasks ?? []).filter(
+		(task) => task.enabled,
+	).length;
+
 	return {
 		config: {
 			loaded: initialized.value && localConfig.value !== null,
@@ -1040,10 +1054,11 @@ const setupChecklistContext = computed(() => {
 				(localConfig.value?.tools?.length ?? 0) +
 				(localConfig.value?.mcpServers?.length ?? 0) +
 				(localConfig.value?.subAgents?.agents?.length ?? 0),
+			scheduleCount: enabledScheduleCount,
 		},
 		channels: {
-			loaded: initialized.value,
-			ids: connectedTriggers.value,
+			loaded: initialized.value && localConfig.value !== null,
+			ids: connectedChannelIds,
 		},
 		publication: {
 			loaded: initialized.value,
@@ -1058,10 +1073,12 @@ const setupChecklistContext = computed(() => {
 			loaded: initialized.value && previewSessionsLoaded.value,
 			count: sessionsStore.previewThreads.length,
 		},
+		showTriggerStep: agentsInvocationStepExperiment.isEnabled.value,
 	};
 });
 const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =
 	useAgentSetupTasks(setupChecklistContext);
+const { isEnabled: isSetupHeaderEnabled } = useAgentSetupHeaderExperiment();
 const areSetupTasksVisible = computed(
 	() =>
 		isSetupChecklistVisible.value &&
@@ -1989,11 +2006,24 @@ async function flushAutosaveIgnoringResult(): Promise<void> {
 	await flushAutosave();
 }
 
-/** The embedded assistant waits to mint its thread until a list-view starter is applied. */
+/** A failed save must not block a message to the embedded assistant, which can help fix the config. */
+async function flushAutosaveBeforeAssistantSend(): Promise<void> {
+	try {
+		await flushAutosave();
+	} catch {
+		// The autosave already showed its own error toast.
+	}
+}
+
+/**
+ * The embedded assistant waits to mint its thread until a list-view starter is applied.
+ * A failed save must not leave the panel without a thread: the failed edit stays queued
+ * for a retry, and the assistant can help fix the config.
+ */
 async function beforeAiNewThread(): Promise<void> {
 	const gate = starterReady;
 	await gate?.promise;
-	await flushAutosaveIgnoringResult();
+	await flushAutosaveBeforeAssistantSend();
 }
 
 useEventListener(document, 'keydown', (event) => {
@@ -2002,9 +2032,27 @@ useEventListener(document, 'keydown', (event) => {
 	void flushAutosave().catch(() => {});
 });
 
-async function flushPendingRouteDraftBeforeNavigation() {
-	if (!isRouteAgentPending.value || !isUnsaved.value) return;
-	await flushAutosave();
+/** Resolves false when the user chooses to stay on the agent after a failed save. */
+async function flushPendingRouteDraftBeforeNavigation(): Promise<boolean> {
+	if (!isRouteAgentPending.value || !isUnsaved.value) return true;
+	try {
+		await flushAutosave();
+		return true;
+	} catch {
+		// The autosave already showed its error toast. A save that keeps failing (e.g. an
+		// imported skill from another project) must not trap the user on this agent.
+		const choice = await openAgentConfirmationModal({
+			title: locale.baseText('agents.builder.leaveUnsaved.title'),
+			description: locale.baseText('agents.builder.leaveUnsaved.description'),
+			confirmButtonText: locale.baseText('agents.builder.leaveUnsaved.confirm'),
+			cancelButtonText: locale.baseText('agents.builder.leaveUnsaved.cancel'),
+			isDestructive: true,
+		});
+		if (choice !== MODAL_CONFIRM) return false;
+		// Drop the failed edits so the unmount flush does not retry them.
+		cancelQueuedAutosaves();
+		return true;
+	}
 }
 
 onBeforeRouteLeave(flushPendingRouteDraftBeforeNavigation);
@@ -2013,14 +2061,14 @@ onBeforeRouteUpdate(async (to) => {
 		? to.params.projectId[0]
 		: to.params.projectId;
 	const nextAgentId = Array.isArray(to.params.agentId) ? to.params.agentId[0] : to.params.agentId;
-	if (nextProjectId === projectId.value && nextAgentId === agentId.value) return;
+	if (nextProjectId === projectId.value && nextAgentId === agentId.value) return true;
 	if (isRouteAgentPending.value) {
-		await flushPendingRouteDraftBeforeNavigation();
-		return;
+		return await flushPendingRouteDraftBeforeNavigation();
 	}
 	// An in-place switch skips the unmount flush, so persist queued edits here.
 	// A failed save rejects and cancels the switch, so the edit stays for a retry.
 	await flushAutosave();
+	return true;
 });
 
 async function beforePreviewSend() {
@@ -2032,6 +2080,11 @@ async function beforePreviewSend() {
 		showError(error, locale.baseText('agents.builder.preview.sendError'));
 		throw error;
 	}
+}
+
+async function beforeTestScenariosGenerate() {
+	await flushAutosave();
+	await ensureAgentPersisted();
 }
 
 /**
@@ -2309,11 +2362,7 @@ async function applyTemplateConfig(template: AgentTemplate): Promise<boolean> {
 	// sync — the template's draft entries plus a default n8n Chat it kept.
 	connectedTriggers.value = (next.integrations ?? []).map((i) => i.type);
 	templateApplied.value = true;
-	// Persist the agent and flush the config autosave before sending the chat
-	// message. The chat's `beforeSend` hook calls `flushAutosave` too — if we
-	// send first, a failed save (e.g. invalid tool fields in draft mode)
-	// rejects `beforeSend` and the chat message is never sent. Flushing here
-	// drains the queue so `beforeSend` resolves immediately.
+	// Persist the template config before the task writes and the chat message.
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
 	try {
@@ -2877,7 +2926,7 @@ async function onHeaderAction(action: string) {
 			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
 			favoritesStore.removeFavoriteLocally(agentId.value, 'agent');
 		} catch (error) {
-			showError(error, 'Could not delete agent');
+			showError(error, locale.baseText('agents.builder.deleteError'));
 			return;
 		}
 
@@ -3504,7 +3553,8 @@ useKeybindings({
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
-			:tasks="areSetupTasksVisible ? setupTasks : undefined"
+			:tasks="areSetupTasksVisible && !isSetupHeaderEnabled ? setupTasks : undefined"
+			@setup-task-action="onSetupTaskAction"
 			@header-action="onHeaderAction"
 			@open-publish-timeline="onOpenVersionHistory('timeline')"
 			@publish-ready="isPublishReady = $event"
@@ -3512,7 +3562,6 @@ useKeybindings({
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
-			@setup-task-action="onSetupTaskAction"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
@@ -3640,7 +3689,7 @@ useKeybindings({
 						:launch="instanceAiEmbedLaunch"
 						:thread-id="aiThreadId"
 						:before-new-thread="beforeAiNewThread"
-						:before-send="flushAutosaveIgnoringResult"
+						:before-send="flushAutosaveBeforeAssistantSend"
 						data-testid="agent-ai-chat-panel"
 						@update:thread-id="onAiThreadIdChange"
 						@update:building="embeddedAiBuilding = $event"
@@ -3695,10 +3744,12 @@ useKeybindings({
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
+					:show-test-scenarios="showTestScenariosEmptyState"
 					:new-session="currentSessionIsEphemeral"
 					:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
+					:before-generate="beforeTestScenariosGenerate"
 					budget-cards
 					:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
 					@continue-loaded="onContinueLoaded"
@@ -3730,6 +3781,11 @@ useKeybindings({
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
+					:tasks="
+						areSetupTasksVisible && isSetupHeaderEnabled && !isAgentArchived
+							? setupTasks
+							: undefined
+					"
 					:main-tab-options="mainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
@@ -3769,6 +3825,7 @@ useKeybindings({
 					@open-preview="onOpenPreview"
 					@close-preview="closePreviewDock"
 					@publish-agent="onSetupTaskPublishAgent"
+					@setup-task-action="onSetupTaskAction"
 				/>
 
 				<AgentVersionHistoryPanel
@@ -3841,11 +3898,13 @@ useKeybindings({
 							:effective-session-id="effectiveSessionId"
 							:new-session="currentSessionIsEphemeral"
 							:initial-prompt="taskPreviewPrompt"
+							:show-test-scenarios="showTestScenariosEmptyState"
 							:can-delete-session="canDeletePreviewSession"
 							:is-deleting-session="isDeletingSession"
 							:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 							:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 							:before-send="beforePreviewSend"
+							:before-generate="beforeTestScenariosGenerate"
 							budget-cards
 							:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
 							@view-trace="viewPreviewTrace"

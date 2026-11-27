@@ -5,6 +5,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 
+import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -45,7 +46,7 @@ vi.mock('../json-config/from-json-config', async () => {
 
 const config: AgentJsonConfig = {
 	name: 'Child Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help with delegated work.',
 };
 
@@ -88,6 +89,7 @@ function makeService(sandboxFilesEnabled = true) {
 		mock<AgentSandboxFilesService>({
 			isEnabled: vi.fn().mockResolvedValue(sandboxFilesEnabled),
 		}),
+		mock<WorkflowsInSkillsFlagGate>(),
 	);
 
 	return { service, workspaceService };

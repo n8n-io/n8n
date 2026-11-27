@@ -1,4 +1,6 @@
 import type { ICredentialDataDecryptedObject, IHttpRequestOptions } from 'n8n-workflow';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { OpenAiApi } from '../OpenAiApi.credentials';
 
@@ -9,9 +11,24 @@ describe('OpenAiApi Credential', () => {
 		expect(openAiApi.name).toBe('openAiApi');
 		expect(openAiApi.displayName).toBe('OpenAI');
 		expect(openAiApi.documentationUrl).toBe('openai');
+		expect(openAiApi.icon).toEqual({
+			light: 'file:icons/openAi.svg',
+			dark: 'file:icons/openAi.dark.svg',
+		});
 		expect(openAiApi.properties).toHaveLength(6);
 		expect(openAiApi.test.request.baseURL).toBe('={{$credentials?.url}}');
 		expect(openAiApi.test.request.url).toBe('/models');
+	});
+
+	it('should reference existing light and dark icon assets', () => {
+		const credentialsDir = resolve(__dirname, '..');
+
+		expect(existsSync(resolve(credentialsDir, openAiApi.icon.light.replace('file:', '')))).toBe(
+			true,
+		);
+		expect(existsSync(resolve(credentialsDir, openAiApi.icon.dark.replace('file:', '')))).toBe(
+			true,
+		);
 	});
 
 	it('should allow custom header expressions to be omitted during design-time resolution', () => {

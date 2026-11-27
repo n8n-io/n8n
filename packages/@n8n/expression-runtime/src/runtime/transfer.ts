@@ -14,12 +14,24 @@
  */
 
 import {
+	bigIntPrototype,
+	bigIntValueOf,
+	booleanPrototype,
+	booleanValueOf,
 	defineProperty,
 	getPrototypeOf,
 	isArray,
 	isArrayBufferView,
+	isPrototypeOf,
+	numberPrototype,
+	numberValueOf,
 	objectKeys,
+	objectPrototype,
+	objectToString,
+	reflectApply,
 	reflectGet,
+	stringPrototype,
+	stringValueOf,
 } from './intrinsics';
 
 /** Names the type a marker carries, and marks the object as one of ours. */
@@ -149,7 +161,81 @@ export function encodeOnce(
 /** Type guard: plain object with Object.prototype or null prototype. */
 export function isPlainObject(value: object): value is Record<string, unknown> {
 	const proto = getPrototypeOf(value);
-	return proto === Object.prototype || proto === null;
+	return proto === objectPrototype || proto === null;
+}
+
+function tryUnbox<T>(value: object, fn: (this: unknown) => T): T | undefined {
+	try {
+		const unboxed: T = reflectApply(fn, value, []);
+		return unboxed;
+	} catch {
+		return undefined;
+	}
+}
+
+function hasPrototype(proto: object, value: object): boolean {
+	try {
+		const found: boolean = reflectApply(isPrototypeOf, proto, [value]);
+		return found;
+	} catch {
+		return false;
+	}
+}
+
+const BOXED_PRIMITIVE_SPECS: ReadonlyArray<{
+	proto: object;
+	tag: string;
+	unbox: (this: unknown) => string | number | boolean | bigint;
+}> = [
+	{ proto: stringPrototype, tag: '[object String]', unbox: stringValueOf },
+	{ proto: numberPrototype, tag: '[object Number]', unbox: numberValueOf },
+	{ proto: booleanPrototype, tag: '[object Boolean]', unbox: booleanValueOf },
+	...(bigIntPrototype !== undefined && bigIntValueOf !== undefined
+		? [{ proto: bigIntPrototype, tag: '[object BigInt]', unbox: bigIntValueOf }]
+		: []),
+];
+
+/**
+ * Return the primitive inside a boxed String, Number, Boolean, or BigInt.
+ * Return undefined for any other object, including an object that inherits
+ * a wrapper prototype without its internal slot.
+ */
+export function unboxPrimitive(value: object): string | number | boolean | bigint | undefined {
+	let proto: unknown;
+	try {
+		proto = getPrototypeOf(value);
+	} catch {
+		return undefined;
+	}
+	if (proto === objectPrototype || proto === null) return undefined;
+
+	for (let i = 0; i < BOXED_PRIMITIVE_SPECS.length; i++) {
+		const spec = BOXED_PRIMITIVE_SPECS[i];
+		if (proto === spec.proto) {
+			const unboxed = tryUnbox(value, spec.unbox);
+			if (unboxed !== undefined) return unboxed;
+		}
+	}
+
+	let tag = '';
+	try {
+		tag = reflectApply(objectToString, value, []);
+	} catch {
+		tag = '';
+	}
+	for (let i = 0; i < BOXED_PRIMITIVE_SPECS.length; i++) {
+		const spec = BOXED_PRIMITIVE_SPECS[i];
+		if (tag === spec.tag || hasPrototype(spec.proto, value)) {
+			const unboxed = tryUnbox(value, spec.unbox);
+			if (unboxed !== undefined) return unboxed;
+		}
+	}
+	return undefined;
+}
+
+/** Say whether `value` is a structured-cloneable boxed primitive object. */
+export function isBoxedPrimitive(value: object): boolean {
+	return unboxPrimitive(value) !== undefined;
 }
 
 /** Types that structured clone copies with the prototype intact. */
@@ -162,7 +248,8 @@ export function isStructuredCloneBuiltin(value: object): boolean {
 		value instanceof Error ||
 		value instanceof Promise ||
 		value instanceof ArrayBuffer ||
-		isArrayBufferView(value)
+		isArrayBufferView(value) ||
+		isBoxedPrimitive(value)
 	);
 }
 
@@ -175,7 +262,9 @@ function unwrapPlainObject(
 	// Record the result before the walk. A value that refers to itself then
 	// resolves to the same object.
 	seen.set(value, result);
-	for (const key of objectKeys(value)) {
+	const keys = objectKeys(value);
+	for (let i = 0; i < keys.length; i++) {
+		const key = keys[i];
 		defineOwnValue(result, key, unwrapValue(value[key], decode, seen));
 	}
 	return result;
