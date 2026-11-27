@@ -86,6 +86,7 @@ import type {
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
+import { useAgentTestScenariosExperiment } from '@/experiments/agentTestScenarios/useAgentTestScenariosExperiment';
 import { useAgentsN8nChatFlag } from '../composables/useAgentsN8nChatFlag';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { useAgentArchive } from '../composables/useAgentArchive';
@@ -258,6 +259,7 @@ const pushConnectionStore = usePushConnectionStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
+const { shouldShow: showTestScenariosEmptyState } = useAgentTestScenariosExperiment();
 const { trackClickedTraceDetailsFromTestPanel } = useAgentTelemetry();
 const instanceAiAvailable = useInstanceAiAvailable();
 const instanceAiReady = useInstanceAiReady();
@@ -2080,6 +2082,11 @@ async function beforePreviewSend() {
 	}
 }
 
+async function beforeTestScenariosGenerate() {
+	await flushAutosave();
+	await ensureAgentPersisted();
+}
+
 /**
  * Raises a budget cap from a preview notice card. The card stays up (and
  * keeps blocking Send) until the new cap is persisted: a failed save must
@@ -3737,10 +3744,12 @@ useKeybindings({
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
+					:show-test-scenarios="showTestScenariosEmptyState"
 					:new-session="currentSessionIsEphemeral"
 					:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
+					:before-generate="beforeTestScenariosGenerate"
 					budget-cards
 					:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
 					@continue-loaded="onContinueLoaded"
@@ -3889,11 +3898,13 @@ useKeybindings({
 							:effective-session-id="effectiveSessionId"
 							:new-session="currentSessionIsEphemeral"
 							:initial-prompt="taskPreviewPrompt"
+							:show-test-scenarios="showTestScenariosEmptyState"
 							:can-delete-session="canDeletePreviewSession"
 							:is-deleting-session="isDeletingSession"
 							:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 							:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 							:before-send="beforePreviewSend"
+							:before-generate="beforeTestScenariosGenerate"
 							budget-cards
 							:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
 							@view-trace="viewPreviewTrace"

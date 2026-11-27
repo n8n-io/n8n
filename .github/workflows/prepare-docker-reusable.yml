@@ -28,7 +28,7 @@ on:
       runner:
         description: 'Runner for the build.'
         required: false
-        default: 'blacksmith-4vcpu-ubuntu-2204'
+        default: 'blacksmith-4vcpu-bmi-n8n'
         type: string
       branch:
         description: 'Git ref to check out.'

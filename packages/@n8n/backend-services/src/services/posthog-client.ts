@@ -2,6 +2,7 @@ import {
 	AGENT_EVALS_FLAG,
 	AGENT_SANDBOX_FILES_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
+	CUSTOM_MCP_SERVERS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
@@ -29,6 +30,12 @@ import type { AllFlagsOptions, FeatureFlagEvaluations, PostHog } from 'posthog-n
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+/**
+ * Backend gates read instance flags on hot paths, for example on each MCP request. A failed or
+ * empty answer is kept this long, so that an unreachable PostHog does not cost a timeout on
+ * each read.
+ */
+const EMPTY_INSTANCE_FLAGS_CACHE_TTL_MS = 60 * 1000;
 const EDITOR_INSTANCE_FLAGS = [
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	AGENT_SANDBOX_FILES_FLAG,
@@ -36,9 +43,13 @@ const EDITOR_INSTANCE_FLAGS = [
 	KNOWLEDGE_COLLECTIONS_FLAG,
 	SELF_HEALING_FLAG,
 	WORKFLOWS_IN_SKILLS_FLAG,
+	CUSTOM_MCP_SERVERS_FLAG,
 ];
-
-const MULTIVARIATE_EDITOR_INSTANCE_FLAGS = [WORKFLOWS_IN_SKILLS_FLAG];
+/**
+ * Multivariate flags that roll out by instance. The editor gets the instance variant as it is,
+ * so the editor and the backend read the same value.
+ */
+const MULTIVARIATE_EDITOR_INSTANCE_FLAGS = [WORKFLOWS_IN_SKILLS_FLAG, CUSTOM_MCP_SERVERS_FLAG];
 
 const SESSION_ID_MAX_LENGTH = 1000;
 
@@ -61,6 +72,9 @@ export class PostHogClient {
 	private postHog?: PostHog;
 
 	private readonly flagsCache = new Map<string, CachedFlags>();
+
+	/** Instance fetches in flight, so that parallel reads share one request. */
+	private readonly instanceFetches = new Map<string, Promise<FeatureFlagData>>();
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -167,11 +181,26 @@ export class PostHogClient {
 
 	private async getFeatureFlagsForInstance(flagNames: string[]): Promise<FeatureFlags> {
 		const { instanceId } = this.instanceSettings;
+		const cacheKey = ['instance', instanceId, ...flagNames].join('#');
+
+		let fetch = this.instanceFetches.get(cacheKey);
+		if (!fetch) {
+			fetch = this.fetchInstanceFlags(cacheKey, flagNames).finally(() =>
+				this.instanceFetches.delete(cacheKey),
+			);
+			this.instanceFetches.set(cacheKey, fetch);
+		}
+
+		return this.applyEnvOverrides(await fetch).featureFlags;
+	}
+
+	private async fetchInstanceFlags(cacheKey: string, flagNames: string[]) {
+		const { instanceId } = this.instanceSettings;
 		let data: FeatureFlagData = { featureFlags: {}, featureFlagPayloads: {} };
 
 		try {
 			data = await this.fetchFlagsFromPostHog({
-				cacheKey: ['instance', instanceId, ...flagNames].join('#'),
+				cacheKey,
 				distinctId: `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
 				options: {
 					flagKeys: flagNames,
@@ -182,7 +211,16 @@ export class PostHogClient {
 			// Apply local overrides when PostHog is not available.
 		}
 
-		return this.applyEnvOverrides(data).featureFlags;
+		// `fetchFlagsFromPostHog` caches only a non-empty answer.
+		const cached = this.flagsCache.get(cacheKey);
+		if (this.postHog && !(cached && cached.expiresAt > Date.now())) {
+			this.flagsCache.set(cacheKey, {
+				...data,
+				expiresAt: Date.now() + EMPTY_INSTANCE_FLAGS_CACHE_TTL_MS,
+			});
+		}
+
+		return data;
 	}
 
 	async getFeatureFlagsAndPayloads(

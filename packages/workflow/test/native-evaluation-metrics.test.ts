@@ -6,10 +6,10 @@ import { workflow } from './ExpressionExtensions/helpers';
 import { Expression } from '../src/expression';
 import {
 	evaluateNatively,
+	MAX_DEPTH,
 	MAX_RESULT_LENGTH,
 	MAX_STEPS,
 } from '../src/expressions/native-evaluation';
-import { MAX_DEPTH } from '../src/expressions/native-evaluation/grammar';
 import type { IDataObject } from '../src/interfaces';
 
 const engine = process.env.N8N_EXPRESSION_ENGINE as 'vm' | 'legacy' | 'quickjs';

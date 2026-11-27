@@ -1,3 +1,4 @@
+import { azurite, createAzuriteHelper } from './azurite';
 import { cadvisor } from './cadvisor';
 import { cloudflared } from './cloudflared';
 import { createEnginePostgresHelper, enginePostgres } from './engine-postgres';
@@ -50,6 +51,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	kafka,
 	mysql: mysqlService,
 	localstack,
+	azurite,
 	vault,
 	kent,
 	postgresExporter,
@@ -70,6 +72,7 @@ export const helperFactories: Partial<HelperFactories> = {
 	proxy: createProxyHelper,
 	kafka: createKafkaHelper,
 	localstack: createLocalStackHelper,
+	azurite: createAzuriteHelper,
 	vault: createVaultHelper,
 	kent: createKentHelper,
 	npmRegistry: createNpmRegistryHelper,

@@ -982,6 +982,23 @@ function getFormWaitingBasePath(context: IWebhookFunctions): string | null {
 }
 
 /**
+ * Path the form page auth cookie is scoped to. A run's cookie only goes to that
+ * run's pages, so the cookies of earlier runs aren't sent along and can't pile
+ * up in the request header. The trigger's cookie must reach the first page of a
+ * run that doesn't exist yet, so it keeps the form-waiting base path.
+ */
+function getFormAuthCookiePath(
+	context: IWebhookFunctions,
+	binding: FormUserAuthTokenBinding,
+): string {
+	const basePath = getFormWaitingBasePath(context);
+	// Nothing narrower is derivable when the base path is unknown; the cookie is
+	// httpOnly and expires with the token either way.
+	if (!basePath) return '/';
+	return binding.executionId ? `${basePath}/${binding.executionId}` : basePath;
+}
+
+/**
  * Hand the follow-up pages of a multi-page form their own auth token, scoped to
  * the form-waiting path. Re-set on every page render, so a long form's later
  * pages get a token that is still within its TTL.
@@ -998,9 +1015,7 @@ export function setFormAuthCookie(
 		// initiates from the real origin.
 		sameSite: 'lax',
 		secure: isSecureRequest(req),
-		// Nothing narrower is derivable when the base path is unknown; the cookie is
-		// httpOnly and expires with the token either way.
-		path: getFormWaitingBasePath(context) ?? '/',
+		path: getFormAuthCookiePath(context, binding),
 		maxAge: FORM_USER_AUTH_TOKEN_TTL_SECONDS * 1000,
 	});
 }
