@@ -54,6 +54,42 @@ describe('resolveModel', () => {
 		});
 	});
 
+	it.each([
+		['google-vertex/claude-sonnet-4-5@20250929', 'anthropic/claude-sonnet-4-5'],
+		[
+			'aws-bedrock/us.anthropic.claude-opus-4-1-20250805-v1:0',
+			'anthropic/claude-opus-4-1-20250805',
+		],
+		['aws-bedrock/anthropic.claude-haiku-4-5-20251001-v1:0', 'anthropic/claude-haiku-4-5-20251001'],
+		['openrouter/anthropic/claude-sonnet-4.5', 'anthropic/claude-sonnet-4-5'],
+		['vercel/anthropic/claude-sonnet-4.6', 'anthropic/claude-sonnet-4-6'],
+	])(
+		'runs Claude reached through another host (%s) on Anthropic as the same model',
+		(model, same) => {
+			expect(resolveModel(model, keys('anthropicApi', 'openRouterApi', 'googlePalmApi'))).toEqual({
+				kind: 'direct',
+				originalModel: model,
+				actualModel: same,
+				credentialType: 'anthropicApi',
+			});
+		},
+	);
+
+	it.each([
+		['google-vertex/claude-sonnet-4-5@20250929', 'openrouter/anthropic/claude-sonnet-4.5'],
+		[
+			'aws-bedrock/us.anthropic.claude-opus-4-1-20250805-v1:0',
+			'openrouter/anthropic/claude-opus-4.1',
+		],
+	])('routes Claude on %s to OpenRouter when Anthropic has no key', (model, openRouterModel) => {
+		expect(resolveModel(model, keys('openRouterApi'))).toEqual({
+			kind: 'openrouter-same',
+			originalModel: model,
+			actualModel: openRouterModel,
+			credentialType: 'openRouterApi',
+		});
+	});
+
 	it('prefers the provider key over OpenRouter', () => {
 		expect(resolveModel('openai/gpt-5-mini', keys('openAiApi', 'openRouterApi')).kind).toBe(
 			'direct',
@@ -63,7 +99,7 @@ describe('resolveModel', () => {
 	it.each([
 		['azure-openai/prod-gpt-4o-mini', 'anthropic/claude-haiku-5-5'],
 		['azure-openai/support-bot-deployment', 'anthropic/claude-sonnet-5-5'],
-		['aws-bedrock/anthropic.claude-opus-4-1-20250805-v1:0', 'anthropic/claude-opus-5-5'],
+		['aws-bedrock/amazon.nova-pro-v1:0', 'anthropic/claude-opus-5-5'],
 		['groq/llama-3.1-8b-instant', 'anthropic/claude-haiku-5-5'],
 	])('maps %s, which has no OpenRouter twin, to a comparable model', (model, comparable) => {
 		expect(resolveModel(model, keys('anthropicApi', 'openRouterApi'))).toEqual({

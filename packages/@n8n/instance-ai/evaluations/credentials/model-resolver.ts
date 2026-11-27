@@ -23,6 +23,7 @@ import {
 } from '@n8n/api-types';
 
 import {
+	CLAUDE_ON_HOST,
 	COMPARABLE_MODEL_FAMILIES,
 	FRONTIER_MODEL_TOKENS,
 	OPENROUTER_HOST_PROVIDERS,
@@ -102,22 +103,48 @@ export function availableModelCredentialTypes(): ReadonlySet<string> {
 // ---------------------------------------------------------------------------
 
 export function resolveModel(model: string, available: ReadonlySet<string>): ModelResolution {
-	const direct = isFreeVariant(model)
-		? undefined
-		: firstAvailable(getAgentModelProviderCredentialTypes(getProviderPrefix(model)), available);
-	if (direct)
-		return { kind: 'direct', originalModel: model, actualModel: model, credentialType: direct };
+	return (
+		claudeOnAnthropic(model, available) ??
+		directRoute(model, available) ??
+		openRouterRoute(model, available) ??
+		comparableModel(model, available)
+	);
+}
 
-	const openRouterModel = available.has('openRouterApi') ? openRouterTwin(model) : undefined;
-	if (openRouterModel) {
-		return {
-			kind: 'openrouter-same',
-			originalModel: model,
-			actualModel: openRouterModel,
-			credentialType: 'openRouterApi',
-		};
-	}
-	return comparableModel(model, available);
+/** Claude reached through another host runs on Anthropic as the same model. */
+function claudeOnAnthropic(model: string, available: ReadonlySet<string>) {
+	const name = claudeName(model);
+	if (!name || !available.has('anthropicApi')) return undefined;
+	return route('direct', model, `anthropic/${name}`, 'anthropicApi');
+}
+
+function directRoute(model: string, available: ReadonlySet<string>) {
+	if (isFreeVariant(model)) return undefined;
+	const types = getAgentModelProviderCredentialTypes(getProviderPrefix(model));
+	const type = firstAvailable(types, available);
+	return type ? route('direct', model, model, type) : undefined;
+}
+
+function openRouterRoute(model: string, available: ReadonlySet<string>) {
+	const twin = available.has('openRouterApi') ? openRouterTwin(model) : undefined;
+	return twin ? route('openrouter-same', model, twin, 'openRouterApi') : undefined;
+}
+
+function route(
+	kind: Exclude<ModelResolutionKind, 'skipped'>,
+	originalModel: string,
+	actualModel: string,
+	credentialType: string,
+): ModelResolution {
+	return { kind, originalModel, actualModel, credentialType };
+}
+
+/** Anthropic's own name for a Claude model, whichever host serves it. */
+function claudeName(model: string): string | undefined {
+	const { provider, model: name } = splitModelId(model);
+	const pattern = isAgentModelProvider(provider) ? CLAUDE_ON_HOST[provider] : undefined;
+	const captured = pattern?.exec(name)?.[1];
+	return captured?.replace(/(\d)\.(\d)/g, '$1-$2');
 }
 
 function firstAvailable(types: readonly string[], available: ReadonlySet<string>) {
@@ -144,6 +171,8 @@ function comparableModel(model: string, available: ReadonlySet<string>): ModelRe
 /** The same model's OpenRouter id, or undefined when OpenRouter has no twin. */
 function openRouterTwin(model: string): string | undefined {
 	if (NO_OPENROUTER_TWIN.some((pattern) => pattern.test(model))) return undefined;
+	const claude = claudeName(model);
+	if (claude && !model.startsWith('openrouter/')) return openRouterId('anthropic', claude);
 	const { provider, model: name } = splitModelId(model);
 	if (provider === 'openrouter') {
 		return isFreeVariant(model) ? model.slice(0, -OPENROUTER_FREE_SUFFIX.length) : undefined;

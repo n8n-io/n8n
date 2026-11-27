@@ -30,6 +30,17 @@ export const OPENROUTER_HOST_PROVIDERS: ReadonlySet<string> = new Set<AgentModel
 	'vercel',
 ]);
 
+/** Claude served by another host, by provider: the capture is Anthropic's own
+ *  model name. Vertex adds `@<version>`, Bedrock a region, `anthropic.` and
+ *  `-v1:0`; OpenRouter and Vercel use a dotted version. */
+export const CLAUDE_ON_HOST: Partial<Record<AgentModelProvider, RegExp>> = {
+	anthropic: /^(claude-.+)$/,
+	'google-vertex': /^(claude-[^@]+)(?:@.*)?$/,
+	'aws-bedrock': /^(?:[a-z]+\.)?anthropic\.(claude-.+?)(?:-v\d+(?::\d+)?)?$/,
+	openrouter: /^anthropic\/(claude-[^:]+)$/,
+	vercel: /^anthropic\/(claude-[^:]+)$/,
+};
+
 /** Host vendor segments whose OpenRouter slug differs. */
 export const OPENROUTER_VENDOR_ALIASES: Readonly<Record<string, string>> = {
 	meta: 'meta-llama',
