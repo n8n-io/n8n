@@ -13,6 +13,7 @@ import type { INode } from 'n8n-workflow';
 import { ActiveExecutions } from '@/active-executions';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { buildApprovalArgs } from './execution-recorder';
 import { executeWorkflow } from './tools/workflow-tool-factory';
@@ -139,7 +140,7 @@ export class ToolGuardrailReviewService {
 
 		const description = `Guardrail "${guardrail.name ?? guardrail.kind}" flagged a ${
 			payload.stage === 'before' ? 'tool input' : 'tool result'
-		} for ${ctx.toolName}: ${JSON.stringify(payload.matchDetails)}`;
+		} for ${ctx.toolName}${this.describeMatches(payload.matchDetails)}`;
 		// The execution runs on its own: nothing resumes the tool call on its
 		// completion, so the review informs and never gates.
 		const { WorkflowRunner } = await import('@/workflow-runner.js');
@@ -168,5 +169,28 @@ export class ToolGuardrailReviewService {
 				error: error instanceof Error ? error.message : String(error),
 			}),
 		);
+	}
+
+	/**
+	 * Counts what a check matched, without echoing the matched values
+	 */
+	private describeMatches(matchDetails: Record<string, unknown>): string {
+		const parts: string[] = [];
+		for (const [key, value] of Object.entries(matchDetails)) {
+			if (key === 'matchedKeywords' && Array.isArray(value)) {
+				parts.push(`${value.length} keyword match${value.length === 1 ? '' : 'es'}`);
+				continue;
+			}
+			if (key === 'maskEntities' && isRecord(value)) {
+				for (const [entityType, entities] of Object.entries(value)) {
+					if (Array.isArray(entities) && entities.length > 0) {
+						parts.push(
+							`${entities.length} ${entityType} match${entities.length === 1 ? '' : 'es'}`,
+						);
+					}
+				}
+			}
+		}
+		return parts.length > 0 ? `: ${parts.join(', ')}` : '';
 	}
 }

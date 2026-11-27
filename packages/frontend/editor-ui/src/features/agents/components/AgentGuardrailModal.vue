@@ -245,11 +245,15 @@ const responseOptions = computed(() =>
 	})),
 );
 
+// Channel destinations have no notify-only delivery yet, so a channel review
+// would never route; the picker offers workflow destinations only.
 const reviewConfigurationOptions = computed(() =>
-	props.reviewConfigurations.map((configuration) => ({
-		value: configuration.id,
-		label: configuration.name,
-	})),
+	props.reviewConfigurations
+		.filter((configuration) => configuration.method === 'workflow')
+		.map((configuration) => ({
+			value: configuration.id,
+			label: configuration.name,
+		})),
 );
 
 /**

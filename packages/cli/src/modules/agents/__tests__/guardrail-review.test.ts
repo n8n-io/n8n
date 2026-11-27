@@ -204,8 +204,10 @@ describe('ToolGuardrailReviewService.route', () => {
 			agentId: 'agent-1',
 			toolName: 'echo',
 			toolInput: { note: 'a secret' },
-			description: expect.stringContaining('secret'),
+			// The description carries match counts, never the matched values.
+			description: expect.stringContaining('1 keyword match'),
 		});
+		expect(item.description).not.toContain('secret');
 		expect(executionContext).toMatchObject({
 			projectId: 'project-1',
 			executionMode: 'manual',

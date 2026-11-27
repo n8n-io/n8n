@@ -131,10 +131,15 @@ export function createWorkflowGuardrailCheck(
 			return {
 				guardrailName,
 				// Guardrails-node convention: any output item that reports a tripwire stops the call.
+				// A decision-trigger check answers with the approval contract's
+				// terminal item, so `{ approved: false }` is a refusal too.
 				tripwireTriggered: Object.values(result.data ?? {}).some(
 					(items) =>
 						Array.isArray(items) &&
-						items.some((item) => isRecord(item) && item.tripwireTriggered === true),
+						items.some(
+							(item) =>
+								isRecord(item) && (item.tripwireTriggered === true || item.approved === false),
+						),
 				),
 				info: {},
 			};

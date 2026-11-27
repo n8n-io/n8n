@@ -230,7 +230,46 @@ export function sanitizeAgentJsonConfig(raw: unknown): unknown {
 		}
 	}
 
+	healReviewGuardrailReferences(sanitized);
+
 	return sanitized;
+}
+
+/**
+ * Heal review guardrails whose human-review configuration is gone: deleting a
+ * configuration must not wedge every later save. A guardrail whose
+ * `review` response can no longer route falls back to the blocking response
+ * and drops the dangling reference, so it keeps firing without a dead link.
+ * The runtime already treats an unroutable review as a warn-and-skip, so
+ * `block` is the honest fallback: the guardrail still stops the call.
+ */
+function healReviewGuardrailReferences(sanitized: Record<string, unknown>): void {
+	const config = sanitized.config;
+	if (!isRecord(config)) return;
+	const guardrails = config.guardrails;
+	if (!isRecord(guardrails) || !Array.isArray(guardrails.tools)) return;
+
+	const configurationIds = new Set(
+		(Array.isArray(sanitized.hitlConfigurations) ? sanitized.hitlConfigurations : [])
+			.filter((entry) => isRecord(entry) && typeof entry.id === 'string')
+			.map((entry) => (entry as Record<string, unknown>).id as string),
+	);
+
+	let healed = false;
+	const healedTools = guardrails.tools.map((tool) => {
+		if (!isRecord(tool)) return tool;
+		const reviewId = tool.reviewConfigurationId;
+		// A `review` response with no configuration, and any response with a
+		// configuration that no longer exists, are the two reject paths; both
+		// heal to the blocking response.
+		const reviewWithoutTarget = tool.response === 'review' && typeof reviewId !== 'string';
+		const danglingTarget = typeof reviewId === 'string' && !configurationIds.has(reviewId);
+		if (!reviewWithoutTarget && !danglingTarget) return tool;
+		healed = true;
+		const { reviewConfigurationId, ...rest } = tool;
+		return { ...rest, response: 'block' };
+	});
+	if (healed) guardrails.tools = healedTools;
 }
 
 /**

@@ -260,6 +260,30 @@ describe('createWorkflowGuardrailCheck', () => {
 		expect(result.executionFailed).toBeUndefined();
 	});
 
+	it('reads {approved: false} from a decision-trigger workflow as a refusal', async () => {
+		const loader = loaderWith(decisionWorkflow);
+		executeResult({ data: { 'Respond to agent': [{ approved: false }] } });
+
+		const decisionGuardrail = { ...guardrail, workflowId: 'wf-decision' };
+		const check = createWorkflowGuardrailCheck(decisionGuardrail, contextWith(loader));
+		const result = await check(toolCall.toolName, toolCall.input);
+
+		expect(result.tripwireTriggered).toBe(true);
+		expect(result.executionFailed).toBeUndefined();
+	});
+
+	it('reads {approved: true} from a decision-trigger workflow as a pass', async () => {
+		const loader = loaderWith(decisionWorkflow);
+		executeResult({ data: { 'Respond to agent': [{ approved: true }] } });
+
+		const decisionGuardrail = { ...guardrail, workflowId: 'wf-decision' };
+		const check = createWorkflowGuardrailCheck(decisionGuardrail, contextWith(loader));
+		const result = await check(toolCall.toolName, toolCall.input);
+
+		expect(result.tripwireTriggered).toBe(false);
+		expect(result.executionFailed).toBeUndefined();
+	});
+
 	it('still fails closed on a workflow without a supported check trigger', async () => {
 		const cronWorkflow = {
 			id: 'wf-cron',
