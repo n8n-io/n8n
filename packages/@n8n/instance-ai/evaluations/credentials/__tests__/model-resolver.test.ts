@@ -42,6 +42,9 @@ describe('resolveModel', () => {
 		['openai/gpt-5-mini', 'openrouter/openai/gpt-5-mini'],
 		['anthropic/claude-sonnet-4-5', 'openrouter/anthropic/claude-sonnet-4.5'],
 		['anthropic/claude-haiku-4-5-20251001', 'openrouter/anthropic/claude-haiku-4.5'],
+		['anthropic/claude-3-5-sonnet-20241022', 'openrouter/anthropic/claude-3.5-sonnet'],
+		['anthropic/claude-3-7-sonnet-20250219', 'openrouter/anthropic/claude-3.7-sonnet'],
+		['anthropic/claude-3-opus-20240229', 'openrouter/anthropic/claude-3-opus'],
 	])('routes %s to the same model on OpenRouter', (model, openRouterModel) => {
 		expect(resolveModel(model, keys('openRouterApi'))).toEqual({
 			kind: 'openrouter-same',

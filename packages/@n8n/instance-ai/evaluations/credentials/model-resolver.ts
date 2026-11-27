@@ -165,10 +165,14 @@ function openRouterId(vendor: string, name: string): string {
 	return `openrouter/${vendor}/${vendor === 'anthropic' ? openRouterClaudeName(name) : name}`;
 }
 
-/** Anthropic ids use dashes and a date (`claude-haiku-4-5-20251001`); OpenRouter
- *  uses a dotted version and no date (`claude-haiku-4.5`). */
+/** Anthropic ids use dashes and a date; OpenRouter uses a dotted version and no
+ *  date, wherever the version sits: `claude-haiku-4-5-20251001` ->
+ *  `claude-haiku-4.5`, `claude-3-5-sonnet-20241022` -> `claude-3.5-sonnet`. */
 function openRouterClaudeName(name: string): string {
-	return name.replace(/-\d{8}$/, '').replace(/(\d)-(\d+)$/, '$1.$2');
+	return name
+		.replace(/-\d{8}$/, '')
+		.replace(/^(claude-\d)-(\d)-([a-z])/, '$1.$2-$3')
+		.replace(/(\d)-(\d+)$/, '$1.$2');
 }
 
 function modelTier(model: string): ModelTier {
