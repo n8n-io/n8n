@@ -75,6 +75,10 @@ export class PublicApiConfig {
 	@Env('N8N_PUBLIC_API_DISABLED')
 	disabled: boolean = false;
 
+	/** Allow the instance owner to issue scoped keys with fresh login credentials. */
+	@Env('N8N_PUBLIC_API_OWNER_KEY_EXCHANGE_ENABLED')
+	ownerKeyExchangeEnabled: boolean = false;
+
 	/** URL path segment for the Public API (for example, /api/v1/...). */
 	@Env('N8N_PUBLIC_API_ENDPOINT')
 	path: string = 'api';

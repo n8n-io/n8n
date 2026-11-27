@@ -521,3 +521,6 @@ paths:
   /workflows/{workflowId}/{workflowVersionId}:
     get:
       $ref: ./handlers/workflows/spec/paths/getDeprecatedWorkflowVersion.generated.yml
+  /auth/api-key:
+    post:
+      $ref: ./handlers/auth/spec/paths/issueOwnerApiKey.generated.yml

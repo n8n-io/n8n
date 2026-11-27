@@ -1,6 +1,7 @@
 /* eslint-disable n8n-local-rules/no-uncaught-json-parse */
 import type { Request, Response } from 'express';
-import { createServer } from 'http';
+import { createServer, request as httpRequest } from 'http';
+import type { AddressInfo } from 'net';
 import request from 'supertest';
 import { gzipSync, deflateSync } from 'zlib';
 
@@ -158,6 +159,47 @@ describe('bodyParser', () => {
 			const body = Buffer.concat([utf8Bom, Buffer.from('<test><a>1</a></test>')]);
 			const response = await sendRaw(body).set('content-type', 'application/xml').expect(200);
 			expect(JSON.parse(response.text)).toEqual({ test: { a: '1' } });
+		});
+	});
+
+	describe('owner key exchange path', () => {
+		// Sends a raw request so the target can be in absolute form.
+		const post = async (target: string) => {
+			await new Promise<void>((resolve) => server.listen(0, resolve));
+			const { port } = server.address() as AddressInfo;
+			try {
+				return await new Promise<string>((resolve, reject) => {
+					const req = httpRequest(
+						{
+							port,
+							method: 'POST',
+							path: target.replace('{port}', String(port)),
+							headers: { 'content-type': 'application/json' },
+						},
+						(res) => {
+							let text = '';
+							res.on('data', (chunk: Buffer) => (text += chunk.toString()));
+							res.on('end', () => resolve(text));
+						},
+					);
+					req.on('error', reject);
+					req.end('{"hello":"world"}');
+				});
+			} finally {
+				await new Promise((resolve) => server.close(resolve));
+			}
+		};
+
+		it.each([
+			'/api/v1/auth/api-key',
+			'/API/V1/AUTH/API-KEY/?a=1',
+			'http://localhost:{port}/api/v1/auth/api-key',
+		])('should leave the body of %s for the exchange to parse', async (target) => {
+			expect(await post(target)).toBe('');
+		});
+
+		it('should parse the body of other paths', async () => {
+			expect(await post('http://localhost:{port}/api/v1/workflows')).toBe('{"hello":"world"}');
 		});
 	});
 });

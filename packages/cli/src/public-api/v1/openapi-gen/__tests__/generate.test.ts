@@ -48,7 +48,11 @@ describe('getGeneratedArtifacts path parameter names', () => {
 		markPublicApiController(CredentialsPublicController as Controller, '/credentials');
 		markPublicApiController(CredentialTypesPublicController as Controller, '/credential-types');
 
-		expect(getRootPaths()).toEqual(['/credential-types/{name}', '/credentials/{id}']);
+		expect(getRootPaths()).toEqual([
+			'/auth/api-key',
+			'/credential-types/{name}',
+			'/credentials/{id}',
+		]);
 	});
 
 	it('throws when equivalent paths use different parameter names', () => {

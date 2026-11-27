@@ -10,6 +10,8 @@ import { Parser as XmlParser } from 'xml2js';
 import { createGunzip, createInflate } from 'zlib';
 
 import { BadRequestError, UnprocessableRequestError, UserError } from '@n8n/errors';
+import { ownerKeyExchangePath } from '@/public-api/v1/owner-key-exchange.dto';
+import { routedPath } from '@/utils/request-path';
 
 // One parser per request: xml2js keeps parse state on the instance, and async
 // mode spreads large bodies over several ticks.
@@ -24,6 +26,8 @@ const createXmlParser = () =>
 	});
 
 const payloadSizeMax = Container.get(GlobalConfig).endpoints.payloadSizeMax;
+const credentialExchangePath =
+	`/${Container.get(GlobalConfig).publicApi.path}/v1${ownerKeyExchangePath}`.toLowerCase();
 
 /**
  * A leading byte order mark is not valid JSON, but RFC 8259 §8.1 permits
@@ -153,6 +157,14 @@ export const parseBody = async (req: Request) => {
 };
 
 export const bodyParser: RequestHandler = async (req, _res, next) => {
+	// The exchange applies its rate limit and small JSON parser before reading credentials.
+	if (
+		req.method === 'POST' &&
+		routedPath(req)?.replace(/\/$/, '').toLowerCase() === credentialExchangePath
+	) {
+		next();
+		return;
+	}
 	await parseBody(req);
 	req.body ??= {};
 	next();

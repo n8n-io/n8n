@@ -13,6 +13,11 @@ import {
 	type SchemaResolver,
 } from './decorator-routes';
 import { applySchemaModifiers } from './schema-modifiers';
+import {
+	issuedKeySchema,
+	OwnerKeyExchangeDto,
+	ownerKeyExchangePath,
+} from '../owner-key-exchange.dto';
 
 const COMPONENT_SCHEMA_REF = /^#\/components\/schemas\/(.+)$/;
 const SHARED_SCHEMA_DIR = 'shared/spec/schemas';
@@ -178,6 +183,41 @@ export function getGeneratedArtifacts(): GeneratedArtifact[] {
 	const resolveSchema: SchemaResolver = (dto, schema) => sharedZodSchemas.get(dto) ?? schema;
 
 	const operations = getDecoratorGeneratedOperations(resolveSchema);
+	operations.push({
+		outputPath: 'handlers/auth/spec/paths/issueOwnerApiKey.generated.yml',
+		method: 'post',
+		pathKey: ownerKeyExchangePath,
+		config: {
+			method: 'post',
+			path: ownerKeyExchangePath,
+			operationId: 'issueOwnerApiKey',
+			security: [],
+			tags: ['User'],
+			summary: 'Issue a public API key with the instance owner credentials',
+			description:
+				'Requires N8N_PUBLIC_API_OWNER_KEY_EXCHANGE_ENABLED and API key authentication for the public API. Supply a current MFA code if the owner uses MFA. The key expires in 1 to 90 days.',
+			request: {
+				body: {
+					required: true,
+					content: { 'application/json': { schema: OwnerKeyExchangeDto.schema } },
+				},
+			},
+			responses: {
+				201: {
+					description: 'Store the key now. It cannot be retrieved again.',
+					content: { 'application/json': { schema: issuedKeySchema } },
+				},
+				400: { description: 'Invalid request or scopes' },
+				401: { description: 'Owner authentication required' },
+				403: { description: 'Key creation not permitted' },
+				404: { description: 'Exchange disabled' },
+				409: { description: 'Label already in use' },
+				413: { description: 'Body exceeds 16 KiB' },
+				415: { description: 'Use uncompressed JSON' },
+				429: { description: 'Too many requests' },
+			},
+		},
+	});
 	operations.forEach(({ config }) => registry.registerPath(config));
 
 	const artifacts = buildArtifactsFromRegistry(

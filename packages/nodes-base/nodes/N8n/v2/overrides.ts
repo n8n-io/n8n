@@ -142,6 +142,7 @@ export const overrides = {
 	importPackage: { exclude: 'Not reviewed yet' },
 	importPackageSelection: { exclude: 'Not reviewed yet' },
 	installPackage: { exclude: 'Not reviewed yet' },
+	issueOwnerApiKey: { exclude: 'Needs the owner password, not an API key credential.' },
 	listAgents: { exclude: 'Not reviewed yet' },
 	listAiPreferences: { exclude: 'Not reviewed yet' },
 	listCredentialTypePolicyDocuments: { exclude: 'Not reviewed yet' },

@@ -12,6 +12,7 @@ import { rememberRawBody } from '@/idempotency/idempotency-request';
 import { PublicApiControllerRegistry } from './public-api-controller.registry';
 import { PublicApiRateLimitSettingsService } from './public-api-rate-limit-settings.service';
 import { stripGitBookParentTags } from './swagger-spec';
+import { ownerKeyExchangeRouter } from './v1/owner-key-exchange';
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
 import { License } from '@/license';
@@ -167,6 +168,7 @@ function createApiRouter(
 
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
+		...(version === 'v1' ? [ownerKeyExchangeRouter(isApiKeyAuthEnabled)] : []),
 		express.json({
 			limit: payloadLimit,
 			verify: (req, _res, buf) => {

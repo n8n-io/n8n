@@ -1,0 +1,77 @@
+operationId: issueOwnerApiKey
+security: []
+tags:
+  - User
+summary: Issue a public API key with the instance owner credentials
+description: Requires N8N_PUBLIC_API_OWNER_KEY_EXCHANGE_ENABLED and API key authentication for the public API. Supply a current MFA code if the owner uses MFA. The key expires in 1 to 90 days.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          label:
+            type: string
+            minLength: 1
+            maxLength: 50
+          scopes:
+            type: array
+            items:
+              type: string
+              pattern: ^[a-zA-Z]+:[a-zA-Z]+$
+            minItems: 1
+          email:
+            type: string
+            maxLength: 254
+            format: email
+          password:
+            type: string
+            minLength: 1
+          mfaCode:
+            type: string
+            pattern: ^\d{6}$
+          expiresInDays:
+            type: integer
+            minimum: 1
+            maximum: 90
+        required:
+          - label
+          - scopes
+          - email
+          - password
+          - expiresInDays
+responses:
+  '201':
+    description: Store the key now. It cannot be retrieved again.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+            apiKey:
+              type: string
+            expiresAt:
+              type: integer
+          required:
+            - id
+            - apiKey
+            - expiresAt
+  '400':
+    description: Invalid request or scopes
+  '401':
+    description: Owner authentication required
+  '403':
+    description: Key creation not permitted
+  '404':
+    description: Exchange disabled
+  '409':
+    description: Label already in use
+  '413':
+    description: Body exceeds 16 KiB
+  '415':
+    description: Use uncompressed JSON
+  '429':
+    description: Too many requests
