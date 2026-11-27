@@ -25,6 +25,28 @@ const ENGINE_TIME_BUCKETS_SECONDS = [0.001, 0.0025, ...DURATION_BUCKETS_SECONDS]
 
 const FINISHED_STATUSES = ['completed', 'failed', 'cancelled'] as const;
 
+/**
+ * Longest wait for one queue's depth. Prometheus scrapes every series in one
+ * call, so a read that hangs, as an LLEN does while Redis is unreachable,
+ * would take every other series with it.
+ */
+const QUEUE_SIZE_TIMEOUT_MS = 1000;
+
+/** The queue's depth, or `undefined` when the read fails or takes too long. */
+async function readQueueSize(queue: WorkQueue<unknown>): Promise<number | undefined> {
+	let timer: NodeJS.Timeout | undefined;
+	const timeout = new Promise<undefined>((resolve) => {
+		timer = setTimeout(() => resolve(undefined), QUEUE_SIZE_TIMEOUT_MS);
+	});
+	try {
+		return await Promise.race([queue.size(), timeout]);
+	} catch {
+		return undefined;
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 const engineSeconds = (handlerMs: number, shimMs: number) => Math.max(0, handlerMs - shimMs) / 1000;
 
 export type EngineMetrics = ReturnType<typeof createEngineMetrics>;
@@ -88,12 +110,14 @@ export function createEngineMetrics({
 				labelNames: ['queue'],
 				registers: [registry],
 				async collect() {
-					const [orchestration, step] = await Promise.all([
-						queues.orchestration.size(),
-						queues.step.size(),
-					]);
-					this.set({ queue: 'orchestration' }, orchestration);
-					this.set({ queue: 'step' }, step);
+					await Promise.all(
+						(['orchestration', 'step'] as const).map(async (queue) => {
+							const depth = await readQueueSize(queues[queue]);
+							// No value rather than a stale one.
+							if (depth === undefined) this.remove({ queue });
+							else this.set({ queue }, depth);
+						}),
+					);
 				},
 			});
 			const inFlight = new Gauge({

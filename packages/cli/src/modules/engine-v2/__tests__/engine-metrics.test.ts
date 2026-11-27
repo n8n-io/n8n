@@ -196,6 +196,24 @@ describe('createEngineMetrics', () => {
 			);
 		});
 
+		it('drops the depth of a queue it cannot read in time, and keeps the other series', async () => {
+			const { registry, orchestration, step } = wrap({ orchestration: 2, step: 7 });
+			await registry.metrics();
+			orchestration.queue.size.mockRejectedValue(new Error('Redis is down'));
+			step.queue.size.mockReturnValue(new Promise(() => {}));
+			vi.useFakeTimers();
+			try {
+				const scrape = registry.metrics();
+				await vi.advanceTimersByTimeAsync(1000);
+				const output = await scrape;
+
+				expect(output).not.toContain('n8n_engine_queue_depth{');
+				expect(output).toContain('n8n_engine_queue_in_flight{queue="step"} 0');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('keeps publish, stop and size of the queue it wraps', async () => {
 			const { wrapped, step } = wrap({ orchestration: 0, step: 4 });
 
