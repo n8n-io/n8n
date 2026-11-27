@@ -126,9 +126,8 @@ export class ErrorWorkflowStarter {
 		workflow: WorkflowDocument,
 	): Promise<ErrorWorkflowSource> {
 		if (execution.status !== 'failed') {
-			// Only the write that fails an execution sets the marker.
 			throw new UnexpectedError(
-				`Execution ${execution.id} is ${execution.status}, so no error workflow can be due`,
+				`Execution ${execution.id} has a pending error-workflow marker but status is '${execution.status}'; expected 'failed'`,
 			);
 		}
 
