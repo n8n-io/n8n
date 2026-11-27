@@ -143,7 +143,7 @@ describe('Slack channel integration scenarios', () => {
 	// AGENT-1629: Keep code delimiters, indentation, and literal asterisks.
 	it('passes literal asterisks and code to the Agent unchanged', async () => {
 		const text =
-			'a * b * c, 𝑎*b*c, and `*x* @U_BOT <https://example.com>`\n\n```\n  x = s • a\n  a*b*c\n  curl <https://example.com>\n```';
+			'a * b * c, 𝑎*b*c, and `*x* @U_BOT <https://example.com> <!channel> &lt;https://example.com/literal&gt;`\n\n```\n  x = s • a\n  a*b*c\n  curl <https://example.com>\n```';
 		const fixtures = slackReplayFixtures({
 			mention: slackEventCallback({ event: { text: `<@U_BOT> ${text}`, thread_ts: undefined } }),
 		});
@@ -152,7 +152,9 @@ describe('Slack channel integration scenarios', () => {
 			await ctx.sendWebhook(fixtures.mention);
 			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
-					message: text.replaceAll('<https://example.com>', 'https://example.com'),
+					message: text
+						.replaceAll('<https://example.com>', 'https://example.com')
+						.replace('&lt;https://example.com/literal&gt;', '<https://example.com/literal>'),
 				}),
 			);
 		} finally {

@@ -78,10 +78,11 @@ describe('Slack stream delivery', () => {
 			const literal = ': a*b*c • <!channel> & List<String> ';
 			const code = '  a*b*c • y < z\n  ```';
 			const list = '- Check the example\n- Review the result';
+			const url = 'https://example.com/?a=1&b=2';
 			const markdown = [
 				list,
 				'',
-				`**Math**${literal}[docs](https://example.com) and ` + '``a`b • c``',
+				`**Math**${literal}[docs](${url}) and ` + '``a`b • c``',
 				'',
 				'````lean',
 				code,
@@ -114,6 +115,7 @@ describe('Slack stream delivery', () => {
 			for (const body of bodies.slice(lateBullet ? 1 : 0)) {
 				expect(body).not.toHaveProperty('markdown_text');
 				expect(body.text).toContain('&lt;!channel&gt; &amp; List&lt;String&gt;');
+				expect(body.text).toContain('docs (https://example.com/?a=1&amp;b=2)');
 				const blocks = typeof body.blocks === 'string' ? JSON.parse(body.blocks) : body.blocks;
 				expect(blocks).toEqual([
 					{ type: 'markdown', text: list },
@@ -125,7 +127,7 @@ describe('Slack stream delivery', () => {
 								elements: [
 									{ type: 'text', text: 'Math', style: { bold: true } },
 									{ type: 'text', text: literal },
-									{ type: 'link', text: 'docs', url: 'https://example.com' },
+									{ type: 'link', text: 'docs', url },
 									{ type: 'text', text: ' and ' },
 									{ type: 'text', text: 'a`b • c', style: { code: true } },
 								],

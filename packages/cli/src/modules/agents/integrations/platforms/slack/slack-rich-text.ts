@@ -83,7 +83,15 @@ export function renderSlackRichText(ast: Root, markdown: string) {
 			hasRichText = true;
 			if (previous?.type === 'rich_text') previous.elements.push(section);
 			else blocks.push({ type: 'rich_text', elements: [section] });
-			fallback.push(section.elements.map((element) => element.text).join(''));
+			fallback.push(
+				section.elements
+					.map((element) =>
+						element.type === 'link' && element.text !== element.url
+							? `${element.text} (${element.url})`
+							: element.text,
+					)
+					.join(''),
+			);
 		} else {
 			const start = node.position?.start.offset;
 			const end = node.position?.end.offset;
