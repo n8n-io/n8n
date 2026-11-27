@@ -21,8 +21,9 @@ export async function getInboundMessageText(
 		}
 		if (!isLinkNode(node)) return node;
 		const label = toPlainText(root([node]));
-		// Keep GFM autolinks because their labels already contain the URL.
-		if ([label, `http://${label}`, `mailto:${label}`].includes(node.url)) return node;
+		if (node.url === label || node.url === `mailto:${label}`) return node;
+		// Outside Slack, GFM supplies the scheme for bare www links.
+		if (!preserveCode && node.url === `http://${label}`) return node;
 		return text(`[${label}](${node.url})`);
 	});
 	return toPlainText(formatted);

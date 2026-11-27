@@ -31,16 +31,7 @@ index 731c4889128120ca4a418495baf6da5a6f536bdd..4e6daf3d5050f19c4abdfab1f4481c91
 +    if (!markers.has(index)) return marker;
 +    return markers.get(index) ? `\\${marker}` : marker.repeat(2);
 +  });
-+  return markdown.replace(opaque, (value) => value.startsWith("`") ? value : convertSlackTokens(value));
++  return markdown.replace(opaque, convertSlackTokens);
  }
  function convertMrkdwnWithCodeFences(mrkdwn) {
    let result = "";
-@@ -125,7 +143,7 @@ function convertMrkdwnWithCodeFences(mrkdwn) {
-     if (!content.startsWith("\n")) {
-       result += "\n";
-     }
--    result += convertSlackTokens(content);
-+    result += content;
-     if (!content.endsWith("\n")) {
-       result += "\n";
-     }

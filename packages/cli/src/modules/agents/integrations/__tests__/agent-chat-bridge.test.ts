@@ -4081,7 +4081,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		// AGENT-1680: The Slack SDK projects labelled links to plain text.
 		const { SlackFormatConverter } = await import('@chat-adapter/slack');
 		const formatted = new SlackFormatConverter().toAst(
-			'See <https://example.com/folder?view=1|folder> and <https://example.com/video|video>.',
+			'See <https://example.com/folder?view=1|folder>, <http://example.com|example.com> and <https://example.com/video|video>.',
 		);
 		const { bot, handlers } = makeBot();
 		bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
@@ -4132,7 +4132,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		expect(call.modelMessage).toContain('<slack_thread_history>');
 		expect(call.modelMessage).toContain('[alice]: what should we do?');
 		expect(call.modelMessage).toContain(
-			'[bob]: See [folder](https://example.com/folder?view=1) and [video](https://example.com/video).',
+			'[bob]: See [folder](https://example.com/folder?view=1), [example.com](http://example.com) and [video](https://example.com/video).',
 		);
 		// Chronological order: alice's message (older) appears before bob's.
 		expect(call.modelMessage.indexOf('[alice]: what should we do?')).toBeLessThan(

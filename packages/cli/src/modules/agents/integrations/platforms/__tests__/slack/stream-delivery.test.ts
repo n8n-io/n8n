@@ -71,43 +71,69 @@ describe('Slack stream delivery', () => {
 	afterEach(() => nock.cleanAll());
 
 	// AGENT-1629: Slack rewrites bullets when it renders markdown_text.
-	it.each([
-		{
-			markdown: '**Math**: x • y and `*x* • y`\n\n```lean\n  a*b*c • y < z\n```\n\na*b*c',
-			field: 'text',
-			expected: '*Math*: x • y and `*x* • y`\n\n```\n  a*b*c • y &lt; z\n```\n\na*b*c',
-		},
-		{
-			markdown: '*This* is math: 𝑎*b*c and `a*b*c`.',
-			field: 'markdown_text',
-			expected: '*This* is math: 𝑎\\*b\\*c and `a*b*c`.',
-		},
-	])(
-		'preserves literal math in Slack posts and edits ($field)',
-		async ({ markdown, field, expected }) => {
-			const bodies: unknown[] = [];
+	it.each([false, true])(
+		'preserves literal Slack text when the bullet arrives late: %s',
+		async (lateBullet) => {
+			const plain = '*This* is math: 𝑎*b*c and `a*b*c`.';
+			const literal = ': a*b*c • <!channel> & List<String> ';
+			const code = '  a*b*c • y < z\n  ```';
+			const list = '- Check the example\n- Review the result';
+			const markdown = [
+				list,
+				'',
+				`**Math**${literal}[docs](https://example.com) and ` + '``a`b • c``',
+				'',
+				'````lean',
+				code,
+				'````',
+			].join('\n');
+			const bodies: Record<string, unknown>[] = [];
 			const ts = '1719000999.000100';
-			const capture = (uri: string, body: unknown) => {
-				if (uri === '/api/chat.postMessage' || uri === '/api/chat.update') {
-					bodies.push(
-						typeof body === 'string' ? Object.fromEntries(new URLSearchParams(body)) : body,
-					);
-				}
-				return { ok: true, ts, message: { ts } };
-			};
 			nock('https://slack.com')
 				.persist()
 				.post(/\/api\/.+/)
-				.reply(200, capture);
+				.reply(200, (uri, body: string | Record<string, unknown>) => {
+					if (uri === '/api/chat.postMessage' || uri === '/api/chat.update') {
+						bodies.push(
+							typeof body === 'string' ? Object.fromEntries(new URLSearchParams(body)) : body,
+						);
+					}
+					return { ok: true, ts, message: { ts } };
+				});
 			const { thread } = await makeSlackContext(false);
-			const reply = await thread.post({ markdown });
+			const reply = await thread.post({ markdown: lateBullet ? plain : markdown });
 			await reply.edit({ markdown });
-			expect(bodies).toEqual([
-				expect.objectContaining({ [field]: expected, thread_ts: '1719000000.000100' }),
-				expect.objectContaining({ [field]: expected, ts }),
-			]);
-			for (const body of bodies) {
-				expect(body).not.toHaveProperty(field === 'text' ? 'markdown_text' : 'text');
+
+			expect(bodies).toHaveLength(2);
+			expect(bodies[0]).toHaveProperty('thread_ts', '1719000000.000100');
+			expect(bodies[1]).toHaveProperty('ts', ts);
+			if (lateBullet) {
+				expect(bodies[0]).toHaveProperty('markdown_text', '*This* is math: 𝑎\\*b\\*c and `a*b*c`.');
+				expect(bodies[0]).not.toHaveProperty('blocks');
+			}
+			for (const body of bodies.slice(lateBullet ? 1 : 0)) {
+				expect(body).not.toHaveProperty('markdown_text');
+				expect(body.text).toContain('&lt;!channel&gt; &amp; List&lt;String&gt;');
+				const blocks = typeof body.blocks === 'string' ? JSON.parse(body.blocks) : body.blocks;
+				expect(blocks).toEqual([
+					{ type: 'markdown', text: list },
+					{
+						type: 'rich_text',
+						elements: [
+							{
+								type: 'rich_text_section',
+								elements: [
+									{ type: 'text', text: 'Math', style: { bold: true } },
+									{ type: 'text', text: literal },
+									{ type: 'link', text: 'docs', url: 'https://example.com' },
+									{ type: 'text', text: ' and ' },
+									{ type: 'text', text: 'a`b • c', style: { code: true } },
+								],
+							},
+							{ type: 'rich_text_preformatted', elements: [{ type: 'text', text: code }] },
+						],
+					},
+				]);
 			}
 		},
 	);

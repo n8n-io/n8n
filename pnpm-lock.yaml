@@ -1159,7 +1159,7 @@ overrides:
   '@langchain/langgraph-checkpoint': 1.1.6
 
 patchedDependencies:
-  '@chat-adapter/slack@4.39.0': 8bbf3f3f179d0a67829926fcb2da878906f3f9e1398b6586882e24e62cb56de9
+  '@chat-adapter/slack@4.39.0': e84522568840661c950855d13926184bc980f9aafb088d3900624e88b660e5b5
   '@chat-adapter/teams@4.39.0': aae12484e0d48fa7c4ebc9bd6db97f17587ae4c458dd6b186fdf748cad60a9af
   '@chat-adapter/whatsapp@4.39.0': bdf07d60cf43691d7f5bff5111d1205d36f62849bea742680713771330455cc7
   '@confluentinc/kafka-javascript@1.9.1': c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003
@@ -5161,7 +5161,7 @@ importers:
         version: 4.39.0(ai@7.0.150(zod@3.25.76))(graphql@16.11.0)(supports-color@8.1.1)(zod@3.25.76)
       '@chat-adapter/slack':
         specifier: 'catalog:'
-        version: 4.39.0(patch_hash=8bbf3f3f179d0a67829926fcb2da878906f3f9e1398b6586882e24e62cb56de9)(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)
+        version: 4.39.0(patch_hash=e84522568840661c950855d13926184bc980f9aafb088d3900624e88b660e5b5)(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)
       '@chat-adapter/state-memory':
         specifier: 'catalog:'
         version: 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
@@ -30707,7 +30707,7 @@ snapshots:
       - workflow
       - zod
 
-  '@chat-adapter/slack@4.39.0(patch_hash=8bbf3f3f179d0a67829926fcb2da878906f3f9e1398b6586882e24e62cb56de9)(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)':
+  '@chat-adapter/slack@4.39.0(patch_hash=e84522568840661c950855d13926184bc980f9aafb088d3900624e88b660e5b5)(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)':
     dependencies:
       '@chat-adapter/shared': 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@slack/socket-mode': 2.0.7(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)

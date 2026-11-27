@@ -2,6 +2,7 @@ import type { SlackAdapter, SlackAdapterConfig } from '@chat-adapter/slack';
 import type { AdapterPostableMessage, WebhookOptions } from 'chat';
 
 import { loadChatSdk, loadSlackAdapter } from '../../esm-loader';
+import { renderSlackRichText } from './slack-rich-text';
 
 export async function createSlackSourceAdapter(config: SlackAdapterConfig): Promise<SlackAdapter> {
 	const [{ SlackAdapter, SlackFormatConverter }, { parseMarkdown, walkAst }] = await Promise.all([
@@ -41,19 +42,8 @@ export async function createSlackSourceAdapter(config: SlackAdapterConfig): Prom
 			const markdown = escapeLiteralAsterisks(message.markdown);
 			// Slack rewrites literal bullets in markdown_text, even in code blocks.
 			if (markdown.includes('•')) {
-				let needsMarkdownFences = false;
-				const ast = walkAst(parseMarkdown(markdown), (node) => {
-					if (node.type !== 'code' && node.type !== 'inlineCode') return node;
-					// The legacy converter uses fixed-length code delimiters.
-					const delimiter = node.type === 'code' ? '```' : '`';
-					if (node.value.includes(delimiter)) needsMarkdownFences = true;
-					const value = node.value
-						.replaceAll('&', '&amp;')
-						.replaceAll('<', '&lt;')
-						.replaceAll('>', '&gt;');
-					return node.type === 'code' ? { ...node, value, lang: null } : { ...node, value };
-				});
-				if (!needsMarkdownFences) return { text: this.toResponseUrlText({ ast }) };
+				const payload = renderSlackRichText(parseMarkdown(markdown), markdown);
+				if (payload) return payload;
 			}
 			return super.toSlackPayload({ ...message, markdown });
 		}
