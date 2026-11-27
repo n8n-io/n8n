@@ -195,10 +195,11 @@ export class AgentThreadRedactionService {
 	 * not redacted.
 	 *
 	 * After one reveal, a chat reads the thread again and again (refreshes,
-	 * pages, files, polls). A repeated reveal of the same sources in the same
-	 * thread is not audited again within {@link REVEAL_AUDIT_WINDOW_MS}, but the
+	 * pages, files, polls). When every redacted source went through an audited
+	 * reveal by the same user in the same thread within
+	 * {@link REVEAL_AUDIT_WINDOW_MS}, the request is not audited again, but the
 	 * redaction service still checks that the user can reveal every source.
-	 * Otherwise the request takes the audited reveal path, which refuses it.
+	 * Otherwise the request takes the audited reveal path.
 	 */
 	private async resolveSources(
 		workflowIdBySource: ReadonlyMap<string, string | undefined>,
@@ -206,18 +207,30 @@ export class AgentThreadRedactionService {
 		threadId: string | undefined,
 	): Promise<Map<string, AgentTurnRedactionInfo>> {
 		const ids = [...workflowIdBySource.keys()];
-		if (reader.revealExecutionData && threadId && this.isRevealAudited(reader, threadId, ids)) {
+		if (
+			reader.revealExecutionData &&
+			threadId &&
+			ids.some((id) => this.isRevealAudited(reader, threadId, id))
+		) {
 			const { revealExecutionData: _reveal, ...withoutReveal } = reader;
 			const decided = await this.decideSources(workflowIdBySource, withoutReveal, false);
-			if ([...decided.values()].every(({ canReveal }) => canReveal)) return new Map();
+			if (
+				[...decided].every(
+					([id, { canReveal }]) => canReveal && this.isRevealAudited(reader, threadId, id),
+				)
+			) {
+				return new Map();
+			}
 		}
 
+		const revealed: string[] = [];
 		const result = await this.decideSources(
 			workflowIdBySource,
 			reader,
 			!reader.revealExecutionData,
+			revealed,
 		);
-		if (reader.revealExecutionData && threadId) this.recordRevealAudit(reader, threadId, ids);
+		if (threadId) this.recordRevealAudit(reader, threadId, revealed);
 		return result;
 	}
 
@@ -225,6 +238,8 @@ export class AgentThreadRedactionService {
 		workflowIdBySource: ReadonlyMap<string, string | undefined>,
 		reader: UserThreadReader,
 		useCache: boolean,
+		/** Collects the sources that went through an audited reveal. */
+		revealed: string[] = [],
 	): Promise<Map<string, AgentTurnRedactionInfo>> {
 		const options: RedactionOptions = {
 			user: reader.user,
@@ -272,6 +287,7 @@ export class AgentThreadRedactionService {
 				redactable.map(({ execution }) => execution),
 				options,
 			);
+			if (options.redactExecutionData === false) revealed.push(...redactable.map(({ id }) => id));
 			for (const { id, execution } of redactable) {
 				const info = execution.data.redactionInfo;
 				if (info?.isRedacted) {
@@ -286,6 +302,7 @@ export class AgentThreadRedactionService {
 				workflowIdBySource.get(id),
 				options,
 				runNodesBySource.get(id) ?? [],
+				revealed,
 			);
 			if (redaction) result.set(id, redaction);
 		}
@@ -339,12 +356,9 @@ export class AgentThreadRedactionService {
 	/** The time of the last audited reveal, by user, thread and source execution. */
 	private readonly revealAudits = new Map<string, number>();
 
-	private isRevealAudited(reader: UserThreadReader, threadId: string, ids: string[]): boolean {
-		const now = Date.now();
-		return ids.every((id) => {
-			const auditedAt = this.revealAudits.get(`${reader.user.id}:${threadId}:${id}`);
-			return auditedAt !== undefined && now - auditedAt < REVEAL_AUDIT_WINDOW_MS;
-		});
+	private isRevealAudited(reader: UserThreadReader, threadId: string, id: string): boolean {
+		const auditedAt = this.revealAudits.get(`${reader.user.id}:${threadId}:${id}`);
+		return auditedAt !== undefined && Date.now() - auditedAt < REVEAL_AUDIT_WINDOW_MS;
 	}
 
 	private recordRevealAudit(reader: UserThreadReader, threadId: string, ids: string[]): void {
@@ -397,6 +411,7 @@ export class AgentThreadRedactionService {
 		workflowId: string | undefined,
 		options: RedactionOptions,
 		runNodes: INode[],
+		revealed: string[],
 	): Promise<AgentTurnRedactionInfo | undefined> {
 		const unavailable: AgentTurnRedactionInfo = {
 			isRedacted: true,
@@ -440,6 +455,7 @@ export class AgentThreadRedactionService {
 		if (options.redactExecutionData === false) {
 			// Checks the reveal right and records the reveal. Throws when it is refused.
 			await this.executionRedaction.processExecutions([standIn()], options);
+			revealed.push(executionId);
 			return undefined;
 		}
 		return { isRedacted: true, reason: SOURCE_UNAVAILABLE_REASON, canReveal: info.canReveal };

@@ -523,6 +523,22 @@ describe('AgentThreadRedactionService', () => {
 			});
 		});
 
+		it('should audit a reveal of a source that the previous reveal did not need to reveal', async () => {
+			const options: Parameters<typeof setup>[0] = {
+				executions: {},
+				workflows: { 'wf-1': {} },
+			};
+			const { service, redactionProxy } = setup(options);
+			const turns = [turn('t1', [workflowToolCall('wf-1', 'e1')])];
+
+			// The source run is pruned and the instance does not redact it yet.
+			await service.redactForReader(turns, reveal);
+			options.policyAllCanReveal = true;
+			await service.redactForReader(turns, reveal);
+
+			expect(auditedReveals(redactionProxy)).toBe(1);
+		});
+
 		it('should take the audited reveal path again when the user can no longer reveal', async () => {
 			const redacted = { 'wf-redacted': { canReveal: true } };
 			const { service, redactionProxy } = setup({
