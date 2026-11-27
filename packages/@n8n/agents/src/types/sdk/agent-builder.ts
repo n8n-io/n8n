@@ -10,7 +10,7 @@ import type { CheckpointStore } from './memory';
 import type { ReasoningLevel } from './reasoning';
 import type { BuiltProviderTool, BuiltTool } from './tool';
 import type { ContextCueProvider, VolatileInstructionsProvider } from '../runtime/agent-runtime';
-import type { ScopedMemoryTaskEvent } from '../../runtime/memory/scoped-memory-task-runner';
+import type { MemoryTaskEvent } from '../../runtime/memory/scoped-memory-task-runner';
 import type { RuntimeSkill, RuntimeSkillSource } from '../../skills';
 import type { ContextCueProviderOptions, ContextCueSet } from '../../context-cues';
 
@@ -46,7 +46,7 @@ export interface AgentBuilder {
 	toolCallConcurrency(n: number): this;
 	memory(m: unknown): this;
 	fileStore(store: unknown): this;
-	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this;
+	memoryTaskObserver(observer: (event: MemoryTaskEvent) => void): this;
 	checkpoint(storage: 'memory' | CheckpointStore): this;
 	inputGuardrail(g: BuiltGuardrail): this;
 	outputGuardrail(g: BuiltGuardrail): this;

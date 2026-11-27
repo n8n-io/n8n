@@ -11,7 +11,7 @@ import type {
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	ObservationalMemoryConfig,
-	ScopedMemoryTaskEvent,
+	MemoryTaskEvent,
 	Telemetry,
 	TokenUsage,
 	Workspace,
@@ -2341,7 +2341,7 @@ export interface InstanceAiTraceContext {
 	 * releases it. Wire this to `Agent.memoryTaskObserver()` / `CreateInstanceAgentOptions.onMemoryTaskEvent`
 	 * for any agent (main or sub-agent) whose spans should join this trace.
 	 */
-	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	onMemoryTaskEvent?: (event: MemoryTaskEvent) => void;
 	/**
 	 * Keep the trace open until a background operation settles, so its spans
 	 * finish normally when it outlives the root run.
@@ -2497,7 +2497,7 @@ export interface CreateInstanceAgentOptions {
 	disableDeferredTools?: boolean;
 	/** When false, extended thinking / reasoning is not enabled. Defaults to true. */
 	thinkingEnabled?: boolean;
-	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	onMemoryTaskEvent?: (event: MemoryTaskEvent) => void;
 	/** Transport for the agent's model calls. Sub-agents and memory tasks inherit it. */
 	modelFetch?: FetchFn;
 	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */

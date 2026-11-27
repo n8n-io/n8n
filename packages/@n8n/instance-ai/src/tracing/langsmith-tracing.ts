@@ -7,7 +7,7 @@ import {
 	type BuiltTelemetry,
 	type BuiltTool,
 	type InterruptibleToolContext,
-	type ScopedMemoryTaskEvent,
+	type MemoryTaskEvent,
 	type ToolContext,
 	type ToolSuspendOptions,
 } from '@n8n/agents';
@@ -1385,7 +1385,7 @@ function createTraceContext(
 	// (see MemoryOrchestrator.saveToMemory, which schedules memory tasks
 	// before the stream's `finish` chunk).
 	const memoryTaskReleases = new Map<string, () => Promise<void>>();
-	const onMemoryTaskEvent = (event: ScopedMemoryTaskEvent): void => {
+	const onMemoryTaskEvent = (event: MemoryTaskEvent): void => {
 		if (event.type === 'queued') {
 			memoryTaskReleases.set(event.task.id, otelRuntime.lifetime.retain());
 			return;

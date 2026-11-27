@@ -24,7 +24,7 @@ import {
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import { FLAG_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory-capture';
-import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
+import type { MemoryTaskEvent, MemoryTaskInfo } from '../runtime/memory/scoped-memory-task-runner';
 import { AgentMessageList } from '../runtime/model/message-list';
 import { resolveNativeToolDeferral } from '../runtime/model/model-factory';
 import type { FetchFn } from '../runtime/model/model-factory';
@@ -135,6 +135,31 @@ type ActiveRuntime = {
 	bus: AgentEventBus;
 };
 
+/** True when `work` settles before `timeoutMs` runs out. */
+async function settlesWithin(work: Promise<unknown>, timeoutMs: number): Promise<boolean> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timedOut = new Promise<false>((resolve) => {
+		timer = setTimeout(() => resolve(false), timeoutMs);
+	});
+	try {
+		return await Promise.race([work.then(() => true), timedOut]);
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
+/** `Agent.waitForBackgroundTasks` ran out of time. Lists the memory tasks still in flight. */
+export class BackgroundTasksTimeoutError extends Error {
+	constructor(
+		readonly timeoutMs: number,
+		readonly inFlightTasks: MemoryTaskInfo[],
+	) {
+		const kinds = inFlightTasks.map((task) => `${task.taskKind} (${task.status})`).join(', ');
+		super(`Background tasks still running after ${timeoutMs}ms${kinds ? `: ${kinds}` : ''}`);
+		this.name = 'BackgroundTasksTimeoutError';
+	}
+}
+
 /**
  * Lightweight read-only view of an agent's configured state.
  * Returned by `Agent.snapshot` for testing and debugging purposes.
@@ -217,7 +242,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private fileStoreValue?: BuiltFileStore;
 
-	private onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	private onMemoryTaskEvent?: (event: MemoryTaskEvent) => void;
 
 	// TODO: Guardrails are accepted by the builder API for forward
 	// compatibility but not yet wired to the runtime.
@@ -269,6 +294,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private agentHandlers = new Map<AgentEvent, Set<AgentEventHandler>>();
 
 	private activeRuntimes = new Set<ActiveRuntime>();
+
+	/** Finished runtimes whose background tasks have not settled yet. */
+	private settlingRuntimes = new Set<AgentRuntime>();
 
 	private workspaceInstance?: Workspace;
 
@@ -471,8 +499,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
-	/** Observe observational-memory background task lifecycle (observer/reflector). */
-	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this {
+	/** Observe background memory task lifecycle: observer, reflector, and episodic processing. */
+	memoryTaskObserver(observer: (event: MemoryTaskEvent) => void): this {
 		this.onMemoryTaskEvent = observer;
 		return this;
 	}
@@ -1087,7 +1115,40 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private async cleanupRuntime(active: ActiveRuntime): Promise<void> {
 		if (!this.activeRuntimes.delete(active)) return;
 		active.bus.dispose();
-		await active.runtime.dispose();
+		this.settlingRuntimes.add(active.runtime);
+		try {
+			await active.runtime.dispose();
+		} finally {
+			void this.settleRuntime(active.runtime);
+		}
+	}
+
+	/** Forget a finished runtime once it has no background task left. */
+	private async settleRuntime(runtime: AgentRuntime): Promise<void> {
+		await runtime.waitForBackgroundTasks();
+		this.settlingRuntimes.delete(runtime);
+	}
+
+	/**
+	 * Wait until every background task of this agent's runs has settled: title
+	 * generation, observer and reflector cycles, and episodic memory
+	 * processing. Covers runs still in progress and runs that already
+	 * returned. Unlike `close()`, nothing is disposed: the agent keeps working.
+	 *
+	 * @throws BackgroundTasksTimeoutError when tasks are still running after
+	 * `timeoutMs`, listing the memory tasks in flight.
+	 */
+	async waitForBackgroundTasks({ timeoutMs }: { timeoutMs: number }): Promise<void> {
+		const runtimes = [
+			...[...this.activeRuntimes].map(({ runtime }) => runtime),
+			...this.settlingRuntimes,
+		];
+		const settled = Promise.all(
+			runtimes.map(async (runtime) => await runtime.waitForBackgroundTasks()),
+		);
+		if (await settlesWithin(settled, timeoutMs)) return;
+		const inFlight = runtimes.flatMap((runtime) => runtime.getInFlightMemoryTasks());
+		throw new BackgroundTasksTimeoutError(timeoutMs, inFlight);
 	}
 
 	private toMessages(input: string | AgentMessage[]): AgentMessage[] {

@@ -1,5 +1,5 @@
 import { settleAbandonedToolCallsInMemory } from '@n8n/agents';
-import type { Message, ScopedMemoryTaskEvent } from '@n8n/agents';
+import type { Message, MemoryTaskEvent } from '@n8n/agents';
 import {
 	type InstanceAiApprovalMode,
 	type InstanceAiAttachment,
@@ -868,7 +868,7 @@ export class InstanceAiService {
 	private memoryTaskObserverFor(
 		threadId: string,
 		tracing: InstanceAiTraceContext | undefined,
-	): (event: ScopedMemoryTaskEvent) => void {
+	): (event: MemoryTaskEvent) => void {
 		return (event) => {
 			// Retains/releases the trace's telemetry provider lease so the
 			// task's LLM span can still export after the root trace finalizes

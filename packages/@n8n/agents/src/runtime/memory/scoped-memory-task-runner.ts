@@ -38,12 +38,28 @@ export interface ScopedMemoryTaskError extends ScopedMemoryTaskDescriptor {
 	createdAt: Date;
 }
 
-export type ScopedMemoryTaskEvent<T = unknown> =
-	| { type: 'queued'; task: ScopedMemoryTaskInfo }
-	| { type: 'started'; task: ScopedMemoryTaskInfo }
-	| { type: 'completed'; task: ScopedMemoryTaskInfo; value: T }
-	| { type: 'skipped'; task: ScopedMemoryTaskInfo; reason: 'lock-held' }
-	| { type: 'failed'; task: ScopedMemoryTaskInfo; error: unknown };
+type MemoryTaskLifecycleEvent<Info, T> =
+	| { type: 'queued'; task: Info }
+	| { type: 'started'; task: Info }
+	| { type: 'completed'; task: Info; value: T }
+	| { type: 'skipped'; task: Info; reason: 'lock-held' }
+	| { type: 'failed'; task: Info; error: unknown };
+
+export type ScopedMemoryTaskEvent<T = unknown> = MemoryTaskLifecycleEvent<ScopedMemoryTaskInfo, T>;
+
+/** Observational tasks (observer, reflector) and episodic memory processing. */
+export type MemoryTaskKind = ObservationLogTaskKind | 'episodic';
+
+/**
+ * A background memory task of any kind. For an episodic task,
+ * `observationScopeId` is the episodic write scope (the resource by default).
+ */
+export interface MemoryTaskInfo extends Omit<ScopedMemoryTaskInfo, 'taskKind'> {
+	taskKind: MemoryTaskKind;
+}
+
+/** What `Agent.memoryTaskObserver` receives: observational and episodic task events. */
+export type MemoryTaskEvent<T = unknown> = MemoryTaskLifecycleEvent<MemoryTaskInfo, T>;
 
 export interface ScopedMemoryTaskRunnerOptions {
 	tracker?: BackgroundTaskTracker;

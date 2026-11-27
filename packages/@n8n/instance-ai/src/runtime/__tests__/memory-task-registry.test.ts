@@ -1,10 +1,10 @@
-import type { ScopedMemoryTaskEvent } from '@n8n/agents';
+import type { MemoryTaskEvent } from '@n8n/agents';
 
 import { MemoryTaskRegistry } from '../memory-task-registry';
 
 function taskInfo(
 	id: string,
-	taskKind: 'observer' | 'reflector',
+	taskKind: 'observer' | 'reflector' | 'episodic',
 	overrides: Partial<{ status: 'queued' | 'running'; startedAt: Date }> = {},
 ) {
 	return {
@@ -14,10 +14,18 @@ function taskInfo(
 		status: overrides.status ?? 'queued',
 		queuedAt: new Date(),
 		...(overrides.startedAt ? { startedAt: overrides.startedAt } : {}),
-	} as ScopedMemoryTaskEvent['task'];
+	} as MemoryTaskEvent['task'];
 }
 
 describe('MemoryTaskRegistry', () => {
+	it('ignores episodic memory tasks, which the thread does not wait on', () => {
+		const registry = new MemoryTaskRegistry();
+
+		registry.handleEvent('thread-1', { type: 'queued', task: taskInfo('task-1', 'episodic') });
+
+		expect(registry.getTasks('thread-1')).toEqual([]);
+	});
+
 	it('tracks queued → running → completed lifecycle', () => {
 		const registry = new MemoryTaskRegistry();
 		const threadId = 'thread-1';

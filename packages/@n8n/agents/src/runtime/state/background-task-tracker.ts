@@ -18,4 +18,9 @@ export class BackgroundTaskTracker {
 		const snapshot = Array.from(this.inFlight);
 		await Promise.allSettled(snapshot);
 	}
+
+	/** Like `flush`, but also waits for tasks tracked while it waits. */
+	async drain(): Promise<void> {
+		while (this.inFlight.size > 0) await this.flush();
+	}
 }
