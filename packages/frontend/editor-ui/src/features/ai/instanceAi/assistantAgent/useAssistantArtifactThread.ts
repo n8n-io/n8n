@@ -75,20 +75,18 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 		() => artifactTurns.value.findLast((turn) => turn.announcedWorkflowId)?.announcedWorkflowId,
 	);
 	const isHydratingThread = computed(() => options.isLoadingHistory());
+	// The credential choices of the setup panel. The agent reads them from the thread metadata.
 	const setupMetadata = shallowRef<Record<string, unknown>>();
 	const setupMetadataStore: SetupPanelMetadataStore = {
-		read: () => setupMetadata.value,
-		write: (metadata) => {
-			setupMetadata.value = metadata;
-		},
-		save: async (metadata) => {
+		getThreadMetadata: () => setupMetadata.value,
+		setThreadMetadata: (metadata) => (setupMetadata.value = metadata),
+		updateThreadMetadata: async (metadata) =>
 			await saveAssistantAgentSetupCredentials(
 				rootStore.restApiContext,
 				options.threadId,
 				metadata,
-			);
-		},
-		fetch: async () =>
+			),
+		fetchThreadMetadata: async () =>
 			(await fetchAssistantAgentSetupCredentials(rootStore.restApiContext, options.threadId))
 				.metadata,
 	};

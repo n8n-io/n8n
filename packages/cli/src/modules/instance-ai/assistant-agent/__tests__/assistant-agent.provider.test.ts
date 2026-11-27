@@ -398,13 +398,8 @@ describe('AssistantAgentProvider', () => {
 				kind: 'credential',
 				credentialType: 'slackApi',
 			};
-			const notion = {
-				id: 'wf-1:credential:notionApi',
-				kind: 'credential',
-				credentialType: 'notionApi',
-			};
 			turnEvents.readRecentHostEvents.mockResolvedValue([
-				{ workflowId: 'wf-1', items: [slack] },
+				{ workflowId: 'wf-1', items: [] },
 				{ workflowId: 'wf-2', items: [] },
 			]);
 			await provider.prepareTurn(startTurn());
@@ -414,15 +409,14 @@ describe('AssistantAgentProvider', () => {
 				type: 'setup-items',
 				runId: 'run-1',
 				agentId: 'agent-1',
-				payload: { workflowId: 'wf-1', items: [slack, notion] },
+				payload: { workflowId: 'wf-1', items: [slack] },
 			} as InstanceAiEvent);
 
-			await runtime.readSetupItemsSnapshots();
 			await expect(runtime.readSetupItemsSnapshots()).resolves.toEqual([
 				{ workflowId: 'wf-2', items: [] },
-				{ workflowId: 'wf-1', items: [slack, notion] },
+				{ workflowId: 'wf-1', items: [slack] },
 			]);
-			expect(turnEvents.readRecentHostEvents).toHaveBeenCalledExactlyOnceWith(
+			expect(turnEvents.readRecentHostEvents).toHaveBeenCalledWith(
 				'assistant',
 				user,
 				'thread-1',

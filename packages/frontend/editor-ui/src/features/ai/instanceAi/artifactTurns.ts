@@ -14,10 +14,7 @@ export interface ArtifactToolCall {
 	result?: unknown;
 	error?: string;
 	isLoading: boolean;
-	/**
-	 * When the call settled. Only the current runtime sets it: its sub-agent
-	 * calls follow the calls of their parent, not the time order.
-	 */
+	/** Set only where the call order is not the time order, as with sub-agent calls. */
 	completedAt?: string;
 }
 

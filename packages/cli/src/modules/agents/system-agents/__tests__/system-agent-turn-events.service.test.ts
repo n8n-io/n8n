@@ -3,6 +3,7 @@ import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionService } from '../../agent-execution.service';
+import type { AgentExecution } from '../../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import type { TimelineEvent } from '../../execution-recorder';
 import type { SystemAgentExecutionService } from '../system-agent-execution.service';
@@ -75,16 +76,22 @@ describe('SystemAgentTurnEventsService', () => {
 		expect(agentExecutions.findExecutionTimeline).not.toHaveBeenCalled();
 	});
 
-	it('returns the events with the name from the recent turns, oldest first', async () => {
-		agentExecutions.findRecentTimelines.mockResolvedValue([
-			timeline,
-			[{ type: 'host-event', name: 'status', key: 'a', payload: { step: 3 }, timestamp: 5 }],
-		]);
+	it('returns the events with the name from the first history page, oldest first', async () => {
+		agentExecutions.getThreadDetailPage.mockResolvedValue({
+			thread: mock<AgentExecutionThread>(),
+			executions: [{ timeline }, { timeline: null }] as AgentExecution[],
+			hasOlder: false,
+		});
 
 		await expect(
 			service.readRecentHostEvents(AGENT_ID, user, THREAD_ID, 'status', 20),
-		).resolves.toEqual([{ step: 1 }, { step: 2 }, { step: 3 }]);
-		expect(systemAgents.getUsableThread).toHaveBeenCalledWith(AGENT_ID, user, THREAD_ID);
-		expect(agentExecutions.findRecentTimelines).toHaveBeenCalledWith(AGENT_ID, THREAD_ID, 20);
+		).resolves.toEqual([{ step: 1 }, { step: 2 }]);
+		expect(agentExecutions.getThreadDetailPage).toHaveBeenCalledWith(
+			THREAD_ID,
+			'project-1',
+			AGENT_ID,
+			'user-1',
+			{ limit: 20 },
+		);
 	});
 });

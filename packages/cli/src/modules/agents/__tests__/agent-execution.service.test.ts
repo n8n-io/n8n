@@ -2627,26 +2627,6 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
-	describe('findRecentTimelines', () => {
-		it('returns the timelines of the newest turns oldest first, without empty ones', async () => {
-			const event = (content: string) => ({ type: 'text', content, timestamp: 1 }) as TimelineEvent;
-			agentExecutionRepository.findByThreadIdNewestFirst.mockResolvedValue([
-				{ id: 'execution-3', storedAt: 'db', timeline: [event('third')] },
-				{ id: 'execution-2', storedAt: 'db', timeline: null },
-				{ id: 'execution-1', storedAt: 'db', timeline: [event('first')] },
-			] as AgentExecution[]);
-
-			await expect(service.findRecentTimelines('agent-1', 'thread-1', 3)).resolves.toEqual([
-				[event('first')],
-				[event('third')],
-			]);
-			expect(agentExecutionRepository.findByThreadIdNewestFirst).toHaveBeenCalledWith(
-				'thread-1',
-				3,
-			);
-		});
-	});
-
 	describe('getThreadDetailPage', () => {
 		const execution = (id: string, minute: number) =>
 			({

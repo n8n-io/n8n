@@ -8,11 +8,9 @@ import {
 	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
-	type InstanceAiSetupItem,
 	type InstanceAiThreadSubject,
 	type InstanceAiWorkflowAttachment,
 	isAttachmentMediaTypeSupported,
-	setupItemsPayloadSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, type AiConfig } from '@n8n/config';
@@ -657,7 +655,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			this.logger,
 			trace ? (event) => trace.observeEvent(event) : undefined,
 		);
-		let earlierSetupItems: ReturnType<AssistantAgentProvider['readEarlierSetupItems']> | undefined;
+		let earlierSetupItems: Promise<unknown[]> | undefined;
 		return {
 			memory: turn.memory,
 			resourceId: turn.resourceId,
@@ -688,8 +686,15 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				runId: options.runId,
 				threadId: turn.thread.id,
 			}),
+			// A merge builds on the checklists of earlier turns, and an unchanged one is not sent again.
 			readSetupItemsSnapshots: async () => {
-				earlierSetupItems ??= this.readEarlierSetupItems(turn);
+				earlierSetupItems ??= this.turnEvents.readRecentHostEvents(
+					ASSISTANT_AGENT_ID,
+					turn.user,
+					turn.thread.id,
+					'setup-items',
+					EARLIER_SETUP_ITEMS_TURN_LIMIT,
+				);
 				return eventBus.setupItemsSnapshots(await earlierSetupItems);
 			},
 			// The setup panel announces the checklist without suspending the turn.
@@ -705,35 +710,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					lease ? await this.workspace.getWorkspace(lease, context) : undefined,
 			},
 		};
-	}
-
-	/**
-	 * The setup checklists that earlier turns recorded, oldest first. A merge
-	 * builds on them, and an unchanged checklist is not sent again. Only the
-	 * turns that the chat loads first count.
-	 */
-	private async readEarlierSetupItems(
-		turn: SystemAgentTurn<AssistantSandboxLease>,
-	): Promise<Array<{ workflowId: string; items: InstanceAiSetupItem[] }>> {
-		try {
-			const payloads = await this.turnEvents.readRecentHostEvents(
-				ASSISTANT_AGENT_ID,
-				turn.user,
-				turn.thread.id,
-				'setup-items',
-				EARLIER_SETUP_ITEMS_TURN_LIMIT,
-			);
-			return payloads.flatMap((payload) => {
-				const parsed = setupItemsPayloadSchema.safeParse(payload);
-				return parsed.success ? [parsed.data] : [];
-			});
-		} catch (error) {
-			this.logger.warn('Failed to read the setup checklists of earlier turns', {
-				threadId: turn.thread.id,
-				error: getErrorMessage(error),
-			});
-			return [];
-		}
 	}
 
 	/** The turn overrides supply the prompt version. The client request supplies only the Browser Use report. */

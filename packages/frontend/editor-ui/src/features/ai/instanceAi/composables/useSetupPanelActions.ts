@@ -151,36 +151,19 @@ function applyDeltaToNodes(nodes: INodeUi[], delta: NodesDelta): 'changed' | 'no
 	return sawTarget ? 'noop' : 'dropped';
 }
 
-/** The thread metadata where the setup panel keeps the credential choices for the agent. */
+/** The thread metadata where the panel keeps credential choices for the agent. */
 export interface SetupPanelMetadataStore {
-	/** The cached metadata. Reactive. */
-	read(): Record<string, unknown> | undefined;
-	/** Replaces the cached metadata. */
-	write(metadata: Record<string, unknown> | undefined): void;
-	/** Merges keys into the stored metadata. */
-	save(metadata: Record<string, unknown>): Promise<void>;
-	/** The stored metadata. */
-	fetch(): Promise<Record<string, unknown> | undefined>;
-}
-
-/** The metadata store of a thread on the current runtime. */
-function useThreadMetadataStore(threadId: string): SetupPanelMetadataStore {
-	const rootStore = useRootStore();
-	const instanceAiStore = useInstanceAiStore();
-	return {
-		read: () => instanceAiStore.getThreadMetadata(threadId),
-		write: (metadata) => instanceAiStore.setThreadMetadata(threadId, metadata),
-		save: async (metadata) => {
-			await updateThreadMetadata(rootStore.restApiContext, threadId, metadata);
-		},
-		fetch: async () => (await fetchThread(rootStore.restApiContext, threadId)).thread.metadata,
-	};
+	getThreadMetadata(): Record<string, unknown> | undefined;
+	setThreadMetadata(metadata: Record<string, unknown> | undefined): void;
+	/** Merges `metadata` into the stored metadata. */
+	updateThreadMetadata(metadata: Record<string, unknown>): Promise<unknown>;
+	fetchThreadMetadata(): Promise<Record<string, unknown> | undefined>;
 }
 
 /** Save credential choices before applying setup values through a guarded workflow PATCH. */
 export function useSetupPanelActions(options: {
 	threadId: string;
-	/** Defaults to the metadata of a thread on the current runtime. */
+	/** Defaults to the thread store of the current runtime. */
 	metadataStore?: SetupPanelMetadataStore;
 	/** The thread's active artifact workflow — same source as `useSetupPanelState`. */
 	workflowId: MaybeRefOrGetter<string | undefined>;
@@ -201,7 +184,15 @@ export function useSetupPanelActions(options: {
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
-	const metadataStore = options.metadataStore ?? useThreadMetadataStore(options.threadId);
+	const instanceAiStore = useInstanceAiStore();
+	const metadataStore: SetupPanelMetadataStore = options.metadataStore ?? {
+		getThreadMetadata: () => instanceAiStore.getThreadMetadata(options.threadId),
+		setThreadMetadata: (metadata) => instanceAiStore.setThreadMetadata(options.threadId, metadata),
+		updateThreadMetadata: async (metadata) =>
+			await updateThreadMetadata(rootStore.restApiContext, options.threadId, metadata),
+		fetchThreadMetadata: async () =>
+			(await fetchThread(rootStore.restApiContext, options.threadId)).thread.metadata,
+	};
 	const credentialsStore = useCredentialsStore();
 
 	const activeApplyCount = ref(0);
@@ -213,34 +204,35 @@ export function useSetupPanelActions(options: {
 	const savedCredentialBinds = computed(() => {
 		const workflowId = toValue(options.workflowId);
 		if (!workflowId) return [];
-		return readPendingInstanceAiSetupCredentialSelections(metadataStore.read(), workflowId).map(
-			({ itemId, selection }): CredentialBind => {
-				const cached = pendingCredentialBinds.get(itemId);
-				if (cached?.selectionId === selection.selectionId) return cached;
-				const credential =
-					credentialsStore.getUsableCredentialById(selection.credentialId) ??
-					credentialsStore.getCredentialById(selection.credentialId);
-				return {
-					item: {
-						id: itemId,
-						kind: 'credential',
-						credentialType: selection.credentialType,
-						nodeBindings: selection.nodeNames?.map((nodeName) => ({ nodeName })),
-					},
-					credential:
-						selection.credentialId === AI_GATEWAY_MANAGED_TAG
-							? { id: null, name: '', __aiGatewayManaged: true }
-							: { id: selection.credentialId, name: credential?.name ?? '' },
-					selectionId: selection.selectionId,
-				};
-			},
-		);
+		return readPendingInstanceAiSetupCredentialSelections(
+			metadataStore.getThreadMetadata(),
+			workflowId,
+		).map(({ itemId, selection }): CredentialBind => {
+			const cached = pendingCredentialBinds.get(itemId);
+			if (cached?.selectionId === selection.selectionId) return cached;
+			const credential =
+				credentialsStore.getUsableCredentialById(selection.credentialId) ??
+				credentialsStore.getCredentialById(selection.credentialId);
+			return {
+				item: {
+					id: itemId,
+					kind: 'credential',
+					credentialType: selection.credentialType,
+					nodeBindings: selection.nodeNames?.map((nodeName) => ({ nodeName })),
+				},
+				credential:
+					selection.credentialId === AI_GATEWAY_MANAGED_TAG
+						? { id: null, name: '', __aiGatewayManaged: true }
+						: { id: selection.credentialId, name: credential?.name ?? '' },
+				selectionId: selection.selectionId,
+			};
+		});
 	});
 
 	async function persistMetadata(metadata: Record<string, unknown>) {
-		await metadataStore.save(metadata);
-		metadataStore.write({
-			...metadataStore.read(),
+		await metadataStore.updateThreadMetadata(metadata);
+		metadataStore.setThreadMetadata({
+			...metadataStore.getThreadMetadata(),
 			...metadata,
 		});
 	}
@@ -448,20 +440,23 @@ export function useSetupPanelActions(options: {
 		applyingDeltas.set(delta, workflowId);
 		try {
 			if (delta.credentialBinds.length > 0) {
-				const before = metadataStore.read();
-				const stored = await metadataStore.fetch();
-				const current = metadataStore.read();
+				const before = metadataStore.getThreadMetadata();
+				const fetchedMetadata = await metadataStore.fetchThreadMetadata();
+				const current = metadataStore.getThreadMetadata();
 				// Keep choices saved locally while the server read was in flight.
-				metadataStore.write({
+				metadataStore.setThreadMetadata({
 					...current,
 					...Object.fromEntries(
-						Object.entries(stored ?? {}).filter(([key]) => isEqual(before?.[key], current?.[key])),
+						Object.entries(fetchedMetadata ?? {}).filter(([key]) =>
+							isEqual(before?.[key], current?.[key]),
+						),
 					),
 				});
 				const pendingIds = new Set(
-					readPendingInstanceAiSetupCredentialSelections(metadataStore.read(), workflowId).map(
-						({ selection }) => selection.selectionId,
-					),
+					readPendingInstanceAiSetupCredentialSelections(
+						metadataStore.getThreadMetadata(),
+						workflowId,
+					).map(({ selection }) => selection.selectionId),
 				);
 				delta.credentialBinds = delta.credentialBinds.filter(({ selectionId }) =>
 					pendingIds.has(selectionId),

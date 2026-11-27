@@ -51,10 +51,16 @@ export class SystemAgentTurnEventsService {
 		name: string,
 		limit: number,
 	): Promise<unknown[]> {
-		await this.systemAgents.getUsableThread(agentId, user, threadId);
-		const timelines = await this.agentExecutions.findRecentTimelines(agentId, threadId, limit);
-		return timelines.flatMap((timeline) =>
-			timeline.flatMap((item) =>
+		const { projectId } = await this.systemAgents.getUsableThread(agentId, user, threadId);
+		const page = await this.agentExecutions.getThreadDetailPage(
+			threadId,
+			projectId,
+			agentId,
+			user.id,
+			{ limit },
+		);
+		return (page?.executions ?? []).flatMap(({ timeline }) =>
+			(timeline ?? []).flatMap((item) =>
 				item.type === 'host-event' && item.name === name ? [item.payload] : [],
 			),
 		);

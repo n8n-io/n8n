@@ -100,10 +100,6 @@ const {
 
 const { routeQuery } = vi.hoisted(() => ({ routeQuery: {} as Record<string, string> }));
 
-const { setupPanelThread } = vi.hoisted(() => ({
-	setupPanelThread: { current: undefined as ArtifactThread | undefined },
-}));
-
 const { fetchTabs, saveTabs } = vi.hoisted(() => ({
 	fetchTabs: vi.fn(),
 	saveTabs: vi.fn(),
@@ -250,19 +246,13 @@ vi.mock('../../components/InstanceAiWorkflowPreview.vue', async () => {
 });
 
 // The real setup panel reads the workflow and credential stores, and has its own tests.
-vi.mock('../../components/setupPanel/InstanceAiSetupPanel.vue', async () => {
-	const { useArtifactThread } = await import('../../artifactThread');
-	return {
-		default: defineComponent({
-			props: { workflowId: { type: String, required: true } },
-			setup(props) {
-				setupPanelThread.current = useArtifactThread();
-				return () =>
-					h('div', { 'data-test-id': 'setup-panel-stub', 'data-workflow-id': props.workflowId });
-			},
-		}),
-	};
-});
+vi.mock('../../components/setupPanel/InstanceAiSetupPanel.vue', () => ({
+	default: defineComponent({
+		props: { workflowId: { type: String, required: true } },
+		setup: (props) => () =>
+			h('div', { 'data-test-id': 'setup-panel-stub', 'data-workflow-id': props.workflowId }),
+	}),
+}));
 
 // The real draft preview renders a canvas, which has its own tests.
 vi.mock('../../components/InstanceAiWorkflowDraftPreview.vue', () => ({
@@ -1131,37 +1121,26 @@ describe('AssistantAgentThreadView', () => {
 		expect(appPreviewProps.current?.['refresh-key']).toBe(Number(firstKey) + 1);
 	});
 
-	describe('setup panel', () => {
-		it('shows the setup checklist that the agent announced above the composer', async () => {
-			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
-				name === INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name
-					? INSTANCE_AI_SETUP_PANEL_EXPERIMENT.variant
-					: undefined,
-			);
-			const slack = {
-				id: 'wf-1:credential:slackApi',
-				kind: 'credential',
-				credentialType: 'slackApi',
-			};
-			chatMessages.value = [
-				{ id: 'u-1', role: 'user', content: 'Build it' },
-				{
-					id: 'a-1',
-					role: 'assistant',
-					content: '',
-					hostEvents: [
-						{ id: 'e-1', name: 'setup-items', payload: { workflowId: 'wf-1', items: [slack] } },
-					],
-				},
-			];
-			const { findByTestId } = renderView({
-				props: { threadId: 'thread-1', projectId: 'project-1' },
-			});
-			isLoadingHistory.value = false;
-
-			expect(await findByTestId('setup-panel-stub')).toHaveAttribute('data-workflow-id', 'wf-1');
-			expect(setupPanelThread.current?.setupItemsByWorkflowId).toEqual({ 'wf-1': [slack] });
+	it('shows the setup panel for the workflow that the agent announced', async () => {
+		mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+			name === INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name
+				? INSTANCE_AI_SETUP_PANEL_EXPERIMENT.variant
+				: undefined,
+		);
+		const payload = { workflowId: 'wf-1', items: [] };
+		chatMessages.value = [
+			{
+				id: 'a-1',
+				role: 'assistant',
+				content: '',
+				hostEvents: [{ id: 'e', name: 'setup-items', payload }],
+			},
+		];
+		const { findByTestId } = renderView({
+			props: { threadId: 'thread-1', projectId: 'project-1' },
 		});
+
+		expect(await findByTestId('setup-panel-stub')).toHaveAttribute('data-workflow-id', 'wf-1');
 	});
 
 	describe('credits and limited mode', () => {

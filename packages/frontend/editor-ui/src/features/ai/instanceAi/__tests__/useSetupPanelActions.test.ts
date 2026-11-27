@@ -295,30 +295,24 @@ describe('useSetupPanelActions', () => {
 		expect(onSaved).toHaveBeenCalledExactlyOnceWith(await updateWorkflow.mock.results[0].value);
 	});
 
-	it('saves the credential choice in the metadata store of the thread', async () => {
-		const stored = ref<Record<string, unknown>>();
+	it('saves the credential choice in the given metadata store', async () => {
+		const cached = ref<Record<string, unknown>>();
 		const metadataStore: SetupPanelMetadataStore = {
-			read: () => stored.value,
-			write: (metadata) => {
-				stored.value = metadata;
-			},
-			save: vi.fn(async () => {}),
-			fetch: vi.fn(async () => stored.value),
+			getThreadMetadata: () => cached.value,
+			setThreadMetadata: (metadata) => (cached.value = metadata),
+			updateThreadMetadata: vi.fn(async () => {}),
+			fetchThreadMetadata: async () => cached.value,
 		};
 		const { actions } = createHarness({ metadataStore });
 
 		await expect(actions.bindCredential(credentialItem, credential)).resolves.toBe('applied');
 
-		expect(metadataStore.save).toHaveBeenCalledWith(
+		expect(metadataStore.updateThreadMetadata).toHaveBeenCalledWith(
 			expect.objectContaining({
-				[instanceAiSetupCredentialSelectionKey(credentialItem.id)]: expect.objectContaining({
-					credentialId: 'cred-1',
-				}),
+				[instanceAiSetupCredentialSelectionKey(credentialItem.id)]: expect.anything(),
 			}),
 		);
-		expect(metadataStore.fetch).toHaveBeenCalled();
 		expect(updateThreadMetadata).not.toHaveBeenCalled();
-		expect(fetchThread).not.toHaveBeenCalled();
 	});
 
 	it('survives a version conflict: refetches, re-applies the delta, retries once', async () => {

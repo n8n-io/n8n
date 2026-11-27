@@ -205,49 +205,28 @@ describe('AssistantAgentController', () => {
 	});
 
 	describe('setup credentials', () => {
-		const selectionKey = 'instanceAiSetupCredentialSelection:wf-1:credential:slackApi';
-		const selection = { selectionId: 'sel-1', credentialType: 'slackApi', credentialId: 'cred-1' };
+		const choice = { 'instanceAiSetupCredentialSelection:wf-1:credential:slackApi': { id: 'c' } };
+		const metadata = { assistantTabs: { tabs: [] }, ...choice };
 
-		it('merges the choices into the thread metadata and returns only the setup keys', async () => {
-			threadMetadata.patch.mockImplementation(async (_agentId, _user, _threadId, change) =>
+		it('reads and merges only the setup keys of the thread metadata', async () => {
+			threadMetadata.readThread.mockResolvedValue({ projectId: 'project-1', metadata });
+			threadMetadata.patch.mockImplementation(async (_agent, _user, _thread, change) =>
 				change({ assistantTabs: { tabs: [] } }),
 			);
-
-			await expect(
-				controller.saveSetupCredentials(
-					req,
-					res,
-					THREAD_ID,
-					new AssistantSetupCredentialMetadataRequestDto({
-						metadata: { [selectionKey]: selection },
-					}),
-				),
-			).resolves.toEqual({ metadata: { [selectionKey]: selection } });
-			expect(threadMetadata.patch).toHaveBeenCalledWith(
-				'assistant',
-				user,
-				THREAD_ID,
-				expect.any(Function),
-			);
-		});
-
-		it('returns only the setup keys of the thread metadata', async () => {
-			threadMetadata.readThread.mockResolvedValue({
-				projectId: 'project-1',
-				metadata: { assistantTabs: { tabs: [] }, [selectionKey]: selection },
-			});
+			const payload = new AssistantSetupCredentialMetadataRequestDto({ metadata: choice });
 
 			await expect(controller.getSetupCredentials(req, res, THREAD_ID)).resolves.toEqual({
-				metadata: { [selectionKey]: selection },
+				metadata: choice,
+			});
+			await expect(controller.saveSetupCredentials(req, res, THREAD_ID, payload)).resolves.toEqual({
+				metadata: choice,
 			});
 		});
 
 		it('refuses metadata keys that the setup panel does not own', () => {
-			expect(
-				AssistantSetupCredentialMetadataRequestDto.safeParse({
-					metadata: { [selectionKey]: selection, assistantTabs: null },
-				}).success,
-			).toBe(false);
+			expect(AssistantSetupCredentialMetadataRequestDto.safeParse({ metadata }).success).toBe(
+				false,
+			);
 		});
 	});
 

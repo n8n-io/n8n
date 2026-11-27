@@ -1,12 +1,14 @@
-import type { InstanceAiEvent, InstanceAiSetupItem } from '@n8n/api-types';
+import {
+	setupItemsPayloadSchema,
+	type InstanceAiEvent,
+	type InstanceAiSetupItem,
+} from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiEventBus } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
 import type { SystemAgentStartTurn } from '@/modules/agents/system-agents/system-agent.types';
-
-type SetupItemsSnapshot = { workflowId: string; items: InstanceAiSetupItem[] };
 
 type HostEventEmitters = Pick<SystemAgentStartTurn, 'emitHostEvent' | 'emitTransientHostEvent'>;
 
@@ -40,8 +42,8 @@ const TRANSIENT_EVENT_TYPES: ReadonlySet<InstanceAiEvent['type']> = new Set([
  * them. Other events have no reader on this runtime and are dropped.
  */
 export class AssistantEventSink implements InstanceAiEventBus {
-	/** The setup checklists that this turn recorded, by workflow, oldest first. */
-	private readonly setupItems = new Map<string, InstanceAiSetupItem[]>();
+	/** The `setup-items` payloads that this turn recorded, oldest first. */
+	private readonly setupItems: unknown[] = [];
 
 	constructor(
 		private readonly emitters: HostEventEmitters,
@@ -60,10 +62,7 @@ export class AssistantEventSink implements InstanceAiEventBus {
 			const payload = toJsonValue('payload' in event ? event.payload : undefined);
 			if (keyOf) this.emitters.emitHostEvent(event.type, payload, { key: keyOf(event) });
 			else this.emitters.emitTransientHostEvent(event.type, payload);
-			if (event.type === 'setup-items') {
-				this.setupItems.delete(event.payload.workflowId);
-				this.setupItems.set(event.payload.workflowId, event.payload.items);
-			}
+			if (event.type === 'setup-items') this.setupItems.push(event.payload);
 		} catch (error) {
 			// An event that is too large or comes after the turn settled is not shown.
 			this.logger.warn('Failed to send an Assistant event to the chat', {
@@ -74,18 +73,18 @@ export class AssistantEventSink implements InstanceAiEventBus {
 	}
 
 	/**
-	 * The latest checklist of each workflow, oldest workflow first. The checklists
-	 * of this turn replace the `earlier` ones. The setup tools read these back to
-	 * confirm that the chat accepted a checklist.
+	 * The latest checklist of each workflow, from the `earlier` payloads and then
+	 * this turn's. The setup tools read these back to confirm that the chat
+	 * accepted a checklist.
 	 */
-	setupItemsSnapshots(earlier: SetupItemsSnapshot[] = []): SetupItemsSnapshot[] {
+	setupItemsSnapshots(earlier: unknown[] = []) {
 		const latest = new Map<string, InstanceAiSetupItem[]>();
-		const add = (workflowId: string, items: InstanceAiSetupItem[]) => {
-			latest.delete(workflowId);
-			latest.set(workflowId, items);
-		};
-		for (const { workflowId, items } of earlier) add(workflowId, items);
-		for (const [workflowId, items] of this.setupItems) add(workflowId, items);
+		for (const payload of [...earlier, ...this.setupItems]) {
+			const parsed = setupItemsPayloadSchema.safeParse(payload);
+			if (!parsed.success) continue;
+			latest.delete(parsed.data.workflowId);
+			latest.set(parsed.data.workflowId, parsed.data.items);
+		}
 		return [...latest].map(([workflowId, items]) => ({ workflowId, items }));
 	}
 

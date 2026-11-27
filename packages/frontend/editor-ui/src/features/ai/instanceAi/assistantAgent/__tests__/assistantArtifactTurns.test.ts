@@ -411,26 +411,22 @@ describe('findLatestAssistantSetupItems', () => {
 			kind: 'credential',
 			credentialType: 'slackApi',
 		};
-		const setupItems = (id: string, workflowId: string, items: unknown) => ({
-			id,
+		const event = (workflowId: string, items: unknown) => ({
+			id: workflowId,
 			name: 'setup-items',
 			payload: { workflowId, items },
+		});
+		const message = (...hostEvents: Array<ReturnType<typeof event>>): ChatMessage => ({
+			id: 'a',
+			role: 'assistant',
+			content: '',
+			hostEvents,
 		});
 
 		const items = findLatestAssistantSetupItems(
 			readonly([
-				{
-					id: 'a1',
-					role: 'assistant',
-					content: '',
-					hostEvents: [setupItems('e1', 'wf-1', []), setupItems('e2', 'wf-2', [slack])],
-				},
-				{
-					id: 'a2',
-					role: 'assistant',
-					content: '',
-					hostEvents: [setupItems('e3', 'wf-1', [slack]), setupItems('e4', 'wf-2', 'bad')],
-				},
+				message(event('wf-1', []), event('wf-2', [slack])),
+				message(event('wf-1', [slack]), event('wf-2', 'bad')),
 			]),
 		);
 

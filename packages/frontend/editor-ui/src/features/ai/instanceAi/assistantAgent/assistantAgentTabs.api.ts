@@ -45,10 +45,6 @@ export async function saveAssistantAgentSetupCredentials(
 	threadId: string,
 	metadata: Record<string, unknown>,
 ): Promise<AssistantSetupCredentialMetadataResponse> {
-	return await makeRestApiRequest(
-		context,
-		'PATCH',
-		`/assistant/threads/${threadId}/setup-credentials`,
-		{ metadata },
-	);
+	const url = `/assistant/threads/${threadId}/setup-credentials`;
+	return await makeRestApiRequest(context, 'PATCH', url, { metadata });
 }

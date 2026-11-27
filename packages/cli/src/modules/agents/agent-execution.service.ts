@@ -1087,24 +1087,6 @@ export class AgentExecutionService {
 	}
 
 	/**
-	 * The timelines of the newest `limit` executions of a thread, oldest first,
-	 * also when they moved to blob storage. Does not check access to the thread.
-	 */
-	async findRecentTimelines(
-		agentId: string,
-		threadId: string,
-		limit: number,
-	): Promise<TimelineEvent[][]> {
-		const executions = await this.agentExecutionRepository.findByThreadIdNewestFirst(
-			threadId,
-			limit,
-		);
-		executions.reverse();
-		await this.hydrateTimelines(agentId, threadId, executions);
-		return executions.flatMap((execution) => (execution.timeline ? [execution.timeline] : []));
-	}
-
-	/**
 	 * Whether `execution` continues `older`, the execution before it. A resume
 	 * from before input messages were linked has no links, but it has the
 	 * `resumed` status.
