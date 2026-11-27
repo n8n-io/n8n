@@ -19,8 +19,8 @@ describe('Grist parseFilterProperties', () => {
 		});
 	});
 
-	it('sends an empty value only as a string', () => {
-		expect(parseFilterProperties([{ field: 'zip', values: ' ' }])).toEqual({ zip: [' '] });
+	it.each(['', ' '])('sends the blank value %j only as a string', (values) => {
+		expect(parseFilterProperties([{ field: 'zip', values }])).toEqual({ zip: [values] });
 	});
 
 	it('sends a value outside the safe integer range only as a string', () => {
