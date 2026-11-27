@@ -64,10 +64,11 @@ export interface McpServerToolCandidateQuery {
  */
 const DRAFT_SAVE_ATTEMPTS = 10;
 
-const TOOL_CHECK_BATCH_SIZE = 10;
-
 /** Each check loads the published version, so the picker checks a few workflows at a time. */
 const CHECK_BATCH_SIZE = 10;
+
+/** The most workflow checks for one search of candidates. */
+const CANDIDATE_CHECK_BUDGET = 200;
 
 /** `null` for `not_found`: a workflow that the project does not own is no candidate. */
 const UNAVAILABLE_REASONS: Record<WorkflowToolRefusal, McpServerWorkflowUnavailableReason | null> =
@@ -130,8 +131,8 @@ export class McpServerToolsService {
 		const tools = await this.tools.listByServer(server.id);
 		// Each check loads a published workflow version, so a large server checks a few at a time.
 		const responses: McpServerToolResponse[] = [];
-		for (let i = 0; i < tools.length; i += TOOL_CHECK_BATCH_SIZE) {
-			const batch = tools.slice(i, i + TOOL_CHECK_BATCH_SIZE);
+		for (let i = 0; i < tools.length; i += CHECK_BATCH_SIZE) {
+			const batch = tools.slice(i, i + CHECK_BATCH_SIZE);
 			responses.push(
 				...(await Promise.all(
 					batch.map(async (tool) => toToolResponse(tool, await this.brokenReason(projectId, tool))),
@@ -204,12 +205,19 @@ export class McpServerToolsService {
 
 		const page: McpServerToolCandidatePage = { candidates: [], unusable: 0, more: false };
 		for (let i = 0; i < matching.length; i += CHECK_BATCH_SIZE) {
+			// Each check loads a published version. A project with many unusable workflows stops
+			// here, and the caller narrows the search with a query.
+			if (i >= CANDIDATE_CHECK_BUDGET) {
+				page.more = true;
+				return page;
+			}
 			const batch = matching.slice(i, i + CHECK_BATCH_SIZE);
 			const checked = await this.checkCandidates(projectId, batch, added);
 			for (const candidate of checked) {
 				if (candidate === null) continue;
 				if (candidate.reason !== null && !includeUnusable) {
-					page.unusable++;
+					// A workflow that is already a tool is not one that "cannot be a tool".
+					if (candidate.reason !== 'already_added') page.unusable++;
 					continue;
 				}
 				if (page.candidates.length === limit) {
@@ -230,12 +238,13 @@ export class McpServerToolsService {
 	): Promise<Array<McpServerToolCandidate | null>> {
 		return await Promise.all(
 			workflows.map(async ({ workflowId, name, description }) => {
-				if (added.has(workflowId)) {
-					return { workflowId, name, description, reason: 'already_added' as const };
-				}
+				// The check comes first, so a workflow that the project lost is no candidate.
 				const check = await this.workflows.check(projectId, workflowId);
 				const reason = check.callable ? null : UNAVAILABLE_REASONS[check.reason];
 				if (!check.callable && !reason) return null;
+				if (added.has(workflowId)) {
+					return { workflowId, name, description, reason: 'already_added' as const };
+				}
 				return { workflowId, name, description, reason };
 			}),
 		);
