@@ -661,8 +661,8 @@ function isUncertainPrimitiveValue(
 	ruleKind: 'show' | 'hide',
 ): boolean {
 	if (typeof value === 'string') {
-		if (ruleKind === 'hide' && isExpression(value)) {
-			return true;
+		if (isExpression(value)) {
+			return ruleKind === 'hide';
 		}
 		return expectedTypes.size > 0 && !expectedTypes.has('string');
 	}
@@ -702,18 +702,20 @@ function isUncertainDisplayCondition(
 			: get(parameters, propertyName);
 
 	const declaredProperties = findDeclaredProperties(nodeTypeDescription.properties, propertyName);
+	const declaredTypes = getDeclaredExpectedTypes(declaredProperties);
 	const { types: conditionTypes, hasExists } = getConditionExpectedTypes(conditions);
-	const expectedTypes = new Set<ExpectedDisplayPrimitiveType>([
-		...getDeclaredExpectedTypes(declaredProperties),
-		...conditionTypes,
-	]);
+	if (declaredTypes.size > 0 && conditionTypes.size > 0) {
+		for (const conditionType of conditionTypes) {
+			if (!declaredTypes.has(conditionType)) {
+				return true;
+			}
+		}
+	}
+	const expectedTypes = conditionTypes.size > 0 ? conditionTypes : declaredTypes;
 
 	if (rawValue === undefined) {
 		if (!expectedTypes.has('boolean')) {
 			return false;
-		}
-		if (ruleKind === 'show') {
-			return checkConditions(conditions, [false]);
 		}
 		return checkConditions(conditions, [undefined]) !== checkConditions(conditions, [false]);
 	}
@@ -745,11 +747,9 @@ function isUncertainDisplayCondition(
 }
 
 /**
- * Evaluates a credential or credential-selector parameter's `displayOptions`.
- * Returns `'uncertain'` when `displayParameter` hides the entry while a
- * discriminator holds an unexpected value type that runtime code could still
- * interpret as active (for example, a non-boolean truthy value on a boolean
- * parameter).
+ * Evaluates the `displayOptions` of a credential or credential-selector parameter.
+ * Returns `'uncertain'` when any discriminator holds an unexpected value type or
+ * its declaration conflicts with the display condition.
  */
 function evaluateCredentialDisplayOptions(
 	parameters: INodeParameters,
@@ -757,13 +757,9 @@ function evaluateCredentialDisplayOptions(
 	node: Pick<INode, 'typeVersion'>,
 	nodeTypeDescription: INodeTypeDescription,
 ): DisplayOptionEvaluation {
-	if (displayParameter(parameters, parameter, node, nodeTypeDescription)) {
-		return 'shown';
-	}
-
 	const displayOptions = parameter.displayOptions;
 	if (!displayOptions) {
-		return 'hidden';
+		return 'shown';
 	}
 
 	if (displayOptions.show) {
@@ -800,7 +796,7 @@ function evaluateCredentialDisplayOptions(
 		}
 	}
 
-	return 'hidden';
+	return displayParameter(parameters, parameter, node, nodeTypeDescription) ? 'shown' : 'hidden';
 }
 
 /**

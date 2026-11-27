@@ -5952,6 +5952,88 @@ describe('NodeHelpers', () => {
 					new Set(),
 				);
 			});
+
+			it('should return null when show uses not-false and an undeclared boolean parameter is omitted', () => {
+				const showNotFalseNodeType: INodeTypeDescription = {
+					...makeNodeType([]),
+					properties: [
+						{
+							displayName: 'Generic Auth Type',
+							name: 'genericAuthType',
+							type: 'credentialsSelect',
+							default: '',
+							credentialTypes: ['has:genericAuth'],
+							displayOptions: { show: { useAuth: [{ _cnd: { not: false } }] } },
+						},
+					],
+				};
+				expect(
+					getActiveCredentialTypes(
+						makeNode({ genericAuthType: 'httpHeaderAuth' }),
+						showNotFalseNodeType,
+					),
+				).toBeNull();
+				expect(
+					getActiveCredentialTypes(
+						makeNode({ useAuth: true, genericAuthType: 'httpHeaderAuth' }),
+						showNotFalseNodeType,
+					),
+				).toEqual(new Set(['httpHeaderAuth']));
+				expect(
+					getActiveCredentialTypes(
+						makeNode({ useAuth: false, genericAuthType: 'httpHeaderAuth' }),
+						showNotFalseNodeType,
+					),
+				).toEqual(new Set());
+			});
+
+			it('should return null when a declared property type conflicts with its display condition type', () => {
+				const conflictingNodeType: INodeTypeDescription = {
+					...makeNodeType([{ name: 'testApi', displayOptions: { show: { enabled: ['on'] } } }]),
+					properties: [
+						{
+							displayName: 'Enabled',
+							name: 'enabled',
+							type: 'boolean',
+							default: false,
+						},
+					],
+				};
+
+				for (const value of ['unexpected', 'on', false, true, 1]) {
+					expect(
+						getActiveCredentialTypes(
+							makeNode({ enabled: value } as unknown as INodeParameters),
+							conflictingNodeType,
+						),
+					).toBeNull();
+				}
+				expect(getActiveCredentialTypes(makeNode({}), conflictingNodeType)).toBeNull();
+
+				const mixedConditionNodeType: INodeTypeDescription = {
+					...makeNodeType([
+						{ name: 'testApi', displayOptions: { show: { enabled: [true, 'on'] } } },
+					]),
+					properties: [
+						{
+							displayName: 'Enabled',
+							name: 'enabled',
+							type: 'boolean',
+							default: false,
+						},
+					],
+				};
+
+				expect(
+					getActiveCredentialTypes(
+						makeNode({ enabled: 'unexpected' } as unknown as INodeParameters),
+						mixedConditionNodeType,
+					),
+				).toBeNull();
+				expect(
+					getActiveCredentialTypes(makeNode({ enabled: false }), mixedConditionNodeType),
+				).toBeNull();
+			});
 		});
 
 		describe('with hide display option discriminators', () => {
@@ -6005,7 +6087,37 @@ describe('NodeHelpers', () => {
 				).toBeNull();
 			});
 
-			it('should return null when a hide condition matches a wrapped non-boolean value', () => {
+			it('should return null when a boolean hide rule sees a non-boolean or expression value even if not hidden', () => {
+				const hideFalseNodeType: INodeTypeDescription = {
+					...makeNodeType([{ name: 'testApi', displayOptions: { hide: { useAuth: [false] } } }]),
+					properties: [
+						{
+							displayName: 'Use Auth',
+							name: 'useAuth',
+							type: 'boolean',
+							default: false,
+						},
+					],
+				};
+
+				expect(getActiveCredentialTypes(makeNode({ useAuth: false }), hideFalseNodeType)).toEqual(
+					new Set(),
+				);
+				expect(getActiveCredentialTypes(makeNode({ useAuth: true }), hideFalseNodeType)).toEqual(
+					new Set(['testApi']),
+				);
+				expect(
+					getActiveCredentialTypes(
+						makeNode({ useAuth: 1 } as unknown as INodeParameters),
+						hideFalseNodeType,
+					),
+				).toBeNull();
+				expect(
+					getActiveCredentialTypes(makeNode({ useAuth: '={{ false }}' }), hideFalseNodeType),
+				).toBeNull();
+			});
+
+			it('should return null when a hide condition receives a non-boolean or wrapped value', () => {
 				const nodeType: INodeTypeDescription = {
 					...makeNodeType([{ name: 'testApi', displayOptions: { hide: { disableAuth: [true] } } }]),
 					properties: [
@@ -6018,9 +6130,21 @@ describe('NodeHelpers', () => {
 					],
 				};
 
+				expect(getActiveCredentialTypes(makeNode({ disableAuth: false }), nodeType)).toEqual(
+					new Set(['testApi']),
+				);
 				expect(getActiveCredentialTypes(makeNode({ disableAuth: true }), nodeType)).toEqual(
 					new Set(),
 				);
+				expect(
+					getActiveCredentialTypes(
+						makeNode({ disableAuth: 1 } as unknown as INodeParameters),
+						nodeType,
+					),
+				).toBeNull();
+				expect(
+					getActiveCredentialTypes(makeNode({ disableAuth: '={{ true }}' }), nodeType),
+				).toBeNull();
 				expect(
 					getActiveCredentialTypes(
 						makeNode({ disableAuth: [true] } as unknown as INodeParameters),
@@ -6047,6 +6171,54 @@ describe('NodeHelpers', () => {
 					expect(getActiveCredentialTypes(node, nodeType)).toBeNull();
 				},
 			);
+
+			it('should return null when a negated show condition matches a non-string discriminator value', () => {
+				const nodeType: INodeTypeDescription = {
+					...makeNodeType([]),
+					properties: [
+						{
+							displayName: 'Authentication',
+							name: 'authentication',
+							type: 'options',
+							options: [
+								{ name: 'None', value: 'none' },
+								{ name: 'OAuth2', value: 'oAuth2' },
+							],
+							default: 'none',
+						},
+						{
+							displayName: 'Generic Auth Type',
+							name: 'genericAuthType',
+							type: 'credentialsSelect',
+							default: '',
+							credentialTypes: ['has:genericAuth'],
+							displayOptions: { show: { authentication: [{ _cnd: { not: 'none' } }] } },
+						},
+					],
+				};
+
+				expect(
+					getActiveCredentialTypes(
+						makeNode({ authentication: 'none', genericAuthType: 'httpHeaderAuth' }),
+						nodeType,
+					),
+				).toEqual(new Set());
+				expect(
+					getActiveCredentialTypes(
+						makeNode({ authentication: 'oAuth2', genericAuthType: 'httpHeaderAuth' }),
+						nodeType,
+					),
+				).toEqual(new Set(['httpHeaderAuth']));
+				expect(
+					getActiveCredentialTypes(
+						makeNode({
+							authentication: 1,
+							genericAuthType: 'httpHeaderAuth',
+						} as unknown as INodeParameters),
+						nodeType,
+					),
+				).toBeNull();
+			});
 
 			it('should return null when a dynamic credential selector is gated by a non-string discriminator', () => {
 				const nodeType: INodeTypeDescription = {
