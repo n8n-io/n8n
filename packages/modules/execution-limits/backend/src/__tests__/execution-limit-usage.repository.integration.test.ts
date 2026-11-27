@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
 
 import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
+import { ExecutionLimitPolicy } from '../execution-limit-policy.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
 import { ExecutionLimitUsageFoldStep } from '../execution-limit-usage.fold-step';
 import { ExecutionLimitUsageRepository } from '../execution-limit-usage.repository';
@@ -63,7 +64,8 @@ describe('ExecutionLimitUsageRepository reads', () => {
 	beforeEach(async () => {
 		await usage.clear();
 		await instanceUsage.clear();
-		// The delete of a project also deletes its assignments.
+		// The delete of a project or a policy also deletes its assignments.
+		await Container.get(DataSource).getRepository(ExecutionLimitPolicy).delete({});
 		await testDb.truncate(['Project', 'Settings']);
 	});
 
