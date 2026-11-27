@@ -219,7 +219,7 @@ export class LeaseSessionManager {
 			return;
 		}
 
-		// Stop has already deleted the row of the current session.
+		// Stop deletes the row of the current session.
 		if (this.stopped) return;
 
 		if (renewed) {
