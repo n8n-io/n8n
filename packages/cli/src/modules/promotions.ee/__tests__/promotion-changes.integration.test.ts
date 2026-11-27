@@ -15,6 +15,7 @@ import {
 import {
 	CredentialsRepository,
 	FolderRepository,
+	type Project,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	TagRepository,
@@ -30,7 +31,7 @@ import { mkdtempSync } from 'node:fs';
 import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { vi } from 'vitest';
+import { onTestFinished, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -51,7 +52,7 @@ import { TagService } from '@/services/tag.service';
 import { createAgent } from '@test-integration/db/agents';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
-import { createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
+import { createMember, createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
 import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
@@ -60,6 +61,7 @@ import type { PromotionEnvironment } from '../database/entities/promotion-enviro
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
+import { PromotionSettingsService } from '../promotion-settings.service';
 import { PromotionsService } from '../promotions.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
@@ -190,6 +192,18 @@ function sourceOf(environment: PromotionEnvironment) {
 /** The resources that the operation changes. Unchanged resources only give context. */
 function changedResources({ resources }: { resources: PromotionResource[] }) {
 	return resources.filter(({ change }) => change !== 'unchanged');
+}
+
+/** A member who administers the project, while "Who can promote" allows project admins. */
+async function createPromotingProjectAdmin(owner: User, project: Project) {
+	const settings = Container.get(PromotionSettingsService);
+	onTestFinished(async () => {
+		await settings.update(owner, { whoCanPromote: 'instanceAdmins' });
+	});
+	await settings.update(owner, { whoCanPromote: 'projectAdmins' });
+	const projectAdmin = await createMember();
+	await linkUserToProject(projectAdmin, project, 'project:admin');
+	return projectAdmin;
 }
 
 function changedWorkflows(preview: { resources: PromotionResource[] }) {
@@ -956,7 +970,7 @@ describe('resources in the preview', () => {
 		expect(changedResources(await loadPreview())).toEqual([]);
 	}, 60_000);
 
-	it('stops Promote when the project or its branch changed after the preview, then pushes what the preview shows', async () => {
+	it('lets a project admin promote their project, stops Promote when the project or its branch changed after the preview, then pushes what the preview shows', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
 		const invoice = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
@@ -969,8 +983,9 @@ describe('resources in the preview', () => {
 		const workflowRepository = Container.get(WorkflowRepository);
 		await workflowRepository.update(invoice.id, { name: 'Invoice (local)' });
 		await workflowRepository.update(reminder.id, { name: 'Reminder (local)' });
+		const projectAdmin = await createPromotingProjectAdmin(owner, project);
 
-		const agent = server.publicApiAgentWithCookie(owner);
+		const agent = server.publicApiAgentWithCookie(projectAdmin);
 		const loadPreview = async () =>
 			(await agent.get(`/promotions/projects/${project.id}/changes/promote`).expect(200)).body;
 		const promoteShown = async (preview: { revision: string }) =>
@@ -984,6 +999,15 @@ describe('resources in the preview', () => {
 
 		// A colleague edits a workflow of the project during the review.
 		const beforeEdit = await loadPreview();
+		const { details } = (
+			await agent
+				.post(`/promotions/projects/${project.id}/changes/promote/details`)
+				.send({ commitSha: beforeEdit.commitSha, keys: [`workflow:${invoice.id}`] })
+				.expect(200)
+		).body;
+		expect(details).toEqual([
+			expect.objectContaining({ after: expect.objectContaining({ name: 'Invoice (local)' }) }),
+		]);
 		await workflowRepository.update(invoice.id, { name: 'Invoice (edited again)' });
 		const head = await remoteHead();
 		expect(await promoteShown(beforeEdit)).toEqual(stopped);
@@ -1317,6 +1341,47 @@ describe('resources in the preview', () => {
 			.expect(200);
 		expect(body.details).toEqual([expect.objectContaining({ key })]);
 		expect(body.missingKeys).toEqual([draftKey]);
+	}, 30_000);
+
+	it("leaves out a credential on the branch that the project admin can't read", async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Billing', owner);
+		const payments = await createTeamProject('Payments', owner);
+		const credential = await saveCredential(
+			{ name: 'Payments API', type: 'httpHeaderAuth', data: {} },
+			{ project: payments, role: 'credential:owner' },
+		);
+		// The owner can use every credential, so the branch holds one that Billing can't read.
+		const charge = await buildWorkflowReferencingCredential({
+			name: 'Charge customers',
+			project,
+			credential,
+		});
+		const environments = await createInstanceEnvironments();
+		await exportPreviewBaseline(environments.promote, owner);
+		const projectAdmin = await createPromotingProjectAdmin(owner, project);
+		const agent = server.publicApiAgentWithCookie(projectAdmin);
+		const endpoint = `/promotions/projects/${project.id}/changes/promote`;
+		const { commitSha } = (await agent.get(endpoint).expect(200)).body;
+		const credentialKey = `credential:${credential.id}`;
+		const workflowKey = `workflow:${charge.id}`;
+
+		const loadDetails = async () =>
+			(
+				await agent
+					.post(`${endpoint}/details`)
+					.send({ commitSha, keys: [credentialKey, workflowKey] })
+					.expect(200)
+			).body;
+
+		const expected = {
+			missingKeys: [credentialKey],
+			details: [expect.objectContaining({ key: workflowKey })],
+		};
+		expect(await loadDetails()).toEqual(expected);
+		// The branch still holds the credential after its deletion on this instance.
+		await Container.get(CredentialsRepository).delete(credential.id);
+		expect(await loadDetails()).toEqual(expected);
 	}, 30_000);
 
 	it('returns both sides of a project whose id has a colon', async () => {

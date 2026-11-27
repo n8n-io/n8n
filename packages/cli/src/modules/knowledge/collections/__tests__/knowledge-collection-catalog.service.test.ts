@@ -10,6 +10,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { makeKnowledgeAvailabilityService } from '../../__tests__/test-utils/knowledge-availability.service';
 import type { KnowledgeCollection } from '../../entities';
+import type { KnowledgeWriteRunner } from '../../files/knowledge-file.service';
 import type {
 	KnowledgeCollectionRepository,
 	KnowledgeCollectionSummary,
@@ -56,6 +57,7 @@ function makeService({ collectionsFlag = true }: { collectionsFlag?: boolean } =
 	collectionRepository.findByIdAndProjectId.mockResolvedValue(collection);
 	collectionRepository.findSharedSummaries.mockResolvedValue([summary]);
 	collectionRepository.isNameTakenInProject.mockResolvedValue(false);
+	collectionRepository.findFileTotals.mockResolvedValue(new Map());
 
 	const projectRepository = mock<ProjectRepository>();
 	projectRepository.existsBy.mockResolvedValue(true);
@@ -595,6 +597,75 @@ describe('KnowledgeCollectionCatalogService', () => {
 
 			await expect(service.delete(user, projectId, 'collection-1')).rejects.toThrow(NotFoundError);
 			expect(collectionRepository.deleteSharedInProject).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('listForAgent', () => {
+		it('lists the collections of the project by name, with the collections of the agent marked', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.findSharedByProjectId.mockResolvedValue([
+				mock<KnowledgeCollection>({ id: 'c-2', name: 'Returns', description: 'Refunds' }),
+				mock<KnowledgeCollection>({ id: 'c-1', name: 'Pricing', description: null }),
+			]);
+			collectionRepository.findAgentCollectionIds.mockResolvedValue(['c-2']);
+			collectionRepository.findFileTotals.mockResolvedValue(
+				new Map([['c-2', { fileCount: 3, totalFileSizeBytes: 300 }]]),
+			);
+
+			await expect(service.listForAgent(user, projectId, 'agent-1')).resolves.toEqual([
+				{ id: 'c-1', name: 'Pricing', description: '', fileCount: 0, usedByAgent: false },
+				{ id: 'c-2', name: 'Returns', description: 'Refunds', fileCount: 3, usedByAgent: true },
+			]);
+			expect(collectionRepository.findFileTotals).toHaveBeenCalledOnce();
+			expect(collectionRepository.findFileTotals).toHaveBeenCalledWith(['c-2', 'c-1'], {});
+			expect(collectionRepository.findSharedByProjectId).toHaveBeenCalledWith(projectId, {});
+			expect(collectionRepository.findAgentCollectionIds).toHaveBeenCalledWith('agent-1', {});
+		});
+
+		it('answers not found and reads nothing when collections are off', async () => {
+			const { service, collectionRepository } = makeService({ collectionsFlag: false });
+
+			await expect(service.listForAgent(user, projectId, 'agent-1')).rejects.toThrow(NotFoundError);
+			expect(collectionRepository.findSharedByProjectId).not.toHaveBeenCalled();
+		});
+
+		it('refuses a user who cannot read agents in the project', async () => {
+			grantScopes();
+			const { service, collectionRepository } = makeService();
+
+			await expect(service.listForAgent(user, projectId, 'agent-1')).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(collectionRepository.findSharedByProjectId).not.toHaveBeenCalled();
+		});
+	});
+
+	describe.each(['addAgent', 'removeAgent'] as const)('%s', (method) => {
+		const ctx = { trx: undefined };
+		const writeFence = vi.fn(async (write) => await write(ctx)) as KnowledgeWriteRunner;
+
+		beforeEach(() => {
+			vi.mocked(writeFence).mockClear();
+		});
+
+		it('writes the dependency row inside the fence', async () => {
+			const { service, collectionRepository } = makeService();
+
+			await service[method](user, ref, 'agent-1', writeFence);
+
+			expect(writeFence).toHaveBeenCalledOnce();
+			expect(collectionRepository[method]).toHaveBeenCalledWith('collection-1', 'agent-1', ctx);
+		});
+
+		it('answers not found and writes nothing when the collection is not in the project', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service[method](user, ref, 'agent-1', writeFence)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(writeFence).not.toHaveBeenCalled();
+			expect(collectionRepository[method]).not.toHaveBeenCalled();
 		});
 	});
 });

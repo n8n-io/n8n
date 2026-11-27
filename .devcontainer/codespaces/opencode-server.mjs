@@ -45,24 +45,23 @@ async function freePort() {
 	return port;
 }
 
-async function request(server, path, directory, options = {}, timeout = 60_000) {
+async function request(server, path, options = {}, timeout = 60_000) {
 	return await fetch(`http://127.0.0.1:${server.port}${path}`, {
 		...options,
 		headers: {
 			authorization: `Basic ${Buffer.from(`opencode:${server.password}`).toString('base64')}`,
-			'x-opencode-directory': encodeURIComponent(directory),
 			'content-type': 'application/json',
 		},
 		signal: AbortSignal.timeout(timeout),
 	});
 }
 
-async function health(server, directory) {
+async function health(server) {
 	try {
-		const response = await request(server, '/global/health', directory, {}, 3000);
+		const response = await request(server, '/api/info', {}, 3000);
 		if (!response.ok) return undefined;
 		const result = await response.json();
-		return result.healthy === true && typeof result.version === 'string' ? result : undefined;
+		return typeof result?.version === 'string' && result.version.length > 0 ? result : undefined;
 	} catch {
 		return undefined;
 	}
@@ -70,9 +69,9 @@ async function health(server, directory) {
 
 const serverFile = (stateDir) => join(stateDir, 'server.json');
 
-async function runningServer({ stateDir, mainDirectory }) {
+async function runningServer({ stateDir }) {
 	const previous = readJson(serverFile(stateDir));
-	return previous && (await health(previous, mainDirectory)) ? previous : undefined;
+	return previous && (await health(previous)) ? previous : undefined;
 }
 
 async function startServer({ stateDir, mainDirectory, workspaces }) {
@@ -94,12 +93,14 @@ async function startServer({ stateDir, mainDirectory, workspaces }) {
 			'unset AGENT_WORKER_TOKEN N8N_DEQUEUE_URL SLACK_BOT_TOKEN',
 			`export TURBO_CACHE_DIR=${quote(join(workspaces, '.turbo-cache'))}`,
 			`[ -d "$TURBO_CACHE_DIR" ] || cp -r ${quote(join(mainDirectory, '.turbo/cache'))} "$TURBO_CACHE_DIR" 2>/dev/null || mkdir -p "$TURBO_CACHE_DIR"`,
-			`export OPENCODE_SERVER_USERNAME=opencode OPENCODE_SERVER_PASSWORD=${quote(server.password)}`,
-			'export OPENCODE_EXPERIMENTAL_CODE_MODE=true',
+			`export OPENCODE_PASSWORD=${quote(server.password)}`,
 			`export OPENCODE_CONFIG_CONTENT=${quote(
 				JSON.stringify({
-					enabled_providers: ['openrouter'],
-					provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
+					policies: [
+						{ action: 'provider.use', resource: '*', effect: 'deny' },
+						{ action: 'provider.use', resource: 'openrouter', effect: 'allow' },
+					],
+					providers: { openrouter: { settings: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
 				}),
 			)}`,
 			// Interactive sessions use the harness sandbox runtime without a profile.
@@ -114,7 +115,7 @@ async function startServer({ stateDir, mainDirectory, workspaces }) {
 	run('tmux', ['new-session', '-d', '-s', tmuxSession, `bash ${quote(launcher)}`]);
 	console.error('Starting the OpenCode server…');
 	for (let attempt = 0; attempt < 60; attempt++) {
-		if (await health(server, mainDirectory)) return server;
+		if (await health(server)) return server;
 		await delay(500);
 	}
 	throw new Error(`OpenCode did not become ready. Check ${stateDir}/server.log.`);
@@ -172,22 +173,22 @@ function prepareWorkspace({ name, directory, mainDirectory, stateDir }) {
 // each worktree resumes its own most recently updated root conversation.
 async function resolveSession({ name, fresh, directory, server }) {
 	if (!fresh) {
-		const query = new URLSearchParams({ directory, roots: 'true' });
-		const response = await request(server, `/session?${query}`, directory);
+		const query = new URLSearchParams({ directory, parentID: 'null', order: 'desc' });
+		const response = await request(server, `/api/session?${query}`);
 		if (!response.ok) throw new Error(`Cannot list OpenCode sessions (${response.status}).`);
-		const sessions = await response.json();
-		const latest = Array.isArray(sessions)
-			? sessions.find((entry) => typeof entry?.id === 'string' && entry.id.length > 0)
+		const result = await response.json();
+		const latest = Array.isArray(result?.data)
+			? result.data.find((entry) => typeof entry?.id === 'string' && entry.id.length > 0)
 			: undefined;
 		if (latest) return latest.id;
 	}
-	const response = await request(server, '/session', directory, {
+	const response = await request(server, '/api/session', {
 		method: 'POST',
-		body: JSON.stringify({ title: `n8n: ${name}` }),
+		body: JSON.stringify({ title: `n8n: ${name}`, location: { directory } }),
 	});
 	if (!response.ok) throw new Error(`Cannot create OpenCode session (${response.status}).`);
-	const session = await response.json();
-	if (typeof session.id !== 'string' || session.directory !== directory)
+	const session = (await response.json())?.data;
+	if (typeof session?.id !== 'string' || session.location?.directory !== directory)
 		throw new Error('OpenCode returned an invalid session.');
 	return session.id;
 }
@@ -203,7 +204,7 @@ export async function prepareOpenCode({
 	if (!/^\w[\w-]*$/.test(name)) throw new Error('Invalid OpenCode workspace name.');
 	mkdirSync(stateDir, { recursive: true, mode: 0o700 });
 	const directory = name === 'agent' ? mainDirectory : join(workspaces, `wt-${name}`);
-	let server = await runningServer({ stateDir, mainDirectory });
+	let server = await runningServer({ stateDir });
 	// On a cold start, fail before the worktree install when OpenCode is missing on the Codespace.
 	if (!server) execFileSync('opencode', ['--version'], { stdio: ['ignore', 'pipe', 'inherit'] });
 	prepareWorkspace({ name, directory, mainDirectory, stateDir });

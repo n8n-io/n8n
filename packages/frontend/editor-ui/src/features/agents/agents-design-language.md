@@ -183,8 +183,10 @@ Put it in the session list menu and beside Close in the session detail header.
 Use a red, icon-only ghost control in the header. Match the Preview control's
 size. Disable the action while the request runs. Keep the session running until
 the server reports its final status. Then remove the stop icon and show
-`Session stopped` in the conversation. Keep the notice after a reload. Send the same
-notice to a user who talks to the Agent through a channel.
+`Session stopped` in the conversation as a muted status line, below the stopped
+turn. Do not show it as reply text. A chat host can replace the label. Keep the
+notice after a reload. A user who talks to the Agent through a channel gets
+`Session stopped` as a channel message.
 Stop discards queued input, including steered messages, before it aborts the active
 execution. Clear the chat queue and close its waiting connections. Keep unsent
 composer drafts. Stop also cancels active background child jobs and clears suspensions for the
@@ -272,6 +274,20 @@ external app choice.
 Disable the menu under edit locks and read-only access. Check this state again
 when the user selects an action. Configuration errors must not block removal
 or deactivation.
+
+## Workflows from skills
+
+Show each workflow that an attached skill mentions in the Workflows row, after
+the direct workflow tools. After the workflow name, put a small muted tag with the
+`book-open` icon and the skill name. Use `From skill <name>` as its hover text and
+its screen-reader text.
+Let these chips use the full row width, so the tag stays readable.
+Truncate the workflow name and the tag apart, so a long name does not hide
+the tag. A click opens the skill. Do not give these chips a context menu: the user removes
+them by detaching the skill. Show the same not published and not found notes
+as on a direct workflow tool. Show a workflow that is also attached directly
+only once, as the direct tool. The skill chip then names it in an
+`Already attached as a tool` tooltip.
 
 ## Modal patterns
 

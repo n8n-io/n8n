@@ -211,7 +211,8 @@ export interface IWorkflowErrorData {
 		url?: string;
 		retryOf?: string;
 		error: ExecutionError;
-		lastNodeExecuted: string;
+		/** Absent when the failed run has no failed node. */
+		lastNodeExecuted?: string;
 		mode: WorkflowExecuteMode;
 		executionContext?: IExecutionContext;
 	};

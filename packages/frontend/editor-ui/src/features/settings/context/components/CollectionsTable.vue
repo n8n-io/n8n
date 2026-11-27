@@ -4,14 +4,13 @@ import type { KnowledgeCollectionDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { N8nActionToggle, N8nBadge, N8nDataTableServer, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji, TableHeader } from '@n8n/design-system';
-import { getResourcePermissions } from '@n8n/permissions';
-import { useRBACStore } from '@n8n/stores/rbac.store';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
+import { useCollectionPermissions } from '@/features/settings/context/composables/useCollectionPermissions';
 
 type HomeProject = KnowledgeCollectionDto['homeProject'];
 type CollectionAction = 'edit' | 'delete';
@@ -36,27 +35,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
-const rbacStore = useRBACStore();
-
-function projectScopes(projectId: string) {
-	const personal = projectsStore.personalProject;
-	if (personal?.id === projectId) {
-		return personal.scopes;
-	}
-
-	return projectsStore.myProjects.find((project) => project.id === projectId)?.scopes;
-}
-
-// The server checks `agent:update` in the home project, or the global scope of an instance owner.
-function canChange(collection: KnowledgeCollectionDto): boolean {
-	const hasGlobalScope = rbacStore.hasScope('agent:update');
-	if (hasGlobalScope) {
-		return true;
-	}
-
-	const scopes = projectScopes(collection.homeProject.id);
-	return getResourcePermissions(scopes).agent?.update === true;
-}
+const { canChange } = useCollectionPermissions();
 
 const rowActions = computed<CollectionActionItem[]>(() => [
 	{ value: 'edit', label: i18n.baseText('settings.context.collections.actions.edit') },

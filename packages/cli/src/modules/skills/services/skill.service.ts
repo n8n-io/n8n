@@ -47,6 +47,7 @@ import {
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
 import { SkillSyncedError } from '../errors/skill-synced.error';
 import { SkillSourceClientRegistry } from '../sources/skill-source-client-registry.service';
+import { skillSourceRepositoryKey } from '../sources/skill-source-client';
 import {
 	isSameSkillTarget,
 	skillScopeOf,
@@ -67,10 +68,9 @@ import {
 	type SkillUpdate,
 } from '../utils/skill-content';
 import { compareSkillFilePaths, skillContentHash } from '../utils/skill-content-hash';
-import { skillGroupPage } from '../utils/skill-group-page';
+import { skillGroupPage, type SkillSourceGroup } from '../utils/skill-group-page';
 import { getSkillHash } from '../utils/skill-hash';
 import { withUnsentSkillFiles } from '../utils/skill-model-update';
-import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
@@ -160,7 +160,6 @@ export class SkillService {
 		private readonly skillAccess: SkillAccessService,
 		private readonly skillRuntime: SkillRuntimeService,
 		private readonly skillsTelemetry: SkillsTelemetry,
-		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 		private readonly syncedFrom: SkillSyncedFromService,
 		private readonly sourceRepository: SkillSourceRepository,
 		private readonly skillSyncFlagGate: SkillSyncFlagGate,
@@ -237,15 +236,14 @@ export class SkillService {
 			!match.usedBySkillIds &&
 			!match.attachableToProjectId &&
 			(Boolean(match.search || match.sourceIds) || (!match.scope && !match.projectId));
-		const sources =
-			match.search || includeEmptySources
-				? (await this.sourceRepository.findVisibleSources(visibility.projectIds)).filter(
-						(source) =>
-							(!match.sourceIds || match.sourceIds.includes(source.id)) &&
-							(!match.projectId || source.projectId === match.projectId) &&
-							(!match.scope || skillScopeOf(source) === match.scope),
-					)
-				: [];
+		const sources = (
+			await this.sourceRepository.findVisibleSourcesForGrouping(visibility.projectIds)
+		).filter(
+			(source) =>
+				(!match.sourceIds || match.sourceIds.includes(source.id)) &&
+				(!match.projectId || source.projectId === match.projectId) &&
+				(!match.scope || skillScopeOf(source) === match.scope),
+		);
 		const search = match.search?.toLowerCase();
 		const searchSourceIds = search
 			? sources
@@ -259,18 +257,35 @@ export class SkillService {
 					.map((source) => source.id)
 			: undefined;
 		const groupedMatch = { ...match, searchSourceIds };
-		let groups = await this.skillRepository.findSourceGroupSizes(visibility, groupedMatch);
-		if (includeEmptySources) {
-			const counts = new Map(groups.map((group) => [group.sourceId, group.count]));
-			groups = sources
-				.filter(
-					(source) => counts.has(source.id) || !search || searchSourceIds?.includes(source.id),
-				)
-				.sort((a, b) => a.identityKey.localeCompare(b.identityKey) || a.id.localeCompare(b.id))
-				.map((source) => ({ sourceId: source.id, count: counts.get(source.id) ?? 0 }));
-			const localCount = counts.get(null);
-			if (localCount) groups.push({ sourceId: null, count: localCount });
-		}
+		const counts = new Map(
+			(await this.skillRepository.findSourceGroupSizes(visibility, groupedMatch)).map((group) => [
+				group.sourceId,
+				group.count,
+			]),
+		);
+		const groups: SkillSourceGroup[] = sources
+			.filter(
+				(source) =>
+					counts.has(source.id) ||
+					(includeEmptySources && (!search || searchSourceIds?.includes(source.id))),
+			)
+			.map((source) => {
+				const identity = this.sourceClients.get(source.type)?.identity(source.locator);
+				return {
+					id: source.id,
+					repository: identity ? skillSourceRepositoryKey(identity) : source.type,
+					path: identity?.path ?? '',
+				};
+			})
+			.sort(
+				(a, b) =>
+					a.repository.localeCompare(b.repository) ||
+					a.path.localeCompare(b.path) ||
+					a.id.localeCompare(b.id),
+			)
+			.map(({ id }) => ({ sourceId: id, count: counts.get(id) ?? 0 }));
+		const localCount = counts.get(null);
+		if (localCount) groups.push({ sourceId: null, count: localCount });
 		const page = skillGroupPage(groups, pageIndex, take, focusSourceId);
 		const openGroups = page.groups.filter(
 			(group) => group.take > 0 && !collapsed.has(group.sourceId),
@@ -439,12 +454,6 @@ export class SkillService {
 		payload: CreateSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillDetail> {
-		if (
-			payload.availableToAssistant !== undefined &&
-			!(await this.assistantSkillsFlagGate.isEnabled())
-		) {
-			throw new UserError("The n8n Assistant can't use skills on this instance.");
-		}
 		const target = await this.skillAccess.resolveCreateTarget(user, payload);
 		const input = {
 			checkNameTaken: true,
@@ -492,12 +501,6 @@ export class SkillService {
 			keepUnnamedBinaryFiles?: boolean;
 		} = {},
 	): Promise<SkillSaveResponse> {
-		if (
-			payload.availableToAssistant !== undefined &&
-			!(await this.assistantSkillsFlagGate.isEnabled())
-		) {
-			throw new NotFoundError('Skill not found');
-		}
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'update');
 		const { scope, projectId, availableToAssistant, availableToMCP, ...update } = payload;
 		if (options.keepUnnamedBinaryFiles && update.references) {

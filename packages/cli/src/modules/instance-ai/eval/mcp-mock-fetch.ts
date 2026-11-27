@@ -59,6 +59,8 @@ interface McpMockTool {
 	inputSchema: Record<string, unknown>;
 }
 
+/** Starts the text of a tool result when the mock failed to generate one. Simulation callers block on it. */
+export const MCP_MOCK_GENERATION_FAILURE_PREFIX = 'Mock generation failed for MCP tool';
 const MAX_PRIOR_CALL_CONTEXT_CHARS = 2_000;
 const MOCK_SESSION_ID = 'eval-mock-session';
 
@@ -276,7 +278,7 @@ export function createMcpMockFetch(options: McpMockFetchOptions): FetchFn {
 				);
 				return (
 					generated ?? {
-						text: `Mock generation failed for MCP tool "${toolName}" — treat this scenario failure as a framework issue, not agent behaviour.`,
+						text: `${MCP_MOCK_GENERATION_FAILURE_PREFIX} "${toolName}" — treat this scenario failure as a framework issue, not agent behaviour.`,
 						isError: true,
 					}
 				);

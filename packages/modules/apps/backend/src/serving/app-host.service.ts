@@ -9,6 +9,7 @@ import { isIP } from 'node:net';
 import { AppsConfig } from '../apps.config';
 
 const FQDN_MAX_LENGTH = 253;
+const DNS_LABEL_MAX_LENGTH = 63;
 const DNS_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const PREVIEW_MARKER = '--preview';
 const APP_CSP = "base-uri 'self'; object-src 'none'";
@@ -85,6 +86,19 @@ export class AppHostService {
 		return this.originForLabel(namespace, PREVIEW_MARKER);
 	}
 
+	/**
+	 * The longest namespace that forms valid app and preview hosts on this instance.
+	 * The preview host is the longer one, so it sets the limit.
+	 */
+	maxNamespaceLength(): number {
+		const fixedLength = PREVIEW_MARKER.length + this.hostSuffix.length;
+		return Math.min(
+			appNamespaceSchema.maxLength ?? DNS_LABEL_MAX_LENGTH,
+			DNS_LABEL_MAX_LENGTH - fixedLength,
+			FQDN_MAX_LENGTH - this.baseUrl.hostname.length - 1 - fixedLength,
+		);
+	}
+
 	callbackUrl(app: { id: string; namespace: string }, kind: AppHostKind = 'published'): string {
 		const origin =
 			kind === 'preview' ? this.previewOrigin(app.namespace) : this.origin(app.namespace);
@@ -145,7 +159,10 @@ export class AppHostService {
 	private originForLabel(namespace: string, marker: string): string | null {
 		if (!appNamespaceSchema.safeParse(namespace).success) return null;
 		const label = `${namespace}${marker}${this.hostSuffix}`;
-		if (label.length > 63 || label.length + this.baseUrl.hostname.length + 1 > FQDN_MAX_LENGTH)
+		if (
+			label.length > DNS_LABEL_MAX_LENGTH ||
+			label.length + this.baseUrl.hostname.length + 1 > FQDN_MAX_LENGTH
+		)
 			return null;
 		const url = new URL(this.baseUrl);
 		const hostname = `${label}.${this.baseUrl.hostname}`;

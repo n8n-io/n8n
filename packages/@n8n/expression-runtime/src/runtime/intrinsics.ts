@@ -44,3 +44,9 @@ export const { isView: isArrayBufferView } = ArrayBuffer;
 export const { isInteger } = Number;
 
 export const { apply: reflectApply, get: reflectGet } = Reflect;
+
+export const NativeMap = Map;
+export const { delete: mapDelete, get: mapGet, has: mapHas, set: mapSet } = Map.prototype;
+
+export const NativeSet = Set;
+export const { delete: setDelete, add: setAdd, has: setHas } = Set.prototype;

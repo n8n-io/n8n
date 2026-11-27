@@ -335,7 +335,7 @@ describe('InstanceAiMessage', () => {
 		expect(container.querySelector('pre')?.textContent).toContain('plain text error details');
 	});
 
-	it('should show blinking cursor when streaming with no content and no agentTree', () => {
+	it('should show typing dots when streaming with no content and no agentTree', () => {
 		const { container } = renderComponent({
 			props: {
 				message: makeMessage({
@@ -346,8 +346,7 @@ describe('InstanceAiMessage', () => {
 			},
 		});
 
-		const cursor = container.querySelector('[class*="blinkingCursor"]');
-		expect(cursor).toBeTruthy();
+		expect(container.querySelector('[data-test-id="ai-typing-indicator"]')).toBeTruthy();
 	});
 
 	it('should show status message when streaming with agentTree.statusMessage', () => {

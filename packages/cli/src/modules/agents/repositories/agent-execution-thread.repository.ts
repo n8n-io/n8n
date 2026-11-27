@@ -629,10 +629,15 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 
 	/**
 	 * Store a generated title and emoji on a thread that has no title yet. A
-	 * title that the user set before the generated one arrived stays.
+	 * title that the user set before the generated one arrived stays. Returns
+	 * whether the thread got the title.
 	 */
-	async setGeneratedTitle(threadId: string, title: string, emoji: string | null): Promise<void> {
-		await this.update({ id: threadId, title: IsNull() }, { title, ...(emoji && { emoji }) });
+	async setGeneratedTitle(threadId: string, title: string, emoji: string | null): Promise<boolean> {
+		const result = await this.update(
+			{ id: threadId, title: IsNull() },
+			{ title, ...(emoji && { emoji }) },
+		);
+		return result.affected === 1;
 	}
 
 	/**
@@ -753,6 +758,18 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			id = thread?.parentThreadId ?? null;
 		}
 		return chain;
+	}
+
+	/** `undefined` when the thread does not exist yet: its first turn creates it. */
+	async findTestChatState(threadId: string): Promise<{ testChat: boolean } | undefined> {
+		const thread = await this.findOne({ select: ['testChat'], where: { id: threadId } });
+		return thread ? { testChat: thread.testChat } : undefined;
+	}
+
+	/** Returns false when the thread does not exist. */
+	async markTestChat(threadId: string): Promise<boolean> {
+		const result = await this.update({ id: threadId }, { testChat: true });
+		return (result.affected ?? 0) > 0;
 	}
 
 	async findProjectId(threadId: string): Promise<string | null> {

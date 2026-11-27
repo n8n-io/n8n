@@ -212,6 +212,44 @@ describe('AgentExecutionService', () => {
 		expect(agentExecutionThreadRepository.incrementUsage).not.toHaveBeenCalled();
 	});
 
+	describe('applyGeneratedTitle', () => {
+		const context = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
+
+		it('stores the title and tells the open lists', async () => {
+			agentExecutionThreadRepository.setGeneratedTitle.mockResolvedValue(true);
+
+			await service.applyGeneratedTitle(context, 'Berlin rain alert', '🌧️');
+
+			expect(agentExecutionThreadRepository.setGeneratedTitle).toHaveBeenCalledWith(
+				'thread-1',
+				'Berlin rain alert',
+				'🌧️',
+			);
+			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).toHaveBeenCalledWith({
+				...context,
+				title: 'Berlin rain alert',
+				emoji: '🌧️',
+			});
+		});
+
+		it('sends no push when the thread already has a title', async () => {
+			agentExecutionThreadRepository.setGeneratedTitle.mockResolvedValue(false);
+
+			await service.applyGeneratedTitle(context, 'Berlin rain alert', null);
+
+			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).not.toHaveBeenCalled();
+		});
+
+		it('does not throw when the title cannot be stored', async () => {
+			agentExecutionThreadRepository.setGeneratedTitle.mockRejectedValue(new Error('db down'));
+
+			await expect(
+				service.applyGeneratedTitle(context, 'Berlin rain alert', null),
+			).resolves.toBeUndefined();
+			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('recordSideCallUsage', () => {
 		it('increments the execution cost and thread totalCost by the report cost in one transaction', async () => {
 			await service.recordSideCallUsage('execution-1', 'thread-1', {
@@ -1324,6 +1362,7 @@ describe('AgentExecutionService', () => {
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			});
+			agentExecutionThreadRepository.setGeneratedTitle.mockResolvedValue(true);
 
 			await recordExecution({
 				threadId: 'thread-1',
@@ -1340,6 +1379,43 @@ describe('AgentExecutionService', () => {
 				'Workflow builder chat',
 				null,
 			);
+			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).toHaveBeenCalledWith({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				title: 'Workflow builder chat',
+			});
+		});
+
+		it('sends no title push from the fallback when the title was already stored during the turn', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread({ title: null }),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
+			memoryBackend.getThread.mockResolvedValue({
+				id: 'thread-1',
+				resourceId: 'user-1',
+				title: 'Workflow builder chat',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+			agentExecutionThreadRepository.setGeneratedTitle.mockResolvedValue(false);
+
+			await recordExecution({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Follow up',
+				record: makeMessageRecord(),
+			});
+
+			expect(agentExecutionThreadRepository.setGeneratedTitle).toHaveBeenCalled();
+			expect(executionUpdateBroadcaster.notifyThreadTitleUpdated).not.toHaveBeenCalled();
 		});
 
 		it('does not sync title from memory when the thread already has a title', async () => {
@@ -2077,8 +2153,56 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('findFirstMessagePreviews', () => {
+		it('reads the first messages of all threads in one query and shortens them', async () => {
+			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(
+				new Map([
+					['thread-1', '  Build a   daily\nrain alert  '],
+					['thread-2', 'x'.repeat(500)],
+					['thread-3', '   '],
+				]),
+			);
+
+			const previews = await service.findFirstMessagePreviews([
+				{ id: 'thread-1', agentName: 'Support' },
+				{ id: 'thread-2', agentName: 'Support' },
+				{ id: 'thread-3', agentName: 'Support' },
+				{ id: 'thread-4', agentName: 'Support' },
+			]);
+
+			expect(agentExecutionRepository.findFirstUserMessageByThreadIds).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.findFirstUserMessageByThreadIds).toHaveBeenCalledWith([
+				'thread-1',
+				'thread-2',
+				'thread-3',
+				'thread-4',
+			]);
+			expect(previews.get('thread-1')).toBe('Build a daily rain alert');
+			expect(previews.get('thread-2')).toHaveLength(200);
+			expect(previews.get('thread-2')?.endsWith('…')).toBe(true);
+			expect(previews.has('thread-3')).toBe(false);
+			expect(previews.has('thread-4')).toBe(false);
+		});
+
+		it('does not split an emoji at the cut', async () => {
+			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(
+				new Map([['thread-1', `${'x'.repeat(198)}🌧️ rain`]]),
+			);
+
+			const previews = await service.findFirstMessagePreviews([
+				{ id: 'thread-1', agentName: 'Support' },
+			]);
+
+			expect(previews.get('thread-1')).toBe(`${'x'.repeat(198)}🌧…`);
+		});
+	});
+
 	describe('findN8nChatThreadsForAgents', () => {
 		const userId = 'user-1';
+
+		beforeEach(() => {
+			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(new Map());
+		});
 
 		it('forwards the agent ids and page request to the repository', async () => {
 			agentExecutionThreadRepository.findN8nChatThreadsForOwner.mockResolvedValue({
@@ -2117,6 +2241,7 @@ describe('AgentExecutionService', () => {
 					{
 						id: 'thread-1',
 						title: 'Refund status',
+						firstMessage: null,
 						updatedAt: '2025-01-02T00:00:00.000Z',
 						agent: {
 							id: 'agent-1',
@@ -2155,6 +2280,10 @@ describe('AgentExecutionService', () => {
 	describe('findN8nChatThreadForAgents', () => {
 		const userId = 'user-1';
 
+		beforeEach(() => {
+			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(new Map());
+		});
+
 		it('forwards the agent ids and thread id to the repository', async () => {
 			agentExecutionThreadRepository.findN8nChatThreadForOwner.mockResolvedValue(null);
 
@@ -2171,12 +2300,16 @@ describe('AgentExecutionService', () => {
 			agentExecutionThreadRepository.findN8nChatThreadForOwner.mockResolvedValue(
 				makeThreadWithAgent(),
 			);
+			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(
+				new Map([['thread-1', 'Where is my refund?']]),
+			);
 
 			const result = await service.findN8nChatThreadForAgents(userId, ['agent-1'], 'thread-1');
 
 			expect(result).toEqual({
 				id: 'thread-1',
 				title: 'Refund status',
+				firstMessage: 'Where is my refund?',
 				updatedAt: '2025-01-02T00:00:00.000Z',
 				agent: { id: 'agent-1', name: 'Support', projectId: 'project-1' },
 			});

@@ -83,6 +83,19 @@ export function useQuickConnect() {
 		return undefined;
 	}
 
+	/**
+	 * Node-scoped match when a node is active; credential-type match for
+	 * node-less surfaces (Agent Builder, credentials list), which have no
+	 * node type to scope the option by package.
+	 */
+	function getQuickConnectOptionForContext(
+		credentialType: string,
+		nodeType: string | undefined,
+	): QuickConnectOption | undefined {
+		if (nodeType) return getQuickConnectOption(credentialType, nodeType);
+		return getQuickConnectOptionByCredentialTypes([credentialType]);
+	}
+
 	async function connectToPinecone(quickConnectOption: QuickConnectPineconeOption) {
 		const { ConnectPopup } = await import('@pinecone-database/connect');
 
@@ -142,7 +155,7 @@ export function useQuickConnect() {
 
 	async function connect(connectParams: {
 		credentialTypeName: string;
-		nodeType: string;
+		nodeType: string | undefined;
 		source: 'node_type' | 'credential_type';
 		serviceName: string;
 		projectId?: string;
@@ -156,7 +169,7 @@ export function useQuickConnect() {
 		telemetry.track('User clicked quick connect button', {
 			source,
 			credential_type: credentialTypeName,
-			node_type: nodeType,
+			node_type: nodeType ?? null,
 		});
 
 		if (isOAuthCredentialType(credentialTypeName)) {
@@ -176,7 +189,7 @@ export function useQuickConnect() {
 			return credential;
 		}
 
-		const quickConnectOption = getQuickConnectOption(credentialTypeName, nodeType);
+		const quickConnectOption = getQuickConnectOptionForContext(credentialTypeName, nodeType);
 		if (quickConnectOption) {
 			const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
 			if (!credentialType) {
@@ -244,6 +257,7 @@ export function useQuickConnect() {
 	return {
 		loading,
 		getQuickConnectOption,
+		getQuickConnectOptionForContext,
 		getQuickConnectOptionByPackageName,
 		getQuickConnectOptionByCredentialTypes,
 		connect,
