@@ -867,7 +867,8 @@ export class EvalThreadRestoreService {
 	}
 }
 
-type ModelCredentialSlot = { model: string; credential?: string };
+/** A `{ model, credential }` pair in an agent config, as a live reference. */
+type ModelCredentialSlot = Pick<AgentJsonConfig, 'model' | 'credential'>;
 
 /** Every `{ model, credential }` pair in an agent config, as live references:
  *  the main model, the sub-agent tiers, and the memory worker models. */
