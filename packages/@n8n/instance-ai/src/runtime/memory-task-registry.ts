@@ -1,4 +1,4 @@
-import type { MemoryTaskEvent } from '@n8n/agents';
+import type { ScopedMemoryTaskEvent } from '@n8n/agents';
 import type { InstanceAiMemoryTaskSnapshot } from '@n8n/api-types';
 
 /**
@@ -8,9 +8,7 @@ import type { InstanceAiMemoryTaskSnapshot } from '@n8n/api-types';
 export class MemoryTaskRegistry {
 	private readonly tasksByThread = new Map<string, Map<string, InstanceAiMemoryTaskSnapshot>>();
 
-	handleEvent(threadId: string, event: MemoryTaskEvent): void {
-		// Episodic memory works across threads; turns of this thread never wait on it.
-		if (event.task.taskKind === 'episodic') return;
+	handleEvent(threadId: string, event: ScopedMemoryTaskEvent): void {
 		const tasks =
 			this.tasksByThread.get(threadId) ?? new Map<string, InstanceAiMemoryTaskSnapshot>();
 		// Map agents-layer task kinds/status into api-types snapshots for eval visibility.

@@ -813,7 +813,7 @@ export class EvalAgentExecutionService {
 
 	/** Record the memory tasks that end during the turn. */
 	private observeMemoryTasks(agent: RuntimeAgent, memoryTurn: MemoryTurn): void {
-		agent.memoryTaskObserver((event) => {
+		agent.allMemoryTasksObserver((event) => {
 			const ended = endedMemoryTask(event);
 			if (ended) memoryTurn.tasks.push(ended);
 		});

@@ -2,7 +2,10 @@ import * as aiModule from 'ai';
 import type { Mock } from 'vitest';
 
 import { InMemoryMemory } from '../../runtime/memory/memory-store';
-import type { MemoryTaskEvent } from '../../runtime/memory/scoped-memory-task-runner';
+import type {
+	MemoryTaskEvent,
+	ScopedMemoryTaskEvent,
+} from '../../runtime/memory/scoped-memory-task-runner';
 import type { SideCallUsageReport } from '../../types/sdk/agent';
 import { Agent } from '../agent';
 import { Memory } from '../memory';
@@ -91,7 +94,7 @@ async function setUpEpisodicAgent(
 				.storage(store)
 				.episodicMemory({ embeddingProviderOptions: { apiKey: 'embedding-key' } }),
 		)
-		.memoryTaskObserver((event) => {
+		.allMemoryTasksObserver((event) => {
 			events.push(event);
 			if (event.type === 'started' && event.task.taskKind === 'episodic') markStarted();
 		});
@@ -161,7 +164,7 @@ describe('Agent.waitForBackgroundTasks', () => {
 		expect(second.finishReason).toBe('stop');
 	});
 
-	it('reports episodic memory tasks to the memory task observer', async () => {
+	it('reports episodic memory tasks to allMemoryTasksObserver', async () => {
 		const { agent, run, release, events } = await setUpEpisodicAgent();
 		release();
 		await agent.waitForBackgroundTasks({ timeoutMs: 5_000 });
@@ -192,5 +195,36 @@ describe('Agent.waitForBackgroundTasks', () => {
 		await waiting;
 		await run;
 		expect(reports.map((report) => report.task)).toContain('episodic');
+	});
+
+	it('keeps episodic events from an observer that did not ask for them', async () => {
+		const store = new InMemoryMemory();
+		await store.episodic.enqueueCaptureCandidate({
+			...PERSISTENCE,
+			sourceMessageId: null,
+			runId: 'run-earlier',
+			toolCallId: 'tc-1',
+			content: 'The user is allergic to peanuts.',
+			evidenceText: 'allergic to peanuts',
+			kind: 'fact',
+		});
+		embedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } });
+		generateText.mockResolvedValue(makeGenerateSuccess('Hello there'));
+		const observed: ScopedMemoryTaskEvent[] = [];
+		const agent = new Agent('memory-agent')
+			.model('openai/gpt-4o-mini')
+			.instructions('You are a test assistant.')
+			.memory(
+				new Memory()
+					.storage(store)
+					.episodicMemory({ embeddingProviderOptions: { apiKey: 'embedding-key' } }),
+			)
+			.memoryTaskObserver((event: ScopedMemoryTaskEvent) => observed.push(event));
+
+		await agent.generate('Hi', { persistence: PERSISTENCE });
+		await agent.waitForBackgroundTasks({ timeoutMs: 5_000 });
+
+		expect(await pendingCandidates(store)).toEqual([]);
+		expect(observed.map((event) => event.task.taskKind)).not.toContain('episodic');
 	});
 });

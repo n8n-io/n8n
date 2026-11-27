@@ -24,7 +24,11 @@ import {
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import { FLAG_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory-capture';
-import type { MemoryTaskEvent, MemoryTaskInfo } from '../runtime/memory/scoped-memory-task-runner';
+import type {
+	MemoryTaskEvent,
+	MemoryTaskInfo,
+	ScopedMemoryTaskEvent,
+} from '../runtime/memory/scoped-memory-task-runner';
 import { AgentMessageList } from '../runtime/model/message-list';
 import { resolveNativeToolDeferral } from '../runtime/model/model-factory';
 import type { FetchFn } from '../runtime/model/model-factory';
@@ -134,6 +138,11 @@ type ActiveRuntime = {
 	runtime: AgentRuntime;
 	bus: AgentEventBus;
 };
+
+/** An observer or reflector task event, the kinds `memoryTaskObserver` reports. */
+function isObservationalMemoryTaskEvent(event: MemoryTaskEvent): event is ScopedMemoryTaskEvent {
+	return event.task.taskKind !== 'episodic';
+}
 
 /** True when `work` settles before `timeoutMs` runs out. */
 async function settlesWithin(work: Promise<unknown>, timeoutMs: number): Promise<boolean> {
@@ -499,8 +508,20 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
-	/** Observe background memory task lifecycle: observer, reflector, and episodic processing. */
-	memoryTaskObserver(observer: (event: MemoryTaskEvent) => void): this {
+	/** Observe observational-memory background task lifecycle (observer/reflector). */
+	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this {
+		this.onMemoryTaskEvent = (event) => {
+			if (isObservationalMemoryTaskEvent(event)) observer(event);
+		};
+		return this;
+	}
+
+	/**
+	 * Observe every background memory task: observer, reflector, and episodic
+	 * memory processing (`taskKind: 'episodic'`). Replaces a
+	 * `memoryTaskObserver`, as a second call of either does.
+	 */
+	allMemoryTasksObserver(observer: (event: MemoryTaskEvent) => void): this {
 		this.onMemoryTaskEvent = observer;
 		return this;
 	}

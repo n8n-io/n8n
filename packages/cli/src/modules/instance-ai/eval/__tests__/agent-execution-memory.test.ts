@@ -124,7 +124,8 @@ describe('EvalAgentExecutionService with memory (AGENT-1666)', () => {
 			approve,
 			close,
 			waitForBackgroundTasks,
-			memoryTaskObserver: (observer: (event: MemoryTaskEvent) => void) => observers.push(observer),
+			allMemoryTasksObserver: (observer: (event: MemoryTaskEvent) => void) =>
+				observers.push(observer),
 		}));
 		Container.set(EvalAgentMemoryReader, memoryReader);
 		memoryReader.pendingCandidateCount.mockResolvedValue(0);

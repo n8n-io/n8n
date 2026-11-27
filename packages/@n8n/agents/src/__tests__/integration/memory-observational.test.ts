@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { createInMemoryAgentMemory, describeIf, getModel } from './helpers';
-import { Agent, Memory, type MemoryTaskEvent } from '../../index';
+import { Agent, Memory, type ScopedMemoryTaskEvent } from '../../index';
 
 const describe = describeIf('anthropic');
 const FIXED_TEST_DATE = new Date('2026-06-01T12:00:00.000Z');
@@ -33,7 +33,7 @@ describe('observational memory integration', () => {
 	it('records observations and emits memory task lifecycle events after generate()', async () => {
 		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
-		const events: MemoryTaskEvent[] = [];
+		const events: ScopedMemoryTaskEvent[] = [];
 		const threadId = uniqueId('thread-observational');
 		const resourceId = uniqueId('resource-observational');
 
