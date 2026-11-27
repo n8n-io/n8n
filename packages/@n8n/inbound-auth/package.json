@@ -1,6 +1,6 @@
 {
   "name": "@n8n/inbound-auth",
-  "version": "0.8.5",
+  "version": "0.8.6",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",

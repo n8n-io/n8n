@@ -1,6 +1,6 @@
 {
   "name": "@n8n/telemetry",
-  "version": "1.17.6",
+  "version": "1.17.7",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
