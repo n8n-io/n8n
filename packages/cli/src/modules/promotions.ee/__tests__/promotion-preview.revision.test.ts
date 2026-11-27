@@ -1,4 +1,8 @@
-import type { PromotionDependencyWarning, PromotionMissingDependency } from '@n8n/api-types';
+import type {
+	PromotionDependencyWarning,
+	PromotionMissingDependency,
+	PromotionPreviewCheck,
+} from '@n8n/api-types';
 
 import { previewRevision, promoteCheckRevision } from '../promotion-preview';
 
@@ -49,6 +53,43 @@ describe('previewRevision', () => {
 		['a warning leaves the list', { warnings: [] }],
 	])('changes when %s', (_case, change) => {
 		expect(previewRevision({ ...shown, ...change })).not.toBe(previewRevision(shown));
+	});
+});
+
+describe('previewRevision of an Apply preview', () => {
+	const notUsable: PromotionMissingDependency = {
+		...missing,
+		group: 'outside-access',
+		reason: 'not-on-instance',
+		accessible: false,
+		blocking: true,
+	};
+	const check = (missingDependencies: PromotionMissingDependency[]): PromotionPreviewCheck => ({
+		missingProjects: [],
+		missingBindings: [],
+		accessRequirements: [],
+		conflicts: [],
+		warnings: [],
+		missingDependencies,
+		movedWorkflows: [],
+		movedFolders: [],
+	});
+	const revisionOf = (missingDependencies: PromotionMissingDependency[]) =>
+		previewRevision({ resources: [], check: check(missingDependencies) });
+
+	it('stays equal when the missing dependencies of the check stay equal', () => {
+		expect(revisionOf([{ ...notUsable }])).toBe(revisionOf([notUsable]));
+	});
+
+	it.each([
+		['a missing dependency leaves the check', []],
+		['a missing dependency changes its reason', [{ ...notUsable, reason: 'not-shared' as const }]],
+		[
+			'a missing dependency changes its group',
+			[{ ...notUsable, group: 'needs-action' as const, accessible: true }],
+		],
+	])('changes when %s', (_case, missingDependencies) => {
+		expect(revisionOf(missingDependencies)).not.toBe(revisionOf([notUsable]));
 	});
 });
 

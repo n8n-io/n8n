@@ -175,7 +175,6 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	credentialConflictSchema.extend({ code: z.literal('missing-id') }),
 	credentialConflictSchema.extend({ code: z.literal('conflicting-types') }),
 	credentialConflictSchema.extend({ code: z.literal('unknown-type') }),
-	credentialConflictSchema.extend({ code: z.literal('unknown-owner') }),
 	credentialConflictSchema.extend({
 		code: z.literal('type-mismatch'),
 		targetType: z.string(),
@@ -258,12 +257,21 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	}),
 ]);
 
+export const promotionBindingWarningSchema = z.object({
+	kind: z.literal('variable'),
+	code: z.literal('variable-shadowed'),
+	name: z.string().min(1),
+	scope: z.object({ kind: z.literal('global') }),
+	consumers: consumersSchema,
+});
+
 export const promotionMissingDependencyKindSchema = z.enum(['credential', 'variable', 'workflow']);
 
 /**
  * Where a missing dependency stands for the user:
  * - `needs-action`: Apply only. The user can resolve it on this instance.
- * - `outside-access`: it is in a project that the user cannot access.
+ * - `outside-access`: it is in a project that the user cannot access, or the branch does not hold
+ *   it under a project (Apply, reason `not-on-branch`). The user cannot resolve it here.
  * - `other-project`: Promote only. It is in another project that the user can access. Promote does not include it.
  * - `personal`: Promote only. It is in a personal project, which a promotion does not carry.
  */
@@ -274,7 +282,11 @@ export const promotionMissingDependencyGroupSchema = z.enum([
 	'personal',
 ]);
 
-/** Promote reports `not-on-branch` and `personal-project`. Apply reports the other reasons. */
+/**
+ * Promote reports `not-on-branch` and `personal-project`. Apply reports the other reasons, and
+ * `not-on-branch` for a dependency that this instance lacks and that the branch does not hold
+ * under a project.
+ */
 export const promotionMissingDependencyReasonSchema = z.enum([
 	'not-on-branch',
 	'personal-project',
@@ -305,7 +317,7 @@ export const promotionMissingDependencySchema = z
 		group: promotionMissingDependencyGroupSchema.openapi({
 			description:
 				'`needs-action` (Apply): you can resolve it on this instance. ' +
-				'`outside-access`: it is in a project that you cannot access. ' +
+				'`outside-access`: it is in a project that you cannot access, or (Apply, reason `not-on-branch`) the branch does not hold it under a project. ' +
 				'`other-project` (Promote): it is in another project that you can access, and this Promote does not include it. ' +
 				'`personal` (Promote): it is in a personal project, which a promotion does not carry.',
 		}),
@@ -320,6 +332,10 @@ export const promotionMissingDependencySchema = z
 		blocking: z.boolean().openapi({
 			description:
 				'Whether the operation stops on this dependency. When false, the operation continues without it.',
+		}),
+		condition: z.enum(['target-selected', 'target-not-selected']).optional().openapi({
+			description:
+				'Only in the Apply preview of a project, for a workflow entry. The entry holds only when the selection includes (`target-selected`) or does not include (`target-not-selected`) the workflow with this `id`. Without it, the entry holds for every selection.',
 		}),
 		consumers: consumersSchema,
 	})
@@ -338,14 +354,6 @@ export const promotionDependencyWarningSchema = z
 		consumers: consumersSchema,
 	})
 	.openapi('PromotionDependencyWarning');
-
-export const promotionBindingWarningSchema = z.object({
-	kind: z.literal('variable'),
-	code: z.literal('variable-shadowed'),
-	name: z.string().min(1),
-	scope: z.object({ kind: z.literal('global') }),
-	consumers: consumersSchema,
-});
 
 /**
  * What stops an Apply. Source IDs define creation scope.
@@ -369,6 +377,12 @@ export const promotionApplyCheckSchema = z
 		accessRequirements: z.array(promotionBindingAccessRequirementSchema),
 		conflicts: z.array(promotionBindingConflictSchema),
 		warnings: z.array(promotionBindingWarningSchema),
+		missingDependencies: z.array(promotionMissingDependencySchema).openapi({
+			description:
+				'Every credential, variable, sub-workflow and error workflow that the applied workflows use, and that is not usable on this instance after the Apply. ' +
+				'An entry of the group `needs-action` can also be in `missingBindings`, `accessRequirements` or `conflicts`, which hold the details to resolve it. ' +
+				'An entry of the group `outside-access` is only in this list.',
+		}),
 	})
 	// One component for the Apply results and the Apply preview.
 	.openapi('PromotionApplyCheck');

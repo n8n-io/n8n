@@ -3,7 +3,7 @@ import type {
 	PromotionMissingDependency,
 	PromotionResource,
 } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { isBlocking, type Blocker } from '../promotionOperation';
 import type { ApplyCheckResult } from '../promotions.types';
@@ -78,10 +78,23 @@ export function usePromotionPreviewLabels() {
 					interpolate: { project: resource.movedFromProject.name },
 				});
 			}
-			return i18n.baseText('promotions.preview.marker.workflow', {
-				adjustToNumber: blocking.length,
-				interpolate: { count: String(blocking.length) },
-			});
+			const counted = (key: BaseTextKey, count: number) =>
+				i18n.baseText(key, { adjustToNumber: count, interpolate: { count: String(count) } });
+			if (!blocking.every(({ kind }) => kind === 'outside')) {
+				return counted('promotions.preview.marker.workflow', blocking.length);
+			}
+			// Users cannot resolve these dependencies. No one can add to this instance a dependency
+			// that the branch does not hold, so it has its own text.
+			const notOnBranch = blocking.filter(({ reason }) => reason === 'not-on-branch').length;
+			const noAccess = blocking.length - notOnBranch;
+			return [
+				noAccess > 0 ? counted('promotions.preview.marker.workflow.outside', noAccess) : '',
+				notOnBranch > 0
+					? counted('promotions.preview.marker.workflow.notOnBranch', notOnBranch)
+					: '',
+			]
+				.filter(Boolean)
+				.join(' ');
 		}
 		const [first] = blocking;
 		if (first.kind === 'moved' && resource.type === 'folder') {
@@ -96,18 +109,46 @@ export function usePromotionPreviewLabels() {
 		if (first.kind === 'missing' && resource.type === 'variable') {
 			return i18n.baseText('promotions.preview.marker.missingVariable', options);
 		}
+		if (first.kind === 'outside' && resource.type === 'credential') {
+			return i18n.baseText(
+				first.reason === 'not-on-branch'
+					? 'promotions.preview.marker.notOnBranchCredential'
+					: 'promotions.preview.marker.outsideCredential',
+				options,
+			);
+		}
 		return i18n.baseText('promotions.preview.marker.conflict', options);
 	}
 
-	/** What a workflow says about the dependencies that Promote leaves out. They do not stop it. */
-	function missingDependencyMarker(dependencies: readonly PromotionMissingDependency[]): string {
+	/**
+	 * What a workflow says about the dependencies that Promote leaves out, or that it cannot use
+	 * on this instance after an Apply. They do not stop it.
+	 */
+	function missingDependencyMarker(
+		dependencies: readonly PromotionMissingDependency[],
+		direction: PromotionDirection,
+	): string {
+		const options = {
+			adjustToNumber: dependencies.length,
+			interpolate: { count: String(dependencies.length) },
+		};
+		// On Apply, the status of this reason is "Not on the branch". Promote gives the reason to
+		// every dependency that it leaves out.
+		const notOnBranch = ({ reason }: PromotionMissingDependency) =>
+			direction === 'apply' && reason === 'not-on-branch';
+		if (dependencies.every((entry) => entry.group === 'outside-access' && !notOnBranch(entry))) {
+			return i18n.baseText(`promotions.preview.marker.outside.${direction}`, options);
+		}
 		// A dependency of another project that the user can access is not outside the access of
 		// the user. Then the text only says that the Promote does not include the dependencies.
+		if (direction === 'promote') {
+			return i18n.baseText('promotions.preview.marker.notIncluded', options);
+		}
 		return i18n.baseText(
-			dependencies.every(({ group }) => group === 'outside-access')
-				? 'promotions.preview.marker.outside.promote'
-				: 'promotions.preview.marker.notIncluded',
-			{ adjustToNumber: dependencies.length, interpolate: { count: String(dependencies.length) } },
+			dependencies.every(notOnBranch)
+				? 'promotions.preview.marker.notOnBranch'
+				: 'promotions.preview.marker.notUsable',
+			options,
 		);
 	}
 

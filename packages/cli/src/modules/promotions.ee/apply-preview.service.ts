@@ -43,6 +43,7 @@ import {
 	type ImportSelectionRequest,
 } from '@/modules/n8n-packages/n8n-packages.types';
 
+import { ApplyDependencyCheckService } from './apply-dependency-check.service';
 import { plannedChanges, toPreviewCheck, withoutTagIds, withoutTags } from './apply-preview';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cross-project-moves';
@@ -52,6 +53,7 @@ import { exportInstancePackage, type InstancePackage } from './instance-package'
 import {
 	collectCredentialReferences,
 	collectVariableReferences,
+	collectWorkflowReferences,
 	compare,
 } from './package-references';
 import { buildPreview, previewRevision, resourceKey, type PreviewSide } from './promotion-preview';
@@ -145,6 +147,7 @@ export class ApplyPreviewService {
 		private readonly folderService: FolderService,
 		private readonly localEntities: LocalPackageEntities,
 		private readonly globalConfig: GlobalConfig,
+		private readonly dependencyCheck: ApplyDependencyCheckService,
 	) {}
 
 	/**
@@ -182,8 +185,9 @@ export class ApplyPreviewService {
 				)
 			: null;
 
+		// The plan covers the whole project, and the user applies a selection of it.
 		const check = plan
-			? this.check(plan, inventory, selection, moves)
+			? await this.check(plan, inventory, selection, moves, true)
 			: projectNotOnBranch(projectId, instance);
 		const { resources, dependencies } = compareWithBranch({
 			operation: { direction: 'apply', planned: plan && plannedChanges(plan) },
@@ -220,7 +224,7 @@ export class ApplyPreviewService {
 			reader,
 			'check',
 		);
-		const planCheck = this.check(plan, inventory, undefined, moves);
+		const planCheck = await this.check(plan, inventory, undefined, moves);
 		const check = { ...planCheck, conflicts: [...planCheck.conflicts, ...deletedProjects] };
 
 		const deletedProjectIds = deletedProjects.flatMap((conflict) =>
@@ -335,15 +339,20 @@ export class ApplyPreviewService {
 	}
 
 	/**
-	 * What stops the Apply of a plan. Without a selection, it checks the whole package. It reads
-	 * credential and variable references only from the workflows that the plan imports.
+	 * What stops the Apply of a plan, and what its workflows cannot use after the Apply. Without a
+	 * selection, it checks the whole package. It reads references only from the workflows that the
+	 * plan imports.
+	 *
+	 * `selectionOpen` is for the preview of a project: the user applies a part of `selection`, so an
+	 * entry of the missing dependencies can depend on that part.
 	 */
-	check(
+	async check(
 		plan: PackageImportPlan,
 		inventory: PackageDirectoryInventory,
 		selection: ImportSelection | undefined,
 		moves: CrossProjectMoves,
-	): PromotionPreviewCheck {
+		selectionOpen = false,
+	): Promise<PromotionPreviewCheck> {
 		const selected = selection && new Set(selection.selectedWorkflowIds);
 		const scoped = {
 			...inventory,
@@ -352,12 +361,22 @@ export class ApplyPreviewService {
 					!selection || (projectId === selection.selectedProjectId && selected?.has(id)),
 			),
 		};
+		const workflows = collectWorkflowReferences(scoped);
 		return toPreviewCheck({
 			plan,
 			inventory,
 			credentials: collectCredentialReferences(scoped),
 			variables: collectVariableReferences(scoped, this.variableExtractor),
+			workflows,
 			moves,
+			dependencies: await this.dependencyCheck.facts({
+				plan,
+				inventory,
+				applied: scoped.workflows,
+				references: workflows,
+				wholeInstance: selection === undefined,
+				selectionOpen,
+			}),
 		});
 	}
 
@@ -491,6 +510,7 @@ function projectNotOnBranch(projectId: string, instance: InstancePackage): Promo
 			},
 		],
 		warnings: [],
+		missingDependencies: [],
 		movedWorkflows: [],
 		movedFolders: [],
 	};
