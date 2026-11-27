@@ -1153,6 +1153,7 @@ export {
 	EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING,
 	EXECUTION_LIMIT_PERIOD_UNITS,
 	executionLimitMaxExecutionsSchema,
+	executionLimitPeriodUnitSchema,
 	executionLimitSettingsSchema,
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,
