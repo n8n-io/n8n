@@ -69,3 +69,76 @@ export const rawCustomFieldKeysOption: INodeProperties = {
 	description:
 		'Whether to provide raw Pipedrive field keys and option IDs instead of human-readable names',
 };
+
+const ORGANIZATION_INCLUDE_FIELDS = [
+	'activities_count',
+	'closed_deals_count',
+	'done_activities_count',
+	'email_messages_count',
+	'files_count',
+	'followers_count',
+	'last_activity_id',
+	'lost_deals_count',
+	'next_activity_id',
+	'notes_count',
+	'open_deals_count',
+	'people_count',
+	'related_closed_deals_count',
+	'related_lost_deals_count',
+	'related_open_deals_count',
+	'related_won_deals_count',
+	'smart_bcc_email',
+	'undone_activities_count',
+	'won_deals_count',
+];
+
+const PERSON_INCLUDE_FIELDS = [
+	'activities_count',
+	'closed_deals_count',
+	'doi_status',
+	'done_activities_count',
+	'email_messages_count',
+	'files_count',
+	'followers_count',
+	'last_activity_id',
+	'last_incoming_mail_time',
+	'last_outgoing_mail_time',
+	'lost_deals_count',
+	'marketing_status',
+	'next_activity_id',
+	'notes_count',
+	'open_deals_count',
+	'participant_closed_deals_count',
+	'participant_open_deals_count',
+	'related_closed_deals_count',
+	'related_lost_deals_count',
+	'related_open_deals_count',
+	'related_won_deals_count',
+	'smart_bcc_email',
+	'undone_activities_count',
+	'won_deals_count',
+];
+
+function includeFieldsOption(fields: string[]): INodeProperties {
+	return {
+		displayName: 'Include Fields',
+		name: 'includeFields',
+		type: 'multiOptions',
+		options: fields.map((field) => ({
+			name: field
+				.split('_')
+				.map((part, index) => (index === 0 ? part[0].toUpperCase() + part.slice(1) : part))
+				.join(' ')
+				.replace(/\bbcc\b/, 'BCC')
+				.replace(/\bdoi\b/i, 'DOI')
+				.replace(/\bid\b/, 'ID'),
+			value: field,
+		})),
+		default: [],
+		description:
+			'Additional fields to return. API v2 leaves these out unless they are requested, for example the deal and activity counts.',
+	};
+}
+
+export const organizationIncludeFieldsOption = includeFieldsOption(ORGANIZATION_INCLUDE_FIELDS);
+export const personIncludeFieldsOption = includeFieldsOption(PERSON_INCLUDE_FIELDS);
