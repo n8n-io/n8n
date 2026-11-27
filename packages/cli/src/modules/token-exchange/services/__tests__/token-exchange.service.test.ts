@@ -75,9 +75,10 @@ describe('TokenExchangeService', () => {
 			);
 			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
 			jtiStore.consume.mockResolvedValue(true);
-			identityResolutionService.resolve.mockResolvedValue(
-				Object.assign(new ServiceAccount(), { id: 'sa-1', role: GLOBAL_MEMBER_ROLE }),
-			);
+			identityResolutionService.resolve.mockResolvedValue({
+				user: Object.assign(new ServiceAccount(), { id: 'sa-1', role: GLOBAL_MEMBER_ROLE }),
+				outcome: 'existing',
+			});
 
 			await expect(service.embedLogin('valid-token')).rejects.toThrow(TokenExchangeAuthError);
 		});
@@ -93,7 +94,7 @@ describe('TokenExchangeService', () => {
 			);
 			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
 			jtiStore.consume.mockResolvedValue(true);
-			identityResolutionService.resolve.mockResolvedValue(mockPerson);
+			identityResolutionService.resolve.mockResolvedValue({ user: mockPerson, outcome: 'linked' });
 
 			const result = await service.embedLogin('valid-token');
 
@@ -102,6 +103,7 @@ describe('TokenExchangeService', () => {
 				subject: 'external-user-1',
 				issuer: 'https://issuer.example.com',
 				kid: 'test-kid',
+				resolution: 'linked',
 			});
 			expect(trustedKeyStore.getByKidAndIss).toHaveBeenCalledWith(
 				'test-kid',

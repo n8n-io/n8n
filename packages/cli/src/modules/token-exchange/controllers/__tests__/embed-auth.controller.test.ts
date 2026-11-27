@@ -36,6 +36,7 @@ const embedLoginResult = {
 	subject: 'ext-sub-1',
 	issuer: 'https://issuer.example.com',
 	kid: 'key-id-1',
+	resolution: 'existing' as const,
 };
 
 describe('EmbedAuthController', () => {
@@ -72,6 +73,22 @@ describe('EmbedAuthController', () => {
 	});
 
 	describe('GET /auth/embed', () => {
+		it('should report a user linked by email as linked, not provisioned', async () => {
+			const req = mock<AuthlessRequest>({ browserId: 'browser-id-123', ip: '192.168.1.1' });
+			const res = mock<Response>();
+			tokenExchangeService.embedLogin.mockResolvedValue({
+				...embedLoginResult,
+				resolution: 'linked',
+			});
+
+			await controller.getLogin(req, res, new EmbedLoginQueryDto({ token: 'subject-token' }));
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'embed-login',
+				expect.objectContaining({ userId: '123', jitProvisioned: false, identityLinked: true }),
+			);
+		});
+
 		it('should login, issue cookie with embed overrides, emit audit event, and redirect', async () => {
 			const req = mock<AuthlessRequest>({ browserId: 'browser-id-123', ip: '192.168.1.1' });
 			const res = mock<Response>();
@@ -97,6 +114,9 @@ describe('EmbedAuthController', () => {
 				issuer: 'https://issuer.example.com',
 				kid: 'key-id-1',
 				clientIp: '192.168.1.1',
+				userId: '123',
+				jitProvisioned: false,
+				identityLinked: false,
 			});
 			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
@@ -128,6 +148,9 @@ describe('EmbedAuthController', () => {
 				issuer: 'https://issuer.example.com',
 				kid: 'key-id-1',
 				clientIp: '10.0.0.1',
+				userId: '123',
+				jitProvisioned: false,
+				identityLinked: false,
 			});
 			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});

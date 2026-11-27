@@ -20,6 +20,7 @@ import {
 } from '@n8n/decorators';
 import type { Controller, MultipartUploadLimits } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import cookieParser from 'cookie-parser';
 import express from 'express';
 import { Readable } from 'node:stream';
 import request from 'supertest';
@@ -51,6 +52,8 @@ describe('PublicApiControllerRegistry', () => {
 	function activate(): express.Express {
 		const app = express();
 		app.use(express.json());
+		// mirrors the app-wide cookie parser, which the session cookie strategy reads
+		app.use(cookieParser());
 		// mirrors the app-wide bodyParser, which defaults an absent body to `{}`
 		app.use((req, _res, next) => {
 			req.body ??= {};
@@ -260,6 +263,83 @@ describe('PublicApiControllerRegistry', () => {
 			.expect(401, { message: 'Unauthorized' });
 
 		expect(response.headers['www-authenticate']).toBeUndefined();
+		// A request that carried no credential is anonymous, so nothing was rejected.
+		expect(eventService.emit).not.toHaveBeenCalledWith('auth-request-rejected', expect.anything());
+	});
+
+	it('reports a 401 for an API key the strategies refused, by the route pattern', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/:widgetId')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
+
+		await request(activate())
+			.get('/api/v1/widgets/12')
+			.set('x-n8n-api-key', 'not-a-key')
+			.expect(401, { message: 'Unauthorized' });
+
+		expect(eventService.emit).toHaveBeenCalledWith('auth-request-rejected', {
+			method: 'GET',
+			endpoint: '/v1/widgets/:widgetId',
+			reason: 'api_key_invalid',
+			statusCode: 401,
+		});
+	});
+
+	it('reports a 401 for a bearer token the strategies refused as an invalid session', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
+
+		await request(activate())
+			.get('/api/v1/widgets')
+			.set('Authorization', 'Bearer not-a-token')
+			.expect(401, { message: 'Unauthorized' });
+
+		expect(eventService.emit).toHaveBeenCalledWith('auth-request-rejected', {
+			method: 'GET',
+			endpoint: '/v1/widgets',
+			reason: 'session_invalid',
+			statusCode: 401,
+		});
+	});
+
+	it('reports a 401 for a session cookie the strategies refused as an invalid session', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
+
+		await request(activate())
+			.get('/api/v1/widgets')
+			.set('Cookie', 'n8n-auth=not-a-jwt')
+			.expect(401, { message: 'Unauthorized' });
+
+		expect(eventService.emit).toHaveBeenCalledWith('auth-request-rejected', {
+			method: 'GET',
+			endpoint: '/v1/widgets',
+			reason: 'session_invalid',
+			statusCode: 401,
+		});
 	});
 
 	it('omits the Deprecation header when @Deprecated is absent', async () => {
@@ -512,6 +592,14 @@ describe('PublicApiControllerRegistry', () => {
 			registerScopedRoute();
 
 			await request(activate()).get('/api/v1/widgets/12').expect(403);
+
+			expect(eventService.emit).toHaveBeenCalledWith('auth-request-rejected', {
+				user: authenticatedUser,
+				method: 'GET',
+				endpoint: '/v1/widgets/:widgetId',
+				reason: 'scope',
+				statusCode: 403,
+			});
 		});
 
 		it('hands the parsed value to the handler when the scope check passes', async () => {
@@ -762,7 +850,12 @@ describe('PublicApiControllerRegistry', () => {
 			it('keeps the scope check ahead of multipart parsing', async () => {
 				authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 					req.user = authenticatedUser;
-					req.tokenGrant = { scopes: [], apiKeyScopes: [], subject: authenticatedUser };
+					req.tokenGrant = {
+						scopes: [],
+						apiKeyScopes: [],
+						apiKeyId: 'key-1',
+						subject: authenticatedUser,
+					};
 					return { authenticated: true };
 				});
 
@@ -791,6 +884,14 @@ describe('PublicApiControllerRegistry', () => {
 					.expect(403);
 
 				expect(response.body).toEqual({ message: 'Forbidden' });
+				expect(eventService.emit).toHaveBeenCalledWith('auth-request-rejected', {
+					user: authenticatedUser,
+					apiKeyId: 'key-1',
+					method: 'POST',
+					endpoint: '/v1/widgets/upload-scoped',
+					reason: 'scope',
+					statusCode: 403,
+				});
 			});
 
 			it('hands the parsed body to a controller middleware, not only to the handler', async () => {
@@ -879,6 +980,13 @@ describe('PublicApiControllerRegistry', () => {
 				message: '/users path can only be used with a valid license. See https://n8n.io/pricing/',
 			});
 			expect(handler).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('auth-request-rejected', {
+				user: authenticatedUser,
+				method: 'GET',
+				endpoint: '/v1/widgets',
+				reason: 'quota',
+				statusCode: 403,
+			});
 		});
 
 		it('leaves a route without the decorator unaffected when over quota', async () => {

@@ -16,7 +16,11 @@ import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 
+import { isRecord } from '@n8n/utils/is-record';
+
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import type { AuthRequestRejectionReason } from '@/events/maps/relay.event-map';
 import {
 	createIdempotencyMiddleware,
 	takeIdempotencyClaimId,
@@ -51,6 +55,24 @@ import {
 } from '@/public-api/public-api-controller.utils';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { LastActiveAtService } from '@/services/last-active-at.service';
+
+/** The route a gate guards, as the `auth-request-rejected` event names it. */
+type GateTarget = { method: string; endpoint: string };
+
+const API_KEY_HEADER = 'x-n8n-api-key';
+
+/**
+ * The reason to record for a request the strategies did not authenticate, by the credential it
+ * presented: an API key, a bearer token, or the session cookie of the editor. A request without
+ * any credential is anonymous and is not recorded.
+ */
+function presentedCredentialRejection(req: Request): AuthRequestRejectionReason | undefined {
+	if (req.headers[API_KEY_HEADER] !== undefined) return 'api_key_invalid';
+	if (req.headers.authorization !== undefined) return 'session_invalid';
+	const cookies: unknown = req.cookies;
+	if (isRecord(cookies) && cookies[AUTH_COOKIE_NAME] !== undefined) return 'session_invalid';
+	return undefined;
+}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -206,18 +228,17 @@ export class PublicApiControllerRegistry {
 			};
 
 			const middlewares: RequestHandler[] = [];
+			const endpoint = toEndpointPath(apiVersion, prefix, route.path);
+			// Names the route in the `auth-request-rejected` event: the pattern, never a resolved path.
+			const gate: GateTarget = { method: route.method.toUpperCase(), endpoint };
 
 			if (route.deprecated) {
 				middlewares.push(this.createDeprecationMiddleware(route.deprecated));
 			}
 
-			middlewares.push(this.createAuthMiddleware(apiVersion, routeName));
+			middlewares.push(this.createAuthMiddleware(apiVersion, routeName, gate));
 			middlewares.push(
-				...this.rateLimitService.createRouteLimiters(
-					route.method,
-					toEndpointPath(apiVersion, prefix, route.path),
-					route.rateLimitAccess,
-				),
+				...this.rateLimitService.createRouteLimiters(route.method, endpoint, route.rateLimitAccess),
 			);
 
 			// Path param validation must run before the scope checks, so that a malformed param always
@@ -229,19 +250,19 @@ export class PublicApiControllerRegistry {
 			}
 
 			if (route.apiKeyScope) {
-				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope));
+				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope, gate));
 			}
 
 			if (route.accessScope) {
-				middlewares.push(this.createAccessScopeMiddleware(route.accessScope));
+				middlewares.push(this.createAccessScopeMiddleware(route.accessScope, gate));
 			}
 
 			if (route.licenseFeature) {
-				middlewares.push(this.createLicenseMiddleware(route.licenseFeature));
+				middlewares.push(this.createLicenseMiddleware(route.licenseFeature, gate));
 			}
 
 			if (route.requiresUserQuota) {
-				middlewares.push(this.createUserQuotaMiddleware());
+				middlewares.push(this.createUserQuotaMiddleware(gate));
 			}
 
 			// After every access gate, the body's Content-Type is checked and then parsed.
@@ -302,7 +323,11 @@ export class PublicApiControllerRegistry {
 		}
 	}
 
-	private createAuthMiddleware(apiVersion: string, routeName: string): RequestHandler {
+	private createAuthMiddleware(
+		apiVersion: string,
+		routeName: string,
+		gate: GateTarget,
+	): RequestHandler {
 		return async (req, res, next) => {
 			const result = await this.authStrategyRegistry.authenticate(req as AuthenticatedRequest);
 
@@ -311,6 +336,8 @@ export class PublicApiControllerRegistry {
 				if (result.challenges.length > 0) {
 					res.setHeader('WWW-Authenticate', result.challenges.join(', '));
 				}
+				const reason = presentedCredentialRejection(req);
+				if (reason) this.reportRejectedRequest(req, gate, reason, 401);
 				res.status(401).json({ message: 'Unauthorized' });
 				return;
 			}
@@ -353,11 +380,15 @@ export class PublicApiControllerRegistry {
 		};
 	}
 
-	private createApiKeyScopeMiddleware(requirement: ApiKeyScopeRequirement): RequestHandler {
+	private createApiKeyScopeMiddleware(
+		requirement: ApiKeyScopeRequirement,
+		gate: GateTarget,
+	): RequestHandler {
 		return (req, res, next) => {
 			const { tokenGrant } = req as AuthenticatedRequest;
 
 			if (!tokenGrant || !apiKeyScopesSatisfy(tokenGrant.apiKeyScopes, requirement)) {
+				this.reportRejectedRequest(req, gate, 'scope', 403);
 				res.status(403).json({ message: 'Forbidden' });
 				return;
 			}
@@ -366,9 +397,13 @@ export class PublicApiControllerRegistry {
 		};
 	}
 
-	private createLicenseMiddleware(feature: BooleanLicenseFeature): RequestHandler {
-		return (_req, res, next) => {
+	private createLicenseMiddleware(
+		feature: BooleanLicenseFeature,
+		gate: GateTarget,
+	): RequestHandler {
+		return (req, res, next) => {
 			if (!Container.get(License).isLicensed(feature)) {
+				this.reportRejectedRequest(req, gate, 'licence', 403);
 				res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
 				return;
 			}
@@ -377,15 +412,34 @@ export class PublicApiControllerRegistry {
 		};
 	}
 
-	private createUserQuotaMiddleware(): RequestHandler {
-		return (_req, res, next) => {
+	private createUserQuotaMiddleware(gate: GateTarget): RequestHandler {
+		return (req, res, next) => {
 			if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
+				this.reportRejectedRequest(req, gate, 'quota', 403);
 				res.status(403).json({ message: USER_QUOTA_FORBIDDEN_MESSAGE });
 				return;
 			}
 
 			next();
 		};
+	}
+
+	/** Records a request that a gate refused, with the user and API key the credential resolved to. */
+	private reportRejectedRequest(
+		req: Request,
+		gate: GateTarget,
+		reason: AuthRequestRejectionReason,
+		statusCode: 401 | 403,
+	) {
+		const { user, tokenGrant } = req as AuthenticatedRequest;
+		this.eventService.emit('auth-request-rejected', {
+			...(user && { user }),
+			...(tokenGrant?.apiKeyId !== undefined && { apiKeyId: tokenGrant.apiKeyId }),
+			method: gate.method,
+			endpoint: gate.endpoint,
+			reason,
+			statusCode,
+		});
 	}
 
 	private createBodyMiddleware(
@@ -444,7 +498,7 @@ export class PublicApiControllerRegistry {
 		};
 	}
 
-	private createAccessScopeMiddleware(accessScope: AccessScope): RequestHandler {
+	private createAccessScopeMiddleware(accessScope: AccessScope, gate: GateTarget): RequestHandler {
 		return async (req, res, next) => {
 			const authReq = req as AuthenticatedRequest;
 
@@ -462,6 +516,7 @@ export class PublicApiControllerRegistry {
 						req.params,
 					))
 				) {
+					this.reportRejectedRequest(req, gate, 'scope', 403);
 					res.status(403).json({ message: 'Forbidden' });
 					return;
 				}

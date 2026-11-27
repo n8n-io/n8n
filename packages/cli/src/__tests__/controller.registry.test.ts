@@ -6,11 +6,13 @@ vi.mock('@n8n/backend-common', async () => {
 });
 
 import { Z } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	ControllerRegistryMetadata,
 	Param,
 	Get,
+	GlobalScope,
 	Post,
 	Body,
 	Licensed,
@@ -32,8 +34,11 @@ import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
 import { ForbiddenError } from '@n8n/errors';
 import type { License } from '@/license';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 import { RateLimitService } from '@/services/rate-limit.service';
+
+vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();
@@ -41,6 +46,7 @@ describe('ControllerRegistry', () => {
 	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
 	const metadata = Container.get(ControllerRegistryMetadata);
 	const lastActiveAtService = mock<LastActiveAtService>();
+	const eventService = mock<EventService>();
 	let app: express.Express;
 	const authMiddleware = vi.fn().mockImplementation(async (_req, _res, next) => next());
 
@@ -56,6 +62,7 @@ describe('ControllerRegistry', () => {
 			metadata,
 			lastActiveAtService,
 			new RateLimitService(),
+			eventService,
 		).activate(app);
 	});
 
@@ -115,6 +122,7 @@ describe('ControllerRegistry', () => {
 				metadata,
 				lastActiveAtService,
 				new RateLimitService(),
+				eventService,
 			).activate(target);
 			expect(target.use.mock.calls.map(([prefix]) => prefix)).not.toContain('/apps-only');
 		});
@@ -134,6 +142,7 @@ describe('ControllerRegistry', () => {
 				metadata,
 				lastActiveAtService,
 				new RateLimitService(),
+				eventService,
 			).activate(target, { surface: 'apps' });
 
 			await request(target).get('/apps-only').expect(401);
@@ -384,8 +393,13 @@ describe('ControllerRegistry', () => {
 			}
 		}
 
+		const member = { id: 'user-1', email: 'member@example.com', role: { slug: 'global:member' } };
+
 		beforeEach(() => {
-			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			authMiddleware.mockImplementation(async (req, _res, next) => {
+				req.user = member;
+				next();
+			});
 			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
 		});
 
@@ -393,12 +407,73 @@ describe('ControllerRegistry', () => {
 			license.isLicensed.calledWith('feat:sharing').mockReturnValue(false);
 			await request(app).get('/rest/test/with-sharing').expect(403);
 			expect(license.isLicensed).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('auth-request-rejected', {
+				user: member,
+				method: 'GET',
+				endpoint: '/rest/test/with-sharing',
+				reason: 'licence',
+				statusCode: 403,
+			});
+		});
+
+		it('should not report an anonymous request that the licence gate refuses', async () => {
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			license.isLicensed.calledWith('feat:sharing').mockReturnValue(false);
+
+			await request(app).get('/rest/test/with-sharing').expect(403);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should allow when feature is available', async () => {
 			license.isLicensed.calledWith('feat:sharing').mockReturnValue(true);
 			await request(app).get('/rest/test/with-sharing').expect(200);
 			expect(license.isLicensed).toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Scope checks', () => {
+		const member = { id: 'user-1', email: 'member@example.com', role: { slug: 'global:member' } };
+
+		@RestController('/test')
+		// @ts-expect-error tsc complains about unused class
+		class TestController {
+			@Get('/scoped/:workflowId')
+			@GlobalScope('workflow:read')
+			scoped() {
+				return { ok: true };
+			}
+		}
+
+		beforeEach(() => {
+			authMiddleware.mockImplementation(async (req, _res, next) => {
+				req.user = member;
+				next();
+			});
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+		});
+
+		it('should report a request the scope check refuses, by its route pattern', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await request(app).get('/rest/test/scoped/wf-1').expect(403);
+
+			expect(eventService.emit).toHaveBeenCalledWith('auth-request-rejected', {
+				user: member,
+				method: 'GET',
+				endpoint: '/rest/test/scoped/:workflowId',
+				reason: 'scope',
+				statusCode: 403,
+			});
+		});
+
+		it('should not report a request the scope check allows', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+
+			await request(app).get('/rest/test/scoped/wf-1').expect(200);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 

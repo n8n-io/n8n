@@ -1,4 +1,4 @@
-import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
+import { EMPTY_CANVAS_GROUPS_FLAG, type AuthenticationMethod } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { EventService, PostHogClient, EventRelay } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -224,6 +224,15 @@ function toPublicApiProperties(publicApi: PublicApiCaller) {
 		: { public_api: true, public_api_client: publicApi };
 }
 
+type SignInMethod = 'email' | 'ldap' | 'saml' | 'oidc';
+
+const SIGN_IN_METHODS = new Set<AuthenticationMethod>(['email', 'ldap', 'saml', 'oidc']);
+
+/** The embedded editor signs in through token exchange and reports its own events. */
+function isSignInMethod(method: AuthenticationMethod): method is SignInMethod {
+	return SIGN_IN_METHODS.has(method);
+}
+
 @Service()
 export class TelemetryEventRelay extends EventRelay {
 	/** Rejections since the last report, and when that report went out, by reason and operation. */
@@ -372,6 +381,12 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-mfa-enabled': (event) => this.userMfaEnabled(event),
 			'user-mfa-disabled': (event) => this.userMfaDisabled(event),
 			'user-logged-out': (event) => this.userLoggedOut(event),
+			'user-logged-in': (event) => this.userLoggedIn(event),
+			'user-login-failed': (event) => this.userLoginFailed(event),
+			'token-exchange-succeeded': (event) => this.tokenExchangeSucceeded(event),
+			'token-exchange-failed': (event) => this.tokenExchangeFailed(event),
+			'embed-login': (event) => this.embedLogin(event),
+			'embed-login-failed': (event) => this.embedLoginFailed(event),
 			'user-submitted-personalization-survey': (event) =>
 				this.userSubmittedPersonalizationSurvey(event),
 			'email-failed': (event) => this.emailFailed(event),
@@ -2787,6 +2802,59 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private userLoggedOut({ user }: RelayEventMap['user-logged-out']) {
 		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_LOGGED_OUT, { user_id: user.id });
+	}
+
+	private userLoggedIn({ user, authenticationMethod, usedMfa }: RelayEventMap['user-logged-in']) {
+		if (!isSignInMethod(authenticationMethod)) return;
+		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_LOGGED_IN, {
+			user_id: user.id,
+			authentication_method: authenticationMethod,
+			used_mfa: usedMfa ?? false,
+		});
+	}
+
+	// The email that was tried is not reported: a failed attempt may name an account that does not exist.
+	private userLoginFailed({
+		authenticationMethod,
+		reasonCode,
+	}: RelayEventMap['user-login-failed']) {
+		if (!isSignInMethod(authenticationMethod)) return;
+		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_LOGIN_FAILED, {
+			authentication_method: authenticationMethod,
+			reason: reasonCode,
+		});
+	}
+
+	private tokenExchangeSucceeded({
+		userId,
+		jitProvisioned,
+		identityLinked,
+	}: RelayEventMap['token-exchange-succeeded']) {
+		this.telemetry.track(TELEMETRY_EVENT.TOKEN_EXCHANGE.TOKEN_EXCHANGE_SUCCEEDED, {
+			user_id: userId,
+			jit_provisioned: jitProvisioned,
+			identity_linked: identityLinked,
+		});
+	}
+
+	private tokenExchangeFailed({ failureReason }: RelayEventMap['token-exchange-failed']) {
+		this.telemetry.track(TELEMETRY_EVENT.TOKEN_EXCHANGE.TOKEN_EXCHANGE_FAILED, {
+			reason: failureReason,
+		});
+	}
+
+	private embedLogin({ userId, jitProvisioned, identityLinked }: RelayEventMap['embed-login']) {
+		this.telemetry.track(TELEMETRY_EVENT.TOKEN_EXCHANGE.EMBED_LOGIN_SUCCEEDED, {
+			user_id: userId,
+			jit_provisioned: jitProvisioned,
+			identity_linked: identityLinked,
+		});
+	}
+
+	private embedLoginFailed({ failureReason }: RelayEventMap['embed-login-failed']) {
+		this.telemetry.track(TELEMETRY_EVENT.TOKEN_EXCHANGE.EMBED_LOGIN_FAILED, {
+			reason: failureReason,
+		});
 	}
 
 	private userSubmittedPersonalizationSurvey({

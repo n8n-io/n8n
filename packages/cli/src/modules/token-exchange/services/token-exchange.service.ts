@@ -19,6 +19,7 @@ import {
 	TokenExchangeFailureReason,
 	type IssuedJwtPayload,
 	type IssuedTokenResult,
+	type IdentityResolutionOutcome,
 } from '../token-exchange.types';
 import { IdentityResolutionService } from './identity-resolution.service';
 import { JtiStoreService } from './jti-store.service';
@@ -139,17 +140,25 @@ export class TokenExchangeService {
 		return { claims, resolvedKey };
 	}
 
-	async embedLogin(
-		subjectToken: string,
-	): Promise<{ user: Person; subject: string; issuer: string; kid: string }> {
+	async embedLogin(subjectToken: string): Promise<{
+		user: Person;
+		subject: string;
+		issuer: string;
+		kid: string;
+		resolution: IdentityResolutionOutcome;
+	}> {
 		const { claims, resolvedKey } = await this.verifyToken(subjectToken, {
 			maxLifetimeSeconds: MAX_TOKEN_LIFETIME_SECONDS,
 		});
-		const user = await this.identityResolutionService.resolve(claims, resolvedKey.allowedRoles, {
-			kid: resolvedKey.kid,
-			issuer: resolvedKey.issuer,
-			requireVerifiedEmail: resolvedKey.requireVerifiedEmail,
-		});
+		const { user, outcome } = await this.identityResolutionService.resolve(
+			claims,
+			resolvedKey.allowedRoles,
+			{
+				kid: resolvedKey.kid,
+				issuer: resolvedKey.issuer,
+				requireVerifiedEmail: resolvedKey.requireVerifiedEmail,
+			},
+		);
 		// Embed login issues a browser session, and only a person has one.
 		if (!isPerson(user)) {
 			throw new TokenExchangeAuthError(
@@ -157,7 +166,13 @@ export class TokenExchangeService {
 				'A service account cannot sign in to the embedded editor',
 			);
 		}
-		return { user, subject: claims.sub, issuer: resolvedKey.issuer, kid: resolvedKey.kid };
+		return {
+			user,
+			subject: claims.sub,
+			issuer: resolvedKey.issuer,
+			kid: resolvedKey.kid,
+			resolution: outcome,
+		};
 	}
 
 	async exchange(request: TokenExchangeRequest): Promise<IssuedTokenResult> {
@@ -167,17 +182,20 @@ export class TokenExchangeService {
 			: undefined;
 
 		const actor = actorClaims
-			? await this.identityResolutionService.resolve(
-					actorClaims.claims,
-					actorClaims.resolvedKey.allowedRoles,
-					actorClaims.resolvedKey,
-				)
+			? (
+					await this.identityResolutionService.resolve(
+						actorClaims.claims,
+						actorClaims.resolvedKey.allowedRoles,
+						actorClaims.resolvedKey,
+					)
+				).user
 			: undefined;
-		const subject = await this.identityResolutionService.resolve(
-			subjectClaims.claims,
-			subjectClaims.resolvedKey.allowedRoles,
-			subjectClaims.resolvedKey,
-		);
+		const { user: subject, outcome: subjectResolution } =
+			await this.identityResolutionService.resolve(
+				subjectClaims.claims,
+				subjectClaims.resolvedKey.allowedRoles,
+				subjectClaims.resolvedKey,
+			);
 
 		const now = Math.floor(Date.now() / 1000);
 
@@ -214,6 +232,7 @@ export class TokenExchangeService {
 			accessToken,
 			expiresIn: exp - now,
 			subjectUserId: subject.id,
+			subjectResolution,
 			subject: subjectClaims.claims.sub,
 			issuer: subjectClaims.claims.iss,
 			actor: actorClaims?.claims.sub,

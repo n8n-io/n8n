@@ -80,6 +80,33 @@ export type WorkflowActionSource =
 export type { UserLike };
 
 /**
+ * Why a sign-in was refused. Bounded, so telemetry can group on it; the audit event keeps the
+ * free-text `reason` next to it.
+ */
+export type LoginFailureReason =
+	| 'wrong_credentials'
+	| 'mfa_rejected'
+	| 'sso_login_required'
+	| 'email_not_verified'
+	| 'access_denied'
+	| 'authentication_failed'
+	| 'provider_error'
+	| 'other';
+
+/**
+ * Why a gate refused a request that carried a session cookie or an API key. `licence` is a
+ * feature the plan lacks; `quota` is a limit of the plan, such as the number of users.
+ */
+export type AuthRequestRejectionReason =
+	| 'scope'
+	| 'licence'
+	| 'quota'
+	| 'session_expired'
+	| 'session_invalid'
+	| 'api_key_invalid'
+	| 'mfa';
+
+/**
  * Which write path produced a policy document event. A composed save emits a document event
  * of its own, so a consumer that already reports the composed save uses this to skip it
  * instead of counting one save twice.
@@ -438,6 +465,8 @@ export type RelayEventMap = ModuleEventMap & {
 	'user-logged-in': {
 		user: UserLike;
 		authenticationMethod: AuthenticationMethod;
+		/** True when n8n verified an MFA code or a recovery code. Absent for SSO, where the identity provider owns MFA. */
+		usedMfa?: boolean;
 	};
 
 	'user-logged-out': {
@@ -448,12 +477,29 @@ export type RelayEventMap = ModuleEventMap & {
 		userEmail: string;
 		authenticationMethod: AuthenticationMethod;
 		reason?: string;
+		reasonCode: LoginFailureReason;
 	};
 
 	'user-login-email-conflict': {
 		user: UserLike;
 		authenticationMethod: AuthenticationMethod;
 		assertedEmail: string;
+	};
+
+	/**
+	 * A gate refused a request that carried a session cookie or an API key, before the handler
+	 * ran: the session was expired or invalid, MFA enforcement, a licence check or a scope check.
+	 * `endpoint` is the route pattern with parameter names, never their values.
+	 */
+	'auth-request-rejected': {
+		/** The user the credential resolved to. Absent when the credential never named a trusted user. */
+		user?: UserLike;
+		apiKeyId?: string;
+		method: string;
+		endpoint: string;
+		reason: AuthRequestRejectionReason;
+		/** The status the gate answered with. A session cookie that is refused on a route open to anonymous callers is cleared and the request goes on without a session; it still counts as a 401 here. */
+		statusCode: 401 | 403;
 	};
 
 	'user-changed-role': {
@@ -1291,6 +1337,9 @@ export type RelayEventMap = ModuleEventMap & {
 		issuer: string;
 		tokenId?: string;
 		clientIp: string;
+		userId: string;
+		jitProvisioned: boolean;
+		identityLinked: boolean;
 	};
 
 	'token-exchange-failed': {
@@ -1305,6 +1354,9 @@ export type RelayEventMap = ModuleEventMap & {
 		issuer: string;
 		kid: string;
 		clientIp: string;
+		userId: string;
+		jitProvisioned: boolean;
+		identityLinked: boolean;
 	};
 
 	'embed-login-failed': {

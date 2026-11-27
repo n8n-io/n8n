@@ -100,9 +100,14 @@ describe('IdentityResolutionService', () => {
 		});
 
 		it('provisions a licensed custom global role', async () => {
-			const user = await service.resolve(makeClaims({ role: CUSTOM_ROLE }), undefined, ctx());
+			const { user, outcome } = await service.resolve(
+				makeClaims({ role: CUSTOM_ROLE }),
+				undefined,
+				ctx(),
+			);
 
 			expect(user.id).toBe('new-user-1');
+			expect(outcome).toBe('provisioned');
 			expect(personRepository.createPersonWithProject).toHaveBeenCalledWith(
 				expect.objectContaining({ role: { slug: CUSTOM_ROLE } }),
 				trx,
@@ -258,7 +263,7 @@ describe('IdentityResolutionService', () => {
 			const resolved = await service.resolve(makeClaims({ given_name: 'New' }), undefined, ctx());
 
 			expect(userService.update).toHaveBeenCalledWith('existing-1', { firstName: 'New' });
-			expect(resolved).toBe(user);
+			expect(resolved).toEqual({ user, outcome: 'existing' });
 		});
 
 		it('throws when the user is gone before the reload', async () => {
@@ -304,14 +309,20 @@ describe('IdentityResolutionService', () => {
 			const member = makeUser('global:member');
 			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(member);
 
-			await expect(service.resolve(makeClaims(), ['global:member'], ctx())).resolves.toBe(member);
+			await expect(service.resolve(makeClaims(), ['global:member'], ctx())).resolves.toEqual({
+				user: member,
+				outcome: 'linked',
+			});
 		});
 
 		it('resolves any existing user when allowedRoles is undefined (unrestricted)', async () => {
 			const owner = makeUser('global:owner');
 			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(owner);
 
-			await expect(service.resolve(makeClaims(), undefined, ctx())).resolves.toBe(owner);
+			await expect(service.resolve(makeClaims(), undefined, ctx())).resolves.toEqual({
+				user: owner,
+				outcome: 'linked',
+			});
 		});
 	});
 
@@ -348,16 +359,17 @@ describe('IdentityResolutionService', () => {
 
 			await expect(
 				service.resolve(makeClaims({ email_verified: true }), ['global:member'], ctx(true)),
-			).resolves.toBe(member);
+			).resolves.toEqual({ user: member, outcome: 'linked' });
 		});
 
 		it('links without an email_verified claim when the key does not require it', async () => {
 			const member = makeUser('global:member');
 			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(member);
 
-			await expect(service.resolve(makeClaims(), ['global:member'], ctx(false))).resolves.toBe(
-				member,
-			);
+			await expect(service.resolve(makeClaims(), ['global:member'], ctx(false))).resolves.toEqual({
+				user: member,
+				outcome: 'linked',
+			});
 		});
 	});
 });

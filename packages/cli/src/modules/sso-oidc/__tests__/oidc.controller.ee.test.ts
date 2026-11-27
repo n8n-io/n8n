@@ -222,11 +222,35 @@ describe('OidcController', () => {
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'user-login-failed',
-				expect.objectContaining({ userEmail: 'unknown', authenticationMethod: 'oidc' }),
+				expect.objectContaining({
+					userEmail: 'unknown',
+					authenticationMethod: 'oidc',
+					reasonCode: 'other',
+				}),
 			);
 			// A failed login must not create a session or emit a success event.
 			expect(authService.issueCookie).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalledWith('user-logged-in', expect.anything());
+		});
+
+		test('Should fall back to the generic reason when the provider error code is empty', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?error=&state=state_value',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+
+			oidcService.loginUser.mockRejectedValueOnce(new Error('Invalid authorization code'));
+
+			await controller.callbackHandler(req, res);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'user-login-failed',
+				expect.objectContaining({ reason: 'oidc_callback_failed', reasonCode: 'other' }),
+			);
 		});
 
 		test('Should record the provider error code in the failed-login reason', async () => {
@@ -250,6 +274,7 @@ describe('OidcController', () => {
 					userEmail: 'unknown',
 					authenticationMethod: 'oidc',
 					reason: 'access_denied',
+					reasonCode: 'provider_error',
 				}),
 			);
 			expect(res.redirect).toHaveBeenCalledWith(
@@ -319,7 +344,11 @@ describe('OidcController', () => {
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'user-login-failed',
-				expect.objectContaining({ userEmail: 'unknown', authenticationMethod: 'oidc' }),
+				expect.objectContaining({
+					userEmail: 'unknown',
+					authenticationMethod: 'oidc',
+					reasonCode: 'other',
+				}),
 			);
 		});
 
@@ -430,6 +459,7 @@ describe('OidcController', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-login-failed', {
 				userEmail: 'unknown',
 				authenticationMethod: 'oidc',
+				reasonCode: 'access_denied',
 			});
 			expect(eventService.emit).not.toHaveBeenCalledWith('user-logged-in', expect.anything());
 		});

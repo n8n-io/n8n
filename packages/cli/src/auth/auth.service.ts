@@ -13,6 +13,9 @@ import type { StringValue as TimeUnitValue } from 'ms';
 
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError, ForbiddenError } from '@n8n/errors';
+import type { AuthRequestRejectionReason } from '@/events/maps/relay.event-map';
+import type { UserLike } from '@/types/user-like.types';
+import { getRoutePattern } from '@/utils/route-pattern';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import {
@@ -91,6 +94,19 @@ interface EmailChangeToken {
 	hash: string;
 }
 
+/** Thrown inside the auth middleware so its catch can tell an MFA rejection from an invalid session. */
+class MfaNotUsedError extends AuthError {
+	constructor() {
+		super('MFA not used during authentication');
+	}
+}
+
+function rejectionReasonOf(error: Error): AuthRequestRejectionReason {
+	if (error instanceof TokenExpiredError) return 'session_expired';
+	if (error instanceof MfaNotUsedError) return 'mfa';
+	return 'session_invalid';
+}
+
 @Service()
 export class AuthService {
 	/**
@@ -102,9 +118,7 @@ export class AuthService {
 	private skipBrowserIdCheckEndpoints: Array<string | RegExp>;
 
 	constructor(
-		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		private readonly eventService: EventService,
-		// EOF Experiment cleanup
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly license: License,
@@ -177,7 +191,7 @@ export class AuthService {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
 						if (user.mfaEnabled) {
 							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
-							throw new AuthError('MFA not used during authentication');
+							throw new MfaNotUsedError();
 						} else {
 							// User doesn't have MFA enabled, but MFA is enforced
 							// They need to set up MFA before accessing most endpoints
@@ -193,6 +207,7 @@ export class AuthService {
 							}
 
 							// In this case we don't want to clear the cookie, to allow for MFA setup
+							this.reportRejectedRequest(req, 'mfa', { id: user.id });
 							res.status(401).json({ status: 'error', message: 'Unauthorized', mfaRequired: true });
 							return;
 						}
@@ -205,6 +220,7 @@ export class AuthService {
 				} catch (error) {
 					if (error instanceof JsonWebTokenError || error instanceof AuthError) {
 						this.clearCookie(res);
+						this.reportRejectedRequest(req, rejectionReasonOf(error), this.subjectOf(token, error));
 					} else {
 						throw error;
 					}
@@ -218,6 +234,38 @@ export class AuthService {
 			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
+	}
+
+	/**
+	 * Records a session cookie that a gate refused. The event is the only place an expired
+	 * session gets counted: a session has no server-side moment of expiry of its own.
+	 */
+	private reportRejectedRequest(
+		req: Request,
+		reason: AuthRequestRejectionReason,
+		user: UserLike | undefined,
+	) {
+		this.eventService.emit('auth-request-rejected', {
+			...(user && { user }),
+			method: req.method,
+			endpoint: getRoutePattern(req),
+			reason,
+			statusCode: 401,
+		});
+	}
+
+	/**
+	 * The user id a refused cookie names, read without verifying the signature again. It is
+	 * trusted only when the signature was already checked: an expired token, or a token the
+	 * service refused after verifying it (revoked, stale hash, unknown user, MFA not used). A
+	 * token with a bad signature or format names nobody.
+	 */
+	private subjectOf(token: string, error: Error): UserLike | undefined {
+		if (error instanceof JsonWebTokenError && !(error instanceof TokenExpiredError)) return;
+
+		const payload: unknown = this.jwtService.decodeUnverified(token);
+		const id = isRecord(payload) && typeof payload.id === 'string' ? payload.id : undefined;
+		return id === undefined ? undefined : { id };
 	}
 
 	/**

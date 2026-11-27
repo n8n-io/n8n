@@ -89,7 +89,7 @@ describe('IdentityResolutionService (integration)', () => {
 				AuthIdentity.create(user, providerIdFor('ext-known'), 'token-exchange'),
 			);
 
-			const result = await service.resolve(
+			const { user: result } = await service.resolve(
 				{
 					...baseClaims,
 					sub: 'ext-known',
@@ -116,7 +116,7 @@ describe('IdentityResolutionService (integration)', () => {
 				AuthIdentity.create(user, providerIdFor('ext-unchanged'), 'token-exchange'),
 			);
 
-			const result = await service.resolve(
+			const { user: result } = await service.resolve(
 				{
 					...baseClaims,
 					sub: 'ext-unchanged',
@@ -146,13 +146,19 @@ describe('IdentityResolutionService (integration)', () => {
 			};
 
 			// First call: email fallback creates the identity link
-			const result = await service.resolve(claims, undefined, ctx());
+			const { user: result, outcome } = await service.resolve(claims, undefined, ctx());
 			expect(result.id).toBe(user.id);
+			expect(outcome).toBe('linked');
 
 			// Second call: should now resolve via Path 1 (known sub),
 			// proving the identity was correctly linked to the user
-			const secondResult = await service.resolve(claims, undefined, ctx());
+			const { user: secondResult, outcome: secondOutcome } = await service.resolve(
+				claims,
+				undefined,
+				ctx(),
+			);
 			expect(secondResult.id).toBe(user.id);
+			expect(secondOutcome).toBe('existing');
 			expect(secondResult.role).toBeDefined();
 			expect(secondResult.role.slug).toBe('global:member');
 		});
@@ -160,7 +166,7 @@ describe('IdentityResolutionService (integration)', () => {
 		it('should update role when linking identity via email fallback', async () => {
 			const user = await createUser({ email: 'fallback-role@example.com' });
 
-			const result = await service.resolve(
+			const { user: result } = await service.resolve(
 				{
 					...baseClaims,
 					sub: 'ext-fallback-role',
@@ -184,7 +190,7 @@ describe('IdentityResolutionService (integration)', () => {
 		it('should match existing user when email claim has different casing', async () => {
 			const user = await createUser({ email: 'casetest@example.com' });
 
-			const result = await service.resolve(
+			const { user: result } = await service.resolve(
 				{
 					...baseClaims,
 					sub: 'ext-case',
@@ -214,7 +220,7 @@ describe('IdentityResolutionService (integration)', () => {
 				family_name: 'Tee',
 			};
 
-			const result = await service.resolve(claims, undefined, ctx());
+			const { user: result } = await service.resolve(claims, undefined, ctx());
 
 			expect(asPerson(result).email).toBe('jit@example.com');
 			expect(asPerson(result).firstName).toBe('Jay');
@@ -291,7 +297,7 @@ describe('IdentityResolutionService (integration)', () => {
 		});
 
 		it('should assign role from allowedRoles when provisioning new user', async () => {
-			const result = await service.resolve(
+			const { user: result } = await service.resolve(
 				{
 					...baseClaims,
 					sub: 'ext-jit-admin',
@@ -383,7 +389,7 @@ describe('IdentityResolutionService (integration)', () => {
 				AuthIdentity.create(user, providerIdFor('ext-unknown-role'), 'token-exchange'),
 			);
 
-			const result = await service.resolve(
+			const { user: result } = await service.resolve(
 				{
 					...baseClaims,
 					sub: 'ext-unknown-role',
@@ -404,7 +410,7 @@ describe('IdentityResolutionService (integration)', () => {
 				AuthIdentity.create(user, providerIdFor('ext-escalation'), 'token-exchange'),
 			);
 
-			const result = await service.resolve(
+			const { user: result } = await service.resolve(
 				{
 					...baseClaims,
 					sub: 'ext-escalation',
@@ -428,7 +434,7 @@ describe('IdentityResolutionService (integration)', () => {
 				AuthIdentity.create(admin, providerIdFor('ext-downgrade'), 'token-exchange'),
 			);
 
-			const result = await service.resolve(
+			const { user: result } = await service.resolve(
 				{
 					...baseClaims,
 					sub: 'ext-downgrade',
@@ -459,7 +465,7 @@ describe('IdentityResolutionService (integration)', () => {
 				AuthIdentity.create(user, providerIdFor('ext-sync'), 'token-exchange'),
 			);
 
-			const result = await service.resolve(
+			const { user: result } = await service.resolve(
 				{
 					...baseClaims,
 					sub: 'ext-sync',
@@ -493,7 +499,7 @@ describe('IdentityResolutionService (integration)', () => {
 			const issuerA = 'https://issuer-a.example.com';
 			const issuerB = 'https://issuer-b.example.com';
 
-			const userA = await service.resolve(
+			const { user: userA } = await service.resolve(
 				{
 					...baseClaims,
 					sub: sharedSub,
@@ -503,7 +509,7 @@ describe('IdentityResolutionService (integration)', () => {
 				undefined,
 				ctx(),
 			);
-			const userB = await service.resolve(
+			const { user: userB } = await service.resolve(
 				{
 					...baseClaims,
 					sub: sharedSub,
@@ -531,7 +537,7 @@ describe('IdentityResolutionService (integration)', () => {
 			const emitSpy = vi.spyOn(eventService, 'emit');
 
 			// No email claim — the rebind must work for email-less integrations.
-			const result = await service.resolve(
+			const { user: result } = await service.resolve(
 				{ ...baseClaims, sub: 'legacy-sub', email: undefined },
 				undefined,
 				ctx(),

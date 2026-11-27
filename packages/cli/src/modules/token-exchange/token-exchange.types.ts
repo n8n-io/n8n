@@ -1,3 +1,5 @@
+import type { User } from '@n8n/db';
+
 import type { TOKEN_EXCHANGE_GRANT_TYPE } from './token-exchange.schemas';
 
 export const TokenExchangeFailureReason = {
@@ -19,11 +21,24 @@ export const TokenExchangeFailureReason = {
 export type TokenExchangeFailureReason =
 	(typeof TokenExchangeFailureReason)[keyof typeof TokenExchangeFailureReason];
 
+/**
+ * How the identity in an external token was matched to an n8n user: through an identity that
+ * was already linked, by linking an existing user through the email claim, or by creating the
+ * user just in time.
+ */
+export type IdentityResolutionOutcome = 'existing' | 'linked' | 'provisioned';
+
+export interface ResolvedIdentity {
+	user: User;
+	outcome: IdentityResolutionOutcome;
+}
+
 export interface IssuedTokenResult {
 	accessToken: string;
 	expiresIn: number;
 	subject: string;
 	subjectUserId: string;
+	subjectResolution: IdentityResolutionOutcome;
 	issuer: string;
 	actor?: string;
 	actorUserId?: string;

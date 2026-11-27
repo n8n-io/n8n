@@ -131,6 +131,7 @@ describe('TokenExchangeController', () => {
 				expiresIn: 900,
 				subject: 'user-123',
 				subjectUserId: 'user-id-123',
+				subjectResolution: 'existing',
 				issuer: 'https://idp.example.com',
 				actor: undefined,
 			};
@@ -179,6 +180,47 @@ describe('TokenExchangeController', () => {
 						issuer: issuedResult.issuer,
 						grantType: TOKEN_EXCHANGE_GRANT_TYPE,
 						clientIp: '127.0.0.1',
+						userId: 'user-id-123',
+						jitProvisioned: false,
+						identityLinked: false,
+					}),
+				);
+			});
+
+			test('emits token-exchange-succeeded event with a subject linked by email', async () => {
+				req.body = validBody;
+				vi.mocked(tokenExchangeService.exchange).mockResolvedValue({
+					...issuedResult,
+					subjectResolution: 'linked',
+				});
+
+				await controller.exchangeToken(req, res);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'token-exchange-succeeded',
+					expect.objectContaining({
+						userId: 'user-id-123',
+						jitProvisioned: false,
+						identityLinked: true,
+					}),
+				);
+			});
+
+			test('emits token-exchange-succeeded event with a just-in-time provisioned subject', async () => {
+				req.body = validBody;
+				vi.mocked(tokenExchangeService.exchange).mockResolvedValue({
+					...issuedResult,
+					subjectResolution: 'provisioned',
+				});
+
+				await controller.exchangeToken(req, res);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'token-exchange-succeeded',
+					expect.objectContaining({
+						userId: 'user-id-123',
+						jitProvisioned: true,
+						identityLinked: false,
 					}),
 				);
 			});

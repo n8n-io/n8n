@@ -12,6 +12,7 @@ import url from 'url';
 import { AuthService } from '@/auth/auth.service';
 import { AuthError, ForbiddenError } from '@n8n/errors';
 import { validateRedirectUrl } from '@n8n/utils/validate-redirect-url';
+import type { LoginFailureReason } from '@/events/maps/relay.event-map';
 import { SSO_ACCESS_DENIED_REDIRECT_PATH } from '@/modules/provisioning.ee/constants';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
@@ -33,6 +34,16 @@ import {
 } from './service-provider.ee';
 import type { SamlLoginBinding } from './types';
 import { getInitSSOFormView } from './views/init-sso-post';
+
+/**
+ * The bounded reason telemetry reports for a SAML sign-in the service refused. A `ForbiddenError`
+ * covers the role mapping that grants no access and an account that may not sign in through SAML.
+ */
+function samlLoginFailureReason(error: unknown): LoginFailureReason {
+	if (error instanceof SamlEmailNotVerifiedError) return 'email_not_verified';
+	if (error instanceof ForbiddenError) return 'access_denied';
+	return 'other';
+}
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -173,14 +184,14 @@ export class SamlController {
 				}
 			}
 			if (loginResult.authenticatedUser) {
-				this.eventService.emit('user-logged-in', {
-					user: loginResult.authenticatedUser,
-					authenticationMethod: 'saml',
-				});
-
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
 				if (isSamlLicensedAndEnabled()) {
 					this.authService.issueCookie(res, loginResult.authenticatedUser, true, req.browserId);
+					// Reported after the cookie: a response that only tests the connection is no sign-in.
+					this.eventService.emit('user-logged-in', {
+						user: loginResult.authenticatedUser,
+						authenticationMethod: 'saml',
+					});
 
 					if (loginResult.onboardingRequired) {
 						return res.redirect(this.urlService.getInstanceBaseUrl() + '/saml/onboarding');
@@ -197,6 +208,7 @@ export class SamlController {
 			this.eventService.emit('user-login-failed', {
 				userEmail: loginResult.attributes.email ?? 'unknown',
 				authenticationMethod: 'saml',
+				reasonCode: 'authentication_failed',
 			});
 			// Need to manually send the error response since we're using templates
 			return sendErrorResponse(res, new AuthError('SAML Authentication failed'));
@@ -208,6 +220,7 @@ export class SamlController {
 				userEmail: error instanceof SamlEmailNotVerifiedError ? error.email : 'unknown',
 				authenticationMethod: 'saml',
 				reason: (error as Error).message,
+				reasonCode: samlLoginFailureReason(error),
 			});
 			// A login denied by role mapping is not a failure to authenticate: send the
 			// user to the sign-in page, which explains they have no access.

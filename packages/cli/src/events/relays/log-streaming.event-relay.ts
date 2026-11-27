@@ -143,6 +143,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-logged-in': (event) => this.userLoggedIn(event),
 			'user-logged-out': (event) => this.userLoggedOut(event),
 			'user-login-failed': (event) => this.userLoginFailed(event),
+			'auth-request-rejected': (event) => this.authRequestRejected(event),
 			'user-login-email-conflict': (event) => this.userLoginEmailConflict(event),
 			'sso-settings-updated': (event) => this.ssoSettingsUpdated(event),
 			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
@@ -826,6 +827,38 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.emailConflict',
 			payload: { ...user, authenticationMethod, _assertedEmail: assertedEmail },
+		});
+	}
+
+	private authRequestRejected({ user, ...rest }: RelayEventMap['auth-request-rejected']) {
+		if (!user) {
+			void this.eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.auth.request.rejected',
+				payload: { userId: null, ...rest },
+			});
+			return;
+		}
+
+		// A gate that only had the user id from the session token hands over just that; the
+		// audit event still carries the user fields, so a SIEM can group on them.
+		if (user.email !== undefined) {
+			this.sendAuthRequestRejected({ ...rest, user });
+			return;
+		}
+
+		void this.findAuditedUser(user).then((audited) =>
+			this.sendAuthRequestRejected({ ...rest, user: audited }),
+		);
+	}
+
+	@Redactable()
+	private sendAuthRequestRejected({
+		user,
+		...rest
+	}: RelayEventMap['auth-request-rejected'] & { user: UserLike }) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.auth.request.rejected',
+			payload: { ...user, ...rest },
 		});
 	}
 

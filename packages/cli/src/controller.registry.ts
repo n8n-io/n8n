@@ -1,5 +1,6 @@
 import type { ZodClass } from '@n8n/api-types';
 import { inProduction } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
 import { isAuthenticatedRequest } from '@n8n/db';
@@ -21,9 +22,11 @@ import assert from 'node:assert';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { AuthRequestRejectionReason } from '@/events/maps/relay.event-map';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { reportError, send, sendErrorResponse } from '@/response-helper';
+import { getRoutePattern } from '@/utils/route-pattern';
 
 import { AbstractServer } from './abstract-server';
 import { CorsService } from './services/cors-service';
@@ -40,6 +43,7 @@ export class ControllerRegistry {
 		private readonly metadata: ControllerRegistryMetadata,
 		private readonly lastActiveAtService: LastActiveAtService,
 		private readonly rateLimitService: RateLimitService,
+		private readonly eventService: EventService,
 	) {}
 
 	activate(app: Pick<Router, 'use'>, options: { surface?: 'main' | 'apps' } = {}) {
@@ -258,8 +262,9 @@ export class ControllerRegistry {
 	}
 
 	private createLicenseMiddleware(feature: BooleanLicenseFeature): RequestHandler {
-		return (_req, res, next) => {
+		return (req, res, next) => {
 			if (!this.license.isLicensed(feature)) {
+				this.reportRejectedRequest(req, 'licence');
 				res.status(403).json({ status: 'error', message: 'Plan lacks license for this feature' });
 				return;
 			}
@@ -276,6 +281,7 @@ export class ControllerRegistry {
 
 			try {
 				if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {
+					this.reportRejectedRequest(req, 'scope');
 					res.status(403).json({
 						status: 'error',
 						message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
@@ -292,5 +298,21 @@ export class ControllerRegistry {
 
 			next();
 		};
+	}
+
+	/**
+	 * Records a request that a gate refused with 403, with the user the session resolved to. A
+	 * request without a session is anonymous: it carried nothing to reject, and a refused cookie
+	 * was already recorded by the session middleware.
+	 */
+	private reportRejectedRequest(req: Request, reason: AuthRequestRejectionReason) {
+		if (!isAuthenticatedRequest(req)) return;
+		this.eventService.emit('auth-request-rejected', {
+			user: req.user,
+			method: req.method,
+			endpoint: getRoutePattern(req),
+			reason,
+			statusCode: 403,
+		});
 	}
 }

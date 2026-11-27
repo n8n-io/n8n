@@ -35,7 +35,7 @@ describe('AuthController', () => {
 	mockInstance(Logger);
 	mockInstance(EventService);
 	mockInstance(AuthService);
-	mockInstance(MfaService);
+	const mfaService = mockInstance(MfaService);
 	mockInstance(UserService);
 	mockInstance(UserRepository);
 	mockInstance(PersonRepository);
@@ -112,6 +112,7 @@ describe('AuthController', () => {
 			expect(eventsService.emit).toHaveBeenCalledWith('user-logged-in', {
 				user: member,
 				authenticationMethod: 'ldap',
+				usedMfa: false,
 			});
 
 			expect(userService.toPublic).toHaveBeenCalledWith(member, {
@@ -164,6 +165,7 @@ describe('AuthController', () => {
 				authenticationMethod: 'email',
 				userEmail: body.emailOrLdapLoginId,
 				reason: 'SSO is enabled, please log in with SSO',
+				reasonCode: 'sso_login_required',
 			});
 		});
 
@@ -192,6 +194,68 @@ describe('AuthController', () => {
 				authenticationMethod: 'email',
 				userEmail: body.emailOrLdapLoginId,
 				reason: 'SSO is enabled, please log in with SSO',
+				reasonCode: 'sso_login_required',
+			});
+		});
+
+		it('should report a sign-in with MFA as made with MFA', async () => {
+			const member = mock<Person>({
+				id: '123',
+				email: 'user@example.com',
+				role: { slug: 'global:member' },
+				mfaEnabled: true,
+			});
+			const body = mock<LoginRequestDto>({
+				emailOrLdapLoginId: 'user@example.com',
+				password: 'password',
+				mfaCode: '123456',
+			});
+			const req = mock<AuthenticatedRequest>({ body, browserId: '1' });
+			const res = mock<Response>();
+
+			emailAuthHandler.handleLogin.mockResolvedValue(member);
+			config.set('userManagement.authenticationMethod', 'email');
+			mfaService.validateMfa.mockResolvedValue(true);
+
+			await controller.login(req, res, body);
+
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, true, '1');
+			expect(eventsService.emit).toHaveBeenCalledWith('user-logged-in', {
+				user: member,
+				authenticationMethod: 'email',
+				usedMfa: true,
+			});
+		});
+
+		it('should emit login failed event when the MFA code is rejected', async () => {
+			const member = mock<Person>({
+				id: '123',
+				email: 'user@example.com',
+				role: { slug: 'global:member' },
+				mfaEnabled: true,
+			});
+			const body = mock<LoginRequestDto>({
+				emailOrLdapLoginId: 'user@example.com',
+				password: 'password',
+				mfaCode: '000000',
+			});
+			const req = mock<AuthenticatedRequest>({ body, browserId: '1' });
+			const res = mock<Response>();
+
+			emailAuthHandler.handleLogin.mockResolvedValue(member);
+			config.set('userManagement.authenticationMethod', 'email');
+			mfaService.validateMfa.mockResolvedValue(false);
+
+			await expect(controller.login(req, res, body)).rejects.toThrow(
+				'Invalid mfa token or recovery code',
+			);
+
+			expect(authService.issueCookie).not.toHaveBeenCalled();
+			expect(eventsService.emit).toHaveBeenCalledWith('user-login-failed', {
+				authenticationMethod: 'email',
+				userEmail: 'user@example.com',
+				reason: 'Invalid mfa token or recovery code',
+				reasonCode: 'mfa_rejected',
 			});
 		});
 

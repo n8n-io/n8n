@@ -98,13 +98,15 @@ export class AuthController {
 			preliminaryPerson,
 		);
 
-		await this.validateMfa(person, mfaCode, mfaRecoveryCode);
+		await this.validateMfa(person, mfaCode, mfaRecoveryCode, usedAuthenticationMethod);
 
 		this.authService.issueCookie(res, person, person.mfaEnabled, req.browserId);
 
 		this.eventService.emit('user-logged-in', {
 			user: person,
 			authenticationMethod: usedAuthenticationMethod,
+			// A person with MFA enabled only gets here after `validateMfa` accepted a code.
+			usedMfa: person.mfaEnabled,
 		});
 
 		return await this.userService.toPublic(person, {
@@ -131,6 +133,7 @@ export class AuthController {
 				authenticationMethod: 'email',
 				userEmail,
 				reason: 'SSO is enabled, please log in with SSO',
+				reasonCode: 'sso_login_required',
 			});
 			throw new AuthError('SSO is enabled, please log in with SSO', SSO_LOGIN_REQUIRED_ERROR_CODE);
 		}
@@ -162,6 +165,7 @@ export class AuthController {
 				authenticationMethod: usedAuthenticationMethod,
 				userEmail: emailOrLdapLoginId,
 				reason: 'wrong credentials',
+				reasonCode: 'wrong_credentials',
 			});
 			throw new AuthError('Wrong username or password. Do you have caps lock on?');
 		}
@@ -173,6 +177,7 @@ export class AuthController {
 		person: Person,
 		mfaCode: string | undefined,
 		mfaRecoveryCode: string | undefined,
+		authenticationMethod: AuthProviderType,
 	): Promise<void> {
 		if (!person.mfaEnabled) {
 			return;
@@ -189,6 +194,14 @@ export class AuthController {
 		);
 
 		if (!isMfaCodeOrMfaRecoveryCodeValid) {
+			// The password was right, so the attempt names a real account; the audit event
+			// gives the operator the same trace as a wrong password does.
+			this.eventService.emit('user-login-failed', {
+				authenticationMethod,
+				userEmail: person.email,
+				reason: 'Invalid mfa token or recovery code',
+				reasonCode: 'mfa_rejected',
+			});
 			throw new AuthError('Invalid mfa token or recovery code');
 		}
 	}
