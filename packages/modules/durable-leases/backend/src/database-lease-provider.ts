@@ -8,6 +8,7 @@ import type { Lease, LeaseKindOptions, LeaseProvider, LeaseSource, LeaseStatus }
 import type { LeaseTransaction } from './durable-lease.service';
 import { LeaseSessionManager, type SessionClock } from './lease-session-manager';
 import { assertLeaseTimings } from './lease-timings';
+import { track } from './promises';
 
 export interface DatabaseLeaseProviderDeps {
 	config: LeasesConfig;
@@ -25,6 +26,8 @@ export class DatabaseLeaseProvider implements LeaseProvider<LeaseTransaction> {
 	private readonly sources = new Map<string, LeaseSource>();
 
 	private readonly managers = new Map<string, LeaseSessionManager>();
+
+	private readonly stoppingManagers = new Set<Promise<void>>();
 
 	private stopped = false;
 
@@ -65,8 +68,9 @@ export class DatabaseLeaseProvider implements LeaseProvider<LeaseTransaction> {
 			await manager.start();
 		} catch (error) {
 			// The kind stays unregistered, so its manager must stop beating; a retry starts a new manager.
+			// Stop can wait one lease length for an insert that hangs, so the registration does not wait for it.
 			this.managers.delete(kind);
-			await manager.stop();
+			track(this.stoppingManagers, manager.stop());
 			throw error;
 		}
 	}
@@ -85,8 +89,7 @@ export class DatabaseLeaseProvider implements LeaseProvider<LeaseTransaction> {
 
 	async stop(): Promise<void> {
 		this.stopped = true;
-		await Promise.allSettled(
-			[...this.managers.values()].map(async (manager) => await manager.stop()),
-		);
+		const stops = [...this.managers.values()].map(async (manager) => await manager.stop());
+		await Promise.allSettled([...stops, ...this.stoppingManagers]);
 	}
 }
