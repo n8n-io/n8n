@@ -15,9 +15,11 @@ export function useOpenEngineV2Findings() {
 
 	return async function openEngineV2Findings(workflowId: string) {
 		if (route.meta?.nodeView !== true) {
-			// A guard can refuse the move. Then nothing opens, so the next canvas doesn't open it later.
+			// A guard can refuse or redirect the move. Then nothing opens, so that a later canvas
+			// doesn't open it.
 			const failure = await router.push({ name: VIEWS.WORKFLOW, params: { workflowId } });
-			if (failure) return;
+			const { meta, params } = router.currentRoute.value;
+			if (failure || meta.nodeView !== true || params.workflowId !== workflowId) return;
 		}
 		findingsDialog.open();
 	};

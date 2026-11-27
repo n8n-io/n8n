@@ -9,6 +9,8 @@ import { createMockEnterpriseSettings, mockNodeTypeDescription } from '@/__tests
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
+import { useRouter } from 'vue-router';
+import { onTestFinished } from 'vitest';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -75,6 +77,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 			value: {
 				params: { workflowId: 'test' },
 				query: {},
+				meta: {},
 			},
 		},
 	}),
@@ -1469,6 +1472,16 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		it('should link the publish tooltip to the findings, on the editor tab', async () => {
 			setEngineV2Gate();
 			mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			// The move reaches the editor tab of this workflow.
+			const { currentRoute } = useRouter();
+			const before = currentRoute.value;
+			mockRouterPush.mockImplementationOnce(async () => {
+				currentRoute.value = { ...before, meta: { nodeView: true }, params: { workflowId: '1' } };
+			});
+			onTestFinished(() => {
+				currentRoute.value = before;
+			});
 
 			const { getByTestId } = renderComponent();
 			const link = getByTestId('engine-v2-publish-blocked-link');

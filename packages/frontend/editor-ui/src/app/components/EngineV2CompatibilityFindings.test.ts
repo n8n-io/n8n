@@ -15,6 +15,8 @@ import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__test
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
+import type { WorkflowHistory } from '@n8n/rest-api-client';
+import { mock } from 'vitest-mock-extended';
 import { shallowRef } from 'vue';
 
 import EngineV2CompatibilityFindings from './EngineV2CompatibilityFindings.vue';
@@ -41,11 +43,13 @@ const renderComponent = createComponentRenderer(EngineV2CompatibilityFindings);
 function setup({ readOnly = false } = {}) {
 	const document = useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID));
 	document.mergeSettings({ engineType: 'v2' });
+	// Like the app's own ref, it follows the open workflow.
+	const currentDocument = shallowRef(document);
 	const result = renderComponent({
 		props: { readOnly },
-		global: { provide: { [WorkflowDocumentStoreKey as symbol]: shallowRef(document) } },
+		global: { provide: { [WorkflowDocumentStoreKey as symbol]: currentDocument } },
 	});
-	return { document, ...result };
+	return { document, currentDocument, ...result };
 }
 
 async function openDialog(findByTestId: (id: string) => Promise<HTMLElement>) {
@@ -98,6 +102,35 @@ describe('EngineV2CompatibilityFindings', () => {
 		await waitFor(() =>
 			expect(queryByTestId('engine-v2-compatibility-dialog')).not.toBeInTheDocument(),
 		);
+	});
+
+	it('leaves the next workflow alone when the user opens it during the save', async () => {
+		let finishSave = () => {};
+		const save = new Promise<never>((resolve) => {
+			finishSave = () => resolve({} as never);
+		});
+		vi.spyOn(useWorkflowsStore(), 'updateWorkflowSetting').mockReturnValue(save);
+		const { currentDocument, findByTestId } = setup();
+		await openDialog(findByTestId);
+		await fireEvent.click(await findByTestId('engine-v2-compatibility-switch-to-v1'));
+
+		// The next workflow has a published version, and the user opens its findings.
+		const next = useWorkflowDocumentStore(createWorkflowDocumentId('w2'));
+		next.mergeSettings({ engineType: 'v2' });
+		next.setActiveState({
+			activeVersionId: 'version-1',
+			activeVersion: mock<WorkflowHistory>({ versionId: 'version-1', settings: {} }),
+		});
+		currentDocument.value = next;
+		useEngineV2FindingsDialog().open();
+		finishSave();
+
+		await waitFor(() =>
+			expect(useToast().showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Switched to Engine v1', message: undefined }),
+			),
+		);
+		expect(useEngineV2FindingsDialog().isOpen.value).toBe(true);
 	});
 
 	it('shows an error and keeps the dialog open when the save fails', async () => {

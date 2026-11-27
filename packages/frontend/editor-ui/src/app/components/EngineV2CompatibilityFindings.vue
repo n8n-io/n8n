@@ -51,13 +51,12 @@ function onOpenNode(nodeId: string) {
 }
 
 async function onSwitchToV1() {
+	// The injected document follows the open workflow. The user can open another workflow during
+	// the save, so read this workflow's values before it.
+	const { workflowId, activeVersion } = workflowDocumentStore.value;
 	isSwitching.value = true;
 	try {
-		await workflowsStore.updateWorkflowSetting(
-			workflowDocumentStore.value.workflowId,
-			'engineType',
-			'v1',
-		);
+		await workflowsStore.updateWorkflowSetting(workflowId, 'engineType', 'v1');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('engineV2Compatibility.dialog.switchToV1.error'));
 		return;
@@ -65,10 +64,11 @@ async function onSwitchToV1() {
 		isSwitching.value = false;
 	}
 
-	findingsDialog.close();
+	// The open state is shared, so don't close the findings of another workflow.
+	if (workflowDocumentStore.value.workflowId === workflowId) findingsDialog.close();
 	toast.showMessage({
 		title: i18n.baseText('engineV2Compatibility.dialog.switchToV1.success'),
-		message: workflowDocumentStore.value.activeVersion
+		message: activeVersion
 			? i18n.baseText('engineV2Compatibility.confirm.publishedVersion')
 			: undefined,
 		type: 'success',
