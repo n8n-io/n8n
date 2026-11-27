@@ -209,14 +209,14 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
  */
 export const COMMUNITY_PACKAGE_TOOLS: ReadonlySet<string> = new Set(['install_community_node']);
 
-/** Context tools that also require the instance-ai module. */
+/** Context tools that also require the instance-ai module and the activity log. */
 export const ACTIVITY_LOG_TOOLS: ReadonlySet<string> = new Set([
 	'get_instance_context',
 	'get_instance_activity',
 	'expand_instance_activity',
 ]);
 
-/** Tools that require the shared instance activity gate. */
+/** Instance context tools. MCP registers them while `instanceContextEnabled` is on. */
 export const INSTANCE_CONTEXT_TOOLS: ReadonlySet<string> = new Set([
 	'get_instance_context',
 	'get_instance_activity',

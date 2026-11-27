@@ -8,6 +8,7 @@ import {
 	createAgent,
 	deleteN8nChatThread,
 	deleteSystemAgentThread,
+	generateAgentTestScenarios,
 	getAgentBackgroundJobs,
 	getAgentBudgetSpend,
 	getAgentChatQueue,
@@ -439,6 +440,24 @@ describe('useAgentApi', () => {
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2/agent-1/chat/agent-1%3Achat%3Abot-1-2%231/messages',
+			);
+		});
+	});
+
+	describe('generateAgentTestScenarios', () => {
+		it('posts to the test-scenarios endpoint with encoded identifiers and optional previousScenarios', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ scenarios: ['Scenario 1'] });
+
+			const result = await generateAgentTestScenarios(restApiContext, 'project/1', 'agent/1', {
+				previousScenarios: ['Old scenario'],
+			});
+
+			expect(result).toEqual({ scenarios: ['Scenario 1'] });
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'POST',
+				'/projects/project%2F1/agents/v2/agent%2F1/chat/test-scenarios',
+				{ previousScenarios: ['Old scenario'] },
 			);
 		});
 	});

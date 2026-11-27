@@ -36,12 +36,23 @@ export class ExecutionLimitsModule implements ModuleInterface {
 		const { ExecutionLimitsSnapshot } = await import('./execution-limits-snapshot.js');
 		await Container.get(ExecutionLimitsSnapshot).start();
 
+		// Workers register it too: the runs they admit do not count, so it stops before any read.
+		await import('./execution-limit.check.js');
+
 		hooks.registerProvider({
 			afterTeamProjectCreated: async (projectId) => {
 				const { ExecutionLimitsService } = await import('./execution-limits.service.js');
 				await Container.get(ExecutionLimitsService).applyDefaultLimitToNewProject(projectId);
 			},
 		});
+
+		// A worker does not admit runs, so it needs no usage.
+		const { InstanceSettings } = await import('n8n-core');
+		const { instanceType } = Container.get(InstanceSettings);
+		if (instanceType !== 'main' && instanceType !== 'webhook') return;
+
+		const { ExecutionUsageCache } = await import('./execution-usage-cache.js');
+		await Container.get(ExecutionUsageCache).start();
 	}
 
 	async entities() {

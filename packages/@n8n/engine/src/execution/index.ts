@@ -15,6 +15,7 @@ export type {
 	ExecutionMode,
 	ExecutionStatus,
 	ExecutorWaitDeclaration,
+	ErrorSourceLink,
 	ParentLink,
 	StepError,
 	StepKey,
@@ -32,6 +33,7 @@ export type {
 } from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
 export type {
+	CreateExecutionResult,
 	ExecutionRecord,
 	ExecutionStore,
 	NewExecutionRecord,

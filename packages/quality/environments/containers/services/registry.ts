@@ -18,6 +18,7 @@ import { postgres, createPostgresHelper } from './postgres';
 import { postgresExporter } from './postgres-exporter';
 import { proxy, createProxyHelper } from './proxy';
 import { redis } from './redis';
+import { createRedisClusterHelper, redisCluster } from './redis-cluster';
 import { sandbox } from './sandbox';
 import { taskRunner } from './task-runner';
 import { tracing, createTracingHelper } from './tracing';
@@ -32,6 +33,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	postgres,
 	enginePostgres,
 	redis,
+	redisCluster,
 	mailpit,
 	gitea,
 	keycloak,
@@ -71,4 +73,5 @@ export const helperFactories: Partial<HelperFactories> = {
 	vault: createVaultHelper,
 	kent: createKentHelper,
 	npmRegistry: createNpmRegistryHelper,
+	redisCluster: createRedisClusterHelper,
 };

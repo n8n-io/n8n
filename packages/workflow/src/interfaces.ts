@@ -347,6 +347,14 @@ export abstract class ICredentialsHelper {
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void>;
 
+	/** Called when the OAuth2 provider rejects a refresh token. */
+	discardRejectedOauthTokenData?(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		rejectedRefreshToken: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<void>;
+
 	abstract getCredentialsProperties(type: string): INodeProperties[];
 }
 

@@ -17,7 +17,6 @@ import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
 import { SkillService } from '../../services/skill.service';
 import type { SkillsTelemetry } from '../../services/skills-telemetry.service';
-import type { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
 import type { SkillSyncedFromService } from '../../services/skill-synced-from.service';
 import type { SkillSyncFlagGate } from '../../services/skill-sync-flag-gate';
 import type { WorkflowsInSkillsFlagGate } from '../../services/workflows-in-skills-flag-gate';
@@ -97,7 +96,6 @@ export function createSkillServices() {
 	const projectScope = mock<ProjectScopeService>();
 	const telemetry = mock<SkillsTelemetry>();
 	const users = mock<UserRepository>();
-	const assistantGate = mock<AssistantSkillsFlagGate>();
 	const syncedFrom = mock<SkillSyncedFromService>();
 	const links = mock<SkillSourceRepository>();
 	const skillSyncGate = mock<SkillSyncFlagGate>();
@@ -123,7 +121,6 @@ export function createSkillServices() {
 		access,
 		runtime,
 		telemetry,
-		assistantGate,
 		syncedFrom,
 		links,
 		skillSyncGate,
@@ -138,7 +135,6 @@ export function createSkillServices() {
 		projectScope,
 		telemetry,
 		users,
-		assistantGate,
 		syncedFrom,
 		links,
 		skillSyncGate,

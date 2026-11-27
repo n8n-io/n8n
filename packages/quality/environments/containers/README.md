@@ -425,6 +425,7 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 |---------|--------|-------------|
 | `postgres` | - | PostgreSQL database (version from `postgres-versions.json`) |
 | `redis` | - | Redis for queue mode |
+| `redisCluster` | ✓ | 3-node Redis Cluster for queue mode (`QUEUE_BULL_REDIS_CLUSTER_NODES`) |
 | `mailpit` | ✓ | Email testing (SMTP + UI) |
 | `gitea` | ✓ | Git server for source control |
 | `keycloak` | ✓ | OIDC/SSO provider |
