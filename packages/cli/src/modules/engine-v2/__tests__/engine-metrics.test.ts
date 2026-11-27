@@ -147,7 +147,7 @@ describe('createEngineMetrics', () => {
 		});
 
 		it('records the engine time of each message by queue and type', async () => {
-			let clock = 0;
+			let clock = 1000;
 			const { registry, wrapped, orchestration } = wrap(undefined, () => clock);
 			wrapped.orchestration.start(async () => {
 				clock += 3;
@@ -158,14 +158,16 @@ describe('createEngineMetrics', () => {
 			const series = { queue: 'orchestration', type: 'step:settled' };
 			const metric = 'n8n_engine_handler_engine_time_seconds';
 			expect(await valueOf(registry, metric, `${metric}_count`, series)).toBe(1);
-			expect(await valueOf(registry, metric, `${metric}_sum`, series)).toBeCloseTo(0.003);
+			expect(await valueOf(registry, metric, `${metric}_sum`, series)).toBeCloseTo(0.003, 4);
+			expect(await registry.metrics()).toContain('le="0.0025"');
 		});
 
 		it('leaves the time in the v1 shim out of the engine time', async () => {
-			let clock = 0;
+			let clock = 1000;
 			const { registry, metrics, wrapped, step } = wrap(undefined, () => clock);
 			const shim = mock<IStepExecutor>();
 			shim.execute.mockImplementation(async () => {
+				await Promise.resolve();
 				clock += 100;
 				return {} as Awaited<ReturnType<IStepExecutor['execute']>>;
 			});
@@ -177,11 +179,59 @@ describe('createEngineMetrics', () => {
 			});
 
 			await step.deliver(ready);
+			await step.deliver(ready);
 
 			const metric = 'n8n_engine_handler_engine_time_seconds';
 			expect(
 				await valueOf(registry, metric, `${metric}_sum`, { queue: 'step', type: 'step:ready' }),
-			).toBeCloseTo(0.035);
+			).toBeCloseTo(0.07, 4);
+		});
+
+		it('keeps the shim time of each message apart when messages run at the same time', async () => {
+			let clock = 1000;
+			const { registry, metrics, wrapped, step } = wrap(undefined, () => clock);
+			let releaseShim = () => {};
+			const shimDone = new Promise<void>((resolve) => {
+				releaseShim = resolve;
+			});
+			let releaseSecond = () => {};
+			const secondDone = new Promise<void>((resolve) => {
+				releaseSecond = resolve;
+			});
+			const shim = mock<IStepExecutor>();
+			shim.execute.mockImplementation(async () => {
+				await shimDone;
+				return {} as Awaited<ReturnType<IStepExecutor['execute']>>;
+			});
+			const wrappedShim = metrics.wrapStepExecutor(shim);
+			wrapped.step.start(async (message) => {
+				if (message.stepId === 'first') {
+					clock += 10;
+					await wrappedShim.execute(mock());
+				} else {
+					clock += 20;
+					await secondDone;
+				}
+			});
+
+			const first = step.deliver({ ...ready, stepId: 'first' });
+			const second = step.deliver({ ...ready, stepId: 'second' });
+			clock += 100;
+			releaseShim();
+			await first;
+			releaseSecond();
+			await second;
+
+			// first: 130 ms in its handler, 120 ms of it in the shim, so 10 ms. second: 120 ms, no shim.
+			const metric = 'n8n_engine_handler_engine_time_seconds';
+			const buckets = ((await registry.getSingleMetric(metric)?.get())?.values ?? []).filter(
+				(value) => (value as { metricName?: string }).metricName === `${metric}_bucket`,
+			);
+			const atMost = (le: number) => buckets.find((value) => value.labels.le === le)?.value;
+			expect(atMost(0.005)).toBe(0);
+			expect(atMost(0.01)).toBe(1);
+			expect(atMost(0.1)).toBe(1);
+			expect(atMost(0.25)).toBe(2);
 		});
 
 		it('reports the queue depth from each queue', async () => {
@@ -277,10 +327,13 @@ describe('createEngineMetrics', () => {
 		});
 
 		it('leaves the other stores and the other execution store methods as they are', async () => {
-			const { executionStore, stores, wrapped } = wrap();
-			executionStore.transitionStatus.mockResolvedValue(true);
+			const { executionStore, stores, wrapped, finished } = wrap();
+			executionStore.transitionStatus.mockImplementation(async function (this: unknown) {
+				return this === executionStore;
+			});
 
 			expect(await wrapped.executionStore.transitionStatus('e1', 'queued', 'running')).toBe(true);
+			expect(await finished('completed')).toBe(0);
 			expect(wrapped.stepStore).toBe(stores.stepStore);
 			expect(wrapped.executionViewStore).toBe(stores.executionViewStore);
 		});

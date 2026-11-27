@@ -621,6 +621,7 @@ describe('EngineV2Runtime', () => {
 			}).init({ ...initOptions(), metricsRegistry: registry });
 
 			expect(registry.getSingleMetric('n8n_engine_db_pool_connections_max')).toBeUndefined();
+			expect(registry.getSingleMetric('n8n_engine_queue_depth')).toBeDefined();
 		});
 
 		const engineOptions = () =>
