@@ -1,5 +1,7 @@
+import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
 import AgentChatMessageList from '../components/AgentChatMessageList.vue';
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
@@ -46,6 +48,9 @@ function mountList(messages: ChatMessage[], messagingState: MessagingState) {
 }
 
 describe('AgentChatMessageList after-reply slot', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
 	it('reports the reply as not complete until the run ends', async () => {
 		const wrapper = mountList(reply('streaming', [heldToolCall('call-1')]), 'receiving');
 		await flushPromises();
