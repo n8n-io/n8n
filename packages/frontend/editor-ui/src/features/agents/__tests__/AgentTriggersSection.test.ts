@@ -66,17 +66,17 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({ replace: routerReplace }),
 }));
 
-const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy, showMessageSpy } = vi.hoisted(
-	function createStatusSpy() {
+const { fetchStatusSpy, connectSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy, showMessageSpy } =
+	vi.hoisted(function createStatusSpy() {
 		return {
 			fetchStatusSpy: vi.fn().mockResolvedValue(undefined),
+			connectSpy: vi.fn().mockResolvedValue(undefined),
 			disconnectSpy: vi.fn(),
 			loadRuntimeSpy: vi.fn(),
 			showErrorSpy: vi.fn(),
 			showMessageSpy: vi.fn(),
 		};
-	},
-);
+	});
 
 const connectedCredentials = ref<Record<string, string>>({});
 const configured = ref<Record<string, boolean>>({});
@@ -104,6 +104,7 @@ vi.mock('../composables/useAgentIntegrationStatus', function mockIntegrationStat
 				connectedCredentials,
 				integrationSettings,
 				fetchStatus: fetchStatusSpy,
+				connect: connectSpy,
 				disconnect: disconnectSpy,
 				loadingMap: ref({}),
 				runtimeErrors: ref({}),
@@ -186,7 +187,7 @@ function mountSection(
 				AgentTriggersList: {
 					name: 'AgentTriggersList',
 					props: ['channels', 'ensureAgentPersisted'],
-					emits: ['add-channel', 'open-channel', 'open-task'],
+					emits: ['add-channel', 'open-channel', 'open-task', 'toggle-channel'],
 					methods: { reloadTasks: reloadTasksSpy },
 					template:
 						'<div data-testid="agent-triggers-list-stub"><button data-testid="agent-triggers-add-trigger" /><button data-testid="add-trigger-item-channel" @click="$emit(\'add-channel\')" /></div>',
@@ -571,6 +572,56 @@ describe('AgentTriggersSection', () => {
 
 			expect(reloadTasksSpy).toHaveBeenCalledTimes(1);
 			expect(wrapper.emitted('tasks-changed')).toHaveLength(1);
+		});
+
+		it('persists the agent and connects n8n Chat when its switch is turned on', async () => {
+			n8nChatFlag.value = true;
+			const ensurePersistedStub = vi.fn().mockResolvedValue(undefined);
+			const wrapper = mountSection(undefined, false, {
+				connectedTriggers: ['slack'],
+				ensureAgentPersisted: ensurePersistedStub,
+			});
+
+			wrapper
+				.findComponent({ name: 'AgentTriggersList' })
+				.vm.$emit('toggle-channel', { type: 'n8n_chat', enabled: true });
+			await flushPromises();
+
+			expect(ensurePersistedStub).toHaveBeenCalledTimes(1);
+			expect(connectSpy).toHaveBeenCalledWith('n8n_chat', '');
+			expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+			expect(wrapper.emitted('trigger-added')).toEqual([
+				[{ triggerType: 'n8n_chat', triggers: ['slack', 'n8n_chat'] }],
+			]);
+		});
+
+		it('shows an error and does not add n8n Chat when connecting fails', async () => {
+			n8nChatFlag.value = true;
+			connectSpy.mockRejectedValueOnce(new Error('Connect failed'));
+			const wrapper = mountSection();
+
+			wrapper
+				.findComponent({ name: 'AgentTriggersList' })
+				.vm.$emit('toggle-channel', { type: 'n8n_chat', enabled: true });
+			await flushPromises();
+
+			expect(showErrorSpy).toHaveBeenCalledWith(
+				expect.any(Error),
+				'agents.channels.modal.saveChannelError',
+			);
+			expect(wrapper.emitted('trigger-added')).toBeUndefined();
+		});
+
+		it('ignores the switch for other channels', async () => {
+			const wrapper = mountSection(undefined, false, { connectedTriggers: ['slack'] });
+
+			wrapper
+				.findComponent({ name: 'AgentTriggersList' })
+				.vm.$emit('toggle-channel', { type: 'slack', enabled: true });
+			await flushPromises();
+
+			expect(connectSpy).not.toHaveBeenCalled();
+			expect(wrapper.emitted('trigger-added')).toBeUndefined();
 		});
 
 		it('shows the row add buttons and no add trigger menu when the flag is off', () => {
