@@ -23,7 +23,7 @@ test.afterEach(async () => await stopAllStacks());
 
 test(
 	'multi-main: a frozen leader steps down after it thaws and finds a new leader',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	async () => {
 		test.setTimeout(300_000);
 

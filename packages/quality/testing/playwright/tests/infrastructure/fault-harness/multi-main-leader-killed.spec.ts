@@ -24,7 +24,7 @@ test.afterEach(async () => await stopAllStacks());
 
 test(
 	'multi-main: a follower takes over within the lease when the leader is killed',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	async () => {
 		test.setTimeout(300_000);
 
