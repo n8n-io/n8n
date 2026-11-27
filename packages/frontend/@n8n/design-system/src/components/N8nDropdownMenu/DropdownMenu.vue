@@ -54,6 +54,8 @@ const emit = defineEmits<{
 	search: [searchTerm: string, itemId?: T];
 	'submenu:toggle': [itemId: T, open: boolean];
 	'item-mouseup': [item: DropdownMenuItemProps<T, D>];
+	'close-auto-focus': [event: Event];
+	'interact-outside': [event: FocusOutsideEvent | PointerDownOutsideEvent];
 }>();
 
 const slots = defineSlots<DropdownMenuSlots<T, D>>();
@@ -199,6 +201,7 @@ const handleContentOpenAutoFocus = (event: Event) => {
 };
 
 const handleContentCloseAutoFocus = (event: Event) => {
+	emit('close-auto-focus', event);
 	if (isExternalSearchMode.value || props.suppressCloseAutoFocus || suppressNextCloseAutoFocus) {
 		event.preventDefault();
 	}
@@ -211,6 +214,7 @@ const contentFocusEventHandlers = computed(() => ({
 }));
 
 const handleContentInteractOutside = (event: FocusOutsideEvent | PointerDownOutsideEvent) => {
+	emit('interact-outside', event);
 	if (
 		isExternalSearchMode.value &&
 		event.detail.originalEvent.target === props.externalFocusTarget

@@ -224,6 +224,33 @@ describe('useContextMenu', () => {
 		});
 	});
 
+	describe('toolbar anchor', () => {
+		it('uses the button for toolbar menus and clears it for right-click menus', () => {
+			const menu = useContextMenu();
+			const button = document.createElement('button');
+			button.addEventListener('click', (event) => {
+				menu.open(event, { source: 'node-button', nodeId: nodes[0].id });
+			});
+			button.click();
+			expect(menu.anchor.value).toBe(button);
+
+			menu.open(mockEvent, { source: 'node-right-click', nodeId: nodes[0].id });
+			expect(menu.anchor.value).toBeUndefined();
+			expect(menu.position.value).toEqual([mockEvent.clientX, mockEvent.clientY]);
+		});
+
+		it('clears the button when the menu closes', () => {
+			const menu = useContextMenu();
+			const button = document.createElement('button');
+			button.addEventListener('click', (event) => {
+				menu.open(event, { source: 'node-button', nodeId: nodes[0].id });
+			});
+			button.click();
+			menu.close();
+			expect(menu.anchor.value).toBeUndefined();
+		});
+	});
+
 	describe('group_nodes gating', () => {
 		beforeEach(() => {
 			// Connect the first two nodes so they form a groupable subgraph
