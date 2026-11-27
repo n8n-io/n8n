@@ -187,8 +187,8 @@ export function createEngineMetrics({
 
 		/**
 		 * Returns a function whose time counts as engine time also when the v1 shim
-		 * calls it, for engine work that runs inside the shim. Today that is the
-		 * step data loader. A call outside a shim call but inside a queue message
+		 * calls it, for engine work that runs inside the shim. Its one caller is
+		 * the step data loader. A call outside a shim call but inside a queue message
 		 * would make the engine time longer than the handler time.
 		 */
 		countAsEngineTime<TArgs extends unknown[], TResult>(

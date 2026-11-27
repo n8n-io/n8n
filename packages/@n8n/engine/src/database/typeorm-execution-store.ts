@@ -33,6 +33,7 @@ import {
 	isEndedExecutionStatus,
 	LIVE_EXECUTION_STATUSES,
 	stepKeyId,
+	type EndedExecutionStatus,
 	type ExecutionStatus,
 	type StepKey,
 	type StepKeyId,
@@ -199,7 +200,11 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		return row.status;
 	}
 
-	async transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean> {
+	async transitionStatus(
+		id: string,
+		from: ExecutionStatus,
+		to: Exclude<ExecutionStatus, EndedExecutionStatus>,
+	): Promise<boolean> {
 		const result = await this.repo.update(
 			{ id, status: from },
 			{ status: to, staleAfter: this.staleAfterFor(to) },

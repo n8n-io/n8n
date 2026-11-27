@@ -3,6 +3,7 @@ import type { LifecycleEventSubscription } from '../lifecycle-events';
 import type { ResponseExpectation } from '../response-channel';
 import type {
 	CallerContext,
+	EndedExecutionStatus,
 	ErrorSourceLink,
 	ExecutionMode,
 	ExecutionStatus,
@@ -126,8 +127,8 @@ export function isMissingExecution(error: unknown, executionId: string): boolean
  * it as stuck in that status (see `StalenessThresholds`). A transition out of
  * `queued` clears that time.
  *
- * Only `finishExecution` and `cancelExecution` move an execution to an ended
- * status, so a host that wraps the store sees every end.
+ * Only `finishExecution` and `cancelExecution` move a `queued` or live
+ * execution to an ended status, so a host that wraps the store sees every end.
  */
 export interface ExecutionStore {
 	/**
@@ -163,7 +164,11 @@ export interface ExecutionStore {
 	 * Compare-and-set status transition. Returns `true` iff this call performed
 	 * the transition, so duplicate/redelivered events are handled idempotently.
 	 */
-	transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean>;
+	transitionStatus(
+		id: string,
+		from: ExecutionStatus,
+		to: Exclude<ExecutionStatus, EndedExecutionStatus>,
+	): Promise<boolean>;
 
 	/**
 	 * Record an execution's outcome: writes the final status and the finish time
