@@ -11,11 +11,11 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
-import { EngineControlPlaneServer } from '@/modules/engine-v2/engine-control-plane-server';
-import { EngineCredentialsClient } from '@/modules/engine-v2/engine-credentials-client';
-import type { ResolveCredentialRequest } from '@/modules/engine-v2/engine-credentials.contract';
+import { EngineControlPlaneServer } from '@/modules/engine-v2/control-plane/engine-control-plane-server';
+import { EngineCredentialsClient } from '@/modules/engine-v2/credentials/engine-credentials-client';
+import type { ResolveCredentialRequest } from '@/modules/engine-v2/credentials/engine-credentials.contract';
 import { CREDENTIALS_RESOLVE_PATH } from '@/modules/engine-v2/engine-v2.constants';
-import { RemoteCredentialsHelper } from '@/modules/engine-v2/remote-credentials-helper';
+import { RemoteCredentialsHelper } from '@/modules/engine-v2/credentials/remote-credentials-helper';
 
 import { saveCredential } from './shared/db/credentials';
 import { createMember, createOwner } from './shared/db/users';

@@ -19,6 +19,7 @@ import {
 } from '@n8n/instance-ai';
 import { ErrorReporter } from 'n8n-core';
 
+import { AgentArchiveService } from '@/modules/agents/agent-archive.service';
 import { formatPreviewSessionContext } from '@/modules/agents/format-agent-session-context';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -109,6 +110,7 @@ export class AssistantAgentFactory {
 			environment.orchestrationContext.tracing = tracing;
 		}
 		await this.bindAgentContextReader(environment.context, user);
+		await this.bindAgentArchiveService(environment.context, user);
 		await this.bindAgentPreviewSession(environment.context, user);
 		const mcpServers = await this.buildMcpServers(
 			user,
@@ -182,6 +184,18 @@ export class AssistantAgentFactory {
 			user,
 			projectId,
 		);
+	}
+
+	private async bindAgentArchiveService(context: InstanceAiContext, user: User): Promise<void> {
+		const { projectId } = context;
+		if (!projectId || context.branchReadOnly || !isAgentsAccessEnabled()) return;
+		if (!(await userHasScopes(user, ['agent:delete'], false, { projectId }))) return;
+
+		const service = Container.get(AgentArchiveService);
+		context.agentArchiveService = {
+			preview: async (agentId) => await service.preview(user.id, projectId, agentId),
+			archive: async (agentId) => await service.archive(user.id, projectId, agentId),
+		};
 	}
 
 	/**

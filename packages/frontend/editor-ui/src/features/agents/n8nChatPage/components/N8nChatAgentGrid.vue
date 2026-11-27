@@ -12,10 +12,8 @@ withDefaults(
 		agents: AgentChatListItem[];
 		loading?: boolean;
 		source: N8nChatAgentSource;
-		/** Puts an n8n Assistant card before the agents. */
-		includeAssistant?: boolean;
 	}>(),
-	{ loading: false, includeAssistant: false },
+	{ loading: false },
 );
 
 const emit = defineEmits<{
@@ -43,7 +41,6 @@ function onAvailable(): void {
 			/>
 		</template>
 		<template v-else>
-			<N8nChatAgentCard v-if="includeAssistant" :agent="null" :source="source" />
 			<N8nChatAgentCard
 				v-for="agent in agents"
 				:key="agent.id"

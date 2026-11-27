@@ -68,7 +68,9 @@ export class WorkflowSettingsModal extends BasePage {
 
 	async selectEngineType(label: string): Promise<void> {
 		await this.getEngineTypeSelect().click();
-		await this.getVisiblePopoverOption(label, { exact: true }).click();
+		// An option's name is its label, then its description. Match the label only.
+		const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		await this.getVisiblePopoverOption(new RegExp(`^${escaped}(\\s|$)`)).click();
 	}
 
 	getRedactProductionSelect(): Locator {

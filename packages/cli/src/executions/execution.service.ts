@@ -43,6 +43,7 @@ import {
 	WorkflowOperationError,
 	createEmptyRunExecutionData,
 	createErrorExecutionData,
+	isTerminalExecutionStatus,
 	runDataUsedDynamicCredentials,
 	WORKFLOW_ENGINE_TYPES,
 } from 'n8n-workflow';
@@ -625,6 +626,10 @@ export class ExecutionService {
 			throw new MissingExecutionStopError(executionId);
 		}
 
+		return await this.stopV1Execution(execution);
+	}
+
+	private async stopV1Execution(execution: IExecutionResponse): Promise<StopResult> {
 		this.assertStoppable(execution);
 
 		// oxlint-disable-next-line typescript/no-deprecated
@@ -661,6 +666,49 @@ export class ExecutionService {
 		}
 
 		return stopped;
+	}
+
+	/**
+	 * Stop the sub-executions that a waiting parent waits for. The caller may not have access to
+	 * a child's workflow. The child is stopped anyway, because it only runs for the parent.
+	 */
+	private async stopWaitingChildren(parentId: string, childIds: string[]) {
+		if (childIds.length === 0) return;
+
+		let unfinishedIds: string[];
+		try {
+			unfinishedIds = await this.findUnfinishedIds(childIds);
+		} catch (error) {
+			this.logger.warn('Failed to find the sub-executions of a stopped parent', {
+				parentExecutionId: parentId,
+				error: ensureError(error).message,
+			});
+			return;
+		}
+
+		for (const childId of unfinishedIds) {
+			try {
+				const child = await this.executionPersistence.findSingleExecution(childId, {
+					includeData: true,
+					unflattenData: true,
+				});
+				if (!child || isTerminalExecutionStatus(child.status)) continue;
+
+				await this.stopV1Execution(child);
+			} catch (error) {
+				this.logger.warn('Failed to stop a sub-execution of a stopped parent', {
+					parentExecutionId: parentId,
+					executionId: childId,
+					error: ensureError(error).message,
+				});
+			}
+		}
+	}
+
+	/** Reads only the status column, so the data of executions that ended is never loaded. */
+	private async findUnfinishedIds(executionIds: string[]) {
+		const statuses = await this.executionPersistence.findStatusesByIds(executionIds);
+		return statuses.filter(({ status }) => !isTerminalExecutionStatus(status)).map(({ id }) => id);
 	}
 
 	private assertStoppable(execution: IExecutionResponse) {
@@ -778,6 +826,7 @@ export class ExecutionService {
 
 	private async stopDuringRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
 		const expectedStatus = execution.status;
+		const waitingChildIds = expectedStatus === 'waiting' ? getWaitingChildIds(execution) : [];
 		const error = new ManualExecutionCancelledError(execution.id);
 
 		execution.data = execution.data ?? createEmptyRunExecutionData();
@@ -815,6 +864,10 @@ export class ExecutionService {
 				? await this.stopInRegularMode(current)
 				: await this.stopInScalingMode(current);
 		}
+
+		// The parent is canceled now, so a child that ends cannot resume it. The queue-mode
+		// broadcast runs after this, so a failed broadcast does not skip the children.
+		await this.stopWaitingChildren(execution.id, waitingChildIds);
 
 		return execution;
 	}
@@ -1055,4 +1108,10 @@ export class ExecutionService {
 			createdAt: v.createdAt,
 		}));
 	}
+}
+
+function getWaitingChildIds(execution: IExecutionResponse): string[] {
+	return (
+		execution.data?.executionData?.nodeExecutionStack?.[0]?.metadata?.waitingChildExecutionIds ?? []
+	);
 }

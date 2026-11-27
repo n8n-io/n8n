@@ -19,7 +19,7 @@ CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(
 | clientSecretExpiresAt | bigint |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | grantTypes | TEXT |  | false |  |  |  |
-| id | varchar |  | false | [oauth_access_tokens](oauth_access_tokens.md) [oauth_authorization_codes](oauth_authorization_codes.md) [oauth_refresh_tokens](oauth_refresh_tokens.md) [oauth_user_consents](oauth_user_consents.md) |  |  |
+| id | varchar |  | false | [mcp_server_connection](mcp_server_connection.md) [oauth_access_tokens](oauth_access_tokens.md) [oauth_authorization_codes](oauth_authorization_codes.md) [oauth_refresh_tokens](oauth_refresh_tokens.md) [oauth_user_consents](oauth_user_consents.md) |  |  |
 | isFirstParty | boolean | false | false |  |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | redirectUris | TEXT |  | false |  |  |  |
@@ -44,6 +44,7 @@ CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(
 ```mermaid
 erDiagram
 
+"mcp_server_connection" |o--|| "oauth_clients" : "FOREIGN KEY (oauthClientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_access_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_refresh_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -60,6 +61,14 @@ erDiagram
   TEXT redirectUris
   varchar_255_ tokenEndpointAuthMethod
   datetime_3_ updatedAt
+}
+"mcp_server_connection" {
+  varchar_255_ clientName
+  datetime_3_ firstUsedAt
+  datetime_3_ lastUsedAt
+  varchar oauthClientId PK
+  varchar serverId PK
+  varchar userId PK
 }
 "oauth_access_tokens" {
   varchar clientId FK

@@ -1,0 +1,21 @@
+@mixin workflow-mention-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: 0 var(--spacing--3xs);
+	border-radius: var(--radius--3xs);
+	background: color-mix(in oklch, var(--color--secondary) 14%, transparent);
+	color: var(--color--secondary);
+	font-weight: var(--font-weight--medium);
+	text-decoration: none;
+
+	&::before {
+		content: '';
+		width: var(--spacing--xs);
+		height: var(--spacing--xs);
+		flex-shrink: 0;
+		background: currentColor;
+		mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7h6a4 4 0 0 1 4 4v2a4 4 0 0 0 4 4h4'/%3E%3Cpath d='M3 17h5'/%3E%3Cpath d='M16 7h5'/%3E%3C/svg%3E")
+			center / contain no-repeat;
+	}
+}

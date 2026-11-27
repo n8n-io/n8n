@@ -7,7 +7,7 @@ import { createInstanceRedisWorkQueues } from '../work-queue/redis-work-queues';
 
 vi.mock('@n8n/engine', { spy: true });
 
-const publisher = { lpush: vi.fn(), rpush: vi.fn() };
+const publisher = { lpush: vi.fn(), rpush: vi.fn(), llen: vi.fn() };
 
 mockInstance(GlobalConfig, { redis: { prefix: 'acme' } });
 const redisClientService = mockInstance(RedisClientService);

@@ -48,7 +48,6 @@ import {
 	SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 } from '@/features/integrations/sourceControl.ee/sourceControl.constants';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
 import {
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -79,8 +78,6 @@ export const lazyModalLoaders = {
 	[ABOUT_MODAL_KEY]: async () => await import('@/app/components/AboutModal.vue'),
 	[WORKFLOW_ACTIVE_MODAL_KEY]: async () =>
 		await import('@/features/workflows/components/ActivationModal.vue'),
-	[API_KEY_CREATE_OR_EDIT_MODAL_KEY]: async () =>
-		await import('@/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue'),
 	[NEW_ASSISTANT_SESSION_MODAL]: async () =>
 		await import('@/features/ai/assistant/components/Chat/NewAssistantSessionModal.vue'),
 	[CHAT_EMBED_MODAL_KEY]: async () => await import('@/app/components/ChatEmbedModal.vue'),

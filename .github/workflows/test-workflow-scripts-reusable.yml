@@ -9,10 +9,10 @@ on:
         type: string
         default: ''
       nodeVersion:
-        description: Version of node to use.
+        description: Version of node to use. Empty uses NODE_VERSION of docker/docker-bake.hcl.
         required: false
         type: string
-        default: 26.13.0
+        default: ''
 
 env:
   NODE_OPTIONS: --max-old-space-size=7168
@@ -20,7 +20,7 @@ env:
 jobs:
   workflow-script-tests:
     name: Run tests for workflow scripts
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-slim' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-slim' || 'blacksmith-4vcpu-bmi-n8n' }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:

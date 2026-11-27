@@ -2,7 +2,12 @@ import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
-import { recordConsumedAuth, WorkflowConfigurationError } from 'n8n-workflow';
+import {
+	recordConsumedAuth,
+	redactedHeaders,
+	WEBHOOK_NODE_TYPE,
+	WorkflowConfigurationError,
+} from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
 	INodeExecutionData,
@@ -34,6 +39,25 @@ export type WebhookParameters = {
 		noResponseBody?: boolean;
 	};
 };
+
+/** First Webhook version that hides the headers used by its built-in authentication. */
+export const HIDE_CONSUMED_AUTH_HEADERS_VERSION = 2.3;
+
+/**
+ * Request headers for the node output. From version 2.3, the Webhook node shows the
+ * headers that its built-in authentication used as hidden, so their values are not stored.
+ * Nodes that reuse this code (for example Wait) keep the raw headers.
+ */
+export function getOutputHeaders(context: IWebhookFunctions) {
+	const req = context.getRequestObject();
+	const { type, typeVersion } = context.getNode();
+
+	if (type === WEBHOOK_NODE_TYPE && typeVersion >= HIDE_CONSUMED_AUTH_HEADERS_VERSION) {
+		return redactedHeaders(req);
+	}
+
+	return req.headers;
+}
 
 export const getResponseCode = (parameters: WebhookParameters) => {
 	if (parameters.responseCode) {
@@ -387,6 +411,8 @@ export async function validateWebhookAuthentication(
 		} catch (error) {
 			throw new WebhookAuthorizationError(403, error.message);
 		}
+	} else {
+		throw new WebhookAuthorizationError(500, 'Unsupported authentication method!');
 	}
 }
 
@@ -401,7 +427,7 @@ export async function handleFormData(
 
 	const returnItem: INodeExecutionData = {
 		json: {
-			headers: req.headers,
+			headers: getOutputHeaders(context),
 			params: req.params,
 			query: req.query,
 			body: data,

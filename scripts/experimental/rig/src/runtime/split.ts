@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 
 import type { RigEnv } from '../environment';
+import { requiredServices } from '../config/env-yaml';
 import { RigError } from '../errors';
 import { userCwd } from '../source';
 import type { ProcessComponent } from '../topology/components';
@@ -8,12 +9,38 @@ import { ui } from '../ui/output';
 
 export interface SplitPane {
 	title: string;
+	/** The component that the pane runs. `rig run` also runs its launcher or runners. */
+	component: string;
+	/** The command, as arguments. Run it without a shell. */
+	argv: string[];
 	/** The command line, quoted for a shell. */
 	command: string;
+	cwd: string;
+	/** Env vars that the pane needs in addition to the env of the user. */
+	env: Record<string, string>;
+}
+
+/**
+ * The version of the `rig panes --format json` output. Raise it when a field
+ * changes its meaning or goes away. New fields do not change the version.
+ */
+export const PANES_SCHEMA_VERSION = 1;
+
+/** What a terminal multiplexer does to run an environment in panes, like `rig up --split`. */
+export interface SplitPlan {
+	schemaVersion: typeof PANES_SCHEMA_VERSION;
+	env: string;
+	/** Run this once, before the panes. It starts the services. Null when there are none. */
+	prepare: Omit<SplitPane, 'title' | 'component'> | null;
+	panes: SplitPane[];
 }
 
 function shellQuote(value: string): string {
 	return /^[\w@%+=:,./-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function shellCommand(argv: string[]): string {
+	return argv.map(shellQuote).join(' ');
 }
 
 /** The command that runs this rig again: the same Node flags and entry, so tsx and the bundle both work. */
@@ -21,11 +48,22 @@ function rigInvocation(): string[] {
 	return [process.execPath, ...process.execArgv, process.argv[1]];
 }
 
+/** Env vars that the panes need. A tmux server keeps the env of the shell that started it. */
+function paneEnv(): Record<string, string> {
+	const env: Record<string, string> = {};
+	for (const [key, value] of Object.entries(process.env)) {
+		if (key.startsWith('RIG_') && value !== undefined) env[key] = value;
+	}
+	env.INIT_CWD = userCwd();
+	return env;
+}
+
 /** One pane for each n8n process. `rig run` also runs the launcher of the process. */
 export function splitPanes(env: RigEnv, extraArgs: string[]): SplitPane[] {
-	return env.processes().map((component: ProcessComponent) => ({
-		title: component.name,
-		command: [
+	const cwd = userCwd();
+	const vars = paneEnv();
+	return env.processes().map((component: ProcessComponent) => {
+		const argv = [
 			...rigInvocation(),
 			'run',
 			component.name,
@@ -35,10 +73,30 @@ export function splitPanes(env: RigEnv, extraArgs: string[]): SplitPane[] {
 			'--no-services',
 			'--wait-deps',
 			...extraArgs,
-		]
-			.map(shellQuote)
-			.join(' '),
-	}));
+		];
+		return {
+			title: component.name,
+			component: component.name,
+			argv,
+			command: shellCommand(argv),
+			cwd,
+			env: vars,
+		};
+	});
+}
+
+/** The panes of `rig up --split`, and the command that starts the services first. */
+export function splitPlan(env: RigEnv, extraArgs: string[]): SplitPlan {
+	const argv = [...rigInvocation(), 'services', 'up', '--env', env.name];
+	return {
+		schemaVersion: PANES_SCHEMA_VERSION,
+		env: env.name,
+		prepare:
+			requiredServices(env.topology).length > 0
+				? { argv, command: shellCommand(argv), cwd: userCwd(), env: paneEnv() }
+				: null,
+		panes: splitPanes(env, extraArgs),
+	};
 }
 
 function tmux(args: string[], options: { inherit?: boolean } = {}): string {
@@ -54,14 +112,6 @@ function tmux(args: string[], options: { inherit?: boolean } = {}): string {
 	return (result.stdout ?? '').trim();
 }
 
-/** Env vars that the panes need. A tmux server keeps the env of the shell that started it. */
-function paneEnv(): string[] {
-	const keys = Object.keys(process.env).filter((key) => key.startsWith('RIG_'));
-	return [...keys.map((key) => `${key}=${process.env[key]}`), `INIT_CWD=${userCwd()}`].flatMap(
-		(assignment) => ['-e', assignment],
-	);
-}
-
 /**
  * Opens one tmux pane for each n8n process. Inside tmux, rig adds a window to
  * the current session. Outside, it creates a session and attaches to it.
@@ -75,7 +125,11 @@ export function openSplit(env: RigEnv, panes: SplitPane[]): void {
 	}
 	const [first, ...rest] = panes;
 	const cwd = userCwd();
-	const common = ['-c', cwd, ...paneEnv()];
+	const common = [
+		'-c',
+		cwd,
+		...Object.entries(first.env).flatMap(([key, value]) => ['-e', `${key}=${value}`]),
+	];
 	const insideTmux = Boolean(process.env.TMUX);
 	const session = `rig-${env.name}`;
 

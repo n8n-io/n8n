@@ -67,6 +67,52 @@ describe('LeaseSessionRepository', () => {
 		expect(row!.expiresAt.getTime()).toBeLessThanOrEqual(dbAfter + 20_000);
 	});
 
+	it('extends a live session to one lease length after the database time of the renewal', async () => {
+		const session = newSession(20);
+		await repository.insertSession(session, {});
+
+		const dbBefore = await readDbNow();
+		const renewed = await repository.renewLive(session.id, 20, {});
+		const dbAfter = await readDbNow();
+
+		const row = await findRow(session.id);
+		expect(renewed).toBe(true);
+		expect(row!.expiresAt.getTime()).toBeGreaterThanOrEqual(dbBefore + 20_000);
+		expect(row!.expiresAt.getTime()).toBeLessThanOrEqual(dbAfter + 20_000);
+	});
+
+	it('renews a live session for the lease length it is given', async () => {
+		const session = newSession(20);
+		await repository.insertSession(session, {});
+
+		const dbBefore = await readDbNow();
+		await repository.renewLive(session.id, 45, {});
+		const dbAfter = await readDbNow();
+
+		const row = await findRow(session.id);
+		expect(row!.expiresAt.getTime()).toBeGreaterThanOrEqual(dbBefore + 45_000);
+		expect(row!.expiresAt.getTime()).toBeLessThanOrEqual(dbAfter + 45_000);
+	});
+
+	it('reports failure when the session does not exist', async () => {
+		await expect(repository.renewLive(randomUUID(), 20, {})).resolves.toBe(false);
+	});
+
+	it('leaves an expired session unchanged and reports failure', async () => {
+		const session = newSession(20);
+		await repository.insertSession(session, {});
+		await Container.get(DataSource)
+			.getRepository(LeaseSession)
+			.update({ id: session.id }, { expiresAt: new Date(Date.now() + 60_000) });
+		const before = await findRow(session.id);
+
+		const renewed = await repository.renewLive(session.id, 20, {});
+
+		const after = await findRow(session.id);
+		expect(renewed).toBe(false);
+		expect(after!.expiresAt).toEqual(before!.expiresAt);
+	});
+
 	it('deletes only the given session', async () => {
 		const session = newSession(20);
 		const other = newSession(20);
