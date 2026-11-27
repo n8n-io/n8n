@@ -43,7 +43,7 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
-import { h } from 'vue';
+import { h, type FunctionalComponent } from 'vue';
 import NodeExecutionErrorMessage from '@/app/components/NodeExecutionErrorMessage.vue';
 import {
 	isGatewayTrialRequestCostLimitError,
@@ -354,6 +354,18 @@ export function getExecutionErrorMessage({
 	return errorMessage;
 }
 
+// The toast can show outside the canvas, where no global link actions are registered.
+// Error toast telemetry reads the `message` prop.
+const GatewayRequestLimitMessage: FunctionalComponent<{ message: string }> = ({ message }) =>
+	h('span', {
+		innerHTML: sanitizeHtml(message),
+		onClick: (event: MouseEvent) => {
+			if (event.target instanceof HTMLAnchorElement) {
+				useAiGatewayTopUp().openUpgrade('requestLimit');
+			}
+		},
+	});
+
 export function getExecutionErrorToastConfiguration({
 	error,
 	lastNodeExecuted,
@@ -382,14 +394,8 @@ export function getExecutionErrorToastConfiguration({
 
 		return {
 			title,
-			// The toast can show outside the canvas, where no global link actions are registered.
-			message: h('span', {
-				innerHTML: sanitizeHtml(i18n.baseText('aiGateway.requestLimit.toast.message')),
-				onClick: (event: MouseEvent) => {
-					if (event.target instanceof HTMLAnchorElement) {
-						useAiGatewayTopUp().openUpgrade('requestLimit');
-					}
-				},
+			message: h(GatewayRequestLimitMessage, {
+				message: i18n.baseText('aiGateway.requestLimit.toast.message'),
 			}),
 		};
 	}

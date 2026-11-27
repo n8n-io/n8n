@@ -557,6 +557,9 @@ describe('getExecutionErrorToastConfiguration', () => {
 			render({ render: () => message });
 
 			expect(title).toBe('aiGateway.requestLimit.toast.title');
+			expect((message as VNode).props).toEqual({
+				message: 'Over the limit. <a>Upgrade</a> to a paid plan.',
+			});
 			expect(screen.getByText(/Over the limit\./)).toHaveTextContent(
 				'Over the limit. Upgrade to a paid plan.',
 			);
