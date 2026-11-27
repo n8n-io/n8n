@@ -25,6 +25,18 @@ type AuditRow = {
 
 type StoredRow = { id: number | string; field: string; createdAt: string | Date };
 
+const COLUMNS_BEFORE = [
+	'createdAt',
+	'field',
+	'id',
+	'loginId',
+	'newValue',
+	'oldValue',
+	'projectId',
+	'updatedBy',
+].sort();
+const COLUMNS_AFTER = [...COLUMNS_BEFORE, 'policyId'].sort();
+
 const POLICY_FIELDS = ['policy', 'projectPolicy', 'newProjectsPolicy', 'personalProjectsPolicy'];
 
 describe('ExpandExecutionLimitAuditForPolicies migration', () => {
@@ -221,43 +233,89 @@ describe('ExpandExecutionLimitAuditForPolicies migration', () => {
 		});
 	});
 
-	it('removes the policy rows on down, keeps the others with their ids and restores the old checks', async () => {
-		const setup = createTestMigrationContext(dataSource);
-		const beforeDown = await readRows(setup);
-		await setup.queryRunner.release();
-		const kept = beforeDown.filter(({ field }) => !POLICY_FIELDS.includes(field));
-		expect(kept.length).toBeLessThan(beforeDown.length);
-
-		await undoLastSingleMigration();
-
+	it('creates a nullable policyId column and no foreign key', async () => {
 		const context = createTestMigrationContext(dataSource);
-		const rows = await readRows(context);
-		expect(normalized(rows)).toEqual(normalized(kept));
-		expect(rows.some(({ field }) => POLICY_FIELDS.includes(field))).toBe(false);
-		expect(await context.queryRunner.hasColumn(`${context.tablePrefix}${TABLE}`, 'policyId')).toBe(
-			false,
-		);
 
-		// Inserts of the old shape, without policyId.
-		await expect(insertOldRow(context, { field: 'projectMaxExecutions' })).rejects.toThrow();
-		await expect(insertOldRow(context, { field: 'periodUnit', projectId })).rejects.toThrow();
-		await expect(insertOldRow(context, { field: 'policy' })).rejects.toThrow();
-		await expect(
-			insertOldRow(context, { field: 'projectMaxExecutions', projectId }),
-		).resolves.not.toThrow();
+		const table = await context.queryRunner.getTable(`${context.tablePrefix}${TABLE}`);
+
+		const policyId = table?.columns.find(({ name }) => name === 'policyId');
+		expect(policyId?.type).toBe(context.isPostgres ? 'uuid' : 'varchar');
+		expect(policyId?.isNullable).toBe(true);
+		expect(table?.foreignKeys).toHaveLength(0);
+		expect(table?.columns.map(({ name }) => name).sort()).toEqual(COLUMNS_AFTER);
 		await context.queryRunner.release();
 	});
 
-	it('runs again after down', async () => {
-		await runSingleMigration(MIGRATION_NAME);
+	describe('down and up again', () => {
+		let keptBeforeDown: StoredRow[];
 
-		const context = createTestMigrationContext(dataSource);
-		expect(await context.queryRunner.hasColumn(`${context.tablePrefix}${TABLE}`, 'policyId')).toBe(
-			true,
-		);
-		await expect(
-			insertRow(context, { field: 'policy', policyId: randomUUID() }),
-		).resolves.not.toThrow();
-		await context.queryRunner.release();
+		beforeAll(async () => {
+			const context = createTestMigrationContext(dataSource);
+			await insertRow(context, { field: 'periodUnit', newValue: JSON.stringify('day') });
+			// The policy rows come last, so they have the highest ids.
+			await insertRow(context, { field: 'policy', policyId: randomUUID() });
+			await insertRow(context, { field: 'projectPolicy', projectId, policyId: randomUUID() });
+			const beforeDown = await readRows(context);
+			await context.queryRunner.release();
+			keptBeforeDown = beforeDown.filter(({ field }) => !POLICY_FIELDS.includes(field));
+			expect(keptBeforeDown.length).toBeLessThan(beforeDown.length);
+
+			await undoLastSingleMigration();
+		});
+
+		it('removes the policy rows and keeps the others with their ids', async () => {
+			const context = createTestMigrationContext(dataSource);
+
+			const rows = await readRows(context);
+
+			expect(normalized(rows)).toEqual(normalized(keptBeforeDown));
+			expect(rows.some(({ field }) => POLICY_FIELDS.includes(field))).toBe(false);
+			await context.queryRunner.release();
+		});
+
+		it('removes the policyId column and keeps the other columns', async () => {
+			const context = createTestMigrationContext(dataSource);
+
+			const table = await context.queryRunner.getTable(`${context.tablePrefix}${TABLE}`);
+
+			expect(table?.columns.map(({ name }) => name).sort()).toEqual(COLUMNS_BEFORE);
+			await context.queryRunner.release();
+		});
+
+		it('gives a new row an id above the kept rows', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const keptIds = (await readRows(context)).map(({ id }) => Number(id));
+
+			await insertOldRow(context, { field: 'periodUnit' });
+
+			const rows = await readRows(context);
+			expect(Number(rows[rows.length - 1].id)).toBeGreaterThan(Math.max(...keptIds));
+			await context.queryRunner.release();
+		});
+
+		it('restores the old checks', async () => {
+			const context = createTestMigrationContext(dataSource);
+
+			// Inserts of the old shape, without policyId.
+			await expect(insertOldRow(context, { field: 'projectMaxExecutions' })).rejects.toThrow();
+			await expect(insertOldRow(context, { field: 'periodUnit', projectId })).rejects.toThrow();
+			await expect(insertOldRow(context, { field: 'policy' })).rejects.toThrow();
+			await expect(
+				insertOldRow(context, { field: 'projectMaxExecutions', projectId }),
+			).resolves.not.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('runs again', async () => {
+			await runSingleMigration(MIGRATION_NAME);
+
+			const context = createTestMigrationContext(dataSource);
+			const table = await context.queryRunner.getTable(`${context.tablePrefix}${TABLE}`);
+			expect(table?.columns.map(({ name }) => name).sort()).toEqual(COLUMNS_AFTER);
+			await expect(
+				insertRow(context, { field: 'policy', policyId: randomUUID() }),
+			).resolves.not.toThrow();
+			await context.queryRunner.release();
+		});
 	});
 });

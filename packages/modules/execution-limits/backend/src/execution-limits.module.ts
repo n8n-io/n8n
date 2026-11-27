@@ -28,6 +28,13 @@ export class ExecutionLimitsModule implements ModuleInterface {
 					ctx,
 				);
 			},
+			// Checked at each call: a licence can start after the boot.
+			afterTeamProjectCreated: async (projectId) => {
+				if (!Container.get(LicenseState).isExecutionLimitsLicensed()) return;
+
+				const { ExecutionLimitsService } = await import('./execution-limits.service.js');
+				await Container.get(ExecutionLimitsService).assignNewProjectsPolicyTo(projectId);
+			},
 		});
 
 		if (!Container.get(LicenseState).isExecutionLimitsLicensed()) return;
@@ -38,13 +45,6 @@ export class ExecutionLimitsModule implements ModuleInterface {
 
 		// Workers register it too: the runs they admit do not count, so it stops before any read.
 		await import('./execution-limit.check.js');
-
-		hooks.registerProvider({
-			afterTeamProjectCreated: async (projectId) => {
-				const { ExecutionLimitsService } = await import('./execution-limits.service.js');
-				await Container.get(ExecutionLimitsService).assignNewProjectsPolicyTo(projectId);
-			},
-		});
 
 		// A worker does not admit runs, so it needs no usage.
 		const { InstanceSettings } = await import('n8n-core');

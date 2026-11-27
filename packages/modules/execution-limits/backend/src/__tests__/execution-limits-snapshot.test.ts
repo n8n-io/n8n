@@ -128,10 +128,10 @@ describe('ExecutionLimitsSnapshot', () => {
 		expect(snapshot.read(null)?.projectPolicy).toBeNull();
 	});
 
-	it('applies the first row of a project that has several policies', async () => {
+	it('applies the lowest policy of a project that has several policies', async () => {
 		policyRepository.findProjectPolicies.mockResolvedValue([
-			row('limited', 'low', 5),
 			row('limited', 'high', 500),
+			row('limited', 'low', 5),
 		]);
 
 		await snapshot.reload();

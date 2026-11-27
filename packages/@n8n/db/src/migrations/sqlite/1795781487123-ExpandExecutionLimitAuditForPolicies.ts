@@ -1,3 +1,5 @@
+import { UnexpectedError } from '@n8n/errors';
+
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const TABLE = 'execution_limit_audit';
@@ -52,6 +54,16 @@ export class ExpandExecutionLimitAuditForPolicies1795781487123 implements Revers
 		await schemaBuilder.dropTable(TABLE);
 		await this.createTable(context, withPolicies);
 		await runQuery(`INSERT INTO ${table} (${columns}) SELECT ${columns} FROM ${copy}`);
+
+		const countRows = async (name: string) => {
+			const [{ count }] = await runQuery<Array<{ count: number }>>(
+				`SELECT COUNT(*) AS count FROM ${name}`,
+			);
+			return Number(count);
+		};
+		if ((await countRows(table)) !== (await countRows(copy))) {
+			throw new UnexpectedError(`The rebuild of "${TABLE}" lost rows`);
+		}
 		await runQuery(`DROP TABLE ${copy}`);
 	}
 
