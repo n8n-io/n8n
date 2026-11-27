@@ -1,4 +1,9 @@
-export const DOCS_DOMAIN = 'docs.n8n.io';
+import { DOCS_DOMAIN } from '@n8n/frontend-constants/urls';
+
+// `DOCS_DOMAIN` moved to `@n8n/frontend-constants/urls` so a module outside the shell can
+// link to the docs. Re-exported here for existing importers.
+export { DOCS_DOMAIN };
+
 export const BUILTIN_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/`;
 export const BUILTIN_CREDENTIALS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/credentials/`;
 export const DATA_PINNING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-pinning/`;

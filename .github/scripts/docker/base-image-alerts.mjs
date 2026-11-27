@@ -42,6 +42,13 @@ export const WAIT_MS = 2 * DAY_MS;
 const REFRESH_BRANCH = 'base-image-refresh/';
 export const DAILY_BRANCH = `${REFRESH_BRANCH}daily`;
 export const REVIEW_BRANCH = `${REFRESH_BRANCH}review`;
+export const NODE_BRANCH = `${REFRESH_BRANCH}node`;
+
+/** The branch of the PR that pins a ready result. */
+export const branchOf = (result) =>
+	({ daily: DAILY_BRANCH, review: REVIEW_BRANCH, node: NODE_BRANCH })[
+		result.group ?? (result.autoMerge ? 'daily' : 'review')
+	];
 
 /** The run summary lists all the findings. An alert lists the first ones. */
 const MAX_LISTED = 10;
@@ -67,7 +74,7 @@ const unique = (findings) => [
 export function planAlerts(results, state, { now, manual = false, actor, prs = [], chains = [] }) {
 	const iso = new Date(now).toISOString();
 	const lastAlert = state.lastAlert ?? {};
-	const next = { findings: {}, noPublishTime: {}, lastAlert: {} };
+	const next = { findings: {}, noPublishTime: {}, nodeCheckFailed: 0, lastAlert: {} };
 	const alerts = [];
 
 	// Repeats an alert every 7 days while its cause stays.
@@ -84,7 +91,8 @@ export function planAlerts(results, state, { now, manual = false, actor, prs = [
 	for (const result of results) {
 		const { source } = result;
 
-		if (result.status === 'unverified') {
+		// A Node pin that waits for another Node pin gets no alert of its own.
+		if (result.status === 'unverified' && !result.heldBy) {
 			const error = result.publisher?.error ? `: ${result.publisher.error}` : '';
 			alerts.push(
 				`\`${source}\`: the publisher check failed for \`${digestOf(result.newest)}…\`${error}. The refresh opens no PR for it.`,
@@ -92,7 +100,7 @@ export function planAlerts(results, state, { now, manual = false, actor, prs = [
 		}
 
 		// Count by source: the newest digest can change from run to run.
-		if (result.status === 'no-publish-time') {
+		if (result.status === 'no-publish-time' && !result.heldBy) {
 			const runs = (state.noPublishTime?.[source] ?? 0) + 1;
 			next.noPublishTime[source] = runs;
 			if (runs >= 2 && due(`no-publish-time ${source}`)) {
@@ -102,9 +110,19 @@ export function planAlerts(results, state, { now, manual = false, actor, prs = [
 			}
 		}
 
+		// One failed request is common. The Node patch waits, so alert after 2 runs.
+		if (result.status === 'node-check-failed') {
+			next.nodeCheckFailed = (state.nodeCheckFailed ?? 0) + 1;
+			if (next.nodeCheckFailed >= 2 && due('node-check-failed')) {
+				alerts.push(
+					`The refresh could not check for a Node patch for ${next.nodeCheckFailed} runs: ${result.error}. It opens no Node PR until it can.`,
+				);
+			}
+		}
+
 		if (result.status === 'ready' && result.gateSkipped && manual) {
 			alerts.push(
-				`\`${source}\`: a manual run${actor ? ` by @${actor}` : ''} skipped the 24-hour gate for \`${digestOf(result.newest)}…\`. The pin is in the review PR.`,
+				`\`${source}\`: a manual run${actor ? ` by @${actor}` : ''} skipped the 24-hour gate for \`${digestOf(result.newest)}…\`. The pin is in the ${result.group === 'node' ? 'Node' : 'review'} PR.`,
 			);
 		}
 
@@ -155,7 +173,7 @@ export function planAlerts(results, state, { now, manual = false, actor, prs = [
 		const open = now - Date.parse(pr.createdAt);
 		const days = Math.floor(open / DAY_MS);
 		if (open < WAIT_MS) continue;
-		if (pr.branch === REVIEW_BRANCH && due(`open ${pr.number}`)) {
+		if ((pr.branch === REVIEW_BRANCH || pr.branch === NODE_BRANCH) && due(`open ${pr.number}`)) {
 			alerts.push(`${link} waits for a review. It is open for ${days} days.`);
 		} else if (pr.branch === DAILY_BRANCH && due(`open ${pr.number}`)) {
 			alerts.push(`${link} is open for ${days} days without a merge.`);
@@ -181,6 +199,7 @@ const json = async (path) => await (await github(path, 'application/vnd.github+j
 const REFRESH_BRANCHES = [
 	DAILY_BRANCH,
 	REVIEW_BRANCH,
+	NODE_BRANCH,
 	`${REFRESH_BRANCH}rebuild`,
 	...Object.keys(CHAIN).map(
 		(workflow) => `${REFRESH_BRANCH}chain-${workflow.replace(/\.yml$/, '')}`,

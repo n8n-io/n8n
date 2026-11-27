@@ -15,7 +15,7 @@ import { useInstancePolicyStore } from '../instance-policy.store';
 const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
-	saveInstancePolicy: vi.fn(),
+	setInstanceTypeAccess: vi.fn(),
 }));
 
 vi.mock('../../type-availability-policies.api', () => mocks);

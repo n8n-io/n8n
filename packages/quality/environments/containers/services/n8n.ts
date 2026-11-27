@@ -294,6 +294,14 @@ function resolveRunAlias(path: string): string {
 	return path.replace(/^\/var\/run(?=\/|$)/, '/run');
 }
 
+function resolveContainerCommand(role: InstanceRole, command?: string[]): string[] | undefined {
+	const roleSubcommand = role === 'main' ? undefined : role;
+	if (command === undefined) {
+		return roleSubcommand ? [roleSubcommand] : undefined;
+	}
+	return roleSubcommand ? [...command, roleSubcommand] : [...command];
+}
+
 async function createContainer(
 	instance: InstanceConfig,
 	shared: SharedConfig,
@@ -314,9 +322,14 @@ async function createContainer(
 		userHomeHostDir,
 		binaryDataHostDir,
 		user,
-		n8nContainer: { readOnlyRootfs, tmpfs, platform } = {},
+		n8nContainer: { readOnlyRootfs, tmpfs, platform, entrypoint, command } = {},
 		startupTimeoutMs,
 	} = shared;
+	if (entrypoint !== undefined && entrypoint.length === 0) {
+		throw new Error(
+			`Container "${name}" requires at least one element in n8nContainer.entrypoint.`,
+		);
+	}
 	const filesToCopy = [...stackFiles, ...filesToMount];
 	if (filesToCopy.length > 0) {
 		if (readOnlyRootfs) {
@@ -382,6 +395,9 @@ async function createContainer(
 	}
 	if (platform) {
 		container = container.withPlatform(platform);
+	}
+	if (entrypoint) {
+		container = container.withEntrypoint([...entrypoint]);
 	}
 
 	// withBindMounts REPLACES the mount list, so all mounts go in one call.
@@ -458,12 +474,9 @@ async function createContainer(
 
 	container = container.withExposedPorts(...ports).withWaitStrategy(waitStrategy);
 
-	if (role === 'worker') {
-		container = container.withCommand(['worker']);
-	} else if (role === 'webhook') {
-		container = container.withCommand(['webhook']);
-	} else if (role === 'engine') {
-		container = container.withCommand(['engine']);
+	const containerCommand = resolveContainerCommand(role, command);
+	if (containerCommand !== undefined) {
+		container = container.withCommand(containerCommand);
 	}
 
 	try {

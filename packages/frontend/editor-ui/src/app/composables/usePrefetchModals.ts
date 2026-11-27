@@ -1,4 +1,5 @@
-import { onBeforeUnmount, onMounted, watch, type WatchStopHandle } from 'vue';
+import { onBeforeUnmount, onMounted, watch, type Component, type WatchStopHandle } from 'vue';
+import { modalRegistry } from '@n8n/frontend-module-sdk';
 import { isRecord } from '@n8n/utils/is-record';
 import { MODAL_PREFETCH_FALLBACK_DELAY, MODAL_PREFETCH_IDLE_TIMEOUT } from '@/app/constants';
 import { lazyModalLoaders, type LazyModalKey } from '@/app/modals/lazyModals';
@@ -30,10 +31,34 @@ function onIdle(callback: () => void): () => void {
 	return () => window.clearTimeout(handle);
 }
 
-async function prefetch(key: LazyModalKey): Promise<void> {
+function isLazyModalKey(key: string): key is LazyModalKey {
+	return Object.hasOwn(lazyModalLoaders, key);
+}
+
+function isAsyncComponentFactory(
+	component: Component | (() => Promise<Component>),
+): component is () => Promise<Component> {
+	return typeof component === 'function';
+}
+
+/**
+ * The shell's own loader for the key, else the lazy loader of a modal that a module
+ * registered. `undefined` when neither has one.
+ */
+function loaderFor(key: string): (() => Promise<unknown>) | undefined {
+	if (isLazyModalKey(key)) return lazyModalLoaders[key];
+
+	const component = modalRegistry.get(key)?.component;
+	return component && isAsyncComponentFactory(component) ? component : undefined;
+}
+
+async function prefetch(key: string): Promise<void> {
+	const load = loaderFor(key);
+	if (!load) return;
+
 	runningPrefetches++;
 	try {
-		await lazyModalLoaders[key]();
+		await load();
 	} catch {
 		// A failed prefetch changes nothing. Opening the modal loads it again.
 	} finally {
@@ -51,6 +76,20 @@ async function prefetch(key: LazyModalKey): Promise<void> {
  */
 export function usePrefetchModals(
 	keys: readonly LazyModalKey[],
+	options: { enabled?: () => boolean } = {},
+): void {
+	useModalPrefetch(keys, options);
+}
+
+/**
+ * Same as `usePrefetchModals`, for any modal key. A key in `lazyModalLoaders` uses that
+ * loader. Another key uses the lazy component of the modal that a module registered in
+ * `modalRegistry`. A key with no lazy loader does nothing.
+ *
+ * The shell gives this to modules as the `modalPrefetch` capability.
+ */
+export function useModalPrefetch(
+	keys: readonly string[],
 	options: { enabled?: () => boolean } = {},
 ): void {
 	let cancelPending: (() => void) | undefined;

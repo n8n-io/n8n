@@ -303,7 +303,7 @@ describe('Instance (global) custom role authorization', () => {
 		});
 
 		test('role:manageProject is present in the scope catalog after startup sync', async () => {
-			const scopes = await Container.get(ScopeRepository).findByList(['role:manageProject']);
+			const scopes = await Container.get(ScopeRepository).findByList(['role:manageProject'], {});
 			expect(scopes).toHaveLength(1);
 		});
 	});

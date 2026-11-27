@@ -31,6 +31,26 @@ export interface ModalOpeners {
 	openModalWithData(payload: { name: string; data: Record<string, unknown> }): void;
 }
 
+/**
+ * Method syntax keeps the parameter bivariant, so the shell can provide a closer
+ * typed with the narrower `ModalKey` union without a cast.
+ */
+export interface ModalCloser {
+	closeModal(name: string): void;
+}
+
+/**
+ * Prefetches the code of the given modals, in list order, after the calling
+ * component mounts. A key with no lazy loader does nothing.
+ *
+ * `enabled` tells if the page can open the modals now. The prefetch starts when it
+ * first returns true.
+ */
+export type ModalPrefetch = (
+	keys: readonly string[],
+	options?: { enabled?: () => boolean },
+) => void;
+
 export interface ProjectPermissions {
 	/** The user's global scopes plus their scopes in the project. Reads reactive state, so call it in a `computed`. */
 	scopesFor(projectId: string): Scope[];
