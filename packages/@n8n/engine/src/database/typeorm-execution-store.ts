@@ -271,13 +271,12 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		);
 	}
 
-	// The two marker writes below run after the execution has ended, so they keep its `updated_at`.
 	async deferErrorWorkflow(id: string, dueAt: Date): Promise<boolean> {
 		const result = await this.repo.update(
 			{ id, errorWorkflowDueAt: dueAt },
 			{
 				errorWorkflowDueAt: new Date(Date.now() + errorWorkflowPendingMs(this.staleness)),
-				...KEEP_UPDATED_AT,
+				...KEEP_UPDATED_AT, // marker write keeps the execution's `updated_at`
 			},
 		);
 		return result.affected === 1;
@@ -286,7 +285,10 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	async clearErrorWorkflowDue(id: string): Promise<void> {
 		await this.repo.update(
 			{ id, errorWorkflowDueAt: Not(IsNull()) },
-			{ errorWorkflowDueAt: null, ...KEEP_UPDATED_AT },
+			{
+				errorWorkflowDueAt: null,
+				...KEEP_UPDATED_AT, // marker write keeps the execution's `updated_at`
+			},
 		);
 	}
 
