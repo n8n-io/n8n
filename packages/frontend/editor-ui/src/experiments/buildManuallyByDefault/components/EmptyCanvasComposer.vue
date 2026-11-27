@@ -150,7 +150,7 @@ async function onConnectOptionClick(client: EmptyCanvasConnectOption) {
 </script>
 
 <template>
-	<!-- One root for the composer and its teleported flight dot. It adds no box. -->
+	<!-- Covers the canvas without catching clicks, so the bar can query the canvas width. -->
 	<div :class="$style.root">
 		<Transition :name="$style.barTransition">
 			<div
@@ -245,9 +245,19 @@ async function onConnectOptionClick(client: EmptyCanvasConnectOption) {
 
 // Timings and curves come from the design prototype. No duration token matches them.
 $ease-grow: cubic-bezier(0.2, 0.8, 0.2, 1);
+// No size token fits the 400px width from the design.
+$form-width: 400px;
+// Space for the canvas zoom controls at the bottom left: up to five buttons, their margin and a gap.
+$controls-reserve: 240px;
 
 .root {
-	display: contents;
+	position: absolute;
+	inset: 0;
+	// The size container starts its own stacking context, so the layer carries the z-index.
+	// No z-index token exists. 10 matches the other NodeView canvas overlays.
+	z-index: 10;
+	container-type: inline-size;
+	pointer-events: none;
 }
 
 .bar {
@@ -256,13 +266,20 @@ $ease-grow: cubic-bezier(0.2, 0.8, 0.2, 1);
 	bottom: var(--spacing--xl);
 	translate: -50%;
 	transform-origin: 50% 100%;
-	// No z-index token exists. 10 matches the other NodeView canvas overlays.
-	z-index: 10;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	width: max-content;
+	pointer-events: auto;
+
+	// A centred bar would cover the zoom controls. Move it to the right, like the execute buttons.
+	@container (max-width: #{$form-width + $controls-reserve * 2 - 1}) {
+		left: auto;
+		right: var(--spacing--sm);
+		translate: none;
+		transform-origin: 100% 100%;
+	}
 }
 
 .form {
@@ -270,9 +287,12 @@ $ease-grow: cubic-bezier(0.2, 0.8, 0.2, 1);
 	align-items: flex-end;
 	justify-content: space-between;
 	gap: var(--spacing--4xs);
-	// No size token fits the 400px width from the design.
-	width: 400px;
-	max-width: calc(100vw - var(--spacing--xl) * 2);
+	width: $form-width;
+	max-width: calc(100cqw - var(--spacing--xl) * 2);
+
+	@container (max-width: #{$form-width + $controls-reserve * 2 - 1}) {
+		max-width: calc(100cqw - #{$controls-reserve} - var(--spacing--sm));
+	}
 	padding-block: var(--spacing--2xs);
 	padding-left: var(--spacing--sm);
 	padding-right: var(--spacing--2xs);
