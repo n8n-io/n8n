@@ -1,0 +1,51 @@
+packages/cli/src/modules/runtime-credentials/credential-field-target.ts
+  s_55c9c16466c150::t_d4c52062b91472 64-66
+  s_55c9c16466c150::t_d91419d33892d2 1-63,67-83
+packages/cli/test/integration/modules/runtime-credential-rules.integration.test.ts
+  s_55c9c16466c150::t_6ec262d3e7911f 10-13,45-58,60-63,65-71,79,263-266,282,294-305,314
+  s_55c9c16466c150::t_816d84321ad13e 59,64
+  s_55c9c16466c150::t_d4c52062b91472 252-262,267-281,283-293,306-313,315-320
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credential-rules.service.test.ts
+  s_55c9c16466c150::t_4bb5c449824d35 45-47
+  s_55c9c16466c150::t_743623efb992c5 1-44,48-74
+packages/cli/src/modules/runtime-credentials/runtime-credential-rules.service.ts
+  s_55c9c16466c150::t_d91419d33892d2 13,15,31,44,71-72,96-98
+  s_55c9c16466c150::t_3a36c2ec06ca5b 99-100
+packages/cli/src/modules/runtime-credentials/runtime-credential-stub.seeder.ts
+  s_55c9c16466c150::t_d91419d33892d2 9,34,43,52-55
+  s_55c9c16466c150::t_16437a36da42c8 56-59
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credential-stub.seeder.test.ts
+  s_55c9c16466c150::t_de6c8d7dcd56d4 9,24,34,41,73-82
+  s_55c9c16466c150::t_63245ee73cd806 83-84
+packages/cli/src/modules/runtime-credentials/__tests__/credential-field-target.test.ts
+  s_55c9c16466c150::t_743623efb992c5 1-55,65-119
+  s_55c9c16466c150::t_d4c52062b91472 56-64
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credentials.module.test.ts
+  s_55c9c16466c150::t_9ab3b738430f60 4,32
+packages/cli/src/modules/runtime-credentials/__tests__/runtime-credentials-access.service.test.ts
+  s_55c9c16466c150::t_de6c8d7dcd56d4 5,22-23,34
+  s_55c9c16466c150::t_743623efb992c5 119-127
+packages/cli/src/modules/runtime-credentials/runtime-credentials-access.service.ts
+  s_55c9c16466c150::t_d91419d33892d2 14,26,85-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e98ef06a4624943a6182e15e47fd339518721d7e",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

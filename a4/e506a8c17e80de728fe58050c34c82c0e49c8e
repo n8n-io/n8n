@@ -1,0 +1,16 @@
+packages/cli/src/modules/agents/simulation/__tests__/held-action-commit.service.test.ts
+  h_8a472ace01776f 415-459
+packages/cli/src/modules/agents/simulation/held-action-commit.service.ts
+  h_8a472ace01776f 1-7,21,152-164,179-202,267-278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a4e506a8c17e80de728fe58050c34c82c0e49c8e",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

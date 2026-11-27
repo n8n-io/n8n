@@ -1,0 +1,48 @@
+AGENTS.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 365
+.agents/skills/prototype-design/SKILL.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 12
+.agents/skills/experiments/reference.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 69
+.agents/skills/ui-review/references/visual.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 1-21
+.agents/skills/ui-review/references/type.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 1-32
+.agents/skills/ui-review/SKILL.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 1,3-8,10-16,18-21,25-36
+  s_d5e3dafb2d332d::t_68fe884ff6c15e 2,9,17,22-24
+.agents/skills/ui-review/references/accessibility.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 1-35
+.agents/skills/ui-review/references/motion.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 1-27
+.agents/skills/ui-review/references/layout.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 1-35
+.agents/skills/ui-review/references/components.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 1-29
+packages/frontend/AGENTS.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 19,71
+.agents/skills/experiments/SKILL.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 23
+.agents/skills/agent-design-language/SKILL.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 16
+.agents/skills/ui-review/references/colour.md
+  s_d5e3dafb2d332d::t_38ac3d94dd70c1 1-16
+.claude/plugins/n8n/skills/ui-review
+  s_d5e3dafb2d332d::t_5e2bc0636e02cf 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b03fddee25ff3a391d5433886a2c8d806f4985b5",
+  "prompts": {},
+  "sessions": {
+    "s_d5e3dafb2d332d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a21884-eeb0-75e7-95ab-3a12e764c144",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
