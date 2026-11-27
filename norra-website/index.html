@@ -2179,12 +2179,12 @@
   .nhub-ex { margin: 10px 0 0; font-size: 13.5px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
   .nhub-logos { margin: 0; padding: 14px 0 0; display: flex; flex-wrap: wrap; gap: 7px; }
   .nhub-chip, .nhub-plus { -webkit-appearance: none; appearance: none; font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; max-width: 100%;
-    border-radius: 999px; padding: 4px 11px 4px 4px; font-size: 13px; font-weight: 500; line-height: 1.2; color: hsl(var(--foreground));
+    border-radius: 16px; padding: 4px 11px 4px 4px; font-size: 13px; font-weight: 500; line-height: 1.2; color: hsl(var(--foreground));
     background: hsl(var(--background)); border: 1px solid hsl(var(--border) / .8); transition: border-color .2s, background-color .2s, box-shadow .2s; }
   .nhub-chip:hover { border-color: hsl(var(--primary) / .4); box-shadow: 0 2px 8px hsl(var(--shadow-color) / .08); }
   .nhub-chip[aria-expanded="true"] { border-color: hsl(var(--primary) / .7); background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
   .nhub-chip:focus-visible, .nhub-plus:focus-visible, .nhub-allbtn:focus-visible, .nhub-seg button:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
-  .nhub-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nhub-nm { min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: left; }
   .nhub-mono { flex: none; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center;
     font: 700 9.5px/1 var(--font-sans); letter-spacing: .02em; background: hsl(var(--h) 70% 92%); color: hsl(var(--h) 52% 30%); }
   .nhub-chip.nhub-x { display: none; }
@@ -7598,7 +7598,7 @@ NORRA._hubCards = function (data, filter, per, uid, shown) {
         var m = NORRA._mono(p.name), hw = how[p.how] || p.how || '';
         return '<button type="button" class="nhub-chip' + (extra && k >= per ? ' nhub-x' : '') + '" style="--h:' + m.hue + ';--k:' + Math.min(k, 6) + '"' +
           ' aria-expanded="false" aria-controls="' + uid + '-d' + i + '" data-what="' + NORRA.esc(p.whatItDoes || '') + '" data-how="' + NORRA.esc(hw) + '"' +
-          ' data-a="' + (p.appliesTo || '') + '"><span class="nhub-mono" aria-hidden="true">' + NORRA.esc(m.text) + '</span><span class="nhub-nm">' + p.name + '</span></button>';
+          ' data-a="' + (p.appliesTo || '') + '"><span class="nhub-mono" aria-hidden="true" data-nt>' + NORRA.esc(m.text) + '</span><span class="nhub-nm">' + p.name + '</span></button>';
       }).join('') +
       (extra ? '<button type="button" class="nhub-plus" aria-expanded="false" data-n="' + extra + '"><span>+' + extra + '</span><span class="sr-only">weitere anzeigen</span></button>' : '') +
       '</div><div class="nhub-detail" id="' + uid + '-d' + i + '" hidden></div></div>';
@@ -7692,8 +7692,14 @@ NORRA.wireMatrix = function (root) {
         allBtn.setAttribute('aria-expanded', String(expanded));
         allBtn.querySelector('span').textContent = expanded ? NORRA.tr('Weniger zeigen') : NORRA.trf('Alle {n} Bereiche zeigen', { n: r.total });
       }
+      /* A filter click during the count-up must win: stop the animation and retarget it. */
       var pc = box.querySelector('[data-imx-count]');
-      if (pc) pc.textContent = NORRA._imxCount(reg.data, filter).p;
+      if (pc) {
+        var np = NORRA._imxCount(reg.data, filter).p;
+        if (pc.__frame) cancelAnimationFrame(pc.__frame);
+        if (pc.hasAttribute('data-count')) pc.setAttribute('data-count', np);
+        pc.textContent = np;
+      }
       active = -1;
       redraw();
     }
