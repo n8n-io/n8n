@@ -156,4 +156,15 @@ describe('extractUrl', () => {
 	])('ends a quoted URL at its closing quote in %j', (text, url) => {
 		expect(extractUrl(text)).toBe(url);
 	});
+
+	it.each([
+		["'https://en.wikipedia.org/wiki/Ender's_Game'", "https://en.wikipedia.org/wiki/Ender's_Game"],
+		[
+			"<a href='https://example.com/wiki/Ender's_Game'>link</a>",
+			"https://example.com/wiki/Ender's_Game",
+		],
+		["url='https://example.com/O'Reilly';next='x'", "https://example.com/O'Reilly"],
+	])('keeps an apostrophe in a URL in single quotes in %j', (text, url) => {
+		expect(extractUrl(text)).toBe(url);
+	});
 });

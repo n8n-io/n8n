@@ -4,6 +4,10 @@ const URL_REGEXP =
 // At the end of a match, these characters belong to the text around the URL.
 const TRAILING_PUNCTUATION = '.,;:!?*"\'';
 
+const CLOSING_DOUBLE_QUOTE = '"';
+// A `'` before a letter or a digit is an apostrophe in the URL, as in `Ender's_Game`.
+const CLOSING_SINGLE_QUOTE = /'(?![\p{L}\p{N}])/u;
+
 /**
  * Gives the first URL in a text. Gives `undefined` when the text has no URL.
  * The URL must start with `http://`, `https://` or `ftp://`.
@@ -18,7 +22,9 @@ export function extractUrl(text: string): string | undefined {
 
 	// A URL that starts after a quote ends at the next quote of that type.
 	const quote = text[matched.index - 1];
-	const url = quote === '"' || quote === "'" ? matched[0].split(quote)[0] : matched[0];
+	let url = matched[0];
+	if (quote === '"') url = url.split(CLOSING_DOUBLE_QUOTE)[0];
+	else if (quote === "'") url = url.split(CLOSING_SINGLE_QUOTE)[0];
 
 	const count = (char: string) => url.split(char).length - 1;
 	// A `)` with no `(` in the URL belongs to the text around the URL.
