@@ -204,7 +204,8 @@ describe('GuardrailRunner', () => {
 			expect(result).toBeUndefined();
 			expect(ctx.input).toEqual({ rewritten: true });
 			expect(later.beforeTool).toHaveBeenCalledWith(ctx);
-			expect(later.beforeTool.mock.calls[0]?.[0].input).toEqual({ rewritten: true });
+			// The rewritten input was visible to the later hook at call time.
+			expect(vi.mocked(later.beforeTool).mock.calls[0]?.[0].input).toEqual({ rewritten: true });
 		});
 
 		it('stops even when a later hook would redact', async () => {

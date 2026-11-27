@@ -577,7 +577,7 @@ export type ToolGuardrailResponse = 'block' | 'redact' | 'review';
  */
 export const TOOL_GUARDRAIL_STAGE_SCOPE: Record<
 	AgentToolGuardrailKind,
-	readonly ('before' | 'after')[]
+	ReadonlyArray<'before' | 'after'>
 > = {
 	keywords: ['before', 'after'],
 	pii: ['before'],
