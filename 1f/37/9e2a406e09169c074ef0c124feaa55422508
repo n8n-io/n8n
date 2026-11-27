@@ -1,0 +1,25 @@
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_319b9a55768bfb::t_bdf05fdaba858f 27-30,38
+packages/cli/src/binary-data/__tests__/unassigned-binary-data-cleanup.task.test.ts
+  s_319b9a55768bfb::t_980d24e3e5e637 1-38
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_319b9a55768bfb::t_bdf05fdaba858f 5,49
+packages/cli/src/binary-data/unassigned-binary-data-cleanup.task.ts
+  s_319b9a55768bfb::t_17948304d8c78c 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f379e2a406e09169c074ef0c124feaa55422508",
+  "prompts": {},
+  "sessions": {
+    "s_319b9a55768bfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc6ae560-d599-4c21-8a44-d5f519bed682",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

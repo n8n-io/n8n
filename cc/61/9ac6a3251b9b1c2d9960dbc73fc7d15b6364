@@ -1,0 +1,16 @@
+.github/workflows/test-get-n8n.yml
+  h_52a137d26d774c 23,48
+docker/test-get-n8n.sh
+  h_52a137d26d774c 6,328,330-342,348,350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc619ac6a3251b9b1c2d9960dbc73fc7d15b6364",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
