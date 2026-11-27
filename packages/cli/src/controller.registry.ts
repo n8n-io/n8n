@@ -275,10 +275,13 @@ export class ControllerRegistry {
 
 	private createInternalApiInvocationMiddleware(routeName: string): RequestHandler {
 		return (req, _res, next) => {
-			this.eventService.emit('internal-api-invoked', {
-				route: routeName,
-				client: resolveInternalApiClient(req.headers[N8N_CLIENT_HEADER]),
-			});
+			// Routes with allowUnauthenticated pass the auth middleware without a user.
+			if (isAuthenticatedRequest(req)) {
+				this.eventService.emit('internal-api-invoked', {
+					route: routeName,
+					client: resolveInternalApiClient(req.headers[N8N_CLIENT_HEADER]),
+				});
+			}
 
 			next();
 		};

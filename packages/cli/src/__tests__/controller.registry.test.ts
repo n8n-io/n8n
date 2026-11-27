@@ -547,7 +547,10 @@ describe('ControllerRegistry', () => {
 		}
 
 		beforeEach(() => {
-			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			authMiddleware.mockImplementation(async (req, _res, next) => {
+				req.user = { id: 'user-1' };
+				next();
+			});
 			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
 		});
 
@@ -604,6 +607,14 @@ describe('ControllerRegistry', () => {
 				'internal-api-invoked',
 				expect.objectContaining({ route: 'GET /rest/test/{widgetId}' }),
 			);
+		});
+
+		it('should not emit for a call without an authenticated user', async () => {
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+
+			await request(app).get('/rest/test/widget-1').expect(200);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should not emit for a route that skips auth', async () => {
