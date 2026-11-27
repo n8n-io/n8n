@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { getAgentRuntimeDefinitionHash } from '../../utils/agent-config-hash';
 import type { AgentsConfig } from '@n8n/config';
 import { AgentChannelHitlService } from '../agent-channel-hitl.service';
@@ -546,17 +547,26 @@ describe('Request from agent workflow approval', () => {
 	});
 
 	it.each([
-		['n8n_chat', true, false, 'workflow', true, true],
-		['n8n_chat', false, true, 'channel', true, true],
-		['slack', false, false, 'workflow', false, false],
-		['slack', false, false, 'workflow', true, true],
-		['slack', false, false, 'channel', true, true],
-		['telegram', false, false, 'workflow', true, true],
-		['discord', false, false, 'channel', true, true],
-		['webhook', false, false, 'workflow', true, false],
+		['n8n_chat', true, false, 'workflow', true, true, false],
+		['n8n_chat', false, true, 'channel', true, true, false],
+		['slack', false, false, 'workflow', false, false, false],
+		['slack', false, false, 'workflow', true, true, false],
+		['slack', false, false, 'workflow', true, false, true],
+		['slack', false, false, 'channel', true, true, false],
+		['telegram', false, false, 'workflow', true, true, false],
+		['discord', false, false, 'channel', true, true, false],
+		['webhook', false, false, 'workflow', true, false, false],
 	] as const)(
-		'asks the requester before review in %s (preview=%s, publishedChat=%s, method=%s, enabled=%s, background=%s)',
-		async (integrationType, previewChat, publishedN8nChat, method, enabled, background) => {
+		'asks the requester before review in %s (preview=%s, publishedChat=%s, method=%s, enabled=%s, background=%s, tool can suspend=%s)',
+		async (
+			integrationType,
+			previewChat,
+			publishedN8nChat,
+			method,
+			enabled,
+			background,
+			toolCanSuspend,
+		) => {
 			const { service, tool, jobs, executions, loader, context, suspend, handler, runtimeConfig } =
 				setup();
 			runtimeConfig.backgroundTasksEnabled = enabled;
@@ -606,7 +616,7 @@ describe('Request from agent workflow approval', () => {
 				mock<IExecutionResponse>({ status: 'waiting' }),
 			);
 			const wrapped = service.wrap(
-				tool,
+				toolCanSuspend ? { ...tool, suspendSchema: z.unknown() } : tool,
 				{ type: 'configuration', configurationIds: ['review'] },
 				agentConfig,
 				{

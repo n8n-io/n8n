@@ -18,10 +18,11 @@ export class AgentConversationStateService {
 		agentId: string,
 		threadId: string,
 		ctx: OperationContext = {},
+		options?: { includeBackground?: boolean },
 	): Promise<{ running: boolean; suspendedCheckpoint: SerializableAgentState | null }> {
 		const [running, suspendedCheckpoint] = await Promise.all([
 			this.executionRepository.existsRunningByThread(threadId, ctx),
-			this.checkpointStorage.findSuspendedForThread(agentId, threadId, ctx),
+			this.checkpointStorage.findSuspendedForThread(agentId, threadId, ctx, options),
 		]);
 		return { running, suspendedCheckpoint };
 	}

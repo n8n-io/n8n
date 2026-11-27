@@ -596,47 +596,64 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenNthCalledWith(3, { markdown: 'After resume.' });
 		});
 
-		it('posts the original approval card when the background checkpoint lookup fails', async () => {
-			const { bot, handlers } = makeBot();
-			const thread = makeThread();
-			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
-			const suspendPayload = {
-				type: 'workflow_wait',
-				backgroundApproval: true,
-				title: 'Waiting for approval',
-				components: [{ type: 'section', text: 'The Agent will continue after approval.' }],
-			};
-			const agentExecutor = {
-				...makeAgentExecutor([
-					{
-						type: 'tool-call-suspended',
-						runId: 'run-1',
-						toolCallId: 'tool-1',
-						toolName: 'send',
-						suspendPayload,
-					},
-				]),
-				getSuspendedRun: vi.fn().mockRejectedValue(new Error('Checkpoint unavailable')),
-			};
+		it.each([true, false])(
+			'posts the approval card when background checkpoint lookup succeeds=%s',
+			async (lookupSucceeded) => {
+				const { bot, handlers } = makeBot();
+				const thread = makeThread();
+				componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+				const suspendPayload = {
+					type: 'workflow_wait',
+					backgroundApproval: true,
+					title: 'Waiting for approval',
+					components: [{ type: 'section', text: 'The Agent will continue after approval.' }],
+				};
+				const agentExecutor = {
+					...makeAgentExecutor([
+						{
+							type: 'tool-call-suspended',
+							runId: 'run-1',
+							toolCallId: 'tool-1',
+							toolName: 'send',
+							suspendPayload,
+						},
+					]),
+					getSuspendedRun: lookupSucceeded
+						? vi.fn().mockResolvedValue({ backgroundApproval: true })
+						: vi.fn().mockRejectedValue(new Error('Checkpoint unavailable')),
+				};
 
-			makeQueuedBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				agentExecutor as never,
-				componentMapper,
-				logger,
-				'project-1',
-				bufferedIntegration,
-			);
+				makeQueuedBridge(
+					bot as unknown as ChatBotLike,
+					'agent-1',
+					agentExecutor as never,
+					componentMapper,
+					logger,
+					'project-1',
+					bufferedIntegration,
+				);
 
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
-			expect(agentExecutor.getSuspendedRun).toHaveBeenCalledWith({
-				agentId: 'agent-1',
-				runId: 'run-1',
-			});
-			expect(componentMapper.toCard.mock.calls[0][0]).toEqual(suspendPayload);
-			expect(thread.post).toHaveBeenCalledExactlyOnceWith({ card: { kind: 'card' } });
-		});
+				await handlers.mention!(thread, {
+					text: 'hi',
+					author: { userId: 'u1', userName: 'user1' },
+				});
+				expect(agentExecutor.getSuspendedRun).toHaveBeenCalledWith({
+					agentId: 'agent-1',
+					runId: 'run-1',
+				});
+				expect(componentMapper.toCard.mock.calls[0][0]).toEqual(
+					lookupSucceeded
+						? {
+								...suspendPayload,
+								components: [
+									{ type: 'section', text: expect.stringContaining('You can keep chatting') },
+								],
+							}
+						: suspendPayload,
+				);
+				expect(thread.post).toHaveBeenCalledExactlyOnceWith({ card: { kind: 'card' } });
+			},
+		);
 
 		it('posts tool approval cards without raw JSON input', async () => {
 			const { bot, handlers } = makeBot();

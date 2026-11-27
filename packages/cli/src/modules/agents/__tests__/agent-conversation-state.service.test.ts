@@ -84,13 +84,14 @@ describe('AgentConversationStateService', () => {
 			const { service, executionRepository, checkpointStorage } = createService();
 			const ctx = {};
 
-			await service.inspect(AGENT_ID, THREAD_ID, ctx);
+			await service.inspect(AGENT_ID, THREAD_ID, ctx, { includeBackground: false });
 
 			expect(executionRepository.existsRunningByThread).toHaveBeenCalledWith(THREAD_ID, ctx);
 			expect(checkpointStorage.findSuspendedForThread).toHaveBeenCalledWith(
 				AGENT_ID,
 				THREAD_ID,
 				ctx,
+				{ includeBackground: false },
 			);
 		});
 	});

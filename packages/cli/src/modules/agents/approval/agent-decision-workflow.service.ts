@@ -98,7 +98,11 @@ export class AgentDecisionWorkflowService {
 				identity.integrationType !== WEBHOOK_INTEGRATION_TYPE &&
 				identity.integrationType !== N8N_CHAT_INTEGRATION_TYPE);
 		const canBackgroundInChat =
-			this.config.backgroundTasksEnabled && identity.allowBackgroundTasks !== false && hasAsyncChat;
+			this.config.backgroundTasksEnabled &&
+			identity.allowBackgroundTasks !== false &&
+			hasAsyncChat &&
+			// A protected tool's own suspension needs the original foreground turn.
+			tool.suspendSchema === undefined;
 		const handler = tool.handler;
 		const reviewed: BuiltTool = {
 			...tool,
