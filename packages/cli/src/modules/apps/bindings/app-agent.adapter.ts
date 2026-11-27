@@ -18,6 +18,7 @@ import {
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -27,6 +28,14 @@ export const APP_AGENT_INTEGRATION_TYPE = 'app';
 
 const VISITOR_ERROR_MESSAGE = 'The agent could not answer.';
 const VISITOR_TOOL_ERROR_MESSAGE = 'Tool execution failed.';
+
+const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
+
+function isFailedDelegation(toolName: string | undefined, output: unknown): boolean {
+	return (
+		toolName === DELEGATE_SUB_AGENT_TOOL_NAME && isRecord(output) && output.status === 'failed'
+	);
+}
 
 interface BoundAgent {
 	agentId: string;
@@ -83,7 +92,8 @@ function toVisitorEvent(
 		case 'tool-call':
 			return { type: 'tool-call', toolCallId: event.toolCallId, toolName: event.toolName };
 		case 'tool-result': {
-			const { toolCallId, toolName, isError, canceled } = event;
+			const { toolCallId, toolName, canceled } = event;
+			const isError = isFailedDelegation(toolName, event.output) || event.isError;
 			return {
 				type: 'tool-result',
 				toolCallId,
@@ -123,7 +133,8 @@ function toVisitorPart(
 		return { type: 'text', text: part.text };
 	}
 	if (part.type !== 'tool-call') return null;
-	const { toolName, toolCallId, state, canceled, startTime, endTime, suspendPayload, error } = part;
+	const { toolName, toolCallId, state, canceled, startTime, endTime, suspendPayload } = part;
+	const error = isFailedDelegation(toolName, part.output) ? VISITOR_TOOL_ERROR_MESSAGE : part.error;
 	return {
 		type: 'tool-call',
 		...(toolName !== undefined && { toolName }),

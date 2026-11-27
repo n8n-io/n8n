@@ -1,3 +1,4 @@
+import { DELEGATE_SUB_AGENT_TOOL_NAME } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AppCallContext } from '@n8n/backend-module-apps';
@@ -396,6 +397,42 @@ describe('AppAgentAdapter', () => {
 				},
 			]);
 		});
+
+		it('marks a failed delegation in history without its output', async () => {
+			const { adapter, orchestrator } = setup();
+			const delegation = {
+				type: 'tool-call',
+				toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+				state: 'resolved',
+			};
+			orchestrator.getConversationHistory.mockResolvedValue({
+				messages: [
+					{
+						id: 'm1',
+						role: 'assistant',
+						content: [
+							{
+								...delegation,
+								toolCallId: 'tc-1',
+								output: { status: 'failed', answer: '', error: 'child-secret-error' },
+							},
+							{
+								...delegation,
+								toolCallId: 'tc-2',
+								output: { status: 'completed', answer: 'child-answer' },
+							},
+						],
+					},
+				],
+			} as never);
+
+			const result = await adapter.messages(userCtx, 'agent-1', SESSION);
+
+			expect(result.messages[0].content).toEqual([
+				{ ...delegation, toolCallId: 'tc-1', error: 'Tool execution failed.' },
+				{ ...delegation, toolCallId: 'tc-2' },
+			]);
+		});
 	});
 
 	it('scopes memory to the app and the visitor', async () => {
@@ -632,6 +669,47 @@ describe('AppAgentAdapter', () => {
 			{ type: 'text-end', id: 't1' },
 			{ type: 'finish-step' },
 			{ type: 'finish', finishReason: 'stop', guardrail: { code: 'max_steps' } },
+			{ type: 'done', sessionId: SESSION },
+		]);
+	});
+
+	it('flags a failed delegation as a tool error without its output', async () => {
+		const { adapter, orchestrator } = setup();
+		const toolName = DELEGATE_SUB_AGENT_TOOL_NAME;
+		orchestrator.executeForChatPublished.mockImplementation(async function* () {
+			yield {
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName,
+				output: { status: 'failed', answer: '', error: 'child-secret-error' },
+				isError: false,
+			};
+			yield {
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName,
+				output: { status: 'completed', answer: 'child-answer' },
+				isError: false,
+			};
+		});
+
+		const turn = await adapter.chat(
+			userCtx,
+			'agent-1',
+			{ message: 'Hi', sessionId: SESSION },
+			new AbortController().signal,
+		);
+		const events = await collect(turn.events);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName,
+				isError: true,
+				output: 'Tool execution failed.',
+			},
+			{ type: 'tool-result', toolCallId: 'tc-2', toolName, isError: false },
 			{ type: 'done', sessionId: SESSION },
 		]);
 	});
