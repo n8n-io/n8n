@@ -17,6 +17,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useAgentToolCatalog } from '../composables/useAgentToolCatalog';
 import type { WorkflowToolRef } from '../types';
 import { listWorkflowToolInputFields } from '../utils/workflowToolInputFields';
@@ -156,6 +157,32 @@ const targetWorkflowId = computed(() => targetWorkflow.value?.id ?? workflowId.v
 /** Falls back to the raw stored name so an unresolved target still displays. */
 const selectedOptionId = computed(
 	() => targetWorkflowId.value ?? workflowId.value ?? workflow.value,
+);
+
+/**
+ * The tool list does not include workflow settings, so load the full target to
+ * learn if it redacts its execution data.
+ */
+const workflowsListStore = useWorkflowsListStore();
+const targetRedactsData = ref(false);
+let redactionRequestId = 0;
+
+watch(
+	targetWorkflowId,
+	async (id) => {
+		const requestId = ++redactionRequestId;
+		targetRedactsData.value = false;
+		if (!id) return;
+		try {
+			const target = await workflowsListStore.fetchWorkflow(id);
+			if (requestId !== redactionRequestId) return;
+			const policy = target.settings?.redactionPolicy;
+			targetRedactsData.value = policy !== undefined && policy !== 'none';
+		} catch {
+			// The hint is optional. The target notices above report missing workflows.
+		}
+	},
+	{ immediate: true },
 );
 
 const declaredInputFields = computed(() => listWorkflowToolInputFields(targetWorkflow.value));
@@ -435,6 +462,14 @@ defineExpose({
 				data-test-id="agent-workflow-tool-target-unpublished"
 			>
 				{{ i18n.baseText('agents.toolConfig.workflow.target.notPublished') }}
+			</N8nText>
+			<N8nText
+				v-if="targetRedactsData"
+				size="xsmall"
+				color="text-light"
+				data-test-id="agent-workflow-tool-target-redacted"
+			>
+				{{ i18n.baseText('agents.toolConfig.workflow.target.redacted') }}
 			</N8nText>
 		</div>
 

@@ -10545,6 +10545,7 @@
 	"agents.toolConfig.workflow.target": "Workflow",
 	"agents.toolConfig.workflow.target.notice": "This tool calls the workflow selected below and returns its output. Only workflows that start with a '{trigger}' trigger can be used. The workflow must be published before the published agent can call it.",
 	"agents.toolConfig.workflow.target.notPublished": "This workflow is not published.",
+	"agents.toolConfig.workflow.target.redacted": "This workflow redacts its execution data. Agent replies that use it are hidden from people who can't reveal its data.",
 	"agents.toolConfig.workflow.target.unavailable": "Workflow \"{name}\" isn't available. It may have been deleted, moved, or you may not have access. Select another workflow.",
 	"agents.toolConfig.workflow.target.placeholder": "Select a workflow",
 	"agents.toolConfig.workflow.target.duplicateName": "More than one workflow in this project is called \"{name}\". The agent may call either one.",

@@ -348,7 +348,10 @@ export class AgentValidationService {
 		}
 
 		const issues = await this.collectIssues({ ...ctx, config: ctx.config }, scope);
-		const warnings = this.collectSkillNameWarnings(ctx.config, ctx.skills);
+		const warnings = [
+			...this.collectSkillNameWarnings(ctx.config, ctx.skills),
+			...(await this.collectRedactedOutputWarnings(ctx.config, ctx.projectId)),
+		];
 		return {
 			status: issues.length === 0 ? 'valid' : 'invalid',
 			issues,
@@ -369,6 +372,44 @@ export class AgentValidationService {
 			capability: { kind: 'skill' },
 			names: group,
 		}));
+	}
+
+	/**
+	 * A workflow that redacts its execution data returns only its last node's
+	 * output to the agent, also with `allOutputs`. A warning, because the
+	 * policy can change after the agent is saved.
+	 */
+	private async collectRedactedOutputWarnings(
+		config: AgentJsonConfig,
+		projectId: string,
+	): Promise<AgentConfigValidationWarning[]> {
+		const refs = (config.tools ?? []).flatMap((tool, index) =>
+			tool.type === 'workflow' && tool.enabled !== false && tool.allOutputs === true
+				? [{ tool, index }]
+				: [],
+		);
+		if (refs.length === 0) return [];
+		const workflows = await findWorkflowToolWorkflows(
+			this.workflowRepository,
+			refs.map(({ tool }) => tool),
+			projectId,
+		);
+		return refs.flatMap(({ tool, index }) => {
+			const workflow = workflows.get(tool.workflowId ?? tool.workflow);
+			const policy = workflow?.settings?.redactionPolicy;
+			if (!policy || policy === 'none') return [];
+			return [
+				{
+					code: 'workflow_outputs_redacted' as const,
+					capability: {
+						kind: 'tool' as const,
+						id: tool.workflow,
+						index,
+						toolType: 'workflow' as const,
+					},
+				},
+			];
+		});
 	}
 
 	private missingConfigIssues(): AgentConfigValidationIssue[] {

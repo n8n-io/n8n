@@ -1949,13 +1949,19 @@ export class McpAgentToolsService {
 				),
 			),
 		];
-		const warnings = (configuration.warnings ?? []).flatMap((warning) =>
-			warning.code === 'similar_skill_names'
-				? [
-						`Skills ${warning.names.map((name) => `"${name}"`).join(', ')} have names that are hard to tell apart. Rename one of them.`,
-					]
-				: [],
-		);
+		const warnings = (configuration.warnings ?? []).flatMap((warning) => {
+			if (warning.code === 'similar_skill_names') {
+				return [
+					`Skills ${warning.names.map((name) => `"${name}"`).join(', ')} have names that are hard to tell apart. Rename one of them.`,
+				];
+			}
+			if (warning.code === 'workflow_outputs_redacted') {
+				return [
+					`Workflow tool "${warning.capability.id ?? ''}" returns only its last node's output, because the workflow redacts its execution data.`,
+				];
+			}
+			return [];
+		});
 		return {
 			valid: errors.length === 0 && missing.length === 0,
 			errors,
