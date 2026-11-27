@@ -1,11 +1,13 @@
 import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, PrometheusMetricsConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { EngineRole, ExecutionChannelPublisher, RedisWorkQueues } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
+import type { Server } from 'node:http';
+import type { Registry } from 'prom-client';
 import { z } from 'zod';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -45,6 +47,8 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 	private channelPublisher?: ExecutionChannelPublisher;
 
 	private workQueues?: RedisWorkQueues;
+
+	private metricsServer?: Server;
 
 	async init() {
 		// The guards below run before `super.init()` wires the reporter, and the
@@ -106,6 +110,8 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 			step: engineConfig.stepConcurrency,
 		});
 
+		const metricsRegistry = await this.createMetricsRegistry();
+
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
 		await this.runtime.init({
@@ -113,9 +119,37 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 			lifecycleEventSender: new LifecycleEventChannelSender(publisher, logger),
 			queues: this.workQueues.queues,
 			roles,
+			metricsRegistry,
 		});
 
 		if (runsSteps) await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+
+		// Last, so a data plane that failed to start serves no metrics.
+		if (metricsRegistry) {
+			const { startEngineMetricsServer } = await import(
+				'@/modules/engine-v2/engine-metrics-server.js'
+			);
+			const { host, metricsPort } = engineConfig;
+			this.metricsServer = await startEngineMetricsServer(metricsRegistry, {
+				host,
+				port: metricsPort,
+			});
+			this.logger.info(`Engine v2 metrics listening on port ${metricsPort}`);
+		}
+	}
+
+	/**
+	 * This process runs no control plane metrics, so it serves a registry of its
+	 * own on a separate port.
+	 */
+	private async createMetricsRegistry(): Promise<Registry | undefined> {
+		const { enable, prefix, includeDefaultMetrics } = Container.get(PrometheusMetricsConfig);
+		if (!enable) return undefined;
+
+		const promClient = await import('prom-client');
+		const registry = new promClient.Registry();
+		if (includeDefaultMetrics) promClient.collectDefaultMetrics({ prefix, register: registry });
+		return registry;
 	}
 
 	/**
@@ -160,6 +194,17 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await new Promise(() => {});
 	}
 
+	private async closeMetricsServer() {
+		const server = this.metricsServer;
+		if (!server) return;
+
+		await new Promise<void>((resolve, reject) => {
+			server.close((error) => (error ? reject(error) : resolve()));
+			// A scraper keeps its connection open between scrapes.
+			server.closeAllConnections();
+		});
+	}
+
 	async catch(error: Error) {
 		await this.exitWithCrash('Exiting due to an error.', error);
 	}
@@ -170,6 +215,7 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const errors: unknown[] = [];
 		const releaseSteps = [
 			async () => await this.runtime?.shutdown(),
+			async () => await this.closeMetricsServer(),
 			// Before the publisher, so a late fetch fails instead of taking a message it can no longer give back.
 			async () => this.workQueues?.close(),
 			// After the engine, so a final response still has somewhere to go.
