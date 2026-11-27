@@ -9,6 +9,7 @@ import type {
 import { PolicyCheck } from '@n8n/decorators';
 
 import { ExecutionLimitsService } from './execution-limits.service';
+import type { ApplicableLimits } from './execution-limits.types';
 import { ExecutionUsageService } from './execution-usage.service';
 import type { UsageScope } from './execution-usage';
 
@@ -77,7 +78,12 @@ export class ExecutionLimitPolicyCheck implements RegisteredPolicyCheck {
 		const reached = [
 			projectId === null
 				? null
-				: this.reachedLimit({ type: 'project', projectId }, limits.projectMaxExecutions, context),
+				: this.reachedLimit(
+						{ type: 'project', projectId },
+						limits.projectMaxExecutions,
+						context,
+						limits.projectPolicy,
+					),
 			this.reachedLimit({ type: 'instance' }, limits.instanceMaxExecutions, context),
 		];
 
@@ -88,6 +94,7 @@ export class ExecutionLimitPolicyCheck implements RegisteredPolicyCheck {
 		scope: UsageScope,
 		max: number | null,
 		context: ExecutionAdmissionContext,
+		policy: ApplicableLimits['projectPolicy'] = null,
 	): PolicyViolation | null {
 		if (max === null) return null;
 
@@ -109,6 +116,7 @@ export class ExecutionLimitPolicyCheck implements RegisteredPolicyCheck {
 			limit: max,
 			usage: usage.executions,
 			resetsAt,
+			...(policy && { policyId: policy.id, policyName: policy.name }),
 		};
 	}
 
