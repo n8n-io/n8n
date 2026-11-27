@@ -7,7 +7,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { SkillNewUpdate, SkillSourceListItem } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useSkillsStore } from '@/features/settings/context/skills.store';
-import SkillSourceNewSkillsDialog from './SkillSourceNewSkillsDialog.vue';
+import SkillSourceUpdatesDialog from './SkillSourceUpdatesDialog.vue';
 
 const { showMessage } = vi.hoisted(() => ({ showMessage: vi.fn() }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showMessage }) }));
@@ -76,11 +76,12 @@ const xlsx = () =>
 		webUrl: 'https://github.com/acme/skills/tree/abc/skills/xlsx',
 	});
 
-const renderDialog = createComponentRenderer(SkillSourceNewSkillsDialog);
+// The review of updates, in the mode that imports the new skills of a connected source.
+const renderDialog = createComponentRenderer(SkillSourceUpdatesDialog);
 let store: ReturnType<typeof useSkillsStore>;
 let pinia: ReturnType<typeof createTestingPinia>;
 const render = (overrides: Partial<SkillSourceListItem> = {}) =>
-	renderDialog({ props: { source: { ...source, ...overrides } }, pinia });
+	renderDialog({ props: { source: { ...source, ...overrides }, mode: 'new' }, pinia });
 const offer = (...newSkills: SkillNewUpdate[]) =>
 	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({ updates: [], newSkills, commit: null });
 
@@ -103,7 +104,9 @@ it('has the header of the import dialog: the title, the repository and the scope
 	expect(view.getByRole('heading', { name: 'Import skills' })).toBeVisible();
 	expect(view.getByTestId('skill-source-summary')).toHaveTextContent('acme/skills · main');
 	expect(view.getByTestId('skill-scope-badge')).toHaveTextContent('Global');
+	expect(view.getByTestId('skill-source-new-skills-dialog')).toBeVisible();
 	expect(view.queryByTestId('skill-update-commit')).toBeNull();
+	expect(store.fetchSourceCommit).not.toHaveBeenCalled();
 });
 
 it('shows new skills unchecked and imports only the selected new skill', async () => {
@@ -113,20 +116,25 @@ it('shows new skills unchecked and imports only the selected new skill', async (
 	const checkbox = await view.findByRole('checkbox', { name: 'pdf' });
 	expect(checkbox).not.toBeChecked();
 	expect(view.getByRole('checkbox', { name: 'xlsx' })).not.toBeChecked();
-	expect(view.getByTestId('skill-new-skills-import')).toBeDisabled();
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 	expect(store.fetchSourceUpdate).not.toHaveBeenCalled();
 
 	await userEvent.click(checkbox);
 
-	expect(view.getByTestId('skill-new-skills-import')).toHaveTextContent('Import 1 skill to Global');
-	await userEvent.click(view.getByTestId('skill-new-skills-import'));
+	expect(view.getByTestId('skill-updates-accept')).toHaveTextContent('Import 1 skill to Global');
+	await userEvent.click(view.getByTestId('skill-updates-accept'));
 	expect(store.acceptSourceUpdates).toHaveBeenCalledWith(source.id, {
 		updates: [],
 		newSkills: [{ key: skill.key, contentHash: skill.contentHash }],
 		skippedNewSkills: [],
 		reviewedWarnings: false,
 	});
-	expect(showMessage).toHaveBeenCalledWith({ type: 'success', title: 'Imported 1 skill' });
+	expect(showMessage).toHaveBeenCalledWith({
+		type: 'success',
+		dangerouslyUseHTMLString: false,
+		title: 'Imported 1 skill',
+		message: '',
+	});
 	expect(view.emitted().changed).toHaveLength(1);
 	expect(view.emitted().close).toHaveLength(1);
 });
@@ -134,9 +142,7 @@ it('shows new skills unchecked and imports only the selected new skill', async (
 it('names the project of the source in the import button', async () => {
 	const view = render({ projectId: 'team-1', projectName: 'Marketing', projectType: 'team' });
 	await userEvent.click(await view.findByRole('checkbox', { name: 'pdf' }));
-	expect(view.getByTestId('skill-new-skills-import')).toHaveTextContent(
-		'Import 1 skill to Marketing',
-	);
+	expect(view.getByTestId('skill-updates-accept')).toHaveTextContent('Import 1 skill to Marketing');
 	expect(view.getByTestId('skill-scope-badge')).toHaveTextContent('Marketing');
 });
 
@@ -186,10 +192,10 @@ it('imports a skill that needs review only after "I have reviewed the warnings"'
 	offer(skill);
 	const view = render();
 	await userEvent.click(await view.findByRole('checkbox', { name: 'pdf' }));
-	expect(view.getByTestId('skill-new-skills-import')).toBeDisabled();
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 
 	await userEvent.click(view.getByRole('checkbox', { name: 'I have reviewed the warnings' }));
-	await userEvent.click(view.getByTestId('skill-new-skills-import'));
+	await userEvent.click(view.getByTestId('skill-updates-accept'));
 
 	expect(store.acceptSourceUpdates).toHaveBeenCalledWith(
 		source.id,
@@ -201,7 +207,7 @@ it('keeps new skills reviewable without import permission', async () => {
 	const view = render({ canImport: false });
 	expect(await view.findByRole('checkbox', { name: 'pdf' })).toBeDisabled();
 	expect(view.getByTestId('skill-source-select-all')).toBeDisabled();
-	expect(view.getByTestId('skill-new-skills-import')).toBeDisabled();
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 	expect(
 		view.getAllByText("You don't have permission to import skills into this scope"),
 	).toHaveLength(2);
@@ -271,7 +277,7 @@ it('unchecks a selected new skill that the reviewer removes from the count, and 
 		type: 'success',
 		title: 'No longer counted as new',
 	});
-	expect(view.getByTestId('skill-new-skills-import')).toBeDisabled();
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 	expect(store.fetchSourceUpdates).toHaveBeenCalledTimes(1);
 	expect(view.emitted().changed).toHaveLength(1);
 });
@@ -287,7 +293,7 @@ it('shows the error and lets the reviewer try again when the hide action fails',
 	await userEvent.click(view.getByTestId('skill-new-hide'));
 	await flushPromises();
 
-	const notice = view.getByTestId('skill-new-skills-error');
+	const notice = view.getByTestId('skill-updates-error');
 	expect(notice).toHaveTextContent("Couldn't load or import the new skills. Try again.");
 	// The list is still there, so the notice needs no Retry.
 	expect(within(notice).queryByRole('button', { name: 'Retry' })).toBeNull();
@@ -309,23 +315,23 @@ it('says why the new skills did not load, with Retry in the notice', async () =>
 		})
 		.mockResolvedValue({ updates: [], newSkills: [newSkill()], commit: null });
 	const view = render();
-	const notice = await view.findByTestId('skill-new-skills-error');
+	const notice = await view.findByTestId('skill-updates-error');
 	expect(notice).toHaveTextContent('n8n cannot reach GitHub. Try again later.');
-	expect(view.getByTestId('skill-new-skills-import')).toBeDisabled();
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 
 	await userEvent.click(within(notice).getByRole('button', { name: 'Retry' }));
 
 	expect(await view.findByRole('checkbox', { name: 'pdf' })).toBeVisible();
-	expect(view.queryByTestId('skill-new-skills-error')).toBeNull();
+	expect(view.queryByTestId('skill-updates-error')).toBeNull();
 });
 
 it('says when the source has no new skills', async () => {
 	offer();
 	const view = render();
 	expect(await view.findByText('This source has no new skills.')).toBeVisible();
-	expect(view.queryByTestId('skill-new-skills-error')).toBeNull();
+	expect(view.queryByTestId('skill-updates-error')).toBeNull();
 	expect(view.queryByTestId('skill-source-review')).toBeNull();
-	expect(view.getByTestId('skill-new-skills-import')).toBeDisabled();
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 });
 
 it('finds a new skill by its description', async () => {
@@ -346,7 +352,7 @@ it.each([
 	const view = render();
 	expect(await view.findByRole('checkbox', { name: 'pdf' })).toBeDisabled();
 	expect(view.getByRole('tab', { name: 'Blocked (1)' })).toBeVisible();
-	expect(view.getByTestId('skill-new-skills-import')).toBeDisabled();
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 });
 
 it('reloads new skills when their content changes before the hide action', async () => {
@@ -380,10 +386,10 @@ it('stays open with the reason when the import fails', async () => {
 	const view = render();
 	await userEvent.click(await view.findByRole('checkbox', { name: 'pdf' }));
 
-	await userEvent.click(view.getByTestId('skill-new-skills-import'));
+	await userEvent.click(view.getByTestId('skill-updates-accept'));
 	await flushPromises();
 
-	expect(view.getByTestId('skill-new-skills-error')).toHaveTextContent(
+	expect(view.getByTestId('skill-updates-error')).toHaveTextContent(
 		"Couldn't load or import the new skills. Try again.",
 	);
 	expect(view.getByRole('checkbox', { name: 'pdf' })).toBeChecked();
@@ -395,7 +401,7 @@ it('closes from Cancel without a write', async () => {
 	const view = render();
 	await view.findByRole('checkbox', { name: 'pdf' });
 
-	await userEvent.click(view.getByTestId('skill-new-skills-cancel'));
+	await userEvent.click(view.getByRole('button', { name: 'Cancel' }));
 
 	expect(view.emitted().close).toHaveLength(1);
 	expect(store.acceptSourceUpdates).not.toHaveBeenCalled();

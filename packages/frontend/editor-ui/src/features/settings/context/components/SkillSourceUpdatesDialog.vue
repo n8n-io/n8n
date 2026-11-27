@@ -2,6 +2,7 @@
 import type {
 	DiscoveredSkill,
 	SkillPendingUpdate,
+	SkillNewUpdate,
 	SkillSourceListItem,
 	SkillUpdateAgents,
 	SkillUpdateCommit,
@@ -21,6 +22,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { ResponseError } from '@n8n/rest-api-client';
+import SkillScopeBadge from './SkillScopeBadge.vue';
 import SkillSourceDialogHeader from './SkillSourceDialogHeader.vue';
 import SkillSourceReview from './SkillSourceReview.vue';
 import SkillSourceFilesView from './SkillSourceFilesView.vue';
@@ -28,17 +30,24 @@ import SkillDiffCount from '@/features/agents/components/skillVersions/SkillDiff
 import { useSkillsStore } from '../skills.store';
 import { SKIPPED_FILE_RULES, useSkillSourceReasons } from '../skills.utils';
 
-const props = defineProps<{ source: SkillSourceListItem }>();
+const props = defineProps<{
+	source: SkillSourceListItem;
+	/** `new` shows the skills of the source that are not imported, as the review of an import. */
+	mode?: 'updates' | 'new';
+}>();
+const isImport = computed(() => props.mode === 'new');
 const emit = defineEmits<{ close: []; changed: [] }>();
 const i18n = useI18n();
 const store = useSkillsStore();
 const { showMessage } = useToast();
 const { reasonText } = useSkillSourceReasons();
-const updates = ref<SkillPendingUpdate[]>([]);
+type ReviewItem = SkillPendingUpdate & { newSkill?: SkillNewUpdate };
+const updates = ref<ReviewItem[]>([]);
 const selected = ref<string[]>([]);
 const reviewed = ref(false);
 const loading = ref(true);
 const saving = ref(false);
+const hiding = ref(false);
 const error = ref('');
 const previewKey = ref<string | null>(null);
 const detail = ref<SkillUpdateReview | null>(null);
@@ -50,11 +59,31 @@ let listRequest = 0;
 let loaded = false;
 let closed = false;
 
-const acceptable = (update: SkillPendingUpdate) =>
-	update.check.verdict !== 'blocked' && !update.nameClash;
+const acceptable = (update: ReviewItem) =>
+	update.check.verdict !== 'blocked' &&
+	!update.nameClash &&
+	(!update.newSkill || props.source.canImport);
+const disabledImportKeys = computed(() =>
+	props.source.canImport
+		? []
+		: updates.value.filter((update) => update.newSkill).map(({ skillId }) => skillId),
+);
+/** The import button names the scope, as in the import of a new source. */
+const importLabel = computed(() =>
+	i18n.baseText(
+		props.source.projectId
+			? 'settings.context.skills.connect.importProject'
+			: 'settings.context.skills.connect.importGlobal',
+		{
+			interpolate: { count: selectedUpdates.value.length, project: scopeLabel.value },
+			adjustToNumber: selectedUpdates.value.length,
+		},
+	),
+);
 const selectedUpdates = computed(() =>
 	updates.value.filter((update) => selected.value.includes(update.skillId) && acceptable(update)),
 );
+const selectedNew = computed(() => selectedUpdates.value.filter((update) => update.newSkill));
 const needsReview = computed(() =>
 	selectedUpdates.value.some((update) => update.check.verdict === 'needs_review'),
 );
@@ -65,15 +94,15 @@ const discovery = computed(() => ({
 		(update): DiscoveredSkill => ({
 			key: update.skillId,
 			name: update.name,
-			description: null,
+			description: update.newSkill?.description ?? null,
 			location: update.location,
 			webUrl: update.webUrl,
 			check: update.check,
 			skippedFiles: update.check.findings.flatMap((finding) =>
 				SKIPPED_FILE_RULES.has(finding.rule) && finding.file ? [finding.file] : [],
 			),
-			previewFiles: [],
-			previewTruncated: false,
+			previewFiles: update.newSkill?.previewFiles ?? [],
+			previewTruncated: update.newSkill?.previewTruncated ?? false,
 			nameTaken: update.nameClash?.where === 'scope',
 			error: update.nameClash?.where === 'agent' ? { reason: 'name_clash', message: '' } : null,
 		}),
@@ -122,10 +151,15 @@ function isStale(cause: unknown) {
 	return cause instanceof ResponseError && cause.meta?.reason === 'stale';
 }
 function errorText(cause: unknown) {
-	if (cause instanceof ResponseError && typeof cause.meta?.reason === 'string') {
-		return reasonText(cause.meta.reason) || i18n.baseText('settings.context.skills.updates.error');
-	}
-	return i18n.baseText('settings.context.skills.updates.error');
+	const reason = cause instanceof ResponseError ? cause.meta?.reason : cause;
+	return (
+		(typeof reason === 'string' && reasonText(reason)) ||
+		i18n.baseText(
+			isImport.value
+				? 'settings.context.skills.newSkills.error'
+				: 'settings.context.skills.updates.error',
+		)
+	);
 }
 
 async function load() {
@@ -137,14 +171,37 @@ async function load() {
 	try {
 		const result = await store.fetchSourceUpdates(props.source.id);
 		if (closed || request !== listRequest) return;
-		// The new skills of the source have their own dialog. This review holds only the updates.
-		updates.value = result.updates;
+		// Each mode has its own list: the updates, or the skills that are not imported.
+		updates.value = [
+			...(isImport.value ? [] : result.updates),
+			...((isImport.value && result.newSkills) || []).map(
+				(skill): ReviewItem => ({
+					skillId: skill.key,
+					name: skill.name ?? skill.location,
+					location: skill.location,
+					webUrl: skill.webUrl,
+					contentHash: skill.contentHash,
+					baseVersionId: '',
+					revision: skill.revision,
+					revisionUrl: null,
+					check: skill.check ?? { verdict: 'blocked', findings: [] },
+					nameClash: skill.nameTaken ? { name: skill.name ?? '', where: 'scope' } : null,
+					changes: { added: 0, removed: 0 },
+					nextVersion: 1,
+					newSkill: skill,
+				}),
+			),
+		];
 		selected.value = updates.value
 			.filter(
-				(update) => acceptable(update) && (!loaded || selected.value.includes(update.skillId)),
+				(update) =>
+					acceptable(update) &&
+					((!loaded && !update.newSkill) || selected.value.includes(update.skillId)),
 			)
 			.map(({ skillId }) => skillId);
 		loaded = true;
+		if (isImport.value && result.newSkillsError)
+			error.value = errorText(result.newSkillsError.reason);
 		if (commit.value?.revision !== result.commit?.revision) commit.value = result.commit;
 	} catch (cause) {
 		if (!closed && request === listRequest) error.value = errorText(cause);
@@ -160,6 +217,8 @@ async function loadPreview() {
 	detailError.value = '';
 	detailLoading.value = false;
 	if (!update) return;
+	// A new skill shows the files that came with the list, as an import does.
+	if (update.newSkill) return;
 	detailLoading.value = true;
 	try {
 		const result = await store.fetchSourceUpdate(props.source.id, update.skillId, {
@@ -182,7 +241,7 @@ watch(focused, loadPreview);
 watch(
 	() => focused.value?.revision,
 	async (revision) => {
-		if (!revision) return;
+		if (!revision || isImport.value) return;
 		commit.value = {
 			revision,
 			webUrl: focused.value?.revisionUrl ?? null,
@@ -221,26 +280,45 @@ async function accept() {
 	error.value = '';
 	try {
 		const result = await store.acceptSourceUpdates(props.source.id, {
-			updates: selectedUpdates.value.map(({ skillId, contentHash, baseVersionId }) => ({
-				skillId,
-				contentHash,
-				baseVersionId,
-			})),
-			newSkills: [],
+			updates: selectedUpdates.value
+				.filter((update) => !update.newSkill)
+				.map(({ skillId, contentHash, baseVersionId }) => ({
+					skillId,
+					contentHash,
+					baseVersionId,
+				})),
+			newSkills: selectedNew.value.flatMap(({ newSkill, contentHash }) =>
+				newSkill ? [{ key: newSkill.key, contentHash }] : [],
+			),
 			skippedNewSkills: [],
 			reviewedWarnings: reviewed.value,
 		});
+		const description = result.updatedCount
+			? [
+					impactText(result),
+					i18n.baseText('settings.context.skills.updates.publishedUnchanged'),
+				].join(' ')
+			: '';
 		showMessage({
 			type: 'success',
 			dangerouslyUseHTMLString: false,
-			title: i18n.baseText('settings.context.skills.updates.success', {
-				interpolate: { count: result.updatedCount },
-				adjustToNumber: result.updatedCount,
-			}),
-			message: [
-				impactText(result),
-				i18n.baseText('settings.context.skills.updates.publishedUnchanged'),
-			].join(' '),
+			title: [
+				result.importedCount
+					? i18n.baseText('settings.context.skills.updates.imported', {
+							interpolate: { count: result.importedCount },
+							adjustToNumber: result.importedCount,
+						})
+					: '',
+				result.updatedCount
+					? i18n.baseText('settings.context.skills.updates.success', {
+							interpolate: { count: result.updatedCount },
+							adjustToNumber: result.updatedCount,
+						})
+					: '',
+			]
+				.filter(Boolean)
+				.join('; '),
+			message: description,
 		});
 		emit('changed');
 		saving.value = false;
@@ -253,6 +331,35 @@ async function accept() {
 	}
 }
 
+async function hideNewSkill() {
+	const update = focused.value;
+	if (!update?.newSkill || saving.value) return;
+	saving.value = true;
+	hiding.value = true;
+	error.value = '';
+	try {
+		await store.acceptSourceUpdates(props.source.id, {
+			updates: [],
+			newSkills: [],
+			skippedNewSkills: [{ key: update.newSkill.key, contentHash: update.contentHash }],
+			reviewedWarnings: false,
+		});
+		update.newSkill.skipped = true;
+		if (selected.value.includes(update.skillId))
+			selected.value = selected.value.filter((id) => id !== update.skillId);
+		showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.context.skills.updates.hiddenNew'),
+		});
+		emit('changed');
+	} catch (cause) {
+		error.value = errorText(cause);
+		if (cause instanceof ResponseError && cause.httpStatusCode === 409) await load();
+	} finally {
+		saving.value = false;
+		hiding.value = false;
+	}
+}
 async function retry() {
 	error.value = '';
 	await load();
@@ -264,17 +371,31 @@ void load();
 <template>
 	<N8nDialog
 		:open="true"
-		:aria-description="i18n.baseText('settings.context.skills.updates.description')"
+		:aria-description="
+			isImport ? undefined : i18n.baseText('settings.context.skills.updates.description')
+		"
 		size="full"
 		:container-class="$style.wide"
-		data-test-id="skill-source-updates-dialog"
+		:data-test-id="isImport ? 'skill-source-new-skills-dialog' : 'skill-source-updates-dialog'"
 		@update:open="!$event && close()"
 	>
 		<SkillSourceDialogHeader
-			:title="i18n.baseText('settings.context.skills.updates.title')"
+			:title="
+				i18n.baseText(
+					isImport
+						? 'settings.context.skills.connect.title'
+						: 'settings.context.skills.updates.title',
+				)
+			"
 			:source-line="sourceLine"
 		>
-			<template v-if="commit" #details>
+			<template v-if="isImport" #trailing>
+				<SkillScopeBadge
+					:skill="{ ...source, scope: source.projectId ? 'project' : 'instance' }"
+					:label="scopeLabel"
+				/>
+			</template>
+			<template v-if="commit && !isImport" #details>
 				<div :class="$style.commit" data-test-id="skill-update-commit">
 					<N8nLink
 						v-if="commit.webUrl"
@@ -327,6 +448,7 @@ void load();
 				:discovery="discovery"
 				:scope-label="scopeLabel"
 				:disabled="saving"
+				:disabled-skill-keys="disabledImportKeys"
 				@preview="previewKey = $event"
 			>
 				<template #row-trailing="{ skill }">
@@ -352,7 +474,7 @@ void load();
 					<SkillSourceFilesView
 						v-else
 						:skill="{ ...skill, ...detail?.preview }"
-						:diff-files="detail?.preview ? undefined : (detail?.files ?? [])"
+						:diff-files="detail?.preview || focused?.newSkill ? undefined : (detail?.files ?? [])"
 					>
 						<template #footer>
 							<N8nCallout
@@ -371,7 +493,7 @@ void load();
 								</template>
 							</N8nCallout>
 							<N8nText
-								v-if="detail && skill.check?.verdict !== 'blocked'"
+								v-if="detail && !focused?.newSkill && skill.check?.verdict !== 'blocked'"
 								size="small"
 								color="text-light"
 								data-test-id="skill-update-impact"
@@ -385,12 +507,39 @@ void load();
 								data-test-id="skill-update-blocked"
 								>{{ i18n.baseText('settings.context.skills.updates.blocked') }}</N8nCallout
 							>
+							<div v-if="focused?.newSkill" :class="$style.detailActions">
+								<N8nText v-if="!source.canImport" size="small" color="text-light">{{
+									i18n.baseText('settings.context.skills.updates.importNotAllowed')
+								}}</N8nText>
+								<N8nText size="small" color="text-light">{{
+									i18n.baseText('settings.context.skills.updates.newHint')
+								}}</N8nText>
+								<N8nButton
+									variant="ghost"
+									:loading="hiding"
+									:disabled="saving || focused.newSkill.skipped"
+									:label="
+										i18n.baseText(
+											focused.newSkill.skipped
+												? 'settings.context.skills.updates.hiddenNew'
+												: 'settings.context.skills.updates.hideNew',
+										)
+									"
+									data-test-id="skill-new-hide"
+									data-attr="skill-new-hide"
+									@click="hideNewSkill"
+								/>
+							</div>
 						</template>
 					</SkillSourceFilesView>
 				</template>
 			</SkillSourceReview>
 			<N8nText v-else-if="!error">{{
-				i18n.baseText('settings.context.skills.updates.empty')
+				i18n.baseText(
+					isImport
+						? 'settings.context.skills.newSkills.empty'
+						: 'settings.context.skills.updates.empty',
+				)
 			}}</N8nText>
 		</N8nDialogBody>
 		<N8nDialogFooter :class="$style.footer">
@@ -408,13 +557,15 @@ void load();
 				@click="close"
 			/>
 			<N8nButton
-				:loading="saving"
+				:loading="saving && !hiding"
 				:disabled="loading || saving || selectedUpdates.length === 0 || (needsReview && !reviewed)"
 				:label="
-					i18n.baseText('settings.context.skills.updates.accept', {
-						interpolate: { count: selectedUpdates.length },
-						adjustToNumber: selectedUpdates.length,
-					})
+					isImport
+						? importLabel
+						: i18n.baseText('settings.context.skills.updates.accept', {
+								interpolate: { count: selectedUpdates.length },
+								adjustToNumber: selectedUpdates.length,
+							})
 				"
 				data-test-id="skill-updates-accept"
 				@click="accept"
@@ -424,7 +575,8 @@ void load();
 </template>
 
 <style lang="scss" module>
-.body {
+.body,
+.detailActions {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
@@ -464,10 +616,15 @@ void load();
 	gap: var(--spacing--sm);
 }
 
+.detailActions {
+	gap: var(--spacing--4xs);
+	align-items: flex-start;
+	padding-top: var(--spacing--xs);
+	border-top: var(--border);
+}
 .detailNotice {
 	margin: var(--spacing--sm);
 }
-
 .wide {
 	--dialog--max-width: min(1200px, calc(100dvw - var(--spacing--lg)));
 }

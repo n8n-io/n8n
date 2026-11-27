@@ -87,7 +87,6 @@ import type {
 
 import SkillSourceMoveDialog from '../components/SkillSourceMoveDialog.vue';
 import SkillSourceUpdatesDialog from '../components/SkillSourceUpdatesDialog.vue';
-import SkillSourceNewSkillsDialog from '@/features/settings/context/components/SkillSourceNewSkillsDialog.vue';
 import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
@@ -1498,9 +1497,10 @@ onMounted(async () => {
 			@close="reviewSource = null"
 			@changed="onSourceUpdatesChanged"
 		/>
-		<SkillSourceNewSkillsDialog
+		<SkillSourceUpdatesDialog
 			v-if="skillSyncEnabled && importSource"
 			:source="importSource"
+			mode="new"
 			@close="importSource = null"
 			@changed="onSourceUpdatesChanged"
 		/>
