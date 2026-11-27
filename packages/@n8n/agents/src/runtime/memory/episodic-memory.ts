@@ -266,14 +266,16 @@ export function hashEpisodicMemoryEvidence(evidenceText: string): string {
 /** `hostMetadata` key that carries the turn's resolved episodic scope through checkpoints. */
 export const EPISODIC_SCOPE_METADATA_KEY = 'n8nEpisodicScope';
 
-const resolvedEpisodicScopeSchema = z.object({
-	writeScopeId: z.string().min(1),
-	readScopeIds: z.array(z.string().min(1)),
-});
+const resolvedEpisodicScopeSchema = z
+	.object({
+		writeScopeId: z.string().min(1),
+		readScopeIds: z.array(z.string().min(1)),
+	})
+	.strict();
 
 const episodicScopeMetadataSchema = z.union([
+	z.object({ disabled: z.literal(true) }).strict(),
 	resolvedEpisodicScopeSchema,
-	z.object({ disabled: z.literal(true) }),
 ]);
 
 /** Encodes a resolved scope, or the marker that turns episodic memory off for the turn. */

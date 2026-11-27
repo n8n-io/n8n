@@ -13,7 +13,7 @@ permissions:
 jobs:
   build-and-format:
     name: Build & format
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-bmi-n8n
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

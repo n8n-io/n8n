@@ -50,6 +50,8 @@ const StartExecutionBody = z.object({
 	lifecycleEventSubscription: lifecycleEventSubscriptionSchema.optional(),
 	/** The caller mints the id. v7 only, so ids stay time-ordered. */
 	executionId: z.string().regex(UUID_V7_PATTERN),
+	/** Whether a failure resolves an error workflow. The host decides. */
+	resolveErrorWorkflowOnFailure: z.boolean().optional(),
 });
 
 export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterType {

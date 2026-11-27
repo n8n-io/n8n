@@ -26,6 +26,11 @@ on:
         required: false
         default: false
         type: boolean
+      targets:
+        description: 'Bake targets to build, comma-separated. Empty builds all'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   build:
@@ -64,7 +69,15 @@ jobs:
           BASE_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           TARGET: ${{ matrix.bake_target }}
           PR_PATHS: .github/workflows/build-base-image.yml${{ matrix.smoke_check && format(',{0}', matrix.smoke_check) || '' }}
+          # A dispatch can build some targets only, so the other tags stay on their digests.
+          ONLY: ${{ inputs.targets }}
         run: |
+          ONLY=${ONLY// /}
+          if [ -n "$ONLY" ] && [[ ",$ONLY," != *",$TARGET,"* ]]; then
+            echo "The dispatch builds $ONLY only."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           node .github/scripts/docker/bake-inputs-changed.mjs --event "$EVENT" --base "$BASE_COMMIT" \
             --targets "$TARGET" --pr-paths "$PR_PATHS"
 

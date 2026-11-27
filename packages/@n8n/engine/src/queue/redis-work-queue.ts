@@ -4,12 +4,13 @@ import { checkWorkQueueConcurrency } from './work-queue-concurrency';
 import type { WorkQueue } from './work-queue.types';
 
 /**
- * The commands that write to a work queue list. ioredis `Redis` and `Cluster`
- * have them. One connection can serve all queues.
+ * The commands that write to a work queue list and count it. ioredis `Redis`
+ * and `Cluster` have them. One connection can serve all queues.
  */
 export interface WorkQueuePublisherClient {
 	lpush(key: string, value: string): Promise<number>;
 	rpush(key: string, value: string): Promise<number>;
+	llen(key: string): Promise<number>;
 }
 
 /**
@@ -111,6 +112,10 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 
 	async publish(message: TMessage): Promise<void> {
 		await this.publisher.lpush(this.key, JSON.stringify(message));
+	}
+
+	async size(): Promise<number> {
+		return await this.publisher.llen(this.key);
 	}
 
 	start(handler: (message: TMessage) => Promise<void>): void {

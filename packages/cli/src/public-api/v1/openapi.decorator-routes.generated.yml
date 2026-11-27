@@ -18,6 +18,12 @@ paths:
       $ref: ./handlers/agents/spec/paths/updateAgent.generated.yml
     delete:
       $ref: ./handlers/agents/spec/paths/deleteAgent.generated.yml
+  /agents/{agentId}/versions:
+    get:
+      $ref: ./handlers/agents/spec/paths/listAgentVersions.generated.yml
+  /agents/{agentId}/versions/{versionId}:
+    get:
+      $ref: ./handlers/agents/spec/paths/getAgentVersion.generated.yml
   /agents/{agentId}/run:
     post:
       $ref: ./handlers/agents/spec/paths/runAgent.generated.yml
@@ -27,6 +33,12 @@ paths:
   /agents/{agentId}/executions:
     get:
       $ref: ./handlers/agents/spec/paths/listAgentExecutions.generated.yml
+  /agents/{agentId}/publish:
+    post:
+      $ref: ./handlers/agents/spec/paths/publishAgent.generated.yml
+  /agents/{agentId}/unpublish:
+    post:
+      $ref: ./handlers/agents/spec/paths/unpublishAgent.generated.yml
   /agents/{agentId}/archive:
     post:
       $ref: ./handlers/agents/spec/paths/archiveAgent.generated.yml
@@ -297,7 +309,7 @@ paths:
   /promotions/settings:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionSettings.generated.yml
-    put:
+    patch:
       $ref: ./handlers/promotions/spec/paths/updatePromotionSettings.generated.yml
   /promotions/providers:
     post:
@@ -376,6 +388,12 @@ paths:
   /promotions/projects/{projectId}/apply/continue:
     post:
       $ref: ./handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  /promotions/reviews:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionReviews.generated.yml
+  /promotions/reviews/{promotionReviewId}:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionReview.generated.yml
   /settings/rate-limits:
     get:
       $ref: ./handlers/settings/spec/paths/getRateLimitSettings.generated.yml

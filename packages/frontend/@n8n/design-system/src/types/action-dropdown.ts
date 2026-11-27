@@ -11,6 +11,8 @@ export interface ActionDropdownItem<T extends string> {
 	icon?: IconName;
 	divided?: boolean;
 	disabled?: boolean;
+	/** Tooltip shown while the pointer is over a leaf item (ignored on items with children), such as the reason it is disabled. */
+	tooltip?: string;
 	shortcut?: KeyboardShortcut;
 	customClass?: string;
 	checked?: boolean;

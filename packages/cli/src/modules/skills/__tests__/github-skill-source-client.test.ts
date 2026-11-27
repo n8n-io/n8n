@@ -368,7 +368,7 @@ describe('GitHubSkillSourceClient', () => {
 			const fetched = await client.fetchLatest(locator, items[0]);
 
 			expect(client.describe(locator)).toEqual({
-				label: 'acme/skills',
+				label: 'acme/skills / skills/pdf',
 				ref: 'feature/new-pdf',
 				path: 'skills/pdf',
 			});
@@ -382,6 +382,21 @@ describe('GitHubSkillSourceClient', () => {
 
 			expect(client.describe(locator).path).toBe('skills/pdf');
 			expect((await client.discover(locator)).items).toEqual([{ path: 'skills/pdf' }]);
+		});
+
+		it('gives folder and file links the same identity across branches', async () => {
+			const folder = await client.parseLocator(
+				'https://github.com/acme/skills/tree/main/skills/pdf',
+			);
+			const file = await client.parseLocator(
+				'https://github.com/acme/skills/blob/main/skills/pdf/SKILL.md',
+			);
+			const branch = await client.parseLocator(
+				'https://github.com/acme/skills/tree/feature/new-pdf/skills/pdf',
+			);
+			expect(client.identity(folder)).toMatchObject({ path: 'skills/pdf' });
+			expect(client.identity(file)).toEqual(client.identity(folder));
+			expect(client.identity(branch)).toEqual(client.identity(folder));
 		});
 
 		it('refuses a link to a tag, a commit or a missing branch', async () => {

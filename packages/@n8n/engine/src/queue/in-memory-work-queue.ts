@@ -51,6 +51,10 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 		await new Promise<void>((resolve) => this.idleWaiters.push(resolve));
 	}
 
+	async size(): Promise<number> {
+		return this.pending.length;
+	}
+
 	/** Starts queued messages until every slot is busy. Safe to call on every publish. */
 	private fillSlots(): void {
 		while (this.handler && this.inFlight < this.concurrency && this.pending.length > 0) {

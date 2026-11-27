@@ -89,11 +89,26 @@ export interface StaleRunningStep {
 }
 
 /**
+ * A settled step that still has its `stale_after` time after that time: the
+ * orchestration worker did not handle its `step:settled` message.
+ */
+export interface StaleSettledStep {
+	id: string;
+	executionId: string;
+	staleAfter: Date;
+}
+
+/**
  * Persistence interface for step records.
  *
  * Every transition into `queued` or `running` also records when the engine
- * treats the step as stuck in that status (see `StalenessThresholds`). Every
- * other transition clears that time.
+ * treats the step as stuck in that status (see `StalenessThresholds`).
+ *
+ * Every transition into `completed`, `failed` or `skipped` records when the
+ * engine treats the `step:settled` message of the step as lost. That time
+ * stays on the row until `acknowledgeSettledStep` clears it.
+ *
+ * Every other transition clears the time.
  */
 export interface StepStore {
 	/**
@@ -225,6 +240,28 @@ export interface StepStore {
 	 */
 	failStaleRunningStep(id: string, staleAfter: Date, error: StepError): Promise<boolean>;
 
+	/**
+	 * The steps that are `completed`, `failed` or `skipped`, and whose
+	 * `stale_after` time is `at` or earlier, oldest first, at most `limit`. A
+	 * plain read: it locks no row.
+	 */
+	findStaleSettledSteps(at: Date, limit: number): Promise<StaleSettledStep[]>;
+
+	/**
+	 * Gives a settled step a new `stale_after` time. As `renewQueuedStep`, a
+	 * compare-and-set on the `staleAfter` value that the caller read. A step that
+	 * `acknowledgeSettledStep` cleared after that read is not changed.
+	 */
+	renewSettledStep(id: string, staleAfter: Date): Promise<boolean>;
+
+	/**
+	 * Clears the `stale_after` time of a settled step. The orchestration worker
+	 * calls this after it handled the `step:settled` message of the step, so
+	 * `findStaleSettledSteps` does not return the step. A second call changes
+	 * nothing.
+	 */
+	acknowledgeSettledStep(id: string): Promise<void>;
+
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
 
@@ -324,6 +361,9 @@ export interface StepStore {
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;
 
-	/** The execution's failed steps, by node and then by pass. */
+	/**
+	 * The execution's failed steps by settle time, the first to settle first.
+	 * The read path reports the first one as the failure of the execution.
+	 */
 	loadFailedSteps(executionId: string): Promise<StepRecord[]>;
 }

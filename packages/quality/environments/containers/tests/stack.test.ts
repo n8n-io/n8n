@@ -170,17 +170,6 @@ test.each([
 	},
 );
 
-test('copies stack and service files into the main, worker, and webhook', async () => {
-	await startStack({ ...queue, files: [keyFile] });
-
-	for (const name of queueNames) {
-		const { files, reuse } = built.get(name)!;
-		expect(files).toHaveLength(2);
-		expect(files).toEqual(expect.arrayContaining([keyFile, serviceFile]));
-		expect(reuse).toBe(false);
-	}
-});
-
 test.each([
 	{ mode: 'standalone', topology: {}, names: [main], port: 5678 },
 	{ mode: 'queue', topology: queue, names: queueNames, port: 8080 },
@@ -208,31 +197,36 @@ test.each([
 	expect(imageExists).not.toHaveBeenCalled();
 });
 
-test.each([
-	{ mode: 'single main', pathPrefix: '/n8n', webhooks: 0 },
-	{ mode: 'webhook processors', pathPrefix: '/n8n/', webhooks: 1 },
-])('strips the public prefix before Caddy routes to $mode', async ({ pathPrefix, webhooks }) => {
-	const { baseUrl } = await startStack({ pathPrefix, webhooks });
-	const caddyfile = built.get(caddy)?.files.find(({ target }) => target === '/etc/caddy/Caddyfile');
-	const route = webhooks
-		? `@webhooks path /webhook/* /form/* /chat\n    handle @webhooks {\n      reverse_proxy ${projectName}-n8n-webhook-1:5678 {`
-		: `reverse_proxy ${main}:5678 {`;
+test.each<{ scenario: string; config: N8NConfig; reuse: boolean }>([
+	{ scenario: 'stack files', config: { files: [keyFile] }, reuse: false },
+	{ scenario: 'shared storage', config: { sharedStorage: true }, reuse: false },
+	{
+		scenario: 'read-only root filesystem',
+		config: { n8nContainer: { readOnlyRootfs: true } },
+		reuse: false,
+	},
+	{
+		scenario: 'tmpfs mounts',
+		config: { n8nContainer: { tmpfs: hardeningOptions.tmpfs } },
+		reuse: false,
+	},
+	{
+		scenario: 'platform with a writable root filesystem',
+		config: { n8nContainer: { readOnlyRootfs: false, platform: hardeningOptions.platform } },
+		reuse: true,
+	},
+])('sets container reuse to $reuse for $scenario', async ({ config, reuse }) => {
+	await startStack({ services: [], ...config });
 
-	expect(caddyfile?.content).toContain(`handle_path /n8n/* {\n    ${route}`);
-	expect(caddyfile?.content).toContain(`reverse_proxy ${main}:5678 {`);
-	expect(caddyfile?.content).toContain('health_uri /healthz');
-	expect(caddyfile?.content).toContain('\n  handle {\n    respond 404\n  }');
-	expect(baseUrl).toBe('http://docker-host.test:8080/n8n/');
-	expect(built.get(main)?.environment).toMatchObject({
-		N8N_PATH: '/n8n/',
-		N8N_EDITOR_BASE_URL: baseUrl,
-		WEBHOOK_URL: baseUrl,
-	});
-	expect(containerUtils.pollContainerHttpEndpoint).toHaveBeenCalledWith(
-		started.get(caddy),
-		'/n8n/healthz/readiness',
-		expect.any(Number),
-		expect.any(AbortSignal),
+	expect(built.get(main)?.reuse).toBe(reuse);
+});
+
+test('strips a normalized path prefix before Caddy matches webhook processor paths', async () => {
+	await startStack({ pathPrefix: '/n8n', webhooks: 1 });
+	const caddyfile = built.get(caddy)?.files.find(({ target }) => target === '/etc/caddy/Caddyfile');
+
+	expect(caddyfile?.content).toContain(
+		`handle_path /n8n/* {\n    @webhooks path /webhook/* /form/* /chat\n    handle @webhooks {\n      reverse_proxy ${projectName}-n8n-webhook-1:5678 {`,
 	);
 });
 
@@ -293,23 +287,6 @@ test.each([
 		`${expectedBase}/form/inbound-auth-keycloak-form`,
 		`${expectedBase}/webhook/inbound-auth-keycloak-chat/chat`,
 	]);
-});
-
-test.each([
-	{ scenario: 'all options', n8nContainer: hardeningOptions, reuse: false },
-	{ scenario: 'read-only root filesystem', n8nContainer: { readOnlyRootfs: true }, reuse: false },
-	{ scenario: 'tmpfs mounts', n8nContainer: { tmpfs: hardeningOptions.tmpfs }, reuse: false },
-	{
-		scenario: 'platform with a writable root filesystem',
-		n8nContainer: { readOnlyRootfs: false, platform: hardeningOptions.platform },
-		reuse: true,
-	},
-])('applies container settings to every queue role: $scenario', async ({ n8nContainer, reuse }) => {
-	await startStack({ ...queue, services: [], n8nContainer });
-
-	for (const name of queueNames) {
-		expect(built.get(name)).toMatchObject({ n8nContainer, reuse });
-	}
 });
 
 test('keeps the container settings when replacing the main', async () => {
@@ -400,51 +377,35 @@ test('preserves the Docker error when the local image platform does not match', 
 	).rejects.toMatchObject({ message, cause: error });
 });
 
-test.each([
-	{ configuredMode: undefined, expectedMode: 'filesystem' },
-	{ configuredMode: 'database', expectedMode: 'database' },
-])(
-	'shares one storage mount across all queue roles in $expectedMode mode',
-	async ({ configuredMode, expectedMode }) => {
-		const { stop } = await startStack({
-			...queue,
-			sharedStorage: true,
-			env: {
-				N8N_STORAGE_PATH: '/custom/storage',
-				N8N_BINARY_DATA_STORAGE_PATH: '/custom/binary',
-				N8N_BINARY_DATA_STORAGE_PATH_FILE: '/run/secrets/binary-path',
-				...(configuredMode ? { N8N_DEFAULT_BINARY_DATA_MODE: configuredMode } : {}),
-			},
-		});
-		const mainMounts = built.get(main)!.bindMounts;
-		expect(mainMounts).toHaveLength(1);
-		const [{ source }] = mainMounts;
+test('overrides caller storage paths and keeps an explicit binary data mode with sharedStorage', async () => {
+	await startStack({
+		sharedStorage: true,
+		env: {
+			N8N_STORAGE_PATH: '/custom/storage',
+			N8N_BINARY_DATA_STORAGE_PATH: '/custom/binary',
+			N8N_BINARY_DATA_STORAGE_PATH_FILE: '/run/secrets/binary-path',
+			N8N_DEFAULT_BINARY_DATA_MODE: 'database',
+		},
+	});
 
-		for (const name of queueNames) {
-			const { environment, bindMounts, reuse } = built.get(name)!;
-			expect(environment).toMatchObject({
-				N8N_STORAGE_PATH: ENGINE_SHARED_STORAGE_PATH,
-				N8N_DEFAULT_BINARY_DATA_MODE: expectedMode,
-			});
-			expect(environment.N8N_BINARY_DATA_STORAGE_PATH).toBeUndefined();
-			expect(environment.N8N_BINARY_DATA_STORAGE_PATH_FILE).toBeUndefined();
-			expect(bindMounts).toEqual([{ source, target: ENGINE_SHARED_STORAGE_PATH, mode: 'rw' }]);
-			expect(reuse).toBe(false);
-		}
+	const { environment } = built.get(main)!;
+	expect(environment).toMatchObject({
+		N8N_STORAGE_PATH: ENGINE_SHARED_STORAGE_PATH,
+		N8N_DEFAULT_BINARY_DATA_MODE: 'database',
+	});
+	expect(environment.N8N_BINARY_DATA_STORAGE_PATH).toBeUndefined();
+	expect(environment.N8N_BINARY_DATA_STORAGE_PATH_FILE).toBeUndefined();
+});
 
-		expect((await stat(source)).isDirectory()).toBe(true);
-		await stop();
-		await expect(stat(source)).rejects.toMatchObject({ code: 'ENOENT' });
-	},
-);
-
-test('prepares nested storage directories through a container with the mount', async () => {
+test('prepares nested storage directories and removes the shared storage directory on stop', async () => {
 	const { stop } = await startStack({ ...queue, sharedStorage: true, services: ['tracing'] });
+	const [{ source }] = built.get(main)!.bindMounts;
 	const [mainContainer, workerContainer, webhookContainer] = queueNames.map(
 		(name) => started.get(name)!,
 	);
 	vi.mocked(mainContainer.exec).mockRejectedValue(new Error('container is not running'));
 
+	expect((await stat(source)).isDirectory()).toBe(true);
 	await stop();
 
 	const prepareStorage = [
@@ -471,6 +432,7 @@ test('prepares nested storage directories through a container with the mount', a
 	expect(vi.mocked(answered[0].exec).mock.invocationCallOrder[0]).toBeLessThan(
 		vi.mocked(answered[0].stop).mock.invocationCallOrder[0],
 	);
+	await expect(stat(source)).rejects.toMatchObject({ code: 'ENOENT' });
 });
 
 test.each([

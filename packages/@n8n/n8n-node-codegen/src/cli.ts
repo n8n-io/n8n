@@ -1,17 +1,44 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { parseArgs } from 'node:util';
 
+import { compareOperations, findBreakingChanges, loadProperties } from './contract';
 import { generate } from './generate';
 import { N8N_NODE_CONFIG } from './n8n-node.config';
 
+const listOf = (title: string, items: string[]) =>
+	items.length > 0 ? [title, ...items.map((item) => `- ${item}`)] : [];
+
+function fail(lines: string[]) {
+	console.error(`\n${lines.join('\n')}`);
+	process.exitCode = 1;
+}
+
 async function main() {
-	const check = process.argv.includes('--check');
-	const { report, errors, content } = await generate(N8N_NODE_CONFIG);
+	const { check, base } = parseArgs({
+		options: { check: { type: 'boolean', default: false }, base: { type: 'string' } },
+	}).values;
+	if (base !== undefined && !check) {
+		fail(['--base works only with --check.']);
+		return;
+	}
+	const { report, errors, properties, content } = await generate(N8N_NODE_CONFIG);
 	console.log(report);
 	if (errors.length > 0) {
-		console.error(`\nThe node cannot be generated:\n- ${errors.join('\n- ')}`);
-		process.exitCode = 1;
+		fail(listOf('The node cannot be generated:', errors));
 		return;
+	}
+
+	if (base !== undefined) {
+		const breaks = findBreakingChanges(await loadProperties(base), properties);
+		if (breaks.length > 0) {
+			fail([
+				...listOf('These changes break saved workflows:', breaks),
+				'See "Breaking changes" in packages/@n8n/n8n-node-codegen/README.md.',
+			]);
+		} else {
+			console.log('\nNo breaking changes.');
+		}
 	}
 
 	const file = N8N_NODE_CONFIG.outputFile;
@@ -20,8 +47,18 @@ async function main() {
 	if (committed === content) {
 		console.log(`\n${name} is up to date.`);
 	} else if (check) {
-		console.error(`\n${name} is out of date. Run: pnpm --filter @n8n/n8n-node-codegen generate`);
-		process.exitCode = 1;
+		const { added, removed } = compareOperations(
+			committed === undefined ? [] : await loadProperties(file),
+			properties,
+		);
+		fail([
+			`${name} is out of date. Run: pnpm --filter @n8n/n8n-node-codegen generate`,
+			...listOf(
+				'These operations are not in the file yet. Test them, or add them to exclude in overrides.ts with a reason:',
+				added,
+			),
+			...listOf('These operations are still in the file, but not in the node:', removed),
+		]);
 	} else {
 		await writeFile(file, content);
 		console.log(`\nWrote ${name}.`);

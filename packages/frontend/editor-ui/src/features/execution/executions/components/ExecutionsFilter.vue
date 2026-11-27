@@ -234,7 +234,6 @@ onBeforeMount(() => {
 		:align="props.popoverAlign"
 		position-strategy="absolute"
 		width="440px"
-		:content-class="$style['popover-content']"
 		show-arrow
 		@update:open="$event && fetchVersions()"
 	>
@@ -262,7 +261,7 @@ onBeforeMount(() => {
 			</N8nButton>
 		</template>
 		<template #content>
-			<div data-test-id="execution-filter-form">
+			<div :class="$style.form" data-test-id="execution-filter-form">
 				<div v-if="workflows && workflows.length > 0" :class="$style.group">
 					<label for="execution-filter-workflows">{{ locale.baseText('workflows.heading') }}</label>
 					<N8nSelect
@@ -591,7 +590,9 @@ onBeforeMount(() => {
 	}
 }
 
-.popover-content {
+// The popover scroll area clips its content, so keep the padding inside it. This leaves room
+// for the focus rings of the full-width controls.
+.form {
 	padding: var(--spacing--sm);
 }
 </style>
@@ -610,7 +611,7 @@ onBeforeMount(() => {
 
 	&:last-of-type {
 		input {
-			padding-left: 0;
+			padding-left: var(--spacing--2xs);
 		}
 
 		.el-input__prefix {

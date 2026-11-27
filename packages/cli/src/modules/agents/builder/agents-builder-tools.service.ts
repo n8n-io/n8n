@@ -48,6 +48,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { BuilderCredentialService, BuilderToolsOptions } from './builder-session';
 import { runInBuilderTelemetrySession } from './builder-telemetry-session';
 import type { Operation } from 'fast-json-patch';
+import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
@@ -354,8 +355,10 @@ type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 /**
  * What the publish tool sends to `suspend()`: an Assistant approval card. The Assistant
  * reads `message`, `severity`, `resourceName` and `approvalDetails` from the payload.
+ * The Assistant agent chat shows a card only for a payload with a `requestId`.
  */
 const PUBLISH_CONFIRMATION_SCHEMA = z.object({
+	requestId: z.string(),
 	message: z.string(),
 	severity: z.literal('warning'),
 	resourceName: z.string().optional(),
@@ -1311,6 +1314,7 @@ export class AgentsBuilderToolsService {
 
 		return {
 			confirmation: {
+				requestId: nanoid(),
 				// Clients that cannot read the details show this text instead.
 				message: `${changedSinceAsked ? 'The agent changed since you were asked. ' : ''}${headline} ${sends}`,
 				severity: 'warning',
@@ -1572,10 +1576,13 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.CREATE_SKILLS)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.CREATE_SKILLS))
 			.description(
-				'Create target-agent skills and attach a ref for each to config.skills. Do not patch the ' +
-					'refs yourself. The agent config must exist. Load agent-builder-target-skills first: it ' +
-					'has the required description and body templates and the skill rules. Pass every skill ' +
-					'you can write in one `skills` array; the batch is all-or-nothing.',
+				'Create new target-agent skills and attach a ref for each to config.skills. Do not patch ' +
+					'the refs yourself. First search existing attachable skills with `skills` ' +
+					'(action "list", attachableToAgentId) and attach any matching skill in config.skills ' +
+					'instead of creating a duplicate. The agent config must exist. Load ' +
+					'agent-builder-target-skills first: it has the required description and body templates ' +
+					'and the skill rules. Pass every skill you can write in one `skills` array; the batch ' +
+					'is all-or-nothing.',
 			)
 			.input(
 				z.object({

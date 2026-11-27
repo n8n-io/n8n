@@ -24,6 +24,10 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@JsonColumn({ nullable: true, comment: 'Latest task stop boundary' })
 	taskStop: StoredAgentTaskStop | null;
 
+	/** A test chat: every turn and resume is a test run, also after a restart. */
+	@Column({ name: 'isTestChat', type: 'boolean', default: false })
+	testChat: boolean;
+
 	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'ownerId', foreignKeyConstraintName: 'FK_agent_execution_threads_owner' })
 	owner: Relation<User> | null;

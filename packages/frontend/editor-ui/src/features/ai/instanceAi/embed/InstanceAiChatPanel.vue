@@ -43,6 +43,7 @@ import {
 } from '@/features/agents/composables/useAgentApi';
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { getThreadDisplayTitle } from '../instanceAi.threadRuntime';
+import { formatThreadTitle } from '@/features/agents/utils/thread-title';
 import { provideThread, useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import {
@@ -72,6 +73,7 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from '../components/InstanceAiConversation.vue';
+import ApprovalModeSelector from '@/features/ai/instanceAi/components/ApprovalModeSelector.vue';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
 import {
@@ -672,7 +674,9 @@ const currentThreadTitle = computed<string | undefined>(() => {
 	const threadId = activeThreadId.value;
 	if (!threadId) return undefined;
 	if (isAgentThread.value) {
-		return assistantAgentThreadsStore.threadsById.get(threadId)?.title ?? undefined;
+		const thread = assistantAgentThreadsStore.threadsById.get(threadId);
+		// The generated title, else the first message until the title arrives.
+		return thread ? formatThreadTitle(thread, '') || undefined : undefined;
 	}
 	const summary = store.threads.find((thread) => thread.id === threadId);
 	const runtime = store.getRuntime(threadId);
@@ -727,6 +731,7 @@ const ThreadScope = defineComponent({
 					...(slots.empty ? { empty: slots.empty } : {}),
 					...(slots['composer-start'] ? { 'composer-start': slots['composer-start'] } : {}),
 					...(slots['composer-footer'] ? { 'composer-footer': slots['composer-footer'] } : {}),
+					'composer-controls': () => h(ApprovalModeSelector, { threadId: scopeProps.threadId }),
 				},
 			);
 	},

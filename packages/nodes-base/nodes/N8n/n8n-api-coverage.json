@@ -17,6 +17,10 @@
 		"GET /agents/{agentId}/executions": {
 			"status": "gap"
 		},
+		"GET /agents/{agentId}/versions": {
+			"status": "gap"
+		},
+		"GET /agents/{agentId}/versions/{versionId}": {},
 		"POST /agents": {
 			"status": "gap"
 		},
@@ -26,10 +30,14 @@
 		"POST /agents/{agentId}/executions/{executionId}/stop": {
 			"status": "gap"
 		},
-		"POST /agents/{agentId}/run": {
+		"POST /agents/{agentId}/publish": {
 			"status": "gap"
 		},
+		"POST /agents/{agentId}/run": {},
 		"POST /agents/{agentId}/unarchive": {
+			"status": "gap"
+		},
+		"POST /agents/{agentId}/unpublish": {
 			"status": "gap"
 		},
 		"PUT /agents/{agentId}": {
@@ -287,7 +295,7 @@
 		"GET /promotions/settings": {
 			"status": "gap"
 		},
-		"PUT /promotions/settings": {
+		"PATCH /promotions/settings": {
 			"status": "gap"
 		},
 		"GET /promotions/providers": {
@@ -372,6 +380,12 @@
 			"status": "gap"
 		},
 		"POST /promotions/environments/{promotionEnvironmentId}/changes/details": {
+			"status": "gap"
+		},
+		"GET /promotions/reviews": {
+			"status": "gap"
+		},
+		"GET /promotions/reviews/{promotionReviewId}": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

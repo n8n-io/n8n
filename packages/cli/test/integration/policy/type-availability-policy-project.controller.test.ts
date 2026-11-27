@@ -1,5 +1,10 @@
 import { EventService } from '@n8n/backend-services';
-import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -396,5 +401,180 @@ describe('node type availability policy project controller delegate rejection vi
 			.send({ rules: [DELEGATE_RULE], version: document.version });
 
 		expect(response.statusCode).toBe(200);
+	});
+});
+
+describe('node type availability policy project controller: team projects only', () => {
+	test('PUT for a personal project is rejected with 400 and writes nothing', async () => {
+		const personalProject = await getPersonalProject(owner);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.put(projectRoute(personalProject.id))
+			.send({ rules: [], defaultAction: 'deny', version: 0 });
+
+		expect(response.statusCode).toBe(400);
+
+		const unchanged = await testServer.authAgentFor(owner).get(projectRoute(personalProject.id));
+		expect(unchanged.body.data.version).toBe(0);
+	});
+
+	test('PATCH access for a personal project is rejected with 400 and writes nothing', async () => {
+		const personalProject = await getPersonalProject(owner);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`${projectRoute(personalProject.id)}/access`)
+			.send({ changes: [{ type: 'n8n-nodes-base.slack', access: 'deny' }], version: 0 });
+
+		expect(response.statusCode).toBe(400);
+
+		const unchanged = await testServer.authAgentFor(owner).get(projectRoute(personalProject.id));
+		expect(unchanged.body.data.version).toBe(0);
+	});
+
+	test('PUT for an unknown project is rejected with 404', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.put(projectRoute('unknown-project-id'))
+			.send({ rules: [], defaultAction: 'deny', version: 0 });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('PUT for a team project still succeeds for the instance owner', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.put(projectRoute(project.id))
+			.send({ rules: [], defaultAction: 'deny', version: 0 });
+
+		expect(response.statusCode).toBe(200);
+	});
+});
+
+describe('PATCH /projects/:projectId/node-type-policies/project/access', () => {
+	const accessRoute = (projectId: string) => `${projectRoute(projectId)}/access`;
+	const SLACK = 'n8n-nodes-base.slack';
+
+	test('rejects a project editor with 403', async () => {
+		const response = await testServer
+			.authAgentFor(projectEditor)
+			.patch(accessRoute(project.id))
+			.send({ changes: [{ type: SLACK, access: 'deny' }], version: 0 });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('lets the project admin set the access of a type on an unconfigured scope', async () => {
+		const response = await testServer
+			.authAgentFor(projectAdmin)
+			.patch(accessRoute(project.id))
+			.send({ changes: [{ type: SLACK, access: 'deny' }], version: 0 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({
+			defaultAction: 'allow',
+			version: 1,
+			rules: [{ action: 'deny', selector: { kind: 'name', value: SLACK } }],
+		});
+
+		const instance = await testServer.authAgentFor(owner).get('/node-type-policies/instance');
+		expect(instance.body.data.version).toBe(0);
+	});
+
+	test('rejects the admin of a different project with 403 and changes nothing', async () => {
+		const response = await testServer
+			.authAgentFor(otherProjectAdmin)
+			.patch(accessRoute(project.id))
+			.send({ changes: [{ type: SLACK, access: 'deny' }], version: 0 });
+
+		expect(response.statusCode).toBe(403);
+
+		const current = await testServer.authAgentFor(projectAdmin).get(projectRoute(project.id));
+		expect(current.body.data.version).toBe(0);
+	});
+
+	test('allows one node type of a package that the project denies, and leaves the instance alone', async () => {
+		const denyPackage = {
+			id: 'deny-base',
+			action: 'deny',
+			selector: { kind: 'package', value: 'n8n-nodes-base' },
+		};
+		const instancePut = await testServer
+			.authAgentFor(owner)
+			.put('/node-type-policies/instance')
+			.send({ rules: [DENY_RULE], defaultAction: 'allow', version: 0 });
+		await testServer
+			.authAgentFor(projectAdmin)
+			.put(projectRoute(project.id))
+			.send({ rules: [denyPackage], defaultAction: 'allow', version: 0 });
+
+		const response = await testServer
+			.authAgentFor(projectAdmin)
+			.patch(accessRoute(project.id))
+			.send({ changes: [{ type: SLACK, access: 'allow' }], version: 1 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.rules).toEqual([
+			{ id: expect.any(String), action: 'allow', selector: { kind: 'name', value: SLACK } },
+			denyPackage,
+		]);
+		expect(
+			response.body.data.warnings.filter((w: { kind: string }) => w.kind === 'shadowed'),
+		).toEqual([]);
+
+		const instance = await testServer.authAgentFor(owner).get('/node-type-policies/instance');
+		expect(instance.body.data).toMatchObject({
+			version: instancePut.body.data.version,
+			rules: [DENY_RULE],
+		});
+	});
+
+	test('rejects delegate with 400 and changes nothing', async () => {
+		const response = await testServer
+			.authAgentFor(projectAdmin)
+			.patch(accessRoute(project.id))
+			.send({ changes: [{ type: SLACK, access: 'delegate' }], version: 0 });
+
+		expect(response.statusCode).toBe(400);
+
+		const current = await testServer.authAgentFor(projectAdmin).get(projectRoute(project.id));
+		expect(current.body.data).toMatchObject({ version: 0, rules: [] });
+	});
+
+	test('rejects a project document that the instance scope shares with 409 and changes nothing', async () => {
+		const configured = await testServer
+			.authAgentFor(projectAdmin)
+			.put(projectRoute(project.id))
+			.send({ rules: [DENY_RULE], defaultAction: 'allow', version: 0 });
+		const documents = await testServer.authAgentFor(owner).get('/node-type-policies/policies');
+		const instancePut = await testServer
+			.authAgentFor(owner)
+			.put('/node-type-policies/instance')
+			.send(ALLOW_ALL);
+		const shared = await testServer
+			.authAgentFor(owner)
+			.put(`/node-type-policies/scopes/${instancePut.body.data.scopeId}/attachments`)
+			.send({
+				attachments: [{ policyId: documents.body.data[0].id, priority: 0, isFloor: false }],
+				version: instancePut.body.data.version,
+			});
+		expect(shared.statusCode).toBe(200);
+
+		const response = await testServer
+			.authAgentFor(projectAdmin)
+			.patch(accessRoute(project.id))
+			.send({
+				changes: [{ type: SLACK, access: 'deny' }],
+				version: configured.body.data.version,
+			});
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body.message).toContain('attached to other scopes');
+
+		const document = await testServer
+			.authAgentFor(owner)
+			.get(`/node-type-policies/policies/${documents.body.data[0].id}`);
+		expect(document.body.data.rules).toEqual([DENY_RULE]);
 	});
 });

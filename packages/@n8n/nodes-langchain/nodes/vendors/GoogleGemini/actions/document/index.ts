@@ -16,6 +16,8 @@ export const description: INodeProperties[] = [
 				value: 'analyze',
 				action: 'Analyze document',
 				description: 'Take in documents and answer questions about them',
+				// Uploads binary inputs and external URLs to the Gemini Files API.
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 		],
 		default: 'analyze',

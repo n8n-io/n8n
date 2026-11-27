@@ -283,30 +283,41 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const approvalModesAvailable = ref(false);
 	/** The last mode that the server confirmed. A failed save shows it again. */
 	let savedApprovalMode: InstanceAiApprovalMode = 'manual';
-	let preferencesLoadFailed = false;
+	let preferencesLoaded = false;
+	/** The load in progress. Callers share it, so a page with several selectors sends one request. */
+	let preferencesRequest: Promise<void> | undefined;
 	/** Counts the saves of the mode, so that a response older than the last save changes nothing. */
 	let approvalModeSaves = 0;
 	/** The save in progress. The next save waits for it, so the server keeps the last pick. */
 	let pendingApprovalModeSave: Promise<unknown> = Promise.resolve();
 
-	async function fetchPreferences(): Promise<void> {
+	async function loadPreferences(): Promise<void> {
 		const savesAtStart = approvalModeSaves;
 		try {
 			const preferences = await fetchUserPreferences(rootStore.restApiContext);
-			preferencesLoadFailed = false;
+			preferencesLoaded = true;
 			if (savesAtStart !== approvalModeSaves) return;
 			savedApprovalMode = preferences.approvalMode;
 			approvalMode.value = preferences.approvalMode;
 			approvalModesAvailable.value = preferences.approvalModesAvailable;
 		} catch {
 			// Without preferences the chat shows no mode selector. Runs still use the saved mode.
-			preferencesLoadFailed = true;
+			preferencesLoaded = false;
 		}
 	}
 
-	/** Loads the preferences again when the last load failed, so the selector can come back. */
-	async function fetchPreferencesAfterFailure(): Promise<void> {
-		if (preferencesLoadFailed) await fetchPreferences();
+	async function fetchPreferences(): Promise<void> {
+		preferencesRequest ??= loadPreferences().finally(() => (preferencesRequest = undefined));
+		await preferencesRequest;
+	}
+
+	/**
+	 * Loads the preferences when no load has succeeded yet. A chat outside the Assistant
+	 * view, such as the panel in the Agent Builder, has no other load. After a failed
+	 * load, this also lets the selector come back.
+	 */
+	async function ensurePreferences(): Promise<void> {
+		if (!preferencesLoaded) await fetchPreferences();
 	}
 
 	/** Saves the approval mode. The next run uses it. Returns whether the save succeeded. */
@@ -535,7 +546,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		approvalMode,
 		approvalModesAvailable,
 		fetchPreferences,
-		fetchPreferencesAfterFailure,
+		ensurePreferences,
 		setApprovalMode,
 		// Browser Use
 		browserConnected,

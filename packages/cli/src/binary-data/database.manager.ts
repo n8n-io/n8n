@@ -167,6 +167,10 @@ export class DatabaseManager implements BinaryData.Manager {
 		if (result.affected === 0) throw new BinaryDataFileNotFoundError(oldFileId);
 	}
 
+	async assignToExecution(fileIds: string[], executionId: string) {
+		await this.repository.moveExecutionFilesToSourceId(fileIds, TEMP_EXECUTION_ID, executionId);
+	}
+
 	private toSource(location: BinaryData.FileLocation): {
 		sourceType: SourceType;
 		sourceId: string;

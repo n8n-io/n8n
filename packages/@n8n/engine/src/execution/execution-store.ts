@@ -3,6 +3,7 @@ import type { LifecycleEventSubscription } from '../lifecycle-events';
 import type { ResponseExpectation } from '../response-channel';
 import type {
 	CallerContext,
+	ErrorSourceLink,
 	ExecutionMode,
 	ExecutionStatus,
 	ParentLink,
@@ -38,8 +39,18 @@ interface BaseExecutionRecord {
 /**
  * A new execution to persist. Timestamps are assigned by the store. The seeded
  * outputs are stored beside the row, in their own table, and read back by key.
+ *
+ * The error fields are written here and never read back into a record: the
+ * read path reports the error source, and only the SQL that ends an execution
+ * reads the flag.
  */
-export type NewExecutionRecord = BaseExecutionRecord & { seededSteps?: SeededSteps };
+export type NewExecutionRecord = BaseExecutionRecord & {
+	seededSteps?: SeededSteps;
+	/** The execution this error execution reports on, or `null`. */
+	errorSource: ErrorSourceLink | null;
+	/** Whether a failure of this execution resolves an error workflow. See `StartExecutionRequest`. */
+	resolveErrorWorkflowOnFailure: boolean;
+};
 
 /**
  * What running an execution needs of its row. The execution path decides on
@@ -51,6 +62,15 @@ export type ExecutionRecord = BaseExecutionRecord & {
 	/** When the execution ended, or `null` while it has not. */
 	finishedAt: Date | null;
 };
+
+/** What `createExecution` did with the record. */
+export interface CreateExecutionResult {
+	/**
+	 * `true` when the record has an error source and that source already has an
+	 * error execution.
+	 */
+	errorExecutionAlreadyExists: boolean;
+}
 
 /** An execution that is still `queued` after its `stale_after` time. */
 export interface StaleQueuedExecution {
@@ -66,8 +86,10 @@ export interface PrunableExecution {
 }
 
 export interface PrunableExecutionQuery {
-	/** Select only executions that ended more than this long ago. */
+	/** Select an execution that ended more than this long ago. */
 	maxAgeMs: number;
+	/** Also select an execution at or before this one, by finish time and id. See `findRetentionCountCutoff`. */
+	countCutoff?: Pick<PrunableExecution, 'id' | 'finishedAt'>;
 	limit: number;
 	/** The last row of the previous batch. The result starts after it. */
 	after?: Pick<PrunableExecution, 'id' | 'finishedAt'>;
@@ -92,6 +114,11 @@ export class ParentExecutionEndedError extends Error {
 	}
 }
 
+/** Whether `error` says that execution `executionId` has no row. */
+export function isMissingExecution(error: unknown, executionId: string): boolean {
+	return error instanceof ExecutionNotFoundError && error.executionId === executionId;
+}
+
 /**
  * Persistence interface for executions.
  *
@@ -108,10 +135,14 @@ export interface ExecutionStore {
 	 * end of the parent either waits and then finds this sub-execution, or
 	 * commits first and this write refuses.
 	 *
+	 * A record with an error source link clears the pending marker of the
+	 * source in the same transaction. When the source already has an error
+	 * execution, nothing is written and the result sets `errorExecutionAlreadyExists`.
+	 *
 	 * @throws {ExecutionNotFoundError} when the parent row is missing.
 	 * @throws {ParentExecutionEndedError} when the parent has ended.
 	 */
-	createExecution(record: NewExecutionRecord): Promise<void>;
+	createExecution(record: NewExecutionRecord): Promise<CreateExecutionResult>;
 
 	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
 	loadExecution(id: string): Promise<ExecutionRecord>;
@@ -136,6 +167,9 @@ export interface ExecutionStore {
 	 * together, as a compare-and-set on the live statuses, so they can't be
 	 * observed apart. Returns the finish time it wrote, so the caller reports the
 	 * time the row records, or `null` when the compare-and-set lost.
+	 *
+	 * A `failed` outcome of an execution with `resolveErrorWorkflowOnFailure` also
+	 * sets the pending error workflow marker, in the same write.
 	 */
 	finishExecution(id: string, status: 'completed' | 'failed'): Promise<{ finishedAt: Date } | null>;
 
@@ -179,13 +213,23 @@ export interface ExecutionStore {
 	loadLiveSubExecutionIds(parentExecutionId: string): Promise<string[]>;
 
 	/**
-	 * The ended executions that finished more than `maxAgeMs` ago, oldest first
-	 * by finish time and id, at most `limit`. The database clock sets the
-	 * cut-off. It skips an execution that still has a step that has not
-	 * settled, and an awaited sub-execution whose parent step still waits. A
-	 * plain read: it locks no row.
+	 * The ended executions that finished more than `maxAgeMs` ago or that are
+	 * at or before `countCutoff`, oldest first by finish time and id, at most
+	 * `limit`. The database clock sets the age cutoff. It skips an execution
+	 * that still has a step that has not settled, and an awaited sub-execution
+	 * whose parent step still waits. A plain read: it locks no row.
 	 */
 	findPrunableExecutions(query: PrunableExecutionQuery): Promise<PrunableExecution[]>;
+
+	/**
+	 * The newest ended execution that is not among the newest `maxCount` ended
+	 * executions, by finish time and id. `undefined` when there are `maxCount`
+	 * or fewer. The count includes the ended executions that
+	 * `findPrunableExecutions` skips.
+	 */
+	findRetentionCountCutoff(
+		maxCount: number,
+	): Promise<Pick<PrunableExecution, 'id' | 'finishedAt'> | undefined>;
 
 	/**
 	 * Deletes the given executions that have ended, with their step rows and

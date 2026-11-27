@@ -74,6 +74,41 @@ export class AgentExecutionUpdateBroadcaster {
 		}
 	}
 
+	/** Tells the users of a thread its new generated title, so open lists show it at once. */
+	notifyThreadTitleUpdated(data: PushPayload<'agentThreadTitleUpdated'>): void {
+		void this.broadcastThreadTitleUpdated(data).catch((error: unknown) => {
+			this.logger.warn('Failed to broadcast agent thread title update', {
+				threadId: data.threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+	}
+
+	private async broadcastThreadTitleUpdated(
+		data: PushPayload<'agentThreadTitleUpdated'>,
+	): Promise<void> {
+		const thread = await this.threadRepository.findOneBy({ id: data.threadId });
+		if (!thread || thread.projectId !== data.projectId || thread.agentId !== data.agentId) return;
+		const userIds = await this.getRecipients(thread);
+		if (userIds.length === 0) return;
+
+		this.push.sendToUsers({ type: 'agentThreadTitleUpdated', data }, userIds);
+		if (this.instanceSettings.isWorker || this.instanceSettings.isMultiMain) {
+			await this.publisher.publishCommand({
+				command: 'relay-agent-thread-title-update',
+				payload: { data, userIds },
+			});
+		}
+	}
+
+	@OnPubSubEvent('relay-agent-thread-title-update', { instanceType: 'main' })
+	handleThreadTitleRelay({
+		data,
+		userIds,
+	}: PubSubCommandMap['relay-agent-thread-title-update']): void {
+		this.push.sendToUsers({ type: 'agentThreadTitleUpdated', data }, userIds);
+	}
+
 	notifyQueueUpdated(threadId: string): void {
 		void this.broadcastQueueUpdated(threadId).catch((error: unknown) => {
 			this.logger.warn('Failed to broadcast agent queue update', { threadId, error });

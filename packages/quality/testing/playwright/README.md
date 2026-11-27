@@ -12,6 +12,7 @@ Commands in this table run from the repository root. Container-backed tests need
 | --- | --- | --- | --- |
 | Test a product UI or API journey | `e2e` (local) or `<mode>:e2e` (container) | `pnpm --filter n8n-playwright test:local` | [E2E tests](tests/e2e/) |
 | Test PostgreSQL, queue mode, multi-main, or process lifecycle | `<mode>:infrastructure` | `pnpm --filter n8n-playwright exec playwright test --project=postgres:infrastructure` | [Infrastructure tests](tests/infrastructure/) |
+| Test published images with API-only deployment compatibility cells | `deployment` | `TEST_IMAGE_N8N=<n8n-image> TEST_IMAGE_TASK_RUNNER=<runners-image> pnpm --filter n8n-playwright test:deployment <spec>` | [Deployment cells](tests/deployment/README.md) |
 | Check accessibility within a product journey | E2E project with the `a11y` fixture | `pnpm --filter n8n-playwright test:local` | [Accessibility checks](docs/ACCESSIBILITY.md) |
 | Measure memory retention or canvas performance | `performance` | `pnpm --filter n8n-playwright test:performance` | [Performance guide](tests/performance/README.md) |
 | Measure idle memory | `@n8n/efficiency` memory project | `pnpm --filter @n8n/efficiency test:memory` | [Idle memory baselines](../../efficiency/memory/idle/README.md) |
