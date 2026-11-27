@@ -19,6 +19,9 @@ const MAX_ENTRIES = 500;
 
 export interface EvalAgentThread {
 	resourceId: string;
+	/** The Agent and n8n user the thread was opened for. */
+	agentId: string;
+	userId: string;
 	messages: AgentMessage[];
 	/** User messages so far. */
 	turns: number;

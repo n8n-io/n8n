@@ -276,27 +276,46 @@ export class EvalAgentExecutionService {
 		const refusal = this.threadRefusal(agentId, user, turn, thread);
 		if (refusal) return this.errorResult(refusal);
 
-		let world = this.threads.world(turn.resourceId);
-		if (!world) {
-			const created = await this.createWorld(agentId, user, options);
-			if ('error' in created) return created.error;
-			world = created;
-			this.threads.saveWorld(turn.resourceId, world);
-		}
+		const world = await this.resolveWorld(agentId, user, options, turn.resourceId);
+		if ('error' in world) return world.error;
 
 		const userMessage = turn.message ?? world.seed.openingMessage;
 		const input = [...(thread?.messages ?? []), userTextMessage(userMessage)];
 		const { output, threadMessages } = await this.runTurn(world, input, options);
 		const turns = (thread?.turns ?? 0) + 1;
 		if (threadMessages) {
-			this.threads.saveThread(turn.threadId, {
-				resourceId: turn.resourceId,
-				messages: [...input, ...threadMessages],
-				turns,
-			});
+			this.saveThread(turn, { agentId, userId: user.id }, [...input, ...threadMessages], turns);
 		}
 		const echo = { threadId: turn.threadId, resourceId: turn.resourceId, turn: turns, userMessage };
 		return { ...output, thread: echo };
+	}
+
+	/** The resource's world, made on its first turn. */
+	private async resolveWorld(
+		agentId: string,
+		user: User,
+		options: InstanceAiEvalAgentExecutionRequest,
+		resourceId: string,
+	): Promise<EvalAgentWorld | { error: InstanceAiEvalAgentExecutionResult }> {
+		const existing = this.threads.world(resourceId);
+		if (existing) return existing;
+		const created = await this.createWorld(agentId, user, options);
+		if (!('error' in created)) this.threads.saveWorld(resourceId, created);
+		return created;
+	}
+
+	private saveThread(
+		turn: InstanceAiEvalAgentThreadTurn,
+		owner: { agentId: string; userId: string },
+		messages: AgentMessage[],
+		turns: number,
+	): void {
+		this.threads.saveThread(turn.threadId, {
+			resourceId: turn.resourceId,
+			...owner,
+			messages,
+			turns,
+		});
 	}
 
 	/** Why a thread turn cannot run, or undefined when it can. */
@@ -306,6 +325,9 @@ export class EvalAgentExecutionService {
 		turn: InstanceAiEvalAgentThreadTurn,
 		thread: EvalAgentThread | undefined,
 	): string | undefined {
+		if (thread && (thread.agentId !== agentId || thread.userId !== user.id)) {
+			return `Eval thread ${turn.threadId} belongs to another Agent or user`;
+		}
 		if (thread && thread.resourceId !== turn.resourceId) {
 			return `Eval thread ${turn.threadId} belongs to another resource id`;
 		}

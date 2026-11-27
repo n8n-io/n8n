@@ -4,7 +4,7 @@ const HOUR = 60 * 60 * 1000;
 const MAX_ENTRIES = 500;
 
 function thread(resourceId: string) {
-	return { resourceId, messages: [], turns: 1 };
+	return { resourceId, agentId: 'agent-1', userId: 'user-1', messages: [], turns: 1 };
 }
 
 describe('EvalAgentThreadStore', () => {

@@ -249,6 +249,23 @@ describe('EvalAgentExecutionService multi-turn threads', () => {
 		expect(result.errors[0]).toMatch(/another Agent/);
 	});
 
+	it('refuses to continue a thread for another user', async () => {
+		const service = buildService();
+		generate.mockResolvedValue(reply('Hi.'));
+		const otherUser = mock<User>({ id: 'user-2' });
+
+		await service.executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a'));
+		const result = await service.executeWithLlmMock(
+			'agent-1',
+			otherUser,
+			turn(THREAD_A, 'user-a', 'Hello'),
+		);
+
+		expect(result.success).toBe(false);
+		expect(result.errors[0]).toMatch(/Eval thread .* belongs to another Agent or user/);
+		expect(generate).toHaveBeenCalledTimes(1);
+	});
+
 	it('does not add a failed turn to the thread', async () => {
 		const service = buildService();
 		generate
