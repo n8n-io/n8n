@@ -499,13 +499,113 @@ const closeDialog = () => {
 	});
 };
 
-const setTheTimeout = (key: string, value: string) => {
-	const time = value ? parseInt(value, 10) : 0;
+const TIMEOUT_FIELD_MAX = 60;
 
-	timeoutHMS.value = {
+// A cap of 0 or less means the instance sets no maximum.
+const executionTimeoutCapSeconds = computed(() => {
+	const cap = workflowSettings.value.maxExecutionTimeout;
+	if (typeof cap !== 'number' || cap <= 0) return undefined;
+	return cap;
+});
+
+const formatTimeoutPart = (count: number, oneKey: string, manyKey: string) => {
+	if (count <= 0) return undefined;
+	if (count === 1) return i18n.baseText(oneKey);
+	return i18n.baseText(manyKey, { interpolate: { count } });
+};
+
+const formatTimeoutCap = (capSeconds: number) => {
+	const parts = [
+		formatTimeoutPart(
+			Math.floor(capSeconds / 3600),
+			'workflowSettings.timeoutMaximum.hour',
+			'workflowSettings.timeoutMaximum.hours',
+		),
+		formatTimeoutPart(
+			Math.floor((capSeconds % 3600) / 60),
+			'workflowSettings.timeoutMaximum.minute',
+			'workflowSettings.timeoutMaximum.minutes',
+		),
+		formatTimeoutPart(
+			capSeconds % 60,
+			'workflowSettings.timeoutMaximum.second',
+			'workflowSettings.timeoutMaximum.seconds',
+		),
+	].filter((part): part is string => part !== undefined);
+
+	if (parts.length <= 1) return parts[0] ?? '';
+	if (parts.length === 2) {
+		return i18n.baseText('workflowSettings.timeoutMaximum.pair', {
+			interpolate: { first: parts[0], second: parts[1] },
+		});
+	}
+	// This branch is only hours, minutes, and seconds. The separators stay in the translation.
+	return i18n.baseText('workflowSettings.timeoutMaximum.list', {
+		interpolate: { first: parts[0], second: parts[1], third: parts[2] },
+	});
+};
+
+const executionTimeoutTooltip = computed(() => {
+	const description = i18n.baseText('workflowSettings.helpTexts.executionTimeout');
+	const cap = executionTimeoutCapSeconds.value;
+	if (cap === undefined) return description;
+	return i18n.baseText('workflowSettings.helpTexts.executionTimeoutWithMaximum', {
+		interpolate: { description, maximum: formatTimeoutCap(cap) },
+	});
+});
+
+// The cap is one total. Each field stops at the time still available.
+// A loaded value above that cap stays in range. The field must not rewrite it on blur.
+const timeoutFieldMax = computed(() => {
+	const cap = executionTimeoutCapSeconds.value;
+	const { hours, minutes, seconds } = timeoutHMS.value;
+	if (cap === undefined) {
+		return { hours: undefined, minutes: TIMEOUT_FIELD_MAX, seconds: TIMEOUT_FIELD_MAX };
+	}
+
+	const maxHours = Math.max(hours, Math.floor(cap / 3600));
+	const maxMinutes = Math.max(
+		minutes,
+		Math.min(TIMEOUT_FIELD_MAX, Math.max(0, Math.floor((cap - hours * 3600) / 60))),
+	);
+	const maxSeconds = Math.max(
+		seconds,
+		Math.min(TIMEOUT_FIELD_MAX, Math.max(0, cap - hours * 3600 - minutes * 60)),
+	);
+	return { hours: maxHours, minutes: maxMinutes, seconds: maxSeconds };
+});
+
+const clampTimeout = (value: ITimeoutHMS): ITimeoutHMS => {
+	const cap = executionTimeoutCapSeconds.value;
+	let { hours, minutes, seconds } = value;
+	if (cap === undefined) {
+		return {
+			hours,
+			minutes: Math.min(TIMEOUT_FIELD_MAX, minutes),
+			seconds: Math.min(TIMEOUT_FIELD_MAX, seconds),
+		};
+	}
+
+	hours = Math.min(hours, Math.floor(cap / 3600));
+	minutes = Math.min(
+		TIMEOUT_FIELD_MAX,
+		minutes,
+		Math.max(0, Math.floor((cap - hours * 3600) / 60)),
+	);
+	seconds = Math.min(TIMEOUT_FIELD_MAX, seconds, Math.max(0, cap - hours * 3600 - minutes * 60));
+	return { hours, minutes, seconds };
+};
+
+const setTheTimeout = (key: keyof ITimeoutHMS, value: string | number | null | undefined) => {
+	const parsed = typeof value === 'number' ? value : value ? parseInt(value, 10) : 0;
+	const time = Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0;
+	// A blur emits the current value again. Leave the other parts unchanged.
+	if (timeoutHMS.value[key] === time) return;
+
+	timeoutHMS.value = clampTimeout({
 		...timeoutHMS.value,
 		[key]: time,
-	};
+	});
 };
 
 const loadWorkflowCallerPolicyOptions = async () => {
@@ -1044,6 +1144,8 @@ onMounted(async () => {
 		workflowSettings.value.credentialResolverId = undefined;
 	}
 
+	// Keep a saved timeout that is above the instance cap. Save reports that value.
+	// A clamp here changes the timeout when the user saves another setting.
 	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
 	isLoading.value = false;
 
@@ -1331,37 +1433,56 @@ onBeforeUnmount(() => {
 							<template #info>
 								<WorkflowSettingsRowTitle
 									:title="i18n.baseText('workflowSettings.timeoutAfter')"
-									:tooltip="helpTexts.executionTimeout"
+									:tooltip="executionTimeoutTooltip"
 								/>
 							</template>
 							<template #action>
-								<div :class="$style['timeout-fields']">
-									<N8nInput
-										:disabled="readOnlyEnv || !workflowPermissions.update"
-										:model-value="timeoutHMS.hours"
-										:min="0"
-										@update:model-value="(value: string) => setTheTimeout('hours', value)"
-									>
-										<template #append>{{ i18n.baseText('workflowSettings.hours') }}</template>
-									</N8nInput>
-									<N8nInput
-										:disabled="readOnlyEnv || !workflowPermissions.update"
-										:model-value="timeoutHMS.minutes"
-										:min="0"
-										:max="60"
-										@update:model-value="(value: string) => setTheTimeout('minutes', value)"
-									>
-										<template #append>{{ i18n.baseText('workflowSettings.minutes') }}</template>
-									</N8nInput>
-									<N8nInput
-										:disabled="readOnlyEnv || !workflowPermissions.update"
-										:model-value="timeoutHMS.seconds"
-										:min="0"
-										:max="60"
-										@update:model-value="(value: string) => setTheTimeout('seconds', value)"
-									>
-										<template #append>{{ i18n.baseText('workflowSettings.seconds') }}</template>
-									</N8nInput>
+								<div :class="$style.timeoutFields">
+									<label :class="$style.timeoutField" for="workflow-settings-timeout-hours">
+										<N8nText tag="span" size="small" color="text-light">
+											{{ i18n.baseText('workflowSettings.hours') }}
+										</N8nText>
+										<N8nInputNumber
+											id="workflow-settings-timeout-hours"
+											:class="$style.timeoutNumber"
+											size="medium"
+											:disabled="readOnlyEnv || !workflowPermissions.update"
+											:model-value="timeoutHMS.hours"
+											:min="0"
+											:max="timeoutFieldMax.hours"
+											@update:model-value="(value) => setTheTimeout('hours', value)"
+										/>
+									</label>
+									<label :class="$style.timeoutField" for="workflow-settings-timeout-minutes">
+										<N8nText tag="span" size="small" color="text-light">
+											{{ i18n.baseText('workflowSettings.minutes') }}
+										</N8nText>
+										<N8nInputNumber
+											id="workflow-settings-timeout-minutes"
+											:class="$style.timeoutNumber"
+											size="medium"
+											:disabled="readOnlyEnv || !workflowPermissions.update"
+											:model-value="timeoutHMS.minutes"
+											:min="0"
+											:max="timeoutFieldMax.minutes"
+											@update:model-value="(value) => setTheTimeout('minutes', value)"
+										/>
+									</label>
+									<label :class="$style.timeoutField" for="workflow-settings-timeout-seconds">
+										<N8nText tag="span" size="small" color="text-light">
+											{{ i18n.baseText('workflowSettings.seconds') }}
+										</N8nText>
+										<N8nInputNumber
+											id="workflow-settings-timeout-seconds"
+											:class="$style.timeoutNumber"
+											size="medium"
+											:disabled="readOnlyEnv || !workflowPermissions.update"
+											:model-value="timeoutHMS.seconds"
+											:min="0"
+											:max="timeoutFieldMax.seconds"
+											@update:model-value="(value) => setTheTimeout('seconds', value)"
+										/>
+									</label>
 								</div>
 							</template>
 						</N8nSettingsRow>
@@ -2014,23 +2135,31 @@ onBeforeUnmount(() => {
 	cursor: pointer;
 }
 
-.timeout-fields {
-	display: grid;
-	// The fields go to the next line when a column gets narrower than the minimum.
-	grid-template-columns: repeat(auto-fit, minmax(var(--spacing--4xl), 1fr));
-	gap: var(--spacing--3xs);
+.timeoutFields {
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: flex-end;
+	gap: var(--spacing--2xs);
 	width: 100%;
 	padding-block: var(--spacing--xs);
 
-	// The unit label of N8nInput extends past its input by this distance. Keep it in the column.
-	> * {
-		padding-inline-end: var(--spacing--xs);
-	}
-
-	// The vertical row has its own space around the control.
+	// The vertical row already has space under the control.
 	.workflow-settings--vertical & {
 		padding-block: 0;
 	}
+}
+
+.timeoutField {
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
+.timeoutNumber {
+	width: 100%;
 }
 
 .time-saved-panel {
