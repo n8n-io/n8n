@@ -39,7 +39,6 @@ import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
 import { EngineWorkflowResolveClient } from './engine-workflow-resolve-client';
-import { createEngineMetrics } from './engine-metrics';
 import { EngineMtls } from './engine-mtls';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
@@ -110,7 +109,7 @@ export class EngineV2Runtime {
 		try {
 			await this.initDb();
 
-			this.initMetrics(options);
+			await this.initMetrics(options);
 
 			this.initEngine(options);
 
@@ -147,12 +146,14 @@ export class EngineV2Runtime {
 		await runMigrations(this.dataSource);
 	}
 
-	private initMetrics({ metricsRegistry }: EngineV2RuntimeOptions): void {
+	private async initMetrics({ metricsRegistry }: EngineV2RuntimeOptions): Promise<void> {
 		const { prefix, includeDbPoolMetrics } = this.metricsConfig;
 		if (!metricsRegistry || !includeDbPoolMetrics) return;
 
 		const dataSource = this.dataSource;
 		assert(dataSource, 'Engine v2 cannot report a pool without a data source');
+		// Lazy, so a data plane without metrics never loads prom-client.
+		const { createEngineMetrics } = await import('./engine-metrics.js');
 		this.unregisterPoolMetrics = createEngineMetrics({
 			registry: metricsRegistry,
 			prefix,
