@@ -292,6 +292,13 @@ export class AgentsService {
 			{ projectId },
 		);
 		const prepared = await this.prepareAgentCreation(agent, schemaConfig, options);
+		if (options.config === undefined) {
+			await this.agentSkillRefs.assertCanReadNewSkillMentions(
+				prepared.skillRefs,
+				options.skills ?? {},
+				options.user ?? options.skillCreator ?? null,
+			);
+		}
 		let savedRefs: AgentSkillRefs;
 		try {
 			savedRefs = await this.insertAgent(agent, prepared.skillRefs, options);
