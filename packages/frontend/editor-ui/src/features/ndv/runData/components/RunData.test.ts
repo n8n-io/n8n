@@ -199,6 +199,26 @@ describe('RunData', () => {
 			);
 		});
 
+		it.each(['success', 'error'] as const)(
+			'shows the execution read-only tooltip for an archived workflow (%s execution)',
+			async (status) => {
+				const { getByTestId } = render({
+					displayMode: 'json',
+					executionStatus: status,
+					stubPinButton: false,
+				});
+				allowCopyToEditor();
+				useWorkflowsListStore().updateWorkflowInCache('test-workflow', { isArchived: true });
+
+				await userEvent.hover(getByTestId('ndv-pin-data'));
+				await waitFor(() =>
+					expect(getByTestId('ndv-pin-data')).toHaveAccessibleDescription(
+						"This execution is read-only. You can't pin or unpin data here.",
+					),
+				);
+			},
+		);
+
 		it.each([
 			{
 				canReveal: false,

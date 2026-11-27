@@ -750,7 +750,8 @@ const pinButtonDisabledTooltip = computed(() => {
 	const redactionInfo = currentExecution.value?.data?.redactionInfo;
 	const hasDebugInEditor =
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DebugInEditor];
-	const canEditWorkflow = getResourcePermissions(workflow?.scopes).workflow.update;
+	const canEditWorkflow =
+		!workflow?.isArchived && getResourcePermissions(workflow?.scopes).workflow.update;
 	const canUseExecutionData = !redactionInfo?.isRedacted || redactionInfo.canReveal;
 
 	if (!currentExecution.value || !hasDebugInEditor || !canEditWorkflow || !canUseExecutionData) {
