@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, type ComputedRef, ref, useTemplateRef, watch } from 'vue';
-import type { IUpdateInformation } from '@/Interface';
+import type { IUpdateInformation, XYPosition } from '@/Interface';
 
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
@@ -331,6 +331,43 @@ function onDrop(newParamValue: string) {
 	}, 200);
 }
 
+const DEFAULT_STICKY_OFFSET: XYPosition = [3, 3];
+
+function measureTextWidth(text: string, input: HTMLInputElement): number | null {
+	const context = document.createElement('canvas').getContext('2d');
+	if (!context) return null;
+
+	const { fontWeight, fontSize, fontFamily } = window.getComputedStyle(input);
+	context.font = `${fontWeight} ${fontSize} ${fontFamily}`;
+	return context.measureText(text).width;
+}
+
+// A drop on a fixed field that takes multiple field names appends the new name
+// (see getMappedResult), so the drag preview snaps after the existing text.
+function getStickyOffset(target: HTMLElement): XYPosition {
+	const value = props.value;
+	if (
+		props.parameter.requiresDataPath !== 'multiple' ||
+		typeof value !== 'string' ||
+		value.trim() === '' ||
+		value.trim() === '='
+	) {
+		return DEFAULT_STICKY_OFFSET;
+	}
+
+	const input = target.querySelector('input');
+	const textWidth = input ? measureTextWidth(`${value}, `, input) : null;
+	if (!input || textWidth === null) return DEFAULT_STICKY_OFFSET;
+
+	const style = window.getComputedStyle(input);
+	const textStart = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.borderLeftWidth) || 0);
+	const previewWidth = ndvStore.value.draggable.dimensions?.width ?? 0;
+	const maxOffset = target.getBoundingClientRect().width - previewWidth - DEFAULT_STICKY_OFFSET[0];
+	const offset = Math.min(textStart + textWidth - input.scrollLeft, maxOffset);
+
+	return [Math.max(DEFAULT_STICKY_OFFSET[0], offset), DEFAULT_STICKY_OFFSET[1]];
+}
+
 const showOverrideButton = computed(
 	() => canCreateContentOverride.value && !isContentOverride.value && !props.isReadOnly,
 );
@@ -523,7 +560,7 @@ function removeOverride(clearField = false) {
 			type="mapping"
 			:disabled="isDropDisabled"
 			sticky
-			:sticky-offset="[3, 3]"
+			:sticky-offset="getStickyOffset"
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">

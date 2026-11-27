@@ -306,6 +306,8 @@ describe('ParameterInputFull.vue', () => {
 	// existing text, and not on top of it.
 	describe('drag ghost position on a fixed multiple-fields input', () => {
 		const inputRect = { left: 100, top: 200, width: 300, height: 30 };
+		const charWidth = 6;
+		const ghostWidth = 40;
 
 		const fieldsParameter = createTestNodeProperties({
 			displayName: 'Fields To Include',
@@ -315,6 +317,18 @@ describe('ParameterInputFull.vue', () => {
 			requiresDataPath: 'multiple',
 		});
 
+		beforeEach(() => {
+			// jsdom has no text layout, so give each character a fixed width
+			vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+				font: '',
+				measureText: (text: string) => ({ width: text.length * charWidth }),
+			} as never);
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
 		const startMappingDrag = () => {
 			mockNdvState.isDraggableDragging = true;
 			mockNdvState.draggableType = 'mapping';
@@ -322,17 +336,17 @@ describe('ParameterInputFull.vue', () => {
 				isDragging: true,
 				type: 'mapping',
 				data: '{{ $json.age }}',
-				dimensions: { width: 40, height: 20 },
+				dimensions: { width: ghostWidth, height: 20 },
 				activeTarget: null,
 				stickyPosition: null,
 			} as never;
 			mockNdvState.setDraggableTarget = vi.fn();
 		};
 
-		const hoverDropTarget = async (value: string) => {
+		const hoverDropTarget = async (value: string, parameter = fieldsParameter) => {
 			startMappingDrag();
 			const { getByTestId } = renderComponent({
-				props: { path: 'fieldsToInclude', parameter: fieldsParameter, value },
+				props: { path: parameter.name, parameter, value },
 			});
 
 			// The DraggableTarget root is the direct child of the input label
@@ -371,6 +385,39 @@ describe('ParameterInputFull.vue', () => {
 			expect(stickyPosition).not.toBeNull();
 			// The ghost must not cover the existing "name, email" text at the start of the input
 			expect(stickyPosition![0]).toBeGreaterThan(inputRect.left + 3);
+			// The drop appends ", <field>", so the ghost sits where the new field lands
+			const { paddingLeft, borderLeftWidth } = window.getComputedStyle(
+				document.querySelector('input')!,
+			);
+			const textStart = parseFloat(paddingLeft) + parseFloat(borderLeftWidth);
+			expect(stickyPosition).toEqual([
+				inputRect.left + textStart + 'name, email, '.length * charWidth,
+				inputRect.top + 3,
+			]);
+		});
+
+		it('keeps the ghost inside the input when the existing fields are wider than it', async () => {
+			const stickyPosition = await hoverDropTarget('a'.repeat(200));
+
+			expect(stickyPosition).toEqual([
+				inputRect.left + inputRect.width - ghostWidth - 3,
+				inputRect.top + 3,
+			]);
+		});
+
+		it('keeps the ghost at the start of a field whose value is replaced on drop', async () => {
+			const stickyPosition = await hoverDropTarget(
+				'name',
+				createTestNodeProperties({
+					displayName: 'Field To Split Out',
+					name: 'fieldToSplitOut',
+					type: 'string',
+					default: '',
+					requiresDataPath: 'single',
+				}),
+			);
+
+			expect(stickyPosition).toEqual([inputRect.left + 3, inputRect.top + 3]);
 		});
 	});
 
