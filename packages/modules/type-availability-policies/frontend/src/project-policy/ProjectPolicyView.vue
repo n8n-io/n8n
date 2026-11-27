@@ -17,8 +17,8 @@ import { usePolicyAdminAccess } from '../composables/usePolicyAdminAccess';
 import { useProjectPolicies } from '../composables/useProjectPolicies';
 import {
 	deleteProjectPolicy,
-	fetchProjectPolicyVersions,
-	type ProjectPolicyVersions,
+	fetchProjectPolicyState,
+	type ProjectPolicyState,
 } from '../type-availability-policies.api';
 import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
@@ -38,8 +38,8 @@ const project = computed(() =>
 	projects.value?.find((candidate) => candidate.projectId === projectId.value),
 );
 
-/** The versions that a delete sends. `null` until a read succeeds, which keeps the delete off. */
-const versions = shallowRef<ProjectPolicyVersions | null>(null);
+/** `null` until a read succeeds, which keeps the delete off. */
+const policyState = shallowRef<ProjectPolicyState | null>(null);
 const deleting = ref(false);
 
 const title = computed(() =>
@@ -57,7 +57,7 @@ const pageActions = computed(() => {
 			label: i18n.baseText('typeAvailabilityPolicies.projectPolicy.delete.action'),
 			value: 'delete' as const,
 			destructive: true,
-			disabled: !hasPolicy || !versions.value || deleting.value,
+			disabled: !hasPolicy || !policyState.value || deleting.value,
 			tooltip: hasPolicy
 				? undefined
 				: i18n.baseText('typeAvailabilityPolicies.projectPolicy.delete.noPolicy'),
@@ -69,9 +69,9 @@ watch(title, (value) => {
 	if (value) documentTitle.set(value);
 });
 
-async function loadVersions() {
+async function loadPolicyState() {
 	try {
-		versions.value = await fetchProjectPolicyVersions(rootStore.restApiContext, projectId.value);
+		policyState.value = await fetchProjectPolicyState(rootStore.restApiContext, projectId.value);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('typeAvailabilityPolicies.projectPolicy.loadError'));
 	}
@@ -88,11 +88,14 @@ function isStillOn(deletedProjectId: string) {
 
 async function onDeletePolicy() {
 	const current = project.value;
-	const readVersions = versions.value;
-	if (!current || !readVersions) return;
+	const readState = policyState.value;
+	if (!current || !readState) return;
 
 	const answer = await message.confirm(
-		i18n.baseText('typeAvailabilityPolicies.projectPolicy.delete.confirm.message'),
+		i18n.baseText('typeAvailabilityPolicies.projectPolicy.delete.confirm.message', {
+			adjustToNumber: readState.ruleCount,
+			interpolate: { name: current.name },
+		}),
 		i18n.baseText('typeAvailabilityPolicies.projectPolicy.delete.confirm.title', {
 			interpolate: { name: current.name },
 		}),
@@ -106,7 +109,7 @@ async function onDeletePolicy() {
 
 	deleting.value = true;
 	try {
-		await deleteProjectPolicy(rootStore.restApiContext, current.projectId, readVersions);
+		await deleteProjectPolicy(rootStore.restApiContext, current.projectId, readState.versions);
 	} catch (error) {
 		onDeleteError(error, current.projectId);
 		return;
@@ -134,9 +137,9 @@ function onDeleteError(error: unknown, deletedProjectId: string) {
 			message: i18n.baseText('typeAvailabilityPolicies.projectPolicy.delete.changed.message'),
 		});
 		if (!isStillOn(deletedProjectId)) return;
-		versions.value = null;
+		policyState.value = null;
 		void load();
-		void loadVersions();
+		void loadPolicyState();
 		return;
 	}
 
@@ -160,7 +163,7 @@ onMounted(() => {
 		return;
 	}
 	void load();
-	void loadVersions();
+	void loadPolicyState();
 });
 </script>
 

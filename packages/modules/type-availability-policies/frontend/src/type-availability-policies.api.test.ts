@@ -11,7 +11,7 @@ import {
 	fetchNodeTypeSummaries,
 	fetchNodeTypeUsage,
 	fetchProjectPolicies,
-	fetchProjectPolicyVersions,
+	fetchProjectPolicyState,
 	saveInstancePolicy,
 } from './type-availability-policies.api';
 
@@ -79,12 +79,17 @@ describe('project policy requests', () => {
 		});
 	});
 
-	it('reads the version of each kind of a project policy', async () => {
-		makeRestApiRequest.mockResolvedValueOnce({ version: 4 }).mockResolvedValueOnce({ version: 0 });
+	it('reads the version of each kind and counts the rules of both kinds', async () => {
+		makeRestApiRequest
+			.mockResolvedValueOnce({ version: 4, rules: [{ id: 'r1' }, { id: 'r2' }] })
+			.mockResolvedValueOnce({ version: 0, rules: [{ id: 'r3' }] });
 
-		const versions = await fetchProjectPolicyVersions(context, 'project-1');
+		const state = await fetchProjectPolicyState(context, 'project-1');
 
-		expect(versions).toEqual({ nodeTypesVersion: 4, credentialTypesVersion: 0 });
+		expect(state).toEqual({
+			versions: { nodeTypesVersion: 4, credentialTypesVersion: 0 },
+			ruleCount: 3,
+		});
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			context,
 			'GET',

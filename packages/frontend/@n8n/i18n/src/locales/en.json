@@ -3085,7 +3085,7 @@
 	"typeAvailabilityPolicies.projectPolicy.delete.action": "Delete policy",
 	"typeAvailabilityPolicies.projectPolicy.delete.noPolicy": "This project follows the instance policy. It has no policy to delete.",
 	"typeAvailabilityPolicies.projectPolicy.delete.confirm.title": "Delete the {name} policy?",
-	"typeAvailabilityPolicies.projectPolicy.delete.confirm.message": "The project follows the instance policy again. You cannot undo this.",
+	"typeAvailabilityPolicies.projectPolicy.delete.confirm.message": "{name} follows the instance policy again. This can't be undone. | {name} follows the instance policy again: its {count} restriction is lifted. This can't be undone. | {name} follows the instance policy again: its {count} restrictions are lifted. This can't be undone.",
 	"typeAvailabilityPolicies.projectPolicy.delete.success.title": "{name} policy deleted",
 	"typeAvailabilityPolicies.projectPolicy.delete.success.message": "The projects follow the instance policy again.",
 	"typeAvailabilityPolicies.projectPolicy.delete.changed.title": "The policy changed",

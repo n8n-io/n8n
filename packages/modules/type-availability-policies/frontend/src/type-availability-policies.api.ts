@@ -91,18 +91,27 @@ export async function createProjectPolicy(
 
 export type ProjectPolicyVersions = DeleteProjectPolicyQueryDto;
 
-export async function fetchProjectPolicyVersions(
+/** What a delete needs: the version of each kind, and how many rules the delete lifts. */
+export type ProjectPolicyState = {
+	versions: ProjectPolicyVersions;
+	ruleCount: number;
+};
+
+export async function fetchProjectPolicyState(
 	context: IRestApiContext,
 	projectId: string,
-): Promise<ProjectPolicyVersions> {
-	const read = async (kind: RestrictedTypeKind): Promise<{ version: number }> =>
+): Promise<ProjectPolicyState> {
+	const read = async (kind: RestrictedTypeKind): Promise<{ version: number; rules: unknown[] }> =>
 		await makeRestApiRequest(
 			context,
 			'GET',
 			`/projects/${projectId}/${kind}-type-policies/project`,
 		);
 	const [node, credential] = await Promise.all([read('node'), read('credential')]);
-	return { nodeTypesVersion: node.version, credentialTypesVersion: credential.version };
+	return {
+		versions: { nodeTypesVersion: node.version, credentialTypesVersion: credential.version },
+		ruleCount: node.rules.length + credential.rules.length,
+	};
 }
 
 /**
