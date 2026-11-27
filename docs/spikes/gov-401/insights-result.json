@@ -1,0 +1,405 @@
+{
+  "ledgerRowsFolded": 36,
+  "insightsRaw": {
+    "v1, collector": {
+      "fixed": {
+        "success rows": 4,
+        "success sum": 4,
+        "billable rows": 4,
+        "billable sum": 4,
+        "runtime_ms rows": 4,
+        "runtime_ms sum": 5,
+        "time_saved_min rows": 4,
+        "time_saved_min sum": 20
+      },
+      "dynamic": {
+        "success rows": 3,
+        "success sum": 3,
+        "billable rows": 3,
+        "billable sum": 3,
+        "runtime_ms rows": 3,
+        "runtime_ms sum": 4,
+        "time_saved_min rows": 3,
+        "time_saved_min sum": 15
+      },
+      "failing": {
+        "failure rows": 2,
+        "failure sum": 2,
+        "billable rows": 2,
+        "billable sum": 2,
+        "runtime_ms rows": 2,
+        "runtime_ms sum": 5
+      }
+    },
+    "v2, collector": {
+      "fixed": {},
+      "dynamic": {},
+      "failing": {}
+    },
+    "v1, fold step": {
+      "fixed": {
+        "success rows": 4,
+        "success sum": 4,
+        "billable rows": 4,
+        "billable sum": 4,
+        "runtime_ms rows": 4,
+        "runtime_ms sum": 5,
+        "time_saved_min rows": 4,
+        "time_saved_min sum": 20
+      },
+      "dynamic": {
+        "success rows": 3,
+        "success sum": 3,
+        "billable rows": 3,
+        "billable sum": 3,
+        "runtime_ms rows": 3,
+        "runtime_ms sum": 4,
+        "time_saved_min rows": 3,
+        "time_saved_min sum": 15
+      },
+      "failing": {
+        "failure rows": 2,
+        "failure sum": 2,
+        "billable rows": 2,
+        "billable sum": 2,
+        "runtime_ms rows": 2,
+        "runtime_ms sum": 5
+      }
+    },
+    "v2, fold step": {
+      "fixed": {
+        "success rows": 4,
+        "success sum": 4,
+        "billable rows": 4,
+        "billable sum": 4,
+        "runtime_ms rows": 4,
+        "runtime_ms sum": 135,
+        "time_saved_min rows": 4,
+        "time_saved_min sum": 20
+      },
+      "dynamic": {
+        "success rows": 3,
+        "success sum": 3,
+        "billable rows": 3,
+        "billable sum": 3,
+        "runtime_ms rows": 3,
+        "runtime_ms sum": 201,
+        "time_saved_min rows": 3,
+        "time_saved_min sum": 15
+      },
+      "failing": {
+        "failure rows": 2,
+        "failure sum": 2,
+        "billable rows": 2,
+        "billable sum": 2,
+        "runtime_ms rows": 2,
+        "runtime_ms sum": 53
+      }
+    }
+  },
+  "summary": {
+    "v1, collector": {
+      "total": 9,
+      "failed": 2,
+      "failureRate": 0.222,
+      "timeSaved": 35,
+      "averageRunTime": 1.56
+    },
+    "v2, collector": {
+      "total": 0,
+      "failed": 0,
+      "failureRate": 0,
+      "timeSaved": 0,
+      "averageRunTime": 0
+    },
+    "v1, fold step": {
+      "total": 9,
+      "failed": 2,
+      "failureRate": 0.222,
+      "timeSaved": 35,
+      "averageRunTime": 1.56
+    },
+    "v2, fold step": {
+      "total": 9,
+      "failed": 2,
+      "failureRate": 0.222,
+      "timeSaved": 35,
+      "averageRunTime": 43.22
+    }
+  },
+  "v2Executions": [
+    {
+      "id": "01a21d54-b692-7768-9ec5-09709aa293c8",
+      "status": "completed",
+      "created_at": "2026-11-27T14:07:00.751Z",
+      "finished_at": "2026-11-27T14:07:00.800Z",
+      "first_step": "2026-11-27T14:07:00.759Z",
+      "steps": [
+        {
+          "node": "00ef642c-df3e-49fa-99dd-57168a27aceb",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        },
+        {
+          "node": "8f72b456-d661-4514-8a1e-dff4274d359a",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        }
+      ]
+    },
+    {
+      "id": "01a21d54-b680-76fe-a379-3867e203cbde",
+      "status": "completed",
+      "created_at": "2026-11-27T14:07:00.737Z",
+      "finished_at": "2026-11-27T14:07:00.804Z",
+      "first_step": "2026-11-27T14:07:00.744Z",
+      "steps": [
+        {
+          "node": "00ef642c-df3e-49fa-99dd-57168a27aceb",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        },
+        {
+          "node": "8f72b456-d661-4514-8a1e-dff4274d359a",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        }
+      ]
+    },
+    {
+      "id": "01a21d54-b68c-760e-bc89-2d1decaee790",
+      "status": "completed",
+      "created_at": "2026-11-27T14:07:00.745Z",
+      "finished_at": "2026-11-27T14:07:00.806Z",
+      "first_step": "2026-11-27T14:07:00.748Z",
+      "steps": [
+        {
+          "node": "00ef642c-df3e-49fa-99dd-57168a27aceb",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        },
+        {
+          "node": "8f72b456-d661-4514-8a1e-dff4274d359a",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        }
+      ]
+    },
+    {
+      "id": "01a21d54-b668-7075-bcfb-6177f38abee8",
+      "status": "completed",
+      "created_at": "2026-11-27T14:07:00.724Z",
+      "finished_at": "2026-11-27T14:07:00.772Z",
+      "first_step": "2026-11-27T14:07:00.730Z",
+      "steps": [
+        {
+          "node": "00ef642c-df3e-49fa-99dd-57168a27aceb",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        },
+        {
+          "node": "8f72b456-d661-4514-8a1e-dff4274d359a",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        }
+      ]
+    },
+    {
+      "id": "01a21d54-b699-723b-9130-c5c189a751f9",
+      "status": "completed",
+      "created_at": "2026-11-27T14:07:00.760Z",
+      "finished_at": "2026-11-27T14:07:00.849Z",
+      "first_step": "2026-11-27T14:07:00.763Z",
+      "steps": [
+        {
+          "node": "5faa1865-6900-4610-9830-ca30ca8e165a",
+          "status": "completed",
+          "error": null,
+          "metadata": {
+            "timeSaved": {
+              "minutes": 3
+            }
+          }
+        },
+        {
+          "node": "636726eb-25cf-48c6-ac8b-7bee7cf1a060",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        },
+        {
+          "node": "d4f15882-fcf0-404a-9c53-e2d963ff1614",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        },
+        {
+          "node": "d96ec7cd-57f3-445a-bd0e-8326f3cc5dea",
+          "status": "completed",
+          "error": null,
+          "metadata": {
+            "timeSaved": {
+              "minutes": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "01a21d54-b6a8-72de-b29e-f944df6f9001",
+      "status": "completed",
+      "created_at": "2026-11-27T14:07:00.773Z",
+      "finished_at": "2026-11-27T14:07:00.854Z",
+      "first_step": "2026-11-27T14:07:00.778Z",
+      "steps": [
+        {
+          "node": "5faa1865-6900-4610-9830-ca30ca8e165a",
+          "status": "completed",
+          "error": null,
+          "metadata": {
+            "timeSaved": {
+              "minutes": 3
+            }
+          }
+        },
+        {
+          "node": "636726eb-25cf-48c6-ac8b-7bee7cf1a060",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        },
+        {
+          "node": "d4f15882-fcf0-404a-9c53-e2d963ff1614",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        },
+        {
+          "node": "d96ec7cd-57f3-445a-bd0e-8326f3cc5dea",
+          "status": "completed",
+          "error": null,
+          "metadata": {
+            "timeSaved": {
+              "minutes": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "01a21d54-b6a1-7271-89b3-952a68dbd527",
+      "status": "completed",
+      "created_at": "2026-11-27T14:07:00.766Z",
+      "finished_at": "2026-11-27T14:07:00.860Z",
+      "first_step": "2026-11-27T14:07:00.772Z",
+      "steps": [
+        {
+          "node": "5faa1865-6900-4610-9830-ca30ca8e165a",
+          "status": "completed",
+          "error": null,
+          "metadata": {
+            "timeSaved": {
+              "minutes": 3
+            }
+          }
+        },
+        {
+          "node": "636726eb-25cf-48c6-ac8b-7bee7cf1a060",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        },
+        {
+          "node": "d4f15882-fcf0-404a-9c53-e2d963ff1614",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        },
+        {
+          "node": "d96ec7cd-57f3-445a-bd0e-8326f3cc5dea",
+          "status": "completed",
+          "error": null,
+          "metadata": {
+            "timeSaved": {
+              "minutes": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "01a21d54-b6ae-7357-917f-9aa305b1fa19",
+      "status": "failed",
+      "created_at": "2026-11-27T14:07:00.780Z",
+      "finished_at": "2026-11-27T14:07:00.839Z",
+      "first_step": "2026-11-27T14:07:00.788Z",
+      "steps": [
+        {
+          "node": "a7325f42-9f91-4ee7-92e3-2011a80d75f8",
+          "status": "failed",
+          "error": {
+            "name": "NodeOperationError",
+            "stack": "NodeOperationError: failed on purpose\n    at DurableWaitExecuteContext.execute (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/nodes-base/dist/nodes/StopAndError/StopAndError.node.js:80:15)\n    at V1StepExecutor.runNode (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/node-engine-compatibility/dist/v1-step-executor.js:115:42)\n    at /Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/node-engine-compatibility/dist/v1-step-executor.js:84:43\n    at Expression.withIsolate (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/workflow/dist/cjs/expression.js:454:26)\n    at async WorkflowExpression.withIsolate (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/workflow/dist/cjs/workflow-expression.js:117:16)\n    at async V1StepExecutor.execute (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/node-engine-compatibility/dist/v1-step-executor.js:83:16)\n    at async StepReadyHandler.runStep (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/engine/dist/execution/step-ready-handler.js:174:24)\n    at async StepReadyHandler.handle (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/engine/dist/execution/step-ready-handler.js:57:23)\n    at async /Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/engine/dist/execution/step-worker.js:16:21\n    at async callAsync (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/engine/dist/queue/in-memory-work-queue.js:7:5)",
+            "details": {
+              "cause": {
+                "name": "OperationalError",
+                "message": "failed on purpose"
+              },
+              "context": {},
+              "timestamp": 1795788420836
+            },
+            "message": "failed on purpose"
+          },
+          "metadata": null
+        },
+        {
+          "node": "be1cabad-b02f-451b-b6fa-387effdae44d",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        }
+      ]
+    },
+    {
+      "id": "01a21d54-b6b9-71c4-80ac-7225a2215995",
+      "status": "failed",
+      "created_at": "2026-11-27T14:07:00.792Z",
+      "finished_at": "2026-11-27T14:07:00.832Z",
+      "first_step": "2026-11-27T14:07:00.797Z",
+      "steps": [
+        {
+          "node": "a7325f42-9f91-4ee7-92e3-2011a80d75f8",
+          "status": "failed",
+          "error": {
+            "name": "NodeOperationError",
+            "stack": "NodeOperationError: failed on purpose\n    at DurableWaitExecuteContext.execute (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/nodes-base/dist/nodes/StopAndError/StopAndError.node.js:80:15)\n    at V1StepExecutor.runNode (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/node-engine-compatibility/dist/v1-step-executor.js:115:42)\n    at /Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/node-engine-compatibility/dist/v1-step-executor.js:84:43\n    at Expression.withIsolate (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/workflow/dist/cjs/expression.js:454:26)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async WorkflowExpression.withIsolate (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/workflow/dist/cjs/workflow-expression.js:117:16)\n    at async V1StepExecutor.execute (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/node-engine-compatibility/dist/v1-step-executor.js:83:16)\n    at async StepReadyHandler.runStep (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/engine/dist/execution/step-ready-handler.js:174:24)\n    at async StepReadyHandler.handle (/Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/engine/dist/execution/step-ready-handler.js:57:23)\n    at async /Users/theonastos/dev/n8n/.claude/worktrees/gov-401-spike-insights-on-engine-v2-1f2b58/packages/@n8n/engine/dist/execution/step-worker.js:16:21",
+            "details": {
+              "cause": {
+                "name": "OperationalError",
+                "message": "failed on purpose"
+              },
+              "context": {},
+              "timestamp": 1795788420827
+            },
+            "message": "failed on purpose"
+          },
+          "metadata": null
+        },
+        {
+          "node": "be1cabad-b02f-451b-b6fa-387effdae44d",
+          "status": "completed",
+          "error": null,
+          "metadata": null
+        }
+      ]
+    }
+  ]
+}
