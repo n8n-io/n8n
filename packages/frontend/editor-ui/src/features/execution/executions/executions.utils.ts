@@ -42,9 +42,11 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
 import NodeExecutionErrorMessage from '@/app/components/NodeExecutionErrorMessage.vue';
+import { isGatewayTrialRequestCostLimitError } from '@/app/stores/aiGateway.store';
 import { parse } from 'flatted';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
@@ -366,6 +368,17 @@ export function getExecutionErrorToastConfiguration({
 
 	if (error.name === 'SubworkflowOperationError') {
 		return { title: error.message, message: error.description ?? '' };
+	}
+
+	if (isGatewayTrialRequestCostLimitError(error)) {
+		return {
+			title: i18n.baseText('aiGateway.requestLimit.toast.title'),
+			message: i18n.baseText(
+				useUsersStore().isInstanceOwner
+					? 'aiGateway.requestLimit.toast.message'
+					: 'aiGateway.requestLimit.toast.message.member',
+			),
+		};
 	}
 
 	if (

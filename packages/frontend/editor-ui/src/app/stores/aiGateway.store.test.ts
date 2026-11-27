@@ -1,7 +1,13 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { describe, it, vi, beforeEach, expect } from 'vitest';
 import type { INode } from 'n8n-workflow';
-import { useAiGatewayStore, usesFreeCreditsLabel } from './aiGateway.store';
+import type { FrontendSettings } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	isGatewayTrialRequestCostLimitError,
+	useAiGatewayStore,
+	usesFreeCreditsLabel,
+} from './aiGateway.store';
 
 const mockGetGatewayConfig = vi.fn();
 const mockGetGatewayWallet = vi.fn();
@@ -958,5 +964,94 @@ describe('aiGateway.store', () => {
 			expect(store.isNodeTypeVersionSupported('some-package.SomeNodeTool', 1.1)).toBe(true);
 			expect(store.isNodeTypeVersionSupported('some-package.SomeNodeTool', 1.0)).toBe(false);
 		});
+	});
+
+	describe('hasHiddenPremiumModels()', () => {
+		const gatewayCredentials = { openAiApi: { id: null, name: '', __aiGatewayManaged: true } };
+		const ownCredentials = { openAiApi: { id: 'cred-1', name: 'My key' } };
+
+		function setPlanGroup(planGroup: string | undefined) {
+			useSettingsStore().settings.license = { planGroup } as FrontendSettings['license'];
+		}
+
+		it.each([
+			// gateway credential × plan group × node type
+			[true, 'trial', '@n8n/n8n-nodes-langchain.lmChatOpenAi', true],
+			[true, 'free', '@n8n/n8n-nodes-langchain.anthropic', true],
+			[true, 'trial', '@n8n/n8n-nodes-langchain.openAiTool', true],
+			[false, 'trial', '@n8n/n8n-nodes-langchain.lmChatOpenAi', false],
+			[true, 'paid', '@n8n/n8n-nodes-langchain.lmChatOpenAi', false],
+			[true, undefined, '@n8n/n8n-nodes-langchain.lmChatOpenAi', false],
+			[true, 'trial', '@n8n/n8n-nodes-langchain.embeddingsOpenAi', false],
+			[true, 'trial', '@n8n/n8n-nodes-langchain.lmChatMoonshot', false],
+		])(
+			'gateway credential: %s, plan group: %s, node: %s → %s',
+			(isGateway, planGroup, type, expected) => {
+				setPlanGroup(planGroup);
+				const store = useAiGatewayStore();
+				const node = {
+					type,
+					credentials: isGateway ? gatewayCredentials : ownCredentials,
+				} as unknown as INode;
+
+				expect(store.hasHiddenPremiumModels(node)).toBe(expected);
+			},
+		);
+
+		it('returns false without a node', () => {
+			setPlanGroup('trial');
+
+			expect(useAiGatewayStore().hasHiddenPremiumModels(null)).toBe(false);
+		});
+	});
+});
+
+describe('isGatewayTrialRequestCostLimitError()', () => {
+	const gatewayMessage =
+		'Request is over your Gateway credits limit for trial plan. This execution was estimated to cost over the $0.50 limit. Upgrade to a paid plan, or use your own credential.';
+	const gatewayBody = {
+		error: {
+			code: 'trial_request_cost_limit',
+			type: 'ai_gateway_request_error',
+			message: gatewayMessage,
+		},
+	};
+
+	it('matches the gateway error code in the error data (Anthropic and Gemini nodes)', () => {
+		expect(
+			isGatewayTrialRequestCostLimitError({
+				description: 'Some other text',
+				context: { data: gatewayBody },
+			}),
+		).toBe(true);
+	});
+
+	it('matches the raw gateway response in messages (OpenAI node, Anthropic chat model)', () => {
+		expect(
+			isGatewayTrialRequestCostLimitError({
+				description: null,
+				context: {},
+				messages: [`403 - ${JSON.stringify(gatewayBody)}`],
+			}),
+		).toBe(true);
+	});
+
+	it('matches the gateway message in the description when the code is lost (OpenAI and Gemini chat models)', () => {
+		expect(
+			isGatewayTrialRequestCostLimitError({
+				description: gatewayMessage,
+				context: {},
+			}),
+		).toBe(true);
+	});
+
+	it('does not match other forbidden errors', () => {
+		expect(
+			isGatewayTrialRequestCostLimitError({
+				description: 'Forbidden - perhaps check your credentials?',
+				context: { data: { error: { code: 'forbidden' } } },
+				messages: ['403 - {"error":"forbidden"}'],
+			}),
+		).toBe(false);
 	});
 });

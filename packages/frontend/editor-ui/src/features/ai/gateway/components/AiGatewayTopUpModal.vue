@@ -5,7 +5,10 @@ import { N8nAlertDialog, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
-import type { AiGatewayTopUpVariant } from '@/app/composables/useAiGatewayTopUp';
+import type {
+	AiGatewayTopUpVariant,
+	AiGatewayUpgradeReason,
+} from '@/app/composables/useAiGatewayTopUp';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/app/stores/ui.store';
 import AlibabaLogo from '../assets/service-icons/alibaba.svg?component';
@@ -78,8 +81,28 @@ const FEATURED_SERVICES = [
 	logo: Component;
 }>;
 
+// Only the Instance Owner opens the modal for these reasons, so they have no member copy.
+const UPGRADE_REASONS = {
+	premiumModels: {
+		title: 'aiGateway.upgrade.modal.title.premiumModels',
+		description: 'aiGateway.upgrade.modal.description.premiumModels',
+		source: 'ai-gateway-premium-models',
+		campaign: 'upgrade-ai-gateway-premium-models',
+	},
+	requestLimit: {
+		title: 'aiGateway.upgrade.modal.title.requestLimit',
+		description: 'aiGateway.upgrade.modal.description.requestLimit',
+		source: 'ai-gateway-request-limit',
+		campaign: 'upgrade-ai-gateway-request-limit',
+	},
+} as const satisfies Record<
+	AiGatewayUpgradeReason,
+	{ title: BaseTextKey; description: BaseTextKey; source: string; campaign: string }
+>;
+
 const props = defineProps<{
 	variant: AiGatewayTopUpVariant;
+	reason?: AiGatewayUpgradeReason;
 }>();
 
 const i18n = useI18n();
@@ -92,7 +115,8 @@ const isOwnerTrial = computed(() => props.variant === 'ownerTrial');
 const needsOwnerEmail = computed(
 	() => props.variant === 'member' || props.variant === 'memberTrial',
 );
-const showsServices = computed(() => props.variant !== 'member');
+const upgradeReason = computed(() => (props.reason ? UPGRADE_REASONS[props.reason] : undefined));
+const showsServices = computed(() => !upgradeReason.value && props.variant !== 'member');
 const ownerEmails = computed(() =>
 	usersStore.allUsers
 		.filter((user) => user.role === ROLE.Owner)
@@ -112,6 +136,7 @@ onMounted(async () => {
 });
 
 const title = computed(() => {
+	if (upgradeReason.value) return i18n.baseText(upgradeReason.value.title);
 	const keys = {
 		ownerTrial: 'aiGateway.topUp.modal.title.trial',
 		memberTrial: 'aiGateway.topUp.modal.title.member',
@@ -121,6 +146,7 @@ const title = computed(() => {
 });
 
 const description = computed(() => {
+	if (upgradeReason.value) return i18n.baseText(upgradeReason.value.description);
 	const keys = {
 		ownerTrial: 'aiGateway.topUp.modal.description.trial',
 		memberTrial: 'aiGateway.topUp.modal.description.member.trial',
@@ -155,7 +181,10 @@ function ownerMailtoHref(): string {
 async function onAction(): Promise<void> {
 	if (isOwnerTrial.value) {
 		close();
-		await goToUpgrade('ai-gateway-top-up', 'upgrade-ai-gateway-top-up');
+		await goToUpgrade(
+			upgradeReason.value?.source ?? 'ai-gateway-top-up',
+			upgradeReason.value?.campaign ?? 'upgrade-ai-gateway-top-up',
+		);
 		return;
 	}
 

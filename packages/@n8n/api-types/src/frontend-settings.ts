@@ -226,6 +226,8 @@ export interface FrontendSettings {
 	hideUsagePage: boolean;
 	license: {
 		planName?: string;
+		/** License plan group, such as `trial` or `free`. */
+		planGroup?: string;
 		consumerId: string;
 		environment: 'development' | 'production' | 'staging';
 	};

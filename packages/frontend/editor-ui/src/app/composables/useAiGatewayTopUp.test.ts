@@ -124,4 +124,30 @@ describe('useAiGatewayTopUp', () => {
 		});
 		expect(goToCloudDashboardMock).not.toHaveBeenCalled();
 	});
+
+	describe('openUpgrade', () => {
+		it.each(['premiumModels', 'requestLimit'] as const)(
+			'opens the %s upgrade dialog for the owner',
+			(reason) => {
+				const usersStore = mockedStore(useUsersStore);
+				const uiStore = mockedStore(useUIStore);
+				usersStore.isInstanceOwner = true;
+
+				useAiGatewayTopUp().openUpgrade(reason);
+
+				expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+					name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+					data: { variant: 'ownerTrial', reason },
+				});
+			},
+		);
+
+		it('does not open a dialog for other users', () => {
+			const uiStore = mockedStore(useUIStore);
+
+			useAiGatewayTopUp().openUpgrade('requestLimit');
+
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+	});
 });

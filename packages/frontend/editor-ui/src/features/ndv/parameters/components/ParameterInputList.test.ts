@@ -66,6 +66,11 @@ import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
 import { WAIT_NODE_TYPE, AGENT_NODE_TYPE } from '@/app/constants';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useI18n } from '@n8n/i18n';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
 const mockConfirm = vi.fn();
 vi.mock('@/app/composables/useMessage', () => ({
@@ -2400,6 +2405,137 @@ describe('ParameterInputList', () => {
 			expect(
 				container.querySelector('[data-test-id="ai-gateway-unsupported-action-notice"]'),
 			).not.toBeInTheDocument();
+		});
+	});
+
+	describe('AI Gateway premium models notice', () => {
+		const modelParameter: INodeProperties = {
+			displayName: 'Model',
+			name: 'model',
+			type: 'string',
+			default: '',
+		};
+		const temperatureParameter: INodeProperties = {
+			displayName: 'Temperature',
+			name: 'temperature',
+			type: 'number',
+			default: 0.7,
+		};
+
+		function setup({
+			hiddenPremiumModels = true,
+			isInstanceOwner = true,
+		}: { hiddenPremiumModels?: boolean; isInstanceOwner?: boolean } = {}) {
+			const aiGatewayStore = mockedStore(useAiGatewayStore);
+			aiGatewayStore.hasHiddenPremiumModels.mockReturnValue(hiddenPremiumModels);
+			mockedStore(useUsersStore).isInstanceOwner = isInstanceOwner;
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+			return { aiGatewayStore, uiStore: mockedStore(useUIStore) };
+		}
+
+		async function render(parameters: INodeProperties[], path = 'parameters') {
+			const result = renderComponent({
+				props: { parameters, nodeValues: { parameters: {} }, path },
+			});
+			await flushPromises();
+			return result;
+		}
+
+		it.each(['model', 'modelId', 'modelName'])(
+			'shows the notice once under the "%s" parameter',
+			async (name) => {
+				setup();
+
+				const { queryAllByTestId } = await render([
+					{ ...modelParameter, name },
+					temperatureParameter,
+				]);
+
+				expect(queryAllByTestId('ai-gateway-premium-models-notice')).toHaveLength(1);
+			},
+		);
+
+		it('shows the notice only once when several model parameters are visible', async () => {
+			setup();
+
+			const { queryAllByTestId } = await render([
+				modelParameter,
+				{ ...modelParameter, name: 'modelId' },
+			]);
+
+			expect(queryAllByTestId('ai-gateway-premium-models-notice')).toHaveLength(1);
+		});
+
+		it('passes the node to the store check', async () => {
+			const { aiGatewayStore } = setup();
+
+			await render([modelParameter]);
+
+			expect(aiGatewayStore.hasHiddenPremiumModels).toHaveBeenCalledWith(
+				expect.objectContaining({ type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			);
+		});
+
+		it('hides the notice when the store reports no hidden premium models', async () => {
+			setup({ hiddenPremiumModels: false });
+
+			const { queryByTestId } = await render([modelParameter]);
+
+			expect(queryByTestId('ai-gateway-premium-models-notice')).not.toBeInTheDocument();
+		});
+
+		it('hides the notice when no model parameter is visible', async () => {
+			setup();
+
+			const { queryByTestId } = await render([temperatureParameter]);
+
+			expect(queryByTestId('ai-gateway-premium-models-notice')).not.toBeInTheDocument();
+		});
+
+		it('hides the notice for nested model parameters', async () => {
+			setup();
+
+			const { queryByTestId } = await render([modelParameter], 'parameters.options');
+
+			expect(queryByTestId('ai-gateway-premium-models-notice')).not.toBeInTheDocument();
+		});
+
+		it('opens the upgrade modal from the notice link for the owner', async () => {
+			const { uiStore } = setup();
+			const baseTextSpy = vi
+				.spyOn(useI18n(), 'baseText')
+				.mockImplementation((key: string) =>
+					key === 'aiGateway.premiumModels.notice'
+						? "Some models aren't listed. <a data-key='upgrade'>Upgrade</a>"
+						: key,
+				);
+
+			const { getByTestId, getByText } = await render([modelParameter]);
+			expect(getByTestId('ai-gateway-premium-models-notice')).toHaveTextContent(
+				"Some models aren't listed. Upgrade",
+			);
+
+			await fireEvent.click(getByText('Upgrade'));
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+				data: { variant: 'ownerTrial', reason: 'premiumModels' },
+			});
+			baseTextSpy.mockRestore();
+		});
+
+		it('shows the notice without an upgrade link for other users', async () => {
+			setup({ isInstanceOwner: false });
+
+			const { getByTestId } = await render([modelParameter]);
+
+			const notice = getByTestId('ai-gateway-premium-models-notice');
+			expect(notice).toHaveTextContent('aiGateway.premiumModels.notice.member');
+			expect(notice.querySelector('a')).toBeNull();
 		});
 	});
 

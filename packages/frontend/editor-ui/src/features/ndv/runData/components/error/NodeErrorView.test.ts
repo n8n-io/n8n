@@ -13,6 +13,9 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
 const mockRouterResolve = vi.fn(() => ({
 	href: '',
@@ -368,6 +371,46 @@ describe('NodeErrorView.vue', () => {
 
 			expect(window.open).not.toHaveBeenCalled();
 			expect(mockNDVStore.setActiveNodeName).toHaveBeenCalledWith('ErrorCode', expect.any(String));
+		});
+	});
+
+	describe('gateway trial request cost limit', () => {
+		const gatewayLimitError = (): NodeError =>
+			({
+				...error,
+				message: 'Forbidden - perhaps check your credentials?',
+				description:
+					'Request is over your Gateway credits limit for trial plan. This execution was estimated to cost over the $0.50 limit.',
+				context: {},
+			}) as NodeError;
+
+		it('opens the upgrade modal from the Upgrade button for the owner', async () => {
+			mockedStore(useUsersStore).isInstanceOwner = true;
+			const uiStore = mockedStore(useUIStore);
+
+			const { getByTestId } = renderComponent({ props: { error: gatewayLimitError() } });
+			await userEvent.click(getByTestId('node-error-view-ai-gateway-upgrade-button'));
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+				data: { variant: 'ownerTrial', reason: 'requestLimit' },
+			});
+		});
+
+		it('hides the Upgrade button for other users', () => {
+			mockedStore(useUsersStore).isInstanceOwner = false;
+
+			const { queryByTestId } = renderComponent({ props: { error: gatewayLimitError() } });
+
+			expect(queryByTestId('node-error-view-ai-gateway-upgrade-button')).not.toBeInTheDocument();
+		});
+
+		it('hides the Upgrade button for other errors', () => {
+			mockedStore(useUsersStore).isInstanceOwner = true;
+
+			const { queryByTestId } = renderComponent({ props: { error } });
+
+			expect(queryByTestId('node-error-view-ai-gateway-upgrade-button')).not.toBeInTheDocument();
 		});
 	});
 });

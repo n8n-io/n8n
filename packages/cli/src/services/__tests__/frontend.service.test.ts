@@ -626,6 +626,17 @@ describe('FrontendService', () => {
 			expect(settings.evaluationConcurrencyLimit).toBe(4);
 		});
 
+		it('surfaces the license plan group', async () => {
+			(license.getValue as Mock).mockImplementation((feature: string) =>
+				feature === 'planGroup' ? 'trial' : undefined,
+			);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.license.planGroup).toBe('trial');
+		});
+
 		it('surfaces the forceAgentWorthTesting operator override', async () => {
 			globalConfig.evaluation = {
 				...globalConfig.evaluation,

@@ -74,7 +74,10 @@ import NpsSurvey from '@/app/components/NpsSurvey.vue';
 import type { WorkflowVersionFormModalData } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
 import DynamicModalLoader from './DynamicModalLoader.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
-import type { AiGatewayTopUpVariant } from '@/app/composables/useAiGatewayTopUp';
+import type {
+	AiGatewayTopUpVariant,
+	AiGatewayUpgradeReason,
+} from '@/app/composables/useAiGatewayTopUp';
 import { defineAsyncComponent } from 'vue';
 import { lazyModalLoaders } from '@/app/modals/lazyModals';
 
@@ -514,8 +517,14 @@ const TrialIntroModal = defineAsyncComponent(lazyModalLoaders[TRIAL_INTRO_MODAL_
 		</ModalRoot>
 
 		<ModalRoot :name="AI_GATEWAY_TOP_UP_MODAL_KEY">
-			<template #default="{ data }: { data: { variant: AiGatewayTopUpVariant } }">
-				<AiGatewayTopUpModal :variant="data.variant" />
+			<template
+				#default="{
+					data,
+				}: {
+					data: { variant: AiGatewayTopUpVariant; reason?: AiGatewayUpgradeReason };
+				}"
+			>
+				<AiGatewayTopUpModal :variant="data.variant" :reason="data.reason" />
 			</template>
 		</ModalRoot>
 
