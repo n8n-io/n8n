@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_af367323ed1620::t_c95b75e278c97c 3,2812,2815-2819,2824-2831,2840-2843,2857-2858,2886
+packages/cli/src/modules/agents/__tests__/agent-thread-redaction.service.test.ts
+  s_af367323ed1620::t_51eb99fb7c1896 1,466,473
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_af367323ed1620::t_fde2fe6b1ec5a1 102-103,1089,1112,1153-1194,1196,1222-1223,1230-1232
+packages/cli/src/modules/agents/agent-thread-redaction.service.ts
+  s_af367323ed1620::t_bd0f62b6872fa3 8,88-89,197-201,239-241,294-297,303-305,307,309,312,315,317,319-320,324,327,329-333,335,345,352-356
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_af367323ed1620::t_9c99b01773d393 140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d5296d24345771e0fa00ae57533117c0b1c348f6",
+  "prompts": {},
+  "sessions": {
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

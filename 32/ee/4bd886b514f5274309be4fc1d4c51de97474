@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_55c9c16466c150::t_dfac9f0fd6c061 1,380
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_55c9c16466c150::t_44ae837b92a447 8,93,113,127,1323-1338,1346-1358,1360-1367,1370-1372,1375,1377-1396
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_55c9c16466c150::t_dbfb7aba06b6b3 41-45,173,358,383-388,393,395,407-411,413,428-449
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_55c9c16466c150::t_e4f6a62d953d91 1960
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32ee4bd886b514f5274309be4fc1d4c51de97474",
+  "prompts": {},
+  "sessions": {
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

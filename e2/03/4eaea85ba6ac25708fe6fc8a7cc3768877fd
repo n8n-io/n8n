@@ -1,0 +1,21 @@
+packages/cli/src/__tests__/load-nodes-and-credentials.test.ts
+  s_a309c198820fb1::t_b9cf9dfa8515a3 160-174
+packages/cli/src/load-nodes-and-credentials.ts
+  s_a309c198820fb1::t_ba56c44034e457 277-278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2034eaea85ba6ac25708fe6fc8a7cc3768877fd",
+  "prompts": {},
+  "sessions": {
+    "s_a309c198820fb1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61fc1daf-a1c2-45e9-bf0c-53ffd6bab72a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

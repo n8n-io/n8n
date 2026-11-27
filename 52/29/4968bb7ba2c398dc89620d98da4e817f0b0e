@@ -1,0 +1,51 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_af367323ed1620::t_abcd4e75524a4a 2818,4140,5395-5396
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_af367323ed1620::t_568037a8b3fafa 7,65,77,80,342-399
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_af367323ed1620::t_f78c328f38a587 283
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_af367323ed1620::t_a76218ad3522ed 817-887,1076-1110
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_55c9c16466c150::t_97ceda31e34f9e 4,49-54,135,148-150,281-282,290-296,321-343,355,358,395-400
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_af367323ed1620::t_278a5290fda737 224-230,486,497-498,534-548,588,605-678,952-966,1832,1845,1911,1930,1955,2018
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_55c9c16466c150::t_bb78e2fb614bd5 38,167
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_55c9c16466c150::t_68b433a08c7ee1 116-121,382
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_3670547c97e2ec::t_56439f75457d6c 381-385,401,1107,1612,1973,2257-2259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "52294968bb7ba2c398dc89620d98da4e817f0b0e",
+  "prompts": {},
+  "sessions": {
+    "s_3670547c97e2ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a54ac6095665d362f",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

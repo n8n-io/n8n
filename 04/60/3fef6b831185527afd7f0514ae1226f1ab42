@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/agent-thread-redaction.service.test.ts
+  s_af367323ed1620::t_f16869bb06ef07 524-539
+packages/cli/src/modules/agents/agent-thread-redaction.service.ts
+  s_af367323ed1620::t_bc579b1709d597 198-200,202,210-214,217-223,226,231,233,241-242,290,305,359-361,414,458
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "04603fef6b831185527afd7f0514ae1226f1ab42",
+  "prompts": {},
+  "sessions": {
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

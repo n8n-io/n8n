@@ -1,0 +1,30 @@
+packages/cli/src/modules/inbound-auth-core/__tests__/external-identity.test.ts
+  s_14807a50d287da::t_b557f2a3e8473d 8,251-262
+  s_14807a50d287da::t_b3486079578fca 241-247
+packages/cli/src/modules/inbound-auth-core/identity/external-identity.ts
+  h_32d8cd6a0d6aad 21,23
+  s_14807a50d287da::t_b557f2a3e8473d 3,22
+packages/cli/src/modules/inbound-auth-core/identity/trusted-source-identity.service.ts
+  ai_agent 404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1fe3dbc1276a2a154be1d3867699934e76b8115a",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_14807a50d287da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e12fb81-4a06-4d8e-90db-fdd5463b88f8",
+        "model": "unknown"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

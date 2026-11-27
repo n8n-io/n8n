@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_af367323ed1620::t_30a26f27deeacc 380
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_af367323ed1620::t_b4e0da370401ce 932-933,940,944-949
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_af367323ed1620::t_26e282d083a7da 296-300,340,347
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_af367323ed1620::t_c771db49a25782 43,646,686,692-696,701-711,848
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "946f62e0c610bdef8a5a33ef598a3204cdacc886",
+  "prompts": {},
+  "sessions": {
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
