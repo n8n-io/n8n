@@ -3632,6 +3632,26 @@ a.br-card:hover .strip img { transform: scale(1.06); }
 a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
 @media (prefers-reduced-motion: reduce) { .br-mini-chip { animation: none; } }
 
+/* ===== src/content/48-branchen-neu.css ===== */
+/* =========================================================================
+   Shared styles for the industries added in 41–47 (48-branchen-neu.css)
+   - .br-safe-note: one short limits line at the end of the stage section
+     (Praxen, Kanzleien, Tierarzt).
+   ========================================================================= */
+.br-safe-note { display: flex; align-items: flex-start; justify-content: center; gap: 8px; max-width: 44em; margin: 10px auto 0; line-height: 1.6; }
+.br-safe-note svg { flex: none; margin-top: 3px; color: hsl(var(--primary)); }
+
+/* #branchen overview with 12 industries */
+/* "Und viele mehr" alone in the last row: full width instead of a lone card */
+@media (min-width: 680px) and (max-width: 999.98px) { .br-grid > .br-more:nth-child(2n+1) { grid-column: 1 / -1; } }
+@media (min-width: 1000px) { .br-grid > .br-more:nth-child(3n+1) { grid-column: 1 / -1; } }
+/* explorer split into two groups behind a switch */
+.br-fx-tabs { margin: 8px auto 32px; }
+.br-fx-grp[hidden] { display: none; }
+
+/* Branchen menu: 12 entries in two columns; scroll inside on short windows */
+#branchen-menu.open { max-height: calc(100vh - 96px); max-height: calc(100dvh - 96px); overflow-y: auto; overscroll-behavior: contain; }
+
 /* ===== src/content/50-preise-kontakt.css ===== */
 /* 50-preise-kontakt.css: #preise, #kontakt (prefix pk-) and the legal pages from 60-rechtliches.js (prefix rk-). */
 
@@ -4102,7 +4122,7 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
     </div>
   </div>
 </footer>
-<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = '4f3a6b9ff3';</script>
+<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = 'd618799a73';</script>
 <script>
 /* ===== src/core.js ===== */
 /* =========================================================================
@@ -4573,6 +4593,8 @@ NORRA.canPost = function () {
 /* Flat hash routes. industry routes are 'branche-' + industry slug. */
 NORRA.ROUTES = ['start', 'produkte', 'voice-agent', 'chatbot', 'social-media', 'website', 'branchen',
   'branche-kosmetik', 'branche-coaches', 'branche-gastro', 'branche-friseure', 'branche-hotels',
+  'branche-praxen', 'branche-werkstatt', 'branche-handwerk', 'branche-immobilien', 'branche-fitness',
+  'branche-kanzleien', 'branche-tierarzt',
   'preise', 'kontakt', 'onboarding', 'impressum', 'datenschutz', 'agb'];
 NORRA.PRODUCT_ROUTES = ['voice-agent', 'chatbot', 'social-media', 'website'];
 NORRA.KIT_BY_PRODUCT = { 'voice-agent': 'voice', 'chatbot': 'chat', 'social-media': 'social', 'website': 'website' };
@@ -9949,7 +9971,7 @@ NORRA.start.privacy = function () {
     '<div class="reveal">' + stage + '</div></div></div></section>';
 };
 
-/* ---------- 12. Industries (live site, 13 tabs) ---------- */
+/* ---------- 12. Industries (live site, 13 tabs; every tab links to its #branche- page) ---------- */
 NORRA.start.AGENTS = { v: ['phone', 'Voice Agent'], c: ['msg', 'Chatbot'], s: ['camera', 'Social Media AI'] };
 /* preset: [Anrufe/Woche, Website-Anfragen/Woche, Stundensatz €, unbeantwortete Anrufe/Woche, Auftragswert €] (live calculator presets) */
 NORRA.start.PRESETS = { salon: [60, 35, 45, 14, 120], cafe: [120, 50, 35, 30, 60], hotel: [150, 120, 45, 25, 340], coach: [20, 30, 90, 6, 900],
@@ -9967,21 +9989,21 @@ NORRA.start.INDUSTRIES = [
     [['v', 'Bucht, verschiebt, storniert.'], ['s', 'Antwortet auf DMs mit Buchungslink.'], ['c', 'Zeigt Preise und freie Zeiten.']], 29, 'vs'],
   ['Hotels', 'bed', 'hotel', 'hotels', 'Gäste fragen rund um die Uhr, in jeder Sprache.',
     [['c', 'Antwortet mehrsprachig, leitet zur Direktbuchung.'], ['v', 'Nimmt nachts Anrufe an.'], ['s', 'Beantwortet Gruppenanfragen.']], 52, 'cvs'],
-  ['Zahnarztpraxen', 'smile', 'praxis', '', 'Die Anmeldung telefoniert, der Tresen wartet.',
+  ['Zahnarztpraxen', 'smile', 'praxis', 'praxen', 'Die Anmeldung telefoniert, der Tresen wartet.',
     [['v', 'Bucht und verschiebt Termine.'], ['c', 'Erklärt Leistungen und Kosten.'], ['s', 'Beantwortet Fragen zu Ästhetik.']], 48, 'vc'],
-  ['Physiotherapie', 'users', 'praxis', '', 'Absagen hinterlassen leere Plätze.',
+  ['Physiotherapie', 'users', 'praxis', 'praxen', 'Absagen hinterlassen leere Plätze.',
     [['v', 'Füllt Absagen aus der Warteliste.'], ['c', 'Klärt Verordnung und Anfahrt.'], ['v', 'Erinnert vor dem Termin.']], 38, 'vc'],
-  ['Autowerkstätten', 'startWrench', 'werkstatt', '', 'In der Halle hört niemand das Telefon.',
+  ['Autowerkstätten', 'startWrench', 'werkstatt', 'werkstatt', 'In der Halle hört niemand das Telefon.',
     [['v', 'Fragt Kennzeichen ab und bucht.'], ['c', 'Auskunft zu Service und Reifen.'], ['v', 'Meldet, wenn das Auto fertig ist.']], 44, 'vc'],
-  ['Handwerksbetriebe', 'building', 'handwerk', '', 'Auf der Baustelle bleibt das Telefon stumm.',
+  ['Handwerksbetriebe', 'building', 'handwerk', 'handwerk', 'Auf der Baustelle bleibt das Telefon stumm.',
     [['v', 'Erkennt Notfälle, leitet sofort weiter.'], ['c', 'Erfasst Ort, Gewerk, Dringlichkeit.'], ['v', 'Fasst bei Angeboten nach.']], 36, 'vc'],
-  ['Immobilienmakler', 'startHome', 'makler', '', 'Jedes Inserat bringt dieselben Fragen.',
+  ['Immobilienmakler', 'startHome', 'makler', 'immobilien', 'Jedes Inserat bringt dieselben Fragen.',
     [['v', 'Vergibt Besichtigungstermine.'], ['c', 'Qualifiziert nach Budget vor.'], ['s', 'Antwortet unter Objektbeiträgen.']], 46, 'vcs'],
-  ['Fitnessstudios', 'startDumbbell', 'fitness', '', 'Das Team betreut Mitglieder, nicht das Telefon.',
+  ['Fitnessstudios', 'startDumbbell', 'fitness', 'fitness', 'Das Team betreut Mitglieder, nicht das Telefon.',
     [['c', 'Bucht das Probetraining.'], ['s', 'Beantwortet DMs zum Kursplan.'], ['v', 'Nimmt Anrufe ausserhalb der Zeiten an.']], 33, 'csv'],
-  ['Kanzleien & Steuerberatung', 'scroll', 'kanzlei', '', 'Erstanfragen binden das Sekretariat.',
+  ['Kanzleien & Steuerberatung', 'scroll', 'kanzlei', 'kanzleien', 'Erstanfragen binden das Sekretariat.',
     [['v', 'Prüft, ob das Rechtsgebiet passt.'], ['c', 'Erklärt Ablauf und Kosten.'], ['v', 'Erinnert an fehlende Unterlagen.']], 30, 'vc'],
-  ['Tierarztpraxen', 'heart', 'praxis', '', 'Besorgte Halter brauchen sofort Auskunft.',
+  ['Tierarztpraxen', 'heart', 'praxis', 'tierarzt', 'Besorgte Halter brauchen sofort Auskunft.',
     [['v', 'Erkennt Notfälle, verbindet sofort.'], ['c', 'Beantwortet Fragen zu Impfungen.'], ['v', 'Erinnert an Impftermine, mit Einwilligung.']], 41, 'vc']
 ];
 NORRA.start.indPanel = function (n) {
@@ -12862,7 +12884,7 @@ NORRA.branchen.build = function (S, CALL) {
 };
 NORRA.branchen.DATA = NORRA.branchen.build(NORRA.branchen.S, NORRA.branchen.CALL);
 
-NORRA.branchen.MORE = ['Zahnarztpraxen', 'Physiotherapie', 'Autowerkstätten', 'Handwerk', 'Immobilien', 'Fitness', 'Kanzleien', 'Tierarztpraxen'];
+NORRA.branchen.MORE = ['Fahrschulen', 'Optiker', 'Reinigungsfirmen', 'Umzugsfirmen', 'Eventlocations', 'Bildungsanbieter'];
 
 NORRA.branchen.DATA.forEach(function (n) {
   n.description = n.lede;
@@ -13094,6 +13116,520 @@ NORRA.branchen.DATA.forEach(function (n) {
 });
 </script>
 <script>
+/* ===== src/content/41-branche-praxen.js ===== */
+/* =========================================================================
+   Branche: Arzt- und Therapiepraxen (41-branche-praxen.js)
+   Route: #branche-praxen. Same entry shape and page as 40-branchen.js
+   (panel hero with day log, stage with 3 scenes + 3 use cards, recs,
+   Richtwerte, CTA), plus a short note on medical limits under the stage.
+   Uses only the public builders on NORRA.branchen; adds to NORRA.branchen.DATA
+   so the #branchen overview (cards, explorer, matrix) lists it too.
+   ========================================================================= */
+
+(function () {
+  var B = NORRA.branchen;
+  if (!B || !B.S || NORRA.industryBySlug('praxen')) return;
+  var S = B.S, CALL = B.CALL;
+
+  NORRA.personas['praxis-am-rain'] = { business: 'Praxis am Rain', type: 'Arztpraxis', owner: 'Dr. Lea Brunner', role: 'Praxisinhaberin', initials: 'LB' };
+
+  var n = {
+    slug: 'praxen', persona: 'praxis-am-rain', name: 'Arzt- und Therapiepraxen', icon: 'heart', color: 'var(--chart-1)', tint: 'sage',
+    tagline: 'Erreichbar, auch in der Sprechstunde.', summary: 'Termine, Erinnerungen und Rezeptwünsche, ohne besetzte Leitung.',
+    lede: 'Termine gebucht und verschoben, Dringendes sofort ans Team.',
+    problem: 'Die Leitung ist besetzt, das Team beim Patienten.',
+    heroGradient: 'linear-gradient(140deg, hsl(158 30% 92%) 0%, hsl(212 56% 94%) 55%, hsl(200 36% 92%) 100%)',
+    log: [['phone', '07:58', 'Kontrolle gebucht'], ['bell', '08:30', 'Erinnerung bestätigt'], ['shield', '09:14', 'Dringend: ans Team verbunden'],
+      ['msg', '10:02', 'Rezeptwunsch ans Team'], ['refresh', '11:25', 'Termin verschoben'], ['calendarCheck', '12:10', 'Recall: Termin vereinbart']],
+    stageTitle: 'Eine Praxis, drei Kanäle',
+    scenes: [
+      S('phone', 'Praxis am Rain · Anruf', ['u:Ich bräuchte nächste Woche einen Kontrolltermin.', 'a:Gerne. Dienstag 8:15 oder Donnerstag 17:40 Uhr?', '+:Kontrolle Di 8:15 gebucht|calendarCheck', 'n:Dringendes geht sofort ans Praxisteam'], 'Termin gebucht', CALL('00:34')),
+      S('msg', 'Praxis am Rain · Website-Chat', ['u:Kann ich mein Rezept erneuern lassen?', 'a:Ich gebe Ihren Wunsch ans Praxisteam weiter. Sie erhalten Bescheid, sobald er geprüft ist.|Norra Chatbot', 'n:Keine medizinische Beratung durch den Agent'], { icon: 'userCheck', text: 'Ans Team übergeben' }),
+      S('smartphone', 'Praxis am Rain · WhatsApp', ['a:Erinnerung: morgen 9:30 Uhr bei Dr. Brunner. Passt es noch?|Norra Chatbot', 'u:Leider nicht. Geht Freitag?', 'a:Freitag 11:00 Uhr ist frei. Ich trage Sie ein.', '+:Verschoben · Termin wieder frei|refresh'], { icon: 'bell', text: 'Erinnert und verschoben' })
+    ],
+    uses: [['voice-agent', 'Anrufe in der Sprechstunde', 'Termine gebucht, Dringendes ans Team.'],
+      ['chatbot', 'Rezeptwünsche und Fragen', 'Aufgenommen und ans Team übergeben.'],
+      ['chatbot', 'Erinnerung und Recall', 'Per WhatsApp, frei gewordene Termine neu vergeben.']],
+    recs: [['voice-agent', 'Erste Wahl', 'Nimmt Anrufe an, bucht und verschiebt.'], ['chatbot', 'Empfohlen', 'Öffnungszeiten, Rezeptwünsche, Erinnerungen.'],
+      ['website', 'Ergänzung', 'Praxisseite mit Online-Terminen.']],
+    groups: ['kalender-termine', 'telefonie-rufnummern'], save: { hours: 38, rate: 55 }, typeFor: 'für eine Arzt- oder Therapiepraxis'
+  };
+
+  n.description = n.lede;
+  n.cardImage = n.video ? n.video.poster : '';
+  B.DATA.push(n);
+  NORRA.industries.push(n);
+  NORRA.titles['branche-' + n.slug] = n.name + ' · Norra';
+
+  /* Short note on medical limits at the end of the stage section (same .br-safe-note as Tierarzt and Kanzleien). */
+  B.praxenGuard = function () {
+    return '<p class="note center br-safe-note">' + NORRA.ico('shield', 14) +
+      '<span>Der Agent stellt keine Diagnosen und gibt keinen medizinischen Rat. Dringendes geht an Ihr Team oder an den Notruf. ' +
+      'Gesundheitsdaten verarbeiten Sie in Ihrer Verantwortung.</span></p>';
+  };
+
+  var route = 'branche-' + n.slug;
+  NORRA.pages[route] = function (el) {
+    el.innerHTML = (B.hero(n) + B.stageSection(n).replace(/<\/section>$/, B.praxenGuard() + '</section>') + B.recs(n) + B.results(n) +
+      NORRA.ctaBlock({ title: 'Bereit für Ihren ersten Agent?',
+        primary: { label: 'Demo anfragen', href: '#kontakt', arrow: true, attrs: B.prefill(n.slug) },
+        secondary: { label: 'Ersparnis berechnen', goto: 'preise:rechner', kind: 'outline', attrs: B.prefill(n.slug) } }))
+      /* calculator preset and contact-form option are keyed 'praxis' */
+      .replace(/data-prefill-industry="praxen"/g, 'data-prefill-industry="praxis"');
+  };
+  NORRA.pages[route].wire = function (el) { B.wireUses(el); B.wireLog(el, n); };
+})();
+</script>
+<script>
+/* ===== src/content/42-branche-werkstatt.js ===== */
+/* =========================================================================
+   Branche Autowerkstätten (42-branche-werkstatt.js)
+   Route: #branche-werkstatt. Same entry shape, builders and look as
+   40-branchen.js (panel hero with day log, stage, use cards, recs, Richtwerte, CTA).
+   Also listed in NORRA.branchen.DATA, so the #branchen overview shows it.
+   ========================================================================= */
+
+NORRA.ICONS.car = NORRA.ICONS.car || '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>';
+
+NORRA.personas = NORRA.personas || {};
+NORRA.personas['garage-moosbach'] = NORRA.personas['garage-moosbach'] ||
+  { business: 'Garage Moosbach', type: 'Autowerkstatt', owner: 'Marco Keller', role: 'Inhaber', initials: 'MK' };
+
+NORRA.brWerkstatt = {};
+NORRA.brWerkstatt.build = function (S, CALL) {
+  return {
+    slug: 'werkstatt', persona: 'garage-moosbach', name: 'Autowerkstätten', icon: 'car', color: 'var(--chart-1)', tint: 'mist',
+    tagline: 'Erreichbar, auch unter der Hebebühne.', summary: 'Termine, Statusfragen und Reifenwechsel, während Sie schrauben.',
+    lede: 'Termine, Statusfragen und Reifenwechsel, auch in der Saison.',
+    problem: 'In der Reifensaison klingelt das Telefon ohne Pause.',
+    heroGradient: 'linear-gradient(140deg, hsl(212 50% 93%) 0%, hsl(220 30% 94%) 55%, hsl(150 22% 91%) 100%)',
+    log: [['phone', '07:32', 'Reifenwechsel gebucht'], ['whatsapp', '08:15', 'Status: abholbereit ab 16 Uhr'], ['msg', '09:40', 'Kostenrahmen genannt'],
+      ['bell', '11:05', 'Abholung erinnert'], ['star', '12:20', 'Bewertungsantwort entworfen'], ['refresh', '13:48', 'Service verschoben']],
+    stageTitle: 'Eine Werkstatt, drei Kanäle',
+    scenes: [
+      S('phone', 'Garage Moosbach · Anruf', ['u:Was kostet der Reifenwechsel, und wann haben Sie Zeit?|Oktober, Hochsaison',
+        'a:Meist {{m:60}} bis {{m:90}}. Montag 7:30 oder Dienstag 12:00 Uhr?', '+:Mo 7:30 gebucht · Räder aus dem Lager|calendarCheck'],
+        { icon: 'calendarCheck', text: 'Termin gebucht' }, CALL('00:34')),
+      S('whatsapp', 'Garage Moosbach · WhatsApp', ['u:Ist mein Auto schon fertig?',
+        'a:Laut Auftrag ab 16 Uhr abholbereit. Ich erinnere Sie kurz vorher.|Norra Chatbot', '+:Erinnerung zur Abholung · 15:45|bell'],
+        { icon: 'check', text: 'Status aus dem Auftrag' }),
+      S('star', 'Garage Moosbach · Google-Profil', ['u:Schnell, freundlich, fairer Preis.|Neue Bewertung · 5 Sterne',
+        'a:Vielen Dank! Gute Fahrt bis zum nächsten Service.|Norra Social Media AI', 'n:Entwurf · wartet auf Ihre Freigabe'],
+        { icon: 'check', text: 'Mit einem Klick frei' })
+    ],
+    uses: [['voice-agent', 'Reifenwechsel zur Saison', 'Kostenrahmen genannt, Termin gebucht.'],
+      ['chatbot', 'Ist mein Auto fertig?', 'Status aus dem Auftrag, per WhatsApp.'],
+      ['social-media', 'Google-Bewertungen', 'Antworten entworfen, Sie geben frei.']],
+    recs: [['voice-agent', 'Erste Wahl', 'Nimmt Anrufe an, während Sie schrauben.'], ['chatbot', 'Empfohlen', 'Status und Termine per WhatsApp und Website.'],
+      ['website', 'Ergänzung', 'Leistungen und Online-Termin an einem Ort.'], ['social-media', 'Ergänzung', 'Antwortet auf Bewertungen, mit Freigabe.']],
+    groups: ['kalender-termine', 'nachrichten-kanaele'], save: { hours: 38, rate: 60 }, typeFor: 'für eine Autowerkstatt'
+  };
+};
+
+NORRA.brWerkstatt.entry = NORRA.brWerkstatt.build(NORRA.branchen.S, NORRA.branchen.CALL);
+NORRA.brWerkstatt.entry.description = NORRA.brWerkstatt.entry.lede;
+NORRA.brWerkstatt.entry.cardImage = '';
+if (!NORRA.industryBySlug('werkstatt')) NORRA.industries.push(NORRA.brWerkstatt.entry);
+if (NORRA.branchen.DATA.indexOf(NORRA.brWerkstatt.entry) < 0) NORRA.branchen.DATA.push(NORRA.brWerkstatt.entry);
+NORRA.titles['branche-werkstatt'] = 'Autowerkstätten · Norra';
+
+NORRA.pages['branche-werkstatt'] = function (el) { NORRA.branchen.renderPage(el, 'werkstatt'); };
+NORRA.pages['branche-werkstatt'].wire = function (el) {
+  NORRA.branchen.wireUses(el);
+  NORRA.branchen.wireLog(el, NORRA.industryBySlug('werkstatt') || NORRA.brWerkstatt.entry);
+};
+</script>
+<script>
+/* ===== src/content/43-branche-handwerk.js ===== */
+/* =========================================================================
+   Branche Handwerk (43-branche-handwerk.js)
+   Route: #branche-handwerk. Same entry shape, builders and look as
+   40-branchen.js (panel hero with day log, stage, use cards, recs, Richtwerte, CTA).
+   Also listed in NORRA.branchen.DATA, so the #branchen overview shows it.
+   ========================================================================= */
+
+NORRA.ICONS.wrench = NORRA.ICONS.wrench || '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>';
+
+NORRA.personas = NORRA.personas || {};
+NORRA.personas['lindmann-haustechnik'] = NORRA.personas['lindmann-haustechnik'] ||
+  { business: 'Lindmann Haustechnik', type: 'Handwerksbetrieb', owner: 'Tobias Lindmann', role: 'Inhaber', initials: 'TL' };
+
+NORRA.brHandwerk = {};
+NORRA.brHandwerk.build = function (S, CALL) {
+  return {
+    slug: 'handwerk', persona: 'lindmann-haustechnik', name: 'Handwerksbetriebe', icon: 'wrench', color: 'var(--chart-3)', tint: 'sand',
+    tagline: 'Erreichbar, auch auf der Baustelle.', summary: 'Anrufe und Aufträge erfasst, während Sie arbeiten.',
+    lede: 'Anfragen mit Fotos erfasst, Dringendes sofort weitergeleitet.',
+    problem: 'Wer auf der Leiter steht, kann nicht abnehmen.',
+    heroGradient: 'linear-gradient(140deg, hsl(36 46% 92%) 0%, hsl(212 50% 94%) 55%, hsl(150 22% 91%) 100%)',
+    log: [['phone', '07:48', 'Notfall ans Pikett'], ['image', '08:20', 'Fotos zum Auftrag erfasst'], ['calendarCheck', '09:05', 'Besichtigung gebucht'],
+      ['msg', '10:30', 'Offerte nachgefragt'], ['refresh', '11:12', 'Termin verschoben'], ['whatsapp', '12:40', 'Anfrage mit Massen']],
+    stageTitle: 'Ein Betrieb, drei Kanäle',
+    scenes: [
+      S('phone', 'Lindmann Haustechnik · Anruf', ['u:Bei uns läuft Wasser aus der Decke!|07:48 Uhr, Team auf der Baustelle',
+        'a:Das ist dringend. Ich verbinde Sie jetzt mit unserem Pikettdienst.', '+:Weitergeleitet · Pikett|phone'],
+        { icon: 'bell', text: 'Dringend erkannt' }, CALL('00:26')),
+      S('whatsapp', 'Lindmann Haustechnik · WhatsApp', ['u:Hier ein Foto vom Sicherungskasten. Können Sie das anschauen?|Foto angehängt',
+        'a:Danke. Passt Donnerstag 13:00 Uhr für eine Besichtigung?|Norra Chatbot', '+:Besichtigung Do 13:00 · Foto im Auftrag|calendarCheck'],
+        { icon: 'image', text: 'Mit Foto erfasst' }),
+      S('msg', 'Lindmann Haustechnik · Website-Chat', ['u:Wir haben die Offerte erhalten. Wann könnten Sie starten?',
+        'a:Ich kläre das mit dem Büro. Sie hören bis morgen von uns.|Norra Chatbot', '+:Rückmeldung ans Büro · Offerte Badumbau|list'],
+        { icon: 'userCheck', text: 'Ans Büro übergeben' })
+    ],
+    uses: [['voice-agent', 'Anrufe auf der Baustelle', 'Dringendes zum Pikett, der Rest gebucht.'],
+      ['chatbot', 'Aufträge mit Fotos', 'Details und Bilder per Chat erfasst.'],
+      ['chatbot', 'Offerten nachfassen', 'Fragen gesammelt, ans Büro übergeben.']],
+    recs: [['voice-agent', 'Erste Wahl', 'Nimmt Anrufe an, während Sie arbeiten.'], ['chatbot', 'Empfohlen', 'Erfasst Aufträge mit Fotos.'],
+      ['website', 'Empfohlen', 'Leistungen, Region und Anfrage an einem Ort.'], ['social-media', 'Ergänzung', 'Zeigt Arbeiten, beantwortet DMs.']],
+    groups: ['kalender-termine', 'nachrichten-kanaele'], save: { hours: 36, rate: 80 }, typeFor: 'für einen Handwerksbetrieb'
+  };
+};
+
+NORRA.brHandwerk.entry = NORRA.brHandwerk.build(NORRA.branchen.S, NORRA.branchen.CALL);
+NORRA.brHandwerk.entry.description = NORRA.brHandwerk.entry.lede;
+NORRA.brHandwerk.entry.cardImage = '';
+if (!NORRA.industryBySlug('handwerk')) NORRA.industries.push(NORRA.brHandwerk.entry);
+if (NORRA.branchen.DATA.indexOf(NORRA.brHandwerk.entry) < 0) NORRA.branchen.DATA.push(NORRA.brHandwerk.entry);
+NORRA.titles['branche-handwerk'] = 'Handwerksbetriebe · Norra';
+
+NORRA.pages['branche-handwerk'] = function (el) { NORRA.branchen.renderPage(el, 'handwerk'); };
+NORRA.pages['branche-handwerk'].wire = function (el) {
+  NORRA.branchen.wireUses(el);
+  NORRA.branchen.wireLog(el, NORRA.industryBySlug('handwerk') || NORRA.brHandwerk.entry);
+};
+</script>
+<script>
+/* ===== src/content/44-branche-immobilien.js ===== */
+/* =========================================================================
+   Branche Immobilien (44-branche-immobilien.js)
+   Route: #branche-immobilien. Same entry shape, builders and page as
+   40-branchen.js (hero -> stage + 3 use cards -> recs -> Richtwerte -> CTA).
+   Makler und Verwaltungen: Objektanfragen, Vorqualifizierung, Besichtigungen,
+   Unterlagen, Mieteranliegen. Example business is invented.
+   ========================================================================= */
+
+if (NORRA.branchen && NORRA.branchen.S && NORRA.branchen.renderPage) {
+  NORRA.personas = NORRA.personas || {};
+  NORRA.personas['immobilien-talwiese'] = NORRA.personas['immobilien-talwiese'] ||
+    { business: 'Immobilien Talwiese', type: 'Immobilienbüro', owner: 'Daniel Lenz', role: 'Inhaber', initials: 'DL' };
+
+  NORRA.branchen.immobilienBuild = function (S, CALL) {
+    return {
+      slug: 'immobilien', persona: 'immobilien-talwiese', name: 'Immobilien', icon: 'building', color: 'var(--chart-2)', tint: 'mist',
+      tagline: 'Jede Objektanfrage beantwortet.', summary: 'Objektanfragen, Besichtigungen und Mieteranliegen, rund um die Uhr.',
+      lede: 'Anfragen, Besichtigungen und Mieteranliegen, rund um die Uhr.',
+      problem: 'Interessenten melden sich abends, nicht zu Bürozeiten.',
+      heroGradient: 'linear-gradient(140deg, hsl(212 56% 93%) 0%, hsl(200 36% 93%) 55%, hsl(44 30% 92%) 100%)',
+      video: { src: 'media/open-floor.mp4', poster: 'media/open-floor.jpg', alt: 'Ein Mann mit Unterlagen arbeitet in einem hellen Büro, Kolleginnen an ihren Bildschirmen.' },
+      stageTitle: 'Ein Büro, drei Kanäle',
+      scenes: [
+        S('phone', 'Immobilien Talwiese · Anruf', ['u:Ist die 3,5-Zimmer-Wohnung an der Seestrasse noch frei?|21:10 Uhr, nach Büroschluss',
+          'a:Ja. Besichtigung am Samstag um 10:00 oder 11:30 Uhr. Was passt Ihnen?',
+          '+:Besichtigung Sa 10:00 · im Kalender|calendarCheck'], { icon: 'calendarCheck', text: 'Besichtigung gebucht' }, CALL('00:38')),
+        S('msg', 'Immobilien Talwiese · Website-Chat', ['u:Ist das Einfamilienhaus am Waldrand noch zu haben?',
+          'a:Ja. Darf ich kurz nach Budget und Zeitrahmen fragen?|Norra Chatbot',
+          'u:Finanzierung steht, Einzug bis Sommer.',
+          '+:Dokumentation per E-Mail · Lead im CRM|file'], { icon: 'userCheck', text: 'Vorqualifiziert' }),
+        S('whatsapp', 'Immobilien Talwiese · WhatsApp', ['u:Die Heizung in unserer Wohnung bleibt kalt.|Mieterin, Birkenweg 12',
+          'a:Danke. Ich erfasse die Meldung, die Verwaltung meldet sich heute noch.|Norra Chatbot',
+          'n:Notfälle wie Wasserschaden: direkt an den Pikettdienst'], { icon: 'file', text: 'Meldung erfasst' })
+      ],
+      uses: [['voice-agent', 'Anfragen zu Objekten', 'Auch abends, Besichtigung direkt gebucht.'],
+        ['chatbot', 'Interessenten vorqualifizieren', 'Budget und Zeitrahmen geklärt, Unterlagen verschickt.'],
+        ['chatbot', 'Mieteranliegen', 'Meldungen erfasst, Dringendes sofort weitergeleitet.']],
+      recs: [['voice-agent', 'Erste Wahl', 'Nimmt Objektanfragen an, auch abends.'], ['chatbot', 'Empfohlen', 'Qualifiziert vor, auch per WhatsApp.'],
+        ['website', 'Empfohlen', 'Objekte und Besichtigungen an einem Ort.'], ['social-media', 'Ergänzung', 'Neue Objekte geplant, Fragen beantwortet.']],
+      groups: ['kalender-termine', 'crm-kundendaten'], save: { hours: 38, rate: 80 }, typeFor: 'für ein Immobilienbüro'
+    };
+  };
+  NORRA.branchen.immobilien = NORRA.branchen.immobilienBuild(NORRA.branchen.S, NORRA.branchen.CALL);
+
+  NORRA.branchen.immobilienRegister = function (n) {
+    n.description = n.lede;
+    n.cardImage = n.video ? n.video.poster : '';
+    if (!NORRA.industryBySlug(n.slug)) NORRA.industries.push(n);
+    /* overview cards, explorer and fit matrix on #branchen read NORRA.branchen.DATA */
+    if (NORRA.branchen.DATA && NORRA.branchen.DATA.indexOf(n) < 0) NORRA.branchen.DATA.push(n);
+    NORRA.titles['branche-' + n.slug] = n.name + ' · Norra';
+    var r = 'branche-' + n.slug;
+    NORRA.pages[r] = function (el) { NORRA.branchen.renderPage(el, n.slug); };
+    NORRA.pages[r].wire = function (el) { NORRA.branchen.wireUses(el); NORRA.branchen.wireLog(el, n); };
+  };
+  NORRA.branchen.immobilienRegister(NORRA.branchen.immobilien);
+}
+</script>
+<script>
+/* ===== src/content/45-branche-fitness.js ===== */
+/* =========================================================================
+   Branche Fitness- und Yogastudios (45-branche-fitness.js)
+   Route: #branche-fitness. Same entry shape and page as 40-branchen.js:
+   panel hero with day log -> stage (3 scenes) + 3 synced use cards ->
+   recommended services -> Richtwerte -> CTA. Reuses NORRA.branchen builders.
+   ========================================================================= */
+
+NORRA.ICONS.dumbbell = NORRA.ICONS.dumbbell ||
+  '<path d="M6 7v10"/><path d="M18 7v10"/><path d="M3 9.5v5"/><path d="M21 9.5v5"/><path d="M6 12h12"/>';
+
+NORRA.fitness = {};
+
+NORRA.fitness.entry = function (S, CALL) {
+  return {
+    slug: 'fitness', persona: 'studio-puls', name: 'Fitness- und Yogastudios', icon: 'dumbbell', color: 'var(--chart-2)', tint: 'night',
+    tagline: 'Volle Kurse, freie Hände.', summary: 'Probetrainings, Abo-Fragen und DMs, während Sie unterrichten.',
+    lede: 'Probetrainings gebucht, Abo-Fragen beantwortet, DMs in Minuten.',
+    problem: 'Wer nach einem Probetraining fragt, will sofort eine Antwort.',
+    heroGradient: 'linear-gradient(140deg, hsl(150 30% 92%) 0%, hsl(212 56% 94%) 55%, hsl(170 28% 91%) 100%)',
+    log: [['msg', '07:40', 'Probetraining Pilates gebucht'], ['camera', '09:15', 'Kursplan per DM'], ['phone', '10:30', 'Abo-Pause notiert'],
+      ['whatsapp', '12:05', 'Ehemaliges Mitglied zurück'], ['calendarCheck', '16:20', 'Platz von der Warteliste vergeben'], ['phone', '18:45', 'Probetraining Boxen gebucht']],
+    stageTitle: 'Zwischen zwei Kursen',
+    scenes: [
+      S('msg', 'Studio Puls · Website-Chat', ['u:Kann ich ein Probetraining machen?', 'a:Gerne. Yoga Flow morgen um 18 Uhr oder Pilates am Samstag um 10 Uhr?|Norra Chatbot', 'u:Samstag passt.', '+:Probetraining Sa 10:00 · Pilates|calendarCheck'], { icon: 'calendarCheck', text: 'Probetraining gebucht' }),
+      S('phone', 'Studio Puls · Anruf', ['u:Kann ich mein Abo über den Sommer pausieren?|18:10 Uhr, mitten im Kurs', 'a:Das geht, nach Ihren Studioregeln. Ab wann soll die Pause gelten?', 'u:Ab dem 1. Juli.', '+:Pausenwunsch ans Team|list'], 'Nach Ihren Regeln', CALL('00:34')),
+      S('camera', 'Studio Puls · Instagram', ['u:Ist der Boxkurs auch für Anfänger?|Kommentar unter einem Reel', 'a:Ja, dienstags um 19 Uhr ist Basics. Den Link zum Probetraining schicke ich per DM.|Norra Social Media AI'], { icon: 'send', text: 'DM mit Probetraining' })
+    ],
+    uses: [['chatbot', 'Probetrainings rund um die Uhr', 'Kurs gewählt, Termin gebucht.'],
+      ['voice-agent', 'Abo-Fragen am Telefon', 'Pausen nach Ihren Regeln notiert.'],
+      ['social-media', 'DMs und Kommentare', 'Anfänger bekommen Kurs und Link.']],
+    recs: [['chatbot', 'Erste Wahl', 'Bucht Probetrainings und kennt Ihren Kursplan.'], ['social-media', 'Empfohlen', 'Antwortet auf DMs und Kommentare.'],
+      ['voice-agent', 'Empfohlen', 'Abo-Fragen am Telefon, Comeback-Anrufe nur mit Einwilligung.'], ['website', 'Ergänzung', 'Kursplan und Probetraining an einem Ort.']],
+    groups: ['kalender-termine', 'nachrichten-kanaele'], save: { hours: 31, rate: 40 }, typeFor: 'für ein Fitness- oder Yogastudio'
+  };
+};
+
+NORRA.fitness.register = function () {
+  var B = NORRA.branchen;
+  if (!B || !B.S || !B.renderPage) return;
+  if (NORRA.personas && !NORRA.personas['studio-puls']) {
+    NORRA.personas['studio-puls'] = { business: 'Studio Puls', type: 'Fitness- und Yogastudio', owner: 'Nina Albrecht', role: 'Inhaberin', initials: 'NA' };
+  }
+  var n = NORRA.fitness.entry(B.S, B.CALL);
+  n.description = n.lede;
+  n.cardImage = '';
+  if (!NORRA.industryBySlug(n.slug)) NORRA.industries.push(n);
+  /* overview cards, explorer and fit matrix on #branchen read NORRA.branchen.DATA at render time */
+  if (B.DATA && !B.DATA.some(function (d) { return d.slug === n.slug; })) B.DATA.push(n);
+  /* no duplicate in the "Und viele mehr" tag list */
+  var k = B.MORE ? B.MORE.indexOf('Fitness') : -1;
+  if (k > -1) B.MORE.splice(k, 1);
+  NORRA.titles['branche-' + n.slug] = n.name + ' · Norra';
+  NORRA.pages['branche-' + n.slug] = function (el) { NORRA.branchen.renderPage(el, 'fitness'); };
+  NORRA.pages['branche-' + n.slug].wire = function (el) {
+    var m = NORRA.industryBySlug('fitness');
+    NORRA.branchen.wireUses(el);
+    if (m) NORRA.branchen.wireLog(el, m);
+  };
+};
+NORRA.fitness.register();
+</script>
+<script>
+/* ===== src/content/46-branche-kanzleien.js ===== */
+/* =========================================================================
+   Branche Kanzleien und Treuhand (46-branche-kanzleien.js)
+   Route: #branche-kanzleien. Same entry shape and page as 40-branchen.js
+   (reuses NORRA.branchen builders: hero, stageSection, recs, results).
+   The agent gives no legal or tax advice: intake and appointments only.
+   ========================================================================= */
+
+if (NORRA.branchen && NORRA.branchen.S && !NORRA.industryBySlug('kanzleien')) {
+  NORRA.personas = NORRA.personas || {};
+  NORRA.personas['kanzlei-steinmatt'] = { business: 'Kanzlei Steinmatt', type: 'Kanzlei & Treuhand', owner: 'Claudia Imhof', role: 'Partnerin', initials: 'CI' };
+
+  NORRA.branchen.kanzleien = {
+    slug: 'kanzleien', persona: 'kanzlei-steinmatt', name: 'Kanzleien und Treuhand', icon: 'scroll', color: 'var(--chart-1)', tint: 'mist',
+    tagline: 'Neue Mandate, sauber aufgenommen.', summary: 'Mandatsanfragen aufgenommen, Erstgespräche gebucht.',
+    lede: 'Anliegen, Fristen und Unterlagen erfasst, bevor Sie zum Hörer greifen.',
+    problem: 'In der Fristensaison klingelt es, während Sie Akten bearbeiten.',
+    heroGradient: 'linear-gradient(140deg, hsl(212 40% 93%) 0%, hsl(212 56% 94%) 55%, hsl(40 24% 92%) 100%)',
+    video: { src: 'media/headset-agent.mp4', poster: 'media/headset-agent.jpg', alt: 'Eine Frau mit Headset arbeitet konzentriert an ihrem Bildschirm.' },
+    stageTitle: 'Eine Kanzlei, drei Kanäle',
+    scenes: [
+      NORRA.branchen.S('phone', 'Kanzlei Steinmatt · Anruf', ['u:Ich habe eine Kündigung erhalten. Können Sie mir helfen?',
+        'a:Das klärt gerne eine Anwältin. Wann ist die Kündigung bei Ihnen eingegangen?',
+        '+:Erstgespräch Mi 10:00 · Arbeitsrecht|calendarCheck'], { icon: 'calendarCheck', text: 'Erstgespräch gebucht' }, NORRA.branchen.CALL('00:38')),
+      NORRA.branchen.S('msg', 'Kanzlei Steinmatt · Website-Chat', ['u:Ich brauche Hilfe bei meiner Steuererklärung.',
+        'a:Gerne. Bitte bringen Sie Lohnausweis, Kontoauszüge und Belege mit. Passt Dienstag?|Norra Chatbot',
+        'n:Quelle: Ihre Unterlagenliste'], { icon: 'file', text: 'Unterlagenliste gesendet' }),
+      NORRA.branchen.S('whatsapp', 'Kanzlei Steinmatt · WhatsApp', ['u:Muss ich die Frist Ende März zwingend einhalten?|Hochsaison, 18:10 Uhr',
+        'a:Das beurteilt Ihr Treuhänder. Ich melde Sie für einen Rückruf morgen früh an.|Norra Chatbot',
+        'n:Keine Rechts- oder Steuerauskunft durch den Agent'], { icon: 'shield', text: 'An Ihr Team' })
+    ],
+    uses: [['voice-agent', 'Neue Mandate aufnehmen', 'Anliegen, Frist und Kontakt erfasst.'],
+      ['chatbot', 'Unterlagen vorbereitet', 'Checkliste vor dem Erstgespräch.'],
+      ['chatbot', 'Fragen in der Hochsaison', 'Keine Auskunft, sauber weitergeleitet.']],
+    recs: [['voice-agent', 'Erste Wahl', 'Nimmt Mandatsanfragen auf und bucht Erstgespräche.'],
+      ['chatbot', 'Empfohlen', 'Erklärt Ablauf und benötigte Unterlagen.'],
+      ['website', 'Ergänzung', 'Klare Kanzleiseite mit Terminbuchung.']],
+    groups: ['kalender-termine', 'crm-kundendaten'], save: { hours: 24, rate: 110 }, typeFor: 'für eine Kanzlei oder Treuhand'
+  };
+
+  NORRA.branchen.kanzleien.description = NORRA.branchen.kanzleien.lede;
+  NORRA.branchen.kanzleien.cardImage = NORRA.branchen.kanzleien.video.poster;
+  NORRA.industries.push(NORRA.branchen.kanzleien);
+  if (NORRA.branchen.DATA && NORRA.branchen.DATA.indexOf(NORRA.branchen.kanzleien) < 0) NORRA.branchen.DATA.push(NORRA.branchen.kanzleien);
+  if (NORRA.branchen.MORE) NORRA.branchen.MORE = NORRA.branchen.MORE.filter(function (m) { return m !== 'Kanzleien'; });
+  NORRA.titles['branche-kanzleien'] = NORRA.branchen.kanzleien.name + ' · Norra';
+
+  NORRA.pages['branche-kanzleien'] = function (el) {
+    var B = NORRA.branchen, n = B.kanzleien;
+    /* short limits note at the end of the stage section (same .br-safe-note as Praxen and Tierarzt) */
+    var stage = B.stageSection(n).replace(/<\/section>$/, '<p class="note center br-safe-note">' + NORRA.ico('shield', 14) +
+      '<span>Der Agent gibt keine Rechts- oder Steuerauskunft, er nimmt auf und bucht.</span></p></section>');
+    el.innerHTML = B.hero(n) + stage + B.recs(n) + B.results(n) +
+      NORRA.ctaBlock({ title: 'Bereit für Ihren ersten Agent?',
+        primary: { label: 'Demo anfragen', href: '#kontakt', arrow: true, attrs: B.prefill(n.slug) },
+        secondary: { label: 'Ersparnis berechnen', goto: 'preise:rechner', kind: 'outline', attrs: B.prefill(n.slug) } });
+  };
+  NORRA.pages['branche-kanzleien'].wire = function (el) { NORRA.branchen.wireUses(el); NORRA.branchen.wireLog(el, NORRA.branchen.kanzleien); };
+}
+</script>
+<script>
+/* ===== src/content/47-branche-tierarzt.js ===== */
+/* =========================================================================
+   Branche Tierarztpraxen (47-branche-tierarzt.js)
+   Route: #branche-tierarzt. Same entry shape, builders and page recipe as
+   40-branchen.js (panel hero with day log -> stage with 3 scenes + 3 use
+   cards -> recommended services -> Richtwerte tiles -> CTA), plus one short
+   safety line under the stage. Everything on NORRA.branchen / NORRA.tierarzt.
+   ========================================================================= */
+
+NORRA.tierarzt = NORRA.tierarzt || {};
+
+/* Paw icon, only if no other file defined one. */
+if (!NORRA.ICONS.paw) {
+  NORRA.ICONS.paw = '<circle cx="6" cy="10" r="1.8"/><circle cx="10" cy="6" r="1.8"/><circle cx="14" cy="6" r="1.8"/><circle cx="18" cy="10" r="1.8"/>' +
+    '<path d="M12 11c-2.6 0-5 3.4-5 6a2.6 2.6 0 0 0 3.2 2.5c1.2-.3 2.4-.3 3.6 0A2.6 2.6 0 0 0 17 17c0-2.6-2.4-6-5-6z"/>';
+}
+
+/* Invented example business. */
+NORRA.personas = NORRA.personas || {};
+NORRA.personas['praxis-am-bach'] = NORRA.personas['praxis-am-bach'] ||
+  { business: 'Tierarztpraxis am Bach', type: 'Tierarztpraxis', owner: 'Simone Graf', role: 'Praxisinhaberin', initials: 'SG' };
+
+NORRA.tierarzt.build = function (S, CALL) {
+  return {
+    slug: 'tierarzt', persona: 'praxis-am-bach', name: 'Tierarztpraxen', icon: 'paw', color: 'var(--chart-5)', tint: 'sand',
+    tagline: 'Erreichbar, auch nach der Sprechstunde.', summary: 'Termine, Impferinnerungen und Notfälle richtig weitergeleitet.',
+    lede: 'Termine gebucht, Impfungen erinnert, Notfälle sofort weitergeleitet.',
+    problem: 'Während der Behandlung bleibt das Telefon liegen.',
+    heroGradient: 'linear-gradient(140deg, hsl(160 30% 92%) 0%, hsl(212 56% 94%) 55%, hsl(40 36% 93%) 100%)',
+    log: [['phone', '08:05', 'Impftermin gebucht'], ['whatsapp', '08:40', 'Impferinnerung bestätigt'], ['msg', '09:20', 'Rückfrage ans Team übergeben'],
+      ['refresh', '10:12', 'Kontrolltermin verschoben'], ['phone', '11:30', 'Neukunde mit Katze eingetragen'], ['bell', '12:05', 'Nachkontrolle erinnert']],
+    stageTitle: 'Eine Praxis, drei Kanäle',
+    scenes: [
+      S('phone', 'Tierarztpraxis am Bach · Anruf', ['u:Unser Hund hat Schokolade gefressen.|21:40 Uhr, Praxis geschlossen', 'a:Ich verbinde Sie jetzt direkt mit dem tierärztlichen Notfalldienst.', '+:Weitergeleitet an den Notfalldienst|phone'], { icon: 'shield', text: 'Notfall weitergeleitet' }, CALL('00:16')),
+      S('msg', 'Tierarztpraxis am Bach · Website-Chat', ['u:Meine Katze frisst seit gestern kaum. Ist das schlimm?', 'a:Das beurteilt unser Team. Heute um 16:15 Uhr wäre ein Termin frei. Passt das?|Norra Chatbot', 'n:Rückfrage ans Praxisteam markiert'], { icon: 'userCheck', text: 'Ans Team übergeben' }),
+      S('whatsapp', 'Tierarztpraxis am Bach · WhatsApp', ['a:Luna ist bald für die Jahresimpfung fällig. Passt Dienstag um 10:00 Uhr?|Norra Chatbot', 'u:Ja, gerne.', '+:Impftermin Di 10:00 gebucht|calendarCheck'], { icon: 'bell', text: 'Erinnerung mit Termin' })
+    ],
+    uses: [['voice-agent', 'Nach Praxisschluss', 'Notfälle direkt an den Notfalldienst.'],
+      ['chatbot', 'Fragen von Tierhaltern', 'Allgemeines beantwortet, Medizinisches ans Team.'],
+      ['chatbot', 'Impferinnerungen', 'Per WhatsApp, mit Terminvorschlag.']],
+    recs: [['voice-agent', 'Erste Wahl', 'Nimmt Anrufe an, leitet Notfälle weiter.'], ['chatbot', 'Empfohlen', 'Beantwortet Fragen, erinnert an Impfungen.'],
+      ['website', 'Ergänzung', 'Praxisseite mit Online-Termin.']],
+    safety: 'Der Agent stellt keine Diagnosen und gibt keine medizinischen Ratschläge. Dringendes geht an Ihr Team oder den Notfalldienst. Die Daten Ihrer Kundschaft verarbeiten Sie in eigener Verantwortung.',
+    groups: ['kalender-termine', 'nachrichten-kanaele'], save: { hours: 38, rate: 55 }, typeFor: 'für eine Tierarztpraxis'
+  };
+};
+
+/* Register like 40-branchen.js does (needs its builders; skipped cleanly if absent). */
+if (NORRA.branchen && NORRA.branchen.S && NORRA.branchen.renderPage) {
+  NORRA.tierarzt.register = function (n) {
+    n.description = n.lede;
+    n.cardImage = n.video ? n.video.poster : '';
+    if (!NORRA.industryBySlug(n.slug)) NORRA.industries.push(n);
+    /* overview cards, explorer and fit matrix read NORRA.branchen.DATA */
+    if (NORRA.branchen.DATA && NORRA.branchen.DATA.indexOf(n) < 0) NORRA.branchen.DATA.push(n);
+    if (NORRA.branchen.MORE) NORRA.branchen.MORE = NORRA.branchen.MORE.filter(function (m) { return m !== n.name; });
+    NORRA.titles['branche-' + n.slug] = n.name + ' · Norra';
+
+    var r = 'branche-' + n.slug;
+    NORRA.pages[r] = function (el) {
+      var B = NORRA.branchen;
+      B.renderPage(el, n.slug);
+      /* one short safety line at the end of the stage section */
+      var sect = el.querySelector('.br-stage-sect');
+      if (sect && n.safety && !sect.querySelector('.br-safe-note')) {
+        var p = document.createElement('p');
+        p.className = 'note center br-safe-note';
+        p.innerHTML = NORRA.ico('shield', 14) + '<span>' + n.safety + '</span>';
+        sect.appendChild(p);
+      }
+    };
+    NORRA.pages[r].wire = function (el) { NORRA.branchen.wireUses(el); NORRA.branchen.wireLog(el, n); };
+  };
+  NORRA.tierarzt.entry = NORRA.tierarzt.build(NORRA.branchen.S, NORRA.branchen.CALL);
+  NORRA.tierarzt.register(NORRA.tierarzt.entry);
+}
+</script>
+<script>
+/* ===== src/content/48-branchen-neu.js ===== */
+/* =========================================================================
+   Branchen overview with 12 industries (48-branchen-neu.js)
+   The industries from 41–47 are listed in NORRA.branchen.DATA, so the
+   #branchen cards and the fit matrix show all of them. The "Ein Moment pro
+   Branche" explorer is built for at most 8 items (CONTRACT §9), so with more
+   industries it shows two groups behind a small switch: one explorer visible
+   at a time, same look and behaviour as before.
+   ========================================================================= */
+
+if (NORRA.branchen && NORRA.branchen.explorer) {
+  NORRA.branchen.GROUPS = [
+    { label: 'Termine und Gäste', slugs: ['kosmetik', 'friseure', 'fitness', 'gastro', 'hotels', 'coaches'] },
+    { label: 'Praxen und Betriebe', slugs: null }   /* null = every other industry */
+  ];
+  NORRA.branchen.explorerSingle = NORRA.branchen.explorer;
+  NORRA.branchen.explorerItem = function (n) {
+    return { icon: n.icon, name: n.name, explain: n.problem, detail: 'Ca. ' + n.save.hours + ' h pro Monat zurück · Richtwert', scene: n.scenes[0] };
+  };
+  NORRA.branchen.explorer = function () {
+    var B = NORRA.branchen, data = B.DATA;
+    if (data.length <= 8) return B.explorerSingle();
+    var first = B.GROUPS[0].slugs;
+    var groups = B.GROUPS.map(function (g) {
+      return { label: g.label, list: data.filter(function (n) { return g.slugs ? g.slugs.indexOf(n.slug) > -1 : first.indexOf(n.slug) < 0; }) };
+    }).filter(function (g) { return g.list.length; });
+    var tabs = groups.map(function (g, i) {
+      return '<button type="button" role="tab" class="tab" id="br-grp-t' + i + '" aria-controls="br-grp-p' + i + '" aria-selected="' + (i === 0) + '" tabindex="' + (i === 0 ? 0 : -1) + '" data-br-grp="' + i + '">' + g.label + '</button>';
+    }).join('');
+    var panels = groups.map(function (g, i) {
+      return '<div class="br-fx-grp" role="tabpanel" id="br-grp-p' + i + '" aria-labelledby="br-grp-t' + i + '"' + (i ? ' hidden' : '') + '>' +
+        NORRA.featureExplorer({ id: 'br-explorer-' + i, bare: true, items: g.list.map(B.explorerItem), tint: 'sage', label: 'Branchen' }) + '</div>';
+    }).join('');
+    return '<section class="wrap sect fx-sect" id="br-explorer">' +
+      NORRA.sectHead({ eyebrow: 'Im Alltag', title: 'Ein Moment pro Branche' }) +
+      '<div class="br-fx-groups" data-br-groups><div class="tabs br-fx-tabs reveal" role="tablist" aria-label="Branchengruppen">' + tabs + '</div>' + panels + '</div>' +
+      '<p class="note">Beispiele mit erfundenen Betrieben.</p></section>';
+  };
+
+  /* Group switch: one explorer visible; the hidden one stops (its stage is off screen). */
+  NORRA.onWire(function (root) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll('[data-br-groups]').forEach(function (box) {
+      if (box.__brg) return;
+      box.__brg = true;
+      var tabs = [].slice.call(box.querySelectorAll('[data-br-grp]'));
+      var panels = [].slice.call(box.querySelectorAll('.br-fx-grp'));
+      function show(i, focus) {
+        tabs.forEach(function (t, k) {
+          t.setAttribute('aria-selected', String(k === i));
+          t.setAttribute('tabindex', k === i ? '0' : '-1');
+        });
+        panels.forEach(function (p, k) { p.hidden = k !== i; });
+        if (focus) tabs[i].focus();
+      }
+      tabs.forEach(function (t, i) {
+        t.addEventListener('click', function () { show(i, false); });
+        t.addEventListener('keydown', function (e) {
+          var d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+          if (!d) return;
+          e.preventDefault();
+          show((i + d + tabs.length) % tabs.length, true);
+        });
+      });
+    });
+  });
+}
+</script>
+<script>
 /* ===== src/content/50-preise-kontakt.js ===== */
 /* =========================================================================
    50-preise-kontakt.js: routes #preise and #kontakt. Namespaces NORRA.preise, NORRA.kontakt. CSS prefix pk-.
@@ -13108,7 +13644,7 @@ NORRA.branchen.DATA.forEach(function (n) {
    - NORRA.preise.INDUSTRY_PRESET  industry slug -> preset key
    - #preise jump targets: data-goto="preise:rechner" (calculator), "preise:tarife" (cards), "preise:vergleich"
    - Prefill: NORRA.prefillProduct = slug | 'all' | [slugs] or data-prefill="<slug>" on a link to #kontakt;
-     NORRA.prefillIndustry = 'kosmetik' | 'coaches' | 'gastro' | 'friseure' | 'hotels' | preset key
+     NORRA.prefillIndustry = industry slug (kosmetik, coaches, ..., praxen, werkstatt, tierarzt) | preset key
      (or data-prefill-industry). On #preise it loads the matching calculator example (until the user moved a slider).
    ========================================================================= */
 
@@ -13158,7 +13694,8 @@ NORRA.preise.PRESETS = {
   hotel: { label: 'Hotel', calls: 150, chats: 120, social: 6, missed: 25, deal: 340, rate: 45 },
   coach: { label: 'Coaching', calls: 20, chats: 30, social: 6, missed: 6, deal: 900, rate: 90 }
 };
-NORRA.preise.INDUSTRY_PRESET = { kosmetik: 'salon', friseure: 'salon', coaches: 'coach', gastro: 'cafe', hotels: 'hotel' };
+NORRA.preise.INDUSTRY_PRESET = { kosmetik: 'salon', friseure: 'salon', coaches: 'coach', gastro: 'cafe', hotels: 'hotel',
+  praxen: 'praxis', werkstatt: 'werkstatt', handwerk: 'handwerk', immobilien: 'makler', fitness: 'fitness', kanzleien: 'kanzlei', tierarzt: 'praxis' };
 NORRA.preise.FIELDS = [
   { key: 'calls', label: 'Anrufe pro Woche', min: 0, max: 300, step: 5, kind: 'week', color: 'var(--chart-1)', hint: 'je ca. 4 Min · 80 % automatisch' },
   { key: 'chats', label: 'Website-Anfragen pro Woche', min: 0, max: 300, step: 5, kind: 'week', color: 'var(--chart-2)', hint: 'je ca. 5 Min · 85 % automatisch' },
@@ -13636,7 +14173,8 @@ NORRA.preise.drawLine = function () {
    ========================================================================= */
 NORRA.kontakt.BRANCHES = [
   ['kosmetik', 'Kosmetikstudio'], ['coaches', 'Coach / Berater'], ['gastro', 'Restaurant / Café'], ['friseure', 'Friseur'],
-  ['hotels', 'Hotel'], ['praxis', 'Praxis'], ['handwerk', 'Handwerk'], ['andere', 'Andere']
+  ['hotels', 'Hotel'], ['praxis', 'Praxis'], ['handwerk', 'Handwerk'], ['werkstatt', 'Autowerkstatt'], ['immobilien', 'Immobilien'],
+  ['fitness', 'Fitness- oder Yogastudio'], ['kanzleien', 'Kanzlei / Treuhand'], ['tierarzt', 'Tierarztpraxis'], ['andere', 'Andere']
 ];
 NORRA.kontakt.PLACEHOLDER = {
   'voice-agent': 'Wir verpassen während der Termine und abends viele Anrufe …',
