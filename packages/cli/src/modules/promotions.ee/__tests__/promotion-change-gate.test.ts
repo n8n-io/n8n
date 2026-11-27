@@ -7,6 +7,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { ApplyPreviewService } from '../apply-preview.service';
 import type { LocalPackageEntities } from '../local-package-entities.service';
+import type { PromoteDependencyCheckService } from '../promote-dependency-check.service';
 import type { PromotionCredentialSelectionService } from '../promotion-credential-selection.service';
 import { PromotePreviewService } from '../promote-preview.service';
 import { PromotionChangeService } from '../promotion-change.service';
@@ -51,6 +52,7 @@ describe('PromotionChangeService.getPreview review gate', () => {
 			mock<SharedWorkflowRepository>(),
 			reviewGate,
 			mock<PromotionCredentialSelectionService>(),
+			mock<PromoteDependencyCheckService>(),
 		),
 		mock<LocalPackageEntities>(),
 		environmentResolver,

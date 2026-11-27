@@ -346,6 +346,9 @@ paths:
   /promotions/environments/{promotionEnvironmentId}/promote:
     post:
       $ref: ./handlers/promotions/spec/paths/promotePackage.generated.yml
+  /promotions/environments/{promotionEnvironmentId}/promote/check:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromoteCheck.generated.yml
   /promotions/environments/{promotionEnvironmentId}/apply:
     post:
       $ref: ./handlers/promotions/spec/paths/applyPackage.generated.yml
