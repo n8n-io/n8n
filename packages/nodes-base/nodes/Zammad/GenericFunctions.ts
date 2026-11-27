@@ -20,7 +20,42 @@ export async function zammadApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const authentication = this.getNodeParameter('authentication', 0) as 'basicAuth' | 'tokenAuth';
+	const authentication = this.getNodeParameter('authentication', 0) as
+		| 'basicAuth'
+		| 'tokenAuth'
+		| 'oAuth2';
+
+	if (authentication === 'oAuth2') {
+		const oAuth2Credentials =
+			await this.getCredentials<Zammad.OAuth2Credentials>('zammadOAuth2Api');
+
+		const oAuth2Options: WithRequestTarget<IRequestOptions, 'uri'> = {
+			method,
+			body,
+			qs,
+			uri: requestUrl`${oAuth2Credentials.baseUrl}/api/v1${endpoint}`,
+			json: true,
+			rejectUnauthorized: !oAuth2Credentials.ignoreSSLIssues,
+		};
+
+		if (!Object.keys(body).length) {
+			delete oAuth2Options.body;
+		}
+
+		if (!Object.keys(qs).length) {
+			delete oAuth2Options.qs;
+		}
+
+		try {
+			return await this.helpers.requestOAuth2.call(this, 'zammadOAuth2Api', oAuth2Options);
+		} catch (error) {
+			if (error.error?.error === 'Object already exists!') {
+				error.error.error = 'An entity with this name already exists.';
+			}
+
+			throw new NodeApiError(this.getNode(), error as JsonObject);
+		}
+	}
 
 	const credentials =
 		authentication === 'basicAuth'
