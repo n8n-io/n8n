@@ -40,6 +40,7 @@ import {
 	type AgentJsonMcpServerConfig,
 	type AgentJsonMemoryConfig,
 	type AgentJsonToolConfig,
+	type AgentSkill,
 	type SubAgentRunPolicy,
 	type SubAgentSource,
 	type SubAgentTaskDifficulty,
@@ -68,6 +69,7 @@ import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/ut
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
 import { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
+import { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { EmbeddingProviderOptions } from '@/modules/knowledge/vector-stores/embedding-credential';
 import { WorkflowRunner } from '@/workflow-runner';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
@@ -122,11 +124,16 @@ import {
 	READ_BINARY_DATA_TOOL_NAME,
 } from './tools/read-binary-data.tool';
 import type { WorkflowToolContext, WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
-import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
+import {
+	findWorkflowToolWorkflow,
+	findWorkflowToolWorkflows,
+} from './tools/workflow-tool-workflow-resolver';
 import type { AgentDecisionWorkflowService } from './approval/agent-decision-workflow.service';
 import { withApprovalDescription } from './approval/approval-description';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
+import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
+import { withSkillWorkflowTools } from './utils/skill-workflow-tools';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 import {
 	AgentSandboxFilesService,
@@ -440,6 +447,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly sandboxFiles: AgentSandboxFilesService,
+		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -473,7 +481,11 @@ export class AgentRuntimeReconstructionService {
 		if (!agentEntity.schema) {
 			throw new UserError('Agent has no JSON config.');
 		}
-		let config = toAgentDocument(agentEntity.schema, skillRefs);
+		let config = await this.withSkillWorkflowTools(
+			toAgentDocument(agentEntity.schema, skillRefs),
+			skills,
+			agentEntity.projectId,
+		);
 
 		// Published/integration runs have no interactive n8n user and keep
 		// today's project-scoped trust boundary. When a user is present (in-app
@@ -582,12 +594,11 @@ export class AgentRuntimeReconstructionService {
 				continue;
 			}
 			const access = await this.checkToolAccess(ref, projectId, user, canExecute, loadUsableIds);
-			if (access && 'reason' in access) {
+			if ('reason' in access) {
 				unavailable.push(access);
 				continue;
 			}
 			filtered.push(ref);
-			if (!access) continue;
 			keptGatedTool = true;
 			for (const id of access.credentialIds) grantedCredentialIds.add(id);
 			for (const id of access.workflowIds) grantedWorkflowIds.add(id);
@@ -641,7 +652,7 @@ export class AgentRuntimeReconstructionService {
 		user: User,
 		canExecute: boolean,
 		loadUsableIds: () => Promise<Set<string>>,
-	): Promise<UserToolAccessSnapshot | UnavailableTool | undefined> {
+	): Promise<UserToolAccessSnapshot | UnavailableTool> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
 			toolType: ref.type,
@@ -674,7 +685,7 @@ export class AgentRuntimeReconstructionService {
 
 		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId);
 		// Missing workflows stay in the list so the tool factory can return a stub.
-		if (!workflow) return undefined;
+		if (!workflow) return { credentialIds: [], workflowIds: [] };
 		const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
 			workflow.id,
 			user,
@@ -744,7 +755,10 @@ export class AgentRuntimeReconstructionService {
 	async reconstructFromResolvedSource(
 		params: ReconstructAgentRuntimeParams,
 	): Promise<ReconstructedAgentRuntime> {
-		let config = params.config;
+		let config =
+			params.runtimeProfile === 'inline'
+				? params.config
+				: await this.withSkillWorkflowTools(params.config, params.skills, params.projectId);
 		let unavailableTools: UnavailableTool[] = [];
 		if (params.user && config.tools?.length) {
 			// Sub-agent runtimes are built per delegation and never cached, so the
@@ -771,6 +785,25 @@ export class AgentRuntimeReconstructionService {
 			subAgentDelegation,
 			unavailableTools,
 		});
+	}
+
+	private async withSkillWorkflowTools(
+		config: AgentJsonConfig,
+		skills: Record<string, AgentSkill>,
+		projectId: string,
+	): Promise<AgentJsonConfig> {
+		if (!config.skills?.length || !(await this.workflowsInSkillsFlagGate.isEnabled())) {
+			return config;
+		}
+		const legacyRefs = extractAgentWorkflowRefs(config).filter(
+			(ref) => ref.workflowId === undefined,
+		);
+		const legacyWorkflows = await findWorkflowToolWorkflows(
+			this.workflowRepository,
+			legacyRefs,
+			projectId,
+		);
+		return withSkillWorkflowTools(config, skills, legacyWorkflows);
 	}
 
 	private async reconstructRuntime(
@@ -1417,11 +1450,20 @@ export class AgentRuntimeReconstructionService {
 			);
 		}
 		try {
-			const { workspace, handle } = await this.agentWorkspaceService.getAgentWorkspace(
-				projectId,
-				agentId,
-				sandboxPrincipalHash,
-			);
+			const sandboxEgress = params.config.config?.sandboxEgress;
+			const { workspace, handle } =
+				sandboxEgress !== undefined
+					? await this.agentWorkspaceService.getAgentWorkspace(
+							projectId,
+							agentId,
+							sandboxPrincipalHash,
+							{ sandboxEgress },
+						)
+					: await this.agentWorkspaceService.getAgentWorkspace(
+							projectId,
+							agentId,
+							sandboxPrincipalHash,
+						);
 			throwIfAborted(params.abortSignal);
 			await this.attachWorkspaceTools(params, workspace);
 			return handle;

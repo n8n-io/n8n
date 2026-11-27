@@ -18,14 +18,15 @@ import type {
  */
 
 /**
- * This function retrieves the previous task data for a given task in the workflow run data.
- * Until there is no more source set
+ * Returns the task data that produced the given input of a task.
+ * Returns undefined when the input has no source or the source has no run data.
  */
 export function previousTaskData(
 	runData: IRunExecutionData['resultData']['runData'],
 	currentRunData: ITaskData,
+	inputIndex = 0,
 ): ITaskData | undefined {
-	const nextNodeName = currentRunData.source?.[0]?.previousNode;
+	const nextNodeName = currentRunData.source?.[inputIndex]?.previousNode;
 	if (!nextNodeName) {
 		return undefined; // No next node
 	}
@@ -36,9 +37,26 @@ export function previousTaskData(
 		return undefined; // No run data for the next node
 	}
 
-	const nextRunIndex = currentRunData.source?.[0]?.previousNodeRun ?? 0;
+	const nextRunIndex = currentRunData.source?.[inputIndex]?.previousNodeRun ?? 0;
 
 	return nextRunData[nextRunIndex]; // Return the first run data for the next node
+}
+
+/** A task without a source is the first task of the workflow run. */
+function isFirstTask(taskData: ITaskData): boolean {
+	return !taskData.source?.some((source) => source !== null);
+}
+
+/** A missing input index means input 0. A missing item index means the given item index. */
+function toPairedItemPosition(
+	pairedItem: INodeExecutionData['pairedItem'],
+	itemIndex: number,
+): { input: number; item: number } {
+	const single = typeof pairedItem === 'number' ? { item: pairedItem } : pairedItem;
+	if (single !== undefined && !Array.isArray(single)) {
+		return { input: single.input ?? 0, item: single.item ?? itemIndex };
+	}
+	return { input: 0, item: itemIndex };
 }
 
 export function findPairedItemThroughWorkflowData(
@@ -74,39 +92,25 @@ export function findPairedItemThroughWorkflowData(
 		return undefined;
 	}
 
-	// Now we are getting the second last task data, because our initial pairedItem points to this.
-	let runDataItem = previousTaskData(workflowRunData.resultData.runData, taskData);
-
+	let currentTaskData = taskData;
 	let pairedItem = item.pairedItem;
 
-	// move the runDataItem to the previous node in the in the workflow execution data
-	// and find the paired item of the current item in the previous task data
-	// We do this until we reach the first task data of the workflow run
-
-	while (runDataItem !== undefined) {
-		// We find the output items for the current run data item
-		const nodeInformationArray = runDataItem.data?.['main'];
-
-		// We find and fallback to 0 for the input index and item index
-		// The input index is the run the node was executed in case it was executed multiple times
-		// The item index is the index of the paired item we are looking for
-		let inputIndex = 0;
-		let nodeIndex = itemIndex;
-		if (typeof pairedItem === 'object') {
-			inputIndex = (pairedItem as IPairedItemData).input ?? 0;
-			nodeIndex = (pairedItem as IPairedItemData).item ?? itemIndex;
-		} else if (typeof pairedItem === 'number') {
-			// If the paired item is a number, we use it as the node index
-			nodeIndex = pairedItem;
-			// and fallback to 0 for the input index
-			inputIndex = 0;
+	// Each paired item points to an input of the current task.
+	// We follow the source of that input until we reach the first task of the workflow run.
+	while (!isFirstTask(currentTaskData)) {
+		const { input, item: sourceItemIndex } = toPairedItemPosition(pairedItem, itemIndex);
+		const sourceTaskData = previousTaskData(
+			workflowRunData.resultData.runData,
+			currentTaskData,
+			input,
+		);
+		if (sourceTaskData === undefined) {
+			return undefined;
 		}
 
-		// We found the paired item of the current run data item, this points to the node in the previous task data
-		pairedItem = nodeInformationArray?.[inputIndex]?.[nodeIndex]?.pairedItem;
-
-		// We move the runDataItem to the previous task data
-		runDataItem = previousTaskData(workflowRunData.resultData.runData, runDataItem);
+		const outputIndex = currentTaskData.source[input]?.previousNodeOutput ?? 0;
+		pairedItem = sourceTaskData.data?.main?.[outputIndex]?.[sourceItemIndex]?.pairedItem;
+		currentTaskData = sourceTaskData;
 	}
 
 	// This is the paired item that was in the first task data when the workflow was executed

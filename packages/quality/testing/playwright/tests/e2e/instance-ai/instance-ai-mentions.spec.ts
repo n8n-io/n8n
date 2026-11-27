@@ -9,10 +9,7 @@ const mentionsTestConfig = {
 		...instanceAiTestConfig.capability,
 		env: {
 			...instanceAiTestConfig.capability.env,
-			N8N_FEATURE_FLAG_OVERRIDES: JSON.stringify({
-				'116_at_mentions_enabled': true,
-				'104_canvas_aia_node_context': false,
-			}),
+			N8N_FEATURE_FLAG_OVERRIDES: JSON.stringify({ '116_at_mentions_enabled': true }),
 		},
 	},
 } as const;

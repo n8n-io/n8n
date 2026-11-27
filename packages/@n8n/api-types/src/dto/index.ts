@@ -7,6 +7,14 @@ export { PublishAppDto } from './app/publish-app.dto';
 export { RestoreAppVersionDto } from './app/restore-app-version.dto';
 export { SetAppBindingsDto } from './app/set-app-bindings.dto';
 
+export { CreateMcpServerDto } from './mcp-server/create-mcp-server.dto';
+export { UpdateMcpServerDto } from './mcp-server/update-mcp-server.dto';
+export { McpServerSlugQueryDto } from './mcp-server/mcp-server-slug-query.dto';
+export { AddMcpServerToolsDto } from './mcp-server/add-mcp-server-tools.dto';
+export { UpdateMcpServerToolDto } from './mcp-server/update-mcp-server-tool.dto';
+export { DraftMcpServerToolDto } from './mcp-server/draft-mcp-server-tool.dto';
+export { BlockMcpServerUserDto } from './mcp-server/block-mcp-server-user.dto';
+
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export {
@@ -447,6 +455,7 @@ export {
 	PutCredentialTypeProjectPolicyDto,
 	PutProjectPolicyDto,
 } from './type-availability-policies/put-project-policy.dto';
+export { CreateProjectPolicyDto } from './type-availability-policies/create-project-policy.dto';
 export {
 	CreateCredentialTypePolicyDocumentDto,
 	CreatePolicyDocumentDto,
@@ -456,6 +465,11 @@ export {
 	UpdatePolicyDocumentDto,
 } from './type-availability-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './type-availability-policies/replace-attachments.dto';
+export {
+	SetInstanceTypeAccessDto,
+	SetProjectTypeAccessDto,
+	type TypeAccessChange,
+} from './type-availability-policies/set-type-access.dto';
 export {
 	CredentialTypePolicyAttachmentsPublicDto,
 	CredentialTypePolicyDocumentListPublicDto,
@@ -899,25 +913,25 @@ export {
 	ListPromotionReviewsQueryDto,
 	PromotionReviewDetailsRequestDto,
 	PromotionReviewListPublicDto,
+	PromotionReviewPublicDto,
 	promotionReviewChangesSchema,
+	promotionReviewItemSchema,
+	promotionReviewRemoteErrorSchema,
 	promotionReviewWarningSchema,
 	promotionReviewResultSchema,
-	promotionReviewListPublicSchema,
 	gitLabRemoteReviewIdSchema,
 	parseRemoteReviewId,
 	promotionRemoteReviewIdSchemas,
 	promotionReviewStateSchema,
-	promotionReviewSummarySchema,
 	promotionReviewTabSchema,
 	promotionReviewTypeSchema,
 	type PromotionReviewChanges,
+	type PromotionReviewItem,
 	type PromotionReviewOutcome,
 	type PromotionReviewWarning,
 	type PromotionReviewResult,
-	type PromotionReviewRemote,
 	type PromotionReviewRemoteError,
 	type PromotionReviewState,
-	type PromotionReviewSummary,
 	type PromotionReviewType,
 	type PromotionReviewTab,
 } from './promotions/promotion-review.dto';

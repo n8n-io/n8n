@@ -28,5 +28,6 @@ export const packagedModules: PackagedModules = {
 	},
 	'execution-limits': async () => await import('@n8n/backend-module-execution-limits/module'),
 	'execution-ledger': async () => await import('@n8n/backend-module-execution-ledger/module'),
+	'mcp-servers': async () => await import('@n8n/backend-module-mcp-servers/module'),
 	'durable-leases': async () => await import('@n8n/backend-module-durable-leases/module'),
 };

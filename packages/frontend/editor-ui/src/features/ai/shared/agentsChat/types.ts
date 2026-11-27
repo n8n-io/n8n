@@ -40,7 +40,7 @@ export interface ToolCall {
 	endTime?: number;
 	/**
 	 * One-line answer label rendered next to the tool name in
-	 * `AgentChatToolSteps`. Set when an interactive tool resolves so the user
+	 * `AgentChatActivity`. Set when an interactive tool resolves so the user
 	 * sees what they picked (e.g. "Slack") instead of just "ask_user".
 	 */
 	displaySummary?: string;

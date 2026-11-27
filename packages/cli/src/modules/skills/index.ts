@@ -2,7 +2,7 @@ export { SkillService } from './services/skill.service';
 export { SkillAccessService } from './services/skill-access.service';
 export { SkillRuntimeService } from './services/skill-runtime.service';
 export { SkillsGate } from './services/skills-gate';
-export { AssistantSkillsFlagGate } from './services/assistant-skills-flag-gate';
+export { WorkflowsInSkillsFlagGate } from './services/workflows-in-skills-flag-gate';
 export { SkillUsage, type SkillAgent } from './services/skill-usage.contracts';
 export { SkillUsageProxy } from './services/skill-usage-proxy.service';
 export {

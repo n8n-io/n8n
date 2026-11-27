@@ -31,7 +31,9 @@ import { USER_TYPED_MESSAGE } from '../../prefills';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import {
+	AGENT_CHAT_MARKDOWN_HOST_KEY,
 	AGENT_TOOL_STEP_LABEL_KEY,
+	type AgentChatMarkdownHost,
 	type AgentToolStepLabeler,
 } from '@/features/agents/components/agentChatInjectionKeys';
 import { mockedStore } from '@/__tests__/utils';
@@ -153,6 +155,8 @@ const isAwaitingUserApproval = ref(false);
 const focusOpenInteraction = vi.fn();
 // The tool step labeler that the view gives the chat.
 const panelToolStepLabel: { current?: AgentToolStepLabeler } = {};
+// The resources that the view gives the chat markdown.
+const panelMarkdownHost: { current?: AgentChatMarkdownHost } = {};
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
 // The user message whose references the stub panel renders through its slot.
 const referencedMessage = ref<ChatMessage>();
@@ -162,6 +166,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 		inheritAttrs: false,
 		setup(_props, { attrs, expose, slots }) {
 			panelToolStepLabel.current = inject(AGENT_TOOL_STEP_LABEL_KEY, undefined);
+			panelMarkdownHost.current = inject(AGENT_CHAT_MARKDOWN_HOST_KEY, undefined);
 			// A chip with the same id replaces the old one, as in the real panel.
 			const addComposerAttachment = (
 				chip: AgentChatComposerAttachment['chip'],
@@ -362,21 +367,41 @@ vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
 	}),
 }));
 
-// The real menu reads the MCP and browser use stores, which have their own tests.
-vi.mock('../../components/InstanceAiInputMenu.vue', () => ({
-	default: defineComponent({
-		props: { disabled: { type: Boolean, default: false } },
-		emits: ['attachFiles'],
-		setup:
-			(props, { emit }) =>
-			() =>
-				h('button', {
-					'data-test-id': 'input-menu-attach',
-					disabled: props.disabled,
-					onClick: () => emit('attachFiles'),
-				}),
-	}),
-}));
+// The real menu reads the MCP and browser use stores, which have their own tests. Opening a
+// resource emits a fixed workflow, so the tests do not depend on the resource search.
+vi.mock('../../components/InstanceAiInputMenu.vue', async () => {
+	const { injectOpenResource } = await import('../../openResourceContext');
+	return {
+		default: defineComponent({
+			props: { disabled: { type: Boolean, default: false } },
+			emits: ['attachFiles'],
+			setup(props, { emit }) {
+				const openResource = injectOpenResource();
+				return () => [
+					h('button', {
+						'data-test-id': 'input-menu-attach',
+						disabled: props.disabled,
+						onClick: () => emit('attachFiles'),
+					}),
+					openResource?.isAvailable()
+						? h('button', {
+								'data-test-id': 'input-menu-open-resource',
+								'data-project-id': openResource.projectId(),
+								onClick: () =>
+									openResource.open({
+										type: 'workflow',
+										id: 'wf-picked',
+										name: 'Picked workflow',
+										icon: 'workflow',
+										projectId: openResource.projectId(),
+									}),
+							})
+						: null,
+				];
+			},
+		}),
+	};
+});
 
 // The real selector reads the settings store, which has its own tests.
 vi.mock('../../components/ApprovalModeSelector.vue', () => ({
@@ -905,10 +930,12 @@ describe('AssistantAgentThreadView', () => {
 		// The thread does not exist on the server before its first message.
 		expect(threadsStore.loadThread).not.toHaveBeenCalled();
 
+		chatMessages.value = [{ id: 'u1', role: 'user', content: 'Build a digest' }];
 		const onSessionCreated = panelProps.current.onSessionCreated as () => void;
 		onSessionCreated();
 
-		expect(threadsStore.loadThread).toHaveBeenCalledWith('thread-new');
+		// The sent text is the preview of the lists until the server has one.
+		expect(threadsStore.loadThread).toHaveBeenCalledWith('thread-new', 'Build a digest');
 	});
 
 	it('sends the first message of a new thread, with its references until the message is accepted', async () => {
@@ -1235,6 +1262,32 @@ describe('AssistantAgentThreadView', () => {
 			expect(getByTestId('skill-preview-draft')).toHaveValue('Unsaved instructions');
 		});
 
+		it('shows the artifacts panel over the chat while the preview is open', async () => {
+			if (threadArea.width) threadArea.width.value = 1200;
+			const { getByTestId, queryByTestId } = await renderWithSkill();
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+
+			await fireEvent.click(getByTestId('assistant-agent-artifacts-panel-toggle'));
+			expect(getByTestId('assistant-agent-artifacts-panel')).toBeInTheDocument();
+
+			// A pick opens another tab, so the panel over the chat closes.
+			tabBarTabToOpen.current = { type: 'workflow', id: 'wf-1', name: 'Workflow' };
+			await userEvent.click(getByTestId('tab-bar-open-tab'));
+			await flushPromises();
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
+		});
+
+		it('gives the chat markdown the resources of the thread', async () => {
+			await renderWithSkill();
+
+			const skill = { type: 'skill', id: 'skill-1' };
+			expect(panelMarkdownHost.current?.resources()).toContainEqual(expect.objectContaining(skill));
+			expect(panelMarkdownHost.current?.linkableResources()).toContainEqual(
+				expect.objectContaining(skill),
+			);
+		});
+
 		it('opens a skill from the artifacts panel', async () => {
 			if (threadArea.width) threadArea.width.value = 1200;
 			const { getByTestId, queryByTestId } = await renderWithSkill();
@@ -1353,31 +1406,41 @@ describe('AssistantAgentThreadView', () => {
 		expect(previewProps.current).toBeUndefined();
 	});
 
-	it('offers a resource picker in the header while no tabs are open, and opens the picked resource', async () => {
+	it('lets the composer menu open a resource while the header shows no open-resource button', async () => {
 		const { getByTestId, queryByTestId } = renderView({
 			props: { threadId: 'thread-1', projectId: 'project-1' },
 		});
 		await flushPromises();
-		// The history can open tabs for past builds, so the picker waits for it.
-		expect(queryByTestId('assistant-agent-open-resource-picker')).toBeNull();
+		// The history can open tabs for past builds, so the item waits for it.
+		expect(queryByTestId('input-menu-open-resource')).toBeNull();
 
 		isLoadingHistory.value = false;
 		await flushPromises();
 
-		expect(getByTestId('assistant-agent-open-resource-picker')).toHaveAttribute(
-			'data-project-id',
-			'project-1',
-		);
+		expect(queryByTestId('assistant-agent-open-resource')).toBeNull();
 		expect(queryByTestId('assistant-agent-preview-toggle')).toBeNull();
+		expect(getByTestId('input-menu-open-resource')).toHaveAttribute('data-project-id', 'project-1');
 
-		await fireEvent.click(getByTestId('assistant-agent-open-resource-picker'));
+		await fireEvent.click(getByTestId('input-menu-open-resource'));
 
 		expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
 		expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-picked' });
 	});
 
-	it('shows the preview toggle, not the picker, while tabs are open', async () => {
-		const { getByTestId, queryByTestId } = renderView({
+	it('does not offer to open a resource until the stored tabs load', async () => {
+		fetchTabs.mockReturnValue(new Promise(() => {}));
+		const { queryByTestId } = renderView({
+			props: { threadId: 'thread-1', projectId: 'project-1' },
+		});
+		await flushPromises();
+		isLoadingHistory.value = false;
+		await flushPromises();
+
+		expect(queryByTestId('input-menu-open-resource')).toBeNull();
+	});
+
+	it('shows the preview toggle while tabs are open', async () => {
+		const { getByTestId } = renderView({
 			props: { threadId: 'thread-1', projectId: 'project-1' },
 		});
 		await flushPromises();
@@ -1388,7 +1451,6 @@ describe('AssistantAgentThreadView', () => {
 
 		await fireEvent.click(getByTestId('tab-bar-preview-toggle'));
 
-		expect(queryByTestId('assistant-agent-open-resource-picker')).toBeNull();
 		expect(getByTestId('assistant-agent-preview-toggle')).toBeEnabled();
 	});
 
@@ -1560,12 +1622,47 @@ describe('AssistantAgentThreadView', () => {
 		expect(getByTestId('header-title')).toHaveTextContent('Weekly digest');
 	});
 
-	it('titles an untitled thread with its first message', async () => {
+	it('shows the first message of an untitled thread until the title arrives', async () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
 		chatMessages.value = [{ id: 'u1', role: 'user', content: 'Build a digest' }];
 		await flushPromises();
 
 		expect(getByTestId('header-title')).toHaveTextContent('Build a digest');
+
+		useAssistantAgentThreadsStore().openedThreads = [
+			{
+				id: 'thread-1',
+				title: 'Weekly digest',
+				updatedAt: '2026-10-26T10:00:00.000Z',
+				projectId: 'project-1',
+			},
+		];
+		await flushPromises();
+
+		expect(getByTestId('header-title')).toHaveTextContent('Weekly digest');
+	});
+
+	it('shows the same first-message preview as the sidebar', async () => {
+		useAssistantAgentThreadsStore().openedThreads = [
+			{
+				id: 'thread-1',
+				title: null,
+				firstMessage: 'Build a digest of the support inbox',
+				updatedAt: '2026-10-26T10:00:00.000Z',
+				projectId: 'project-1',
+			},
+		];
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('header-title')).toHaveTextContent('Build a digest of the support inbox');
+	});
+
+	it('shows no title for a thread with no messages', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('header-title')).toBeEmptyDOMElement();
 	});
 
 	it('opens a new Assistant thread from the header', async () => {
@@ -1577,21 +1674,33 @@ describe('AssistantAgentThreadView', () => {
 		expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
 	});
 
-	it('opens the session timeline of the thread from the header', async () => {
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
-		await flushPromises();
-
-		await fireEvent.click(getByTestId('assistant-agent-view-session'));
-
-		expect(routerPush).toHaveBeenCalledWith({
-			name: INSTANCE_AI_THREAD_SESSION_VIEW,
-			params: { threadId: 'thread-1' },
-		});
-	});
-
 	describe('trace export', () => {
 		afterEach(() => {
 			localStorage.removeItem('instanceAi.debugMode');
+		});
+
+		it('hides the session timeline button without the debug flag', async () => {
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('assistant-agent-view-session')).not.toBeInTheDocument();
+		});
+
+		it('opens the session timeline of the thread from the header with the debug flag', async () => {
+			localStorage.setItem('instanceAi.debugMode', 'true');
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await fireEvent.click(getByTestId('assistant-agent-view-session'));
+
+			expect(routerPush).toHaveBeenCalledWith({
+				name: INSTANCE_AI_THREAD_SESSION_VIEW,
+				params: { threadId: 'thread-1' },
+			});
 		});
 
 		it('hides the trace menu without the debug flag', async () => {

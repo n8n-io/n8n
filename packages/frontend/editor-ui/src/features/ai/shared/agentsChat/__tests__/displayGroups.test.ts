@@ -1,9 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildDisplayGroups, isGroupable } from '../displayGroups';
+import { createStoppedMessage } from '../messageMappers';
 import type { AgentsChatMessage } from '../types';
 
 describe('shared agents chat display groups', () => {
+	it('keeps the notice of a stopped turn in its own group, below the reasoning', () => {
+		const groups = buildDisplayGroups([
+			{
+				id: 'a1',
+				executionId: 'exec-1',
+				role: 'assistant',
+				content: '',
+				thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a tool.' }],
+				toolCalls: [{ tool: 'search', toolCallId: 'tc1', state: 'cancelled' }],
+			},
+			createStoppedMessage('exec-1'),
+		]);
+
+		expect(groups.map(({ kind, id }) => [kind, id])).toEqual([
+			['toolRun', 'a1'],
+			['message', 'exec-1:stopped'],
+		]);
+		expect(
+			groups.map((group) => 'thinkingSegments' in group && group.thinkingSegments.length),
+		).toEqual([1, 0]);
+	});
+
 	it('keeps the results entry unchanged when the assistant reply arrives', () => {
 		const previous: AgentsChatMessage = {
 			id: 'previous',
@@ -296,7 +319,7 @@ describe('shared agents chat display groups', () => {
 		}
 	});
 
-	it('moves reasoning from narrated tool steps to the final assistant group', () => {
+	it('moves reasoning from later tool steps to the first assistant group', () => {
 		const messages: AgentsChatMessage[] = [
 			{ id: 'u1', role: 'user', content: 'research this', executionId: 'exec-1' },
 			{
@@ -330,8 +353,8 @@ describe('shared agents chat display groups', () => {
 		expect(groups[1].kind).toBe('message');
 		expect(groups[2].kind).toBe('toolRun');
 		if (groups[1].kind !== 'message' || groups[2].kind !== 'toolRun') return;
-		expect(groups[1].thinkingSegments).toEqual([]);
-		expect(groups[2].thinkingSegments.map((segment) => segment.id)).toEqual(['r1', 'r2', 'r3']);
+		expect(groups[1].thinkingSegments.map((segment) => segment.id)).toEqual(['r1', 'r2', 'r3']);
+		expect(groups[2].thinkingSegments).toEqual([]);
 	});
 
 	it('does not group assistant messages with visible text as tool-only messages', () => {

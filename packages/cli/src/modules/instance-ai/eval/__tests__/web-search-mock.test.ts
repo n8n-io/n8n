@@ -102,4 +102,48 @@ describe('createWebSearchMock', () => {
 		expect(result.results).toEqual([]);
 		expect(result.note).toContain('framework issue');
 	});
+
+	it('cancels the model call on a stop and does not keep the stopped search', async () => {
+		const controller = new AbortController();
+		generate.mockImplementationOnce(async (_prompt: string, opts: { abortSignal: AbortSignal }) => {
+			return await new Promise((_resolve, reject) => {
+				opts.abortSignal.addEventListener('abort', () => reject(new Error('aborted')));
+			});
+		});
+		const onSearch = vi.fn();
+		const search = buildMock(onSearch);
+
+		const stopped = search({ query: 'acme export limit' }, { signal: controller.signal });
+		controller.abort();
+
+		await expect(stopped).rejects.toThrow('The web search was stopped.');
+		expect(generate).toHaveBeenCalledTimes(1);
+		expect(onSearch).not.toHaveBeenCalled();
+
+		// The same search runs again: the stopped one is not in the cache.
+		extractText.mockReturnValue(resultsJson);
+		const result = await search({ query: 'acme export limit' });
+		expect(result.results).toHaveLength(2);
+		expect(generate).toHaveBeenCalledTimes(2);
+	});
+
+	it('runs the search again for a call that did not stop when it shared a stopped search', async () => {
+		const controller = new AbortController();
+		generate.mockImplementationOnce(async (_prompt: string, opts: { abortSignal: AbortSignal }) => {
+			return await new Promise((_resolve, reject) => {
+				opts.abortSignal.addEventListener('abort', () => reject(new Error('aborted')));
+			});
+		});
+		const search = buildMock();
+
+		const stopped = search({ query: 'acme export limit' }, { signal: controller.signal });
+		const active = search({ query: 'acme export limit' });
+		extractText.mockReturnValue(resultsJson);
+		controller.abort();
+
+		await expect(stopped).rejects.toThrow('The web search was stopped.');
+		const result = await active;
+		expect(result.results).toHaveLength(2);
+		expect(generate).toHaveBeenCalledTimes(2);
+	});
 });
