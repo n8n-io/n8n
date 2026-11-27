@@ -435,6 +435,7 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `tracing` | ✓ | Jaeger for distributed tracing |
 | `kafka` | ✓ | Kafka broker for message queue testing |
 | `localstack` | ✓ | AWS emulator for Secrets Manager and S3 |
+| `azurite` | ✓ | Azure Blob Storage emulator (Azurite) |
 | `proxy` | - | HTTP proxy (MockServer) |
 | `taskRunner` | - | External task runner |
 | `engineTaskRunner` | - | External task runner for the engine container (auto-starts with `engine: 'container'`) |

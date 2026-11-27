@@ -389,3 +389,11 @@ export class HostCallError extends Error {
 
 /** The runtime is being replaced after a host error. A later call can succeed. */
 export class RuntimeRestartingError extends Error {}
+
+/**
+ * What one engine did with one expression. `errorClass` names the failure without its message.
+ * `errorOrigin` tells where a QuickJS failure started, when the bridge knows it.
+ */
+export type ExpressionEvaluationOutcome =
+	| { ok: true; value: unknown }
+	| { ok: false; error: unknown; errorClass: string; errorOrigin?: string };

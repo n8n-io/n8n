@@ -1,9 +1,5 @@
 import { DateTime } from 'luxon';
 
-import { ExpressionExtensionError } from '../../errors/expression-extension.error';
-import { ExpressionError } from '../../errors/expression.error';
-import { extend } from '../../extensions';
-import type { IWorkflowDataProxyData } from '../../interfaces';
 import {
 	ARRAY_METHODS,
 	EXTENSION_METHODS,
@@ -25,6 +21,7 @@ import {
 	type NativeMethod,
 	type SimpleNode,
 } from './grammar';
+import type { NativeEvaluationData, NativeEvaluationHost } from './host';
 
 // ── Evaluation: total over the grammar. ────────────────────────────────────
 //
@@ -33,7 +30,7 @@ import {
 // the grammar stops compilation until it is handled here.
 
 /**
- * One evaluation's state: the data proxy, the value bound to the callback
+ * One evaluation's state: the data proxy, the host, the value bound to the callback
  * parameter while a body runs, and the step and work budgets spent so far.
  * Only one callback is ever in scope (a nested one is unrepresentable), so a
  * single slot holds the parameter, and both budgets are shared by every node
@@ -48,7 +45,10 @@ export class Env {
 
 	readonly parameters = new Map<string | number, unknown>();
 
-	constructor(readonly data: IWorkflowDataProxyData) {}
+	constructor(
+		readonly data: NativeEvaluationData,
+		readonly host: NativeEvaluationHost,
+	) {}
 
 	charge(units: number): void {
 		this.work += units;
@@ -478,7 +478,7 @@ function evalExtension(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): u
 	if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
 	env.charge(weight);
 
-	const result: unknown = extend(receiver, node.method, args);
+	const result: unknown = env.host.extend(receiver, node.method, args);
 	if (isObj(result) && !isArray(result) && Object.getPrototypeOf(result) !== Object.prototype) {
 		throw new EngineFallbackError('unsupported_type');
 	}
@@ -674,10 +674,7 @@ export function evalChunk(node: SimpleNode, env: Env): unknown {
 	try {
 		return evalNode(node, env);
 	} catch (error) {
-		const rethrow =
-			error instanceof EngineFallbackError ||
-			error instanceof ExpressionError ||
-			error instanceof ExpressionExtensionError;
+		const rethrow = error instanceof EngineFallbackError || env.host.isExpressionError(error);
 
 		if (rethrow) throw error;
 

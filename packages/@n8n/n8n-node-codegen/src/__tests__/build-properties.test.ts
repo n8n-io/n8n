@@ -2,45 +2,10 @@ import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import { buildProperties } from '../build-properties';
 import { N8N_NODE_CONFIG } from '../n8n-node.config';
-import type { ApiParameter, OperationRow, SpecOperation } from '../types';
+import type { OperationRow } from '../types';
+import { asDefault, getTag, getWorkflow, parameter, row, workflowId } from './fixtures';
 
 const PARSED_JSON = '={{ typeof $value === "string" ? $value.parseJson() : $value }}';
-
-const parameter = (name: string, overrides: Partial<ApiParameter> = {}): ApiParameter => ({
-	name,
-	location: 'query',
-	required: false,
-	deprecated: false,
-	schema: { type: 'string' },
-	...overrides,
-});
-
-const row = (
-	operationId: string,
-	overrides: Partial<SpecOperation> = {},
-	fields: OperationRow['fields'] = {},
-): OperationRow => ({
-	resource: { id: 'workflow', displayName: 'Workflow' },
-	isDefault: false,
-	fields,
-	operation: {
-		operationId,
-		summary: `Summary of ${operationId}`,
-		method: 'GET',
-		apiPath: '/workflows',
-		tag: {
-			name: 'Workflow',
-			displayName: 'Workflows',
-			group: { name: 'BuildAndRun', displayName: 'Build and run' },
-		},
-		deprecated: false,
-		paginated: false,
-		emptyResponse: false,
-		parameters: [],
-		blockers: [],
-		...overrides,
-	},
-});
 
 const build = (...rows: OperationRow[]) => buildProperties(rows, N8N_NODE_CONFIG.spec);
 
@@ -52,10 +17,7 @@ const choicesOf = (property: INodeProperties | undefined) =>
 
 describe('buildProperties', () => {
 	it('should give the node a resource selector and each resource an operation selector', () => {
-		const properties = build(row('getWorkflow'), row('archiveWorkflow'), {
-			...row('getTag'),
-			resource: { id: 'tag', displayName: 'Tag' },
-		});
+		const properties = build(row('getWorkflow'), row('archiveWorkflow'), getTag);
 
 		expect(
 			properties.map((property) => ({
@@ -82,7 +44,7 @@ describe('buildProperties', () => {
 			row('updateWorkflowTags', {
 				method: 'PUT',
 				apiPath: '/workflows/{workflowId}/tags',
-				parameters: [parameter('workflowId', { location: 'path', required: true })],
+				parameters: [workflowId],
 			}),
 		);
 
@@ -333,11 +295,7 @@ describe('buildProperties', () => {
 
 	it('should select the default resource and the default operation of each resource', () => {
 		const properties = buildProperties(
-			[
-				row('archiveWorkflow'),
-				{ ...row('getWorkflows'), isDefault: true },
-				{ ...row('getTag'), resource: { id: 'tag', displayName: 'Tag' }, isDefault: true },
-			],
+			[row('archiveWorkflow'), asDefault(row('getWorkflows')), asDefault(getTag)],
 			N8N_NODE_CONFIG.spec,
 			'workflow',
 		);
@@ -370,20 +328,10 @@ describe('buildProperties', () => {
 
 	it('should put a field override over the generated field, in the required fields and in Options', () => {
 		const properties = build(
-			row(
-				'getWorkflow',
-				{
-					apiPath: '/workflows/{workflowId}',
-					parameters: [
-						parameter('workflowId', { location: 'path', required: true }),
-						parameter('excludePinnedData', { schema: { type: 'boolean' } }),
-					],
-				},
-				{
-					workflowId: { displayName: 'Workflow', description: 'Workflow to get' },
-					excludePinnedData: { displayName: 'Exclude Pinned Data', default: true },
-				},
-			),
+			getWorkflow([workflowId, parameter('excludePinnedData', { schema: { type: 'boolean' } })], {
+				workflowId: { displayName: 'Workflow', description: 'Workflow to get' },
+				excludePinnedData: { displayName: 'Exclude Pinned Data', default: true },
+			}),
 		);
 
 		expect(named(properties, 'workflowId')).toEqual({
@@ -413,7 +361,7 @@ describe('buildProperties', () => {
 				{
 					apiPath: '/workflows/{workflowId}/versions/{workflowVersionId}',
 					parameters: [
-						parameter('workflowId', { location: 'path', required: true }),
+						workflowId,
 						parameter('workflowVersionId', { location: 'path', required: true }),
 					],
 				},

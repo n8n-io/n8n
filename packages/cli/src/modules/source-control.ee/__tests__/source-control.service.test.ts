@@ -22,7 +22,6 @@ import {
 	SOURCE_CONTROL_DEFAULT_NAME,
 } from '../constants';
 import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
-import type { ExportResult } from '../types/export-result';
 import { mockServiceAccount } from '@test/mock-objects';
 
 // Mock the status service to avoid complex dependency issues
@@ -86,7 +85,6 @@ describe('SourceControlService', () => {
 
 	describe('pushWorkfolder', () => {
 		it('should push the workfolder', async () => {
-			const mockExportResult = mock<ExportResult>();
 			// Arrange
 			const user = Object.assign(new User(), {
 				role: GLOBAL_ADMIN_ROLE,
@@ -204,30 +202,17 @@ describe('SourceControlService', () => {
 			mockStatusService.getStatus.mockResolvedValueOnce(files);
 
 			// Mock all export and delete methods
-			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValueOnce(
-				mockExportResult,
-			);
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValueOnce(undefined);
 			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
-				count: 1,
 				missingIds: [],
-				folder: '',
-				files: [],
 			});
-			sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValueOnce(
-				mockExportResult,
-			);
-			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValueOnce(mockExportResult);
-			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
-			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
-				mockExportResult,
-			);
-			sourceControlExportService.exportDataTablesToWorkFolder.mockResolvedValueOnce(
-				mockExportResult,
-			);
-			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
-			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
-				mockExportResult,
-			);
+			sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValueOnce(undefined);
+			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValueOnce(undefined);
+			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(undefined);
+			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(undefined);
+			sourceControlExportService.exportDataTablesToWorkFolder.mockResolvedValueOnce(undefined);
+			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(undefined);
+			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(undefined);
 			sourceControlExportService.rmFilesFromExportFolder.mockResolvedValueOnce(new Set());
 
 			(isContainedWithin as Mock).mockReturnValue(true);
@@ -324,10 +309,7 @@ describe('SourceControlService', () => {
 
 			mockStatusService.getStatus.mockResolvedValueOnce([authorizedResource]);
 			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
-				count: 0,
 				missingIds: [],
-				folder: '',
-				files: [],
 			});
 			(isContainedWithin as Mock).mockReturnValue(true);
 			gitService.push.mockResolvedValueOnce(mock<PushResult>());
@@ -478,10 +460,7 @@ describe('SourceControlService', () => {
 
 			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
 			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
-				count: 0,
 				missingIds: [],
-				folder: '',
-				files: [],
 			});
 			eventService.emit.mockReturnValueOnce(true);
 
@@ -568,10 +547,7 @@ describe('SourceControlService', () => {
 
 			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
 			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
-				count: 0,
 				missingIds: [],
-				folder: '',
-				files: [],
 			});
 
 			(isContainedWithin as Mock).mockReturnValue(true);
@@ -617,10 +593,7 @@ describe('SourceControlService', () => {
 
 			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
 			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
-				count: 0,
 				missingIds: [],
-				folder: '',
-				files: [],
 			});
 
 			(isContainedWithin as Mock).mockReturnValue(true);
@@ -1726,7 +1699,6 @@ describe('SourceControlService', () => {
 			sourceControlExportService.exportWorkflowsToWorkFolder.mockImplementation(async () => {
 				signalExportStarted();
 				await exportGate;
-				return mock<ExportResult>();
 			});
 			return { exportStarted, releaseExport };
 		};
@@ -1737,15 +1709,10 @@ describe('SourceControlService', () => {
 			gitService.push.mockResolvedValue(mock<PushResult>());
 			sourceControlExportService.rmFilesFromExportFolder.mockResolvedValue(new Set());
 			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValue({
-				count: 0,
 				missingIds: [],
-				folder: '',
-				files: [],
 			});
-			sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValue(
-				mock<ExportResult>(),
-			);
-			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValue(mock<ExportResult>());
+			sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValue(undefined);
+			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValue(undefined);
 		};
 
 		it('queues a reset behind an in-flight push and never resets the work tree mid-push', async () => {
@@ -1847,9 +1814,7 @@ describe('SourceControlService', () => {
 			// ARRANGE
 			arrangeSuccessfulPushMocks();
 			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
-			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(
-				mock<ExportResult>(),
-			);
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(undefined);
 
 			const callOrder: string[] = [];
 			gitService.setGitUserDetails.mockImplementation(async () => {
@@ -1882,9 +1847,7 @@ describe('SourceControlService', () => {
 			arrangeSuccessfulPushMocks();
 			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
 			gitService.commit.mockResolvedValue(mock<CommitResult>());
-			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(
-				mock<ExportResult>(),
-			);
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(undefined);
 
 			const userWithoutProfile = Object.assign(new User(), {
 				role: GLOBAL_ADMIN_ROLE,
@@ -1908,9 +1871,7 @@ describe('SourceControlService', () => {
 			arrangeSuccessfulPushMocks();
 			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
 			gitService.commit.mockResolvedValue(mock<CommitResult>());
-			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(
-				mock<ExportResult>(),
-			);
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(undefined);
 
 			const serviceAccount = mockServiceAccount({ role: GLOBAL_ADMIN_ROLE });
 
