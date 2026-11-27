@@ -1957,7 +1957,7 @@ export class McpAgentToolsService {
 			}
 			if (warning.code === 'workflow_outputs_redacted') {
 				return [
-					`Workflow tool "${warning.capability.id ?? ''}" returns only its last node's output, because the workflow redacts its execution data.`,
+					`In published runs, workflow tool "${warning.capability.id ?? ''}" returns only its last node's output, because the workflow redacts the execution data of these runs.`,
 				];
 			}
 			return [];

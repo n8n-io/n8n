@@ -1,3 +1,4 @@
+import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { BuiltTool, Tool } from '@n8n/agents';
 import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { FolderService } from '@/services/folder.service';
@@ -376,6 +377,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			new AgentPolicyService(new PolicyEnforcementService()),
 			mock<WorkflowsInSkillsFlagGate>(),
 			mock<WorkflowFinderService>(),
+			mock<ExecutionRedactionServiceProxy>(),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,

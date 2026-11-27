@@ -38,7 +38,11 @@ import {
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { deniedNodeTypes } from '@/modules/type-availability-policies/type-violation';
-import { NodeTypesProxy } from '@n8n/backend-services';
+import {
+	ExecutionRedactionServiceProxy,
+	NodeTypesProxy,
+	type RedactableExecution,
+} from '@n8n/backend-services';
 import {
 	toPolicedMcpNodes,
 	toPolicedNodes,
@@ -166,6 +170,7 @@ export class AgentValidationService {
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly executionRedaction: ExecutionRedactionServiceProxy,
 	) {}
 
 	/**
@@ -350,7 +355,7 @@ export class AgentValidationService {
 		const issues = await this.collectIssues({ ...ctx, config: ctx.config }, scope);
 		const warnings = [
 			...this.collectSkillNameWarnings(ctx.config, ctx.skills),
-			...(await this.collectRedactedOutputWarnings(ctx.config, ctx.projectId)),
+			...(await this.collectRedactedOutputWarnings(ctx.config, ctx.projectId, ctx.user)),
 		];
 		return {
 			status: issues.length === 0 ? 'valid' : 'invalid',
@@ -375,14 +380,19 @@ export class AgentValidationService {
 	}
 
 	/**
-	 * A workflow that redacts its execution data returns only its last node's
-	 * output to the agent, also with `allOutputs`. A warning, because the
-	 * policy can change after the agent is saved.
+	 * A workflow that redacts the execution data of a published agent run
+	 * returns only its last node's output to the agent, also with `allOutputs`.
+	 * The check uses the run mode of a published agent and the effective policy:
+	 * the workflow setting, the instance policy and the license. A warning,
+	 * because the policy can change after the agent is saved. Only a user sees
+	 * the warning, so a validation without a user skips the check.
 	 */
 	private async collectRedactedOutputWarnings(
 		config: AgentJsonConfig,
 		projectId: string,
+		user: User | undefined,
 	): Promise<AgentConfigValidationWarning[]> {
+		if (!user) return [];
 		const refs = (config.tools ?? []).flatMap((tool, index) =>
 			tool.type === 'workflow' && tool.enabled !== false && tool.allOutputs === true
 				? [{ tool, index }]
@@ -394,10 +404,13 @@ export class AgentValidationService {
 			refs.map(({ tool }) => tool),
 			projectId,
 		);
-		return refs.flatMap(({ tool, index }) => {
+		const redacted = new Map<string, boolean>();
+		for (const workflow of new Set(workflows.values())) {
+			redacted.set(workflow.id, await this.isPublishedRunOutputRedacted(workflow, user));
+		}
+		return refs.flatMap(({ tool, index }): AgentConfigValidationWarning[] => {
 			const workflow = workflows.get(tool.workflowId ?? tool.workflow);
-			const policy = workflow?.settings?.redactionPolicy;
-			if (!policy || policy === 'none') return [];
+			if (!workflow || !redacted.get(workflow.id)) return [];
 			return [
 				{
 					code: 'workflow_outputs_redacted' as const,
@@ -410,6 +423,28 @@ export class AgentValidationService {
 				},
 			];
 		});
+	}
+
+	/**
+	 * True when a run of the workflow as a tool of a published agent redacts its
+	 * execution data. A stand-in execution without run data makes the redaction
+	 * service apply the strictest of the workflow setting and the instance
+	 * policy, and no policy without the license. The stand-in asks for no
+	 * reveal, so the service writes no audit event.
+	 */
+	private async isPublishedRunOutputRedacted(
+		workflow: Pick<WorkflowEntity, 'id' | 'settings' | 'nodes'>,
+		user: User,
+	): Promise<boolean> {
+		const standIn: RedactableExecution = {
+			mode: 'integrated',
+			workflowId: workflow.id,
+			workflowData: { settings: workflow.settings ?? {}, nodes: workflow.nodes },
+			data: { resultData: { runData: {} } },
+			dataTooLargeToDisplay: true,
+		};
+		await this.executionRedaction.processExecutions([standIn], { user });
+		return standIn.data.redactionInfo?.isRedacted === true;
 	}
 
 	private missingConfigIssues(): AgentConfigValidationIssue[] {
