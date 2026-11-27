@@ -165,6 +165,9 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 						@select="onSelectTestScenario"
 					/>
 				</template>
+				<template v-if="$slots['after-reply']" #after-reply="replyProps">
+					<slot name="after-reply" v-bind="replyProps" />
+				</template>
 				<template v-if="$slots['above-input']" #above-input>
 					<slot name="above-input" />
 				</template>

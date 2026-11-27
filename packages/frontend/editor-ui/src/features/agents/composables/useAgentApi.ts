@@ -1,4 +1,8 @@
-import type { AgentTaskCancellationState } from '@n8n/api-types';
+import type {
+	AgentTaskCancellationState,
+	AgentTestRunCommitActionResult,
+	AgentTestRunCommitResponse,
+} from '@n8n/api-types';
 import type {
 	AgentPlanSnapshotDto,
 	AgentKnowledgeCollectionDto,
@@ -1389,3 +1393,7 @@ export const getAgentPlan = async (
 		'GET',
 		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/plan`,
 	);
+
+/** One held action after its run in the real apps. */
+export type AgentTestRunCommitResult = AgentTestRunCommitActionResult;
+export type { AgentTestRunCommitResponse };
