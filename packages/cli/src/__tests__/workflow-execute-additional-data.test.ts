@@ -892,6 +892,17 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(fullRunData.data.resultData.failedBeforeStart).toBe('credentialAccess');
 			});
 
+			it('keeps the recorded trigger when the credential check fails', async () => {
+				failCredentialCheck();
+
+				await expect(runSubWorkflow(false)).rejects.toThrow('does not have access');
+
+				const [, fullRunData] = executeErrorWorkflow.mock.calls[0];
+				expect(fullRunData.data.startData?.triggerNodeType).toBe(
+					'n8n-nodes-base.executeWorkflowTrigger',
+				);
+			});
+
 			it('marks the run as blocked by policy when the sub-workflow refuses its caller', async () => {
 				failPolicyCheck();
 
@@ -2085,7 +2096,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 						pinData: undefined,
 						runData: {},
 					},
-					startData: {},
+					startData: { triggerNodeType: 'n8n-nodes-base.executeWorkflowTrigger' },
 				}),
 				executionMode: 'integrated',
 				workflowData: workflow,
@@ -2121,7 +2132,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 						workflowId: '567',
 					},
 					resultData: { runData: {} },
-					startData: {},
+					startData: { triggerNodeType: 'n8n-nodes-base.executeWorkflowTrigger' },
 				}),
 				executionMode: 'integrated',
 				workflowData: workflow,
