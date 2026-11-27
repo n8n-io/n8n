@@ -212,11 +212,11 @@ describe('v2/components/Select', () => {
 		});
 
 		test.each([
-			[undefined, '8px'],
-			['mini', '8px'],
-			['small', '8px'],
+			[undefined, '10px'],
+			['mini', '10px'],
+			['small', '10px'],
 			['medium', '10px'],
-			['large', '10px'],
+			['large', '12px'],
 			['xlarge', '12px'],
 		] as const)('size %s uses a %s chevron', (size, width) => {
 			const wrapper = render(Select, {
@@ -230,6 +230,29 @@ describe('v2/components/Select', () => {
 				.querySelector('[data-icon="chevron-down"]');
 			expect(chevron).toHaveAttribute('width', width);
 			expect(chevron).toHaveAttribute('height', width);
+		});
+
+		test.each([
+			[undefined, '10px'],
+			['mini', '10px'],
+			['small', '10px'],
+			['medium', '10px'],
+			['large', '12px'],
+			['xlarge', '12px'],
+		] as const)('size %s uses a %s clear icon', (size, width) => {
+			const wrapper = render(Select, {
+				props: {
+					items: [{ value: 'Option 1', label: 'Option 1' }],
+					modelValue: 'Option 1',
+					clearable: true,
+					size,
+				},
+			});
+			const clearIcon = wrapper
+				.getByRole('button', { name: 'Clear selection' })
+				.querySelector('[data-icon="x"]');
+			expect(clearIcon).toHaveAttribute('width', width);
+			expect(clearIcon).toHaveAttribute('height', width);
 		});
 	});
 

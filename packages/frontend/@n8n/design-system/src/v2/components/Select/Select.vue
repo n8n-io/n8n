@@ -34,7 +34,7 @@ import type {
 } from './Select.types';
 import N8nSelectItem from './SelectItem.vue';
 import Icon from '../../../components/N8nIcon/Icon.vue';
-import type { IconSize } from '../../../types/icon';
+import { IconSize } from '@n8n/design-system/types';
 
 defineOptions({ inheritAttrs: false });
 
@@ -104,13 +104,11 @@ const sizes: Record<SelectSizes, string> = {
 };
 const size = computed(() => sizes[props.size]);
 
-// Two icon sizes below the field text, so the chevron stays lighter than the label.
-// 8px continues the 2px icon scale below xsmall. No smaller named size exists.
 const chevronSizes: Record<SelectSizes, IconSize | number> = {
-	mini: 8,
-	small: 8,
+	mini: 'xsmall',
+	small: 'xsmall',
 	medium: 'xsmall',
-	large: 'xsmall',
+	large: 'small',
 	xlarge: 'small',
 };
 const chevronSize = computed(() => chevronSizes[props.size]);
@@ -415,7 +413,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				@pointerdown.stop.prevent
 				@click.stop="onClear"
 			>
-				<Icon icon="x" size="small" />
+				<Icon icon="x" :size="chevronSize" />
 			</button>
 			<Icon
 				icon="chevron-down"

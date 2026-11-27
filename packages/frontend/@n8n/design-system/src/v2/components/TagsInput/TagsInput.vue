@@ -48,8 +48,9 @@ const sizes: Record<TagsInputSizes, string> = {
 	xlarge: $style.xlarge,
 };
 
+// Same size as the select and combobox chevron for this field size.
 const deleteIconSize = computed(
-	(): IconSize => (props.size === 'mini' || props.size === 'small' ? 'xsmall' : 'small'),
+	(): IconSize => (props.size === 'large' || props.size === 'xlarge' ? 'small' : 'xsmall'),
 );
 
 const rootRef = useTemplateRef<HTMLElement>('root');

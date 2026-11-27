@@ -105,6 +105,27 @@ describe('v2/components/TagsInput', () => {
 			const root = wrapper.container.firstElementChild;
 			expect(root?.className).toContain(expected);
 		});
+
+		test.each([
+			[undefined, '12px'],
+			['mini' as const, '10px'],
+			['small' as const, '10px'],
+			['medium' as const, '10px'],
+			['large' as const, '12px'],
+			['xlarge' as const, '12px'],
+		])('size %s uses a %s remove icon', (size, width) => {
+			const wrapper = render(TagsInput, {
+				props: {
+					size,
+					modelValue: ['tag'],
+				},
+			});
+			const removeIcon = wrapper
+				.getByRole('button', { name: 'Remove tag' })
+				.querySelector('[data-icon="x"]');
+			expect(removeIcon).toHaveAttribute('width', width);
+			expect(removeIcon).toHaveAttribute('height', width);
+		});
 	});
 
 	describe('v-model', () => {
