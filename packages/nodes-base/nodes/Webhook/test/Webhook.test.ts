@@ -81,6 +81,7 @@ describe('Test Webhook Node', () => {
 			nodeHelpers: mock(),
 		});
 		context.getNodeParameter.calledWith('options').mockReturnValue({});
+		context.getNodeParameter.calledWith('authentication', 'none').mockReturnValue('none');
 		context.getNode.calledWith().mockReturnValue({
 			type: 'n8n-nodes-base.webhook',
 			typeVersion: 1.1,
@@ -130,6 +131,7 @@ describe('Test Webhook Node', () => {
 			context.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'options') return {};
 				if (paramName === 'responseMode') return 'streaming';
+				if (paramName === 'authentication') return 'none';
 				return undefined;
 			});
 			req.headers = {};
@@ -165,6 +167,7 @@ describe('Test Webhook Node', () => {
 			context.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'options') return {};
 				if (paramName === 'responseMode') return 'onReceived';
+				if (paramName === 'authentication') return 'none';
 				return undefined;
 			});
 
@@ -397,6 +400,7 @@ describe('Test Webhook Node', () => {
 				if (paramName === 'options') return runtimeOptions;
 				if (paramName === 'responseMode') return 'onReceived';
 				if (paramName === 'httpMethod') return 'POST';
+				if (paramName === 'authentication') return 'none';
 				return undefined;
 			});
 

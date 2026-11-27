@@ -799,6 +799,28 @@ describe('Webhook Utils', () => {
 			},
 		);
 
+		it.each([
+			['empty string', ''],
+			['null', null],
+			['undefined', undefined],
+		])(
+			'should reject non-matching authentication value (%s) with a 500 error',
+			async (_label, authentication) => {
+				const ctx: Partial<IWebhookFunctions> = {
+					getNodeParameter: vi.fn().mockReturnValue(authentication),
+					getRequestObject: vi.fn().mockReturnValue({
+						headers: {},
+					}),
+					getHeaderData: vi.fn().mockReturnValue({}),
+				};
+
+				const authCheck = validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication');
+
+				await expect(authCheck).rejects.toBeInstanceOf(WebhookAuthorizationError);
+				await expect(authCheck).rejects.toMatchObject({ responseCode: 500 });
+			},
+		);
+
 		describe('records the headers it authenticated with', () => {
 			const setup = (
 				authentication: string,
