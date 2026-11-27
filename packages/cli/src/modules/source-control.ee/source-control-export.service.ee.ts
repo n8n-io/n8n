@@ -217,14 +217,8 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
 			const variables = await this.variablesService.getAllCached({ globalOnly: true });
-			// do not export empty variables
-			if (variables.length === 0) {
-				return {
-					count: 0,
-					folder: this.gitFolder,
-					files: [],
-				};
-			}
+			// Always write the file: deleting every variable must be pushed as
+			// an empty collection, not silently keep the previous export.
 			const fileName = getVariablesPath(this.gitFolder);
 			const sanitizedVariables: ExportableVariable[] = variables.map((e) => ({
 				id: e.id,
@@ -365,14 +359,7 @@ export class SourceControlExportService {
 				where: this.sourceControlScopedService.getFoldersInAdminProjectsFromContextFilter(context),
 			});
 
-			if (folders.length === 0) {
-				return {
-					count: 0,
-					folder: this.gitFolder,
-					files: [],
-				};
-			}
-
+			// Always write the file so deleting every folder is recorded in Git.
 			const fileName = getFoldersPath(this.gitFolder);
 
 			let foldersToKeepUnchanged: ExportableFolder[] = [];

@@ -645,7 +645,7 @@ describe('SourceControlExportService', () => {
 			expect(result.files).toHaveLength(1);
 		});
 
-		it('should not export empty folders', async () => {
+		it('should export an empty folders file so deletions are pushed', async () => {
 			// Arrange
 			folderRepository.find.mockResolvedValue([]);
 
@@ -654,7 +654,8 @@ describe('SourceControlExportService', () => {
 
 			// Assert
 			expect(result.count).toBe(0);
-			expect(result.files).toHaveLength(0);
+			expect(result.files).toHaveLength(1);
+			expect(fsWriteFile).toHaveBeenCalledWith(expect.any(String), '[]');
 		});
 
 		it('should not duplicate folders on push', async () => {
@@ -728,7 +729,7 @@ describe('SourceControlExportService', () => {
 			expect(result.files).toHaveLength(1);
 		});
 
-		it('should not export empty variables', async () => {
+		it('should export an empty variables file so deletions are pushed', async () => {
 			// Arrange
 			variablesService.getAllCached.mockResolvedValue([]);
 
@@ -737,7 +738,8 @@ describe('SourceControlExportService', () => {
 
 			// Assert
 			expect(result.count).toBe(0);
-			expect(result.files).toHaveLength(0);
+			expect(result.files).toHaveLength(1);
+			expect(fsWriteFile).toHaveBeenCalledWith(expect.any(String), '[]');
 		});
 	});
 
