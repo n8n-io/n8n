@@ -50,6 +50,7 @@ export class DatabaseLeaseProvider implements LeaseProvider<LeaseTransaction> {
 		const manager = new LeaseSessionManager({
 			kind,
 			leaseSeconds,
+			renewSeconds: config.renewSeconds,
 			hostId: this.deps.hostId,
 			bootId: this.deps.bootId,
 			kinds: this.deps.kinds,
@@ -60,8 +61,9 @@ export class DatabaseLeaseProvider implements LeaseProvider<LeaseTransaction> {
 		try {
 			await manager.start();
 		} catch (error) {
-			// The kind stays unregistered, so it must hold no session; a retry starts a new manager.
+			// The kind stays unregistered, so its manager must stop beating; a retry starts a new manager.
 			this.managers.delete(kind);
+			await manager.stop();
 			throw error;
 		}
 	}
