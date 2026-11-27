@@ -129,7 +129,7 @@ function setup({ dependsOnConnections = true }: { dependsOnConnections?: boolean
 	const credentialsFinder = mock<CredentialsFinderService>();
 	credentialsFinder.findCredentialForUser.mockImplementation(async (id) => {
 		const updatedAt = credentials.get(id);
-		return (updatedAt ? { id, updatedAt } : null) as never;
+		return (updatedAt ? { id, type: 'httpBearerAuth', updatedAt } : null) as never;
 	});
 
 	const service = new SimulationSessionService(
@@ -165,6 +165,7 @@ function setup({ dependsOnConnections = true }: { dependsOnConnections?: boolean
 	return {
 		service,
 		backend,
+		agentRepository,
 		opened,
 		closed,
 		state,
@@ -412,18 +413,27 @@ describe('SimulationSessionService connection binding', () => {
 			expect(opened).toHaveLength(1);
 		});
 
-		it('should open a new world when the credential is edited in place', async () => {
+		it('should keep the world when the credential is updated in place', async () => {
 			const { turn, opened, closed, credentials } = setup();
 			const first = await turn();
-			expect(await turn()).toBe(first);
 
-			// Same credential ID, pointed at another account.
+			// A rename or an OAuth2 token refresh changes `updatedAt` only.
 			credentials.set('credential-a', new Date('2026-11-23T10:00:00Z'));
 			const second = await turn();
 
-			expect(second).not.toBe(first);
-			expect(opened).toHaveLength(2);
-			expect(closed).toEqual(['world-1']);
+			expect(second).toBe(first);
+			expect(opened).toHaveLength(1);
+			expect(closed).toEqual([]);
+		});
+
+		it('should treat an empty credential ID as no credential', async () => {
+			const { turn, opened, draft, credentialsFinder } = setup();
+			draft.current = draftWith([{ ...serverA, credential: '' }]);
+
+			await turn();
+
+			expect(credentialsFinder.findCredentialForUser).not.toHaveBeenCalled();
+			expect(opened[0].agent.tools.map((tool) => tool.toolName)).toContain('tracker');
 		});
 
 		it('should drop the world and leave the server out when the owner loses access', async () => {
@@ -486,6 +496,40 @@ describe('SimulationSessionService connection binding', () => {
 			await turn();
 
 			expect(closed).toEqual(['world-1']);
+		});
+
+		it('should close a world once when it expires during the binding check', async () => {
+			const { turn, closed, agentRepository } = setup();
+			await turn();
+
+			const findAgent = agentRepository.findByIdAndProjectId.getMockImplementation();
+			agentRepository.findByIdAndProjectId.mockImplementationOnce(async (...args) => {
+				vi.setSystemTime(Date.now() + 31 * 60 * 1000);
+				return await findAgent!(...args);
+			});
+			const second = await turn();
+
+			expect(second?.worldId).toBe('world-2');
+			expect(closed).toEqual(['world-1']);
+		});
+
+		it('should close an idle world soon after it expires, with no further turn', async () => {
+			const { turn, closed } = setup();
+			await turn();
+
+			await vi.advanceTimersByTimeAsync(36 * 60 * 1000);
+
+			expect(closed).toEqual(['world-1']);
+		});
+
+		it('should close the open worlds on shutdown', async () => {
+			const { service, turn, closed } = setup();
+			await turn();
+			await turn({ user: mock<User>({ id: 'user-2' }) });
+
+			await service.shutdown();
+
+			expect(closed.sort()).toEqual(['world-1', 'world-2']);
 		});
 
 		it('should still run the turn when closing the old world throws synchronously', async () => {
