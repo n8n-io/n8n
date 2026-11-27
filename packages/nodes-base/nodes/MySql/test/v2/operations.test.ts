@@ -1763,7 +1763,7 @@ describe('Test MySql V2, operations', () => {
 			it.each(['single', 'independently', 'transaction'])(
 				'should return error items in %s mode when the table contains a database name',
 				async (queryBatching) => {
-					const nodeParameters = {
+					const nodeParameters: IDataObject = {
 						...insertParameters(queryBatching),
 						database: otherDatabase,
 						table: { __rl: true, value: 'crm.orders', mode: 'name' },
