@@ -74,7 +74,7 @@ function namedImportBindings(declaration: ImportDeclaration, importedName: strin
 		.map((specifier) => specifier.getAliasNode()?.getText() ?? specifier.getName());
 }
 
-function isPersistenceAdapter(file: SourceFile): boolean {
+export function isPersistenceAdapter(file: SourceFile): boolean {
 	const typeormImports = file
 		.getImportDeclarations()
 		.filter((declaration) => declaration.getModuleSpecifierValue() === TYPEORM_PACKAGE);
@@ -113,6 +113,67 @@ function isPersistenceAdapter(file: SourceFile): boolean {
 	});
 }
 
+/**
+ * Non-test source files of the backend packages that depend on `@n8n/db` or `@n8n/typeorm`,
+ * without the allowed files and directories. The TypeORM rules use this scope.
+ */
+export async function persistenceScopeFiles(
+	rootDir: string,
+	options: Record<string, unknown>,
+	{ includeDbPackage }: { includeDbPackage: boolean },
+): Promise<Array<{ file: SourceFile; packagePath: string }>> {
+	const allowedFiles = new Set(stringArrayOption(options.allowedFiles, DEFAULT_ALLOWED_FILES));
+	const allowedDirectories = stringArrayOption(
+		options.allowedDirectories,
+		DEFAULT_ALLOWED_DIRECTORIES,
+	);
+	const exemptPackages = new Set(
+		stringArrayOption(options.exemptPackages, DEFAULT_EXEMPT_PACKAGES),
+	);
+	const result: Array<{ file: SourceFile; packagePath: string }> = [];
+
+	for (const packageJsonPath of await findPackageJsonFiles(rootDir)) {
+		const packageInfo = parsePackageJson(packageJsonPath);
+		if (exemptPackages.has(packageInfo.packageName)) continue;
+		const isDbPackage = packageInfo.packageName === DB_PACKAGE;
+		if (isDbPackage && !includeDbPackage) continue;
+		if (
+			!isDbPackage &&
+			!packageInfo.deps.some((dependency) =>
+				[TYPEORM_PACKAGE, DB_PACKAGE].includes(dependency.name),
+			)
+		) {
+			continue;
+		}
+
+		const packageDir = path.dirname(packageJsonPath);
+		const project = new Project({
+			skipAddingFilesFromTsConfig: true,
+			skipFileDependencyResolution: true,
+		});
+		const packagePath = relativeDir(rootDir, packageJsonPath);
+		const patterns = SOURCE_GLOBS.map((glob) => {
+			const prefix = glob.startsWith('!') ? '!' : '';
+			const relativeGlob = prefix ? glob.slice(1) : glob;
+			return `${prefix}${packageDir}/${relativeGlob}`.replaceAll('\\', '/');
+		});
+
+		project.addSourceFilesAtPaths(patterns);
+		for (const file of project.getSourceFiles()) {
+			const relativeFile = normalizedRelativePath(rootDir, file.getFilePath());
+			if (
+				allowedFiles.has(relativeFile) ||
+				allowedDirectories.some((directory) => relativeFile.startsWith(`${directory}/`))
+			) {
+				continue;
+			}
+			result.push({ file, packagePath });
+		}
+	}
+
+	return result;
+}
+
 /** Enforces the TypeORM persistence boundary without prescribing a package layout. */
 export class TypeormPersistenceBoundaryRule extends BaseRule<CodeHealthContext> {
 	readonly id = 'typeorm-persistence-boundary';
@@ -122,56 +183,13 @@ export class TypeormPersistenceBoundaryRule extends BaseRule<CodeHealthContext> 
 	readonly severity = 'error' as const;
 
 	async analyze(context: CodeHealthContext): Promise<Violation[]> {
-		const allowedFiles = new Set(
-			stringArrayOption(this.getOptions().allowedFiles, DEFAULT_ALLOWED_FILES),
-		);
-		const allowedDirectories = stringArrayOption(
-			this.getOptions().allowedDirectories,
-			DEFAULT_ALLOWED_DIRECTORIES,
-		);
-		const exemptPackages = new Set(
-			stringArrayOption(this.getOptions().exemptPackages, DEFAULT_EXEMPT_PACKAGES),
-		);
 		const violations: Violation[] = [];
-
-		for (const packageJsonPath of await findPackageJsonFiles(context.rootDir)) {
-			const packageInfo = parsePackageJson(packageJsonPath);
-			if (packageInfo.packageName === DB_PACKAGE || exemptPackages.has(packageInfo.packageName)) {
-				continue;
-			}
-			if (
-				!packageInfo.deps.some((dependency) =>
-					[TYPEORM_PACKAGE, DB_PACKAGE].includes(dependency.name),
-				)
-			) {
-				continue;
-			}
-
-			const packageDir = path.dirname(packageJsonPath);
-			const project = new Project({
-				skipAddingFilesFromTsConfig: true,
-				skipFileDependencyResolution: true,
-			});
-			const packagePath = relativeDir(context.rootDir, packageJsonPath);
-			const patterns = SOURCE_GLOBS.map((glob) => {
-				const prefix = glob.startsWith('!') ? '!' : '';
-				const relativeGlob = prefix ? glob.slice(1) : glob;
-				return `${prefix}${packageDir}/${relativeGlob}`.replaceAll('\\', '/');
-			});
-
-			project.addSourceFilesAtPaths(patterns);
-			for (const file of project.getSourceFiles()) {
-				const relativeFile = normalizedRelativePath(context.rootDir, file.getFilePath());
-				if (
-					allowedFiles.has(relativeFile) ||
-					allowedDirectories.some((directory) => relativeFile.startsWith(`${directory}/`))
-				) {
-					continue;
-				}
-				violations.push(...this.analyzeFile(file, packagePath));
-			}
+		const files = await persistenceScopeFiles(context.rootDir, this.getOptions(), {
+			includeDbPackage: false,
+		});
+		for (const { file, packagePath } of files) {
+			violations.push(...this.analyzeFile(file, packagePath));
 		}
-
 		return violations;
 	}
 
