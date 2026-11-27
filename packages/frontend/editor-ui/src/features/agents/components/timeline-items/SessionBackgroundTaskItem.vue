@@ -139,7 +139,7 @@ function submitApproval(resumeData: ApprovalResume) {
 @use '@n8n/design-system/css/mixins/motion';
 
 .row .activityButton {
-	--ai-activity-step--padding: var(--spacing--2xs);
+	--n8n-ai-activity-step--padding: var(--spacing--2xs);
 	--button--color--background-hover: var(--background--hover);
 	--button--color--background-active: var(--background--active);
 }
@@ -148,7 +148,7 @@ function submitApproval(resumeData: ApprovalResume) {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
-	--ai-activity-step--color: var(--text-color--subtle);
+	--n8n-ai-activity-step--color: var(--text-color--subtle);
 }
 
 .header {
@@ -199,11 +199,11 @@ function submitApproval(resumeData: ApprovalResume) {
 }
 
 .failed {
-	--ai-activity-step--color: var(--color--text--danger);
+	--n8n-ai-activity-step--color: var(--color--text--danger);
 }
 
 .cancelled {
-	--ai-activity-step--color: var(--text-color--disabled);
+	--n8n-ai-activity-step--color: var(--text-color--disabled);
 }
 
 .cancelledIcon {

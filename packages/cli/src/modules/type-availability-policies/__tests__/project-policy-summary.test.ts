@@ -1,5 +1,5 @@
 import type { EventService } from '@n8n/backend-services';
-import type { TransactionRunner } from '@n8n/db';
+import type { ProjectRepository, TransactionRunner } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -54,6 +54,7 @@ describe('TypeAvailabilityPolicyService.summarizeProjectPolicies', () => {
 		mock<TypeAvailabilityPolicySnapshot>(),
 		loadNodesAndCredentials,
 		nodeTypes,
+		mock<ProjectRepository>(),
 	);
 
 	let rulesByScope: Map<string, PolicyRule[]>;

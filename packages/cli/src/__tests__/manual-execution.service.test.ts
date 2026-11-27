@@ -498,6 +498,51 @@ describe('ManualExecutionService', () => {
 			expect(mockRunPartialWorkflow2.mock.calls[0][4]).toEqual(destinationNode);
 		});
 
+		it.each([
+			{
+				name: 'trigger reconstruction',
+				data: {
+					executionMode: 'manual' as const,
+					triggerToStartFrom: { name: 'trigger', data: mock<ITaskData>() },
+					startNodes: [{ name: 'start', sourceData: null }],
+					destinationNode: { nodeName: 'trigger', mode: 'inclusive' as const },
+				},
+			},
+			{
+				name: 'full execution',
+				data: { executionMode: 'manual' as const, runData: undefined },
+			},
+			{
+				name: 'partial execution',
+				data: {
+					executionMode: 'manual' as const,
+					runData: { start: [mock<ITaskData>()] },
+					destinationNode: { nodeName: 'destination', mode: 'inclusive' as const },
+				},
+			},
+		])('preserves binary grants during $name', async ({ data }) => {
+			const binaryDataAccess = ['binary-id'];
+			const workflow = mock<Workflow>({
+				getNode: vi.fn((name) => mock<INode>({ name })),
+				getTriggerNodes: vi.fn().mockReturnValue([]),
+			});
+
+			await manualExecutionService.runManually(
+				{
+					...data,
+					binaryDataAccess,
+					workflowData: mock<IWorkflowExecutionDataProcess['workflowData']>(),
+				},
+				workflow,
+				mock<IWorkflowExecuteAdditionalData>(),
+				'execution-id',
+			);
+
+			expect(vi.mocked(WorkflowExecute).mock.calls[0][2]?.binaryDataAccess).toEqual(
+				binaryDataAccess,
+			);
+		});
+
 		it('should validate nodes exist before execution', async () => {
 			const startNodeName = 'existingNode';
 			const data = mock<IWorkflowExecutionDataProcess>({

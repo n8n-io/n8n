@@ -1,0 +1,368 @@
+# Runs deployment compatibility cells against published nightly images for
+# master and 3.x and reports results to Currents project n8n-nightly-compatibility (tlfUav).
+#
+# Images are pinned by digest from GHCR before cells start. Nothing is built
+# here, and cells run API-only without a browser or the e2e controller.
+
+name: 'Test: Deployment cells'
+
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] nothing from the triggering run is checked out or reaches a shell
+    workflows:
+      - 'Docker: Build and Push'
+      - 'Build: v3 Nightly Docker Images'
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'Release channel to test'
+        required: false
+        type: choice
+        options:
+          - master
+          - 3.x
+        default: master
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: >-
+    deployment-cells-${{
+      github.event_name == 'workflow_dispatch'
+      && (inputs.channel || 'master')
+      || (github.event.workflow_run.name == 'Build: v3 Nightly Docker Images' && '3.x' || 'master')
+    }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve published images
+    # Skip fork repos, failed builds, and ad-hoc branch dispatches of Docker: Build and Push.
+    if: |
+      github.repository == 'n8n-io/n8n' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'master' &&
+        (github.event.workflow_run.event == 'schedule' ||
+         (github.event.workflow_run.name == 'Build: v3 Nightly Docker Images' &&
+          github.event.workflow_run.event == 'workflow_dispatch'))))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      channel: ${{ steps.context.outputs.channel }}
+      n8n: ${{ steps.pin.outputs.n8n }}
+      n8n_pc: ${{ steps.pin.outputs.n8n_pc }}
+      runners: ${{ steps.pin.outputs.runners }}
+      runners_distroless: ${{ steps.pin.outputs.runners_distroless }}
+      n8n_stable: ${{ steps.pin.outputs.n8n_stable }}
+    steps:
+      - name: Checkout CI helpers
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
+
+      - name: Determine channel and image tags
+        id: context
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_CHANNEL: ${{ inputs.channel }}
+          TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            CHANNEL="${INPUT_CHANNEL:-master}"
+          elif [ "$TRIGGER_WORKFLOW" = "Build: v3 Nightly Docker Images" ]; then
+            CHANNEL="3.x"
+          else
+            CHANNEL="master"
+          fi
+
+          case "$CHANNEL" in
+            master) TAG="nightly" ;;
+            3.x)    TAG="v3-nightly" ;;
+            *)
+              echo "::error::Unsupported channel: $CHANNEL"
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "channel=${CHANNEL}"
+            echo "n8n_tag=ghcr.io/n8n-io/n8n:${TAG}"
+            echo "n8n_pc_tag=ghcr.io/n8n-io/n8n:${TAG}-pc"
+            echo "runners_tag=ghcr.io/n8n-io/runners:${TAG}"
+            echo "runners_distroless_tag=ghcr.io/n8n-io/runners:${TAG}-distroless"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: true
+
+      - name: Resolve image digests
+        id: digests
+        env:
+          N8N_TAG: ${{ steps.context.outputs.n8n_tag }}
+          N8N_PC_TAG: ${{ steps.context.outputs.n8n_pc_tag }}
+          RUNNERS_TAG: ${{ steps.context.outputs.runners_tag }}
+          DISTROLESS_TAG: ${{ steps.context.outputs.runners_distroless_tag }}
+        run: node .github/scripts/docker/get-manifest-digests.mjs
+
+      - name: Resolve 2.x stable image digest
+        id: stable_digest
+        if: steps.context.outputs.channel == '3.x'
+        env:
+          N8N_TAG: ghcr.io/n8n-io/n8n:stable
+        run: node .github/scripts/docker/get-manifest-digests.mjs
+
+      - name: Pin image references by digest
+        id: pin
+        env:
+          CHANNEL: ${{ steps.context.outputs.channel }}
+          N8N_IMAGE: ${{ steps.digests.outputs.n8n_image }}
+          N8N_DIGEST: ${{ steps.digests.outputs.n8n_digest }}
+          N8N_PC_IMAGE: ${{ steps.digests.outputs.n8n_pc_image }}
+          N8N_PC_DIGEST: ${{ steps.digests.outputs.n8n_pc_digest }}
+          RUNNERS_IMAGE: ${{ steps.digests.outputs.runners_image }}
+          RUNNERS_DIGEST: ${{ steps.digests.outputs.runners_digest }}
+          RUNNERS_DISTROLESS_IMAGE: ${{ steps.digests.outputs.runners_distroless_image }}
+          RUNNERS_DISTROLESS_DIGEST: ${{ steps.digests.outputs.runners_distroless_digest }}
+          N8N_STABLE_IMAGE: ${{ steps.stable_digest.outputs.n8n_image }}
+          N8N_STABLE_DIGEST: ${{ steps.stable_digest.outputs.n8n_digest }}
+        run: |
+          set -euo pipefail
+          pin() {
+            local key="$1" image="$2" digest="$3"
+            if [[ -z "$image" || ! "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+              echo "::error::Failed to resolve valid digest for ${key}: image='${image}' digest='${digest}'"
+              exit 1
+            fi
+            echo "${key}=${image}@${digest}" >> "$GITHUB_OUTPUT"
+            echo "- \`${key}\`: \`${image}@${digest}\`" >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          echo "### Resolved images (${CHANNEL})" >> "$GITHUB_STEP_SUMMARY"
+          pin "n8n" "$N8N_IMAGE" "$N8N_DIGEST"
+          pin "n8n_pc" "$N8N_PC_IMAGE" "$N8N_PC_DIGEST"
+          pin "runners" "$RUNNERS_IMAGE" "$RUNNERS_DIGEST"
+          pin "runners_distroless" "$RUNNERS_DISTROLESS_IMAGE" "$RUNNERS_DISTROLESS_DIGEST"
+          if [ "$CHANNEL" = "3.x" ]; then
+            pin "n8n_stable" "$N8N_STABLE_IMAGE" "$N8N_STABLE_DIGEST"
+          fi
+
+  cells:
+    name: ${{ needs.resolve.outputs.channel }} · ${{ matrix.arch }} · ${{ matrix.group }}
+    needs: resolve
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && (matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest') || matrix.runner }}
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: default
+            arch: amd64
+            runner: blacksmith-2vcpu-ubuntu-2204
+            n8n_image_key: n8n
+            runners_image_key: runners
+            specs: '--grep-invert @cell:IMG-07|@cell:CRT-01|@cell:DEP-05|@cell:DEP-06|@cell:PLT-04'
+          - group: distroless
+            arch: amd64
+            runner: blacksmith-2vcpu-ubuntu-2204
+            n8n_image_key: n8n
+            runners_image_key: runners_distroless
+            specs: tests/deployment/task-runner-distroless.spec.ts
+          - group: pc-distroless
+            arch: amd64
+            runner: blacksmith-2vcpu-ubuntu-2204
+            n8n_image_key: n8n_pc
+            runners_image_key: runners_distroless
+            specs: tests/deployment/cloud-image-pair.spec.ts
+          - group: redis-7
+            arch: amd64
+            runner: blacksmith-2vcpu-ubuntu-2204
+            n8n_image_key: n8n
+            runners_image_key: runners
+            redis_image: redis:7.4.12-alpine
+            specs: tests/deployment/redis-7.spec.ts
+          - group: valkey
+            arch: amd64
+            runner: blacksmith-2vcpu-ubuntu-2204
+            n8n_image_key: n8n
+            runners_image_key: runners
+            redis_image: valkey/valkey:9.2.1-alpine
+            specs: tests/deployment/valkey.spec.ts
+          - group: standard
+            arch: arm64
+            runner: blacksmith-8vcpu-ubuntu-2204-arm
+            n8n_image_key: n8n
+            runners_image_key: runners
+            specs: tests/deployment/standard-image-pair.spec.ts
+          - group: pc-distroless
+            arch: arm64
+            runner: blacksmith-8vcpu-ubuntu-2204-arm
+            n8n_image_key: n8n_pc
+            runners_image_key: runners_distroless
+            specs: tests/deployment/cloud-image-pair.spec.ts
+    env:
+      NODE_OPTIONS: '--max-old-space-size=6144'
+      DEPLOYMENT_CHANNEL: ${{ needs.resolve.outputs.channel }}
+      DEPLOYMENT_ARCH: ${{ matrix.arch }}
+      # Always pass both image env vars explicitly: parseImage() cannot derive
+      # a runners tag when TEST_IMAGE_N8N is pinned by @sha256:... digest.
+      TEST_IMAGE_N8N: ${{ needs.resolve.outputs[matrix.n8n_image_key] }}
+      TEST_IMAGE_TASK_RUNNER: ${{ needs.resolve.outputs[matrix.runners_image_key] }}
+      CURRENTS_PROJECT_ID: 'tlfUav'
+      CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=n8n-workflow...
+
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: true
+
+      - name: Pull pinned images
+        env:
+          REDIS_IMAGE: ${{ matrix.redis_image }}
+        run: |
+          set -euo pipefail
+          docker pull --quiet "$TEST_IMAGE_N8N"
+          docker pull --quiet "$TEST_IMAGE_TASK_RUNNER"
+          if [ -n "$REDIS_IMAGE" ]; then
+            docker pull --quiet "$REDIS_IMAGE"
+          fi
+
+      - name: Run deployment cells
+        env:
+          SPECS: ${{ matrix.specs }}
+          REDIS_IMAGE: ${{ matrix.redis_image }}
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+        run: |
+          set -euo pipefail
+          if [ -n "$REDIS_IMAGE" ]; then
+            export TEST_IMAGE_REDIS="$REDIS_IMAGE"
+          fi
+          read -r -a SPEC_ARGS <<< "$SPECS"
+          pnpm --filter=n8n-playwright test:deployment "${SPEC_ARGS[@]}"
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: deployment-cells-${{ needs.resolve.outputs.channel }}-${{ matrix.arch }}-${{ matrix.group }}-${{ github.run_attempt }}
+          path: |
+            packages/quality/testing/playwright/test-results/
+            packages/quality/testing/playwright/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Cancel Currents run if workflow is cancelled
+        if: cancelled()
+        env:
+          CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          if [ -n "$CURRENTS_API_KEY" ]; then
+            curl --location --request PUT \
+              "https://api.currents.dev/v1/runs/cancel-ci/github" \
+              --header "Authorization: Bearer $CURRENTS_API_KEY" \
+              --header "Content-Type: application/json" \
+              --data "{\"githubRunId\": \"${GITHUB_RUN_ID}\", \"githubRunAttempt\": \"${GITHUB_RUN_ATTEMPT}\"}"
+          fi
+
+  upgrade:
+    name: 3.x · amd64 · upgrade
+    needs: resolve
+    if: needs.resolve.outputs.channel == '3.x'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read
+    env:
+      NODE_OPTIONS: '--max-old-space-size=6144'
+      DEPLOYMENT_CHANNEL: ${{ needs.resolve.outputs.channel }}
+      DEPLOYMENT_ARCH: amd64
+      # Always pass both image env vars explicitly: parseImage() cannot derive
+      # a runners tag when TEST_IMAGE_N8N is pinned by @sha256:... digest.
+      TEST_IMAGE_N8N: ${{ needs.resolve.outputs.n8n }}
+      TEST_IMAGE_TASK_RUNNER: ${{ needs.resolve.outputs.runners }}
+      TEST_IMAGE_N8N_UPGRADE_FROM: ${{ needs.resolve.outputs.n8n_stable }}
+      CURRENTS_PROJECT_ID: 'tlfUav'
+      CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=n8n-workflow...
+
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: true
+
+      - name: Pull pinned images
+        run: |
+          set -euo pipefail
+          docker pull --quiet "$TEST_IMAGE_N8N"
+          docker pull --quiet "$TEST_IMAGE_N8N_UPGRADE_FROM"
+
+      - name: Run upgrade deployment cell
+        env:
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+        run: |
+          set -euo pipefail
+          pnpm --filter=n8n-playwright test:deployment tests/deployment/upgrade-2x-to-3x.spec.ts
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: deployment-cells-3.x-amd64-upgrade-${{ github.run_attempt }}
+          path: |
+            packages/quality/testing/playwright/test-results/
+            packages/quality/testing/playwright/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Cancel Currents run if workflow is cancelled
+        if: cancelled()
+        env:
+          CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          if [ -n "$CURRENTS_API_KEY" ]; then
+            curl --location --request PUT \
+              "https://api.currents.dev/v1/runs/cancel-ci/github" \
+              --header "Authorization: Bearer $CURRENTS_API_KEY" \
+              --header "Content-Type: application/json" \
+              --data "{\"githubRunId\": \"${GITHUB_RUN_ID}\", \"githubRunAttempt\": \"${GITHUB_RUN_ATTEMPT}\"}"
+          fi

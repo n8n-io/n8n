@@ -7,7 +7,6 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import {
 	canWriteInstanceSkillScope,
@@ -46,8 +45,7 @@ export function useInstanceAiInputMenuItems(
 	const { ignorePendingConnectResult } = useMcpServerConnect();
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
 	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
-	const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
-	const shouldShowSkills = computed(() => assistantSkillsEnabled.value && isContextSkillsEnabled());
+	const shouldShowSkills = computed(() => isContextSkillsEnabled());
 	const canCreateSkill = computed(
 		() =>
 			canWriteInstanceSkillScope() ||

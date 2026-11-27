@@ -130,7 +130,9 @@ test.describe(
 			await n8n.workflows.archiveWorkflow(workflow);
 			await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.ARCHIVED)).toBeVisible();
 
+			await expect(workflow).toBeHidden();
 			await n8n.workflows.toggleShowArchived();
+			await expect(workflow).toBeVisible();
 
 			await n8n.workflows.deleteWorkflow(workflow);
 			await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.DELETED)).toBeVisible();

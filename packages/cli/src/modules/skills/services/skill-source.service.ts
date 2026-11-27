@@ -58,6 +58,9 @@ import {
 import { SkillSourceClientRegistry } from '../sources/skill-source-client-registry.service';
 import {
 	skillSourceIdentityKey,
+	skillSourceFolderKeyPrefix,
+	skillSourceRepositoryKey,
+	skillSourcePathsOverlap,
 	type FetchedSkill,
 	type RemoteSkillRef,
 	type SkillSourceAuth,
@@ -230,7 +233,7 @@ export class SkillSourceService {
 			if (surface) this.toolBudget.take(user.id);
 			const source = await this.parse(payload, user, target.projectId, surface !== undefined);
 			report.provider = source.type;
-			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
+			const duplicate = await this.duplicateOf(user, source, target.projectId);
 			report.duplicate_result = duplicate.kind;
 			const discovered = await this.discoverAll(source);
 			const skills = await this.readAll(source, discovered);
@@ -313,7 +316,7 @@ export class SkillSourceService {
 			this.toolBudget.take(user.id);
 			const source = await this.parse(payload, user, target.projectId, true);
 			report.provider = source.type;
-			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
+			const duplicate = await this.duplicateOf(user, source, target.projectId);
 			report.duplicate_result = duplicate.kind;
 			if (duplicate.kind === 'blocked') throw duplicateError(duplicate.where);
 			const discovered = await this.discoverAll(source);
@@ -366,7 +369,7 @@ export class SkillSourceService {
 			if (preview) this.toolBudget.take(user.id);
 			const source = await this.parse(payload, user, target.projectId, preview !== undefined);
 			report.provider = source.type;
-			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
+			const duplicate = await this.duplicateOf(user, source, target.projectId);
 			report.duplicate_result = duplicate.kind;
 			if (duplicate.kind === 'blocked') throw duplicateError(duplicate.where);
 			const { response, warning } = await this.importSkills(user, source, target, scopeType, {
@@ -509,6 +512,7 @@ export class SkillSourceService {
 					sourceId,
 					target.projectId,
 					payload.credentialId ?? null,
+					await skillSourceIdentityKey(this.identityOf(locked)),
 					ctx,
 				);
 			});
@@ -654,7 +658,7 @@ export class SkillSourceService {
 		};
 		const duplicate = await this.duplicateOf(
 			user,
-			source.identityKey,
+			source,
 			target.projectId,
 			source.id,
 			ctx,
@@ -903,7 +907,7 @@ export class SkillSourceService {
 				await this.skillRepository.lockNames(ctx);
 				const duplicate = await this.duplicateOf(
 					user,
-					source.identityKey,
+					source,
 					target.projectId,
 					undefined,
 					ctx,
@@ -1178,7 +1182,7 @@ export class SkillSourceService {
 				// The registry holds only the clients of stored source types.
 				type: client.type as SkillSourceType,
 				locator,
-				identityKey: skillSourceIdentityKey(client.identity(locator)),
+				identityKey: await skillSourceIdentityKey(client.identity(locator)),
 				auth,
 			};
 		} catch (error) {
@@ -1186,21 +1190,38 @@ export class SkillSourceService {
 		}
 	}
 
+	private identityOf(source: Pick<SkillSourceConnection, 'type' | 'locator'>) {
+		const client = this.clients.get(source.type);
+		if (!client) throw new NotFoundError('Source not found');
+		return client.identity(source.locator);
+	}
+
 	/**
-	 * The duplicate rules. A source in Global or in the chosen scope blocks the connect. A
+	 * Overlapping folders in Global or in the chosen scope block the connect. A
 	 * source in another project that the user can see gives a warning. A source in a project
 	 * that the user cannot see changes nothing, so the answer never reveals it.
 	 */
 	private async duplicateOf(
 		user: User,
-		identityKey: string,
+		source: Pick<SkillSourceConnection, 'type' | 'locator'>,
 		projectId: string | null,
 		exceptSourceId?: string,
 		ctx: OperationContext = {},
 		visibleProjectIds?: string[] | 'all',
 	): Promise<SkillSourceDuplicate> {
-		const same = (await this.sourceRepository.findSameSources(identityKey, ctx)).filter(
-			({ id }) => id !== exceptSourceId,
+		const identity = this.identityOf(source);
+		const candidates = await this.sourceRepository.findSourcesInRepository(
+			skillSourceRepositoryKey(identity),
+			await skillSourceFolderKeyPrefix(identity),
+			ctx,
+		);
+		const same = candidates.filter(
+			({ id, locator }) =>
+				id !== exceptSourceId &&
+				skillSourcePathsOverlap(
+					identity.path,
+					this.identityOf({ type: source.type, locator }).path,
+				),
 		);
 		if (same.length === 0) return { kind: 'none' };
 		const blocking =
@@ -1217,9 +1238,13 @@ export class SkillSourceService {
 			};
 		}
 		const visible = visibleProjectIds ?? (await this.skillAccess.visibleSourceProjects(user));
-		const shownIds = same.flatMap(({ projectId: id }) =>
-			id !== null && (visible === 'all' || visible.includes(id)) ? [id] : [],
-		);
+		const shownIds = [
+			...new Set(
+				same.flatMap(({ projectId: id }) =>
+					id !== null && (visible === 'all' || visible.includes(id)) ? [id] : [],
+				),
+			),
+		];
 		if (shownIds.length === 0) return { kind: 'none' };
 		const projects = await this.skillRepository.findProjects(shownIds, ctx);
 		return {

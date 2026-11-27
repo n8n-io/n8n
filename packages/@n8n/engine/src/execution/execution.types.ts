@@ -68,6 +68,16 @@ export interface ParentLink {
 }
 
 /**
+ * The failed execution that an error execution reports on. Only
+ * the engine's own error start sets it: a caller over HTTP cannot claim one.
+ * The workflow id is stored too, because the source row can be pruned first.
+ */
+export interface ErrorSourceLink {
+	executionId: string;
+	workflowId: string;
+}
+
+/**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
  * at birth: the step was considered and decided against (no live input), so it
  * never runs. `waiting` is the other extreme: the step ran, but it produced no
@@ -96,6 +106,18 @@ export type SettledStepStatus = (typeof SETTLED_STEP_STATUSES)[number];
 
 export function isSettledStatus(status: StepStatus): status is SettledStepStatus {
 	return (SETTLED_STEP_STATUSES as readonly StepStatus[]).includes(status);
+}
+
+/**
+ * The settled statuses that have a `step:settled` message on the orchestration
+ * queue. A `cancelled` step has no message, because its execution already ended.
+ */
+export const ANNOUNCED_STEP_STATUSES = ['completed', 'failed', 'skipped'] as const;
+
+export type AnnouncedStepStatus = (typeof ANNOUNCED_STEP_STATUSES)[number];
+
+export function isAnnouncedStatus(status: StepStatus): status is AnnouncedStepStatus {
+	return (ANNOUNCED_STEP_STATUSES as readonly StepStatus[]).includes(status);
 }
 
 /**

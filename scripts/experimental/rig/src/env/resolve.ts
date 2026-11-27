@@ -10,7 +10,7 @@ import type {
 	RunnerComponent,
 	RunnerLayer,
 } from '../topology/components';
-import { readDotenv } from './dotenv';
+import { readEnvFile } from './secret-store';
 import {
 	defaultLauncherEnv,
 	defaultProcessEnv,
@@ -92,7 +92,7 @@ function fromFile(kind: LayerKind, paths: EnvPaths, file: string): Layer {
 	const label = inside ? relative(paths.root, file) : displayPath(file);
 	return {
 		kind,
-		entries: readDotenv(file).map((entry) => ({
+		entries: readEnvFile(file).map((entry) => ({
 			key: entry.key,
 			value: entry.value,
 			label: `${label}:${entry.line}`,
@@ -151,16 +151,29 @@ function profileLayers(ctx: ResolveContext, exclude: (key: string) => boolean): 
 	);
 }
 
-/** Global secrets first, so the secrets of the environment win. */
-function secretLayers(ctx: ResolveContext, exclude: (key: string) => boolean): Layer[] {
+/**
+ * The layers from env files, least specific first, so a more specific layer
+ * wins: global secrets, profiles, secrets of the environment, shared, role,
+ * component. A secret can be in any layer, so the secrets do not sit on top.
+ */
+function fileLayers(
+	ctx: ResolveContext,
+	files: { role: string; component: string },
+	exclude: { shared: (key: string) => boolean; secrets: (key: string) => boolean },
+): Layer[] {
+	const { paths } = ctx;
 	return [
-		without(fromFile('secrets', ctx.paths, globalSecretsFile()), exclude),
-		without(fromFile('secrets', ctx.paths, ctx.paths.secrets), exclude),
+		without(fromFile('secrets', paths, globalSecretsFile()), exclude.secrets),
+		...profileLayers(ctx, exclude.shared),
+		without(fromFile('secrets', paths, paths.secrets), exclude.secrets),
+		without(fromFile('shared', paths, paths.layerFile('shared')), exclude.shared),
+		fromFile('role', paths, paths.layerFile(files.role)),
+		fromFile('component', paths, paths.layerFile(files.component)),
 	];
 }
 
 export function resolveProcessEnv(ctx: ResolveContext, component: ProcessComponent): ResolvedEnv {
-	const { paths, topology } = ctx;
+	const { topology } = ctx;
 	let exclude: (key: string) => boolean = () => false;
 	if (component.role === 'engine') exclude = isControlPlaneOnlyKey;
 	else if (component.role === 'main' && topology.engine === 'remote') exclude = isDataPlaneOnlyKey;
@@ -170,11 +183,11 @@ export function resolveProcessEnv(ctx: ResolveContext, component: ProcessCompone
 		shellLayer(ctx),
 		fromRecord('default', 'rig default', defaultProcessEnv()),
 		fromRecord('managed', 'rig', managedProcessEnv(ctx, component)),
-		...profileLayers(ctx, exclude),
-		without(fromFile('shared', paths, paths.layerFile('shared')), exclude),
-		fromFile('role', paths, paths.layerFile(component.role)),
-		fromFile('component', paths, paths.layerFile(component.name)),
-		...secretLayers(ctx, (key) => exclude(key) || excludeSecrets(key)),
+		...fileLayers(
+			ctx,
+			{ role: component.role, component: component.name },
+			{ shared: exclude, secrets: (key) => exclude(key) || excludeSecrets(key) },
+		),
 		fromRecord('one-off', '-e', ctx.oneOff ?? {}),
 	]);
 
@@ -185,16 +198,15 @@ export function resolveProcessEnv(ctx: ResolveContext, component: ProcessCompone
 }
 
 export function resolveLauncherEnv(ctx: ResolveContext, component: LauncherComponent): ResolvedEnv {
-	const { paths, topology } = ctx;
 	return merge([
 		shellLayer(ctx),
 		fromRecord('default', 'rig default', defaultLauncherEnv()),
 		fromRecord('managed', 'rig', managedLauncherEnv(ctx, component)),
-		...profileLayers(ctx, () => false),
-		fromFile('shared', paths, paths.layerFile('shared')),
-		fromFile('role', paths, paths.layerFile('launcher')),
-		fromFile('component', paths, paths.layerFile(component.name)),
-		...secretLayers(ctx, secretsExclusion(topology)),
+		...fileLayers(
+			ctx,
+			{ role: 'launcher', component: component.name },
+			{ shared: () => false, secrets: secretsExclusion(ctx.topology) },
+		),
 		fromRecord('one-off', '-e', ctx.oneOff ?? {}),
 	]);
 }

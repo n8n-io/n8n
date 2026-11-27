@@ -1,6 +1,7 @@
 import type { Repository, SelectQueryBuilder } from '@n8n/typeorm';
 
 import type { WorkflowExecution, WorkflowStepExecution } from './entities';
+import { errorSourceSql } from './error-source-columns';
 import { parentLinkSql } from './parent-link-columns';
 import { UnexpectedError } from '../common';
 import { ExecutionNotFoundError } from '../execution/execution-store';
@@ -52,6 +53,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect('execution.mode', 'mode')
 			.addSelect(hostMode('execution'), 'hostMode')
 			.addSelect(parentLinkSql('execution'), 'parent')
+			.addSelect(errorSourceSql('execution'), 'errorSource')
 			.addSelect('execution.created_at', 'createdAt')
 			.addSelect('execution.updated_at', 'updatedAt')
 			.addSelect('execution.finished_at', 'finishedAt');
@@ -166,6 +168,7 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect('execution.graph', 'graph')
 			.addSelect('execution.workflow', 'workflow')
 			.addSelect(parentLinkSql('execution'), 'parent')
+			.addSelect(errorSourceSql('execution'), 'errorSource')
 			.addSelect('execution.created_at', 'createdAt')
 			.addSelect('execution.updated_at', 'updatedAt')
 			.addSelect('execution.finished_at', 'finishedAt');

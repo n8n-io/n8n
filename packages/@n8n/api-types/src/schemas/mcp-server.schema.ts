@@ -121,13 +121,13 @@ export const mcpServerConnectionSchema = mcpServerPersonSchema.extend({
 	firstUsedAt: z.string().datetime(),
 	lastUsedAt: z.string().datetime(),
 });
-export type McpServerConnection = z.infer<typeof mcpServerConnectionSchema>;
+export type McpServerConnectionResponse = z.infer<typeof mcpServerConnectionSchema>;
 
 export const mcpServerBlockSchema = mcpServerPersonSchema.extend({
 	blockedById: z.string().uuid().nullable(),
 	blockedAt: z.string().datetime(),
 });
-export type McpServerBlock = z.infer<typeof mcpServerBlockSchema>;
+export type McpServerBlockResponse = z.infer<typeof mcpServerBlockSchema>;
 
 export const mcpServerConnectionsResponseSchema = z.object({
 	connections: z.array(mcpServerConnectionSchema),

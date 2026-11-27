@@ -410,6 +410,7 @@ onMounted(() => {
 					size="medium"
 					multiple
 					filterable
+					data-test-id="credential-filter-type"
 					:class="$style['type-input']"
 					@update:model-value="setKeyValue('type', $event)"
 				>

@@ -8,7 +8,17 @@ import {
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { UnexpectedError } from '@n8n/errors';
-import { DataSource, In, IsNull, LessThan, LessThanOrEqual, Not, Or } from '@n8n/typeorm';
+import {
+	DataSource,
+	Equal,
+	In,
+	IsNull,
+	LessThan,
+	LessThanOrEqual,
+	Like,
+	Not,
+	Or,
+} from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import {
@@ -31,8 +41,8 @@ class SkillSourceLinkTable extends BaseRepository<SkillSourceLink> {
 	}
 }
 
-/** A source with the same identity in some scope, for the duplicate rules. */
-export type SameSource = Pick<SkillSourceConnection, 'id' | 'projectId'>;
+/** A source in one repository, including its saved discovery root. */
+export type SameSource = Pick<SkillSourceConnection, 'id' | 'projectId' | 'locator'>;
 
 /** The source of a synced skill, and where the skill is in it. */
 export type SyncedFromRow = Pick<
@@ -97,11 +107,15 @@ export class SkillSourceRepository {
 		this.links = new SkillSourceLinkTable(dataSource, transactionRunner);
 	}
 
-	/** Every source with this identity, in any scope. */
-	async findSameSources(identityKey: string, ctx: OperationContext = {}): Promise<SameSource[]> {
+	/** Includes legacy repository keys and folder keys, without rewriting existing sources. */
+	async findSourcesInRepository(
+		repositoryKey: string,
+		folderKeyPrefix: string,
+		ctx: OperationContext = {},
+	): Promise<SameSource[]> {
 		return await this.sources.managerFor(ctx).find(SkillSourceConnection, {
-			select: ['id', 'projectId'],
-			where: { identityKey },
+			select: ['id', 'projectId', 'locator'],
+			where: { identityKey: Or(Equal(repositoryKey), Like(`${folderKeyPrefix}%`)) },
 		});
 	}
 
@@ -240,6 +254,7 @@ export class SkillSourceRepository {
 		sourceId: string,
 		projectId: string | null,
 		credentialId: string | null,
+		identityKey: string,
 		ctx: OperationContext,
 	): Promise<void> {
 		try {
@@ -249,6 +264,7 @@ export class SkillSourceRepository {
 				{
 					projectId,
 					credentialId,
+					identityKey,
 					credentialRequired: credentialId !== null,
 					probeCursor: null,
 				},
@@ -440,6 +456,25 @@ export class SkillSourceRepository {
 	}
 
 	/** The sources in Global and in these projects, for the skills table. `all` for every source. */
+	async findVisibleSourcesForGrouping(
+		projectIds: string[] | 'all',
+	): Promise<Array<Pick<SkillSourceConnection, 'id' | 'type' | 'locator' | 'projectId'>>> {
+		const scopes =
+			projectIds === 'all'
+				? [{}]
+				: [{ projectId: IsNull() }, ...chunkIds(projectIds).map((ids) => ({ projectId: In(ids) }))];
+		const sources: Array<Pick<SkillSourceConnection, 'id' | 'type' | 'locator' | 'projectId'>> = [];
+		for (const where of scopes) {
+			sources.push(
+				...(await this.sources.managerFor({}).find(SkillSourceConnection, {
+					select: ['id', 'type', 'locator', 'projectId'],
+					where,
+				})),
+			);
+		}
+		return sources;
+	}
+
 	async findVisibleSources(projectIds: string[] | 'all'): Promise<SkillSourceConnection[]> {
 		const manager = this.sources.managerFor({});
 		if (projectIds === 'all') {

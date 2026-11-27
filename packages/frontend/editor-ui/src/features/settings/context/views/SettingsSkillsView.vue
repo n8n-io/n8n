@@ -64,7 +64,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import RecommendedSkillCards from '@/experiments/recommendedSkills/components/RecommendedSkillCards.vue';
 import RecommendedSkillsDialog from '@/experiments/recommendedSkills/components/RecommendedSkillsDialog.vue';
 import type { RecommendedSkillSelection } from '@/experiments/recommendedSkills/recommendedSkills';
@@ -142,11 +141,8 @@ const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
 const settingsStore = useSettingsStore();
-const { isEnabled: assistantSkillsExperimentEnabled } = useAssistantSkillsExperiment();
 const assistantSkillsEnabled = computed(
-	() =>
-		assistantSkillsExperimentEnabled.value &&
-		settingsStore.moduleSettings['instance-ai']?.enabled === true,
+	() => settingsStore.moduleSettings['instance-ai']?.enabled === true,
 );
 const posthogStore = usePostHog();
 const { deleteBlockedReason } = useSkillDeleteRule();
