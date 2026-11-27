@@ -133,7 +133,7 @@ const chatPanelStore = useChatPanelStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { getQuickConnectOption } = useQuickConnect();
+const { getQuickConnectOptionForContext } = useQuickConnect();
 const { promotionText } = useGatewayCreditsPromotion({
 	nodeType: () => props.contextNode?.type,
 	credentialType: () => props.credentialType.name,
@@ -339,10 +339,9 @@ const isInstanceAiCredentialHelpAvailable = computed(
 
 const activeNode = computed(() => ndvStore.value.activeNode);
 
-const quickConnectOption = computed(() => {
-	if (!activeNode.value) return undefined;
-	return getQuickConnectOption(props.credentialType.name, activeNode.value.type);
-});
+const quickConnectOption = computed(() =>
+	getQuickConnectOptionForContext(props.credentialType.name, activeNode.value?.type),
+);
 
 const quickConnectAvailable = computed(() => !!quickConnectOption.value);
 

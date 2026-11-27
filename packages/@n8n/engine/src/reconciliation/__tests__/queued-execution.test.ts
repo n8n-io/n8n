@@ -29,7 +29,7 @@ function makeExecutionStore(): ExecutionStore {
 }
 
 function makeOrchestrationQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
 }
 
 describe('QueuedExecutionDetector', () => {

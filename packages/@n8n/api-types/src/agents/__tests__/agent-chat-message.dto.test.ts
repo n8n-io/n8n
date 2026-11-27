@@ -1,5 +1,5 @@
 import { MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE } from '../agent-chat-attachments.constants';
-import { AgentChatMessageDto } from '../dto';
+import { AgentChatMessageDto, AgentPreviewChatMessageDto, SystemAgentChatMessageDto } from '../dto';
 
 describe('AgentChatMessageDto', () => {
 	const attachment = {
@@ -99,5 +99,32 @@ describe('AgentChatMessageDto', () => {
 				attachments: [{ ...attachment, mimeType: '' }],
 			}).success,
 		).toBe(false);
+	});
+});
+
+describe('chat message mode', () => {
+	it('accepts a test run only in the preview chat', () => {
+		expect(AgentPreviewChatMessageDto.parse({ message: 'Hi', mode: 'test' })).toMatchObject({
+			mode: 'test',
+		});
+		expect(AgentPreviewChatMessageDto.safeParse({ message: 'Hi', mode: 'live' }).success).toBe(
+			true,
+		);
+	});
+
+	it.each([
+		['n8n Chat', AgentChatMessageDto],
+		['a system agent', SystemAgentChatMessageDto],
+	])('rejects a test run in %s instead of running it live', (_surface, dto) => {
+		const payload = { message: 'Hi', sessionId: '0f8fad5b-d9cb-469f-a165-70867728950e' };
+		expect(dto.safeParse({ ...payload, mode: 'test' }).success).toBe(false);
+		expect(dto.safeParse({ ...payload, mode: 'live' }).success).toBe(true);
+		expect(dto.safeParse(payload).success).toBe(true);
+	});
+
+	it('keeps the message rules in the preview chat', () => {
+		expect(AgentPreviewChatMessageDto.safeParse({ message: '  ', mode: 'test' }).success).toBe(
+			false,
+		);
 	});
 });

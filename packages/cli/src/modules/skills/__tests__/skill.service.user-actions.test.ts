@@ -75,7 +75,6 @@ describe('SkillService user actions', () => {
 		telemetry: skillsTelemetry,
 		usage,
 		skillUsage,
-		assistantGate: rollout,
 		access,
 		links,
 		skillSyncGate,
@@ -99,7 +98,6 @@ describe('SkillService user actions', () => {
 			agents: [{ key: 'agent-1', name: 'Support bot', project: 'project-1' }],
 			skills: [],
 		});
-		rollout.isEnabled.mockResolvedValue(true);
 		visible = Object.keys(NAMES).map((id) => skill(id));
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 		vi.mocked(hasGlobalScope).mockReturnValue(false);
@@ -678,16 +676,6 @@ describe('SkillService user actions', () => {
 			expect(setAssistantAvailability).not.toHaveBeenCalled();
 		});
 
-		it('refuses the Assistant availability when the Assistant flag is off', async () => {
-			vi.mocked(hasGlobalScope).mockReturnValue(true);
-			rollout.isEnabled.mockResolvedValue(false);
-
-			await expect(service.create(user, payload({ availableToAssistant: true }))).rejects.toThrow(
-				UserError,
-			);
-			expect(createTrusted).not.toHaveBeenCalled();
-		});
-
 		it('stores the source the caller passed', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
@@ -754,14 +742,6 @@ describe('SkillService user actions', () => {
 			skill: { name: 'Brand voice', description: 'd', instructions: 'New.' },
 			followingAgentIds: ['agent-1'],
 		};
-
-		it('refuses availability changes when the Assistant flag is off', async () => {
-			rollout.isEnabled.mockResolvedValue(false);
-			await expect(
-				service.update(user, 'skill_a', update({ availableToAssistant: true })),
-			).rejects.toThrow(NotFoundError);
-			expect(setAssistantAvailability).not.toHaveBeenCalled();
-		});
 
 		it('saves the update for a user who may edit the skill', async () => {
 			saveTrusted.mockResolvedValue(saved);

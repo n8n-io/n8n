@@ -23,6 +23,7 @@ export const SCOPE_TYPES: ProjectResource[] = [
 	'workflow',
 	'agent',
 	'app',
+	'mcpServer',
 	'credential',
 	'execution',
 	'externalSecretsProvider',

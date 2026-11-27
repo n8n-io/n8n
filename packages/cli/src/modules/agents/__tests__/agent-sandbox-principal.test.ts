@@ -26,6 +26,10 @@ describe('hashAgentSandboxPrincipal', () => {
 				'5PiyOW90m1b3G7sUBU89WQEDdW7jT8E2rnaqMtRilc4',
 			],
 			[{ type: 'scheduled-task', taskId: 'task-1' }, 'zNDZ3KUSonoPGuBjyiJ1huc8pr8psw4zGbu7t5vlJFA'],
+			[
+				{ type: 'test-chat', userId: 'user/123:raw', threadId: 'thread|one' },
+				'P6c4QpMgaXhpMq1rB1u2zbq0sgq-t9mN3g94zyzlDr4',
+			],
 		];
 
 		for (const [principal, expectedHash] of cases) {

@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Locator, type Page, type Response } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { hoverToReveal } from '../utils/retry-utils';
@@ -452,6 +452,10 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewCanvas().getByTestId('execute-workflow-button');
 	}
 
+	getPreviewRunWorkflowButtonSpinner(): Locator {
+		return this.getPreviewRunWorkflowButton().locator('.n8n-spinner');
+	}
+
 	async runPreviewWorkflow(): Promise<void> {
 		const runButton = this.getPreviewRunWorkflowButton();
 		const approvalButton = this.getConfirmApproveButton();
@@ -477,6 +481,55 @@ export class InstanceAiPage extends BasePage {
 			await approvalButton.dispatchEvent('click');
 		} else {
 			await runButton.click();
+		}
+	}
+
+	async runPreviewWorkflowAndWaitForCompletion(timeout = 30_000): Promise<void> {
+		const completedExecutionIds = new Set<string>();
+		const onResponse = (response: Response) => {
+			if (response.request().method() !== 'GET' || !response.ok()) return;
+			const match = response.url().match(/\/rest\/executions\/([^/?#]+)/);
+			if (match) completedExecutionIds.add(match[1]);
+		};
+		this.page.on('response', onResponse);
+
+		try {
+			const runResponsePromise = this.page.waitForResponse(
+				(response) =>
+					response.url().includes('/rest/workflows/') &&
+					response.url().includes('/run') &&
+					response.request().method() === 'POST',
+				{ timeout: 120_000 },
+			);
+
+			await this.runPreviewWorkflow();
+
+			const runResponse = await runResponsePromise;
+			const payload: unknown = await runResponse.json().catch(() => undefined);
+			const executionId =
+				typeof payload === 'object' &&
+				payload !== null &&
+				'data' in payload &&
+				typeof payload.data === 'object' &&
+				payload.data !== null &&
+				'executionId' in payload.data &&
+				typeof payload.data.executionId === 'string'
+					? payload.data.executionId
+					: undefined;
+
+			if (executionId && !completedExecutionIds.has(executionId)) {
+				await this.page.waitForResponse(
+					(response) =>
+						response.url().includes(`/rest/executions/${executionId}`) &&
+						response.request().method() === 'GET' &&
+						response.ok(),
+					{ timeout },
+				);
+			}
+
+			await expect(this.getPreviewRunWorkflowButtonSpinner()).toBeHidden({ timeout });
+		} finally {
+			this.page.off('response', onResponse);
 		}
 	}
 

@@ -1,4 +1,4 @@
-import { ASSISTANT_SKILLS_FLAG, SKILL_SYNC_FLAG } from '@n8n/api-types';
+import { SKILL_SYNC_FLAG, WORKFLOWS_IN_SKILLS_FLAG } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { PostHogClient } from '@n8n/backend-services';
 import type { ModuleSettings } from '@n8n/decorators';
@@ -6,11 +6,11 @@ import type { User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { AssistantSkillsFlagGate } from '../services/assistant-skills-flag-gate';
 import type { SkillUsage } from '../services/skill-usage.contracts';
 import { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
 import type { SkillSyncSettingsService } from '../services/skill-sync-settings.service';
 import { SkillUsageProxy } from '../services/skill-usage-proxy.service';
+import { WorkflowsInSkillsFlagGate } from '../services/workflows-in-skills-flag-gate';
 import { SkillsGate } from '../services/skills-gate';
 
 describe('skills gates', () => {
@@ -27,22 +27,19 @@ describe('skills gates', () => {
 		const moduleRegistry = { settings } as unknown as ModuleRegistry;
 		const skillsGate = new SkillsGate(proxy, moduleRegistry);
 		const postHog = mock<PostHogClient>();
-		const assistantGate = new AssistantSkillsFlagGate(skillsGate, postHog);
 		const skillSyncSettings = mock<SkillSyncSettingsService>();
 		skillSyncSettings.isEnabled.mockReturnValue(true);
 		const syncGate = new SkillSyncFlagGate(skillsGate, postHog, skillSyncSettings);
-		return { proxy, skillsGate, postHog, assistantGate, syncGate, skillSyncSettings };
+		const mentionsGate = new WorkflowsInSkillsFlagGate(skillsGate, postHog);
+		return { proxy, skillsGate, postHog, syncGate, skillSyncSettings, mentionsGate };
 	}
 
 	const user = mock<User>({ id: 'user-1' });
 
-	it('keeps both gates off until the agents module registers its SkillUsage', async () => {
-		const { skillsGate, postHog, assistantGate } = createGates();
-		postHog.getFeatureFlagForInstance.mockResolvedValue(true);
+	it('keeps skills off until the agents module registers its SkillUsage', () => {
+		const { skillsGate } = createGates();
 
 		expect(skillsGate.isEnabled).toBe(false);
-		expect(await assistantGate.isEnabled()).toBe(false);
-		expect(postHog.getFeatureFlagForInstance).not.toHaveBeenCalled();
 	});
 
 	it.each(['agents', 'assistant', 'mcp'] as const)(
@@ -77,30 +74,29 @@ describe('skills gates', () => {
 		expect(skillsGate.isEnabled).toBe(false);
 	});
 
-	it('keeps Assistant skills off while all consumers are off, whatever the flag says', async () => {
-		const { proxy, postHog, assistantGate } = createGates(consumerSettings());
-		postHog.getFeatureFlagForInstance.mockResolvedValue(true);
-		proxy.register(mock<SkillUsage>());
+	it('keeps workflow mentions off while skills are off, whatever the flag says', async () => {
+		const { postHog, mentionsGate } = createGates();
+		postHog.getFeatureFlagForInstance.mockResolvedValue('variant');
 
-		expect(await assistantGate.isEnabled()).toBe(false);
+		expect(await mentionsGate.isEnabled()).toBe(false);
+		expect(postHog.getFeatureFlagForInstance).not.toHaveBeenCalled();
 	});
 
 	it.each([
-		{ flag: true, expected: true },
+		{ flag: 'variant', expected: true },
+		{ flag: 'control', expected: false },
+		{ flag: true, expected: false },
 		{ flag: false, expected: false },
-		{ flag: 'test', expected: false },
 		{ flag: undefined, expected: false },
 	])(
-		'turns Assistant skills on only for the flag value true (flag: $flag)',
+		'turns workflow mentions on only for the flag value variant (flag: $flag)',
 		async ({ flag, expected }) => {
-			const { proxy, skillsGate, postHog, assistantGate } = createGates();
+			const { proxy, postHog, mentionsGate } = createGates();
 			postHog.getFeatureFlagForInstance.mockResolvedValue(flag);
-
 			proxy.register(mock<SkillUsage>());
 
-			expect(skillsGate.isEnabled).toBe(true);
-			expect(await assistantGate.isEnabled()).toBe(expected);
-			expect(postHog.getFeatureFlagForInstance).toHaveBeenCalledWith(ASSISTANT_SKILLS_FLAG);
+			expect(await mentionsGate.isEnabled()).toBe(expected);
+			expect(postHog.getFeatureFlagForInstance).toHaveBeenCalledWith(WORKFLOWS_IN_SKILLS_FLAG);
 		},
 	);
 

@@ -23,10 +23,26 @@ vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }
 vi.mock('@/features/agents/components/skillMermaidRenderer', { spy: true });
 const uiStore = reactive({ appliedTheme: 'light' });
 vi.mock('@/app/stores/ui.store', () => ({ useUIStore: () => uiStore }));
+const workflowMentionsFlag = vi.hoisted(() => ({ enabled: false }));
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({
+		isVariantEnabled: (name: string, variant: string) =>
+			name === '152_workflows_in_skills' &&
+			variant === (workflowMentionsFlag.enabled ? 'variant' : 'control'),
+	}),
+}));
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		resolve: ({ params }: { params: { workflowId: string } }) => ({
+			href: `/base/workflow/${params.workflowId}`,
+		}),
+	}),
+}));
 
 enableAutoUnmount(afterEach);
 beforeEach(() => {
 	uiStore.appliedTheme = 'light';
+	workflowMentionsFlag.enabled = false;
 });
 
 vi.mock('@n8n/i18n', () => ({
@@ -195,6 +211,38 @@ describe('AgentSkillViewer', () => {
 		const checkbox = wrapper.find('[data-testid="agent-skill-instructions-text"] input');
 		expect(checkbox.attributes('type')).toBe('checkbox');
 		expect(checkbox.attributes('disabled')).toBeDefined();
+	});
+
+	it('links a workflow mention in a read-only skill to the workflow', () => {
+		workflowMentionsFlag.enabled = true;
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Report',
+				description: 'Send the report',
+				instructions: 'Run [Weekly report](n8n://workflow/wf1).',
+			},
+		});
+
+		const text = wrapper.find('[data-testid="agent-skill-instructions-text"]');
+		expect(text.find('a').attributes('href')).toBe('/base/workflow/wf1');
+		expect(text.find('a').text()).toBe('Weekly report');
+		expect(text.classes().join(' ')).toContain('workflowChips');
+	});
+
+	it('keeps the mention link unchanged in a read-only skill when the flag is off', () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Report',
+				description: 'Send the report',
+				instructions: 'Run [Weekly report](n8n://workflow/wf1).',
+			},
+		});
+
+		const text = wrapper.find('[data-testid="agent-skill-instructions-text"]');
+		expect(text.find('a').attributes('href')).not.toContain('/workflow/');
+		expect(text.classes().join(' ')).not.toContain('workflowChips');
 	});
 
 	it('shows a read-only reference as text', () => {

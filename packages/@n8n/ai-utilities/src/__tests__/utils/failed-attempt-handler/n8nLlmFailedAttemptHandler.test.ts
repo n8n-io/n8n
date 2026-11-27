@@ -1,5 +1,6 @@
+import { ContextOverflowError } from '@langchain/core/errors';
 import { AsyncCaller } from '@langchain/core/utils/async_caller';
-import type { ISupplyDataFunctions } from 'n8n-workflow';
+import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -8,7 +9,7 @@ import { makeN8nLlmFailedAttemptHandler } from 'src/utils/failed-attempt-handler
 
 describe('makeN8nLlmFailedAttemptHandler', () => {
 	const ctx = mock<ISupplyDataFunctions>({
-		getNode: vi.fn(),
+		getNode: () => mock<INode>(),
 	});
 
 	it('should not throw a retryable error, when NO custom handler is provided', () => {
@@ -81,6 +82,44 @@ describe('makeN8nLlmFailedAttemptHandler', () => {
 			expect((caught as NodeApiError).description).toBe(message);
 			expect(callable).toHaveBeenCalledTimes(1);
 		});
+
+		it.each([
+			// AGENT-1628: LangChain wraps the provider error and does not copy its HTTP status.
+			{
+				error: ContextOverflowError.fromError(
+					Object.assign(new Error('Prompt is too long'), { status: 400 }),
+				),
+				httpCode: '400',
+			},
+			// AGENT-1632: The provider rejects the request when the budget is exhausted.
+			{
+				error: Object.assign(new Error('ExceededBudget'), { status: 422 }),
+				httpCode: '422',
+			},
+		])(
+			'should stop after one HTTP $httpCode failure and preserve a warning-level API error',
+			async ({ error, httpCode }) => {
+				const caller = new AsyncCaller({
+					maxRetries: 2,
+					onFailedAttempt: makeN8nLlmFailedAttemptHandler(ctx),
+				});
+				const callable = vi.fn().mockRejectedValue(error);
+
+				const result = caller.call(callable).catch((caught: unknown) => caught);
+				await vi.runAllTimersAsync();
+				const caught = await result;
+
+				expect(callable).toHaveBeenCalledTimes(1);
+				expect(caught).toBeInstanceOf(NodeApiError);
+				expect(caught).toMatchObject({
+					level: 'warning',
+					httpCode,
+					functionality: 'configuration-node',
+					description: error.message,
+				});
+				expect((caught as NodeApiError).cause).toBe(error);
+			},
+		);
 
 		it('should retry Ollama server errors and preserve the final error', async () => {
 			const error = Object.assign(new Error('Service unavailable'), {

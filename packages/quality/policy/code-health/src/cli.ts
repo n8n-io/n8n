@@ -28,6 +28,8 @@ async function main(): Promise<void> {
 		rootDir,
 		changedFiles: parseChangedFiles(process.env.CODE_HEALTH_CHANGED_FILES),
 		addedFiles: parseChangedFiles(process.env.CODE_HEALTH_ADDED_FILES),
+		baseBranch: process.env.CODE_HEALTH_BASE_BRANCH || undefined,
+		masterRef: process.env.CODE_HEALTH_MASTER_REF || undefined,
 	};
 
 	if (options.command === 'verify-closure') {
