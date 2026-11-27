@@ -104,11 +104,10 @@ export class ExecutionUsageCache {
 		try {
 			const queried = await this.load(new Date(startedAt));
 			this.failuresInARow = 0;
-			if (queried) {
-				this.eventService.emit('execution-limit-usage-refreshed', {
-					durationMs: Date.now() - startedAt,
-				});
-			}
+			this.eventService.emit('execution-limit-usage-refreshed', {
+				durationMs: Date.now() - startedAt,
+				queried,
+			});
 		} catch (error) {
 			// A database that stays down must not write a log line at every refresh.
 			if (this.failuresInARow++ % FAILURES_BETWEEN_LOGS === 0) {
