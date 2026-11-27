@@ -7,6 +7,7 @@ import type { QueryRunner, QueryValues, QueryWithValues } from '../../helpers/in
 import {
 	addWhereClauses,
 	escapeSqlIdentifier,
+	getTableName,
 	getWhereClauses,
 	prepareErrorItem,
 } from '../../helpers/utils';
@@ -83,9 +84,7 @@ export async function execute(
 
 	for (let i = 0; i < inputItems.length; i++) {
 		try {
-			const table = this.getNodeParameter('table', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const table = getTableName(this, i);
 
 			const deleteCommand = this.getNodeParameter('deleteCommand', i) as string;
 

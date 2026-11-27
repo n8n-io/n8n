@@ -4,8 +4,9 @@ name: 'Security: Base Image Refresh'
 # images, and opens the pin PRs. See .github/scripts/docker/base-image-candidates.mjs.
 
 on:
+  # Monday to Friday, so no PR or alert waits over the weekend.
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '0 2 * * 1-5'
   # Master published our own images, so the next pin PR of a chain is due.
   workflow_run:
     workflows: ['Build: Base Image']
