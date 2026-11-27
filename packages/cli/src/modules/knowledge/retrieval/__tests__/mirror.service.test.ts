@@ -828,6 +828,15 @@ describe('KnowledgeMirrorService', () => {
 			expect(result.collections).toEqual([handbook, docs]);
 		});
 
+		it('lists the catalog on the first page only', async () => {
+			const service = makeCollectionService();
+
+			const secondPage = await service.findFiles(scope, { pattern: '*', limit: 2, offset: 2 });
+
+			expect(secondPage.files.map((file) => file.file)).toEqual(['handbook/leave.txt', 'own.txt']);
+			expect(secondPage).not.toHaveProperty('collections');
+		});
+
 		it('lists the files of one collection with a directory pattern', async () => {
 			const service = makeCollectionService();
 
@@ -993,6 +1002,17 @@ describe('KnowledgeMirrorService', () => {
 				.map(([command]) => command)
 				.find((command) => command.includes(' rg '));
 			expect(searchCommand).toContain("-- '\\''./handbook'\\'' '\\''./own.txt'\\''");
+		});
+
+		it('accepts a collection directory with a trailing slash', async () => {
+			const service = makeCollectionService();
+
+			await service.searchText(scope, { pattern: 'leave', path: ['handbook/'] });
+
+			const searchCommand = sandbox.executeCommand.mock.calls
+				.map(([command]) => command)
+				.find((command) => command.includes(' rg '));
+			expect(searchCommand).toContain("-- '\\''./handbook'\\''");
 		});
 
 		it('searches a file once when its collection directory is also a path value', async () => {

@@ -40,7 +40,7 @@ const MODEL_OUTPUT_READ_RANGE_MIN_CHARS = 800;
  * without collections read as they did before.
  */
 const FIND_FILES_COLLECTIONS_HINT =
-	'Knowledge files are the files uploaded to this agent and the files of its knowledge collections. A file of a collection has the file value `<collection>/<name>`, where `<collection>` is the directory of the collection; a pattern like `<collection>/*` lists the files of one collection. The result also lists every collection under `collections`, with its directory, name, description and file count: read them to decide which collection a question calls for.';
+	'Knowledge files are the files uploaded to this agent and the files of its knowledge collections. A file of a collection has the file value `<collection>/<name>`, where `<collection>` is the directory of the collection; a pattern like `<collection>/*` lists the files of one collection. The first page of a result also lists every collection under `collections`, with its directory, name, description and file count: read them to decide which collection a question calls for.';
 const SEARCH_TEXT_COLLECTIONS_HINT =
 	'Files of a knowledge collection have file values of `<collection>/<name>`. To search one collection, pass its directory `<collection>` as a path value, alone or next to file values; a directory counts as one path.';
 const READ_FILE_COLLECTIONS_HINT =

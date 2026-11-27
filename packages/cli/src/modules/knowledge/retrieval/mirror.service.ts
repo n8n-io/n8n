@@ -185,9 +185,13 @@ export class KnowledgeMirrorService {
 		const references = await this.loadKnowledgeFileLookup(scope);
 		const limit = validatedRequest.limit ?? DEFAULT_FIND_FILES_LIMIT;
 		const offset = validatedRequest.offset ?? 0;
-		// The catalog is listed only for a scope with collections, so the result of an agent without them is unchanged.
+		// The catalog is listed only for a scope with collections, so the result of an
+		// agent without them is unchanged, and only on the first page: a later page
+		// of the same list would repeat it for nothing.
 		const catalog =
-			references.collections.length > 0 ? { collections: references.collections } : {};
+			offset === 0 && references.collections.length > 0
+				? { collections: references.collections }
+				: {};
 
 		if (references.files.length === 0) {
 			return { files: [], limit, offset, hasMore: false, ...catalog };
@@ -542,10 +546,11 @@ export class KnowledgeMirrorService {
 			references.collections.map((collection) => [collection.dir, collection.fileCount]),
 		);
 		for (const path of request.path ?? []) {
-			const normalized = parseKnowledgeFilePath(path);
-			const collectionFileCount = fileCountByDir.get(normalized);
+			// Models often write a directory with a trailing slash, as in `handbook/`.
+			const directory = parseKnowledgeFilePath(path.endsWith('/') ? path.slice(0, -1) : path);
+			const collectionFileCount = fileCountByDir.get(directory);
 			if (collectionFileCount !== undefined) {
-				if (collectionFileCount > 0) targets.add(normalized);
+				if (collectionFileCount > 0) targets.add(directory);
 				continue;
 			}
 
