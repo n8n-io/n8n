@@ -1,3 +1,4 @@
+import { SPLIT_IN_BATCHES_NODE_TYPE } from '@/app/constants';
 import {
 	AddConnectionCommand,
 	AddNodeCommand,
@@ -17,7 +18,8 @@ import {
 	CanvasNodeDirtiness,
 	type CanvasNodeDirtinessType,
 } from '@/features/workflows/canvas/canvas.types';
-import type { INodeConnections, NodeConnectionType } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+import type { INodeConnections, NodeConnectionType, NodeInputConnections } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
@@ -83,77 +85,151 @@ function shouldCommandMarkDirty(
 	return false;
 }
 
-function getMainConnectedNodeNames(connections: INodeConnections): string[] {
-	const mainConnections = connections[NodeConnectionTypes.Main];
-
-	if (!mainConnections) {
-		return [];
-	}
-
-	const names: string[] = [];
-
-	for (const group of mainConnections) {
-		for (const { node } of group ?? []) {
-			names.push(node);
-		}
-	}
-
-	return names;
-}
-
-/**
- * Returns all nodes in the cycle that contains `nodeName`, or `undefined` if `nodeName` is not in a cycle.
- */
-function findLoop(
-	nodeName: string,
-	getIncomingConnections: (nodeName: string) => INodeConnections,
-	getOutgoingConnections: (nodeName: string) => INodeConnections,
-): string[] | undefined {
-	// Find all nodes reachable from `nodeName` via one or more Main edges.
-	// If `nodeName` cannot reach itself, it is not part of a cycle.
-	const descendants = new Set<string>();
-	const forwardStack = getMainConnectedNodeNames(getOutgoingConnections(nodeName));
-
-	while (forwardStack.length > 0) {
-		const current = forwardStack.pop();
-
-		if (current === undefined || descendants.has(current)) {
-			continue;
-		}
-
-		descendants.add(current);
-
-		for (const next of getMainConnectedNodeNames(getOutgoingConnections(current))) {
-			if (!descendants.has(next)) {
-				forwardStack.push(next);
-			}
-		}
-	}
-
-	if (!descendants.has(nodeName)) {
+function getSplitInBatchesDoneOutputIndex(node: INodeUi | undefined): number | undefined {
+	if (node?.type !== SPLIT_IN_BATCHES_NODE_TYPE) {
 		return undefined;
 	}
 
-	// Walk backward from `nodeName` within `descendants` to collect its strongly connected component.
-	const loopNodes = new Set<string>([nodeName]);
-	const backwardStack = [nodeName];
+	// SplitInBatches v2 exposes ['loop', 'done']; v3 and later expose ['done', 'loop'].
+	// v1 has a single output with no dedicated done branch.
+	if (node.typeVersion === 2) {
+		return 1;
+	}
 
-	while (backwardStack.length > 0) {
-		const current = backwardStack.pop();
+	if (node.typeVersion >= 3) {
+		return 0;
+	}
 
-		if (current === undefined) {
-			continue;
+	return undefined;
+}
+
+function getMainOutputGroups(connections: INodeConnections): NodeInputConnections {
+	return connections[NodeConnectionTypes.Main] ?? [];
+}
+
+function getMainOutgoingTargets(connections: INodeConnections): string[] {
+	const targets: string[] = [];
+
+	for (const group of getMainOutputGroups(connections)) {
+		for (const { node } of group ?? []) {
+			targets.push(node);
+		}
+	}
+
+	return targets;
+}
+
+/**
+ * Returns every strongly connected component that contains a Main cycle (Tarjan's algorithm).
+ */
+function findCyclicStronglyConnectedComponents(
+	nodeNames: string[],
+	getOutgoingConnections: (nodeName: string) => INodeConnections,
+): Array<Set<string>> {
+	let nextIndex = 0;
+	const indexByNode = new Map<string, number>();
+	const onStack = new Set<string>();
+	const stack: string[] = [];
+	const cyclicComponents: Array<Set<string>> = [];
+
+	function strongConnect(nodeName: string): number {
+		const index = nextIndex++;
+		let lowLink = index;
+		indexByNode.set(nodeName, index);
+		const stackIndex = stack.length;
+		stack.push(nodeName);
+		onStack.add(nodeName);
+
+		let hasSelfLoop = false;
+
+		for (const next of getMainOutgoingTargets(getOutgoingConnections(nodeName))) {
+			if (next === nodeName) {
+				hasSelfLoop = true;
+			}
+
+			const nextIndexValue = indexByNode.get(next);
+			if (nextIndexValue === undefined) {
+				lowLink = Math.min(lowLink, strongConnect(next));
+			} else if (onStack.has(next)) {
+				lowLink = Math.min(lowLink, nextIndexValue);
+			}
 		}
 
-		for (const prev of getMainConnectedNodeNames(getIncomingConnections(current))) {
-			if (descendants.has(prev) && !loopNodes.has(prev)) {
-				loopNodes.add(prev);
-				backwardStack.push(prev);
+		if (lowLink === index) {
+			const component = new Set<string>();
+			for (const member of stack.splice(stackIndex)) {
+				onStack.delete(member);
+				component.add(member);
+			}
+
+			if (component.size > 1 || hasSelfLoop) {
+				cyclicComponents.push(component);
+			}
+		}
+
+		return lowLink;
+	}
+
+	for (const nodeName of nodeNames) {
+		if (!indexByNode.has(nodeName)) {
+			strongConnect(nodeName);
+		}
+	}
+
+	return cyclicComponents;
+}
+
+/**
+ * Returns every node that executes inside `component` or on a branch that leaves
+ * `component` through anything other than an exiting SplitInBatches `done` output.
+ *
+ * Dead-end branches inside a loop body run once per iteration, so editing them must
+ * still mark the loop entry node dirty. Only branches reached exclusively through a
+ * completed SplitInBatches `done` output stay outside the loop scope.
+ */
+function getLoopScope(
+	component: Set<string>,
+	nodesByName: Map<string, INodeUi>,
+	getOutgoingConnections: (nodeName: string) => INodeConnections,
+): Set<string> {
+	const scope = new Set<string>(component);
+	const stack: string[] = [];
+
+	for (const nodeName of component) {
+		const mainOutputs = getMainOutputGroups(getOutgoingConnections(nodeName));
+		const doneOutputIndex = getSplitInBatchesDoneOutputIndex(nodesByName.get(nodeName));
+
+		for (let outputIndex = 0; outputIndex < mainOutputs.length; outputIndex++) {
+			const group = mainOutputs[outputIndex];
+			if (!group) {
+				continue;
+			}
+
+			// Ignore a SplitInBatches `done` output only when none of its targets feed back
+			// into the same cycle (an inner loop's `done` output continues the outer loop).
+			if (outputIndex === doneOutputIndex && group.every(({ node }) => !component.has(node))) {
+				continue;
+			}
+
+			for (const { node } of group) {
+				if (!scope.has(node)) {
+					scope.add(node);
+					stack.push(node);
+				}
 			}
 		}
 	}
 
-	return [...loopNodes];
+	for (let current = stack.pop(); current !== undefined; current = stack.pop()) {
+		for (const next of getMainOutgoingTargets(getOutgoingConnections(current))) {
+			if (!scope.has(next)) {
+				scope.add(next);
+				stack.push(next);
+			}
+		}
+	}
+
+	return scope;
 }
 
 /**
@@ -293,6 +369,69 @@ export function useNodeDirtiness(workflowDocumentId: MaybeRefOrGetter<WorkflowDo
 		return depth;
 	});
 
+	const loopEntryNodesByNodeName = computed(() => {
+		const allNodes = workflowDocumentStore.value.allNodes;
+		const cyclicComponents = findCyclicStronglyConnectedComponents(
+			allNodes.map((node) => node.name),
+			getOutgoingConnections,
+		);
+
+		if (cyclicComponents.length === 0) {
+			return new Map<string, string[]>();
+		}
+
+		const nodesByName = new Map(allNodes.map((node) => [node.name, node]));
+		const depth = depthByName.value;
+		const loopScopes: Array<{ entryNodeName: string; nodes: Set<string> }> = [];
+
+		for (const component of cyclicComponents) {
+			let entryNodeName: string | undefined;
+			let minDepth = Number.MAX_SAFE_INTEGER;
+
+			for (const member of component) {
+				const memberDepth = depth[member];
+				if (memberDepth && memberDepth < minDepth) {
+					minDepth = memberDepth;
+					entryNodeName = member;
+				}
+			}
+
+			if (!entryNodeName) {
+				continue;
+			}
+
+			loopScopes.push({
+				entryNodeName,
+				nodes: getLoopScope(component, nodesByName, getOutgoingConnections),
+			});
+		}
+
+		const entriesByNode = new Map<string, string[]>();
+
+		for (const scope of loopScopes) {
+			// Skip loops whose entry node is inside an outer loop scope, since marking the outer
+			// loop entry already invalidates the nested loop.
+			const isCoveredByOuterLoop = loopScopes.some(
+				(other) => other !== scope && other.nodes.has(scope.entryNodeName),
+			);
+
+			if (isCoveredByOuterLoop) {
+				continue;
+			}
+
+			for (const nodeName of scope.nodes) {
+				const entries = entriesByNode.get(nodeName);
+				if (entries) {
+					entries.push(scope.entryNodeName);
+				} else {
+					entriesByNode.set(nodeName, [scope.entryNodeName]);
+				}
+			}
+		}
+
+		return entriesByNode;
+	});
+
 	const dirtinessByName = computed(() => {
 		const dirtiness: Record<string, CanvasNodeDirtinessType | undefined> = {};
 		const runDataByNode = executionStateStore.value.activeExecutionRunData ?? {};
@@ -300,19 +439,7 @@ export function useNodeDirtiness(workflowDocumentId: MaybeRefOrGetter<WorkflowDo
 		function setDirtiness(nodeName: string, value: CanvasNodeDirtinessType) {
 			dirtiness[nodeName] = dirtiness[nodeName] ?? value;
 
-			const loop = findLoop(nodeName, getIncomingConnections, getOutgoingConnections);
-
-			if (!loop) {
-				return;
-			}
-
-			const loopEntryNodeName = [...loop].sort(
-				(a, b) =>
-					(depthByName.value[a] ?? Number.MAX_SAFE_INTEGER) -
-					(depthByName.value[b] ?? Number.MAX_SAFE_INTEGER),
-			)?.[0];
-
-			if (loopEntryNodeName && depthByName.value[loopEntryNodeName]) {
+			for (const loopEntryNodeName of loopEntryNodesByNodeName.value.get(nodeName) ?? []) {
 				// If a node in a loop becomes dirty, the first node in the loop should also be dirty
 				dirtiness[loopEntryNodeName] =
 					dirtiness[loopEntryNodeName] ?? CanvasNodeDirtiness.UPSTREAM_DIRTY;
