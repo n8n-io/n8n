@@ -5,13 +5,22 @@ import {
 	type InstanceAiEvalInterceptedRequest,
 	type InstanceAiEvalNodeResult,
 	type InstanceAiEvalExecutionResult,
+	type InstanceAiEvalSimExecutionRequest,
+	type InstanceAiEvalSimPollRequest,
+	type InstanceAiEvalSimPollResult,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
 import { NodeTypesProxy, PostHogClient } from '@n8n/backend-services';
-import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
+import {
+	ExecutionsConfig,
+	GlobalConfig,
+	InstanceAiConfig,
+	SsrfProtectionConfig,
+} from '@n8n/config';
 import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
@@ -19,6 +28,7 @@ import {
 	BinaryDataService,
 	type EvalLlmMockHandler,
 	type EvalMockHttpResponse,
+	PollContext,
 	synthesizeBinaryFixture,
 	WorkflowHasIssuesError,
 } from 'n8n-core';
@@ -37,6 +47,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type IWorkflowExecutionDataProcess,
 	createRunExecutionData,
+	deepCopy,
 	fileTypeFromMimeType,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NodeHelpers,
@@ -49,6 +60,8 @@ import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type {
 	AgentRuntimeInstrumentation,
@@ -56,7 +69,7 @@ import type {
 } from '@/modules/agents/evaluation/agent-evaluation.contracts';
 import { DataTableService } from '@n8n/backend-module-data-table';
 import { OwnershipService } from '@/services/ownership.service';
-import { executeAgent } from '@/workflow-execute-additional-data';
+import { executeAgent, getBase } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -86,6 +99,8 @@ import {
 	resolveDataTableNodeId,
 } from './data-table-rows';
 import { generatePinData } from './pin-data-generator';
+import { baseUrlProperty, SimCredentialsHelper } from './sim-credentials-helper';
+import { parseSimGateway, SimEgressProxy } from './sim-egress-proxy';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,
@@ -93,6 +108,7 @@ import {
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	identifyNodesForRunMock,
+	isVendorSdkSubNode,
 	type MockHints,
 	partitionAiRoots,
 	type TriggerBinaryRequirement,
@@ -102,6 +118,10 @@ import {
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+/** Node parameters arrive as JSON; any object is a valid parameter set. */
+const isNodeParameters = (value: unknown): value is INodeParameters => isRecord(value);
+const isDataObject = (value: unknown): value is IDataObject => isRecord(value);
 
 /** Max output items per branch kept in the artifact. The full count lives in `outputCount`. */
 const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;
@@ -136,6 +156,22 @@ interface CalledAgentRun {
 // Executes workflows with LLM-based HTTP mocking. Phase 1 generates per-node
 // mock hints (one LLM call); Phase 2 runs the workflow with a per-execution
 // mock handler — additionalData is fresh, no global state mutated.
+/** An error the start node's own poll threw: a result of the built workflow, not of the harness. */
+class SimPollError extends Error {
+	constructor(cause: unknown) {
+		super(cause instanceof Error ? cause.message : String(cause), { cause });
+	}
+}
+
+/** MCP nodes and called Agents open their own connections, which the run proxy never sees. */
+function bypassesRunProxy(nodeType: string): boolean {
+	return (
+		nodeType === 'n8n-nodes-base.messageAnAgent' ||
+		nodeType.startsWith('@n8n/mcp-registry.') ||
+		/^@n8n\/n8n-nodes-langchain\.mcp(Client|ClientTool|RegistryClientTool)$/.test(nodeType)
+	);
+}
+
 @Service()
 export class EvalExecutionService {
 	constructor(
@@ -154,6 +190,10 @@ export class EvalExecutionService {
 		private readonly processedDataRepository: ProcessedDataRepository,
 		private readonly instanceAiConfig: InstanceAiConfig,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly credentialsService: CredentialsService,
+		private readonly credentialTypes: CredentialTypes,
+		private readonly globalConfig: GlobalConfig,
+		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 	) {}
 
 	async executeWithLlmMock(
@@ -178,19 +218,7 @@ export class EvalExecutionService {
 			);
 		}
 
-		// Retry transient lookup misses from concurrent eval runs.
-		let workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:execute',
-		]);
-		if (!workflowEntity) {
-			for (const delayMs of [200, 500, 1000]) {
-				await sleep(delayMs);
-				workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-					'workflow:execute',
-				]);
-				if (workflowEntity) break;
-			}
-		}
+		const workflowEntity = await this.findWorkflowToRun(workflowId, user);
 
 		if (!workflowEntity) {
 			return this.errorResult(randomUUID(), `Workflow ${workflowId} not found or not accessible`);
@@ -263,6 +291,216 @@ export class EvalExecutionService {
 			vendorLlmRouting,
 			budget,
 		);
+	}
+
+	/**
+	 * Runs a built workflow against simulated services. The run is a normal execution on
+	 * this instance: the stored workflow with the caller's node parameters, the credentials
+	 * the sim server issued (stored only while the run lasts), real node code, and every
+	 * outbound request sent through the run's egress proxy to the sim server. Data Tables,
+	 * static data and Remove Duplicates history start from the scenario, as in mock mode.
+	 */
+	async executeWithSim(
+		workflowId: string,
+		user: User,
+		options: InstanceAiEvalSimExecutionRequest,
+	): Promise<InstanceAiEvalExecutionResult> {
+		const budget: RunBudget | undefined =
+			options.timeoutMs === undefined
+				? undefined
+				: { totalMs: options.timeoutMs, deadlineAt: Date.now() + options.timeoutMs };
+		return await this.withSimRun(
+			workflowId,
+			user,
+			options,
+			(message) => this.errorResult(randomUUID(), message),
+			async (workflowEntity, proxy, storedCredentialTypes) => {
+				const refused = this.simRefusal(workflowEntity, options, storedCredentialTypes);
+				if (refused) return refused;
+				if (isDataObject(options.pollState)) workflowEntity.staticData = options.pollState;
+				const timings = new EvalTimings();
+				const hints: MockHints = {
+					globalContext: options.dataContext ?? '',
+					nodeHints: {},
+					triggerContent: options.triggerItems[0] ?? {},
+					startNodeName: options.startNodeName,
+					triggerEmitsNoItems: options.triggerItems.length === 0,
+					warnings: [],
+					bypassPinData: {},
+				};
+				await this.prepareDataTables(
+					workflowEntity,
+					hints,
+					timings,
+					options.scenarioHints,
+					options.seededDataTableIds,
+				);
+				return await this.executeAgainstSim(
+					workflowEntity,
+					user,
+					hints,
+					timings,
+					options,
+					proxy,
+					budget,
+				);
+			},
+		);
+	}
+
+	/**
+	 * The first poll of a polling start node, as when its workflow is published: the node
+	 * records in its static data where it starts reading, and returns that state.
+	 */
+	async pollWithSim(
+		workflowId: string,
+		user: User,
+		options: InstanceAiEvalSimPollRequest,
+	): Promise<InstanceAiEvalSimPollResult> {
+		return await this.withSimRun(
+			workflowId,
+			user,
+			options,
+			(error) => ({ pollState: {}, error }),
+			async (workflowEntity, proxy) => {
+				this.prepareNodesForRun(workflowEntity);
+				const workflow = this.buildWorkflow({ ...workflowEntity, staticData: {} });
+				const startNode = workflow.nodes[options.startNodeName];
+				if (!startNode) {
+					throw new OperationalError(`the workflow has no node "${options.startNodeName}"`);
+				}
+				try {
+					const proxyUrl = await proxy.start();
+					await this.pollStartNode(
+						workflow,
+						workflowEntity,
+						startNode,
+						user,
+						this.routeToSim(proxyUrl),
+					);
+				} catch (error) {
+					// The node's own poll failed: the built workflow answers for it, like a failed run.
+					if (error instanceof SimPollError) return { pollState: {}, error: error.message };
+					throw error;
+				} finally {
+					await proxy.stop();
+				}
+				return { pollState: deepCopy(workflow.staticData) };
+			},
+		);
+	}
+
+	/**
+	 * The setup both simulated-services calls share: a run copy of the stored workflow with
+	 * the caller's parameters, and the issued credentials stored for the call only.
+	 */
+	private async withSimRun<T>(
+		workflowId: string,
+		user: User,
+		options: InstanceAiEvalSimPollRequest,
+		failed: (message: string) => T,
+		run: (
+			workflowEntity: IWorkflowBase,
+			proxy: SimEgressProxy,
+			/** Node name → the credential types the stored workflow had, before the run dropped them. */
+			storedCredentialTypes: Map<string, string[]>,
+		) => Promise<T>,
+	): Promise<T> {
+		// Same reason as the mock: configureAdditionalData does not survive queue serialization.
+		if (this.executionsConfig.mode === 'queue') {
+			return failed('Eval execution requires main process mode — queue mode is not supported.');
+		}
+		// The guard blocks loopback, and the run proxy listens on loopback.
+		if (this.ssrfProtectionConfig.enabled) {
+			return failed(
+				'FRAMEWORK ISSUE: simulated-services runs cannot run with SSRF protection on (N8N_SSRF_PROTECTION_ENABLED): it blocks the run proxy on loopback',
+			);
+		}
+		const gateway = parseSimGateway(this.instanceAiConfig.evalSimGateway);
+		if (!gateway) {
+			return failed(
+				'FRAMEWORK ISSUE: simulated-services runs need N8N_INSTANCE_AI_EVAL_SIM_GATEWAY (host:port) on the eval instance',
+			);
+		}
+
+		const stored = await this.findWorkflowToRun(workflowId, user);
+		if (!stored) return failed(`Workflow ${workflowId} not found or not accessible`);
+
+		// The run's copy of the stored workflow; nothing below is saved.
+		const workflowEntity: IWorkflowBase = { ...stored, nodes: structuredClone(stored.nodes) };
+		const nodesByName = new Map(workflowEntity.nodes.map((node) => [node.name, node]));
+		const unknown = [
+			...Object.keys(options.nodeParameters ?? {}),
+			...(options.credentials ?? []).map((c) => c.nodeName),
+		].filter((name) => !nodesByName.has(name));
+		if (unknown.length > 0) {
+			return failed(
+				`FRAMEWORK ISSUE: the sim request names nodes the workflow does not have: ${[...new Set(unknown)].join(', ')}`,
+			);
+		}
+		for (const [name, parameters] of Object.entries(options.nodeParameters ?? {})) {
+			const node = nodesByName.get(name);
+			const copy: unknown = structuredClone(parameters);
+			if (node && isNodeParameters(copy)) node.parameters = copy;
+		}
+
+		// Only what the sim server issued takes part in the run: a stored credential is never sent.
+		const storedCredentialTypes = new Map(
+			workflowEntity.nodes.map((node) => [node.name, Object.keys(node.credentials ?? {})]),
+		);
+		for (const node of workflowEntity.nodes) delete node.credentials;
+		const createdCredentials: string[] = [];
+		try {
+			const projectId = (await this.ownershipService.getWorkflowProjectCached(stored.id)).id;
+			// One stored credential per issued credential, in the workflow's project: the
+			// run resolves, refreshes and permission-checks it like any other.
+			const idsByIssued = new Map<string, string>();
+			for (const issued of options.credentials ?? []) {
+				const key = JSON.stringify([issued.type, issued.data]);
+				let id = idsByIssued.get(key);
+				if (!id) {
+					const created = await this.credentialsService.createUnmanagedCredential(
+						{
+							name: `[eval-sim] ${issued.type} ${randomUUID().slice(0, 8)}`,
+							type: issued.type,
+							data: issued.data,
+							projectId,
+						},
+						user,
+					);
+					id = created.id;
+					createdCredentials.push(id);
+					idsByIssued.set(key, id);
+				}
+				const node = nodesByName.get(issued.nodeName);
+				if (node) {
+					node.credentials = {
+						...node.credentials,
+						[issued.type]: { id, name: `[eval-sim] ${issued.type}` },
+					};
+				}
+			}
+			const proxy = new SimEgressProxy(
+				gateway,
+				options.simHosts,
+				[this.globalConfig.port],
+				this.logger,
+			);
+			return await run(workflowEntity, proxy, storedCredentialTypes);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return failed(
+				message.startsWith('FRAMEWORK ISSUE:') ? message : `FRAMEWORK ISSUE: ${message}`,
+			);
+		} finally {
+			for (const id of createdCredentials) {
+				await this.credentialsService.delete(user, id).catch((error: unknown) => {
+					this.logger.warn('[EvalSim] Failed to delete a run credential', {
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+			}
+		}
 	}
 
 	// Default-on kill-switch: unset → enabled, explicit `false` → disabled, resolution error → disabled.
@@ -511,6 +749,305 @@ export class EvalExecutionService {
 		}
 	}
 
+	/** Retries transient lookup misses from concurrent eval runs. */
+	private async findWorkflowToRun(workflowId: string, user: User) {
+		let workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:execute',
+		]);
+		if (!workflowEntity) {
+			for (const delayMs of [200, 500, 1000]) {
+				await sleep(delayMs);
+				workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:execute',
+				]);
+				if (workflowEntity) break;
+			}
+		}
+		return workflowEntity;
+	}
+
+	/** Parameter fixes every eval run needs, mock or simulated. */
+	private prepareNodesForRun(workflowEntity: IWorkflowBase): void {
+		// Fill setup-pending resource locators BEFORE the first normalization pass:
+		// Workflow construction runs getNodeParameters(returnNoneDisplayed=false),
+		// which STRIPS params whose displayOptions depend on a selected resource
+		// (e.g. Google Sheets `columns` vanishes while documentId/sheetName are
+		// empty) — destroying the builder's full column mapping before the patcher
+		// runs; the engine later re-adds such params from bare defaults and the
+		// node crashes. Production never executes in this state — users complete
+		// setup first — so filling here mirrors a completed setup.
+		for (const node of workflowEntity.nodes) {
+			if (node.disabled || !node.parameters) continue;
+			fillSetupPendingResourceLocators(node.parameters);
+		}
+
+		// Time-based Wait nodes park the execution until a future timestamp
+		// (specificTime) or sleep away the scenario budget (timeInterval), so
+		// downstream nodes never run inside the eval window even when the built
+		// workflow is correct. The verifier still sees the builder's original
+		// wait config in the workflow JSON.
+		workflowEntity.nodes = skipTimeBasedWaits(workflowEntity.nodes).nodes;
+	}
+
+	// ── Simulated-services execution ───────────────────────────────────────
+
+	/**
+	 * Refuses, before any setup that costs, a run the simulation cannot measure: a start
+	 * node that is not one, and nodes whose calls would not reach the sim server.
+	 */
+	private simRefusal(
+		workflowEntity: IWorkflowBase,
+		options: InstanceAiEvalSimExecutionRequest,
+		storedCredentialTypes: Map<string, string[]>,
+	): InstanceAiEvalExecutionResult | undefined {
+		// A throwaway copy: building a Workflow rewrites node parameters.
+		const probe = this.buildWorkflow({
+			...workflowEntity,
+			nodes: structuredClone(workflowEntity.nodes),
+		});
+		const named = probe.nodes[options.startNodeName];
+		const isStart =
+			this.asTriggerNode(named) ??
+			(named && this.findStartNode(probe)?.name === named.name ? named : undefined);
+		if (!isStart) {
+			return this.errorResult(
+				randomUUID(),
+				`FRAMEWORK ISSUE: "${options.startNodeName}" is not a start node of the workflow`,
+			);
+		}
+
+		const reasons = workflowEntity.nodes
+			.filter((node) => !node.disabled)
+			.flatMap((node) => this.simCoverageGaps(node, storedCredentialTypes.get(node.name) ?? []));
+		if (reasons.length === 0) return undefined;
+		const result = this.errorResult(randomUUID(), reasons.join('; '));
+		result.hints.warnings.push(...reasons.map((reason) => `SIM NOT COVERED: ${reason}`));
+		return result;
+	}
+
+	/** Why a node's calls would bypass the run proxy, if they would. */
+	private simCoverageGaps(node: INode, storedTypes: string[]): string[] {
+		if (bypassesRunProxy(node.type)) {
+			return [`node "${node.name}" (${node.type}) connects outside the run proxy`];
+		}
+		if (!isVendorSdkSubNode(node.type)) return [];
+		// A vendor SDK reaches the sim server only through a base URL the run rewrites.
+		const issued = Object.keys(node.credentials ?? {});
+		const gaps = issued
+			.filter((type) => !this.hasBaseUrl(type))
+			.map((type) => `AI sub-node "${node.name}" uses ${type}, which has no base URL to route`);
+		if (issued.length === 0 && storedTypes.length > 0) {
+			gaps.push(
+				`AI sub-node "${node.name}" uses ${storedTypes.join(', ')}, which the sim server did not issue`,
+			);
+		}
+		const nodeOptions: unknown = node.parameters?.options;
+		const baseURL = isRecord(nodeOptions) ? nodeOptions.baseURL : undefined;
+		if (typeof baseURL === 'string' && baseURL && !URL.canParse(baseURL)) {
+			gaps.push(`AI sub-node "${node.name}" has a base URL that is not an absolute URL`);
+		}
+		return gaps;
+	}
+
+	private async executeAgainstSim(
+		workflowEntity: IWorkflowBase,
+		user: User,
+		hints: MockHints,
+		timings: EvalTimings,
+		options: InstanceAiEvalSimExecutionRequest,
+		proxy: SimEgressProxy,
+		budget?: RunBudget,
+	): Promise<InstanceAiEvalExecutionResult> {
+		// Null-prototype map, as in execute(): node names come from workflow input.
+		const nodeResults: Record<string, InstanceAiEvalNodeResult> = Object.create(null);
+		this.prepareNodesForRun(workflowEntity);
+
+		const workflow = this.buildWorkflow(workflowEntity);
+		// The caller names the start node; never silently run another one.
+		const named = workflow.nodes[options.startNodeName];
+		const startNode =
+			this.asTriggerNode(named) ??
+			(named && this.findStartNode(workflow)?.name === named.name ? named : undefined);
+		if (!startNode) {
+			return this.errorResult(
+				randomUUID(),
+				`FRAMEWORK ISSUE: "${options.startNodeName}" is not a start node of the workflow`,
+			);
+		}
+
+		let restoreNoProxy: (() => void) | undefined;
+		let dbExecutionId: string | undefined;
+		try {
+			const proxyUrl = await proxy.start();
+			// AI SDK calls reach the proxy on loopback; keep any environment proxy out of that hop.
+			restoreNoProxy = ensureHostsBypassProxy(['127.0.0.1', 'localhost']);
+			// A base URL set on the node beats the credential's (LangChain OpenAI): route it too.
+			for (const node of workflowEntity.nodes) {
+				const nodeOptions: unknown = node.parameters?.options;
+				if (node.disabled || !isVendorSdkSubNode(node.type) || !isRecord(nodeOptions)) continue;
+				if (typeof nodeOptions.baseURL !== 'string' || !nodeOptions.baseURL) continue;
+				const target = new URL(nodeOptions.baseURL);
+				const baseURL = `${proxyUrl}/sim/${target.host}${target.pathname.replace(/\/$/, '')}`;
+				node.parameters = { ...node.parameters, options: { ...nodeOptions, baseURL } };
+			}
+			const routeToSim = this.routeToSim(proxyUrl);
+
+			let startItems: INodeExecutionData[];
+			if (options.pollState) {
+				const startTime = Date.now();
+				try {
+					startItems = await this.pollStartNode(
+						workflow,
+						workflowEntity,
+						startNode,
+						user,
+						routeToSim,
+					);
+				} finally {
+					// The poll's vendor requests happen before the run: its window belongs to the trigger.
+					(nodeResults[startNode.name] ??= {
+						outputs: {},
+						outputCount: 0,
+						iterationCount: 0,
+						interceptedRequests: [],
+						executionMode: 'pinned',
+					}).runTimes = [{ startTime, executionTime: Date.now() - startTime }];
+				}
+				hints.triggerContent = startItems[0]?.json ?? {};
+				hints.triggerEmitsNoItems = startItems.length === 0;
+			} else {
+				startItems = this.writtenStartItems(startNode, workflowEntity, options.triggerItems);
+			}
+			const pinData: IPinData = { [startNode.name]: startItems };
+
+			this.patchParameterIssuesForEval(workflow, [startNode.name]);
+			this.checkNodeConfig(workflow, nodeResults, [startNode.name]);
+			const blockingIssues = this.issuesBlockingRun(workflow, startNode, [startNode.name]);
+			if (blockingIssues) {
+				const reason = new WorkflowHasIssuesError(blockingIssues, workflow.nodes).message;
+				return this.buildPartialFailureResult(
+					randomUUID(),
+					new Error(`n8n refused to start the workflow: ${reason}`),
+					nodeResults,
+					hints,
+					undefined,
+				);
+			}
+			const executionData = this.buildExecutionData(startNode, pinData);
+			this.markNodeAsPinned(startNode.name, nodeResults);
+
+			const runData: IWorkflowExecutionDataProcess = {
+				executionMode: 'evaluation',
+				// Scenarios start with empty static data, as in mock mode.
+				workflowData: { ...workflowEntity, staticData: undefined },
+				userId: user.id,
+				executionData,
+				pinData,
+				configureAdditionalData: routeToSim,
+			};
+
+			await this.clearDeduplicationState(workflowEntity.id);
+			dbExecutionId = await this.workflowRunner.run(runData);
+			const runResult = await this.awaitRunWithinBudget(dbExecutionId, budget);
+
+			// What the run could not simulate: the verifier must not charge it to the workflow.
+			for (const host of proxy.refusedHosts) {
+				hints.warnings.push(`SIM NOT COVERED: ${host} is not served by the simulated services`);
+			}
+
+			if (!runResult) {
+				return this.buildPartialFailureResult(
+					dbExecutionId,
+					new Error('Execution finished with no run data'),
+					nodeResults,
+					hints,
+					undefined,
+				);
+			}
+			return await this.buildResult(dbExecutionId, runResult, nodeResults, hints, undefined);
+		} catch (error: unknown) {
+			return this.buildPartialFailureResult(
+				dbExecutionId ?? randomUUID(),
+				error,
+				nodeResults,
+				hints,
+				undefined,
+			);
+		} finally {
+			if (restoreNoProxy) restoreNoProxy();
+			await proxy.stop();
+			await this.blankPersistedStaticData(workflowEntity.id);
+			await this.clearDeduplicationState(workflowEntity.id);
+			timings.summary(this.logger);
+		}
+	}
+
+	/** The caller's items for the start node; files declared in them get real bytes. */
+	private writtenStartItems(
+		startNode: INode,
+		workflowEntity: IWorkflowBase,
+		items: Array<Record<string, unknown>>,
+	): INodeExecutionData[] {
+		const binaryRequirement = detectBinaryDependencies(workflowEntity);
+		return items.flatMap(
+			(item) => this.buildTriggerPinData(startNode, item, binaryRequirement)[startNode.name] ?? [],
+		);
+	}
+
+	/** Every outbound request of the run goes to the sim server, through the run's proxy. */
+	private routeToSim(proxyUrl: string) {
+		return (additionalData: IWorkflowExecuteAdditionalData) => {
+			additionalData.credentialsHelper = new SimCredentialsHelper(
+				additionalData.credentialsHelper,
+				proxyUrl,
+			);
+			additionalData.evalEgressProxy = proxyUrl;
+		};
+	}
+
+	/**
+	 * Runs a polling trigger's poll against the simulated service, as an active workflow
+	 * polls from where its static data says, so the start node's items are the ones the
+	 * real node emits for the seeded data, ids included. An empty poll means the trigger
+	 * emitted nothing. An error the poll itself throws is a {@link SimPollError}.
+	 */
+	private async pollStartNode(
+		workflow: Workflow,
+		workflowEntity: IWorkflowBase,
+		startNode: INode,
+		user: User,
+		routeToSim: (additionalData: IWorkflowExecuteAdditionalData) => void,
+	): Promise<INodeExecutionData[]> {
+		const nodeType = this.nodeTypes.getByNameAndVersion(startNode.type, startNode.typeVersion);
+		if (!nodeType.poll) {
+			throw new OperationalError(`FRAMEWORK ISSUE: start node "${startNode.name}" does not poll`);
+		}
+		const additionalData = await getBase({
+			userId: user.id,
+			workflowId: workflowEntity.id,
+			workflowSettings: workflowEntity.settings,
+		});
+		routeToSim(additionalData);
+		try {
+			const polled = await nodeType.poll.call(
+				new PollContext(workflow, startNode, additionalData, 'trigger', 'activate'),
+			);
+			return polled?.[0] ?? [];
+		} catch (error) {
+			throw new SimPollError(error);
+		}
+	}
+
+	private hasBaseUrl(credentialType: string): boolean {
+		try {
+			return (
+				baseUrlProperty(this.credentialTypes.getByName(credentialType).properties) !== undefined
+			);
+		} catch {
+			return false;
+		}
+	}
+
 	// ── Phase 2: Mock execution ────────────────────────────────────────────
 
 	private async execute(
@@ -531,25 +1068,7 @@ export class EvalExecutionService {
 		// `Object.prototype`.
 		const nodeResults: Record<string, InstanceAiEvalNodeResult> = Object.create(null);
 
-		// Fill setup-pending resource locators BEFORE the first normalization pass:
-		// Workflow construction runs getNodeParameters(returnNoneDisplayed=false),
-		// which STRIPS params whose displayOptions depend on a selected resource
-		// (e.g. Google Sheets `columns` vanishes while documentId/sheetName are
-		// empty) — destroying the builder's full column mapping before the patcher
-		// runs; the engine later re-adds such params from bare defaults and the
-		// node crashes. Production never executes in this state — users complete
-		// setup first — so filling here mirrors a completed setup.
-		for (const node of workflowEntity.nodes) {
-			if (node.disabled || !node.parameters) continue;
-			fillSetupPendingResourceLocators(node.parameters);
-		}
-
-		// Time-based Wait nodes park the execution until a future timestamp
-		// (specificTime) or sleep away the scenario budget (timeInterval), so
-		// downstream nodes never run inside the eval window even when the built
-		// workflow is correct. The verifier still sees the builder's original
-		// wait config in the workflow JSON.
-		workflowEntity.nodes = skipTimeBasedWaits(workflowEntity.nodes).nodes;
+		this.prepareNodesForRun(workflowEntity);
 
 		const workflow = this.buildWorkflow(workflowEntity);
 		// Multi-trigger workflows: Phase 1 picks the trigger the scenario targets
@@ -1343,6 +1862,7 @@ export class EvalExecutionService {
 			interceptedRequests: [],
 			executionMode: 'pinned',
 			...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
+			...(existing?.runTimes ? { runTimes: existing.runTimes } : {}),
 		};
 	}
 
@@ -1489,6 +2009,13 @@ export class EvalExecutionService {
 			if (lastRun?.startTime) {
 				entry.startTime = lastRun.startTime;
 			}
+			entry.runTimes = [
+				...(entry.runTimes ?? []),
+				...nodeRuns
+					.slice(-100)
+					.filter((run) => typeof run?.startTime === 'number')
+					.map((run) => ({ startTime: run.startTime, executionTime: run.executionTime ?? 0 })),
+			];
 			if (lastRun?.data) {
 				// Preserve per-connection-type, per-output-port structure so verifiers can
 				// distinguish Filter/IF/Switch branches and AI sub-node outputs.
