@@ -1,7 +1,10 @@
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed } from 'vue';
 
-import { customMcpServersEnabled } from '@/experiments/customMcpServers/customMcpServersEnabled';
+/** The shell reads the PostHog flag. No provider means that the feature is off. */
+const customMcpServersEnabled = () =>
+	capabilityRegistry.tryUse(capabilities.customMcpServersEnabled)?.() === true;
 
 /** The resource of a scope, for example `mcpServer` for `mcpServer:read`. */
 export const resourceOfScope = (scope: string) => scope.split(':')[0];

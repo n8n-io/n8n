@@ -4,11 +4,11 @@ import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/app/constants';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import CustomRolesUpgradeModal from './CustomRolesUpgradeModal.vue';
-import { UI_VISIBLE_SCOPES } from '@/features/roles/project/projectRoleScopes';
+import { UI_VISIBLE_SCOPES } from '../project/projectRoleScopes';
 import { useHiddenRoleResources, withoutHiddenScopes } from '../composables/useHiddenRoleResources';
 
 const props = withDefaults(
@@ -40,7 +40,8 @@ const settingsStore = useSettingsStore();
 
 const upgradeModalVisible = ref(false);
 
-const canManageRoles = computed(() => hasPermission(['rbac'], { rbac: { scope: 'role:manage' } }));
+const rbacStore = useRBACStore();
+const canManageRoles = computed(() => rbacStore.hasScope('role:manage'));
 const canEditRole = computed(() => canManageRoles.value && !props.role.systemRole);
 
 // Count only UI-visible scopes (exclude implicit :list, :execute, :listProject), and leave out

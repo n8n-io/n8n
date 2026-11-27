@@ -1,4 +1,4 @@
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
@@ -6,8 +6,8 @@ import CustomRolesUpgradeModal from './CustomRolesUpgradeModal.vue';
 
 const mockGoToUpgrade = vi.fn();
 
-vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
-	usePageRedirectionHelper: () => ({
+vi.mock('@n8n/stores/composables/useBasePageRedirectionHelper', () => ({
+	useBasePageRedirectionHelper: () => ({
 		goToUpgrade: mockGoToUpgrade,
 	}),
 }));

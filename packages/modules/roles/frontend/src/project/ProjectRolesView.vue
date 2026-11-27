@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useMessage } from '@n8n/design-system';
+import { VIEWS } from '@n8n/frontend-constants/views';
+import { MODAL_CONFIRM } from '../roles.constants';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useI18n } from '@n8n/i18n';

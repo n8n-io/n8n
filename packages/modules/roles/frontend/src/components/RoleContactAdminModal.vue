@@ -4,7 +4,7 @@ import { ElDialog } from 'element-plus';
 import { N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
-import { APP_MODALS_ELEMENT_ID, CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
+import { APP_MODALS_ELEMENT_ID, CUSTOM_ROLES_DOCS_URL } from '../roles.constants';
 
 const props = withDefaults(
 	defineProps<{

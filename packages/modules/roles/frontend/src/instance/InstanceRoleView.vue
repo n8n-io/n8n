@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { useMessage } from '@/app/composables/useMessage';
+import {
+	useMessage,
+	N8nButton,
+	N8nHeading,
+	N8nTabs,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { VIEWS } from '@n8n/frontend-constants/views';
+import { MODAL_CONFIRM } from '../roles.constants';
 import { useRolesStore } from '@n8n/stores/roles.store';
-import { N8nButton, N8nHeading, N8nTabs, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { GLOBAL_ADMIN_ROLE_SLUG, GLOBAL_MEMBER_ROLE_SLUG } from '@n8n/permissions';
 import { computed } from 'vue';

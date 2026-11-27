@@ -7,6 +7,31 @@ Read the full guide at `packages/@n8n/module-cli/frontend-module-guide.md`. It g
 descriptor contract, the registration points and the known problems. This README gives a
 summary only.
 
+## What this module holds
+
+The roles settings page (`/settings/roles`), the instance and project role editors, and the
+role pickers that other settings pages use. The roles store is not here: it is
+`@n8n/stores/roles.store`.
+
+The shell imports these from `src/index.ts`:
+
+- `RolesModule`, through the `./roles.module` subpath, so the boot chunk stays small.
+- `RoleSelectDropdown` and `CustomRolesUpgradeModal`.
+- `useHiddenRoleResources`, `countInstancePermissions` and `countGrantedInstancePermissions`.
+
+## No backend module
+
+No backend module has the id `roles`, so `isModuleActive('roles')` is always false. Do not add
+the `'custom'` middleware to a route, and do not add `settingsPages` or `placeholderPage`. Each
+one hides the roles pages from every user. The settings sidebar link stays in the shell
+(`useSettingsItems.ts`). `src/roles.module.test.ts` checks this.
+
+## Dialogs
+
+Three dialogs (`CustomRolesUpgradeModal`, `RoleContactAdminModal` and
+`DeleteInstanceRoleModal`) attach to the modals container of the shell, `#app-modals`. The
+test setup in `src/__tests__/setup.ts` adds that container before each test.
+
 ```bash
 pnpm turbo typecheck --filter=@n8n/frontend-module-roles
 pnpm turbo lint --filter=@n8n/frontend-module-roles
@@ -21,9 +46,8 @@ yet. Turbo builds them first; the bare pnpm form does not.
 ## Import rules
 
 - Depend on foundation and platform packages only (`@n8n/design-system`,
-  `@n8n/stores`, `@n8n/composables`, `@n8n/i18n`, `@n8n/rest-api-client`,
-  `@n8n/api-types`, `@n8n/permissions`, `n8n-workflow`,
-  `@n8n/frontend-module-sdk`). Never import another
+  `@n8n/stores`, `@n8n/composables`, `@n8n/i18n`, `@n8n/frontend-constants`,
+  `@n8n/api-types`, `@n8n/permissions`, `@n8n/frontend-module-sdk`). Never import another
   `@n8n/frontend-module-*`, and never import `@/…` from the shell.
 - `@n8n/stores` and `@n8n/composables` are **subpath-only** — import
   `@n8n/stores/settings.store`, not `@n8n/stores`.

@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, ref, useId } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { I18nT } from 'vue-i18n';
-import { VIEWS } from '@/app/constants';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import {
 	PERSONAL_SPACE_GROUPS,
 	PERSONAL_SPACE_GROUP_LABEL_KEYS,

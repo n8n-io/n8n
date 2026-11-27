@@ -27,6 +27,7 @@ const EXTRACTED_MODULES = [
 	{ group: '@/features/settings/otel', package: '@n8n/frontend-module-otel' },
 	{ group: '@/features/execution/insights', package: '@n8n/frontend-module-insights' },
 	{ group: '@/features/ai/mcpAccess', package: '@n8n/frontend-module-mcp' },
+	{ group: '@/features/roles', package: '@n8n/frontend-module-roles' },
 ];
 
 // One representative path per block in `oxlint.config.mts` that sets the rule, plus

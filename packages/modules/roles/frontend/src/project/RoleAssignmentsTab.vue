@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { VIEWS } from '@/app/constants';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { N8nLoading, N8nTableBase, N8nText } from '@n8n/design-system';
 import type { RoleProjectAssignment } from '@n8n/api-types';

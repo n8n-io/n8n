@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
-import { VIEWS } from '@/app/constants';
-import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants/urls';
+import { VIEWS } from '@n8n/frontend-constants/views';
+import { CUSTOM_ROLES_DOCS_URL } from './roles.constants';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { TabOptions } from '@n8n/design-system';
@@ -73,7 +73,9 @@ watch(
 );
 
 onMounted(async () => {
-	useDocumentTitle().set(i18n.baseText('settings.roles'));
+	useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel }).set(
+		i18n.baseText('settings.roles'),
+	);
 	try {
 		await rolesStore.fetchRoles();
 	} catch (error) {

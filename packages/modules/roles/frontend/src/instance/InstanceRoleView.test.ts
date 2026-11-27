@@ -1,15 +1,14 @@
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import { VIEWS } from '@/app/constants';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useRolesStore } from '@n8n/stores/roles.store';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { GLOBAL_ADMIN_SCOPES } from '@n8n/permissions';
 import InstanceRoleView from './InstanceRoleView.vue';
 import { getPresetScopes } from './instanceRoleScopes';
 import {
 	BASELINE_INSTANCE_SCOPES,
+	GLOBAL_ADMIN_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 	MANDATORY_INSTANCE_SCOPES,
 } from '@n8n/permissions';
@@ -24,7 +23,8 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mockShowError, showMessage: mockShowMessage }),
 }));
 
-vi.mock('@/app/composables/useMessage', () => ({
+vi.mock('@n8n/design-system', async (importOriginal) => ({
+	...(await importOriginal()),
 	useMessage: () => ({ confirm: mockConfirm }),
 }));
 

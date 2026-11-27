@@ -1,4 +1,4 @@
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';

@@ -3,7 +3,7 @@ import { N8nCallout, N8nCheckbox, N8nLink, N8nLoading, N8nTooltip } from '@n8n/d
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
+import { CUSTOM_ROLES_DOCS_URL } from '../../roles.constants';
 import {
 	INSTANCE_SCOPE_GROUP_LIST,
 	getEscalationWarningKey,

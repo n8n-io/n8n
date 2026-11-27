@@ -1,22 +1,13 @@
-import { createComponentRenderer } from '@/__tests__/render';
-import type { MockedStore } from '@/__tests__/utils';
-import { mockedStore } from '@/__tests__/utils';
+import { createComponentRenderer, type MockedStore, mockedStore } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import type { Role } from '@n8n/permissions';
 import RoleHoverPopover from './RoleHoverPopover.vue';
-import { VIEWS } from '@/app/constants';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { hasPermission } from '@/app/utils/rbac/permissions';
-import {
-	TOTAL_PROJECT_PERMISSIONS,
-	UI_VISIBLE_SCOPES,
-} from '@/features/roles/project/projectRoleScopes';
-
-vi.mock('@/app/utils/rbac/permissions', () => ({
-	hasPermission: vi.fn(),
-}));
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { TOTAL_PROJECT_PERMISSIONS, UI_VISIBLE_SCOPES } from '../project/projectRoleScopes';
 
 const mockPush = vi.fn();
 
@@ -78,13 +69,15 @@ const renderComponent = createComponentRenderer(RoleHoverPopover, {
 
 describe('RoleHoverPopover', () => {
 	let settingsStore: MockedStore<typeof useSettingsStore>;
+	let rbacStore: MockedStore<typeof useRBACStore>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia();
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.isCustomRolesFeatureEnabled = true;
-		vi.mocked(hasPermission).mockReturnValue(false);
+		rbacStore = mockedStore(useRBACStore);
+		rbacStore.hasScope.mockReturnValue(false);
 	});
 
 	describe('Rendering', () => {
@@ -141,17 +134,18 @@ describe('RoleHoverPopover', () => {
 
 	describe('Button text based on permissions', () => {
 		it('should show "View and edit role" when user has role:manage and role is custom', () => {
-			vi.mocked(hasPermission).mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 
 			const { getByText } = renderComponent({
 				props: { role: mockCustomRole },
 			});
 
 			expect(getByText('View and edit role')).toBeInTheDocument();
+			expect(rbacStore.hasScope).toHaveBeenCalledWith('role:manage');
 		});
 
 		it('should show "View role" when user lacks role:manage', () => {
-			vi.mocked(hasPermission).mockReturnValue(false);
+			rbacStore.hasScope.mockReturnValue(false);
 
 			const { getByText } = renderComponent({
 				props: { role: mockCustomRole },
@@ -161,7 +155,7 @@ describe('RoleHoverPopover', () => {
 		});
 
 		it('should disable the button when user lacks role:manage', () => {
-			vi.mocked(hasPermission).mockReturnValue(false);
+			rbacStore.hasScope.mockReturnValue(false);
 
 			const { getByRole } = renderComponent({
 				props: { role: mockCustomRole },
@@ -171,7 +165,7 @@ describe('RoleHoverPopover', () => {
 		});
 
 		it('should not disable the button when user has role:manage', () => {
-			vi.mocked(hasPermission).mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 
 			const { getByRole } = renderComponent({
 				props: { role: mockCustomRole },
@@ -181,7 +175,7 @@ describe('RoleHoverPopover', () => {
 		});
 
 		it('should show "View role" for system role even when user has role:manage', () => {
-			vi.mocked(hasPermission).mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 
 			const { getByText } = renderComponent({
 				props: { role: mockSystemRole },
@@ -193,7 +187,7 @@ describe('RoleHoverPopover', () => {
 
 	describe('Button click behavior', () => {
 		it('should navigate to role settings when user has role:manage and role is custom', async () => {
-			vi.mocked(hasPermission).mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 
 			const { getByText } = renderComponent({
 				props: { role: mockCustomRole },
@@ -209,7 +203,7 @@ describe('RoleHoverPopover', () => {
 		});
 
 		it('should not navigate when user lacks role:manage because the button is disabled', async () => {
-			vi.mocked(hasPermission).mockReturnValue(false);
+			rbacStore.hasScope.mockReturnValue(false);
 
 			const { getByRole } = renderComponent({
 				props: { role: mockCustomRole },
@@ -224,7 +218,7 @@ describe('RoleHoverPopover', () => {
 		});
 
 		it('should navigate to view route for system role even when user has role:manage', async () => {
-			vi.mocked(hasPermission).mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 
 			const { getByText } = renderComponent({
 				props: { role: mockSystemRole },
@@ -243,7 +237,7 @@ describe('RoleHoverPopover', () => {
 	describe('Upgrade modal (no enterprise license)', () => {
 		beforeEach(() => {
 			settingsStore.isCustomRolesFeatureEnabled = false;
-			vi.mocked(hasPermission).mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 		});
 
 		it('should show upgrade modal instead of navigating when clicking on a custom role', async () => {

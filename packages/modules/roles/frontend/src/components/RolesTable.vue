@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
+import { useBasePageRedirectionHelper } from '@n8n/stores/composables/useBasePageRedirectionHelper';
+import { CUSTOM_ROLES_DOCS_URL } from '../roles.constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { N8nActionToggle, N8nButton, N8nDatatable, N8nIcon, N8nText } from '@n8n/design-system';
 import type { DatatableColumn } from '@n8n/design-system';
@@ -35,7 +35,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const $style = useCssModule();
 const settingsStore = useSettingsStore();
-const { goToUpgrade } = usePageRedirectionHelper();
+const { goToUpgrade } = useBasePageRedirectionHelper();
 
 const columns = computed<DatatableColumn[]>(() => [
 	{

@@ -1,5 +1,10 @@
-// The module's only public entry. The shell imports the descriptor from here via
-// `modules.manifest.ts`; anything else the shell (or a test) needs must be exported
-// here too — deep paths into `src/` are not part of the contract.
+// The module's public entry for consumers. The shell imports the descriptor from
+// `./roles.module` instead, so the boot chunk does not pull in the components below.
 export { RolesModule } from './roles.module';
-export { useRolesStore } from './roles.store';
+export { useHiddenRoleResources } from './composables/useHiddenRoleResources';
+export {
+	countGrantedInstancePermissions,
+	countInstancePermissions,
+} from './instance/instanceRoleScopes';
+export { default as CustomRolesUpgradeModal } from './components/CustomRolesUpgradeModal.vue';
+export { default as RoleSelectDropdown } from './components/RoleSelectDropdown.vue';

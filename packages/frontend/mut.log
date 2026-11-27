@@ -1,0 +1,130 @@
+[WARN] This project is configured to use 12.4.2 of pnpm. Your current pnpm is v12.3.4
+$ vitest run src/app/extractionRatchet.test.ts --maxWorkers=1
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.mts:28:29). Use `import.meta.dirname` instead
+  - import "../@n8n/design-system/src/icons/lucide/vite" without a file extension (vite.config.mts:12:35). Add the file extension
+  - import "./vite/i18n-locales-hmr-helpers" without a file extension (vite.config.mts:15:48). Add the file extension
+  - import "../../@n8n/constants/src/csp" without a file extension (vite.config.mts:20:40). Add the file extension
+  - ESM syntax in a file loaded as CommonJS (../../@n8n/constants/src/csp.ts:6:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+  - import "./bucket" without a file extension (../@n8n/design-system/src/icons/lucide/vite.ts:5:46). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.0.1 /Users/n8n/multica_workspaces_desktop-multica.albacore-shilling.ts.net-8080/n8n-e46a30095470/n8n-493-7a6a03c5244f/workdir/n8n/packages/frontend/editor-ui
+
+ ❯ src/app/extractionRatchet.test.ts (9 tests | 8 failed) 17ms
+   ❯ extraction ratchet (9)
+     × restricts every extracted module for src/app/main.ts 3ms
+     × restricts every extracted module for src/app/views/WorkflowsView.vue 0ms
+     × restricts every extracted module for src/features/agents/views/AgentsListView.vue 0ms
+     × restricts every extracted module for src/features/agents/agents.store.ts 0ms
+     × restricts every extracted module for src/features/credentials/views/CredentialsView.vue 0ms
+     × restricts every extracted module for src/features/collaboration/projects/projects.routes.ts 0ms
+     × restricts every extracted module for src/features/ndv/ndv.store.ts 0ms
+     × restricts every extracted module for src/features/shared/editors/utils/loadPrettier.ts 0ms
+     ✓ keeps the agents-only RunData restriction alongside the ratchet 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/extractionRatchet.test.ts > extraction ratchet > restricts every extracted module for src/app/main.ts
+AssertionError: src/app/main.ts does not restrict @n8n/frontend-module-roles's old path: expected [ '@/features/instanceRegistry', …(9) ] to include '@/features/roles'
+ ❯ src/app/extractionRatchet.test.ts:82:66
+     80|   const groups = (options.patterns ?? []).flatMap((pattern) => pattern…
+     81|   for (const { group, package: pkg } of EXTRACTED_MODULES) {
+     82|    expect(groups, `${path} does not restrict ${pkg}'s old path`).toCon…
+       |                                                                  ^
+     83|   }
+     84|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  src/app/extractionRatchet.test.ts > extraction ratchet > restricts every extracted module for src/app/views/WorkflowsView.vue
+AssertionError: src/app/views/WorkflowsView.vue does not restrict @n8n/frontend-module-roles's old path: expected [ '@/features/instanceRegistry', …(9) ] to include '@/features/roles'
+ ❯ src/app/extractionRatchet.test.ts:82:66
+     80|   const groups = (options.patterns ?? []).flatMap((pattern) => pattern…
+     81|   for (const { group, package: pkg } of EXTRACTED_MODULES) {
+     82|    expect(groups, `${path} does not restrict ${pkg}'s old path`).toCon…
+       |                                                                  ^
+     83|   }
+     84|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  src/app/extractionRatchet.test.ts > extraction ratchet > restricts every extracted module for src/features/agents/views/AgentsListView.vue
+AssertionError: src/features/agents/views/AgentsListView.vue does not restrict @n8n/frontend-module-roles's old path: expected [ Array(11) ] to include '@/features/roles'
+ ❯ src/app/extractionRatchet.test.ts:82:66
+     80|   const groups = (options.patterns ?? []).flatMap((pattern) => pattern…
+     81|   for (const { group, package: pkg } of EXTRACTED_MODULES) {
+     82|    expect(groups, `${path} does not restrict ${pkg}'s old path`).toCon…
+       |                                                                  ^
+     83|   }
+     84|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  src/app/extractionRatchet.test.ts > extraction ratchet > restricts every extracted module for src/features/agents/agents.store.ts
+AssertionError: src/features/agents/agents.store.ts does not restrict @n8n/frontend-module-roles's old path: expected [ Array(11) ] to include '@/features/roles'
+ ❯ src/app/extractionRatchet.test.ts:82:66
+     80|   const groups = (options.patterns ?? []).flatMap((pattern) => pattern…
+     81|   for (const { group, package: pkg } of EXTRACTED_MODULES) {
+     82|    expect(groups, `${path} does not restrict ${pkg}'s old path`).toCon…
+       |                                                                  ^
+     83|   }
+     84|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  src/app/extractionRatchet.test.ts > extraction ratchet > restricts every extracted module for src/features/credentials/views/CredentialsView.vue
+AssertionError: src/features/credentials/views/CredentialsView.vue does not restrict @n8n/frontend-module-roles's old path: expected [ '@/features/instanceRegistry', …(9) ] to include '@/features/roles'
+ ❯ src/app/extractionRatchet.test.ts:82:66
+     80|   const groups = (options.patterns ?? []).flatMap((pattern) => pattern…
+     81|   for (const { group, package: pkg } of EXTRACTED_MODULES) {
+     82|    expect(groups, `${path} does not restrict ${pkg}'s old path`).toCon…
+       |                                                                  ^
+     83|   }
+     84|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  src/app/extractionRatchet.test.ts > extraction ratchet > restricts every extracted module for src/features/collaboration/projects/projects.routes.ts
+AssertionError: src/features/collaboration/projects/projects.routes.ts does not restrict @n8n/frontend-module-roles's old path: expected [ '@/features/instanceRegistry', …(9) ] to include '@/features/roles'
+ ❯ src/app/extractionRatchet.test.ts:82:66
+     80|   const groups = (options.patterns ?? []).flatMap((pattern) => pattern…
+     81|   for (const { group, package: pkg } of EXTRACTED_MODULES) {
+     82|    expect(groups, `${path} does not restrict ${pkg}'s old path`).toCon…
+       |                                                                  ^
+     83|   }
+     84|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  src/app/extractionRatchet.test.ts > extraction ratchet > restricts every extracted module for src/features/ndv/ndv.store.ts
+AssertionError: src/features/ndv/ndv.store.ts does not restrict @n8n/frontend-module-roles's old path: expected [ '@/features/instanceRegistry', …(9) ] to include '@/features/roles'
+ ❯ src/app/extractionRatchet.test.ts:82:66
+     80|   const groups = (options.patterns ?? []).flatMap((pattern) => pattern…
+     81|   for (const { group, package: pkg } of EXTRACTED_MODULES) {
+     82|    expect(groups, `${path} does not restrict ${pkg}'s old path`).toCon…
+       |                                                                  ^
+     83|   }
+     84|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  src/app/extractionRatchet.test.ts > extraction ratchet > restricts every extracted module for src/features/shared/editors/utils/loadPrettier.ts
+AssertionError: src/features/shared/editors/utils/loadPrettier.ts does not restrict @n8n/frontend-module-roles's old path: expected [ '@/features/instanceRegistry', …(7) ] to include '@/features/roles'
+ ❯ src/app/extractionRatchet.test.ts:82:66
+     80|   const groups = (options.patterns ?? []).flatMap((pattern) => pattern…
+     81|   for (const { group, package: pkg } of EXTRACTED_MODULES) {
+     82|    expect(groups, `${path} does not restrict ${pkg}'s old path`).toCon…
+       |                                                                  ^
+     83|   }
+     84|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 1 passed (9)
+   Start at  13:18:59
+   Duration  595ms (setup 41%, environment 38%, transform 17%, tests 3%, worker 1%)
+
+[ELIFECYCLE] Test failed. See above for more details.

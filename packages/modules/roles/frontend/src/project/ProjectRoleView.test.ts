@@ -1,17 +1,21 @@
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor, type RenderResult } from '@testing-library/vue';
-import { VIEWS } from '@/app/constants';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRoleView from './ProjectRoleView.vue';
 
-const { customMcpServersEnabled } = vi.hoisted(() => ({ customMcpServersEnabled: vi.fn() }));
-vi.mock('@/experiments/customMcpServers/customMcpServersEnabled', () => ({
-	customMcpServersEnabled,
-}));
+const customMcpServersEnabled = vi.fn<() => boolean>();
+// The shell provides the flag in `capabilities.manifest.ts`. The tests provide a stub.
+beforeEach(() => {
+	capabilityRegistry.provide(capabilities.customMcpServersEnabled, customMcpServersEnabled);
+});
+afterEach(() => {
+	capabilityRegistry.clear();
+});
 
 // Mock composables
 const mockShowError = vi.fn();

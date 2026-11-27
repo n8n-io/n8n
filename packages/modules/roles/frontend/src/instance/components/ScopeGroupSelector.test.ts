@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { renderComponent } from '@/__tests__/render';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import { renderComponent, getTooltip } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import ScopeGroupSelector from './ScopeGroupSelector.vue';
@@ -9,15 +10,18 @@ import {
 	GLOBAL_CHAT_USER_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 } from '@n8n/permissions';
-import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
-import { getTooltip } from '@/__tests__/utils';
+import { CUSTOM_ROLES_DOCS_URL } from '../../roles.constants';
 import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
-const { customMcpServersEnabled } = vi.hoisted(() => ({ customMcpServersEnabled: vi.fn() }));
-vi.mock('@/experiments/customMcpServers/customMcpServersEnabled', () => ({
-	customMcpServersEnabled,
-}));
+const customMcpServersEnabled = vi.fn<() => boolean>();
+// The shell provides the flag in `capabilities.manifest.ts`. The tests provide a stub.
+beforeEach(() => {
+	capabilityRegistry.provide(capabilities.customMcpServersEnabled, customMcpServersEnabled);
+});
+afterEach(() => {
+	capabilityRegistry.clear();
+});
 
 const totalOptions = INSTANCE_SCOPE_GROUP_LIST.reduce((sum, g) => sum + g.options.length, 0);
 
@@ -458,7 +462,7 @@ describe('ScopeGroupSelector', () => {
 		// the trigger is as wide as the whole row, so `placement="right"` puts the
 		// tooltip at the right edge of the card instead of beside the hovered
 		// option.
-		const SFC_PATH = 'src/features/roles/instance/components/ScopeGroupSelector.vue';
+		const SFC_PATH = 'src/instance/components/ScopeGroupSelector.vue';
 
 		/**
 		 * Give jsdom the component's own CSS module block. `classNameStrategy:

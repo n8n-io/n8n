@@ -1,4 +1,4 @@
-import { renderComponent } from '@/__tests__/render';
+import { renderComponent } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@n8n/stores/settings.store';

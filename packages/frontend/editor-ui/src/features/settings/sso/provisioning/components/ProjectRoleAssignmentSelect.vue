@@ -5,8 +5,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { VIEWS } from '@/app/constants';
-import RoleSelectDropdown from '@/features/roles/components/RoleSelectDropdown.vue';
-import CustomRolesUpgradeModal from '@/features/roles/components/CustomRolesUpgradeModal.vue';
+import { CustomRolesUpgradeModal, RoleSelectDropdown } from '@n8n/frontend-module-roles';
 
 const { disabled = false, testId = 'project-role-assignment-select' } = defineProps<{
 	disabled?: boolean;

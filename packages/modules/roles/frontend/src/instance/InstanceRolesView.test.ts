@@ -1,10 +1,9 @@
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import InstanceRolesView from './InstanceRolesView.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -21,7 +20,8 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: vi.fn(), showError: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useMessage', () => ({
+vi.mock('@n8n/design-system', async (importOriginal) => ({
+	...(await importOriginal()),
 	useMessage: () => ({ confirm: vi.fn() }),
 }));
 

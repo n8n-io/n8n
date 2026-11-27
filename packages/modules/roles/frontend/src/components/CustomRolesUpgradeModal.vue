@@ -3,12 +3,12 @@ import { ElDialog } from 'element-plus';
 import { N8nButton, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { APP_MODALS_ELEMENT_ID, CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
+import { useBasePageRedirectionHelper } from '@n8n/stores/composables/useBasePageRedirectionHelper';
+import { APP_MODALS_ELEMENT_ID, CUSTOM_ROLES_DOCS_URL } from '../roles.constants';
 
 const visible = defineModel<boolean>();
 const i18n = useI18n();
-const { goToUpgrade } = usePageRedirectionHelper();
+const { goToUpgrade } = useBasePageRedirectionHelper();
 
 const onViewPlans = async () => {
 	await goToUpgrade('custom-roles-selector', 'upgrade-custom-roles');

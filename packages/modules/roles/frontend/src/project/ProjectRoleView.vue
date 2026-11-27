@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@n8n/composables/useToast';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
-import { useRolesStore } from '@n8n/stores/roles.store';
 import {
+	useMessage,
 	N8nButton,
 	N8nFormInput,
 	N8nHeading,
@@ -13,6 +9,11 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { VIEWS } from '@n8n/frontend-constants/views';
+import { MODAL_CONFIRM } from '../roles.constants';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, toRaw } from 'vue';
