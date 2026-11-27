@@ -45,4 +45,17 @@ export interface IDynamicCredentialStorageProvider {
 		workflowSettings?: IWorkflowSettings,
 		executionId?: string,
 	): Promise<void>;
+
+	/**
+	 * Deletes the stored data of the caller in `credentialContext` when its OAuth
+	 * refresh token is still the one the provider rejected. A token stored after a
+	 * reconnect has a different refresh token and stays.
+	 */
+	discardRejectedOAuthTokenData?(
+		credentialStoreMetadata: CredentialStoreMetadata,
+		rejectedRefreshToken: string,
+		credentialContext: ICredentialContext,
+		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
+	): Promise<void>;
 }
