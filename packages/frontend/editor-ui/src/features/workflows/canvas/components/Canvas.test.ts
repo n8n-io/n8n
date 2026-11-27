@@ -2526,4 +2526,195 @@ describe('Canvas', () => {
 			);
 		});
 	});
+
+	// Regression tests for CAP-231: Touchscreen on canvas stops working after sending any keystroke
+	describe('touchscreen interaction on mobile devices (CAP-231)', () => {
+		const IPAD_USER_AGENT =
+			'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+
+		type TouchPoint = { identifier: number; clientX: number; clientY: number };
+
+		let userAgentSpy: ReturnType<typeof vi.spyOn>;
+		let originalMaxTouchPoints: PropertyDescriptor | undefined;
+		let originalMatchMedia: typeof window.matchMedia;
+
+		function dispatchTouchEvent(
+			target: Element,
+			type: 'touchstart' | 'touchmove' | 'touchend',
+			touches: TouchPoint[],
+			changedTouches: TouchPoint[] = touches,
+		) {
+			const toTouchList = (points: TouchPoint[]) =>
+				points.map((point) => ({
+					...point,
+					pageX: point.clientX,
+					pageY: point.clientY,
+					target,
+				}));
+
+			const event = new Event(type, { bubbles: true, cancelable: true });
+			Object.defineProperties(event, {
+				touches: { value: toTouchList(touches) },
+				changedTouches: { value: toTouchList(changedTouches) },
+			});
+			target.dispatchEvent(event);
+			return event;
+		}
+
+		function performTouchDrag(
+			pane: Element,
+			from: { x: number; y: number },
+			to: { x: number; y: number },
+		) {
+			const startPoint = { identifier: 1, clientX: from.x, clientY: from.y };
+			const endPoint = { identifier: 1, clientX: to.x, clientY: to.y };
+
+			dispatchTouchEvent(pane, 'touchstart', [startPoint]);
+			const moveEvent = dispatchTouchEvent(pane, 'touchmove', [endPoint]);
+			dispatchTouchEvent(pane, 'touchend', [], [endPoint]);
+
+			return moveEvent;
+		}
+
+		function performPinchZoom(pane: Element) {
+			// Spread two touches from 100px apart to 150px apart (1.5x zoom).
+			const startTouches: TouchPoint[] = [
+				{ identifier: 1, clientX: 100, clientY: 100 },
+				{ identifier: 2, clientX: 200, clientY: 100 },
+			];
+			const spreadTouches: TouchPoint[] = [
+				{ identifier: 1, clientX: 75, clientY: 100 },
+				{ identifier: 2, clientX: 225, clientY: 100 },
+			];
+
+			dispatchTouchEvent(pane, 'touchstart', startTouches);
+			const moveEvent = dispatchTouchEvent(pane, 'touchmove', spreadTouches);
+			dispatchTouchEvent(pane, 'touchend', [], spreadTouches);
+
+			return moveEvent;
+		}
+
+		beforeEach(() => {
+			userAgentSpy = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPAD_USER_AGENT);
+			originalMaxTouchPoints = Object.getOwnPropertyDescriptor(navigator, 'maxTouchPoints');
+			Object.defineProperty(navigator, 'maxTouchPoints', {
+				value: 5,
+				configurable: true,
+			});
+			originalMatchMedia = window.matchMedia;
+			window.matchMedia = vi.fn((query: string) => ({
+				matches: query === '(any-pointer: coarse)',
+				media: query,
+				onchange: null,
+				addListener: vi.fn(),
+				removeListener: vi.fn(),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+				dispatchEvent: vi.fn(),
+			})) as unknown as typeof window.matchMedia;
+		});
+
+		afterEach(() => {
+			userAgentSpy.mockRestore();
+			if (originalMaxTouchPoints) {
+				Object.defineProperty(navigator, 'maxTouchPoints', originalMaxTouchPoints);
+			} else {
+				Reflect.deleteProperty(navigator, 'maxTouchPoints');
+			}
+			window.matchMedia = originalMatchMedia;
+		});
+
+		it('pans and pinch-zooms the canvas repeatedly via touch before any keystroke', async () => {
+			const { container } = renderComponent({
+				props: {
+					nodes: [createCanvasNodeElement()],
+					initialViewport: { x: 0, y: 0, zoom: 1 },
+				},
+			});
+
+			const pane = container.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			const { getViewport } = useVueFlow(canvasId);
+			await waitFor(() => expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 }));
+
+			const firstDragMove = performTouchDrag(pane, { x: 100, y: 100 }, { x: 200, y: 150 });
+			expect(getViewport()).toEqual({ x: 100, y: 50, zoom: 1 });
+			expect(firstDragMove.defaultPrevented).toBe(true);
+
+			const secondDragMove = performTouchDrag(pane, { x: 100, y: 100 }, { x: 250, y: 200 });
+			expect(getViewport()).toEqual({ x: 250, y: 150, zoom: 1 });
+			expect(secondDragMove.defaultPrevented).toBe(true);
+
+			const firstPinchMove = performPinchZoom(pane);
+			expect(getViewport().zoom).toBeCloseTo(1.5, 5);
+			expect(firstPinchMove.defaultPrevented).toBe(true);
+
+			const secondPinchMove = performPinchZoom(pane);
+			expect(getViewport().zoom).toBeCloseTo(2.25, 5);
+			expect(secondPinchMove.defaultPrevented).toBe(true);
+		});
+
+		it.each(['a', ' '])('keeps touch drag panning working after pressing "%s"', async (key) => {
+			const { container } = renderComponent({
+				props: {
+					nodes: [createCanvasNodeElement()],
+					initialViewport: { x: 0, y: 0, zoom: 1 },
+				},
+			});
+
+			const pane = container.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			const { getViewport } = useVueFlow(canvasId);
+			await waitFor(() => expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 }));
+
+			// Touch dragging pans the canvas on initial load.
+			const initialMoveEvent = performTouchDrag(pane, { x: 100, y: 100 }, { x: 200, y: 150 });
+			expect(getViewport()).toEqual({ x: 100, y: 50, zoom: 1 });
+			expect(initialMoveEvent.defaultPrevented).toBe(true);
+
+			// Press a key on a physical or virtual keyboard.
+			await fireEvent.keyDown(document, { key });
+			await fireEvent.keyUp(document, { key });
+
+			// Touch dragging must continue to pan the canvas instead of scrolling the page.
+			const moveEventAfterKey = performTouchDrag(pane, { x: 100, y: 100 }, { x: 250, y: 200 });
+			expect(getViewport()).toEqual({ x: 250, y: 150, zoom: 1 });
+			expect(moveEventAfterKey.defaultPrevented).toBe(true);
+		});
+
+		it.each(['a', ' '])(
+			'keeps two-finger pinch-to-zoom working after pressing "%s"',
+			async (key) => {
+				const { container } = renderComponent({
+					props: {
+						nodes: [createCanvasNodeElement()],
+						initialViewport: { x: 0, y: 0, zoom: 1 },
+					},
+				});
+
+				const pane = container.querySelector('.vue-flow__pane');
+				if (!pane) throw new Error('VueFlow pane not found');
+
+				const { getViewport } = useVueFlow(canvasId);
+				await waitFor(() => expect(getViewport()).toEqual({ x: 0, y: 0, zoom: 1 }));
+
+				// Two-finger pinch zooms the canvas on initial load.
+				const initialPinchEvent = performPinchZoom(pane);
+				const zoomBeforeKey = getViewport().zoom;
+				expect(zoomBeforeKey).toBeCloseTo(1.5, 5);
+				expect(initialPinchEvent.defaultPrevented).toBe(true);
+
+				// Press a key on a physical or virtual keyboard.
+				await fireEvent.keyDown(document, { key });
+				await fireEvent.keyUp(document, { key });
+
+				// Two-finger pinch must continue to zoom the canvas instead of the whole page.
+				const pinchEventAfterKey = performPinchZoom(pane);
+				expect(getViewport().zoom).toBeCloseTo(zoomBeforeKey * 1.5, 5);
+				expect(pinchEventAfterKey.defaultPrevented).toBe(true);
+			},
+		);
+	});
 });
