@@ -35,6 +35,7 @@ import {
 	SMALL_MODEL_TOKENS,
 	type ModelTier,
 } from './model-tiers';
+import { agentModelSlots, unsetMemoryWorkerSlots } from './agent-model-slots';
 import { hasRealCredentialKey } from './seeder';
 import { z } from 'zod';
 import { isDirectAgentRun } from '../harness/agent-run-schema';
@@ -239,35 +240,6 @@ function modelTier(model: string): ModelTier {
 // One Agent config
 // ---------------------------------------------------------------------------
 
-/** A `{ model, credential }` slot inside a (cloned) config, mutated in place. */
-interface ModelSlotRef {
-	slot: string;
-	target: { model: string };
-}
-
-/** Every model the config names: main, sub-agent tiers, and memory workers. */
-function modelSlots(config: AgentJsonConfig): ModelSlotRef[] {
-	const slots: ModelSlotRef[] = config.model ? [{ slot: 'model', target: config }] : [];
-	for (const [level, entry] of Object.entries(config.subAgents?.modelsByDifficulty ?? {})) {
-		if (entry) slots.push({ slot: `subAgents.modelsByDifficulty.${level}`, target: entry });
-	}
-	return [...slots, ...memoryModelSlots(config.memory)];
-}
-
-function memoryModelSlots(memory: AgentJsonConfig['memory']): ModelSlotRef[] {
-	const observational = memory?.observationalMemory;
-	const episodic = memory?.episodicMemory;
-	const candidates = [
-		['memory.observationalMemory.observerModel', observational?.observerModel],
-		['memory.observationalMemory.reflectorModel', observational?.reflectorModel],
-		[
-			'memory.episodicMemory.reflectorModel',
-			episodic?.enabled ? episodic.reflectorModel : undefined,
-		],
-	] as const;
-	return candidates.flatMap(([slot, target]) => (target ? [{ slot, target }] : []));
-}
-
 /** Rewrite every model in the config to the route the eval can run, and say
  *  what was changed. The input is not mutated. */
 export function resolveAgentConfigModels(
@@ -276,7 +248,7 @@ export function resolveAgentConfigModels(
 	options: ModelResolverOptions = {},
 ): { config: AgentJsonConfig; resolution: AgentModelResolution } {
 	const config = structuredClone(input);
-	const slots: SlotModelResolution[] = modelSlots(config).map(({ slot, target }) => {
+	const slots: SlotModelResolution[] = agentModelSlots(config).map(({ slot, target }) => {
 		const resolved = resolveModel(target.model, available, options);
 		if (resolved.kind !== 'skipped') target.model = resolved.actualModel;
 		return { slot, ...resolved };
@@ -294,31 +266,7 @@ function inheritedWorkerSlots(
 	memory: AgentJsonConfig['memory'],
 	main: SlotModelResolution,
 ): SlotModelResolution[] {
-	return unsetMemoryWorkers(memory).map((slot) => ({ ...main, slot, inheritsFrom: 'model' }));
-}
-
-/** Memory workers that will run, but have no model of their own. */
-function unsetMemoryWorkers(memory: AgentJsonConfig['memory']): string[] {
-	if (!memory?.enabled) return [];
-	const episodic = memory.episodicMemory;
-	const workers: Array<[string, unknown]> = [
-		...observationalWorkers(memory.observationalMemory),
-		...(episodic?.enabled
-			? [['memory.episodicMemory.reflectorModel', episodic.reflectorModel] as [string, unknown]]
-			: []),
-	];
-	return workers.flatMap(([slot, model]) => (model === undefined ? [slot] : []));
-}
-
-/** Observational memory runs unless it is turned off explicitly. */
-function observationalWorkers(
-	observational: NonNullable<AgentJsonConfig['memory']>['observationalMemory'],
-): Array<[string, unknown]> {
-	if (observational?.enabled === false) return [];
-	return [
-		['memory.observationalMemory.observerModel', observational?.observerModel],
-		['memory.observationalMemory.reflectorModel', observational?.reflectorModel],
-	];
+	return unsetMemoryWorkerSlots(memory).map((slot) => ({ ...main, slot, inheritsFrom: 'model' }));
 }
 
 function summarize(

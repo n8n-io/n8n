@@ -38,6 +38,7 @@ import type {
 	TestCaseCredential,
 } from '../types';
 import type { CaseSeed } from './schema';
+import { agentModelSlots, AgentModelSlotsViewSchema } from '../credentials/agent-model-slots';
 import type { AgentModelResolution } from '../credentials/model-resolver';
 import { credentialGetsRealKey } from '../credentials/seeder';
 
@@ -70,19 +71,12 @@ function seededAgentIndex(createdAgentIds: string[] | undefined, agentId: string
 	return (createdAgentIds ?? []).indexOf(agentId);
 }
 
-/** Every model an Agent config names, by slot: the main model and each
- *  `subAgents.modelsByDifficulty` tier — the slots the restore binds. */
+/** Every model an Agent config names, by slot: main, sub-agent tiers, and
+ *  memory workers. A config that doesn't parse names none. */
 function modelSlots(config: unknown): Map<string, string> {
-	const slots = new Map<string, string>();
-	if (!isRecord(config)) return slots;
-	if (typeof config.model === 'string' && config.model !== '') slots.set('model', config.model);
-	const tiers = isRecord(config.subAgents) ? config.subAgents.modelsByDifficulty : undefined;
-	if (isRecord(tiers)) {
-		for (const [tier, entry] of Object.entries(tiers)) {
-			if (isRecord(entry) && typeof entry.model === 'string') slots.set(tier, entry.model);
-		}
-	}
-	return slots;
+	const parsed = AgentModelSlotsViewSchema.safeParse(config);
+	if (!parsed.success) return new Map();
+	return new Map(agentModelSlots(parsed.data).map(({ slot, target }) => [slot, target.model]));
 }
 
 export interface DraftAgentVerdict {

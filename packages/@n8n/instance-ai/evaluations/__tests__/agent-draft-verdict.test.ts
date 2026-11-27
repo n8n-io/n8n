@@ -48,6 +48,31 @@ describe('draftAgentVerdict', () => {
 		);
 	});
 
+	it('checks seeded memory worker models too', () => {
+		vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
+		const withObserver = {
+			...seeded,
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: {
+					observerModel: { model: 'openai/gpt-4o-mini', credential: '[redacted]' },
+				},
+			},
+		};
+
+		expect(
+			draftAgentVerdict(
+				artifact(withObserver),
+				[{ type: 'anthropicApi', realModelKey: true }],
+				withObserver,
+			),
+		).toMatchObject({
+			execError: 'Seeded Agent model has no declared credential',
+			reasoning: expect.stringContaining('openai/gpt-4o-mini needs a openAiApi credential'),
+		});
+	});
+
 	it('leaves a model the builder changed to the builder', () => {
 		const built = { ...seeded, model: 'openai/gpt-5-mini' };
 
