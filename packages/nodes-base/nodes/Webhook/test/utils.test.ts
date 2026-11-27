@@ -974,6 +974,7 @@ describe('Webhook Utils', () => {
 					},
 				}),
 				getNodeParameter: vi.fn().mockReturnValue(options),
+				getNode: vi.fn().mockReturnValue({ type: 'n8n-nodes-base.webhook', typeVersion: 2.2 }),
 				nodeHelpers: {
 					copyBinaryFile: mockCopyBinaryFile,
 				},

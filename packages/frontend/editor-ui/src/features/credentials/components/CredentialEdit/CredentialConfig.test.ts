@@ -11,6 +11,8 @@ import { createTestingPinia } from '@pinia/testing';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import type { QuickConnectOption } from '@n8n/api-types';
 import { vi } from 'vitest';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -1232,6 +1234,117 @@ describe('CredentialConfig', () => {
 			});
 
 			expect(screen.queryByTestId('credential-mode-selector')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Quick connect on node-less surfaces', () => {
+		const pineconeCredentialType: ICredentialType = {
+			name: 'pineconeApi',
+			displayName: 'Pinecone API',
+			properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+		};
+
+		const pineconeOption: QuickConnectOption = {
+			packageName: '@n8n/n8n-nodes-langchain',
+			credentialType: 'pineconeApi',
+			text: 'Connect to Pinecone in one click',
+			quickConnectType: 'pinecone',
+			config: { integrationId: 'test-integration-id' },
+		};
+
+		const writePermissions = {
+			create: true,
+			update: true,
+			read: true,
+			delete: false,
+			share: false,
+			list: true,
+			move: false,
+		};
+
+		function renderInQuickConnectMode(quickConnectOptions?: { options: QuickConnectOption[] }) {
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: { enterprise: { sharing: false, externalSecrets: false } },
+					},
+				},
+			});
+
+			if (quickConnectOptions) {
+				const settingsStore = mockedStore(useSettingsStore);
+				settingsStore.moduleSettings['quick-connect'] = quickConnectOptions;
+			}
+
+			return renderComponent({
+				pinia,
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: pineconeCredentialType,
+					credentialProperties: pineconeCredentialType.properties ?? [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isQuickConnectMode: true,
+					credentialPermissions: writePermissions,
+				},
+			});
+		}
+
+		it('shows the quick connect banner from a credential-type match without an active node', () => {
+			renderInQuickConnectMode({ options: [pineconeOption] });
+
+			expect(screen.getByTestId('quick-connect-banner')).toHaveTextContent(
+				'Connect to Pinecone in one click',
+			);
+			expect(screen.getByTestId('quick-connect-modal-button')).toBeInTheDocument();
+		});
+
+		it('shows no quick connect banner when no option is configured for the credential type', () => {
+			renderInQuickConnectMode();
+
+			expect(screen.queryByTestId('quick-connect-banner')).not.toBeInTheDocument();
+		});
+
+		it('keeps the node-scoped package match when an active node is present', () => {
+			const pinia = createTestingPinia({
+				stubActions: false,
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: { enterprise: { sharing: false, externalSecrets: false } },
+					},
+				},
+			});
+
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.setWorkflowId('test-workflow-id');
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
+			ndvStore.activeNode = {
+				parameters: {},
+				type: 'other-package.pinecone',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'test-node-id',
+				name: 'Test Node',
+				credentials: {},
+			} as INodeUi;
+
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.moduleSettings['quick-connect'] = { options: [pineconeOption] };
+
+			renderComponent({
+				pinia,
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: pineconeCredentialType,
+					credentialProperties: pineconeCredentialType.properties ?? [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isQuickConnectMode: true,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.queryByTestId('quick-connect-banner')).not.toBeInTheDocument();
 		});
 	});
 

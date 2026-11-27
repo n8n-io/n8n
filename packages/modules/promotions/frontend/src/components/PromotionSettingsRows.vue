@@ -1,27 +1,26 @@
 <script setup lang="ts">
-import type { PromotionSettings } from '@n8n/api-types';
+import {
+	UpdatePromotionSettingsDto,
+	type PromotionRequireApproval,
+	type PromotionSettings,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nSelect2, N8nSettingsRow, N8nSettingsRowGroup } from '@n8n/design-system';
 import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import {
-	promotionProjectAccessSchema,
-	type PromotionProjectAccess,
-	type PromotionProjectAccessSetting,
-} from '@n8n/permissions';
+import type { PromotionProjectAccess } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref } from 'vue';
 
 import { getPromotionSettings, updatePromotionSettings } from '../promotions.api';
 
+type PromotionSetting = keyof PromotionSettings;
+
 const props = defineProps<{
-	settings: readonly PromotionProjectAccessSetting[];
+	settings: readonly PromotionSetting[];
 }>();
 
-const SETTING_TEXT: Record<
-	PromotionProjectAccessSetting,
-	{ title: BaseTextKey; description: BaseTextKey }
-> = {
+const SETTING_TEXT: Record<PromotionSetting, { title: BaseTextKey; description: BaseTextKey }> = {
 	whoCanPromote: {
 		title: 'settings.promotions.projectAccess.whoCanPromote.title',
 		description: 'settings.promotions.projectAccess.whoCanPromote.description',
@@ -34,12 +33,28 @@ const SETTING_TEXT: Record<
 		title: 'settings.promotions.projectAccess.whoCanApply.title',
 		description: 'settings.promotions.projectAccess.whoCanApply.description',
 	},
+	requireApproval: {
+		title: 'settings.promotions.reviews.requireApproval.title',
+		description: 'settings.promotions.reviews.requireApproval.description',
+	},
 };
 
-const OPTION_LABEL: Record<PromotionProjectAccess, BaseTextKey> = {
+const ACCESS_LABEL: Record<PromotionProjectAccess, BaseTextKey> = {
 	instanceAdmins: 'settings.promotions.projectAccess.option.instanceAdmins',
 	projectAdmins: 'settings.promotions.projectAccess.option.projectAdmins',
 	projectAdminsAndEditors: 'settings.promotions.projectAccess.option.projectAdminsAndEditors',
+};
+
+const REQUIRE_APPROVAL_LABEL: Record<PromotionRequireApproval, BaseTextKey> = {
+	whenConfigured: 'settings.promotions.reviews.requireApproval.option.whenConfigured',
+	alwaysRequired: 'settings.promotions.reviews.requireApproval.option.alwaysRequired',
+};
+
+const OPTION_LABEL: Record<PromotionSetting, Record<string, BaseTextKey>> = {
+	whoCanPromote: ACCESS_LABEL,
+	whoCanApprove: ACCESS_LABEL,
+	whoCanApply: ACCESS_LABEL,
+	requireApproval: REQUIRE_APPROVAL_LABEL,
 };
 
 const i18n = useI18n();
@@ -51,12 +66,11 @@ const values = ref<PromotionSettings>();
 const saving = ref(false);
 const disabled = computed(() => !values.value || saving.value);
 
-const options = computed<Array<SelectOptionBase<PromotionProjectAccess>>>(() =>
-	promotionProjectAccessSchema.options.map((value) => ({
+const optionsOf = (setting: PromotionSetting): Array<SelectOptionBase<string>> =>
+	Object.entries(OPTION_LABEL[setting]).map(([value, label]) => ({
 		value,
-		label: i18n.baseText(OPTION_LABEL[value]),
-	})),
-);
+		label: i18n.baseText(label),
+	}));
 
 onMounted(async () => {
 	try {
@@ -68,17 +82,17 @@ onMounted(async () => {
 	}
 });
 
-async function save(setting: PromotionProjectAccessSetting, selected: SelectValue | undefined) {
-	const parsed = promotionProjectAccessSchema.safeParse(selected);
-	if (!values.value || !parsed.success || parsed.data === values.value[setting]) return;
+async function save(setting: PromotionSetting, selected: SelectValue | undefined) {
+	if (!values.value || selected === undefined || selected === values.value[setting]) return;
+	const parsed = UpdatePromotionSettingsDto.safeParse({ [setting]: selected });
+	if (!parsed.success) return;
+	const change = parsed.data;
 
 	const previous = values.value;
-	values.value = { ...previous, [setting]: parsed.data };
+	values.value = { ...previous, ...change };
 	saving.value = true;
 	try {
-		values.value = await updatePromotionSettings(rootStore.publicApiContext, {
-			[setting]: parsed.data,
-		});
+		values.value = await updatePromotionSettings(rootStore.publicApiContext, change);
 		toast.showMessage({
 			title: i18n.baseText('settings.promotions.projectAccess.toast.saved'),
 			type: 'success',
@@ -106,11 +120,11 @@ async function save(setting: PromotionProjectAccessSetting, selected: SelectValu
 			<template #action>
 				<N8nSelect2
 					:model-value="values?.[setting]"
-					:items="options"
+					:items="optionsOf(setting)"
 					size="medium"
 					:disabled="disabled"
 					:aria-label="i18n.baseText(SETTING_TEXT[setting].title)"
-					:data-test-id="`promotion-project-access-${setting}`"
+					:data-test-id="`promotion-setting-${setting}`"
 					@update:model-value="(selected) => save(setting, selected)"
 				/>
 			</template>

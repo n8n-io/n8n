@@ -25,6 +25,7 @@ import type {
 	Workflow,
 	IDataObject,
 	IRun,
+	IRunData,
 	INode,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
@@ -48,6 +49,7 @@ import {
 	type ExecutionOutcomeSaveResult,
 } from '@/executions/execution-persistence';
 
+import { DatabaseManager } from '@/binary-data/database.manager';
 import { ExternalHooks } from '@/external-hooks';
 import { MemoryStoppedExecutions } from '@/memory-guard/memory-stopped-executions';
 import { Push } from '@/push';
@@ -77,7 +79,30 @@ describe('Execution Lifecycle Hooks', () => {
 	const workflowStaticDataService = mockInstance(WorkflowStaticDataService);
 	const workflowStatisticsService = mockInstance(WorkflowStatisticsService);
 	const binaryDataService = mockInstance(BinaryDataService);
+	mockInstance(BinaryDataConfig, { mode: 'default' });
 	const binaryDataAccessService = mockInstance(BinaryDataAccessService);
+	const databaseManager = mockInstance(DatabaseManager);
+	const databaseFileId = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
+	const runDataWithBinary = (binaryDataId: string): IRunData => ({
+		[nodeName]: [
+			{
+				startTime: 1,
+				executionIndex: 0,
+				executionTime: 1,
+				source: [],
+				data: {
+					main: [
+						[
+							{
+								json: {},
+								binary: { data: { id: binaryDataId, data: '', mimeType: 'text/plain' } },
+							},
+						],
+					],
+				},
+			},
+		],
+	});
 	const ownershipService = mockInstance(OwnershipService);
 	const workflowExecutionService = mockInstance(WorkflowExecutionService);
 	const userRepository = mockInstance(UserRepository);
@@ -1878,6 +1903,24 @@ describe('Execution Lifecycle Hooks', () => {
 					'workflows/test-workflow-id/executions/test-execution-id/binary_data/123',
 				);
 			});
+
+			it.each(['webhook', 'manual', 'trigger'] as const)(
+				'should assign database binary data to the execution before the save in %s mode',
+				async (mode) => {
+					lifecycleHooks = createHooks(mode);
+					successfulRun.data.resultData.runData = runDataWithBinary(`database:${databaseFileId}`);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+					expect(databaseManager.assignToExecution).toHaveBeenCalledWith(
+						[databaseFileId],
+						executionId,
+					);
+					expect(databaseManager.assignToExecution.mock.invocationCallOrder[0]).toBeLessThan(
+						executionPersistence.saveExecutionOutcome.mock.invocationCallOrder[0],
+					);
+				},
+			);
 		});
 
 		describe('user of the pushRef', () => {
@@ -2316,6 +2359,42 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
+		});
+
+		it.each(['webhook', 'manual', 'trigger'] as const)(
+			'should assign database binary data to the execution before the save in %s mode',
+			async (mode) => {
+				lifecycleHooks = createHooks(mode);
+				successfulRun.data.resultData.runData = runDataWithBinary(`database:${databaseFileId}`);
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(databaseManager.assignToExecution).toHaveBeenCalledWith(
+					[databaseFileId],
+					executionId,
+				);
+				expect(databaseManager.assignToExecution.mock.invocationCallOrder[0]).toBeLessThan(
+					executionPersistence.saveExecutionOutcome.mock.invocationCallOrder[0],
+				);
+			},
+		);
+
+		it('should restore binary data IDs before the save for webhooks', async () => {
+			mockInstance(BinaryDataConfig, { mode: 'filesystem' });
+			lifecycleHooks = createHooks('webhook');
+			successfulRun.data.resultData.runData = runDataWithBinary(
+				`filesystem-v2:workflows/${workflowId}/executions/temp/binary_data/123`,
+			);
+
+			await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+			expect(binaryDataService.rename).toHaveBeenCalledWith(
+				`workflows/${workflowId}/executions/temp/binary_data/123`,
+				`workflows/${workflowId}/executions/${executionId}/binary_data/123`,
+			);
+			expect(binaryDataService.rename.mock.invocationCallOrder[0]).toBeLessThan(
+				executionPersistence.saveExecutionOutcome.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should run workflow.preExecute when legacy flag is on', async () => {
@@ -2912,6 +2991,25 @@ describe('Execution Lifecycle Hooks', () => {
 					expect(
 						binaryDataService.duplicateBinaryData.mock.invocationCallOrder.at(-1),
 					).toBeLessThan(executionPersistence.saveExecutionOutcome.mock.invocationCallOrder[0]);
+				},
+			);
+
+			it.each(['subexecution', 'worker'] as const)(
+				'should not assign database binary data to a %s that has a parent',
+				async (hookType) => {
+					if (hookType === 'worker') {
+						lifecycleHooks = getLifecycleHooksForScalingWorker(
+							mock<IWorkflowExecutionDataProcess>({ executionMode: 'integrated', workflowData }),
+							executionId,
+						);
+					}
+					successfulRun.data.resultData.runData = runDataWithBinary(`database:${databaseFileId}`);
+					successfulRun.data.parentExecution = parentExecution;
+					binaryDataService.duplicateBinaryData.mockResolvedValue([]);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+					expect(databaseManager.assignToExecution).not.toHaveBeenCalled();
 				},
 			);
 
