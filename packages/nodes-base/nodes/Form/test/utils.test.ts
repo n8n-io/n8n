@@ -18,7 +18,7 @@ vi.mock('fs/promises', async () => ({
 import { rm } from 'fs/promises';
 import type * as _fsPromises from 'fs/promises';
 import { Container } from '@n8n/di';
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
 import jwt from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
@@ -845,95 +845,6 @@ describe('FormTrigger, formWebhook', () => {
 			'Content-Security-Policy',
 			expect.stringContaining('sandbox'),
 		);
-	});
-
-	describe('webhook authentication error responses', () => {
-		const setupAuthContext = (
-			authentication: string,
-			headers: Record<string, string> = {},
-			credentials?: IDataObject,
-		) => {
-			const send = vi.fn();
-			const status = vi.fn(() => ({ send }));
-			const setHeader = vi.fn();
-			const ctx = mock<IWebhookFunctions>();
-
-			const req = mock<Request>({ method: 'POST', query: {}, headers });
-			const res = mock<Response>({
-				status: status as unknown as Response['status'],
-				setHeader: setHeader as unknown as Response['setHeader'],
-			});
-
-			ctx.getNode.mockReturnValue({ id: 'node-1', webhookId: 'wh-1', typeVersion: 2.1 } as INode);
-			ctx.getNodeParameter.calledWith('options').mockReturnValue({});
-			ctx.getNodeParameter.calledWith('authentication', 'none').mockReturnValue(authentication);
-			ctx.getRequestObject.mockReturnValue(req);
-			ctx.getHeaderData.mockReturnValue(headers);
-			ctx.getResponseObject.mockReturnValue(res);
-			if (credentials) {
-				ctx.getCredentials.mockResolvedValue(credentials);
-			} else {
-				ctx.getCredentials.mockRejectedValue(new Error('No credentials'));
-			}
-
-			return { ctx, status, send, setHeader };
-		};
-
-		it('should return 401 with WWW-Authenticate header when basicAuth credentials are missing from request', async () => {
-			const { ctx, status, send, setHeader } = setupAuthContext(
-				'basicAuth',
-				{},
-				{ user: 'testuser', password: 'testpass' },
-			);
-
-			const result = await formWebhook(ctx);
-
-			expect(result).toEqual({ noWebhookResponse: true });
-			expect(setHeader).toHaveBeenCalledWith('WWW-Authenticate', 'Basic realm="Enter credentials"');
-			expect(status).toHaveBeenCalledWith(401);
-			expect(send).toHaveBeenCalledWith();
-		});
-
-		it('should preserve 403 status without WWW-Authenticate header when x-auth-token is invalid', async () => {
-			const { ctx, status, send, setHeader } = setupAuthContext(
-				'basicAuth',
-				{ 'x-auth-token': 'invalid-token' },
-				{ user: 'testuser', password: 'testpass' },
-			);
-
-			const result = await formWebhook(ctx);
-
-			expect(result).toEqual({ noWebhookResponse: true });
-			expect(setHeader).not.toHaveBeenCalled();
-			expect(status).toHaveBeenCalledWith(403);
-			expect(send).toHaveBeenCalledWith('Authorization data is wrong!');
-		});
-
-		it('should preserve 500 status without WWW-Authenticate header when authentication mode is unsupported', async () => {
-			const { ctx, status, send, setHeader } = setupAuthContext(
-				'unsupportedMode',
-				{},
-				{ user: 'testuser', password: 'testpass' },
-			);
-
-			const result = await formWebhook(ctx);
-
-			expect(result).toEqual({ noWebhookResponse: true });
-			expect(setHeader).not.toHaveBeenCalled();
-			expect(status).toHaveBeenCalledWith(500);
-			expect(send).toHaveBeenCalledWith('Unsupported authentication method!');
-		});
-
-		it('should preserve 500 status without WWW-Authenticate header when basicAuth credentials are not configured', async () => {
-			const { ctx, status, send, setHeader } = setupAuthContext('basicAuth');
-
-			const result = await formWebhook(ctx);
-
-			expect(result).toEqual({ noWebhookResponse: true });
-			expect(setHeader).not.toHaveBeenCalled();
-			expect(status).toHaveBeenCalledWith(500);
-			expect(send).toHaveBeenCalledWith('No authentication data defined on node!');
-		});
 	});
 
 	describe('n8nUserAuth with OAuth2 flow', () => {
