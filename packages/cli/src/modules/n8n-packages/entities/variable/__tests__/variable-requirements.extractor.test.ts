@@ -91,19 +91,43 @@ describe('VariableRequirementsExtractor', () => {
 		expect(extractor.extract(workflow)).toHaveLength(2);
 	});
 
-	it('finds references in HTML-node templates, which resolve `{{ }}` without the `=` prefix', () => {
+	it('ignores the other parameters of a code node', () => {
 		const workflow = makeWorkflow({
-			id: 'wf-html',
 			nodes: [
 				makeNode(
-					{ html: '<p>$vars.PROSE</p><a href="{{ $vars.LINK_URL }}">link</a>' },
-					{ type: 'n8n-nodes-base.html' },
+					{ instructions: 'Copy $vars.PROSE into the output', jsCode: 'return items;' },
+					{ type: 'n8n-nodes-base.aiTransform' },
 				),
 			],
 		});
 
+		expect(extractor.extract(workflow)).toEqual([]);
+	});
+
+	// Many nodes resolve `{{ }}` in a fixed value at runtime, without the `=` prefix.
+	it.each([
+		{
+			name: 'a SQL query',
+			type: 'n8n-nodes-base.postgres',
+			parameters: { query: "SELECT '$vars.PROSE' FROM t WHERE env = '{{ $vars.TEMPLATE_VAR }}'" },
+		},
+		{
+			name: 'Form HTML',
+			type: 'n8n-nodes-base.form',
+			parameters: {
+				formFields: { values: [{ html: '<p>$vars.PROSE</p><b>{{ $vars.TEMPLATE_VAR }}</b>' }] },
+			},
+		},
+		{
+			name: 'an HTML template',
+			type: 'n8n-nodes-base.html',
+			parameters: { html: '<p>$vars.PROSE</p><a href="{{ $vars.TEMPLATE_VAR }}">link</a>' },
+		},
+	])('finds references in the `{{ }}` blocks of a fixed value: $name', ({ type, parameters }) => {
+		const workflow = makeWorkflow({ id: 'wf-template', nodes: [makeNode(parameters, { type })] });
+
 		expect(extractor.extract(workflow)).toEqual([
-			{ workflowId: 'wf-html', variableName: 'LINK_URL' },
+			{ workflowId: 'wf-template', variableName: 'TEMPLATE_VAR' },
 		]);
 	});
 
@@ -186,7 +210,6 @@ describe('VariableRequirementsExtractor', () => {
 	it.each([
 		{ name: 'plain prose mentioning vars', value: 'set your $vars up correctly' },
 		{ name: 'a reference in a fixed value', value: 'Documentation example: $vars.LITERAL_ONLY' },
-		{ name: 'a braced reference in a fixed value', value: 'Use {{ $vars.LITERAL_ONLY }}' },
 		{
 			name: 'a reference in the text part of an expression',
 			value: '=Use $vars.LITERAL_ONLY, today is {{ $today }}',

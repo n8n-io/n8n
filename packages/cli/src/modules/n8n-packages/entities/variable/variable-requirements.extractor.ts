@@ -3,7 +3,6 @@ import {
 	CODE_LANGCHAIN_NODE_TYPE,
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	ExpressionParser,
-	HTML_NODE_TYPE,
 	isExpression,
 	NODES_WITH_RENAMABLE_CONTENT,
 } from 'n8n-workflow';
@@ -32,6 +31,9 @@ const CODE_NODE_TYPES = new Set([
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	CODE_LANGCHAIN_NODE_TYPE,
 ]);
+
+/** The parameters of those nodes that hold the source. Their other parameters are plain values. */
+const CODE_PARAMETER_NAMES = new Set(['jsCode', 'pythonCode', 'functionCode', 'code']);
 
 /**
  * Describes the workflow fields needed to find variable references.
@@ -65,9 +67,14 @@ export class VariableRequirementsExtractor
 		return [...names];
 	}
 
-	private scan(value: unknown, names: Set<string>, nodeType?: string): void {
+	private scan(value: unknown, names: Set<string>, nodeType?: string, key?: string): void {
 		if (typeof value === 'string') {
-			for (const code of this.codeIn(value, nodeType)) {
+			const isSource =
+				nodeType !== undefined &&
+				key !== undefined &&
+				CODE_NODE_TYPES.has(nodeType) &&
+				CODE_PARAMETER_NAMES.has(key);
+			for (const code of evaluatedParts(value, isSource)) {
 				for (const match of code.matchAll(VARS_REFERENCE_PATTERN)) {
 					const name = match[1] ?? match[2] ?? match[3] ?? match[4];
 					if (name) names.add(name);
@@ -77,31 +84,28 @@ export class VariableRequirementsExtractor
 		}
 
 		if (Array.isArray(value)) {
-			for (const item of value) this.scan(item, names, nodeType);
+			for (const item of value) this.scan(item, names, nodeType, key);
 			return;
 		}
 
 		if (value !== null && typeof value === 'object') {
-			for (const nested of Object.values(value)) this.scan(nested, names, nodeType);
+			for (const [nestedKey, nested] of Object.entries(value)) {
+				this.scan(nested, names, nodeType, nestedKey);
+			}
 		}
-	}
-
-	/**
-	 * Returns the parts of a parameter value that the runtime evaluates: the
-	 * `{{ }}` blocks of an expression (or of an HTML-node template, which
-	 * resolves them without the `=` prefix) and the source of a code node. Any
-	 * other text is fixed, so a `$vars` mention in it is not a reference.
-	 */
-	private codeIn(value: string, nodeType?: string): string[] {
-		if (isExpression(value)) return expressionCode(value.slice(1));
-		if (!nodeType) return [];
-		if (CODE_NODE_TYPES.has(nodeType)) return [value];
-		if (nodeType === HTML_NODE_TYPE) return expressionCode(value);
-		return [];
 	}
 }
 
-function expressionCode(template: string): string[] {
+/**
+ * Returns the parts of a parameter value that the runtime evaluates: the whole
+ * source of a code node, otherwise the `{{ }}` blocks. Fixed values count too,
+ * because many nodes resolve `{{ }}` in them without the `=` prefix (SQL
+ * queries, HTML and Form templates, LDAP filters). Text outside the blocks is
+ * fixed, so a `$vars` mention in it is not a reference.
+ */
+function evaluatedParts(value: string, isSource: boolean): string[] {
+	if (isSource && !isExpression(value)) return [value];
+	const template = isExpression(value) ? value.slice(1) : value;
 	return ExpressionParser.splitExpression(template)
 		.filter((chunk) => chunk.type === 'code')
 		.map((chunk) => chunk.text);
