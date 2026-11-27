@@ -27,7 +27,7 @@ const {
 } = vi.hoisted(() => ({
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
 	ensureBrowserConnected: vi.fn(),
-	featureFlags: { assistantSkills: false, skills: true },
+	featureFlags: { skills: false },
 	getSkills: vi.fn<typeof import('@/features/settings/context/skills.api').getSkills>(),
 	ignorePendingConnectResult: vi.fn(),
 	mcpStore: {
@@ -81,10 +81,6 @@ vi.mock('@/app/stores/ui.store', () => ({
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => rootStore,
-}));
-
-vi.mock('@/experiments/assistantSkills/useAssistantSkillsExperiment', () => ({
-	useAssistantSkillsExperiment: () => ({ isEnabled: ref(featureFlags.assistantSkills) }),
 }));
 
 vi.mock('@/features/settings/context/context.utils', async (importOriginal) => ({
@@ -171,8 +167,7 @@ const mcpStatusCases: Array<{
 describe('useInstanceAiInputMenuItems', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		featureFlags.assistantSkills = false;
-		featureFlags.skills = true;
+		featureFlags.skills = false;
 		projectsStore.personalProject = null;
 		projectsStore.myProjects = [];
 		usersStore.currentUser.globalScopes = ['skill:create'];
@@ -321,21 +316,18 @@ describe('useInstanceAiInputMenuItems', () => {
 
 	describe('the skills submenu', () => {
 		beforeEach(() => {
-			featureFlags.assistantSkills = true;
+			featureFlags.skills = true;
 		});
 
-		it.each(['assistantSkills', 'skills'] as const)(
-			'omits skills and does not fetch them when %s is off',
-			async (flag) => {
-				featureFlags[flag] = false;
-				const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+		it('omits skills and does not fetch them when skills are off', async () => {
+			featureFlags.skills = false;
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
 
-				await refreshSkills();
+			await refreshSkills();
 
-				expect(findItem(menuItems.value, 'skills')).toBeUndefined();
-				expect(getSkills).not.toHaveBeenCalled();
-			},
-		);
+			expect(findItem(menuItems.value, 'skills')).toBeUndefined();
+			expect(getSkills).not.toHaveBeenCalled();
+		});
 
 		it('groups enabled session-project and instance skills by name and follows project changes', async () => {
 			const projectId = ref<string | undefined>('project-1');

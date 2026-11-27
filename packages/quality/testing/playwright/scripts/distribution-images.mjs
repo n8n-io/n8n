@@ -34,6 +34,7 @@ const SERVICE_IMAGES = {
 	postgresExporter: ['postgresExporter'],
 	proxy: ['mockserver'],
 	redis: ['redis'],
+	redisCluster: ['redis'],
 	sandbox: ['sandboxApi', 'sandboxRunner', 'sandboxSandbox'],
 	taskRunner: ['taskRunner'],
 	tracing: ['jaeger', 'n8nTracer'],

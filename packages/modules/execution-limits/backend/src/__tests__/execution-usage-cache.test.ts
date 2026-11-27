@@ -108,6 +108,7 @@ describe('ExecutionUsageCache', () => {
 
 			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('execution-limit-usage-refreshed', {
 				durationMs: expect.any(Number),
+				queried: true,
 			});
 		});
 	});
@@ -154,7 +155,7 @@ describe('ExecutionUsageCache', () => {
 				{ ...LIMITS, hasInstanceLimit: false, limitedProjectIds: new Set<string>() },
 			],
 			['limits not loaded', null],
-		])('reads nothing and emits nothing with %s', async (_name, limits) => {
+		])('reads nothing and emits an unqueried refresh with %s', async (_name, limits) => {
 			snapshot.readLimitedScopes.mockReturnValue(limits);
 
 			await cache.refresh();
@@ -162,7 +163,10 @@ describe('ExecutionUsageCache', () => {
 			expect(repository.sumInstanceUsage).not.toHaveBeenCalled();
 			expect(repository.sumUsageOfLimitedProjects).not.toHaveBeenCalled();
 			expect(cache.read(INSTANCE, NOW)).toBeNull();
-			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('execution-limit-usage-refreshed', {
+				durationMs: expect.any(Number),
+				queried: false,
+			});
 		});
 
 		it('drops the loaded usage when the last limit is removed', async () => {
@@ -230,6 +234,7 @@ describe('ExecutionUsageCache', () => {
 			expect(cache.read(INSTANCE, NOW)?.executions).toBe(140);
 			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('execution-limit-usage-refreshed', {
 				durationMs: expect.any(Number),
+				queried: true,
 			});
 		});
 

@@ -2,7 +2,7 @@ import { LicenseState, type Logger } from '@n8n/backend-common';
 import { ProjectMutationHooksProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { FoldStepRegistry } from '@n8n/db';
-import { ControllerRegistryMetadata, ModuleMetadata } from '@n8n/decorators';
+import { ControllerRegistryMetadata, ModuleMetadata, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
@@ -16,6 +16,11 @@ import { ExecutionLimitsModule } from '../execution-limits.module';
 import { ExecutionLimitsService } from '../execution-limits.service';
 import { ExecutionLimitsSnapshot } from '../execution-limits-snapshot';
 import { ProjectExecutionLimit } from '../project-execution-limit.entity';
+
+const registeredCheckNames = () =>
+	Container.get(PolicyCheckMetadata)
+		.getClasses()
+		.map((checkClass) => checkClass.name);
 
 describe('ExecutionLimitsModule', () => {
 	let registry: FoldStepRegistry;
@@ -66,6 +71,15 @@ describe('ExecutionLimitsModule', () => {
 		).toBe('/execution-limits');
 		expect(snapshot.start).not.toHaveBeenCalled();
 		expect(usageCache.start).not.toHaveBeenCalled();
+	});
+
+	// By class name: importing the check here would register it and make the test vacuous.
+	it('registers the execution limit check when licensed', async () => {
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
+
+		await new ExecutionLimitsModule().init();
+
+		expect(registeredCheckNames()).toContain('ExecutionLimitPolicyCheck');
 	});
 
 	it.each([
