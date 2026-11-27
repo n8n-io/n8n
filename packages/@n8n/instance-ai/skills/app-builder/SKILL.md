@@ -48,8 +48,8 @@ Add components under `src/`. Keep files small and focused.
      with a recommended default. Do not ask about minor styling or details with
      safe defaults.
    - New app: call `create_app` with a short blueprint. The
-     user can review the description and edit the name, namespace, visibility,
-     and theme before approval. Include a high-level binding plan for the
+     user can review the description and edit the app title before approval.
+     Set `theme` to `both`. Include a high-level binding plan for the
      workflows, data tables, and agents the app is likely to need. Do not delay
      the blueprint to design every resource or find every resource id. Mark a
      resource as `existing` and include its id only when you already know it.
@@ -69,12 +69,9 @@ Add components under `src/`. Keep files small and focused.
      call `open_app`.
    - `open_app` returns the app folder, `apps/<appId>`. It keeps a folder that is
      already open, with your uncommitted edits.
-2. **Apply the selected theme.**
-   - For `light`, build only a light theme.
-   - For `dark`, build only a dark theme.
-   - For `both`, add light and dark styles. Use
-     `@media (prefers-color-scheme: dark)` so the app responds to the theme
-     switch in the preview and to the browser setting when opened directly.
+2. **Support light and dark themes.** Add light and dark styles to every app.
+   Use `@media (prefers-color-scheme: dark)` so the app responds to the theme
+   switch in the preview and to the browser setting when opened directly.
 3. **Edit the folder in batches.** Read with `workspace_read_files` and change
    files with `workspace_edit_files`. Put all the files of one step into one
    call, not one call for each file. Use the single-file tools only for a single

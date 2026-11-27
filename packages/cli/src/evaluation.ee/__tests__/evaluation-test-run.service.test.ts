@@ -5,14 +5,20 @@ import type {
 	TestCaseExecutionRepository,
 	TestRun,
 	TestRunRepository,
+	User,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { Mocked } from 'vitest';
+import type { Mocked, MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { PaymentRequiredError } from '@n8n/errors';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
+
 import { EvaluationTestRunService } from '../evaluation-test-run.service';
+
+vi.mock('@/permissions.ee/check-access');
+const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
 
 describe('EvaluationTestRunService', () => {
 	let service: EvaluationTestRunService;
@@ -21,7 +27,11 @@ describe('EvaluationTestRunService', () => {
 	let workflowRepository: Mocked<WorkflowRepository>;
 	let licenseState: Mocked<LicenseState>;
 
+	const user = mock<User>({ id: 'user-1' });
+
 	beforeEach(() => {
+		userHasScopesMock.mockReset();
+		userHasScopesMock.mockResolvedValue(true);
 		testRunRepository = mock<TestRunRepository>();
 		testCaseExecutionRepository = mock<TestCaseExecutionRepository>();
 		workflowRepository = mock<WorkflowRepository>();
@@ -87,9 +97,23 @@ describe('EvaluationTestRunService', () => {
 			testRunRepository.existsInWorkflow.mockResolvedValueOnce(false);
 
 			expect(
-				await service.findTestCasesAndCount('run-1', 'wf-1', { offset: 0, limit: 2 }),
+				await service.findTestCasesAndCount(user, 'run-1', 'wf-1', { offset: 0, limit: 2 }),
 			).toBeNull();
 			expect(testCaseExecutionRepository.getManyByTestRunId).not.toHaveBeenCalled();
+		});
+
+		it('returns null without reading cases when the user lacks execution:read', async () => {
+			userHasScopesMock.mockResolvedValueOnce(false);
+
+			expect(
+				await service.findTestCasesAndCount(user, 'run-1', 'wf-1', { offset: 0, limit: 2 }),
+			).toBeNull();
+
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['execution:read'], false, {
+				workflowId: 'wf-1',
+			});
+			expect(testCaseExecutionRepository.getManyByTestRunId).not.toHaveBeenCalled();
+			expect(testCaseExecutionRepository.countByTestRunId).not.toHaveBeenCalled();
 		});
 
 		it('lists and counts test cases when the run belongs to the workflow', async () => {
@@ -98,7 +122,10 @@ describe('EvaluationTestRunService', () => {
 			testCaseExecutionRepository.getManyByTestRunId.mockResolvedValueOnce(testCases);
 			testCaseExecutionRepository.countByTestRunId.mockResolvedValueOnce(4);
 
-			const result = await service.findTestCasesAndCount('run-1', 'wf-1', { offset: 0, limit: 2 });
+			const result = await service.findTestCasesAndCount(user, 'run-1', 'wf-1', {
+				offset: 0,
+				limit: 2,
+			});
 
 			expect(testCaseExecutionRepository.getManyByTestRunId).toHaveBeenCalledWith('run-1', {
 				offset: 0,

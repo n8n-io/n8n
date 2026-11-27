@@ -426,6 +426,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'app-opened': (event) => this.appOpened(event),
 			'app-interacted': (event) => this.appInteracted(event),
 			'app-bindings-changed': (event) => this.appBindingsChanged(event),
+			'mcp-server-created': (event) => this.mcpServerCreated(event),
+			'mcp-server-deleted': (event) => this.mcpServerDeleted(event),
 		});
 	}
 
@@ -616,6 +618,42 @@ export class TelemetryEventRelay extends EventRelay {
 			creds_pushed: credsPushed,
 			variables_pushed: variablesPushed,
 			...toPublicApiProperties(publicApi),
+		});
+	}
+
+	// #endregion
+
+	// #region Custom MCP servers
+
+	private mcpServerCreated({
+		serverId,
+		projectId,
+		userId,
+		source,
+		threadId,
+	}: RelayEventMap['mcp-server-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CREATED_CUSTOM_MCP_SERVER, {
+			server_id: serverId,
+			project_id: projectId,
+			user_id: userId,
+			source,
+			thread_id: threadId,
+		});
+	}
+
+	private mcpServerDeleted({
+		serverId,
+		projectId,
+		userId,
+		source,
+		threadId,
+	}: RelayEventMap['mcp-server-deleted']) {
+		this.telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_DELETED_CUSTOM_MCP_SERVER, {
+			server_id: serverId,
+			project_id: projectId,
+			user_id: userId,
+			source,
+			thread_id: threadId,
 		});
 	}
 
@@ -875,6 +913,7 @@ export class TelemetryEventRelay extends EventRelay {
 		rulesAfter,
 		shadowWarningCount,
 		notLoadedWarningCount,
+		origin,
 	}: RelayEventMap['node-type-policy-saved']) {
 		if (!isPolicyKind(kind)) return;
 
@@ -901,6 +940,7 @@ export class TelemetryEventRelay extends EventRelay {
 				shadow_warning_count: shadowWarningCount,
 				not_loaded_warning_count: notLoadedWarningCount,
 				version: after.version,
+				origin: origin ?? 'save',
 			},
 		);
 	}

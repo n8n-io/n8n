@@ -6,11 +6,12 @@ const ACCESS_OPTIONS = ['instanceAdmins', 'projectAdmins', 'projectAdminsAndEdit
 
 export default class PromotionSettingsUpdate extends BaseCommand {
 	static override description =
-		'Update who can promote, approve, and apply in their own projects. A setting that you leave out keeps its value.';
+		'Update who can promote, approve, and apply in their own projects, and whether every promote needs a review. A setting that you leave out keeps its value.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-settings update --who-can-promote=projectAdmins',
 		'<%= config.bin %> promotion-settings update --who-can-approve=projectAdminsAndEditors --who-can-apply=instanceAdmins',
+		'<%= config.bin %> promotion-settings update --require-approval=alwaysRequired',
 	];
 
 	static override flags = {
@@ -27,6 +28,11 @@ export default class PromotionSettingsUpdate extends BaseCommand {
 			description: 'Who can apply changes into a project',
 			options: ACCESS_OPTIONS,
 		}),
+		'require-approval': Flags.string({
+			description:
+				'Whether every promote needs a review. alwaysRequired pushes every promote to a new branch, and a gitlab provider also opens a merge request.',
+			options: ['whenConfigured', 'alwaysRequired'],
+		}),
 	};
 
 	async run() {
@@ -35,19 +41,16 @@ export default class PromotionSettingsUpdate extends BaseCommand {
 			whoCanPromote: flags['who-can-promote'],
 			whoCanApprove: flags['who-can-approve'],
 			whoCanApply: flags['who-can-apply'],
+			requireApproval: flags['require-approval'],
 		};
 		if (Object.values(changes).every((value) => value === undefined)) {
-			this.error('Pass at least one of --who-can-promote, --who-can-approve, --who-can-apply');
+			this.error(
+				'Pass at least one of --who-can-promote, --who-can-approve, --who-can-apply, --require-approval',
+			);
 		}
 		await this.execute(async () => {
-			const client = this.getClient(flags);
-			// The API replaces the whole object, so keep the values of the flags left out.
-			const current = await client.getPromotionSettings();
-			const settings = { ...current };
-			for (const [key, value] of Object.entries(changes)) {
-				if (value !== undefined) settings[key] = value;
-			}
-			this.output(await client.updatePromotionSettings(settings), flags);
+			// The API keeps the value of a setting that the request leaves out.
+			this.output(await this.getClient(flags).updatePromotionSettings(changes), flags);
 		});
 	}
 }

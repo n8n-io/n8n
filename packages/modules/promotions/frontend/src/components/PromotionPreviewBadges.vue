@@ -25,21 +25,22 @@ const isPromotionsEnabled = computed(() => environmentsSettings?.isPromotionsEna
 const currentProject = computed(() => projectContext?.currentProject() ?? null);
 const currentProjectId = computed(() => currentProject.value?.id);
 const isTeamProject = computed(() => currentProject.value?.type === ProjectTypes.Team);
-const projectPermissions = computed(
-	() => getResourcePermissions(currentProject.value?.scopes).project,
-);
-const promotionsPermissions = computed(
+const projectPermissions = computed(() => getResourcePermissions(currentProject.value?.scopes));
+// Apply from a project role ships with LIGO-1476. Until then only the instance role counts.
+const instancePromotionsPermissions = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).promotions,
 );
 
 const canPreviewChanges = computed(
-	() => isTeamProject.value && isPromotionsEnabled.value && !!projectPermissions.value.export,
+	() =>
+		isTeamProject.value && isPromotionsEnabled.value && !!projectPermissions.value.project.export,
 );
+// The project scopes also hold the scopes of the instance role.
 const canPreviewPromote = computed(
-	() => canPreviewChanges.value && !!promotionsPermissions.value.promote,
+	() => canPreviewChanges.value && !!projectPermissions.value.promotions.promote,
 );
 const canPreviewApply = computed(
-	() => canPreviewChanges.value && !!promotionsPermissions.value.apply,
+	() => canPreviewChanges.value && !!instancePromotionsPermissions.value.apply,
 );
 
 const promote = usePromotionChangeCount(currentProjectId, 'promote', canPreviewPromote);

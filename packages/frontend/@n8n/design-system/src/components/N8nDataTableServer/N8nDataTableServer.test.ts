@@ -76,6 +76,20 @@ describe('N8nDataTableServer', () => {
 		});
 	});
 
+	it('renders the header slot of a column in place of its title', () => {
+		const slotName = 'header.id' as `header.${string}`;
+		const { container } = render(N8nDataTableServer<Item>, {
+			props: { items, headers, itemsLength: items.length },
+			slots: { [slotName]: () => '🍌 header' },
+		});
+
+		const titles = Array.from(container.querySelectorAll('thead th'), (th) =>
+			th.textContent?.trim(),
+		);
+		expect(titles[0]).toBe('🍌 header');
+		expect(titles.slice(1)).toEqual(headers.slice(1).map((header) => header.title));
+	});
+
 	it('uses the server page count when a source exceeds the page size', async () => {
 		const { getByTestId, getByRole } = render(N8nDataTableServer<Item>, {
 			props: {
@@ -261,12 +275,12 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should emit options for sorting', async () => {
-		const { container, emitted } = renderComponent({
+		const { getByRole, emitted } = renderComponent({
 			props: { items, headers, itemsLength: 100 },
 		});
 
-		await userEvent.click(container.querySelector('thead tr th')!);
-		await userEvent.click(container.querySelector('thead tr th')!);
+		await userEvent.click(getByRole('button', { name: 'Id' }));
+		await userEvent.click(getByRole('button', { name: 'Id' }));
 
 		expect(emitted('update:options').length).toBe(2);
 		expect(emitted('update:options')[0]).toStrictEqual([
@@ -311,18 +325,125 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should emit options for sorting with initial sort', async () => {
-		const { container, emitted } = renderComponent({
+		const { getByRole, emitted } = renderComponent({
 			props: { items, headers, itemsLength: 100, sortBy: [{ id: 'id', desc: true }] },
 		});
 
-		await userEvent.click(container.querySelector('thead tr th')!);
-		await userEvent.click(container.querySelector('thead tr th')!);
+		await userEvent.click(getByRole('button', { name: 'Id' }));
+		await userEvent.click(getByRole('button', { name: 'Id' }));
 
 		expect(emitted('update:options').length).toBe(2);
 		expect(emitted('update:options')[0]).toStrictEqual([expect.objectContaining({ sortBy: [] })]);
 		expect(emitted('update:options')[1]).toStrictEqual([
 			expect.objectContaining({ sortBy: [{ id: 'id', desc: false }] }),
 		]);
+	});
+
+	describe('sort headers', () => {
+		it('should reach each sortable header with the Tab key, in column order', async () => {
+			const { getByRole } = renderComponent({ props: { items, headers, itemsLength: 3 } });
+
+			for (const name of ['Id', 'First name', 'Last name', 'Full name']) {
+				await userEvent.tab();
+				expect(getByRole('button', { name })).toHaveFocus();
+			}
+
+			await userEvent.tab();
+			expect(getByRole('columnheader', { name: 'Empty Column' })).not.toContainElement(
+				document.activeElement as HTMLElement,
+			);
+		});
+
+		it('should sort with Enter and reverse the order with Space', async () => {
+			const { getByRole, emitted } = renderComponent({
+				props: { items, headers, itemsLength: 100 },
+			});
+
+			getByRole('button', { name: 'Id' }).focus();
+			await userEvent.keyboard('{Enter}');
+			await userEvent.keyboard(' ');
+
+			expect(emitted('update:options')).toStrictEqual([
+				[expect.objectContaining({ sortBy: [{ id: 'id', desc: false }] })],
+				[expect.objectContaining({ sortBy: [{ id: 'id', desc: true }] })],
+			]);
+		});
+
+		it('should set aria-sort on the sorted header only', async () => {
+			const { getByRole, getAllByRole } = renderComponent({
+				props: { items, headers, itemsLength: 100 },
+			});
+			const idHeader = getByRole('columnheader', { name: 'Id' });
+
+			expect(getAllByRole('columnheader').filter((th) => th.hasAttribute('aria-sort'))).toEqual([]);
+
+			await userEvent.click(getByRole('button', { name: 'Id' }));
+			expect(idHeader).toHaveAttribute('aria-sort', 'ascending');
+			expect(getAllByRole('columnheader').filter((th) => th.hasAttribute('aria-sort'))).toEqual([
+				idHeader,
+			]);
+
+			await userEvent.click(getByRole('button', { name: 'Id' }));
+			expect(idHeader).toHaveAttribute('aria-sort', 'descending');
+		});
+
+		it('should not sort a column that disables sorting or has no value', async () => {
+			const { getByRole, emitted } = renderComponent({
+				props: {
+					items,
+					headers: [{ title: 'Id', key: 'id', disableSort: true }, { title: 'Empty Column' }],
+					itemsLength: 3,
+				},
+			});
+
+			for (const name of ['Id', 'Empty Column']) {
+				const header = getByRole('columnheader', { name });
+				expect(within(header).queryByRole('button')).not.toBeInTheDocument();
+				await userEvent.click(header);
+				expect(header).not.toHaveAttribute('aria-sort');
+			}
+			expect(emitted('update:options')).toBeUndefined();
+		});
+
+		it('should add a column to the sort with Shift when multiSort is on', async () => {
+			const { getByRole, emitted } = renderComponent({
+				props: { items, headers, itemsLength: 100, multiSort: true },
+			});
+
+			// The default userEvent API forgets a held key between calls, so one session holds Shift.
+			const user = userEvent.setup();
+			await user.click(getByRole('button', { name: 'Id' }));
+			await user.keyboard('{Shift>}');
+			await user.click(getByRole('button', { name: 'First name' }));
+			await user.keyboard('{/Shift}');
+
+			expect(emitted('update:options').at(-1)).toStrictEqual([
+				expect.objectContaining({
+					sortBy: [
+						{ id: 'id', desc: false },
+						{ id: 'firstName', desc: false },
+					],
+				}),
+			]);
+		});
+
+		it('should not sort when a resize drag ends on the header title', async () => {
+			const { getByRole, emitted } = renderComponent({
+				props: { items, headers, itemsLength: 100 },
+			});
+			const resizer = getByRole('columnheader', { name: 'Id' }).querySelector('.resizer')!;
+
+			await userEvent.pointer([
+				{ keys: '[MouseLeft>]', target: resizer },
+				{ target: getByRole('button', { name: 'Id' }) },
+				{ keys: '[/MouseLeft]' },
+			]);
+			expect(emitted('update:options')).toBeUndefined();
+
+			// A plain click on the same title still sorts, so the drag is what did not.
+			await userEvent.click(getByRole('button', { name: 'Id' }));
+			expect(emitted('update:options')).toHaveLength(1);
+		});
 	});
 
 	it('should not show the pagination if there are no items', async () => {
@@ -480,6 +601,87 @@ describe('N8nDataTableServer', () => {
 		expect(bodyCells[0]).toHaveClass('is-pinned');
 		expect(bodyCells[1]).toHaveClass('is-pinned-edge');
 		expect(bodyCells[2]).not.toHaveClass('is-pinned');
+	});
+
+	it('should scroll a cell into view when it gets focus from the keyboard only', async () => {
+		const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView);
+		scrollIntoView.mockClear();
+		const { getByRole } = render(N8nDataTableServer<Item>, {
+			props: { items: items.slice(0, 1), headers, itemsLength: 1, pinColumns: 1 },
+		});
+
+		await userEvent.click(getByRole('button', { name: 'First name' }));
+		expect(scrollIntoView).not.toHaveBeenCalled();
+
+		await userEvent.tab();
+		expect(getByRole('button', { name: 'Last name' })).toHaveFocus();
+		expect(scrollIntoView).toHaveBeenCalledOnce();
+		expect(scrollIntoView.mock.contexts[0]).toBe(getByRole('button', { name: 'Last name' }));
+		expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+	});
+
+	describe('keyboard focus near pinned cells', () => {
+		// jsdom has no layout, so each test gives the scroll container and the cells their geometry.
+		function mockScroll(element: HTMLElement, property: 'scrollLeft' | 'scrollTop', start: number) {
+			const state = { value: start };
+			Object.defineProperty(element, property, {
+				get: () => state.value,
+				set: (value: number) => (state.value = value),
+			});
+			return state;
+		}
+		function mockRect(element: Element, rect: Partial<DOMRect>) {
+			vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
+				top: 50,
+				bottom: 80,
+				left: 0,
+				right: 0,
+				...rect,
+			} as DOMRect);
+		}
+
+		it('should move a focused cell out from under the pinned columns, but not move for a pinned cell', () => {
+			const { container, getByRole } = render(N8nDataTableServer<Item>, {
+				props: { items, headers, itemsLength: 3, pinColumns: 1, pinEndColumns: 2 },
+			});
+			const scroll = container.querySelector<HTMLElement>('.table-scroll')!;
+			Object.defineProperty(scroll, 'clientWidth', { value: 800 });
+			mockRect(scroll, { left: 0 });
+			mockRect(container.querySelector('thead')!, { bottom: 36 });
+			const scrollLeft = mockScroll(scroll, 'scrollLeft', 400);
+			const headerCell = (name: string) => getByRole('columnheader', { name });
+
+			// The pinned columns are 150px on the left and 300px on the right, so 150-500px is clear.
+			mockRect(headerCell('Id'), { left: 0, right: 150 });
+			getByRole('button', { name: 'Id' }).focus();
+			expect(scrollLeft.value).toBe(400);
+
+			mockRect(headerCell('First name'), { left: 100, right: 250 });
+			getByRole('button', { name: 'First name' }).focus();
+			expect(scrollLeft.value).toBe(350);
+
+			mockRect(headerCell('Last name'), { left: 400, right: 600 });
+			getByRole('button', { name: 'Last name' }).focus();
+			expect(scrollLeft.value).toBe(450);
+		});
+
+		it('should move a focused row out from under the sticky header, but not move for a header', () => {
+			const { container, getAllByRole, getByRole } = render(N8nDataTableServer<Item>, {
+				props: { items, headers, itemsLength: 3, showSelect: true, selection: [] },
+			});
+			const scroll = container.querySelector<HTMLElement>('.table-scroll')!;
+			const scrollTop = mockScroll(scroll, 'scrollTop', 100);
+			mockRect(container.querySelector('thead')!, { bottom: 36 });
+			const rowCheckbox = getAllByRole('checkbox')[1];
+			mockRect(rowCheckbox.closest('td')!, { top: 10 });
+			mockRect(getByRole('columnheader', { name: 'Id' }), { top: 0 });
+
+			getByRole('button', { name: 'Id' }).focus();
+			expect(scrollTop.value).toBe(100);
+
+			rowCheckbox.focus();
+			expect(scrollTop.value).toBe(74);
+		});
 	});
 
 	it('should not pin any column by default', () => {

@@ -72,6 +72,7 @@ catalog:
   '@ai-sdk/openai': ^4.0.104
   '@ai-sdk/openai-compatible': ^3.0.77
   '@ai-sdk/otel': ^1.0.150
+  '@ai-sdk/provider': ^4.0.33
   '@ai-sdk/provider-utils': ^5.0.67
   '@ai-sdk/xai': ^4.0.59
   '@asteasolutions/zod-to-openapi': 7.3.4
@@ -252,7 +253,7 @@ catalog:
   mermaid: ^11.17.0
   mime-types: 3.0.2
   mocha: ^11.8.0
-  moment-timezone: 0.5.48
+  moment-timezone: 0.6.5
   mqtt-packet: 9.0.0
   ms: 2.1.3
   mysql2: 3.23.1
@@ -315,6 +316,8 @@ catalog:
   ioredis-mock: ^8.8.1
   '@types/ioredis-mock': 8.2.2
   '@microsoft/opentelemetry': 1.5.0
+  parseurl: 1.3.3
+  '@types/parseurl': 1.3.3
   pg-copy-streams: 7.0.0
   '@types/pg-copy-streams': 1.2.5
   '@n8n/sandbox-client': 1.4.0
@@ -323,6 +326,7 @@ catalogMode: strict
 
 catalogs:
   e2e:
+    '@currents/cmd': 3.4.0
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
     '@playwright/test': 1.62.1
@@ -342,12 +346,14 @@ catalogs:
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^14.3.0
     autoprefixer: ^10.4.19
+    chart.js: ^4.4.0
     element-plus: 2.4.3
     highlight.js: 11.12.0
     pinia: ^2.2.4
     unplugin-icons: ^23.0.1
     vite-svg-loader: 5.1.0
     vue: ^3.5.13
+    vue-chartjs: ^5.2.0
     vue-i18n: 11.4.14
     vue-markdown-render: ^2.2.1
     vue-router: ^4.5.0
@@ -420,7 +426,7 @@ overrides:
   '@google-cloud/resource-manager>google-gax': ^5.0.1
   '@google-cloud/secret-manager>google-gax': ^5.0.1
   google-gax: ^4.3.7
-  ws: '>=8.21.1'
+  ws: '>=8.23.0'
   date-fns: 2.30.0
   date-fns-tz: 2.0.0
   form-data: 4.0.6
@@ -475,7 +481,7 @@ overrides:
   picomatch@4: 4.0.4
   avsc: 5.7.9
   brace-expansion@<2.1.7: 2.1.7
-  '@xmldom/xmldom': 0.8.15
+  '@xmldom/xmldom@<0.9': 0.8.15
   yaml@<=2.8.3: 2.8.3
   axios: 'catalog:'
   fast-xml-builder: 1.2.1

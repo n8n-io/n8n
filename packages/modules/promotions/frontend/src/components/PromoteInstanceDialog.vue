@@ -15,6 +15,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, useTemplateRef } from 'vue';
 
+import { usePromotionRequireApproval } from '../composables/usePromotionRequireApproval';
 import { httpUrl, warningSegments } from '../promotionResult';
 import { promotePackage } from '../promotionsSettings.api';
 import PromotionCommitMessageField from './PromotionCommitMessageField.vue';
@@ -35,6 +36,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
+const { isAlwaysRequired } = usePromotionRequireApproval();
 
 const commitMessage = ref('');
 const isSubmitting = ref(false);
@@ -56,13 +58,22 @@ const ariaDescription = computed(() =>
 		: i18n.baseText('settings.promotions.promote.dialog.ariaDescription'),
 );
 
+// The server pushes a new branch when "Require approval" is "Always required", whatever the
+// environment setting is. Undefined while that setting is unknown.
+const createsBranch = computed(() =>
+	props.createBranchOnPromotion ? true : isAlwaysRequired.value,
+);
+
 const bodyText = computed(() => {
-	if (props.providerType === 'gitlab' && props.createBranchOnPromotion) {
+	if (createsBranch.value === undefined) {
+		return i18n.baseText('settings.promotions.promote.dialog.body.remote');
+	}
+	if (props.providerType === 'gitlab' && createsBranch.value) {
 		return i18n.baseText('settings.promotions.promote.dialog.body.mergeRequest', {
 			interpolate: { branch: props.baseBranchName },
 		});
 	}
-	return props.createBranchOnPromotion
+	return createsBranch.value
 		? i18n.baseText('settings.promotions.promote.dialog.body.newBranch')
 		: i18n.baseText('settings.promotions.promote.dialog.body.toBranch', {
 				interpolate: { branch: props.baseBranchName },

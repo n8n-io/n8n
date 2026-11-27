@@ -1,9 +1,11 @@
-import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
+import { WORKFLOWS_IN_SKILLS_ENABLED_VARIANT, WORKFLOWS_IN_SKILLS_FLAG } from '@n8n/api-types';
 import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
+	createWorkflow,
 	linkUserToProject,
 	mockInstance,
+	shareWorkflowWithProjects,
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
@@ -60,12 +62,6 @@ describe('SkillsController', () => {
 		await linkUserToProject(viewerUser, project, 'project:viewer');
 	});
 
-	beforeEach(async () => {
-		postHog.getFeatureFlagForInstance.mockImplementation(
-			async (flag) => flag === ASSISTANT_SKILLS_FLAG,
-		);
-	});
-
 	it('keeps new skills unavailable and lets an owner toggle without a new content version', async () => {
 		const {
 			body: { data: created },
@@ -96,21 +92,6 @@ describe('SkillsController', () => {
 		} = await owner.get(`/skills/${created.id}`).expect(200);
 		expect(disabled.availableToAssistant).toBe(false);
 		expect(disabled.latestVersion).toBe(created.latestVersion);
-	});
-
-	it('blocks Assistant updates while ordinary skill edits remain available', async () => {
-		const {
-			body: { data: created },
-		} = await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(200);
-		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
-		await owner
-			.patch(`/skills/${created.id}`)
-			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
-			.expect(404);
-		await owner
-			.patch(`/skills/${created.id}`)
-			.send({ baseSkillHash: created.skillHash, description: 'Updated description' })
-			.expect(200);
 	});
 
 	it('uses the project edit permission for the Assistant toggle', async () => {
@@ -157,18 +138,6 @@ describe('SkillsController', () => {
 			.expect(200);
 		expect(created.availableToAssistant).toBe(true);
 		expect(created.latestVersion).toBe(1);
-	});
-
-	it('creates nothing when the Assistant cannot use the new skill', async () => {
-		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
-		await owner
-			.post('/skills')
-			.send({ scope: 'instance', skill: body, availableToAssistant: true })
-			.expect(400);
-		const {
-			body: { data: list },
-		} = await owner.get('/skills').expect(200);
-		expect(list.count).toBe(0);
 	});
 
 	afterEach(async () => {
@@ -1078,6 +1047,49 @@ describe('SkillsController', () => {
 				.patch(`/skills/${id}`)
 				.send({ scope: 'agent', baseSkillHash: skillHash })
 				.expect(400);
+		});
+	});
+
+	describe('workflow mentions', () => {
+		it('refuses a mention of a workflow that the author cannot read, and accepts it after a share', async () => {
+			postHog.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+				flag === WORKFLOWS_IN_SKILLS_FLAG ? WORKFLOWS_IN_SKILLS_ENABLED_VARIANT : false,
+			);
+			const workflow = await createWorkflow({ name: 'Owner report' }, ownerPerson);
+			const skill = {
+				...body,
+				name: 'Mentions owner report',
+				instructions: `Run [Owner report](n8n://workflow/${workflow.id}).`,
+			};
+
+			const { body: refused } = await editor
+				.post('/skills')
+				.send({ scope: 'project', projectId: project.id, skill })
+				.expect(400);
+			expect(refused.message).toContain(`Workflow "${workflow.id}"`);
+
+			await shareWorkflowWithProjects(workflow, [{ project }]);
+			await editor
+				.post('/skills')
+				.send({ scope: 'project', projectId: project.id, skill })
+				.expect(200);
+		});
+
+		it('refuses an owner mention of a workflow that does not exist', async () => {
+			postHog.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+				flag === WORKFLOWS_IN_SKILLS_FLAG ? WORKFLOWS_IN_SKILLS_ENABLED_VARIANT : false,
+			);
+			const skill = {
+				...body,
+				name: 'Mentions missing workflow',
+				instructions: 'Run [Gone](n8n://workflow/missingWorkflow1).',
+			};
+
+			const { body: refused } = await owner
+				.post('/skills')
+				.send({ scope: 'instance', skill })
+				.expect(400);
+			expect(refused.message).toContain('Workflow "missingWorkflow1"');
 		});
 	});
 

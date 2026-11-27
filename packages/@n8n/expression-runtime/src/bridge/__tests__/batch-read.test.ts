@@ -330,7 +330,8 @@ describe('readBatchAtPath on an object', () => {
 	it('leaves out the fields that do not fit in the read limit', () => {
 		const $json = { a: 'x'.repeat(600), b: 'y'.repeat(600), c: 1 };
 
-		expect(readFields($json, WHOLE_VALUES)).toEqual(whole({ a: $json.a, c: 1 }));
+		// The walk of `b` counts the rest of the read, so `c` gets no walk.
+		expect(readFields($json, WHOLE_VALUES)).toEqual(whole({ a: $json.a }));
 		expect(readFields({ ['a'.repeat(600)]: 1, ['b'.repeat(600)]: 2 }, WHOLE_VALUES)).toEqual(
 			whole({ ['a'.repeat(600)]: 1 }),
 		);
@@ -418,12 +419,60 @@ describe('readBatchAtPath with the character budget of an evaluation', () => {
 				readItems([{ id: 1, big: 'x'.repeat(200) }], 0, 0, ['id', 'big'], budget),
 			chars: 118,
 		},
+		{
+			label: 'array items, with a start item that does not go across',
+			read: (budget: BatchReadBudget) =>
+				readItems([{ nums: [1, 2, 3], at: new Date(0) }], 0, 0, WHOLE_VALUES, budget),
+			// The object 8, `nums` 4 + 8 + 3 x 8, and `at` 2 + 8 until the walk stops at the Date.
+			chars: 54,
+		},
+		{
+			label: 'array items, with a later item that does not go across',
+			read: (budget: BatchReadBudget) =>
+				readItems([1, { at: new Date(0) }], 0, 0, SMALL_VALUES, budget),
+			// The later item is the start of the next read, which counts it.
+			chars: 8,
+		},
 	])('takes the characters of a read of $label from the budget', ({ read, chars }) => {
 		const budget = { remaining: 1000 };
 
 		read(budget);
 
 		expect(budget.remaining).toBe(1000 - chars);
+	});
+});
+
+describe('readBatchAtPath with a field that does not go across', () => {
+	class Item {
+		id = 1;
+	}
+	const wide = Object.fromEntries(
+		Array.from({ length: 2000 }, (_, index) => [`key${index}`, index]),
+	);
+
+	it('charges a Date and a class instance what their walks counted', () => {
+		const item = { at: new Date(0), obj: new Item() };
+		const named = { remaining: 1000 };
+		const fields = { remaining: 1000 };
+
+		expect(readItems([item], 0, 0, ['at', 'obj'], named)).toEqual(whole([{}]));
+		expect(readFields(item, WHOLE_VALUES, fields)).toEqual(whole({}));
+		// The item counts 8. Each walk counts 8 for its value and stops.
+		expect(1000 - named.remaining).toBe(8 + 8 + 8);
+		// Each field also counts its key.
+		expect(1000 - fields.remaining).toBe(2 + 8 + 3 + 8);
+	});
+
+	it('charges a wide field its whole limit and leaves out the fields after it', () => {
+		const named = { remaining: 100_000 };
+		const fields = { remaining: 100_000 };
+
+		const result = readFields({ id: 1, name: 'a', meta: wide, after: 2 }, WHOLE_VALUES, fields);
+		expect(result).toEqual(whole({ id: 1, name: 'a' }));
+		expect(Object.keys((result as { __value: object }).__value)).toEqual(['id', 'name']);
+		expect(100_000 - fields.remaining).toBe(limits.maxBatchChars);
+		expect(readItems([{ meta: wide }], 0, 0, ['meta'], named)).toEqual(whole([{}]));
+		expect(100_000 - named.remaining).toBe(8 + limits.smallValueChars);
 	});
 });
 

@@ -157,16 +157,13 @@ export class MemoryVectorStoreManager {
 		return vectorStoreInstance;
 	}
 
-	/**
-	 * Reset a store's metadata when it's cleared
-	 */
-	protected clearStoreMetadata(memoryKey: string): void {
+	clearStore(memoryKey: string): void {
 		const metadata = this.storeMetadata.get(memoryKey);
 		if (metadata) {
 			this.memoryUsageBytes -= metadata.size;
-			metadata.size = 0;
-			metadata.lastAccessed = new Date();
+			this.storeMetadata.delete(memoryKey);
 		}
+		this.vectorStoreBuffer.delete(memoryKey);
 	}
 
 	/**
@@ -214,8 +211,7 @@ export class MemoryVectorStoreManager {
 		clearStore?: boolean,
 	): Promise<void> {
 		if (clearStore) {
-			this.clearStoreMetadata(memoryKey);
-			this.vectorStoreBuffer.delete(memoryKey);
+			this.clearStore(memoryKey);
 		}
 
 		// Fast batch estimation instead of per-document calculation

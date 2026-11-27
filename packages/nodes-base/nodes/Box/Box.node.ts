@@ -184,8 +184,8 @@ export class Box implements INodeType {
 							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject)
 								.createdRangeValuesUi as IDataObject;
 							if (createdRangeValues) {
-								const from = moment.tz(createdRangeValues.from, tz).format();
-								const to = moment.tz(createdRangeValues.to, tz).format();
+								const from = moment.tz(createdRangeValues.from as string, tz).format();
+								const to = moment.tz(createdRangeValues.to as string, tz).format();
 								qs.created_at_range = `${from},${to}`;
 							}
 							delete qs.createdRangeUi;
@@ -195,8 +195,8 @@ export class Box implements INodeType {
 							const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject)
 								.updatedRangeValuesUi as IDataObject;
 							if (updateRangeValues) {
-								qs.updated_at_range = `${moment.tz(updateRangeValues.from, tz).format()},${moment
-									.tz(updateRangeValues.to, tz)
+								qs.updated_at_range = `${moment.tz(updateRangeValues.from as string, tz).format()},${moment
+									.tz(updateRangeValues.to as string, tz)
 									.format()}`;
 							}
 							delete qs.updatedRangeUi;
@@ -419,8 +419,8 @@ export class Box implements INodeType {
 							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject)
 								.createdRangeValuesUi as IDataObject;
 							if (createdRangeValues) {
-								qs.created_at_range = `${moment.tz(createdRangeValues.from, tz).format()},${moment
-									.tz(createdRangeValues.to, tz)
+								qs.created_at_range = `${moment.tz(createdRangeValues.from as string, tz).format()},${moment
+									.tz(createdRangeValues.to as string, tz)
 									.format()}`;
 							}
 							delete qs.createdRangeUi;
@@ -430,8 +430,8 @@ export class Box implements INodeType {
 							const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject)
 								.updatedRangeValuesUi as IDataObject;
 							if (updateRangeValues) {
-								qs.updated_at_range = `${moment.tz(updateRangeValues.from, tz).format()},${moment
-									.tz(updateRangeValues.to, tz)
+								qs.updated_at_range = `${moment.tz(updateRangeValues.from as string, tz).format()},${moment
+									.tz(updateRangeValues.to as string, tz)
 									.format()}`;
 							}
 							delete qs.updatedRangeUi;

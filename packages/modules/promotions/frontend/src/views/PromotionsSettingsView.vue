@@ -35,7 +35,7 @@ import { useRouter } from 'vue-router';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
-import PromotionProjectAccessRows from '../components/PromotionProjectAccessRows.vue';
+import PromotionSettingsRows from '../components/PromotionSettingsRows.vue';
 import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
@@ -290,7 +290,7 @@ async function remove(environment: PromotionEnvironment) {
 			:description="i18n.baseText('settings.promotions.projectAccess.description')"
 			data-test-id="promotion-project-access-section"
 		>
-			<PromotionProjectAccessRows :settings="PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE" />
+			<PromotionSettingsRows :settings="PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE" />
 		</N8nSettingsSection>
 		<N8nText
 			v-if="canSwitchBack"

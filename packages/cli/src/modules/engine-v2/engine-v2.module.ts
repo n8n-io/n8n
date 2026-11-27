@@ -50,14 +50,16 @@ export class EngineV2Module implements ModuleInterface {
 		}
 
 		// Before the engine, so its first step can resolve credentials.
-		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
+		const { EngineControlPlaneServer } = await import(
+			'./control-plane/engine-control-plane-server.js'
+		);
 		await Container.get(EngineControlPlaneServer).start();
 
 		const { EngineV2WebhookResponseRegistry } = await import(
 			'./webhook-response/webhook-response-registry.service.js'
 		);
 		const { EngineV2LifecycleSubscriptions } = await import(
-			'./engine-lifecycle-event-subscriptions.js'
+			'./lifecycle-events/engine-lifecycle-event-subscriptions.js'
 		);
 		if (engineConfig.mode === 'in-process') {
 			// Hand both endpoints over before the engine starts. A short run can answer
@@ -169,7 +171,9 @@ export class EngineV2Module implements ModuleInterface {
 		}
 
 		// After the engine, so a step that still runs can resolve credentials.
-		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
+		const { EngineControlPlaneServer } = await import(
+			'./control-plane/engine-control-plane-server.js'
+		);
 		await Container.get(EngineControlPlaneServer).stop();
 
 		const { EngineMtls } = await import('./engine-mtls.js');

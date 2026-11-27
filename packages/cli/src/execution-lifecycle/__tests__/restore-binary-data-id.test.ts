@@ -3,7 +3,11 @@ import { Container } from '@n8n/di';
 import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 
-import { restoreBinaryDataId } from '@/execution-lifecycle/restore-binary-data-id';
+import { DatabaseManager } from '@/binary-data/database.manager';
+import {
+	assignDatabaseFilesToExecution,
+	restoreBinaryDataId,
+} from '@/execution-lifecycle/restore-binary-data-id';
 
 function toIRun(item?: object) {
 	return {
@@ -29,6 +33,7 @@ function getDataId(run: IRun, kind: 'binary' | 'json') {
 }
 
 const binaryDataService = mockInstance(BinaryDataService);
+const databaseManager = mockInstance(DatabaseManager);
 
 for (const mode of ['filesystem', 's3'] as const) {
 	describe(`on ${mode} mode`, () => {
@@ -61,6 +66,31 @@ for (const mode of ['filesystem', 's3'] as const) {
 			expect(binaryDataService.rename).toHaveBeenCalledWith(incorrectFileId, correctFileId);
 			expect(getDataId(run, 'binary')).toBe(correctBinaryDataId);
 		});
+
+		it('should restore a file under the temporary path in `trigger` mode', async () => {
+			const executionId = '999';
+			const incorrectFileId = 'workflows/6HYhhKmJch2cYxGj/executions/temp/binary_data/a5c3f1ed';
+			const run = toIRun({ binary: { data: { id: `${mode}:${incorrectFileId}` } } });
+
+			await restoreBinaryDataId(run, executionId, 'trigger');
+
+			const correctFileId = incorrectFileId.replace('temp', executionId);
+			expect(binaryDataService.rename).toHaveBeenCalledWith(incorrectFileId, correctFileId);
+			expect(getDataId(run, 'binary')).toBe(`${mode}:${correctFileId}`);
+		});
+
+		it.each(['integrated', 'manual', 'retry'] as const)(
+			'should leave a file under the temporary path in `%s` mode',
+			async (executionMode) => {
+				const binaryDataId = `${mode}:workflows/6HYhhKmJch2cYxGj/executions/temp/binary_data/a5c3f1ed`;
+				const run = toIRun({ binary: { data: { id: binaryDataId } } });
+
+				await restoreBinaryDataId(run, '999', executionMode);
+
+				expect(binaryDataService.rename).not.toHaveBeenCalled();
+				expect(getDataId(run, 'binary')).toBe(binaryDataId);
+			},
+		);
 
 		it('should restore if binary data ID in a given form-data name is missing execution ID', async () => {
 			const workflowId = '6HYhhKmJch2cYxGj';
@@ -292,6 +322,52 @@ for (const mode of ['filesystem', 's3'] as const) {
 		});
 	});
 }
+
+describe('assignDatabaseFilesToExecution', () => {
+	const executionId = '999';
+	const fileId = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should assign the file to the execution and keep the binary data ID', async () => {
+		const run = toIRun({ binary: { data: { id: `database:${fileId}` } } });
+
+		await assignDatabaseFilesToExecution(run, executionId);
+
+		expect(databaseManager.assignToExecution).toHaveBeenCalledWith([fileId], executionId);
+		expect(getDataId(run, 'binary')).toBe(`database:${fileId}`);
+	});
+
+	it('should assign a file once when several items refer to it', async () => {
+		const run = toIRun({
+			binary: { first: { id: `database:${fileId}` }, second: { id: `database:${fileId}` } },
+		});
+
+		await assignDatabaseFilesToExecution(run, executionId);
+
+		expect(databaseManager.assignToExecution).toHaveBeenCalledTimes(1);
+		expect(databaseManager.assignToExecution).toHaveBeenCalledWith([fileId], executionId);
+	});
+
+	it('should do nothing when the run holds no database file', async () => {
+		const run = toIRun({
+			binary: { data: { id: 'filesystem-v2:workflows/1/executions/temp/binary_data/123' } },
+		});
+
+		await assignDatabaseFilesToExecution(run, executionId);
+
+		expect(databaseManager.assignToExecution).not.toHaveBeenCalled();
+	});
+
+	it('should not throw when the assignment fails', async () => {
+		const run = toIRun({ binary: { data: { id: `database:${fileId}` } } });
+		databaseManager.assignToExecution.mockRejectedValueOnce(new Error('connection lost'));
+
+		await expect(assignDatabaseFilesToExecution(run, executionId)).resolves.not.toThrow();
+	});
+});
 
 describe('on default mode', () => {
 	it('should do nothing', async () => {

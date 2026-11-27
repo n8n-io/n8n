@@ -9,14 +9,13 @@ import {
 	type AssistantMentionCounts,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 
-import { messageApprovalMode, threadTargetsAgent } from '../instanceAi.threadRuntime';
+import { messageApprovalMode } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import {
 	resolveAuthorship,
 	type InstanceAiMessageAuthorship,
 	type InstanceAiPrefillPayload,
 } from '../prefills';
-import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 
 /** The context of the user message that starts a run, as `User sent builder message` reports it. */
 export interface AssistantAgentSentMessageContext {
@@ -49,7 +48,6 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
 	const settingsStore = useInstanceAiSettingsStore();
-	const threadsStore = useAssistantAgentThreadsStore();
 	let prefill: InstanceAiPrefillPayload | null = null;
 	let hostSend: AssistantAgentHostSend | null = null;
 
@@ -88,10 +86,6 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 		const selectedElementCount = attachments.filter(
 			(a) => isRecord(a) && a.type === 'element',
 		).length;
-		// Like the backend: a message that attaches an agent, or a thread that builds one, runs in Manual.
-		const buildsAgent =
-			attachments.some((attachment) => isRecord(attachment) && attachment.type === 'agent') ||
-			threadTargetsAgent(threadsStore.threadsById.get(threadId)?.metadata);
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
@@ -101,7 +95,7 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 			prefill_type: isPrefill ? authorship.prefillType : null,
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
-			approval_mode: messageApprovalMode(settingsStore, buildsAgent),
+			approval_mode: messageApprovalMode(settingsStore),
 			mention_counts: mentionCounts,
 			attachment_count: attachmentCount,
 			selected_element_count: selectedElementCount,
