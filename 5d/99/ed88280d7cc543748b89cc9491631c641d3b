@@ -1,0 +1,131 @@
+packages/modules/runtime-credentials/frontend/src/views/RuntimeInputsSettingsView.test.ts
+  s_55c9c16466c150::t_8345424d1fcbbc 257-265
+  s_55c9c16466c150::t_d4e114da7c7452 3,5,9-16,21,42-85,90,95-100,104-112,116,119-120,123-129,132-133,135-145,148-150,152-166,168-189,204-206,208-212,214-215,217-227,229-231,233,235-239,241-246,248-253,255-256,266-272,274-286,288-316,319-323,325-370,372-385,391-394,397-405,407-469,471-498,500-638,641-718,721-732,734-755,757-758,760-761,779-787,792,809,817,826,836-838
+  s_55c9c16466c150::t_cddf9f60c8c25c 130-131,134,146-147,151,273,287,386,389-390,406,470,499,756,847,851
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.catalog.ts
+  s_55c9c16466c150::t_aeb2a0d499cd32 1-105
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.presets.ts
+  s_55c9c16466c150::t_454a0a9e633cf2 1-151
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_55c9c16466c150::t_ef83472dfd31d9 1627,7595-7684,7686-7710
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_55c9c16466c150::t_e70bded961e543 11,357
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_55c9c16466c150::t_1faa99e2040c25 82,1970-1977,1979,2409-2415
+packages/frontend/editor-ui/src/features/credentials/components/RuntimeCredentialIndicator.vue
+  s_55c9c16466c150::t_62b7ceabb8c608 1-69
+packages/frontend/editor-ui/src/features/credentials/credentials.constants.ts
+  s_55c9c16466c150::t_1275d2514e43c7 3-6
+packages/modules/runtime-credentials/frontend/src/components/RuleCard.vue
+  s_af367323ed1620::t_af5265ce4bac9c 1-174
+packages/modules/runtime-credentials/frontend/src/components/RuleDetailDialog.vue
+  s_55c9c16466c150::t_e81d88617bc500 1-61
+packages/modules/runtime-credentials/frontend/src/components/RuleFlow.vue
+  s_d99b231a198ea7::t_7fbfa8c624331d 2,4,6-8,10,12-20,22-31,34-35,37,39,41,47-54,58-126,130-138,140-171,174-175,179,181-187,190-192
+packages/modules/runtime-credentials/frontend/src/components/RuleImpact.vue
+  s_55c9c16466c150::t_660a4a1f9dcd55 1-129
+packages/modules/runtime-credentials/frontend/src/components/RuleWizard.vue
+  s_55c9c16466c150::t_f5469796344dd7 10,14-24,26,28-31,33-35,37,44,49-64,68-70,72,77-80,82,91-97,100-104,106,108-109,111-135,138,141-163,168-211,213-215,218-225,228-230,232-234,236-237,240-291,294-315,317-319,322,326,328-329,338-342,344-345,350-354,356-425,427,429,431-432,434,437,439-440,442-448,450,457,461-476,479,481,495-496,499,502-506,509-511
+packages/modules/runtime-credentials/frontend/src/components/RulesSummaryStrip.vue
+  s_d99b231a198ea7::t_b5ac4ec0333770 1-77
+packages/modules/runtime-credentials/frontend/src/components/SampleRequest.vue
+  s_55c9c16466c150::t_4301f97173f91c 1-61
+packages/modules/runtime-credentials/frontend/src/components/WizardCredentialStep.vue
+  s_55c9c16466c150::t_01ae6688e9c945 1-342
+packages/modules/runtime-credentials/frontend/src/components/WizardEndpointsStep.vue
+  s_55c9c16466c150::t_dd628d4a804552 1-185
+packages/modules/runtime-credentials/frontend/src/components/WizardSourceStep.vue
+  s_55c9c16466c150::t_f55d132bb4dc62 1-238
+packages/modules/runtime-credentials/frontend/src/components/project/ProjectAccessTable.vue
+  s_d99b231a198ea7::t_137f5ee98f0af1 1-357
+packages/modules/runtime-credentials/frontend/src/components/project/effectiveAccess.test.ts
+  s_d99b231a198ea7::t_f3f701c4e511e3 1-130
+packages/modules/runtime-credentials/frontend/src/components/project/effectiveAccess.ts
+  s_55c9c16466c150::t_70101ff237432a 1-156
+packages/modules/runtime-credentials/frontend/src/components/project/useProjectRuntimeInputs.ts
+  s_d99b231a198ea7::t_3d15c2761ce682 1-132
+packages/modules/runtime-credentials/frontend/src/composables/useTypeIcons.ts
+  s_55c9c16466c150::t_77b5ac75859d6c 1-122
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.constants.ts
+  s_d99b231a198ea7::t_3e0174a46d6db2 6-10
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.module.test.ts
+  s_d99b231a198ea7::t_f16e9450014d2a 6,10-11
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.module.ts
+  s_d99b231a198ea7::t_f3d5bae9f14bf9 10,53
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.store.ts
+  s_af367323ed1620::t_f46061a8ab926c 3,5-8,22-26,40-58,78-80,82
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.utils.test.ts
+  s_55c9c16466c150::t_18051b725c6f56 2-4,6-9,12-14,37-166
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.utils.ts
+  s_55c9c16466c150::t_2f346d8a02b8ee 1,3,54-289
+packages/modules/runtime-credentials/frontend/src/views/RuntimeInputsProjectView.test.ts
+  s_d99b231a198ea7::t_f3766129e89d5e 3,13,33-59,72,75-78,81,84-93,97-114,116-118,121-122,135-157,160,166-167,169-170,172-251,254,257-258
+packages/modules/runtime-credentials/frontend/src/views/RuntimeInputsProjectView.vue
+  s_d99b231a198ea7::t_a262f637d37b41 3-4,6,9-10,15,18,21,24-37,39-50,56-58,60,62,64-65,70-71,75-100,102,104-108,110,118-120
+packages/modules/runtime-credentials/frontend/src/views/RuntimeInputsSettingsView.vue
+  s_55c9c16466c150::t_cc5a13938941c6 13-14,16-21,23-24,26-27,32-33,35,37-38,40-48,60-63,65,67,70-78,81-94,97-101,103-106,109-154,157-161,167-173,176,178,184,205,207,225,233,238-248,251,269,272-296,300-301,303-305,308,312-313,331,333-334
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.test.ts
+  s_d24e56421a4ec8::t_28c8676316a4a5 20,48-54,230-280
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_d24e56421a4ec8::t_e6e9c13fa43c5d 1,29,1156-1186
+packages/frontend/editor-ui/src/features/credentials/composables/useRuntimeRuleLink.test.ts
+  s_d24e56421a4ec8::t_9d470988aec51c 1-14
+packages/frontend/editor-ui/src/features/credentials/composables/useRuntimeRuleLink.ts
+  s_d24e56421a4ec8::t_846e179cee7a99 1-33
+packages/modules/runtime-credentials/frontend/src/components/EmptyRules.vue
+  s_18afad991cde55::t_d66e6abd322796 1-95
+packages/modules/runtime-credentials/frontend/src/components/PathChip.vue
+  s_18afad991cde55::t_922d53d5b6d5ae 1-52
+packages/modules/runtime-credentials/frontend/src/components/RulesList.vue
+  s_d24e56421a4ec8::t_275b194ce917cb 1-106
+packages/modules/runtime-credentials/frontend/src/components/project/credentialTypes.ts
+  s_18afad991cde55::t_480afc2e6e1420 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d99ed88280d7cc543748b89cc9491631c641d3b",
+  "prompts": {},
+  "sessions": {
+    "s_18afad991cde55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a13fbd49413478718",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_d24e56421a4ec8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a57a2ee3322bf4b7a",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_d99b231a198ea7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7264fc5-e5bb-4bf5-9594-a1b6401f7cfe",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
