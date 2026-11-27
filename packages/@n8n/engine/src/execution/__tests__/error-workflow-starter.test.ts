@@ -252,7 +252,9 @@ describe('ErrorWorkflowStarter', () => {
 		async (status) => {
 			const { starter } = setup({ execution: { ...failedExecution, status } });
 
-			await expect(starter.start('failed-exec')).rejects.toThrow('no error workflow can be due');
+			await expect(starter.start('failed-exec')).rejects.toThrow(
+				`Execution failed-exec has a pending error-workflow marker but status is '${status}'; expected 'failed'`,
+			);
 		},
 	);
 
