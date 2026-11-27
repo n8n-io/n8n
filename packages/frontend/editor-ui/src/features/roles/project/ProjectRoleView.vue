@@ -23,8 +23,10 @@ import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEdito
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
 import { CUSTOM_ROLE_SCOPE_WHITELIST } from '@n8n/permissions';
+import { useHiddenRoleResources, withoutHiddenScopes } from '../composables/useHiddenRoleResources';
 
 const rolesStore = useRolesStore();
+const hiddenResources = useHiddenRoleResources();
 const route = useRoute();
 const router = useRouter();
 const { showError, showMessage } = useToast();
@@ -54,11 +56,14 @@ const {
 	roleSlug: () => props.roleSlug,
 	viewRoute: VIEWS.PROJECT_ROLE_VIEW,
 	defaultScopes: () =>
-		structuredClone(
-			toRaw(
-				rolesStore.processedProjectRoles.find((role) => role.slug === 'project:viewer')?.scopes ??
-					[],
+		withoutHiddenScopes(
+			structuredClone(
+				toRaw(
+					rolesStore.processedProjectRoles.find((role) => role.slug === 'project:viewer')?.scopes ??
+						[],
+				),
 			),
+			hiddenResources.value,
 		),
 	filterScopes: (scopes) => scopes.filter((s) => CUSTOM_ROLE_SCOPE_WHITELIST.project.has(s)),
 	fetchError: 'Error fetching role',
@@ -82,16 +87,9 @@ const onBackClick = () => {
 };
 
 const scopeTypes = computed(() => {
-	let types = SCOPE_TYPES;
-	if (!settingsStore.isAppsEnabled) {
-		types = types.filter((type) => type !== 'app');
-	}
+	let types = SCOPE_TYPES.filter((type) => !hiddenResources.value.has(type));
 	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
 		types = types.filter((type) => type !== 'externalSecretsProvider' && type !== 'externalSecret');
-	}
-	// Project skills exist only while the agents module is on.
-	if (!settingsStore.isModuleActive('agents')) {
-		types = types.filter((type) => type !== 'projectSkill');
 	}
 	return types;
 });
@@ -112,8 +110,11 @@ function toggleScope(scope: string) {
 		return;
 	}
 
+	// `:list` follows `:read`. Match it instead of flipping it: Apps, Agents and MCP servers also
+	// show List as its own box, so it can already have the new state.
 	if (scope.endsWith(':read')) {
-		toggleScope(scope.replace(':read', ':list'));
+		const list = scope.replace(':read', ':list');
+		if (form.value.scopes.includes(list) !== isBeingAdded) toggleScope(list);
 	}
 
 	// Dependency: workflow:execute requires workflow:read

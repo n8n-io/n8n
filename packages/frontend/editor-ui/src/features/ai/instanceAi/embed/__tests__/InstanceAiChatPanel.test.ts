@@ -70,6 +70,15 @@ vi.mock('../../composables/useAgentMutationRefresh', () => ({
 	useAgentMutationRefresh: useAgentMutationRefreshMock,
 }));
 
+// The real selector reads the settings store, which has its own tests.
+vi.mock('@/features/ai/instanceAi/components/ApprovalModeSelector.vue', () => ({
+	default: defineComponent({
+		props: { threadId: { type: String, default: undefined } },
+		setup: (props) => () =>
+			h('div', { 'data-test-id': 'approval-mode-selector-stub', 'data-thread-id': props.threadId }),
+	}),
+}));
+
 // Minimal stand-ins: exercise the panel's own wiring, not the real children's
 // internals (each has its own suite). The panel's history now lives inside the
 // header's popover, so this stub applies `threadList.filter`/`disabled` the same
@@ -115,7 +124,7 @@ const InstanceAiConversationStub = defineComponent({
 	template: `<div data-test-id="conversation-stub" :data-has-before-send="String(typeof beforeSend === 'function')">
 		<textarea data-test-id="conversation-input" class="ignore-key-press-canvas" />
 		<button data-test-id="conversation-thread-missing" type="button" @click="$emit('thread-missing')" />
-		<slot name="empty" /><slot name="composer-start" />
+		<slot name="empty" /><slot name="composer-start" /><slot name="composer-controls" />
 	</div>`,
 });
 
@@ -480,6 +489,13 @@ describe('InstanceAiChatPanel', () => {
 		expect(store.threads).toEqual([]);
 
 		pending.resolve(true);
+	});
+
+	it('shows the approval mode selector of the thread in the composer', async () => {
+		const { getByTestId } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		await vi.waitFor(() => expect(getByTestId('conversation-stub')).toBeInTheDocument());
+
+		expect(getByTestId('approval-mode-selector-stub')).toHaveAttribute('data-thread-id', 't-match');
 	});
 
 	it('renders the host empty slot inside the conversation', async () => {

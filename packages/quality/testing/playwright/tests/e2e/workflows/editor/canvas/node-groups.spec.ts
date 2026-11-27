@@ -126,7 +126,9 @@ test.describe(
 
 			await n8n.canvas.deselectAll();
 			await n8n.canvas.selectNodes([TRIGGER, 'Set A']);
-			await expect(n8n.canvas.selectionToolbar.root()).toBeHidden();
+			// The toolbar still shows "Add to chat" for this selection while the Assistant is on.
+			await expect(n8n.canvas.selectionToolbar.groupButton()).toBeHidden();
+			await expect(n8n.canvas.selectionToolbar.extractSubWorkflowButton()).toBeHidden();
 		});
 
 		test('keeps a single-node group when one of two members is deleted', async ({ n8n }) => {
@@ -220,7 +222,7 @@ test.describe(
 			n8n,
 		}) => {
 			await n8n.canvas.selectNodes([TRIGGER, 'Set A']);
-			await expect(n8n.canvas.selectionToolbar.root()).toBeHidden();
+			await expect(n8n.canvas.selectionToolbar.extractSubWorkflowButton()).toBeHidden();
 		});
 
 		test('auto-extends the group when a new connection would otherwise invalidate it', async ({

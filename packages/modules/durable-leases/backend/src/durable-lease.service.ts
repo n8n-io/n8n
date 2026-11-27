@@ -9,6 +9,7 @@ import { InstanceSettings } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
 import { DatabaseLeaseProvider } from './database-lease-provider';
+import { systemClock } from './lease-session-manager';
 import { assertLeaseTimings } from './lease-timings';
 
 export type LeaseTransaction = OperationContext;
@@ -34,6 +35,7 @@ export class DurableLeaseService {
 			sessions,
 			hostId: instanceSettings.hostId,
 			bootId: randomUUID(),
+			clock: systemClock,
 			logger: logger.scoped('durable-leases'),
 		});
 		this.leaseService = new LeaseService(this.provider);

@@ -30,7 +30,7 @@ flowchart LR
 | Processes | One or more mains, workers |
 | Task runners | Through the launcher, or `direct` |
 | Engine v2 | Off, in-process (regular mode only), remote (also queue mode, optional mutual TLS) |
-| Extras | Public HTTPS URL, Mailpit |
+| Extras | Public HTTPS URL, Mailpit, a stored [license](#licenses) |
 
 ## Setup
 
@@ -171,6 +171,32 @@ pnpm rig up --split    # one tmux pane for each n8n process
 `--split` adds a window in tmux. Outside tmux, it creates and attaches the
 session `rig-<env>`.
 
+To use another terminal multiplexer, get the panes from `rig panes`. Run the
+`prepare` command once, then open one pane for each entry of `panes`. Each
+pane runs `argv` in `cwd`, with `env` added to the env of the user.
+
+```bash
+pnpm rig panes                  # JSON
+pnpm rig panes --format shell   # one command line for each pane
+pnpm rig panes --inspect        # the same flags as `rig up --split`
+```
+
+### Scripts and editor integrations
+
+`pnpm rig status --format json` prints the services, the components, and the
+URLs of an environment:
+
+| Field | Content |
+|---|---|
+| `schemaVersion` | `1`. A new version removes or changes a field. New fields keep the version |
+| `env`, `topology`, `slot` | The name of the environment, a summary of its topology, and its port slot |
+| `source` | The checkout that a start from the current directory uses |
+| `urls` | `editor`, `mail`, and `public`. `null` when the environment does not have it |
+| `services[]` | `name`, `state` (`stopped` when there is no container), `health` (`null` without a health check), `ports`, `address` |
+| `components[]` | `name`, `kind`, `role`, `state` (`stopped`, `starting`, `ready`), `pid`, `ports`, `inspectPort`, `url` (mains), `startedAt`, `owner` (`null` in the background), `drift`, `source` |
+
+`rig panes --format json` has a `schemaVersion` too.
+
 ### Debugging
 
 ```bash
@@ -238,6 +264,68 @@ mail:
 | Data | Stays after `stop`. `reset` and `destroy` delete it |
 | Ports | `pnpm rig status` |
 
+## Licenses
+
+`rig` stores n8n licenses in `~/.config/rig/licenses/<name>.env`. An
+environment uses one license, with `license: <name>` in its `env.yaml`.
+
+| License kind | Env vars |
+|---|---|
+| Activation key | `N8N_LICENSE_ACTIVATION_KEY`, `N8N_LICENSE_TENANT_ID` |
+| Cert | `N8N_LICENSE_CERT`, `N8N_LICENSE_TENANT_ID` |
+
+Each license can also have a `N8N_LICENSE_SERVER_URL`, for example for a
+staging license server.
+
+```bash
+pnpm rig license add prod                       # asks for the values
+pbpaste | pnpm rig license add stage --tenant-id 1 --server-url https://…
+pnpm rig license ls                             # licenses, their default, and the environments that use them
+pnpm rig license use prod                       # use a license in this environment
+pnpm rig license off                            # use no license in this environment
+pnpm rig license default prod                   # the license for new environments
+pnpm rig license rm stage
+```
+
+- `license add` asks for the activation key or the cert with a masked prompt,
+  or reads it from stdin. `rig` finds the kind from the format: a UUID is an
+  activation key, and a base64 value is a cert. For a value with neither
+  format, `rig` asks for the kind. Without a terminal, give `--activation-key`
+  or `--cert`. These flags also override the format. The tenant ID is required. The prompt and the
+  `--tenant-id` flag use `1` when you give no value.
+- `rig` checks the values: the activation key must be a UUID, the cert must
+  be base64, the tenant ID must be a positive integer, and the server URL must
+  be an `http` or `https` URL. When a check fails, `rig` asks if you want to
+  add the license anyway, so you can test an invalid license. Without a
+  terminal, add `--force`.
+- `rig` encrypts every value of a license file. With the `off` secrets
+  backend, the values are in plaintext. See
+  [Secrets encryption](#secrets-encryption).
+- The first license that you add becomes the default. `license add --default`
+  or `license default <name>` changes it. `license.default` in the global
+  config holds it.
+
+### License of an environment
+
+| How | License |
+|---|---|
+| Wizard | A step after Email. It selects the default license. You can also add a new license there |
+| `create --license <name>` | The given license |
+| `create` without `--license` | The default license |
+| `create --no-license` | No license |
+| `clone` | The license of the source environment |
+
+- `create` writes the name of the license into `env.yaml`. A later change of
+  the default does not change existing environments.
+- After you change a stored license, restart the components that use it.
+- The license layer is after the global secrets and before the profiles. A
+  profile or a layer of the environment can override a value of the license.
+  See [Env vars](#env-vars).
+- n8n gets the env vars of all layers. When the license has an activation
+  key and another layer sets `N8N_LICENSE_CERT`, or the reverse, `rig` shows a
+  warning at start.
+- `rig doctor` shows a license that does not exist or is not valid.
+
 ## Parallel environments
 
 Each environment has a port slot (`slot` in `env.yaml`, default `0`).
@@ -267,12 +355,13 @@ one:
 ```mermaid
 flowchart LR
   A["1. rig defaults<br/>(ports, DB, Redis, engine)"] --> B["2. Global secrets<br/>~/.config/rig/secrets.env"]
-  B --> C["3. Profiles<br/>(in order)"]
-  C --> D["4. secrets.env<br/>of the environment"]
-  D --> E["5. env/shared.env"]
-  E --> F["6. env/&lt;role&gt;.env<br/>main, worker, engine, launcher"]
-  F --> G["7. env/&lt;component&gt;.env<br/>e.g. worker-2"]
-  G --> H["8. rig run -e K=V<br/>(not saved)"]
+  B --> L["3. License<br/>~/.config/rig/licenses/&lt;name&gt;.env"]
+  L --> C["4. Profiles<br/>(in order)"]
+  C --> D["5. secrets.env<br/>of the environment"]
+  D --> E["6. env/shared.env"]
+  E --> F["7. env/&lt;role&gt;.env<br/>main, worker, engine, launcher"]
+  F --> G["8. env/&lt;component&gt;.env<br/>e.g. worker-2"]
+  G --> H["9. rig run -e K=V<br/>(not saved)"]
 ```
 
 - Both `secrets.env` files have mode 0600. `rig` encrypts their values, and
@@ -305,7 +394,7 @@ flowchart LR
 | Show every layer that sets a key | `pnpm rig env explain N8N_LOG_LEVEL --on worker-2` |
 | Compare two components | `pnpm rig env diff main-1 worker-1` (also `<env>:<component>`) |
 | Set a secret of this environment (asks for the value) | `pnpm rig env set MY_API_KEY --secret` |
-| Set a secret for all environments | `pnpm rig env set N8N_LICENSE_CERT --on global-secrets` |
+| Set a secret for all environments | `pnpm rig env set OPENAI_API_KEY --on global-secrets` |
 | Set a secret from the clipboard | `pbpaste \| pnpm rig env set OPENAI_API_KEY` |
 
 ### Profiles
@@ -346,7 +435,8 @@ seconds. Later runs use a cache until the commit or a scanned file changes.
 
 `rig` encrypts values with AES-256-GCM:
 
-- Every value in both `secrets.env` files.
+- Every value in both `secrets.env` files and in the [license](#licenses)
+  files.
 - The values of sensitive keys in every other env file: the layers in `env/`
   and the profiles. A key is sensitive when its name ends in one of these:
   `KEY`, `PASS`, `PASSWORD`, `PASSWD`, `PASSWORD_HASH`, `SECRET`, `TOKEN`,
@@ -423,17 +513,19 @@ saves it in `secrets.backend` in the global config:
 | Command | Function |
 |---|---|
 | `create`, `ls`, `use`, `reset`, `destroy`, `clone` | Manage environments |
-| `up`, `run`, `stop`, `restart`, `status`, `logs`, `open` | Run components |
+| `up`, `run`, `stop`, `restart`, `status`, `logs`, `open` | Run components. `status --format json` is for scripts |
+| `panes` | Print the panes of `up --split` for another terminal multiplexer |
 | `services up\|down` | Start or stop only the containers |
 | `env browse\|set\|unset\|edit\|ls\|explain\|diff` | Read and change env vars |
 | `profile ls\|on\|off` | Turn profiles on or off |
+| `license ls\|add\|rm\|use\|off\|default` | Manage the stored [licenses](#licenses) and the license of the environment |
 | `secrets status\|encrypt\|use\|export-key\|import-key` | Manage the [encryption of secrets](#secrets-encryption) |
 | `exec <component> -- <cmd>` | Run a command with the env of a component |
 | `print <component> --format shell\|dotenv\|json\|vscode` | Print the resolved env, or VS Code launch configurations |
 | `psql`, `redis-cli` | Open a shell in a service container |
-| `config get\|set\|unset\|edit` | Read and change the global config: `launcher.path`, `launcher.version`, `container.runtime`, `browser`, `editor` |
+| `config get\|set\|unset\|edit` | Read and change the global config: `launcher.path`, `launcher.version`, `container.runtime`, `browser`, `editor`, `license.default` |
 | `edit` | Open `env.yaml` in your editor, then check it |
-| `doctor` | Check the runtime, Node, Go, `uv`, the checkout and build, the launcher, ports, and secrets encryption |
+| `doctor` | Check the runtime, Node, Go, `uv`, the checkout and build, the launcher, ports, licenses, and secrets encryption |
 
 To select an environment, `rig` uses the first of these:
 
@@ -447,6 +539,7 @@ To select an environment, `rig` uses the first of these:
 |---|---|---|
 | `~/.config/rig/config.yaml` | Global config | `RIG_CONFIG_DIR` |
 | `~/.config/rig/profiles/<name>.env` | Profiles | `RIG_CONFIG_DIR` |
+| `~/.config/rig/licenses/<name>.env` | Licenses | `RIG_CONFIG_DIR` |
 | `~/.config/rig/secrets.env` | Global secrets | `RIG_CONFIG_DIR` |
 | `~/.config/rig/secrets.key` | Secrets key, only with the `file` backend | `RIG_CONFIG_DIR` |
 | `~/.local/share/rig/envs/<name>/env.yaml` | Topology | `RIG_DATA_DIR` |

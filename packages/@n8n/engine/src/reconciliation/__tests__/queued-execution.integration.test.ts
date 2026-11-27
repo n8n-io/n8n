@@ -49,6 +49,8 @@ describe('queued execution with no event (integration)', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
 			parent: null,
+			errorSource: null,
+			resolveErrorWorkflowOnFailure: false,
 		});
 		const runtime = createEngineRuntime({
 			dataSource,

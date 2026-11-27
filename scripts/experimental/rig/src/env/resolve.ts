@@ -2,7 +2,13 @@ import { createHash } from 'node:crypto';
 import { relative } from 'node:path';
 
 import type { Topology } from '../config/env-yaml';
-import { displayPath, type EnvPaths, globalSecretsFile, profileFile } from '../config/paths';
+import {
+	displayPath,
+	type EnvPaths,
+	globalSecretsFile,
+	licenseFile,
+	profileFile,
+} from '../config/paths';
 import type {
 	Component,
 	LauncherComponent,
@@ -29,6 +35,7 @@ export type LayerKind =
 	| 'shell'
 	| 'default'
 	| 'managed'
+	| 'license'
 	| 'profile'
 	| 'shared'
 	| 'role'
@@ -151,10 +158,17 @@ function profileLayers(ctx: ResolveContext, exclude: (key: string) => boolean): 
 	);
 }
 
+/** The license of the topology. It sits between the global secrets and the profiles. */
+function licenseLayer(ctx: ResolveContext, exclude: (key: string) => boolean): Layer[] {
+	const { license } = ctx.topology;
+	if (!license) return [];
+	return [without(fromFile('license', ctx.paths, licenseFile(license)), exclude)];
+}
+
 /**
  * The layers from env files, least specific first, so a more specific layer
- * wins: global secrets, profiles, secrets of the environment, shared, role,
- * component. A secret can be in any layer, so the secrets do not sit on top.
+ * wins: global secrets, license, profiles, secrets of the environment, shared,
+ * role, component. A secret can be in any layer, so the secrets do not sit on top.
  */
 function fileLayers(
 	ctx: ResolveContext,
@@ -164,6 +178,7 @@ function fileLayers(
 	const { paths } = ctx;
 	return [
 		without(fromFile('secrets', paths, globalSecretsFile()), exclude.secrets),
+		...licenseLayer(ctx, exclude.shared),
 		...profileLayers(ctx, exclude.shared),
 		without(fromFile('secrets', paths, paths.secrets), exclude.secrets),
 		without(fromFile('shared', paths, paths.layerFile('shared')), exclude.shared),

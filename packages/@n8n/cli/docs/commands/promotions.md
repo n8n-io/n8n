@@ -247,7 +247,7 @@ n8n-cli promotion-environment create --file=promote.json
 | `direction` | `promote` or `apply`. |
 | `settings.branchName` | For `apply`: the branch to import from. |
 | `settings.baseBranchName` | For `promote`: the branch to push to. |
-| `settings.createBranchOnPromotion` | For `promote`: required. Push to a new timestamped branch instead of the base branch. |
+| `settings.createBranchOnPromotion` | For `promote`: required. Push to a new timestamped branch instead of the base branch. When the `promotion-settings` option `--require-approval` is `alwaysRequired`, every promote pushes a new branch, and the stored value applies again when it goes back to `whenConfigured`. |
 
 ## `promotion-environment list` / `get` / `update` / `delete`
 
@@ -685,16 +685,18 @@ returns "not found".
 
 ## `promotion-settings get` / `update`
 
-Decide who can promote, approve, and apply in their own projects. Instance
-owners and admins can always do all three.
+Decide who can promote, approve, and apply in their own projects, and whether
+every promote needs a review. Instance owners and admins can always promote,
+approve, and apply.
 
 ```bash
 n8n-cli promotion-settings get
 n8n-cli promotion-settings update --who-can-promote=projectAdmins
 n8n-cli promotion-settings update --who-can-approve=projectAdminsAndEditors --who-can-apply=instanceAdmins
+n8n-cli promotion-settings update --require-approval=alwaysRequired
 ```
 
-Each setting takes one of these values:
+Each who-can setting takes one of these values:
 
 | Value | Who can do it in their projects |
 |-------|---------------------------------|
@@ -702,5 +704,13 @@ Each setting takes one of these values:
 | `projectAdmins` | Project admins |
 | `projectAdminsAndEditors` | Project admins and editors |
 
-A setting that you leave out keeps its value. The settings change the project
-admin and project editor roles. Custom project roles keep their own scopes.
+`--require-approval` takes one of these values:
+
+| Value | What a promote does |
+|-------|---------------------|
+| `whenConfigured` | Each Promote environment uses its own `createBranchOnPromotion` setting (default) |
+| `alwaysRequired` | Every promote pushes a new branch. With a `gitlab` provider, it also opens a merge request. With a `git` provider, n8n cannot see the review and cannot stop direct pushes |
+
+A setting that you leave out keeps its value. The who-can settings change the
+project admin and project editor roles. Custom project roles keep their own
+scopes.

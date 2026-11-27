@@ -20,7 +20,6 @@ import { Service } from '@n8n/di';
 import { z } from 'zod';
 
 import {
-	AssistantSkillsFlagGate,
 	SkillService,
 	SkillSourceService,
 	SkillSyncFlagGate,
@@ -98,15 +97,15 @@ type SearchSkillsInput = z.infer<z.ZodObject<typeof searchSkillsInput>>;
 type CreateSkillInput = z.infer<z.ZodObject<typeof createSkillInput>>;
 type UpdateSkillInput = z.infer<z.ZodObject<typeof updateSkillInput>>;
 
-type SkillAvailabilityFlags = { assistantSkillsEnabled: boolean; mcpSkillsEnabled: boolean };
+type SkillAvailabilityFlags = { mcpSkillsEnabled: boolean };
 
-function withAvailabilityInputs<
-	T extends { availableToAssistant: z.ZodTypeAny; availableToMCP: z.ZodTypeAny },
->(shape: T, { assistantSkillsEnabled, mcpSkillsEnabled }: SkillAvailabilityFlags) {
-	const { availableToAssistant, availableToMCP, ...rest } = shape;
+function withAvailabilityInputs<T extends { availableToMCP: z.ZodTypeAny }>(
+	shape: T,
+	{ mcpSkillsEnabled }: SkillAvailabilityFlags,
+) {
+	const { availableToMCP, ...rest } = shape;
 	return {
 		...rest,
-		...(assistantSkillsEnabled ? { availableToAssistant } : {}),
 		...(mcpSkillsEnabled ? { availableToMCP } : {}),
 	};
 }
@@ -119,7 +118,7 @@ function summary(item: SkillListItem, flags: SkillAvailabilityFlags) {
 		scope: item.scope,
 		projectId: item.projectId,
 		projectName: item.projectName,
-		...(flags.assistantSkillsEnabled ? { availableToAssistant: item.availableToAssistant } : {}),
+		availableToAssistant: item.availableToAssistant,
 		...(flags.mcpSkillsEnabled ? { availableToMCP: item.availableToMCP } : {}),
 		latestVersion: item.latestVersion,
 		usedByAgents: item.usedByAgents,
@@ -150,7 +149,6 @@ export class McpSkillToolsService {
 	constructor(
 		private readonly telemetry: TelemetryProxy,
 		private readonly skillService: SkillService,
-		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 		private readonly skillSourceService: SkillSourceService,
 		private readonly skillSyncFlagGate: SkillSyncFlagGate,
 		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
@@ -161,11 +159,8 @@ export class McpSkillToolsService {
 		user: User,
 		mcpSkillsEnabled: boolean,
 	): Promise<void> {
-		const [assistantSkillsEnabled, workflowsInSkillsEnabled] = await Promise.all([
-			this.assistantSkillsFlagGate.isEnabled(),
-			this.workflowsInSkillsFlagGate.isEnabled(),
-		]);
-		const flags = { assistantSkillsEnabled, mcpSkillsEnabled };
+		const workflowsInSkillsEnabled = await this.workflowsInSkillsFlagGate.isEnabled();
+		const flags = { mcpSkillsEnabled };
 		registerTool({
 			name: 'search_n8n_skills',
 			config: {

@@ -127,6 +127,7 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 				'mode',
 				'hostMode',
 				'parent',
+				'errorSource',
 				'createdAt',
 				'updatedAt',
 				'finishedAt',
@@ -270,6 +271,8 @@ function subExecutionRecord(id: string, parent: ParentLink): NewExecutionRecord 
 		callerContext: { hostMode: 'integrated' },
 		responseExpectation: { kind: 'none' },
 		parent,
+		errorSource: null,
+		resolveErrorWorkflowOnFailure: false,
 	};
 }
 
@@ -309,8 +312,8 @@ beforeAll(async () => {
 }, 120_000);
 
 beforeEach(async () => {
-	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
-	stepQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
+	stepQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
 	lifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
 	responseSender = { send: vi.fn(), stop: vi.fn() };
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
@@ -836,6 +839,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
 			parent: null,
+			errorSource: null,
 			finishedAt: null,
 		});
 		expect(response.body).not.toHaveProperty('steps');

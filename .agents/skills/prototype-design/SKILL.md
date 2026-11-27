@@ -9,7 +9,7 @@ A prototype shows a UX flow. It does not do real work. Nothing calls a
 backend, and nothing persists. Reviewers click through it to judge the
 flow, the states, and the copy.
 
-For production UI, use `n8n:ui-design` instead. The rules for the n8n design
+For production UI, use `n8n:ui-review` instead. The rules for the n8n design
 system do not apply here: no i18n, no design tokens, no `N8n*` components.
 The theme below is a wireframe theme on purpose. It keeps reviewers on the
 structure, not on the visuals.
