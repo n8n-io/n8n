@@ -25,6 +25,8 @@ const props = withDefaults(
 		/** Keep error icon/tooltip but skip the inner danger callout. */
 		hideErrorCallout?: boolean;
 		errorIcon?: IconName;
+		/** Color for the error icon; any `--` CSS custom property is accepted. */
+		errorIconColor?: string;
 	}>(),
 	{
 		loading: false,
@@ -33,6 +35,7 @@ const props = withDefaults(
 		wrapContent: false,
 		hideErrorCallout: false,
 		errorIcon: 'triangle-alert',
+		errorIconColor: 'danger',
 	},
 );
 
@@ -69,7 +72,7 @@ const errorTooltip = computed(() =>
 							</template>
 							<N8nIcon
 								:icon="props.errorIcon"
-								color="danger"
+								:color="props.errorIconColor"
 								size="small"
 								:class="$style.activityErrorIcon"
 							/>
@@ -104,7 +107,7 @@ const errorTooltip = computed(() =>
 					</template>
 					<N8nIcon
 						:icon="props.errorIcon"
-						color="danger"
+						:color="props.errorIconColor"
 						size="small"
 						:class="$style.activityErrorIcon"
 					/>

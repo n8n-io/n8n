@@ -355,6 +355,7 @@ import IconLucideClipboardCheck from '~icons/lucide/clipboard-check';
 import IconLucideCloudDownload from '~icons/lucide/cloud-download';
 import IconLucideColumns3Cog from '~icons/lucide/columns-3-cog';
 import IconLucideContrast from '~icons/lucide/contrast';
+import IconLucideCrosshair from '~icons/lucide/crosshair';
 import IconLucideDoorOpen from '~icons/lucide/door-open';
 import IconLucideDot from '~icons/lucide/dot';
 import IconLucideEarth from '~icons/lucide/earth';
@@ -856,6 +857,7 @@ export const updatedIconSet = {
 	'circle-pause': IconLucideCirclePause,
 	'circle-play': BrandCirclePlay,
 	'circle-plus': BrandCirclePlus,
+	crosshair: IconLucideCrosshair,
 	'circle-user-round': BrandCircleUserRound,
 	'circle-x': BrandCircleX,
 	clipboard: BrandClipboard,

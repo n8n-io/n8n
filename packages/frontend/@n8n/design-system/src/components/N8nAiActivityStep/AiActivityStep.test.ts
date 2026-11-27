@@ -121,6 +121,30 @@ describe('N8nAiActivityStep', () => {
 		expect(container.querySelector('.n8n-icon')?.getAttribute('icon')).toBe('lock');
 	});
 
+	it('should use a custom errorIconColor when provided', () => {
+		const { container } = render(AiActivityStep, {
+			props: {
+				label: 'Search nodes',
+				error: 'Something went wrong',
+				errorIconColor: '--node--icon--color--blue',
+			},
+			global,
+		});
+
+		expect(container.querySelector('.n8n-icon')?.getAttribute('color')).toBe(
+			'--node--icon--color--blue',
+		);
+	});
+
+	it('should default the error icon color to danger', () => {
+		const { container } = render(AiActivityStep, {
+			props: { label: 'Search nodes', error: 'Something went wrong' },
+			global,
+		});
+
+		expect(container.querySelector('.n8n-icon')?.getAttribute('color')).toBe('danger');
+	});
+
 	it('should render errorCallout slot content instead of the default error text', () => {
 		const { getByText, queryByText } = render(AiActivityStep, {
 			props: { label: 'Search nodes', error: 'Something went wrong' },
