@@ -729,7 +729,7 @@ export class OauthService {
 		}
 
 		// The state holds the verified starter; the callback request may carry no user at all.
-		const additionalData = await this.getAdditionalData(csrfUserId(state, credential));
+		const additionalData = await this.getAdditionalData(csrfUserId(state), credential);
 		const decryptedDataOriginal = await this.getDecryptedDataForCallback(
 			credential,
 			additionalData,
