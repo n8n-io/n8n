@@ -1,4 +1,3 @@
-import { UnexpectedError } from '../common';
 import type {
 	ErrorWorkflowResolver,
 	ErrorWorkflowSource,
@@ -28,8 +27,9 @@ export type ErrorWorkflowStartOutcome =
  * error workflow for it. This service reads the marker, asks the host to
  * resolve the error workflow, and starts the error execution with an error
  * source link. The start clears the marker in the same transaction. An answer
- * of `none` clears it too, and so does a graph that the engine refuses. A
- * failure leaves it, so the reconciliation repair tries again.
+ * of `none` clears it too, and so do a graph that the engine refuses and an
+ * execution that did not fail. Any other failure leaves it, so the
+ * reconciliation repair tries again.
  *
  * Two callers call it: the worker that failed the execution, and the repair.
  */
@@ -78,6 +78,16 @@ export class ErrorWorkflowStarter {
 		}
 
 		const execution = await this.executionStore.loadExecution(executionId);
+		// An ended execution does not change status, so asking again cannot help.
+		if (execution.status !== 'failed') {
+			this.logger.error('An execution that did not fail has a pending error workflow marker', {
+				executionId,
+				status: execution.status,
+			});
+			await this.executionStore.clearErrorWorkflowDue(executionId);
+			return 'abandoned';
+		}
+
 		const resolution = await this.resolve(await this.toSource(execution, state.workflow));
 		// The host found no error workflow, or refused the one it found, and the answer is final.
 		if (resolution.kind === 'none') {
@@ -125,12 +135,6 @@ export class ErrorWorkflowStarter {
 		execution: ExecutionRecord,
 		workflow: WorkflowDocument,
 	): Promise<ErrorWorkflowSource> {
-		if (execution.status !== 'failed') {
-			throw new UnexpectedError(
-				`Execution ${execution.id} has a pending error-workflow marker but status is '${execution.status}'; expected 'failed'`,
-			);
-		}
-
 		const source: ErrorWorkflowSource = {
 			executionId: execution.id,
 			workflowId: execution.workflowId,

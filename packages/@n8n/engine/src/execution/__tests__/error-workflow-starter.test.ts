@@ -248,12 +248,20 @@ describe('ErrorWorkflowStarter', () => {
 	});
 
 	it.each(['completed', 'cancelled'] as const)(
-		'refuses an execution that is %s',
+		'clears the marker of an execution that is %s, since a retry cannot help',
 		async (status) => {
-			const { starter } = setup({ execution: { ...failedExecution, status } });
+			const { starter, resolve, startExecution, executionStore, logger } = setup({
+				execution: { ...failedExecution, status },
+			});
 
-			await expect(starter.start('failed-exec')).rejects.toThrow(
-				`Execution failed-exec has a pending error-workflow marker but status is '${status}'; expected 'failed'`,
+			expect(await starter.start('failed-exec')).toBe('abandoned');
+
+			expect(executionStore.clearErrorWorkflowDue).toHaveBeenCalledWith('failed-exec');
+			expect(resolve).not.toHaveBeenCalled();
+			expect(startExecution.start).not.toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ executionId: 'failed-exec', status }),
 			);
 		},
 	);
