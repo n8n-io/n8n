@@ -34,8 +34,8 @@ import {
 	type ModelTier,
 } from './model-tiers';
 import { hasRealCredentialKey } from './seeder';
-import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
+import { isDirectAgentRun } from '../harness/agent-run-schema';
 import type { TestCaseCredential, WorkflowTestCase } from '../types';
 
 /** Ordered from most to least faithful to the user's own model. */
@@ -350,7 +350,7 @@ export function describeModelResolution(resolution: AgentModelResolution): strin
 // One case
 // ---------------------------------------------------------------------------
 
-type ResolvableCase = Pick<WorkflowTestCase, 'seed' | 'credentials' | 'tags'>;
+type ResolvableCase = Pick<WorkflowTestCase, 'seed' | 'credentials' | 'tags' | 'agentRun'>;
 
 /** Resolve every seeded Agent of a case: rewrite its models, declare the
  *  credential types the restore needs to bind them, and tag fallback runs.
@@ -385,13 +385,8 @@ export function resolveDirectRunAgentModels<T extends ResolvableCase>(
 	testCase: T,
 	available: ReadonlySet<string>,
 ): { testCase: T; resolutions: AgentModelResolution[] } {
-	if (!runsSeededAgentDirectly(testCase)) return { testCase, resolutions: [] };
+	if (!isDirectAgentRun(testCase)) return { testCase, resolutions: [] };
 	return resolveCaseAgentModels(testCase, available);
-}
-
-function runsSeededAgentDirectly(testCase: object): boolean {
-	const agentRun: unknown = 'agentRun' in testCase ? testCase.agentRun : undefined;
-	return isRecord(agentRun) && agentRun.mode === 'direct';
 }
 
 function withCredentialTypes(
