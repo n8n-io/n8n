@@ -43,6 +43,6 @@ export function guardrailStopLabelKey(stop: GuardrailStop): BaseTextKey {
 }
 
 /** The guardrail kind's display name, the label's `{type}` value. */
-export function guardrailStopType(stop: GuardrailStop): string {
+export function guardrailStopType(stop: GuardrailStop): BaseTextKey {
 	return guardrailKindLabelKey(stop.kind);
 }

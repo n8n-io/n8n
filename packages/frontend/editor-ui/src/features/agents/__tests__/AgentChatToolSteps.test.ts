@@ -339,7 +339,9 @@ describe('AgentChatToolSteps', () => {
 		);
 
 		await wrapper.get('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
-		const failures = wrapper.emitted('fixWithAssistant')?.[0]?.[0];
+		const failures = wrapper.emitted('fixWithAssistant')?.[0]?.[0] as
+			| Array<{ toolCallId: string }>
+			| undefined;
 		expect(failures).toHaveLength(1);
 		expect(failures?.[0]).toMatchObject({ toolCallId: 'tc-failed' });
 	});
