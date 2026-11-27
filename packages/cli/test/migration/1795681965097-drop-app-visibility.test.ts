@@ -3,6 +3,7 @@ import {
 	initDbUpToMigration,
 	runSingleMigration,
 	type TestMigrationContext,
+	undoLastSingleMigration,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -51,6 +52,12 @@ describe('DropAppVisibility migration', () => {
 		context = createTestMigrationContext(dataSource);
 	}
 
+	async function revert() {
+		await context.queryRunner.release();
+		await undoLastSingleMigration();
+		context = createTestMigrationContext(dataSource);
+	}
+
 	const column = (name: string) => context.escape.columnName(name);
 
 	async function insertRow(tableName: string, values: Row) {
@@ -66,6 +73,26 @@ describe('DropAppVisibility migration', () => {
 		const id = randomUUID();
 		await insertRow('app', { id, name: namespace, namespace, visibility, projectId });
 		return id;
+	}
+
+	async function insertVersion(appId: string) {
+		await insertRow('app_artifact', {
+			id: 1,
+			appId,
+			storedAt: 'db',
+			storageKey: 'source',
+			sizeBytes: 1,
+		});
+		const id = randomUUID();
+		await insertRow('app_version', { id, appId, sourceArtifactId: 1 });
+		return id;
+	}
+
+	async function versionIds() {
+		const rows = await context.runQuery<Array<{ id: string }>>(
+			`SELECT ${column('id')} AS id FROM ${context.escape.tableName('app_version')}`,
+		);
+		return rows.map((row) => row.id);
 	}
 
 	async function appRows() {
@@ -86,23 +113,44 @@ describe('DropAppVisibility migration', () => {
 	});
 
 	it('keeps the versions of the apps', async () => {
-		const appId = await insertApp('sales', 'instance');
-		await insertRow('app_artifact', {
-			id: 1,
-			appId,
-			storedAt: 'db',
-			storageKey: 'source',
-			sizeBytes: 1,
-		});
-		const versionId = randomUUID();
-		await insertRow('app_version', { id: versionId, appId, sourceArtifactId: 1 });
+		const versionId = await insertVersion(await insertApp('sales', 'instance'));
 
 		await migrate();
 
-		const versions = await context.runQuery<Array<{ id: string }>>(
-			`SELECT ${column('id')} AS id FROM ${context.escape.tableName('app_version')}`,
-		);
-		expect(versions).toEqual([{ id: versionId }]);
+		expect(await versionIds()).toEqual([versionId]);
+	});
+
+	it('restores the visibility column as project on revert', async () => {
+		const instanceApp = await insertApp('wiki', 'instance');
+		const projectApp = await insertApp('crm', 'project');
+		await migrate();
+
+		await revert();
+
+		const rows = await appRows();
+		expect(rows.map((row) => [row.id, row.visibility])).toEqual([
+			[projectApp, 'project'],
+			[instanceApp, 'project'],
+		]);
+	});
+
+	it('keeps the versions of the apps on revert', async () => {
+		const versionId = await insertVersion(await insertApp('sales', 'instance'));
+		await migrate();
+
+		await revert();
+
+		expect(await versionIds()).toEqual([versionId]);
+	});
+
+	it('accepts only project or instance visibility after revert', async () => {
+		await migrate();
+
+		await revert();
+
+		await expect(insertApp('sales', 'public')).rejects.toThrow();
+		await insertApp('wiki', 'instance');
+		expect((await appRows()).map((row) => row.visibility)).toEqual(['instance']);
 	});
 
 	it('accepts new apps without a visibility', async () => {
