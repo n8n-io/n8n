@@ -568,19 +568,11 @@ describe('ControllerRegistry', () => {
 			});
 		});
 
-		it('should count a call without the client header as other', async () => {
-			await request(app).get('/rest/test/widget-1').expect(200);
-
-			await vi.waitFor(() => {
-				expect(eventService.emit).toHaveBeenCalledWith(
-					'internal-api-invoked',
-					expect.objectContaining({ client: 'other' }),
-				);
-			});
-		});
-
-		it('should count a call from another n8n client as other', async () => {
-			await request(app).get('/rest/test/widget-1').set(N8N_CLIENT_HEADER, 'n8n-cli').expect(200);
+		it.each([
+			{ description: 'without the client header', headers: {} },
+			{ description: 'from another n8n client', headers: { [N8N_CLIENT_HEADER]: 'n8n-cli' } },
+		])('should count a call $description as other', async ({ headers }) => {
+			await request(app).get('/rest/test/widget-1').set(headers).expect(200);
 
 			await vi.waitFor(() => {
 				expect(eventService.emit).toHaveBeenCalledWith(
