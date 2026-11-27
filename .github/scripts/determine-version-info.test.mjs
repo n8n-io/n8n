@@ -55,7 +55,7 @@ describe('determine-tracks', () => {
 		assert.equal(output.bump, 'patch');
 		assert.equal(output.new_stable_version, null);
 		assert.equal(output.release_type, 'stable');
-		assert.equal(output.rc_branch, 'release-candidate/2.9.x');
+		assert.equal(output.rc_branch, '2.x');
 	});
 
 	it('Allow patch releases on beta', () => {
@@ -67,7 +67,7 @@ describe('determine-tracks', () => {
 		assert.equal(output.bump, 'patch');
 		assert.equal(output.new_stable_version, null);
 		assert.equal(output.release_type, 'stable');
-		assert.equal(output.rc_branch, 'release-candidate/2.10.x');
+		assert.equal(output.rc_branch, '2.x');
 	});
 
 	// This use case might happen if a patch release fails and we proceed with rolling over to next release
@@ -80,7 +80,7 @@ describe('determine-tracks', () => {
 		assert.equal(output.bump, 'patch');
 		assert.equal(output.new_stable_version, null);
 		assert.equal(output.release_type, 'stable');
-		assert.equal(output.rc_branch, 'release-candidate/2.9.x');
+		assert.equal(output.rc_branch, '2.x');
 	});
 
 	it('Disallow skipping versions in minors', () => {
@@ -189,7 +189,7 @@ describe('determine-tracks', () => {
 		assert.equal(output.bump, 'minor');
 		assert.equal(output.new_stable_version, '2.10.1');
 		assert.equal(output.release_type, 'stable');
-		assert.equal(output.rc_branch, 'release-candidate/2.11.x');
+		assert.equal(output.rc_branch, '2.x');
 	});
 
 	it('Set release_type accordingly on rc releases', () => {
@@ -201,7 +201,7 @@ describe('determine-tracks', () => {
 		assert.equal(output.bump, 'patch');
 		assert.equal(output.new_stable_version, null);
 		assert.equal(output.release_type, 'rc');
-		assert.equal(output.rc_branch, 'release-candidate/2.10.x');
+		assert.equal(output.rc_branch, '2.x');
 	});
 
 	it('Set release_type accordingly on exp releases', () => {
@@ -213,6 +213,6 @@ describe('determine-tracks', () => {
 		assert.equal(output.bump, 'patch');
 		assert.equal(output.new_stable_version, null);
 		assert.equal(output.release_type, 'rc');
-		assert.equal(output.rc_branch, 'release-candidate/2.9.x');
+		assert.equal(output.rc_branch, '2.x');
 	});
 });

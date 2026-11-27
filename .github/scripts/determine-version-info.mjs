@@ -113,13 +113,10 @@ export function determineTrack(packageVersion, { prerelease = false } = {}) {
 		throw new Error('Could not determine track for release. Exiting...');
 	}
 
-	const rc_branch = tagVersionInfoToReleaseCandidateBranchName(
-		{
-			version: packageVersion,
-			tag: /** @type {import('./github-helpers.mjs').ReleaseVersion} */ (`n8n@${packageVersion}`),
-		},
-		track,
-	);
+	const rc_branch = tagVersionInfoToReleaseCandidateBranchName({
+		version: packageVersion,
+		tag: /** @type {import('./github-helpers.mjs').ReleaseVersion} */ (`n8n@${packageVersion}`),
+	});
 
 	const previousVersion = newStable ?? trackToReleaseMap[track]?.version;
 

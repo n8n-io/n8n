@@ -23,8 +23,8 @@ mock.module('./github-helpers.mjs', {
 		tagVersionInfoToReleaseCandidateBranchName,
 		resolveReleaseTagForTrack: (track) => {
 			// Always return deterministic data
-			if (track === 'stable') return { version: '2.9.2', tag: 'n8n@2.9.2' };
-			if (track === 'beta') return { version: '2.10.1', tag: 'n8n@2.10.1' };
+			if (track === 'stable') return { version: '3.4.1', tag: 'n8n@3.4.1' };
+			if (track === 'beta') return { version: '3.5.0', tag: 'n8n@3.5.0' };
 			return { version: '1.123.33', tag: 'n8n@1.123.33' };
 		},
 		writeGithubOutput: () => {}, // no-op in tests
@@ -47,12 +47,12 @@ describe('Determine branch changes', () => {
 		const ensureBranches = output.branchesToEnsure.map(tagVersionInfoToReleaseCandidateBranchName);
 
 		assert.ok(
-			ensureBranches.includes('release-candidate/2.10.x'),
+			ensureBranches.includes('release-candidate/3.5.x'),
 			"Beta release-candidate branch doesn't exist",
 		);
 
 		assert.ok(
-			ensureBranches.includes('release-candidate/2.9.x'),
+			ensureBranches.includes('release-candidate/3.4.x'),
 			"Stable release-candidate branch doesn't exist",
 		);
 	});
@@ -62,8 +62,8 @@ describe('Determine branch changes', () => {
 		const output = determineBranchChanges();
 
 		assert.ok(
-			output.branchesToDeprecate.includes('release-candidate/2.7.x'),
-			'Existing branch release-candidate/2.7.x should be marked for removal',
+			output.branchesToDeprecate.includes('release-candidate/3.2.x'),
+			'Existing branch release-candidate/3.2.x should be marked for removal',
 		);
 	});
 });

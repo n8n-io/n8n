@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 /** @returns { typeof import('semver') } */
 const loadSemver = () => require('semver');
 
-const FIRST_MAJOR_WITH_RC_BRANCHES = 2;
+export const CURRENT_MAJOR_VERSION = 3;
 export const RELEASE_CANDIDATE_BRANCH_PREFIX = 'release-candidate/';
 
 export const RELEASE_TRACKS = /** @type { const } */ ([
@@ -118,9 +118,8 @@ export function resolveReleaseTagForTrack(track) {
 }
 
 /**
- * Resolve a release track tag (stable/beta/etc.) to the corresponding
- * release-candidate/<major>.<minor>.x branch, based on the n8n@<x.y.z> tag
- * pointing at the same commit.
+ * Resolve a track to its maintenance branch or use the release tag to resolve
+ * its release-candidate branch.
  *
  * Queries tags via `git ls-remote` so it works with shallow checkouts where
  * the tags aren't present locally.
@@ -142,29 +141,25 @@ export function resolveRcBranchForTrack(track) {
 	const releaseTag = pickHighestReleaseTag(tagsAtCommit);
 	if (!releaseTag) return null;
 
-	const parsed = loadSemver().parse(stripReleasePrefixes(releaseTag));
-	if (!parsed) return null;
-
-	return `release-candidate/${parsed.major}.${parsed.minor}.x`;
+	return tagVersionInfoToReleaseCandidateBranchName({
+		tag: releaseTag,
+		version: stripReleasePrefixes(releaseTag),
+	});
 }
 
 /**
  * Takes a TagVersionInfo object and returns a rc-branch name.
  *
- * e.g. release-candidate/2.8.x or 1.x
+ * e.g. release-candidate/3.5.x or 2.x
  *
  * @param {import('./github-helpers.mjs').TagVersionInfo} tagVersionInfo
- * @param {ReleaseTrack} [track]
  *
  * @returns { `${RELEASE_CANDIDATE_BRANCH_PREFIX}${number}.${number}.x` | `${number}.x` }
  * */
-export function tagVersionInfoToReleaseCandidateBranchName(tagVersionInfo, track) {
-	const maintenanceBranch = track && maintenanceBranchForTrack(track);
-	if (maintenanceBranch) return maintenanceBranch;
-
+export function tagVersionInfoToReleaseCandidateBranchName(tagVersionInfo) {
 	const version = tagVersionInfo.version;
 	const majorVersion = loadSemver().major(version);
-	if (majorVersion < FIRST_MAJOR_WITH_RC_BRANCHES) {
+	if (majorVersion < CURRENT_MAJOR_VERSION) {
 		return `${majorVersion}.x`;
 	}
 
