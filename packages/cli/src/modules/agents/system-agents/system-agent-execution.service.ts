@@ -63,7 +63,7 @@ import type {
 	SystemAgentProvider,
 	SystemAgentSkippedFile,
 	SystemAgentStartTurn,
-	SystemAgentStoredFile,
+	SystemAgentStoredWorkflowFile,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
@@ -1118,13 +1118,32 @@ export class SystemAgentExecutionService {
 	/**
 	 * Store a binary that a workflow run returned as a file of the thread. A file
 	 * of the thread that the run passed on unchanged gives that file, without a copy.
+	 * Gives a skipped file when storage fails: the run already happened, so an error
+	 * here must not fail the tool call and make the model run it again.
 	 */
 	private async storeWorkflowFile(
 		thread: AgentExecutionThread,
 		resourceId: string,
 		user: User,
 		binary: IBinaryData,
-	): Promise<SystemAgentStoredFile | SystemAgentSkippedFile | undefined> {
+	): Promise<SystemAgentStoredWorkflowFile | SystemAgentSkippedFile | undefined> {
+		try {
+			return await this.storeWorkflowFileOrThrow(thread, resourceId, user, binary);
+		} catch (error) {
+			this.logger.warn('Failed to store a workflow file in the system chat', {
+				threadId: thread.id,
+				error,
+			});
+			return { fileName: binary.fileName ?? 'file', reason: 'the file could not be stored' };
+		}
+	}
+
+	private async storeWorkflowFileOrThrow(
+		thread: AgentExecutionThread,
+		resourceId: string,
+		user: User,
+		binary: IBinaryData,
+	): Promise<SystemAgentStoredWorkflowFile | SystemAgentSkippedFile | undefined> {
 		// A file of this thread proves access to its bytes.
 		const threadFile = binary.id
 			? await this.attachmentService.findSystemAgentThreadFileByBinary(
@@ -1148,6 +1167,7 @@ export class SystemAgentExecutionService {
 					fileName: threadFile.fileName,
 					mimeType: threadFile.mimeType,
 					sizeBytes: threadFile.fileSizeBytes,
+					passedOn: true,
 				};
 			}
 		} else if (binary.id) {

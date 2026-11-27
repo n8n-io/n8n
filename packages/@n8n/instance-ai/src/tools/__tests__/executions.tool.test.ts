@@ -1143,7 +1143,12 @@ describe('execution tools', () => {
 	});
 
 	describe('files of a run', () => {
-		const pngBinary = { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' };
+		const pngBinary = {
+			id: 'filesystem-v2:a',
+			data: 'filesystem-v2',
+			mimeType: 'image/png',
+			fileName: 'a.png',
+		};
 
 		function contextWithFiles(overrides: Parameters<typeof createMockContext>[0] = {}) {
 			const storedFiles = {
@@ -1295,31 +1300,48 @@ describe('execution tools', () => {
 				expect(grantSessionToolApproval).not.toHaveBeenCalled();
 				expect(context.executionService.run).toHaveBeenCalled();
 			});
-
-			it('fails a missing file before the card shows', async () => {
-				const { context } = contextWithFiles();
-				const suspend = vi.fn();
-
-				const result = await executeTool(
-					createExecutionToolRouter(context),
-					{ action: 'run' as const, workflowId: 'wf-1', files: { data: 'other' } },
-					createAgentCtx({ suspend }) as never,
-				);
-
-				expect(suspend).not.toHaveBeenCalled();
-				expect(result).toMatchObject({ status: 'error' });
-			});
 		});
 
-		it('does not run the workflow with a file that the conversation does not have', async () => {
+		it('names the input files in the approval prompt', async () => {
 			const { context } = contextWithFiles();
+			const suspend = vi.fn();
+
+			await executeTool(
+				createExecutionToolRouter(context),
+				{ action: 'run' as const, workflowId: 'wf-1', files: { image: 'file-1' } },
+				createAgentCtx({ suspend }) as never,
+			);
+
+			expect(suspend.mock.calls[0][0].message).toContain(
+				'Run this workflow live with the file a.png',
+			);
+		});
+
+		it('does not read the files when the user denied the run', async () => {
+			const { context, storedFiles } = contextWithFiles();
 
 			const result = await executeTool(
 				createExecutionToolRouter(context),
 				{ action: 'run' as const, workflowId: 'wf-1', files: { data: 'other' } },
-				createAgentCtx({ resumeData: { approved: true } }) as never,
+				createAgentCtx({ resumeData: { approved: false } }) as never,
 			);
 
+			expect(result).toMatchObject({ status: 'error', denied: true });
+			expect(storedFiles.readBinary).not.toHaveBeenCalled();
+			expect(context.executionService.run).not.toHaveBeenCalled();
+		});
+
+		it('does not ask for approval or run the workflow with a file that the conversation does not have', async () => {
+			const { context } = contextWithFiles();
+			const suspend = vi.fn();
+
+			const result = await executeTool(
+				createExecutionToolRouter(context),
+				{ action: 'run' as const, workflowId: 'wf-1', files: { data: 'other' } },
+				createAgentCtx({ suspend }) as never,
+			);
+
+			expect(suspend).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				executionId: '',
 				status: 'error',

@@ -633,8 +633,13 @@ workflow without a trigger node cannot take files, so the run fails before it
 starts. After the run, the files of the last node are stored as conversation
 files with the `tool` source, one time for each binary and at most 10 for each
 run. A file of the conversation that the run passes on unchanged keeps its
-fileId and is not copied. A renamed or retyped file becomes a new file. The result lists the files in `files`, so the chat
-shows them. `skippedFiles.files` lists at most 10 files that were not stored, and
+fileId and is not copied. A renamed or retyped file becomes a new file. The
+result lists the files in `files`, so the chat shows them. `files` does not
+list a conversation file that the run passes on unchanged, and such a file does
+not count against the cap, as with project Agents. The host marks such a file
+`passedOn` when it finds the file by its binary id. The approval prompt names the
+input files, because the run can send them to an outside service. A fileId that
+the conversation does not have fails the call before the prompt. `skippedFiles.files` lists at most 10 files that were not stored, and
 `skippedFiles.total` counts all of them. A redacted execution stores no
 files. Without the host functions, the input schema has no `files` field.
 
@@ -873,7 +878,9 @@ than its first 10. The host matches a file by the hash of its bytes, not by
 its binary id. A file of the conversation with the same bytes, name and type
 is given again, not stored again, so a second call on the same output gives
 the same fileIds. A file without a usable name matches on its bytes and type
-only. A redacted execution stores no files. The host offers
+only. A conversation file that the run passed on unchanged, such as a file of
+a mock input, is listed with `passedOn: true` and does not count against the
+cap. The host recognizes it by its binary id. A redacted execution stores no files. The host offers
 `storeFiles` only when it sets `readBinary` and `storeWorkflowFile` on
 `storedFiles`.
 
@@ -1138,10 +1145,11 @@ so the agent can pass a node it is building verbatim:
 | `version` | number | yes | Node type version |
 | `config.parameters` | object | yes | Same shape as workflow-sdk `NodeConfig.parameters` |
 | `config.credentials` | object | no | Resolved credential references `{ id, name }` by credential type; n8n Connect managed credentials use `{ id: null, name, __aiGatewayManaged: true }` |
-| `input` | array | no | Input items `{ json }` (defaults to one empty item) |
+| `input` | array | no | Input items `{ json, files? }` (defaults to one empty item). `files` maps a binary property name to a fileId, and the files become binary data of that item. `files` is there only when the host can store files |
 | `timeoutMs` | number | no | Max execution time (default 30s, max 10 min). `EXECUTIONS_TIMEOUT_MAX` can lower the max |
+| `storeFiles` | boolean | no | Store the files of the output items as conversation files. Only when the host can store files |
 
-**Returns**: `{ status: 'success', output }` or
+**Returns**: `{ status: 'success', output, files?, skippedFiles?: { total, files } }` or
 `{ status: 'error', error: { message, description?, nodeErrorType? } }`. The
 output is the serialized items inside an `<untrusted_data
 source="execution-output">` boundary, the same envelope the workflow-execution
@@ -1151,6 +1159,22 @@ called. Binary output is reduced to metadata (`fileName`, `mimeType`,
 items).
 When `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` is disabled, output items and
 upstream error details are suppressed, mirroring `workflow_builder_executions(action="run")`.
+
+The temporary execution and its binary data are deleted after the run. With
+`storeFiles`, n8n copies the output files to conversation files before that, at
+most 10, one time for each binary. The result lists them in `files` with their
+fileId, and each output item gives the fileId of its file in its `binary`
+metadata, so the model can tell which item a file belongs to. `files` does not
+list an input file that the node passes on unchanged, and such a file does not
+count against the cap. `skippedFiles.files` lists at most 10 files that were
+not stored, and `skippedFiles.total` counts all of them. A failed or redacted
+run, or a run with output items suppressed by the privacy setting, stores no
+files. When storing a file fails, `skippedFiles` lists it, and the run still
+succeeds, because the node already ran. The approval prompt names the input files.
+The input `files` entries point to the stored bytes of the conversation files,
+so the deletion does not touch them. The host offers `files` and `storeFiles`
+only when it sets `readBinary` and `storeWorkflowFile` on `storedFiles`.
+
 Wait states are not supported — a node that starts waiting (e.g. Wait,
 send-and-wait operations) returns an error.
 

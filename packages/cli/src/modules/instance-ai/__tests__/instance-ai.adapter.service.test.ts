@@ -805,6 +805,18 @@ describe('redactExecuteNodeResult', () => {
 		});
 	});
 
+	it('keeps the stored output files', () => {
+		const files = [{ fileId: 'f-1', fileName: 'a.png', mimeType: 'image/png', sizeBytes: 3 }];
+		const skippedFiles = { total: 1, files: [{ fileName: 'b.png', reason: 'larger than 50 MB' }] };
+
+		const result = redactExecuteNodeResult(
+			{ status: 'success', output: [[{ json: {} }]], files, skippedFiles },
+			true,
+		);
+
+		expect(result).toMatchObject({ status: 'success', files, skippedFiles });
+	});
+
 	it('returns the items inside the untrusted-data boundary when sending values is allowed', () => {
 		const result = redactExecuteNodeResult(successResult([{ json: { id: 1 } }]), true);
 
@@ -2207,6 +2219,82 @@ describe('executeNodeService adapter', () => {
 			'required permissions',
 		);
 		expect(executeNodeService.run).not.toHaveBeenCalled();
+	});
+
+	describe('files', () => {
+		const png = { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' };
+		const stored = { fileId: 'f-1', fileName: 'a.png', mimeType: 'image/png', sizeBytes: 3 };
+
+		async function runWithFiles(allowSendingParameterValues: boolean, passedOn = false) {
+			mockedUserHasScopes.mockResolvedValue(true);
+			const executeNodeService = {
+				run: vi.fn().mockResolvedValue({ status: 'success', output: [] }),
+			};
+			const { service, mockUser } = createNodeAdapterServiceForTests([], { executeNodeService });
+			const context = service.createContext(mockUser, {
+				projectId: 'team-project-1',
+				allowSendingParameterValues,
+			});
+			// The host marks the conversation file of the input as passed on.
+			const storeOutputFile = vi
+				.fn()
+				.mockResolvedValue(passedOn ? { ...stored, passedOn: true } : stored);
+			await context.executeNodeService?.execute({
+				...executeRequest,
+				input: [{ json: {}, binary: { data: png } }],
+				storeOutputFile,
+			});
+			return { request: executeNodeService.run.mock.calls[0][1], storeOutputFile };
+		}
+
+		it('passes the input files and stores each output file one time', async () => {
+			const { request, storeOutputFile } = await runWithFiles(true);
+
+			expect(request.input).toEqual([{ json: {}, binary: { data: png } }]);
+			const result = await request.storeOutputFiles([
+				{ json: {}, binary: { data: png } },
+				{ json: {}, binary: { copy: png } },
+			]);
+			expect(storeOutputFile).toHaveBeenCalledTimes(1);
+			expect(result).toMatchObject({ files: [stored] });
+			expect(result.fileIdOf(png)).toBe('f-1');
+			expect(result.fileIdOf({ ...png, id: 'filesystem-v2:other' })).toBeUndefined();
+		});
+
+		it('does not list an input file that the node passes on, but names it on its item', async () => {
+			const { request } = await runWithFiles(true, true);
+
+			const result = await request.storeOutputFiles([{ json: {}, binary: { data: png } }]);
+			expect(result).not.toHaveProperty('files');
+			expect(result.fileIdOf(png)).toBe('f-1');
+		});
+
+		it('names an input file that the node passes on after the file cap is full', async () => {
+			const { request, storeOutputFile } = await runWithFiles(true);
+			storeOutputFile.mockImplementation(async (binary: { id: string }) =>
+				binary.id === png.id
+					? { ...stored, passedOn: true }
+					: { ...stored, fileId: `new-${binary.id}` },
+			);
+			const outputs = Array.from({ length: 10 }, (_, i) => ({
+				json: {},
+				binary: { data: { ...png, id: `filesystem-v2:out-${i}` } },
+			}));
+
+			const result = await request.storeOutputFiles([
+				...outputs,
+				{ json: {}, binary: { data: png } },
+			]);
+			expect(result.files).toHaveLength(10);
+			expect(result).not.toHaveProperty('skippedFiles');
+			expect(result.fileIdOf(png)).toBe('f-1');
+		});
+
+		it('stores no output files when the privacy setting hides the output', async () => {
+			const { request } = await runWithFiles(false);
+
+			expect(request).not.toHaveProperty('storeOutputFiles');
+		});
 	});
 });
 

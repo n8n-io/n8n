@@ -7,6 +7,8 @@ import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData, NodeError, TimeoutExecutionCancelledError } from 'n8n-workflow';
 import type {
+	IBinaryData,
+	IBinaryKeyData,
 	IDataObject,
 	INode,
 	INodeCredentials,
@@ -48,14 +50,36 @@ export interface ExecuteNodeRequest {
 		parameters: INodeParameters;
 		credentials?: INodeCredentials;
 	};
-	input?: Array<{ json: IDataObject }>;
+	/**
+	 * Input items. The `binary` entries of an item point to bytes that n8n
+	 * already stores, so nothing is copied.
+	 */
+	input?: Array<{ json: IDataObject; binary?: IBinaryKeyData }>;
+	/**
+	 * Keep the files of the output items. The temporary execution and its binary
+	 * data are deleted after the run, so the callback must copy the bytes. It
+	 * runs only for a successful run whose data is not redacted.
+	 */
+	storeOutputFiles?: (items: INodeExecutionData[]) => Promise<ExecuteNodeStoredFiles>;
 	timeoutMs?: number;
 	projectId: string;
 }
 
+/** The output files that `storeOutputFiles` kept, and the files it skipped. */
+export interface ExecuteNodeStoredFiles {
+	files?: Array<{ fileId: string; fileName: string; mimeType: string; sizeBytes: number }>;
+	/** `files` has a cap; `total` counts all the skipped files. */
+	skippedFiles?: { total: number; files: Array<{ fileName: string; reason: string }> };
+	/** The fileId of an output binary that has a stored file, for its output item. */
+	fileIdOf?: (binary: IBinaryData) => string | undefined;
+}
+
 export interface ExecuteNodeOutputItem {
 	json: IDataObject;
-	binary?: Record<string, { fileName?: string; mimeType?: string; fileSize?: string }>;
+	binary?: Record<
+		string,
+		{ fileName?: string; mimeType?: string; fileSize?: string; fileId?: string }
+	>;
 }
 
 export interface ExecuteNodeError {
@@ -70,7 +94,10 @@ export interface ExecuteNodeError {
 }
 
 export type ExecuteNodeResult =
-	| { status: 'success'; output: ExecuteNodeOutputItem[][] }
+	| ({ status: 'success'; output: ExecuteNodeOutputItem[][] } & Omit<
+			ExecuteNodeStoredFiles,
+			'fileIdOf'
+	  >)
 	| { status: 'error'; error: ExecuteNodeError }
 	/**
 	 * n8n redacted the run's data for the user, the same way the executions API
@@ -137,7 +164,14 @@ export class ExecuteNodeService {
 				const { message, description } = refusal;
 				return { status: 'error', error: { message, description, refused: true } };
 			}
-			return await this.execute(user, workflow, node, inputItems, timeoutMs);
+			return await this.execute(
+				user,
+				workflow,
+				node,
+				inputItems,
+				timeoutMs,
+				request.storeOutputFiles,
+			);
 		} catch (error) {
 			return { status: 'error', error: this.toErrorResponse(error) };
 		} finally {
@@ -268,6 +302,7 @@ export class ExecuteNodeService {
 		node: INode,
 		inputItems: INodeExecutionData[],
 		timeoutMs: number,
+		storeOutputFiles?: ExecuteNodeRequest['storeOutputFiles'],
 	): Promise<ExecuteNodeResult> {
 		const executionData = createRunExecutionData({
 			startData: {},
@@ -298,7 +333,7 @@ export class ExecuteNodeService {
 			};
 		}
 
-		return await this.extractResult(executionId, node.type, user);
+		return await this.extractResult(executionId, node.type, user, storeOutputFiles);
 	}
 
 	private async waitForCompletion(executionId: string, timeoutMs: number): Promise<boolean> {
@@ -358,6 +393,7 @@ export class ExecuteNodeService {
 		executionId: string,
 		nodeTypeName: string,
 		user: User,
+		storeOutputFiles?: ExecuteNodeRequest['storeOutputFiles'],
 	): Promise<ExecuteNodeResult> {
 		const execution = await loadExecutionForViewer(executionId, user);
 
@@ -404,22 +440,55 @@ export class ExecuteNodeService {
 			};
 		}
 
-		return { status: 'success', output: this.toOutput(branches) };
+		// The caller deletes the execution after this read, so its files are kept now.
+		const { fileIdOf, ...storedFiles } = await this.storeOutputFiles(
+			branches.flatMap((branch) => branch ?? []),
+			storeOutputFiles,
+		);
+		return { status: 'success', output: this.toOutput(branches, fileIdOf), ...storedFiles };
 	}
 
-	private toOutput(branches: Array<INodeExecutionData[] | null>): ExecuteNodeOutputItem[][] {
-		return branches.map((branch) => (branch ?? []).map((item) => this.toOutputItem(item)));
+	/**
+	 * The node already ran, with its side effects, so a storage error must not
+	 * fail the run: the caller could then run the node again. The run succeeds
+	 * without its files.
+	 */
+	private async storeOutputFiles(
+		items: INodeExecutionData[],
+		storeOutputFiles?: ExecuteNodeRequest['storeOutputFiles'],
+	): Promise<ExecuteNodeStoredFiles> {
+		if (!storeOutputFiles) return {};
+		try {
+			return await storeOutputFiles(items);
+		} catch (error) {
+			this.logger.warn('Failed to store the output files of a standalone node run', { error });
+			return {};
+		}
 	}
 
-	private toOutputItem(item: INodeExecutionData): ExecuteNodeOutputItem {
+	private toOutput(
+		branches: Array<INodeExecutionData[] | null>,
+		fileIdOf?: ExecuteNodeStoredFiles['fileIdOf'],
+	): ExecuteNodeOutputItem[][] {
+		return branches.map((branch) =>
+			(branch ?? []).map((item) => this.toOutputItem(item, fileIdOf)),
+		);
+	}
+
+	private toOutputItem(
+		item: INodeExecutionData,
+		fileIdOf?: ExecuteNodeStoredFiles['fileIdOf'],
+	): ExecuteNodeOutputItem {
 		if (!item.binary) return { json: item.json };
 
 		const binary: ExecuteNodeOutputItem['binary'] = {};
 		for (const [key, value] of Object.entries(item.binary)) {
+			const fileId = fileIdOf?.(value);
 			binary[key] = {
 				fileName: value.fileName,
 				mimeType: value.mimeType,
 				fileSize: value.fileSize,
+				...(fileId ? { fileId } : {}),
 			};
 		}
 		return { json: item.json, binary };

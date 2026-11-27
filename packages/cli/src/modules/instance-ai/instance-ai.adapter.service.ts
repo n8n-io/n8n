@@ -149,6 +149,7 @@ import {
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
+	type IBinaryData,
 	type IBinaryKeyData,
 	type IRunData,
 	type ITaskData,
@@ -287,6 +288,7 @@ import {
 } from './instance-ai-run-pin-data';
 import {
 	MAX_RUN_OUTPUT_FILES,
+	binaryIdsOf,
 	countItemFiles,
 	storeItemFiles,
 	storeRunOutputFiles,
@@ -1057,6 +1059,28 @@ export class InstanceAiAdapterService {
 				// The caller supplies the node type and parameters, so a standalone run
 				// authors a workflow. See ADR-20261012-require-create-and-execute-scopes-for-standalone-node-runs.
 				const projectId = await resolveProjectId(['workflow:create', 'workflow:execute']);
+				// The privacy setting hides the output items, so it keeps their files out of the chat too.
+				const { storeOutputFile } = request;
+				const storeOutputFiles =
+					storeOutputFile && allowSendingParameterValues
+						? async (items: Array<{ binary?: IBinaryKeyData }>) => {
+								// The output items name the file of each binary, so the model can tell which item a file belongs to.
+								const fileIds = new Map<IBinaryData | string, string>();
+								const stored = await storeItemFiles(
+									items,
+									storeOutputFile,
+									`one node run returns at most ${MAX_RUN_OUTPUT_FILES} files`,
+									{
+										inputBinaryIds: binaryIdsOf(request.input ?? []),
+										onStored: (binary, fileId) => fileIds.set(binary.id ?? binary, fileId),
+									},
+								);
+								return {
+									...stored,
+									fileIdOf: (binary: IBinaryData) => fileIds.get(binary.id ?? binary),
+								};
+							}
+						: undefined;
 				const result = await executeNodeService.run(user, {
 					type: request.type,
 					version: request.version,
@@ -1064,7 +1088,8 @@ export class InstanceAiAdapterService {
 						parameters: request.config.parameters as INodeParameters,
 						credentials: request.config.credentials,
 					},
-					input: request.input as Array<{ json: IDataObject }> | undefined,
+					input: request.input as Array<{ json: IDataObject; binary?: IBinaryKeyData }> | undefined,
+					...(storeOutputFiles ? { storeOutputFiles } : {}),
 					timeoutMs: request.timeoutMs,
 					projectId,
 				});
@@ -2770,7 +2795,12 @@ export class InstanceAiAdapterService {
 						? options?.storeOutputFile
 						: undefined;
 					if (storeOutputFile && outcome.execution && result.status !== 'running') {
-						Object.assign(result, await storeRunOutputFiles(outcome.execution, storeOutputFile));
+						Object.assign(
+							result,
+							await storeRunOutputFiles(outcome.execution, storeOutputFile, {
+								inputBinaryIds: binaryIdsOf([{ binary: options?.binary }]),
+							}),
+						);
 					}
 					trackBuilderExecutedWorkflow(result.status, telemetryError);
 					// Saved workflow pins fed this run (they ride every instance-ai run) —
@@ -5761,11 +5791,16 @@ export function redactExecuteNodeResult(
 	// The items come from whatever service the node called, so they carry the same
 	// boundary tag the workflow-execution path puts on node output.
 	const output = wrapUntrustedData(JSON.stringify(kept, null, 2), 'execution-output');
-	if (shownItems === totalItems) return { status: 'success', output };
+	const storedFiles = {
+		...(result.files ? { files: result.files } : {}),
+		...(result.skippedFiles ? { skippedFiles: result.skippedFiles } : {}),
+	};
+	if (shownItems === totalItems) return { status: 'success', output, ...storedFiles };
 
 	return {
 		status: 'success',
 		output,
+		...storedFiles,
 		truncated: {
 			totalItems,
 			shownItems,
@@ -5945,6 +5980,8 @@ export async function extractNodeOutput(
 					returnedItemsWithFiles,
 					options.storeFile,
 					`one call stores at most ${MAX_RUN_OUTPUT_FILES} files; ask for fewer items with startIndex and maxItems to store the files of later items`,
+					// The model sees only the JSON of an item, so a file that the run passed on is listed too.
+					{ listPassedOn: true },
 				)
 			: {};
 

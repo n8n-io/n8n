@@ -12,11 +12,9 @@ import {
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
-	MAX_APPROVAL_FILE_NAMES,
 } from '@n8n/api-types';
 import type { ExecutionToolAction, InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
-import type { IBinaryData, IBinaryKeyData } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -28,6 +26,12 @@ import {
 	TRIGGER_NODE_NAME_DESCRIPTION,
 } from './shared/trigger-input-descriptions';
 import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
+import {
+	approvalFilesOf,
+	describeInputFiles,
+	readInputFiles,
+	workflowFilesOf,
+} from './shared/workflow-files';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -242,54 +246,6 @@ const ACTION_SCHEMAS = {
 
 type Input = z.infer<(typeof ACTION_SCHEMAS)[ExecutionToolAction]>;
 
-/**
- * The file reads and writes that let a workflow run take conversation files
- * and return its files. Only hosts that store conversation files set them.
- */
-function workflowFilesOf(context: InstanceAiContext) {
-	const { storedFiles } = context;
-	const readBinary = storedFiles?.readBinary?.bind(storedFiles);
-	const storeWorkflowFile = storedFiles?.storeWorkflowFile?.bind(storedFiles);
-	return readBinary && storeWorkflowFile ? { readBinary, storeWorkflowFile } : undefined;
-}
-
-/**
- * The names of the files that a run gets, one time for each file. The names
- * come from the stored files, not from the model.
- */
-function inputFileNames(binaries: Array<IBinaryKeyData | undefined>): string[] {
-	const names = new Map<IBinaryData | string, string>();
-	for (const entry of binaries.flatMap((binary) => Object.values(binary ?? {}))) {
-		names.set(entry.id ?? entry, entry.fileName ?? 'file');
-	}
-	return [...names.values()];
-}
-
-/** The files that the approval card lists. Empty when the run gets no files. */
-function approvalFilesOf(binaries: Array<IBinaryKeyData | undefined>): {
-	files?: string[];
-	moreFiles?: number;
-} {
-	const names = inputFileNames(binaries);
-	if (names.length === 0) return {};
-	const more = names.length - MAX_APPROVAL_FILE_NAMES;
-	return {
-		files: names.slice(0, MAX_APPROVAL_FILE_NAMES),
-		...(more > 0 ? { moreFiles: more } : {}),
-	};
-}
-
-/**
- * The approval message names the files that a run gets, because the run can
- * send them to an outside service. Empty when the run gets no files.
- */
-function describeInputFiles(binaries: Array<IBinaryKeyData | undefined>): string {
-	const { files, moreFiles } = approvalFilesOf(binaries);
-	if (!files) return '';
-	const count = files.length + (moreFiles ?? 0);
-	return ` with ${count === 1 ? 'the file' : 'the files'} ${files.join(', ')}${moreFiles ? ` and ${moreFiles} more` : ''}`;
-}
-
 interface ExecutionsToolOptions {
 	allowedActions?: readonly ExecutionToolAction[];
 }
@@ -394,24 +350,10 @@ async function handleRun(
 
 	// Read the files before the approval, so a missing file fails early and the card can name them.
 	const workflowFiles = workflowFilesOf(context);
-	let binary: IBinaryKeyData | undefined;
-	if (workflowFiles && input.files && Object.keys(input.files).length > 0) {
-		const entries = new Map<string, IBinaryData>();
-		for (const [key, fileId] of Object.entries(input.files)) {
-			const entry = await workflowFiles.readBinary(fileId);
-			if (!entry) {
-				return {
-					executionId: '',
-					status: 'error' as const,
-					error: `File "${fileId}" not found in this conversation`,
-				};
-			}
-			entries.set(key, entry);
-		}
-		// A plain object would take a `__proto__` key as its prototype. `fromEntries` defines
-		// own properties only, so no key from the model can change a prototype.
-		binary = Object.fromEntries(entries);
-	}
+	const { binary, error: fileError } = workflowFiles
+		? await readInputFiles(workflowFiles, input.files)
+		: {};
+	if (fileError) return { executionId: '', status: 'error' as const, error: fileError };
 
 	// The run can send the files to an outside service, so the user confirms every run
 	// with files. Grants and the `always_allow` permission cover only runs without files.

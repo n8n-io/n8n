@@ -103,12 +103,13 @@ interface SystemAgentTurnBase<TLease> {
 	/**
 	 * Store a binary that a workflow run returned as a file of this thread, in
 	 * the system chat of the user, the same as the workflow tools of project
-	 * agents. Gives a skipped file for a file over a cap, and `undefined` when
-	 * storage fails.
+	 * agents. `passedOn` marks a file of this thread that the run passed on
+	 * unchanged. Gives a skipped file with the reason for a file over a cap or a
+	 * file that storage could not take.
 	 */
 	storeWorkflowFile(
 		binary: IBinaryData,
-	): Promise<SystemAgentStoredFile | SystemAgentSkippedFile | undefined>;
+	): Promise<SystemAgentStoredWorkflowFile | SystemAgentSkippedFile | undefined>;
 	/**
 	 * The sandbox files of project agents, for this turn. It is set only when
 	 * the sandbox files flag is on.
@@ -154,6 +155,9 @@ export interface SystemAgentSandboxFiles {
 
 /** A file that a system-agent turn stored in its thread. */
 export type SystemAgentStoredFile = AgentToolOutputFile;
+
+/** A file that a workflow run returned. `passedOn` marks a file of the thread that the run passed on unchanged. */
+export type SystemAgentStoredWorkflowFile = SystemAgentStoredFile & { passedOn?: true };
 
 /** A file that a system-agent turn did not store, with the reason. */
 export type SystemAgentSkippedFile = AgentToolSkippedFile;

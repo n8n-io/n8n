@@ -457,11 +457,23 @@ export function getExecutionCallAction(
 export function callCarriesInputFiles(toolName: string, args: unknown): boolean {
 	if (!isRecord(args)) return false;
 	if (getExecutionCallAction(toolName, args.action) === 'run') return hasEntries(args.files);
+	const resolved = resolveBuilderToolName(toolName);
+	if (
+		resolved === SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE ||
+		(resolved === WORKFLOW_BUILDER_TOOL_NAMES.NODES && args.action === 'execute')
+	) {
+		return itemsCarryFiles(args.input);
+	}
 	return false;
 }
 
 function hasEntries(value: unknown): boolean {
 	return isRecord(value) && Object.keys(value).length > 0;
+}
+
+/** Whether any input item names files, as in `[{ json, files: { data: fileId } }]`. */
+function itemsCarryFiles(items: unknown): boolean {
+	return Array.isArray(items) && items.some((item) => isRecord(item) && hasEntries(item.files));
 }
 
 /** Whether a stored tool name is the former multi-action workspace tool. */

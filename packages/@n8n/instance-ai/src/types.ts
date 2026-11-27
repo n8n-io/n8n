@@ -321,9 +321,10 @@ export interface NodeOutputResult {
 	binaryFileCount?: number;
 	/**
 	 * Files of the returned items, stored as conversation files. Set only when
-	 * the caller passed `storeFile`.
+	 * the caller passed `storeFile`. `passedOn` marks a conversation file that
+	 * the run passed on unchanged.
 	 */
-	files?: InstanceAiConversationFile[];
+	files?: InstanceAiStoredWorkflowFile[];
 	/** Files of the returned items that were not stored, for example because they are too large. The list has a cap. */
 	skippedFiles?: InstanceAiSkippedFiles;
 	/**
@@ -833,6 +834,13 @@ export type ExecuteNodeResult =
 			outputSuppressed?: string;
 			/** Set when n8n redacted the run's data for the user. `output` is then empty. */
 			redaction?: ExecutionRedaction;
+			/**
+			 * Files of the output items, stored as conversation files. Set only when
+			 * the caller passed `storeOutputFile`.
+			 */
+			files?: InstanceAiConversationFile[];
+			/** Output files that were not stored, for example because they are too large. The list has a cap. */
+			skippedFiles?: InstanceAiSkippedFiles;
 	  }
 	| {
 			status: 'error';
@@ -854,7 +862,13 @@ export interface InstanceAiExecuteNodeService {
 				{ id: string | null; name: string; __aiGatewayManaged?: boolean }
 			>;
 		};
-		input?: Array<{ json: Record<string, unknown> }>;
+		/** `binary` of an item points to stored bytes, such as a conversation file. */
+		input?: Array<{ json: Record<string, unknown>; binary?: IBinaryKeyData }>;
+		/**
+		 * Store each file of the output items as a conversation file. The result
+		 * lists them in `files`.
+		 */
+		storeOutputFile?: InstanceAiStoreWorkflowFile;
 		timeoutMs?: number;
 	}): Promise<ExecuteNodeResult>;
 }
@@ -1862,7 +1876,8 @@ export interface InstanceAiStoredFileReader {
 	readBinary?(fileId: string): Promise<IBinaryData | undefined>;
 	/**
 	 * Store a binary of a workflow execution as a conversation file. Gives
-	 * a skipped file for a file over a cap, and `undefined` when storage fails.
+	 * a skipped file with the reason for a file over a cap or a file that storage
+	 * could not take.
 	 * The host sets it together with `readBinary`.
 	 */
 	storeWorkflowFile?: InstanceAiStoreWorkflowFile;
@@ -1878,12 +1893,20 @@ export interface InstanceAiSkippedFiles {
 }
 
 /**
+ * A conversation file for a binary that a workflow run returned. `passedOn`
+ * marks a conversation file that the run passed on unchanged: the binary
+ * points to the stored bytes of that file, so it is not a new file.
+ */
+export type InstanceAiStoredWorkflowFile = InstanceAiConversationFile & { passedOn?: true };
+
+/**
  * Stores a binary that a workflow run returned as a conversation file. Gives a
- * skipped file for a file over a cap, and `undefined` when storage fails.
+ * skipped file with the reason for a file over a cap or a file that storage
+ * could not take.
  */
 export type InstanceAiStoreWorkflowFile = (
 	binary: IBinaryData,
-) => Promise<InstanceAiConversationFile | InstanceAiSkippedFile | undefined>;
+) => Promise<InstanceAiStoredWorkflowFile | InstanceAiSkippedFile | undefined>;
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 
