@@ -351,3 +351,56 @@ describe('ToolCallRunner guardrail after-stage stop', () => {
 		expect(handler).not.toHaveBeenCalled();
 	});
 });
+
+describe('ToolCallRunner MCP HTTP errors', () => {
+	it.each([true, false])('includes HTTP status only for MCP tools (MCP: %s)', async (mcpTool) => {
+		const { StreamableHTTPError } = await import(
+			'@modelcontextprotocol/sdk/client/streamableHttp.js'
+		);
+		const error = new StreamableHTTPError(429, 'Unavailable');
+		const originalMessage = error.message;
+		const tool: BuiltTool = {
+			name: 'read_status',
+			description: 'Read status',
+			mcpTool,
+			outputTrust: 'untrusted',
+			handler: vi.fn().mockRejectedValue(error),
+		};
+		const list = new AgentMessageList();
+		list.addResponse(
+			fromAiMessages([
+				{
+					role: 'assistant',
+					content: [{ type: 'tool-call', toolCallId: 'call-1', toolName: tool.name, input: {} }],
+				},
+			]),
+		);
+		const runner = new ToolCallRunner({
+			eventBus: new AgentEventBus(),
+			telemetry: new RuntimeTelemetry({ name: 'test', model: 'openai/gpt-5', instructions: '' }),
+			concurrency: 1,
+			onCancelled: vi.fn(),
+			tokenCounter: (text) => Math.ceil(text.length / 5),
+		});
+		const result = await runner.processToolCall({
+			toolName: tool.name,
+			toolCallId: 'call-1',
+			input: {},
+			toolMap: new Map([[tool.name, tool]]),
+			list,
+			runId: 'run-1',
+		});
+		expect(result.outcome).toBe('error');
+		if (result.outcome !== 'error' || typeof result.error !== 'string') {
+			throw new Error('Expected a failed tool call with an error message');
+		}
+		expect(result.error).toContain('<untrusted_data');
+		expect(result.error).toContain(originalMessage);
+		expect(result.error.includes('HTTP 429')).toBe(mcpTool);
+		expect(list.responseDelta()).toMatchObject([
+			{ content: [{ type: 'tool-call', state: 'rejected', error: result.error }] },
+		]);
+		expect(error.message).toBe(originalMessage);
+		expect(error.code).toBe(429);
+	});
+});

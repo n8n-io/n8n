@@ -10,12 +10,12 @@ import { ServerResponse } from 'http';
 import type { Server } from 'http';
 import pick from 'lodash/pick';
 import { InstanceSettings } from 'n8n-core';
-import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError, InternalServerError } from '@n8n/errors';
 import { MAX_PUBSUB_PAYLOAD_BYTES, Publisher } from '@n8n/backend-services';
+import { routedPath } from '@/utils/request-path';
 
 import { validateSseOrigin, validateWebSocketOrigin } from './origin-validator';
 import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
@@ -66,12 +66,16 @@ export class Push extends TypedEmitter<PushEvents> implements PushSender {
 		return this.backend;
 	}
 
+	isWebSocketPath(path: string | undefined, restEndpoint: string): boolean {
+		return this.useWebSockets && path === `/${restEndpoint}/push`;
+	}
+
 	/** Sets up the main express app to upgrade websocket connections */
 	setupPushServer(restEndpoint: string, server: Server, app: Application) {
 		if (this.useWebSockets) {
 			const wsServer = new WSServer({ noServer: true });
 			server.on('upgrade', (request: WebSocketPushRequest, socket, upgradeHead) => {
-				if (parseUrl(request.url).pathname === `/${restEndpoint}/push`) {
+				if (this.isWebSocketPath(routedPath(request), restEndpoint)) {
 					wsServer.handleUpgrade(request, socket, upgradeHead, (ws) => {
 						request.ws = ws;
 

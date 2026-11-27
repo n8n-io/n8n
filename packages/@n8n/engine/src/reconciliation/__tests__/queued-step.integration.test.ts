@@ -84,6 +84,8 @@ describe('queued step with no event (integration)', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
 			parent: null,
+			errorSource: null,
+			resolveErrorWorkflowOnFailure: false,
 		});
 		await stepStore.createSteps(executionId, [
 			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [[{ json: {} }]] },

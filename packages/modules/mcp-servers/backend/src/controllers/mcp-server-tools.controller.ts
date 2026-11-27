@@ -12,7 +12,10 @@ import { McpServerToolsService } from '../services/mcp-server-tools.service';
 type ToolsRequest = AuthenticatedRequest<{ projectId: string; serverId: string }>;
 type ToolRequest = AuthenticatedRequest<{ projectId: string; serverId: string; toolId: string }>;
 
-/** The tools of a server. Every route changes the server, so every route needs `update`. */
+/**
+ * The tools of a server. The write routes change the server, so they need `update`. The read
+ * route `tool-candidates` also needs `update`, because only the editor of the server uses it.
+ */
 @RestController('/projects/:projectId/mcp-servers/:serverId')
 export class McpServerToolsController {
 	constructor(

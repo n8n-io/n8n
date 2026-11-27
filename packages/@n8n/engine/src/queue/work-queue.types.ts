@@ -51,6 +51,8 @@ export interface WorkQueue<TMessage> {
 	 * being dispatched.
 	 */
 	stop(): Promise<void>;
+	/** The number of messages that wait for a handler. */
+	size(): Promise<number>;
 }
 
 /** The two queues the engine runs on. */

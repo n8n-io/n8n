@@ -19,9 +19,10 @@ function previewFromFirstMessage(text: string): string {
 /**
  * Display title for a chat thread, in fallback order:
  *
- * 1. `title` — LLM-generated summary, set after the first turn completes.
- * 2. `firstMessage` preview — what the user actually typed, available as soon
- *    as the thread is persisted. Distinguishes untitled sessions in lists.
+ * 1. `title` — LLM-generated summary. The server pushes it a few seconds into
+ *    the first turn.
+ * 2. `firstMessage` preview — what the user actually typed. The thread
+ *    summaries carry it, so lists show it without loading the history.
  * 3. `fallbackLabel` — the i18n "New chat" string for empty / brand-new sessions.
  */
 export function formatThreadTitle(thread: ThreadLike, fallbackLabel: string): string {

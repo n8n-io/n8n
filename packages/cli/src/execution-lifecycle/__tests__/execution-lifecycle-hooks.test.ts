@@ -25,6 +25,7 @@ import type {
 	Workflow,
 	IDataObject,
 	IRun,
+	IRunData,
 	INode,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
@@ -42,11 +43,13 @@ import {
 } from '../execution-lifecycle-hooks';
 import { UnsavedManualExecutionService } from '../unsaved-manual-execution.service';
 
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import {
 	ExecutionPersistence,
 	type ExecutionOutcomeSaveResult,
 } from '@/executions/execution-persistence';
 
+import { DatabaseManager } from '@/binary-data/database.manager';
 import { ExternalHooks } from '@/external-hooks';
 import { MemoryStoppedExecutions } from '@/memory-guard/memory-stopped-executions';
 import { Push } from '@/push';
@@ -56,6 +59,8 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import type { RedactionContext } from '@/modules/redaction/executions/execution-redaction.interfaces';
+import { FullItemRedactionStrategy } from '@/modules/redaction/executions/strategies/full-item-redaction.strategy';
 
 describe('Execution Lifecycle Hooks', () => {
 	mockInstance(Logger);
@@ -74,6 +79,30 @@ describe('Execution Lifecycle Hooks', () => {
 	const workflowStaticDataService = mockInstance(WorkflowStaticDataService);
 	const workflowStatisticsService = mockInstance(WorkflowStatisticsService);
 	const binaryDataService = mockInstance(BinaryDataService);
+	mockInstance(BinaryDataConfig, { mode: 'default' });
+	const binaryDataAccessService = mockInstance(BinaryDataAccessService);
+	const databaseManager = mockInstance(DatabaseManager);
+	const databaseFileId = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
+	const runDataWithBinary = (binaryDataId: string): IRunData => ({
+		[nodeName]: [
+			{
+				startTime: 1,
+				executionIndex: 0,
+				executionTime: 1,
+				source: [],
+				data: {
+					main: [
+						[
+							{
+								json: {},
+								binary: { data: { id: binaryDataId, data: '', mimeType: 'text/plain' } },
+							},
+						],
+					],
+				},
+			},
+		],
+	});
 	const ownershipService = mockInstance(OwnershipService);
 	const workflowExecutionService = mockInstance(WorkflowExecutionService);
 	const userRepository = mockInstance(UserRepository);
@@ -1124,10 +1153,14 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(options.keepOriginal).toBe(true);
 				expect(options.user).toBeDefined();
 
-				// nodeExecuteAfter (metadata-only) is unaffected
+				// nodeExecuteAfter (metadata-only) comes from the same redacted task data
+				const { data: _, ...redactedMetadata } = redactedTaskData;
 				expect(push.send).toHaveBeenNthCalledWith(
 					1,
-					expect.objectContaining({ type: 'nodeExecuteAfter' }),
+					expect.objectContaining({
+						type: 'nodeExecuteAfter',
+						data: expect.objectContaining({ data: redactedMetadata }),
+					}),
 					pushRef,
 					userId,
 				);
@@ -1234,7 +1267,7 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(dataPushes).toEqual([]);
 			});
 
-			it('should skip nodeExecuteAfterData push when user cannot be resolved (fail-closed)', async () => {
+			it('should skip nodeExecuteAfterData push when user cannot be resolved', async () => {
 				userRepository.findOne.mockResolvedValue(null);
 				lifecycleHooks = createHooks();
 
@@ -1266,6 +1299,132 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(dataPushes).toEqual([]);
 
 				expect(redactionProxy.processExecution).not.toHaveBeenCalled();
+			});
+
+			describe('node metadata push', () => {
+				const errorTaskData = (): ITaskData => ({
+					startTime: 1,
+					executionTime: 1,
+					executionIndex: 0,
+					executionStatus: 'error',
+					source: [],
+					data: { main: [[{ json: { key: 'value' } }]] },
+					inputOverride: { ai_languageModel: [[{ json: { prompt: 'input-value' } }]] },
+					error: {
+						name: 'NodeApiError',
+						message: 'error-message',
+						description: 'details',
+						httpCode: '401',
+					} as unknown as ITaskData['error'],
+					metadata: {
+						subNodeExecutionData: { actions: [], metadata: {} },
+					},
+				});
+
+				const metadataPush = () =>
+					vi.mocked(push.send).mock.calls.find(([message]) => message.type === 'nodeExecuteAfter');
+
+				const redactionCases: Array<[string, Partial<RedactionContext>]> = [
+					['the policy redacts and the user cannot reveal', {}],
+					['a credential is inaccessible', { enforceCredentialUsabilityRedaction: true }],
+					['dynamic credentials ran as another user', { enforceDynCredRedaction: true }],
+				];
+
+				it.each(redactionCases)(
+					'should send redacted error and input in node metadata push when %s',
+					async (_reason, contextOverrides) => {
+						const strategy = new FullItemRedactionStrategy();
+						redactionProxy.processExecution.mockImplementation(async (execution) => {
+							const copy = {
+								...execution,
+								data: {
+									...execution.data,
+									resultData: { runData: structuredClone(execution.data.resultData.runData) },
+								},
+							};
+							await strategy.apply(copy, {
+								redactExecutionData: undefined,
+								userCanReveal: false,
+								enforceDynCredRedaction: false,
+								enforceCredentialUsabilityRedaction: false,
+								inaccessibleCredentialIds: [],
+								redactedBySubWorkflow: false,
+								memo: new Map(),
+								...contextOverrides,
+							} as RedactionContext);
+							return copy;
+						});
+
+						await lifecycleHooks.runHook('nodeExecuteAfter', [
+							nodeName,
+							errorTaskData(),
+							runExecutionData,
+						]);
+
+						const pushed = metadataPush()?.[0].data as { data: ITaskData };
+						expect(pushed.data).not.toHaveProperty('error');
+						expect(pushed.data.redactedError).toEqual({ type: 'NodeApiError', httpCode: '401' });
+						expect(pushed.data.executionStatus).toBe('error');
+						expect(pushed.data.inputOverride).toEqual({
+							ai_languageModel: [[expect.objectContaining({ json: {} })]],
+						});
+						expect(pushed.data.metadata).not.toHaveProperty('subNodeExecutionData');
+						expect(JSON.stringify(pushed)).not.toContain('error-message');
+						expect(JSON.stringify(pushed)).not.toContain('input-value');
+
+						// The metadata push still goes before the data push
+						expect(vi.mocked(push.send).mock.calls.map(([message]) => message.type)).toEqual([
+							'nodeExecuteAfter',
+							'nodeExecuteAfterData',
+						]);
+					},
+				);
+
+				it('should send full error and input in node metadata push when nothing is redacted', async () => {
+					const taskData = errorTaskData();
+
+					await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+
+					const { data: _, ...expected } = taskData;
+					expect(metadataPush()?.[0].data).toEqual(expect.objectContaining({ data: expected }));
+				});
+
+				it('should send minimal node metadata when user cannot be resolved', async () => {
+					userRepository.findOne.mockResolvedValue(null);
+					lifecycleHooks = createHooks();
+
+					await lifecycleHooks.runHook('nodeExecuteAfter', [
+						nodeName,
+						errorTaskData(),
+						runExecutionData,
+					]);
+
+					const pushed = metadataPush()?.[0].data as { data: ITaskData };
+					expect(pushed.data).not.toHaveProperty('error');
+					expect(pushed.data).not.toHaveProperty('inputOverride');
+					expect(pushed.data.metadata).toEqual({});
+					expect(pushed.data.redactedError).toEqual({ type: 'NodeApiError', httpCode: '401' });
+					expect(pushed.data.executionStatus).toBe('error');
+				});
+
+				it('should send minimal node metadata when redaction fails', async () => {
+					redactionProxy.processExecution.mockRejectedValue(new Error('redaction failed'));
+
+					await lifecycleHooks.runHook('nodeExecuteAfter', [
+						nodeName,
+						errorTaskData(),
+						runExecutionData,
+					]);
+
+					const pushed = metadataPush()?.[0].data as { data: ITaskData };
+					expect(pushed.data).not.toHaveProperty('error');
+					expect(pushed.data).not.toHaveProperty('inputOverride');
+					expect(pushed.data.redactedError).toEqual({ type: 'NodeApiError', httpCode: '401' });
+					const dataPushes = vi
+						.mocked(push.send)
+						.mock.calls.filter(([message]) => message.type === 'nodeExecuteAfterData');
+					expect(dataPushes).toEqual([]);
+				});
 			});
 		});
 
@@ -1744,6 +1903,24 @@ describe('Execution Lifecycle Hooks', () => {
 					'workflows/test-workflow-id/executions/test-execution-id/binary_data/123',
 				);
 			});
+
+			it.each(['webhook', 'manual', 'trigger'] as const)(
+				'should assign database binary data to the execution before the save in %s mode',
+				async (mode) => {
+					lifecycleHooks = createHooks(mode);
+					successfulRun.data.resultData.runData = runDataWithBinary(`database:${databaseFileId}`);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+					expect(databaseManager.assignToExecution).toHaveBeenCalledWith(
+						[databaseFileId],
+						executionId,
+					);
+					expect(databaseManager.assignToExecution.mock.invocationCallOrder[0]).toBeLessThan(
+						executionPersistence.saveExecutionOutcome.mock.invocationCallOrder[0],
+					);
+				},
+			);
 		});
 
 		describe('user of the pushRef', () => {
@@ -2182,6 +2359,42 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
+		});
+
+		it.each(['webhook', 'manual', 'trigger'] as const)(
+			'should assign database binary data to the execution before the save in %s mode',
+			async (mode) => {
+				lifecycleHooks = createHooks(mode);
+				successfulRun.data.resultData.runData = runDataWithBinary(`database:${databaseFileId}`);
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(databaseManager.assignToExecution).toHaveBeenCalledWith(
+					[databaseFileId],
+					executionId,
+				);
+				expect(databaseManager.assignToExecution.mock.invocationCallOrder[0]).toBeLessThan(
+					executionPersistence.saveExecutionOutcome.mock.invocationCallOrder[0],
+				);
+			},
+		);
+
+		it('should restore binary data IDs before the save for webhooks', async () => {
+			mockInstance(BinaryDataConfig, { mode: 'filesystem' });
+			lifecycleHooks = createHooks('webhook');
+			successfulRun.data.resultData.runData = runDataWithBinary(
+				`filesystem-v2:workflows/${workflowId}/executions/temp/binary_data/123`,
+			);
+
+			await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+			expect(binaryDataService.rename).toHaveBeenCalledWith(
+				`workflows/${workflowId}/executions/temp/binary_data/123`,
+				`workflows/${workflowId}/executions/${executionId}/binary_data/123`,
+			);
+			expect(binaryDataService.rename.mock.invocationCallOrder[0]).toBeLessThan(
+				executionPersistence.saveExecutionOutcome.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should run workflow.preExecute when legacy flag is on', async () => {
@@ -2653,7 +2866,60 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(binaryDataService.duplicateBinaryData).toHaveBeenCalledWith(
 					{ type: 'execution', workflowId: parentWorkflowId, executionId: parentExecutionId },
 					mainOutputData,
+					{ shouldDuplicate: expect.any(Function) },
 				);
+			});
+
+			describe('shouldDuplicate', () => {
+				const getShouldDuplicate = async () => {
+					successfulRun.data.resultData.runData = {
+						[nodeName]: [
+							{
+								startTime: 1,
+								executionIndex: 0,
+								executionTime: 1,
+								source: [],
+								data: { main: [[{ json: {} }]] },
+							},
+						],
+					};
+					successfulRun.data.resultData.lastNodeExecuted = nodeName;
+					binaryDataService.duplicateBinaryData.mockResolvedValue([[{ json: {} }]]);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+					const options = binaryDataService.duplicateBinaryData.mock.calls[0][2];
+					return options!.shouldDuplicate!;
+				};
+
+				it('should duplicate binary data that the parent passed to the subworkflow', async () => {
+					successfulRun.data.binaryDataAccess = ['filesystem:granted-id'];
+
+					const shouldDuplicate = await getShouldDuplicate();
+
+					await expect(shouldDuplicate('filesystem:granted-id')).resolves.toBe(true);
+					expect(binaryDataAccessService.isOwnedByWorkflow).not.toHaveBeenCalled();
+				});
+
+				it('should duplicate binary data that belongs to the subworkflow', async () => {
+					binaryDataAccessService.isOwnedByWorkflow.mockResolvedValue(true);
+
+					const shouldDuplicate = await getShouldDuplicate();
+
+					await expect(shouldDuplicate('filesystem:own-id')).resolves.toBe(true);
+					expect(binaryDataAccessService.isOwnedByWorkflow).toHaveBeenCalledWith(
+						workflowId,
+						'filesystem:own-id',
+					);
+				});
+
+				it('should not duplicate binary data that the subworkflow may not read', async () => {
+					binaryDataAccessService.isOwnedByWorkflow.mockResolvedValue(false);
+
+					const shouldDuplicate = await getShouldDuplicate();
+
+					await expect(shouldDuplicate('filesystem:other-id')).resolves.toBe(false);
+				});
 			});
 
 			it.each(
@@ -2725,6 +2991,25 @@ describe('Execution Lifecycle Hooks', () => {
 					expect(
 						binaryDataService.duplicateBinaryData.mock.invocationCallOrder.at(-1),
 					).toBeLessThan(executionPersistence.saveExecutionOutcome.mock.invocationCallOrder[0]);
+				},
+			);
+
+			it.each(['subexecution', 'worker'] as const)(
+				'should not assign database binary data to a %s that has a parent',
+				async (hookType) => {
+					if (hookType === 'worker') {
+						lifecycleHooks = getLifecycleHooksForScalingWorker(
+							mock<IWorkflowExecutionDataProcess>({ executionMode: 'integrated', workflowData }),
+							executionId,
+						);
+					}
+					successfulRun.data.resultData.runData = runDataWithBinary(`database:${databaseFileId}`);
+					successfulRun.data.parentExecution = parentExecution;
+					binaryDataService.duplicateBinaryData.mockResolvedValue([]);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+					expect(databaseManager.assignToExecution).not.toHaveBeenCalled();
 				},
 			);
 

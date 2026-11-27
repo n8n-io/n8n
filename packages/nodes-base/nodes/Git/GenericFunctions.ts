@@ -30,6 +30,12 @@ const URL_REWRITE_CONFIG_KEY_PATTERN = /^url\.(.*)\.(?:insteadof|pushinsteadof)$
 
 const CREDENTIAL_URL_HELPER_CONFIG_KEY_PATTERN = /^credential\.(.*)\.helper$/i;
 
+// A promisor remote is where git fetches objects that are missing from the repository.
+export const PROMISOR_CONFIG_KEY_PATTERNS = [
+	/^extensions\.partialclone$/i,
+	/^remote\.(.*)\.promisor$/i,
+];
+
 const KEY_BLACKLIST = [
 	FILTER_COMMAND_CONFIG_KEY_PATTERN,
 	MERGE_DRIVER_CONFIG_KEY_PATTERN,
@@ -44,11 +50,13 @@ const KEY_BLACKLIST = [
 	GPG_SSH_DEFAULT_KEY_COMMAND_CONFIG_KEY_PATTERN,
 	URL_REWRITE_CONFIG_KEY_PATTERN,
 	CREDENTIAL_URL_HELPER_CONFIG_KEY_PATTERN,
+	...PROMISOR_CONFIG_KEY_PATTERNS,
 ];
 
 export function findBlacklistedKeys(
 	config: ConfigListSummary,
 	localConfigFiles: string[],
+	patterns: RegExp[] = KEY_BLACKLIST,
 ): string[] {
 	const localConfigFileSet = new Set(localConfigFiles);
 	const localConfigIndex = config.files.findIndex((file) => localConfigFileSet.has(file));
@@ -62,7 +70,7 @@ export function findBlacklistedKeys(
 
 	for (const file of repositoryConfigFiles) {
 		for (const key of Object.keys(config.values[file] ?? {})) {
-			if (KEY_BLACKLIST.some((pattern) => pattern.test(key))) {
+			if (patterns.some((pattern) => pattern.test(key))) {
 				forbiddenKeys.add(key);
 			}
 		}

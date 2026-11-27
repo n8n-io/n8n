@@ -339,13 +339,18 @@ export class EmailReadImapV2 implements INodeType {
 			}
 		};
 
-		const connection = await ImapSimple.connect(toImapCredentials(credentials), {
-			mailbox,
-			interval:
-				options.forceReconnect === undefined
-					? undefined
-					: (options.forceReconnect as number) * 1000 * 60,
-		});
+		let connection: ImapSimple;
+		try {
+			connection = await ImapSimple.connect(toImapCredentials(credentials), {
+				mailbox,
+				interval:
+					options.forceReconnect === undefined
+						? undefined
+						: (options.forceReconnect as number) * 1000 * 60,
+			});
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), error as Error);
+		}
 
 		connection.onArrival(async ({ count }) => await fetchNewEmails(connection, count));
 

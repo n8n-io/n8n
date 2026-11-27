@@ -1,10 +1,15 @@
+import { Logger } from '@n8n/backend-common';
 import { LeasesConfig } from '@n8n/config';
 import type { OperationContext } from '@n8n/db';
+import { LeaseKindRepository, LeaseSessionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { LeaseService } from '@n8n/leases';
 import type { LeaseKind, LeaseStatus } from '@n8n/leases';
+import { InstanceSettings } from 'n8n-core';
+import { randomUUID } from 'node:crypto';
 
 import { DatabaseLeaseProvider } from './database-lease-provider';
+import { systemClock } from './lease-session-manager';
 import { assertLeaseTimings } from './lease-timings';
 
 export type LeaseTransaction = OperationContext;
@@ -16,9 +21,23 @@ export class DurableLeaseService {
 
 	private readonly leaseService: LeaseService<LeaseTransaction>;
 
-	constructor(config: LeasesConfig) {
+	constructor(
+		logger: Logger,
+		instanceSettings: InstanceSettings,
+		config: LeasesConfig,
+		kinds: LeaseKindRepository,
+		sessions: LeaseSessionRepository,
+	) {
 		assertLeaseTimings(config);
-		this.provider = new DatabaseLeaseProvider();
+		this.provider = new DatabaseLeaseProvider({
+			config,
+			kinds,
+			sessions,
+			hostId: instanceSettings.hostId,
+			bootId: randomUUID(),
+			clock: systemClock,
+			logger: logger.scoped('durable-leases'),
+		});
 		this.leaseService = new LeaseService(this.provider);
 	}
 

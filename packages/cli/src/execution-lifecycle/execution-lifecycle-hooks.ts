@@ -22,17 +22,22 @@ import type {
 	IRun,
 	IRunData,
 	IRunExecutionData,
+	ITaskData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	RelatedAgentRun,
 	RelatedExecution,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
+import {
+	redactExecutionError,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
+} from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { executeErrorWorkflow } from './execute-error-workflow';
-import { restoreBinaryDataId } from './restore-binary-data-id';
+import { assignDatabaseFilesToExecution, restoreBinaryDataId } from './restore-binary-data-id';
 import { saveExecutionProgress } from './save-execution-progress';
 import {
 	determineFinalExecutionStatus,
@@ -43,6 +48,7 @@ import {
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 import { UnsavedManualExecutionService } from './unsaved-manual-execution.service';
 
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { ExternalHooks } from '@/external-hooks';
@@ -302,6 +308,23 @@ function buildRedactableExecution(
 }
 
 /**
+ * Task data for the node metadata push when the redaction decision is not known.
+ * Keeps only the metadata that redaction keeps, so the editor can still show the node status.
+ */
+function toMinimalTaskMetadata(taskData: ITaskData): Omit<ITaskData, 'data'> {
+	const { data: _, inputOverride: __, error, metadata, ...rest } = taskData;
+	const result: Omit<ITaskData, 'data'> = { ...rest };
+	if (metadata) {
+		const { subNodeExecutionData: ___, ...safeMetadata } = metadata;
+		result.metadata = safeMetadata;
+	}
+	if (error) {
+		result.redactedError = redactExecutionError(error);
+	}
+	return result;
+}
+
+/**
  * Returns hook functions to push data to Editor-UI
  */
 function hookFunctionsPush(
@@ -367,25 +390,26 @@ function hookFunctionsPush(
 		});
 
 		const itemCountByConnectionType = getItemCountByConnectionType(data?.data);
-		const { data: _, ...taskData } = data;
-
-		pushInstance.send(
-			{
-				type: 'nodeExecuteAfter',
-				data: {
-					executionId,
-					nodeName,
-					sequenceNumber: nodeEventSequence++,
-					itemCountByConnectionType,
-					data: taskData,
+		// Take the sequence number before any await to keep engine order.
+		const sequenceNumber = nodeEventSequence++;
+		const sendMetadata = (taskData: Omit<ITaskData, 'data'>) =>
+			pushInstance.send(
+				{
+					type: 'nodeExecuteAfter',
+					data: {
+						executionId,
+						nodeName,
+						sequenceNumber,
+						itemCountByConnectionType,
+						data: taskData,
+					},
 				},
-			},
-			pushRef,
-			pushRefUserId,
-		);
+				pushRef,
+				pushRefUserId,
+			);
 
-		// Fail-closed redaction: if user cannot be resolved, skip the data push
-		// entirely rather than sending unredacted data to the client.
+		// Fail-closed redaction: if user cannot be resolved, send only minimal
+		// metadata and skip the data push.
 		const user = await getUser();
 		if (!user) {
 			logger.warn('Skipping execution data push: unable to resolve user for redaction', {
@@ -393,14 +417,17 @@ function hookFunctionsPush(
 				nodeName,
 				userId: pushRefUserId,
 			});
+			if (!memoryStoppedExecutions.isStopped(executionId)) {
+				sendMetadata(toMinimalTaskMetadata(data));
+			}
 			return;
 		}
 
 		// Apply copy-on-write redaction before sending binary data.
 		// Returns the original data if no redaction is needed (zero-copy),
 		// or a structuredClone with redaction applied.
-		// Fail-closed: if redaction throws, skip the data push rather than
-		// sending unredacted data. The metadata-only push above already fired.
+		// Fail-closed: if redaction throws, send only minimal metadata and skip
+		// the data push.
 		let dataToSend = data;
 		try {
 			const dummy = buildRedactableExecution(this, { [nodeName]: [data] }, executionData);
@@ -417,11 +444,17 @@ function hookFunctionsPush(
 				nodeName,
 				error,
 			});
+			if (!memoryStoppedExecutions.isStopped(executionId))
+				sendMetadata(toMinimalTaskMetadata(data));
 			return;
 		}
 
 		// The guard can stop the execution while the user or the redaction is awaited.
 		if (memoryStoppedExecutions.isStopped(executionId)) return;
+
+		// The metadata comes from the same redacted task data as the data push.
+		const { data: _, ...taskData } = dataToSend;
+		sendMetadata(taskData);
 
 		// We send the node execution data as a WS binary message to the FE. Not
 		// because it's more efficient on the wire: the content is a JSON string
@@ -597,12 +630,21 @@ function hookFunctionsStatistics(
  * This ensures the parent can access the binary data after the subworkflow
  * execution is cleaned up. The duplicateBinaryData method also updates
  * the binary data IDs in the data to point to the new location.
+ * Only binary data that the subworkflow may read is duplicated. Other IDs stay
+ * unchanged, so the read check of the parent applies to them. Call this before
+ * the subworkflow execution is deleted, because the check looks it up.
  */
 async function duplicateBinaryDataToParent(
 	fullRunData: IRun,
 	parentExecution: RelatedExecution,
+	subWorkflowId: string,
 	binaryDataService: BinaryDataService,
 ) {
+	const grantedIds = fullRunData.data.binaryDataAccess;
+	const shouldDuplicate = async (binaryDataId: string) =>
+		grantedIds?.includes(binaryDataId) === true ||
+		(await Container.get(BinaryDataAccessService).isOwnedByWorkflow(subWorkflowId, binaryDataId));
+
 	const outputRuns =
 		fullRunData.data.subWorkflowOutput?.lastRunOnly === false
 			? getLastExecutedNodeRuns(fullRunData)
@@ -612,6 +654,7 @@ async function duplicateBinaryDataToParent(
 		const duplicatedData = await binaryDataService.duplicateBinaryData(
 			FileLocation.ofExecution(parentExecution.workflowId, parentExecution.executionId),
 			outputData.data.main,
+			{ shouldDuplicate },
 		);
 		// Update the run data with the new binary data IDs
 		outputData.data.main = duplicatedData;
@@ -658,7 +701,15 @@ function hookFunctionsSave(
 		// data, and updates the binary data IDs in fullRunData to point to the parent location.
 		const parent = parentExecution ?? fullRunData.data.parentExecution;
 		if (parent) {
-			await duplicateBinaryDataToParent(fullRunData, parent, binaryDataService);
+			await duplicateBinaryDataToParent(
+				fullRunData,
+				parent,
+				this.workflowData.id,
+				binaryDataService,
+			);
+		} else {
+			// Not for a sub-execution: its run data refers to files of its parent.
+			await assignDatabaseFilesToExecution(fullRunData, this.executionId);
 		}
 
 		const isManualMode = this.mode === 'manual';
@@ -857,9 +908,19 @@ function hookFunctionsSaveWorker(
 		});
 		runsEndedBySave.delete(fullRunData);
 
+		await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
+
 		const { parentExecution } = fullRunData.data;
 		if (parentExecution) {
-			await duplicateBinaryDataToParent(fullRunData, parentExecution, binaryDataService);
+			await duplicateBinaryDataToParent(
+				fullRunData,
+				parentExecution,
+				this.workflowData.id,
+				binaryDataService,
+			);
+		} else {
+			// Not for a sub-execution: its run data refers to files of its parent.
+			await assignDatabaseFilesToExecution(fullRunData, this.executionId);
 		}
 
 		const isManualMode = this.mode === 'manual';

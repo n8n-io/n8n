@@ -17,6 +17,7 @@ export type McpServerToolDraftStatus =
 	| 'drafted'
 	| 'invalid_answer'
 	| 'model_failed'
+	| 'no_credits'
 	| 'not_available';
 
 export interface McpServerEventMap {

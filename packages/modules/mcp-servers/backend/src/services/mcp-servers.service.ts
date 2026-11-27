@@ -62,6 +62,9 @@ export class McpServersService {
 	}
 
 	async list(projectId: string): Promise<McpServerResponse[]> {
+		if (!(await this.servers.projectExists(projectId))) {
+			throw new NotFoundError('Project not found');
+		}
 		return await this.toResponses(await this.servers.listInProjects([projectId]));
 	}
 

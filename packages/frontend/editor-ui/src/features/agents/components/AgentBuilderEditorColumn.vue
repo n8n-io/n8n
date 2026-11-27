@@ -17,6 +17,7 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useIsCollectionsEnabled } from '@/features/shared/knowledge/useIsCollectionsEnabled';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
@@ -27,6 +28,7 @@ import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
+import AgentKnowledgeCollectionsPanel from './AgentKnowledgeCollectionsPanel.vue';
 import AgentMemoryEntriesPanel from './AgentMemoryEntriesPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
 import AgentMcpPanel from './AgentMcpPanel.vue';
@@ -84,6 +86,11 @@ provideAgentPersonalisation(
 );
 const isKnowledgeAdvancedExpanded = ref(false);
 const isMemoryViewAll = ref(false);
+const isCollectionsEnabled = useIsCollectionsEnabled();
+// Collections link to a saved agent, and the full memory list replaces the Knowledge cards.
+const showCollectionsPanel = computed(
+	() => isCollectionsEnabled.value && !props.agentUnsaved && !isMemoryViewAll.value,
+);
 
 const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
@@ -262,6 +269,7 @@ defineExpose({ onSetupTaskAction });
 								:show-label="false"
 								:validation-issues="configValidationIssues ?? []"
 								:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
+								:tools="localConfig?.tools ?? []"
 								@open-skill="emit('open-skill', $event)"
 								@add-skill="emit('add-skill')"
 								@remove-skill="emit('remove-skill', $event)"
@@ -335,6 +343,7 @@ defineExpose({ onSetupTaskAction });
 								:show-label="false"
 								:validation-issues="configValidationIssues ?? []"
 								:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
+								:tools="localConfig?.tools ?? []"
 								@open-skill="emit('open-skill', $event)"
 								@add-skill="emit('add-skill')"
 								@remove-skill="emit('remove-skill', $event)"
@@ -361,6 +370,7 @@ defineExpose({ onSetupTaskAction });
 							:agent-unsaved="agentUnsaved"
 							:sections="['tools', 'subAgents', 'tasks']"
 							@open-tool="emit('open-tool', $event)"
+							@open-skill="emit('open-skill', $event)"
 							@add-tool="emit('add-tool', $event)"
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
@@ -397,6 +407,12 @@ defineExpose({ onSetupTaskAction });
 							@delete-file="emit('delete-file', $event)"
 						/>
 					</AgentPanel>
+					<AgentKnowledgeCollectionsPanel
+						v-if="showCollectionsPanel"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:disabled="childrenDisabled"
+					/>
 					<AgentMemoryEntriesPanel
 						v-if="!agentUnsaved"
 						v-model:show-all="isMemoryViewAll"

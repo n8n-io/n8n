@@ -1,6 +1,8 @@
-import type { AgentFileDto } from '@n8n/api-types';
+import type { AgentFileDto, AgentKnowledgeCollectionDto } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { KnowledgeCollectionCatalogService } from '@/modules/knowledge/collections/knowledge-collection-catalog.service';
 import { KnowledgeFileCleanupService } from '@/modules/knowledge/files/knowledge-file-cleanup.service';
 import {
 	KnowledgeFileService,
@@ -32,6 +34,7 @@ export class AgentKnowledgeService {
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
 		private readonly knowledgeFileCleanupService: KnowledgeFileCleanupService,
+		private readonly collectionCatalogService: KnowledgeCollectionCatalogService,
 	) {}
 
 	async uploadFiles(
@@ -66,6 +69,35 @@ export class AgentKnowledgeService {
 		const scope = await this.scopeFor(agentId, projectId, { forWrite: true });
 
 		return await this.knowledgeFileService.deleteFile(scope, fileId, this.writeFence(projectId));
+	}
+
+	async listCollections(
+		user: User,
+		agentId: string,
+		projectId: string,
+	): Promise<AgentKnowledgeCollectionDto[]> {
+		await this.scopeFor(agentId, projectId);
+		return await this.collectionCatalogService.listForAgent(user, projectId, agentId);
+	}
+
+	async addCollection(user: User, agentId: string, projectId: string, collectionId: string) {
+		await this.scopeFor(agentId, projectId, { forWrite: true });
+		await this.collectionCatalogService.addAgent(
+			user,
+			{ projectId, collectionId },
+			agentId,
+			this.writeFence(projectId),
+		);
+	}
+
+	async removeCollection(user: User, agentId: string, projectId: string, collectionId: string) {
+		await this.scopeFor(agentId, projectId, { forWrite: true });
+		await this.collectionCatalogService.removeAgent(
+			user,
+			{ projectId, collectionId },
+			agentId,
+			this.writeFence(projectId),
+		);
 	}
 
 	/** Cleans up files before the agent or project deletion cascades remove their references. */

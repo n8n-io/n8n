@@ -395,7 +395,7 @@ async function handleImportFromSource(
 		// The service applies the import rules, so the card names what the import takes.
 		const { source, importable, failed } = await sources.checkImport(input);
 		const target = await audience(context, input.scope, input.projectId);
-		const { label, ref, path } = source;
+		const { label, ref } = source;
 		const names = importable.map(({ name }) => name).join(', ');
 		const selection =
 			importable.length === 1 ? '1 synced skill' : `${importable.length} synced skills`;
@@ -407,7 +407,7 @@ async function handleImportFromSource(
 					: ` ${failed.length} selected skills cannot come in.`;
 		return await ctx.suspend({
 			requestId: nanoid(),
-			resourceName: `${label}${ref ? ` · ${ref}` : ''}${path ? ` · ${path}` : ''}`,
+			resourceName: `${label}${ref ? ` · ${ref}` : ''}`,
 			message: `Connect this source and import ${selection} ${target}: ${names}.${leftOut}`,
 			severity: 'warning',
 		});
@@ -441,7 +441,9 @@ export function createSkillsTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.SKILLS)
 		.description(
 			'Manage skills: list, get, create, update and delete. A skill is reusable instructions. ' +
-				'This tool does not attach a skill to an agent.' +
+				'Before creating a new skill or building an agent, list existing skills (pass ' +
+				'attachableToAgentId for an agent) and reuse a matching skill instead of creating a ' +
+				'duplicate. This tool does not attach a skill to an agent.' +
 				(sources
 					? ' List connected sources or preview a public GitHub link with discover-source. Show the check verdicts to the user. To connect the source, use import-from-source with the same URL, scope and revision, and the selected skills. Only skills that passed come in, and the result lists the others in failed. Review warnings and accept updates in Settings > Context > Skills.'
 					: ''),

@@ -123,6 +123,7 @@ function makeExecutionStore(
 		refreshLiveStatus: vi.fn(),
 		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
 		findPrunableExecutions: vi.fn(),
+		findRetentionCountCutoff: vi.fn(),
 		deleteEndedExecutions: vi.fn(),
 	};
 }
@@ -167,13 +168,16 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		renewQueuedStep: vi.fn(),
 		findStaleRunningSteps: vi.fn().mockResolvedValue([]),
 		failStaleRunningStep: vi.fn(),
+		findStaleSettledSteps: vi.fn().mockResolvedValue([]),
+		renewSettledStep: vi.fn(),
+		acknowledgeSettledStep: vi.fn(),
 		failWaitingStep: vi.fn().mockResolvedValue(true),
 		...overrides,
 	} satisfies StepStore;
 }
 
 function makeQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
 }
 
 function makeExecutor(result: unknown = { outputs: [[{ json: { ok: true } }]] }): IStepExecutor {
@@ -1795,6 +1799,7 @@ describe('StepReadyHandler lifecycle events', () => {
 			}),
 			start: vi.fn(),
 			stop: vi.fn(),
+			size: vi.fn(),
 		};
 		const handler = makeHandler(
 			makeExecutionStore(),

@@ -611,13 +611,29 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 	}),
 ]);
 
+export const AGENT_SANDBOX_EGRESS_POLICIES = ['disabled', 'opt-in', 'opt-out'] as const;
+export type AgentSandboxEgressPolicy = (typeof AGENT_SANDBOX_EGRESS_POLICIES)[number];
+
+/**
+ * Resolves whether outbound internet access is enabled for an Agent sandbox.
+ * The instance policy acts as a hard ceiling when set to `disabled`.
+ */
+export function resolveAgentSandboxEgressEnabled(
+	policy: AgentSandboxEgressPolicy,
+	agentSetting?: boolean,
+): boolean {
+	if (policy === 'disabled') return false;
+	if (policy === 'opt-in') return agentSetting === true;
+	return agentSetting !== false;
+}
+
+export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
+
 /**
  * Unrefined agent config object shape. Use for schema derivation only
  * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
  * {@link AgentJsonConfigSchema} instead.
  */
-export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
-
 export const AgentJsonConfigBaseSchema = z.object({
 	hitlConfigurations: z
 		.array(AgentHitlConfigurationSchema)
@@ -707,6 +723,12 @@ export const AgentJsonConfigBaseSchema = z.object({
 				.optional()
 				.describe(
 					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
+				),
+			sandboxEgress: z
+				.boolean()
+				.optional()
+				.describe(
+					'Whether the agent sandbox can access the public internet. Do not set unless the user explicitly asks.',
 				),
 			guardrails: z
 				.object({
