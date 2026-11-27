@@ -29,6 +29,15 @@ describe('callCarriesInputFiles', () => {
 		).toBe(true);
 	});
 
+	it('is true for a step run whose mock input items name files', () => {
+		const mockInput = [{ json: {}, files: { data: 'file-1' } }];
+		expect(callCarriesInputFiles('run_workflow_step', { mockInput })).toBe(true);
+		expect(
+			callCarriesInputFiles('workflow_builder_executions', { action: 'run-step', mockInput }),
+		).toBe(true);
+		expect(callCarriesInputFiles('run_workflow_step', { mockInput: [{ json: {} }] })).toBe(false);
+	});
+
 	it('is true for a node run whose input items name files, also for the former nodes tool', () => {
 		const input = [{ json: {} }, { json: {}, files: { data: 'file-1' } }];
 		expect(callCarriesInputFiles('execute_node', { input })).toBe(true);

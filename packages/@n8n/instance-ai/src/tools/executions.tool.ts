@@ -458,8 +458,6 @@ async function handleRunStep(
 		context.sessionApprovedToolKeys?.has(buildRunWorkflowSessionGrantKey(input.workflowId)) ===
 			true;
 
-	const needsApproval = !allowedByScope && !allowedBySessionGrant;
-
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return {
 			executionId: '',
@@ -478,6 +476,11 @@ async function handleRunStep(
 	}
 	const mockInput = read?.items;
 
+	// The node can send the files to an outside service, so the user confirms every step run
+	// with files. Grants and the `always_allow` permission cover only step runs without files.
+	const carriesFiles = mockInput?.some((item) => item.binary !== undefined) ?? false;
+	const needsApproval = carriesFiles || (!allowedByScope && !allowedBySessionGrant);
+
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName =
@@ -492,7 +495,8 @@ async function handleRunStep(
 		});
 	}
 
-	if (resumeData?.approved && resumeData.scope === 'session') {
+	// A step run with files never stores a grant, because it must not approve the next one.
+	if (resumeData?.approved && resumeData.scope === 'session' && !carriesFiles) {
 		await context.grantSessionToolApproval?.(stepGrantKey);
 	}
 

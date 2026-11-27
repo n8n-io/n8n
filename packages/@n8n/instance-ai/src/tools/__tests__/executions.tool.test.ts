@@ -1448,6 +1448,57 @@ describe('execution tools', () => {
 				expect(suspend.mock.calls[0][0].message).toContain('with the file a.png');
 			});
 
+			const stepWithFile = {
+				action: 'run-step' as const,
+				workflowId: 'wf-1',
+				nodeName: 'Edit Image',
+				mockInput: [{ json: {}, files: { data: 'file-1' } }],
+			};
+
+			it.each([
+				[
+					'a session grant for the step',
+					{ sessionApprovedToolKeys: new Set(['executions:run-step:wf-1:Edit Image']) },
+				],
+				[
+					'a session grant for the workflow',
+					{ sessionApprovedToolKeys: new Set(['executions:run:wf-1']) },
+				],
+				[
+					'always_allow on a workflow the agent created',
+					{
+						permissions: { runWorkflow: 'always_allow' as const },
+						aiCreatedWorkflowIds: new Set(['wf-1']),
+					},
+				],
+			])('asks for every step run with files, also with %s', async (_, overrides) => {
+				const { context } = contextWithFiles(overrides);
+				const suspend = vi.fn();
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					stepWithFile,
+					createAgentCtx({ suspend }) as never,
+				);
+
+				expect(suspend).toHaveBeenCalled();
+				expect(context.executionService.runStep).not.toHaveBeenCalled();
+			});
+
+			it('does not store a grant when the user approves a step run with files for the session', async () => {
+				const grantSessionToolApproval = vi.fn();
+				const { context } = contextWithFiles({ grantSessionToolApproval });
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					stepWithFile,
+					createAgentCtx({ resumeData: { approved: true, scope: 'session' } }) as never,
+				);
+
+				expect(grantSessionToolApproval).not.toHaveBeenCalled();
+				expect(context.executionService.runStep).toHaveBeenCalled();
+			});
+
 			it('does not ask for approval or run the step with a file that the conversation does not have', async () => {
 				const { context } = contextWithFiles();
 				const suspend = vi.fn();

@@ -77,6 +77,13 @@ describe('buildAlwaysAllowKeys', () => {
 				'executions:run:wf-1',
 			]);
 			expect(
+				buildAlwaysAllowKeys('run_workflow_step', {
+					workflowId: 'wf-1',
+					nodeName: 'Edit Image',
+					mockInput: [{ json: {}, files: { data: 'file-1' } }],
+				}),
+			).toEqual([]);
+			expect(
 				buildAlwaysAllowKeys('execute_node', {
 					type: 'n8n-nodes-base.set',
 					input: [{ json: {}, files: { data: 'file-1' } }],
