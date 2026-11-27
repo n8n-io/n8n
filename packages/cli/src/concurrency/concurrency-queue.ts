@@ -47,9 +47,10 @@ export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 		if (index > -1) {
 			this.queue.splice(index, 1);
 
+			// A queued execution never held a running slot, so removing it only
+			// returns its reservation. Releasing the next waiter is left to
+			// `dequeue()`, when a running execution actually finishes.
 			this.capacity++;
-
-			this.resolveNext();
 		}
 	}
 
