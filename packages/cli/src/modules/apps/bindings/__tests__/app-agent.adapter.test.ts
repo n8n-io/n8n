@@ -429,7 +429,12 @@ describe('AppAgentAdapter', () => {
 			const result = await adapter.messages(userCtx, 'agent-1', SESSION);
 
 			expect(result.messages[0].content).toEqual([
-				{ ...delegation, toolCallId: 'tc-1', error: 'Tool execution failed.' },
+				{
+					...delegation,
+					toolCallId: 'tc-1',
+					state: 'rejected',
+					error: 'Tool execution failed.',
+				},
 				{ ...delegation, toolCallId: 'tc-2' },
 			]);
 		});

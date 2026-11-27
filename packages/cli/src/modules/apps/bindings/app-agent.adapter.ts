@@ -133,8 +133,10 @@ function toVisitorPart(
 		return { type: 'text', text: part.text };
 	}
 	if (part.type !== 'tool-call') return null;
-	const { toolName, toolCallId, state, canceled, startTime, endTime, suspendPayload } = part;
-	const error = isFailedDelegation(toolName, part.output) ? VISITOR_TOOL_ERROR_MESSAGE : part.error;
+	const { toolName, toolCallId, canceled, startTime, endTime, suspendPayload } = part;
+	const failedDelegation = isFailedDelegation(toolName, part.output);
+	const state = failedDelegation ? 'rejected' : part.state;
+	const error = failedDelegation ? VISITOR_TOOL_ERROR_MESSAGE : part.error;
 	return {
 		type: 'tool-call',
 		...(toolName !== undefined && { toolName }),
