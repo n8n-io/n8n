@@ -786,6 +786,10 @@ describe('SkillSourceConnectDialog', () => {
 				skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [pdf, lint, docx] }));
 				const view = render();
 				await review(view);
+				const importButton = view.getByTestId('skill-source-import');
+				// A tick state that differs from the default, so a reset of the ticks shows.
+				await userEvent.click(view.getByRole('checkbox', { name: 'pdf' }));
+				expect(importButton).toHaveTextContent('Import 2 skills to Global');
 				const toggle = within(group(view, 'skills')).getByTestId('skill-source-group-toggle');
 				expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
@@ -793,15 +797,15 @@ describe('SkillSourceConnectDialog', () => {
 
 				expect(toggle).toHaveAttribute('aria-expanded', 'false');
 				expect(rows(view)).toEqual(['tools/lint']);
-				expect(view.getByTestId('skill-source-import')).toHaveTextContent(
-					'Import 3 skills to Global',
-				);
+				expect(importButton).toHaveTextContent('Import 2 skills to Global');
 
 				await userEvent.click(toggle);
 
 				expect(toggle).toHaveAttribute('aria-expanded', 'true');
 				expect(rows(view)).toEqual(['skills/pdf', 'skills/docx', 'tools/lint']);
-				expect(view.getByRole('checkbox', { name: 'pdf' })).toBeChecked();
+				expect(view.getByRole('checkbox', { name: 'pdf' })).not.toBeChecked();
+				expect(view.getByRole('checkbox', { name: 'docx' })).toBeChecked();
+				expect(importButton).toHaveTextContent('Import 2 skills to Global');
 			});
 
 			it('opens a closed folder when a search finds a skill in it', async () => {

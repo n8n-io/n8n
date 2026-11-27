@@ -588,8 +588,9 @@ function hasPreview(finding: SkillScanFinding): boolean {
 .findings .findingLink {
 	color: inherit;
 
+	/* The underline stays, so the link still reads as a link. It gets thicker on hover. */
 	&:hover {
-		text-decoration-line: none;
+		text-decoration-thickness: calc(var(--border-width) * 2);
 	}
 }
 
