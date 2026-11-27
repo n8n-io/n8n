@@ -122,6 +122,8 @@ export class EngineV2Module implements ModuleInterface {
 		if (Container.get(InstanceSettings).instanceType === 'main') {
 			const { EngineV2EndedExecutionFeed } = await import('./ended-feed/ended-execution-feed.js');
 			Container.get(EngineV2EndedExecutionFeed).start();
+			const { EngineV2LedgerFeed } = await import('./ledger-feed/engine-v2-ledger-feed.js');
+			Container.get(EngineV2LedgerFeed).start();
 		}
 	}
 
@@ -165,6 +167,8 @@ export class EngineV2Module implements ModuleInterface {
 	async shutdown() {
 		const { EngineV2EndedExecutionFeed } = await import('./ended-feed/ended-execution-feed.js');
 		await Container.get(EngineV2EndedExecutionFeed).stop();
+		const { EngineV2LedgerFeed } = await import('./ledger-feed/engine-v2-ledger-feed.js');
+		await Container.get(EngineV2LedgerFeed).stop();
 
 		try {
 			if (Container.get(EngineConfig).mode === 'in-process') {

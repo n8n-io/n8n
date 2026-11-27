@@ -90,6 +90,32 @@ export interface EndedExecutionView {
 	} | null;
 }
 
+/** Where a reader of the started feed stopped, in `(createdAt, id)` order. */
+export interface StartedExecutionCursor {
+	createdAt: string;
+	id: string;
+}
+
+export interface StartedExecutionQuery {
+	after?: StartedExecutionCursor;
+	limit: number;
+	/** `created_at` is the transaction start, so a row can commit behind one the reader passed. */
+	settleMs: number;
+}
+
+/** A run that the data plane started by itself: today, a sub-execution. */
+export interface StartedExecutionView {
+	id: string;
+	workflowId: string;
+	workflowName: string | null;
+	mode: ExecutionMode;
+	hostMode: string;
+	userId: string | null;
+	projectId: string | null;
+	parent: ParentLink;
+	createdAt: Date;
+}
+
 /**
  * Read view of an execution: what a caller is shown, which is not what running
  * one needs. It carries the timing the execution path never reads, and omits
@@ -177,4 +203,7 @@ export interface ExecutionViewStore {
 
 	/** Ended executions after `query.after`, oldest end first. */
 	listEndedExecutionViews(query: EndedExecutionQuery): Promise<EndedExecutionView[]>;
+
+	/** Executions the data plane started by itself after `query.after`, oldest first. */
+	listStartedExecutionViews(query: StartedExecutionQuery): Promise<StartedExecutionView[]>;
 }

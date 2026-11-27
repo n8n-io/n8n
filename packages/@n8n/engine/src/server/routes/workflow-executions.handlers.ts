@@ -108,6 +108,30 @@ export function createListEndedExecutionsHandler(
 	};
 }
 
+const ListStartedExecutionsBody = z
+	.object({
+		after: z
+			.object({ createdAt: datetimeStringWithOffset(), id: z.string().uuid() })
+			.strict()
+			.optional(),
+		limit: z.number().int().min(1).max(500).default(100),
+		settleMs: z.number().int().min(0).max(60_000).default(5_000),
+	})
+	.strict();
+
+export function createListStartedExecutionsHandler(
+	executionQuery: ExecutionQueryService,
+): RequestHandler {
+	return async (req, res) => {
+		const parsed = ListStartedExecutionsBody.safeParse(req.body);
+		if (!parsed.success) {
+			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
+			return;
+		}
+		res.status(200).json(await executionQuery.listStartedExecutions(parsed.data));
+	};
+}
+
 /**
  * `strict`, so a paging key is refused rather than stripped: the body names
  * one execution, and a `limit` or `before` would otherwise read as honored.

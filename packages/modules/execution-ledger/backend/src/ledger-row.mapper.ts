@@ -26,7 +26,7 @@ export function toStartedRow(
 		blockedBy: 'none',
 		runtimeMs: 0,
 		timeSavedMin: 0,
-		origin: 'v1',
+		origin: facts.origin ?? 'v1',
 		eventId,
 	};
 }

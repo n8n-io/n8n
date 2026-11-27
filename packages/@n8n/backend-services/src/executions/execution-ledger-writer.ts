@@ -1,4 +1,9 @@
-import type { ExecutionLedgerBlockedBy, ExecutionLedgerOutcome, OperationContext } from '@n8n/db';
+import type {
+	ExecutionLedgerBlockedBy,
+	ExecutionLedgerOrigin,
+	ExecutionLedgerOutcome,
+	OperationContext,
+} from '@n8n/db';
 import type { WorkflowExecuteMode, WorkflowExecutionSource } from 'n8n-workflow';
 
 type RunFacts = {
@@ -11,6 +16,8 @@ type RunFacts = {
 	/** The owner project, when the caller already has it. The writer looks it up when unset. */
 	projectId?: string;
 	occurredAt: Date;
+	/** The engine that ran the run. The writer stores `v1` when unset. */
+	origin?: ExecutionLedgerOrigin;
 };
 
 export type ExecutionLedgerStartedFacts = RunFacts;

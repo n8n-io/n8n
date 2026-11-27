@@ -1,6 +1,7 @@
 import type {
 	EndedExecutionQuery,
 	EndedExecutionView,
+	StartedExecutionQuery,
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
@@ -48,6 +49,16 @@ export class ExecutionQueryService {
 		return {
 			items: items.map((item) => ({ ...item, eventKey: endedEventKey(item) })),
 			cursor: last ? { finishedAt: toIso(last.finishedAt), id: last.id } : (query.after ?? null),
+		};
+	}
+
+	/** One page of the started feed. The cursor rules are the same as for the ended feed. */
+	async listStartedExecutions(query: StartedExecutionQuery) {
+		const items = await this.viewStore.listStartedExecutionViews(query);
+		const last = items.at(-1);
+		return {
+			items: items.map((item) => ({ ...item, eventKey: `${item.id}:started` })),
+			cursor: last ? { createdAt: toIso(last.createdAt), id: last.id } : (query.after ?? null),
 		};
 	}
 

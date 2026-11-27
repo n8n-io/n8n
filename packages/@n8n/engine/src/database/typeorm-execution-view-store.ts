@@ -8,6 +8,8 @@ import { ExecutionNotFoundError } from '../execution/execution-store';
 import type {
 	EndedExecutionQuery,
 	EndedExecutionView,
+	StartedExecutionQuery,
+	StartedExecutionView,
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
@@ -199,6 +201,36 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addOrderBy('execution.id')
 			.limit(query.limit)
 			.getRawMany<EndedExecutionView>();
+	}
+
+	async listStartedExecutionViews(query: StartedExecutionQuery): Promise<StartedExecutionView[]> {
+		// Only runs the data plane started by itself. The control plane writes the others.
+		const qb = this.executions
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.addSelect('execution.workflow_id', 'workflowId')
+			.addSelect("execution.workflow->>'name'", 'workflowName')
+			.addSelect('execution.mode', 'mode')
+			.addSelect(hostMode('execution'), 'hostMode')
+			.addSelect("execution.caller_context->>'userId'", 'userId')
+			.addSelect("execution.caller_context->>'projectId'", 'projectId')
+			.addSelect(parentLinkSql('execution'), 'parent')
+			.addSelect('execution.created_at', 'createdAt')
+			.where('execution.parent_execution_id IS NOT NULL')
+			.andWhere("execution.created_at < now() - interval '1 millisecond' * :settleMs", {
+				settleMs: query.settleMs,
+			});
+		if (query.after) {
+			qb.andWhere('(execution.created_at, execution.id) > (:afterCreatedAt, :afterId)', {
+				afterCreatedAt: query.after.createdAt,
+				afterId: query.after.id,
+			});
+		}
+		return await qb
+			.orderBy('execution.created_at')
+			.addOrderBy('execution.id')
+			.limit(query.limit)
+			.getRawMany<StartedExecutionView>();
 	}
 
 	private selectExecution(id: string): SelectQueryBuilder<WorkflowExecution> {

@@ -14,6 +14,9 @@ export type {
 	ListEndedExecutionsRequest,
 	ListEndedExecutionsResponse,
 	EndedExecutionItem,
+	ListStartedExecutionsRequest,
+	ListStartedExecutionsResponse,
+	StartedExecutionItem,
 	ExecutionListItem,
 } from './api.types';
 export { fail } from './error-response';

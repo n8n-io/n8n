@@ -11,6 +11,8 @@ import type {
 	FindLatestExecutionRequest,
 	ListEndedExecutionsRequest,
 	ListEndedExecutionsResponse,
+	ListStartedExecutionsRequest,
+	ListStartedExecutionsResponse,
 	ResolveStepRequest,
 	ResolveStepResponse,
 	ResumeLocateRequest,
@@ -159,6 +161,23 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		});
 		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
 		return response.body as ListEndedExecutionsResponse;
+	}
+
+	/** One page of the runs that the data plane started by itself after `request.after`. */
+	async listStartedExecutions(
+		request: ListStartedExecutionsRequest,
+	): Promise<ListStartedExecutionsResponse> {
+		const response = await this.http.request<ListStartedExecutionsResponse | EngineErrorResponse>({
+			url: '/api/workflow-executions/started',
+			method: 'POST',
+			body: request,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			disableFollowRedirect: true,
+		});
+		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
+		return response.body as ListStartedExecutionsResponse;
 	}
 
 	async findLatestExecution(

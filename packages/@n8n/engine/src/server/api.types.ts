@@ -10,6 +10,7 @@ import type {
 } from '../execution';
 import type {
 	EndedExecutionCursor,
+	StartedExecutionCursor,
 	ExecutionListFilter,
 	ExecutionListQuery,
 } from '../execution/execution-view-store';
@@ -52,6 +53,32 @@ export interface EndedExecutionItem {
 		nodeType: string | null;
 		error: StepError;
 	} | null;
+}
+
+/** `POST /started` body. `settleMs` defaults to 5 seconds. */
+export interface ListStartedExecutionsRequest {
+	after?: StartedExecutionCursor;
+	limit?: number;
+	settleMs?: number;
+}
+
+/** A run that the data plane started by itself, so no control plane saw its start. */
+export interface StartedExecutionItem {
+	eventKey: string;
+	id: string;
+	workflowId: string;
+	workflowName: string | null;
+	mode: ExecutionMode;
+	hostMode: string;
+	userId: string | null;
+	projectId: string | null;
+	parent: ParentLink;
+	createdAt: string;
+}
+
+export interface ListStartedExecutionsResponse {
+	items: StartedExecutionItem[];
+	cursor: StartedExecutionCursor | null;
 }
 
 /** `POST /ended` response. Send `cursor` back as `after` once the page is handled. */
