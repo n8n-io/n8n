@@ -78,12 +78,26 @@ async function openDeleteItem(view: ReturnType<typeof renderWithScopes>) {
 }
 
 /** Opens the menu once the versions are read, so "Delete policy" is on, and picks it. */
-async function confirmDelete(view: ReturnType<typeof renderWithScopes>) {
-	confirm.mockResolvedValue('confirm');
+async function confirmDelete(
+	view: ReturnType<typeof renderWithScopes>,
+	answer: 'confirm' | 'cancel' = 'confirm',
+) {
+	confirm.mockResolvedValue(answer);
 	await waitFor(() => expect(fetchProjectPolicyVersions).toHaveBeenCalled());
 	const item = await openDeleteItem(view);
 	await waitFor(() => expect(item).not.toHaveAttribute('data-disabled'));
 	await userEvent.click(item);
+}
+
+/** Holds the delete request open until the test settles it. */
+function deferDelete() {
+	let settle!: { resolve: () => void; reject: (error: unknown) => void };
+	deleteProjectPolicy.mockReturnValue(
+		new Promise<void>((resolve, reject) => {
+			settle = { resolve, reject };
+		}),
+	);
+	return settle;
 }
 
 describe('ProjectPolicyView', () => {
@@ -163,13 +177,7 @@ describe('ProjectPolicyView', () => {
 		});
 
 		it('asks before it deletes and sends nothing when the admin cancels', async () => {
-			confirm.mockResolvedValue('cancel');
-			const view = renderWithScopes();
-			await waitFor(() => expect(fetchProjectPolicyVersions).toHaveBeenCalled());
-			const item = await openDeleteItem(view);
-			await waitFor(() => expect(item).not.toHaveAttribute('data-disabled'));
-
-			await userEvent.click(item);
+			await confirmDelete(renderWithScopes(), 'cancel');
 
 			await waitFor(() =>
 				expect(confirm).toHaveBeenCalledWith(
@@ -195,34 +203,24 @@ describe('ProjectPolicyView', () => {
 		});
 
 		it('turns the action off while the delete runs', async () => {
-			let finish!: () => void;
-			deleteProjectPolicy.mockReturnValue(
-				new Promise<void>((resolve) => {
-					finish = resolve;
-				}),
-			);
+			const request = deferDelete();
 			const view = renderWithScopes();
 			await confirmDelete(view);
 			await waitFor(() => expect(deleteProjectPolicy).toHaveBeenCalled());
 
 			expect(await openDeleteItem(view)).toHaveAttribute('data-disabled');
 
-			finish();
+			request.resolve();
 			await waitFor(() => expect(push).toHaveBeenCalled());
 		});
 
 		it('stays on the page it opened when the admin left before the delete ended', async () => {
-			let finish!: () => void;
-			deleteProjectPolicy.mockReturnValue(
-				new Promise<void>((resolve) => {
-					finish = resolve;
-				}),
-			);
+			const request = deferDelete();
 			await confirmDelete(renderWithScopes());
 			await waitFor(() => expect(deleteProjectPolicy).toHaveBeenCalled());
 
 			route.params.teamProjectId = 'other';
-			finish();
+			request.resolve();
 
 			await waitFor(() => expect(showMessage).toHaveBeenCalled());
 			expect(push).not.toHaveBeenCalled();
@@ -273,17 +271,12 @@ describe('ProjectPolicyView', () => {
 		});
 
 		it('does not reload a page that the admin left when another admin changed the policy', async () => {
-			let fail!: () => void;
-			deleteProjectPolicy.mockReturnValue(
-				new Promise<void>((_resolve, reject) => {
-					fail = () => reject(new ResponseError('changed', { httpStatusCode: 409 }));
-				}),
-			);
+			const request = deferDelete();
 			await confirmDelete(renderWithScopes());
 			await waitFor(() => expect(deleteProjectPolicy).toHaveBeenCalled());
 
 			route.params.teamProjectId = 'other';
-			fail();
+			request.reject(new ResponseError('changed', { httpStatusCode: 409 }));
 			await new Promise((resolve) => setTimeout(resolve));
 
 			expect(fetchProjectPolicies).toHaveBeenCalledTimes(1);
@@ -304,17 +297,12 @@ describe('ProjectPolicyView', () => {
 		});
 
 		it('stays where the admin went when the policy was already deleted', async () => {
-			let fail!: () => void;
-			deleteProjectPolicy.mockReturnValue(
-				new Promise<void>((_resolve, reject) => {
-					fail = () => reject(new ResponseError('no policy', { httpStatusCode: 404 }));
-				}),
-			);
+			const request = deferDelete();
 			await confirmDelete(renderWithScopes());
 			await waitFor(() => expect(deleteProjectPolicy).toHaveBeenCalled());
 
 			route.params.teamProjectId = 'other';
-			fail();
+			request.reject(new ResponseError('no policy', { httpStatusCode: 404 }));
 
 			await waitFor(() => expect(showMessage).toHaveBeenCalled());
 			expect(push).not.toHaveBeenCalled();
