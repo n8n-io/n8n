@@ -1,0 +1,25 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_c792ac6863e1cd::t_5af0f02a946bba 210-215,1714-1715
+packages/cli/src/modules/source-control.ee/source-control-export.service.ee.ts
+  s_c792ac6863e1cd::t_64a7e057f06092 172,202,208,229,234,303,324,364,458-460,489,503
+packages/cli/src/modules/source-control.ee/__tests__/source-control-export.service.test.ts
+  s_c792ac6863e1cd::t_d2d3a97ad46458 119,122,160,196,222,281,335,375,447-449,462,493,520,579,620,623-624,632,635,669,690,700,703-707,715,718,760,763,765,843,866-868,952,967,1034,1037,1077,1082
+packages/cli/test/integration/environments/source-control-export.service.test.ts
+  s_c792ac6863e1cd::t_5aaf0d27163b41 120,122,333,374,421,467,511,575,577,579,597,599,612,631
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6e4f3e79d5fc470b9ec0d91601ba58b3e2755aa1",
+  "prompts": {},
+  "sessions": {
+    "s_c792ac6863e1cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "245d3376-c26b-422f-808d-ff3b903f6e99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
