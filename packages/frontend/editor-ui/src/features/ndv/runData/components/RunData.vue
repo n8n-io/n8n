@@ -145,6 +145,7 @@ type Props = {
 	disableDisplayModeSelection?: boolean;
 	disableEdit?: boolean;
 	disablePin?: boolean;
+	disableUnpin?: boolean;
 	compact?: boolean;
 	showActionsOnHover?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
@@ -171,6 +172,7 @@ const props = withDefaults(defineProps<Props>(), {
 	disableDisplayModeSelection: false,
 	disableEdit: false,
 	disablePin: false,
+	disableUnpin: false,
 	disableHoverHighlight: false,
 	disableSettingsHint: false,
 	compact: false,
@@ -1567,7 +1569,7 @@ defineExpose({ enterEditMode });
 			data-test-id="ndv-pinned-data-callout"
 		>
 			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
-			<span v-if="!isReadOnlyRoute && !isArchivedWorkflow && !readOnlyEnv" class="ml-4xs">
+			<span v-if="!disableUnpin && !isReadOnly" class="ml-4xs">
 				<N8nLink
 					theme="secondary"
 					size="small"
@@ -1868,7 +1870,7 @@ defineExpose({ enterEditMode });
 					{{ i18n.baseText('runData.trimmedData.corrupted') }}
 				</N8nText>
 				<N8nButton
-					v-if="pinnedData.hasData.value"
+					v-if="pinnedData.hasData.value && !disableUnpin && !isReadOnly"
 					class="mt-s"
 					size="small"
 					data-test-id="ndv-trimmed-corrupted-unpin"

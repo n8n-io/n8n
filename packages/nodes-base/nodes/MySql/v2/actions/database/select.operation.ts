@@ -27,6 +27,7 @@ import {
 	addWhereClauses,
 	checkStartAfterColumn,
 	escapeSqlIdentifier,
+	getTableName,
 	getUniqueKeyColumns,
 	getWhereClauses,
 	prepareErrorItem,
@@ -101,9 +102,7 @@ export async function execute(
 
 	for (let i = 0; i < inputItems.length; i++) {
 		try {
-			const table = this.getNodeParameter('table', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const table = getTableName(this, i);
 
 			const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
 			const selectDistinct = this.getNodeParameter('options.selectDistinct', i, false) as boolean;
