@@ -1,0 +1,39 @@
+packages/frontend/@n8n/rest-api-client/src/utils.ts
+  s_1f81abe09807b5::t_a4c391ecc66b13 1
+packages/@n8n/telemetry/src/__tests__/internal-api-usage.test.ts
+  s_1f81abe09807b5::t_2c2fc469d4dd9e 37
+  s_1f81abe09807b5::t_3fdd6010b4d370 14
+packages/cli/src/telemetry/index.ts
+  s_1f81abe09807b5::t_1a2ef93cfd0124 476
+  s_1f81abe09807b5::t_1a8eed6f324cb4 120-125
+packages/@n8n/telemetry/src/events/internal-api.ts
+  s_1f81abe09807b5::t_97a75650fba181 39
+  s_1f81abe09807b5::t_eea2ac1478ea9d 4,11,18
+  s_1f81abe09807b5::t_c0497cf6d8fc7b 44
+packages/cli/src/__tests__/controller.registry.test.ts
+  s_1f81abe09807b5::t_9d35f31ce168b0 8
+  s_1f81abe09807b5::t_b2dfd60b7ffcfd 9
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_1f81abe09807b5::t_8c3d2701553231 1539
+  s_1f81abe09807b5::t_0803f0cbc7b849 1475
+  s_1f81abe09807b5::t_0757a47d937809 1507
+packages/cli/src/controller.registry.ts
+  s_1f81abe09807b5::t_359d16cee1199d 5
+  s_1f81abe09807b5::t_0b88fee8ff02f7 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d94078981294c5aef8f605b7d7f31758d9d171e0",
+  "prompts": {},
+  "sessions": {
+    "s_1f81abe09807b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66abfa0d-c819-44a1-b320-43149bbebabb",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_55c9c16466c150::t_e107a9cab266eb 18
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.integration.test.ts
+  s_55c9c16466c150::t_e5721ffd62f326 76
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_55c9c16466c150::t_08767b204dfc7b 208-209,315-316,468-469,557-558,605-606,1723-1724
+packages/cli/src/modules/source-control.ee/source-control-export.service.ee.ts
+  s_55c9c16466c150::t_321789eccbc19d 420-421,453-454,461,469,479,484,495
+packages/cli/test/integration/workflows/version-scoped-settings.test.ts
+  s_55c9c16466c150::t_e0239dfe665155 67
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_55c9c16466c150::t_d62ba4723f842a 169
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_55c9c16466c150::t_d4a12e32c47fe3 155
+packages/nodes-base/nodes/N8n/v2/overrides.ts
+  s_55c9c16466c150::t_c9dfeb6d7ab700 28,48,70,129-130,133,161-162,173-174,178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2714171781dd04d91f8cd0f4a605132673b90787",
+  "prompts": {},
+  "sessions": {
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

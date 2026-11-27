@@ -1,0 +1,45 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_af367323ed1620::t_b95d159f12e9d7 2143-2167
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_af367323ed1620::t_fa8a553a8607e8 3,127,131,181,2098-2128,2836-2974
+packages/cli/src/modules/agents/__tests__/agent-thread-redaction.service.test.ts
+  s_af367323ed1620::t_21e873b04d6fb1 1,131,467,472,475-489,491-494,496,498-565
+packages/cli/src/modules/agents/__tests__/test-utils/thread-reader.ts
+  s_af367323ed1620::t_22de406d64021e 18-19
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_af367323ed1620::t_42e36f7ff346b2 46,473
+packages/cli/src/modules/agents/agent-thread-redaction.service.ts
+  s_af367323ed1620::t_dcaf0b46c8d50d 8,88-93,113,118-122,179,199-210,214-235,247-249,301-302,308-312,314,316,319,322,324,326-327,331,334,336,338-349,353-364,473-486
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_af367323ed1620::t_3a6eb7c6caa63c 87-101,154-156
+packages/cli/test/integration/agents/system-agent-user-deletion.test.ts
+  s_af367323ed1620::t_1a4d600e5bd79c 7,45,67-68
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_af367323ed1620::t_8953d4e81a0eb4 4230-4259
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_6f169c4a47095e::t_9cc6bbd3ec84e8 97,99,104-105,111-134,1102-1105,1119-1121,1144-1146,1187-1192,1194,1196-1200,1225-1260,1267-1288,1291-1295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0cf581e882945466f421b48d9a48312396ee8e5d",
+  "prompts": {},
+  "sessions": {
+    "s_6f169c4a47095e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-acdeee567512a4396",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
