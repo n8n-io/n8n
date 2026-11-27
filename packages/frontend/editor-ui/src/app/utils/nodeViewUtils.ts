@@ -395,7 +395,9 @@ export function getGenericHints({
 	getNodeByName,
 	connections,
 	hasNodeRun,
+	t,
 }: {
+	t?: (key: string, values?: Record<string, string | number>) => string;
 	workflowNode: INode;
 	node: INodeUi;
 	nodeType: INodeTypeDescription;
@@ -417,6 +419,7 @@ export function getGenericHints({
 		if (!stringifiedParameters.includes('$fromAI')) {
 			nodeHints.push({
 				message:
+					t?.('ndv.nodeHints.noAiParameters') ??
 					'No parameters are set up to be filled by AI. Click on the ✨ button next to a parameter to allow AI to set its value.',
 				location: 'outputPane',
 				whenToDisplay: 'afterExecution',
@@ -428,7 +431,9 @@ export function getGenericHints({
 	if (hasNodeRun && workflowNode.parameters.limit) {
 		if (nodeOutputData.length === workflowNode.parameters.limit) {
 			nodeHints.push({
-				message: `Limit of ${workflowNode.parameters.limit} items reached. There may be more items that aren't being returned. Tweak the 'Return All' or 'Limit' parameters to access more items.`,
+				message:
+					t?.('ndv.nodeHints.limitReached', { count: workflowNode.parameters.limit }) ??
+					`Limit of ${workflowNode.parameters.limit} items reached. There may be more items that aren't being returned. Tweak the 'Return All' or 'Limit' parameters to access more items.`,
 				location: 'outputPane',
 				whenToDisplay: 'afterExecution',
 			});
@@ -444,6 +449,7 @@ export function getGenericHints({
 		if (!executeOnce) {
 			nodeHints.push({
 				message:
+					t?.('ndv.nodeHints.multipleRuns') ??
 					'This node runs multiple times, once for each input item. Use ‘Execute Once’ in the node settings if you want to run it only once.',
 				location: 'outputPane',
 			});
@@ -455,7 +461,9 @@ export function getGenericHints({
 		const executeOnce = getNodeByName(node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
-				message: 'This action will run only once, for the first input item',
+				message:
+					t?.('ndv.nodeHints.executeOnceFirstItem') ??
+					'This action will run only once, for the first input item',
 				location: 'outputPane',
 			});
 		}
@@ -484,7 +492,11 @@ export function getGenericHints({
 
 		if (expressionInFieldName.length > 0) {
 			nodeHints.push({
-				message: `An expression is used in 'Fields to Set' in ${expressionInFieldName.length === 1 ? 'field' : 'fields'} ${expressionInFieldName.join(', ')}, did you mean to use it in the value instead?`,
+				message:
+					t?.('ndv.nodeHints.expressionInFieldName', {
+						fieldText: `${expressionInFieldName.length === 1 ? 'field' : 'fields'} ${expressionInFieldName.join(', ')}`,
+					}) ??
+					`An expression is used in 'Fields to Set' in ${expressionInFieldName.length === 1 ? 'field' : 'fields'} ${expressionInFieldName.join(', ')}, did you mean to use it in the value instead?`,
 				whenToDisplay: 'beforeExecution',
 				location: 'outputPane',
 			});
@@ -498,7 +510,9 @@ export function getGenericHints({
 
 		if (!firstNodesInLoop.length) {
 			nodeHints.push({
-				message: "No nodes connected to the 'loop' output of this node",
+				message:
+					t?.('ndv.nodeHints.noLoopConnection') ??
+					"No nodes connected to the 'loop' output of this node",
 				whenToDisplay: 'beforeExecution',
 				location: 'outputPane',
 			});
@@ -508,6 +522,7 @@ export function getGenericHints({
 				if (!nodeChilds.includes(node.name)) {
 					nodeHints.push({
 						message:
+							t?.('ndv.nodeHints.loopNotConnectedBack') ??
 							"The last node in the branch of the 'loop' output must be connected back to the input of this node to loop correctly",
 						whenToDisplay: 'beforeExecution',
 						location: 'outputPane',
