@@ -712,7 +712,9 @@ export interface InstanceAiExecutionService {
 			abortSignal?: AbortSignal;
 			/**
 			 * Binary data for the trigger item, by binary property name. The run
-			 * gives it to the trigger together with `inputData`.
+			 * gives it to the trigger together with `inputData`, and grants the run
+			 * read access to each stored binary here. Build it only from
+			 * `InstanceAiStoredFileReader.readBinary`, never from model input.
 			 */
 			binary?: IBinaryKeyData;
 			/**

@@ -6093,6 +6093,54 @@ describe('createExecutionAdapter run()', () => {
 		expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
 	});
 
+	describe('binary data access of a run', () => {
+		const conversationFileId = 'filesystem-v2:agents/assistant/attachments/file-1/binary_data/b1';
+		const foreignId = 'filesystem-v2:workflows/other-wf/executions/9/binary_data/b2';
+		const foreignBinary = { data: 'filesystem-v2', id: foreignId, mimeType: 'text/plain' };
+		const triggerWorkflow = {
+			id: 'wf-1',
+			nodes: [
+				{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1, position: [0, 0] },
+			],
+			connections: {},
+			// Pin data can name any stored binary, so it must not get a grant.
+			pinData: { Other: [{ json: {}, binary: { data: foreignBinary } }] },
+		};
+
+		it('grants the run exactly the files that the caller resolved', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(triggerWorkflow, {
+				execution: makeExecution({ status: 'success' }),
+			});
+
+			await adapter.run(
+				'wf-1',
+				// A binary in the input JSON comes from the model, so it must not get a grant.
+				{ file: foreignBinary },
+				{
+					binary: {
+						data: { data: 'filesystem-v2', id: conversationFileId, mimeType: 'text/plain' },
+					},
+				},
+			);
+
+			const runData = mockWorkflowRunner.run.mock.calls[0][0];
+			expect(runData.binaryDataAccess).toEqual([conversationFileId]);
+			expect(runData.executionData.binaryDataAccess).toEqual([conversationFileId]);
+		});
+
+		it('grants nothing to a run without files', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(triggerWorkflow, {
+				execution: makeExecution({ status: 'success' }),
+			});
+
+			await adapter.run('wf-1', { file: foreignBinary });
+
+			const runData = mockWorkflowRunner.run.mock.calls[0][0];
+			expect(runData.binaryDataAccess).toBeUndefined();
+			expect(runData.executionData?.binaryDataAccess).toBeUndefined();
+		});
+	});
+
 	it('forces save settings so the agent can read the result back', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',

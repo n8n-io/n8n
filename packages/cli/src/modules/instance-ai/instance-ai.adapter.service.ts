@@ -136,7 +136,7 @@ import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { InstanceSettings } from 'n8n-core';
+import { collectBinaryDataIds, InstanceSettings } from 'n8n-core';
 import {
 	type ICredentialsDecrypted,
 	type IDataObject,
@@ -2676,6 +2676,18 @@ export class InstanceAiAdapterService {
 						},
 						executionData: null,
 					});
+				}
+
+				// A node reads a stored binary only when its workflow owns it or the run grants it.
+				// Grant exactly the conversation files that the host resolved for `binary`. A binary
+				// id in `inputData` or in pin data gets no grant, so the core access check applies.
+				const binaryDataAccess = options?.binary
+					? collectBinaryDataIds([{ json: {}, binary: options.binary }])
+					: [];
+				if (binaryDataAccess.length > 0) {
+					runData.binaryDataAccess = binaryDataAccess;
+					// A run that starts from execution data, or runs on a worker, reads the grant there.
+					if (runData.executionData) runData.executionData.binaryDataAccess = binaryDataAccess;
 				}
 
 				const trackBuilderExecutedWorkflow = (
