@@ -129,23 +129,34 @@ const saveDataErrorExecutionOptions = ref<Array<{ key: string; value: string }>>
 const saveDataSuccessExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveExecutionProgressOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
 const saveManualOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
-const executionLogicAllOptions = ref<Array<{ key: string; value: string; description: string }>>([
+const executionLogicAllOptions = ref<
+	Array<{ key: string; value: string; badge: string; description: string }>
+>([
 	{
 		key: 'v0',
 		value: i18n.baseText('workflowSettings.executionLogic.v0.title'),
+		badge: i18n.baseText('workflowSettings.executionLogic.v0.badge'),
 		description: i18n.baseText('workflowSettings.executionLogic.v0.description'),
 	},
 	{
 		key: 'v1',
 		value: i18n.baseText('workflowSettings.executionLogic.v1.title'),
+		badge: i18n.baseText('workflowSettings.executionLogic.v1.badge'),
 		description: i18n.baseText('workflowSettings.executionLogic.v1.description'),
 	},
 	{
 		key: 'v2',
 		value: i18n.baseText('workflowSettings.executionLogic.v2.title'),
+		badge: i18n.baseText('workflowSettings.executionLogic.v2.badge'),
 		description: i18n.baseText('workflowSettings.executionLogic.v2.description'),
 	},
 ]);
+
+function executionLogicBadgeVariant(key: string): 'subtle' | 'success' | 'warning' {
+	if (key === 'v1') return 'success';
+	if (key === 'v2') return 'warning';
+	return 'subtle';
+}
 const timezones = ref<Array<{ key: string; value: string }>>([]);
 // Filter the list ourselves: Element Plus' built-in filter re-renders the select once per
 // hidden option, which exceeds Vue's recursive update limit for the long timezone list.
@@ -1167,7 +1178,16 @@ onBeforeUnmount(() => {
 										:value="option.key"
 									>
 										<div class="list-option">
-											<div class="option-headline">{{ option.value }}</div>
+											<div :class="[$style.logicTitle, 'option-headline']">
+												<span>{{ option.value }}</span>
+												<N8nBadge
+													v-if="option.badge"
+													size="xxxsmall"
+													:variant="executionLogicBadgeVariant(option.key)"
+												>
+													{{ option.badge }}
+												</N8nBadge>
+											</div>
 											<div v-n8n-html="option.description" class="option-description"></div>
 										</div>
 									</N8nOption>
@@ -2221,5 +2241,12 @@ onBeforeUnmount(() => {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
+}
+
+.logicTitle {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
 }
 </style>
