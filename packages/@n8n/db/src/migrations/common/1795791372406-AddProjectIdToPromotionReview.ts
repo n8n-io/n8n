@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddProjectIdToPromotionReview1795291851380 implements ReversibleMigration {
+export class AddProjectIdToPromotionReview1795791372406 implements ReversibleMigration {
 	async up({ schemaBuilder: { createIndex }, escape, runQuery, isPostgres }: MigrationContext) {
 		const table = escape.tableName('promotion_review');
 		const projectId = escape.columnName('projectId');
