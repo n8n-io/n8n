@@ -220,6 +220,21 @@ export class CredentialModal extends BaseModal {
 	}
 
 	/**
+	 * Get the combobox input for an options-type credential field
+	 */
+	getFieldCombobox(key: string): Locator {
+		return this.root.getByTestId(`parameter-input-${key}`).getByRole('combobox');
+	}
+
+	/**
+	 * Select an option by its visible label for an options-type credential field
+	 */
+	async selectFieldOption(key: string, optionLabel: string): Promise<void> {
+		await this.getFieldCombobox(key).click();
+		await this.getVisibleDropdownOption(optionLabel).click();
+	}
+
+	/**
 	 * Get the users select dropdown in the Sharing tab
 	 */
 	getUsersSelect(): Locator {

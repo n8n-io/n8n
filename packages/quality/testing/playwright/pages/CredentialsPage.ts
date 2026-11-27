@@ -98,6 +98,16 @@ export class CredentialsPage extends BasePage {
 		return this.page.getByTestId('node-restricted-popover').filter({ visible: true });
 	}
 
+	/** The confirmation dialog shown when closing a credential modal with unsaved changes. */
+	getUnsavedChangesDialog() {
+		return this.page.getByRole('dialog', { name: 'Close without saving?' });
+	}
+
+	/** The button in the unsaved-changes confirmation dialog that returns to editing. */
+	getUnsavedChangesKeepEditingButton() {
+		return this.getUnsavedChangesDialog().getByRole('button', { name: 'Keep Editing' });
+	}
+
 	/**
 	 * Select credential type without auto-saving (for tests that need to handle save manually)
 	 */
