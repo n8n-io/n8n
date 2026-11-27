@@ -507,3 +507,52 @@ describe('agentExpectationUnits', () => {
 		expect(agentExpectationUnits({ name: 'refund', successCriteria: 'ok' })).toEqual([]);
 	});
 });
+
+describe('expectation keys stay unambiguous', () => {
+	const scenario = (name: string, expectations: string[], sessions?: unknown[]) => ({
+		name,
+		description: 'd',
+		dataSetup: 'x',
+		expectations,
+		...(sessions ? { sessions } : {}),
+	});
+
+	it('rejects the key separator " › " in a scenario name', () => {
+		expect(
+			issueMessages(directCase({ executionScenarios: [scenario('refund › late', ['Quotes it'])] })),
+		).toEqual([expect.stringContaining('" › "')]);
+	});
+
+	it('rejects the key separator in a scenario expectation and in a session expectation', () => {
+		const messages = issueMessages(
+			directCase({
+				executionScenarios: [
+					scenario(
+						'refund',
+						['Quotes › the window'],
+						[{ goal: 'g', expectations: ['Recalls › the order'] }],
+					),
+				],
+			}),
+		);
+
+		expect(messages).toHaveLength(2);
+		expect(messages.every((message) => message.includes('" › "'))).toBe(true);
+	});
+
+	it('accepts the character without the spaces around it', () => {
+		expect(
+			issueMessages(directCase({ executionScenarios: [scenario('refund›late', ['Quotes it'])] })),
+		).toEqual([]);
+	});
+
+	it('rejects two scenarios with the same name', () => {
+		const messages = issueMessages(
+			directCase({
+				executionScenarios: [scenario('refund', ['Quotes it']), scenario('refund', ['Says no'])],
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('"refund"')]);
+	});
+});

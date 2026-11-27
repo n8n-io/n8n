@@ -69,12 +69,27 @@ export const AgentUserTurnsSchema = z
 
 export type AgentUserTurns = z.infer<typeof AgentUserTurnsSchema>;
 
+/** Separates the parts of an expectation unit key. */
+export const EXPECTATION_KEY_SEPARATOR = ' › ';
+
+/** A scenario name or expectation with the separator would make keys ambiguous. */
+function separatorMessage(subject: string): string {
+	return `${subject} contains "${EXPECTATION_KEY_SEPARATOR}", which separates the parts of an expectation key — rephrase it`;
+}
+
 /** Separate pass/fail statements about one Agent run, like a workflow case's
  *  outcomeExpectations. A scenario passes only if all of them hold. */
 export const AgentExpectationsSchema = z.array(z.string().min(1)).superRefine((list, ctx) => {
 	// Each expectation is a unit keyed by its text, so a repeat would merge into one.
 	const seen = new Set<string>();
 	for (const [index, text] of list.entries()) {
+		if (text.includes(EXPECTATION_KEY_SEPARATOR)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: [index],
+				message: separatorMessage(`expectation "${text}"`),
+			});
+		}
 		if (seen.has(text)) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
@@ -145,6 +160,7 @@ export interface AgentRunCaseView {
 
 /** A scenario as the contract checks and the judge bridge see it. */
 export interface AgentScenarioView {
+	name?: string;
 	successCriteria?: string;
 	seedDataTables?: TableShape[];
 	userTurns?: unknown;
@@ -166,9 +182,6 @@ export interface AgentExpectationUnit {
 	key: string;
 	text: string;
 }
-
-/** Separates the parts of an expectation unit key. */
-export const EXPECTATION_KEY_SEPARATOR = ' › ';
 
 /**
  * Every expectation of a scenario as its own unit: the scenario's, then each
@@ -333,6 +346,31 @@ function scenarioExpectationIssues(c: AgentRunCaseView): CaseIssue[] {
 	);
 }
 
+/** Scenario names key expectation units: no separator in them, and no repeats. */
+function scenarioNameIssues(c: AgentRunCaseView): CaseIssue[] {
+	const names = (c.executionScenarios ?? []).map((scenario) => scenario.name);
+	return [...names.flatMap(separatorInNameIssues), ...duplicateNameIssues(names)];
+}
+
+function separatorInNameIssues(name: string | undefined, index: number): CaseIssue[] {
+	if (!name?.includes(EXPECTATION_KEY_SEPARATOR)) return [];
+	const path = ['executionScenarios', index, 'name'];
+	return [{ path, message: separatorMessage(`scenario name "${name}"`) }];
+}
+
+function duplicateNameIssues(names: Array<string | undefined>): CaseIssue[] {
+	return names.flatMap((name, index) =>
+		name !== undefined && names.indexOf(name) < index
+			? [
+					{
+						path: ['executionScenarios', index, 'name'],
+						message: `scenario name "${name}" is used twice — its expectation keys would collide`,
+					},
+				]
+			: [],
+	);
+}
+
 /** Outside direct mode `successCriteria` is what gets graded, so it stays required. */
 function successCriteriaIssues(c: AgentRunCaseView): CaseIssue[] {
 	return (c.executionScenarios ?? []).flatMap((scenario, index) =>
@@ -352,6 +390,7 @@ export function findAgentRunIssues(c: AgentRunCaseView): CaseIssue[] {
 		...agentRefIssues(c),
 		...configOverrideIssues(c),
 		...scenarioCountIssues(c),
+		...scenarioNameIssues(c),
 		...scenarioExpectationIssues(c),
 		...scenarioTableIssues(c),
 		...turnIssues,
