@@ -138,8 +138,7 @@ The `test-e2e-helm.yml` workflow handles everything:
 - **Cleanup:** Removes the ephemeral GHCR images
 - **Alert:** A nightly failure posts to Slack
 
-Manual dispatch accepts `branch` and `helm-chart-ref`. After the v3 cutover, run
-the workflow on `master` to test v3. Set `branch` only to test another ref.
+Manual dispatch accepts `branch` and `helm-chart-ref`.
 
 To add a profile, add the chart example name to the workflow matrix. The stack does not run the chart's `ci/install/<example>.pre.sh` hooks, so examples that have one are not supported.
 
