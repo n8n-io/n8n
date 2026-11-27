@@ -901,6 +901,59 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			expect(result.userToolAccessSnapshot).toBeUndefined();
 		});
 
+		async function reconstructForOutputReader(
+			service: AgentRuntimeReconstructionService,
+			tools: AgentJsonToolConfig[],
+		) {
+			return await service.reconstructFromAgentEntity(
+				makeAgentEntity(tools),
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				undefined,
+				undefined,
+				'integrated',
+				undefined,
+				{ outputReader: testUser },
+			);
+		}
+
+		it('should pin a workflow tool that names its workflow for the output reader', async () => {
+			const { service } = makeService({
+				...accessibleWorkflow(),
+				executionRedaction: redactingProxy(true),
+			});
+
+			await reconstructForOutputReader(service, [
+				{ type: 'workflow', workflow: 'Lookup customer' },
+			]);
+
+			const [config] = buildFromJsonMock.mock.calls.at(-1) as [AgentJsonConfig];
+			expect(config.tools).toEqual([expect.objectContaining({ workflowId: 'wf-1' })]);
+		});
+
+		it.each([
+			['is missing', null],
+			[
+				'has no active version',
+				mock<WorkflowEntity>({ id: 'wf-1', settings: {}, nodes: [], activeVersion: null }),
+			],
+		])(
+			'should leave out a workflow tool whose workflow %s for the output reader',
+			async (_, found) => {
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.findOneByAgentToolReference.mockResolvedValue(found);
+				const { service } = makeService({
+					workflowRepository,
+					executionRedaction: redactingProxy(true),
+				});
+
+				await reconstructForOutputReader(service, [workflowTool, customTool]);
+
+				expect(toolNamesPassedToBuildFromJson()).toEqual(['custom_tool']);
+			},
+		);
+
 		it('should keep the workflow tool when the output reader can reveal its data', async () => {
 			const { service } = makeService({
 				...accessibleWorkflow(),

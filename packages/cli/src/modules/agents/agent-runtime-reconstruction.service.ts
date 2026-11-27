@@ -698,15 +698,21 @@ export class AgentRuntimeReconstructionService {
 		return !hidden.some(Boolean);
 	}
 
-	/** The workflow of a tool, with the active version that a published run uses. */
+	/**
+	 * The workflow of a tool, with the active version that a published run uses.
+	 * A published run cannot use a workflow without an active version, so that
+	 * counts as missing.
+	 */
 	private async findCheckedWorkflow(
 		ref: AgentJsonWorkflowToolConfig,
 		projectId: string,
 		mode: WorkflowToolExecutionMode,
 	) {
-		return await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId, {
+		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId, {
 			withActiveVersion: mode === 'integrated',
 		});
+		if (mode === 'integrated' && !workflow?.activeVersion) return null;
+		return workflow;
 	}
 
 	/**
