@@ -836,8 +836,9 @@ Get the output data of a specific node from an execution.
 | `nodeName` | string | yes | Node name to get output for |
 | `startIndex` | number | no | First item index to return. Defaults to `0` |
 | `maxItems` | number | no | Maximum items to return. Defaults to `10`; maximum `50` |
+| `storeFiles` | boolean | no | Store the files of the returned items as conversation files. Only when the host can store files |
 
-**Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to }, totalRuns? }`.
+**Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to }, totalRuns?, binaryFileCount?, files?, skippedFiles?: { total, files } }`.
 One `outputs` entry per node output, in output order; a Filter reports `Kept` and
 `Discarded` separately. `name` follows the node's output pane labels, including
 renamed Switch outputs and `Success` / `Error` for nodes that route errors to an
@@ -857,6 +858,24 @@ when there was more than one. Which runs are read depends on the node:
 A run that failed records no items, so `totalRuns` can count more runs than the
 items account for. Read the error of that run from `action="get"`, which
 reports it under `nodeErrors`.
+
+The items show only their JSON. `binaryFileCount` counts the files (binary
+data) of the returned items, one time for each binary. With `storeFiles`, the
+action stores those files as conversation files, at most 10 for each call, one
+time for each binary. It lists them in `files` with their fileId.
+`skippedFiles.files` lists at most 10 files that were not stored, and
+`skippedFiles.total` counts all of them. The model can then view them with
+`view-file`, copy them to the sandbox with `import-files`, or pass them to a
+run. The cap counts the unique files of the whole page, so the later items of
+a page can store fewer files or none. To store their files, page with
+`startIndex` and `maxItems`. An item with more than 10 files never stores more
+than its first 10. The host matches a file by the hash of its bytes, not by
+its binary id. A file of the conversation with the same bytes, name and type
+is given again, not stored again, so a second call on the same output gives
+the same fileIds. A file without a usable name matches on its bytes and type
+only. A redacted execution stores no files. The host offers
+`storeFiles` only when it sets `readBinary` and `storeWorkflowFile` on
+`storedFiles`.
 
 ### `workflow_builder_executions(action="get-resolved-node-parameters")`
 
