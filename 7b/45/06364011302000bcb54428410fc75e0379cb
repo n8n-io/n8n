@@ -1,0 +1,16 @@
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable-requirements.extractor.test.ts
+  h_b48525a15b2d62 94,98-99,104-128,130
+packages/cli/src/modules/n8n-packages/entities/variable/variable-requirements.extractor.ts
+  h_b48525a15b2d62 35-37,70,72-77,87,92-94,99-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b4506364011302000bcb54428410fc75e0379cb",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
