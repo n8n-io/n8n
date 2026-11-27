@@ -33,7 +33,7 @@ export interface KnowledgeRetrievalObserver {
  * inputs and outputs stay identical.
  */
 export interface KnowledgeRetriever {
-	/** Files of its own, or a collection it can search. Consumers attach the tools only when it does. */
+	/** Has files of its own, or a collection it can search. Consumers attach the tools only when it does. */
 	hasFiles(scope: KnowledgeConsumerScope): Promise<boolean>;
 
 	/** Matches file names against a glob, in-process. The first page also lists the collections of the scope. */

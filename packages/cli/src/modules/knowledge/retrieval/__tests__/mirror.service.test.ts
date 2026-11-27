@@ -109,7 +109,7 @@ function makeCollectionSourceService(
 	source: KnowledgeCollectionSource = { collections: [], files: [] },
 ): ReturnType<typeof mock<KnowledgeCollectionSourceService>> {
 	const service = mock<KnowledgeCollectionSourceService>();
-	service.load.mockResolvedValue(source);
+	service.loadSearchableCollections.mockResolvedValue(source);
 	return service;
 }
 

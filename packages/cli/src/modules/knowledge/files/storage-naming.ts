@@ -50,12 +50,10 @@ export function assertKnowledgePathSegment(segment: string, label: string): void
 	}
 }
 
-/** A collection directory and a file name. */
-const MAX_MIRROR_PATH_SEGMENTS = 2;
-
 export function assertKnowledgeMirrorPath(mirrorPath: string, label: string): void {
 	const segments = mirrorPath.split('/');
-	if (segments.length > MAX_MIRROR_PATH_SEGMENTS) {
+	// At most a collection directory and a file name.
+	if (segments.length > 2) {
 		throw new UnexpectedError(`Invalid ${label} for agent knowledge storage`);
 	}
 	for (const segment of segments) {

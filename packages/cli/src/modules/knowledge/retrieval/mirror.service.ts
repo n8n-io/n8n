@@ -436,7 +436,7 @@ export class KnowledgeMirrorService {
 
 		const [ownFiles, collectionSource] = await Promise.all([
 			this.loadKnowledgeFileReferences(scope.agentId),
-			this.collectionSourceService.load(scope),
+			this.collectionSourceService.loadSearchableCollections(scope),
 		]);
 		const files = [...ownFiles, ...collectionSource.files];
 		return {

@@ -37,7 +37,7 @@ export class KnowledgeRetrievalService implements KnowledgeRetriever {
 	async hasFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
 		return (
 			(await this.fileRepository.hasFilesForAgent(scope.agentId, {})) ||
-			(await this.collectionSourceService.hasCollections(scope))
+			(await this.collectionSourceService.hasSearchableCollection(scope))
 		);
 	}
 
@@ -53,7 +53,7 @@ export class KnowledgeRetrievalService implements KnowledgeRetriever {
 	private async hasFilesToMirror(scope: KnowledgeConsumerScope): Promise<boolean> {
 		return (
 			(await this.fileRepository.hasFilesForAgent(scope.agentId, {})) ||
-			(await this.collectionSourceService.hasCollectionFiles(scope))
+			(await this.collectionSourceService.hasSearchableCollectionFile(scope))
 		);
 	}
 

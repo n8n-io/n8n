@@ -29,8 +29,8 @@ describe('KnowledgeRetrievalService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		fileRepository.hasFilesForAgent.mockResolvedValue(false);
-		collectionSourceService.hasCollections.mockResolvedValue(false);
-		collectionSourceService.hasCollectionFiles.mockResolvedValue(false);
+		collectionSourceService.hasSearchableCollection.mockResolvedValue(false);
+		collectionSourceService.hasSearchableCollectionFile.mockResolvedValue(false);
 	});
 
 	it('answers that the scope has files from the file repository, without a collection check', async () => {
@@ -39,15 +39,15 @@ describe('KnowledgeRetrievalService', () => {
 		await expect(service.hasFiles(scope)).resolves.toBe(true);
 
 		expect(fileRepository.hasFilesForAgent).toHaveBeenCalledWith('agent-1', {});
-		expect(collectionSourceService.hasCollections).not.toHaveBeenCalled();
+		expect(collectionSourceService.hasSearchableCollection).not.toHaveBeenCalled();
 	});
 
 	it('answers that a scope without files of its own has files when it has a collection', async () => {
-		collectionSourceService.hasCollections.mockResolvedValue(true);
+		collectionSourceService.hasSearchableCollection.mockResolvedValue(true);
 
 		await expect(service.hasFiles(scope)).resolves.toBe(true);
 
-		expect(collectionSourceService.hasCollections).toHaveBeenCalledWith(scope);
+		expect(collectionSourceService.hasSearchableCollection).toHaveBeenCalledWith(scope);
 	});
 
 	it('answers that a scope without files and without collections has no files', async () => {
@@ -63,17 +63,17 @@ describe('KnowledgeRetrievalService', () => {
 	});
 
 	it('warms the sandbox when the scope has a collection with files and no files of its own', async () => {
-		collectionSourceService.hasCollections.mockResolvedValue(true);
-		collectionSourceService.hasCollectionFiles.mockResolvedValue(true);
+		collectionSourceService.hasSearchableCollection.mockResolvedValue(true);
+		collectionSourceService.hasSearchableCollectionFile.mockResolvedValue(true);
 
 		await service.warmSandbox(scope);
 
 		expect(sandboxProviderProxy.warm).toHaveBeenCalledExactlyOnceWith(scope);
-		expect(collectionSourceService.hasCollectionFiles).toHaveBeenCalledWith(scope);
+		expect(collectionSourceService.hasSearchableCollectionFile).toHaveBeenCalledWith(scope);
 	});
 
 	it('does not warm the sandbox of a scope whose only collection is empty, although it has the tools', async () => {
-		collectionSourceService.hasCollections.mockResolvedValue(true);
+		collectionSourceService.hasSearchableCollection.mockResolvedValue(true);
 
 		await expect(service.hasFiles(scope)).resolves.toBe(true);
 		await service.warmSandbox(scope);
@@ -92,7 +92,7 @@ describe('KnowledgeRetrievalService', () => {
 
 		expect(sandboxProviderProxy.destroy).toHaveBeenCalledExactlyOnceWith(scope);
 		expect(fileRepository.hasFilesForAgent).not.toHaveBeenCalled();
-		expect(collectionSourceService.hasCollections).not.toHaveBeenCalled();
+		expect(collectionSourceService.hasSearchableCollection).not.toHaveBeenCalled();
 	});
 
 	it('finds, searches and reads through the mirror with the scope unchanged', async () => {

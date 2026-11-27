@@ -34,8 +34,8 @@ export class KnowledgeCollectionSourceService {
 		this.logger = logger.scoped('knowledge');
 	}
 
-	/** Whether the scope can search at least one collection, with or without files. */
-	async hasCollections(scope: KnowledgeConsumerScope): Promise<boolean> {
+	/** True when the agent is linked to a collection that it can search. The collection can be empty. */
+	async hasSearchableCollection(scope: KnowledgeConsumerScope): Promise<boolean> {
 		if (!(await this.availabilityService.isCollectionsEnabled())) {
 			return false;
 		}
@@ -43,8 +43,8 @@ export class KnowledgeCollectionSourceService {
 		return await this.collectionRepository.hasSearchableByAgent(scope.agentId, scope.projectId, {});
 	}
 
-	/** Whether a collection that the scope can search has a file. The sandbox needs one; the tools do not. */
-	async hasCollectionFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
+	/** True when a collection that the agent can search has a file. The sandbox needs one; the tools do not. */
+	async hasSearchableCollectionFile(scope: KnowledgeConsumerScope): Promise<boolean> {
 		if (!(await this.availabilityService.isCollectionsEnabled())) {
 			return false;
 		}
@@ -56,7 +56,14 @@ export class KnowledgeCollectionSourceService {
 		);
 	}
 
-	async load(scope: KnowledgeConsumerScope): Promise<KnowledgeCollectionSource> {
+	/**
+	 * The collections that the agent can search, and their files. The path of a
+	 * file is `<collection slug>/<file name>`. Skips a collection or a file whose
+	 * name cannot be a path, with a warning.
+	 */
+	async loadSearchableCollections(
+		scope: KnowledgeConsumerScope,
+	): Promise<KnowledgeCollectionSource> {
 		if (!(await this.availabilityService.isCollectionsEnabled())) {
 			return EMPTY_SOURCE;
 		}

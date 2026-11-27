@@ -72,12 +72,12 @@ function makeService({
 }
 
 describe('KnowledgeCollectionSourceService', () => {
-	describe('hasCollections', () => {
+	describe('hasSearchableCollection', () => {
 		it('asks the repository with the agent and the project of the scope', async () => {
 			const { service, collectionRepository } = makeService();
 			collectionRepository.hasSearchableByAgent.mockResolvedValue(true);
 
-			await expect(service.hasCollections(scope)).resolves.toBe(true);
+			await expect(service.hasSearchableCollection(scope)).resolves.toBe(true);
 
 			expect(collectionRepository.hasSearchableByAgent).toHaveBeenCalledWith(
 				'agent-1',
@@ -91,18 +91,18 @@ describe('KnowledgeCollectionSourceService', () => {
 				availabilityService: makeKnowledgeAvailabilityService({ collectionsFlag: false }),
 			});
 
-			await expect(service.hasCollections(scope)).resolves.toBe(false);
+			await expect(service.hasSearchableCollection(scope)).resolves.toBe(false);
 
 			expect(collectionRepository.hasSearchableByAgent).not.toHaveBeenCalled();
 		});
 	});
 
-	describe('hasCollectionFiles', () => {
+	describe('hasSearchableCollectionFile', () => {
 		it('asks the repository for a file in a searchable collection of the scope', async () => {
 			const { service, collectionRepository } = makeService();
 			collectionRepository.hasSearchableFileByAgent.mockResolvedValue(true);
 
-			await expect(service.hasCollectionFiles(scope)).resolves.toBe(true);
+			await expect(service.hasSearchableCollectionFile(scope)).resolves.toBe(true);
 
 			expect(collectionRepository.hasSearchableFileByAgent).toHaveBeenCalledWith(
 				'agent-1',
@@ -116,13 +116,13 @@ describe('KnowledgeCollectionSourceService', () => {
 				availabilityService: makeKnowledgeAvailabilityService({ collectionsFlag: false }),
 			});
 
-			await expect(service.hasCollectionFiles(scope)).resolves.toBe(false);
+			await expect(service.hasSearchableCollectionFile(scope)).resolves.toBe(false);
 
 			expect(collectionRepository.hasSearchableFileByAgent).not.toHaveBeenCalled();
 		});
 	});
 
-	describe('load', () => {
+	describe('loadSearchableCollections', () => {
 		it('returns the collections of the scope with their files under one directory each', async () => {
 			const { service, collectionRepository, fileRepository } = makeService();
 			collectionRepository.findSearchableByAgent.mockResolvedValue([
@@ -141,7 +141,7 @@ describe('KnowledgeCollectionSourceService', () => {
 				makeFile({ id: 'file-3', knowledgeCollectionId: 'collection-2', name: 'api.txt' }),
 			]);
 
-			const source = await service.load(scope);
+			const source = await service.loadSearchableCollections(scope);
 
 			expect(collectionRepository.findSearchableByAgent).toHaveBeenCalledWith(
 				'agent-1',
@@ -196,7 +196,10 @@ describe('KnowledgeCollectionSourceService', () => {
 				availabilityService: makeKnowledgeAvailabilityService({ collectionsFlag: false }),
 			});
 
-			await expect(service.load(scope)).resolves.toEqual({ collections: [], files: [] });
+			await expect(service.loadSearchableCollections(scope)).resolves.toEqual({
+				collections: [],
+				files: [],
+			});
 
 			expect(collectionRepository.findSearchableByAgent).not.toHaveBeenCalled();
 			expect(fileRepository.findByCollectionIds).not.toHaveBeenCalled();
@@ -206,7 +209,10 @@ describe('KnowledgeCollectionSourceService', () => {
 			const { service, collectionRepository, fileRepository } = makeService();
 			collectionRepository.findSearchableByAgent.mockResolvedValue([]);
 
-			await expect(service.load(scope)).resolves.toEqual({ collections: [], files: [] });
+			await expect(service.loadSearchableCollections(scope)).resolves.toEqual({
+				collections: [],
+				files: [],
+			});
 
 			expect(fileRepository.findByCollectionIds).not.toHaveBeenCalled();
 		});
@@ -219,7 +225,7 @@ describe('KnowledgeCollectionSourceService', () => {
 			]);
 			fileRepository.findByCollectionIds.mockResolvedValue([makeFile()]);
 
-			const source = await service.load(scope);
+			const source = await service.loadSearchableCollections(scope);
 
 			expect(fileRepository.findByCollectionIds).toHaveBeenCalledWith(['collection-1'], {});
 			expect(source.collections.map(({ dir }) => dir)).toEqual(['employee_handbook']);
@@ -237,7 +243,7 @@ describe('KnowledgeCollectionSourceService', () => {
 				makeFile(),
 			]);
 
-			const source = await service.load(scope);
+			const source = await service.loadSearchableCollections(scope);
 
 			expect(source.files.map(({ fileId }) => fileId)).toEqual(['file-1']);
 			expect(source.collections[0].fileCount).toBe(1);

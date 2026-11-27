@@ -139,7 +139,7 @@ export class KnowledgeFileService {
 		// A collection without files keeps the tools, but no tool call needs a sandbox then.
 		const hasFilesToMirror =
 			(await this.fileRepository.hasFilesForAgent(scope.agentId, {})) ||
-			(await this.collectionSourceService.hasCollectionFiles(scope));
+			(await this.collectionSourceService.hasSearchableCollectionFile(scope));
 		if (hasFilesToMirror) {
 			this.scheduleMirrorSync(scope, writeFence);
 		} else {

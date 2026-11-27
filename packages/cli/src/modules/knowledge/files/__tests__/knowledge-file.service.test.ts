@@ -202,7 +202,7 @@ describe('KnowledgeFileService', () => {
 		mirrorService = mock<KnowledgeMirrorService>();
 		sandboxProviderProxy = mock<KnowledgeSandboxProviderProxy>();
 		collectionSourceService = mock<KnowledgeCollectionSourceService>();
-		collectionSourceService.hasCollectionFiles.mockResolvedValue(false);
+		collectionSourceService.hasSearchableCollectionFile.mockResolvedValue(false);
 		logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
 		service = makeService();
@@ -812,14 +812,14 @@ describe('KnowledgeFileService', () => {
 
 		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
 
-		expect(collectionSourceService.hasCollectionFiles).toHaveBeenCalledWith(scope);
+		expect(collectionSourceService.hasSearchableCollectionFile).toHaveBeenCalledWith(scope);
 		expect(sandboxProviderProxy.destroy).toHaveBeenCalledExactlyOnceWith(scope);
 		expect(mirrorService.syncMirrorInBackground).not.toHaveBeenCalled();
 	});
 
 	it('keeps the sandbox after the final file is deleted when a collection of the scope has files', async () => {
 		await fileRepository.save(makeAgentFile({ id: 'file-1' }));
-		collectionSourceService.hasCollectionFiles.mockResolvedValue(true);
+		collectionSourceService.hasSearchableCollectionFile.mockResolvedValue(true);
 
 		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
 
@@ -833,13 +833,13 @@ describe('KnowledgeFileService', () => {
 	it('decides on the files of the collections, not on the collections, after the final file is deleted', async () => {
 		await fileRepository.save(makeAgentFile({ id: 'file-1' }));
 		// A collection without files keeps the tools attached, but not the sandbox.
-		collectionSourceService.hasCollections.mockResolvedValue(true);
-		collectionSourceService.hasCollectionFiles.mockResolvedValue(false);
+		collectionSourceService.hasSearchableCollection.mockResolvedValue(true);
+		collectionSourceService.hasSearchableCollectionFile.mockResolvedValue(false);
 
 		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
 
-		expect(collectionSourceService.hasCollections).not.toHaveBeenCalled();
-		expect(collectionSourceService.hasCollectionFiles).toHaveBeenCalledWith(scope);
+		expect(collectionSourceService.hasSearchableCollection).not.toHaveBeenCalled();
+		expect(collectionSourceService.hasSearchableCollectionFile).toHaveBeenCalledWith(scope);
 		expect(sandboxProviderProxy.destroy).toHaveBeenCalledExactlyOnceWith(scope);
 		expect(mirrorService.syncMirrorInBackground).not.toHaveBeenCalled();
 	});
