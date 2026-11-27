@@ -35,7 +35,6 @@
     "@vueuse/core": "catalog:frontend",
     "chart.js": "catalog:frontend",
     "dateformat": "^3.0.3",
-    "element-plus": "catalog:frontend",
     "lodash": "catalog:",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend",

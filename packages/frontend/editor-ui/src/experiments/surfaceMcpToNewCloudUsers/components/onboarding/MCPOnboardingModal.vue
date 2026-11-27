@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { useToast } from '@n8n/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
 import SurfaceMcpBridgeGraphic from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpBridgeGraphic.vue';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
@@ -9,7 +9,15 @@ import {
 	MCP_SETTINGS_VIEW,
 	useMCPStore,
 } from '@n8n/frontend-module-mcp';
-import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import {
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogTitle,
+	N8nIcon,
+	N8nLink,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -19,6 +27,8 @@ import MCPOnboardingAgentPicker from './MCPOnboardingAgentPicker.vue';
 import MCPOnboardingClientSetup from './MCPOnboardingClientSetup.vue';
 import MCPOnboardingCopyBlock from './MCPOnboardingCopyBlock.vue';
 import type { MCPOnboardingClient, MCPOnboardingClientOption } from './types';
+
+defineOptions({ inheritAttrs: false });
 
 type MCPOnboardingSurface = 'tile' | 'workflow_card';
 type MCPOnboardingPromptClient = Exclude<MCPOnboardingClient, 'chatgpt'>;
@@ -38,7 +48,11 @@ const i18n = useI18n();
 const toast = useToast();
 const mcpStore = useMCPStore();
 const experimentStore = useSurfaceMcpToNewCloudUsersStore();
+const uiStore = useUIStore();
 const modalBus = createEventBus();
+const modalOpen = computed(
+	() => uiStore.modalsById[SURFACE_MCP_ONBOARDING_MODAL_KEY]?.open === true,
+);
 
 const activeClient = ref<MCPOnboardingClient>('claude');
 const isToggling = ref(false);
@@ -186,6 +200,15 @@ async function handleToggleMcpAccess() {
 	}
 }
 
+async function closeDialog() {
+	uiStore.closeModal(SURFACE_MCP_ONBOARDING_MODAL_KEY);
+	modalBus.emit('closed');
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
 function handleModalClosed() {
 	if (!enabledDuringThisOpen.value && !mcpStore.mcpAccessEnabled) {
 		experimentStore.trackDismissed(surface.value, {
@@ -221,22 +244,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<Modal
-		:name="SURFACE_MCP_ONBOARDING_MODAL_KEY"
-		:title="i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.title')"
-		width="640px"
-		:event-bus="modalBus"
-		:close-on-click-modal="true"
-		:custom-class="$style.modal"
-	>
-		<template #header>
+	<N8nDialog :open="modalOpen" size="xlarge" @update:open="onDialogOpenUpdate">
+		<N8nDialogBody :class="$style.body">
 			<div :class="$style.header">
 				<div :class="$style.headerGraphic">
 					<SurfaceMcpBridgeGraphic size="hero" />
 				</div>
-				<h1 :class="$style.headerTitle">
-					{{ i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.title') }}
-				</h1>
+				<N8nDialogTitle as-child>
+					<h1 :class="$style.headerTitle">
+						{{ i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.title') }}
+					</h1>
+				</N8nDialogTitle>
 				<N8nText
 					tag="p"
 					size="small"
@@ -247,9 +265,6 @@ onBeforeUnmount(() => {
 					{{ i18n.baseText('experiments.surfaceMcpToNewCloudUsers.onboarding.description') }}
 				</N8nText>
 			</div>
-		</template>
-
-		<template #content>
 			<div :class="$style.content" data-test-id="mcp-onboarding-modal-content">
 				<!-- Step 1: Enable MCP access -->
 				<section :class="$style.section">
@@ -267,7 +282,7 @@ onBeforeUnmount(() => {
 									size="xsmall"
 									:stroke-width="2.5"
 								/>
-								<template v-else>1</template>
+								<template v-else> 1</template>
 							</span>
 							<h2 :class="$style.sectionTitle">
 								{{
@@ -428,9 +443,8 @@ onBeforeUnmount(() => {
 					</template>
 				</template>
 			</div>
-		</template>
-
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<N8nText
 				tag="p"
 				size="xsmall"
@@ -474,29 +488,17 @@ onBeforeUnmount(() => {
 					</template>
 				</I18nT>
 			</N8nText>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion.scss' as motion;
 
-.modal {
-	overflow: hidden;
-
-	:global(.el-dialog__header) {
-		padding: 0;
-		margin: 0;
-	}
-
-	:global(.el-dialog__body) {
-		padding-top: var(--spacing--lg);
-		padding-bottom: var(--spacing--sm);
-
-		> :last-child {
-			margin-top: var(--spacing--sm);
-		}
-	}
+.body {
+	--n8n-dialog-body--padding-block-start: 0;
+	--n8n-dialog-body--padding-block-end: 0;
+	--n8n-dialog-body--padding-inline: 0;
 }
 
 // --- Header (centered hero) -----------------------------------------------
@@ -508,7 +510,6 @@ onBeforeUnmount(() => {
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--xl) var(--spacing--3xl) var(--spacing--lg);
 	background: linear-gradient(180deg, rgb(234 152 75 / 8%) 0%, rgb(234 152 75 / 0%) 100%);
-	border-bottom: 1px solid var(--border-color--subtle);
 	text-align: center;
 }
 
@@ -520,16 +521,11 @@ onBeforeUnmount(() => {
 
 .headerTitle {
 	margin: 0;
-	font-size: var(--font-size--xl);
-	font-weight: var(--font-weight--medium);
-	letter-spacing: var(--letter-spacing--tight);
-	color: var(--text-color);
 }
 
 .headerDescription {
 	max-width: 50ch;
 	line-height: 1.55;
-	margin-top: var(--spacing--3xs);
 }
 
 // --- Sections -------------------------------------------------------------
@@ -538,6 +534,8 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+	padding-inline: var(--n8n-dialog-region--padding, var(--spacing--md));
+	padding-block-end: var(--n8n-dialog-region--padding, var(--spacing--md));
 }
 
 .section {
@@ -667,7 +665,8 @@ onBeforeUnmount(() => {
 }
 
 .footer {
-	margin: 0;
+	width: 100%;
+	margin: var(--spacing--sm) 0 0;
 	padding: 0 var(--spacing--md);
 	color: var(--text-color--subtler);
 	line-height: 1.35;

@@ -1,17 +1,26 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { EXPERIMENT_TEMPLATE_RECO_V2_KEY } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
-import { computed, ref, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, ref, watchEffect } from 'vue';
 import { usePersonalizedTemplatesV2Store } from '../stores/templateRecoV2.store';
 import TemplateCard from './TemplateCard.vue';
 import YoutubeCard from './YoutubeCard.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nLink, N8nSegmentControl, N8nSpinner, N8nText } from '@n8n/design-system';
+import {
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nLink,
+	N8nSegmentControl,
+	N8nSpinner,
+	N8nText,
+} from '@n8n/design-system';
+
+defineOptions({ inheritAttrs: false });
 
 const props = defineProps<{
 	modalName: string;
@@ -21,6 +30,9 @@ const props = defineProps<{
 }>();
 
 const uiStore = useUIStore();
+const modalOpen = computed(
+	() => uiStore.modalsById[EXPERIMENT_TEMPLATE_RECO_V2_KEY]?.open === true,
+);
 const {
 	nodes: userSelectedNodes,
 	getNodeData,
@@ -32,9 +44,13 @@ const nodeTypesStore = useNodeTypesStore();
 const templatesStore = useTemplatesStore();
 const locale = useI18n();
 
-const closeModal = () => {
+async function closeDialog() {
 	uiStore.closeModal(EXPERIMENT_TEMPLATE_RECO_V2_KEY);
-};
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 
 const selectedNode = ref<string>(props.data.nodeName ?? userSelectedNodes[0] ?? '');
 
@@ -84,6 +100,32 @@ function onSelectedNodeChange(val: string) {
 	selectedNode.value = val;
 }
 
+// A horizontal card row is a scroll container. A vertical wheel over it does not
+// reach the dialog body, so forward that gesture to the body.
+const rowScrollCleanups = new Map<HTMLElement, () => void>();
+
+function bindHorizontalRow(element: unknown) {
+	if (!(element instanceof HTMLElement) || rowScrollCleanups.has(element)) return;
+
+	const onWheel = (event: WheelEvent) => {
+		if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+		const scroller = element.closest('[data-slot="dialog-body"]');
+		if (!(scroller instanceof HTMLElement)) return;
+		scroller.scrollBy({ top: event.deltaY });
+		event.preventDefault();
+	};
+
+	element.addEventListener('wheel', onWheel, { passive: false });
+	rowScrollCleanups.set(element, () => {
+		element.removeEventListener('wheel', onWheel);
+		rowScrollCleanups.delete(element);
+	});
+}
+
+onBeforeUnmount(() => {
+	for (const cleanup of rowScrollCleanups.values()) cleanup();
+});
+
 watchEffect(async () => {
 	if (!selectedNode.value) return;
 
@@ -125,34 +167,31 @@ watchEffect(async () => {
 </script>
 
 <template>
-	<Modal
-		:name="EXPERIMENT_TEMPLATE_RECO_V2_KEY"
-		min-width="min(800px, 90vw)"
-		max-height="90vh"
-		@close="closeModal"
-		@canceled="closeModal"
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:aria-label="locale.baseText('workflows.templateRecoV2.ariaLabel')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<div :class="$style.header">
-				<N8nSegmentControl
-					v-model="selectedNode"
-					:options="nodes"
-					@update:model-value="onSelectedNodeChange"
-				>
-					<template #option="option">
-						<div :class="$style.tab">
-							<NodeIcon
-								:size="18"
-								:class="$style.nodeIcon"
-								:stroke-width="1.5"
-								:node-type="nodeTypes.get(option.value)"
-							/>
-						</div>
-					</template>
-				</N8nSegmentControl>
-			</div>
-		</template>
-		<template #content>
+		<N8nDialogHeader>
+			<N8nSegmentControl
+				v-model="selectedNode"
+				:options="nodes"
+				@update:model-value="onSelectedNodeChange"
+			>
+				<template #option="option">
+					<div :class="$style.tab">
+						<NodeIcon
+							:size="18"
+							:class="$style.nodeIcon"
+							:stroke-width="1.5"
+							:node-type="nodeTypes.get(option.value)"
+						/>
+					</div>
+				</template>
+			</N8nSegmentControl>
+		</N8nDialogHeader>
+		<N8nDialogBody :class="$style.body">
 			<div :class="[$style.title, 'mb-m']">
 				<N8nText tag="h2" size="large" :bold="true">{{
 					locale.baseText('workflows.templateRecoV2.starterTemplates')
@@ -161,7 +200,7 @@ watchEffect(async () => {
 					{{ locale.baseText('workflows.templateRecoV2.seeMoreStarterTemplates') }}
 				</N8nLink>
 			</div>
-			<div :class="$style.suggestions">
+			<div :ref="bindHorizontalRow" :class="$style.suggestions">
 				<div v-if="isLoadingTemplates" :class="$style.loading">
 					<N8nSpinner size="small" />
 					<N8nText size="small">{{
@@ -184,7 +223,7 @@ watchEffect(async () => {
 					{{ locale.baseText('workflows.templateRecoV2.seeMorePopularTemplates') }}</N8nLink
 				>
 			</div>
-			<div :class="$style.suggestions">
+			<div :ref="bindHorizontalRow" :class="$style.suggestions">
 				<div v-if="isLoadingTemplates" :class="$style.loading">
 					<N8nSpinner size="small" />
 					<N8nText size="small">{{
@@ -211,14 +250,19 @@ watchEffect(async () => {
 					:description="video.description"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.header {
-	border-bottom: 1px solid var(--border-color);
-	padding-bottom: var(--spacing--sm);
+.body {
+	&.body {
+		/* Keep vertical scroll on the dialog body. The card rows must not become scrollports. */
+		min-width: 0;
+		min-height: 0;
+		overflow-x: hidden;
+		overflow-y: auto;
+	}
 }
 
 .tab {
@@ -229,7 +273,11 @@ watchEffect(async () => {
 	display: flex;
 	flex-direction: row;
 	gap: var(--spacing--md);
+	min-width: 0;
+	max-width: 100%;
+	/* Set overflow-y as well. overflow-x: auto alone computes overflow-y to auto. */
 	overflow-x: auto;
+	overflow-y: hidden;
 	min-height: 182px;
 }
 
@@ -244,7 +292,8 @@ watchEffect(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	overflow-x: auto;
+	min-width: 0;
+	max-width: 100%;
 }
 
 .loading {

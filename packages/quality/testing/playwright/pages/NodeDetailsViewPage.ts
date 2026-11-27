@@ -611,25 +611,35 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async changeInputRunSelector(value: string) {
-		await this.selectRun(this.inputPanel, value);
+		await this.chooseRunSelectorOption(this.inputPanel.getRunSelector(), value);
 		await this.expectInputRunSelectorValue(value);
 	}
 
 	async changeOutputRunSelector(value: string) {
-		await this.selectRun(this.outputPanel, value);
+		await this.chooseRunSelectorOption(this.outputPanel.getRunSelector(), value);
 		await this.expectOutputRunSelectorValue(value);
 	}
 
-	private async selectRun(panel: RunDataPanel, value: string) {
-		const input = panel.getRunSelectorInput();
-		await panel.getRunSelector().click();
-		await expect(input).toHaveAttribute('aria-expanded', 'true');
-		const listboxId = await input.getAttribute('aria-controls');
-		if (!listboxId) throw new Error('The run selector has no associated listbox');
-		await this.page
-			.locator(`[id=${JSON.stringify(listboxId)}]`)
-			.getByRole('option', { name: value, includeHidden: true })
-			.click();
+	// The select teleports this list outside the NDV.
+	// Callers pass part of the run label, for example "(2 items)".
+	// The option name is the full label, for example "2 of 2 (2 items)".
+	// A pointer click misses this option: the menu hides it before the click lands.
+	// The option stays mounted on this control's list. Send the click there.
+	private async chooseRunSelectorOption(selector: Locator, value: string) {
+		const input = selector.getByRole('combobox');
+		await expect(async () => {
+			const listId = await input.getAttribute('aria-controls');
+			if (!listId) {
+				throw new Error('Run selector list is missing');
+			}
+
+			const option = this.page.locator(`[id="${listId}"]`).getByRole('option', {
+				name: value,
+				includeHidden: true,
+			});
+			await option.dispatchEvent('click', {}, { timeout: 2_000 });
+			await expect(input).toHaveValue(containsValue(value), { timeout: 1_000 });
+		}).toPass({ timeout: 15_000 });
 	}
 
 	// Run-selector updates can land asynchronously (notably cross-panel via

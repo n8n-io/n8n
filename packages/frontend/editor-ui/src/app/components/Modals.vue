@@ -54,6 +54,7 @@ import {
 } from '@/features/settings/users/users.constants';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 import {
+	CREATE_FOLDER_MODAL_KEY,
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/core/folders/folders.constants';
@@ -95,6 +96,9 @@ const CommunityPackageManageConfirmModal = defineAsyncComponent(
 );
 const CommunityPlusEnrollmentModal = defineAsyncComponent(
 	lazyModalLoaders[COMMUNITY_PLUS_ENROLLMENT_MODAL],
+);
+const CreateFolderModal = defineAsyncComponent(
+	async () => await import('@/features/core/folders/components/CreateFolderModal.vue'),
 );
 const CredentialEdit = defineAsyncComponent(lazyModalLoaders[CREDENTIAL_EDIT_MODAL_KEY]);
 const CredentialsSelectModal = defineAsyncComponent(lazyModalLoaders[CREDENTIAL_SELECT_MODAL_KEY]);
@@ -389,11 +393,7 @@ const TrialIntroModal = defineAsyncComponent(lazyModalLoaders[TRIAL_INTRO_MODAL_
 		</ModalRoot>
 		<ModalRoot :name="PROJECT_MOVE_RESOURCE_MODAL">
 			<template #default="{ modalName, data }">
-				<ProjectMoveResourceModal
-					data-test-id="project-move-resource-modal"
-					:modal-name="modalName"
-					:data="data"
-				/>
+				<ProjectMoveResourceModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 		<ModalRoot :name="NEW_ASSISTANT_SESSION_MODAL">
@@ -405,6 +405,12 @@ const TrialIntroModal = defineAsyncComponent(lazyModalLoaders[TRIAL_INTRO_MODAL_
 		<ModalRoot :name="COMMUNITY_PLUS_ENROLLMENT_MODAL">
 			<template #default="{ modalName, data }">
 				<CommunityPlusEnrollmentModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="CREATE_FOLDER_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<CreateFolderModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

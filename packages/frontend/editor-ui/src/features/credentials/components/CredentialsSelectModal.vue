@@ -3,14 +3,25 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCredentialsStore } from '../credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onMounted, ref, watch } from 'vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
-import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import type { NewCredentialsModal } from '@/Interface';
 
-import { N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogDescription,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+	N8nSpinner,
+	N8nText,
+} from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
 import {
@@ -25,11 +36,13 @@ import {
 	useCredentialTypeUsability,
 	type CredentialTypeRestrictionCopy,
 } from '../composables/useCredentialTypeUsability';
+
+defineOptions({ inheritAttrs: false });
+
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
-const modalBus = ref(createEventBus());
 const selected = ref('');
 const loading = ref(true);
 const selectRef = ref<HTMLSelectElement>();
@@ -132,8 +145,18 @@ function onSelect(type: string) {
 	selected.value = type;
 }
 
+const modalOpen = computed(() => uiStore.modalsById[CREDENTIAL_SELECT_MODAL_KEY]?.open === true);
+
+function closeDialog() {
+	uiStore.closeModal(CREDENTIAL_SELECT_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
+
 function openCredentialType() {
-	modalBus.value.emit('close');
+	closeDialog();
 	// Carry the credentials-list credential help into the new-credential dialog so
 	// it offers the Instance AI button (not the legacy assistant) like the rest of
 	// the list does.
@@ -164,81 +187,76 @@ function openCredentialType() {
 </script>
 
 <template>
-	<Modal
-		:name="CREDENTIAL_SELECT_MODAL_KEY"
-		:event-bus="modalBus"
-		width="50%"
-		:center="true"
-		:loading="isListLoading"
-		max-width="460px"
-		min-height="250px"
-	>
-		<template #header>
-			<h2 :class="$style.title">
-				{{ i18n.baseText('credentialSelectModal.addNewCredential') }}
-			</h2>
-		</template>
-		<template #content>
-			<div>
-				<div :class="$style.subtitle">
-					{{ i18n.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
-				</div>
-				<N8nSelect
-					ref="selectRef"
-					filterable
-					default-first-option
-					:placeholder="i18n.baseText('credentialSelectModal.searchForApp')"
-					size="xlarge"
-					:model-value="selected"
-					:filter-method="filterCredentials"
-					data-test-id="new-credential-type-select"
-					@update:model-value="onSelect"
-					@visible-change="(visible: boolean) => visible && (hasListOpened = true)"
-				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-					<!-- A press on a disabled row would move the focus out of the search input, so typing would stop filtering. -->
-					<N8nOption
-						v-for="{ type: credential, restricted } in selectableCredentialTypes"
-						:key="credential.name"
-						:value="credential.name"
-						:label="credential.displayName"
-						:disabled="restricted?.blocked"
+	<N8nDialog :open="modalOpen" size="medium" @update:open="onDialogOpenUpdate">
+		<N8nDialogBody v-if="isListLoading">
+			<N8nSpinner />
+		</N8nDialogBody>
+		<template v-else>
+			<N8nDialogHeader>
+				<N8nDialogTitle>
+					{{ i18n.baseText('credentialSelectModal.addNewCredential') }}
+				</N8nDialogTitle>
+			</N8nDialogHeader>
+			<N8nDialogBody>
+				<div>
+					<N8nDialogDescription>
+						{{ i18n.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
+					</N8nDialogDescription>
+					<N8nSelect
+						ref="selectRef"
 						filterable
-						data-test-id="new-credential-type-select-option"
-						@mousedown="(event: MouseEvent) => restricted?.blocked && event.preventDefault()"
+						default-first-option
+						:placeholder="i18n.baseText('credentialSelectModal.searchForApp')"
+						size="xlarge"
+						:model-value="selected"
+						:filter-method="filterCredentials"
+						data-test-id="new-credential-type-select"
+						@update:model-value="onSelect"
+						@visible-change="(visible: boolean) => visible && (hasListOpened = true)"
 					>
-						<div v-if="restricted" :class="$style.restrictedOption">
-							<span :class="$style.restrictedName">{{ credential.displayName }}</span>
-							<span :class="$style.restrictedScope">
-								<N8nText size="small" color="text-light">{{ restricted.scopeLabel }}</N8nText>
-								<CredentialTypeRestrictedMarker
-									v-if="hasListOpened"
-									:name="credential.displayName"
-									:restriction="restricted.restriction"
-									:kind="restricted.kind"
-									:scope-label="restricted.popoverScopeLabel"
-									:description="restricted.description"
-									@contact-admin="
-										(audience) =>
-											requestContactAdmin(restricted.contactSubject, audience, restricted.kind)
-									"
-								/>
-							</span>
-						</div>
-					</N8nOption>
-				</N8nSelect>
-				<ContactAdminModal
-					v-model:open="isContactAdminOpen"
-					:kind="contactAdmin.kind"
-					:type-name="contactAdmin.subject"
-					:audience="contactAdmin.audience"
-				/>
-			</div>
-		</template>
-		<template #footer>
-			<div :class="$style.footer">
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+						<!-- A press on a disabled row would move the focus out of the search input, so typing would stop filtering. -->
+						<N8nOption
+							v-for="{ type: credential, restricted } in selectableCredentialTypes"
+							:key="credential.name"
+							:value="credential.name"
+							:label="credential.displayName"
+							:disabled="restricted?.blocked"
+							filterable
+							data-test-id="new-credential-type-select-option"
+							@mousedown="(event: MouseEvent) => restricted?.blocked && event.preventDefault()"
+						>
+							<div v-if="restricted" :class="$style.restrictedOption">
+								<span :class="$style.restrictedName">{{ credential.displayName }}</span>
+								<span :class="$style.restrictedScope">
+									<N8nText size="small" color="text-light">{{ restricted.scopeLabel }}</N8nText>
+									<CredentialTypeRestrictedMarker
+										v-if="hasListOpened"
+										:name="credential.displayName"
+										:restriction="restricted.restriction"
+										:kind="restricted.kind"
+										:scope-label="restricted.popoverScopeLabel"
+										:description="restricted.description"
+										@contact-admin="
+											(audience) =>
+												requestContactAdmin(restricted.contactSubject, audience, restricted.kind)
+										"
+									/>
+								</span>
+							</div>
+						</N8nOption>
+					</N8nSelect>
+					<ContactAdminModal
+						v-model:open="isContactAdminOpen"
+						:kind="contactAdmin.kind"
+						:type-name="contactAdmin.subject"
+						:audience="contactAdmin.audience"
+					/>
+				</div>
+			</N8nDialogBody>
+			<N8nDialogFooter>
 				<N8nButton
 					:label="i18n.baseText('credentialSelectModal.continue')"
 					float="right"
@@ -247,23 +265,12 @@ function openCredentialType() {
 					data-test-id="new-credential-type-button"
 					@click="openCredentialType"
 				/>
-			</div>
+			</N8nDialogFooter>
 		</template>
-	</Modal>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
-.title {
-	font-size: var(--font-size--xl);
-	line-height: var(--line-height--md);
-}
-
-.subtitle {
-	margin-bottom: var(--spacing--sm);
-	font-size: var(--font-size--md);
-	line-height: var(--line-height--xl);
-}
-
 .restrictedOption {
 	display: flex;
 	align-items: center;

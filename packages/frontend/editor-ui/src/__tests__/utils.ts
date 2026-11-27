@@ -1,5 +1,5 @@
 import { within, waitFor } from '@testing-library/vue';
-import userEvent from '@testing-library/user-event';
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
 import { AuthenticationMethod } from '@n8n/api-types';
 import { defaultSettings, getTooltip } from '@n8n/frontend-test-utils';
@@ -67,6 +67,20 @@ export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
 	await waitFor(() => expect(selectDropdown).toBeInTheDocument());
 
 	return selectDropdown.querySelectorAll('.el-select-dropdown__item');
+};
+
+/**
+ * Click a teleported select option.
+ *
+ * A modal sets pointer-events: none on the body. The dialog stylesheet sets
+ * pointer-events: auto on .el-popper, so the option receives the click in a
+ * browser. jsdom does not apply that rule, and the pointer-events check rejects
+ * the click.
+ */
+export const clickDropdownItem = async (item: Element) => {
+	await userEvent.click(item, {
+		pointerEventsCheck: PointerEventsCheckLevel.Never,
+	});
 };
 
 export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {

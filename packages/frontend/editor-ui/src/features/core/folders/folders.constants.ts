@@ -21,6 +21,7 @@ export const FOLDER_NAME_ILLEGAL_CHARACTERS_REGEX = new RegExp(
 export const FOLDER_NAME_ONLY_DOTS_REGEX = /^\.+$/;
 export const FOLDER_NAME_MAX_LENGTH = 128;
 
+export const CREATE_FOLDER_MODAL_KEY = 'createFolder';
 export const DELETE_FOLDER_MODAL_KEY = 'deleteFolder';
 export const MOVE_FOLDER_MODAL_KEY = 'moveFolder';
 

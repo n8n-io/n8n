@@ -37,18 +37,19 @@ vi.mock('@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp', () =
 	useInstanceAiCredentialHelp: () => () => undefined,
 }));
 
-vi.mock('@/app/components/Modal.vue', () => ({
-	default: {
-		props: { loading: { type: Boolean, default: false } },
-		template:
-			'<div><slot name="header" /><slot v-if="!loading" name="content" /><slot name="footer" /></div>',
-	},
-}));
-
 vi.mock('@n8n/design-system', async () => {
 	const { defineComponent } = await import('vue');
 
+	const slot = defineComponent({ template: '<div><slot /></div>' });
+
 	return {
+		N8nDialog: slot,
+		N8nDialogBody: slot,
+		N8nDialogDescription: slot,
+		N8nDialogFooter: slot,
+		N8nDialogHeader: slot,
+		N8nDialogTitle: slot,
+		N8nSpinner: defineComponent({ template: '<div />' }),
 		N8nSelect: defineComponent({
 			name: 'N8nSelect',
 			props: { modelValue: { type: String, default: '' } },

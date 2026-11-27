@@ -9,6 +9,7 @@ import {
 	createProjectSharingData,
 } from '@/features/collaboration/projects/__tests__/utils';
 import {
+	clickDropdownItem,
 	getDropdownItems,
 	getSelectedDropdownValue,
 	mockedStore,
@@ -340,7 +341,7 @@ describe('MoveToFolderModal', () => {
 		let selectedValue = await getSelectedDropdownValue(projectSelectDropdownItems);
 		expect(selectedValue).toBe(personalProject.name);
 
-		await userEvent.click(projectSelectDropdownItems[0]);
+		await clickDropdownItem(projectSelectDropdownItems[0]);
 		expect(queryByTestId('project-sharing-list-item')).not.toBeInTheDocument();
 
 		selectedValue = await getSelectedDropdownValue(projectSelectDropdownItems);
@@ -376,7 +377,7 @@ describe('MoveToFolderModal', () => {
 		);
 		expect(teamProject).toBeDefined();
 
-		await userEvent.click(teamProject as Element);
+		await clickDropdownItem(teamProject as Element);
 		expect(queryByTestId('move-modal-share-credentials-checkbox')).not.toBeInTheDocument();
 	});
 
@@ -406,7 +407,7 @@ describe('MoveToFolderModal', () => {
 		);
 		expect(teamProject).toBeDefined();
 
-		await userEvent.click(teamProject as Element);
+		await clickDropdownItem(teamProject as Element);
 
 		await waitFor(() =>
 			expect(getByTestId('move-modal-share-credentials-checkbox')).toBeInTheDocument(),
@@ -438,7 +439,7 @@ describe('MoveToFolderModal', () => {
 		const teamProject = [...projectSelectDropdownItems].find(
 			(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
 		);
-		await userEvent.click(teamProject as Element);
+		await clickDropdownItem(teamProject as Element);
 
 		await waitFor(() => expect(getByText(/can't be shared/)).toBeInTheDocument());
 		expect(queryByTestId('move-modal-share-credentials-checkbox')).not.toBeInTheDocument();
@@ -483,7 +484,7 @@ describe('MoveToFolderModal', () => {
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
 		expect(folderSelectDropdownItems).toHaveLength(2); // root, test
 
-		await userEvent.click(folderSelectDropdownItems[1]);
+		await clickDropdownItem(folderSelectDropdownItems[1]);
 		expect(within(folderSelect).getByRole('combobox')).toHaveValue('test');
 	});
 
@@ -505,7 +506,7 @@ describe('MoveToFolderModal', () => {
 
 		const folderSelect = getByTestId('move-to-folder-dropdown');
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
-		await userEvent.click(folderSelectDropdownItems[1]);
+		await clickDropdownItem(folderSelectDropdownItems[1]);
 
 		expect(within(folderSelect).getByRole('combobox')).toHaveValue('test');
 
@@ -514,7 +515,7 @@ describe('MoveToFolderModal', () => {
 		const teamProject = [...(await getDropdownItems(projectSelect))].find(
 			(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
 		);
-		await userEvent.click(teamProject as Element);
+		await clickDropdownItem(teamProject as Element);
 
 		// After switching projects, the project root should be selected
 		expect(within(folderSelect).getByRole('combobox')).toHaveValue('No folder (project root)');
@@ -541,7 +542,7 @@ describe('MoveToFolderModal', () => {
 
 		const folderSelect = getByTestId('move-to-folder-dropdown');
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
-		await userEvent.click(folderSelectDropdownItems[1]);
+		await clickDropdownItem(folderSelectDropdownItems[1]);
 
 		expect(submitButton).toBeEnabled();
 		await userEvent.click(submitButton);
@@ -584,14 +585,14 @@ describe('MoveToFolderModal', () => {
 		const teamProject = [...projectSelectDropdownItems].find(
 			(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
 		);
-		await userEvent.click(teamProject as Element);
+		await clickDropdownItem(teamProject as Element);
 
 		const submitButton = getByTestId('confirm-move-folder-button');
 		await waitFor(() => expect(submitButton).toBeEnabled());
 
 		const folderSelect = getByTestId('move-to-folder-dropdown');
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
-		await userEvent.click(folderSelectDropdownItems[1]);
+		await clickDropdownItem(folderSelectDropdownItems[1]);
 
 		expect(submitButton).toBeEnabled();
 		await userEvent.click(submitButton);
@@ -650,13 +651,13 @@ describe('MoveToFolderModal', () => {
 		);
 		expect(teamProject).toBeDefined();
 
-		await userEvent.click(teamProject as Element);
+		await clickDropdownItem(teamProject as Element);
 
 		const submitButton = getByTestId('confirm-move-folder-button');
 		const folderSelect = getByTestId('move-to-folder-dropdown');
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
 
-		await userEvent.click(folderSelectDropdownItems[1]);
+		await clickDropdownItem(folderSelectDropdownItems[1]);
 		await userEvent.click(getByTestId('move-modal-share-credentials-checkbox'));
 		await userEvent.click(submitButton);
 
@@ -714,13 +715,13 @@ describe('MoveToFolderModal', () => {
 		);
 		expect(teamProject).toBeDefined();
 
-		await userEvent.click(teamProject as Element);
+		await clickDropdownItem(teamProject as Element);
 
 		const submitButton = getByTestId('confirm-move-folder-button');
 		const folderSelect = getByTestId('move-to-folder-dropdown');
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
 
-		await userEvent.click(folderSelectDropdownItems[1]);
+		await clickDropdownItem(folderSelectDropdownItems[1]);
 		await userEvent.click(submitButton);
 
 		await waitFor(() => {
@@ -774,7 +775,7 @@ describe('MoveToFolderModal', () => {
 		);
 		expect(anotherUserPersonalProject).toBeDefined();
 
-		await userEvent.click(anotherUserPersonalProject as Element);
+		await clickDropdownItem(anotherUserPersonalProject as Element);
 
 		const submitButton = getByTestId('confirm-move-folder-button');
 		await waitFor(() => expect(submitButton).toBeEnabled());
@@ -854,7 +855,7 @@ describe('MoveToFolderModal', () => {
 			const teamProject = [...projectSelectDropdownItems].find(
 				(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
 			);
-			await userEvent.click(teamProject as Element);
+			await clickDropdownItem(teamProject as Element);
 		};
 
 		it('should warn when transferring a workflow that uses data tables, without blocking the move', async () => {
@@ -1006,7 +1007,7 @@ describe('MoveToFolderModal', () => {
 
 		const folderSelect = getByTestId('move-to-folder-dropdown');
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
-		await userEvent.click(folderSelectDropdownItems[1]);
+		await clickDropdownItem(folderSelectDropdownItems[1]);
 
 		expect(submitButton).toBeEnabled();
 		await userEvent.click(submitButton);
@@ -1055,14 +1056,14 @@ describe('MoveToFolderModal', () => {
 		);
 		expect(teamProject).toBeDefined();
 
-		await userEvent.click(teamProject as Element);
+		await clickDropdownItem(teamProject as Element);
 
 		const submitButton = getByTestId('confirm-move-folder-button');
 		await waitFor(() => expect(submitButton).toBeEnabled());
 
 		const folderSelect = getByTestId('move-to-folder-dropdown');
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
-		await userEvent.click(folderSelectDropdownItems[1]);
+		await clickDropdownItem(folderSelectDropdownItems[1]);
 
 		expect(submitButton).toBeEnabled();
 		await userEvent.click(submitButton);
@@ -1124,7 +1125,7 @@ describe('MoveToFolderModal', () => {
 		);
 		expect(anotherUserPersonalProject).toBeDefined();
 
-		await userEvent.click(anotherUserPersonalProject as Element);
+		await clickDropdownItem(anotherUserPersonalProject as Element);
 
 		const submitButton = getByTestId('confirm-move-folder-button');
 		await waitFor(() => expect(submitButton).toBeEnabled());
@@ -1199,7 +1200,7 @@ describe('MoveToFolderModal', () => {
 			const teamProject = [...items].find(
 				(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
 			);
-			await userEvent.click(teamProject as Element);
+			await clickDropdownItem(teamProject as Element);
 		};
 
 		beforeEach(() => {
@@ -1333,7 +1334,7 @@ describe('MoveToFolderModal', () => {
 				const otherProject = [...items].find(
 					(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[1].name,
 				);
-				await userEvent.click(otherProject as Element);
+				await clickDropdownItem(otherProject as Element);
 				finishMove(result);
 
 				await waitFor(() =>
@@ -1362,7 +1363,7 @@ describe('MoveToFolderModal', () => {
 				foldersStore.fetchFoldersAvailableForMove = vi.fn().mockResolvedValue([folder]);
 				await userEvent.click(folderSelect);
 				const items = await getDropdownItems(folderSelect);
-				await userEvent.click(items[items.length - 1]);
+				await clickDropdownItem(items[items.length - 1]);
 
 				const submitButton = getByTestId('confirm-move-folder-button');
 				await waitFor(() => expect(submitButton).toBeEnabled());

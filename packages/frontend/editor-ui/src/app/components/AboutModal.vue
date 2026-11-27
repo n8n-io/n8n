@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { ABOUT_MODAL_KEY } from '../constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useDebugInfo } from '@/app/composables/useDebugInfo';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useInstanceRegistryStore } from '@n8n/frontend-module-instance-registry';
 import { useI18n } from '@n8n/i18n';
 import { getThirdPartyLicenses } from '@n8n/rest-api-client';
+import { useUIStore } from '@/app/stores/ui.store';
 
 import {
 	N8nButton,
@@ -20,6 +20,8 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 
+defineOptions({ inheritAttrs: false });
+
 const SOURCE_CODE_HOST = 'github.com/n8n-io/n8n';
 const SOURCE_CODE_URL = `https://${SOURCE_CODE_HOST}`;
 const LICENSE_URL = `${SOURCE_CODE_URL}/blob/master/LICENSE.md`;
@@ -29,16 +31,17 @@ const i18n = useI18n();
 const debugInfo = useDebugInfo();
 const clipboard = useClipboard();
 const rootStore = useRootStore();
-const uiStore = useUIStore();
 const instanceRegistryStore = useInstanceRegistryStore();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[ABOUT_MODAL_KEY]?.open === true);
 
 onMounted(async () => {
 	await instanceRegistryStore.fetchClusterInfo();
 });
 
-const onOpenChange = (open: boolean) => {
+function onDialogOpenUpdate(open: boolean) {
 	if (!open) uiStore.closeModal(ABOUT_MODAL_KEY);
-};
+}
 
 const copyInstanceId = async () => {
 	await clipboard.copy(rootStore.instanceId);
@@ -75,12 +78,12 @@ const copyDebugInfoToClipboard = async () => {
 
 <template>
 	<N8nDialog
-		:open="true"
+		:open="modalOpen"
 		size="large"
 		:header="i18n.baseText('about.aboutN8n')"
 		:aria-description="i18n.baseText('about.ariaDescription')"
 		data-test-id="about-modal"
-		@update:open="onOpenChange"
+		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>
 			<N8nSettingsRowGroup>

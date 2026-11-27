@@ -1817,18 +1817,7 @@ const createFolder = async (
 	const projectId = currentBreadcrumbsProject.value?.id;
 	if (!projectId) return;
 
-	const promptResponsePromise = message.prompt(
-		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
-		{
-			confirmButtonText: i18n.baseText('generic.create'),
-			cancelButtonText: i18n.baseText('generic.cancel'),
-			inputValidator: folderHelpers.validateFolderName,
-			customClass: 'add-folder-modal',
-		},
-	);
-	const promptResponse = await promptResponsePromise;
-	if (promptResponse.action === MODAL_CONFIRM) {
-		const folderName = promptResponse.value;
+	uiStore.openCreateFolderModal(parent.name, async (folderName) => {
 		try {
 			const newFolder = await foldersStore.createFolder(
 				folderName,
@@ -1892,7 +1881,7 @@ const createFolder = async (
 		} catch (error) {
 			toast.showError(error, i18n.baseText('folders.create.error.title'));
 		}
-	}
+	});
 };
 
 const renameFolder = async (folderId: string) => {
@@ -2738,21 +2727,5 @@ const onNameSubmit = async (name: string) => {
 
 .pointer-disabled {
 	pointer-events: none;
-}
-</style>
-
-<style lang="scss">
-.add-folder-modal {
-	width: 500px;
-	padding-bottom: 0;
-	.el-message-box__message {
-		font-size: var(--font-size--xl);
-	}
-	.el-message-box__btns {
-		padding: 0 var(--spacing--lg) var(--spacing--lg);
-	}
-	.el-message-box__content {
-		padding: var(--spacing--lg);
-	}
 }
 </style>

@@ -5,7 +5,11 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@n8n/composables/useToast';
 import { useRoute, useRouter } from 'vue-router';
-import { DATA_TABLE_DETAILS, PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import {
+	ADD_DATA_TABLE_MODAL_KEY,
+	DATA_TABLE_DETAILS,
+	PROJECT_DATA_TABLES,
+} from '@/features/core/dataTable/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { dataTableColumnNameSchema } from '@n8n/api-types';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
@@ -13,6 +17,11 @@ import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 import {
 	N8nButton,
 	N8nCheckbox,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
@@ -22,10 +31,10 @@ import {
 	N8nRadioGroupItem,
 	N8nText,
 } from '@n8n/design-system';
-import Modal from '@/app/components/Modal.vue';
 import { ElUpload } from 'element-plus';
 import type { UploadFile } from 'element-plus';
 
+defineOptions({ inheritAttrs: false });
 type Props = {
 	modalName: string;
 };
@@ -329,22 +338,33 @@ const goBack = () => {
 const redirectToDataTables = () => {
 	void router.replace({ name: PROJECT_DATA_TABLES });
 };
+
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+async function closeDialog() {
+	const shouldClose: unknown = await Promise.resolve(redirectToDataTables());
+	if (shouldClose === false) {
+		return;
+	}
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 </script>
 
 <template>
-	<Modal
-		:name="props.modalName"
-		:center="true"
-		:width="creationMode === 'import' ? '700px' : '540px'"
-		:min-height="creationMode === 'import' ? '600px' : undefined"
-		:before-close="redirectToDataTables"
+	<N8nDialog
+		:open="modalOpen"
+		:size="creationMode === 'import' ? '2xlarge' : 'large'"
+		:data-test-id="`${ADD_DATA_TABLE_MODAL_KEY}-modal`"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<div :class="$style.header">
-				<h2>{{ modalTitle }}</h2>
-			</div>
-		</template>
-		<template #content>
+		<N8nDialogHeader>
+			<N8nDialogTitle>{{ modalTitle }}</N8nDialogTitle>
+		</N8nDialogHeader>
+		<N8nDialogBody>
 			<div v-if="creationMode === 'select'" :class="$style.selectionContent">
 				<N8nInputLabel
 					:label="i18n.baseText('dataTable.add.input.name.label')"
@@ -485,8 +505,8 @@ const redirectToDataTables = () => {
 					</div>
 				</div>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					variant="outline"
@@ -526,15 +546,11 @@ const redirectToDataTables = () => {
 					@click="onSubmit"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
-.header {
-	margin-bottom: var(--spacing--xs);
-}
-
 .content {
 	display: flex;
 	flex-direction: column;
@@ -654,7 +670,6 @@ const redirectToDataTables = () => {
 	display: flex;
 	gap: var(--spacing--2xs);
 	justify-content: flex-end;
-	margin-top: var(--spacing--lg);
 }
 
 .fileSelectedContainer {

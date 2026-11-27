@@ -11,7 +11,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { type EventBus, createEventBus } from '@n8n/utils/event-bus';
+import { type EventBus } from '@n8n/utils/event-bus';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type {
 	ProjectListItem,
@@ -24,7 +24,6 @@ import type {
 } from '@/features/credentials/credentials.types';
 import type { ResolvedDependency } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
-import Modal from '@/app/components/Modal.vue';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import ProjectMoveResourceModalCredentialsList from '@/features/collaboration/projects/components/ProjectMoveResourceModalCredentialsList.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
@@ -46,7 +45,19 @@ import PolicyViolationTypeIcon from '@/app/components/PolicyViolationTypeIcon.vu
 import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
 import { useUnpublishedByMoveToast } from '@/app/composables/useUnpublishedByMoveToast';
 
-import { N8nButton, N8nCallout, N8nCheckbox, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nCheckbox,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogDescription,
+	N8nDialogFooter,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+
+defineOptions({ inheritAttrs: false });
 /**
  * This modal is used to move a resource (folder or workflow) to a different folder.
  */
@@ -75,11 +86,19 @@ export interface SimpleFolder {
 const props = defineProps<Props>();
 
 const i18n = useI18n();
-const modalBus = createEventBus();
 
 const foldersStore = useFoldersStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 const credentialsStore = useCredentialsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
@@ -488,21 +507,20 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		:title="title"
-		width="500"
-		:class="$style.container"
-		:event-bus="modalBus"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="title"
+		:data-test-id="`${MOVE_FOLDER_MODAL_KEY}-modal`"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<p
+		<N8nDialogBody>
+			<N8nDialogDescription
 				v-if="props.data.resourceType === 'folder' && (workflowCount > 0 || subFolderCount > 0)"
-				:class="$style.description"
 				data-test-id="move-modal-description"
 			>
 				{{ descriptionMessage }}
-			</p>
+			</N8nDialogDescription>
 			<div v-if="projectsStore.isTeamProjectFeatureEnabled" :class="$style.content">
 				<div :class="$style.block">
 					<N8nText color="text-dark">
@@ -533,12 +551,12 @@ onMounted(async () => {
 				<div v-if="isTransferringOwnership" :class="$style.block">
 					<N8nText>
 						<I18nT keypath="projects.move.resource.modal.message.sharingNote" scope="global">
-							<template #note
-								><strong>{{
+							<template #note>
+								<strong>{{
 									i18n.baseText('projects.move.resource.modal.message.note')
 								}}</strong></template
 							>
-							<template #resourceTypeLabel>{{ resourceTypeLabel }}</template>
+							<template #resourceTypeLabel> {{ resourceTypeLabel }}</template>
 						</I18nT>
 						<div
 							v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0"
@@ -556,23 +574,21 @@ onMounted(async () => {
 					</N8nText>
 				</div>
 			</div>
-			<template v-if="selectedProject && isFolderSelectable">
-				<div :class="$style.block">
-					<N8nText color="text-dark">
-						{{ i18n.baseText('folders.move.modal.folder.label') }}
-					</N8nText>
-					<MoveToFolderDropdown
-						:selected-location="selectedFolder"
-						:selected-project-id="selectedProject.id"
-						:current-project-id="currentResourceProjectId"
-						:current-folder-id="currentFolder?.id"
-						:parent-folder-id="props.data.resource.parentFolderId"
-						:exclude-only-parent="props.data.resourceType === 'workflow'"
-						@location:selected="onFolderSelected"
-						@load:error="toast.showError($event, i18n.baseText('folders.open.error.title'))"
-					/>
-				</div>
-			</template>
+			<div v-if="selectedProject && isFolderSelectable" :class="$style.block">
+				<N8nText color="text-dark">
+					{{ i18n.baseText('folders.move.modal.folder.label') }}
+				</N8nText>
+				<MoveToFolderDropdown
+					:selected-location="selectedFolder"
+					:selected-project-id="selectedProject.id"
+					:current-project-id="currentResourceProjectId"
+					:current-folder-id="currentFolder?.id"
+					:parent-folder-id="props.data.resource.parentFolderId"
+					:exclude-only-parent="props.data.resourceType === 'workflow'"
+					@location:selected="onFolderSelected"
+					@load:error="toast.showError($event, i18n.baseText('folders.open.error.title'))"
+				/>
+			</div>
 			<N8nCheckbox
 				v-if="shareableCredentials.length"
 				v-model="shareUsedCredentials"
@@ -670,8 +686,8 @@ onMounted(async () => {
 					</template>
 				</I18nT>
 			</N8nCallout>
-		</template>
-		<template #footer="{ close }">
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					variant="outline"
@@ -679,7 +695,7 @@ onMounted(async () => {
 					:disabled="loading"
 					float="right"
 					data-test-id="cancel-move-folder-button"
-					@click="close"
+					@click="closeDialog"
 				/>
 				<N8nButton
 					:disabled="(!selectedFolder && isFolderSelectable) || loading"
@@ -696,22 +712,11 @@ onMounted(async () => {
 					@click="onSubmit"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
-.container {
-	h1 {
-		max-width: 90%;
-	}
-}
-
-.description {
-	font-size: var(--font-size--sm);
-	margin: var(--spacing--sm) 0;
-}
-
 .block {
 	margin-bottom: var(--spacing--sm);
 }

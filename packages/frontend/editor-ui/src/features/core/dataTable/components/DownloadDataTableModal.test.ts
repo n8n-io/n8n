@@ -1,19 +1,35 @@
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
+import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { vi } from 'vitest';
 import DownloadDataTableModal from '@/features/core/dataTable/components/DownloadDataTableModal.vue';
 
-const ModalStub = {
-	template: `
-		<div>
-			<slot name="header" />
-			<slot name="title" />
-			<slot name="content" />
-			<slot name="footer" />
-		</div>
-	`,
-};
+const MODAL_NAME = 'download-data-table';
+
+vi.mock('@n8n/design-system', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/design-system')>();
+	return {
+		...actual,
+		N8nAlertDialog: {
+			name: 'N8nAlertDialog',
+			props: ['open', 'title', 'actionLabel', 'cancelLabel'],
+			emits: ['action', 'cancel', 'update:open'],
+			template: `
+				<div v-if="open" role="dialog">
+					<h2>{{ title }}</h2>
+					<slot />
+					<button type="button" data-test-id="download-modal-cancel" @click="$emit('cancel')">
+						{{ cancelLabel }}
+					</button>
+					<button type="button" data-test-id="download-modal-confirm" @click="$emit('action')">
+						{{ actionLabel }}
+					</button>
+				</div>
+			`,
+		},
+	};
+});
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -30,28 +46,35 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 
 const renderComponent = createComponentRenderer(DownloadDataTableModal, {
 	props: {
-		modalName: 'download-data-table',
-	},
-	global: {
-		stubs: {
-			Modal: ModalStub,
-		},
+		modalName: MODAL_NAME,
 	},
 });
 
 describe('DownloadDataTableModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		createTestingPinia();
 	});
 
+	function renderOpenModal() {
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalStateById: {
+						[MODAL_NAME]: { open: true },
+					},
+				},
+			},
+		});
+		return renderComponent({ pinia });
+	}
+
 	it('should render the checkbox unchecked by default', () => {
-		const { getByTestId } = renderComponent();
+		const { getByTestId } = renderOpenModal();
 		expect(getByTestId('download-include-system-columns')).toBeInTheDocument();
 	});
 
 	it('should emit confirm with false when clicking confirm without toggling checkbox', async () => {
-		const { getByTestId, emitted } = renderComponent();
+		const { getByTestId, emitted } = renderOpenModal();
 
 		await userEvent.click(getByTestId('download-modal-confirm'));
 
@@ -60,7 +83,7 @@ describe('DownloadDataTableModal', () => {
 	});
 
 	it('should emit confirm with true when checkbox is checked then confirm is clicked', async () => {
-		const { getByTestId, emitted } = renderComponent();
+		const { getByTestId, emitted } = renderOpenModal();
 
 		await userEvent.click(getByTestId('download-include-system-columns'));
 		await userEvent.click(getByTestId('download-modal-confirm'));
@@ -70,7 +93,7 @@ describe('DownloadDataTableModal', () => {
 	});
 
 	it('should emit close when cancel is clicked', async () => {
-		const { getByTestId, emitted } = renderComponent();
+		const { getByTestId, emitted } = renderOpenModal();
 
 		await userEvent.click(getByTestId('download-modal-cancel'));
 

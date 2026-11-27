@@ -15,7 +15,7 @@ import type { CloudPlanState } from '@n8n/stores/cloudPlan.store';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { computed } from 'vue';
 
-import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import {
 	AGENTS_MODULE_NAME,
 	AGENT_BUILDER_VIEW,
@@ -32,7 +32,6 @@ import type { Project, ProjectListItem } from '@/features/collaboration/projects
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 import { useGlobalEntityCreation } from './useGlobalEntityCreation';
 
-const promptMock = vi.hoisted(() => vi.fn());
 const createAppMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
@@ -73,10 +72,6 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	};
 });
 
-vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ prompt: promptMock }),
-}));
-
 vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showToast = vi.fn();
@@ -115,7 +110,6 @@ beforeEach(() => {
 	setActivePinia(createTestingPinia());
 	routerPushMock.mockReset();
 	routerResolveMock.mockReturnValue({ href: '/folder' });
-	promptMock.mockReset();
 	trackMock.mockReset();
 	vi.mocked(hasPermission).mockReturnValue(false);
 	capabilityRegistry.clear();
@@ -221,16 +215,20 @@ describe('useGlobalEntityCreation', () => {
 				id: 'folder-1',
 				name: 'New folder',
 			} as never);
-			promptMock.mockResolvedValue({ action: MODAL_CONFIRM, value: 'New folder' });
+			const uiStore = mockedStore(useUIStore);
 
 			const { handleSelect } = useGlobalEntityCreation();
 			handleSelect('folder');
-			await flushPromises();
 
-			expect(promptMock).toHaveBeenCalledWith(
-				expect.any(String),
-				expect.objectContaining({ inputValidator: expect.any(Function) }),
+			expect(uiStore.openCreateFolderModal).toHaveBeenCalledWith(
+				'Team project',
+				expect.any(Function),
 			);
+			const onConfirm = uiStore.openCreateFolderModal.mock.calls[0][1] as (
+				name: string,
+			) => Promise<void>;
+			await onConfirm('New folder');
+
 			expect(foldersStore.createFolder).toHaveBeenCalledWith('New folder', 'team-project');
 			expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.PLATFORM.USER_CREATED_FOLDER, {
 				folder_id: 'folder-1',
@@ -254,11 +252,16 @@ describe('useGlobalEntityCreation', () => {
 				id: 'folder-1',
 				name: 'New folder',
 			} as never);
-			promptMock.mockResolvedValue({ action: MODAL_CONFIRM, value: 'New folder' });
+			const uiStore = mockedStore(useUIStore);
 
 			const { handleSelect } = useGlobalEntityCreation();
 			handleSelect('folder');
-			await flushPromises();
+
+			expect(uiStore.openCreateFolderModal).toHaveBeenCalledWith('Personal', expect.any(Function));
+			const onConfirm = uiStore.openCreateFolderModal.mock.calls[0][1] as (
+				name: string,
+			) => Promise<void>;
+			await onConfirm('New folder');
 
 			expect(foldersStore.createFolder).toHaveBeenCalledWith('New folder', 'personal-project');
 		});
