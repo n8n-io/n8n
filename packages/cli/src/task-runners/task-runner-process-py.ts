@@ -68,7 +68,9 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 		const value = process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
 		if (value === undefined) return undefined;
 
-		if (/^\d+$/.test(value) && Number(value) > 0) return value;
+		// A safe integer also rejects huge digit strings that Python cannot parse.
+		const seconds = Number(value);
+		if (/^\d+$/.test(value) && Number.isSafeInteger(seconds) && seconds > 0) return value;
 
 		this.logger.warn(
 			`Ignoring N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT="${value}" for the Python task runner. The value must be a positive integer. The runner uses its default.`,

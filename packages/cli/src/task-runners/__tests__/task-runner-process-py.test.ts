@@ -65,6 +65,18 @@ describe('PyTaskRunnerProcess', () => {
 		});
 
 		describe('N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT', () => {
+			const originalValue = process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
+
+			beforeEach(() => {
+				delete process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
+			});
+
+			afterAll(() => {
+				if (originalValue !== undefined) {
+					process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = originalValue;
+				}
+			});
+
 			afterEach(() => {
 				delete process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
 				logger.warn.mockClear();
@@ -88,7 +100,7 @@ describe('PyTaskRunnerProcess', () => {
 				expect(logger.warn).not.toHaveBeenCalled();
 			});
 
-			test.each(['0', '-5', '1.5', 'abc', ''])(
+			test.each(['0', '-5', '1.5', 'abc', '', '1'.repeat(400)])(
 				'should not forward %j and should log a warning',
 				async (value) => {
 					process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT = value;
