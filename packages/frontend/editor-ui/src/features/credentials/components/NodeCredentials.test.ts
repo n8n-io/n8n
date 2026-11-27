@@ -1159,7 +1159,7 @@ describe('NodeCredentials', () => {
 			);
 			ndvStore.activeNode = httpNode;
 			credentialsStore.state.credentials = {
-				c8vqdPpPClh4TgIO: createCredential({ isRuntime: true, name: 'Request value: slack-bot' }),
+				c8vqdPpPClh4TgIO: createCredential({ isRuntime: true, ruleAlias: 'slack-bot' }),
 			};
 
 			renderComponent({

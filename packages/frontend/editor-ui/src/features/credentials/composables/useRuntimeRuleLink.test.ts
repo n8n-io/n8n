@@ -1,14 +1,21 @@
-import { getRuntimeRuleAlias } from './useRuntimeRuleLink';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 
-describe('getRuntimeRuleAlias', () => {
-	it('reads the alias from the stub name', () => {
-		expect(getRuntimeRuleAlias('Request value: gmail-caller')).toBe('gmail-caller');
+import { useRuntimeRuleLink } from './useRuntimeRuleLink';
+
+describe('useRuntimeRuleLink', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
 	});
 
-	it.each([undefined, '', 'Gmail account', 'Request value: '])(
-		'returns undefined for %j',
-		(name) => {
-			expect(getRuntimeRuleAlias(name)).toBeUndefined();
-		},
-	);
+	it('links to the rule by its alias', () => {
+		expect(useRuntimeRuleLink().ruleLocation('gmail-caller')).toEqual({
+			path: '/settings/runtime-inputs',
+			query: { rule: 'gmail-caller' },
+		});
+	});
+
+	it.each([undefined, null, ''])('links to the page without a rule for %j', (alias) => {
+		expect(useRuntimeRuleLink().ruleLocation(alias)).toEqual({ path: '/settings/runtime-inputs' });
+	});
 });

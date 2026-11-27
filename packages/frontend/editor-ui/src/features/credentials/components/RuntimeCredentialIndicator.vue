@@ -7,12 +7,12 @@ import { useRuntimeRuleLink } from '../composables/useRuntimeRuleLink';
 
 const props = withDefaults(
 	defineProps<{
-		/** The name of the stub credential. The rule alias comes from it. */
-		credentialName?: string;
+		/** The alias of the rule behind the stub. `null` or missing when the rule is gone. */
+		ruleAlias?: string | null;
 		/** `badge` is the outlined label of a list card. `icon` is the compact mark of a dropdown row. */
 		variant?: 'badge' | 'icon';
 	}>(),
-	{ credentialName: undefined, variant: 'badge' },
+	{ ruleAlias: undefined, variant: 'badge' },
 );
 
 const i18n = useI18n();
@@ -27,7 +27,7 @@ const { canManageRules, ruleLocation } = useRuntimeRuleLink();
 				<!-- The tooltip is dark in both themes, so the link takes the tooltip's text color. -->
 				<RouterLink
 					v-if="canManageRules"
-					:to="ruleLocation(props.credentialName)"
+					:to="ruleLocation(props.ruleAlias)"
 					:class="$style.link"
 					data-test-id="credential-runtime-manage-rule"
 				>

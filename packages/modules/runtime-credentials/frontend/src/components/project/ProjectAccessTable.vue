@@ -19,7 +19,6 @@ import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { computed, ref } from 'vue';
 
 import type { ProjectInputRow } from './useProjectRuntimeInputs';
-import type { RuntimeCredentialRule } from '../../runtime-credentials.api';
 
 type Access = 'allow' | 'deny';
 
@@ -85,7 +84,7 @@ const headers = computed<Array<TableHeader<ProjectInputRow>>>(() => [
 	{
 		title: i18n.baseText('runtimeCredentials.project.table.access'),
 		key: 'access',
-		value: (row: ProjectInputRow) => row.effective.access,
+		value: (row: ProjectInputRow) => row.access,
 		width: 190,
 	},
 ]);
@@ -99,7 +98,7 @@ const sortedRows = computed(() => {
 		collator.compare(a.displayName, b.displayName);
 	return [...props.rows].sort((a, b) =>
 		sort?.id === 'access'
-			? direction * collator.compare(a.effective.access, b.effective.access) || byName(a, b)
+			? direction * collator.compare(a.access, b.access) || byName(a, b)
 			: direction * byName(a, b),
 	);
 });
@@ -119,42 +118,25 @@ const filteredRows = computed(() => {
 
 const noMatch = computed(() => props.rows.length > 0 && filteredRows.value.length === 0);
 
-function triggerOf(rule: RuntimeCredentialRule): string {
-	return rule.nodeType === '*'
-		? i18n.baseText('runtimeCredentials.project.table.rule.anyTrigger')
-		: rule.nodeType;
-}
-
-function ruleContext(rule: RuntimeCredentialRule): string {
-	return i18n.baseText('runtimeCredentials.project.table.rule.trigger', {
-		interpolate: { path: rule.path, nodeType: triggerOf(rule) },
-	});
-}
-
-/** The project can change a row unless the instance blocks the type outright. */
+/** The project can change a row unless the instance blocks the type. */
 function isEditable(row: ProjectInputRow): boolean {
-	return row.effective.deniedBy !== 'instance' || row.effective.canOptIn;
+	return row.blockedBy !== 'instance';
 }
 
 function tooltipOf(row: ProjectInputRow): string | undefined {
-	const { effective } = row;
-	if (effective.deniedBy === 'instance' && !effective.canOptIn) {
-		return i18n.baseText('runtimeCredentials.project.access.deniedByInstance.tooltip');
-	}
-	if (effective.canOptIn && effective.access === 'deny') {
-		return i18n.baseText('runtimeCredentials.project.access.optIn.tooltip');
-	}
-	return undefined;
+	return row.blockedBy === 'instance'
+		? i18n.baseText('runtimeCredentials.project.access.deniedByInstance.tooltip')
+		: undefined;
 }
 
 function accessLabel(row: ProjectInputRow): string {
-	return row.effective.deniedBy === 'instance' && !row.effective.canOptIn
+	return row.blockedBy === 'instance'
 		? i18n.baseText('runtimeCredentials.project.access.deniedByInstance')
-		: i18n.baseText(ACCESS_LABEL_KEY[row.effective.access]);
+		: i18n.baseText(ACCESS_LABEL_KEY[row.access]);
 }
 
 function onSelect(row: ProjectInputRow, access: Access) {
-	if (access === row.effective.access) return;
+	if (access === row.access) return;
 	emit('change', row.credentialType, access, row.displayName);
 }
 </script>
@@ -222,7 +204,7 @@ function onSelect(row: ProjectInputRow, access: Access) {
 					<li v-for="rule in item.rules" :key="rule.alias" :class="$style.rule">
 						<N8nText bold>{{ rule.alias }}</N8nText>
 						<N8nText color="text-light" size="small" :class="$style.ellipsis">
-							{{ ruleContext(rule) }}
+							{{ rule.path }}
 						</N8nText>
 					</li>
 				</ul>
@@ -233,7 +215,7 @@ function onSelect(row: ProjectInputRow, access: Access) {
 						<template #content>{{ tooltipOf(item) }}</template>
 						<N8nDropdownMenu
 							v-if="isEditable(item)"
-							:items="accessMenuItems[item.effective.access]"
+							:items="accessMenuItems[item.access]"
 							placement="bottom-start"
 							:data-test-id="`runtime-project-access-${item.credentialType}`"
 							@select="(access: Access) => onSelect(item, access)"
@@ -255,7 +237,7 @@ function onSelect(row: ProjectInputRow, access: Access) {
 										size="small"
 										spin
 									/>
-									<N8nIcon v-else v-bind="ACCESS_ICON[item.effective.access]" size="small" />
+									<N8nIcon v-else v-bind="ACCESS_ICON[item.access]" size="small" />
 									{{ accessLabel(item) }}
 									<N8nIcon icon="chevron-down" size="small" />
 								</N8nButton>
@@ -269,20 +251,9 @@ function onSelect(row: ProjectInputRow, access: Access) {
 							:class="$style.readOnly"
 							:data-test-id="`runtime-project-access-${item.credentialType}`"
 						>
-							<N8nIcon v-bind="ACCESS_ICON[item.effective.access]" size="small" />
+							<N8nIcon v-bind="ACCESS_ICON[item.access]" size="small" />
 							<N8nText>{{ accessLabel(item) }}</N8nText>
 						</div>
-					</N8nTooltip>
-					<N8nTooltip v-if="!item.effective.exact" placement="top">
-						<template #content>
-							{{ i18n.baseText('runtimeCredentials.project.access.inexact.tooltip') }}
-						</template>
-						<N8nIcon
-							icon="info"
-							size="small"
-							color="text-light"
-							:data-test-id="`runtime-project-inexact-${item.credentialType}`"
-						/>
 					</N8nTooltip>
 				</div>
 			</template>

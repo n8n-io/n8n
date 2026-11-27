@@ -354,7 +354,7 @@ function moveResource() {
 				:class="$style.privateCredentialIndicator"
 				data-test-id="credential-card-runtime"
 			>
-				<RuntimeCredentialIndicator :credential-name="data.name" />
+				<RuntimeCredentialIndicator :rule-alias="data.ruleAlias" />
 			</span>
 			<span
 				v-if="isPrivateCredentialsEnabled && data.isResolvable"

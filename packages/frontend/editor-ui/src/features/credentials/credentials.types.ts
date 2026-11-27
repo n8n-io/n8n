@@ -33,6 +33,8 @@ export interface ICredentialsResponse
 	isResolvable?: boolean;
 	/** Stub that gets its value from the incoming request at run time. Nothing is stored. */
 	isRuntime?: boolean;
+	/** The rule behind a run-time stub. `null` when the rule was removed. */
+	ruleAlias?: string | null;
 	usageScope?: 'project' | 'instance';
 	/**
 	 * How this credential reaches the workflow being edited: `project` when the

@@ -1,5 +1,6 @@
 import type {
 	CreateRuntimeCredentialRuleDto,
+	ProjectRuntimeCredentialRule,
 	RuntimeCredentialRule,
 	RuntimeCredentialRuleImpact,
 	UpdateRuntimeCredentialRuleDto,
@@ -8,6 +9,7 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 export type {
+	ProjectRuntimeCredentialRule,
 	RuntimeCredentialRule,
 	RuntimeCredentialRuleImpact,
 	RuntimeCredentialRuleImpactWorkflow,
@@ -25,6 +27,22 @@ export async function fetchRules(context: IRestApiContext): Promise<RuntimeCrede
 		context,
 		'GET',
 		RULES_ENDPOINT,
+	);
+	return response.rules;
+}
+
+/**
+ * The rules with their access in one project. A project admin can read it. Fails with 403 when the
+ * feature is off, the license is missing, or the user lacks the project scope.
+ */
+export async function fetchProjectRules(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ProjectRuntimeCredentialRule[]> {
+	const response = await makeRestApiRequest<{ rules: ProjectRuntimeCredentialRule[] }>(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/runtime-credential-rules`,
 	);
 	return response.rules;
 }
@@ -64,9 +82,8 @@ export async function deleteRule(context: IRestApiContext, alias: string): Promi
 	await makeRestApiRequest(context, 'DELETE', `${RULES_ENDPOINT}/${encodeURIComponent(alias)}`);
 }
 
-// Policy kind "request-fed credential types". Modeled on the credential type policy client.
-// The backend sets these paths. Change them here only.
-const instancePolicyEndpoint = () => '/request-fed-credential-type-policies/instance';
+// Project policy kind "request-fed credential types". Modeled on the credential type policy client.
+// The backend sets this path. Change it here only.
 const projectPolicyEndpoint = (projectId: string) =>
 	`/projects/${encodeURIComponent(projectId)}/request-fed-credential-type-policies/project`;
 
@@ -84,10 +101,6 @@ export type RequestFedPolicy = {
 	/** What a save sends back. A stale version fails with 409. */
 	version: number;
 };
-
-export async function fetchInstancePolicy(context: IRestApiContext): Promise<RequestFedPolicy> {
-	return await makeRestApiRequest(context, 'GET', instancePolicyEndpoint());
-}
 
 export async function fetchProjectPolicy(
 	context: IRestApiContext,

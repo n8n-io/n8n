@@ -77,14 +77,6 @@ async function onChange(credentialType: string, access: 'allow' | 'deny', displa
 			</N8nCallout>
 			<template v-else>
 				<N8nCallout
-					v-if="inputs.instanceUnavailable.value"
-					theme="secondary"
-					slim
-					data-test-id="runtime-project-instance-unavailable"
-				>
-					{{ i18n.baseText('runtimeCredentials.project.instanceUnavailable') }}
-				</N8nCallout>
-				<N8nCallout
 					v-if="inputs.saveFailure.value"
 					theme="danger"
 					slim

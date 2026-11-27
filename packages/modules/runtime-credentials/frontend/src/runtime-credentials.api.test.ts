@@ -3,7 +3,7 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import {
 	createRule,
 	deleteRule,
-	fetchInstancePolicy,
+	fetchProjectRules,
 	fetchProjectPolicy,
 	fetchRuleImpact,
 	fetchRules,
@@ -110,13 +110,14 @@ describe('request-fed credential type policy requests', () => {
 		vi.clearAllMocks();
 	});
 
-	it('reads the instance policy', async () => {
-		await fetchInstancePolicy(context);
+	it('reads the project rules from the project scoped endpoint', async () => {
+		makeRestApiRequest.mockResolvedValue({ rules: [{ alias: 'a' }] });
 
+		await expect(fetchProjectRules(context, 'p/1')).resolves.toEqual([{ alias: 'a' }]);
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			context,
 			'GET',
-			'/request-fed-credential-type-policies/instance',
+			'/projects/p%2F1/runtime-credential-rules',
 		);
 	});
 

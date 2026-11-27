@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor, within } from '@testing-library/vue';
 
-import type { RequestFedPolicy, RuntimeCredentialRule } from '../runtime-credentials.api';
+import type { ProjectRuntimeCredentialRule, RequestFedPolicy } from '../runtime-credentials.api';
 import RuntimeInputsProjectView from './RuntimeInputsProjectView.vue';
 
 const showMessage = vi.fn();
@@ -18,50 +18,39 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 
 type ApiMock = (...args: unknown[]) => Promise<unknown>;
-const fetchRules = vi.fn<ApiMock>();
-const fetchInstancePolicy = vi.fn<ApiMock>();
+const fetchProjectRules = vi.fn<ApiMock>();
 const fetchProjectPolicy = vi.fn<ApiMock>();
 const saveProjectPolicy = vi.fn<ApiMock>();
 
 vi.mock('../runtime-credentials.api', () => ({
-	fetchRules: async (...args: unknown[]) => await fetchRules(...args),
-	fetchInstancePolicy: async (...args: unknown[]) => await fetchInstancePolicy(...args),
+	fetchProjectRules: async (...args: unknown[]) => await fetchProjectRules(...args),
 	fetchProjectPolicy: async (...args: unknown[]) => await fetchProjectPolicy(...args),
 	saveProjectPolicy: async (...args: unknown[]) => await saveProjectPolicy(...args),
 }));
 
-vi.mock('../components/project/credentialTypes', async (importOriginal) => ({
-	...(await importOriginal<object>()),
-	fetchCredentialTypeInfo: async () =>
+vi.mock('../components/project/credentialTypes', () => ({
+	fetchCredentialTypeNames: async () =>
 		await Promise.resolve(
 			new Map([
-				['gmailOAuth2', { displayName: 'Gmail OAuth2 API', extends: ['googleOAuth2Api'] }],
-				['slackApi', { displayName: 'Slack API', extends: [] }],
-				['sshPrivateKey', { displayName: 'SSH Private Key', extends: [] }],
+				['gmailOAuth2', 'Gmail OAuth2 API'],
+				['slackApi', 'Slack API'],
+				['sshPrivateKey', 'SSH Private Key'],
 			]),
 		),
 }));
 
-const rule = (alias: string, credentialType: string, nodeType = 'n8n-nodes-base.webhook') =>
-	({
-		alias,
-		nodeType,
-		path: `body.${alias}`,
-		credentialType,
-		source: 'database',
-		stubCredentialId: `s-${alias}`,
-	}) satisfies RuntimeCredentialRule;
+const rule = (
+	alias: string,
+	credentialType: string,
+	access: ProjectRuntimeCredentialRule['access'] = 'allowed',
+	blockedBy: ProjectRuntimeCredentialRule['blockedBy'] = null,
+) => ({ alias, path: `body.${alias}`, credentialType, access, blockedBy });
 
 const rules = [
 	rule('gmail-caller', 'gmailOAuth2'),
 	rule('slack-bot', 'slackApi'),
-	rule('ssh-deploy', 'sshPrivateKey', '*'),
+	rule('ssh-deploy', 'sshPrivateKey', 'blocked', 'instance'),
 ];
-const instancePolicy: RequestFedPolicy = {
-	rules: [{ id: 'i1', action: 'deny', selector: { kind: 'name', value: 'sshPrivateKey' } }],
-	defaultAction: 'allow',
-	version: 1,
-};
 const projectPolicy: RequestFedPolicy = { rules: [], defaultAction: 'allow', version: 4 };
 
 const renderView = createComponentRenderer(RuntimeInputsProjectView);
@@ -69,8 +58,7 @@ const renderView = createComponentRenderer(RuntimeInputsProjectView);
 describe('RuntimeInputsProjectView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		fetchRules.mockResolvedValue(rules);
-		fetchInstancePolicy.mockResolvedValue(instancePolicy);
+		fetchProjectRules.mockResolvedValue(rules);
 		fetchProjectPolicy.mockResolvedValue(projectPolicy);
 		saveProjectPolicy.mockImplementation(
 			async (_context, _id, policy) =>
@@ -89,8 +77,8 @@ describe('RuntimeInputsProjectView', () => {
 		);
 		expect(screen.getAllByTestId(/^runtime-project-type-/)).toHaveLength(3);
 		expect(screen.getByText('slack-bot')).toBeInTheDocument();
-		expect(screen.getByText('body.slack-bot on n8n-nodes-base.webhook')).toBeInTheDocument();
-		expect(screen.getByText('body.ssh-deploy on any trigger node')).toBeInTheDocument();
+		expect(screen.getByText('body.slack-bot')).toBeInTheDocument();
+		expect(fetchProjectRules).toHaveBeenCalledWith(expect.anything(), 'p1');
 		expect(fetchProjectPolicy).toHaveBeenCalledWith(expect.anything(), 'p1');
 	});
 
@@ -103,16 +91,14 @@ describe('RuntimeInputsProjectView', () => {
 		expect(screen.getByRole('button', { name: 'Access for Slack API' })).toBeInTheDocument();
 	});
 
-	it('keeps a project allow rule from loosening an instance block', async () => {
-		fetchProjectPolicy.mockResolvedValue({
-			...projectPolicy,
-			rules: [{ id: 'p1', action: 'allow', selector: { kind: 'name', value: 'sshPrivateKey' } }],
-		});
+	it('shows a type that the project policy blocks as editable', async () => {
+		fetchProjectRules.mockResolvedValue([rule('slack-bot', 'slackApi', 'blocked', 'project')]);
 		renderView();
 
-		expect(await screen.findByTestId('runtime-project-access-sshPrivateKey')).toHaveTextContent(
-			'Blocked by instance',
+		expect(await screen.findByTestId('runtime-project-access-slackApi')).toHaveTextContent(
+			'Blocked',
 		);
+		expect(screen.getByRole('button', { name: 'Access for Slack API' })).toBeInTheDocument();
 	});
 
 	it('blocks a credential type with the version that the page read', async () => {
@@ -132,17 +118,18 @@ describe('RuntimeInputsProjectView', () => {
 		expect(saved.rules).toEqual([
 			expect.objectContaining({ action: 'deny', selector: { kind: 'name', value: 'slackApi' } }),
 		]);
-		expect(await screen.findByText('Blocked')).toBeInTheDocument();
+		expect(fetchProjectRules).toHaveBeenCalledTimes(2);
 		expect(showMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'success', title: 'Slack API blocked' }),
 		);
 	});
 
-	it('removes the project deny rule when the type is allowed again', async () => {
+	it('replaces the project deny rule with an allow rule when the type is allowed again', async () => {
 		fetchProjectPolicy.mockResolvedValue({
 			...projectPolicy,
 			rules: [{ id: 'p1', action: 'deny', selector: { kind: 'name', value: 'slackApi' } }],
 		});
+		fetchProjectRules.mockResolvedValue([rule('slack-bot', 'slackApi', 'blocked', 'project')]);
 		renderView();
 
 		await userEvent.click(await screen.findByRole('button', { name: 'Access for Slack API' }));
@@ -150,7 +137,9 @@ describe('RuntimeInputsProjectView', () => {
 
 		await waitFor(() => expect(saveProjectPolicy).toHaveBeenCalled());
 		const [, , saved] = saveProjectPolicy.mock.calls[0] as [unknown, string, RequestFedPolicy];
-		expect(saved.rules).toEqual([]);
+		expect(saved.rules).toEqual([
+			expect.objectContaining({ action: 'allow', selector: { kind: 'name', value: 'slackApi' } }),
+		]);
 		expect(saved.version).toBe(4);
 		expect(showMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ title: 'Slack API allowed' }),
@@ -189,7 +178,7 @@ describe('RuntimeInputsProjectView', () => {
 	});
 
 	it('shows a callout when the instance has no rules', async () => {
-		fetchRules.mockResolvedValue([]);
+		fetchProjectRules.mockResolvedValue([]);
 		renderView();
 
 		expect(await screen.findByTestId('runtime-project-no-rules')).toHaveTextContent(
@@ -199,7 +188,7 @@ describe('RuntimeInputsProjectView', () => {
 	});
 
 	it('shows a loading state before the data arrives', () => {
-		fetchRules.mockReturnValue(new Promise(() => {}));
+		fetchProjectRules.mockReturnValue(new Promise(() => {}));
 		renderView();
 
 		expect(screen.getByTestId('runtime-project-loading')).toBeInTheDocument();
@@ -216,27 +205,27 @@ describe('RuntimeInputsProjectView', () => {
 	});
 
 	it('explains a missing permission without a retry', async () => {
-		fetchRules.mockRejectedValue(Object.assign(new Error('forbidden'), { httpStatusCode: 403 }));
-		renderView();
-
-		expect(await screen.findByTestId('runtime-project-error')).toHaveTextContent(
-			"You can't view the instance rules.",
-		);
-		expect(screen.queryByTestId('runtime-project-retry')).not.toBeInTheDocument();
-	});
-
-	it('works from the project policy when the instance policy is not readable', async () => {
-		fetchInstancePolicy.mockRejectedValue(
+		fetchProjectRules.mockRejectedValue(
 			Object.assign(new Error('forbidden'), { httpStatusCode: 403 }),
 		);
 		renderView();
 
-		expect(await screen.findByTestId('runtime-project-instance-unavailable')).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Access for SSH Private Key' })).toBeInTheDocument();
+		expect(await screen.findByTestId('runtime-project-error')).toHaveTextContent(
+			"You can't view run-time inputs for this project.",
+		);
+		expect(screen.queryByTestId('runtime-project-retry')).not.toBeInTheDocument();
+	});
+
+	it('only calls project scoped endpoints', async () => {
+		renderView();
+
+		await screen.findByTestId('runtime-project-type-slackApi');
+		expect(fetchProjectRules).toHaveBeenCalledWith(expect.anything(), 'p1');
+		expect(fetchProjectPolicy).toHaveBeenCalledWith(expect.anything(), 'p1');
 	});
 
 	it('shows search only for more than eight rows and filters by name', async () => {
-		fetchRules.mockResolvedValue(
+		fetchProjectRules.mockResolvedValue(
 			Array.from({ length: 9 }, (_, index) => rule(`rule-${index}`, `type${index}`)),
 		);
 		renderView();

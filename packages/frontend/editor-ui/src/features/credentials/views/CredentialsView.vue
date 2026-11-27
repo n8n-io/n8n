@@ -146,6 +146,7 @@ const allCredentials = computed<Resource[]>(() =>
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
 		isRuntime: credential.isRuntime,
+		ruleAlias: credential.ruleAlias,
 		connectedByMe: credential.connectedByMe,
 		type: credential.type,
 		...restrictionOf(credential),

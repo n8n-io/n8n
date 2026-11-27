@@ -1,43 +1,62 @@
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, shallowRef } from 'vue';
 
-import { fetchCredentialTypeInfo, policedType, type CredentialTypeInfo } from './credentialTypes';
-import { effectiveAccess, projectRulesFor, type EffectiveAccess } from './effectiveAccess';
+import { fetchCredentialTypeNames } from './credentialTypes';
 import {
-	fetchInstancePolicy,
 	fetchProjectPolicy,
-	fetchRules,
+	fetchProjectRules,
 	saveProjectPolicy,
+	type PolicyRule,
+	type ProjectRuntimeCredentialRule,
 	type RequestFedPolicy,
-	type RuntimeCredentialRule,
 } from '../../runtime-credentials.api';
 import { getHttpStatus } from '../../runtime-credentials.utils';
 
 export type ProjectInputRow = {
 	credentialType: string;
 	displayName: string;
-	/** The instance rules that feed this credential type. */
-	rules: RuntimeCredentialRule[];
-	effective: EffectiveAccess;
+	/** The rules that feed this credential type. */
+	rules: ProjectRuntimeCredentialRule[];
+	access: 'allow' | 'deny';
+	/** The policy scope that blocks the type. `null` when the type is allowed. */
+	blockedBy: 'instance' | 'project' | null;
 };
 
 export type LoadFailure = 'forbidden' | 'generic';
 export type SaveFailure = 'conflict' | 'generic';
 
+/**
+ * The project policy after a change of access for one type. It drops the rules that name the type
+ * and puts one explicit rule first. First match wins, so that rule decides, even when a broader
+ * rule or a default action says otherwise. An explicit allow also lets the project opt in when
+ * the instance delegates the decision.
+ */
+export function projectRulesFor(
+	rules: readonly PolicyRule[],
+	credentialType: string,
+	desired: 'allow' | 'deny',
+	newId: () => string,
+): PolicyRule[] {
+	const kept = rules.filter(
+		(rule) => !(rule.selector.kind === 'name' && rule.selector.value === credentialType),
+	);
+	return [
+		{ id: newId(), action: desired, selector: { kind: 'name', value: credentialType } },
+		...kept,
+	];
+}
+
 /** Loads what the project page needs and writes the project policy for one credential type. */
 export function useProjectRuntimeInputs(getProjectId: () => string) {
 	const rootStore = useRootStore();
 
-	const rules = ref<RuntimeCredentialRule[]>([]);
-	const instancePolicy = ref<RequestFedPolicy | null>(null);
+	const rules = ref<ProjectRuntimeCredentialRule[]>([]);
 	const projectPolicy = ref<RequestFedPolicy | null>(null);
-	const typeInfo = shallowRef(new Map<string, CredentialTypeInfo>());
+	const typeNames = shallowRef(new Map<string, string>());
 
 	// True from the start, so the page never flashes the empty state before the first read.
 	const loading = ref(true);
 	const loadFailure = ref<LoadFailure | null>(null);
-	/** True when the user cannot read the instance policy. Instance blocks still apply at run time. */
-	const instanceUnavailable = ref(false);
 	const savingType = ref<string | null>(null);
 	const saveFailure = ref<SaveFailure | null>(null);
 
@@ -46,33 +65,26 @@ export function useProjectRuntimeInputs(getProjectId: () => string) {
 		loadFailure.value = null;
 		saveFailure.value = null;
 		const context = rootStore.restApiContext;
-		const [rulesResult, instanceResult, projectResult, typesResult] = await Promise.allSettled([
-			fetchRules(context),
-			fetchInstancePolicy(context),
+		const [rulesResult, policyResult, typesResult] = await Promise.allSettled([
+			fetchProjectRules(context, getProjectId()),
 			fetchProjectPolicy(context, getProjectId()),
-			fetchCredentialTypeInfo(rootStore.baseUrl),
+			fetchCredentialTypeNames(rootStore.baseUrl),
 		]);
 
-		if (rulesResult.status === 'rejected') {
-			loadFailure.value = getHttpStatus(rulesResult.reason) === 403 ? 'forbidden' : 'generic';
-		} else if (projectResult.status === 'rejected') {
-			loadFailure.value = 'generic';
-		} else {
+		const failed = [rulesResult, policyResult].find((result) => result.status === 'rejected');
+		if (failed) {
+			loadFailure.value = getHttpStatus(failed.reason) === 403 ? 'forbidden' : 'generic';
+		} else if (rulesResult.status === 'fulfilled' && policyResult.status === 'fulfilled') {
 			rules.value = rulesResult.value;
-			projectPolicy.value = projectResult.value;
+			projectPolicy.value = policyResult.value;
 		}
 
-		instanceUnavailable.value = instanceResult.status === 'rejected';
-		instancePolicy.value = instanceResult.status === 'fulfilled' ? instanceResult.value : null;
-		if (typesResult.status === 'fulfilled') typeInfo.value = typesResult.value;
+		if (typesResult.status === 'fulfilled') typeNames.value = typesResult.value;
 		loading.value = false;
 	}
 
 	const rows = computed<ProjectInputRow[]>(() => {
-		const project = projectPolicy.value;
-		if (!project) return [];
-
-		const byType = new Map<string, RuntimeCredentialRule[]>();
+		const byType = new Map<string, ProjectRuntimeCredentialRule[]>();
 		for (const rule of rules.value) {
 			byType.set(rule.credentialType, [...(byType.get(rule.credentialType) ?? []), rule]);
 		}
@@ -80,18 +92,16 @@ export function useProjectRuntimeInputs(getProjectId: () => string) {
 		return [...byType]
 			.map(([credentialType, feeding]) => ({
 				credentialType,
-				displayName: typeInfo.value.get(credentialType)?.displayName ?? credentialType,
+				displayName: typeNames.value.get(credentialType) ?? credentialType,
 				rules: feeding,
-				effective: effectiveAccess(
-					instancePolicy.value,
-					project,
-					policedType(typeInfo.value, credentialType),
-				),
+				// The server gives every rule of a type the same access.
+				access: feeding[0].access === 'allowed' ? ('allow' as const) : ('deny' as const),
+				blockedBy: feeding[0].blockedBy,
 			}))
 			.sort((a, b) => a.displayName.localeCompare(b.displayName));
 	});
 
-	/** Saves the project policy with the version that this page last read. */
+	/** Saves the project policy with the version that this page last read, then reads the rules again. */
 	async function setAccess(credentialType: string, desired: 'allow' | 'deny'): Promise<boolean> {
 		const current = projectPolicy.value;
 		if (!current || savingType.value) return false;
@@ -101,14 +111,11 @@ export function useProjectRuntimeInputs(getProjectId: () => string) {
 		try {
 			projectPolicy.value = await saveProjectPolicy(rootStore.restApiContext, getProjectId(), {
 				...current,
-				rules: projectRulesFor(
-					instancePolicy.value,
-					current,
-					policedType(typeInfo.value, credentialType),
-					desired,
-					() => globalThis.crypto.randomUUID(),
+				rules: projectRulesFor(current.rules, credentialType, desired, () =>
+					globalThis.crypto.randomUUID(),
 				),
 			});
+			rules.value = await fetchProjectRules(rootStore.restApiContext, getProjectId());
 			return true;
 		} catch (error) {
 			saveFailure.value = getHttpStatus(error) === 409 ? 'conflict' : 'generic';
@@ -123,7 +130,6 @@ export function useProjectRuntimeInputs(getProjectId: () => string) {
 		rows,
 		loading,
 		loadFailure,
-		instanceUnavailable,
 		savingType,
 		saveFailure,
 		load,

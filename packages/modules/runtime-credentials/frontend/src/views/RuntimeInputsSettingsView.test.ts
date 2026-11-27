@@ -34,7 +34,6 @@ vi.mock('../runtime-credentials.api', () => ({
 	updateRule: async (...args: unknown[]) => await updateRule(...args),
 	deleteRule: async (...args: unknown[]) => await deleteRule(...args),
 	fetchRuleImpact: async (...args: unknown[]) => await fetchRuleImpact(...args),
-	fetchInstancePolicy: vi.fn(),
 	fetchProjectPolicy: vi.fn(),
 	saveProjectPolicy: vi.fn(),
 }));

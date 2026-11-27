@@ -231,7 +231,7 @@ describe('CredentialCard', () => {
 			mockedStore(useRBACStore).hasScope.mockImplementation(
 				(scope) => scope === 'securitySettings:manage',
 			);
-			const data = createCredential({ isRuntime: true, name: 'Request value: gmail-caller' });
+			const data = createCredential({ isRuntime: true, ruleAlias: 'gmail-caller' });
 			const { getByTestId, findByTestId } = renderComponent({
 				props: { data },
 				...routerLinkStubs,
@@ -248,9 +248,9 @@ describe('CredentialCard', () => {
 			});
 		});
 
-		it('should link to the settings page without a rule when the name has no alias', async () => {
+		it('should link to the settings page without a rule when the rule alias is null', async () => {
 			mockedStore(useRBACStore).hasScope.mockReturnValue(true);
-			const data = createCredential({ isRuntime: true, name: 'Renamed' });
+			const data = createCredential({ isRuntime: true, ruleAlias: null });
 			const { getByTestId, findByTestId } = renderComponent({
 				props: { data },
 				...routerLinkStubs,
@@ -265,7 +265,7 @@ describe('CredentialCard', () => {
 
 		it('should not show the manage rule link without the security settings scope', async () => {
 			mockedStore(useRBACStore).hasScope.mockReturnValue(false);
-			const data = createCredential({ isRuntime: true, name: 'Request value: gmail-caller' });
+			const data = createCredential({ isRuntime: true, ruleAlias: 'gmail-caller' });
 			const { getByTestId, findByTestId } = renderComponent({
 				props: { data },
 				...routerLinkStubs,

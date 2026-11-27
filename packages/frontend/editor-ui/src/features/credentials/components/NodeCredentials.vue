@@ -1973,7 +1973,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 												data-test-id="credential-option-runtime-badge"
 											>
 												<RuntimeCredentialIndicator
-													:credential-name="row.option.name"
+													:rule-alias="row.option.ruleAlias"
 													variant="icon"
 												/>
 											</span>
