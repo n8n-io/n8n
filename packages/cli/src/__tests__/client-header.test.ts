@@ -13,23 +13,49 @@ describe('resolveClientHeader', () => {
 		['n8n_cli', 'n8n-cli'],
 		['other', 'foo'],
 	])('returns the %s client for the %s header value', (expectedClient, received) => {
-		expect(resolveClientHeader(received, CLIENT_BY_HEADER_VALUE, 'other')).toBe(expectedClient);
+		expect(
+			resolveClientHeader({
+				headerValue: received,
+				clientByHeaderValue: CLIENT_BY_HEADER_VALUE,
+				fallback: 'other',
+			}),
+		).toBe(expectedClient);
 	});
 
 	it('ignores case and surrounding whitespace', () => {
-		expect(resolveClientHeader(' Editor-UI ', CLIENT_BY_HEADER_VALUE, 'other')).toBe('editor_ui');
+		expect(
+			resolveClientHeader({
+				headerValue: ' Editor-UI ',
+				clientByHeaderValue: CLIENT_BY_HEADER_VALUE,
+				fallback: 'other',
+			}),
+		).toBe('editor_ui');
 	});
 
 	it('returns the fallback when the header is absent', () => {
-		expect(resolveClientHeader(undefined, CLIENT_BY_HEADER_VALUE, 'other')).toBe('other');
+		expect(
+			resolveClientHeader({
+				headerValue: undefined,
+				clientByHeaderValue: CLIENT_BY_HEADER_VALUE,
+				fallback: 'other',
+			}),
+		).toBe('other');
 	});
 
 	it('uses the first value of a repeated header', () => {
-		expect(resolveClientHeader(['editor-ui', 'foo'], CLIENT_BY_HEADER_VALUE, 'other')).toBe(
-			'editor_ui',
-		);
-		expect(resolveClientHeader(['foo', 'editor-ui'], CLIENT_BY_HEADER_VALUE, 'other')).toBe(
-			'other',
-		);
+		expect(
+			resolveClientHeader({
+				headerValue: ['editor-ui', 'foo'],
+				clientByHeaderValue: CLIENT_BY_HEADER_VALUE,
+				fallback: 'other',
+			}),
+		).toBe('editor_ui');
+		expect(
+			resolveClientHeader({
+				headerValue: ['foo', 'editor-ui'],
+				clientByHeaderValue: CLIENT_BY_HEADER_VALUE,
+				fallback: 'other',
+			}),
+		).toBe('other');
 	});
 });

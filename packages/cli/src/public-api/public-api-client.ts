@@ -23,6 +23,12 @@ const TELEMETRY_CLIENT_BY_HEADER_VALUE = new Map<string, PublicApiClient>([
 	[N8N_CLIENT_N8N_CLI, 'n8n_cli'],
 ]);
 
-export function resolvePublicApiClient(header: string | string[] | undefined): PublicApiClient {
-	return resolveClientHeader(header, TELEMETRY_CLIENT_BY_HEADER_VALUE, 'other');
+export function resolvePublicApiClient(
+	headerValue: string | string[] | undefined,
+): PublicApiClient {
+	return resolveClientHeader({
+		headerValue,
+		clientByHeaderValue: TELEMETRY_CLIENT_BY_HEADER_VALUE,
+		fallback: 'other',
+	});
 }
