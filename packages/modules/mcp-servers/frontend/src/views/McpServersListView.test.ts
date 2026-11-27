@@ -13,14 +13,21 @@ const api = vi.hoisted(() => ({ listMcpServers: vi.fn() }));
 vi.mock('../mcp-servers.api', () => api);
 
 const route = vi.hoisted(() => ({ params: {} as Record<string, string> }));
+/** The same route, reactive, so a test can move it to another project. */
+const liveRoute = vi.hoisted(() => ({ current: undefined as typeof route | undefined }));
 const push = vi.hoisted(() => vi.fn());
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
-	useRoute: () => route,
-	useRouter: () => ({ push, resolve: () => ({ href: '/settings/mcp' }) }),
-}));
+vi.mock('vue-router', async (importOriginal) => {
+	const { reactive } = await import('vue');
+	liveRoute.current = reactive(route);
+	return {
+		...(await importOriginal()),
+		useRoute: () => liveRoute.current,
+		useRouter: () => ({ push, resolve: () => ({ href: '/settings/mcp' }) }),
+	};
+});
 
 // The shell parts, reduced to the slots that the view fills.
+const layout = vi.hoisted(() => ({ initialize: undefined as (() => Promise<void>) | undefined }));
 const LayoutStub = defineComponent({
 	props: {
 		initialize: { type: Function as PropType<() => Promise<void>>, required: true },
@@ -28,6 +35,7 @@ const LayoutStub = defineComponent({
 		hasEmptyState: Boolean,
 	},
 	setup(props, { slots }) {
+		layout.initialize = props.initialize;
 		onMounted(async () => await props.initialize());
 		return () =>
 			h('div', [
@@ -55,8 +63,20 @@ function server(overrides: Partial<McpServerResponse>): McpServerResponse {
 	};
 }
 
+const RouterLinkStub = defineComponent({
+	props: { to: { type: Object, required: true } },
+	setup:
+		(props, { slots }) =>
+		() =>
+			h(
+				'a',
+				{ 'data-test-id': 'router-link', 'data-to': JSON.stringify(props.to) },
+				slots.default?.(),
+			),
+});
+
 const renderComponent = createComponentRenderer(McpServersListView, {
-	global: { stubs: { CreateMcpServerDialog: true, RouterLink: true } },
+	global: { stubs: { CreateMcpServerDialog: true, RouterLink: RouterLinkStub } },
 });
 
 function setUp(scopes: Scope[] = ['mcpServer:list', 'mcpServer:create']) {
@@ -127,17 +147,33 @@ describe('McpServersListView', () => {
 		expect(screen.getByTestId('project-header')).toHaveTextContent('mcpServer');
 	});
 
-	it('opens the server page from a card', async () => {
+	it('links each card to its server page', async () => {
 		api.listMcpServers.mockResolvedValue([server({})]);
 		setUp();
 		renderComponent();
 
-		await userEvent.click(await screen.findByText('Sales tools'));
+		const card = await screen.findByTestId('mcp-server-card');
 
-		expect(push).toHaveBeenCalledWith({
+		expect(JSON.parse(card.closest('a')!.dataset.to!)).toEqual({
 			name: 'McpServerView',
 			params: { projectId: 'project-1', serverId: server({}).id },
 		});
+	});
+
+	it('drops the cards and the search of the old project while the next project loads', async () => {
+		route.params = { projectId: 'project-1' };
+		api.listMcpServers.mockResolvedValue([server({})]);
+		setUp();
+		renderComponent();
+		await screen.findByTestId('mcp-server-card');
+		await userEvent.type(screen.getByTestId('mcp-servers-search'), 'Sales');
+
+		liveRoute.current!.params = { projectId: 'project-2' };
+		api.listMcpServers.mockReturnValue(new Promise(() => {}));
+		void layout.initialize!();
+
+		await waitFor(() => expect(screen.queryByTestId('mcp-server-card')).not.toBeInTheDocument());
+		expect(api.listMcpServers).toHaveBeenLastCalledWith(expect.anything(), 'project-2');
 	});
 
 	it('filters the cards by name', async () => {

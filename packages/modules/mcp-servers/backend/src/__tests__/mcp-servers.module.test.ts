@@ -7,6 +7,7 @@ import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { McpServersModule } from '../mcp-servers.module';
 import { McpServerProtectedResource } from '../runtime/mcp-server-protected-resource';
 import { OAuthClientNamePort } from '../tools/oauth-client-name-port';
+import { OAuthGrantPort } from '../tools/oauth-grant-port';
 import { TextDraftPort } from '../tools/text-draft-port';
 import { McpServerToolAdapters, WorkflowToolPort } from '../tools/workflow-tool-port';
 
@@ -24,7 +25,10 @@ describe('McpServersModule', () => {
 		const workflows = mock<WorkflowToolPort>();
 		const textDrafts = mock<TextDraftPort>();
 		const clients = mock<OAuthClientNamePort>();
-		Container.set(McpServerToolAdapters, { resolve: () => ({ workflows, textDrafts, clients }) });
+		const grants = mock<OAuthGrantPort>();
+		Container.set(McpServerToolAdapters, {
+			resolve: () => ({ workflows, textDrafts, clients, grants }),
+		});
 		Container.set(McpServerProtectedResource, mock<McpServerProtectedResource>());
 		const registry = mock<ProtectedResourceRegistry>();
 		Container.set(ProtectedResourceRegistry, registry);
@@ -34,6 +38,7 @@ describe('McpServersModule', () => {
 		expect(Container.get(WorkflowToolPort)).toBe(workflows);
 		expect(Container.get(TextDraftPort)).toBe(textDrafts);
 		expect(Container.get(OAuthClientNamePort)).toBe(clients);
+		expect(Container.get(OAuthGrantPort)).toBe(grants);
 		expect(registry.registerResolver).toHaveBeenCalledWith(
 			Container.get(McpServerProtectedResource),
 		);

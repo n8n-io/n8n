@@ -18,6 +18,7 @@ import {
 	BadRequestError,
 	ConflictError,
 	NotFoundError,
+	PaymentRequiredError,
 	ServiceUnavailableError,
 } from '@n8n/errors';
 
@@ -58,9 +59,12 @@ export interface McpServerToolCandidateQuery {
 
 /**
  * Parallel drafts after an add can pick the same name. The unique index refuses the second
- * write, and the draft tries again with the next free name.
+ * write, and the draft tries again with the next free name. Each refusal means that another
+ * draft took a name, so the cap is far above the number of drafts that the editor runs at once.
  */
-const DRAFT_SAVE_ATTEMPTS = 3;
+const DRAFT_SAVE_ATTEMPTS = 10;
+
+const TOOL_CHECK_BATCH_SIZE = 10;
 
 /** Each check loads the published version, so the picker checks a few workflows at a time. */
 const CHECK_BATCH_SIZE = 10;
@@ -124,9 +128,17 @@ export class McpServerToolsService {
 	async listTools(projectId: string, serverId: string): Promise<McpServerToolResponse[]> {
 		const server = await this.findServer(projectId, serverId);
 		const tools = await this.tools.listByServer(server.id);
-		return await Promise.all(
-			tools.map(async (tool) => toToolResponse(tool, await this.brokenReason(projectId, tool))),
-		);
+		// Each check loads a published workflow version, so a large server checks a few at a time.
+		const responses: McpServerToolResponse[] = [];
+		for (let i = 0; i < tools.length; i += TOOL_CHECK_BATCH_SIZE) {
+			const batch = tools.slice(i, i + TOOL_CHECK_BATCH_SIZE);
+			responses.push(
+				...(await Promise.all(
+					batch.map(async (tool) => toToolResponse(tool, await this.brokenReason(projectId, tool))),
+				)),
+			);
+		}
+		return responses;
 	}
 
 	/** One tool of a server. It checks only this tool, not every tool of the server. */
@@ -362,6 +374,12 @@ export class McpServerToolsService {
 		if (result.status === 'not_available') {
 			track('not_available');
 			return { status: 'not_available', tool: toToolResponse(tool, null) };
+		}
+		if (result.status === 'no_credits') {
+			track('no_credits');
+			throw new PaymentRequiredError(
+				'You have no n8n Assistant credits left, so n8n cannot write a draft.',
+			);
 		}
 
 		const answer = parseToolDraftAnswer(result.text, field);

@@ -1,6 +1,5 @@
 import {
 	AGENTS_N8N_CHAT_FLAG,
-	ASSISTANT_SKILLS_FLAG,
 	CUSTOM_MCP_SERVERS_FLAG,
 	CUSTOM_MCP_SERVERS_FLAG_VARIANT,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
@@ -9,6 +8,7 @@ import {
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
+	WORKFLOWS_IN_SKILLS_FLAG,
 } from '@n8n/api-types';
 
 function createExperiment<
@@ -159,7 +159,7 @@ export const INSTANCE_AI_SETUP_PANEL_EXPERIMENT = createExperiment(INSTANCE_AI_S
 export const AI_ASSISTANT_AT_MENTIONS_EXPERIMENT = createExperiment(AI_ASSISTANT_AT_MENTIONS_FLAG);
 
 export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
-export const ASSISTANT_SKILLS_EXPERIMENT = createExperiment(ASSISTANT_SKILLS_FLAG);
+export const WORKFLOWS_IN_SKILLS_EXPERIMENT = createExperiment(WORKFLOWS_IN_SKILLS_FLAG);
 
 /** Boolean flag. New threads of the user run on the Assistant agent, if the instance runs it. */
 export const INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT = createExperiment('141_assistant_agent');
@@ -216,6 +216,9 @@ export const PREFERENCES_EMPTY_STATE_EXPERIMENT = createExperiment('127_preferen
 
 export const RECOMMENDED_SKILLS_EXPERIMENT = createExperiment('143_recommended_skills');
 
+/** Boolean flag. It gates the node version picker in the node settings. */
+export const NODE_VERSION_PICKER_EXPERIMENT = createExperiment('154_node_version_picker');
+
 export const MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT = createExperiment(
 	'150_mcp_preferences_entry_points',
 	{
@@ -231,6 +234,7 @@ export const TEST_BUTTON_PRIMARY_COLOR_EXPERIMENT = createExperiment(
 
 export const AGENTS_INVOCATION_STEP_EXPERIMENT = createExperiment('153_agents_invocation_step');
 
+export const AGENT_TEST_SCENARIOS_EXPERIMENT = createExperiment('156_agent_test_scenarios');
 export const AGENT_BUILDER_EXPERIMENT_COHORT = createExperiment(
 	'133_agent_builder_experiment_cohort',
 	{
@@ -316,7 +320,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
 	// EOF Experiment cleanup
 	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
-	ASSISTANT_SKILLS_EXPERIMENT.name,
+	WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
 	INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name,
 	INSTANCE_AI_CLOUD_BROWSER_EXPERIMENT.name,
 	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT.name,
@@ -325,4 +329,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name,
 	TEST_BUTTON_PRIMARY_COLOR_EXPERIMENT.name,
 	AGENTS_INVOCATION_STEP_EXPERIMENT.name,
+	AGENT_TEST_SCENARIOS_EXPERIMENT.name,
 ];

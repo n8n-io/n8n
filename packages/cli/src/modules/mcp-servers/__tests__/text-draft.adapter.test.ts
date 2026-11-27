@@ -7,6 +7,7 @@ import type { Scope } from '@n8n/permissions';
 import { generateText } from 'ai';
 import { mock } from 'vitest-mock-extended';
 
+import { InstanceAiCreditService } from '@/modules/instance-ai/instance-ai-credit.service';
 import { InstanceAiModelService } from '@/modules/instance-ai/instance-ai-model.service';
 import { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
 
@@ -19,7 +20,13 @@ vi.mock('@/modules/instance-ai/instance-ai-settings.service', () => ({
 vi.mock('@/modules/instance-ai/instance-ai-model.service', () => ({
 	InstanceAiModelService: class {},
 }));
-vi.mock('@n8n/agents', () => ({ createModel: vi.fn() }));
+vi.mock('@/modules/instance-ai/instance-ai-credit.service', () => ({
+	InstanceAiCreditService: class {},
+}));
+vi.mock('@n8n/agents', () => ({
+	createModel: vi.fn(),
+	getCatalogModelId: vi.fn(() => 'anthropic/claude-sonnet-4-5'),
+}));
 vi.mock('ai', () => ({ generateText: vi.fn() }));
 vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn()) }));
 
@@ -32,11 +39,13 @@ function setup({
 	enabled = true,
 	modelConfigured = true,
 	scopes = [{ slug: 'instanceAi:message' }],
+	credits = { creditsQuota: 100, creditsClaimed: 10 },
 }: {
 	moduleActive?: boolean;
 	enabled?: boolean;
 	modelConfigured?: boolean;
 	scopes?: Array<{ slug: Scope }>;
+	credits?: { creditsQuota: number; creditsClaimed: number } | Error;
 } = {}) {
 	const moduleRegistry = mock<ModuleRegistry>();
 	moduleRegistry.isActive.mockImplementation((name) => moduleActive && name === 'instance-ai');
@@ -46,13 +55,18 @@ function setup({
 	Container.set(InstanceAiSettingsService, settings);
 	const models = mock<InstanceAiModelService>();
 	models.resolveAgentModelConfig.mockResolvedValue('anthropic/claude-sonnet-4-5');
+	if (credits instanceof Error) models.getCredits.mockRejectedValue(credits);
+	else models.getCredits.mockResolvedValue(credits);
 	Container.set(InstanceAiModelService, models);
+	const creditService = mock<InstanceAiCreditService>();
+	Container.set(InstanceAiCreditService, creditService);
 	vi.mocked(createModel).mockReturnValue({} as never);
 	const user = mock<User>({ ...member, role: { slug: 'global:member', scopes } });
 	const logger = mock<Logger>();
 	return {
 		user,
 		logger,
+		creditService,
 		adapter: new TextDraftAdapter(moduleRegistry, mock<OutboundHttp>(), logger),
 	};
 }
@@ -94,6 +108,45 @@ describe('TextDraftAdapter', () => {
 		expect(generateTextMock).toHaveBeenCalledWith(
 			expect.objectContaining({ prompt: 'Write a draft.', maxOutputTokens: 1_000 }),
 		);
+	});
+
+	it('claims the credits of the model call for the person', async () => {
+		const { adapter, user, creditService } = setup();
+		generateTextMock.mockResolvedValueOnce({
+			text: '{"toolName":"get_numbers"}',
+			usage: { inputTokens: 300, outputTokens: 20, totalTokens: 320 },
+		} as never);
+
+		await adapter.draft(user, 'Write a draft.');
+
+		expect(creditService.claimSideCallUsage).toHaveBeenCalledWith(
+			user,
+			'mcp-server-tool-drafts',
+			expect.stringMatching(/^mcp-server-tool-draft:/),
+			{
+				model: 'anthropic/claude-sonnet-4-5',
+				usage: { promptTokens: 300, completionTokens: 20, totalTokens: 320 },
+			},
+		);
+	});
+
+	it('reports "no credits" without a model call when the balance is used up', async () => {
+		const { adapter, user } = setup({ credits: { creditsQuota: 100, creditsClaimed: 100 } });
+
+		await expect(adapter.draft(user, 'Write a draft.')).resolves.toEqual({
+			status: 'no_credits',
+		});
+		expect(generateTextMock).not.toHaveBeenCalled();
+	});
+
+	it('writes the draft when the balance cannot be read', async () => {
+		const { adapter, user } = setup({ credits: new Error('Service down') });
+		generateTextMock.mockResolvedValueOnce({ text: 'draft', usage: {} } as never);
+
+		await expect(adapter.draft(user, 'Write a draft.')).resolves.toEqual({
+			status: 'drafted',
+			text: 'draft',
+		});
 	});
 
 	it('throws a failed model call, and logs it without the key', async () => {

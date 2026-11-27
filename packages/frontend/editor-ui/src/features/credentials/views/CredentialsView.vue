@@ -220,17 +220,23 @@ listenForModalChanges({
 const onFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean): boolean => {
 	if (!isCredentialsResource(resource)) return false;
 	const filtersToApply = newFilters as Filters;
-	if (filtersToApply.type && filtersToApply.type.length > 0) {
-		matches = matches && filtersToApply.type.includes(resource.type);
-	}
 
 	if (filtersToApply.search) {
 		const searchString = filtersToApply.search.toLowerCase();
+		const matchesTypeDisplayName =
+			credentialTypesById.value[resource.type]?.displayName.toLowerCase().includes(searchString) ??
+			false;
 
-		matches =
-			matches ||
-			(credentialTypesById.value[resource.type] &&
-				credentialTypesById.value[resource.type].displayName.toLowerCase().includes(searchString));
+		matches = matches || matchesTypeDisplayName;
+	}
+
+	// Re-apply homeProject because the search OR above can override the project check in ResourcesListLayout.
+	if (filtersToApply.homeProject) {
+		matches = matches && resource.homeProject?.id === filtersToApply.homeProject;
+	}
+
+	if (filtersToApply.type && filtersToApply.type.length > 0) {
+		matches = matches && filtersToApply.type.includes(resource.type);
 	}
 
 	if (filtersToApply.setupNeeded) {
@@ -410,6 +416,7 @@ onMounted(() => {
 					size="medium"
 					multiple
 					filterable
+					data-test-id="credential-filter-type"
 					:class="$style['type-input']"
 					@update:model-value="setKeyValue('type', $event)"
 				>

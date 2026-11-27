@@ -1935,6 +1935,8 @@ export class McpAgentToolsService {
 				projectId,
 				credentialProvider,
 				'publish',
+				undefined,
+				user,
 			),
 		]);
 		const errors = schema.valid ? [] : [schema.error];

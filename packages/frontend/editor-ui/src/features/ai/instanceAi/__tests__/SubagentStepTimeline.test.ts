@@ -39,7 +39,7 @@ describe('SubagentStepTimeline', () => {
 		createTestingPinia({ stubActions: false });
 	});
 
-	it('should render text timeline entry as inline ButtonLike', () => {
+	it('should render text timeline entry as inline narration', () => {
 		const { getByText } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({
@@ -233,10 +233,11 @@ describe('SubagentStepTimeline', () => {
 		expect(triggerButton).toBeTruthy();
 	});
 
-	it('renders a reasoning entry labelled with its first sentence', () => {
+	it('labels a settled reasoning entry with its first sentence', () => {
 		const { getByText } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({
+					status: 'completed',
 					timeline: [
 						{
 							type: 'reasoning',
@@ -251,7 +252,7 @@ describe('SubagentStepTimeline', () => {
 	});
 
 	it('streams the trailing reasoning entry on an active node', () => {
-		const { getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({
 					status: 'active',
@@ -260,7 +261,9 @@ describe('SubagentStepTimeline', () => {
 			},
 		});
 
-		expect(getByText('Still thinking about tools.').className).toContain('shimmer');
+		const step = getByTestId('instance-ai-subagent-thinking');
+		expect(step).toHaveAttribute('data-active', 'true');
+		expect(step.querySelector('[class*="shimmer"]')).not.toBeNull();
 	});
 
 	it('does not stream a settled reasoning entry when later timeline content follows', () => {
@@ -277,5 +280,57 @@ describe('SubagentStepTimeline', () => {
 		});
 
 		expect(getByText('Finished this thought.').className).not.toContain('shimmer');
+	});
+
+	it('groups adjacent tool calls into one step group', () => {
+		const { getAllByTestId, getByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({
+					toolCalls: [makeToolCall({ toolCallId: 'tc-a' }), makeToolCall({ toolCallId: 'tc-b' })],
+					timeline: [
+						{ type: 'tool-call', toolCallId: 'tc-a' },
+						{ type: 'tool-call', toolCallId: 'tc-b' },
+					],
+				}),
+			},
+		});
+
+		expect(getAllByTestId('ai-activity-trace')).toHaveLength(1);
+		expect(getByText('2 tool calls')).toBeInTheDocument();
+	});
+
+	it('keeps text between tool calls and does not group across it', () => {
+		const { getAllByTestId, container } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({
+					toolCalls: [makeToolCall({ toolCallId: 'tc-a' }), makeToolCall({ toolCallId: 'tc-b' })],
+					timeline: [
+						{ type: 'tool-call', toolCallId: 'tc-a' },
+						{ type: 'text', content: 'Between calls' },
+						{ type: 'tool-call', toolCallId: 'tc-b' },
+					],
+				}),
+			},
+		});
+
+		expect(getAllByTestId('ai-activity-trace')).toHaveLength(2);
+		expect(container.textContent).not.toContain('2 tool calls');
+		const text = container.textContent ?? '';
+		const firstTool = text.indexOf('Searching nodes');
+		expect(firstTool).toBeLessThan(text.indexOf('Between calls'));
+		expect(text.lastIndexOf('Searching nodes')).toBeGreaterThan(text.indexOf('Between calls'));
+	});
+
+	it('hides hidden tools', () => {
+		const { container } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({
+					toolCalls: [makeToolCall({ toolCallId: 'tc-h', toolName: 'updateWorkingMemory' })],
+					timeline: [{ type: 'tool-call', toolCallId: 'tc-h' }],
+				}),
+			},
+		});
+
+		expect(container.textContent).toBe('');
 	});
 });

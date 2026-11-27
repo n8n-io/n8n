@@ -256,6 +256,19 @@ describe('EmailReadImapV2', () => {
 	});
 
 	describe('a connection that fails', () => {
+		it('rejects activation with a warning-level node error when the server cannot be reached', async () => {
+			const cause = Object.assign(new Error('Socket timeout'), { code: 'ETIMEOUT' });
+			connectMock.mockRejectedValueOnce(cause);
+
+			const activation = startTrigger();
+
+			await expect(activation).rejects.toBeInstanceOf(NodeOperationError);
+			await expect(activation).rejects.toMatchObject({
+				message: 'Socket timeout',
+				level: 'warning',
+			});
+		});
+
 		it('reports the error to the error workflow', async () => {
 			const connection = createConnection();
 			connectMock.mockResolvedValueOnce(connection);
