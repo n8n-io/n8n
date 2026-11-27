@@ -2,6 +2,7 @@ import type { StoredWorkflowGraph } from '../graph';
 import type {
 	ExecutionMode,
 	ExecutionStatus,
+	ErrorSourceLink,
 	ParentLink,
 	StepError,
 	StepSlots,
@@ -24,6 +25,8 @@ export interface ExecutionListItemView {
 	hostMode: string;
 	/** The parent link, or `null` for a top-level execution. */
 	parent: ParentLink | null;
+	/** The execution this error execution reports on, or `null`. */
+	errorSource: ErrorSourceLink | null;
 	createdAt: Date;
 	updatedAt: Date;
 	finishedAt: Date | null;
@@ -69,6 +72,8 @@ export interface ExecutionView {
 	workflow: WorkflowDocument;
 	/** The parent link, or `null` for a top-level execution. */
 	parent: ParentLink | null;
+	/** The execution this error execution reports on, or `null`. */
+	errorSource: ErrorSourceLink | null;
 	createdAt: Date;
 	updatedAt: Date;
 	finishedAt: Date | null;

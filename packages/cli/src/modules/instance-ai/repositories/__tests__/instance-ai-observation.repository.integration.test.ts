@@ -2,11 +2,12 @@ import type { ObservationCursor, ObservationLogBatch } from '@n8n/agents';
 import { getPersonalProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 
 import { createOwner } from '@test-integration/db/users';
 
 import { InstanceAiObservationRepository } from '../instance-ai-observation.repository';
-import { InstanceAiObservationCursorRepository } from '../instance-ai-observation-cursor.repository';
+import { InstanceAiObservationCursor } from '../../entities/instance-ai-observation-cursor.entity';
 import { InstanceAiThreadRepository } from '../instance-ai-thread.repository';
 import { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
 import { InstanceAiObservation } from '../../entities/instance-ai-observation.entity';
@@ -42,7 +43,7 @@ describe('InstanceAiObservationRepository', () => {
 	afterEach(async () => {
 		// Not in the shared truncate list; a module table cleans up through its repository.
 		await repository.delete({});
-		await Container.get(InstanceAiObservationCursorRepository).delete({});
+		await Container.get(DataSource).getRepository(InstanceAiObservationCursor).delete({});
 	});
 
 	afterAll(async () => {

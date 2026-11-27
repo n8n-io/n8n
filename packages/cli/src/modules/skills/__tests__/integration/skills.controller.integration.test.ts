@@ -1,4 +1,3 @@
-import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
 import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
@@ -34,7 +33,7 @@ beforeAll(async () => {
 
 describe('SkillsController', () => {
 	const server = setupTestServer({ endpointGroups: ['ai'] });
-	const postHog = mockInstance(PostHogClient);
+	mockInstance(PostHogClient);
 	let ownerPerson: Person;
 	let memberUser: User;
 	let editorUser: User;
@@ -58,12 +57,6 @@ describe('SkillsController', () => {
 		project = await createTeamProject('Team');
 		await linkUserToProject(editorUser, project, 'project:editor');
 		await linkUserToProject(viewerUser, project, 'project:viewer');
-	});
-
-	beforeEach(async () => {
-		postHog.getFeatureFlagForInstance.mockImplementation(
-			async (flag) => flag === ASSISTANT_SKILLS_FLAG,
-		);
 	});
 
 	it('keeps new skills unavailable and lets an owner toggle without a new content version', async () => {
@@ -96,21 +89,6 @@ describe('SkillsController', () => {
 		} = await owner.get(`/skills/${created.id}`).expect(200);
 		expect(disabled.availableToAssistant).toBe(false);
 		expect(disabled.latestVersion).toBe(created.latestVersion);
-	});
-
-	it('blocks Assistant updates while ordinary skill edits remain available', async () => {
-		const {
-			body: { data: created },
-		} = await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(200);
-		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
-		await owner
-			.patch(`/skills/${created.id}`)
-			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
-			.expect(404);
-		await owner
-			.patch(`/skills/${created.id}`)
-			.send({ baseSkillHash: created.skillHash, description: 'Updated description' })
-			.expect(200);
 	});
 
 	it('uses the project edit permission for the Assistant toggle', async () => {
@@ -157,18 +135,6 @@ describe('SkillsController', () => {
 			.expect(200);
 		expect(created.availableToAssistant).toBe(true);
 		expect(created.latestVersion).toBe(1);
-	});
-
-	it('creates nothing when the Assistant cannot use the new skill', async () => {
-		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
-		await owner
-			.post('/skills')
-			.send({ scope: 'instance', skill: body, availableToAssistant: true })
-			.expect(400);
-		const {
-			body: { data: list },
-		} = await owner.get('/skills').expect(200);
-		expect(list.count).toBe(0);
 	});
 
 	afterEach(async () => {

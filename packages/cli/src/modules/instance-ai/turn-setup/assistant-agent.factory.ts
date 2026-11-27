@@ -297,16 +297,10 @@ export class AssistantAgentFactory {
 		generateTitle = false,
 	): InstanceAiMemoryConfig {
 		return {
-			// Titles run on the utility model, like the observer and the reflector.
+			// Titles run on the utility model, like the observer and the reflector. The
+			// run does not wait for the title: the host stores and pushes it when it is ready.
 			...(generateTitle
-				? {
-						titleGeneration: {
-							...(utilityModelId ? { model: utilityModelId } : {}),
-							// The host copies the title to the thread list when the run ends, so the
-							// title must be saved by then to show after the first turn.
-							sync: true,
-						},
-					}
+				? { titleGeneration: { ...(utilityModelId ? { model: utilityModelId } : {}) } }
 				: {}),
 			observationalMemory: {
 				model: utilityModelId,

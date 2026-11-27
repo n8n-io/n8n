@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, type Ref } from 'vue';
 import type { SkillListItem, SkillListResponse } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
@@ -9,6 +9,8 @@ import {
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
 import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
+import type { OpenResourceContext } from '../openResourceContext';
+import type { ArtifactTab } from '../useCanvasPreview';
 
 const {
 	browserUseTelemetry,
@@ -18,7 +20,9 @@ const {
 	ignorePendingConnectResult,
 	mcpStore,
 	mcpTelemetry,
+	openResource,
 	projectsStore,
+	resourceSearch,
 	rootStore,
 	router,
 	settingsStore,
@@ -27,7 +31,7 @@ const {
 } = vi.hoisted(() => ({
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
 	ensureBrowserConnected: vi.fn(),
-	featureFlags: { assistantSkills: false, skills: true },
+	featureFlags: { skills: false },
 	getSkills: vi.fn<typeof import('@/features/settings/context/skills.api').getSkills>(),
 	ignorePendingConnectResult: vi.fn(),
 	mcpStore: {
@@ -38,6 +42,13 @@ const {
 	mcpTelemetry: {
 		trackToolsListOpened: vi.fn(),
 		trackSettingsOpened: vi.fn(),
+	},
+	openResource: { current: null as OpenResourceContext | null },
+	// The refs are set when the mocked module loads, as vi.hoisted runs before the imports.
+	resourceSearch: {} as {
+		results: Ref<ArtifactTab[]>;
+		isLoading: Ref<boolean>;
+		search: ReturnType<typeof vi.fn>;
 	},
 	projectsStore: {
 		personalProject: null as { id: string } | null,
@@ -83,10 +94,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => rootStore,
 }));
 
-vi.mock('@/experiments/assistantSkills/useAssistantSkillsExperiment', () => ({
-	useAssistantSkillsExperiment: () => ({ isEnabled: ref(featureFlags.assistantSkills) }),
-}));
-
 vi.mock('@/features/settings/context/context.utils', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/features/settings/context/context.utils')>()),
 	isContextSkillsEnabled: () => featureFlags.skills,
@@ -125,6 +132,18 @@ vi.mock('../instanceAiMcp.telemetry', () => ({
 vi.mock('../instanceAiBrowserUse.telemetry', () => ({
 	useInstanceAiBrowserUseTelemetry: () => browserUseTelemetry,
 }));
+
+vi.mock('../openResourceContext', () => ({
+	injectOpenResource: () => openResource.current,
+}));
+
+vi.mock('../composables/useProjectResourceSearch', async () => {
+	const { ref: vueRef } = await import('vue');
+	resourceSearch.results = vueRef([]);
+	resourceSearch.isLoading = vueRef(false);
+	resourceSearch.search = vi.fn();
+	return { useProjectResourceSearch: () => resourceSearch };
+});
 
 function findItem(items: InputMenuItem[], id: string): InputMenuItem | undefined {
 	for (const item of items) {
@@ -171,8 +190,7 @@ const mcpStatusCases: Array<{
 describe('useInstanceAiInputMenuItems', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		featureFlags.assistantSkills = false;
-		featureFlags.skills = true;
+		featureFlags.skills = false;
 		projectsStore.personalProject = null;
 		projectsStore.myProjects = [];
 		usersStore.currentUser.globalScopes = ['skill:create'];
@@ -181,6 +199,9 @@ describe('useInstanceAiInputMenuItems', () => {
 		settingsStore.isMcpAvailable = true;
 		settingsStore.isBrowserUseAvailable = true;
 		settingsStore.browserUseConnectionStatus = 'none';
+		openResource.current = null;
+		resourceSearch.results.value = [];
+		resourceSearch.isLoading.value = false;
 	});
 
 	it('omits connection groups that instance settings report as unavailable', () => {
@@ -319,23 +340,121 @@ describe('useInstanceAiInputMenuItems', () => {
 		});
 	});
 
-	describe('the skills submenu', () => {
-		beforeEach(() => {
-			featureFlags.assistantSkills = true;
+	describe('the open-resource submenu', () => {
+		const workflow: ArtifactTab = {
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'Morning report',
+			icon: 'workflow',
+			projectId: 'project-1',
+		};
+
+		function provideContext(overrides: Partial<OpenResourceContext> = {}) {
+			const context: OpenResourceContext = {
+				projectId: () => 'project-1',
+				isAvailable: () => true,
+				excludedTabs: () => [],
+				open: vi.fn(),
+				...overrides,
+			};
+			openResource.current = context;
+			return context;
+		}
+
+		it('is not shown in a composer that has no preview to open resources in', () => {
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+			expect(findItem(menuItems.value, 'open-resource')).toBeUndefined();
 		});
 
-		it.each(['assistantSkills', 'skills'] as const)(
-			'omits skills and does not fetch them when %s is off',
-			async (flag) => {
-				featureFlags[flag] = false;
-				const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+		it('is not shown until the thread view can open a resource', () => {
+			provideContext({ isAvailable: () => false });
 
-				await refreshSkills();
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 
-				expect(findItem(menuItems.value, 'skills')).toBeUndefined();
-				expect(getSkills).not.toHaveBeenCalled();
-			},
-		);
+			expect(findItem(menuItems.value, 'open-resource')).toBeUndefined();
+		});
+
+		it('sits in one group with Preferences, and opens the picked resource', async () => {
+			const context = provideContext();
+			resourceSearch.results.value = [workflow];
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			const ids = menuItems.value.map(({ id }) => id);
+			const item = findItem(menuItems.value, 'open-resource');
+
+			expect(ids.slice(-2)).toEqual(['open-resource', 'preferences']);
+			expect(item).toMatchObject({
+				label: 'instanceAi.inputMenu.openResource.label',
+				divided: true,
+				searchable: true,
+				loading: false,
+			});
+			expect(findItem(menuItems.value, 'preferences')?.divided).toBe(false);
+			expect(item?.children?.map(({ label }) => label)).toEqual(['Morning report']);
+
+			await item?.children?.[0]?.data?.action?.();
+			expect(context.open).toHaveBeenCalledWith(workflow);
+		});
+
+		it('shows loading while the first results load, then an empty state', () => {
+			provideContext();
+			resourceSearch.isLoading.value = true;
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			expect(findItem(menuItems.value, 'open-resource')?.loading).toBe(true);
+
+			resourceSearch.isLoading.value = false;
+			const item = findItem(menuItems.value, 'open-resource');
+			expect(item?.loading).toBe(false);
+			expect(item?.children).toEqual([
+				expect.objectContaining({
+					label: 'instanceAi.previewTabBar.noResources',
+					disabled: true,
+				}),
+			]);
+		});
+
+		it('loads the resources when the submenu opens, and searches them with a debounce', async () => {
+			vi.useFakeTimers();
+			try {
+				provideContext();
+				const { handleSubMenuToggle, handleSearch } = useInstanceAiInputMenuItems(vi.fn());
+
+				handleSubMenuToggle('skills', true);
+				handleSubMenuToggle('open-resource', false);
+				expect(resourceSearch.search).not.toHaveBeenCalled();
+
+				handleSubMenuToggle('open-resource', true);
+				expect(resourceSearch.search).toHaveBeenCalledExactlyOnceWith();
+
+				handleSearch('mor', 'skills');
+				handleSearch('mor', 'open-resource');
+				handleSearch('morn', 'open-resource');
+				await vi.runAllTimersAsync();
+
+				expect(resourceSearch.search).toHaveBeenCalledTimes(2);
+				expect(resourceSearch.search).toHaveBeenLastCalledWith('morn');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	describe('the skills submenu', () => {
+		beforeEach(() => {
+			featureFlags.skills = true;
+		});
+
+		it('omits skills and does not fetch them when skills are off', async () => {
+			featureFlags.skills = false;
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(vi.fn());
+
+			await refreshSkills();
+
+			expect(findItem(menuItems.value, 'skills')).toBeUndefined();
+			expect(getSkills).not.toHaveBeenCalled();
+		});
 
 		it('groups enabled session-project and instance skills by name and follows project changes', async () => {
 			const projectId = ref<string | undefined>('project-1');

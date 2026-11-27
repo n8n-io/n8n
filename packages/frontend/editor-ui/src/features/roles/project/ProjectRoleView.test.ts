@@ -748,6 +748,58 @@ describe('ProjectRoleView', () => {
 			);
 			expect(getByTestId('scope-checkbox-mcpServer:create')).toBeInTheDocument();
 		});
+
+		it.each([
+			['off', false, defaultScopes],
+			['on', true, [...defaultScopes, 'mcpServer:read', 'mcpServer:list', 'mcpServer:connect']],
+		])(
+			'starts a new role from the viewer scopes, with the hidden MCP server scopes left out (flag %s)',
+			async (_case, flag, expectedScopes) => {
+				vi.mocked(settingsStore.isModuleActive).mockImplementation(
+					(name: string) => name === 'mcp-servers',
+				);
+				customMcpServersEnabled.mockReturnValue(flag);
+				rolesStore.processedProjectRoles = mockSystemRoles.map((role) =>
+					role.slug === 'project:viewer'
+						? {
+								...role,
+								scopes: [...defaultScopes, 'mcpServer:read', 'mcpServer:list', 'mcpServer:connect'],
+							}
+						: role,
+				);
+				rolesStore.createRole.mockResolvedValueOnce({ ...mockExistingRole, slug: 'new-role' });
+				const { container, getByRole } = renderComponent();
+
+				await fillForm(container, 'New Test Role', 'A new test role');
+				await userEvent.click(getByRole('button', { name: 'Create' }));
+
+				await waitFor(() =>
+					expect(rolesStore.createRole).toHaveBeenCalledWith(
+						expect.objectContaining({ scopes: expectedScopes }),
+					),
+				);
+			},
+		);
+
+		it('keeps List checked when View is checked after it', async () => {
+			vi.mocked(settingsStore.isModuleActive).mockImplementation(
+				(name: string) => name === 'mcp-servers',
+			);
+			customMcpServersEnabled.mockReturnValue(true);
+			const { getByTestId } = renderComponent();
+			await waitFor(() => expect(getByTestId('scope-checkbox-mcpServer:list')).toBeInTheDocument());
+			const list = getByTestId('scope-checkbox-mcpServer:list');
+			const read = getByTestId('scope-checkbox-mcpServer:read');
+
+			await userEvent.click(list);
+			await userEvent.click(read);
+			expect(read).toBeChecked();
+			expect(list).toBeChecked();
+
+			await userEvent.click(read);
+			expect(read).not.toBeChecked();
+			expect(list).not.toBeChecked();
+		});
 	});
 
 	describe('Skill scopes', () => {
@@ -763,6 +815,34 @@ describe('ProjectRoleView', () => {
 
 			expect(getByText('Skills')).toBeInTheDocument();
 		});
+
+		it.each([
+			['inactive', false, defaultScopes],
+			['active', true, [...defaultScopes, 'projectSkill:read', 'projectSkill:list']],
+		])(
+			'starts a new role without the hidden Skills scopes (agents module %s)',
+			async (_case, agentsActive, expectedScopes) => {
+				vi.mocked(settingsStore.isModuleActive).mockImplementation(
+					(name: string) => name === 'agents' && agentsActive,
+				);
+				rolesStore.processedProjectRoles = mockSystemRoles.map((role) =>
+					role.slug === 'project:viewer'
+						? { ...role, scopes: [...defaultScopes, 'projectSkill:read', 'projectSkill:list'] }
+						: role,
+				);
+				rolesStore.createRole.mockResolvedValueOnce({ ...mockExistingRole, slug: 'new-role' });
+				const { container, getByRole } = renderComponent();
+
+				await fillForm(container, 'New Test Role', 'A new test role');
+				await userEvent.click(getByRole('button', { name: 'Create' }));
+
+				await waitFor(() =>
+					expect(rolesStore.createRole).toHaveBeenCalledWith(
+						expect.objectContaining({ scopes: expectedScopes }),
+					),
+				);
+			},
+		);
 	});
 
 	describe('External Secrets Scopes', () => {

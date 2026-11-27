@@ -188,7 +188,11 @@ function toExecuteLineage(
 		const iterations = Object.keys(outputsByIteration).map(Number);
 		if (iterations.length > 0) lastIterationByNodeId.set(nodeId, Math.max(...iterations));
 	}
-	return toSourceLineage(graph, lastIterationByNodeId);
+	return toSourceLineage(
+		graph,
+		lastIterationByNodeId,
+		(nodeId, iteration) => outputsByNode[nodeId]?.[iteration],
+	);
 }
 
 export function toV1Workflow(

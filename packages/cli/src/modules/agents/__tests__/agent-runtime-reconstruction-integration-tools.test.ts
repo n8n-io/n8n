@@ -1,4 +1,5 @@
 import type { BuiltTool, Tool } from '@n8n/agents';
+import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { FolderService } from '@/services/folder.service';
 import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 import { SlackIntegration } from '../integrations/platforms/slack/slack-integration';
@@ -169,6 +170,7 @@ function makeRuntimeReconstructionService(
 		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
+		mock<WorkflowsInSkillsFlagGate>(),
 	);
 }
 
@@ -372,6 +374,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			skillRefs,
 			// No enforcement implementation is registered, so every evaluation comes back clear.
 			new AgentPolicyService(new PolicyEnforcementService()),
+			mock<WorkflowsInSkillsFlagGate>(),
+			mock<WorkflowFinderService>(),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,

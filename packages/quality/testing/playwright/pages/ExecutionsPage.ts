@@ -135,6 +135,18 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('executions-filter-status-select');
 	}
 
+	getStatusSelectCombobox(): Locator {
+		return this.getStatusSelect().getByRole('combobox');
+	}
+
+	getFilterStartDateInput(): Locator {
+		return this.getFilterForm().getByPlaceholder('Earliest');
+	}
+
+	getFilterEndDateInput(): Locator {
+		return this.getFilterForm().getByPlaceholder('Latest');
+	}
+
 	getStatusOption(status: string): Locator {
 		return this.getVisiblePopoverOption(status);
 	}
@@ -162,7 +174,7 @@ export class ExecutionsPage extends BasePage {
 	}
 
 	async selectFilterStatus(status: string): Promise<void> {
-		await this.getStatusSelect().getByRole('combobox').click();
+		await this.getStatusSelectCombobox().click();
 		await this.getVisiblePopoverOption(status).click();
 	}
 }

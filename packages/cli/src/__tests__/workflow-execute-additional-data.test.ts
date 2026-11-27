@@ -1,4 +1,5 @@
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { ModuleRegistry } from '@n8n/backend-common';
+import type { Logger } from '@n8n/backend-common';
 import {
 	CodeExecutionBackend,
 	EventService,
@@ -338,6 +339,34 @@ describe('WorkflowExecuteAdditionalData', () => {
 					loadedWorkflowData: undefined,
 					loadedRunData: { ...mock<IWorkflowExecutionDataProcess>(), executionData },
 					returnLastRunOnly: false,
+				}),
+			).rejects.toThrow('Stop after persistence check');
+		});
+
+		it('persists explicit parent binary grants in the child run data', async () => {
+			const workflowData = mock<IWorkflowBase>({
+				nodes: [
+					{
+						id: 'trigger',
+						name: 'Start',
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.3,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+			activeExecutions.add.mockImplementationOnce(async (runData) => {
+				expect(runData.executionData?.binaryDataAccess).toEqual(['parent-binary-id']);
+				throw new Error('Stop after persistence check');
+			});
+
+			await expect(
+				executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
+					parentWorkflowId: 'parent-id',
+					loadedWorkflowData: workflowData,
+					binaryDataAccess: ['parent-binary-id'],
 				}),
 			).rejects.toThrow('Stop after persistence check');
 		});

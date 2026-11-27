@@ -9,6 +9,7 @@ export const SERVICE_NAMES = [
 	'postgres',
 	'enginePostgres',
 	'redis',
+	'redisCluster',
 	'mailpit',
 	'gitea',
 	'keycloak',

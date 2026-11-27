@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import { N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
+import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
-import type { AgentSkill } from '../types';
+import type { AgentJsonToolRef, AgentSkill } from '../types';
+import { findDirectlyAttachedMentions } from '@/features/agents/utils/skillWorkflows';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
@@ -17,12 +21,14 @@ const props = withDefaults(
 		showLabel?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
 		outdatedSkillIds?: string[];
+		tools?: AgentJsonToolRef[];
 	}>(),
 	{
 		disabled: false,
 		showLabel: true,
 		validationIssues: () => [],
 		outdatedSkillIds: () => [],
+		tools: () => [],
 	},
 );
 
@@ -39,6 +45,31 @@ const skillIssueMessages = computed(() =>
 );
 const outdatedSkillIds = computed(() => new Set(props.outdatedSkillIds));
 const outdatedWarning = computed(() => [i18n.baseText('agents.builder.skills.outdated.warning')]);
+const posthogStore = usePostHog();
+const alreadyAttachedNotes = computed(() => {
+	const notes = new Map<string, string>();
+	if (
+		!posthogStore.isVariantEnabled(
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		)
+	)
+		return notes;
+	for (const { id, skill } of props.skills) {
+		const attached = findDirectlyAttachedMentions(skill, props.tools);
+		if (attached.length === 0) continue;
+		notes.set(
+			id,
+			i18n.baseText('agents.builder.skills.workflowsAlreadyAttached', {
+				interpolate: {
+					workflows: attached.map(({ name, workflowId }) => name || workflowId).join(', '),
+				},
+				adjustToNumber: attached.length,
+			}),
+		);
+	}
+	return notes;
+});
 </script>
 
 <template>
@@ -52,21 +83,24 @@ const outdatedWarning = computed(() => [i18n.baseText('agents.builder.skills.out
 		@add="emit('add-skill')"
 	>
 		<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
-			<AgentItemContextMenu :disabled="props.disabled" @remove="emit('remove-skill', id)">
-				<AgentChipButton
-					icon="book-open"
-					:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
-					:invalid-reasons="skillIssueMessages.get(id) ?? []"
-					:warning="outdatedSkillIds.has(id)"
-					:warning-reasons="outdatedSkillIds.has(id) ? outdatedWarning : []"
-					:disabled="props.disabled"
-					:class="$style.skillChip"
-					data-testid="agent-capabilities-skill-row"
-					@click="emit('open-skill', id)"
-				>
-					{{ skill.name || id }}
-				</AgentChipButton>
-			</AgentItemContextMenu>
+			<N8nTooltip :disabled="!alreadyAttachedNotes.has(id)" placement="bottom" as-child>
+				<AgentItemContextMenu :disabled="props.disabled" @remove="emit('remove-skill', id)">
+					<AgentChipButton
+						icon="book-open"
+						:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
+						:invalid-reasons="skillIssueMessages.get(id) ?? []"
+						:warning="outdatedSkillIds.has(id)"
+						:warning-reasons="outdatedSkillIds.has(id) ? outdatedWarning : []"
+						:disabled="props.disabled"
+						:class="$style.skillChip"
+						data-testid="agent-capabilities-skill-row"
+						@click="emit('open-skill', id)"
+					>
+						{{ skill.name || id }}
+					</AgentChipButton>
+				</AgentItemContextMenu>
+				<template #content>{{ alreadyAttachedNotes.get(id) }}</template>
+			</N8nTooltip>
 		</div>
 	</AgentChipRow>
 </template>

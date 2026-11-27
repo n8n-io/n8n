@@ -579,8 +579,10 @@ function handleOpenChange(value: boolean) {
 									:connect-label="props.connectLabel?.(row.item)"
 									:connect-aria-label="props.connectAriaLabel?.(row.item)"
 									:connected-label="props.connectedLabel?.(row.item)"
+									:iconless="props.iconlessRows"
 									@open-detail="openDetail($event)"
 									@connect="emit('connect', $event)"
+									@disconnect="emit('disconnect', $event)"
 									@select-credential="
 										(item, authType, credentialId) =>
 											emit('select-credential', item, authType, credentialId)

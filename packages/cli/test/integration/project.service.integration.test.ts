@@ -9,6 +9,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import { ExecutionLimitsService } from '@n8n/backend-module-execution-limits';
+import { EventService } from '@n8n/backend-services';
 import {
 	ProjectRelationRepository,
 	ProjectRelation,
@@ -19,7 +20,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, IsNull } from '@n8n/typeorm';
 import { LicenseMocker } from '@test-integration/license';
 
 import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from './shared/db/roles';
@@ -58,6 +59,7 @@ describe('ProjectService', () => {
 			'WorkflowEntity',
 			'SharedWorkflow',
 			'Settings',
+			'ExecutionLimitAudit',
 		]);
 	});
 
@@ -78,6 +80,67 @@ describe('ProjectService', () => {
 			expect(await executionLimitsService.getProjectLimits([project.id])).toEqual([
 				{ projectId: project.id, maxExecutions: 50 },
 			]);
+		});
+	});
+
+	describe('deleteProject', () => {
+		const removals: unknown[] = [];
+		let executionLimitsService: ExecutionLimitsService;
+		let owner: User;
+		let project: Project;
+
+		async function readRemovalRows() {
+			return await Container.get(DataSource)
+				.getRepository('ExecutionLimitAudit')
+				.find({
+					select: ['projectId', 'field', 'oldValue', 'newValue', 'updatedBy'],
+					where: { field: 'projectMaxExecutions', newValue: IsNull() },
+				});
+		}
+
+		beforeAll(() => {
+			executionLimitsService = Container.get(ExecutionLimitsService);
+			Container.get(EventService).on('execution-limit-updated', (event) => removals.push(event));
+		});
+
+		beforeEach(async () => {
+			owner = await createOwner();
+			project = await createTeamProject('Limited', owner);
+			await executionLimitsService.setProjectLimits(
+				[{ projectId: project.id, maxExecutions: 10 }],
+				owner.id,
+			);
+			removals.length = 0;
+		});
+
+		it('records the removal of the execution limit of the project', async () => {
+			await projectService.deleteProject(owner, project.id);
+
+			const removal = {
+				projectId: project.id,
+				field: 'projectMaxExecutions',
+				oldValue: 10,
+				newValue: null,
+				updatedBy: owner.id,
+			};
+			expect(removals).toEqual([removal]);
+			expect(await readRemovalRows()).toEqual([removal]);
+		});
+
+		it('keeps the execution limit and records nothing when the project delete fails', async () => {
+			vi.spyOn(Container.get(ProjectRepository), 'removeProjectForDeletion').mockRejectedValueOnce(
+				new Error('The project delete failed'),
+			);
+
+			await expect(projectService.deleteProject(owner, project.id)).rejects.toThrow(
+				'The project delete failed',
+			);
+
+			expect(await executionLimitsService.getProjectLimits([project.id])).toEqual([
+				{ projectId: project.id, maxExecutions: 10 },
+			]);
+			expect(removals).toEqual([]);
+			expect(await readRemovalRows()).toEqual([]);
 		});
 	});
 

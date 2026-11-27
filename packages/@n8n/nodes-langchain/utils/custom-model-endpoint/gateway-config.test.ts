@@ -1,4 +1,6 @@
 import type { UserError } from '@n8n/errors';
+
+import type { AccessTokenSource } from './oauth2';
 import type {
 	ICredentialDataDecryptedObject,
 	INode,
@@ -39,6 +41,7 @@ import {
 	CUSTOM_MODEL_ENDPOINT_CREDENTIAL,
 	OPENAI_CREDENTIAL,
 	createCustomModelEndpointConfig,
+	createRunTokenSource,
 	pickCredentialType,
 	readEndpointCredential,
 } from './gateway-config';
@@ -328,5 +331,98 @@ describe('createCustomModelEndpointConfig', () => {
 
 		expect(response?.status).toBe(401);
 		expect(JSON.parse(text)).toMatchObject({ error: { message: 'Rejected' } });
+	});
+});
+
+describe('createRunTokenSource', () => {
+	const TOKEN_URL = 'https://login.example.com/oauth2/token';
+
+	const OAUTH2_CREDENTIAL = {
+		url: 'https://gateway.example.com/v1',
+		authentication: 'oauth2',
+		tokenUrl: TOKEN_URL,
+		clientId: 'id',
+		clientSecret: 'secret',
+	} as const;
+
+	const context = () =>
+		({
+			getNode: () => nodeWith({ [CUSTOM_MODEL_ENDPOINT_CREDENTIAL]: {} }),
+			helpers: {
+				getSecureEgressFilter: () =>
+					({
+						validateUrl: async () => ({ ok: true }),
+						createSecureLookup: () => undefined,
+					}) as unknown as NodeEgressFilter,
+			},
+		}) as unknown as ISupplyDataFunctions;
+
+	// This is an entry point of its own, and the source it builds talks to the token URL,
+	// so checking the base URL alone would leave that one to the first request
+	it.each([
+		['is relative', '/oauth2/token'],
+		['names no host', 'https://'],
+		['carries a user name and a password', 'https://user:pass@login.example.com/token'],
+	])('refuses a token URL that %s', (_name, tokenUrl) => {
+		expect(() =>
+			createRunTokenSource(
+				context(),
+				{ ...OAUTH2_CREDENTIAL, tokenUrl },
+				CUSTOM_MODEL_ENDPOINT_CREDENTIAL,
+			),
+		).toThrow(/Token URL/);
+	});
+
+	const tokenRequests = () => gateway.calls.filter((call) => call.url === TOKEN_URL).length;
+
+	/** What the action node does: a transport for each item, and one call through each. */
+	const runOverItems = async (itemCount: number, tokenSource?: AccessTokenSource) => {
+		for (let item = 0; item < itemCount; item++) {
+			const { configuration } = createCustomModelEndpointConfig(context(), OAUTH2_CREDENTIAL, {
+				credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL,
+				userHeaders: { 'x-item': String(item) },
+				tokenSource,
+			});
+
+			await configuration.fetch!('https://gateway.example.com/v1/chat/completions', {
+				method: 'POST',
+			});
+		}
+	};
+
+	beforeEach(() => {
+		gateway.calls.length = 0;
+		gateway.reply = new Response(
+			JSON.stringify({ access_token: 'at', token_type: 'Bearer', expires_in: 3600 }),
+			{ status: 200, headers: { 'content-type': 'application/json' } },
+		);
+	});
+
+	it.each([1, 2, 10])('signs in one time for a run of %i items', async (itemCount) => {
+		await runOverItems(
+			itemCount,
+			createRunTokenSource(context(), OAUTH2_CREDENTIAL, CUSTOM_MODEL_ENDPOINT_CREDENTIAL),
+		);
+
+		expect(tokenRequests()).toBe(1);
+	});
+
+	// The default when nobody passes a source: the cache dies with the transport. The
+	// sub-node builds one transport for a run, so this costs it nothing; the action node
+	// builds one for each item, which is why it passes a source in.
+	it('signs in for every transport that builds its own source', async () => {
+		await runOverItems(3);
+
+		expect(tokenRequests()).toBe(3);
+	});
+
+	it('gives no source to a credential that does not sign in', () => {
+		const source = createRunTokenSource(
+			context(),
+			{ url: 'https://gateway.example.com/v1', authentication: 'none' },
+			CUSTOM_MODEL_ENDPOINT_CREDENTIAL,
+		);
+
+		expect(source).toBeUndefined();
 	});
 });

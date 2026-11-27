@@ -87,6 +87,7 @@ function openServer(server: McpServerResponse) {
 		:is="ResourcesListLayout"
 		v-if="ResourcesListLayout"
 		resource-key="mcpServers"
+		tab-key="mcpServers"
 		type="list-full"
 		:resources="[]"
 		:initialize="initialize"

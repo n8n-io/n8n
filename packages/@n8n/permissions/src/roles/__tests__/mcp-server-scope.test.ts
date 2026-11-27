@@ -59,11 +59,10 @@ describe('mcpServer scopes', () => {
 			['connect', 'create', 'delete', 'list', 'read', 'update'].sort(),
 		);
 		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.mcpServer).toEqual({
-			Use: ['mcpServer:list', 'mcpServer:read', 'mcpServer:connect'],
+			View: ['mcpServer:list', 'mcpServer:read'],
 			Manage: [
 				'mcpServer:list',
 				'mcpServer:read',
-				'mcpServer:connect',
 				'mcpServer:create',
 				'mcpServer:update',
 				'mcpServer:delete',

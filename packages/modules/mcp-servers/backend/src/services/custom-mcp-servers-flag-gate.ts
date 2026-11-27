@@ -9,7 +9,8 @@ import { NotFoundError } from '@n8n/errors';
  *
  * The gate reads the flag for the instance, not for a user, because some callers have no user:
  * the protected resource metadata and the consent screen. `PostHogClient` caches the instance
- * answer and applies the local overrides, so this gate needs no cache of its own.
+ * answer (also a failed fetch) and applies the local overrides, so this gate needs no cache of
+ * its own. The editor gets the same instance variant from `PostHogClient`.
  */
 @Service()
 export class CustomMcpServersFlagGate {
