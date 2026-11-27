@@ -226,9 +226,29 @@ describe('Data Transformation Functions', () => {
 
 		test.each([
 			['Docs: https://docs.n8n.io.', 'https://docs.n8n.io'],
-			['Wiki (https://example.com/C_(lang))', 'https://example.com/C_(lang)'],
-		])('.extractUrl should leave out the punctuation after the URL in %j', (text, url) => {
+			['Visit https://example.com, then come back', 'https://example.com'],
+			['File at https://example.com/data.csv;', 'https://example.com/data.csv'],
+			['The link is this: https://example.com/a: it works', 'https://example.com/a'],
+			['Search https://example.com/search?q=n8n!', 'https://example.com/search?q=n8n'],
+			['Did you see https://example.com/page?', 'https://example.com/page'],
+			['More at https://example.com/docs...', 'https://example.com/docs'],
+		])('.extractUrl should leave out the sentence punctuation after the URL in %j', (text, url) => {
 			expect(evaluate('={{ $json.text.extractUrl() }}', [{ text }])).toEqual(url);
+		});
+
+		test.each([
+			'https://example.com/',
+			'https://example.com/a.b,c;d:e!f',
+			'https://example.com/?time=12:30',
+			'https://en.wikipedia.org/wiki/C_(programming_language)',
+			"https://en.wikipedia.org/wiki/Kids'_Choice_Awards",
+			'https://example.com/?q="n8n"',
+			'https://example.com/a>',
+			'https://example.com/a)',
+		])('.extractUrl should keep all other characters of %j', (url) => {
+			expect(evaluate('={{ $json.text.extractUrl() }}', [{ text: `Go to ${url} now` }])).toEqual(
+				url,
+			);
 		});
 
 		test('.extractDomain should work on a string', () => {
