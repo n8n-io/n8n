@@ -20,7 +20,7 @@ on:
         description: 'Release Track'
         required: true
         type: choice
-        options: [stable, beta, v1]
+        options: [stable, beta, v1, v2]
       force:
         description: 'Create the PR even when there are no actionable commits'
         required: false

@@ -25,7 +25,7 @@ on:
         description: 'Release Track'
         required: true
         type: choice
-        options: [stable, beta, v1]
+        options: [stable, beta, v1, v2]
       version-tag:
         description: 'Version tag (e.g. n8n@2.7.0).'
         required: true

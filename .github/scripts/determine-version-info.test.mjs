@@ -1,97 +1,118 @@
-import { describe, it, mock, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { tagVersionInfoToReleaseCandidateBranchName } from './github-helpers.mjs';
+import { describe, it, mock } from 'node:test';
+import * as helpers from './github-helpers.mjs';
 
+const versions = { stable: '3.4.1', beta: '3.5.0' };
+const preCutoverVersions = { stable: '2.9.2', beta: '2.10.1' };
+const releaseTag = (version) => (version ? { version, tag: `n8n@${version}` } : null);
+const resolveReleaseTagForTrack = mock.fn((track) => releaseTag(versions[track]));
 const trySh = mock.fn(() => ({ ok: true, out: '' }));
-function resolveV2Track(track) {
-	if (track === 'stable') return { version: '2.9.2', tag: 'n8n@2.9.2' };
-	if (track === 'beta') return { version: '2.10.1', tag: 'n8n@2.10.1' };
-	return { version: '1.123.33', tag: 'n8n@1.123.33' };
-}
-const resolveReleaseTagForTrack = mock.fn(resolveV2Track);
 
-/**
- * Run these tests by running
- *
- * node --test --experimental-test-module-mocks ./.github/scripts/determine-version-info.test.mjs
- * */
-
-// mock.module must be called before the module under test is imported,
-// because static imports are hoisted and resolve before any code runs.
 mock.module('./github-helpers.mjs', {
 	namedExports: {
-		RELEASE_TRACKS: ['stable', 'beta', 'v1'],
-		RELEASE_PREFIX: 'n8n@',
+		...helpers,
 		listRemoteTagsWithCommits: () =>
 			new Map([
-				['n8n@1.123.33', 'v1'],
-				['n8n@2.9.2', 'stable'],
 				['n8n@2.10.1', 'beta'],
 				['n8n@3.0.0', 'prerelease'],
 			]),
 		resolveReleaseTagForTrack,
-		tagVersionInfoToReleaseCandidateBranchName,
 		trySh,
-		writeGithubOutput: () => {}, // no-op in tests
-		getCommitForRef: () => {}, // no-op
-		localRefExists: () => {}, // no-op
-		remoteBranchExists: () => {}, // no-op
-		sh: () => {}, // no-op
+		writeGithubOutput: () => {},
 	},
 });
 
-let determineTrack;
-before(async () => {
-	({ determineTrack } = await import('./determine-version-info.mjs'));
+const { determineTrack } = await import('./determine-version-info.mjs');
+
+describe('determineTrack', () => {
+	it('allows patch releases on stable', () => {
+		assert.deepEqual(determineTrack('3.4.2'), {
+			track: 'stable',
+			version: '3.4.2',
+			previous_version: '3.4.1',
+			bump: 'patch',
+			new_stable_version: null,
+			release_type: 'stable',
+			rc_branch: 'release-candidate/3.4.x',
+			prerelease: false,
+		});
+	});
+
+	it('allows patch releases on beta', () => {
+		assert.deepEqual(determineTrack('3.5.1'), {
+			track: 'beta',
+			version: '3.5.1',
+			previous_version: '3.5.0',
+			bump: 'patch',
+			new_stable_version: null,
+			release_type: 'stable',
+			rc_branch: 'release-candidate/3.5.x',
+			prerelease: false,
+		});
+	});
+
+	it('allows skipping patch versions', () => {
+		const output = determineTrack('3.4.3');
+		assert.equal(output.track, 'stable');
+		assert.equal(output.previous_version, '3.4.1');
+		assert.equal(output.bump, 'patch');
+		assert.equal(output.rc_branch, 'release-candidate/3.4.x');
+	});
+
+	it('rejects skipping minor versions', () => {
+		assert.throws(() => determineTrack('3.7.0'), /more than one increment/);
+	});
+
+	it('rejects a major version change', () => {
+		assert.throws(() => determineTrack('4.0.0'), /Major version bumps are not allowed/);
+	});
+
+	it('rejects an invalid version', () => {
+		assert.throws(() => determineTrack(''), /Package semver not valid/);
+	});
+
+	it('releases a new minor to beta and promotes the previous beta', () => {
+		trySh.mock.resetCalls();
+		assert.deepEqual(determineTrack('3.6.0'), {
+			track: 'beta',
+			version: '3.6.0',
+			previous_version: '3.5.0',
+			bump: 'minor',
+			new_stable_version: '3.5.0',
+			release_type: 'stable',
+			rc_branch: 'release-candidate/3.6.x',
+			prerelease: false,
+		});
+		assert.equal(trySh.mock.callCount(), 0);
+	});
+
+	it('sets the release type for a release candidate', () => {
+		const output = determineTrack('3.5.1-rc.1');
+		assert.equal(output.track, 'beta');
+		assert.equal(output.previous_version, '3.5.0');
+		assert.equal(output.bump, 'patch');
+		assert.equal(output.new_stable_version, null);
+		assert.equal(output.release_type, 'rc');
+		assert.equal(output.rc_branch, 'release-candidate/3.5.x');
+	});
+
+	it('sets the release type for an experimental release', () => {
+		const output = determineTrack('3.4.1-exp.0');
+		assert.equal(output.track, 'stable');
+		assert.equal(output.previous_version, '3.4.1');
+		assert.equal(output.bump, 'patch');
+		assert.equal(output.new_stable_version, null);
+		assert.equal(output.release_type, 'rc');
+		assert.equal(output.rc_branch, 'release-candidate/3.4.x');
+	});
 });
 
-describe('determine-tracks', () => {
-	it('Allow patch releases on stable', () => {
-		const output = determineTrack('2.9.3');
-
-		assert.equal(output.track, 'stable');
-		assert.equal(output.version, '2.9.3');
-		assert.equal(output.previous_version, '2.9.2');
-		assert.equal(output.bump, 'patch');
-		assert.equal(output.new_stable_version, null);
-		assert.equal(output.release_type, 'stable');
-		assert.equal(output.rc_branch, 'release-candidate/2.9.x');
-	});
-
-	it('Allow patch releases on beta', () => {
-		const output = determineTrack('2.10.2');
-
-		assert.equal(output.track, 'beta');
-		assert.equal(output.version, '2.10.2');
-		assert.equal(output.previous_version, '2.10.1');
-		assert.equal(output.bump, 'patch');
-		assert.equal(output.new_stable_version, null);
-		assert.equal(output.release_type, 'stable');
-		assert.equal(output.rc_branch, 'release-candidate/2.10.x');
-	});
-
-	// This use case might happen if a patch release fails and we proceed with rolling over to next release
-	it('Allow skipping versions in patches', () => {
-		const output = determineTrack('2.9.4');
-
-		assert.equal(output.track, 'stable');
-		assert.equal(output.version, '2.9.4');
-		assert.equal(output.previous_version, '2.9.2');
-		assert.equal(output.bump, 'patch');
-		assert.equal(output.new_stable_version, null);
-		assert.equal(output.release_type, 'stable');
-		assert.equal(output.rc_branch, 'release-candidate/2.9.x');
-	});
-
-	it('Disallow skipping versions in minors', () => {
-		assert.throws(() => determineTrack('2.12.0'));
-	});
-	it('Disallow changing major version', () => {
-		assert.throws(() => determineTrack('3.0.0'), /Major version bumps are not allowed/);
-		assert.throws(() => determineTrack('3.6.0'), /Major version bumps are not allowed/);
-		assert.throws(() => determineTrack('3.5.1'), /Major version bumps are not allowed/);
-	});
-	it('Promote the v3 baseline when cutting the first normal v3 beta', () => {
+describe('first normal v3 release', () => {
+	it('promotes the v3 baseline when the release descends from it', (t) => {
+		resolveReleaseTagForTrack.mock.mockImplementation((track) =>
+			releaseTag(preCutoverVersions[track]),
+		);
+		t.after(() => resolveReleaseTagForTrack.mock.restore());
 		trySh.mock.resetCalls();
 		assert.deepEqual(determineTrack('3.5.0'), {
 			previous_version: '3.4.1',
@@ -108,111 +129,43 @@ describe('determine-tracks', () => {
 			['merge-base', '--is-ancestor', 'refs/tags/n8n@3.4.1', 'HEAD'],
 		]);
 	});
-	it('Reject the v3 cutover if its baseline is not in the release history', () => {
+
+	it('rejects a release that does not descend from the v3 baseline', (t) => {
+		resolveReleaseTagForTrack.mock.mockImplementation((track) =>
+			releaseTag(preCutoverVersions[track]),
+		);
+		t.after(() => resolveReleaseTagForTrack.mock.restore());
 		trySh.mock.mockImplementationOnce(() => ({ ok: false, out: '' }));
 		assert.throws(() => determineTrack('3.5.0'), /must descend from n8n@3\.4\.1/);
 	});
-	it('Use the live v3 beta for subsequent v3 minors and patches', (t) => {
-		const versions = {
-			stable: { version: '3.4.1', tag: 'n8n@3.4.1' },
-			beta: { version: '3.5.0', tag: 'n8n@3.5.0' },
-		};
-		resolveReleaseTagForTrack.mock.mockImplementation(
-			(track) => versions[track] ?? resolveV2Track(track),
-		);
-		t.after(() => resolveReleaseTagForTrack.mock.restore());
-		trySh.mock.resetCalls();
-		const minor = determineTrack('3.6.0');
-		assert.equal(minor.previous_version, '3.5.0');
-		assert.equal(minor.new_stable_version, '3.5.0');
-		const patch = determineTrack('3.5.1');
-		assert.equal(patch.previous_version, '3.5.0');
-		assert.equal(patch.new_stable_version, null);
-		assert.equal(trySh.mock.callCount(), 0);
-	});
-	it('Allow a standalone prerelease with a bare major version', () => {
-		const output = determineTrack('3.0.0', { prerelease: true });
+});
 
-		assert.equal(output.track, 'rc');
-		assert.equal(output.version, '3.0.0');
-		assert.equal(output.previous_version, '2.10.1');
-		assert.equal(output.bump, 'minor');
-		assert.equal(output.new_stable_version, null);
-		assert.equal(output.release_type, 'rc');
-		assert.equal(output.rc_branch, 'release-candidate/3.0.x');
-		assert.equal(output.prerelease, true);
-	});
-	it('Use the previous standalone prerelease for the next weekly minor', () => {
-		const output = determineTrack('3.1.0', { prerelease: true });
+describe('standalone prereleases', () => {
+	for (const [version, previous, bump] of [
+		['3.0.0', '2.10.1', 'minor'],
+		['3.1.0', '3.0.0', 'minor'],
+		['3.0.1', '3.0.0', 'patch'],
+	]) {
+		it(`plans ${version} after ${previous}`, () => {
+			assert.deepEqual(determineTrack(version, { prerelease: true }), {
+				previous_version: previous,
+				version,
+				track: 'rc',
+				bump,
+				new_stable_version: null,
+				release_type: 'rc',
+				rc_branch: `release-candidate/${version.split('.').slice(0, 2).join('.')}.x`,
+				prerelease: true,
+			});
+		});
+	}
 
-		assert.equal(output.track, 'rc');
-		assert.equal(output.version, '3.1.0');
-		assert.equal(output.previous_version, '3.0.0');
-		assert.equal(output.bump, 'minor');
-		assert.equal(output.release_type, 'rc');
-		assert.equal(output.rc_branch, 'release-candidate/3.1.x');
-		assert.equal(output.prerelease, true);
-	});
-	it('Allow a standalone prerelease patch', () => {
-		const output = determineTrack('3.0.1', { prerelease: true });
-
-		assert.equal(output.track, 'rc');
-		assert.equal(output.version, '3.0.1');
-		assert.equal(output.previous_version, '3.0.0');
-		assert.equal(output.bump, 'patch');
-		assert.equal(output.release_type, 'rc');
-		assert.equal(output.rc_branch, 'release-candidate/3.0.x');
-		assert.equal(output.prerelease, true);
-	});
-	it('Reject a standalone prerelease outside v3', () => {
-		assert.throws(
-			() => determineTrack('2.11.0', { prerelease: true }),
-			/require a bare v3 version/,
-		);
-	});
-	it('Reject a standalone prerelease with a SemVer prerelease suffix', () => {
-		assert.throws(
-			() => determineTrack('3.1.0-rc.0', { prerelease: true }),
-			/require a bare v3 version/,
-		);
-	});
-	it('Throw when track is not determinable', () => {
-		assert.throws(() => determineTrack(''));
-	});
-
-	it('Set track as "beta" when doing a minor bump', () => {
-		const output = determineTrack('2.11.0');
-
-		assert.equal(output.track, 'beta');
-		assert.equal(output.version, '2.11.0');
-		assert.equal(output.previous_version, '2.10.1');
-		assert.equal(output.bump, 'minor');
-		assert.equal(output.new_stable_version, '2.10.1');
-		assert.equal(output.release_type, 'stable');
-		assert.equal(output.rc_branch, 'release-candidate/2.11.x');
-	});
-
-	it('Set release_type accordingly on rc releases', () => {
-		const output = determineTrack('2.10.2-rc.1');
-
-		assert.equal(output.track, 'beta');
-		assert.equal(output.version, '2.10.2-rc.1');
-		assert.equal(output.previous_version, '2.10.1');
-		assert.equal(output.bump, 'patch');
-		assert.equal(output.new_stable_version, null);
-		assert.equal(output.release_type, 'rc');
-		assert.equal(output.rc_branch, 'release-candidate/2.10.x');
-	});
-
-	it('Set release_type accordingly on exp releases', () => {
-		const output = determineTrack('2.9.2-exp.0');
-
-		assert.equal(output.track, 'stable');
-		assert.equal(output.version, '2.9.2-exp.0');
-		assert.equal(output.previous_version, '2.9.2');
-		assert.equal(output.bump, 'patch');
-		assert.equal(output.new_stable_version, null);
-		assert.equal(output.release_type, 'rc');
-		assert.equal(output.rc_branch, 'release-candidate/2.9.x');
+	it('requires a bare v3 version', () => {
+		for (const version of ['2.11.0', '3.1.0-rc.0']) {
+			assert.throws(
+				() => determineTrack(version, { prerelease: true }),
+				/require a bare v3 version/,
+			);
+		}
 	});
 });

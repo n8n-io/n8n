@@ -53,6 +53,13 @@ describe('Compute backport targets', () => {
 		assert.ok(result.has('release-candidate/2.9.4'));
 	});
 
+	it('Maps each maintenance label to its own major branch', () => {
+		assert.deepEqual(
+			labelsToReleaseCandidateBranches(new Set(['Backport to v1', 'Backport to v2'])),
+			new Set(['1.x', '2.x']),
+		);
+	});
+
 	it("Doesn't parse other labes to backport branches", () => {
 		const labels = new Set(['n8n team', 'release']);
 		/** @type { Set<string> } */

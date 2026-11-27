@@ -62,17 +62,27 @@ export function determineTrack(packageVersion, { prerelease = false } = {}) {
 
 	console.log('Current Tracks: ', JSON.stringify(trackToReleaseMap, null, 4));
 
-	let track = null;
 	let newStable = null;
 
-	// Check through our current release versions, if semver matches,
-	// we inherit the track pointer from them
-	for (const [releaseTrack, tagVersionInfo] of Object.entries(trackToReleaseMap)) {
-		if (tagVersionInfo && matchesTrack(tagVersionInfo, packageVersion)) {
-			track = releaseTrack;
-			break;
-		}
+	const matchingTracks = RELEASE_TRACKS.filter((candidate) => {
+		const tagVersionInfo = trackToReleaseMap[candidate];
+		return tagVersionInfo && matchesTrack(tagVersionInfo, packageVersion);
+	});
+	const maintenanceTrack = matchingTracks.find((candidate) => candidate.startsWith('v'));
+	if (maintenanceTrack && matchingTracks.length > 1) {
+		throw new Error(
+			`The ${maintenanceTrack} maintenance line overlaps with another release track.`,
+		);
 	}
+	if (
+		maintenanceTrack &&
+		(maintenanceTrack !== `v${semver.major(packageVersion)}` || bump !== 'patch')
+	) {
+		throw new Error(
+			`The ${maintenanceTrack} maintenance track only supports patches for its major version.`,
+		);
+	}
+	let [track] = matchingTracks;
 
 	if (!track) {
 		let previousBeta = trackToReleaseMap.beta?.version;

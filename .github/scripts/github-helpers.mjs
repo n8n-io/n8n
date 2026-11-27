@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 /** @returns { typeof import('semver') } */
 const loadSemver = () => require('semver');
 
-export const CURRENT_MAJOR_VERSION = 2;
+export const CURRENT_MAJOR_VERSION = 3;
 export const RELEASE_CANDIDATE_BRANCH_PREFIX = 'release-candidate/';
 
 export const RELEASE_TRACKS = /** @type { const } */ ([
@@ -21,7 +21,15 @@ export const RELEASE_TRACKS = /** @type { const } */ ([
 	'stable',
 	'beta',
 	'v1',
+	'v2',
 ]);
+
+const MAINTENANCE_BRANCHES = /** @type { const } */ ({ v1: '1.x', v2: '2.x' });
+
+/** @param {ReleaseTrack} track */
+function maintenanceBranchForTrack(track) {
+	return track === 'v1' || track === 'v2' ? MAINTENANCE_BRANCHES[track] : null;
+}
 
 /**
  * @typedef { InstanceType<typeof import("@actions/github/lib/utils").GitHub> } GitHubInstance
@@ -110,9 +118,8 @@ export function resolveReleaseTagForTrack(track) {
 }
 
 /**
- * Resolve a release track tag (stable/beta/etc.) to the corresponding
- * release-candidate/<major>.<minor>.x branch, based on the n8n@<x.y.z> tag
- * pointing at the same commit.
+ * Resolve a track to its maintenance branch or use the release tag to resolve
+ * its release-candidate branch.
  *
  * Queries tags via `git ls-remote` so it works with shallow checkouts where
  * the tags aren't present locally.
@@ -122,31 +129,28 @@ export function resolveReleaseTagForTrack(track) {
  * @param { ReleaseTrack } track
  * */
 export function resolveRcBranchForTrack(track) {
-	if (track === 'v1') {
-		return '1.x';
-	}
+	const maintenanceBranch = maintenanceBranchForTrack(track);
+	if (maintenanceBranch) return maintenanceBranch;
 
 	const tagToSha = listRemoteTagsWithCommits();
 	const trackSha = tagToSha.get(track);
 	if (!trackSha) return null;
 
-	const tagsAtCommit = [...tagToSha]
-		.filter(([, sha]) => sha === trackSha)
-		.map(([tag]) => tag);
+	const tagsAtCommit = [...tagToSha].filter(([, sha]) => sha === trackSha).map(([tag]) => tag);
 
 	const releaseTag = pickHighestReleaseTag(tagsAtCommit);
 	if (!releaseTag) return null;
 
-	const parsed = loadSemver().parse(stripReleasePrefixes(releaseTag));
-	if (!parsed) return null;
-
-	return `release-candidate/${parsed.major}.${parsed.minor}.x`;
+	return tagVersionInfoToReleaseCandidateBranchName({
+		tag: releaseTag,
+		version: stripReleasePrefixes(releaseTag),
+	});
 }
 
 /**
  * Takes a TagVersionInfo object and returns a rc-branch name.
  *
- * e.g. release-candidate/2.8.x or 1.x
+ * e.g. release-candidate/3.5.x or 2.x
  *
  * @param {import('./github-helpers.mjs').TagVersionInfo} tagVersionInfo
  *
@@ -387,7 +391,9 @@ export function initGithub() {
 	}
 
 	if (!actionsGithub) {
-		throw new Error('No Octokit client: call setOctokit() or install the .github/scripts dependencies');
+		throw new Error(
+			'No Octokit client: call setOctokit() or install the .github/scripts dependencies',
+		);
 	}
 	const token = ensureEnvVar('GITHUB_TOKEN');
 	const octokit = actionsGithub.getOctokit(token);

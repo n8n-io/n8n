@@ -19,6 +19,7 @@ const BACKPORT_BY_TAG_MAP = {
 
 const BACKPORT_BY_BRANCH_MAP = {
 	'Backport to v1': '1.x',
+	'Backport to v2': '2.x',
 };
 
 /**

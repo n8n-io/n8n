@@ -13,6 +13,14 @@ Backport bugs with urgent or high priority and regression fixes.
 | `Backport to Beta`   | `release-candidate/<major>.<minor>.x` of the version that has the `beta` tag   |
 | `Backport to Stable` | `release-candidate/<major>.<minor>.x` of the version that has the `stable` tag |
 | `Backport to v1`     | `1.x`                                                                          |
+| `Backport to v2`     | `2.x`                                                                          |
+
+Use `Backport to v2` for approved maintenance fixes. Create v2 patches on demand
+with **Release: Create Patch Release PR**, track `v2`. The `v2` pointer tracks the
+latest v2 patch. A v2 patch does not move the global `stable` or `beta` pointers.
+Before the first v2 patch, branch `2.x` from the last v2 beta and seed the `v2`
+pointer at that release. Copy the maintenance release tooling to `2.x` before
+dispatching the patch workflow. Wait until global `stable` and `beta` point to v3.
 
 You can add more than one label. The workflow creates one backport PR for each label.
 
