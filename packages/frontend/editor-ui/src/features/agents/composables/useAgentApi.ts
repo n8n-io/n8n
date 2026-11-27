@@ -1397,3 +1397,16 @@ export const getAgentPlan = async (
 /** One held action after its run in the real apps. */
 export type AgentTestRunCommitResult = AgentTestRunCommitActionResult;
 export type { AgentTestRunCommitResponse };
+
+export const commitAgentTestRunActions = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: { testChatId: string; actionIds: string[] },
+): Promise<AgentTestRunCommitResponse> =>
+	await makeRestApiRequest<AgentTestRunCommitResponse>(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/test-run/commit`,
+		payload,
+	);

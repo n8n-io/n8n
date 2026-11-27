@@ -1,11 +1,14 @@
+import { ResponseError } from '@n8n/rest-api-client/utils';
 import { createTestingPinia } from '@pinia/testing';
-import { configure, fireEvent, waitFor } from '@testing-library/vue';
-import { describe, expect, it } from 'vitest';
+import { configure, fireEvent, screen, waitFor } from '@testing-library/vue';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick, ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 
 import AgentHeldActionsTray from '../components/chatMode/AgentHeldActionsTray.vue';
+import AgentRunHeldActionsModal from '../components/chatMode/AgentRunHeldActionsModal.vue';
 import AgentTestRunEmptyState from '../components/chatMode/AgentTestRunEmptyState.vue';
 import {
 	actionObject,
@@ -15,9 +18,25 @@ import {
 	isHeldWriteToolCall,
 	type AgentHeldAction,
 } from '../components/chatMode/heldActions';
+import { useAgentHeldActions } from '../components/chatMode/useAgentHeldActions';
 import { TOOL_CALL_STATE } from '../constants';
+import { AgentModalTestStub } from './utils/AgentModalTestStub';
 
 configure({ testIdAttribute: 'data-testid' });
+
+const commitAgentTestRunActionsMock = vi.fn();
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
+}));
+
+vi.mock('../composables/useAgentApi', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../composables/useAgentApi')>();
+	return {
+		...actual,
+		commitAgentTestRunActions: (...args: unknown[]) => commitAgentTestRunActionsMock(...args),
+	};
+});
 
 const sampleActions: AgentHeldAction[] = [
 	{
@@ -219,6 +238,22 @@ describe('AgentHeldActionsTray', () => {
 		expect(emitted('run-actions')).toEqual([[sampleActions]]);
 	});
 
+	it('does not emit run-actions while the run is disabled', async () => {
+		const { getByTestId, emitted, rerender } = renderTray({
+			props: { actions: sampleActions, runDisabled: true },
+		});
+
+		await fireEvent.click(getByTestId('agent-held-actions-toggle'));
+		await waitFor(() => expect(getByTestId('agent-held-actions-run-btn')).toBeDisabled());
+		await fireEvent.click(getByTestId('agent-held-actions-run-btn'));
+		expect(emitted('run-actions')).toBeUndefined();
+
+		await rerender({ runDisabled: false });
+		expect(getByTestId('agent-held-actions-run-btn')).toBeEnabled();
+		await fireEvent.click(getByTestId('agent-held-actions-run-btn'));
+		expect(emitted('run-actions')).toEqual([[sampleActions]]);
+	});
+
 	it('updates in place to the done count and done summary after commit', () => {
 		const committedAt = new Date(2026, 10, 20, 14, 7, 0).toISOString();
 		const { getByTestId, queryByTestId } = renderTray({
@@ -327,5 +362,206 @@ describe('AgentHeldActionsTray', () => {
 				'Linear: issue saved',
 			),
 		);
+	});
+});
+
+describe('AgentRunHeldActionsModal', () => {
+	const renderModal = createComponentRenderer(AgentRunHeldActionsModal, {
+		pinia: createTestingPinia(),
+		global: { stubs: { AgentModal: AgentModalTestStub } },
+	});
+
+	it('lists each action with its target and emits confirm', async () => {
+		const { emitted } = renderModal({
+			props: { open: true, actions: sampleActions },
+		});
+
+		expect(
+			screen.getByRole('heading', { name: 'Run these actions for real?' }),
+		).toBeInTheDocument();
+		const items = screen.getAllByTestId('agent-run-held-actions-item');
+		expect(items).toHaveLength(2);
+		expect(screen.getByTestId('agent-run-held-actions-description')).toHaveTextContent(
+			"These actions from this test will run in your real apps. This can't be undone.",
+		);
+		expect(items[0]).toHaveTextContent('Slack: message');
+		expect(items[0]).toHaveTextContent('#ops');
+		expect(items[1]).toHaveTextContent('Linear: issue');
+		expect(items[1]).toHaveTextContent('ENG-123');
+
+		await fireEvent.click(screen.getByTestId('agent-run-held-actions-confirm'));
+		expect(emitted('confirm')).toHaveLength(1);
+	});
+});
+
+describe('useAgentHeldActions', () => {
+	beforeEach(() => {
+		commitAgentTestRunActionsMock.mockReset();
+	});
+
+	it('commits held actions and stores the response per reply', async () => {
+		const committedAt = new Date(2026, 10, 20, 15, 30, 0).toISOString();
+		const response = {
+			committedAt,
+			results: [
+				{ actionId: 'call-1', toolName: 'slack__post_message', status: 'done' },
+				{ actionId: 'call-2', toolName: 'linear__create_issue', status: 'done' },
+			],
+		};
+		commitAgentTestRunActionsMock.mockResolvedValueOnce(response);
+
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref('chat-1'),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		expect(state.confirmModalOpen.value).toBe(true);
+
+		expect(await state.confirmCommit()).toBe(true);
+		expect(commitAgentTestRunActionsMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			{
+				testChatId: 'chat-1',
+				actionIds: ['call-1', 'call-2'],
+			},
+		);
+		expect(state.confirmModalOpen.value).toBe(false);
+		expect(state.committedByReply.value['reply-1']).toEqual(response);
+	});
+
+	it('keeps the busy state of a new commit when a commit for an earlier chat settles', async () => {
+		const settle: Array<{ resolve: (value: unknown) => void; reject: (error: Error) => void }> = [];
+		commitAgentTestRunActionsMock.mockImplementation(
+			async () =>
+				await new Promise((resolve, reject) => {
+					settle.push({ resolve, reject });
+				}),
+		);
+
+		const sessionId = ref('chat-1');
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId,
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		const firstCommit = state.confirmCommit();
+		expect(state.committingReplyId.value).toBe('reply-1');
+
+		sessionId.value = 'chat-2';
+		await nextTick();
+		expect(state.committingReplyId.value).toBeNull();
+
+		state.openConfirmModal('reply-2', sampleActions);
+		const secondCommit = state.confirmCommit();
+		expect(state.committingReplyId.value).toBe('reply-2');
+
+		// The commit for the earlier chat fails after the new commit starts.
+		settle[0].reject(new Error('Old chat failed'));
+		expect(await firstCommit).toBe(false);
+		expect(state.committingReplyId.value).toBe('reply-2');
+		expect(state.commitError.value).toBeNull();
+		expect(state.confirmModalOpen.value).toBe(true);
+
+		const response = { committedAt: new Date().toISOString(), results: [] };
+		settle[1].resolve(response);
+		expect(await secondCommit).toBe(true);
+		expect(state.committingReplyId.value).toBeNull();
+		expect(state.committedByReply.value).toEqual({ 'reply-2': response });
+	});
+
+	it('shows an error and keeps the modal open when there is no test chat session', async () => {
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref(undefined),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		expect(await state.confirmCommit()).toBe(false);
+
+		expect(commitAgentTestRunActionsMock).not.toHaveBeenCalled();
+		expect(state.confirmModalOpen.value).toBe(true);
+		expect(state.commitError.value).toBe(
+			'This test chat is no longer available. Start a new test to run these actions.',
+		);
+	});
+
+	it('shows localized text instead of the server message, and clears it on a retry', async () => {
+		commitAgentTestRunActionsMock.mockRejectedValueOnce(
+			new ResponseError('Request failed with status code 500', { httpStatusCode: 500 }),
+		);
+		const response = { committedAt: new Date().toISOString(), results: [] };
+		commitAgentTestRunActionsMock.mockResolvedValueOnce(response);
+
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref('chat-1'),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		expect(await state.confirmCommit()).toBe(false);
+		expect(state.commitError.value).toBe('Could not run these actions. Try again.');
+		expect(state.confirmModalOpen.value).toBe(true);
+		expect(state.committingReplyId.value).toBeNull();
+
+		expect(await state.confirmCommit()).toBe(true);
+		expect(commitAgentTestRunActionsMock).toHaveBeenCalledTimes(2);
+		expect(state.commitError.value).toBeNull();
+		expect(state.confirmModalOpen.value).toBe(false);
+		expect(state.committedByReply.value).toEqual({ 'reply-1': response });
+	});
+
+	it('says the test chat is gone when the server cannot find the session', async () => {
+		commitAgentTestRunActionsMock.mockRejectedValueOnce(
+			new ResponseError('Test chat session not found.', { httpStatusCode: 404 }),
+		);
+
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref('chat-1'),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		expect(await state.confirmCommit()).toBe(false);
+		expect(state.commitError.value).toBe(
+			'This test chat is no longer available. Start a new test to run these actions.',
+		);
+	});
+
+	it('ignores a second confirm and a cancel while a commit is in progress', async () => {
+		let resolveCommit: (value: unknown) => void = () => {};
+		commitAgentTestRunActionsMock.mockImplementationOnce(
+			async () =>
+				await new Promise((resolve) => {
+					resolveCommit = resolve;
+				}),
+		);
+
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref('chat-1'),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		const firstCommit = state.confirmCommit();
+
+		expect(await state.confirmCommit()).toBe(false);
+		state.cancelConfirmModal();
+		state.confirmModalOpen.value = false;
+		expect(state.confirmModalOpen.value).toBe(true);
+		expect(commitAgentTestRunActionsMock).toHaveBeenCalledTimes(1);
+
+		resolveCommit({ committedAt: new Date().toISOString(), results: [] });
+		expect(await firstCommit).toBe(true);
+		expect(state.confirmModalOpen.value).toBe(false);
 	});
 });

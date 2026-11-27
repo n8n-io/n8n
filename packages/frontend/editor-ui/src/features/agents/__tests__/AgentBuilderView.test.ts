@@ -280,6 +280,8 @@ const resetSessionStoreMock = vi.fn(() => {
 const startSessionAutoRefreshMock = vi.fn();
 const stopSessionAutoRefreshMock = vi.fn();
 
+const commitAgentTestRunActionsMock = vi.fn();
+
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
 	createAgent: createAgentMock,
@@ -291,6 +293,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgent: deleteAgentMock,
 	archiveAgent: archiveAgentMock,
 	publishAgent: publishAgentMock,
+	commitAgentTestRunActions: commitAgentTestRunActionsMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 	getModelCatalog: vi.fn().mockResolvedValue({}),
 	getAgentConfigValidation: getAgentConfigValidationMock,
@@ -8134,9 +8137,10 @@ describe('chat-first builder', () => {
 	);
 });
 
-describe('AgentBuilderView — safe testing', () => {
+describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 	beforeEach(() => {
 		resetViewMocks();
+		commitAgentTestRunActionsMock.mockReset();
 		agentPermissionsMock.canUpdate.value = true;
 		agentPermissionsMock.canExecute.value = true;
 	});
@@ -8147,10 +8151,11 @@ describe('AgentBuilderView — safe testing', () => {
 
 		expect(dock.props('chatMode')).toBeUndefined();
 		expect(wrapper.find('[data-testid="agent-test-run-empty-state"]').exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentRunHeldActionsModal' }).exists()).toBe(false);
 		wrapper.unmount();
 	});
 
-	it('runs in test mode with the safe testing empty state and starter chips when the flag is on', async () => {
+	it('runs in test mode with the Hold & Replay empty state and starter chips when the flag is on', async () => {
 		const wrapper = await renderView({
 			seedStores: () => {
 				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
@@ -8174,6 +8179,174 @@ describe('AgentBuilderView — safe testing', () => {
 		await firstChip.trigger('click');
 		await nextTick();
 		expect(dock.props('initialPrompt')).toBe(firstChip.text());
+		wrapper.unmount();
+	});
+
+	it('opens the confirm modal and commits held actions via POST /test-run/commit', async () => {
+		const committedAt = new Date(2026, 10, 20, 14, 12, 0).toISOString();
+		commitAgentTestRunActionsMock.mockResolvedValueOnce({
+			committedAt,
+			results: [{ actionId: 'call-1', toolName: 'slack__post_message', status: 'done' }],
+		});
+
+		const heldToolCalls = [
+			{
+				tool: 'slack__post_message',
+				toolCallId: 'call-1',
+				input: { channel: '#ops', text: 'Shipped' },
+				state: 'done',
+				simulation: {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['world_write'],
+				},
+			},
+		];
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentTestDock: {
+					...commonStubs.AgentTestDock,
+					data: () => ({ heldToolCalls }),
+					template:
+						'<aside data-testid="stub-agent-preview-dock"><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" :complete="true" /></aside>',
+				},
+			},
+		});
+
+		// Ensure a session ID is bound so commit has a testChatId.
+		await wrapper.getComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
+		await nextTick();
+
+		expect(wrapper.get('[data-testid="agent-held-actions-count"]').text()).toBe(
+			'agents.testRun.holdReplay.onHold',
+		);
+		await wrapper.get('[data-testid="agent-held-actions-toggle"]').trigger('click');
+		await nextTick();
+		expect(wrapper.get('[data-testid="agent-held-actions-note"]').text()).toBe(
+			'agents.testRun.holdReplay.nothingSent',
+		);
+
+		await wrapper.get('[data-testid="agent-held-actions-run-btn"]').trigger('click');
+		await nextTick();
+
+		const modal = wrapper.getComponent({ name: 'AgentRunHeldActionsModal' });
+		expect(modal.props('open')).toBe(true);
+
+		modal.vm.$emit('confirm');
+		await flushPromises();
+
+		expect(commitAgentTestRunActionsMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			expect.objectContaining({
+				testChatId: expect.any(String),
+				actionIds: ['call-1'],
+			}),
+		);
+		expect(wrapper.get('[data-testid="agent-held-actions-committed-banner"]').text()).toBe(
+			'agents.testRun.holdReplay.doneCount',
+		);
+		expect(wrapper.get('[data-testid="agent-held-actions-done-summary"]').text()).toBe(
+			'agents.testRun.holdReplay.doneSummary',
+		);
+		wrapper.unmount();
+	});
+
+	it('does not open the confirm modal while the test reply is not complete', async () => {
+		const heldToolCalls = [
+			{
+				tool: 'slack__post_message',
+				toolCallId: 'call-1',
+				input: { channel: '#ops', text: 'Shipped' },
+				state: 'done',
+				simulation: {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['world_write'],
+				},
+			},
+		];
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentTestDock: {
+					...commonStubs.AgentTestDock,
+					data: () => ({ heldToolCalls, complete: false }),
+					template:
+						'<aside data-testid="stub-agent-preview-dock"><button data-testid="finish-reply" @click="complete = true" /><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" :complete="complete" /></aside>',
+				},
+			},
+		});
+
+		await wrapper.getComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
+		await nextTick();
+		await wrapper.get('[data-testid="agent-held-actions-toggle"]').trigger('click');
+		await nextTick();
+
+		const runButton = () => wrapper.get('[data-testid="agent-held-actions-run-btn"]');
+		const modal = wrapper.getComponent({ name: 'AgentRunHeldActionsModal' });
+		expect(runButton().attributes('disabled')).toBeDefined();
+		await runButton().trigger('click');
+		await nextTick();
+		expect(modal.props('open')).toBe(false);
+
+		await wrapper.get('[data-testid="finish-reply"]').trigger('click');
+		await nextTick();
+		expect(runButton().attributes('disabled')).toBeUndefined();
+		await runButton().trigger('click');
+		await nextTick();
+		expect(modal.props('open')).toBe(true);
+		wrapper.unmount();
+	});
+
+	it('disables Run until the test chat has a session', async () => {
+		const heldToolCalls = [
+			{
+				tool: 'slack__post_message',
+				toolCallId: 'call-1',
+				state: 'done',
+				simulation: {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['world_write'],
+				},
+			},
+		];
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentTestDock: {
+					...commonStubs.AgentTestDock,
+					data: () => ({ heldToolCalls }),
+					template:
+						'<aside data-testid="stub-agent-preview-dock"><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" :complete="true" /></aside>',
+				},
+			},
+		});
+
+		await wrapper.get('[data-testid="agent-held-actions-toggle"]').trigger('click');
+		await nextTick();
+		const runButton = () => wrapper.get('[data-testid="agent-held-actions-run-btn"]');
+		expect(runButton().attributes('disabled')).toBeDefined();
+		await runButton().trigger('click');
+		await nextTick();
+		const modal = wrapper.getComponent({ name: 'AgentRunHeldActionsModal' });
+		expect(modal.props('open')).toBe(false);
+
+		await wrapper.getComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
+		await nextTick();
+		expect(runButton().attributes('disabled')).toBeUndefined();
 		wrapper.unmount();
 	});
 
