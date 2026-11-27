@@ -12,8 +12,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInstancePolicyStore } from './instance-policy.store';
 import { useRestrictReviewStore } from './restrict-review/restrict-review.store';
 import NodeTypesTab from './NodeTypesTab.vue';
-import { findPopupItem, MENU_ITEM, OPTION } from '../__tests__/popups';
-import { accessFilter, policyTableCells, rowCheckbox, type GetByRole } from '../__tests__/table';
+import { findPopupItem, MENU_ITEM } from '../__tests__/popups';
+import { policyTableCells, rowCheckbox, type GetByRole } from '../__tests__/table';
 import type { InstancePolicy, NodeTypeSummary } from '../type-availability-policies.api';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
@@ -138,10 +138,8 @@ describe('NodeTypesTab', () => {
 			],
 		});
 
-		const showCommunity = async (getByRole: (role: string, options?: object) => HTMLElement) => {
-			await userEvent.click(accessFilter(getByRole));
-			await userEvent.click(await findPopupItem(OPTION, 'Community (2)'));
-		};
+		const searchFor = async (getByPlaceholderText: (text: string) => HTMLElement, text: string) =>
+			await userEvent.type(getByPlaceholderText('Search nodes'), text);
 
 		beforeEach(() => {
 			mocks.fetchNodeTypeSummaries.mockResolvedValue(
@@ -152,21 +150,31 @@ describe('NodeTypesTab', () => {
 			} satisfies NodeTypeUsageResponse);
 		});
 
-		it('shows a node that is not installed under Community, with its catalog name and icon and no usage', async () => {
-			const { findByText, getByTestId, getByRole, queryByText } = await setup(() =>
+		it('shows an installed community node with its subtitle and usage', async () => {
+			const { findByText, getByTestId, queryByText } = await setup(() =>
+				mocks.fetchInstanceAccess.mockResolvedValue(communityAccess(1, 'allow')),
+			);
+
+			await findByText('MCP Client');
+
+			expect(getByTestId(`instance-policy-community-${MCP_CLIENT}`)).toHaveTextContent(
+				/^Community node$/,
+			);
+			expect(usageCells(getByTestId, MCP_CLIENT)).toEqual(['1', '4', '2', '1']);
+			expect(queryByText('Browserless')).not.toBeInTheDocument();
+		});
+
+		it('shows a node that is not installed when a search names it, with its catalog name and icon and no usage', async () => {
+			const { findByText, getByTestId, getByPlaceholderText } = await setup(() =>
 				mocks.fetchInstanceAccess.mockResolvedValue(communityAccess(1, 'allow')),
 			);
 			await findByText('MCP Client');
-			expect(queryByText('Browserless')).not.toBeInTheDocument();
 
-			await showCommunity(getByRole);
+			await searchFor(getByPlaceholderText, 'browserless');
 
 			expect(await findByText('Browserless')).toBeInTheDocument();
 			expect(getByTestId(`instance-policy-community-${BROWSERLESS}`)).toHaveTextContent(
 				'Community node · Not installed',
-			);
-			expect(getByTestId(`instance-policy-community-${MCP_CLIENT}`)).toHaveTextContent(
-				/^Community node$/,
 			);
 			const browserlessRow = accessCell(getByTestId, BROWSERLESS).closest('tr') as HTMLElement;
 			expect(browserlessRow.querySelector('img')).toHaveAttribute(
@@ -174,19 +182,18 @@ describe('NodeTypesTab', () => {
 				'https://cdn.example.com/browserless.svg',
 			);
 			expect(usageCells(getByTestId, BROWSERLESS)).toEqual(['—', '—', '—', '—']);
-			expect(usageCells(getByTestId, MCP_CLIENT)).toEqual(['1', '4', '2', '1']);
 		});
 
 		it('restricts a node that is not installed by its name', async () => {
 			mocks.fetchNodeTypeUsage.mockResolvedValue({});
 			mocks.setInstanceTypeAccess.mockResolvedValue({ ...policy(2), warnings: [] });
-			const { findByText, getByTestId, getByRole } = await setup(() =>
+			const { findByText, getByTestId, getByPlaceholderText } = await setup(() =>
 				mocks.fetchInstanceAccess
 					.mockResolvedValueOnce(communityAccess(1, 'allow'))
 					.mockResolvedValue(communityAccess(2, 'deny')),
 			);
 			await findByText('MCP Client');
-			await showCommunity(getByRole);
+			await searchFor(getByPlaceholderText, 'browserless');
 			await findByText('Browserless');
 
 			await restrict(getByTestId, BROWSERLESS);

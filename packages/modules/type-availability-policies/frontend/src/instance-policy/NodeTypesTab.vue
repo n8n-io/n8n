@@ -97,7 +97,7 @@ defineExpose({ returnFocus: (name: string | undefined) => table.value?.returnFoc
 		:loading="loading || typeSummaries === null"
 		:search-placeholder="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.search.node')"
 		:no-match-text="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noMatch.node')"
-		community-filter
+		show-source
 		data-test-id="node-types-tab"
 		@change="changeAccess"
 		@bulk-change="bulkChange"
