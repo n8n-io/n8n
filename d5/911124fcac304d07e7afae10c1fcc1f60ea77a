@@ -1,0 +1,21 @@
+packages/workflow/src/index.ts
+  s_413ec925079a3f::t_3d7f7952114eb5 31
+packages/@n8n/expression-runtime/package.json
+  s_413ec925079a3f::t_c552ae4f78f522 24-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d5911124fcac304d07e7afae10c1fcc1f60ea77a",
+  "prompts": {},
+  "sessions": {
+    "s_413ec925079a3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d20f7262-98f7-4454-aab4-3e0f75705dcc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
