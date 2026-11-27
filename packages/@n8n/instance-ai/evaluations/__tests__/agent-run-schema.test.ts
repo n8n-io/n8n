@@ -147,6 +147,21 @@ describe('agentRun case contract', () => {
 		expect(messages).toEqual([expect.stringContaining('memory.observerModel')]);
 	});
 
+	it('rejects configOverrides that set a credential: memory credentials come from the seed', () => {
+		const messages = issueMessages(
+			directCase({
+				seed: memorySeed,
+				agentRun: {
+					mode: 'direct',
+					keepMemory: true,
+					configOverrides: { memory: { episodicMemory: { enabled: true, credential: 'cred-9' } } },
+				},
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('memory.episodicMemory.credential')]);
+	});
+
 	it('rejects configOverrides that is not an object', () => {
 		expect(
 			issueMessages(directCase({ agentRun: { mode: 'direct', configOverrides: 'memory' } })),

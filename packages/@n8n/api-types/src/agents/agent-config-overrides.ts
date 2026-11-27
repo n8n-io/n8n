@@ -36,10 +36,34 @@ function unknownOverridePaths(override: unknown, parsed: unknown, prefix = ''): 
 	});
 }
 
+/** Credential references: `credential`, `credentialId`, and the like. */
+const CREDENTIAL_KEY = /^credential/i;
+
+/** Dotted paths of override keys that name a credential. */
+function credentialOverridePaths(override: unknown, prefix = ''): string[] {
+	if (!isPlainObject(override)) return [];
+	return Object.entries(override).flatMap(([key, value]) => {
+		const path = prefix ? `${prefix}.${key}` : key;
+		return CREDENTIAL_KEY.test(key) ? [path] : credentialOverridePaths(value, path);
+	});
+}
+
+/**
+ * The eval restore binds the seeded config's credentials to real ones; an
+ * override is applied after it, so a credential it names would stay unbound.
+ */
+function credentialOverrideError(overrides: AgentConfigOverrides): string | undefined {
+	const credentials = credentialOverridePaths(overrides);
+	if (credentials.length === 0) return undefined;
+	return `Overrides cannot set credentials (${credentials.join(', ')}): set them on the seeded Agent config and keep its memory with keepMemory`;
+}
+
 function mergeAndValidate(
 	config: unknown,
 	overrides: AgentConfigOverrides,
 ): AgentConfigOverrideResult {
+	const credentialError = credentialOverrideError(overrides);
+	if (credentialError) return { success: false, error: credentialError };
 	const parsed = AgentJsonConfigSchema.safeParse(deepMerge(config, overrides));
 	if (!parsed.success) {
 		return { success: false, error: formatAgentConfigZodError(parsed.error) };

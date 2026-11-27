@@ -237,6 +237,15 @@ describe('AgentEvaluationService', () => {
 			expect(schema?.instructions).toBe(baseConfig.instructions);
 		});
 
+		it('rejects configOverrides that set a credential', async () => {
+			const { service } = setup({ ...baseConfig, memory });
+			const result = await service.prepare(user, 'proj-1', 'agent-1', {
+				keepMemory: true,
+				configOverrides: { memory: { episodicMemory: { enabled: true, credential: 'cred-9' } } },
+			});
+			expect(result.error).toContain('memory.episodicMemory.credential');
+		});
+
 		it('rejects configOverrides that do not give a valid Agent config', async () => {
 			const { service, reconstruction } = setup({ ...baseConfig, memory });
 			const result = await service.prepare(user, 'proj-1', 'agent-1', {

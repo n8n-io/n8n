@@ -111,3 +111,31 @@ describe('agentConfigOverrideError', () => {
 		).toContain('memory.observationalMemory.lockTtlMs');
 	});
 });
+
+describe('credentials in overrides', () => {
+	it.each([
+		['the model credential', { credential: 'cred-9' }, 'credential'],
+		[
+			'an episodic embedding credential',
+			{ memory: { episodicMemory: { credential: 'cred-9' } } },
+			'memory.episodicMemory.credential',
+		],
+		[
+			'a worker model credential',
+			{
+				memory: {
+					observationalMemory: {
+						observerModel: { model: 'anthropic/claude-haiku-5-5', credential: 'cred-9' },
+					},
+				},
+			},
+			'memory.observationalMemory.observerModel.credential',
+		],
+	])('rejects %s, which the restore would not rebind', (_label, overrides, path) => {
+		const result = applyAgentConfigOverrides(seeded, overrides);
+
+		expect(result.success).toBe(false);
+		expect(!result.success && result.error).toContain(path);
+		expect(agentConfigOverrideError(seeded, overrides)).toContain(path);
+	});
+});
