@@ -23,6 +23,7 @@ import { generateSecureToken } from './utils';
 
 export interface CreateFullRunExecutionDataOptions {
 	startData?: {
+		triggerNodeType?: string | null;
 		startNodes?: StartNodeData[];
 		destinationNode?: NonNullable<IRunExecutionData['startData']>['destinationNode'];
 		originalDestinationNode?: NonNullable<

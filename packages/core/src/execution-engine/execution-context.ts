@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import {
+	isTriggerNodeType,
 	toErrorWorkflowContext,
 	type IExecutionContext,
 	type IRunExecutionData,
@@ -147,6 +148,12 @@ export const establishExecutionContext = async (
 	assertExecutionDataExists(runExecutionData.executionData, workflow, additionalData, mode);
 
 	const executionData = runExecutionData.executionData;
+	const startData = (runExecutionData.startData ??= {});
+	if (startData.triggerNodeType === undefined) {
+		// Record this execution's start before the context can inherit its parent's trigger.
+		const nodeType = executionData.nodeExecutionStack?.[0]?.node?.type;
+		startData.triggerNodeType = nodeType && isTriggerNodeType(nodeType) ? nodeType : null;
+	}
 
 	// Call the execution context service to augment the context with any hook-based data
 	const executionContextService = Container.get(ExecutionContextService);
