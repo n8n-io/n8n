@@ -476,6 +476,132 @@ describe(useNodeDirtiness, () => {
 				inLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
 			});
 		});
+
+		it('should not mark a completed loop as dirty when an incoming connection is added downstream of the loop', () => {
+			setupCompletedLoopWorkflow();
+
+			canvasOperations.createConnection(
+				{
+					source: workflowDocumentStore.nodesByName.trigger.id,
+					target: workflowDocumentStore.nodesByName.afterLoop.id,
+				},
+				{ trackHistory: true },
+			);
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				afterLoop: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
+			});
+		});
+
+		it('should not mark a completed loop as dirty when a downstream node is disabled', () => {
+			setupCompletedLoopWorkflow();
+
+			canvasOperations.toggleNodesDisabled([workflowDocumentStore.nodesByName.afterLoop.id], {
+				trackHistory: true,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				finalNode: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
+			});
+		});
+
+		it('should not mark a completed loop as dirty when pinned data is updated downstream of the loop', () => {
+			setupCompletedLoopWorkflow();
+
+			workflowDocumentStore.pinNodeData('afterLoop', [{ json: { value: 1 } }]);
+			workflowDocumentStore.clearPinnedDataTimestamps('afterLoop');
+			workflowDocumentStore.touchPinnedDataLastUpdatedAt('afterLoop');
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				finalNode: CanvasNodeDirtiness.PINNED_DATA_UPDATED,
+			});
+		});
+
+		it('should not mark a completed loop as dirty when pinned data is removed downstream of the loop', () => {
+			setupCompletedLoopWorkflow();
+
+			workflowDocumentStore.pinNodeData('afterLoop', [{ json: { value: 1 } }]);
+			workflowDocumentStore.clearPinnedDataTimestamps('afterLoop');
+
+			canvasOperations.toggleNodesPinned(
+				[workflowDocumentStore.nodesByName.afterLoop.id],
+				'pin-icon-click',
+				{ trackHistory: true },
+			);
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				afterLoop: CanvasNodeDirtiness.PINNED_DATA_UPDATED,
+			});
+		});
+
+		it('should not mark a completed loop as dirty after copying execution data to the editor and editing a downstream node', () => {
+			setupCompletedLoopWorkflow();
+
+			// Copy to editor pins root trigger data and clears pinned data timestamps.
+			workflowDocumentStore.pinNodeData('trigger', [{ json: { value: 1 } }]);
+			workflowDocumentStore.clearPinnedDataTimestamps('trigger');
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.afterLoop.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				afterLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should not mark sequential completed loops as dirty when a downstream node changes', () => {
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> b✅, b -> d✅ -> e✅ -> f✅ -> e✅, e -> g✅');
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.g.id, { foo: 1 });
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				g: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should only mark the containing loop entry node dirty in sequential loops', () => {
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> b✅, b -> d✅ -> e✅ -> f✅ -> e✅, e -> g✅');
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.f.id, { foo: 1 });
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				e: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				f: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should not mark nested loops as dirty when a node downstream of the outer loop changes', () => {
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> d✅ -> c✅, c -> e✅ -> b✅, b -> f✅');
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.f.id, { foo: 1 });
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				f: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark the outer loop entry node dirty when a node in the outer loop body after an inner loop changes', () => {
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> d✅ -> c✅, c -> e✅ -> b✅, b -> f✅');
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.e.id, { foo: 1 });
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				b: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				e: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+
+		it('should mark the outer loop entry node dirty when a node inside a nested inner loop changes', () => {
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> d✅ -> c✅, c -> e✅ -> b✅, b -> f✅');
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.d.id, { foo: 1 });
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				b: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				d: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
 	});
 
 	/**

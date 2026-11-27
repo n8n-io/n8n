@@ -83,39 +83,77 @@ function shouldCommandMarkDirty(
 	return false;
 }
 
+function getMainConnectedNodeNames(connections: INodeConnections): string[] {
+	const mainConnections = connections[NodeConnectionTypes.Main];
+
+	if (!mainConnections) {
+		return [];
+	}
+
+	const names: string[] = [];
+
+	for (const group of mainConnections) {
+		for (const { node } of group ?? []) {
+			names.push(node);
+		}
+	}
+
+	return names;
+}
+
 /**
- * If given node is part of a loop, returns the set of nodes that forms the loop, otherwise returns undefined.
+ * Returns all nodes in the cycle that contains `nodeName`, or `undefined` if `nodeName` is not in a cycle.
  */
 function findLoop(
 	nodeName: string,
-	visited: string[],
 	getIncomingConnections: (nodeName: string) => INodeConnections,
+	getOutgoingConnections: (nodeName: string) => INodeConnections,
 ): string[] | undefined {
-	const index = visited.indexOf(nodeName);
+	// Find all nodes reachable from `nodeName` via one or more Main edges.
+	// If `nodeName` cannot reach itself, it is not part of a cycle.
+	const descendants = new Set<string>();
+	const forwardStack = getMainConnectedNodeNames(getOutgoingConnections(nodeName));
 
-	if (index >= 0) {
-		return visited.slice(index);
-	}
+	while (forwardStack.length > 0) {
+		const current = forwardStack.pop();
 
-	const newVisited = [...visited, nodeName];
-
-	for (const [type, typeConnections] of Object.entries(getIncomingConnections(nodeName))) {
-		if ((type as NodeConnectionType) !== NodeConnectionTypes.Main) {
+		if (current === undefined || descendants.has(current)) {
 			continue;
 		}
 
-		for (const connections of typeConnections) {
-			for (const { node } of connections ?? []) {
-				const loop = findLoop(node, newVisited, getIncomingConnections);
+		descendants.add(current);
 
-				if (loop) {
-					return loop;
-				}
+		for (const next of getMainConnectedNodeNames(getOutgoingConnections(current))) {
+			if (!descendants.has(next)) {
+				forwardStack.push(next);
 			}
 		}
 	}
 
-	return undefined;
+	if (!descendants.has(nodeName)) {
+		return undefined;
+	}
+
+	// Walk backward from `nodeName` within `descendants` to collect its strongly connected component.
+	const loopNodes = new Set<string>([nodeName]);
+	const backwardStack = [nodeName];
+
+	while (backwardStack.length > 0) {
+		const current = backwardStack.pop();
+
+		if (current === undefined) {
+			continue;
+		}
+
+		for (const prev of getMainConnectedNodeNames(getIncomingConnections(current))) {
+			if (descendants.has(prev) && !loopNodes.has(prev)) {
+				loopNodes.add(prev);
+				backwardStack.push(prev);
+			}
+		}
+	}
+
+	return [...loopNodes];
 }
 
 /**
@@ -262,7 +300,7 @@ export function useNodeDirtiness(workflowDocumentId: MaybeRefOrGetter<WorkflowDo
 		function setDirtiness(nodeName: string, value: CanvasNodeDirtinessType) {
 			dirtiness[nodeName] = dirtiness[nodeName] ?? value;
 
-			const loop = findLoop(nodeName, [], getIncomingConnections);
+			const loop = findLoop(nodeName, getIncomingConnections, getOutgoingConnections);
 
 			if (!loop) {
 				return;
