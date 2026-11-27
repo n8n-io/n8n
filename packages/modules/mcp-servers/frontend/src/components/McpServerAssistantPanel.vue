@@ -78,6 +78,12 @@ async function loadCandidates() {
 	}
 }
 
+/** A change from the Assistant can add the trigger that the suggestion names. */
+async function onSubjectChanged() {
+	emit('changed');
+	await loadCandidates();
+}
+
 function onSuggestion() {
 	composerPrefill.value = { text: suggestion.value, prefillType: 'mcp_server_suggestion' };
 }
@@ -92,7 +98,7 @@ onMounted(loadCandidates);
 		:subject="subject"
 		:prefill="composerPrefill"
 		data-test-id="mcp-assistant-panel"
-		@subject-changed="emit('changed')"
+		@subject-changed="onSubjectChanged"
 		@close="emit('close')"
 	>
 		<template #subject>

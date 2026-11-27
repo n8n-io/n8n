@@ -304,15 +304,28 @@ function flushQueuedHandoff(threadId: string) {
 	stashHandoff(threadId, queued);
 }
 
-/** A pre-fill that the host set before the panel had a thread. */
-const queuedPrefill = ref<PendingComposerDraft | null>(null);
+/** A pre-fill that the host set before the panel had a thread, with the subject it is for. */
+const queuedPrefill = ref<{ draft: PendingComposerDraft; subjectKey: string } | null>(null);
+
+function subjectKeyOf(subject: InstanceAiEmbedSubject): string {
+	return `${subject.type}:${subject.projectId ?? ''}:${subject.id}`;
+}
+
+// A pre-fill for one subject must not reach the thread of the next subject.
+watch(
+	() => subjectKeyOf(props.subject),
+	() => {
+		queuedPrefill.value = null;
+	},
+);
 
 /** The conversation of the thread reads the stash when it mounts. */
 function flushQueuedPrefill(threadId: string) {
-	const draft = queuedPrefill.value;
-	if (!draft) return;
+	const queued = queuedPrefill.value;
+	if (!queued) return;
 	queuedPrefill.value = null;
-	stashPendingComposerDraft(threadId, draft);
+	if (queued.subjectKey !== subjectKeyOf(props.subject)) return;
+	stashPendingComposerDraft(threadId, queued.draft);
 }
 
 /** Every path that discovers a thread id routes through here so a queued
@@ -366,9 +379,12 @@ function setPrefill(prefill: InstanceAiPrefillPayload) {
 		return;
 	}
 	queuedPrefill.value = {
-		text: prefill.text,
-		prefillType: prefill.prefillType,
-		...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+		draft: {
+			text: prefill.text,
+			prefillType: prefill.prefillType,
+			...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+		},
+		subjectKey: subjectKeyOf(props.subject),
 	};
 	if (activeThreadId.value) flushQueuedPrefill(activeThreadId.value);
 }

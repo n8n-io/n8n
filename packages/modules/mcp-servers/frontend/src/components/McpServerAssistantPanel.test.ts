@@ -139,6 +139,25 @@ describe('McpServerAssistantPanel', () => {
 		expect(JSON.parse(screen.getByTestId('stub-prefill').textContent ?? '')).toEqual(prefill);
 	});
 
+	it('loads the suggestion again after the Assistant changes the server', async () => {
+		api.listToolCandidates.mockResolvedValueOnce([
+			candidate({ workflowId: 'wf-2', name: 'Weekly newsletter', reason: 'missing_trigger' }),
+		]);
+		renderComponent();
+		await screen.findByText(
+			"Add the trigger 'When Executed by Another Workflow' to Weekly newsletter, so that it can be a tool.",
+		);
+		api.listToolCandidates.mockResolvedValueOnce([candidate({ workflowId: 'wf-2', reason: null })]);
+
+		await userEvent.click(screen.getByTestId('stub-changed'));
+
+		await waitFor(() =>
+			expect(screen.getByTestId('mcp-assistant-suggestion')).toHaveTextContent(
+				'Add the workflows that fit this server.',
+			),
+		);
+	});
+
 	it('passes on a change of the server and the close', async () => {
 		const { emitted } = renderComponent();
 

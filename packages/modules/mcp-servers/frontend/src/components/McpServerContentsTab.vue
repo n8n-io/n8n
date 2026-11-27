@@ -124,6 +124,14 @@ async function reload() {
 		highlightedIds.value = new Set(
 			known ? next.tools.filter(({ id }) => !known.has(id)).map(({ id }) => id) : [],
 		);
+		// A tool that did not change keeps its object, so its row does not see a new tool.
+		const previous = new Map(server.value?.tools.map((tool) => [tool.id, tool]));
+		next.tools = next.tools.map((tool) => {
+			const old = previous.get(tool.id);
+			return old && old.updatedAt === tool.updatedAt && old.brokenReason === tool.brokenReason
+				? old
+				: tool;
+		});
 		server.value = next;
 	} catch (error) {
 		if (!isLatest()) return;
