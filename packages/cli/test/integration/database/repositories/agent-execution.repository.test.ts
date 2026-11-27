@@ -4206,6 +4206,118 @@ describe('AgentExecutionRepository', () => {
 		return await repository.save(execution);
 	};
 
+	const describeSqlite = describe.skipIf(process.env.DB_TYPE === 'postgresdb');
+	describeSqlite('AGENT-1047 SQLite pagination matrix', () => {
+		const seed = async (count: number) => {
+			const ids: string[] = [];
+			for (let index = 0; index < count; index++) {
+				const thread = await createThread();
+				await createExecution({ threadId: thread.id, status: 'success' });
+				await threadRepo
+					.createQueryBuilder()
+					.update()
+					.set({ updatedAt: () => `'2026-09-24 19:33:${59 - index}'` })
+					.where('id = :id', { id: thread.id })
+					.execute();
+				ids.push(thread.id);
+			}
+			return ids;
+		};
+
+		it.each([0, 1, 2, 5])(
+			'returns %i sessions without a cursor when limit covers the count',
+			async (count) => {
+				const ids = await seed(count);
+				const page = await threadRepo.findByProjectIdPaginated(
+					projectId,
+					agentId,
+					viewerId,
+					Math.max(count, 1),
+				);
+				expect(page.threads.map(({ id }) => id)).toEqual(ids);
+				expect(page.nextCursor).toBeNull();
+			},
+		);
+
+		it('returns the newest session and an ISO cursor on the first page', async () => {
+			const ids = await seed(2);
+			const page = await threadRepo.findByProjectIdPaginated(projectId, agentId, viewerId, 1);
+			expect(page.threads.map(({ id }) => id)).toEqual(ids.slice(0, 1));
+			expect(page.nextCursor).toBe('2026-09-24T19:33:59.000Z');
+			const rows = await threadRepo.query(
+				'SELECT updatedAt FROM agent_execution_threads WHERE id = ?',
+				[ids[0]],
+			);
+			expect(rows).toEqual([{ updatedAt: '2026-09-24 19:33:59' }]);
+		});
+
+		it.each([2, 5])('walks %i completed sessions exactly once with limit=1', async (count) => {
+			const ids = await seed(count);
+			const seen: string[] = [];
+			let cursor: string | undefined;
+			for (const id of ids) {
+				const page = await threadRepo.findByProjectIdPaginated(
+					projectId,
+					agentId,
+					viewerId,
+					1,
+					cursor,
+				);
+				expect(page.threads.map((thread) => thread.id)).toEqual([id]);
+				seen.push(...page.threads.map((thread) => thread.id));
+				cursor = page.nextCursor ?? undefined;
+			}
+			expect(cursor).toBeUndefined();
+			expect(seen).toEqual(ids);
+			expect(new Set(seen).size).toBe(count);
+		});
+
+		it('paginates through the service used by REST and agent-context', async () => {
+			const ids = await seed(2);
+			const { executionService } = recordingServices();
+			const first = await executionService.getThreads(projectId, agentId, viewerId, 1);
+			const second = await executionService.getThreads(
+				projectId,
+				agentId,
+				viewerId,
+				1,
+				first.nextCursor!,
+			);
+			expect(first.threads.map(({ id }) => id)).toEqual([ids[0]]);
+			expect(second.threads.map(({ id }) => id)).toEqual([ids[1]]);
+			expect(second.nextCursor).toBeNull();
+		});
+
+		it('includes whole-second timestamps at both inclusive date boundaries', async () => {
+			const ids = await seed(3);
+			const page = await threadRepo.findByProjectIdPaginated(
+				projectId,
+				agentId,
+				viewerId,
+				10,
+				undefined,
+				{
+					updatedAfter: new Date('2026-09-24T19:33:58.000Z'),
+					updatedBefore: new Date('2026-09-24T19:33:59.000Z'),
+					status: 'succeeded',
+				},
+			);
+			expect(page.threads.map(({ id }) => id)).toEqual(ids.slice(0, 2));
+			expect(page.nextCursor).toBeNull();
+		});
+
+		it('returns no sessions for a different agent or an empty date range', async () => {
+			await seed(2);
+			for (const page of [
+				await threadRepo.findByProjectIdPaginated(projectId, uuid(), viewerId, 1),
+				await threadRepo.findByProjectIdPaginated(projectId, agentId, viewerId, 1, undefined, {
+					updatedAfter: new Date('2027-01-01T00:00:00Z'),
+				}),
+			])
+				expect(page).toEqual({ threads: [], nextCursor: null });
+		});
+	});
+
 	it('paginates sessions with whole-second and millisecond timestamps', async () => {
 		const newest = await createThread();
 		const middle = await createThread();
