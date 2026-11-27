@@ -15,7 +15,7 @@
  * - Fix with assistant: one callout that sends the failed calls of the run to
  *   the assistant.
  * - Test runs: how each simulated call ran, under the steps. The raw calls stay
- *   collapsed in a group, even a single call.
+ *   collapsed in a group, even a single call or a call of a delegated agent.
  */
 import { N8nButton, N8nCallout, N8nIcon } from '@n8n/design-system';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
@@ -50,6 +50,8 @@ const props = defineProps<{
 	executionId?: string;
 	/** Host events that show right before the step of their call, by call. */
 	hostEvents?: ReadonlyMap<string, AgentsChatHostEventItem[]>;
+	/** The chat runs in test mode. A local tool call has no simulation, so the calls do not tell. */
+	testRun?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -112,7 +114,10 @@ function emitFixWithAssistant() {
 
 <template>
 	<div :class="$style.activity" data-test-id="agent-chat-activity">
-		<AiActivityTrace :items="items" :group-single-tool="simulatedRouteItems.length > 0">
+		<AiActivityTrace
+			:items="items"
+			:group-single-tool="Boolean(testRun) || simulatedRouteItems.length > 0"
+		>
 			<template v-if="props.thinking?.hostEvents?.length" #thinking-prepend>
 				<AgentChatHostEvents :items="props.thinking.hostEvents" />
 			</template>

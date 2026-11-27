@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { MANAGED_CREDENTIAL_TOKEN, type AgentChatMode } from '@n8n/api-types';
 import { computed, inject, ref, useTemplateRef, watch } from 'vue';
 
 import { deriveAgentStatus } from '@/features/agents/composables/agentTelemetry.utils';
@@ -40,6 +40,8 @@ const props = withDefaults(
 		budgetCards?: boolean;
 		/** Persists a raised budget cap. Omitted when the agent is read-only. */
 		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
+		/** Safe-testing execution mode (`'test'` or `'live'`). Omitted when safe testing is off. */
+		chatMode?: AgentChatMode;
 	}>(),
 	{
 		visible: true,
@@ -50,6 +52,7 @@ const props = withDefaults(
 		dismissedFixToolCallIds: () => [],
 		budgetCards: false,
 		increaseBudget: undefined,
+		chatMode: undefined,
 	},
 );
 
@@ -62,6 +65,7 @@ const emit = defineEmits<{
 	'initial-consumed': [];
 	'message-sent': [];
 	'new-session': [];
+	'first-user-message': [text: string | undefined];
 }>();
 
 const inputDraft = ref('');
@@ -79,6 +83,7 @@ const canShowTestScenarios = computed(() => {
 });
 
 function onFirstUserMessage(text: string | undefined) {
+	emit('first-user-message', text);
 	if (text !== undefined) emit('message-sent');
 }
 
@@ -140,6 +145,7 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				:before-send="beforeSend"
 				:budget-cards="budgetCards"
 				:increase-budget="increaseBudget"
+				:chat-mode="chatMode"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@usage-updated="emit('usage-updated', $event)"
 				@session-created="emit('session-created', $event)"
@@ -149,13 +155,18 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				@first-user-message="onFirstUserMessage"
 				@new-test-run="emit('new-session')"
 			>
-				<template v-if="canShowTestScenarios" #empty-state>
+				<template v-if="$slots['empty-state'] || canShowTestScenarios" #empty-state>
+					<slot v-if="$slots['empty-state']" name="empty-state" />
 					<AgentTestScenariosEmptyState
+						v-else
 						:project-id="projectId"
 						:agent-id="agentId"
 						:before-generate="beforeGenerate"
 						@select="onSelectTestScenario"
 					/>
+				</template>
+				<template v-if="$slots['above-input']" #above-input>
+					<slot name="above-input" />
 				</template>
 				<template v-if="$slots['composer-start']" #composer-start>
 					<slot name="composer-start" />

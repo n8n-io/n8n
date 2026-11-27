@@ -138,6 +138,32 @@ describe('Safe testing labels, previews, reload persistence, and fresh test runs
 		expect(rawGroupToggle).toHaveAttribute('aria-expanded', 'false');
 	});
 
+	it('collapses a single local tool call in a test run, which has no simulation', () => {
+		const localCall: ToolCall = {
+			tool: 'read_file',
+			toolCallId: 'call-local',
+			state: TOOL_CALL_STATE.DONE,
+			input: { path: 'notes.md' },
+			output: 'Notes',
+		};
+
+		const testRun = renderToolSteps({
+			props: { toolCalls: [localCall], testRun: true },
+			pinia: createTestingPinia(),
+		});
+		expect(testRun.getByRole('button', { name: /1 tool calls/i })).toHaveAttribute(
+			'aria-expanded',
+			'false',
+		);
+		testRun.unmount();
+
+		const liveRun = renderToolSteps({
+			props: { toolCalls: [localCall] },
+			pinia: createTestingPinia(),
+		});
+		expect(liveRun.queryByRole('button', { name: /1 tool calls/i })).not.toBeInTheDocument();
+	});
+
 	it('does not show Fix with Assistant callout for a simulated blocked tool call', () => {
 		const blockedCall: ToolCall = {
 			tool: 'run_custom_code',

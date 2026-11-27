@@ -182,6 +182,7 @@ function mountSteps(
 		canFixWithAssistant?: boolean;
 		executionId?: string;
 		dismissedToolCallIds?: string[];
+		testRun?: boolean;
 	} = {},
 ) {
 	return mount(AgentChatActivity, {
@@ -944,6 +945,30 @@ describe('AgentChatActivity', () => {
 		await wrapper.find('button').trigger('click');
 		const text = wrapper.text();
 		expect(text.indexOf('Web search')).toBeLessThan(text.indexOf('Final child answer'));
+	});
+
+	it('groups a single child tool call in a test run', async () => {
+		const wrapper = mountSteps(
+			[
+				{
+					tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+					toolCallId: 'tc-delegate',
+					state: TOOL_CALL_STATE.RUNNING,
+					input: { subAgentId: 'inline', taskName: 'research_api' },
+					childProgress: {
+						text: '',
+						reasoningSegments: [],
+						steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+					},
+				},
+			],
+			{ testRun: true },
+		);
+
+		await wrapper.find('button').trigger('click');
+		const childProgress = wrapper.get('[data-test-id="ai-activity-tool-children"]');
+		expect(childProgress.find('[data-test-id="n8n-ai-activity-step-group"]').exists()).toBe(true);
+		expect(childProgress.text()).toContain('Web search');
 	});
 
 	it('still renders the child text when a failed delegation has no answer', async () => {

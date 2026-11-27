@@ -31,6 +31,7 @@ import {
 import { createReusableTemplate, useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
+	type AgentChatMode,
 	type AgentChatQueueItem,
 	type AgentSessionFile,
 	type AgentBuilderOpenSuspension,
@@ -144,6 +145,8 @@ const props = withDefaults(
 		backgroundJobsActive?: boolean;
 		/** `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'` talks to the published n8n Chat channel; `'system'` talks to a system agent, such as the n8n Assistant. */
 		channel?: AgentChatChannel;
+		/** Safe-testing execution mode for preview chats (`'test'` or `'live'`). Omitted when the flag is off. */
+		chatMode?: AgentChatMode;
 		/**
 		 * The n8n Chat entry page: centers the empty state and the composer together until a
 		 * new chat gets its first message, and shows that message right away when sent.
@@ -209,6 +212,7 @@ const props = withDefaults(
 		inputDraft: undefined,
 		backgroundJobsActive: false,
 		channel: 'chat',
+		chatMode: undefined,
 		centerEmptyState: false,
 		budgetCards: false,
 		increaseBudget: undefined,
@@ -348,6 +352,7 @@ const {
 	continueSessionId: toRef(props, 'continueSessionId'),
 	newSession: toRef(props, 'newSession'),
 	channel: toRef(props, 'channel'),
+	chatMode: toRef(props, 'chatMode'),
 	onHistoryLoaded: (count) => {
 		if (props.continueSessionId) {
 			emit('continue-loaded', { sessionId: props.continueSessionId, count });
@@ -2090,6 +2095,7 @@ onBeforeUnmount(() => {
 						v-bind="planCardProps"
 						@stop="stopTasks"
 					/>
+					<!-- Approvals in Test Run follow the same card flow: resume keeps the thread's SimulationSession so approved calls stay simulated. -->
 					<div ref="approvalCards" :class="$style.approvalCards" data-testid="agent-chat-approvals">
 						<ToolApprovalCard
 							v-if="pendingApproval"
@@ -2350,12 +2356,14 @@ onBeforeUnmount(() => {
 					!$slots['inline-offers']
 				"
 			>
-				<slot name="empty-state">
-					<AgentChatEmptyState :agent-config="agentConfig" :icon="emptyStateIcon" />
-				</slot>
-				<div v-if="isSafeTestingEnabled" :class="$style.testRunNotices">
-					<AgentTestRunToolsNotice v-if="testRunTools.length > 0" :tools="testRunTools" />
-					<AgentTestRunChangesNote />
+				<div :class="{ [$style.testRunEmpty]: isSafeTestingEnabled }">
+					<slot name="empty-state">
+						<AgentChatEmptyState :agent-config="agentConfig" :icon="emptyStateIcon" />
+					</slot>
+					<div v-if="isSafeTestingEnabled" :class="$style.testRunNotices">
+						<AgentTestRunToolsNotice v-if="testRunTools.length > 0" :tools="testRunTools" />
+						<AgentTestRunChangesNote />
+					</div>
 				</div>
 			</template>
 			<AgentChatMessageList
@@ -2378,6 +2386,7 @@ onBeforeUnmount(() => {
 				:load-older-messages-failed="loadOlderMessagesFailed"
 				:thinking-label="props.thinkingLabel"
 				:stopped-label="props.stoppedLabel"
+				:test-run="props.chatMode === 'test'"
 				:task-trace-route="
 					continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 				"
@@ -2444,6 +2453,22 @@ onBeforeUnmount(() => {
 	min-height: 0;
 	// Centers the scroll button over the input, which a host panel can move.
 	--n8n-chat-scroll-area--x-offset--end: var(--agent-chat-reserved-end, 0);
+}
+
+/* Sizes the empty test run from the scroll area, so its starters sit by the composer. */
+.scrollArea:has(.testRunEmpty) {
+	container-type: size;
+}
+
+.testRunEmpty {
+	display: flex;
+	flex-direction: column;
+	/* The scroll area adds two 1px sentinels around the content; without them the viewport overflows. */
+	min-height: calc(100cqb - var(--chat--input--height, 0px) - 2px);
+
+	.testRunNotices {
+		margin-bottom: var(--spacing--xs);
+	}
 }
 
 .centeredEmpty {
