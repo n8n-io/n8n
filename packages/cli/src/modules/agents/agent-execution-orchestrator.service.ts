@@ -1202,6 +1202,9 @@ export class AgentExecutionOrchestratorService {
 						usePublishedVersion: setup.runtime.usePublishedVersion,
 						sandboxPrincipalHash: setup.sandboxPrincipalHash,
 						attributionUserId: setup.runtime.attributionUserId,
+						// The Public API is a synchronous channel: nothing can receive a
+						// background job wake, so the run schedules no background tasks.
+						allowBackgroundTasks: false,
 					},
 					{
 						threadId: memory.threadId,

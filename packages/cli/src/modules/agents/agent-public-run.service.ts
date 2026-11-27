@@ -15,6 +15,7 @@ import { AgentsService } from './agents.service';
 import type { AgentExecution } from './entities/agent-execution.entity';
 import type { ProjectAgent } from './entities/agent.entity';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
+import { publicApiMemoryResourceId } from './utils/agent-memory-scope';
 import { threadBelongsTo } from './utils/agent-thread-access';
 
 const NOT_PUBLISHED = 'This agent has no published version. The Public API cannot run it.';
@@ -60,6 +61,7 @@ export class AgentPublicRunService {
 				agentId,
 				suspensions: result.suspensions,
 				userId: user.id,
+				resourceId: publicApiMemoryResourceId(user.id),
 			});
 			throw new UnprocessableRequestError(
 				cancelled

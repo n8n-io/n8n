@@ -325,6 +325,7 @@ describe('AgentTestRunService', () => {
 		agentExecutionOrchestratorService.executeForPublicApiPublished.mockImplementation(
 			async function* (config) {
 				config.onExecutionRecorded?.('execution-2');
+				yield* [];
 			},
 		);
 
@@ -540,6 +541,25 @@ describe('AgentTestRunService', () => {
 			agentId,
 			runId: 'run-2',
 			resourceId: 'draft-chat:user-1',
+		});
+	});
+
+	it('cancels a suspended run in the memory scope the caller passes', async () => {
+		const { service, agentExecutionOrchestratorService } = makeService();
+		agentExecutionOrchestratorService.cancelChatRun.mockResolvedValue(true);
+
+		await expect(
+			service.cancelSuspendedRuns({
+				agentId,
+				userId: user.id,
+				suspensions: [{ runId: 'run-1' }],
+				resourceId: 'public-api:user-1',
+			}),
+		).resolves.toBe(true);
+		expect(agentExecutionOrchestratorService.cancelChatRun).toHaveBeenCalledWith({
+			agentId,
+			runId: 'run-1',
+			resourceId: 'public-api:user-1',
 		});
 	});
 

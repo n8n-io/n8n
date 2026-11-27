@@ -215,6 +215,7 @@ describe('AgentPublicRunService', () => {
 				agentId: 'agent-1',
 				suspensions,
 				userId: 'user-1',
+				resourceId: 'public-api:user-1',
 			});
 		});
 

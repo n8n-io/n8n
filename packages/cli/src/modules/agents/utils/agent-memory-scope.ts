@@ -17,6 +17,12 @@ export function publicApiMemoryResourceId(userId: string): string {
 	return `${PUBLIC_API_MEMORY_RESOURCE_PREFIX}${userId}`;
 }
 
+export function userIdFromPublicApiMemoryResourceId(resourceId: string): string | undefined {
+	if (!resourceId.startsWith(PUBLIC_API_MEMORY_RESOURCE_PREFIX)) return undefined;
+	const userId = resourceId.slice(PUBLIC_API_MEMORY_RESOURCE_PREFIX.length);
+	return userId.length > 0 ? userId : undefined;
+}
+
 /** A system-agent chat. It is not a Preview chat, so it has its own resource scope. */
 export function systemChatMemoryResourceId(userId: string): string {
 	return `${SYSTEM_CHAT_MEMORY_RESOURCE_PREFIX}${userId}`;

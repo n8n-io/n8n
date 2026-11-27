@@ -431,10 +431,13 @@ export class AgentTestRunService {
 		agentId,
 		suspensions,
 		userId,
+		resourceId = draftChatMemoryResourceId(userId),
 	}: {
 		agentId: string;
 		suspensions: Array<Pick<AgentTestRunSuspension, 'runId'>>;
 		userId: string;
+		/** The memory scope the suspended run lives in. A draft run defaults to the draft scope. */
+		resourceId?: string;
 	}): Promise<boolean> {
 		const runIds = [...new Set(suspensions.map(({ runId }) => runId))];
 		try {
@@ -444,7 +447,7 @@ export class AgentTestRunService {
 						await this.agentExecutionOrchestratorService.cancelChatRun({
 							agentId,
 							runId,
-							resourceId: draftChatMemoryResourceId(userId),
+							resourceId,
 						}),
 				),
 			);

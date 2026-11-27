@@ -3048,6 +3048,8 @@ describe('AgentExecutionOrchestratorService', () => {
 				usePublishedVersion: true,
 				attributionUserId: user.id,
 				sandboxPrincipalHash: userPrincipalHash,
+				// A synchronous channel: no background task wakes, so no background tasks.
+				allowBackgroundTasks: false,
 			}),
 		);
 		expect(readReviewRequester(runtime.agent.stream.mock.calls[0][1]?.persistence)).toEqual({
