@@ -1,5 +1,10 @@
 import { EventService } from '@n8n/backend-services';
-import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -145,6 +150,54 @@ describe('credential type availability policy: instance deny beats a project all
 			scope: 'instance',
 			matchedRuleId: 'instance-deny',
 		});
+	});
+});
+
+describe('credential type availability policy project controller: team projects only', () => {
+	test('PUT for a personal project is rejected with 400 and writes nothing', async () => {
+		const personalProject = await getPersonalProject(owner);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.put(projectRoute(personalProject.id))
+			.send({ rules: [], defaultAction: 'deny', version: 0 });
+
+		expect(response.statusCode).toBe(400);
+
+		const unchanged = await testServer.authAgentFor(owner).get(projectRoute(personalProject.id));
+		expect(unchanged.body.data.version).toBe(0);
+	});
+
+	test('PATCH access for a personal project is rejected with 400 and writes nothing', async () => {
+		const personalProject = await getPersonalProject(owner);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`${projectRoute(personalProject.id)}/access`)
+			.send({ changes: [{ type: 'slackApi', access: 'deny' }], version: 0 });
+
+		expect(response.statusCode).toBe(400);
+
+		const unchanged = await testServer.authAgentFor(owner).get(projectRoute(personalProject.id));
+		expect(unchanged.body.data.version).toBe(0);
+	});
+
+	test('PUT for an unknown project is rejected with 404', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.put(projectRoute('unknown-project-id'))
+			.send({ rules: [], defaultAction: 'deny', version: 0 });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('PUT for a team project still succeeds for the instance owner', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.put(projectRoute(project.id))
+			.send({ rules: [], defaultAction: 'deny', version: 0 });
+
+		expect(response.statusCode).toBe(200);
 	});
 });
 

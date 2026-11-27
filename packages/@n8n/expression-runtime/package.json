@@ -12,6 +12,12 @@
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
     },
+    "./native-evaluation": {
+      "types": "./dist/esm/native-evaluation/index.d.ts",
+      "node": "./dist/cjs/native-evaluation/index.js",
+      "import": "./dist/esm/native-evaluation/index.js",
+      "require": "./dist/cjs/native-evaluation/index.js"
+    },
     "./runtime-bundle.iife.js": "./dist/bundle/runtime.iife.js",
     "./*": "./*"
   },
@@ -20,6 +26,10 @@
     "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json && pnpm build:runtime",
     "build:unchecked": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --noCheck && pnpm build:runtime",
     "build:runtime": "node esbuild.config.js",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "oxlint src/native-evaluation --quiet",
+    "lint:fix": "oxlint src/native-evaluation --fix",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --watch --silent false",
@@ -52,6 +62,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/jmespath": "^0.15.0",
@@ -59,6 +70,8 @@
     "@types/luxon": "catalog:",
     "@types/md5": "^2.3.5",
     "esbuild": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },

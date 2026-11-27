@@ -23,6 +23,8 @@ export class FakeRedisList implements WorkQueuePublisherClient, WorkQueueConsume
 		return this.items.length;
 	});
 
+	llen = vi.fn(async (_key: string) => this.items.length);
+
 	brpop = vi.fn(async (key: string, timeoutSeconds: number): Promise<[string, string] | null> => {
 		if (this.items.length === 0) {
 			await new Promise<void>((resolve) => {

@@ -42,7 +42,13 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	UserError,
+} from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -840,6 +846,37 @@ describe('AgentsService', () => {
 			skillCreator,
 			expect.anything(),
 		);
+	});
+
+	it('checks the workflow mentions of seeded skill bodies before the insert transaction', async () => {
+		const { service, agentRepository, skillRefs, transactionRunner } = makeService();
+		mockCreateReturning(agentRepository, makeAgent());
+		const skills = {
+			skill_abc: { name: 'Triage', description: '', instructions: 'Use [A](n8n://workflow/a).' },
+		};
+		const skillCreator = mock<User>({ id: 'user-1' });
+		skillRefs.assertCanReadNewSkillMentions.mockRejectedValue(new UserError('No access'));
+
+		await expect(
+			service.create(projectId, 'Support Agent', {
+				actor,
+				skillCreator,
+				schema: {
+					name: 'Support Agent',
+					model: 'anthropic/claude-sonnet-5-5',
+					instructions: 'Triage tickets.',
+					skills: [{ type: 'skill', id: 'skill_abc' }],
+				},
+				skills,
+			}),
+		).rejects.toThrow('No access');
+
+		expect(skillRefs.assertCanReadNewSkillMentions).toHaveBeenCalledWith(
+			[{ type: 'skill', id: 'skill_abc' }],
+			skills,
+			skillCreator,
+		);
+		expect(transactionRunner.run).not.toHaveBeenCalled();
 	});
 
 	it('stores the skill refs of a seeded config in order', async () => {

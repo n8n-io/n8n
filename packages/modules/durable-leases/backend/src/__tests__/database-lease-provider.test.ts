@@ -7,6 +7,7 @@ import type { LeaseKindOptions } from '@n8n/leases';
 import { mock } from 'vitest-mock-extended';
 
 import { DatabaseLeaseProvider } from '../database-lease-provider';
+import type { SessionClock } from '../lease-session-manager';
 
 describe('DatabaseLeaseProvider', () => {
 	const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -23,6 +24,7 @@ describe('DatabaseLeaseProvider', () => {
 
 	beforeEach(() => {
 		vi.useFakeTimers();
+		const clock: SessionClock = { monotonicMs: () => 0, wallMs: () => 1_800_000_000_000 };
 		kinds = mock<LeaseKindRepository>();
 		kinds.insertIfMissing.mockResolvedValue();
 		sessions = mock<LeaseSessionRepository>();
@@ -35,6 +37,7 @@ describe('DatabaseLeaseProvider', () => {
 			sessions,
 			hostId: 'host-1',
 			bootId: 'boot-1',
+			clock,
 			logger: mock<Logger>(),
 		});
 	});
@@ -104,6 +107,37 @@ describe('DatabaseLeaseProvider', () => {
 			expect(id).toBe(inserted.id);
 			expect(leaseSeconds).toBe(30);
 		}
+	});
+
+	it('waits on stop for the delete of a session that a failed registration left', async () => {
+		let finishInsert!: () => void;
+		sessions.insertSession.mockImplementationOnce(
+			async () => await new Promise<void>((resolve) => (finishInsert = resolve)),
+		);
+		const registering = expect(provider.registerHolder('test-kind', options, hold)).rejects.toThrow(
+			'did not finish within the lease length',
+		);
+		await vi.advanceTimersByTimeAsync(20 * 1000);
+		await registering;
+
+		let finishDelete!: () => void;
+		sessions.deleteSession.mockImplementationOnce(
+			async () => await new Promise<void>((resolve) => (finishDelete = resolve)),
+		);
+		let stopped = false;
+		const stopping = provider.stop().then(() => {
+			stopped = true;
+		});
+		finishInsert();
+		await vi.advanceTimersByTimeAsync(0);
+
+		const [inserted] = insertedSessions();
+		expect(sessions.deleteSession).toHaveBeenCalledWith(inserted.id, {});
+		expect(stopped).toBe(false);
+
+		finishDelete();
+		await stopping;
+		expect(stopped).toBe(true);
 	});
 
 	it('starts no session for a kind that registers after stop', async () => {
