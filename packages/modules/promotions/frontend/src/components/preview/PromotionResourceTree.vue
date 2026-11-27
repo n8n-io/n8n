@@ -157,7 +157,10 @@ function onToggle(resource: PromotionResource) {
 					:class="[
 						$style.row,
 						$style.resource,
-						{ [$style.inspected]: inspectedKey === item.id, [$style.blocked]: marker.blocked },
+						{
+							[$style.inspected]: inspectedKey === item.id,
+							[$style.blocked]: marker.blocked,
+						},
 					]"
 					data-test-id="promotion-preview-tree-row"
 					:data-resource-key="item.id"
@@ -173,7 +176,7 @@ function onToggle(resource: PromotionResource) {
 					/>
 					<button
 						type="button"
-						:class="$style.name"
+						:class="[$style.name, { [$style.muted]: selectable && check.disabled }]"
 						:style="{ '--preview-tree--indent': indent }"
 						:aria-current="inspectedKey === item.id ? 'true' : undefined"
 						@click="emit('inspect', item.id)"
@@ -329,6 +332,12 @@ function onToggle(resource: PromotionResource) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* The checkbox mutes its own label when disabled. The name and its icon are a separate button, so they need the same token. */
+.muted .icon,
+.muted .label {
+	color: var(--checkbox--label--color--disabled);
 }
 
 .blockerMarker {

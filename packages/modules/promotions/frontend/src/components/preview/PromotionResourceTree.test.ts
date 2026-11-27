@@ -49,6 +49,45 @@ describe('PromotionResourceTree', () => {
 		expect(row(getAllByTestId, 'workflow:w4').getByRole('checkbox')).not.toBeChecked();
 	});
 
+	it('should mute the name and icon of a disabled row only, whether it is selected or not', () => {
+		const { getAllByTestId } = render(['workflow:w1']);
+
+		const labelOf = (key: string) =>
+			getAllByTestId('promotion-preview-tree-row')
+				.find((element) => element.dataset.resourceKey === key)
+				?.querySelector('button:not([role="checkbox"])');
+
+		expect(labelOf('dataTable:t1')?.className).toContain('muted');
+		expect(labelOf('workflow:w4')?.className).not.toContain('muted');
+		expect(labelOf('workflow:w1')?.className).not.toContain('muted');
+	});
+
+	it('should mute the name of a disabled row that is not selected', () => {
+		const selected = new Set<string>();
+		const { getAllByTestId } = renderComponent({
+			pinia: createTestingPinia(),
+			props: {
+				tree,
+				graph,
+				selected,
+				inclusion: resolveInclusion(graph, selected),
+				disabled: new Set(['workflow:w3']),
+				locked: false,
+				direction: 'promote',
+				blockers: indexBlockers([]),
+			},
+		});
+
+		const buttonOf = (key: string) =>
+			getAllByTestId('promotion-preview-tree-row')
+				.find((element) => element.dataset.resourceKey === key)
+				?.querySelector('button:not([role="checkbox"])');
+
+		expect(row(getAllByTestId, 'workflow:w3').getByRole('checkbox')).not.toBeChecked();
+		expect(buttonOf('workflow:w3')?.className).toContain('muted');
+		expect(buttonOf('workflow:w2')?.className).not.toContain('muted');
+	});
+
 	it('should say "a personal project" in a blocker tooltip, because the server leaves out its name', async () => {
 		const base = billingPreview();
 		const preview = {
