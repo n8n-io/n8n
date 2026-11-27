@@ -83,6 +83,22 @@ describe('seed data table rows', () => {
 		expect(found[0].message).toContain(`${type} column`);
 	});
 
+	it.each([
+		['an id shorter than 8 characters', { id: 'dt-1' }],
+		['a name longer than 128 characters', { name: 'x'.repeat(129) }],
+	])('rejects a seed table with %s, as the restore would', (_label, override) => {
+		const testCase = caseWithRows([]);
+		const seed = testCase.seed as { dataTables: Array<Record<string, unknown>> };
+		const table = { ...seed.dataTables[0], ...override };
+
+		const parsed = EvalTestCaseSchema.safeParse({
+			...testCase,
+			seed: { ...seed, dataTables: [table] },
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+
 	it('rejects more than 1000 rows', () => {
 		const rows = Array.from({ length: 1001 }, () => ({ price: 1 }));
 

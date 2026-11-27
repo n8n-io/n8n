@@ -31,7 +31,11 @@ export interface DirectAgentRunConfig {
 
 /** What the setup made so far. Kept on failure too, so cleanup finds it. */
 interface DirectRunState {
-	project?: BuildProject;
+	/** A project made for this run, which cleanup deletes. Absent when the lane
+	 *  cannot make one and the run uses the owner's personal project. */
+	buildProject?: BuildProject;
+	/** Where the run lives: the build project, else the personal project. */
+	projectId?: string;
 	threadId?: string;
 	workflowIds: string[];
 	dataTableIds: string[];
@@ -69,9 +73,12 @@ export async function prepareDirectAgentRun(config: DirectAgentRunConfig): Promi
 
 async function runSetup(config: DirectAgentRunConfig, state: DirectRunState): Promise<BuildResult> {
 	const seed = inlineSeedOf(config.testCase);
-	state.project = await createBuildProject(config.lane);
-	state.threadId = await createSeedThread(config, state.project.projectId);
-	await pinDeclaredCredentials(config, state.threadId, state.project.projectId);
+	state.buildProject = await createBuildProject(config.lane);
+	const projectId =
+		state.buildProject?.projectId ?? (await config.lane.client.getPersonalProjectId());
+	state.projectId = projectId;
+	state.threadId = await createSeedThread(config, projectId);
+	await pinDeclaredCredentials(config, state.threadId, projectId);
 	await restoreSeed(config.lane, state.threadId, state, seed);
 	const tableIdsByName = await createDirectScenarioTables(
 		config,
@@ -131,10 +138,11 @@ function inlineSeedOf(testCase: WorkflowTestCase): ConversationSeed {
 	return seed;
 }
 
-async function createBuildProject(lane: Lane): Promise<BuildProject> {
+/** Undefined when the lane cannot make one. The run then uses the personal
+ *  project, which cleanup must never delete (as in build-workflow.ts). */
+async function createBuildProject(lane: Lane): Promise<BuildProject | undefined> {
 	const provide = buildProjectProvider(lane);
-	if (provide) return await provide();
-	return { projectId: await lane.client.getPersonalProjectId() };
+	return provide ? await provide() : undefined;
 }
 
 /** The restore, the credential pin and the scenario tables are all scoped to a thread. */
@@ -189,6 +197,17 @@ async function restoreSeed(
 		remapped.agents,
 		{ folders: remapped.folders, uniquifyNames: false },
 	);
+	recordRestored(state, remapped, result);
+}
+
+type RestoreResult = Awaited<ReturnType<Lane['client']['restoreThread']>>;
+
+/** Restored ids are positional to the seed's arrays. */
+function recordRestored(
+	state: DirectRunState,
+	remapped: ConversationSeed,
+	result: RestoreResult,
+): void {
 	state.workflowIds.push(...result.workflowIds);
 	state.dataTableIds.push(...result.dataTableIds);
 	state.agentIds.push(...result.agentIds);
@@ -214,7 +233,7 @@ function agentUnderTest(testCase: WorkflowTestCase, state: DirectRunState) {
 	if (id === undefined) {
 		throw new Error(`The restore produced no Agent for seed index ${String(index)}`);
 	}
-	return { type: 'agent' as const, id, projectId: state.project?.projectId };
+	return { type: 'agent' as const, id, projectId: state.projectId };
 }
 
 function artifactFields(state: DirectRunState) {
@@ -225,7 +244,7 @@ function artifactFields(state: DirectRunState) {
 		createdAgentIds: state.agentIds,
 		createdFolderIds: state.folderIds,
 		...(state.threadId ? { seedThreadId: state.threadId } : {}),
-		...(state.project ? { buildProjectId: state.project.projectId } : {}),
-		...(state.project?.userId ? { buildUserId: state.project.userId } : {}),
+		...(state.buildProject ? { buildProjectId: state.buildProject.projectId } : {}),
+		...(state.buildProject?.userId ? { buildUserId: state.buildProject.userId } : {}),
 	};
 }

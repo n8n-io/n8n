@@ -122,10 +122,17 @@ export interface CaseIssue {
 	message: string;
 }
 
+interface TableShape {
+	name: string;
+	columns: Array<{ name: string; type: string }>;
+}
+
 /** The case as the contract checks see it. Loose on purpose: only the keys read here. */
 export interface AgentRunCaseView {
 	agentRun?: AgentRun;
-	seed?: { mode: string; agents?: Array<{ id: string }> } & Partial<Record<string, unknown>>;
+	seed?: { mode: string; agents?: Array<{ id: string }>; dataTables?: TableShape[] } & Partial<
+		Record<string, unknown>
+	>;
 	executionScenarios?: AgentScenarioView[];
 	[key: string]: unknown;
 }
@@ -133,6 +140,7 @@ export interface AgentRunCaseView {
 /** A scenario as the contract checks and the judge bridge see it. */
 export interface AgentScenarioView {
 	successCriteria?: string;
+	seedDataTables?: TableShape[];
 	userTurns?: unknown;
 	expectations?: string[];
 	sessions?: Array<Partial<AgentSession>>;
@@ -156,8 +164,9 @@ export function scenarioJudgeCriteria(scenario: AgentScenarioView): string {
 	return summary ? `${summary}\n\n${list}` : list;
 }
 
+/** `false` turns a flag off, which is the same as leaving it out. */
 function isPresent(value: unknown): boolean {
-	if (value === undefined || value === null) return false;
+	if (value === undefined || value === null || value === false) return false;
 	return !Array.isArray(value) || value.length > 0;
 }
 
@@ -233,6 +242,28 @@ function scenarioTurnIssues(c: AgentRunCaseView): CaseIssue[] {
 	});
 }
 
+function sameColumns(a: TableShape, b: TableShape): boolean {
+	return JSON.stringify(a.columns) === JSON.stringify(b.columns);
+}
+
+/** A scenario table with a seed table's name fills that table, so its columns
+ *  must be the seed table's: otherwise its rows do not fit the table the Agent uses. */
+function scenarioTableIssues(c: AgentRunCaseView): CaseIssue[] {
+	const seedTables = c.seed?.mode === 'inline' ? (c.seed.dataTables ?? []) : [];
+	return (c.executionScenarios ?? []).flatMap((scenario, index) =>
+		(scenario.seedDataTables ?? []).flatMap((table, tableIndex) => {
+			const seeded = seedTables.find((seedTable) => seedTable.name === table.name);
+			if (!seeded || sameColumns(seeded, table)) return [];
+			return [
+				{
+					path: ['executionScenarios', index, 'seedDataTables', tableIndex, 'columns'],
+					message: `scenario table "${table.name}" fills the seed table of that name, so it needs the same columns`,
+				},
+			];
+		}),
+	);
+}
+
 /** Direct runs are graded by expectations; `successCriteria` is only a summary. */
 function scenarioExpectationIssues(c: AgentRunCaseView): CaseIssue[] {
 	return (c.executionScenarios ?? []).flatMap((scenario, index) =>
@@ -267,6 +298,7 @@ export function findAgentRunIssues(c: AgentRunCaseView): CaseIssue[] {
 		...agentRefIssues(c),
 		...scenarioCountIssues(c),
 		...scenarioExpectationIssues(c),
+		...scenarioTableIssues(c),
 		...turnIssues,
 	];
 }

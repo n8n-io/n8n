@@ -150,6 +150,43 @@ describe('agentRun case contract', () => {
 	});
 
 	it.each([
+		['allowUserExecution', false],
+		['requiresMemoryCompaction', false],
+	])('treats %s: false as absent in direct mode', (field, value) => {
+		expect(issueMessages(directCase({ [field]: value }))).toEqual([]);
+	});
+
+	describe('a scenario table named like a seed table', () => {
+		const seedTable = {
+			id: 'dt-price-list-0001',
+			name: 'price_list',
+			columns: [{ name: 'sku', type: 'string' }],
+		};
+		const withScenarioTable = (columns: unknown[]) => {
+			const base = directCase();
+			const seed = base.seed as Record<string, unknown>;
+			const [scenario] = base.executionScenarios as Array<Record<string, unknown>>;
+			return {
+				...base,
+				seed: { ...seed, dataTables: [seedTable] },
+				executionScenarios: [
+					{ ...scenario, seedDataTables: [{ ...seedTable, columns, rows: [] }] },
+				],
+			};
+		};
+
+		it('is accepted with the same columns', () => {
+			expect(issueMessages(withScenarioTable(seedTable.columns))).toEqual([]);
+		});
+
+		it('is rejected with different columns', () => {
+			const messages = issueMessages(withScenarioTable([{ name: 'price', type: 'number' }]));
+
+			expect(messages.some((m) => m.includes('price_list') && m.includes('columns'))).toBe(true);
+		});
+	});
+
+	it.each([
 		['conversation', [{ role: 'user', text: 'hi' }]],
 		['processExpectations', ['asks a question']],
 		['outcomeExpectations', ['an agent exists']],

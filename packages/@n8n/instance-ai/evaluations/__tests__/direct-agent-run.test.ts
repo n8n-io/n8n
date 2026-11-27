@@ -344,6 +344,25 @@ describe('prepareDirectAgentRun', () => {
 		expect(build.seedThreadId).toBe(mocks.ensureThread.mock.calls[0][0]);
 	});
 
+	it('runs in the personal project, and leaves it out of cleanup, when the lane has no build projects', async () => {
+		const { client, mocks } = makeClient();
+		const lane = { ...makeLane(client), teamBuildProjects: false };
+
+		const build = await prepareDirectAgentRun({
+			lane,
+			testCase: directCase(),
+			caseIdentity: { fileSlug: 'case-a', iteration: 0 },
+			logger: silentLogger,
+		});
+
+		expect(mocks.ensureThread.mock.calls[0][1]).toBe('personal-project');
+		expect(build.artifactRefs).toEqual([
+			{ type: 'agent', id: 'run-agent-1', projectId: 'personal-project' },
+		]);
+		// Cleanup deletes `buildProjectId`; the personal project must survive it.
+		expect(build.buildProjectId).toBeUndefined();
+	});
+
 	it('never calls the assistant', async () => {
 		const { mocks } = await prepare();
 

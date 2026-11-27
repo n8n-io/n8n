@@ -14,13 +14,11 @@ export const SeedTableRowsSchema = instanceAiEvalSeedDataTableSchema.shape.rows;
 
 type SeedTableRow = NonNullable<z.infer<typeof SeedTableRowsSchema>>[number];
 type SeedCell = SeedTableRow[string];
-type SeedColumnType = z.infer<typeof instanceAiEvalSeedDataTableSchema>['columns'][number]['type'];
+type SeedColumnType = SeedDataTable['columns'][number]['type'];
 
-export interface SeedTableView {
-	name: string;
-	columns: Array<{ name: string; type: SeedColumnType }>;
-	rows?: SeedTableRow[];
-}
+type SeedDataTable = z.infer<typeof instanceAiEvalSeedDataTableSchema>;
+
+export type SeedTableView = Pick<SeedDataTable, 'name' | 'columns' | 'rows'>;
 
 export interface SeedRowIssue {
 	/** Relative to the table: `['rows', rowIndex, column]`. */
