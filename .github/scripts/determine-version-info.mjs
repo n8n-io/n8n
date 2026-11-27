@@ -62,28 +62,27 @@ export function determineTrack(packageVersion, { prerelease = false } = {}) {
 
 	console.log('Current Tracks: ', JSON.stringify(trackToReleaseMap, null, 4));
 
-	let track = null;
 	let newStable = null;
 
-	// Check through our current release versions, if semver matches,
-	// we inherit the track pointer from them
-	for (const [releaseTrack, tagVersionInfo] of Object.entries(trackToReleaseMap)) {
-		if (tagVersionInfo && matchesTrack(tagVersionInfo, packageVersion)) {
-			track = releaseTrack;
-			break;
-		}
+	const matchingTracks = RELEASE_TRACKS.filter((candidate) => {
+		const tagVersionInfo = trackToReleaseMap[candidate];
+		return tagVersionInfo && matchesTrack(tagVersionInfo, packageVersion);
+	});
+	const maintenanceTrack = matchingTracks.find((candidate) => candidate.startsWith('v'));
+	if (maintenanceTrack && matchingTracks.length > 1) {
+		throw new Error(
+			`The ${maintenanceTrack} maintenance line overlaps with another release track.`,
+		);
 	}
-
 	if (
-		(track === 'stable' || track === 'beta') &&
-		trackToReleaseMap.v2 &&
-		matchesTrack(trackToReleaseMap.v2, packageVersion)
+		maintenanceTrack &&
+		(maintenanceTrack !== `v${semver.major(packageVersion)}` || bump !== 'patch')
 	) {
-		throw new Error('The v2 maintenance line overlaps with a main release track.');
+		throw new Error(
+			`The ${maintenanceTrack} maintenance track only supports patches for its major version.`,
+		);
 	}
-	if (track === 'v2' && (semver.major(packageVersion) !== 2 || bump !== 'patch')) {
-		throw new Error('The v2 maintenance track only supports v2 patch releases.');
-	}
+	let [track] = matchingTracks;
 
 	if (!track) {
 		let previousBeta = trackToReleaseMap.beta?.version;
