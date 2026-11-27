@@ -69,6 +69,9 @@ describe('AddOwnerUserIdToWorkflowsAndAgents migration', () => {
 	beforeAll(async () => {
 		await Container.get(DbConnection).init();
 		dataSource = Container.get(DataSource);
+	});
+
+	beforeEach(async () => {
 		await withContext(async ({ queryRunner }) => await queryRunner.clearDatabase());
 		await initDbUpToMigration(MIGRATION_NAME);
 
@@ -119,6 +122,7 @@ describe('AddOwnerUserIdToWorkflowsAndAgents migration', () => {
 	});
 
 	it('removes the column on rollback and keeps rows, dependents, triggers and indexes', async () => {
+		await runSingleMigration(MIGRATION_NAME);
 		await undoLastSingleMigration();
 
 		expect(await hasOwnerColumn('workflow_entity')).toBe(false);
@@ -139,12 +143,15 @@ describe('AddOwnerUserIdToWorkflowsAndAgents migration', () => {
 
 	it('runs again after a rollback', async () => {
 		await runSingleMigration(MIGRATION_NAME);
+		await undoLastSingleMigration();
+		await runSingleMigration(MIGRATION_NAME);
 
 		expect(await hasOwnerColumn('workflow_entity')).toBe(true);
 		expect(await hasOwnerColumn('agents')).toBe(true);
 	});
 
 	it('clears the owner and keeps the resource when the user is deleted', async () => {
+		await runSingleMigration(MIGRATION_NAME);
 		await withContext(async ({ escape, runQuery }) => {
 			for (const table of ['workflow_entity', 'agents']) {
 				await runQuery(
