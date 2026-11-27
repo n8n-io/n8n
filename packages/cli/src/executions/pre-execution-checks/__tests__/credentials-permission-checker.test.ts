@@ -917,34 +917,34 @@ describe('CredentialsPermissionChecker', () => {
 		});
 
 		describe('with a boolean display option on a credential', () => {
-			const sslCredentialId = 'ssl-cred';
+			const gatedCredentialId = 'gated-cred';
 			const description = {
 				credentials: [
 					{
-						name: 'httpSslAuth',
+						name: 'testGatedApi',
 						required: true,
-						displayOptions: { show: { provideSslCertificates: [true] } },
+						displayOptions: { show: { useGatedAuth: [true] } },
 					},
 				],
 				properties: [
 					{
-						displayName: 'SSL Certificates',
-						name: 'provideSslCertificates',
+						displayName: 'Gated Credential',
+						name: 'useGatedAuth',
 						type: 'boolean',
 						default: false,
 					},
 				],
 			};
 
-			const makeSslNode = (parameters: INode['parameters']): INode => ({
+			const makeGatedNode = (parameters: INode['parameters']): INode => ({
 				id: 'node-7',
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
+				name: 'Gated Node',
+				type: 'n8n-nodes-base.gatedNode',
 				typeVersion: 4.2,
 				position: [0, 0],
 				parameters,
 				credentials: {
-					httpSslAuth: { id: sslCredentialId, name: 'SSL Certificates' },
+					testGatedApi: { id: gatedCredentialId, name: 'Gated Credential' },
 				},
 			});
 
@@ -953,44 +953,51 @@ describe('CredentialsPermissionChecker', () => {
 				credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 			});
 
-			it.each([1, 0, 'true', 'false', {}, [], [false], { __rl: true, value: false }, null])(
-				'should check the credential when provideSslCertificates is %p',
-				async (value) => {
-					sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
-					const node = makeSslNode({
-						provideSslCertificates: value,
-					} as unknown as INode['parameters']);
+			it.each([
+				[1],
+				[0],
+				['true'],
+				['false'],
+				[{}],
+				[[]],
+				[[false]],
+				[{ __rl: true, value: false }],
+				[null],
+			])('should check the credential when the boolean parameter is %j', async (value) => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+				const node = makeGatedNode({
+					useGatedAuth: value,
+				} as unknown as INode['parameters']);
 
-					await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
-						'Node "HTTP Request" does not have access to the credential',
-					);
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "Gated Node" does not have access to the credential',
+				);
 
-					expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
-						[teamProject.id],
-						[sslCredentialId],
-					);
-				},
-			);
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[gatedCredentialId],
+				);
+			});
 
-			it('should allow execution when provideSslCertificates is non-boolean and the credential is accessible', async () => {
+			it('should allow execution when the boolean parameter has another type and the credential is accessible', async () => {
 				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
-					sslCredentialId,
+					gatedCredentialId,
 				]);
-				const node = makeSslNode({
-					provideSslCertificates: 1,
+				const node = makeGatedNode({
+					useGatedAuth: 1,
 				} as unknown as INode['parameters']);
 
 				await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
 
 				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
 					[teamProject.id],
-					[sslCredentialId],
+					[gatedCredentialId],
 				);
 			});
 
-			it('should skip the credential when provideSslCertificates is false or omitted', async () => {
-				const falseNode = makeSslNode({ provideSslCertificates: false });
-				const omittedNode = makeSslNode({});
+			it('should skip the credential when the boolean parameter is false or omitted', async () => {
+				const falseNode = makeGatedNode({ useGatedAuth: false });
+				const omittedNode = makeGatedNode({});
 
 				await expect(permissionChecker.check(workflowId, [falseNode])).resolves.not.toThrow();
 				await expect(permissionChecker.check(workflowId, [omittedNode])).resolves.not.toThrow();
@@ -998,40 +1005,38 @@ describe('CredentialsPermissionChecker', () => {
 				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
 			});
 
-			it('should check the credential when provideSslCertificates is true', async () => {
+			it('should check the credential when the boolean parameter is true', async () => {
 				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
-				const node = makeSslNode({ provideSslCertificates: true });
+				const node = makeGatedNode({ useGatedAuth: true });
 
 				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
-					'Node "HTTP Request" does not have access to the credential',
+					'Node "Gated Node" does not have access to the credential',
 				);
 
 				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
 					[teamProject.id],
-					[sslCredentialId],
+					[gatedCredentialId],
 				);
 			});
 
-			it('should return the credential id from getCredentialIdsForNodes for non-boolean values', () => {
+			it('should return the credential id from getCredentialIdsForNodes when the boolean parameter has another type', () => {
 				expect(
 					permissionChecker.getCredentialIdsForNodes([
-						makeSslNode({ provideSslCertificates: 1 } as unknown as INode['parameters']),
+						makeGatedNode({ useGatedAuth: 1 } as unknown as INode['parameters']),
 					]),
-				).toEqual([sslCredentialId]);
+				).toEqual([gatedCredentialId]);
 				expect(
 					permissionChecker.getCredentialIdsForNodes([
-						makeSslNode({ provideSslCertificates: 'true' } as unknown as INode['parameters']),
+						makeGatedNode({ useGatedAuth: 'true' } as unknown as INode['parameters']),
 					]),
-				).toEqual([sslCredentialId]);
+				).toEqual([gatedCredentialId]);
 				expect(
 					permissionChecker.getCredentialIdsForNodes([
-						makeSslNode({ provideSslCertificates: {} } as unknown as INode['parameters']),
+						makeGatedNode({ useGatedAuth: {} } as unknown as INode['parameters']),
 					]),
-				).toEqual([sslCredentialId]);
+				).toEqual([gatedCredentialId]);
 				expect(
-					permissionChecker.getCredentialIdsForNodes([
-						makeSslNode({ provideSslCertificates: false }),
-					]),
+					permissionChecker.getCredentialIdsForNodes([makeGatedNode({ useGatedAuth: false })]),
 				).toEqual([]);
 			});
 		});

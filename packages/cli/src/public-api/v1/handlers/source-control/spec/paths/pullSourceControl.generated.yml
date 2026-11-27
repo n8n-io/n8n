@@ -160,12 +160,6 @@ responses:
                           type: string
                         optInAvailable:
                           type: boolean
-                        limit:
-                          type: number
-                        usage:
-                          type: number
-                        resetsAt:
-                          type: string
                       required:
                         - kind
                         - checkId
@@ -328,12 +322,6 @@ responses:
                           type: string
                         optInAvailable:
                           type: boolean
-                        limit:
-                          type: number
-                        usage:
-                          type: number
-                        resetsAt:
-                          type: string
                       required:
                         - kind
                         - checkId
