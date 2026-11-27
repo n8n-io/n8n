@@ -335,12 +335,13 @@ describe('CallableWorkflowRunner', () => {
 			});
 			const [runData] = ctx.workflowRunner.run.mock.calls[0] as [IWorkflowExecutionDataProcess];
 			expect(runData.executionMode).toBe('integrated');
+			expect(runData.projectId).toBe(PROJECT_ID);
 			expect(runData.workflowData.id).toBe(WORKFLOW_ID);
 			expect(runData.startNodes).toEqual([{ name: 'Start', sourceData: null }]);
 			expect(runData.pinData).toEqual({ Start: [{ json: { email: 'a@b.c' } }] });
 		});
 
-		it('keeps the success setting of the owner and always saves a failed run', async () => {
+		it('keeps the save settings of the owner', async () => {
 			const ctx = setup();
 			ctx.loader.loadWorkflow.mockResolvedValue(
 				makeWorkflow({
@@ -353,9 +354,9 @@ describe('CallableWorkflowRunner', () => {
 			await vi.waitFor(() => expect(ctx.workflowRunner.run).toHaveBeenCalledTimes(1));
 
 			const [runData] = ctx.workflowRunner.run.mock.calls[0] as [IWorkflowExecutionDataProcess];
-			expect(runData.workflowData.settings).toMatchObject({
+			expect(runData.workflowData.settings).toEqual({
 				saveDataSuccessExecution: 'none',
-				saveDataErrorExecution: 'all',
+				saveDataErrorExecution: 'none',
 			});
 			done.resolve(completedRun());
 			await run;
@@ -438,6 +439,37 @@ describe('CallableWorkflowRunner', () => {
 			await expect(ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT)).resolves.toMatchObject({
 				status: 'unknown',
 				executionId: 'exec-1',
+			});
+		});
+
+		it('returns the items of the node that ran last, also when it is not the last key', async () => {
+			const ctx = setup();
+			ctx.loader.loadWorkflow.mockResolvedValue(makeWorkflow());
+			const done = startExecution(ctx);
+
+			const pending = ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
+			// In a loop, the loop node runs again after the node inside it, so it is not the last key.
+			done.resolve(
+				completedRun({
+					data: {
+						resultData: {
+							runData: {
+								Start: [{ data: { main: [[{ json: {} }]] } }],
+								Loop: [
+									{ data: { main: [[], [{ json: { batch: 1 } }]] } },
+									{ data: { main: [[{ json: { done: true } }], []] } },
+								],
+								Inside: [{ data: { main: [[{ json: { batch: 1 } }]] } }],
+							},
+							lastNodeExecuted: 'Loop',
+						},
+					},
+				} as unknown as Partial<IRun>),
+			);
+
+			await expect(pending).resolves.toMatchObject({
+				status: 'success',
+				output: [{ done: true }],
 			});
 		});
 
@@ -565,8 +597,8 @@ describe('CallableWorkflowRunner', () => {
 			});
 		});
 
-		it('has no limit when the limit is 0', async () => {
-			const ctx = setup({ maxRuns: 0 });
+		it('has no limit when the limit is -1', async () => {
+			const ctx = setup({ maxRuns: -1 });
 			ctx.loader.loadWorkflow.mockResolvedValue(makeWorkflow());
 			const firstDone = startExecution(ctx, 'exec-1');
 			const first = ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
