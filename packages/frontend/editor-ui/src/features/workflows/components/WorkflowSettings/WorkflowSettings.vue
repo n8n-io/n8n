@@ -1065,7 +1065,13 @@ onBeforeUnmount(() => {
 
 <template>
 	<div>
-		<N8nDialog :open="true" size="2xlarge" @update:open="onDialogOpenChange">
+		<!-- TODO: Remove the dialog class and set size="3xlarge" when https://github.com/n8n-io/n8n/pull/45558 is released. -->
+		<N8nDialog
+			:open="true"
+			size="2xlarge"
+			:container-class="$style.dialog"
+			@update:open="onDialogOpenChange"
+		>
 			<N8nDialogHeader>
 				<N8nDialogTitle>
 					{{
@@ -1991,6 +1997,16 @@ onBeforeUnmount(() => {
 
 <style module lang="scss">
 @use '@/app/css/variables' as *;
+
+// Stand-in for the 3xlarge dialog size (920px).
+// TODO: Remove this class and set size="3xlarge" when https://github.com/n8n-io/n8n/pull/45558 is released.
+.dialog {
+	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+
+	@media (min-width: 640px) {
+		--dialog--max-width: 920px;
+	}
+}
 
 .workflow-settings {
 	font-size: var(--font-size--sm);
