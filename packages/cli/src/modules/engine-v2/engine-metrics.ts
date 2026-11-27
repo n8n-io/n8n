@@ -32,7 +32,6 @@ const FINISHED_STATUSES = ['completed', 'failed', 'cancelled'] as const;
  */
 const QUEUE_SIZE_TIMEOUT_MS = 1000;
 
-/** The queue's depth, or `undefined` when the read fails or takes too long. */
 async function readQueueSize(queue: WorkQueue<unknown>): Promise<number | undefined> {
 	let timer: NodeJS.Timeout | undefined;
 	const timeout = new Promise<undefined>((resolve) => {
@@ -49,6 +48,10 @@ async function readQueueSize(queue: WorkQueue<unknown>): Promise<number | undefi
 
 const engineSeconds = (handlerMs: number, shimMs: number) => Math.max(0, handlerMs - shimMs) / 1000;
 
+/**
+ * The data plane series of one runtime. `registerPool`, `wrapQueues` and
+ * `wrapStores` register series, so call each one time only.
+ */
 export type EngineMetrics = ReturnType<typeof createEngineMetrics>;
 
 /**
@@ -67,7 +70,7 @@ export function createEngineMetrics({
 		return metricName;
 	};
 
-	/** The time the v1 shim spends inside the queue message that runs now. */
+	/** The v1 shim time of the current queue message. */
 	const shimTime = new AsyncLocalStorage<{ ms: number }>();
 
 	return {
@@ -106,7 +109,7 @@ export function createEngineMetrics({
 		wrapQueues(queues: EngineWorkQueues): EngineWorkQueues {
 			new Gauge({
 				name: name('queue_depth'),
-				help: 'Messages on an engine work queue that no data plane has taken yet. Every data plane reports the same value, so aggregate with max.',
+				help: 'Messages on an engine work queue that no data plane has taken yet. Every data plane reads the same queue, so aggregate with max.',
 				labelNames: ['queue'],
 				registers: [registry],
 				async collect() {
@@ -128,7 +131,7 @@ export function createEngineMetrics({
 			});
 			const engineTime = new Histogram({
 				name: name('handler_engine_time_seconds'),
-				help: 'Time a data plane spends on one queue message, without the time the v1 shim runs a node.',
+				help: 'Time a data plane spends on one queue message, without the time in the v1 shim.',
 				labelNames: ['queue', 'type'],
 				buckets: ENGINE_TIME_BUCKETS_SECONDS,
 				registers: [registry],
@@ -167,7 +170,7 @@ export function createEngineMetrics({
 			};
 		},
 
-		/** Returns a v1 step executor that takes its node runs out of the engine time. */
+		/** Returns a v1 step executor whose time does not count as engine time. */
 		wrapStepExecutor(executor: IStepExecutor): IStepExecutor {
 			return {
 				execute: async (request) => {
@@ -211,7 +214,6 @@ export function createEngineMetrics({
 				get(target, property) {
 					if (property === 'finishExecution') return finishExecution;
 					if (property === 'cancelExecution') return cancelExecution;
-					// Bound to the store, so its own calls do not pass the wrappers again.
 					const value: unknown = Reflect.get(target, property);
 					return typeof value === 'function' ? value.bind(target) : value;
 				},

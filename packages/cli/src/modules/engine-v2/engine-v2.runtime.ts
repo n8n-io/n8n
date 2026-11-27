@@ -73,7 +73,7 @@ export class EngineV2Runtime {
 
 	private engine?: EngineRuntime;
 
-	/** Set when the host passed a registry. Unregistered on shutdown, so a later `init()` can register again. */
+	/** Set when the host passes a registry. */
 	private metrics?: EngineMetrics;
 
 	private server?: Server;

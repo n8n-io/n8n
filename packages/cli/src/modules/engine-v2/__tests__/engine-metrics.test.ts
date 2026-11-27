@@ -37,7 +37,6 @@ const plainStores = (executionStore = mock<ExecutionStore>()): EngineStores => (
 	executionViewStore: mock<EngineStores['executionViewStore']>(),
 });
 
-/** A queue that hands each delivered message to the handler its consumer registered. */
 const fakeQueue = <TMessage>(size = 0) => {
 	let handler: ((message: TMessage) => Promise<void>) | undefined;
 	const queue = mock<WorkQueue<TMessage>>();
@@ -162,7 +161,7 @@ describe('createEngineMetrics', () => {
 			expect(await valueOf(registry, metric, `${metric}_sum`, series)).toBeCloseTo(0.003);
 		});
 
-		it('leaves the time the v1 shim runs a node out of the engine time', async () => {
+		it('leaves the time in the v1 shim out of the engine time', async () => {
 			let clock = 0;
 			const { registry, metrics, wrapped, step } = wrap(undefined, () => clock);
 			const shim = mock<IStepExecutor>();

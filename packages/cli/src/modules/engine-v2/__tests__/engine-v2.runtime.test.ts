@@ -623,7 +623,6 @@ describe('EngineV2Runtime', () => {
 			expect(registry.getSingleMetric('n8n_engine_db_pool_connections_max')).toBeUndefined();
 		});
 
-		/** The options the runtime handed to the engine. */
 		const engineOptions = () =>
 			mocks.createEngineRuntime.mock.calls[0][0] as {
 				queues: unknown;
