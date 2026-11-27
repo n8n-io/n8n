@@ -1050,22 +1050,28 @@ describe(useNodeDirtiness, () => {
 		});
 	});
 
-	function setupExecutedWorkflow(nodes: INodeUi[], connections: IConnections) {
-		const runData: IRunData = {};
+	function setupExecutedWorkflow(
+		nodes: INodeUi[],
+		connections: IConnections,
+		customRunData?: IRunData,
+	) {
+		const runData: IRunData = customRunData ?? {};
 
-		for (const node of nodes) {
-			runData[node.name] = [
-				{
-					startTime: +NODE_RUN_AT,
-					executionTime: 0,
-					executionIndex: 0,
-					executionStatus: 'success',
-					source: [],
-					data: {
-						[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }]],
+		if (!customRunData) {
+			for (const node of nodes) {
+				runData[node.name] = [
+					{
+						startTime: +NODE_RUN_AT,
+						executionTime: 0,
+						executionIndex: 0,
+						executionStatus: 'success',
+						source: [],
+						data: {
+							[NodeConnectionTypes.Main]: [[{ json: { value: 1 } }]],
+						},
 					},
-				},
-			];
+				];
+			}
 		}
 
 		const workflow = createTestWorkflow({ nodes, connections });
@@ -1299,31 +1305,7 @@ describe(useNodeDirtiness, () => {
 			],
 		};
 
-		const workflow = createTestWorkflow({
-			nodes: [trigger, loop, inLoop, afterLoop, finalNode],
-			connections,
-		});
-
-		const documentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-		documentStore.setNodes(workflow.nodes);
-		documentStore.setConnections(workflow.connections);
-
-		useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		).setWorkflowExecutionData({
-			id: workflow.id,
-			finished: true,
-			mode: 'manual',
-			status: 'success',
-			workflowData: workflow,
-			startedAt: NODE_RUN_AT,
-			createdAt: NODE_RUN_AT,
-			data: createRunExecutionData({ resultData: { runData } }),
-		});
-
-		vi.setSystemTime(WORKFLOW_UPDATED_AT);
+		setupExecutedWorkflow([trigger, loop, inLoop, afterLoop, finalNode], connections, runData);
 	}
 
 	/**
