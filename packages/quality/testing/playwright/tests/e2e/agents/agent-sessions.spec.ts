@@ -22,7 +22,7 @@ test.use({
 });
 
 test.describe('Agent sessions', { annotation: [{ type: 'owner', description: 'Agent' }] }, () => {
-	test('fits long session titles within the sessions table', async ({ n8n, api }) => {
+	test('fits long session titles within the session row', async ({ n8n, api }) => {
 		const project = await api.projects.getMyPersonalProject();
 		const agentId = `agent-${nanoid(8)}`;
 		const threadId = `thread-${nanoid(8)}`;
@@ -43,9 +43,9 @@ test.describe('Agent sessions', { annotation: [{ type: 'owner', description: 'Ag
 		await n8n.start.fromHome();
 		await n8n.agentSessions.gotoList(project.id, agentId);
 
-		const tableWidth = await n8n.agentSessions.getSessionTableWidth();
+		const rowWidth = await n8n.agentSessions.getSessionRowWidth();
 		const narrowTitleWidth = await n8n.agentSessions.getSessionTitleWidth();
-		expect(tableWidth.scrollWidth).toBe(tableWidth.clientWidth);
+		expect(rowWidth.scrollWidth).toBe(rowWidth.clientWidth);
 		expect(narrowTitleWidth.scrollWidth).toBeGreaterThan(narrowTitleWidth.clientWidth);
 
 		await n8n.agentSessions.setViewportWidth(1_400);
