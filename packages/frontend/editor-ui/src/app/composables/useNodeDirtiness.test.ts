@@ -1035,6 +1035,137 @@ describe(useNodeDirtiness, () => {
 				afterLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
 			});
 		});
+
+		it('should choose the loop entry node with the shortest distance from the trigger', () => {
+			setupExecutedWorkflow(
+				[
+					createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'long1', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'long2', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'loopA', type: SET_NODE_TYPE }),
+					createTestNode({ name: 'loopB', type: SET_NODE_TYPE }),
+				],
+				{
+					trigger: {
+						[NodeConnectionTypes.Main]: [
+							[
+								{ node: 'long1', type: NodeConnectionTypes.Main, index: 0 },
+								{ node: 'loopB', type: NodeConnectionTypes.Main, index: 0 },
+							],
+						],
+					},
+					long1: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'long2', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					long2: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loopA', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					loopA: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loopB', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					loopB: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'loopA', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+			);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.loopA.id, { foo: 1 });
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				loopA: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+				loopB: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+			});
+		});
+
+		it('should compute loop entry depths in linear time across repeated diamond branches', () => {
+			const diamondCount = 30;
+			const nodes: INodeUi[] = [
+				createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+				createTestNode({ name: 'unrelated', type: SET_NODE_TYPE }),
+				createTestNode({ name: 'loop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 3 }),
+				createTestNode({ name: 'inLoop', type: SET_NODE_TYPE }),
+				createTestNode({ name: 'afterLoop', type: SET_NODE_TYPE }),
+			];
+			const connections: IConnections = {
+				trigger: {
+					[NodeConnectionTypes.Main]: [
+						[
+							{ node: 'split0', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'unrelated', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			};
+
+			for (let i = 0; i < diamondCount; i++) {
+				const split = `split${i}`;
+				const left = `left${i}`;
+				const right = `right${i}`;
+				const merge = `merge${i}`;
+				const nextTarget = i + 1 < diamondCount ? `split${i + 1}` : 'loop';
+
+				nodes.push(
+					createTestNode({ name: split, type: SET_NODE_TYPE }),
+					createTestNode({ name: left, type: SET_NODE_TYPE }),
+					createTestNode({ name: right, type: SET_NODE_TYPE }),
+					createTestNode({ name: merge, type: SET_NODE_TYPE }),
+				);
+
+				connections[split] = {
+					[NodeConnectionTypes.Main]: [
+						[{ node: left, type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: right, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				};
+				connections[left] = {
+					[NodeConnectionTypes.Main]: [[{ node: merge, type: NodeConnectionTypes.Main, index: 0 }]],
+				};
+				connections[right] = {
+					[NodeConnectionTypes.Main]: [[{ node: merge, type: NodeConnectionTypes.Main, index: 1 }]],
+				};
+				connections[merge] = {
+					[NodeConnectionTypes.Main]: [
+						[{ node: nextTarget, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				};
+			}
+
+			connections.loop = {
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'afterLoop', type: NodeConnectionTypes.Main, index: 0 }],
+					[{ node: 'inLoop', type: NodeConnectionTypes.Main, index: 0 }],
+				],
+			};
+			connections.inLoop = {
+				[NodeConnectionTypes.Main]: [[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }]],
+			};
+
+			setupExecutedWorkflow(nodes, connections);
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.unrelated.id, {
+				foo: 1,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				unrelated: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+
+			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.inLoop.id, { foo: 1 });
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				unrelated: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+				loop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
+				inLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
 	});
 
 	function setupExecutedWorkflow(

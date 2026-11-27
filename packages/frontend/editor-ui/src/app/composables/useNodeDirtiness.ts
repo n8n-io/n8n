@@ -90,8 +90,9 @@ function getSplitInBatchesDoneOutputIndex(node: INodeUi | undefined): number | u
 		return undefined;
 	}
 
-	// Only v3+ exposes `done` at output 0. v1 has one output, and v2 exposes `done`
-	// at output 1, which `findStartNodes` in core does not check and still re-runs.
+	// Only v3+ exposes `done` at output 0. v1 has one output. For v2, `done` is at
+	// output 1, so `findStartNodes` in core checks output 0, finds it empty on the
+	// final run, and re-runs the loop.
 	return node.typeVersion >= 3 ? 0 : undefined;
 }
 
@@ -319,43 +320,29 @@ export function useNodeDirtiness(workflowDocumentId: MaybeRefOrGetter<WorkflowDo
 	 * Depth of node is defined as the minimum distance (number of connections) from the trigger node
 	 */
 	const depthByName = computed(() => {
-		const depth: Record<string, number> = {};
+		const depth = new Map<string, number>();
+		let frontier: string[] = [];
 
-		function setDepthRecursively(nodeName: string, current: number, visited: Set<string>) {
-			if (visited.has(nodeName)) {
-				return;
-			}
-
-			const myVisited = new Set<string>(visited);
-
-			myVisited.add(nodeName);
-
-			for (const [type, typeConnections] of Object.entries(getOutgoingConnections(nodeName))) {
-				if ((type as NodeConnectionType) !== NodeConnectionTypes.Main) {
-					continue;
-				}
-
-				for (const connections of typeConnections) {
-					for (const { node } of connections ?? []) {
-						if (!depth[node] || depth[node] > current) {
-							depth[node] = current;
-						}
-
-						setDepthRecursively(node, current + 1, myVisited);
-					}
-				}
+		for (const node of workflowDocumentStore.value.allNodes) {
+			if (Object.keys(getIncomingConnections(node.name)).length === 0 && !depth.has(node.name)) {
+				depth.set(node.name, 0);
+				frontier.push(node.name);
 			}
 		}
 
-		for (const startNode of workflowDocumentStore.value.allNodes) {
-			const hasIncomingNode = Object.keys(getIncomingConnections(startNode.name)).length > 0;
+		for (let current = 1; frontier.length > 0; current++) {
+			const next: string[] = [];
 
-			if (hasIncomingNode) {
-				continue;
+			for (const nodeName of frontier) {
+				for (const node of getMainOutgoingTargets(getOutgoingConnections(nodeName))) {
+					if (!depth.has(node)) {
+						depth.set(node, current);
+						next.push(node);
+					}
+				}
 			}
 
-			depth[startNode.name] = 0;
-			setDepthRecursively(startNode.name, 1, new Set());
+			frontier = next;
 		}
 
 		return depth;
@@ -381,7 +368,7 @@ export function useNodeDirtiness(workflowDocumentId: MaybeRefOrGetter<WorkflowDo
 			let minDepth = Number.MAX_SAFE_INTEGER;
 
 			for (const member of component) {
-				const memberDepth = depth[member];
+				const memberDepth = depth.get(member);
 				if (memberDepth && memberDepth < minDepth) {
 					minDepth = memberDepth;
 					entryNodeName = member;
