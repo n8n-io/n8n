@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EngineConfig, ExecutionsConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig, PrometheusMetricsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -85,8 +85,18 @@ export class EngineV2Module implements ModuleInterface {
 				},
 				logger,
 			});
+			// Main serves the global registry on its own `/metrics` and already
+			// registers the Node.js default metrics there.
+			const metricsRegistry = Container.get(PrometheusMetricsConfig).enable
+				? (await import('prom-client')).register
+				: undefined;
 			const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
-			await Container.get(EngineV2Runtime).init({ responseSender, lifecycleEventSender, queues });
+			await Container.get(EngineV2Runtime).init({
+				responseSender,
+				lifecycleEventSender,
+				queues,
+				metricsRegistry,
+			});
 		} else {
 			// The remote data plane publishes over Redis, so only the subscribing end
 			// runs here.
