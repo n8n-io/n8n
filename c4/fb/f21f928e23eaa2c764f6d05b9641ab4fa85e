@@ -1,0 +1,32 @@
+packages/cli/src/modules/favorites/favorites.service.ts
+  s_467f6fed02cb6e::t_8d98bb375dc2b3 175
+  s_467f6fed02cb6e::t_6ea27be303da59 299-300,303
+  s_467f6fed02cb6e::t_bf666a07aaa247 216,218,223,228
+packages/modules/data-table/backend/src/register-favorite-resolver.ts
+  s_467f6fed02cb6e::t_6be52a4d239f65 9
+packages/cli/src/modules/favorites/__tests__/favorites.service.test.ts
+  s_467f6fed02cb6e::t_c5f10229e41a48 58,62,702,704,716,722,729-731,739
+  s_467f6fed02cb6e::t_c179eda057cc1b 691-693
+packages/@n8n/backend-services/src/services/favorite-resource-resolver.registry.ts
+  s_467f6fed02cb6e::t_6be52a4d239f65 15
+packages/cli/test/integration/favorites.api.test.ts
+  s_467f6fed02cb6e::t_7c9bddae9584d1 45
+packages/cli/src/modules/agents/register-favorite-resolver.ts
+  s_467f6fed02cb6e::t_6be52a4d239f65 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c4fbf21f928e23eaa2c764f6d05b9641ab4fa85e",
+  "prompts": {},
+  "sessions": {
+    "s_467f6fed02cb6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2559fd2a-d576-4b88-9a44-aa6795a80a65",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}
