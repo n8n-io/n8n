@@ -44,7 +44,7 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.enabledForPollTriggers).toBe(true);
 			expect(scheduler.durableCursorsEnabled).toBe(true);
 			expect(scheduler.pollTimeoutSeconds).toBe(45);
-			expect(scheduler.enabledForSystemTasks).toBe(false);
+			expect(scheduler.enabledForSystemTasks).toBe(true);
 		});
 	});
 
@@ -63,6 +63,14 @@ describe('SchedulerConfig', () => {
 			const { scheduler } = Container.get(GlobalConfig);
 
 			expect(scheduler.enabledForPollTriggers).toBe(false);
+		});
+
+		it('should disable system tasks via env', () => {
+			vi.stubEnv('N8N_SCHEDULER_SYSTEM_TASKS_ENABLED', 'false');
+
+			const { scheduler } = Container.get(GlobalConfig);
+
+			expect(scheduler.enabledForSystemTasks).toBe(false);
 		});
 
 		it('should disable durable cursors via env', () => {

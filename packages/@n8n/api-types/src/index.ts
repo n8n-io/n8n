@@ -6,7 +6,7 @@ export type * from './scaling';
 export type * from './process-internals';
 export * from './frontend-settings';
 export type * from './user';
-export type * from './consent';
+export * from './consent';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
@@ -26,6 +26,7 @@ export * from './node-type-availability';
 export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
 export type * from './instance-type-access';
+export type * from './project-type-access';
 export type * from './project-policies';
 export type * from './type-usage';
 export type * from './transfer-preview';
@@ -166,6 +167,7 @@ export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
 export {
+	agentExecutionIdParamSchema,
 	agentIdParamSchema,
 	agentVersionIdParamSchema,
 	aiPreferenceIdParamSchema,
@@ -1161,6 +1163,7 @@ export {
 	AGENT_SAFE_TESTING_FLAG,
 	toolCallRouteSchema,
 	toolCallReasonSchema,
+	toolCallEvidenceSchema,
 	toolCallSimulationSchema,
 	agentChatModeSchema,
 	type AgentChatMode,
@@ -1170,6 +1173,7 @@ export {
 export type {
 	ToolCallRoute,
 	ToolCallReason,
+	ToolCallEvidence,
 	ToolCallSimulation,
 	ToolTestability,
 	ToolTestKind,

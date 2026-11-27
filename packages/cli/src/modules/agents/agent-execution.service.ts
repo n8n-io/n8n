@@ -67,8 +67,10 @@ import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import {
 	draftChatMemoryResourceId,
 	productionChatMemoryResourceId,
+	publicApiMemoryResourceId,
 } from './utils/agent-memory-scope';
 import {
+	canContinuePublicApiThread,
 	canContinueThreadInN8nChat,
 	canContinueThreadInPreview,
 	canUseTopLevelDraftThread,
@@ -1368,6 +1370,34 @@ export class AgentExecutionService {
 			return false;
 		const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
 		return canContinueThreadInN8nChat(
+			thread,
+			userId,
+			sources.get(threadId),
+			this.systemAgents.has(thread.agentId),
+		);
+	}
+
+	async canUsePublicApiThread(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+		sessionMode: AgentSessionMode,
+	): Promise<boolean> {
+		const thread = await this.findThreadById(threadId);
+		if (!thread)
+			return (
+				sessionMode === 'new' &&
+				(await this.canUseUnrecordedThread(threadId, agentId, publicApiMemoryResourceId(userId)))
+			);
+		if (
+			thread.projectId !== projectId ||
+			thread.agentId !== agentId ||
+			!canUseTopLevelDraftThread(thread, userId)
+		)
+			return false;
+		const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
+		return canContinuePublicApiThread(
 			thread,
 			userId,
 			sources.get(threadId),

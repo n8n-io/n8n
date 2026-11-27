@@ -1,19 +1,20 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { EngineConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig, GlobalConfig, PrometheusMetricsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { createInMemoryWorkQueues, type EngineWorkQueues } from '@n8n/engine';
+import promClient from 'prom-client';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { RedisClientService } from '@n8n/backend-services';
 
-import { EngineControlPlaneServer } from '../engine-control-plane-server';
+import { EngineControlPlaneServer } from '../control-plane/engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
 import { EngineMtls } from '../engine-mtls';
-import { EngineV2LifecycleSubscriptions } from '../engine-lifecycle-event-subscriptions';
+import { EngineV2LifecycleSubscriptions } from '../lifecycle-events/engine-lifecycle-event-subscriptions';
 import { EngineV2Module } from '../engine-v2.module';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { ExecutionChannelReceiver } from '../execution-channel/execution-channel-receiver';
@@ -106,6 +107,20 @@ describe('EngineV2Module', () => {
 				expect.objectContaining({ queues: inMemoryQueues }),
 			);
 		});
+
+		it.each([
+			{ enable: true, registry: promClient.register, given: 'the global metrics registry' },
+			{ enable: false, registry: undefined, given: 'no metrics registry' },
+		])(
+			'gives the in-process engine $given when N8N_METRICS is $enable',
+			async ({ enable, registry }) => {
+				mockInstance(PrometheusMetricsConfig, { enable });
+
+				await module.init();
+
+				expect(vi.mocked(runtime.init).mock.calls[0][0].metricsRegistry).toBe(registry);
+			},
+		);
 
 		it('registers the client as the data plane provider', async () => {
 			const proxy = Container.get(EngineDataPlaneProxyService);

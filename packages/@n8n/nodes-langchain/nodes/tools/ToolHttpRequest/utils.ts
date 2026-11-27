@@ -57,7 +57,7 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
 
 	if (genericType === 'httpBasicAuth' || genericType === 'httpDigestAuth') {
-		const basicAuth = await ctx.getCredentials('httpBasicAuth', itemIndex);
+		const basicAuth = await ctx.getCredentials(genericType, itemIndex);
 		const sendImmediately = genericType === 'httpDigestAuth' ? false : undefined;
 
 		return async (options: IHttpRequestOptions) => {

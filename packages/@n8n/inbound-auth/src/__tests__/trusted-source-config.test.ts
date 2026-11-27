@@ -10,6 +10,7 @@ import {
 } from '../trusted-source-config';
 import { trustedSourceConfigV1Fixture } from './fixtures/trusted-source-config.v1';
 import { trustedSourceConfigV2Fixture } from './fixtures/trusted-source-config.v2';
+import { trustedSourceConfigV3Fixture } from './fixtures/trusted-source-config.v3';
 
 const minimalDocument = {
 	version: 2,
@@ -78,7 +79,7 @@ describe('TrustedSourceConfigSchema defaults', () => {
 
 describe('TrustedSourceConfigSchema shape', () => {
 	test.each([
-		{ name: 'an unknown version', document: { ...minimalDocument, version: 3 }, path: ['version'] },
+		{ name: 'an unknown version', document: { ...minimalDocument, version: 4 }, path: ['version'] },
 		{
 			name: 'a missing authentication block',
 			document: { version: 2, surfaces: {} },
@@ -141,7 +142,7 @@ describe('TrustedSourceConfigSchema shape', () => {
 	});
 });
 
-describe.each([1, 2] as const)('TrustedSourceConfigSchema v%s refinement rules', (version) => {
+describe.each([1, 2, 3] as const)('TrustedSourceConfigSchema v%s refinement rules', (version) => {
 	const forVersion = (document: ReturnType<typeof withIdentity>) => ({
 		...document,
 		version,
@@ -352,13 +353,42 @@ describe('migrateToLatest', () => {
 	const admin = { managedBy: 'admin' } as const;
 	const system = { managedBy: 'system' } as const;
 
-	test('returns a v2 document unchanged', () => {
-		const parsed = TrustedSourceConfigSchema.parse(trustedSourceConfigV2Fixture);
+	test('returns a v3 document unchanged', () => {
+		const parsed = TrustedSourceConfigSchema.parse(trustedSourceConfigV3Fixture);
 
 		expect(migrateToLatest(parsed, admin)).toBe(parsed);
 	});
 
-	test('adds the apps surface to a v1 system document', () => {
+	test('adds the mcp-servers surface to a v2 system document', () => {
+		const parsed = TrustedSourceConfigSchema.parse({
+			...trustedSourceConfigV2Fixture,
+			surfaces: { 'public-api': {}, apps: {} },
+		});
+
+		const migrated = migrateToLatest(parsed, system);
+
+		expect(migrated.version).toBe(3);
+		expect(migrated.surfaces).toEqual({ 'public-api': {}, apps: {}, 'mcp-servers': {} });
+	});
+
+	test('keeps the mcp-servers settings of a v2 system document that has them', () => {
+		const parsed = TrustedSourceConfigSchema.parse({
+			...trustedSourceConfigV2Fixture,
+			surfaces: { 'mcp-servers': { audiences: ['custom'] } },
+		});
+
+		expect(migrateToLatest(parsed, system).surfaces).toEqual({
+			'mcp-servers': { audiences: ['custom'] },
+		});
+	});
+
+	test('does not add the mcp-servers surface to a v2 admin document', () => {
+		const parsed = TrustedSourceConfigSchema.parse(trustedSourceConfigV2Fixture);
+
+		expect(migrateToLatest(parsed, admin).surfaces).toEqual(trustedSourceConfigV2Fixture.surfaces);
+	});
+
+	test('adds the apps and mcp-servers surfaces to a v1 system document', () => {
 		const parsed = TrustedSourceConfigSchema.parse({
 			...trustedSourceConfigV1Fixture,
 			surfaces: { 'public-api': {}, trigger: { audiences: ['custom-audience'] } },
@@ -368,6 +398,7 @@ describe('migrateToLatest', () => {
 			'public-api': {},
 			trigger: { audiences: ['custom-audience'] },
 			apps: {},
+			'mcp-servers': {},
 		});
 	});
 
@@ -377,7 +408,10 @@ describe('migrateToLatest', () => {
 			surfaces: { apps: { audiences: ['apps'] } },
 		});
 
-		expect(migrateToLatest(parsed, system).surfaces).toEqual({ apps: { audiences: ['apps'] } });
+		expect(migrateToLatest(parsed, system).surfaces).toEqual({
+			apps: { audiences: ['apps'] },
+			'mcp-servers': {},
+		});
 	});
 
 	test('does not add the apps surface to a v1 admin document', () => {
@@ -407,7 +441,7 @@ describe('migrateToLatest', () => {
 
 			expect(migrated).toEqual({
 				...document,
-				version: 2,
+				version: 3,
 				identity: { ...document.identity, provision: { person: mode } },
 			});
 			expect(migrated.identity.provision).not.toHaveProperty('human');
@@ -435,11 +469,12 @@ describe('migrateToLatest', () => {
 	test.each([
 		{ name: 'v1', fixture: trustedSourceConfigV1Fixture },
 		{ name: 'v2', fixture: trustedSourceConfigV2Fixture },
+		{ name: 'v3', fixture: trustedSourceConfigV3Fixture },
 	])('migrates the $name fixture to a document the latest schema accepts', ({ fixture }) => {
 		const parsed = TrustedSourceConfigSchema.parse(fixture);
 		const migrated = migrateToLatest(parsed, admin);
 
 		expect(TrustedSourceConfigSchema.safeParse(migrated).success).toBe(true);
-		expect(migrated.version).toBe(2);
+		expect(migrated.version).toBe(3);
 	});
 });

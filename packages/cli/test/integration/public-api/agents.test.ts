@@ -5,12 +5,16 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 
+import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
+import { AgentTestRunService } from '@/modules/agents/agent-test-run.service';
 import { createAgent as createTestAgent, ensureInstanceAgent } from '@test-integration/db/agents';
 
 import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createFolder } from '../shared/db/folders';
@@ -992,6 +996,646 @@ describe('PUT /agents/:agentId', () => {
 
 		expect(response.statusCode).toBe(403);
 		expect(await agentRepository.existsBy({ id: agent.id })).toBe(true);
+	});
+});
+
+describe('POST /agents/:agentId/run and stop', () => {
+	let agentRepository: AgentRepository;
+	let historyRepository: AgentHistoryRepository;
+
+	beforeAll(async () => {
+		agentRepository = Container.get(AgentRepository);
+		historyRepository = Container.get(AgentHistoryRepository);
+		Container.get(InstanceSettings).markAsLeader();
+	});
+
+	beforeEach(async () => {
+		await Container.get(DataSource).getRepository(AgentHistory).delete({});
+		await agentRepository.delete({});
+		await cleanupRolesAndScopes();
+	});
+
+	afterEach(async () => {
+		vi.restoreAllMocks();
+		await Container.get(DataSource).getRepository(AgentHistory).delete({});
+		await agentRepository.delete({});
+		await testDb.truncate(['ProjectRelation', 'Project']);
+	});
+
+	/**
+	 * A published agent. The run endpoint uses the active version's schema,
+	 * never the draft.
+	 */
+	const createPublishedAgent = async (
+		projectId: string,
+		id: string,
+		publishedSchema: unknown = { name: 'My Agent', model: '', instructions: '' },
+	) => {
+		await createTestAgent({
+			id,
+			name: 'My Agent',
+			projectId,
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+		await historyRepository.saveVersion(
+			{
+				agentId: id,
+				versionId: 'version-1',
+				schema: publishedSchema as never,
+				tools: {},
+				savedBy: 'Test',
+			},
+			{},
+		);
+		await agentRepository.update({ id }, { activeVersionId: 'version-1' });
+	};
+
+	const personalProjectId = async (user: User) =>
+		(await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id)).id;
+
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/agents/agent-1/run');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should return 403 when the API key lacks agent:execute', async () => {
+		const owner = await createOwnerWithApiKey({ scopes: ['agent:read'] });
+		await createPublishedAgent(await personalProjectId(owner), 'agent-1');
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Hello' });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 403 when the user lacks agent:execute on the project', async () => {
+		const owner = await createOwnerWithApiKey();
+		const member = await createMemberWithApiKey();
+		const customRole = await createCustomRoleWithScopeSlugs(['agent:read'], {
+			roleType: 'project',
+			displayName: 'Agent Reader',
+			description: 'Can read agents but not run them',
+		});
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+		await createPublishedAgent(teamProject.id, 'agent-1');
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Hello' });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 400 for an empty body', async () => {
+		const owner = await createOwnerWithApiKey();
+		await createPublishedAgent(await personalProjectId(owner), 'agent-1');
+
+		const response = await testServer.publicApiAgentFor(owner).post('/agents/agent-1/run').send({});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 404 for an unknown agent', async () => {
+		const owner = await createOwnerWithApiKey();
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/missing/run')
+			.send({ message: 'Hello' });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 404 for an unknown session', async () => {
+		const owner = await createOwnerWithApiKey();
+		await createPublishedAgent(await personalProjectId(owner), 'agent-1');
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Hello', sessionId: 'missing-session' });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 422 when the agent has no published version', async () => {
+		const owner = await createOwnerWithApiKey();
+		await createTestAgent({
+			id: 'agent-1',
+			name: 'My Agent',
+			projectId: await personalProjectId(owner),
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Hello' });
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body.message).toContain('no published version');
+	});
+
+	test('should return 422 when the published version uses a tool that needs approval', async () => {
+		const owner = await createOwnerWithApiKey();
+		await createPublishedAgent(await personalProjectId(owner), 'agent-1', {
+			name: 'My Agent',
+			model: '',
+			instructions: '',
+			tools: [{ type: 'workflow', workflow: 'Lookup', requireApproval: true }],
+		});
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Hello' });
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body.message).toContain('needs approval');
+	});
+
+	test('should return the final response and continue the same session', async () => {
+		const owner = await createOwnerWithApiKey();
+		const projectId = await personalProjectId(owner);
+		await createPublishedAgent(projectId, 'agent-1');
+		const threads = Container.get(AgentExecutionThreadRepository);
+		const executions = Container.get(AgentExecutionRepository);
+		await threads.save(
+			threads.create({
+				id: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'My Agent',
+				projectId,
+				ownerId: owner.id,
+				accessScope: 'user',
+				sessionNumber: 1,
+			}),
+		);
+		await executions.save(
+			executions.create({
+				id: 'execution-1',
+				threadId: 'thread-1',
+				status: 'success',
+				source: 'public_api',
+				promptTokens: 2,
+				completionTokens: 3,
+				totalTokens: 5,
+				cost: 0.1,
+			}),
+		);
+		const run = vi
+			.spyOn(Container.get(AgentTestRunService), 'executePublishedRun')
+			.mockResolvedValue({
+				status: 'completed',
+				response: 'Hello',
+				sessionId: 'thread-1',
+				executionId: 'execution-1',
+			});
+
+		const first = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Hello' });
+		const second = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Again', sessionId: 'thread-1' });
+
+		expect(first.statusCode, JSON.stringify(first.body)).toBe(200);
+		expect(first.body).toMatchObject({
+			response: 'Hello',
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			status: 'success',
+			usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: 0.1 },
+		});
+		expect(second.statusCode).toBe(200);
+		expect(run).toHaveBeenLastCalledWith(expect.objectContaining({ sessionId: 'thread-1' }));
+	});
+
+	test('should stop a running execution and return the status of a finished one', async () => {
+		const owner = await createOwnerWithApiKey();
+		const projectId = await personalProjectId(owner);
+		await createPublishedAgent(projectId, 'agent-1');
+		const threads = Container.get(AgentExecutionThreadRepository);
+		const executions = Container.get(AgentExecutionRepository);
+		await threads.save(
+			threads.create({
+				id: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'My Agent',
+				projectId,
+				ownerId: owner.id,
+				accessScope: 'user',
+				sessionNumber: 1,
+			}),
+		);
+		await executions.save(
+			executions.create({
+				id: 'execution-done',
+				threadId: 'thread-1',
+				status: 'success',
+				source: 'public_api',
+			}),
+		);
+		await executions.save(
+			executions.create({
+				id: 'execution-running',
+				threadId: 'thread-1',
+				status: 'running',
+				source: 'public_api',
+			}),
+		);
+		const cancel = vi
+			.spyOn(Container.get(AgentExecutionService), 'stopExecution')
+			.mockReturnValue(true);
+
+		const finished = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/executions/execution-done/stop');
+		const running = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/executions/execution-running/stop');
+		const missing = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/executions/missing/stop');
+
+		expect(finished.statusCode, JSON.stringify(finished.body)).toBe(200);
+		expect(finished.body).toEqual({ executionId: 'execution-done', status: 'success' });
+		expect(running.body).toEqual({
+			executionId: 'execution-running',
+			status: 'cancel_requested',
+		});
+		expect(cancel).toHaveBeenCalledTimes(1);
+		expect(cancel).toHaveBeenCalledWith('execution-running');
+		expect(missing.statusCode).toBe(404);
+	});
+});
+
+describe('GET /agents/:agentId/executions', () => {
+	let agentRepository: AgentRepository;
+	let threads: AgentExecutionThreadRepository;
+	let executions: AgentExecutionRepository;
+
+	beforeAll(async () => {
+		agentRepository = Container.get(AgentRepository);
+		threads = Container.get(AgentExecutionThreadRepository);
+		executions = Container.get(AgentExecutionRepository);
+		Container.get(InstanceSettings).markAsLeader();
+	});
+
+	beforeEach(async () => {
+		await agentRepository.delete({});
+		await cleanupRolesAndScopes();
+	});
+
+	afterEach(async () => {
+		await agentRepository.delete({});
+		await testDb.truncate(['ProjectRelation', 'Project']);
+	});
+
+	const createAgent = async (projectId: string, id: string) =>
+		await createTestAgent({
+			id,
+			name: 'My Agent',
+			projectId,
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+	const personalProjectId = async (user: User) =>
+		(await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id)).id;
+
+	const insertThread = async (
+		projectId: string,
+		id: string,
+		access: { ownerId: string | null; accessScope: 'user' | 'project' },
+		agentId = 'agent-1',
+	) =>
+		await threads.save(
+			threads.create({
+				id,
+				agentId,
+				agentName: 'My Agent',
+				projectId,
+				ownerId: access.ownerId,
+				accessScope: access.accessScope,
+				sessionNumber: 1,
+			}),
+		);
+
+	const insertExecution = async (values: Record<string, unknown>) =>
+		await executions.save(executions.create(values as never));
+
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.get('/agents/agent-1/executions');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should return 403 when the API key lacks agent:read', async () => {
+		const owner = await createOwnerWithApiKey({ scopes: ['agent:list'] });
+		await createAgent(await personalProjectId(owner), 'agent-1');
+
+		const response = await testServer.publicApiAgentFor(owner).get('/agents/agent-1/executions');
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 403 when the user lacks agent:read on the project', async () => {
+		const owner = await createOwnerWithApiKey();
+		const member = await createMemberWithApiKey();
+		const customRole = await createCustomRoleWithScopeSlugs(['agent:list'], {
+			roleType: 'project',
+			displayName: 'Agent Lister',
+			description: 'Can list agents but not read them',
+		});
+
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+		await createAgent(teamProject.id, 'agent-1');
+
+		const response = await testServer.publicApiAgentFor(member).get('/agents/agent-1/executions');
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 404 for a non-existing agent', async () => {
+		const owner = await createOwnerWithApiKey();
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.get('/agents/missing-agent/executions');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should list the runs of the agent, newest first, without sub-agent runs', async () => {
+		const owner = await createOwnerWithApiKey();
+		const projectId = await personalProjectId(owner);
+		await createAgent(projectId, 'agent-1');
+		await createAgent(projectId, 'agent-2');
+		await insertThread(projectId, 'thread-1', { ownerId: null, accessScope: 'project' });
+		await insertThread(projectId, 'thread-2', { ownerId: null, accessScope: 'project' }, 'agent-2');
+
+		await insertExecution({
+			id: 'execution-old',
+			threadId: 'thread-1',
+			status: 'success',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T10:00:00Z'),
+			startedAt: new Date('2026-11-19T10:00:01Z'),
+			stoppedAt: new Date('2026-11-19T10:00:02Z'),
+			promptTokens: 2,
+			completionTokens: 3,
+			totalTokens: 5,
+			cost: 0.1,
+		});
+		await insertExecution({
+			id: 'execution-new',
+			threadId: 'thread-1',
+			status: 'running',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T11:00:00Z'),
+			startedAt: new Date('2026-11-19T11:00:01Z'),
+		});
+		// A delegated run of the new turn: not a row of this list.
+		await insertExecution({
+			id: 'execution-child',
+			threadId: 'thread-1',
+			parentExecutionId: 'execution-new',
+			status: 'success',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T12:00:00Z'),
+		});
+		// A run of another agent: excluded by the agent id.
+		await insertExecution({
+			id: 'execution-other-agent',
+			threadId: 'thread-2',
+			status: 'success',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T13:00:00Z'),
+		});
+
+		const response = await testServer.publicApiAgentFor(owner).get('/agents/agent-1/executions');
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body).toEqual({
+			data: [
+				{
+					executionId: 'execution-new',
+					sessionId: 'thread-1',
+					status: 'running',
+					source: 'public_api',
+					createdAt: '2026-11-19T11:00:00.000Z',
+					startedAt: '2026-11-19T11:00:01.000Z',
+					stoppedAt: null,
+					usage: { promptTokens: null, completionTokens: null, totalTokens: null, cost: null },
+				},
+				{
+					executionId: 'execution-old',
+					sessionId: 'thread-1',
+					status: 'success',
+					source: 'public_api',
+					createdAt: '2026-11-19T10:00:00.000Z',
+					startedAt: '2026-11-19T10:00:01.000Z',
+					stoppedAt: '2026-11-19T10:00:02.000Z',
+					usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: 0.1 },
+				},
+			],
+			nextCursor: null,
+		});
+	});
+
+	test('should narrow the list with the status and session filters', async () => {
+		const owner = await createOwnerWithApiKey();
+		const projectId = await personalProjectId(owner);
+		await createAgent(projectId, 'agent-1');
+		await insertThread(projectId, 'thread-1', { ownerId: null, accessScope: 'project' });
+		await insertThread(projectId, 'thread-2', { ownerId: null, accessScope: 'project' });
+
+		await insertExecution({
+			id: 'execution-a',
+			threadId: 'thread-1',
+			status: 'running',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T10:00:00Z'),
+		});
+		await insertExecution({
+			id: 'execution-b',
+			threadId: 'thread-2',
+			status: 'running',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T11:00:00Z'),
+		});
+		await insertExecution({
+			id: 'execution-c',
+			threadId: 'thread-2',
+			status: 'success',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T12:00:00Z'),
+		});
+
+		const byStatus = await testServer
+			.publicApiAgentFor(owner)
+			.get('/agents/agent-1/executions')
+			.query({ status: 'running' });
+		const bySession = await testServer
+			.publicApiAgentFor(owner)
+			.get('/agents/agent-1/executions')
+			.query({ sessionId: 'thread-2' });
+		const byBoth = await testServer
+			.publicApiAgentFor(owner)
+			.get('/agents/agent-1/executions')
+			.query({ sessionId: 'thread-2', status: 'running' });
+
+		expect(byStatus.statusCode, JSON.stringify(byStatus.body)).toBe(200);
+		expect(byStatus.body.data.map((row: { executionId: string }) => row.executionId)).toEqual([
+			'execution-b',
+			'execution-a',
+		]);
+		expect(bySession.body.data.map((row: { executionId: string }) => row.executionId)).toEqual([
+			'execution-c',
+			'execution-b',
+		]);
+		expect(byBoth.body.data.map((row: { executionId: string }) => row.executionId)).toEqual([
+			'execution-b',
+		]);
+	});
+
+	test('should page the list with the cursor', async () => {
+		const owner = await createOwnerWithApiKey();
+		const projectId = await personalProjectId(owner);
+		await createAgent(projectId, 'agent-1');
+		await insertThread(projectId, 'thread-1', { ownerId: null, accessScope: 'project' });
+
+		await insertExecution({
+			id: 'execution-1',
+			threadId: 'thread-1',
+			status: 'success',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T10:00:00Z'),
+		});
+		await insertExecution({
+			id: 'execution-2',
+			threadId: 'thread-1',
+			status: 'success',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T11:00:00Z'),
+		});
+		await insertExecution({
+			id: 'execution-3',
+			threadId: 'thread-1',
+			status: 'success',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T12:00:00Z'),
+		});
+
+		const firstPage = await testServer
+			.publicApiAgentFor(owner)
+			.get('/agents/agent-1/executions')
+			.query({ limit: '2' });
+		expect(firstPage.statusCode, JSON.stringify(firstPage.body)).toBe(200);
+		expect(firstPage.body.data.map((row: { executionId: string }) => row.executionId)).toEqual([
+			'execution-3',
+			'execution-2',
+		]);
+		expect(firstPage.body.nextCursor).toBeTypeOf('string');
+
+		const secondPage = await testServer
+			.publicApiAgentFor(owner)
+			.get('/agents/agent-1/executions')
+			.query({ limit: '2', cursor: firstPage.body.nextCursor });
+		expect(secondPage.body.data.map((row: { executionId: string }) => row.executionId)).toEqual([
+			'execution-1',
+		]);
+		expect(secondPage.body.nextCursor).toBeNull();
+	});
+
+	test('should hide the private sessions of another member', async () => {
+		const owner = await createOwnerWithApiKey();
+		const memberA = await createMemberWithApiKey();
+		const memberB = await createMemberWithApiKey();
+		const customRole = await createCustomRoleWithScopeSlugs(['agent:read'], {
+			roleType: 'project',
+			displayName: 'Agent Reader',
+			description: 'Can read agents',
+		});
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(memberA, teamProject, customRole.slug);
+		await linkUserToProject(memberB, teamProject, customRole.slug);
+		await createAgent(teamProject.id, 'agent-1');
+
+		// A project session every member shares, and one private session per member.
+		await insertThread(teamProject.id, 'thread-shared', { ownerId: null, accessScope: 'project' });
+		await insertThread(teamProject.id, 'thread-a', {
+			ownerId: memberA.id,
+			accessScope: 'user',
+		});
+		await insertThread(teamProject.id, 'thread-b', {
+			ownerId: memberB.id,
+			accessScope: 'user',
+		});
+		await insertExecution({
+			id: 'execution-shared',
+			threadId: 'thread-shared',
+			status: 'success',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T10:00:00Z'),
+		});
+		await insertExecution({
+			id: 'execution-a',
+			threadId: 'thread-a',
+			status: 'success',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T11:00:00Z'),
+		});
+		await insertExecution({
+			id: 'execution-b',
+			threadId: 'thread-b',
+			status: 'success',
+			source: 'n8n_chat',
+			createdAt: new Date('2026-11-19T12:00:00Z'),
+		});
+
+		const listA = await testServer.publicApiAgentFor(memberA).get('/agents/agent-1/executions');
+		expect(listA.statusCode, JSON.stringify(listA.body)).toBe(200);
+		expect(listA.body.data.map((row: { executionId: string }) => row.executionId)).toEqual([
+			'execution-a',
+			'execution-shared',
+		]);
+
+		// The session filter must not turn a private session into a readable one.
+		const foreignSession = await testServer
+			.publicApiAgentFor(memberA)
+			.get('/agents/agent-1/executions')
+			.query({ sessionId: 'thread-b' });
+		expect(foreignSession.statusCode, JSON.stringify(foreignSession.body)).toBe(200);
+		expect(foreignSession.body).toEqual({ data: [], nextCursor: null });
+
+		const listB = await testServer.publicApiAgentFor(memberB).get('/agents/agent-1/executions');
+		expect(listB.body.data.map((row: { executionId: string }) => row.executionId)).toEqual([
+			'execution-b',
+			'execution-shared',
+		]);
 	});
 });
 

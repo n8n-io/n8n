@@ -3,7 +3,7 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, PrometheusMetricsConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { CommandMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -12,6 +12,7 @@ import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import promClient from 'prom-client';
 
 import * as CrashJournal from '@/crash-journal';
 import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
@@ -20,6 +21,7 @@ import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { startEngineMetricsServer } from '@/modules/engine-v2/engine-metrics-server';
 import { EngineMtls } from '@/modules/engine-v2/engine-mtls';
 import { parseEngineRoles } from '@/modules/engine-v2/engine-roles';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
@@ -37,6 +39,13 @@ import { Engine } from '../engine';
 
 vi.mock('@/crash-journal');
 vi.mock('@/modules/engine-v2/work-queue/redis-work-queues', { spy: true });
+const metricsServer = vi.hoisted(() => ({
+	close: vi.fn((done?: (error?: Error) => void) => done?.()),
+	closeAllConnections: vi.fn(),
+}));
+vi.mock('@/modules/engine-v2/engine-metrics-server', () => ({
+	startEngineMetricsServer: vi.fn(async () => metricsServer),
+}));
 
 const dbConnection = mockInstance(DbConnection);
 const encryptionBootstrap = mockInstance(EncryptionBootstrapService);
@@ -44,6 +53,7 @@ const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 loadNodesAndCredentials.init.mockResolvedValue(undefined);
 loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
 const runtime = mockInstance(EngineV2Runtime);
+const metricsConfig = mockInstance(PrometheusMetricsConfig);
 const taskRunnerModule = mockInstance(TaskRunnerModule);
 const binaryDataConfig = mockInstance(BinaryDataConfig, { mode: 'filesystem' });
 const binaryDataService = mockInstance(BinaryDataService);
@@ -110,6 +120,7 @@ describe('Engine', () => {
 			roles: '',
 		});
 		useTls(false);
+		Object.assign(metricsConfig, { enable: false, prefix: 'n8n_', includeDefaultMetrics: true });
 	});
 
 	afterEach(() => {
@@ -469,6 +480,88 @@ describe('Engine', () => {
 				expect(objectStoreService.init).not.toHaveBeenCalled();
 				expect(binaryDataService.setManager).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('metrics', () => {
+		// The command registers the Node.js default metrics on the global registry.
+		afterEach(() => {
+			promClient.register.clear();
+		});
+
+		const registryGivenToRuntime = () =>
+			vi.mocked(runtime.init).mock.calls.at(-1)?.[0].metricsRegistry;
+
+		it('starts no metrics server and gives the engine no registry when N8N_METRICS is off', async () => {
+			await createEngine().init();
+
+			expect(startEngineMetricsServer).not.toHaveBeenCalled();
+			expect(registryGivenToRuntime()).toBeUndefined();
+		});
+
+		it('serves the global registry, which it also gives the engine, on N8N_ENGINE_HOST and N8N_ENGINE_METRICS_PORT', async () => {
+			metricsConfig.enable = true;
+			Object.assign(engineConfig, { host: '::', metricsPort: 9999 });
+
+			await createEngine().init();
+
+			const registry = registryGivenToRuntime();
+			expect(registry).toBe(promClient.register);
+			expect(startEngineMetricsServer).toHaveBeenCalledExactlyOnceWith(registry, {
+				host: '::',
+				port: 9999,
+				logger: expect.anything(),
+			});
+		});
+
+		it('refuses to boot, naming N8N_ENGINE_METRICS_PORT, when the metrics port is taken', async () => {
+			metricsConfig.enable = true;
+			const listenError = new Error('listen EADDRINUSE: address already in use');
+			vi.mocked(startEngineMetricsServer).mockRejectedValueOnce(listenError);
+
+			await expect(createEngine().init()).rejects.toMatchObject({
+				message: expect.stringContaining('N8N_ENGINE_METRICS_PORT'),
+				cause: listenError,
+			});
+			expect(runtime.init).not.toHaveBeenCalled();
+		});
+
+		it('registers the Node.js default metrics under N8N_METRICS_PREFIX', async () => {
+			Object.assign(metricsConfig, { enable: true, prefix: 'custom_' });
+
+			await createEngine().init();
+
+			expect(
+				registryGivenToRuntime()?.getSingleMetric('custom_nodejs_eventloop_lag_seconds'),
+			).toBeDefined();
+		});
+
+		it('leaves the Node.js default metrics out when N8N_METRICS_INCLUDE_DEFAULT_METRICS is off', async () => {
+			Object.assign(metricsConfig, { enable: true, includeDefaultMetrics: false });
+
+			await createEngine().init();
+
+			expect(
+				promClient.register.getSingleMetric('n8n_nodejs_eventloop_lag_seconds'),
+			).toBeUndefined();
+		});
+
+		it('closes the metrics server when the data plane stops', async () => {
+			metricsConfig.enable = true;
+			const engine = createEngine();
+			await engine.init();
+			await startAndStopWorkQueues();
+			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			try {
+				// @ts-expect-error - Accessing protected method for testing
+				await engine.stopProcess();
+
+				expect(metricsServer.close).toHaveBeenCalledTimes(1);
+				expect(metricsServer.closeAllConnections).toHaveBeenCalledTimes(1);
+				expect(exit).toHaveBeenCalledExactlyOnceWith();
+			} finally {
+				exit.mockRestore();
+			}
 		});
 	});
 

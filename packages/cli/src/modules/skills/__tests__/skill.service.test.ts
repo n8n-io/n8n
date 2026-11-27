@@ -1592,9 +1592,13 @@ describe('SkillService', () => {
 			function useSkill(
 				instructions: string,
 				files: Array<{ path: string; content: string }> = [],
-				projectId: string | null = 'project-1',
 			) {
-				const row = versionRow(skillRow('skill-4', { projectId }), 1, { instructions }, files);
+				const row = versionRow(
+					skillRow('skill-4', { projectId: 'project-1' }),
+					1,
+					{ instructions },
+					files,
+				);
 				row.skill.availableToMCP = true;
 				projectScope.getProjectIds.mockResolvedValue(['project-1']);
 				skills.findLatestSaved.mockResolvedValue(new Map([['skill-4', row]]));

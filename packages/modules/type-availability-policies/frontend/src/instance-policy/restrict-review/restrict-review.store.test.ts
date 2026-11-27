@@ -185,4 +185,97 @@ describe('useRestrictReviewStore', () => {
 		await expect(confirmed).resolves.toBe(false);
 		expect(review.request).toBeNull();
 	});
+
+	describe('bulk restriction', () => {
+		const GITHUB = 'n8n-nodes-base.github';
+		const types = [
+			{ name: NOTION, label: 'Notion' },
+			{ name: SLACK, label: 'Slack' },
+			{ name: GITHUB, label: 'GitHub' },
+		];
+
+		it('applies with no review when no selected type is in use', async () => {
+			mocks.fetchNodeTypeUsage.mockResolvedValue({
+				[NOTION]: { ...IN_USE, uses: 0 },
+				[SLACK]: { ...IN_USE, uses: 0 },
+				[GITHUB]: { ...IN_USE, uses: 0 },
+			});
+			const review = useRestrictReviewStore();
+
+			await expect(review.reviewBulkRestrict('node', types)).resolves.toBe(true);
+			expect(review.bulkRequest).toBeNull();
+		});
+
+		it('opens one review that lists only the types in use', async () => {
+			mocks.fetchNodeTypeUsage.mockResolvedValue({
+				[NOTION]: IN_USE,
+				[SLACK]: { ...IN_USE, uses: 0 },
+			});
+			const review = useRestrictReviewStore();
+
+			const confirmed = review.reviewBulkRestrict('node', types);
+			await vi.waitFor(() =>
+				expect(review.bulkRequest).toEqual({
+					kind: 'node',
+					total: 3,
+					items: [{ name: NOTION, label: 'Notion', usage: IN_USE }],
+				}),
+			);
+			expect(review.request).toBeNull();
+
+			review.resolve(true);
+			await expect(confirmed).resolves.toBe(true);
+			expect(review.bulkRequest).toBeNull();
+		});
+
+		it('lists every type when the counts do not load, because each may be in use', async () => {
+			mocks.fetchNodeTypeUsage.mockRejectedValue(new Error('offline'));
+			const review = useRestrictReviewStore();
+
+			const confirmed = review.reviewBulkRestrict('node', types);
+			await vi.waitFor(() =>
+				expect(review.bulkRequest?.items).toEqual(types.map((type) => ({ ...type, usage: null }))),
+			);
+
+			review.resolve(false);
+			await expect(confirmed).resolves.toBe(false);
+		});
+
+		it('marks each selected type as checking while the counts load', async () => {
+			const counts = createDeferredPromise<Record<string, typeof IN_USE>>();
+			mocks.fetchNodeTypeUsage.mockReturnValue(counts.promise);
+			const review = useRestrictReviewStore();
+
+			const confirmed = review.reviewBulkRestrict('node', types);
+			expect(types.every(({ name }) => review.isChecking('node', name))).toBe(true);
+
+			counts.resolve({});
+			await expect(confirmed).resolves.toBe(true);
+			expect(types.some(({ name }) => review.isChecking('node', name))).toBe(false);
+		});
+
+		it('resolves false when the admin changes one of the types while the counts load', async () => {
+			const counts = createDeferredPromise<Record<string, typeof IN_USE>>();
+			mocks.fetchNodeTypeUsage.mockReturnValue(counts.promise);
+			const review = useRestrictReviewStore();
+
+			const confirmed = review.reviewBulkRestrict('node', types);
+			void review.reviewChange('node', SLACK, 'allow', 'Slack');
+			counts.resolve({ [NOTION]: IN_USE });
+
+			await expect(confirmed).resolves.toBe(false);
+			expect(review.bulkRequest).toBeNull();
+		});
+
+		it('cancels the open bulk review when all reviews are cancelled', async () => {
+			const review = useRestrictReviewStore();
+
+			const confirmed = review.reviewBulkRestrict('node', types);
+			await vi.waitFor(() => expect(review.bulkRequest).not.toBeNull());
+			review.cancelAll();
+
+			await expect(confirmed).resolves.toBe(false);
+			expect(review.bulkRequest).toBeNull();
+		});
+	});
 });

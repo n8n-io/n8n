@@ -696,7 +696,7 @@ Runs on push to `master`:
 ```
 Push to master
 ├─ build-and-format (Blacksmith: build, then format check; populate master cache)
-├─ unit-test (matrix: Node 24.22.2, 26.13.0)
+├─ unit-test (matrix: Node 24.22.2, and `NODE_VERSION` of `docker/docker-bake.hcl`)
 │   └─ Coverage only on 24.22.2
 ├─ lint
 ├─ performance (CodSpeed benchmarks)
@@ -720,7 +720,7 @@ Push to master
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
-| Daily 02:00               | `sec-base-image-refresh.yml`      | Find base image digests that remove fixable OS findings, open the pin PRs, build `n8nio/base` again when a package that it installs has a fix, alert `#updates-security`, and publish the Trivy report of the released images |
+| Monday–Friday 02:00       | `sec-base-image-refresh.yml`      | Find base image digests that remove fixable OS findings, open the pin PRs, build `n8nio/base` again when a package that it installs has a fix, alert `#updates-security`, and publish the Trivy report of the released images |
 | Daily 03:00               | `test-e2e-helm.yml`               | n8n build on the public Helm chart |
 | Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
 | Daily 04:30               | `test-image-efficiency.yml`       | Image size and layer waste with Dive |
@@ -790,11 +790,15 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '26.13.0'
+  node-version:        # default: NODE_VERSION of docker/docker-bake.hcl
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
 ```
+
+The Node version comes from `NODE_VERSION` in `docker/docker-bake.hcl`, through
+`resolve-node-version.mjs`, unless the job sets `node-version`. A Node update
+changes that line only, and CI runs the Node of the images.
 
 The pnpm version comes from the `packageManager` field in the root
 `package.json`, through `resolve-pnpm-version.mjs`. There is no version input to
@@ -921,12 +925,12 @@ Scripts in `.github/scripts/`:
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
 | `docker/base-debian-smoke-check.mjs`| Verify the Debian base image contract (tools, no package manager, fonts, global npm modules) on amd64 and arm64 | `build-base-image.yml`|
 | `docker/bake-inputs-changed.mjs`| Decide whether an image must build: compare its resolved bake inputs and Dockerfile between two commits | `build-base-image.yml`, `build-node-pc-image.yml`|
-| `docker/base-image-candidates.mjs`| Find the newest digest of each upstream base image pin and keep it when a Trivy scan shows that it removes fixable OS findings of any severity. A candidate is ready when its publisher is verified and it is at least 24 hours old. A manual run skips the age check. When the tag has no fix, the moving tag of its line shows whether a newer patch removes findings: for `DHI_REF` that patch becomes a candidate on its exact tag (the Alpine n8n images replace its Node, so only the OS packages change), for the other pins a person updates the version | `sec-base-image-refresh.yml`|
+| `docker/base-image-candidates.mjs`| Find the newest digest of each upstream base image pin and keep it when a Trivy scan shows that it removes fixable OS findings of any severity. A candidate is ready when its publisher is verified and it is at least 24 hours old. A manual run skips the age check. When the tag has no fix, the moving tag of its line shows whether a newer patch removes findings, and a person updates the version. A newer patch of the Node minor on nodejs.org becomes a Node patch when every Node pin (`DHI_REF`, `DEBIAN_DHI_REF`, `BUILDER_IMAGE`, `DEBIAN_BUILDER_IMAGE`) publishes it: each pin passes the publisher check and the 24-hour gate, or the whole patch waits | `sec-base-image-refresh.yml`|
 | `docker/base-image-publisher.mjs`| Verify the publisher of a base image digest (cosign for DHI and distroless, SLSA provenance for Docker Official Images) and read its publication time | `sec-base-image-refresh.yml`|
-| `docker/base-image-pin-pr.mjs`| Update the pins of the ready candidates in `docker/docker-bake.hcl` and write the PR body: one daily PR, and one review PR without auto-merge for digests that add a package, skipped the 24-hour gate or update the `DHI_REF` patch. A preview run shows the PRs in the job summary and opens none | `sec-base-image-refresh.yml`|
-| `docker/base-image-alerts.mjs`| Plan the Slack alerts of a refresh run: a failed publisher check, a publish time missing for 2 runs, a version update, a finding of any severity fixable for 7 days without a new digest, a manual run that skipped the 24-hour gate, a refresh PR with failed checks, a daily or review PR open for 48 hours, and a chain that stops for 48 hours after master published its images. An artifact keeps the state from run to run, and an alert repeats every 7 days | `sec-base-image-refresh.yml`|
+| `docker/base-image-pin-pr.mjs`| Update the pins of the ready candidates in `docker/docker-bake.hcl` and write the PR body: one daily PR, one review PR without auto-merge for digests that add a package or skipped the 24-hour gate, and one Node PR without auto-merge that updates `NODE_VERSION` and all Node pins, so the Alpine and the Debian images stay aligned. A preview run shows the PRs in the job summary and opens none | `sec-base-image-refresh.yml`|
+| `docker/base-image-alerts.mjs`| Plan the Slack alerts of a refresh run: a failed publisher check, a publish time missing for 2 runs, a version update, a finding of any severity fixable for 7 days without a new digest, a manual run that skipped the 24-hour gate, a refresh PR with failed checks, a daily, review or Node PR open for 48 hours, a Node patch check that fails for 2 runs (nodejs.org or a registry), a Node pin on another version than `NODE_VERSION` for 48 hours, and a chain that stops for 48 hours after master published its images. An artifact keeps the state from run to run, and an alert repeats every 7 days | `sec-base-image-refresh.yml`|
 | `docker/base-image-report.mjs`| Scan each variant of the released images (the versions of the `stable` and `beta` Git tags, and the newest `n8n@3.*` tag) and of the nightly image of its line for fixable OS findings of any severity, and give each finding the status of its fix: `fix-merged`, `pr-open`, `in-24h-gate`, `publisher-check-failed`, `no-publish-time`, `version-update`, `no-upstream-fix`, or `needs-rebuild`. Uploads one public JSON for each image (14 days) | `sec-base-image-refresh.yml`|
-| `docker/base-image-chain-pr.mjs`| After master publishes `n8nio/base` from the merge of a refresh PR, pin the new images (the second PR of the chain in `docker/AGENTS.md`). A pin never moves back to an older master commit | `sec-base-image-refresh.yml` (on `workflow_run` of `build-base-image.yml`)|
+| `docker/base-image-chain-pr.mjs`| After master publishes `n8nio/base`, `n8nio/node-pc` or `n8nio/node-patched` from the merge of a refresh PR or of the Node PR, pin the new images (the second PR of the chain in `docker/AGENTS.md`): one PR for the bases, one for the Node builder images. For the Node PR, one PR pins the images of both workflows when both published, so the Alpine and the Debian images move to the new Node together. A pin never moves back to an older master commit | `sec-base-image-refresh.yml` (on `workflow_run` of `build-base-image.yml` and `build-node-pc-image.yml`)|
 | `docker/base-image-rebuild.mjs`| Build `n8nio/base` again when a package that it installs on top of the DHI image has a fix. A finding of the pinned base that the pinned DHI image does not have comes from such a package. The package manager of the DHI image checks that its repository has a version with the fix, and only then the script dispatches `build-base-image.yml` for that base. No rebuild while a refresh PR or a chain PR builds the base anyway, or for the same findings within 7 days. A later run scans the rebuilt base, and pins it in the rebuild PR when it has fewer findings and is at least 24 hours old. Alerts when the rebuild fails or does not reduce the findings | `sec-base-image-refresh.yml`|
 | `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
 
@@ -943,6 +947,7 @@ Scripts in `.github/scripts/`:
 | `link-check/check-report.mjs` | Decide which lychee failures are broken links | `test-link-check-weekly.yml` |
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
+| `resolve-node-version.mjs` | Publish the Node version of a job: the requested one, or `NODE_VERSION` of `docker/docker-bake.hcl`. Its test fails when a workflow or action pins a full version of the same Node major | `setup-nodejs` action, `util-probe-npm-oidc-exchange.yml` |
 | `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `find-last-green-commit.mjs` | Newest PR commit that passed the current workflow, for incremental PR runs | `ci-pull-requests.yml` |

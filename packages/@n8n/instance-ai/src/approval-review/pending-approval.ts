@@ -69,6 +69,8 @@ const ALWAYS_ASK_TOOLS: ReadonlySet<string> = new Set([
 	DOMAIN_TOOL_IDS.ARCHIVE_WORKFLOW,
 	DOMAIN_TOOL_IDS.UNPUBLISH_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESTORE_WORKFLOW_VERSION,
+	// Archiving an Agent unpublishes it and stops its channels and schedules.
+	DOMAIN_TOOL_IDS.ARCHIVE_AGENT,
 ]);
 
 const LOW_RISK_TOOLS: ReadonlySet<string> = new Set([

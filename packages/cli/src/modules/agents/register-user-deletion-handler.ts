@@ -11,6 +11,7 @@ import { SystemAgentExecutionService } from './system-agents/system-agent-execut
 import {
 	draftChatMemoryResourceId,
 	productionChatMemoryResourceId,
+	publicApiMemoryResourceId,
 	systemChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 
@@ -34,6 +35,7 @@ export function registerUserDeletionHandler() {
 				[
 					draftChatMemoryResourceId(userId),
 					productionChatMemoryResourceId(userId),
+					publicApiMemoryResourceId(userId),
 					systemChatMemoryResourceId(userId),
 				],
 				{},

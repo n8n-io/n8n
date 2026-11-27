@@ -1,3 +1,7 @@
+import type { OAuthClientNamePort } from './oauth-client-name-port';
+import type { OAuthGrantPort } from './oauth-grant-port';
+import type { TextDraftPort } from './text-draft-port';
+
 /**
  * The CLI implements these ports and registers them when it loads the module.
  * They keep this package free of imports from `packages/cli`.
@@ -33,13 +37,25 @@ export type WorkflowToolCheck =
 	| { callable: true }
 	| { callable: false; reason: WorkflowToolRefusal };
 
-/** The name and the description of the workflow, and the inputs of its published version. */
+/** A workflow that the project owns and that is not archived, with its check. */
+export interface WorkflowToolListItem {
+	workflowId: string;
+	name: string;
+	description: string | null;
+	check: WorkflowToolCheck;
+}
+
+/**
+ * The name and the description of the workflow, and the inputs and the node names of its
+ * published version.
+ */
 export type WorkflowToolDescription =
 	| {
 			callable: true;
 			name: string;
 			description: string | null;
 			inputSchema: WorkflowToolInputSchema;
+			nodeNames: string[];
 	  }
 	| { callable: false; reason: WorkflowToolRefusal };
 
@@ -74,6 +90,9 @@ export type WorkflowToolRunResult =
 	| WorkflowToolStartedRun;
 
 export abstract class WorkflowToolPort {
+	/** Every workflow that the project owns, for the workflow picker. A workflow that another project shares is not in the list. */
+	abstract list(projectId: string): Promise<WorkflowToolListItem[]>;
+
 	abstract check(projectId: string, workflowId: string): Promise<WorkflowToolCheck>;
 
 	abstract describe(projectId: string, workflowId: string): Promise<WorkflowToolDescription>;
@@ -93,5 +112,10 @@ export abstract class WorkflowToolPort {
  * exist yet at load time.
  */
 export abstract class McpServerToolAdapters {
-	abstract resolve(): { workflows: WorkflowToolPort };
+	abstract resolve(): {
+		workflows: WorkflowToolPort;
+		textDrafts: TextDraftPort;
+		clients: OAuthClientNamePort;
+		grants: OAuthGrantPort;
+	};
 }

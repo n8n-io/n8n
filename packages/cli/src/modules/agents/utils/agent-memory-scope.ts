@@ -2,6 +2,7 @@ const INTEGRATION_MEMORY_RESOURCE_PREFIX = 'integration:';
 const DRAFT_CHAT_MEMORY_RESOURCE_PREFIX = 'draft-chat:';
 const PRODUCTION_CHAT_MEMORY_RESOURCE_PREFIX = 'n8n-chat-production:';
 const SYSTEM_CHAT_MEMORY_RESOURCE_PREFIX = 'system-chat:';
+const PUBLIC_API_MEMORY_RESOURCE_PREFIX = 'public-api:';
 
 export function draftChatMemoryResourceId(userId: string): string {
 	return `${DRAFT_CHAT_MEMORY_RESOURCE_PREFIX}${userId}`;
@@ -9,6 +10,17 @@ export function draftChatMemoryResourceId(userId: string): string {
 
 export function productionChatMemoryResourceId(userId: string): string {
 	return `${PRODUCTION_CHAT_MEMORY_RESOURCE_PREFIX}${userId}`;
+}
+
+/** A Public API run. It runs the published version, so it keeps its own resource scope. */
+export function publicApiMemoryResourceId(userId: string): string {
+	return `${PUBLIC_API_MEMORY_RESOURCE_PREFIX}${userId}`;
+}
+
+export function userIdFromPublicApiMemoryResourceId(resourceId: string): string | undefined {
+	if (!resourceId.startsWith(PUBLIC_API_MEMORY_RESOURCE_PREFIX)) return undefined;
+	const userId = resourceId.slice(PUBLIC_API_MEMORY_RESOURCE_PREFIX.length);
+	return userId.length > 0 ? userId : undefined;
 }
 
 /** A system-agent chat. It is not a Preview chat, so it has its own resource scope. */
