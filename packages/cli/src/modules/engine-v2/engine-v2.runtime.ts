@@ -1,6 +1,7 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
-import { EngineConfig, ExecutionsConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig, PrometheusMetricsConfig } from '@n8n/config';
+import { readPoolStats } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	EngineRole,
@@ -28,6 +29,7 @@ import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
+import type { Registry } from 'prom-client';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -37,6 +39,7 @@ import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
 import { EngineWorkflowResolveClient } from './engine-workflow-resolve-client';
+import { createEngineMetrics } from './engine-metrics';
 import { EngineMtls } from './engine-mtls';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
@@ -50,6 +53,8 @@ export interface EngineV2RuntimeOptions {
 	queues: EngineWorkQueues;
 	/** The engine roles this process runs. Without it, the process runs every role. */
 	roles?: readonly EngineRole[];
+	/** Where the data plane metrics register. Without it, the engine records no metrics. */
+	metricsRegistry?: Registry;
 }
 
 /**
@@ -66,6 +71,9 @@ export class EngineV2Runtime {
 	private dataSource?: ReturnType<typeof createDataSource>;
 
 	private engine?: EngineRuntime;
+
+	/** Removes the pool gauges, so a later `init()` can register them again. */
+	private unregisterPoolMetrics?: () => void;
 
 	private server?: Server;
 
@@ -92,6 +100,7 @@ export class EngineV2Runtime {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly additionalDataBuilder: EngineAdditionalDataBuilder,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly metricsConfig: PrometheusMetricsConfig,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
 		this.dataTablesHttp = transport.forScope('data-tables:use');
@@ -100,6 +109,8 @@ export class EngineV2Runtime {
 	async init(options: EngineV2RuntimeOptions): Promise<void> {
 		try {
 			await this.initDb();
+
+			this.initMetrics(options);
 
 			this.initEngine(options);
 
@@ -134,6 +145,18 @@ export class EngineV2Runtime {
 			'Running the engine migrations. This waits while another engine process holds the migration lock.',
 		);
 		await runMigrations(this.dataSource);
+	}
+
+	private initMetrics({ metricsRegistry }: EngineV2RuntimeOptions): void {
+		const { prefix, includeDbPoolMetrics } = this.metricsConfig;
+		if (!metricsRegistry || !includeDbPoolMetrics) return;
+
+		const dataSource = this.dataSource;
+		assert(dataSource, 'Engine v2 cannot report a pool without a data source');
+		this.unregisterPoolMetrics = createEngineMetrics({
+			registry: metricsRegistry,
+			prefix,
+		}).registerPool(() => readPoolStats(dataSource), this.engineConfig.databasePoolSize);
 	}
 
 	private initEngine({
@@ -299,6 +322,9 @@ export class EngineV2Runtime {
 	}
 
 	private async destroyDataSource(): Promise<void> {
+		this.unregisterPoolMetrics?.();
+		this.unregisterPoolMetrics = undefined;
+
 		if (!this.dataSource) return;
 
 		if (this.dataSource.isInitialized) await this.dataSource.destroy();
