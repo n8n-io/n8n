@@ -269,7 +269,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			await expect(
 				executeWorkflow(
-					mock<IExecuteWorkflowInfo>(),
+					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
 					mock<IWorkflowExecuteAdditionalData>(),
 					mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 				),
