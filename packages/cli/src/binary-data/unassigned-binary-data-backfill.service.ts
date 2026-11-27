@@ -132,11 +132,23 @@ export class UnassignedBinaryDataBackfillService {
 		return progress;
 	}
 
+	/** Whether every pass of the backfill is complete. False before the first call of `backfill`. */
+	async isComplete(): Promise<boolean> {
+		const saved = await this.findSavedProgress();
+
+		return saved !== undefined && isDone(saved);
+	}
+
 	/** Saved progress, or the progress of a backfill that starts now. */
 	private async loadProgress(): Promise<Progress> {
+		return (await this.findSavedProgress()) ?? (await this.startPastPass());
+	}
+
+	/** Undefined before the first call of `backfill`. */
+	private async findSavedProgress(): Promise<Progress | undefined> {
 		const saved = await this.settingsRepository.findByKey(PROGRESS_SETTINGS_KEY);
 
-		return saved ? progressSchema.parse(jsonParse(saved.value)) : await this.startPastPass();
+		return saved ? progressSchema.parse(jsonParse(saved.value)) : undefined;
 	}
 
 	private async startPastPass(): Promise<Progress> {
