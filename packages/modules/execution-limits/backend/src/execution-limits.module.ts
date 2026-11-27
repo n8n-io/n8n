@@ -55,6 +55,13 @@ export class ExecutionLimitsModule implements ModuleInterface {
 		await Container.get(ExecutionUsageCache).start();
 	}
 
+	async systemTasks() {
+		const { ExecutionLimitUsagePruningTask } = await import(
+			'./execution-limit-usage-pruning.task.js'
+		);
+		return [ExecutionLimitUsagePruningTask];
+	}
+
 	async entities() {
 		const { ExecutionLimitAudit } = await import('./execution-limit-audit.entity.js');
 		const { ExecutionLimitInstanceUsage } = await import(

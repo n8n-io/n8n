@@ -177,7 +177,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 }
 
 function makeQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
 }
 
 function makeExecutor(result: unknown = { outputs: [[{ json: { ok: true } }]] }): IStepExecutor {
@@ -1799,6 +1799,7 @@ describe('StepReadyHandler lifecycle events', () => {
 			}),
 			start: vi.fn(),
 			stop: vi.fn(),
+			size: vi.fn(),
 		};
 		const handler = makeHandler(
 			makeExecutionStore(),

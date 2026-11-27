@@ -1,5 +1,7 @@
 import type { CombinatorId } from './ir';
 
+export type Severity = 'fail' | 'warning';
+
 export interface ParityRules {
 	name: string;
 	/** The catalog entries the generator can use. */
@@ -20,6 +22,7 @@ export interface ParityRules {
 		/** The part of node references that name a node that did not run. From 0 to 1. */
 		ghostRate: number;
 	};
+	severity: { L3: Severity; L4: Severity };
 }
 
 const base: Omit<ParityRules, 'name'> = {
@@ -27,6 +30,7 @@ const base: Omit<ParityRules, 'name'> = {
 	combinators: ['chain', 'branch', 'fanOut', 'merge'],
 	limits: { depth: 4, nodes: 12, width: 3, items: 5 },
 	expressions: { ghostRate: 0.05 },
+	severity: { L3: 'warning', L4: 'warning' },
 };
 
 /** Named rule sets. `PARITY_RULES` selects one or more of them, separated by commas. */
