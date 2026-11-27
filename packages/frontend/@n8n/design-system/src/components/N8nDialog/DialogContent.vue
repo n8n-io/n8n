@@ -148,6 +148,7 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 		:force-mount="forceMount"
 		:trap-focus="trapFocus"
 		:disable-outside-pointer-events="disableOutsidePointerEvents"
+		data-n8n-dialog-content
 		:class="[$style.content, sizeClass, stacked && $style.stacked]"
 		@escape-key-down="handleEscapeKeyDown"
 		@interact-outside="handleInteractOutside"

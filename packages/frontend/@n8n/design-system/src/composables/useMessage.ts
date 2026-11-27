@@ -18,7 +18,7 @@ type AdditionalConfirmOptions = {
 function withDialogHost<T extends ElMessageBoxOptions>(config: T): T {
 	if (config.appendTo || typeof document === 'undefined') return config;
 	const dialogs = document.querySelectorAll<HTMLElement>(
-		'[role="dialog"][data-state="open"]:not(.el-message-box)',
+		'[data-n8n-dialog-content][data-state="open"]',
 	);
 	const host = dialogs.item(dialogs.length - 1);
 	return host ? { ...config, appendTo: host } : config;

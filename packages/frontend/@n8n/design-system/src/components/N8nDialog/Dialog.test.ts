@@ -15,6 +15,7 @@ import {
 	N8nDialogTitle,
 } from './index';
 import { OVERLAY_LAYER_SELECTOR } from '../../constants';
+import N8nPopover from '../N8nPopover';
 import { useMessage } from '../../composables/useMessage';
 
 // Helper to render the simplified N8nDialog component
@@ -852,6 +853,26 @@ describe('N8nDialog', () => {
 			await user.keyboard('{Escape}');
 			await expect(pending).resolves.toBe('close');
 			expect(getByRole('dialog', { name: 'Parent Dialog' })).toBeInTheDocument();
+		});
+
+		it('mounts a message box in the body when only a popover is open', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByRole } = render({
+				components: { N8nPopover },
+				template: `
+					<N8nPopover>
+						<template #trigger><button data-test-id="popover-trigger">Open</button></template>
+						<template #content><div>Popover content</div></template>
+					</N8nPopover>
+				`,
+			});
+
+			await user.click(getByTestId('popover-trigger'));
+			const popover = await waitFor(() => getByRole('dialog'));
+
+			void useMessage().confirm('Sure?', 'Confirm?');
+			const messageBox = await waitFor(() => getByRole('dialog', { name: 'Confirm?' }));
+			expect(popover.contains(messageBox)).toBe(false);
 		});
 	});
 });
