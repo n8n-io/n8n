@@ -336,7 +336,7 @@ export class EngineV2Dispatcher {
 		if (data.pushRef) return { kind: 'all' };
 
 		const { EngineV2LifecycleSubscriptions } = await import(
-			'@/modules/engine-v2/engine-lifecycle-event-subscriptions.js'
+			'@/modules/engine-v2/lifecycle-events/engine-lifecycle-event-subscriptions.js'
 		);
 		if (Container.get(EngineV2LifecycleSubscriptions).hasListener(executionId)) {
 			return { kind: 'all' };

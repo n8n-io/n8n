@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import {
 	EngineV2LifecycleSubscriptions,
 	type LifecycleEventListener,
-} from '@/modules/engine-v2/engine-lifecycle-event-subscriptions';
+} from '@/modules/engine-v2/lifecycle-events/engine-lifecycle-event-subscriptions';
 import {
 	type EngineDataPlaneProxyService,
 	EngineV2UnavailableError,

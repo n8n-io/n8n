@@ -82,7 +82,7 @@ export class EngineV2RunService {
 
 		// Lazily imported: the subscriptions belong to the engine-v2 module.
 		const { EngineV2LifecycleSubscriptions } = await import(
-			'@/modules/engine-v2/engine-lifecycle-event-subscriptions.js'
+			'@/modules/engine-v2/lifecycle-events/engine-lifecycle-event-subscriptions.js'
 		);
 		const executionId = createExecutionIdV2();
 		const ended = createDeferredPromise<EngineV2RunOutcome>();
