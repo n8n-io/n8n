@@ -602,6 +602,128 @@ describe('CredentialsView', () => {
 			expect(items).toHaveLength(1);
 			expect(items[0]).toHaveTextContent('Confluence check');
 		});
+
+		it('should combine search, type, and owner filters together', async () => {
+			const teamA = createTestProject({ id: 'team-a', name: 'Team A', type: ProjectTypes.Team });
+			const teamB = createTestProject({ id: 'team-b', name: 'Team B', type: ProjectTypes.Team });
+			await router.push({
+				name: VIEWS.CREDENTIALS,
+				query: { type: ['jiraSoftwareCloudApi'], homeProject: teamA.id },
+			});
+
+			const credentialTypes = [
+				{
+					name: 'jiraSoftwareCloudApi',
+					displayName: 'Jira SW Cloud API',
+					properties: [],
+				},
+				{
+					name: 'postgres',
+					displayName: 'Postgres',
+					properties: [],
+				},
+			];
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentialTypes = credentialTypes;
+			credentialsStore.credentialTypesById = Object.fromEntries(
+				credentialTypes.map((type) => [type.name, type]),
+			);
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'Team A Jira',
+					type: 'jiraSoftwareCloudApi',
+					homeProject: teamA,
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+				{
+					id: '2',
+					name: 'Team B Jira',
+					type: 'jiraSoftwareCloudApi',
+					homeProject: teamB,
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+				{
+					id: '3',
+					name: 'Team A Cloud Postgres',
+					type: 'postgres',
+					homeProject: teamA,
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+			];
+
+			const { getAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+
+			await fireEvent.input(getByTestId('resources-list-search'), { target: { value: 'cloud' } });
+			await flushPromises();
+
+			const items = getAllByTestId('resources-list-item');
+			expect(items).toHaveLength(1);
+			expect(items[0]).toHaveTextContent('Team A Jira');
+		});
+
+		it('should show no results when search only matches credentials excluded by the type filter', async () => {
+			await router.push({
+				name: VIEWS.CREDENTIALS,
+				query: { type: ['slackApi'] },
+			});
+			const credentialTypes = [
+				{
+					name: 'slackApi',
+					displayName: 'Slack API',
+					properties: [],
+				},
+				{
+					name: 'githubApi',
+					displayName: 'GitHub API',
+					properties: [],
+				},
+			];
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentialTypes = credentialTypes;
+			credentialsStore.credentialTypesById = Object.fromEntries(
+				credentialTypes.map((type) => [type.name, type]),
+			);
+			credentialsStore.allCredentials = [
+				{
+					id: '1',
+					name: 'Workspace Slack',
+					type: 'slackApi',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+				{
+					id: '2',
+					name: 'Org GitHub',
+					type: 'githubApi',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+					isManaged: false,
+				},
+			];
+
+			const { queryAllByTestId, getByTestId } = renderComponent();
+			await flushPromises();
+
+			await fireEvent.input(getByTestId('resources-list-search'), { target: { value: 'GitHub' } });
+			await flushPromises();
+
+			expect(queryAllByTestId('resources-list-item')).toHaveLength(0);
+			expect(getByTestId('resources-list-empty')).toBeInTheDocument();
+		});
 	});
 
 	describe('credentials shared with all users and projects', () => {
