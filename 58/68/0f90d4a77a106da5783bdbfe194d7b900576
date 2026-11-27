@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/synthetic-integration.test.ts
+  s_dfe3f914c8bb46::t_27a2aa1df1a583 145-146,154-156
+pnpm-lock.yaml
+  s_d73a42db3b578f::t_fc21b85de1842d 1162,5164,30710
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "58680f90d4a77a106da5783bdbfe194d7b900576",
+  "prompts": {},
+  "sessions": {
+    "s_d73a42db3b578f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a21d1d-2407-7372-a4e7-92d9a697f6fb",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
