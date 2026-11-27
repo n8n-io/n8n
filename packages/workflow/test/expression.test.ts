@@ -251,6 +251,25 @@ describe('Expression', () => {
 			expect(testFn).not.toHaveBeenCalled();
 		});
 
+		it('should flatten string array items that use [*] wildcard syntax', () => {
+			const data: INodeExecutionData[] = [
+				{ json: { orders: [{ name: 'a' }, { name: 'b' }], tags: ['x', 'y'] } },
+			];
+
+			expect(
+				expression.getParameterValue(
+					['={{ $json.orders[*].name }}', 'c', '={{ $json.tags }}'],
+					null,
+					0,
+					0,
+					'node',
+					data,
+					'manual',
+					{},
+				),
+			).toEqual(['a', 'b', 'c', ['x', 'y']]);
+		});
+
 		it.each([
 			[
 				'caller',

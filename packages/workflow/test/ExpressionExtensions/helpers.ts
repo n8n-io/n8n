@@ -1,7 +1,7 @@
 import { afterAll, beforeAll } from 'vitest';
 import { DateTime, Duration, Interval } from 'luxon';
 
-import type { IDataObject } from '../../src/interfaces';
+import type { IDataObject, NodeParameterValueType } from '../../src/interfaces';
 import { Workflow } from '../../src/workflow';
 import * as Helpers from '../helpers';
 
@@ -33,6 +33,18 @@ afterAll(async () => {
 });
 
 export const evaluate = (value: string, values?: IDataObject[]) =>
+	expression.getParameterValue(
+		value,
+		null,
+		0,
+		0,
+		'node',
+		values?.map((v) => ({ json: v })) ?? [],
+		'manual',
+		{},
+	);
+
+export const evaluateParam = (value: NodeParameterValueType, values?: IDataObject[]) =>
 	expression.getParameterValue(
 		value,
 		null,

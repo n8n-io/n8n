@@ -727,4 +727,121 @@ describe('useExpressionEditor', () => {
 			});
 		});
 	});
+
+	describe('array wildcard [*] syntax validation', () => {
+		test('should show valid state when [*] expression resolves to value on first item', async () => {
+			const resolveMock = mockResolveExpression();
+			// First call returns undefined (original [*] expression)
+			// Second call returns a value (test with [0])
+			resolveMock.mockReturnValueOnce(undefined).mockReturnValueOnce('Test Value');
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: '{{ $json.items[*].name }}',
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				const resolvable = toValue(segments.resolvable)[0];
+				expect(resolvable.state).toBe('valid');
+				expect(resolvable.resolved).toBe('[Dynamic value, will be resolved on execution]');
+			});
+		});
+
+		test('should show invalid state when [*] expression property does not exist', async () => {
+			const resolveMock = mockResolveExpression();
+			// Both calls return undefined (property doesn't exist)
+			resolveMock.mockReturnValueOnce(undefined).mockReturnValueOnce(undefined);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: '{{ $json.items[*].nonexistent }}',
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				const resolvable = toValue(segments.resolvable)[0];
+				expect(resolvable.state).toBe('invalid');
+				expect(resolvable.resolved).toBe('[undefined]');
+			});
+		});
+
+		test('should not treat a [*] property name in quotes as a wildcard', async () => {
+			const resolveMock = mockResolveExpression();
+			resolveMock.mockReturnValue(undefined);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ $json['[*]'] }}",
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				const resolvable = toValue(segments.resolvable)[0];
+				expect(resolvable.state).toBe('invalid');
+				expect(resolvable.resolved).toBe('[undefined]');
+			});
+			expect(resolveMock).toHaveBeenCalledTimes(1);
+		});
+
+		test('should show error when multiple [*] wildcards are used', async () => {
+			const resolveMock = mockResolveExpression();
+			resolveMock.mockReturnValueOnce(undefined);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: '{{ $json.items[*].subitems[*].name }}',
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				const resolvable = toValue(segments.resolvable)[0];
+				expect(resolvable.state).toBe('invalid');
+				expect(resolvable.resolved).toBe('[Only one [*] wildcard is allowed per expression]');
+			});
+		});
+
+		test('should show invalid state when [*] test expression throws error', async () => {
+			const resolveMock = mockResolveExpression();
+			// First call returns undefined, second call throws
+			resolveMock.mockReturnValueOnce(undefined).mockImplementationOnce(() => {
+				throw new Error('Test error');
+			});
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: '{{ $json.items[*].name }}',
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				const resolvable = toValue(segments.resolvable)[0];
+				expect(resolvable.state).toBe('invalid');
+				expect(resolvable.resolved).toBe('[undefined]');
+			});
+		});
+
+		test('should handle [*] with whitespace variations', async () => {
+			const resolveMock = mockResolveExpression();
+			resolveMock.mockReturnValueOnce(undefined).mockReturnValueOnce('Value');
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: '{{ $json.items[ * ].name }}',
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				const resolvable = toValue(segments.resolvable)[0];
+				expect(resolvable.state).toBe('valid');
+				expect(resolvable.resolved).toBe('[Dynamic value, will be resolved on execution]');
+			});
+		});
+	});
 });

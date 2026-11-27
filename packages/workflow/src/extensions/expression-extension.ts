@@ -61,10 +61,64 @@ const EXPRESSION_EXTENSION_REGEX = new RegExp(
 	`(\\$if|\\.(${EXPRESSION_EXTENSION_METHODS.join('|')})\\s*(\\?\\.)?)\\s*\\(`,
 );
 
+const ARRAY_WILDCARD_AT_START = /^\[\s*\*\s*\]/;
+
+// Placeholder used to make [*] parseable by esprima
+const ARRAY_WILDCARD_PLACEHOLDER = '__n8n_array_wildcard__';
+
+// Positions of [*] in code, skipping string and template literals
+const findArrayWildcards = (code: string): Array<{ index: number; length: number }> => {
+	const found: Array<{ index: number; length: number }> = [];
+	let quote: string | null = null;
+	for (let i = 0; i < code.length; i++) {
+		const char = code[i];
+		if (quote) {
+			if (char === '\\') i++;
+			else if (char === quote) quote = null;
+			continue;
+		}
+		if (char === "'" || char === '"' || char === '`') {
+			quote = char;
+		} else if (char === '[') {
+			const match = ARRAY_WILDCARD_AT_START.exec(code.slice(i));
+			if (match) {
+				found.push({ index: i, length: match[0].length });
+				i += match[0].length - 1;
+			}
+		}
+	}
+	return found;
+};
+
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
 
 export const hasExpressionExtension = (str: string): boolean =>
 	EXPRESSION_EXTENSION_REGEX.test(str);
+
+export const countArrayWildcards = (code: string): number => findArrayWildcards(code).length;
+
+export const hasArrayWildcardSyntax = (code: string): boolean => countArrayWildcards(code) > 0;
+
+/**
+ * Replaces every [*] outside string and template literals
+ */
+export const replaceArrayWildcards = (code: string, replacement: string): string => {
+	let result = '';
+	let last = 0;
+	for (const { index, length } of findArrayWildcards(code)) {
+		result += code.slice(last, index) + replacement;
+		last = index + length;
+	}
+	return result + code.slice(last);
+};
+
+/**
+ * Checks the code parts of a bracketed expression such as `Total: {{ $json.items[*].price }}`
+ */
+export const expressionUsesArrayWildcard = (bracketedExpression: string): boolean =>
+	splitExpression(bracketedExpression).some(
+		(chunk) => chunk.type === 'code' && hasArrayWildcardSyntax(chunk.text),
+	);
 
 export const hasNativeMethod = (method: string): boolean => {
 	if (hasExpressionExtension(method)) {
@@ -108,6 +162,96 @@ function parseWithEsprimaNext(source: string, options?: any): any {
 }
 
 /**
+ * Checks if a MemberExpression node represents array wildcard access [*]
+ * After preprocessing, [*] becomes ["__n8n_array_wildcard__"]
+ */
+function isArrayWildcardAccess(node: types.namedTypes.MemberExpression): boolean {
+	return (
+		node.computed === true &&
+		node.property.type === 'Literal' &&
+		node.property.value === ARRAY_WILDCARD_PLACEHOLDER
+	);
+}
+
+/**
+ * Checks if a node contains an array wildcard [*] access anywhere in its chain
+ */
+function containsArrayWildcard(node: ExpressionKind): boolean {
+	if (node.type === 'MemberExpression') {
+		if (isArrayWildcardAccess(node)) {
+			return true;
+		}
+		return containsArrayWildcard(node.object);
+	}
+	return false;
+}
+
+/**
+ * Turns the member chain after [*] into a JMESPath query.
+ *
+ * For `$json.orders[*].customer.name`, baseObject is `$json.orders` and the query is
+ * `map(&"customer"."name", [*] || `[]`)`. `map` keeps a null for an element without the
+ * field, so values from several [*] expressions on the same array stay aligned.
+ * With `dropLastSegment`, used when the chain is the callee of a call such as
+ * `orders[*].name.join(', ')`, the method is left to run on the resulting array.
+ */
+function collectJmesPathFromChain(
+	node: types.namedTypes.MemberExpression,
+	dropLastSegment: boolean,
+): { baseObject: ExpressionKind; jmesPath: string } | null {
+	if (!containsArrayWildcard(node)) {
+		return null;
+	}
+
+	const segments: string[] = [];
+	let baseObject: ExpressionKind | null = null;
+
+	const collectPath = (n: ExpressionKind): boolean => {
+		if (n.type !== 'MemberExpression') {
+			return false;
+		}
+		if (isArrayWildcardAccess(n)) {
+			baseObject = n.object;
+			return true;
+		}
+		if (!collectPath(n.object)) {
+			return false;
+		}
+		if (!n.computed && n.property.type === 'Identifier') {
+			segments.push(JSON.stringify(n.property.name));
+		} else if (n.property.type === 'Literal' && typeof n.property.value === 'number') {
+			segments.push(`[${n.property.value}]`);
+		} else if (n.property.type === 'Literal' && typeof n.property.value === 'string') {
+			segments.push(JSON.stringify(n.property.value));
+		} else {
+			throw new ExpressionExtensionError('[*] supports only fixed property names after it');
+		}
+		return true;
+	};
+
+	collectPath(node);
+
+	if (!baseObject) {
+		return null;
+	}
+
+	if (dropLastSegment) {
+		segments.pop();
+	}
+
+	if (segments.length === 0) {
+		return { baseObject, jmesPath: '[*]' };
+	}
+
+	const path = segments.reduce(
+		(query, segment) =>
+			segment.startsWith('[') || !query ? query + segment : `${query}.${segment}`,
+		'',
+	);
+	return { baseObject, jmesPath: `map(&${path}, [*] || \`[]\`)` };
+}
+
+/**
  * A function to inject an extender function call into the AST of an expression.
  * This uses recast to do the transform.
  *
@@ -119,13 +263,65 @@ function parseWithEsprimaNext(source: string, options?: any): any {
  *
  * 'a'.first('x').second('y') // becomes
  * extend(extend('a', 'first', ['x']), 'second', ['y']));
+ *
+ * // Array wildcard syntax:
+ * items[*].field // becomes
+ * $jmesPath(items, '[*].field')
  * ```
  */
 export const extendTransform = (expression: string): { code: string } | undefined => {
 	try {
-		const ast = parse(expression, { parser: { parse: parseWithEsprimaNext } }) as types.ASTNode;
+		// Preprocess: Replace [*] with ["__n8n_array_wildcard__"] to make it parseable
+		// JavaScript doesn't allow [*] as it interprets * as multiplication operator
+		const preprocessedExpression = replaceArrayWildcards(
+			expression,
+			`["${ARRAY_WILDCARD_PLACEHOLDER}"]`,
+		);
+
+		const ast = parse(preprocessedExpression, {
+			parser: { parse: parseWithEsprimaNext },
+		}) as types.ASTNode;
 
 		let currentChain = 1;
+
+		// Transform array wildcard [*] syntax to $jmesPath calls
+		// e.g., $json.items[*].title -> $jmesPath($json.items, '[*].title')
+		visit(ast, {
+			visitMemberExpression(path) {
+				// First traverse children to handle nested expressions
+				this.traverse(path);
+
+				const node = path.node;
+
+				// Skip if this node is part of a larger MemberExpression chain
+				// We only want to process the topmost expression containing [*]
+				const parentNode: unknown = path.parent?.node;
+				if (types.namedTypes.MemberExpression.check(parentNode) && parentNode.object === node) {
+					// This node is the `object` of a parent MemberExpression,
+					// so we should skip it and let the parent handle the full chain
+					return;
+				}
+
+				// A method called after the path, e.g. orders[*].name.join(', '), runs on the result
+				const isCallee =
+					types.namedTypes.CallExpression.check(parentNode) && parentNode.callee === node;
+				const result = collectJmesPathFromChain(node, isCallee);
+				if (!result) {
+					return;
+				}
+
+				const jmesPathCall = types.builders.callExpression(types.builders.identifier('$jmesPath'), [
+					result.baseObject,
+					types.builders.literal(result.jmesPath),
+				]);
+
+				if (isCallee) {
+					path.replace(types.builders.memberExpression(jmesPathCall, node.property, node.computed));
+				} else {
+					path.replace(jmesPathCall);
+				}
+			},
+		});
 
 		// Polyfill optional chaining
 		visit(ast, {
@@ -600,10 +796,13 @@ export function extendSyntax(bracketedExpression: string, forceExtend = false): 
 		.filter((c) => c.type === 'code')
 		.map((c) => c.text.replace(/("|').*?("|')/, '').trim());
 
-	if (
-		(!codeChunks.some(hasExpressionExtension) || hasNativeMethod(bracketedExpression)) &&
-		!forceExtend
-	) {
+	// Check if expression needs transformation:
+	// - Has extension methods (e.g., .isEmpty())
+	// - Has array wildcard syntax (e.g., [*])
+	const needsExtension =
+		codeChunks.some(hasExpressionExtension) || codeChunks.some(hasArrayWildcardSyntax);
+
+	if ((!needsExtension || hasNativeMethod(bracketedExpression)) && !forceExtend) {
 		return bracketedExpression;
 	}
 

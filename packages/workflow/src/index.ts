@@ -113,7 +113,14 @@ export {
 	type ExtractableSubgraphData,
 	type IConnectionAdjacencyList as AdjacencyList,
 } from './graph/graph-utils';
-export { ExpressionExtensions, type Alias, type AliasCompletion } from './extensions';
+export {
+	countArrayWildcards,
+	ExpressionExtensions,
+	hasArrayWildcardSyntax,
+	replaceArrayWildcards,
+	type Alias,
+	type AliasCompletion,
+} from './extensions';
 export * as ExpressionParser from './extensions/expression-parser';
 export { NativeMethods } from './native-methods';
 export * from './node-parameters/filter-parameter';

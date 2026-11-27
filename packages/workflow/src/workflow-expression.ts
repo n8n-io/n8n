@@ -1,6 +1,8 @@
 import { CODE_LANGCHAIN_NODE_TYPE, FUNCTION_ITEM_NODE_TYPE, FUNCTION_NODE_TYPE } from './constants';
 import { Expression } from './expression';
+import { expandArraysToObjects } from './expression-array-expander';
 import { isExpression } from './expressions/expression-helpers';
+import { expressionUsesArrayWildcard } from './extensions';
 import type {
 	IExecuteData,
 	INode,
@@ -16,6 +18,16 @@ import type { IRunExecutionData } from './run-execution-data/run-execution-data'
 import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type { Workflow } from './workflow';
 import { WorkflowDataProxy } from './workflow-data-proxy';
+
+const usesArrayWildcard = (value: unknown): boolean =>
+	typeof value === 'string' && isExpression(value) && expressionUsesArrayWildcard(value.slice(1));
+
+const containsWildcardSyntax = (obj: object): boolean =>
+	Object.values(obj).some(
+		(value) =>
+			usesArrayWildcard(value) ||
+			(typeof value === 'object' && value !== null && containsWildcardSyntax(value)),
+	);
 
 // These nodes return vm2 proxies that the vm engine reads differently from native evaluation.
 const DEPRECATED_VM2_SANDBOX_NODE_TYPES = new Set([
@@ -161,10 +173,19 @@ export class WorkflowExpression {
 
 		// Handle arrays - recursively resolve each element
 		if (Array.isArray(parameterValue)) {
-			// Data is an array
-			const returnData = parameterValue.map((item) =>
-				resolveParameterValue(item as NodeParameterValueType, {}),
-			);
+			// Data is an array; items using [*] that resolve to an array are flattened into it
+			const returnData: NodeParameterValueType[] = [];
+			for (const item of parameterValue) {
+				const resolved = resolveParameterValue(item, {});
+				const itemUsesWildcard =
+					usesArrayWildcard(item) ||
+					(typeof item === 'object' && item !== null && containsWildcardSyntax(item));
+				if (itemUsesWildcard && Array.isArray(resolved)) {
+					for (const element of resolved) returnData.push(element);
+				} else {
+					returnData.push(resolved);
+				}
+			}
 			return returnData as NodeParameterValue[] | INodeParameters[];
 		}
 
@@ -179,12 +200,23 @@ export class WorkflowExpression {
 
 		// Data is an object
 		const returnData: INodeParameters = {};
+		const wildcardKeys: string[] = [];
 
 		for (const [key, value] of Object.entries(parameterValue)) {
-			returnData[key] = resolveParameterValue(
+			const resolved = resolveParameterValue(
 				value as NodeParameterValueType,
 				parameterValue as INodeParameters,
 			);
+			returnData[key] = resolved;
+
+			// Only values written with [*] expand the object into one object per element
+			if (usesArrayWildcard(value) && Array.isArray(resolved)) {
+				wildcardKeys.push(key);
+			}
+		}
+
+		if (wildcardKeys.length > 0) {
+			return expandArraysToObjects(returnData, wildcardKeys);
 		}
 
 		if (returnObjectAsString && typeof returnData === 'object') {
