@@ -590,6 +590,11 @@ function warningLabel(key: string): string {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+
+	/* Without a warning button, the text ends in line with the search icon of the header. */
+	&:not(:has(.warning)) {
+		padding-inline-end: var(--spacing--2xs);
+	}
 }
 
 .warning {
