@@ -346,6 +346,10 @@ Once merged, migrations are immutable. Write a new migration. To remove a column
 
 **One narrow exception:** a change that does not alter the result of `up()`. For example, a guard that lets `up()` finish when its column already exists, or a log line in `down()`. Instances that ran the old version and instances that run the new version end with the same schema. Give the reason in the PR description.
 
+### Backporting a migration
+
+Backport a migration only together with a fix that the [backport conventions](../../../.github/backport_conventions.md#when-to-backport) allow. Merge it to `master` first, then copy it without changes. See [backport conventions](../../../.github/backport_conventions.md#migrations).
+
 ### Don't parameterize values that aren't user input
 
 Inline literals where the value is from the migration itself. Named parameters are for runtime values; constants in the migration body can sit directly in the SQL.

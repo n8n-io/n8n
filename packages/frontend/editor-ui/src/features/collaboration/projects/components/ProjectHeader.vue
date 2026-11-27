@@ -38,6 +38,8 @@ import { PROJECT_AGENTS } from '@/features/agents/constants';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useCreateApp } from '@n8n/frontend-module-apps';
+import { openCreateMcpServerDialog } from '@n8n/frontend-module-mcp-servers';
+import { customMcpServersEnabled } from '@/experiments/customMcpServers/customMcpServersEnabled';
 
 // Lazy, so the badges and their preview code stay out of the boot chunk.
 const PromotionPreviewBadges = defineAsyncComponent(loadPromotionPreviewBadges);
@@ -194,6 +196,7 @@ const ACTION_TYPES = {
 	VARIABLE: 'variable',
 	AGENT: 'agent',
 	APP: 'app',
+	MCP_SERVER: 'mcpServer',
 	SELF_HEALING: 'selfHealing',
 } as const satisfies Record<string, SlotProjectHeaderMainButton | 'folder'>;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
@@ -259,6 +262,18 @@ const createAppButton = computed(() => ({
 	disabled: !canCreateApp.value,
 }));
 
+const isCustomMcpServersEnabled = computed(() => customMcpServersEnabled());
+const createMcpServerButton = computed(() => ({
+	value: ACTION_TYPES.MCP_SERVER,
+	label: i18n.baseText('mcpServers.create.button'),
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
+	size: 'mini' as const,
+	// On Overview the dialog lets the builder pick a project, so the check uses the home project.
+	disabled:
+		sourceControlStore.preferences.branchReadOnly ||
+		!getResourcePermissions(homeProject.value?.scopes).mcpServer?.create,
+}));
+
 const createSelfHealingButton = computed(() => ({
 	value: ACTION_TYPES.SELF_HEALING,
 	label: i18n.baseText('selfHealing.config.create'),
@@ -272,6 +287,9 @@ const selectedMainButtonType = computed(() => {
 		return ACTION_TYPES.WORKFLOW;
 	}
 	if (props.mainButton === ACTION_TYPES.APP && !settingsStore.isAppsEnabled) {
+		return ACTION_TYPES.WORKFLOW;
+	}
+	if (props.mainButton === ACTION_TYPES.MCP_SERVER && !isCustomMcpServersEnabled.value) {
 		return ACTION_TYPES.WORKFLOW;
 	}
 	return props.mainButton ?? ACTION_TYPES.WORKFLOW;
@@ -291,6 +309,8 @@ const mainButtonConfig = computed(() => {
 			return createAgentButton.value;
 		case ACTION_TYPES.APP:
 			return createAppButton.value;
+		case ACTION_TYPES.MCP_SERVER:
+			return createMcpServerButton.value;
 		case ACTION_TYPES.WORKFLOW:
 		default:
 			return createWorkflowButton.value;
@@ -464,6 +484,9 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	},
 	[ACTION_TYPES.APP]: (projectId) => {
 		createApp(projectId);
+	},
+	[ACTION_TYPES.MCP_SERVER]: (projectId) => {
+		openCreateMcpServerDialog(projectPages.isOverviewSubPage ? undefined : projectId);
 	},
 } as const;
 

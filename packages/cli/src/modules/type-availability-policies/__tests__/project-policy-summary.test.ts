@@ -116,11 +116,11 @@ describe('TypeAvailabilityPolicyService.summarizeProjectPolicies', () => {
 	});
 
 	const summarize = async (types = NODE_TYPES, hidden: string[] = []) =>
-		await service.summarizeProjectPolicies(NODE_TYPES_KIND, types, (verdicts, instanceRules) =>
+		await service.summarizeProjectPolicies(NODE_TYPES_KIND, types, (verdicts, rules) =>
 			listedNodeTypes(verdicts, {
 				resolveBaseName: (name) => nodeTypes.resolveBaseName(name),
 				hiddenTypes: new Set(hidden),
-				instanceRules,
+				rules,
 			}),
 		);
 	const projectSummary = (result: Awaited<ReturnType<typeof summarize>>, projectId = 'project-a') =>

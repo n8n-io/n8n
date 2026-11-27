@@ -8,13 +8,14 @@ import type { TelemetryProxy } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
+import type { z } from 'zod';
 
 import {
-	type AssistantSkillsFlagGate,
 	SkillNameTakenError,
 	type SkillService,
 	type SkillSourceService,
 	type SkillSyncFlagGate,
+	type WorkflowsInSkillsFlagGate,
 } from '@/modules/skills';
 import { SkillSourceRequestError, SkillSyncedError } from '@/modules/skills/testing';
 
@@ -83,15 +84,15 @@ describe('McpSkillToolsService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	const telemetry = mock<TelemetryProxy>();
 	const skillService = mock<SkillService>();
-	const rollout = mock<AssistantSkillsFlagGate>();
 	const skillSources = mock<SkillSourceService>();
 	const skillSyncGate = mock<SkillSyncFlagGate>();
+	const workflowsInSkillsGate = mock<WorkflowsInSkillsFlagGate>();
 	const service = new McpSkillToolsService(
 		telemetry,
 		skillService,
-		rollout,
 		skillSources,
 		skillSyncGate,
+		workflowsInSkillsGate,
 	);
 	let tools: Map<string, Handler>;
 
@@ -103,7 +104,6 @@ describe('McpSkillToolsService', () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		rollout.isEnabled.mockResolvedValue(true);
 		skillSyncGate.isEnabled.mockResolvedValue(true);
 		tools = new Map();
 		const registerTool: RegisterToolFn = (tool) => {
@@ -159,28 +159,6 @@ describe('McpSkillToolsService', () => {
 		});
 	});
 
-	it('hides Assistant availability from MCP when its flag is off', async () => {
-		rollout.isEnabled.mockResolvedValue(false);
-		const registered: Array<Parameters<RegisterToolFn>[0]> = [];
-		await service.registerTools(
-			(tool) => {
-				registered.push(tool);
-				tools.set(tool.name, tool.handler as unknown as Handler);
-			},
-			user,
-			true,
-		);
-		for (const name of ['create_skill', 'update_skill']) {
-			expect(registered.find((tool) => tool.name === name)?.config.inputSchema).not.toHaveProperty(
-				'availableToAssistant',
-			);
-		}
-		skillService.get.mockResolvedValue(detail);
-		expect(
-			(await callTool('get_skill', { skillId: 'skill_a' })).structuredContent,
-		).not.toHaveProperty('availableToAssistant');
-	});
-
 	it('hides MCP availability when the MCP skills extension is off', async () => {
 		const registered: Array<Parameters<RegisterToolFn>[0]> = [];
 		await service.registerTools(
@@ -200,6 +178,41 @@ describe('McpSkillToolsService', () => {
 		expect(
 			(await callTool('get_skill', { skillId: 'skill_a' })).structuredContent,
 		).not.toHaveProperty('availableToMCP');
+	});
+
+	describe('workflow mention hint', () => {
+		const workflowMentionHint =
+			'To make a skill run an n8n workflow, link the workflow in the instructions as [Workflow name](n8n://workflow/<workflow-id>).';
+
+		async function instructionsDescriptions() {
+			const registered: Array<Parameters<RegisterToolFn>[0]> = [];
+			await service.registerTools((tool) => registered.push(tool), user, true);
+			const schemaOf = (name: string) =>
+				registered.find((tool) => tool.name === name)?.config.inputSchema as Record<
+					string,
+					z.ZodTypeAny
+				>;
+			const createSkill = schemaOf('create_skill').skill as z.AnyZodObject;
+			return {
+				create: createSkill.shape.instructions.description,
+				update: schemaOf('update_skill').instructions.description,
+			};
+		}
+
+		it('tells the client how to mention a workflow when the flag is on', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+
+			expect(await instructionsDescriptions()).toEqual({
+				create: workflowMentionHint,
+				update: workflowMentionHint,
+			});
+		});
+
+		it('says nothing about workflow mentions when the flag is off', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(false);
+
+			expect(await instructionsDescriptions()).toEqual({ create: undefined, update: undefined });
+		});
 	});
 
 	describe('search_n8n_skills', () => {

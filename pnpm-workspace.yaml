@@ -253,7 +253,7 @@ catalog:
   mermaid: ^11.17.0
   mime-types: 3.0.2
   mocha: ^11.8.0
-  moment-timezone: 0.5.48
+  moment-timezone: 0.6.5
   mqtt-packet: 9.0.0
   ms: 2.1.3
   mysql2: 3.23.1
@@ -326,6 +326,7 @@ catalogMode: strict
 
 catalogs:
   e2e:
+    '@currents/cmd': 3.4.0
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
     '@playwright/test': 1.62.1
@@ -565,6 +566,8 @@ patchedDependencies:
   '@langchain/google-common@2.1.24': patches/@langchain__google-common@2.1.24.patch
   '@confluentinc/kafka-javascript@1.9.1': patches/@confluentinc__kafka-javascript@1.9.1.patch
   imapflow@1.7.1: patches/imapflow@1.7.1.patch
+  # Preserve literal asterisks and code without bumping the whole Chat SDK.
+  '@chat-adapter/slack@4.39.0': patches/@chat-adapter__slack@4.39.0.patch
   '@chat-adapter/teams@4.39.0': patches/@chat-adapter__teams@4.39.0.patch
   '@chat-adapter/whatsapp@4.39.0': patches/@chat-adapter__whatsapp@4.39.0.patch
   pdf-parse@2.4.5: patches/pdf-parse@2.4.5.patch

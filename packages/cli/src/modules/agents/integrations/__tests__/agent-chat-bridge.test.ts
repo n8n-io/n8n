@@ -4070,7 +4070,19 @@ describe('AgentChatBridge — Slack thread history', () => {
 		vi.clearAllMocks();
 	});
 
-	it('prepends prior thread messages as context on a new mention inside a real thread', async () => {
+	it('prepends prior thread messages as context on a new mention inside a real thread', async ({
+		onTestFinished,
+	}) => {
+		const chatSdk = await import('chat');
+		const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue(chatSdk);
+		onTestFinished(() => {
+			loadChatSdkSpy.mockRestore();
+		});
+		// AGENT-1680: The Slack SDK projects labelled links to plain text.
+		const { SlackFormatConverter } = await import('@chat-adapter/slack');
+		const formatted = new SlackFormatConverter().toAst(
+			'See <https://example.com/folder?view=1|folder>, <http://example.com|example.com> and <https://example.com/video|video>.',
+		);
 		const { bot, handlers } = makeBot();
 		bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
 		// thread.messages yields newest-first; trigger first, then bob, then alice.
@@ -4078,7 +4090,12 @@ describe('AgentChatBridge — Slack thread history', () => {
 			[Symbol.asyncIterator]: () => {
 				return (async function* () {
 					yield { id: 'trigger', text: '@U_BOT help', author: { userId: 'u1', userName: 'alice' } };
-					yield { id: 'm2', text: 'let me check', author: { userId: 'u2', userName: 'bob' } };
+					yield {
+						id: 'm2',
+						text: chatSdk.toPlainText(formatted),
+						formatted,
+						author: { userId: 'u2', userName: 'bob' },
+					};
 					yield {
 						id: 'm1',
 						text: 'what should we do?',
@@ -4114,10 +4131,12 @@ describe('AgentChatBridge — Slack thread history', () => {
 		const call = agentExecutor.captured[0];
 		expect(call.modelMessage).toContain('<slack_thread_history>');
 		expect(call.modelMessage).toContain('[alice]: what should we do?');
-		expect(call.modelMessage).toContain('[bob]: let me check');
+		expect(call.modelMessage).toContain(
+			'[bob]: See [folder](https://example.com/folder?view=1), [example.com](http://example.com) and [video](https://example.com/video).',
+		);
 		// Chronological order: alice's message (older) appears before bob's.
 		expect(call.modelMessage.indexOf('[alice]: what should we do?')).toBeLessThan(
-			call.modelMessage.indexOf('[bob]: let me check'),
+			call.modelMessage.indexOf('[bob]: See [folder]'),
 		);
 		// Triggering message is excluded, and the mention text is appended after.
 		expect(call.modelMessage).not.toContain('@U_BOT help');

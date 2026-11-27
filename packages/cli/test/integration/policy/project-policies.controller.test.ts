@@ -199,7 +199,6 @@ describe('GET /project-policies', () => {
 			.expect(200);
 		await putProjectPolicy('node', withNodePolicy.id, [deny('p1', NOTION), deny('p2', GMAIL)]);
 		await putProjectPolicy('credential', withCredentialPolicy.id, [deny('c1', 'slackApi')]);
-		await putProjectPolicy('node', personal.id, [deny('p3', NOTION)]);
 
 		const projects = await listProjectPolicies();
 

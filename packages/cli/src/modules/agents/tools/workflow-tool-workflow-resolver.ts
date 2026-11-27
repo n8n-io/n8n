@@ -1,5 +1,7 @@
 import type { AgentJsonConfig, AgentJsonWorkflowToolConfig } from '@n8n/api-types';
-import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { extractAgentWorkflowRefs } from '../utils/extract-agent-workflow-refs';
 
@@ -31,6 +33,25 @@ export async function findWorkflowToolWorkflows(
 	}
 
 	return workflowsByReference;
+}
+
+export async function findReadableUnarchivedWorkflowIds(
+	workflowFinderService: WorkflowFinderService,
+	workflowRepository: WorkflowRepository,
+	workflowIds: string[],
+	user: User,
+): Promise<Set<string>> {
+	if (workflowIds.length === 0) return new Set();
+	const readableIds = await workflowFinderService.findWorkflowIdsWithScopeForUser(
+		workflowIds,
+		user,
+		['workflow:read'],
+	);
+	if (readableIds.size === 0) return new Set();
+	const workflows = await workflowRepository.findByIds([...readableIds], {
+		fields: ['isArchived'],
+	});
+	return new Set(workflows.filter(({ isArchived }) => !isArchived).map(({ id }) => id));
 }
 
 export async function findWorkflowToolWorkflow(

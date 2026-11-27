@@ -419,6 +419,22 @@ describe('useWorkflowsListStore', () => {
 			);
 		});
 
+		it('should pass the filter that leaves out personal projects of other users', async () => {
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: 0,
+				data: [],
+			});
+
+			await workflowsListStore.searchWorkflows({ excludePersonalProjectsOfOthers: true });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				expect.objectContaining({ excludePersonalProjectsOfOthers: true }),
+				undefined,
+				undefined,
+			);
+		});
+
 		it('should pass workflow ids and list options', async () => {
 			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
 				count: 0,

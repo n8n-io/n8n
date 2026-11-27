@@ -17,6 +17,7 @@ import { PrometheusEncryptionMetricsService } from './encryption-metrics.service
 import { PrometheusEventBusMetricsService } from './event-bus-metrics.service';
 import { PrometheusExecutionDataMetricsService } from './execution-data-metrics.service';
 import { PrometheusExecutionLedgerMetricsService } from './execution-ledger-metrics.service';
+import { PrometheusExecutionLimitsMetricsService } from './execution-limits-metrics.service';
 import { PrometheusInstanceAiMetricsService } from './instance-ai-metrics.service';
 import { PrometheusInstanceRoleMetricsService } from './instance-role-metrics.service';
 import { PrometheusMcpPostSaveMetricsService } from './mcp-post-save-metrics.service';
@@ -72,6 +73,7 @@ export class PrometheusMetricsService {
 		systemTask: PrometheusSystemTaskMetricsService,
 		memoryGuard: PrometheusMemoryGuardMetricsService,
 		executionLedger: PrometheusExecutionLedgerMetricsService,
+		executionLimits: PrometheusExecutionLimitsMetricsService,
 		private readonly databaseIndependentRoutes: DatabaseIndependentRoutes,
 	) {
 		this.logger = logger.scoped('metrics');
@@ -104,6 +106,7 @@ export class PrometheusMetricsService {
 			systemTask,
 			memoryGuard,
 			executionLedger,
+			executionLimits,
 		];
 	}
 

@@ -2,13 +2,17 @@ import {
 	PutProjectPolicyDto,
 	SetProjectTypeAccessDto,
 	type NodeTypeUsageResponse,
+	type ProjectTypeAccessResponse,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Patch, ProjectScope, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { NodeTypes } from '@/node-types';
+
 import { NODE_TYPES_KIND } from './constants';
+import { ListedNodeTypes } from './listed-node-types';
 import { NodeTypeUsageService } from './node-type-usage.service';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
@@ -19,7 +23,7 @@ import { TypeAvailabilityPolicyService } from './type-availability-policy.servic
  * decision).
  *
  * Deliberately narrower than the instance controller: the composed read/write, mirroring
- * `GET`/`PUT /instance`, the access write, and the usage read. Policy-document CRUD and multi-attachment management stay
+ * `GET`/`PUT /instance`, the access read and write, and the usage read. Policy-document CRUD and multi-attachment management stay
  * instance-only — those act on documents and attachments potentially shared across scopes.
  */
 @RestController('/projects/:projectId/node-type-policies')
@@ -27,6 +31,8 @@ export class TypeAvailabilityPolicyProjectController {
 	constructor(
 		private readonly service: TypeAvailabilityPolicyService,
 		private readonly nodeTypeUsageService: NodeTypeUsageService,
+		private readonly nodeTypes: NodeTypes,
+		private readonly listedNodeTypes: ListedNodeTypes,
 	) {}
 
 	@Get('/project')
@@ -41,6 +47,20 @@ export class TypeAvailabilityPolicyProjectController {
 			defaultAction: effective.defaultAction,
 			version: effective.version,
 		};
+	}
+
+	@Get('/project/access')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@ProjectScope('nodeTypePolicy:manage')
+	async getProjectAccess(
+		req: AuthenticatedRequest<{ projectId: string }>,
+	): Promise<ProjectTypeAccessResponse> {
+		return await this.service.getProjectAccess(
+			NODE_TYPES_KIND,
+			req.params.projectId,
+			Object.keys(this.nodeTypes.getKnownTypes()),
+			await this.listedNodeTypes.filter(),
+		);
 	}
 
 	@Get('/usage')

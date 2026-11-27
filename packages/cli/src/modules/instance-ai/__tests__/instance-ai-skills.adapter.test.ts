@@ -48,6 +48,11 @@ describe('InstanceAiSkillsAdapterService', () => {
 		expect(service.assistantSkillsEnabled).toBe(true);
 	});
 
+	it('exposes whether skills can mention workflows, off by default', () => {
+		expect(service.workflowsInSkillsEnabled).toBe(false);
+		expect(adapter.createService(user, true, false, true).workflowsInSkillsEnabled).toBe(true);
+	});
+
 	it('binds source actions to the current user when Skill Sync is enabled', async () => {
 		expect(service.sources).toBeUndefined();
 		const sources = adapter.createService(user, true, true).sources!;
