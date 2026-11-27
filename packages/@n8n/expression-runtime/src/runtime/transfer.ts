@@ -209,7 +209,8 @@ export function unboxPrimitive(value: object): string | number | boolean | bigin
 	}
 	if (proto === objectPrototype || proto === null) return undefined;
 
-	for (const spec of BOXED_PRIMITIVE_SPECS) {
+	for (let i = 0; i < BOXED_PRIMITIVE_SPECS.length; i++) {
+		const spec = BOXED_PRIMITIVE_SPECS[i];
 		if (proto === spec.proto) {
 			const unboxed = tryUnbox(value, spec.unbox);
 			if (unboxed !== undefined) return unboxed;
@@ -222,7 +223,8 @@ export function unboxPrimitive(value: object): string | number | boolean | bigin
 	} catch {
 		tag = '';
 	}
-	for (const spec of BOXED_PRIMITIVE_SPECS) {
+	for (let i = 0; i < BOXED_PRIMITIVE_SPECS.length; i++) {
+		const spec = BOXED_PRIMITIVE_SPECS[i];
 		if (tag === spec.tag || hasPrototype(spec.proto, value)) {
 			const unboxed = tryUnbox(value, spec.unbox);
 			if (unboxed !== undefined) return unboxed;
@@ -260,7 +262,9 @@ function unwrapPlainObject(
 	// Record the result before the walk. A value that refers to itself then
 	// resolves to the same object.
 	seen.set(value, result);
-	for (const key of objectKeys(value)) {
+	const keys = objectKeys(value);
+	for (let i = 0; i < keys.length; i++) {
+		const key = keys[i];
 		defineOwnValue(result, key, unwrapValue(value[key], decode, seen));
 	}
 	return result;

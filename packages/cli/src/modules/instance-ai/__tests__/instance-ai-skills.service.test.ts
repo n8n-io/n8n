@@ -4,7 +4,7 @@ import { MockLanguageModelV3 } from 'ai/test';
 import { mock } from 'vitest-mock-extended';
 import { loadInstanceAiSkills, resolvePromptProfile } from '@n8n/instance-ai';
 
-import type { AssistantSkillsFlagGate, SkillRuntimeService } from '@/modules/skills';
+import type { SkillRuntimeService, SkillsGate } from '@/modules/skills';
 
 import {
 	InstanceAiSkillsService,
@@ -108,9 +108,9 @@ describe('Assistant reads of user skills', () => {
 		version: 1,
 	};
 	const content = { ...summary, instructions: 'Be brief.', frontmatter: null, files: [] };
-	const gate = mock<AssistantSkillsFlagGate>();
+	const gate = { isEnabled: false };
 	const skillRuntime = mock<SkillRuntimeService>();
-	const service = new InstanceAiSkillsService(gate, skillRuntime);
+	const service = new InstanceAiSkillsService(gate as SkillsGate, skillRuntime);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -119,7 +119,7 @@ describe('Assistant reads of user skills', () => {
 	});
 
 	it('reads nothing while Assistant skills are off', async () => {
-		gate.isEnabled.mockResolvedValue(false);
+		gate.isEnabled = false;
 
 		expect(await service.isEnabled()).toBe(false);
 		expect(await service.listSkills(context)).toEqual([]);
@@ -136,7 +136,7 @@ describe('Assistant reads of user skills', () => {
 	});
 
 	it('reads the skills of the user while Assistant skills are on', async () => {
-		gate.isEnabled.mockResolvedValue(true);
+		gate.isEnabled = true;
 		const file = {
 			skillId: summary.id,
 			versionId: summary.versionId,
@@ -165,7 +165,7 @@ describe('Assistant reads of user skills', () => {
 	it.each([false, true])(
 		'preserves the built-in model request with no applicable skills when the flag is %s',
 		async (enabled) => {
-			gate.isEnabled.mockResolvedValue(enabled);
+			gate.isEnabled = enabled;
 			skillRuntime.listForAssistant.mockResolvedValue([]);
 			const builtIns = await service.loadSkills(openScope);
 			const current = await service.loadSkills(openScope, context);
@@ -204,7 +204,7 @@ describe('Assistant reads of user skills', () => {
 	);
 
 	it('combines the user skills with the active built-ins', async () => {
-		gate.isEnabled.mockResolvedValue(true);
+		gate.isEnabled = true;
 
 		const result = await service.loadSkills(openScope, context);
 

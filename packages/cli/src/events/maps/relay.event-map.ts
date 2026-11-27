@@ -1563,7 +1563,8 @@ export type RelayEventMap = ModuleEventMap & {
 				settingName:
 					| 'promotions_who_can_promote'
 					| 'promotions_who_can_approve'
-					| 'promotions_who_can_apply';
+					| 'promotions_who_can_apply'
+					| 'promotions_require_approval';
 				value: PromotionSettings[keyof PromotionSettings];
 		  }
 	);

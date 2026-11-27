@@ -14,7 +14,10 @@ import {
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
+import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
+import { HttpRequest } from 'n8n-nodes-base/nodes/HttpRequest/HttpRequest.node';
+import nock from 'nock';
 import type { CredentialConnectionsRequiredResponse, INode } from 'n8n-workflow';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -32,7 +35,9 @@ import { CacheService } from '@n8n/backend-services';
 import { UrlService } from '@n8n/backend-services';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
-import { createCredentials } from '../shared/db/credentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+
+import { createCredentials, saveCredential } from '../shared/db/credentials';
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { initNodeTypes, setupTestServer } from '../shared/utils';
@@ -154,10 +159,15 @@ beforeAll(async () => {
 	formEndpoint = Container.get(GlobalConfig).endpoints.form;
 
 	// The webhook path is served by a real `WebhookServer` running the real Form
-	// Trigger, so that is the only node type the (single-node) workflow needs.
+	// Trigger. The HTTP Request node and OAuth2 type serve the refresh-rejection case.
 	await initNodeTypes({
 		[FORM_TRIGGER_NODE_TYPE]: { type: new FormTrigger(), sourcePath: '' },
+		'n8n-nodes-base.httpRequest': { type: new HttpRequest(), sourcePath: '' },
 	});
+	Container.get(LoadNodesAndCredentials).loaded.credentials.oAuth2Api = {
+		type: new OAuth2Api(),
+		sourcePath: '',
+	};
 
 	owner = await createOwner();
 	submitter = await createOwner();
@@ -270,5 +280,139 @@ describe('form trigger submit-time credential gate', () => {
 		expect(response.statusCode).toBe(401);
 		expect(response.headers['www-authenticate']).toContain('error_description="revoked"');
 		await expect(executionCountFor(workflow.id)).resolves.toBe(0);
+	});
+});
+
+describe('form trigger after the provider rejects the refresh token', () => {
+	const providerUrl = 'https://provider.example.com';
+	const apiUrl = 'https://api.example.com';
+
+	/**
+	 * Published form whose next node calls an API with an end-user OAuth2
+	 * credential. The trigger itself has no credential.
+	 */
+	const setupPublishedFormWithApiCall = async () => {
+		const webhookPath = randomUUID();
+		const trigger = formTriggerNode(webhookPath);
+
+		const credential = await saveCredential(
+			{
+				name: 'Submitter API',
+				type: 'oAuth2Api',
+				isResolvable: true,
+				data: {
+					grantType: 'authorizationCode',
+					authUrl: `${providerUrl}/authorize`,
+					accessTokenUrl: `${providerUrl}/token`,
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					scope: '',
+					authentication: 'header',
+				},
+			},
+			{ project: await getPersonalProject(owner), role: 'credential:owner' },
+		);
+
+		const apiCall: INode = {
+			id: randomUUID(),
+			name: 'Call API',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			position: [200, 0],
+			parameters: {
+				method: 'GET',
+				url: `${apiUrl}/data`,
+				authentication: 'genericCredentialType',
+				genericAuthType: 'oAuth2Api',
+				options: {},
+			},
+			credentials: { oAuth2Api: { id: credential.id, name: credential.name } },
+		};
+
+		const workflow = await createWorkflowWithHistory(
+			{
+				active: true,
+				nodes: [trigger, apiCall],
+				connections: {
+					[trigger.name]: { main: [[{ node: apiCall.name, type: 'main', index: 0 }]] },
+				},
+			},
+			owner,
+		);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+			workflow.id,
+			workflow.versionId,
+		);
+		await Container.get(WebhookRepository).insert({
+			workflowId: workflow.id,
+			webhookPath,
+			method: 'POST',
+			node: trigger.name,
+		});
+
+		return { workflow, webhookPath, credential };
+	};
+
+	const connectWithToken = async (credentialId: string, userId: string) => {
+		const encrypted = await Container.get(Cipher).encryptV2({
+			oauthTokenData: {
+				access_token: 'expired-access',
+				refresh_token: 'rejected-refresh',
+				token_type: 'bearer',
+			},
+		});
+		await Container.get(DynamicCredentialUserEntryStorage).setCredentialData(
+			credentialId,
+			userId,
+			SYSTEM_RESOLVER_ID,
+			encrypted,
+			{},
+		);
+	};
+
+	const waitForFinishedExecution = async (workflowId: string) => {
+		const executions = Container.get(ExecutionRepository);
+		for (let attempt = 0; attempt < 100; attempt++) {
+			const execution = await executions.findOne({ where: { workflowId } });
+			if (execution && execution.status !== 'new' && execution.status !== 'running') {
+				return execution;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+		throw new Error('The execution did not finish');
+	};
+
+	afterEach(() => {
+		nock.cleanAll();
+	});
+
+	test('the next submission asks the submitter to connect again', async () => {
+		const { workflow, webhookPath, credential } = await setupPublishedFormWithApiCall();
+		const token = await mintAccessToken(submitter.id, resourceUrlFor(webhookPath));
+		await connectWithToken(credential.id, submitter.id);
+
+		const api = nock(apiUrl).get('/data').reply(401, { error: 'token expired' });
+		const provider = nock(providerUrl)
+			.post('/token')
+			.reply(400, { error: 'invalid_grant', error_description: 'Token is not active' });
+
+		expect((await submitForm(webhookPath, token)).statusCode).toBe(200);
+		const execution = await waitForFinishedExecution(workflow.id);
+		expect(execution.status).toBe('error');
+		expect(api.isDone()).toBe(true);
+		expect(provider.isDone()).toBe(true);
+
+		const response = await submitForm(webhookPath, token);
+
+		expect(response.statusCode).toBe(428);
+		expect(response.body).toMatchObject({
+			status: 'credential_connections_required',
+			readyToExecute: false,
+			credentials: [
+				expect.objectContaining({ credentialId: credential.id, credentialStatus: 'missing' }),
+			],
+		});
+		await expect(executionCountFor(workflow.id)).resolves.toBe(1);
 	});
 });

@@ -101,6 +101,9 @@ function rulesContainDelegate(rules: readonly PolicyRule[]): boolean {
 
 const DELEGATE_RULE_AT_PROJECT_SCOPE = 'A rule cannot use action "delegate" at project scope';
 
+export const PERSONAL_PROJECT_POLICY =
+	'Only a team project can have a policy. A personal project follows the instance policy.';
+
 /**
  * `delegate` is only satisfiable at instance scope. A project write never accepts it — not in
  * a rule's `action` (already rejected by `PutProjectPolicyDto`'s schema) and not in
@@ -234,6 +237,20 @@ export class TypeAvailabilityPolicyService {
 	) {}
 
 	/**
+	 * Only a team project can own a scope row. A global scope passes the project scope check
+	 * for any project id, so the write path checks the project type itself.
+	 */
+	private async assertTeamProject(projectId: string | null): Promise<void> {
+		if (projectId === null) return;
+
+		const [project] = await this.projectRepository.findTypesByIds([projectId]);
+		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+		if (project.type !== 'team') {
+			throw new BadRequestError(PERSONAL_PROJECT_POLICY);
+		}
+	}
+
+	/**
 	 * Never creates a scope row on read — an unconfigured scope reports allow-all with
 	 * version `0` rather than being materialized just because someone looked at it.
 	 *
@@ -271,6 +288,7 @@ export class TypeAvailabilityPolicyService {
 		updatedBy: string,
 	): Promise<TypeAvailabilityPolicyScope> {
 		assertNoDelegateAtProjectScope(projectId, defaultAction);
+		await this.assertTeamProject(projectId);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			const scope = await this.scopeRepository.findScopeByKindAndProject(
@@ -675,6 +693,7 @@ export class TypeAvailabilityPolicyService {
 	}> {
 		assertNoDelegateAtProjectScope(projectId, input.defaultAction, input.rules);
 		const warnings = this.validateAndLintRules(kind, input.rules);
+		await this.assertTeamProject(projectId);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			const scope = await this.scopeRepository.findScopeByKindAndProject(
@@ -888,6 +907,8 @@ export class TypeAvailabilityPolicyService {
 		expectedVersion: number,
 		updatedBy: string,
 	) {
+		// Checked here too, because a change that leaves the rules as they are returns without a write.
+		await this.assertTeamProject(projectId);
 		const effective = await this.getEffectivePolicy(kind, projectId);
 		if (effective.version !== expectedVersion) {
 			throw scopeVersionConflict(expectedVersion, effective.version);
@@ -980,15 +1001,6 @@ export class TypeAvailabilityPolicyService {
 				notLoadedWarningCount: 0,
 				origin: 'add-project-policy',
 			});
-		}
-	}
-
-	/** Only a team project can have a project policy. */
-	private async assertTeamProject(projectId: string): Promise<void> {
-		const [project] = await this.projectRepository.findTypesByIds([projectId]);
-		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
-		if (project.type !== 'team') {
-			throw new BadRequestError('A personal project cannot have a project policy');
 		}
 	}
 

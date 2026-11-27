@@ -11,7 +11,6 @@ describe('public API', () => {
 
 		expect(moduleMetadata.get('skills')).toBeUndefined();
 		expect(Object.keys(publicApi).sort()).toEqual([
-			'AssistantSkillsFlagGate',
 			'SkillAccessService',
 			'SkillAgentNameTakenError',
 			'SkillNameTakenError',

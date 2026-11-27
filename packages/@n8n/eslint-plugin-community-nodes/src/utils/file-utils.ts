@@ -79,7 +79,7 @@ export function readJsonObject(filePath: string): Record<string, unknown> | null
 	}
 }
 
-function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
+export function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
 	const parsed = readJsonObject(packageJsonPath);
 	if (parsed) {
 		const n8n = parsed.n8n;
