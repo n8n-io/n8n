@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Mock, MockInstance } from 'vitest';
@@ -297,6 +297,218 @@ describe('MessageEventBusLogWriter.readLoggedMessagesFromFile', () => {
 		const sampleMatch = warnCall?.match(/Sample \(truncated\): (.*)$/);
 		expect(sampleMatch).not.toBeNull();
 		expect(sampleMatch![1].length).toBeLessThanOrEqual(200);
+	});
+
+	describe('duplicate copies of a message', () => {
+		const makeEventLine = (
+			__type: EventMessageTypeNames,
+			id: string,
+			eventName: string,
+			executionId: string,
+		) =>
+			JSON.stringify({
+				__type,
+				id,
+				ts: '2026-04-16T12:00:00.000Z',
+				eventName,
+				message: eventName,
+				payload: { executionId },
+			});
+
+		const emptyResults = () => ({
+			loggedMessages: [] as EventMessageTypes[],
+			sentMessages: [] as EventMessageTypes[],
+			unfinishedExecutions: {} as Record<string, EventMessageTypes[]>,
+		});
+
+		it('keeps one pending copy of a message that the log holds many times', async () => {
+			setMaxMessagesPerParse(1000);
+			writer = new MessageEventBusLogWriter();
+			const logFile = writeLogFile(
+				'copies.log',
+				Array.from({ length: 6 }, () => makeWorkflowStartedLine('id-1', 'exec-1')),
+			);
+			const results = emptyResults();
+
+			await writer.readLoggedMessagesFromFile(results, 'unsent', logFile);
+
+			expect(results.loggedMessages.map(({ id }) => id)).toEqual(['id-1']);
+			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('skipped 5 duplicate'));
+		});
+
+		it('reads a confirm that follows more copies than the working-set limit', async () => {
+			setMaxMessagesPerParse(5);
+			writer = new MessageEventBusLogWriter();
+			const logFile = writeLogFile('copies-then-confirm.log', [
+				...Array.from({ length: 6 }, () => makeWorkflowStartedLine('id-1', 'exec-1')),
+				makeConfirmLine('id-1'),
+			]);
+			const results = emptyResults();
+
+			await writer.readLoggedMessagesFromFile(results, 'unsent', logFile);
+
+			expect(results.loggedMessages).toHaveLength(0);
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('still aborts when distinct messages after the copies exceed the working-set limit', async () => {
+			setMaxMessagesPerParse(5);
+			writer = new MessageEventBusLogWriter();
+			const logFile = writeLogFile('copies-then-distinct.log', [
+				...Array.from({ length: 6 }, () => makeWorkflowStartedLine('id-1', 'exec-1')),
+				...Array.from({ length: 10 }, (_, i) =>
+					makeWorkflowStartedLine(`id-${i + 2}`, `exec-${i + 2}`),
+				),
+			]);
+			const results = emptyResults();
+
+			await writer.readLoggedMessagesFromFile(results, 'unsent', logFile);
+
+			expect(results.loggedMessages.length).toBeLessThanOrEqual(6);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('exceeded 5 in-memory messages during parse'),
+			);
+		});
+
+		it('does not count duplicate copies toward the total line ceiling', async () => {
+			setMaxMessagesPerParse(1000, 20);
+			writer = new MessageEventBusLogWriter();
+			const logFile = writeLogFile(
+				'many-copies.log',
+				Array.from({ length: 100 }, () => makeWorkflowStartedLine('id-1', 'exec-1')),
+			);
+			const results = emptyResults();
+
+			await writer.readLoggedMessagesFromFile(results, 'all', logFile);
+
+			expect(results.loggedMessages).toHaveLength(1);
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('treats a copy that follows its confirm as pending again', async () => {
+			setMaxMessagesPerParse(1000);
+			writer = new MessageEventBusLogWriter();
+			const logFile = writeLogFile('copy-after-confirm.log', [
+				makeWorkflowStartedLine('id-1', 'exec-1'),
+				makeConfirmLine('id-1'),
+				makeWorkflowStartedLine('id-1', 'exec-1'),
+			]);
+			const results = emptyResults();
+
+			await writer.readLoggedMessagesFromFile(results, 'unsent', logFile);
+
+			expect(results.loggedMessages.map(({ id }) => id)).toEqual(['id-1']);
+		});
+
+		it('keeps the node events of an execution when a workflow.started copy follows them', async () => {
+			setMaxMessagesPerParse(1000);
+			writer = new MessageEventBusLogWriter();
+			const logFile = writeLogFile('started-copy.log', [
+				makeWorkflowStartedLine('started-1', 'exec-1'),
+				makeEventLine(EventMessageTypeNames.node, 'node-1', 'n8n.node.started', 'exec-1'),
+				makeConfirmLine('node-1'),
+				makeWorkflowStartedLine('started-1', 'exec-1'),
+			]);
+			const results = emptyResults();
+
+			await writer.readLoggedMessagesFromFile(results, 'unsent', logFile);
+
+			expect(results.unfinishedExecutions['exec-1']?.map(({ id }) => id)).toEqual([
+				'started-1',
+				'node-1',
+			]);
+		});
+
+		it('does not reopen a finished execution when a workflow.started copy follows', async () => {
+			setMaxMessagesPerParse(1000);
+			writer = new MessageEventBusLogWriter();
+			const logFile = writeLogFile('finished-then-copy.log', [
+				makeWorkflowStartedLine('started-1', 'exec-1'),
+				makeEventLine(
+					EventMessageTypeNames.workflow,
+					'success-1',
+					'n8n.workflow.success',
+					'exec-1',
+				),
+				makeWorkflowStartedLine('started-1', 'exec-1'),
+			]);
+			const results = emptyResults();
+
+			await writer.readLoggedMessagesFromFile(results, 'unsent', logFile);
+
+			expect(results.unfinishedExecutions).not.toHaveProperty('exec-1');
+		});
+
+		describe('across rotated log files', () => {
+			let savedOptions: typeof MessageEventBusLogWriter.options;
+
+			beforeEach(() => {
+				savedOptions = MessageEventBusLogWriter.options;
+				MessageEventBusLogWriter.options = {
+					logFullBasePath: join(tempDir, 'n8nEventLog'),
+					keepNumberOfFiles: 3,
+					maxFileSizeInKB: 10240,
+				};
+			});
+
+			afterEach(() => {
+				MessageEventBusLogWriter.options = savedOptions;
+			});
+
+			it('returns one unsent copy when the previous and the current log both hold it', async () => {
+				setMaxMessagesPerParse(1000);
+				writer = new MessageEventBusLogWriter();
+				writeLogFile(
+					'n8nEventLog-1.log',
+					Array.from({ length: 3 }, () => makeWorkflowStartedLine('id-1', 'exec-1')),
+				);
+				writeLogFile(
+					'n8nEventLog.log',
+					Array.from({ length: 2 }, () => makeWorkflowStartedLine('id-1', 'exec-1')),
+				);
+
+				const { unsentMessages } = await writer.getUnsentAndUnfinishedExecutions();
+
+				expect(unsentMessages.map(({ id }) => id)).toEqual(['id-1']);
+			});
+
+			it('does not grow the copies of an unsent message across restarts', async () => {
+				setMaxMessagesPerParse(1000);
+				writer = new MessageEventBusLogWriter();
+				const currentLog = join(tempDir, 'n8nEventLog.log');
+				writeLogFile(
+					'n8nEventLog.log',
+					Array.from({ length: 4 }, () => makeWorkflowStartedLine('id-1', 'exec-1')),
+				);
+
+				// Each cycle does what startup recovery does: read, rotate, then append the replay.
+				for (let restart = 0; restart < 3; restart++) {
+					const { unsentMessages } = await writer.getUnsentAndUnfinishedExecutions();
+					expect(unsentMessages.map(({ id }) => id)).toEqual(['id-1']);
+
+					renameSync(currentLog, join(tempDir, 'n8nEventLog-1.log'));
+					writeLogFile(
+						'n8nEventLog.log',
+						unsentMessages.map(({ id }) => makeWorkflowStartedLine(id, 'exec-1')),
+					);
+				}
+			});
+
+			it('returns no unsent copy when the current log confirms it', async () => {
+				setMaxMessagesPerParse(1000);
+				writer = new MessageEventBusLogWriter();
+				writeLogFile('n8nEventLog-1.log', [makeWorkflowStartedLine('id-1', 'exec-1')]);
+				writeLogFile('n8nEventLog.log', [
+					makeWorkflowStartedLine('id-1', 'exec-1'),
+					makeConfirmLine('id-1'),
+				]);
+
+				const { unsentMessages } = await writer.getUnsentAndUnfinishedExecutions();
+
+				expect(unsentMessages).toHaveLength(0);
+			});
+		});
 	});
 });
 
