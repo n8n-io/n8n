@@ -91,8 +91,12 @@ function memoryAfter(turn: number): InstanceAiEvalAgentMemoryState {
 	};
 }
 
-/** A client whose every turn reports memory and one title side call. */
-function memoryClient(calls: ExecuteCall[]): N8nClient {
+/** A client whose every turn reports memory and one title side call.
+ *  `memoryOf(turn)` overrides a turn's memory; undefined = the read failed. */
+function memoryClient(
+	calls: ExecuteCall[],
+	memoryOf: (turn: number) => InstanceAiEvalAgentMemoryState | undefined = memoryAfter,
+): N8nClient {
 	return {
 		getPersonalProjectId: vi.fn().mockResolvedValue('project-1'),
 		executeAgentWithLlmMock: vi
@@ -109,7 +113,8 @@ function memoryClient(calls: ExecuteCall[]): N8nClient {
 					calls.push({ thread, options });
 					return {
 						...agentReply(`reply ${String(calls.length)}`, thread),
-						memory: memoryAfter(calls.length),
+						memoryConfig: { enabled: true, storage: 'n8n' },
+						...(memoryOf(calls.length) ? { memory: memoryOf(calls.length) } : {}),
 						sideCallUsage: [{ task: 'title', model: 'm', inputTokens: 10, outputTokens: 2 }],
 					};
 				},
@@ -140,9 +145,14 @@ const twoSessions: ExecutionScenario = {
 	],
 };
 
-async function run(scenario: ExecutionScenario, calls: ExecuteCall[], options = agentRun) {
+async function run(
+	scenario: ExecutionScenario,
+	calls: ExecuteCall[],
+	options = agentRun,
+	memoryOf?: (turn: number) => InstanceAiEvalAgentMemoryState | undefined,
+) {
 	return await executeAgentScenario(
-		memoryClient(calls),
+		memoryClient(calls, memoryOf),
 		'agent-1',
 		scenario,
 		'(agent context)',
@@ -278,5 +288,50 @@ describe('executeAgentScenario with memory (AGENT-1666)', () => {
 			),
 		).rejects.toThrow(/FRAMEWORK ISSUE: .*not retried/);
 		expect(client.executeAgentWithLlmMock).toHaveBeenCalledTimes(1);
+	});
+
+	function judgeContext(): string {
+		return vi.mocked(verifyBuildExpectations).mock.calls[0]?.[1].artifactContext ?? '';
+	}
+
+	it('caps the stored entries the judge reads, by count and by length', async () => {
+		const many = (turn: number): InstanceAiEvalAgentMemoryState => ({
+			...memoryAfter(turn),
+			episodicEntries: [
+				{ content: `long entry ${'x'.repeat(2_000)}`, createdAt: '2026-11-27T00:00:00.000Z' },
+				...Array.from({ length: 29 }, (_, index) => ({
+					content: `entry number ${String(index + 2)}`,
+					createdAt: '2026-11-27T00:00:00.000Z',
+				})),
+			],
+		});
+
+		await run(twoSessions, [], agentRun, many);
+
+		const context = judgeContext();
+		expect(context).toContain('entry number 20');
+		expect(context).not.toContain('entry number 21');
+		expect(context).toContain('10 more');
+		expect(context).not.toContain('x'.repeat(1_000));
+	});
+
+	it('gives the judge task counts per kind and outcome, not one line per task', async () => {
+		await run(twoSessions, []);
+
+		const context = judgeContext();
+		expect(context).toMatch(/episodic:(?=[^\n]*2 completed)(?=[^\n]*1 failed)/);
+		expect(context.match(/episodic: completed/g)).toBeNull();
+	});
+
+	it('marks the stored memory as stale when the last turn could not read it', async () => {
+		const result = await run(twoSessions, [], agentRun, (turn) =>
+			turn === 3 ? undefined : memoryAfter(turn),
+		);
+
+		expect(result.agentEvalResult?.memory).toMatchObject({
+			stale: true,
+			episodicEntries: [expect.objectContaining({ content: 'entry after turn 2' })],
+		});
+		expect(judgeContext()).toContain('entry after turn 2');
 	});
 });

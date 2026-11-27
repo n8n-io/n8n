@@ -321,14 +321,21 @@ export function mergeConversationResult(
 }
 
 /** The memory stored after the last turn that reported it, with the memory
- *  tasks of every turn. Undefined when memory was off. */
+ *  tasks of every turn; stale when the last memory turn could not read it.
+ *  Undefined when memory was off. */
 function conversationMemory(
 	results: InstanceAiEvalAgentExecutionResult[],
 ): InstanceAiEvalAgentMemoryState | undefined {
 	const states = results.flatMap((r) => (r.memory ? [r.memory] : []));
 	const last = states[states.length - 1];
 	if (!last) return undefined;
-	return { ...last, tasks: states.flatMap((state) => state.tasks) };
+	const lastMemoryTurn = results.filter((r) => r.memoryConfig !== undefined).at(-1);
+	const stale = lastMemoryTurn !== undefined && lastMemoryTurn.memory === undefined;
+	return {
+		...last,
+		tasks: states.flatMap((state) => state.tasks),
+		...(stale ? { stale: true } : {}),
+	};
 }
 
 function stepsOf(result: InstanceAiEvalAgentExecutionResult): TranscriptStep[] {

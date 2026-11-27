@@ -3299,6 +3299,9 @@ export interface InstanceAiEvalAgentMemoryState {
 	pendingCandidates: number;
 	/** Memory tasks that ended during this turn. */
 	tasks: InstanceAiEvalAgentMemoryTask[];
+	/** Set by the harness when the last memory turn could not read the store:
+	 *  this is the state after an earlier turn. */
+	stale?: boolean;
 }
 
 /** One model call made beside the agent loop: title, observer, reflector, episodic. */

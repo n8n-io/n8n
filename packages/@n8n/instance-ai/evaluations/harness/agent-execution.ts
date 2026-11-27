@@ -729,27 +729,75 @@ function buildAgentScenarioContextBlock(
 	return sections.join('\n');
 }
 
+/** At most this many entries or observations, each at most this many characters. */
+const MAX_MEMORY_ITEMS = 20;
+const MAX_MEMORY_ITEM_CHARS = 400;
+const MAX_LISTED_TASK_FAILURES = 5;
+
+/** Bulleted, capped by count and length, with "(+N more)" for the rest. */
+function cappedList(items: string[]): string[] {
+	if (items.length === 0) return ['(none)'];
+	const shown = items.slice(0, MAX_MEMORY_ITEMS).map((item) => `- ${truncateMemoryItem(item)}`);
+	const hidden = items.length - shown.length;
+	return hidden > 0 ? [...shown, `(+${String(hidden)} more)`] : shown;
+}
+
+function truncateMemoryItem(item: string): string {
+	if (item.length <= MAX_MEMORY_ITEM_CHARS) return item;
+	return `${item.slice(0, MAX_MEMORY_ITEM_CHARS)}… [truncated]`;
+}
+
+/** One line per task kind with its outcome counts, then the failed or skipped
+ *  tasks with their errors. */
+function memoryTaskSummary(tasks: InstanceAiEvalAgentMemoryState['tasks']): string[] {
+	if (tasks.length === 0) return ['(none)'];
+	const counts = new Map<string, Map<string, number>>();
+	for (const { taskKind, outcome } of tasks) {
+		const byOutcome = counts.get(taskKind) ?? new Map<string, number>();
+		byOutcome.set(outcome, (byOutcome.get(outcome) ?? 0) + 1);
+		counts.set(taskKind, byOutcome);
+	}
+	const lines = [...counts].map(
+		([kind, byOutcome]) =>
+			`- ${kind}: ${[...byOutcome].map(([outcome, count]) => `${String(count)} ${outcome}`).join(', ')}`,
+	);
+	const unfinished = tasks
+		.filter((task) => task.outcome !== 'completed')
+		.map((task) => `${task.taskKind} ${task.outcome}${task.error ? `: ${task.error}` : ''}`);
+	return unfinished.length === 0
+		? lines
+		: [...lines, 'Not completed:', ...cappedFailures(unfinished)];
+}
+
+function cappedFailures(failures: string[]): string[] {
+	const shown = failures.slice(0, MAX_LISTED_TASK_FAILURES).map((line) => `- ${line}`);
+	const hidden = failures.length - shown.length;
+	return hidden > 0 ? [...shown, `(+${String(hidden)} more)`] : shown;
+}
+
 /** What the Agent's memory held for the simulated user after the run, so memory
  *  expectations are graded against what was stored, not only what was said. */
 function agentMemorySection(memory: InstanceAiEvalAgentMemoryState): string[] {
-	const entries = memory.episodicEntries.map((entry) => `- ${entry.content}`);
 	const observations = memory.observations.map(
-		(observation) => `- [${observation.marker.toUpperCase()}] ${observation.text}`,
-	);
-	const tasks = memory.tasks.map(
-		(task) => `- ${task.taskKind}: ${task.outcome}${task.error ? ` (${task.error})` : ''}`,
+		(observation) => `[${observation.marker.toUpperCase()}] ${observation.text}`,
 	);
 	return [
 		'## Agent memory after the run (ground truth — read from the memory store)',
 		'',
+		...(memory.stale
+			? [
+					'⚠ STALE: the memory store could not be read after the last turn; this is the state after an earlier turn.',
+					'',
+				]
+			: []),
 		'**Episodic memory entries stored for this user:**',
-		...(entries.length > 0 ? entries : ['(none)']),
+		...cappedList(memory.episodicEntries.map((entry) => entry.content)),
 		'',
 		'**Observations (compacted summaries of the threads):**',
-		...(observations.length > 0 ? observations : ['(none)']),
+		...cappedList(observations),
 		'',
 		'**Background memory tasks that ran:**',
-		...(tasks.length > 0 ? tasks : ['(none)']),
+		...memoryTaskSummary(memory.tasks),
 		`**Flagged memories still pending:** ${String(memory.pendingCandidates)}`,
 		'',
 	];
