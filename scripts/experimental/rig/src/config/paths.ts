@@ -31,6 +31,15 @@ export function profileFile(name: string): string {
 	return join(profilesDir(), `${name}.env`);
 }
 
+/** Stored n8n licenses that environments use with `license: <name>` in env.yaml. */
+export function licensesDir(): string {
+	return join(configDir(), 'licenses');
+}
+
+export function licenseFile(name: string): string {
+	return join(licensesDir(), `${name}.env`);
+}
+
 /** Secrets for every environment, for example license keys. */
 export function globalSecretsFile(): string {
 	return join(configDir(), 'secrets.env');

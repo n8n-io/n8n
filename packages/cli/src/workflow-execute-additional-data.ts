@@ -138,6 +138,46 @@ export function getRunData(
 }
 
 /**
+ * Validates a workflow ID and converts finite numbers to strings before the database query.
+ * Node expressions can evaluate to empty strings, null, legacy integer IDs, or non-string values.
+ */
+function normalizeWorkflowId(workflowId: unknown, parentWorkflowId: string): string {
+	if (
+		workflowId === null ||
+		workflowId === undefined ||
+		(typeof workflowId === 'string' && workflowId.trim() === '')
+	) {
+		throw new UserError(
+			'Workflow ID is empty. Select a sub-workflow or check the workflow ID expression.',
+			{
+				extra: { workflowId, parentWorkflowId },
+			},
+		);
+	}
+
+	if (typeof workflowId === 'number' && Number.isFinite(workflowId)) {
+		return String(workflowId);
+	}
+
+	if (typeof workflowId !== 'string') {
+		throw new UserError(
+			'Workflow ID is invalid. Select a sub-workflow or check the workflow ID expression.',
+			{
+				extra: {
+					workflowId:
+						typeof workflowId === 'bigint' || typeof workflowId === 'symbol'
+							? String(workflowId)
+							: workflowId,
+					parentWorkflowId,
+				},
+			},
+		);
+	}
+
+	return workflowId;
+}
+
+/**
  * Fetches workflow from database or returns provided code.
  * Shared helper for getDraftWorkflowData and getPublishedWorkflowData.
  */
@@ -147,25 +187,30 @@ async function fetchWorkflowData(
 	parentWorkflowSettings?: IWorkflowSettings,
 ) {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
-		throw new UnexpectedError(
+		throw new UserError(
 			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
+			{
+				extra: { parentWorkflowId },
+			},
 		);
 	}
 
 	if (workflowInfo.id !== undefined) {
+		const workflowId = normalizeWorkflowId(workflowInfo.id, parentWorkflowId);
+
 		const baseRelations = ['activeVersion'];
 		const relations = Container.get(GlobalConfig).tags.disabled
 			? [...baseRelations]
 			: [...baseRelations, 'tags'];
 
 		const workflowFromDb = await Container.get(WorkflowRepository).get(
-			{ id: workflowInfo.id },
+			{ id: workflowId },
 			{ relations },
 		);
 
 		if (workflowFromDb === undefined || workflowFromDb === null) {
-			throw new UnexpectedError('Workflow does not exist.', {
-				extra: { workflowId: workflowInfo.id },
+			throw new UserError(`Workflow "${workflowId}" does not exist.`, {
+				extra: { workflowId, parentWorkflowId },
 			});
 		}
 
@@ -225,12 +270,21 @@ export async function getPublishedWorkflowData(
 		workflowInfo.id !== undefined &&
 		Container.get(WorkflowsConfig).useWorkflowPublicationService
 	) {
+		const workflowId = normalizeWorkflowId(workflowInfo.id, parentWorkflowId);
+
 		const publishedData = await Container.get(
 			WorkflowPublishedDataService,
-		).getPublishedWorkflowData(workflowInfo.id);
+		).getPublishedWorkflowData(workflowId);
 		if (publishedData === null) {
+			const exists = await Container.get(WorkflowRepository).existsBy({ id: workflowId });
+			if (!exists) {
+				throw new UserError(`Workflow "${workflowId}" does not exist.`, {
+					extra: { workflowId, parentWorkflowId },
+				});
+			}
+
 			throw new OperationalError('Workflow is not active and cannot be executed.', {
-				extra: { workflowId: workflowInfo.id, parentWorkflowId },
+				extra: { workflowId, parentWorkflowId },
 			});
 		}
 		return {
@@ -271,7 +325,7 @@ export async function getPublishedWorkflowData(
 	}
 
 	throw new OperationalError('Workflow is not active and cannot be executed.', {
-		extra: { workflowId: workflowInfo.id, parentWorkflowId },
+		extra: { workflowId: workflowData?.id ?? String(workflowInfo.id), parentWorkflowId },
 	});
 }
 

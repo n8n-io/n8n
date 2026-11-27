@@ -282,6 +282,10 @@ export interface AgentSkillMutationResponse {
 	versionId: string | null;
 }
 
+export interface AgentSkillWorkflowAccessResponse {
+	outsideProjectWorkflowIds: string[];
+}
+
 export interface AgentVersionDto {
 	versionId: string;
 	schema: AgentJsonConfig | null;
@@ -707,6 +711,11 @@ export interface AgentChatMessagesResponse {
 	 * An omitted value means that the response holds the whole thread.
 	 */
 	nextCursor?: string | null;
+}
+
+/** Suggested starter prompts returned by the test-chat scenario generator. */
+export interface GenerateAgentTestScenariosResponse {
+	scenarios: string[];
 }
 
 /**

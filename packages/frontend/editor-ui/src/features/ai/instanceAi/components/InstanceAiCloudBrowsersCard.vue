@@ -121,6 +121,7 @@ function subtitleOf(task: CloudBrowserTask): string {
 					<iframe
 						v-if="liveViewUrl"
 						:src="liveViewUrl"
+						class="ph-no-capture"
 						:class="$style.thumbnailFrame"
 						:data-cloud-browser-task-id="task.taskId"
 						:data-cloud-browser-window-id="windowId"

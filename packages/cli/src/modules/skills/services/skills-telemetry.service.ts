@@ -1,4 +1,4 @@
-import type { SkillScanFinding } from '@n8n/api-types';
+import { parseAgentSkillWorkflowMentions, type SkillScanFinding } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
@@ -7,6 +7,8 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
+import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
+import { WorkflowsInSkillsFlagGate } from './workflows-in-skills-flag-gate';
 
 /** Package imports report no skill telemetry. */
 export type SkillTelemetrySource = Exclude<SkillSource, 'import'>;
@@ -83,6 +85,7 @@ export class SkillsTelemetry {
 		private readonly telemetry: TelemetryProxy,
 		private readonly skillRepository: SkillRepository,
 		private readonly logger: Logger,
+		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 	) {}
 
 	async created(
@@ -94,6 +97,7 @@ export class SkillsTelemetry {
 	): Promise<void> {
 		await this.safely(async () => {
 			const skills = await this.resolve(refs);
+			const mentionCounts = await this.createdMentionCounts(skills.map(({ id }) => id));
 			for (const skill of skills) {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CREATED_SKILL, {
 					user_id: userId,
@@ -102,6 +106,7 @@ export class SkillsTelemetry {
 					source,
 					method,
 					...origin,
+					...mentionCounts.get(skill.id),
 				});
 			}
 		});
@@ -125,6 +130,7 @@ export class SkillsTelemetry {
 				source,
 				version,
 				scope_changed: scopeChanged,
+				...(await this.updatedMentionCounts(skill.id, version)),
 			});
 		});
 	}
@@ -265,6 +271,49 @@ export class SkillsTelemetry {
 		});
 	}
 
+	private async createdMentionCounts(skillIds: string[]) {
+		return await this.countMentions(async () => {
+			const latest = await this.skillRepository.findLatestSaved(skillIds);
+			return new Map(
+				[...latest].map(([id, row]) => [
+					id,
+					{ workflow_mention_count: mentionedWorkflowIds(row).size },
+				]),
+			);
+		}, new Map<string, { workflow_mention_count: number }>());
+	}
+
+	private async updatedMentionCounts(skillId: string, version: number) {
+		return await this.countMentions(async () => {
+			const [saved, previous] = await Promise.all([
+				this.skillRepository.findVersionByNumber(skillId, version),
+				this.skillRepository.findVersionByNumber(skillId, version - 1),
+			]);
+			if (!saved) return {};
+			const next = mentionedWorkflowIds(saved);
+			const mentionCount = { workflow_mention_count: next.size };
+			if (!previous) return mentionCount;
+			const before = mentionedWorkflowIds(previous);
+			return {
+				...mentionCount,
+				workflow_mentions_added: [...next].filter((id) => !before.has(id)).length,
+				workflow_mentions_removed: [...before].filter((id) => !next.has(id)).length,
+			};
+		}, {});
+	}
+
+	private async countMentions<T>(count: () => Promise<T>, none: T): Promise<T> {
+		try {
+			if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return none;
+			return await count();
+		} catch (error) {
+			this.logger.warn('Could not count skill workflow mentions', {
+				error: ensureError(error).message,
+			});
+			return none;
+		}
+	}
+
 	/** Reads back only the refs that came as a bare id, in one query. */
 	private async resolve(refs: SkillTelemetryRef[]): Promise<SkillTelemetryTarget[]> {
 		const ids = refs.filter((ref) => typeof ref === 'string');
@@ -279,6 +328,12 @@ export class SkillsTelemetry {
 			this.logger.warn('Could not send skills telemetry', { error: ensureError(error).message });
 		}
 	}
+}
+
+function mentionedWorkflowIds(row: ResolvedSkillRow): Set<string> {
+	return new Set(
+		parseAgentSkillWorkflowMentions(toAgentSkill(row)).map(({ workflowId }) => workflowId),
+	);
 }
 
 function placeOf(skill: SkillTelemetryTarget): SkillPlace {

@@ -7,11 +7,12 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { VIEWS } from '@/app/constants';
 import {
-	TOTAL_INSTANCE_PERMISSIONS,
 	countGrantedInstancePermissions,
-} from '@/features/roles/instance/instanceRoleScopes';
-import RoleSelectDropdown from '@/features/roles/components/RoleSelectDropdown.vue';
-import CustomRolesUpgradeModal from '@/features/roles/components/CustomRolesUpgradeModal.vue';
+	countInstancePermissions,
+	CustomRolesUpgradeModal,
+	RoleSelectDropdown,
+	useHiddenRoleResources,
+} from '@n8n/frontend-module-roles';
 
 const props = withDefaults(
 	defineProps<{
@@ -49,7 +50,10 @@ const assignableRoles = computed(() => rolesStore.processedInstanceRoles);
 const systemRoles = computed(() => assignableRoles.value.filter((role) => role.systemRole));
 const customRoles = computed(() => rolesStore.customInstanceRoles);
 
-const permissionCountFor = (role: Role) => countGrantedInstancePermissions(role.scopes ?? []);
+const hiddenResources = useHiddenRoleResources();
+const totalPermissions = computed(() => countInstancePermissions(hiddenResources.value));
+const permissionCountFor = (role: Role) =>
+	countGrantedInstancePermissions(role.scopes ?? [], hiddenResources.value);
 
 const upgradeModalVisible = ref(false);
 
@@ -70,7 +74,7 @@ const onRoleUpdate = (role: string) => {
 			:add-custom-role-route-name="VIEWS.INSTANCE_NEW_ROLE"
 			:loading="loading"
 			:permission-count-fn="permissionCountFor"
-			:total-permissions="TOTAL_INSTANCE_PERMISSIONS"
+			:total-permissions="totalPermissions"
 			:edit-route-name="VIEWS.INSTANCE_ROLE_SETTINGS"
 			:view-route-name="VIEWS.INSTANCE_ROLE_VIEW"
 			:from-view="VIEWS.USERS_SETTINGS"

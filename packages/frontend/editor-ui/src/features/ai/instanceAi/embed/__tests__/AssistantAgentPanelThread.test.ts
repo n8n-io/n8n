@@ -68,17 +68,25 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 			});
 			return () => {
 				panelProps.current = { ...attrs };
-				return h(
-					'div',
-					{ 'data-test-id': 'agent-chat-panel-stub' },
+				return h('div', { 'data-test-id': 'agent-chat-panel-stub' }, [
 					slots['composer-attachments']?.(),
-				);
+					slots['footer-start']?.({ disabled: false }),
+				]);
 			};
 		},
 	}),
 }));
 
 vi.mock('../../composables/useAgentMutationRefresh', () => ({ useAgentMutationRefresh: vi.fn() }));
+
+// The real selector reads the settings store, which has its own tests.
+vi.mock('@/features/ai/instanceAi/components/ApprovalModeSelector.vue', () => ({
+	default: defineComponent({
+		props: { threadId: { type: String, default: undefined } },
+		setup: (props) => () =>
+			h('div', { 'data-test-id': 'approval-mode-selector-stub', 'data-thread-id': props.threadId }),
+	}),
+}));
 
 type AcceptMessage = (payload: { clientContext?: Record<string, unknown> }) => void;
 
@@ -131,6 +139,15 @@ describe('AssistantAgentPanelThread', () => {
 		clearDraftIfMatches.mockReset();
 		telemetryTrack.mockReset();
 		clearPendingHandoffContext('thread-1');
+	});
+
+	it('shows the approval mode selector and the actions that Auto mode approved', async () => {
+		const wrapper = await render();
+
+		const selector = wrapper.find('[data-test-id="approval-mode-selector-stub"]');
+		expect(selector.attributes('data-thread-id')).toBe('thread-1');
+		const extensions = panelProps.current['interaction-extensions'] as Array<{ key: string }>;
+		expect(extensions.map((extension) => extension.key)).toContain('assistant_auto_approval');
 	});
 
 	it('passes the preview ref to the composer without reading its frames', async () => {

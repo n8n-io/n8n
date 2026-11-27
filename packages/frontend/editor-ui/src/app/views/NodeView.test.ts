@@ -48,6 +48,7 @@ import { DEFAULT_NODE_SIZE, snapPositionToGrid } from '@/app/utils/nodeViewUtils
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { EngineCompatibilityReason } from '@n8n/frontend-module-engine-v2';
 import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
+import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { lazyModalLoaders, type LazyModalKey } from '@/app/modals/lazyModals';
 import {
@@ -1194,9 +1195,17 @@ describe('NodeView', () => {
 
 			const aboveToolbar = await findByTestId('node-creation-stub-above-toolbar');
 			expect(aboveToolbar).toContainElement(await findByTestId(BUTTON));
-			expect(await reasonsText(findByTestId)).toContain(
-				"Engine v2 doesn't run error workflows yet.",
-			);
+			expect(await reasonsText(findByTestId)).toContain("Error workflows aren't supported yet.");
+		});
+
+		// Enter on the focused button must open the findings, not the panel of the selected node.
+		it('keeps the button out of the canvas shortcuts', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			const { findByTestId } = renderNodeView();
+
+			expect(shouldIgnoreCanvasShortcut(await findByTestId(BUTTON))).toBe(true);
 		});
 
 		it('shows the button on its own on a read-only canvas', async () => {

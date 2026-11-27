@@ -75,6 +75,11 @@
 			"reason": "Apps stay in their source project. The project FK cascade deletes apps and their versions."
 		},
 		{
+			"name": "McpServer",
+			"path": "packages/modules/mcp-servers/backend/src/database/entities/mcp-server.entity.ts",
+			"reason": "Custom MCP servers stay in their source project. The project FK cascade deletes the servers, their tools, connections, and blocks. A user delete removes the personal project and its servers, also when the workflows move to another user."
+		},
+		{
 			"name": "AgentExecutionThread",
 			"path": "packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts",
 			"reason": "Dropped via FK cascade together with its Agent."

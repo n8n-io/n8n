@@ -20,6 +20,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import * as restApiClient from '@n8n/rest-api-client';
+import type { WorkflowHistory } from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
 import type { Scope } from '@n8n/permissions';
 import { BINARY_MODE_COMBINED } from 'n8n-workflow';
@@ -27,6 +28,11 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import {
+	confirmEngineV2Switch,
+	type EngineCompatibilityReason,
+} from '@n8n/frontend-module-engine-v2';
+import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
 
 const toast = {
 	showMessage: vi.fn(),
@@ -60,6 +66,16 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => {
 		getCredentialResolverTypes: vi.fn().mockResolvedValue([]),
 	};
 });
+
+vi.mock('@n8n/frontend-module-engine-v2', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	confirmEngineV2Switch: vi.fn(),
+}));
+
+const openEngineV2Findings = vi.fn();
+vi.mock('@/app/composables/useOpenEngineV2Findings', () => ({
+	useOpenEngineV2Findings: () => openEngineV2Findings,
+}));
 
 const getSecuritySettings = vi.fn();
 vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
@@ -812,6 +828,245 @@ describe('WorkflowSettingsVue', () => {
 					settings: expect.objectContaining({ engineType: 'v2' }),
 				}),
 			);
+		});
+
+		describe('Engine v2 compatibility', () => {
+			const nodeReason = (code: EngineCompatibilityReason['code']): EngineCompatibilityReason => ({
+				code,
+				kind: 'temporary',
+				severity: 'blocking',
+				nodeId: 'node-1',
+				nodeName: 'HTTP Request',
+				message: `${code}.`,
+			});
+			const workflowReason: EngineCompatibilityReason = {
+				code: 'REDACTION_POLICY',
+				kind: 'temporary',
+				severity: 'warning',
+				message: 'Redaction.',
+			};
+			// Two reasons on one node and one on the workflow: two issues.
+			const reasons = [nodeReason('RETRY_ON_FAIL'), nodeReason('EXECUTE_ONCE'), workflowReason];
+
+			async function selectEngine(getByTestId: (id: string) => HTMLElement, engine: 'v1' | 'v2') {
+				const dropdownItems = await getDropdownItems(
+					getByTestId('workflow-settings-engine-type-select'),
+				);
+				await userEvent.click(dropdownItems[engine === 'v2' ? 1 : 0]);
+				await flushPromises();
+			}
+
+			const selectedEngine = (getByTestId: (id: string) => HTMLElement) =>
+				getByTestId('workflow-settings-engine-type-select').querySelector('input')?.value;
+
+			beforeEach(() => {
+				vi.mocked(confirmEngineV2Switch).mockResolvedValue(false);
+			});
+
+			it('describes both engines in the dropdown', async () => {
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const dropdownItems = await getDropdownItems(
+					getByTestId('workflow-settings-engine-type-select'),
+				);
+				expect(dropdownItems[0]).toHaveTextContent(
+					'The current execution engine. It supports every node and setting.',
+				);
+				expect(dropdownItems[1]).toHaveTextContent(
+					"The next generation of the n8n execution engine. More scalable, performant, and reliable. Try it early, while it's in beta.",
+				);
+			});
+
+			it('shows no compatibility warning and runs no check when Settings opens', async () => {
+				const { checkWorkflow } = mockEngineV2Compatibility({ reasons });
+				workflowDocumentStore.setSettings({ engineType: 'v2' });
+
+				const { queryByText } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(queryByText(/compatibility issues? with Engine v2/)).not.toBeInTheDocument();
+				expect(checkWorkflow).not.toHaveBeenCalled();
+				expect(confirmEngineV2Switch).not.toHaveBeenCalled();
+			});
+
+			it('asks for confirmation when the user selects v2 and the workflow has issues', async () => {
+				mockEngineV2Compatibility({ reasons });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+				await selectEngine(getByTestId, 'v2');
+
+				expect(confirmEngineV2Switch).toHaveBeenCalledWith({
+					count: 2,
+					hasBlocking: true,
+					hasPublishedVersion: false,
+				});
+			});
+
+			it('tells the confirmation that the workflow has a published version', async () => {
+				mockEngineV2Compatibility({ reasons });
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'version-1',
+					activeVersion: mock<WorkflowHistory>({ versionId: 'version-1', settings: {} }),
+				});
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+				await selectEngine(getByTestId, 'v2');
+
+				expect(confirmEngineV2Switch).toHaveBeenCalledWith(
+					expect.objectContaining({ hasPublishedVersion: true }),
+				);
+			});
+
+			it('restores the earlier value on "Keep Engine v1", so Save sends no engineType', async () => {
+				mockEngineV2Compatibility({ reasons });
+				vi.mocked(confirmEngineV2Switch).mockResolvedValue(false);
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+				await selectEngine(getByTestId, 'v2');
+
+				expect(selectedEngine(getByTestId)).toBe('v1');
+				expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
+
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+				const [, data] = workflowsStore.updateWorkflow.mock.calls[0];
+				expect(data.settings).not.toHaveProperty('engineType');
+				expect(openEngineV2Findings).not.toHaveBeenCalled();
+			});
+
+			it('restores v1 on "Keep Engine v1" when v1 was stored', async () => {
+				mockEngineV2Compatibility({ reasons });
+				workflowDocumentStore.setSettings({ engineType: 'v1' });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+				await selectEngine(getByTestId, 'v2');
+
+				expect(selectedEngine(getByTestId)).toBe('v1');
+			});
+
+			it('saves v2 and opens the findings on "Switch and fix issues"', async () => {
+				mockEngineV2Compatibility({ reasons });
+				vi.mocked(confirmEngineV2Switch).mockResolvedValue(true);
+				workflowsStore.updateWorkflow.mockResolvedValue(createTestWorkflow({ id: '1' }));
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+				await selectEngine(getByTestId, 'v2');
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					'1',
+					expect.objectContaining({
+						settings: expect.objectContaining({ engineType: 'v2' }),
+					}),
+				);
+				expect(openEngineV2Findings).toHaveBeenCalledWith('1');
+			});
+
+			it('stays on v2 and opens no findings when the save fails', async () => {
+				mockEngineV2Compatibility({ reasons });
+				vi.mocked(confirmEngineV2Switch).mockResolvedValue(true);
+				workflowsStore.updateWorkflow.mockRejectedValue(new Error('Conflict'));
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+				await selectEngine(getByTestId, 'v2');
+
+				expect(toast.showError).toHaveBeenCalled();
+				expect(openEngineV2Findings).not.toHaveBeenCalled();
+				expect(selectedEngine(getByTestId)).toBe('v2 (Beta)');
+			});
+
+			it('asks nothing when the user selects v2 and the workflow has no issues', async () => {
+				mockEngineV2Compatibility({ reasons: [] });
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+				await selectEngine(getByTestId, 'v2');
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+
+				expect(confirmEngineV2Switch).not.toHaveBeenCalled();
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({ engineType: 'v2' }),
+					}),
+				);
+			});
+
+			it('asks nothing when the user selects v1', async () => {
+				mockEngineV2Compatibility({ reasons });
+				workflowDocumentStore.setSettings({ engineType: 'v2' });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+				await selectEngine(getByTestId, 'v1');
+
+				expect(confirmEngineV2Switch).not.toHaveBeenCalled();
+			});
+
+			it('checks the settings as Save sends them, so a redaction floor adds no issue', async () => {
+				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+				getSecuritySettings.mockResolvedValue({
+					...DEFAULT_SECURITY_SETTINGS,
+					redactionEnforcement: { floor: 'production' },
+				});
+				workflowDocumentStore.setSettings({ redactionPolicy: 'none' });
+				// The real rule: any redaction policy other than "none" is a warning.
+				const { checkWorkflow } = mockEngineV2Compatibility({
+					reasons: (workflow) =>
+						(workflow.settings?.redactionPolicy ?? 'none') === 'none' ? [] : [workflowReason],
+				});
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				// The floor shows production as redacted, but Save keeps the stored policy.
+				expect(
+					getByTestId('workflow-settings-redact-production-select').querySelector('input')?.value,
+				).toBe('Redact');
+				await selectEngine(getByTestId, 'v2');
+				expect(confirmEngineV2Switch).not.toHaveBeenCalled();
+
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+				const [, data] = workflowsStore.updateWorkflow.mock.calls[0];
+				expect(checkWorkflow).toHaveBeenLastCalledWith(
+					expect.objectContaining({
+						settings: expect.objectContaining({ redactionPolicy: data.settings?.redactionPolicy }),
+					}),
+				);
+			});
+
+			it('follows a change to another setting in the same form', async () => {
+				mockEngineV2Compatibility({
+					reasons: (workflow) =>
+						(workflow.settings?.redactionPolicy ?? 'none') === 'none' ? [] : [workflowReason],
+				});
+				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
+				projectsStore.personalProject = mock<Project>({
+					scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
+				});
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const dropdownItems = await getDropdownItems(
+					getByTestId('workflow-settings-redact-production-select'),
+				);
+				await userEvent.click(dropdownItems[1]);
+				await flushPromises();
+				await selectEngine(getByTestId, 'v2');
+
+				expect(confirmEngineV2Switch).toHaveBeenCalledWith({
+					count: 1,
+					hasBlocking: false,
+					hasPublishedVersion: false,
+				});
+			});
 		});
 
 		it('should disable the select if env is read-only', async () => {

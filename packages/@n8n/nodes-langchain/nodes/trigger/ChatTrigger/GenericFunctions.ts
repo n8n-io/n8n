@@ -11,7 +11,7 @@ import {
 	setChatOAuthToken,
 	setChatRefreshToken,
 } from './shell';
-import type { AuthenticationChatOption, ChatFrameIdentity, ChatShellSession } from './types';
+import type { ChatFrameIdentity, ChatShellSession } from './types';
 
 /** Absolute expiry for an access token the AS just minted, from the duration it reported. */
 function expiryFrom(expiresIn: number): number {
@@ -62,10 +62,7 @@ async function resolveCurrentSessionUserId(context: IWebhookFunctions): Promise<
  * `undefined` for the modes that identify nobody (`none`, `basicAuth`, `setup`).
  */
 export async function validateAuth(context: IWebhookFunctions): Promise<IUser | undefined> {
-	const authentication = context.getNodeParameter(
-		'authentication',
-		'none',
-	) as AuthenticationChatOption;
+	const authentication = context.getNodeParameter('authentication', 'none');
 	const req = context.getRequestObject();
 	const headers = context.getHeaderData();
 
@@ -156,6 +153,8 @@ export async function validateAuth(context: IWebhookFunctions): Promise<IUser | 
 				);
 			}
 		}
+	} else {
+		throw new ChatTriggerAuthorizationError(500, 'Unsupported authentication method!');
 	}
 
 	return;

@@ -1,7 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { EngineConfig, ExecutionsConfig } from '@n8n/config';
+import type { EngineConfig, ExecutionsConfig, PrometheusMetricsConfig } from '@n8n/config';
+import { readPoolStats } from '@n8n/db';
 import {
 	mintApprovalCallback,
 	mintResumeToken,
@@ -13,6 +14,7 @@ import {
 import type { V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
 import type { BinaryDataService } from 'n8n-core';
 import type { DataTableProxyProvider } from 'n8n-workflow';
+import { Registry } from 'prom-client';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -20,13 +22,13 @@ import type { CredentialsHelper } from '@/credentials-helper';
 import type { NodeTypesProxy } from '@n8n/backend-services';
 
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
-import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
-import type { EngineCredentialsClient } from '../engine-credentials-client';
-import type { EngineWorkflowResolveClient } from '../engine-workflow-resolve-client';
+import type { EngineControlPlaneTransport } from '../control-plane/engine-control-plane-transport';
+import type { EngineCredentialsClient } from '../credentials/engine-credentials-client';
+import type { EngineWorkflowResolveClient } from '../workflow-resolve/engine-workflow-resolve-client';
 import type { EngineMtls } from '../engine-mtls';
 import { EngineV2Runtime } from '../engine-v2.runtime';
-import { RemoteCredentialsHelper } from '../remote-credentials-helper';
-import { RemoteDataTableProxyProvider } from '../remote-data-table-proxy-provider';
+import { RemoteCredentialsHelper } from '../credentials/remote-credentials-helper';
+import { RemoteDataTableProxyProvider } from '../data-tables/remote-data-table-proxy-provider';
 
 // Hoisted so the `vi.mock` factories below, which vitest lifts above the imports,
 // can close over them.
@@ -125,6 +127,10 @@ vi.mock('@n8n/node-engine-compatibility', () => ({
 	createEngineStepDataLoader: mocks.createEngineStepDataLoader,
 	V1StepExecutor: mocks.V1StepExecutor,
 }));
+vi.mock('@n8n/db', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/db')>()),
+	readPoolStats: vi.fn(() => ({ active: 1, idle: 2, waiting: 3 })),
+}));
 
 describe('EngineV2Runtime', () => {
 	const engineConfig = (databaseUrl: string, overrides: Partial<EngineConfig> = {}) =>
@@ -161,6 +167,7 @@ describe('EngineV2Runtime', () => {
 		config: Partial<EngineConfig> = {},
 		executions: Partial<ExecutionsConfig> = {},
 		logger: Logger = mockLogger(),
+		metrics: Partial<PrometheusMetricsConfig> = {},
 	) =>
 		new EngineV2Runtime(
 			engineConfig(databaseUrl, config),
@@ -180,6 +187,7 @@ describe('EngineV2Runtime', () => {
 			credentialTypes,
 			additionalDataBuilder,
 			binaryDataService,
+			mock<PrometheusMetricsConfig>({ prefix: 'n8n_', includeDbPoolMetrics: true, ...metrics }),
 		);
 
 	const stepContext = {
@@ -585,6 +593,48 @@ describe('EngineV2Runtime', () => {
 			mocks.engine.stop.mockRejectedValueOnce(new Error('stop failed'));
 
 			await expect(newRuntime().init(initOptions())).rejects.toThrow('listen failed');
+		});
+	});
+
+	describe('metrics', () => {
+		const valueOf = async (registry: Registry, name: string) =>
+			(await registry.getSingleMetric(name)?.get())?.values[0]?.value;
+
+		it('reports the data plane pool on the registry it is given', async () => {
+			const registry = new Registry();
+
+			await newRuntime('postgres://engine', { databasePoolSize: 25 }).init({
+				...initOptions(),
+				metricsRegistry: registry,
+			});
+
+			expect(await valueOf(registry, 'n8n_engine_db_pool_requests_pending')).toBe(3);
+			expect(await valueOf(registry, 'n8n_engine_db_pool_connections_max')).toBe(25);
+			expect(readPoolStats).toHaveBeenCalledWith(mocks.dataSource);
+		});
+
+		it('reports no pool when N8N_METRICS_INCLUDE_DB_POOL_METRICS is off', async () => {
+			const registry = new Registry();
+
+			await newRuntime('postgres://engine', {}, {}, mockLogger(), {
+				includeDbPoolMetrics: false,
+			}).init({ ...initOptions(), metricsRegistry: registry });
+
+			expect(await registry.getMetricsAsJSON()).toEqual([]);
+		});
+
+		it('registers the pool again when init runs after a rollback', async () => {
+			const registry = new Registry();
+			const runtime = newRuntime();
+			mocks.listen.error = new Error('listen failed');
+			await expect(runtime.init({ ...initOptions(), metricsRegistry: registry })).rejects.toThrow(
+				'listen failed',
+			);
+			mocks.listen.error = undefined;
+
+			await runtime.init({ ...initOptions(), metricsRegistry: registry });
+
+			expect(await valueOf(registry, 'n8n_engine_db_pool_connections_max')).toBe(10);
 		});
 	});
 
