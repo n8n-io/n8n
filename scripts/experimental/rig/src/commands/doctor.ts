@@ -407,11 +407,16 @@ export function licenseChecks(env: RigEnv | undefined): Check[] {
 			hint: `Set another with \`${RIG} license default <name>\`.`,
 		});
 	} else {
-		checks.push({
-			status: 'info',
-			label: 'Default',
-			detail: configured ?? `none · ${RIG} create uses no license`,
-		});
+		const problems = configured ? licenseProblems(configured) : undefined;
+		checks.push(
+			configured && problems && problems.length > 0
+				? invalidLicenseCheck('Default', configured, problems)
+				: {
+						status: 'info',
+						label: 'Default',
+						detail: configured ?? `none · ${RIG} create uses no license`,
+					},
+		);
 	}
 	const name = env?.topology.license;
 	if (!env || !name) {
@@ -427,24 +432,32 @@ export function licenseChecks(env: RigEnv | undefined): Check[] {
 		});
 		return checks;
 	}
-	let problems: string[];
-	try {
-		problems = validateLicenseValues(readLicenseValues(name));
-	} catch {
-		// The "Secrets encryption" section reports a key that rig cannot read.
-		return checks;
-	}
+	const problems = licenseProblems(name);
+	if (!problems) return checks;
 	checks.push(
 		problems.length > 0
-			? {
-					status: 'warn',
-					label: env.name,
-					detail: `${name} is not valid: ${problems.join(' ')}`,
-					hint: 'n8n can reject it. Keep it only to test an invalid license.',
-				}
+			? invalidLicenseCheck(env.name, name, problems)
 			: { status: 'ok', label: env.name, detail: describeLicense(name) },
 	);
 	return checks;
+}
+
+/** Undefined when rig cannot read the license. The "Secrets encryption" section reports that. */
+function licenseProblems(name: string): string[] | undefined {
+	try {
+		return validateLicenseValues(readLicenseValues(name));
+	} catch {
+		return undefined;
+	}
+}
+
+function invalidLicenseCheck(label: string, name: string, problems: string[]): Check {
+	return {
+		status: 'warn',
+		label,
+		detail: `${name} is not valid: ${problems.join(' ')}`,
+		hint: 'n8n can reject it. Keep it only to test an invalid license.',
+	};
 }
 
 function toolChecks(): Check[] {

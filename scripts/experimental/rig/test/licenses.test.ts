@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { licenseChecks } from '../src/commands/doctor';
 import { loadTopology, parseTopology, saveTopology } from '../src/config/env-yaml';
 import { globalConfigFile, licenseFile, licensesDir } from '../src/config/paths';
 import { envPaths, listEnvNames } from '../src/environment';
@@ -58,6 +59,8 @@ describe('validateLicense', () => {
 			'The activation key is not a UUID.',
 		]);
 		expect(validateLicense({ ...cert, value: 'not base64!' })).toEqual(['The cert is not base64.']);
+		expect(validateLicense({ ...cert, value: 'abcde' })).toEqual(['The cert is not base64.']);
+		expect(validateLicense({ ...cert, value: 'abcdef=' })).toEqual(['The cert is not base64.']);
 		expect(validateLicense({ ...activation, tenantId: '' })).toEqual([
 			'N8N_LICENSE_TENANT_ID is missing.',
 		]);
@@ -67,6 +70,11 @@ describe('validateLicense', () => {
 		expect(validateLicense({ ...activation, serverUrl: 'ftp://x' })).toEqual([
 			'The server URL is not an http or https URL.',
 		]);
+	});
+
+	it('should accept a cert in base64url without padding', () => {
+		const value = CERT.replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+		expect(validateLicense({ ...cert, value })).toEqual([]);
 	});
 
 	it('should report a file with no key or with both keys', () => {
@@ -163,6 +171,28 @@ describe('licenseForNewEnv', () => {
 		createEnv('one', licenseForNewEnv(undefined));
 		setDefaultLicense('b');
 		expect(loadTopology(envPaths('one').envYaml).license).toBe('a');
+	});
+});
+
+describe('listLicenses', () => {
+	it('should ignore a directory with a license name', () => {
+		writeLicense('a', activation);
+		mkdirSync(licenseFile('b'), { recursive: true });
+		expect(listLicenses()).toEqual(['a']);
+		expect(() => licenseForNewEnv('b')).toThrow('License "b" does not exist.');
+	});
+});
+
+describe('licenseChecks', () => {
+	it('should warn when the default license is not valid', () => {
+		writeLicense('prod', { ...activation, value: 'not-a-uuid' });
+		expect(licenseChecks(undefined)).toEqual([
+			expect.objectContaining({
+				status: 'warn',
+				label: 'Default',
+				detail: 'prod is not valid: The activation key is not a UUID.',
+			}),
+		]);
 	});
 });
 

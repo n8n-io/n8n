@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 
 import { LICENSE_NAME_PATTERN, loadTopology } from './config/env-yaml';
 import { loadGlobalConfig, saveGlobalConfig } from './config/global-config';
@@ -48,12 +48,20 @@ export function listLicenses(): string[] {
 	return readdirSync(licensesDir())
 		.filter((file) => file.endsWith('.env'))
 		.map((file) => file.slice(0, -'.env'.length))
-		.filter((name) => LICENSE_NAME_PATTERN.test(name))
+		.filter(licenseExists)
 		.sort();
 }
 
 export function licenseExists(name: string): boolean {
-	return LICENSE_NAME_PATTERN.test(name) && existsSync(licenseFile(name));
+	return LICENSE_NAME_PATTERN.test(name) && isFile(licenseFile(name));
+}
+
+function isFile(path: string): boolean {
+	try {
+		return statSync(path).isFile();
+	} catch {
+		return false;
+	}
 }
 
 export function requireLicense(name: string): string {
@@ -123,7 +131,18 @@ export function validateActivationKey(value: string): string | undefined {
 
 export function validateCert(value: string): string | undefined {
 	if (!BASE64.test(value)) return 'The cert is not base64.';
-	if (Buffer.from(value, 'base64').length === 0) return 'The cert is empty.';
+	// Buffer.from ignores a bad length and bad padding. A canonical encoding
+	// survives a round trip.
+	const standard = value.replace(/-/g, '+').replace(/_/g, '/');
+	const unpadded = standard.replace(/=+$/, '');
+	const decoded = Buffer.from(standard, 'base64');
+	if (
+		(unpadded !== standard && standard.length % 4 !== 0) ||
+		decoded.toString('base64').replace(/=+$/, '') !== unpadded
+	) {
+		return 'The cert is not base64.';
+	}
+	if (decoded.length === 0) return 'The cert is empty.';
 	return undefined;
 }
 

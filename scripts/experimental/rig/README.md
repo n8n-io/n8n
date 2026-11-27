@@ -272,7 +272,8 @@ pnpm rig license rm stage
   be an `http` or `https` URL. When a check fails, `rig` asks if you want to
   add the license anyway, so you can test an invalid license. Without a
   terminal, add `--force`.
-- `rig` encrypts every value of a license file. See
+- `rig` encrypts every value of a license file. With the `off` secrets
+  backend, the values are in plaintext. See
   [Secrets encryption](#secrets-encryption).
 - The first license that you add becomes the default. `license add --default`
   or `license default <name>` changes it. `license.default` in the global
