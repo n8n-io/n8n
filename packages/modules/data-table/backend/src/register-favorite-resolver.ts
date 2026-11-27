@@ -14,5 +14,6 @@ export function registerFavoriteResolver() {
 					{ name, projectId },
 				]),
 			),
+		exists: async (id) => await dataTableRepository.existsBy({ id }),
 	});
 }

@@ -57,10 +57,12 @@ describe('FavoritesService', () => {
 	const dataTableResolver = {
 		globalReadScope: 'dataTable:read',
 		findMeta: vi.fn<FavoriteResourceResolver['findMeta']>(),
+		exists: vi.fn<FavoriteResourceResolver['exists']>(),
 	} satisfies FavoriteResourceResolver;
 	const agentResolver = {
 		globalReadScope: 'agent:read',
 		findMeta: vi.fn<FavoriteResourceResolver['findMeta']>(),
+		exists: vi.fn<FavoriteResourceResolver['exists']>(),
 	} satisfies FavoriteResourceResolver;
 	const resolverRegistry = new FavoriteResourceResolverRegistry();
 	resolverRegistry.register('dataTable', dataTableResolver);

@@ -14,6 +14,7 @@ export type ResolvedFavoriteResourceType = Extract<FavoriteResourceType, 'dataTa
 export interface FavoriteResourceResolver {
 	readonly globalReadScope: Scope;
 	findMeta(ids: string[]): Promise<Map<string, FavoriteResourceMeta>>;
+	exists(id: string): Promise<boolean>;
 }
 
 @Service()
