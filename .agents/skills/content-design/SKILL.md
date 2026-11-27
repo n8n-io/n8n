@@ -129,21 +129,10 @@ Only capitalize the first word and proper nouns.
 - Don't: "What Triggers This Workflow?", "Zoom In"
 
 **Periods.** A single sentence or fragment doesn't need one. If there are
-multiple sentences, all of them need one.
+multiple sentences (including in tooltips), all of them need one.
 - "Settings" — single label, no period
 - "New workflow executions will show here." — multiple sentences need periods
 - Not: "Settings."
-
-**Tooltips.** End every tooltip sentence with a period, including a tooltip
-that is only one sentence. A label, a button, and a placeholder are not
-tooltips: they stay without a trailing period.
-- Do: "Whether to save data of executions that fail."
-- Don't: "Whether to save data of executions that fail"
-
-**Settings labels.** Use sentence case. Capitalize the first word and proper
-nouns only.
-- Do: "Execution logic", "Timeout after", "Save failed production executions"
-- Don't: "Execution Logic", "Timeout After"
 
 **Contractions.** Use them. They keep the tone conversational.
 - Do: can't, don't, it's, you'll, we're
@@ -338,7 +327,6 @@ Before finalizing any copy, verify:
 - [ ] Terminology matches glossary exactly
 - [ ] Single fragments have no trailing period
 - [ ] Multi-sentence groups all have periods
-- [ ] Every tooltip sentence ends with a period
 - [ ] Button labels start with a verb
 - [ ] Destructive actions name the thing being destroyed
 - [ ] Error messages include what happened + what to do
