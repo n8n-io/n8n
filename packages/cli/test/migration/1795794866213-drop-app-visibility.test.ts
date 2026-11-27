@@ -143,6 +143,20 @@ describe('DropAppVisibility migration', () => {
 		expect(await versionIds()).toEqual([versionId]);
 	});
 
+	it('drops the column again when it runs after a revert', async () => {
+		const appId = await insertApp('sales', 'instance');
+		const versionId = await insertVersion(appId);
+		await migrate();
+		await revert();
+
+		await migrate();
+
+		const rows = await appRows();
+		expect(rows.map((row) => row.id)).toEqual([appId]);
+		expect(rows[0]).not.toHaveProperty('visibility');
+		expect(await versionIds()).toEqual([versionId]);
+	});
+
 	it('accepts only project or instance visibility after revert', async () => {
 		await migrate();
 
