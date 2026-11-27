@@ -163,6 +163,7 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 
 			expect(gated.started).toHaveLength(concurrency);
 			expect(gated.maxInFlight()).toBe(concurrency);
+			expect(await queue.size()).toBe(10 - concurrency);
 
 			gated.releaseAll();
 			await eventually(() => {
