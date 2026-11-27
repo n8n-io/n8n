@@ -66,8 +66,21 @@ describe('canonicalize', () => {
 		expect(canonicalize([undefined])).not.toBe(canonicalize([]));
 	});
 
+	it('reads an array hole as undefined', () => {
+		expect(canonicalize(new Array(1))).toBe(canonicalize([undefined]));
+		expect(canonicalize(new Array(1))).not.toBe(canonicalize([]));
+		expect(canonicalize(new Array(2).fill(1, 1))).toBe(canonicalize([undefined, 1]));
+	});
+
+	it('compares errors by name and treats all functions as equal', () => {
+		expect(canonicalize(new TypeError('a'))).toBe(canonicalize(new TypeError('b')));
+		expect(canonicalize(new TypeError('a'))).not.toBe(canonicalize(new RangeError('a')));
+		expect(canonicalize(() => 1)).toBe(canonicalize(() => 2));
+	});
+
 	it('gives up on values that are too large to compare', () => {
 		expect(canonicalize(new Array(20_000).fill(1))).toBeUndefined();
+		expect(canonicalize(new Array(20_000))).toBeUndefined();
 		expect(canonicalize('x'.repeat(2_000_000))).toBeUndefined();
 		expect(canonicalize({ a: 'x'.repeat(600_000), b: 'y'.repeat(600_000) })).toBeUndefined();
 	});

@@ -90,7 +90,8 @@ function writeCanonical(value: unknown, state: CanonicalState): string {
 
 function writeContainer(value: object, state: CanonicalState): string {
 	if (Array.isArray(value)) {
-		return `[${value.map((entry) => writeCanonical(entry, state)).join(',')}]`;
+		// `Array.from` reads a hole as undefined, so each hole counts against the node limit.
+		return `[${Array.from(value, (entry) => writeCanonical(entry, state)).join(',')}]`;
 	}
 	if (value instanceof Map) {
 		const entries = [...value.entries()].map(
