@@ -16,6 +16,7 @@ import type { TypeAvailabilityPolicyRepository } from '../database/repositories/
 import { TypeAvailabilityPolicy } from '../database/entities/type-availability-policy.entity';
 import { TypeAvailabilityPolicyScope } from '../database/entities/type-availability-policy-scope.entity';
 import { unconfiguredScope, type EffectivePolicy } from '../effective-policy';
+import type { ListTypes } from '../listed-node-types';
 import type { PolicyAttachment, PolicyRule } from '../policy-rule.types';
 import type { TypeAvailabilityPolicySnapshot } from '../type-availability-policy-snapshot';
 import {
@@ -2040,6 +2041,273 @@ describe('TypeAvailabilityPolicyService', () => {
 					{ name: 'googleOAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
 				]);
 			});
+		});
+	});
+
+	describe('getProjectAccess', () => {
+		const PROJECT_ID = 'project-1';
+		const SLACK = 'n8n-nodes-base.slack';
+		const NOTION = 'n8n-nodes-base.notion';
+		const GMAIL = 'n8n-nodes-base.gmail';
+		const GMAIL_TOOL = 'n8n-nodes-base.gmailTool';
+
+		type ScopeSetup = {
+			rules: PolicyRule[];
+			defaultAction?: TypeAvailabilityPolicyScope['defaultAction'];
+			version?: number;
+		};
+
+		/** `project: null` leaves the project without a scope row. */
+		function givenScopes(instance: ScopeSetup, project: ScopeSetup | null) {
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async (_kind, projectId) => {
+				const setup = projectId === null ? instance : project;
+				if (!setup) return null;
+				return makeScope({
+					id: projectId === null ? 'instance-scope' : 'project-scope',
+					projectId,
+					defaultAction: setup.defaultAction ?? 'allow',
+					version: setup.version ?? 1,
+				});
+			});
+			attachmentRepository.listAttachmentsForScope.mockImplementation(async (scopeId) => [
+				{
+					policyId: `${scopeId}-policy`,
+					rules: scopeId === 'instance-scope' ? instance.rules : (project?.rules ?? []),
+					priority: 0,
+					isFloor: false,
+				},
+			]);
+		}
+
+		const delegateNotion: PolicyRule = {
+			id: 'delegate-notion',
+			action: 'delegate',
+			selector: { kind: 'name', value: NOTION },
+		};
+
+		it('reports a delegated type that the project opts in to as allowed by the project', async () => {
+			givenScopes(
+				{ rules: [delegateNotion] },
+				{
+					rules: [
+						{ id: 'allow-notion', action: 'allow', selector: { kind: 'name', value: NOTION } },
+					],
+				},
+			);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [NOTION]);
+
+			expect(result.types).toEqual([
+				{
+					name: NOTION,
+					access: 'allow',
+					scope: 'project',
+					matchedRuleId: 'allow-notion',
+					optInAvailable: false,
+				},
+			]);
+		});
+
+		it('reports a type that the instance restricts as restricted by the instance', async () => {
+			givenScopes(
+				{ rules: [{ id: 'deny-slack', action: 'deny', selector: { kind: 'name', value: SLACK } }] },
+				{
+					rules: [{ id: 'allow-slack', action: 'allow', selector: { kind: 'name', value: SLACK } }],
+				},
+			);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [SLACK]);
+
+			expect(result.types).toEqual([
+				{
+					name: SLACK,
+					access: 'deny',
+					scope: 'instance',
+					matchedRuleId: 'deny-slack',
+					optInAvailable: false,
+				},
+			]);
+		});
+
+		it('reports a delegated type without an opt-in as restricted by the instance, with opt-in available', async () => {
+			givenScopes({ rules: [delegateNotion] }, null);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [NOTION]);
+
+			expect(result.types).toEqual([
+				{
+					name: NOTION,
+					access: 'deny',
+					scope: 'instance',
+					matchedRuleId: 'delegate-notion',
+					optInAvailable: true,
+				},
+			]);
+		});
+
+		it('reports a delegated type under a project deny default as restricted by the project, with opt-in available', async () => {
+			givenScopes({ rules: [delegateNotion] }, { rules: [], defaultAction: 'deny' });
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [NOTION]);
+
+			expect(result.types).toEqual([
+				{
+					name: NOTION,
+					access: 'deny',
+					scope: 'project',
+					matchedRuleId: null,
+					optInAvailable: true,
+				},
+			]);
+		});
+
+		it('reports a type that only the project restricts as restricted by the project', async () => {
+			givenScopes(
+				{ rules: [] },
+				{ rules: [{ id: 'deny-gmail', action: 'deny', selector: { kind: 'name', value: GMAIL } }] },
+			);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [GMAIL, SLACK]);
+
+			expect(result.types).toEqual([
+				{
+					name: GMAIL,
+					access: 'deny',
+					scope: 'project',
+					matchedRuleId: 'deny-gmail',
+					optInAvailable: false,
+				},
+				{
+					name: SLACK,
+					access: 'allow',
+					scope: 'instance',
+					matchedRuleId: null,
+					optInAvailable: false,
+				},
+			]);
+		});
+
+		it('reports the version of each scope it read', async () => {
+			givenScopes({ rules: [], version: 7 }, { rules: [], version: 3 });
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [SLACK]);
+
+			expect(result).toMatchObject({ instanceVersion: 7, projectVersion: 3 });
+		});
+
+		it('reports version 0 for a project without a policy', async () => {
+			givenScopes({ rules: [], version: 7 }, null);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [SLACK]);
+
+			expect(result).toMatchObject({ instanceVersion: 7, projectVersion: 0 });
+		});
+
+		it('throws ProjectNotFoundError for an unknown project, before reading a scope', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([]);
+
+			await expect(service.getProjectAccess(KIND, PROJECT_ID, [SLACK])).rejects.toThrow(
+				ProjectNotFoundError,
+			);
+			expect(scopeRepository.findScopeByKindAndProject).not.toHaveBeenCalled();
+		});
+
+		it('reports the instance rows for a personal project', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([{ id: PROJECT_ID, type: 'personal' }]);
+			givenScopes(
+				{
+					rules: [{ id: 'deny-slack', action: 'deny', selector: { kind: 'name', value: SLACK } }],
+					version: 7,
+				},
+				null,
+			);
+
+			const result = await service.getProjectAccess(KIND, PROJECT_ID, [SLACK]);
+
+			expect(result).toMatchObject({ instanceVersion: 7, projectVersion: 0 });
+			expect(result.types).toEqual([
+				expect.objectContaining({ name: SLACK, access: 'deny', scope: 'instance' }),
+			]);
+		});
+
+		it('reads the database, not the snapshot', async () => {
+			givenScopes({ rules: [] }, { rules: [] });
+
+			await service.getProjectAccess(KIND, PROJECT_ID, [SLACK]);
+
+			expect(snapshot.read).not.toHaveBeenCalled();
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledWith(KIND, null, ROOT);
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledWith(
+				KIND,
+				PROJECT_ID,
+				ROOT,
+			);
+		});
+
+		it('lists each scope against its own rules, and keeps a row that either scope lists', async () => {
+			const denyGmailTool: PolicyRule = {
+				id: 'deny-gmail-tool',
+				action: 'deny',
+				selector: { kind: 'name', value: GMAIL_TOOL },
+			};
+			givenScopes({ rules: [delegateNotion] }, { rules: [denyGmailTool] });
+			const listTypesCalls: Array<[unknown[], readonly PolicyRule[]]> = [];
+			// Lists a tool variant only when a rule decides it, as `listedNodeTypes` does.
+			const listTypes: ListTypes = (types, rules) => {
+				listTypesCalls.push([[...types], rules]);
+				return types.filter((type) => type.name !== GMAIL_TOOL || type.matchedRuleId !== null);
+			};
+
+			const result = await service.getProjectAccess(
+				KIND,
+				PROJECT_ID,
+				[NOTION, GMAIL, GMAIL_TOOL],
+				listTypes,
+			);
+
+			expect(listTypesCalls).toEqual([
+				[
+					[
+						expect.objectContaining({ name: NOTION, matchedRuleId: 'delegate-notion' }),
+						expect.objectContaining({ name: GMAIL, matchedRuleId: null }),
+						expect.objectContaining({ name: GMAIL_TOOL, matchedRuleId: null }),
+					],
+					[delegateNotion],
+				],
+				[
+					[
+						expect.objectContaining({ name: NOTION, matchedRuleId: null }),
+						expect.objectContaining({ name: GMAIL, matchedRuleId: null }),
+						expect.objectContaining({ name: GMAIL_TOOL, matchedRuleId: 'deny-gmail-tool' }),
+					],
+					[denyGmailTool],
+				],
+			]);
+			expect(result.types).toEqual([
+				expect.objectContaining({ name: NOTION, scope: 'instance' }),
+				expect.objectContaining({ name: GMAIL, scope: 'instance' }),
+				{
+					name: GMAIL_TOOL,
+					access: 'deny',
+					scope: 'project',
+					matchedRuleId: 'deny-gmail-tool',
+					optInAvailable: false,
+				},
+			]);
+		});
+
+		it('adds no row when neither scope lists the type', async () => {
+			givenScopes({ rules: [] }, { rules: [] });
+			const listTypes: ListTypes = (types) => types.filter((type) => type.name !== GMAIL_TOOL);
+
+			const result = await service.getProjectAccess(
+				KIND,
+				PROJECT_ID,
+				[GMAIL, GMAIL_TOOL],
+				listTypes,
+			);
+
+			expect(result.types.map((type) => type.name)).toEqual([GMAIL]);
 		});
 	});
 

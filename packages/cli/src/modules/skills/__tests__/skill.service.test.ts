@@ -23,6 +23,7 @@ import type { Skill } from '../database/entities/skill.entity';
 import { SkillSyncedError } from '../errors/skill-synced.error';
 import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
 import { getSkillHash } from '../utils/skill-hash';
+import { SKILL_WORKFLOW_MENTION_HINT } from '../utils/skill-workflow-mention-hint';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
@@ -45,6 +46,7 @@ describe('SkillService', () => {
 		users,
 		links,
 		skillSyncGate,
+		workflowsInSkillsGate,
 		service,
 	} = createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
@@ -1384,6 +1386,59 @@ describe('SkillService', () => {
 
 		it('does not read a missing skill', async () => {
 			expect(await service.readForMcp(user, 'missing')).toBeNull();
+		});
+
+		describe('a skill that mentions a workflow', () => {
+			const mentioning = 'Run [Report](n8n://workflow/wf-1).';
+
+			function useSkill(
+				instructions: string,
+				files: Array<{ path: string; content: string }> = [],
+			) {
+				const row = versionRow(
+					skillRow('skill-4', { projectId: 'project-1' }),
+					1,
+					{ instructions },
+					files,
+				);
+				row.skill.availableToMCP = true;
+				projectScope.getProjectIds.mockResolvedValue(['project-1']);
+				skills.findLatestSaved.mockResolvedValue(new Map([['skill-4', row]]));
+				skills.findLatestVersionIds.mockResolvedValue(new Map([['skill-4', row.version.id]]));
+				skills.findVersionsByIds.mockResolvedValue(new Map([[row.version.id, row]]));
+				skills.findVisiblePage.mockResolvedValue({ skills: [row.skill], count: 1 });
+			}
+
+			it('adds the workflow hint to the instructions when the flag is on', async () => {
+				workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+				useSkill(mentioning);
+				const expected = `${mentioning}\n\n${SKILL_WORKFLOW_MENTION_HINT}`;
+
+				expect((await service.readForMcp(user, 'skill-4'))?.skill.instructions).toBe(expected);
+				expect((await service.listForMcp(user, 0, 50)).skills[0].content?.skill.instructions).toBe(
+					expected,
+				);
+			});
+
+			it('keeps the instructions when the flag is off', async () => {
+				workflowsInSkillsGate.isEnabled.mockResolvedValue(false);
+				useSkill(mentioning);
+
+				expect((await service.readForMcp(user, 'skill-4'))?.skill.instructions).toBe(mentioning);
+				expect((await service.listForMcp(user, 0, 50)).skills[0].content?.skill.instructions).toBe(
+					mentioning,
+				);
+			});
+
+			it('adds the workflow hint to the instructions when only a reference mentions a workflow', async () => {
+				workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
+				useSkill('Be brief.', [{ path: 'references/run.md', content: mentioning }]);
+
+				const skill = (await service.listForMcp(user, 0, 50)).skills[0].content?.skill;
+
+				expect(skill?.instructions).toBe(`Be brief.\n\n${SKILL_WORKFLOW_MENTION_HINT}`);
+				expect(skill?.references).toEqual([{ path: 'references/run.md', content: mentioning }]);
+			});
 		});
 
 		describe('the origin of a synced skill', () => {

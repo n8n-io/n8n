@@ -34,6 +34,7 @@ describe('public API', () => {
 			'skillScopeOf',
 			'skillSourceReasonOf',
 			'toSkillToolRefusal',
+			'withSkillWorkflowMentionHint',
 			'withTrimmedName',
 			'withUnsentSkillFiles',
 		]);

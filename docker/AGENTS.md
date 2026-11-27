@@ -79,7 +79,9 @@ a multi-arch manifest for each tag.
    minor, `sec-base-image-refresh.yml` opens this PR
    (`build: Update Node to <version>`) when every pin publishes the patch.
 2. Pin `RUNTIME_IMAGE`, `DEBIAN_RUNTIME_IMAGE`, `N8N_BUILDER_IMAGE`, and
-   `PC_BUILDER_IMAGE`.
+   `PC_BUILDER_IMAGE` in one PR, so the Alpine and the Debian images move to
+   the new Node together. After the merge of the Node PR, the chain job of
+   `sec-base-image-refresh.yml` opens this PR when both workflows published.
 
 For a Node 24 update, change `NODE_24_DHI_REF` and `NODE_24_VERSION`. After
 master publishes `n8nio/base` and `n8nio/node-patched:*-dev`, pin

@@ -29,7 +29,7 @@ describe('withSkillWorkflowTools', () => {
 
 		const result = withSkillWorkflowTools(config(['skill-1']), skills);
 
-		expect(result.tools).toEqual([
+		expect(result.config.tools).toEqual([
 			{
 				type: 'workflow',
 				workflowId: 'wf1',
@@ -48,9 +48,9 @@ describe('withSkillWorkflowTools', () => {
 
 		const result = withSkillWorkflowTools(config(['skill-1']), skills);
 
-		expect(result.tools?.map((tool) => tool.type === 'workflow' && tool.workflowId)).toEqual([
-			'wf2',
-		]);
+		expect(result.config.tools?.map((tool) => tool.type === 'workflow' && tool.workflowId)).toEqual(
+			['wf2'],
+		);
 	});
 
 	it('gives two skills that mention the same workflow one tool', () => {
@@ -61,10 +61,16 @@ describe('withSkillWorkflowTools', () => {
 
 		const result = withSkillWorkflowTools(config(['skill-1', 'skill-2']), skills);
 
-		expect(result.tools).toEqual([
+		expect(result.config.tools).toEqual([
 			expect.objectContaining({ workflowId: 'wf1', name: 'workflow_wf1', workflow: 'Get code' }),
 			expect.objectContaining({ workflowId: 'wf2', name: 'workflow_wf2', workflow: 'Other' }),
 		]);
+		expect(result.skillIdsByWorkflowId).toEqual(
+			new Map([
+				['wf1', ['skill-1', 'skill-2']],
+				['wf2', ['skill-2']],
+			]),
+		);
 	});
 
 	it('keeps the direct tool of a mentioned workflow and adds the workflow ID to its description', () => {
@@ -80,7 +86,9 @@ describe('withSkillWorkflowTools', () => {
 
 		const result = withSkillWorkflowTools(config(['skill-1'], [direct]), skills);
 
-		expect(result.tools).toEqual([{ ...direct, description: 'Fetch the code. Workflow ID: wf1.' }]);
+		expect(result.config.tools).toEqual([
+			{ ...direct, description: 'Fetch the code. Workflow ID: wf1.' },
+		]);
 	});
 
 	it('adds the workflow ID to the default description of a direct tool', () => {
@@ -93,7 +101,7 @@ describe('withSkillWorkflowTools', () => {
 
 		const result = withSkillWorkflowTools(config(['skill-1'], [direct]), skills);
 
-		expect(result.tools).toEqual([
+		expect(result.config.tools).toEqual([
 			{ ...direct, description: 'Execute the "Get code" workflow. Workflow ID: wf1.' },
 		]);
 	});
@@ -108,7 +116,7 @@ describe('withSkillWorkflowTools', () => {
 			new Map([['Get code', { id: 'wf1' }]]),
 		);
 
-		expect(result.tools).toEqual([
+		expect(result.config.tools).toEqual([
 			{ ...direct, description: 'Execute the "Get code" workflow. Workflow ID: wf1.' },
 		]);
 	});
@@ -116,7 +124,7 @@ describe('withSkillWorkflowTools', () => {
 	it('uses the workflow ID as the name when the link text is empty', () => {
 		const skills = { 'skill-1': skill('Skill', '[](n8n://workflow/wf1)') };
 
-		const [tool] = withSkillWorkflowTools(config(['skill-1']), skills).tools ?? [];
+		const [tool] = withSkillWorkflowTools(config(['skill-1']), skills).config.tools ?? [];
 
 		expect(tool).toEqual(expect.objectContaining({ workflow: 'wf1', name: 'workflow_wf1' }));
 	});
@@ -132,7 +140,7 @@ describe('withSkillWorkflowTools', () => {
 
 		const result = withSkillWorkflowTools(config(['skill-1'], [direct]), skills);
 
-		expect(result.tools).toEqual([direct]);
+		expect(result.config.tools).toEqual([direct]);
 		expect(findSkillWorkflowTools(config(['skill-1'], [direct]), skills)).toEqual([]);
 	});
 
@@ -142,25 +150,27 @@ describe('withSkillWorkflowTools', () => {
 
 		const result = withSkillWorkflowTools(config(['skill-1'], [custom]), skills);
 
-		expect(result.tools).toEqual([custom]);
+		expect(result.config.tools).toEqual([custom]);
 	});
 
 	it('ignores skills that are not attached or have no body', () => {
 		const skills = { 'skill-2': skill('Other', '[Get code](n8n://workflow/wf1)') };
 		const input = config(['skill-1']);
 
-		expect(withSkillWorkflowTools(input, skills)).toBe(input);
+		expect(withSkillWorkflowTools(input, skills).config).toBe(input);
 	});
 
 	it('returns the same config when no skill mentions a workflow', () => {
 		const input = config(['skill-1']);
 
-		expect(withSkillWorkflowTools(input, { 'skill-1': skill('Skill', 'No links.') })).toBe(input);
+		expect(withSkillWorkflowTools(input, { 'skill-1': skill('Skill', 'No links.') }).config).toBe(
+			input,
+		);
 	});
 });
 
 describe('findSkillWorkflowTools', () => {
-	it('returns the skill of the first mention and leaves out directly attached workflows', () => {
+	it('returns every skill that mentions a workflow and leaves out directly attached workflows', () => {
 		const direct: AgentJsonToolConfig = {
 			type: 'workflow',
 			workflowId: 'wf1',
@@ -174,7 +184,10 @@ describe('findSkillWorkflowTools', () => {
 		const result = findSkillWorkflowTools(config(['skill-1', 'skill-2'], [direct]), skills);
 
 		expect(result).toEqual([
-			{ skillId: 'skill-1', tool: expect.objectContaining({ workflowId: 'wf2' }) },
+			{
+				skillIds: ['skill-1', 'skill-2'],
+				tool: expect.objectContaining({ workflowId: 'wf2' }),
+			},
 		]);
 	});
 });
