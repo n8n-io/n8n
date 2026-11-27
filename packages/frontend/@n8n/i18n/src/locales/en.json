@@ -10802,7 +10802,7 @@
 	"agents.builder.skills.workflowMentions.note.outsideProject": "Agents in this skill's project can't use this workflow. Share it with this project and set 'This workflow can be called by' to 'Any workflow'.",
 	"agents.builder.skills.workflowMentions.note.mcpUnavailable": "To run this workflow from MCP, turn on 'Available in MCP' in the workflow settings.",
 	"agents.builder.skills.workflowMentions.note.unpublished": "To use this workflow in a published agent, publish the workflow.",
-	"agents.builder.skills.workflowMentions.projectSkillsOnly": "Workflows work only in project skills.",
+	"agents.builder.skills.workflowMentions.projectSkillsOnly": "Workflows can be added only to project scoped skills.",
 	"agents.builder.skills.workflowMentions.scope.instanceBlocked": "Remove the workflows from this skill to make it global.",
 	"agents.builder.skills.workflowMentions.scope.projectBlocked": "Remove the workflows from this skill to move it to another project.",
 	"agents.builder.skills.workflowMentions.searchPlaceholder": "Search workflows",

@@ -23,7 +23,7 @@ export function hasWorkflowMentions(skill: SkillTexts): boolean {
 }
 
 export const INSTANCE_SKILL_WORKFLOWS_MESSAGE =
-	'Workflows work only in project skills. Remove the workflows from this skill, or save it in a project.';
+	'Workflows can be added only to project scoped skills. Remove the workflows from this skill, or save it in a project.';
 
 export function skillWithWorkflowsMoveMessage(toInstance: boolean): string {
 	return toInstance

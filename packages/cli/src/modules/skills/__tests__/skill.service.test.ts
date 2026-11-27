@@ -1073,7 +1073,7 @@ describe('SkillService', () => {
 	describe('workflows only in project skills', () => {
 		const withMention = 'Run [Report](n8n://workflow/wf1).';
 		const instanceMessage =
-			'Workflows work only in project skills. Remove the workflows from this skill, or save it in a project.';
+			'Workflows can be added only to project scoped skills. Remove the workflows from this skill, or save it in a project.';
 
 		function givenStored(projectId: string | null, instructions: string) {
 			const skill = skillRow('skill_a', { projectId });

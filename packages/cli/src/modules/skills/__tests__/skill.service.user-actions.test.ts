@@ -847,6 +847,7 @@ describe('SkillService user actions', () => {
 				// A refusal names only the agents in projects the user may read.
 				{
 					nameAfterMove: undefined,
+					contentAfterMove: { instructions: undefined, references: undefined },
 					checkedSource: { projectId: null },
 					agentProjectIds: ['project-1'],
 				},

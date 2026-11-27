@@ -1116,7 +1116,7 @@ describe('SkillsController', () => {
 				.expect(400);
 
 			expect(refused.message).toBe(
-				'Workflows work only in project skills. Remove the workflows from this skill, or save it in a project.',
+				'Workflows can be added only to project scoped skills. Remove the workflows from this skill, or save it in a project.',
 			);
 		});
 

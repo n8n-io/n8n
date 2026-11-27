@@ -148,7 +148,7 @@ describe('AgentSkillFileNav', () => {
 			byTestId(container, 'agent-skill-workflows-project-only')?.id,
 		);
 		expect(byTestId(container, 'agent-skill-workflows-project-only')).toHaveTextContent(
-			'Workflows work only in project skills.',
+			'Workflows can be added only to project scoped skills.',
 		);
 		expect(byTestId(container, 'picker-stub')).toBeNull();
 		expect(container.querySelectorAll('[data-testid="agent-skill-workflow-item"]')).toHaveLength(2);
