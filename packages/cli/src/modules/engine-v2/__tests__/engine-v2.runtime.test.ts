@@ -638,12 +638,19 @@ describe('EngineV2Runtime', () => {
 
 			expect(engineOptions().queues).not.toBe(options.queues);
 			expect(registry.getSingleMetric('n8n_engine_queue_depth')).toBeDefined();
-			engineOptions().instrumentation?.wrapStores({
-				executionStore: {},
+			const finishExecution = vi.fn().mockResolvedValue({ finishedAt: new Date() });
+			const stores = engineOptions().instrumentation?.wrapStores({
+				executionStore: { finishExecution },
 				stepStore: {},
 				executionViewStore: {},
-			});
-			expect(registry.getSingleMetric('n8n_engine_executions_finished_total')).toBeDefined();
+			}) as {
+				executionStore: { finishExecution: (id: string, status: string) => Promise<unknown> };
+			};
+			await stores.executionStore.finishExecution('e1', 'completed');
+			expect(finishExecution).toHaveBeenCalledWith('e1', 'completed');
+			expect(await registry.metrics()).toContain(
+				'n8n_engine_executions_finished_total{status="completed"} 1',
+			);
 			const executor = externalDependencies({ executionStore: {}, stepStore: {} })
 				.v1StepExecutor as { execute: (request: unknown) => Promise<unknown> };
 			expect(executor).not.toBe(mocks.v1StepExecutor);
