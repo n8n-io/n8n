@@ -1,3 +1,16 @@
+## [2.50.3](https://github.com/n8n-io/n8n/compare/n8n@2.50.2...n8n@2.50.3) (2026-11-27)
+
+
+### Bug Fixes
+
+* **editor:** Show a stopped agent chat run as a status line ([#45273](https://github.com/n8n-io/n8n/issues/45273)) ([a5310b6](https://github.com/n8n-io/n8n/commit/a5310b6e2540a01c181879a0b79ea2bbde7e35c9))
+
+
+### Features
+
+* **editor:** Show thinking and tool calls in one shared activity trace ([#45370](https://github.com/n8n-io/n8n/issues/45370)) ([3aff99e](https://github.com/n8n-io/n8n/commit/3aff99e9a64ba258dedc64d76964efc79da13cdd))
+
+
 ## [2.50.2](https://github.com/n8n-io/n8n/compare/n8n@2.50.1...n8n@2.50.2) (2026-11-26)
 
 
