@@ -201,7 +201,8 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	async loadDeadline(id: string): Promise<Date | null> {
-		const row = await this.repo.findOne({ select: { deadline: true }, where: { id } });
+		// With the id: TypeORM drops a row whose selected columns are all null.
+		const row = await this.repo.findOne({ select: { id: true, deadline: true }, where: { id } });
 		if (!row) throw new ExecutionNotFoundError(id);
 		return row.deadline;
 	}
