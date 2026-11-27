@@ -2086,6 +2086,33 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 	});
 
+	describe('the recorded trigger on workflow events', () => {
+		it.each([getLifecycleHooksForRegularMain, getLifecycleHooksForScalingMain])(
+			'keeps the recorded trigger when an early failure returns new run data (%s)',
+			async (createHooks) => {
+				const hooks = createHooks(
+					{
+						executionMode: 'webhook',
+						workflowData,
+						executionData: createRunExecutionData({
+							startData: { triggerNodeType: 'n8n-nodes-base.webhook' },
+						}),
+					},
+					executionId,
+				);
+				const run = { ...successfulRun, data: createRunExecutionData() };
+
+				await hooks.runHook('workflowExecuteAfter', [run, {}]);
+
+				expect(run.data.startData?.triggerNodeType).toBe('n8n-nodes-base.webhook');
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'workflow-post-execute',
+					expect.objectContaining({ runData: run }),
+				);
+			},
+		);
+	});
+
 	describe('getLifecycleHooksForScalingMain', () => {
 		beforeEach(() => {
 			lifecycleHooks = getLifecycleHooksForScalingMain(

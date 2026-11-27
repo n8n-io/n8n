@@ -184,6 +184,7 @@ function hookFunctionsWorkflowEvents(
 	source?: IWorkflowExecutionDataProcess['source'],
 	telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'],
 	parentAgentRun?: RelatedAgentRun,
+	triggerNodeType?: string | null,
 ) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('workflowExecuteBefore', function () {
@@ -218,6 +219,11 @@ function hookFunctionsWorkflowEvents(
 		}
 
 		const { executionId, workflowData: workflow } = this;
+
+		// Early failures can return a new run object without the recorded start data.
+		if (runData.data.startData?.triggerNodeType === undefined && triggerNodeType !== undefined) {
+			(runData.data.startData ??= {}).triggerNodeType = triggerNodeType;
+		}
 
 		if (runData.data.startData) {
 			const originalDestination = runData.data.startData.originalDestinationNode;
@@ -1146,6 +1152,7 @@ export function getLifecycleHooksForScalingMain(
 		source,
 		telemetryMetadata,
 		data.executionData?.parentAgentRun,
+		data.executionData?.startData?.triggerNodeType,
 	);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsPreExecute(hooks, source);
@@ -1266,6 +1273,7 @@ export function getLifecycleHooksForRegularMain(
 		source,
 		telemetryMetadata,
 		data.executionData?.parentAgentRun,
+		data.executionData?.startData?.triggerNodeType,
 	);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
