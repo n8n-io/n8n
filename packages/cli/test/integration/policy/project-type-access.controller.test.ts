@@ -1,12 +1,13 @@
 import {
 	createTeamProject,
+	getPersonalProject,
 	linkUserToProject,
 	mockInstance,
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { PolicyRule } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ProjectRepository, type Project, type User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -130,9 +131,7 @@ describe('GET /projects/:projectId/<kind>/project/access gating', () => {
 	test.each([NODE_KIND_ROUTE, CREDENTIAL_KIND_ROUTE])(
 		'%s rejects the owner of a personal project with 403 for that project',
 		async (kindRoute) => {
-			const personalProject = await Container.get(
-				ProjectRepository,
-			).getPersonalProjectForUserOrFail(projectEditor.id);
+			const personalProject = await getPersonalProject(projectEditor);
 
 			const response = await readAccess(kindRoute, projectEditor, personalProject.id);
 
@@ -161,9 +160,7 @@ describe('GET /projects/:projectId/<kind>/project/access gating', () => {
 	test.each([NODE_KIND_ROUTE, CREDENTIAL_KIND_ROUTE])(
 		'%s reads a personal project for an owner, with project version 0',
 		async (kindRoute) => {
-			const personalProject = await Container.get(
-				ProjectRepository,
-			).getPersonalProjectForUserOrFail(projectEditor.id);
+			const personalProject = await getPersonalProject(projectEditor);
 
 			const response = await readAccess(kindRoute, owner, personalProject.id);
 
