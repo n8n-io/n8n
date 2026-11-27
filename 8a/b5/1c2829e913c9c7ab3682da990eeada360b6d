@@ -1,0 +1,52 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_08ad1fe1d43e02::t_72de92a429d911 3001,3022-3023,3024-3036,3038-3040
+  s_08ad1fe1d43e02::t_555b3a519ff516 2918-2921,2967,3014,3052,3037
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_08ad1fe1d43e02::t_802edc3d53c36c 3706-3708,3709-3718,3720-3733,3741-3743,3755-3761
+  s_08ad1fe1d43e02::t_0f6b3033a5ef7e 475
+  s_08ad1fe1d43e02::t_555b3a519ff516 3625,3629,3642
+  s_08ad1fe1d43e02::t_8e89d678a88bc9 3719,3734-3736
+  s_08ad1fe1d43e02::t_0334ac323077d8 17
+  s_08ad1fe1d43e02::t_72de92a429d911 476,3737-3740,3744,3746-3754
+  s_08ad1fe1d43e02::t_d6c67e18bf1ef4 3745
+packages/frontend/editor-ui/src/features/agents/components/AgentTestChatPage.vue
+  s_08ad1fe1d43e02::t_739ccc2015b9e6 34,147
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 109
+  s_08ad1fe1d43e02::t_505156e776bf75 35,148
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_08ad1fe1d43e02::t_392596019c0558 90
+  s_08ad1fe1d43e02::t_739ccc2015b9e6 193-194,1148-1149,2083
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 1052,1384,1405,1468,1503,1522,1533,1595,1663,1668,1705
+  s_08ad1fe1d43e02::t_1ff82eb16c5712 38
+  s_08ad1fe1d43e02::t_505156e776bf75 195-196,2084
+packages/frontend/editor-ui/src/features/agents/components/AgentScheduleTestNotice.vue
+  s_08ad1fe1d43e02::t_505156e776bf75 14,2-3,6-13,35-40,46,53
+  s_08ad1fe1d43e02::t_739ccc2015b9e6 41-45,47-52
+packages/frontend/editor-ui/src/features/agents/components/AgentTestDock.vue
+  s_08ad1fe1d43e02::t_739ccc2015b9e6 64,353
+  s_08ad1fe1d43e02::t_1ff82eb16c5712 2
+  s_08ad1fe1d43e02::t_505156e776bf75 65,354
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 1374,1383-1386
+  s_08ad1fe1d43e02::t_1909f8fc22b434 3782,3940
+  s_08ad1fe1d43e02::t_505156e776bf75 3783,3941
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_08ad1fe1d43e02::t_a8b284c26d12e3 305-306,314,317-318
+  ai_agent 315-316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8ab51c2829e913c9c7ab3682da990eeada360b6d",
+  "prompts": {},
+  "sessions": {
+    "s_08ad1fe1d43e02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8181cd39-5693-42c0-89cf-63f7653ab06b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
