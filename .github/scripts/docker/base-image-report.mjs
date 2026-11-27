@@ -27,7 +27,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
-import { DAILY_BRANCH, REVIEW_BRANCH, collectPullRequests } from './base-image-alerts.mjs';
+import { branchOf, collectPullRequests } from './base-image-alerts.mjs';
 import { PLATFORMS, SEVERITIES, scan } from './base-image-candidates.mjs';
 import { resolveDigest } from './base-image-chain-pr.mjs';
 
@@ -87,7 +87,7 @@ export function statusOf(key, image, { results, nightlyKeys, prs, runUrl }) {
 	for (const result of sources) {
 		if (!removes(result.platforms)) continue;
 		if (result.status === 'ready') {
-			const branch = result.autoMerge ? DAILY_BRANCH : REVIEW_BRANCH;
+			const branch = branchOf(result);
 			return { status: 'pr-open', link: prs.find((pr) => pr.branch === branch)?.url ?? null };
 		}
 		if (['in-24h-gate', 'unverified', 'no-publish-time'].includes(result.status)) {

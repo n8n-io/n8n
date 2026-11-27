@@ -1,5 +1,8 @@
 import { mock } from 'vitest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
 import type { Mysql2Pool, QueryValues, SortRule, WhereClause } from '../../v2/helpers/interfaces';
 import * as utils from '../../v2/helpers/utils';
@@ -12,6 +15,8 @@ import {
 	replaceEmptyStringsByNulls,
 	escapeSqlIdentifier,
 	getUniqueKeyColumns,
+	getTableName,
+	isDatabaseExpression,
 	splitQueryToStatements,
 } from '../../v2/helpers/utils';
 
@@ -518,5 +523,85 @@ describe('Test MySql V2, getUniqueKeyColumns', () => {
 		]);
 		expect(pool.query).toHaveBeenCalledWith('SHOW COLUMNS FROM `otherdb`.`orders`');
 		expect(pool.query).toHaveBeenCalledWith('SHOW INDEX FROM `otherdb`.`orders`');
+	});
+});
+
+describe('Test MySql V2, getTableName', () => {
+	const context = (parameters: IDataObject) => createMockExecuteFunction(parameters, mySqlMockNode);
+	const locator = (value: unknown) => ({ __rl: true, mode: 'name', value }) as IDataObject;
+
+	const expectNameError = (parameters: IDataObject, part: string) => {
+		let error: unknown;
+		try {
+			getTableName(context(parameters), 2);
+		} catch (e) {
+			error = e;
+		}
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect((error as NodeOperationError).message).toBe(
+			`The ${part} value did not resolve to a name`,
+		);
+		expect((error as NodeOperationError).context.itemIndex).toBe(2);
+	};
+
+	it('should return the raw table when the database is empty', () => {
+		expect(getTableName(context({ table: locator('other.tbl'), database: locator('') }), 0)).toBe(
+			'other.tbl',
+		);
+		expect(getTableName(context({ table: locator('tbl') }), 0)).toBe('tbl');
+		expect(getTableName(context({ table: locator(''), database: locator('') }), 0)).toBe('');
+	});
+
+	it('should qualify the table when the database is set', () => {
+		expect(getTableName(context({ table: locator('tbl'), database: locator('shop') }), 0)).toBe(
+			'`shop`.`tbl`',
+		);
+	});
+
+	it('should throw when the table has its own database and the database is set', () => {
+		const parameters = { table: locator('other.tbl'), database: locator('shop') };
+		expect(() => getTableName(context(parameters), 0)).toThrow(
+			'The Table value already contains a database name',
+		);
+		expect(getTableName(context({ ...parameters, table: locator('`my.tbl`') }), 0)).toBe(
+			'`shop`.`my.tbl`',
+		);
+	});
+
+	it.each([
+		['my.db', '`my.db`.`tbl`'],
+		['my`db', '`my``db`.`tbl`'],
+	])('should keep the database "%s" as one identifier', (database, expected) => {
+		const name = getTableName(context({ table: locator('tbl'), database: locator(database) }), 0);
+		expect(name).toBe(expected);
+		expect(escapeSqlIdentifier(name)).toBe(expected);
+	});
+
+	it('should throw when a database expression resolves to empty', () => {
+		expectNameError({ table: locator('tbl'), database: '={{ $json.db }}' }, 'Database');
+	});
+
+	it.each([123, ' '])('should throw when the database is "%s"', (value) => {
+		expectNameError({ table: locator('tbl'), database: locator(value) }, 'Database');
+	});
+
+	it.each(['', '.'])('should throw when the database is set and the table is "%s"', (value) => {
+		expectNameError({ table: locator(value), database: locator('shop') }, 'Table');
+	});
+});
+
+describe('Test MySql V2, isDatabaseExpression', () => {
+	it.each([
+		[{ __rl: true, mode: 'name', value: '={{ $json.db }}' }, true],
+		[{ mode: 'name', value: '={{ $json.db }}' }, true],
+		['={{ $json.db }}', true],
+		[{ __rl: true, mode: 'name', value: 'shop' }, false],
+		[undefined, false],
+	])('should return the right result for %j', (database, expected) => {
+		const context = createMockExecuteFunction(
+			database === undefined ? {} : { database },
+			mySqlMockNode,
+		);
+		expect(isDatabaseExpression(context)).toBe(expected);
 	});
 });

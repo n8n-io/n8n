@@ -1,6 +1,13 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { removedFindings, renderBody, selectGroup, updatePins } from './base-image-pin-pr.mjs';
+import {
+	removedFindings,
+	renderBody,
+	selectGroup,
+	titleOf,
+	updateNodeVersion,
+	updatePins,
+} from './base-image-pin-pr.mjs';
 
 const digest = (char) => `sha256:${char.repeat(64)}`;
 
@@ -52,6 +59,40 @@ describe('selectGroup', () => {
 		assert.deepEqual(
 			selectGroup(results, 'review').map((result) => result.source),
 			['DISTROLESS_BASE_IMAGE'],
+		);
+	});
+
+	it('puts the Node patch in the node group only', () => {
+		const node = { ...ready('DHI_REF', false, []), group: 'node' };
+		const withNode = [...results, node];
+		assert.deepEqual(selectGroup(withNode, 'node'), [node]);
+		assert.ok(!selectGroup(withNode, 'review').includes(node));
+		assert.ok(!selectGroup(withNode, 'daily').includes(node));
+	});
+});
+
+describe('titleOf', () => {
+	it('names the new Node version in the Node PR', () => {
+		const results = [{ nodePatch: { from: '26.13.0', to: '26.13.1' } }];
+		assert.equal(titleOf('node', results), 'build: Update Node to 26.13.1');
+		assert.equal(titleOf('daily', []), 'build: Update base image digests with fewer OS findings');
+	});
+});
+
+describe('updateNodeVersion', () => {
+	const hcl = 'variable "NODE_VERSION" { default = "26.13.0" }\n';
+
+	it('sets the new version', () => {
+		assert.equal(
+			updateNodeVersion(hcl, { from: '26.13.0', to: '26.13.1' }),
+			'variable "NODE_VERSION" { default = "26.13.1" }\n',
+		);
+	});
+
+	it('stops when NODE_VERSION is not the old version', () => {
+		assert.throws(
+			() => updateNodeVersion(hcl, { from: '26.12.0', to: '26.13.1' }),
+			/NODE_VERSION 26\.12\.0 is in docker\/docker-bake\.hcl 0 times/,
 		);
 	});
 });
@@ -142,24 +183,39 @@ describe('renderBody', () => {
 		assert.doesNotMatch(body, /less than 24 hours old/);
 	});
 
-	it('explains a patch update and pins the exact tag', () => {
-		const result = {
-			...ready('DHI_REF', false, [platform('linux/amd64', [finding('CVE-1', 'libssl3')])]),
-			pinned: `dhi.io/node:26.13.0-alpine3.24-dev@${digest('a')}`,
-			newest: `dhi.io/node:26.13.1-alpine3.24-dev@${digest('b')}`,
-			versionBump: { from: '26.13.0-alpine3.24-dev', to: '26.13.1-alpine3.24-dev' },
-		};
-		const body = renderBody([result], { group: 'review', runUrl });
+	it('explains the Node patch and updates all Node pins and NODE_VERSION', () => {
+		const nodePatch = { from: '26.13.0', to: '26.13.1', security: true };
+		const pin = (source, repository, variant, removed) => ({
+			...ready(source, false, removed ? [platform('linux/amd64', removed)] : []),
+			pinned: `${repository}:26.13.0-${variant}@${digest('a')}`,
+			newest: `${repository}:26.13.1-${variant}@${digest('b')}`,
+			group: 'node',
+			nodePatch,
+		});
+		const pins = [
+			pin('DHI_REF', 'dhi.io/node', 'alpine3.24-dev', [finding('CVE-1', 'libssl3')]),
+			pin('DEBIAN_DHI_REF', 'dhi.io/node', 'debian13-dev', [finding('CVE-2', 'libc6')]),
+			pin('BUILDER_IMAGE', 'node', 'alpine3.24'),
+			pin('DEBIAN_BUILDER_IMAGE', 'node', 'trixie-slim'),
+		];
+		const body = renderBody(pins, { group: 'node', runUrl });
+		assert.match(body, /This PR updates Node from `26\.13\.0` to `26\.13\.1`/);
+		assert.match(body, /security release/);
+		assert.match(body, /This PR has no auto-merge/);
+		assert.match(body, /\| CVE-1 \| HIGH \| libssl3 \|/);
+		assert.match(body, /\| CVE-2 \| HIGH \| libc6 \|/);
 		assert.match(
 			body,
-			/This pin updates the version from `26\.13\.0-alpine3\.24-dev` to `26\.13\.1-alpine3\.24-dev`/,
+			/The release images take only the Node of this image, so no scan covers it\./,
 		);
-		assert.match(body, /Only the OS packages change/);
-		assert.match(body, /`NODE_VERSION`/);
-		const hcl = `variable "DHI_REF" {\n  default = "${result.pinned}"\n}\n`;
-		assert.match(
-			updatePins(hcl, [result]),
-			/default = "dhi\.io\/node:26\.13\.1-alpine3\.24-dev@sha256:b+"/,
-		);
+		assert.doesNotMatch(body, /fewer fixable OS findings/);
+		const hcl = [
+			'variable "NODE_VERSION" { default = "26.13.0" }',
+			...pins.map(({ source, pinned }) => `variable "${source}" {\n  default = "${pinned}"\n}`),
+		].join('\n');
+		const updated = updateNodeVersion(updatePins(hcl, pins), nodePatch);
+		assert.doesNotMatch(updated, /26\.13\.0/);
+		for (const { newest } of pins) assert.ok(updated.includes(`default = "${newest}"`));
+		assert.match(updated, /variable "NODE_VERSION" \{ default = "26\.13\.1" \}/);
 	});
 });

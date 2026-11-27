@@ -1,10 +1,11 @@
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import { createServiceStack, type N8NStack } from 'n8n-containers';
 import { constructExecutionMetaData } from 'n8n-core';
-import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
 
 import { router } from '../../v2/actions/router';
 import type { MysqlNodeCredentials } from '../../v2/helpers/interfaces';
+import { searchTables } from '../../v2/methods/listSearch';
 
 let stack: N8NStack;
 let credentials: MysqlNodeCredentials;
@@ -186,5 +187,96 @@ describe('MySQL Integration - Select Start After', () => {
 
 	test('rejects a column without a single-column unique index', async () => {
 		await expect(selectPage('grp', '')).rejects.toThrow('Column "grp" has no unique index');
+	});
+});
+
+describe('MySQL Integration - Database parameter', () => {
+	// The container user has grants on the credential database only
+	const rootCredentials = (): MysqlNodeCredentials => ({
+		...credentials,
+		user: 'root',
+		password: 'root_password',
+	});
+
+	const run = async (params: IDataObject, creds: MysqlNodeCredentials) =>
+		await router.call(
+			mockExecuteFunctions(
+				{
+					resource: 'database',
+					options: { queryBatching: 'single', nodeVersion: 2.5 },
+					...params,
+				},
+				creds,
+			),
+		);
+
+	const searchTablesIn = async (database: string, creds: MysqlNodeCredentials) => {
+		const params: IDataObject = { database, options: {} };
+		return await searchTables.call({
+			getCredentials: async () => creds,
+			getNodeParameter: (name: string, fallback?: unknown) => params[name] ?? fallback,
+		} as unknown as ILoadOptionsFunctions);
+	};
+
+	beforeAll(async () => {
+		for (const query of [
+			'CREATE DATABASE IF NOT EXISTS n8n_other',
+			'DROP TABLE IF EXISTS n8n_other.items',
+			'CREATE TABLE n8n_other.items (id INT PRIMARY KEY, name VARCHAR(16))',
+		]) {
+			await run({ operation: 'executeQuery', query }, rootCredentials());
+		}
+	});
+
+	test('inserts into and selects from a database that is not the credential database', async () => {
+		expect(credentials.database).not.toBe('n8n_other');
+
+		await run(
+			{
+				operation: 'insert',
+				database: 'n8n_other',
+				table: 'items',
+				dataMode: 'defineBelow',
+				valuesToSend: {
+					values: [
+						{ column: 'id', value: 1 },
+						{ column: 'name', value: 'first' },
+					],
+				},
+			},
+			rootCredentials(),
+		);
+
+		const result = await run(
+			{ operation: 'select', database: 'n8n_other', table: 'items', returnAll: true },
+			rootCredentials(),
+		);
+
+		expect(result[0].map((row) => row.json)).toEqual([{ id: 1, name: 'first' }]);
+	});
+
+	test('select rejects with the server error when the user cannot see the database', async () => {
+		await expect(
+			run(
+				{ operation: 'select', database: 'n8n_other', table: 'items', returnAll: true },
+				credentials,
+			),
+		).rejects.toThrow(/denied/i);
+	});
+
+	test('searchTables lists the tables of the chosen database', async () => {
+		const { results } = await searchTablesIn('n8n_other', rootCredentials());
+
+		expect(results.map(({ value }) => value)).toEqual(['items']);
+	});
+
+	test('searchTables rejects with the server error when the user cannot see the database', async () => {
+		await expect(searchTablesIn('n8n_other', credentials)).rejects.toThrow(/denied/i);
+	});
+
+	test('searchTables rejects with the server error when the database does not exist', async () => {
+		await expect(searchTablesIn('n8n_missing_db', rootCredentials())).rejects.toThrow(
+			/Unknown database/,
+		);
 	});
 });

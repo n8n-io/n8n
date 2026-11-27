@@ -219,6 +219,7 @@ async function returnControl(userNote?: string) {
 						:title="
 							frame.isCurrent ? i18n.baseText('instanceAi.cloudBrowser.frameTitle') : undefined
 						"
+						class="ph-no-capture"
 						:class="[
 							$style.frame,
 							{

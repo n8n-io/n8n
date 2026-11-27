@@ -1130,10 +1130,16 @@ export class CanvasPage extends BasePage {
 	}
 
 	async getNodePosition(nodeName: string): Promise<{ x: number; y: number }> {
-		const node = this.nodeByName(nodeName);
-		const boundingBox = await node.boundingBox();
+		const { x, y } = await this.getNodeBoundingBox(nodeName);
+		return { x, y };
+	}
+
+	async getNodeBoundingBox(
+		nodeName: string,
+	): Promise<{ x: number; y: number; width: number; height: number }> {
+		const boundingBox = await this.nodeByName(nodeName).boundingBox();
 		if (!boundingBox) throw new Error(`Node ${nodeName} not found or not visible`);
-		return { x: boundingBox.x, y: boundingBox.y };
+		return boundingBox;
 	}
 
 	async dragNodeToRelativePosition(

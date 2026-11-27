@@ -117,6 +117,7 @@ const WAIT = { waitMs: 60_000 };
 function setup({ maxRuns = 20 } = {}) {
 	const loader = mock<CallableWorkflowLoader>();
 	const policyChecker = mock<SubworkflowPolicyChecker>();
+	policyChecker.isCallableByProject.mockResolvedValue(true);
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
 	activeExecutions.has.mockReturnValue(false);
@@ -222,17 +223,19 @@ describe('CallableWorkflowRunner', () => {
 			});
 		});
 
-		it('refuses a workflow whose sub-workflow policy does not allow the project', async () => {
+		it('refuses a workflow whose sub-workflow policy does not allow the project, without the denial log', async () => {
 			const { runner, loader, policyChecker } = setup();
 			const workflow = makeWorkflow();
 			loader.loadWorkflow.mockResolvedValue(workflow);
-			policyChecker.checkForProject.mockRejectedValue(policyDenial());
+			policyChecker.isCallableByProject.mockResolvedValue(false);
 
 			await expect(runner.check(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual({
 				callable: false,
 				reason: 'not_callable',
 			});
-			expect(policyChecker.checkForProject).toHaveBeenCalledWith(workflow, PROJECT_ID);
+			expect(policyChecker.isCallableByProject).toHaveBeenCalledWith(workflow, PROJECT_ID);
+			// Only a run logs "Subworkflow execution denied".
+			expect(policyChecker.checkForProject).not.toHaveBeenCalled();
 		});
 
 		it('accepts a published workflow of the project with the right trigger', async () => {
@@ -251,7 +254,7 @@ describe('CallableWorkflowRunner', () => {
 	});
 
 	describe('describe', () => {
-		it('describes the name, the description, and the inputs of the published version', async () => {
+		it('describes the name, the description, the inputs, and the node names of the published version', async () => {
 			const { runner, loader } = setup();
 			loader.loadWorkflow.mockResolvedValue(makeWorkflow());
 
@@ -267,6 +270,7 @@ describe('CallableWorkflowRunner', () => {
 					},
 					additionalProperties: false,
 				},
+				nodeNames: ['Start', 'Set'],
 			});
 		});
 
@@ -303,6 +307,21 @@ describe('CallableWorkflowRunner', () => {
 				status: 'refused',
 				reason: 'not_found',
 			});
+			expect(ctx.workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('refuses a run that the sub-workflow policy denies, through the logged check', async () => {
+			const ctx = setup();
+			const workflow = makeWorkflow();
+			ctx.loader.loadWorkflow.mockResolvedValue(workflow);
+			ctx.policyChecker.checkForProject.mockRejectedValue(policyDenial());
+
+			await expect(ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT)).resolves.toEqual({
+				status: 'refused',
+				reason: 'not_callable',
+			});
+			expect(ctx.policyChecker.checkForProject).toHaveBeenCalledWith(workflow, PROJECT_ID);
+			expect(ctx.policyChecker.isCallableByProject).not.toHaveBeenCalled();
 			expect(ctx.workflowRunner.run).not.toHaveBeenCalled();
 		});
 

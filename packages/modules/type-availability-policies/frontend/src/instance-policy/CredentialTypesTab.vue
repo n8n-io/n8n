@@ -19,7 +19,8 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
 const instancePolicy = useInstancePolicy();
-const { types, loading, changeAccess } = useInstanceTypeAccess('credential');
+const { types, loading, changeAccess, selection, bulkBusy, bulkChange } =
+	useInstanceTypeAccess('credential');
 
 const typeSummaries = shallowRef(new Map<string, CredentialTypeSummary>());
 
@@ -65,7 +66,9 @@ defineExpose({ returnFocus: (name: string | undefined) => table.value?.returnFoc
 <template>
 	<InstancePolicyTable
 		ref="table"
+		v-model:selection="selection"
 		:rows="rows"
+		:bulk-busy="bulkBusy"
 		:loading="loading"
 		:search-placeholder="
 			i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.search.credential')
@@ -75,6 +78,7 @@ defineExpose({ returnFocus: (name: string | undefined) => table.value?.returnFoc
 		"
 		data-test-id="credential-types-tab"
 		@change="changeAccess"
+		@bulk-change="bulkChange"
 		@open="(name) => emit('open', name)"
 	>
 		<template #toolbar-start>

@@ -13,8 +13,13 @@ export class McpServersModule implements ModuleInterface {
 		const { McpServerToolAdapters, WorkflowToolPort } = await import(
 			'./tools/workflow-tool-port.js'
 		);
+		const { TextDraftPort } = await import('./tools/text-draft-port.js');
 		const adapters = Container.get(McpServerToolAdapters).resolve();
 		Container.set(WorkflowToolPort, adapters.workflows);
+		Container.set(TextDraftPort, adapters.textDrafts);
+		await import('./controllers/mcp-servers.controller.js');
+		await import('./controllers/mcp-servers-list.controller.js');
+		await import('./controllers/mcp-server-tools.controller.js');
 	}
 
 	async entities() {

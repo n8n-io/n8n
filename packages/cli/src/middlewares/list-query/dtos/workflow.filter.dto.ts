@@ -57,6 +57,11 @@ export class WorkflowFilter extends BaseFilter {
 	@Expose()
 	availableInMCP?: boolean;
 
+	@IsBoolean()
+	@IsOptional()
+	@Expose()
+	excludePersonalProjectsOfOthers?: boolean;
+
 	@IsArray()
 	@IsString({ each: true })
 	@IsOptional()

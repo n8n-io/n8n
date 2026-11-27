@@ -83,13 +83,14 @@ describe('useEngineV2Compatibility', () => {
 	it('returns the reasons of the check when the module is on and the workflow runs on v2', () => {
 		mockEngineV2Compatibility({ reasons: [blockingReason, warningReason] });
 
-		const { reasons, blockingReasons } = setup({
+		const { reasons, blockingReasons, groups } = setup({
 			moduleActive: true,
 			settings: { engineType: 'v2' },
 		});
 
 		expect(reasons.value).toEqual([blockingReason, warningReason]);
 		expect(blockingReasons.value).toEqual([blockingReason]);
+		expect(groups.value.map((group) => group.reasons)).toEqual([[blockingReason], [warningReason]]);
 	});
 
 	it('reports a node type as incompatible only when the check does not support it', () => {
@@ -165,7 +166,7 @@ describe('useEngineV2Compatibility', () => {
 describe('describeEngineV2Block', () => {
 	it('returns the publish tooltip text', () => {
 		expect(describeEngineV2Block()).toBe(
-			"This workflow can't run on Engine v2 yet. Select the Engine v2 issues button on the canvas to see why.",
+			'Fix the blocking Engine v2 compatibility issues to publish this workflow.',
 		);
 	});
 });

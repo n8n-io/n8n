@@ -9,10 +9,10 @@ on:
         type: string
         default: ''
       nodeVersion:
-        description: Version of node to use.
+        description: Version of node to use. Empty uses NODE_VERSION of docker/docker-bake.hcl.
         required: false
         type: string
-        default: 26.13.0
+        default: ''
       collectCoverage:
         required: false
         default: false

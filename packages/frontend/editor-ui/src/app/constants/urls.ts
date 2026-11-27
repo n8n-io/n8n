@@ -1,4 +1,9 @@
-export const DOCS_DOMAIN = 'docs.n8n.io';
+import { DOCS_DOMAIN } from '@n8n/frontend-constants/urls';
+
+// `DOCS_DOMAIN` moved to `@n8n/frontend-constants/urls` so a module outside the shell can
+// link to the docs. Re-exported here for existing importers.
+export { DOCS_DOMAIN };
+
 export const BUILTIN_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/`;
 export const BUILTIN_CREDENTIALS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/credentials/`;
 export const DATA_PINNING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-pinning/`;
@@ -9,7 +14,6 @@ export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/connect/create-nodes`;
 export const AI_GATEWAY_CREDITS_DOCS_URL = `https://${DOCS_DOMAIN}/deploy/use-n8n-cloud/gateway-credits`;
-export const CUSTOM_ROLES_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/rbac/custom-roles/`;
 export const END_USER_CREDENTIALS_DOCS_URL = `https://${DOCS_DOMAIN}/administer/manage-credentials/end-user-credentials`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const EVALUATIONS_DOCS_URL = `https://${DOCS_DOMAIN}/advanced-ai/evaluations/overview/`;

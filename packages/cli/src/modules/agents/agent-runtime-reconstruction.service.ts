@@ -69,7 +69,7 @@ import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/ut
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
 import { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
-import { WorkflowsInSkillsFlagGate } from '@/modules/skills';
+import { withSkillWorkflowMentionHint, WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { EmbeddingProviderOptions } from '@/modules/knowledge/vector-stores/embedding-credential';
 import { WorkflowRunner } from '@/workflow-runner';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
@@ -79,6 +79,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { AgentCredentialProvider } from './agent-credential-provider.contracts';
 import { AgentKnowledgeUsageTracker } from './agent-knowledge-usage-tracker';
+import { AgentSkillWorkflowTelemetry } from './agent-skill-workflow-telemetry.service';
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import {
 	AgentSandboxRuntimeService,
@@ -255,6 +256,7 @@ interface RuntimeReconstructionOptions extends ReconstructAgentRuntimeParams {
 	unavailableTools?: UnavailableTool[];
 	/** Set by the in-app preview chat only — see `BuildFromJsonOptions.previewChat`. */
 	previewChat?: boolean;
+	skillIdsByWorkflowId?: ReadonlyMap<string, string[]>;
 }
 
 interface RuntimeDependencies
@@ -287,6 +289,8 @@ interface ToolRunIdentity {
 	delegatingAgentId?: string;
 	supportsHitl: boolean;
 	backgroundTasksEnabled: boolean;
+	runType: AgentRunTelemetryType;
+	skillIdsByWorkflowId?: ReadonlyMap<string, string[]>;
 }
 
 /**
@@ -481,11 +485,12 @@ export class AgentRuntimeReconstructionService {
 		if (!agentEntity.schema) {
 			throw new UserError('Agent has no JSON config.');
 		}
-		let config = await this.withSkillWorkflowTools(
+		const skillWorkflows = await this.withSkillWorkflows(
 			toAgentDocument(agentEntity.schema, skillRefs),
 			skills,
 			agentEntity.projectId,
 		);
+		let config = skillWorkflows.config;
 
 		// Published/integration runs have no interactive n8n user and keep
 		// today's project-scoped trust boundary. When a user is present (in-app
@@ -531,7 +536,8 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			toolDescriptors,
 			toolCodeByName,
-			skills,
+			skills: skillWorkflows.skills,
+			skillIdsByWorkflowId: skillWorkflows.skillIdsByWorkflowId,
 			runtimeProfile: 'top-level',
 			supportsHitl,
 			runType,
@@ -755,10 +761,11 @@ export class AgentRuntimeReconstructionService {
 	async reconstructFromResolvedSource(
 		params: ReconstructAgentRuntimeParams,
 	): Promise<ReconstructedAgentRuntime> {
-		let config =
+		const skillWorkflows =
 			params.runtimeProfile === 'inline'
-				? params.config
-				: await this.withSkillWorkflowTools(params.config, params.skills, params.projectId);
+				? { config: params.config, skills: params.skills }
+				: await this.withSkillWorkflows(params.config, params.skills, params.projectId);
+		let config = skillWorkflows.config;
 		let unavailableTools: UnavailableTool[] = [];
 		if (params.user && config.tools?.length) {
 			// Sub-agent runtimes are built per delegation and never cached, so the
@@ -781,19 +788,25 @@ export class AgentRuntimeReconstructionService {
 		return await this.reconstructRuntime({
 			...params,
 			config,
+			skills: skillWorkflows.skills,
+			skillIdsByWorkflowId: skillWorkflows.skillIdsByWorkflowId,
 			credentialIntegrations: params.credentialIntegrations ?? [],
 			subAgentDelegation,
 			unavailableTools,
 		});
 	}
 
-	private async withSkillWorkflowTools(
+	private async withSkillWorkflows(
 		config: AgentJsonConfig,
 		skills: Record<string, AgentSkill>,
 		projectId: string,
-	): Promise<AgentJsonConfig> {
+	): Promise<{
+		config: AgentJsonConfig;
+		skills: Record<string, AgentSkill>;
+		skillIdsByWorkflowId?: ReadonlyMap<string, string[]>;
+	}> {
 		if (!config.skills?.length || !(await this.workflowsInSkillsFlagGate.isEnabled())) {
-			return config;
+			return { config, skills };
 		}
 		const legacyRefs = extractAgentWorkflowRefs(config).filter(
 			(ref) => ref.workflowId === undefined,
@@ -803,7 +816,14 @@ export class AgentRuntimeReconstructionService {
 			legacyRefs,
 			projectId,
 		);
-		return withSkillWorkflowTools(config, skills, legacyWorkflows);
+		const withTools = withSkillWorkflowTools(config, skills, legacyWorkflows);
+		return {
+			config: withTools.config,
+			skills: Object.fromEntries(
+				Object.entries(skills).map(([id, skill]) => [id, withSkillWorkflowMentionHint(skill)]),
+			),
+			skillIdsByWorkflowId: withTools.skillIdsByWorkflowId,
+		};
 	}
 
 	private async reconstructRuntime(
@@ -1037,6 +1057,7 @@ export class AgentRuntimeReconstructionService {
 			previewChat,
 			supportsHitl,
 			runtimeProfile,
+			skillIdsByWorkflowId,
 		} = options;
 		const canResume = supportsHitl ?? runtimeProfile === 'top-level';
 		return {
@@ -1063,6 +1084,8 @@ export class AgentRuntimeReconstructionService {
 			// interactive turn to hand a receipt to. Everyone else handles waits
 			// the legacy way.
 			backgroundTasksEnabled: backgroundTasksEnabled && canResume,
+			runType,
+			skillIdsByWorkflowId,
 		};
 	}
 
@@ -1270,8 +1293,20 @@ export class AgentRuntimeReconstructionService {
 			'./tools/workflow-tool-factory.js'
 		);
 		const context = await this.buildWorkflowToolContext(runIdentity, instrumentToolAdditionalData);
+		const { agentId, userId, runType, skillIdsByWorkflowId } = runIdentity;
+		const skillIds = ref.workflowId ? skillIdsByWorkflowId?.get(ref.workflowId) : undefined;
+		const withSkillRunTracking = (tool: BuiltTool) =>
+			skillIds && agentId && ref.workflowId
+				? Container.get(AgentSkillWorkflowTelemetry).withRunTracking(tool, {
+						agent_id: agentId,
+						...(userId ? { user_id: userId } : {}),
+						workflow_id: ref.workflowId,
+						skill_ids: skillIds,
+						run_type: runType,
+					})
+				: tool;
 		try {
-			return await resolveWorkflowTool(ref, context);
+			return withSkillRunTracking(await resolveWorkflowTool(ref, context));
 		} catch (error) {
 			// A missing or incompatible workflow costs the agent one tool call, not
 			// the whole run: the stub keeps the tool listed and reports the reason.
@@ -1282,7 +1317,7 @@ export class AgentRuntimeReconstructionService {
 				reason: error.reason,
 				message: error.message,
 			});
-			return buildUnavailableWorkflowTool(ref, context);
+			return withSkillRunTracking(buildUnavailableWorkflowTool(ref, context));
 		}
 	}
 

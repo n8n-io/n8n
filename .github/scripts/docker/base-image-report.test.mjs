@@ -32,6 +32,7 @@ const runUrl = 'https://github.com/n8n-io/n8n/actions/runs/5';
 const prs = [
 	{ branch: 'base-image-refresh/daily', url: 'https://github.com/n8n-io/n8n/pull/45000' },
 	{ branch: 'base-image-refresh/review', url: 'https://github.com/n8n-io/n8n/pull/45001' },
+	{ branch: 'base-image-refresh/node', url: 'https://github.com/n8n-io/n8n/pull/45002' },
 ];
 const context = (results, nightlyKeys = new Set(['CVE-1 zlib'])) => ({
 	results,
@@ -61,6 +62,20 @@ describe('statusOf', () => {
 		assert.deepEqual(statusOf('CVE-1 zlib', n8n, context([ready(false)])), {
 			status: 'pr-open',
 			link: 'https://github.com/n8n-io/n8n/pull/45001',
+		});
+	});
+
+	it('links the Node PR of a ready Node patch that removes the finding', () => {
+		const node = {
+			source: 'DHI_REF',
+			status: 'ready',
+			autoMerge: false,
+			group: 'node',
+			platforms: [platform([finding('CVE-1')])],
+		};
+		assert.deepEqual(statusOf('CVE-1 zlib', n8n, context([node])), {
+			status: 'pr-open',
+			link: 'https://github.com/n8n-io/n8n/pull/45002',
 		});
 	});
 

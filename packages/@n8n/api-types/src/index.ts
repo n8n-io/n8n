@@ -26,6 +26,7 @@ export * from './node-type-availability';
 export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
 export type * from './instance-type-access';
+export type * from './project-type-access';
 export type * from './project-policies';
 export type * from './type-usage';
 export type * from './transfer-preview';
@@ -1161,6 +1162,7 @@ export {
 	AGENT_SAFE_TESTING_FLAG,
 	toolCallRouteSchema,
 	toolCallReasonSchema,
+	toolCallEvidenceSchema,
 	toolCallSimulationSchema,
 	agentChatModeSchema,
 	type AgentChatMode,
@@ -1170,6 +1172,7 @@ export {
 export type {
 	ToolCallRoute,
 	ToolCallReason,
+	ToolCallEvidence,
 	ToolCallSimulation,
 	ToolTestability,
 	ToolTestKind,
