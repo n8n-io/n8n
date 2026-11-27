@@ -611,9 +611,8 @@ can continue without that check.
 1. Record the current `master` SHA and the `stable` and `beta` tag targets. Keep the
    v2 beta version for the v2 maintenance handoff.
 2. Finish the final sync and stop the old sync workflow. Check for open PRs that
-   target `3.x` and retarget or close them. Close any open standalone prerelease
-   PRs without merging them. Confirm no sync or standalone prerelease is in flight.
-   Merge `3.x` into `master` with the `n8n@3.4.1` tag in its history.
+   target `3.x` and retarget or close them. Merge `3.x` into `master` with the
+   `n8n@3.4.1` tag in its history.
 3. Verify the published `3.4.1` n8n and runner images and smoke-test the installer.
    Dispatch **Release: Create Minor Release PR** on `master`. If the cadence guard
    reports a minor release in the same UTC week, dispatch with `force: true` for

@@ -31,12 +31,6 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Reject standalone prereleases
-        if: contains(github.event.pull_request.body, '<!-- release-prerelease -->')
-        run: |
-          echo '::error::A retired standalone prerelease was merged. Do not retry this run. Ask the release owner to recover the release branch.'
-          exit 1
-
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
