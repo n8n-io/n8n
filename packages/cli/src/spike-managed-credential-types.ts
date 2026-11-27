@@ -1,13 +1,10 @@
-import { BadRequestError, UserError } from '@n8n/errors';
+import { UserError } from '@n8n/errors';
 import type { Types } from 'n8n-core';
-import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
-
-// The node signs a token with the stored private key, so it cannot work without a secret.
-const SIGNING_CREDENTIAL_TYPES = new Set(['googleApi']);
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 /**
- * Spike (API-663): in managed mode the editor offers only the managed credential.
- * Node code is unchanged; core swaps the type at runtime.
+ * Spike (API-663): in managed mode every node uses the managed credential, and the editor
+ * offers only the managed type. Node code is unchanged; core swaps the type at runtime.
  */
 export function applyManagedCredentialToTypes(types: Types): void {
 	const managedType = process.env.N8N_MANAGED_CREDENTIAL_TYPE;
@@ -37,72 +34,8 @@ function withManagedCredential(
 	nodeTypeName = description.name,
 ): INodeTypeDescription {
 	if (!description.credentials?.length) return description;
+	// HTTP Request picks its credential type in its own parameter, which lists the loaded types.
+	if (nodeTypeName === 'n8n-nodes-base.httpRequest') return description;
 
-	// HTTP Request picks its credential through its own parameter: keep its list and
-	// only drop the generic (secret-holding) auth types.
-	if (nodeTypeName === 'n8n-nodes-base.httpRequest') {
-		return {
-			...description,
-			properties: description.properties.map((property) =>
-				withoutAuthOptions(property, new Set(['genericCredentialType'])),
-			),
-		};
-	}
-
-	const blockedAuthValues = new Set<string>();
-	for (const credential of description.credentials) {
-		if (!SIGNING_CREDENTIAL_TYPES.has(credential.name)) continue;
-		for (const value of credential.displayOptions?.show?.authentication ?? []) {
-			if (typeof value === 'string') blockedAuthValues.add(value);
-		}
-	}
-
-	return {
-		...description,
-		properties: blockedAuthValues.size
-			? description.properties.map((property) => withoutAuthOptions(property, blockedAuthValues))
-			: description.properties,
-		credentials: [{ name: managedType, required: true }],
-	};
-}
-
-function withoutAuthOptions(property: INodeProperties, blocked: Set<string>): INodeProperties {
-	if (property.name !== 'authentication' || !property.options) return property;
-
-	const options = property.options.filter(
-		(option) => !('value' in option) || !blocked.has(String(option.value)),
-	);
-	const defaultBlocked = blocked.has(String(property.default));
-	const firstValue = options.find((option) => 'value' in option);
-	return {
-		...property,
-		options,
-		default:
-			defaultBlocked && firstValue && 'value' in firstValue ? firstValue.value : property.default,
-	};
-}
-
-export function isManagedCredentialMode(): boolean {
-	return !!process.env.N8N_MANAGED_CREDENTIAL_TYPE;
-}
-
-/**
- * Spike (API-663): in managed mode n8n stores no credential. A node's reference to the managed
- * type has no stored record behind it. It may carry the platform's data, such as an ORD ID.
- */
-export function assertManagedCredentialType(_type: string): void {
-	if (isManagedCredentialMode()) {
-		throw new BadRequestError(
-			'Credentials cannot be saved on this instance. An external gateway manages them',
-		);
-	}
-}
-
-/**
- * Spike (API-663): a reference to the managed type has `id: null` by design, like a Gateway
- * credits reference. Checks that resolve or reject references must skip it, whatever its id.
- */
-export function isManagedCredentialReference(credentialType: string): boolean {
-	const managedType = process.env.N8N_MANAGED_CREDENTIAL_TYPE;
-	return !!managedType && credentialType === managedType;
+	return { ...description, credentials: [{ name: managedType, required: true }] };
 }

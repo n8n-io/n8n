@@ -1,11 +1,6 @@
 import type { INode, INodeProperties } from 'n8n-workflow';
 
-import {
-	fillManagedPlaceholders,
-	findMissingManagedFields,
-	getManagedReferenceData,
-	resolveManagedCredentialType,
-} from '../managed-credential';
+import { fillManagedPlaceholders, resolveManagedCredentialType } from '../managed-credential';
 
 const node = (type = 'n8n-nodes-base.slack'): INode => ({
 	id: '1',
@@ -36,77 +31,6 @@ describe('managed credential (spike)', () => {
 			expect(resolveManagedCredentialType(node(), 'microsoftOutlookOAuth2Api')).toBe(
 				'platformManagedApi',
 			);
-		});
-	});
-
-	describe('getManagedReferenceData', () => {
-		it("returns the fields that the platform put on the node's reference, without id and name", () => {
-			const slack = {
-				...node(),
-				credentials: {
-					platformManagedApi: { id: null, name: 'Slack', ordId: 'acme:apiResource:SLACK:v1' },
-				},
-			};
-			expect(getManagedReferenceData(slack, 'platformManagedApi')).toEqual({
-				ordId: 'acme:apiResource:SLACK:v1',
-			});
-		});
-
-		it('returns nothing for a node with no managed reference', () => {
-			expect(getManagedReferenceData(node(), 'platformManagedApi')).toEqual({});
-		});
-
-		it('reads no fields from a reference in the old string form', () => {
-			const legacy = {
-				...node(),
-				credentials: { platformManagedApi: 'Slack' },
-			} as unknown as INode;
-			expect(getManagedReferenceData(legacy, 'platformManagedApi')).toEqual({});
-		});
-
-		it('ignores fields on another credential type', () => {
-			const other = {
-				...node(),
-				credentials: { slackApi: { id: '1', name: 'Slack', ordId: 'acme:apiResource:SLACK:v1' } },
-			};
-			expect(getManagedReferenceData(other, 'platformManagedApi')).toEqual({});
-		});
-	});
-
-	describe('findMissingManagedFields', () => {
-		const field = (name: string, extra: Partial<INodeProperties> = {}): INodeProperties =>
-			({ displayName: name, name, type: 'string', default: '', ...extra }) as INodeProperties;
-
-		it('lists required fields that the reference does not fill', () => {
-			const properties = [field('ordId', { required: true }), field('optional')];
-			expect(findMissingManagedFields(properties, {})).toEqual(['ordId']);
-			expect(findMissingManagedFields(properties, { ordId: '' })).toEqual(['ordId']);
-			expect(findMissingManagedFields(properties, { ordId: 'x' })).toEqual([]);
-		});
-
-		it('treats null as missing', () => {
-			expect(
-				findMissingManagedFields([field('ordId', { required: true })], { ordId: null } as never),
-			).toEqual(['ordId']);
-		});
-
-		it('ignores required secret fields, which never sit on the node', () => {
-			const secret = field('token', { required: true, typeOptions: { password: true } });
-			expect(findMissingManagedFields([secret], {})).toEqual([]);
-		});
-
-		it('ignores required fields that are shown only under a condition', () => {
-			const conditional = field('domain', {
-				required: true,
-				displayOptions: { show: { variant: ['server'] } },
-			});
-			expect(findMissingManagedFields([conditional], {})).toEqual([]);
-		});
-
-		it('ignores notices', () => {
-			expect(
-				findMissingManagedFields([field('notice', { type: 'notice', required: true })], {}),
-			).toEqual([]);
 		});
 	});
 

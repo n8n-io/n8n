@@ -13,6 +13,7 @@ import type {
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
 	INodeProperties,
+	INodeType,
 	INodeExecutionData,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
@@ -52,7 +53,6 @@ import { getAdditionalKeys } from './utils/get-additional-keys';
 import {
 	fillManagedPlaceholders,
 	getManagedCredentialType,
-	getValidManagedData,
 	resolveManagedCredentialType,
 } from './utils/managed-credential';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
@@ -334,21 +334,63 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	}
 
 	/**
-	 * SPIKE (API-663): no credential is stored. n8n builds the node's data from the requested
-	 * type's fields, with no secret, plus the platform's data from the node's managed reference.
+	 * SPIKE (API-663): the node runs with the stored managed credential, which holds no secret.
+	 * The node still reads its own type's fields, so give it those with empty secrets.
 	 */
-	private getManagedCredentials<T extends object>(managedType: string, requestedType: string): T {
+	private withRequestedTypeFields<T extends object>(
+		requestedType: string,
+		managedData: ICredentialDataDecryptedObject,
+	): T {
+		let properties: INodeProperties[] = [];
+		try {
+			properties = this.additionalData.credentialsHelper.getCredentialsProperties(requestedType);
+		} catch (error) {
+			this.logger.warn(`Managed credential: unknown credential type "${requestedType}"`, {
+				error,
+			});
+		}
+		return fillManagedPlaceholders(properties, managedData) as T;
+	}
+
+	/** The node's description of a credential type, if the node can use it with its current parameters. */
+	private getShownCredentialDescription(
+		nodeType: INodeType,
+		type: string,
+	): INodeCredentialDescription {
 		const { node, additionalData } = this;
-		const propertiesOf = (type: string): INodeProperties[] => {
-			try {
-				return additionalData.credentialsHelper.getCredentialsProperties(type);
-			} catch (error) {
-				this.logger.warn(`Managed credential: unknown credential type "${type}"`, { error });
-				return [];
-			}
-		};
-		const managedData = getValidManagedData(node, managedType, propertiesOf(managedType));
-		return fillManagedPlaceholders(propertiesOf(requestedType), managedData) as T;
+		if (nodeType.description.credentials === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node type "${node.type}" does not have any credentials defined`,
+				{ level: 'warning' },
+			);
+		}
+
+		const nodeCredentialDescription = nodeType.description.credentials.find(
+			(credentialTypeDescription) => credentialTypeDescription.name === type,
+		);
+		if (nodeCredentialDescription === undefined) {
+			throw new NodeOperationError(
+				node,
+				`Node type "${node.type}" does not have any credentials of type "${type}" defined`,
+				{ level: 'warning' },
+			);
+		}
+
+		if (
+			!NodeHelpers.displayParameter(
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+				additionalData.currentNodeParameters || node.parameters,
+				nodeCredentialDescription,
+				node,
+				nodeType.description,
+				node.parameters,
+			)
+		) {
+			// Credentials should not be displayed even if they would be defined
+			throw new NodeOperationError(node, 'Credentials not found');
+		}
+		return nodeCredentialDescription;
 	}
 
 	/** Returns the requested decrypted credentials if the node has access to them */
@@ -361,12 +403,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
 		const type = resolveManagedCredentialType(node, requestedType);
-
-		const managedType = getManagedCredentialType();
-		if (managedType) {
-			this.assertCredentialUsableByNode(requestedType, node.type);
-			return this.getManagedCredentials<T>(managedType, requestedType);
-		}
+		if (type !== requestedType) this.assertCredentialUsableByNode(requestedType, node.type);
 
 		// Eval bypass: only mock when the node is fully unconfigured, so nodes
 		// probing multiple auth types still get production's throw. Handler
@@ -403,47 +440,18 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		// fullAccess bypass that HTTP Request and its tool variants enjoy.
 		this.assertCredentialUsableByNode(type, node.type);
 
-		let nodeCredentialDescription: INodeCredentialDescription | undefined;
-		if (!fullAccess) {
-			if (nodeType.description.credentials === undefined) {
-				throw new NodeOperationError(
-					node,
-					`Node type "${node.type}" does not have any credentials defined`,
-					{ level: 'warning' },
-				);
-			}
+		// SPIKE (API-663): in managed mode every node may use the managed credential. The node's
+		// own description lists only its own types, so it cannot say whether the managed one applies.
+		const isManaged = type === getManagedCredentialType();
 
-			nodeCredentialDescription = nodeType.description.credentials.find(
-				(credentialTypeDescription) => credentialTypeDescription.name === type,
-			);
-			if (nodeCredentialDescription === undefined) {
-				throw new NodeOperationError(
-					node,
-					`Node type "${node.type}" does not have any credentials of type "${type}" defined`,
-					{ level: 'warning' },
-				);
-			}
-
-			if (
-				!NodeHelpers.displayParameter(
-					// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-					additionalData.currentNodeParameters || node.parameters,
-					nodeCredentialDescription,
-					node,
-					nodeType.description,
-					node.parameters,
-				)
-			) {
-				// Credentials should not be displayed even if they would be defined
-				throw new NodeOperationError(node, 'Credentials not found');
-			}
-		}
+		const nodeCredentialDescription =
+			fullAccess || isManaged ? undefined : this.getShownCredentialDescription(nodeType, type);
 
 		// Check if node has any credentials defined
 		if (!fullAccess && !node.credentials?.[type]) {
 			// If none are defined check if the credentials are required or not
 
-			if (nodeCredentialDescription?.required === true) {
+			if (nodeCredentialDescription?.required === true || isManaged) {
 				// Credentials are required so error
 				if (!node.credentials) {
 					throw new NodeOperationError(node, 'Node does not have any credentials set', {
@@ -516,6 +524,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			options,
 		);
 
+		if (type !== requestedType) {
+			return this.withRequestedTypeFields<T>(requestedType, decryptedDataObject);
+		}
 		return decryptedDataObject as T;
 	}
 

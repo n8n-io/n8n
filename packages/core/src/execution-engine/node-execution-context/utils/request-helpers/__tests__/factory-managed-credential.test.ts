@@ -1,10 +1,9 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type {
-	ICredentialDataDecryptedObject,
+	IAllExecuteFunctions,
 	IHttpRequestOptions,
 	INode,
-	INodeProperties,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
@@ -12,45 +11,42 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { getRequestHelperFunctions } from '../factory';
 
-// SPIKE (API-663): requests a node builds itself (its own auth header) still get the managed
-// type's `authenticate`, fed with the data on the node's managed reference.
+// SPIKE (API-663): auth helpers use the managed type, so the managed type's `authenticate`
+// applies, not the node's own type's. A managed type with no `authenticate` adds no header.
 describe('request helpers in managed mode', () => {
 	const workflow = mock<Workflow>();
-	const ordIdField = {
-		displayName: 'ORD ID',
-		name: 'ordId',
-		type: 'string',
-		default: '',
-		required: true,
-	} as INodeProperties;
-	const freshdesk = (reference?: Record<string, unknown>): INode => ({
+	const node: INode = {
 		id: '1',
-		name: 'Freshdesk',
-		type: 'n8n-nodes-base.freshdesk',
+		name: 'Slack',
+		type: 'n8n-nodes-base.slack',
 		typeVersion: 1,
 		position: [0, 0],
 		parameters: {},
-		...(reference
-			? { credentials: { platformManagedApi: { id: null, name: 'x', ...reference } } }
-			: {}),
-	});
+		credentials: { platformManagedApi: { id: 'managed-1', name: 'Managed by platform' } },
+	};
 
-	function setup(node: INode) {
+	function setup() {
 		const request = vi.fn().mockResolvedValue({ ok: true });
-		Container.set(OutboundHttp, mock<OutboundHttp>({ requests: () => ({ request }) as never }));
+		Container.set(
+			OutboundHttp,
+			mock<OutboundHttp>({ requests: () => ({ request, requestLegacy: request }) as never }),
+		);
 		const additionalData =
 			mockDeep<IWorkflowExecuteAdditionalData>() as IWorkflowExecuteAdditionalData;
 		additionalData.evalLlmMockHandler = undefined;
 		additionalData.otel = undefined;
+		additionalData.credentialsHelper.getParentTypes = vi.fn(() => []);
+		additionalData.credentialsHelper.preAuthentication = vi.fn(async () => undefined);
 		const authenticate = vi.fn(
-			async (data: ICredentialDataDecryptedObject, _type: string, options: IHttpRequestOptions) =>
-				({ ...options, headers: { ordID: data.ordId } }) as IHttpRequestOptions,
+			async (_data: unknown, _type: string, options: IHttpRequestOptions) => options,
 		);
 		additionalData.credentialsHelper.authenticate = authenticate as never;
-		additionalData.credentialsHelper.getCredentialsProperties = vi.fn(() => [ordIdField]);
+		const getCredentials = vi.fn().mockResolvedValue({ notice: '' });
+		const context = mock<IAllExecuteFunctions>({ getCredentials });
 		return {
 			helpers: getRequestHelperFunctions(workflow, node, additionalData),
-			request,
+			context,
+			getCredentials,
 			authenticate,
 		};
 	}
@@ -64,66 +60,36 @@ describe('request helpers in managed mode', () => {
 		Container.reset();
 	});
 
-	it("applies the managed type's authenticate with the node's data", async () => {
-		const { helpers, request, authenticate } = setup(
-			freshdesk({ ordId: 'acme:apiResource:FRESHDESK:v1' }),
-		);
+	it("authenticates with the managed type, not the node's own type", async () => {
+		const { helpers, context, getCredentials, authenticate } = setup();
 
-		await helpers.httpRequest({ url: 'https://company.freshdesk.com/api/v2/tickets/1' });
-
-		expect(authenticate.mock.calls[0].slice(0, 2)).toEqual([
-			{ ordId: 'acme:apiResource:FRESHDESK:v1' },
-			'platformManagedApi',
-		]);
-		expect(request).toHaveBeenCalledWith(
-			expect.objectContaining({ headers: { ordID: 'acme:apiResource:FRESHDESK:v1' } }),
-		);
-	});
-
-	it('stops before sending when a required field is missing', async () => {
-		const { helpers, request } = setup(freshdesk({}));
-
-		await expect(helpers.httpRequest({ url: 'https://company.freshdesk.com' })).rejects.toThrow(
-			"Add ordId to this node's managed credential",
-		);
-		expect(request).not.toHaveBeenCalled();
-	});
-
-	it('lets the eval mock answer request() before the managed data is checked', async () => {
-		const node = freshdesk({});
-		const request = vi.fn();
-		Container.set(OutboundHttp, mock<OutboundHttp>({ requests: () => ({ request }) as never }));
-		const additionalData =
-			mockDeep<IWorkflowExecuteAdditionalData>() as IWorkflowExecuteAdditionalData;
-		additionalData.otel = undefined;
-		additionalData.evalLlmMockHandler = vi.fn(async () => ({
-			statusCode: 200,
-			headers: {},
-			body: { mocked: true },
-		}));
-		additionalData.credentialsHelper.getCredentialsProperties = vi.fn(() => [ordIdField]);
-		const helpers = getRequestHelperFunctions(workflow, node, additionalData);
-
-		await expect(helpers.request({ uri: 'https://company.freshdesk.com' })).resolves.toEqual({
-			mocked: true,
+		await helpers.httpRequestWithAuthentication.call(context, 'slackApi', {
+			url: 'https://slack.com/api/chat.postMessage',
 		});
-		expect(request).not.toHaveBeenCalled();
+
+		expect(getCredentials).toHaveBeenCalledWith('platformManagedApi');
+		expect(authenticate.mock.calls[0][1]).toBe('platformManagedApi');
 	});
 
-	it('leaves requests of a node without a credential unchanged', async () => {
-		const { helpers, authenticate } = setup(freshdesk());
+	it('sends OAuth2 requests through the managed type, with no token', async () => {
+		const { helpers, context, authenticate } = setup();
 
-		await helpers.httpRequest({ url: 'https://example.com/feed.xml' });
+		// oxlint-disable-next-line typescript/no-deprecated
+		await helpers.requestOAuth2.call(context, 'googleSheetsOAuth2Api', {
+			uri: 'https://sheets.googleapis.com/v4/spreadsheets/1',
+		});
 
-		expect(authenticate).not.toHaveBeenCalled();
+		expect(authenticate.mock.calls[0][1]).toBe('platformManagedApi');
 	});
 
-	it('changes nothing when managed mode is off', async () => {
+	it("uses the node's own type when managed mode is off", async () => {
 		delete process.env.N8N_MANAGED_CREDENTIAL_TYPE;
-		const { helpers, authenticate } = setup(freshdesk({ ordId: 'x' }));
+		const { helpers, context, authenticate } = setup();
 
-		await helpers.httpRequest({ url: 'https://example.com' });
+		await helpers.httpRequestWithAuthentication.call(context, 'slackApi', {
+			url: 'https://slack.com/api/chat.postMessage',
+		});
 
-		expect(authenticate).not.toHaveBeenCalled();
+		expect(authenticate.mock.calls[0][1]).toBe('slackApi');
 	});
 });

@@ -4,8 +4,6 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import {
 	applyManagedCredentialToDescription,
 	applyManagedCredentialToTypes,
-	assertManagedCredentialType,
-	isManagedCredentialReference,
 } from '@/spike-managed-credential-types';
 
 const description = (d: Partial<INodeTypeDescription>): INodeTypeDescription =>
@@ -108,18 +106,12 @@ describe('spike managed credential types', () => {
 				expect(sheetsOut.credentials).toEqual([{ name: 'platformManagedApi', required: true }]);
 			});
 
-			it('removes auth options whose node signs a token itself', () => {
-				const auth = t.nodes.find((n) => n.name === sheets.name)!.properties[0];
-				expect(auth.options?.map((o) => ('value' in o ? o.value : undefined))).toEqual(['oAuth2']);
-				expect(auth.default).toBe('oAuth2');
+			it("keeps the node's auth options", () => {
+				expect(t.nodes.find((n) => n.name === sheets.name)!.properties).toEqual(sheets.properties);
 			});
 
-			it('keeps HTTP Request credentials and removes only the generic type', () => {
-				const httpOut = t.nodes.find((n) => n.name === http.name)!;
-				expect(httpOut.credentials).toEqual(http.credentials);
-				expect(
-					httpOut.properties[0].options?.map((o) => ('value' in o ? o.value : undefined)),
-				).toEqual(['none', 'predefinedCredentialType']);
+			it('leaves HTTP Request unchanged, because it picks its credential type in a parameter', () => {
+				expect(t.nodes.find((n) => n.name === http.name)).toEqual(http);
 			});
 
 			it('fails at startup when the managed type is not loaded', () => {
@@ -153,33 +145,6 @@ describe('spike managed credential types', () => {
 			expect(
 				applyManagedCredentialToDescription(shortName, 'n8n-nodes-base.httpRequest').credentials,
 			).toEqual(http.credentials);
-		});
-	});
-
-	describe('assertManagedCredentialType', () => {
-		it('allows any type when managed mode is off', () => {
-			expect(() => assertManagedCredentialType('slackApi')).not.toThrow();
-		});
-
-		it('refuses every type when managed mode is on, the managed type too', () => {
-			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
-			for (const type of ['platformManagedApi', 'slackApi']) {
-				expect(() => assertManagedCredentialType(type)).toThrow(
-					'Credentials cannot be saved on this instance',
-				);
-			}
-		});
-	});
-
-	describe('isManagedCredentialReference', () => {
-		it('is false when managed mode is off', () => {
-			expect(isManagedCredentialReference('platformManagedApi')).toBe(false);
-		});
-
-		it('matches only the managed type when managed mode is on', () => {
-			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
-			expect(isManagedCredentialReference('platformManagedApi')).toBe(true);
-			expect(isManagedCredentialReference('slackApi')).toBe(false);
 		});
 	});
 });

@@ -44,7 +44,6 @@ import { getNodeSubtitle, hasProxyAuth } from '@/app/utils/nodeTypesUtils';
 import { assignNodeId } from '@/app/utils/nodes/nodeTransforms';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { isSystemManagedCredentialType } from '@/features/credentials/credentials.utils';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { EnableNodeToggleCommand } from '@/app/models/history';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -525,17 +524,6 @@ export function useNodeHelpers() {
 
 		const { authentication, genericAuthType, nodeCredentialType } =
 			node.parameters as HttpRequestNode.V2.AuthParams;
-
-		// SPIKE (API-663): the instance builds this credential at run time; nothing to select.
-		const isSystemManaged = (name?: string) =>
-			!!name && isSystemManagedCredentialType(credentialsStore.getCredentialTypeByName(name));
-		if (
-			(authentication === 'predefinedCredentialType' && isSystemManaged(nodeCredentialType)) ||
-			(localNodeType.credentials.length > 0 &&
-				localNodeType.credentials.every(({ name }) => isSystemManaged(name)))
-		) {
-			return null;
-		}
 
 		if (
 			authentication === 'genericCredentialType' &&

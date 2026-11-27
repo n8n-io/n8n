@@ -1,4 +1,3 @@
-import { NodeOperationError } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject, INode, INodeProperties } from 'n8n-workflow';
 
 // SPIKE (API-663): one operator-defined credential type that stands in for every
@@ -7,69 +6,9 @@ export function getManagedCredentialType(): string | undefined {
 	return process.env.N8N_MANAGED_CREDENTIAL_TYPE || undefined;
 }
 
-/**
- * In managed mode every credential lookup resolves to the managed type, so a real
- * credential on the node is never used. A node whose reference misses a required field of
- * the managed type fails in `_getCredentials` before any request is sent.
- */
+/** In managed mode every credential lookup resolves to the managed type. */
 export function resolveManagedCredentialType(_node: INode, requestedType: string): string {
 	return getManagedCredentialType() ?? requestedType;
-}
-
-/**
- * SPIKE (API-663): no credential is stored. The node's reference to the managed type holds
- * the platform's data instead, for example `{ id: null, name, ordId }`. That data becomes
- * `$credentials` for the managed type's `authenticate`, the same way Gateway credits marks a node.
- */
-export function getManagedReferenceData(
-	node: INode,
-	managedType: string,
-): ICredentialDataDecryptedObject {
-	const reference: unknown = node.credentials?.[managedType];
-	if (!reference || typeof reference !== 'object') return {};
-	const data: ICredentialDataDecryptedObject = {};
-	for (const [key, value] of Object.entries(reference)) {
-		if (key === 'id' || key === 'name' || key === '__aiGatewayManaged') continue;
-		data[key] = value as ICredentialDataDecryptedObject[string];
-	}
-	return data;
-}
-
-/**
- * Required fields of the managed type that the node's reference leaves empty. Secret fields
- * never sit on the node, and conditional fields cannot be judged here, so both are skipped.
- */
-export function findMissingManagedFields(
-	properties: INodeProperties[],
-	data: ICredentialDataDecryptedObject,
-): string[] {
-	return properties
-		.filter(
-			(property) =>
-				property.required &&
-				property.type !== 'notice' &&
-				!property.typeOptions?.password &&
-				!property.displayOptions,
-		)
-		.filter(({ name }) => data[name] === undefined || data[name] === null || data[name] === '')
-		.map(({ name }) => name);
-}
-
-/** The node's managed data. Fails before any request when a required field is missing. */
-export function getValidManagedData(
-	node: INode,
-	managedType: string,
-	managedProperties: INodeProperties[],
-): ICredentialDataDecryptedObject {
-	const data = getManagedReferenceData(node, managedType);
-	const missing = findMissingManagedFields(managedProperties, data);
-	if (missing.length) {
-		throw new NodeOperationError(
-			node,
-			`Add ${missing.join(', ')} to this node's managed credential`,
-		);
-	}
-	return data;
 }
 
 const PLACEHOLDER_URL = 'https://managed.example.com';
