@@ -1,10 +1,13 @@
 import { testDb, createWorkflow } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository, type IWorkflowDb } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { OperationalError, UserError } from '@n8n/errors';
 import { ErrorReporter } from 'n8n-core';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { getPublishedWorkflowData } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { createOwner } from './shared/db/users';
@@ -193,5 +196,44 @@ describe('ExecuteWorkflow node with missing or invalid sub-workflow ID', () => {
 			message: expect.stringContaining('My Sub-workflow Name'),
 		});
 		expect(await executionRepository.count()).toBe(1);
+	});
+
+	it('fails with a non-reportable UserError when the workflow ID expression resolves to a number', async () => {
+		const execution = await runParentWithSubworkflow('={{ 123 }}', 'once');
+
+		expect(execution.status).toBe('error');
+		const nodeError = execution.data.resultData.runData['Execute Sub-workflow']?.at(-1)?.error;
+		expect(nodeError).toMatchObject({
+			name: 'UserError',
+			level: 'info',
+			shouldReport: false,
+			message: expect.stringContaining('Workflow ID is invalid.'),
+		});
+		expect(await executionRepository.count()).toBe(1);
+	});
+
+	it('throws a non-reportable UserError naming the missing ID in published mode with publication service enabled', async () => {
+		expect(Container.get(WorkflowsConfig).useWorkflowPublicationService).toBe(true);
+
+		const promise = getPublishedWorkflowData(
+			{ id: 'deleted-subworkflow-id-404' },
+			'parent-workflow-id',
+		);
+
+		await expect(promise).rejects.toBeInstanceOf(UserError);
+		await expect(promise).rejects.toMatchObject({
+			shouldReport: false,
+			message: expect.stringContaining('deleted-subworkflow-id-404'),
+		});
+	});
+
+	it('throws an OperationalError for an existing unpublished workflow in published mode with publication service enabled', async () => {
+		expect(Container.get(WorkflowsConfig).useWorkflowPublicationService).toBe(true);
+		const unpublished = await createWorkflow({ name: 'Unpublished Sub', active: false }, owner);
+
+		const promise = getPublishedWorkflowData({ id: unpublished.id }, 'parent-workflow-id');
+
+		await expect(promise).rejects.toBeInstanceOf(OperationalError);
+		await expect(promise).rejects.toThrow('Workflow is not active and cannot be executed.');
 	});
 });

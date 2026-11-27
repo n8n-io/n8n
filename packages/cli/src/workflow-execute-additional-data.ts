@@ -138,10 +138,13 @@ export function getRunData(
 }
 
 /**
- * Rejects blank or non-scalar workflow IDs before querying the database.
- * Node expressions can resolve to empty strings, null, or objects at runtime.
+ * Rejects blank or non-string workflow IDs before querying the database.
+ * Node expressions can resolve to empty strings, null, numbers, or objects at runtime.
  */
-function assertValidWorkflowId(workflowId: unknown, parentWorkflowId: string): void {
+function assertValidWorkflowId(
+	workflowId: unknown,
+	parentWorkflowId: string,
+): asserts workflowId is string {
 	if (
 		workflowId === null ||
 		workflowId === undefined ||
@@ -155,11 +158,17 @@ function assertValidWorkflowId(workflowId: unknown, parentWorkflowId: string): v
 		);
 	}
 
-	if (typeof workflowId === 'object' || typeof workflowId === 'boolean') {
+	if (typeof workflowId !== 'string') {
 		throw new UserError(
 			'Workflow ID is invalid. Select a sub-workflow or check the workflow ID expression.',
 			{
-				extra: { workflowId, parentWorkflowId },
+				extra: {
+					workflowId:
+						typeof workflowId === 'bigint' || typeof workflowId === 'symbol'
+							? String(workflowId)
+							: workflowId,
+					parentWorkflowId,
+				},
 			},
 		);
 	}
@@ -264,6 +273,13 @@ export async function getPublishedWorkflowData(
 			WorkflowPublishedDataService,
 		).getPublishedWorkflowData(workflowInfo.id);
 		if (publishedData === null) {
+			const exists = await Container.get(WorkflowRepository).existsBy({ id: workflowInfo.id });
+			if (!exists) {
+				throw new UserError(`Workflow "${workflowInfo.id}" does not exist.`, {
+					extra: { workflowId: workflowInfo.id, parentWorkflowId },
+				});
+			}
+
 			throw new OperationalError('Workflow is not active and cannot be executed.', {
 				extra: { workflowId: workflowInfo.id, parentWorkflowId },
 			});
