@@ -29,7 +29,9 @@ import { recordLiveRunVerification } from './orchestration/verification/record-l
 import {
 	approvalFilesOf,
 	describeInputFiles,
+	inputItemFilesSchema,
 	readInputFiles,
+	readItemFiles,
 	workflowFilesOf,
 } from './shared/workflow-files';
 
@@ -102,6 +104,20 @@ const runAction = z.object({
 		),
 });
 
+const MOCK_INPUT_DESCRIPTION =
+	'Items to feed the target node, as `{ json }` items, skipping every node above it. Good for ' +
+	'studying one node on its own: probing an edge case, or holding the input ' +
+	'still while upstream data changes between runs. The result shows the node ' +
+	'handles THIS input; it shows nothing about what the workflow really ' +
+	'produces, so use reuseExecutionId or a chain run when that is the ' +
+	'question. This does not make a write node safe: the node still runs for ' +
+	'real, only its input is invented.';
+
+const mockInputItem = z.object({ json: z.record(z.unknown()) });
+
+// Only when the host can pass files to runs. See `actionSchemaFor`.
+const mockInputItemWithFiles = mockInputItem.extend({ files: inputItemFilesSchema });
+
 const runStepAction = z.object({
 	action: z
 		.literal('run-step')
@@ -130,18 +146,7 @@ const runStepAction = z.object({
 				'it is the fastest option and the input is real. The execution must belong ' +
 				'to the same workflow.',
 		),
-	mockInput: z
-		.array(z.record(z.unknown()))
-		.optional()
-		.describe(
-			'Items to feed the target node, skipping every node above it. Good for ' +
-				'studying one node on its own: probing an edge case, or holding the input ' +
-				'still while upstream data changes between runs. The result shows the node ' +
-				'handles THIS input; it shows nothing about what the workflow really ' +
-				'produces, so use reuseExecutionId or a chain run when that is the ' +
-				'question. This does not make a write node safe: the node still runs for ' +
-				'real, only its input is invented.',
-		),
+	mockInput: z.array(mockInputItemWithFiles).optional().describe(MOCK_INPUT_DESCRIPTION),
 	toolArguments: z
 		.union([z.string(), z.record(z.unknown())])
 		.optional()
@@ -453,7 +458,28 @@ async function handleRunStep(
 		context.sessionApprovedToolKeys?.has(buildRunWorkflowSessionGrantKey(input.workflowId)) ===
 			true;
 
-	const needsApproval = !allowedByScope && !allowedBySessionGrant;
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return {
+			executionId: '',
+			status: 'error' as const,
+			denied: true,
+			reason: 'User denied the action',
+		};
+	}
+
+	// Read the files before the approval, so a missing file fails early and the prompt can name them.
+	const read = input.mockInput
+		? await readItemFiles(workflowFilesOf(context), input.mockInput)
+		: undefined;
+	if (read?.error !== undefined) {
+		return { executionId: '', status: 'error' as const, error: read.error };
+	}
+	const mockInput = read?.items;
+
+	// The node can send the files to an outside service, so the user confirms every step run
+	// with files. Grants and the `always_allow` permission cover only step runs without files.
+	const carriesFiles = mockInput?.some((item) => item.binary !== undefined) ?? false;
+	const needsApproval = carriesFiles || (!allowedByScope && !allowedBySessionGrant);
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
@@ -464,27 +490,19 @@ async function handleRunStep(
 				.catch(() => undefined)) ?? input.workflowId;
 		return await suspend({
 			requestId: nanoid(),
-			message: `Run the node "${input.nodeName}" in ${workflowName}`,
+			message: `Run the node "${input.nodeName}" in ${workflowName}${describeInputFiles((mockInput ?? []).map((item) => item.binary))}`,
 			severity: 'warning' as const,
 		});
 	}
 
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return {
-			executionId: '',
-			status: 'error' as const,
-			denied: true,
-			reason: 'User denied the action',
-		};
-	}
-
-	if (resumeData?.approved && resumeData.scope === 'session') {
+	// A step run with files never stores a grant, because it must not approve the next one.
+	if (resumeData?.approved && resumeData.scope === 'session' && !carriesFiles) {
 		await context.grantSessionToolApproval?.(stepGrantKey);
 	}
 
 	return await context.executionService.runStep(input.workflowId, input.nodeName, {
 		reuseExecutionId: input.reuseExecutionId,
-		mockInput: input.mockInput,
+		mockInput,
 		toolArguments: input.toolArguments,
 		versionId: input.versionId,
 		timeout: input.timeout,
@@ -623,6 +641,11 @@ function actionSchemaFor(
 	if (workflowFilesOf(context)) return ACTION_SCHEMAS[action];
 	if (action === 'run') return runAction.omit({ files: true });
 	if (action === 'get-node-output') return getNodeOutputAction.omit({ storeFiles: true });
+	if (action === 'run-step') {
+		return runStepAction.extend({
+			mockInput: z.array(mockInputItem).optional().describe(MOCK_INPUT_DESCRIPTION),
+		});
+	}
 	return ACTION_SCHEMAS[action];
 }
 

@@ -808,7 +808,7 @@ describe('execution tools', () => {
 				{
 					...stepInput,
 					reuseExecutionId: 'exec-9',
-					mockInput: [{ text: 'hi' }],
+					mockInput: [{ json: { text: 'hi' } }],
 					toolArguments: { title: 'Login fails' },
 					versionId: 'v-2',
 					timeout: 30_000,
@@ -821,7 +821,7 @@ describe('execution tools', () => {
 				'Send Slack message',
 				expect.objectContaining({
 					reuseExecutionId: 'exec-9',
-					mockInput: [{ text: 'hi' }],
+					mockInput: [{ json: { text: 'hi' } }],
 					toolArguments: { title: 'Login fails' },
 					versionId: 'v-2',
 					timeout: 30_000,
@@ -1348,6 +1348,180 @@ describe('execution tools', () => {
 				error: 'File "other" not found in this conversation',
 			});
 			expect(context.executionService.run).not.toHaveBeenCalled();
+		});
+
+		describe('files of a step run', () => {
+			const mockItemShape = (context: InstanceAiContext) =>
+				(
+					(
+						(createExecutionTool(context, 'run-step').inputSchema as z.AnyZodObject).shape
+							.mockInput as z.ZodOptional<z.ZodArray<z.AnyZodObject>>
+					).unwrap().element as z.AnyZodObject
+				).shape;
+
+			it('takes item files only when the host can pass files to runs', () => {
+				expect(mockItemShape(createMockContext())).toHaveProperty('json');
+				expect(mockItemShape(createMockContext())).not.toHaveProperty('files');
+				expect(mockItemShape(contextWithFiles().context)).toHaveProperty('files');
+			});
+
+			it('gives each mock item its files as binary data', async () => {
+				const { context, storedFiles } = contextWithFiles();
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					{
+						action: 'run-step' as const,
+						workflowId: 'wf-1',
+						nodeName: 'Edit Image',
+						mockInput: [{ json: { n: 1 } }, { json: { n: 2 }, files: { data: 'file-1' } }],
+					},
+					createAgentCtx({ resumeData: { approved: true } }) as never,
+				);
+
+				expect(storedFiles.readBinary).toHaveBeenCalledWith('file-1');
+				expect(context.executionService.runStep).toHaveBeenCalledWith(
+					'wf-1',
+					'Edit Image',
+					expect.objectContaining({
+						mockInput: [{ json: { n: 1 } }, { json: { n: 2 }, binary: { data: pngBinary } }],
+					}),
+				);
+			});
+
+			it('reads a file that several mock items get one time, and names it one time', async () => {
+				const { context, storedFiles } = contextWithFiles();
+				const suspend = vi.fn();
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					{
+						action: 'run-step' as const,
+						workflowId: 'wf-1',
+						nodeName: 'Edit Image',
+						mockInput: [
+							{ json: {}, files: { data: 'file-1' } },
+							{ json: {}, files: { data: 'file-1' } },
+						],
+					},
+					createAgentCtx({ suspend }) as never,
+				);
+
+				expect(storedFiles.readBinary).toHaveBeenCalledTimes(1);
+				expect(suspend.mock.calls[0][0].message).toMatch(/ with the file a\.png$/);
+			});
+
+			it('does not read the files when the user denied the step run', async () => {
+				const { context, storedFiles } = contextWithFiles();
+
+				const result = await executeTool(
+					createExecutionToolRouter(context),
+					{
+						action: 'run-step' as const,
+						workflowId: 'wf-1',
+						nodeName: 'Edit Image',
+						mockInput: [{ json: {}, files: { data: 'other' } }],
+					},
+					createAgentCtx({ resumeData: { approved: false } }) as never,
+				);
+
+				expect(result).toMatchObject({ status: 'error', denied: true });
+				expect(storedFiles.readBinary).not.toHaveBeenCalled();
+				expect(context.executionService.runStep).not.toHaveBeenCalled();
+			});
+
+			it('names the mock input files in the approval prompt', async () => {
+				const { context } = contextWithFiles();
+				const suspend = vi.fn();
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					{
+						action: 'run-step' as const,
+						workflowId: 'wf-1',
+						nodeName: 'Edit Image',
+						mockInput: [{ json: {}, files: { data: 'file-1' } }],
+					},
+					createAgentCtx({ suspend }) as never,
+				);
+
+				expect(suspend.mock.calls[0][0].message).toContain('with the file a.png');
+			});
+
+			const stepWithFile = {
+				action: 'run-step' as const,
+				workflowId: 'wf-1',
+				nodeName: 'Edit Image',
+				mockInput: [{ json: {}, files: { data: 'file-1' } }],
+			};
+
+			it.each([
+				[
+					'a session grant for the step',
+					{ sessionApprovedToolKeys: new Set(['executions:run-step:wf-1:Edit Image']) },
+				],
+				[
+					'a session grant for the workflow',
+					{ sessionApprovedToolKeys: new Set(['executions:run:wf-1']) },
+				],
+				[
+					'always_allow on a workflow the agent created',
+					{
+						permissions: { runWorkflow: 'always_allow' as const },
+						aiCreatedWorkflowIds: new Set(['wf-1']),
+					},
+				],
+			])('asks for every step run with files, also with %s', async (_, overrides) => {
+				const { context } = contextWithFiles(overrides);
+				const suspend = vi.fn();
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					stepWithFile,
+					createAgentCtx({ suspend }) as never,
+				);
+
+				expect(suspend).toHaveBeenCalled();
+				expect(context.executionService.runStep).not.toHaveBeenCalled();
+			});
+
+			it('does not store a grant when the user approves a step run with files for the session', async () => {
+				const grantSessionToolApproval = vi.fn();
+				const { context } = contextWithFiles({ grantSessionToolApproval });
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					stepWithFile,
+					createAgentCtx({ resumeData: { approved: true, scope: 'session' } }) as never,
+				);
+
+				expect(grantSessionToolApproval).not.toHaveBeenCalled();
+				expect(context.executionService.runStep).toHaveBeenCalled();
+			});
+
+			it('does not ask for approval or run the step with a file that the conversation does not have', async () => {
+				const { context } = contextWithFiles();
+				const suspend = vi.fn();
+
+				const result = await executeTool(
+					createExecutionToolRouter(context),
+					{
+						action: 'run-step' as const,
+						workflowId: 'wf-1',
+						nodeName: 'Edit Image',
+						mockInput: [{ json: {}, files: { data: 'other' } }],
+					},
+					createAgentCtx({ suspend }) as never,
+				);
+
+				expect(suspend).not.toHaveBeenCalled();
+				expect(result).toEqual({
+					executionId: '',
+					status: 'error',
+					error: 'File "other" not found in this conversation',
+				});
+				expect(context.executionService.runStep).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('files of a node output', () => {

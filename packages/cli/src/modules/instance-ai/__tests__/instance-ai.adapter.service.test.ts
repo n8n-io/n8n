@@ -7215,7 +7215,7 @@ describe('createExecutionAdapter runStep()', () => {
 
 	type StepOptions = {
 		reuseExecutionId?: string;
-		mockInput?: Array<Record<string, unknown>>;
+		mockInput?: Array<{ json: Record<string, unknown> }>;
 		toolArguments?: Record<string, unknown> | string;
 		versionId?: string;
 		timeout?: number;
@@ -7266,7 +7266,7 @@ describe('createExecutionAdapter runStep()', () => {
 
 	it('mocks the path above the target when given mock input', async () => {
 		const { runData, result } = await runStepOn(chainWorkflow, 'Send', {
-			mockInput: [{ text: 'hello' }],
+			mockInput: [{ json: { text: 'hello' } }],
 		});
 
 		expect(runData.runData.Fetch[0].data.main[0]).toEqual([{ json: { text: 'hello' } }]);
@@ -7453,7 +7453,7 @@ describe('createExecutionAdapter runStep()', () => {
 			const { runData } = await runStepOn(
 				chainWorkflow,
 				'Send',
-				{ mockInput: [{ a: 1 }] },
+				{ mockInput: [{ json: { a: 1 } }] },
 				{ queueMode: true },
 			);
 
@@ -7510,7 +7510,7 @@ describe('createExecutionAdapter runStep()', () => {
 		const { runData } = await runStepOn(
 			{ ...chainWorkflow, pinData: { Fetch: [{ json: { pinned: true } }] } },
 			'Send',
-			{ mockInput: [{ text: 'hi' }] },
+			{ mockInput: [{ json: { text: 'hi' } }] },
 		);
 
 		expect(runData.pinData).toEqual({});
@@ -7533,7 +7533,7 @@ describe('createExecutionAdapter runStep()', () => {
 		});
 		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
 
-		const result = await runStep('wf-1', 'Send', { mockInput: [{ a: 1 }] });
+		const result = await runStep('wf-1', 'Send', { mockInput: [{ json: { a: 1 } }] });
 
 		expect(result.mockedNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
 		expect(result.executedNodeNames).toEqual(['Send']);
@@ -7623,7 +7623,7 @@ describe('createExecutionAdapter runStep()', () => {
 		const { mockTelemetry } = await runStepOn(
 			chainWorkflow,
 			'Send',
-			{ mockInput: [{ a: 1 }] },
+			{ mockInput: [{ json: { a: 1 } }] },
 			{
 				threadId: 'thread-1',
 			},
@@ -7669,7 +7669,7 @@ describe('createExecutionAdapter runStep()', () => {
 		});
 		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
 
-		await expect(runStep('wf-1', 'Send', { mockInput: [{}] })).rejects.toThrow(
+		await expect(runStep('wf-1', 'Send', { mockInput: [{ json: {} }] })).rejects.toThrow(
 			'the mock leaves a Loop Over Items node unfinished, and n8n would restart it and execute these nodes for real (Loop)',
 		);
 		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
@@ -7765,7 +7765,7 @@ describe('createExecutionAdapter runStep()', () => {
 
 		it('mocks the path above the Agent instead of running it', async () => {
 			const { runData, result } = await runStepOn(agentWorkflow, 'Calculator', {
-				mockInput: [{ text: 'hello' }],
+				mockInput: [{ json: { text: 'hello' } }],
 			});
 
 			// The tool has no main input of its own, so the nodes to keep from
@@ -7821,14 +7821,16 @@ describe('createExecutionAdapter runStep()', () => {
 		});
 
 		it('omits the root node list for a node that is its own root', async () => {
-			const { result } = await runStepOn(agentWorkflow, 'Agent', { mockInput: [{ a: 1 }] });
+			const { result } = await runStepOn(agentWorkflow, 'Agent', {
+				mockInput: [{ json: { a: 1 } }],
+			});
 
 			expect(result).not.toHaveProperty('ranThroughNodeNames');
 		});
 
 		it('passes the tool its arguments through the agent request', async () => {
 			const { runData } = await runStepOn(agentWorkflow, 'Calculator', {
-				mockInput: [{}],
+				mockInput: [{ json: {} }],
 				toolArguments: { input: '2 + 2' },
 			});
 
@@ -7842,7 +7844,9 @@ describe('createExecutionAdapter runStep()', () => {
 		});
 
 		it('sends an empty argument set for a tool that declares none', async () => {
-			const { runData } = await runStepOn(agentWorkflow, 'Calculator', { mockInput: [{}] });
+			const { runData } = await runStepOn(agentWorkflow, 'Calculator', {
+				mockInput: [{ json: {} }],
+			});
 
 			expect(runData.agentRequest).toEqual({
 				query: { Calculator: {} },
@@ -7876,9 +7880,9 @@ describe('createExecutionAdapter runStep()', () => {
 
 			// Running it with empty arguments fails for a reason that has nothing to
 			// do with the user's problem, and the model would report that failure.
-			await expect(runStep('wf-1', 'Create Ticket Tool', { mockInput: [{}] })).rejects.toThrow(
-				'Pass toolArguments with: url, title',
-			);
+			await expect(
+				runStep('wf-1', 'Create Ticket Tool', { mockInput: [{ json: {} }] }),
+			).rejects.toThrow('Pass toolArguments with: url, title');
 			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
 		});
 
@@ -7891,7 +7895,7 @@ describe('createExecutionAdapter runStep()', () => {
 			});
 			const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
 
-			await expect(runStep('wf-1', 'MCP Client', { mockInput: [{}] })).rejects.toThrow(
+			await expect(runStep('wf-1', 'MCP Client', { mockInput: [{ json: {} }] })).rejects.toThrow(
 				'holds several tools, and a step run cannot pick one of them',
 			);
 			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
@@ -7950,7 +7954,7 @@ describe('createExecutionAdapter runStep()', () => {
 				);
 				const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
 
-				await expect(runStep('wf-1', 'Calculator', { mockInput: [{}] })).rejects.toThrow(
+				await expect(runStep('wf-1', 'Calculator', { mockInput: [{ json: {} }] })).rejects.toThrow(
 					'"Agent A" runs above another of them, so a step run would run "Agent A" and the nodes after it again',
 				);
 				expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
@@ -7970,7 +7974,7 @@ describe('createExecutionAdapter runStep()', () => {
 						POST: { main: [[{ node: 'Agent B', type: 'main', index: 0 }]] },
 					}),
 					'Calculator',
-					{ mockInput: [{}] },
+					{ mockInput: [{ json: {} }] },
 				);
 
 				expect(result.inputMode).toBe('mocked');
@@ -8010,7 +8014,7 @@ describe('createExecutionAdapter runStep()', () => {
 				const { result } = await runStepOn(
 					agentWorkflow,
 					'Calculator',
-					{ mockInput: [{}] },
+					{ mockInput: [{ json: {} }] },
 					{ execution: toolRunExecution(), allowSendingParameterValues: true },
 				);
 
@@ -8022,7 +8026,7 @@ describe('createExecutionAdapter runStep()', () => {
 				const { result } = await runStepOn(
 					agentWorkflow,
 					'Calculator',
-					{ mockInput: [{}] },
+					{ mockInput: [{ json: {} }] },
 					{ execution: toolRunExecution(), allowSendingParameterValues: true },
 				);
 
@@ -8052,7 +8056,7 @@ describe('createExecutionAdapter runStep()', () => {
 				const { result } = await runStepOn(
 					agentWorkflow,
 					'Calculator',
-					{ mockInput: [{}] },
+					{ mockInput: [{ json: {} }] },
 					{ execution: failed },
 				);
 
@@ -8093,7 +8097,7 @@ describe('createExecutionAdapter runStep()', () => {
 				});
 				const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
 
-				await expect(runStep('wf-1', 'Calculator', { mockInput: [{}] })).rejects.toThrow(
+				await expect(runStep('wf-1', 'Calculator', { mockInput: [{ json: {} }] })).rejects.toThrow(
 					'no node is connected to run it',
 				);
 				expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
@@ -8141,7 +8145,7 @@ describe('createExecutionAdapter runStep()', () => {
 			});
 			const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
 
-			await expect(runStep('wf-1', 'Linear', { mockInput: [{}] })).rejects.toThrow(
+			await expect(runStep('wf-1', 'Linear', { mockInput: [{ json: {} }] })).rejects.toThrow(
 				'holds several tools, and a step run cannot pick one of them',
 			);
 			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
@@ -8187,7 +8191,7 @@ describe('createExecutionAdapter runStep()', () => {
 				const { runData } = await runStepOn(
 					agentWorkflow,
 					'Calculator',
-					{ mockInput: [{}], toolArguments: { input: '2 + 2' } },
+					{ mockInput: [{ json: {} }], toolArguments: { input: '2 + 2' } },
 					{ queueMode: true },
 				);
 
@@ -8357,7 +8361,7 @@ describe('createExecutionAdapter on engine v2', () => {
 				statuses: ['running', 'success'],
 			});
 
-			const result = await runStep('wf-1', 'Send', { mockInput: [{ text: 'hello' }] });
+			const result = await runStep('wf-1', 'Send', { mockInput: [{ json: { text: 'hello' } }] });
 
 			expect(result).toMatchObject({ executionId: V2_ID, status: 'success', inputMode: 'mocked' });
 			expect(reader.findOne).toHaveBeenCalledWith(V2_ID, ['wf-1'], { includeData: false });

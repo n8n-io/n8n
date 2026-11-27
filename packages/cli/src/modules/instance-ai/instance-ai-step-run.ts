@@ -1,6 +1,7 @@
 import type {
 	AiAgentRequest,
 	FromAIArgument,
+	IBinaryKeyData,
 	IConnections,
 	IDataObject,
 	INode,
@@ -755,10 +756,16 @@ export function buildToolAgentRequest(args: {
 }
 
 /**
- * Converts caller-supplied plain objects into engine items. The cast mirrors
+ * Converts caller-supplied items into engine items. The cast mirrors
  * `sdkPinDataToRuntime`: the model hands us arbitrary JSON, and the engine
- * validates the deeper shape when the node reads it.
+ * validates the deeper shape when the node reads it. A `binary` entry points
+ * to stored bytes, such as a conversation file.
  */
-export function toExecutionItems(items: Array<Record<string, unknown>>): INodeExecutionData[] {
-	return items.map((json) => ({ json: (json ?? {}) as IDataObject }));
+export function toExecutionItems(
+	items: Array<{ json: Record<string, unknown>; binary?: IBinaryKeyData }>,
+): INodeExecutionData[] {
+	return items.map(({ json, binary }) => ({
+		json: (json ?? {}) as IDataObject,
+		...(binary ? { binary } : {}),
+	}));
 }
