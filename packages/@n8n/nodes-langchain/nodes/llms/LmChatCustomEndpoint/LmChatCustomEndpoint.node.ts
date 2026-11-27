@@ -226,9 +226,7 @@ export class LmChatCustomEndpoint implements INodeType {
 			modelKwargs: modelKwargsFor(this, options, extraBody, itemIndex, usesResponses),
 			// The Responses API reports real counts in the message's
 			// usage_metadata, which only openAiTokensUsageParser reads.
-			callbacks: [
-				new N8nLlmTracing(this, { tokensUsageParser: openAiTokensUsageParser }),
-			],
+			callbacks: [new N8nLlmTracing(this, { tokensUsageParser: openAiTokensUsageParser })],
 			// The gateways this node exists for (vLLM, LM Studio and the rest) reject
 			// `strict: null` in a tool definition, so the OpenAI sub-node turns this off too
 			supportsStrictToolCalling: false,
