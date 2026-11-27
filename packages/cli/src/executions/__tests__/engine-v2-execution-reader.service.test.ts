@@ -1,5 +1,5 @@
 import type { ExecutionSnapshot, ExecutionStatus, StepDetail, WorkflowDocument } from '@n8n/engine';
-import type { ExecutionStatus as ExecutionStatusV1 } from 'n8n-workflow';
+import { createRunExecutionData, type ExecutionStatus as ExecutionStatusV1 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -7,6 +7,7 @@ import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-p
 import {
 	EngineV2ExecutionReader,
 	type EngineV2SearchQuery,
+	withCancellationError,
 } from '../engine-v2-execution-reader.service';
 import type { ExecutionIdV2 } from '../execution-id';
 
@@ -50,6 +51,7 @@ const snapshot = (overrides: Partial<ExecutionSnapshot> = {}): ExecutionSnapshot
 	createdAt: '2026-08-25T10:00:00.000Z',
 	updatedAt: '2026-08-25T10:00:05.000Z',
 	finishedAt: '2026-08-25T10:00:05.000Z',
+	deadline: null,
 	...overrides,
 });
 
@@ -653,5 +655,34 @@ describe('EngineV2ExecutionReader', () => {
 			expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, { includeSteps: false });
 			expect(result?.status).toBe('running');
 		});
+	});
+});
+
+describe('withCancellationError', () => {
+	const finishedAt = '2026-08-25T10:00:05.000Z';
+
+	it.each([
+		['at the deadline', 'cancelled', finishedAt, 'TimeoutExecutionCancelledError'],
+		[
+			'after the deadline',
+			'cancelled',
+			'2026-08-25T10:00:04.000Z',
+			'TimeoutExecutionCancelledError',
+		],
+		[
+			'before the deadline',
+			'cancelled',
+			'2026-08-25T10:00:06.000Z',
+			'ManualExecutionCancelledError',
+		],
+		['with no deadline', 'cancelled', null, 'ManualExecutionCancelledError'],
+		['that did not end cancelled', 'completed', finishedAt, undefined],
+	] as const)('reports an execution %s as v1 does', (_name, status, deadline, expected) => {
+		const data = withCancellationError(
+			snapshot({ status, finishedAt, deadline }),
+			createRunExecutionData({ executionData: null }),
+		);
+
+		expect(data.resultData.error?.constructor.name).toBe(expected);
 	});
 });

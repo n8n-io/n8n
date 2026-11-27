@@ -104,6 +104,7 @@ describe('engine v2 executions', () => {
 		createdAt: '2026-08-25T10:00:00.000Z',
 		updatedAt: '2026-08-25T10:00:00.000Z',
 		finishedAt: null,
+		deadline: null,
 	};
 
 	beforeEach(() => {
