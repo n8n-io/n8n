@@ -4,6 +4,7 @@ import type {
 	CredentialTransferPreview,
 	CredentialTypePolicyEffectivePublicDto,
 	CredentialTypeUsageResponse,
+	DeleteProjectPolicyQueryDto,
 	FolderTransferPreview,
 	InstanceTypeAccessResponse,
 	NodeTypeUsageResponse,
@@ -86,6 +87,35 @@ export async function createProjectPolicy(
 	projectId: string,
 ): Promise<ProjectPolicySummary> {
 	return await makeRestApiRequest(context, 'POST', '/project-policies', { projectId });
+}
+
+export type ProjectPolicyVersions = DeleteProjectPolicyQueryDto;
+
+/** A kind without a project policy reads as version 0, which is the version a delete expects. */
+export async function fetchProjectPolicyVersions(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ProjectPolicyVersions> {
+	const read = async (kind: RestrictedTypeKind): Promise<{ version: number }> =>
+		await makeRestApiRequest(
+			context,
+			'GET',
+			`/projects/${projectId}/${kind}-type-policies/project`,
+		);
+	const [node, credential] = await Promise.all([read('node'), read('credential')]);
+	return { nodeTypesVersion: node.version, credentialTypesVersion: credential.version };
+}
+
+/**
+ * Fails with 409 when either kind changed since `versions` was read, and with 404 when the
+ * project has no policy.
+ */
+export async function deleteProjectPolicy(
+	context: IRestApiContext,
+	projectId: string,
+	versions: ProjectPolicyVersions,
+): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `/project-policies/${projectId}`, versions);
 }
 
 export async function fetchCredentialTypeUsage(

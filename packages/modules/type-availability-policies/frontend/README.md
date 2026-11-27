@@ -50,6 +50,13 @@ reads the list again after each add, also when the admin closed the dialog befor
 list again. If the first list read fails, the page shows the Global section only. A later read that
 fails keeps the last list, and a read that ends after a newer one is ignored.
 
+The project policy page reads the version of each kind when it opens. "Delete policy" in the page
+menu sends these versions to `DELETE /project-policies/:projectId`. A 409 means another admin
+changed the policy: nothing is deleted, and the page reads the policy and the versions again. A
+404 means another admin deleted it first: the page opens the landing page. If the admin left the
+page while the delete ran, the page does not navigate or read again. The action is off while the
+versions are not read, while a delete runs, and when the project has no policy.
+
 ```bash
 pnpm turbo typecheck lint test --filter=@n8n/frontend-module-type-availability-policies
 ```
