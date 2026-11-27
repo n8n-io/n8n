@@ -1,0 +1,102 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_1b3760c92ccdfb::t_bbf3574f0e178e 211-214
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.test.ts
+  s_1b3760c92ccdfb::t_00bb72b650deb9 496,511,522,550,579,612
+  s_1b3760c92ccdfb::t_bbf3574f0e178e 516-518
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_1b3760c92ccdfb::t_fede3e2f6f02e4 235-238
+packages/cli/src/modules/instance-ai/instance-ai-preference-card.service.ts
+  s_1b3760c92ccdfb::t_a3b00c9e8238ab 106,114,141,147,165
+packages/frontend/editor-ui/src/features/ai/instanceAi/preferenceCardHost.ts
+  s_1b3760c92ccdfb::t_bbf3574f0e178e 23
+packages/cli/src/modules/n8n-packages/__tests__/preferences.integration.test.ts
+  s_1b3760c92ccdfb::t_bbf3574f0e178e 513-515
+  s_1b3760c92ccdfb::t_b97f17470d6d3f 22,464-467,470-472,479-491
+  s_1b3760c92ccdfb::t_00bb72b650deb9 417,448-450,453,632,644,646,663,668
+  s_1b3760c92ccdfb::t_ff3daa8dbdf920 468-469,473-478
+packages/@n8n/backend-services/src/services/ai-preference-changes.ts
+  s_1b3760c92ccdfb::t_fede3e2f6f02e4 35-36,43-46,52-54
+  s_1b3760c92ccdfb::t_bbf3574f0e178e 37-42,47-51
+packages/@n8n/backend-services/src/services/ai-preference.md
+  s_1b3760c92ccdfb::t_00bb72b650deb9 239-240,251-254
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantPreferenceCards.api.ts
+  s_1b3760c92ccdfb::t_a3b00c9e8238ab 49
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_1b3760c92ccdfb::t_a3b00c9e8238ab 264
+packages/frontend/editor-ui/src/features/settings/context/context.store.ts
+  s_1b3760c92ccdfb::t_00bb72b650deb9 1
+  s_1b3760c92ccdfb::t_a3b00c9e8238ab 162
+packages/cli/test/integration/ai-preference.api.test.ts
+  s_1b3760c92ccdfb::t_bbf3574f0e178e 711-725,727-747
+  s_1b3760c92ccdfb::t_00bb72b650deb9 726,748
+packages/@n8n/db/src/repositories/project.repository.ts
+  s_1b3760c92ccdfb::t_fede3e2f6f02e4 42
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/PreferenceEditModal.vue
+  s_1b3760c92ccdfb::t_00bb72b650deb9 156,175-177,184,200
+  s_1b3760c92ccdfb::t_a3b00c9e8238ab 158,163,169,171,178-183,185-186,216,302
+  s_1b3760c92ccdfb::t_695d61af47ac7f 172-174,201-207
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_1b3760c92ccdfb::t_fede3e2f6f02e4 7,33,36
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-preference-card-request.dto.ts
+  s_1b3760c92ccdfb::t_a3b00c9e8238ab 27
+packages/cli/src/modules/n8n-packages/entities/preference/preference.importer.ts
+  s_1b3760c92ccdfb::t_b97f17470d6d3f 14,138-140
+  s_1b3760c92ccdfb::t_fede3e2f6f02e4 3,168-169,181-182
+  s_1b3760c92ccdfb::t_ff3daa8dbdf920 177-180
+  s_1b3760c92ccdfb::t_bbf3574f0e178e 170-176
+packages/cli/src/modules/n8n-packages/entities/project/project-importer.ts
+  s_1b3760c92ccdfb::t_fede3e2f6f02e4 2,82,99-107
+packages/frontend/editor-ui/src/features/settings/context/context.api.ts
+  s_1b3760c92ccdfb::t_a3b00c9e8238ab 5,44
+packages/@n8n/cli/docs/commands/package.md
+  s_1b3760c92ccdfb::t_00bb72b650deb9 342-344
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-preference-card.service.test.ts
+  s_1b3760c92ccdfb::t_ff3daa8dbdf920 128-131
+  s_1b3760c92ccdfb::t_350271acb750c5 134
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantPreferenceCardResult.test.ts
+  s_1b3760c92ccdfb::t_350271acb750c5 176
+  s_1b3760c92ccdfb::t_ff3daa8dbdf920 143-154
+packages/cli/src/controllers/ai-preference.controller.ts
+  s_1b3760c92ccdfb::t_bbf3574f0e178e 1-5
+  s_1b3760c92ccdfb::t_a3b00c9e8238ab 63
+packages/cli/src/services/project.service.ee.ts
+  s_1b3760c92ccdfb::t_fede3e2f6f02e4 571,573-575,577-578
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-preference-cards.service.ts
+  s_1b3760c92ccdfb::t_a3b00c9e8238ab 102
+  s_1b3760c92ccdfb::t_bbf3574f0e178e 87-94
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.vue
+  s_1b3760c92ccdfb::t_a3b00c9e8238ab 96-97,104,269-272
+packages/@n8n/backend-services/src/services/ai-preference.service.ts
+  s_1b3760c92ccdfb::t_fede3e2f6f02e4 27-28,129,305-308,481,507-510,532-533,535,539-540
+  s_1b3760c92ccdfb::t_bbf3574f0e178e 18,301-304,536-537
+packages/@n8n/api-types/src/dto/ai-preference/ai-preference-request.dto.ts
+  s_1b3760c92ccdfb::t_a3b00c9e8238ab 9,16-20
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_1b3760c92ccdfb::t_b97f17470d6d3f 101,313-320
+packages/@n8n/api-types/src/dto/assistant/assistant-preference-card-request.dto.ts
+  s_1b3760c92ccdfb::t_a3b00c9e8238ab 23
+packages/@n8n/backend-services/src/index.ts
+  s_1b3760c92ccdfb::t_fede3e2f6f02e4 214
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/PreferenceCard.test.ts
+  s_1b3760c92ccdfb::t_bbf3574f0e178e 542-544
+  s_1b3760c92ccdfb::t_cd475a3c0bcdf8 653,687,719,832
+  s_1b3760c92ccdfb::t_ff3daa8dbdf920 748-750,755-757,759-767,769-771
+  s_1b3760c92ccdfb::t_e4451a9410ffd1 598,747,751-754,758,768,772-780
+  s_1b3760c92ccdfb::t_2fe0bf10f2e7e0 1121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fecac89e5e43e18c8a8558b3b5ecfdf6e3ec43a4",
+  "prompts": {},
+  "sessions": {
+    "s_1b3760c92ccdfb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20df9-cb98-7aa1-a82b-883694996695",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

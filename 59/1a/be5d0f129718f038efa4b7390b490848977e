@@ -1,0 +1,126 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_c51b71bedc600f::t_6e090cbc45855c 76-78,82
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_c51b71bedc600f::t_0eef883db1a338 4
+  s_c51b71bedc600f::t_b72ab839fd3401 46-69
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_c51b71bedc600f::t_0266d88ab73045 2320
+  s_c51b71bedc600f::t_64a0813670c9fa 2351-2357,2380-2386,2411-2417
+  s_c51b71bedc600f::t_0fa8f7d9addb89 63,113
+  s_c51b71bedc600f::t_1b3c70656dde24 241
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_c51b71bedc600f::t_1b78eb4d29db61 99,101
+  s_c51b71bedc600f::t_f7482005521f84 7,15,20,39,73-74,80,82-83,100,102,112,114-119,121,190-192
+  s_c51b71bedc600f::t_15bc4bb85808b7 75-79,81,113,120
+packages/modules/promotions/frontend/spec/preview-selection.feature
+  s_c51b71bedc600f::t_6d4374c5347975 1-96,98-163
+  s_c51b71bedc600f::t_9814e2fd2ada65 97
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCard.test.ts
+  s_c51b71bedc600f::t_7673100b12a08d 34-56
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_c51b71bedc600f::t_96803ac972c1e5 73,160,523,656,699,707,1684,1692-1695
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_c51b71bedc600f::t_0a8932663b3d5c 280-285
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_c51b71bedc600f::t_6301fcd94e4a75 163-168
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_c51b71bedc600f::t_1b3c70656dde24 157
+packages/cli/src/modules/promotions.ee/__tests__/promotion-credential-selection.service.test.ts
+  s_c51b71bedc600f::t_eb0c02c22e6416 1-133
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_c51b71bedc600f::t_0a8932663b3d5c 357
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_c51b71bedc600f::t_0ea4540619f234 40-44,83,94-109,113-145
+packages/modules/promotions/frontend/src/promotionPreview.tree.ts
+  s_c51b71bedc600f::t_4ac0069b917eea 23-24,137,153
+  s_c51b71bedc600f::t_4745bdd5dee5d7 8-10,130-131,136,139-142
+packages/cli/src/modules/promotions.ee/promotion-credential-selection.service.ts
+  s_c51b71bedc600f::t_64a0813670c9fa 112-114
+  s_c51b71bedc600f::t_4770d82a7f0b4a 1-6,17-23,25-111,115-117
+  s_c51b71bedc600f::t_af271b158e6b2a 9-16,24
+packages/modules/promotions/frontend/src/promotionPreview.tree.test.ts
+  s_c51b71bedc600f::t_badecf49181872 1,51-84
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_c51b71bedc600f::t_2805c8eddcda74 38-43,49,52-67,81-85,172-174,184-186,188-191,343-351,353-367,378,509-514
+  s_c51b71bedc600f::t_15bc4bb85808b7 44-48,187
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.vue
+  s_c51b71bedc600f::t_4ec32c104ac0e7 102-103
+  s_c51b71bedc600f::t_598e780570bc47 131
+  s_c51b71bedc600f::t_3f146669b46348 160,299
+  s_c51b71bedc600f::t_79f9a30951a012 272-275
+  s_c51b71bedc600f::t_dc7aaa61bf26bf 11,44,70-72,141-159,163-174,292,297-298,300-303
+  s_c51b71bedc600f::t_0c2a148db8262d 125-127,130,132-140,310-318
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_c51b71bedc600f::t_dc7aaa61bf26bf 489
+packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.credentials.test.ts
+  s_c51b71bedc600f::t_737ec3055252c5 85-94
+  s_c51b71bedc600f::t_af271b158e6b2a 113
+  s_c51b71bedc600f::t_d6325bac86629a 1-27,32-47,51-84,95,100-104,106-110,112,114-156
+  s_c51b71bedc600f::t_64a0813670c9fa 28-31,48-50,96-99,105,111
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_c51b71bedc600f::t_f7482005521f84 170
+  s_c51b71bedc600f::t_af271b158e6b2a 175,177,179-180
+  s_c51b71bedc600f::t_4f22c4b336c20c 49,74
+  s_c51b71bedc600f::t_6a808f9f0181ec 158-162,171,176,178,182-187
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_c51b71bedc600f::t_1b3c70656dde24 55,60
+  s_c51b71bedc600f::t_ce95b3e1ef5f48 10
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_c51b71bedc600f::t_96803ac972c1e5 25-26,100-102
+  s_c51b71bedc600f::t_af271b158e6b2a 120,124
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_c51b71bedc600f::t_a75ab38b95b35c 371,647,685,701,735
+  s_c51b71bedc600f::t_ab09c873ea4529 975
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_c51b71bedc600f::t_f2cc899fcce808 119-176
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_c51b71bedc600f::t_96803ac972c1e5 38,45,51,62
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_c51b71bedc600f::t_6e090cbc45855c 14-15,23-25
+packages/modules/promotions/frontend/src/promotionPreview.selection.ts
+  s_c51b71bedc600f::t_1667409bf7bc23 38-43,168,253-256,290-342
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_c51b71bedc600f::t_0fa8f7d9addb89 107
+  s_c51b71bedc600f::t_f6b8314ecc70e9 248
+  s_c51b71bedc600f::t_1b3c70656dde24 539
+  s_c51b71bedc600f::t_64a0813670c9fa 3222-3224
+  s_c51b71bedc600f::t_2dc233b68aad00 457,3192-3221,3225-3246
+packages/modules/promotions/frontend/src/components/review/PromotionReviewChanges.vue
+  s_c51b71bedc600f::t_1667409bf7bc23 39
+packages/cli/src/modules/promotions.ee/promotion-review-changes.service.ts
+  s_c51b71bedc600f::t_af271b158e6b2a 136-143
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_c51b71bedc600f::t_7690e482011db5 10,212-228
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_c51b71bedc600f::t_f7482005521f84 53-60,68
+packages/cli/src/modules/promotions.ee/__tests__/promotion-commit-message.test.ts
+  s_c51b71bedc600f::t_6301fcd94e4a75 73-82,86
+  s_c51b71bedc600f::t_64a0813670c9fa 83-85
+packages/modules/promotions/frontend/src/composables/usePromotionSelection.ts
+  s_c51b71bedc600f::t_1667409bf7bc23 10,19-23,71-74
+packages/modules/promotions/frontend/src/promotionPreview.selection.groups.test.ts
+  s_c51b71bedc600f::t_26ebfb27ef0252 1-141,144-175
+  s_c51b71bedc600f::t_f6f24c4084bb06 142-143
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.test.ts
+  s_c51b71bedc600f::t_c07cbaed76f558 141-203,205,207-226
+  s_c51b71bedc600f::t_4ec32c104ac0e7 206
+  s_c51b71bedc600f::t_598e780570bc47 204
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c51b71bedc600f::t_dc7aaa61bf26bf 11265-11266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "591abe5d0f129718f038efa4b7390b490848977e",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

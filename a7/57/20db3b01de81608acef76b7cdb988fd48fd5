@@ -1,0 +1,23 @@
+packages/workflow/test/expression-boxed-primitive-engine-parity.test.ts
+  s_2e3388aec0aa1e::t_c938d182e04e84 275-296
+packages/@n8n/expression-runtime/src/bridge/guest-transfer.ts
+  s_2e3388aec0aa1e::t_0eb5a122db9583 295-298
+packages/@n8n/expression-runtime/src/bridge/__tests__/guest-transfer.test.ts
+  s_2e3388aec0aa1e::t_eae95cc005fe7d 301-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a75720db3b01de81608acef76b7cdb988fd48fd5",
+  "prompts": {},
+  "sessions": {
+    "s_2e3388aec0aa1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91674cc7-efff-474b-b06e-c1fcb20d8ee9",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

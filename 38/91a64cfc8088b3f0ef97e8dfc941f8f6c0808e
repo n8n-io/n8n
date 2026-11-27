@@ -1,0 +1,28 @@
+packages/@n8n/api-types/src/schemas/breaking-changes.schema.ts
+  h_52a137d26d774c 83
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-skills.service.test.ts
+  h_52a137d26d774c 60-66
+packages/cli/src/modules/instance-ai/__tests__/migration-report-handoff.test.ts
+  h_52a137d26d774c 19-27,76,122-128
+packages/cli/src/modules/instance-ai/instance-ai-skills.service.ts
+  h_52a137d26d774c 2,79-82
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  h_52a137d26d774c 8-12
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  h_52a137d26d774c 89-97,894,904-919
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.test.ts
+  h_52a137d26d774c 13-17
+packages/frontend/editor-ui/src/features/settings/migrationReport/useMigrationFindingAssistant.test.ts
+  h_52a137d26d774c 7-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3891a64cfc8088b3f0ef97e8dfc941f8f6c0808e",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

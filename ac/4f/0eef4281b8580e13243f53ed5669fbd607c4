@@ -1,0 +1,19 @@
+spike/api-663/README.md
+  s_f93f6dff9520ae::t_54ef0343393050 1,4,9-19,25-30,32,42-43,46-47,55,57,63-66,69-70,82-88,90-94,97,102-107,113,117-119,144,150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ac4f0eef4281b8580e13243f53ed5669fbd607c4",
+  "prompts": {},
+  "sessions": {
+    "s_f93f6dff9520ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00622748-5e28-4f20-9f3f-2a773a82a768",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

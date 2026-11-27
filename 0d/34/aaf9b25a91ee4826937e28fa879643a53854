@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_08ad1fe1d43e02::t_e444d489466787 155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0d34aaf9b25a91ee4826937e28fa879643a53854",
+  "prompts": {},
+  "sessions": {
+    "s_08ad1fe1d43e02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8181cd39-5693-42c0-89cf-63f7653ab06b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

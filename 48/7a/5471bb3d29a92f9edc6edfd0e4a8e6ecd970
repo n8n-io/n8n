@@ -1,0 +1,18 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_8a472ace01776f 10081-10086
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHoldReplay.test.ts
+  h_8a472ace01776f 254-259,266-271,277-282,301-306
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentHeldActionsTray.vue
+  h_8a472ace01776f 58,62-66,68,84-94,113-127,141-150,177-180,183-197,290,294,353-357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "487a5471bb3d29a92f9edc6edfd0e4a8e6ecd970",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

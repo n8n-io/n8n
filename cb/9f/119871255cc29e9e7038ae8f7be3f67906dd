@@ -1,0 +1,16 @@
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  h_52a137d26d774c 506,514,539
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  h_52a137d26d774c 127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb9f119871255cc29e9e7038ae8f7be3f67906dd",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

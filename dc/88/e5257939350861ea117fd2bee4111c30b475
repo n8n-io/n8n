@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_dfe3f914c8bb46::t_d27fab674f4716 11,24,34,102,120,125,129,153-154,172,175-176,1031-1032,1141-1142,1222,1408,1425,1623-1694,1916-1917,2357-2398,2509-2707,2796-2841
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_dfe3f914c8bb46::t_b04f15ff1afa0c 31-35,63,89,154-159,228-229,418,498-500,583,624-639,645,782-783,785,791,793,797,802-820,1027,1032-1098,1102,1105-1106,1124-1128,1614-1619,1622
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc88e5257939350861ea117fd2bee4111c30b475",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

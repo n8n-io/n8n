@@ -1,0 +1,21 @@
+packages/@n8n/expression-runtime/src/extensions/__tests__/array-extensions.test.ts
+  s_22034c4b2641a6::t_094fcc4d506426 39-57
+packages/workflow/test/ExpressionExtensions/array-extensions.test.ts
+  s_22034c4b2641a6::t_1dd68d1aecd514 58-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cbb7bd02a15baa8b78437c0f979857793692ea97",
+  "prompts": {},
+  "sessions": {
+    "s_22034c4b2641a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "151f5925-9042-41ae-801a-404bc440f97d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

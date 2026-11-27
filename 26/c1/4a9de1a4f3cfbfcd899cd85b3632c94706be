@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/NextCloud/GenericFunctions.ts
+  s_69d18b007d0835::t_67027232275012 166,169-174
+packages/nodes-base/nodes/NextCloud/test/update.operation.test.ts
+  s_69d18b007d0835::t_2d13179a172e5e 315-372
+packages/nodes-base/nodes/NextCloud/actions/file/update.operation.ts
+  s_69d18b007d0835::t_7dd478fc0c3209 159,163,165-166,171,173,250-251
+packages/nodes-base/nodes/NextCloud/test/NextCloud.node.test.ts
+  s_69d18b007d0835::t_ee69dd570f055a 485-487
+  s_69d18b007d0835::t_f23b6d5c606057 59-76,454,456,475-484,488-523
+  s_69d18b007d0835::t_a69ab2305304d8 524-527
+packages/nodes-base/nodes/NextCloud/NextCloud.node.ts
+  s_69d18b007d0835::t_c16612ce35e521 24,1023-1027
+packages/nodes-base/nodes/NextCloud/__schema__/v1.1.0/folder/list.json
+  s_69d18b007d0835::t_5a8f42f29bae41 13-15,24-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26c14a9de1a4f3cfbfcd899cd85b3632c94706be",
+  "prompts": {},
+  "sessions": {
+    "s_69d18b007d0835": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2742f16a-41df-4d0f-909f-e67f21d45770",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

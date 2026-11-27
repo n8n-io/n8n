@@ -1,0 +1,130 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_08ad1fe1d43e02::t_02c04e3cc65b69 1-11
+  s_08ad1fe1d43e02::t_8db8d57d59a500 1852,1874,2050-2051,2058,2104
+  s_08ad1fe1d43e02::t_b04663a7a2bfad 225-226,298,312,331-332,734,1875-1878,2245
+packages/cli/src/modules/agents/__tests__/agent-execution-thread.repository.test.ts
+  s_08ad1fe1d43e02::t_87d9ed6d80b51f 134,139-158,196
+packages/@n8n/telemetry/src/events/agents.ts
+  s_08ad1fe1d43e02::t_8d7457ff0d690a 1087,1090
+  s_08ad1fe1d43e02::t_04e4a38a162811 1089,1091
+packages/@n8n/api-types/src/agents/types.ts
+  s_08ad1fe1d43e02::t_521512e4595743 700-704
+packages/@n8n/db/src/migrations/common/1795609783977-AddTestTaskIdToAgentExecutionThreads.ts
+  s_08ad1fe1d43e02::t_e376ba1c6dbd67 4-27,30-33
+  s_08ad1fe1d43e02::t_a0a0746d4e8a21 1-3,28-29,34-35
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_08ad1fe1d43e02::t_668e15d9ca4200 53-54,260
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_08ad1fe1d43e02::t_4e41173a7b3bdf 981,984,995-999,1019-1020,1048-1056
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_08ad1fe1d43e02::t_69a2055495dc5f 38
+  s_08ad1fe1d43e02::t_9f476d79971dbc 39
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_08ad1fe1d43e02::t_a9b0126cdcbcb8 313-314
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_08ad1fe1d43e02::t_2bbb080f5920df 581-601,610
+packages/frontend/editor-ui/src/features/agents/components/AgentScheduleTestNotice.vue
+  s_08ad1fe1d43e02::t_8b07f6401d366c 14,29
+  s_08ad1fe1d43e02::t_dc2e58fe443c46 1-13,15-28,30-69
+packages/frontend/editor-ui/src/features/agents/components/AgentTestDock.vue
+  s_08ad1fe1d43e02::t_4f29708bb1f651 94-95,357-358
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_08ad1fe1d43e02::t_416d8d89d662aa 3814,3817-3818,3828-3841
+  s_08ad1fe1d43e02::t_7ccaba844ea732 3802-3813,3815-3816,3819-3827,3842
+packages/frontend/editor-ui/src/features/agents/components/AgentItemContextMenu.vue
+  s_08ad1fe1d43e02::t_134e077e29f7dc 9-12,15,17-18,22,27-31,33-34
+  s_08ad1fe1d43e02::t_482814e1cd9628 13-14,16,26,32,67-68
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_08ad1fe1d43e02::t_0781b77d9a03fb 73,87-88,461,1367-1368,1370,1372,1374,1377-1399,3905-3906
+  s_08ad1fe1d43e02::t_e61098ffdb068b 3739,3749-3751
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_08ad1fe1d43e02::t_d0c1c9e383a36a 24-27,33,44,72,485-503,505-538,541,544-548
+  s_08ad1fe1d43e02::t_bace74626e5e6d 504
+  s_08ad1fe1d43e02::t_0385a642d6c728 539-540,542-543
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
+  s_08ad1fe1d43e02::t_546507ce7ac2a1 40-52
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_08ad1fe1d43e02::t_7b559aac6fcc3b 1342-1359,1375-1379,1402
+  s_08ad1fe1d43e02::t_2714a4f9b0c1dd 1371-1373
+  s_08ad1fe1d43e02::t_6b3a1e8c695d29 747-749,754-775
+  s_08ad1fe1d43e02::t_9551a2cbf67dd9 2,113,130,135,1335-1341,1360-1370,1374,1380-1401,1403-1429
+  s_08ad1fe1d43e02::t_346c81c9e886c9 599,821,869
+  s_08ad1fe1d43e02::t_bace74626e5e6d 750-753
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSchedulesRow.test.ts
+  s_08ad1fe1d43e02::t_6510a670a7dedd 179
+  s_08ad1fe1d43e02::t_e3f343d0c5eda7 88-89
+  s_08ad1fe1d43e02::t_28c50b731b7ca0 135-178,180-192
+  s_08ad1fe1d43e02::t_288a513561996f 90
+  s_08ad1fe1d43e02::t_b7fe52489db76b 401-403
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_08ad1fe1d43e02::t_161d4290157861 256-258,277-285
+  s_08ad1fe1d43e02::t_215ec0b167d2d7 287-295
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_08ad1fe1d43e02::t_aa47c0236f15f8 587,634,671,1297,1666,1866,3377,3404-3412,3487,3521,3542,3776,3801,3841,4079,4569,4636,4726-4732,4839,4908,5445,5460,5501,5527,5565-5573
+  s_08ad1fe1d43e02::t_8c8cbf815eeaac 3619-3638
+  s_08ad1fe1d43e02::t_7f0edb9f8bb256 3547-3582,3646-3647
+  s_08ad1fe1d43e02::t_b66fe27fa3d560 80,412,444,3583-3591,3593-3618,3639-3645
+  s_08ad1fe1d43e02::t_e8102925460a69 3592
+packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts
+  s_08ad1fe1d43e02::t_b1ee9886c430c8 112-125
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_08ad1fe1d43e02::t_5efcb17b14a9be 1238-1260
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_08ad1fe1d43e02::t_4e6671b36d94ad 656-662,669-673
+  s_08ad1fe1d43e02::t_e4971faaf02a37 1845
+  s_08ad1fe1d43e02::t_9c42f058f5cedf 165-166
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_08ad1fe1d43e02::t_bdc5f5d67c708e 752-753,2857,2878-2881
+  s_08ad1fe1d43e02::t_7952189a06302a 204,2842-2851
+  s_08ad1fe1d43e02::t_bde24e8643cee1 2795-2796,2799-2802,2805-2809,2815-2816,2819,2822,2903-2906,2908-2911
+  s_08ad1fe1d43e02::t_217e77c1b55499 735
+  s_08ad1fe1d43e02::t_0644659e633249 277,2831-2841,2852-2856,2858-2877,2882-2896
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_08ad1fe1d43e02::t_e61098ffdb068b 75
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_08ad1fe1d43e02::t_1a062e345c675a 9934-9938
+  s_08ad1fe1d43e02::t_ddb7708b5d1c63 10694-10695,10707
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_08ad1fe1d43e02::t_2b92f5779991c2 122-123,133,144-146,150
+  s_08ad1fe1d43e02::t_bace74626e5e6d 147-149
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_08ad1fe1d43e02::t_e8c86e305f31a7 399-410
+  s_08ad1fe1d43e02::t_4234c05f1010a8 394
+  s_08ad1fe1d43e02::t_288a513561996f 546-550
+  s_08ad1fe1d43e02::t_b7fe52489db76b 392-393,395-396
+  s_08ad1fe1d43e02::t_621b80189e53b2 585
+packages/frontend/editor-ui/src/features/agents/components/AgentTestChatPage.vue
+  s_08ad1fe1d43e02::t_4f29708bb1f651 58-59,86,128-129
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_08ad1fe1d43e02::t_dd39ba6827cf25 79,237-240,342,437,1019-1020,1025,2038-2040,2042-2043,2062,2077
+  s_08ad1fe1d43e02::t_d8acb78175b781 1021-1023,2041,2381-2382
+  s_08ad1fe1d43e02::t_e8102925460a69 1198-1199,2050
+  s_08ad1fe1d43e02::t_8db8d57d59a500 1037-1038,1369,1390,1444,1478,1494-1495,1505,1567,1635,1640,1671
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_08ad1fe1d43e02::t_5efcb17b14a9be 199,202-213
+  s_08ad1fe1d43e02::t_14c331fb4a1cbf 76,198,200-201
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_08ad1fe1d43e02::t_516aed2ceac079 39,94,266,301-304,313-314
+  s_08ad1fe1d43e02::t_521512e4595743 1110-1113
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestDock.test.ts
+  s_08ad1fe1d43e02::t_b7fe52489db76b 143,421-422,426,723,739-744
+packages/@n8n/api-types/src/agents/dto.ts
+  s_08ad1fe1d43e02::t_18381a2ea0c60f 821-823,834,839-840
+  s_08ad1fe1d43e02::t_bdcd14f095f096 824-833,837,887
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7773b321313bc6a62cc5d848bc04791e3fb975bc",
+  "prompts": {},
+  "sessions": {
+    "s_08ad1fe1d43e02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8181cd39-5693-42c0-89cf-63f7653ab06b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

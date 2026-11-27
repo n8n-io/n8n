@@ -1,0 +1,33 @@
+packages/@n8n/cli/src/__tests__/promotion-expected-preview-revision.test.ts
+  s_4a494bfdece475::t_852f866424ed77 1-59
+packages/@n8n/cli/src/commands/promotion-environment/apply-continue.ts
+  s_4a494bfdece475::t_15688eb5390417 31
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_4a494bfdece475::t_ec7d5785e53e0c 39
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_4a494bfdece475::t_569a4c8312429d 40
+packages/@n8n/cli/src/commands/promotion-environment/apply.ts
+  s_4a494bfdece475::t_6ba069f2ceb7f8 30
+packages/@n8n/cli/src/commands/promotion-environment/expected-source.ts
+  s_4a494bfdece475::t_e3eb7ee04c0877 60-70,73-88
+packages/@n8n/cli/src/commands/promotion-environment/promote-selection.ts
+  s_4a494bfdece475::t_7e6cc909c3eaf1 40
+packages/@n8n/cli/src/commands/promotion-environment/promote.ts
+  s_4a494bfdece475::t_8cae6f23244584 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cff103db7255d2cc570886e41409bf5728fe9a4e",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

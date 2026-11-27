@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/agents.module.ts
+  s_4698cb1ae50481::t_4037256271a847 32-37
+packages/cli/src/modules/agents/simulation/__tests__/register-gym-simulation-backend.test.ts
+  s_4698cb1ae50481::t_090909821f852f 1-38
+packages/cli/src/modules/agents/simulation/gym/register-gym-simulation-backend.ts
+  s_4698cb1ae50481::t_c8bce545ecaf61 1-15
+packages/cli/src/modules/agents/simulation/__tests__/gym-simulation-backend.test.ts
+  s_4698cb1ae50481::t_779546af539826 1-203
+  s_4698cb1ae50481::t_41af39fc465fd4 204-234
+packages/cli/src/modules/agents/simulation/gym/gym-simulation-backend.ts
+  s_4698cb1ae50481::t_8b00ae0d1e9af0 1-168
+  s_4698cb1ae50481::t_2b444a7dfde46e 169-194
+packages/cli/src/modules/agents/simulation/gym/agent-simulation-gym.ts
+  s_4698cb1ae50481::t_eec82461ca3d25 1-46
+  s_4698cb1ae50481::t_1c39bf206caab4 47-64
+packages/@n8n/config/src/configs/agents.config.ts
+  s_4698cb1ae50481::t_d40e553cbeb618 2,37-38,97-104
+packages/@n8n/config/test/config.test.ts
+  s_4698cb1ae50481::t_329557a3af65f1 788
+packages/cli/src/modules/agents/simulation/__tests__/gym-world-slack-node.test.ts
+  s_4698cb1ae50481::t_6aa0313cc70636 1-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a1c682948440b362769315e6fd5d7c56a428f0b",
+  "prompts": {},
+  "sessions": {
+    "s_4698cb1ae50481": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20e7a-e21a-734d-95c4-f6bd36ddeea9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

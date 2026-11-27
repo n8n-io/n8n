@@ -1,0 +1,23 @@
+docker/AGENTS.md
+  s_761b295ca82ccf::t_13c2458a24e15f 27
+docker/docker-bake.hcl
+  s_761b295ca82ccf::t_458a1ac427111d 8,13,16
+  s_761b295ca82ccf::t_21b3f073b967f0 26,29
+  s_761b295ca82ccf::t_13c2458a24e15f 104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0fca6c6d00065b10ddcc763f6e59f298bc577ccc",
+  "prompts": {},
+  "sessions": {
+    "s_761b295ca82ccf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04bee6f9-c333-4211-a640-d73f22a76f53",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

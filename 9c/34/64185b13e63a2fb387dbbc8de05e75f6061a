@@ -1,0 +1,30 @@
+packages/@n8n/workflow-engine-check/README.md
+  s_5e5f3ce1c6da16::t_7711a5efdf189a 11-18
+packages/modules/engine-v2/frontend/src/engineV2Check.ts
+  s_5e5f3ce1c6da16::t_01a2f9d61ffc5a 3,32
+packages/@n8n/workflow-engine-check/src/index.ts
+  s_5e5f3ce1c6da16::t_7711a5efdf189a 2
+packages/@n8n/workflow-engine-check/src/__tests__/node-type-rule.test.ts
+  s_5e5f3ce1c6da16::t_1592ecfdab05e5 3,5,182-214
+  s_5e5f3ce1c6da16::t_8405a963da0db9 215
+packages/modules/engine-v2/frontend/README.md
+  s_5e5f3ce1c6da16::t_ffeee068ac6b8f 18-19
+packages/@n8n/workflow-engine-check/src/node-type-rule.ts
+  s_5e5f3ce1c6da16::t_7711a5efdf189a 13-14,17-18,20,24-31,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c3464185b13e63a2fb387dbbc8de05e75f6061a",
+  "prompts": {},
+  "sessions": {
+    "s_5e5f3ce1c6da16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "512d7f4b-1d3a-4776-9de2-8862e7f307bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

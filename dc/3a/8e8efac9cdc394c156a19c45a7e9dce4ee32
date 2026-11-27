@@ -1,0 +1,44 @@
+packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.integration.test.ts
+  s_4a494bfdece475::t_264af5e4340656 850
+  s_d128ee12fdf482::t_1ee628235dbae4 263,274,589,591-595
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-apply-check.dto.test.ts
+  s_d128ee12fdf482::t_9b3056c0b9235f 68-89
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_d128ee12fdf482::t_711b27f89d46c2 305,328-331
+packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.test.ts
+  s_d128ee12fdf482::t_3ae3df967956d2 1-2,17,88,166,181-199,201-208,236,306-309
+packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.revision.test.ts
+  s_d128ee12fdf482::t_b0d7d1527a6fb6 48-51
+packages/cli/src/modules/promotions.ee/promote-dependency-check.service.ts
+  s_d128ee12fdf482::t_e9243ff375600b 122,125-128
+packages/cli/src/modules/promotions.ee/promote-dependency-check.ts
+  s_d128ee12fdf482::t_3eb84a746b05e4 18-24,51,60-61,225-227,229,231-232
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionMissingDependency.generated.yml
+  s_d128ee12fdf482::t_0c5b10f2498f58 42-53
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-missing-dependencies.spec.ts
+  s_4a494bfdece475::t_aaa21188bea0c0 12-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc3a8e8efac9cdc394c156a19c45a7e9dce4ee32",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_d128ee12fdf482": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-adf43ea3b177b4d74",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

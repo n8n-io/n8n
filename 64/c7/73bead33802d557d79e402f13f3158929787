@@ -1,0 +1,70 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_8fb43d087ddb6b::t_e1dc4a4d96d658 1-6,497-500,515-517,522-524,532-535,545-547
+  s_8fb43d087ddb6b::t_a7dc442b8a2268 9,128,198,220,223-224,238,241-242
+  s_8fb43d087ddb6b::t_ef768cfffd0028 495-496,501-514,518-521,525-531,536-544,548-557
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  ai_agent 10-22,28
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_8fb43d087ddb6b::t_e1dc4a4d96d658 4693-4704,4706-4726
+  s_8fb43d087ddb6b::t_ef768cfffd0028 4687-4692
+packages/@n8n/api-types/src/dto/packages/skill-import.schema.ts
+  s_8fb43d087ddb6b::t_21a34db7beccd9 3-15,19
+packages/cli/src/modules/n8n-packages/engine/package-skill-plan.ts
+  s_8fb43d087ddb6b::t_e921f5cabbb065 88,100,110
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8fb43d087ddb6b::t_e921f5cabbb065 11623-11625,11627,11629-11633
+  s_8fb43d087ddb6b::t_7fcb1e7b3e57ce 11626,11628
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_8fb43d087ddb6b::t_21a34db7beccd9 291,316,321-325
+  s_8fb43d087ddb6b::t_e1dc4a4d96d658 292
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_8fb43d087ddb6b::t_21a34db7beccd9 304
+packages/cli/src/public-api/v1/controllers/__tests__/promotions.public.controller.test.ts
+  s_8fb43d087ddb6b::t_a7dc442b8a2268 236
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_8fb43d087ddb6b::t_e1dc4a4d96d658 2-7
+  s_8fb43d087ddb6b::t_a7dc442b8a2268 1,162-163
+packages/cli/src/modules/n8n-packages/entities/skill/skill-importer.ts
+  s_8fb43d087ddb6b::t_e921f5cabbb065 1,85,92-93,105,110,114,118,124,132,134,142,173,179,187,194,206-214,233
+  s_8fb43d087ddb6b::t_e1dc4a4d96d658 96-100
+packages/cli/src/modules/promotions.ee/__tests__/promotion-skill-selection.service.test.ts
+  s_8fb43d087ddb6b::t_a1c67d505ce1a4 2,37-38,51,72-73,75-78,125,127-128,134,137-138
+  s_8fb43d087ddb6b::t_ef768cfffd0028 49,74
+  s_8fb43d087ddb6b::t_e1dc4a4d96d658 6-11,40-46,135-136
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  ai_agent 286-301
+packages/cli/src/modules/promotions.ee/promotion-skill-selection.service.ts
+  s_8fb43d087ddb6b::t_21a34db7beccd9 2,24-25,33,40,47,49-50,53
+  s_8fb43d087ddb6b::t_e1dc4a4d96d658 9-14
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_8fb43d087ddb6b::t_21a34db7beccd9 104
+packages/@n8n/cli/docs/commands/promotions.md
+  s_8fb43d087ddb6b::t_e921f5cabbb065 77-79
+  s_8fb43d087ddb6b::t_a7461c12e42283 80-82
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_8fb43d087ddb6b::t_a7dc442b8a2268 1,60-61,71-72
+  s_8fb43d087ddb6b::t_e1dc4a4d96d658 2-7
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_8fb43d087ddb6b::t_a7dc442b8a2268 227
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_8fb43d087ddb6b::t_21a34db7beccd9 12,180
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.test.ts
+  s_8fb43d087ddb6b::t_7fcb1e7b3e57ce 1-16,21-39
+  s_8fb43d087ddb6b::t_e1dc4a4d96d658 17-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "64c773bead33802d557d79e402f13f3158929787",
+  "prompts": {},
+  "sessions": {
+    "s_8fb43d087ddb6b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20d41-65de-7b62-b2c0-d672a318c785",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

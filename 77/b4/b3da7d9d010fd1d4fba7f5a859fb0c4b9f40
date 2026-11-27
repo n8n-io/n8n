@@ -1,0 +1,16 @@
+.github/scripts/determine-version-info.mjs
+  h_52a137d26d774c 8,13-14,78-79,84-93,96,99,111
+.github/scripts/determine-version-info.test.mjs
+  h_52a137d26d774c 5-12,32,34,90-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77b4b3da7d9d010fd1d4fba7f5a859fb0c4b9f40",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+pnpm-lock.yaml
+  ai_agent 7103-7105,7906-7995
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  ai_agent 4188-4206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "359d2b172582121dcf65ce0e3665fb5511d3770e",
+  "prompts": {}
+}
