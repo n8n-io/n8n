@@ -5,6 +5,7 @@ import type {
 	NodeTypeAvailabilityScope,
 	ProjectPolicyEffectiveCounts,
 	ProjectPolicyKindSummary,
+	ProjectTypeAccessResponse,
 	TypeAccessChange,
 } from '@n8n/api-types';
 import { EventService, loginIdOf, ProjectNotFoundError } from '@n8n/backend-services';
@@ -243,11 +244,16 @@ export class TypeAvailabilityPolicyService {
 	private async assertTeamProject(projectId: string | null): Promise<void> {
 		if (projectId === null) return;
 
-		const [project] = await this.projectRepository.findTypesByIds([projectId]);
-		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+		const project = await this.findExistingProject(projectId);
 		if (project.type !== 'team') {
 			throw new BadRequestError(PERSONAL_PROJECT_POLICY);
 		}
+	}
+
+	private async findExistingProject(projectId: string) {
+		const [project] = await this.projectRepository.findTypesByIds([projectId]);
+		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+		return project;
 	}
 
 	/**
@@ -1034,6 +1040,54 @@ export class TypeAvailabilityPolicyService {
 				}),
 				effective.rules,
 			),
+		};
+	}
+
+	/**
+	 * What the instance and project policies decide together for each type in one project, and
+	 * which scope decides it, evaluated against one read of each scope so that the versions match
+	 * the verdicts. Uncached for the reason on `getEffectivePolicy`.
+	 *
+	 * A type has a row when `listTypes` lists it for the instance policy alone or for the project
+	 * policy alone, so a project rule on a hidden type or a tool variant keeps a row to undo it.
+	 * Each scope is listed with its own rules, because rule ids are unique only in one scope.
+	 *
+	 * A personal project gets the instance rows, like `getEffectivePolicy`, not the write error.
+	 */
+	async getProjectAccess(
+		kind: string,
+		projectId: string,
+		typeNames: readonly string[],
+		listTypes: ListTypes = (types) => types,
+	): Promise<ProjectTypeAccessResponse> {
+		await this.findExistingProject(projectId);
+
+		const [instance, project] = await Promise.all([
+			this.getEffectivePolicy(kind, null),
+			this.getEffectivePolicy(kind, projectId),
+		]);
+
+		const composeVerdicts = this.verdictComposer(kind, typeNames);
+		const listedFor = (scope: EffectivePolicy) =>
+			listTypes(composeVerdicts(scope, unconfiguredScope(kind, null)), scope.rules).map(
+				(verdict) => verdict.name,
+			);
+		const listed = new Set([...listedFor(instance), ...listedFor(project)]);
+		const verdicts = this.verdictComposer(
+			kind,
+			typeNames.filter((name) => listed.has(name)),
+		)(instance, project);
+
+		return {
+			instanceVersion: instance.version,
+			projectVersion: project.version,
+			types: verdicts.map(({ name, action, scope, matchedRuleId, optInAvailable }) => ({
+				name,
+				access: action,
+				scope,
+				matchedRuleId,
+				optInAvailable,
+			})),
 		};
 	}
 

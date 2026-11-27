@@ -1,4 +1,8 @@
-import { mcpServerActionSourceSchema, mcpServerToolKindSchema } from '@n8n/api-types';
+import {
+	mcpServerActionSourceSchema,
+	mcpServerToolDraftFieldSchema,
+	mcpServerToolKindSchema,
+} from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -42,9 +46,24 @@ export const CUSTOM_MCP_SERVERS_TELEMETRY = defineTelemetryEvents({
 			server_id: serverId,
 			user_id: userId,
 			tool_kind: toolKind,
-			is_ai_draft: z
-				.boolean()
-				.describe('True when the AI wrote the name and the description of the tool'),
+			...builderSource,
+		}),
+	},
+	USER_DRAFTED_TOOL_OF_CUSTOM_MCP_SERVER: {
+		name: 'User drafted tool of custom MCP server',
+		description:
+			'The n8n Assistant wrote the text of a tool, or tried to. Fires once per draft call: after an add, or for a "Generate" click.',
+		properties: z.object({
+			server_id: serverId,
+			user_id: userId,
+			field: z
+				.enum([...mcpServerToolDraftFieldSchema.options, 'both'])
+				.describe('both for the draft after an add. One field for a "Generate" click'),
+			status: z
+				.enum(['drafted', 'invalid_answer', 'model_failed', 'no_credits', 'not_available'])
+				.describe(
+					'drafted: the tool has the new text. invalid_answer: the answer broke the rules. model_failed: the model call failed. no_credits: the person has no Assistant credits left, so no model call ran. not_available: the Assistant cannot write drafts',
+				),
 			...builderSource,
 		}),
 	},

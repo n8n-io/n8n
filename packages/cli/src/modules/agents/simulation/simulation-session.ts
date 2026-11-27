@@ -7,12 +7,16 @@ import {
 	type FetchFn,
 	type ToolCallInterceptor,
 } from '@n8n/agents';
-import type {
-	ToolCallReason,
-	ToolCallSimulation,
-	ToolTestCapability,
-	ToolTestKind,
+import {
+	toolCallEvidenceSchema,
+	type ToolCallEvidence,
+	type ToolCallReason,
+	type ToolCallSimulation,
+	type ToolTestCapability,
+	type ToolTestKind,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, EvalNodeMockHandler } from 'n8n-core';
@@ -101,6 +105,8 @@ interface ActiveToolCall {
 	toolCallId: string;
 	toolName: string;
 	sources: ReplySource[];
+	/** Only known values, so nothing large a backend sends is kept until the call ends. */
+	evidence: Set<ToolCallEvidence>;
 	blocked?: ToolCallSimulation;
 }
 
@@ -202,6 +208,7 @@ export class SimulationSession {
 			toolCallId,
 			toolName: tool.name,
 			sources: [],
+			evidence: new Set(),
 		};
 		let output: unknown;
 		try {
@@ -215,7 +222,7 @@ export class SimulationSession {
 				this.recordDecision(toolCallId, active.blocked);
 				throw new SimulationBlockedError(active.blocked);
 			}
-			const decision = foldSources(active.sources);
+			const decision = foldSources(active.sources, active.evidence);
 			if (decision) this.recordDecision(toolCallId, decision);
 			throw error;
 		}
@@ -224,7 +231,7 @@ export class SimulationSession {
 			this.recordDecision(toolCallId, active.blocked);
 			throw new SimulationBlockedError(active.blocked);
 		}
-		const decision = foldSources(active.sources);
+		const decision = foldSources(active.sources, active.evidence);
 		if (decision) this.recordDecision(toolCallId, decision);
 		return output;
 	};
@@ -297,6 +304,17 @@ export class SimulationSession {
 		}
 		if (reply.outcome === 'served') {
 			active?.sources.push(reply.source);
+			if (Array.isArray(reply.evidence)) {
+				// A valid list holds each value at most once, so a longer one is cut before parsing.
+				const items = reply.evidence.slice(0, toolCallEvidenceSchema.options.length);
+				for (const item of items) {
+					if (isToolCallEvidence(item)) active?.evidence.add(item);
+				}
+			} else if (reply.evidence !== undefined) {
+				Container.get(Logger).warn('[SafeTesting] The simulator sent evidence that is not a list', {
+					toolName: active?.toolName,
+				});
+			}
 			return reply;
 		}
 		const decision =
@@ -402,10 +420,23 @@ function classifyTool(tool: BuiltTool): ToolClassification {
 	return { type: 'simulated', key: `unknown:${tool.name}`, kind: 'other' };
 }
 
-export function foldSources(sources: ReplySource[]): ToolCallSimulation | undefined {
+function isToolCallEvidence(value: unknown): value is ToolCallEvidence {
+	return toolCallEvidenceSchema.safeParse(value).success;
+}
+
+export function foldSources(
+	sources: ReplySource[],
+	reported: ReadonlySet<unknown> = new Set(),
+): ToolCallSimulation | undefined {
 	if (sources.length === 0) return undefined;
-	if (sources.includes('made_up')) return { route: 'simulated_made_up', reason: 'invented_by_llm' };
-	return { route: 'simulated', reason: 'served_from_world' };
+	// Only known values pass, in the order of the enum, so the list is stable for one tool call.
+	const evidence = toolCallEvidenceSchema.options.filter((item) => reported.has(item));
+	return {
+		...(sources.includes('made_up')
+			? { route: 'simulated_made_up', reason: 'invented_by_llm' }
+			: { route: 'simulated', reason: 'served_from_world' }),
+		...(evidence.length > 0 ? { evidence } : {}),
+	};
 }
 
 /**

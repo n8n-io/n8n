@@ -61,6 +61,7 @@ function createSetupFactory() {
 				nodeUsageEnabled: false,
 				preferencesNoteVariant: undefined as string | undefined,
 				skillSourcesEnabled: undefined as boolean | undefined,
+				workflowsInSkillsEnabled: undefined as boolean | undefined,
 			})),
 		},
 		settingsService: {
@@ -426,18 +427,19 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			},
 		);
 
-		it('passes the skill sources gate of the turn to the tool context', async () => {
+		it('passes the skill sources and workflows in skills gates of the turn to the tool context', async () => {
 			const { factory, fields } = createSetupFactory();
 			fields.adapterService.resolveExperimentGates.mockResolvedValue({
 				...(await fields.adapterService.resolveExperimentGates()),
 				skillSourcesEnabled: true,
+				workflowsInSkillsEnabled: true,
 			});
 
 			await factory.create(params, createRuntime());
 
 			expect(fields.adapterService.createContext).toHaveBeenCalledWith(
 				user,
-				expect.objectContaining({ skillSourcesEnabled: true }),
+				expect.objectContaining({ skillSourcesEnabled: true, workflowsInSkillsEnabled: true }),
 			);
 		});
 

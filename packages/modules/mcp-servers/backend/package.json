@@ -35,13 +35,17 @@
     "test:dev": "vitest --silent=false"
   },
   "dependencies": {
+    "@n8n/ai-utilities": "workspace:*",
     "@n8n/api-types": "workspace:*",
+    "@n8n/backend-common": "workspace:*",
     "@n8n/backend-services": "workspace:*",
     "@n8n/db": "workspace:*",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
-    "@n8n/typeorm": "workspace:*"
+    "@n8n/typeorm": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "uuid": "catalog:"
   },
   "devDependencies": {
     "@n8n/oxlint-config": "workspace:*",

@@ -42,6 +42,20 @@ export const blockedReasonSchema = z.enum([
 	'not_simulatable',
 ]);
 
+/**
+ * What a served tool call did, as the simulation backend reports it. A closed list: it never
+ * carries request or reply data. The names hold for any backend.
+ */
+export const toolCallEvidenceSchema = z.enum([
+	// Read from the real service. Nothing was written to it.
+	'real_read',
+	// Read from the simulated world.
+	'world_read',
+	// Wrote to the simulated world only.
+	'world_write',
+]);
+export type ToolCallEvidence = z.infer<typeof toolCallEvidenceSchema>;
+
 /** The reasons that fit each route, so a payload cannot claim a blocked call was served. */
 const REASONS_BY_ROUTE: Record<ToolCallRoute, readonly ToolCallReason[]> = {
 	simulated: ['served_from_world'],
@@ -55,10 +69,29 @@ export const toolCallSimulationSchema = z
 		reason: toolCallReasonSchema,
 		/** Short detail that is safe to show to the user. */
 		detail: z.string().optional(),
+		/** Each value at most once, in the order of the enum. Absent when the backend reports none. */
+		evidence: z
+			.array(toolCallEvidenceSchema)
+			.min(1)
+			.refine(
+				(items) =>
+					items.every(
+						(item, index) =>
+							index === 0 ||
+							toolCallEvidenceSchema.options.indexOf(items[index - 1]) <
+								toolCallEvidenceSchema.options.indexOf(item),
+					),
+				{ message: 'Evidence holds each value at most once, in the order of the enum' },
+			)
+			.optional(),
 	})
 	.refine(({ route, reason }) => REASONS_BY_ROUTE[route].includes(reason), {
 		message: 'The reason does not fit the route',
 		path: ['reason'],
+	})
+	.refine(({ route, evidence }) => route !== 'blocked' || evidence === undefined, {
+		message: 'A blocked call has no evidence',
+		path: ['evidence'],
 	});
 export type ToolCallSimulation = z.infer<typeof toolCallSimulationSchema>;
 

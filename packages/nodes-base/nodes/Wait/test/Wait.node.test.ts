@@ -1,4 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import {
@@ -7,6 +8,8 @@ import {
 	NodeOperationError,
 	WAIT_INDEFINITELY,
 	type IExecuteFunctions,
+	type IWebhookFunctions,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
@@ -240,4 +243,80 @@ describe('Wait Node description', () => {
 			displayParameter({ resume: 'webhook' }, responseMode!, { typeVersion }, description),
 		).toBe(true);
 	});
+});
+
+describe('Wait Node webhook authentication', () => {
+	const createWebhookContext = (resume: 'webhook' | 'form', incomingAuthentication: string) => {
+		const context = mock<IWebhookFunctions>({ nodeHelpers: mock(), logger: mock() });
+		const req = mock<Request>();
+		const res = mock<Response>();
+
+		req.headers = {};
+		req.params = {};
+		req.query = {};
+		req.method = 'POST';
+		req.body = { message: 'hello' };
+		Object.defineProperty(req, 'ips', { value: [], configurable: true });
+		Object.defineProperty(req, 'ip', { value: '127.0.0.1', configurable: true });
+
+		res.writeHead.mockImplementation(() => res);
+		res.end.mockImplementation(() => res);
+		res.setHeader.mockImplementation(() => res);
+		res.status.mockImplementation(() => res);
+		res.send.mockImplementation(() => res);
+
+		context.getRequestObject.mockReturnValue(req);
+		context.getResponseObject.mockReturnValue(res);
+		context.getHeaderData.mockReturnValue({});
+		context.getChildNodes.mockReturnValue([]);
+		context.getCredentials.mockResolvedValue({ user: 'admin', password: 'password' });
+		context.getNode.mockReturnValue({
+			id: 'wait-1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1.1,
+			position: [0, 0],
+			parameters: { resume, incomingAuthentication },
+		});
+		context.getNodeParameter.mockImplementation(
+			(paramName: string, fallbackValue?: NodeParameterValueType | object) => {
+				if (paramName === 'resume') return resume;
+				if (paramName === 'incomingAuthentication') return incomingAuthentication;
+				if (paramName === 'options') return {};
+				if (paramName === 'responseMode') return 'onReceived';
+				if (paramName === 'httpMethod') return 'POST';
+				return fallbackValue;
+			},
+		);
+
+		return { context, res };
+	};
+
+	it.each(['unsupportedMode', 'BasicAuth'])(
+		'should return 500 without workflowData when webhook resume uses unsupported authentication mode "%s"',
+		async (incomingAuthentication) => {
+			const waitNode = new Wait();
+			const { context, res } = createWebhookContext('webhook', incomingAuthentication);
+
+			const result = await waitNode.webhook(context);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(res.writeHead).toHaveBeenCalledWith(500, expect.any(Object));
+			expect(res.end).toHaveBeenCalled();
+		},
+	);
+
+	it.each(['unsupportedMode', 'BasicAuth'])(
+		'should reject form resume without workflowData when authentication mode "%s" is unsupported',
+		async (incomingAuthentication) => {
+			const waitNode = new Wait();
+			const { context, res } = createWebhookContext('form', incomingAuthentication);
+
+			const result = await waitNode.webhook(context);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.send).toHaveBeenCalled();
+		},
+	);
 });

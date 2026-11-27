@@ -17,7 +17,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Logger } from '@n8n/backend-common';
 
-import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/engine-lifecycle-event-subscriptions';
+import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/lifecycle-events/engine-lifecycle-event-subscriptions';
 import { createInMemoryExecutionChannel } from '@/modules/engine-v2/execution-channel/in-memory-execution-channel';
 import { ExecutionChannelReceiver } from '@/modules/engine-v2/execution-channel/execution-channel-receiver';
 import { createLifecycleEventCodec } from '@/modules/engine-v2/execution-channel/lifecycle-event-frame';
