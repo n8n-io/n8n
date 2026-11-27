@@ -37,7 +37,7 @@ the instance holds for the kind.
    valid again. The next session of the instance has a new id.
 4. The expiry of a session row uses database time. An instance also ends a session on its own clocks
    when the validity deadline passes (the lease length minus the margin after it sent the last
-   renewal that succeeded), so a session can end before its row expires.
+   insert or renewal that succeeded), so a session can end before its row expires.
 
 ## Links
 
