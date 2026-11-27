@@ -831,7 +831,6 @@ describe('WorkflowSettingsVue', () => {
 		});
 
 		describe('Engine v2 compatibility', () => {
-			const WARNING = 'workflow-settings-engine-v2-warning';
 			const nodeReason = (code: EngineCompatibilityReason['code']): EngineCompatibilityReason => ({
 				code,
 				kind: 'temporary',
@@ -879,49 +878,16 @@ describe('WorkflowSettingsVue', () => {
 				);
 			});
 
-			it('warns with the number of issues while the workflow is on v1', async () => {
-				mockEngineV2Compatibility({ reasons });
-				workflowDocumentStore.setSettings({ engineType: 'v1' });
-
-				const { getByTestId } = createComponent({ pinia });
-				await flushPromises();
-
-				expect(getByTestId(WARNING)).toHaveTextContent(
-					'This workflow has 2 compatibility issues with Engine v2.',
-				);
-			});
-
-			it('warns on v2 too, and asks nothing when Settings opens on v2', async () => {
-				mockEngineV2Compatibility({ reasons });
+			it('shows no compatibility warning and runs no check when Settings opens', async () => {
+				const { checkWorkflow } = mockEngineV2Compatibility({ reasons });
 				workflowDocumentStore.setSettings({ engineType: 'v2' });
 
-				const { getByTestId } = createComponent({ pinia });
+				const { queryByText } = createComponent({ pinia });
 				await flushPromises();
 
-				expect(getByTestId(WARNING)).toBeInTheDocument();
-				expect(confirmEngineV2Switch).not.toHaveBeenCalled();
-			});
-
-			it('shows no warning when the workflow has no issues', async () => {
-				mockEngineV2Compatibility({ reasons: [] });
-
-				const { queryByTestId } = createComponent({ pinia });
-				await flushPromises();
-
-				expect(queryByTestId(WARNING)).not.toBeInTheDocument();
-			});
-
-			it('shows no warning and runs no check when the engine-v2 module is inactive', async () => {
-				vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
-					(name: string) => name !== 'engine-v2',
-				);
-				const { checkWorkflow } = mockEngineV2Compatibility({ reasons });
-
-				const { queryByTestId } = createComponent({ pinia });
-				await flushPromises();
-
-				expect(queryByTestId(WARNING)).not.toBeInTheDocument();
+				expect(queryByText(/compatibility issues? with Engine v2/)).not.toBeInTheDocument();
 				expect(checkWorkflow).not.toHaveBeenCalled();
+				expect(confirmEngineV2Switch).not.toHaveBeenCalled();
 			});
 
 			it('asks for confirmation when the user selects v2 and the workflow has issues', async () => {
@@ -1042,7 +1008,7 @@ describe('WorkflowSettingsVue', () => {
 				expect(confirmEngineV2Switch).not.toHaveBeenCalled();
 			});
 
-			it('checks the settings as Save sends them, so a redaction floor adds no warning', async () => {
+			it('checks the settings as Save sends them, so a redaction floor adds no issue', async () => {
 				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
 				getSecuritySettings.mockResolvedValue({
@@ -1056,14 +1022,15 @@ describe('WorkflowSettingsVue', () => {
 						(workflow.settings?.redactionPolicy ?? 'none') === 'none' ? [] : [workflowReason],
 				});
 
-				const { getByTestId, queryByTestId, getByRole } = createComponent({ pinia });
+				const { getByTestId, getByRole } = createComponent({ pinia });
 				await flushPromises();
 
 				// The floor shows production as redacted, but Save keeps the stored policy.
 				expect(
 					getByTestId('workflow-settings-redact-production-select').querySelector('input')?.value,
 				).toBe('Redact');
-				expect(queryByTestId(WARNING)).not.toBeInTheDocument();
+				await selectEngine(getByTestId, 'v2');
+				expect(confirmEngineV2Switch).not.toHaveBeenCalled();
 
 				await userEvent.click(getByRole('button', { name: 'Save' }));
 				const [, data] = workflowsStore.updateWorkflow.mock.calls[0];
@@ -1084,19 +1051,21 @@ describe('WorkflowSettingsVue', () => {
 					scopes: ['workflow:enableRedaction', 'workflow:disableRedaction'],
 				});
 
-				const { getByTestId, queryByTestId } = createComponent({ pinia });
+				const { getByTestId } = createComponent({ pinia });
 				await flushPromises();
-				expect(queryByTestId(WARNING)).not.toBeInTheDocument();
 
 				const dropdownItems = await getDropdownItems(
 					getByTestId('workflow-settings-redact-production-select'),
 				);
 				await userEvent.click(dropdownItems[1]);
 				await flushPromises();
+				await selectEngine(getByTestId, 'v2');
 
-				expect(getByTestId(WARNING)).toHaveTextContent(
-					'This workflow has 1 compatibility issue with Engine v2.',
-				);
+				expect(confirmEngineV2Switch).toHaveBeenCalledWith({
+					count: 1,
+					hasBlocking: false,
+					hasPublishedVersion: false,
+				});
 			});
 		});
 

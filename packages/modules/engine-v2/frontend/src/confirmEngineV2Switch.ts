@@ -2,8 +2,6 @@ import { useMessage } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { h } from 'vue';
 
-import { describeEngineV2IssueCount } from './composables/useEngineV2Compatibility';
-
 export interface EngineV2SwitchConfirmation {
 	/** The number of groups of findings. */
 	count: number;
@@ -26,7 +24,10 @@ export async function confirmEngineV2Switch({
 	const i18n = useI18n();
 
 	const summary = [
-		describeEngineV2IssueCount(count),
+		i18n.baseText('engineV2Compatibility.confirm.message', {
+			adjustToNumber: count,
+			interpolate: { count: String(count) },
+		}),
 		i18n.baseText(
 			hasBlocking
 				? 'engineV2Compatibility.confirm.message.blocking'

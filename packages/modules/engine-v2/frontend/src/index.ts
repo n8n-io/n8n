@@ -12,7 +12,6 @@ export {
 export { confirmEngineV2Switch, type EngineV2SwitchConfirmation } from './confirmEngineV2Switch';
 export {
 	describeEngineV2Block,
-	describeEngineV2IssueCount,
 	useEngineV2Compatibility,
 	type EngineV2CompatibilityWorkflowSource,
 } from './composables/useEngineV2Compatibility';

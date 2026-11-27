@@ -60,11 +60,3 @@ export function useEngineV2Compatibility(workflow: EngineV2CompatibilityWorkflow
 export function describeEngineV2Block(): string {
 	return useI18n().baseText('engineV2Compatibility.publishBlocked');
 }
-
-/** "This workflow has N compatibility issues with Engine v2." N is the number of groups. */
-export function describeEngineV2IssueCount(count: number): string {
-	return useI18n().baseText('engineV2Compatibility.issueCount', {
-		adjustToNumber: count,
-		interpolate: { count: String(count) },
-	});
-}

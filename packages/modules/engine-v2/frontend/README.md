@@ -23,7 +23,7 @@ The module tells the editor if the open workflow can run on engine v2. Every ans
 - `groupEngineV2Reasons` (`src/engineV2Findings.ts`) puts the reasons of one node in one group. A
   reason with no node is a group of its own. Every surface shows the number of groups as its
   count. `findEngineV2Issues` runs the check without the engine gate, so workflow settings can
-  warn before the switch.
+  ask before the switch.
 - `confirmEngineV2Switch` asks the user to confirm the switch to engine v2. It is a message box,
   so it opens above the workflow settings modal.
 - `EngineV2CompatibilityButton` shows the number of groups in a badge: red when one blocks, yellow

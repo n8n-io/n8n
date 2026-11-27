@@ -19,7 +19,6 @@ import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 import {
 	N8nBadge,
 	N8nButton,
-	N8nCallout,
 	N8nIcon,
 	N8nInput,
 	N8nInputNumber,
@@ -73,7 +72,6 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import WorkflowCustomTelemetryTags from '@/features/workflows/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
 import {
 	confirmEngineV2Switch,
-	describeEngineV2IssueCount,
 	findEngineV2Issues,
 	hasBlockingGroup,
 } from '@n8n/frontend-module-engine-v2';
@@ -302,7 +300,7 @@ const isEngineTypeChangePendingPublish = computed(() => {
 const openEngineV2Findings = useOpenEngineV2Findings();
 
 // The engine v2 findings of the workflow with the settings that Save would send, whatever the
-// selected engine. So the warning shows before the switch, and follows the other settings.
+// selected engine. So the confirmation counts the issues that the saved workflow would have.
 const engineV2Issues = computed(() => {
 	if (!isEngineTypeSettingVisible.value) return [];
 	return findEngineV2Issues({
@@ -311,8 +309,6 @@ const engineV2Issues = computed(() => {
 		settings: settingsToSave(),
 	});
 });
-
-const engineV2Warning = computed(() => describeEngineV2IssueCount(engineV2Issues.value.length));
 
 // A select change, not a watch: loading the settings also writes `engineType`, and that must
 // not ask anything.
@@ -1189,15 +1185,6 @@ onBeforeUnmount(() => {
 								</div>
 							</N8nOption>
 						</N8nSelect>
-						<N8nCallout
-							v-if="engineV2Issues.length > 0"
-							theme="warning"
-							slim
-							:class="$style['engine-v2-warning']"
-							data-test-id="workflow-settings-engine-v2-warning"
-						>
-							{{ engineV2Warning }}
-						</N8nCallout>
 					</ElCol>
 				</ElRow>
 				<ElRow v-if="isExecutionLogicSettingVisible">
@@ -2101,10 +2088,6 @@ onBeforeUnmount(() => {
 			opacity: 1;
 		}
 	}
-}
-
-.engine-v2-warning {
-	margin-top: var(--spacing--2xs);
 }
 
 .engine-type-pending-badge {
