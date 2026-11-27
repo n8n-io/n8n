@@ -309,6 +309,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		:display-mode="displayMode"
 		:disable-edit="isReadOnly"
 		:disable-pin="isReadOnly"
+		:disable-unpin="isReadOnly"
 		:disable-ai-content="true"
 		:collapsing-table-column-name="collapsingColumnName"
 		data-test-id="ndv-output-panel"
