@@ -1,0 +1,49 @@
+packages/@n8n/api-types/src/dto/packages/credential.schema.ts
+  s_3947e7a7645066::t_7848de7253426b 38-39
+packages/modules/promotions/frontend/src/composables/usePreparedApplyCredentials.ts
+  s_3947e7a7645066::t_2e8f91cad2adb9 23-24,76,81
+  s_3947e7a7645066::t_b528075ef5dc95 51
+  s_3947e7a7645066::t_d8d042d0b7af55 1-22,25-50,52-75,77-80,82-113
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_3947e7a7645066::t_7848de7253426b 145-148
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_3947e7a7645066::t_464a1740c1f987 24,28,33,90-101
+  s_3947e7a7645066::t_ee2b42fcbd1831 255-261,330-345,645-652
+  s_3947e7a7645066::t_b528075ef5dc95 489-519
+packages/@n8n/api-types/src/dto/index.ts
+  s_3947e7a7645066::t_69e4ddedd554a1 882-884
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3947e7a7645066::t_69e4ddedd554a1 7-9,908-957
+packages/cli/src/modules/n8n-packages/entities/credential/credential.serializer.ts
+  s_3947e7a7645066::t_7848de7253426b 19,43,49-50,61
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_3947e7a7645066::t_62abaca358de29 29
+  s_3947e7a7645066::t_6bb904cce3d442 127-141,1094-1126,1128-1149,1151-1162,1164-1183
+  s_3947e7a7645066::t_80713bcc88f6d3 25,34,38,1127,1150
+packages/modules/promotions/frontend/src/components/preview/PromotionPreparedCredentials.vue
+  s_3947e7a7645066::t_d80414cfcab20d 1-113
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3947e7a7645066::t_61bab9ba3b9bf1 11608-11618
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_3947e7a7645066::t_464a1740c1f987 69,74-75,202
+packages/modules/promotions/frontend/src/composables/usePromotionBindingCreation.test.ts
+  s_3947e7a7645066::t_486e1cc77006a4 32
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_3947e7a7645066::t_69e4ddedd554a1 241-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5b3fd4b22524a2b91a9a3b605e3f43bbe9505ede",
+  "prompts": {},
+  "sessions": {
+    "s_3947e7a7645066": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6c1ad71-79f0-424f-bcac-75282364c349",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
