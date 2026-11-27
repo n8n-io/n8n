@@ -36,14 +36,23 @@ function unknownOverridePaths(override: unknown, parsed: unknown, prefix = ''): 
 	});
 }
 
-/** Keys the eval restore binds: credentials (`credential`, `credentialId`, …)
- *  and models (`model`, `observerModel`, `reflectorModel`, …). */
+/**
+ * Keys the eval restore binds, at any depth: credentials (`credential…`),
+ * models (`model`, `…Model`), and `modelsByDifficulty`. Case-insensitive, as
+ * lang-tracer checks them, so both sides refuse the same cases.
+ */
 function isRestoreBoundKey(key: string): boolean {
-	return /^credential/i.test(key) || key === 'model' || /Model$/.test(key);
+	return /^credential/i.test(key) || /model$/i.test(key) || /^modelsByDifficulty$/i.test(key);
 }
 
-/** Dotted paths of override keys that name a credential or a model. */
+/** Paths (`a.b`, `tools[0].c`) of override keys that name a credential or a
+ *  model, inside objects and arrays. */
 function restoreBoundOverridePaths(override: unknown, prefix = ''): string[] {
+	if (Array.isArray(override)) {
+		return override.flatMap((item, index) =>
+			restoreBoundOverridePaths(item, `${prefix}[${String(index)}]`),
+		);
+	}
 	if (!isPlainObject(override)) return [];
 	return Object.entries(override).flatMap(([key, value]) => {
 		const path = prefix ? `${prefix}.${key}` : key;

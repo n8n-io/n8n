@@ -168,3 +168,28 @@ describe('model overrides', () => {
 		).toBe(true);
 	});
 });
+
+describe('restore-bound keys, as lang-tracer checks them', () => {
+	it.each([
+		[
+			'a model key in any case',
+			{ memory: { observationalMemory: { ObserverMODEL: {} } } },
+			'memory.observationalMemory.ObserverMODEL',
+		],
+		['a credential key in any case', { CredentialId: 'cred-9' }, 'CredentialId'],
+		[
+			'modelsByDifficulty',
+			{ subAgents: { modelsByDifficulty: { easy: 'openai/gpt-5' } } },
+			'subAgents.modelsByDifficulty',
+		],
+		[
+			'a credential inside an array',
+			{ tools: [{ type: 'node', CredentialId: 'cred-9' }] },
+			'tools[0].CredentialId',
+		],
+	])('rejects %s', (_label, overrides, path) => {
+		const error = agentConfigOverrideError(seeded, overrides);
+		expect(error).toContain('cannot set credentials or models');
+		expect(error).toContain(path);
+	});
+});
