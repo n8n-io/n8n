@@ -1,0 +1,113 @@
+operationId: getAgentVersion
+tags:
+  - Agent
+summary: Retrieve an agent version
+description: |-
+  Retrieve one saved version of an agent, including its configuration, tools, and skills.
+
+  Requires the `agent:read` API key scope.
+x-required-scope: agent:read
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the agent.
+    name: agentId
+    in: path
+  - schema:
+      type: string
+    required: true
+    description: The ID of the agent version.
+    name: versionId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            versionId:
+              type: string
+            agentId:
+              type: string
+            name:
+              type: string
+              nullable: true
+            description:
+              type: string
+              nullable: true
+            author:
+              type: string
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+            isActive:
+              type: boolean
+            isCurrent:
+              type: boolean
+            lastPublished:
+              type: object
+              properties:
+                author:
+                  type: string
+                createdAt:
+                  type: string
+                isLegacy:
+                  type: boolean
+              required:
+                - author
+                - createdAt
+                - isLegacy
+            config:
+              type: object
+              nullable: true
+            tools:
+              type: object
+              additionalProperties:
+                type: object
+                description: 'A custom tool: the code it runs and its descriptor.'
+                properties:
+                  code:
+                    type: string
+                  descriptor:
+                    type: object
+                    description: The tool descriptor. `name` is required; other fields pass through.
+                    properties:
+                      name:
+                        type: string
+                    required:
+                      - name
+                    additionalProperties: true
+                required:
+                  - code
+                  - descriptor
+            skills:
+              type: object
+              additionalProperties:
+                type: object
+                description: A skill body saved with this version.
+                additionalProperties: true
+          required:
+            - versionId
+            - agentId
+            - name
+            - description
+            - author
+            - createdAt
+            - updatedAt
+            - isActive
+            - isCurrent
+            - config
+            - tools
+            - skills
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
