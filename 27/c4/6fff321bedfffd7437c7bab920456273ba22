@@ -1,0 +1,23 @@
+.github/scripts/quality/check-n8n-node-override.test.mjs
+  s_f5b6971a0ab7f6::t_e5a01b3491468c 23-28
+  s_f5b6971a0ab7f6::t_7225d68bc562e6 51-60
+.github/scripts/quality/check-n8n-node-override.mjs
+  s_f5b6971a0ab7f6::t_8f7e58d9e06668 18-33
+  s_f5b6971a0ab7f6::t_8d5854282b0498 49-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "27c46fff321bedfffd7437c7bab920456273ba22",
+  "prompts": {},
+  "sessions": {
+    "s_f5b6971a0ab7f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34345f33-68d5-4c0e-9308-7e63f21dd4db",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}
