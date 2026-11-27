@@ -15,6 +15,7 @@ import {
 } from '../utils/cli-imports.js';
 
 const AGENT_ENTRY_POINTS = new Set([
+	'agent-archive.service',
 	'agent-context.service',
 	'agent-context.contracts',
 	'agent-credential-provider.contracts',

@@ -24,9 +24,13 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
+import { readNodeVersion } from '../resolve-node-version.mjs';
+import { readPin } from './base-image-candidates.mjs';
 import {
 	CHAIN,
+	NODE_CHAIN,
 	bakeFileAt,
+	chainBranchOf,
 	contains,
 	github,
 	isRefreshCommit,
@@ -67,11 +71,42 @@ const unique = (findings) => [
 ];
 
 /**
- * The alerts of one run, and the state for the next run. `state` is the state
- * of the last run, or an empty object. `prs` are the open refresh PRs, and
- * `chains` the newest publish of each chain workflow (see collectChains).
+ * The Node pins and the images that n8n builds from them. The tag of each
+ * starts with its Node version. The Alpine images run the Node of
+ * N8N_BUILDER_IMAGE and PC_BUILDER_IMAGE, the Debian images the Node of
+ * DEBIAN_RUNTIME_IMAGE.
  */
-export function planAlerts(results, state, { now, manual = false, actor, prs = [], chains = [] }) {
+export const NODE_VERSION_PINS = [
+	'DHI_REF',
+	'DEBIAN_DHI_REF',
+	'BUILDER_IMAGE',
+	'DEBIAN_BUILDER_IMAGE',
+	'RUNTIME_IMAGE',
+	'DEBIAN_RUNTIME_IMAGE',
+	'N8N_BUILDER_IMAGE',
+	'PC_BUILDER_IMAGE',
+];
+
+/** The Node pins whose tag is not on NODE_VERSION. */
+export function nodeMismatch(hcl) {
+	const version = readNodeVersion(hcl);
+	const lagging = NODE_VERSION_PINS.filter(
+		(name) => !readPin(hcl, name).tag.startsWith(`${version}-`),
+	);
+	return { version, lagging };
+}
+
+/**
+ * The alerts of one run, and the state for the next run. `state` is the state
+ * of the last run, or an empty object. `prs` are the open refresh PRs,
+ * `chains` the newest publish of each chain workflow (see collectChains), and
+ * `node` the Node pins that are not on NODE_VERSION (see nodeMismatch).
+ */
+export function planAlerts(
+	results,
+	state,
+	{ now, manual = false, actor, prs = [], chains = [], node = null },
+) {
 	const iso = new Date(now).toISOString();
 	const lastAlert = state.lastAlert ?? {};
 	const next = { findings: {}, noPublishTime: {}, nodeCheckFailed: 0, lastAlert: {} };
@@ -188,6 +223,20 @@ export function planAlerts(results, state, { now, manual = false, actor, prs = [
 		);
 	}
 
+	// A Node update moves the pins in two steps (the Node PR, then its chain PR),
+	// so a mismatch is normal for some hours. After 48 hours a chain stopped, or a
+	// person changed only some pins: the Alpine and the Debian images can run
+	// different Node versions.
+	if (node?.lagging?.length > 0) {
+		next.nodeMismatchSince = state.nodeMismatchSince ?? iso;
+		const open = now - Date.parse(next.nodeMismatchSince);
+		if (open >= WAIT_MS && due(`node-mismatch ${node.version}`)) {
+			alerts.push(
+				`\`NODE_VERSION\` is \`${node.version}\`, but ${node.lagging.map((name) => `\`${name}\``).join(', ')} still use another Node version after ${Math.floor(open / DAY_MS)} days. The Alpine and the Debian images can run different Node versions. Check the chain PR of the Node update and \`build-node-pc-image.yml\` on master.`,
+			);
+		}
+	}
+
 	return { alerts, state: next };
 }
 
@@ -201,9 +250,8 @@ const REFRESH_BRANCHES = [
 	REVIEW_BRANCH,
 	NODE_BRANCH,
 	`${REFRESH_BRANCH}rebuild`,
-	...Object.keys(CHAIN).map(
-		(workflow) => `${REFRESH_BRANCH}chain-${workflow.replace(/\.yml$/, '')}`,
-	),
+	...Object.keys(CHAIN).map(chainBranchOf),
+	NODE_CHAIN.branch,
 ];
 
 /** The open refresh PRs, with the names of their failed checks. */
@@ -326,6 +374,7 @@ async function main() {
 		actor: values.actor,
 		prs: await collect('refresh PRs', collectPullRequests),
 		chains: await collect('chains', () => collectChains(hcl)),
+		node: await collect('Node pins', async () => nodeMismatch(hcl)),
 	});
 	alerts.push(...failures);
 	writeFileSync(values['state-out'], `${JSON.stringify(next, null, 2)}\n`);
