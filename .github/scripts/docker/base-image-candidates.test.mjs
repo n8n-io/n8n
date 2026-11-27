@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
 	GATE_MS,
+	PATCH_UPDATES,
 	SOURCES,
 	applyGate,
 	classifyNoFix,
+	exactTagOf,
 	movingTagOf,
+	nextPatchTags,
 	compareScans,
 	evaluateSource,
 	readPin,
@@ -194,6 +197,66 @@ describe('classifyNoFix', () => {
 	it('reports no upstream fix without a moving tag', () => {
 		assert.equal(classifyNoFix(noFix, null).status, 'no-upstream-fix');
 	});
+
+	const patch = {
+		ref: `dhi.io/node:26.13.1-alpine3.24-dev@${digest('d')}`,
+		platforms: [{ platform: 'linux/amd64', removed: [fixed], added: [], addedPackages: [] }],
+		versionBump: { from: '26.13.0-alpine3.24-dev', to: '26.13.1-alpine3.24-dev' },
+	};
+
+	it('makes the newer patch a candidate on its exact tag', () => {
+		const result = classifyNoFix(noFix, moving([fixed]), patch);
+		assert.equal(result.status, 'candidate');
+		assert.equal(result.newest, patch.ref);
+		assert.deepEqual(result.platforms, patch.platforms);
+		assert.deepEqual(result.versionBump, patch.versionBump);
+		assert.equal(result.versionUpdate, undefined);
+	});
+
+	it('ignores the patch when the moving tag removes nothing', () => {
+		assert.equal(classifyNoFix(noFix, moving([]), patch).status, 'no-upstream-fix');
+	});
+});
+
+describe('PATCH_UPDATES', () => {
+	it('covers the Alpine DHI Node pin only', () => {
+		// The Debian images run the Node of DEBIAN_DHI_REF, so a person updates it.
+		assert.deepEqual([...PATCH_UPDATES], ['DHI_REF']);
+	});
+});
+
+describe('nextPatchTags', () => {
+	it('lists the next patches and keeps the variant', () => {
+		assert.deepEqual(nextPatchTags('26.13.0-alpine3.24-dev', 3), [
+			'26.13.1-alpine3.24-dev',
+			'26.13.2-alpine3.24-dev',
+			'26.13.3-alpine3.24-dev',
+		]);
+		assert.deepEqual(nextPatchTags('3.13.9', 2), ['3.13.10', '3.13.11']);
+	});
+
+	it('returns no tag for a tag without a patch number', () => {
+		assert.deepEqual(nextPatchTags('latest'), []);
+	});
+});
+
+describe('exactTagOf', () => {
+	const digests = {
+		'26.13.1-alpine3.24-dev': digest('b'),
+		'26.13.3-alpine3.24-dev': digest('d'),
+	};
+	const resolve = (tag) => digests[tag] ?? null;
+
+	it('finds the patch tag that has the digest of the moving tag, past a missing patch', () => {
+		assert.equal(
+			exactTagOf('26.13.0-alpine3.24-dev', digest('d'), resolve),
+			'26.13.3-alpine3.24-dev',
+		);
+	});
+
+	it('returns null when no patch tag has the digest', () => {
+		assert.equal(exactTagOf('26.13.0-alpine3.24-dev', digest('e'), resolve), null);
+	});
 });
 
 describe('applyGate', () => {
@@ -241,6 +304,17 @@ describe('applyGate', () => {
 	it('keeps auto-merge on a manual run for a digest older than 24 hours', () => {
 		const result = applyGate(candidate(), publisher(hoursAgo(48)), { now, skipGate: true });
 		assert.equal(result.autoMerge, true);
+		assert.equal(result.gateSkipped, false);
+	});
+
+	it('turns auto-merge off for a patch update, also after 24 hours', () => {
+		const bump = {
+			...candidate(),
+			versionBump: { from: '26.13.0-alpine3.24-dev', to: '26.13.1-alpine3.24-dev' },
+		};
+		const result = applyGate(bump, publisher(hoursAgo(48)), { now, skipGate: false });
+		assert.equal(result.status, 'ready');
+		assert.equal(result.autoMerge, false);
 		assert.equal(result.gateSkipped, false);
 	});
 
@@ -303,6 +377,23 @@ describe('renderSummary', () => {
 			summary,
 			/- `DHI_REF`: version update needed\. `dhi\.io\/node:26\.13-alpine3\.24-dev@sha256:d` removes 0 C \/ 1 H \/ 0 M \/ 0 L \/ 0 U\./,
 		);
+	});
+
+	it('lists the patch updates with their status', () => {
+		const summary = renderSummary([
+			{
+				source: 'DHI_REF',
+				status: 'in-24h-gate',
+				platforms: [],
+				versionBump: { from: '26.13.0-alpine3.24-dev', to: '26.13.1-alpine3.24-dev' },
+			},
+		]);
+		assert.match(summary, /### Patch updates/);
+		assert.match(
+			summary,
+			/- `DHI_REF`: `26\.13\.0-alpine3\.24-dev` → `26\.13\.1-alpine3\.24-dev` \(in-24h-gate\)\./,
+		);
+		assert.doesNotMatch(summary, /Needs a person/);
 	});
 
 	it('lists the publisher errors', () => {

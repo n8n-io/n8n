@@ -35,6 +35,7 @@ import {
 	writeTodosLabel,
 	writeTodosSummaryLabel,
 } from '../utils/write-todos-tool';
+import { useSkillWorkflowToolNames } from './useSkillWorkflowToolNames';
 import { useSubAgentNames } from './useSubAgentNames';
 
 /** The thinking of an Agents run. It shows before the tool calls. */
@@ -158,6 +159,9 @@ export function useAgentActivityItems(options: {
 		toRef(() => options.projectId() ?? ''),
 		() => toolCallsNeedSubAgentNames(options.toolCalls()),
 	);
+	const { skillWorkflowName } = useSkillWorkflowToolNames(() =>
+		options.toolCalls().map(({ tool }) => tool),
+	);
 
 	function toolStepLabel(tc: ToolCall, isCompact = false): string {
 		if (isDelegateSubAgentTool(tc.tool)) {
@@ -167,7 +171,10 @@ export function useAgentActivityItems(options: {
 		const hostLabel = hostToolStepLabel?.(tc.tool, tc.input);
 		if (hostLabel) return hostLabel;
 		/** The compact "Memory noted" label only applies once the call has finished. */
-		return resolveToolNameForDisplay(tc.tool, i18n, isCompact ? tc.output : undefined);
+		return (
+			skillWorkflowName(tc.tool) ??
+			resolveToolNameForDisplay(tc.tool, i18n, isCompact ? tc.output : undefined)
+		);
 	}
 
 	function toolStepMetadata(tc: ToolCall): string[] {
