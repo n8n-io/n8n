@@ -96,6 +96,8 @@ describe('POST /favorites', () => {
 			{ resourceType: 'dataTable', resourceId: dataTable.id },
 			{ resourceType: 'agent', resourceId: agent.id },
 		] as const;
+		const withMaskedId = (body: unknown, id: string): unknown =>
+			JSON.parse(JSON.stringify(body).replaceAll(id, '<id>'));
 
 		for (const payload of cases) {
 			const denied = await authMemberAgent.post('/favorites').send(payload).expect(404);
@@ -104,7 +106,9 @@ describe('POST /favorites', () => {
 				.send({ resourceType: payload.resourceType, resourceId: 'nonexistent-id' })
 				.expect(404);
 
-			expect(denied.body.code).toBe(missing.body.code);
+			expect(withMaskedId(denied.body, payload.resourceId)).toEqual(
+				withMaskedId(missing.body, 'nonexistent-id'),
+			);
 		}
 
 		const stored = await Container.get(UserFavoriteRepository).findByUser(member.id);
