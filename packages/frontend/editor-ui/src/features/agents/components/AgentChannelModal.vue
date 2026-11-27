@@ -686,10 +686,11 @@ function previewTask() {
 	const objective = taskFormRef.value?.previewObjective();
 	if (!objective || props.previewDisabledReason) return;
 	completeAndClose();
-	// The form's objective, so an unsaved edit can be tested.
+	// The form's objective and timezone, so an unsaved edit can be tested.
 	emit('preview-task', {
 		objective,
 		taskId: scheduleTask.value?.id,
+		timezone: taskFormRef.value?.previewTimezone(),
 		source: 'schedule_modal',
 	});
 }

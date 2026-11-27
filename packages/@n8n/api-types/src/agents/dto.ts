@@ -930,6 +930,12 @@ const hasOnlyObjectiveForTaskId = {
 	options: { message: 'A task test sends only the schedule objective', path: ['message'] },
 };
 
+const hasTaskIdForTaskTimezone = {
+	check: (value: { taskId?: string; taskTimezone?: string | null }) =>
+		value.taskTimezone === undefined || !!value.taskId,
+	options: { message: 'A task timezone needs a task ID', path: ['taskTimezone'] },
+};
+
 const projectAgentChatMessageShape = {
 	...agentChatMessageShape,
 	/**
@@ -938,6 +944,11 @@ const projectAgentChatMessageShape = {
 	 * Needs `newSession`. n8n Chat ignores it.
 	 */
 	taskId: z.string().min(1).optional(),
+	/**
+	 * The unsaved timezone of the tested task. `null` is the instance timezone.
+	 * Omit it to use the saved timezone.
+	 */
+	taskTimezone: agentTaskSchema.shape.timezone,
 };
 
 const agentChatMessageSchema = z
@@ -945,7 +956,8 @@ const agentChatMessageSchema = z
 	.refine(hasMessageContent.check, hasMessageContent.options)
 	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options)
 	.refine(hasNewSessionForTaskId.check, hasNewSessionForTaskId.options)
-	.refine(hasOnlyObjectiveForTaskId.check, hasOnlyObjectiveForTaskId.options);
+	.refine(hasOnlyObjectiveForTaskId.check, hasOnlyObjectiveForTaskId.options)
+	.refine(hasTaskIdForTaskTimezone.check, hasTaskIdForTaskTimezone.options);
 
 const agentPreviewChatMessageSchema = z
 	.object(agentPreviewChatMessageShape)

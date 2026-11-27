@@ -3901,12 +3901,16 @@ describe('useAgentChatStream — done executionId', () => {
 
 		await hook.loadHistory();
 		expect(hook.sessionTestTaskId.value).toBeUndefined();
-		await hook.sendMessage('Summarize', undefined, undefined, undefined, 'task-1');
+		await hook.sendMessage('Summarize', undefined, undefined, undefined, {
+			taskId: 'task-1',
+		});
 		await flushPromises();
 		// The server refused the test, so the session stays open.
 		expect(hook.sessionTestTaskId.value).toBeUndefined();
 		newSession.value = false;
-		await hook.sendMessage('Summarize', undefined, undefined, undefined, 'task-1');
+		await hook.sendMessage('Summarize', undefined, undefined, undefined, {
+			taskId: 'task-1',
+		});
 		await flushPromises();
 
 		expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
@@ -3914,6 +3918,35 @@ describe('useAgentChatStream — done executionId', () => {
 			taskId: 'task-1',
 		});
 		expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).not.toHaveProperty('taskId');
+	});
+
+	it('sends the unsaved timezone of a schedule test, including the instance timezone', async () => {
+		getChatMessagesMock.mockRejectedValue({ httpStatusCode: 404 });
+		const fetchMock = vi.fn(
+			async (_input: RequestInfo | URL, _init?: RequestInit) =>
+				new Response(JSON.stringify({ message: 'Unavailable' }), { status: 503 }),
+		);
+		globalThis.fetch = fetchMock as typeof fetch;
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		await hook.loadHistory();
+		await hook.sendMessage('Summarize', undefined, undefined, undefined, {
+			taskId: 'task-1',
+			timezone: 'Asia/Tokyo',
+		});
+		await flushPromises();
+		await hook.sendMessage('Summarize', undefined, undefined, undefined, {
+			taskId: 'task-1',
+			timezone: null,
+		});
+		await flushPromises();
+		await hook.sendMessage('Summarize', undefined, undefined, undefined, { taskId: 'task-1' });
+		await flushPromises();
+
+		const bodies = fetchMock.mock.calls.map((call) => JSON.parse(String(call[1]?.body)));
+		expect(bodies[0]).toMatchObject({ taskId: 'task-1', taskTimezone: 'Asia/Tokyo' });
+		expect(bodies[1]).toMatchObject({ taskId: 'task-1', taskTimezone: null });
+		expect(bodies[2]).not.toHaveProperty('taskTimezone');
 	});
 
 	it('marks a schedule test session once the server accepts the test', async () => {
@@ -3927,7 +3960,9 @@ describe('useAgentChatStream — done executionId', () => {
 		});
 
 		await hook.loadHistory();
-		const sending = hook.sendMessage('Summarize', undefined, onAccepted, undefined, 'task-1');
+		const sending = hook.sendMessage('Summarize', undefined, onAccepted, undefined, {
+			taskId: 'task-1',
+		});
 		await flushPromises();
 		// No notice yet: the user cannot start another session before the test is accepted.
 		expect(hook.sessionTestTaskId.value).toBeUndefined();

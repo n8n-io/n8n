@@ -2915,7 +2915,10 @@ describe('AgentBuilderView — preview routing', () => {
 			expect.objectContaining({
 				isOpen: true,
 				newSession: true,
-				initialPrompt: { text: 'Test these instructions', taskId: 'task-1' },
+				initialPrompt: {
+					text: 'Test these instructions',
+					scheduleTest: { taskId: 'task-1', timezone: undefined },
+				},
 			}),
 		);
 		expect(preview.props('effectiveSessionId')).not.toBe('thread-1');
@@ -2961,7 +2964,7 @@ describe('AgentBuilderView — preview routing', () => {
 			expect(preview.props('effectiveSessionId')).not.toBe('thread-1');
 			expect(preview.props('initialPrompt')).toEqual({
 				text: 'Summarize the inbox',
-				taskId: 'task-1',
+				scheduleTest: { taskId: 'task-1', timezone: undefined },
 			});
 			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
@@ -3008,7 +3011,7 @@ describe('AgentBuilderView — preview routing', () => {
 			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 			expect(preview.props('initialPrompt')).toEqual({
 				text: 'Summarize the inbox',
-				taskId: 'task-1',
+				scheduleTest: { taskId: 'task-1', timezone: undefined },
 			});
 
 			preview.vm.$emit('schedule-test-chat');
@@ -3029,7 +3032,7 @@ describe('AgentBuilderView — preview routing', () => {
 		await flushPromises();
 		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialPrompt')).toEqual({
 			text: 'Test these instructions',
-			taskId: undefined,
+			scheduleTest: undefined,
 		});
 
 		routeParams.agentId = 'a2';

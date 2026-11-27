@@ -312,7 +312,8 @@ and `Preview` in the schedule modal start a new Preview session. The first
 message is the objective, in the format of a scheduled run. The modal sends the
 objective in the form, so users can test an edit before they save it. A new
 schedule that is not saved yet has no task to test. Its `Preview` sends the
-objective as a normal chat message. Disable these actions when the Test button
+objective as a normal chat message. The modal also sends the timezone in the
+form. Disable these actions when the Test button
 beside the Agent title is disabled, and show the same tooltip. Deactivated
 schedules stay testable.
 
@@ -320,7 +321,10 @@ A schedule test runs once, like the scheduled run. Lock the composer of its
 session, and show the notice `Schedule test: runs once, like the real schedule.`
 above it. Do not show a disabled field without an explanation. The notice has
 two actions. `Run again` starts a new test of the same schedule with its saved
-objective. `Chat with the agent` starts a new, normal Preview session. Keep Stop
+objective. Disable `Run again` when the Test button beside the Agent title is
+disabled, and show the same reason in a tooltip. `Chat with the agent` starts a
+new, normal Preview session. Do not offer Retry after a failed test, because a
+retry is a follow-up message. `Run again` repeats the test. Keep Stop
 available while the test runs. Keep inline approval cards. The server marks the
 session as a schedule test and refuses new messages, so the lock stays after a
 reload and when the user opens the session from Preview history.

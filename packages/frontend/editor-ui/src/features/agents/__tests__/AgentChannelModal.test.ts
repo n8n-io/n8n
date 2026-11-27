@@ -71,6 +71,7 @@ vi.mock('../components/AgentTaskForm.vue', async () => {
 			setup(props, { expose }) {
 				expose({
 					previewObjective: () => (props.task as { objective?: string } | null)?.objective,
+					previewTimezone: () => 'Asia/Tokyo',
 				});
 				return () => null;
 			},
@@ -428,7 +429,14 @@ describe('AgentChannelModal', () => {
 		await flushPromises();
 
 		expect(wrapper.emitted('preview-task')).toEqual([
-			[{ objective: 'Summarize the inbox', taskId: 'task-1', source: 'schedule_modal' }],
+			[
+				{
+					objective: 'Summarize the inbox',
+					taskId: 'task-1',
+					timezone: 'Asia/Tokyo',
+					source: 'schedule_modal',
+				},
+			],
 		]);
 	});
 

@@ -62,16 +62,28 @@ export interface AgentEditRequestEvent {
 
 export type AgentSendToAssistantEvent = AgentFixWithAssistantEvent | AgentEditRequestEvent;
 
-/** A message that opens a new Preview session. `taskId` makes it a test of that schedule. */
+/**
+ * The schedule that the first message of a Preview session tests. `timezone` is
+ * the form's unsaved timezone: `null` is the instance timezone, and no value is
+ * the saved one.
+ */
+export interface AgentScheduleTest {
+	taskId: string;
+	timezone?: string | null;
+}
+
+/** A message that opens a new Preview session. `scheduleTest` makes it a test of that schedule. */
 export interface AgentPreviewPrompt {
 	text: string;
-	taskId?: string;
+	scheduleTest?: AgentScheduleTest;
 }
 
 /** A schedule to test in Preview. A new task in the modal has no `taskId` yet. */
 export interface AgentTaskTestRequest {
 	objective: string;
 	taskId?: string;
+	/** The modal's unsaved timezone. See `AgentScheduleTest`. */
+	timezone?: string | null;
 	source: 'schedule' | 'schedule_modal' | 'schedule_rerun';
 }
 

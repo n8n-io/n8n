@@ -1409,12 +1409,14 @@ describe('AgentChatController task test turns', () => {
 			message: 'Summarize',
 			newSession: true,
 			taskId: 'task-1',
+			taskTimezone: 'Asia/Tokyo',
 		});
 
 		expect(agentTaskService.buildTaskTestMessage).toHaveBeenCalledWith(
 			'agent-1',
 			'task-1',
 			'Summarize',
+			'Asia/Tokyo',
 		);
 		expect(messageQueue.enqueue).toHaveBeenCalledWith(
 			expect.objectContaining({

@@ -268,7 +268,8 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		// The text-or-attachment invariant is enforced by the DTO schema.
-		const { message, sessionId, messageId, newSession, attachments, mode, taskId } = payload;
+		const { message, sessionId, messageId, newSession, attachments, mode, taskId, taskTimezone } =
+			payload;
 
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -305,7 +306,7 @@ export class AgentChatController {
 			const resourceId = draftChatMemoryResourceId(req.user.id);
 			// Throws when the task is not on this agent. The relay reports it on the stream.
 			const turnMessage = taskId
-				? await this.agentTaskService.buildTaskTestMessage(agentId, taskId, message)
+				? await this.agentTaskService.buildTaskTestMessage(agentId, taskId, message, taskTimezone)
 				: message;
 			return {
 				agentId,

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-defineProps<{ disabled?: boolean }>();
+/** Why Preview cannot open now. Run again is disabled while it is set. */
+defineProps<{ runAgainDisabledReason?: string }>();
 
 const emit = defineEmits<{ 'run-again': []; chat: [] }>();
 const locale = useI18n();
@@ -18,24 +19,25 @@ const locale = useI18n();
 			<N8nButton
 				variant="ghost"
 				size="small"
-				:disabled="disabled"
 				data-testid="agent-schedule-test-chat"
 				data-attr="agent-schedule-test-chat"
 				@click="emit('chat')"
 			>
 				{{ locale.baseText('agents.chat.scheduleTest.chat') }}
 			</N8nButton>
-			<N8nButton
-				variant="outline"
-				size="small"
-				icon="flask-conical"
-				:disabled="disabled"
-				data-testid="agent-schedule-test-run-again"
-				data-attr="agent-schedule-test-run-again"
-				@click="emit('run-again')"
-			>
-				{{ locale.baseText('agents.chat.scheduleTest.runAgain') }}
-			</N8nButton>
+			<N8nTooltip :content="runAgainDisabledReason" :disabled="!runAgainDisabledReason">
+				<N8nButton
+					variant="outline"
+					size="small"
+					icon="flask-conical"
+					:disabled="!!runAgainDisabledReason"
+					data-testid="agent-schedule-test-run-again"
+					data-attr="agent-schedule-test-run-again"
+					@click="emit('run-again')"
+				>
+					{{ locale.baseText('agents.chat.scheduleTest.runAgain') }}
+				</N8nButton>
+			</N8nTooltip>
 		</div>
 	</div>
 </template>

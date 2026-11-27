@@ -60,6 +60,7 @@ const props = withDefaults(
 		newSession?: boolean;
 		initialPrompt?: AgentPreviewPrompt;
 		showTestScenarios?: boolean;
+		scheduleTestDisabledReason?: string;
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		canDeleteSession?: boolean;
@@ -347,6 +348,7 @@ defineExpose({ clearBudgetStops });
 				:new-session="props.newSession"
 				:initial-prompt="props.initialPrompt"
 				:show-test-scenarios="props.showTestScenarios"
+				:schedule-test-disabled-reason="props.scheduleTestDisabledReason"
 				:can-send-to-assistant="props.canSendToAssistant"
 				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"

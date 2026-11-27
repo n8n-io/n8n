@@ -86,6 +86,7 @@ import {
 } from '../utils/composer-attachments';
 import type {
 	AgentContinueLoadedEvent,
+	AgentScheduleTest,
 	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
@@ -188,6 +189,8 @@ const props = withDefaults(
 		 * not blocked; use `beforeSend` to refuse them.
 		 */
 		disabled?: boolean;
+		/** Why a schedule test cannot run again now, for example while the agent builds. */
+		scheduleTestDisabledReason?: string;
 		/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
 		thinkingLabel?: string;
 		/** Replaces the generic "Session stopped" of a stopped turn. The Assistant sets it. */
@@ -1043,7 +1046,7 @@ let externalAttachedFiles: File[] = [];
 // The client context a hand-off sends with its own message only, on top of the `clientContext` prop.
 let externalClientContext: Record<string, unknown> | undefined;
 // The schedule a hand-off tests. It goes with the hand-off's own message only.
-let externalTaskId: string | undefined;
+let externalScheduleTest: AgentScheduleTest | undefined;
 
 type SubmitResult = 'sent' | 'busy' | 'rejected';
 
@@ -1139,7 +1142,8 @@ const isSubmissionBlocked = computed(
 		hasBudgetStop.value,
 );
 const retryMessageId = computed(() => {
-	if (!isRetryableChatError(messages.value.at(-1))) return undefined;
+	// A schedule test takes no follow-up. Run again repeats it.
+	if (sessionTestTaskId.value || !isRetryableChatError(messages.value.at(-1))) return undefined;
 	return messages.value.findLast((message) => message.role === CHAT_MESSAGE_ROLE.USER)?.id;
 });
 const retryDisabled = computed(
@@ -1374,7 +1378,7 @@ watch(
 	() => {
 		queuedExternalMessage = undefined;
 		externalClientContext = undefined;
-		externalTaskId = undefined;
+		externalScheduleTest = undefined;
 		handoffPreview = undefined;
 		editingQueueId.value = undefined;
 		queueExpanded.value = false;
@@ -1395,7 +1399,7 @@ function consumeQueuedExternalMessage(message: string) {
 	if (queuedExternalMessage !== message) return;
 	queuedExternalMessage = undefined;
 	externalClientContext = undefined;
-	externalTaskId = undefined;
+	externalScheduleTest = undefined;
 	emit('initial-consumed');
 }
 
@@ -1458,7 +1462,7 @@ async function submitDraft(
 	const ownedHandoffPreview = submittingQueuedExternalMessage ? handoffPreview : undefined;
 	if (ownedHandoffPreview) handoffPreview = undefined;
 	const ownedClientContext = submittingQueuedExternalMessage ? externalClientContext : undefined;
-	const ownedTaskId = submittingQueuedExternalMessage ? externalTaskId : undefined;
+	const ownedScheduleTest = submittingQueuedExternalMessage ? externalScheduleTest : undefined;
 	const hadNoMessagesBeforeSend = messages.value.length === 0;
 	const isCurrentTarget = captureTarget();
 
@@ -1493,7 +1497,7 @@ async function submitDraft(
 		staleControlledDraft: options.staleControlledDraft,
 		handoffPreview: ownedHandoffPreview,
 		clientContext: ownedClientContext,
-		taskId: ownedTaskId,
+		scheduleTest: ownedScheduleTest,
 	});
 }
 
@@ -1512,7 +1516,7 @@ interface SendRequest {
 	/** Sent with this message only, on top of the `clientContext` prop. */
 	clientContext?: Record<string, unknown>;
 	/** The schedule that this message tests. */
-	taskId?: string;
+	scheduleTest?: AgentScheduleTest;
 }
 
 async function sendRequest(request: SendRequest): Promise<SubmitResult> {
@@ -1523,7 +1527,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 		staleControlledDraft,
 		handoffPreview: ownedHandoffPreview,
 		clientContext: ownedClientContext,
-		taskId,
+		scheduleTest,
 	} = request;
 	const hadNoMessagesBeforeSend = messages.value.length === 0;
 	const isCurrentTarget = captureTarget();
@@ -1585,7 +1589,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 			consumeQueuedExternalMessage(text);
 		};
 		emitMessageSending({ text, files, clientContext });
-		const sending = sendMessage(text, sentFiles, onAccepted, clientContext, taskId);
+		const sending = sendMessage(text, sentFiles, onAccepted, clientContext, scheduleTest);
 		isPreparingToSend.value = false;
 		const result = await sending;
 		// A send the server never accepted (busy, failed, lost) won't bring the real
@@ -1653,12 +1657,12 @@ function sendMessageFromOutside(
 	message: string,
 	files?: File[],
 	clientContext?: Record<string, unknown>,
-	taskId?: string,
+	scheduleTest?: AgentScheduleTest,
 ) {
 	queuedExternalMessage = message;
 	externalAttachedFiles = files ?? [];
 	externalClientContext = clientContext;
-	externalTaskId = taskId;
+	externalScheduleTest = scheduleTest;
 	// Staged as the composer's own attachments, with the same count and size checks
 	// as a picked file: `onSubmit` reads `attachedFiles`, so they ride along with
 	// every retry `submitQueuedExternalMessage` makes while blocked.
@@ -1695,7 +1699,7 @@ async function submitQueuedExternalMessage() {
 		queuedExternalMessage = undefined;
 		// The draft is the user's now, so the hand-off's context does not go with it.
 		externalClientContext = undefined;
-		externalTaskId = undefined;
+		externalScheduleTest = undefined;
 		firstMessagePreview.value = undefined;
 		// The files stay in the composer as the user's draft now.
 		externalAttachedFiles = [];
@@ -2073,6 +2077,7 @@ onBeforeUnmount(() => {
 					<AgentScheduleTestNotice
 						v-if="sessionTestTaskId"
 						:class="$style.scheduleTestNotice"
+						:run-again-disabled-reason="scheduleTestDisabledReason"
 						@run-again="runScheduleTestAgain"
 						@chat="emit('schedule-test-chat')"
 					/>

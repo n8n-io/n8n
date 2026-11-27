@@ -62,6 +62,19 @@ describe('AgentChatMessageDto', () => {
 		).toBe(false);
 	});
 
+	it('accepts a valid task timezone only with a task id', () => {
+		const test = { message: 'Summarize', newSession: true, taskId: 'task-1' };
+		const parsed = AgentChatMessageDto.safeParse({ ...test, taskTimezone: 'Europe/Berlin' });
+		expect(parsed.success && parsed.data.taskTimezone).toBe('Europe/Berlin');
+		expect(AgentChatMessageDto.safeParse({ ...test, taskTimezone: null }).success).toBe(true);
+		expect(AgentChatMessageDto.safeParse({ ...test, taskTimezone: 'Not/AZone' }).success).toBe(
+			false,
+		);
+		expect(
+			AgentChatMessageDto.safeParse({ message: 'Hi', taskTimezone: 'Europe/Berlin' }).success,
+		).toBe(false);
+	});
+
 	it('rejects a payload with neither message text nor attachments', () => {
 		expect(AgentChatMessageDto.safeParse({ message: '' }).success).toBe(false);
 		expect(AgentChatMessageDto.safeParse({ message: '   ' }).success).toBe(false);

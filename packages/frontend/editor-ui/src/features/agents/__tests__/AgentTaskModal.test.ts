@@ -392,11 +392,14 @@ describe('AgentTaskModal', () => {
 		expect(onPreview).toHaveBeenCalledWith({
 			objective: 'Obj',
 			taskId: 'task-9',
+			// The saved task has no timezone, so it follows the instance timezone.
+			timezone: null,
 			source: 'schedule_modal',
 		});
 	});
 
-	it('tests the objective in the form of a new schedule without a task id', async () => {
+	it('tests the objective and timezone in the form of a new schedule without a task id', async () => {
+		setBrowserTimezone('Asia/Tokyo');
 		const onPreview = vi.fn();
 		const { getByTestId } = renderModal({ isRunnable: true, onPreview });
 
@@ -406,6 +409,8 @@ describe('AgentTaskModal', () => {
 		expect(onPreview).toHaveBeenCalledWith({
 			objective: 'Draft objective',
 			taskId: undefined,
+			// A new schedule starts in the browser timezone.
+			timezone: 'Asia/Tokyo',
 			source: 'schedule_modal',
 		});
 	});
@@ -546,6 +551,8 @@ describe('AgentTaskModal', () => {
 		expect(onPreview).toHaveBeenCalledWith({
 			objective: 'Test these instructions',
 			taskId: 'task-9',
+			// The saved task has no timezone, so it follows the instance timezone.
+			timezone: null,
 			source: 'schedule_modal',
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);

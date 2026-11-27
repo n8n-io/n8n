@@ -1250,6 +1250,23 @@ describe('AgentTaskService', () => {
 			);
 		});
 
+		it('uses the given timezone over the saved one', async () => {
+			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(
+				makeTask({ timezone: 'Europe/London' }),
+			);
+
+			const edited = await service.buildTaskTestMessage(
+				AGENT_ID,
+				'task-1',
+				'Objective',
+				'Asia/Tokyo',
+			);
+			const instance = await service.buildTaskTestMessage(AGENT_ID, 'task-1', 'Objective', null);
+
+			expect(edited).toMatch(/\nThis task is scheduled in Asia\/Tokyo\.$/);
+			expect(instance).not.toContain('This task is scheduled in');
+		});
+
 		it('throws NotFoundError for a task that is not on the agent', async () => {
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(null);
 

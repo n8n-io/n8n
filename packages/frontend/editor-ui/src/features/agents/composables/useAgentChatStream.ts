@@ -75,7 +75,7 @@ import { addReplyAttachments } from '@/features/ai/shared/agentsChat/replyFiles'
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
-import type { AgentUsageUpdate } from '../types';
+import type { AgentScheduleTest, AgentUsageUpdate } from '../types';
 
 export interface FatalAgentError {
 	message: string;
@@ -1849,7 +1849,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		onAccepted?: (queueId?: string) => void,
 		userMessage?: ChatMessage,
 		clientContext?: Record<string, unknown>,
-		taskId?: string,
+		scheduleTest?: AgentScheduleTest,
 	) {
 		const target = targetKey();
 		const baseUrl = agentChatBaseUrl(
@@ -1873,12 +1873,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			body.messageId = userMessage?.id;
 			if (newSession) body.newSession = true;
 			// The server accepts a task test only as the first message of a new session.
-			if (newSession && taskId) {
-				body.taskId = taskId;
+			if (newSession && scheduleTest) {
+				body.taskId = scheduleTest.taskId;
+				if (scheduleTest.timezone !== undefined) body.taskTimezone = scheduleTest.timezone;
 				// Lock the session only once the server takes the test. The pending
 				// prompt is consumed at the same time, so it cannot move to a new session.
 				accepted = (queueId) => {
-					if (target === targetKey()) sessionTestTaskId.value = taskId;
+					if (target === targetKey()) sessionTestTaskId.value = scheduleTest.taskId;
 					onAccepted?.(queueId);
 				};
 			}
@@ -2073,7 +2074,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	/**
 	 * `clientContext` is per-message context that a system agent's provider reads.
-	 * The request body carries it only when it is set. `taskId` makes the first
+	 * The request body carries it only when it is set. `scheduleTest` makes the first
 	 * message of a new Preview session a test of that schedule.
 	 */
 	async function sendMessage(
@@ -2081,7 +2082,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		files?: File[],
 		onAccepted?: (queueId?: string) => void,
 		clientContext?: Record<string, unknown>,
-		taskId?: string,
+		scheduleTest?: AgentScheduleTest,
 	): Promise<'sent' | 'busy'> {
 		const trimmed = text.trim();
 		if ((!trimmed && !files?.length) || isSubmitting.value || isLoadingHistory.value) return 'busy';
@@ -2127,7 +2128,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				},
 				userMessage,
 				clientContext,
-				taskId,
+				scheduleTest,
 			)
 				.then(({ outcome }) => {
 					detached = outcome === 'detached';

@@ -1371,7 +1371,7 @@ async function onOpenPreview(
 }
 
 /** Tests a schedule in a new Preview session, so the run does not mix with an open chat. */
-async function onPreviewTask({ objective, taskId, source }: AgentTaskTestRequest) {
+async function onPreviewTask({ objective, taskId, timezone, source }: AgentTaskTestRequest) {
 	const target = { projectId: projectId.value, agentId: agentId.value };
 	if (!(await onOpenPreview(source, target))) return;
 
@@ -1380,7 +1380,10 @@ async function onPreviewTask({ objective, taskId, source }: AgentTaskTestRequest
 	onNewChat();
 	await nextTick();
 	if (isStaleAgentTarget(target.projectId, target.agentId)) return;
-	taskPreviewPrompt.value = { text: objective, taskId };
+	taskPreviewPrompt.value = {
+		text: objective,
+		scheduleTest: taskId ? { taskId, timezone } : undefined,
+	};
 }
 
 /** Tests the schedule of a schedule test session again, with its saved objective. */
@@ -3776,6 +3779,7 @@ useKeybindings({
 					:show-test-scenarios="showTestScenariosEmptyState"
 					:new-session="currentSessionIsEphemeral"
 					:initial-prompt="taskPreviewPrompt"
+					:schedule-test-disabled-reason="testModeDisabledReason"
 					:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
@@ -3932,6 +3936,7 @@ useKeybindings({
 							:new-session="currentSessionIsEphemeral"
 							:initial-prompt="taskPreviewPrompt"
 							:show-test-scenarios="showTestScenariosEmptyState"
+							:schedule-test-disabled-reason="testModeDisabledReason"
 							:can-delete-session="canDeletePreviewSession"
 							:is-deleting-session="isDeletingSession"
 							:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"

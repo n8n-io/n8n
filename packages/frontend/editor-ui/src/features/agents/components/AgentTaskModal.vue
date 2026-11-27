@@ -52,8 +52,13 @@ function onPreview() {
 	if (!objective || !props.data.onPreview || props.data.getPreviewDisabledReason?.()) return;
 
 	closeModal();
-	// The form's objective, so an unsaved edit can be tested.
-	props.data.onPreview({ objective, taskId: props.data.task?.id, source: 'schedule_modal' });
+	// The form's objective and timezone, so an unsaved edit can be tested.
+	props.data.onPreview({
+		objective,
+		taskId: props.data.task?.id,
+		timezone: formRef.value?.previewTimezone(),
+		source: 'schedule_modal',
+	});
 }
 
 async function onDelete() {

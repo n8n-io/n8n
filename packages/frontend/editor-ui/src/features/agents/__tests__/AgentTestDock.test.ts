@@ -6,6 +6,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import AgentTestDock from '../components/AgentTestDock.vue';
 import AgentTestChatPage from '../components/AgentTestChatPage.vue';
+import type { AgentPreviewPrompt } from '../types';
 
 enableAutoUnmount(afterEach);
 
@@ -140,7 +141,7 @@ function mountDock(
 		isOpen: boolean;
 		isDeletingSession: boolean;
 		canDeleteSession: boolean;
-		initialPrompt?: { text: string; taskId?: string };
+		initialPrompt?: AgentPreviewPrompt;
 		sessionOptions: Array<{
 			id: string;
 			title: string;
@@ -418,7 +419,7 @@ describe('AgentTestDock', () => {
 				},
 			],
 		};
-		const initialPrompt = { text: 'Test these instructions', taskId: 'task-1' };
+		const initialPrompt = { text: 'Test these instructions', scheduleTest: { taskId: 'task-1' } };
 		const wrapper = mountDock({ beforeSend, initialPrompt });
 		const chatPage = wrapper.findComponent({ name: 'AgentTestChatPage' });
 
@@ -720,7 +721,7 @@ describe('AgentTestChatPage', () => {
 				localConfig: null,
 				connectedTriggers: [],
 				effectiveSessionId: 'thread-1',
-				initialPrompt: { text: 'Test these instructions', taskId: 'task-1' },
+				initialPrompt: { text: 'Test these instructions', scheduleTest: { taskId: 'task-1' } },
 			},
 			global: {
 				stubs: {
@@ -740,7 +741,7 @@ describe('AgentTestChatPage', () => {
 			'Test these instructions',
 			undefined,
 			undefined,
-			'task-1',
+			{ taskId: 'task-1' },
 		);
 		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
 

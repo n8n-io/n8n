@@ -31,6 +31,7 @@ const props = withDefaults(
 		newSession?: boolean;
 		initialPrompt?: AgentPreviewPrompt;
 		showTestScenarios?: boolean;
+		scheduleTestDisabledReason?: string;
 		placeholder?: string;
 		composerHeight?: string;
 		canSendToAssistant?: boolean;
@@ -104,7 +105,7 @@ watch(
 	[() => props.initialPrompt, chatPanel],
 	([prompt, panel]) => {
 		if (!prompt || !panel) return;
-		panel.sendMessageFromOutside(prompt.text, undefined, undefined, prompt.taskId);
+		panel.sendMessageFromOutside(prompt.text, undefined, undefined, prompt.scheduleTest);
 	},
 	{ immediate: true, flush: 'post' },
 );
@@ -142,6 +143,7 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				:before-send="beforeSend"
 				:budget-cards="budgetCards"
 				:increase-budget="increaseBudget"
+				:schedule-test-disabled-reason="scheduleTestDisabledReason"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@usage-updated="emit('usage-updated', $event)"
 				@session-created="emit('session-created', $event)"

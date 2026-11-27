@@ -471,6 +471,7 @@ describe('AgentChatPanel', () => {
 			acceptedMimeTypes: string;
 			beforeSend: () => Promise<void> | void;
 			backgroundJobsActive: boolean;
+			scheduleTestDisabledReason: string;
 			increaseBudget: (payload: {
 				field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
 				amount: number;
@@ -3619,11 +3620,11 @@ describe('AgentChatPanel', () => {
 				message: string,
 				files?: File[],
 				clientContext?: Record<string, unknown>,
-				taskId?: string,
+				scheduleTest?: { taskId: string },
 			) => void;
 		};
 
-		panel.sendMessageFromOutside('Summarize', undefined, undefined, 'task-1');
+		panel.sendMessageFromOutside('Summarize', undefined, undefined, { taskId: 'task-1' });
 		await flushPromises();
 		sendMessageMock.mock.lastCall?.[2]?.();
 		await flushPromises();
@@ -3636,7 +3637,7 @@ describe('AgentChatPanel', () => {
 			undefined,
 			expect.any(Function),
 			undefined,
-			'task-1',
+			{ taskId: 'task-1' },
 		);
 		expect(sendMessageMock).toHaveBeenNthCalledWith(
 			2,
@@ -3700,6 +3701,45 @@ describe('AgentChatPanel', () => {
 			await nextTick();
 
 			expect(wrapper.find('[data-testid="agent-chat-approvals"]').exists()).toBe(true);
+			wrapper.unmount();
+		});
+
+		it('offers no resend after a failed test, so the locked composer gets no text', async () => {
+			sessionTestTaskIdMock.value = 'task-1';
+			messagesMock.value = [
+				{ id: 'user', role: 'user', content: 'Summarize the inbox' },
+				{
+					id: 'error',
+					role: 'assistant',
+					content: 'The model finished without returning an answer.',
+					status: 'error',
+				},
+			];
+			const wrapper = mountPanel();
+			await flushPromises();
+			const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+
+			expect(list.props('retryMessageId')).toBeUndefined();
+			list.vm.$emit('retry', 'user');
+			await flushPromises();
+			expect(sendMessageMock).not.toHaveBeenCalled();
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
+			wrapper.unmount();
+		});
+
+		it('disables Run again while Preview cannot open', async () => {
+			sessionTestTaskIdMock.value = 'task-1';
+			const wrapper = mountPanel({ scheduleTestDisabledReason: 'The agent is building' });
+			const runAgain = wrapper.get('[data-testid="agent-schedule-test-run-again"]');
+
+			expect(runAgain.attributes('disabled')).toBeDefined();
+			expect(
+				wrapper.findComponent({ name: 'AgentScheduleTestNotice' }).props('runAgainDisabledReason'),
+			).toBe('The agent is building');
+			await runAgain.trigger('click');
+			await wrapper.get('[data-testid="agent-schedule-test-chat"]').trigger('click');
+			expect(wrapper.emitted('schedule-test-run-again')).toBeUndefined();
+			expect(wrapper.emitted('schedule-test-chat')).toHaveLength(1);
 			wrapper.unmount();
 		});
 
