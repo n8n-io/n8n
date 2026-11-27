@@ -225,14 +225,15 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test.each([
-			['Docs: https://docs.n8n.io.', 'https://docs.n8n.io'],
-			['Visit https://example.com, then come back', 'https://example.com'],
-			['File at https://example.com/data.csv;', 'https://example.com/data.csv'],
-			['The link is this: https://example.com/a: it works', 'https://example.com/a'],
-			['Search https://example.com/search?q=n8n!', 'https://example.com/search?q=n8n'],
-			['Did you see https://example.com/page?', 'https://example.com/page'],
-			['More at https://example.com/docs...', 'https://example.com/docs'],
-		])('.extractUrl should leave out the sentence punctuation after the URL in %j', (text, url) => {
+			['See (https://example.com) for details', 'https://example.com'],
+			['(see https://example.com/docs).', 'https://example.com/docs'],
+			[
+				'(see https://en.wikipedia.org/wiki/Rust_(language))',
+				'https://en.wikipedia.org/wiki/Rust_(language)',
+			],
+			['Go to <https://example.com/a> now', 'https://example.com/a'],
+			['Go to "https://example.com/a" now', 'https://example.com/a'],
+		])('.extractUrl should stop where the URL stops in %j', (text, url) => {
 			expect(evaluate('={{ $json.text.extractUrl() }}', [{ text }])).toEqual(url);
 		});
 
@@ -242,10 +243,9 @@ describe('Data Transformation Functions', () => {
 			'https://example.com/?time=12:30',
 			'https://en.wikipedia.org/wiki/C_(programming_language)',
 			"https://en.wikipedia.org/wiki/Kids'_Choice_Awards",
-			'https://example.com/?q="n8n"',
-			'https://example.com/a>',
-			'https://example.com/a)',
-		])('.extractUrl should keep all other characters of %j', (url) => {
+			'https://en.wikipedia.org/wiki/Washington,_D.C.',
+			'https://example.com/page?',
+		])('.extractUrl should keep all characters of %j', (url) => {
 			expect(evaluate('={{ $json.text.extractUrl() }}', [{ text: `Go to ${url} now` }])).toEqual(
 				url,
 			);
