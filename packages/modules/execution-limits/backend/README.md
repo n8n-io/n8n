@@ -48,6 +48,14 @@ it only when the licence feature is on.
   allows the run and logs.
 - Execution limits apply to workflow runs only, so agent runs are not checked.
 
+## Usage retention
+
+A daily system task deletes the rows of `execution_limit_usage` and
+`execution_limit_instance_usage` that are older than
+`N8N_EXECUTION_LIMITS_USAGE_RETENTION_DAYS` (default 430, from 31 to 36500). The task runs one
+time for the cluster and does not need a licence, because the fold step writes rows on
+every instance. The minimum is the longest limit period, in days.
+
 ## Import rules
 
 - Do not import from `packages/cli` or from the `n8n` package.

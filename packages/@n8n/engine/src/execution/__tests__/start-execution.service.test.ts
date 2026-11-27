@@ -30,7 +30,7 @@ const sampleWorkflow: WorkflowDocument = {
 };
 
 function makeQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
 }
 
 function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {

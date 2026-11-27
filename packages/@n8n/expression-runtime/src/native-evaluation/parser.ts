@@ -1,5 +1,4 @@
-import type { namedTypes } from 'ast-types';
-import type { ExpressionKind, SpreadElementKind } from 'ast-types/lib/gen/kinds';
+import type { ExpressionKind, SpreadElementKind, namedTypes } from '@n8n/tournament';
 
 import {
 	BINARY_OPS,
@@ -21,7 +20,7 @@ import {
 	type Literal,
 	type SimpleNode,
 } from './grammar';
-import { isSafeObjectProperty } from '../../utils';
+import { isSafeObjectProperty } from '../runtime/safe-globals';
 
 // ── Parsing: esprima output → the subset grammar, or null. ────────────────
 //
