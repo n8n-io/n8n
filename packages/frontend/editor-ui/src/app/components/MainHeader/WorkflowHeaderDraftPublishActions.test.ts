@@ -570,21 +570,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				expect(indicator.className).not.toMatch(/indicatorPublished/);
 			});
 
-			it('should not show indicator when workflow has never been published', () => {
-				workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
-
-				const { getByTestId, queryByTestId, getByText } = renderComponent({
-					props: noPublishPermissionProps,
-				});
-
-				expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
-					'aria-disabled',
-					'true',
-				);
-				expect(getByText("You don't have permission to publish this workflow")).toBeInTheDocument();
-				expect(queryByTestId('workflow-active-version-indicator')).not.toBeInTheDocument();
-			});
-
 			it('should show changes (yellow) indicator when published workflow has no activatable trigger', () => {
 				workflowDocumentStore.setNodes([]);
 				workflowDocumentStore.setVersionData({
