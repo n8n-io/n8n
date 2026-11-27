@@ -407,6 +407,79 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-preview-panel');
 	}
 
+	getAppHeader(): Locator {
+		return this.container.getByTestId('app-header');
+	}
+
+	getAppPreviewTab(): Locator {
+		return this.getAppHeader().getByTestId('app-header-tabs').getByTestId('radio-button-preview');
+	}
+
+	getAppConfigureTab(): Locator {
+		return this.getAppHeader().getByTestId('app-header-tabs').getByTestId('radio-button-configure');
+	}
+
+	getAppPublishButton(): Locator {
+		return this.getAppHeader().getByTestId('app-publish-button');
+	}
+
+	/**
+	 * Stubs a built version and preview grant for an app so the header's Publish
+	 * button is enabled without requiring an external build sandbox.
+	 */
+	async mockBuiltAppVersion(projectId: string, appId: string, versionId: string): Promise<void> {
+		const now = new Date().toISOString();
+		await this.page.route(`**/rest/projects/${projectId}/apps/${appId}/versions`, async (route) => {
+			if (route.request().method() !== 'GET') {
+				await route.continue();
+				return;
+			}
+			await route.fulfill({
+				json: {
+					data: [
+						{
+							id: versionId,
+							appId,
+							label: 'v1',
+							description: null,
+							sourceArtifactId: 1,
+							bundleArtifactId: 2,
+							buildStatus: 'succeeded',
+							createdAt: now,
+							updatedAt: now,
+						},
+					],
+				},
+			});
+		});
+		await this.page.route(
+			`**/rest/projects/${projectId}/apps/${appId}/versions/${versionId}/preview`,
+			async (route) => {
+				await route.fulfill({
+					json: {
+						data: {
+							url: 'http://apps.example.test/',
+							authorizeUrl: 'http://apps.example.test/authorize',
+						},
+					},
+				});
+			},
+		);
+		await this.page.route(
+			`**/rest/projects/${projectId}/apps/${appId}/versions/${versionId}/publish-preview`,
+			async (route) => {
+				await route.fulfill({ json: { data: { resources: [] } } });
+			},
+		);
+		await this.page.route('http://apps.example.test/**', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'text/html',
+				body: '<!doctype html><html><body></body></html>',
+			});
+		});
+	}
+
 	getBuilderChat(): Locator {
 		return this.container.getByTestId('instance-ai-builder-chat');
 	}
