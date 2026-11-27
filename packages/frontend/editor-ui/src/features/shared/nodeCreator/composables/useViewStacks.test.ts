@@ -25,10 +25,39 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 const TRIGGER_NAME = 'n8n-nodes-base.acmeTrigger';
 
 describe('useViewStacks', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	it('does not accumulate forceIncludeNodes when the same stack is opened twice', () => {
+		const nodeCreatorStore = useNodeCreatorStore();
+		nodeCreatorStore.setMergeNodes([
+			mockSimplifiedNodeType({ name: 'nodeA' }),
+			mockSimplifiedNodeType({ name: 'nodeB' }),
+		]);
+
+		const viewStacks = useViewStacks();
+		const openStack = () =>
+			viewStacks.pushViewStack(
+				{
+					subcategory: DEFAULT_SUBCATEGORY,
+					title: 'Subcategory',
+					forceIncludeNodes: ['nodeB'],
+				},
+				{ resetStacks: true },
+			);
+
+		openStack();
+		const firstOpen = viewStacks.activeViewStack.items?.map((item) => item.key);
+
+		openStack();
+		const secondOpen = viewStacks.activeViewStack.items?.map((item) => item.key);
+
+		expect(secondOpen).toEqual(firstOpen);
+	});
+
 	describe('trigger name in a subcategory', () => {
 		beforeEach(() => {
-			setActivePinia(createPinia());
-
 			const nodeCreatorStore = useNodeCreatorStore();
 			nodeCreatorStore.setMergeNodes([
 				mockSimplifiedNodeType({

@@ -13,7 +13,6 @@ const OPERATION_ONLY = '__operation_only__';
  */
 export const HTTP_NODE_TYPES: ReadonlySet<string> = new Set([
 	'n8n-nodes-base.httpRequest',
-	'@n8n/n8n-nodes-langchain.toolHttpRequest',
 	'n8n-nodes-base.httpRequestTool',
 ]);
 

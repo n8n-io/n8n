@@ -112,13 +112,8 @@ function flushResponse(res: { flush?: () => void }) {
  * process. Test runs and evals ask this too (`instrumentedRunGap`): their hooks only apply in
  * this process, so keep this the one place the queue decision is made.
  */
-export function runsOnQueueWorker(
-	executionsConfig: Pick<ExecutionsConfig, 'mode'>,
-	executionMode: WorkflowExecuteMode,
-): boolean {
-	if (executionsConfig.mode !== 'queue') return false;
-	// @TODO: Reduce to `true` once offloading manual executions is stable
-	return process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true' || executionMode !== 'manual';
+export function runsOnQueueWorker(executionsConfig: Pick<ExecutionsConfig, 'mode'>): boolean {
+	return executionsConfig.mode === 'queue';
 }
 
 @Service()
@@ -566,12 +561,10 @@ export class WorkflowRunner {
 		// queue/local decision because a worker cannot write to it.
 		const heartbeat = this.setupV1StreamingHeartbeat(data);
 
-		const shouldEnqueue = runsOnQueueWorker(this.executionsConfig, data.executionMode);
-
 		const shouldReloadStaticData = Boolean(existingExecution && loadStaticData);
 
 		try {
-			if (shouldEnqueue) {
+			if (runsOnQueueWorker(this.executionsConfig)) {
 				await this.enqueueExecution(
 					executionId,
 					workflowId,

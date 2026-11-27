@@ -12,7 +12,7 @@ import {
 	type CredentialProvider,
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import { AgentsConfig, AiConfig, GlobalConfig } from '@n8n/config';
+import { AgentsConfig, AiConfig } from '@n8n/config';
 import {
 	ServiceAccountRepository,
 	SettingsRepository,
@@ -284,7 +284,6 @@ describe('AgentExecutionRepository', () => {
 				? new AgentRepository(
 						connection,
 						txRunner,
-						Container.get(GlobalConfig),
 						mock<FolderRepository>(),
 						Container.get(ServiceAccountRepository),
 					)

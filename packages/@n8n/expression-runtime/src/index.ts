@@ -48,6 +48,10 @@ export type {
 	ExpressionErrorType,
 } from './evaluator/error-classification';
 
+// Removed expression globals (shared with n8n-workflow's legacy engine)
+export { REMOVED_EXPRESSION_GLOBALS, removedGlobalMessage } from './runtime/removed-globals';
+export type { RemovedExpressionGlobal } from './runtime/removed-globals';
+
 // Extension runtime exports
 export { extend, extendOptional, EXTENSION_OBJECTS } from './extensions/extend';
 export { ExpressionExtensionError } from './extensions/expression-extension-error';

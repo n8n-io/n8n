@@ -1,5 +1,6 @@
 import { binaryToBuffer, binaryToString } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import chardet from 'chardet';
 import { IncomingMessage } from 'http';
 import get from 'lodash/get';
@@ -22,7 +23,6 @@ import {
 	BINARY_MODE_SEPARATE,
 	sanitizeFilename,
 } from 'n8n-workflow';
-import { UserError, UnexpectedError } from '@n8n/errors';
 import path from 'path';
 import type { Readable } from 'stream';
 import { URL } from 'url';
@@ -441,7 +441,9 @@ export const getBinaryHelperFunctions = (
 		binaryToBuffer,
 		binaryToString,
 		createBinarySignedUrl(binaryData: IBinaryData, expiresIn?: TimeUnitValue) {
-			if (!binaryData.id) throw new UserError('URL signing is not available in memory mode');
+			if (!binaryData.id) {
+				throw new UserError('URL signing is not available for inline binary data');
+			}
 			const granted =
 				isExplicitlyGranted(binaryData.id, runExecutionData) ||
 				additionalData.binaryDataAccess?.isGranted(binaryData.id) !== false;
@@ -467,10 +469,6 @@ export const getBinaryHelperFunctions = (
 			const stored = await setBinaryDataBuffer(data, binaryData, workflowId, executionId!);
 			grantBinaryData(stored, additionalData, runExecutionData);
 			return stored;
-		},
-		// oxlint-disable-next-line typescript/no-deprecated -- Keep the upgrade error for nodes that call the removed helper.
-		copyBinaryFile: async () => {
-			throw new UserError('`copyBinaryFile` has been removed. Please upgrade this node.');
 		},
 	};
 };

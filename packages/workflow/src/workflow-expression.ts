@@ -1,4 +1,3 @@
-import { CODE_LANGCHAIN_NODE_TYPE, FUNCTION_ITEM_NODE_TYPE, FUNCTION_NODE_TYPE } from './constants';
 import { Expression } from './expression';
 import { isExpression } from './expressions/expression-helpers';
 import type {
@@ -17,21 +16,11 @@ import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type { Workflow } from './workflow';
 import { WorkflowDataProxy } from './workflow-data-proxy';
 
-// These nodes return vm2 proxies that the vm engine reads differently from native evaluation.
-const DEPRECATED_VM2_SANDBOX_NODE_TYPES = new Set([
-	FUNCTION_NODE_TYPE,
-	FUNCTION_ITEM_NODE_TYPE,
-	CODE_LANGCHAIN_NODE_TYPE,
-]);
-
 export class WorkflowExpression {
 	private readonly expression: Expression;
 
 	constructor(private readonly workflow: Workflow) {
-		const hasVm2SandboxNode = Object.values(workflow.nodes).some((node) =>
-			DEPRECATED_VM2_SANDBOX_NODE_TYPES.has(node.type),
-		);
-		this.expression = new Expression(workflow.timezone, !hasVm2SandboxNode);
+		this.expression = new Expression(workflow.timezone);
 	}
 
 	/**

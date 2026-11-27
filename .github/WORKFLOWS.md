@@ -540,8 +540,7 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │                                                                            │
 │  Inputs:                                                                   │
 │  ├─ release-type: patch │ minor │ major │ experimental │ premajor          │
-│  ├─ base-branch: default master                                            │
-│  └─ prerelease: skip release channel and branch maintenance                │
+│  └─ base-branch: default master                                            │
 │                          │                                                 │
 │                          ▼                                                 │
 │  STAGE 2: CI Validation                                                    │
@@ -556,7 +555,7 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │  ├─ publish-to-npm                                                         │
 │  │   ├─ trim-fe-packageJson.js ───▶ Strip devDeps                          │
 │  │   ├─ ensure-provenance-fields.mjs ───▶ Add license fields               │
-│  │   └─ npm publish (tag: rc or latest)                                    │
+│  │   └─ Publish public packages with the release track's npm tag           │
 │  ├─ publish-to-docker-hub ────────▶ docker-build-push.yml                  │
 │  │   ├─ Build the application once on amd64                                │
 │  │   ├─ Build/push images on native amd64 + arm64 runners                  │
@@ -569,24 +568,29 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │  └─ trigger-release-note (stable only)                                     │
 │                          │                                                 │
 │                          ▼                                                 │
-│  STAGE 4: Channel Promotion (optional)                                     │
+│  STAGE 4: Docker Channel Promotion                                         │
 │  ──────────────────────────────────────                                    │
-│  Trigger: Manual release-push-to-channel.yml                               │
-│  ├─ beta ─────▶ npm tags: next, beta                                       │
-│  └─ stable ───▶ npm tags: latest, stable                                   │
+│  release-publish-post-release.yml calls release-push-to-channel.yml        │
+│  ├─ beta ─────▶ Docker Hub and GHCR tags: beta, next                        │
+│  └─ stable ───▶ Docker Hub and GHCR tags: stable, latest                    │
 │                                                                            │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### npm `latest` promotion
+The n8n v3 application ships as Docker images. The `n8n` npm package is private
+on v3; the publish job still publishes public libraries and developer tools.
+`release-push-to-channel.yml` updates the n8n and runner aliases in both registries.
+It does not move npm tags. In a normal minor release, the new version enters
+`beta` and the previous beta moves to `stable`.
+
+### npm `latest` for public packages
 
 `release-set-stable-npm-packages-to-latest.yml` sets npm `latest` from the Git
 `stable` tag for public `@n8n/*` packages, `n8n-core`, `n8n-editor-ui`,
 `n8n-nodes-base`, and `n8n-workflow`. The three standalone packages
 `@n8n/create-node`, `@n8n/eslint-plugin-community-nodes`, and
 `@n8n/scan-community-package` follow npm `beta` when available and do not
-downgrade a newer `latest`. The channel promotion workflow manages `n8n@latest`
-separately.
+downgrade a newer `latest`. This workflow does not publish the v3 application.
 
 ### Release PR verification
 
@@ -602,31 +606,26 @@ For older release refs without the verifier package, the verification job emits 
 notice and skips dependency verification, even in blocking mode. Release PR creation
 can continue without that check.
 
-### Standalone prereleases
+### First normal v3 release
 
-Set `prerelease: true` on `release-create-pr.yml` to publish a bare SemVer as a
-prerelease without moving the stable or beta release channels. This mode:
+1. Record the current `master` SHA and the `stable` and `beta` tag targets. Keep the
+   v2 beta version for the v2 maintenance handoff.
+2. Finish the final sync and stop the old sync workflow. Check for open PRs that
+   target `3.x` and retarget or close them. Merge `3.x` into `master` with the
+   `n8n@3.4.1` tag in its history.
+3. Verify the published `3.4.1` n8n and runner images and smoke-test the installer.
+   Dispatch **Release: Create Minor Release PR** on `master`. If the cadence guard
+   reports a minor release in the same UTC week, dispatch with `force: true` for
+   this planned cutover.
+4. Verify that the Git `beta` and `stable` tags point to the same commits as
+   `n8n@3.5.0` and `n8n@3.4.1`, respectively. Check `beta`/`next` and
+   `stable`/`latest` in both image registries. Check GitHub Releases, the Cloud
+   release record, and the Public API schema. Do not rebuild `3.4.1` to promote it.
 
-- publishes public packages under the npm `rc` dist-tag;
-- publishes versioned Docker images without moving channel tags;
-- marks the GitHub release as a prerelease and populates cloud with the same
-  non-experimental payload as a normal minor or patch release;
-- skips pointer tag updates, backport label updates, release notifications, and
-  release-candidate branch maintenance; and
-- fast-forwards `3.x` to the release tag so the next minor version increments
-  from the released version.
+The old standalone prerelease mode is no longer available. Experimental releases
+still use **Release: Create Experiment PR**.
 
-Standalone prereleases require `base-branch: 3.x`, a bare v3 version, and a
-`major`, `minor`, or `patch` release type. The release tag update shares a
-concurrency group with the master-to-`3.x` sync. The publish workflow verifies
-that the release descends from the current `3.x` branch before it publishes any
-artifacts. The final branch update fails unless `3.x` can move with a
-fast-forward. Do not merge or push other changes to `3.x` from release PR
-creation until the release tag returns to `3.x`.
-
-For the first v3 prerelease, use `base-branch: 3.x`, `release-type: major`, and
-`prerelease: true`. For later weekly prereleases, use `base-branch: 3.x`,
-`release-type: minor`, and `prerelease: true`.
+### Major releases
 
 A major release marks every public package as dirty and increments every package
 by one major version. This gives parallel release lines separate npm version
@@ -634,6 +633,12 @@ namespaces. Minor and patch releases continue to bump only changed packages and
 their dependents.
 
 ### Recovering a failed release
+
+The npm-based procedure below applies to releases that publish the `n8n` package.
+It does not apply to the Docker-only v3 application. For v3, inspect the original
+run, Git tag, GitHub release, and versioned Docker images in both registries before
+retrying failed jobs. If recovery requires a new version, confirm the procedure with
+the release owner. Do not bypass the npm check just because the v3 package is private.
 
 If the pipeline publishes `n8n@X.Y.Z` to npm and then fails, that version is
 burned — npm versions are immutable. Recovery depends on how far it got:
@@ -725,7 +730,6 @@ Push to master
 | Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
 | Daily 04:30               | `test-image-efficiency.yml`       | Image size and layer waste with Dive |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
-| Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
@@ -737,25 +741,12 @@ Push to master
 
 ---
 
-## v3 development (master + 3.x)
+## Legacy v3 nightly images
 
-The sync runs automation code from the triggering `master` SHA while its working checkout
-stays on `3.x`.
+After cutover, use the regular `master` nightly for new v3 builds. Keep the legacy
+workflow until deployment cells verify the regular nightly and the Helm release
+owner confirms what will replace `v3-rc`.
 
-During the v3 release window, `master` carries normal feature work (behind opt-in
-flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-master-to-3x.yml`
-syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
-clean sync adds no commit and nothing is squashed. What it pushes is always verified to be
-exactly the tree a merge of `3.x` and `master` produces, and marker-free. Conflicts confined
-to non-lockfile mechanical files (bot-maintained data files — see `MECHANICAL_PATHS` in
-`sync-master-to-3x.mjs`) are auto-resolved during the replay. On a code or `pnpm-lock.yaml`
-conflict, `3.x` is left untouched and a draft PR carrying the conflict markers (labeled
-`automation:v3-sync`, with other mechanical files pre-resolved) is opened on
-`sync/master-to-3x`. The lockfile is always left for the resolver. The PR names both ends of
-the conflict — the breaking-commit authors and the `master` commits that touched the same
-files — via `sync-conflict-owners.mjs`, posts to `#alerts-v3-sync`, and pauses further syncs
-until it is resolved and merged normally. Delete/modify conflicts have no markers to carry,
-so they are resolved toward `3.x` and listed as an explicit decision in the PR body.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
 by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`. On Mondays it also
 retags that run's n8n + runners manifests as a release candidate (by digest on GHCR, so
@@ -765,14 +756,11 @@ claims the next free `v3-rc-<date>.N` as its immutable tag and moves the floatin
 and `v3-rc-<date>` onto it. The counter is derived by probing the registry, and the job
 is serialized on a `v3-rc-tagging` concurrency group so two runs can't claim one number.
 
-`test-deployment-cells.yml` ("Test: Deployment cells") runs via `workflow_run` after
-scheduled `Docker: Build and Push` runs (`master`) and after `Build: v3 Nightly Docker Images`
-runs (`3.x`), and supports manual `workflow_dispatch` with a `channel` selector. It resolves
-and pins the published GHCR image digests, runs API-only Playwright deployment cells in
+`test-deployment-cells.yml` ("Test: Deployment cells") runs after a successful scheduled
+`Docker: Build and Push` run on `master`. Manual runs also test the published `master`
+nightly. The workflow pins the GHCR images by digest, runs API-only Playwright cells in
 `packages/quality/testing/playwright/tests/deployment/` with 0 retries, and reports to the
 separate `n8n-nightly-compatibility` Currents project (`tlfUav`).
-
-See **[`DEVELOPING_V3.md`](./DEVELOPING_V3.md)** for the full model.
 
 ---
 
@@ -974,7 +962,6 @@ rewrite safe.
 | Script                     | Purpose                                                              | Called By                          |
 |----------------------------|----------------------------------------------------------------------|------------------------------------|
 | `branch-replay.mjs`        | Shared primitives: merge-tree, tree guard, marker scan               | the two scripts below              |
-| `sync-master-to-3x.mjs`    | master → `3.x`, rebased; auto-resolves mechanical files, opens a conflict PR | `util-sync-master-to-3x.yml`       |
 | `sync-bundle-branch.mjs`   | base → `bundle/*` in n8n-private, merged; skips while the base is unpublished; fail-loud, never resolves conflicts | `sec-sync-bundle-branches.yml`   |
 
 ### Slack Scripts
@@ -1086,8 +1073,7 @@ on "Expected". The routes that skip the evaluation are in the shared workflow's
 `ownership-checks/actions/required-reviews/evaluate.mjs` file. An
 exempt PR reports `success`. Only heads in this repository can match a route,
 so the shared workflow still evaluates a fork branch with a matching name.
-Add a route only when somebody already reviewed every commit that it carries, as with
-`sync/master-to-3x -> 3.x`: its commits landed on `master` first.
+Add a route only when somebody already reviewed every commit that it carries.
 
 The shared workflow reads OWNERS from `master` only, never from the base branch
 or the PR. Thus, a PR cannot lift its own review requirement. A retarget
@@ -1394,8 +1380,7 @@ working tree is touched, so the branch is left exactly as it was, that job **fai
 green runs hiding a stalled branch) and `#alerts-security` gets a run link — while the other
 branch still syncs. Recovery is deliberate: merge the public base into the branch locally,
 resolve, push, then re-run the workflow — and that resolution then lives in the merge commit
-instead of being re-litigated on every later run. The sync never resolves a conflict itself,
-unlike `util-sync-master-to-3x.yml`.
+instead of causing the same conflict in later runs. The sync does not resolve conflicts.
 
 See **[`../AGENTS.md`](../AGENTS.md)** ("Security Fix Hygiene") for the naming rules that
 keep the vulnerability out of public branch names, commits, and test descriptions.

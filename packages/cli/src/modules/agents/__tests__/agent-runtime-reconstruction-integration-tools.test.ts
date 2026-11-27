@@ -425,7 +425,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<N8nChatFlagService>(),
 			mock<AgentDefinitionService>(),
 			mock(),
-			mock<GlobalConfig>({ tags: { disabled: false } }),
 			mock<TagService>(),
 			mock<FolderService>(),
 			mock(),

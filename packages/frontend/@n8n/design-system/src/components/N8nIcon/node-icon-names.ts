@@ -3,7 +3,6 @@ export const nodeIconNames = [
 	'node:agent-decision-trigger',
 	'node:aggregate',
 	'node:ai-agent',
-	'node:ai-transform',
 	'node:basic-llm-chain',
 	'node:calculator',
 	'node:call-n8n-sub-workflow-tool',

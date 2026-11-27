@@ -271,16 +271,16 @@ test.describe(
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
 		});
 
-		test('should not undo/redo when NDV or a prompt is open', async ({ n8n }) => {
-			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-			await n8n.canvas.clickWorkflowMenu();
-			await n8n.canvas.clickImportFromURL();
+		test('should not undo/redo when a text input in the NDV is focused', async ({ n8n }) => {
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME);
 
-			await n8n.canvas.getImportURLInput().click();
+			// A focused text input swallows the shortcut on its own, separately from
+			// the check that blocks it for any open dialog.
+			await n8n.ndv.focusNodeNameInput();
 			await n8n.canvas.hitUndo();
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
 
-			await n8n.canvas.clickCancelImportURL();
+			await n8n.ndv.clickBackToCanvasButton();
 			await n8n.canvas.hitUndo();
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
 		});

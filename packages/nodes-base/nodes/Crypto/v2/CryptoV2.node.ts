@@ -79,7 +79,6 @@ const versionDescription: INodeTypeDescription = {
 	description: 'Provide cryptographic utilities',
 	defaults: {
 		name: 'Crypto',
-		color: '#408000',
 	},
 	usableAsTool: true,
 	inputs: [NodeConnectionTypes.Main],

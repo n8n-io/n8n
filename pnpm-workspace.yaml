@@ -407,7 +407,6 @@ overrides:
   '@azure/msal-node@5.0.0-beta.0 - 7.0': 7.1.0
   '@lezer/common': ^1.2.0
   '@mistralai/mistralai': ^2.2.1
-  '@n8n/typeorm>@sentry/node': catalog:sentry
   'mssql@12.7.0>tedious': 20.0.5
   '@opentelemetry/api': 'catalog:'
   '@opentelemetry/core': 2.10.0

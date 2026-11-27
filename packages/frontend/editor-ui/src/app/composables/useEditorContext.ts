@@ -33,8 +33,6 @@ export function useEditorContext() {
 				return settings.isAiAssistantEnabled === true;
 			case 'aiBuilder':
 				return settings.isAiBuilderEnabled === true;
-			case 'askAi':
-				return settings.isAskAiEnabled === true;
 			case 'instanceAi':
 				// Mirrors useInstanceAiAvailable() (the feature-layer gate) with
 				// app-layer primitives so this base composable imports no feature:
@@ -56,7 +54,6 @@ export function useEditorContext() {
 	return {
 		aiAssistant: featureEnabled('aiAssistant'),
 		aiBuilder: featureEnabled('aiBuilder'),
-		askAi: featureEnabled('askAi'),
 		instanceAi: featureEnabled('instanceAi'),
 		readOnly: computed(() => enabledFeatures?.value?.readOnly === true),
 		expandGroups: computed(() => enabledFeatures?.value?.expandGroups),

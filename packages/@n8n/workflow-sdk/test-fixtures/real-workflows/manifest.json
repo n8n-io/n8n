@@ -325,6 +325,14 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "🕐 Status Check Trigger"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "🕘 Daily Application Trigger"
+				},
+				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "📝 Update Changed Status"
 				},
@@ -347,6 +355,9 @@
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "📧 Send Status Update"
+				},
+				{
+					"code": "MISSING_TRIGGER"
 				}
 			]
 		},
@@ -786,8 +797,15 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily Stock Check"
+				},
+				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Send Email Alert"
+				},
+				{
+					"code": "MISSING_TRIGGER"
 				}
 			]
 		},
@@ -2071,7 +2089,16 @@
 		{
 			"id": 7701,
 			"name": "Real-time stock monitor with smart alerts for Indian & US markets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Market Hours Trigger"
+				},
+				{
+					"code": "MISSING_TRIGGER"
+				}
+			]
 		},
 		{
 			"id": 4867,
@@ -2867,7 +2894,13 @@
 			"id": 6150,
 			"name": "Auto Germany apartment search & apply with Immobilienscout24 & Google Services",
 			"success": true,
-			"nodeType": "splitInBatches"
+			"nodeType": "splitInBatches",
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Cron Trigger"
+				}
+			]
 		},
 		{
 			"id": 5851,
@@ -4093,7 +4126,13 @@
 		{
 			"id": 8562,
 			"name": "AI Shopify product descriptions: GPT-4o Vision + Claude + Analytics",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Every 5 Minutes"
+				}
+			]
 		},
 		{
 			"id": 4940,
@@ -4208,7 +4247,13 @@
 		{
 			"id": 8067,
 			"name": "Personalized evening wind-down system with mood tracking via Telegram, Notion & Email",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Cron: 9PM Daily"
+				}
+			]
 		},
 		{
 			"id": 8042,
@@ -4679,7 +4724,16 @@
 		{
 			"id": 12387,
 			"name": "Get domain expiry reminders with Google Sheets, WHOIS, Telegram, and Ollama AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Cron (Daily 08:00)"
+				},
+				{
+					"code": "MISSING_TRIGGER"
+				}
+			]
 		},
 		{
 			"id": 11600,
@@ -5929,7 +5983,16 @@
 		{
 			"id": 5396,
 			"name": "AI Timesheet Generator with Gmail, Calendar & GitHub to Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily at 7PM"
+				},
+				{
+					"code": "MISSING_TRIGGER"
+				}
+			]
 		},
 		{
 			"id": 5292,
@@ -6140,7 +6203,16 @@
 		{
 			"id": 8055,
 			"name": "Automate client communications & management with Notion, Gmail, and GPT-4o",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Cron Trigger"
+				},
+				{
+					"code": "MISSING_TRIGGER"
+				}
+			]
 		},
 		{
 			"id": 5840,
@@ -6962,7 +7034,13 @@
 		{
 			"id": 4368,
 			"name": "AI real estate agent: end-to-end ops automation (web, data, voice)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "SerpAPI"
+				}
+			]
 		},
 		{
 			"id": 4359,
@@ -8614,7 +8692,16 @@
 		{
 			"id": 9846,
 			"name": "Travel itinerary reminders with Google Calendar, Excel, and SMS/Email alerts",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily Travel Check"
+				},
+				{
+					"code": "MISSING_TRIGGER"
+				}
+			]
 		},
 		{
 			"id": 9844,
@@ -8864,7 +8951,13 @@
 		{
 			"id": 9464,
 			"name": "Sync KPI metrics from ClickUp and Google Sheets to Slack and Gmail",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily Cron Trigger"
+				}
+			]
 		},
 		{
 			"id": 9211,
@@ -10197,6 +10290,10 @@
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "playlistidgen"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "SerpAPItool"
 				}
 			]
 		},
@@ -10609,6 +10706,13 @@
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "AI Agent"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Cron"
+				},
+				{
+					"code": "MISSING_TRIGGER"
 				}
 			]
 		},
@@ -11095,6 +11199,10 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
+					"nodeName": "Cron"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
 					"nodeName": "Google Sheets - Tech Radar"
 				},
 				{
@@ -11317,6 +11425,14 @@
 			"name": "Manage construction projects with tasks, photo reports, Telegram & Google Sheets",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Check every minute - Photo"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Check every minute - Tasks"
+				},
 				{
 					"code": "MERGE_SINGLE_INPUT",
 					"nodeName": "Merge file streams2"
@@ -12015,7 +12131,16 @@
 		{
 			"id": 7604,
 			"name": "Automatic FTP file backup to Google Drive with scheduled sync",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Start: Every Hour"
+				},
+				{
+					"code": "MISSING_TRIGGER"
+				}
+			]
 		},
 		{
 			"id": 7448,
@@ -12105,6 +12230,10 @@
 			"name": "Manage personal expenses with webhooks and Google Sheets automated tracker",
 			"success": true,
 			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily Summary Schedule"
+				},
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Send Error Response"
@@ -14454,6 +14583,14 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
+					"nodeName": "Campaign Schedule (e.g., Daily at 9 AM)"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Hourly Check"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
 					"nodeName": "Lookup Order API"
 				},
 				{
@@ -15593,7 +15730,16 @@
 		{
 			"id": 5333,
 			"name": "Post new articles from feeds to Slack channel",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Trigger Workflow"
+				},
+				{
+					"code": "MISSING_TRIGGER"
+				}
+			]
 		},
 		{
 			"id": 5308,
@@ -16363,7 +16509,16 @@
 		{
 			"id": 3712,
 			"name": "Automate weekly SEO reports from Google Search Console to email",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Weekly Trigger (Monday 7AM)"
+				},
+				{
+					"code": "MISSING_TRIGGER"
+				}
+			]
 		},
 		{
 			"id": 3710,
@@ -17066,6 +17221,10 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily Cron"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
 					"nodeName": "If: Telegram Enabled?"
 				}
 			]
@@ -17432,7 +17591,16 @@
 		{
 			"id": 5660,
 			"name": "Generate personalized language learning news digests with LLaMA-3.1 & DeepSeek AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily Trigger"
+				},
+				{
+					"code": "MISSING_TRIGGER"
+				}
+			]
 		},
 		{
 			"id": 5648,
@@ -17509,7 +17677,16 @@
 		{
 			"id": 5284,
 			"name": "Daily govt exam quiz by Gopal Debnath (mrtechyguru)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily Trigger"
+				},
+				{
+					"code": "MISSING_TRIGGER"
+				}
+			]
 		},
 		{
 			"id": 5234,
@@ -17780,7 +17957,49 @@
 		{
 			"id": 4855,
 			"name": "Family assistant: Schedule, meal & routine management with Email & Telegram",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily Evening Trigger"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily Meal Idea"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily Meal Idea1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily Morning Trigger (Weekdays)"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Screen Time Break Trigger (Optional)"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Screen Time Break Trigger (Optional)1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Trigger: Daily Evening Check-in"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Trigger: School/Daycare Comms Check"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Trigger: Weekly Wins/Gratitude"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Weekly Planning Trigger (Sunday PM)"
+				}
+			]
 		},
 		{
 			"id": 4851,
@@ -18256,6 +18475,10 @@
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "Get Rows: Confirm Tracks in GSheets"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "SerpAPI: Browse the internet for Music Ideas"
 				}
 			]
 		},

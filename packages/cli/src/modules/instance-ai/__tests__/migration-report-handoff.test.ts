@@ -16,6 +16,15 @@ import {
 import { MigrationFindingQueryService } from '@/modules/breaking-changes/query/migration-finding-query.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+const report = vi.hoisted(() => ({ target: 'v3' as 'v3' | null }));
+
+vi.mock('@n8n/api-types', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/api-types')>()),
+	get MIGRATION_REPORT_TARGET_VERSION() {
+		return report.target;
+	},
+}));
+
 const handoff: InstanceAiMigrationReportHandoffContext = {
 	source: 'migration-report',
 	ruleId: 'function-removed-v3',
@@ -64,6 +73,7 @@ describe('resolveMigrationReportFinding', () => {
 	let findingQuery: ReturnType<typeof mockInstance<MigrationFindingQueryService>>;
 
 	beforeEach(() => {
+		report.target = 'v3';
 		moduleRegistry = mockInstance(ModuleRegistry);
 		workflowFinder = mockInstance(WorkflowFinderService);
 		findingQuery = mockInstance(MigrationFindingQueryService);
@@ -105,6 +115,13 @@ describe('resolveMigrationReportFinding', () => {
 
 	it('rejects the hand-off when the migration report module is off', async () => {
 		moduleRegistry.isActive.mockReturnValue(false);
+
+		await expect(resolveMigrationReportFinding(handoff, user)).rejects.toThrow(UserError);
+		expect(workflowFinder.findWorkflowForUser).not.toHaveBeenCalled();
+	});
+
+	it('rejects the hand-off when there is no migration target', async () => {
+		report.target = null;
 
 		await expect(resolveMigrationReportFinding(handoff, user)).rejects.toThrow(UserError);
 		expect(workflowFinder.findWorkflowForUser).not.toHaveBeenCalled();

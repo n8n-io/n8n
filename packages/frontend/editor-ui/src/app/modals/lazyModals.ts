@@ -13,7 +13,6 @@ import {
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
-	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	MIGRATE_WORKFLOW_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
@@ -124,8 +123,6 @@ export const lazyModalLoaders = {
 		await import('@/features/ndv/parameters/components/ImportCurlModal.vue'),
 	[BINARY_DATA_VIEW_MODAL_KEY]: async () =>
 		await import('@/features/ndv/runData/components/BinaryDataViewModal.vue'),
-	[IMPORT_WORKFLOW_URL_MODAL_KEY]: async () =>
-		await import('@/features/workflows/components/ImportWorkflowUrlModal.vue'),
 	[INVITE_USER_MODAL_KEY]: async () =>
 		await import('@/features/settings/users/components/InviteUsersModal.vue'),
 	[PERSONALIZATION_MODAL_KEY]: async () =>

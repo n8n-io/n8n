@@ -9,7 +9,6 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PROJECT_OWNER_ROLE_SLUG,
 	PERSONAL_SPACE_SHARING_SETTING,
-	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_EDITOR_ROLE_SLUG,
 	PROMOTION_PROJECT_ACCESS_SETTING_KEYS,
@@ -164,31 +163,6 @@ export class AuthRolesService {
 		return scopes.filter((slug) => !denied.includes(slug));
 	}
 
-	private async getExternalSecretsSystemRolesScopes(
-		roleSlug: string,
-		tx: EntityManager,
-	): Promise<string[]> {
-		const settingRow = await tx.findOneBy(Settings, {
-			key: EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key,
-		});
-
-		if (settingRow?.value !== 'true') {
-			return [];
-		}
-
-		const roleScopeMap = EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap;
-		const scopesForRole = roleScopeMap[roleSlug];
-
-		if (scopesForRole) {
-			this.logger.debug(
-				`${EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key} is enabled - allowing ${scopesForRole.join(', ')} scopes to ${roleSlug} role`,
-			);
-			return scopesForRole;
-		}
-
-		return [];
-	}
-
 	private async getPromotionProjectRoleScopes(
 		roleSlug: typeof PROJECT_ADMIN_ROLE_SLUG | typeof PROJECT_EDITOR_ROLE_SLUG,
 		tx: EntityManager,
@@ -217,9 +191,7 @@ export class AuthRolesService {
 			return this.removeCanvasOnlyPersonalOwnerScopes(scopes);
 		}
 
-		// Scopes that instance settings give to the system project roles
 		if (roleSlug === PROJECT_ADMIN_ROLE_SLUG || roleSlug === PROJECT_EDITOR_ROLE_SLUG) {
-			scopes.push(...(await this.getExternalSecretsSystemRolesScopes(roleSlug, tx)));
 			scopes.push(...(await this.getPromotionProjectRoleScopes(roleSlug, tx)));
 		}
 

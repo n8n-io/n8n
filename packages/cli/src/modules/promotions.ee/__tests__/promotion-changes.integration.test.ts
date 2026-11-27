@@ -24,7 +24,6 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdtempSync } from 'node:fs';
@@ -122,7 +121,6 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	Container.get(GlobalConfig).tags.disabled = false;
 	await rm(remoteRoot, { recursive: true, force: true });
 });
 
@@ -729,14 +727,9 @@ it('answers for a destination that has only an apply environment', async () => {
 	await agent.get(endpoint).expect(404);
 }, 30_000);
 
-it.each([
-	{ scope: 'project', tags: 'enabled' },
-	{ scope: 'project', tags: 'disabled' },
-	{ scope: 'instance', tags: 'enabled' },
-	{ scope: 'instance', tags: 'disabled' },
-])(
-	'lists nothing after apply in the $scope preview with workflow tags $tags',
-	async ({ scope, tags }) => {
+it.each(['project', 'instance'])(
+	'lists nothing after apply in the %s preview, although the destination mints its own version',
+	async (scope) => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Destination', owner);
 		const workflow = await createWorkflow({ name: 'Orders', nodes: [], connections: {} }, project);
@@ -761,8 +754,6 @@ it.each([
 		await service.promote(environments.promote.id, owner, {
 			commitMessage: 'Source edit',
 		});
-		// The branch file has `tagIds: []`, which a destination without workflow tags does not export.
-		Container.get(GlobalConfig).tags.disabled = tags === 'disabled';
 		// The destination still runs the previous content under a version of its own.
 		await workflows.update(workflow.id, { versionId: 'destination-version', nodes: [] });
 		const agent = server.publicApiAgentWithCookie(owner);
@@ -1277,14 +1268,6 @@ describe('resources in the preview', () => {
 					revision: resource.revision,
 				}),
 			]);
-
-			// With workflow tags disabled, Apply changes no tag and no tag mapping.
-			Container.get(GlobalConfig).tags.disabled = true;
-			expect(changedResources((await agent.get(endpoint).expect(200)).body)).toEqual([]);
-			const instancePreview = await agent
-				.get(`/promotions/environments/${environments.apply.id}/changes`)
-				.expect(200);
-			expect(changedResources(instancePreview.body)).toEqual([]);
 		},
 		30_000,
 	);

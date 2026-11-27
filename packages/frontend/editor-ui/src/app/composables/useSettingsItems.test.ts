@@ -135,7 +135,6 @@ describe('useSettingsItems', () => {
 				'settings-workersview',
 				'settings-log-streaming',
 				'settings-opentelemetry',
-				'settings-migration-report',
 				'settings-n8n-connect',
 				'settings-usage-and-plan',
 			]);
@@ -198,7 +197,6 @@ describe('useSettingsItems', () => {
 						'settings-workersview',
 						'settings-log-streaming',
 						'settings-opentelemetry',
-						'settings-migration-report',
 					],
 				},
 				{

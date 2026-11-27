@@ -57,6 +57,13 @@ describe('InstanceAiSkillsService', () => {
 			const offIds = off.source.registry.skills.map(({ id }) => id);
 			expect(onIds.filter((id) => !offIds.includes(id)).sort()).toEqual([...skillIds].sort());
 		});
+
+		it('does not expose the v3 migration skill when there is no migration target', async () => {
+			const { source } = await service.loadSkills(openScope);
+
+			expect(source.registry.skills.map(({ id }) => id)).not.toContain(SKILLS.v3Migration);
+			await expect(service.retrieveSkill(SKILLS.v3Migration, openScope)).resolves.toBeNull();
+		});
 	});
 
 	describe('retrieveSkill', () => {

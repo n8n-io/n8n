@@ -11,7 +11,6 @@ import {
 } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import type { GlobalConfig } from '@n8n/config';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
@@ -42,7 +41,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -164,7 +163,6 @@ function makeService() {
 
 	const transactionRunner = mock<TransactionRunner>();
 	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
-	const globalConfig = mock<GlobalConfig>({ tags: { disabled: false } });
 	const tagService = mock<TagService>();
 	tagService.sortByRequestOrder.mockImplementation(
 		(tags: TagEntity[], { requestOrder }: { requestOrder: string[] }) =>
@@ -212,7 +210,6 @@ function makeService() {
 		n8nChatFlag,
 		mock<AgentDefinitionService>(),
 		approvalCleanup,
-		globalConfig,
 		tagService,
 		folderService,
 		licenseState,
@@ -245,7 +242,6 @@ function makeService() {
 		credentialsFinderService,
 		projectScopeService,
 		agentsSettingsService,
-		globalConfig,
 		tagService,
 		agentServiceAccount,
 		approvalCleanup,
@@ -524,18 +520,6 @@ describe('AgentsService', () => {
 			expect(agentRepository.insertNew).not.toHaveBeenCalled();
 		});
 
-		it('rejects a create with tags when tags are disabled', async () => {
-			const { service, globalConfig } = makeService();
-			globalConfig.tags.disabled = true;
-
-			await expect(
-				service.createOrAdopt(projectId, 'Support Agent', {
-					actor,
-					tagIds: ['tag-1'],
-				}),
-			).rejects.toThrow(BadRequestError);
-		});
-
 		describe('updateAgentTags', () => {
 			it('overwrites the mappings and returns the tags in request order', async () => {
 				const { service, agentRepository, tagService } = makeService();
@@ -593,16 +577,6 @@ describe('AgentsService', () => {
 				await expect(service.updateAgentTags(agentId, 'other-project', ['tag-1'])).rejects.toThrow(
 					`Agent "${agentId}" not found`,
 				);
-			});
-
-			it('throws a BadRequest when tags are disabled', async () => {
-				const { service, globalConfig, agentRepository } = makeService();
-				globalConfig.tags.disabled = true;
-
-				await expect(service.updateAgentTags(agentId, projectId, ['tag-1'])).rejects.toThrow(
-					BadRequestError,
-				);
-				expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 			});
 
 			it('validates without writing when validateAgentTags is used alone', async () => {

@@ -1,7 +1,6 @@
 import type { PromotionApplyCheck } from '@n8n/api-types';
 import { LockService, type Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
-import type { GlobalConfig } from '@n8n/config';
 import { Person } from '@n8n/db';
 import type {
 	OperationContext,
@@ -113,7 +112,6 @@ describe('PromotionsService', () => {
 	const credentialSelection = mock<PromotionCredentialSelectionService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
 	const inventoryReader = mock<PackageDirectoryInventoryReader>();
-	const globalConfig = mock<GlobalConfig>({ tags: { disabled: false } });
 	const packageImportConfig = mock<PackageImportConfig>();
 	const runRepository = mock<PromotionRunRepository>();
 	const reviewsService = mock<PromotionReviewsService>();
@@ -214,7 +212,6 @@ describe('PromotionsService', () => {
 			projectRepository,
 			folderService,
 			mock(),
-			globalConfig,
 		);
 		service = new PromotionsService(
 			resolver,

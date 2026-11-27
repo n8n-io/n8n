@@ -250,8 +250,7 @@ export class SimulationSessionService {
 		const workflows = await findWorkflowToolWorkflows(this.workflowRepository, refs, projectId);
 		for (const ref of refs) {
 			const workflow = workflows.get(ref.workflowId ?? ref.workflow);
-			// Draft runs start workflow tools in manual mode.
-			const gap = workflow ? instrumentedRunGap(workflow, 'manual') : undefined;
+			const gap = workflow ? instrumentedRunGap(workflow) : undefined;
 			if (gap) gaps.set(sanitizeToolName(ref.name ?? ref.workflow), gap);
 		}
 		return gaps;

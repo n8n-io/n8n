@@ -132,7 +132,6 @@ describe('WorkflowPreviewHost', () => {
 			expandGroups: 'all',
 			aiAssistant: false,
 			aiBuilder: false,
-			askAi: false,
 			executionSuccessToasts: false,
 			executionErrorToasts: false,
 			showNodeIssues: true,

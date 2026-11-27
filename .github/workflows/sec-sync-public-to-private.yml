@@ -99,6 +99,31 @@ jobs:
           git reset --hard public-1.x
           git push origin 1.x --force-with-lease
 
+      - name: Sync 2.x from public
+        id: sync-2x
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          if ! PRIVATE_SHA=$(git rev-parse --verify --quiet refs/remotes/origin/2.x); then
+            echo '::warning::Private 2.x has not been set up, skipping sync.'
+            exit 0
+          fi
+
+          git fetch https://github.com/n8n-io/n8n.git refs/heads/2.x:refs/remotes/public/2.x
+          AHEAD_COUNT=$(git rev-list "refs/remotes/public/2.x..$PRIVATE_SHA" --grep='chore: Bundle' --invert-grep --count)
+
+          if [ "$AHEAD_COUNT" -gt 0 ]; then
+            if [ "$EVENT_NAME" = "schedule" ] || [ "$FORCE" != "true" ]; then
+              echo "Private 2.x is $AHEAD_COUNT commit(s) ahead of public, skipping sync"
+              echo "ahead_count=$AHEAD_COUNT" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Private 2.x is $AHEAD_COUNT commit(s) ahead of public, force syncing anyway"
+          fi
+
+          git push --force-with-lease="refs/heads/2.x:$PRIVATE_SHA" origin refs/remotes/public/2.x:refs/heads/2.x
+
       - name: Notify Slack on failure
         if: failure()
         env:
@@ -112,11 +137,12 @@ jobs:
 
       - name: Notify Slack on skipped sync
         continue-on-error: true
-        if: ${{ !cancelled() && (steps.sync-master.outputs.ahead_count || steps.sync-1x.outputs.ahead_count) }}
+        if: ${{ !cancelled() && (steps.sync-master.outputs.ahead_count || steps.sync-1x.outputs.ahead_count || steps.sync-2x.outputs.ahead_count) }}
         env:
           SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
           MASTER_AHEAD: ${{ steps.sync-master.outputs.ahead_count }}
           ONE_X_AHEAD: ${{ steps.sync-1x.outputs.ahead_count }}
+          TWO_X_AHEAD: ${{ steps.sync-2x.outputs.ahead_count }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           DETAILS=''
@@ -127,8 +153,11 @@ jobs:
             [ -z "$DETAILS" ] || DETAILS="$DETAILS, "
             DETAILS="${DETAILS}1.x is $ONE_X_AHEAD commit(s) ahead"
           fi
+          if [ -n "$TWO_X_AHEAD" ]; then
+            [ -z "$DETAILS" ] || DETAILS="$DETAILS, "
+            DETAILS="${DETAILS}2.x is $TWO_X_AHEAD commit(s) ahead"
+          fi
 
-          # Non-Bundle commits on private master/1.x keep the sync skipped until they are removed or force-synced
           node .github/scripts/slack/notify.mjs \
             --channel '#alerts-build' \
             --text "<${RUN_URL}|Public → private sync skipped>: ${DETAILS} of public. Re-run with force once resolved."

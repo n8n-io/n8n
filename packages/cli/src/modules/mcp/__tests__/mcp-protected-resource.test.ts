@@ -5,6 +5,15 @@ import { User } from '@n8n/db';
 import * as permissions from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
+const report = vi.hoisted(() => ({ target: null as 'v3' | null }));
+
+vi.mock('@n8n/api-types', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/api-types')>()),
+	get MIGRATION_REPORT_TARGET_VERSION() {
+		return report.target;
+	},
+}));
+
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof permissions>()),
 	hasGlobalScope: vi.fn(),
@@ -33,14 +42,12 @@ import { McpProtectedResource } from '../mcp-protected-resource';
 
 const makeGlobalConfig = ({
 	builderEnabled = true,
-	tagsDisabled = false,
 	managedByEnv = false,
 	activityLogEnabled = true,
 } = {}) =>
 	({
 		activityLog: { enabled: activityLogEnabled },
 		endpoints: { mcpBuilderEnabled: builderEnabled },
-		tags: { disabled: tagsDisabled },
 		instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
 	}) as unknown as GlobalConfig;
 
@@ -71,6 +78,7 @@ describe('McpProtectedResource', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		report.target = null;
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		postHogClient.getFeatureFlags.mockResolvedValue({});
 		mcpConfig.baseUrl = '';
@@ -240,7 +248,7 @@ describe('McpProtectedResource', () => {
 				urlService,
 				mcpSettingsService,
 				mcpConfig,
-				makeGlobalConfig({ builderEnabled: false, tagsDisabled: true }),
+				makeGlobalConfig({ builderEnabled: false }),
 				moduleRegistry,
 				licenseState,
 				postHogClient,
@@ -257,8 +265,6 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['project:read']).toEqual([]);
 			expect(scopeTools['agent:read']).toBeUndefined();
 			expect(scopeTools['agent:write']).toBeUndefined();
-			// list_workflow_tags is hidden when tags are disabled
-			expect(scopeTools['tag:read']).toEqual([]);
 		});
 
 		it('should drop folder tools when folders are not licensed', async () => {
@@ -530,6 +536,10 @@ describe('McpProtectedResource', () => {
 			const READ_TOOLS = ['get_migration_report', 'get_migration_findings'];
 			const ALL_TOOLS = [...READ_TOOLS, 'migrate_workflow', 'set_migration_finding_status'];
 
+			beforeEach(() => {
+				report.target = 'v3';
+			});
+
 			it('offers both to a user whose role holds both permissions', async () => {
 				hasGlobalScope.mockReturnValue(true);
 
@@ -558,14 +568,21 @@ describe('McpProtectedResource', () => {
 				expect(hasGlobalScope).toHaveBeenCalledWith(user, 'breakingChanges:list');
 			});
 
-			it('drops both everywhere when the breaking-changes module is inactive', async () => {
+			it.each([
+				{ reason: 'the module is inactive', moduleActive: false, target: 'v3' },
+				{ reason: 'there is no migration target', moduleActive: true, target: null },
+			] as const)('drops both scopes everywhere when $reason', async ({ moduleActive, target }) => {
+				report.target = target;
 				hasGlobalScope.mockReturnValue(true);
-				moduleRegistry.isActive.mockImplementation((name) => name !== 'breaking-changes');
+				moduleRegistry.isActive.mockImplementation(
+					(name) => name !== 'breaking-changes' || moduleActive,
+				);
 
 				const scopeTools = await resource.getScopeTools();
+				const grantableScopes = await resource.getGrantableScopes(user);
 				for (const scope of ['breakingChanges:list', 'breakingChanges:migrate']) {
 					expect(resource.scopes).not.toContain(scope);
-					expect(await resource.getGrantableScopes(user)).not.toContain(scope);
+					expect(grantableScopes).not.toContain(scope);
 					expect(scopeTools).not.toHaveProperty([scope]);
 				}
 			});

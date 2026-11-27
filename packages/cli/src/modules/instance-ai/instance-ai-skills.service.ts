@@ -1,4 +1,5 @@
 import { filterRuntimeSkillSource, type RuntimeSkillContent } from '@n8n/agents';
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai';
 import { UnexpectedError } from '@n8n/errors';
@@ -74,6 +75,10 @@ const SKILL_GATES: ReadonlyArray<{
 	{
 		skills: [SKILLS.appBuilder],
 		isOpen: ({ appBuildingEnabled }) => appBuildingEnabled,
+	},
+	{
+		skills: [SKILLS.v3Migration],
+		isOpen: () => MIGRATION_REPORT_TARGET_VERSION === 'v3',
 	},
 ];
 

@@ -1235,7 +1235,6 @@ describe('placeholder API hosts', () => {
 	it.each([
 		'n8n-nodes-base.httpRequest',
 		'n8n-nodes-base.httpRequestTool',
-		'@n8n/n8n-nodes-langchain.toolHttpRequest',
 		'n8n-nodes-base.graphql',
 	])('applies the Placeholder API section to the generic HTTP client %s', async (type) => {
 		llmSubmits({ type: 'json', body: [] });

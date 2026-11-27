@@ -17,9 +17,9 @@ const versionDescription: INodeTypeDescription = {
 	version: [1, 2],
 	annotations: READ_ONLY_ANNOTATIONS,
 	description: 'Sets values on items and optionally remove other values',
+	iconColor: 'blue',
 	defaults: {
 		name: 'Set',
-		color: '#0000FF',
 	},
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],

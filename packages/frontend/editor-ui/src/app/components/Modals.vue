@@ -9,7 +9,6 @@ import {
 	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
-	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
@@ -115,9 +114,6 @@ const DeleteSecretsProviderModal = defineAsyncComponent(
 const FromAiParametersModal = defineAsyncComponent(lazyModalLoaders[FROM_AI_PARAMETERS_MODAL_KEY]);
 const ImportCurlModal = defineAsyncComponent(lazyModalLoaders[IMPORT_CURL_MODAL_KEY]);
 const BinaryDataViewModal = defineAsyncComponent(lazyModalLoaders[BINARY_DATA_VIEW_MODAL_KEY]);
-const ImportWorkflowUrlModal = defineAsyncComponent(
-	lazyModalLoaders[IMPORT_WORKFLOW_URL_MODAL_KEY],
-);
 const InviteUsersModal = defineAsyncComponent(lazyModalLoaders[INVITE_USER_MODAL_KEY]);
 const PersonalizationModal = defineAsyncComponent(lazyModalLoaders[PERSONALIZATION_MODAL_KEY]);
 const ProjectMoveResourceModal = defineAsyncComponent(
@@ -228,10 +224,6 @@ const TrialIntroModal = defineAsyncComponent(lazyModalLoaders[TRIAL_INTRO_MODAL_
 			<template #default="{ modalName, active, data }">
 				<DuplicateWorkflowDialog :data="data" :is-active="active" :modal-name="modalName" />
 			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="IMPORT_WORKFLOW_URL_MODAL_KEY">
-			<ImportWorkflowUrlModal />
 		</ModalRoot>
 
 		<ModalRoot :name="PERSONALIZATION_MODAL_KEY">

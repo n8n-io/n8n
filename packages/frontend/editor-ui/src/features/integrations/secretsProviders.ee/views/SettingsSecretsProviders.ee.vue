@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import { useToast } from '@n8n/composables/useToast';
@@ -8,7 +7,6 @@ import {
 	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 } from '@/app/constants/modals';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
@@ -20,14 +18,10 @@ import {
 	N8nIcon,
 	N8nLink,
 	N8nLoading,
-	N8nSettingsEnableRow,
-	N8nSettingsRowGroup,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import * as externalSecretsApi from '@n8n/rest-api-client';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import SecretsProviderConnectionCard from '../components/SecretsProviderConnectionCard.ee.vue';
@@ -38,10 +32,7 @@ import { useSecretsProvidersList } from '../composables/useSecretsProvidersList.
 const i18n = useI18n();
 const secretsProviders = useSecretsProvidersList();
 const projectsStore = useProjectsStore();
-const settingsStore = useSettingsStore();
-const rootStore = useRootStore();
 const toast = useToast();
-const message = useMessage();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const uiStore = useUIStore();
@@ -51,53 +42,6 @@ usePrefetchModals([SECRETS_PROVIDER_CONNECTION_MODAL_KEY, DELETE_SECRETS_PROVIDE
 });
 const secretsProviderConnection = useSecretsProviderConnection(projectsStore.currentProjectId);
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
-
-const externalSecretsModuleSettings = computed(
-	() => settingsStore.moduleSettings['external-secrets'],
-);
-const isRoleBasedAccessEnabled = computed(
-	() => externalSecretsModuleSettings.value?.roleBasedAccess ?? false,
-);
-const systemRolesEnabled = ref(false);
-const systemRolesToggleLoading = ref(false);
-
-async function onSystemRolesToggle(enabled: boolean) {
-	if (!enabled) {
-		const result = await message.confirm(
-			i18n.baseText('settings.externalSecrets.systemRoles.confirm.message'),
-			i18n.baseText('settings.externalSecrets.systemRoles.confirm.headline'),
-			{
-				confirmButtonText: i18n.baseText(
-					'settings.externalSecrets.systemRoles.confirm.confirmButtonText',
-				),
-				cancelButtonText: i18n.baseText(
-					'settings.externalSecrets.systemRoles.confirm.cancelButtonText',
-				),
-			},
-		);
-		if (result !== 'confirm') return;
-	}
-
-	systemRolesToggleLoading.value = true;
-	try {
-		const response = await externalSecretsApi.updateExternalSecretsSettings(
-			rootStore.restApiContext,
-			{ systemRolesEnabled: enabled },
-		);
-		systemRolesEnabled.value = response.systemRolesEnabled;
-		await settingsStore.getModuleSettings();
-		toast.showMessage({
-			title: enabled
-				? i18n.baseText('settings.externalSecrets.systemRoles.enabled.toast')
-				: i18n.baseText('settings.externalSecrets.systemRoles.disabled.toast'),
-			type: 'success',
-		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.externalSecrets.systemRoles.error'));
-	} finally {
-		systemRolesToggleLoading.value = false;
-	}
-}
 
 const sortedProviders = computed(() => {
 	return [...secretsProviders.activeProviders.value].sort((a, b) => a.name.localeCompare(b.name));
@@ -226,7 +170,6 @@ onMounted(async () => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 	}
-	systemRolesEnabled.value = externalSecretsModuleSettings.value?.systemRolesEnabled ?? false;
 });
 
 function goToUpgrade() {
@@ -260,20 +203,6 @@ function goToUpgrade() {
 						</span>
 					</N8nLink>
 				</N8nText>
-				<N8nSettingsRowGroup
-					v-if="isRoleBasedAccessEnabled"
-					class="mt-xl"
-					data-test-id="external-secrets-system-roles-toggle"
-				>
-					<N8nSettingsEnableRow
-						:title="i18n.baseText('settings.externalSecrets.systemRoles.title')"
-						:description="i18n.baseText('settings.externalSecrets.systemRoles.description')"
-						:enabled="systemRolesEnabled"
-						:disabled="systemRolesToggleLoading"
-						switch-test-id="external-secrets-system-roles-switch"
-						@update:enabled="onSystemRolesToggle"
-					/>
-				</N8nSettingsRowGroup>
 				<N8nButton
 					v-if="hasActiveProviders && secretsProviders.canCreate.value"
 					:class="$style.addButton"

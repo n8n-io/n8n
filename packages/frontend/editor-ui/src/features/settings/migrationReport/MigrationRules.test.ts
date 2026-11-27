@@ -10,6 +10,11 @@ import MigrationRules from './MigrationRules.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import type { BreakingChangeLightReportResult } from '@n8n/api-types';
 
+vi.mock('@n8n/api-types', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/api-types')>()),
+	MIGRATION_REPORT_TARGET_VERSION: 'v3',
+}));
+
 vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	getReport: vi.fn(),
 	refreshReport: vi.fn(),

@@ -2040,7 +2040,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		select?: Record<string, boolean>,
 	): void {
-		const areTagsEnabled = !this.globalConfig.tags.disabled;
 		const isDefaultSelect = select === undefined;
 		const areTagsRequested = isDefaultSelect || select?.tags;
 		const isOwnedByIncluded = isDefaultSelect || select?.ownedBy;
@@ -2056,7 +2055,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			]);
 		}
 
-		if (areTagsEnabled && areTagsRequested) {
+		if (areTagsRequested) {
 			this.applyTagsRelation(qb);
 		}
 

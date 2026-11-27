@@ -28,10 +28,10 @@ export class IfV1 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: 1,
+			iconColor: 'green',
 			annotations: READ_ONLY_ANNOTATIONS,
 			defaults: {
 				name: 'If',
-				color: '#408000',
 			},
 			inputs: [NodeConnectionTypes.Main],
 

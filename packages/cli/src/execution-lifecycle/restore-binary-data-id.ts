@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { BinaryData } from 'n8n-core';
-import { BinaryDataConfig, BinaryDataService, TEMP_EXECUTION_ID } from 'n8n-core';
+import { BinaryDataService, TEMP_EXECUTION_ID } from 'n8n-core';
 import type { IBinaryData, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { DatabaseManager } from '@/binary-data/database.manager';
@@ -102,14 +102,12 @@ export async function assignDatabaseFilesToExecution(run: IRun, executionId: str
 const storesFilesBeforeItsExecution = (mode: WorkflowExecuteMode) =>
 	mode === 'webhook' || mode === 'trigger';
 
-const keepsBinaryDataInMemory = () => Container.get(BinaryDataConfig).mode === 'default';
-
 export async function restoreBinaryDataId(
 	run: IRun,
 	executionId: string,
 	workflowExecutionMode: WorkflowExecuteMode,
 ) {
-	if (!storesFilesBeforeItsExecution(workflowExecutionMode) || keepsBinaryDataInMemory()) {
+	if (!storesFilesBeforeItsExecution(workflowExecutionMode)) {
 		return;
 	}
 

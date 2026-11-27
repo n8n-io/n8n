@@ -3,7 +3,6 @@ import NodeAgentDecisionResponse from './nodes/agent-decision-response.svg';
 import NodeAgentDecisionTrigger from './nodes/agent-decision-trigger.svg';
 import NodeAggregate from './nodes/aggregate.svg';
 import NodeAiAgent from './nodes/ai-agent.svg';
-import NodeAiTransform from './nodes/ai-transform.svg';
 import NodeBasicLlmChain from './nodes/basic-llm-chain.svg';
 import NodeCalculator from './nodes/calculator.svg';
 import NodeCallN8nSubWorkflowTool from './nodes/call-n8n-sub-workflow-tool.svg';
@@ -87,7 +86,6 @@ export const nodeIconSet = {
 	'node:agent-decision-trigger': NodeAgentDecisionTrigger,
 	'node:aggregate': NodeAggregate,
 	'node:ai-agent': NodeAiAgent,
-	'node:ai-transform': NodeAiTransform,
 	'node:basic-llm-chain': NodeBasicLlmChain,
 	'node:calculator': NodeCalculator,
 	'node:call-n8n-sub-workflow-tool': NodeCallN8nSubWorkflowTool,

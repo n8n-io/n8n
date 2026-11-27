@@ -5,9 +5,12 @@ import {
 	listRemoteTagsWithCommits,
 	resolveReleaseTagForTrack,
 	tagVersionInfoToReleaseCandidateBranchName,
+	trySh,
 	writeGithubOutput,
 } from './github-helpers.mjs';
 import semver from 'semver';
+
+const V3_CUTOVER_BASELINE = '3.4.1';
 
 /**
  * @param {any} packageVersion
@@ -59,30 +62,51 @@ export function determineTrack(packageVersion, { prerelease = false } = {}) {
 
 	console.log('Current Tracks: ', JSON.stringify(trackToReleaseMap, null, 4));
 
-	let track = null;
 	let newStable = null;
 
-	// Check through our current release versions, if semver matches,
-	// we inherit the track pointer from them
-	for (const [releaseTrack, tagVersionInfo] of Object.entries(trackToReleaseMap)) {
-		if (tagVersionInfo && matchesTrack(tagVersionInfo, packageVersion)) {
-			track = releaseTrack;
-			break;
-		}
+	const matchingTracks = RELEASE_TRACKS.filter((candidate) => {
+		const tagVersionInfo = trackToReleaseMap[candidate];
+		return tagVersionInfo && matchesTrack(tagVersionInfo, packageVersion);
+	});
+	const maintenanceTrack = matchingTracks.find((candidate) => candidate.startsWith('v'));
+	if (maintenanceTrack && matchingTracks.length > 1) {
+		throw new Error(
+			`The ${maintenanceTrack} maintenance line overlaps with another release track.`,
+		);
 	}
+	if (
+		maintenanceTrack &&
+		(maintenanceTrack !== `v${semver.major(packageVersion)}` || bump !== 'patch')
+	) {
+		throw new Error(
+			`The ${maintenanceTrack} maintenance track only supports patches for its major version.`,
+		);
+	}
+	let [track] = matchingTracks;
 
 	if (!track) {
-		if (!trackToReleaseMap.beta?.version) {
+		let previousBeta = trackToReleaseMap.beta?.version;
+		if (!previousBeta) {
 			throw new Error(
 				'Likely updating to new beta release, but no existing beta tag was found in git.',
 			);
 		}
+		if (
+			semver.major(previousBeta) === 2 &&
+			packageVersion === semver.inc(V3_CUTOVER_BASELINE, 'minor')
+		) {
+			const baselineTag = `${RELEASE_PREFIX}${V3_CUTOVER_BASELINE}`;
+			if (!trySh('git', ['merge-base', '--is-ancestor', `refs/tags/${baselineTag}`, 'HEAD']).ok) {
+				throw new Error(`The v3 cutover release must descend from ${baselineTag}.`);
+			}
+			previousBeta = V3_CUTOVER_BASELINE;
+		}
 		// If not track was found in current versions, we verify we're building a
 		// new beta version and the input is not invalid.
-		assertNewBetaRelease(trackToReleaseMap.beta.version, packageVersion);
+		assertNewBetaRelease(previousBeta, packageVersion);
 
 		track = 'beta';
-		newStable = trackToReleaseMap.beta.version;
+		newStable = previousBeta;
 	}
 
 	if (!track) {
@@ -94,7 +118,7 @@ export function determineTrack(packageVersion, { prerelease = false } = {}) {
 		tag: /** @type {import('./github-helpers.mjs').ReleaseVersion} */ (`n8n@${packageVersion}`),
 	});
 
-	const previousVersion = trackToReleaseMap[track]?.version;
+	const previousVersion = newStable ?? trackToReleaseMap[track]?.version;
 
 	const output = {
 		previous_version: previousVersion,

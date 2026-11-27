@@ -13,6 +13,9 @@ on:
       v1:
         description: 'v1 release version'
         value: ${{ jobs.get-versions.outputs.v1 }}
+      v2:
+        description: 'v2 release version'
+        value: ${{ jobs.get-versions.outputs.v2 }}
 
 jobs:
   get-versions:
@@ -21,6 +24,7 @@ jobs:
       stable: ${{ steps.get-tags.outputs.stable }}
       beta: ${{ steps.get-tags.outputs.beta }}
       v1: ${{ steps.get-tags.outputs.v1 }}
+      v2: ${{ steps.get-tags.outputs.v2 }}
 
     steps:
       - name: Checkout
@@ -44,3 +48,4 @@ jobs:
           echo "Stable: ${{ steps.get-tags.outputs.stable }}"
           echo "Beta:   ${{ steps.get-tags.outputs.beta }}"
           echo "v1: ${{ steps.get-tags.outputs.v1 }}"
+          echo "v2: ${{ steps.get-tags.outputs.v2 }}"

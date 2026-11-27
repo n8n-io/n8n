@@ -412,7 +412,7 @@ export async function executeWorkflow(
 	// refused here, before it starts.
 	let instrumentationApplied = false;
 	if (instrument && instrumentedToolName) {
-		assertInstrumentedRunStaysOnMain(workflow, context.executionMode);
+		assertInstrumentedRunStaysOnMain(workflow);
 		runData.configureAdditionalData = (additionalData) => {
 			instrument(additionalData, { toolName: instrumentedToolName, toolKind: 'workflow' });
 			instrumentationApplied = true;

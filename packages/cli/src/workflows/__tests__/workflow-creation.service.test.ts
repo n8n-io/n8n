@@ -123,7 +123,6 @@ describe('WorkflowCreationService', () => {
 			externalHooksMock, // externalHooks
 			projectServiceMock,
 			eventServiceMock,
-			mock(), // globalConfig
 			workflowFinderServiceMock, // workflowFinderService
 			licenseStateMock,
 			projectRepositoryMock,
