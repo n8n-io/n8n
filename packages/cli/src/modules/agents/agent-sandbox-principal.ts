@@ -20,7 +20,12 @@ export type AgentSandboxPrincipal =
 			workflowId: string;
 			executionId: string;
 	  }
-	| { type: 'scheduled-task'; taskId: string };
+	| { type: 'scheduled-task'; taskId: string }
+	/**
+	 * A test chat. Simulated runs must never share files or processes with the user's live
+	 * preview chats, so each test chat gets its own sandbox.
+	 */
+	| { type: 'test-chat'; userId: string; threadId: string };
 
 declare const agentSandboxPrincipalHashBrand: unique symbol;
 
@@ -96,6 +101,9 @@ export function hashAgentSandboxPrincipal(
 			break;
 		case 'scheduled-task':
 			canonicalPrincipal = [principal.type, principal.taskId];
+			break;
+		case 'test-chat':
+			canonicalPrincipal = [principal.type, principal.userId, principal.threadId];
 			break;
 	}
 

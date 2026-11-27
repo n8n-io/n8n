@@ -112,6 +112,14 @@ describe('skills tool', () => {
 		service = createSkillService();
 	});
 
+	it('prompts the assistant to list and reuse existing skills before creating a new one', () => {
+		const tool = createSkillsTool(createContext(service));
+
+		expect(tool.description).toContain('attachableToAgentId');
+		expect(tool.description).toMatch(/list existing skills/i);
+		expect(tool.description).toMatch(/reuse a matching skill/i);
+	});
+
 	describe('list', () => {
 		it('lists skills with the filters the model sent', async () => {
 			const tool = createSkillsTool(createContext(service));
@@ -283,7 +291,7 @@ describe('skills tool', () => {
 			revision: 'commit',
 		};
 		const check = {
-			source: { label: 'acme/skills', ref: 'main', path: 'skills' },
+			source: { label: 'acme/skills / skills', ref: 'main', path: 'skills' },
 			importable: [{ key: 'brand-voice', name: 'Brand voice' }],
 			failed: [],
 		};
@@ -351,7 +359,7 @@ describe('skills tool', () => {
 			});
 			expect(suspend).toHaveBeenCalledWith(
 				expect.objectContaining({
-					resourceName: 'acme/skills · main · skills',
+					resourceName: 'acme/skills / skills · main',
 					message:
 						'Connect this source and import 1 synced skill for every project on this instance: Brand voice.',
 				}),

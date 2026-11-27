@@ -39,6 +39,7 @@ describe('classifyScope', () => {
 		['sourceControl:push', 'write'],
 		['sourceControl:read', 'read'],
 		['promotions:readEnvironments', 'read'],
+		['promotions:readReviews', 'read'],
 		['promotions:manageEnvironments', 'write'],
 		['communityPackage:install', 'write'],
 		['dataTableRow:upsert', 'write'],

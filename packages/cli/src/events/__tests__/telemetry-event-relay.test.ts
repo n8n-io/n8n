@@ -1011,7 +1011,38 @@ describe('TelemetryEventRelay', () => {
 					shadow_warning_count: 2,
 					not_loaded_warning_count: 1,
 					version: 1,
+					origin: 'save',
 				},
+			);
+		});
+
+		it('should track the create of an empty project policy with its origin', () => {
+			eventService.emit('node-type-policy-saved', {
+				updatedBy: 'user123',
+				kind: 'credential-types',
+				projectId: 'project-1',
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'allow', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [],
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
+				origin: 'add-project-policy',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
+				expect.objectContaining({
+					kind: 'credential-types',
+					scope: 'project',
+					project_id: 'project-1',
+					default_action: 'allow',
+					is_first_write: true,
+					rule_count: 0,
+					blocked_type_count: 0,
+					origin: 'add-project-policy',
+				}),
 			);
 		});
 

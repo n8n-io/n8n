@@ -101,6 +101,7 @@ import type { AgentExecutionStreamChunk } from './types/agent-steering';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { resolveAgentRunSource } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
+import type { SimulationSession } from './simulation/simulation-session';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import type { AgentExecution } from './entities/agent-execution.entity';
 import { encodeChatHistoryCursor, type ChatHistoryPageRequest } from './utils/chat-history-page';
@@ -141,6 +142,9 @@ interface ChatExecutionInput extends AgentExecutionInput {
 	attachments?: StoredAttachmentRef[];
 }
 
+/** Resolves a draft thread's test-run session; `undefined` means a live run. */
+export type DraftSimulationResolver = (threadId: string) => Promise<SimulationSession | undefined>;
+
 interface ChatExecutionCallbacks {
 	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	/** Runs after the turn is stored. Adds the execution ID to the SSE done event. */
@@ -168,6 +172,7 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 	/** Preview chat sends the approaching-budget card. The run continues. */
 	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 	abortSignal?: AbortSignal;
+	simulation?: DraftSimulationResolver;
 }
 
 export interface ExecuteForChatPublishedConfig extends ChatExecutionInput {
@@ -238,6 +243,7 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
 	automaticPreviewContinuation?: boolean;
 	abortSignal?: AbortSignal;
+	simulation?: DraftSimulationResolver;
 }
 
 export interface ExecuteForTaskPublishedConfig extends AgentExecutionInput {
@@ -279,6 +285,8 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 
 export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecutionCallbacks {
 	onAdmitted?: () => Promise<void>;
+	/** A test turn: no background wake runs after it, because a wake would run unsimulated. */
+	skipBackgroundWake?: boolean;
 	onRuntimeStarted?: () => void;
 	access: AgentThreadAccess;
 	messageContext?: IntegrationMessageContext | null;
@@ -338,8 +346,14 @@ interface ResumeCheckpoint {
 	scope: ResumeScope;
 }
 
-type ResumeChatConfig = ResumeForChatConfig & { usePublishedVersion: boolean };
-type DraftChatConfig = ExecuteForChatConfig & { sessionMode: AgentSessionMode };
+type ResumeChatConfig = ResumeForChatConfig & {
+	usePublishedVersion: boolean;
+	simulationSession?: SimulationSession;
+};
+type DraftChatConfig = ExecuteForChatConfig & {
+	sessionMode: AgentSessionMode;
+	simulationSession?: SimulationSession;
+};
 
 /**
  * The access, sandbox, and runtime scope for a run on one chat channel —
@@ -548,6 +562,10 @@ export class AgentExecutionOrchestratorService {
 						...thread,
 						user,
 						previewChat: chatSurface === 'preview',
+						// A suspended test run already marked its chat, so its sandbox is the test chat's.
+						testChat:
+							(await this.agentExecutionService.findThreadById(memoryScope.threadId))?.testChat ===
+							true,
 					})
 				: await this.prepareN8nChat({
 						...thread,
@@ -659,8 +677,21 @@ export class AgentExecutionOrchestratorService {
 		}
 		if (await this.resumeBackgroundForChat(resume)) return;
 		const checkpoint = await this.loadResumeCheckpoint(resume);
+		const simulationSession = await resume.simulation?.(checkpoint.memoryScope.threadId);
+		// A test chat never resumes live. A caller that resolves no session gets an error instead.
+		if (
+			!simulationSession &&
+			(await this.agentExecutionService.findThreadById(checkpoint.memoryScope.threadId))
+				?.testChat === true
+		) {
+			throw new UserError('This test chat can only resume as a test run');
+		}
 		// n8n Chat has one canonical source; the caller doesn't need to pass it.
-		const run = { ...resume, source: resume.source ?? checkpoint.scope.source };
+		const run = {
+			...resume,
+			source: resume.source ?? checkpoint.scope.source,
+			simulationSession,
+		};
 		yield* this.withRuntimeLease(
 			async () => await this.getResumeRuntime(run, checkpoint),
 			(runtime) => this.resumeRuntimeTurn(run, checkpoint, runtime),
@@ -898,10 +929,23 @@ export class AgentExecutionOrchestratorService {
 			previewChat: config.previewChat,
 			sessionMode,
 		});
-		const draft = { ...config, sessionMode };
+		const simulationSession = await config.simulation?.(config.memory.threadId);
+		const draft = { ...config, sessionMode, simulationSession };
+		// The session is known only after the access check, and a new test chat is marked only
+		// when its turn starts, so the test chat's own sandbox is chosen here.
+		const draftSetup = simulationSession
+			? {
+					...setup,
+					sandboxPrincipalHash: draftSandboxPrincipalHash(
+						config.user.id,
+						config.memory.threadId,
+						true,
+					),
+				}
+			: setup;
 		yield* this.withRuntimeLease(
-			async () => await this.getDraftChatRuntime(draft, setup),
-			async (runtime) => await this.streamDraftChatResponse(draft, runtime, setup),
+			async () => await this.getDraftChatRuntime(draft, draftSetup),
+			async (runtime) => await this.streamDraftChatResponse(draft, runtime, draftSetup),
 		);
 	}
 
@@ -1264,6 +1308,13 @@ export class AgentExecutionOrchestratorService {
 				throw new OperationalError('Production n8n Chat wake identity is no longer valid');
 			}
 		}
+		// A wake runs unsimulated, so a test chat never gets one. Throwing keeps the job results.
+		if (
+			isDraft &&
+			(await this.agentExecutionService.findThreadById(memory.threadId))?.testChat === true
+		) {
+			throw new OperationalError('A test chat does not run background wakes');
+		}
 		if (isDraft) {
 			setup = await this.prepareDraftWake({
 				agentId,
@@ -1409,9 +1460,10 @@ export class AgentExecutionOrchestratorService {
 			chatSurface: config.chatSurface,
 			acceptsSteering: !config.pauseReport,
 			onExecutionStarted: config.onExecutionStarted,
-			onSettled: config.isWakeRun
-				? undefined
-				: async () => await this.requestPendingBackgroundWake(config.memory.threadId),
+			onSettled:
+				config.isWakeRun || config.skipBackgroundWake
+					? undefined
+					: async () => await this.requestPendingBackgroundWake(config.memory.threadId),
 			prepare: async () => await this.prepareChatTurn(config),
 		});
 	}
@@ -1553,6 +1605,7 @@ export class AgentExecutionOrchestratorService {
 				attributionUserId: scope.runtime.attributionUserId,
 				...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
 				previewChat,
+				...simulationRuntimeParams(config.simulationSession),
 			},
 			{
 				threadId: memoryScope.threadId,
@@ -1583,10 +1636,14 @@ export class AgentExecutionOrchestratorService {
 			context: { projectId: config.projectId, agentId: config.agentId, threadId },
 			chatSurface: config.chatSurface,
 			automaticPreviewContinuation: config.automaticPreviewContinuation,
+			onAdmitted: async () => await config.simulationSession?.markTestChat(),
 			onExecutionStarted: config.onExecutionStarted,
 			onExecutionRecorded: config.onExecutionRecorded,
 			onSettled: async (suspended) => {
-				if (!suspended) await this.requestPendingBackgroundWake(threadId);
+				// A wake after a test turn would run unsimulated.
+				if (!suspended && !config.simulationSession) {
+					await this.requestPendingBackgroundWake(threadId);
+				}
 			},
 			prepare: async () => await this.prepareChatResume(config, checkpoint, runtime),
 		});
@@ -1681,9 +1738,11 @@ export class AgentExecutionOrchestratorService {
 				...encodeIntegrationMessageContext(selectedContext),
 				// The resume merge lets this metadata win, so it must not replace a stored decision.
 				// A checkpoint from before channels resolved a scope gets the integration fallback.
-				...(readEpisodicScopeDecision(memoryScope.hostMetadata)
-					? {}
-					: episodicScopeHostMetadata(memoryScope.resourceId)),
+				...(config.simulationSession
+					? episodicScopeHostMetadata(memoryScope.resourceId, { disabled: true })
+					: readEpisodicScopeDecision(memoryScope.hostMetadata)
+						? {}
+						: episodicScopeHostMetadata(memoryScope.resourceId)),
 			},
 			...(selectedContext && conversation
 				? {
@@ -1766,9 +1825,20 @@ export class AgentExecutionOrchestratorService {
 		sessionMode: AgentSessionMode;
 		/** Produces the error thrown for an inaccessible thread. Defaults to 'Session not found'. */
 		denied?: () => Error;
+		/** A test chat gets its own sandbox, apart from the user's live preview chats. */
+		testChat?: boolean;
 	}): Promise<ChatChannelSetup> {
-		const { agentId, projectId, threadId, resourceId, user, previewChat, sessionMode, denied } =
-			params;
+		const {
+			agentId,
+			projectId,
+			threadId,
+			resourceId,
+			user,
+			previewChat,
+			sessionMode,
+			denied,
+			testChat,
+		} = params;
 		const fail = denied ?? (() => new UserError('Session not found'));
 		if (
 			resourceId !== chatSurfaceMemoryResourceId('preview', user.id) ||
@@ -1782,7 +1852,7 @@ export class AgentExecutionOrchestratorService {
 		return {
 			surface: previewChat ? 'preview' : undefined,
 			access: { accessScope: 'user', ownerId: user.id },
-			sandboxPrincipalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }),
+			sandboxPrincipalHash: draftSandboxPrincipalHash(user.id, threadId, testChat === true),
 			alwaysSandboxed: false,
 			runtime: {
 				usePublishedVersion: false,
@@ -1917,6 +1987,7 @@ export class AgentExecutionOrchestratorService {
 				user: setup.runtime.user,
 				sandboxPrincipalHash: setup.sandboxPrincipalHash,
 				previewChat: setup.runtime.previewChat,
+				...simulationRuntimeParams(config.simulationSession),
 			},
 			{
 				threadId: memory.threadId,
@@ -1955,12 +2026,16 @@ export class AgentExecutionOrchestratorService {
 			pauseReport: config.pauseReport,
 			hideUserMessageFromTranscript: config.hideUserMessageFromTranscript,
 			admittedExecution: config.admittedExecution,
-			onAdmitted: async () =>
+			onAdmitted: async () => {
 				await this.integrationMessageContextService.setLatest(
 					memory.threadId,
 					memory.resourceId,
 					messageContext,
-				),
+				);
+				// Before the agent runs, so a later turn of this chat never runs live.
+				await config.simulationSession?.markTestChat();
+			},
+			skipBackgroundWake: config.simulationSession !== undefined,
 			access: setup.access,
 			messageContext,
 			agentInstance: runtime.agent,
@@ -1990,6 +2065,7 @@ export class AgentExecutionOrchestratorService {
 			onExecutionStarted: config.onExecutionStarted,
 			sandboxPrincipalHash: setup.sandboxPrincipalHash,
 			sessionMode,
+			...simulationEpisodicScope(config.simulationSession),
 		});
 	}
 
@@ -2266,4 +2342,25 @@ export class AgentExecutionOrchestratorService {
 			onRuntimeStarted: config.onRuntimeStarted,
 		});
 	}
+}
+
+// No background jobs in a test run: a job would outlive the turn and run unsimulated.
+function simulationRuntimeParams(session: SimulationSession | undefined) {
+	return session ? { simulation: session, allowBackgroundTasks: false } : {};
+}
+
+/**
+ * Episodic memory is scoped to the user's draft resource, which every draft chat shares. A test
+ * run would store simulated results there that live chats then recall as fact, so it is off.
+ * Observational memory and history recall are keyed by thread, so they stay in the test chat.
+ */
+function simulationEpisodicScope(session: SimulationSession | undefined) {
+	return session ? { episodicScope: { disabled: true } as const } : {};
+}
+
+/** A test chat's sandbox is its own; every other draft chat of a user shares one. */
+function draftSandboxPrincipalHash(userId: string, threadId: string, testChat: boolean) {
+	return hashAgentSandboxPrincipal(
+		testChat ? { type: 'test-chat', userId, threadId } : { type: 'n8n-user', userId },
+	);
 }
