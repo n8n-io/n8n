@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
-const migrationName = 'CreateMcpServerTables1795631969949';
+const migrationName = 'CreateMcpServerTables1795765972133';
 const tables = ['mcp_server', 'mcp_server_tool', 'mcp_server_connection', 'mcp_server_block'];
 
 describe('CreateMcpServerTables migration', () => {
