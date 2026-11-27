@@ -261,9 +261,7 @@ function warningLabel(key: string): string {
 							:model-value="selectAll.checked"
 							:indeterminate="selectAll.indeterminate"
 							:disabled="disabled || selectAll.keys.length === 0"
-							:label="
-								searchOpen ? undefined : i18n.baseText('settings.context.skills.columns.skill')
-							"
+							:label="searchOpen ? undefined : i18n.baseText('settings.context.skills.title')"
 							:aria-label="i18n.baseText('settings.context.skills.connect.review.selectAll')"
 							data-test-id="skill-source-select-all"
 							@update:model-value="toggleAll(visibleSkills)"
@@ -420,7 +418,7 @@ function warningLabel(key: string): string {
 											</template>
 											<N8nButton
 												variant="ghost"
-												size="small"
+												size="xsmall"
 												:class="$style.warning"
 												:aria-label="warningLabel(item.key)"
 												data-test-id="skill-source-skill-warnings"
@@ -502,8 +500,10 @@ function warningLabel(key: string): string {
 	border-block-end: var(--border);
 }
 
+/* The list starts one row gap below the header. */
 .sidebar {
 	flex: none;
+	--n8n-sidebar--padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--2xs);
 }
 
 .preview {
@@ -513,13 +513,15 @@ function warningLabel(key: string): string {
 	overflow: hidden;
 }
 
-/* The inline padding puts the checkbox and the search above the checkboxes and badges of the rows. */
+/* The header has the box of a row, so its checkbox and its button are in line with the rows. */
 .listHeader {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) calc(var(--spacing--2xs) + var(--spacing--xs));
+	min-height: var(--spacing--xl);
+	margin: var(--spacing--2xs) var(--spacing--2xs) 0;
+	padding: var(--spacing--4xs) var(--spacing--xs);
 }
 
 .search {
