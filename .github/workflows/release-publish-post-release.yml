@@ -35,7 +35,7 @@ on:
 jobs:
   push-new-release-to-channel:
     name: Push new release to channel
-    if: inputs.release_type != 'rc' && inputs.track != 'v2'
+    if: inputs.release_type != 'rc' && (inputs.track == 'beta' || inputs.track == 'stable')
     uses: ./.github/workflows/release-push-to-channel.yml
     secrets: inherit
     with:
@@ -78,7 +78,7 @@ jobs:
   ensure-release-candidate-branches:
     name: 'Ensure release candidate branches'
     if: |
-      inputs.release_type != 'rc' && inputs.track != 'v2'
+      inputs.release_type != 'rc' && (inputs.track == 'beta' || inputs.track == 'stable')
     uses: ./.github/workflows/util-ensure-release-candidate-branches.yml
     secrets: inherit
 
