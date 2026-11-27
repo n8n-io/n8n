@@ -106,10 +106,11 @@ const expectSavesTime = (f: LedgerFact) =>
 	['cli', 'retry', 'trigger', 'webhook', 'evaluation'].includes(f.mode);
 
 const expectLimit = (f: LedgerFact) =>
+	f.entityType === 'workflow' &&
 	f.event === 'started' &&
 	f.outcome === 'none' &&
 	f.source !== 'instance_ai' &&
-	['cli', 'retry', 'trigger', 'webhook', 'evaluation', 'agent'].includes(f.mode);
+	['cli', 'retry', 'trigger', 'webhook', 'evaluation'].includes(f.mode);
 
 const expectDelta = (f: LedgerFact) => {
 	if (expectLimit(f)) return 1;
@@ -193,10 +194,12 @@ describe('countsTowardExecutionLimit', () => {
 		expect(countsTowardExecutionLimit(start)).toBe(false);
 	});
 
-	// Agent messages count toward the limit by design, but are not billed.
-	const workflowModes = allModes.filter((mode) => mode !== 'agent');
+	test('an agent run never counts toward the limit', () => {
+		const agentFacts = allFacts.filter((f) => f.entityType === 'agent' || f.mode === 'agent');
+		expect(agentFacts.filter(countsTowardExecutionLimit).map(describeFact)).toEqual([]);
+	});
 
-	test.each(workflowModes)('a workflow run in %s mode counts only if billing counts it', (mode) => {
+	test.each(allModes)('a workflow run in %s mode counts only if billing counts it', (mode) => {
 		const started = fact({ mode, event: 'started', outcome: 'none' });
 		const ended = fact({ mode, event: 'ended', outcome: 'success' });
 		expect(countsTowardExecutionLimit(started)).toBe(isBillableExecution(ended));
