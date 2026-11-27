@@ -16,7 +16,7 @@ import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
 import { WidenStepStaleAfterIndex1795050000000 } from '../migrations/1795050000000-WidenStepStaleAfterIndex';
-import { AddStepAttempt1795089600000 } from '../migrations/1795089600000-AddStepAttempt';
+import { AddStepAttempt1795136400000 } from '../migrations/1795136400000-AddStepAttempt';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 import { TypeOrmStepStore } from '../typeorm-step-store';
 
@@ -913,8 +913,8 @@ describe('workflow_step_execution table (integration)', () => {
 		const settledLater = await seedStep({ executionId, nodeId: 'a', status: 'running' });
 		const settledFirst = await seedStep({ executionId, nodeId: 'z', status: 'running' });
 		await seedStep({ executionId, nodeId: 'm', status: 'running' });
-		await store.failStep(settledFirst.id, { name: 'Error', message: 'z failed' });
-		await store.failStep(settledLater.id, { name: 'Error', message: 'a failed' });
+		await store.failStep(settledFirst.id, 1, { name: 'Error', message: 'z failed' });
+		await store.failStep(settledLater.id, 1, { name: 'Error', message: 'a failed' });
 		// Set the settle times, so that the order does not depend on the clock.
 		const table = dataSource.getRepository(WorkflowStepExecution).metadata.tableName;
 		const setSettledAt = async (id: string, at: string) =>
@@ -935,7 +935,7 @@ describe('workflow_step_execution table (integration)', () => {
 			await seedStep({ executionId, nodeId: 'a', status: 'running' }),
 			await seedStep({ executionId, nodeId: 'z', status: 'running' }),
 		];
-		for (const { id } of seeded) await store.failStep(id, { name: 'Error', message: id });
+		for (const { id } of seeded) await store.failStep(id, 1, { name: 'Error', message: id });
 		// The same settle time for both, and the creation order opposite to the id
 		// order, so that an order by id gives the other answer.
 		const [lowerId, higherId] = seeded.map(({ id }) => id).sort();
@@ -1985,7 +1985,7 @@ describe('workflow_step_execution table (integration)', () => {
 			);
 			return rows;
 		};
-		const migration = new AddStepAttempt1795089600000();
+		const migration = new AddStepAttempt1795136400000();
 		const queryRunner = dataSource.createQueryRunner();
 		await queryRunner.connect();
 		try {

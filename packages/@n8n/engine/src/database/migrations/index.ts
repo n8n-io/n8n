@@ -5,7 +5,7 @@ import { AddOutputSourcesToWorkflowStepExecution1794960000000 } from './17949600
 import { AddFinishedAtIndexToWorkflowExecution1795046400000 } from './1795046400000-AddFinishedAtIndexToWorkflowExecution';
 import { WidenStepStaleAfterIndex1795050000000 } from './1795050000000-WidenStepStaleAfterIndex';
 import { AddErrorWorkflowColumnsToWorkflowExecution1795132800000 } from './1795132800000-AddErrorWorkflowColumnsToWorkflowExecution';
-import { AddStepAttempt1795089600000 } from './1795089600000-AddStepAttempt';
+import { AddStepAttempt1795136400000 } from './1795136400000-AddStepAttempt';
 
 export const migrations = [
 	CreateWorkflowExecution1778529600000,
@@ -15,5 +15,5 @@ export const migrations = [
 	AddFinishedAtIndexToWorkflowExecution1795046400000,
 	WidenStepStaleAfterIndex1795050000000,
 	AddErrorWorkflowColumnsToWorkflowExecution1795132800000,
-	AddStepAttempt1795089600000,
+	AddStepAttempt1795136400000,
 ];

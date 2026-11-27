@@ -55,7 +55,12 @@ function makeRepair(stepStore = makeStepStore(), execution = makeExecution()) {
 	const executionStore = {
 		loadExecution: vi.fn<ExecutionStore['loadExecution']>().mockResolvedValue(execution),
 	};
-	const stepQueue: WorkQueue<StepMessage> = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	const stepQueue: WorkQueue<StepMessage> = {
+		publish: vi.fn(),
+		start: vi.fn(),
+		stop: vi.fn(),
+		size: vi.fn(),
+	};
 	const orchestrationQueue: WorkQueue<OrchestrationMessage> = {
 		publish: vi.fn(),
 		start: vi.fn(),

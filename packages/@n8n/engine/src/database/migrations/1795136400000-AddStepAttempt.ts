@@ -13,7 +13,7 @@ const COLUMN = 'attempt';
  * The default is a constant, so PostgreSQL adds the column without a rewrite
  * of the table.
  */
-export class AddStepAttempt1795089600000 implements MigrationInterface {
+export class AddStepAttempt1795136400000 implements MigrationInterface {
 	async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.addColumn(
 			TABLE,
