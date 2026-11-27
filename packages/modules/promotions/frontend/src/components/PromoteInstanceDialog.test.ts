@@ -12,6 +12,9 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock('../promotionsSettings.api', () => api);
+vi.mock('../promotions.api', () => ({
+	getPromotionSettings: async () => ({ requireApproval: 'whenConfigured' }),
+}));
 
 const mockShowError = vi.fn();
 const mockShowMessage = vi.fn();

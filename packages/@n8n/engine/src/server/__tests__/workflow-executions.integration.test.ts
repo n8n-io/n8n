@@ -312,8 +312,8 @@ beforeAll(async () => {
 }, 120_000);
 
 beforeEach(async () => {
-	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
-	stepQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
+	stepQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
 	lifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
 	responseSender = { send: vi.fn(), stop: vi.fn() };
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);

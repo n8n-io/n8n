@@ -117,6 +117,7 @@ describe('RedisWorkQueue (integration)', () => {
 		}
 
 		const next = startProcess(key, 1);
+		expect(await next.queue.size()).toBe(2);
 		const nextReceived: number[] = [];
 		next.queue.start(async ({ n }) => {
 			nextReceived.push(n);

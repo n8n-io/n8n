@@ -5,6 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
+import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -1565,6 +1566,75 @@ describe('AgentSkillModal', () => {
 			);
 			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
 			expect(await findByTestId('agent-skill-instructions-text')).toHaveTextContent('Write SQL');
+		});
+
+		it('notes the MCP needs of mentioned workflows for a skill that the agent builder opens', async () => {
+			mockedStore(usePostHog).isFeatureEnabled = vi.fn(() => true);
+			mockedStore(usePostHog).isVariantEnabled = vi.fn(
+				(name: string, variant: string) =>
+					name === WORKFLOWS_IN_SKILLS_EXPERIMENT.name &&
+					variant === WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+			);
+			mockedStore(useWorkflowsListStore).searchWorkflows = vi.fn().mockResolvedValue([
+				{
+					id: 'wf1',
+					name: 'Report',
+					nodes: [{ type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'Start' }],
+					activeVersionId: 'v1',
+					settings: { availableInMCP: false },
+				},
+			]);
+			getSkillDetail.mockResolvedValue(
+				makeDetail({ id: 'sql', name: 'SQL helper', scope: 'project', availableToMCP: true }),
+			);
+			const { findByTestId } = renderModal({
+				skillRefsEnabled: true,
+				skillId: 'sql',
+				skill: {
+					name: 'SQL helper',
+					description: 'Use for SQL',
+					instructions: 'Run [Report](n8n://workflow/wf1).',
+				},
+			});
+
+			await waitFor(async () =>
+				expect(await findByTestId('agent-skill-workflow-notes')).toHaveAttribute(
+					'aria-label',
+					expect.stringContaining('note.mcpUnavailable'),
+				),
+			);
+		});
+
+		it('warns about the workflow notes that block the agent that opens the skill', async () => {
+			mockedStore(usePostHog).isFeatureEnabled = vi.fn(() => false);
+			mockedStore(usePostHog).isVariantEnabled = vi.fn(
+				(name: string, variant: string) =>
+					name === WORKFLOWS_IN_SKILLS_EXPERIMENT.name &&
+					variant === WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+			);
+			mockedStore(useWorkflowsListStore).searchWorkflows = vi
+				.fn()
+				.mockResolvedValue([
+					{ id: 'wf1', name: 'Report', nodes: [], activeVersionId: null, settings: {} },
+				]);
+			getSkillDetail.mockResolvedValue(
+				makeDetail({ id: 'sql', name: 'SQL helper', scope: 'project' }),
+			);
+			const { findByTestId, queryByTestId } = renderModal({
+				skillRefsEnabled: true,
+				skillId: 'sql',
+				skill: {
+					name: 'SQL helper',
+					description: 'Use for SQL',
+					instructions: 'Run [Report](n8n://workflow/wf1).',
+				},
+			});
+
+			expect(await findByTestId('agent-skill-workflow-warnings')).toHaveAttribute(
+				'aria-label',
+				expect.stringContaining('note.agentTrigger'),
+			);
+			expect(queryByTestId('agent-skill-workflow-notes')).not.toBeInTheDocument();
 		});
 
 		it('shows a skill that the user cannot edit as read-only', async () => {
