@@ -3,9 +3,8 @@ import { createServer, type Server } from 'node:http';
 import type { Registry } from 'prom-client';
 
 /**
- * Serves the data plane's Prometheus metrics on `GET /metrics` and nothing
- * else. Plain HTTP on its own port, apart from the engine API, so a scraper
- * needs no client certificate when the engine API uses mutual TLS.
+ * Serves the registry on `GET /metrics`. It uses plain HTTP on its own port,
+ * so a scraper needs no client certificate when the engine API uses mutual TLS.
  */
 export async function startEngineMetricsServer(
 	registry: Registry,
@@ -33,7 +32,6 @@ export async function startEngineMetricsServer(
 		server.once('error', reject);
 		server.listen(port, host, () => {
 			server.off('error', reject);
-			// Nothing else handles a later error, so log it instead of crashing.
 			server.on('error', (error) => logger.error('Engine metrics server error', { error }));
 			resolve(server);
 		});

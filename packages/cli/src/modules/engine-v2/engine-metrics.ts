@@ -30,7 +30,6 @@ export function createEngineMetrics({ registry, prefix }: EngineMetricsOptions) 
 			};
 			const poolGauge = (suffix: string, help: string, value: (stats: DbPoolStats) => number) =>
 				gauge(suffix, help, function () {
-					// No stats while the pool reconnects: keep the last values.
 					const stats = readStats();
 					if (stats) this.set(value(stats));
 				});

@@ -215,7 +215,7 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
-			// A scraper keeps its connection open between scrapes.
+			// Also end a scrape in progress.
 			server.closeAllConnections();
 		});
 	}

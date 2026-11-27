@@ -53,8 +53,8 @@ export class EngineConfig {
 	 * Port the `n8n engine` process serves Prometheus metrics on, at `/metrics`,
 	 * when `N8N_METRICS` is enabled. It uses plain HTTP on the `N8N_ENGINE_HOST`
 	 * interface, even when the engine port uses TLS, so keep it inside your
-	 * network. An engine that runs inside n8n main reports on main's metrics
-	 * endpoint instead.
+	 * network. In `in-process` mode, the main metrics endpoint reports them
+	 * instead.
 	 */
 	@Env('N8N_ENGINE_METRICS_PORT')
 	metricsPort: number = 9464;

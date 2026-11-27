@@ -52,7 +52,7 @@ export interface EngineV2RuntimeOptions {
 	queues: EngineWorkQueues;
 	/** The engine roles this process runs. Without it, the process runs every role. */
 	roles?: readonly EngineRole[];
-	/** Where the data plane metrics register. Without it, the engine records no metrics. */
+	/** Where the data plane metrics register. Without it, none register. */
 	metricsRegistry?: Registry;
 }
 
@@ -152,7 +152,6 @@ export class EngineV2Runtime {
 
 		const dataSource = this.dataSource;
 		assert(dataSource, 'Engine v2 cannot report a pool without a data source');
-		// Lazy, so a data plane without metrics never loads prom-client.
 		const { createEngineMetrics } = await import('./engine-metrics.js');
 		this.unregisterPoolMetrics = createEngineMetrics({
 			registry: metricsRegistry,

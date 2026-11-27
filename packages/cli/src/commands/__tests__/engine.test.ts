@@ -489,7 +489,6 @@ describe('Engine', () => {
 			promClient.register.clear();
 		});
 
-		/** The registry the command handed to the runtime. */
 		const registryGivenToRuntime = () =>
 			vi.mocked(runtime.init).mock.calls.at(-1)?.[0].metricsRegistry;
 
