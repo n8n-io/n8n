@@ -64,6 +64,9 @@ jobs:
 
       - name: Build and Test
         uses: ./.github/actions/setup-nodejs
+        env:
+          # Type-aware lint uses a Go process outside the Node heap limit.
+          GOMEMLIMIT: ${{ matrix.name == 'Backend' && '5GiB' || '' }}
         with:
           build-command: ${{ matrix.command }}${{ inputs.affectedBase != '' && ' --affected' || '' }}
           node-version: ${{ inputs.nodeVersion }}
