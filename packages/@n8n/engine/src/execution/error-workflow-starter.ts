@@ -65,11 +65,16 @@ export class ErrorWorkflowStarter {
 		const state = await this.executionStore.loadErrorWorkflowState(executionId);
 		if (state.dueAt === null) return 'not-due';
 
-		// The start that wrote the link cleared the marker in its transaction, so a
-		// set marker beside a link is only left over from a lost race.
-		if (state.hasErrorExecution || this.resolve === undefined) {
+		// An error execution already exists. Clear any leftover pending marker
+		// rather than attempting to start another.
+		if (state.hasErrorExecution) {
 			await this.executionStore.clearErrorWorkflowDue(executionId);
-			return state.hasErrorExecution ? 'started' : 'abandoned';
+			return 'started';
+		}
+		// No resolver configured => error workflow is not executed
+		if (this.resolve === undefined) {
+			await this.executionStore.clearErrorWorkflowDue(executionId);
+			return 'abandoned';
 		}
 
 		const execution = await this.executionStore.loadExecution(executionId);
