@@ -11,9 +11,13 @@ vi.mock('./stores/buildManuallyByDefault.store', () => ({
 	useBuildManuallyByDefaultStore: () => store,
 }));
 
+const { waitForFeatureFlagsWithTimeout } = vi.hoisted(() => ({
+	waitForFeatureFlagsWithTimeout: vi.fn(async () => {}),
+}));
+
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({}),
-	waitForFeatureFlagsWithTimeout: vi.fn(async () => {}),
+	waitForFeatureFlagsWithTimeout,
 }));
 
 describe('landOnCanvasOnce', () => {
@@ -34,5 +38,23 @@ describe('landOnCanvasOnce', () => {
 
 		expect(await landOnCanvasOnce()).toBe(false);
 		expect(markLandedOnCanvas).not.toHaveBeenCalled();
+	});
+
+	it('decides only after the feature flags load', async () => {
+		let resolveFlags = () => {};
+		waitForFeatureFlagsWithTimeout.mockReturnValueOnce(
+			new Promise<void>((resolve) => {
+				resolveFlags = resolve;
+			}),
+		);
+		store.shouldLandOnCanvas = false;
+
+		const landing = landOnCanvasOnce();
+		// The arm arrives with the flags.
+		store.shouldLandOnCanvas = true;
+		resolveFlags();
+
+		expect(await landing).toBe(true);
+		expect(waitForFeatureFlagsWithTimeout).toHaveBeenCalledWith(expect.anything(), 2000);
 	});
 });

@@ -99,6 +99,18 @@ describe('EmptyCanvasComposer', () => {
 		expect(mocks.trackComposerPromptSent).toHaveBeenCalledWith('Send me a daily summary');
 	});
 
+	it('does not track the prompt when the thread does not start', async () => {
+		mocks.startThread.mockResolvedValue('busy');
+		const { getByTestId } = render({ props: { isCanvasEmpty: true } });
+
+		await userEvent.type(getByTestId('empty-canvas-composer-input'), 'Send me a daily summary');
+		await userEvent.click(getByTestId('empty-canvas-composer-send'));
+
+		await waitFor(() => expect(mocks.startThread).toHaveBeenCalledTimes(1));
+		expect(mocks.trackComposerPromptSent).not.toHaveBeenCalled();
+		expect(getByTestId('empty-canvas-composer-input')).toHaveValue('Send me a daily summary');
+	});
+
 	it('collapses the connect row while the user types', async () => {
 		const { getByTestId } = render({ props: { isCanvasEmpty: true } });
 		const row = getByTestId('empty-canvas-composer-connect-row');
@@ -115,6 +127,7 @@ describe('EmptyCanvasComposer', () => {
 
 		await userEvent.type(input, 'Line one{Shift>}{Enter}{/Shift}');
 		expect(mocks.startThread).not.toHaveBeenCalled();
+		expect(input).toHaveValue('Line one\n');
 
 		await userEvent.type(input, '{Enter}');
 		await waitFor(() => expect(mocks.startThread).toHaveBeenCalledTimes(1));

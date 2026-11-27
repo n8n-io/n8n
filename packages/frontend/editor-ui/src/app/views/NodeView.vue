@@ -138,6 +138,7 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useMcpJsonNudgeTrigger } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 // Experiment cleanup (158_build_manually_by_default)
 import { useBuildManuallyByDefaultStore } from '@/experiments/buildManuallyByDefault/stores/buildManuallyByDefault.store';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 // EOF Experiment cleanup
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
@@ -248,6 +249,7 @@ const builderStore = useBuilderStore();
 const mcpJsonNudgeTrigger = useMcpJsonNudgeTrigger();
 // Experiment cleanup (158_build_manually_by_default)
 const buildManuallyByDefaultStore = useBuildManuallyByDefaultStore();
+const isInstanceAiReady = useInstanceAiReady();
 // EOF Experiment cleanup
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
@@ -359,11 +361,13 @@ const {
 } = useEditorContext();
 
 // Experiment cleanup (158_build_manually_by_default)
-// The composer hands off to the Assistant, so it needs the Instance AI entry point.
+// The composer starts an Assistant thread, so it needs the Instance AI entry point
+// and a finished Assistant setup.
 const showEmptyCanvasComposer = computed(
 	() =>
 		!isCanvasReadOnly.value &&
 		isInstanceAiEditorEnabled.value &&
+		isInstanceAiReady.value &&
 		buildManuallyByDefaultStore.isComposerVariant,
 );
 const isCanvasEmpty = computed(() => (workflowDocumentStore?.value?.allNodes ?? []).length === 0);

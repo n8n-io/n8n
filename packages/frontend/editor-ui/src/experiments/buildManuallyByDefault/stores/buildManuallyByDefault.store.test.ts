@@ -159,6 +159,15 @@ describe('buildManuallyByDefault store', () => {
 			setArm(EXPERIMENT.canvasComposer);
 		});
 
+		it('hides the row until the check answers', () => {
+			mockFetchOAuthClientsPreview.mockReturnValue(new Promise(() => {}));
+			const store = useBuildManuallyByDefaultStore();
+
+			void store.refreshConnectedMcpClients();
+
+			expect(store.showConnectRow).toBe(false);
+		});
+
 		it('hides the row when the user has a connected client', async () => {
 			mockFetchOAuthClientsPreview.mockResolvedValue([{ id: 'client' }]);
 			const store = useBuildManuallyByDefaultStore();

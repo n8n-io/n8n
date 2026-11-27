@@ -117,7 +117,6 @@ async function onSubmit() {
 	if (!message || isSending.value) return;
 	isSending.value = true;
 	try {
-		store.trackComposerPromptSent(message);
 		const projectId = await ensurePersonalProjectId();
 		if (!projectId) return;
 		const outcome = await startThread(
@@ -126,7 +125,10 @@ async function onSubmit() {
 			{ kind: 'user_typed' },
 			{ source: 'empty_canvas_composer', origin: 'internal' },
 		);
-		if (outcome === 'started') prompt.value = '';
+		if (outcome !== 'started') return;
+		// Track only a started thread, so failed hand-offs do not count as sends.
+		store.trackComposerPromptSent(message);
+		prompt.value = '';
 	} finally {
 		isSending.value = false;
 	}

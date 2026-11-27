@@ -85,21 +85,22 @@ export const useBuildManuallyByDefaultStore = defineStore(
 			landedStorage.value = JSON.stringify([...landedUserIds.value, userId]);
 		}
 
-		const hasConnectedMcpClient = ref(false);
-		const showConnectRow = computed(() => !hasConnectedMcpClient.value);
+		// Unknown until the check answers, so users with a client never see the row flash.
+		const mcpClientState = ref<'unknown' | 'connected' | 'none'>('unknown');
+		const showConnectRow = computed(() => mcpClientState.value === 'none');
 
 		async function refreshConnectedMcpClients() {
 			if (!isComposerVariant.value) return;
 			if (settingsStore.moduleSettings.mcp?.mcpAccessEnabled !== true) {
-				hasConnectedMcpClient.value = false;
+				mcpClientState.value = 'none';
 				return;
 			}
 			try {
 				const clients = await useMCPStore().fetchOAuthClientsPreview(1);
-				hasConnectedMcpClient.value = clients.length > 0;
+				mcpClientState.value = clients.length > 0 ? 'connected' : 'none';
 			} catch {
 				// Show the row when the check fails. It only links to the MCP setup.
-				hasConnectedMcpClient.value = false;
+				mcpClientState.value = 'none';
 			}
 		}
 

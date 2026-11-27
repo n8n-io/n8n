@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { onBeforeUnmount, ref, watch } from 'vue';
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { useBuildManuallyByDefaultStore } from '../stores/buildManuallyByDefault.store';
 
@@ -15,10 +15,15 @@ let hideTimer: ReturnType<typeof setTimeout> | undefined;
 
 watch(
 	() => store.isAssistantButtonHighlightPending,
-	(isPending) => {
+	async (isPending) => {
 		if (!isPending || !store.consumeAssistantButtonHighlight()) return;
-		isHighlighted.value = true;
 		clearTimeout(hideTimer);
+		// Remove the class for one render, so a minimize during a highlight replays it.
+		if (isHighlighted.value) {
+			isHighlighted.value = false;
+			await nextTick();
+		}
+		isHighlighted.value = true;
 		hideTimer = setTimeout(() => {
 			isHighlighted.value = false;
 		}, HIGHLIGHT_DURATION_MS);
