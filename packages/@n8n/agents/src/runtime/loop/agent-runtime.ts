@@ -438,10 +438,12 @@ export class AgentRuntime {
 				runId: _rid,
 				toolCallId: _tcid,
 				onResumeClaimed: _onResumeClaimed,
+				toolCallOnly,
 				hostMetadata,
 				...callerExecOptions
 			} = options;
 			const mergedExecOptions = mergeResumeExecutionOptions(state, callerExecOptions);
+			if (toolCallOnly) mergedExecOptions.onInputBoundary = undefined;
 
 			const claimed = await this.runState.claimResume(this.runId, state);
 			if (!claimed) {
@@ -462,6 +464,7 @@ export class AgentRuntime {
 			const pendingResume: PendingResume = {
 				pendingToolCalls: state.pendingToolCalls,
 				resumeToolCallId: options.toolCallId,
+				toolCallOnly,
 				resumeData,
 			};
 
@@ -586,6 +589,9 @@ export class AgentRuntime {
 			throw new StaleResumeError(`No suspended run found for runId: ${this.runId}`);
 		}
 
+		if (options.toolCallOnly && Object.keys(state.pendingToolCalls).length !== 1) {
+			throw new Error('A tool-only resume requires one pending tool call');
+		}
 		const toolCall = state.pendingToolCalls[options.toolCallId];
 		if (!toolCall) {
 			throw new StaleResumeError(`No tool call found for toolCallId: ${options.toolCallId}`);
@@ -1079,7 +1085,10 @@ export class AgentRuntime {
 		await this.memory.persistTurnDelta(ctx.list, ctx.options);
 		// Resumed tool results form a new observation boundary before the next model call.
 		await this.memory.maybeObserveMidRun(ctx.list, ctx.options);
-		if (resumedTurnEnds(ctx.list.messages(), pendingResume.resumeToolCallId, toolMap)) {
+		if (
+			pendingResume.toolCallOnly ||
+			resumedTurnEnds(ctx.list.messages(), pendingResume.resumeToolCallId, toolMap)
+		) {
 			state.lastFinishReason = 'stop';
 			state.reachedStopCondition = true;
 		}

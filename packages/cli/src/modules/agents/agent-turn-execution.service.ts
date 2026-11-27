@@ -742,6 +742,13 @@ export class AgentTurnExecutionService {
 				[EXECUTION_METADATA_KEY]: executionId,
 			};
 			turn.options.persistence.persistSettledSuspensions = true;
+			if (turn.recording.source === 'slack') {
+				turn.options.pendingBackgroundToolCallIds =
+					await this.agentExecutionService.findBackgroundApprovalToolCalls(
+						config.context.agentId,
+						config.context.threadId,
+					);
+			}
 		} else if (turn.type === 'resume') {
 			turn.options.hostMetadata = {
 				...turn.options.hostMetadata,

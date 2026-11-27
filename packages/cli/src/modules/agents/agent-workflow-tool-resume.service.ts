@@ -11,6 +11,7 @@ import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { Publisher } from '@n8n/backend-services';
 import { collectResultData } from '@/workflows/callable/callable-workflow-result';
 
+import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentRepository } from './repositories/agent.repository';
@@ -144,6 +145,7 @@ export class AgentWorkflowToolResumeService {
 			await this.resume(agentRun, status);
 			await this.backgroundJobService.consumeSettledApprovals(agentRun.runId, agentRun.agentId);
 		} catch (error) {
+			if (error instanceof AgentTurnAlreadyRunningError) return;
 			this.logger.error('Failed to resume agent run after sub-workflow completed', {
 				agentId: agentRun.agentId,
 				runId: agentRun.runId,

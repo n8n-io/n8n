@@ -34,6 +34,7 @@ import {
 	AgentChatExecutionService,
 	type CancelSuspendedRunParams,
 } from './agent-chat-execution.service';
+import { getBackgroundApproval } from './approval/decision-continuation';
 import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
 import type {
 	AgentRunTelemetryType,
@@ -341,6 +342,7 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
  * live in `AgentWorkflowExecutionService`.
  */
 interface ResumeCheckpoint {
+	toolCallOnly: boolean;
 	memoryScope: NonNullable<SerializableAgentState['persistence']>;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash | undefined;
 	scope: ResumeScope;
@@ -502,12 +504,12 @@ export class AgentExecutionOrchestratorService {
 	}
 
 	private async loadResumeCheckpoint(config: ResumeChatConfig): Promise<ResumeCheckpoint> {
-		const memoryScope = await this.loadResumeMemory(config);
+		const { memoryScope, toolCallOnly } = await this.loadResumeMemory(config);
 		const { scope, sandboxPrincipalHash } = await this.resolveResumeScope(config, memoryScope);
-		return { memoryScope, sandboxPrincipalHash, scope };
+		return { memoryScope, sandboxPrincipalHash, scope, toolCallOnly };
 	}
 
-	private async loadResumeMemory({ agentId, runId, expectedMemory }: ResumeChatConfig) {
+	private async loadResumeMemory({ agentId, runId, expectedMemory, toolCallId }: ResumeChatConfig) {
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
 		if (checkpointStatus.status === 'expired') {
 			throw new UserError(`Checkpoint ${runId} is expired and cannot be resumed`);
@@ -532,7 +534,11 @@ export class AgentExecutionOrchestratorService {
 		) {
 			throw new UserError(`Checkpoint ${runId} does not belong to this chat`);
 		}
-		return memoryScope;
+		return {
+			memoryScope,
+			toolCallOnly:
+				getBackgroundApproval(checkpointStatus.checkpoint)?.call.toolCallId === toolCallId,
+		};
 	}
 
 	/**
@@ -1636,6 +1642,7 @@ export class AgentExecutionOrchestratorService {
 			context: { projectId: config.projectId, agentId: config.agentId, threadId },
 			chatSurface: config.chatSurface,
 			automaticPreviewContinuation: config.automaticPreviewContinuation,
+			acceptsSteering: checkpoint.toolCallOnly ? false : undefined,
 			onAdmitted: async () => await config.simulationSession?.markTestChat(),
 			onExecutionStarted: config.onExecutionStarted,
 			onExecutionRecorded: config.onExecutionRecorded,
@@ -1669,7 +1676,16 @@ export class AgentExecutionOrchestratorService {
 			resumeData: config.resumeData,
 			options: withToolGuardrails(
 				withBudgetGuardrail(
-					this.createResumeOptions(config, memoryScope, messageContext, executionSource, tracing),
+					{
+						...this.createResumeOptions(
+							config,
+							memoryScope,
+							messageContext,
+							executionSource,
+							tracing,
+						),
+						...(checkpoint.toolCallOnly ? { toolCallOnly: true } : {}),
+					},
 					{
 						budget: runtime.budget,
 						sessionId: memoryScope.threadId,

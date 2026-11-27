@@ -17,6 +17,7 @@ import type { Publisher } from '@n8n/backend-services';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import { AgentWorkflowToolResumeService } from '../../agent-workflow-tool-resume.service';
+import { encodeReviewRequester } from '../../approval/review-requester';
 import { APPROVAL_EXPIRED_ERROR } from '../../approval/approval-expiry';
 import type { AgentExecutionUpdateBroadcaster } from '../../agent-execution-update-broadcaster';
 import { AgentChatExecutionService } from '../../agent-chat-execution.service';
@@ -685,6 +686,75 @@ describe('background task notifications', () => {
 				'agent-1',
 				'thread-1',
 			);
+		},
+	);
+
+	it.each([
+		['requester', 'cancelled'],
+		['other-participant', 'not-found'],
+	] as const)(
+		'checks who requested the pending approval before acting on a cancellation by %s',
+		async (id, expected) => {
+			const { service, jobRepository, checkpointStorage } = setup();
+			const job = makeWorkflowJob({ kind: 'approval', parentRunId: 'run-1' });
+			jobRepository.findByParentThread.mockResolvedValue([job]);
+			const requester = { source: 'slack', id: 'requester' };
+			const pending = {
+				toolCallId: 'call',
+				toolName: 'write',
+				input: {},
+				suspended: true as const,
+				runId: 'run-1',
+				resumeSchema: {},
+				suspendPayload: { type: 'workflow_wait' },
+				continuation: {
+					__agentDecisionWorkflow: true,
+					executionId: 'exec-1',
+					definitionHash: 'hash',
+					backgroundApproval: true,
+				},
+			};
+			checkpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: {
+					status: 'suspended',
+					persistence: {
+						threadId: 'thread-1',
+						resourceId: 'resource',
+						hostMetadata: encodeReviewRequester(requester),
+					},
+					pendingToolCalls: { call: pending },
+					messageList: {
+						inputIds: [],
+						historyIds: [],
+						responseIds: ['response'],
+						messages: [
+							{
+								id: 'response',
+								createdAt: new Date(0),
+								role: 'assistant',
+								content: [
+									{
+										type: 'tool-call',
+										state: 'pending',
+										toolCallId: 'call',
+										toolName: 'write',
+										input: {},
+									},
+								],
+							},
+						],
+					},
+				},
+			});
+			const executions = mock<ExecutionService>();
+			Container.set(ExecutionService, executions);
+
+			await expect(service.cancelFromTool('thread-1', job.id, { ...requester, id })).resolves.toBe(
+				expected,
+			);
+			expect(executions.stop).toHaveBeenCalledTimes(id === requester.id ? 1 : 0);
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		},
 	);
 

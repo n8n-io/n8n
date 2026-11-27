@@ -20,6 +20,8 @@ import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broad
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { AgentFileBridge } from '../agent-file-bridge.service';
 import { APPROVAL_EXPIRED_ERROR, hasApprovalExpired } from '../approval/approval-expiry';
+import { getBackgroundApproval } from '../approval/decision-continuation';
+import { readReviewRequester, type AgentReviewRequester } from '../approval/review-requester';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { isApprovalSuspendPayload } from '../integrations/agent-chat-suspension-cards';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -951,7 +953,35 @@ export class AgentBackgroundJobService {
 		expected?: ExpectedBackgroundJobState,
 	): Promise<'cancelled' | 'not-found' | 'already-settled'> {
 		const [job] = await this.jobRepository.findByParentThread(parentThreadId, [jobId]);
+		return job ? await this.cancelJob(job, expected) : 'not-found';
+	}
+
+	async cancelFromTool(
+		parentThreadId: string,
+		jobId: string,
+		requester: AgentReviewRequester | undefined,
+	): Promise<'cancelled' | 'not-found' | 'already-settled'> {
+		const [job] = await this.jobRepository.findByParentThread(parentThreadId, [jobId]);
 		if (!job) return 'not-found';
+		if (job.kind === 'approval') {
+			if (!job.parentRunId || !job.childExecutionId || !requester) return 'not-found';
+			const status = await this.checkpointStorage.getStatus(job.parentRunId, job.parentAgentId);
+			if (
+				status.status !== 'active' ||
+				getBackgroundApproval(status.checkpoint)?.executionId !== job.childExecutionId
+			)
+				return 'not-found';
+			const original = readReviewRequester(status.checkpoint.persistence);
+			if (original?.id !== requester.id || original.source !== requester.source) return 'not-found';
+		}
+		return await this.cancelJob(job);
+	}
+
+	private async cancelJob(
+		job: AgentBackgroundJob,
+		expected?: ExpectedBackgroundJobState,
+	): Promise<'cancelled' | 'already-settled'> {
+		const { id: jobId, parentThreadId } = job;
 		if (job.status !== 'running' && job.status !== 'suspended' && job.status !== 'paused')
 			return 'already-settled';
 
@@ -1323,7 +1353,8 @@ export class AgentBackgroundJobService {
 		if (settled) {
 			this.updateBroadcaster.notifyBackgroundJobsUpdated(job.parentAgentId, job.parentThreadId);
 		}
-		await this.consumeCancelledMail(job.parentThreadId, job.id);
+		// Reconciliation still needs the receipt to close a suspended approval call.
+		if (job.kind !== 'approval') await this.consumeCancelledMail(job.parentThreadId, job.id);
 		return 'cancelled';
 	}
 

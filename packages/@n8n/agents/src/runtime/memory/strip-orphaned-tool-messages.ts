@@ -19,7 +19,10 @@ import type { AgentMessage, ContentToolCall, MessageContent } from '../../types/
  * `stripOrphanedToolMessages`: there a pending block is the *current* turn's
  * live suspension, which receives its real result on resume.
  */
-export function settleOrphanedToolMessages<T extends AgentMessage>(messages: T[]): T[] {
+export function settleOrphanedToolMessages<T extends AgentMessage>(
+	messages: T[],
+	backgroundToolCallIds?: ReadonlySet<string>,
+): T[] {
 	return messages.map((msg) => {
 		if (!isLlmMessage(msg)) return msg;
 		if (!msg.content.some((block) => block.type === 'tool-call' && block.state === 'pending')) {
@@ -31,8 +34,16 @@ export function settleOrphanedToolMessages<T extends AgentMessage>(messages: T[]
 			const { suspension, ...rest } = block;
 			return {
 				...rest,
-				state: 'rejected' as const,
-				error: buildAbandonedSuspensionError(block),
+				...(backgroundToolCallIds?.has(block.toolCallId)
+					? {
+							state: 'resolved' as const,
+							output: {
+								status: 'pending_background_action',
+								message:
+									'The background action is pending or its outcome has not been recorded. Do not repeat the call.',
+							},
+						}
+					: { state: 'rejected' as const, error: buildAbandonedSuspensionError(block) }),
 			};
 		});
 		return { ...msg, content };
@@ -64,10 +75,20 @@ export async function settleAbandonedToolCallsInMemory(
 /** `settleOrphanedToolMessages`, plus the messages that it changed. */
 export function settleOrphanedToolMessagesWithChanges<T extends AgentMessage>(
 	messages: T[],
+	backgroundToolCallIds?: ReadonlySet<string>,
 ): { settled: T[]; changed: T[] } {
-	const settled = settleOrphanedToolMessages(messages);
-	// Unchanged messages keep their identity, so only settled ones are rewritten.
-	const changed = settled.filter((message, index) => message !== messages[index]);
+	const settled = settleOrphanedToolMessages(messages, backgroundToolCallIds);
+	// The in-memory result keeps model history valid while the saved call stays pending.
+	const changed = settled.filter((message, index) => {
+		const original = messages[index];
+		return (
+			message !== original &&
+			(!isLlmMessage(original) ||
+				!original.content.some(
+					(block) => block.type === 'tool-call' && backgroundToolCallIds?.has(block.toolCallId),
+				))
+		);
+	});
 	return { settled, changed };
 }
 

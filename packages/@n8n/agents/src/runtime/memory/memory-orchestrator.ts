@@ -320,7 +320,10 @@ export class MemoryOrchestrator {
 			if (memMessages.length > 0) {
 				// Settle (not strip) so an abandoned suspension stays visible as an
 				// explicit "never completed" record instead of vanishing (INS-1223).
-				const { settled, changed } = settleOrphanedToolMessagesWithChanges(memMessages);
+				const { settled, changed } = settleOrphanedToolMessagesWithChanges(
+					memMessages,
+					new Set(options.pendingBackgroundToolCallIds),
+				);
 				list.addHistory(settled);
 				if (options.persistence.persistSettledSuspensions && changed.length > 0) {
 					await this.persistSettledHistory(changed, options.persistence, telemetry);

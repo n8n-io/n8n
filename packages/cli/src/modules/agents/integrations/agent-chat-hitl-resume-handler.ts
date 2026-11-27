@@ -17,6 +17,7 @@ import type {
 	ResumeForChatConfig,
 	AgentExecutionOrchestratorService,
 } from '../agent-execution-orchestrator.service';
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import { parseBackgroundApprovalAction } from '../background/sub-agent-background-state';
 
 type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'> & {
@@ -26,7 +27,11 @@ type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'> &
 	getSuspendedRun?(config: {
 		agentId: string;
 		runId: string;
-	}): Promise<{ threadId: string; toolResults: EarlierToolResult[] } | null>;
+	}): Promise<{
+		threadId: string;
+		toolResults: EarlierToolResult[];
+		backgroundApproval?: true;
+	} | null>;
 };
 
 /** Covers both an expired callback key and a checkpoint that is gone. */
@@ -357,17 +362,23 @@ export class AgentChatHitlResumeHandler {
 					resumeData,
 					integrationType: this.options.integration.type,
 				});
-				await this.options.streamConsumer.consume(stream, thread, {
-					...resumeExecutionContext,
-					statusHandle,
-					...(cardUserId ? { actingUserId: cardUserId } : {}),
-					...(suspendedRun
-						? {
-								agentThreadId: suspendedRun.threadId,
-								earlierToolResults: suspendedRun.toolResults,
-							}
-						: {}),
-				});
+				await this.options.streamConsumer.consume(
+					suspendedRun?.backgroundApproval
+						? withBackgroundApprovalOutcome(stream, toolCallId)
+						: stream,
+					thread,
+					{
+						...resumeExecutionContext,
+						statusHandle,
+						...(cardUserId ? { actingUserId: cardUserId } : {}),
+						...(suspendedRun
+							? {
+									agentThreadId: suspendedRun.threadId,
+									earlierToolResults: suspendedRun.toolResults,
+								}
+							: {}),
+					},
+				);
 			} finally {
 				// The stream consumer clears the status right before the first response;
 				// this clear covers failures before/outside consumption. The
@@ -379,4 +390,30 @@ export class AgentChatHitlResumeHandler {
 			this.activeResumedRuns.delete(runId);
 		}
 	}
+}
+
+async function* withBackgroundApprovalOutcome(
+	stream: AsyncGenerator<AgentExecutionStreamChunk>,
+	toolCallId: string,
+): AsyncGenerator<AgentExecutionStreamChunk> {
+	let approved: boolean | undefined;
+	let result: Extract<AgentExecutionStreamChunk, { type: 'tool-result' }> | undefined;
+	for await (const chunk of stream) {
+		if (
+			chunk.type === 'tool-approval' &&
+			chunk.toolCallId === toolCallId &&
+			chunk.phase === 'resolved'
+		)
+			approved = chunk.response.approved;
+		if (chunk.type === 'tool-result' && chunk.toolCallId === toolCallId) result = chunk;
+		yield chunk;
+	}
+	if (!result) return;
+	const delta =
+		approved === false
+			? `Approval was declined for ${result.toolName}.`
+			: approved !== true || result.canceled || result.isError
+				? `The pending action for ${result.toolName} did not complete. See the session for details.`
+				: `The approved call to ${result.toolName} finished.`;
+	yield { type: 'text-delta', id: toolCallId, delta };
 }

@@ -21,6 +21,7 @@ import type { JSONValue } from '../utils/json';
 
 /** Pending tool calls from a suspended run, passed into the loop to execute before the first LLM call. */
 export interface PendingResume {
+	toolCallOnly?: true;
 	pendingToolCalls: Record<string, PendingToolCall>;
 	/** The tool call being resumed with new data. */
 	resumeToolCallId: string;

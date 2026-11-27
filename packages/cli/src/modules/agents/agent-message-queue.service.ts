@@ -644,7 +644,9 @@ export class AgentMessageQueueService {
 	private async isBlocked(thread: AgentExecutionThread, ctx: OperationContext): Promise<boolean> {
 		if (await this.executionRepository.existsRunningByThread(thread.id, ctx)) return true;
 		return (
-			(await this.checkpointStorage.findSuspendedForThread(thread.agentId, thread.id, ctx)) !== null
+			(await this.checkpointStorage.findSuspendedForThread(thread.agentId, thread.id, ctx, {
+				includeBackground: false,
+			})) !== null
 		);
 	}
 

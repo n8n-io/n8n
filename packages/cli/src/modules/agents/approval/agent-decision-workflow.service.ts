@@ -162,6 +162,12 @@ export class AgentDecisionWorkflowService {
 						identity,
 						definitionHash,
 						workflowVersionId,
+						this.config.backgroundTasksEnabled &&
+							identity.integrationType === 'slack' &&
+							identity.published &&
+							configuration.method === 'workflow' &&
+							configurations.length === 1 &&
+							tool.suspendSchema === undefined,
 					);
 				};
 				return await review(firstIndex);
@@ -246,6 +252,7 @@ export class AgentDecisionWorkflowService {
 		identity: ApprovalRunIdentity,
 		definitionHash: string,
 		reviewedWorkflowVersionId?: string,
+		backgroundApproval = false,
 	): Promise<unknown> {
 		const pending = DECISION_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
 		const argumentsRedacted = ctx.persistence?.hostMetadata?.approvalArgumentsRedacted === true;
@@ -455,10 +462,13 @@ export class AgentDecisionWorkflowService {
 		job = await this.expireIfPastDeadline(job, executionId);
 		if (!job) throw new OperationalError('The approval job is unavailable');
 		if (job.status === 'running') {
+			const canBackground =
+				backgroundApproval && !readWorkflowCaller(ctx.persistence?.hostMetadata?.workflowCaller);
 			return await ctx.suspend(
 				{
 					type: WORKFLOW_WAIT_SUSPEND_TYPE,
 					approval: true,
+					...(canBackground ? { backgroundApproval: true } : {}),
 					displayName: getToolApprovalDisplayName(tool),
 					...(configuration.method === 'workflow'
 						? { workflowId: job.workflowId, workflowExecutionId: executionId }
@@ -479,6 +489,7 @@ export class AgentDecisionWorkflowService {
 						__agentDecisionWorkflow: true,
 						executionId,
 						definitionHash,
+						...(canBackground ? { backgroundApproval: true } : {}),
 						...(workflowVersionId ? { workflowVersionId } : {}),
 					},
 					resumeSchema: RESUME_SCHEMA,

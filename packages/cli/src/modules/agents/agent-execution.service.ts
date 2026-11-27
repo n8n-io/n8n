@@ -35,6 +35,7 @@ import {
 	type FinishedAgentExecutionStatus,
 } from './agent-execution-metrics';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { getBackgroundApproval } from './approval/decision-continuation';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
@@ -369,6 +370,10 @@ export class AgentExecutionService {
 		return [message.id];
 	}
 
+	async findBackgroundApprovalToolCalls(agentId: string, threadId: string): Promise<string[]> {
+		return await this.checkpointStorage.findBackgroundApprovalToolCalls(agentId, threadId);
+	}
+
 	private async checkAdmission(params: StartExecutionParams, ctx: OperationContext) {
 		const { threadId, agentId, resumeRunId, queueItemId } = params;
 		const running = await this.agentExecutionRepository.findRunningByThread(threadId, ctx);
@@ -383,6 +388,16 @@ export class AgentExecutionService {
 				throw new AgentTurnAlreadyRunningError();
 			}
 			const predecessorId = checkpointExecutionId(checkpoint.checkpoint);
+			if (
+				getBackgroundApproval(checkpoint.checkpoint) &&
+				(running.length ||
+					active ||
+					(await this.checkpointStorage.findSuspendedForThread(agentId, threadId, ctx, {
+						includeBackground: false,
+					})))
+			) {
+				throw new AgentTurnAlreadyRunningError();
+			}
 			const legacyPredecessor = !predecessorId && !active && params.allowSuspendedPredecessor;
 			if (
 				running.some(({ id }) => id !== predecessorId) &&
@@ -400,7 +415,9 @@ export class AgentExecutionService {
 		if (
 			running.length ||
 			active ||
-			(await this.checkpointStorage.findSuspendedForThread(agentId, threadId, ctx))
+			(await this.checkpointStorage.findSuspendedForThread(agentId, threadId, ctx, {
+				includeBackground: false,
+			}))
 		) {
 			throw new AgentTurnAlreadyRunningError();
 		}

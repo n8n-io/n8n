@@ -546,15 +546,18 @@ describe('Request from agent workflow approval', () => {
 	});
 
 	it.each([
-		['n8n_chat', true, false],
-		['n8n_chat', false, true],
-		['slack', false, false],
-		['telegram', false, false],
-		['discord', false, false],
+		['n8n_chat', true, false, false],
+		['n8n_chat', false, true, false],
+		['slack', false, false, false],
+		['slack', false, false, true],
+		['telegram', false, false, false],
+		['discord', false, false, false],
 	] as const)(
-		'asks the requester before external review in %s (preview=%s, publishedChat=%s)',
-		async (integrationType, previewChat, publishedN8nChat) => {
-			const { service, tool, jobs, executions, loader, context, suspend, handler } = setup();
+		'asks the requester before external review in %s (preview=%s, publishedChat=%s, background=%s)',
+		async (integrationType, previewChat, publishedN8nChat, background) => {
+			const { service, tool, jobs, executions, loader, context, suspend, handler, runtimeConfig } =
+				setup();
+			runtimeConfig.backgroundTasksEnabled = background;
 			Container.set(WorkflowRunner, mock<WorkflowRunner>());
 			const execute = vi
 				.spyOn(workflowTools, 'executeWorkflow')
@@ -589,7 +592,7 @@ describe('Request from agent workflow approval', () => {
 				{
 					agentId: 'agent',
 					projectId: 'project',
-					published: publishedN8nChat,
+					published: !previewChat,
 					integrationType,
 					previewChat,
 					publishedN8nChat,
@@ -637,6 +640,7 @@ describe('Request from agent workflow approval', () => {
 				},
 			);
 			const [waiting, options] = suspend.mock.calls[1];
+			expect(options.continuation.backgroundApproval).toBe(background ? true : undefined);
 			expect(execute.mock.calls[0][2].requester).toEqual({
 				id: 'original-author',
 				name: 'Alex Example',
@@ -655,6 +659,7 @@ describe('Request from agent workflow approval', () => {
 			expect(waiting).toEqual({
 				type: 'workflow_wait',
 				approval: true,
+				...(background ? { backgroundApproval: true } : {}),
 				displayName: undefined,
 				workflowId: 'decision',
 				workflowExecutionId: 'child',
