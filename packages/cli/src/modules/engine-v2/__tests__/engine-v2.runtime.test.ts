@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EngineConfig, ExecutionsConfig } from '@n8n/config';
+import { UserError } from '@n8n/errors';
 import {
 	mintApprovalCallback,
 	mintResumeToken,
@@ -460,6 +461,20 @@ describe('EngineV2Runtime', () => {
 			expect(resolved).toEqual({ workflowId: 'sub-execution' });
 			expect(workflowResolveClient.resolve).toHaveBeenCalledExactlyOnceWith(
 				{ kind: 'sub-workflow', ...request },
+				expect.any(AbortSignal),
+			);
+		});
+
+		it('gives the engine an error workflow resolver that asks the control plane', async () => {
+			await newRuntime().init(initOptions());
+			const resolveErrorWorkflow = externalDependencies({ executionStore: {}, stepStore: {} })
+				.resolveErrorWorkflow as (source: unknown) => Promise<unknown>;
+			const source = { executionId: 'exec-1' };
+			vi.mocked(workflowResolveClient.resolve).mockRejectedValue(new UserError('none'));
+
+			await expect(resolveErrorWorkflow(source)).resolves.toEqual({ kind: 'none', reason: 'none' });
+			expect(workflowResolveClient.resolve).toHaveBeenCalledExactlyOnceWith(
+				{ kind: 'error-workflow', executionId: expect.any(String), source },
 				expect.any(AbortSignal),
 			);
 		});
