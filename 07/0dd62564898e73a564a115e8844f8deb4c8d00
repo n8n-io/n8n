@@ -1,0 +1,43 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_af367323ed1620::t_418fddccf8519b 471-524
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
+  s_af367323ed1620::t_5080a5338d67c3 112-140
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_af367323ed1620::t_41523bf507aa7c 621
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_af367323ed1620::t_b543a95234600f 142
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_af367323ed1620::t_52320d7177b7f9 992,999,1001-1004,1008-1009,1035,1037-1038,1042
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBackgroundJobs.ts
+  s_af367323ed1620::t_5bb7df46a48a83 28-29,36-38,102,187,238-241
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatTaskControls.ts
+  s_af367323ed1620::t_a34d789636ee95 26-27,85
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_6f169c4a47095e::t_0fa07f81ccee8d 548-553,695-697,716-718,890-906,913-915
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_6f169c4a47095e::t_36ae431e29046a 225-247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "070dd62564898e73a564a115e8844f8deb4c8d00",
+  "prompts": {},
+  "sessions": {
+    "s_6f169c4a47095e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-acdeee567512a4396",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    },
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
