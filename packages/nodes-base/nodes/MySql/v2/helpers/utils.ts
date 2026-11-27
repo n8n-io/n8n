@@ -7,7 +7,7 @@ import type {
 	IPairedItemData,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { isExpression, NodeOperationError } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
 import {
@@ -41,7 +41,7 @@ function toIdentifierText(value: unknown, paramNumber: string): string {
 }
 
 export function escapeSqlIdentifier(identifier: string): string {
-	const parts = identifier.match(/(`[^`]*`|[^.`]+)/g) ?? [];
+	const parts = identifier.match(/(`(?:[^`]|``)*`|[^.`]+)/g) ?? [];
 
 	return parts
 		.map((part) => {
@@ -54,6 +54,47 @@ export function escapeSqlIdentifier(identifier: string): string {
 			return `\`${trimmedPart}\``;
 		})
 		.join('.');
+}
+
+// Quotes a value as one identifier. A dot or a backtick in the value stays part of the name.
+export function quoteSqlIdentifier(name: string): string {
+	return `\`${name.trim().replace(/`/g, '``')}\``;
+}
+
+// The raw read does not depend on the item, so index 0 is enough.
+export function isDatabaseExpression(ctx: IExecuteFunctions): boolean {
+	const raw = ctx.getNodeParameter('database', 0, '', { rawExpressions: true });
+	// No `__rl` check: extractValueRLC also resolves a locator without it.
+	return isExpression(typeof raw === 'object' && raw !== null && 'value' in raw ? raw.value : raw);
+}
+
+// Returns the raw table when Database is empty and an escaped `db`.`tbl` when it is set.
+// Callers still pass the result through escapeSqlIdentifier.
+export function getTableName(ctx: IExecuteFunctions, itemIndex: number): string {
+	const table = ctx.getNodeParameter('table', itemIndex, '', { extractValue: true }) as string;
+	const database = ctx.getNodeParameter('database', itemIndex, '', { extractValue: true });
+	// A literal empty Database keeps the unqualified table name.
+	if (!database && !isDatabaseExpression(ctx)) return table;
+
+	const databaseName =
+		typeof database === 'string' && database.trim() ? quoteSqlIdentifier(database) : '';
+	const tableName = typeof table === 'string' ? escapeSqlIdentifier(table) : '';
+	// An empty part would collapse to a one-part name in the next escape pass.
+	if (!databaseName || !tableName) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`The ${databaseName ? 'Table' : 'Database'} value did not resolve to a name`,
+			{ itemIndex, description: 'Make sure the value is a non-empty string' },
+		);
+	}
+	if ((tableName.match(/`(?:[^`]|``)*`/g) ?? []).length > 1) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			'The Table value already contains a database name',
+			{ itemIndex, description: 'Remove the database from Table or clear Database' },
+		);
+	}
+	return `${databaseName}.${tableName}`;
 }
 
 function findParameterMatches(rawQuery: string, regex: RegExp): ParameterMatch[] {

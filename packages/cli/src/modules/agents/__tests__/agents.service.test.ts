@@ -42,7 +42,13 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	UserError,
+} from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -53,6 +59,10 @@ import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentsService } from '../agents.service';
 import type { AgentTask } from '../entities/agent-task.entity';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
+import {
+	ChatIntegrationRegistry,
+	type AgentChatIntegration,
+} from '../integrations/agent-chat-integration';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { N8nChatFlagService } from '../integrations/platforms/n8n-chat/n8n-chat-flag.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -161,6 +171,8 @@ function makeService() {
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	Container.set(AgentTaskService, agentTaskService);
 	Container.set(ChatIntegrationService, chatIntegrationService);
+	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+	Container.set(ChatIntegrationRegistry, chatIntegrationRegistry);
 
 	const transactionRunner = mock<TransactionRunner>();
 	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
@@ -187,8 +199,9 @@ function makeService() {
 			}
 		},
 	);
+	const logger = mockLogger();
 	const service = new AgentsService(
-		mockLogger(),
+		logger,
 		agentRepository,
 		projectRelationRepository,
 		projectRepository,
@@ -221,6 +234,7 @@ function makeService() {
 
 	return {
 		service,
+		logger,
 		folderService,
 		licenseState,
 		n8nChatFlag,
@@ -238,6 +252,7 @@ function makeService() {
 		agentTaskService,
 		agentTaskRepository,
 		chatIntegrationService,
+		chatIntegrationRegistry,
 		subAgentCleanupService,
 		eventService,
 		agentExecutionService,
@@ -842,6 +857,37 @@ describe('AgentsService', () => {
 		);
 	});
 
+	it('checks the workflow mentions of seeded skill bodies before the insert transaction', async () => {
+		const { service, agentRepository, skillRefs, transactionRunner } = makeService();
+		mockCreateReturning(agentRepository, makeAgent());
+		const skills = {
+			skill_abc: { name: 'Triage', description: '', instructions: 'Use [A](n8n://workflow/a).' },
+		};
+		const skillCreator = mock<User>({ id: 'user-1' });
+		skillRefs.assertCanReadNewSkillMentions.mockRejectedValue(new UserError('No access'));
+
+		await expect(
+			service.create(projectId, 'Support Agent', {
+				actor,
+				skillCreator,
+				schema: {
+					name: 'Support Agent',
+					model: 'anthropic/claude-sonnet-5-5',
+					instructions: 'Triage tickets.',
+					skills: [{ type: 'skill', id: 'skill_abc' }],
+				},
+				skills,
+			}),
+		).rejects.toThrow('No access');
+
+		expect(skillRefs.assertCanReadNewSkillMentions).toHaveBeenCalledWith(
+			[{ type: 'skill', id: 'skill_abc' }],
+			skills,
+			skillCreator,
+		);
+		expect(transactionRunner.run).not.toHaveBeenCalled();
+	});
+
 	it('stores the skill refs of a seeded config in order', async () => {
 		const { service, agentRepository, skillRefs: refsService } = makeService();
 		const saved = makeAgent();
@@ -1263,6 +1309,83 @@ describe('AgentsService', () => {
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
 		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
+		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
+	});
+
+	it('removes the external resources of each integration after the agent row is removed', async () => {
+		const { service, agentRepository, chatIntegrationRegistry } = makeService();
+		const onRemove = vi.fn().mockResolvedValue(undefined);
+		chatIntegrationRegistry.get.mockImplementation((type) =>
+			type === 'slack' ? mock<AgentChatIntegration>({ onRemove }) : undefined,
+		);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				integrations: [
+					{ type: 'slack', credentialId: 'slack-1' },
+					{ type: 'telegram', credentialId: 'telegram-1' },
+				],
+			}),
+		);
+
+		await service.delete(agentId, user, projectId);
+
+		expect(onRemove).toHaveBeenCalledTimes(1);
+		expect(onRemove).toHaveBeenCalledWith({
+			agentId,
+			projectId,
+			credentialId: 'slack-1',
+			user,
+			deleteExternalResource: true,
+		});
+		expect(onRemove.mock.invocationCallOrder[0]).toBeGreaterThan(
+			agentRepository.removeAfterApprovalCleanup.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('logs the warning when an integration cannot remove its external resources', async () => {
+		const { service, logger, agentRepository, chatIntegrationRegistry } = makeService();
+		const warning = {
+			integrationType: 'slack',
+			code: 'app_not_deleted',
+			action: { type: 'open_url', url: 'https://api.slack.com/apps/A1' },
+			details: { appId: 'A1' },
+		};
+		chatIntegrationRegistry.get.mockReturnValue(
+			mock<AgentChatIntegration>({ onRemove: vi.fn().mockResolvedValue(warning) }),
+		);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ integrations: [{ type: 'slack', credentialId: 'slack-1' }] }),
+		);
+
+		await service.delete(agentId, user, projectId);
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Integration cleanup left resources behind on agent delete',
+			{ agentId, type: 'slack', warning },
+		);
+	});
+
+	it('still deletes the agent and removes other integrations when one removal fails', async () => {
+		const { service, agentRepository, chatIntegrationRegistry, eventService } = makeService();
+		const onRemove = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('Slack down'))
+			.mockResolvedValueOnce(undefined);
+		chatIntegrationRegistry.get.mockReturnValue(mock<AgentChatIntegration>({ onRemove }));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				integrations: [
+					{ type: 'slack', credentialId: 'slack-1' },
+					{ type: 'slack', credentialId: 'slack-2' },
+				],
+			}),
+		);
+
+		await expect(service.delete(agentId, user, projectId)).resolves.toMatchObject({
+			id: agentId,
+		});
+		expect(onRemove).toHaveBeenCalledTimes(2);
+		expect(agentRepository.removeAfterApprovalCleanup).toHaveBeenCalledWith(agentId, projectId, {});
 		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
 	});
 

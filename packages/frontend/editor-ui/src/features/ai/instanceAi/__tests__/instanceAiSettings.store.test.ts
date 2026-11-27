@@ -682,17 +682,28 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.approvalMode).toBe('manual');
 		});
 
-		it('loads the preferences again only after a failed load', async () => {
+		it('loads the preferences until a load succeeds', async () => {
 			mockFetchUserPreferences
 				.mockRejectedValueOnce(new Error('offline'))
 				.mockResolvedValue({ approvalMode: 'auto', approvalModesAvailable: true });
 
-			await store.fetchPreferences();
-			await store.fetchPreferencesAfterFailure();
-			await store.fetchPreferencesAfterFailure();
+			await store.ensurePreferences();
+			await store.ensurePreferences();
+			await store.ensurePreferences();
 
 			expect(mockFetchUserPreferences).toHaveBeenCalledTimes(2);
 			expect(store.approvalModesAvailable).toBe(true);
+		});
+
+		it('sends one request for loads that overlap', async () => {
+			mockFetchUserPreferences.mockResolvedValue({
+				approvalMode: 'auto',
+				approvalModesAvailable: true,
+			});
+
+			await Promise.all([store.fetchPreferences(), store.ensurePreferences()]);
+
+			expect(mockFetchUserPreferences).toHaveBeenCalledTimes(1);
 		});
 	});
 });
