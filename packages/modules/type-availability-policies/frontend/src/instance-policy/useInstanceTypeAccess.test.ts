@@ -271,7 +271,8 @@ describe('useInstanceTypeAccess', () => {
 			types: threeTypes(1).types.map((type) => ({ ...type, access: 'allow' })),
 		};
 
-		const sentChanges = () => mocks.setInstanceTypeAccess.mock.calls[0][2].changes;
+		const sentChanges = () =>
+			mocks.setInstanceTypeAccess.mock.calls.flatMap((call) => call[2].changes);
 
 		beforeEach(() => {
 			mocks.fetchInstanceAccess.mockResolvedValue(threeTypes(1));
@@ -290,7 +291,7 @@ describe('useInstanceTypeAccess', () => {
 			const change = changeAccessMany(selected, 'allow');
 			expect(types.value.map((type) => type.access)).toEqual(['allow', 'allow', 'allow']);
 
-			expect(await change).toBe('saved');
+			expect(await change).toBe(true);
 			expect(useRestrictReviewStore().bulkRequest).toBeNull();
 			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
 			// GitHub is already allowed, so the save leaves it out.
@@ -321,7 +322,7 @@ describe('useInstanceTypeAccess', () => {
 
 			review.resolve(true);
 
-			expect(await change).toBe('saved');
+			expect(await change).toBe(true);
 			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
 			expect(sentChanges()).toEqual([
 				{ type: SLACK, access: 'deny' },
@@ -340,7 +341,7 @@ describe('useInstanceTypeAccess', () => {
 			await waitFor(() => expect(review.bulkRequest).not.toBeNull());
 			review.resolve(false);
 
-			expect(await change).toBe('cancelled');
+			expect(await change).toBe(false);
 			expect(mocks.setInstanceTypeAccess).not.toHaveBeenCalled();
 			expect(types.value.map((type) => type.access)).toEqual(['allow', 'allow', 'allow']);
 		});
@@ -349,7 +350,7 @@ describe('useInstanceTypeAccess', () => {
 			mocks.fetchNodeTypeUsage.mockResolvedValue({});
 			await setup();
 
-			expect(await useInstanceTypeAccess('node').changeAccessMany(selected, 'deny')).toBe('saved');
+			expect(await useInstanceTypeAccess('node').changeAccessMany(selected, 'deny')).toBe(true);
 			expect(useRestrictReviewStore().bulkRequest).toBeNull();
 			expect(sentChanges()).toEqual([{ type: GITHUB, access: 'deny' }]);
 		});
@@ -364,9 +365,7 @@ describe('useInstanceTypeAccess', () => {
 			});
 			await setup();
 
-			expect(await useInstanceTypeAccess('node').changeAccessMany(selected, 'allow')).toBe(
-				'unchanged',
-			);
+			expect(await useInstanceTypeAccess('node').changeAccessMany(selected, 'allow')).toBe(false);
 			expect(mocks.setInstanceTypeAccess).not.toHaveBeenCalled();
 		});
 
@@ -379,7 +378,7 @@ describe('useInstanceTypeAccess', () => {
 			mocks.fetchInstanceAccess.mockResolvedValue(threeTypes(2));
 			const { types, changeAccessMany } = useInstanceTypeAccess('node');
 
-			expect(await changeAccessMany(selected, 'allow')).toBe('changed');
+			expect(await changeAccessMany(selected, 'allow')).toBe(false);
 			expect(types.value.map((type) => type.access)).toEqual(['deny', 'deny', 'allow']);
 		});
 
@@ -390,9 +389,31 @@ describe('useInstanceTypeAccess', () => {
 			);
 			const { types, changeAccessMany } = useInstanceTypeAccess('node');
 
-			expect(await changeAccessMany(selected, 'allow')).toBe('failed');
+			expect(await changeAccessMany(selected, 'allow')).toBe(false);
 			expect(types.value.map((type) => type.access)).toEqual(['deny', 'deny', 'allow']);
 		});
+
+		it.each([
+			{ title: 'with types to change', selection: selected, saved: true },
+			{ title: 'with no type to change', selection: [selected[2]], saved: false },
+		])(
+			'ends a restriction that waits for its counts when the admin allows a selection $title',
+			async ({ selection, saved }) => {
+				await setup();
+				const counts = createDeferredPromise<Record<string, typeof inUse>>();
+				mocks.fetchNodeTypeUsage.mockReturnValue(counts.promise);
+				const { changeAccess, changeAccessMany } = useInstanceTypeAccess('node');
+
+				// GitHub shows Allowed while its restriction waits, so the bulk Allow has nothing to send for it.
+				const restrict = changeAccess(GITHUB, 'deny', 'GitHub');
+				expect(await changeAccessMany(selection, 'allow')).toBe(saved);
+				counts.resolve({ [GITHUB]: inUse });
+				await restrict;
+
+				expect(useRestrictReviewStore().request).toBeNull();
+				expect(sentChanges()).not.toContainEqual({ type: GITHUB, access: 'deny' });
+			},
+		);
 
 		it('sends a type whose own save still runs, because that save can fail', async () => {
 			await setup();
@@ -412,7 +433,7 @@ describe('useInstanceTypeAccess', () => {
 			failSingle(new ResponseError('Internal error', { httpStatusCode: 500 }));
 			await single;
 
-			expect(await bulk).toBe('saved');
+			expect(await bulk).toBe(true);
 			expect(mocks.setInstanceTypeAccess.mock.calls[1][2].changes).toEqual([
 				{ type: SLACK, access: 'allow' },
 				{ type: NOTION, access: 'allow' },

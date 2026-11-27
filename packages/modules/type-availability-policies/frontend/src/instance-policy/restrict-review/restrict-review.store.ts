@@ -94,7 +94,9 @@ export const useRestrictReviewStore = defineStore(RESTRICT_REVIEW_STORE_ID, () =
 
 	/** Ends a restriction of each type that still waits for its review, because a newer change replaces it. */
 	function supersede(kind: RestrictedTypeKind, names: readonly string[]): void {
-		for (const name of names) startChange(kind, name, false);
+		for (const name of names) {
+			if (latestChange.has(`${kind}:${name}`)) startChange(kind, name, false);
+		}
 	}
 
 	function startChange(kind: RestrictedTypeKind, name: string, checking: boolean): symbol {

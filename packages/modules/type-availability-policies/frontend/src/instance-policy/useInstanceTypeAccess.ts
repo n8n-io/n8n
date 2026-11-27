@@ -20,9 +20,6 @@ export type InstanceTypeAccessRow = {
 
 type PendingChange = { access: PolicyAction; savedVersion?: number };
 
-/** The result of a bulk change. `unchanged` means that no selected type needed the change. */
-type BulkChangeStatus = InstancePolicySaveResult['status'] | 'cancelled' | 'unchanged';
-
 /** The access of every type of one kind under the instance policy, for a tab of the admin page. */
 export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 	const instancePolicy = useInstancePolicy();
@@ -78,26 +75,38 @@ export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 	/**
 	 * Gives the selected types the same access in one save. Types that cannot change here, or that
 	 * already have the access, are left out. A restriction asks once for all the types in use.
+	 * Returns `true` when the save went through.
 	 */
 	async function changeAccessMany(
 		selected: ReadonlyArray<{ name: string; label: string }>,
 		access: PolicyAction,
-	): Promise<BulkChangeStatus> {
+	): Promise<boolean> {
 		const byName = new Map(types.value.map((type) => [type.name, type]));
-		const toChange = selected.filter(({ name }) => {
-			const type = byName.get(name);
-			if (type?.editable !== true) return false;
-			// A save that still runs can fail, so its access does not count as the current access.
-			const change = pending.get(name);
-			return type.access !== access || (change !== undefined && change.savedVersion === undefined);
+		const editable = selected.flatMap((item) => {
+			const type = byName.get(item.name);
+			return type?.editable ? [{ item, type }] : [];
 		});
-		if (toChange.length === 0) return 'unchanged';
+		if (access !== 'deny') {
+			restrictReview.supersede(
+				kind,
+				editable.map(({ item }) => item.name),
+			);
+		}
+
+		const toChange = editable
+			.filter(({ item, type }) => {
+				// A save that still runs can fail, so its access does not count as the current access.
+				const change = pending.get(item.name);
+				return (
+					type.access !== access || (change !== undefined && change.savedVersion === undefined)
+				);
+			})
+			.map(({ item }) => item);
+		if (toChange.length === 0) return false;
 		const names = toChange.map(({ name }) => name);
 
-		if (access === 'deny') {
-			if (!(await restrictReview.reviewBulkRestrict(kind, toChange))) return 'cancelled';
-		} else {
-			restrictReview.supersede(kind, names);
+		if (access === 'deny' && !(await restrictReview.reviewBulkRestrict(kind, toChange))) {
+			return false;
 		}
 
 		const changes = names.map((name): [string, PendingChange] => {
@@ -107,7 +116,7 @@ export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 		});
 		const result = await instancePolicy.setAccessMany(kind, names, access);
 		settle(changes, result);
-		return result.status;
+		return result.status === 'saved';
 	}
 
 	/** Keeps a saved change until its version arrives, or drops it so the row shows the server value. */
@@ -135,8 +144,8 @@ export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 	): Promise<void> {
 		bulkBusy.value = true;
 		try {
-			// A cancelled review, a conflict or a failed save keeps the selection, so the admin can try again.
-			if ((await changeAccessMany(selected, access)) !== 'saved') return;
+			// When nothing saved, the selection stays so the admin can try again.
+			if (!(await changeAccessMany(selected, access))) return;
 			// Rows that the admin picked while the save ran stay selected.
 			const saved = new Set(selected.map(({ name }) => name));
 			selection.value = selection.value.filter((name) => !saved.has(name));
