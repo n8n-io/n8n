@@ -56,6 +56,10 @@ describe('VariableRequirementsExtractor', () => {
 		{ notation: 'single-quote bracket', expression: "={{ $vars['API_KEY'] }}" },
 		{ notation: 'double-quote bracket', expression: '={{ $vars["API_KEY"] }}' },
 		{ notation: 'bracket with inner spaces', expression: "={{ $vars[ 'API_KEY' ] }}" },
+		{ notation: 'template-literal bracket', expression: '={{ $vars[`API_KEY`] }}' },
+		{ notation: 'optional-chaining dot', expression: '={{ $vars?.API_KEY }}' },
+		{ notation: 'optional-chaining bracket', expression: "={{ $vars?.['API_KEY'] }}" },
+		{ notation: 'optional-chaining template-literal', expression: '={{ $vars?.[`API_KEY`] }}' },
 	])('finds $notation references', ({ expression }) => {
 		const workflow = makeWorkflow({
 			id: 'wf-bracket',
@@ -85,6 +89,22 @@ describe('VariableRequirementsExtractor', () => {
 			]),
 		);
 		expect(extractor.extract(workflow)).toHaveLength(2);
+	});
+
+	it('finds references in HTML-node templates, which resolve `{{ }}` without the `=` prefix', () => {
+		const workflow = makeWorkflow({
+			id: 'wf-html',
+			nodes: [
+				makeNode(
+					{ html: '<p>$vars.PROSE</p><a href="{{ $vars.LINK_URL }}">link</a>' },
+					{ type: 'n8n-nodes-base.html' },
+				),
+			],
+		});
+
+		expect(extractor.extract(workflow)).toEqual([
+			{ workflowId: 'wf-html', variableName: 'LINK_URL' },
+		]);
 	});
 
 	it('scans nested parameter structures and arrays', () => {
@@ -165,6 +185,16 @@ describe('VariableRequirementsExtractor', () => {
 
 	it.each([
 		{ name: 'plain prose mentioning vars', value: 'set your $vars up correctly' },
+		{ name: 'a reference in a fixed value', value: 'Documentation example: $vars.LITERAL_ONLY' },
+		{ name: 'a braced reference in a fixed value', value: 'Use {{ $vars.LITERAL_ONLY }}' },
+		{
+			name: 'a reference in the text part of an expression',
+			value: '=Use $vars.LITERAL_ONLY, today is {{ $today }}',
+		},
+		{
+			name: 'a dynamic template-literal key',
+			value: '={{ $vars[`PREFIX_$' + '{$json.env}`] }}',
+		},
 		{ name: 'different prefix', value: '={{ $varsomething.FOO }}' },
 		{ name: 'invalid leading digit in dot notation', value: '={{ $vars.1BAD }}' },
 		{ name: 'unquoted bracket access', value: '={{ $vars[key] }}' },
