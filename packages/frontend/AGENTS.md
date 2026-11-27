@@ -115,6 +115,11 @@ Wait with the composable that matches what the getter reads:
 | `allUsableCredentialsForNode` of `useCredentialsStore()`. It reads the node types, not the credential types. | `useNodeTypesLoad()` |
 | `isCredentialTypeTestable` of `useCredentialsStore()`. It reads both. | Both |
 
+A credential-only node type has a name that starts with `n8n-creds-base.`.
+The store builds it from the HTTP Request node type and a credential type.
+For such a name, `getNodeType()` returns `null` until both types load, and `isNodeTypeUnavailable()` can return `true`.
+Code that reads credential-only node types needs both composables.
+
 The credentials list is a different load. Neither composable loads it.
 
 Both composables take no arguments and return:
@@ -148,7 +153,7 @@ A view that renders only in that main view does not need a composable. The demo 
 The editor header, sidebar, logs panel and floating buttons render at once, so the wait does not cover them.
 If a load fails, the editor shows an error and renders with empty stores.
 Some editor components also render on other pages, for example the canvas in n8n Assistant previews and the parameter inputs on the agent pages.
-The command bar renders on every page. If you are not sure, use the composable. It sends no extra request.
+The command bar renders on each page after sign-in, except the demo view and canvas-only mode. If you are not sure, use the composable. It sends no extra request.
 
 Do not call `nodeTypesStore.getNodeTypes()` or `credentialsStore.fetchCredentialTypes(true)` to wait for the types.
 They load the types again on each call.
