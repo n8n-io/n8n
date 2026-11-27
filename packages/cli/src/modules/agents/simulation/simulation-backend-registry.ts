@@ -7,6 +7,7 @@ import type { SimulationBackend } from './tool-simulation.contracts';
 export class SimulationBackendRegistry {
 	private backend: SimulationBackend | undefined;
 
+	/** Called once at module init, before any request, so the backend does not change at runtime. */
 	register(backend: SimulationBackend): void {
 		this.backend = backend;
 	}
