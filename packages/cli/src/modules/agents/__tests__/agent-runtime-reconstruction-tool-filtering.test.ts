@@ -814,6 +814,77 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 				),
 			).resolves.toBe(false);
 		});
+
+		it('should drop the workflow tool for the output reader of a run without a user', async () => {
+			const executionRedaction = redactingProxy(false);
+			const { service } = makeService({ ...accessibleWorkflow(), executionRedaction });
+
+			const result = await service.reconstructFromAgentEntity(
+				makeAgentEntity([workflowTool, customTool]),
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				undefined,
+				undefined,
+				'integrated',
+				undefined,
+				{ outputReader: testUser },
+			);
+
+			expect(toolNamesPassedToBuildFromJson()).toEqual(['custom_tool']);
+			expect(vi.mocked(userHasScopes)).not.toHaveBeenCalled();
+			const [[standIns, options]] = executionRedaction.processExecutions.mock.calls;
+			expect(standIns).toEqual([
+				expect.objectContaining({ mode: 'integrated', workflowId: 'wf-1' }),
+			]);
+			expect(options).toEqual({ user: testUser });
+			expect(result.userToolAccessSnapshot).toBeUndefined();
+		});
+
+		it('should keep the workflow tool when the output reader can reveal its data', async () => {
+			const { service } = makeService({
+				...accessibleWorkflow(),
+				executionRedaction: redactingProxy(true),
+			});
+
+			const result = await service.reconstructFromAgentEntity(
+				makeAgentEntity([workflowTool]),
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				undefined,
+				undefined,
+				'integrated',
+				undefined,
+				{ outputReader: testUser },
+			);
+
+			expect(toolNamesPassedToBuildFromJson()).toEqual(['Lookup customer']);
+			expect(result.userToolAccessSnapshot).toEqual({
+				credentialIds: [],
+				workflowIds: ['wf-1'],
+				requiresWorkflowExecute: false,
+				workflowToolExecutionMode: 'integrated',
+			});
+		});
+
+		it('should report when the output reader can no longer reveal the workflow data', async () => {
+			const workflowRepository = mock<WorkflowRepository>();
+			workflowRepository.findByIds.mockResolvedValue([
+				mock<WorkflowEntity>({ id: 'wf-1', settings: { redactionPolicy: 'all' }, nodes: [] }),
+			]);
+			const { service } = makeService({
+				workflowRepository,
+				executionRedaction: redactingProxy(false),
+			});
+
+			await expect(
+				service.outputReaderStillSeesWorkflowOutputs(
+					{ credentialIds: [], workflowIds: ['wf-1'], workflowToolExecutionMode: 'integrated' },
+					testUser,
+				),
+			).resolves.toBe(false);
+		});
 	});
 
 	it('stubs a workflow tool that cannot be built so a call reports the reason', async () => {
@@ -1000,6 +1071,41 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 			projectId,
 		});
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['custom_tool']);
+	});
+
+	it('drops sub-agent workflow tools whose output the reader of the parent run cannot reveal', async () => {
+		const workflowRepository = mock<WorkflowRepository>();
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+			mock<WorkflowEntity>({ id: 'wf-1', settings: { redactionPolicy: 'all' }, nodes: [] }),
+		);
+		const executionRedaction = mock<ExecutionRedactionServiceProxy>();
+		executionRedaction.processExecutions.mockImplementation(async (executions) => {
+			for (const execution of executions) {
+				execution.data.redactionInfo = {
+					isRedacted: true,
+					reason: 'workflow_redaction_policy',
+					canReveal: false,
+				};
+			}
+		});
+		const { service } = makeService({ workflowRepository, executionRedaction });
+
+		await service.reconstructFromResolvedSource({
+			config: makeResolvedSourceConfig([nodeToolWithCredential, workflowTool, customTool]),
+			memoryOwnerAgentId: 'child-1',
+			projectId,
+			credentialProvider: mock<CredentialProvider>(),
+			toolDescriptors: {},
+			toolCodeByName: {},
+			skills: {},
+			runtimeProfile: 'sub-agent',
+			runType: 'production',
+			workflowToolExecutionMode: 'integrated',
+			outputReader: testUser,
+		});
+
+		expect(userHasScopes).not.toHaveBeenCalled();
+		expect(toolNamesPassedToBuildFromJson()).toEqual(['Send Slack message', 'custom_tool']);
 	});
 
 	it('does not filter sub-agent tools when no user is present (published/integration parents)', async () => {

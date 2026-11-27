@@ -280,6 +280,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			agentSandboxRuntimeService,
 			skillRefs,
+			mock<UserRepository>(),
 		);
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const modificationTelemetry = mock<AgentModificationTelemetryService>();

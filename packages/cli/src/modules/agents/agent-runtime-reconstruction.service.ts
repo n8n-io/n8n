@@ -221,6 +221,13 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	 * integration parents, which keep the project-scoped trust boundary.
 	 */
 	user?: User;
+	/**
+	 * The n8n user who reads the output of a run without an interactive user,
+	 * for example the chatting user of a published n8n Chat. Workflow tools whose
+	 * execution data this user cannot reveal are left out. No other access check
+	 * applies. Ignored when `user` is set, because the full filter covers it.
+	 */
+	outputReader?: User;
 	attributionUserId?: string;
 	/**
 	 * The stored agent's service account (`agents.identityId`). Workflow tools stamp it
@@ -476,6 +483,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks = true,
 			allowPlanTools = true,
 			attributionUserId,
+			outputReader,
 			abortSignal,
 		}: {
 			/** Pass false when the caller cannot resume a suspended run (workflow executions). */
@@ -486,6 +494,8 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks?: boolean;
 			allowPlanTools?: boolean;
 			attributionUserId?: string;
+			/** See {@link ReconstructAgentRuntimeParams.outputReader}. */
+			outputReader?: User;
 			abortSignal?: AbortSignal;
 		} = {},
 	): Promise<ReconstructedAgentRuntime & { userToolAccessSnapshot?: UserToolAccessSnapshot }> {
@@ -514,6 +524,21 @@ export class AgentRuntimeReconstructionService {
 						tools,
 						agentEntity.projectId,
 						user,
+						workflowToolExecutionMode,
+					),
+				abortSignal,
+			);
+			config = { ...config, tools: filtered.tools };
+			userToolAccessSnapshot = filtered.snapshot;
+			unavailableTools = filtered.unavailable;
+		} else if (outputReader && config.tools?.length) {
+			const tools = config.tools;
+			const filtered = await raceWithAbort(
+				async () =>
+					await this.filterToolsForOutputReader(
+						tools,
+						agentEntity.projectId,
+						outputReader,
 						workflowToolExecutionMode,
 					),
 				abortSignal,
@@ -560,6 +585,7 @@ export class AgentRuntimeReconstructionService {
 			credentialIntegrations,
 			subAgentDelegation,
 			user,
+			...(outputReader && !user ? { outputReader } : {}),
 			attributionUserId,
 			...(agentEntity.identityId ? { agentServiceAccountId: agentEntity.identityId } : {}),
 			instrumentation,
@@ -574,6 +600,80 @@ export class AgentRuntimeReconstructionService {
 			...runtime,
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),
 		};
+	}
+
+	/**
+	 * Leave out the workflow tools whose execution data `reader` cannot reveal,
+	 * for a run that has no interactive user. The reader sees the replies of the
+	 * run, so the run must not use data that the reader cannot see. Other tools
+	 * stay, because the run keeps the project-scoped trust boundary.
+	 */
+	private async filterToolsForOutputReader(
+		tools: AgentJsonToolConfig[],
+		projectId: string,
+		reader: User,
+		mode: WorkflowToolExecutionMode,
+	): Promise<{
+		tools: AgentJsonToolConfig[];
+		snapshot?: UserToolAccessSnapshot;
+		unavailable: UnavailableTool[];
+	}> {
+		const filtered: AgentJsonToolConfig[] = [];
+		const unavailable: UnavailableTool[] = [];
+		const workflowIds: string[] = [];
+		for (const ref of tools) {
+			if (ref.enabled === false) continue;
+			if (ref.type !== 'workflow') {
+				filtered.push(ref);
+				continue;
+			}
+			const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId);
+			if (workflow && (await this.isWorkflowOutputHiddenFrom(workflow, reader, mode))) {
+				unavailable.push({
+					toolName: toolRefName(ref),
+					toolType: ref.type,
+					reason: 'redacted_output',
+					message: `Workflow "${workflow.name}" redacts its execution data and the user cannot reveal it`,
+				});
+				continue;
+			}
+			filtered.push(ref);
+			if (workflow) workflowIds.push(workflow.id);
+		}
+		return {
+			tools: filtered,
+			unavailable,
+			...(workflowIds.length > 0
+				? {
+						snapshot: {
+							credentialIds: [],
+							workflowIds,
+							requiresWorkflowExecute: false,
+							workflowToolExecutionMode: mode,
+						},
+					}
+				: {}),
+		};
+	}
+
+	/**
+	 * True when `reader` can still reveal the execution data of every workflow
+	 * in `snapshot`. A runtime built for an output reader is rebuilt when this
+	 * is false, so a changed redaction setting takes effect.
+	 */
+	async outputReaderStillSeesWorkflowOutputs(
+		snapshot: UserToolAccessSnapshot,
+		reader: User,
+	): Promise<boolean> {
+		const mode = snapshot.workflowToolExecutionMode;
+		if (!mode) return true;
+		const workflows = await this.workflowRepository.findByIds(snapshot.workflowIds);
+		const hidden = await Promise.all(
+			workflows.map(
+				async (workflow) => await this.isWorkflowOutputHiddenFrom(workflow, reader, mode),
+			),
+		);
+		return !hidden.some(Boolean);
 	}
 
 	/**
@@ -843,6 +943,21 @@ export class AgentRuntimeReconstructionService {
 						tools,
 						params.projectId,
 						user,
+						params.workflowToolExecutionMode ?? 'manual',
+					),
+				params.abortSignal,
+			);
+			config = { ...config, tools: filtered.tools };
+			unavailableTools = filtered.unavailable;
+		} else if (params.outputReader && config.tools?.length) {
+			const outputReader = params.outputReader;
+			const tools = config.tools;
+			const filtered = await raceWithAbort(
+				async () =>
+					await this.filterToolsForOutputReader(
+						tools,
+						params.projectId,
+						outputReader,
 						params.workflowToolExecutionMode ?? 'manual',
 					),
 				params.abortSignal,
@@ -1714,6 +1829,7 @@ export class AgentRuntimeReconstructionService {
 			workflowToolExecutionMode,
 			subAgentDelegation,
 			user,
+			outputReader,
 			instrumentation,
 			backgroundTasksEnabled,
 		} = params;
@@ -1726,6 +1842,7 @@ export class AgentRuntimeReconstructionService {
 			workflowToolExecutionMode,
 			delegation: subAgentDelegation,
 			user,
+			...(outputReader ? { outputReader } : {}),
 			instrumentation,
 			abortSignal: params.abortSignal,
 		};
@@ -1791,6 +1908,7 @@ export class AgentRuntimeReconstructionService {
 		delegation: SubAgentDelegationConfig;
 		parentWorkspaceHandle?: AgentSandboxRuntime;
 		user?: User;
+		outputReader?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 		rootSessionId?: string;
 		rootSessionCapUsd?: number;
@@ -1809,6 +1927,7 @@ export class AgentRuntimeReconstructionService {
 			delegation,
 			parentWorkspaceHandle,
 			user,
+			outputReader,
 			instrumentation,
 			rootSessionId,
 			rootSessionCapUsd,
@@ -1833,6 +1952,7 @@ export class AgentRuntimeReconstructionService {
 				workflowToolExecutionMode,
 				...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				user,
+				...(outputReader ? { outputReader } : {}),
 				instrumentation,
 				parentBudget: config.config?.guardrails?.budget,
 				runBackgroundSubAgent,
@@ -1895,6 +2015,7 @@ export class AgentRuntimeReconstructionService {
 		workflowToolExecutionMode: WorkflowToolExecutionMode;
 		delegation: SubAgentDelegationConfig;
 		user?: User;
+		outputReader?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 		parentWorkspaceHandle?: AgentSandboxRuntime;
 		rootSessionCapUsd?: number;
