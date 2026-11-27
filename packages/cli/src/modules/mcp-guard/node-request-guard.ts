@@ -1,7 +1,12 @@
 import { Readable } from 'node:stream';
 import { Container } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
-import type { IHttpRequestOptions } from 'n8n-workflow';
+import type { IHttpRequestOptions, INode } from 'n8n-workflow';
+
+import {
+	type CredentialCarrier,
+	hideCredentialCarriers,
+} from '../instance-ai/eval/request-sanitizer';
 
 import { HttpSimulator, isGenericHttpNode } from './http-simulator';
 import type { HydrationModel } from './hydration-llm';
@@ -109,6 +114,26 @@ async function toMockResponse(
 	return { statusCode: res.status, headers, body };
 }
 
+const QUERY_AUTH_TYPES: ReadonlySet<string> = new Set(['httpQueryAuth']);
+const CUSTOM_AUTH_TYPES: ReadonlySet<string> = new Set([
+	'httpCustomAuth',
+	'httpTemplatedCustomAuth',
+]);
+
+/**
+ * The HTTP Request node adds the values of some credential types to the query or the body by
+ * itself, under names that no key rule knows. Tell which part the credential of this node fills.
+ * An expression can give any type, so it counts as the widest one.
+ */
+function credentialCarrier(node: INode): CredentialCarrier | undefined {
+	const { authentication, genericAuthType } = node.parameters ?? {};
+	if (authentication !== 'genericCredentialType' || typeof genericAuthType !== 'string') {
+		return undefined;
+	}
+	if (CUSTOM_AUTH_TYPES.has(genericAuthType) || genericAuthType.startsWith('=')) return 'custom';
+	return QUERY_AUTH_TYPES.has(genericAuthType) ? 'query' : undefined;
+}
+
 export interface NodeRequestGuardScope {
 	model: HydrationModel;
 	chatId: string | undefined;
@@ -126,7 +151,11 @@ export function createNodeRequestGuard(scope: NodeRequestGuardScope): EvalLlmMoc
 		// or a host with a vendor, goes to the guard.
 		if (isGenericHttpNode(node) && !hasVendor(req)) {
 			// The mock reads `url` only. Give it the address that the guard resolved from `baseURL` and `qs`.
-			const resolved = { ...options, url: req.url.href, baseURL: undefined, qs: undefined };
+			const carrier = credentialCarrier(node);
+			const { url, body } = carrier
+				? hideCredentialCarriers({ url: req.url.href, body: options.body }, carrier)
+				: { url: req.url.href, body: options.body };
+			const resolved = { ...options, url, body, baseURL: undefined, qs: undefined };
 			return await Container.get(HttpSimulator).respond(resolved, node, scope);
 		}
 		// Load the guard only when a node tool makes a call. Most chats never do.

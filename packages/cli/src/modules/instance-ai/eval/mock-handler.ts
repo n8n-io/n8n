@@ -15,7 +15,8 @@ import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
-import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
+import type { EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
+import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE } from 'n8n-workflow';
 import { OperationalError } from '@n8n/errors';
@@ -33,6 +34,7 @@ import {
 import { redactBinaryBody } from './request-binary-redactor';
 import {
 	redactEndpoint,
+	redactSecretBodyStrings,
 	redactSecretKeys,
 	redactSecretSearchParams,
 	redactSecretValuePatterns,
@@ -272,8 +274,9 @@ function serializeForLedger(value: unknown): string {
 }
 
 /** Redacted, serialized and clipped: the form a ledger entry keeps and the prompt shows. */
-function ledgerSnapshot(value: unknown): string {
-	return clip(serializeForLedger(redactSecretKeys(value)), LEDGER_BODY_MAX);
+function ledgerSnapshot(value: unknown, redact = false): string {
+	const readable = redact ? redactSecretBodyStrings(value) : value;
+	return clip(serializeForLedger(redactSecretKeys(readable)), LEDGER_BODY_MAX);
 }
 
 /** A success status whose body reports a failure: `ok: false`, or GraphQL errors with no data. */
@@ -312,8 +315,11 @@ function recordWrite(
 		body:
 			request.body === undefined
 				? undefined
-				: ledgerSnapshot(redactBinaryBody(request.body, getContentType(request.headers))),
-		qs: request.qs && Object.keys(request.qs).length > 0 ? ledgerSnapshot(request.qs) : undefined,
+				: ledgerSnapshot(redactBinaryBody(request.body, getContentType(request.headers)), redact),
+		qs:
+			request.qs && Object.keys(request.qs).length > 0
+				? ledgerSnapshot(request.qs, redact)
+				: undefined,
 	});
 }
 
@@ -351,7 +357,25 @@ export function formatWriteLedger(
 // Handler factory
 // ---------------------------------------------------------------------------
 
-export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockHandler {
+/**
+ * A mock handler. A caller that stops waiting for one request passes the `signal` of that request:
+ * the handler then makes no more attempts, and it neither caches nor records the late answer.
+ */
+export type SignalAwareMockHandler = (
+	requestOptions: IHttpRequestOptions,
+	node: INode,
+	signal?: AbortSignal,
+) => Promise<EvalMockHttpResponse | undefined>;
+
+function buildCancelledResponse(): EvalMockHttpResponse {
+	return {
+		body: { _evalMockError: true, message: 'Mock generation was cancelled' },
+		headers: { 'content-type': 'application/json' },
+		statusCode: 200,
+	};
+}
+
+export function createLlmMockHandler(options?: MockHandlerOptions): SignalAwareMockHandler {
 	const nodeConfigCache = new Map<string, string>();
 	// Identical repeated requests (multi-item loops fanning out one HTTP call
 	// per item) are served from cache: one LLM round-trip per distinct request
@@ -367,7 +391,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 	// later requests to the same service so a read returns what was written.
 	const writeLedger: WriteLedgerEntry[] = [];
 
-	return async (requestOptions, node) => {
+	return async (requestOptions, node, signal) => {
 		// Thrown past the catch-all below: a node that ignores HTTP errors must not keep looping.
 		if (options?.signal?.aborted) {
 			throw new OperationalError('The eval run has ended, so this mocked request was cancelled');
@@ -400,6 +424,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				);
 				await sleep(CACHED_REPLY_DELAY_MS);
 				const response = cloneMockResponse(await cached);
+				if (signal?.aborted) return buildCancelledResponse();
 				recordWrite(writeLedger, requestOptions, node.name, response, options?.redactSecrets);
 				return response;
 			}
@@ -414,6 +439,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
 				model: options?.model,
 				redactSecrets: options?.redactSecrets,
+				signal,
 			});
 
 			if (cacheKey) {
@@ -432,6 +458,11 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 			// the object with the cached promise, so an in-place body mutation by
 			// node code would otherwise leak into every later hit.
 			const response = cloneMockResponse(await pending);
+			// The caller gave up. A late answer must not stay in the cache or show in the ledger.
+			if (signal?.aborted) {
+				if (cacheKey && responseCache.get(cacheKey) === pending) responseCache.delete(cacheKey);
+				return buildCancelledResponse();
+			}
 			recordWrite(writeLedger, requestOptions, node.name, response, options?.redactSecrets);
 			return response;
 		} catch (error) {
@@ -538,6 +569,7 @@ interface MockResponseContext {
 	maxRetries: number;
 	model?: MockModel;
 	redactSecrets?: boolean;
+	signal?: AbortSignal;
 }
 
 async function generateMockResponse(
@@ -580,7 +612,10 @@ async function generateMockResponse(
 		// Strip raw binary bytes (Buffers, FormData) BEFORE secret redaction so the
 		// LLM prompt always sees a JSON-safe structure even for multipart uploads.
 		const binarySafe = redactBinaryBody(request.body, getContentType(request.headers));
-		const sanitized = redactSecretKeys(binarySafe);
+		// A text body has no key names for `redactSecretKeys`, so read it as JSON or as a form first.
+		const sanitized = redactSecretKeys(
+			context.redactSecrets ? redactSecretBodyStrings(binarySafe) : binarySafe,
+		);
 		const serialized = truncateForLlm(JSON.stringify(sanitized));
 		sections.push(`Body: ${serialized}`);
 	}
@@ -659,6 +694,7 @@ async function generateMockResponse(
 	const dateConstraints = extractDateFilterConstraints(request.body, request.qs);
 
 	for (let attempt = 0; attempt <= context.maxRetries; attempt++) {
+		if (context.signal?.aborted) return buildCancelledResponse();
 		try {
 			const { spec, softOnly } = await callLlm(
 				userPrompt,

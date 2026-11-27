@@ -4,6 +4,7 @@ import type { INode } from 'n8n-workflow';
 
 import { HttpSimulator, isGenericHttpNode, SIMULATED_HEADER } from '../http-simulator';
 import type { HydrationModel } from '../hydration-llm';
+import { GUARDED_CALL_TIMEOUT_MS } from '../mcp-guard-fetch';
 import { createNodeRequestGuard } from '../node-request-guard';
 
 const mockHandler = vi.fn();
@@ -44,7 +45,10 @@ describe('HttpSimulator', () => {
 		simulator = new HttpSimulator();
 	});
 
-	afterEach(() => fetchSpy.mockRestore());
+	afterEach(() => {
+		fetchSpy.mockRestore();
+		vi.useRealTimers();
+	});
 
 	it('answers with the mock and marks the answer as simulated', async () => {
 		const res = await simulator.respond({ url: 'https://api.unknown.test/items' }, node, scope);
@@ -165,6 +169,85 @@ describe('HttpSimulator', () => {
 
 		expect(mockHandler.mock.calls[0][0]).toMatchObject({
 			url: 'https://api.unknown.test/v1/items?page=2',
+		});
+	});
+	it('answers 504 when the mock is too slow, and tells the mock to stop', async () => {
+		vi.useFakeTimers();
+		let seen: AbortSignal | undefined;
+		mockHandler.mockImplementation(async (_options, _node, signal: AbortSignal) => {
+			seen = signal;
+			return await new Promise(() => {});
+		});
+
+		const pending = simulator.respond({ url: 'https://a.test/x', method: 'POST' }, node, scope);
+		await vi.advanceTimersByTimeAsync(GUARDED_CALL_TIMEOUT_MS);
+		const res = await pending;
+
+		expect(res.statusCode).toBe(504);
+		expect(res.headers[SIMULATED_HEADER]).toBe('true');
+		expect(seen?.aborted).toBe(true);
+	});
+
+	it('does not abort a call that answers in time', async () => {
+		let seen: AbortSignal | undefined;
+		mockHandler.mockImplementation(async (_options, _node, signal: AbortSignal) => {
+			seen = signal;
+			return ok;
+		});
+
+		await simulator.respond({ url: 'https://a.test/x' }, node, scope);
+
+		expect(seen?.aborted).toBe(false);
+	});
+
+	describe('values that a credential adds', () => {
+		const withAuth = (genericAuthType: string) =>
+			({
+				...node,
+				parameters: { authentication: 'genericCredentialType', genericAuthType },
+			}) as INode;
+
+		const send = async (httpNode: INode, options: Record<string, unknown>) => {
+			Container.set(HttpSimulator, simulator);
+			await createNodeRequestGuard(scope)(
+				{ url: 'https://api.unknown.test/data', ...options },
+				httpNode,
+			);
+			return mockHandler.mock.calls[0][0] as { url: string; body?: unknown };
+		};
+
+		it('hides the query values of query auth, also under a name that no rule knows', async () => {
+			const seen = await send(withAuth('httpQueryAuth'), { qs: { q: 'Berlin', appid: 'SECRET' } });
+
+			expect(seen.url).not.toContain('SECRET');
+			expect(seen.url).toContain('?q=');
+			expect(seen.url).toContain('&appid=');
+		});
+
+		it('hides the query and the body values of custom auth', async () => {
+			const seen = await send(withAuth('httpCustomAuth'), {
+				method: 'POST',
+				qs: { sig: 'SECRET' },
+				body: { user: 'jo', pass: 'SECRET2' },
+			});
+
+			expect(JSON.stringify(seen)).not.toContain('SECRET');
+			expect(JSON.stringify(seen)).not.toContain('"jo"');
+		});
+
+		it('keeps the body for query auth, and hides all values when an expression gives the type', async () => {
+			const body = { title: 'Buy milk' };
+
+			expect((await send(withAuth('httpQueryAuth'), { method: 'POST', body })).body).toEqual(body);
+			mockHandler.mockClear();
+			const widest = await send(withAuth('={{ $json.type }}'), { method: 'POST', body });
+			expect(JSON.stringify(widest.body)).not.toContain('Buy milk');
+		});
+
+		it('leaves the request as it is for a node with no generic credential', async () => {
+			const seen = await send(node, { qs: { q: 'Berlin', appid: 'visible' } });
+
+			expect(seen.url).toBe('https://api.unknown.test/data?q=Berlin&appid=visible');
 		});
 	});
 });

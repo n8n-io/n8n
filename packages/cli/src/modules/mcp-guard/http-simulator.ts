@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
-import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
+import type { EvalMockHttpResponse } from 'n8n-core';
 import {
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
@@ -8,6 +8,7 @@ import {
 	type INode,
 } from 'n8n-workflow';
 
+import type { SignalAwareMockHandler } from '../instance-ai/eval/mock-handler';
 import { redactEndpoint } from '../instance-ai/eval/request-sanitizer';
 
 import { GUARDED_CALL_TIMEOUT_MS } from './mcp-guard-fetch';
@@ -36,7 +37,7 @@ const failure = (statusCode: number, text: string): EvalMockHttpResponse => ({
 
 interface Simulation {
 	// A promise, so two first requests of a chat share one handler and one write ledger.
-	handler: Promise<EvalLlmMockHandler>;
+	handler: Promise<SignalAwareMockHandler>;
 	lastUsed: number;
 }
 
@@ -58,15 +59,17 @@ export class HttpSimulator {
 		const handler = await this.handlerFor(`${scope.agentId ?? 'agent'}-${scope.chatId}`, scope);
 		this.log(options);
 
+		// A call that times out must stop: no more attempts, and no late write in the ledger.
+		const abort = new AbortController();
 		let timer: NodeJS.Timeout | undefined;
 		const timeout = new Promise<EvalMockHttpResponse>((resolve) => {
-			timer = setTimeout(
-				() => resolve(failure(504, 'mcp-guard: the simulated call took too long')),
-				GUARDED_CALL_TIMEOUT_MS,
-			);
+			timer = setTimeout(() => {
+				abort.abort();
+				resolve(failure(504, 'mcp-guard: the simulated call took too long'));
+			}, GUARDED_CALL_TIMEOUT_MS);
 		});
 		try {
-			const res = await Promise.race([this.invoke(handler, options, node), timeout]);
+			const res = await Promise.race([this.invoke(handler, options, node, abort.signal), timeout]);
 			return { ...res, headers: { ...res.headers, [SIMULATED_HEADER]: 'true' } };
 		} finally {
 			clearTimeout(timer);
@@ -74,14 +77,15 @@ export class HttpSimulator {
 	}
 
 	private async invoke(
-		handler: EvalLlmMockHandler,
+		handler: SignalAwareMockHandler,
 		options: IHttpRequestOptions,
 		node: INode,
+		signal: AbortSignal,
 	): Promise<EvalMockHttpResponse> {
 		// The mock does not throw. It answers a failure with an error marker, so check for the marker.
 		const { isMockErrorSentinel } = await import('../instance-ai/eval/mock-handler.js');
 		try {
-			const res = await handler(options, node);
+			const res = await handler(options, node, signal);
 			if (res === undefined || isMockErrorSentinel(res)) {
 				return failure(502, 'mcp-guard: the simulator could not answer');
 			}
@@ -91,7 +95,10 @@ export class HttpSimulator {
 		}
 	}
 
-	private async handlerFor(key: string, scope: NodeRequestGuardScope): Promise<EvalLlmMockHandler> {
+	private async handlerFor(
+		key: string,
+		scope: NodeRequestGuardScope,
+	): Promise<SignalAwareMockHandler> {
 		const now = Date.now();
 		for (const [id, simulation] of this.simulations) {
 			if (simulation.lastUsed < now - IDLE_MS) this.simulations.delete(id);
@@ -112,7 +119,7 @@ export class HttpSimulator {
 		return await simulation.handler;
 	}
 
-	private async createHandler(scope: NodeRequestGuardScope): Promise<EvalLlmMockHandler> {
+	private async createHandler(scope: NodeRequestGuardScope): Promise<SignalAwareMockHandler> {
 		// Load the mock only when a chat needs it. It brings the eval code of Instance AI.
 		const { createLlmMockHandler } = await import('../instance-ai/eval/mock-handler.js');
 		return createLlmMockHandler({ model: scope.model, redactSecrets: true });
