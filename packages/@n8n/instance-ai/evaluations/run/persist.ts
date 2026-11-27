@@ -14,7 +14,6 @@ import { parseTargetOutput, reshapeLangSmithRuns, type ReshapeRunRow } from './r
 import { roundRobinCaseRows } from './rows';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import type { CliArgs } from '../cli/args';
-import { isExpectationGraded } from '../harness/agent-run-schema';
 import type { ComparisonOutcome, ComparisonResult } from '../comparison/compare';
 import {
 	formatComparisonMarkdown,
@@ -27,7 +26,11 @@ import {
 	AGENT_ARTIFACT_CASE_CAP_BYTES,
 	sanitizeAgentArtifact,
 } from '../harness/artifacts/agent-artifact';
-import { DIRECT_AGENT_BUILD_PATH, isDirectAgentRun } from '../harness/agent-run-schema';
+import {
+	DIRECT_AGENT_BUILD_PATH,
+	isDirectAgentRun,
+	isExpectationGraded,
+} from '../harness/agent-run-schema';
 import type { EvalLogger } from '../harness/logger';
 import { extractErrorMessage } from '../harness/transient-error';
 import { rollupCaseVerification } from '../summary';
