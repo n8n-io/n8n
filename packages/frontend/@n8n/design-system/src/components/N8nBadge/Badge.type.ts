@@ -24,6 +24,14 @@ export interface BadgeProps {
 	trailingIcon?: IconName;
 }
 
-export const BADGE_SIZE = ['xxsmall', 'xsmall', 'small', 'medium', 'large', 'xlarge'] as const;
+export const BADGE_SIZE = [
+	'xxxsmall',
+	'xxsmall',
+	'xsmall',
+	'small',
+	'medium',
+	'large',
+	'xlarge',
+] as const;
 
 export type BadgeSize = (typeof BADGE_SIZE)[number];

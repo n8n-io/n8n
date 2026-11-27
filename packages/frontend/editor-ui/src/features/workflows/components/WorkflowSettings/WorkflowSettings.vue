@@ -1182,7 +1182,7 @@ onBeforeUnmount(() => {
 												<span>{{ option.value }}</span>
 												<N8nBadge
 													v-if="option.badge"
-													size="xxsmall"
+													size="xxxsmall"
 													:variant="executionLogicBadgeVariant(option.key)"
 												>
 													{{ option.badge }}
