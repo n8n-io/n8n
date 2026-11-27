@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -21,6 +22,8 @@ const selectivePushOptionsSchema = z.object({
 	workflowIds: z.array(z.string().min(1)),
 	deletedWorkflowIds: z.array(z.string().min(1)),
 	folderIds: z.array(z.string().min(1)),
+	/** Credentials of the project to write although no selected workflow uses them. */
+	credentialIds: z.array(z.string().min(1)).optional(),
 });
 
 export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
@@ -29,6 +32,8 @@ const ENTITY_FILES = {
 	'project.json': 'projects',
 	'folder.json': 'folders',
 	'workflow.json': 'workflows',
+	'agent.json': 'agents',
+	'skill.json': 'skills',
 } as const satisfies Record<string, keyof BranchLayout>;
 
 /** Dependency collections whose directory a rename relocates (name-derived slug). */
@@ -92,6 +97,10 @@ export class WorkingCopyUpdater {
 		if (new Set(selection.folderIds).size !== selection.folderIds.length) {
 			throw new BadRequestError('folderIds contains duplicates');
 		}
+		const credentialIds = selection.credentialIds ?? [];
+		if (new Set(credentialIds).size !== credentialIds.length) {
+			throw new BadRequestError('credentialIds contains duplicates');
+		}
 
 		const overlap = selection.deletedWorkflowIds.filter((id) => addSet.has(id));
 		if (overlap.length > 0) {
@@ -108,9 +117,11 @@ export class WorkingCopyUpdater {
 		const stagedIds = new Set((staging.workflows ?? []).map((workflow) => workflow.id));
 		const selectedIds = new Set(selection.workflowIds);
 		const stagedFolderIds = new Set((staging.folders ?? []).map((folder) => folder.id));
+		const stagedCredentialIds = new Set((staging.credentials ?? []).map(({ id }) => id));
 		const missing = [
 			...selection.workflowIds.filter((id) => !stagedIds.has(id)),
 			...selection.folderIds.filter((id) => !stagedFolderIds.has(id)),
+			...(selection.credentialIds ?? []).filter((id) => !stagedCredentialIds.has(id)),
 		];
 		const extra = [...stagedIds].filter((id) => !selectedIds.has(id));
 		if (missing.length === 0 && extra.length === 0) return;
@@ -135,7 +146,13 @@ export class WorkingCopyUpdater {
 		const rootInfo = await fs.stat(resolvedBase).catch(() => null);
 		if (!rootInfo?.isDirectory()) return { state: {}, dependencies: [] };
 
-		const collected: Required<BranchLayout> = { projects: [], folders: [], workflows: [] };
+		const collected: Required<BranchLayout> = {
+			projects: [],
+			folders: [],
+			workflows: [],
+			agents: [],
+			skills: [],
+		};
 		const dependencies: DependencyRef[] = [];
 
 		const walk = async (absDir: string): Promise<void> => {
@@ -158,7 +175,12 @@ export class WorkingCopyUpdater {
 
 				const kind = ENTITY_FILES[entry.name as keyof typeof ENTITY_FILES];
 				if (kind !== undefined) {
-					const { entry, isArchived } = await this.readEntityFile(fullPath, target, relativeFile);
+					const { entry, isArchived } = await this.readEntityFile(
+						fullPath,
+						target,
+						relativeFile,
+						kind,
+					);
 					// Only a workflow entry carries the flag; the other kinds list id, name and target.
 					if (kind === 'workflows') {
 						collected.workflows.push({ ...entry, isArchived });
@@ -183,6 +205,8 @@ export class WorkingCopyUpdater {
 			...(collected.projects.length > 0 ? { projects: collected.projects } : {}),
 			...(collected.folders.length > 0 ? { folders: collected.folders } : {}),
 			...(collected.workflows.length > 0 ? { workflows: collected.workflows } : {}),
+			...(collected.agents.length > 0 ? { agents: collected.agents } : {}),
+			...(collected.skills.length > 0 ? { skills: collected.skills } : {}),
 		};
 		return { state, dependencies };
 	}
@@ -196,6 +220,8 @@ export class WorkingCopyUpdater {
 			['projects', state.projects],
 			['folders', state.folders],
 			['workflows', state.workflows],
+			['agents', state.agents],
+			['skills', state.skills],
 		] as const) {
 			const seen = new Map<string, string>();
 			for (const entry of entries ?? []) {
@@ -233,6 +259,7 @@ export class WorkingCopyUpdater {
 		file: string,
 		target: string,
 		relativeFile: string,
+		kind: keyof BranchLayout,
 	): Promise<{ entry: ManifestEntry; isArchived: boolean }> {
 		let raw: string;
 		try {
@@ -250,18 +277,17 @@ export class WorkingCopyUpdater {
 				`"${relativeFile}" on the branch is not valid JSON. Remove it and retry.`,
 			);
 		}
-		if (
-			typeof parsed !== 'object' ||
-			parsed === null ||
-			typeof (parsed as { id?: unknown }).id !== 'string' ||
-			typeof (parsed as { name?: unknown }).name !== 'string'
-		) {
+
+		const nameSource = isRecord(parsed) && kind === 'skills' ? parsed.skill : parsed;
+		const name = isRecord(nameSource) ? nameSource.name : undefined;
+
+		if (!isRecord(parsed) || typeof parsed.id !== 'string' || typeof name !== 'string') {
 			throw new BadRequestError(
 				`"${relativeFile}" on the branch is missing an id or a name. Remove it and retry.`,
 			);
 		}
-		const { id, name, isArchived } = parsed as { id: string; name: string; isArchived?: unknown };
-		return { entry: { id, name, target }, isArchived: isArchived === true };
+
+		return { entry: { id: parsed.id, name, target }, isArchived: parsed.isArchived === true };
 	}
 
 	async assertSelectionFitsBranch(
@@ -508,7 +534,11 @@ export class WorkingCopyUpdater {
 		const resolved = await this.resolveLeafTarget(exportFolder, target, 'Manifest');
 
 		const writtenIds = new Set((staging.workflows ?? []).map((entry) => entry.id));
-		for (const entry of remaining.workflows ?? []) {
+		for (const entry of [
+			...(remaining.workflows ?? []),
+			...(remaining.agents ?? []),
+			...(remaining.skills ?? []),
+		]) {
 			if (isUnder(entry.target, target)) {
 				throw new BadRequestError(
 					`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,

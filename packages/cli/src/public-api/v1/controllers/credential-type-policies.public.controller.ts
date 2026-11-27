@@ -140,6 +140,7 @@ export class CredentialTypePoliciesPublicController {
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
 			req.user.id,
+			req.ctx,
 		);
 
 		return {
@@ -186,10 +187,12 @@ export class CredentialTypePoliciesPublicController {
 	@ProjectScope('credentialTypePolicy:manage')
 	@ApiSummary("Preview: Replace a project's credential type policy")
 	@ApiDescription(
-		"**Preview** — breaking changes may still occur without major version bump.\n\nSets the project's default action and replaces the rules of its single policy document, creating both on first write. The `delegate` action is not accepted at project scope. `version` must equal the version last read; a stale value is rejected with 409, as is a project document that is shared with another scope.",
+		"**Preview** — breaking changes may still occur without major version bump.\n\nSets the project's default action and replaces the rules of its single policy document, creating both on first write. Only a team project can have a policy; a personal project is rejected with 400. The `delegate` action is not accepted at project scope. `version` must equal the version last read; a stale value is rejected with 409, as is a project document that is shared with another scope.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, CredentialTypePolicyEffectiveWriteResultPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async putCredentialTypeProjectPolicy(
@@ -204,6 +207,7 @@ export class CredentialTypePoliciesPublicController {
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
 			req.user.id,
+			req.ctx,
 		);
 
 		return {
@@ -265,6 +269,7 @@ export class CredentialTypePoliciesPublicController {
 			CREDENTIAL_TYPES_KIND,
 			dto.rules,
 			req.user.id,
+			req.ctx,
 		);
 
 		return { policy: toPublicDocument(policy), warnings: [...warnings] };
@@ -318,6 +323,7 @@ export class CredentialTypePoliciesPublicController {
 			dto.rules,
 			dto.version,
 			req.user.id,
+			req.ctx,
 		);
 
 		return { policy: toPublicDocument(policy), warnings: [...warnings] };
@@ -341,7 +347,12 @@ export class CredentialTypePoliciesPublicController {
 		_res: Response,
 		@Param('policyId', credentialTypePolicyIdParamSchema) policyId: string,
 	): Promise<void> {
-		await (await this.service()).deletePolicyDocument(CREDENTIAL_TYPES_KIND, policyId, req.user.id);
+		await (await this.service()).deletePolicyDocument(
+			CREDENTIAL_TYPES_KIND,
+			policyId,
+			req.user.id,
+			req.ctx,
+		);
 	}
 
 	@Get('/scopes/:scopeId/attachments')
@@ -391,6 +402,7 @@ export class CredentialTypePoliciesPublicController {
 			dto.attachments,
 			dto.version,
 			req.user.id,
+			req.ctx,
 		);
 
 		return toPublicAttachments(result);

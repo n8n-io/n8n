@@ -135,8 +135,8 @@ describe('N8nClient on the Agents runtime', () => {
 		await client.ensureThread('t-1', 'p-1');
 		const attachments = [{ type: 'workflow' as const, id: 'wf-1' }];
 
-		await client.sendMessage('t-1', 'Build it', attachments, 'default', 'v7', undefined, 1000);
-		await client.sendMessage('t-1', 'Rename it', undefined, 'default', 'v7', undefined, 1000);
+		await client.sendMessage('t-1', 'Build it', attachments, 'v7', undefined, 1000);
+		await client.sendMessage('t-1', 'Rename it', undefined, 'v7', undefined, 1000);
 
 		const sent = afterLogin(calls).slice(1);
 		expect(sent).toEqual([
@@ -144,7 +144,7 @@ describe('N8nClient on the Agents runtime', () => {
 				path: '/rest/assistant/eval/threads/t-1/overrides',
 				method: 'PUT',
 				// The Assistant agent has no observer threshold override.
-				body: { mode: 'default', promptVersion: 'v7' },
+				body: { promptVersion: 'v7' },
 			},
 			{
 				path: '/rest/agents/system/assistant/chat?projectId=p-1',
@@ -157,6 +157,27 @@ describe('N8nClient on the Agents runtime', () => {
 				body: { message: 'Rename it', sessionId: 't-1', clientContext: {} },
 			},
 		]);
+	});
+
+	it('sends an attached Agent as the subject that binds the thread', async () => {
+		const calls = mockN8n([
+			[
+				'POST',
+				/^\/rest\/agents\/system\/assistant\/chat\?/,
+				{ sse: sse({ type: 'message-queued', queueId: 'q-1' }) },
+			],
+		]);
+		const client = await agentsClient();
+		await client.ensureThread('t-1', 'p-1');
+		const agent = { type: 'agent' as const, id: 'agent-1', name: 'Triage', projectId: 'p-1' };
+
+		await client.sendMessage('t-1', 'Change it', [agent]);
+
+		expect(afterLogin(calls).at(-1)?.body).toEqual({
+			message: 'Change it',
+			sessionId: 't-1',
+			clientContext: { attachments: [agent], subject: agent },
+		});
 	});
 
 	it('throws when the chat stream starts with an error event', async () => {

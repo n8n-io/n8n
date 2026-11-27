@@ -516,6 +516,43 @@ describe('AgentSkillRefsService', () => {
 		});
 	});
 
+	describe('assertCanReadNewSkillMentions', () => {
+		const body = {
+			name: 'New',
+			description: 'New description',
+			instructions: 'Run [Report](n8n://workflow/wf1).',
+		};
+		const user = mock<User>({ id: 'user-1' });
+
+		it('checks only the bodies that become new skills, outside a transaction', async () => {
+			skillRuntime.findTargets.mockResolvedValueOnce(new Map([['shared', { projectId: null }]]));
+
+			await service.assertCanReadNewSkillMentions(
+				[
+					{ type: 'skill', id: 'shared' },
+					{ type: 'skill', id: 'seed_skill' },
+				],
+				{ shared: { ...body, name: 'Shared' }, seed_skill: body },
+				user,
+			);
+
+			expect(skillRuntime.findTargets).toHaveBeenCalledWith(['shared', 'seed_skill'], {});
+			expect(skillAccess.assertCanReadMentionedWorkflows).toHaveBeenCalledTimes(1);
+			expect(skillAccess.assertCanReadMentionedWorkflows).toHaveBeenCalledWith(user, body);
+		});
+
+		it('checks nothing without a user who creates the skills', async () => {
+			await service.assertCanReadNewSkillMentions(
+				[{ type: 'skill', id: 'seed_skill' }],
+				{ seed_skill: body },
+				null,
+			);
+
+			expect(skillRuntime.findTargets).not.toHaveBeenCalled();
+			expect(skillAccess.assertCanReadMentionedWorkflows).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('createDraftRefs', () => {
 		const body = { name: 'New', description: 'New description', instructions: 'Do it.' };
 		const user = mock<User>({ id: 'user-1' });
@@ -912,6 +949,15 @@ describe('AgentSkillRefsService attach check', () => {
 	});
 
 	describe('checkRefs', () => {
+		it('checks the current scope after waiting for an attach lock', async () => {
+			skillRuntime.findTargets
+				.mockResolvedValueOnce(new Map([['skill_new', { projectId: null }]]))
+				.mockResolvedValueOnce(new Map([['skill_new', { projectId: 'other-project' }]]));
+			await expect(
+				service.checkRefs({ id: 'agent', projectId: 'p1' }, [{ id: 'skill_new' }], TX_CTX),
+			).rejects.toThrow('is not available to this agent');
+		});
+
 		const agent = { id: 'agent-1', projectId: PROJECT };
 
 		function givenAgentRefs(refs: Array<{ skillId: string; versionId?: string }>) {

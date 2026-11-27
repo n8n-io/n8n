@@ -26,19 +26,24 @@ describe('InstanceAiEventRelay', () => {
 
 	it('deletes the user threads and MCP registry connections', async () => {
 		memoryService.deleteThreadsForUser.mockResolvedValue(2);
-		mcpRegistryConnectionRepository.delete.mockResolvedValue({ affected: 1, raw: [] });
+		mcpRegistryConnectionRepository.deleteByUserId.mockResolvedValue(1);
 
 		await handleUserDeleted({ targetUserId: 'user-1' });
 
 		expect(memoryService.deleteThreadsForUser).toHaveBeenCalledWith('user-1');
-		expect(mcpRegistryConnectionRepository.delete).toHaveBeenCalledWith({ userId: 'user-1' });
+		expect(mcpRegistryConnectionRepository.deleteByUserId).toHaveBeenCalledWith('user-1', {});
+		expect(logger.debug).toHaveBeenCalledWith('Cleaned up Instance AI data for deleted user', {
+			userId: 'user-1',
+			deletedThreads: 2,
+			deletedMcpConnections: 1,
+		});
 	});
 
 	it('ignores the event when no target user id is present', async () => {
 		await handleUserDeleted({});
 
 		expect(memoryService.deleteThreadsForUser).not.toHaveBeenCalled();
-		expect(mcpRegistryConnectionRepository.delete).not.toHaveBeenCalled();
+		expect(mcpRegistryConnectionRepository.deleteByUserId).not.toHaveBeenCalled();
 	});
 
 	it('logs and swallows errors so user deletion is not blocked', async () => {

@@ -25,7 +25,6 @@ import {
 	Post,
 	RootLevelController,
 } from '@n8n/decorators';
-import { principalFromUser } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { Principal } from '@n8n/permissions';
@@ -54,7 +53,7 @@ import {
 import { toRuntimeBinding } from '../bindings/app-bindings.service';
 import { AppRuntimeError } from '../bindings/app-runtime.error';
 import { AppPreviewService } from '../preview/app-preview.service';
-import { AppHostService } from '../serving/app-host.service';
+import { AppHostService, type AppHostKind } from '../serving/app-host.service';
 import type { AppVersion } from '../versions/app-version.entity';
 import { AppVersionRepository } from '../versions/app-version.repository';
 
@@ -80,15 +79,18 @@ interface AppRuntimeContext {
 	user: AppRuntimeUser;
 	versionId: string;
 	isPreview: boolean;
+	/** The n8n OAuth access token of the session. */
+	sessionToken: string;
 }
 
 /** The app host of the request. A preview host serves a version that can be an unpublished draft. */
-type AppRuntimeHost = { kind: 'published' | 'preview'; namespace: string };
+type AppRuntimeHost = { kind: AppHostKind; namespace: string };
 
 interface AppRuntimeAdmission {
 	app: App;
 	versionId: string | null;
 	user: AppRuntimeUser;
+	sessionToken: string;
 }
 
 export interface AppRuntimeRequest<P = Record<string, string>> extends Request<P> {
@@ -146,9 +148,7 @@ export class AppRuntimeController {
 			this.assertSameOriginRequest(req, host);
 			await run(parseCookies, req, res);
 			const isPreview = host?.kind === 'preview';
-			const { app, versionId, user } = isPreview
-				? await this.admitPreview(req)
-				: await this.admitPublished(req);
+			const { app, versionId, user, sessionToken } = await this.admit(req, isPreview);
 			const version = await this.servedVersion(app, versionId);
 			await this.parseBody(req, res);
 			req.appRuntime = {
@@ -157,6 +157,7 @@ export class AppRuntimeController {
 				user,
 				versionId: version.id,
 				isPreview,
+				sessionToken,
 			};
 			next();
 		} catch (error) {
@@ -240,6 +241,13 @@ export class AppRuntimeController {
 	async runWorkflow(req: KeyRequest, res: Response) {
 		await this.answer(res, async () => {
 			const { ctx, binding } = this.resolve(req, 'workflow');
+			const { app, user, sessionToken, isPreview } = this.context(req);
+			ctx.runnerIdentity = await this.auth.sealVisitor(
+				app,
+				sessionToken,
+				user.id,
+				isPreview ? 'preview' : 'published',
+			);
 			const result = await this.workflows.run(ctx, binding.workflowId, req.body ?? {});
 			this.interacted(req, 'workflow_run');
 			if (result.status === 'running') res.status(202);
@@ -332,17 +340,20 @@ export class AppRuntimeController {
 		return published ? { kind: 'published', namespace: published } : undefined;
 	}
 
-	/** Only here does a `NotFoundError` mean that the host has no published app. */
-	private async admitPublished(req: Request): Promise<AppRuntimeAdmission> {
-		let admission: Awaited<ReturnType<AppAuthService['admit']>>;
+	/** Only here does a `NotFoundError` mean that the host has no app to serve. */
+	private async admit(req: Request, isPreview: boolean): Promise<AppRuntimeAdmission> {
 		try {
-			admission = await this.auth.admit(req);
+			return isPreview ? await this.admitPreview(req) : await this.admitPublished(req);
 		} catch (error) {
 			if (error instanceof NotFoundError) {
 				throw new AppRuntimeError(404, 'app_not_found', 'App not found.');
 			}
 			throw error;
 		}
+	}
+
+	private async admitPublished(req: Request): Promise<AppRuntimeAdmission> {
+		const admission = await this.auth.admit(req);
 		if (!admission.ok) {
 			throw admission.reason === 'insufficient_scope'
 				? new AppRuntimeError(403, 'forbidden', "You don't have access to this app.")
@@ -352,6 +363,7 @@ export class AppRuntimeController {
 			app: admission.app,
 			versionId: admission.app.publishedVersionId,
 			user: admission.security.subject,
+			sessionToken: admission.token,
 		};
 	}
 
@@ -365,10 +377,8 @@ export class AppRuntimeController {
 				'This preview session ended. Open the preview again.',
 			);
 		}
-		const { app, versionId, user } = admitted;
-		// A service account has no email or name.
-		const { id, email, firstName, lastName } = principalFromUser(user);
-		return { app, versionId, user: { id, email, firstName, lastName } };
+		const { app, versionId, security, token } = admitted;
+		return { app, versionId, user: security.subject, sessionToken: token };
 	}
 
 	private interacted(req: AppRuntimeRequest, interactionType: AppInteractionType) {

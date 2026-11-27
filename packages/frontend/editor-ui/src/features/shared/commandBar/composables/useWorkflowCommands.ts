@@ -26,6 +26,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import type { CommandGroup, CommandBarItem } from '../types';
 import uniqBy from 'lodash/uniqBy';
 import { nodeViewEventBus } from '@/app/event-bus';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
 const ITEM_ID = {
 	OPEN_CREDENTIAL: 'open-credential',
@@ -57,6 +58,7 @@ export function useWorkflowCommands(): CommandGroup {
 	const collaborationStore = useCollaborationStore();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const { isReviewRequiredFor } = useWorkflowReviewsFeature();
 
 	const router = useRouter();
 
@@ -118,7 +120,12 @@ export function useWorkflowCommands(): CommandGroup {
 			? [
 					{
 						id: ITEM_ID.PUBLISH_WORKFLOW,
-						title: i18n.baseText('commandBar.workflow.publish'),
+						title: isReviewRequiredFor({
+							id: workflowDocumentStore.value.workflowId,
+							homeProject: workflowDocumentStore.value.homeProject,
+						})
+							? i18n.baseText('commandBar.workflow.submitForReview')
+							: i18n.baseText('commandBar.workflow.publish'),
 						section: i18n.baseText('commandBar.sections.workflow'),
 						handler: () => {
 							nodeViewEventBus.emit('publishWorkflow');

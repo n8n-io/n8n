@@ -281,6 +281,7 @@ describe('createParseStoredFileTool', () => {
 			fileName,
 			mimeType,
 			sizeBytes: sizeBytes ?? content?.length ?? 0,
+			hasContent: vi.fn(async () => await Promise.resolve(content !== undefined)),
 			readContent: vi.fn(async () => await Promise.resolve(content)),
 		};
 	}

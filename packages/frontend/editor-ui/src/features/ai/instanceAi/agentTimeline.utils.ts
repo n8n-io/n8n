@@ -10,6 +10,7 @@ import type {
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
+import { isCloudBrowserAgent } from './cloudBrowserAgents';
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user.
@@ -34,15 +35,14 @@ const INVISIBLE_RENDER_HINTS = new Set(['data-table', 'eval-setup']);
 const TAIL_NARRATION_MAX_LENGTH = 200;
 
 /**
- * How long the transcript must stay quiet before the activity indicator shows.
+ * How long the transcript must stay quiet before the typing indicator shows.
  *
- * Short silences are normal — the tail of a streamed answer, a run wrapping up
- * after its last token — and calling those "Thinking" is noise on every reply.
- * A real stall is an order of magnitude longer: a provider that buffers tool
- * calls goes quiet for 10s on a 4.5KB write and ~53s on a 20KB one (INS-1224).
+ * Short silences are normal: the tail of a streamed answer, or a run that ends
+ * after its last token. A real stall is much longer. A provider that buffers
+ * tool calls can go quiet for 10s to 53s (INS-1224).
  *
- * A threshold rather than a signal, because the client cannot tell the two
- * apart on its own; the server knowing it is mid-generation would replace this.
+ * The client cannot tell the two apart, so a threshold is used. A server
+ * signal for "mid-generation" would replace it.
  */
 export const ACTIVITY_INDICATOR_DELAY_MS = 5_000;
 
@@ -88,7 +88,7 @@ type ToolCallKind =
  * child agent section represents them. In-thread builds (`workflow_builder_build_workflow`)
  * render as trace rows so the build step is visible inside the thinking block.
  */
-function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
+function classifyToolCall(tc: InstanceAiToolCallState, preferencesEnabled: boolean): ToolCallKind {
 	if (HIDDEN_TOOLS.has(tc.toolName)) return 'hidden';
 	if (tc.renderHint === 'tasks') return 'tasks';
 	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
@@ -96,7 +96,7 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	// The card is the whole render for a finished preference write, saved or refused.
 	// A call still in flight drops instead of joining the thinking block.
 	if (tc.toolName === SAVE_USER_PREFERENCE_TOOL_NAME) {
-		return isPreferenceWriteOutcome(tc) ? 'preference' : 'hidden';
+		return preferencesEnabled && isPreferenceWriteOutcome(tc) ? 'preference' : 'hidden';
 	}
 	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';
 	if (tc.confirmation?.appBlueprint) return 'app-blueprint';
@@ -118,6 +118,7 @@ export function buildTimelineBlocks(
 	toolCallsById: Record<string, InstanceAiToolCallState>,
 	childrenById: Record<string, InstanceAiAgentNode>,
 	agentStatus: InstanceAiAgentNode['status'],
+	preferencesEnabled: boolean,
 ): TimelineBlock[] {
 	// A text entry is intermediate narration (part of the thinking trace) when
 	// trace content from the SAME model response follows it — i.e. the model
@@ -152,7 +153,7 @@ export function buildTimelineBlocks(
 			const tc = toolCallsById[entry.toolCallId];
 			if (
 				tc &&
-				classifyToolCall(tc) === 'trace' &&
+				classifyToolCall(tc, preferencesEnabled) === 'trace' &&
 				// Keep the explanation before a confirmation outside the trace.
 				tc.confirmation === undefined &&
 				!(
@@ -230,8 +231,9 @@ export function buildTimelineBlocks(
 			const child = childrenById[entry.agentId];
 			// Running builder sub-agents are extracted and rendered at the bottom
 			// of the conversation by InstanceAiView; once a builder finishes it
-			// reappears here in its chronological slot.
-			if (child && !isActiveBuilderAgent(child)) {
+			// reappears here in its chronological slot. A cloud browser sub-agent is never
+			// drawn here since it runs in the background
+			if (child && !isCloudBrowserAgent(child) && !isActiveBuilderAgent(child)) {
 				pushStandalone({ type: 'child', key: `child-${idx}`, child });
 			}
 			return;
@@ -245,7 +247,7 @@ export function buildTimelineBlocks(
 		) {
 			return;
 		}
-		switch (classifyToolCall(tc)) {
+		switch (classifyToolCall(tc, preferencesEnabled)) {
 			case 'tasks':
 				pushStandalone({ type: 'tasks', key: `tasks-${idx}`, toolCall: tc });
 				return;
@@ -331,8 +333,14 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
+/** The fields the artifact extractors read. The Agents chat maps its tool calls to them too. */
+type ArtifactSourceToolCall = Pick<
+	InstanceAiToolCallState,
+	'toolName' | 'args' | 'result' | 'isLoading' | 'completedAt'
+>;
+
 /** The workflow a workflow_builder_build_workflow / submit-workflow call wrote, if it wrote one. */
-function workflowArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
+function workflowArtifactFromToolCall(tc: ArtifactSourceToolCall): ArtifactInfo | undefined {
 	if (
 		tc.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
 		tc.toolName !== REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW
@@ -362,7 +370,7 @@ function workflowArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo
  * Only successful builds count, each workflow once.
  */
 export function extractBuiltWorkflowArtifacts(
-	toolCalls: InstanceAiToolCallState[],
+	toolCalls: readonly ArtifactSourceToolCall[],
 ): ArtifactInfo[] {
 	const artifacts = new Map<string, ArtifactInfo>();
 	for (const tc of toolCalls) {
@@ -376,7 +384,7 @@ export function extractBuiltWorkflowArtifacts(
 }
 
 /** The Agent an orchestrator builder call created or changed, if it did. */
-function agentArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
+function agentArtifactFromToolCall(tc: ArtifactSourceToolCall): ArtifactInfo | undefined {
 	if (tc.isLoading || !isRecord(tc.result)) return undefined;
 	const result = tc.result;
 	if (typeof result.agentId !== 'string') return undefined;
@@ -399,7 +407,9 @@ function agentArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | 
  * Agents the orchestrator created or changed with its own builder tool calls.
  * Each Agent appears once, with the name and project of its latest change.
  */
-export function extractBuiltAgentArtifacts(toolCalls: InstanceAiToolCallState[]): ArtifactInfo[] {
+export function extractBuiltAgentArtifacts(
+	toolCalls: readonly ArtifactSourceToolCall[],
+): ArtifactInfo[] {
 	const artifacts = new Map<string, ArtifactInfo>();
 	for (const tc of toolCalls) {
 		const agent = agentArtifactFromToolCall(tc);

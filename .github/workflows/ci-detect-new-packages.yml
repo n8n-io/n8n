@@ -1,0 +1,53 @@
+name: 'CI: Check Unpublished Packages'
+
+on:
+  schedule:
+    - cron: '15 */2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  detect-new-packages:
+    name: Check unpublished packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      - name: Check unpublished packages
+        id: detect
+        run: node .github/scripts/detect-new-packages.mjs --report-only --strict
+
+      - name: Notify Developer Platform alerts channel
+        if: steps.detect.outputs.packages != '[]'
+        env:
+          PACKAGES: ${{ steps.detect.outputs.packages }}
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          PACKAGE_LIST=$(jq -r '.[] | "- `\(.name)` — `\(.path)`"' <<< "$PACKAGES")
+          MESSAGE=$(cat <<EOF
+          *Unpublished npm packages need manual setup*
+
+          The check found these public packages on \`master\`:
+
+          $PACKAGE_LIST
+
+          Run <${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-publish-new-package.yml|Release: Setup Trusted Publishing for Package> for each package before the next release. Copy the repository path from the list into the \`package-path\` input.
+
+          <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View the check>
+          EOF
+          )
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-developer-platforms' \
+            --text "$MESSAGE"

@@ -1,0 +1,34 @@
+type: object
+properties:
+  whoCanPromote:
+    type: string
+    enum:
+      - instanceAdmins
+      - projectAdmins
+      - projectAdminsAndEditors
+    description: 'Who can promote a project and see its promotion reviews. `instanceAdmins`: only instance owners and admins. `projectAdmins`: also project admins, in their projects. `projectAdminsAndEditors`: also project admins and editors, in their projects.'
+  whoCanApprove:
+    type: string
+    enum:
+      - instanceAdmins
+      - projectAdmins
+      - projectAdminsAndEditors
+    description: 'Who can see and approve the promotion reviews of a project. `instanceAdmins`: only instance owners and admins. `projectAdmins`: also project admins, in their projects. `projectAdminsAndEditors`: also project admins and editors, in their projects.'
+  whoCanApply:
+    type: string
+    enum:
+      - instanceAdmins
+      - projectAdmins
+      - projectAdminsAndEditors
+    description: 'Who can apply changes into a project. `instanceAdmins`: only instance owners and admins. `projectAdmins`: also project admins, in their projects. `projectAdminsAndEditors`: also project admins and editors, in their projects.'
+  requireApproval:
+    type: string
+    enum:
+      - whenConfigured
+      - alwaysRequired
+    description: 'Whether a promote needs a review. `whenConfigured`: each Promote environment uses its own review setting. `alwaysRequired`: every promote pushes a new branch. With a `gitlab` provider, it also opens a merge request. With a `git` provider, n8n cannot see the review and cannot stop direct pushes.'
+required:
+  - whoCanPromote
+  - whoCanApprove
+  - whoCanApply
+  - requireApproval

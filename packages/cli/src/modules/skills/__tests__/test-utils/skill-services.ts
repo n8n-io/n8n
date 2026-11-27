@@ -1,6 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ProjectScopeService } from '@n8n/backend-services';
-import type { OperationContext, TransactionRunner, UserRepository } from '@n8n/db';
+import type { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
+import type {
+	OperationContext,
+	WorkflowRepository,
+	TransactionRunner,
+	UserRepository,
+} from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { SkillFile } from '../../database/entities/skill-file.entity';
@@ -12,12 +17,13 @@ import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
 import { SkillService } from '../../services/skill.service';
 import type { SkillsTelemetry } from '../../services/skills-telemetry.service';
-import type { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
 import type { SkillSyncedFromService } from '../../services/skill-synced-from.service';
 import type { SkillSyncFlagGate } from '../../services/skill-sync-flag-gate';
+import type { WorkflowsInSkillsFlagGate } from '../../services/workflows-in-skills-flag-gate';
 import type { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
+import type { SkillSourceClientRegistry } from '../../sources/skill-source-client-registry.service';
 import type { ResolvedSkillRow } from '../../utils/skill-content';
-import { skillContentHash } from '../../utils/skill-content-hash';
+import { skillContentHash, type SkillContent } from '../../utils/skill-content-hash';
 import { FakeSkillUsage } from '../../testing';
 
 export const PROJECT = 'project-1';
@@ -45,7 +51,7 @@ export function versionRow(
 	skill: Skill,
 	version: number,
 	overrides: Partial<SkillVersion> = {},
-	files: Array<{ path: string; content: string }> = [],
+	files: SkillContent['files'] = [],
 ): ResolvedSkillRow {
 	const base = {
 		name: 'Brand voice',
@@ -72,7 +78,7 @@ export function versionRow(
 			...base,
 			contentHash,
 		}),
-		files: files.map((file) => mock<SkillFile>(file)),
+		files: files.map((file) => mock<SkillFile>({ ...file, isBinary: file.isBinary ?? false })),
 	};
 }
 
@@ -90,11 +96,20 @@ export function createSkillServices() {
 	const projectScope = mock<ProjectScopeService>();
 	const telemetry = mock<SkillsTelemetry>();
 	const users = mock<UserRepository>();
-	const assistantGate = mock<AssistantSkillsFlagGate>();
 	const syncedFrom = mock<SkillSyncedFromService>();
 	const links = mock<SkillSourceRepository>();
 	const skillSyncGate = mock<SkillSyncFlagGate>();
-	const access = new SkillAccessService(skills, projectScope);
+	const sourceClients = mock<SkillSourceClientRegistry>();
+	const workflowSharing = mock<WorkflowSharingService>();
+	const workflows = mock<WorkflowRepository>();
+	const workflowsInSkillsGate = mock<WorkflowsInSkillsFlagGate>();
+	const access = new SkillAccessService(
+		skills,
+		projectScope,
+		workflowSharing,
+		workflows,
+		workflowsInSkillsGate,
+	);
 	const runtime = new SkillRuntimeService(skills, projectScope, access);
 	const service = new SkillService(
 		logger,
@@ -106,10 +121,10 @@ export function createSkillServices() {
 		access,
 		runtime,
 		telemetry,
-		assistantGate,
 		syncedFrom,
 		links,
 		skillSyncGate,
+		sourceClients,
 	);
 	return {
 		logger,
@@ -120,10 +135,12 @@ export function createSkillServices() {
 		projectScope,
 		telemetry,
 		users,
-		assistantGate,
 		syncedFrom,
 		links,
 		skillSyncGate,
+		workflowSharing,
+		workflows,
+		workflowsInSkillsGate,
 		access,
 		runtime,
 		service,

@@ -120,18 +120,36 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 			scope,
 			project_id: z.string().optional().describe("Set only when the scope is 'project'"),
 			outcome: z
-				.enum(['success', 'success_with_warnings', 'failed'])
+				.enum(['success', 'success_with_warnings', 'preview_changed', 'failed'])
 				.describe(
-					"'success_with_warnings' = the push worked, but a follow-up step, such as opening the merge request, failed",
+					"'success_with_warnings' = the push worked, but a follow-up step, such as opening the merge request, failed; 'preview_changed' = the project or its branch changed after the user reviewed the preview, so nothing was pushed",
 				),
 			failure_kind: failureKind,
 			duration_ms: z.number(),
-			workflow_count: z.number().optional().describe('Set when the outcome is not failed'),
-			folder_count: z.number().optional().describe('Set when the outcome is not failed'),
-			credential_count: z.number().optional().describe('Set when the outcome is not failed'),
-			data_table_count: z.number().optional().describe('Set when the outcome is not failed'),
-			variable_count: z.number().optional().describe('Set when the outcome is not failed'),
-			tag_count: z.number().optional().describe('Set when the outcome is not failed'),
+			workflow_count: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'success' or 'success_with_warnings'"),
+			folder_count: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'success' or 'success_with_warnings'"),
+			credential_count: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'success' or 'success_with_warnings'"),
+			data_table_count: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'success' or 'success_with_warnings'"),
+			variable_count: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'success' or 'success_with_warnings'"),
+			tag_count: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'success' or 'success_with_warnings'"),
 			selected_workflow_count: z
 				.number()
 				.optional()
@@ -143,7 +161,9 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 			opened_review: z
 				.boolean()
 				.optional()
-				.describe('Set when the outcome is not failed. True when the push opened a merge request'),
+				.describe(
+					"Set when the outcome is 'success' or 'success_with_warnings'. True when the push opened a merge request",
+				),
 		}),
 	},
 	USER_APPLIED_PROMOTION_CHANGES: {

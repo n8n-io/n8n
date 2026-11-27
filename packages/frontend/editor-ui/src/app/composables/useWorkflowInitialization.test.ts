@@ -3,6 +3,7 @@ import { ref, shallowRef, defineComponent, h } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { render } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 
 import { useWorkflowInitialization } from './useWorkflowInitialization';
 import { VIEWS } from '@/app/constants';
@@ -10,8 +11,10 @@ import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
+import { ResponseError } from '@n8n/rest-api-client';
 
 const mockSetDocumentTitle = vi.hoisted(() => vi.fn());
 const mockResetDocumentTitle = vi.hoisted(() => vi.fn());
@@ -148,10 +151,11 @@ function renderWithComposable(
 	workflowDocumentStoreRef = shallowRef<typeof mockWorkflowDocumentStore | null>(
 		mockWorkflowDocumentStore,
 	),
+	options?: Parameters<typeof useWorkflowInitialization>[0],
 ) {
 	const TestComponent = defineComponent({
 		setup() {
-			const init = useWorkflowInitialization();
+			const init = useWorkflowInitialization(options);
 			callback(init);
 			return () => h('div');
 		},
@@ -228,6 +232,33 @@ describe('useWorkflowInitialization', () => {
 		});
 	});
 
+	describe('initializeData', () => {
+		it('waits for the shared node types load and sends no second request', async () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockReturnValueOnce(promise);
+
+			let initializeData!: () => Promise<void>;
+			renderWithComposable((init) => {
+				initializeData = init.initializeData;
+			});
+
+			let done = false;
+			const initializing = initializeData().then(() => {
+				done = true;
+			});
+			await flushPromises();
+
+			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalledTimes(1);
+			expect(nodeTypesStore.getNodeTypes).not.toHaveBeenCalled();
+			expect(done).toBe(false);
+
+			resolve();
+			await initializing;
+			expect(done).toBe(true);
+		});
+	});
+
 	describe('new workflow home project', () => {
 		function initializeNewWorkflow() {
 			let initializeWorkspaceForNewWorkflow!: () => Promise<void>;
@@ -294,6 +325,43 @@ describe('useWorkflowInitialization', () => {
 			expect(mockRouter.replace.mock.invocationCallOrder[0]).toBeLessThan(
 				fetchWorkflow.mock.invocationCallOrder[0],
 			);
+		});
+	});
+
+	describe('workflow load failure', () => {
+		async function failToOpenWorkflow(options?: Parameters<typeof useWorkflowInitialization>[0]) {
+			const error = new ResponseError('Forbidden', { httpStatusCode: 403 });
+			mockedStore(useWorkflowsListStore).fetchWorkflow.mockRejectedValue(error);
+
+			let init!: ReturnType<typeof useWorkflowInitialization>;
+			renderWithComposable(
+				(composable) => {
+					init = composable;
+				},
+				undefined,
+				options,
+			);
+			await init.initializeWorkspaceForExistingWorkflow('wf-1');
+			return error;
+		}
+
+		it('opens the access page when the user cannot access the workflow', async () => {
+			await failToOpenWorkflow();
+
+			expect(mockRouter.replace).toHaveBeenCalledWith({
+				name: VIEWS.ENTITY_UNAUTHORIZED,
+				params: { entityType: 'workflow' },
+			});
+		});
+
+		it('passes the error to onLoadError and stays on the page', async () => {
+			const onLoadError = vi.fn();
+
+			const error = await failToOpenWorkflow({ onLoadError });
+
+			expect(onLoadError).toHaveBeenCalledWith(error, 'wf-1');
+			expect(mockRouter.replace).not.toHaveBeenCalled();
+			expect(mockRouter.push).not.toHaveBeenCalled();
 		});
 	});
 

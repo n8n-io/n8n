@@ -16,6 +16,7 @@ export class WorkflowSelect extends BaseSelect {
 			'nodes',
 			'isArchived',
 			'description',
+			'settings',
 		]);
 	}
 

@@ -6,6 +6,7 @@ import {
 	WorkflowHistoryRepository,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationReason,
+	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	type WorkflowPublicationTriggerKind,
@@ -34,7 +35,7 @@ import type {
 	PublicationResult,
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
-import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
+import { computeTriggerDiff, type TriggerDiff } from '@/workflows/publication/trigger-diff';
 import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
 import {
 	isTriggerLikeNodeType,
@@ -62,7 +63,7 @@ type PartitionedVersion = { runnable: WorkflowTriggerVersion; unresolvable: Unre
  * e.g. the n8n Trigger's "Instance Started" event fires exactly for the
  * leader's startup pass. Records from before the `reason` column existed
  * default to `publish` at the DB level, i.e. today's `update` behavior.
- * A first publication overrides `publish` → `activate`; see
+ * A first publication overrides `publish` or `transfer` → `activate`; see
  * {@link WorkflowPublicationApplier.resolveActivationMode}.
  */
 const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActivateMode> = {
@@ -70,7 +71,24 @@ const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActiv
 	[WorkflowPublicationReason.Startup]: 'init',
 	[WorkflowPublicationReason.LeadershipTakeover]: 'leadershipChange',
 	[WorkflowPublicationReason.Reconcile]: 'update',
+	[WorkflowPublicationReason.Transfer]: 'update',
 };
+
+/** Whether a user asked for the publication; records from before the `reason` column count as `publish`. */
+function isUserIntent(record: WorkflowPublicationOutbox): boolean {
+	const reason = record.reason ?? WorkflowPublicationReason.Publish;
+	return (
+		reason === WorkflowPublicationReason.Publish || reason === WorkflowPublicationReason.Transfer
+	);
+}
+
+/** Removes every old trigger and adds every new one, so unchanged triggers also register again. */
+function replaceAllTriggers(oldTriggers: INode[], newTriggers: INode[]): TriggerDiff {
+	return {
+		toRemove: new Set(oldTriggers.map((node) => node.id)),
+		toAdd: new Set(newTriggers.map((node) => node.id)),
+	};
+}
 
 /**
  * Reconciles a workflow's triggers to a published version, one outbox record at
@@ -99,6 +117,7 @@ export class WorkflowPublicationApplier {
 		private readonly durableJobProvisioner: DurableJobProvisioner,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly workflowPublisherService: WorkflowPublisherService,
+		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -163,7 +182,9 @@ export class WorkflowPublicationApplier {
 		if (healSkip !== null) return healSkip;
 
 		const oversized = this.rejectOversizedTriggerNodeIds(workflow, newVersion);
-		if (oversized !== null) return oversized;
+		if (oversized !== null) {
+			return await this.preserveRunningTriggerStatuses(workflow, oldVersion, oversized);
+		}
 
 		const unrunnable = await this.handleUnrunnableVersion(
 			workflow,
@@ -175,18 +196,24 @@ export class WorkflowPublicationApplier {
 		if (unrunnable !== null) return unrunnable;
 
 		const blocked = await this.enforcePublishPolicy(workflow, newVersion);
-		if (blocked !== null) return blocked;
+		if (blocked !== null) {
+			return await this.preserveRunningTriggerStatuses(workflow, oldVersion, blocked);
+		}
 
 		const refused = await this.refuseUnusableTriggerCredentials(workflow, newVersion);
-		if (refused !== null) return refused;
+		if (refused !== null) {
+			return await this.preserveRunningTriggerStatuses(workflow, oldVersion, refused);
+		}
 
 		const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
 		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
 
-		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes, {
-			versionChanged: oldVersion !== null && oldVersion.versionId !== newVersion.versionId,
-		});
+		const versionChanged = oldVersion !== null && oldVersion.versionId !== newVersion.versionId;
+		const { toAdd, toRemove } =
+			record.reason === WorkflowPublicationReason.Transfer
+				? replaceAllTriggers(oldTriggerCandidates, desiredTriggerNodes)
+				: computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes, { versionChanged });
 
 		this.logger.debug(
 			`Calculated trigger diff for workflow publication: ${toAdd.size} to add, ${toRemove.size} to remove`,
@@ -253,15 +280,29 @@ export class WorkflowPublicationApplier {
 			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
 				const activationMode = this.resolveActivationMode(record, oldVersion);
+				// A user publication keeps the full attempt budget even when a retry note exists.
+				let retriedNodeIds = new Set<INode['id']>();
+				if (!isUserIntent(record)) {
+					retriedNodeIds = await this.triggerStatusRepository.findRetriedTriggerNodeIds(
+						record.workflowId,
+						newVersion.versionId,
+					);
+				}
 				const outcome = await this.workflowTriggerActivator.activate(
 					workflow,
 					newVersion,
 					toAdd,
 					activationMode,
 					abort,
+					retriedNodeIds,
 				);
 				return withTeardownFailures(
-					this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds),
+					this.classifyActivationOutcome(
+						outcome,
+						desiredTriggerNodes,
+						triggerKinds,
+						newVersion.versionId,
+					),
 				);
 			}
 
@@ -399,7 +440,15 @@ export class WorkflowPublicationApplier {
 			),
 		];
 
-		return this.withTeardownFailures({ type: 'failed', error, triggerStatuses }, teardownFailures);
+		return this.withTeardownFailures(
+			{
+				type: 'failed',
+				error,
+				nodeId: triggerStatuses.length === 1 ? triggerStatuses[0].nodeId : undefined,
+				triggerState: { versionId: newVersion.versionId, triggerStatuses },
+			},
+			teardownFailures,
+		);
 	}
 
 	/**
@@ -517,9 +566,78 @@ export class WorkflowPublicationApplier {
 		}
 	}
 
+	/** Keep live trigger state separate from a request refused before trigger changes. */
+	private async preserveRunningTriggerStatuses(
+		workflow: WorkflowEntity,
+		oldVersion: WorkflowHistory | null,
+		result: PublicationResult,
+	): Promise<PublicationResult> {
+		if (result.type !== 'failed' || oldVersion === null || oldVersion.nodes.length === 0) {
+			return result;
+		}
+
+		const { runnable } = this.partitionByResolvability(oldVersion);
+		const triggers = this.workflowTriggerActivator.getEnabledTriggerNodes(runnable);
+		const missingTriggers = await this.findUnregisteredTriggers(workflow, runnable, triggers);
+		if (missingTriggers === undefined) {
+			// The refusal did not change registrations. Keep the stored state if its check fails.
+			return { ...result, triggerState: undefined };
+		}
+		if (missingTriggers.length === triggers.length) return result;
+
+		// The refusal did not stop these triggers, so do not report it as their cause.
+		const notRegistered = new Error('Trigger is not registered');
+		return {
+			...result,
+			triggerState: {
+				versionId: oldVersion.versionId,
+				triggerStatuses: this.buildTriggerStatuses(
+					triggers,
+					this.workflowTriggerActivator.getTriggerKinds(triggers),
+					{
+						activated: [],
+						failures: missingTriggers.map((node) => ({
+							nodeId: node.id,
+							nodeName: node.name,
+							error: notRegistered,
+						})),
+					},
+				),
+			},
+		};
+	}
+
+	private async findUnregisteredTriggers(
+		workflow: WorkflowEntity,
+		runnable: WorkflowTriggerVersion,
+		triggers: INode[],
+	): Promise<INode[] | undefined> {
+		try {
+			const missingNonWebhooks =
+				this.workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds(
+					workflow.id,
+					triggers,
+				);
+			const missingWebhooks = await this.workflowTriggerActivator.getNodesWithUnregisteredWebhooks(
+				workflow,
+				runnable,
+			);
+			// Stored activation rows alone do not prove that triggers survived a restart.
+			return triggers.filter(
+				(node) => missingNonWebhooks.has(node.id) || missingWebhooks.has(node.id),
+			);
+		} catch (error) {
+			this.logger.warn('Could not check the triggers of the previous version after a refusal', {
+				workflowId: workflow.id,
+				error: ensureError(error).message,
+			});
+			return undefined;
+		}
+	}
+
 	/**
-	 * Reports every trigger as failed: `activated` rows left behind read as drift
-	 * to the reconciler, which would then re-enqueue this forever.
+	 * Report the refused request's trigger failures. Retry suppression prevents
+	 * reconciliation from retrying it when the previous version stays live.
 	 */
 	private failAllTriggers(newVersion: WorkflowHistory, error: Error): PublicationResult {
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
@@ -528,14 +646,17 @@ export class WorkflowPublicationApplier {
 		return {
 			type: 'failed',
 			error,
-			triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
-				activated: [],
-				failures: desiredTriggerNodes.map((node) => ({
-					nodeId: node.id,
-					nodeName: node.name,
-					error,
-				})),
-			}),
+			triggerState: {
+				versionId: newVersion.versionId,
+				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+					activated: [],
+					failures: desiredTriggerNodes.map((node) => ({
+						nodeId: node.id,
+						nodeName: node.name,
+						error,
+					})),
+				}),
+			},
 		};
 	}
 
@@ -547,9 +668,8 @@ export class WorkflowPublicationApplier {
 		record: WorkflowPublicationOutbox,
 		oldVersion: WorkflowHistory | null,
 	): WorkflowActivateMode {
-		const reason = record.reason ?? WorkflowPublicationReason.Publish;
-		if (reason === WorkflowPublicationReason.Publish && oldVersion === null) return 'activate';
-		return ACTIVATION_MODE_BY_REASON[reason];
+		if (isUserIntent(record) && oldVersion === null) return 'activate';
+		return ACTIVATION_MODE_BY_REASON[record.reason ?? WorkflowPublicationReason.Publish];
 	}
 
 	/**
@@ -620,6 +740,7 @@ export class WorkflowPublicationApplier {
 		outcome: TriggerActivationOutcome,
 		desiredTriggerNodes: INode[],
 		triggerKinds: Map<INode['id'], WorkflowPublicationTriggerKind>,
+		versionId: string,
 	): PublicationResult {
 		const triggerStatuses = this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, outcome);
 		if (outcome.failures.length === 0) return { type: 'completed', triggerStatuses };
@@ -628,10 +749,19 @@ export class WorkflowPublicationApplier {
 		// has been activated successfully, it's partial.
 		const hasRunningTrigger = triggerStatuses.some((s) => s.status === 'activated');
 		if (!hasRunningTrigger) {
-			return { type: 'failed', error: this.toActivationError(outcome.failures), triggerStatuses };
+			return {
+				type: 'failed',
+				error: this.toActivationError(outcome.failures),
+				nodeId: outcome.failures.length === 1 ? outcome.failures[0].nodeId : undefined,
+				triggerState: { versionId, triggerStatuses },
+			};
 		}
 
-		return { type: 'partial', triggerStatuses };
+		return {
+			type: 'partial',
+			triggerStatuses,
+			error: this.toActivationError(outcome.failures),
+		};
 	}
 
 	/**
@@ -670,7 +800,8 @@ export class WorkflowPublicationApplier {
 		// The lone error keeps its class: the reporter checks it for a policy refusal.
 		if (failures.length === 1) return failures[0].error;
 
-		return new Error(
+		return new AggregateError(
+			failures.map(({ error }) => error),
 			formatFailedActivationError(
 				failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
 			),
@@ -744,6 +875,7 @@ export class WorkflowPublicationApplier {
 				nodes: healed.nodes,
 				connections: newVersion.connections,
 				nodeGroups: newVersion.nodeGroups,
+				settings: newVersion.settings,
 			},
 			newVersion.versionId,
 		);
@@ -761,8 +893,7 @@ export class WorkflowPublicationApplier {
 
 	/**
 	 * Fails a version whose trigger node ids cannot be stored in status rows. This
-	 * runs before trigger changes, so the old version keeps running. Fitting ids
-	 * get failed rows to prevent reconciliation retries.
+	 * runs before trigger changes, so the old version keeps running.
 	 */
 	private rejectOversizedTriggerNodeIds(
 		workflow: WorkflowEntity,
@@ -786,14 +917,18 @@ export class WorkflowPublicationApplier {
 		return {
 			type: 'failed',
 			error,
-			triggerStatuses: this.buildTriggerStatuses(
-				storable,
-				this.workflowTriggerActivator.getTriggerKinds(storable),
-				{
-					activated: [],
-					failures: storable.map((node) => ({ nodeId: node.id, nodeName: node.name, error })),
-				},
-			),
+			nodeId: oversized.length === 1 ? oversized[0].id : undefined,
+			triggerState: {
+				versionId: newVersion.versionId,
+				triggerStatuses: this.buildTriggerStatuses(
+					storable,
+					this.workflowTriggerActivator.getTriggerKinds(storable),
+					{
+						activated: [],
+						failures: storable.map((node) => ({ nodeId: node.id, nodeName: node.name, error })),
+					},
+				),
+			},
 		};
 	}
 

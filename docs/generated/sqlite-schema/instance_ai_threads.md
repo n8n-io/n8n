@@ -114,6 +114,7 @@ erDiagram
   varchar_36_ resumeFromMessageId
   TEXT resumeNotes
   datetime_3_ updatedAt
+  TEXT workingSet
 }
 "instance_ai_observation_locks" {
   datetime_3_ createdAt

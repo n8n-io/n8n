@@ -1,0 +1,202 @@
+{
+	"properties": {
+		"background": {
+			"type": "boolean"
+		},
+		"completed_at": {
+			"type": ["null", "number"]
+		},
+		"created_at": {
+			"type": "number"
+		},
+		"error": {},
+		"frequency_penalty": {
+			"type": "number"
+		},
+		"id": {
+			"type": "string"
+		},
+		"incomplete_details": {
+			"properties": {
+				"reason": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"instructions": {
+			"type": ["null", "string"]
+		},
+		"max_output_tokens": {
+			"type": ["null", "number"]
+		},
+		"max_tool_calls": {},
+		"metadata": {
+			"type": "object"
+		},
+		"model": {
+			"type": "string"
+		},
+		"object": {
+			"type": "string"
+		},
+		"output": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"content": {
+						"items": {
+							"properties": {
+								"annotations": {
+									"items": {},
+									"type": "array"
+								},
+								"text": {
+									"type": "string"
+								},
+								"type": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"id": {
+						"type": "string"
+					},
+					"role": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"parallel_tool_calls": {
+			"type": "boolean"
+		},
+		"presence_penalty": {
+			"type": "number"
+		},
+		"previous_response_id": {},
+		"prompt_cache_key": {},
+		"reasoning": {
+			"properties": {
+				"effort": {
+					"type": "string"
+				},
+				"summary": {}
+			},
+			"type": ["null", "object"]
+		},
+		"safety_identifier": {},
+		"service_tier": {
+			"type": "string"
+		},
+		"status": {
+			"type": "string"
+		},
+		"store": {
+			"type": "boolean"
+		},
+		"temperature": {
+			"type": "number"
+		},
+		"text": {
+			"properties": {
+				"format": {
+					"properties": {
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"tool_choice": {
+			"type": "string"
+		},
+		"tools": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"top_logprobs": {
+			"type": "number"
+		},
+		"top_p": {
+			"type": "number"
+		},
+		"truncation": {
+			"type": "string"
+		},
+		"usage": {
+			"additionalProperties": true,
+			"properties": {
+				"cost": {
+					"additionalProperties": true,
+					"properties": {
+						"currency": {
+							"type": "string"
+						},
+						"input_cost": {
+							"type": "number"
+						},
+						"output_cost": {
+							"type": "number"
+						},
+						"total_cost": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"input_tokens": {
+					"type": "number"
+				},
+				"input_tokens_details": {
+					"additionalProperties": true,
+					"properties": {
+						"cached_tokens": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"output_tokens": {
+					"type": "number"
+				},
+				"output_tokens_details": {
+					"properties": {
+						"reasoning_tokens": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"total_tokens": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"user": {}
+	},
+	"type": "object"
+}

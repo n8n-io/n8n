@@ -253,7 +253,7 @@ function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
 	// Stable sort keeps each bucket in its original order (Array.sort is stable).
 	if (category === 'all') {
 		return props.items
-			.filter((item) => !isGatewayDuplicate(item))
+			.filter((item) => !isGatewayDuplicate(item) && categoryOf(item) !== 'recommended')
 			.sort((a, b) => allSortRank(a) - allSortRank(b));
 	}
 	if (category === 'connected') return props.items.filter((item) => hasToolConnection(item.status));
@@ -346,6 +346,7 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	project: 'tools.connection.categories.project',
 	global: 'tools.connection.categories.global',
 	data: 'tools.connection.categories.data',
+	recommended: 'tools.connection.categories.recommended',
 };
 
 function categoryLabel(category: ToolCategoryKey): string {
@@ -511,8 +512,8 @@ function handleOpenChange(value: boolean) {
 						:model-value="activeCategory"
 						:options="tabOptions"
 						size="small"
-						variant="modern"
 						justified
+						show-border
 						:class="$style.tabs"
 						data-test-id="tools-connection-tabs"
 						@update:model-value="selectCategory"
@@ -578,8 +579,10 @@ function handleOpenChange(value: boolean) {
 									:connect-label="props.connectLabel?.(row.item)"
 									:connect-aria-label="props.connectAriaLabel?.(row.item)"
 									:connected-label="props.connectedLabel?.(row.item)"
+									:iconless="props.iconlessRows"
 									@open-detail="openDetail($event)"
 									@connect="emit('connect', $event)"
+									@disconnect="emit('disconnect', $event)"
 									@select-credential="
 										(item, authType, credentialId) =>
 											emit('select-credential', item, authType, credentialId)
@@ -587,7 +590,11 @@ function handleOpenChange(value: boolean) {
 									@credential-dropdown-open="emit('credential-dropdown-open', $event)"
 									@first-credential-connect="emit('first-credential-connect', $event)"
 									@new-credential-connect="emit('new-credential-connect', $event)"
-								/>
+								>
+									<template v-if="$slots['row-footer']" #footer>
+										<slot name="row-footer" :item="row.item" />
+									</template>
+								</ToolRow>
 								<div v-else :class="$style.suggestionRow">
 									<slot name="suggestion-footer" />
 								</div>
@@ -650,11 +657,10 @@ function handleOpenChange(value: boolean) {
 	margin-block-end: var(--spacing--sm);
 }
 
-// N8nTabs owns the tab styling, and the justified strip gives every tab an equal
-// slot, so it cannot overflow at this tab count; this only supplies the divider
-// and stops the strip shrinking.
+// N8nTabs owns the tab styling and divider, and the justified strip gives every
+// tab an equal slot, so it cannot overflow at this tab count; this only stops
+// the strip shrinking.
 .tabs {
-	border-bottom: 1px solid var(--border-color);
 	flex-shrink: 0;
 }
 

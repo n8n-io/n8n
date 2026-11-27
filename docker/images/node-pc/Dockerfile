@@ -1,27 +1,31 @@
 # check=skip=InvalidDefaultArgInFrom
-# Node.js compiled with V8 pointer compression, for the n8n `-pc` image variant.
+# Node.js compiled from source, with the V8 patches in ./patches applied.
 #
-# No official pointer-compressed Node binaries exist (nodejs.org publishes none,
-# and Docker Hub node images are stock), so this image compiles Node from the
-# GPG-verified source tarball, following the source-build path of the official
-# docker-node Alpine recipe with one added configure flag.
+# Three images build from this file:
+#   node-pc         - Node 26 with V8 pointer compression, for the n8n `-pc`
+#                     image variant. No official pointer-compressed Node
+#                     binaries exist (nodejs.org publishes none, and Docker Hub
+#                     node images are stock).
+#   node-patched-24 - stock-configured Node 24 for the 1.x image, so that the
+#                     1.x line also runs a Node whose V8 we control.
+#   node-patched-26 - stock-configured Node 26 for the release images.
 #
-# The build also applies the V8 patches in ./patches: upstream V8 fixes that
-# Node has not backported to this release line yet. The patch count becomes
-# the -n8n.N suffix of the V8 version, and check-v8-patches.js proves that
-# the compiled Node carries the patches.
+# All follow the source-build path of the official docker-node Alpine recipe.
+# The build applies the V8 patches in ./patches: upstream V8 fixes that Node
+# has not backported to the release line yet. The patch count becomes the
+# -n8n.N suffix of the V8 version, and check-v8-patches.js proves that the
+# compiled Node carries the patches and the expected configure flags.
 #
-# Two published targets:
-#   runtime (default) - n8nio/base with our compiled Node swapped in
-#   dev               - plain Alpine with apk usable, for the n8n builder
-#                       stage, which must compile native addons against this
-#                       Node's headers
+# Publishes the `dev` target per image: plain Alpine with our compiled Node,
+# npm, and headers under /usr/local. The n8n image builds native addons in this
+# image and copies /usr/local/bin and /usr/local/lib onto n8nio/base, so OS base
+# refreshes do not recompile Node.
 #
-# The node-pc target in docker/docker-bake.hcl sets these. Do not use plain
-# `docker build`.
+# The node-pc and node-patched-* targets in docker/docker-bake.hcl set these.
+# Do not use plain `docker build`.
 ARG NODE_VERSION
 ARG ALPINE_IMAGE
-ARG RUNTIME_IMAGE
+ARG ENABLE_POINTER_COMPRESSION=true
 # Compiling V8 needs 1.5-2 GB of memory per parallel job. Lower this on
 # builders whose memory-to-core ratio cannot cover all cores.
 ARG MAKE_JOBS=
@@ -29,9 +33,11 @@ ARG MAKE_JOBS=
 FROM ${ALPINE_IMAGE} AS builder
 ARG NODE_VERSION
 ARG MAKE_JOBS
+ARG ENABLE_POINTER_COMPRESSION
 
 COPY docker/images/node-pc/patches/ /patches/
-RUN apk add --no-cache --virtual .build-deps \
+RUN case "$ENABLE_POINTER_COMPRESSION" in true|false) ;; *) echo "ENABLE_POINTER_COMPRESSION must be true or false, got '$ENABLE_POINTER_COMPRESSION'" && exit 1;; esac \
+    && apk add --no-cache --virtual .build-deps \
         binutils-gold \
         curl \
         g++ \
@@ -71,7 +77,8 @@ RUN apk add --no-cache --virtual .build-deps \
     && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
     && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc \
     && gpgconf --kill all \
-    && rm -rf "$GNUPGHOME" \
+    # dirmngr exits asynchronously and can unlink S.dirmngr mid-rm on BusyBox.
+    && { rm -rf "$GNUPGHOME" || { sleep 1 && rm -rf "$GNUPGHOME"; }; } \
     && grep " node-v$NODE_VERSION.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
     && tar -xf "node-v$NODE_VERSION.tar.xz" \
     && cd "node-v$NODE_VERSION" \
@@ -81,13 +88,29 @@ RUN apk add --no-cache --virtual .build-deps \
     && n=$(ls /patches/*.patch | wc -l) \
     && sed -i "s/^\([[:space:]]*'v8_embedder_string': '-node\.[0-9]*\)'/\1-n8n.$n'/" common.gypi \
     && grep -q "n8n\.$n'" common.gypi \
-    && ./configure --experimental-enable-pointer-compression \
+    && ./configure $([ "$ENABLE_POINTER_COMPRESSION" = true ] && echo --experimental-enable-pointer-compression) \
     && make -j"${MAKE_JOBS:-$(getconf _NPROCESSORS_ONLN)}" V= \
     && make install DESTDIR=/node-install \
     # Remove unused OpenSSL headers to save ~34MB. See https://github.com/nodejs/node/issues/46451
     && find /node-install/usr/local/include/node/openssl/archs -mindepth 1 -maxdepth 1 ! -name "$OPENSSL_ARCH" -exec rm -rf {} \;
 
+# Remove this override when Node 26 bundles brace-expansion 5.0.12 or later.
+RUN set -eu; \
+    if [ "${NODE_VERSION%%.*}" != 26 ]; then exit 0; fi; \
+    cd /node-install/usr/local/lib/node_modules/npm/node_modules; \
+    needs_update=$(/node-install/usr/local/bin/node -p \
+        "require('./semver').lt(require('./brace-expansion/package.json').version, '5.0.12')"); \
+    if [ "$needs_update" = false ]; then exit 0; fi; \
+    archive=/tmp/brace-expansion.tgz; \
+    curl -fsSL https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.12.tgz -o "$archive"; \
+    echo "ef8448ec78f20b692f04fa6d01f39b5ab34c66404bea3429f5a39c6c9e0be8b4  $archive" | sha256sum -c -; \
+    rm -rf brace-expansion; \
+    mkdir brace-expansion; \
+    tar -xzf "$archive" --strip-components=1 -C brace-expansion; \
+    rm "$archive"
+
 FROM ${ALPINE_IMAGE} AS base
+ARG ENABLE_POINTER_COMPRESSION
 
 RUN addgroup -g 1000 node \
     && adduser -u 1000 -G node -s /bin/sh -D node \
@@ -95,28 +118,10 @@ RUN addgroup -g 1000 node \
 COPY --from=builder /node-install/usr/local /usr/local
 COPY docker/images/node-pc/check-v8-patches.js /tmp/check-v8-patches.js
 RUN node --version && npm --version \
-    && node -e "if (!process.config.variables.v8_enable_pointer_compression) { throw new Error('pointer compression is not enabled') }" \
     && node /tmp/check-v8-patches.js && rm /tmp/check-v8-patches.js
 
 FROM base AS dev
 # node-gyp must compile native addons against this build's headers so they pick
-# up the pointer compression defines, never against downloaded stock headers.
+# up this build's defines (e.g. pointer compression), never against downloaded
+# stock headers.
 ENV npm_config_nodedir=/usr/local
-
-# ---------------------------------------------------------------------------
-
-# RUNTIME_IMAGE (`n8nio/base`), with the pointer-compressed Node in place of
-# the stock node, npm and npx.
-FROM ${RUNTIME_IMAGE} AS runtime
-
-RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
-COPY --from=builder /node-install/usr/local /usr/local
-COPY docker/images/node-pc/check-v8-patches.js /tmp/check-v8-patches.js
-RUN node --version \
-    && node -e "if (!process.config.variables.v8_enable_pointer_compression) { throw new Error('pointer compression is not enabled') }" \
-    && node /tmp/check-v8-patches.js && rm /tmp/check-v8-patches.js
-
-# The compiled build lives at /usr/local/bin, which is what the cloud launch
-# and AppArmor profile expect. Keep the stock /usr/bin path working for
-# anything that references it.
-RUN ln -sf /usr/local/bin/node /usr/bin/node

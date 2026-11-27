@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { GlobalConfig, MemoryGuardConfig } from '@n8n/config';
-import type { ExecutionRepository, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type {
@@ -187,7 +187,7 @@ describe('MemoryGuardService', () => {
 		productionHold = new ProductionHold(mock<EventService>());
 		concurrencyControl = new ConcurrencyControlService(
 			mockLogger(),
-			mock<ExecutionRepository>(),
+			mock(),
 			mock<Telemetry>(),
 			mock<EventService>(),
 			globalConfig,
@@ -497,6 +497,64 @@ describe('MemoryGuardService', () => {
 			utilization = 0.9;
 			await sample(2);
 			expect(stoppedIds()).toEqual(['first', 'second']);
+		});
+
+		it('should stop holding when a hold-limit stop frees no memory', async () => {
+			addExecution('first', { megabytes: 300 });
+			addExecution('second', { megabytes: 200 });
+			utilization = 0.82;
+			await sample(2);
+			const held = concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
+			utilization = 0.78;
+
+			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 300);
+			await vi.advanceTimersByTimeAsync(3_000);
+			expect(stoppedIds()).toEqual(['first']);
+			expect(await isAdmitted(held)).toBe(true);
+			expect(guardLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('A stop at the hold limit did not free the expected memory'),
+			);
+
+			utilization = 0.82;
+			await sample(2);
+			const arrival = concurrencyControl.throttle({ mode: 'webhook', executionId: 'arrival' });
+			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS * 2);
+			expect(await isAdmitted(arrival)).toBe(true);
+			expect(stoppedIds()).toEqual(['first']);
+
+			utilization = 0.96;
+			await sample();
+			expect(stoppedIds()).toEqual(['first', 'second']);
+
+			utilization = 0.7;
+			await sample();
+			utilization = 0.82;
+			await sample(2);
+			const later = concurrencyControl.throttle({ mode: 'webhook', executionId: 'later' });
+			expect(await isAdmitted(later)).toBe(false);
+		});
+
+		it('should keep a hold that starts during a hold-limit stop', async () => {
+			addExecution('first', { megabytes: 300 });
+			addExecution('second', { megabytes: 200 });
+			utilization = 0.82;
+			await sample(2);
+			void concurrencyControl.throttle({ mode: 'webhook', executionId: 'held' });
+			utilization = 0.78;
+			await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS + 300);
+			expect(stoppedIds()).toEqual(['first']);
+
+			utilization = 0.7;
+			await vi.advanceTimersByTimeAsync(300);
+			utilization = 0.82;
+			await vi.advanceTimersByTimeAsync(600);
+			const arrival = concurrencyControl.throttle({ mode: 'webhook', executionId: 'arrival' });
+			await vi.advanceTimersByTimeAsync(3_000);
+
+			expect(await isAdmitted(arrival)).toBe(false);
+			expect(guardLogger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('A stop at the hold limit did not free the expected memory'),
+			);
 		});
 
 		it.each([0.82, 0.9, 0.96])(

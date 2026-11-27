@@ -16,19 +16,19 @@ export type TaskRunnerResult = ServiceResult<TaskRunnerMeta>;
 
 export const taskRunner: Service<TaskRunnerResult> = {
 	description: 'Task Runner',
-	shouldStart: (ctx) => ctx.mains > 0 || ctx.workers > 0,
+	// In queue mode the stack offloads manual runs to workers, and a main that
+	// offloads them starts no task broker. Without a worker there is no broker to
+	// dial, so the runner would never register.
+	shouldStart: (ctx) =>
+		(ctx.workers > 0 || (ctx.mains > 0 && !ctx.isQueueMode)) &&
+		ctx.config.env?.N8N_RUNNERS_MODE !== 'internal',
 
 	getOptions(ctx) {
 		if (ctx.external) {
 			return { taskBrokerUri: `http://${EXTERNAL_HOST}:5679` };
 		}
-		const { workers, mains, projectName } = ctx;
-		const taskBrokerHost =
-			workers > 0
-				? `${projectName}-n8n-worker-1`
-				: mains > 1
-					? `${projectName}-n8n-main-1`
-					: `${projectName}-n8n`;
+		const { workers, projectName } = ctx;
+		const taskBrokerHost = workers > 0 ? `${projectName}-n8n-worker-1` : `${projectName}-n8n`;
 		return { taskBrokerUri: `http://${taskBrokerHost}:5679` };
 	},
 
@@ -65,7 +65,8 @@ export async function startTaskRunnerContainer(
 				N8N_RUNNERS_MAX_CONCURRENCY: '5',
 				N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '0', // Disabled in tests to prevent cold-start delays
 			})
-			.withWaitStrategy(Wait.forListeningPorts())
+			// Distroless runner images have no shell, so Wait.forListeningPorts() cannot exec its internal port check.
+			.withWaitStrategy(Wait.forHttp('/healthz', 5680).forStatusCode(200))
 			.withLabels({
 				'com.docker.compose.project': projectName,
 				'com.docker.compose.service': serviceName,

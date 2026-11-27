@@ -26,6 +26,7 @@
  */
 
 import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from './agents';
+import type { ToolCallSimulation } from './schemas/agent-safe-testing.schema';
 
 export interface ToolSuspendedPayload {
 	toolCallId: string;
@@ -141,6 +142,8 @@ export type AgentSseEvent =
 			output: unknown;
 			isError?: boolean;
 			canceled?: boolean;
+			/** How the call ran. Set only in a test run (safe testing). */
+			simulation?: ToolCallSimulation;
 	  }
 	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
 	| {
@@ -171,6 +174,16 @@ export type AgentSseEvent =
 			 * its position.
 			 */
 			key?: string;
+			payload: unknown;
+	  }
+	| {
+			/**
+			 * A short-lived event from a system-agent provider during a turn, such
+			 * as a live preview. The runtime does not record it, so history does not
+			 * return it. A client that does not know the name ignores it.
+			 */
+			type: 'transient-host-event';
+			name: string;
 			payload: unknown;
 	  }
 	| {

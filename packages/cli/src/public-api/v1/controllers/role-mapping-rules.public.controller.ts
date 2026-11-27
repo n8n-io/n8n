@@ -104,7 +104,7 @@ export class RoleMappingRulesPublicController {
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
 
-		const rule = await this.roleMappingRuleService.create(body, req.user);
+		const rule = await this.roleMappingRuleService.create(body, req.user, req.ctx);
 
 		return toRoleMappingRulePublicDto(rule);
 	}
@@ -126,12 +126,15 @@ export class RoleMappingRulesPublicController {
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
 
-		const rule = await this.roleMappingRuleService.move({
-			id: roleMappingRuleId,
-			targetIndex: body.targetIndex,
-			userId: req.user.id,
-			userEmail: isPerson(req.user) ? req.user.email : undefined,
-		});
+		const rule = await this.roleMappingRuleService.move(
+			{
+				id: roleMappingRuleId,
+				targetIndex: body.targetIndex,
+				userId: req.user.id,
+				userEmail: isPerson(req.user) ? req.user.email : undefined,
+			},
+			req.ctx,
+		);
 
 		return toRoleMappingRulePublicDto(rule);
 	}
@@ -153,12 +156,15 @@ export class RoleMappingRulesPublicController {
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
 
-		const rule = await this.roleMappingRuleService.patch({
-			id: roleMappingRuleId,
-			dto: body,
-			userId: req.user.id,
-			userEmail: isPerson(req.user) ? req.user.email : undefined,
-		});
+		const rule = await this.roleMappingRuleService.patch(
+			{
+				id: roleMappingRuleId,
+				dto: body,
+				userId: req.user.id,
+				userEmail: isPerson(req.user) ? req.user.email : undefined,
+			},
+			req.ctx,
+		);
 
 		return toRoleMappingRulePublicDto(rule);
 	}
@@ -179,11 +185,14 @@ export class RoleMappingRulesPublicController {
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
 
-		const rule = await this.roleMappingRuleService.delete({
-			id: roleMappingRuleId,
-			userId: req.user.id,
-			userEmail: isPerson(req.user) ? req.user.email : undefined,
-		});
+		const rule = await this.roleMappingRuleService.delete(
+			{
+				id: roleMappingRuleId,
+				userId: req.user.id,
+				userEmail: isPerson(req.user) ? req.user.email : undefined,
+			},
+			req.ctx,
+		);
 
 		return toRoleMappingRulePublicDto(rule);
 	}

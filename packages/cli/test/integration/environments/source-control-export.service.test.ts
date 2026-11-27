@@ -26,6 +26,7 @@ import { SourceControlExportService } from '@/modules/source-control.ee/source-c
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
 
 import { createCredentials } from '../shared/db/credentials';
+import { createFolder } from '../shared/db/folders';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import { createUser } from '../shared/db/users';
 
@@ -103,11 +104,24 @@ describe('SourceControlExportService Integration', () => {
 			'CredentialsEntity',
 			'SharedWorkflow',
 			'WorkflowEntity',
+			'Folder',
 			'WorkflowTagMapping',
 			'TagEntity',
 		]);
 		// Reset mocks
 		vi.clearAllMocks();
+	});
+
+	it('exports workflow folders without Agent folders', async () => {
+		const workflowFolder = await createFolder(teamProject);
+		const agentFolder = await createFolder(teamProject, { resourceType: 'agent' });
+		const context = await sourceControlContextFactory.createContext(testPerson);
+
+		await exportService.exportFoldersToWorkFolder(context);
+
+		expect(mockFsWriteFile).toHaveBeenCalledTimes(1);
+		expect(mockFsWriteFile.mock.calls[0][1]).toContain(workflowFolder.id);
+		expect(mockFsWriteFile.mock.calls[0][1]).not.toContain(agentFolder.id);
 	});
 
 	describe('exportCredentialsToWorkFolder', () => {
@@ -152,8 +166,6 @@ describe('SourceControlExportService Integration', () => {
 			const result = await exportService.exportCredentialsToWorkFolder(candidates);
 
 			// Assert
-			expect(result.count).toBe(1);
-			expect(result.files).toHaveLength(1);
 			expect(result.missingIds).toEqual([]);
 
 			// Verify file write was called with correct path and content
@@ -212,8 +224,6 @@ describe('SourceControlExportService Integration', () => {
 			const result = await exportService.exportCredentialsToWorkFolder(candidates);
 
 			// Assert
-			expect(result.count).toBe(1);
-			expect(result.files).toHaveLength(1);
 			expect(result.missingIds).toEqual([]);
 
 			// Verify file write was called
@@ -260,8 +270,6 @@ describe('SourceControlExportService Integration', () => {
 			const result = await exportService.exportCredentialsToWorkFolder(candidates);
 
 			// Assert
-			expect(result.count).toBe(0);
-			expect(result.files).toHaveLength(0);
 			expect(result.missingIds).toEqual([nonExistentCredentialId, 'another-missing-id']);
 
 			// Verify no file writes were attempted
@@ -287,8 +295,6 @@ describe('SourceControlExportService Integration', () => {
 			const result = await exportService.exportCredentialsToWorkFolder(candidates);
 
 			// Assert
-			expect(result.count).toBe(1);
-			expect(result.files).toHaveLength(1);
 			expect(result.missingIds).toEqual([nonExistentId]);
 
 			// Verify only one file write was attempted (for the existing credential)
@@ -324,10 +330,7 @@ describe('SourceControlExportService Integration', () => {
 			const candidates = [{ id: savedCredential.id }] as SourceControlledFile[];
 
 			// Act & Assert - This should not throw an error accessing pr.role.slug
-			const result = await exportService.exportCredentialsToWorkFolder(candidates);
-
-			expect(result.count).toBe(1);
-			expect(result.files).toHaveLength(1);
+			await exportService.exportCredentialsToWorkFolder(candidates);
 
 			// Verify file write was called
 			expect(mockFsWriteFile).toHaveBeenCalledTimes(1);
@@ -368,11 +371,9 @@ describe('SourceControlExportService Integration', () => {
 			const candidates = [{ id: credential.id }] as SourceControlledFile[];
 
 			// Act
-			const result = await exportService.exportCredentialsToWorkFolder(candidates);
+			await exportService.exportCredentialsToWorkFolder(candidates);
 
 			// Assert
-			expect(result.count).toBe(1);
-
 			// Verify file write was called
 			expect(mockFsWriteFile).toHaveBeenCalledTimes(1);
 
@@ -417,11 +418,9 @@ describe('SourceControlExportService Integration', () => {
 			const candidates = [{ id: credential.id }] as SourceControlledFile[];
 
 			// Act
-			const result = await exportService.exportCredentialsToWorkFolder(candidates);
+			await exportService.exportCredentialsToWorkFolder(candidates);
 
 			// Assert
-			expect(result.count).toBe(1);
-
 			// Verify file write was called
 			expect(mockFsWriteFile).toHaveBeenCalledTimes(1);
 
@@ -465,12 +464,9 @@ describe('SourceControlExportService Integration', () => {
 			const candidates = [{ id: credential.id }] as SourceControlledFile[];
 
 			// Act
-			const result = await exportService.exportCredentialsToWorkFolder(candidates);
+			await exportService.exportCredentialsToWorkFolder(candidates);
 
 			// Assert
-			expect(result.count).toBe(1);
-			expect(result.files).toHaveLength(1);
-
 			// Verify file write was called
 			expect(mockFsWriteFile).toHaveBeenCalledTimes(1);
 
@@ -512,10 +508,9 @@ describe('SourceControlExportService Integration', () => {
 			const candidates = [{ id: credential.id }] as SourceControlledFile[];
 
 			// Act
-			const result = await exportService.exportCredentialsToWorkFolder(candidates);
+			await exportService.exportCredentialsToWorkFolder(candidates);
 
 			// Assert
-			expect(result.count).toBe(1);
 			expect(mockFsWriteFile).toHaveBeenCalledTimes(1);
 
 			const exportedCredential = getWrittenCredentialData(credential.id);
@@ -577,12 +572,11 @@ describe('SourceControlExportService Integration', () => {
 				assignTagToWorkflow(tag2, workflow3),
 			]);
 
-			const result = await exportTags();
+			await exportTags();
 
-			expect(result.count).toBe(2);
-			expect(result.files).toHaveLength(1);
-
+			expect(mockFsWriteFile).toHaveBeenCalledTimes(1);
 			const { tags, mappings } = getWrittenTagsData();
+			expect(tags).toHaveLength(2);
 			expect(tags).toEqual(
 				expect.arrayContaining([
 					{ id: 'tag1', name: 'Tag 1' },
@@ -600,10 +594,9 @@ describe('SourceControlExportService Integration', () => {
 		});
 
 		it('should export empty tags file when no tags exist', async () => {
-			const result = await exportTags();
+			await exportTags();
 
-			expect(result.count).toBe(0);
-			expect(result.files).toHaveLength(1);
+			expect(mockFsWriteFile).toHaveBeenCalledTimes(1);
 			expect(mockFsWriteFile).toHaveBeenCalledWith(
 				tagsFilePath(),
 				JSON.stringify({ tags: [], mappings: [] }, null, 2),
@@ -616,9 +609,7 @@ describe('SourceControlExportService Integration', () => {
 				createTag({ id: 'tag2', name: 'Tag 2' }),
 			]);
 
-			const result = await exportTags();
-
-			expect(result.count).toBe(2);
+			await exportTags();
 
 			const { tags, mappings } = getWrittenTagsData();
 			expect(tags).toHaveLength(2);
@@ -637,9 +628,7 @@ describe('SourceControlExportService Integration', () => {
 
 			await Promise.all(tags.map(async (tag) => await assignTagToWorkflow(tag, workflow)));
 
-			const result = await exportTags();
-
-			expect(result.count).toBe(3);
+			await exportTags();
 
 			const { tags: exportedTags, mappings } = getWrittenTagsData();
 			expect(exportedTags).toHaveLength(3);

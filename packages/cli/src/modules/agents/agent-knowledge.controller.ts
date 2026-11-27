@@ -1,13 +1,14 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Delete, Get, Param, Post, ProjectScope, Put, RestController } from '@n8n/decorators';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Response } from 'express';
 import multer from 'multer';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
-import type { UploadedKnowledgeFile } from '@/modules/knowledge/files/knowledge-file.service';
+import type { KnowledgeFileUploadResult } from '@/modules/knowledge/files/knowledge-file.service';
 import { KnowledgeUploadError } from '@/modules/knowledge/files/knowledge-upload.error';
 import {
 	KnowledgeUploadMiddleware,
@@ -15,7 +16,6 @@ import {
 	multerFailureReason,
 } from '@/modules/knowledge/files/knowledge-upload.middleware';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
-import { Telemetry } from '@/telemetry';
 
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
@@ -29,11 +29,11 @@ export class AgentKnowledgeController {
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	/** Knowledge base endpoints require the knowledge module and an enabled Agent sandbox. */
-	private assertKnowledgeBaseEnabled() {
+	private assertFileKnowledgeEnabled() {
 		if (!this.knowledgeAvailabilityService.isFileKnowledgeEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
@@ -47,7 +47,7 @@ export class AgentKnowledgeController {
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 	) {
-		this.assertKnowledgeBaseEnabled();
+		this.assertFileKnowledgeEnabled();
 		return await this.agentKnowledgeService.listFiles(agentId, projectId);
 	}
 
@@ -66,7 +66,7 @@ export class AgentKnowledgeController {
 	) {
 		const files = req.files ?? [];
 		try {
-			this.assertKnowledgeBaseEnabled();
+			this.assertFileKnowledgeEnabled();
 			if (req.fileUploadError) {
 				const error = req.fileUploadError;
 				if (error instanceof multer.MulterError) {
@@ -104,7 +104,7 @@ export class AgentKnowledgeController {
 		@Param('agentId') agentId: string,
 		@Param('fileId') fileId: string,
 	) {
-		this.assertKnowledgeBaseEnabled();
+		this.assertFileKnowledgeEnabled();
 
 		const deleted = await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
 
@@ -121,11 +121,48 @@ export class AgentKnowledgeController {
 		return { success: true };
 	}
 
+	@Get('/:agentId/knowledge-collections')
+	@ProjectScope('agent:read')
+	async listCollections(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+	) {
+		return await this.agentKnowledgeService.listCollections(req.user, agentId, projectId);
+	}
+
+	@Put('/:agentId/knowledge-collections/:collectionId')
+	@ProjectScope('agent:update')
+	async addCollection(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+		@Param('collectionId') collectionId: string,
+	) {
+		await this.agentKnowledgeService.addCollection(req.user, agentId, projectId, collectionId);
+		return { success: true };
+	}
+
+	@Delete('/:agentId/knowledge-collections/:collectionId')
+	@ProjectScope('agent:update')
+	async removeCollection(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+		@Param('collectionId') collectionId: string,
+	) {
+		await this.agentKnowledgeService.removeCollection(req.user, agentId, projectId, collectionId);
+		return { success: true };
+	}
+
 	private trackUploadedFiles(
 		userId: string,
 		projectId: string,
 		agentId: string,
-		uploadedFiles: UploadedKnowledgeFile[],
+		uploadedFiles: KnowledgeFileUploadResult[],
 	) {
 		const files = uploadedFiles.map(({ file, contentHash }) => ({
 			...(contentHash === undefined ? {} : { content_hash: contentHash }),

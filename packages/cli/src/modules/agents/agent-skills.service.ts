@@ -22,6 +22,7 @@ import {
 	type SkillTelemetryMethod,
 	type SkillTelemetrySource,
 	withTrimmedName,
+	withUnsentSkillFiles,
 } from '@/modules/skills';
 
 import {
@@ -155,6 +156,9 @@ export class AgentSkillsService {
 		await this.skillAccess.assertCanCreate(context.user, {
 			projectId: availableTo === 'project' ? entity.projectId : null,
 		});
+		for (const body of bodies) {
+			await this.skillAccess.assertCanReadMentionedWorkflows(context.user, body);
+		}
 
 		const previous = await this.agentSkillRefs.readDraft(entity, {});
 		this.assertNoNameClashes(previous.skills, bodies);
@@ -244,13 +248,22 @@ export class AgentSkillsService {
 		// Skills ignore `allowedTools`.
 		const { allowedTools: _allowedTools, ...changes } = updates;
 		const updated: AgentSkill = { ...existing, ...changes };
+		// A model reads no binary content, so it cannot send a binary file back. The builder
+		// prompt also says to send Markdown only, so its files replace only the Markdown files.
+		if (context.modifiedBy !== 'user' && 'references' in updates) {
+			updated.references = withUnsentSkillFiles(
+				existing.references ?? [],
+				updates.references ?? [],
+				{ keepNonMarkdown: context.modifiedBy === 'builder' },
+			);
+		}
 		if (instructionEdits?.length) {
 			if (updates.instructions !== undefined) {
 				throw new UserError('Pass either instructions or instructionEdits, not both.');
 			}
 			updated.instructions = applySkillInstructionEdits(existing.instructions, instructionEdits);
 		}
-		if ('references' in updates && !updates.references?.length) delete updated.references;
+		if ('references' in updates && !updated.references?.length) delete updated.references;
 		this.validateSkill(updated);
 
 		const nextAvailability = await this.availabilityChange(skillId, availableTo);
@@ -298,6 +311,7 @@ export class AgentSkillsService {
 			}
 		}
 		await this.skillAccess.assertCanEdit(context.user, [skillId]);
+		await this.skillAccess.assertCanReadMentionedWorkflows(context.user, updated, existing);
 
 		if (pinned) markAgentDraftDirty(entity);
 		const saved = await this.transactionRunner.run({}, async (ctx) => {

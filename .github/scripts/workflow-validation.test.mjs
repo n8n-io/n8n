@@ -50,27 +50,19 @@ const resolveInputs = (workflow, callerInputs = {}) => {
 
 /**
  * Evaluates the subset of the GitHub Actions expression syntax that the step
- * conditions below use: the status functions, `&&`/`||`, and `==`/`!=` against
- * a string literal. Anything outside that subset throws, so a condition this
- * evaluator cannot model fails the test instead of passing silently.
+ * conditions below use: status functions, `&&`/`||`, unary `!`, parenthesized
+ * grouping, `inputs.*`, `env.*`, and `==`/`!=` against string literals.
+ * Anything outside that subset throws, so a condition this evaluator cannot
+ * model fails the test instead of passing silently.
  *
  * @param {string} condition - the raw value of a step's `if:` key
- * @param {{ inputs?: Record<string, unknown>, jobStatus?: 'success' | 'failure' | 'cancelled' }} context
+ * @param {{ inputs?: Record<string, unknown>, env?: Record<string, string>, jobStatus?: 'success' | 'failure' | 'cancelled' }} context
  * @returns {boolean} true when the step runs, false when the runner skips it
  */
-const evaluateStepCondition = (condition, { inputs = {}, jobStatus = 'success' } = {}) => {
-	const expression = String(condition)
-		.trim()
-		.replace(/^\$\{\{(.*)\}\}$/s, '$1')
-		.trim();
-	// The subset has no grouping, so only the zero-argument status calls may
-	// carry parentheses. Anything else would need precedence rules this lacks.
-	assert.doesNotMatch(
-		expression.replace(/\w+\(\)/g, ''),
-		/[()]/,
-		`step condition uses grouping this evaluator cannot model: "${expression}"`,
-	);
-
+const evaluateStepCondition = (
+	condition,
+	{ inputs = {}, env = {}, jobStatus = 'success' } = {},
+) => {
 	const value = (token) => {
 		const term = token.trim();
 		switch (term) {
@@ -99,22 +91,44 @@ const evaluateStepCondition = (condition, { inputs = {}, jobStatus = 'success' }
 			return inputs[input[1]];
 		}
 
+		const envVar = term.match(/^env\.([\w-]+)$/);
+		if (envVar) return env[envVar[1]] ?? '';
+
 		assert.fail(`unsupported term in step condition: "${term}"`);
 	};
 
 	const operand = (token) => {
-		const comparison = token.match(/^(.+?)(==|!=)(.+)$/s);
-		if (!comparison) return Boolean(value(token));
-
-		const [, left, operator, right] = comparison;
-		const equal = String(value(left)) === String(value(right));
-		return operator === '==' ? equal : !equal;
+		const trimmed = token.trim();
+		const comparison = trimmed.match(/^(.+?)(==|!=)(.+)$/s);
+		if (comparison) {
+			const [, left, operator, right] = comparison;
+			const equal = String(value(left)) === String(value(right));
+			return operator === '==' ? equal : !equal;
+		}
+		if (trimmed.startsWith('!')) return !operand(trimmed.slice(1));
+		return Boolean(value(trimmed));
 	};
 
-	// `&&` binds tighter than `||`, and the subset has no parentheses to nest.
-	return expression
-		.split('||')
-		.some((disjunct) => disjunct.split('&&').every((conjunct) => operand(conjunct)));
+	const evaluateFlat = (expr) =>
+		expr
+			.split('||')
+			.some((disjunct) => disjunct.split('&&').every((conjunct) => operand(conjunct)));
+
+	let expression = String(condition)
+		.trim()
+		.replace(/^\$\{\{(.*)\}\}$/s, '$1')
+		.trim();
+	while (/(?<!\w)\(([^()]+)\)/.test(expression)) {
+		expression = expression.replace(/(?<!\w)\(([^()]+)\)/, (_, inner) =>
+			String(evaluateFlat(inner)),
+		);
+	}
+	assert.doesNotMatch(
+		expression.replace(/\w+\(\)/g, ''),
+		/[()]/,
+		`step condition has unmatched parentheses: "${expression}"`,
+	);
+	return evaluateFlat(expression);
 };
 
 describe('evaluateStepCondition', () => {
@@ -135,9 +149,117 @@ describe('evaluateStepCondition', () => {
 		assert.equal(evaluateStepCondition("${{ inputs.key != 'abc' }}", { inputs }), false);
 	});
 
+	it('evaluates grouping, unary negation, and env variables', () => {
+		const inputs = { skip: true };
+		assert.equal(
+			evaluateStepCondition("${{ always() && (!inputs.skip || env.KEY == '') }}", {
+				inputs,
+				env: {},
+			}),
+			true,
+		);
+		assert.equal(
+			evaluateStepCondition("${{ always() && (!inputs.skip || env.KEY == '') }}", {
+				inputs,
+				env: { KEY: 'crnts_ci_abc' },
+			}),
+			false,
+		);
+	});
+
 	it('rejects a term it cannot model', () => {
 		assert.throws(() => evaluateStepCondition('github.event_name'), /unsupported term/);
 	});
+});
+
+describe('ownership workflow routing', () => {
+	const reviews = workflowFile('ci-owners-required-reviews.yml');
+	const dispatch = stepNamed(
+		reviews,
+		'dispatch-review',
+		'Evaluate reviews with the caller on master',
+	);
+
+	const runDispatch = (t, { owner = 'n8n-io', numbers = '123\n', failure = '' } = {}) => {
+		const directory = mkdtempSync(join(tmpdir(), 'ownership-dispatch-'));
+		t.after(() => rmSync(directory, { recursive: true, force: true }));
+		const log = join(directory, 'calls.jsonl');
+		writeFileSync(log, '');
+		writeFileSync(
+			join(directory, 'gh'),
+			`#!/usr/bin/env node
+const { appendFileSync } = require('node:fs');
+const args = process.argv.slice(2);
+appendFileSync(process.env.MOCK_LOG, JSON.stringify(args) + '\\n');
+if (args.includes(process.env.MOCK_FAILURE)) process.exit(1);
+if (args.includes('GET')) process.stdout.write(process.env.MOCK_NUMBERS);
+`,
+			{ mode: 0o755 },
+		);
+		execFileSync('bash', ['-c', dispatch.run], {
+			env: {
+				...process.env,
+				PATH: `${directory}:${process.env.PATH}`,
+				GH_TOKEN: 'test-token',
+				GITHUB_REPOSITORY: 'n8n-io/n8n',
+				RUN_HEAD_OWNER: owner,
+				RUN_HEAD_BRANCH: 'feature/"$(exit 1)',
+				MOCK_LOG: log,
+				MOCK_NUMBERS: numbers,
+				MOCK_FAILURE: failure,
+			},
+		});
+		return readFileSync(log, 'utf8').trim().split('\n').map(JSON.parse);
+	};
+
+	it('uses base-branch callers and keeps the external pins in sync', () => {
+		assert.ok(triggersOf(reviews).pull_request_target);
+		assert.equal(triggersOf(reviews).pull_request_review, undefined);
+		assert.deepEqual(triggersOf(reviews).workflow_run, {
+			workflows: ['Util: Notify PR Status'],
+			types: ['completed'],
+		});
+		assert.equal(
+			reviews.jobs['dispatch-review'].if,
+			"github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request_review'",
+		);
+		assert.equal(reviews.jobs['required-reviews'].if, "github.event_name != 'workflow_run'");
+		assert.match(reviews.jobs['required-reviews'].uses, /ownership-checks\.yml@[a-f0-9]{40}$/);
+		assert.equal(reviews.jobs['required-reviews'].with['ownership-comment'], true);
+		assert.ok(reviews.jobs['dispatch-review'].steps.every((step) => !step.uses));
+	});
+
+	for (const owner of ['n8n-io', 'contributor']) {
+		it(`dispatches each open PR from ${owner} on master`, (t) => {
+			const [lookup, ...calls] = runDispatch(t, { owner, numbers: '123\n456\n' });
+			assert.ok(lookup.includes('--paginate'));
+			assert.ok(lookup.includes('state=open'));
+			assert.ok(lookup.includes(`head=${owner}:feature/"$(exit 1)`));
+			assert.deepEqual(
+				calls,
+				['123', '456'].map((number) => [
+					'api',
+					'-X',
+					'POST',
+					'repos/n8n-io/n8n/actions/workflows/ci-owners-required-reviews.yml/dispatches',
+					'-f',
+					'ref=master',
+					'-f',
+					`inputs[pr_number]=${number}`,
+				]),
+			);
+		});
+	}
+
+	it('does not dispatch when no open PR matches', (t) => {
+		assert.equal(runDispatch(t, { numbers: '' }).length, 1);
+	});
+
+	for (const failure of ['GET', 'POST']) {
+		it(`fails when the ${failure} request fails`, (t) => {
+			assert.throws(() => runDispatch(t, { failure }));
+		});
+	}
 });
 
 describe('automated release PR CI bypass', () => {
@@ -376,132 +498,162 @@ describe('test-e2e-reusable.yml', () => {
 	const workflow = workflowFile('test-e2e-reusable.yml');
 	const shardUpload = stepNamed(workflow, 'test', 'Upload Shard Artifacts');
 	const a11yUpload = stepNamed(workflow, 'test', 'Upload Accessibility Report');
+	const cancelStep = stepNamed(workflow, 'test', 'Cancel Currents run if workflow is cancelled');
+	const revokeStep = stepNamed(workflow, 'test', 'Revoke Currents OIDC credential');
 
-	describe('currents-record-key input', () => {
-		it('is an optional string that defaults to an empty value', () => {
-			const { 'currents-record-key': recordKey } = triggersOf(workflow).workflow_call.inputs;
+	describe('skip-shard-upload-when-recording input', () => {
+		it('is an optional boolean that defaults to false', () => {
+			const { 'skip-shard-upload-when-recording': skipUpload } =
+				triggersOf(workflow).workflow_call.inputs;
 
-			assert.ok(recordKey, 'workflow does not declare a currents-record-key input');
-			assert.equal(recordKey.type, 'string');
-			assert.equal(recordKey.required ?? false, false);
-			assert.equal(recordKey.default, '');
+			assert.ok(skipUpload, 'workflow does not declare a skip-shard-upload-when-recording input');
+			assert.equal(skipUpload.type, 'boolean');
+			assert.equal(skipUpload.required ?? false, false);
+			assert.equal(skipUpload.default, false);
 		});
 	});
 
 	describe('shard artifact upload', () => {
-		it('runs when the caller passes no record key', () => {
+		it('runs by default even when Currents is recording', () => {
 			const inputs = resolveInputs(workflow);
 
-			for (const jobStatus of ['success', 'failure']) {
-				assert.equal(
-					evaluateStepCondition(shardUpload.if, { inputs, jobStatus }),
-					true,
-					`shard upload must run on a ${jobStatus} job when no record key is passed`,
-				);
+			for (const env of [{}, { CURRENTS_RECORD_KEY: 'crnts_ci_record-key' }]) {
+				for (const jobStatus of ['success', 'failure']) {
+					assert.equal(
+						evaluateStepCondition(shardUpload.if, { inputs, env, jobStatus }),
+						true,
+						`shard upload must run by default on a ${jobStatus} job`,
+					);
+				}
 			}
 		});
 
-		it('runs when the caller passes an empty record key', () => {
-			const inputs = resolveInputs(workflow, { 'currents-record-key': '' });
+		it('runs when skip-shard-upload-when-recording is true but CURRENTS_RECORD_KEY is empty', () => {
+			const inputs = resolveInputs(workflow, { 'skip-shard-upload-when-recording': true });
 
-			assert.equal(evaluateStepCondition(shardUpload.if, { inputs }), true);
+			for (const env of [{}, { CURRENTS_RECORD_KEY: '' }]) {
+				for (const jobStatus of ['success', 'failure']) {
+					assert.equal(
+						evaluateStepCondition(shardUpload.if, { inputs, env, jobStatus }),
+						true,
+						`shard upload must run on a ${jobStatus} job when not recording`,
+					);
+				}
+			}
 		});
 
-		it('is skipped when the caller passes a record key', () => {
-			const inputs = resolveInputs(workflow, { 'currents-record-key': 'record-key-value' });
+		it('is skipped when skip-shard-upload-when-recording is true and Currents is recording', () => {
+			const inputs = resolveInputs(workflow, { 'skip-shard-upload-when-recording': true });
+			const env = { CURRENTS_RECORD_KEY: 'crnts_ci_record-key' };
 
 			for (const jobStatus of ['success', 'failure']) {
 				assert.equal(
-					evaluateStepCondition(shardUpload.if, { inputs, jobStatus }),
+					evaluateStepCondition(shardUpload.if, { inputs, env, jobStatus }),
 					false,
-					`shard upload must be skipped on a ${jobStatus} job when a record key is passed`,
+					`shard upload must be skipped on a ${jobStatus} job when recording`,
 				);
 			}
 		});
 	});
 
 	describe('accessibility report upload', () => {
-		it('is not gated on the record key', () => {
-			assert.doesNotMatch(String(a11yUpload.if), /currents-record-key/);
+		it('is not gated on Currents recording', () => {
+			assert.doesNotMatch(
+				String(a11yUpload.if),
+				/skip-shard-upload-when-recording|CURRENTS_RECORD_KEY/,
+			);
 		});
 
-		it('runs on a failed job whether or not a record key is passed', () => {
-			for (const callerInputs of [{}, { 'currents-record-key': 'record-key-value' }]) {
+		it('runs on a failed job whether or not Currents is recording', () => {
+			for (const callerInputs of [{}, { 'skip-shard-upload-when-recording': true }]) {
 				const inputs = resolveInputs(workflow, callerInputs);
 
-				assert.equal(evaluateStepCondition(a11yUpload.if, { inputs, jobStatus: 'failure' }), true);
+				assert.equal(
+					evaluateStepCondition(a11yUpload.if, {
+						inputs,
+						env: { CURRENTS_RECORD_KEY: 'crnts_ci_record-key' },
+						jobStatus: 'failure',
+					}),
+					true,
+				);
 			}
+		});
+	});
+
+	describe('Currents cancellation and revocation', () => {
+		it('cancels using CURRENTS_RECORD_KEY before revoking the OIDC credential', () => {
+			const steps = workflow.jobs.test.steps;
+			assert.ok(steps.indexOf(cancelStep) < steps.indexOf(revokeStep));
+			assert.equal(
+				evaluateStepCondition(cancelStep.if, {
+					env: { CURRENTS_RECORD_KEY: 'crnts_ci_record-key' },
+					jobStatus: 'cancelled',
+				}),
+				true,
+			);
+			assert.equal(
+				evaluateStepCondition(cancelStep.if, { env: {}, jobStatus: 'cancelled' }),
+				false,
+			);
+			assert.equal(
+				evaluateStepCondition(cancelStep.if, {
+					env: { CURRENTS_RECORD_KEY: 'crnts_ci_record-key' },
+					jobStatus: 'success',
+				}),
+				false,
+			);
+			assert.equal(
+				evaluateStepCondition(revokeStep.if, {
+					env: { CURRENTS_RECORD_KEY: 'crnts_ci_record-key' },
+					jobStatus: 'cancelled',
+				}),
+				true,
+			);
+			assert.equal(evaluateStepCondition(revokeStep.if, { env: {}, jobStatus: 'success' }), false);
 		});
 	});
 });
 
-describe('trusted publishing setup workflows', () => {
-	const orchestrator = workflowFile('release-setup-trusted-publishing.yml');
-	const packageSetup = workflowFile('release-publish-new-package.yml');
+describe('unpublished package handling', () => {
+	const scheduledCheck = workflowFile('ci-detect-new-packages.yml');
 	const releasePublish = workflowFile('release-publish.yml');
 
-	it('exposes unpublished packages and processes them one at a time', () => {
-		assert.equal(
-			triggersOf(orchestrator).workflow_call.outputs.packages.value,
-			'${{ jobs.detect-new-packages.outputs.packages }}',
+	it('checks unpublished packages every two hours on Mondays and Tuesdays', () => {
+		const check = stepNamed(scheduledCheck, 'detect-new-packages', 'Check unpublished packages');
+		const notify = stepNamed(
+			scheduledCheck,
+			'detect-new-packages',
+			'Notify Developer Platform alerts channel',
 		);
-		assert.equal(
-			orchestrator.jobs['detect-new-packages'].outputs.packages,
-			"${{ steps.detect.outputs.packages-json || '[]' }}",
-		);
-		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['max-parallel'], 1);
-		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['fail-fast'], false);
-		assert.equal(
-			orchestrator.jobs['setup-trusted-publishing'].strategy.matrix.package,
-			'${{ fromJSON(needs.detect-new-packages.outputs.packages) }}',
-		);
-		assert.equal(
-			orchestrator.jobs['setup-trusted-publishing'].uses,
-			'./.github/workflows/release-publish-new-package.yml',
-		);
+
+		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '15 */2 * * 1' }]);
+		assert.match(check.run, /detect-new-packages\.mjs --report-only --strict/);
+		assert.equal(notify.if, "steps.detect.outputs.packages != '[]'");
+		assert.match(notify.run, /--channel '#alerts-developer-platforms'/);
+		assert.ok(notify.run.includes(String.raw`\(.name)`));
+		assert.ok(notify.run.includes(String.raw`\(.path)`));
+		assert.match(notify.run, /\/actions\/workflows\/release-publish-new-package\.yml\|/);
+		assert.match(notify.run, /\/actions\/runs\/.*\|View the check>/);
 	});
 
-	it('publishes a throwaway version under the rc tag', () => {
-		const publish = stepNamed(packageSetup, 'publish-to-npm', 'Publish throwaway package version');
-		assert.match(publish.run, /npm pkg set version=0\.0\.0-tp/);
-		assert.match(publish.run, /pnpm publish --access public --tag rc --no-git-checks/);
+	it('uses a setup-only dist-tag for the initial publish', () => {
+		const setup = workflowFile('release-publish-new-package.yml');
+		const publish = stepNamed(setup, 'publish-to-npm', 'Publish throwaway package version');
+
+		assert.equal(publish.if, "steps.registry.outputs.exists == 'false'");
+		assert.equal(publish['working-directory'], '${{ inputs.package-path }}');
+		assert.match(publish.run, /pnpm publish --access public --tag tp-setup --no-git-checks/);
 	});
 
-	it('configures the release workflow as a trusted publisher', () => {
-		const trust = stepNamed(packageSetup, 'publish-to-npm', 'Configure trusted publishing');
-		assert.match(
-			trust.run,
-			/npm trust github "\$PACKAGE_NAME" --repo n8n-io\/n8n --file release-publish\.yml --env npm --allow-publish --yes/,
-		);
-	});
-
-	it('finishes setup as a no-op outside minor releases and blocks publishing when setup fails', () => {
-		const setup = releasePublish.jobs['setup-trusted-publishing'];
+	it('keeps unpublished package setup out of the release workflow', () => {
 		const publish = releasePublish.jobs['publish-to-npm'];
-		const detectJob = orchestrator.jobs['detect-new-packages'];
-		const setupInputs = resolveInputs(orchestrator, { setup_required: false });
-		const skip = stepNamed(orchestrator, 'detect-new-packages', 'Skip setup for non-minor release');
 
-		assert.equal(setup.uses, './.github/workflows/release-setup-trusted-publishing.yml');
-		assert.equal(setup.if, 'github.event.pull_request.merged == true');
+		assert.equal(releasePublish.jobs['setup-trusted-publishing'], undefined);
+		assert.deepEqual(publish.needs, ['determine-version-info']);
+		assert.equal(publish.if, 'github.event.pull_request.merged == true');
 		assert.equal(
-			setup.with.setup_required,
-			"${{ needs.determine-version-info.outputs.bump == 'minor' }}",
+			publish.steps.some((step) => step.run?.includes('detect-new-packages.mjs')),
+			false,
 		);
-		assert.equal(detectJob.outputs.packages, "${{ steps.detect.outputs.packages-json || '[]' }}");
-		assert.equal(evaluateStepCondition(skip.if, { inputs: setupInputs }), true);
-		for (const name of [
-			'Checkout',
-			'Setup Node.js',
-			'Find unpublished packages',
-			'Summarize unpublished packages',
-		]) {
-			const step = stepNamed(orchestrator, 'detect-new-packages', name);
-			assert.equal(evaluateStepCondition(step.if, { inputs: setupInputs }), false);
-		}
-		assert.ok(publish.needs.includes('setup-trusted-publishing'));
-		assert.match(publish.if, /always\(\)/);
-		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'failure'/);
-		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'cancelled'/);
 	});
 });

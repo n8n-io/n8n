@@ -2,7 +2,17 @@ import type { PromotionProviderAuthType, PromotionSshKeyType } from '@n8n/api-ty
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { Dirent } from 'node:fs';
-import { chmod, mkdir, mkdtemp, readdir, rename, rm, unlink, writeFile } from 'node:fs/promises';
+import {
+	chmod,
+	mkdir,
+	mkdtemp,
+	readdir,
+	rename,
+	rm,
+	stat,
+	unlink,
+	writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -22,6 +32,7 @@ import {
 	GIT_READ_CONCURRENCY,
 	PACKAGE_SUBFOLDER,
 	PROMOTION_KEY_COMMENT,
+	STALE_GIT_LOCK_AGE_MS,
 } from './constants';
 import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
 import { deleteTrash, isMissing, moveToTrash } from './promotion-working-directory.service';
@@ -60,10 +71,8 @@ type TreeEntry = { path: string; objectName: string; size: number };
 /** A full SHA-1 or SHA-256 object name, as `rev-parse` prints it. */
 const COMMIT_SHA = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
 
-/** Lock files that only a write takes. A fetch takes only `refs/remotes` locks, so those stay. */
-const WRITER_LOCK_FILES = ['index.lock', 'HEAD.lock'];
-/** Branch names can contain `/`, so their lock files can sit in subfolders. */
-const LOCAL_BRANCH_REFS = path.join('refs', 'heads');
+/** Lock files directly in `.git`. Every `*.lock` file under `.git/refs` is a lock file too. */
+const TOP_LEVEL_LOCK_FILES = ['index.lock', 'HEAD.lock', 'packed-refs.lock'];
 
 const BASE_GIT_OPTIONS = {
 	binary: 'git',
@@ -86,13 +95,49 @@ export class PromotionsGitService {
 		this.logger = this.logger.scoped('promotions');
 	}
 
-	private async lockCheckout<T>(repositoryFolder: string, operation: () => Promise<T>) {
+	/** Runs every Git command on a checkout. It removes stale lock files before `operation`. */
+	private async lockCheckout<T>(
+		repositoryFolder: string,
+		environmentId: string,
+		operation: () => Promise<T>,
+	) {
 		let lock = this.checkoutLocks.get(repositoryFolder);
 		if (!lock) {
 			lock = pLimit(1);
 			this.checkoutLocks.set(repositoryFolder, lock);
 		}
-		return await lock(operation);
+		return await lock(async () => {
+			await this.removeStaleLockFiles(repositoryFolder, environmentId);
+			return await operation();
+		});
+	}
+
+	/**
+	 * Removes the Git lock files that a stopped Git process left. Git cannot remove them after
+	 * a crash or a SIGKILL, and a leftover file makes every later command that needs it fail.
+	 *
+	 * The checkout lock stops all Git commands of this process on the checkout. But mains can
+	 * share one checkout on a shared volume, so a lock file can belong to a running command on
+	 * another main. Thus only lock files older than `STALE_GIT_LOCK_AGE_MS` are removed.
+	 *
+	 * A failure is only logged. When the lock file stays, Git reports it.
+	 */
+	private async removeStaleLockFiles(repositoryFolder: string, environmentId: string) {
+		const gitDir = path.join(repositoryFolder, '.git');
+		try {
+			for (const lockFile of await listLockFiles(gitDir)) {
+				if (!(await removeIfStale(path.join(gitDir, lockFile)))) continue;
+				this.logger.debug('Removed a leftover Git lock file from the promotion checkout', {
+					environmentId,
+					lockFile,
+				});
+			}
+		} catch (error) {
+			this.logger.warn('Failed to remove leftover Git lock files from the promotion checkout', {
+				environmentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	/** The provider's auth method decides which remote URL forms are accepted. */
@@ -185,7 +230,7 @@ export class PromotionsGitService {
 		let trashed: string | undefined;
 
 		try {
-			await this.lockCheckout(repositoryFolder, async () => {
+			await this.lockCheckout(repositoryFolder, environmentId, async () => {
 				await rm(nextRepositoryFolder, { recursive: true, force: true });
 				try {
 					// Clone from the root so repository-next sits beside the checkout.
@@ -294,6 +339,7 @@ export class PromotionsGitService {
 		try {
 			return await this.lockCheckout(
 				paths.repositoryFolder,
+				environmentId,
 				async () =>
 					await this.withGit(
 						{
@@ -374,7 +420,7 @@ export class PromotionsGitService {
 		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
 		try {
 			// The lock also covers SSH, which can write known_hosts in sshDir.
-			return await this.lockCheckout(paths.repositoryFolder, async () => {
+			return await this.lockCheckout(paths.repositoryFolder, environmentId, async () => {
 				const refs = await this.withGit(
 					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
 					async (git) => await git.listRemote(['--heads', 'origin', `refs/heads/${branchName}`]),
@@ -393,7 +439,7 @@ export class PromotionsGitService {
 	async prepareCheckoutForPromotion(operation: GitOperation): Promise<{ commitSha: string }> {
 		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
 		try {
-			return await this.lockCheckout(paths.repositoryFolder, async () => {
+			return await this.lockCheckout(paths.repositoryFolder, environmentId, async () => {
 				return await this.withGit(
 					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
 					async (git) => {
@@ -435,7 +481,7 @@ export class PromotionsGitService {
 		environmentId,
 	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'>): Promise<void> {
 		try {
-			await this.lockCheckout(paths.repositoryFolder, async () => {
+			await this.lockCheckout(paths.repositoryFolder, environmentId, async () => {
 				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
 				const trackingRef = `refs/remotes/origin/${branchName}`;
 				const tracked = (
@@ -451,38 +497,6 @@ export class PromotionsGitService {
 				await git.raw(['read-tree', '--empty']);
 				// The files of a removed commit are now untracked, so this also removes them.
 				await git.raw(['clean', '-ffdx', '--', PACKAGE_SUBFOLDER]);
-			});
-		} catch (error) {
-			throw this.mapGitError(error, { environmentId, branchName });
-		}
-	}
-
-	/**
-	 * Removes the Git lock files that only a write takes. Git cannot remove them after a SIGKILL,
-	 * and a leftover file makes every later `git add` and `reset --hard` fail. Call it only under
-	 * the environment lock, before the first write. Reads run without that lock, but a fetch takes
-	 * only `refs/remotes` locks, so this never removes the lock of a running read.
-	 */
-	async removeLeftoverLockFiles({
-		paths,
-		branchName,
-		environmentId,
-	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'>): Promise<void> {
-		const gitDir = path.join(paths.repositoryFolder, '.git');
-		try {
-			await this.lockCheckout(paths.repositoryFolder, async () => {
-				for (const lockFile of await listWriterLockFiles(gitDir)) {
-					try {
-						await unlink(path.join(gitDir, lockFile));
-					} catch (error) {
-						if (isMissing(error)) continue;
-						throw error;
-					}
-					this.logger.debug('Removed a leftover Git lock file from the promotion checkout', {
-						environmentId,
-						lockFile,
-					});
-				}
 			});
 		} catch (error) {
 			throw this.mapGitError(error, { environmentId, branchName });
@@ -597,7 +611,7 @@ export class PromotionsGitService {
 	async refreshCheckout(operation: GitOperation): Promise<{ commitSha: string }> {
 		const { paths, branchName, environmentId } = operation;
 		try {
-			return await this.lockCheckout(paths.repositoryFolder, async () => {
+			return await this.lockCheckout(paths.repositoryFolder, environmentId, async () => {
 				await this.fetchBranch(operation);
 				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
 				await git.raw(['reset', '--hard', `origin/${branchName}`]);
@@ -617,7 +631,7 @@ export class PromotionsGitService {
 	}> {
 		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
 		try {
-			return await this.lockCheckout(paths.repositoryFolder, async () => {
+			return await this.lockCheckout(paths.repositoryFolder, environmentId, async () => {
 				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
 				try {
 					await this.fetchBranch(operation);
@@ -651,7 +665,7 @@ export class PromotionsGitService {
 		pathspec: string;
 	}): Promise<boolean> {
 		try {
-			return await this.lockCheckout(paths.repositoryFolder, async () => {
+			return await this.lockCheckout(paths.repositoryFolder, environmentId, async () => {
 				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
 				const head = (
 					await git.raw(['for-each-ref', '--format=%(objectname)', `refs/heads/${branchName}`])
@@ -680,7 +694,7 @@ export class PromotionsGitService {
 		}
 		if (filePaths.length === 0) return new Set();
 		try {
-			return await this.lockCheckout(paths.repositoryFolder, async () => {
+			return await this.lockCheckout(paths.repositoryFolder, environmentId, async () => {
 				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
 				const output = await git.raw([
 					'ls-tree',
@@ -713,7 +727,7 @@ export class PromotionsGitService {
 		}
 		if (filePaths.length === 0) return new Map();
 		try {
-			return await this.lockCheckout(paths.repositoryFolder, async () => {
+			return await this.lockCheckout(paths.repositoryFolder, environmentId, async () => {
 				const git = simpleGit({
 					...BASE_GIT_OPTIONS,
 					baseDir: paths.repositoryFolder,
@@ -746,7 +760,7 @@ export class PromotionsGitService {
 			throw new UnexpectedError('The commit SHA is not a Git object name');
 		}
 		try {
-			return await this.lockCheckout(paths.repositoryFolder, async () => {
+			return await this.lockCheckout(paths.repositoryFolder, environmentId, async () => {
 				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
 				const tree = await git.raw(['ls-tree', '-r', '-l', '-z', commitSha, '--', `${directory}/`]);
 				return new Map(
@@ -787,7 +801,7 @@ export class PromotionsGitService {
 		if (baseline.targetBranchName) await this.validateBranchName(baseline.targetBranchName);
 		const missingCommits = new PromotionReviewCommitsMissingError();
 		try {
-			return await this.lockCheckout(paths.repositoryFolder, async () => {
+			return await this.lockCheckout(paths.repositoryFolder, environmentId, async () => {
 				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
 				const hasCommits = async () => {
 					for (const sha of commitShas) if (!(await hasCommit(git, sha))) return false;
@@ -859,6 +873,39 @@ export class PromotionsGitService {
 	}
 
 	/**
+	 * Fetches the branch when this checkout lacks the commit. The fetch changes only refs and
+	 * objects, so a read path can call this without the environment lock.
+	 */
+	async ensureCommit({ commitSha, ...operation }: GitOperation & { commitSha: string }) {
+		const { paths, branchName, environmentId } = operation;
+		if (!COMMIT_SHA.test(commitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		try {
+			await this.lockCheckout(
+				paths.repositoryFolder,
+				environmentId,
+				async () => await this.fetchMissingCommit(operation, commitSha),
+			);
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/** Run under the checkout lock. */
+	private async fetchMissingCommit(operation: GitOperation, commitSha: string) {
+		const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: operation.paths.repositoryFolder });
+		// Another main may have served the preview, so this checkout can lack its commit.
+		if (await hasCommit(git, commitSha)) return;
+		await this.fetchBranch(operation);
+		if (!(await hasCommit(git, commitSha))) {
+			throw new BadRequestError(
+				'The branch no longer has the commit of the preview. Load the preview again.',
+			);
+		}
+	}
+
+	/**
 	 * Reads every file under `directory` at the commit, keyed by its path inside `directory`.
 	 * One `cat-file --batch` reads all files: a `git show` per file takes seconds for a large package.
 	 * The limits are checked on the listed sizes, before any content is read.
@@ -878,17 +925,9 @@ export class PromotionsGitService {
 			throw new UnexpectedError('The commit SHA is not a Git object name');
 		}
 		try {
-			return await this.lockCheckout(paths.repositoryFolder, async () => {
+			return await this.lockCheckout(paths.repositoryFolder, environmentId, async () => {
 				const options = { ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder };
-				// Another main may have served the preview, so this checkout can lack its commit.
-				if (!(await hasCommit(simpleGit(options), commitSha))) {
-					await this.fetchBranch(operation);
-					if (!(await hasCommit(simpleGit(options), commitSha))) {
-						throw new BadRequestError(
-							'The branch no longer has the commit of the preview. Load the preview again.',
-						);
-					}
-				}
+				await this.fetchMissingCommit(operation, commitSha);
 				const tree = await simpleGit(options).raw([
 					'ls-tree',
 					'-r',
@@ -990,7 +1029,8 @@ export class PromotionsGitService {
 			return new ServiceUnavailableError('The Git operation timed out. Please try again.');
 		}
 
-		this.logger.warn('Git operation failed', ctx);
+		const lockFile = error instanceof GitError ? findExistingLockFile(error.message) : undefined;
+		this.logger.warn('Git operation failed', lockFile ? { ...ctx, lockFile } : ctx);
 		if (!isRemoteGitError(error)) return new PromotionLocalGitError(GIT_FAILURE_MESSAGE);
 		return new PromotionGitError(explainRemoteGitFailure(error.message) ?? GIT_FAILURE_MESSAGE);
 	}
@@ -1066,19 +1106,49 @@ function isRemoteGitError(error: unknown): error is GitError {
 	return false;
 }
 
-/** The writer lock files that can exist, as paths inside `gitDir`. */
-async function listWriterLockFiles(gitDir: string): Promise<string[]> {
-	const refEntries = await readdir(path.join(gitDir, LOCAL_BRANCH_REFS), {
+/**
+ * Git's own line for a lock file that already exists, for example
+ * `error: cannot lock ref '<ref>': Unable to create '<path>.lock': File exists.`
+ * Lines from the remote start with `remote:`, so they cannot match.
+ */
+const LOCK_FILE_EXISTS =
+	/^(?:error|fatal): (?:cannot lock ref '[^'\n]*': )?Unable to create '([^'\n]+\.lock)': File exists\.$/m;
+
+/** Returns only the path of the lock file. The rest of Git's output can hold secrets. */
+function findExistingLockFile(output: string): string | undefined {
+	return LOCK_FILE_EXISTS.exec(output)?.[1];
+}
+
+/**
+ * The lock files that can exist, as paths inside `gitDir`. Ref names can contain `/`, so a
+ * ref lock file can sit in a subfolder of `refs`. A missing `.git` gives only files that do
+ * not exist.
+ */
+async function listLockFiles(gitDir: string): Promise<string[]> {
+	const refEntries = await readdir(path.join(gitDir, 'refs'), {
 		recursive: true,
 		withFileTypes: true,
 	}).catch((error: unknown): Dirent[] => {
 		if (isMissing(error)) return [];
 		throw error;
 	});
-	const branchLockFiles = refEntries
+	const refLockFiles = refEntries
 		.filter((entry) => entry.isFile() && entry.name.endsWith('.lock'))
 		.map((entry) => path.relative(gitDir, path.join(entry.parentPath, entry.name)));
-	return [...WRITER_LOCK_FILES, ...branchLockFiles];
+	return [...TOP_LEVEL_LOCK_FILES, ...refLockFiles];
+}
+
+/** Returns whether it removed the file. A missing file is not an error. */
+async function removeIfStale(lockFile: string): Promise<boolean> {
+	try {
+		const { mtimeMs } = await stat(lockFile);
+		if (Date.now() - mtimeMs < STALE_GIT_LOCK_AGE_MS) return false;
+		await unlink(lockFile);
+		return true;
+	} catch (error) {
+		if (isMissing(error)) return false;
+		throw error;
+	}
 }
 
 async function hasCommit(git: SimpleGit, commitSha: string): Promise<boolean> {

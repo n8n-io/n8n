@@ -12,6 +12,7 @@ import { INSTANCE_AI_MODALS } from './modals';
 import {
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_THREAD_SESSION_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 	INSTANCE_AI_THREADS_VIEW,
@@ -85,6 +86,8 @@ const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadRouteView = async () => await import('./InstanceAiThreadRouteView.vue');
 const InstanceAiThreadsView = async () => await import('./InstanceAiThreadsView.vue');
+const AssistantAgentSessionView = async () =>
+	await import('./assistantAgent/AssistantAgentSessionView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
 
 const SelfHealingConfigView = async () =>
@@ -224,6 +227,12 @@ export const InstanceAiModule = defineFrontendModule({
 					component: InstanceAiThreadRouteView,
 					props: true,
 				},
+				{
+					name: INSTANCE_AI_THREAD_SESSION_VIEW,
+					path: ':threadId/session',
+					component: AssistantAgentSessionView,
+					props: true,
+				},
 			],
 		},
 		// Permanent redirects from the legacy `/instance-ai` path to `/assistant`.
@@ -308,6 +317,15 @@ export const InstanceAiModule = defineFrontendModule({
 			const { threadId, totalCreditsUsed } = perThread;
 			useAssistantAgentThreadsStore().setThreadCreditsUsed(threadId, totalCreditsUsed);
 			useInstanceAiStore().setThreadCreditsUsed(threadId, totalCreditsUsed);
+		},
+		// Title generation stores the title of a new thread while its first turn
+		// runs. The push lets the lists show it at once. The store ignores
+		// threads of other agents.
+		agentThreadTitleUpdated: async (event) => {
+			const { useAssistantAgentThreadsStore } = await import(
+				'./assistantAgent/assistantAgentThreads.store'
+			);
+			useAssistantAgentThreadsStore().applyGeneratedTitle(event.data);
 		},
 		instanceAiMcpToolCallFailed: async (event) => {
 			const { useInstanceAiMcpStore } = await import('./instanceAiMcp.store');

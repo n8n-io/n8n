@@ -16,6 +16,7 @@ import { createDataSource, createStores } from '../../database';
 import { generateId } from '../../database/generate-id';
 import { ExecutionNotFoundError, type WaitDeclaration } from '../../execution';
 import { MAX_SLOT_INDEX, type WorkflowGraph } from '../../graph';
+import { createInMemoryWorkQueues } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import type { ResumeTargetResponse } from '../api.types';
@@ -70,6 +71,7 @@ beforeAll(async () => {
 		admittance: new AllowAllAdmittance(),
 		identityVerifier: new SharedSecretIdentityVerifier(identitySecret),
 		responseSender: noopExecutionResponseSender,
+		queues: createInMemoryWorkQueues(),
 		resumeSecret,
 	}));
 }, 120_000);
@@ -92,6 +94,8 @@ async function seed(waits: Partial<Record<'wait-a' | 'wait-b', WaitDeclaration>>
 		workflow: { nodes: [] },
 		triggerOutputs: null,
 		parent: null,
+		errorSource: null,
+		resolveErrorWorkflowOnFailure: false,
 		callerContext: { hostMode: 'webhook' },
 		responseExpectation: { kind: 'none' },
 	});
@@ -411,6 +415,7 @@ describe('resume secret', () => {
 				admittance: new AllowAllAdmittance(),
 				identityVerifier: new SharedSecretIdentityVerifier(identitySecret),
 				responseSender: noopExecutionResponseSender,
+				queues: createInMemoryWorkQueues(),
 				resumeSecret,
 			});
 			const id = generateId();
@@ -435,6 +440,7 @@ describe('resume secret', () => {
 				admittance: new AllowAllAdmittance(),
 				identityVerifier: new SharedSecretIdentityVerifier(identitySecret),
 				responseSender: noopExecutionResponseSender,
+				queues: createInMemoryWorkQueues(),
 				resumeSecret: 'r'.repeat(31),
 			}),
 		).toThrow(/at least 32 characters/);

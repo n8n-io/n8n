@@ -1,17 +1,31 @@
-import { reactive, computed } from 'vue';
+import { reactive, computed, defineComponent, h } from 'vue';
 import {
+	runDataDisplayModeRegistry,
+	type RunDataDisplayModeContribution,
+	type RunDataDisplayModeProps,
+} from '@n8n/frontend-module-sdk';
+import { HtmlDisplayModeModule } from '@n8n/frontend-module-html-display-mode';
+import {
+	createMockNodeTypes,
 	createTestNode,
 	createTestWorkflow,
 	createTestWorkflowObject,
 	createTestWorkflowExecutionResponse,
 	defaultNodeDescriptions,
+	defaultNodeTypes,
+	mockLoadedNodeType,
 } from '@/__tests__/mocks';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from './RunData.vue';
 import { STORES } from '@n8n/stores';
-import { MODAL_CONFIRM, SET_NODE_TYPE } from '@/app/constants';
+import {
+	MODAL_CONFIRM,
+	OPEN_AI_CHAT_MODEL_NODE_TYPE,
+	SET_NODE_TYPE,
+	TRIMMED_RUN_DATA_FILL_DELAY,
+} from '@/app/constants';
 import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecutions.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -23,10 +37,13 @@ import { waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import {
 	createRunExecutionData,
+	HTML_NODE_TYPE,
 	jsonParse,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	type ExecutionStatus,
 	type INodeExecutionData,
+	type IConnectedNode,
+	type IRunData,
 	type IRunExecutionData,
 	type ITaskData,
 	type ITaskMetadata,
@@ -178,6 +195,220 @@ describe('RunData', () => {
 			expect(
 				getAllByTestId('run-data-schema-item').map((item) => jsonParse(item.textContent ?? '')),
 			).toEqual(runItems.map((item) => item.json));
+		});
+	});
+
+	describe('registered display modes', () => {
+		const FakeMapView = defineComponent(
+			(props: RunDataDisplayModeProps) => () =>
+				h(
+					'div',
+					{ 'data-test-id': 'fake-map-view' },
+					JSON.stringify({
+						names: props.data.map((item) => item.json.name),
+						node: props.node.name,
+						pane: props.pane,
+						runIndex: props.runIndex,
+						outputIndex: props.outputIndex,
+						search: props.search,
+						compact: props.compact,
+					}),
+				),
+			{ props: ['data', 'node', 'pane', 'runIndex', 'outputIndex', 'search', 'compact'] },
+		);
+
+		const map = (
+			overrides: Partial<RunDataDisplayModeContribution> = {},
+		): RunDataDisplayModeContribution => ({
+			id: 'map',
+			label: () => 'Map',
+			icon: 'globe',
+			component: FakeMapView,
+			canRender: () => true,
+			...overrides,
+		});
+
+		const items = Array.from({ length: 30 }, (_, index) => ({ json: { name: `Item ${index}` } }));
+		const allNames = items.map((item) => item.json.name);
+
+		const viewProps = (element: HTMLElement) =>
+			jsonParse<Record<string, unknown>>(element.textContent ?? '');
+
+		beforeEach(() => {
+			runDataDisplayModeRegistry.clear();
+		});
+
+		afterEach(() => {
+			runDataDisplayModeRegistry.clear();
+		});
+
+		it('renders the selected mode with the run data props, and keeps pinning', async () => {
+			runDataDisplayModeRegistry.register(map());
+
+			const { findByTestId, queryByTestId } = render({
+				defaultRunItems: items,
+				displayMode: 'map',
+			});
+
+			expect(viewProps(await findByTestId('fake-map-view'))).toEqual({
+				names: allNames,
+				node: 'Test Node',
+				pane: 'output',
+				runIndex: 0,
+				outputIndex: 0,
+				search: '',
+				compact: false,
+			});
+			expect(await findByTestId('ndv-pin-data')).toBeInTheDocument();
+			expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
+			expect(queryByTestId('ndv-search')).not.toBeInTheDocument();
+		});
+
+		it('offers the mode in the select only when canRender is true', async () => {
+			runDataDisplayModeRegistry.register(map());
+			runDataDisplayModeRegistry.register(map({ id: 'chart', canRender: () => false }));
+
+			const { findByTestId, queryByTestId } = render({
+				defaultRunItems: items,
+				displayMode: 'table',
+			});
+
+			expect(await findByTestId('radio-button-map')).toBeInTheDocument();
+			expect(queryByTestId('radio-button-chart')).not.toBeInTheDocument();
+		});
+
+		it('renders the pane default, and the panel and the select save nothing, when the mode cannot render the data', async () => {
+			runDataDisplayModeRegistry.register(map({ canRender: () => false }));
+
+			const { emitted, findByTestId, queryByTestId } = render({
+				defaultRunItems: items,
+				displayMode: 'map',
+				paneType: 'input',
+			});
+
+			expect(await findByTestId('run-data-schema-node')).toBeInTheDocument();
+			expect(queryByTestId('fake-map-view')).not.toBeInTheDocument();
+			expect(emitted('displayModeChange')).toBeUndefined();
+		});
+
+		it('passes the search text and the filtered items to a mode that supports search', async () => {
+			runDataDisplayModeRegistry.register(map({ supports: { search: true } }));
+
+			const { findByTestId } = render({ defaultRunItems: items, displayMode: 'map' });
+
+			await userEvent.type(await findByTestId('ndv-search'), 'Item 2');
+
+			await waitFor(async () =>
+				expect(viewProps(await findByTestId('fake-map-view'))).toMatchObject({
+					search: 'Item 2',
+					names: allNames.filter((name) => name.includes('Item 2')),
+				}),
+			);
+		});
+
+		it('ignores search text from another mode in a mode without search support', async () => {
+			runDataDisplayModeRegistry.register(map());
+
+			const { emitted, findByTestId, queryByTestId, rerender } = render({
+				defaultRunItems: items,
+				displayMode: 'table',
+			});
+			await userEvent.type(await findByTestId('ndv-search'), 'no such item');
+			// The search input is debounced. Wait until RunData has the text before switching.
+			await waitFor(() => expect(emitted('search')).toContainEqual(['no such item']));
+
+			await rerender({ displayMode: 'map' });
+
+			expect(queryByTestId('ndv-search')).not.toBeInTheDocument();
+			expect(viewProps(await findByTestId('fake-map-view'))).toMatchObject({
+				search: '',
+				names: allNames,
+			});
+		});
+
+		it('shows a mode that sets autoSelect in the output pane without saving it', async () => {
+			runDataDisplayModeRegistry.register(map({ autoSelect: true }));
+
+			const { emitted, findByTestId } = render({ defaultRunItems: items, displayMode: 'table' });
+
+			expect(await findByTestId('fake-map-view')).toBeInTheDocument();
+			expect(ndvStore.output.shownDisplayMode).toBe('map');
+			expect(emitted('displayModeChange')).toBeUndefined();
+		});
+
+		it('saves and shows the mode that the user picks on a node with an automatic mode', async () => {
+			runDataDisplayModeRegistry.register(map({ autoSelect: true }));
+
+			const { emitted, findByTestId, queryByTestId } = render({
+				defaultRunItems: items,
+				displayMode: 'table',
+			});
+			await findByTestId('fake-map-view');
+
+			await userEvent.click(await findByTestId('radio-button-table'));
+
+			expect(emitted('displayModeChange')).toEqual([['table']]);
+			await waitFor(() => expect(queryByTestId('fake-map-view')).not.toBeInTheDocument());
+			expect(ndvStore.output.shownDisplayMode).toBe('table');
+		});
+
+		it('shows the automatic mode again when another node opens', async () => {
+			runDataDisplayModeRegistry.register(map({ autoSelect: true }));
+			const otherNode = { ...nodes[0], id: '2' };
+
+			const { findByTestId, queryByTestId, rerender } = render({
+				defaultRunItems: items,
+				displayMode: 'table',
+			});
+			await userEvent.click(await findByTestId('radio-button-table'));
+			await waitFor(() => expect(queryByTestId('fake-map-view')).not.toBeInTheDocument());
+
+			await rerender({ node: otherNode });
+
+			expect(await findByTestId('fake-map-view')).toBeInTheDocument();
+		});
+
+		it('shows a new automatic mode after the user picked a mode on this node', async () => {
+			const { findByTestId, rerender } = render({ defaultRunItems: items, displayMode: 'table' });
+			await userEvent.click(await findByTestId('radio-button-json'));
+			await rerender({ displayMode: 'json' });
+
+			runDataDisplayModeRegistry.register(map({ autoSelect: true }));
+
+			expect(await findByTestId('fake-map-view')).toBeInTheDocument();
+		});
+
+		it('offers, auto-selects and renders the HTML module for an HTML node', async () => {
+			HtmlDisplayModeModule.runDataDisplayModes?.forEach((mode) =>
+				runDataDisplayModeRegistry.register(mode),
+			);
+			const htmlNode = createTestNode({
+				name: 'Test Node',
+				type: HTML_NODE_TYPE,
+				parameters: { operation: 'generateHtmlTemplate' },
+			}) as INodeUi;
+			const htmlItems = Array.from({ length: 26 }, (_, index) => ({
+				json: { html: `<h1>Item ${index}</h1>` },
+			}));
+
+			const { emitted, findByTestId, container, queryByTestId } = render({
+				defaultRunItems: htmlItems,
+				workflowNodes: [{ ...htmlNode }],
+				node: htmlNode,
+				displayMode: 'table',
+			});
+
+			expect(await findByTestId('radio-button-html')).toHaveTextContent('HTML');
+			expect(emitted('displayModeChange')).toBeUndefined();
+
+			await waitFor(() =>
+				expect(container.querySelector('iframe.__html-display')).toHaveAttribute(
+					'srcdoc',
+					'<h1>Item 0</h1>',
+				),
+			);
+			expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
+			expect(queryByTestId('ndv-search')).toBeInTheDocument();
 		});
 	});
 
@@ -380,6 +611,18 @@ describe('RunData', () => {
 		expect(pinDataButton).not.toBeDisabled();
 	});
 
+	it('keeps the unpin link when the pin button is disabled', () => {
+		const { getByTestId } = render({
+			defaultRunItems: [],
+			displayMode: 'table',
+			pinnedData: [{ json: { name: 'Test' } }],
+			paneType: 'output',
+			disablePin: true,
+		});
+
+		expect(getByTestId('ndv-unpin-data')).toBeInTheDocument();
+	});
+
 	it('should render callout when data is pinned in output panel', async () => {
 		const { getByTestId } = render({
 			defaultRunItems: [],
@@ -433,18 +676,8 @@ describe('RunData', () => {
 		expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
 	});
 
-	it('should not render pagination on html tab', async () => {
-		const { queryByTestId } = render({
-			defaultRunItems: Array.from({ length: 26 }).map((_, i) => ({
-				json: { html: `<h1>Test ${i}</h1>` },
-			})),
-			displayMode: 'html',
-		});
-		expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
-	});
-
 	it('should render pagination with binary data on non-binary tab', async () => {
-		const { getByTestId } = render({
+		const { getByTestId, findByTestId } = render({
 			defaultRunItems: Array.from({ length: 26 }).map((_, i) => ({
 				json: {
 					data: {
@@ -462,7 +695,75 @@ describe('RunData', () => {
 			})),
 			displayMode: 'json',
 		});
+		await userEvent.click(await findByTestId('radio-button-json'));
 		expect(getByTestId('ndv-data-pagination')).toBeInTheDocument();
+	});
+
+	describe('automatic built-in display modes', () => {
+		const binaryItem = {
+			json: {},
+			binary: { data: { fileName: 'test.txt', mimeType: 'text/plain', data: '' } },
+		};
+
+		it('shows binary data without saving the binary mode', async () => {
+			const { emitted, findByTestId } = render({
+				defaultRunItems: [binaryItem],
+				displayMode: 'table',
+			});
+
+			expect(await findByTestId('ndv-binary-data_0')).toBeInTheDocument();
+			expect(ndvStore.output.shownDisplayMode).toBe('binary');
+			expect(emitted('displayModeChange')).toBeUndefined();
+		});
+
+		it('shows the pane default when the saved binary mode has no binary data', async () => {
+			const { emitted, findByTestId } = render({
+				defaultRunItems: [{ json: { id: 1 } }],
+				displayMode: 'binary',
+			});
+
+			expect(await findByTestId('radio-button-table')).toHaveAttribute('data-state', 'checked');
+			expect(ndvStore.output.shownDisplayMode).toBe('table');
+			expect(emitted('displayModeChange')).toBeUndefined();
+		});
+
+		it('shows the pane default when the saved rendered mode has no AI content', async () => {
+			const { emitted, findByTestId } = render({
+				defaultRunItems: [{ json: { id: 1 } }],
+				displayMode: 'ai',
+			});
+
+			expect(await findByTestId('radio-button-table')).toHaveAttribute('data-state', 'checked');
+			expect(ndvStore.output.shownDisplayMode).toBe('table');
+			expect(emitted('displayModeChange')).toBeUndefined();
+		});
+
+		it('shows AI content without saving the rendered mode', async () => {
+			const modelNode = {
+				...nodes[0],
+				type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+				typeVersion: 1,
+			} as INodeUi;
+
+			const { emitted, findByTestId } = render({
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						source: [null],
+						data: { ai_languageModel: [[{ json: { response: { messages: ['Hello'] } } }]] },
+					},
+				],
+				workflowNodes: [{ ...modelNode }],
+				node: modelNode,
+				displayMode: 'table',
+			});
+
+			expect(await findByTestId('radio-button-ai')).toHaveAttribute('data-state', 'checked');
+			expect(ndvStore.output.shownDisplayMode).toBe('ai');
+			expect(emitted('displayModeChange')).toBeUndefined();
+		});
 	});
 
 	it('should render sub-execution link in header', async () => {
@@ -1580,20 +1881,17 @@ describe('RunData', () => {
 	});
 
 	describe('trimmed execution data placeholder', () => {
+		const trimmedItems = [
+			{
+				json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+				pairedItem: { item: 0 },
+			},
+		];
 		const trimmedRun = {
 			startTime: Date.now(),
 			executionIndex: 0,
 			executionTime: 1,
-			data: {
-				main: [
-					[
-						{
-							json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
-							pairedItem: { item: 0 },
-						},
-					],
-				],
-			},
+			data: { main: [trimmedItems] },
 			source: [null],
 		} as unknown as ITaskData;
 
@@ -1625,7 +1923,7 @@ describe('RunData', () => {
 			expect(getByTestId('ndv-trimmed-corrupted-unpin')).toBeInTheDocument();
 		});
 
-		it('shows the recovery state without an unpin button when the trimmed marker is on a different node', () => {
+		it('shows the recovery state without an unpin button for trimmed data that is not pinned', () => {
 			const { getByTestId, queryByTestId } = render({
 				displayMode: 'json',
 				runs: [trimmedRun],
@@ -1635,6 +1933,192 @@ describe('RunData', () => {
 			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
 			expect(getByTestId('ndv-trimmed-corrupted')).toBeInTheDocument();
 			expect(queryByTestId('ndv-trimmed-corrupted-unpin')).not.toBeInTheDocument();
+		});
+
+		it('shows the data of the shown run while another node is trimmed', () => {
+			const { getByTestId, queryByTestId } = render({
+				displayMode: 'json',
+				defaultRunItems: [{ json: { value: 'live' } }],
+				otherNodeRuns: [trimmedRun],
+				executionStatus: 'running',
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(queryByTestId('ndv-trimmed-corrupted')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-items-count')).toHaveTextContent('1 item');
+		});
+
+		it('shows the loading state in the schema view while a displayed parent node is trimmed', () => {
+			const { getByTestId } = render({
+				displayMode: 'schema',
+				paneType: 'input',
+				defaultRunItems: [{ json: { value: 'live' } }],
+				otherNodeRuns: [trimmedRun],
+				executionStatus: 'running',
+				inputNodes: [
+					{ name: 'Test Node', indicies: [], depth: 1 },
+					{ name: 'Other Node', indicies: [], depth: 2 },
+				],
+			});
+
+			expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
+		it('shows the schema in the input panel when an older run of a parent is trimmed and its latest run has data', async () => {
+			const { queryByTestId, findByTestId } = render({
+				displayMode: 'schema',
+				paneType: 'input',
+				defaultRunItems: [{ json: { value: 'live' } }],
+				otherNodeRuns: [trimmedRun, { ...trimmedRun, data: { main: [[{ json: { value: 1 } }]] } }],
+				executionStatus: 'running',
+				inputNodes: [
+					{ name: 'Test Node', indicies: [], depth: 1 },
+					{ name: 'Other Node', indicies: [], depth: 2 },
+				],
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(await findByTestId('run-data-schema-node')).toBeInTheDocument();
+		});
+
+		it('shows the loading state in the input panel when the latest run of a parent is trimmed', () => {
+			const { getByTestId } = render({
+				displayMode: 'schema',
+				paneType: 'input',
+				defaultRunItems: [{ json: { value: 'live' } }],
+				otherNodeRuns: [{ ...trimmedRun, data: { main: [[{ json: { value: 1 } }]] } }, trimmedRun],
+				executionStatus: 'running',
+				inputNodes: [
+					{ name: 'Test Node', indicies: [], depth: 1 },
+					{ name: 'Other Node', indicies: [], depth: 2 },
+				],
+			});
+
+			expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
+		it('judges a parent with two outputs on the run its connected output shows', () => {
+			// The latest run is trimmed on output 0 and has no items on output 1, so
+			// the schema shows the older run for output 1.
+			const latestRun = {
+				...trimmedRun,
+				data: { main: [trimmedItems, []] },
+			};
+			const olderRun = {
+				...trimmedRun,
+				data: { main: [[{ json: { value: 0 } }], [{ json: { value: 1 } }]] },
+			};
+			const renderWithIndexes = (indicies: number[]) =>
+				render({
+					displayMode: 'schema',
+					paneType: 'input',
+					defaultRunItems: [{ json: { value: 'live' } }],
+					otherNodeRuns: [olderRun, latestRun],
+					executionStatus: 'running',
+					inputNodes: [
+						{ name: 'Test Node', indicies: [], depth: 1 },
+						{ name: 'Other Node', indicies, depth: 2 },
+					],
+				});
+
+			const connectedToOutput1 = renderWithIndexes([1]);
+			expect(connectedToOutput1.queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			connectedToOutput1.unmount();
+
+			const connectedToOutput0 = renderWithIndexes([0]);
+			expect(connectedToOutput0.getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
+		describe('fill from the execution', () => {
+			const V2_ID = '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b';
+			const fetchedItems = [{ json: { value: 'fetched' } }, { json: { value: 'fetched 2' } }];
+			const fetchedRun = {
+				startTime: Date.now(),
+				executionIndex: 0,
+				executionTime: 1,
+				data: { main: [fetchedItems] },
+				source: [null],
+			} as unknown as ITaskData;
+			const otherNode = createTestNode({
+				id: '2',
+				name: 'Other Node',
+				type: SET_NODE_TYPE,
+				position: [0, 0],
+				parameters: {},
+			});
+
+			beforeEach(() => {
+				vi.useFakeTimers();
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('fetches once after the delay and shows the items when mounted on a trimmed engine v2 run', async () => {
+				const { getAllByTestId, queryByTestId, getByTestId } = render({
+					displayMode: 'schema',
+					runs: [trimmedRun],
+					executionStatus: 'running',
+					activeExecutionId: V2_ID,
+					fetchedRunData: { 'Test Node': [fetchedRun] },
+				});
+
+				expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
+
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				await flushPromises();
+				expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledTimes(1);
+				expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledWith(V2_ID);
+
+				expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+				expect(getByTestId('ndv-items-count')).toHaveTextContent('2 items');
+				expect(
+					getAllByTestId('run-data-schema-item').map((item) => jsonParse(item.textContent ?? '')),
+				).toEqual(fetchedItems.map((item) => item.json));
+			});
+
+			it('restarts the delay and fetches once after a switch from one trimmed node to another', async () => {
+				const rendered = render({
+					displayMode: 'schema',
+					runs: [trimmedRun],
+					executionStatus: 'running',
+					activeExecutionId: V2_ID,
+					otherNodeRuns: [trimmedRun],
+					fetchedRunData: { 'Test Node': [fetchedRun], 'Other Node': [fetchedRun] },
+				});
+
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				await rendered.rerender({ node: otherNode });
+				expect(rendered.getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+
+				// The delay of the first node would end here.
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
+
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				await flushPromises();
+				expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledTimes(1);
+				expect(rendered.queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			});
+
+			it('does not fetch for a numeric execution ID', async () => {
+				const { getByTestId } = render({
+					displayMode: 'json',
+					runs: [trimmedRun],
+					executionStatus: 'running',
+					activeExecutionId: '123',
+					fetchedRunData: { 'Test Node': [fetchedRun] },
+				});
+
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY * 2);
+				await flushPromises();
+
+				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
+				expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+			});
 		});
 	});
 
@@ -1778,6 +2262,12 @@ describe('RunData', () => {
 		workflowExecutionProp,
 		nodeId,
 		executionNodes,
+		activeExecutionId,
+		otherNodeRuns,
+		fetchedRunData,
+		inputNodes,
+		node,
+		disablePin = false,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1798,6 +2288,16 @@ describe('RunData', () => {
 		nodeId?: string;
 		/** Nodes the execution recorded running. Omit for an execution with no snapshot. */
 		executionNodes?: INodeUi[];
+		/** Makes the execution the active one, with this id. Omit for a displayed execution. */
+		activeExecutionId?: string;
+		/** Runs of a second node, `Other Node`, in the same execution. */
+		otherNodeRuns?: ITaskData[];
+		/** Run data that `fetchExecutionDataById` resolves with. */
+		fetchedRunData?: IRunData;
+		/** The parent nodes that the input panel's schema view shows. */
+		inputNodes?: IConnectedNode[];
+		node?: INodeUi;
+		disablePin?: boolean;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1843,6 +2343,11 @@ describe('RunData', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		schemaPreviewStore = mockedStore(useSchemaPreviewStore);
 		workflowsStore.setWorkflowId(testWorkflowId);
+		workflowsStore.fetchExecutionDataById = vi
+			.fn()
+			.mockResolvedValue(
+				fetchedRunData ? { data: { resultData: { runData: fetchedRunData } } } : null,
+			);
 		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(testWorkflowId));
 
 		nodeTypesStore.setNodeTypes(
@@ -1861,21 +2366,31 @@ describe('RunData', () => {
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
-		useWorkflowExecutionStateStore(
+		const executionStateStore = useWorkflowExecutionStateStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
-		).setWorkflowExecutionData(
+		);
+		executionStateStore.setWorkflowExecutionData(
 			createTestWorkflowExecutionResponse({
+				...(activeExecutionId ? { id: activeExecutionId } : {}),
 				mode: 'trigger',
 				status: executionStatus ?? 'success',
 				...(executionNodes ? { workflowData: createTestWorkflow({ nodes: executionNodes }) } : {}),
 				data: createRunExecutionData({
 					resultData: {
-						runData: withRunData ? { 'Test Node': runs ?? [defaultRun] } : {},
+						runData: withRunData
+							? {
+									'Test Node': runs ?? [defaultRun],
+									...(otherNodeRuns ? { 'Other Node': otherNodeRuns } : {}),
+								}
+							: {},
 					},
 					...(redactionInfo ? { redactionInfo } : {}),
 				}),
 			}),
 		);
+		if (activeExecutionId) {
+			executionStateStore.setActiveExecutionId(activeExecutionId);
+		}
 
 		if (lastSuccessfulExecution) {
 			useWorkflowExecutionStateStore(
@@ -1894,6 +2409,10 @@ describe('RunData', () => {
 				workflowObject: createTestWorkflowObject({
 					id: workflowId,
 					nodes: workflowNodes,
+					nodeTypes: createMockNodeTypes({
+						...defaultNodeTypes,
+						[HTML_NODE_TYPE]: mockLoadedNodeType(HTML_NODE_TYPE),
+					}),
 				}),
 				displayMode,
 				...(workflowExecutionProp ? { workflowExecution: workflowExecutionProp } : {}),
@@ -1935,14 +2454,16 @@ describe('RunData', () => {
 			},
 		})({
 			props: {
-				node: createTestNode({
-					id: nodeId ?? '1',
-					name: 'Test Node',
-					type: SET_NODE_TYPE,
-					position: [0, 0],
-					parameters: {},
-				}),
-				nodes: [{ name: 'Test Node', indicies: [], depth: 1 }],
+				node:
+					node ??
+					createTestNode({
+						id: nodeId ?? '1',
+						name: 'Test Node',
+						type: SET_NODE_TYPE,
+						position: [0, 0],
+						parameters: {},
+					}),
+				nodes: inputNodes ?? [{ name: 'Test Node', indicies: [], depth: 1 }],
 				runIndex: 0,
 				paneType,
 				isExecuting: false,
@@ -1951,6 +2472,7 @@ describe('RunData', () => {
 				executingMessage: '',
 				noDataInBranchMessage: '',
 				overrideOutputs,
+				disablePin,
 			},
 			slots: {
 				'data-redacted': '<div data-test-id="data-redacted-slot">Data is redacted</div>',

@@ -13,6 +13,7 @@ import { ConflictError, UnexpectedError, UserError } from '@n8n/errors';
 import {
 	findIntroducedNameClashes,
 	SkillAccessService,
+	type SkillFileReadOptions,
 	type SkillMoveOptions,
 	type SkillRef,
 	SkillRuntimeService,
@@ -77,20 +78,26 @@ export class AgentSkillRefsService {
 	}
 
 	/** The refs of the agent draft and the skill bodies the draft runs. */
-	async readDraft(agent: Pick<Agent, 'id'>, ctx: OperationContext): Promise<AgentSkillsSnapshot> {
+	async readDraft(
+		agent: Pick<Agent, 'id'>,
+		ctx: OperationContext,
+		options?: SkillFileReadOptions,
+	): Promise<AgentSkillsSnapshot> {
 		const skillRefs = await this.refsForDraft(agent, ctx);
-		return { skillRefs, skills: await this.skillsForRefs(skillRefs, ctx) };
+		return { skillRefs, skills: await this.skillsForRefs(skillRefs, ctx, options) };
 	}
 
 	/** The refs of one published agent version and the pinned skill bodies. */
 	async readVersion(
 		version: Pick<AgentHistory, 'versionId'>,
 		ctx: OperationContext,
+		options?: SkillFileReadOptions,
 	): Promise<AgentSkillsSnapshot> {
 		const pins = await this.agentSkillRepository.findPins(version.versionId, ctx);
 		const versions = await this.skillRuntime.resolveVersions(
 			pins.map((pin) => pin.skillVersionId),
 			ctx,
+			...(options ? [options] : []),
 		);
 		// Keep pin order. Object key order would move numeric ids to the front.
 		const resolved = pins.flatMap((pin): Array<[string, AgentSkill]> => {
@@ -110,9 +117,14 @@ export class AgentSkillRefsService {
 	async skillsForRefs(
 		skillRefs: AgentSkillRefs,
 		ctx: OperationContext,
+		options?: SkillFileReadOptions,
 	): Promise<Record<string, AgentSkill>> {
 		if (!skillRefs?.length) return {};
-		return await this.skillRuntime.resolveForAgentDraft(toServiceRefs(skillRefs), ctx);
+		return await this.skillRuntime.resolveForAgentDraft(
+			toServiceRefs(skillRefs),
+			ctx,
+			...(options ? [options] : []),
+		);
 	}
 
 	async findOutdatedSkillIds(
@@ -382,6 +394,22 @@ export class AgentSkillRefsService {
 		);
 	}
 
+	async assertCanReadNewSkillMentions(
+		refs: AgentSkillRefs,
+		bodies: Record<string, AgentSkill>,
+		creator: User | null,
+	): Promise<void> {
+		if (!refs?.length || creator === null) return;
+		const found = await this.skillRuntime.findTargets(
+			refs.map((ref) => ref.id),
+			{},
+		);
+		for (const ref of refs) {
+			if (found.has(ref.id) || !Object.hasOwn(bodies, ref.id)) continue;
+			await this.skillAccess.assertCanReadMentionedWorkflows(creator, bodies[ref.id]);
+		}
+	}
+
 	/**
 	 * Create with a config (duplicate, import, eval seeding). A ref to a stored skill
 	 * stays a ref. A ref with a body but no stored skill gets a new skill in the agent's
@@ -412,6 +440,8 @@ export class AgentSkillRefsService {
 		const createdIds = new Map<string, string>();
 		if (creator !== null && toCreate.length > 0) {
 			await this.skillAccess.assertCanCreate(creator, target);
+			// Take existing skill locks before inline creates take the name lock.
+			await this.skillRuntime.lockForAttach([...found.keys()], ctx);
 			// A new name must also differ from the skills this draft keeps referring to.
 			const kept = await this.skillRuntime.resolveForAgentDraft(
 				[...found.keys()].map((id) => ({ id })),
@@ -578,6 +608,8 @@ export class AgentSkillRefsService {
 		if (newIds.length === 0 && repinned.length === 0) return kept;
 		// Shared lock until the attach commits, so `moveTrusted` cannot narrow a skill in between.
 		if (ctx.trx && newIds.length > 0) await this.skillRuntime.lockForAttach(newIds, ctx);
+		// A source move can finish while the attach waits for the lock.
+		const lockedTargets = ctx.trx ? await this.skillRuntime.findTargets(newIds, ctx) : found;
 
 		const keptExisting = kept.filter((ref) => existingIds.has(ref.id));
 		// The first ref of a new skill decides its pin, as `replaceDependencies` stores it.
@@ -591,8 +623,8 @@ export class AgentSkillRefsService {
 			ctx,
 		);
 		for (const id of newIds) {
-			const skill = found.get(id);
-			if (skill && !this.isAttachable(skill, agent)) {
+			const skill = lockedTargets.get(id);
+			if (!skill || !this.isAttachable(skill, agent)) {
 				throw new UserError(
 					`Skill "${nameOf({ id }) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project and instance skills.`,
 				);

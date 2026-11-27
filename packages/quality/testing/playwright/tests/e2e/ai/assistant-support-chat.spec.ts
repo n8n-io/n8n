@@ -1,5 +1,6 @@
 import {
 	simpleAssistantResponse,
+	aiEnabledRequirements,
 	aiEnabledWithCodeSnippetRequirements,
 	aiEnabledWithHttpWorkflowRequirements,
 } from '../../../config/ai-assistant-fixtures';
@@ -73,9 +74,13 @@ test.describe(
 
 			test('should not send workflow context if nothing changed', async ({
 				n8n,
+				internalUrl,
 				setupRequirements,
 			}) => {
-				await setupRequirements(aiEnabledWithHttpWorkflowRequirements);
+				await setupRequirements(aiEnabledRequirements);
+				// Import the workflow through the API so it starts clean and saved.
+				// This avoids UI-import autosave races between the first two messages.
+				await n8n.start.fromImportedWorkflow('Simple_workflow_with_http_node.json');
 
 				const chatRequests: ChatRequestBody[] = [];
 				await n8n.page.route('**/rest/ai/chat', async (route) => {
@@ -102,9 +107,12 @@ test.describe(
 				await n8n.aiAssistant.waitForStreamingComplete();
 
 				await n8n.canvas.openNode(HTTP_REQUEST_NODE_NAME);
-				await n8n.ndv.setParameterInputValue('url', 'https://example.com');
+				// Use the local health endpoint so execution does not depend on external network access.
+				await n8n.ndv.setParameterInputValue('url', `${internalUrl}/healthz`);
 				await n8n.ndv.close();
-				await n8n.canvas.clickExecuteWorkflowButton();
+				// Wait for the run to finish and render node results on the canvas so the next message includes execution context.
+				await n8n.executionsComposer.createExecutions(1);
+				await expect(n8n.canvas.getAllNodeSuccessIndicators()).toHaveCount(2);
 
 				await n8n.aiAssistant.sendMessage('What about now?', 'enter-key');
 				await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(3);

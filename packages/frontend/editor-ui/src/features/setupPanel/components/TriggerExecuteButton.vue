@@ -23,7 +23,7 @@ const onClick = async () => {
 </script>
 
 <template>
-	<N8nTooltip :disabled="!hasTooltip" placement="top">
+	<N8nTooltip as-child :disabled="!hasTooltip" placement="top">
 		<template #content>
 			<p v-for="(item, index) in tooltipItems" :key="index" :class="$style.tooltipItem">
 				{{ item }}
@@ -33,6 +33,7 @@ const onClick = async () => {
 			data-test-id="trigger-execute-button"
 			:label="label"
 			:disabled="disabled"
+			:focusable-when-disabled="hasTooltip"
 			:loading="loading"
 			:icon="icon"
 			size="small"

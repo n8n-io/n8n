@@ -64,6 +64,11 @@ export interface DisconnectDetails {
 	blockingExtensionIds: string[];
 }
 
+export interface PageChangeDetails {
+	type: 'opened' | 'closed';
+	pageId: string;
+}
+
 export interface Adapter {
 	onDisconnect?: (reason: ConnectionLostReason, details?: DisconnectDetails) => void;
 	/**
@@ -72,6 +77,11 @@ export interface Adapter {
 	 * disconnect details, so there a block is reported without naming the extension.
 	 */
 	onBlocked?: (details: DisconnectDetails) => void;
+	/**
+	 * A page opened or closed, for example a popup. It also fires when no tool call
+	 * runs, such as when a user clicks in a live view. Playwright adapter only.
+	 */
+	onPageChange?: (change: PageChangeDetails) => void;
 	launch(config: ConnectConfig): Promise<void>;
 	close(): Promise<void>;
 	// Tabs
@@ -128,9 +138,6 @@ export interface Adapter {
 	wait(pageId: string, options: WaitOptions): Promise<number>;
 	waitForCompletion<T>(pageId: string, action: () => Promise<T>): Promise<T>;
 	// State
-	getCookies(pageId: string, url?: string): Promise<Cookie[]>;
-	setCookies(pageId: string, cookies: Cookie[]): Promise<void>;
-	clearCookies(pageId: string): Promise<void>;
 	getStorage(pageId: string, kind: 'local' | 'session'): Promise<Record<string, string>>;
 	setStorage(
 		pageId: string,
@@ -140,6 +147,11 @@ export interface Adapter {
 	clearStorage(pageId: string, kind: 'local' | 'session'): Promise<void>;
 	// Sync helpers used by tool helpers
 	getPageUrl(pageId: string): string | undefined;
+	/**
+	 * The CDP target id of a tracked page, which a remote browser service uses to name
+	 * its tabs. `undefined` when the page is gone. Playwright adapter only.
+	 */
+	getTargetId?(pageId: string): Promise<string | undefined>;
 	// Credential capture
 	getElementValue(pageId: string, target: ElementTarget): Promise<string>;
 }
@@ -222,17 +234,6 @@ export interface NetworkEntry {
 	timestamp: number;
 }
 
-export interface Cookie {
-	name: string;
-	value: string;
-	domain?: string;
-	path?: string;
-	expires?: number;
-	httpOnly?: boolean;
-	secure?: boolean;
-	sameSite?: 'Strict' | 'Lax' | 'None';
-}
-
 // ---------------------------------------------------------------------------
 // Adapter option types
 // ---------------------------------------------------------------------------
@@ -264,7 +265,6 @@ export interface WaitOptions {
 	selector?: string;
 	url?: string;
 	loadState?: 'load' | 'domcontentloaded' | 'networkidle';
-	predicate?: string;
 	text?: string;
 	timeoutMs?: number;
 }

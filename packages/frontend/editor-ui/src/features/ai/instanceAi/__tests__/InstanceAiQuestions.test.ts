@@ -103,6 +103,37 @@ describe('InstanceAiQuestions', () => {
 		]);
 	});
 
+	it('submits the clicked option when the card unmounts before it advances', async () => {
+		vi.useFakeTimers();
+		const { emitted, getByText, unmount } = render([singleQuestion]);
+
+		await fireEvent.click(getByText('Production'));
+		unmount();
+
+		expect(emitted().submit).toEqual([
+			[[expect.objectContaining({ questionId: 'q-single', selectedOptions: ['Production'] })]],
+		]);
+	});
+
+	it('continues from the draft when the host replaces the card', async () => {
+		vi.useFakeTimers();
+		const props = { questions: [singleQuestion, textQuestion], draftKey: 'request-1' };
+		const first = renderComponent({ props });
+
+		await fireEvent.click(first.getByText('Production'));
+		first.unmount();
+		const second = renderComponent({ props });
+
+		expect(second.getByText(textQuestion.question)).toBeInTheDocument();
+		await fireEvent.click(second.getByTestId('instance-ai-questions-next'));
+		expect(second.emitted().submit[0]).toEqual([
+			[
+				expect.objectContaining({ questionId: 'q-single', selectedOptions: ['Production'] }),
+				expect.objectContaining({ questionId: 'q-text', skipped: true }),
+			],
+		]);
+	});
+
 	it('submits the clicked option on the final single-select question', async () => {
 		vi.useFakeTimers();
 		const { emitted, getByText } = render([singleQuestion]);

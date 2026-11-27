@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
+import { isModalPrefetchRunning } from '@/app/composables/usePrefetchModals';
+
+vi.mock('@/app/composables/usePrefetchModals', () => ({
+	isModalPrefetchRunning: vi.fn(() => false),
+}));
 
 const STORAGE_KEY = 'n8n:vite-preload-reloaded-at';
 
@@ -21,6 +26,7 @@ describe('registerVitePreloadErrorHandler', () => {
 
 		originalLocation = window.location;
 		reloadSpy = vi.fn();
+		vi.mocked(isModalPrefetchRunning).mockReturnValue(false);
 		Object.defineProperty(window, 'location', {
 			configurable: true,
 			value: { ...originalLocation, reload: reloadSpy },
@@ -62,5 +68,15 @@ describe('registerVitePreloadErrorHandler', () => {
 		dispatchPreloadError();
 
 		expect(reloadSpy).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not reload when a modal prefetch fails', () => {
+		vi.mocked(isModalPrefetchRunning).mockReturnValue(true);
+
+		const event = dispatchPreloadError();
+
+		expect(reloadSpy).not.toHaveBeenCalled();
+		expect(event.defaultPrevented).toBe(false);
+		expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
 	});
 });

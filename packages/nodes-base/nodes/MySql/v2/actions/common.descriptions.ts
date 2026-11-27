@@ -48,6 +48,9 @@ export const tableRLC: INodeProperties = {
 	default: { mode: 'list', value: '' },
 	required: true,
 	description: 'The table you want to work on',
+	typeOptions: {
+		loadOptionsDependsOn: ['database.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',
@@ -68,6 +71,33 @@ export const tableRLC: INodeProperties = {
 	],
 };
 
+export const databaseRLC: INodeProperties = {
+	displayName: 'Database',
+	name: 'database',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	description:
+		'The database that contains the table. Leave empty to use the database of the credential.',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Leave empty to use the credential database',
+			typeOptions: {
+				searchListMethod: 'searchDatabases',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'Name',
+			name: 'name',
+			type: 'string',
+			placeholder: 'database_name',
+		},
+	],
+};
+
 export const optionsCollection: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
@@ -77,10 +107,11 @@ export const optionsCollection: INodeProperties = {
 	options: [
 		{
 			displayName: 'Connection Timeout',
-			name: 'connectionTimeoutMillis',
+			name: 'connectionTimeout',
 			type: 'number',
 			default: 30,
-			description: 'Number of milliseconds reserved for connecting to the database',
+			description:
+				'Number of seconds reserved for connecting to the database. Overrides the Connect Timeout of the credential.',
 			typeOptions: {
 				minValue: 1,
 			},
@@ -145,7 +176,7 @@ export const optionsCollection: INodeProperties = {
 				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getColumnsMultiOptions',
-				loadOptionsDependsOn: ['table.value'],
+				loadOptionsDependsOn: ['database.value', 'table.value'],
 			},
 			default: [],
 			displayOptions: {
@@ -286,7 +317,7 @@ export const selectRowsFixedCollection: INodeProperties = {
 					placeholder: 'e.g. ID',
 					typeOptions: {
 						loadOptionsMethod: 'getColumns',
-						loadOptionsDependsOn: ['schema.value', 'table.value'],
+						loadOptionsDependsOn: ['database.value', 'table.value'],
 					},
 				},
 				{
@@ -340,7 +371,7 @@ export const sortFixedCollection: INodeProperties = {
 					default: '',
 					typeOptions: {
 						loadOptionsMethod: 'getColumns',
-						loadOptionsDependsOn: ['schema.value', 'table.value'],
+						loadOptionsDependsOn: ['database.value', 'table.value'],
 					},
 				},
 				{
@@ -358,6 +389,52 @@ export const sortFixedCollection: INodeProperties = {
 						},
 					],
 					default: 'ASC',
+				},
+			],
+		},
+	],
+};
+
+export const startAfterFixedCollection: INodeProperties = {
+	displayName: 'Start After',
+	name: 'startAfter',
+	type: 'fixedCollection',
+	placeholder: 'Add Start After',
+	default: {},
+	description:
+		'Get the table one page at a time. Each page has the rows after the last value of the page before. Limit sets the page size. To get the biggest values first, sort this column DESC.',
+	displayOptions: {
+		show: {
+			returnAll: [false],
+		},
+	},
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+					displayName: 'Column',
+					name: 'column',
+					type: 'options',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+					description:
+						'A unique column that is never null, for example the primary key. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>.',
+					default: '',
+					typeOptions: {
+						loadOptionsMethod: 'getColumns',
+						loadOptionsDependsOn: ['database.value', 'table.value'],
+					},
+				},
+				{
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					default: '',
+					description:
+						'The value of the column in the last row of the page before. Leave empty to get the first page.',
+					hint: 'The node runs once for each input item. In a loop, give it only the last row of the page before, for example with a Limit node that keeps the last item, and use {{ $json.id }}.',
 				},
 			],
 		},

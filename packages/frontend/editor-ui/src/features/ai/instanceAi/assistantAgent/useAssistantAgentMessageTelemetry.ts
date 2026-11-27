@@ -9,11 +9,21 @@ import {
 	type AssistantMentionCounts,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 
+import { messageApprovalMode } from '../instanceAi.threadRuntime';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import {
 	resolveAuthorship,
 	type InstanceAiMessageAuthorship,
 	type InstanceAiPrefillPayload,
 } from '../prefills';
+
+/** The context of the user message that starts a run, as `User sent builder message` reports it. */
+export interface AssistantAgentSentMessageContext {
+	isFirstMessage: boolean;
+	mentionCounts: AssistantMentionCounts;
+	attachmentCount: number;
+	selectedElementCount: number;
+}
 
 /** A text that the host sends for the user. Its authorship is final. */
 export interface AssistantAgentHostSend {
@@ -37,10 +47,14 @@ export interface AssistantAgentSendingMessage {
 export function useAssistantAgentMessageTelemetry(threadId: string) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
+	const settingsStore = useInstanceAiSettingsStore();
 	let prefill: InstanceAiPrefillPayload | null = null;
 	let hostSend: AssistantAgentHostSend | null = null;
 
-	function takeAuthorship(text: string): Omit<AssistantAgentHostSend, 'text'> {
+	function takeAuthorship(
+		text: string,
+		composerMentionCounts: AssistantMentionCounts | undefined,
+	): Omit<AssistantAgentHostSend, 'text'> {
 		// Only the next send can be the host send. A refused host send leaves its text
 		// as the user's draft, so that next send is still the host text when it matches.
 		const host = hostSend;
@@ -48,15 +62,30 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 		if (host?.text.trim() === text) {
 			return { authorship: host.authorship, mentionCounts: host.mentionCounts };
 		}
-		return { authorship: resolveAuthorship(text, prefill) };
+		return { authorship: resolveAuthorship(text, prefill), mentionCounts: composerMentionCounts };
 	}
 
-	function trackSend({ text, files, clientContext, isFirstMessage }: AssistantAgentSendingMessage) {
-		const { authorship, mentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS } = takeAuthorship(text);
+	/**
+	 * Returns the context of the message, which `User received AI Assistant response` repeats.
+	 * `composerMentionCounts` are the composer mentions that this message sends. A host send
+	 * reports its own counts instead.
+	 */
+	function trackSend(
+		{ text, files, clientContext, isFirstMessage }: AssistantAgentSendingMessage,
+		composerMentionCounts?: AssistantMentionCounts,
+	): AssistantAgentSentMessageContext {
+		const { authorship, mentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS } = takeAuthorship(
+			text,
+			composerMentionCounts,
+		);
 		const isPrefill = authorship.kind === 'prefill';
 		const attachments: unknown[] = Array.isArray(clientContext?.attachments)
 			? clientContext.attachments
 			: [];
+		const attachmentCount = files.length + attachments.length;
+		const selectedElementCount = attachments.filter(
+			(a) => isRecord(a) && a.type === 'element',
+		).length;
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
@@ -66,11 +95,13 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 			prefill_type: isPrefill ? authorship.prefillType : null,
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
+			approval_mode: messageApprovalMode(settingsStore),
 			mention_counts: mentionCounts,
-			attachment_count: files.length + attachments.length,
-			selected_element_count: attachments.filter((a) => isRecord(a) && a.type === 'element').length,
+			attachment_count: attachmentCount,
+			selected_element_count: selectedElementCount,
 			runtime: 'agents',
 		});
+		return { isFirstMessage, mentionCounts, attachmentCount, selectedElementCount };
 	}
 
 	return {

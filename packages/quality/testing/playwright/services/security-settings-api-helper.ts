@@ -18,6 +18,12 @@ import { TestError } from '../Types';
 export class SecuritySettingsApiHelper {
 	constructor(private readonly api: ApiHelpers) {}
 
+	/** The policy that the instance enforces on its own responses, or `undefined` if it enforces none. */
+	async getEnforcedContentSecurityPolicy(): Promise<string | undefined> {
+		const response = await this.api.request.get('/rest/settings');
+		return response.headers()['content-security-policy'];
+	}
+
 	async getRedactionFloor(): Promise<RedactionFloor | undefined> {
 		const response = await this.api.request.get('/rest/settings/security');
 		if (!response.ok()) {
@@ -47,6 +53,19 @@ export class SecuritySettingsApiHelper {
 	async setWorkflowReviewsEnabled(enabled: boolean): Promise<void> {
 		const response = await this.api.request.post('/rest/settings/security', {
 			data: { workflowReviews: { enabled } },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/settings/security failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
+	/** Sets "Require approval" to "Always required" or back to "Set per project or workflow". */
+	async setWorkflowReviewsAlwaysRequired(alwaysRequired: boolean): Promise<void> {
+		const response = await this.api.request.post('/rest/settings/security', {
+			data: { workflowReviews: { alwaysRequired } },
 		});
 
 		if (!response.ok()) {

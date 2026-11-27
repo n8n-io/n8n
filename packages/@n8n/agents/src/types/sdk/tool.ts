@@ -6,7 +6,6 @@ import type { GuardrailNotice } from './guardrail';
 import type { McpToolAnnotations } from './mcp';
 import type { AgentMessage } from './message';
 import type { ApprovalResumePayload } from '../../sdk/tool';
-import type { RuntimeSkillLoader } from '../../skills/types';
 import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject, JSONValue } from '../utils/json';
@@ -27,8 +26,6 @@ export interface ToolSuspendOptions {
 }
 
 export interface ToolExecutionContext {
-	/** Load and retain instructions from this run's selected skill catalog. */
-	loadSkill?: RuntimeSkillLoader;
 	/** Agent run ID for the current execution. */
 	runId?: string;
 	/**
@@ -70,7 +67,6 @@ export interface ToolExecutionContext {
 }
 
 export interface ToolContext {
-	loadSkill?: ToolExecutionContext['loadSkill'];
 	/** AI SDK tool call ID for the current local tool execution. */
 	toolCallId?: string;
 	/** Exact model-facing name of the tool being executed. */
@@ -88,11 +84,34 @@ export interface ToolContext {
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
 	approvalContext?: ToolExecutionContext['approvalContext'];
+	/** Short explanation supplied by the model for this approval request. */
+	approvalDescription?: string;
 	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
+/** One tool call that a {@link ToolCallInterceptor} receives. */
+export interface ToolCallInterception {
+	/** The tool that runs. For a `call_tool` dispatch, this is the dispatched tool. */
+	tool: BuiltTool;
+	toolCallId: string;
+	input: unknown;
+}
+
+/**
+ * Runs around every tool handler of a runtime, including MCP tools and the
+ * tools of inline sub-agents. Call `run` to execute the tool. Throw to fail the
+ * call without running it: the model receives the error as the tool result.
+ * `run` refuses to start once the run is aborted.
+ *
+ * A tool's `onCancellation` cleanup is not intercepted: it releases what the
+ * tool's own handler started, so it must run even when the call is guarded.
+ */
+export type ToolCallInterceptor = (
+	call: ToolCallInterception,
+	run: () => Promise<unknown>,
+) => Promise<unknown>;
+
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
-	loadSkill?: ToolExecutionContext['loadSkill'];
 	/**
 	 * Suspend execution and send a payload to the consumer.
 	 * Must be used with `return await` — the branded return type signals
@@ -120,6 +139,8 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
 	approvalContext?: ToolExecutionContext['approvalContext'];
+	/** Short explanation supplied by the model for this approval request. */
+	approvalDescription?: string;
 	/** The payload this tool passed to `suspend()` when it suspended, restored from the checkpoint. Only set when the tool is being resumed. */
 	suspendPayload?: S;
 	/** Private continuation this tool passed to `suspend()`, restored from the checkpoint. */
@@ -140,6 +161,9 @@ export interface ToolCancellationContext extends ToolContext {
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
 }
 
+/** Turns the stored input of a call under a former tool name into the current tool's input. */
+export type LegacyCallConverter = (formerName: string, input: JSONValue) => JSONValue;
+
 export interface BuiltTool {
 	readonly name: string;
 	/**
@@ -155,6 +179,12 @@ export interface BuiltTool {
 	 * tool that now owns its action. Never exposed to the model.
 	 */
 	readonly legacyActions?: Readonly<Record<string, readonly string[]>>;
+	/**
+	 * Former names and former actions resolve only for a suspended call that
+	 * resumes, and `convert` turns its stored input into this tool's input. A
+	 * new model call under a former name fails as an unknown tool.
+	 */
+	readonly legacyResumeOnly?: { readonly convert: LegacyCallConverter };
 	readonly description: string;
 	/**
 	 * Behavioural directive paired with the tool, injected into the agent's

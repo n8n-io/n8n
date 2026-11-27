@@ -1,13 +1,33 @@
-import type { ILoadOptionsFunctions } from 'n8n-workflow';
-import { requestPath } from 'n8n-workflow';
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { Container } from '@n8n/di';
+import { InstanceSettings, LoadOptionsContext } from 'n8n-core';
+import type {
+	ILoadOptionsFunctions,
+	INode,
+	INodeParameters,
+	INodeTypes,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+import { requestPath, Workflow } from 'n8n-workflow';
+import { rmSync } from 'node:fs';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import { Notion } from '../../Notion.node';
 import {
 	getDataSourceOptionsFromPage,
 	getDataSourcePropertiesFromPage,
 	getPropertySelectValues,
 } from '../../v3/methods/loadOptions';
 import * as Transport from '../../v3/transport';
+
+const userFolder = await vi.hoisted(async () => {
+	const { mkdtempSync } = await import('node:fs');
+	const { tmpdir } = await import('node:os');
+	const { join } = await import('node:path');
+	const folder = mkdtempSync(join(tmpdir(), 'n8n-notion-v3-load-options-test-'));
+	vi.stubEnv('N8N_USER_FOLDER', folder);
+	return folder;
+});
 
 vi.mock('../../v3/transport', async () => ({
 	...(await vi.importActual<typeof Transport>('../../v3/transport')),
@@ -24,9 +44,50 @@ function createLoadOptionsContext(parameters: Record<string, unknown>): ILoadOpt
 	} as unknown as ILoadOptionsFunctions;
 }
 
+function createNotionV3LoadOptionsContext(
+	currentNodeParameters: INodeParameters,
+	path = 'parameters.propertiesUi.propertyValues[0].key',
+): LoadOptionsContext {
+	const notionV3 = new Notion().getNodeType(3);
+	const nodeTypes = mock<INodeTypes>();
+	nodeTypes.getByNameAndVersion.mockReturnValue(notionV3);
+
+	const node: INode = {
+		id: 'notion-node',
+		name: 'Notion',
+		type: 'n8n-nodes-base.notion',
+		typeVersion: 3,
+		position: [0, 0],
+		parameters: currentNodeParameters,
+	};
+
+	const workflow = new Workflow({
+		nodes: [node],
+		connections: {},
+		active: false,
+		nodeTypes,
+	});
+
+	const additionalData = mock<IWorkflowExecuteAdditionalData>();
+	// Assign directly so vitest-mock-extended does not wrap parameter objects in mock proxies.
+	additionalData.currentNodeParameters = currentNodeParameters;
+
+	return new LoadOptionsContext(workflow, node, additionalData, path);
+}
+
 describe('Notion V3 load options', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		Container.set(InstanceSettings, mock<InstanceSettings>());
+	});
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	afterAll(() => {
+		vi.unstubAllEnvs();
+		rmSync(userFolder, { recursive: true, force: true });
 	});
 
 	it('returns no options when property select values are requested before choosing a property', async () => {
@@ -113,6 +174,55 @@ describe('Notion V3 load options', () => {
 
 		expect(result).toEqual([]);
 		expect(mockNotionApiRequest).toHaveBeenCalledWith('GET', requestPath`/pages/page-id`);
+		expect(mockGetDataSourceProperties).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['incomplete url resourceLocator object', { __rl: true, mode: 'url' }],
+		['incomplete id resourceLocator object', { __rl: true, mode: 'id' }],
+		['null value', null],
+		['numeric value', 12345],
+		['empty string', ''],
+	])(
+		'returns no page data source properties when pageId resolves to %s',
+		async (_label, pageId) => {
+			const context = createNotionV3LoadOptionsContext({
+				resource: 'databasePage',
+				operation: 'update',
+				pageId,
+			});
+
+			const result = await getDataSourcePropertiesFromPage.call(context);
+
+			expect(result).toEqual([]);
+			expect(mockNotionApiRequest).not.toHaveBeenCalled();
+			expect(mockGetDataSourceProperties).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([
+		['incomplete url resourceLocator object', { __rl: true, mode: 'url' }],
+		['incomplete id resourceLocator object', { __rl: true, mode: 'id' }],
+		['null value', null],
+		['numeric value', 12345],
+		['empty string', ''],
+	])('returns no page data source options when pageId resolves to %s', async (_label, pageId) => {
+		const context = createNotionV3LoadOptionsContext(
+			{
+				resource: 'databasePage',
+				operation: 'update',
+				pageId,
+				propertiesUi: {
+					propertyValues: [{ key: 'Status|select', type: 'select' }],
+				},
+			},
+			'parameters.propertiesUi.propertyValues[0].selectValue',
+		);
+
+		const result = await getDataSourceOptionsFromPage.call(context);
+
+		expect(result).toEqual([]);
+		expect(mockNotionApiRequest).not.toHaveBeenCalled();
 		expect(mockGetDataSourceProperties).not.toHaveBeenCalled();
 	});
 });

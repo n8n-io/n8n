@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.48.0",
+  "version": "2.50.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -89,6 +89,7 @@
     "nodes": [
       "dist/nodes/vendors/AlibabaCloud/AlibabaCloud.node.js",
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
+      "dist/nodes/vendors/CustomModelEndpoint/CustomModelEndpoint.node.js",
       "dist/nodes/vendors/GoogleGemini/GoogleGemini.node.js",
       "dist/nodes/vendors/MiniMax/MiniMax.node.js",
       "dist/nodes/vendors/Moonshot/Moonshot.node.js",
@@ -128,6 +129,7 @@
       "dist/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.js",
       "dist/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.js",
       "dist/nodes/llms/LmChatCohere/LmChatCohere.node.js",
+      "dist/nodes/llms/LmChatCustomEndpoint/LmChatCustomEndpoint.node.js",
       "dist/nodes/llms/LmChatDatabricks/LmChatDatabricks.node.js",
       "dist/nodes/llms/LmChatDeepSeek/LmChatDeepSeek.node.js",
       "dist/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.js",
@@ -311,7 +313,7 @@
     "jsonwebtoken": "catalog:",
     "langchain": "catalog:",
     "lodash": "catalog:",
-    "mammoth": "1.12.1",
+    "mammoth": "1.12.3",
     "mime-types": "catalog:",
     "mongodb": "^6.17.0",
     "mysql2": "catalog:",

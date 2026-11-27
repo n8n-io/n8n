@@ -145,7 +145,11 @@ describe('chat-model-validation', () => {
 			},
 		});
 
-		const context = { ...createMockContext(), modelFetch: vi.fn<typeof fetch>() };
+		const context = {
+			...createMockContext(),
+			modelFetch: vi.fn<typeof fetch>(),
+			catalogFetch: vi.fn<typeof fetch>(),
+		};
 		const openAiIssues = await computeChatModelValidationIssues(context, {
 			name: 'OpenAI Model',
 			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -153,7 +157,7 @@ describe('chat-model-validation', () => {
 				model: { __rl: true, mode: 'id', value: 'gpt-4o-mini' },
 			},
 		} as unknown as NodeJSON);
-		expect(getCachedCatalogMock).toHaveBeenCalledWith({ fetch: context.modelFetch });
+		expect(getCachedCatalogMock).toHaveBeenCalledWith({ fetch: context.catalogFetch });
 		expect(openAiIssues.model?.[0]).toContain('deprecated');
 		expect(openAiIssues.model?.[0]).toContain('gpt-5-mini');
 

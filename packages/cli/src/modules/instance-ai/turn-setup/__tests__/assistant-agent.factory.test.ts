@@ -33,7 +33,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			user: User,
 			threadId: string,
 			runId: string,
-			memoryModelId?: ModelConfig,
+			utilityModelId?: ModelConfig,
 			observerThresholdTokens?: number,
 			generateTitle?: boolean,
 		) => {
@@ -44,15 +44,14 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 				onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void>;
 				policy?: Record<string, unknown>;
 			};
-			titleGeneration?: { model?: ModelConfig; sync?: boolean };
+			titleGeneration?: { model?: ModelConfig };
 		};
 		instanceAiConfig: Pick<
 			InstanceAiConfig,
 			'observerMessageTokens' | 'reflectorObservationTokens'
 		> &
 			Partial<InstanceAiConfig>;
-		creditService: { claimRunUsage: Mock };
-		logger: { warn: Mock };
+		creditService: { claimSideCallUsage: Mock };
 	};
 
 	function buildService(): MemoryOptionsInternals {
@@ -60,8 +59,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			AssistantAgentFactory.prototype,
 		) as unknown as MemoryOptionsInternals;
 		service.instanceAiConfig = { observerMessageTokens: 8_000, reflectorObservationTokens: 12_000 };
-		service.creditService = { claimRunUsage: vi.fn(async () => {}) };
-		service.logger = { warn: vi.fn() };
+		service.creditService = { claimSideCallUsage: vi.fn(async () => {}) };
 		return service;
 	}
 
@@ -119,7 +117,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		).toBeUndefined();
 	});
 
-	it('generates titles only when the caller asks for it, on the memory model, before the run ends', () => {
+	it('generates titles only when the caller asks for it, on the memory model, without waiting for them', () => {
 		const service = buildService();
 		const user = { id: 'user-1' } as User;
 		expect(
@@ -128,7 +126,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		expect(
 			service.createAgentMemoryOptions(user, 'thread-1', 'run-1', undefined, undefined, true)
 				.titleGeneration,
-		).toEqual({ sync: true });
+		).toEqual({});
 		expect(
 			service.createAgentMemoryOptions(
 				user,
@@ -138,7 +136,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 				undefined,
 				true,
 			).titleGeneration,
-		).toEqual({ model: 'anthropic/claude-haiku-4-5', sync: true });
+		).toEqual({ model: 'anthropic/claude-haiku-4-5' });
 	});
 
 	it('uses the per-thread override when an eval set one', () => {
@@ -209,7 +207,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		expect(policy?.maxObserverBatchesAfterTurn).toBe(0);
 	});
 
-	it('claims converted usage under the orchestrator dedupe key, and skips claiming when usage is zero', async () => {
+	it('claims each memory task call under the orchestrator dedupe key', async () => {
 		const service = buildService();
 		const user = { id: 'user-1' } as User;
 		const { onTaskUsage } = service.createAgentMemoryOptions(
@@ -217,39 +215,21 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			'thread-1',
 			'run-1',
 		).observationalMemory;
-
-		await onTaskUsage({
-			task: 'observer',
+		const report = {
+			task: 'observer' as const,
 			model: 'anthropic/claude-sonnet-4-5',
 			usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
 			reportId: 'report-1',
-		});
+		};
 
-		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
+		await onTaskUsage(report);
+
+		expect(service.creditService.claimSideCallUsage).toHaveBeenCalledWith(
 			user,
 			'thread-1',
 			'run-1:memory:observer:report-1',
-			[
-				{
-					type: 'llmTokens',
-					model: 'anthropic/claude-sonnet-4-5',
-					uncachedInput: 0,
-					cacheRead: 0,
-					cacheWrite: 0,
-					output: 20,
-				},
-			],
-			'completed',
+			report,
 		);
-
-		await onTaskUsage({
-			task: 'reflector',
-			model: 'anthropic/claude-sonnet-4-5',
-			usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
-			reportId: 'report-2',
-		});
-
-		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(1);
 	});
 });
 

@@ -5,8 +5,8 @@
  * Publishing because Trusted Publishing requires the package to already exist
  * on npm with the publisher configured first.
  *
- * New packages need an initial token-based publish before the workflow can
- * configure Trusted Publishing.
+ * A human must publish new packages and configure Trusted Publishing before
+ * the release workflow can publish later versions.
  *
  * Exit codes:
  *   0 – All public packages exist on npm, or --report-only was used
@@ -52,8 +52,7 @@ for (const { name, path, private: isPrivate } of packages) {
 }
 
 const output = {
-	packages: newPackages.map(({ name }) => name).join(','),
-	'packages-json': JSON.stringify(newPackages),
+	packages: JSON.stringify(newPackages),
 };
 console.log(` -- Writing to github output: ${JSON.stringify(output)}`);
 writeGithubOutput(output);
@@ -85,8 +84,7 @@ for (const { name } of newPackages) {
 }
 
 console.log(`
-Run the Release: Setup Trusted Publishing workflow to publish an initial
-throwaway version and configure release-publish.yml as the trusted publisher.
+Run release-publish-new-package.yml for each package before the next release.
 
 `);
 

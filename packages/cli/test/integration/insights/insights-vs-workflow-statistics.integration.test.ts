@@ -29,6 +29,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import * as utils from '../shared/utils';
 import { loadNodesFromDist } from '../shared/utils/node-types-data';
 import { createSimpleWorkflowFixture } from '../shared/workflow-fixtures';
+import { findWorkflowStatistic } from '../shared/workflow-statistics';
 
 describe('Insights vs Workflow Statistics Integration', () => {
 	beforeAll(async () => {
@@ -326,6 +327,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		{
 			cause: 'an unusable credential',
 			error: 'Credential not usable',
+			reason: 'credentialAccess',
 			workflowFixture: createSimpleWorkflowFixture,
 			fail: () =>
 				vi
@@ -335,6 +337,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		{
 			cause: 'an execution context failure',
 			error: 'No identity',
+			reason: 'contextHook',
 			workflowFixture: createSimpleWorkflowFixture,
 			fail: () =>
 				vi.spyOn(core, 'establishExecutionContext').mockRejectedValue(new Error('No identity')),
@@ -342,6 +345,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		{
 			cause: 'a missing required parameter',
 			error: "The 'HTTP Request' node has issues",
+			reason: 'invalidWorkflow',
 			workflowFixture: () => {
 				const fixture = createSimpleWorkflowFixture();
 				return {
@@ -353,8 +357,8 @@ describe('Insights vs Workflow Statistics Integration', () => {
 			fail: () => undefined,
 		},
 	])(
-		'should count runs refused by $cause as failures but not as billable',
-		async ({ error, workflowFixture, fail }) => {
+		'should count runs refused by $cause as Insights failures, but not as billable or in workflow statistics',
+		async ({ error, reason, workflowFixture, fail }) => {
 			const blockedCount = 3;
 			const blockedWorkflow = await createWorkflow(
 				{ name: 'Refused before start', ...workflowFixture() },
@@ -383,25 +387,18 @@ describe('Insights vs Workflow Statistics Integration', () => {
 			for (let i = 0; i < blockedCount; i++) await runWithTriggerItem();
 			spy?.mockRestore();
 
-			await waitForStatistics(
-				blockedWorkflow.id,
-				blockedCount,
-				10000,
-				StatisticsNames.productionError,
-			);
 			await waitForCompaction(blockedWorkflow.id, blockedCount, 20000, 'failure');
 
-			const productionError = await workflowStatisticsRepository.findOne({
-				where: { workflowId: blockedWorkflow.id, name: StatisticsNames.productionError },
-			});
-			expect(productionError).toMatchObject({ count: blockedCount, rootCount: 0 });
+			expect(
+				await findWorkflowStatistic(blockedWorkflow.id, StatisticsNames.productionError),
+			).toBeNull();
 
 			const [refused] = await executionRepository.findMultipleExecutions(
 				{ where: { workflowId: blockedWorkflow.id } },
 				{ includeData: true, unflattenData: true },
 			);
 			expect(refused.data.resultData.error?.message).toContain(error);
-			expect(refused.data.resultData.failedBeforeStart).toBe(true);
+			expect(refused.data.resultData.failedBeforeStart).toBe(reason);
 
 			const compactedInsights = await getCompactedInsightsByWorkflow(blockedWorkflow.id);
 			const sum = (type: string) =>

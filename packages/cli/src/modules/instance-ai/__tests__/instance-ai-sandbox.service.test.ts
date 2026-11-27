@@ -37,7 +37,6 @@ import {
 	isSandboxWorkspaceInitialized,
 	setupSandboxWorkspace,
 	withSandboxLifecycleTrace,
-	type BuilderTemplatesService,
 	type InstanceAiContext,
 	type ManagedBackgroundTask,
 } from '@n8n/instance-ai';
@@ -55,7 +54,6 @@ const fakeUser = { id: 'user-1' } as User;
 
 type Overrides = {
 	resolveTracingConfig?: InstanceAiSandboxServiceOptions['resolveTracingConfig'];
-	getTemplatesService?: InstanceAiSandboxServiceOptions['getTemplatesService'];
 	identityScheme?: InstanceAiSandboxServiceOptions['identityScheme'];
 	config?: Partial<InstanceAiConfig>;
 	runState?: Partial<InstanceAiSandboxRunState>;
@@ -95,7 +93,6 @@ function createSandboxService(overrides: Overrides = {}) {
 		settingsService,
 		aiService,
 		resolveTracingConfig: overrides.resolveTracingConfig,
-		getTemplatesService: overrides.getTemplatesService ?? vi.fn(),
 		identityScheme: overrides.identityScheme,
 	};
 	const service = new InstanceAiSandboxService(options);
@@ -112,6 +109,35 @@ describe('InstanceAiSandboxService', () => {
 	});
 
 	describe('config resolution', () => {
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
+		it.each(['daytona', 'n8n-sandbox'] as const)(
+			'keeps %s network access independent of the Agent egress setting',
+			async (sandboxProvider) => {
+				const { service } = createSandboxService({
+					config: {
+						sandboxEnabled: true,
+						sandboxProvider,
+						n8nSandboxServiceUrl: 'https://sandbox.test',
+					},
+					settingsService: {
+						resolveN8nSandboxConfig: vi.fn(async () => ({ serviceUrl: 'https://sandbox.test' })),
+					},
+				});
+
+				for (const value of ['disabled', 'opt-in', 'opt-out']) {
+					vi.stubEnv('N8N_AGENTS_AI_SANDBOX_EGRESS_POLICY', value);
+
+					const config = await service.resolveSandboxConfig(fakeUser);
+
+					expect(config).toMatchObject({ enabled: true, provider: sandboxProvider });
+					expect(config).not.toHaveProperty('egress', 'none');
+				}
+			},
+		);
+
 		it('returns a disabled config when sandboxes are not enabled', async () => {
 			const { service } = createSandboxService({
 				config: { sandboxEnabled: false, sandboxProvider: 'daytona', sandboxTimeout: 42 },
@@ -749,15 +775,13 @@ describe('InstanceAiSandboxService', () => {
 			expect(ids[2]).not.toBe(ids[0]);
 		});
 
-		it('threads Daytona name prefixes, labels and the templates service through sandbox creation', async () => {
-			const templatesService = {} as BuilderTemplatesService;
+		it('threads Daytona name prefixes and labels through sandbox creation', async () => {
 			const { service } = createSandboxService({
 				config: {
 					sandboxEnabled: true,
 					sandboxProvider: 'daytona',
 					sandboxNamePrefix: 'Acme Eval',
 				},
-				getTemplatesService: () => templatesService,
 			});
 			const sandbox = { id: 'sandbox-1' };
 			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
@@ -777,7 +801,7 @@ describe('InstanceAiSandboxService', () => {
 						thread_id: 'thread-1',
 					}),
 				}),
-				expect.objectContaining({ useSnapshotFallback: true, templatesService }),
+				expect.objectContaining({ useSnapshotFallback: true }),
 			);
 		});
 

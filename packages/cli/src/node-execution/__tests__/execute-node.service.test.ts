@@ -209,10 +209,10 @@ describe('ExecuteNodeService', () => {
 		});
 
 		it('clamps the timeout to the maximum', async () => {
-			await service.run(user, baseRequest({ timeoutMs: 120_000 }));
+			await service.run(user, baseRequest({ timeoutMs: 900_000 }));
 
 			const savedWorkflow = workflowRepository.createWorkflowWithOwner.mock.calls[0][0];
-			expect(savedWorkflow.settings?.executionTimeout).toBe(60);
+			expect(savedWorkflow.settings?.executionTimeout).toBe(600);
 		});
 
 		it('runs through WorkflowRunner in manual mode with a seeded execution stack', async () => {

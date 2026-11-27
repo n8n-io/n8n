@@ -2,7 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import type { PushMessage } from '@n8n/api-types';
 import { useWorkflowActivate } from './useWorkflowActivate';
-import { WORKFLOW_ACTIVE_MODAL_KEY } from '@/app/constants';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
+import {
+	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_PUBLISH_MODAL_KEY,
+} from '@/app/constants';
 
 // --- hoisted mocks ---
 // vi.hoisted callbacks run before any imports, so only plain JS is usable there.
@@ -92,17 +97,27 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 const mockSettingsImpl = vi.hoisted(() => ({
 	isWorkflowPublicationServiceEnabled: false,
 	isMultiMain: false,
+	settings: { workflowReviews: { enabled: false, alwaysRequired: false } },
+	setWorkflowReviewsPolicy: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => mockSettingsImpl),
 }));
 
+const mockFetchWorkflowReviewRequests = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
+	fetchWorkflowReviewRequests: mockFetchWorkflowReviewRequests,
+}));
+
 const mockOpenModal = vi.hoisted(() => vi.fn());
+const mockCloseModal = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: vi.fn().mockReturnValue({
 		openModal: mockOpenModal,
+		closeModal: mockCloseModal,
 		openModalWithData: vi.fn(),
 	}),
 }));
@@ -265,6 +280,34 @@ describe('useWorkflowActivate', () => {
 			expect(mockShowError).not.toHaveBeenCalled();
 			expect(mockSetWorkflowInactive).not.toHaveBeenCalled();
 			expect(mockSetActiveState).not.toHaveBeenCalled();
+		});
+
+		it('keeps the instance policy and refreshes the review status after a review_required rejection', async () => {
+			const refusal = Object.assign(new Error('No approved review'), {
+				meta: { reason: 'review_required', versionId: VERSION_ID, validationError: true },
+			});
+			mockPublishWorkflow.mockRejectedValueOnce(refusal);
+			mockFetchWorkflowReviewRequests.mockResolvedValueOnce({
+				count: 0,
+				data: [],
+				reviewRequiredBy: 'instance',
+			});
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: false, errorHandled: true });
+			expect(mockSettingsImpl.setWorkflowReviewsPolicy).toHaveBeenCalledWith({
+				enabled: true,
+				alwaysRequired: false,
+			});
+			await vi.waitFor(() =>
+				expect(useWorkflowReviewStatusStore().reviewRequiredBy(WORKFLOW_ID)).toBe('instance'),
+			);
+			expect(mockCloseModal).toHaveBeenCalledWith(WORKFLOW_PUBLISH_MODAL_KEY);
+			expect(mockCloseModal).toHaveBeenCalledWith(WORKFLOW_HISTORY_PUBLISH_MODAL_KEY);
+			expect(mockShowError).toHaveBeenCalled();
+			expect(mockSetWorkflowInactive).not.toHaveBeenCalled();
 		});
 
 		it('sends the document checksum and refreshes it when the document is open in an editor', async () => {

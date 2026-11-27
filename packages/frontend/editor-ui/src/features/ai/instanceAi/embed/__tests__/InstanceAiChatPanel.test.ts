@@ -10,7 +10,11 @@ import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
-import { forgetAssistantAgentThread } from '../../assistantAgent/assistantAgentThreads';
+import {
+	clearAssistantAgentLaunch,
+	forgetAssistantAgentThread,
+	getAssistantAgentLaunch,
+} from '../../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../../assistantAgent/assistantAgentThreads.store';
 import {
 	defaultModuleSettings,
@@ -66,6 +70,15 @@ vi.mock('../../composables/useAgentMutationRefresh', () => ({
 	useAgentMutationRefresh: useAgentMutationRefreshMock,
 }));
 
+// The real selector reads the settings store, which has its own tests.
+vi.mock('@/features/ai/instanceAi/components/ApprovalModeSelector.vue', () => ({
+	default: defineComponent({
+		props: { threadId: { type: String, default: undefined } },
+		setup: (props) => () =>
+			h('div', { 'data-test-id': 'approval-mode-selector-stub', 'data-thread-id': props.threadId }),
+	}),
+}));
+
 // Minimal stand-ins: exercise the panel's own wiring, not the real children's
 // internals (each has its own suite). The panel's history now lives inside the
 // header's popover, so this stub applies `threadList.filter`/`disabled` the same
@@ -111,7 +124,7 @@ const InstanceAiConversationStub = defineComponent({
 	template: `<div data-test-id="conversation-stub" :data-has-before-send="String(typeof beforeSend === 'function')">
 		<textarea data-test-id="conversation-input" class="ignore-key-press-canvas" />
 		<button data-test-id="conversation-thread-missing" type="button" @click="$emit('thread-missing')" />
-		<slot name="empty" /><slot name="composer-start" />
+		<slot name="empty" /><slot name="composer-start" /><slot name="composer-controls" />
 	</div>`,
 });
 
@@ -120,7 +133,7 @@ const agentApplyHandoffMock = vi.hoisted(() => vi.fn());
 const AssistantAgentPanelThreadStub = defineComponent({
 	name: 'AssistantAgentPanelThread',
 	props: ['threadId', 'subject', 'newSession', 'beforeSend', 'visible', 'placeholderPreview'],
-	emits: ['content-change'],
+	emits: ['content-change', 'session-created'],
 	methods: {
 		focus: vi.fn(),
 		isDirty: () => false,
@@ -476,6 +489,13 @@ describe('InstanceAiChatPanel', () => {
 		expect(store.threads).toEqual([]);
 
 		pending.resolve(true);
+	});
+
+	it('shows the approval mode selector of the thread in the composer', async () => {
+		const { getByTestId } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		await vi.waitFor(() => expect(getByTestId('conversation-stub')).toBeInTheDocument());
+
+		expect(getByTestId('approval-mode-selector-stub')).toHaveAttribute('data-thread-id', 't-match');
 	});
 
 	it('renders the host empty slot inside the conversation', async () => {
@@ -1192,7 +1212,9 @@ describe('InstanceAiChatPanel', () => {
 		}
 
 		beforeEach(() => {
-			mockedStore(useInstanceAiSettingsStore).isAssistantAgentEnabled = true;
+			const settingsStore = mockedStore(useInstanceAiSettingsStore);
+			settingsStore.isAssistantAgentEnabled = true;
+			settingsStore.newThreadsUseAssistantAgent = true;
 			// The current runtime knows only its own threads.
 			store.getThreadMetadata.mockImplementation(
 				(threadId) => store.threads.find(({ id }) => id === threadId)?.metadata,
@@ -1207,7 +1229,10 @@ describe('InstanceAiChatPanel', () => {
 			listSystemAgentThreadsMock.mockReset().mockResolvedValue({ data: [], nextCursor: null });
 			getSystemAgentThreadMock.mockReset();
 			agentApplyHandoffMock.mockClear();
-			for (const id of ['thread-2', 'aa-1', 'aa-9']) forgetAssistantAgentThread(id);
+			for (const id of ['thread-2', 'aa-1', 'aa-9']) {
+				forgetAssistantAgentThread(id);
+				clearAssistantAgentLaunch(id);
+			}
 		});
 
 		it('starts a new thread on the Assistant agent', async () => {
@@ -1230,6 +1255,45 @@ describe('InstanceAiChatPanel', () => {
 			conversation.vm.$emit('content-change', true);
 			expect(wrapper.emitted('content-change')).toEqual([[true]]);
 			expect(wrapper.find('[data-test-id="conversation-stub"]').exists()).toBe(false);
+		});
+
+		it('opens a new thread in the full view as new, with the agent as its subject', async () => {
+			const wrapper = mountPanel({ subject, launch });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+
+			await wrapper.get('[data-test-id="instance-ai-embed-open-full"]').trigger('click');
+			await vi.waitFor(() => expect(routerPush).toHaveBeenCalled());
+
+			expect(getAssistantAgentLaunch('thread-2')).toEqual({ projectId: 'p1', subject });
+		});
+
+		it('opens a thread with messages in the full view without launch data', async () => {
+			const wrapper = mountPanel({ subject, launch });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+			wrapper.getComponent(AssistantAgentPanelThreadStub).vm.$emit('session-created');
+
+			await wrapper.get('[data-test-id="instance-ai-embed-open-full"]').trigger('click');
+			await vi.waitFor(() => expect(routerPush).toHaveBeenCalled());
+
+			expect(getAssistantAgentLaunch('thread-2')).toBeUndefined();
+		});
+
+		it('starts a new thread on the current runtime for a user outside the rollout', async () => {
+			mockedStore(useInstanceAiSettingsStore).newThreadsUseAssistantAgent = false;
+
+			const wrapper = mountPanel({ subject, launch });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+
+			expect(wrapper.find('[data-test-id="agent-thread-stub"]').exists()).toBe(false);
+			await wrapper.getComponent(InstanceAiConversationStub).props('beforeSend')();
+			expect(store.syncThread).toHaveBeenCalledWith('thread-2', 'p1', launch);
+			wrapper.unmount();
 		});
 
 		it('resumes the newest thread of the subject across both runtimes', async () => {

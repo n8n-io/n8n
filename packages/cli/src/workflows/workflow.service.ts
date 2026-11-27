@@ -13,6 +13,8 @@ import {
 	RestrictedNodeTypesProviderProxy,
 	WorkflowMutationHooksProxy,
 	WorkflowPublishGuardProxy,
+	WorkflowVersionedSettingsService,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -49,13 +51,24 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
-import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
+import type {
+	INode,
+	INodes,
+	IWorkflowSettings,
+	JsonValue,
+	IConnections,
+	VersionedWorkflowSettings,
+} from 'n8n-workflow';
 import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	PROJECT_ROOT,
 	Workflow,
+	applyVersionedSettings,
 	assert,
 	calculateWorkflowChecksum,
+	compareWorkflowSettings,
+	pickVersionedSettings,
+	versionedSettingsEqual,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -70,7 +83,12 @@ import { WorkflowPublicationStatusService } from './publication/workflow-publica
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
-import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
+import {
+	getErrorDescription,
+	getErrorNodeId,
+	getRequiredRedactionScopes,
+	getWorkflowProjectDetailsSafe,
+} from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
@@ -104,6 +122,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
+import { toUserLike } from '@/utils/to-user-like';
 import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
@@ -150,6 +169,18 @@ type WorkflowUpdateOptions = {
 	readOnlyNodeEdits?: 'restore' | 'reject';
 	/** Node fields the caller's payload never carries. The credential guard strips these when comparing with a saved node. */
 	unsentNodeFields?: readonly string[];
+	/** The version-scoped settings of a restored version, such as its engine. */
+	restoredVersionSettings?: VersionedWorkflowSettings;
+};
+
+type ActivateWorkflowOptions = {
+	versionId?: string;
+	name?: string;
+	description?: string;
+	expectedChecksum?: string;
+	source?: WorkflowActionSource;
+	publicApi?: PublicApiCaller;
+	publishHistory?: PublishHistoryScope;
 };
 
 export type PreparedWorkflowUpdate = {
@@ -163,6 +194,8 @@ export type PreparedWorkflowUpdate = {
 	tagsDisabled: boolean;
 	versionIdToPublish: string | null;
 	settingsChanged: boolean;
+	/** The caller's context, for the audit events after the save. */
+	ctx: OperationContext;
 	options: WorkflowUpdateOptions &
 		Required<
 			Pick<WorkflowUpdateOptions, 'autosaved' | 'source' | 'publicApi' | 'aiBuilderAssisted'>
@@ -211,6 +244,7 @@ export class WorkflowService {
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly workflowIndexService: WorkflowIndexService,
+		private readonly WorkflowVersionedSettingsService: WorkflowVersionedSettingsService,
 	) {}
 
 	/**
@@ -565,19 +599,20 @@ export class WorkflowService {
 		workflowUpdateData: WorkflowEntity,
 		workflowId: string,
 		options: WorkflowUpdateOptions = {},
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity> {
-		const prepared = await this.prepareUpdate(user, workflowUpdateData, workflowId, options);
+		const prepared = await this.prepareUpdate(user, workflowUpdateData, workflowId, options, ctx);
 		const saved = await this.savePreparedUpdate(prepared);
 		return await this.finishUpdate(prepared, saved);
 	}
 
 	/** Prepare before opening a transaction. Only save the returned data through savePreparedUpdate. */
-	// eslint-disable-next-line complexity
 	async prepareUpdate(
 		user: User,
 		workflowUpdateData: WorkflowEntity,
 		workflowId: string,
 		options: WorkflowUpdateOptions = {},
+		ctx: OperationContext = {},
 	): Promise<PreparedWorkflowUpdate> {
 		const {
 			expectedChecksum,
@@ -677,7 +712,17 @@ export class WorkflowService {
 			);
 		}
 
-		// Update the workflow's version when changing nodes, connections, or nodeGroups
+		await this.applyRestoredVersionSettings(workflow, workflowUpdateData, options);
+		await this.prepareSettingsUpdate(user, workflow, workflowUpdateData, ownerProject.id);
+
+		// A version-scoped change saves a new version. Only a live change republishes the active version.
+		const settingsChange = compareWorkflowSettings(
+			workflow.settings,
+			workflowUpdateData.settings,
+			this.WorkflowVersionedSettingsService.isEnabled(),
+		);
+
+		// Save a new version when nodes, connections, nodeGroups, or a version-scoped setting change
 		const hasNodesKey = 'nodes' in workflowUpdateData;
 		const hasConnectionsKey = 'connections' in workflowUpdateData;
 		const hasNodeGroupsKey = 'nodeGroups' in workflowUpdateData;
@@ -686,7 +731,8 @@ export class WorkflowService {
 			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
 		const nodeGroupsChanged =
 			hasNodeGroupsKey && !isEqual(workflowUpdateData.nodeGroups, workflow.nodeGroups);
-		const saveNewVersion = nodesChanged || connectionsChanged || nodeGroupsChanged;
+		const structureChanged = nodesChanged || connectionsChanged || nodeGroupsChanged;
+		const saveNewVersion = structureChanged || settingsChange.versioned;
 
 		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
@@ -697,15 +743,17 @@ export class WorkflowService {
 					newVersionId: workflowUpdateData.versionId,
 				},
 			);
+		} else {
+			// Do not let users change versionId directly
+			workflowUpdateData.versionId = workflow.versionId;
+		}
 
+		if (structureChanged) {
 			// A saved version needs nodes, connections, and node groups; backfill any the update
 			// omitted from the persisted workflow so the history row records the effective state.
 			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
 			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
 			workflowUpdateData.nodeGroups = workflowUpdateData.nodeGroups ?? workflow.nodeGroups;
-		} else {
-			// Do not let users change versionId directly
-			workflowUpdateData.versionId = workflow.versionId;
 		}
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
@@ -713,7 +761,7 @@ export class WorkflowService {
 		// Validate structure and node groups only for structural changes; a metadata-only edit
 		// re-persists an already-validated graph, so re-checking is redundant and could block on
 		// legacy data. Both are safe to read off workflowUpdateData: it was backfilled above.
-		if (saveNewVersion) {
+		if (structureChanged) {
 			WorkflowHelpers.validateWorkflowStructure({
 				nodes: workflowUpdateData.nodes,
 				connections: workflowUpdateData.connections,
@@ -741,76 +789,6 @@ export class WorkflowService {
 				workflow.id,
 			);
 		}
-
-		// Strip redactionPolicy if instance lacks data-redaction license
-		if (
-			workflowUpdateData.settings?.redactionPolicy !== undefined &&
-			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy &&
-			!this.licenseState.isDataRedactionLicensed()
-		) {
-			delete workflowUpdateData.settings.redactionPolicy;
-		}
-
-		// Strip redactionPolicy if user lacks the required directional scope
-		if (
-			workflowUpdateData.settings?.redactionPolicy !== undefined &&
-			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy
-		) {
-			const requiredScopes = getRequiredRedactionScopes(
-				workflow.settings?.redactionPolicy,
-				workflowUpdateData.settings.redactionPolicy,
-			);
-
-			const canUpdate = await userHasScopes(user, requiredScopes, false, {
-				projectId: ownerProject.id,
-			});
-			if (!canUpdate) {
-				delete workflowUpdateData.settings.redactionPolicy;
-			}
-		}
-
-		// redactCallerExecutions is on when it is not set. Turning it off lowers redaction and
-		// turning it on raises it, so strip a change the license or the user's scopes do not allow.
-		if (workflowUpdateData.settings?.redactCallerExecutions !== undefined) {
-			// The settings schema does not check this value. Any value other than `false` keeps the
-			// setting on, so store a boolean and select the scope from it.
-			const value: unknown = workflowUpdateData.settings.redactCallerExecutions;
-			const turnsOn = value !== false;
-			workflowUpdateData.settings.redactCallerExecutions = turnsOn;
-			const wasOn = workflow.settings?.redactCallerExecutions !== false;
-			const canUpdate =
-				turnsOn === wasOn ||
-				(this.licenseState.isDataRedactionLicensed() &&
-					(await userHasScopes(
-						user,
-						[turnsOn ? 'workflow:enableRedaction' : 'workflow:disableRedaction'],
-						false,
-						{ projectId: ownerProject.id },
-					)));
-			if (!canUpdate) {
-				delete workflowUpdateData.settings.redactCallerExecutions;
-			}
-		}
-
-		// Merge settings to support partial updates
-		if (workflowUpdateData.settings && workflow.settings) {
-			workflowUpdateData.settings = {
-				...workflow.settings,
-				...workflowUpdateData.settings,
-			};
-		}
-
-		if (workflowUpdateData.settings) {
-			workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
-				workflowUpdateData.settings,
-				this.globalConfig.executions.timeout,
-			);
-		}
-
-		// Check if settings actually changed
-		const settingsChanged =
-			workflowUpdateData.settings !== undefined &&
-			!isEqual(workflow.settings, workflowUpdateData.settings);
 
 		// Always set updatedAt to get millisecond precision
 		workflowUpdateData.updatedAt = new Date();
@@ -887,6 +865,7 @@ export class WorkflowService {
 					await this.folderRepository.findOneOrFailFolderInProject(
 						parentFolderId,
 						project?.id ?? '',
+						'workflow',
 					);
 				} catch (e) {
 					throw new FolderNotFoundError(parentFolderId);
@@ -904,7 +883,8 @@ export class WorkflowService {
 			saveNewVersion,
 			tagsDisabled: this.globalConfig.tags.disabled,
 			versionIdToPublish,
-			settingsChanged,
+			settingsChanged: settingsChange.live,
+			ctx,
 			options: {
 				tagIds,
 				autosaved,
@@ -918,13 +898,117 @@ export class WorkflowService {
 		};
 	}
 
+	/**
+	 * Strips the redaction changes that the license or the user's scopes do not allow.
+	 * Then merges the partial settings into the stored settings.
+	 */
+	private async prepareSettingsUpdate(
+		user: User,
+		workflow: WorkflowEntity,
+		workflowUpdateData: WorkflowEntity,
+		projectId: string,
+	) {
+		// Strip redactionPolicy if instance lacks data-redaction license
+		if (
+			workflowUpdateData.settings?.redactionPolicy !== undefined &&
+			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy &&
+			!this.licenseState.isDataRedactionLicensed()
+		) {
+			delete workflowUpdateData.settings.redactionPolicy;
+		}
+
+		// Strip redactionPolicy if user lacks the required directional scope
+		if (
+			workflowUpdateData.settings?.redactionPolicy !== undefined &&
+			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy
+		) {
+			const requiredScopes = getRequiredRedactionScopes(
+				workflow.settings?.redactionPolicy,
+				workflowUpdateData.settings.redactionPolicy,
+			);
+
+			const canUpdate = await userHasScopes(user, requiredScopes, false, {
+				projectId,
+			});
+			if (!canUpdate) {
+				delete workflowUpdateData.settings.redactionPolicy;
+			}
+		}
+
+		// redactCallerExecutions is on when it is not set. Turning it off lowers redaction and
+		// turning it on raises it, so strip a change the license or the user's scopes do not allow.
+		if (workflowUpdateData.settings?.redactCallerExecutions !== undefined) {
+			// The settings schema does not check this value. Any value other than `false` keeps the
+			// setting on, so store a boolean and select the scope from it.
+			const value: unknown = workflowUpdateData.settings.redactCallerExecutions;
+			const turnsOn = value !== false;
+			workflowUpdateData.settings.redactCallerExecutions = turnsOn;
+			const wasOn = workflow.settings?.redactCallerExecutions !== false;
+			const canUpdate =
+				turnsOn === wasOn ||
+				(this.licenseState.isDataRedactionLicensed() &&
+					(await userHasScopes(
+						user,
+						[turnsOn ? 'workflow:enableRedaction' : 'workflow:disableRedaction'],
+						false,
+						{ projectId },
+					)));
+			if (!canUpdate) {
+				delete workflowUpdateData.settings.redactCallerExecutions;
+			}
+		}
+
+		// Merge settings to support partial updates
+		if (workflowUpdateData.settings && workflow.settings) {
+			workflowUpdateData.settings = {
+				...workflow.settings,
+				...workflowUpdateData.settings,
+			};
+		}
+
+		if (workflowUpdateData.settings) {
+			workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
+				workflowUpdateData.settings,
+				this.globalConfig.executions.timeout,
+			);
+		}
+	}
+
+	/** A restore also brings back the version-scoped settings of the version, such as its engine. */
+	private async applyRestoredVersionSettings(
+		workflow: WorkflowEntity,
+		workflowUpdateData: WorkflowEntity,
+		{ restoredFromVersionId, restoredVersionSettings }: WorkflowUpdateOptions,
+	) {
+		if (!this.WorkflowVersionedSettingsService.isEnabled()) return;
+
+		const storedSettings =
+			restoredVersionSettings ??
+			(restoredFromVersionId
+				? await this.workflowHistoryService.findVersionSettings(workflow.id, restoredFromVersionId)
+				: undefined);
+		if (!storedSettings) return;
+
+		// A version saved before history stored settings has no engine, so it restores v1.
+		const versionSettings = pickVersionedSettings(storedSettings);
+
+		// Leave the settings unset when the restore keeps the current values.
+		const restored = applyVersionedSettings(workflow.settings, versionSettings);
+		if (versionedSettingsEqual(workflow.settings, restored)) return;
+
+		workflowUpdateData.settings = applyVersionedSettings(
+			workflowUpdateData.settings,
+			versionSettings,
+		);
+	}
+
 	/** Pass the caller's context to include the workflow and history in its transaction. */
 	async savePreparedUpdate(
 		prepared: PreparedWorkflowUpdate,
 		ctx: OperationContext = {},
 		{ propagateVersionHistoryErrors = false }: { propagateVersionHistoryErrors?: boolean } = {},
 	) {
-		const { user, changes, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
+		const { user, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
 		const workflowId = prepared.workflow.id;
 		const { tagIds, autosaved, source, versionName, versionDescription } = prepared.options;
 		if (saveNewVersion) {
@@ -932,9 +1016,10 @@ export class WorkflowService {
 				versionName || versionDescription
 					? { name: versionName, description: versionDescription }
 					: undefined;
+			// The saved workflow, so a version-scoped settings change also stores the unchanged nodes.
 			await this.workflowHistoryService.saveVersion(
 				user,
-				changes,
+				prepared.workflow,
 				workflowId,
 				autosaved,
 				source,
@@ -965,7 +1050,7 @@ export class WorkflowService {
 
 	/** Run once after the save transaction commits. */
 	async finishUpdate(prepared: PreparedWorkflowUpdate, updatedWorkflow: WorkflowEntity) {
-		const { user, previousWorkflow: workflow, versionIdToPublish, settingsChanged } = prepared;
+		const { user, previousWorkflow: workflow, versionIdToPublish, settingsChanged, ctx } = prepared;
 		const workflowId = workflow.id;
 		const { tagIds, source, publicApi, apiKeyScopes, aiBuilderAssisted } = prepared.options;
 
@@ -993,6 +1078,7 @@ export class WorkflowService {
 			aiBuilderAssisted,
 			...(settingsChangesDetail && { settingsChanged: settingsChangesDetail }),
 			source,
+			loginId: loginIdOf(ctx),
 		});
 
 		if (versionIdToPublish) {
@@ -1004,22 +1090,32 @@ export class WorkflowService {
 				await this.assertMayPublishOnSave(user, workflowId, apiKeyScopes, versionIdToPublish);
 			}
 
-			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
-				versionId: versionIdToPublish,
-				source,
-				publicApi,
-			});
+			const publishedWorkflow = await this.activateWorkflow(
+				user,
+				workflowId,
+				{
+					versionId: versionIdToPublish,
+					source,
+					publicApi,
+				},
+				ctx,
+			);
 			// oxlint-disable-next-line typescript/no-deprecated
 			updatedWorkflow.active = publishedWorkflow.active;
 			updatedWorkflow.activeVersionId = publishedWorkflow.activeVersionId;
 			updatedWorkflow.activeVersion = publishedWorkflow.activeVersion;
 		} else if (settingsChanged && workflow.activeVersionId) {
-			await this.activateWorkflow(user, workflowId, {
-				versionId: workflow.activeVersionId,
-				source,
-				publicApi,
-				publishHistory: 'none',
-			});
+			await this.activateWorkflow(
+				user,
+				workflowId,
+				{
+					versionId: workflow.activeVersionId,
+					source,
+					publicApi,
+					publishHistory: 'none',
+				},
+				ctx,
+			);
 		}
 		return updatedWorkflow;
 	}
@@ -1065,6 +1161,7 @@ export class WorkflowService {
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
 		options: { source: WorkflowActionSource; publicApi?: PublicApiCaller } = { source: 'ui' },
+		ctx: OperationContext = {},
 	): Promise<void> {
 		let didPublish = false;
 		try {
@@ -1134,6 +1231,7 @@ export class WorkflowService {
 					workflow,
 					publicApi: options.publicApi ?? false,
 					source: options.source,
+					loginId: loginIdOf(ctx),
 				});
 			}
 		}
@@ -1189,22 +1287,46 @@ export class WorkflowService {
 	 * @param options - Optional versionId, name and description updates
 	 * @returns The activated workflow
 	 */
-	// eslint-disable-next-line complexity
 	async activateWorkflow(
 		user: User,
 		workflowId: string,
-		options?: {
-			versionId?: string;
-			name?: string;
-			description?: string;
-			expectedChecksum?: string;
-			source?: WorkflowActionSource;
-			publicApi?: PublicApiCaller;
-			publishHistory?: PublishHistoryScope;
-		},
+		options?: ActivateWorkflowOptions,
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity> {
-		const source = options?.source ?? 'ui';
-		const publicApi = options?.publicApi ?? false;
+		return await this._activateWorkflow(
+			user,
+			workflowId,
+			{ ...options, fromSourceControlPull: false },
+			ctx,
+		);
+	}
+
+	/**
+	 * Publishes a version that a source control pull imported. A publish guard can relax its
+	 * checks for it.
+	 * `SourceControlImportService` is the single caller.
+	 */
+	async activateWorkflowFromSourceControlPull(
+		user: User,
+		workflowId: string,
+		versionId: string,
+	): Promise<WorkflowEntity> {
+		return await this._activateWorkflow(user, workflowId, {
+			versionId,
+			fromSourceControlPull: true,
+		});
+	}
+
+	// eslint-disable-next-line complexity
+	private async _activateWorkflow(
+		user: User,
+		workflowId: string,
+		options: ActivateWorkflowOptions & { fromSourceControlPull: boolean },
+		ctx: OperationContext = {},
+	): Promise<WorkflowEntity> {
+		const source = options.source ?? 'ui';
+		const publicApi = options.publicApi ?? false;
+		const loginId = loginIdOf(ctx);
 
 		let workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:publish',
@@ -1236,7 +1358,7 @@ export class WorkflowService {
 			throw new BadRequestError('Cannot activate an archived workflow.');
 		}
 
-		const versionIdToActivate = options?.versionId ?? workflow.versionId;
+		const versionIdToActivate = options.versionId ?? workflow.versionId;
 		const previousActiveVersionId = workflow.activeVersionId;
 
 		// Reached with access to the workflow but not the right to release a version, so there is no
@@ -1268,7 +1390,7 @@ export class WorkflowService {
 			throw error;
 		}
 
-		if (options?.expectedChecksum) {
+		if (options.expectedChecksum) {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
@@ -1292,6 +1414,7 @@ export class WorkflowService {
 		// the previous active version running instead of deactivating it.
 		const candidateWorkflow = this.workflowRepository.create({
 			...workflow,
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve the active field for existing lifecycle hook consumers.
 			active: true,
 			activeVersionId: versionIdToActivate,
 			activeVersion: versionToActivate,
@@ -1331,7 +1454,10 @@ export class WorkflowService {
 		// races — accepted, because both outcomes degrade gracefully (the approval
 		// stands and auto-publish reports `failed`).`.
 		if (versionIdToActivate !== previousActiveVersionId) {
-			await this.workflowPublishGuard.assertCanPublish(workflowId);
+			await this.workflowPublishGuard.assertCanPublish(workflowId, {
+				versionId: versionIdToActivate,
+				fromSourceControlPull: options.fromSourceControlPull,
+			});
 		}
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
@@ -1351,11 +1477,13 @@ export class WorkflowService {
 					publicApi,
 					deactivatedVersionId: previousActiveVersionId,
 					source,
+					loginId,
 				});
 			}
 
 			const activatedWorkflow = this.workflowRepository.create({
 				...workflow,
+				// oxlint-disable-next-line typescript/no-deprecated -- Preserve the active field for existing event consumers.
 				active: true,
 				activeVersionId: versionIdToActivate,
 				activeVersion: versionToActivate,
@@ -1369,6 +1497,7 @@ export class WorkflowService {
 				workflow: activatedWorkflow,
 				publicApi,
 				source,
+				loginId,
 			});
 		} else {
 			if (previousActiveVersionId) {
@@ -1381,6 +1510,7 @@ export class WorkflowService {
 					publicApi,
 					deactivatedVersionId: previousActiveVersionId,
 					source,
+					loginId,
 				});
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId,
@@ -1394,6 +1524,7 @@ export class WorkflowService {
 
 			await this.workflowRepository.update(workflowId, {
 				activeVersionId: versionIdToActivate,
+				// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 				active: true,
 				// workflow content did not change, so we keep updatedAt as is
 				updatedAt: workflow.updatedAt,
@@ -1414,6 +1545,7 @@ export class WorkflowService {
 				workflowForActivation,
 				activationMode,
 				{ source, publicApi },
+				ctx,
 			);
 		}
 
@@ -1427,7 +1559,7 @@ export class WorkflowService {
 			userId: user.id,
 		});
 
-		if (options?.name !== undefined || options?.description !== undefined) {
+		if (options.name !== undefined || options.description !== undefined) {
 			const updateFields: UpdateWorkflowHistoryVersionDto = {};
 			if (options.name !== undefined) updateFields.name = options.name;
 			if (options.description !== undefined) updateFields.description = options.description;
@@ -1448,7 +1580,7 @@ export class WorkflowService {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 		}
 
-		const publishHistory = options?.publishHistory ?? 'all';
+		const publishHistory = options.publishHistory ?? 'all';
 		if (updatedWorkflow.activeVersion && publishHistory !== 'none') {
 			updatedWorkflow.activeVersion.workflowPublishHistory =
 				await this.workflowPublishHistoryRepository.findByVersion(
@@ -1476,6 +1608,7 @@ export class WorkflowService {
 			source?: WorkflowActionSource;
 			publicApi?: PublicApiCaller;
 		},
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
 		const publicApi = options?.publicApi ?? false;
@@ -1541,6 +1674,7 @@ export class WorkflowService {
 			publicApi,
 			deactivatedVersionId,
 			source,
+			loginId: loginIdOf(ctx),
 		});
 
 		return workflow;
@@ -1564,6 +1698,24 @@ export class WorkflowService {
 		const deactivatedVersionId = workflow.activeVersionId;
 		if (deactivatedVersionId === null) return;
 
+		await this._forceUnpublish(workflow, deactivatedVersionId, null);
+
+		await this.workflowIndexService.removePublishedDependenciesForWorkflow(workflowId);
+
+		this.eventService.emit('workflow-deactivated-by-system', {
+			workflowId,
+			workflowName: workflow.name,
+			deactivatedVersionId,
+			reason,
+		});
+	}
+
+	/** Unpublishes in a way the `workflow.deactivate` hook cannot block: a hook failure is a warning. */
+	private async _forceUnpublish(
+		workflow: WorkflowEntity,
+		deactivatedVersionId: string,
+		user: User | null,
+	): Promise<void> {
 		// `active` is still true here: the hook sees the pre-deactivation state.
 		const deactivatedWorkflow = this.workflowRepository.create({
 			...workflow,
@@ -1574,28 +1726,24 @@ export class WorkflowService {
 		});
 
 		try {
-			await this.externalHooks.run('workflow.deactivate', [
-				deactivatedWorkflow,
-				this.workflowHookContextService,
-			]);
+			await this.externalHooks.run(
+				'workflow.deactivate',
+				user
+					? [
+							deactivatedWorkflow,
+							this.workflowHookContextService,
+							toWorkflowLifecycleHookActor(user),
+						]
+					: [deactivatedWorkflow, this.workflowHookContextService],
+			);
 		} catch (error) {
-			// A failing hook must not leave a crash-looping workflow published
-			this.logger.warn('workflow.deactivate hook failed during system deactivation, proceeding', {
-				workflowId,
+			this.logger.warn('workflow.deactivate hook failed, proceeding with the unpublish', {
+				workflowId: workflow.id,
 				error: ensureError(error).message,
 			});
 		}
 
-		await this._teardownActiveVersion(workflow, deactivatedVersionId, null);
-
-		await this.workflowIndexService.removePublishedDependenciesForWorkflow(workflowId);
-
-		this.eventService.emit('workflow-deactivated-by-system', {
-			workflowId,
-			workflowName: workflow.name,
-			deactivatedVersionId,
-			reason,
-		});
+		await this._teardownActiveVersion(workflow, deactivatedVersionId, user?.id ?? null);
 	}
 
 	/**
@@ -1636,6 +1784,7 @@ export class WorkflowService {
 			nodes: WorkflowEntity['nodes'];
 			connections: WorkflowEntity['connections'];
 			nodeGroups?: WorkflowEntity['nodeGroups'];
+			settings?: WorkflowHistory['settings'];
 		},
 		expectedActiveVersionId: string,
 	): Promise<{ published: true; versionId: string } | { published: false; reason: 'superseded' }> {
@@ -1718,6 +1867,7 @@ export class WorkflowService {
 			await this.activeWorkflowManager.remove(workflowId);
 
 			await this.workflowRepository.update(workflowId, {
+				// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 				active: false,
 				activeVersionId: null,
 				// workflow content did not change, so we keep updatedAt as is
@@ -1745,6 +1895,7 @@ export class WorkflowService {
 		workflowId: string,
 		force = false,
 		options?: { publicApi?: PublicApiCaller },
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [
 			workflowId,
@@ -1816,7 +1967,7 @@ export class WorkflowService {
 		//
 		// All three writes commit together. A deprovision of its own would leave a workflow
 		// whose delete then failed alive with its schedules stripped.
-		await this.workflowRepository.runInTransaction({}, async (trx, ctx) => {
+		await this.workflowRepository.runInTransaction({}, async (trx, trxCtx) => {
 			await this.durableJobProvisioner.deprovisionOwnerInTransaction(
 				trx,
 				this.workflowScheduledJobOwner.ref(workflowId),
@@ -1824,7 +1975,7 @@ export class WorkflowService {
 
 			// A new workflow can be created at this id once the row is gone, so allowlists lose
 			// the entry in the same transaction.
-			await this.workflowRepository.removeFromCallerAllowlists([workflowId], ctx);
+			await this.workflowRepository.removeFromCallerAllowlists([workflowId], trxCtx);
 
 			await trx.delete(WorkflowEntity, { id: workflowId });
 		});
@@ -1841,6 +1992,7 @@ export class WorkflowService {
 			workflowName: workflow.name,
 			projectId: owningProject?.id,
 			publicApi: options?.publicApi ?? false,
+			loginId: loginIdOf(ctx),
 		});
 		await this.externalHooks.run('workflow.afterDelete', [
 			workflowId,
@@ -1854,6 +2006,7 @@ export class WorkflowService {
 		user: User,
 		workflowId: string,
 		options?: { skipArchived?: boolean; expectedChecksum?: string; publicApi?: PublicApiCaller },
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -1889,6 +2042,7 @@ export class WorkflowService {
 
 		await this.workflowRepository.update(workflowId, {
 			isArchived: true,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 			active: false,
 			activeVersion: null,
 			versionId,
@@ -1902,6 +2056,7 @@ export class WorkflowService {
 			user,
 			workflowId,
 			publicApi: options?.publicApi ?? false,
+			loginId: loginIdOf(ctx),
 		});
 		await this.externalHooks.run('workflow.afterArchive', [
 			workflowId,
@@ -1915,6 +2070,7 @@ export class WorkflowService {
 		user: User,
 		workflowId: string,
 		options?: { publicApi?: PublicApiCaller },
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -1940,6 +2096,7 @@ export class WorkflowService {
 			user,
 			workflowId,
 			publicApi: options?.publicApi ?? false,
+			loginId: loginIdOf(ctx),
 		});
 		await this.externalHooks.run('workflow.afterUnarchive', [
 			workflowId,
@@ -1953,25 +2110,28 @@ export class WorkflowService {
 		user: User,
 		workflowId: string,
 		client: PublicApiClient,
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | undefined> {
-		return await this.archive(user, workflowId, { skipArchived: true, publicApi: client });
+		return await this.archive(user, workflowId, { skipArchived: true, publicApi: client }, ctx);
 	}
 
 	async unarchiveForPublicApi(
 		user: User,
 		workflowId: string,
 		client: PublicApiClient,
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | undefined> {
-		return await this.unarchive(user, workflowId, { publicApi: client });
+		return await this.unarchive(user, workflowId, { publicApi: client }, ctx);
 	}
 
 	async deleteForPublicApi(
 		user: User,
 		workflowId: string,
 		client: PublicApiClient,
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | undefined> {
 		// The public API deletes without requiring the workflow to be archived first.
-		return await this.delete(user, workflowId, true, { publicApi: client });
+		return await this.delete(user, workflowId, true, { publicApi: client }, ctx);
 	}
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {
@@ -1983,6 +2143,23 @@ export class WorkflowService {
 			},
 		});
 		return this.roleService.combineResourceScopes('workflow', user, shared, userProjectRelations);
+	}
+
+	async emitWorkflowExecuted(user: User, workflow: WorkflowEntity, executionId: string) {
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflow.id,
+		);
+
+		this.eventService.emit('workflow-executed', {
+			user: toUserLike(user),
+			workflowId: workflow.id,
+			workflowName: workflow.name,
+			executionId,
+			projectId,
+			projectName,
+			source: 'user-manual',
+		});
 	}
 
 	/**
@@ -2269,6 +2446,7 @@ export class WorkflowService {
 				: { id: workflowId, activeVersionId: options.onlyIfActiveVersionIs },
 			{
 				activeVersionId: versionIdToActivate,
+				// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 				active: true,
 				// workflow content did not change, so we keep updatedAt as is
 				updatedAt,
@@ -2329,6 +2507,7 @@ export class WorkflowService {
 				WorkflowEntity,
 				{ id: workflowId },
 				{
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 					active: false,
 					activeVersionId: null,
 					// workflow content did not change, so we keep updatedAt as is

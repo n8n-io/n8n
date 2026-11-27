@@ -14,7 +14,7 @@ permissions:
 jobs:
   validate-sbom:
     name: Validate release SBOM
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-bmi-n8n
     timeout-minutes: 15
     steps:
       - name: Checkout workflow source

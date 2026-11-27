@@ -30,7 +30,10 @@ export {
 export { ExpressionExtensionError } from '../../../@n8n/expression-runtime/src/extensions/expression-extension-error';
 export { NoOpProvider } from '../../../@n8n/expression-runtime/src/observability/noop-provider';
 export { EXPRESSION_METRICS } from '../../../@n8n/expression-runtime/src/observability/metrics';
-export { classifyExpressionError } from '../../../@n8n/expression-runtime/src/evaluator/error-classification';
+export {
+	classifyExpressionError,
+	errorOriginOf,
+} from '../../../@n8n/expression-runtime/src/evaluator/error-classification';
 
 export { DEFAULT_BRIDGE_CONFIG, RuntimeError } from '../../../@n8n/expression-runtime/src/types';
 
@@ -48,6 +51,7 @@ export type {
 	EvaluatorConfig,
 	WorkflowData,
 	EvaluateOptions,
+	ExpressionEvaluationOutcome,
 	RuntimeBridge,
 	BridgeConfig,
 	ObservabilityProvider,

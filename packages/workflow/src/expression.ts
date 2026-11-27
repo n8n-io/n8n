@@ -1,6 +1,11 @@
-import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
+import type {
+	ExpressionEvaluationOutcome,
+	IExpressionEvaluator,
+	ObservabilityProvider,
+} from '@n8n/expression-runtime';
 import {
 	classifyExpressionError,
+	errorOriginOf,
 	EXPRESSION_METRICS,
 	HostCallError,
 	MemoryLimitError,
@@ -15,13 +20,13 @@ import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
-import { evaluateNatively } from './expressions/native-evaluation';
-import type { NativeFallbackReason } from './expressions/native-evaluation/evaluator';
 import {
 	canVerifyNatively,
+	evaluateNatively,
 	NativeVerifier,
+	type NativeFallbackReason,
 	type NativeVerifyMismatch,
-} from './expressions/native-evaluation/verify';
+} from './expressions/native-evaluation';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -40,7 +45,17 @@ const isSyntaxError = (error: unknown): error is SyntaxError =>
 const isExpressionError = (error: unknown): error is ExpressionError =>
 	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
 
-export type { NativeVerifyMismatch } from './expressions/native-evaluation/verify';
+export type { NativeVerifyMismatch } from './expressions/native-evaluation';
+export type { ExpressionEvaluationOutcome } from '@n8n/expression-runtime';
+
+const JSON_STRING_OR_SEPARATOR = /"(?:[^"\\]|\\.)*"|:|,(?=")/g;
+
+/**
+ * Adds a space after each key colon and before each string or key that follows a comma.
+ * The contents of string values and keys stay unchanged.
+ */
+const addReadableJsonSpacing = (json: string): string =>
+	json.replace(JSON_STRING_OR_SEPARATOR, (token) => (token.startsWith('"') ? token : `${token} `));
 
 const isTypeError = (error: unknown): error is TypeError =>
 	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
@@ -49,11 +64,6 @@ const isTypeError = (error: unknown): error is TypeError =>
 setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
-
-/** What one engine did with one expression. `errorClass` names the failure without its message. */
-export type ExpressionEvaluationOutcome =
-	| { ok: true; value: unknown }
-	| { ok: false; error: unknown; errorClass: string };
 
 export interface ExpressionShadowContext {
 	/** The expression after `extendSyntax`, as the engines receive it. */
@@ -127,6 +137,15 @@ const TYPEOF_NAMES = new Set(
 /** Like `knownErrorClass`, but keeps the `typeof` name that the bridge gives a thrown non-Error. */
 function hostErrorClass(name: string): string {
 	return TYPEOF_NAMES.has(name) ? name : knownErrorClass(name);
+}
+
+/** Where a bridge error started, as `<kind>` or `<kind>:<class>`. The class is kept to a fixed set. */
+function errorOriginLabelOf(error: unknown): string | undefined {
+	const origin = errorOriginOf(error);
+	if (origin?.errorName !== undefined) {
+		return `${origin.kind}:${hostErrorClass(origin.errorName)}`;
+	}
+	return origin?.kind;
 }
 
 /**
@@ -391,6 +410,7 @@ export class Expression {
 					verifySample,
 					options.reportNativeVerifyMismatch,
 					options.canReportNativeVerifyMismatch,
+					LoggerProxy,
 				)
 			: undefined;
 		if (verifySample > 0 && this.nativeEvaluation) {
@@ -518,7 +538,12 @@ export class Expression {
 				try {
 					return { ok: true, value: evaluator.evaluate(expression, data, caller, { timezone }) };
 				} catch (error) {
-					return { ok: false, error: mapVmError(error), errorClass: errorClassOf(error) };
+					return {
+						ok: false,
+						error: mapVmError(error),
+						errorClass: errorClassOf(error),
+						errorOrigin: errorOriginLabelOf(error),
+					};
 				}
 			},
 			dispose: async () => {
@@ -607,7 +632,7 @@ export class Expression {
 		canReportMismatch?: () => boolean,
 	): void {
 		this.nativeVerifier = reportMismatch
-			? new NativeVerifier(sample, reportMismatch, canReportMismatch)
+			? new NativeVerifier(sample, reportMismatch, canReportMismatch, LoggerProxy)
 			: undefined;
 	}
 	private static shouldVerifyNative(expression: string): boolean {
@@ -840,12 +865,8 @@ export class Expression {
 		} else if (DateTime.isDateTime(value)) {
 			result = value.toString();
 		} else {
-			result = JSON.stringify(value);
+			result = addReadableJsonSpacing(JSON.stringify(value));
 		}
-
-		result = result
-			.replace(/,"/g, ', "') // spacing for
-			.replace(/":/g, '": '); // readability
 
 		return `[${typeName}: ${result}]`;
 	}

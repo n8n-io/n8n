@@ -41,6 +41,9 @@
                                     "type": "integer"
                                 }
                             },
+                            "speaker_label": {
+                                "type": "string"
+                            },
                             "start_time": {
                                 "type": "string"
                             },
@@ -70,20 +73,16 @@
                                                     "type": "array",
                                                     "items": {
                                                         "type": "object",
-                                                        "properties": {
-                                                            "confidence": {
-                                                                "type": "string"
-                                                            },
-                                                            "content": {
-                                                                "type": "string"
-                                                            }
-                                                        }
+                                                        "properties": {}
                                                     }
                                                 },
                                                 "channel_label": {
                                                     "type": "string"
                                                 },
                                                 "end_time": {
+                                                    "type": "string"
+                                                },
+                                                "speaker_label": {
                                                     "type": "string"
                                                 },
                                                 "start_time": {
@@ -131,12 +130,60 @@
                             "id": {
                                 "type": "integer"
                             },
+                            "speaker_label": {
+                                "type": "string"
+                            },
                             "start_time": {
                                 "type": "string"
                             },
                             "type": {
                                 "type": "string"
                             }
+                        }
+                    }
+                },
+                "speaker_labels": {
+                    "type": "object",
+                    "properties": {
+                        "channel_label": {
+                            "type": "string"
+                        },
+                        "segments": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "end_time": {
+                                        "type": "string"
+                                    },
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "end_time": {
+                                                    "type": "string"
+                                                },
+                                                "speaker_label": {
+                                                    "type": "string"
+                                                },
+                                                "start_time": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "speaker_label": {
+                                        "type": "string"
+                                    },
+                                    "start_time": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        },
+                        "speakers": {
+                            "type": "integer"
                         }
                     }
                 },
@@ -180,5 +227,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

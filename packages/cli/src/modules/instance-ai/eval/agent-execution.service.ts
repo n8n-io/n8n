@@ -122,9 +122,12 @@ export async function resolveCanonicalMcpCatalogs(
 		try {
 			const entries = await Container.get(McpRegistryService).getAll();
 			for (const server of mcpServers) {
-				const entry = entries.find((candidate) =>
+				const matching = entries.filter((candidate) =>
 					candidate.remotes.some((remote) => mcpUrlsMatch(server.url, remote.url)),
 				);
+				// A URL that matches several servers (an origin that hosts more than one) names none
+				// of them. Taking the first would show one server's tools for another.
+				const entry = matching.length === 1 ? matching[0] : undefined;
 				if (entry && entry.tools.length > 0) {
 					result[server.name] = entry.tools.map((tool) => ({
 						name: tool.name,
@@ -365,7 +368,7 @@ export class EvalAgentExecutionService {
 
 		return {
 			modelFetch: recorder.fetch,
-			mcpFetch,
+			mcpFetch: () => mcpFetch,
 			onMcpToolCallSettled: ({ serverName, toolName, modelToolName }) => {
 				recordSettledMcpCall(serverName, toolName, modelToolName);
 			},

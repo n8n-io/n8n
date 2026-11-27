@@ -1,7 +1,7 @@
 import { inTest, Logger } from '@n8n/backend-common';
-import { EventService, UrlService } from '@n8n/backend-services';
+import { EventService, UrlService, loginIdOf } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { ApiKey, User } from '@n8n/db';
+import type { ApiKey, OperationContext, User } from '@n8n/db';
 import { accountSummary, accountFirstName, isPerson, PersonRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { AssignableProjectRole } from '@n8n/permissions';
@@ -40,6 +40,8 @@ function formatRevokedBy(user: User): string {
 	const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
 	return fullName || email || '';
 }
+
+export type AutodeactivationReason = 'crashes' | 'process-crashes' | 'memory-pressure';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName =
@@ -273,6 +275,7 @@ export class UserManagementMailer {
 		subjectBuilder,
 		messageType,
 		publicApi = false,
+		ctx,
 	}: {
 		mailerTemplate: TemplateName;
 		recipients: T[];
@@ -281,6 +284,7 @@ export class UserManagementMailer {
 		subjectBuilder: () => string;
 		messageType: RelayEventMap['user-transactional-email-sent']['messageType'];
 		publicApi?: PublicApiCaller;
+		ctx?: OperationContext;
 	}): Promise<SendEmailResult> {
 		if (!this.mailer) return { emailSent: false };
 		if (recipients.length === 0) return { emailSent: false };
@@ -322,6 +326,7 @@ export class UserManagementMailer {
 				user: sharer,
 				messageType,
 				publicApi,
+				loginId: loginIdOf(ctx),
 			});
 
 			const error = toError(e);
@@ -336,7 +341,7 @@ export class UserManagementMailer {
 	}: {
 		recipient: User;
 		workflow: IWorkflowBase;
-		reason?: 'crashes' | 'memory-pressure';
+		reason?: AutodeactivationReason;
 	}): Promise<SendEmailResult> {
 		const recipients = await this.personRepository.getEmailsByIds([recipient.id]);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
@@ -345,6 +350,11 @@ export class UserManagementMailer {
 				reason: 'its executions repeatedly crashed',
 				nextStep:
 					'Please review its recent executions and resolve any issues before reactivating it.',
+			},
+			'process-crashes': {
+				reason: 'n8n repeatedly crashed while it was running',
+				nextStep:
+					'This often happens when a run loads more data than fits in memory. Reduce how much data the workflow handles at once before reactivating it.',
 			},
 			'memory-pressure': {
 				reason:
@@ -423,11 +433,13 @@ export class UserManagementMailer {
 		newSharees,
 		project,
 		publicApi,
+		ctx,
 	}: {
 		sharer: User;
 		newSharees: Array<{ userId: string; role: AssignableProjectRole }>;
 		project: { id: string; name: string };
 		publicApi?: PublicApiCaller;
+		ctx?: OperationContext;
 	}): Promise<SendEmailResult> {
 		const recipients = await this.personRepository.getEmailsByIds(newSharees.map((s) => s.userId));
 		const baseUrl = this.urlService.getInstanceBaseUrl();
@@ -456,6 +468,7 @@ export class UserManagementMailer {
 			subjectBuilder: () => `${accountFirstName(sharer)} has invited you to a project`,
 			messageType: 'Project shared',
 			publicApi,
+			ctx,
 		});
 	}
 

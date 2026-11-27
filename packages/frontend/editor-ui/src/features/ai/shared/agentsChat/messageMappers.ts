@@ -2,11 +2,11 @@ import {
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	WAIT_TOOL_NAME,
+	instanceAiApprovalAskReasonSchema,
 	type AgentBuilderOpenSuspension,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { useI18n } from '@n8n/i18n';
 import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
@@ -26,6 +26,7 @@ import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
 import { addReplyAttachments, newReplyAttachments } from './replyFiles';
 import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
+import { resolveToolCatalogCall } from './toolCatalogCall';
 import type {
 	AgentsChatHostEvent,
 	ApprovalInput,
@@ -143,6 +144,7 @@ export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 	if (!isRecord(value)) return undefined;
 	if (value.type !== 'approval') return undefined;
 	if (typeof value.toolName !== 'string' || value.toolName.length === 0) return undefined;
+	const askReason = instanceAiApprovalAskReasonSchema.safeParse(value.askReason);
 	return {
 		type: 'approval',
 		toolName: value.toolName,
@@ -150,6 +152,7 @@ export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 		...(typeof value.displayName === 'string' &&
 			value.displayName.length > 0 && { displayName: value.displayName }),
 		args: value.args,
+		...(askReason.success && { askReason: askReason.data }),
 	};
 }
 
@@ -242,14 +245,26 @@ export function rebuildInteractiveFromHistory(
 	return undefined;
 }
 
+function stoppedMessageId(executionId: string): string {
+	return `${executionId}:stopped`;
+}
+
 export function createStoppedMessage(executionId: string): ChatMessage {
 	return {
-		id: `${executionId}:stopped`,
+		id: stoppedMessageId(executionId),
 		role: CHAT_MESSAGE_ROLE.ASSISTANT,
-		content: useI18n().baseText('agentSessions.stopped'),
+		content: '',
 		status: CHAT_MESSAGE_STATUS.SUCCESS,
 		executionId,
 	};
+}
+
+/**
+ * Whether the message is the notice that `createStoppedMessage` adds after a stopped turn.
+ * The notice has no text. The message list shows it as a status line.
+ */
+export function isStoppedMessage(message: Pick<ChatMessage, 'id' | 'executionId'>): boolean {
+	return message.executionId !== undefined && message.id === stoppedMessageId(message.executionId);
 }
 
 /**
@@ -300,11 +315,25 @@ export function convertDbMessages(
 		if (failed) status = CHAT_MESSAGE_STATUS.ERROR;
 		else if (msg.executionStatus === 'running') status = CHAT_MESSAGE_STATUS.STREAMING;
 
+		// True while the parts after the last text part are only host events.
+		let continuesText = false;
 		for (const [partIndex, part] of msg.content.entries()) {
 			if (part.type === 'text' && part.text) {
 				text += part.text;
-				renderParts.push({ type: 'text', text: part.text });
-			} else if (part.type === 'file' && part.fileId) {
+				const previous = renderParts.at(-1);
+				// The live stream joins the text deltas around a host event into one
+				// text, so history keeps them as one text too, without a break.
+				if (continuesText && previous?.type === 'text') {
+					previous.text += part.text;
+				} else {
+					renderParts.push({ type: 'text', text: part.text });
+				}
+				continuesText = true;
+				continue;
+			}
+			if (part.type !== 'host-event') continuesText = false;
+
+			if (part.type === 'file' && part.fileId) {
 				attachments.push({
 					fileId: part.fileId,
 					fileName: part.fileName ?? 'attachment',
@@ -360,10 +389,11 @@ export function convertDbMessages(
 					output = undefined;
 				}
 
+				const call = resolveToolCatalogCall(part.toolName, part.input);
 				const toolCall: ToolCall = {
-					tool: part.toolName,
+					tool: call.tool,
 					toolCallId: part.toolCallId ?? '',
-					input: part.input,
+					input: call.input,
 					...(output !== undefined && { output }),
 					...(canceled && { canceled }),
 					state,
@@ -371,7 +401,7 @@ export function convertDbMessages(
 					...(part.endTime !== undefined && { endTime: part.endTime }),
 					...(part.suspendPayload !== undefined && { suspendPayload: part.suspendPayload }),
 					...(part.childTrace && { childProgress: part.childTrace }),
-					displaySummary: summariseToolCall(part.toolName, output, part.input),
+					displaySummary: summariseToolCall(call.tool, output, call.input),
 				};
 				toolCalls.push(toolCall);
 				attachments.push(...newReplyAttachments(attachments, toolCall));
@@ -403,6 +433,9 @@ export function convertDbMessages(
 			...(thinkingSegments.length > 0 && { thinkingSegments }),
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(attachments.length > 0 && { attachments }),
+			...(role === CHAT_MESSAGE_ROLE.USER && msg.references?.length
+				? { references: msg.references }
+				: {}),
 			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && hostEvents.length > 0 && { hostEvents }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
