@@ -26,8 +26,14 @@ Requires the Promotions feature to be licensed. The API key scopes are:
   connect and disconnect them, and link projects
 - `promotions:readEnvironments`: list and get environments, their projects and
   their missing projects
-- `promotions:promote`: preview and promote
+- `promotions:promote`: preview and promote. Every member can add it to a key.
+  The key promotes only the projects where the role of its owner can promote:
+  instance owners and admins in every project, project admins and editors as
+  the `promotion-settings` option `--who-can-promote` allows. Only instance
+  owners and admins can promote all team projects
 - `promotions:apply`: preview, apply and continue
+- `promotions:readReviews`: list and get promotion reviews. Every member can
+  add it to a key. The key reads the reviews that the Inbox of its owner shows
 - `securitySettings:manage`: get and update the promotion settings
 
 A scope lets the key start the operation. The role of the key owner still
@@ -657,6 +663,25 @@ n8n-cli promotion-environment remove-project env-3 proj-abc
 
 A project can have one environment for each direction. A direction without a
 project environment uses the instance environment.
+
+## `promotion-review list` / `get`
+
+List the promotion reviews that your Inbox shows, or get one review by ID.
+Each review has its merge request link (`webUrl`), branch, requester, approver
+and state. The list starts with the newest activity. `--state` selects the open
+or the closed reviews, as the Inbox tabs do. The default is `open`.
+
+```bash
+n8n-cli promotion-review list
+n8n-cli promotion-review list --state=closed --limit=20
+n8n-cli promotion-review get <reviewId> --json
+```
+
+`reviewState` is `open`, `changes_requested`, `merged` or `closed`. The approver
+is set only for a merged review. `title`, `webUrl` and `headCommitSha` come from
+the Git host. When the host does not answer, they are `null`, `hasConflicts` is
+`false`, and `remoteError` tells why. A review that your Inbox does not show
+returns "not found".
 
 ## `promotion-settings get` / `update`
 

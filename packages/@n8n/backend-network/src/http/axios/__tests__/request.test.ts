@@ -8,6 +8,7 @@ import { gzipSync } from 'node:zlib';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge } from '../../../ssrf';
+import { startRecordingProxy, type RecordingProxy } from '../../__tests__/fixtures/recording-proxy';
 import { configureGlobalAxiosDefaults } from '../config';
 import { convertN8nRequestToAxios, httpRequest, removeEmptyBody } from '../request';
 import { HttpResponseSizeLimitError } from '../../response-size-limit.error';
@@ -790,6 +791,49 @@ describe('SSRF protection', () => {
 						allowedDomains: '*.example.com',
 					}),
 				).rejects.toThrow('Domain not allowed');
+			});
+
+			describe('with a proxy', () => {
+				let proxy: RecordingProxy;
+
+				beforeEach(async () => {
+					nock.restore();
+					proxy = await startRecordingProxy();
+				});
+
+				afterEach(async () => {
+					await proxy.close();
+					nock.activate();
+				});
+
+				test('should block a proxy that is not in allowedDomains', async () => {
+					await expect(
+						httpRequest({
+							method: 'GET',
+							url: 'http://example.com/data',
+							headers: { Authorization: 'Bearer token' },
+							proxy: { host: proxy.host, port: proxy.port },
+							allowedDomains: 'example.com',
+						}),
+					).rejects.toThrow('Domain not allowed');
+
+					expect(proxy.received).toHaveLength(0);
+				});
+
+				test.each([['example.com, 127.0.0.1'], [undefined]])(
+					'should use the proxy when allowedDomains is %s',
+					async (allowedDomains) => {
+						const response = await httpRequest({
+							method: 'GET',
+							url: 'http://example.com/data',
+							proxy: { host: proxy.host, port: proxy.port },
+							allowedDomains,
+						});
+
+						expect(response).toEqual('ok');
+						expect(proxy.received).toHaveLength(1);
+					},
+				);
 			});
 		});
 

@@ -43,7 +43,6 @@ describe('SkillService', () => {
 		access,
 		telemetry,
 		users,
-		assistantGate,
 		links,
 		skillSyncGate,
 		service,
@@ -961,7 +960,6 @@ describe('SkillService', () => {
 	describe('update', () => {
 		it('reports a new version under the skill it read when only the availability changes', async () => {
 			const skill = skillRow('skill_a', { projectId: PROJECT });
-			assistantGate.isEnabled.mockResolvedValue(true);
 			vi.spyOn(access, 'requireAccess').mockResolvedValue(skill);
 			projectScope.getProjectIds.mockResolvedValue(null);
 			const setAvailability = vi

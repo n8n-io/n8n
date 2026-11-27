@@ -35,6 +35,7 @@ import type { AgentChatAttachment } from '../entities/agent-chat-attachment.enti
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentTestRunService } from '../agent-test-run.service';
+import type { AgentTestScenariosService } from '../agent-test-scenarios.service';
 import { AgentChatRelayService } from '../agent-chat-relay.service';
 import type { AgentsService } from '../agents.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -51,6 +52,7 @@ import {
 	startServer,
 	waitForClose,
 } from '@test/file-stream-server';
+import type { SimulationSessionService } from '../simulation/simulation-session.service';
 
 // Draft runs check `agent:read`; these tests run as a user who holds it.
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -91,6 +93,7 @@ function makeController() {
 		agentValidationService,
 		agentExecutionOrchestratorService,
 		mock<N8NCheckpointStorage>(),
+		mock<SimulationSessionService>(),
 	);
 
 	const messageQueue = mock<AgentMessageQueueService>();
@@ -109,6 +112,7 @@ function makeController() {
 
 	const taskCancellation = mock<AgentTaskCancellationService>();
 	const plans = mock<AgentPlanService>();
+	const agentTestScenariosService = mock<AgentTestScenariosService>();
 	const controller = new AgentChatController(
 		taskCancellation,
 		agentExecutionOrchestratorService,
@@ -125,10 +129,12 @@ function makeController() {
 		agentsConfig,
 		new AgentChatRelayService(messageQueue, previewStreams, agentChatAttachmentService),
 		plans,
+		agentTestScenariosService,
 	);
 
 	return {
 		plans,
+		agentTestScenariosService,
 		taskCancellation,
 		controller,
 		agentsConfig,
@@ -231,8 +237,35 @@ describe('AgentChatController route access scopes', () => {
 		['getProductionPlan', 'agent:execute'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
+		['generateTestScenarios', 'agent:execute'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+	});
+});
+
+describe('AgentChatController.generateTestScenarios', () => {
+	it('delegates to AgentTestScenariosService with params, user, and payload', async () => {
+		const { controller, agentTestScenariosService } = makeController();
+		agentTestScenariosService.generateTestScenarios.mockResolvedValue({
+			scenarios: ['Scenario A', 'Scenario B'],
+		});
+
+		const result = await controller.generateTestScenarios(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1' },
+				user: { id: 'user-1' },
+			} as never,
+			{},
+			{ previousScenarios: ['Old scenario'] },
+		);
+
+		expect(result).toEqual({ scenarios: ['Scenario A', 'Scenario B'] });
+		expect(agentTestScenariosService.generateTestScenarios).toHaveBeenCalledWith(
+			{ id: 'user-1' },
+			'project-1',
+			'agent-1',
+			{ previousScenarios: ['Old scenario'] },
+		);
 	});
 });
 
@@ -1325,6 +1358,31 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		);
 		expect(events()).toContainEqual({ type: 'error', message: 'database unavailable' });
 		expect(agentChatAttachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+	});
+
+	it.each([
+		{ mode: 'test' as const, expected: { mode: 'test' } },
+		{ mode: undefined, expected: {} },
+	])('queues the chat mode with a preview message (mode: $mode)', async ({ mode, expected }) => {
+		const { controller, messageQueue } = makeController();
+		const { res } = makeCleanupSseResponse();
+		void controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{
+				message: 'hi',
+				sessionId: 'thread-1',
+				newSession: true,
+				...(mode ? { mode } : {}),
+			} as never,
+		);
+		await vi.waitFor(() => expect(messageQueue.enqueue).toHaveBeenCalled());
+
+		const payload = messageQueue.enqueue.mock.calls[0][0].payload;
+		expect(payload).toMatchObject({ kind: 'preview', ...expected });
+		if (!mode) expect(payload).not.toHaveProperty('mode');
+		res.emit('close');
 	});
 
 	it('keeps accepted input and attachments when the waiting browser disconnects', async () => {

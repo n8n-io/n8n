@@ -7,6 +7,7 @@ import { N8nButton, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { truncate } from '@n8n/utils/string/truncate';
+import { formatThreadTitle } from '@/features/agents/utils/thread-title';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -160,8 +161,15 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 ]);
 
 const sessionTitle = computed(() => {
-	const title = summary.value?.title ?? threadsStore.threadsById.get(props.threadId)?.title;
-	return truncate(title || i18n.baseText('agents.builder.chat.newChat.label'), 64);
+	const known = threadsStore.threadsById.get(props.threadId);
+	const title = formatThreadTitle(
+		{
+			title: summary.value?.title ?? known?.title ?? null,
+			firstMessage: summary.value?.firstMessage ?? known?.firstMessage,
+		},
+		i18n.baseText('agents.builder.chat.newChat.label'),
+	);
+	return truncate(title, 64);
 });
 
 const sessionOptions = computed<
@@ -169,7 +177,10 @@ const sessionOptions = computed<
 >(() =>
 	threadsStore.knownThreads.map((known) => ({
 		id: known.id,
-		label: truncate(known.title || i18n.baseText('agents.builder.chat.newChat.label'), 64),
+		label: truncate(
+			formatThreadTitle(known, i18n.baseText('agents.builder.chat.newChat.label')),
+			64,
+		),
 		class: known.id === props.threadId ? 'session-dropdown-item-active' : undefined,
 		data: { date: formatSessionDateTime(known.updatedAt), active: known.id === props.threadId },
 	})),

@@ -10,6 +10,8 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError, UnexpectedError } from '@n8n/errors';
 
+import { McpServerProtectedResource } from '../runtime/mcp-server-protected-resource';
+import { OAuthGrantPort } from '../tools/oauth-grant-port';
 import type { McpServer } from '../database/entities/mcp-server.entity';
 import type { McpServerActor } from '../mcp-server-events';
 import {
@@ -40,6 +42,8 @@ export class McpServersService {
 		private readonly servers: McpServerRepository,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly events: EventService,
+		private readonly resources: McpServerProtectedResource,
+		private readonly grants: OAuthGrantPort,
 	) {}
 
 	async create(
@@ -57,11 +61,17 @@ export class McpServersService {
 			description: dto.description,
 			createdById: actor.userId,
 		});
+		// A slug is free again after its project is deleted. Grants for the old server must not
+		// reach the new one. Old access tokens end within their short lifetime.
+		await this.grants.revokeForResource(this.resources.serverUrl(server));
 		this.events.emit('mcp-server-created', { ...actor, serverId: server.id, projectId });
 		return await this.withProject(server);
 	}
 
 	async list(projectId: string): Promise<McpServerResponse[]> {
+		if (!(await this.servers.projectExists(projectId))) {
+			throw new NotFoundError('Project not found');
+		}
 		return await this.toResponses(await this.servers.listInProjects([projectId]));
 	}
 

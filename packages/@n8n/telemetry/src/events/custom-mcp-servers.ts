@@ -60,9 +60,9 @@ export const CUSTOM_MCP_SERVERS_TELEMETRY = defineTelemetryEvents({
 				.enum([...mcpServerToolDraftFieldSchema.options, 'both'])
 				.describe('both for the draft after an add. One field for a "Generate" click'),
 			status: z
-				.enum(['drafted', 'invalid_answer', 'model_failed', 'not_available'])
+				.enum(['drafted', 'invalid_answer', 'model_failed', 'no_credits', 'not_available'])
 				.describe(
-					'drafted: the tool has the new text. invalid_answer: the answer broke the rules. model_failed: the model call failed. not_available: the Assistant cannot write drafts',
+					'drafted: the tool has the new text. invalid_answer: the answer broke the rules. model_failed: the model call failed. no_credits: the person has no Assistant credits left, so no model call ran. not_available: the Assistant cannot write drafts',
 				),
 			...builderSource,
 		}),

@@ -124,6 +124,14 @@ async function reload() {
 		highlightedIds.value = new Set(
 			known ? next.tools.filter(({ id }) => !known.has(id)).map(({ id }) => id) : [],
 		);
+		// A tool that did not change keeps its object, so its row does not see a new tool.
+		const previous = new Map(server.value?.tools.map((tool) => [tool.id, tool]));
+		next.tools = next.tools.map((tool) => {
+			const old = previous.get(tool.id);
+			return old && old.updatedAt === tool.updatedAt && old.brokenReason === tool.brokenReason
+				? old
+				: tool;
+		});
 		server.value = next;
 	} catch (error) {
 		if (!isLatest()) return;
@@ -251,8 +259,10 @@ async function onUpdate(tool: McpServerToolResponse, changes: UpdateMcpServerToo
 			await updateTool(rootStore.restApiContext, props.projectId, props.serverId, tool.id, changes),
 		);
 	} catch (error) {
-		// A new object resets the fields of the row to the saved text.
-		replaceTool({ ...tool });
+		// A new object resets the field to the saved text. The current tool keeps the result of
+		// another save that ended while this one ran.
+		const current = server.value?.tools.find(({ id }) => id === tool.id) ?? tool;
+		replaceTool({ ...current });
 		toast.showError(error, i18n.baseText('mcpServers.tools.saveError'));
 	}
 }

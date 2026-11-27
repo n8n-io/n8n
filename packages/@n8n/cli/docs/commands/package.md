@@ -216,6 +216,25 @@ It does not change the skills of skipped Agents.
   uses it. It reports every skill problem as an `agent-invalid` issue on that
   Agent, with the issue path `skills.<skillId>`.
 
+A package skill holds the Markdown instructions of the skill and its supporting
+files. A supporting file can have any extension, for example `.md`, `.py` or
+`.png`. The package keeps a text file as text and a binary file as Base64, so
+the import writes the same bytes. The export and the import validate the files
+against the shared skill schema:
+
+- Each path is relative to the skill folder and has 512 characters or fewer. It
+  cannot go up a folder or replace `SKILL.md`.
+- A skill has 500 supporting files or fewer.
+- A text file has 1,048,576 characters or fewer. A binary file has 1,398,104
+  Base64 characters or fewer, which is about 1 MiB.
+- The supporting files of a skill total 2,097,152 characters or fewer. A binary
+  file counts with its Base64 length.
+- The Markdown instructions have 65,536 characters or fewer. They do not count
+  toward the supporting-file limits.
+
+An Agent reads text files through `load_skill`. An Agent run does not load
+binary files, so `load_skill` does not list them or return their contents.
+
 ## `package import-selection`
 
 Import a chosen subset of workflows from a `.n8np` project package. Workflow and

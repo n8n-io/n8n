@@ -31,12 +31,18 @@ const route = vi.hoisted(() => ({
 	name: 'McpServerView',
 	params: { projectId: 'project-1', serverId: '0190a8d6-4a2e-7000-8000-000000000001' },
 }));
+/** The same route, reactive, so a test can move it to another server. */
+const liveRoute = vi.hoisted(() => ({ current: undefined as typeof route | undefined }));
 const push = vi.hoisted(() => vi.fn());
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
-	useRoute: () => route,
-	useRouter: () => ({ push, resolve: () => ({ href: '/home/mcp-servers' }) }),
-}));
+vi.mock('vue-router', async (importOriginal) => {
+	const { reactive } = await import('vue');
+	liveRoute.current = reactive(route);
+	return {
+		...(await importOriginal()),
+		useRoute: () => liveRoute.current,
+		useRouter: () => ({ push, resolve: () => ({ href: '/home/mcp-servers' }) }),
+	};
+});
 
 const server: McpServerResponse = {
 	id: '0190a8d6-4a2e-7000-8000-000000000001',
@@ -103,10 +109,10 @@ function provideAssistant({ available = true, panel = true } = {}) {
 	if (panel) componentRegistry.register('assistant-panel', { template: '<div />' });
 }
 
-async function renderPage(scopes: Scope[] = BUILDER) {
+async function renderPage(scopes: Scope[] = BUILDER, readOnly = false) {
 	capabilityRegistry.provide(capabilities.projectPermissions, {
 		scopesFor: () => scopes,
-		isReadOnly: () => false,
+		isReadOnly: () => readOnly,
 	});
 	renderComponent();
 	await screen.findByTestId('mcp-server-name');
@@ -120,6 +126,7 @@ async function openMenuItem(label: string) {
 describe('McpServerView', () => {
 	beforeEach(() => {
 		route.name = MCP_SERVER_VIEW;
+		route.params.serverId = server.id;
 		api.getMcpServer.mockResolvedValue(server);
 		api.updateMcpServer.mockImplementation(async (_ctx, _projectId, _serverId, body) => ({
 			...server,
@@ -438,9 +445,35 @@ describe('McpServerView', () => {
 			expect(screen.queryByText('Rename')).not.toBeInTheDocument();
 			expect(screen.queryByText('Delete')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('rename-mcp-server-dialog')).not.toBeInTheDocument();
-			expect(
-				screen.getByTestId('mcp-server-description').querySelector('input, textarea'),
-			).toBeNull();
+			const description = screen.getByTestId('mcp-server-description');
+			expect(description).not.toHaveAttribute('role', 'button');
+			await userEvent.click(description);
+			expect(description.querySelector('input, textarea')).toBeNull();
+			expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+		});
+
+		it('gives no rename, no delete, and no description edit on a read-only branch', async () => {
+			await renderPage(BUILDER, true);
+
+			await userEvent.click(screen.getByTestId('mcp-server-menu').querySelector('button')!);
+
+			expect(await screen.findByText('Copy URL')).toBeInTheDocument();
+			expect(screen.queryByText('Rename')).not.toBeInTheDocument();
+			expect(screen.queryByText('Delete')).not.toBeInTheDocument();
+			expect(screen.getByTestId('mcp-server-description')).not.toHaveAttribute('role', 'button');
+		});
+
+		it('closes the delete dialog when the route moves to another server', async () => {
+			await renderPage();
+			await openMenuItem('Delete');
+			await screen.findByRole('dialog');
+
+			api.getMcpServer.mockReturnValue(new Promise(() => {}));
+			liveRoute.current!.params.serverId = '0190a8d6-4a2e-7000-8000-000000000002';
+
+			await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+			expect(screen.queryByTestId('mcp-server-name')).not.toBeInTheDocument();
+			expect(api.deleteMcpServer).not.toHaveBeenCalled();
 		});
 
 		it('shows "not found" for a server that does not exist', async () => {

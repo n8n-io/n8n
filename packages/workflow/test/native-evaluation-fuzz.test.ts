@@ -15,8 +15,11 @@ import * as Helpers from './helpers';
 import type { IDataObject } from '../src';
 import { createRunExecutionData } from '../src';
 import { Expression } from '../src/expression';
-import { CALLABLE_METHODS, ITERATOR_METHODS } from '../src/expressions/native-evaluation';
-import { EXTENSION_METHODS } from '../src/expressions/native-evaluation/grammar';
+import {
+	CALLABLE_METHODS,
+	EXTENSION_METHODS,
+	ITERATOR_METHODS,
+} from '../src/expressions/native-evaluation';
 import { Workflow } from '../src/workflow';
 
 // One pre-existing, flag-independent quickjs bridge behaviour is kept out of

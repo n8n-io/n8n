@@ -128,6 +128,7 @@ export class AgentWorkflowToolResumeService {
 				},
 				runData,
 				ctx.workflow.connections,
+				...(data.binaryDataAccess?.length ? [data.binaryDataAccess] : []),
 			);
 		} catch (error) {
 			this.logger.error('Failed to settle workflow background job', {

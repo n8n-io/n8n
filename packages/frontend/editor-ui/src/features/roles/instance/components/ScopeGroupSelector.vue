@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { N8nCallout, N8nCheckbox, N8nLink, N8nLoading, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
@@ -18,7 +17,7 @@ import {
 	type InstanceScopeOption,
 } from '../instanceRoleScopes';
 import PersonalSpacePermissions from './PersonalSpacePermissions.vue';
-import { customMcpServersEnabled } from '@/experiments/customMcpServers/customMcpServersEnabled';
+import { useHiddenRoleResources } from '../../composables/useHiddenRoleResources';
 
 const i18n = useI18n();
 
@@ -34,15 +33,10 @@ const props = withDefaults(
 
 const emit = defineEmits<{ 'update:modelValue': [scopes: string[]] }>();
 
-const settingsStore = useSettingsStore();
-const groups = computed(() => {
-	const hidden = new Set<InstanceResource>();
-	if (!settingsStore.isAppsEnabled) hidden.add('app');
-	if (!settingsStore.isModuleActive('mcp-servers') || !customMcpServersEnabled()) {
-		hidden.add('mcpServer');
-	}
-	return INSTANCE_SCOPE_GROUP_LIST.filter((group) => !hidden.has(group.resource));
-});
+const hiddenResources = useHiddenRoleResources();
+const groups = computed(() =>
+	INSTANCE_SCOPE_GROUP_LIST.filter((group) => !hiddenResources.value.has(group.resource)),
+);
 
 /** data-testid must be a single value: turn "Manage own" into "manage-own". */
 function optionTestId(resource: string, option: InstanceScopeOption): string {

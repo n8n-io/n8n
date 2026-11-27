@@ -43,6 +43,7 @@ import {
 } from '@/features/agents/composables/useAgentApi';
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { getThreadDisplayTitle } from '../instanceAi.threadRuntime';
+import { formatThreadTitle } from '@/features/agents/utils/thread-title';
 import { provideThread, useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import {
@@ -303,15 +304,28 @@ function flushQueuedHandoff(threadId: string) {
 	stashHandoff(threadId, queued);
 }
 
-/** A pre-fill that the host set before the panel had a thread. */
-const queuedPrefill = ref<PendingComposerDraft | null>(null);
+/** A pre-fill that the host set before the panel had a thread, with the subject it is for. */
+const queuedPrefill = ref<{ draft: PendingComposerDraft; subjectKey: string } | null>(null);
+
+function subjectKeyOf(subject: InstanceAiEmbedSubject): string {
+	return `${subject.type}:${subject.projectId ?? ''}:${subject.id}`;
+}
+
+// A pre-fill for one subject must not reach the thread of the next subject.
+watch(
+	() => subjectKeyOf(props.subject),
+	() => {
+		queuedPrefill.value = null;
+	},
+);
 
 /** The conversation of the thread reads the stash when it mounts. */
 function flushQueuedPrefill(threadId: string) {
-	const draft = queuedPrefill.value;
-	if (!draft) return;
+	const queued = queuedPrefill.value;
+	if (!queued) return;
 	queuedPrefill.value = null;
-	stashPendingComposerDraft(threadId, draft);
+	if (queued.subjectKey !== subjectKeyOf(props.subject)) return;
+	stashPendingComposerDraft(threadId, queued.draft);
 }
 
 /** Every path that discovers a thread id routes through here so a queued
@@ -365,9 +379,12 @@ function setPrefill(prefill: InstanceAiPrefillPayload) {
 		return;
 	}
 	queuedPrefill.value = {
-		text: prefill.text,
-		prefillType: prefill.prefillType,
-		...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+		draft: {
+			text: prefill.text,
+			prefillType: prefill.prefillType,
+			...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+		},
+		subjectKey: subjectKeyOf(props.subject),
 	};
 	if (activeThreadId.value) flushQueuedPrefill(activeThreadId.value);
 }
@@ -703,7 +720,9 @@ const currentThreadTitle = computed<string | undefined>(() => {
 	const threadId = activeThreadId.value;
 	if (!threadId) return undefined;
 	if (isAgentThread.value) {
-		return assistantAgentThreadsStore.threadsById.get(threadId)?.title ?? undefined;
+		const thread = assistantAgentThreadsStore.threadsById.get(threadId);
+		// The generated title, else the first message until the title arrives.
+		return thread ? formatThreadTitle(thread, '') || undefined : undefined;
 	}
 	const summary = store.threads.find((thread) => thread.id === threadId);
 	const runtime = store.getRuntime(threadId);

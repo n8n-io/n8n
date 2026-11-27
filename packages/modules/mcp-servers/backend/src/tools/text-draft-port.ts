@@ -5,8 +5,14 @@ import type { User } from '@n8n/db';
  * for the draft.
  */
 
-/** `not_available`: the Assistant is off, has no model, or the person cannot use it. */
-export type TextDraftResult = { status: 'drafted'; text: string } | { status: 'not_available' };
+/**
+ * `not_available`: the Assistant is off, has no model, or the person cannot use it.
+ * `no_credits`: the person has no Assistant credits left, so n8n made no model call.
+ */
+export type TextDraftResult =
+	| { status: 'drafted'; text: string }
+	| { status: 'not_available' }
+	| { status: 'no_credits' };
 
 export abstract class TextDraftPort {
 	/** Whether the Assistant can write drafts for this person. It makes no model call. */

@@ -1,4 +1,5 @@
 import type { OAuthClientNamePort } from './oauth-client-name-port';
+import type { OAuthGrantPort } from './oauth-grant-port';
 import type { TextDraftPort } from './text-draft-port';
 
 /**
@@ -117,5 +118,6 @@ export abstract class McpServerToolAdapters {
 		workflows: WorkflowToolPort;
 		textDrafts: TextDraftPort;
 		clients: OAuthClientNamePort;
+		grants: OAuthGrantPort;
 	};
 }

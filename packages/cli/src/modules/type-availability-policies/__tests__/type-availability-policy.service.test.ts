@@ -1,14 +1,15 @@
 import type { EventService } from '@n8n/backend-services';
-import type { OperationContext, TransactionRunner } from '@n8n/db';
+import { ProjectNotFoundError } from '@n8n/backend-services';
+import type { OperationContext, ProjectRepository, TransactionRunner } from '@n8n/db';
 import type { SecurityContext } from '@n8n/permissions';
 import type { NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { NodeTypes } from '@/node-types';
 
-import { CREDENTIAL_TYPES_KIND } from '../constants';
+import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from '../constants';
 import type { TypeAvailabilityPolicyAttachmentRepository } from '../database/repositories/type-availability-policy-attachment.repository';
 import type { TypeAvailabilityPolicyScopeRepository } from '../database/repositories/type-availability-policy-scope.repository';
 import type { TypeAvailabilityPolicyRepository } from '../database/repositories/type-availability-policy.repository';
@@ -17,7 +18,10 @@ import { TypeAvailabilityPolicyScope } from '../database/entities/type-availabil
 import { unconfiguredScope, type EffectivePolicy } from '../effective-policy';
 import type { PolicyAttachment, PolicyRule } from '../policy-rule.types';
 import type { TypeAvailabilityPolicySnapshot } from '../type-availability-policy-snapshot';
-import { TypeAvailabilityPolicyService } from '../type-availability-policy.service';
+import {
+	PERSONAL_PROJECT_POLICY,
+	TypeAvailabilityPolicyService,
+} from '../type-availability-policy.service';
 
 const KIND = 'node-types';
 const ROOT: OperationContext = {};
@@ -77,6 +81,12 @@ function makePolicy(overrides: Partial<TypeAvailabilityPolicy> = {}) {
 	});
 }
 
+const PROJECT_ID = 'project-1';
+const BOTH_KINDS = [NODE_TYPES_KIND, CREDENTIAL_TYPES_KIND];
+
+const projectScopeOf = (kind: string) =>
+	makeScope({ id: `scope-${kind}`, kind, projectId: PROJECT_ID, version: 1 });
+
 describe('TypeAvailabilityPolicyService', () => {
 	const policyRepository = mock<TypeAvailabilityPolicyRepository>();
 	const scopeRepository = mock<TypeAvailabilityPolicyScopeRepository>();
@@ -86,6 +96,7 @@ describe('TypeAvailabilityPolicyService', () => {
 	const snapshot = mock<TypeAvailabilityPolicySnapshot>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const nodeTypes = mock<NodeTypes>();
+	const projectRepository = mock<ProjectRepository>();
 
 	const service = new TypeAvailabilityPolicyService(
 		policyRepository,
@@ -96,7 +107,18 @@ describe('TypeAvailabilityPolicyService', () => {
 		snapshot,
 		loadNodesAndCredentials,
 		nodeTypes,
+		projectRepository,
 	);
+
+	const arrangeTeamProject = () =>
+		projectRepository.findTypesByIds.mockResolvedValue([{ id: PROJECT_ID, type: 'team' }]);
+
+	/** `createScopeIfAbsent` reports a new row for the kinds in `missing`, an existing one otherwise. */
+	const arrangeProjectScopes = (missing: string[]) =>
+		scopeRepository.createScopeIfAbsent.mockImplementation(async ({ kind }) => ({
+			scope: projectScopeOf(kind),
+			created: missing.includes(kind),
+		}));
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -105,6 +127,10 @@ describe('TypeAvailabilityPolicyService', () => {
 		snapshot.projectScopes.mockReturnValue(null);
 		snapshot.refreshAfterWrite.mockResolvedValue(undefined);
 		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(ROOT));
+		// Every project id in these tests names a team project unless a test says otherwise.
+		projectRepository.findTypesByIds.mockImplementation(async (ids) =>
+			ids.map((id) => ({ id, type: 'team' as const })),
+		);
 		// Every fixture rule names `n8n-nodes-base`, so it must resolve as an installed package.
 		loadNodesAndCredentials.loaders = { 'n8n-nodes-base': makeLoader('n8n-nodes-base') };
 		// Fixture `name` rules name Slack, so it must resolve as a loaded node.
@@ -244,6 +270,16 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			expect(transactionRunner.run).not.toHaveBeenCalled();
 			expect(scopeRepository.findScopeByKindAndProject).not.toHaveBeenCalled();
+		});
+
+		it('rejects a personal project before opening a transaction', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([{ id: 'project-1', type: 'personal' }]);
+
+			await expect(
+				service.setDefaultAction(KIND, 'project-1', 'deny', 0, 'user-1'),
+			).rejects.toThrow(PERSONAL_PROJECT_POLICY);
+
+			expect(transactionRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('still allows a delegate defaultAction at instance scope', async () => {
@@ -1062,6 +1098,53 @@ describe('TypeAvailabilityPolicyService', () => {
 			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
 		});
 
+		it('rejects a personal project before opening a transaction', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([{ id: 'project-1', type: 'personal' }]);
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					'project-1',
+					{ rules: [RULE], defaultAction: 'deny' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow(PERSONAL_PROJECT_POLICY);
+			expect(projectRepository.findTypesByIds).toHaveBeenCalledWith(['project-1']);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('throws ProjectNotFoundError for an unknown project, before opening a transaction', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([]);
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					'missing-project',
+					{ rules: [RULE], defaultAction: 'deny' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow(ProjectNotFoundError);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('does not look up a project at instance scope', async () => {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ version: 2 }));
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					null,
+					{ rules: [RULE], defaultAction: 'deny' },
+					1,
+					'user-1',
+				),
+			).rejects.toThrow(ConflictError);
+			expect(projectRepository.findTypesByIds).not.toHaveBeenCalled();
+		});
+
 		it('rejects a package rule on the credential-only prefix, before opening a transaction', async () => {
 			const rule: PolicyRule = {
 				id: 'r1',
@@ -1516,6 +1599,115 @@ describe('TypeAvailabilityPolicyService', () => {
 		});
 	});
 
+	describe('createProjectPolicy', () => {
+		const emitted = (name: string) =>
+			eventService.emit.mock.calls
+				.filter(([event]) => event === name)
+				.map(([, payload]) => payload);
+
+		beforeEach(() => {
+			arrangeTeamProject();
+		});
+
+		it('creates an empty allow scope of both kinds in one transaction', async () => {
+			arrangeProjectScopes(BOTH_KINDS);
+
+			await service.createProjectPolicy(PROJECT_ID, 'user-1');
+
+			expect(transactionRunner.run).toHaveBeenCalledTimes(1);
+			expect(scopeRepository.createScopeIfAbsent.mock.calls).toEqual(
+				BOTH_KINDS.map((kind) => [
+					{ kind, projectId: PROJECT_ID, defaultAction: 'allow', updatedBy: 'user-1' },
+					ROOT,
+				]),
+			);
+			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
+		});
+
+		it('emits an audit event and a saved event for each created kind', async () => {
+			arrangeProjectScopes(BOTH_KINDS);
+
+			await service.createProjectPolicy(PROJECT_ID, 'user-1');
+
+			const scope = (kind: string) => ({
+				updatedBy: 'user-1',
+				kind,
+				projectId: PROJECT_ID,
+				scopeId: `scope-${kind}`,
+				before: null,
+				after: { defaultAction: 'allow', version: 1 },
+			});
+			expect(emitted('node-type-policy-scope-updated')).toEqual(
+				BOTH_KINDS.map((kind) => ({ ...scope(kind), loginId: undefined })),
+			);
+			expect(emitted('node-type-policy-saved')).toEqual(
+				BOTH_KINDS.map((kind) => ({
+					...scope(kind),
+					rulesBefore: null,
+					rulesAfter: [],
+					shadowWarningCount: 0,
+					notLoadedWarningCount: 0,
+					origin: 'add-project-policy',
+				})),
+			);
+		});
+
+		it.each(BOTH_KINDS)('creates only the missing kind when %s is missing', async (missing) => {
+			arrangeProjectScopes([missing]);
+
+			await service.createProjectPolicy(PROJECT_ID, 'user-1');
+
+			for (const event of ['node-type-policy-scope-updated', 'node-type-policy-saved']) {
+				expect(emitted(event)).toEqual([expect.objectContaining({ kind: missing })]);
+			}
+		});
+
+		it('throws a conflict when the project has a policy of both kinds', async () => {
+			arrangeProjectScopes([]);
+
+			await expect(service.createProjectPolicy(PROJECT_ID, 'user-1')).rejects.toThrow(
+				ConflictError,
+			);
+
+			expect(snapshot.refreshAfterWrite).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('throws not found for an unknown project', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([]);
+
+			await expect(service.createProjectPolicy(PROJECT_ID, 'user-1')).rejects.toThrow(
+				NotFoundError,
+			);
+
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects a personal project', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([{ id: PROJECT_ID, type: 'personal' }]);
+
+			await expect(service.createProjectPolicy(PROJECT_ID, 'user-1')).rejects.toThrow(
+				BadRequestError,
+			);
+
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('refreshes nothing and emits nothing when the second write fails', async () => {
+			scopeRepository.createScopeIfAbsent
+				.mockResolvedValueOnce({ scope: projectScopeOf(NODE_TYPES_KIND), created: true })
+				.mockRejectedValueOnce(new Error('second write failed'));
+
+			await expect(service.createProjectPolicy(PROJECT_ID, 'user-1')).rejects.toThrow(
+				'second write failed',
+			);
+
+			expect(snapshot.refreshAfterWrite).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('login id on the audit events', () => {
 		type Case = {
 			write: string;
@@ -1601,6 +1793,15 @@ describe('TypeAvailabilityPolicyService', () => {
 						'user-1',
 						ctx,
 					);
+				},
+			},
+			{
+				write: 'createProjectPolicy',
+				events: ['node-type-policy-scope-updated'],
+				act: async (ctx) => {
+					arrangeTeamProject();
+					arrangeProjectScopes([NODE_TYPES_KIND]);
+					return await service.createProjectPolicy(PROJECT_ID, 'user-1', ctx);
 				},
 			},
 			{
@@ -2321,7 +2522,7 @@ describe('TypeAvailabilityPolicyService', () => {
 
 				const result = await service.evaluateComposedTypesForAllProjects(KIND, [TYPE]);
 
-				expect(scopeRepository.findProjectScopes).toHaveBeenCalledWith(KIND, {});
+				expect(scopeRepository.findProjectScopes).toHaveBeenCalledWith(KIND, {}, undefined);
 				expect(attachmentRepository.listAttachmentsForScopes).toHaveBeenCalledWith(['scope-2'], {});
 				expect(result.byProject).toHaveLength(1);
 				expect(result.byProject[0].projectId).toBe('project-a');
@@ -2361,6 +2562,15 @@ describe('TypeAvailabilityPolicyService', () => {
 				);
 
 				await service.setDefaultAction(KIND, null, 'deny', 1, 'user-2');
+
+				expectRefreshedOnceAfterCommit();
+			});
+
+			it('refreshes once after createProjectPolicy commits', async () => {
+				arrangeTeamProject();
+				arrangeProjectScopes(BOTH_KINDS);
+
+				await service.createProjectPolicy(PROJECT_ID, 'user-1');
 
 				expectRefreshedOnceAfterCommit();
 			});

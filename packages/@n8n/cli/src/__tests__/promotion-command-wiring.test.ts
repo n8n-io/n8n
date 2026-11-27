@@ -18,6 +18,8 @@ import PromotionProviderList from '../commands/promotion-provider/list';
 import PromotionProviderListBranches from '../commands/promotion-provider/list-branches';
 import PromotionProviderListRepositories from '../commands/promotion-provider/list-repositories';
 import PromotionProviderUpdate from '../commands/promotion-provider/update';
+import PromotionReviewGet from '../commands/promotion-review/get';
+import PromotionReviewList from '../commands/promotion-review/list';
 import PromotionSettingsGet from '../commands/promotion-settings/get';
 import PromotionSettingsUpdate from '../commands/promotion-settings/update';
 import { commands } from '../index';
@@ -94,6 +96,20 @@ const CASES: WiringCase[] = [
 		args: { id: 'prov-1' },
 		method: 'deletePromotionProvider',
 		callArgs: ['prov-1'],
+	},
+	{
+		title: 'promotion-review list',
+		commandClass: PromotionReviewList,
+		flags: { state: 'closed', limit: 5 },
+		method: 'listPromotionReviews',
+		callArgs: ['closed', 5],
+	},
+	{
+		title: 'promotion-review get',
+		commandClass: PromotionReviewGet,
+		args: { id: 'rev-1' },
+		method: 'getPromotionReview',
+		callArgs: ['rev-1'],
 	},
 	{
 		title: 'promotion-environment get',
@@ -210,18 +226,11 @@ describe('promotion-settings', () => {
 		expect(commands['promotion-settings:update']).toBe(PromotionSettingsUpdate);
 	});
 
-	it('update keeps the settings of the flags that were left out', async () => {
+	it('update sends only the settings of the flags that were given', async () => {
 		const command = instantiate(PromotionSettingsUpdate);
 		const internals = command as unknown as Internals;
 		const updatePromotionSettings = vi.fn().mockResolvedValue({});
-		const client = {
-			getPromotionSettings: vi.fn().mockResolvedValue({
-				whoCanPromote: 'instanceAdmins',
-				whoCanApprove: 'projectAdmins',
-				whoCanApply: 'instanceAdmins',
-			}),
-			updatePromotionSettings,
-		};
+		const client = { updatePromotionSettings };
 		vi.spyOn(internals, 'parse').mockResolvedValue({
 			args: {},
 			flags: { 'who-can-promote': 'projectAdminsAndEditors' },
@@ -231,10 +240,9 @@ describe('promotion-settings', () => {
 
 		await command.run();
 
+		// The API keeps the other settings, so a newer change by another admin stays.
 		expect(updatePromotionSettings).toHaveBeenCalledWith({
 			whoCanPromote: 'projectAdminsAndEditors',
-			whoCanApprove: 'projectAdmins',
-			whoCanApply: 'instanceAdmins',
 		});
 	});
 });

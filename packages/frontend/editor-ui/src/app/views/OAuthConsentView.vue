@@ -93,9 +93,12 @@ const serverRefusal = computed(() => {
 		heading: i18n.baseText(`oauth.consentView.mcpServer.refusal.${reason.data}.heading`, {
 			interpolate,
 		}),
-		description: i18n.baseText(`oauth.consentView.mcpServer.refusal.${reason.data}.description`, {
-			interpolate,
-		}),
+		// A server in a personal project has no project name on this screen.
+		description: refusal.projectName
+			? i18n.baseText(`oauth.consentView.mcpServer.refusal.${reason.data}.description`, {
+					interpolate,
+				})
+			: i18n.baseText(`oauth.consentView.mcpServer.refusal.${reason.data}.description.personal`),
 	};
 });
 const allowLabel = computed(() => {

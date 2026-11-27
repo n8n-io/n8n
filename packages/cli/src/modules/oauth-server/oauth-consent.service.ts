@@ -160,7 +160,13 @@ export class OAuthConsentService {
 		resource: ProtectedResource,
 		user: User,
 	): Promise<Extract<ConsentDetailsResult, { reason: 'forbidden' }>> {
-		const refusal = await resource.describeRefusal?.(user);
+		// The details only explain the refusal. A failed lookup still answers `forbidden`.
+		const refusal = await Promise.resolve(resource.describeRefusal?.(user)).catch(
+			(error: unknown) => {
+				this.logger.warn('Could not describe a refusal', { error });
+				return undefined;
+			},
+		);
 		if (!refusal) return { ok: false, reason: 'forbidden' };
 		return {
 			ok: false,
@@ -385,6 +391,15 @@ export class OAuthConsentService {
 			(await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource));
 		if (!resource?.isFirstParty) return null;
 
+		if (resource.skipConsent && this.isOwnClient(resource, sessionPayload)) {
+			if (!(await resource.authorize(user))) return null;
+			const scopes = this.grantableScopes(
+				await this.supportedScopesFor(resource, user),
+				sessionPayload.requestedScopes,
+			);
+			return await this.issueGrant(user, sessionPayload, scopes);
+		}
+
 		const consent = await this.userConsentRepository.findGrant(
 			user.id,
 			sessionPayload.clientId,
@@ -443,5 +458,13 @@ export class OAuthConsentService {
 				return null;
 			return await this.issueGrant(user, sessionPayload, consented, ctx);
 		});
+	}
+
+	private isOwnClient(resource: ProtectedResource, sessionPayload: OAuthSessionPayload): boolean {
+		const resourceUrls = resource.getResourceUrls?.() ?? [resource.getResourceUrl()];
+		return (
+			sessionPayload.redirectUri === sessionPayload.clientId &&
+			resourceUrls.includes(sessionPayload.clientId)
+		);
 	}
 }

@@ -228,14 +228,16 @@ test.describe(
 				setupRequirements,
 			}) => {
 				await setupRequirements(webhookTestRequirements);
+				await n8n.canvas.openNode(NODES.WEBHOOK);
+				const path = await n8n.ndv.getParameterInputField('path').inputValue();
+				await n8n.ndv.close();
 				await n8n.canvas.clickExecuteWorkflowButton();
 				await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText('Waiting for trigger event');
 				await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveAccessibleName(
 					'Execute workflow from Webhook',
 				);
 
-				const webhookPath = '/webhook-test/b0d79ddb-df2d-49b1-8555-9fa2b482608f';
-				const response = await n8n.ndv.makeWebhookRequest(webhookPath);
+				const response = await n8n.ndv.makeWebhookRequest(`/webhook-test/${path}`);
 				expect(response.status()).toBe(200);
 
 				await n8n.canvas.openNode(NODES.END);

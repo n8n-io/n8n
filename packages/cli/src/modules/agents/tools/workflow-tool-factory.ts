@@ -16,6 +16,7 @@ import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
+import { collectBinaryDataIds } from 'n8n-core';
 import { DateTime } from 'luxon';
 import type {
 	IBinaryKeyData,
@@ -165,6 +166,8 @@ export interface WorkflowToolExecutionResult extends WorkflowToolResult {
 	wait?: WorkflowWaitState;
 	/** Set only when the output has binary data, for {@link finishResult} to store. */
 	items?: Record<string, INodeExecutionData[]>;
+	/** Binary IDs that the execution received or created. */
+	binaryDataAccess?: string[];
 }
 
 function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
@@ -356,6 +359,7 @@ export async function executeWorkflow(
 	const triggerPinData: IPinData = {
 		[triggerNode.name]: [{ json: inputData as IDataObject, ...(binary && { binary }) }],
 	};
+	const binaryDataAccess = collectBinaryDataIds(triggerPinData[triggerNode.name]);
 	const workflowData =
 		workflow.pinData === undefined ? workflow : { ...workflow, pinData: undefined };
 
@@ -364,12 +368,14 @@ export async function executeWorkflow(
 
 	// Build execution data following Instance AI adapter's pattern
 	const runData: IWorkflowExecutionDataProcess = {
+		binaryDataAccess,
 		...(context.executionProjectId ? { projectId: context.executionProjectId } : {}),
 		executionMode: context.executionMode,
 		workflowData,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
 		pinData: triggerPinData,
 		executionData: createRunExecutionData({
+			binaryDataAccess,
 			...(context.agentRun ? { parentAgentRun: context.agentRun } : {}),
 			startData: {},
 			resultData: {
@@ -600,6 +606,7 @@ function formatResult(
 		error: data?.resultData?.error?.message,
 		...(wait ? { wait } : {}),
 		...(hasBinary ? { items } : {}),
+		...(data?.binaryDataAccess?.length ? { binaryDataAccess: data.binaryDataAccess } : {}),
 	};
 }
 
@@ -706,10 +713,11 @@ async function finishResult(
 	result: WorkflowToolExecutionResult,
 	context: Pick<WorkflowToolContext, 'agentId' | 'projectId'>,
 	ctx: WaitToolContext,
+	workflowId: string | undefined,
 	/** Input files of the tool call, so an unchanged input file keeps its file ID. */
 	inputFiles = new Map<string, AgentToolOutputFile>(),
 ): Promise<WorkflowToolResult> {
-	const { wait: _wait, items, ...rest } = result;
+	const { wait: _wait, items, binaryDataAccess, ...rest } = result;
 	const persistence = ctx.persistence;
 	if (!persistence?.threadId || !persistence.resourceId || !items) return rest;
 	const { threadId, resourceId } = persistence;
@@ -720,6 +728,8 @@ async function finishResult(
 		projectId: context.projectId,
 		threadId,
 		resourceId,
+		...(workflowId ? { workflowId } : {}),
+		...(binaryDataAccess?.length ? { binaryDataAccess } : {}),
 	};
 	const data = { ...rest.data };
 	const files: AgentToolOutputFile[] = [];
@@ -823,7 +833,7 @@ async function backgroundWaitingExecution(
 			const settlementStatus = settlementStatusForExecution(rawStatus);
 			const runData = full.data?.resultData?.runData;
 			// Store the files one time. The tool result and the job list the same file IDs.
-			const finished = await finishResult(fresh, context, ctx, inputFiles);
+			const finished = await finishResult(fresh, context, ctx, reference.workflowId, inputFiles);
 			await jobService.settle(jobId, {
 				status: settlementStatus,
 				result:
@@ -1194,7 +1204,7 @@ function assembleWorkflowTool(
 			// second execution, so say so.
 			if (result.status === 'waiting' && isWaitCancelled(ctx.resumeData)) {
 				return {
-					...(await finishResult(result, context, ctx, inputFiles)),
+					...(await finishResult(result, context, ctx, reference.workflowId, inputFiles)),
 					note: 'The user stopped waiting for this workflow. It is still paused — do not start it again.',
 				};
 			}
@@ -1202,7 +1212,7 @@ function assembleWorkflowTool(
 			// A wait due within the poll window resolves inline. Only a wait the poll
 			// did not settle is handed to the background.
 			if (result.status !== 'waiting') {
-				return await finishResult(result, context, ctx, inputFiles);
+				return await finishResult(result, context, ctx, reference.workflowId, inputFiles);
 			}
 
 			const waiting = result;
@@ -1227,7 +1237,7 @@ function assembleWorkflowTool(
 					}
 
 					if (result.status !== 'waiting' || !supportsHitl) {
-						return await finishResult(result, context, ctx, inputFiles);
+						return await finishResult(result, context, ctx, reference.workflowId, inputFiles);
 					}
 
 					current ??= await loadCurrentWorkflow(context, reference);

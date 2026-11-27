@@ -4,6 +4,8 @@ import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
 import {
 	N8nBadge,
@@ -28,10 +30,13 @@ import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabili
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { findSkillWorkflows } from '@/features/agents/utils/skillWorkflows';
+import { useSkillWorkflowNames } from '@/features/agents/composables/useSkillWorkflowToolNames';
 import {
 	isRestrictedByInlineTool,
 	isRestrictedIssue,
 	isWarningIssue,
+	skillWorkflowIdOfIssue,
 } from '../utils/validationIssues';
 import type {
 	ChipRestriction,
@@ -74,9 +79,11 @@ const props = withDefaults(
 		/** Capability sections to render. */
 
 		sections?: AgentCapabilitySection[];
+		showSkillWorkflows?: boolean;
 	}>(),
 	{
 		disabled: false,
+		showSkillWorkflows: true,
 		supportsActivation: false,
 		taskRefs: () => [],
 
@@ -108,6 +115,7 @@ const toast = useToast();
 const rootStore = useRootStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+const posthogStore = usePostHog();
 const { createAgent } = useCreateAgent();
 const openToolGroup = ref<number | null>(null);
 
@@ -164,6 +172,12 @@ const toolIssueMessages = computed(() =>
 );
 const toolWarningMessages = computed(() =>
 	groupIssueMessages('tool', (issue) => issue.capability.index, isWarningIssue),
+);
+const skillWorkflowIssueMessages = computed(() =>
+	groupIssueMessages('tool', skillWorkflowIdOfIssue, (issue) => !isWarningIssue(issue)),
+);
+const skillWorkflowWarningMessages = computed(() =>
+	groupIssueMessages('tool', skillWorkflowIdOfIssue, isWarningIssue),
 );
 const mcpServerIssueMessages = computed(() =>
 	groupIssueMessages('mcpServer', (issue) => issue.capability.id),
@@ -409,9 +423,43 @@ const workflowRows = computed<SingleToolRow[]>(() =>
 	).filter((row): row is SingleToolRow => !row.isGrouped),
 );
 
+const skillWorkflowsEnabled = computed(
+	() =>
+		props.showSkillWorkflows &&
+		posthogStore.isVariantEnabled(
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		),
+);
+
+const { workflowName } = useSkillWorkflowNames(() =>
+	skillWorkflowsEnabled.value
+		? findSkillWorkflows(props.skills, props.tools).map(({ workflowId }) => workflowId)
+		: [],
+);
+
+const skillWorkflows = computed(() =>
+	skillWorkflowsEnabled.value ? findSkillWorkflows(props.skills, props.tools, workflowName) : [],
+);
+
+const skillWorkflowRows = computed(() =>
+	skillWorkflows.value.map((workflow) => {
+		const invalidReasons = skillWorkflowIssueMessages.value.get(workflow.workflowId) ?? [];
+		const warningReasons = skillWorkflowWarningMessages.value.get(workflow.workflowId) ?? [];
+		return {
+			...workflow,
+			label: workflowName(workflow.workflowId) ?? (workflow.name || workflow.workflowId),
+			invalidReasons,
+			warningReasons,
+		};
+	}),
+);
+
+const workflowRowCount = computed(() => workflowRows.value.length + skillWorkflowRows.value.length);
+
 const capabilityRowItemCounts = computed<Record<CapabilityRow, number>>(() => ({
 	tools: toolRows.value.length,
-	workflows: workflowRows.value.length,
+	workflows: workflowRowCount.value,
 	skills: props.skills.length,
 	subAgents: selectedSubAgents.value.length,
 }));
@@ -755,7 +803,7 @@ function openExistingSubAgentModal(subAgent: {
 				<AgentChipRow
 					v-else-if="section === 'workflows'"
 					:label="i18n.baseText('generic.workflows')"
-					:item-count="workflowRows.length"
+					:item-count="workflowRowCount"
 					:add-label="i18n.baseText('workflows.add')"
 					add-button-test-id="agent-capabilities-add-workflow"
 					:disabled="props.disabled"
@@ -788,12 +836,56 @@ function openExistingSubAgentModal(subAgent: {
 							</AgentChipButton>
 						</AgentItemContextMenu>
 					</div>
+					<div
+						v-for="workflow in skillWorkflowRows"
+						:key="`skill-workflow-${workflow.workflowId}`"
+						:class="[$style.chipGroup, $style.skillWorkflowChipGroup]"
+					>
+						<AgentChipButton
+							icon="workflow"
+							:invalid="workflow.invalidReasons.length > 0"
+							:invalid-reasons="workflow.invalidReasons"
+							:warning="workflow.warningReasons.length > 0"
+							:warning-reasons="workflow.warningReasons"
+							:disabled="props.disabled"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-skill-workflow-row"
+							data-attr="agent-capabilities-skill-workflow-row"
+							@click="emit('open-skill', workflow.skillId)"
+						>
+							<span :class="$style.skillWorkflowLabel">
+								<span :class="$style.skillWorkflowName">{{ workflow.label }}</span>
+								{{ ' ' }}
+								<span
+									:class="$style.skillNote"
+									:title="
+										i18n.baseText('agents.builder.tools.workflow.fromSkill', {
+											interpolate: { skill: workflow.skillName },
+										})
+									"
+									data-testid="agent-capabilities-skill-workflow-source"
+								>
+									<N8nIcon icon="book-open" :size="12" :class="$style.skillNoteIcon" />
+									<span :class="$style.skillNoteName" aria-hidden="true">{{
+										workflow.skillName
+									}}</span>
+									{{ ' ' }}
+									<span :class="$style.srOnly">{{
+										i18n.baseText('agents.builder.tools.workflow.fromSkill', {
+											interpolate: { skill: workflow.skillName },
+										})
+									}}</span>
+								</span>
+							</span>
+						</AgentChipButton>
+					</div>
 				</AgentChipRow>
 
 				<AgentSkillsSection
 					v-else-if="section === 'skills'"
 					:skills="skills"
 					:disabled="props.disabled"
+					:tools="props.tools"
 					:validation-issues="props.validationIssues"
 					@open-skill="emit('open-skill', $event)"
 					@add-skill="emit('add-skill')"
@@ -852,6 +944,8 @@ function openExistingSubAgentModal(subAgent: {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/utils';
+
 .deactivatedTool {
 	color: var(--text-color--subtle);
 }
@@ -875,6 +969,46 @@ function openExistingSubAgentModal(subAgent: {
 	> .capabilityChip {
 		width: 100%;
 	}
+}
+
+.skillWorkflowChipGroup {
+	max-width: 100%;
+}
+
+.skillWorkflowLabel {
+	display: grid;
+	grid-template-columns: minmax(0, max-content) minmax(0, max-content);
+	column-gap: var(--spacing--4xs);
+}
+
+.skillWorkflowName,
+.skillNoteName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.skillNote {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+	padding: 0 var(--spacing--4xs);
+	border-radius: var(--radius--sm);
+	background: var(--background--subtle);
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+}
+
+.skillNoteIcon {
+	flex-shrink: 0;
+}
+
+.skillNoteName {
+	white-space: nowrap;
+}
+
+.srOnly {
+	@include utils.utils-sr-only;
 }
 
 .groupChipLabel {

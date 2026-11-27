@@ -6,7 +6,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
-import type { AgentResource } from '../types';
+import type { AgentJsonConfig, AgentResource } from '../types';
 import type {
 	SetupTask,
 	SetupTaskId,
@@ -210,6 +210,7 @@ async function mountColumn(
 		canEditAgent: boolean;
 		isPreviewOpen: boolean;
 		agent: AgentResource | null;
+		localConfig: AgentJsonConfig;
 		tasks: Array<SetupTask<SetupTaskId>>;
 		hidePreviewButton: boolean;
 	}> = {},
@@ -228,7 +229,7 @@ async function mountColumn(
 				{ label: 'Sessions', value: 'sessions' },
 				{ label: 'Settings', value: 'settings' },
 			],
-			localConfig: {
+			localConfig: overrides.localConfig ?? {
 				name: 'Agent',
 				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help the user.',
@@ -722,5 +723,21 @@ describe('AgentBuilderEditorColumn', () => {
 			capabilities.element.compareDocumentPosition(memory.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it('gives the skills section the attached tools and forwards skill opens from capabilities', async () => {
+		const tools: AgentJsonConfig['tools'] = [
+			{ type: 'workflow', workflow: 'Send report', workflowId: 'wf-1' },
+		];
+		const wrapper = await mountColumn({
+			localConfig: { name: 'Agent', model: '', instructions: '', tools },
+		});
+		await flushPromises();
+
+		expect(wrapper.getComponent({ name: 'AgentSkillsSection' }).props('tools')).toEqual(tools);
+
+		wrapper.getComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('open-skill', 'skill-1');
+
+		expect(wrapper.emitted('open-skill')).toEqual([['skill-1']]);
 	});
 });
