@@ -95,11 +95,11 @@ export async function httpRequestWithAuthentication(
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
-		if (parentTypes.includes('oAuth1Api')) {
+		if (credentialsType === 'oAuth1Api' || parentTypes.includes('oAuth1Api')) {
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
 		}
-		if (parentTypes.includes('oAuth2Api')) {
+		if (credentialsType === 'oAuth2Api' || parentTypes.includes('oAuth2Api')) {
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(
 				this,

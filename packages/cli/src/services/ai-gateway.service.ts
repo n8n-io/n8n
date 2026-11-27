@@ -331,9 +331,33 @@ export class AiGatewayService {
 		});
 
 		return {
-			[providerConfig.apiKeyField]: jwt,
+			...this.buildTokenFields(credentialType, providerConfig.apiKeyField, jwt),
 			...urlFields,
 		};
+	}
+
+	/**
+	 * Where the gateway token goes in the synthetic credential. OAuth2 credentials sign
+	 * requests with `oauthTokenData.access_token` and ignore a flat key field, so the token
+	 * goes there for any type that extends `oAuth2Api`.
+	 */
+	private buildTokenFields(
+		credentialType: string,
+		apiKeyField: string,
+		jwt: string,
+	): ICredentialDataDecryptedObject {
+		const isOAuth2 =
+			credentialType === 'oAuth2Api' ||
+			this.credentialTypes.getParentTypes(credentialType).includes('oAuth2Api');
+		if (isOAuth2) {
+			// Only `access_token` is set. The credential type's `preAuthentication` still runs on
+			// it, so one that decodes or rewrites the token would break, and nodes that read other
+			// token fields (such as Salesforce's `instance_url`) get `undefined`. Check both before
+			// serving another OAuth2 credential type through the gateway.
+			return { oauthTokenData: { access_token: jwt, token_type: 'Bearer' } };
+		}
+
+		return { [apiKeyField]: jwt };
 	}
 
 	/**

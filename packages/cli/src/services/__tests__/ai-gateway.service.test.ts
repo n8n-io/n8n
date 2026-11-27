@@ -58,7 +58,10 @@ function makeService({
 	urlService = mock<UrlService>({
 		getInstanceBaseUrl: vi.fn().mockReturnValue(INSTANCE_BASE_URL),
 	}),
-	credentialTypes = mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(true) }),
+	credentialTypes = mock<CredentialTypes>({
+		recognizes: vi.fn().mockReturnValue(true),
+		getParentTypes: vi.fn().mockReturnValue([]),
+	}),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
@@ -658,6 +661,105 @@ describe('AiGatewayService', () => {
 			expect(result).toEqual({
 				apiKey: 'mock-jwt-token',
 				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
+			});
+		});
+
+		it('writes the token as OAuth2 token data for a credential that extends oAuth2Api', async () => {
+			const oauth2Config = {
+				...MOCK_GATEWAY_CONFIG,
+				credentialTypes: ['zoomInfoPkceOAuth2Api'],
+				providerConfig: {
+					zoomInfoPkceOAuth2Api: {
+						gatewayPath: '/v1/gateway/zoominfo',
+						urlField: 'baseUrl',
+						apiKeyField: 'apiKey',
+					},
+				},
+			};
+			requestMock
+				.mockResolvedValueOnce(ok(oauth2Config))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const credentialTypes = mock<CredentialTypes>({
+				recognizes: vi.fn().mockReturnValue(true),
+				getParentTypes: vi.fn().mockReturnValue(['oAuth2Api']),
+			});
+			const service = makeService({ credentialTypes });
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'zoomInfoPkceOAuth2Api',
+				userId: USER_ID,
+			});
+
+			// `apiKeyField` is ignored: OAuth2 credentials only read `oauthTokenData`.
+			expect(result).toEqual({
+				oauthTokenData: { access_token: 'mock-jwt-token', token_type: 'Bearer' },
+				baseUrl: `${BASE_URL}/v1/gateway/zoominfo`,
+			});
+			expect(credentialTypes.getParentTypes).toHaveBeenCalledWith('zoomInfoPkceOAuth2Api');
+		});
+
+		it('writes the token as OAuth2 token data for the base oAuth2Api type', async () => {
+			const oauth2Config = {
+				...MOCK_GATEWAY_CONFIG,
+				credentialTypes: ['oAuth2Api'],
+				providerConfig: {
+					oAuth2Api: {
+						gatewayPath: '/v1/gateway/generic',
+						urlField: 'baseUrl',
+						apiKeyField: 'apiKey',
+					},
+				},
+			};
+			requestMock
+				.mockResolvedValueOnce(ok(oauth2Config))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			// The base type has no parent types.
+			const credentialTypes = mock<CredentialTypes>({
+				recognizes: vi.fn().mockReturnValue(true),
+				getParentTypes: vi.fn().mockReturnValue([]),
+			});
+			const service = makeService({ credentialTypes });
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'oAuth2Api',
+				userId: USER_ID,
+			});
+
+			expect(result).toEqual({
+				oauthTokenData: { access_token: 'mock-jwt-token', token_type: 'Bearer' },
+				baseUrl: `${BASE_URL}/v1/gateway/generic`,
+			});
+		});
+
+		it('writes the token to apiKeyField for a credential that does not extend oAuth2Api', async () => {
+			const apiKeyConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				credentialTypes: ['someApi'],
+				providerConfig: {
+					someApi: {
+						gatewayPath: '/v1/gateway/some',
+						urlField: 'url',
+						apiKeyField: 'apiKey',
+					},
+				},
+			};
+			requestMock
+				.mockResolvedValueOnce(ok(apiKeyConfig))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const credentialTypes = mock<CredentialTypes>({
+				recognizes: vi.fn().mockReturnValue(true),
+				getParentTypes: vi.fn().mockReturnValue(['someBaseApi']),
+			});
+			const service = makeService({ credentialTypes });
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'someApi',
+				userId: USER_ID,
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				url: `${BASE_URL}/v1/gateway/some`,
 			});
 		});
 

@@ -98,6 +98,63 @@ describe('httpRequestWithAuthentication', () => {
 		expect(request).not.toHaveBeenCalled();
 	});
 
+	test('signs a request with the base oAuth2Api credential type, which has no parent types', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({
+			oauthTokenData: { access_token: 'access-token', token_type: 'Bearer' },
+		});
+		mockThis.helpers.httpRequest.mockResolvedValueOnce({ ok: true });
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'oAuth2Api',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).resolves.toEqual({ ok: true });
+
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				headers: expect.objectContaining({ Authorization: 'Bearer access-token' }),
+			}),
+		);
+		expect(request).not.toHaveBeenCalled();
+	});
+
+	test('signs a request with the base oAuth1Api credential type, which has no parent types', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({
+			consumerKey: 'consumer-key',
+			consumerSecret: 'consumer-secret',
+			signatureMethod: 'HMAC-SHA1',
+			oauthTokenData: { oauth_token: 'token', oauth_token_secret: 'token-secret' },
+		});
+		mockThis.helpers.httpRequest.mockResolvedValueOnce({ ok: true });
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'oAuth1Api',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).resolves.toEqual({ ok: true });
+
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					Authorization: expect.stringMatching(/^OAuth .*oauth_consumer_key="consumer-key"/),
+				}),
+			}),
+		);
+		expect(request).not.toHaveBeenCalled();
+	});
+
 	test('still refreshes and resends on 401 for preAuthentication credentials', async () => {
 		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
 		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });

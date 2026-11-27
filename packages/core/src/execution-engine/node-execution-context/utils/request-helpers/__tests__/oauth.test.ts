@@ -940,6 +940,59 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
 	});
 
+	test('should surface a 401 without refreshing an n8n Connect credential', async () => {
+		// The shape AiGatewayService builds for a gateway-managed OAuth2 credential: only the
+		// gateway token, no client or token URL, and no credential ID to refresh against.
+		mockNode.credentials = {
+			testOAuth2: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+		} as unknown as INode['credentials'];
+		mockThis.getCredentials.mockResolvedValue({
+			oauthTokenData: { access_token: 'gateway-jwt', token_type: 'Bearer' },
+			baseUrl: 'http://gateway.test/v1/gateway/zoominfo',
+		});
+
+		const error401 = Object.assign(new Error('401'), { response: { status: 401 } });
+		mockThis.helpers.httpRequest.mockRejectedValueOnce(error401);
+
+		await expect(
+			requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			),
+		).rejects.toBe(error401);
+
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				headers: expect.objectContaining({ Authorization: 'Bearer gateway-jwt' }),
+			}),
+		);
+		expect(mockAdditionalData.credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+	});
+
+	test('refreshOAuth2Token should return the token of an n8n Connect credential without refreshing it', async () => {
+		mockNode.credentials = {
+			testOAuth2: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+		} as unknown as INode['credentials'];
+		mockThis.getCredentials.mockResolvedValue({
+			oauthTokenData: { access_token: 'gateway-jwt', token_type: 'Bearer' },
+		});
+
+		await expect(
+			refreshOAuth2Token.call(mockThis, 'testOAuth2', mockNode, mockAdditionalData),
+		).resolves.toEqual({ access_token: 'gateway-jwt', token_type: 'Bearer' });
+
+		expect(mockThis.helpers.httpRequest).not.toHaveBeenCalled();
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).not.toHaveBeenCalled();
+	});
+
 	test('credential-level tokenExpiredStatusCode should take priority over oAuth2Options', async () => {
 		mockThis.getCredentials.mockResolvedValue(makeCredentialData({ tokenExpiredStatusCode: 403 }));
 
