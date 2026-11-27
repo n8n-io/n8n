@@ -40,16 +40,11 @@ import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.s
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
 
-<<<<<<< HEAD
-const makeGlobalConfig = ({ builderEnabled = true, managedByEnv = false } = {}) =>
-=======
 const makeGlobalConfig = ({
 	builderEnabled = true,
-	tagsDisabled = false,
 	managedByEnv = false,
 	activityLogEnabled = true,
 } = {}) =>
->>>>>>> 5970521c47a7dea4b32f6ac4655b64e33b65ed4c
 	({
 		activityLog: { enabled: activityLogEnabled },
 		endpoints: { mcpBuilderEnabled: builderEnabled },

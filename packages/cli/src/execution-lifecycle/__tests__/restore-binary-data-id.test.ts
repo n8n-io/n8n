@@ -79,7 +79,7 @@ for (const mode of ['filesystem', 's3'] as const) {
 			expect(getDataId(run, 'binary')).toBe(`${mode}:${correctFileId}`);
 		});
 
-		it.each(['integrated', 'manual', 'retry'] as const)(
+		it.each(['integrated', 'internal', 'manual', 'retry'] as const)(
 			'should leave a file under the temporary path in `%s` mode',
 			async (executionMode) => {
 				const binaryDataId = `${mode}:workflows/6HYhhKmJch2cYxGj/executions/temp/binary_data/a5c3f1ed`;
@@ -173,22 +173,6 @@ for (const mode of ['filesystem', 's3'] as const) {
 			});
 
 			const promise = restoreBinaryDataId(run, executionId, 'webhook');
-
-			await expect(promise).resolves.not.toThrow();
-
-			expect(binaryDataService.rename).not.toHaveBeenCalled();
-		});
-
-		it('should do nothing if workflow execution mode is not `webhook`', async () => {
-			const executionId = '999';
-
-			const run = toIRun({
-				json: {
-					data: undefined,
-				},
-			});
-
-			const promise = restoreBinaryDataId(run, executionId, 'internal');
 
 			await expect(promise).resolves.not.toThrow();
 
@@ -323,9 +307,6 @@ for (const mode of ['filesystem', 's3'] as const) {
 	});
 }
 
-<<<<<<< HEAD
-describe('on non-webhook execution mode', () => {
-=======
 describe('assignDatabaseFilesToExecution', () => {
 	const executionId = '999';
 	const fileId = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
@@ -369,24 +350,5 @@ describe('assignDatabaseFilesToExecution', () => {
 		databaseManager.assignToExecution.mockRejectedValueOnce(new Error('connection lost'));
 
 		await expect(assignDatabaseFilesToExecution(run, executionId)).resolves.not.toThrow();
-	});
-});
-
-describe('on default mode', () => {
->>>>>>> 5970521c47a7dea4b32f6ac4655b64e33b65ed4c
-	it('should do nothing', async () => {
-		const executionId = '999';
-
-		const run = toIRun({
-			json: {
-				data: undefined,
-			},
-		});
-
-		const promise = restoreBinaryDataId(run, executionId, 'internal');
-
-		await expect(promise).resolves.not.toThrow();
-
-		expect(binaryDataService.rename).not.toHaveBeenCalled();
 	});
 });

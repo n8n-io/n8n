@@ -36,9 +36,6 @@ TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly \
 TEST_IMAGE_REDIS=valkey/valkey:9.2.1-alpine \
 pnpm --filter n8n-playwright test:deployment tests/deployment/valkey.spec.ts
 
-<<<<<<< HEAD
-# PLT-04: local standalone SQLite upgrade from pinned 2.x stable to 3.x nightly
-=======
 # ENV-09: Azure Blob binary data storage against Azurite (requires license env)
 TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly \
 TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly \
@@ -54,8 +51,7 @@ TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly \
 TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly \
 pnpm --filter n8n-playwright test:deployment tests/deployment/redis-cluster.spec.ts
 
-# PLT-04: standalone SQLite upgrade from 2.x stable to 3.x nightly (3.x channel only)
->>>>>>> 5970521c47a7dea4b32f6ac4655b64e33b65ed4c
+# PLT-04: local standalone SQLite upgrade from pinned 2.x stable to 3.x nightly
 TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:v3-nightly \
 TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:v3-nightly \
 pnpm --filter n8n-playwright test:deployment tests/deployment/upgrade-2x-to-3x.spec.ts
@@ -70,14 +66,10 @@ pnpm --filter n8n-playwright test:deployment tests/deployment/upgrade-2x-to-3x.s
 | `CRT-01` (`amd64`), `CRT-01`/`IMG-04`/`IMG-08` (`arm64`) | `cloud-image-pair.spec.ts` | Pointer-compressed `-pc` image (for example `ghcr.io/n8n-io/n8n:nightly-pc`) | Distroless runner (for example `ghcr.io/n8n-io/runners:nightly-distroless`) | `runCodeNodes({ python: true })` (JS + Python Code nodes), distroless runner, image architecture, V8 pointer compression enabled |
 | `DEP-05` | `redis-7.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`), `runWebhook()` + `runCodeNodes()`, `INFO server` reports engine `redis` and major version `7`, Bull job counter advances |
 | `DEP-06` | `valkey.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`) with `TEST_IMAGE_REDIS=valkey/valkey:9.2.1-alpine`, `runWebhook()` + `runCodeNodes()`, `INFO server` reports engine `valkey` and major version `9`, Bull job counter advances |
-<<<<<<< HEAD
-| `PLT-04` (local only) | `upgrade-2x-to-3x.spec.ts` | 3.x standard image (for example `ghcr.io/n8n-io/n8n:v3-nightly`) | Internal (`N8N_RUNNERS_MODE=internal`) | Boots standalone SQLite on `TEST_IMAGE_N8N_UPGRADE_FROM` (2.x stable), seeds workflow, credential, execution, active webhook, and filesystem binary file in `~/.n8n/binaryData`, upgrades via `replaceN8N()`, verifies `binaryData/` renamed to `storage/`, and confirms all seeded state and webhook still work |
-=======
 | `ENV-09` | `azure-binary-storage.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`, `services: ['azurite']`, `N8N_DEFAULT_BINARY_DATA_MODE=azure`), `roundTripBinary()` + `readExecution()`, uploaded and worker-written binary blobs verified in Azurite |
 | `ENV-13` | `azure-execution-storage.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Standalone SQLite (`services: ['azurite']`, `N8N_EXECUTION_DATA_STORAGE_MODE=azure`), `runWebhook()` + `readExecution()`, execution bundle blob verified in Azurite, SQLite records `storedAt="az"` with zero `execution_data` rows |
 | `ENV-16` | `redis-cluster.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`, `services: ['redisCluster']`), `runWebhook()`, all 3 cluster nodes healthy across 16384 slots, `MOVED` redirect and cluster slot routing on `{bull}:jobs:id`, main and worker process execution via Redis cluster client |
-| `PLT-04` (`3.x` channel) | `upgrade-2x-to-3x.spec.ts` | 3.x standard image (for example `ghcr.io/n8n-io/n8n:v3-nightly`) | Internal (`N8N_RUNNERS_MODE=internal`) | Boots standalone SQLite on `TEST_IMAGE_N8N_UPGRADE_FROM` (2.x stable), seeds workflow, credential, execution, active webhook, and filesystem binary file in `~/.n8n/binaryData`, upgrades via `replaceN8N()`, verifies `binaryData/` renamed to `storage/`, and confirms all seeded state and webhook still work |
->>>>>>> 5970521c47a7dea4b32f6ac4655b64e33b65ed4c
+| `PLT-04` (local only) | `upgrade-2x-to-3x.spec.ts` | 3.x standard image (for example `ghcr.io/n8n-io/n8n:v3-nightly`) | Internal (`N8N_RUNNERS_MODE=internal`) | Boots standalone SQLite on `TEST_IMAGE_N8N_UPGRADE_FROM` (2.x stable), seeds workflow, credential, execution, active webhook, and filesystem binary file in `~/.n8n/binaryData`, upgrades via `replaceN8N()`, verifies `binaryData/` renamed to `storage/`, and confirms all seeded state and webhook still work |
 
 ## Parameters
 

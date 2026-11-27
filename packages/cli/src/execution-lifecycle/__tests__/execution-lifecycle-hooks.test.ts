@@ -75,7 +75,6 @@ describe('Execution Lifecycle Hooks', () => {
 	const workflowStaticDataService = mockInstance(WorkflowStaticDataService);
 	const workflowStatisticsService = mockInstance(WorkflowStatisticsService);
 	const binaryDataService = mockInstance(BinaryDataService);
-	mockInstance(BinaryDataConfig, { mode: 'default' });
 	const binaryDataAccessService = mockInstance(BinaryDataAccessService);
 	const databaseManager = mockInstance(DatabaseManager);
 	const databaseFileId = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
@@ -2316,8 +2315,6 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
-<<<<<<< HEAD
-=======
 		it.each(['webhook', 'manual', 'trigger'] as const)(
 			'should assign database binary data to the execution before the save in %s mode',
 			async (mode) => {
@@ -2354,21 +2351,6 @@ describe('Execution Lifecycle Hooks', () => {
 			);
 		});
 
-		it('should run workflow.preExecute when legacy flag is on', async () => {
-			executionsConfig.preExecuteErrorCreatesExecution = true;
-			lifecycleHooks = createHooks();
-
-			await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
-
-			expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
-				workflow,
-				'manual',
-				workflowHookContext,
-				undefined,
-			]);
-		});
-
->>>>>>> 5970521c47a7dea4b32f6ac4655b64e33b65ed4c
 		describe('user of the pushRef', () => {
 			const createHooksWithUser = () =>
 				getLifecycleHooksForScalingWorker(

@@ -102,18 +102,12 @@ export async function assignDatabaseFilesToExecution(run: IRun, executionId: str
 const storesFilesBeforeItsExecution = (mode: WorkflowExecuteMode) =>
 	mode === 'webhook' || mode === 'trigger';
 
-const keepsBinaryDataInMemory = () => Container.get(BinaryDataConfig).mode === 'default';
-
 export async function restoreBinaryDataId(
 	run: IRun,
 	executionId: string,
 	workflowExecutionMode: WorkflowExecuteMode,
 ) {
-<<<<<<< HEAD
-	if (workflowExecutionMode !== 'webhook') {
-=======
-	if (!storesFilesBeforeItsExecution(workflowExecutionMode) || keepsBinaryDataInMemory()) {
->>>>>>> 5970521c47a7dea4b32f6ac4655b64e33b65ed4c
+	if (!storesFilesBeforeItsExecution(workflowExecutionMode)) {
 		return;
 	}
 
