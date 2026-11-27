@@ -142,6 +142,8 @@ const resourceEditors = {
 			undefined,
 			options,
 		),
+	openExistingCredentialEditor: (id: string) =>
+		useUIStore().openExistingCredential(id, { appendToBody: true, hideAskAssistant: true }),
 	openVariableEditor: (options: VariableEditorOptions) =>
 		useUIStore().openModalWithData({
 			name: VARIABLE_MODAL_KEY,

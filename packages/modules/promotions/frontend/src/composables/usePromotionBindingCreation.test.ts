@@ -29,6 +29,7 @@ const editors = {
 	loadVariables: vi.fn<ResourceEditors['loadVariables']>(),
 	createVariable: vi.fn<ResourceEditors['createVariable']>(),
 	openCredentialEditor: vi.fn<ResourceEditors['openCredentialEditor']>(),
+	openExistingCredentialEditor: vi.fn<ResourceEditors['openExistingCredentialEditor']>(),
 	openVariableEditor: vi.fn<ResourceEditors['openVariableEditor']>(),
 	isEditorOpen: (editor: 'credential' | 'variable') => editorOpen[editor],
 	closeEditor: vi.fn<ResourceEditors['closeEditor']>(),

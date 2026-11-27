@@ -526,6 +526,11 @@ oneOf:
               $ref: promotionCredentialExpressionValue.generated.yml
           dataIsComplete:
             type: boolean
+          sharedWithProjectIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
         required:
           - id
           - name
@@ -554,6 +559,11 @@ oneOf:
               $ref: promotionCredentialExpressionValue.generated.yml
           dataIsComplete:
             type: boolean
+          sharedWithProjectIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
         required:
           - id
           - name

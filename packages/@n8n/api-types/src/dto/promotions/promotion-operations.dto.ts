@@ -238,3 +238,30 @@ export const ApplyPackageResultDto = {
 };
 
 export type ApplyPackageResultDto = z.infer<typeof applyPackageResultSchema>;
+
+/** Prototype: the credentials of the Apply branch to create in flight or to delete again. */
+export class PrototypeApplyCredentialsDto extends Z.class(
+	{ credentialIds: z.array(z.string().min(1).max(36)).max(500) },
+	{ strict: true },
+) {}
+
+/** Prototype: the branch credentials that an Apply created in flight, or found. */
+export class PrototypePreparedCredentialsDto extends Z.class({
+	credentials: z.array(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+			type: z.string(),
+			ownerProjectId: z.string(),
+			created: z.boolean(),
+			needsValues: z.boolean(),
+			sharedWith: z.array(z.object({ id: z.string(), name: z.string() })),
+			notShared: z.array(z.string()),
+		}),
+	),
+}) {}
+
+/** Prototype: the credentials that the discard deleted. */
+export class PrototypeDiscardedCredentialsDto extends Z.class({
+	deleted: z.array(z.string()),
+}) {}

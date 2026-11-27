@@ -16,7 +16,7 @@ type CredentialPackageKeyHandling = {
 	description: 'copy';
 	data: 'transform';
 	type: 'copy';
-	shared: 'exclude';
+	shared: 'transform';
 	isManaged: 'exclude';
 	isGlobal: 'exclude';
 	isResolvable: 'exclude';
@@ -40,11 +40,14 @@ export class CredentialSerializer {
 			data,
 			dataIsComplete,
 			includeDescription,
+			sharedWithProjectIds,
 		}: {
 			data?: SerializedCredentialData;
 			dataIsComplete?: boolean;
 			/** Set when the source instance has credential descriptions on. An empty one exports as `null`. */
 			includeDescription?: boolean;
+			/** Prototype: projects with `credential:user` sharing. Empty is left out. */
+			sharedWithProjectIds?: string[];
 		} = {},
 	): SerializedCredential {
 		return serializedCredentialSchema.parse(
@@ -55,6 +58,7 @@ export class CredentialSerializer {
 				...(includeDescription ? { description: credential.description ?? null } : {}),
 				...(data !== undefined ? { data } : {}),
 				...(dataIsComplete !== undefined ? { dataIsComplete } : {}),
+				...(sharedWithProjectIds?.length ? { sharedWithProjectIds } : {}),
 			}),
 		);
 	}

@@ -142,6 +142,10 @@ export class CredentialExporter {
 				data,
 				includeDescription,
 				...(data !== undefined ? { dataIsComplete: isEqual(data, decryptedData) } : {}),
+				sharedWithProjectIds: (credential.shared ?? [])
+					.filter(({ role }) => role === 'credential:user')
+					.map(({ projectId }) => projectId)
+					.sort(),
 			}),
 		);
 	}

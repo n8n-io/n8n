@@ -373,6 +373,12 @@ paths:
   /promotions/projects/{projectId}/apply/continue:
     post:
       $ref: ./handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  /promotions/projects/{projectId}/apply/credentials/prepare:
+    post:
+      $ref: ./handlers/promotions/spec/paths/prepareApplyCredentials.generated.yml
+  /promotions/projects/{projectId}/apply/credentials/discard:
+    post:
+      $ref: ./handlers/promotions/spec/paths/discardApplyCredentials.generated.yml
   /settings/rate-limits:
     get:
       $ref: ./handlers/settings/spec/paths/getRateLimitSettings.generated.yml

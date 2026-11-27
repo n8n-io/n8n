@@ -66,10 +66,13 @@ export function usePromotionOperation(
 		preview,
 		check,
 		refresh,
+		onApplied,
 	}: {
 		preview: Ref<PromotionPreview | null>;
 		check: Ref<ApplyCheckResult | null>;
 		refresh: () => Promise<void>;
+		/** Prototype: runs before the page leaves after a successful Apply. */
+		onApplied?: () => void;
 	},
 ) {
 	const i18n = useI18n();
@@ -196,6 +199,7 @@ export function usePromotionOperation(
 				})
 			: await applyProjectSelection(rootStore.publicApiContext, id, expected);
 		if (result.status === 'applied') {
+			onApplied?.();
 			outcome.showApplied(result);
 			await leave();
 			await outcome.announceApplied(id);

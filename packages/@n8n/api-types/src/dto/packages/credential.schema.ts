@@ -35,6 +35,8 @@ export const serializedCredentialSchema = z
 		description: credentialDescriptionSchema.optional(),
 		data: serializedCredentialDataSchema.optional(),
 		dataIsComplete: z.boolean().optional(),
+		// Prototype: the projects that the credential is shared with, besides its owner project.
+		sharedWithProjectIds: z.array(z.string().min(1)).optional(),
 	})
 	.strict();
 

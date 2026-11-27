@@ -4,6 +4,9 @@ import {
 	ApplySelectionDto,
 	ContinueApplyPackageDto,
 	ContinueApplySelectionDto,
+	PrototypeApplyCredentialsDto,
+	PrototypeDiscardedCredentialsDto,
+	PrototypePreparedCredentialsDto,
 	CreatePromotionEnvironmentDto,
 	CreatePromotionProviderDto,
 	ListPromotionEnvironmentsQueryDto,
@@ -900,6 +903,58 @@ export class PromotionsPublicController {
 			req.publicApiClient,
 			req.ctx,
 		);
+	}
+
+	// -- Prototype: credentials of the Apply branch ------------------------------
+
+	@Post('/projects/:projectId/apply/credentials/prepare')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:apply')
+	@GlobalScope('promotions:apply')
+	@ApiSummary('Prototype: Create the missing credentials of an Apply from the branch')
+	@ApiDescription(
+		BETA_NOTE +
+			'Prototype. Creates each listed credential that this instance lacks, with the name, type, description, expression values and sharing on the branch. Secrets stay empty.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PrototypePreparedCredentialsDto)
+	async prepareApplyCredentials(
+		req: PublicApiRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Body input: PrototypeApplyCredentialsDto,
+	) {
+		return {
+			credentials: await (await this.promotionsService()).prepareApplyCredentials(
+				projectId,
+				req.user,
+				input.credentialIds,
+			),
+		};
+	}
+
+	@Post('/projects/:projectId/apply/credentials/discard')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:apply')
+	@GlobalScope('promotions:apply')
+	@ApiSummary('Prototype: Delete the credentials that an aborted Apply created')
+	@ApiDescription(
+		BETA_NOTE + 'Prototype. Deletes the listed credentials that the prepare route created.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PrototypeDiscardedCredentialsDto)
+	async discardApplyCredentials(
+		req: PublicApiRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) _projectId: string,
+		@Body input: PrototypeApplyCredentialsDto,
+	) {
+		return {
+			deleted: await (await this.promotionsService()).discardApplyCredentials(
+				req.user,
+				input.credentialIds,
+			),
+		};
 	}
 
 	/** The route accepts a key with either scope. The direction decides which one this call needs. */

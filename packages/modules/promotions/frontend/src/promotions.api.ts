@@ -139,3 +139,43 @@ export async function updatePromotionSettings(
 ): Promise<PromotionSettings> {
 	return await makePublicApiRequest(context, 'PATCH', '/promotions/settings', changes);
 }
+
+/** Prototype: a branch credential that an Apply created in flight. */
+export type PreparedApplyCredential = {
+	id: string;
+	name: string;
+	type: string;
+	ownerProjectId: string;
+	created: boolean;
+	needsValues: boolean;
+	sharedWith: Array<{ id: string; name: string }>;
+	notShared: string[];
+};
+
+/** Prototype: creates the missing credentials of an Apply from the branch. */
+export async function prepareApplyCredentials(
+	context: PublicApiContext,
+	projectId: string,
+	credentialIds: string[],
+): Promise<{ credentials: PreparedApplyCredential[] }> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		`/promotions/projects/${projectId}/apply/credentials/prepare`,
+		{ credentialIds },
+	);
+}
+
+/** Prototype: deletes the credentials that an aborted Apply created. */
+export async function discardApplyCredentials(
+	context: PublicApiContext,
+	projectId: string,
+	credentialIds: string[],
+): Promise<{ deleted: string[] }> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		`/promotions/projects/${projectId}/apply/credentials/discard`,
+		{ credentialIds },
+	);
+}

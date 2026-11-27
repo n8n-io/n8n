@@ -20,19 +20,22 @@ import {
 	type PromotionRunContents,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { CredentialsFinderService, EventService } from '@n8n/backend-services';
 import {
 	isPerson,
 	ProjectRepository,
+	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	type OperationContext,
 	type User,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -119,6 +122,21 @@ type PushedPromotion = {
 type ApplyHead = {
 	operation: Omit<Parameters<PromotionsGitService['listBranchTree']>[0], 'pathspecs'>;
 	identity: { environmentId: string; git: { commitSha: string; branchName: string } };
+};
+
+/** Prototype: a branch credential that an Apply created in flight, or found. */
+export type PreparedApplyCredential = {
+	id: string;
+	name: string;
+	type: string;
+	ownerProjectId: string;
+	/** False when the credential already existed on this instance. */
+	created: boolean;
+	/** True when the branch file does not hold every value, so the user must add secrets. */
+	needsValues: boolean;
+	sharedWith: Array<{ id: string; name: string }>;
+	/** Projects of the branch sharing that this instance lacks or the user cannot share with. */
+	notShared: string[];
 };
 
 type ApplyTip = {
@@ -1071,6 +1089,98 @@ export class PromotionsService {
 						),
 				),
 		);
+	}
+
+	// -- Prototype: create the branch credentials in flight ---------------------
+
+	/** Prototype: credentials that this process created for an Apply, by the user who asked. */
+	private readonly preparedCredentials = new Map<string, Set<string>>();
+
+	/**
+	 * Prototype. Creates the missing credentials of an Apply from the branch: name, type,
+	 * description, expression values and sharing. The Apply then binds to them. A credential whose
+	 * file is not complete still needs its secret values from the user.
+	 */
+	async prepareApplyCredentials(
+		projectId: string,
+		actor: User,
+		credentialIds: string[],
+	): Promise<PreparedApplyCredential[]> {
+		const input = await this.resolver.resolveForProject(projectId, 'apply');
+		return await this.withEnvironmentLock(
+			input,
+			async () => await this.resolver.resolveForProject(projectId, 'apply'),
+			async (current, signal) => {
+				await this.ensureCheckout(current, signal);
+				const { files } = await this.readApplyTip(current, undefined);
+				const inventory = await this.inventoryReader.read(new GitCommitPackageReader(files));
+				const credentials = Container.get(CredentialsService);
+				const sharing = Container.get(EnterpriseCredentialsService);
+				const prepared = this.preparedCredentials.get(actor.id) ?? new Set<string>();
+				this.preparedCredentials.set(actor.id, prepared);
+
+				const result: PreparedApplyCredential[] = [];
+				for (const id of new Set(credentialIds)) {
+					const file = inventory.credentials.find(({ credential }) => credential.id === id);
+					if (!file?.projectId) continue;
+					const { credential } = file;
+					const existing = await Container.get(CredentialsFinderService).findById(id);
+					if (!existing) {
+						await credentials.createStubCredential(
+							{
+								id,
+								name: credential.name,
+								type: credential.type,
+								projectId: file.projectId,
+								...(credential.data !== undefined
+									? { data: credential.data as ICredentialDataDecryptedObject }
+									: {}),
+								...(credential.description !== undefined
+									? { description: credential.description }
+									: {}),
+							},
+							actor,
+						);
+						prepared.add(id);
+					}
+					const sharedWith = credential.sharedWithProjectIds ?? [];
+					if (sharedWith.length > 0 && prepared.has(id)) {
+						await sharing.shareWithProjects(actor, id, sharedWith);
+					}
+					const shared = await Container.get(SharedCredentialsRepository).find({
+						where: { credentialsId: id, role: 'credential:user' },
+						relations: { project: true },
+					});
+					result.push({
+						id,
+						name: credential.name,
+						type: credential.type,
+						ownerProjectId: file.projectId,
+						created: prepared.has(id),
+						needsValues: credential.dataIsComplete !== true,
+						sharedWith: shared.map(({ project }) => ({ id: project.id, name: project.name })),
+						notShared: sharedWith.filter(
+							(pid) => !shared.some(({ projectId }) => projectId === pid),
+						),
+					});
+				}
+				return result;
+			},
+		);
+	}
+
+	/** Prototype. Deletes the credentials that {@link prepareApplyCredentials} created for this user. */
+	async discardApplyCredentials(actor: User, credentialIds: string[]): Promise<string[]> {
+		const prepared = this.preparedCredentials.get(actor.id);
+		if (!prepared) return [];
+		const credentials = Container.get(CredentialsService);
+		const deleted: string[] = [];
+		for (const id of credentialIds) {
+			if (!prepared.has(id)) continue;
+			if (await credentials.delete(actor, id)) deleted.push(id);
+			prepared.delete(id);
+		}
+		return deleted;
 	}
 
 	private async applySelectionResolved(

@@ -159,6 +159,8 @@ export interface ResourceEditors {
 	loadVariables(): Promise<void>;
 	createVariable(variable: CreateEnvironmentVariable): Promise<EnvironmentVariable>;
 	openCredentialEditor(type: string, options: CredentialEditorOptions): void;
+	/** Prototype: opens the shell editor of a credential that exists. */
+	openExistingCredentialEditor(id: string): void;
 	openVariableEditor(options: VariableEditorOptions): void;
 	/** Reads reactive state, so watch it to see the editor close. */
 	isEditorOpen(editor: ResourceEditorKind): boolean;
