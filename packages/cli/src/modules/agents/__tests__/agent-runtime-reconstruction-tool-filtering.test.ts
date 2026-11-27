@@ -41,6 +41,7 @@ import { AgentsCredentialProvider } from '../adapters/agents-credential-provider
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentSkillWorkflowTelemetry } from '../agent-skill-workflow-telemetry.service';
 import { AgentDecisionWorkflowService } from '../approval/agent-decision-workflow.service';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
@@ -1165,6 +1166,9 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		Container.set(SubAgentRunner, mock<SubAgentRunner>());
+		const skillWorkflowTelemetry = mock<AgentSkillWorkflowTelemetry>();
+		skillWorkflowTelemetry.withRunTracking.mockImplementation((tool) => tool);
+		Container.set(AgentSkillWorkflowTelemetry, skillWorkflowTelemetry);
 	});
 
 	afterEach(() => {
@@ -1184,6 +1188,76 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 
 		expect(resolveWorkflowToolMock).toHaveBeenCalledTimes(1);
 		expect(resolveWorkflowToolMock).toHaveBeenCalledWith(mentionedTool, expect.anything());
+	});
+
+	it('tracks the runs of a mentioned workflow tool, and not of a direct tool', async () => {
+		const skillWorkflowTelemetry = mock<AgentSkillWorkflowTelemetry>();
+		const tracked = mock<agents.BuiltTool>({ name: 'tracked' });
+		skillWorkflowTelemetry.withRunTracking.mockReturnValue(tracked);
+		Container.set(AgentSkillWorkflowTelemetry, skillWorkflowTelemetry);
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		const built = mock<agents.BuiltTool>({ name: 'workflow_wf-mentioned' });
+		resolveWorkflowToolMock.mockResolvedValueOnce(built).mockResolvedValueOnce(built);
+		const resolved: Array<agents.BuiltTool | null | undefined> = [];
+		buildFromJsonResolvingTools(resolved);
+		const direct: AgentJsonToolConfig = {
+			type: 'workflow',
+			workflowId: 'wf-direct',
+			workflow: 'Other',
+		};
+
+		await service.reconstructFromAgentEntity(
+			makeSkillAgentEntity([direct]),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		expect(skillWorkflowTelemetry.withRunTracking).toHaveBeenCalledTimes(1);
+		expect(skillWorkflowTelemetry.withRunTracking).toHaveBeenCalledWith(built, {
+			agent_id: expect.any(String),
+			workflow_id: 'wf-mentioned',
+			skill_ids: ['skill-1'],
+			run_type: 'production',
+		});
+		expect(resolved).toEqual([built, tracked]);
+	});
+
+	it('tracks the stub of a mentioned workflow that n8n cannot run, with the user of a sub-agent run', async () => {
+		const skillWorkflowTelemetry = mock<AgentSkillWorkflowTelemetry>();
+		skillWorkflowTelemetry.withRunTracking.mockImplementation((tool) => tool);
+		Container.set(AgentSkillWorkflowTelemetry, skillWorkflowTelemetry);
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		resolveWorkflowToolMock.mockRejectedValueOnce(
+			new CallableWorkflowUnavailableError('not_published', 'Workflow "Get code" is not published'),
+		);
+		buildFromJsonResolvingTools([]);
+		const { agent, skills } = makeSkillAgentEntity();
+
+		await service.reconstructFromResolvedSource({
+			config: { ...agent.schema!, skills: [{ type: 'skill', id: 'skill-1' }] },
+			memoryOwnerAgentId: 'agent-1',
+			projectId,
+			credentialProvider: mock<CredentialProvider>(),
+			toolDescriptors: {},
+			toolCodeByName: {},
+			skills,
+			runtimeProfile: 'sub-agent',
+			runType: 'test',
+			attributionUserId: 'user-9',
+		});
+
+		expect(skillWorkflowTelemetry.withRunTracking).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'workflow_wf-mentioned' }),
+			{
+				agent_id: 'agent-1',
+				user_id: 'user-9',
+				workflow_id: 'wf-mentioned',
+				skill_ids: ['skill-1'],
+				run_type: 'test',
+			},
+		);
 	});
 
 	it('builds a workflow tool for a mention in a resolved sub-agent source', async () => {
@@ -1340,5 +1414,93 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 		);
 
 		expect(toolNamesPassedToBuildFromJson()).toEqual([]);
+	});
+
+	function skillInstructionsPassedToBuildFromJson(): string | undefined {
+		const [, , options] = buildFromJsonMock.mock.calls.at(-1) as [
+			AgentJsonConfig,
+			unknown,
+			BuildFromJsonOptions,
+		];
+		return options.skills?.['skill-1']?.instructions;
+	}
+
+	it('adds the workflow hint to the instructions of a skill that mentions a workflow', async () => {
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		buildFromJsonResolvingTools([]);
+
+		await service.reconstructFromAgentEntity(
+			makeSkillAgentEntity(),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		expect(skillInstructionsPassedToBuildFromJson()).toMatch(
+			/^Call \[Get code\]\(n8n:\/\/workflow\/wf-mentioned\) and reply with the code\.\n\n.*If you cannot find or run the workflow, say so first and stop\. Do not make up its result\.$/,
+		);
+	});
+
+	it('adds the workflow hint when only a reference of the skill mentions a workflow', async () => {
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		buildFromJsonResolvingTools([]);
+		const source = makeSkillAgentEntity();
+		source.skills['skill-1'] = {
+			...source.skills['skill-1'],
+			instructions: 'Read the reference.',
+			references: [
+				{ path: 'references/run.md', content: 'Call [Get code](n8n://workflow/wf-mentioned).' },
+			],
+		};
+
+		await service.reconstructFromAgentEntity(source, mock<CredentialProvider>(), 'production');
+
+		expect(skillInstructionsPassedToBuildFromJson()).toMatch(
+			/^Read the reference\.\n\n.*If you cannot find or run the workflow, say so first and stop\. Do not make up its result\.$/,
+		);
+	});
+
+	it('adds the workflow hint to the skills of a sub-agent', async () => {
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		buildFromJsonResolvingTools([]);
+		const { skillRefs, skills } = makeSkillAgentEntity();
+
+		await service.reconstructFromResolvedSource({
+			config: {
+				name: 'Child Agent',
+				model: 'anthropic/claude-sonnet-5-5',
+				instructions: 'Be helpful',
+				skills: skillRefs,
+			},
+			memoryOwnerAgentId: 'child-1',
+			projectId,
+			credentialProvider: mock<CredentialProvider>(),
+			toolDescriptors: {},
+			toolCodeByName: {},
+			skills,
+			runtimeProfile: 'sub-agent',
+			runType: 'test',
+		});
+
+		expect(skillInstructionsPassedToBuildFromJson()).toMatch(
+			/^Call \[Get code\]\(n8n:\/\/workflow\/wf-mentioned\) and reply with the code\.\n\n.*say so first and stop\. Do not make up its result\.$/,
+		);
+	});
+
+	it('keeps the skill instructions while the flag is off', async () => {
+		const { service, workflowsInSkillsFlagGate } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(false);
+
+		await service.reconstructFromAgentEntity(
+			makeSkillAgentEntity(),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		expect(skillInstructionsPassedToBuildFromJson()).toBe(
+			'Call [Get code](n8n://workflow/wf-mentioned) and reply with the code.',
+		);
 	});
 });

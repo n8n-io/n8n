@@ -610,8 +610,7 @@ Things worth knowing:
 - **Rules are checked at case load**: ids of at least 8 characters, unique; every
   `parentFolderId` names a declared folder; no cycles; trimmed names that pass n8n's
   folder-name rules; at most 20 folders.
-- **Needs a licensed instance** (`feat:folders`) with
-  `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED=true`. An unlicensed instance fails the
+- **Needs a licensed instance** (`feat:folders`). An unlicensed instance fails the
   restore with a hint rather than running the case without its folder. Locally, after
   `/rest/e2e/reset`: `PATCH /rest/e2e/feature {"feature":"feat:folders","enabled":true}`.
 - **Keep it on disk for now.** The LangTracer case-write API does not store

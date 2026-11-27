@@ -9,7 +9,10 @@
  * removes at least one finding. A candidate is ready when its publisher is
  * verified and it is at least 24 hours old (see applyGate). When no digest of
  * the tag removes a finding, the moving tag of the line shows whether a newer
- * patch does (see classifyNoFix).
+ * patch does (see classifyNoFix), and a person updates the version.
+ *
+ * A newer patch of the Node minor (see findNodePatch) updates all Node pins
+ * and NODE_VERSION in one PR, so the Alpine and the Debian images stay aligned.
  *
  * Usage: node base-image-candidates.mjs [--out <file>] [--skip-gate]
  * Needs docker buildx, trivy, cosign, and a login to each private registry
@@ -24,6 +27,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
+import { readNodeVersion } from '../resolve-node-version.mjs';
 import { verifyPublisher } from './base-image-publisher.mjs';
 
 const BAKE_FILE = 'docker/docker-bake.hcl';
@@ -122,14 +126,135 @@ export function movingTagOf(tag) {
 }
 
 /**
+ * The pins of the Node version. A Node patch changes them together with
+ * NODE_VERSION, so the Alpine and the Debian images run the same Node. The
+ * builder images compile the native addons and give the runners their Node.
+ */
+export const NODE_PINS = ['DHI_REF', 'DEBIAN_DHI_REF', 'BUILDER_IMAGE', 'DEBIAN_BUILDER_IMAGE'];
+
+export const NODE_RELEASES_URL = 'https://nodejs.org/dist/index.json';
+
+const patchOf = (version) => Number(version.split('.')[2]);
+
+/**
+ * The patches of the same Node minor that are newer than `current`, newest
+ * first. `releases` is the release list of nodejs.org.
+ */
+export function newerPatches(releases, current) {
+	const [major, minor] = current.split('.');
+	return releases
+		.map((release) => ({
+			version: String(release.version).replace(/^v/, ''),
+			security: release.security === true,
+		}))
+		.filter(({ version }) => {
+			const parts = version.split('.');
+			return (
+				parts.length === 3 &&
+				parts[0] === major &&
+				parts[1] === minor &&
+				/^\d+$/.test(parts[2]) &&
+				patchOf(version) > patchOf(current)
+			);
+		})
+		.sort((a, b) => patchOf(b.version) - patchOf(a.version));
+}
+
+/** The tag of a Node pin for another version: 26.13.0-alpine3.24-dev -> 26.13.1-alpine3.24-dev. */
+export function retag(tag, from, to) {
+	return tag.startsWith(`${from}-`) ? `${to}${tag.slice(from.length)}` : null;
+}
+
+/**
+ * The newest patch of the Node minor that every Node pin publishes.
+ * `resolve(repository, tag)` returns the digest of a tag, or null. Returns null
+ * when nodejs.org has no newer patch. Otherwise `pins` holds the new tag and
+ * digest of each pin (empty when no newer patch is complete), and `waiting`
+ * holds the newest patch and the tags that it waits for. `security` tells
+ * whether nodejs.org marks a patch up to `to` as a security release.
+ */
+export function findNodePatch(hcl, releases, resolve) {
+	const from = readNodeVersion(hcl);
+	const pins = NODE_PINS.map((name) => readPin(hcl, name));
+	const misaligned = pins.filter((pin) => !retag(pin.tag, from, from)).map((pin) => pin.name);
+	if (misaligned.length > 0) return { from, to: null, pins: [], waiting: null, misaligned };
+
+	const patches = newerPatches(releases, from);
+	if (patches.length === 0) return null;
+	let waiting = null;
+	for (const { version } of patches) {
+		const found = pins.map((pin) => {
+			const tag = retag(pin.tag, from, version);
+			return { pin, tag, digest: resolve(pin.repository, tag) };
+		});
+		const missing = found.filter((entry) => !entry.digest);
+		if (missing.length === 0) {
+			const security = patches.some(
+				(patch) => patch.security && patchOf(patch.version) <= patchOf(version),
+			);
+			return { from, to: version, security, pins: found, waiting };
+		}
+		waiting ??= {
+			version,
+			tags: missing.map((entry) => `${entry.pin.repository}:${entry.tag}`),
+		};
+	}
+	return { from, to: null, pins: [], waiting };
+}
+
+/**
+ * Holds the Node patch back until every Node pin is ready: one PR changes them
+ * all. A ready pin takes the status of the first pin that is not ready.
+ */
+export function holdNodePatch(results) {
+	const members = results.filter((result) => result.nodePatch);
+	const blockers = members.filter((result) => result.status !== 'ready');
+	if (blockers.length === 0) return results;
+	return results.map((result) =>
+		result.nodePatch && result.status === 'ready'
+			? { ...result, status: blockers[0].status, heldBy: blockers.map((blocker) => blocker.source) }
+			: result,
+	);
+}
+
+/** The Node release list of nodejs.org, or the error of the request. */
+async function nodeReleases() {
+	try {
+		const response = await fetch(NODE_RELEASES_URL, { signal: AbortSignal.timeout(30_000) });
+		if (!response.ok) throw new Error(`${NODE_RELEASES_URL} returned ${response.status}`);
+		return { releases: await response.json() };
+	} catch (error) {
+		console.log(`No Node patch check: ${error.message}`);
+		return { error: error.message };
+	}
+}
+
+/**
+ * The result that tells the alerts that the run could not check for a Node
+ * patch: nodejs.org or a registry failed. It has no platforms, so the PRs and
+ * the report skip it.
+ */
+export function nodeCheckFailed(hcl, error) {
+	const version = readNodeVersion(hcl);
+	return {
+		source: 'NODE_VERSION',
+		status: 'node-check-failed',
+		pinned: version,
+		newest: version,
+		platforms: [],
+		error,
+	};
+}
+
+/**
  * Classifies a source whose newest digest leaves fixable findings. When the
  * moving tag points to a newer patch that removes a finding, a person must
  * update the version. Otherwise the upstream has no fix yet.
  */
 export function classifyNoFix(result, moving) {
-	if (moving?.platforms.some((platform) => platform.removed.length > 0))
-		return { ...result, status: 'version-update', versionUpdate: moving };
-	return { ...result, status: 'no-upstream-fix' };
+	if (!moving?.platforms.some((platform) => platform.removed.length > 0))
+		return { ...result, status: 'no-upstream-fix' };
+	return { ...result, status: 'version-update', versionUpdate: moving };
 }
 
 export const GATE_MS = 24 * 60 * 60 * 1000;
@@ -138,8 +263,9 @@ export const GATE_MS = 24 * 60 * 60 * 1000;
  * Applies the publisher check, the 24-hour gate and the package-set rule to a
  * candidate. A digest is ready when its publisher is verified and it is at
  * least 24 hours old. A manual run skips the gate. A digest that adds a
- * package, or that skipped the gate, is ready without auto-merge, so that a
- * person reviews it.
+ * package or that skipped the gate is ready without auto-merge, so that a
+ * person reviews it. `group` names its PR: `daily`, `review`, or `node` for a
+ * Node patch, which a person reviews.
  */
 export function applyGate(candidate, publisher, { now, skipGate }) {
 	const checked = { ...candidate, publisher };
@@ -149,14 +275,30 @@ export function applyGate(candidate, publisher, { now, skipGate }) {
 		return { ...checked, status: publisher.publishedAt ? 'in-24h-gate' : 'no-publish-time' };
 	}
 	const addsPackage = candidate.platforms.some((platform) => platform.addedPackages.length > 0);
-	return { ...checked, status: 'ready', autoMerge: !addsPackage && !gated, gateSkipped: gated };
+	const autoMerge = !addsPackage && !gated && !candidate.nodePatch;
+	const group = candidate.nodePatch ? 'node' : autoMerge ? 'daily' : 'review';
+	return { ...checked, status: 'ready', autoMerge, group, gateSkipped: gated };
+}
+
+/**
+ * The digest of a tag, or null when the registry does not have the tag. Any
+ * other error stops the Node patch check, so a registry error never looks
+ * like a missing patch.
+ */
+function findDigest(repository, tag) {
+	try {
+		return resolveDigest(repository, tag);
+	} catch (error) {
+		if (/: not found\b/.test(String(error.stderr ?? ''))) return null;
+		throw error;
+	}
 }
 
 function resolveDigest(repository, tag) {
 	const out = execFileSync(
 		'docker',
 		['buildx', 'imagetools', 'inspect', `${repository}:${tag}`, '--format', '{{json .Manifest}}'],
-		{ encoding: 'utf8' },
+		{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
 	);
 	const digest = JSON.parse(out).digest;
 	if (!/^sha256:[0-9a-f]{64}$/.test(digest ?? '')) {
@@ -199,8 +341,34 @@ const count = (findings) => {
 	return `${by('CRITICAL')} C / ${by('HIGH')} H / ${by('MEDIUM')} M / ${by('LOW')} L / ${by('UNKNOWN')} U`;
 };
 
+/** The Node patch lines of the job summary. `nodePatch` is the result of findNodePatch. */
+export function renderNodePatch(results, nodePatch) {
+	if (!nodePatch) return [];
+	if (nodePatch.misaligned) {
+		return [
+			`- The Node pins do not all use \`NODE_VERSION\` \`${nodePatch.from}\`: ${nodePatch.misaligned.map((name) => `\`${name}\``).join(', ')}. A person aligns them.`,
+		];
+	}
+	const lines = [];
+	if (nodePatch.to) {
+		const members = results.filter((result) => result.nodePatch);
+		const status = members.every((result) => result.status === 'ready')
+			? 'ready'
+			: members.map((result) => `\`${result.source}\` ${result.status}`).join(', ');
+		lines.push(
+			`- Node \`${nodePatch.from}\` → \`${nodePatch.to}\`${nodePatch.security ? ' (security release)' : ''}: ${status}.`,
+		);
+	}
+	if (nodePatch.waiting) {
+		lines.push(
+			`- Node \`${nodePatch.waiting.version}\` waits for: ${nodePatch.waiting.tags.map((tag) => `\`${tag}\``).join(', ')}.`,
+		);
+	}
+	return lines;
+}
+
 /** A Markdown table of the results for the job summary. */
-export function renderSummary(results) {
+export function renderSummary(results, nodePatch = null) {
 	const lines = [
 		'## Base image candidates',
 		'',
@@ -237,6 +405,8 @@ export function renderSummary(results) {
 			);
 		}
 	}
+	const node = renderNodePatch(results, nodePatch);
+	if (node.length > 0) lines.push('', '### Node patch', '', ...node);
 	if (notes.length > 0) lines.push('', '### Needs a person', '', ...notes);
 	if (errors.length > 0) lines.push('', '### Publisher errors', '', ...errors);
 	return `${lines.join('\n')}\n`;
@@ -248,8 +418,10 @@ async function main() {
 	});
 	const hcl = readFileSync(BAKE_FILE, 'utf8');
 	const workDir = mkdtempSync(path.join(tmpdir(), 'base-image-candidates-'));
-	const results = [];
+	let results = [];
+	let nodePatch = null;
 	try {
+		const scansOf = new Map();
 		for (const name of SOURCES) {
 			const pin = readPin(hcl, name);
 			const newestDigest = resolveDigest(pin.repository, pin.tag);
@@ -261,11 +433,9 @@ async function main() {
 						: scan(`${pin.repository}@${newestDigest}`, platform, workDir);
 				return { platform, pinned, newest };
 			});
+			scansOf.set(name, scans);
 			let result = evaluateSource(pin, newestDigest, scans);
-			if (result.status === 'candidate') {
-				const publisher = await verifyPublisher(pin, newestDigest, PLATFORMS);
-				result = applyGate(result, publisher, { now: Date.now(), skipGate: values['skip-gate'] });
-			} else if (result.status === 'no-fix') {
+			if (result.status === 'no-fix') {
 				// A pinned tag can freeze on its patch. The moving tag of the line shows a newer patch.
 				const movingTag = movingTagOf(pin.tag);
 				let movingDigest = null;
@@ -275,23 +445,69 @@ async function main() {
 					// Not every line publishes a moving tag. The source stays no-upstream-fix.
 					console.log(`${name}: no moving tag ${pin.repository}:${movingTag}`);
 				}
-				const moving =
-					movingDigest && movingDigest !== newestDigest
-						? {
-								ref: `${pin.repository}:${movingTag}@${movingDigest}`,
-								platforms: scans.map(({ platform, newest }) => ({
-									platform,
-									...compareScans(
-										newest,
-										scan(`${pin.repository}@${movingDigest}`, platform, workDir),
-									),
-								})),
-							}
-						: null;
+				let moving = null;
+				if (movingDigest && movingDigest !== newestDigest) {
+					moving = {
+						ref: `${pin.repository}:${movingTag}@${movingDigest}`,
+						platforms: scans.map(({ platform, newest }) => ({
+							platform,
+							...compareScans(newest, scan(`${pin.repository}@${movingDigest}`, platform, workDir)),
+						})),
+					};
+				}
 				result = classifyNoFix(result, moving);
+			}
+			if (result.status === 'candidate') {
+				const publisher = await verifyPublisher(pin, newestDigest, PLATFORMS);
+				result = applyGate(result, publisher, { now: Date.now(), skipGate: values['skip-gate'] });
 			}
 			console.log(`${name}: ${result.status} (${result.newest})`);
 			results.push(result);
+		}
+
+		// The Node patch replaces the results of its pins: one PR changes them all.
+		const { releases, error: releasesError } = await nodeReleases();
+		let error = releasesError;
+		try {
+			nodePatch = releases ? findNodePatch(hcl, releases, findDigest) : null;
+		} catch (registryError) {
+			error =
+				String(registryError.stderr ?? '')
+					.trim()
+					.split('\n')
+					.at(-1) || registryError.message;
+			console.log(`No Node patch check: ${error}`);
+		}
+		if (error) results.push(nodeCheckFailed(hcl, error));
+		for (const { pin, tag, digest } of nodePatch?.pins ?? []) {
+			const scans = scansOf.get(pin.name);
+			// The builder images give the release images only their Node, so no scan covers them.
+			const platforms = scans
+				? scans.map(({ platform, pinned }) => ({
+						platform,
+						...compareScans(pinned, scan(`${pin.repository}@${digest}`, platform, workDir)),
+					}))
+				: [];
+			const candidate = {
+				source: pin.name,
+				pinned: pin.ref,
+				newest: `${pin.repository}:${tag}@${digest}`,
+				status: 'candidate',
+				platforms,
+				nodePatch: { from: nodePatch.from, to: nodePatch.to, security: nodePatch.security },
+			};
+			const publisher = await verifyPublisher({ ...pin, tag }, digest, PLATFORMS);
+			const result = applyGate(candidate, publisher, {
+				now: Date.now(),
+				skipGate: values['skip-gate'],
+			});
+			const index = results.findIndex((entry) => entry.source === pin.name);
+			if (index === -1) results.push(result);
+			else results[index] = result;
+		}
+		results = holdNodePatch(results);
+		for (const result of results.filter((entry) => entry.nodePatch)) {
+			console.log(`${result.source}: Node ${nodePatch.to}, ${result.status} (${result.newest})`);
 		}
 	} finally {
 		rmSync(workDir, { recursive: true, force: true });
@@ -299,7 +515,7 @@ async function main() {
 
 	if (values.out) writeFileSync(values.out, `${JSON.stringify(results, null, 2)}\n`);
 	if (process.env.GITHUB_STEP_SUMMARY)
-		appendFileSync(process.env.GITHUB_STEP_SUMMARY, renderSummary(results));
+		appendFileSync(process.env.GITHUB_STEP_SUMMARY, renderSummary(results, nodePatch));
 	if (process.env.GITHUB_OUTPUT) {
 		const ready = results.filter((result) => result.status === 'ready').length;
 		appendFileSync(process.env.GITHUB_OUTPUT, `ready=${ready}\n`);

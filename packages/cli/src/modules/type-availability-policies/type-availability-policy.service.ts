@@ -5,6 +5,7 @@ import type {
 	NodeTypeAvailabilityScope,
 	ProjectPolicyEffectiveCounts,
 	ProjectPolicyKindSummary,
+	ProjectTypeAccessResponse,
 	TypeAccessChange,
 } from '@n8n/api-types';
 import { EventService, loginIdOf, ProjectNotFoundError } from '@n8n/backend-services';
@@ -100,6 +101,9 @@ function rulesContainDelegate(rules: readonly PolicyRule[]): boolean {
 }
 
 const DELEGATE_RULE_AT_PROJECT_SCOPE = 'A rule cannot use action "delegate" at project scope';
+
+export const PERSONAL_PROJECT_POLICY =
+	'Only a team project can have a policy. A personal project follows the instance policy.';
 
 /**
  * `delegate` is only satisfiable at instance scope. A project write never accepts it — not in
@@ -234,6 +238,25 @@ export class TypeAvailabilityPolicyService {
 	) {}
 
 	/**
+	 * Only a team project can own a scope row. A global scope passes the project scope check
+	 * for any project id, so the write path checks the project type itself.
+	 */
+	private async assertTeamProject(projectId: string | null): Promise<void> {
+		if (projectId === null) return;
+
+		const project = await this.findExistingProject(projectId);
+		if (project.type !== 'team') {
+			throw new BadRequestError(PERSONAL_PROJECT_POLICY);
+		}
+	}
+
+	private async findExistingProject(projectId: string) {
+		const [project] = await this.projectRepository.findTypesByIds([projectId]);
+		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+		return project;
+	}
+
+	/**
 	 * Never creates a scope row on read — an unconfigured scope reports allow-all with
 	 * version `0` rather than being materialized just because someone looked at it.
 	 *
@@ -271,6 +294,7 @@ export class TypeAvailabilityPolicyService {
 		updatedBy: string,
 	): Promise<TypeAvailabilityPolicyScope> {
 		assertNoDelegateAtProjectScope(projectId, defaultAction);
+		await this.assertTeamProject(projectId);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			const scope = await this.scopeRepository.findScopeByKindAndProject(
@@ -675,6 +699,7 @@ export class TypeAvailabilityPolicyService {
 	}> {
 		assertNoDelegateAtProjectScope(projectId, input.defaultAction, input.rules);
 		const warnings = this.validateAndLintRules(kind, input.rules);
+		await this.assertTeamProject(projectId);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			const scope = await this.scopeRepository.findScopeByKindAndProject(
@@ -888,6 +913,8 @@ export class TypeAvailabilityPolicyService {
 		expectedVersion: number,
 		updatedBy: string,
 	) {
+		// Checked here too, because a change that leaves the rules as they are returns without a write.
+		await this.assertTeamProject(projectId);
 		const effective = await this.getEffectivePolicy(kind, projectId);
 		if (effective.version !== expectedVersion) {
 			throw scopeVersionConflict(expectedVersion, effective.version);
@@ -983,15 +1010,6 @@ export class TypeAvailabilityPolicyService {
 		}
 	}
 
-	/** Only a team project can have a project policy. */
-	private async assertTeamProject(projectId: string): Promise<void> {
-		const [project] = await this.projectRepository.findTypesByIds([projectId]);
-		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
-		if (project.type !== 'team') {
-			throw new BadRequestError('A personal project cannot have a project policy');
-		}
-	}
-
 	/**
 	 * What the instance policy alone decides for each type, evaluated against one read so that
 	 * `version` matches the verdicts. Uncached for the reason on `getEffectivePolicy`.
@@ -1022,6 +1040,54 @@ export class TypeAvailabilityPolicyService {
 				}),
 				effective.rules,
 			),
+		};
+	}
+
+	/**
+	 * What the instance and project policies decide together for each type in one project, and
+	 * which scope decides it, evaluated against one read of each scope so that the versions match
+	 * the verdicts. Uncached for the reason on `getEffectivePolicy`.
+	 *
+	 * A type has a row when `listTypes` lists it for the instance policy alone or for the project
+	 * policy alone, so a project rule on a hidden type or a tool variant keeps a row to undo it.
+	 * Each scope is listed with its own rules, because rule ids are unique only in one scope.
+	 *
+	 * A personal project gets the instance rows, like `getEffectivePolicy`, not the write error.
+	 */
+	async getProjectAccess(
+		kind: string,
+		projectId: string,
+		typeNames: readonly string[],
+		listTypes: ListTypes = (types) => types,
+	): Promise<ProjectTypeAccessResponse> {
+		await this.findExistingProject(projectId);
+
+		const [instance, project] = await Promise.all([
+			this.getEffectivePolicy(kind, null),
+			this.getEffectivePolicy(kind, projectId),
+		]);
+
+		const composeVerdicts = this.verdictComposer(kind, typeNames);
+		const listedFor = (scope: EffectivePolicy) =>
+			listTypes(composeVerdicts(scope, unconfiguredScope(kind, null)), scope.rules).map(
+				(verdict) => verdict.name,
+			);
+		const listed = new Set([...listedFor(instance), ...listedFor(project)]);
+		const verdicts = this.verdictComposer(
+			kind,
+			typeNames.filter((name) => listed.has(name)),
+		)(instance, project);
+
+		return {
+			instanceVersion: instance.version,
+			projectVersion: project.version,
+			types: verdicts.map(({ name, action, scope, matchedRuleId, optInAvailable }) => ({
+				name,
+				access: action,
+				scope,
+				matchedRuleId,
+				optInAvailable,
+			})),
 		};
 	}
 

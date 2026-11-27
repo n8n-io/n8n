@@ -70,7 +70,9 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
 			});
-			await n8n.instanceAi.runPreviewWorkflow();
+			// Wait for the agent turn and its verification run to finish before starting the manual run.
+			await n8n.instanceAi.waitForResponseComplete();
+			await n8n.instanceAi.runPreviewWorkflowAndWaitForCompletion();
 
 			// All three nodes should show the success indicator.
 			await expect(n8n.instanceAi.getPreviewSuccessIndicators()).toHaveCount(3, {

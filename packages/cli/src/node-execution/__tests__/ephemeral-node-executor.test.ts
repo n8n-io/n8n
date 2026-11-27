@@ -19,6 +19,7 @@ import { mock } from 'vitest-mock-extended';
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import {
 	AGENT_PROVIDER_NODE_WHITELIST,
@@ -116,6 +117,7 @@ describe('EphemeralNodeExecutor', () => {
 		logger,
 		policyEnforcementService,
 		credentialAccessRepository,
+		mockInstance(DeprecatedNodesValidationService),
 	);
 
 	const toolDescription: INodeTypeDescription = {

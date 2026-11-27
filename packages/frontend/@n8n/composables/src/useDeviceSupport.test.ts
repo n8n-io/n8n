@@ -105,6 +105,38 @@ describe('useDeviceSupport()', () => {
 			const { isMobileDevice } = useDeviceSupport();
 			expect(isMobileDevice).toEqual(true);
 		});
+
+		it('should be true for iPad in desktop mode (Macintosh UA with multi-touch)', () => {
+			Object.defineProperty(navigator, 'userAgent', {
+				value:
+					'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+			});
+			Object.defineProperty(navigator, 'maxTouchPoints', { value: 5 });
+			const { isIOs, isMacOs, isMobileDevice } = useDeviceSupport();
+			expect(isIOs).toEqual(true);
+			expect(isMacOs).toEqual(true);
+			expect(isMobileDevice).toEqual(true);
+		});
+
+		it('should be false for desktop macOS without multi-touch', () => {
+			Object.defineProperty(navigator, 'userAgent', {
+				value:
+					'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+			});
+			Object.defineProperty(navigator, 'maxTouchPoints', { value: 0 });
+			const { isIOs, isMacOs, isMobileDevice } = useDeviceSupport();
+			expect(isIOs).toEqual(false);
+			expect(isMacOs).toEqual(true);
+			expect(isMobileDevice).toEqual(false);
+		});
+
+		it('should be false for Windows touchscreen devices', () => {
+			Object.defineProperty(navigator, 'userAgent', { value: 'windows' });
+			Object.defineProperty(navigator, 'maxTouchPoints', { value: 5 });
+			const { isIOs, isMobileDevice } = useDeviceSupport();
+			expect(isIOs).toEqual(false);
+			expect(isMobileDevice).toEqual(false);
+		});
 	});
 
 	describe('isCtrlKeyPressed()', () => {

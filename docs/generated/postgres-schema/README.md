@@ -123,6 +123,10 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.lease_kind](public.lease_kind.md) | 7 |  | BASE TABLE |
 | [public.lease_session](public.lease_session.md) | 7 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
+| [public.mcp_server](public.mcp_server.md) | 9 |  | BASE TABLE |
+| [public.mcp_server_block](public.mcp_server_block.md) | 4 |  | BASE TABLE |
+| [public.mcp_server_connection](public.mcp_server_connection.md) | 6 |  | BASE TABLE |
+| [public.mcp_server_tool](public.mcp_server_tool.md) | 11 |  | BASE TABLE |
 | [public.migration_finding](public.migration_finding.md) | 10 |  | BASE TABLE |
 | [public.migration_finding_sync](public.migration_finding_sync.md) | 3 |  | BASE TABLE |
 | [public.migration_workflow_owner](public.migration_workflow_owner.md) | 7 |  | BASE TABLE |
@@ -403,6 +407,15 @@ erDiagram
 "public.knowledge_vector_store" }o--|| "public.knowledge_collection" : "FOREIGN KEY (#quot;knowledgeCollectionId#quot;) REFERENCES knowledge_collection(id) ON DELETE CASCADE"
 "public.lease" }o--|| "public.lease_kind" : "FOREIGN KEY (#quot;leaseKind#quot;) REFERENCES lease_kind(kind) ON DELETE CASCADE"
 "public.lease_session" }o--|| "public.lease_kind" : "FOREIGN KEY (#quot;leaseKind#quot;) REFERENCES lease_kind(kind) ON DELETE CASCADE"
+"public.mcp_server" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.mcp_server" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.mcp_server_block" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.mcp_server_block" }o--o| "public.user" : "FOREIGN KEY (#quot;blockedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.mcp_server_block" }o--|| "public.mcp_server" : "FOREIGN KEY (#quot;serverId#quot;) REFERENCES mcp_server(id) ON DELETE CASCADE"
+"public.mcp_server_connection" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.mcp_server_connection" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;oauthClientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
+"public.mcp_server_connection" }o--|| "public.mcp_server" : "FOREIGN KEY (#quot;serverId#quot;) REFERENCES mcp_server(id) ON DELETE CASCADE"
+"public.mcp_server_tool" }o--|| "public.mcp_server" : "FOREIGN KEY (#quot;serverId#quot;) REFERENCES mcp_server(id) ON DELETE CASCADE"
 "public.migration_finding" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;assignedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
@@ -1731,6 +1744,44 @@ erDiagram
   varchar_50_ status
   timestamp_3__with_time_zone updatedAt
   varchar_50_ version
+}
+"public.mcp_server" {
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  timestamp_3__with_time_zone deletedAt
+  text description
+  uuid id
+  varchar_128_ name
+  varchar_36_ projectId FK
+  varchar_128_ slug
+  timestamp_3__with_time_zone updatedAt
+}
+"public.mcp_server_block" {
+  timestamp_3__with_time_zone blockedAt
+  uuid blockedById FK
+  uuid serverId FK
+  uuid userId FK
+}
+"public.mcp_server_connection" {
+  varchar_255_ clientName
+  timestamp_3__with_time_zone firstUsedAt
+  timestamp_3__with_time_zone lastUsedAt
+  varchar oauthClientId FK
+  uuid serverId FK
+  uuid userId FK
+}
+"public.mcp_server_tool" {
+  timestamp_3__with_time_zone createdAt
+  text description
+  varchar_16_ draftSource
+  uuid id
+  varchar_16_ kind
+  integer position
+  uuid serverId FK
+  varchar_36_ targetId
+  json toolData
+  varchar_64_ toolName
+  timestamp_3__with_time_zone updatedAt
 }
 "public.migration_finding" {
   timestamp_3__with_time_zone createdAt

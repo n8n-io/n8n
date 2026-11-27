@@ -82,6 +82,9 @@ const loadSkillsTool = lazyMod(() => require('./skills.tool') as typeof import('
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
+const loadArchiveAgentTool = lazyMod(
+	() => require('./archive-agent.tool') as typeof import('./archive-agent.tool'),
+);
 const loadAgentContextTool = lazyMod(
 	() => require('./agent-context.tool') as typeof import('./agent-context.tool'),
 );
@@ -266,6 +269,14 @@ function getOrchestratorDomainToolFactories(
 					resolveDefaultAgentId: async () => (await resolveAgentBuilderTarget(context))?.agentId,
 					logger: context.logger,
 				}),
+		]);
+	}
+
+	const { agentArchiveService } = context;
+	if (agentArchiveService && !context.branchReadOnly) {
+		tools.push([
+			DOMAIN_TOOL_IDS.ARCHIVE_AGENT,
+			() => loadArchiveAgentTool().createArchiveAgentTool(agentArchiveService),
 		]);
 	}
 

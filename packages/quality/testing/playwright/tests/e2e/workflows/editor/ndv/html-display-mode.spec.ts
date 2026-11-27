@@ -43,6 +43,27 @@ test.describe(
 			await expect(outputPanel.getHtmlPreviewHeadings()).toHaveCount(1);
 		});
 
+		test('should keep the saved display mode for the next node', async ({ n8n }) => {
+			const { outputPanel } = n8n.ndv;
+			await n8n.ndv.clickBackToCanvasButton();
+			await n8n.canvas.openNode('Create items');
+			await outputPanel.switchDisplayMode('json');
+			await n8n.ndv.clickBackToCanvasButton();
+
+			await n8n.canvas.openNode('HTML');
+			await expect(outputPanel.getActiveDisplayMode()).toHaveAttribute(
+				'data-test-id',
+				'radio-button-html',
+			);
+			await n8n.ndv.clickBackToCanvasButton();
+
+			await n8n.canvas.openNode('Create items');
+			await expect(outputPanel.getActiveDisplayMode()).toHaveAttribute(
+				'data-test-id',
+				'radio-button-json',
+			);
+		});
+
 		test('should fall back to a built-in display mode on a node that does not generate HTML', async ({
 			n8n,
 		}) => {

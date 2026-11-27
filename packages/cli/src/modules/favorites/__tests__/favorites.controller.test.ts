@@ -37,7 +37,7 @@ describe('FavoritesController', () => {
 				resourceType: 'workflow',
 			});
 
-			expect(favoritesService.addFavorite).toHaveBeenCalledWith('user1', 'res1', 'workflow');
+			expect(favoritesService.addFavorite).toHaveBeenCalledWith(req.user, 'res1', 'workflow');
 			expect(result).toBe(favorite);
 		});
 	});

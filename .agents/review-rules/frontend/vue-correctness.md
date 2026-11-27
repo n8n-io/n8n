@@ -41,3 +41,14 @@ Backend responses and `/rest/settings` omit optional sections entirely. Flag a
 new getter or computed walking more than one level into a response without
 optional chaining, e.g. `settings.value.license.planName`. It throws during
 boot and takes the view with it.
+
+## Node and credential types
+
+Startup does not wait for the node or credential types. Flag a component that
+can render outside the workflow editor's main view and reads them one time
+(`setup`, `onMounted`, an init function) or with a non-null assertion, without
+the matching load: `useNodeTypesLoad()`, `useCredentialTypesLoad()` or an
+awaited store load. `allUsableCredentialsForNode` needs the node types load.
+`isCredentialTypeTestable`, and `getNodeType()` for a credential-only node
+(`n8n-creds-base.*`), need both loads. A computed or template
+read is fine when a short empty state is acceptable.

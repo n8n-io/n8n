@@ -315,12 +315,12 @@ describe('PromotionPreviewView', () => {
 
 	it('should keep the selection while the user inspects cards', async () => {
 		const { getAllByTestId, getByTestId } = await render();
-		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('5 of 5');
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/\b5\b/);
 
 		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
 		await userEvent.click(treeRow(getAllByTestId, 'dataTable:t1').getByText('Invoices'));
 
-		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('4 of 5');
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/\b4\b/);
 		// The tab shows the total, whatever the selection.
 		expect(getByTestId('promotion-preview-tabs')).toHaveTextContent(/Changes\s*5/);
 		expect(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox')).not.toBeChecked();
@@ -349,20 +349,20 @@ describe('PromotionPreviewView', () => {
 		const { getAllByTestId, getByTestId } = await render();
 		const cardCheckbox = (key: string) =>
 			card(getAllByTestId, key).getByTestId('promotion-preview-card-checkbox');
-		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('3 of 3');
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/\b3\b/);
 
 		// The folder card clears the workflows inside the folder, and the card stays open.
 		await userEvent.click(cardCheckbox('folder:f1'));
 		expect(cardToggle(getAllByTestId, 'folder:f1')).toHaveAttribute('aria-expanded', 'true');
 		expect(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox')).not.toBeChecked();
 		expect(cardCheckbox('workflow:w2')).not.toBeChecked();
-		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('1 of 3');
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/\b1\b/);
 
 		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
 		expect(cardCheckbox('workflow:w1')).toBeChecked();
 		expect(cardCheckbox('folder:f1')).toHaveAttribute('data-state', 'indeterminate');
 		expect(cardCheckbox('workflow:w2')).not.toBeChecked();
-		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('3 of 3');
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/\b3\b/);
 
 		await promote(getByTestId);
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {

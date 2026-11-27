@@ -1,4 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { AIMessage } from '@langchain/core/messages';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -187,9 +188,11 @@ describe('model helper', () => {
 		});
 
 		it('should use provided systemMessage instead of default rules', async () => {
-			const invokeMock = vi.fn().mockResolvedValue({
-				content: [{ type: 'text', text: '{"confidenceScore":0.6,"flagged":true}' }],
-			});
+			const invokeMock = vi.fn().mockResolvedValue(
+				new AIMessage({
+					content: [{ type: 'text', text: '{"confidenceScore":0.6,"flagged":true}' }],
+				}),
+			);
 			vi.mocked(MockChatPromptTemplate.fromMessages).mockImplementationOnce(
 				() =>
 					({
@@ -218,9 +221,11 @@ describe('model helper', () => {
 
 		it('should not expose raw model output in parser failure details', async () => {
 			const rawModelOutput = 'customer payload in guardrail output';
-			const invokeMock = vi.fn().mockResolvedValue({
-				content: [{ type: 'text', text: rawModelOutput }],
-			});
+			const invokeMock = vi.fn().mockResolvedValue(
+				new AIMessage({
+					content: [{ type: 'text', text: rawModelOutput }],
+				}),
+			);
 			vi.mocked(MockChatPromptTemplate.fromMessages).mockImplementationOnce(
 				() =>
 					({
@@ -245,6 +250,76 @@ describe('model helper', () => {
 			expect((result.originalException as GuardrailError).description).not.toContain(
 				rawModelOutput,
 			);
+		});
+
+		describe('reading the model reply', () => {
+			// The output parser runs inside @n8n/ai-utilities, so these tests use the
+			// real parser and check the result instead of a mocked parse call.
+			const passed = {
+				guardrailName: 'test-guardrail',
+				tripwireTriggered: false,
+				executionFailed: false,
+				confidenceScore: 0.1,
+				info: {},
+			};
+
+			const runWithReply = async (reply: AIMessage) => {
+				vi.mocked(MockChatPromptTemplate.fromMessages).mockImplementationOnce(
+					() =>
+						({
+							pipe: vi.fn().mockReturnValue({ invoke: vi.fn().mockResolvedValue(reply) }),
+						}) as unknown as any,
+				);
+
+				return await runLLMValidation('test-guardrail', 'What time do you open on Saturday?', {
+					model: mockModel,
+					prompt: 'System Prompt',
+					threshold: 0.5,
+				});
+			};
+
+			it('should read the text block when a thinking block comes first', async () => {
+				// Reply shape of Anthropic models that think: the thinking block comes first
+				// (its text is empty by default on Claude 5 models)
+				const result = await runWithReply(
+					new AIMessage({
+						content: [
+							{ type: 'thinking', thinking: '', signature: 'sig' },
+							{ type: 'text', text: '{"confidenceScore":0.1,"flagged":false}' },
+						],
+					}),
+				);
+
+				expect(result).toEqual(passed);
+			});
+
+			it('should join the text when the reply has several text blocks', async () => {
+				const result = await runWithReply(
+					new AIMessage({
+						content: [
+							{ type: 'text', text: '{"confidenceScore":0.1,' },
+							{ type: 'text', text: '"flagged":false}' },
+						],
+					}),
+				);
+
+				expect(result).toEqual(passed);
+			});
+
+			it('should read plain string content', async () => {
+				const result = await runWithReply(
+					new AIMessage({ content: '{"confidenceScore":0.1,"flagged":false}' }),
+				);
+
+				expect(result).toEqual(passed);
+			});
+
+			it('should report a parse failure when the reply has no content blocks', async () => {
+				const result = await runWithReply(new AIMessage({ content: [] }));
+
+				expect(result.executionFailed).toBe(true);
+				expect(result.originalException?.message).toBe('Failed to parse output');
+			});
 		});
 	});
 });
