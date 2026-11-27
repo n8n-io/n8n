@@ -4007,5 +4007,6 @@ window.NORRA.I18N.es = Object.assign(window.NORRA.I18N.es || {}, {
   "Per WhatsApp mit Einwilligung, frei gewordene Termine neu vergeben.": "Por WhatsApp con consentimiento, citas liberadas reasignadas.",
   "Per WhatsApp, mit Einwilligung und Terminvorschlag.": "Por WhatsApp, con consentimiento y propuesta de cita.",
   "pro Monat, bei {{m:70}} pro Stunde": "al mes, a {{m:70}} por hora",
-  "pro Monat, bei {{m:75}} pro Stunde": "al mes, a {{m:75}} por hora"
+  "pro Monat, bei {{m:75}} pro Stunde": "al mes, a {{m:75}} por hora",
+  "von uns eingerichtet": "configurada por nosotros"
 });
