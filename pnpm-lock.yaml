@@ -10661,9 +10661,6 @@ importers:
         specifier: workspace:*
         version: link:../../environments/containers
     devDependencies:
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../../../@n8n/oxlint-config

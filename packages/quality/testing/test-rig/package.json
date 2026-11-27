@@ -23,7 +23,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@n8n/eslint-config": "workspace:*",
     "@n8n/oxlint-config": "workspace:*",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
