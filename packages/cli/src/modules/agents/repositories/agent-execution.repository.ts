@@ -85,6 +85,52 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	}
 
 	/**
+	 * The top-level runs of one agent that the user can see, newest first,
+	 * with the total row count. A project session is visible to every project
+	 * member, a user session only to its owner. Runs of a sub-agent are not
+	 * listed. The `timeline` column is skipped.
+	 */
+	async findListForAgent(
+		agentId: string,
+		userId: string,
+		filter: { sessionId?: string; status?: AgentExecutionStatus },
+		{ offset, limit }: { offset: number; limit: number },
+	): Promise<[AgentExecution[], number]> {
+		const query = this.createQueryBuilder('execution')
+			.select([
+				'execution.id',
+				'execution.threadId',
+				'execution.status',
+				'execution.source',
+				'execution.createdAt',
+				'execution.startedAt',
+				'execution.stoppedAt',
+				'execution.promptTokens',
+				'execution.completionTokens',
+				'execution.totalTokens',
+				'execution.cost',
+			])
+			.innerJoin(AgentExecutionThread, 'thread', 'execution.threadId = thread.id')
+			.where('thread.agentId = :agentId', { agentId })
+			.andWhere(
+				"(thread.accessScope = 'project' OR (thread.accessScope = 'user' AND thread.ownerId = :userId))",
+				{ userId },
+			)
+			.andWhere('execution.parentExecutionId IS NULL AND thread.parentThreadId IS NULL')
+			.orderBy('execution.createdAt', 'DESC')
+			.addOrderBy('execution.id', 'DESC')
+			.skip(offset)
+			.take(limit);
+		if (filter.sessionId) {
+			query.andWhere('execution.threadId = :sessionId', { sessionId: filter.sessionId });
+		}
+		if (filter.status) {
+			query.andWhere('execution.status = :status', { status: filter.status });
+		}
+		return await query.getManyAndCount();
+	}
+
+	/**
 	 * Up to `limit` executions of a thread, newest first. With `before`, only
 	 * the executions older than that one. The `id` breaks ties in `createdAt`.
 	 */

@@ -1,0 +1,63 @@
+operationId: stopAgentExecution
+tags:
+  - Agent
+summary: Stop an agent run
+description: |-
+  Stop a run of this agent. A finished run returns its status. An unknown execution returns 404.
+
+  Requires the `agent:execute` API key scope.
+x-required-scope: agent:execute
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+  - schema:
+      type: string
+    required: true
+    description: The ID of the agent.
+    name: agentId
+    in: path
+  - schema:
+      type: string
+    required: true
+    description: The ID of the agent execution.
+    name: executionId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            executionId:
+              type: string
+            status:
+              anyOf:
+                - type: string
+                  enum:
+                    - running
+                    - success
+                    - error
+                    - cancelled
+                    - interrupted
+                    - awaiting
+                - type: string
+                  enum:
+                    - cancel_requested
+          required:
+            - executionId
+            - status
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
