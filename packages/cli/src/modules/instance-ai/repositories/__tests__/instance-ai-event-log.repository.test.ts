@@ -197,6 +197,39 @@ describe('InstanceAiEventLogRepository', () => {
 			// `IN ()` is not valid SQL, so the short-circuit is load-bearing.
 			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
 		});
+
+		it('reads and maps events for the requested runs in sequence order', async () => {
+			const createdAt = new Date('2026-07-01T10:00:00.000Z');
+			const event = {
+				type: 'run-start' as const,
+				runId: 'run-1',
+				agentId: 'a1',
+				ts: 5000,
+				payload: { messageId: 'm-1' },
+			};
+			const qb = {
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				getMany: vi.fn().mockResolvedValue([
+					{
+						seq: 1,
+						runId: 'run-1',
+						createdAt,
+						payload: JSON.stringify(event),
+					},
+				] as InstanceAiEventLogEntry[]),
+			};
+			entityManager.createQueryBuilder.mockReturnValueOnce(qb as never);
+
+			await expect(repo.getForThreadRuns('thread-1', ['run-1'], {})).resolves.toEqual([
+				{ runId: 'run-1', createdAt, event },
+			]);
+			expect(entityManager.createQueryBuilder).toHaveBeenCalledWith(InstanceAiEventLogEntry, 'e');
+			expect(qb.where).toHaveBeenCalledWith('e.threadId = :threadId', { threadId: 'thread-1' });
+			expect(qb.andWhere).toHaveBeenCalledWith('e.runId IN (:...runIds)', { runIds: ['run-1'] });
+			expect(qb.orderBy).toHaveBeenCalledWith('e.seq', 'ASC');
+		});
 	});
 
 	describe('getSetupItemsSnapshots', () => {
@@ -325,6 +358,136 @@ describe('InstanceAiEventLogRepository', () => {
 			await expect(repo.findUnfinishedRunsForThread('thread-1', {})).resolves.toEqual(expected);
 			expect(entityManager.createQueryBuilder).toHaveBeenCalledWith(InstanceAiEventLogEntry, 'e');
 			expect(qb.andWhere).toHaveBeenCalledWith('e.threadId = :threadId', { threadId: 'thread-1' });
+		});
+	});
+
+	describe('maxSeq', () => {
+		it('reads the highest sequence for a thread and defaults to 0 when empty', async () => {
+			const qb = {
+				select: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				getRawOne: vi.fn().mockResolvedValueOnce({ max: 7 }).mockResolvedValueOnce({ max: null }),
+			};
+			entityManager.createQueryBuilder
+				.mockReturnValueOnce(qb as never)
+				.mockReturnValueOnce(qb as never);
+
+			await expect(repo.maxSeq('thread-1', {})).resolves.toBe(7);
+			expect(entityManager.createQueryBuilder).toHaveBeenCalledWith(InstanceAiEventLogEntry, 'e');
+			expect(qb.select).toHaveBeenCalledWith('MAX(e.seq)', 'max');
+			expect(qb.where).toHaveBeenCalledWith('e.threadId = :threadId', { threadId: 'thread-1' });
+
+			await expect(repo.maxSeq('thread-1', {})).resolves.toBe(0);
+		});
+	});
+
+	describe('getForRuns', () => {
+		it('skips the query for an empty run set', async () => {
+			await expect(repo.getForRuns('thread-1', [], {})).resolves.toEqual([]);
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('reads and parses events for the requested runs in sequence order', async () => {
+			const event = {
+				type: 'run-start' as const,
+				runId: 'run-1',
+				agentId: 'a1',
+				ts: 2000,
+				payload: { messageId: 'm-1' },
+			};
+			const qb = {
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				getMany: vi.fn().mockResolvedValue([
+					{
+						seq: 1,
+						runId: 'run-1',
+						createdAt: new Date('2026-07-01T10:00:00.000Z'),
+						payload: JSON.stringify(event),
+					},
+				] as InstanceAiEventLogEntry[]),
+			};
+			entityManager.createQueryBuilder.mockReturnValueOnce(qb as never);
+
+			await expect(repo.getForRuns('thread-1', ['run-1', 'run-2'], {})).resolves.toEqual([event]);
+			expect(entityManager.createQueryBuilder).toHaveBeenCalledWith(InstanceAiEventLogEntry, 'e');
+			expect(qb.where).toHaveBeenCalledWith('e.threadId = :threadId', { threadId: 'thread-1' });
+			expect(qb.andWhere).toHaveBeenCalledWith('e.runId IN (:...runIds)', {
+				runIds: ['run-1', 'run-2'],
+			});
+			expect(qb.orderBy).toHaveBeenCalledWith('e.seq', 'ASC');
+		});
+	});
+
+	describe('getActivityTerminalEvents', () => {
+		it('skips the query for an empty run set', async () => {
+			await expect(repo.getActivityTerminalEvents('thread-1', [], {})).resolves.toEqual([]);
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('reads terminal events for the requested runs in sequence order', async () => {
+			const event = {
+				type: 'run-finish' as const,
+				runId: 'run-1',
+				agentId: 'a1',
+				ts: 3000,
+				payload: { status: 'completed' as const },
+			};
+			const qb = {
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				getMany: vi.fn().mockResolvedValue([
+					{
+						seq: 2,
+						runId: 'run-1',
+						createdAt: new Date('2026-07-01T10:00:05.000Z'),
+						payload: JSON.stringify(event),
+					},
+				] as InstanceAiEventLogEntry[]),
+			};
+			entityManager.createQueryBuilder.mockReturnValueOnce(qb as never);
+
+			await expect(repo.getActivityTerminalEvents('thread-1', ['run-1'], {})).resolves.toEqual([
+				event,
+			]);
+			expect(entityManager.createQueryBuilder).toHaveBeenCalledWith(InstanceAiEventLogEntry, 'e');
+			expect(qb.where).toHaveBeenCalledWith('e.threadId = :threadId', { threadId: 'thread-1' });
+			expect(qb.andWhere).toHaveBeenCalledWith('e.runId IN (:...runIds)', { runIds: ['run-1'] });
+			expect(qb.andWhere).toHaveBeenCalledWith('e.type IN (:...types)', {
+				types: ['run-finish', 'agent-completed'],
+			});
+			expect(qb.orderBy).toHaveBeenCalledWith('e.seq', 'ASC');
+		});
+	});
+
+	describe('lastFactAt', () => {
+		it('returns the latest fact timestamp for a run, or null when no facts exist', async () => {
+			const timestamp = new Date('2026-07-01T10:05:00.000Z');
+			const qb = {
+				select: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				getRawOne: vi
+					.fn()
+					.mockResolvedValueOnce({ max: timestamp.toISOString() })
+					.mockResolvedValueOnce({ max: timestamp })
+					.mockResolvedValueOnce({ max: null }),
+			};
+			entityManager.createQueryBuilder
+				.mockReturnValueOnce(qb as never)
+				.mockReturnValueOnce(qb as never)
+				.mockReturnValueOnce(qb as never);
+
+			await expect(repo.lastFactAt('thread-1', 'run-1', {})).resolves.toEqual(timestamp);
+			expect(entityManager.createQueryBuilder).toHaveBeenCalledWith(InstanceAiEventLogEntry, 'e');
+			expect(qb.select).toHaveBeenCalledWith('MAX(e.createdAt)', 'max');
+			expect(qb.where).toHaveBeenCalledWith('e.threadId = :threadId', { threadId: 'thread-1' });
+			expect(qb.andWhere).toHaveBeenCalledWith('e.runId = :runId', { runId: 'run-1' });
+
+			await expect(repo.lastFactAt('thread-1', 'run-1', {})).resolves.toBe(timestamp);
+			await expect(repo.lastFactAt('thread-1', 'run-1', {})).resolves.toBeNull();
 		});
 	});
 });
