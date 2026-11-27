@@ -187,6 +187,18 @@ interface DispatcherView {
 					pendingCandidates: number;
 					tasks: Array<{ taskKind: string; outcome: string; error?: string }>;
 				};
+				/** Agent runs: side calls beside the agent loop (title, memory workers, embeddings). */
+				sideCallUsage?: Array<{
+					task: string;
+					model: string;
+					inputTokens: number;
+					outputTokens: number;
+					cost?: number;
+				}>;
+				/** Agent runs: USD of the priced side calls. */
+				sideCallCostUsd?: number;
+				/** Agent runs: side calls with no known pricing, left out of sideCallCostUsd. */
+				unpricedSideCalls?: number;
 			}>;
 		}>;
 	}>;
@@ -470,6 +482,22 @@ describe('eval-results.json — dispatcher contract', () => {
 						mockedCredentials: [],
 						memoryConfig,
 						memory: memoryState,
+						sideCallUsage: [
+							{
+								task: 'title',
+								model: 'anthropic/claude-haiku-5-5',
+								inputTokens: 40,
+								outputTokens: 6,
+								cost: 0.25,
+							},
+							{
+								task: 'episodic',
+								model: 'openai/text-embedding-3-small',
+								inputTokens: 12,
+								outputTokens: 0,
+								cost: 0.5,
+							},
+						],
 					},
 				},
 			],
@@ -488,7 +516,13 @@ describe('eval-results.json — dispatcher contract', () => {
 		);
 		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
 
-		expect(report.testCases[0].scenarios[0].runs[0]).toMatchObject({ memoryConfig, memoryState });
+		expect(report.testCases[0].scenarios[0].runs[0]).toMatchObject({
+			memoryConfig,
+			memoryState,
+			sideCallCostUsd: 0.75,
+			unpricedSideCalls: 0,
+		});
+		expect(report.testCases[0].scenarios[0].runs[0].sideCallUsage).toHaveLength(2);
 	});
 
 	it('leaves memoryConfig and memoryState off a workflow scenario run', () => {

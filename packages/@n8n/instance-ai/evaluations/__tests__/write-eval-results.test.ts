@@ -204,4 +204,35 @@ describe('writeEvalResults — agent scenario runs', () => {
 		expect(run).not.toHaveProperty('memoryConfig');
 		expect(run).not.toHaveProperty('memoryState');
 	});
+
+	it('records the side-call usage of a run and its priced total', () => {
+		const sideCallUsage = [
+			{
+				task: 'title' as const,
+				model: 'anthropic/claude-haiku-5-5',
+				inputTokens: 40,
+				outputTokens: 6,
+				cost: 0.0002,
+			},
+			{
+				task: 'episodic' as const,
+				model: 'openai/text-embedding-3-small',
+				inputTokens: 12,
+				outputTokens: 0,
+				cost: 0.0001,
+			},
+			{ task: 'observer' as const, model: 'custom/unpriced', inputTokens: 900, outputTokens: 80 },
+		];
+
+		const run = writeAgentRun({ ...agentResult, sideCallUsage });
+
+		expect(run).toMatchObject({ sideCallUsage, sideCallCostUsd: 0.0003, unpricedSideCalls: 1 });
+	});
+
+	it('leaves the side-call fields off a run without side calls', () => {
+		const run = writeAgentRun(agentResult);
+
+		expect(run).not.toHaveProperty('sideCallUsage');
+		expect(run).not.toHaveProperty('sideCallCostUsd');
+	});
 });

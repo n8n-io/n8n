@@ -5,6 +5,7 @@
 // crash path that still writes whatever completed when the run threw.
 // ---------------------------------------------------------------------------
 
+import type { InstanceAiEvalAgentSideCallUsage } from '@n8n/api-types';
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
@@ -425,6 +426,23 @@ function serializeAgentArtifacts(runs: WorkflowTestCaseResult[]): {
 		: { agentArtifactPerRun };
 }
 
+/**
+ * An Agent run's side calls (title, memory workers, embeddings), and their
+ * total in USD as the agent runtime priced each call (models.dev catalog).
+ * Calls with no known pricing are counted, not guessed. Nothing without side calls.
+ */
+function sideCallRowFields(sideCallUsage: InstanceAiEvalAgentSideCallUsage[] | undefined) {
+	if (!sideCallUsage || sideCallUsage.length === 0) return {};
+	const priced = sideCallUsage.flatMap((call) => (call.cost !== undefined ? [call.cost] : []));
+	const total = priced.reduce((sum, cost) => sum + cost, 0);
+	return {
+		sideCallUsage,
+		// Micro-dollar precision: summed floats otherwise carry noise digits.
+		sideCallCostUsd: Math.round(total * 1_000_000) / 1_000_000,
+		unpricedSideCalls: sideCallUsage.length - priced.length,
+	};
+}
+
 export function writeEvalResults(
 	evaluation: MultiRunEvaluation,
 	duration: number,
@@ -558,6 +576,7 @@ export function writeEvalResults(
 						? { memoryConfig: sr.agentEvalResult.memoryConfig }
 						: {}),
 					...(sr.agentEvalResult?.memory ? { memoryState: sr.agentEvalResult.memory } : {}),
+					...sideCallRowFields(sr.agentEvalResult?.sideCallUsage),
 					passed: sr.success,
 					...(sr.incomplete ? { incomplete: true } : {}),
 					score: sr.score,
