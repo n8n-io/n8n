@@ -1,6 +1,6 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
 
 import { BinaryDataFile } from '../entities';
 import type { SourceType } from '../entities';
@@ -48,6 +48,30 @@ export class BinaryDataRepository extends Repository<BinaryDataFile> {
 	/** Whether at least one execution file holds `sourceId`. */
 	async hasExecutionFilesWithSourceId(sourceId: string): Promise<boolean> {
 		return await this.existsBy({ sourceType: 'execution', sourceId });
+	}
+
+	/**
+	 * Deletes up to `limit` execution files that hold `sourceId` and were created
+	 * before `createdBefore`, oldest first. Returns the number of files it found.
+	 */
+	async deleteExecutionFilesCreatedBefore(
+		sourceId: string,
+		createdBefore: Date,
+		limit: number,
+	): Promise<number> {
+		const files = await this.find({
+			select: { fileId: true },
+			where: { sourceType: 'execution', sourceId, createdAt: LessThan(createdBefore) },
+			order: { createdAt: 'ASC' },
+			take: limit,
+		});
+		const fileIds = files.map(({ fileId }) => fileId);
+
+		if (fileIds.length > 0) {
+			await this.delete({ fileId: In(fileIds), sourceType: 'execution', sourceId });
+		}
+
+		return fileIds.length;
 	}
 
 	async deleteByFileIds(fileIds: string[]): Promise<void> {

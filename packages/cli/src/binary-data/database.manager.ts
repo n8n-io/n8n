@@ -176,6 +176,18 @@ export class DatabaseManager implements BinaryData.Manager {
 		return await this.repository.hasExecutionFilesWithSourceId(TEMP_EXECUTION_ID);
 	}
 
+	/**
+	 * Deletes up to `limit` files that are assigned to no execution and were created
+	 * before `createdBefore`. Returns the number of files it found.
+	 */
+	async deleteUnassignedExecutionFilesCreatedBefore(createdBefore: Date, limit: number) {
+		return await this.repository.deleteExecutionFilesCreatedBefore(
+			TEMP_EXECUTION_ID,
+			createdBefore,
+			limit,
+		);
+	}
+
 	private toSource(location: BinaryData.FileLocation): {
 		sourceType: SourceType;
 		sourceId: string;
