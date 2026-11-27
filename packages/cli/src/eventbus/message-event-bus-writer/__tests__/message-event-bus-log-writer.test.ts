@@ -401,6 +401,40 @@ describe('MessageEventBusLogWriter.readLoggedMessagesFromFile', () => {
 			expect(results.loggedMessages.map(({ id }) => id)).toEqual(['id-1']);
 		});
 
+		it('returns one sent message for each confirm in "sent" mode', async () => {
+			setMaxMessagesPerParse(1000);
+			writer = new MessageEventBusLogWriter();
+			const logFile = writeLogFile('sent-copies.log', [
+				makeWorkflowStartedLine('id-1', 'exec-1'),
+				makeWorkflowStartedLine('id-1', 'exec-1'),
+				makeConfirmLine('id-1'),
+				makeWorkflowStartedLine('id-1', 'exec-1'),
+				makeConfirmLine('id-1'),
+			]);
+			const results = emptyResults();
+
+			await writer.readLoggedMessagesFromFile(results, 'sent', logFile);
+
+			expect(results.sentMessages.map(({ id }) => id)).toEqual(['id-1', 'id-1']);
+			expect(results.loggedMessages).toHaveLength(0);
+		});
+
+		it('returns each message once in "all" mode, also after its confirm', async () => {
+			setMaxMessagesPerParse(1000);
+			writer = new MessageEventBusLogWriter();
+			const logFile = writeLogFile('all-copies.log', [
+				makeWorkflowStartedLine('id-1', 'exec-1'),
+				makeConfirmLine('id-1'),
+				makeWorkflowStartedLine('id-1', 'exec-1'),
+				makeWorkflowStartedLine('id-2', 'exec-2'),
+			]);
+			const results = emptyResults();
+
+			await writer.readLoggedMessagesFromFile(results, 'all', logFile);
+
+			expect(results.loggedMessages.map(({ id }) => id)).toEqual(['id-1', 'id-2']);
+		});
+
 		it('keeps the node events of an execution when a workflow.started copy follows them', async () => {
 			setMaxMessagesPerParse(1000);
 			writer = new MessageEventBusLogWriter();

@@ -49,11 +49,6 @@ interface ReadMessagesFromLogFileResult {
 	loggedMessages: EventMessageTypes[];
 	sentMessages: EventMessageTypes[];
 	unfinishedExecutions: Record<string, EventMessageTypes[]>;
-	/**
-	 * IDs in `loggedMessages`. Startup replay appends each unsent message to the log again,
-	 * so a log can hold many copies of one ID; only the first pending copy is kept.
-	 */
-	pendingIds?: Set<string>;
 }
 
 /**
@@ -237,9 +232,10 @@ export class MessageEventBusLogWriter {
 				const maxTotalMessagesPerFile =
 					this.globalConfig.eventBus.logWriter.maxTotalMessagesPerFile;
 				const baselineCount = results.loggedMessages.length;
-				results.pendingIds ??= new Set(results.loggedMessages.map(({ id }) => id));
+				// The IDs in loggedMessages. Startup recovery appends each unsent message to the
+				// log again, so a log can hold many copies of one ID; only the first is kept.
+				const loggedIds = new Set(results.loggedMessages.map(({ id }) => id));
 				let aborted = false;
-				// Skipped copies hold no memory, so they count toward neither guard.
 				let duplicatesSkipped = 0;
 				// Stack-local counters: aggregate malformed lines into a single warn at
 				// the end of the parse pass. Each per-line error log allocates the raw
@@ -250,7 +246,7 @@ export class MessageEventBusLogWriter {
 				rl.on('line', (line) => {
 					if (aborted) return;
 					try {
-						if (this.processLoggedLine(line, results, mode) === 'duplicate') {
+						if (this.processLoggedLine(line, results, mode, loggedIds) === 'duplicate') {
 							duplicatesSkipped += 1;
 						}
 					} catch {
@@ -272,7 +268,8 @@ export class MessageEventBusLogWriter {
 						return;
 					}
 					// Absolute ceiling applied in every mode, counting skipped lines too
-					// so 100%-malformed files also trip it.
+					// so 100%-malformed files also trip it. Duplicate copies are not counted
+					// because they are not kept in memory.
 					if (
 						results.loggedMessages.length - baselineCount + parseSkipped >=
 						maxTotalMessagesPerFile
@@ -289,7 +286,7 @@ export class MessageEventBusLogWriter {
 				await eventOnce(rl, 'close');
 				if (duplicatesSkipped > 0) {
 					this.logger.debug(
-						`Event log parse skipped ${duplicatesSkipped} duplicate line(s) of pending messages in ${logFileName}`,
+						`Event log parse skipped ${duplicatesSkipped} duplicate line(s) of messages already read in ${logFileName}`,
 					);
 				}
 				if (parseSkipped > 0) {
@@ -308,14 +305,15 @@ export class MessageEventBusLogWriter {
 		line: string,
 		results: ReadMessagesFromLogFileResult,
 		mode: EventMessageReturnMode,
+		loggedIds: Set<string>,
 	): 'duplicate' | undefined {
 		const json = jsonParse(line);
 		if (isEventMessageOptions(json) && json.__type !== undefined) {
-			if (json.id !== undefined && results.pendingIds?.has(json.id)) return 'duplicate';
+			if (json.id !== undefined && loggedIds.has(json.id)) return 'duplicate';
 			const msg = this.getEventMessageObjectByType(json);
 			if (msg !== null) {
 				results.loggedMessages.push(msg);
-				results.pendingIds?.add(msg.id);
+				loggedIds.add(msg.id);
 			}
 			if (msg?.eventName && msg.payload?.executionId) {
 				const executionId = msg.payload.executionId as string;
@@ -344,7 +342,7 @@ export class MessageEventBusLogWriter {
 		}
 		if (isEventMessageConfirm(json) && mode !== 'all') {
 			const removedMessage = remove(results.loggedMessages, (e) => e.id === json.confirm);
-			results.pendingIds?.delete(json.confirm);
+			loggedIds.delete(json.confirm);
 			if (mode === 'sent') {
 				results.sentMessages.push(...removedMessage);
 			}
