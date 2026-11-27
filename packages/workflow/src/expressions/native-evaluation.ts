@@ -10,7 +10,6 @@ import {
 	RESERVED_NAMES,
 	TIME_METHODS,
 	canVerifyNatively,
-	canonicalize,
 	evaluateNatively as evaluateNativelyWithHost,
 	isNativelyEvaluable,
 	nativeSkeleton,
@@ -34,7 +33,6 @@ export {
 	RESERVED_NAMES,
 	TIME_METHODS,
 	canVerifyNatively,
-	canonicalize,
 	isNativelyEvaluable,
 	nativeSkeleton,
 };

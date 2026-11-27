@@ -21,6 +21,11 @@
     "./runtime-bundle.iife.js": "./dist/bundle/runtime.iife.js",
     "./*": "./*"
   },
+  "sideEffects": [
+    "./src/runtime/**",
+    "./dist/**/runtime/**",
+    "./dist/bundle/**"
+  ],
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json && pnpm build:runtime",

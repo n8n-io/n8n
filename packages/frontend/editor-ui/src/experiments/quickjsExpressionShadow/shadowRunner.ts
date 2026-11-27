@@ -1,10 +1,10 @@
+import { canonicalize } from '@n8n/expression-runtime/native-evaluation';
 import type {
 	ExpressionEvaluationOutcome,
 	ExpressionShadowContext,
 	ExpressionShadowRunner,
 	ShadowEvaluator,
 } from 'n8n-workflow';
-import { canonicalize } from 'n8n-workflow';
 
 import { getResolvableState } from '@/app/utils/expressions';
 
