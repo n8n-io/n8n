@@ -7,6 +7,7 @@ import type { LeaseKindOptions } from '@n8n/leases';
 import { mock } from 'vitest-mock-extended';
 
 import { DatabaseLeaseProvider } from '../database-lease-provider';
+import type { SessionClock } from '../lease-session-manager';
 
 describe('DatabaseLeaseProvider', () => {
 	const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -23,6 +24,7 @@ describe('DatabaseLeaseProvider', () => {
 
 	beforeEach(() => {
 		vi.useFakeTimers();
+		const clock: SessionClock = { monotonicMs: () => 0, wallMs: () => 1_800_000_000_000 };
 		kinds = mock<LeaseKindRepository>();
 		kinds.insertIfMissing.mockResolvedValue();
 		sessions = mock<LeaseSessionRepository>();
@@ -35,6 +37,7 @@ describe('DatabaseLeaseProvider', () => {
 			sessions,
 			hostId: 'host-1',
 			bootId: 'boot-1',
+			clock,
 			logger: mock<Logger>(),
 		});
 	});
