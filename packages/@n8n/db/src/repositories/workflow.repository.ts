@@ -763,7 +763,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			// it the backend falls back to scanning every enabled node and
 			// disagrees with the frontend picker, which fetches connections.
 			// `activeVersionId` tells the publish check whether the workflow is published.
-			select: ['id', 'name', 'nodes', 'connections', 'activeVersionId'],
+			select: ['id', 'name', 'nodes', 'connections', 'activeVersionId', 'isArchived'],
 		});
 	}
 

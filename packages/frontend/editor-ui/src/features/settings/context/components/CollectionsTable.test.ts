@@ -7,6 +7,9 @@ import { useRBACStore } from '@n8n/stores/rbac.store';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
+
 import CollectionsTable from './CollectionsTable.vue';
 
 function collection(overrides: Partial<KnowledgeCollectionDto> = {}): KnowledgeCollectionDto {
@@ -245,6 +248,30 @@ describe('CollectionsTable', () => {
 			]);
 
 			expect(getAllByTestId('collection-row-actions')).toHaveLength(3);
+		});
+
+		it('shows the menu on a collection of the personal project when the user can edit agents there', () => {
+			mockedStore(useProjectsStore).personalProject = {
+				id: 'personal-1',
+				name: 'Me <me@n8n.io>',
+				type: 'personal',
+				scopes: ['agent:read', 'agent:update'],
+			} as Project;
+			const { getByTestId } = render([
+				collection({
+					homeProject: { id: 'personal-1', name: 'Me <me@n8n.io>', type: 'personal' },
+				}),
+			]);
+
+			expect(getByTestId('collection-row-actions')).toBeVisible();
+		});
+
+		it('shows no menu on a collection of a project that is not in the list of the user', () => {
+			const { queryByTestId } = render([
+				collection({ homeProject: { id: 'team-2', name: 'Sales', type: 'team' } }),
+			]);
+
+			expect(queryByTestId('collection-row-actions')).toBeNull();
 		});
 
 		it('emits edit and delete with the collection of the row', async () => {

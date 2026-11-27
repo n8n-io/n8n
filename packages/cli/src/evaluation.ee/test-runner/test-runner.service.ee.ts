@@ -617,6 +617,7 @@ export class TestRunnerService {
 				const config = await this.evaluationConfigRepository.findByIdAndWorkflowId(
 					options.evaluationConfigId,
 					workflowId,
+					{},
 				);
 				if (!config) {
 					configLookupErrorCode = TestRunErrorCode.EVALUATION_CONFIG_NOT_FOUND;

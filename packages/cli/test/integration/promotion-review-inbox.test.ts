@@ -18,7 +18,13 @@ import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-
 import { PromotionEnvironmentsService } from '@/modules/promotions.ee/promotion-environments.service';
 import { PromotionReviewsService } from '@/modules/promotions.ee/promotion-reviews.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { createAdmin, createMember, createOwner, createUser } from '@test-integration/db/users';
+import {
+	createAdmin,
+	createAdminWithApiKey,
+	createMember,
+	createOwnerWithApiKey,
+	createUser,
+} from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 const baseUrl = 'https://gitlab.example.com';
@@ -127,7 +133,7 @@ function gitlabWrites(
 describe('Promotion reviews in the Inbox', () => {
 	const testServer = setupTestServer({
 		reuseServer: true,
-		endpointGroups: ['promotions'],
+		endpointGroups: ['promotions', 'publicApi', 'apiKeys'],
 		enabledFeatures: ['feat:promotions'],
 		modules: ['inbox', 'promotions'],
 	});
@@ -190,6 +196,18 @@ describe('Promotion reviews in the Inbox', () => {
 		return response;
 	};
 
+	/** The public API list. The key of `user` holds only `promotions:readReviews`. */
+	const reviews = async (user: User, query: Record<string, string> = {}) => {
+		const response = await testServer
+			.publicApiAgentFor(user)
+			.get('/promotions/reviews')
+			.query(query);
+		expect(response.status, response.text).toBe(200);
+		return response.body as { data: Array<{ id: string }>; nextCursor: string | null };
+	};
+
+	const withoutType = ({ type: _, ...review }: Record<string, unknown>) => review;
+
 	const approve = async (user: User, reviewId: string, headCommitSha = headSha) =>
 		await testServer
 			.authAgentFor(user)
@@ -220,7 +238,7 @@ describe('Promotion reviews in the Inbox', () => {
 		await Container.get(PromotionEnvironmentRepository).delete({});
 		await Container.get(PromotionProviderRepository).delete({});
 		await testDb.truncate(['User']);
-		owner = await createOwner();
+		owner = await createOwnerWithApiKey({ scopes: ['promotions:readReviews'] });
 		environmentId = await createEnvironment(
 			{ name: 'GitLab', type: 'gitlab', password: token, config: { schemaVersion: 1, baseUrl } },
 			{ name: 'To production', scope: 'instance', remoteUrl: `${baseUrl}/platform/workflows.git` },
@@ -374,9 +392,14 @@ describe('Promotion reviews in the Inbox', () => {
 			8: { state: 'merged', source_branch: 'n8n-promotion/elsewhere' },
 		});
 
+		// The public API reads first, so its own sync must record the host states.
+		const publicClosed = await reviews(owner, { state: 'closed' });
+		const publicOpen = await reviews(owner, { state: 'open' });
 		const closedList = await inbox(owner, { state: 'closed' });
 		const open = await inbox(owner, { state: 'open', category: 'waiting' });
 
+		expect(publicClosed.data).toEqual(closedList.body.data.data.map(withoutType));
+		expect(publicOpen.data).toEqual(open.body.data.data.map(withoutType));
 		expect(closedList.status, JSON.stringify(closedList.body)).toBe(200);
 		expect(closedList.body.data.data).toHaveLength(4);
 		expect(closedList.body.data.data).toEqual(
@@ -477,10 +500,24 @@ describe('Promotion reviews in the Inbox', () => {
 		expect(second.body.data.nextCursor).toBeNull();
 		expect(callsForFirstPage).toBe(3);
 		expect(calls.slice(callsForFirstPage)).toEqual([1]);
+
+		const publicFirst = await reviews(owner, { limit: '2' });
+		const callsBeforeSecondPage = calls.length;
+		const publicSecond = await reviews(owner, { limit: '2', cursor: publicFirst.nextCursor ?? '' });
+
+		expect(publicFirst.data.map(({ id }) => id)).toEqual([newest, middle]);
+		expect(publicSecond.data.map(({ id }) => id)).toEqual([oldest]);
+		expect(publicSecond.nextCursor).toBeNull();
+		expect(calls.slice(callsBeforeSecondPage)).toEqual([1]);
+		const otherTab = await testServer
+			.publicApiAgentFor(owner)
+			.get('/promotions/reviews')
+			.query({ state: 'closed', cursor: publicFirst.nextCursor });
+		expect(otherTab.status).toBe(400);
 	});
 
 	it('hides promotion reviews from a member and on environments v1', async () => {
-		await insertReview(1);
+		const reviewId = await insertReview(1);
 		gitlab({ 1: { state: 'opened' } });
 		const member = await createMember();
 
@@ -491,12 +528,30 @@ describe('Promotion reviews in the Inbox', () => {
 			closed: 0,
 		});
 
+		// Every member can add the scope to a key. The key reads what the member's Inbox shows.
+		const created = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'Reviews', expiresAt: null, scopes: ['promotions:readReviews'] });
+		expect(created.status, created.text).toBe(200);
+		const memberKey = testServer.publicApiAgentWithApiKey(created.body.data.rawApiKey);
+		const memberList = await memberKey.get('/promotions/reviews');
+		expect(memberList.status, memberList.text).toBe(200);
+		expect(memberList.body.data).toEqual([]);
+		expect((await memberKey.get(`/promotions/reviews/${reviewId}`)).status).toBe(404);
+		expect(
+			(await testServer.publicApiAgentFor(owner).get(`/promotions/reviews/${uuidv7()}`)).status,
+		).toBe(404);
+
 		const preferences = Container.get(SourceControlPreferencesService);
 		preferences.sourceControlPreferences = { environmentsVersion: 'v1' };
 		try {
 			const onV1 = await inbox(owner, { state: 'open', category: 'waiting' });
 			expect(onV1.body.data.data).toEqual([]);
 			expect(onV1.body.data.disabledSources).toContain('promotion_review');
+			expect((await testServer.publicApiAgentFor(owner).get('/promotions/reviews')).status).toBe(
+				403,
+			);
 		} finally {
 			preferences.sourceControlPreferences = { environmentsVersion: 'v2' };
 		}
@@ -507,8 +562,27 @@ describe('Promotion reviews in the Inbox', () => {
 			const reviewId = await insertReview(1);
 			gitlab({ 1: { state: 'opened' } });
 			const writes = gitlabWrites(1);
-			const admin = await createAdmin();
+			const admin = await createAdminWithApiKey({ scopes: ['promotions:readReviews'] });
+			const readReview = async () => {
+				const response = await testServer
+					.publicApiAgentFor(admin)
+					.get(`/promotions/reviews/${reviewId}`);
+				expect(response.status, response.text).toBe(200);
+				return response.body;
+			};
 
+			// Nobody opened the Inbox yet, so the read alone must reach GitLab.
+			expect(await readReview()).toEqual(
+				expect.objectContaining({
+					id: reviewId,
+					state: 'open',
+					reviewState: 'open',
+					webUrl: `${baseUrl}/platform/workflows/-/merge_requests/1`,
+					branchName: 'n8n-promotion/1',
+					requester: expect.objectContaining({ id: owner.id }),
+					approver: null,
+				}),
+			);
 			const [row] = (await inbox(admin, { state: 'open', category: 'waiting' })).body.data.data;
 			const response = await approve(admin, reviewId, row.headCommitSha);
 
@@ -526,6 +600,7 @@ describe('Promotion reviews in the Inbox', () => {
 			});
 			expect(response.body.data).toEqual(merged);
 			expect((await inbox(admin, { state: 'closed' })).body.data.data).toEqual([merged]);
+			expect(await readReview()).toEqual(merged);
 			expect(emitSpy).toHaveBeenCalledWith(
 				'promotion-review-approved',
 				expect.objectContaining({

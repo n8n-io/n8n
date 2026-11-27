@@ -305,6 +305,23 @@ export function getProjects(): Project[] {
 			use: { trace: 'off', video: 'off', screenshot: 'off' },
 		});
 
+		// API-only, no browser: each cell boots its own stack against published
+		// images and runs the deployment probe (no e2e controller). When CI sets
+		// channel and arch, the project name becomes the Currents group.
+		const deploymentProjectName =
+			process.env.DEPLOYMENT_CHANNEL && process.env.DEPLOYMENT_ARCH
+				? `deployment · ${process.env.DEPLOYMENT_CHANNEL} · ${process.env.DEPLOYMENT_ARCH}`
+				: 'deployment';
+		projects.push({
+			name: deploymentProjectName,
+			testDir: './tests/deployment',
+			grep: /@cell:/,
+			workers: 1,
+			timeout: 300_000,
+			retries: 0,
+			use: { trace: 'off', video: 'off', screenshot: 'off' },
+		});
+
 		for (const { name, config } of LOCAL_ONLY_BENCHMARK_PROFILES) {
 			projects.push({
 				name: `benchmark-${name}:infrastructure`,

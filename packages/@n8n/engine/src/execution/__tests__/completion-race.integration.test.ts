@@ -78,6 +78,7 @@ async function setup(dataSource: DataSource, graph: WorkflowGraph, queued: strin
 		new LifecycleEventPublisherFactory(publisher),
 		noopExecutionResponseSender,
 		{ cancelSubExecutions: vi.fn() } as unknown as CancelExecutionService,
+		{ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 	);
 	const executionId = generateId();
 

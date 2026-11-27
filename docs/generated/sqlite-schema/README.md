@@ -25,7 +25,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_execution](agent_execution.md) | 28 |  | table |
 | [agent_execution_message_links](agent_execution_message_links.md) | 5 |  | table |
 | [agent_execution_statistics](agent_execution_statistics.md) | 2 |  | table |
-| [agent_execution_threads](agent_execution_threads.md) | 20 |  | table |
+| [agent_execution_threads](agent_execution_threads.md) | 21 |  | table |
 | [agent_file_grants](agent_file_grants.md) | 4 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 11 |  | table |
@@ -729,6 +729,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_8_ emoji
   varchar_128_ id PK
+  boolean isTestChat
   varchar ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId

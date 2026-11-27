@@ -60,7 +60,7 @@ export class InsightsModelResolver {
 		const config =
 			preloadedConfig !== undefined
 				? preloadedConfig
-				: await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId);
+				: await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId, {});
 		if (!config) return null;
 
 		// Reuse the first LLM-judge metric's model. Collections score against a
