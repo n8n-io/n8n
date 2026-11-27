@@ -240,10 +240,10 @@ export class AgentsPublicController {
 	@ProjectScope('agent:execute')
 	@ApiSummary('Run an agent')
 	@ApiDescription(
-		'Run the current draft of an agent and wait for the final response. ' +
+		'Run the latest published version of an agent and wait for the final response. ' +
 			'Omit sessionId to start a session. Send the same sessionId to continue that session. ' +
-			'The user of the API key also needs permission to read the agent. ' +
-			'The Public API rejects an agent that uses a tool which needs approval.',
+			'The Public API rejects an agent that has no published version, ' +
+			'and an agent whose published version uses a tool that needs approval.',
 	)
 	@ApiTags(['Agent'])
 	@ApiResponse(200, AgentRunPublicDto)

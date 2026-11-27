@@ -10,6 +10,8 @@ export type AgentSessionMode = 'new' | 'existing';
 
 export const PREVIEW_THREAD_SOURCES = ['', 'chat', 'n8n_chat'] as const;
 export const N8N_CHAT_PRODUCTION_SOURCE = 'n8n_chat_production' as const;
+/** Transcript source of a Public API run of the published version. */
+export const PUBLIC_API_SOURCE = 'public_api' as const;
 /** Transcript source of a system-agent turn. It is not a Preview source. */
 export const SYSTEM_CHAT_SOURCE = 'system_chat' as const;
 /** File source of the files of `outputs/` that the sandbox files feature stores. */
@@ -104,6 +106,16 @@ export function canContinueThreadInN8nChat(
 	return (
 		!isSystemAgent && isOpenChatThread(thread, userId) && source === N8N_CHAT_PRODUCTION_SOURCE
 	);
+}
+
+/** A Public API run continues only its own session, never a Preview or n8n Chat thread. */
+export function canContinuePublicApiThread(
+	thread: AgentExecutionThread,
+	userId: string,
+	source: string | null | undefined,
+	isSystemAgent: boolean,
+): boolean {
+	return !isSystemAgent && isOpenChatThread(thread, userId) && source === PUBLIC_API_SOURCE;
 }
 
 /** A system thread does not check the execution source, so it works before the first turn. */

@@ -8,8 +8,6 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError, UnexpectedError, UnprocessableRequestError } from '@n8n/errors';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSessionStopService } from './agent-session-stop.service';
 import { AgentTestRunService } from './agent-test-run.service';
@@ -17,12 +15,9 @@ import { AgentsService } from './agents.service';
 import type { AgentExecution } from './entities/agent-execution.entity';
 import type { ProjectAgent } from './entities/agent.entity';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
-import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { threadBelongsTo } from './utils/agent-thread-access';
 
-const PUBLIC_API_SOURCE = 'public_api';
-
-const NOT_RUNNABLE = 'This agent is not ready to run.';
+const NOT_PUBLISHED = 'This agent has no published version. The Public API cannot run it.';
 const NEEDS_APPROVAL = 'This agent uses a tool that needs approval. The Public API cannot run it.';
 
 @Service()
@@ -30,7 +25,6 @@ export class AgentPublicRunService {
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly agentTestRunService: AgentTestRunService,
-		private readonly credentialsService: CredentialsService,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionService: AgentExecutionService,
 		private readonly sessionStopService: AgentSessionStopService,
@@ -39,28 +33,28 @@ export class AgentPublicRunService {
 	async run(user: User, agentId: string, body: RunAgentPublicDto, abortSignal?: AbortSignal) {
 		const agent = await this.agentsService.findById(agentId);
 		if (!agent) throw new NotFoundError('Not Found');
-		await this.agentTestRunService.assertCanRunDraft(user, agent.projectId);
-		if (draftRequiresApproval(agent)) throw new UnprocessableRequestError(NEEDS_APPROVAL);
 
-		const result = await this.agentTestRunService.executeDraftRun({
+		// The run uses the published version, so both checks read it, not the draft.
+		if (!agent.activeVersionId) throw new UnprocessableRequestError(NOT_PUBLISHED);
+		if (
+			runRequiresApproval({
+				schema: agent.activeVersion?.schema ?? null,
+				integrations: agent.integrations,
+			})
+		) {
+			throw new UnprocessableRequestError(NEEDS_APPROVAL);
+		}
+
+		const result = await this.agentTestRunService.executePublishedRun({
 			agentId,
 			projectId: agent.projectId,
 			message: body.message,
 			sessionId: body.sessionId,
-			credentialProvider: createAgentCredentialProvider(
-				this.credentialsService,
-				agent.projectId,
-				user,
-			),
 			user,
-			source: PUBLIC_API_SOURCE,
 			...(abortSignal ? { abortSignal } : {}),
 		});
 
 		if (result.status === 'session_not_found') throw new NotFoundError('Not Found');
-		if (result.status === 'agent_misconfigured') {
-			throw new UnprocessableRequestError(`${NOT_RUNNABLE} Missing: ${result.missing.join(', ')}.`);
-		}
 		if (result.status === 'suspended') {
 			const cancelled = await this.agentTestRunService.cancelSuspendedRuns({
 				agentId,
@@ -174,11 +168,12 @@ function toIsoTimestamp(value: Date | string): string {
 	return value instanceof Date ? value.toISOString() : value;
 }
 
-function draftRequiresApproval(agent: Pick<ProjectAgent, 'schema' | 'integrations'>): boolean {
-	const tools = agent.schema?.tools ?? [];
+/** Whether the configuration a run would use contains anything that can pause for approval. */
+function runRequiresApproval(config: Pick<ProjectAgent, 'schema' | 'integrations'>): boolean {
+	const tools = config.schema?.tools ?? [];
 	if (tools.some((tool) => tool.enabled !== false && tool.requireApproval)) return true;
 
-	const servers = agent.schema?.mcpServers ?? [];
+	const servers = config.schema?.mcpServers ?? [];
 	if (
 		servers.some((server) => {
 			const permissions = server.toolPermissions;
@@ -193,7 +188,7 @@ function draftRequiresApproval(agent: Pick<ProjectAgent, 'schema' | 'integration
 		return true;
 	}
 
-	return agent.integrations.some(
+	return config.integrations.some(
 		(integration) => 'approval' in integration && integration.approval !== undefined,
 	);
 }

@@ -1,8 +1,6 @@
 import type { User } from '@n8n/db';
-import { ForbiddenError, NotFoundError, UnprocessableRequestError } from '@n8n/errors';
+import { NotFoundError, UnprocessableRequestError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
-
-import type { CredentialsService } from '@/credentials/credentials.service';
 
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentPublicRunService } from '../agent-public-run.service';
@@ -17,23 +15,24 @@ import type { AgentExecutionRepository } from '../repositories/agent-execution.r
 describe('AgentPublicRunService', () => {
 	const agentsService = mock<AgentsService>();
 	const agentTestRunService = mock<AgentTestRunService>();
-	const credentialsService = mock<CredentialsService>();
 	const executionRepository = mock<AgentExecutionRepository>();
 	const executionService = mock<AgentExecutionService>();
 	const sessionStopService = mock<AgentSessionStopService>();
 	const service = new AgentPublicRunService(
 		agentsService,
 		agentTestRunService,
-		credentialsService,
 		executionRepository,
 		executionService,
 		sessionStopService,
 	);
 	const user = { id: 'user-1' } as User;
 
+	/** A published agent: the run uses `activeVersion`, never the draft `schema`. */
 	const agent = {
 		id: 'agent-1',
 		projectId: 'project-1',
+		activeVersionId: 'version-1',
+		activeVersion: { schema: { tools: [], mcpServers: [] } },
 		schema: { tools: [], mcpServers: [] },
 		integrations: [],
 	} as unknown as ProjectAgent;
@@ -41,12 +40,11 @@ describe('AgentPublicRunService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		agentsService.findById.mockResolvedValue(agent);
-		agentTestRunService.assertCanRunDraft.mockResolvedValue(undefined);
 	});
 
 	describe('run', () => {
 		it('returns the recorded execution for a completed run', async () => {
-			agentTestRunService.executeDraftRun.mockResolvedValue({
+			agentTestRunService.executePublishedRun.mockResolvedValue({
 				status: 'completed',
 				response: 'Hello',
 				sessionId: 'session-1',
@@ -68,20 +66,17 @@ describe('AgentPublicRunService', () => {
 				status: 'success',
 				usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: null },
 			});
-			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith(
-				expect.objectContaining({
-					agentId: 'agent-1',
-					projectId: 'project-1',
-					message: 'Hi',
-					source: 'public_api',
-					user,
-				}),
-			);
-			expect(agentTestRunService.assertCanRunDraft).toHaveBeenCalledWith(user, 'project-1');
+			expect(agentTestRunService.executePublishedRun).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				message: 'Hi',
+				sessionId: undefined,
+				user,
+			});
 		});
 
 		it('passes sessionId through for a follow-up run', async () => {
-			agentTestRunService.executeDraftRun.mockResolvedValue({
+			agentTestRunService.executePublishedRun.mockResolvedValue({
 				status: 'completed',
 				response: 'Again',
 				sessionId: 'session-1',
@@ -98,7 +93,7 @@ describe('AgentPublicRunService', () => {
 
 			await service.run(user, 'agent-1', { message: 'Continue', sessionId: 'session-1' });
 
-			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith(
+			expect(agentTestRunService.executePublishedRun).toHaveBeenCalledWith(
 				expect.objectContaining({ sessionId: 'session-1' }),
 			);
 		});
@@ -108,31 +103,28 @@ describe('AgentPublicRunService', () => {
 			await expect(service.run(user, 'missing', { message: 'Hi' })).rejects.toThrow(NotFoundError);
 
 			agentsService.findById.mockResolvedValue(agent);
-			agentTestRunService.executeDraftRun.mockResolvedValue({ status: 'session_not_found' });
+			agentTestRunService.executePublishedRun.mockResolvedValue({ status: 'session_not_found' });
 			await expect(
 				service.run(user, 'agent-1', { message: 'Hi', sessionId: 'missing' }),
 			).rejects.toThrow(NotFoundError);
 		});
 
-		it('returns 422 when the agent is not runnable', async () => {
-			agentTestRunService.executeDraftRun.mockResolvedValue({
-				status: 'agent_misconfigured',
-				missing: ['model'],
-			});
+		it('returns 422 when the agent has no published version', async () => {
+			agentsService.findById.mockResolvedValue({ ...agent, activeVersionId: null });
 			await expect(service.run(user, 'agent-1', { message: 'Hi' })).rejects.toThrow(
-				UnprocessableRequestError,
+				/no published version/,
 			);
+			expect(agentTestRunService.executePublishedRun).not.toHaveBeenCalled();
 		});
 
 		it.each([
 			{
 				name: 'workflow tool',
-				schema: { tools: [{ type: 'workflow', requireApproval: true, enabled: true }] },
-				integrations: undefined,
+				publishedSchema: { tools: [{ type: 'workflow', requireApproval: true, enabled: true }] },
 			},
 			{
 				name: 'MCP server',
-				schema: {
+				publishedSchema: {
 					mcpServers: [
 						{
 							toolPermissions: {
@@ -141,46 +133,69 @@ describe('AgentPublicRunService', () => {
 						},
 					],
 				},
-				integrations: undefined,
-			},
-			{
-				name: 'integration',
-				schema: undefined,
-				integrations: [{ type: 'slack', approval: { mode: 'global' } }],
 			},
 		])(
-			'returns 422 before running when a $name needs approval',
-			async ({ schema, integrations }) => {
+			'returns 422 before running when the published version uses a $name that needs approval',
+			async ({ publishedSchema }) => {
 				agentsService.findById.mockResolvedValue({
 					...agent,
-					schema: {
-						...(agent.schema ?? {}),
-						...(schema ?? {}),
-					} as ProjectAgent['schema'],
-					integrations: (integrations ?? agent.integrations) as ProjectAgent['integrations'],
-				});
+					activeVersion: {
+						schema: {
+							tools: [],
+							mcpServers: [],
+							...publishedSchema,
+						},
+					},
+				} as unknown as ProjectAgent);
 
 				await expect(service.run(user, 'agent-1', { message: 'Hi' })).rejects.toThrow(
 					UnprocessableRequestError,
 				);
-				expect(agentTestRunService.executeDraftRun).not.toHaveBeenCalled();
+				expect(agentTestRunService.executePublishedRun).not.toHaveBeenCalled();
 			},
 		);
 
-		it('returns 403 before it inspects an approval-gated draft', async () => {
-			agentTestRunService.assertCanRunDraft.mockRejectedValue(new ForbiddenError('no read'));
+		it('returns 422 before running when the published version has an approvable integration', async () => {
+			agentsService.findById.mockResolvedValue({
+				...agent,
+				integrations: [{ type: 'slack', approval: { mode: 'global' } }],
+			} as unknown as ProjectAgent);
+
+			await expect(service.run(user, 'agent-1', { message: 'Hi' })).rejects.toThrow(
+				UnprocessableRequestError,
+			);
+			expect(agentTestRunService.executePublishedRun).not.toHaveBeenCalled();
+		});
+
+		it('runs when only the draft needs approval', async () => {
 			agentsService.findById.mockResolvedValue({
 				...agent,
 				schema: { tools: [{ type: 'workflow', requireApproval: true, enabled: true }] },
 			} as unknown as ProjectAgent);
+			agentTestRunService.executePublishedRun.mockResolvedValue({
+				status: 'completed',
+				response: 'Hello',
+				sessionId: 'session-1',
+				executionId: 'execution-1',
+			});
+			executionRepository.findExecution.mockResolvedValue({
+				status: 'success',
+				promptTokens: null,
+				completionTokens: null,
+				totalTokens: null,
+				cost: null,
+				error: null,
+			} as AgentExecution);
 
-			await expect(service.run(user, 'agent-1', { message: 'Hi' })).rejects.toThrow(ForbiddenError);
-			expect(agentTestRunService.executeDraftRun).not.toHaveBeenCalled();
+			await expect(service.run(user, 'agent-1', { message: 'Hi' })).resolves.toEqual(
+				expect.objectContaining({ status: 'success' }),
+			);
+			expect(agentTestRunService.executePublishedRun).toHaveBeenCalled();
 		});
 
 		it('cancels a suspended run before returning 422', async () => {
 			const suspensions = [{ runId: 'run-1', toolCallId: 'call-1', toolName: 'lookup' }];
-			agentTestRunService.executeDraftRun.mockResolvedValue({
+			agentTestRunService.executePublishedRun.mockResolvedValue({
 				status: 'suspended',
 				response: '',
 				sessionId: 'session-1',
@@ -200,7 +215,7 @@ describe('AgentPublicRunService', () => {
 		});
 
 		it('names the execution when a suspended run cannot be cancelled', async () => {
-			agentTestRunService.executeDraftRun.mockResolvedValue({
+			agentTestRunService.executePublishedRun.mockResolvedValue({
 				status: 'suspended',
 				response: '',
 				sessionId: 'session-1',

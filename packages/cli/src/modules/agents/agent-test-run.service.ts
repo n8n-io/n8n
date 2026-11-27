@@ -29,7 +29,7 @@ import type { SimulationSession } from './simulation/simulation-session';
 import { SimulationSessionService } from './simulation/simulation-session.service';
 import { findPendingStandardApproval, parseStandardApprovalSuspension } from './standard-approval';
 import type { AgentExecutionStreamChunk } from './types/agent-steering';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import { draftChatMemoryResourceId, publicApiMemoryResourceId } from './utils/agent-memory-scope';
 import type { AgentSessionMode } from './utils/agent-thread-access';
 
 interface PrepareDraftRunInput {
@@ -145,6 +145,19 @@ export type PreparedDraftRunResult = {
 export type AgentTestRunResult =
 	| (PreparedDraftRunResult & { sessionId: string })
 	| Exclude<PrepareDraftRunResult, { status: 'ready' }>;
+
+export interface ExecutePublishedRunInput {
+	agentId: string;
+	projectId: string;
+	user: User;
+	sessionId?: string;
+	message: string;
+	abortSignal?: AbortSignal;
+}
+
+export type PublishedRunResult =
+	| (PreparedDraftRunResult & { sessionId: string })
+	| { status: 'session_not_found' };
 
 export class InvalidAgentTestRunCheckpointError extends UserError {
 	readonly code = 'invalid_checkpoint';
@@ -306,6 +319,56 @@ export class AgentTestRunService {
 			sessionMode: prepared.sessionMode,
 		});
 		return { ...result, sessionId: prepared.sessionId };
+	}
+
+	/**
+	 * Run the published version for the Public API. The session belongs to the
+	 * API key's user and only continues other `public_api` runs of this agent.
+	 * A published agent is validated at publish time, so this skips the draft
+	 * runnable checks.
+	 */
+	async executePublishedRun({
+		agentId,
+		projectId,
+		user,
+		sessionId,
+		message,
+		abortSignal,
+	}: ExecutePublishedRunInput): Promise<PublishedRunResult> {
+		const sessionMode: AgentSessionMode = sessionId ? 'existing' : 'new';
+		if (
+			sessionId &&
+			!(await this.agentExecutionService.canUsePublicApiThread(
+				sessionId,
+				projectId,
+				agentId,
+				user.id,
+				sessionMode,
+			))
+		) {
+			return { status: 'session_not_found' };
+		}
+		const resolvedSessionId = sessionId ?? randomUUID();
+
+		let executionId: string | undefined;
+		const stream = this.agentExecutionOrchestratorService.executeForPublicApiPublished({
+			agentId,
+			projectId,
+			message,
+			memory: {
+				threadId: resolvedSessionId,
+				resourceId: publicApiMemoryResourceId(user.id),
+			},
+			user,
+			sessionMode,
+			onExecutionRecorded: (id) => {
+				executionId = id;
+			},
+			...(abortSignal ? { abortSignal } : {}),
+		});
+
+		const result = await this.collectDraftRun(stream, '', () => executionId, {});
+		return { ...result, sessionId: resolvedSessionId };
 	}
 
 	async resumeDraftRun({

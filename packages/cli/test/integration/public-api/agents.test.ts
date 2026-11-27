@@ -1001,34 +1001,58 @@ describe('PUT /agents/:agentId', () => {
 
 describe('POST /agents/:agentId/run and stop', () => {
 	let agentRepository: AgentRepository;
+	let historyRepository: AgentHistoryRepository;
 
 	beforeAll(async () => {
 		agentRepository = Container.get(AgentRepository);
+		historyRepository = Container.get(AgentHistoryRepository);
 		Container.get(InstanceSettings).markAsLeader();
 	});
 
 	beforeEach(async () => {
+		await Container.get(DataSource).getRepository(AgentHistory).delete({});
 		await agentRepository.delete({});
 		await cleanupRolesAndScopes();
 	});
 
 	afterEach(async () => {
 		vi.restoreAllMocks();
+		await Container.get(DataSource).getRepository(AgentHistory).delete({});
 		await agentRepository.delete({});
 		await testDb.truncate(['ProjectRelation', 'Project']);
 	});
 
-	const createAgent = async (projectId: string, id: string, schema: unknown = null) =>
+	/**
+	 * A published agent. The run endpoint uses the active version's schema,
+	 * never the draft.
+	 */
+	const createPublishedAgent = async (
+		projectId: string,
+		id: string,
+		publishedSchema: unknown = { name: 'My Agent', model: '', instructions: '' },
+	) => {
 		await createTestAgent({
 			id,
 			name: 'My Agent',
 			projectId,
-			schema: schema as never,
+			schema: null,
 			integrations: [],
 			tools: {},
 			skills: {},
 			versionId: 'draft-version',
 		});
+		await historyRepository.saveVersion(
+			{
+				agentId: id,
+				versionId: 'version-1',
+				schema: publishedSchema as never,
+				tools: {},
+				savedBy: 'Test',
+			},
+			{},
+		);
+		await agentRepository.update({ id }, { activeVersionId: 'version-1' });
+	};
 
 	const personalProjectId = async (user: User) =>
 		(await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id)).id;
@@ -1041,7 +1065,7 @@ describe('POST /agents/:agentId/run and stop', () => {
 
 	test('should return 403 when the API key lacks agent:execute', async () => {
 		const owner = await createOwnerWithApiKey({ scopes: ['agent:read'] });
-		await createAgent(await personalProjectId(owner), 'agent-1');
+		await createPublishedAgent(await personalProjectId(owner), 'agent-1');
 
 		const response = await testServer
 			.publicApiAgentFor(owner)
@@ -1061,7 +1085,7 @@ describe('POST /agents/:agentId/run and stop', () => {
 		});
 		const teamProject = await createTeamProject('Test Project', owner);
 		await linkUserToProject(member, teamProject, customRole.slug);
-		await createAgent(teamProject.id, 'agent-1');
+		await createPublishedAgent(teamProject.id, 'agent-1');
 
 		const response = await testServer
 			.publicApiAgentFor(member)
@@ -1073,7 +1097,7 @@ describe('POST /agents/:agentId/run and stop', () => {
 
 	test('should return 400 for an empty body', async () => {
 		const owner = await createOwnerWithApiKey();
-		await createAgent(await personalProjectId(owner), 'agent-1');
+		await createPublishedAgent(await personalProjectId(owner), 'agent-1');
 
 		const response = await testServer.publicApiAgentFor(owner).post('/agents/agent-1/run').send({});
 
@@ -1093,7 +1117,7 @@ describe('POST /agents/:agentId/run and stop', () => {
 
 	test('should return 404 for an unknown session', async () => {
 		const owner = await createOwnerWithApiKey();
-		await createAgent(await personalProjectId(owner), 'agent-1');
+		await createPublishedAgent(await personalProjectId(owner), 'agent-1');
 
 		const response = await testServer
 			.publicApiAgentFor(owner)
@@ -1103,9 +1127,18 @@ describe('POST /agents/:agentId/run and stop', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should return 422 when the agent is not ready to run', async () => {
+	test('should return 422 when the agent has no published version', async () => {
 		const owner = await createOwnerWithApiKey();
-		await createAgent(await personalProjectId(owner), 'agent-1');
+		await createTestAgent({
+			id: 'agent-1',
+			name: 'My Agent',
+			projectId: await personalProjectId(owner),
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
 
 		const response = await testServer
 			.publicApiAgentFor(owner)
@@ -1113,12 +1146,12 @@ describe('POST /agents/:agentId/run and stop', () => {
 			.send({ message: 'Hello' });
 
 		expect(response.statusCode).toBe(422);
-		expect(response.body.message).toContain('not ready to run');
+		expect(response.body.message).toContain('no published version');
 	});
 
-	test('should return 422 when the agent uses a tool that needs approval', async () => {
+	test('should return 422 when the published version uses a tool that needs approval', async () => {
 		const owner = await createOwnerWithApiKey();
-		await createAgent(await personalProjectId(owner), 'agent-1', {
+		await createPublishedAgent(await personalProjectId(owner), 'agent-1', {
 			name: 'My Agent',
 			model: '',
 			instructions: '',
@@ -1137,7 +1170,7 @@ describe('POST /agents/:agentId/run and stop', () => {
 	test('should return the final response and continue the same session', async () => {
 		const owner = await createOwnerWithApiKey();
 		const projectId = await personalProjectId(owner);
-		await createAgent(projectId, 'agent-1');
+		await createPublishedAgent(projectId, 'agent-1');
 		const threads = Container.get(AgentExecutionThreadRepository);
 		const executions = Container.get(AgentExecutionRepository);
 		await threads.save(
@@ -1163,12 +1196,14 @@ describe('POST /agents/:agentId/run and stop', () => {
 				cost: 0.1,
 			}),
 		);
-		const run = vi.spyOn(Container.get(AgentTestRunService), 'executeDraftRun').mockResolvedValue({
-			status: 'completed',
-			response: 'Hello',
-			sessionId: 'thread-1',
-			executionId: 'execution-1',
-		});
+		const run = vi
+			.spyOn(Container.get(AgentTestRunService), 'executePublishedRun')
+			.mockResolvedValue({
+				status: 'completed',
+				response: 'Hello',
+				sessionId: 'thread-1',
+				executionId: 'execution-1',
+			});
 
 		const first = await testServer
 			.publicApiAgentFor(owner)
@@ -1194,7 +1229,7 @@ describe('POST /agents/:agentId/run and stop', () => {
 	test('should stop a running execution and return the status of a finished one', async () => {
 		const owner = await createOwnerWithApiKey();
 		const projectId = await personalProjectId(owner);
-		await createAgent(projectId, 'agent-1');
+		await createPublishedAgent(projectId, 'agent-1');
 		const threads = Container.get(AgentExecutionThreadRepository);
 		const executions = Container.get(AgentExecutionRepository);
 		await threads.save(
