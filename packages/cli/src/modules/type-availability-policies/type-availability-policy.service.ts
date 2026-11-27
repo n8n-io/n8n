@@ -127,9 +127,15 @@ function assertNoDelegateAtProjectScope(
 	}
 }
 
-function scopeVersionConflict(expectedVersion: number, foundVersion: number): ConflictError {
+/** Pass `kind` when one request checks the versions of several kinds. */
+function scopeVersionConflict(
+	expectedVersion: number,
+	foundVersion: number,
+	kind?: string,
+): ConflictError {
+	const subject = kind ? `The ${kind} policy scope` : 'Policy scope';
 	return new ConflictError(
-		`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${foundVersion})`,
+		`${subject} has changed since it was last read (expected version ${expectedVersion}, found ${foundVersion})`,
 	);
 }
 
@@ -535,34 +541,39 @@ export class TypeAvailabilityPolicyService {
 		projectId: string,
 		expectedVersions: { [NODE_TYPES_KIND]: number; [CREDENTIAL_TYPES_KIND]: number },
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<void> {
-		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const found: Array<TypeAvailabilityPolicyScope | null> = [];
+		const result = await this.transactionRunner.run({}, async (tx) => {
+			const found: Array<{
+				kind: (typeof PROJECT_POLICY_KINDS)[number];
+				scope: TypeAvailabilityPolicyScope | null;
+			}> = [];
 			for (const kind of PROJECT_POLICY_KINDS) {
-				found.push(
-					await this.scopeRepository.findScopeByKindAndProject(kind, projectId, ctx, true),
-				);
+				found.push({
+					kind,
+					scope: await this.scopeRepository.findScopeByKindAndProject(kind, projectId, tx, true),
+				});
 			}
 
-			const scopes = found.filter((scope) => scope !== null);
+			const scopes = found.flatMap(({ scope }) => (scope ? [scope] : []));
 			if (scopes.length === 0) {
 				throw new NotFoundError(`Project has no policy: ${projectId}`);
 			}
 
-			PROJECT_POLICY_KINDS.forEach((kind, i) => {
-				const currentVersion = found[i]?.version ?? UNCONFIGURED_VERSION;
+			for (const { kind, scope } of found) {
+				const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 				if (currentVersion !== expectedVersions[kind]) {
-					throw scopeVersionConflict(expectedVersions[kind], currentVersion);
+					throw scopeVersionConflict(expectedVersions[kind], currentVersion, kind);
 				}
-			});
+			}
 
 			const attachmentsByScope = await this.attachmentRepository.listAttachmentsForScopes(
 				scopes.map((scope) => scope.id),
-				ctx,
+				tx,
 			);
 
 			for (const scope of scopes) {
-				await this.scopeRepository.deleteScope(scope.id, ctx);
+				await this.scopeRepository.deleteScope(scope.id, tx);
 			}
 
 			// Scopes before documents, the order every write path keeps. The document lock makes a
@@ -571,14 +582,14 @@ export class TypeAvailabilityPolicyService {
 				...new Set([...attachmentsByScope.values()].flat().map((a) => a.policyId)),
 			];
 			const deletedDocuments: TypeAvailabilityPolicy[] = [];
-			for (const policy of await this.policyRepository.findManyByIds(policyIds, ctx, true)) {
+			for (const policy of await this.policyRepository.findManyByIds(policyIds, tx, true)) {
 				const stillAttached = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
 					policy.id,
-					ctx,
+					tx,
 				);
 				if (stillAttached.length > 0) continue;
 
-				await this.policyRepository.deletePolicy(policy.id, ctx);
+				await this.policyRepository.deletePolicy(policy.id, tx);
 				deletedDocuments.push(policy);
 			}
 
@@ -598,6 +609,7 @@ export class TypeAvailabilityPolicyService {
 					version: scope.version,
 					attachments: result.attachmentsByScope.get(scope.id) ?? [],
 				},
+				loginId: loginIdOf(ctx),
 			});
 		}
 
@@ -608,6 +620,7 @@ export class TypeAvailabilityPolicyService {
 				policyId: document.id,
 				origin: 'project-policy-delete',
 				before: { rules: document.rules, version: document.version },
+				loginId: loginIdOf(ctx),
 			});
 		}
 	}

@@ -919,6 +919,20 @@ describe('TypeAvailabilityPolicyService', () => {
 			},
 		);
 
+		it('names the stale kind in the conflict message', async () => {
+			arrangeBothKinds();
+
+			await expect(
+				service.deleteProjectPolicy(
+					PROJECT_ID,
+					{ [NODE_TYPES_KIND]: 3, [CREDENTIAL_TYPES_KIND]: 1 },
+					'user-1',
+				),
+			).rejects.toThrow(
+				'The credential-types policy scope has changed since it was last read (expected version 1, found 2)',
+			);
+		});
+
 		it('expects version 0 for a kind with no scope', async () => {
 			arrangeScopes(nodeScope, null);
 			attachmentRepository.listAttachmentsForScopes.mockResolvedValue(new Map());
@@ -1868,6 +1882,28 @@ describe('TypeAvailabilityPolicyService', () => {
 					policyRepository.findByIdAndKind.mockResolvedValue(makePolicy());
 					attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
 					return await service.deletePolicyDocument(KIND, 'policy-1', 'user-1', ctx);
+				},
+			},
+			{
+				write: 'deleteProjectPolicy',
+				events: ['node-type-policy-scope-deleted', 'node-type-policy-document-deleted'],
+				act: async (ctx) => {
+					scopeRepository.findScopeByKindAndProject.mockImplementation(async (kind) =>
+						kind === NODE_TYPES_KIND ? makeScope({ projectId: 'project-1', version: 1 }) : null,
+					);
+					attachmentRepository.listAttachmentsForScopes.mockResolvedValue(
+						new Map([
+							['scope-1', [{ policyId: 'policy-1', rules: [], priority: 0, isFloor: false }]],
+						]),
+					);
+					policyRepository.findManyByIds.mockResolvedValue([makePolicy()]);
+					attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
+					return await service.deleteProjectPolicy(
+						'project-1',
+						{ [NODE_TYPES_KIND]: 1, [CREDENTIAL_TYPES_KIND]: 0 },
+						'user-1',
+						ctx,
+					);
 				},
 			},
 			{
