@@ -98,11 +98,7 @@ import {
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-import {
-	firstMessageTitle,
-	getAppTargetsFromThreadMetadata,
-	threadTargetsAgent,
-} from '../instanceAi.threadRuntime';
+import { firstMessageTitle, getAppTargetsFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
 import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from '../useCanvasPreview';
@@ -1193,11 +1189,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 								:project-id="props.projectId"
 								@attach-files="panel?.openFilePicker()"
 							/>
-							<!-- A thread that builds an agent always runs in Manual mode. -->
-							<ApprovalModeSelector
-								v-if="!threadTargetsAgent(threadsStore.threadsById.get(props.threadId)?.metadata)"
-								:thread-id="props.threadId"
-							/>
+							<ApprovalModeSelector :thread-id="props.threadId" />
 						</template>
 					</AgentChatPanel>
 				</div>
