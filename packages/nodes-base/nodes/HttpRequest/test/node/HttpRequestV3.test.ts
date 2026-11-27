@@ -1060,11 +1060,13 @@ describe('HttpRequestV3', () => {
 			});
 
 			it.each([
-				['"ordinary string"', 'ordinary string'],
-				['"42"', '42'],
-				['42', 42],
+				['"ordinary string"', { data: 'ordinary string' }],
+				['"42"', { data: '42' }],
+				['42', { data: 42 }],
+				['null', {}],
+				['{"a":1}', { a: 1 }],
 			])(
-				'should output the JSON value of body %s without the full response in version 4.6',
+				'should output body %s as an object without the full response in version 4.6',
 				async (body, expected) => {
 					setupAutodetect(4.6, false);
 					mockJsonResponse(body);
@@ -1072,6 +1074,35 @@ describe('HttpRequestV3', () => {
 					const result = await node.execute.call(executeFunctions);
 
 					expect(result).toStrictEqual([[{ json: expected, pairedItem: { item: 0 } }]]);
+				},
+			);
+
+			it('should output each array element as an object in version 4.6', async () => {
+				setupAutodetect(4.6, false);
+				mockJsonResponse('["ordinary string", {"a":1}]');
+
+				const result = await node.execute.call(executeFunctions);
+
+				expect(result).toStrictEqual([
+					[
+						{ json: { data: 'ordinary string' }, pairedItem: { item: 0 } },
+						{ json: { a: 1 }, pairedItem: { item: 0 } },
+					],
+				]);
+			});
+
+			it.each([
+				['42', [42]],
+				['[1, "a"]', [1, 'a']],
+			])(
+				'should output the values of body %s unchanged without the full response in version 4.5',
+				async (body, expected) => {
+					setupAutodetect(4.5, false);
+					mockJsonResponse(body);
+
+					const result = await node.execute.call(executeFunctions);
+
+					expect(result[0].map((item) => item.json)).toStrictEqual(expected);
 				},
 			);
 

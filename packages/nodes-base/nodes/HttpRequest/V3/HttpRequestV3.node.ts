@@ -48,6 +48,7 @@ import {
 	sanitizeUiMessage,
 	setAgentOptions,
 	updadeQueryParameterConfig,
+	wrapNonObjectJson,
 } from '../GenericFunctions';
 import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
@@ -131,6 +132,7 @@ export class HttpRequestV3 implements INodeType {
 		const items = this.getInputData();
 		const nodeVersion = this.getNode().typeVersion;
 		const keepsAutodetectedJsonValue = nodeVersion >= 4.6;
+		const outputsObjectItemsOnly = nodeVersion >= 4.6;
 
 		const fullResponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
 
@@ -1200,6 +1202,9 @@ export class HttpRequestV3 implements INodeType {
 		}
 
 		returnItems = returnItems.map(replaceNullValues);
+		if (outputsObjectItemsOnly) {
+			returnItems = returnItems.map(wrapNonObjectJson);
+		}
 
 		// Only show the Split Out hint in regular workflow context, not when running as an AI Agent tool
 		// (users cannot add nodes after tools in an AI Agent context)
