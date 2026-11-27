@@ -97,10 +97,13 @@ describe('OutputPanel read-only actions (GOV-117)', () => {
 		await vi.dynamicImportSettled();
 	});
 
-	function renderOutputPanel(isReadOnly: boolean) {
+	function renderOutputPanel(isReadOnly: boolean, withPinnedData = false) {
 		const pinia = createTestingPinia({ stubActions: false });
 		const node = createTestNode({ name: 'Set', type: SET_NODE_TYPE });
-		const workflow = createTestWorkflow({ nodes: [node] });
+		const workflow = createTestWorkflow({
+			nodes: [node],
+			...(withPinnedData ? { pinData: { [node.name]: [{ json: { name: 'Pinned' } }] } } : {}),
+		});
 		const documentId = createWorkflowDocumentId(workflow.id);
 		const documentStore = useWorkflowDocumentStore(documentId);
 		documentStore.hydrate(workflow);
@@ -145,5 +148,18 @@ describe('OutputPanel read-only actions (GOV-117)', () => {
 		expect(queryByTestId('ndv-edit-pinned-data')).not.toBeInTheDocument();
 		expect(queryByTestId('ndv-pin-data')).not.toBeInTheDocument();
 		expect(getByTestId('run-selector')).toBeInTheDocument();
+	});
+
+	it('keeps the pinned-data notice and hides unpin when the NDV is read-only', () => {
+		const { getByTestId, queryByTestId } = renderOutputPanel(true, true);
+
+		expect(getByTestId('ndv-pinned-data-callout')).toBeInTheDocument();
+		expect(queryByTestId('ndv-unpin-data')).not.toBeInTheDocument();
+	});
+
+	it('offers unpin when the NDV can change pinned data', () => {
+		const { getByTestId } = renderOutputPanel(false, true);
+
+		expect(getByTestId('ndv-unpin-data')).toBeInTheDocument();
 	});
 });

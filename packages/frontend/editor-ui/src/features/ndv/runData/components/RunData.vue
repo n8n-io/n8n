@@ -1567,7 +1567,7 @@ defineExpose({ enterEditMode });
 			data-test-id="ndv-pinned-data-callout"
 		>
 			{{ i18n.baseText('runData.pindata.thisDataIsPinned') }}
-			<span v-if="!isReadOnlyRoute && !isArchivedWorkflow && !readOnlyEnv" class="ml-4xs">
+			<span v-if="!disablePin && !isReadOnly" class="ml-4xs">
 				<N8nLink
 					theme="secondary"
 					size="small"
@@ -1868,7 +1868,7 @@ defineExpose({ enterEditMode });
 					{{ i18n.baseText('runData.trimmedData.corrupted') }}
 				</N8nText>
 				<N8nButton
-					v-if="pinnedData.hasData.value"
+					v-if="pinnedData.hasData.value && !disablePin && !isReadOnly"
 					class="mt-s"
 					size="small"
 					data-test-id="ndv-trimmed-corrupted-unpin"
