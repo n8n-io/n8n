@@ -8,6 +8,7 @@ import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import CredentialIcon from './CredentialIcon.vue';
+import RuntimeCredentialIndicator from './RuntimeCredentialIndicator.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '../credentials.store';
@@ -123,17 +124,23 @@ const isPrivateUnconnected = computed(
 		credentialPermissions.value.connect === true,
 );
 
+const isRuntime = computed(() => props.data.isRuntime === true);
+
 const actions = computed(() => {
-	const items = [
-		{
-			label: locale.baseText('credentials.item.open'),
-			value: CREDENTIAL_LIST_ITEM_ACTIONS.OPEN,
-		},
-	];
+	// Run-time stubs have nothing to edit, and the backend blocks edit and delete.
+	const items = isRuntime.value
+		? []
+		: [
+				{
+					label: locale.baseText('credentials.item.open'),
+					value: CREDENTIAL_LIST_ITEM_ACTIONS.OPEN,
+				},
+			];
 
 	// Deleting an end-user credential removes every user's own connection,
 	// so it additionally requires the createEndUser permission.
 	if (
+		!isRuntime.value &&
 		credentialPermissions.value.delete &&
 		(!props.data.isResolvable || credentialPermissions.value.createEndUser)
 	) {
@@ -143,7 +150,12 @@ const actions = computed(() => {
 		});
 	}
 
-	if (credentialPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
+	// A stub has no owner project, so it cannot move.
+	if (
+		!isRuntime.value &&
+		credentialPermissions.value.move &&
+		projectsStore.isTeamProjectFeatureEnabled
+	) {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,
@@ -171,6 +183,7 @@ const formattedCreatedAtDate = computed(() => {
 const credentialHasDependents = computed(() => hasDependencies(props.data.id, 'credential'));
 
 function onClick() {
+	if (isRuntime.value) return;
 	emit('click', props.data.id);
 }
 
@@ -337,6 +350,13 @@ function moveResource() {
 				</span>
 			</N8nText>
 			<span
+				v-if="isRuntime"
+				:class="$style.privateCredentialIndicator"
+				data-test-id="credential-card-runtime"
+			>
+				<RuntimeCredentialIndicator :rule-alias="data.ruleAlias" />
+			</span>
+			<span
 				v-if="isPrivateCredentialsEnabled && data.isResolvable"
 				:class="$style.privateCredentialIndicator"
 				data-test-id="credential-card-dynamic"
@@ -370,6 +390,7 @@ function moveResource() {
 					data-test-id="credential-card-dependents"
 				/>
 				<ProjectCardBadge
+					v-if="!isRuntime"
 					:class="$style.cardBadge"
 					:resource="data"
 					:resource-type="ResourceType.Credential"
@@ -392,6 +413,7 @@ function moveResource() {
 					</N8nButton>
 				</N8nTooltip>
 				<N8nActionToggle
+					v-if="actions.length > 0"
 					data-test-id="credential-card-actions"
 					:actions="actions"
 					theme="dark"

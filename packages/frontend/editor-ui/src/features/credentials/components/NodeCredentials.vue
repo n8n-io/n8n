@@ -79,6 +79,7 @@ import {
 } from '@n8n/api-types';
 import CredentialIcon from './CredentialIcon.vue';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
+import RuntimeCredentialIndicator from './RuntimeCredentialIndicator.vue';
 import CredentialTypeRestrictedMarker from './CredentialTypeRestrictedMarker.vue';
 import {
 	ContactAdminModal,
@@ -439,6 +440,12 @@ function isCredentialResolvable(credentialType: string): boolean {
 	if (!credentialId) return false;
 	const credential = findDisplayedCredential(credentialType, credentialId);
 	return credential?.isResolvable === true;
+}
+
+function isCredentialRuntime(credentialType: string): boolean {
+	const credentialId = selected.value[credentialType]?.id;
+	if (!credentialId) return false;
+	return findDisplayedCredential(credentialType, credentialId)?.isRuntime === true;
 }
 
 function getSelectedPrivateCredential(credentialType: string): ICredentialsResponse | null {
@@ -1960,6 +1967,16 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 										/>
 										<div :class="$style.credentialOptionName">
 											<N8nText :class="$style.optionName">{{ row.option.name }}</N8nText>
+											<span
+												v-if="row.option.isRuntime"
+												:class="$style.runtimeIndicator"
+												data-test-id="credential-option-runtime-badge"
+											>
+												<RuntimeCredentialIndicator
+													:rule-alias="row.option.ruleAlias"
+													variant="icon"
+												/>
+											</span>
 											<N8nTooltip
 												v-if="isPrivateCredentialsEnabled && row.option.isResolvable"
 												placement="top"
@@ -1976,11 +1993,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 										</div>
 										<N8nText size="small" color="text-light" :class="$style.optionMeta">
 											{{
-												row.option.isResolvable
-													? i18n.baseText(
-															'credentialEdit.credentialConfig.credentialType.endUser.title',
-														)
-													: row.option.typeDisplayName
+												row.option.isRuntime
+													? i18n.baseText('credentials.runtime.label')
+													: row.option.isResolvable
+														? i18n.baseText(
+																'credentialEdit.credentialConfig.credentialType.endUser.title',
+															)
+														: row.option.typeDisplayName
 											}}
 										</N8nText>
 										<CredentialTypeRestrictedMarker
@@ -2106,7 +2125,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							(isCredentialExisting(type) ||
 								(getUnlistedSelected(type.name) &&
 									credentialsStore.getCredentialById(selected[type.name].id ?? ''))) &&
-							(!getSelectedPrivateCredential(type.name) || canEditPrivateCredential(type.name))
+							(!getSelectedPrivateCredential(type.name) || canEditPrivateCredential(type.name)) &&
+							!isCredentialRuntime(type.name)
 						"
 						:class="$style.edit"
 						data-test-id="credential-edit-button"
@@ -2384,6 +2404,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .entryPill {
 	margin-left: auto;
+}
+
+.runtimeIndicator {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
 }
 
 // Give the menu a comfortable floor width (wider than the compact trigger) so

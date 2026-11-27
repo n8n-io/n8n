@@ -105,7 +105,7 @@ const loading = ref(false);
 const needsSetup = (credential: ICredentialsResponse): boolean => {
 	// Private (resolvable) credentials store their connection data per-user via a
 	// resolver, so their own `data` is always empty and they never need setup.
-	if (credential.isResolvable) return false;
+	if (credential.isResolvable || credential.isRuntime) return false;
 
 	const dataObject = credential.data as unknown as ICredentialsDecrypted['data'];
 	if (!dataObject) return false;
@@ -145,6 +145,8 @@ const allCredentials = computed<Resource[]>(() =>
 		needsSetup: needsSetup(credential),
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
+		isRuntime: credential.isRuntime,
+		ruleAlias: credential.ruleAlias,
 		connectedByMe: credential.connectedByMe,
 		type: credential.type,
 		...restrictionOf(credential),

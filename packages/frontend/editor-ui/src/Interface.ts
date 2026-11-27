@@ -372,6 +372,9 @@ export type CredentialsResource = BaseResource & {
 	restrictionProject?: { id: string; type?: ProjectSharingData['type'] };
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	isRuntime?: boolean;
+	/** The rule behind a run-time stub. `null` when the rule was removed. */
+	ruleAlias?: string | null;
 	connectedByMe?: boolean;
 	connectedAccountIdentifier?: string;
 };

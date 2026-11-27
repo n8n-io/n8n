@@ -17,6 +17,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { defineComponent } from 'vue';
 import type { Project } from '@n8n/rest-api-client';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 const mockAuthorize = vi.fn();
 const mockIsOAuthCredentialType = vi.fn();
@@ -43,6 +44,13 @@ vi.mock('@n8n/composables/useToast', () => ({
 		showError,
 	}),
 }));
+
+const RouterLinkStub = defineComponent({
+	name: 'RouterLink',
+	props: { to: { type: [String, Object], required: true } },
+	template: '<a :data-to="JSON.stringify(to)"><slot /></a>',
+});
+const routerLinkStubs = { global: { stubs: { RouterLink: RouterLinkStub } } };
 
 const renderComponent = createComponentRenderer(CredentialCard);
 
@@ -209,6 +217,106 @@ describe('CredentialCard', () => {
 		const { getByRole } = renderComponent({ props: { data, readOnly: true } });
 		const heading = getByRole('heading');
 		expect(heading).toHaveTextContent('Read only');
+	});
+
+	describe('run-time credentials', () => {
+		it('should show the run-time label', () => {
+			const data = createCredential({ isRuntime: true });
+			const { getByTestId } = renderComponent({ props: { data } });
+
+			expect(getByTestId('credential-card-runtime')).toHaveTextContent('Provided at run time');
+		});
+
+		it('should show the manage rule link in the tooltip to users who manage security settings', async () => {
+			mockedStore(useRBACStore).hasScope.mockImplementation(
+				(scope) => scope === 'securitySettings:manage',
+			);
+			const data = createCredential({ isRuntime: true, ruleAlias: 'gmail-caller' });
+			const { getByTestId, findByTestId } = renderComponent({
+				props: { data },
+				...routerLinkStubs,
+			});
+
+			await userEvent.hover(getByTestId('credential-runtime-badge'));
+
+			const tooltip = await findByTestId('tooltip-content');
+			const link = within(tooltip).getByTestId('credential-runtime-manage-rule');
+			expect(link).toHaveTextContent('Manage rule');
+			expect(JSON.parse(link.dataset.to ?? '')).toEqual({
+				path: '/settings/runtime-inputs',
+				query: { rule: 'gmail-caller' },
+			});
+		});
+
+		it('should link to the settings page without a rule when the rule alias is null', async () => {
+			mockedStore(useRBACStore).hasScope.mockReturnValue(true);
+			const data = createCredential({ isRuntime: true, ruleAlias: null });
+			const { getByTestId, findByTestId } = renderComponent({
+				props: { data },
+				...routerLinkStubs,
+			});
+
+			await userEvent.hover(getByTestId('credential-runtime-badge'));
+
+			const tooltip = await findByTestId('tooltip-content');
+			const link = within(tooltip).getByTestId('credential-runtime-manage-rule');
+			expect(JSON.parse(link.dataset.to ?? '')).toEqual({ path: '/settings/runtime-inputs' });
+		});
+
+		it('should not show the manage rule link without the security settings scope', async () => {
+			mockedStore(useRBACStore).hasScope.mockReturnValue(false);
+			const data = createCredential({ isRuntime: true, ruleAlias: 'gmail-caller' });
+			const { getByTestId, findByTestId } = renderComponent({
+				props: { data },
+				...routerLinkStubs,
+			});
+
+			await userEvent.hover(getByTestId('credential-runtime-badge'));
+
+			const tooltip = await findByTestId('tooltip-content');
+			expect(tooltip).toHaveTextContent('Nothing is stored.');
+			expect(within(tooltip).queryByTestId('credential-runtime-manage-rule')).toBeNull();
+		});
+
+		it('should not show the run-time label for regular credentials', () => {
+			const { queryByTestId } = renderComponent({ props: { data: createCredential() } });
+
+			expect(queryByTestId('credential-card-runtime')).not.toBeInTheDocument();
+		});
+
+		it('should hide the actions menu, including Open and Delete', () => {
+			const data = createCredential({
+				isRuntime: true,
+				scopes: ['credential:delete', 'credential:update'],
+			});
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-actions')).not.toBeInTheDocument();
+		});
+
+		it('should not offer Move, even for a user who may move credentials', () => {
+			vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
+			const data = createCredential({ isRuntime: true, scopes: ['credential:move'] });
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-actions')).not.toBeInTheDocument();
+		});
+
+		it('should not show the project badge, because a stub has no owner project', () => {
+			const data = createCredential({ isRuntime: true, isGlobal: true });
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-global-badge')).not.toBeInTheDocument();
+		});
+
+		it('should not emit click when the card is clicked', async () => {
+			const data = createCredential({ isRuntime: true, name: 'Request value: x' });
+			const { getByText, emitted } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByText('Request value: x'));
+
+			expect(emitted('click')).toBeUndefined();
+		});
 	});
 
 	describe('global credentials', () => {
