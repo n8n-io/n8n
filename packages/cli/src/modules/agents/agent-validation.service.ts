@@ -436,10 +436,18 @@ export class AgentValidationService {
 		workflow: Pick<WorkflowEntity, 'id' | 'settings' | 'nodes'>,
 		user: User,
 	): Promise<boolean> {
+		const settings = workflow.settings ?? {};
 		const standIn: RedactableExecution = {
 			mode: 'integrated',
 			workflowId: workflow.id,
-			workflowData: { settings: workflow.settings ?? {}, nodes: workflow.nodes },
+			workflowData: {
+				// A run records a legacy `manual-only` policy as `all`.
+				settings:
+					settings.redactionPolicy === 'manual-only'
+						? { ...settings, redactionPolicy: 'all' }
+						: settings,
+				nodes: workflow.nodes,
+			},
 			data: { resultData: { runData: {} } },
 			dataTooLargeToDisplay: true,
 		};

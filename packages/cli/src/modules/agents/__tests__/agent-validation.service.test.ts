@@ -1381,6 +1381,31 @@ describe('AgentValidationService — structured issues', () => {
 			);
 		});
 
+		it('checks a legacy manual-only policy as all', async () => {
+			const { service, agent, workflowRepository, executionRedaction } = setup(true);
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					activeVersionId: 'v1',
+					nodes: [executeWorkflowTriggerNode],
+					settings: { redactionPolicy: 'manual-only' },
+				},
+			] as never);
+
+			await service.validateLoadedAgentConfiguration(
+				agent,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+				'publish',
+				undefined,
+				user,
+			);
+
+			const [[standIns]] = executionRedaction.processExecutions.mock.calls;
+			expect(standIns[0].workflowData.settings).toEqual({ redactionPolicy: 'all' });
+		});
+
 		it('skips the check for a validation without a user', async () => {
 			const { service, agent, executionRedaction } = setup(true);
 
