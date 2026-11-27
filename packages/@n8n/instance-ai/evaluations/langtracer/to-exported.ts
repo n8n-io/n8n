@@ -13,6 +13,10 @@ export interface LangTracerScenario {
 	successCriteria?: string;
 	requires?: string;
 	seedDataTables?: ExecutionScenario['seedDataTables'];
+	/** Agent cases (lang-tracer #613 / L3): graded statements, multi-turn chats, sessions. */
+	expectations?: ExecutionScenario['expectations'];
+	userTurns?: ExecutionScenario['userTurns'];
+	sessions?: ExecutionScenario['sessions'];
 }
 
 /** Body for `POST /api/v1/cases`. Disk keys are renamed (`complexity`→`evalComplexity`,
@@ -44,6 +48,8 @@ export interface LangTracerCreateCaseBody {
 	seed?: PushableSeed;
 	credentialFixture?: string;
 	requiresMemoryCompaction?: boolean;
+	/** How the seeded Agent is run (AGENT-1665/1666), stored at `metadata.agentRun`. */
+	agentRun?: EvalTestCaseInput['agentRun'];
 }
 
 type InlineSeed = Extract<CaseSeed, { mode: 'inline' }>;
@@ -70,10 +76,13 @@ export interface ToLangTracerOptions {
  *  a LangSmith trace that expires, lang-tracer derives it from a source thread it
  *  already holds, and such a case is barred from suites anyway. Returns a
  *  human-readable reason, else null. */
-export function unsupportedPushReason(testCase: EvalTestCaseInput): string | null {
-	const agentRuntimeFields = agentRuntimeFieldsIn(testCase);
-	if (agentRuntimeFields.length > 0) {
-		return `uses ${agentRuntimeFields.join(', ')}, which the LangTracer case-write contract does not carry yet (AGENT-1665/1666, lang-tracer L2/L3). Pushing would strip them and land a broken assistant case. Keep the case on disk until lang-tracer supports them.`;
+export function unsupportedPushReason(
+	testCase: EvalTestCaseInput,
+	/** The push marks its cases synthetic (the default); seed rows need it. */
+	{ synthetic }: { synthetic: boolean } = { synthetic: true },
+): string | null {
+	if (!synthetic && hasSeedRows(testCase)) {
+		return 'seeds data table rows, which lang-tracer accepts only on a case marked synthetic (rows must never hold user data). Push without --contains-user-data, or drop the rows.';
 	}
 	if (testCase.credentials?.some((credential) => credential.description !== undefined)) {
 		return 'seeds credential descriptions, which the current LangTracer case-write schema does not store. Keep the case on disk until that contract supports descriptions.';
@@ -128,20 +137,10 @@ export function unsupportedPushReason(testCase: EvalTestCaseInput): string | nul
 	}
 }
 
-/** Every agent runtime contract field the case uses, by name. */
-function agentRuntimeFieldsIn(testCase: EvalTestCaseInput): string[] {
-	const scenarios = testCase.executionScenarios ?? [];
-	const sessions = scenarios.flatMap((scenario) => scenario.sessions ?? []);
+/** Seed tables with synthetic rows (AGENT-1665). */
+function hasSeedRows(testCase: EvalTestCaseInput): boolean {
 	const seedTables = testCase.seed?.mode === 'inline' ? testCase.seed.dataTables : [];
-	const used: Array<[string, boolean]> = [
-		['agentRun', testCase.agentRun !== undefined],
-		['userTurns', scenarios.some((scenario) => scenario.userTurns !== undefined)],
-		['sessions', sessions.length > 0],
-		['expectations', scenarios.some((scenario) => scenario.expectations !== undefined)],
-		['session expectations', sessions.some((session) => session.expectations !== undefined)],
-		['seed.dataTables[].rows', seedTables.some((table) => table.rows !== undefined)],
-	];
-	return used.filter(([, isUsed]) => isUsed).map(([field]) => field);
+	return seedTables.some((table) => table.rows !== undefined);
 }
 
 /** Map a schema-parsed disk case to a create-case body. `conversation.text` is already
@@ -181,6 +180,7 @@ export function diskCaseToLangTracerCreate(
 	if (testCase.requiresMemoryCompaction !== undefined) {
 		body.requiresMemoryCompaction = testCase.requiresMemoryCompaction;
 	}
+	if (testCase.agentRun !== undefined) body.agentRun = testCase.agentRun;
 
 	return body;
 }
@@ -192,6 +192,9 @@ function mapScenario(scenario: {
 	successCriteria?: string;
 	requires?: string;
 	seedDataTables?: ExecutionScenario['seedDataTables'];
+	expectations?: ExecutionScenario['expectations'];
+	userTurns?: ExecutionScenario['userTurns'];
+	sessions?: ExecutionScenario['sessions'];
 }): LangTracerScenario {
 	const mapped: LangTracerScenario = { name: scenario.name };
 	if (scenario.description !== undefined) mapped.description = scenario.description;
@@ -199,5 +202,8 @@ function mapScenario(scenario: {
 	if (scenario.successCriteria !== undefined) mapped.successCriteria = scenario.successCriteria;
 	if (scenario.requires !== undefined) mapped.requires = scenario.requires;
 	if (scenario.seedDataTables !== undefined) mapped.seedDataTables = scenario.seedDataTables;
+	if (scenario.expectations !== undefined) mapped.expectations = scenario.expectations;
+	if (scenario.userTurns !== undefined) mapped.userTurns = scenario.userTurns;
+	if (scenario.sessions !== undefined) mapped.sessions = scenario.sessions;
 	return mapped;
 }

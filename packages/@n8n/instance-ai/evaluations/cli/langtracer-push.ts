@@ -223,7 +223,7 @@ async function main() {
 	const idsByName: Record<string, number> = {};
 	for (const c of cases) idsByName[c.name] = c.id;
 
-	const plan = planPush(selected, exported.files, idsByName);
+	const plan = planPush(selected, exported.files, idsByName, { synthetic: args.synthetic });
 
 	console.log(
 		`\nSuite "${suite.slug}" (#${String(suite.id)}) — ${args.dryRun ? 'DRY RUN' : 'push'}`,

@@ -424,10 +424,8 @@ describe('attach round-trip: write → export → reparse', () => {
 	});
 });
 
-// lang-tracer's case-write contract has none of the agent runtime fields yet
-// (L2/L3). Pushing would strip them and land a broken assistant case, so the
-// push refuses with a reason that names the field.
-describe('unsupportedPushReason for the agent runtime contract', () => {
+// lang-tracer #613 and L3 carry the agent runtime fields: they are pushed as authored.
+describe('the agent runtime contract on push', () => {
 	const scenario = { name: 's', description: 'd', dataSetup: 'x', successCriteria: 'y' };
 	const inlineSeed = (dataTables: unknown[] = []) =>
 		({
@@ -439,41 +437,69 @@ describe('unsupportedPushReason for the agent runtime contract', () => {
 			folders: [],
 			projects: [],
 		}) as unknown as EvalTestCaseInput['seed'];
+	const opts = { suiteId: 7, setKind: 'regression' as const, synthetic: true };
+	const rowsSeed = inlineSeed([
+		{ id: 'dt-price-list-0001', name: 'prices', columns: [], rows: [{ price: 1 }] },
+	]);
 
 	it.each([
-		['agentRun', diskCase({ agentRun: { mode: 'direct' } })],
+		['agentRun', diskCase({ agentRun: { mode: 'direct', keepMemory: true } })],
 		[
 			'userTurns',
 			diskCase({ executionScenarios: [{ ...scenario, userTurns: { goal: 'g', maxTurns: 6 } }] }),
 		],
 		[
-			'sessions',
-			diskCase({ executionScenarios: [{ ...scenario, sessions: [{ goal: 'g', maxTurns: 6 }] }] }),
-		],
-		['expectations', diskCase({ executionScenarios: [{ ...scenario, expectations: ['e'] }] })],
-		[
-			'expectations',
+			'sessions with expectations',
 			diskCase({
 				executionScenarios: [
 					{ ...scenario, sessions: [{ goal: 'g', maxTurns: 6, expectations: ['e'] }] },
 				],
 			}),
 		],
-		[
-			'rows',
-			diskCase({
-				seed: inlineSeed([{ id: 'dt-price-list-0001', name: 'prices', columns: [], rows: [{}] }]),
-			}),
-		],
-	])('refuses a case that uses %s', (field, input) => {
-		expect(unsupportedPushReason(input)).toContain(field);
+		['expectations', diskCase({ executionScenarios: [{ ...scenario, expectations: ['e'] }] })],
+		['seed rows', diskCase({ seed: rowsSeed })],
+	])('allows a case that uses %s', (_field, input) => {
+		expect(unsupportedPushReason(input, { synthetic: true })).toBeNull();
 	});
 
-	it('still allows a seed table without rows', () => {
-		const input = diskCase({
-			seed: inlineSeed([{ id: 'dt-price-list-0001', name: 'prices', columns: [] }]),
-		});
+	it('refuses seed rows unless the push is synthetic', () => {
+		expect(unsupportedPushReason(diskCase({ seed: rowsSeed }), { synthetic: false })).toContain(
+			'synthetic',
+		);
+	});
 
-		expect(unsupportedPushReason(input)).toBeNull();
+	it('carries agentRun and the Agent scenario fields into the create body', () => {
+		const sessions = [{ goal: 'g', maxTurns: 3, expectations: ['Recalls it'] }];
+		const body = diskCaseToLangTracerCreate(
+			diskCase({
+				agentRun: { mode: 'direct', keepMemory: true },
+				executionScenarios: [
+					{
+						...scenario,
+						name: 'a',
+						expectations: ['Quotes it'],
+						userTurns: { goal: 'u', maxTurns: 2 },
+					},
+					{ ...scenario, name: 'b', sessions },
+				],
+			}),
+			'agent-case',
+			opts,
+		);
+
+		expect(body.agentRun).toEqual({ mode: 'direct', keepMemory: true });
+		expect(body.scenarios).toEqual([
+			expect.objectContaining({
+				expectations: ['Quotes it'],
+				userTurns: { goal: 'u', maxTurns: 2 },
+			}),
+			expect.objectContaining({ sessions }),
+		]);
+	});
+
+	it('carries seed table rows into the create body', () => {
+		const body = diskCaseToLangTracerCreate(diskCase({ seed: rowsSeed }), 'rows-case', opts);
+
+		expect(body.seed?.dataTables[0]).toMatchObject({ rows: [{ price: 1 }] });
 	});
 });

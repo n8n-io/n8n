@@ -396,6 +396,39 @@ describe('planPush', () => {
 	});
 });
 
+describe('planPush for Agent cases', () => {
+	const rowsSeed = inlineSeed({
+		dataTables: [{ id: 'dt-price-list-0001', name: 'prices', columns: [], rows: [{ price: 1 }] }],
+	});
+
+	it('skips a case with seed rows when the push is not synthetic', () => {
+		const plan = planPush([item('rows', { seed: rowsSeed })], {}, {}, { synthetic: false });
+
+		expect(plan.skipped).toEqual([
+			{ fileSlug: 'rows', reason: expect.stringContaining('synthetic') },
+		]);
+	});
+
+	it('creates a case with seed rows on a synthetic push', () => {
+		const plan = planPush([item('rows', { seed: rowsSeed })], {}, {}, { synthetic: true });
+
+		expect(plan.toCreate.map((c) => c.fileSlug)).toEqual(['rows']);
+	});
+
+	it('updates a case whose agentRun changed, and leaves one with the same agentRun alone', () => {
+		const agentRun = { mode: 'direct', keepMemory: true };
+		const changed = planPush(
+			[item('c', { agentRun })],
+			{ 'c.json': body({ agentRun: { mode: 'direct' } }) },
+			{ c: 5 },
+		);
+		const same = planPush([item('c', { agentRun })], { 'c.json': body({ agentRun }) }, { c: 5 });
+
+		expect(changed.toUpdate.map((u) => u.id)).toEqual([5]);
+		expect(same.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
+	});
+});
+
 describe('toUpdatePatch', () => {
 	function createBody(overrides: Partial<LangTracerCreateCaseBody> = {}): LangTracerCreateCaseBody {
 		return {
@@ -408,6 +441,15 @@ describe('toUpdatePatch', () => {
 			...overrides,
 		};
 	}
+
+	it('clears a stored agentRun when the case has none', () => {
+		expect(toUpdatePatch(createBody()).agentRun).toBeNull();
+	});
+
+	it('keeps the agentRun when the case has one', () => {
+		const agentRun = { mode: 'direct' as const, keepMemory: true };
+		expect(toUpdatePatch(createBody({ agentRun })).agentRun).toEqual(agentRun);
+	});
 
 	it('drops the create-only fields', () => {
 		const patch = toUpdatePatch(createBody());
