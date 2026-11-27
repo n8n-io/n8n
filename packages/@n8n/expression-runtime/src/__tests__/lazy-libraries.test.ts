@@ -76,18 +76,21 @@ describe(`libraries that load at the first call (${engineName})`, () => {
 
 	it('should load a library again after a timeout stopped its first load', async () => {
 		const bridge = newBridge({ timeout: 200 });
-		await bridge.initialize();
-		const unique = 'return extend([1, 1, 2], "unique", [])';
-		// lodash reads the `self` global during its setup.
-		bridge.execute(
-			'Object.defineProperty(globalThis, "self", { configurable: true, get() { for (;;) {} } }); return 0',
-			{},
-		);
+		try {
+			await bridge.initialize();
+			const unique = 'return extend([1, 1, 2], "unique", [])';
+			// lodash reads the `self` global during its setup.
+			bridge.execute(
+				'Object.defineProperty(globalThis, "self", { configurable: true, get() { for (;;) {} } }); return 0',
+				{},
+			);
 
-		expect(() => bridge.execute(unique, {})).toThrow('timed out');
-		bridge.execute('delete globalThis.self; return 0', {});
+			expect(() => bridge.execute(unique, {})).toThrow('timed out');
+			bridge.execute('delete globalThis.self; return 0', {});
 
-		expect(bridge.execute(unique, {})).toEqual([1, 2]);
-		await bridge.dispose();
+			expect(bridge.execute(unique, {})).toEqual([1, 2]);
+		} finally {
+			await bridge.dispose();
+		}
 	});
 });

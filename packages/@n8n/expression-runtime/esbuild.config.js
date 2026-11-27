@@ -31,12 +31,14 @@ const guestToAsciiPlugin = {
 
 // These libraries run a long setup when they load, and few expressions use them.
 // Each group is bundled apart, and loads at the first call of one of its stand-ins.
+const lodashFunctions = ['isEqual', 'random', 'uniqWith'];
+
 const lazyGroups = {
 	md5: "module.exports = require('md5');",
-	jssha: "module.exports = require('jssha');",
+	// Only jssha has an ES module build. An import resolves to it, and it is smaller than the UMD build.
+	jssha: "import SHA from 'jssha'; module.exports = SHA;",
 	jmespath: "module.exports = require('jmespath');",
-	lodash:
-		"module.exports = { isEqual: require('lodash/isEqual'), random: require('lodash/random'), uniqWith: require('lodash/uniqWith') };",
+	lodash: `module.exports = { ${lodashFunctions.map((name) => `${name}: require('lodash/${name}')`).join(', ')} };`,
 };
 
 const standIn = (group, body) => `import { library } from 'lazy-group:${group}';\n${body}`;
@@ -55,9 +57,7 @@ const lazyLibraries = {
 		'jmespath',
 		'export function search(...args) { return library().search(...args); }',
 	),
-	'lodash/isEqual': lodashStandIn('isEqual'),
-	'lodash/random': lodashStandIn('random'),
-	'lodash/uniqWith': lodashStandIn('uniqWith'),
+	...Object.fromEntries(lodashFunctions.map((name) => [`lodash/${name}`, lodashStandIn(name)])),
 };
 
 /**
