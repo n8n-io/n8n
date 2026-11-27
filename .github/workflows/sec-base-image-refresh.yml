@@ -155,6 +155,33 @@ jobs:
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
 
+      - name: Reset the bake file again
+        run: git checkout -- docker/docker-bake.hcl
+
+      # A newer Node patch changes NODE_VERSION and all Node pins in one PR, so
+      # the Alpine and the Debian images stay aligned. CI reads NODE_VERSION.
+      - name: Prepare the Node PR
+        id: node
+        run: |
+          node .github/scripts/docker/base-image-pin-pr.mjs --candidates base-image-candidates.json \
+            --group node --body node-pr.md
+
+      - name: Open the Node PR
+        if: steps.node.outputs.changed == 'true' && steps.mode.outputs.preview == 'false'
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          add-paths: docker/docker-bake.hcl
+          commit-message: ${{ steps.node.outputs.title }}
+          title: ${{ steps.node.outputs.title }}
+          body-path: node-pr.md
+          branch: base-image-refresh/node
+          base: master
+          labels: ${{ env.PR_LABELS }}
+          delete-branch: true
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
       - name: Upload candidates
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -164,6 +191,7 @@ jobs:
             base-image-candidates.json
             daily-pr.md
             review-pr.md
+            node-pr.md
           if-no-files-found: ignore
           retention-days: 14
 

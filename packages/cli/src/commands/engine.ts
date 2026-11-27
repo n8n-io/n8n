@@ -1,11 +1,14 @@
+import type { Logger } from '@n8n/backend-common';
 import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, PrometheusMetricsConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { EngineRole, ExecutionChannelPublisher, RedisWorkQueues } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
+import type { Server } from 'node:http';
+import type { Registry } from 'prom-client';
 import { z } from 'zod';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -45,6 +48,8 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 	private channelPublisher?: ExecutionChannelPublisher;
 
 	private workQueues?: RedisWorkQueues;
+
+	private metricsServer?: Server;
 
 	async init() {
 		// The guards below run before `super.init()` wires the reporter, and the
@@ -106,6 +111,11 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 			step: engineConfig.stepConcurrency,
 		});
 
+		const metricsRegistry = await this.prepareMetricsRegistry();
+		// Before the engine takes work: a crash exit loses a message the queue
+		// handed out, so a taken port must stop the boot first.
+		if (metricsRegistry) await this.startMetricsServer(metricsRegistry, engineConfig, logger);
+
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
 		await this.runtime.init({
@@ -113,9 +123,48 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 			lifecycleEventSender: new LifecycleEventChannelSender(publisher, logger),
 			queues: this.workQueues.queues,
 			roles,
+			metricsRegistry,
 		});
 
 		if (runsSteps) await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	/**
+	 * The global registry, so the metrics that shared code registers there, such
+	 * as the expression engine's, show on this process's endpoint too. This
+	 * process runs no control plane metrics service, so it registers the Node.js
+	 * default metrics itself.
+	 */
+	private async prepareMetricsRegistry(): Promise<Registry | undefined> {
+		const { enable, prefix, includeDefaultMetrics } = Container.get(PrometheusMetricsConfig);
+		if (!enable) return undefined;
+
+		const promClient = await import('prom-client');
+		if (includeDefaultMetrics) promClient.collectDefaultMetrics({ prefix });
+		return promClient.register;
+	}
+
+	private async startMetricsServer(
+		registry: Registry,
+		{ host, metricsPort }: EngineConfig,
+		logger: Logger,
+	): Promise<void> {
+		const { startEngineMetricsServer } = await import(
+			'@/modules/engine-v2/engine-metrics-server.js'
+		);
+		try {
+			this.metricsServer = await startEngineMetricsServer(registry, {
+				host,
+				port: metricsPort,
+				logger,
+			});
+		} catch (error) {
+			throw new UserError(
+				`The engine metrics server cannot listen on ${host}:${metricsPort}. Check N8N_ENGINE_HOST and N8N_ENGINE_METRICS_PORT.`,
+				{ cause: error },
+			);
+		}
+		logger.info(`Engine v2 metrics listening on port ${metricsPort}`);
 	}
 
 	/**
@@ -160,6 +209,17 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await new Promise(() => {});
 	}
 
+	private async closeMetricsServer() {
+		const server = this.metricsServer;
+		if (!server) return;
+
+		await new Promise<void>((resolve, reject) => {
+			server.close((error) => (error ? reject(error) : resolve()));
+			// Also end a scrape in progress.
+			server.closeAllConnections();
+		});
+	}
+
 	async catch(error: Error) {
 		await this.exitWithCrash('Exiting due to an error.', error);
 	}
@@ -170,6 +230,7 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const errors: unknown[] = [];
 		const releaseSteps = [
 			async () => await this.runtime?.shutdown(),
+			async () => await this.closeMetricsServer(),
 			// Before the publisher, so a late fetch fails instead of taking a message it can no longer give back.
 			async () => this.workQueues?.close(),
 			// After the engine, so a final response still has somewhere to go.

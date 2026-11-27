@@ -160,6 +160,9 @@ Set `platform` to select a Docker image platform, such as `linux/arm64`.
 Set `image` to a platform-specific tag or digest that is available on the Docker daemon.
 The stack does not pull the image when `platform` is set, because that pull can change a tag that other stacks use.
 
+Set `entrypoint` and `command` to override the image `ENTRYPOINT` and `CMD`.
+Worker and webhook containers append their subcommand (`worker`, `webhook`) to `command`.
+
 ```typescript
 test.use({
   capability: {

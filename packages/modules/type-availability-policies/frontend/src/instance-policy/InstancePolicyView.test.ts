@@ -28,7 +28,7 @@ const { route, push, replace, track, fetchInstancePolicy, fetchInstanceAccess } 
 
 vi.mock('../type-availability-policies.api', () => ({
 	fetchInstancePolicy,
-	saveInstancePolicy: vi.fn(),
+	setInstanceTypeAccess: vi.fn(),
 	fetchInstanceAccess,
 	fetchCredentialTypeSummaries: vi.fn(
 		async () => new Map([['bitlyApi', { displayName: 'Bitly API' }]]),

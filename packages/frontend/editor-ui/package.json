@@ -54,6 +54,7 @@
     "@n8n/errors": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
     "@n8n/frontend-constants": "workspace:*",
+    "@n8n/frontend-module-api-keys": "workspace:*",
     "@n8n/frontend-module-apps": "workspace:*",
     "@n8n/frontend-module-engine-v2": "workspace:*",
     "@n8n/frontend-module-html-display-mode": "workspace:*",

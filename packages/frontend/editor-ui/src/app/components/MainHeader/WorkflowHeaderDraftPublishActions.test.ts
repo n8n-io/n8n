@@ -9,6 +9,8 @@ import { createMockEnterpriseSettings, mockNodeTypeDescription } from '@/__tests
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
+import { useRouter } from 'vue-router';
+import { onTestFinished } from 'vitest';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -16,7 +18,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { WORKFLOW_PUBLISH_MODAL_KEY, EnterpriseEditionFeature } from '@/app/constants';
+import { WORKFLOW_PUBLISH_MODAL_KEY, EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { STORES } from '@n8n/stores';
 import type { INodeUi } from '@/Interface';
@@ -31,6 +33,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import {
 	describeEngineV2Block,
+	useEngineV2FindingsDialog,
 	type EngineCompatibilityReason,
 } from '@n8n/frontend-module-engine-v2';
 import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
@@ -74,6 +77,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 			value: {
 				params: { workflowId: 'test' },
 				query: {},
+				meta: {},
 			},
 		},
 	}),
@@ -1929,6 +1933,54 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				'true',
 			);
 			expect(getByText(describeEngineV2Block())).toBeInTheDocument();
+		});
+
+		it('should link the publish tooltip to the findings, on the editor tab', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			// The move reaches the editor tab of this workflow.
+			const { currentRoute } = useRouter();
+			const before = currentRoute.value;
+			mockRouterPush.mockImplementationOnce(async () => {
+				currentRoute.value = { ...before, meta: { nodeView: true }, params: { workflowId: '1' } };
+			});
+			onTestFinished(() => {
+				currentRoute.value = before;
+			});
+
+			const { getByTestId } = renderComponent();
+			const link = getByTestId('engine-v2-publish-blocked-link');
+			expect(link).toHaveTextContent('Show issues');
+
+			await userEvent.click(link);
+
+			// The mocked route is not the canvas, so the link goes to the editor tab first.
+			expect(mockRouterPush).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW,
+				params: { workflowId: '1' },
+			});
+			await waitFor(() => expect(useEngineV2FindingsDialog().isOpen.value).toBe(true));
+			useEngineV2FindingsDialog().close();
+		});
+
+		it('should not link to the findings when another reason blocks publish', () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			workflowDocumentStore.setNodes([]);
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('engine-v2-publish-blocked-link')).not.toBeInTheDocument();
+		});
+
+		it('should not link to the findings for a warning only', () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [warningReason] });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('engine-v2-publish-blocked-link')).not.toBeInTheDocument();
 		});
 
 		// The NDV, the command bar and the shortcut publish through the event bus,

@@ -48,6 +48,7 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 				N8N_RUNNERS_MAX_CONCURRENCY: this.runnerConfig.maxConcurrency.toString(),
 				N8N_RUNNERS_TASK_TIMEOUT: this.runnerConfig.taskTimeout.toString(),
 				N8N_RUNNERS_HEARTBEAT_INTERVAL: this.runnerConfig.heartbeatInterval.toString(),
+				N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT: this.getGracefulShutdownTimeout(),
 
 				// n8n
 				N8N_RUNNERS_STDLIB_ALLOW: process.env.N8N_RUNNERS_STDLIB_ALLOW,
@@ -57,6 +58,27 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 				N8N_BLOCK_RUNNER_ENV_ACCESS: process.env.N8N_BLOCK_RUNNER_ENV_ACCESS,
 			}),
 		});
+	}
+
+	/**
+	 * The JS runner accepts 0, but the Python runner refuses to start on a value
+	 * that is not a positive integer. Drop such values so it keeps its default.
+	 */
+	private getGracefulShutdownTimeout() {
+		const value = process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT;
+		if (value === undefined) return undefined;
+
+		// Forward the normalised number, so huge or zero-padded digit strings that
+		// Python cannot parse never reach it.
+		const seconds = Number(value);
+		if (/^\d+$/.test(value) && Number.isSafeInteger(seconds) && seconds > 0) {
+			return String(seconds);
+		}
+
+		this.logger.warn(
+			`Ignoring N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT="${value}" for the Python task runner. The value must be a positive integer. The runner uses its default.`,
+		);
+		return undefined;
 	}
 
 	/**

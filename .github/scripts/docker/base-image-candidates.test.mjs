@@ -3,13 +3,16 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
 	GATE_MS,
-	PATCH_UPDATES,
+	NODE_PINS,
 	SOURCES,
 	applyGate,
 	classifyNoFix,
-	exactTagOf,
+	findNodePatch,
+	holdNodePatch,
 	movingTagOf,
-	nextPatchTags,
+	newerPatches,
+	nodeCheckFailed,
+	retag,
 	compareScans,
 	evaluateSource,
 	readPin,
@@ -197,65 +200,163 @@ describe('classifyNoFix', () => {
 	it('reports no upstream fix without a moving tag', () => {
 		assert.equal(classifyNoFix(noFix, null).status, 'no-upstream-fix');
 	});
-
-	const patch = {
-		ref: `dhi.io/node:26.13.1-alpine3.24-dev@${digest('d')}`,
-		platforms: [{ platform: 'linux/amd64', removed: [fixed], added: [], addedPackages: [] }],
-		versionBump: { from: '26.13.0-alpine3.24-dev', to: '26.13.1-alpine3.24-dev' },
-	};
-
-	it('makes the newer patch a candidate on its exact tag', () => {
-		const result = classifyNoFix(noFix, moving([fixed]), patch);
-		assert.equal(result.status, 'candidate');
-		assert.equal(result.newest, patch.ref);
-		assert.deepEqual(result.platforms, patch.platforms);
-		assert.deepEqual(result.versionBump, patch.versionBump);
-		assert.equal(result.versionUpdate, undefined);
-	});
-
-	it('ignores the patch when the moving tag removes nothing', () => {
-		assert.equal(classifyNoFix(noFix, moving([]), patch).status, 'no-upstream-fix');
-	});
 });
 
-describe('PATCH_UPDATES', () => {
-	it('covers the Alpine DHI Node pin only', () => {
-		// The Debian images run the Node of DEBIAN_DHI_REF, so a person updates it.
-		assert.deepEqual([...PATCH_UPDATES], ['DHI_REF']);
-	});
-});
+describe('newerPatches', () => {
+	const releases = [
+		{ version: 'v26.14.0', security: false },
+		{ version: 'v26.13.2', security: false },
+		{ version: 'v26.13.1', security: true },
+		{ version: 'v26.13.0', security: false },
+		{ version: 'v24.22.3', security: true },
+		{ version: 'v26.13.10', security: false },
+	];
 
-describe('nextPatchTags', () => {
-	it('lists the next patches and keeps the variant', () => {
-		assert.deepEqual(nextPatchTags('26.13.0-alpine3.24-dev', 3), [
-			'26.13.1-alpine3.24-dev',
-			'26.13.2-alpine3.24-dev',
-			'26.13.3-alpine3.24-dev',
+	it('lists the newer patches of the same minor, newest first', () => {
+		assert.deepEqual(newerPatches(releases, '26.13.0'), [
+			{ version: '26.13.10', security: false },
+			{ version: '26.13.2', security: false },
+			{ version: '26.13.1', security: true },
 		]);
-		assert.deepEqual(nextPatchTags('3.13.9', 2), ['3.13.10', '3.13.11']);
 	});
 
-	it('returns no tag for a tag without a patch number', () => {
-		assert.deepEqual(nextPatchTags('latest'), []);
+	it('lists nothing when the pin is on the newest patch', () => {
+		assert.deepEqual(newerPatches(releases, '26.13.10'), []);
+		assert.deepEqual(newerPatches(releases, '26.14.0'), []);
 	});
 });
 
-describe('exactTagOf', () => {
-	const digests = {
-		'26.13.1-alpine3.24-dev': digest('b'),
-		'26.13.3-alpine3.24-dev': digest('d'),
-	};
-	const resolve = (tag) => digests[tag] ?? null;
-
-	it('finds the patch tag that has the digest of the moving tag, past a missing patch', () => {
-		assert.equal(
-			exactTagOf('26.13.0-alpine3.24-dev', digest('d'), resolve),
-			'26.13.3-alpine3.24-dev',
-		);
+describe('retag', () => {
+	it('changes the Node version of a tag and keeps the variant', () => {
+		assert.equal(retag('26.13.0-alpine3.24-dev', '26.13.0', '26.13.1'), '26.13.1-alpine3.24-dev');
+		assert.equal(retag('26.13.0-trixie-slim', '26.13.0', '26.13.1'), '26.13.1-trixie-slim');
 	});
 
-	it('returns null when no patch tag has the digest', () => {
-		assert.equal(exactTagOf('26.13.0-alpine3.24-dev', digest('e'), resolve), null);
+	it('returns null for a tag of another version', () => {
+		assert.equal(retag('26.13.1-alpine3.24', '26.13.0', '26.13.2'), null);
+		assert.equal(retag('26.13.0', '26.13.0', '26.13.1'), null);
+	});
+});
+
+describe('findNodePatch', () => {
+	const bake = (version = '26.13.0', debianTag = `${version}-debian13-dev`) =>
+		[
+			`variable "NODE_VERSION" { default = "${version}" }`,
+			`variable "DHI_REF" {\n  default = "dhi.io/node:${version}-alpine3.24-dev@${digest('a')}"\n}`,
+			`variable "DEBIAN_DHI_REF" {\n  default = "dhi.io/node:${debianTag}@${digest('b')}"\n}`,
+			`variable "BUILDER_IMAGE" {\n  default = "node:${version}-alpine3.24@${digest('c')}"\n}`,
+			`variable "DEBIAN_BUILDER_IMAGE" {\n  default = "node:${version}-trixie-slim@${digest('d')}"\n}`,
+		].join('\n');
+	const releases = [
+		{ version: 'v26.13.2', security: false },
+		{ version: 'v26.13.1', security: true },
+		{ version: 'v26.13.0', security: false },
+	];
+	// Every tag of 26.13.1 exists. 26.13.2 has no Debian DHI image yet.
+	const published = new Set([
+		'dhi.io/node:26.13.1-alpine3.24-dev',
+		'dhi.io/node:26.13.1-debian13-dev',
+		'node:26.13.1-alpine3.24',
+		'node:26.13.1-trixie-slim',
+		'dhi.io/node:26.13.2-alpine3.24-dev',
+		'node:26.13.2-alpine3.24',
+		'node:26.13.2-trixie-slim',
+	]);
+	const resolve = (repository, tag) =>
+		published.has(`${repository}:${tag}`) ? digest(tag.endsWith('slim') ? 'f' : 'e') : null;
+
+	it('takes the newest patch that every Node pin publishes', () => {
+		const patch = findNodePatch(bake(), releases, resolve);
+		assert.equal(patch.from, '26.13.0');
+		assert.equal(patch.to, '26.13.1');
+		assert.equal(patch.security, true);
+		assert.deepEqual(
+			patch.pins.map(({ pin, tag }) => [pin.name, tag]),
+			[
+				['DHI_REF', '26.13.1-alpine3.24-dev'],
+				['DEBIAN_DHI_REF', '26.13.1-debian13-dev'],
+				['BUILDER_IMAGE', '26.13.1-alpine3.24'],
+				['DEBIAN_BUILDER_IMAGE', '26.13.1-trixie-slim'],
+			],
+		);
+		assert.deepEqual(patch.waiting, {
+			version: '26.13.2',
+			tags: ['dhi.io/node:26.13.2-debian13-dev'],
+		});
+	});
+
+	it('covers all the Node pins', () => {
+		assert.deepEqual(NODE_PINS, [
+			'DHI_REF',
+			'DEBIAN_DHI_REF',
+			'BUILDER_IMAGE',
+			'DEBIAN_BUILDER_IMAGE',
+		]);
+	});
+
+	it('marks a skipped security patch', () => {
+		const all = (repository, tag) => digest(tag.includes('slim') ? 'f' : 'e');
+		const patch = findNodePatch(bake(), releases, all);
+		assert.equal(patch.to, '26.13.2');
+		assert.equal(patch.security, true);
+		assert.equal(patch.waiting, null);
+	});
+
+	it('opens nothing while no newer patch is complete', () => {
+		const patch = findNodePatch(bake(), releases, () => null);
+		assert.equal(patch.to, null);
+		assert.deepEqual(patch.pins, []);
+		assert.equal(patch.waiting.version, '26.13.2');
+		assert.equal(patch.waiting.tags.length, 4);
+	});
+
+	it('returns null when nodejs.org has no newer patch', () => {
+		assert.equal(findNodePatch(bake('26.13.2'), releases, resolve), null);
+	});
+
+	it('changes nothing when a Node pin is on another version', () => {
+		const patch = findNodePatch(bake('26.13.0', '26.13.1-debian13-dev'), releases, resolve);
+		assert.deepEqual(patch.misaligned, ['DEBIAN_DHI_REF']);
+		assert.deepEqual(patch.pins, []);
+	});
+});
+
+describe('nodeCheckFailed', () => {
+	it('reports the failed Node patch check of the pinned Node version', () => {
+		const result = nodeCheckFailed('variable "NODE_VERSION" { default = "26.13.0" }\n', 'timeout');
+		assert.equal(result.source, 'NODE_VERSION');
+		assert.equal(result.status, 'node-check-failed');
+		assert.equal(result.pinned, '26.13.0');
+		assert.deepEqual(result.platforms, []);
+		assert.equal(result.error, 'timeout');
+		assert.match(renderSummary([result]), /\| `NODE_VERSION` \| node-check-failed \|/);
+	});
+});
+
+describe('holdNodePatch', () => {
+	const member = (source, status) => ({
+		source,
+		status,
+		nodePatch: { from: '26.13.0', to: '26.13.1' },
+	});
+
+	it('keeps a complete Node patch ready', () => {
+		const results = [member('DHI_REF', 'ready'), member('BUILDER_IMAGE', 'ready')];
+		assert.deepEqual(holdNodePatch(results), results);
+	});
+
+	it('holds every Node pin while one is not ready, and leaves the other sources', () => {
+		const other = { source: 'PYTHON_IMAGE', status: 'ready' };
+		const [dhi, builder, python] = holdNodePatch([
+			member('DHI_REF', 'ready'),
+			member('BUILDER_IMAGE', 'in-24h-gate'),
+			other,
+		]);
+		assert.equal(dhi.status, 'in-24h-gate');
+		assert.deepEqual(dhi.heldBy, ['BUILDER_IMAGE']);
+		assert.equal(builder.status, 'in-24h-gate');
+		assert.equal(builder.heldBy, undefined);
+		assert.equal(python, other);
 	});
 });
 
@@ -307,14 +408,19 @@ describe('applyGate', () => {
 		assert.equal(result.gateSkipped, false);
 	});
 
-	it('turns auto-merge off for a patch update, also after 24 hours', () => {
-		const bump = {
-			...candidate(),
-			versionBump: { from: '26.13.0-alpine3.24-dev', to: '26.13.1-alpine3.24-dev' },
-		};
-		const result = applyGate(bump, publisher(hoursAgo(48)), { now, skipGate: false });
+	it('puts a ready digest in the daily or the review group', () => {
+		const daily = applyGate(candidate(), publisher(hoursAgo(48)), { now, skipGate: false });
+		const review = applyGate(candidate(), publisher(hoursAgo(1)), { now, skipGate: true });
+		assert.equal(daily.group, 'daily');
+		assert.equal(review.group, 'review');
+	});
+
+	it('puts a Node patch in the node group without auto-merge, also after 24 hours', () => {
+		const patch = { ...candidate(), nodePatch: { from: '26.13.0', to: '26.13.1' } };
+		const result = applyGate(patch, publisher(hoursAgo(48)), { now, skipGate: false });
 		assert.equal(result.status, 'ready');
 		assert.equal(result.autoMerge, false);
+		assert.equal(result.group, 'node');
 		assert.equal(result.gateSkipped, false);
 	});
 
@@ -379,21 +485,31 @@ describe('renderSummary', () => {
 		);
 	});
 
-	it('lists the patch updates with their status', () => {
-		const summary = renderSummary([
-			{
-				source: 'DHI_REF',
-				status: 'in-24h-gate',
-				platforms: [],
-				versionBump: { from: '26.13.0-alpine3.24-dev', to: '26.13.1-alpine3.24-dev' },
-			},
-		]);
-		assert.match(summary, /### Patch updates/);
+	it('lists the Node patch with its status and the patch that waits', () => {
+		const nodePatch = { from: '26.13.0', to: '26.13.1', security: true };
+		const results = [
+			{ source: 'DHI_REF', status: 'ready', platforms: [], nodePatch },
+			{ source: 'BUILDER_IMAGE', status: 'in-24h-gate', platforms: [], nodePatch },
+		];
+		const summary = renderSummary(results, {
+			...nodePatch,
+			waiting: { version: '26.13.2', tags: ['dhi.io/node:26.13.2-debian13-dev'] },
+		});
+		assert.match(summary, /### Node patch/);
 		assert.match(
 			summary,
-			/- `DHI_REF`: `26\.13\.0-alpine3\.24-dev` → `26\.13\.1-alpine3\.24-dev` \(in-24h-gate\)\./,
+			/- Node `26\.13\.0` → `26\.13\.1` \(security release\): `DHI_REF` ready, `BUILDER_IMAGE` in-24h-gate\./,
 		);
+		assert.match(summary, /- Node `26\.13\.2` waits for: `dhi\.io\/node:26\.13\.2-debian13-dev`\./);
 		assert.doesNotMatch(summary, /Needs a person/);
+	});
+
+	it('lists Node pins that are not aligned', () => {
+		const summary = renderSummary([], { from: '26.13.0', misaligned: ['DEBIAN_DHI_REF'] });
+		assert.match(
+			summary,
+			/- The Node pins do not all use `NODE_VERSION` `26\.13\.0`: `DEBIAN_DHI_REF`\./,
+		);
 	});
 
 	it('lists the publisher errors', () => {
