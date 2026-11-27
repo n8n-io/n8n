@@ -5,6 +5,7 @@ import {
 	ExpressionParser,
 	isExpression,
 	NODES_WITH_RENAMABLE_CONTENT,
+	STICKY_NODE_TYPE,
 } from 'n8n-workflow';
 
 import type { WorkflowVariableRequirement } from './variable.types';
@@ -60,6 +61,8 @@ export class VariableRequirementsExtractor
 		const names = new Set<string>();
 
 		for (const node of source.nodes ?? []) {
+			// A sticky note never runs, so its text is never evaluated.
+			if (node.type === STICKY_NODE_TYPE) continue;
 			this.scan(node.parameters, names, node.type);
 		}
 		this.scan(source.settings, names);

@@ -104,6 +104,19 @@ describe('VariableRequirementsExtractor', () => {
 		expect(extractor.extract(workflow)).toEqual([]);
 	});
 
+	it('ignores sticky notes, which never run', () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				makeNode(
+					{ content: 'Set it to {{ $vars.NOTE_ONLY }}' },
+					{ type: 'n8n-nodes-base.stickyNote' },
+				),
+			],
+		});
+
+		expect(extractor.extract(workflow)).toEqual([]);
+	});
+
 	// Many nodes resolve `{{ }}` in a fixed value at runtime, without the `=` prefix.
 	it.each([
 		{
