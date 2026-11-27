@@ -1214,6 +1214,6 @@ function withMentionHint(
 	content: McpSkillContent,
 	hintsWorkflowMentions: boolean,
 ): McpSkillContent {
-	if (!hintsWorkflowMentions || content.projectId === null) return content;
+	if (!hintsWorkflowMentions) return content;
 	return { ...content, skill: withSkillWorkflowMentionHint(content.skill) };
 }

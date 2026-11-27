@@ -76,11 +76,7 @@ import {
 	findSkillWorkflowTools,
 	type SkillWorkflowTool,
 } from './utils/skill-workflow-tools';
-import {
-	findNameClashGroups,
-	SkillRuntimeService,
-	WorkflowsInSkillsFlagGate,
-} from '@/modules/skills';
+import { findNameClashGroups, WorkflowsInSkillsFlagGate } from '@/modules/skills';
 
 type AgentValidationScope = 'runtime' | 'publish';
 
@@ -170,7 +166,6 @@ export class AgentValidationService {
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly skillRuntime: SkillRuntimeService,
 	) {}
 
 	/**
@@ -453,10 +448,7 @@ export class AgentValidationService {
 		) {
 			return [];
 		}
-		return findSkillWorkflowTools(
-			ctx.config,
-			await this.skillRuntime.withoutInstanceSkillsWithWorkflows(ctx.skills),
-		);
+		return findSkillWorkflowTools(ctx.config, ctx.skills);
 	}
 
 	private async collectSkillWorkflowIssues(

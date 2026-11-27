@@ -144,22 +144,12 @@ describe('SkillRuntimeService', () => {
 			});
 		});
 
-		it('adds the workflow hint to project skill instructions that mention a workflow when the flag is on', async () => {
+		it('adds the workflow hint to instructions that mention a workflow when the flag is on', async () => {
 			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
-			row.skill.projectId = 'project-1';
 			row.version.instructions = 'Run [Report](n8n://workflow/wf-1).';
 
 			expect((await runtime.readForAssistant(context, 'skill-1'))?.instructions).toBe(
 				`Run [Report](n8n://workflow/wf-1).\n\n${SKILL_WORKFLOW_MENTION_HINT}`,
-			);
-		});
-
-		it('adds no workflow hint to an instance skill that mentions a workflow', async () => {
-			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
-			row.version.instructions = 'Run [Report](n8n://workflow/wf-1).';
-
-			expect((await runtime.readForAssistant(context, 'skill-1'))?.instructions).toBe(
-				'Run [Report](n8n://workflow/wf-1).',
 			);
 		});
 
@@ -228,9 +218,8 @@ describe('SkillRuntimeService', () => {
 			});
 		});
 
-		it('adds the workflow hint to a project skill reference that mentions a workflow when the flag is on', async () => {
+		it('adds the workflow hint to a reference that mentions a workflow when the flag is on', async () => {
 			workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
-			row.skill.projectId = 'project-1';
 			skills.findAssistantSkillFile.mockResolvedValue({
 				skill: row.skill,
 				file: mock<SkillFile>({
@@ -473,34 +462,6 @@ describe('SkillRuntimeService', () => {
 				['skill_a', { projectId: PROJECT }],
 				['skill_b', { projectId: null }],
 			]);
-		});
-
-		it('withoutInstanceSkillsWithWorkflows drops instance skills that mention workflows', async () => {
-			skills.findByIds.mockResolvedValue([
-				skillRow('skill_a', { projectId: PROJECT }),
-				skillRow('skill_b'),
-			]);
-			const mentioning = { name: 'n', description: 'd', instructions: '[R](n8n://workflow/wf1)' };
-			const plain = { name: 'n', description: 'd', instructions: 'i' };
-
-			const kept = await runtime.withoutInstanceSkillsWithWorkflows({
-				skill_a: mentioning,
-				skill_b: mentioning,
-				skill_new: mentioning,
-				skill_plain: plain,
-			});
-
-			expect(skills.findByIds).toHaveBeenCalledWith(['skill_a', 'skill_b', 'skill_new'], {});
-			expect(Object.keys(kept)).toEqual(['skill_a', 'skill_new', 'skill_plain']);
-		});
-
-		it('withoutInstanceSkillsWithWorkflows reads nothing when no skill mentions a workflow', async () => {
-			const plain = { name: 'n', description: 'd', instructions: 'i' };
-
-			const kept = await runtime.withoutInstanceSkillsWithWorkflows({ skill_a: plain });
-
-			expect(kept).toEqual({ skill_a: plain });
-			expect(skills.findByIds).not.toHaveBeenCalled();
 		});
 
 		it('resolveVersions maps each version to its skill and runtime content', async () => {

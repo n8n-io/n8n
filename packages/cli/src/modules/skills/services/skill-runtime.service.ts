@@ -20,7 +20,6 @@ import {
 	type SkillTarget,
 } from '../utils/skill-content';
 import { withSkillWorkflowMentionHint } from '../utils/skill-workflow-mention-hint';
-import { hasWorkflowMentions } from '../utils/skill-workflow-mentions';
 import { SkillAccessService } from './skill-access.service';
 import { WorkflowsInSkillsFlagGate } from './workflows-in-skills-flag-gate';
 
@@ -62,7 +61,8 @@ export class SkillRuntimeService {
 			description: version.description,
 			versionId: version.id,
 			version: version.version,
-			instructions: await this.withWorkflowMentionHint(version.instructions, skill.projectId),
+			instructions: (await this.withWorkflowMentionHint({ instructions: version.instructions }))
+				.instructions,
 			frontmatter: version.frontmatter,
 			files: files.map(({ path }) => ({ path })),
 		};
@@ -86,13 +86,16 @@ export class SkillRuntimeService {
 			skillId,
 			versionId,
 			path: row.file.path,
-			content: await this.withWorkflowMentionHint(row.file.content, row.skill.projectId),
+			content: (await this.withWorkflowMentionHint({ instructions: row.file.content }))
+				.instructions,
 		};
 	}
 
-	private async withWorkflowMentionHint(text: string, projectId: string | null): Promise<string> {
-		if (projectId === null || !(await this.workflowsInSkillsFlagGate.isEnabled())) return text;
-		return withSkillWorkflowMentionHint({ instructions: text }).instructions;
+	async withWorkflowMentionHint<T extends Pick<AgentSkill, 'instructions' | 'references'>>(
+		skill: T,
+	): Promise<T> {
+		if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return skill;
+		return withSkillWorkflowMentionHint(skill);
 	}
 
 	/**
@@ -111,18 +114,6 @@ export class SkillRuntimeService {
 	async findTargets(skillIds: string[], ctx: OperationContext = {}) {
 		const skills = await this.skillRepository.findByIds(skillIds, ctx);
 		return new Map<string, SkillTarget>(skills.map(({ id, projectId }) => [id, { projectId }]));
-	}
-
-	async withoutInstanceSkillsWithWorkflows(
-		skills: Record<string, AgentSkill>,
-		ctx: OperationContext = {},
-	): Promise<Record<string, AgentSkill>> {
-		const mentioningIds = Object.keys(skills).filter((id) => hasWorkflowMentions(skills[id]));
-		if (mentioningIds.length === 0) return skills;
-		const targets = await this.findTargets(mentioningIds, ctx);
-		return Object.fromEntries(
-			Object.entries(skills).filter(([id]) => targets.get(id)?.projectId !== null),
-		);
 	}
 
 	async lockForEdit(skillIds: string[], ctx: OperationContext): Promise<void> {

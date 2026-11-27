@@ -177,18 +177,6 @@ describe('AgentSkillWorkflowAccessService', () => {
 		).resolves.toEqual([]);
 	});
 
-	it('lists nothing for an instance skill that got a workflow while the flag was off', async () => {
-		flagGate.isEnabled.mockResolvedValue(false);
-		const outside = await createWorkflow({ name: 'Outside' }, otherProject);
-		const skillId = await createSkillMentioning([outside], null);
-		flagGate.isEnabled.mockResolvedValue(true);
-		const agentId = await createAgent(agentProject.id);
-
-		await expect(
-			service.findOutsideProjectWorkflowIds(owner, agentProject.id, agentId, skillId),
-		).resolves.toEqual([]);
-	});
-
 	it('answers like a missing skill when the user cannot read the skill', async () => {
 		const outside = await createWorkflow({ name: 'Outside' }, otherProject);
 		const skillId = await createSkillMentioning([outside], otherProject.id);

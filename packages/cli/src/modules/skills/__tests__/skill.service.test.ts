@@ -1150,18 +1150,6 @@ describe('SkillService', () => {
 			);
 		});
 
-		it('saveTrusted lets an unchanged instance skill with old mentions pass', async () => {
-			const baseSkillHash = givenStored(null, withMention);
-
-			const result = await service.saveTrusted(
-				'skill_a',
-				{ baseSkillHash, instructions: withMention },
-				user.id,
-			);
-
-			expect(result.created).toBe(false);
-		});
-
 		it('saveTrusted keeps a workflow mention in a project skill', async () => {
 			const baseSkillHash = givenStored(PROJECT, 'Use short sentences.');
 
@@ -1221,10 +1209,18 @@ describe('SkillService', () => {
 			);
 		});
 
-		it('moveTrusted lets an instance skill with old mentions move into a project', async () => {
-			givenStored(null, withMention);
+		it('moveTrusted lets an instance skill move into a project with new workflow mentions', async () => {
+			givenStored(null, 'Use short sentences.');
 
-			await service.moveTrusted('skill_a', { projectId: 'p1' }, undefined);
+			await service.moveTrusted(
+				'skill_a',
+				{ projectId: 'p1' },
+				undefined,
+				{},
+				{
+					contentAfterMove: { instructions: withMention },
+				},
+			);
 
 			expect(skills.updateTarget).toHaveBeenCalledWith('skill_a', { projectId: 'p1' }, TX_CTX);
 		});
@@ -1615,16 +1611,6 @@ describe('SkillService', () => {
 				expect((await service.readForMcp(user, 'skill-4'))?.skill.instructions).toBe(expected);
 				expect((await service.listForMcp(user, 0, 50)).skills[0].content?.skill.instructions).toBe(
 					expected,
-				);
-			});
-
-			it('adds no workflow hint to an instance skill', async () => {
-				workflowsInSkillsGate.isEnabled.mockResolvedValue(true);
-				useSkill(mentioning, [], null);
-
-				expect((await service.readForMcp(user, 'skill-4'))?.skill.instructions).toBe(mentioning);
-				expect((await service.listForMcp(user, 0, 50)).skills[0].content?.skill.instructions).toBe(
-					mentioning,
 				);
 			});
 

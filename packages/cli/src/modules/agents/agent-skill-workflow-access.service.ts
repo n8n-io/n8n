@@ -33,8 +33,8 @@ export class AgentSkillWorkflowAccessService {
 			projectId,
 			'Agent not found',
 		);
-		const skill = await this.skillAccess.requireAccess(user, skillId, 'read');
-		if (skill.projectId === null || !(await this.workflowsInSkillsFlagGate.isEnabled())) return [];
+		await this.skillAccess.requireAccess(user, skillId, 'read');
+		if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return [];
 
 		const draftRef = (await this.agentSkillRefs.refsForDraft(agent, {})).find(
 			({ id }) => id === skillId,
