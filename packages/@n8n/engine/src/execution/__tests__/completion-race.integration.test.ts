@@ -28,6 +28,10 @@ class RecordingQueue<T> implements WorkQueue<T> {
 	start() {}
 
 	async stop() {}
+
+	async size() {
+		return this.published.length;
+	}
 }
 
 class RecordingPublisher implements LifecycleEventPublisher {

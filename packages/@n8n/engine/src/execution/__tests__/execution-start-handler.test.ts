@@ -51,7 +51,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 }
 
 function makeOrchestrationQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn(), size: vi.fn() };
 }
 
 /** Only `createSteps` is exercised here; the rest belong to other handlers. */
