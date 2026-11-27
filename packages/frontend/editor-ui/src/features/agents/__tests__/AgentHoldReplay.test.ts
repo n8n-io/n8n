@@ -177,7 +177,7 @@ describe('AgentTestRunEmptyState', () => {
 			'Test Support Agent safely',
 		);
 		expect(getByTestId('agent-test-run-empty-bullets')).toHaveTextContent(
-			'Looks things up in your apps for real',
+			'Makes up replies from your apps, so nothing real is read',
 		);
 		expect(getByTestId('agent-test-run-empty-bullets')).toHaveTextContent(
 			'Holds every send and change for you to review',

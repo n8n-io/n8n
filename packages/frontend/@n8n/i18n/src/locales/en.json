@@ -10272,7 +10272,7 @@
 	"agents.testRun.mode.reset.notice": "Agent changed. New chat in Test run.",
 	"agents.testRun.holdReplay.emptyState.title": "Test {agentName} safely",
 	"agents.testRun.holdReplay.emptyState.titleFallback": "Test this agent safely",
-	"agents.testRun.holdReplay.emptyState.bulletReads": "Looks things up in your apps for real",
+	"agents.testRun.holdReplay.emptyState.bulletReads": "Makes up replies from your apps, so nothing real is read",
 	"agents.testRun.holdReplay.emptyState.bulletHolds": "Holds every send and change for you to review",
 	"agents.testRun.holdReplay.emptyState.defaultStarter.summarize": "Summarize what needs attention right now",
 	"agents.testRun.holdReplay.emptyState.defaultStarter.draft": "Draft an update for the team",
