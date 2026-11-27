@@ -1,4 +1,4 @@
-import type { ExecutionLimitSettings } from '@n8n/api-types';
+import type { ExecutionLimitPeriodUnit, ExecutionLimitSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Publisher } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
@@ -11,6 +11,13 @@ import type { ApplicableLimits } from './execution-limits.types';
 import { ProjectExecutionLimitRepository } from './project-execution-limit.repository';
 
 export const REFRESH_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
+
+/** Which scopes have a limit, so a reader of usage loads only those. */
+export type LimitedScopes = {
+	periodUnit: ExecutionLimitPeriodUnit;
+	hasInstanceLimit: boolean;
+	limitedProjectIds: ReadonlySet<string>;
+};
 
 /**
  * Every execution limit, held in memory so a read at an execution start does no I/O.
@@ -25,6 +32,7 @@ export class ExecutionLimitsSnapshot {
 	private loaded: {
 		settings: ExecutionLimitSettings;
 		projectMaxExecutions: ReadonlyMap<string, number>;
+		limitedScopes: LimitedScopes;
 	} | null = null;
 
 	private refreshTimer: NodeJS.Timeout | undefined;
@@ -52,15 +60,21 @@ export class ExecutionLimitsSnapshot {
 		this.refreshTimer = undefined;
 	}
 
-	/** `null` until the first load succeeds. */
-	read(projectId: string): ApplicableLimits | null {
+	/** `null` until the first load succeeds. A `null` project has no project limit. */
+	read(projectId: string | null): ApplicableLimits | null {
 		if (!this.loaded) return null;
 
 		return {
 			periodUnit: this.loaded.settings.periodUnit,
 			instanceMaxExecutions: this.loaded.settings.instanceMaxExecutions,
-			projectMaxExecutions: this.loaded.projectMaxExecutions.get(projectId) ?? null,
+			projectMaxExecutions:
+				projectId === null ? null : (this.loaded.projectMaxExecutions.get(projectId) ?? null),
 		};
+	}
+
+	/** `null` until the first load succeeds. Each load makes a new object. */
+	readLimitedScopes(): LimitedScopes | null {
+		return this.loaded?.limitedScopes ?? null;
 	}
 
 	/** A failed reload keeps the limits that are loaded, and the next reload tries again. */
@@ -97,6 +111,11 @@ export class ExecutionLimitsSnapshot {
 			projectMaxExecutions: new Map(
 				projectLimits.map(({ projectId, maxExecutions }) => [projectId, maxExecutions]),
 			),
+			limitedScopes: {
+				periodUnit: settings.periodUnit,
+				hasInstanceLimit: settings.instanceMaxExecutions !== null,
+				limitedProjectIds: new Set(projectLimits.map(({ projectId }) => projectId)),
+			},
 		};
 	});
 }

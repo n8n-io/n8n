@@ -24,10 +24,19 @@ const whoCanApply = accessSchema.openapi({
 	description: `Who can apply changes into a project. ${ACCESS_OPTIONS}`,
 });
 
+export const promotionRequireApprovalSchema = z.enum(['whenConfigured', 'alwaysRequired']);
+export type PromotionRequireApproval = z.infer<typeof promotionRequireApprovalSchema>;
+
+const requireApproval = promotionRequireApprovalSchema.openapi({
+	description:
+		'Whether a promote needs a review. `whenConfigured`: each Promote environment uses its own review setting. `alwaysRequired`: every promote pushes a new branch. With a `gitlab` provider, it also opens a merge request. With a `git` provider, n8n cannot see the review and cannot stop direct pushes.',
+});
+
 export class PromotionSettingsPublicDto extends Z.class({
 	whoCanPromote,
 	whoCanApprove,
 	whoCanApply,
+	requireApproval,
 }) {}
 
 /** Only the settings to change, so a change never overwrites a newer value of another setting. */
@@ -36,8 +45,11 @@ export class UpdatePromotionSettingsDto extends Z.class(
 		whoCanPromote: whoCanPromote.optional(),
 		whoCanApprove: whoCanApprove.optional(),
 		whoCanApply: whoCanApply.optional(),
+		requireApproval: requireApproval.optional(),
 	},
 	{ strict: true },
 ) {}
 
-export type PromotionSettings = PromotionProjectAccessSettings;
+export type PromotionSettings = PromotionProjectAccessSettings & {
+	requireApproval: PromotionRequireApproval;
+};

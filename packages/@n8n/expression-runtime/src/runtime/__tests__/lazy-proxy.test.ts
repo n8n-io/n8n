@@ -1040,6 +1040,67 @@ describe('createDeepLazyProxy batched reads', () => {
 			expect('other' in rows[1]).toBe(true);
 		});
 
+		it.each([1, 2])(
+			'asks for whole items after a read in full of item %i with some fields',
+			(index) => {
+				const callbacks = createCallbacks();
+				callbacks.getArrayElement.mockReturnValue(objectOf(['id', 'name']));
+				callbacks.getValueAtPath.mockImplementation((path: string[]) =>
+					path.length === 3 ? objectOf(['id', 'name']) : 'x',
+				);
+				callbacks.readBatch.mockImplementation((path: string[]) =>
+					hostData(path.length === 2 ? [{ id: 1 }, { id: 2 }] : { id: 1, name: 'n' }),
+				);
+				const rows = arrayProxy(callbacks, 10);
+				void rows[0].id;
+				void rows[1];
+				JSON.stringify(rows[index]);
+				void rows[3];
+
+				expect(callbacks.readBatch.mock.calls.at(-1)).toEqual([
+					['$json', 'rows'],
+					3,
+					1,
+					WHOLE_VALUES,
+				]);
+			},
+		);
+
+		it('asks for fields by name after a read in full of a nested object of an item', () => {
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockReturnValue(objectOf(['id', 'address']));
+			callbacks.getValueAtPath.mockReturnValue(objectOf(['city']));
+			callbacks.readBatch.mockImplementation((path: string[]) =>
+				hostData(path.length === 2 ? [{}] : { city: 'x' }),
+			);
+			const rows = arrayProxy(callbacks, 10);
+			JSON.stringify(rows[0].address);
+			void rows[1];
+
+			expect(callbacks.readBatch.mock.calls.at(-1)).toEqual([['$json', 'rows'], 1, 0, ['address']]);
+		});
+
+		it('reads every field of an item one time when the expression lists its keys again', () => {
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockReturnValue(objectOf(['id', 'blob']));
+			callbacks.getValueAtPath.mockReturnValue('blob');
+			callbacks.readBatch
+				.mockReturnValueOnce(hostData({ id: 0 }))
+				.mockReturnValueOnce(objectOf(['id', 'blob']))
+				.mockReturnValue(hostData({ id: 1, blob: 'blob' }));
+			const rows = arrayProxy(callbacks, 10);
+			JSON.stringify(rows[0]);
+			const row = rows[1];
+			Object.keys(row);
+			void row.id;
+			const hostReads = callbacks.getValueAtPath.mock.calls.length;
+			Object.keys(row);
+
+			expect(row.blob).toBe('blob');
+			expect(callbacks.readBatch).toHaveBeenCalledTimes(3);
+			expect(callbacks.getValueAtPath).toHaveBeenCalledTimes(hostReads);
+		});
+
 		it('asks for small rows after a read of two items of the first row', () => {
 			const callbacks = createCallbacks();
 			callbacks.getArrayElement.mockImplementation((path: string[]) =>
@@ -1268,7 +1329,7 @@ describe('createDeepLazyProxy batched reads', () => {
 			item.c = 3;
 
 			expect({ ...item }).toEqual({ a: 1, b: 2, c: 3 });
-			expect(callbacks.readBatch).toHaveBeenCalledTimes(1);
+			expect(callbacks.readBatch.mock.calls).toEqual([[['$json'], 0, 0, SMALL_VALUES]]);
 			expect(callbacks.getValueAtPath).not.toHaveBeenCalled();
 		});
 

@@ -33,6 +33,8 @@ export interface CatalogEntry {
 	outputs: number | ((params: Record<string, unknown>) => number);
 	params: (ctx: GenContext) => fc.Arbitrary<ParamDraft>;
 	deterministic: true;
+	/** Raises L3 (item order) from a warning to a failure for this node. */
+	orderSensitive?: boolean;
 }
 
 export function outputCount(entry: CatalogEntry, params: Record<string, unknown>): number {

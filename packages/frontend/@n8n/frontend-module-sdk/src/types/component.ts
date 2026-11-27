@@ -133,7 +133,13 @@ export type SlotResourcesListFilters = {
 };
 
 /** The list whose page size and sort the `resources-list-layout` slot persists. */
-export type SlotResourcesListTabKey = 'workflows' | 'credentials' | 'dataTable' | 'agents' | 'apps';
+export type SlotResourcesListTabKey =
+	| 'workflows'
+	| 'credentials'
+	| 'dataTable'
+	| 'agents'
+	| 'apps'
+	| 'mcpServers';
 
 export type SlotResourcesListLayoutProps<ResourceType> = {
 	resourceKey: string;

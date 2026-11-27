@@ -14,6 +14,7 @@ export default mergeConfig(createVitestConfigWithDecorators({}, { pinCjs: ['@n8n
 	],
 	test: {
 		pool: 'forks',
+		globalSetup: ['./test/setup-sqlite.ts'],
 		setupFiles: ['./test/setup-test-folder.ts'],
 		exclude: [...configDefaults.exclude, '**/dist/**'],
 	},
