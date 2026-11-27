@@ -134,11 +134,11 @@ describe('TrustedSourceStore (integration)', () => {
 				type: 'oauth2',
 				managedBy: 'admin',
 				status: 'unchecked',
-				configVersion: 2,
+				configVersion: 3,
 			});
 			expect(row.config).not.toContain('oauth2');
 			expect(JSON.parse(await cipher.decryptV2(row.config))).toMatchObject({
-				version: 2,
+				version: 3,
 				authentication: { type: 'oauth2', clockSkewSeconds: 60 },
 				identity: { subject: 'binding' },
 			});
@@ -201,7 +201,7 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(await store.getById(row.id)).toMatchObject({
 				id: row.id,
 				name: 'Acme',
-				config: { version: 2 },
+				config: { version: 3 },
 			});
 			expect(await store.getByIssuer('https://acme.example.com')).toMatchObject({ id: row.id });
 			expect(await store.getById('missing')).toBeUndefined();
@@ -301,7 +301,7 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(updated).toMatchObject({
 				name: 'New',
 				issuer: 'https://new.example.com',
-				configVersion: 2,
+				configVersion: 3,
 			});
 			expect(updated.config).not.toBe(row.config);
 
@@ -776,12 +776,12 @@ describe('TrustedSourceStore (integration)', () => {
 			for (const row of [admin, system]) {
 				const after = await rows.findOneByOrFail({ id: row.id });
 				expect(after).toMatchObject({
-					configVersion: 2,
+					configVersion: 3,
 					status: row.status,
 					lastCheckedAt: row.lastCheckedAt,
 					metadata: row.metadata,
 				});
-				expect(await storedDocument(row.id)).toMatchObject({ version: 2 });
+				expect(await storedDocument(row.id)).toMatchObject({ version: 3 });
 			}
 			const adminDocument = await storedDocument(admin.id);
 			expect(adminDocument.identity.provision).toEqual({ person: 'jit' });
@@ -790,16 +790,18 @@ describe('TrustedSourceStore (integration)', () => {
 				'public-api': {},
 				trigger: { audiences: ['custom-audience'] },
 				apps: {},
+				'mcp-servers': {},
 			});
 			expect(await bindings.countBy({ sourceId: admin.id })).toBe(1);
 		});
 
-		it('reads a system row without the apps surface as one that serves it', async () => {
+		it('reads a system row without the apps and mcp-servers surfaces as one that serves them', async () => {
 			const system = await seedRow({ managedBy: 'system', config: await v1SystemWithoutApps() });
 
 			expect((await loadSource(system.id)).config.surfaces).toEqual({
 				'public-api': {},
 				apps: {},
+				'mcp-servers': {},
 			});
 		});
 
@@ -828,7 +830,7 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(await store.upgradeStoredConfigs()).toBe(2);
 
 			for (const row of [first, second]) {
-				expect((await rows.findOneByOrFail({ id: row.id })).configVersion).toBe(2);
+				expect((await rows.findOneByOrFail({ id: row.id })).configVersion).toBe(3);
 			}
 			expect(warn).toHaveBeenCalledWith(
 				'Config upgraded but the cache could not be invalidated',
@@ -869,7 +871,7 @@ describe('TrustedSourceStore (integration)', () => {
 				configVersion: 1,
 				config: 'garbage',
 			});
-			expect((await rows.findOneByOrFail({ id: good.id })).configVersion).toBe(2);
+			expect((await rows.findOneByOrFail({ id: good.id })).configVersion).toBe(3);
 			expect(warn).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ id: bad.id }),

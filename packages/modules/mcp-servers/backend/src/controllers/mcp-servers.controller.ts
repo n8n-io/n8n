@@ -61,7 +61,11 @@ export class McpServersController {
 		await this.flagGate.assertEnabled();
 		const { projectId, serverId } = req.params;
 		const server = await this.service.get(projectId, serverId);
-		return { ...server, tools: await this.toolsService.listTools(projectId, server.id) };
+		const [tools, toolDraftsAvailable] = await Promise.all([
+			this.toolsService.listTools(projectId, server.id),
+			this.toolsService.draftsAvailable(req.user),
+		]);
+		return { ...server, tools, toolDraftsAvailable };
 	}
 
 	@Patch('/:serverId')

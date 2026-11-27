@@ -58,6 +58,14 @@ export class McpServerToolRepository {
 		return await this.table.managerFor(ctx).findOneBy(McpServerTool, { id: toolId, serverId });
 	}
 
+	async findByName(
+		serverId: string,
+		toolName: string,
+		ctx: OperationContext = {},
+	): Promise<McpServerTool | null> {
+		return await this.table.managerFor(ctx).findOneBy(McpServerTool, { serverId, toolName });
+	}
+
 	/** Appends the tools after the last position, with the default text. All or nothing. */
 	async addWorkflowTools(
 		serverId: string,

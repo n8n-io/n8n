@@ -5,6 +5,7 @@ const events = TELEMETRY_EVENT.CUSTOM_MCP_SERVERS;
 const builderEvents = [
 	events.USER_CREATED_CUSTOM_MCP_SERVER,
 	events.USER_ADDED_TOOL_TO_CUSTOM_MCP_SERVER,
+	events.USER_DRAFTED_TOOL_OF_CUSTOM_MCP_SERVER,
 	events.USER_BLOCKED_PERSON_FROM_CUSTOM_MCP_SERVER,
 	events.USER_RESTORED_ACCESS_TO_CUSTOM_MCP_SERVER,
 	events.USER_DELETED_CUSTOM_MCP_SERVER,
@@ -15,11 +16,11 @@ const clientEvents = [
 ];
 
 describe('custom MCP server events', () => {
-	it('has the seven events of the build spec', () => {
+	it('has the seven events of the build spec, and the draft event', () => {
 		expect(Object.values(events)).toEqual(
 			expect.arrayContaining([...builderEvents, ...clientEvents]),
 		);
-		expect(Object.keys(events)).toHaveLength(7);
+		expect(Object.keys(events)).toHaveLength(8);
 	});
 
 	it.each(Object.values(events).map((event) => [event.name, event]))(
@@ -52,6 +53,26 @@ describe('custom MCP server events', () => {
 			expect(Object.keys(event.properties.shape)).not.toContain('source');
 		},
 	);
+
+	it('accepts a draft for one field, and refuses an unknown status', () => {
+		const draft = {
+			server_id: 'server-1',
+			user_id: 'user-1',
+			field: 'toolName',
+			status: 'drafted',
+			source: 'ui',
+		};
+
+		expect(
+			getEventValidationError(events.USER_DRAFTED_TOOL_OF_CUSTOM_MCP_SERVER, draft),
+		).toBeNull();
+		expect(
+			getEventValidationError(events.USER_DRAFTED_TOOL_OF_CUSTOM_MCP_SERVER, {
+				...draft,
+				status: 'timeout',
+			}),
+		).not.toBeNull();
+	});
 
 	it('accepts a tool call from a client', () => {
 		expect(

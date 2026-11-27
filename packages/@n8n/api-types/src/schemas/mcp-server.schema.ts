@@ -99,6 +99,18 @@ export const mcpServerToolBrokenReasonSchema = z.enum([
 ]);
 export type McpServerToolBrokenReason = z.infer<typeof mcpServerToolBrokenReasonSchema>;
 
+/** The `consentType` hint of a server, so the consent page uses the wording for a server. */
+export const MCP_SERVER_CONSENT_TYPE = 'mcp-server';
+
+/**
+ * Why a person cannot connect to a server, for the refusal screen after sign-in:
+ * - `not_member`: the person has no role in the project of the server.
+ * - `no_connect_scope`: the role of the person in the project cannot connect.
+ * - `blocked`: a builder blocked the person on this server.
+ */
+export const mcpServerConnectRefusalSchema = z.enum(['not_member', 'no_connect_scope', 'blocked']);
+export type McpServerConnectRefusal = z.infer<typeof mcpServerConnectRefusalSchema>;
+
 export const mcpServerSchema = z.object({
 	id: z.string().uuid(),
 	projectId: z.string(),
@@ -136,8 +148,23 @@ export type McpServerToolResponse = z.infer<typeof mcpServerToolSchema>;
 
 export const mcpServerDetailSchema = mcpServerSchema.extend({
 	tools: z.array(mcpServerToolSchema),
+	/**
+	 * Whether the n8n Assistant can write tool drafts for the user. Without it, the tool keeps the
+	 * workflow name and description, and the UI hides the "Generate" buttons.
+	 */
+	toolDraftsAvailable: z.boolean(),
 });
 export type McpServerDetailResponse = z.infer<typeof mcpServerDetailSchema>;
+
+/**
+ * The answer of a draft call. `not_available`: the n8n Assistant is off or has no model, so the
+ * tool keeps its text.
+ */
+export const mcpServerToolDraftResponseSchema = z.object({
+	status: z.enum(['drafted', 'not_available']),
+	tool: mcpServerToolSchema,
+});
+export type McpServerToolDraftResponse = z.infer<typeof mcpServerToolDraftResponseSchema>;
 
 export const mcpServerToolCandidateSchema = z.object({
 	workflowId: z.string(),

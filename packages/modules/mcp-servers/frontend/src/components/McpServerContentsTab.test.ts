@@ -17,6 +17,7 @@ const api = vi.hoisted(() => ({
 	addWorkflowTools: vi.fn(),
 	updateTool: vi.fn(),
 	removeTool: vi.fn(),
+	draftTool: vi.fn(),
 }));
 vi.mock('../mcp-servers.api', () => api);
 
@@ -48,7 +49,10 @@ function tool(overrides: Partial<McpServerToolResponse> = {}): McpServerToolResp
 	};
 }
 
-function server(tools: McpServerToolResponse[]): McpServerDetailResponse {
+function server(
+	tools: McpServerToolResponse[],
+	toolDraftsAvailable = true,
+): McpServerDetailResponse {
 	return {
 		id: SERVER_ID,
 		projectId: PROJECT_ID,
@@ -59,7 +63,19 @@ function server(tools: McpServerToolResponse[]): McpServerDetailResponse {
 		createdAt: '2026-11-24T10:00:00.000Z',
 		updatedAt: '2026-11-24T10:00:00.000Z',
 		tools,
+		toolDraftsAvailable,
 	};
+}
+
+/** A promise that the test settles, to see the state while a call runs. */
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	let reject!: (error: unknown) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+	return { promise, resolve, reject };
 }
 
 const candidates: McpServerToolCandidate[] = [
@@ -224,6 +240,21 @@ describe('McpServerContentsTab', () => {
 					{ description: 'Use it for campaign questions.' },
 				),
 			);
+		});
+
+		it('resets the field to the saved text when the save fails', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			api.updateTool.mockRejectedValue(new Error('The name is taken.'));
+			const { findByTestId, getByTestId } = render();
+
+			await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+			const name = getByTestId('mcp-tool-row-name-input');
+			await userEvent.clear(name);
+			await userEvent.type(name, 'get_numbers');
+			await fireEvent.blur(name);
+
+			await waitFor(() => expect(name).toHaveValue('get_campaign_numbers'));
+			expect(toast.showError).toHaveBeenCalledTimes(1);
 		});
 
 		it('limits the description to the length that the server accepts', async () => {
@@ -400,6 +431,201 @@ describe('McpServerContentsTab', () => {
 		});
 	});
 
+	describe('AI drafts', () => {
+		const second = tool({
+			id: '0190a8d6-4a2e-7000-8000-0000000000a2',
+			targetId: 'wf-6',
+			toolName: 'escalate_to_on_call',
+			description: '',
+			position: 1,
+		});
+
+		async function addTwoTools(toolDraftsAvailable = true) {
+			api.getMcpServer.mockResolvedValue(server([], toolDraftsAvailable));
+			const added = [tool(), second];
+			api.addWorkflowTools.mockResolvedValue(added);
+			const result = render();
+			await userEvent.click(await result.findByTestId('mcp-server-add-workflow'));
+			const rows = await result.findAllByTestId('mcp-workflow-picker-row');
+			await userEvent.click(rows.find((row) => row.textContent?.includes('Get campaign'))!);
+			await userEvent.click(rows.find((row) => row.textContent?.includes('Escalate'))!);
+			await userEvent.click(result.getByTestId('mcp-workflow-picker-confirm'));
+			return result;
+		}
+
+		it('asks for a draft of each new tool in parallel, and shows the loading line until it arrives', async () => {
+			const first = deferred<unknown>();
+			const other = deferred<unknown>();
+			api.draftTool.mockReturnValueOnce(first.promise).mockReturnValueOnce(other.promise);
+			const { findAllByTestId, findByText, queryAllByTestId } = await addTwoTools();
+
+			expect(await findAllByTestId('mcp-tool-row-drafting')).toHaveLength(2);
+			expect(api.draftTool).toHaveBeenCalledTimes(2);
+			expect(api.draftTool).toHaveBeenCalledWith(
+				expect.anything(),
+				PROJECT_ID,
+				SERVER_ID,
+				tool().id,
+				undefined,
+			);
+			expect(api.draftTool).toHaveBeenCalledWith(
+				expect.anything(),
+				PROJECT_ID,
+				SERVER_ID,
+				second.id,
+				undefined,
+			);
+
+			first.resolve({
+				status: 'drafted',
+				tool: tool({ toolName: 'get_campaign_kpis', draftSource: 'ai' }),
+			});
+
+			expect(await findByText('get_campaign_kpis')).toBeInTheDocument();
+			expect(queryAllByTestId('mcp-tool-row-drafting')).toHaveLength(1);
+
+			other.resolve({ status: 'not_available', tool: second });
+			await waitFor(() => expect(queryAllByTestId('mcp-tool-row-drafting')).toHaveLength(0));
+			expect(await findByText('escalate_to_on_call')).toBeInTheDocument();
+		});
+
+		it('keeps the text and reports the failed drafts of one add in one toast', async () => {
+			api.draftTool.mockRejectedValue(new Error('The draft breaks the rules.'));
+			const { queryAllByTestId, findByText } = await addTwoTools();
+
+			await waitFor(() => expect(queryAllByTestId('mcp-tool-row-drafting')).toHaveLength(0));
+			expect(toast.showError).toHaveBeenCalledExactlyOnceWith(
+				expect.any(Error),
+				'Could not write 2 drafts',
+			);
+			expect(await findByText('escalate_to_on_call')).toBeInTheDocument();
+		});
+
+		it('runs at most four drafts at a time, and shows the loading line on every new row', async () => {
+			const added = Array.from({ length: 6 }, (_, index) =>
+				tool({
+					id: `0190a8d6-4a2e-7000-8000-0000000000b${index}`,
+					targetId: `wf-${index + 1}`,
+					toolName: `tool_${index}`,
+					position: index,
+				}),
+			);
+			api.getMcpServer.mockResolvedValue(server([]));
+			api.addWorkflowTools.mockResolvedValue(added);
+			const calls = added.map(() => deferred<unknown>());
+			let started = 0;
+			api.draftTool.mockImplementation(async () => await calls[started++].promise);
+			const result = render();
+			await userEvent.click(await result.findByTestId('mcp-server-add-workflow'));
+			const rows = await result.findAllByTestId('mcp-workflow-picker-row');
+			await userEvent.click(rows.find((row) => row.textContent?.includes('Get campaign'))!);
+			await userEvent.click(result.getByTestId('mcp-workflow-picker-confirm'));
+
+			expect(await result.findAllByTestId('mcp-tool-row-drafting')).toHaveLength(6);
+			expect(api.draftTool).toHaveBeenCalledTimes(4);
+
+			calls[0].resolve({ status: 'drafted', tool: added[0] });
+			await waitFor(() => expect(api.draftTool).toHaveBeenCalledTimes(5));
+			calls[1].reject(new Error('Invalid key'));
+			await waitFor(() => expect(api.draftTool).toHaveBeenCalledTimes(6));
+			for (const [index, call] of calls.slice(2).entries()) {
+				call.resolve({ status: 'drafted', tool: added[index + 2] });
+			}
+
+			await waitFor(() => expect(result.queryAllByTestId('mcp-tool-row-drafting')).toHaveLength(0));
+			expect(toast.showError).toHaveBeenCalledExactlyOnceWith(
+				expect.any(Error),
+				'Could not write the draft',
+			);
+		});
+
+		it('asks for no draft without the Assistant', async () => {
+			const { findByText, queryAllByTestId } = await addTwoTools(false);
+
+			expect(await findByText('escalate_to_on_call')).toBeInTheDocument();
+			expect(queryAllByTestId('mcp-tool-row-drafting')).toHaveLength(0);
+			expect(api.draftTool).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['toolName', 'name'],
+			['description', 'description'],
+		] as const)(
+			'"Generate" below the %s writes that field, with a loading state meanwhile',
+			async (field, testId) => {
+				api.getMcpServer.mockResolvedValue(server([tool()]));
+				const call = deferred<unknown>();
+				api.draftTool.mockReturnValue(call.promise);
+				const { findByTestId, getByTestId, queryByTestId } = render();
+
+				await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+				await userEvent.click(getByTestId(`mcp-tool-row-generate-${testId}`));
+
+				expect(api.draftTool).toHaveBeenCalledWith(
+					expect.anything(),
+					PROJECT_ID,
+					SERVER_ID,
+					tool().id,
+					field,
+				);
+				expect(getByTestId(`mcp-tool-row-generating-${testId}`)).toBeInTheDocument();
+				expect(getByTestId(`mcp-tool-row-generate-${testId}`)).toBeDisabled();
+
+				const text = field === 'toolName' ? 'get_campaign_kpis' : 'Returns the KPIs.';
+				call.resolve({ status: 'drafted', tool: tool({ [field]: text, draftSource: 'ai' }) });
+
+				await waitFor(() =>
+					expect(queryByTestId(`mcp-tool-row-generating-${testId}`)).not.toBeInTheDocument(),
+				);
+				expect(getByTestId(`mcp-tool-row-${testId}-input`)).toHaveValue(text);
+			},
+		);
+
+		it('keeps the name that the builder types while "Generate" writes the description', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()]));
+			const call = deferred<unknown>();
+			api.draftTool.mockReturnValue(call.promise);
+			const { findByTestId, getByTestId } = render();
+
+			await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+			await userEvent.click(getByTestId('mcp-tool-row-generate-description'));
+			const name = getByTestId('mcp-tool-row-name-input');
+			await userEvent.clear(name);
+			await userEvent.type(name, 'get_kpis');
+			call.resolve({
+				status: 'drafted',
+				tool: tool({ description: 'Returns the KPIs.', draftSource: 'ai' }),
+			});
+
+			await waitFor(() =>
+				expect(getByTestId('mcp-tool-row-description-input')).toHaveValue('Returns the KPIs.'),
+			);
+			expect(name).toHaveValue('get_kpis');
+		});
+
+		it('hides the "Generate" buttons without the Assistant', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool()], false));
+			const { findByTestId, getByTestId, queryByTestId } = render();
+
+			await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+
+			expect(getByTestId('mcp-tool-row-name-input')).toBeInTheDocument();
+			expect(queryByTestId('mcp-tool-row-generate-name')).not.toBeInTheDocument();
+			expect(queryByTestId('mcp-tool-row-generate-description')).not.toBeInTheDocument();
+		});
+
+		it('hides the "Generate" buttons on a broken tool', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool({ brokenReason: 'not_published' })]));
+			const { findByTestId, getByTestId, queryByTestId } = render();
+
+			await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+
+			expect(getByTestId('mcp-tool-row-name-input')).toBeInTheDocument();
+			expect(queryByTestId('mcp-tool-row-generate-name')).not.toBeInTheDocument();
+			expect(queryByTestId('mcp-tool-row-generate-description')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('a project viewer', () => {
 		it('sees the tools, but not the add, edit, and remove controls', async () => {
 			permissions.canUpdate = false;
@@ -413,6 +639,8 @@ describe('McpServerContentsTab', () => {
 			expect(queryByTestId('mcp-tool-row-menu')).not.toBeInTheDocument();
 			expect(queryByTestId('mcp-tool-row-name-input')).not.toBeInTheDocument();
 			expect(queryByTestId('mcp-tool-row-description-input')).not.toBeInTheDocument();
+			expect(queryByTestId('mcp-tool-row-generate-name')).not.toBeInTheDocument();
+			expect(queryByTestId('mcp-tool-row-generate-description')).not.toBeInTheDocument();
 		});
 	});
 

@@ -143,6 +143,7 @@ export const API_KEY_RESOURCES = {
 		'publish',
 		'unpublish',
 		'delete',
+		'execute',
 	] as const,
 	aiPreference: ['read', 'list', 'create', 'update', 'delete'] as const,
 	skill: ['create', 'update'] as const,

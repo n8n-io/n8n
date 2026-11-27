@@ -69,6 +69,7 @@ describe('WorkflowToolAdapter', () => {
 			name: 'Get pipeline summary',
 			description: null,
 			inputSchema: { type: 'object' as const, additionalProperties: true },
+			nodeNames: ['When Executed by Another Workflow'],
 		};
 		runner.describe.mockResolvedValue(description);
 

@@ -2,18 +2,15 @@
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { AgentChatListItem } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { AGENT_N8N_CHAT_VIEW } from '../../constants';
 import { useAgentTelemetry, type N8nChatAgentSource } from '../../composables/useAgentTelemetry';
 import AgentPersonalisationIcon from '../../components/AgentPersonalisationIcon.vue';
-import { useN8nAssistantIdentity } from '../composables/useN8nAssistantIdentity';
 
 const props = defineProps<{
-	/** `null` renders the n8n Assistant, which links back to the Assistant page. */
-	agent: AgentChatListItem | null;
+	agent: AgentChatListItem;
 	/** Where the card was shown, for the selection telemetry event. */
 	source: N8nChatAgentSource;
 }>();
@@ -23,23 +20,14 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const assistant = useN8nAssistantIdentity();
 const agentTelemetry = useAgentTelemetry();
 
-const to = computed(() =>
-	props.agent
-		? { name: AGENT_N8N_CHAT_VIEW, params: { agentId: props.agent.id } }
-		: { name: INSTANCE_AI_VIEW },
-);
+const to = computed(() => ({ name: AGENT_N8N_CHAT_VIEW, params: { agentId: props.agent.id } }));
 // An agent the user owns that is not in n8n Chat yet: no link, only the "Make available" action.
-const isUnavailable = computed(() => props.agent !== null && !props.agent.availableInChat);
-const name = computed(() => props.agent?.name ?? assistant.name.value);
-const description = computed(() =>
-	props.agent ? props.agent.description : assistant.description.value,
-);
+const isUnavailable = computed(() => !props.agent.availableInChat);
 
 function onClick(): void {
-	if (!props.agent || isUnavailable.value) return;
+	if (isUnavailable.value) return;
 	agentTelemetry.trackSelectedN8nChatAgent({ agentId: props.agent.id, source: props.source });
 }
 </script>
@@ -54,31 +42,27 @@ function onClick(): void {
 	>
 		<div :class="$style.main">
 			<AgentPersonalisationIcon
-				v-if="agent"
 				:personalisation="agent.personalisation"
 				:size="40"
 				:class="$style.muted"
 			/>
-			<span v-else :class="$style.assistantIcon">
-				<N8nIcon icon="n8n-assistant" :size="24" />
-			</span>
 			<div :class="[$style.content, $style.muted]">
 				<N8nText bold :class="$style.title" data-test-id="n8n-chat-agent-card-name">
-					{{ name }}
+					{{ agent.name }}
 				</N8nText>
 				<N8nText
-					v-if="description"
+					v-if="agent.description"
 					size="small"
 					color="text-light"
 					:class="$style.description"
 					data-test-id="n8n-chat-agent-card-description"
 				>
-					{{ description }}
+					{{ agent.description }}
 				</N8nText>
 			</div>
 		</div>
 		<N8nButton
-			v-if="isUnavailable && agent"
+			v-if="isUnavailable"
 			variant="ghost"
 			size="small"
 			:class="$style.makeAvailable"
@@ -118,16 +102,6 @@ function onClick(): void {
 	align-items: center;
 	gap: var(--spacing--sm);
 	width: 100%;
-}
-
-// Matches the size of an agent icon tile, so the names line up.
-.assistantIcon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-	width: 40px;
-	height: 40px;
 }
 
 .unavailable {

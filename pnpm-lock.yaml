@@ -1159,6 +1159,7 @@ overrides:
   '@langchain/langgraph-checkpoint': 1.1.6
 
 patchedDependencies:
+  '@chat-adapter/slack@4.39.0': e84522568840661c950855d13926184bc980f9aafb088d3900624e88b660e5b5
   '@chat-adapter/teams@4.39.0': aae12484e0d48fa7c4ebc9bd6db97f17587ae4c458dd6b186fdf748cad60a9af
   '@chat-adapter/whatsapp@4.39.0': bdf07d60cf43691d7f5bff5111d1205d36f62849bea742680713771330455cc7
   '@confluentinc/kafka-javascript@1.9.1': c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003
@@ -5160,7 +5161,7 @@ importers:
         version: 4.39.0(ai@7.0.150(zod@3.25.76))(graphql@16.11.0)(supports-color@8.1.1)(zod@3.25.76)
       '@chat-adapter/slack':
         specifier: 'catalog:'
-        version: 4.39.0(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)
+        version: 4.39.0(patch_hash=e84522568840661c950855d13926184bc980f9aafb088d3900624e88b660e5b5)(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)
       '@chat-adapter/state-memory':
         specifier: 'catalog:'
         version: 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
@@ -8933,12 +8934,27 @@ importers:
 
   packages/modules/mcp-servers/backend:
     dependencies:
+      '@modelcontextprotocol/node':
+        specifier: 'catalog:'
+        version: 2.1.0(@modelcontextprotocol/server@2.3.0)(hono@4.13.11)
+      '@modelcontextprotocol/server':
+        specifier: 'catalog:'
+        version: 2.3.0
+      '@n8n/ai-utilities':
+        specifier: workspace:*
+        version: link:../../../@n8n/ai-utilities
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-common
       '@n8n/backend-services':
         specifier: workspace:*
         version: link:../../../@n8n/backend-services
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../../../@n8n/config
       '@n8n/db':
         specifier: workspace:*
         version: link:../../../@n8n/db
@@ -8951,9 +8967,18 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../../../@n8n/errors
+      '@n8n/inbound-auth':
+        specifier: workspace:*
+        version: link:../../../@n8n/inbound-auth
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../../../@n8n/permissions
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
       uuid:
         specifier: 'catalog:'
         version: 11.1.1
@@ -8967,6 +8992,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.1
       oxlint:
         specifier: 'catalog:'
         version: 1.93.0(oxlint-tsgolint@7.0.2007)
@@ -30993,7 +31021,7 @@ snapshots:
       - workflow
       - zod
 
-  '@chat-adapter/slack@4.39.0(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)':
+  '@chat-adapter/slack@4.39.0(patch_hash=e84522568840661c950855d13926184bc980f9aafb088d3900624e88b660e5b5)(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)':
     dependencies:
       '@chat-adapter/shared': 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@slack/socket-mode': 2.0.7(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)

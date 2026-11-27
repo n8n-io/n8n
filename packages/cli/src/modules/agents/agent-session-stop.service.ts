@@ -67,6 +67,25 @@ export class AgentSessionStopService {
 		return { cancelRequested: true };
 	}
 
+	/**
+	 * Abort one execution. A controller on this process stops immediately.
+	 * In queue mode the same command reaches the main that holds the run.
+	 * Returns false when this process has no controller and no other main can.
+	 */
+	async abortExecution(agentId: string, threadId: string, executionId: string): Promise<boolean> {
+		if (this.executionService.stopExecution(executionId)) {
+			this.chatExecutionService.stopSessionExecutions(agentId, threadId, [executionId]);
+			return true;
+		}
+		if (this.executionsConfig.mode !== 'queue') return false;
+
+		await this.publisher.publishCommand({
+			command: 'stop-agent-session',
+			payload: { agentId, threadId, executionIds: [executionId] },
+		});
+		return true;
+	}
+
 	/** Internal cleanup includes system and delegated sessions in this project. */
 	async stopProjectSessions(projectId: string): Promise<void> {
 		for (const thread of await this.threads.findMemoryThreadsForProject(projectId)) {

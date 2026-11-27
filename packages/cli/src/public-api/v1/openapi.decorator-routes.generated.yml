@@ -24,6 +24,15 @@ paths:
   /agents/{agentId}/versions/{versionId}:
     get:
       $ref: ./handlers/agents/spec/paths/getAgentVersion.generated.yml
+  /agents/{agentId}/run:
+    post:
+      $ref: ./handlers/agents/spec/paths/runAgent.generated.yml
+  /agents/{agentId}/executions/{executionId}/stop:
+    post:
+      $ref: ./handlers/agents/spec/paths/stopAgentExecution.generated.yml
+  /agents/{agentId}/executions:
+    get:
+      $ref: ./handlers/agents/spec/paths/listAgentExecutions.generated.yml
   /agents/{agentId}/publish:
     post:
       $ref: ./handlers/agents/spec/paths/publishAgent.generated.yml

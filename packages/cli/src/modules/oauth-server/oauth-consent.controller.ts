@@ -41,6 +41,7 @@ export class OAuthConsentController {
 						res,
 						403,
 						'You do not have sufficient permissions to authorize this request',
+						consentDetails.refusal && { refusal: consentDetails.refusal },
 					);
 				} else {
 					this.sendErrorResponse(res, 422, 'Authorization target is no longer available');
@@ -123,10 +124,16 @@ export class OAuthConsentController {
 		}
 	}
 
-	private sendErrorResponse(res: Response, statusCode: number, message: string): void {
+	private sendErrorResponse(
+		res: Response,
+		statusCode: number,
+		message: string,
+		meta?: Record<string, unknown>,
+	): void {
 		res.status(statusCode).json({
 			status: 'error',
 			message,
+			...(meta && { meta }),
 		});
 	}
 
