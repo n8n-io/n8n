@@ -217,10 +217,13 @@ export async function execute(
 
 		queries.push({ query, values });
 	} else {
+		let firstTable: string | undefined;
 		for (let i = 0; i < items.length; i++) {
 			try {
-				// Without a Database expression, index 0 is read, for compatibility with saved workflows.
-				const itemTable = getTableName(this, databasePerItem ? i : 0);
+				// Without a Database expression, index 0 is read once, for compatibility with saved workflows.
+				const itemTable = databasePerItem
+					? getTableName(this, i)
+					: (firstTable ??= getTableName(this, 0));
 				let columns: string[] = [];
 				let insertItem: IDataObject = {};
 

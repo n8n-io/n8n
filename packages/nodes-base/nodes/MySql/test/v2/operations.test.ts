@@ -1785,6 +1785,25 @@ describe('Test MySql V2, operations', () => {
 				},
 			);
 
+			it('should resolve the table once when the database is not an expression', async () => {
+				const nodeParameters = insertParameters('independently');
+				const runQueries = vi.fn(async () => []);
+				let reads = 0;
+
+				await insert.execute.call(
+					createPerItemContext(nodeParameters, 'table', () => `table_${reads++}`),
+					items,
+					runQueries,
+					nodeParameters.options as IDataObject,
+				);
+
+				expect(queriesOf(runQueries)).toEqual([
+					'INSERT   INTO `table_0` (`id`) VALUES (?);',
+					'INSERT   INTO `table_0` (`id`) VALUES (?);',
+					'INSERT   INTO `table_0` (`id`) VALUES (?);',
+				]);
+			});
+
 			it('should keep the table of the first item when the database is empty', async () => {
 				const nodeParameters = insertParameters('independently');
 				const runQueries = vi.fn(async () => []);
