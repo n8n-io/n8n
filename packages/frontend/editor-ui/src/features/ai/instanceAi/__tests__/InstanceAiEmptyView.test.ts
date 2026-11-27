@@ -22,11 +22,24 @@ import { useAssistantCreditsStore } from '../assistantCredits.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT } from '@/app/constants/experiments';
-import { INSTANCE_AI_THREAD_VIEW } from '../constants';
+import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { consumePendingN8nChatMessage } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import { defaultModuleSettings } from './createThreadComponentRenderer';
+import { useUsersStore } from '@n8n/stores/users.store';
+import {
+	claimOnboardingBuild,
+	reserveOnboardingBuildSend,
+} from '@/features/ai/instanceAi/onboardingBuild';
+import * as availability from '../composables/useInstanceAiAvailability';
+
+vi.mock('@/features/ai/instanceAi/onboardingBuild', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/ai/instanceAi/onboardingBuild')>()),
+	claimOnboardingBuild: vi.fn(),
+	reserveOnboardingBuildSend: vi.fn(),
+}));
+const buildRoute = { hash: '', name: INSTANCE_AI_VIEW as string };
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
 
@@ -253,7 +266,11 @@ vi.mock('@n8n/stores/settings.store', () => ({
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ pushRef: 'test-push-ref' }),
+	useRootStore: () => ({
+		instanceId: 'test-instance',
+		pushRef: 'test-push-ref',
+		restApiContext: { baseUrl: '/rest' },
+	}),
 }));
 
 vi.mock('@/features/agents/composables/useAgentsN8nChatFlag', () => ({
@@ -321,13 +338,23 @@ vi.mock('@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMention
 	useIsAssistantAtMentionsEnabled: () => computed(() => mentionsFlagEnabled.value),
 }));
 
-vi.mock('uuid', () => ({
+vi.mock('uuid', async (importOriginal) => ({
+	...(await importOriginal<typeof import('uuid')>()),
 	v4: () => 'thread-placeholder',
 }));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
-	useRoute: () => ({ query: routeQuery, params: {} }),
+	useRoute: () => ({
+		query: routeQuery,
+		params: {},
+		get name() {
+			return buildRoute.name;
+		},
+		get hash() {
+			return buildRoute.hash;
+		},
+	}),
 	useRouter: () => ({ push: pushMock, replace: replaceMock }),
 }));
 
@@ -623,6 +650,8 @@ describe('InstanceAiEmptyView', () => {
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
+		buildRoute.hash = '';
+		buildRoute.name = INSTANCE_AI_VIEW;
 		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		agentsN8nChatVariant.value = undefined;
 		vi.stubGlobal('localStorage', {
@@ -682,6 +711,223 @@ describe('InstanceAiEmptyView', () => {
 		vi.useRealTimers();
 		vi.clearAllMocks();
 		vi.unstubAllGlobals();
+	});
+
+	describe('approved Cloud onboarding build', () => {
+		const id = '20000000-0000-4000-8000-000000000000';
+		const prompt = 'When a lead emails me, add a row to Google Sheets.';
+		beforeEach(() => {
+			buildRoute.hash = `#onboardingBuild=${id}`;
+			appSettingsStoreMock.isCloudDeployment = true;
+			const users = mockedStore(useUsersStore);
+			users.currentUserId = 'owner';
+			users.isInstanceOwner = true;
+			sessionStorage.clear();
+			vi.mocked(claimOnboardingBuild).mockResolvedValue({ prompt });
+			vi.mocked(reserveOnboardingBuildSend).mockResolvedValue(true);
+			vi.spyOn(availability, 'useInstanceAiReady').mockReturnValue(computed(() => true));
+		});
+
+		it.each([
+			['onboardingDraft', undefined],
+			['onboardingDraft', 'draft'],
+			['onboardingBuild', 'draft'],
+		] as const)('fills the composer for %s and %s and waits for Send', async (link, intent) => {
+			buildRoute.hash = `#${link}=${id}`;
+			vi.mocked(claimOnboardingBuild).mockResolvedValue({ prompt, intent });
+			const { getByRole, getByTestId } = renderView({
+				global: { stubs: { InstanceAiInput: false } },
+			});
+			await flushPromises();
+			const composer = getByRole('textbox');
+			expect(composer).toHaveValue(prompt);
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+			expect(reserveOnboardingBuildSend).not.toHaveBeenCalled();
+			const edited = `${prompt} Only include qualified leads.`;
+			await fireEvent.update(composer, edited);
+			await fireEvent.click(getByTestId('instance-ai-send-button'));
+			await flushPromises();
+			expect(thread.sendMessage).toHaveBeenCalledExactlyOnceWith(
+				edited,
+				expect.objectContaining({
+					authorship: {
+						kind: 'prefill',
+						prefillType: 'cloud_onboarding_draft',
+						promptModified: true,
+					},
+				}),
+			);
+		});
+
+		it('restores edits after a verified refresh, and only sends when the user clicks', async () => {
+			buildRoute.hash = '';
+			window.history.replaceState({ cloudOnboardingBuild: `#onboardingDraft=${id}` }, '');
+			try {
+				const options = { global: { stubs: { InstanceAiInput: false } } };
+				const first = renderView(options);
+				await flushPromises();
+				expect(JSON.stringify(sessionStorage)).not.toContain(prompt);
+				const edited = 'Save important leads from my inbox.';
+				await fireEvent.update(first.getByRole('textbox'), edited);
+				first.unmount();
+				const next = renderView(options);
+				await flushPromises();
+				expect(claimOnboardingBuild).toHaveBeenCalledTimes(2);
+				expect(next.getByRole('textbox')).toHaveValue(edited);
+				expect(thread.sendMessage).not.toHaveBeenCalled();
+				await fireEvent.click(next.getByTestId('instance-ai-send-button'));
+				await flushPromises();
+				expect(thread.sendMessage).toHaveBeenCalledExactlyOnceWith(
+					edited,
+					expect.objectContaining({
+						authorship: {
+							kind: 'prefill',
+							prefillType: 'cloud_onboarding_draft',
+							promptModified: true,
+						},
+					}),
+				);
+				buildRoute.name = INSTANCE_AI_THREAD_VIEW;
+				next.unmount();
+				expect(JSON.stringify(sessionStorage)).not.toContain(edited);
+			} finally {
+				window.history.replaceState(null, '');
+			}
+		});
+
+		it('does not load saved text into an ordinary new chat or after leaving for the workspace', async () => {
+			const hash = `#onboardingDraft=${id}`;
+			window.history.replaceState({ cloudOnboardingBuild: hash }, '');
+			buildRoute.hash = '';
+			try {
+				const options = { global: { stubs: { InstanceAiInput: false } } };
+				const first = renderView(options);
+				await flushPromises();
+				const edited = 'Only email me on Mondays.';
+				await fireEvent.update(first.getByRole('textbox'), edited);
+				first.unmount();
+				window.history.replaceState(null, '');
+				const normal = renderView(options);
+				await flushPromises();
+				expect(normal.getByRole('textbox')).toHaveValue('');
+				expect(claimOnboardingBuild).toHaveBeenCalledTimes(1);
+				normal.unmount();
+				window.history.replaceState({ cloudOnboardingBuild: hash }, '');
+				const restored = renderView(options);
+				await flushPromises();
+				expect(restored.getByRole('textbox')).toHaveValue(edited);
+				buildRoute.name = 'Workflows';
+				restored.unmount();
+				expect(JSON.stringify(sessionStorage)).not.toContain(edited);
+				expect(window.history.state.cloudOnboardingBuild).toBeNull();
+			} finally {
+				window.history.replaceState(null, '');
+			}
+		});
+
+		it('restores an untouched draft on refresh and forgets it when the user clears the composer', async () => {
+			buildRoute.hash = '';
+			window.history.replaceState({ cloudOnboardingBuild: `#onboardingDraft=${id}` }, '');
+			try {
+				const { getByRole, unmount } = renderView({
+					global: { stubs: { InstanceAiInput: false } },
+				});
+				await flushPromises();
+				expect(getByRole('textbox')).toHaveValue(prompt);
+				await fireEvent.update(getByRole('textbox'), '');
+				await flushPromises();
+				expect(window.history.state.cloudOnboardingBuild).toBeNull();
+				unmount();
+				expect(thread.sendMessage).not.toHaveBeenCalled();
+				const next = renderView({ global: { stubs: { InstanceAiInput: false } } });
+				await flushPromises();
+				expect(next.getByRole('textbox')).toHaveValue('');
+				expect(claimOnboardingBuild).toHaveBeenCalledTimes(1);
+			} finally {
+				window.history.replaceState(null, '');
+			}
+		});
+
+		it('uses the real composer to send exactly the claimed text as the first turn', async () => {
+			renderView({ global: { stubs: { InstanceAiInput: false } } });
+			await flushPromises();
+			expect(claimOnboardingBuild).toHaveBeenCalledWith('/rest', id);
+			expect(thread.sendMessage).toHaveBeenCalledExactlyOnceWith(
+				prompt,
+				expect.objectContaining({
+					authorship: expect.objectContaining({
+						kind: 'prefill',
+						prefillType: 'cloud_onboarding_build',
+					}),
+				}),
+			);
+			expect(replaceMock).toHaveBeenLastCalledWith({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: 'thread-placeholder' },
+			});
+		});
+
+		it('hands the approved first message to the Assistant agent thread on its rollout', async () => {
+			useSettingsStore().moduleSettings = {
+				'instance-ai': { ...defaultModuleSettings, assistantAgentEnabled: true },
+			};
+			vi.mocked(usePostHog().isFeatureEnabled).mockImplementation(
+				(flag) => flag === INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name,
+			);
+			renderView({ global: { stubs: { InstanceAiInput: false } } });
+			await flushPromises();
+			expect(pushMock).toHaveBeenCalledWith({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: 'thread-placeholder' },
+			});
+			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toMatchObject({
+				text: prompt,
+				authorship: { kind: 'prefill', prefillType: 'cloud_onboarding_build' },
+			});
+			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+		});
+
+		it.each(['not-ready', 'already-attempted', 'admission-refused'])(
+			'preserves a draft for %s',
+			async (mode) => {
+				if (mode === 'not-ready')
+					vi.spyOn(availability, 'useInstanceAiReady').mockReturnValue(computed(() => false));
+				if (mode === 'already-attempted')
+					vi.mocked(reserveOnboardingBuildSend).mockResolvedValue(false);
+				if (mode === 'admission-refused') vi.mocked(thread.sendMessage).mockResolvedValue(false);
+				const { getByRole } = renderView({ global: { stubs: { InstanceAiInput: false } } });
+				await flushPromises();
+				expect(thread.sendMessage).toHaveBeenCalledTimes(mode === 'admission-refused' ? 1 : 0);
+				expect(getByRole('textbox')).toHaveValue(prompt);
+			},
+		);
+
+		it('does not deliver a delayed claim after leaving the assistant', async () => {
+			const claim = Promise.withResolvers<{ prompt: string }>();
+			vi.mocked(claimOnboardingBuild).mockReturnValue(claim.promise);
+			const { unmount } = renderView();
+			unmount();
+			claim.resolve({ prompt });
+			await flushPromises();
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+			expect(reserveOnboardingBuildSend).not.toHaveBeenCalled();
+		});
+
+		it.each(['self-hosted', 'member', 'different-recipient', 'arbitrary-prompt'])(
+			'ignores a handoff with an ineligible context: %s',
+			async (context) => {
+				if (context === 'self-hosted') appSettingsStoreMock.isCloudDeployment = false;
+				if (context === 'member') mockedStore(useUsersStore).isInstanceOwner = false;
+				if (context === 'different-recipient') routeQuery.pendingAppId = 'a-different-app';
+				if (context === 'arbitrary-prompt') buildRoute.hash = '#onboardingBuild=Build%20this';
+				renderView();
+				await flushPromises();
+				expect(claimOnboardingBuild).not.toHaveBeenCalled();
+				expect(thread.sendMessage).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	it('resets the browser tab title left behind by the previous thread', () => {
