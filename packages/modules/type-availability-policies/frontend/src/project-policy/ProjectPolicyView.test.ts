@@ -20,7 +20,7 @@ const {
 	push,
 	replace,
 	fetchProjectPolicies,
-	fetchProjectPolicyState,
+	fetchProjectPolicyByKind,
 	deleteProjectPolicy,
 	confirm,
 	showMessage,
@@ -29,7 +29,7 @@ const {
 	push: vi.fn(),
 	replace: vi.fn(),
 	fetchProjectPolicies: vi.fn(),
-	fetchProjectPolicyState: vi.fn(),
+	fetchProjectPolicyByKind: vi.fn(),
 	deleteProjectPolicy: vi.fn(),
 	confirm: vi.fn(),
 	showMessage: vi.fn(),
@@ -45,7 +45,7 @@ vi.mock('vue-router', () => ({
 
 vi.mock('../type-availability-policies.api', () => ({
 	fetchProjectPolicies,
-	fetchProjectPolicyState,
+	fetchProjectPolicyByKind,
 	deleteProjectPolicy,
 }));
 
@@ -59,7 +59,25 @@ vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showMessage, sh
 const renderView = createComponentRenderer(ProjectPolicyView);
 
 const VERSIONS = { nodeTypesVersion: 3, credentialTypesVersion: 0 };
-const STATE = { versions: VERSIONS, ruleCount: 7 };
+
+/** The node policy holds all the rules; the count is what the dialog reports. */
+function policiesWith(versions: typeof VERSIONS, ruleCount: number) {
+	return {
+		node: {
+			scopeId: 'node-scope',
+			defaultAction: 'allow',
+			version: versions.nodeTypesVersion,
+			rules: Array.from({ length: ruleCount }, (_, i) => ({ id: `r${i}` })),
+		},
+		credential: {
+			scopeId: null,
+			defaultAction: 'allow',
+			version: versions.credentialTypesVersion,
+			rules: [],
+		},
+	};
+}
+const POLICIES = policiesWith(VERSIONS, 7);
 
 function renderWithScopes(
 	scopes: Array<'nodeTypePolicy:manage' | 'credentialTypePolicy:manage'> = [
@@ -109,7 +127,7 @@ describe('ProjectPolicyView', () => {
 				mockProjectPolicy({ projectId: 'security', name: 'Security Engineering', hasPolicy: true }),
 			],
 		});
-		fetchProjectPolicyState.mockResolvedValue(STATE);
+		fetchProjectPolicyByKind.mockResolvedValue(POLICIES);
 		deleteProjectPolicy.mockResolvedValue(undefined);
 	});
 
@@ -134,7 +152,7 @@ describe('ProjectPolicyView', () => {
 
 			expect(replace).toHaveBeenCalledWith({ name: INSTANCE_POLICY_VIEW });
 			expect(fetchProjectPolicies).not.toHaveBeenCalled();
-			expect(fetchProjectPolicyState).not.toHaveBeenCalled();
+			expect(fetchProjectPolicyByKind).not.toHaveBeenCalled();
 			expect(queryByRole('button', { name: 'Policy actions' })).not.toBeInTheDocument();
 		},
 	);
@@ -167,7 +185,7 @@ describe('ProjectPolicyView', () => {
 
 		it('keeps the action off and says why when the versions cannot be read', async () => {
 			const error = new Error('offline');
-			fetchProjectPolicyState.mockRejectedValue(error);
+			fetchProjectPolicyByKind.mockRejectedValue(error);
 			const view = renderWithScopes();
 
 			await waitFor(() =>
@@ -197,7 +215,7 @@ describe('ProjectPolicyView', () => {
 				"Security Engineering follows the instance policy again: its 1 restriction is lifted. This can't be undone.",
 			],
 		])('says how many restrictions a policy with %i rules lifts', async (ruleCount, text) => {
-			fetchProjectPolicyState.mockResolvedValue({ versions: VERSIONS, ruleCount });
+			fetchProjectPolicyByKind.mockResolvedValue(policiesWith(VERSIONS, ruleCount));
 
 			await confirmDelete(renderWithScopes(), 'cancel');
 
@@ -244,9 +262,9 @@ describe('ProjectPolicyView', () => {
 
 		it('reads the policy again and sends the new versions when another admin changed it', async () => {
 			const newVersions = { nodeTypesVersion: 4, credentialTypesVersion: 0 };
-			fetchProjectPolicyState
-				.mockResolvedValueOnce(STATE)
-				.mockResolvedValue({ versions: newVersions, ruleCount: 7 });
+			fetchProjectPolicyByKind
+				.mockResolvedValueOnce(POLICIES)
+				.mockResolvedValue(policiesWith(newVersions, 7));
 			deleteProjectPolicy.mockRejectedValueOnce(
 				new ResponseError('The node types policy scope has changed', { httpStatusCode: 409 }),
 			);
@@ -261,7 +279,7 @@ describe('ProjectPolicyView', () => {
 			expect(fetchProjectPolicies).toHaveBeenCalledTimes(2);
 			expect(push).not.toHaveBeenCalled();
 
-			await waitFor(() => expect(fetchProjectPolicyState).toHaveBeenCalledTimes(2));
+			await waitFor(() => expect(fetchProjectPolicyByKind).toHaveBeenCalledTimes(2));
 			await confirmDelete(view);
 
 			await waitFor(() =>
@@ -274,7 +292,9 @@ describe('ProjectPolicyView', () => {
 		});
 
 		it('keeps the action off when the read after a change fails', async () => {
-			fetchProjectPolicyState.mockResolvedValueOnce(STATE).mockRejectedValue(new Error('offline'));
+			fetchProjectPolicyByKind
+				.mockResolvedValueOnce(POLICIES)
+				.mockRejectedValue(new Error('offline'));
 			deleteProjectPolicy.mockRejectedValue(
 				new ResponseError('The node types policy scope has changed', { httpStatusCode: 409 }),
 			);
@@ -304,7 +324,7 @@ describe('ProjectPolicyView', () => {
 				}),
 			);
 			expect(fetchProjectPolicies).toHaveBeenCalledTimes(1);
-			expect(fetchProjectPolicyState).toHaveBeenCalledTimes(1);
+			expect(fetchProjectPolicyByKind).toHaveBeenCalledTimes(1);
 		});
 
 		it('opens the landing page when another admin already deleted the policy', async () => {
@@ -318,7 +338,7 @@ describe('ProjectPolicyView', () => {
 				expect.objectContaining({ type: 'warning', title: 'The project has no policy' }),
 			);
 			expect(fetchProjectPolicies).toHaveBeenCalledTimes(1);
-			expect(fetchProjectPolicyState).toHaveBeenCalledTimes(1);
+			expect(fetchProjectPolicyByKind).toHaveBeenCalledTimes(1);
 		});
 
 		it('stays where the admin went when the policy was already deleted', async () => {

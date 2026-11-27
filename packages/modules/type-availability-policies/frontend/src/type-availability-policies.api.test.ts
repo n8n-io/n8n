@@ -11,7 +11,7 @@ import {
 	fetchNodeTypeSummaries,
 	fetchNodeTypeUsage,
 	fetchProjectPolicies,
-	fetchProjectPolicyState,
+	fetchProjectPolicyByKind,
 	saveInstancePolicy,
 } from './type-availability-policies.api';
 
@@ -79,23 +79,23 @@ describe('project policy requests', () => {
 		});
 	});
 
-	it('reads the version of each kind and counts the rules of both kinds', async () => {
-		makeRestApiRequest
-			.mockResolvedValueOnce({ version: 4, rules: [{ id: 'r1' }, { id: 'r2' }] })
-			.mockResolvedValueOnce({ version: 0, rules: [{ id: 'r3' }] });
+	it('reads both kinds of a project policy', async () => {
+		const node = { scopeId: 'n', rules: [], defaultAction: 'allow', version: 4 };
+		const credential = { scopeId: 'c', rules: [], defaultAction: 'allow', version: 0 };
+		makeRestApiRequest.mockResolvedValueOnce(node).mockResolvedValueOnce(credential);
 
-		const state = await fetchProjectPolicyState(context, 'project-1');
-
-		expect(state).toEqual({
-			versions: { nodeTypesVersion: 4, credentialTypesVersion: 0 },
-			ruleCount: 3,
+		await expect(fetchProjectPolicyByKind(context, 'project-1')).resolves.toEqual({
+			node,
+			credential,
 		});
-		expect(makeRestApiRequest).toHaveBeenCalledWith(
+		expect(makeRestApiRequest).toHaveBeenNthCalledWith(
+			1,
 			context,
 			'GET',
 			'/projects/project-1/node-type-policies/project',
 		);
-		expect(makeRestApiRequest).toHaveBeenCalledWith(
+		expect(makeRestApiRequest).toHaveBeenNthCalledWith(
+			2,
 			context,
 			'GET',
 			'/projects/project-1/credential-type-policies/project',

@@ -89,30 +89,41 @@ export async function createProjectPolicy(
 	return await makeRestApiRequest(context, 'POST', '/project-policies', { projectId });
 }
 
-export type ProjectPolicyVersions = DeleteProjectPolicyQueryDto;
+/** The composed policy of one kind in a project. It has the shape of the instance policy. */
+export type ProjectPolicy<K extends RestrictedTypeKind> = InstancePolicyByKind[K];
 
-/** What a delete needs: the version of each kind, and how many rules the delete lifts. */
-export type ProjectPolicyState = {
-	versions: ProjectPolicyVersions;
-	ruleCount: number;
-};
+export type ProjectPolicyByKind = { [K in RestrictedTypeKind]: ProjectPolicy<K> };
 
-export async function fetchProjectPolicyState(
+const PROJECT_POLICY_RESOURCE = {
+	node: 'node-type-policies',
+	credential: 'credential-type-policies',
+} as const satisfies Record<RestrictedTypeKind, string>;
+
+export async function fetchProjectPolicy<K extends RestrictedTypeKind>(
 	context: IRestApiContext,
 	projectId: string,
-): Promise<ProjectPolicyState> {
-	const read = async (kind: RestrictedTypeKind): Promise<{ version: number; rules: unknown[] }> =>
-		await makeRestApiRequest(
-			context,
-			'GET',
-			`/projects/${projectId}/${kind}-type-policies/project`,
-		);
-	const [node, credential] = await Promise.all([read('node'), read('credential')]);
-	return {
-		versions: { nodeTypesVersion: node.version, credentialTypesVersion: credential.version },
-		ruleCount: node.rules.length + credential.rules.length,
-	};
+	kind: K,
+): Promise<ProjectPolicy<K>> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${projectId}/${PROJECT_POLICY_RESOURCE[kind]}/project`,
+	);
 }
+
+/** A project policy always covers both kinds, so a page reads them together. */
+export async function fetchProjectPolicyByKind(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ProjectPolicyByKind> {
+	const [node, credential] = await Promise.all([
+		fetchProjectPolicy(context, projectId, 'node'),
+		fetchProjectPolicy(context, projectId, 'credential'),
+	]);
+	return { node, credential };
+}
+
+export type ProjectPolicyVersions = DeleteProjectPolicyQueryDto;
 
 /**
  * Fails with 409 when either kind changed since `versions` was read, and with 404 when the
