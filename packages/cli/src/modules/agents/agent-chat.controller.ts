@@ -43,7 +43,11 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import { threadReaderFromRequest } from './agent-thread-redaction.service';
+import {
+	isRedactedThreadFile,
+	threadReaderFromRequest,
+	type ThreadReader,
+} from './agent-thread-redaction.service';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
 import { AgentChatRelayService } from './agent-chat-relay.service';
@@ -102,6 +106,40 @@ export class AgentChatController {
 		if (!(await this.agentsService.isN8nChatPublished(agentId, projectId))) {
 			throw new NotFoundError('Agent is not available in n8n Chat');
 		}
+	}
+
+	/** Leave out the files that are hidden from the reader, see {@link isRedactedThreadFile}. */
+	private async filterThreadFiles<T extends { source: string; createdAt: Date | string }>(
+		files: T[],
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		reader: ThreadReader,
+	): Promise<T[]> {
+		const redactionStart = await this.agentExecutionService.findRedactionStart(
+			threadId,
+			projectId,
+			agentId,
+			reader,
+		);
+		return files.filter((file) => !isRedactedThreadFile(file, redactionStart));
+	}
+
+	/** A file that is hidden from the reader is not found, the same as a file of another thread. */
+	private async assertThreadFileReadable(
+		attachment: { id: string; threadId: string; source: string; createdAt: Date },
+		projectId: string,
+		agentId: string,
+		reader: ThreadReader,
+	): Promise<void> {
+		const [file] = await this.filterThreadFiles(
+			[attachment],
+			attachment.threadId,
+			projectId,
+			agentId,
+			reader,
+		);
+		if (!file) throw new NotFoundError(`Attachment "${attachment.id}" not found`);
 	}
 
 	private async requireProductionThread(
@@ -507,6 +545,7 @@ export class AgentChatController {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
 		await this.requireProductionThread(attachment.threadId, projectId, agentId, req.user.id);
+		await this.assertThreadFileReadable(attachment, projectId, agentId, threadReaderFromRequest(req));
 		await this.chatRelay.streamAttachment(attachment, res);
 	}
 
@@ -523,7 +562,15 @@ export class AgentChatController {
 		if (!(await this.agentExecutionService.findThreadById(threadId))) return { files: [] };
 		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
 		const files = await this.agentChatAttachmentService.listForSession({ projectId, threadId });
-		return { files };
+		return {
+			files: await this.filterThreadFiles(
+				files,
+				threadId,
+				projectId,
+				agentId,
+				threadReaderFromRequest(req),
+			),
+		};
 	}
 
 	// Same reasoning as `getProductionChatMessages`: `messageQueue.listPending`
@@ -831,8 +878,18 @@ export class AgentChatController {
 		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId, {
 			includePaused: true,
 		});
+		const redactionStart = await this.agentExecutionService.findRedactionStart(
+			threadId,
+			projectId,
+			agentId,
+			threadReaderFromRequest(req),
+		);
 
-		return this.mapBackgroundJobsToDto(jobs);
+		return this.mapBackgroundJobsToDto(
+			redactionStart
+				? jobs.map((job) => withoutJobContentFrom(job, redactionStart.startedAt))
+				: jobs,
+		);
 	}
 
 	private mapBackgroundJobsToDto(
@@ -1173,7 +1230,15 @@ export class AgentChatController {
 			{ projectId, threadId },
 			N8N_CHAT_PRODUCTION_SOURCE,
 		);
-		return { files };
+		return {
+			files: await this.filterThreadFiles(
+				files,
+				threadId,
+				projectId,
+				agentId,
+				threadReaderFromRequest(req),
+			),
+		};
 	}
 
 	@Get('/:agentId/chat/attachments/:attachmentId')
@@ -1201,6 +1266,12 @@ export class AgentChatController {
 		if (attachment.source === N8N_CHAT_PRODUCTION_SOURCE) {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
+		await this.assertThreadFileReadable(
+			attachment,
+			projectId,
+			agentId,
+			threadReaderFromRequest(req),
+		);
 		await this.chatRelay.streamAttachment(attachment, res);
 	}
 
@@ -1239,4 +1310,27 @@ export class AgentChatController {
 			payload,
 		);
 	}
+}
+
+/**
+ * A job that started during or after the first turn that is redacted for the
+ * reader, without its title, approval payload and output files. Each can hold
+ * workflow data.
+ */
+function withoutJobContentFrom<
+	T extends {
+		createdAt: Date;
+		title: string;
+		approval?: { suspendPayload?: unknown } | null;
+		files?: unknown;
+	},
+>(job: T, startedAt: Date): T {
+	if (job.createdAt.getTime() < startedAt.getTime()) return job;
+	return {
+		...job,
+		// The model writes the title, so it can hold tool data.
+		title: '',
+		approval: job.approval ? { ...job.approval, suspendPayload: undefined } : job.approval,
+		files: null,
+	};
 }

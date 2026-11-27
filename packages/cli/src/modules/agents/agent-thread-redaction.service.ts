@@ -79,6 +79,22 @@ export function threadReaderFromRequest(
 	};
 }
 
+/** The sources that tools and the sandbox write. Other sources are human input. */
+const GENERATED_FILE_SOURCES: readonly string[] = ['tool', 'sandbox'];
+
+/**
+ * True when a file of a thread is hidden from the reader: a tool or the
+ * sandbox stored it during or after the first turn that is redacted for the
+ * reader. Files from human input stay visible, like the human messages.
+ */
+export function isRedactedThreadFile(
+	file: { source: string; createdAt: Date | string },
+	redactionStart: { startedAt: Date } | undefined,
+): boolean {
+	if (!redactionStart || !GENERATED_FILE_SOURCES.includes(file.source)) return false;
+	return new Date(file.createdAt).getTime() >= redactionStart.startedAt.getTime();
+}
+
 export function readerUserId(reader: ThreadReader): string {
 	return 'user' in reader ? reader.user.id : reader.sessionEndUserId;
 }

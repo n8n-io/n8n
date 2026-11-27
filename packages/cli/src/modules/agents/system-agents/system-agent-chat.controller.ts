@@ -23,7 +23,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Response } from 'express';
 
-import { threadReaderFromRequest } from '../agent-thread-redaction.service';
+import { isRedactedThreadFile, threadReaderFromRequest } from '../agent-thread-redaction.service';
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentChatRelayService } from '../agent-chat-relay.service';
@@ -323,7 +323,16 @@ export class SystemAgentChatController {
 		if (!attachment) {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
-		await this.systemAgents.getUsableThread(agentId, req.user, attachment.threadId);
+		const thread = await this.systemAgents.getUsableThread(agentId, req.user, attachment.threadId);
+		const redactionStart = await this.executionService.findRedactionStart(
+			thread.id,
+			thread.projectId,
+			agentId,
+			threadReaderFromRequest(req),
+		);
+		if (isRedactedThreadFile(attachment, redactionStart)) {
+			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
+		}
 		await this.chatRelay.streamAttachment(attachment, res);
 	}
 
@@ -344,7 +353,13 @@ export class SystemAgentChatController {
 			thread.id,
 			systemChatFileScope(agentId, this.systemAgents.resourceIdFor(req.user)),
 		);
-		return { files };
+		const redactionStart = await this.executionService.findRedactionStart(
+			thread.id,
+			thread.projectId,
+			agentId,
+			threadReaderFromRequest(req),
+		);
+		return { files: files.filter((file) => !isRedactedThreadFile(file, redactionStart)) };
 	}
 
 	/** System agents do not run Agents background jobs. */

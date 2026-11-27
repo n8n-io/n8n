@@ -14,6 +14,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { createRunExecutionData, type IWorkflowBase } from 'n8n-workflow';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v4 as uuid } from 'uuid';
 
 import { AgentChatAttachment } from '@/modules/agents/entities/agent-chat-attachment.entity';
@@ -171,6 +172,28 @@ async function saveTurn(
 	return id;
 }
 
+async function saveFile(threadId: string, source: string, createdAt: Date) {
+	const files = Container.get(DataSource).getRepository(AgentChatAttachment);
+	const id = generateNanoId();
+	await files.save(
+		files.create({
+			id,
+			agentId,
+			projectId: project.id,
+			threadId,
+			createdByThreadId: threadId,
+			resourceId: null,
+			binaryDataId: `filesystem-v2:agents/${agentId}/attachments/${id}/binary_data/${id}`,
+			fileName: `${source}-file.txt`,
+			mimeType: 'text/plain',
+			fileSizeBytes: 4,
+			source,
+		}),
+	);
+	await files.update({ id }, { createdAt });
+	return id;
+}
+
 const threadUrl = (threadId: string) =>
 	`/projects/${project.id}/agents/v2/${agentId}/threads/${threadId}`;
 
@@ -306,6 +329,62 @@ describe('chat messages of redacted agent turns', () => {
 
 		expect(JSON.stringify(response.body)).not.toContain(MARKER);
 		expect(response.body.data.redaction).toEqual({ isRedacted: true, canReveal: true });
+	});
+});
+
+describe('files of redacted agent turns', () => {
+	async function threadWithFiles() {
+		const workflow = await createToolWorkflow('all');
+		const execution = await createToolExecution(workflow);
+		const threadId = `task-${uuid()}`;
+		await saveThread(threadId);
+		await saveTurn(threadId, [], new Date('2026-11-26T09:00:00.000Z'));
+		await saveTurn(
+			threadId,
+			[
+				{
+					type: 'tool-call',
+					kind: 'workflow',
+					name: 'run_wf',
+					toolCallId: 'call-1',
+					input: {},
+					output: { executionId: execution.id },
+					startTime: 1,
+					endTime: 2,
+					success: true,
+					workflowId: workflow.id,
+					workflowExecutionId: execution.id,
+				},
+			],
+			new Date('2026-11-26T10:00:00.000Z'),
+		);
+		const earlierToolFile = await saveFile(threadId, 'tool', new Date('2026-11-26T09:00:05.000Z'));
+		const laterToolFile = await saveFile(threadId, 'tool', new Date('2026-11-26T10:00:05.000Z'));
+		const laterUpload = await saveFile(threadId, 'chat', new Date('2026-11-26T10:10:00.000Z'));
+		return { threadId, earlierToolFile, laterToolFile, laterUpload };
+	}
+
+	it('should leave out generated files from redacted turns in the files list', async () => {
+		const { threadId, earlierToolFile, laterToolFile, laterUpload } = await threadWithFiles();
+
+		const response = await testServer
+			.authAgentFor(viewer)
+			.get(`/projects/${project.id}/agents/v2/${agentId}/chat/${threadId}/files`)
+			.expect(200);
+
+		const ids = response.body.data.files.map((file: { fileId: string }) => file.fileId);
+		expect(ids).toEqual(expect.arrayContaining([earlierToolFile, laterUpload]));
+		expect(ids).not.toContain(laterToolFile);
+	});
+
+	it('should not find a generated file of a redacted turn on download', async () => {
+		const { threadId, laterToolFile } = await threadWithFiles();
+
+		await testServer
+			.authAgentFor(viewer)
+			.get(`/projects/${project.id}/agents/v2/${agentId}/chat/attachments/${laterToolFile}`)
+			.query({ threadId })
+			.expect(404);
 	});
 });
 
