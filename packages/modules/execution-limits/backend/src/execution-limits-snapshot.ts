@@ -60,14 +60,15 @@ export class ExecutionLimitsSnapshot {
 		this.refreshTimer = undefined;
 	}
 
-	/** `null` until the first load succeeds. */
-	read(projectId: string): ApplicableLimits | null {
+	/** `null` until the first load succeeds. A `null` project has no project limit. */
+	read(projectId: string | null): ApplicableLimits | null {
 		if (!this.loaded) return null;
 
 		return {
 			periodUnit: this.loaded.settings.periodUnit,
 			instanceMaxExecutions: this.loaded.settings.instanceMaxExecutions,
-			projectMaxExecutions: this.loaded.projectMaxExecutions.get(projectId) ?? null,
+			projectMaxExecutions:
+				projectId === null ? null : (this.loaded.projectMaxExecutions.get(projectId) ?? null),
 		};
 	}
 
