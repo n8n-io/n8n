@@ -428,12 +428,15 @@ export class MigrationExecutor {
 		);
 		this.connection.logger.logSchemaBuild(`Now reverting it...`);
 
+		const disableForeignKeys = migrationToRevert.instance?.withFKsDisabled === true;
 		let transactionStartedByUs = false;
 		let beforeMigrationCalled = false;
 
 		try {
 			// Run beforeMigration before starting the transaction so SQLite can toggle PRAGMA foreign_keys.
-			if (!this.fake && !queryRunner.isTransactionActive) {
+			// Only do this for migrations that set withFKsDisabled so ordinary reverts keep foreign keys
+			// enabled and ON DELETE CASCADE continues to fire.
+			if (!this.fake && disableForeignKeys && !queryRunner.isTransactionActive) {
 				await queryRunner.beforeMigration();
 				beforeMigrationCalled = true;
 			}

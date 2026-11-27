@@ -190,6 +190,41 @@ describe('SQLite withFKsDisabled migration atomicity (CAP-733)', () => {
 		return DropParentDescription1700000000001;
 	}
 
+	function createFailingRevertDropDescriptionMigration(): Migration {
+		class DropParentDescription1700000000001 implements ReversibleMigration {
+			withFKsDisabled = true as const;
+
+			async up({ schemaBuilder: { dropColumns } }: MigrationContext) {
+				await dropColumns('parent_items', ['description'], { recreatesOnSqlite: true });
+			}
+
+			async down({ schemaBuilder: { addColumns, column } }: MigrationContext) {
+				await addColumns('parent_items', [column('description').varchar(512)], {
+					recreatesOnSqlite: true,
+				});
+				throw new Error('Simulated failure after revert table rebuild');
+			}
+		}
+
+		wrapMigration(DropParentDescription1700000000001);
+		return DropParentDescription1700000000001;
+	}
+
+	function createCascadeDeleteOnRevertMigration(): Migration {
+		class DeleteParentOnRevert1700000000002 implements ReversibleMigration {
+			async up() {
+				// No-op on upgrade; down deletes a parent row and relies on ON DELETE CASCADE.
+			}
+
+			async down({ runQuery }: MigrationContext) {
+				await runQuery('DELETE FROM "parent_items" WHERE "id" = :id', { id: 'parent-1' });
+			}
+		}
+
+		wrapMigration(DeleteParentOnRevert1700000000002);
+		return DeleteParentOnRevert1700000000002;
+	}
+
 	it('drops the column, preserves CASCADE FK child rows, and records the migration', async () => {
 		const dbPath = join(tempDir, `happy-${++dbCounter}.sqlite`);
 		const migration = createDropDescriptionMigration({ withFKsDisabled: true });
@@ -347,5 +382,59 @@ describe('SQLite withFKsDisabled migration atomicity (CAP-733)', () => {
 			'SELECT "id" FROM "child_items"',
 		);
 		expect(childRows).toEqual([{ id: 'child-1' }]);
+	});
+
+	it('keeps foreign keys enabled on revert for a standard migration so ON DELETE CASCADE fires', async () => {
+		const dbPath = join(tempDir, `revert-cascade-${++dbCounter}.sqlite`);
+		const migration = createCascadeDeleteOnRevertMigration();
+		dataSource = await openSqliteDataSource(dbPath, [migration]);
+		await seedTables(dataSource);
+		await dataSource.query(
+			'INSERT INTO "parent_items" ("id", "name", "description") VALUES (?, ?, ?)',
+			['parent-2', 'Beta', 'Kept row'],
+		);
+		await dataSource.query('INSERT INTO "child_items" ("id", "parentId") VALUES (?, ?)', [
+			'child-2',
+			'parent-2',
+		]);
+
+		await dataSource.runMigrations({ transaction: 'each' });
+		expect(await countMigrationRecords(dataSource, 'DeleteParentOnRevert1700000000002')).toBe(1);
+
+		await dataSource.undoLastMigration({ transaction: 'each' });
+
+		const parentRows = await dataSource.query<Array<{ id: string }>>(
+			'SELECT "id" FROM "parent_items" ORDER BY "id"',
+		);
+		const childRows = await dataSource.query<Array<{ id: string }>>(
+			'SELECT "id" FROM "child_items" ORDER BY "id"',
+		);
+		expect(parentRows).toEqual([{ id: 'parent-2' }]);
+		expect(childRows).toEqual([{ id: 'child-2' }]);
+		expect(await dataSource.query('PRAGMA foreign_key_check')).toEqual([]);
+		expect(await countMigrationRecords(dataSource, 'DeleteParentOnRevert1700000000002')).toBe(0);
+		expect(await getForeignKeysEnabled(dataSource)).toBe(1);
+	});
+
+	it('rolls back the schema change and re-enables foreign keys when a withFKsDisabled revert fails', async () => {
+		const dbPath = join(tempDir, `revert-failed-${++dbCounter}.sqlite`);
+		const migration = createFailingRevertDropDescriptionMigration();
+		dataSource = await openSqliteDataSource(dbPath, [migration]);
+		await seedTables(dataSource);
+
+		await dataSource.runMigrations({ transaction: 'each' });
+		expect(await getParentColumns(dataSource)).not.toContain('description');
+
+		await expect(dataSource.undoLastMigration({ transaction: 'each' })).rejects.toThrow(
+			'Simulated failure after revert table rebuild',
+		);
+
+		expect(await getParentColumns(dataSource)).not.toContain('description');
+		const childRows = await dataSource.query<Array<{ id: string }>>(
+			'SELECT "id" FROM "child_items"',
+		);
+		expect(childRows).toEqual([{ id: 'child-1' }]);
+		expect(await countMigrationRecords(dataSource, MIGRATION_NAME)).toBe(1);
+		expect(await getForeignKeysEnabled(dataSource)).toBe(1);
 	});
 });
