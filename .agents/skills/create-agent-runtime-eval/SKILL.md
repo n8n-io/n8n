@@ -113,6 +113,11 @@ Rules:
   from today.
 - Don't grade what the run can't have: knowledge files, channel metadata, or
   tools the instructions name but the Agent lacks.
+- Don't grade live facts from provider web search. Grade the process only
+  (see [building.md](building.md#4-scenarios)).
+- Don't grade a re-read after a write through MCP. The MCP mock caches by
+  exact arguments, so a second read with the same arguments returns the old
+  result.
 - Every conditional expectation needs proof that its precondition happened.
   "Does not save after the customer refuses" passes vacuously if the customer
   never refused. Write the refusal into the user goal.
@@ -188,8 +193,12 @@ case only says whether to keep it.
 - **Local runs skip episodic cases** with "Skipped: no embedding key".
   Episodic embeddings always use OpenAI, and no OpenAI key is set locally.
   Calibrate episodic cases remotely.
-- An observational-only Agent still benefits from `keepMemory` in a long
-  `userTurns` scenario. Grade what it keeps, not how it compacts.
+- **Observational memory only runs after about 50k tokens.** A test
+  conversation never gets there. For a memory case with multi-turn scenarios,
+  set a low threshold, and say so in the case `description`:
+  `"configOverrides": { "memory": { "observationalMemory": { "observerThresholdTokens": 2000 } } }`.
+  Then you can grade that an observer task completed (it is in
+  `memoryState.tasks`). Grade what it keeps, not how it compacts.
 
 ## Review
 

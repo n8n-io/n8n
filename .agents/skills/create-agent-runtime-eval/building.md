@@ -188,6 +188,16 @@ Things the run doesn't have:
 - **Date-dependent rules.** The run date changes. Write expectations that hold
   on any date, for example "does not present the March item as new", not
   "lists 2 items from this week".
+- **A mock for provider web search.** `anthropic.web_search` and
+  `openai.web_search` run live and can't be mocked. Tag the case
+  `web-search-live`. Don't put search results in `dataSetup`. Grade the
+  process and self-consistency only: it searched when it needed to, it cites
+  the source and the time, its own numbers agree with each other, and it
+  invents nothing. Never grade a live fact (a price, a headline).
+- **Fresh MCP reads after a write.** The MCP mock caches results by exact
+  arguments. A read after a write, with the same arguments, returns the cached
+  result. Don't write expectations that depend on re-reading what the Agent
+  just wrote. Grade the write call instead.
 
 Write the scenarios with `update_test_case` (`scenarios`, the full set,
 matched by name). **Pending L3** for `expectations`, `userTurns`, and
@@ -223,8 +233,8 @@ Direct mode rejects assistant-only fields: `conversation`,
 ## 6. Tags
 
 Always `agent-runtime`. Then one tag per component the case exercises:
-`data-tables`, `mcp`, `skills`, `web-search`, `memory`, `episodic`,
-`multi-turn`. Add the `business_domain`. Tags let a run select part of the
+`data-tables`, `mcp`, `skills`, `web-search`, `web-search-live` (provider
+web search, see Scenarios), `memory`, `episodic`, `multi-turn`. Add the `business_domain`. Tags let a run select part of the
 suite. Set them with `update_test_case` (`evalTags`; the export writes them as
 the case's `tags`).
 
