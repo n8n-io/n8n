@@ -929,6 +929,46 @@ describe('run', () => {
 		}
 	});
 
+	it('records how the run started in its telemetry metadata', async () => {
+		globalConfig.executions.mode = 'queue';
+		try {
+			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined);
+			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
+			vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
+			vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
+
+			const data: IWorkflowExecutionDataProcess = {
+				executionMode: 'webhook',
+				workflowData: mock<IWorkflowExecutionDataProcess['workflowData']>({
+					id: 'workflow-id',
+					nodes: [],
+					staticData: {},
+				}),
+				executionData: createRunExecutionData({
+					parentAgentRun: {
+						agentId: 'agent1',
+						projectId: 'project1',
+						threadId: 'thread1',
+						runId: 'run1',
+						toolCallId: 'toolCall1',
+					},
+				}),
+			};
+
+			await runner.run(data, true);
+
+			expect(data.telemetryMetadata).toEqual({
+				origin: { caller: 'agent' },
+				personalCredentialsCount: 0,
+			});
+		} finally {
+			globalConfig.executions.mode = 'regular';
+		}
+	});
+
 	it('uses recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom with data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);

@@ -690,6 +690,36 @@ describe('WorkflowExecuteAdditionalData', () => {
 				);
 			});
 
+			it('reports how a sub-workflow started to telemetry', async () => {
+				credentialsPermissionChecker.check.mockResolvedValue({ personalCredentialsCount: 0 });
+
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mockExecuteOptions({
+						loadedWorkflowData: subWorkflowData(),
+						loadedRunData: undefined,
+						parentExecution: { executionId: 'parent-execution-id', workflowId: 'parent-1' },
+						doNotWaitToFinish: false,
+					}),
+				);
+
+				const [additionalDataIntegrated] = vi.mocked(WorkflowExecute).mock.calls[0];
+				eventService.emit.mockClear();
+				// A fresh run: other tests change the status of the shared one.
+				const run = getMockRun({ lastNodeOutput: [[{ json: { test: 1 } }]] });
+				await additionalDataIntegrated.hooks?.runHook('workflowExecuteAfter', [run, {}]);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'workflow-post-execute',
+					expect.objectContaining({
+						telemetryMetadata: expect.objectContaining({
+							origin: { caller: 'workflow' },
+						}),
+					}),
+				);
+			});
+
 			it('falls back to the project check for an inline sub-workflow without a triggering user', async () => {
 				const workflowData = subWorkflowData();
 				await executeWorkflow(
