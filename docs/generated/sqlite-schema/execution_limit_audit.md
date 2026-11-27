@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "execution_limit_audit" ("id" integer PRIMARY KEY NOT NULL, "projectId" varchar(36), "field" varchar(32) NOT NULL, "oldValue" text, "newValue" text, "updatedBy" varchar, "loginId" varchar(255), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_execution_limit_audit_project_field" CHECK (("field" = 'projectMaxExecutions' AND "projectId" IS NOT NULL) OR ("field" <> 'projectMaxExecutions' AND "projectId" IS NULL)), CONSTRAINT "CHK_execution_limit_audit_field" CHECK ("field" IN ('periodUnit', 'instanceMaxExecutions', 'defaultProjectMaxExecutions', 'projectMaxExecutions')))
+CREATE TABLE "execution_limit_audit" ("id" integer PRIMARY KEY NOT NULL, "projectId" varchar(36), "field" varchar(32) NOT NULL, "oldValue" text, "newValue" text, "updatedBy" varchar, "loginId" varchar(255), "policyId" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_execution_limit_audit_project_field" CHECK (("field" IN ('projectMaxExecutions', 'projectPolicy') AND "projectId" IS NOT NULL) OR (NOT "field" IN ('projectMaxExecutions', 'projectPolicy') AND "projectId" IS NULL)), CONSTRAINT "CHK_execution_limit_audit_policy_field" CHECK ("field" NOT IN ('policy', 'projectPolicy', 'newProjectsPolicy', 'personalProjectsPolicy') OR "policyId" IS NOT NULL), CONSTRAINT "CHK_execution_limit_audit_field" CHECK ("field" IN ('periodUnit', 'instanceMaxExecutions', 'defaultProjectMaxExecutions', 'projectMaxExecutions', 'policy', 'projectPolicy', 'newProjectsPolicy', 'personalProjectsPolicy')))
 ```
 
 </details>
@@ -21,6 +21,7 @@ CREATE TABLE "execution_limit_audit" ("id" integer PRIMARY KEY NOT NULL, "projec
 | loginId | varchar(255) |  | true |  |  |  |
 | newValue | TEXT |  | true |  |  |  |
 | oldValue | TEXT |  | true |  |  |  |
+| policyId | varchar |  | true |  |  |  |
 | projectId | varchar(36) |  | true |  |  |  |
 | updatedBy | varchar |  | true |  |  |  |
 
@@ -28,8 +29,9 @@ CREATE TABLE "execution_limit_audit" ("id" integer PRIMARY KEY NOT NULL, "projec
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK (("field" = 'projectMaxExecutions' AND "projectId" IS NOT NULL) OR ("field" <> 'projectMaxExecutions' AND "projectId" IS NULL)) |
-| - | CHECK | CHECK ("field" IN ('periodUnit', 'instanceMaxExecutions', 'defaultProjectMaxExecutions', 'projectMaxExecutions')) |
+| - | CHECK | CHECK (("field" IN ('projectMaxExecutions', 'projectPolicy') AND "projectId" IS NOT NULL) OR (NOT "field" IN ('projectMaxExecutions', 'projectPolicy') AND "projectId" IS NULL)) |
+| - | CHECK | CHECK ("field" NOT IN ('policy', 'projectPolicy', 'newProjectsPolicy', 'personalProjectsPolicy') OR "policyId" IS NOT NULL) |
+| - | CHECK | CHECK ("field" IN ('periodUnit', 'instanceMaxExecutions', 'defaultProjectMaxExecutions', 'projectMaxExecutions', 'policy', 'projectPolicy', 'newProjectsPolicy', 'personalProjectsPolicy')) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Relations
@@ -45,6 +47,7 @@ erDiagram
   varchar_255_ loginId
   TEXT newValue
   TEXT oldValue
+  varchar policyId
   varchar_36_ projectId
   varchar updatedBy
 }

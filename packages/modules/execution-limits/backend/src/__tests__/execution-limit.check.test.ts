@@ -33,6 +33,7 @@ describe('ExecutionLimitPolicyCheck', () => {
 			periodUnit: 'month',
 			projectMaxExecutions,
 			instanceMaxExecutions,
+			projectPolicy: projectMaxExecutions === null ? null : { id: 'policy-1', name: 'Free tier' },
 		});
 
 	const setUsage = (project: number | null, instance: number | null) =>

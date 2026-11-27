@@ -5,11 +5,12 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| field | varchar(32) |  | false |  |  | What changed. periodUnit, instanceMaxExecutions and defaultProjectMaxExecutions are the instance settings in features.executionLimits. projectMaxExecutions is the limit of the project in projectId |
+| field | varchar(32) |  | false |  |  | What changed. periodUnit and instanceMaxExecutions are the instance settings in features.executionLimits. policy is the name or the maximum of the policy in policyId. projectPolicy is the policy of the project in projectId. newProjectsPolicy and personalProjectsPolicy are the policy of that project group. defaultProjectMaxExecutions and projectMaxExecutions are from earlier versions |
 | id | integer |  | false |  |  |  |
 | loginId | varchar(255) |  | true |  |  | Login that a service account used to make the change. NULL for a person and for a change that n8n made. No foreign key, so the row stays when the login is deleted |
-| newValue | json |  | true |  |  | Value after the change: a period unit or a maximum number of executions. NULL for no limit |
-| oldValue | json |  | true |  |  | Value before the change: a period unit or a maximum number of executions. NULL for no limit |
+| newValue | json |  | true |  |  | Value after the change: a period unit, a maximum number of executions, the name and the maximum of a policy, or a policy ID. NULL for no value |
+| oldValue | json |  | true |  |  | Value before the change: a period unit, a maximum number of executions, the name and the maximum of a policy, or a policy ID. NULL for no value |
+| policyId | uuid |  | true |  |  | Policy that changed, or the policy that was assigned or removed. NULL for a change to the instance settings. No foreign key, so the row stays when the policy is deleted |
 | projectId | varchar(36) |  | true |  |  | Project whose execution limit changed. NULL for a change to the instance settings. No foreign key, so the row stays when the project is deleted |
 | updatedBy | uuid |  | true |  |  | User who made the change. NULL for a change that n8n made. No foreign key, so the row stays when the user is deleted |
 
@@ -17,8 +18,9 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_execution_limit_audit_field | CHECK | CHECK (((field)::text = ANY ((ARRAY['periodUnit'::character varying, 'instanceMaxExecutions'::character varying, 'defaultProjectMaxExecutions'::character varying, 'projectMaxExecutions'::character varying])::text[]))) |
-| CHK_execution_limit_audit_project_field | CHECK | CHECK (((((field)::text = 'projectMaxExecutions'::text) AND ("projectId" IS NOT NULL)) OR (((field)::text <> 'projectMaxExecutions'::text) AND ("projectId" IS NULL)))) |
+| CHK_execution_limit_audit_field | CHECK | CHECK (((field)::text = ANY ((ARRAY['periodUnit'::character varying, 'instanceMaxExecutions'::character varying, 'defaultProjectMaxExecutions'::character varying, 'projectMaxExecutions'::character varying, 'policy'::character varying, 'projectPolicy'::character varying, 'newProjectsPolicy'::character varying, 'personalProjectsPolicy'::character varying])::text[]))) |
+| CHK_execution_limit_audit_policy_field | CHECK | CHECK ((((field)::text <> ALL ((ARRAY['policy'::character varying, 'projectPolicy'::character varying, 'newProjectsPolicy'::character varying, 'personalProjectsPolicy'::character varying])::text[])) OR ("policyId" IS NOT NULL))) |
+| CHK_execution_limit_audit_project_field | CHECK | CHECK (((((field)::text = ANY ((ARRAY['projectMaxExecutions'::character varying, 'projectPolicy'::character varying])::text[])) AND ("projectId" IS NOT NULL)) OR ((NOT ((field)::text = ANY ((ARRAY['projectMaxExecutions'::character varying, 'projectPolicy'::character varying])::text[]))) AND ("projectId" IS NULL)))) |
 | PK_eaff1c6bc11b40a5e2310811cc6 | PRIMARY KEY | PRIMARY KEY (id) |
 | execution_limit_audit_createdAt_not_null | n | NOT NULL "createdAt" |
 | execution_limit_audit_field_not_null | n | NOT NULL field |
@@ -43,6 +45,7 @@ erDiagram
   varchar_255_ loginId
   json newValue
   json oldValue
+  uuid policyId
   varchar_36_ projectId
   uuid updatedBy
 }

@@ -86,7 +86,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_entity](public.execution_entity.md) | 20 |  | BASE TABLE |
 | [public.execution_ledger](public.execution_ledger.md) | 16 |  | BASE TABLE |
 | [public.execution_ledger_parked](public.execution_ledger_parked.md) | 20 |  | BASE TABLE |
-| [public.execution_limit_audit](public.execution_limit_audit.md) | 8 |  | BASE TABLE |
+| [public.execution_limit_audit](public.execution_limit_audit.md) | 9 |  | BASE TABLE |
 | [public.execution_limit_instance_usage](public.execution_limit_instance_usage.md) | 5 |  | BASE TABLE |
 | [public.execution_limit_policy](public.execution_limit_policy.md) | 5 |  | BASE TABLE |
 | [public.execution_limit_policy_assignment](public.execution_limit_policy_assignment.md) | 3 |  | BASE TABLE |
@@ -1397,6 +1397,7 @@ erDiagram
   varchar_255_ loginId
   json newValue
   json oldValue
+  uuid policyId
   varchar_36_ projectId
   uuid updatedBy
 }

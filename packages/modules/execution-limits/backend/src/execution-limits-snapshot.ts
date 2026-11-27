@@ -7,10 +7,13 @@ import { Service } from '@n8n/di';
 import { latestWins } from '@n8n/utils/promise/latest-wins';
 
 import { ExecutionLimitPolicyRepository } from './execution-limit-policy.repository';
+import { resolveProjectPolicies } from './execution-limit-rules';
 import { ExecutionLimitSettingsStore } from './execution-limit-settings.store';
-import type { ApplicableLimits } from './execution-limits.types';
+import type { ApplicableLimits, ProjectPolicy } from './execution-limits.types';
 
 export const REFRESH_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
+
+const LOGGED_PROJECT_IDS = 20;
 
 /** Which scopes have a limit, so a reader of usage loads only those. */
 export type LimitedScopes = {
@@ -31,11 +34,13 @@ export type LimitedScopes = {
 export class ExecutionLimitsSnapshot {
 	private loaded: {
 		settings: ExecutionLimitSettings;
-		projectMaxExecutions: ReadonlyMap<string, number>;
+		projectPolicies: ReadonlyMap<string, ProjectPolicy>;
 		limitedScopes: LimitedScopes;
 	} | null = null;
 
 	private refreshTimer: NodeJS.Timeout | undefined;
+
+	private warnedProjectIds = '';
 
 	constructor(
 		private readonly settingsStore: ExecutionLimitSettingsStore,
@@ -64,11 +69,13 @@ export class ExecutionLimitsSnapshot {
 	read(projectId: string | null): ApplicableLimits | null {
 		if (!this.loaded) return null;
 
+		const policy = projectId === null ? undefined : this.loaded.projectPolicies.get(projectId);
+
 		return {
 			periodUnit: this.loaded.settings.periodUnit,
 			instanceMaxExecutions: this.loaded.settings.instanceMaxExecutions,
-			projectMaxExecutions:
-				projectId === null ? null : (this.loaded.projectMaxExecutions.get(projectId) ?? null),
+			projectMaxExecutions: policy?.maxExecutions ?? null,
+			projectPolicy: policy ? { id: policy.policyId, name: policy.name } : null,
 		};
 	}
 
@@ -101,22 +108,34 @@ export class ExecutionLimitsSnapshot {
 	}
 
 	private readonly loadLatest = latestWins(async () => {
-		const [settings, projectLimits] = await Promise.all([
+		const [settings, rows] = await Promise.all([
 			this.settingsStore.read({}),
-			this.policyRepository.findProjectLimits({}),
+			this.policyRepository.findProjectPolicies({}),
 		]);
-		const projectMaxExecutions = new Map(
-			projectLimits.map(({ projectId, maxExecutions }) => [projectId, maxExecutions]),
-		);
+		const { byProject, projectsWithSeveralPolicies } = resolveProjectPolicies(rows);
+		this.warnOfSeveralPolicies(projectsWithSeveralPolicies);
 
 		this.loaded = {
 			settings,
-			projectMaxExecutions,
+			projectPolicies: byProject,
 			limitedScopes: {
 				periodUnit: settings.periodUnit,
 				hasInstanceLimit: settings.instanceMaxExecutions !== null,
-				limitedProjectIds: new Set(projectMaxExecutions.keys()),
+				limitedProjectIds: new Set(byProject.keys()),
 			},
 		};
 	});
+
+	// Logs when the list changes, not at each reload.
+	private warnOfSeveralPolicies(projectIds: string[]): void {
+		const key = projectIds.join(',');
+		if (key === this.warnedProjectIds) return;
+		this.warnedProjectIds = key;
+		if (projectIds.length === 0) return;
+
+		this.logger.warn('Projects have several execution limit policies, so the lowest applies', {
+			projectCount: projectIds.length,
+			projectIds: projectIds.slice(0, LOGGED_PROJECT_IDS),
+		});
+	}
 }

@@ -1125,6 +1125,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				field: event.field,
 				oldValue: event.oldValue,
 				newValue: event.newValue,
+				...(event.policyId !== null && { policyId: event.policyId }),
 				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});

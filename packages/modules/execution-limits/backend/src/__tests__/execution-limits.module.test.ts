@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { ProjectMutationHooksProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { FoldStepRegistry } from '@n8n/db';
 import { ModuleMetadata, PolicyCheckMetadata } from '@n8n/decorators';
@@ -26,10 +27,12 @@ describe('ExecutionLimitsModule', () => {
 	let registry: FoldStepRegistry;
 	let licenseState: ReturnType<typeof mockInstance<LicenseState>>;
 	let usageCache: ReturnType<typeof mockInstance<ExecutionUsageCache>>;
+	let hooks: ReturnType<typeof mockInstance<ProjectMutationHooksProxy>>;
 
 	beforeEach(() => {
 		licenseState = mockInstance(LicenseState);
 		usageCache = mockInstance(ExecutionUsageCache);
+		hooks = mockInstance(ProjectMutationHooksProxy);
 		mockInstance(ExecutionLimitsSnapshot);
 		mockInstance(InstanceSettings, { instanceType: 'main' });
 		registry = new FoldStepRegistry();
@@ -57,6 +60,28 @@ describe('ExecutionLimitsModule', () => {
 		expect(registry.getAll().map((step) => step.name)).toEqual(['execution_limit_usage']);
 		expect(snapshot.start).not.toHaveBeenCalled();
 		expect(usageCache.start).not.toHaveBeenCalled();
+	});
+
+	const registeredHookNames = () =>
+		hooks.registerProvider.mock.calls.flatMap(([provider]) => Object.keys(provider));
+
+	it('registers the project delete hook when unlicensed, and not the project create hook', async () => {
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
+
+		await new ExecutionLimitsModule().init();
+
+		expect(registeredHookNames()).toEqual(['beforeProjectDeleted']);
+	});
+
+	it('registers both project hooks when licensed', async () => {
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
+
+		await new ExecutionLimitsModule().init();
+
+		expect(registeredHookNames().sort()).toEqual([
+			'afterTeamProjectCreated',
+			'beforeProjectDeleted',
+		]);
 	});
 
 	// By class name: importing the check here would register it and make the test vacuous.
