@@ -349,7 +349,6 @@ export class EmailReadImapV2 implements INodeType {
 						: (options.forceReconnect as number) * 1000 * 60,
 			});
 		} catch (error) {
-			// An unreachable or failing mail server is an expected condition, not a bug in n8n.
 			throw new NodeOperationError(this.getNode(), error as Error);
 		}
 
