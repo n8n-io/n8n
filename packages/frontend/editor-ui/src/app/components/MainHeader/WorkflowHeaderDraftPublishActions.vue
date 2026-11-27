@@ -503,45 +503,6 @@ const publishButtonConfig = computed(() => {
 		};
 	}
 
-	// Handle permission-denied state first
-	if (!hasPublishPermission.value) {
-		const defaultConfigForNoPermission = {
-			text: i18n.baseText('workflows.publish'),
-			enabled: false,
-			loading: false,
-			showIndicator: false,
-			indicatorClass: '',
-			tooltip: isPersonalSpace.value
-				? i18n.baseText('workflows.publish.personalSpaceRestricted')
-				: i18n.baseText('workflows.publish.permissionDenied'),
-			showVersionInfo: false,
-		};
-		const isWorkflowPublished = !!activeVersion.value;
-		if (isWorkflowPublished) {
-			return {
-				...defaultConfigForNoPermission,
-				showIndicator: true,
-				showVersionInfo: true,
-				indicatorClass: 'published',
-			};
-		} else {
-			return defaultConfigForNoPermission;
-		}
-	}
-
-	// Handle new workflow state
-	if (props.isNewWorkflow) {
-		return {
-			text: i18n.baseText('workflows.publish'),
-			enabled: isWorkflowPublishable.value,
-			loading: false,
-			showIndicator: false,
-			indicatorClass: '',
-			tooltip: publishBlockedReason.value,
-			showVersionInfo: false,
-		};
-	}
-
 	// Map workflow state to UI configuration
 	const configs = {
 		'not-published-not-eligible': {
@@ -627,7 +588,29 @@ const publishButtonConfig = computed(() => {
 		},
 	};
 
-	return configs[workflowPublishState.value];
+	const stateConfig = props.isNewWorkflow
+		? {
+				text: i18n.baseText('workflows.publish'),
+				enabled: isWorkflowPublishable.value,
+				loading: false,
+				showIndicator: false,
+				indicatorClass: '',
+				tooltip: publishBlockedReason.value,
+				showVersionInfo: false,
+			}
+		: configs[workflowPublishState.value];
+
+	if (!hasPublishPermission.value) {
+		return {
+			...stateConfig,
+			enabled: false,
+			tooltip: isPersonalSpace.value
+				? i18n.baseText('workflows.publish.personalSpaceRestricted')
+				: i18n.baseText('workflows.publish.permissionDenied'),
+		};
+	}
+
+	return stateConfig;
 });
 
 const shouldHidePublishButton = computed(() => {
