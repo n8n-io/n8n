@@ -127,7 +127,11 @@ describe('PoolConfigService', () => {
 			const result = await service.setProjectPoolSettings(projectId, { defaultPool: 'gpu' });
 
 			expect(result).toEqual({ defaultPool: 'gpu', availablePools: ['gpu'] });
-			expect(projectPoolSettingsRepository.setDefaultPool).toHaveBeenCalledWith(projectId, 'gpu');
+			expect(projectPoolSettingsRepository.setDefaultPool).toHaveBeenCalledWith(
+				projectId,
+				'gpu',
+				{},
+			);
 			expect(cacheService.delete).toHaveBeenCalledWith(`projectPool:${projectId}`);
 		});
 
@@ -135,14 +139,22 @@ describe('PoolConfigService', () => {
 			const result = await service.setProjectPoolSettings(projectId, { defaultPool: '' });
 
 			expect(result.defaultPool).toBeNull();
-			expect(projectPoolSettingsRepository.setDefaultPool).toHaveBeenCalledWith(projectId, null);
+			expect(projectPoolSettingsRepository.setDefaultPool).toHaveBeenCalledWith(
+				projectId,
+				null,
+				{},
+			);
 		});
 
 		it('clears the default pool when given null', async () => {
 			const result = await service.setProjectPoolSettings(projectId, { defaultPool: null });
 
 			expect(result.defaultPool).toBeNull();
-			expect(projectPoolSettingsRepository.setDefaultPool).toHaveBeenCalledWith(projectId, null);
+			expect(projectPoolSettingsRepository.setDefaultPool).toHaveBeenCalledWith(
+				projectId,
+				null,
+				{},
+			);
 		});
 	});
 });
