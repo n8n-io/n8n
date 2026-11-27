@@ -34,8 +34,10 @@ import {
 	PromotionReviewListPublicDto,
 	PromotionReviewPublicDto,
 	PromotionBranchListPublicDto,
+	PromotionProjectEnvironmentsSettingsPublicDto,
 	PromotionSettingsPublicDto,
 	UpdatePromotionEnvironmentDto,
+	UpdatePromotionProjectEnvironmentsSettingsDto,
 	UpdatePromotionProviderDto,
 	UpdatePromotionSettingsDto,
 	projectIdParamSchema,
@@ -135,6 +137,40 @@ export class PromotionsPublicController {
 		@Body({ required: true }) body: UpdatePromotionSettingsDto,
 	): Promise<PromotionSettingsPublicDto> {
 		return await (await this.settingsService()).update(req.user, body, req.ctx);
+	}
+
+	@Get('/settings/project-environments')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:manageEnvironments')
+	@GlobalScope('promotions:manageEnvironments')
+	@ApiSummary('Beta: Get the project environments setting')
+	@ApiDescription(BETA_NOTE + 'Returns whether project environments are on for this instance.')
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionProjectEnvironmentsSettingsPublicDto)
+	@ApiErrorResponse(503)
+	async getPromotionProjectEnvironmentsSettings(): Promise<PromotionProjectEnvironmentsSettingsPublicDto> {
+		const service = await this.settingsService();
+		return { enabled: await service.isProjectEnvironmentsEnabled() };
+	}
+
+	@Put('/settings/project-environments')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:manageEnvironments')
+	@GlobalScope('promotions:manageEnvironments')
+	@ApiSummary('Beta: Update the project environments setting')
+	@ApiDescription(BETA_NOTE + 'Turns project environments on or off for this instance.')
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionProjectEnvironmentsSettingsPublicDto)
+	@ApiErrorResponse(503)
+	async updatePromotionProjectEnvironmentsSettings(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: UpdatePromotionProjectEnvironmentsSettingsDto,
+	): Promise<PromotionProjectEnvironmentsSettingsPublicDto> {
+		const service = await this.settingsService();
+		return {
+			enabled: await service.setProjectEnvironmentsEnabled(req.user, body.enabled, req.ctx),
+		};
 	}
 
 	// -- Providers -----------------------------------------------------------

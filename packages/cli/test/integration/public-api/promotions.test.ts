@@ -14,6 +14,7 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	ProjectRepository,
 	RoleRepository,
+	SettingsRepository,
 	TransactionRunner,
 	UserRepository,
 } from '@n8n/db';
@@ -354,6 +355,95 @@ describe('Promotions in Public API', () => {
 			expect(unknownOption.status).toBe(400);
 
 			expect((await owners.get('/promotions/settings')).body).toEqual(before);
+		});
+	});
+
+	describe('project environments settings', () => {
+		const path = '/promotions/settings/project-environments';
+		const key = 'promotions.projectEnvironments';
+
+		beforeEach(async () => {
+			await Container.get(SettingsRepository).delete({ key });
+		});
+
+		it('reads off when no value was saved', async () => {
+			const response = await testServer.publicApiAgentFor(owner).get(path);
+
+			expect(response.status, JSON.stringify(response.body)).toBe(200);
+			expect(response.body).toEqual({ enabled: false });
+		});
+
+		it('saves each change and reports it as an instance policy change', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
+			onTestFinished(() => emit.mockRestore());
+			const user = expect.objectContaining({ id: owner.id });
+
+			const on = await agent.put(path).send({ enabled: true });
+			expect(on.status, JSON.stringify(on.body)).toBe(200);
+			expect(on.body).toEqual({ enabled: true });
+			expect((await agent.get(path)).body).toEqual({ enabled: true });
+			expect(emit).toHaveBeenCalledWith('instance-policies-updated', {
+				user,
+				settingName: 'promotions_project_environments',
+				value: true,
+			});
+			emit.mockClear();
+
+			expect((await agent.put(path).send({ enabled: true })).status).toBe(200);
+			expect(emit).not.toHaveBeenCalledWith(
+				'instance-policies-updated',
+				expect.objectContaining({ settingName: 'promotions_project_environments' }),
+			);
+
+			const off = await agent.put(path).send({ enabled: false });
+			expect(off.body).toEqual({ enabled: false });
+			expect((await agent.get(path)).body).toEqual({ enabled: false });
+			expect(emit).toHaveBeenCalledWith('instance-policies-updated', {
+				user,
+				settingName: 'promotions_project_environments',
+				value: false,
+			});
+		});
+
+		it('returns a value that another instance saved', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			expect((await agent.get(path)).body).toEqual({ enabled: false });
+
+			await Container.get(SettingsRepository).upsertByKey(key, 'true', false, {});
+
+			expect((await agent.get(path)).body).toEqual({ enabled: true });
+		});
+
+		it('rejects a read or change without promotions:manageEnvironments on the role or the key, or with an invalid body', async () => {
+			// The owner's role holds the scope, so the key check must reject it.
+			const keyWithoutScope = await createOwnerWithApiKey({
+				scopes: ['securitySettings:manage', 'promotions:readEnvironments'],
+			});
+			// The member's key holds the scope, so the role check must reject it.
+			const member = await createMemberWithApiKey({ scopes: ['promotions:manageEnvironments'] });
+
+			for (const caller of [keyWithoutScope, member]) {
+				const agent = testServer.publicApiAgentFor(caller);
+				expect((await agent.get(path)).status).toBe(403);
+				expect((await agent.put(path).send({ enabled: true })).status).toBe(403);
+			}
+			const owners = testServer.publicApiAgentFor(owner);
+			expect((await owners.put(path).send({ enabled: 'yes' })).status).toBe(400);
+			expect((await owners.put(path).send({ enabled: true, extra: 1 })).status).toBe(400);
+
+			expect((await owners.get(path)).body).toEqual({ enabled: false });
+		});
+
+		it('requires the promotions license', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			testServer.license.disable('feat:promotions');
+
+			expect((await agent.get(path)).status).toBe(403);
+			expect((await agent.put(path).send({ enabled: true })).status).toBe(403);
+
+			testServer.license.enable('feat:promotions');
+			expect((await agent.get(path)).body).toEqual({ enabled: false });
 		});
 	});
 

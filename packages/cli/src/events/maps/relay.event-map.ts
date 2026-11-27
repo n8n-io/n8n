@@ -1552,7 +1552,8 @@ export type RelayEventMap = ModuleEventMap & {
 					| 'workflow_sharing'
 					| 'workflow_reviews'
 					| 'workflow_reviews_approval_required'
-					| 'public_api_rate_limit';
+					| 'public_api_rate_limit'
+					| 'promotions_project_environments';
 				value: boolean;
 		  }
 		| {

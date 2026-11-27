@@ -287,6 +287,12 @@
 		"PATCH /promotions/settings": {
 			"status": "gap"
 		},
+		"GET /promotions/settings/project-environments": {
+			"status": "gap"
+		},
+		"PUT /promotions/settings/project-environments": {
+			"status": "gap"
+		},
 		"GET /promotions/providers": {
 			"status": "gap"
 		},

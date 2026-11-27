@@ -928,7 +928,9 @@ export {
 	type PromotionReviewTab,
 } from './promotions/promotion-review.dto';
 export {
+	PromotionProjectEnvironmentsSettingsPublicDto,
 	PromotionSettingsPublicDto,
+	UpdatePromotionProjectEnvironmentsSettingsDto,
 	UpdatePromotionSettingsDto,
 	type PromotionSettings,
 } from './promotions/promotion-settings.dto';

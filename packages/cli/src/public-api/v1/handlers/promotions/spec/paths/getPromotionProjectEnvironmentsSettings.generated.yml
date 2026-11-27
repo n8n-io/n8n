@@ -1,0 +1,26 @@
+operationId: getPromotionProjectEnvironmentsSettings
+tags:
+  - Promotions
+summary: 'Beta: Get the project environments setting'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Returns whether project environments are on for this instance.
+
+  Requires the `promotions:manageEnvironments` API key scope.
+x-required-scope: promotions:manageEnvironments
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/promotionProjectEnvironmentsSettingsPublicDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml
