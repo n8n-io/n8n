@@ -24,13 +24,13 @@ export const INTENT_RECOGNITION_CUES: ContextCueSet = {
 		},
 		{
 			id: 'chat-trigger-is-not-an-agent',
-			text: 'Never satisfy an agent-anchored request with a Chat Trigger + AI Agent node workflow. A Chat Trigger workflow is right when chat only starts a fixed graph (paste an input, run fixed steps, reply). It is also right when the user explicitly asks for a workflow: build that workflow and do not ask. An explicit Agent request still goes to `agent-builder`.',
+			text: 'Never satisfy an agent-anchored request with a Chat Trigger + AI Agent node workflow. A Chat Trigger workflow is right when chat only starts a fixed graph (paste an input, run fixed steps, reply). An explicit Agent request still goes to `agent-builder`.',
 			appliesWhen:
 				'The user asks for an agent, assistant or bot that people chat with, and does not ask for a workflow or name its nodes.',
 		},
 		{
 			id: 'close-pair-chat-workflow',
-			text: 'When the user names a workflow but people message it over time and each reply needs judgment or memory, it fits the Agent / chat-workflow close pair: ask whether it should hold a conversation and decide its replies, or run fixed steps on every message, before you build either. Do not ask when the user names the nodes (Chat Trigger, AI Agent node), pastes a workflow, or explicitly asks for a workflow with a chat-triggered agent: build that workflow.',
+			text: 'When the user names a workflow but people message it over time and each reply needs judgment or memory, it fits the Agent / chat-workflow close pair: ask whether it should hold a conversation and decide its replies, or run fixed steps on every message, before you build either. Named nodes (Chat Trigger, AI Agent node) do not settle it. Do not ask when the user pastes a workflow: build that workflow.',
 			appliesWhen:
 				'The user asks for a workflow that talks to customers, shoppers or users in chat, DMs or a messaging channel.',
 		},
