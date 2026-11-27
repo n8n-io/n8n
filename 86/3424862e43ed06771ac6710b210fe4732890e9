@@ -1,0 +1,28 @@
+packages/quality/testing/playwright/tests/e2e/inbound-auth/fixtures.ts
+  s_679b5fc4bcbe6d::t_32989c1b1acaa5 68
+packages/quality/testing/playwright/tests/e2e/inbound-auth/chat-trigger.spec.ts
+  s_679b5fc4bcbe6d::t_32989c1b1acaa5 6,50,55-60
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/GenericFunctions.ts
+  s_679b5fc4bcbe6d::t_e5232e24f2277b 141-142
+  s_679b5fc4bcbe6d::t_52d3193a4219fb 101-104,109,127-136,138-139,145,152
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/GenericFunctions.test.ts
+  s_679b5fc4bcbe6d::t_52d3193a4219fb 258-259
+  s_679b5fc4bcbe6d::t_e5232e24f2277b 260-279
+  s_679b5fc4bcbe6d::t_1f6a74cdbf2874 108-110,113-115,117-120,123-125,127-131,134-139,141-145,148-159,162-167,169-170,173-182,241,257,280-286,296-309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "863424862e43ed06771ac6710b210fe4732890e9",
+  "prompts": {},
+  "sessions": {
+    "s_679b5fc4bcbe6d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "adafab8e-0d0a-4919-837e-502e92ecae74",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
