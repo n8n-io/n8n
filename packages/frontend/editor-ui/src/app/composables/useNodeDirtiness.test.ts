@@ -721,13 +721,12 @@ describe(useNodeDirtiness, () => {
 			});
 		});
 
-		it('should handle SplitInBatches v2 done output at index 1 and still mark loop dirty for dead-end branches', () => {
+		it('should keep marking SplitInBatches v2 loops dirty when a downstream done branch changes', () => {
 			setupExecutedWorkflow(
 				[
 					createTestNode({ name: 'trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
 					createTestNode({ name: 'loop', type: SPLIT_IN_BATCHES_NODE_TYPE, typeVersion: 2 }),
 					createTestNode({ name: 'inLoop', type: SET_NODE_TYPE }),
-					createTestNode({ name: 'deadEnd', type: SET_NODE_TYPE }),
 					createTestNode({ name: 'afterLoop', type: SET_NODE_TYPE }),
 				],
 				{
@@ -744,10 +743,7 @@ describe(useNodeDirtiness, () => {
 					},
 					inLoop: {
 						[NodeConnectionTypes.Main]: [
-							[
-								{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 },
-								{ node: 'deadEnd', type: NodeConnectionTypes.Main, index: 0 },
-							],
+							[{ node: 'loop', type: NodeConnectionTypes.Main, index: 0 }],
 						],
 					},
 				},
@@ -758,17 +754,8 @@ describe(useNodeDirtiness, () => {
 			});
 
 			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
-				afterLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
-			});
-
-			canvasOperations.setNodeParameters(workflowDocumentStore.nodesByName.deadEnd.id, {
-				foo: 1,
-			});
-
-			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				loop: CanvasNodeDirtiness.UPSTREAM_DIRTY,
 				afterLoop: CanvasNodeDirtiness.PARAMETERS_UPDATED,
-				deadEnd: CanvasNodeDirtiness.PARAMETERS_UPDATED,
 			});
 		});
 

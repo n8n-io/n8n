@@ -90,17 +90,9 @@ function getSplitInBatchesDoneOutputIndex(node: INodeUi | undefined): number | u
 		return undefined;
 	}
 
-	// SplitInBatches v2 exposes ['loop', 'done']; v3 and later expose ['done', 'loop'].
-	// v1 has a single output with no dedicated done branch.
-	if (node.typeVersion === 2) {
-		return 1;
-	}
-
-	if (node.typeVersion >= 3) {
-		return 0;
-	}
-
-	return undefined;
+	// Only v3+ exposes `done` at output 0. v1 has one output, and v2 exposes `done`
+	// at output 1, which `findStartNodes` in core does not check and still re-runs.
+	return node.typeVersion >= 3 ? 0 : undefined;
 }
 
 function getMainOutputGroups(connections: INodeConnections): NodeInputConnections {
