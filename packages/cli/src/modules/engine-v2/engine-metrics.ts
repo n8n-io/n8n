@@ -131,7 +131,7 @@ export function createEngineMetrics({
 			});
 			const engineTime = new Histogram({
 				name: name('handler_engine_time_seconds'),
-				help: 'Time a data plane spends on one queue message, without the time in the v1 shim.',
+				help: 'Time a data plane spends on one queue message, without the time in the v1 shim. Reading the step data inside the shim counts.',
 				labelNames: ['queue', 'type'],
 				buckets: ENGINE_TIME_BUCKETS_SECONDS,
 				registers: [registry],
@@ -182,6 +182,24 @@ export function createEngineMetrics({
 						if (shim) shim.ms += now() - started;
 					}
 				},
+			};
+		},
+
+		/**
+		 * Returns a function whose time counts as engine time also when the v1 shim
+		 * calls it, for engine work that runs inside the shim.
+		 */
+		countAsEngineTime<TArgs extends unknown[], TResult>(
+			work: (...args: TArgs) => Promise<TResult>,
+		): (...args: TArgs) => Promise<TResult> {
+			return async (...args) => {
+				const started = now();
+				try {
+					return await work(...args);
+				} finally {
+					const shim = shimTime.getStore();
+					if (shim) shim.ms -= now() - started;
+				}
 			};
 		},
 

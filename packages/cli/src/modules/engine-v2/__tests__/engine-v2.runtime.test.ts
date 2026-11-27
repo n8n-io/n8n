@@ -649,6 +649,12 @@ describe('EngineV2Runtime', () => {
 			expect(executor).not.toBe(mocks.v1StepExecutor);
 			await executor.execute('request');
 			expect(mocks.v1StepExecutor.execute).toHaveBeenCalledWith('request');
+			const { loadStepData } = mocks.V1StepExecutor.mock.calls[0][0] as unknown as {
+				loadStepData: (context: unknown) => Promise<unknown>;
+			};
+			expect(loadStepData).not.toBe(mocks.stepDataLoader);
+			await loadStepData('context');
+			expect(mocks.stepDataLoader).toHaveBeenCalledWith('context');
 		});
 
 		it('runs the engine on what it builds, unwrapped, without a registry', async () => {

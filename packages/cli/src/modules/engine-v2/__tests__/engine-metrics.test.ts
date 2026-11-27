@@ -187,6 +187,34 @@ describe('createEngineMetrics', () => {
 			).toBeCloseTo(0.07, 4);
 		});
 
+		it('counts the step data load inside the v1 shim as engine time', async () => {
+			let clock = 1000;
+			const { registry, metrics, wrapped, step } = wrap(undefined, () => clock);
+			const loadStepData = metrics.countAsEngineTime(async () => {
+				await Promise.resolve();
+				clock += 15;
+			});
+			const shim = mock<IStepExecutor>();
+			shim.execute.mockImplementation(async () => {
+				await loadStepData();
+				clock += 100;
+				return {} as Awaited<ReturnType<IStepExecutor['execute']>>;
+			});
+			const wrappedShim = metrics.wrapStepExecutor(shim);
+			wrapped.step.start(async () => {
+				clock += 30;
+				await wrappedShim.execute(mock());
+				clock += 5;
+			});
+
+			await step.deliver(ready);
+
+			const metric = 'n8n_engine_handler_engine_time_seconds';
+			expect(
+				await valueOf(registry, metric, `${metric}_sum`, { queue: 'step', type: 'step:ready' }),
+			).toBeCloseTo(0.05, 4);
+		});
+
 		it('keeps the shim time of each message apart when messages run at the same time', async () => {
 			let clock = 1000;
 			const { registry, metrics, wrapped, step } = wrap(undefined, () => clock);

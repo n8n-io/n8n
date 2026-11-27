@@ -208,7 +208,10 @@ export class EngineV2Runtime {
 					new V1StepExecutor({
 						nodeTypes: this.nodeTypes,
 						additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
-						loadStepData: createEngineStepDataLoader(executionStore, stepStore),
+						// Engine database reads, so they count as engine time.
+						loadStepData: this.countAsEngineTime(
+							createEngineStepDataLoader(executionStore, stepStore),
+						),
 						...this.resumeMinters(),
 						resolveSubWorkflow: async (request) =>
 							await this.workflowResolveClient.resolve(
@@ -225,6 +228,12 @@ export class EngineV2Runtime {
 
 	private withMetrics(executor: IStepExecutor): IStepExecutor {
 		return this.metrics ? this.metrics.wrapStepExecutor(executor) : executor;
+	}
+
+	private countAsEngineTime<TArgs extends unknown[], TResult>(
+		work: (...args: TArgs) => Promise<TResult>,
+	): (...args: TArgs) => Promise<TResult> {
+		return this.metrics ? this.metrics.countAsEngineTime(work) : work;
 	}
 
 	private resumeMinters(): Pick<
