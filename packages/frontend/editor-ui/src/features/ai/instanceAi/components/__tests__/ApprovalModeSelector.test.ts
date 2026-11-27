@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
@@ -72,6 +72,18 @@ describe('ApprovalModeSelector', () => {
 			'aria-checked',
 			'false',
 		);
+	});
+
+	it('shows the check only on the current mode', async () => {
+		const { pinia } = setup({ approvalMode: 'auto', approvalModesAvailable: true });
+		const { getByRole } = renderComponent({ pinia });
+
+		await userEvent.click(getByRole('button', { name: /Approval mode/ }));
+
+		const current = getByRole('menuitemcheckbox', { name: /Approve for me/ });
+		const other = getByRole('menuitemcheckbox', { name: /Ask for approval/ });
+		expect(within(current).getByTestId('instance-ai-approval-mode-check')).toBeInTheDocument();
+		expect(within(other).queryByTestId('instance-ai-approval-mode-check')).not.toBeInTheDocument();
 	});
 
 	it('saves a new mode and tracks the change', async () => {
