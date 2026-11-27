@@ -41,7 +41,8 @@ project has several policies, the lowest maximum applies. The period and the ins
 are in the `features.executionLimits` settings row.
 
 Write policies and assignments through `ExecutionLimitsService` only. Each write locks the
-settings row, adds rows to `execution_limit_audit`, and reloads the limits in memory.
+settings row. A write that changes a value adds rows to `execution_limit_audit` and reloads
+the limits in memory.
 
 - A project and a group have one policy. An assignment replaces the policy that is there.
 - Only a team project can get a policy. A personal project is rejected.
