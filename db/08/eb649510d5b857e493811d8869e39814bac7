@@ -1,0 +1,34 @@
+packages/@n8n/agents/src/runtime/memory/strip-orphaned-tool-messages.ts
+  s_dfe3f914c8bb46::t_ce4aeddbe6383e 26-27,29-54,56,87-91
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_dfe3f914c8bb46::t_ce4aeddbe6383e 693-695,697-698,754,757
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_dfe3f914c8bb46::t_ce4aeddbe6383e 1458,1463,1465-1474,1503-1504,1506-1518
+  s_dfe3f914c8bb46::t_dfa558d63d1268 1505,1519-1521
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-history.test.ts
+  s_dfe3f914c8bb46::t_97efb3f7e805e4 499-533
+packages/cli/src/modules/agents/__tests__/agent-conversation-state.service.test.ts
+  s_dfe3f914c8bb46::t_aa5b9ff22a6163 161-209
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_dfe3f914c8bb46::t_13f802b018334b 5203-5284
+packages/cli/src/modules/agents/__tests__/agent-message-steering.service.test.ts
+  s_dfe3f914c8bb46::t_24fcb891cf0e59 1,74-91
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_dfe3f914c8bb46::t_99e8ecc836366a 599-640
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db08eb649510d5b857e493811d8869e39814bac7",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,61 @@
+packages/@n8n/api-types/src/agents/types.ts
+  s_af367323ed1620::t_4e057d3debfaad 642-646,729-734
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_af367323ed1620::t_af634bf9827b38 747-764
+packages/cli/src/modules/agents/__tests__/messages-envelope.test.ts
+  s_af367323ed1620::t_0bb203b6b55b44 436-492
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_af367323ed1620::t_1da35585500557 1131-1134,1136-1149
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_af367323ed1620::t_58db6d71fb040e 121,495,500-507
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_af367323ed1620::t_afbd7003adc543 20,258-259,270,323-324
+packages/cli/src/modules/agents/utils/messages-envelope.ts
+  s_af367323ed1620::t_137155ae784eb2 182-185,190-194,197,200-215
+packages/cli/test/integration/agents/agent-thread-redaction.api.test.ts
+  s_af367323ed1620::t_bd6a4b3609209b 296-311
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatActivity.test.ts
+  s_af367323ed1620::t_7e33833d444b5b 711-731
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_af367323ed1620::t_0831f10457f234 176-224
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_af367323ed1620::t_65209adaefa4c4 4,24,145-148,259,395-397,444-445,1478-1574
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_af367323ed1620::t_d953d031e01f1c 259-280,411,461-475
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_af367323ed1620::t_49f4b29b473dfd 3540-3722
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_af367323ed1620::t_8c80895605621b 55,243-251,817-819,997,999
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_af367323ed1620::t_b35e683eb90298 79-81,322-324,377,381-397,698-705,778,1832,1843-1858,2252-2259
+packages/frontend/editor-ui/src/features/agents/components/AgentChatRedactedReply.vue
+  s_af367323ed1620::t_d3e096d7de12f9 1-25
+packages/frontend/editor-ui/src/features/agents/composables/useAgentActivityItems.ts
+  s_af367323ed1620::t_a59898dfaf58b3 181,199-206,220-221
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_af367323ed1620::t_e49484f55214d2 1102-1106,1118,1121-1133,1200-1206,1209-1210,1212
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_af367323ed1620::t_13bfab0e8ce041 220-230,281,285-286,295,301,310,316,332-333,361,373,375-379,428-458,474-475,477-480,490,516-532,781-782,2327-2329
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.redaction.test.ts
+  s_af367323ed1620::t_09e884aedeed1a 1-64
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_af367323ed1620::t_3d323a1ffcaced 315,393-394,408,450
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_af367323ed1620::t_5140e785b2ada3 61-62,202-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e439afb85f6f20c4e70844c3be110aa517792552",
+  "prompts": {},
+  "sessions": {
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

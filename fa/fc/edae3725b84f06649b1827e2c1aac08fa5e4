@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_08ad1fe1d43e02::t_d004cc31f24e79 3000,3008-3019
+  s_08ad1fe1d43e02::t_708b150c4dab6f 3001-3007
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_08ad1fe1d43e02::t_6f260dfd2bdd7a 1324-1326,1328,1336,1385-1388,1391-1392,1409,1411,1428
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fafcedae3725b84f06649b1827e2c1aac08fa5e4",
+  "prompts": {},
+  "sessions": {
+    "s_08ad1fe1d43e02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8181cd39-5693-42c0-89cf-63f7653ab06b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

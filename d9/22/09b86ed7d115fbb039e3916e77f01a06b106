@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_08ad1fe1d43e02::t_72de92a429d911 2998-3000
+packages/@n8n/api-types/src/agents/dto.ts
+  s_08ad1fe1d43e02::t_ebd879cb46fa76 926
+packages/frontend/editor-ui/src/features/agents/components/AgentScheduleTestNotice.vue
+  s_08ad1fe1d43e02::t_505156e776bf75 2,6,36
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_08ad1fe1d43e02::t_802edc3d53c36c 3703-3705
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d92209b86ed7d115fbb039e3916e77f01a06b106",
+  "prompts": {},
+  "sessions": {
+    "s_08ad1fe1d43e02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8181cd39-5693-42c0-89cf-63f7653ab06b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
