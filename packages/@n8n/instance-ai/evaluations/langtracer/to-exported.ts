@@ -71,6 +71,10 @@ export interface ToLangTracerOptions {
  *  already holds, and such a case is barred from suites anyway. Returns a
  *  human-readable reason, else null. */
 export function unsupportedPushReason(testCase: EvalTestCaseInput): string | null {
+	const agentRuntimeFields = agentRuntimeFieldsIn(testCase);
+	if (agentRuntimeFields.length > 0) {
+		return `uses ${agentRuntimeFields.join(', ')}, which the LangTracer case-write contract does not carry yet (AGENT-1665/1666, lang-tracer L2/L3). Pushing would strip them and land a broken assistant case. Keep the case on disk until lang-tracer supports them.`;
+	}
 	if (testCase.credentials?.some((credential) => credential.description !== undefined)) {
 		return 'seeds credential descriptions, which the current LangTracer case-write schema does not store. Keep the case on disk until that contract supports descriptions.';
 	}
@@ -122,6 +126,22 @@ export function unsupportedPushReason(testCase: EvalTestCaseInput): string | nul
 			throw new Error(`Unhandled seed mode: ${JSON.stringify(unhandled)}`);
 		}
 	}
+}
+
+/** Every agent runtime contract field the case uses, by name. */
+function agentRuntimeFieldsIn(testCase: EvalTestCaseInput): string[] {
+	const scenarios = testCase.executionScenarios ?? [];
+	const sessions = scenarios.flatMap((scenario) => scenario.sessions ?? []);
+	const seedTables = testCase.seed?.mode === 'inline' ? testCase.seed.dataTables : [];
+	const used: Array<[string, boolean]> = [
+		['agentRun', testCase.agentRun !== undefined],
+		['userTurns', scenarios.some((scenario) => scenario.userTurns !== undefined)],
+		['sessions', sessions.length > 0],
+		['expectations', scenarios.some((scenario) => scenario.expectations !== undefined)],
+		['session expectations', sessions.some((session) => session.expectations !== undefined)],
+		['seed.dataTables[].rows', seedTables.some((table) => table.rows !== undefined)],
+	];
+	return used.filter(([, isUsed]) => isUsed).map(([field]) => field);
 }
 
 /** Map a schema-parsed disk case to a create-case body. `conversation.text` is already
