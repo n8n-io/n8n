@@ -97,7 +97,8 @@ describe('getExecutionOrigin', () => {
 				description: {
 					name: type,
 					group: type === editFields.type ? ['transform'] : ['trigger'],
-					properties: [],
+					// A parameter with a default value, which a Workflow fills in on the nodes it gets.
+					properties: [{ displayName: 'Mode', name: 'mode', type: 'string', default: 'manual' }],
 				},
 				...(type === scheduleTrigger.type ? { trigger: async () => undefined } : {}),
 			}),
@@ -127,6 +128,15 @@ describe('getExecutionOrigin', () => {
 			expect(getExecutionOrigin(runUpTo(undefined), nodeTypes)).toEqual({
 				triggerNodeType: 'n8n-nodes-base.scheduleTrigger',
 			});
+		});
+
+		it('does not change the nodes of the run', () => {
+			const run = runUpTo({});
+			const nodesBefore = structuredClone(run.workflowData.nodes);
+
+			getExecutionOrigin(run, nodeTypes);
+
+			expect(run.workflowData.nodes).toEqual(nodesBefore);
 		});
 
 		it('returns nothing without node types', () => {

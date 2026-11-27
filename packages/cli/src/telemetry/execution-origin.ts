@@ -7,7 +7,7 @@ import type {
 	WorkflowExecutionCaller,
 	WorkflowExecutionOrigin,
 } from 'n8n-workflow';
-import { isTriggerNodeType, Workflow } from 'n8n-workflow';
+import { deepCopy, isTriggerNodeType, Workflow } from 'n8n-workflow';
 
 /**
  * Returns how a run started, from what is known when its execution is created, so that its
@@ -77,10 +77,15 @@ function getManualRunTriggerNodeType(
 	if (data.executionMode !== 'manual' || typeof destinationNodeName !== 'string') return undefined;
 
 	try {
+		// A Workflow fills in the default parameter values of the nodes it gets, so it gets copies
+		// and the run keeps its nodes as they are.
 		const workflow = new Workflow({
 			id: data.workflowData.id,
 			name: data.workflowData.name,
-			nodes: data.workflowData.nodes,
+			nodes: data.workflowData.nodes.map((node) => ({
+				...node,
+				parameters: deepCopy(node.parameters),
+			})),
 			connections: data.workflowData.connections,
 			active: false,
 			nodeTypes,
