@@ -28,14 +28,8 @@ describe('Internal API usage', () => {
 		},
 	);
 
-	it('accepts a follow-up event that carries route rows and zero totals', () => {
-		const followUp = {
-			...report,
-			total_calls: 0,
-			clients: JSON.stringify({ editor_ui: 0, other: 0 }),
-		};
-
-		expect(INTERNAL_API_USAGE.getValidationError(followUp)).toBeNull();
+	it('rejects a report without calls', () => {
+		expect(INTERNAL_API_USAGE.getValidationError({ ...report, total_calls: 0 })).not.toBeNull();
 	});
 
 	it('rejects a route row without a call count for each client', () => {

@@ -818,7 +818,7 @@ describe('Telemetry', () => {
 
 			telemetry.trackInternalApiInvocation({ route: 'GET /rest/workflows', client: 'other' });
 
-			expect(telemetry.getInternalApiInvocationsBuffer()).toBeUndefined();
+			expect(telemetry.getInternalApiInvocationsBuffer().total_calls).toBe(0);
 		});
 	});
 
@@ -1406,7 +1406,7 @@ describe('Telemetry', () => {
 				]),
 			});
 			expect(report).not.toHaveProperty('user_id');
-			expect(telemetry.getInternalApiInvocationsBuffer()).toBeUndefined();
+			expect(telemetry.getInternalApiInvocationsBuffer().total_calls).toBe(0);
 		});
 
 		test('should send no Internal API usage report for a window without calls', () => {
@@ -1442,28 +1442,6 @@ describe('Telemetry', () => {
 			for (const [field, schema] of Object.entries(INTERNAL_API_USAGE_JSON_FIELDS)) {
 				expect(schema.safeParse(jsonParse(reports[0][field] as string)).success).toBe(true);
 			}
-		});
-
-		test('should split a large route report into events that each fit the size limit', () => {
-			for (let i = 0; i < 250; i++) {
-				const route = `GET /rest/resource-${i}/${'x'.repeat(100)}/{resourceId}`;
-				telemetry.trackInternalApiInvocation({ route, client: 'editor_ui' });
-				telemetry.trackInternalApiInvocation({ route, client: 'other' });
-			}
-
-			telemetry.flushBuffers();
-
-			const reports = spyTrack.mock.calls
-				.filter(([e]) => e === TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE)
-				.map(([, report]) => report);
-			expect(
-				reports.map((report) => (jsonParse(report.routes as string) as unknown[]).length),
-			).toEqual([100, 100, 50]);
-			for (const report of reports) {
-				expect(Buffer.byteLength(JSON.stringify(report), 'utf8')).toBeLessThan(32 << 10);
-			}
-			expect(reports.map((report) => report.total_calls)).toEqual([500, 0, 0]);
-			expect(jsonParse(reports[0].clients as string)).toEqual({ editor_ui: 250, other: 250 });
 		});
 
 		test('should send nothing when RudderStack is not initialized', () => {

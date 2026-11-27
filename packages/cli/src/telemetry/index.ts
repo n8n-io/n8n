@@ -109,23 +109,13 @@ interface IInternalApiInvocationsBufferEntry {
 	routeCalls: Map<string, IInternalApiRouteCalls>;
 }
 
-/**
- * `track()` drops an event above 32 KB without an error. 100 rows stay well below that,
- * even for long route names.
- */
-const INTERNAL_API_ROUTE_ROWS_PER_EVENT = 100;
-
-const NO_CALLS_BY_CLIENT: Record<InternalApiClient, number> = { editor_ui: 0, other: 0 };
-
-/** An empty report still gets one batch, so its totals are sent. */
-function batchRouteRows(rows: IInternalApiRouteCalls[]): IInternalApiRouteCalls[][] {
-	if (rows.length === 0) return [[]];
-
-	const batches: IInternalApiRouteCalls[][] = [];
-	for (let start = 0; start < rows.length; start += INTERNAL_API_ROUTE_ROWS_PER_EVENT) {
-		batches.push(rows.slice(start, start + INTERNAL_API_ROUTE_ROWS_PER_EVENT));
-	}
-	return batches;
+function newInternalApiInvocationsBuffer(): IInternalApiInvocationsBufferEntry {
+	return {
+		total_calls: 0,
+		first: new Date(),
+		clients: { editor_ui: 0, other: 0 },
+		routeCalls: new Map(),
+	};
 }
 
 @Service()
@@ -139,8 +129,7 @@ export class Telemetry implements TelemetryTracker {
 
 	private publicApiInvocationsBuffer: IPublicApiInvocationsBuffer = {};
 
-	/** Calls of this process in the current window. Unset until the first call. */
-	private internalApiInvocationsBuffer?: IInternalApiInvocationsBufferEntry;
+	private internalApiInvocationsBuffer = newInternalApiInvocationsBuffer();
 
 	private readonly bufferFlushers: (() => void)[] = [];
 
@@ -254,7 +243,7 @@ export class Telemetry implements TelemetryTracker {
 
 		this.flushWorkflowExecutionCounts();
 		for (const flush of this.bufferFlushers) flush();
-		this.flushApiInvocations();
+		this.flushPublicApiInvocations();
 		this.flushInternalApiInvocations();
 	}
 
@@ -289,7 +278,7 @@ export class Telemetry implements TelemetryTracker {
 		this.track('pulse', pulsePacket);
 	}
 
-	private flushApiInvocations() {
+	private flushPublicApiInvocations() {
 		for (const userId of Object.keys(this.publicApiInvocationsBuffer)) {
 			const entry = this.publicApiInvocationsBuffer[userId];
 			if (entry.total_calls > 0) {
@@ -310,23 +299,18 @@ export class Telemetry implements TelemetryTracker {
 
 	private flushInternalApiInvocations() {
 		const entry = this.internalApiInvocationsBuffer;
-		if (!entry) return;
+		if (entry.total_calls === 0) {
+			return;
+		}
 
-		const routeBatches = batchRouteRows([...entry.routeCalls.values()]);
-
-		routeBatches.forEach((routes, index) => {
-			// Totals go on the first event only, so summing a window's events counts each call once.
-			const isFirstEvent = index === 0;
-
-			this.track(TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE, {
-				total_calls: isFirstEvent ? entry.total_calls : 0,
-				first: entry.first.toISOString(),
-				routes: JSON.stringify(routes),
-				clients: JSON.stringify(isFirstEvent ? entry.clients : NO_CALLS_BY_CLIENT),
-			});
+		this.track(TELEMETRY_EVENT.INTERNAL_API.INTERNAL_API_USAGE, {
+			total_calls: entry.total_calls,
+			first: entry.first.toISOString(),
+			routes: JSON.stringify([...entry.routeCalls.values()]),
+			clients: JSON.stringify(entry.clients),
 		});
 
-		this.internalApiInvocationsBuffer = undefined;
+		this.internalApiInvocationsBuffer = newInternalApiInvocationsBuffer();
 	}
 
 	private flushWorkflowExecutionCounts() {
@@ -463,12 +447,7 @@ export class Telemetry implements TelemetryTracker {
 
 		const { route, client } = properties;
 
-		const entry = (this.internalApiInvocationsBuffer ??= {
-			total_calls: 0,
-			first: new Date(),
-			clients: { ...NO_CALLS_BY_CLIENT },
-			routeCalls: new Map(),
-		});
+		const entry = this.internalApiInvocationsBuffer;
 		entry.total_calls++;
 		entry.clients[client]++;
 
@@ -674,7 +653,7 @@ export class Telemetry implements TelemetryTracker {
 		return this.publicApiInvocationsBuffer;
 	}
 
-	getInternalApiInvocationsBuffer(): IInternalApiInvocationsBufferEntry | undefined {
+	getInternalApiInvocationsBuffer(): IInternalApiInvocationsBufferEntry {
 		return this.internalApiInvocationsBuffer;
 	}
 }
