@@ -6,6 +6,7 @@ import {
 } from '@n8n/api-types';
 import { z } from 'zod';
 
+import { agentScenarioFields, AgentRunSchema, findAgentRunIssues } from './agent-run-schema';
 import {
 	ConversationSeedSchema,
 	SeedMessageSchema,
@@ -68,6 +69,7 @@ const ExecutionScenarioSchema = z.object({
 	 *  rejected by a `number` column. Reuses the api-types seed-table schema
 	 *  (extended with optional `rows`). */
 	seedDataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
+	...agentScenarioFields,
 });
 
 /** Prior messages for an inline seed. Accepts a full envelope or the `{role, text}`
@@ -253,6 +255,9 @@ const evalTestCaseObjectSchema = z
 		/** History restored before the live turn — one slot, `mode` says where it
 		 *  comes from. See `CaseSeedSchema`. */
 		seed: CaseSeedSchema.optional(),
+		/** How the seeded Agent is run (AGENT-1665). Omitted: an assistant build.
+		 *  See `harness/agent-run-schema.ts`. */
+		agentRun: AgentRunSchema.optional(),
 		/**
 		 * Logical groupings this case belongs to (e.g. `['pr', 'full']`). Used by
 		 * the eval CLI's `--tier` flag and propagated to LangSmith as example
@@ -276,9 +281,20 @@ export const WORKFLOW_TEST_CASE_KEYS = Object.keys(evalTestCaseObjectSchema.shap
 // `seed` union — so the old two-refine pair is down to this one rule, keyed off
 // the discriminant: only `replay` brings its own live turn.)
 export const EvalTestCaseSchema = evalTestCaseObjectSchema
-	.refine((c) => c.seed?.mode === 'replay' || c.conversation !== undefined, {
-		message:
-			'a case needs a conversation, or a seed with mode: replay (which supplies the live turn from the trace)',
+	.refine(
+		(c) =>
+			c.seed?.mode === 'replay' || c.conversation !== undefined || c.agentRun?.mode === 'direct',
+		{
+			message:
+				'a case needs a conversation, a seed with mode: replay (which supplies the live turn from the trace), or agentRun.mode direct',
+		},
+	)
+	// A direct Agent run skips the assistant turn, so every assistant-only field
+	// would be silently ignored — fail at load instead.
+	.superRefine((c, ctx) => {
+		for (const issue of findAgentRunIssues(c)) {
+			ctx.addIssue({ code: z.ZodIssueCode.custom, ...issue });
+		}
 	})
 	// An inline seed that carries nothing restores nothing, and the case then grades
 	// as an unseeded build — green for the wrong reason. `messages` is optional (a

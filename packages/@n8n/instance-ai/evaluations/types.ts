@@ -16,6 +16,7 @@ import type { z } from 'zod';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
+import type { AgentRun, AgentUserTurns } from './harness/agent-run-schema';
 import type { EvalAttribution } from './harness/attribution';
 import type { CaseSeed, ConversationTurnSchema, EvalTestCaseInput } from './harness/schema';
 
@@ -226,6 +227,10 @@ export interface ExecutionScenario {
 	 *  (TRUST-311). Seeded under their exact declared names so the built
 	 *  workflow's by-name data-table references resolve. */
 	seedDataTables?: InstanceAiEvalSeedDataTable[];
+	/** AGENT-1666: the simulated user's goal and turn cap. Agent runs only. */
+	userTurns?: AgentUserTurns;
+	/** AGENT-1666: one thread per session, same user. Agent runs only. */
+	sessions?: AgentUserTurns[];
 }
 
 export type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
@@ -282,6 +287,8 @@ export interface WorkflowTestCase {
 	 *  LangSmith trace at run time and supplies the live turn itself, which is why
 	 *  `conversation` is optional for it. See `harness/schema.ts`. */
 	seed?: CaseSeed;
+	/** How the seeded Agent is run (AGENT-1665). Omitted: an assistant build. */
+	agentRun?: AgentRun;
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }

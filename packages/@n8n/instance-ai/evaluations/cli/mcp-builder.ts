@@ -220,6 +220,8 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// Restored into the build user's project before `claude` starts; the earlier
 	// conversation goes to `claude` as text (see run/mcp-seed.ts).
 	seed: 'supported',
+	// A direct Agent run never reaches the builder (run/direct-agent-run.ts).
+	agentRun: 'supported',
 	datasets: 'supported',
 };
 
