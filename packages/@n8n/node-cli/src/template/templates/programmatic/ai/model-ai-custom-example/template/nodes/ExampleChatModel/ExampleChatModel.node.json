@@ -1,5 +1,5 @@
 {
-	"node": "{{nodePackageName}}",
+	"node": "{{nodePackageName}}.exampleChatModel",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Development"],

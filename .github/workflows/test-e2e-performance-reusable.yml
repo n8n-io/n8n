@@ -17,6 +17,9 @@ jobs:
 
   build-and-test-performance:
     needs: [prepare-docker]
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-artifact
@@ -29,6 +32,9 @@ jobs:
 
   idle-memory-baselines:
     needs: [prepare-docker]
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-artifact

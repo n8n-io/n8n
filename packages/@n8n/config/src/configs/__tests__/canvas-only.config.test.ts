@@ -47,12 +47,13 @@ describe('CanvasOnlyConfig', () => {
 		test('accepts every deniable scope', () => {
 			process.env = {
 				N8N_CANVAS_ONLY_PERSONAL_SPACE_SCOPE_DENY_LIST:
-					'credential:create,dataTable:create,agent:create',
+					'credential:create,dataTable:create,agent:create,mcpServer:create',
 			};
 			expect(Container.get(CanvasOnlyConfig).personalSpaceScopeDenyList).toEqual([
 				'credential:create',
 				'dataTable:create',
 				'agent:create',
+				'mcpServer:create',
 			]);
 		});
 

@@ -143,7 +143,12 @@ describe('execution start (integration)', () => {
 	it('is idempotent across duplicate execution:enqueued deliveries', async () => {
 		const { executionStore, stepStore } = stores();
 		const publish = vi.fn();
-		const queue: WorkQueue<OrchestrationMessage> = { publish, start: vi.fn(), stop: vi.fn() };
+		const queue: WorkQueue<OrchestrationMessage> = {
+			publish,
+			start: vi.fn(),
+			stop: vi.fn(),
+			size: vi.fn(),
+		};
 		const handler = new ExecutionStartHandler(
 			executionStore,
 			stepStore,
@@ -163,6 +168,8 @@ describe('execution start (integration)', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
 			parent: null,
+			errorSource: null,
+			resolveErrorWorkflowOnFailure: false,
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

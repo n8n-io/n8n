@@ -198,6 +198,30 @@ describe('resumePaused', () => {
 		expect(runner.resumePaused.mock.lastCall?.[1].abortSignal?.aborted).toBe(true);
 	});
 
+	it('forwards sharedWorkspaceEgress when re-acquiring the parent workspace on resumePaused', async () => {
+		const { backgroundRunner, runner, workspaceService, context, suspension } = prepare();
+		suspension.metadata.sharedWorkspace = true;
+		suspension.metadata.sharedWorkspaceEgress = true;
+		workspaceService.getAgentWorkspace.mockResolvedValue({
+			workspace: mock(),
+			handle: mock<AgentSandboxRuntime>({ egressEnabled: true }),
+		});
+		runner.resumePaused.mockImplementation(async (_request, runContext) => {
+			await runContext.onResumeClaimed?.();
+			return completedRunResult();
+		});
+
+		await backgroundRunner.resumePaused(job, context, reservationTimeoutAt);
+		await flushDetachedRun();
+
+		expect(workspaceService.getAgentWorkspace).toHaveBeenCalledWith(
+			context.projectId,
+			job.parentAgentId,
+			suspension.scope.principalHash,
+			{ sandboxEgress: true },
+		);
+	});
+
 	it('preserves a pending approval when a later stop rejects its resume', async () => {
 		const { backgroundRunner, runner, jobService, jobRepository, context, suspension } =
 			prepare(true);

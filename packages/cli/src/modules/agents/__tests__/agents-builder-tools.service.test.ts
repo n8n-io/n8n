@@ -2252,6 +2252,7 @@ describe('AgentsBuilderToolsService', () => {
 			expect(toolNamed(name).description).toContain('agent-builder-target-skills');
 			expect(toolNamed(name).systemInstruction).toBeUndefined();
 		}
+		expect(toolNamed(BUILDER_TOOLS.CREATE_SKILLS).description).toContain('attachableToAgentId');
 	});
 
 	describe('agent_builder_create_skills tool', () => {
@@ -3433,7 +3434,9 @@ describe('AgentsBuilderToolsService', () => {
 					revision: 3,
 				},
 			});
+			// The Assistant agent chat shows a card only for a payload with a request id.
 			expect(result).toEqual({
+				requestId: expect.any(String),
 				message:
 					'Republish Support agent and go live. These might get sent for real: replies in Slack, runs the scheduled task "Daily digest", calls tools from Linear, uses its 1 tool.',
 				severity: 'warning',

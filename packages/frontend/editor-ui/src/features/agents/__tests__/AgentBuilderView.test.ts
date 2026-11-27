@@ -81,7 +81,7 @@ const routeState = reactive({
 	params: routeParams,
 	query: routeQuery,
 });
-type RouteGuard = (to: { params: Record<string, string> }) => void | Promise<void>;
+type RouteGuard = (to: { params: Record<string, string> }) => unknown;
 const routeGuards: { leave?: RouteGuard; update?: RouteGuard } = {};
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
@@ -1662,6 +1662,82 @@ describe('AgentBuilderView — preview routing', () => {
 		await expect(
 			routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } }),
 		).rejects.toThrow('save failed');
+	});
+
+	describe('when a never-saved agent fails to save', () => {
+		async function renderWithFailedCreate() {
+			history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+			createAgentMock.mockRejectedValue(new Error('Skill is not available to this agent'));
+			const wrapper = await renderView();
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { instructions: 'Imported' });
+			await nextTick();
+			return wrapper;
+		}
+
+		function answerLeaveConfirmation(answer: 'onConfirm' | 'onCancel') {
+			const modal = openModalWithDataMock.mock.calls
+				.map((call) => call[0] as { name?: string; data: Record<typeof answer, () => void> })
+				.find(({ name }) => name === AGENT_CONFIRMATION_MODAL_KEY);
+			expect(modal).toBeDefined();
+			modal?.data[answer]();
+		}
+
+		it('asks before leaving, and leaves without retrying the save on confirm', async () => {
+			const wrapper = await renderWithFailedCreate();
+
+			const navigation = routeGuards.leave?.({ params: {} });
+			await vi.waitFor(() => answerLeaveConfirmation('onConfirm'));
+
+			await expect(navigation).resolves.toBe(true);
+			const createCalls = createAgentMock.mock.calls.length;
+			wrapper.unmount();
+			await flushPromises();
+			expect(createAgentMock).toHaveBeenCalledTimes(createCalls);
+		});
+
+		it('stays on the agent when the user keeps editing', async () => {
+			await renderWithFailedCreate();
+
+			const navigation = routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } });
+			await vi.waitFor(() => answerLeaveConfirmation('onCancel'));
+
+			await expect(navigation).resolves.toBe(false);
+		});
+
+		it('still lets the embedded AI panel start a thread', async () => {
+			const wrapper = await renderWithFailedCreate();
+			const beforeNewThread = wrapper
+				.findComponent({ name: 'InstanceAiChatPanel' })
+				.props('beforeNewThread') as () => Promise<void>;
+
+			await expect(beforeNewThread()).resolves.toBeUndefined();
+			expect(createAgentMock).toHaveBeenCalled();
+		});
+
+		// The usual path: the debounced save fails first, so later flushes find no queued
+		// edit and must still report the failure instead of resolving as if all was saved.
+		it('starts a thread and asks before leaving after the debounced save already failed', async () => {
+			const wrapper = await renderWithFailedCreate();
+			await vi.waitFor(() =>
+				expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), 'agents.builder.saveError'),
+			);
+			createAgentMock.mockClear();
+
+			const beforeNewThread = wrapper
+				.findComponent({ name: 'InstanceAiChatPanel' })
+				.props('beforeNewThread') as () => Promise<void>;
+			await expect(beforeNewThread()).resolves.toBeUndefined();
+
+			const navigation = routeGuards.leave?.({ params: {} });
+			await vi.waitFor(() => answerLeaveConfirmation('onConfirm'));
+			await expect(navigation).resolves.toBe(true);
+
+			wrapper.unmount();
+			await flushPromises();
+			expect(createAgentMock).not.toHaveBeenCalled();
+		});
 	});
 
 	it('loads node types when the page opens', async () => {
