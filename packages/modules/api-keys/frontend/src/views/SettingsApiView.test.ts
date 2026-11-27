@@ -3,12 +3,11 @@ import { flushPromises } from '@vue/test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useToast } from '@n8n/composables/useToast';
 
-import { renderComponent } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
-import { isModalPrefetchEnabled } from '@/__tests__/prefetchModals';
+import { mockedStore, renderComponent } from '@n8n/frontend-test-utils';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import type { ModalPrefetch } from '@n8n/frontend-module-sdk';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 
-vi.mock('@/app/composables/usePrefetchModals');
 import SettingsApiView from './SettingsApiView.vue';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { setActivePinia } from 'pinia';
@@ -18,7 +17,6 @@ import { DateTime } from 'luxon';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { ApiKey, ApiKeyOwner, ApiKeyOwnerSummary } from '@n8n/api-types';
 
@@ -115,7 +113,10 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	};
 });
 
-setActivePinia(createTestingPinia());
+// The package's test setup activates a fresh pinia before each test. The stores below
+// belong to this one, so each test activates it again.
+const pinia = createTestingPinia();
+setActivePinia(pinia);
 
 const settingsStore = mockedStore(useSettingsStore);
 const cloudStore = mockedStore(useCloudPlanStore);
@@ -123,7 +124,20 @@ const apiKeysStore = mockedStore(useApiKeysStore);
 const rootStore = mockedStore(useRootStore);
 const usersStore = mockedStore(useUsersStore);
 const rbacStore = mockedStore(useRBACStore);
-const uiStore = mockedStore(useUIStore);
+const modalOpeners = { openModal: vi.fn(), openModalWithData: vi.fn() };
+const modalPrefetch = vi.fn<ModalPrefetch>();
+
+/**
+ * Tells if the last rendered page would prefetch the modal now. A page from an earlier
+ * test may still be in the mock's calls, so read the last call that names the key.
+ */
+function isModalPrefetchEnabled(key: string): boolean {
+	const call = [...modalPrefetch.mock.calls].reverse().find(([keys]) => keys.includes(key));
+	if (!call) throw new Error(`The page does not prefetch the "${key}" modal`);
+	const enabled = call[1]?.enabled;
+	// The shell treats a missing `enabled` as on.
+	return enabled ? enabled() : true;
+}
 
 const ownerFixture: ApiKeyOwner = {
 	id: 'u1',
@@ -163,12 +177,19 @@ const assertHintsAreShown = (expectedPlaygroundHref: string) => {
 
 describe('SettingsApiView', () => {
 	beforeEach(() => {
+		setActivePinia(pinia);
 		vi.clearAllMocks();
 		usersStore.currentUserId = 'u1';
 		// mockedStore lets us override computed properties.
 		// @ts-expect-error: replacing a computed for the test
 		usersStore.currentUser = { id: 'u1' };
 		rbacStore.hasScope.mockReturnValue(false);
+		capabilityRegistry.provide(capabilities.modalOpeners, modalOpeners);
+		capabilityRegistry.provide(capabilities.modalPrefetch, modalPrefetch);
+	});
+
+	afterEach(() => {
+		capabilityRegistry.clear();
 	});
 
 	it('if user public api is not enabled and user is trialing it should show upgrade call to action', () => {
@@ -407,7 +428,7 @@ describe('SettingsApiView', () => {
 			expect(apiKeysStore.rotateApiKey).toHaveBeenCalledWith('1');
 			// The rotated key is shown through the same modal used for newly created keys.
 			await waitFor(() =>
-				expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				expect(modalOpeners.openModalWithData).toHaveBeenCalledWith({
 					name: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 					data: { mode: 'new', rotatedApiKey: rotated },
 				}),

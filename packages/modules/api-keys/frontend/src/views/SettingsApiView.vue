@@ -2,21 +2,20 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useToast } from '@n8n/composables/useToast';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME } from '@/app/constants/durations';
+import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
+import { DOCS_DOMAIN } from '@n8n/frontend-constants/urls';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { DOCS_DOMAIN } from '@/app/constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useUIStore } from '@/app/stores/ui.store';
+import { useBasePageRedirectionHelper } from '@n8n/stores/composables/useBasePageRedirectionHelper';
 import { useApiKeysStore } from '../apiKeys.store';
 import { storeToRefs } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -43,18 +42,18 @@ import RevokeApiKeyConfirmModal from '../components/RevokeApiKeyConfirmModal.vue
 import RotateApiKeyConfirmModal from '../components/RotateApiKeyConfirmModal.vue';
 
 const settingsStore = useSettingsStore();
-const uiStore = useUIStore();
+const modalOpeners = capabilityRegistry.use(capabilities.modalOpeners);
 const cloudPlanStore = useCloudPlanStore();
 const usersStore = useUsersStore();
 const rbacStore = useRBACStore();
 
 const { showError, showMessage } = useToast();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const i18n = useI18n();
-const { goToUpgrade } = usePageRedirectionHelper();
+const { goToUpgrade } = useBasePageRedirectionHelper();
 const telemetry = useTelemetry();
 
-usePrefetchModals([API_KEY_CREATE_OR_EDIT_MODAL_KEY], {
+capabilityRegistry.use(capabilities.modalPrefetch)([API_KEY_CREATE_OR_EDIT_MODAL_KEY], {
 	enabled: () => settingsStore.isPublicApiEnabled,
 });
 
@@ -205,7 +204,7 @@ async function onTableUpdate() {
 const onCreateApiKey = () => {
 	telemetry.track('User clicked create API key button');
 
-	uiStore.openModalWithData({
+	modalOpeners.openModalWithData({
 		name: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 		data: { mode: 'new' },
 	});
@@ -243,7 +242,7 @@ async function getApiKeysAndScopes() {
 }
 
 function onEdit(apiKey: ApiKey) {
-	uiStore.openModalWithData({
+	modalOpeners.openModalWithData({
 		name: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 		data: { mode: 'edit', activeId: apiKey.id },
 	});
@@ -284,7 +283,7 @@ async function onRotateConfirm() {
 		rotateConfirmApiKey.value = null;
 		showMessage({ title: i18n.baseText('settings.api.rotate.toast'), type: 'success' });
 		// Reuse the create modal's "created" view so a rotated key is presented identically.
-		uiStore.openModalWithData({
+		modalOpeners.openModalWithData({
 			name: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
 			data: { mode: 'new', rotatedApiKey: rotated },
 		});

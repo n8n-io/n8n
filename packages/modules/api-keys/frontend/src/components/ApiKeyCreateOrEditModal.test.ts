@@ -1,15 +1,18 @@
-import { createComponentRenderer } from '@/__tests__/render';
+import {
+	createComponentRenderer,
+	mockedStore,
+	retry,
+	waitAllPromises,
+} from '@n8n/frontend-test-utils';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createTestingPinia } from '@pinia/testing';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
-import { STORES } from '@n8n/stores';
-import { mockedStore, retry } from '@/__tests__/utils';
 import ApiKeyEditModal from './ApiKeyCreateOrEditModal.vue';
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { nextTick } from 'vue';
 
 import { useApiKeysStore } from '../apiKeys.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -32,15 +35,7 @@ Object.defineProperty(navigator, 'clipboard', {
 });
 
 const renderComponent = createComponentRenderer(ApiKeyEditModal, {
-	pinia: createTestingPinia({
-		initialState: {
-			[STORES.UI]: {
-				modalStateById: {
-					[API_KEY_CREATE_OR_EDIT_MODAL_KEY]: { open: true },
-				},
-			},
-		},
-	}),
+	pinia: createTestingPinia(),
 });
 
 const testApiKey: ApiKeyWithRawValue = {
@@ -64,7 +59,7 @@ const testApiKey: ApiKeyWithRawValue = {
 const apiKeysStore = mockedStore(useApiKeysStore);
 const rootStore = mockedStore(useRootStore);
 const usersStore = mockedStore(useUsersStore);
-const uiStore = mockedStore(useUIStore);
+const modalCloser = { closeModal: vi.fn() };
 const rbacStore = mockedStore(useRBACStore);
 
 describe('ApiKeyCreateOrEditModal', () => {
@@ -76,9 +71,11 @@ describe('ApiKeyCreateOrEditModal', () => {
 		// @ts-expect-error: replacing a computed for the test
 		usersStore.currentUser = { id: 'u1' };
 		rbacStore.hasScope.mockReturnValue(true);
+		capabilityRegistry.provide(capabilities.modalCloser, modalCloser);
 	});
 
 	afterEach(() => {
+		capabilityRegistry.clear();
 		vi.clearAllMocks();
 	});
 
@@ -87,7 +84,10 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		const { getByText, getByPlaceholderText, getByDisplayValue } = renderComponent({
 			props: {
-				mode: 'new',
+				open: true,
+				data: {
+					mode: 'new',
+				},
 			},
 		});
 
@@ -138,7 +138,10 @@ describe('ApiKeyCreateOrEditModal', () => {
 		const { getByText, getAllByText, getByPlaceholderText, getByTestId, getByDisplayValue } =
 			renderComponent({
 				props: {
-					mode: 'new',
+					open: true,
+					data: {
+						mode: 'new',
+					},
 				},
 			});
 
@@ -190,7 +193,10 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		const { getByText, getByPlaceholderText, getByTestId, getByDisplayValue } = renderComponent({
 			props: {
-				mode: 'new',
+				open: true,
+				data: {
+					mode: 'new',
+				},
 			},
 		});
 
@@ -231,7 +237,10 @@ describe('ApiKeyCreateOrEditModal', () => {
 	test('shows the expiration hint for the default option and the "never" copy when Never is selected', async () => {
 		const { getByText, getByTestId } = renderComponent({
 			props: {
-				mode: 'new',
+				open: true,
+				data: {
+					mode: 'new',
+				},
 			},
 		});
 
@@ -261,7 +270,10 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		const { getByText, getByPlaceholderText, getByTestId, getByDisplayValue } = renderComponent({
 			props: {
-				mode: 'new',
+				open: true,
+				data: {
+					mode: 'new',
+				},
 			},
 		});
 
@@ -296,8 +308,11 @@ describe('ApiKeyCreateOrEditModal', () => {
 	test('shows a rotated key in the same created view, with the rotation title', async () => {
 		const { getByText, getByDisplayValue } = renderComponent({
 			props: {
-				mode: 'new',
-				rotatedApiKey: testApiKey,
+				open: true,
+				data: {
+					mode: 'new',
+					rotatedApiKey: testApiKey,
+				},
 			},
 		});
 
@@ -316,8 +331,11 @@ describe('ApiKeyCreateOrEditModal', () => {
 		try {
 			const { getByTestId } = renderComponent({
 				props: {
-					mode: 'new',
-					rotatedApiKey: testApiKey,
+					open: true,
+					data: {
+						mode: 'new',
+						rotatedApiKey: testApiKey,
+					},
 				},
 			});
 			await nextTick();
@@ -347,8 +365,11 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		const { getByText, getByTestId } = renderComponent({
 			props: {
-				mode: 'edit',
-				activeId: '123',
+				open: true,
+				data: {
+					mode: 'edit',
+					activeId: '123',
+				},
 			},
 		});
 
@@ -386,7 +407,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			apiKeysStore.apiKeys = [testApiKey]; // expiresAt: 0 → no expiry
 
 			const { getByText, getByTestId } = renderComponent({
-				props: { mode: 'edit', activeId: '123' },
+				props: { open: true, data: { mode: 'edit', activeId: '123' } },
 			});
 
 			await retry(() => expect(getByText('Edit API Key')).toBeInTheDocument());
@@ -401,7 +422,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			apiKeysStore.apiKeys = [{ ...testApiKey, expiresAt }];
 
 			const { getByText, getByTestId } = renderComponent({
-				props: { mode: 'edit', activeId: '123' },
+				props: { open: true, data: { mode: 'edit', activeId: '123' } },
 			});
 
 			await retry(() => expect(getByText('Edit API Key')).toBeInTheDocument());
@@ -416,7 +437,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			apiKeysStore.apiKeys = [{ ...testApiKey, expiresAt }];
 
 			const { getByText, getByTestId } = renderComponent({
-				props: { mode: 'edit', activeId: '123' },
+				props: { open: true, data: { mode: 'edit', activeId: '123' } },
 			});
 
 			await retry(() => expect(getByText('Edit API Key')).toBeInTheDocument());
@@ -440,7 +461,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			setupNonOwnerView();
 
 			const { getByText, queryByText, getByTestId } = renderComponent({
-				props: { mode: 'edit', activeId: '123' },
+				props: { open: true, data: { mode: 'edit', activeId: '123' } },
 			});
 
 			await retry(() => expect(getByText('API Key owned by test@n8n.io')).toBeInTheDocument());
@@ -457,14 +478,14 @@ describe('ApiKeyCreateOrEditModal', () => {
 			setupNonOwnerView();
 
 			const { getByTestId, getByText } = renderComponent({
-				props: { mode: 'edit', activeId: '123' },
+				props: { open: true, data: { mode: 'edit', activeId: '123' } },
 			});
 
 			await retry(() => expect(getByText('API Key owned by test@n8n.io')).toBeInTheDocument());
 
 			await userEvent.click(getByTestId('api-key-readonly-close'));
 
-			expect(uiStore.closeModal).toHaveBeenCalledWith(API_KEY_CREATE_OR_EDIT_MODAL_KEY);
+			expect(modalCloser.closeModal).toHaveBeenCalledWith(API_KEY_CREATE_OR_EDIT_MODAL_KEY);
 			expect(apiKeysStore.deleteApiKey).not.toHaveBeenCalled();
 		});
 
@@ -473,7 +494,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			apiKeysStore.deleteApiKey.mockResolvedValue();
 
 			const { getByTestId, getByText, findAllByRole } = renderComponent({
-				props: { mode: 'edit', activeId: '123' },
+				props: { open: true, data: { mode: 'edit', activeId: '123' } },
 			});
 
 			await retry(() => expect(getByText('API Key owned by test@n8n.io')).toBeInTheDocument());
@@ -499,7 +520,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			apiKeysStore.apiKeys = [testApiKey];
 
 			const { getByTestId, getByText, queryByText } = renderComponent({
-				props: { mode: 'edit', activeId: '123' },
+				props: { open: true, data: { mode: 'edit', activeId: '123' } },
 			});
 
 			await retry(() => expect(getByTestId('api-key-label')).toBeInTheDocument());
@@ -520,7 +541,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			apiKeysStore.apiKeys = [testApiKey];
 
 			const { getByTestId, getByText, queryByText } = renderComponent({
-				props: { mode: 'edit', activeId: '123' },
+				props: { open: true, data: { mode: 'edit', activeId: '123' } },
 			});
 
 			await retry(() => expect(getByTestId('api-key-readonly-revoke')).toBeInTheDocument());
@@ -535,6 +556,52 @@ describe('ApiKeyCreateOrEditModal', () => {
 				).toBeInTheDocument(),
 			);
 			expect(queryByText(/has set up will stop working/)).not.toBeInTheDocument();
+		});
+	});
+
+	// `DynamicModalLoader` passes the whole modal state as props. Its top-level `mode` and
+	// `activeId` are not the ones the openers set: those are in `data`.
+	describe('as DynamicModalLoader renders it', () => {
+		const loaderProps = (data: Record<string, unknown>) => ({
+			modalName: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
+			active: true,
+			open: true,
+			activeId: null,
+			mode: '',
+			data,
+		});
+
+		test('opens the key from data in edit mode', async () => {
+			apiKeysStore.apiKeys = [testApiKey];
+
+			const { getByText, getByTestId } = renderComponent({
+				props: loaderProps({ mode: 'edit', activeId: '123' }),
+			});
+
+			await retry(() => expect(getByText('Edit API Key')).toBeInTheDocument());
+			expect((getByTestId('api-key-label') as unknown as HTMLInputElement).value).toBe(
+				'new api key',
+			);
+		});
+
+		test('opens the create form for the initial state of the modal', async () => {
+			const { getByText, getByTestId } = renderComponent({
+				props: loaderProps({ activeId: null, mode: '' }),
+			});
+
+			await retry(() => expect(getByText('Create API Key')).toBeInTheDocument());
+			expect(getByTestId('expiration-select')).toBeInTheDocument();
+		});
+
+		test('shows nothing while the modal is closed', async () => {
+			const { queryByText } = renderComponent({
+				props: { ...loaderProps({ mode: 'new' }), open: false },
+			});
+			// Let the dialog settle, as it does before the open-state tests find their title.
+			await waitAllPromises();
+			await nextTick();
+
+			expect(queryByText('Create API Key')).not.toBeInTheDocument();
 		});
 	});
 });
