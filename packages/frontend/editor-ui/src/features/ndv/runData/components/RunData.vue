@@ -276,7 +276,14 @@ const { isSubNodeType } = useNodeType({
 	node,
 });
 
-const isArchivedWorkflow = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
+const isArchivedWorkflow = computed(() => {
+	if (route.name === VIEWS.EXECUTION_PREVIEW) {
+		// The preview document reflects the workflow at execution time.
+		return workflowsListStore.getWorkflowById(workflowId.value)?.isArchived ?? false;
+	}
+
+	return workflowDocumentStore?.value?.isArchived ?? false;
+});
 const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
 const isWaitNodeWaiting = computed(() => {
 	return (
@@ -751,7 +758,7 @@ const pinButtonDisabledTooltip = computed(() => {
 	const hasDebugInEditor =
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DebugInEditor];
 	const canEditWorkflow =
-		!workflow?.isArchived && getResourcePermissions(workflow?.scopes).workflow.update;
+		!isArchivedWorkflow.value && getResourcePermissions(workflow?.scopes).workflow.update;
 	const canUseExecutionData = !redactionInfo?.isRedacted || redactionInfo.canReveal;
 
 	if (!currentExecution.value || !hasDebugInEditor || !canEditWorkflow || !canUseExecutionData) {

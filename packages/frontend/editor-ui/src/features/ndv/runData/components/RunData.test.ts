@@ -200,7 +200,7 @@ describe('RunData', () => {
 		});
 
 		it.each(['success', 'error'] as const)(
-			'shows the execution read-only tooltip for an archived workflow (%s execution)',
+			'shows the read-only tooltip when the workflow was archived after execution (%s)',
 			async (status) => {
 				const { getByTestId } = render({
 					displayMode: 'json',
@@ -208,6 +208,7 @@ describe('RunData', () => {
 					stubPinButton: false,
 				});
 				allowCopyToEditor();
+				workflowDocumentStore.setIsArchived(false);
 				useWorkflowsListStore().updateWorkflowInCache('test-workflow', { isArchived: true });
 
 				await userEvent.hover(getByTestId('ndv-pin-data'));
@@ -255,7 +256,12 @@ describe('RunData', () => {
 				route.name = VIEWS.WORKFLOW;
 				route.meta.readOnlyCanvas = reason === 'route';
 				const { getByTestId } = render({ displayMode: 'json', stubPinButton: false });
-				if (reason === 'archived') workflowDocumentStore.setIsArchived(true);
+				if (reason === 'archived') {
+					useWorkflowsListStore().addWorkflow(
+						createTestWorkflow({ id: 'test-workflow', isArchived: false }),
+					);
+					workflowDocumentStore.setIsArchived(true);
+				}
 				if (reason === 'environment') useSourceControlStore().preferences.branchReadOnly = true;
 				if (reason === 'collaboration') mockedStore(useCollaborationStore).shouldBeReadOnly = true;
 
@@ -267,6 +273,19 @@ describe('RunData', () => {
 				);
 				expect(getByTestId('ndv-pin-data')).toHaveAttribute('aria-disabled', 'true');
 			},
+		);
+	});
+
+	it('pins data in the unarchived editor document when the cached workflow is archived', async () => {
+		const { getByTestId } = render({ displayMode: 'json', stubPinButton: false });
+		useWorkflowsListStore().addWorkflow(
+			createTestWorkflow({ id: 'test-workflow', isArchived: true }),
+		);
+
+		await userEvent.click(getByTestId('ndv-pin-data'));
+
+		await waitFor(() =>
+			expect(workflowDocumentStore.pinnedDataByNodeName['Test Node']).toEqual([{ json: {} }]),
 		);
 	});
 
