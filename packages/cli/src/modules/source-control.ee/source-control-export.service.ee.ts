@@ -43,7 +43,6 @@ import {
 	sanitizeCredentialData,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
-import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
 import type { DataTableResourceOwner, ExportableDataTable } from './types/exportable-data-table';
 import type { ExportableFolder } from './types/exportable-folders';
@@ -170,7 +169,7 @@ export class SourceControlExportService {
 		);
 	}
 
-	async exportWorkflowsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
+	async exportWorkflowsToWorkFolder(candidates: SourceControlledFile[]): Promise<void> {
 		try {
 			sourceControlFoldersExistCheck([this.workflowExportFolder]);
 			const workflowIds = candidates.map((e) => e.id);
@@ -187,43 +186,26 @@ export class SourceControlExportService {
 				owners[workflowId] = owner;
 			}
 
-			const files: ExportResult['files'] = [];
 			for (const workflowIdChunk of chunk(workflowIds, SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE)) {
 				const workflows = await this.workflowRepository.find({
 					where: { id: In(workflowIdChunk) },
 					relations: ['parentFolder'],
 				});
 				await this.writeExportableWorkflowsToExportFolder(workflows, owners);
-				files.push(
-					...workflows.map((workflow) => ({
-						id: workflow.id,
-						name: this.getWorkflowPath(workflow.name),
-					})),
-				);
 			}
-
-			return {
-				count: ownerProjects.size,
-				folder: this.workflowExportFolder,
-				files,
-			};
 		} catch (error) {
 			if (error instanceof UnexpectedError) throw error;
 			throw new UnexpectedError('Failed to export workflows to work folder', { cause: error });
 		}
 	}
 
-	async exportGlobalVariablesToWorkFolder(): Promise<ExportResult> {
+	async exportGlobalVariablesToWorkFolder(): Promise<void> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
 			const variables = await this.variablesService.getAllCached({ globalOnly: true });
 			// do not export empty variables
 			if (variables.length === 0) {
-				return {
-					count: 0,
-					folder: this.gitFolder,
-					files: [],
-				};
+				return;
 			}
 			const fileName = getVariablesPath(this.gitFolder);
 			const sanitizedVariables: ExportableVariable[] = variables.map((e) => ({
@@ -233,16 +215,6 @@ export class SourceControlExportService {
 				value: '',
 			}));
 			await fsWriteFile(fileName, JSON.stringify(sanitizedVariables, null, 2));
-			return {
-				count: sanitizedVariables.length,
-				folder: this.gitFolder,
-				files: [
-					{
-						id: '',
-						name: fileName,
-					},
-				],
-			};
 		} catch (error) {
 			this.logger.error('Failed to export variables to work folder', { error });
 			throw new UnexpectedError('Failed to export variables to work folder', {
@@ -254,16 +226,12 @@ export class SourceControlExportService {
 	async exportDataTablesToWorkFolder(
 		candidates: SourceControlledFile[],
 		context: SourceControlContext,
-	): Promise<ExportResult> {
+	): Promise<void> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder, this.dataTableExportFolder]);
 
 			if (candidates.length === 0) {
-				return {
-					count: 0,
-					folder: this.dataTableExportFolder,
-					files: [],
-				};
+				return;
 			}
 
 			// Extract data table IDs from candidates
@@ -299,8 +267,6 @@ export class SourceControlExportService {
 				dataTables.flatMap((table) => table.project ?? []),
 			);
 
-			const exportedFiles: Array<{ id: string; name: string }> = [];
-
 			// Write each data table to its own file
 			for (const table of dataTables) {
 				const owner: DataTableResourceOwner | null = table.project
@@ -325,18 +291,7 @@ export class SourceControlExportService {
 
 				const filePath = this.getDataTablePath(table.id);
 				await fsWriteFile(filePath, JSON.stringify(exportableDataTable, null, 2));
-
-				exportedFiles.push({
-					id: table.id,
-					name: filePath,
-				});
 			}
-
-			return {
-				count: dataTables.length,
-				folder: this.dataTableExportFolder,
-				files: exportedFiles,
-			};
 		} catch (error) {
 			this.logger.error('Failed to export data tables to work folder', { error });
 			throw new UnexpectedError('Failed to export data tables to work folder', {
@@ -345,7 +300,7 @@ export class SourceControlExportService {
 		}
 	}
 
-	async exportFoldersToWorkFolder(context: SourceControlContext): Promise<ExportResult> {
+	async exportFoldersToWorkFolder(context: SourceControlContext): Promise<void> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
 			const folders = await this.folderRepository.find({
@@ -366,11 +321,7 @@ export class SourceControlExportService {
 			});
 
 			if (folders.length === 0) {
-				return {
-					count: 0,
-					folder: this.gitFolder,
-					files: [],
-				};
+				return;
 			}
 
 			const fileName = getFoldersPath(this.gitFolder);
@@ -404,23 +355,13 @@ export class SourceControlExportService {
 					2,
 				),
 			);
-			return {
-				count: folders.length,
-				folder: this.gitFolder,
-				files: [
-					{
-						id: '',
-						name: fileName,
-					},
-				],
-			};
 		} catch (error) {
 			this.logger.error('Failed to export folders to work folder', { error });
 			throw new UnexpectedError('Failed to export folders to work folder', { cause: error });
 		}
 	}
 
-	async exportTagsToWorkFolder(context: SourceControlContext): Promise<ExportResult> {
+	async exportTagsToWorkFolder(context: SourceControlContext): Promise<void> {
 		try {
 			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
 			sourceControlFoldersExistCheck([this.gitFolder]);
@@ -466,11 +407,6 @@ export class SourceControlExportService {
 					2,
 				),
 			);
-			return {
-				count: tagsById.size,
-				folder: this.gitFolder,
-				files: [{ id: '', name: fileName }],
-			};
 		} catch (error) {
 			this.logger.error('Failed to export tags to work folder', { error });
 			throw new UnexpectedError('Failed to export tags to work folder', { cause: error });
@@ -519,7 +455,9 @@ export class SourceControlExportService {
 		);
 	}
 
-	async exportCredentialsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
+	async exportCredentialsToWorkFolder(
+		candidates: SourceControlledFile[],
+	): Promise<{ missingIds: string[] }> {
 		try {
 			sourceControlFoldersExistCheck([this.credentialExportFolder]);
 			const credentialIds = candidates.map((e) => e.id);
@@ -527,7 +465,6 @@ export class SourceControlExportService {
 				await this.sharedCredentialsRepository.findOwnerProjectsByCredentialIds(credentialIds);
 			const ownerEmails = await this.getPersonalOwnerEmails(ownerProjects.values());
 			const foundCredentialIds = new Set<string>();
-			const files: ExportResult['files'] = [];
 
 			for (const credentialIdChunk of chunk(credentialIds, SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE)) {
 				const credentialsToBeExported = await this.sharedCredentialsRepository.findByCredentialIds(
@@ -541,10 +478,6 @@ export class SourceControlExportService {
 				);
 				for (const sharing of credentialsToBeExported) {
 					foundCredentialIds.add(sharing.credentialsId);
-					files.push({
-						id: sharing.credentials.id,
-						name: path.join(this.credentialExportFolder, `${sharing.credentials.name}.json`),
-					});
 				}
 			}
 
@@ -553,12 +486,7 @@ export class SourceControlExportService {
 				missingIds = credentialIds.filter((remote) => !foundCredentialIds.has(remote));
 			}
 
-			return {
-				count: files.length,
-				folder: this.credentialExportFolder,
-				files,
-				missingIds,
-			};
+			return { missingIds };
 		} catch (error) {
 			this.logger.error('Failed to export credentials to work folder', { error });
 			throw new UnexpectedError('Failed to export credentials to work folder', { cause: error });
@@ -572,7 +500,7 @@ export class SourceControlExportService {
 	 * Personal project are not supported because they are not stable across instances
 	 * (different ids across instances).
 	 */
-	async exportTeamProjectsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
+	async exportTeamProjectsToWorkFolder(candidates: SourceControlledFile[]): Promise<void> {
 		try {
 			sourceControlFoldersExistCheck([this.projectExportFolder], true);
 
@@ -609,15 +537,6 @@ export class SourceControlExportService {
 					return await fsWriteFile(fileName, JSON.stringify(sanitizedProject, null, 2));
 				}),
 			);
-
-			return {
-				count: projects.length,
-				folder: this.projectExportFolder,
-				files: projects.map((project) => ({
-					id: project.id,
-					name: getProjectExportPath(project.id, this.projectExportFolder),
-				})),
-			};
 		} catch (error) {
 			if (error instanceof UnexpectedError) throw error;
 			throw new UnexpectedError('Failed to export projects to work folder', { cause: error });

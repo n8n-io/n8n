@@ -49,6 +49,7 @@ describe('MCP server DTOs', () => {
 	it('adds tools from at least one workflow', () => {
 		expect(AddMcpServerToolsDto.safeParse({ workflowIds: ['wf-1', 'wf-2'] }).success).toBe(true);
 		expect(AddMcpServerToolsDto.safeParse({ workflowIds: [] }).success).toBe(false);
+		expect(AddMcpServerToolsDto.safeParse({ workflowIds: ['w'.repeat(37)] }).success).toBe(false);
 	});
 
 	it('adds tools from at most 100 workflows, each with an id', () => {

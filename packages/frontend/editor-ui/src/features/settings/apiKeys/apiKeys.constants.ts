@@ -29,7 +29,7 @@ export const API_KEY_SCOPE_GROUPS: Array<{ key: string; resources: ApiKeyResourc
 
 // Actions treated as read-only for the "Read only" preset and the read/write badge.
 // `export` is intentionally included: it is non-mutating, even though `workflow:export`
-// returns the full workflow definition. The promotion setup reads its providers and environments
+// returns the full workflow definition. Promotions read their providers, environments and reviews
 // with their own read actions.
 export const READ_SCOPE_ACTIONS = [
 	'read',
@@ -37,4 +37,5 @@ export const READ_SCOPE_ACTIONS = [
 	'export',
 	'readProviders',
 	'readEnvironments',
+	'readReviews',
 ] as const;

@@ -333,29 +333,23 @@ describe('app tools', () => {
 		expect(appService.createApp).not.toHaveBeenCalled();
 	});
 
-	it('shows the edited blueprint again with a namespace error when the namespace is taken', async () => {
+	it('returns a taken namespace to the model instead of showing the blueprint again', async () => {
 		const { tool, appService, thread, onArtifactChanged } = setup();
 		appService.createApp.mockRejectedValue(new AppNamespaceTakenError('taken-name'));
-		const blueprint = {
-			...BLUEPRINT,
-			namespace: 'taken-name',
-			additionalInstructions: 'Use compact cards.',
-		};
-		const suspend = vi.fn(async (payload: unknown) => await Promise.resolve(payload));
+		const blueprint = { ...BLUEPRINT, namespace: 'taken-name' };
+		const suspend = vi.fn();
 
-		await executeTool(tool('create'), createInput(), {
+		const result = await executeTool(tool('create'), createInput(), {
 			resumeData: { approved: true, blueprint },
 			suspend,
 		});
 
-		expect(suspend).toHaveBeenCalledWith({
-			requestId: expect.any(String),
-			message: 'Review the blueprint for Todos',
-			severity: 'info',
-			inputType: 'app-blueprint',
-			appBlueprint: blueprint,
-			appBlueprintErrors: { namespace: 'taken' },
+		expect(result).toEqual({
+			approved: true,
+			blueprint,
+			error: 'An app already uses the namespace "taken-name".',
 		});
+		expect(suspend).not.toHaveBeenCalled();
 		expect(thread.metadata).toEqual({});
 		expect(onArtifactChanged).not.toHaveBeenCalled();
 	});

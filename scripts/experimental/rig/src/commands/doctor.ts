@@ -6,7 +6,18 @@ import pc from 'picocolors';
 
 import { requiredServices, servicePorts } from '../config/env-yaml';
 import { CONTAINER_RUNTIMES, loadGlobalConfig } from '../config/global-config';
+import { displayPath } from '../config/paths';
 import { RigEnv } from '../environment';
+import {
+	inspectSecrets,
+	keyFileHint,
+	keyFileWarning,
+	keyStoreLabel,
+	SECRETS_BACKEND_ENV_VAR,
+	type SecretsReport,
+} from '../env/secret-store';
+import type { LayerKind } from '../env/resolve';
+import { GENERATED_SECRET_KEYS } from '../env/secrets';
 import { RigError } from '../errors';
 import {
 	type LauncherSource,
@@ -14,6 +25,12 @@ import {
 	releaseBinaryPath,
 	releaseMethod,
 } from '../launcher/binary';
+import {
+	describeLicense,
+	licenseExists,
+	readLicenseValues,
+	validateLicenseValues,
+} from '../licenses';
 import { isPortFree, portOwner } from '../runtime/health';
 import { liveState } from '../runtime/state';
 import { browserLabel, installedBrowsers } from '../integrations/browser';
@@ -342,6 +359,107 @@ async function portChecks(env: RigEnv): Promise<Check[]> {
 	return checks;
 }
 
+/**
+ * Values of secrets.env that a more specific layer overrides. Before the
+ * secrets moved below the other layers, secrets.env won. So an environment
+ * from an older rig can run with another value now, for example another
+ * N8N_ENCRYPTION_KEY.
+ */
+const OVERRIDING_LAYERS = new Set<LayerKind>(['shared', 'role', 'component']);
+
+export function secretOverrideChecks(env: RigEnv): Check[] {
+	const overrides = new Map<string, Check>();
+	try {
+		for (const component of env.components()) {
+			for (const [key, sources] of env.resolve(component).trace) {
+				const secret = sources
+					.filter((source) => source.layer === 'secrets' && source.label.startsWith('secrets.env:'))
+					.at(-1);
+				const winner = sources.at(-1);
+				if (!secret || !winner || winner === secret || winner.value === secret.value) continue;
+				// Only a layer file can override secrets.env. rig adds `engine-v2` to N8N_ENABLED_MODULES after the merge.
+				if (!OVERRIDING_LAYERS.has(winner.layer)) continue;
+				overrides.set(`${key} ${winner.label}`, {
+					status: 'warn',
+					label: 'Secrets',
+					detail: `${key} in ${winner.label} overrides ${secret.label}`,
+					hint: GENERATED_SECRET_KEYS.includes(key)
+						? `rig generated ${key}. Remove it from ${winner.label} unless you want this value.`
+						: `Layers win over secrets.env. Remove ${key} from ${winner.label} to use the value of secrets.env.`,
+				});
+			}
+		}
+	} catch {
+		// The "Secrets encryption" section reports a key that rig cannot read.
+		return [];
+	}
+	return [...overrides.values()];
+}
+
+export function licenseChecks(env: RigEnv | undefined): Check[] {
+	const checks: Check[] = [];
+	const configured = loadGlobalConfig().license.default;
+	if (configured && !licenseExists(configured)) {
+		checks.push({
+			status: 'warn',
+			label: 'Default',
+			detail: `license "${configured}" does not exist`,
+			hint: `Set another with \`${RIG} license default <name>\`.`,
+		});
+	} else {
+		const problems = configured ? licenseProblems(configured) : undefined;
+		checks.push(
+			configured && problems && problems.length > 0
+				? invalidLicenseCheck('Default', configured, problems)
+				: {
+						status: 'info',
+						label: 'Default',
+						detail: configured ?? `none · ${RIG} create uses no license`,
+					},
+		);
+	}
+	const name = env?.topology.license;
+	if (!env || !name) {
+		if (env) checks.push({ status: 'info', label: env.name, detail: 'no license' });
+		return checks;
+	}
+	if (!licenseExists(name)) {
+		checks.push({
+			status: 'warn',
+			label: env.name,
+			detail: `license "${name}" does not exist`,
+			hint: `Add it with \`${RIG} license add ${name}\`, or run \`${RIG} license use <name>\`.`,
+		});
+		return checks;
+	}
+	const problems = licenseProblems(name);
+	if (!problems) return checks;
+	checks.push(
+		problems.length > 0
+			? invalidLicenseCheck(env.name, name, problems)
+			: { status: 'ok', label: env.name, detail: describeLicense(name) },
+	);
+	return checks;
+}
+
+/** Undefined when rig cannot read the license. The "Secrets encryption" section reports that. */
+function licenseProblems(name: string): string[] | undefined {
+	try {
+		return validateLicenseValues(readLicenseValues(name));
+	} catch {
+		return undefined;
+	}
+}
+
+function invalidLicenseCheck(label: string, name: string, problems: string[]): Check {
+	return {
+		status: 'warn',
+		label,
+		detail: `${name} is not valid: ${problems.join(' ')}`,
+		hint: 'n8n can reject it. Keep it only to test an invalid license.',
+	};
+}
+
 function toolChecks(): Check[] {
 	const { browser, editor } = loadGlobalConfig();
 	const browsers = installedBrowsers().map((b) => b.label);
@@ -366,6 +484,79 @@ function toolChecks(): Check[] {
 	];
 }
 
+export function secretsChecks(): Check[] {
+	let report: SecretsReport;
+	try {
+		report = inspectSecrets();
+	} catch (error) {
+		return [
+			{
+				status: 'fail',
+				label: 'Backend',
+				detail: error instanceof Error ? error.message : String(error),
+			},
+		];
+	}
+	const { backend, from } = report.choice;
+	const checks: Check[] = [];
+	if (backend === 'off') {
+		checks.push({
+			status: 'warn',
+			label: 'Backend',
+			detail: 'off, secrets are in plaintext',
+			hint: `Run \`${RIG} secrets use <backend>\`.`,
+		});
+	} else if (!report.available || report.problem) {
+		checks.push({
+			status: 'fail',
+			label: 'Backend',
+			detail: report.problem ?? `${keyStoreLabel(backend)} is not available`,
+			hint: `Run \`${RIG} secrets use <backend>\` to move to a backend that works here.`,
+		});
+	} else if (backend === 'file') {
+		checks.push({
+			status: 'warn',
+			label: 'Backend',
+			detail: keyFileWarning(),
+			hint: keyFileHint(),
+		});
+	} else {
+		checks.push({
+			status: 'ok',
+			label: 'Backend',
+			detail: `${keyStoreLabel(backend)} ${pc.dim(from === 'detected' ? '(saved on the first use)' : `(${from === 'env' ? SECRETS_BACKEND_ENV_VAR : 'secrets.backend'})`)}`,
+		});
+	}
+	const unreadable = report.files.filter((file) => file.unreadable > 0);
+	for (const file of unreadable) {
+		checks.push({
+			status: 'fail',
+			label: 'Secrets',
+			detail: `${file.unreadable} value(s) in ${displayPath(file.file)} cannot be decrypted`,
+			hint: `Import the right key with \`${RIG} secrets import-key\`.`,
+		});
+	}
+	// With encryption off, the backend check above already warns about plaintext.
+	const plaintext = backend === 'off' ? [] : report.files.filter((file) => file.plaintext > 0);
+	for (const file of plaintext) {
+		checks.push({
+			status: 'warn',
+			label: 'Secrets',
+			detail: `${file.plaintext} value(s) in ${displayPath(file.file)} are in plaintext`,
+			hint: `Run \`${RIG} secrets encrypt\`. rig also encrypts them the next time it reads the file.`,
+		});
+	}
+	if (unreadable.length === 0 && plaintext.length === 0 && report.files.length > 0) {
+		const encrypted = report.files.reduce((sum, file) => sum + file.encrypted, 0);
+		checks.push({
+			status: 'ok',
+			label: 'Secrets',
+			detail: `${encrypted} encrypted value(s) in ${report.files.length} file(s)`,
+		});
+	}
+	return checks;
+}
+
 function printSection(title: string, checks: Check[]): void {
 	console.log(`\n${pc.bold(title)}`);
 	const width = Math.max(...checks.map((check) => check.label.length));
@@ -379,7 +570,8 @@ function printSection(title: string, checks: Check[]): void {
 export const doctorCommand = defineCommand({
 	meta: {
 		name: 'doctor',
-		description: 'Check the tools, the checkout, the launcher, and ports',
+		description:
+			'Check the tools, the checkout, the launcher, ports, licenses, and secrets encryption',
 	},
 	args: { ...envArg },
 	async run({ args }) {
@@ -410,7 +602,10 @@ export const doctorCommand = defineCommand({
 			],
 		];
 		if (env) {
-			sections.push([`Environment ${env.name}`, await portChecks(env)]);
+			sections.push([
+				`Environment ${env.name}`,
+				[...(await portChecks(env)), ...secretOverrideChecks(env)],
+			]);
 		} else {
 			sections.push([
 				'Environment',
@@ -423,6 +618,8 @@ export const doctorCommand = defineCommand({
 				],
 			]);
 		}
+		sections.push(['Licenses', licenseChecks(env)]);
+		sections.push(['Secrets encryption', secretsChecks()]);
 		sections.push(['Browser and editor', toolChecks()]);
 
 		for (const [title, checks] of sections) printSection(title, checks);

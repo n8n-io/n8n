@@ -256,6 +256,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
   varchar_128_ id
+  boolean isTestChat
   uuid ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId

@@ -1,8 +1,8 @@
 <script lang="ts" setup>
+import { Line } from '@n8n/design-system/charts';
 import { useI18n } from '@n8n/i18n';
 import { type ChartData, Filler, type ScriptableContext } from 'chart.js';
 import { computed } from 'vue';
-import { Line } from 'vue-chartjs';
 
 import type { ChartProps } from './insightChartProps';
 import { generateLinearGradient, generateLineChartOptions } from '../../chartjs.utils';

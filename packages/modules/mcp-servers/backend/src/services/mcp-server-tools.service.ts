@@ -40,6 +40,8 @@ import { WorkflowToolPort, type WorkflowToolRefusal } from '../tools/workflow-to
  */
 const DRAFT_SAVE_ATTEMPTS = 3;
 
+const TOOL_CHECK_BATCH_SIZE = 10;
+
 /** `null` for `not_found`: a workflow that the project does not own is no candidate. */
 const UNAVAILABLE_REASONS: Record<WorkflowToolRefusal, McpServerWorkflowUnavailableReason | null> =
 	{
@@ -99,9 +101,17 @@ export class McpServerToolsService {
 	async listTools(projectId: string, serverId: string): Promise<McpServerToolResponse[]> {
 		const server = await this.findServer(projectId, serverId);
 		const tools = await this.tools.listByServer(server.id);
-		return await Promise.all(
-			tools.map(async (tool) => toToolResponse(tool, await this.brokenReason(projectId, tool))),
-		);
+		// Each check loads a published workflow version, so a large server checks a few at a time.
+		const responses: McpServerToolResponse[] = [];
+		for (let i = 0; i < tools.length; i += TOOL_CHECK_BATCH_SIZE) {
+			const batch = tools.slice(i, i + TOOL_CHECK_BATCH_SIZE);
+			responses.push(
+				...(await Promise.all(
+					batch.map(async (tool) => toToolResponse(tool, await this.brokenReason(projectId, tool))),
+				)),
+			);
+		}
+		return responses;
 	}
 
 	/** Every workflow that the project owns, with the reason when it cannot be a tool of this server. */

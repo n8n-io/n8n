@@ -8,10 +8,11 @@
  *
  * Adapted from PlanQuestionsMessage.vue for the instance AI confirmation flow.
  */
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import type { InstanceAiQuestion } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { questionDrafts, saveQuestionsDraft } from '@/features/ai/instanceAi/questionDrafts';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const OTHER_SENTINEL = '__other__';
@@ -36,6 +37,8 @@ interface Props {
 	questions: QuestionItem[];
 	introMessage?: string;
 	disabled?: boolean;
+	/** Set it when the host can replace the open card with a new instance. See `questionDrafts`. */
+	draftKey?: string;
 }
 
 const props = defineProps<Props>();
@@ -45,9 +48,10 @@ const emit = defineEmits<{
 	submit: [answers: QuestionAnswer[]];
 }>();
 
-const currentIndex = ref(0);
+const draft = props.draftKey ? questionDrafts.get(props.draftKey) : undefined;
+const currentIndex = ref(draft?.currentIndex ?? 0);
 const isSubmitted = ref(false);
-const answers = ref<Map<string, QuestionAnswer>>(new Map());
+const answers = ref<Map<string, QuestionAnswer>>(draft?.answers ?? new Map());
 const highlightedIndex = ref(-1);
 const selectedIndex = ref<number | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
@@ -174,16 +178,35 @@ function onSingleSelect(option: string) {
 	answer.skipped = false;
 }
 
+let advanceTimer: ReturnType<typeof setTimeout> | undefined;
+
 function onSingleSelectAndAdvance(option: string) {
 	onSingleSelect(option);
 	const idx = filteredOptions.value.indexOf(option);
 	selectedIndex.value = idx >= 0 ? idx : null;
 
-	setTimeout(() => {
+	advanceTimer = setTimeout(() => {
+		advanceTimer = undefined;
 		selectedIndex.value = null;
 		goToNextInternal();
 	}, 250);
 }
+
+onBeforeUnmount(() => {
+	// The host can replace the card during the delay. Advance at once, so the answer is kept.
+	if (advanceTimer) {
+		clearTimeout(advanceTimer);
+		goToNextInternal();
+	}
+	if (!props.draftKey) return;
+	if (isSubmitted.value) questionDrafts.delete(props.draftKey);
+	else {
+		saveQuestionsDraft(props.draftKey, {
+			currentIndex: currentIndex.value,
+			answers: answers.value,
+		});
+	}
+});
 
 function onMultiToggle(option: string, checked: boolean) {
 	const answer = currentAnswer.value;

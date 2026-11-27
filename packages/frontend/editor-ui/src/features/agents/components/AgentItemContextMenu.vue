@@ -6,9 +6,10 @@ import { computed, ref } from 'vue';
 
 defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(defineProps<{ disabled?: boolean; enabled?: boolean }>(), {
-	enabled: undefined,
-});
+const props = withDefaults(
+	defineProps<{ disabled?: boolean; enabled?: boolean; removeLabel?: string }>(),
+	{ enabled: undefined },
+);
 const emit = defineEmits<{ remove: []; 'update:enabled': [enabled: boolean] }>();
 const i18n = useI18n();
 const open = ref(false);
@@ -37,7 +38,7 @@ const items = computed<Array<ContextMenuNode<Action>>>(() => {
 			{
 				type: 'item',
 				id: 'remove',
-				label: i18n.baseText('agents.builder.contextMenu.remove'),
+				label: props.removeLabel ?? i18n.baseText('agents.builder.contextMenu.remove'),
 				icon: { type: 'icon', value: 'trash-2' },
 				variant: 'destructive',
 				disabled: props.disabled,

@@ -822,6 +822,21 @@ describe('N8nDropdownMenu', () => {
 			vi.useRealTimers();
 		});
 
+		it('should render the footer slot', async () => {
+			const { findByTestId } = render(DropdownMenu, {
+				props: {
+					items: createItems(3),
+					modelValue: true,
+					searchable: true,
+				},
+				slots: {
+					footer: '<button data-test-id="dropdown-footer">Load more</button>',
+				},
+			});
+
+			expect(await findByTestId('dropdown-footer')).toBeInTheDocument();
+		});
+
 		it('should render search placeholder', async () => {
 			render(DropdownMenu, {
 				props: {

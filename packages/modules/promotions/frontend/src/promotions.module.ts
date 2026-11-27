@@ -25,16 +25,32 @@ const isPromotionsEnabled = () =>
 // Module routes skip custom middleware, so the gate runs here.
 const requirePromotionsEnabled = () => isPromotionsEnabled() || { name: VIEWS.SOURCE_CONTROL };
 
+// The scopes of the role in the project, which also hold the scopes of the instance role. The open
+// project loads its scopes again, as for the badges. The project list loads once per session.
+const projectScopes = (projectId: string) => {
+	const openProject = capabilityRegistry.use(capabilities.projectContext).currentProject();
+	return openProject?.id === projectId
+		? openProject.scopes
+		: capabilityRegistry.use(capabilities.projectPermissions).scopesFor(projectId);
+};
+
 // Users who cannot promote or apply see no promotions UI, so a direct link leads home.
-// The rbac middleware needs project scopes, which these routes do not load.
+// Apply from a project role ships with LIGO-1476. Until then only the instance role counts.
 const requireOperationScope =
 	(direction: PromotionDirection, otherScopes: Scope[] = []) =>
-	() => {
-		const scope = direction === 'promote' ? 'promotions:promote' : 'promotions:apply';
-		const allowed =
-			isPromotionsEnabled() &&
-			useRBACStore().hasScope([scope, ...otherScopes], {}, { mode: 'allOf' });
-		return allowed || { name: VIEWS.HOMEPAGE };
+	(to: RouteLocationNormalized) => {
+		const required: Scope[] = [
+			direction === 'promote' ? 'promotions:promote' : 'promotions:apply',
+			...otherScopes,
+		];
+		let canOperate: boolean;
+		if (direction === 'promote') {
+			const scopes = projectScopes(String(to.params.projectId));
+			canOperate = required.every((scope) => scopes.includes(scope));
+		} else {
+			canOperate = useRBACStore().hasScope(required, {}, { mode: 'allOf' });
+		}
+		return (isPromotionsEnabled() && canOperate) || { name: VIEWS.HOMEPAGE };
 	};
 
 /** A project page that shows the changes before the user promotes or applies them. */

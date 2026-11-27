@@ -17,6 +17,7 @@ const emit = defineEmits<{
 }>();
 
 const input = useTemplateRef<{ focus: () => void }>('input');
+const preview = useTemplateRef<{ $el: HTMLElement }>('preview');
 const editing = ref(false);
 const draft = ref('');
 
@@ -34,8 +35,11 @@ function save() {
 	if (value !== props.modelValue) emit('update:model-value', value);
 }
 
-function cancel() {
+async function cancel() {
 	editing.value = false;
+	// The textarea had focus and is gone now, so keyboard users continue on the preview.
+	await nextTick();
+	preview.value?.$el.focus();
 }
 </script>
 
@@ -56,6 +60,7 @@ function cancel() {
 		/>
 		<N8nText
 			v-else
+			ref="preview"
 			tag="div"
 			size="small"
 			role="button"
@@ -63,6 +68,7 @@ function cancel() {
 			:class="[$style.preview, { [$style.placeholder]: !modelValue }]"
 			@click="startEdit"
 			@keydown.enter.prevent="startEdit"
+			@keydown.space.prevent="startEdit"
 		>
 			{{ modelValue || placeholder }}
 		</N8nText>
@@ -77,7 +83,7 @@ function cancel() {
 .preview {
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
-	color: var(--text-color--subtler);
+	color: var(--text-color--subtle);
 	cursor: pointer;
 	border-radius: var(--radius);
 
@@ -88,6 +94,6 @@ function cancel() {
 }
 
 .placeholder {
-	color: var(--text-color--subtle);
+	color: var(--text-color--subtler);
 }
 </style>

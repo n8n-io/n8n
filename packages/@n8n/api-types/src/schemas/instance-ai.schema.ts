@@ -928,12 +928,6 @@ export const appBlueprintResumeSchema = z.object({
 });
 export type AppBlueprintResume = z.infer<typeof appBlueprintResumeSchema>;
 
-/** Field problems that reopen the blueprint card instead of creating the app. */
-export const appBlueprintErrorsSchema = z.object({
-	namespace: z.enum(['taken']).optional(),
-});
-export type AppBlueprintErrors = z.infer<typeof appBlueprintErrorsSchema>;
-
 export const instanceAiTargetApprovalSchema = z.object({
 	toolName: z.string(),
 	displayName: z.string().optional(),
@@ -1073,9 +1067,6 @@ export const confirmationRequestPayloadSchema = z.object({
 	appBlueprint: appBlueprintSchema
 		.optional()
 		.describe('Proposed app for the editable blueprint card (inputType=app-blueprint)'),
-	appBlueprintErrors: appBlueprintErrorsSchema
-		.optional()
-		.describe('Field errors from a rejected blueprint, shown on the reopened card'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -3076,9 +3067,6 @@ export const CONFIG_EVALUATIONS_FLAG = '088_config_evaluations';
 /** Enabled arm of `CONFIG_EVALUATIONS_FLAG` (matches the editor-ui experiment). */
 export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 
-/** Enables adding selected canvas nodes as chat context in the n8n Assistant */
-export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
-
 /** Enables workflow, node, and canvas group mentions in the n8n Assistant */
 export const AI_ASSISTANT_AT_MENTIONS_FLAG = '116_at_mentions_enabled';
 
@@ -3116,27 +3104,8 @@ export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
  *  action and the `nodeTypes` filter on `list_workflows`. */
 export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
 
-/**
- * Rollout flag for folder exploration in Instance AI: folder attribution on
- * `list_workflows` rows plus `folderPath` / `folderId` / `recursive`
- * on that action. Off by default. PostHog owns cohort rollout;
- * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
- */
-export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
-
-/** Instance rollout gate for shared activity recording and retrieval. */
-export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
-
 /** Rollout gate for cloud browser use in the n8n Assistant. */
 export const INSTANCE_AI_CLOUD_BROWSER_FLAG = '129_instance_ai_cloud_browser';
-
-/**
- * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
- * variant string, not a boolean. The flag names its on-arm `test` rather than
- * the `variant` the other Instance AI experiments use, so this constant tracks
- * the flag's own spelling.
- */
-export const INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT = 'test';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
