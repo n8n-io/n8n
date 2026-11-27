@@ -52,7 +52,6 @@ import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview
 import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
-import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiWorkflowDraftPreview from '../components/InstanceAiWorkflowDraftPreview.vue';
@@ -102,6 +101,7 @@ import { getAppTargetsFromThreadMetadata, threadTargetsAgent } from '../instance
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
 import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from '../useCanvasPreview';
+import { provideOpenResource } from '@/features/ai/instanceAi/openResourceContext';
 import { toAgentPreviewComposerAttachment } from './assistantAgentPreviewHandoff';
 import {
 	fetchAssistantAgentThreadTabs,
@@ -561,6 +561,14 @@ provide('openAppPreview', preview.openAppPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
+provideOpenResource({
+	projectId: () => props.projectId,
+	// A resource opened before the stored tabs load replaces them, and the history can open
+	// tabs for past builds, so the item waits for both.
+	isAvailable: () => preview.tabsLoaded.value && !thread.isHydratingThread,
+	excludedTabs: () => preview.openTabs.value.filter(isArtifactTab),
+	open: preview.openTab,
+});
 // Links to the resources of the thread open in the preview, as in the current Assistant.
 provide(AGENT_CHAT_MARKDOWN_HOST_KEY, {
 	resources: () => [...thread.resourceNameIndex.values()],
@@ -1019,40 +1027,9 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 							@click="toggleArtifactsPanel"
 						/>
 					</N8nTooltip>
-					<!-- With no tabs to show, the toggle opens a resource in a new tab. It waits for
-					the history, which can open tabs for past builds. -->
-					<InstanceAiResourcePicker
-						v-if="
-							!thread.isHydratingThread &&
-							!preview.isPreviewVisible.value &&
-							preview.openTabs.value.length === 0
-						"
-						:project-id="props.projectId"
-						:excluded-tabs="preview.openTabs.value.filter(isArtifactTab)"
-						placement="bottom-end"
-						content-test-id="assistant-agent-open-resource-picker"
-						@select="preview.openTab"
-					>
-						<template #trigger>
-							<N8nTooltip
-								:content="i18n.baseText('instanceAi.artifactsPanel.openResource')"
-								placement="bottom"
-								:show-after="TOOLTIP_DELAY_MS"
-								as-child
-							>
-								<N8nIconButton
-									icon="square-plus"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="assistant-agent-open-resource"
-									:aria-label="i18n.baseText('instanceAi.artifactsPanel.openResource')"
-								/>
-							</N8nTooltip>
-						</template>
-					</InstanceAiResourcePicker>
+					<!-- With no tab open, the "+" menu of the composer opens a resource. -->
 					<N8nTooltip
-						v-else-if="!preview.isPreviewVisible.value"
+						v-if="preview.openTabs.value.length > 0 && !preview.isPreviewVisible.value"
 						:content="previewToggleLabel"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
@@ -1065,7 +1042,6 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 							data-test-id="assistant-agent-preview-toggle"
 							:aria-label="previewToggleLabel"
 							:aria-pressed="false"
-							:disabled="preview.openTabs.value.length === 0"
 							@click="togglePreview"
 						/>
 					</N8nTooltip>
