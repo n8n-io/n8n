@@ -7,7 +7,7 @@ import { createBuildOrchestrator, type Lane, type LaneState } from '../run/build
 import { createCasePipeline } from '../run/case-pipeline';
 import { prepareDirectAgentRun } from '../run/direct-agent-run';
 import { LaneAllocator } from '../run/lane-allocator';
-import type { WorkflowTestCase } from '../types';
+import type { ExecutionScenario, WorkflowTestCase } from '../types';
 
 // AGENT-1665: a direct Agent run restores the seeded Agent, binds its model
 // credential through the restore (TRUST-608), and runs the scenarios against it.
@@ -389,10 +389,19 @@ describe('a direct-mode case end to end', () => {
 		};
 	}
 
-	async function runAllRows(args: Partial<CliArgs>) {
+	interface RunOptions {
+		testCase?: WorkflowTestCase;
+		/** Start every row at once, as the drivers may. */
+		concurrent?: boolean;
+		prepare?: (mocks: ClientMocks, laneState: LaneState) => void;
+	}
+
+	async function runAllRows(args: Partial<CliArgs>, options: RunOptions = {}) {
 		const { client, mocks } = makeClient();
 		const laneState = makeLaneState(client);
-		const testCaseByFileSlug = new Map([['case-a', directCase()]]);
+		options.prepare?.(mocks, laneState);
+		const testCase = options.testCase ?? directCase();
+		const testCaseByFileSlug = new Map([['case-a', testCase]]);
 		const shared = {
 			buildExpectationsByKey: new Map(),
 			agentContextByKey: new Map(),
@@ -419,19 +428,21 @@ describe('a direct-mode case end to end', () => {
 			harnessUsageByKey: new Map(),
 			...shared,
 		});
+		const runRow = async (s: ExecutionScenario) =>
+			await pipeline.runRow({
+				testCaseFile: 'case-a',
+				scenarioName: s.name,
+				scenarioDescription: s.description,
+				dataSetup: s.dataSetup,
+				successCriteria: s.successCriteria,
+				_iteration: 0,
+			});
+		const scenarios = testCase.executionScenarios ?? [];
 		const outputs = [];
-		for (const name of ['refund', 'invoice']) {
-			const s = scenario(name);
-			outputs.push(
-				await pipeline.runRow({
-					testCaseFile: 'case-a',
-					scenarioName: name,
-					scenarioDescription: s.description,
-					dataSetup: s.dataSetup,
-					successCriteria: s.successCriteria,
-					_iteration: 0,
-				}),
-			);
+		if (options.concurrent) {
+			outputs.push(...(await Promise.all(scenarios.map(runRow))));
+		} else {
+			for (const s of scenarios) outputs.push(await runRow(s));
 		}
 		return { outputs, laneState, mocks };
 	}
@@ -463,5 +474,108 @@ describe('a direct-mode case end to end', () => {
 
 		expect(outputs.every((o) => o.passed)).toBe(true);
 		expect(laneState.tracedExecuteAgent).toHaveBeenCalledTimes(2);
+	});
+
+	describe('seed tables across scenarios', () => {
+		const seedRows = [{ sku: 'TRIAL', price: 0 }];
+		const priceList = {
+			id: 'dt-price-list-0001',
+			name: 'price_list',
+			columns: [
+				{ name: 'sku', type: 'string' },
+				{ name: 'price', type: 'number' },
+			],
+			rows: seedRows,
+		};
+		const requests = {
+			id: 'dt-requests-00001',
+			name: 'customer_requests',
+			columns: [{ name: 'note', type: 'string' }],
+		};
+		const overrideRows = [{ sku: 'PROMO', price: 5 }];
+		const tableCase = () =>
+			directCase({
+				seed: {
+					mode: 'inline',
+					agents: [seedAgent(SUPPORT_AGENT, 'Support')],
+					dataTables: [priceList, requests],
+				},
+				executionScenarios: [
+					scenario('promo', { seedDataTables: [{ ...priceList, rows: overrideRows }] }),
+					scenario('plain'),
+				],
+			});
+		const restoreTables = (mocks: ClientMocks) =>
+			mocks.restoreThread.mockResolvedValueOnce(
+				restored({ agentIds: ['run-agent-1'], dataTableIds: ['dt-run-prices', 'dt-run-requests'] }),
+			);
+
+		function tablesSeenBy(laneState: LaneState) {
+			return vi.mocked(laneState.tracedExecuteAgent).mock.calls.map(([call]) => ({
+				scenario: call.scenario.name,
+				tables: Object.fromEntries(
+					(call.scenario.seedDataTables ?? []).map((table) => [table.name, table.rows]),
+				),
+				tableIds: call.seedContext?.tableIdsByName,
+			}));
+		}
+
+		it('resets every seed table before each scenario, with the scenario rows laid over the top', async () => {
+			const { laneState } = await runAllRows({}, { testCase: tableCase(), prepare: restoreTables });
+
+			expect(tablesSeenBy(laneState)).toEqual([
+				{
+					scenario: 'promo',
+					tables: { price_list: overrideRows, customer_requests: [] },
+					tableIds: { price_list: 'dt-run-prices', customer_requests: 'dt-run-requests' },
+				},
+				{
+					// The override of the first scenario is gone, and whatever the Agent wrote
+					// to customer_requests in it is cleared.
+					scenario: 'plain',
+					tables: { price_list: seedRows, customer_requests: [] },
+					tableIds: { price_list: 'dt-run-prices', customer_requests: 'dt-run-requests' },
+				},
+			]);
+		});
+
+		it('runs the scenarios one at a time, even with no scenario tables, so a reset never lands mid-run', async () => {
+			let active = 0;
+			let maxActive = 0;
+			const noOverrides = directCase({
+				seed: {
+					mode: 'inline',
+					agents: [seedAgent(SUPPORT_AGENT, 'Support')],
+					dataTables: [priceList, requests],
+				},
+				executionScenarios: [scenario('first'), scenario('second')],
+			});
+			const { outputs } = await runAllRows(
+				{},
+				{
+					testCase: noOverrides,
+					concurrent: true,
+					prepare: (mocks, laneState) => {
+						restoreTables(mocks);
+						vi.mocked(laneState.tracedExecuteAgent).mockImplementation(async () => {
+							active++;
+							maxActive = Math.max(maxActive, active);
+							await new Promise((resolve) => setTimeout(resolve, 5));
+							active--;
+							return {
+								scenario: scenario('x'),
+								success: true,
+								score: 1,
+								reasoning: 'ok',
+								agentId: 'run-agent-1',
+							};
+						});
+					},
+				},
+			);
+
+			expect(outputs.every((o) => o.passed)).toBe(true);
+			expect(maxActive).toBe(1);
+		});
 	});
 });

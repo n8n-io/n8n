@@ -7,19 +7,49 @@
 // it through its usual agent scenario path.
 // ---------------------------------------------------------------------------
 
+import type { InstanceAiEvalSeedDataTable } from '@n8n/api-types';
 import { randomUUID } from 'node:crypto';
 
 import type { Lane } from './build-orchestrator';
 import { buildProjectProvider, type BuildProject } from './lane-users';
 import { createScenarioTables } from './mcp-seed';
 import { createDeclaredCredentials } from '../credentials/seeder';
-import { agentUnderTestIndex } from '../harness/agent-run-schema';
+import { agentUnderTestIndex, isDirectAgentRun } from '../harness/agent-run-schema';
 import type { BuildResult } from '../harness/build-workflow';
 import { remapSeedArtifactIds, type ConversationSeed } from '../harness/conversation-seed';
 import type { EvalLogger } from '../harness/logger';
 import { dedupeScenarioSeedTables } from '../harness/seed-tables';
 import { extractErrorMessage } from '../harness/transient-error';
-import type { WorkflowTestCase } from '../types';
+import type { ExecutionScenario, WorkflowTestCase } from '../types';
+
+function inlineSeedTables(testCase: WorkflowTestCase): InstanceAiEvalSeedDataTable[] {
+	return testCase.seed?.mode === 'inline' ? testCase.seed.dataTables : [];
+}
+
+/**
+ * The scenario as a direct run executes it: every seed table reset to its seed
+ * rows (none = emptied), with the scenario's own `seedDataTables` laid over the
+ * top by name. Without this, one scenario's override, or rows the Agent wrote,
+ * would leak into the next scenario.
+ */
+export function withSeedTableResets(
+	testCase: WorkflowTestCase,
+	scenario: ExecutionScenario,
+): ExecutionScenario {
+	const seedTables = inlineSeedTables(testCase);
+	if (seedTables.length === 0) return scenario;
+	const overrides = scenario.seedDataTables ?? [];
+	const resets = seedTables
+		.filter((table) => !overrides.some((override) => override.name === table.name))
+		.map((table) => ({ ...table, rows: table.rows ?? [] }));
+	return { ...scenario, seedDataTables: [...resets, ...overrides] };
+}
+
+/** Each scenario resets the seed tables, and the Agent may write to them, so the
+ *  scenarios of a direct run with seed tables must not interleave. */
+export function directRunNeedsSerialScenarios(testCase: WorkflowTestCase): boolean {
+	return isDirectAgentRun(testCase) && inlineSeedTables(testCase).length > 0;
+}
 
 export interface DirectAgentRunConfig {
 	lane: Lane;
@@ -87,7 +117,12 @@ async function runSetup(config: DirectAgentRunConfig, state: DirectRunState): Pr
 	);
 	addNew(state.dataTableIds, Object.values(tableIdsByName));
 	config.logger.info(`  Direct Agent run: restored ${String(state.agentIds.length)} Agent(s)`);
-	return successfulRun(config.testCase, state, tableIdsByName);
+	// Every seed table is reset before each scenario (`withSeedTableResets`), so
+	// the reset needs all of them by name, not only the scenario tables.
+	const seedTableIds = Object.fromEntries(
+		[...state.seedTablesByName].map(([name, table]) => [name, table.id]),
+	);
+	return successfulRun(config.testCase, state, { ...seedTableIds, ...tableIdsByName });
 }
 
 function successfulRun(

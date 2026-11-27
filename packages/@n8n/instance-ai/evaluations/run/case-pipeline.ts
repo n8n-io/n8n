@@ -13,6 +13,7 @@
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
 import type { BuildOrchestrator } from './build-orchestrator';
+import { directRunNeedsSerialScenarios, withSeedTableResets } from './direct-agent-run';
 import { sentinelOutcomeFromVerdicts, type TargetOutput } from './reshape';
 import { EvalUsageMeter } from '../../src/utils/eval-usage';
 import type { CliArgs } from '../cli/args';
@@ -22,6 +23,7 @@ import {
 	findAgentArtifactRef,
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
+import { isDirectAgentRun } from '../harness/agent-run-schema';
 import { buildFailedOnInfra, harnessFault } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
@@ -429,6 +431,9 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					planRejections: build.proxyDecisionStats?.rejection ?? 0,
 				});
 			}
+			// A direct run resets every seed table before each scenario.
+			const agentRunScenario =
+				testCase && isDirectAgentRun(testCase) ? withSeedTableResets(testCase, scenario) : scenario;
 			const runAgentScenario = async (): Promise<TargetOutput> => {
 				const agentExecStart = Date.now();
 				let agentResult;
@@ -436,7 +441,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					try {
 						agentResult = await builtOnLane.tracedExecuteAgent({
 							agentId: agentRef.id,
-							scenario,
+							scenario: agentRunScenario,
 							agentContext,
 							buildTrace: build.buildTrace,
 							timeoutMs: effectiveTimeoutMs(
@@ -506,7 +511,10 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					planRejections: build.proxyDecisionStats?.rejection ?? 0,
 				});
 			};
-			return scenariosRequireSerialSeeding(authoredScenarios)
+			const serial =
+				scenariosRequireSerialSeeding(authoredScenarios) ||
+				(testCase !== undefined && directRunNeedsSerialScenarios(testCase));
+			return serial
 				? await withSerialSeeding(cacheKey, runAgentScenario)
 				: await runAgentScenario();
 		}
