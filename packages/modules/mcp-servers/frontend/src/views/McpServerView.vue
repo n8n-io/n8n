@@ -110,6 +110,12 @@ function applyResponse(response: McpServerResponse) {
 
 async function load() {
 	const isLatest = latestFetch.next();
+	// Another server: drop the old one and its dialogs, so no action reaches the wrong server.
+	if (server.value?.id !== serverId.value) {
+		server.value = null;
+		renameOpen.value = false;
+		deleteOpen.value = false;
+	}
 	loading.value = true;
 	notFound.value = false;
 	try {
@@ -149,10 +155,12 @@ function onTitleDoubleClick() {
 }
 
 async function onRename(name: string) {
+	const current = server.value;
+	if (!current) return;
 	renaming.value = true;
 	try {
 		applyResponse(
-			await updateMcpServer(rootStore.restApiContext, projectId.value, serverId.value, { name }),
+			await updateMcpServer(rootStore.restApiContext, current.projectId, current.id, { name }),
 		);
 		renameOpen.value = false;
 		toast.showMessage({ type: 'success', title: i18n.baseText('mcpServers.rename.success') });
@@ -164,9 +172,11 @@ async function onRename(name: string) {
 }
 
 async function onDescription(description: string) {
+	const current = server.value;
+	if (!current) return;
 	try {
 		applyResponse(
-			await updateMcpServer(rootStore.restApiContext, projectId.value, serverId.value, {
+			await updateMcpServer(rootStore.restApiContext, current.projectId, current.id, {
 				description,
 			}),
 		);
@@ -176,11 +186,12 @@ async function onDescription(description: string) {
 }
 
 async function onDelete() {
-	if (!server.value) return;
-	const name = server.value.name;
+	const current = server.value;
+	if (!current) return;
 	deleting.value = true;
+	const { name } = current;
 	try {
-		await deleteMcpServer(rootStore.restApiContext, projectId.value, serverId.value);
+		await deleteMcpServer(rootStore.restApiContext, current.projectId, current.id);
 		deleteOpen.value = false;
 		toast.showMessage({
 			type: 'success',
@@ -232,6 +243,7 @@ async function onBreadcrumbSelected(item: PathItem) {
 						</N8nHeading>
 						<McpServerDescriptionEdit
 							v-if="permissions.canUpdate"
+							:key="server.id"
 							:model-value="server.description"
 							:placeholder="i18n.baseText('mcpServers.server.description.placeholder')"
 							:max-length="MCP_SERVER_DESCRIPTION_MAX_LENGTH"
@@ -309,10 +321,9 @@ async function onBreadcrumbSelected(item: PathItem) {
 				:cancel-label="i18n.baseText('generic.cancel')"
 				action-variant="destructive"
 				:loading="deleting"
-				data-test-id="delete-mcp-server-dialog"
-				@update:open="deleteOpen = $event"
+				@update:open="!deleting && (deleteOpen = $event)"
 				@action="onDelete"
-				@cancel="deleteOpen = false"
+				@cancel="!deleting && (deleteOpen = false)"
 			/>
 		</template>
 	</div>

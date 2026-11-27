@@ -34,6 +34,9 @@ const ProjectHeader = computed(() => componentRegistry.get('project-header'));
 const servers = ref<McpServerResponse[]>([]);
 const loading = ref(true);
 const search = ref('');
+const searchTerm = computed(() => search.value.trim().toLowerCase());
+/** The project of the shown list. `null` before the first load. On Overview it is `undefined`. */
+let listedProjectId: string | undefined | null = null;
 
 const projectId = computed(() =>
 	typeof route.params.projectId === 'string' ? route.params.projectId : undefined,
@@ -46,7 +49,7 @@ const canCreate = computed(() => {
 });
 
 const filteredServers = computed(() => {
-	const term = search.value.trim().toLowerCase();
+	const term = searchTerm.value;
 	return term
 		? servers.value.filter((server) => server.name.toLowerCase().includes(term))
 		: servers.value;
@@ -62,6 +65,12 @@ const emptyStateIcon = {
 // The layout calls this on mount and when the project of the route changes.
 async function initialize() {
 	const isLatest = latestFetch.next();
+	// Another project: the cards and the search of the old one go, also when the load fails.
+	if (projectId.value !== listedProjectId) {
+		listedProjectId = projectId.value;
+		servers.value = [];
+		search.value = '';
+	}
 	loading.value = servers.value.length === 0;
 	try {
 		const result = await listMcpServers(rootStore.restApiContext, projectId.value);
@@ -74,11 +83,12 @@ async function initialize() {
 	loading.value = false;
 }
 
+function serverRoute(server: McpServerResponse) {
+	return { name: MCP_SERVER_VIEW, params: { projectId: server.projectId, serverId: server.id } };
+}
+
 function openServer(server: McpServerResponse) {
-	void router.push({
-		name: MCP_SERVER_VIEW,
-		params: { projectId: server.projectId, serverId: server.id },
-	});
+	void router.push(serverRoute(server));
 }
 </script>
 
@@ -147,11 +157,12 @@ function openServer(server: McpServerResponse) {
 					</template>
 				</N8nInput>
 				<div :class="$style.grid" data-test-id="mcp-servers-grid">
-					<BuiltInMcpCard v-if="!search" />
+					<BuiltInMcpCard v-if="!searchTerm" />
 					<McpServerCard
 						v-for="server in filteredServers"
 						:key="server.id"
 						:server="server"
+						:to="serverRoute(server)"
 						@open="openServer(server)"
 						@copy-url="copyServerUrl(server)"
 					/>
