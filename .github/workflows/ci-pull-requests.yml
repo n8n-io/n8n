@@ -716,7 +716,7 @@ jobs:
     if: >-
       always() &&
       needs.required-checks.result == 'failure' &&
-      (github.head_ref == 'bundle/2.x' || github.head_ref == 'bundle/1.x')
+      (github.head_ref == 'bundle/3.x' || github.head_ref == 'bundle/2.x' || github.head_ref == 'bundle/1.x')
     runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

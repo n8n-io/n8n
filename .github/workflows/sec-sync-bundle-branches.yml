@@ -1,7 +1,7 @@
 # Keeps the bundle integration branches in sync with their base, in n8n-io/n8n-private.
 #
-# Fixes are integrated on bundle/2.x and bundle/1.x and eventually merged into private
-# master/1.x as a squashed `chore: Bundle/*` PR. Each bundle branch tracks its public base
+# Fixes are integrated on bundle/3.x, bundle/2.x, and bundle/1.x and merged into
+# their private base as a squashed `chore: Bundle/*` PR. Each bundle tracks its public base
 # directly, so a private-only bundle cut can never become part of the next bundle branch.
 #
 # The base is MERGED IN, never replayed: these branches receive PRs, and rewriting a branch
@@ -41,8 +41,10 @@ jobs:
       fail-fast: false # a conflict on one bundle branch must not hold back the other
       matrix:
         include:
-          - bundle: 'bundle/2.x'
+          - bundle: 'bundle/3.x'
             base: 'master'
+          - bundle: 'bundle/2.x'
+            base: '2.x'
           - bundle: 'bundle/1.x'
             base: '1.x'
     concurrency: # serialize per branch — never two syncs of the same one at once

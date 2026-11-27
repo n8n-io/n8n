@@ -3,11 +3,15 @@ name: 'Security: Publish fix'
 on:
   pull_request:
     types: [closed]
-    branches: [master]
+    branches: [master, '2.x']
 
 jobs:
   sync-security-fix:
-    if: github.repository == 'n8n-io/n8n-private' && github.event.pull_request.merged == true
+    if: |
+      github.repository == 'n8n-io/n8n-private' &&
+      github.event.pull_request.merged == true &&
+      ((github.base_ref == 'master' && github.head_ref == 'bundle/3.x') ||
+       (github.base_ref == '2.x' && github.head_ref == 'bundle/2.x'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -31,23 +35,29 @@ jobs:
       - name: Open PR to public repo
         run: |
           COMMIT_TO_PUBLISH=$(git rev-parse HEAD)
-          BRANCH_NAME="private-$(date +%Y%m%d-%H%M%S)"
+          case "$PUBLIC_BASE" in
+            master) PREFIX=private ;;
+            2.x) PREFIX=private-2x ;;
+            *) exit 1 ;;
+          esac
+          BRANCH_NAME="$PREFIX-$(date +%Y%m%d-%H%M%S)"
 
-          git remote add public-repo https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/n8n-io/n8n.git
-          git fetch public-repo master
-          git checkout -b "$BRANCH_NAME" public-repo/master
+          git remote add public-repo "https://x-access-token:${GH_TOKEN}@github.com/n8n-io/n8n.git"
+          git fetch public-repo "$PUBLIC_BASE"
+          git checkout -b "$BRANCH_NAME" "public-repo/$PUBLIC_BASE"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git cherry-pick "$COMMIT_TO_PUBLISH"
           git push public-repo "$BRANCH_NAME"
           gh pr create \
             --repo n8n-io/n8n \
-            --base master \
+            --base "$PUBLIC_BASE" \
             --head "$BRANCH_NAME" \
             --title "$PR_TITLE" \
             --body "Cherry-picked from n8n-private. Original PR: $PR_URL"
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+          PUBLIC_BASE: ${{ github.base_ref }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_URL: ${{ github.event.pull_request.html_url }}
 
