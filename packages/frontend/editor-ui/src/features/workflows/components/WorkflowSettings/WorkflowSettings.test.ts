@@ -494,9 +494,15 @@ describe('WorkflowSettingsVue', () => {
 	describe('Timeout', () => {
 		type TimeoutUnit = 'hours' | 'minutes' | 'seconds';
 
+		const timeoutUnitLabel: Record<TimeoutUnit, string> = {
+			hours: 'Hours',
+			minutes: 'Minutes',
+			seconds: 'Seconds',
+		};
+
 		// The inputs have no accessible name. Find each one by the unit text that it shows.
 		const getTimeoutInput = (form: HTMLElement, unit: TimeoutUnit) => {
-			let field: HTMLElement | null = within(form).getByText(unit);
+			let field: HTMLElement | null = within(form).getByText(timeoutUnitLabel[unit]);
 			while (field && field !== form && !field.querySelector('input')) {
 				field = field.parentElement;
 			}

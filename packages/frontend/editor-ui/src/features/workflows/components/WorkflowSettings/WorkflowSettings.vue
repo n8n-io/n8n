@@ -499,8 +499,9 @@ const closeDialog = () => {
 	});
 };
 
-const setTheTimeout = (key: string, value: string) => {
-	const time = value ? parseInt(value, 10) : 0;
+const setTheTimeout = (key: string, value: string | number | null | undefined) => {
+	const parsed = typeof value === 'number' ? value : value ? parseInt(value, 10) : 0;
+	const time = Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0;
 
 	timeoutHMS.value = {
 		...timeoutHMS.value,
@@ -1335,33 +1336,51 @@ onBeforeUnmount(() => {
 								/>
 							</template>
 							<template #action>
-								<div :class="$style['timeout-fields']">
-									<N8nInput
-										:disabled="readOnlyEnv || !workflowPermissions.update"
-										:model-value="timeoutHMS.hours"
-										:min="0"
-										@update:model-value="(value: string) => setTheTimeout('hours', value)"
-									>
-										<template #append>{{ i18n.baseText('workflowSettings.hours') }}</template>
-									</N8nInput>
-									<N8nInput
-										:disabled="readOnlyEnv || !workflowPermissions.update"
-										:model-value="timeoutHMS.minutes"
-										:min="0"
-										:max="60"
-										@update:model-value="(value: string) => setTheTimeout('minutes', value)"
-									>
-										<template #append>{{ i18n.baseText('workflowSettings.minutes') }}</template>
-									</N8nInput>
-									<N8nInput
-										:disabled="readOnlyEnv || !workflowPermissions.update"
-										:model-value="timeoutHMS.seconds"
-										:min="0"
-										:max="60"
-										@update:model-value="(value: string) => setTheTimeout('seconds', value)"
-									>
-										<template #append>{{ i18n.baseText('workflowSettings.seconds') }}</template>
-									</N8nInput>
+								<div :class="$style.timeoutFields">
+									<label :class="$style.timeoutField" for="workflow-settings-timeout-hours">
+										<N8nText tag="span" size="small" color="text-light">
+											{{ i18n.baseText('workflowSettings.hours') }}
+										</N8nText>
+										<N8nInputNumber
+											id="workflow-settings-timeout-hours"
+											:class="$style.timeoutNumber"
+											size="medium"
+											:disabled="readOnlyEnv || !workflowPermissions.update"
+											:model-value="timeoutHMS.hours"
+											:min="0"
+											@update:model-value="(value) => setTheTimeout('hours', value)"
+										/>
+									</label>
+									<label :class="$style.timeoutField" for="workflow-settings-timeout-minutes">
+										<N8nText tag="span" size="small" color="text-light">
+											{{ i18n.baseText('workflowSettings.minutes') }}
+										</N8nText>
+										<N8nInputNumber
+											id="workflow-settings-timeout-minutes"
+											:class="$style.timeoutNumber"
+											size="medium"
+											:disabled="readOnlyEnv || !workflowPermissions.update"
+											:model-value="timeoutHMS.minutes"
+											:min="0"
+											:max="60"
+											@update:model-value="(value) => setTheTimeout('minutes', value)"
+										/>
+									</label>
+									<label :class="$style.timeoutField" for="workflow-settings-timeout-seconds">
+										<N8nText tag="span" size="small" color="text-light">
+											{{ i18n.baseText('workflowSettings.seconds') }}
+										</N8nText>
+										<N8nInputNumber
+											id="workflow-settings-timeout-seconds"
+											:class="$style.timeoutNumber"
+											size="medium"
+											:disabled="readOnlyEnv || !workflowPermissions.update"
+											:model-value="timeoutHMS.seconds"
+											:min="0"
+											:max="60"
+											@update:model-value="(value) => setTheTimeout('seconds', value)"
+										/>
+									</label>
 								</div>
 							</template>
 						</N8nSettingsRow>
@@ -2014,23 +2033,25 @@ onBeforeUnmount(() => {
 	cursor: pointer;
 }
 
-.timeout-fields {
-	display: grid;
-	// The fields go to the next line when a column gets narrower than the minimum.
-	grid-template-columns: repeat(auto-fit, minmax(var(--spacing--4xl), 1fr));
-	gap: var(--spacing--3xs);
+.timeoutFields {
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: flex-end;
+	gap: var(--spacing--2xs);
 	width: 100%;
-	padding-block: var(--spacing--xs);
+}
 
-	// The unit label of N8nInput extends past its input by this distance. Keep it in the column.
-	> * {
-		padding-inline-end: var(--spacing--xs);
-	}
+.timeoutField {
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
 
-	// The vertical row has its own space around the control.
-	.workflow-settings--vertical & {
-		padding-block: 0;
-	}
+.timeoutNumber {
+	width: 100%;
 }
 
 .time-saved-panel {
