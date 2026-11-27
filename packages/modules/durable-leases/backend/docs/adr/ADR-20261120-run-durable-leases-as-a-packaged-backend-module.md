@@ -23,8 +23,8 @@ tables and their repositories stay in `@n8n/db`. The module is not in the defaul
 `N8N_ENABLED_MODULES=durable-leases` turns it on. Consumers check
 `ModuleRegistry.isActive('durable-leases')` before they use `DurableLeaseService`.
 
-The main reason is that the package acts as the implementation of the `@n8n/leases` lease service
-contract on database storage.
+The main reason is that most new backend features are built as modules, and a new module lives in
+its own package (`docs/backend/how-to/build-a-backend-module.md`).
 
 ## Alternatives Considered
 
