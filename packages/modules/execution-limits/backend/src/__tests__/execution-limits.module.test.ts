@@ -1,7 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { FoldStepRegistry } from '@n8n/db';
-import { ModuleMetadata } from '@n8n/decorators';
+import { ModuleMetadata, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
@@ -9,10 +9,16 @@ import { InstanceSettings } from 'n8n-core';
 import { ExecutionLimitAudit } from '../execution-limit-audit.entity';
 import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
+import { ExecutionLimitUsagePruningTask } from '../execution-limit-usage-pruning.task';
 import { ExecutionUsageCache } from '../execution-usage-cache';
 import { ExecutionLimitsModule } from '../execution-limits.module';
 import { ExecutionLimitsSnapshot } from '../execution-limits-snapshot';
 import { ProjectExecutionLimit } from '../project-execution-limit.entity';
+
+const registeredCheckNames = () =>
+	Container.get(PolicyCheckMetadata)
+		.getClasses()
+		.map((checkClass) => checkClass.name);
 
 describe('ExecutionLimitsModule', () => {
 	let registry: FoldStepRegistry;
@@ -49,6 +55,15 @@ describe('ExecutionLimitsModule', () => {
 		expect(registry.getAll().map((step) => step.name)).toEqual(['execution_limit_usage']);
 		expect(snapshot.start).not.toHaveBeenCalled();
 		expect(usageCache.start).not.toHaveBeenCalled();
+	});
+
+	// By class name: importing the check here would register it and make the test vacuous.
+	it('registers the execution limit check when licensed', async () => {
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
+
+		await new ExecutionLimitsModule().init();
+
+		expect(registeredCheckNames()).toContain('ExecutionLimitPolicyCheck');
 	});
 
 	it.each([
@@ -92,6 +107,12 @@ describe('ExecutionLimitsModule', () => {
 			ExecutionLimitUsage,
 			ExecutionLimitInstanceUsage,
 			ExecutionLimitAudit,
+		]);
+	});
+
+	it('declares the usage pruning task', async () => {
+		expect(await new ExecutionLimitsModule().systemTasks()).toEqual([
+			ExecutionLimitUsagePruningTask,
 		]);
 	});
 });

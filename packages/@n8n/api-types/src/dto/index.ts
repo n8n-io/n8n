@@ -7,6 +7,14 @@ export { PublishAppDto } from './app/publish-app.dto';
 export { RestoreAppVersionDto } from './app/restore-app-version.dto';
 export { SetAppBindingsDto } from './app/set-app-bindings.dto';
 
+export { CreateMcpServerDto } from './mcp-server/create-mcp-server.dto';
+export { UpdateMcpServerDto } from './mcp-server/update-mcp-server.dto';
+export { McpServerSlugQueryDto } from './mcp-server/mcp-server-slug-query.dto';
+export { AddMcpServerToolsDto } from './mcp-server/add-mcp-server-tools.dto';
+export { UpdateMcpServerToolDto } from './mcp-server/update-mcp-server-tool.dto';
+export { DraftMcpServerToolDto } from './mcp-server/draft-mcp-server-tool.dto';
+export { BlockMcpServerUserDto } from './mcp-server/block-mcp-server-user.dto';
+
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export {

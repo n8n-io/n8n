@@ -864,6 +864,9 @@ catalogs:
       specifier: 3.23.3
       version: 3.23.3
   e2e:
+    '@currents/cmd':
+      specifier: 3.4.0
+      version: 3.4.0
     '@currents/playwright':
       specifier: ^2.0.0
       version: 2.0.0
@@ -3261,6 +3264,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3282,6 +3288,12 @@ importers:
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -3869,6 +3881,9 @@ importers:
 
   packages/@n8n/n8n-node-codegen:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       pluralize:
         specifier: 'catalog:'
         version: 8.0.0
@@ -5227,6 +5242,9 @@ importers:
       '@n8n/backend-module-insights':
         specifier: workspace:*
         version: link:../modules/insights/backend
+      '@n8n/backend-module-mcp-servers':
+        specifier: workspace:*
+        version: link:../modules/mcp-servers/backend
       '@n8n/backend-module-quick-connect':
         specifier: workspace:*
         version: link:../modules/quick-connect/backend
@@ -7167,6 +7185,9 @@ importers:
       '@n8n/frontend-module-mcp':
         specifier: workspace:*
         version: link:../../modules/mcp/frontend
+      '@n8n/frontend-module-mcp-servers':
+        specifier: workspace:*
+        version: link:../../modules/mcp-servers/frontend
       '@n8n/frontend-module-otel':
         specifier: workspace:*
         version: link:../../modules/otel/frontend
@@ -8258,6 +8279,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/modules/html-display-mode/frontend:
     dependencies:
@@ -8764,6 +8788,149 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vue-tsc:
+        specifier: ^2.2.8
+        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+
+  packages/modules/mcp-servers/backend:
+    dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
+      '@n8n/backend-services':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-services
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../../../@n8n/db
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../../../@n8n/decorators
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
+      '@n8n/typeorm':
+        specifier: workspace:*
+        version: link:../../../@n8n/typeorm
+    devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+
+  packages/modules/mcp-servers/frontend:
+    dependencies:
+      '@n8n/design-system':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/design-system
+      '@n8n/frontend-constants':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-constants
+      '@n8n/frontend-module-sdk':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-module-sdk
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/i18n
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../../../@n8n/permissions
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
+    devDependencies:
+      '@iconify/json':
+        specifier: 'catalog:'
+        version: 2.2.488
+      '@n8n/frontend-test-utils':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-test-utils
+      '@n8n/frontend-vite-config':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-vite-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@n8n/playwright-janitor':
+        specifier: workspace:*
+        version: link:../../../quality/testing/janitor
+      '@n8n/stylelint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/stylelint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@testing-library/jest-dom':
+        specifier: catalog:frontend
+        version: 6.9.1
+      '@testing-library/user-event':
+        specifier: catalog:frontend
+        version: 14.6.1(@testing-library/dom@10.4.1)
+      '@testing-library/vue':
+        specifier: catalog:frontend
+        version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+      stylelint:
+        specifier: 'catalog:'
+        version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.2
+      unplugin-icons:
+        specifier: catalog:frontend
+        version: 23.0.1(@vue/compiler-sfc@3.5.26)
+      vite:
+        specifier: 'catalog:'
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite-svg-loader:
+        specifier: catalog:frontend
+        version: 5.1.0(vue@3.5.26(typescript@6.0.2))
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vize:
+        specifier: 'catalog:'
+        version: 0.715.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -10067,6 +10234,9 @@ importers:
       '@aws-sdk/client-secrets-manager':
         specifier: 3.808.0
         version: 3.808.0
+      '@azure/storage-blob':
+        specifier: 'catalog:'
+        version: 12.32.0(supports-color@8.1.1)
       '@testcontainers/k3s':
         specifier: 'catalog:'
         version: 11.13.0(supports-color@8.1.1)
@@ -10211,6 +10381,12 @@ importers:
 
   packages/quality/testing/engine-parity:
     dependencies:
+      '@n8n/engine':
+        specifier: workspace:*
+        version: link:../../../@n8n/engine
+      '@n8n/node-engine-compatibility':
+        specifier: workspace:*
+        version: link:../../../@n8n/node-engine-compatibility
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
@@ -10220,6 +10396,9 @@ importers:
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../../../@n8n/workflow-sdk
+      '@testcontainers/postgresql':
+        specifier: 'catalog:'
+        version: 11.13.0(supports-color@8.1.1)
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
@@ -10315,6 +10494,9 @@ importers:
       '@axe-core/playwright':
         specifier: ^4.13.0
         version: 4.13.0(playwright-core@1.62.1)
+      '@currents/cmd':
+        specifier: catalog:e2e
+        version: 3.4.0(supports-color@8.1.1)
       '@currents/playwright':
         specifier: catalog:e2e
         version: 2.0.0(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
@@ -12220,6 +12402,11 @@ packages:
     peerDependencies:
       commander: ~13.1.0
 
+  '@commander-js/extra-typings@14.0.0':
+    resolution: {integrity: sha512-hIn0ncNaJRLkZrxBIp5AsW/eXEHNKYQBh0aPdoUqNgD+Io3NIykQqpKFyKcuasZhicGaEZJX/JBSIkZ4e5x8Dg==}
+    peerDependencies:
+      commander: ~14.0.0
+
   '@confluentinc/kafka-javascript@1.9.1':
     resolution: {integrity: sha512-Qc7IZGSiWb9PVcfGwhMDmVcn0fj4V2jZjJ7r1ObNdnu1JSFY1yMZvINS4QY9dAI00S7Ng6EE2zIaEQ7UrVDrPw==}
     engines: {node: '>=18.0.0'}
@@ -12255,13 +12442,25 @@ packages:
     resolution: {integrity: sha512-6V0+8vw/GmH92URQ/Ki12FPhoB3nqaQUJE+5xgbFbB5ok0OXYK5jCQsQQoyR3BzCddHsCpyCFRnIcI1PSOVYkQ==}
     engines: {node: '>=14'}
 
+  '@currents/cmd@3.4.0':
+    resolution: {integrity: sha512-/s5wAN5X1UX1bBVlgiwP+wNjeeSR67o6sJtjA3wjJ16RjcdkpeVbCXjajAfQTPKuLSiUNcwlzS+rGcsa47PC3g==}
+    engines: {node: '>=22.13'}
+    hasBin: true
+
   '@currents/commit-info@1.0.1-beta.0':
     resolution: {integrity: sha512-gkn8E3UC+F4/fCla7QAGMGgGPzxZUL9bU9+4I+KZf9PtCU3DdQCdy7a+er2eg4ewfUzZ2Ic1HcfnHuPkuLPKIw==}
     engines: {node: '>=6'}
 
+  '@currents/commit-info@3.0.0':
+    resolution: {integrity: sha512-eGc3f816w4fvqCQaKJRYOWohX7HS1TleE10qOfEQa7jh34jHfgE0vmbg+vcC0wfW92j+iJaN4kgsbaFNMP8VTQ==}
+
   '@currents/playwright@2.0.0':
     resolution: {integrity: sha512-ai/qoXb0i0WU0tO6JJWwEJvPcC72Ldl7sRlkgbHiEiHTiaDBt1d09rdDBvwcS3p/TtqSZ4C3GDsk9dovLd5hZg==}
     hasBin: true
+
+  '@currents/rules@0.1.0':
+    resolution: {integrity: sha512-VmNYE2vsFdHCYAvNCDirjuOGV8AYiFNgyTbS1QitN9k8Kaqv7vovEi70/dBf2g/pSRfwL2vkxqMN8ddyXMWAag==}
+    engines: {node: '>=18.17'}
 
   '@dabh/diagnostics@2.0.3':
     resolution: {integrity: sha512-hrlQOIi7hAfzsMqlGSFyVucrx38O+j6wiGOf//H2ecvIEqYN4ADBSS2iLMh5UFyDunCNniUIPk/q3riFv45xRA==}
@@ -27760,6 +27959,13 @@ packages:
   yauzl@2.10.0:
     resolution: {integrity: sha512-p4a9I6X6nu6IhoGmBqAcbJy1mlC4j27vEPZX9F4L4/vZT3Lyq1VkFHw/V/PUcB9Buo+DG3iHkT0x3Qya58zc3g==}
 
+  yauzl@3.4.0:
+    resolution: {integrity: sha512-jIH9yLR9wqr0wOS0TpBvo/g/2UgZH5qePVbjgRliiF0BYvOZyaBknKsF+x9Iht0O6sqgnB93rCICdOZFecJuDw==}
+    engines: {node: '>=12'}
+
+  yazl@3.3.1:
+    resolution: {integrity: sha512-BbETDVWG+VcMUle37k5Fqp//7SDOK2/1+T7X8TD96M3D9G8jK5VLUdQVdVjGi8im7FGkazX7kk5hkU8X4L5Bng==}
+
   yjs@13.6.29:
     resolution: {integrity: sha512-kHqDPdltoXH+X4w1lVmMtddE3Oeqq48nM40FD5ojTd8xYhQpzIDcfE2keMSU5bAgRPJBe225WTUdyUgj1DtbiQ==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
@@ -30725,6 +30931,10 @@ snapshots:
     dependencies:
       commander: 13.1.0
 
+  '@commander-js/extra-typings@14.0.0(commander@14.0.3)':
+    dependencies:
+      commander: 14.0.3
+
   '@confluentinc/kafka-javascript@1.9.1(patch_hash=c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003)(encoding@0.1.13)(supports-color@8.1.1)':
     dependencies:
       '@mapbox/node-pre-gyp': 2.0.3(encoding@0.1.13)(supports-color@8.1.1)
@@ -30753,6 +30963,25 @@ snapshots:
 
   '@ctrl/tinycolor@4.3.0': {}
 
+  '@currents/cmd@3.4.0(supports-color@8.1.1)':
+    dependencies:
+      '@commander-js/extra-typings': 14.0.0(commander@14.0.3)
+      '@currents/commit-info': 3.0.0(supports-color@8.1.1)
+      '@currents/rules': 0.1.0
+      commander: 14.0.3
+      debug: 4.4.3(supports-color@8.1.1)
+      dotenv: 17.4.2
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
+      proxy-from-env: 2.1.0
+      semver: 7.7.3
+      tinyglobby: 0.2.17
+      undici: 7.30.1
+      xml2js: 0.6.2(patch_hash=3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3)
+      yauzl: 3.4.0
+      yazl: 3.3.1
+    transitivePeerDependencies:
+      - supports-color
+
   '@currents/commit-info@1.0.1-beta.0(supports-color@8.1.1)':
     dependencies:
       bluebird: 3.5.5
@@ -30761,6 +30990,12 @@ snapshots:
       execa: 1.0.0
       lazy-ass: 1.6.0
       ramda: 0.26.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@currents/commit-info@3.0.0(supports-color@8.1.1)':
+    dependencies:
+      debug: 4.4.3(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -30805,6 +31040,11 @@ snapshots:
       - bufferutil
       - supports-color
       - utf-8-validate
+
+  '@currents/rules@0.1.0':
+    dependencies:
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
+      safe-regex2: 5.1.1
 
   '@dabh/diagnostics@2.0.3':
     dependencies:
@@ -48685,6 +48925,14 @@ snapshots:
     dependencies:
       buffer-crc32: 0.2.13
       fd-slicer: 1.1.0
+
+  yauzl@3.4.0:
+    dependencies:
+      pend: 1.2.0
+
+  yazl@3.3.1:
+    dependencies:
+      buffer-crc32: 1.0.0
 
   yjs@13.6.29:
     dependencies:

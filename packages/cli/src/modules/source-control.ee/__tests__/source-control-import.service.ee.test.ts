@@ -3909,6 +3909,130 @@ describe('SourceControlImportService', () => {
 				]);
 			});
 
+			it.each([
+				['target', ['project2', 'project1']],
+				['source', ['project1', 'project2']],
+			])(
+				'keeps a variable moved between projects when the %s project file comes first',
+				async (_, fileOrder) => {
+					const variableProjects = new Map<string, string>([['var1', 'project1']]);
+					variablesRepository.upsert.mockImplementation(async (row: unknown) => {
+						const { id, project } = row as { id: string; project?: { id: string } | null };
+						if (project) variableProjects.set(id, project.id);
+						return { identifiers: [], generatedMaps: [], raw: [] };
+					});
+					variablesRepository.find.mockImplementation(async (options?: unknown) => {
+						const projectId = (options as { where?: { project?: { id?: string } } } | undefined)
+							?.where?.project?.id;
+						return [...variableProjects]
+							.filter(([, pid]) => projectId === undefined || pid === projectId)
+							.map(([id]) => mock<Variables>({ id }));
+					});
+					variableService.deleteByIds.mockImplementation(async (ids: string[]) => {
+						ids.forEach((id) => variableProjects.delete(id));
+					});
+
+					const projectFiles: Record<string, object> = {
+						project1: {
+							id: 'project1',
+							name: 'Team Project 1',
+							type: 'team',
+							owner: { type: 'team', teamId: 'project1' },
+						},
+						project2: {
+							id: 'project2',
+							name: 'Team Project 2',
+							type: 'team',
+							owner: { type: 'team', teamId: 'project2' },
+							variableStubs: [{ id: 'var1', key: 'VAR1', value: '', type: 'string' }],
+						},
+					};
+					const candidates = fileOrder.map((id) =>
+						mock<SourceControlledFile>({ file: `/mock/team-${id}.json`, id }),
+					);
+					fileOrder.forEach((id) =>
+						fsReadFile.mockResolvedValueOnce(JSON.stringify(projectFiles[id])),
+					);
+					projectRepository.findOne.mockResolvedValue(null);
+					projectRelationRepository.findOne.mockResolvedValue(null);
+
+					await service.importTeamProjectsFromWorkFolder(candidates, mockPullingUserId);
+
+					for (const [ids] of variableService.deleteByIds.mock.calls) {
+						expect(ids).not.toContain('var1');
+					}
+					expect(variableProjects.get('var1')).toBe('project2');
+					const var1Upserts = variablesRepository.upsert.mock.calls.filter(
+						(call) => (call[0] as { id?: string }).id === 'var1',
+					);
+					expect(var1Upserts).toHaveLength(1);
+					expect((var1Upserts[0][0] as { value?: string }).value).toBeUndefined();
+				},
+			);
+
+			it('keeps pruning the remaining projects when one project prune fails', async () => {
+				// Both projects import fine; project1's prune blows up (find rejects). The
+				// failure must not escape the function and must not skip project2's prune.
+				variablesRepository.find.mockImplementation(async (options?: unknown) => {
+					const projectId = (options as { where?: { project?: { id?: string } } } | undefined)
+						?.where?.project?.id;
+					if (projectId === 'project1') {
+						throw new Error('prune find blew up');
+					}
+					if (projectId === 'project2') {
+						return [
+							mock<Variables>({
+								id: 'stale2',
+								key: 'STALE2',
+								project: mock<Project>({ id: 'project2' }),
+							}),
+						];
+					}
+					// importVariables' {select:['id']} probe: no variables exist.
+					return [];
+				});
+
+				const projectData1 = {
+					id: 'project1',
+					name: 'Team Project 1',
+					type: 'team',
+					owner: { type: 'team', teamId: 'project1' },
+				};
+				const projectData2 = {
+					id: 'project2',
+					name: 'Team Project 2',
+					type: 'team',
+					owner: { type: 'team', teamId: 'project2' },
+				};
+				const candidates = [
+					mock<SourceControlledFile>({ file: '/mock/team-project1.json', id: 'project1' }),
+					mock<SourceControlledFile>({ file: '/mock/team-project2.json', id: 'project2' }),
+				];
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(projectData1))
+					.mockResolvedValueOnce(JSON.stringify(projectData2));
+				projectRepository.findOne.mockResolvedValue(null);
+				projectRelationRepository.findOne.mockResolvedValue(null);
+
+				const result = await service.importTeamProjectsFromWorkFolder(
+					candidates,
+					mockPullingUserId,
+				);
+
+				// The pull completed normally: both imports are reported.
+				expect(result).toEqual([
+					{ id: 'project1', name: 'Team Project 1' },
+					{ id: 'project2', name: 'Team Project 2' },
+				]);
+				// project2's prune still ran despite project1's failure...
+				expect(variableService.deleteByIds).toHaveBeenCalledWith(['stale2']);
+				// ...and project1's failure was logged, not thrown.
+				expect(mockLogger.error).toHaveBeenCalledWith(
+					expect.stringContaining('prune variables of project project1'),
+					expect.anything(),
+				);
+			});
+
 			it('should NOT assign pulling user as project admin for existing projects with an admin', async () => {
 				// Arrange
 				const mockProjectFile = '/mock/team-project.json';
@@ -4092,7 +4216,7 @@ describe('SourceControlImportService', () => {
 
 				fsReadFile.mockResolvedValueOnce(JSON.stringify(mockProjectData));
 
-				variableService.getAllCached.mockResolvedValue([
+				variablesRepository.find.mockResolvedValue([
 					{
 						id: 'var2',
 						key: 'VAR2',

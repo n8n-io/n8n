@@ -33,6 +33,29 @@ the usage in memory, and a timer reloads it every 5 seconds. The count can be up
 about 10 seconds old. If a reload fails, the last count stays in use until a reload
 succeeds or the period ends, so it can be older.
 
+## Limit check
+
+`ExecutionLimitPolicyCheck` runs at the `executionAdmission` policy point. `init` registers
+it only when the licence feature is on.
+
+- A run that does not count toward the limit is allowed before any read. The counting
+  rule is `countsTowardExecutionLimit` in `@n8n/backend-services`.
+- A run is refused when its project or the instance has reached its limit. The
+  violation gives the scope, the limit, the usage and the reset time.
+- The check reads memory only. It writes nothing. A refused run gets no execution row,
+  so it adds nothing to the usage.
+- The check fails open. If the limits or the usage are not loaded, or a read throws, it
+  allows the run and logs.
+- Execution limits apply to workflow runs only, so agent runs are not checked.
+
+## Usage retention
+
+A daily system task deletes the rows of `execution_limit_usage` and
+`execution_limit_instance_usage` that are older than
+`N8N_EXECUTION_LIMITS_USAGE_RETENTION_DAYS` (default 430, from 31 to 36500). The task runs one
+time for the cluster and does not need a licence, because the fold step writes rows on
+every instance. The minimum is the longest limit period, in days.
+
 ## Import rules
 
 - Do not import from `packages/cli` or from the `n8n` package.

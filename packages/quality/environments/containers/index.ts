@@ -41,6 +41,23 @@ export {
 	type S3ObjectSummary,
 } from './services/localstack';
 export {
+	AzuriteHelper,
+	AzureBlobClient,
+	buildAzuriteConnectionString,
+	buildAzuriteEndpoint,
+	buildN8nAzureBlobEnv,
+	formatBlobContainerName,
+	isAzureNotFound,
+	validateBlobContainerName,
+	type AzuriteBlobConfig,
+	type AzuriteCredentials,
+	type AzuriteMeta,
+	type AzuriteProtocol,
+	type AzuriteResult,
+	type AzureBlobClientOptions,
+	type AzureBlobSummary,
+} from './services/azurite';
+export {
 	RedisClusterHelper,
 	isClusterInfoHealthy,
 	isClusterTopologyComplete,

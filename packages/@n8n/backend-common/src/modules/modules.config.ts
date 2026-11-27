@@ -51,6 +51,7 @@ export const MODULE_NAMES = [
 	'knowledge',
 	'execution-limits',
 	'execution-ledger',
+	'mcp-servers',
 	'durable-leases',
 ] as const;
 
