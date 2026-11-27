@@ -278,6 +278,91 @@ describe('AgentTestRunService', () => {
 		);
 	});
 
+	it('continues a public_api session on the published version in the caller scope', async () => {
+		const { service, agentExecutionService, agentExecutionOrchestratorService } = makeService();
+		agentExecutionService.canUsePublicApiThread.mockResolvedValue(true);
+		agentExecutionOrchestratorService.executeForPublicApiPublished.mockImplementation(
+			async function* (config) {
+				yield { type: 'text-delta', id: 'text-1', delta: 'Hello' };
+				config.onExecutionRecorded?.('execution-1');
+			},
+		);
+
+		const result = await service.executePublishedRun({
+			agentId,
+			projectId,
+			message: 'Hi',
+			user,
+			sessionId: 'session-1',
+		});
+
+		expect(agentExecutionService.canUsePublicApiThread).toHaveBeenCalledWith(
+			'session-1',
+			projectId,
+			agentId,
+			user.id,
+			'existing',
+		);
+		expect(agentExecutionOrchestratorService.executeForPublicApiPublished).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentId,
+				projectId,
+				user,
+				memory: { threadId: 'session-1', resourceId: 'public-api:user-1' },
+				sessionMode: 'existing',
+			}),
+		);
+		expect(result).toEqual({
+			status: 'completed',
+			response: 'Hello',
+			sessionId: 'session-1',
+			executionId: 'execution-1',
+		});
+	});
+
+	it('mints a public_api session id when none is given', async () => {
+		const { service, agentExecutionService, agentExecutionOrchestratorService } = makeService();
+		agentExecutionOrchestratorService.executeForPublicApiPublished.mockImplementation(
+			async function* (config) {
+				config.onExecutionRecorded?.('execution-2');
+			},
+		);
+
+		const result = await service.executePublishedRun({
+			agentId,
+			projectId,
+			message: 'Hi',
+			user,
+		});
+
+		expect(agentExecutionService.canUsePublicApiThread).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ status: 'completed', executionId: 'execution-2' });
+		if (result.status !== 'completed') throw new Error('Expected a completed run');
+		expect(result.sessionId).toEqual(expect.any(String));
+		expect(agentExecutionOrchestratorService.executeForPublicApiPublished).toHaveBeenCalledWith(
+			expect.objectContaining({
+				memory: { threadId: result.sessionId, resourceId: 'public-api:user-1' },
+				sessionMode: 'new',
+			}),
+		);
+	});
+
+	it('returns session_not_found for a public_api session the caller cannot use', async () => {
+		const { service, agentExecutionService, agentExecutionOrchestratorService } = makeService();
+		agentExecutionService.canUsePublicApiThread.mockResolvedValue(false);
+
+		await expect(
+			service.executePublishedRun({
+				agentId,
+				projectId,
+				message: 'Hi',
+				user,
+				sessionId: 'session-1',
+			}),
+		).resolves.toEqual({ status: 'session_not_found' });
+		expect(agentExecutionOrchestratorService.executeForPublicApiPublished).not.toHaveBeenCalled();
+	});
+
 	it('returns partial text and every suspension for a continued session', async () => {
 		const { service, agentExecutionOrchestratorService } = makeService();
 		const chunks: StreamChunk[] = [

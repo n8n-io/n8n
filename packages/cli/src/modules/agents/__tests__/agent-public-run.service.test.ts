@@ -111,6 +111,10 @@ describe('AgentPublicRunService', () => {
 
 		it('returns 422 when the agent has no published version', async () => {
 			agentsService.findById.mockResolvedValue({ ...agent, activeVersionId: null });
+
+			await expect(service.run(user, 'agent-1', { message: 'Hi' })).rejects.toThrow(
+				UnprocessableRequestError,
+			);
 			await expect(service.run(user, 'agent-1', { message: 'Hi' })).rejects.toThrow(
 				/no published version/,
 			);
