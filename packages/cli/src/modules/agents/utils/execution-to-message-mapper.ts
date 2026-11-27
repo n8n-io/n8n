@@ -17,6 +17,7 @@ type ExecutionTranscript = Pick<
 	| 'createdAt'
 	| 'inputMessages'
 	| 'stopReport'
+	| 'redaction'
 >;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
@@ -254,7 +255,8 @@ function executionSegmentToMessagesDto(execution: ExecutionTranscript): AgentPer
 		backgroundJobSignal ||
 		assistantContent.length > 0 ||
 		executionError !== undefined ||
-		execution.status === 'cancelled'
+		execution.status === 'cancelled' ||
+		execution.redaction
 	) {
 		messages.push({
 			id: `${execution.id}:assistant`,
@@ -265,6 +267,7 @@ function executionSegmentToMessagesDto(execution: ExecutionTranscript): AgentPer
 			executionId: execution.id,
 			...(execution.status ? { executionStatus: execution.status } : {}),
 			...(executionError !== undefined ? { executionError } : {}),
+			...(execution.redaction ? { redaction: execution.redaction } : {}),
 			createdAt,
 		});
 	}
@@ -317,6 +320,7 @@ export function executionsToMessagesDto(
 			message.backgroundTaskSignal ||
 			message.content.length > 0 ||
 			message.executionError !== undefined ||
-			message.executionStatus === 'cancelled',
+			message.executionStatus === 'cancelled' ||
+			message.redaction !== undefined,
 	);
 }

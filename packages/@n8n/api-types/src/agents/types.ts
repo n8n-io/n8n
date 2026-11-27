@@ -643,6 +643,11 @@ export interface AgentPersistedMessageDto {
 	executionError?: string;
 	/** ISO timestamp of when this turn was recorded. Absent on older history. */
 	createdAt?: string;
+	/**
+	 * Set when the turn of this message is redacted for the reader. The
+	 * message then holds no model text and no tool data.
+	 */
+	redaction?: AgentTurnRedactionDto;
 }
 
 export interface AgentBuilderOpenSuspension {
@@ -725,6 +730,12 @@ export interface AgentChatMessagesResponse {
 	 * An omitted value means that the response holds the whole thread.
 	 */
 	nextCursor?: string | null;
+	/**
+	 * Set when a turn in the response is redacted for the reader. `canReveal`
+	 * is true when the reader can reveal every redacted turn, with
+	 * `redactExecutionData=false` in the query.
+	 */
+	redaction?: { isRedacted: true; canReveal: boolean };
 }
 
 /** Suggested starter prompts returned by the test-chat scenario generator. */

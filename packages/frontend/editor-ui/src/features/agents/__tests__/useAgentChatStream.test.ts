@@ -3537,6 +3537,189 @@ describe('useAgentChatStream — loadHistory', () => {
 	});
 });
 
+describe('useAgentChatStream — redacted turns', () => {
+	const redactedPage = (canReveal: boolean): AgentChatMessagesResponse => ({
+		messages: [
+			{
+				id: 'e1:assistant',
+				role: 'assistant',
+				executionId: 'e1',
+				content: [],
+				redaction: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal },
+			},
+		],
+		openSuspensions: [],
+		activeExecutionId: null,
+		nextCursor: null,
+		redaction: { isRedacted: true, canReveal },
+	});
+	const revealedPage: AgentChatMessagesResponse = {
+		messages: [
+			{
+				id: 'e1:assistant',
+				role: 'assistant',
+				executionId: 'e1',
+				content: [{ type: 'text', text: 'Hi' }],
+			},
+		],
+		openSuspensions: [],
+		activeExecutionId: null,
+		nextCursor: null,
+	};
+
+	it('reports the redaction of the loaded history', async () => {
+		getChatMessagesMock.mockResolvedValue(redactedPage(false));
+		const hook = buildHook('thread-1');
+
+		await hook.loadHistory();
+
+		expect(hook.historyRedaction.value).toEqual({ isRedacted: true, canReveal: false });
+		expect(hook.messages.value.at(-1)).toMatchObject({ redacted: true, content: '' });
+	});
+
+	it('loads the history again with the data revealed', async () => {
+		getChatMessagesMock.mockResolvedValueOnce(redactedPage(true));
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+
+		getChatMessagesMock.mockResolvedValue(revealedPage);
+		await expect(hook.revealHistory()).resolves.toBe(true);
+
+		expect(getChatMessagesMock).toHaveBeenLastCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'chat',
+			{ limit: 20 },
+			{ revealExecutionData: true },
+		);
+		expect(hook.revealExecutionData.value).toBe(true);
+		expect(hook.historyRedaction.value).toBeNull();
+		expect(hook.messages.value.at(-1)?.content).toBe('Hi');
+	});
+
+	it('loads the redacted view again when a later refresh cannot be revealed', async () => {
+		getChatMessagesMock.mockResolvedValueOnce(redactedPage(true));
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+		getChatMessagesMock.mockResolvedValueOnce(revealedPage);
+		await hook.revealHistory();
+
+		getChatMessagesMock
+			.mockRejectedValueOnce({ httpStatusCode: 403 })
+			.mockResolvedValueOnce(redactedPage(false));
+		hook.refresh();
+
+		await vi.waitFor(() =>
+			expect(hook.historyRedaction.value).toEqual({ isRedacted: true, canReveal: false }),
+		);
+		expect(hook.revealExecutionData.value).toBe(false);
+		expect(getChatMessagesMock).toHaveBeenLastCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'chat',
+			{ limit: 20 },
+		);
+	});
+
+	function pageOf(
+		executionId: string,
+		text: string,
+		nextCursor: string | null,
+		redaction?: { canReveal: boolean },
+	): AgentChatMessagesResponse {
+		return {
+			messages: [
+				{
+					id: `${executionId}:assistant`,
+					role: 'assistant',
+					executionId,
+					content: redaction ? [] : [{ type: 'text', text }],
+					...(redaction && {
+						redaction: { isRedacted: true, reason: 'workflow_redaction_policy', ...redaction },
+					}),
+				},
+			],
+			openSuspensions: [],
+			activeExecutionId: null,
+			nextCursor,
+			...(redaction && { redaction: { isRedacted: true, ...redaction } }),
+		};
+	}
+	const ids = (hook: ReturnType<typeof buildHook>) => hook.messages.value.map(({ id }) => id);
+
+	it('drops the older pages that were loaded redacted when the reader reveals', async () => {
+		getChatMessagesMock
+			.mockResolvedValueOnce(pageOf('e2', '', 'cursor-1', { canReveal: true }))
+			.mockResolvedValueOnce(pageOf('e1', '', null, { canReveal: true }));
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+		await hook.loadOlderMessages();
+		expect(ids(hook)).toEqual(['e1:assistant', 'e2:assistant']);
+
+		getChatMessagesMock
+			.mockResolvedValueOnce(pageOf('e2', 'Second', 'cursor-1'))
+			.mockResolvedValueOnce(pageOf('e1', 'First', null));
+		await hook.revealHistory();
+
+		expect(ids(hook)).toEqual(['e2:assistant']);
+		expect(hook.hasOlderMessages.value).toBe(true);
+
+		await hook.loadOlderMessages();
+		expect(getChatMessagesMock).toHaveBeenLastCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'chat',
+			{ limit: 20, cursor: 'cursor-1' },
+			{ revealExecutionData: true },
+		);
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['First', 'Second']);
+	});
+
+	it('drops the older pages that were loaded revealed when the reveal is withdrawn', async () => {
+		getChatMessagesMock.mockResolvedValueOnce(pageOf('e2', '', 'cursor-1', { canReveal: true }));
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+		getChatMessagesMock
+			.mockResolvedValueOnce(pageOf('e2', 'Second', 'cursor-1'))
+			.mockResolvedValueOnce(pageOf('e1', 'First', null));
+		await hook.revealHistory();
+		await hook.loadOlderMessages();
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['First', 'Second']);
+
+		getChatMessagesMock
+			.mockRejectedValueOnce({ httpStatusCode: 403 })
+			.mockResolvedValueOnce(pageOf('e2', '', 'cursor-1', { canReveal: false }));
+		hook.refresh();
+
+		await vi.waitFor(() => expect(ids(hook)).toEqual(['e2:assistant']));
+		expect(hook.messages.value[0]).toMatchObject({ redacted: true, content: '' });
+		expect(hook.revealExecutionData.value).toBe(false);
+		expect(hook.hasOlderMessages.value).toBe(true);
+	});
+
+	it('keeps the redacted view and reports an error when the reveal fails', async () => {
+		getChatMessagesMock.mockResolvedValueOnce(redactedPage(true));
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+
+		getChatMessagesMock.mockRejectedValueOnce({ httpStatusCode: 403 });
+		await expect(hook.revealHistory()).resolves.toBe(false);
+
+		expect(hook.revealExecutionData.value).toBe(false);
+		expect(showQueueErrorMock).toHaveBeenCalledWith(
+			{ httpStatusCode: 403 },
+			'ndv.redacted.revealError',
+		);
+		expect(hook.historyRedaction.value).toEqual({ isRedacted: true, canReveal: true });
+	});
+});
+
 describe('useAgentChatStream — older messages', () => {
 	function turn(executionId: string, text: string): AgentPersistedMessageDto[] {
 		return [

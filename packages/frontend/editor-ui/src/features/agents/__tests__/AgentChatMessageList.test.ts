@@ -173,6 +173,55 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	describe('redacted replies', () => {
+		const placeholder = '[data-test-id="agent-chat-redacted-reply"]';
+
+		it('shows a placeholder for a redacted reply without text', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'u1', role: 'user', content: 'Hi', executionId: 'e1' },
+						{ id: 'a1', role: 'assistant', content: '', executionId: 'e1', redacted: true },
+					],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.get(placeholder).text()).toBe('agentSessions.timeline.replyRedacted');
+		});
+
+		it('shows a placeholder after the tool calls of a redacted turn', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{
+							id: 'a1',
+							role: 'assistant',
+							content: '',
+							executionId: 'e1',
+							redacted: true,
+							toolCalls: [{ tool: 'lookup', toolCallId: 'tc-1', state: 'done', redacted: true }],
+						},
+					],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.find(placeholder).exists()).toBe(true);
+		});
+
+		it('shows no placeholder for a reply that is not redacted', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [{ id: 'a1', role: 'assistant', content: 'Hello', executionId: 'e1' }],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.find(placeholder).exists()).toBe(false);
+		});
+	});
+
 	it('shows the reply files as chips on the assistant message', () => {
 		const message: ChatMessage = {
 			id: 'reply',

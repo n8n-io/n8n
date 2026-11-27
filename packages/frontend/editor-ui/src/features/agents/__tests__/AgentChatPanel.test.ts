@@ -1,7 +1,7 @@
 import { i18nInstance } from '@n8n/i18n';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { enableAutoUnmount, flushPromises, mount, type VueWrapper } from '@vue/test-utils';
-import { computed, defineComponent, h, isReadonly, ref, nextTick, type Ref } from 'vue';
+import { computed, defineComponent, h, inject, isReadonly, ref, nextTick, type Ref } from 'vue';
 import Draggable from 'vuedraggable';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
@@ -21,6 +21,7 @@ import type {
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
+import { AGENT_ATTACHMENT_URL_KEY } from '../components/agentChatInjectionKeys';
 import type { AgentChatChannel } from '../composables/useAgentApi';
 import AgentTestDock from '../components/AgentTestDock.vue';
 import AgentTestChatPage from '../components/AgentTestChatPage.vue';
@@ -141,6 +142,10 @@ let onStreamEvent: ((event: AgentSseEvent) => void) | undefined;
 let streamInteractionExtensions: readonly AgentsChatInteractionExtension[] | undefined;
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
+const historyRedactionMock = ref<{ isRedacted: true; canReveal: boolean } | null>(null);
+const revealExecutionDataMock = ref(false);
+const revealHistoryMock = vi.fn();
+const confirmMock = vi.fn();
 
 const defaultAgentConfig: AgentJsonConfig = {
 	name: 'Agent',
@@ -251,7 +256,7 @@ vi.mock('@/app/composables/useKeybindings', () => ({
 vi.mock('@/app/composables/useMessage', function mockUseMessage() {
 	return {
 		useMessage: function useMessage() {
-			return { confirm: vi.fn() };
+			return { confirm: confirmMock };
 		},
 	};
 });
@@ -387,6 +392,9 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			isLoadingHistory: isLoadingHistoryMock,
 			hasOlderMessages: ref(false),
 			loadOlderMessages: vi.fn(),
+			historyRedaction: historyRedactionMock,
+			revealExecutionData: revealExecutionDataMock,
+			revealHistory: revealHistoryMock,
 			getFullHistory: async () => messagesMock.value,
 			queuedMessages: queuedMessagesMock,
 			removingQueueIds: ref(new Set()),
@@ -433,6 +441,8 @@ vi.mock('../composables/agentTelemetry.utils', () => ({
 describe('AgentChatPanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		historyRedactionMock.value = null;
+		revealExecutionDataMock.value = false;
 		isMacOsMock.value = false;
 		removeQueuedMessageMock.mockReset().mockResolvedValue('removed');
 		reorderQueuedMessageMock.mockReset().mockResolvedValue(undefined);
@@ -1463,6 +1473,103 @@ describe('AgentChatPanel', () => {
 			wrapper.findAll('[data-queue-id]').map((row) => row.attributes('data-queue-id')),
 		).toEqual(['2', '3']);
 		wrapper.unmount();
+	});
+
+	describe('redacted turns', () => {
+		const notice = '[data-test-id="agent-session-redacted-notice"]';
+		const revealButton = '[data-test-id="agent-session-reveal-data"]';
+
+		beforeEach(() => {
+			messagesMock.value = [{ id: 'm1', role: 'assistant', content: 'Hi' } as ChatMessage];
+			revealHistoryMock.mockImplementation(async () => {
+				revealExecutionDataMock.value = true;
+				historyRedactionMock.value = null;
+				return true;
+			});
+		});
+
+		it('shows no notice when no turn is redacted', () => {
+			expect(mountPanel({ continueSessionId: 't1' }).find(notice).exists()).toBe(false);
+		});
+
+		it('shows the notice without a reveal action when the reader cannot reveal', () => {
+			historyRedactionMock.value = { isRedacted: true, canReveal: false };
+			const wrapper = mountPanel({ continueSessionId: 't1' });
+
+			expect(wrapper.find(notice).exists()).toBe(true);
+			expect(wrapper.find(revealButton).exists()).toBe(false);
+		});
+
+		it('reveals the history and the files after confirmation', async () => {
+			historyRedactionMock.value = { isRedacted: true, canReveal: true };
+			confirmMock.mockResolvedValue('confirm');
+			getSessionFilesMock.mockReset().mockResolvedValue({
+				files: [
+					{
+						fileId: 'f-1',
+						fileName: 'out.csv',
+						mimeType: 'text/csv',
+						sizeBytes: 3,
+						source: 'sandbox',
+						createdAt: '2026-10-29T10:00:00.000Z',
+					},
+				],
+			});
+			const wrapper = mountPanel({ continueSessionId: 't1' });
+			(wrapper.findComponent('[data-test-id="agent-session-files-toggle"]') as VueWrapper).vm.$emit(
+				'click',
+				new MouseEvent('click'),
+			);
+			await flushPromises();
+
+			await wrapper.get(revealButton).trigger('click');
+			await flushPromises();
+
+			expect(confirmMock).toHaveBeenCalledOnce();
+			expect(revealHistoryMock).toHaveBeenCalledOnce();
+			expect(getSessionFilesMock).toHaveBeenLastCalledWith(
+				{ baseUrl: '/rest' },
+				'p1',
+				'a1',
+				't1',
+				'chat',
+				{ revealExecutionData: true },
+			);
+			expect(wrapper.find('[data-test-id="session-file-link"]').attributes('href')).toContain(
+				'redactExecutionData=false',
+			);
+			expect(wrapper.find(notice).exists()).toBe(false);
+		});
+
+		it('asks for the unredacted attachment files after a reveal', async () => {
+			const AttachmentUrl = defineComponent({
+				setup: () => ({ build: inject(AGENT_ATTACHMENT_URL_KEY) }),
+				template: '<a data-test-id="attachment-url" :href="build?.(\'f-1\')" />',
+			});
+			messagesMock.value = [];
+			const wrapper = mountPanel({ continueSessionId: 't1' }, undefined, {
+				'empty-state': () => h(AttachmentUrl),
+			});
+			const href = () => wrapper.get('[data-test-id="attachment-url"]').attributes('href');
+			expect(href()).not.toContain('redactExecutionData');
+
+			revealExecutionDataMock.value = true;
+			await nextTick();
+
+			expect(href()).toContain('/chat/attachments/f-1?threadId=t1&redactExecutionData=false');
+		});
+
+		it('keeps the data hidden when the reader cancels the confirmation', async () => {
+			historyRedactionMock.value = { isRedacted: true, canReveal: true };
+			confirmMock.mockResolvedValue('cancel');
+			const wrapper = mountPanel({ continueSessionId: 't1' });
+
+			await wrapper.get(revealButton).trigger('click');
+			await flushPromises();
+
+			expect(revealHistoryMock).not.toHaveBeenCalled();
+			expect(wrapper.find(notice).exists()).toBe(true);
+		});
 	});
 
 	describe('session files', () => {

@@ -293,6 +293,22 @@ describe('reveal of redacted agent turns', () => {
 	});
 });
 
+describe('chat messages of redacted agent turns', () => {
+	it('should report the redaction in the messages response for a project admin', async () => {
+		const workflow = await createToolWorkflow('all');
+		const execution = await createToolExecution(workflow);
+		const threadId = await createTaskThread(workflow.id, execution.id);
+
+		const response = await testServer
+			.authAgentFor(projectAdmin)
+			.get(`/projects/${project.id}/agents/v2/${agentId}/chat/${threadId}/messages`)
+			.expect(200);
+
+		expect(JSON.stringify(response.body)).not.toContain(MARKER);
+		expect(response.body.data.redaction).toEqual({ isRedacted: true, canReveal: true });
+	});
+});
+
 describe('turns that delegate to a sub-agent', () => {
 	it('should redact a turn whose sub-agent ran a redacted workflow tool', async () => {
 		const workflow = await createToolWorkflow('all');

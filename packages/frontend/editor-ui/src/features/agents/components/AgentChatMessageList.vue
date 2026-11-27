@@ -52,6 +52,7 @@ import AgentChatHostEvents from './AgentChatHostEvents.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatActivity from './AgentChatActivity.vue';
+import AgentChatRedactedReply from './AgentChatRedactedReply.vue';
 import AgentChatRetryError from './AgentChatRetryError.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentChatTaskSummary from './AgentChatTaskSummary.vue';
@@ -238,6 +239,15 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 }
 
 const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
+
+/** A reply of a redacted turn has no text, so a placeholder stands in for it. */
+function isRedactedReply(message: ChatMessage | undefined): boolean {
+	return (
+		message?.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
+		message.redacted === true &&
+		!message.content.trim()
+	);
+}
 
 /** True when the bubble of `message` shows something besides host events. */
 function hasBubbleContent(message: ChatMessage): boolean {
@@ -804,6 +814,9 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							@open-build="onBuildLink($event, group.finalMessage)"
 						/>
 					</div>
+					<AgentChatRedactedReply
+						v-else-if="!group.active && group.toolCalls.some((tc) => tc.redacted)"
+					/>
 					<AgentBudgetNoticeCard
 						v-for="notice in group.budgetNotices"
 						:key="notice.id"
@@ -981,8 +994,9 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						<span>{{ props.stoppedLabel ?? i18n.baseText('agentSessions.stopped') }}</span>
 					</div>
 					<template v-else>
+						<AgentChatRedactedReply v-if="isRedactedReply(group.message)" />
 						<AgentChatRetryError
-							v-if="isRetryableChatError(group.message)"
+							v-else-if="isRetryableChatError(group.message)"
 							:message="group.message.content"
 							:retry-message-id="
 								group.message.id === retryErrorMessageId ? retryMessageId : undefined

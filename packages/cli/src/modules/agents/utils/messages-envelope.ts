@@ -179,15 +179,37 @@ export function ownCheckpoint(
  * only its open suspensions.
  */
 export function threadMessagesResponse(
-	history: Pick<AgentChatMessagesResponse, 'messages' | 'activeExecutionId' | 'nextCursor'> | null,
+	history: Pick<
+		AgentChatMessagesResponse,
+		'messages' | 'activeExecutionId' | 'nextCursor' | 'redaction'
+	> | null,
 	checkpoint: SerializableAgentState | null,
 ): AgentChatMessagesResponse {
 	if (!history) return { ...withOpenSuspensions([], checkpoint), activeExecutionId: null };
 	return {
-		...withOpenSuspensions(history.messages, checkpoint, {
-			appendInactiveCheckpointMessages: false,
-		}),
+		...(history.redaction
+			? withRedactedOpenSuspensions(history.messages, checkpoint)
+			: withOpenSuspensions(history.messages, checkpoint, {
+					appendInactiveCheckpointMessages: false,
+				})),
 		activeExecutionId: history.activeExecutionId,
 		...(history.nextCursor !== undefined ? { nextCursor: history.nextCursor } : {}),
+		...(history.redaction ? { redaction: history.redaction } : {}),
 	};
+}
+
+/**
+ * The open suspensions of a thread whose newest turn is redacted for the
+ * reader. A redacted turn redacts every later turn, so the suspended turn is
+ * redacted too. The checkpoint holds its content, so only the ids pass: the
+ * history keeps its redacted messages, and the suspensions carry no payload.
+ */
+function withRedactedOpenSuspensions(
+	messages: AgentPersistedMessageDto[],
+	checkpoint: SerializableAgentState | null,
+): AgentChatMessagesResponse {
+	const openSuspensions = Object.values(checkpoint?.pendingToolCalls ?? {})
+		.filter((tc) => tc.suspended)
+		.map((tc) => ({ toolCallId: tc.toolCallId, runId: tc.runId }));
+	return { messages, openSuspensions };
 }

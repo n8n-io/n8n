@@ -58,6 +58,8 @@ export interface ToolCall {
 		reasoningSegments: ThinkingSegment[];
 		steps: Array<{ toolCallId: string; toolName: string; running: boolean }>;
 	};
+	/** The turn is redacted for the reader. The call has no input or output. */
+	redacted?: boolean;
 }
 
 interface InteractivePayloadBase {
@@ -197,6 +199,8 @@ export interface AgentsChatMessage {
 	}>;
 	/** Host events of this turn, in arrival order. Host extensions render them. */
 	hostEvents?: AgentsChatHostEvent[];
+	/** The turn is redacted for the reader. The message has no model text or tool data. */
+	redacted?: boolean;
 }
 
 export type ChatMessage = AgentsChatMessage;
