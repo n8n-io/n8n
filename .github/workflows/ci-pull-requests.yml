@@ -59,7 +59,6 @@ jobs:
       affected_packages: ${{ steps.affected-packages.outputs.list }}
       lockfile_impact: ${{ steps.affected-packages.outputs.lockfile-impact }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
-      currents_record_key: ${{ secrets.CURRENTS_RECORD_KEY != '' && 'present' || '' }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -173,6 +172,7 @@ jobs:
               scripts/cloud-session*.mjs
               scripts/codespace-env.mjs
               scripts/codespace-preview/**
+              scripts/format.mjs
               scripts/licenses/**
               scripts/mutation-health/**
               scripts/telemetry/**
@@ -532,6 +532,9 @@ jobs:
       needs.e2e-matrix.result == 'success' &&
       needs.install-and-build.outputs.run_e2e == 'true' &&
       needs.e2e-matrix.outputs.skip_tests != 'true'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -540,7 +543,7 @@ jobs:
       workers: '1'
       pre-generated-matrix: ${{ needs.e2e-matrix.outputs.matrix }}
       artifact-prefix: e2e
-      currents-record-key: ${{ needs.install-and-build.outputs.currents_record_key }}
+      skip-shard-upload-when-recording: true
     secrets: inherit
 
   # Engine v2 parity: runs the `@engine:*` specs against a main that routes
@@ -557,6 +560,9 @@ jobs:
         || contains(github.event.pull_request.labels.*.name, 'force-engine-e2e')) &&
       github.event.pull_request.head.repo.fork != true &&
       github.event_name != 'merge_group'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -615,6 +621,9 @@ jobs:
       (needs.install-and-build.outputs.e2e_performance == 'true' ||
        contains(github.event.pull_request.labels.*.name, 'run-perf-tests')) &&
       github.event.pull_request.head.repo.fork != true
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/test-e2e-performance-reusable.yml
     secrets: inherit
 

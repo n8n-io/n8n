@@ -47,6 +47,7 @@ function makeRepair(stepStore = makeStepStore()) {
 		publish: vi.fn(),
 		start: vi.fn(),
 		stop: vi.fn(),
+		size: vi.fn(),
 	};
 	const publisher: LifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
 	const repair = new RunningStepRepair(

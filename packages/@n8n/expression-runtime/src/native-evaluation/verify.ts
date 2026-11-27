@@ -2,11 +2,14 @@ import { IsolateError } from '@n8n/errors';
 import isEqualWith from 'lodash/isEqualWith';
 
 import { getCompiled } from './compiler';
+import { isObj } from './grammar';
+import type { NativeEvaluationData } from './host';
 import { readsClockOrParameter, skeletonOf } from './skeleton';
-import type { ExpressionEvaluationOutcome } from '../../expression';
-import type { IWorkflowDataProxyData } from '../../interfaces';
-import * as LoggerProxy from '../../logger-proxy';
-import { isObject } from '../../utils';
+import { isPlainObject } from '../runtime/transfer';
+import type { ExpressionEvaluationOutcome, Logger } from '../types';
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+	isObj(value) && isPlainObject(value);
 
 // Each mismatch shape is reported once per process, up to this many, so a
 // common mismatch cannot spend the Sentry quota.
@@ -62,6 +65,7 @@ export class NativeVerifier {
 		private readonly sample: number,
 		private readonly report: (mismatch: NativeVerifyMismatch) => void,
 		private readonly canReport: () => boolean = () => true,
+		private readonly logger?: Pick<Logger, 'warn'>,
 	) {}
 
 	/** Draws whether this evaluation is part of the sample. False while reports cannot be sent. */
@@ -75,7 +79,7 @@ export class NativeVerifier {
 		engineName: NativeVerifyMismatch['engine'],
 		native: ExpressionEvaluationOutcome,
 		engine: ExpressionEvaluationOutcome,
-		data: IWorkflowDataProxyData,
+		data: NativeEvaluationData,
 	): void {
 		try {
 			if (
@@ -97,7 +101,7 @@ export class NativeVerifier {
 				if (this.reportedShapes.size >= MAX_REPORTED_SHAPES) return;
 				this.reportedShapes.add(key);
 				if (this.reportedShapes.size === MAX_REPORTED_SHAPES) {
-					LoggerProxy.warn(
+					this.logger?.warn(
 						'Native evaluation verify mode reached its report limit and stops reporting new differences',
 					);
 				}
@@ -135,7 +139,7 @@ function compareValues(a: unknown, b: unknown, maxComparedPairs = MAX_COMPARED_P
 			throw new ComparisonTooLargeError();
 		}
 		// QuickJS drops object keys that hold undefined from its results.
-		if (isObject(x) && isObject(y)) {
+		if (isPlainRecord(x) && isPlainRecord(y)) {
 			return sameDefinedEntries(x, y, compare);
 		}
 		return undefined;
@@ -191,7 +195,7 @@ function prototypeName(value: object): string {
 	return typeof constructor === 'function' ? constructor.name : 'object';
 }
 
-function workflowIdOf(data: IWorkflowDataProxyData): string | undefined {
+function workflowIdOf(data: NativeEvaluationData): string | undefined {
 	try {
 		const id: unknown = data.$workflow?.id;
 		return typeof id === 'string' ? id : undefined;
