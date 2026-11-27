@@ -233,7 +233,7 @@ describe('promotion-settings', () => {
 		const client = { updatePromotionSettings };
 		vi.spyOn(internals, 'parse').mockResolvedValue({
 			args: {},
-			flags: { 'who-can-promote': 'projectAdminsAndEditors' },
+			flags: { 'who-can-promote': 'projectAdminsAndEditors', 'require-approval': 'alwaysRequired' },
 		});
 		vi.spyOn(internals, 'getClient').mockReturnValue(client as unknown as N8nClient);
 		vi.spyOn(internals, 'output').mockImplementation(() => {});
@@ -243,6 +243,7 @@ describe('promotion-settings', () => {
 		// The API keeps the other settings, so a newer change by another admin stays.
 		expect(updatePromotionSettings).toHaveBeenCalledWith({
 			whoCanPromote: 'projectAdminsAndEditors',
+			requireApproval: 'alwaysRequired',
 		});
 	});
 });
