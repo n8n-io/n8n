@@ -1,5 +1,11 @@
 import type { BuiltTool } from '@n8n/agents';
-import type { ToolTestCapability } from '@n8n/api-types';
+import {
+	toolCallEvidenceSchema,
+	toolCallSimulationSchema,
+	type ToolTestCapability,
+} from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type {
@@ -742,5 +748,172 @@ describe('SimulationSession', () => {
 		const [request] = world.handleRequest.mock.calls[0];
 		expect(request).toMatchObject({ headers: { 'mcp-session-id': 'session-1' } });
 		expect(JSON.stringify(request)).not.toContain('secret-token');
+	});
+});
+
+describe('SimulationSession route evidence', () => {
+	const SECRET_TEXT = 'canary-request-text-4711';
+
+	const served = (evidence?: unknown, source: 'world_state' | 'made_up' = 'world_state') =>
+		({ outcome: 'served', source, status: 200, body: {}, evidence }) as SimulatedReply;
+
+	/** A world that gives one reply for each request, in order. */
+	function worldWithReplies(replies: SimulatedReply[]) {
+		const queue = [...replies];
+		return makeWorld(
+			async () => await Promise.resolve(queue.shift() ?? { outcome: 'unsupported' }),
+		);
+	}
+
+	/** A node tool whose handler sends `count` HTTP requests in one tool call. */
+	function requestTool(session: SimulationSession, count: number, swallowErrors = false) {
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		session
+			.instrumentation()
+			.configureToolAdditionalData?.(additionalData, { toolName: 'send_slack', toolKind: 'node' });
+		return nodeTool('send_slack', 'n8n-nodes-base.slack', async () => {
+			for (let index = 0; index < count; index++) {
+				try {
+					await additionalData.evalLlmMockHandler!(
+						{ url: `https://slack.com/api/step-${index}`, method: 'POST', body: SECRET_TEXT },
+						slackNode,
+					);
+				} catch (error) {
+					if (!swallowErrors) throw error;
+				}
+			}
+			return 'done';
+		});
+	}
+
+	const sessionFor = (replies: SimulatedReply[]) =>
+		new SimulationSession({
+			testChatId: 't',
+			world: worldWithReplies(replies),
+			capabilities: [slackCapability],
+		});
+
+	it('folds the evidence of all requests of one tool call, once each, in a fixed order', async () => {
+		const session = sessionFor([
+			served(['world_write']),
+			served(['world_read', 'real_read']),
+			served(),
+			served(['world_write', 'world_read']),
+		]);
+
+		await runTool(session, requestTool(session, 4));
+
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'simulated',
+			reason: 'served_from_world',
+			evidence: ['real_read', 'world_read', 'world_write'],
+		});
+	});
+
+	it('keeps the evidence of each tool call apart', async () => {
+		const session = sessionFor([served(['world_read']), served(['world_write'])]);
+
+		await runTool(session, requestTool(session, 1), 'tc-1');
+		await runTool(session, requestTool(session, 1), 'tc-2');
+
+		expect(session.takeDecision('tc-1')).toMatchObject({ evidence: ['world_read'] });
+		expect(session.takeDecision('tc-2')).toMatchObject({ evidence: ['world_write'] });
+	});
+
+	it('keeps the evidence when a request of the call was made up', async () => {
+		const session = sessionFor([served(['world_read']), served(undefined, 'made_up')]);
+
+		await runTool(session, requestTool(session, 2));
+
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'simulated_made_up',
+			reason: 'invented_by_llm',
+			evidence: ['world_read'],
+		});
+	});
+
+	it.each([
+		['absent', undefined],
+		['empty', []],
+	])('leaves the evidence key out when the reply evidence is %s', async (_label, evidence) => {
+		const session = sessionFor([served(evidence)]);
+
+		await runTool(session, requestTool(session, 1));
+
+		const decision = session.takeDecision('tc-1');
+		expect(decision).toEqual({ route: 'simulated', reason: 'served_from_world' });
+		expect(Object.keys(decision ?? {})).toEqual(['route', 'reason']);
+	});
+
+	it.each([
+		['the tool throws', false],
+		['the tool swallows the error', true],
+	])(
+		'gives a blocked call no evidence, also after served requests, when %s',
+		async (_label, swallowErrors) => {
+			const session = sessionFor([
+				served(['world_read', 'world_write']),
+				{ outcome: 'unsupported', detail: 'Not supported' },
+			]);
+
+			await expect(runTool(session, requestTool(session, 2, swallowErrors))).rejects.toThrow(
+				SimulationBlockedError,
+			);
+
+			const decision = session.takeDecision('tc-1');
+			expect(decision).toEqual({
+				route: 'blocked',
+				reason: 'unsupported_by_simulator',
+				detail: 'Not supported',
+			});
+			expect(toolCallSimulationSchema.safeParse(decision).success).toBe(true);
+		},
+	);
+
+	it('never carries request data: only the known values pass', async () => {
+		const session = sessionFor([
+			served([SECRET_TEXT, 'world_write', { url: `https://slack.com/${SECRET_TEXT}` }, 7, null]),
+			served(SECRET_TEXT),
+			served({ 0: SECRET_TEXT, length: 1 }),
+		]);
+
+		await runTool(session, requestTool(session, 3));
+
+		const decision = session.takeDecision('tc-1');
+		expect(decision).toEqual({
+			route: 'simulated',
+			reason: 'served_from_world',
+			evidence: ['world_write'],
+		});
+		expect(JSON.stringify(decision)).not.toContain(SECRET_TEXT);
+		expect(toolCallSimulationSchema.safeParse(decision).success).toBe(true);
+	});
+
+	it('reads no more items than the evidence values that exist', async () => {
+		const padding = toolCallEvidenceSchema.options.map(() => SECRET_TEXT);
+		const session = sessionFor([served([...padding, 'world_write'])]);
+
+		await runTool(session, requestTool(session, 1));
+
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'simulated',
+			reason: 'served_from_world',
+		});
+	});
+
+	it('warns when the evidence is not a list', async () => {
+		const logger = mockInstance(Logger);
+		const session = sessionFor([served('world_write')]);
+
+		await runTool(session, requestTool(session, 1));
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'[SafeTesting] The simulator sent evidence that is not a list',
+			{ toolName: 'send_slack' },
+		);
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'simulated',
+			reason: 'served_from_world',
+		});
 	});
 });

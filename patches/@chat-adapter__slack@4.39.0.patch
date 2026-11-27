@@ -1,0 +1,37 @@
+diff --git a/dist/chunk-6QHBXN7B.js b/dist/chunk-6QHBXN7B.js
+index 731c4889128120ca4a418495baf6da5a6f536bdd..4e6daf3d5050f19c4abdfab1f4481c91b0caf98b 100644
+--- a/dist/chunk-6QHBXN7B.js
++++ b/dist/chunk-6QHBXN7B.js
+@@ -76,10 +76,28 @@ function convertSlackTokens(mrkdwn) {
+   return markdown;
+ }
+ function convertMrkdwnText(mrkdwn) {
+-  let markdown = convertSlackTokens(mrkdwn);
+-  markdown = markdown.replace(/(?<![_*\\])\*([^*\n]+)\*(?![_*])/g, "**$1**");
+-  markdown = markdown.replace(/(?<!~)~([^~\n]+)~(?!~)/g, "~~$1~~");
+-  return markdown;
++  // Backport the emphasis fix from vercel/chat#957. Mask code and Slack tokens
++  // so emphasis can span them without changing the characters inside them.
++  const opaque = /`[^`\r\n]*`|<[^<>\r\n]+>/g;
++  const masked = mrkdwn.replace(opaque, (value) => "x".repeat(value.length));
++  const wordStars = new Set(Array.from(masked.matchAll(/(?<=[\p{L}\p{N}])\*(?=[\p{L}\p{N}])/gu), (match) => match.index));
++  const markers = new Map();
++  for (const pattern of [
++    /(?<![_*\\])\*([^\s*](?:[^*\n]*[^\s*])?)\*(?![_*])/g,
++    /(?<!~)~([^\s~](?:[^~\n]*[^\s~])?)~(?!~)/g
++  ]) {
++    for (const match of masked.matchAll(pattern)) {
++      const close = match.index + match[0].length - 1;
++      const escape = wordStars.has(match.index) && wordStars.has(close);
++      markers.set(match.index, escape);
++      markers.set(close, escape);
++    }
++  }
++  const markdown = mrkdwn.replace(/[*~]/g, (marker, index) => {
++    if (!markers.has(index)) return marker;
++    return markers.get(index) ? `\\${marker}` : marker.repeat(2);
++  });
++  return markdown.replace(opaque, convertSlackTokens);
+ }
+ function convertMrkdwnWithCodeFences(mrkdwn) {
+   let result = "";
