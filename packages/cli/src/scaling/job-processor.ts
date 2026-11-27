@@ -584,6 +584,7 @@ export class JobProcessor {
 			lastNodeExecuted: run.data.resultData.lastNodeExecuted,
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
+			triggerNodeType: run.data.startData?.triggerNodeType,
 			waitTill: run.waitTill ?? null,
 			...(run.data.resultData.failedBeforeStart && {
 				failedBeforeStart: run.data.resultData.failedBeforeStart,

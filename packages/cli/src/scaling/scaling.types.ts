@@ -96,6 +96,7 @@ export type JobFinishedProps = {
 	startedAt: Date;
 	stoppedAt: Date;
 	failedBeforeStart?: FailedBeforeStartMarker;
+	triggerNodeType?: string | null;
 	nodeTimeSavedMinutes?: number;
 };
 
