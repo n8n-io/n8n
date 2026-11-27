@@ -553,6 +553,11 @@ export function writeEvalResults(
 					...(sr.agentTurnCount !== undefined ? { agentTurnCount: sr.agentTurnCount } : {}),
 					...(sr.durationMs !== undefined ? { durationMs: sr.durationMs } : {}),
 					...(sr.agentTranscript ? { transcript: sr.agentTranscript } : {}),
+					// Agent memory runs (AGENT-1666): the config the run used, the memory it stored.
+					...(sr.agentEvalResult?.memoryConfig
+						? { memoryConfig: sr.agentEvalResult.memoryConfig }
+						: {}),
+					...(sr.agentEvalResult?.memory ? { memoryState: sr.agentEvalResult.memory } : {}),
 					passed: sr.success,
 					...(sr.incomplete ? { incomplete: true } : {}),
 					score: sr.score,

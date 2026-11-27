@@ -178,6 +178,15 @@ interface DispatcherView {
 				execErrors: string[];
 				/** Agent runs: the multi-turn conversation, sessions marked by `heading`. */
 				transcript?: TranscriptTurn[];
+				/** Agent memory runs: the memory config the run used. */
+				memoryConfig?: Record<string, unknown>;
+				/** Agent memory runs: the stored memory after the run. */
+				memoryState?: {
+					observations: Array<{ threadId: string; marker: string; text: string }>;
+					episodicEntries: Array<{ content: string; createdAt: string }>;
+					pendingCandidates: number;
+					tasks: Array<{ taskKind: string; outcome: string; error?: string }>;
+				};
 			}>;
 		}>;
 	}>;
@@ -418,6 +427,74 @@ describe('eval-results.json — dispatcher contract', () => {
 		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
 
 		expect(report.testCases[0].scenarios[0].runs[0].transcript).toEqual(transcript);
+	});
+
+	it('serializes the memory config and the stored memory of an Agent memory run', () => {
+		const directCase: WorkflowTestCase = {
+			complexity: 'simple',
+			tags: [],
+			datasets: ['full'],
+			executionScenarios: [scenario],
+			agentRun: { mode: 'direct', keepMemory: true },
+		};
+		const memoryConfig = {
+			enabled: true,
+			storage: 'n8n' as const,
+			episodicMemory: { enabled: true as const, credential: 'cred-embed' },
+		};
+		const memoryState = {
+			observations: [{ threadId: 'thread-1', marker: 'important', text: 'Nut allergy' }],
+			episodicEntries: [{ content: 'Allergic to nuts', createdAt: '2026-11-27T00:00:00.000Z' }],
+			pendingCandidates: 0,
+			tasks: [{ taskKind: 'episodic' as const, outcome: 'completed' as const }],
+		};
+		const run = (): WorkflowTestCaseResult => ({
+			testCase: directCase,
+			workflowBuildSuccess: true,
+			agentId: 'agent-1',
+			executionScenarioResults: [
+				{
+					scenario,
+					success: true,
+					score: 1,
+					reasoning: 'ok',
+					agentEvalResult: {
+						runId: 'run-1',
+						success: true,
+						errors: [],
+						finalText: 'Noted.',
+						toolCalls: [],
+						modelTurns: [],
+						seed: { openingMessage: 'hi', globalContext: '', toolHints: {}, warnings: [] },
+						skippedFeatures: [],
+						mockedCredentials: [],
+						memoryConfig,
+						memory: memoryState,
+					},
+				},
+			],
+		});
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const { jsonPath } = writeEvalResults(
+			aggregateResults([[run()]], 1),
+			1234,
+			dir,
+			'exp-direct-agent',
+			undefined,
+			undefined,
+			new Map([[directCase, 'memory-agent']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+
+		expect(report.testCases[0].scenarios[0].runs[0]).toMatchObject({ memoryConfig, memoryState });
+	});
+
+	it('leaves memoryConfig and memoryState off a workflow scenario run', () => {
+		const row = writeAndRead().testCases[0].scenarios[0].runs[0];
+		expect(row).not.toHaveProperty('memoryConfig');
+		expect(row).not.toHaveProperty('memoryState');
 	});
 
 	it('leaves the transcript off a workflow scenario run', () => {
