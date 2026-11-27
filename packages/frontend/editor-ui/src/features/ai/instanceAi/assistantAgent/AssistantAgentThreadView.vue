@@ -98,15 +98,7 @@ import {
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-<<<<<<< HEAD
-import {
-	firstMessageTitle,
-	getAppTargetsFromThreadMetadata,
-	threadTargetsAgent,
-} from '../instanceAi.threadRuntime';
-=======
-import { getAppTargetsFromThreadMetadata } from '../instanceAi.threadRuntime';
->>>>>>> a4bb0aa1 (fix(ai-builder): Use approval modes in Assistant threads that build agents (#45359))
+import { firstMessageTitle, getAppTargetsFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
 import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from '../useCanvasPreview';
