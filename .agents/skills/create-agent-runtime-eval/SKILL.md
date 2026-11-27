@@ -67,7 +67,7 @@ The schema wins if this skill and the code disagree. Then fix this skill.
 2. Ask for the autonomy level, as in
    [create-instance-ai-eval](../create-instance-ai-eval/SKILL.md#set-the-autonomy-level-first).
 3. The target suite is **"Agents — runtime"**. State it in one line. Do not
-   push runtime cases to `agents` (suite 10). That suite grades the builder.
+   file runtime cases in `agents` (suite 10). That suite grades the builder.
 4. Start a timer. Record the time per case and each step you fixed by hand.
    See [Measure the skill](#measure-the-skill).
 
