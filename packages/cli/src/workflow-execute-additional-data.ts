@@ -138,6 +138,34 @@ export function getRunData(
 }
 
 /**
+ * Rejects blank or non-scalar workflow IDs before querying the database.
+ * Node expressions can resolve to empty strings, null, or objects at runtime.
+ */
+function assertValidWorkflowId(workflowId: unknown, parentWorkflowId: string): void {
+	if (
+		workflowId === null ||
+		workflowId === undefined ||
+		(typeof workflowId === 'string' && workflowId.trim() === '')
+	) {
+		throw new UserError(
+			'Workflow ID is empty. Select a sub-workflow or check the workflow ID expression.',
+			{
+				extra: { workflowId, parentWorkflowId },
+			},
+		);
+	}
+
+	if (typeof workflowId === 'object' || typeof workflowId === 'boolean') {
+		throw new UserError(
+			'Workflow ID is invalid. Select a sub-workflow or check the workflow ID expression.',
+			{
+				extra: { workflowId, parentWorkflowId },
+			},
+		);
+	}
+}
+
+/**
  * Fetches workflow from database or returns provided code.
  * Shared helper for getDraftWorkflowData and getPublishedWorkflowData.
  */
@@ -147,12 +175,17 @@ async function fetchWorkflowData(
 	parentWorkflowSettings?: IWorkflowSettings,
 ) {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
-		throw new UnexpectedError(
+		throw new UserError(
 			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
+			{
+				extra: { parentWorkflowId },
+			},
 		);
 	}
 
 	if (workflowInfo.id !== undefined) {
+		assertValidWorkflowId(workflowInfo.id, parentWorkflowId);
+
 		const baseRelations = ['activeVersion'];
 		const relations = Container.get(GlobalConfig).tags.disabled
 			? [...baseRelations]
@@ -164,8 +197,8 @@ async function fetchWorkflowData(
 		);
 
 		if (workflowFromDb === undefined || workflowFromDb === null) {
-			throw new UnexpectedError('Workflow does not exist.', {
-				extra: { workflowId: workflowInfo.id },
+			throw new UserError(`Workflow "${workflowInfo.id}" does not exist.`, {
+				extra: { workflowId: workflowInfo.id, parentWorkflowId },
 			});
 		}
 
@@ -225,6 +258,8 @@ export async function getPublishedWorkflowData(
 		workflowInfo.id !== undefined &&
 		Container.get(WorkflowsConfig).useWorkflowPublicationService
 	) {
+		assertValidWorkflowId(workflowInfo.id, parentWorkflowId);
+
 		const publishedData = await Container.get(
 			WorkflowPublishedDataService,
 		).getPublishedWorkflowData(workflowInfo.id);

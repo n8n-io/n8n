@@ -1710,7 +1710,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		// Regression test for CET-178: a missing sub-workflow is a user error, so
 		// executeWorkflow must throw a non-reportable UserError that names the ID.
-		it.each<WorkflowExecuteMode>(['manual', 'chat'])(
+		it.each<WorkflowExecuteMode>(['manual', 'chat', 'trigger'])(
 			'throws a UserError naming the missing sub-workflow ID in %s mode without starting a sub-execution',
 			async (executionMode) => {
 				activeExecutions.add.mockClear();
@@ -2353,6 +2353,20 @@ describe('WorkflowExecuteAdditionalData', () => {
 				getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id'),
 			).rejects.toThrow('Workflow is not active and cannot be executed.');
 		});
+
+		it.each([false, true])(
+			'should throw a UserError without querying the database when workflow ID is empty (flag=%s)',
+			async (usePublicationService) => {
+				workflowsConfig.useWorkflowPublicationService = usePublicationService;
+
+				const promise = getPublishedWorkflowData({ id: '' }, 'parent-workflow-id');
+
+				await expect(promise).rejects.toBeInstanceOf(UserError);
+				await expect(promise).rejects.toMatchObject({ shouldReport: false });
+				expect(workflowRepository.get).not.toHaveBeenCalled();
+				expect(workflowPublishedDataService.getPublishedWorkflowData).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('getDraftWorkflowData', () => {
@@ -2468,18 +2482,29 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 		});
 
-		// Regression test for CET-178: an expression that resolves to an empty string
-		// reaches fetchWorkflowData and must throw a non-reportable UserError.
-		it('should throw a UserError when the workflow ID is empty', async () => {
-			workflowRepository.get.mockResolvedValueOnce(null);
-			onTestFinished(() => {
-				workflowRepository.get.mockReset();
-			});
+		// Regression test for CET-178: an expression that resolves to an empty string,
+		// whitespace, null, or a non-scalar value must throw a non-reportable UserError
+		// without querying the database.
+		it.each(['', '   ', null, {}, true])(
+			'should throw a UserError without querying the database when the workflow ID is %j',
+			async (invalidId) => {
+				const promise = getDraftWorkflowData(
+					{ id: invalidId as unknown as string },
+					'parent-workflow-id',
+				);
 
-			const promise = getDraftWorkflowData({ id: '' }, 'parent-workflow-id');
+				await expect(promise).rejects.toBeInstanceOf(UserError);
+				await expect(promise).rejects.toMatchObject({ shouldReport: false });
+				expect(workflowRepository.get).not.toHaveBeenCalled();
+			},
+		);
+
+		it('should throw a UserError without querying the database when neither id nor code is provided', async () => {
+			const promise = getDraftWorkflowData({ id: undefined }, 'parent-workflow-id');
 
 			await expect(promise).rejects.toBeInstanceOf(UserError);
 			await expect(promise).rejects.toMatchObject({ shouldReport: false });
+			expect(workflowRepository.get).not.toHaveBeenCalled();
 		});
 	});
 
