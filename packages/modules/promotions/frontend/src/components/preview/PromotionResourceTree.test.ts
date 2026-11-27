@@ -225,7 +225,7 @@ describe('PromotionResourceTree', () => {
 					{ ...notOnBranchWorkflow, ...usedByBlocked },
 					{ ...archivedWorkflow, ...usedByBlocked },
 				],
-				'1 issue needs your action.',
+				'1 issue needs your action. 1 is outside your access.',
 			],
 		])(
 			'should show one amber marker for a workflow with an issue and %s',
@@ -388,7 +388,7 @@ describe('PromotionResourceTree', () => {
 			[
 				'no dependency is on the branch',
 				[notOnBranchWorkflow, anotherNotOnBranch],
-				'2 dependencies are not on the branch.',
+				'This workflow uses 2 dependencies that are outside your access. You can apply it without them.',
 			],
 			[
 				'every dependency is outside the access of the user',
@@ -396,9 +396,9 @@ describe('PromotionResourceTree', () => {
 				'This workflow uses 1 dependency that is outside your access. You can apply it without it.',
 			],
 			[
-				'only some dependencies are outside the access of the user',
+				'a dependency is outside the access of the user and another is not on the branch',
 				[unreachableWorkflow, notOnBranchWorkflow],
-				'2 dependencies are not usable on this instance.',
+				'This workflow uses 2 dependencies that are outside your access. You can apply it without them.',
 			],
 			[
 				'the user can resolve one of the dependencies',
@@ -414,6 +414,23 @@ describe('PromotionResourceTree', () => {
 			expect(marker).toHaveAccessibleName(message);
 			expect(marker.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'triangle-alert');
 		});
+
+		it.each([
+			[true, '1 dependency is not included in this Promote.'],
+			[
+				false,
+				'This workflow uses 1 dependency that is outside your access. You can promote it without it.',
+			],
+		])(
+			'should mark a workflow of a Promote that uses a personal credential, when the user can access it is %s',
+			(accessible, message) => {
+				const { getAllByTestId } = renderWithMissing([{ ...personalCredential, accessible }]);
+
+				expect(
+					row(getAllByTestId, 'workflow:w3').getByTestId('promotion-preview-tree-dependencies'),
+				).toHaveAccessibleName(message);
+			},
+		);
 
 		it('should show no marker on a workflow without missing dependencies', () => {
 			const { getAllByTestId, queryAllByTestId } = renderWithMissing();

@@ -24,14 +24,11 @@ const MOVED_DETAIL = {
 } as const;
 
 /**
- * True for a dependency that the text "outside your access" is correct for. On Apply, the status
- * of the reason `not-on-branch` is "Not on the branch". Promote gives that reason to every
- * dependency that it leaves out.
+ * True for a dependency that the text "outside your access" is correct for. The text does not
+ * say "branch", because users do not need to know it, and a later promotion from instance to
+ * instance has no branch.
  */
-const isOutsideAccess = (
-	{ group, reason }: PromotionMissingDependency,
-	direction: PromotionDirection,
-) => group === 'outside-access' && !(direction === 'apply' && reason === 'not-on-branch');
+const isOutsideAccess = ({ group }: PromotionMissingDependency) => group === 'outside-access';
 
 /** Labels for change details and blockers in the promotion preview. */
 export function usePromotionPreviewLabels() {
@@ -98,9 +95,7 @@ export function usePromotionPreviewLabels() {
 				interpolate: { count: String(blocking.length) },
 			});
 			// Only Apply shows this text, because a moved workflow is the only blocker of a Promote.
-			const outside = missing.filter(
-				(entry) => !entry.blocking && isOutsideAccess(entry, 'apply'),
-			).length;
+			const outside = missing.filter((entry) => !entry.blocking && isOutsideAccess(entry)).length;
 			return outside > 0
 				? `${needsAction} ${i18n.baseText('promotions.preview.marker.outsideAlso', {
 						adjustToNumber: outside,
@@ -139,7 +134,15 @@ export function usePromotionPreviewLabels() {
 			adjustToNumber: dependencies.length,
 			interpolate: { count: String(dependencies.length) },
 		};
-		if (dependencies.every((entry) => isOutsideAccess(entry, direction))) {
+		// A dependency of a personal project that the user cannot access is outside the access of the
+		// user. A personal dependency that the user can access is only left out of the Promote.
+		if (
+			dependencies.every(
+				(entry) =>
+					isOutsideAccess(entry) ||
+					(direction === 'promote' && entry.group === 'personal' && !entry.accessible),
+			)
+		) {
 			return i18n.baseText(`promotions.preview.marker.outside.${direction}`, options);
 		}
 		// A dependency of another project that the user can access is not outside the access of
