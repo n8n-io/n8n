@@ -372,6 +372,15 @@ describe('ResumeRequestService.resolve', () => {
 		);
 	});
 
+	it('leaves the step queue running', async () => {
+		const { service, stepQueue } = setup();
+
+		await service.resolve('s1', token, outputs);
+
+		expect(stepQueue.start).not.toHaveBeenCalled();
+		expect(stepQueue.stop).not.toHaveBeenCalled();
+	});
+
 	it('checks the token against the execution of the step', async () => {
 		const { service, stepStore } = setup({
 			step: { ...accepting('s1'), executionId: otherExecutionId },
