@@ -4,7 +4,6 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRepository,
@@ -42,7 +41,6 @@ import {
 	productionChatMemoryResourceId,
 	systemChatMemoryResourceId,
 } from '@/modules/agents/utils/agent-memory-scope';
-import { License } from '@/license';
 import { UserService } from '@/services/user.service';
 
 import { createMember, createOwner } from '../shared/db/users';
@@ -64,8 +62,6 @@ describe('Agent memory on user deletion', () => {
 		Container.get(GlobalConfig).database.postgresdb.poolSize = 4;
 		await testModules.loadModules(['agents']);
 		await testDb.init();
-		// Thread reads check whether the instance redacts execution data.
-		Container.get(LicenseState).setLicenseProvider(Container.get(License));
 		threadRepo = Container.get(AgentExecutionThreadRepository);
 		executionRepo = Container.get(AgentExecutionRepository);
 		checkpointRepo = Container.get(AgentCheckpointRepository);

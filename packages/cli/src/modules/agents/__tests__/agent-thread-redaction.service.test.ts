@@ -1,4 +1,4 @@
-import type { LicenseState, Logger } from '@n8n/backend-common';
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRedactionServiceProxy, RedactableExecution } from '@n8n/backend-services';
 import type {
@@ -128,7 +128,6 @@ function setup(options: {
 		workflowRepository,
 		mock<GlobalConfig>({ executions: { maxDisplaySize: 1024 } }),
 		credentialsRepository,
-		mock<LicenseState>(),
 	);
 	return { service, executionPersistence, redactionProxy, workflowRepository };
 }
@@ -464,19 +463,15 @@ describe('AgentThreadRedactionService', () => {
 		expect(executionPersistence.findSingleExecution).toHaveBeenCalledTimes(1);
 	});
 
-	it('should reuse a decision without redaction for the same user only', async () => {
+	it('should load the source again for a source that is not redacted', async () => {
 		const { service, executionPersistence } = setup({
 			executions: { e1: { workflowId: 'wf-open' } },
 		});
 		const turns = [turn('t1', [workflowToolCall('wf-open', 'e1')])];
-		const otherUser = mock<User>({ id: 'other' });
 
 		await service.redactForReader(turns, { user: viewer });
-		const [cached] = await service.redactForReader(turns, { user: viewer });
-		expect(cached.redaction).toBeUndefined();
-		expect(executionPersistence.findSingleExecution).toHaveBeenCalledTimes(1);
+		await service.redactForReader(turns, { user: viewer });
 
-		await service.redactForReader(turns, { user: otherUser });
 		expect(executionPersistence.findSingleExecution).toHaveBeenCalledTimes(2);
 	});
 

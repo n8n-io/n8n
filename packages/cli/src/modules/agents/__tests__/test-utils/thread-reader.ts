@@ -15,7 +15,5 @@ export function asReader(userId: string): ThreadReader {
 export function passthroughThreadRedaction() {
 	const redaction = mock<AgentThreadRedactionService>();
 	redaction.redactForReader.mockImplementation(async (turns) => turns);
-	redaction.resolveForReader.mockResolvedValue(new Map());
-	redaction.isDataRedactionLicensed.mockReturnValue(true);
 	return redaction;
 }

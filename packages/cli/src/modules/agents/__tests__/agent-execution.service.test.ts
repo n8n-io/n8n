@@ -1,6 +1,6 @@
 import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { TransactionRunner, User } from '@n8n/db';
+import type { TransactionRunner } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
@@ -2095,37 +2095,6 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('getThreads', () => {
-		it('keeps the error text of a failed thread when the instance does not redact execution data', async () => {
-			threadRedaction.isDataRedactionLicensed.mockReturnValue(false);
-			const failedThread = makeThread({ id: 'thread-failed' });
-			const failureSummary = {
-				count: 1,
-				latest: {
-					kind: 'tool' as const,
-					name: 'lookup',
-					message: 'request failed',
-					occurredAt: 20,
-					executionId: 'execution-1',
-				},
-			};
-			agentExecutionThreadRepository.findByProjectIdPaginated.mockResolvedValue({
-				threads: [failedThread],
-				nextCursor: null,
-			});
-			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(new Map());
-			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(new Map());
-			agentExecutionRepository.findFailureSummariesByThreadIds.mockResolvedValue(
-				new Map([[failedThread.id, failureSummary]]),
-			);
-			agentExecutionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
-				new Map([[failedThread.id, 'error']]),
-			);
-
-			const result = await service.getThreads('project-1', 'agent-1', 'user-1', 20);
-
-			expect(result.threads[0].failureSummary).toEqual(failureSummary);
-		});
-
 		it('returns composite statuses and aggregated failure summaries without the error text', async () => {
 			const recoveredThread = makeThread({ id: 'thread-recovered' });
 			const cleanThread = makeThread({ id: 'thread-clean', accessScope: 'project', ownerId: null });
@@ -2834,39 +2803,32 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('redaction of thread reads', () => {
-		const redaction = {
-			isRedacted: true as const,
-			reason: 'workflow_redaction_policy',
-			canReveal: false,
-		};
 		const turn = (id: string, minute: number, extra: Partial<AgentExecution> = {}) =>
 			({
 				id,
 				threadId: 'thread-1',
 				storedAt: 'db',
-				status: 'success',
 				createdAt: new Date(`2026-05-07T10:${String(minute).padStart(2, '0')}:00Z`),
-				timeline: [{ type: 'text', content: `reply ${id}`, timestamp: minute }],
+				timeline: [],
 				...extra,
 			}) as AgentExecution;
-		const thread = [turn('e1', 1), turn('e2', 2), turn('e3', 3), turn('e4', 4)];
+		const redaction = {
+			isRedacted: true as const,
+			reason: 'workflow_redaction_policy',
+			canReveal: false,
+		};
 
 		beforeEach(() => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
-			messageRepository.continuesExecution.mockResolvedValue(false);
-			agentExecutionRepository.findByThreadIdOrdered.mockImplementation(async () =>
-				thread.map((t) => ({ ...t })),
-			);
-			agentExecutionRepository.findTurnStamp.mockResolvedValue('4:stamp-1');
 			agentExecutionThreadRepository.findManyByIds.mockResolvedValue([makeThread()]);
-			// e2 ran a redacted workflow, so e2 and every later turn are redacted.
-			threadRedaction.resolveForReader.mockResolvedValue(
-				new Map([
-					['e2', redaction],
-					['e3', redaction],
-					['e4', redaction],
-				]),
-			);
+			threadRedaction.resolveForReader.mockResolvedValue(new Map());
+			messageRepository.continuesExecution.mockResolvedValue(false);
+			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([
+				turn('e1', 1),
+				turn('e2', 2),
+				turn('e3', 3),
+				turn('e4', 4),
+			]);
 		});
 
 		it('redacts a page of turns from a redaction that started on an earlier page', async () => {
@@ -2875,6 +2837,10 @@ describe('AgentExecutionService', () => {
 				turn('e3', 3),
 				turn('e2', 2),
 			]);
+			// e2 ran a redacted workflow, so e2 and every later turn are redacted.
+			threadRedaction.redactForReader.mockImplementation(async (turns) =>
+				turns.map((t) => (t.id === 'e1' ? t : { ...t, redaction })),
+			);
 
 			const result = await service.getThreadDetailPage(
 				'thread-1',
@@ -2888,58 +2854,8 @@ describe('AgentExecutionService', () => {
 				['e3', redaction],
 				['e4', redaction],
 			]);
-			expect(JSON.stringify(result?.executions)).not.toContain('reply');
-			// The decision covers the whole thread, so the earlier turns took part.
-			expect(threadRedaction.resolveForReader.mock.calls[0][0].map(({ id }) => id)).toEqual([
-				'e1',
-				'e2',
-				'e3',
-				'e4',
-			]);
-		});
-
-		it('reuses the decision of an unchanged thread for older pages and redaction starts', async () => {
-			agentExecutionRepository.findByThreadIdNewestFirst.mockResolvedValue([
-				turn('e2', 2),
-				turn('e1', 1),
-			]);
-			const before = { createdAt: new Date('2026-05-07T10:03:00Z'), id: 'e3' };
-			const reader = asReader('user-1');
-
-			const start = await service.findRedactionStart('thread-1', 'project-1', 'agent-1', reader);
-			const page = await service.getThreadDetailPage('thread-1', 'project-1', 'agent-1', reader, {
-				limit: 2,
-				before,
-			});
-
-			expect(start?.startedAt).toEqual(thread[1].createdAt);
-			expect(start?.executionIds).toEqual(new Set(['e2', 'e3', 'e4']));
-			expect(page?.executions.map(({ id, redaction: r }) => [id, r])).toEqual([
-				['e1', undefined],
-				['e2', redaction],
-			]);
-			expect(agentExecutionRepository.findByThreadIdOrdered).toHaveBeenCalledTimes(1);
-			expect(threadRedaction.resolveForReader).toHaveBeenCalledTimes(1);
-		});
-
-		it('decides again when a turn of the thread changes or another user reads it', async () => {
-			await service.findRedactionStart('thread-1', 'project-1', 'agent-1', asReader('user-1'));
-			agentExecutionRepository.findTurnStamp.mockResolvedValue('4:stamp-2');
-			await service.findRedactionStart('thread-1', 'project-1', 'agent-1', asReader('user-1'));
-			await service.findRedactionStart('thread-1', 'project-1', 'agent-1', asReader('user-2'));
-
-			expect(threadRedaction.resolveForReader).toHaveBeenCalledTimes(3);
-		});
-
-		it('decides a reveal on each request and keeps no decision of it', async () => {
-			const reveal = { user: mock<User>({ id: 'user-1' }), revealExecutionData: true };
-
-			await service.findRedactionStart('thread-1', 'project-1', 'agent-1', reveal);
-			await service.findRedactionStart('thread-1', 'project-1', 'agent-1', reveal);
-			await service.findRedactionStart('thread-1', 'project-1', 'agent-1', asReader('user-1'));
-
-			expect(threadRedaction.resolveForReader).toHaveBeenCalledTimes(3);
-			expect(agentExecutionRepository.findTurnStamp).toHaveBeenCalledTimes(1);
+			const [turns] = threadRedaction.redactForReader.mock.calls[0];
+			expect(turns.map(({ id }) => id)).toEqual(['e1', 'e2', 'e3', 'e4']);
 		});
 
 		it('stops the walk of delegated runs at the depth limit', async () => {
@@ -2967,8 +2883,7 @@ describe('AgentExecutionService', () => {
 
 			expect(agentExecutionRepository.findChildrenByParentIds).toHaveBeenCalledTimes(2);
 			const [, , options] = threadRedaction.resolveForReader.mock.calls[0];
-			expect(options?.delegatedTimelines?.get('e1')).toEqual(child.timeline);
-			expect(options?.delegatedTimelines?.size).toBe(1);
+			expect(options?.delegatedTimelines).toEqual(new Map([['e1', child.timeline]]));
 		});
 	});
 

@@ -94,42 +94,16 @@ import { applyFatalSessionOutcome } from './utils/fatal-session-outcome';
 import {
 	AgentThreadRedactionService,
 	readerUserId,
-	redactTurn,
 	type ThreadReader,
-	type UserThreadReader,
 } from './agent-thread-redaction.service';
 import type { ChatHistoryPageRequest } from './utils/chat-history-page';
 
 /**
- * How a thread failed, without the error text. The text can hold tool data,
- * and the list does not decide redaction per reader.
+ * The list shows how a thread failed, without the error text. The text can
+ * hold tool data, and the list does not decide redaction per reader.
  */
 function withoutFailureMessage(summary: ThreadFailureSummary | null): ThreadFailureSummary | null {
 	return summary && { ...summary, latest: { ...summary.latest, message: null } };
-}
-
-/** How long the redaction decisions of an unchanged thread stay valid for a reader. */
-const THREAD_DECISION_TTL_MS = 30_000;
-const THREAD_DECISION_MAX_ENTRIES = 2_000;
-
-/** The redaction decisions of one thread for one reader. */
-interface ThreadRedactionDecisions {
-	/** The redaction of each redacted turn, by turn id. */
-	decisions: Map<string, AgentTurnRedactionInfo>;
-	/** The first redacted turn. */
-	start: { startedAt: Date; redaction: AgentTurnRedactionInfo } | undefined;
-}
-
-/** The turns with each redacted turn replaced by its redacted copy. */
-function applyDecisions(
-	turns: AgentExecution[],
-	decisions: ReadonlyMap<string, AgentTurnRedactionInfo>,
-): AgentExecution[] {
-	if (decisions.size === 0) return turns;
-	return turns.map((turn) => {
-		const redaction = decisions.get(turn.id);
-		return redaction ? redactTurn(turn, redaction) : turn;
-	});
 }
 
 /** True when the timeline is stored outside the database and did not load. */
@@ -1099,10 +1073,6 @@ export class AgentExecutionService {
 			this.agentExecutionRepository.findLatestStatusesByThreadIds(threadIds),
 		]);
 
-		// Without the data redaction license, policy redaction does not apply. Private
-		// credential data is redacted without the license too, but the list cannot
-		// tell that per thread cheaply, so it shows the text in that case.
-		const hideFailureMessage = this.threadRedaction.isDataRedactionLicensed();
 		return threads.map((thread) => {
 			const { ownerId: _ownerId, accessScope: _accessScope, owner: _owner, ...t } = thread;
 			const source = sourceMap.get(t.id) ?? null;
@@ -1116,9 +1086,7 @@ export class AgentExecutionService {
 				),
 				firstMessage: previews.get(t.id) ?? null,
 				source,
-				failureSummary: hideFailureMessage
-					? withoutFailureMessage(failureSummaryMap.get(t.id) ?? null)
-					: (failureSummaryMap.get(t.id) ?? null),
+				failureSummary: withoutFailureMessage(failureSummaryMap.get(t.id) ?? null),
 				status: toSessionStatus(latestStatusMap.get(t.id)),
 			};
 		});
@@ -1141,9 +1109,7 @@ export class AgentExecutionService {
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
 		await this.hydrateExecutionInputs(executions, thread.agentName, agentId);
 		await this.hydrateTimelines(agentId, threadId, executions);
-		if (!('user' in reader)) return { thread, executions };
-		const { decisions } = await this.resolveThreadDecisions(threadId, agentId, reader, executions);
-		return { thread, executions: applyDecisions(executions, decisions) };
+		return { thread, executions: await this.redactForReader(executions, reader) };
 	}
 
 	/**
@@ -1184,20 +1150,51 @@ export class AgentExecutionService {
 
 		await this.hydrateExecutionInputs(executions, thread.agentName, agentId);
 		await this.hydrateTimelines(agentId, threadId, executions);
-		if (!('user' in reader)) return { thread, executions, hasOlder: older !== undefined };
-		// A redacted turn also redacts the turns after it, so the decision covers the
-		// whole thread. Without older turns, the page is the whole thread.
-		const { decisions } = await this.resolveThreadDecisions(
-			threadId,
-			agentId,
+		const redacted = await this.redactPageForReader(agentId, threadId, executions, older, reader);
+		return { thread, executions: redacted, hasOlder: older !== undefined };
+	}
+
+	/**
+	 * Redact one page of turns. A redacted turn also redacts the turns after it,
+	 * so the turns before the page take part in the decision.
+	 */
+	private async redactPageForReader(
+		agentId: string,
+		threadId: string,
+		page: AgentExecution[],
+		older: AgentExecution | undefined,
+		reader: ThreadReader,
+	): Promise<AgentExecution[]> {
+		if (!older) return await this.redactForReader(page, reader);
+
+		const pageIds = new Set(page.map((execution) => execution.id));
+		const all = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		const firstOnPage = all.findIndex((execution) => pageIds.has(execution.id));
+		// Without the page in the list, take every other turn, so no earlier turn is missed.
+		const earlier =
+			firstOnPage >= 0
+				? all.slice(0, firstOnPage)
+				: all.filter((execution) => !pageIds.has(execution.id));
+		await this.hydrateTimelines(agentId, threadId, earlier);
+		const redacted = await this.redactForReader([...earlier, ...page], reader);
+		return redacted.slice(earlier.length);
+	}
+
+	/**
+	 * Redact turns of one thread for the reader, in thread order from the first
+	 * turn. A delegating turn takes part with the workflow tools of the runs it
+	 * delegated, because it receives their result.
+	 */
+	private async redactForReader(
+		executions: AgentExecution[],
+		reader: ThreadReader,
+	): Promise<AgentExecution[]> {
+		if (!('user' in reader)) return executions;
+		return await this.threadRedaction.redactForReader(
+			executions,
 			reader,
-			older ? undefined : executions,
+			await this.loadRedactionInputs(executions),
 		);
-		return {
-			thread,
-			executions: applyDecisions(executions, decisions),
-			hasOlder: older !== undefined,
-		};
 	}
 
 	/**
@@ -1222,76 +1219,18 @@ export class AgentExecutionService {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
 
-		const { decisions, start } = await this.resolveThreadDecisions(threadId, agentId, reader);
-		if (!start) return undefined;
-		return { ...start, executionIds: new Set(decisions.keys()) };
-	}
-
-	/**
-	 * Redaction decisions of the thread for the reader. Polls, file lists,
-	 * downloads and older pages ask for the same thread often, so the decisions
-	 * of a read without a reveal are kept for {@link THREAD_DECISION_TTL_MS},
-	 * while the turns of the thread do not change. A reveal is decided on each
-	 * request, so the redaction service checks the reveal right each time.
-	 * `turns` are the loaded, hydrated turns of the whole thread, when the caller
-	 * has them.
-	 */
-	private async resolveThreadDecisions(
-		threadId: string,
-		agentId: string,
-		reader: UserThreadReader,
-		turns?: AgentExecution[],
-	): Promise<ThreadRedactionDecisions> {
-		const useCache = !reader.revealExecutionData;
-		const key = `${reader.user.id}:${threadId}`;
-		// The stamp is read before the turns, so a cached decision never covers older turns than its stamp.
-		const stamp = useCache
-			? await this.agentExecutionRepository.findTurnStamp(threadId)
-			: undefined;
-		if (stamp !== undefined) {
-			const cached = this.threadDecisionCache.get(key);
-			if (cached?.stamp === stamp && cached.expiresAt > Date.now()) return cached.value;
-		}
-
-		let executions = turns;
-		if (!executions) {
-			executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
-			await this.hydrateTimelines(agentId, threadId, executions);
-		}
+		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		await this.hydrateTimelines(agentId, threadId, executions);
 		const decisions = await this.threadRedaction.resolveForReader(
 			executions,
 			reader,
 			await this.loadRedactionInputs(executions),
 		);
 		const first = executions.find((execution) => decisions.has(execution.id));
-		const firstRedaction = first && decisions.get(first.id);
-		const value: ThreadRedactionDecisions = {
-			decisions,
-			start:
-				first && firstRedaction
-					? { startedAt: first.createdAt, redaction: firstRedaction }
-					: undefined,
-		};
-
-		if (stamp !== undefined) {
-			this.threadDecisionCache.delete(key);
-			if (this.threadDecisionCache.size >= THREAD_DECISION_MAX_ENTRIES) {
-				const oldest = this.threadDecisionCache.keys().next();
-				if (!oldest.done) this.threadDecisionCache.delete(oldest.value);
-			}
-			this.threadDecisionCache.set(key, {
-				stamp,
-				value,
-				expiresAt: Date.now() + THREAD_DECISION_TTL_MS,
-			});
-		}
-		return value;
+		const redaction = first && decisions.get(first.id);
+		if (!first || !redaction) return undefined;
+		return { startedAt: first.createdAt, redaction, executionIds: new Set(decisions.keys()) };
 	}
-
-	private readonly threadDecisionCache = new Map<
-		string,
-		{ stamp: string; value: ThreadRedactionDecisions; expiresAt: number }
-	>();
 
 	/**
 	 * What the redaction decision needs beyond the turns: the timelines of the
