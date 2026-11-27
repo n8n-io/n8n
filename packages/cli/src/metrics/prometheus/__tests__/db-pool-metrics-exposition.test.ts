@@ -21,6 +21,7 @@ import type { PrometheusDnsCacheMetricsService } from '../dns-cache-metrics.serv
 import type { PrometheusEncryptionMetricsService } from '../encryption-metrics.service';
 import type { PrometheusEventBusMetricsService } from '../event-bus-metrics.service';
 import type { PrometheusExecutionDataMetricsService } from '../execution-data-metrics.service';
+import type { PrometheusAgentMetricsService } from '../agent-metrics.service';
 import type { PrometheusInstanceAiMetricsService } from '../instance-ai-metrics.service';
 import type { PrometheusInstanceRoleMetricsService } from '../instance-role-metrics.service';
 import type { PrometheusMcpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
@@ -32,6 +33,7 @@ import type { PrometheusRouteMetricsService } from '../route-metrics.service';
 import type { PrometheusSchedulerMetricsService } from '../scheduler-metrics.service';
 import type { PrometheusSsrfMetricsService } from '../ssrf-metrics.service';
 import type { PrometheusExecutionLedgerMetricsService } from '../execution-ledger-metrics.service';
+import type { PrometheusExecutionLimitsMetricsService } from '../execution-limits-metrics.service';
 import type { PrometheusMemoryGuardMetricsService } from '../memory-guard-metrics.service';
 import type { PrometheusSystemTaskMetricsService } from '../system-task-metrics.service';
 import type { PrometheusTokenExchangeMetricsService } from '../token-exchange-metrics.service';
@@ -70,6 +72,7 @@ describe('database pool metrics exposition', () => {
 		webhook: mock<PrometheusWebhookAndFormMetricsService>({ enabled: false }),
 		workflowInfo: mock<PrometheusWorkflowInfoMetricsService>({ enabled: false }),
 		instanceAi: mock<PrometheusInstanceAiMetricsService>({ enabled: false }),
+		agent: mock<PrometheusAgentMetricsService>({ enabled: false }),
 		mcpPostSave: mock<PrometheusMcpPostSaveMetricsService>({ enabled: false }),
 		workflowPublication: mock<PrometheusWorkflowPublicationMetricsService>({ enabled: false }),
 		scheduler: mock<PrometheusSchedulerMetricsService>({ enabled: false }),
@@ -78,6 +81,7 @@ describe('database pool metrics exposition', () => {
 		systemTask: mock<PrometheusSystemTaskMetricsService>({ enabled: false }),
 		memoryGuard: mock<PrometheusMemoryGuardMetricsService>({ enabled: false }),
 		executionLedger: mock<PrometheusExecutionLedgerMetricsService>({ enabled: false }),
+		executionLimits: mock<PrometheusExecutionLimitsMetricsService>({ enabled: false }),
 	};
 	let config: GlobalConfig;
 	let metrics: DbConnectionMetrics;
@@ -144,6 +148,7 @@ describe('database pool metrics exposition', () => {
 			disabledCollectors.webhook,
 			disabledCollectors.workflowInfo,
 			disabledCollectors.instanceAi,
+			disabledCollectors.agent,
 			disabledCollectors.mcpPostSave,
 			poolMetrics,
 			disabledCollectors.workflowPublication,
@@ -153,6 +158,7 @@ describe('database pool metrics exposition', () => {
 			disabledCollectors.systemTask,
 			disabledCollectors.memoryGuard,
 			disabledCollectors.executionLedger,
+			disabledCollectors.executionLimits,
 			Container.get(DatabaseIndependentRoutes),
 		);
 		prometheusMetrics.init(server.app);

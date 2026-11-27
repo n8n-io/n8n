@@ -1,0 +1,91 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"Columns": {
+			"properties": {
+				"Column": {
+					"items": {
+						"properties": {
+							"ColTitle": {
+								"type": "string"
+							},
+							"ColType": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"Header": {
+			"additionalProperties": true,
+			"properties": {
+				"Currency": {
+					"type": "string"
+				},
+				"EndPeriod": {
+					"type": "string"
+				},
+				"Option": {
+					"items": {
+						"properties": {
+							"Name": {
+								"type": "string"
+							},
+							"Value": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"ReportName": {
+					"type": "string"
+				},
+				"StartPeriod": {
+					"type": "string"
+				},
+				"Time": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"Rows": {
+			"properties": {
+				"Row": {
+					"items": {
+						"additionalProperties": true,
+						"properties": {
+							"ColData": {
+								"items": {
+									"properties": {
+										"id": {
+											"type": "string"
+										},
+										"value": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"type": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

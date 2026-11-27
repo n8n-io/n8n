@@ -1,12 +1,18 @@
 import {
 	agentIdParamSchema,
+	agentVersionIdParamSchema,
 	AgentListPublicDto,
 	AgentPublicDto,
+	AgentVersionListPublicDto,
+	AgentVersionPublicDto,
 	CreatedAgentPublicDto,
 	CreateAgentPublicDto,
 	DeletedAgentPublicDto,
+	ListAgentVersionsPublicQueryDto,
 	ListAgentsPublicQueryDto,
+	PublishAgentPublicDto,
 	UpdateAgentPublicDto,
+	type AgentVersionListItemDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -28,10 +34,11 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError, UnprocessableRequestError, UserError } from '@n8n/errors';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
+import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import {
 	AgentResponseMapper,
 	mapAgentListPublicItem,
@@ -51,6 +58,7 @@ export class AgentsPublicController {
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
 		private readonly agentConfigService: AgentConfigService,
+		private readonly agentPublishService: AgentPublishService,
 	) {}
 
 	@Post('/')
@@ -118,6 +126,75 @@ export class AgentsPublicController {
 		}
 
 		return await this.agentResponseMapper.toPublicDto(agent, agent.projectId ?? '', req.user);
+	}
+
+	@Get('/:agentId/versions')
+	@ApiKeyScope('agent:read')
+	@ProjectScope('agent:read')
+	@ApiSummary('Retrieve agent version history')
+	@ApiDescription(
+		'Returns a paginated list of saved agent versions for an agent. ' +
+			'The response is one cursor page: read the next page with the cursor query parameter.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentVersionListPublicDto)
+	@ApiErrorResponse(404)
+	async listAgentVersions(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Query query: ListAgentVersionsPublicQueryDto,
+	): Promise<AgentVersionListPublicDto> {
+		const agent = await this.requireProjectAgent(agentId);
+		const { offset, limit } = resolveOffsetPagination({ cursor: query.cursor, limit: query.limit });
+		const versions = await this.agentPublishService.listVersions(
+			agentId,
+			agent.projectId,
+			limit + 1,
+			offset,
+		);
+		const hasMore = versions.length > limit;
+		const data = hasMore ? versions.slice(0, limit) : versions;
+
+		return {
+			data: data.map(toPublicAgentVersion),
+			nextCursor: encodeNextCursor({
+				offset,
+				limit,
+				numberOfTotalRecords: hasMore ? offset + limit + 1 : offset + data.length,
+			}),
+		};
+	}
+
+	@Get('/:agentId/versions/:versionId')
+	@ApiKeyScope('agent:read')
+	@ProjectScope('agent:read')
+	@ApiSummary('Retrieve an agent version')
+	@ApiDescription(
+		'Retrieve one saved version of an agent, including its configuration, tools, and skills.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentVersionPublicDto)
+	@ApiErrorResponse(404)
+	async getAgentVersion(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Param('versionId', agentVersionIdParamSchema) versionId: string,
+	): Promise<AgentVersionPublicDto> {
+		const agent = await this.requireProjectAgent(agentId);
+		// The summary owns list metadata. The version read owns the saved document.
+		const [summary, { definition }] = await Promise.all([
+			this.agentPublishService.getVersionSummary(agentId, agent.projectId, versionId),
+			this.agentPublishService.getVersion(agentId, agent.projectId, versionId),
+		]);
+
+		return {
+			...toPublicAgentVersion(summary),
+			config: definition.schema,
+			tools: definition.tools ?? {},
+			skills: definition.skills,
+		};
 	}
 
 	@Get('/')
@@ -203,6 +280,84 @@ export class AgentsPublicController {
 		return await this.agentResponseMapper.toPublicDto(updated, updated.projectId ?? '', req.user);
 	}
 
+	@Post('/:agentId/publish')
+	@ApiKeyScope('agent:publish')
+	@ProjectScope('agent:publish')
+	@ApiSummary('Publish an agent')
+	@ApiDescription(
+		'Publish an agent. Omit versionId to publish the current draft. Send versionId to publish a saved version.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(422)
+	async publishAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Body body: PublishAgentPublicDto,
+	): Promise<AgentPublicDto> {
+		const agent = await this.agentsService.findById(agentId);
+		if (!agent?.projectId) {
+			throw new NotFoundError('Not Found');
+		}
+
+		try {
+			const { agent: published } = await this.agentPublishService.publishAgent(
+				agentId,
+				agent.projectId,
+				req.user,
+				{ by: 'user', trigger: 'explicit' },
+				body.versionId,
+			);
+			return await this.agentResponseMapper.toPublicDto(
+				published,
+				published.projectId ?? agent.projectId,
+				req.user,
+			);
+		} catch (error) {
+			if (error instanceof BadRequestError || error instanceof UserError) {
+				throw new UnprocessableRequestError(error.message);
+			}
+			throw error;
+		}
+	}
+
+	@Post('/:agentId/unpublish')
+	@ApiKeyScope('agent:unpublish')
+	@ProjectScope('agent:unpublish')
+	@ApiSummary('Unpublish an agent')
+	@ApiDescription(
+		'Unpublish an agent. This stops the published version and disconnects its live channels.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async unpublishAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+	): Promise<AgentPublicDto> {
+		const agent = await this.agentsService.findById(agentId);
+		if (!agent?.projectId) {
+			throw new NotFoundError('Not Found');
+		}
+
+		const unpublished = await this.agentPublishService.unpublishAgent(
+			agentId,
+			agent.projectId,
+			req.user,
+			'user',
+		);
+		return await this.agentResponseMapper.toPublicDto(
+			unpublished,
+			unpublished.projectId ?? agent.projectId,
+			req.user,
+		);
+	}
+
 	@Delete('/:agentId')
 	@ApiKeyScope('agent:delete')
 	@ProjectScope('agent:delete')
@@ -230,6 +385,78 @@ export class AgentsPublicController {
 		return this.toDeletedAgentPublicDto(deleted);
 	}
 
+	@Post('/:agentId/archive')
+	@ApiKeyScope('agent:delete')
+	@ProjectScope('agent:delete')
+	@ApiSummary('Archive an agent')
+	@ApiDescription(
+		'Soft-deletes an agent by archiving it. Idempotent: archiving an already ' +
+			'archived agent returns 200 with the current agent.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentPublicDto)
+	@ApiErrorResponse(404)
+	async archiveAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+	): Promise<AgentPublicDto> {
+		const existing = await this.agentsService.findById(agentId);
+		if (!existing?.projectId) throw new NotFoundError('Not Found');
+
+		try {
+			const archived = await this.agentPublishService.archiveAgent(
+				agentId,
+				existing.projectId,
+				req.user,
+				undefined,
+				'user',
+				req.ctx,
+			);
+			return await this.agentResponseMapper.toPublicDto(archived, existing.projectId, req.user);
+		} catch (error) {
+			// The service rejects an agent that is already archived. This endpoint returns that agent.
+			if (!(error instanceof BadRequestError)) throw error;
+			const current = await this.agentsService.findById(agentId);
+			if (!current?.isArchived || !current.projectId) throw error;
+			return await this.agentResponseMapper.toPublicDto(current, current.projectId, req.user);
+		}
+	}
+
+	@Post('/:agentId/unarchive')
+	@ApiKeyScope('agent:delete')
+	@ProjectScope('agent:delete')
+	@ApiSummary('Unarchive an agent')
+	@ApiDescription('Restores an archived agent.')
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	async unarchiveAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+	): Promise<AgentPublicDto> {
+		const existing = await this.agentsService.findById(agentId);
+		if (!existing?.projectId) throw new NotFoundError('Not Found');
+		const restored = await this.agentPublishService.unarchiveAgent(
+			agentId,
+			existing.projectId,
+			req.user,
+			undefined,
+			req.ctx,
+		);
+		return await this.agentResponseMapper.toPublicDto(restored, existing.projectId, req.user);
+	}
+
+	private async requireProjectAgent(agentId: string) {
+		const agent = await this.agentsService.findById(agentId);
+		if (!agent?.projectId) {
+			throw new NotFoundError('Not Found');
+		}
+		return agent;
+	}
+
 	private toDeletedAgentPublicDto(agent: DeletedAgentSnapshot): DeletedAgentPublicDto {
 		return {
 			id: agent.id,
@@ -242,6 +469,21 @@ export class AgentsPublicController {
 			updatedAt: toIsoTimestamp(agent.updatedAt),
 		};
 	}
+}
+
+function toPublicAgentVersion(item: AgentVersionListItemDto) {
+	return {
+		versionId: item.versionId,
+		agentId: item.agentId,
+		name: item.name ?? null,
+		description: item.description ?? null,
+		author: item.author,
+		createdAt: item.createdAt,
+		updatedAt: item.updatedAt,
+		isActive: item.isActive,
+		isCurrent: item.isCurrent ?? false,
+		...(item.lastPublished ? { lastPublished: item.lastPublished } : {}),
+	};
 }
 
 function toIsoTimestamp(value: Date | string | undefined): string {

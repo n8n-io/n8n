@@ -1,3 +1,5 @@
+import flatted from 'flatted';
+
 import { test, expect } from '../../../../../fixtures/base';
 
 /**
@@ -58,6 +60,90 @@ test.describe(
 			// ...and the worker actually interrupted the run rather than completing all ~15s of delays.
 			const ranForMs = new Date(final.stoppedAt!).getTime() - new Date(final.startedAt!).getTime();
 			expect(ranForMs).toBeLessThan(10000);
+		});
+
+		test('should stop an awaited subworkflow when its parent is stopped', async ({ api }) => {
+			const { workflowId: childWorkflowId } =
+				await api.workflows.importWorkflowFromFile('cat-2662-child.json');
+
+			const { workflowId: parentWorkflowId, webhookPath } =
+				await api.workflows.importWorkflowFromFile('cat-2662-parent.json', {
+					transform: (workflow) => {
+						const executeNode = workflow.nodes!.find(
+							(n) => n.type === 'n8n-nodes-base.executeWorkflow',
+						)!;
+						executeNode.parameters.workflowId = { __rl: true, value: childWorkflowId, mode: 'id' };
+						return workflow;
+					},
+				});
+
+			void api.webhooks.trigger(`/webhook/${webhookPath}`, { method: 'POST' }).catch(() => {});
+
+			const child = await api.workflows.waitForWorkflowStatus(childWorkflowId, 'running', 15000);
+			const parent = await api.workflows.waitForWorkflowStatus(parentWorkflowId, 'running', 5000);
+
+			const stopped = await api.workflows.stopExecution(parent.id);
+			expect(stopped.status).toBe('canceled');
+
+			// The child must end with its parent rather than run its remaining delays.
+			await expect(async () => {
+				const current = await api.workflows.getExecution(child.id);
+				expect(current.status).toBe('canceled');
+			}).toPass({ timeout: 10000, intervals: [500] });
+
+			const finalChild = await api.workflows.getExecution(child.id);
+			const ranForMs =
+				new Date(finalChild.stoppedAt!).getTime() - new Date(finalChild.startedAt!).getTime();
+			expect(ranForMs).toBeLessThan(10000);
+		});
+	},
+);
+
+test.describe(
+	'Subworkflow Stop while the parent waits',
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
+	() => {
+		test('should stop a waiting subworkflow when its waiting parent is stopped', async ({
+			api,
+		}) => {
+			const { workflowId: childWorkflowId } = await api.workflows.importWorkflowFromFile(
+				'cet-1212-waiting-child.json',
+			);
+
+			const { workflowId: parentWorkflowId, webhookPath } =
+				await api.workflows.importWorkflowFromFile('cat-2662-parent.json', {
+					transform: (workflow) => {
+						const executeNode = workflow.nodes!.find(
+							(n) => n.type === 'n8n-nodes-base.executeWorkflow',
+						)!;
+						executeNode.parameters.workflowId = { __rl: true, value: childWorkflowId, mode: 'id' };
+						return workflow;
+					},
+				});
+
+			void api.webhooks.trigger(`/webhook/${webhookPath}`, { method: 'POST' }).catch(() => {});
+
+			// The child parks on its Wait node, and the parent parks until the child ends.
+			const child = await api.workflows.waitForWorkflowStatus(childWorkflowId, 'waiting', 15000);
+			const parent = await api.workflows.waitForWorkflowStatus(parentWorkflowId, 'waiting', 5000);
+
+			const stopped = await api.workflows.stopExecution(parent.id);
+			expect(stopped.status).toBe('canceled');
+			expect((await api.workflows.getExecution(child.id)).status).toBe('canceled');
+
+			// The child's resume URL must not wake the child, nor the parent through it.
+			const { data } = await api.workflows.getExecution(child.id);
+			const resumeUrl = new URL(
+				flatted.parse(data).resultData.runData['Capture Resume URL'][0].data.main[0][0].json
+					.resumeUrl,
+			);
+			const resumed = await api.webhooks.trigger(`${resumeUrl.pathname}${resumeUrl.search}`, {
+				maxNotFoundRetries: 0,
+			});
+			expect(resumed.status()).toBe(409);
+
+			expect((await api.workflows.getExecution(child.id)).status).toBe('canceled');
+			expect((await api.workflows.getExecution(parent.id)).status).toBe('canceled');
 		});
 	},
 );

@@ -577,6 +577,212 @@ describe('WorkflowProductionChecklist', () => {
 			});
 		});
 
+		it('should not open popover or record first activation when auto-open is disabled', async () => {
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
+				suggestedActions: {},
+				firstActivatedAt: undefined,
+			});
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			renderComponent({ pinia: createTestingPinia(), props: { disableAutoOpen: true } });
+			await flushPromises();
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			await flushPromises();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockN8nSuggestedActionsProps.open).toBe(false);
+			expect(workflowsCache.getWorkflowSettings).not.toHaveBeenCalled();
+			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+		});
+
+		it('should open popover when auto-open is enabled after an activation while it was disabled', async () => {
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
+				suggestedActions: {},
+				firstActivatedAt: undefined,
+			});
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			const { rerender } = renderComponent({
+				pinia: createTestingPinia(),
+				props: { disableAutoOpen: true },
+			});
+			await flushPromises();
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			await flushPromises();
+
+			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+
+			await rerender({ disableAutoOpen: false });
+
+			await vi.waitFor(() => {
+				expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+			});
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.open).toBe(true);
+			});
+		});
+
+		it('should not open popover when auto-open is enabled without an activation while it was disabled', async () => {
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
+				suggestedActions: {},
+				firstActivatedAt: undefined,
+			});
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			const { rerender } = renderComponent({
+				pinia: createTestingPinia(),
+				props: { disableAutoOpen: true },
+			});
+			await flushPromises();
+
+			await rerender({ disableAutoOpen: false });
+			await flushPromises();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockN8nSuggestedActionsProps.open).not.toBe(true);
+			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+		});
+
+		it('should defer the activation when auto-open is disabled while settings load', async () => {
+			let resolveSettings: (settings: object) => void = () => {};
+			workflowsCache.getWorkflowSettings = vi
+				.fn()
+				.mockReturnValueOnce(
+					new Promise((resolve) => {
+						resolveSettings = resolve;
+					}),
+				)
+				.mockResolvedValue({ firstActivatedAt: undefined });
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			const { rerender } = renderComponent({ pinia: createTestingPinia() });
+			await flushPromises();
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			await flushPromises();
+			expect(workflowsCache.getWorkflowSettings).toHaveBeenCalledTimes(1);
+
+			await rerender({ disableAutoOpen: true });
+			resolveSettings({ firstActivatedAt: undefined });
+			await flushPromises();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockN8nSuggestedActionsProps.open).not.toBe(true);
+			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+
+			await rerender({ disableAutoOpen: false });
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.open).toBe(true);
+			});
+			expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+		});
+
+		it('should defer the activation when auto-open is disabled before an open modal closes', async () => {
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
+				firstActivatedAt: undefined,
+			});
+
+			const pinia = createTestingPinia();
+			uiStore = useUIStore(pinia);
+			// @ts-expect-error - mocking readonly property
+			uiStore.isAnyModalOpen = true;
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			const { rerender } = renderComponent({ pinia });
+			await flushPromises();
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			await flushPromises();
+
+			await rerender({ disableAutoOpen: true });
+			// @ts-expect-error - mocking readonly property
+			uiStore.isAnyModalOpen = false;
+			await flushPromises();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockN8nSuggestedActionsProps.open).not.toBe(true);
+			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+
+			await rerender({ disableAutoOpen: false });
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.open).toBe(true);
+			});
+			expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+		});
+
+		it('should record the first activation only when the popover opens after a modal closes', async () => {
+			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
+				firstActivatedAt: undefined,
+			});
+
+			const pinia = createTestingPinia();
+			uiStore = useUIStore(pinia);
+			// @ts-expect-error - mocking readonly property
+			uiStore.isAnyModalOpen = true;
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
+
+			renderComponent({ pinia });
+			await flushPromises();
+
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			await flushPromises();
+
+			expect(mockN8nSuggestedActionsProps.open).not.toBe(true);
+			expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+
+			// @ts-expect-error - mocking readonly property
+			uiStore.isAnyModalOpen = false;
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.open).toBe(true);
+			});
+			expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+		});
+
 		it('should not open popover automatically if workflow was previously activated', async () => {
 			workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
 				suggestedActions: {},
@@ -964,7 +1170,12 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: false,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+				},
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
 
@@ -988,7 +1199,12 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: false,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+				},
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
 			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
@@ -1009,7 +1225,12 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: false,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+				},
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
 
@@ -1034,7 +1255,12 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+				},
 			});
 
 			renderComponent({ pinia });
@@ -1056,7 +1282,12 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+				},
 			});
 
 			workflowDocumentStoreRef.value?.setSettings({
@@ -1083,7 +1314,12 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+				},
 			});
 
 			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
@@ -1108,7 +1344,12 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: false,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+				},
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
 
@@ -1133,7 +1374,12 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+				},
 			});
 
 			renderComponent({ pinia });

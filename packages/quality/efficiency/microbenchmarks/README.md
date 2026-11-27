@@ -27,9 +27,19 @@ pnpm --filter=@n8n/performance bench:compare   # Compare against baseline (>10% 
 
 ## CI Regression Detection
 
-CI benchmarks are paused. CI used [CodSpeed](https://codspeed.io), and `@codspeed/vitest-plugin` does not support Vitest 5 yet. Add the `performance` job back to `.github/workflows/ci-master.yml` when the plugin supports Vitest 5.
+Benchmarks run automatically on each push to `master` that starts the master CI, not on pull requests. [CodSpeed](https://codspeed.io) counts CPU instructions instead of wall-clock time, producing deterministic results regardless of runner load. It reports results and regression warnings against the master trend.
 
-Until then, use `bench:baseline` + `bench:compare` for before/after comparisons on the same machine in the same session. Local results measure wall-clock time and have 15-30% variance.
+To benchmark a change before you merge it, trigger the run manually for your branch via **Actions > Test: Benchmarks > Run workflow**.
+
+### Local vs CI
+
+| | Local (`bench`) | CI |
+|---|---|---|
+| **Measurement** | Wall-clock time (Hz, ms) | CPU instruction count |
+| **Noise** | 15-30% variance | Near-zero variance |
+| **Best for** | Quick sanity checks, comparing approaches | Automated regression detection |
+
+Local benchmarks are useful for eyeballing performance during development. Use `bench:baseline` + `bench:compare` for before/after comparisons on the same machine in the same session.
 
 ## Adding a Benchmark
 

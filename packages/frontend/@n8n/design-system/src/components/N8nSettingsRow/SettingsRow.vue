@@ -213,6 +213,7 @@ function onKeydown(event: KeyboardEvent) {
 			},
 		]"
 		:data-layout="layout"
+		:data-hoverable="hoverable || clickable ? '' : undefined"
 		v-bind="interactiveAttrs"
 		@click="onActivate"
 		@keydown="onKeydown"

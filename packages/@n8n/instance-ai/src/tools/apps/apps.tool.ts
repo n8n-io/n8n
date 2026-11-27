@@ -3,7 +3,6 @@ import {
 	appAgentBindingSchema,
 	appBindingKeySchema,
 	appBindingSchema,
-	appBlueprintErrorsSchema,
 	appBlueprintResumeSchema,
 	appBlueprintSchema,
 	appDataTableBindingSchema,
@@ -11,14 +10,14 @@ import {
 	type AppBuildResponse,
 	type AppBlueprint,
 	appWorkflowBindingSchema,
+	APP_TOOL_NAME_BY_ACTION,
+	type AppToolAction,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
-import { AppNamespaceTakenError } from '../../errors/app-namespace-taken.error';
 import type { InstanceAiAppService, InstanceAiContext } from '../../types';
-import { APPS_TOOL_ID } from '../tool-ids';
 import { addAppTarget, readPendingAppTarget } from './app-target-binding';
 import {
 	appFolder,
@@ -29,8 +28,6 @@ import {
 	writeBaseVersion,
 } from './app-workspace';
 
-export { APPS_TOOL_ID };
-
 const MAX_LOG_CHARS = 4000;
 
 const appIdSchema = z.string().uuid().describe('ID of the app');
@@ -38,20 +35,48 @@ const appIdSchema = z.string().uuid().describe('ID of the app');
 const labelSchema = z.string().max(255).describe('Short summary of the change set');
 const appBlueprintProposalSchema = appBlueprintSchema.omit({ additionalInstructions: true });
 
-const inputSchema = z.discriminatedUnion('action', [
-	z.object({
-		action: z.literal('create'),
+const ACTION_SCHEMAS = {
+	create: z.object({
+		action: z
+			.literal('create')
+			.describe(
+				'Propose a new n8n App: a small static Vue app that n8n builds and hosts. ' +
+					'Load `app-builder` via `load_skill` before you call this tool. ' +
+					'Shows the user an editable blueprint, including its planned bindings, and creates the app only after approval. ' +
+					'Then call `open_app` with the returned `app.id` before you edit files. ' +
+					'Build from the approved blueprint, including its additional instructions. ' +
+					'If the user cancels, do not create the app.',
+			),
 		blueprint: appBlueprintProposalSchema.describe('The app you propose to build'),
 	}),
-	z.object({
-		action: z.literal('list'),
+	list: z.object({
+		action: z.literal('list').describe('List the apps of the project with their ids and URLs'),
 		search: z.string().max(128).optional().describe('Only apps whose name contains this text'),
 	}),
-	z.object({ action: z.literal('get'), appId: appIdSchema }),
-	z.object({ action: z.literal('open'), appId: appIdSchema }),
-	z.object({ action: z.literal('bindings'), appId: appIdSchema }),
-	z.object({
-		action: z.literal('bind'),
+	get: z.object({
+		action: z.literal('get').describe('Get the state of an app'),
+		appId: appIdSchema,
+	}),
+	open: z.object({
+		action: z
+			.literal('open')
+			.describe(
+				'Put the source of an app into the sandbox workspace. Edit it there with the workspace tools. ' +
+					'Load `app-builder` via `load_skill` before you change an app. ' +
+					'Keeps a folder that is already open, with its uncommitted edits.',
+			),
+		appId: appIdSchema,
+	}),
+	bindings: z.object({
+		action: z
+			.literal('bindings')
+			.describe('List the workflows, data tables and agents that an app can call'),
+		appId: appIdSchema,
+	}),
+	bind: z.object({
+		action: z
+			.literal('bind')
+			.describe('Add or replace one binding of an app. Saves a new version of the app.'),
 		appId: appIdSchema,
 		binding: z
 			.union([appWorkflowBindingSchema, appDataTableBindingSchema, appAgentBindingSchema])
@@ -59,17 +84,32 @@ const inputSchema = z.discriminatedUnion('action', [
 				'The binding to add. It replaces the binding with the same key. Use the ID of a workflow, data table or agent in the app project.',
 			),
 	}),
-	z.object({
-		action: z.literal('unbind'),
+	unbind: z.object({
+		action: z
+			.literal('unbind')
+			.describe('Remove one binding of an app. Saves a new version of the app.'),
 		appId: appIdSchema,
 		key: appBindingKeySchema.describe('Key of the binding to remove'),
 	}),
-	z.object({ action: z.literal('commit'), appId: appIdSchema, label: labelSchema }),
-	z.object({ action: z.literal('discard'), appId: appIdSchema }),
-]);
+	commit: z.object({
+		action: z
+			.literal('commit')
+			.describe('Save the open app folder as one version of the app and build it'),
+		appId: appIdSchema,
+		label: labelSchema,
+	}),
+	discard: z.object({
+		action: z
+			.literal('discard')
+			.describe('Replace the open app folder with the current draft. Drops uncommitted edits.'),
+		appId: appIdSchema,
+	}),
+} satisfies Record<AppToolAction, z.ZodDiscriminatedUnionOption<'action'>>;
 
-type Input = z.infer<typeof inputSchema>;
-type NonCreateInput = Exclude<Input, { action: 'create' }>;
+type NonCreateAction = Exclude<AppToolAction, 'create'>;
+type NonCreateInput = {
+	[A in NonCreateAction]: z.infer<(typeof ACTION_SCHEMAS)[A]>;
+}[NonCreateAction];
 
 function commitResult({ versionId, status, diagnostics }: AppBuildResponse) {
 	return {
@@ -152,7 +192,7 @@ async function commit(
 ) {
 	const baseVersionId = await readBaseVersion(workspace, appId);
 	if (baseVersionId === undefined) {
-		throw new Error('The app is not open in the workspace. Open it with the `open` action first.');
+		throw new Error('The app is not open in the workspace. Open it with `open_app` first.');
 	}
 	const build = await apps.commit(
 		appId,
@@ -255,21 +295,25 @@ async function handle(
 	}
 }
 
-export function createAppsTool(context: InstanceAiContext) {
-	return new Tool(APPS_TOOL_ID)
-		.description(
-			'Build n8n Apps: small static Vue apps that n8n builds and hosts. ' +
-				'Load `app-builder` via `load_skill` before calling this tool. ' +
-				'`create` shows an editable blueprint, including its planned bindings, and creates the app only after approval. ' +
-				'After an approved `create`, call `open` with the returned `app.id` before editing files. ' +
-				'Use the approved blueprint, including additional instructions, while building. ' +
-				'If the user cancels, do not create the app. ' +
-				'`open` puts the app source into the sandbox workspace. Edit it there with the workspace tools. ' +
-				'`commit` saves the folder as one version and builds it. ' +
-				'`bindings` lists the workflows, data tables and agents that the app can call. ' +
-				'`bind` adds or replaces one binding and `unbind` removes one. Each change saves a new version.',
-		)
-		.input(sanitizeInputSchema(inputSchema))
+async function withApps(
+	context: InstanceAiContext,
+	run: (apps: InstanceAiAppService, workspace: Workspace) => Promise<unknown>,
+) {
+	const apps = context.appService;
+	const workspace = context.workspace;
+	if (!apps || !workspace) return { error: 'Apps are not available in this conversation.' };
+	try {
+		return await run(apps, workspace);
+	} catch (error) {
+		return { error: error instanceof Error ? error.message : String(error) };
+	}
+}
+
+function createCreateAppTool(context: InstanceAiContext) {
+	const schema = ACTION_SCHEMAS.create;
+	return new Tool(APP_TOOL_NAME_BY_ACTION.create)
+		.description(schema.shape.action.description ?? '')
+		.input(sanitizeInputSchema(schema.omit({ action: true })))
 		.suspend(
 			z.object({
 				requestId: z.string(),
@@ -277,17 +321,12 @@ export function createAppsTool(context: InstanceAiContext) {
 				severity: z.literal('info'),
 				inputType: z.literal('app-blueprint'),
 				appBlueprint: appBlueprintSchema,
-				appBlueprintErrors: appBlueprintErrorsSchema.optional(),
 			}),
 		)
 		.resume(appBlueprintResumeSchema)
-		.handler(async (input: Input, ctx) => {
-			const apps = context.appService;
-			const workspace = context.workspace;
-			if (!apps || !workspace) return { error: 'Apps are not available in this conversation.' };
-
-			try {
-				if (input.action === 'create') {
+		.handler(
+			async (input, ctx) =>
+				await withApps(context, async (apps) => {
 					const resumeData = ctx.resumeData;
 					if (!resumeData) {
 						return await ctx.suspend({
@@ -312,30 +351,33 @@ export function createAppsTool(context: InstanceAiContext) {
 							...(await createApp(context, apps, blueprint)),
 						};
 					} catch (error) {
-						// The user can fix the namespace on the card, so show it again
-						// with the edits they made instead of handing the error to the model.
-						// A new requestId keeps the frontend from treating it as answered.
-						if (error instanceof AppNamespaceTakenError) {
-							return await ctx.suspend({
-								requestId: nanoid(),
-								message: `Review the blueprint for ${blueprint.name}`,
-								severity: 'info',
-								inputType: 'app-blueprint',
-								appBlueprint: blueprint,
-								appBlueprintErrors: { namespace: 'taken' },
-							});
-						}
 						return {
 							approved: true,
 							blueprint,
 							error: error instanceof Error ? error.message : String(error),
 						};
 					}
-				}
-				return await handle(context, workspace, apps, input);
-			} catch (error) {
-				return { error: error instanceof Error ? error.message : String(error) };
-			}
-		})
+				}),
+		)
+		.build();
+}
+
+/** Builds the tool for one app action. */
+export function createAppTool(context: InstanceAiContext, action: AppToolAction) {
+	if (action === 'create') return createCreateAppTool(context);
+	const schema: z.ZodDiscriminatedUnionOption<'action'> = ACTION_SCHEMAS[action];
+	// The input schema omits `action`, so restore it for the shared handler.
+	const withAction = (input: unknown) =>
+		({ ...(typeof input === 'object' && input !== null ? input : {}), action }) as NonCreateInput;
+	return new Tool(APP_TOOL_NAME_BY_ACTION[action])
+		.description(schema.shape.action.description ?? '')
+		.input(sanitizeInputSchema(schema.omit({ action: true })))
+		.handler(
+			async (input) =>
+				await withApps(
+					context,
+					async (apps, workspace) => await handle(context, workspace, apps, withAction(input)),
+				),
+		)
 		.build();
 }

@@ -76,8 +76,10 @@ import {
 	AGENT_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
+	IF_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	MERGE_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
@@ -86,8 +88,9 @@ import {
 	SET_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	STICKY_NODE_TYPE,
-	UPDATE_WEBHOOK_ID_NODE_TYPES,
+	SWITCH_NODE_TYPE,
 	VIEWS,
+	WAIT_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	EnterpriseEditionFeature,
 } from '@/app/constants';
@@ -883,38 +886,171 @@ describe('useCanvasOperations', () => {
 			},
 		);
 
-		it('should place the node below the last interacted with node if it has non-main outputs', () => {
+		it('should place the node one gap past the rendered width of a node with non-main inputs', () => {
 			const uiStore = mockedStore(useUIStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 
 			const node = createTestNode({ id: '0' });
 			const nodeTypeDescription = mockNodeTypeDescription();
+			const lastInteractedTypeDescription = mockNodeTypeDescription({
+				name: 'test',
+				inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiTool],
+			});
 
 			const lastInteracted = createTestNode({
 				position: [96, 96],
 				type: 'test',
 				typeVersion: 1,
 			});
-			uiStore.lastInteractedWithNodeId = lastInteracted.id;
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(
-				lastInteracted as INodeUi,
+			vi.mocked(workflowDocumentStoreInstance.getExpressionHandler).mockReturnValue(
+				createWorkflowObjectKeepingParameters([lastInteracted]).expression,
 			);
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			uiStore.lastInteractedWithNodeId = lastInteracted.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				id === lastInteracted.id ? (lastInteracted as INodeUi) : undefined,
+			);
+			nodeTypesStore.getNodeType = vi.fn((type: string) =>
+				type === 'test' ? lastInteractedTypeDescription : nodeTypeDescription,
+			);
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(
 				lastInteracted as INodeUi,
 			);
 
-			vi.spyOn(NodeHelpers, 'getNodeOutputs').mockReturnValueOnce([
-				{ type: NodeConnectionTypes.AiTool },
-			]);
-			vi.spyOn(NodeHelpers, 'getConnectionTypes')
-				.mockReturnValueOnce([NodeConnectionTypes.AiTool])
-				.mockReturnValueOnce([NodeConnectionTypes.AiTool]);
-
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position).toEqual([464, 96]);
+			// 96 + 224 (configurable width) + NODE_X_SPACING (128)
+			expect(position).toEqual([448, 96]);
+		});
+
+		describe('next-node slot', () => {
+			const setNodeType = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+
+			function resolvePositionAfter(
+				sourceTypeDescription: INodeTypeDescription,
+				newNodeTypeDescription: INodeTypeDescription,
+				{ handle, typeVersion = 1 }: { handle?: string; typeVersion?: number } = {},
+			) {
+				const uiStore = mockedStore(useUIStore);
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
+				const source = createTestNode({
+					id: 'source',
+					name: 'Source',
+					type: sourceTypeDescription.name,
+					typeVersion,
+					position: [0, 0],
+				}) as INodeUi;
+
+				vi.mocked(workflowDocumentStoreInstance.getExpressionHandler).mockReturnValue(
+					createWorkflowObjectKeepingParameters([source]).expression,
+				);
+				uiStore.lastInteractedWithNodeId = source.id;
+				uiStore.lastInteractedWithNodeHandle = handle ?? null;
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+					id === source.id ? source : undefined,
+				);
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(source);
+				nodeTypesStore.getNodeType = vi.fn((type: string) =>
+					type === source.type ? sourceTypeDescription : newNodeTypeDescription,
+				);
+
+				const { resolveNodePosition } = useCanvasOperations();
+				return resolveNodePosition(
+					{
+						...createTestNode({ id: 'new', name: 'New', type: newNodeTypeDescription.name }),
+						position: undefined,
+					},
+					newNodeTypeDescription,
+				);
+			}
+
+			it.each([
+				['4 ports', 3, [352, 0]],
+				['5 ports', 5, [400, 0]],
+			])(
+				'should place a node after an AI Agent v1 with %s from its rendered width',
+				(_description, nonMainInputCount, expected) => {
+					const agentV1Type = mockNodeTypeDescription({
+						name: AGENT_NODE_TYPE,
+						inputs: [
+							NodeConnectionTypes.Main,
+							...Array.from({ length: nonMainInputCount }, () => NodeConnectionTypes.AiTool),
+						],
+					});
+
+					expect(resolvePositionAfter(agentV1Type, setNodeType)).toEqual(expected);
+				},
+			);
+
+			it('should line up the main handles after a 4-input Merge node', () => {
+				const mergeType = mockNodeTypeDescription({
+					name: MERGE_NODE_TYPE,
+					inputs: Array.from({ length: 4 }, () => NodeConnectionTypes.Main),
+				});
+
+				// The Merge node is 160 high, so its output handle is at 80. The Set handle is at 48.
+				expect(resolvePositionAfter(mergeType, setNodeType)).toEqual([224, 32]);
+			});
+
+			it('should line up the main handles of a new Sentiment Analysis node', () => {
+				const sentimentType = mockNodeTypeDescription({
+					name: '@n8n/n8n-nodes-langchain.sentimentAnalysis',
+					inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel],
+					outputs: Array.from({ length: 3 }, () => NodeConnectionTypes.Main),
+				});
+
+				// The new node is 128 high, so its input handle is at 64. The source handle is at 48.
+				expect(resolvePositionAfter(setNodeType, sentimentType)).toEqual([224, -16]);
+			});
+
+			it('should fan the nodes after a Switch node with 3 outputs one node and one NODE_Y_SPACING apart', () => {
+				const switchType = mockNodeTypeDescription({
+					name: SWITCH_NODE_TYPE,
+					outputs: Array.from({ length: 3 }, () => NodeConnectionTypes.Main),
+				});
+
+				const positions = [0, 1, 2].map((index) =>
+					resolvePositionAfter(switchType, setNodeType, { handle: `outputs/main/${index}` }),
+				);
+
+				expect(positions).toEqual([
+					[224, -176],
+					[224, 16],
+					[224, 208],
+				]);
+			});
+
+			it('should keep a node inserted on an edge of a Switch node on its handle line', () => {
+				const switchType = mockNodeTypeDescription({
+					name: SWITCH_NODE_TYPE,
+					outputs: Array.from({ length: 3 }, () => NodeConnectionTypes.Main),
+				});
+				mockedStore(useUIStore).lastInteractedWithNodeConnection = {
+					source: 'source',
+					sourceHandle: 'outputs/main/2',
+					target: 'target',
+					targetHandle: 'inputs/main/0',
+				};
+
+				// No fan offset: the Switch handle line is at 64 and the Set handle is at 48
+				expect(resolvePositionAfter(switchType, setNodeType)).toEqual([224, 16]);
+			});
+
+			it('should keep the nodes after an IF node 96 above and below its handle line', () => {
+				const ifType = mockNodeTypeDescription({
+					name: IF_NODE_TYPE,
+					outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+				});
+
+				const positions = [0, 1].map((index) =>
+					resolvePositionAfter(ifType, setNodeType, { handle: `outputs/main/${index}` }),
+				);
+
+				expect(positions).toEqual([
+					[224, -96],
+					[224, 96],
+				]);
+			});
 		});
 
 		it('should place the node at the last clicked position if no other position is set', () => {
@@ -1964,6 +2100,39 @@ describe('useCanvasOperations', () => {
 
 			// 96 (two main inputs) + NODE_X_SPACING (128)
 			expect(addNodeSpy.mock.calls[1][0].position).toEqual([224, 0]);
+		});
+		it('should line up the main handle of an agent card added after a Chat Trigger', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			nodeTypesStore.nodeTypes = {
+				[CHAT_TRIGGER_NODE_TYPE]: {
+					1: mockNodeTypeDescription({ name: CHAT_TRIGGER_NODE_TYPE, inputs: [] }),
+				},
+				[MESSAGE_AN_AGENT_NODE_TYPE]: {
+					2: mockNodeTypeDescription({ name: MESSAGE_AN_AGENT_NODE_TYPE, version: 2 }),
+				},
+			};
+			geometryStore.getNodeHeight.mockReturnValue(undefined);
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodes } = useCanvasOperations();
+			await addNodes(
+				[
+					{ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE, typeVersion: 1 },
+					{ name: 'Message an Agent', type: MESSAGE_AN_AGENT_NODE_TYPE, typeVersion: 2 },
+				],
+				{ position: [0, 0] },
+			);
+
+			// 96 + NODE_X_SPACING, and the card handle (64) on the trigger handle line (48)
+			const card = addNodeSpy.mock.calls[1][0];
+			expect(card.position).toEqual([224, -16]);
+			expect(geometryStore.setPendingCenterY).toHaveBeenCalledWith(
+				workflowDocumentStoreInstance.workflowId,
+				card.id,
+				-16 + DEFAULT_AGENT_HEIGHT / 2,
+			);
 		});
 	});
 
@@ -6597,6 +6766,33 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('importWorkflowData', () => {
+		const WEBHOOK_BEARING_NODE_TYPES = [
+			WEBHOOK_NODE_TYPE,
+			FORM_TRIGGER_NODE_TYPE,
+			FORM_NODE_TYPE,
+			WAIT_NODE_TYPE,
+			MCP_TRIGGER_NODE_TYPE,
+		];
+
+		function registerWebhookBearingNodeTypes() {
+			const webhooks: IWebhookDescription[] = [
+				{ name: 'default', httpMethod: 'GET', responseMode: 'onReceived', path: '' },
+			];
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				...nodeTypesStore.nodeTypes,
+				...Object.fromEntries(
+					WEBHOOK_BEARING_NODE_TYPES.map((name) => [
+						name,
+						{
+							1: mockNodeTypeDescription({ name, version: 1, webhooks }),
+							2: mockNodeTypeDescription({ name, version: 2, webhooks }),
+						},
+					]),
+				),
+			};
+		}
+
 		const workflowData = {
 			nodes: [], //buildImportNodes(),
 			connections: {},
@@ -7214,9 +7410,11 @@ describe('useCanvasOperations', () => {
 			});
 		});
 
-		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
+		it.each(WEBHOOK_BEARING_NODE_TYPES)(
 			'should regenerate webhook ids for node type "%s" on pasting into canvas and sync default paths',
 			async (type) => {
+				registerWebhookBearingNodeTypes();
+
 				// This mock is needed for addImportedNodesToWorkflow to work
 				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
 					nodes: {},
@@ -7228,7 +7426,7 @@ describe('useCanvasOperations', () => {
 				const nodesToImport = [
 					{
 						id: 'import-1',
-						name: 'Execute Workflow Trigger 1',
+						name: 'Webhook Node 1',
 						type,
 						typeVersion: 1,
 						position: [200, 200] as [number, number],
@@ -7239,7 +7437,7 @@ describe('useCanvasOperations', () => {
 					},
 					{
 						id: 'import-2',
-						name: 'Execute Workflow Trigger 2',
+						name: 'Webhook Node 2',
 						type,
 						typeVersion: 1,
 						position: [300, 300] as [number, number],
@@ -7256,8 +7454,8 @@ describe('useCanvasOperations', () => {
 					nodes: nodesToImport,
 					connections: {},
 					pinData: {
-						'Execute Workflow Trigger 1': [{ json: { test: 'data1' } }],
-						'Execute Workflow Trigger 2': [{ json: { test: 'data2' } }],
+						'Webhook Node 1': [{ json: { test: 'data1' } }],
+						'Webhook Node 2': [{ json: { test: 'data2' } }],
 					},
 				};
 
@@ -7266,10 +7464,10 @@ describe('useCanvasOperations', () => {
 				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
 
 				expect(workflow.nodes).toHaveLength(2);
-				expect(workflow.nodes![0].name).toBe('Execute Workflow Trigger 1');
+				expect(workflow.nodes![0].name).toBe('Webhook Node 1');
 				expect(workflow.nodes![0].webhookId).not.toBe('first-webhook');
 				expect(workflow.nodes![0].parameters.path).toBe(workflow.nodes![0].webhookId);
-				expect(workflow.nodes![1].name).toBe('Execute Workflow Trigger 2');
+				expect(workflow.nodes![1].name).toBe('Webhook Node 2');
 				expect(workflow.nodes![1].webhookId).not.toBe('second-webhook');
 				expect((workflow.nodes![1].parameters.options as { path: string }).path).toBe(
 					workflow.nodes![1].webhookId,
@@ -7277,9 +7475,80 @@ describe('useCanvasOperations', () => {
 			},
 		);
 
-		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
+		it('should regenerate the webhook id of a pasted node that carries no parameters', async () => {
+			registerWebhookBearingNodeTypes();
+
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+				nodes: {},
+				connections: {},
+				connectionsBySourceNode: {},
+				renameNode: vi.fn(),
+			} as unknown as Workflow);
+
+			const workflowDataToImport = {
+				nodes: [
+					{
+						id: 'import-1',
+						name: 'Webhook',
+						type: WEBHOOK_NODE_TYPE,
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'first-webhook',
+					},
+				],
+				connections: {},
+			} as unknown as WorkflowDataUpdate;
+
+			const canvasOperations = useCanvasOperations();
+
+			const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+
+			expect(workflow.nodes).toHaveLength(1);
+			expect(workflow.nodes![0].webhookId).not.toBe('first-webhook');
+		});
+
+		it('should keep the webhook id of an imported node when the node ids are kept', async () => {
+			registerWebhookBearingNodeTypes();
+
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+				nodes: {},
+				connections: {},
+				connectionsBySourceNode: {},
+				renameNode: vi.fn(),
+			} as unknown as Workflow);
+
+			const workflowDataToImport = {
+				nodes: [
+					{
+						id: 'import-1',
+						name: 'Webhook',
+						type: WEBHOOK_NODE_TYPE,
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'first-webhook',
+						parameters: { path: 'first-webhook' },
+					},
+				],
+				connections: {},
+			} as unknown as WorkflowDataUpdate;
+
+			const canvasOperations = useCanvasOperations();
+
+			const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'file', {
+				regenerateIds: false,
+			});
+
+			expect(workflow.nodes).toHaveLength(1);
+			expect(workflow.nodes![0].id).toBe('import-1');
+			expect(workflow.nodes![0].webhookId).toBe('first-webhook');
+			expect(workflow.nodes![0].parameters.path).toBe('first-webhook');
+		});
+
+		it.each(WEBHOOK_BEARING_NODE_TYPES)(
 			'should preserve user-defined paths for node type "%s" on importing into canvas',
 			async (type) => {
+				registerWebhookBearingNodeTypes();
+
 				// This mock is needed for addImportedNodesToWorkflow to work
 				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
 					nodes: {},
@@ -7291,7 +7560,7 @@ describe('useCanvasOperations', () => {
 				const nodesToImport = [
 					{
 						id: 'import-1',
-						name: 'Execute Workflow Trigger 1',
+						name: 'Webhook Node 1',
 						type,
 						typeVersion: 1,
 						position: [200, 200] as [number, number],
@@ -7302,7 +7571,7 @@ describe('useCanvasOperations', () => {
 					},
 					{
 						id: 'import-2',
-						name: 'Execute Workflow Trigger 2',
+						name: 'Webhook Node 2',
 						type,
 						typeVersion: 1,
 						position: [300, 300] as [number, number],
@@ -7334,9 +7603,11 @@ describe('useCanvasOperations', () => {
 			},
 		);
 
-		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
+		it.each(WEBHOOK_BEARING_NODE_TYPES)(
 			'should preserve user-defined paths for node type "%s" on pasting into canvas',
 			async (type) => {
+				registerWebhookBearingNodeTypes();
+
 				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
 					nodes: {},
 					connections: {},
@@ -7347,7 +7618,7 @@ describe('useCanvasOperations', () => {
 				const nodesToImport = [
 					{
 						id: 'import-1',
-						name: 'Execute Workflow Trigger 1',
+						name: 'Webhook Node 1',
 						type,
 						typeVersion: 1,
 						position: [200, 200] as [number, number],
@@ -7377,9 +7648,11 @@ describe('useCanvasOperations', () => {
 			},
 		);
 
-		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
+		it.each(WEBHOOK_BEARING_NODE_TYPES)(
 			'should regenerate webhook id for node type "%s" when no path is defined',
 			async (type) => {
+				registerWebhookBearingNodeTypes();
+
 				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
 					nodes: {},
 					connections: {},
@@ -7390,7 +7663,7 @@ describe('useCanvasOperations', () => {
 				const nodesToImport = [
 					{
 						id: 'import-1',
-						name: 'Execute Workflow Trigger 1',
+						name: 'Webhook Node 1',
 						type,
 						typeVersion: 1,
 						position: [200, 200] as [number, number],
@@ -7415,9 +7688,11 @@ describe('useCanvasOperations', () => {
 			},
 		);
 
-		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
+		it.each(WEBHOOK_BEARING_NODE_TYPES)(
 			'should preserve user-defined parameters.path even when it equals the empty string for node type "%s"',
 			async (type) => {
+				registerWebhookBearingNodeTypes();
+
 				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
 					nodes: {},
 					connections: {},
@@ -7428,7 +7703,7 @@ describe('useCanvasOperations', () => {
 				const nodesToImport = [
 					{
 						id: 'import-1',
-						name: 'Execute Workflow Trigger 1',
+						name: 'Webhook Node 1',
 						type,
 						typeVersion: 1,
 						position: [200, 200] as [number, number],
@@ -7457,9 +7732,14 @@ describe('useCanvasOperations', () => {
 			},
 		);
 
-		it.each([WEBHOOK_NODE_TYPE, MCP_TRIGGER_NODE_TYPE])(
+		it.each([SET_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE])(
 			'should not regenerate webhook ids for node type "%s" on pasting into canvas',
 			async (type) => {
+				const nodeTypesStore = useNodeTypesStore();
+				nodeTypesStore.nodeTypes = {
+					[type]: { 1: mockNodeTypeDescription({ name: type }) },
+				};
+
 				// This mock is needed for addImportedNodesToWorkflow to work
 				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
 					nodes: {},
@@ -7518,6 +7798,78 @@ describe('useCanvasOperations', () => {
 				expect((workflow.nodes![1].parameters.options as { path: string }).path).toBe('some-path');
 			},
 		);
+
+		it('keeps the webhook id of a node type the store does not know', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {};
+
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+				nodes: {},
+				connections: {},
+				connectionsBySourceNode: {},
+				renameNode: vi.fn(),
+			} as unknown as Workflow);
+
+			const workflowDataToImport = {
+				nodes: [
+					{
+						id: 'import-1',
+						name: 'Unknown',
+						type: 'n8n-nodes-community.notInstalled',
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'copied-webhook-id',
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			const canvasOperations = useCanvasOperations();
+			const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+
+			expect(workflow.nodes![0].webhookId).toBe('copied-webhook-id');
+		});
+
+		it('regenerates the webhook id when only another version of the type is loaded', async () => {
+			const webhooks: IWebhookDescription[] = [
+				{ name: 'default', httpMethod: 'GET', responseMode: 'onReceived', path: '' },
+			];
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[WEBHOOK_NODE_TYPE]: {
+					1: mockNodeTypeDescription({ name: WEBHOOK_NODE_TYPE, version: 1, webhooks }),
+				},
+			};
+
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+				nodes: {},
+				connections: {},
+				connectionsBySourceNode: {},
+				renameNode: vi.fn(),
+			} as unknown as Workflow);
+
+			const workflowDataToImport = {
+				nodes: [
+					{
+						id: 'import-1',
+						name: 'Webhook',
+						type: WEBHOOK_NODE_TYPE,
+						typeVersion: 2,
+						position: [200, 200] as [number, number],
+						webhookId: 'copied-webhook-id',
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			const canvasOperations = useCanvasOperations();
+			const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+
+			expect(workflow.nodes![0].webhookId).toEqual(expect.any(String));
+			expect(workflow.nodes![0].webhookId).not.toBe('copied-webhook-id');
+		});
 
 		it('should remap nodeGroups nodeIds when regenerating IDs', async () => {
 			const oldId1 = 'old-node-id-1';

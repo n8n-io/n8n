@@ -16,6 +16,7 @@ export class LinearTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Linear Trigger',
 		name: 'linearTrigger',
+		schemaPath: 'Linear',
 		icon: 'file:linear.svg',
 		group: ['trigger'],
 		version: 1,

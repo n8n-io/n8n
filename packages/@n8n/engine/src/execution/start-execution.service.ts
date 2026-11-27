@@ -1,4 +1,5 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
+import { UnexpectedError } from '../common';
 import {
 	createNodeLabeler,
 	deriveLoops,
@@ -8,20 +9,28 @@ import {
 	validateExecutableGraph,
 	type StoredWorkflowGraph,
 	type WorkflowGraph,
+	type WorkflowLoop,
 } from '../graph';
 import type { LifecycleEventSubscription } from '../lifecycle-events';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ResponseExpectation } from '../response-channel';
-import { ExecutionNotFoundError, type ExecutionStore } from './execution-store';
+import {
+	ExecutionNotFoundError,
+	ParentExecutionEndedError,
+	type CreateExecutionResult,
+	type ExecutionStore,
+} from './execution-store';
 import {
 	isLiveExecutionStatus,
 	type CallerContext,
+	type ErrorSourceLink,
 	type ExecutionMode,
 	type ParentLink,
 	type SeededSteps,
 	type TriggerOutputs,
 	type WorkflowDocument,
 } from './execution.types';
+import { LOOP_SLOT } from './loop-ledger';
 import { StepNotFoundError, type StepStore } from './step-store';
 
 export interface StartExecutionRequest {
@@ -50,10 +59,28 @@ export interface StartExecutionRequest {
 	executionId: string;
 	/** The execution and step that asked for this one. Absent for a top-level run. */
 	parent?: ParentLink;
+	/**
+	 * The execution this error execution reports on. Only the engine's error
+	 * start sets it. A request cannot set it together with `parent`.
+	 */
+	errorSource?: ErrorSourceLink;
+	/**
+	 * Whether the engine asks the host to resolve an error workflow when this
+	 * execution fails. A cancellation never resolves one, unlike in v1. The host
+	 * decides from the error workflow settings, the mode and the suppression,
+	 * which the engine does not read. `true` is no promise: the resolver can
+	 * still answer `none`. Defaults to `false`.
+	 */
+	resolveErrorWorkflowOnFailure?: boolean;
 }
 
 export interface StartExecutionResult {
 	executionId: string;
+	/**
+	 * Set when the request named an error source that already has an error
+	 * execution. Nothing was written and nothing starts.
+	 */
+	errorExecutionAlreadyExists?: true;
 }
 
 /** The parent link names a missing row, or a row that cannot start a sub-execution now. */
@@ -89,7 +116,21 @@ export class StartExecutionService {
 		// admittance capacity, and nothing is persisted for it.
 		this.validateGraph(request.graph);
 		validateSeededSteps(request.graph, request.seededSteps ?? {});
+		if (request.parent && request.errorSource) {
+			throw new UnexpectedError('An execution cannot have both a parent link and an error source');
+		}
 		if (request.parent) await this.validateParent(request.parent);
+		// Only a failed execution can have an error execution. No lock is
+		// needed: an ended execution does not change status again.
+		if (request.errorSource) {
+			const { executionId: sourceId } = request.errorSource;
+			const status = await this.executionStore.loadExecutionStatus(sourceId);
+			if (status !== 'failed') {
+				throw new UnexpectedError(
+					`Execution ${sourceId} is ${status}, so it cannot be the source of an error execution`,
+				);
+			}
+		}
 
 		const decision = await this.admittance.evaluate({ workflowId: request.workflowId });
 		if (!decision.accept) {
@@ -100,21 +141,31 @@ export class StartExecutionService {
 		// against it, so the store never gets to rename the run.
 		const { executionId } = request;
 
-		await this.executionStore.createExecution({
-			id: executionId,
-			workflowId: request.workflowId,
-			// admitted; a worker flips this to 'running' when it starts
-			status: 'queued',
-			mode: request.mode ?? 'production',
-			graph: toStoredGraph(request.graph, request.seededSteps ?? {}),
-			workflow: request.workflow,
-			triggerOutputs: request.triggerOutputs ?? null,
-			seededSteps: request.seededSteps,
-			callerContext: request.callerContext,
-			responseExpectation: request.responseExpectation ?? { kind: 'none' },
-			parent: request.parent ?? null,
-			lifecycleEventSubscription: request.lifecycleEventSubscription,
-		});
+		let created: CreateExecutionResult;
+		try {
+			created = await this.executionStore.createExecution({
+				id: executionId,
+				workflowId: request.workflowId,
+				// admitted; a worker flips this to 'running' when it starts
+				status: 'queued',
+				mode: request.mode ?? 'production',
+				graph: toStoredGraph(request.graph, request.seededSteps ?? {}),
+				workflow: request.workflow,
+				triggerOutputs: request.triggerOutputs ?? null,
+				seededSteps: request.seededSteps,
+				callerContext: request.callerContext,
+				responseExpectation: request.responseExpectation ?? { kind: 'none' },
+				parent: request.parent ?? null,
+				errorSource: request.errorSource ?? null,
+				resolveErrorWorkflowOnFailure: request.resolveErrorWorkflowOnFailure ?? false,
+				lifecycleEventSubscription: request.lifecycleEventSubscription,
+			});
+		} catch (error) {
+			endedParentAsInvalid(error);
+		}
+		// Only an error execution can lose to an earlier start for the same source.
+		if (created.errorExecutionAlreadyExists)
+			return { executionId, errorExecutionAlreadyExists: true };
 
 		// The persist above and this publish aren't atomic. A crash between them
 		// leaves the execution 'queued' until the reconciliation sweeper
@@ -133,6 +184,9 @@ export class StartExecutionService {
 	 * The parent must be live and the step must be its own, in the state that
 	 * asks for a sub-execution: suspended when it waits for this one, still
 	 * running when it does not. A step starts nothing once it has settled.
+	 *
+	 * A parent can end between this check and the insert. The store repeats the
+	 * check under a lock when it writes the row, so that case refuses too.
 	 */
 	private async validateParent(parent: ParentLink): Promise<void> {
 		const [status, step] = await Promise.all([
@@ -166,6 +220,14 @@ export class StartExecutionService {
 	}
 }
 
+/** A parent that ended before the row was written is an invalid link. */
+function endedParentAsInvalid(error: unknown): never {
+	if (error instanceof ParentExecutionEndedError) {
+		throw new InvalidParentLinkError('execution-not-live', error.message);
+	}
+	throw error;
+}
+
 /** A missing parent row is an invalid link, not a lookup failure of its own. */
 function absentAsInvalid(error: unknown): never {
 	if (error instanceof ExecutionNotFoundError) {
@@ -186,26 +248,33 @@ function toStoredGraph(graph: WorkflowGraph, seededSteps: SeededSteps): StoredWo
 }
 
 /**
- * Rejects seeded steps that a settlement could not record correctly.
+ * Rejects seeded steps the run could not use.
  *
- * When the run reaches a seeded node, the settlement that would have queued it
- * records it as completed with the seeded outputs for that pass instead. That
- * only works for a node that:
+ * A seeded node does not run. When the run reaches it, settlement records it
+ * as completed with the seeded outputs for that pass, and the run goes on from
+ * there. Settlement throws if it reaches a seeded node and finds no outputs
+ * for that pass, so this check makes sure that cannot happen:
  *
- * - is not the trigger: its outputs arrive as `triggerOutputs`.
- * - the trigger can reach: no settlement ever reaches any other node, so its
- *   outputs would never be used.
- * - is not in a loop, and so has exactly one pass. TODO(CAT-4875): accept a
- *   loop's passes.
+ * - The trigger cannot be seeded. Its outputs arrive as `triggerOutputs`.
+ * - Every seeded node must be downstream of the trigger. The run never
+ *   reaches any other node, so its seeded outputs would never be used.
+ * - A node outside any loop runs once, so it must have exactly one pass.
+ * - A loop is seeded whole or not at all. The caller must seed the batch node
+ *   with t + 1 passes, where every pass but the last fills the loop slot and
+ *   the last one does not, and every other node in the loop with exactly t
+ *   passes. The batch node's outputs decide how many times the loop runs, and
+ *   the loop ends when a batch pass does not fill the loop slot. So fewer
+ *   member passes would leave a pass without outputs, and a batch node whose
+ *   last pass still fills the loop slot would leave the loop unfinished.
  */
 function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): void {
 	// The graph was validated first, so the trigger exists.
 	const trigger = findTriggerNode(graph);
 	const reachable = new Set(trigger ? getDescendantNodeIds(graph, trigger.id) : []);
-	const loopByMember = new Map(
-		deriveLoops(graph).flatMap((loop) => [...loop.memberIds].map((id) => [id, loop] as const)),
-	);
+	const loops = deriveLoops(graph);
+	const loopMemberIds = union(loops.map((loop) => loop.memberIds));
 	const name = createNodeLabeler(graph);
+
 	for (const [nodeId, passes] of Object.entries(seededSteps)) {
 		if (nodeId === trigger?.id) {
 			throw new GraphValidationError(
@@ -217,16 +286,69 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 				`Seeded step names node ${name(nodeId)}, which the trigger does not reach`,
 			);
 		}
-		const loop = loopByMember.get(nodeId);
-		if (loop) {
-			throw new GraphValidationError(
-				`Seeded step names node ${name(nodeId)}, which is inside the loop of ${name(loop.batchNodeId)}; a loop member runs once per pass and cannot be seeded`,
-			);
+		if (passes.length === 0) {
+			throw new GraphValidationError(`Node ${name(nodeId)} is seeded with no passes`);
 		}
-		if (passes.length !== 1) {
+		if (!loopMemberIds.has(nodeId) && passes.length > 1) {
 			throw new GraphValidationError(
 				`Node ${name(nodeId)} is seeded with ${passes.length} passes, and a node outside a loop has one`,
 			);
 		}
 	}
+	for (const loop of loops) validateSeededLoop(loop, seededSteps, name);
+}
+
+/** Checks that a loop is seeded whole or not at all. See `validateSeededSteps` for why. */
+function validateSeededLoop(
+	loop: WorkflowLoop,
+	seededSteps: SeededSteps,
+	name: (nodeId: string) => string,
+): void {
+	const seeded = new Set(Object.keys(seededSteps));
+	const seededMemberId = find(loop.memberIds, (id) => seeded.has(id));
+	if (seededMemberId === undefined) return;
+
+	const batch = name(loop.batchNodeId);
+	if (!seeded.has(loop.batchNodeId)) {
+		throw new GraphValidationError(
+			`Node ${name(seededMemberId)} is seeded but ${batch}, the batch node of its loop, is not; a loop is seeded whole or not at all`,
+		);
+	}
+
+	const batchPasses = seededSteps[loop.batchNodeId];
+	const passes = batchPasses.length - 1;
+	batchPasses.forEach((outputs, iteration) => {
+		const fillsLoopSlot = outputs[LOOP_SLOT] !== null && outputs[LOOP_SLOT] !== undefined;
+		if (iteration < passes && !fillsLoopSlot) {
+			throw new GraphValidationError(
+				`Batch node ${batch} is seeded past iteration ${iteration}, but that pass does not fill its loop slot, so the loop ended there`,
+			);
+		}
+		if (iteration === passes && fillsLoopSlot) {
+			throw new GraphValidationError(
+				`Batch node ${batch} fills its loop slot on its last seeded pass, iteration ${iteration}, so the loop has not ended; a loop is seeded whole or not at all`,
+			);
+		}
+	});
+
+	for (const memberId of loop.memberIds) {
+		if (memberId === loop.batchNodeId) continue;
+		const count = seeded.has(memberId) ? seededSteps[memberId].length : 0;
+		if (count !== passes) {
+			throw new GraphValidationError(
+				`Node ${name(memberId)} is seeded for ${count} passes of the loop of ${batch}, which has ${passes}; a loop is seeded whole or not at all`,
+			);
+		}
+	}
+}
+
+function find<T>(items: Iterable<T>, matches: (item: T) => boolean): T | undefined {
+	for (const item of items) if (matches(item)) return item;
+	return undefined;
+}
+
+function union<T>(sets: Array<Set<T>>): Set<T> {
+	const result = new Set<T>();
+	for (const set of sets) for (const item of set) result.add(item);
+	return result;
 }

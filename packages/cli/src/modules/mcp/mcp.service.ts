@@ -4,7 +4,6 @@ import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	MIGRATION_REPORT_TARGET_VERSION,
 } from '@n8n/api-types';
 import { getN8nVersion, LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -21,6 +20,7 @@ import {
 	NodeTypesProxy,
 	PostHogClient,
 	TelemetryProxy,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { type OperationContext, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
@@ -41,7 +41,6 @@ import type z from 'zod';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { loginIdOf } from '@/events/login-id';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
@@ -79,6 +78,7 @@ import {
 import { FOLDER_FEATURE_TOOLS, getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
+	areMcpPreferencesAvailable,
 	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
@@ -172,7 +172,7 @@ export type McpAppsResolution = {
 	variant: McpAppsTelemetryVariant;
 };
 
-/** User experience gates and the shared instance activity gate. */
+/** User experience gates and the instance context gate. */
 export type McpFeatureFlags = {
 	credentialDescriptionsEnabled?: boolean;
 	mcpApps: McpAppsResolution;
@@ -307,21 +307,17 @@ export class McpService {
 	}
 	// EOF Experiment cleanup
 
-	/** Resolves user experience flags and the shared activity gate. */
+	/** Resolves user experience flags. */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
 		const { mcpAppsEnabled } = this.globalConfig.endpoints;
 
-		const [userFlags, instanceFlag] = await Promise.allSettled([
-			this.postHogClient.getFeatureFlags(user),
-			this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
-		]);
-		const flags = userFlags.status === 'fulfilled' ? userFlags.value : {};
+		const flags = await this.postHogClient.getFeatureFlags(user).catch((): FeatureFlags => ({}));
 		const preferencesNoteFlag = flags[MCP_EMPTY_PREFERENCES_NOTE_FLAG];
 
 		return {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
-			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
+			instanceContextEnabled: true,
 			skillsExtensionEnabled: flags[MCP_SKILLS_EXTENSION_FLAG] === true,
 			preferencesNoteVariant:
 				typeof preferencesNoteFlag === 'string' ? preferencesNoteFlag : 'unassigned',
@@ -542,10 +538,11 @@ export class McpService {
 		// Same rationale again: a grant that cannot reach the instance-context tools is not told
 		// to start by calling them, and does not get the resource that carries the same data.
 		const contextToolsAllowed = allowedToolNames?.has(GET_INSTANCE_CONTEXT_TOOL_NAME) ?? true;
-		// Gates the sentence only; registration below goes through `registerIfAllowed` like every
-		// other tool. No RBAC check: a user's own preferences need no scope.
+		// Gates the sentence and the preference tools below, which also go through
+		// `registerIfAllowed`. No RBAC check: a user's own preferences need no scope.
+		const preferencesEnabled = areMcpPreferencesAvailable(this.moduleRegistry);
 		const userPreferencesInstructionsEnabled =
-			allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true;
+			preferencesEnabled && (allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
 		// The same rationale again: only a caller whose role and grant reach the report is
 		// pointed at it.
 		const migrationReportReadable = canReadMigrationReport(this.moduleRegistry, user);
@@ -562,6 +559,7 @@ export class McpService {
 					isInstanceContextEnabled:
 						featureFlags.instanceContextEnabled &&
 						this.moduleRegistry.isActive('instance-ai') &&
+						this.globalConfig.activityLog.enabled &&
 						contextToolsAllowed,
 					isBuilderEnabled: builderInstructionsEnabled,
 					isN8nConnectAvailable: n8nConnectAvailable,
@@ -614,6 +612,7 @@ export class McpService {
 			this.workflowFinderService,
 			this.telemetry,
 			this.executionRedactionServiceProxy,
+			this.executionsConfig.maxDisplaySize,
 		);
 		registerIfAllowed(getExecutionTool);
 
@@ -752,7 +751,8 @@ export class McpService {
 
 			// The activity reader belongs to the `instance-ai` module, so it is resolved lazily and
 			// only when that module is active — an instance with the surface off never builds it.
-			if (this.moduleRegistry.isActive('instance-ai')) {
+			// With the activity log off there is nothing to read.
+			if (this.moduleRegistry.isActive('instance-ai') && this.globalConfig.activityLog.enabled) {
 				const { InstanceContextService } = await import(
 					'@/modules/instance-ai/instance-context.service.js'
 				);
@@ -885,38 +885,40 @@ export class McpService {
 
 		// Not builder-gated: preferences apply to Agents, data tables and folders as well as
 		// workflows, so a caller without the builder still has changes to apply them to.
-		registerIfAllowed(
-			createGetUserPreferencesTool(
-				user,
-				this.aiPreferenceService,
-				this.telemetry,
-				this.preferencesNoteService,
-				featureFlags.preferencesNoteVariant,
-			),
-		);
-		// The write path. Gated by `aiPreference:write` at registration; the service applies the
-		// same rules as the settings area, and `source` is fixed to `mcp` inside the tools.
-		registerIfAllowed(
-			createSaveUserPreferenceTool(
-				user,
-				this.aiPreferenceService,
-				this.telemetry,
-				this.urlService,
-				this.logger,
-			),
-		);
-		registerIfAllowed(
-			createUpdateUserPreferenceTool(
-				user,
-				this.aiPreferenceService,
-				this.telemetry,
-				this.urlService,
-				this.logger,
-			),
-		);
-		registerIfAllowed(
-			createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
-		);
+		if (preferencesEnabled) {
+			registerIfAllowed(
+				createGetUserPreferencesTool(
+					user,
+					this.aiPreferenceService,
+					this.telemetry,
+					this.preferencesNoteService,
+					featureFlags.preferencesNoteVariant,
+				),
+			);
+			// The write path. Gated by `aiPreference:write` at registration; the service applies the
+			// same rules as the settings area, and `source` is fixed to `mcp` inside the tools.
+			registerIfAllowed(
+				createSaveUserPreferenceTool(
+					user,
+					this.aiPreferenceService,
+					this.telemetry,
+					this.urlService,
+					this.logger,
+				),
+			);
+			registerIfAllowed(
+				createUpdateUserPreferenceTool(
+					user,
+					this.aiPreferenceService,
+					this.telemetry,
+					this.urlService,
+					this.logger,
+				),
+			);
+			registerIfAllowed(
+				createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
+			);
+		}
 
 		// Not builder-gated: reading the report and running its built-in fixes need no builder.
 		// The tools belong to the `breaking-changes` module, so they load only when it serves a report.

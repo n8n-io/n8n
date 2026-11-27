@@ -11,6 +11,7 @@ import { generateId } from '../../database/generate-id';
 import type { IStepExecutor } from '../../dependencies';
 import type { StartExecutionResult, StepStore } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
+import { createInMemoryWorkQueues } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 
@@ -43,6 +44,7 @@ describe('queued step with no event (integration)', () => {
 			responseSender: noopExecutionResponseSender,
 			staleness,
 			reconciliationIntervalMs: 20,
+			queues: createInMemoryWorkQueues(),
 			externalDependencies: ({ stepStore }) => {
 				stores.stepStore = stepStore;
 				return { v1StepExecutor: executor };
@@ -82,6 +84,8 @@ describe('queued step with no event (integration)', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
 			parent: null,
+			errorSource: null,
+			resolveErrorWorkflowOnFailure: false,
 		});
 		await stepStore.createSteps(executionId, [
 			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [[{ json: {} }]] },

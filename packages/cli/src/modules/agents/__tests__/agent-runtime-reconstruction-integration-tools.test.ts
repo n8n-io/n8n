@@ -1,5 +1,9 @@
+import type { BuiltTool, Tool } from '@n8n/agents';
+import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { FolderService } from '@/services/folder.service';
 import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
+import { SlackIntegration } from '../integrations/platforms/slack/slack-integration';
+import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
 import type {
 	CredentialsFinderService,
 	EventService,
@@ -10,12 +14,13 @@ import type {
 } from '@n8n/backend-services';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
-import { type AgentJsonConfig } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
+	AgentExecutionStatisticsRepository,
 	TransactionRunner,
 	Person,
 	UserRepository,
@@ -165,6 +170,7 @@ function makeRuntimeReconstructionService(
 		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
+		mock<WorkflowsInSkillsFlagGate>(),
 	);
 }
 
@@ -343,6 +349,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentsSettingsService>(),
 			skillRefs,
 			mock<UserRepository>(),
+			mock<AgentExecutionStatisticsRepository>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -367,6 +374,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			skillRefs,
 			// No enforcement implementation is registered, so every evaluation comes back clear.
 			new AgentPolicyService(new PolicyEnforcementService()),
+			mock<WorkflowsInSkillsFlagGate>(),
+			mock<WorkflowFinderService>(),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,
@@ -415,6 +424,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<N8nChatFlagService>(),
 			mock<AgentDefinitionService>(),
+			mock(),
 			mock<GlobalConfig>({ tags: { disabled: false } }),
 			mock<TagService>(),
 			mock<FolderService>(),
@@ -446,6 +456,77 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		beforeEach(() => {
 			Container.set(SubAgentRunner, mock<SubAgentRunner>());
 		});
+
+		it.each([false, true])(
+			'attaches eager conversation tools with n8n Chat=%s',
+			async (n8nChat) => {
+				const registry = new ChatIntegrationRegistry();
+				registry.register(new SlackIntegration(mock<AgentRepository>(), mock()));
+				registry.register(new N8nChatIntegration(mock()));
+				Container.set(ChatIntegrationRegistry, registry);
+				Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+				Container.set(ChatIntegrationActionExecutor, mock<ChatIntegrationActionExecutor>());
+				Container.set(
+					ChatIntegrationContextQueryExecutor,
+					mock<ChatIntegrationContextQueryExecutor>(),
+				);
+				const attached: BuiltTool[] = [];
+				// Like Agent.tool: takes builders or built tools.
+				const agent = {
+					tool: (tools: Tool | BuiltTool | Array<Tool | BuiltTool>) => {
+						for (const tool of Array.isArray(tools) ? tools : [tools]) {
+							attached.push(
+								'build' in tool && typeof tool.build === 'function'
+									? tool.build()
+									: (tool as BuiltTool),
+							);
+						}
+					},
+				};
+				await (
+					makeRuntimeReconstructionService() as unknown as {
+						attachIntegrationTools(params: Record<string, unknown>): Promise<void>;
+					}
+				).attachIntegrationTools({
+					agent,
+					agentId,
+					projectId,
+					integrationType: n8nChat ? N8N_CHAT_INTEGRATION_TYPE : undefined,
+					credentialIntegrations: n8nChat
+						? []
+						: [
+								{ type: 'slack', credentialId: 'cred-a' },
+								{ type: 'slack', credentialId: 'cred-b' },
+							],
+				});
+				expect(attached.map(({ name }) => name)).toEqual(
+					n8nChat
+						? ['chat_context', 'chat_action']
+						: [
+								'slack_context',
+								'slack_action',
+								'slack_2_context',
+								'slack_2_action',
+								'do_not_respond',
+							],
+				);
+				// A test run tells integration tools apart by this tag.
+				for (const tool of attached) expect(tool.metadata).toEqual({ kind: 'integration' });
+				const actions = attached.filter(({ name }) => name.endsWith('_action'));
+				for (const action of actions) {
+					expect(action.systemInstruction).toContain('Search your tools');
+					expect(action.systemInstruction).toContain('rich messages');
+					expect(action.systemInstruction).toContain(action.name);
+					expect(action.description).toContain('Generic card examples:');
+				}
+				for (const tool of attached.filter(({ name }) => name === 'do_not_respond')) {
+					expect(tool.providerOptions).toEqual({
+						anthropic: { deferLoading: false },
+						openai: { deferLoading: false },
+					});
+				}
+			},
+		);
 
 		it('injects each credential integration context/action tool only once', async () => {
 			const integrationRegistry = new ChatIntegrationRegistry();
@@ -497,7 +578,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				runtimeProfile: 'top-level',
 				config: {
 					name: 'Test Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Be helpful',
 				},
 				parentAgentIdForDelegation: agentId,
@@ -563,7 +644,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				projectId,
 				credentialProvider: mock(),
 				runtimeProfile: 'top-level',
-				config: { name: 'Test Agent', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
+				config: { name: 'Test Agent', model: 'anthropic/claude-sonnet-5-5', instructions: 'Hi' },
 				parentAgentIdForDelegation: agentId,
 				subAgentDelegation: { sourcesById: {}, availableSubAgents: [] },
 				credentialIntegrations: [

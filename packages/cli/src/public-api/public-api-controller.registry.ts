@@ -1,8 +1,8 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
+import { N8N_CLIENT_HEADER, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { BooleanLicenseFeature } from '@n8n/constants';
-import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type {
@@ -22,7 +22,6 @@ import {
 	takeIdempotencyClaimId,
 } from '@/idempotency/idempotency.middleware';
 import { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
-import { N8N_CLIENT_HEADER } from '@n8n/api-types';
 import { BadRequestError, UnsupportedMediaTypeError } from '@n8n/errors';
 import { License } from '@/license';
 import { assertContentType } from '@/public-api/media-types/content-type';

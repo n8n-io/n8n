@@ -184,7 +184,7 @@ describe('AssistantConfirmationCard', () => {
 		});
 	});
 
-	it('opens the app blueprint again with its field errors when the tool asks again', async () => {
+	it('shows the app blueprint card', () => {
 		const appBlueprint = {
 			name: 'Planner',
 			namespace: 'planner',
@@ -192,22 +192,14 @@ describe('AssistantConfirmationCard', () => {
 			description: 'Plan weekly tasks.',
 			theme: 'both' as const,
 		};
-		const { getByTestId, queryByTestId, rerender } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: { input: { requestId: 'req-app-1', message: 'Review', appBlueprint } },
 		});
-		expect(queryByTestId('instance-ai-app-blueprint-namespace-error')).not.toBeInTheDocument();
 
-		await rerender({
-			input: {
-				requestId: 'req-app-2',
-				message: 'Review',
-				appBlueprint: { ...appBlueprint, namespace: 'taken-planner' },
-				appBlueprintErrors: { namespace: 'taken' },
-			},
-		});
-
-		expect(getByTestId('instance-ai-app-blueprint-namespace')).toHaveValue('taken-planner');
-		expect(getByTestId('instance-ai-app-blueprint-namespace-error')).toBeVisible();
+		expect(getByTestId('instance-ai-app-blueprint-name')).toHaveValue('Planner');
+		expect(getByTestId('instance-ai-app-blueprint-description')).toHaveTextContent(
+			'Plan weekly tasks.',
+		);
 	});
 
 	it('submits the typed answer of a text card', async () => {
@@ -262,6 +254,32 @@ describe('AssistantConfirmationCard', () => {
 		expect(card).toHaveTextContent('Assistant wants to run Daily weather');
 		expect(card).toHaveTextContent('Fetch the forecast');
 		expect(card).not.toHaveTextContent('workflowId');
+	});
+
+	describe('an approval that the "Approve for me" mode shows', () => {
+		const input = {
+			requestId: 'req-archive',
+			message: 'Archive "Lead router"',
+			severity: 'warning' as const,
+		};
+
+		it('shows the reason of the review below the description', () => {
+			const { getByTestId } = renderComponent({
+				props: { input: { ...input, askReason: { kind: 'always-ask' as const } } },
+			});
+
+			expect(getByTestId('assistant-agent-approval')).toHaveTextContent('Archive "Lead router"');
+			expect(getByTestId('approval-ask-reason')).toHaveTextContent(
+				'This type of action always needs your approval.',
+			);
+		});
+
+		it('shows no reason without one, as in the "Ask for approval" mode', () => {
+			const { getByTestId, queryByTestId } = renderComponent({ props: { input } });
+
+			expect(getByTestId('assistant-agent-approval')).toHaveTextContent('Archive "Lead router"');
+			expect(queryByTestId('approval-ask-reason')).not.toBeInTheDocument();
+		});
 	});
 
 	it('does not offer always allow for a destructive action', () => {

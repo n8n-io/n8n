@@ -1,4 +1,4 @@
-import { INSTANCE_ACTIVITY_CONTEXT_FLAG, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
+import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
@@ -25,7 +25,8 @@ import type { UrlService, PostHogClient } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { SkillsGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -34,8 +35,10 @@ const makeGlobalConfig = ({
 	builderEnabled = true,
 	tagsDisabled = false,
 	managedByEnv = false,
+	activityLogEnabled = true,
 } = {}) =>
 	({
+		activityLog: { enabled: activityLogEnabled },
 		endpoints: { mcpBuilderEnabled: builderEnabled },
 		tags: { disabled: tagsDisabled },
 		instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
@@ -58,19 +61,32 @@ describe('McpProtectedResource', () => {
 		postHogClient,
 	);
 
+	function mockModuleSettings(overrides: Record<string, Record<string, unknown>>) {
+		const settings: Record<string, Record<string, unknown>> = {
+			mcp: { preferencesEnabled: true },
+			...overrides,
+		};
+		vi.mocked(moduleRegistry.settings.get).mockImplementation((name) => settings[name]);
+	}
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		postHogClient.getFeatureFlags.mockResolvedValue({});
 		mcpConfig.baseUrl = '';
 		moduleRegistry.isActive.mockReturnValue(true);
-		vi.mocked(moduleRegistry.settings.get).mockReturnValue(undefined);
+		mockModuleSettings({});
 		licenseState.isFoldersLicensed.mockReturnValue(true);
 		Container.set(
 			CommunityPackagesConfig,
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
 		Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: true }));
+		Container.set(SkillSyncFlagGate, mock<SkillSyncFlagGate>({ isAvailable: true }));
+		Container.set(
+			AiPreferenceSettingsService,
+			mock<AiPreferenceSettingsService>({ isEnabled: true }),
+		);
 	});
 
 	describe('getScopeTools', () => {
@@ -84,7 +100,7 @@ describe('McpProtectedResource', () => {
 		});
 
 		it('withholds Agent scopes and tools when Agents is disabled', async () => {
-			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+			mockModuleSettings({ agents: { enabled: false } });
 			const scopeTools = await resource.getScopeTools();
 			expect(resource.scopes).not.toContain('agent:read');
 			expect(resource.scopes).not.toContain('agent:write');
@@ -100,8 +116,55 @@ describe('McpProtectedResource', () => {
 			expect(await resource.getScopeTools()).not.toHaveProperty('skill:read');
 		});
 
+		it('lists the skill source tools while Skill Sync is on for the instance', async () => {
+			const scopeTools = await resource.getScopeTools();
+
+			expect(scopeTools['skill:read']).toEqual([
+				'search_n8n_skills',
+				'get_skill',
+				'list_skill_sources',
+			]);
+			expect(scopeTools['skill:write']).toEqual(
+				expect.arrayContaining(['discover_skill_source', 'import_skills_from_source']),
+			);
+		});
+
+		it('withholds the skill source tools while Skill Sync is off for the instance', async () => {
+			Container.set(SkillSyncFlagGate, mock<SkillSyncFlagGate>({ isAvailable: false }));
+
+			const scopeTools = await resource.getScopeTools();
+
+			expect(scopeTools['skill:read']).toEqual(['search_n8n_skills', 'get_skill']);
+			expect(scopeTools['skill:write']).toEqual([
+				'create_skill',
+				'update_skill',
+				'delete_skill',
+				'search_n8n_skills',
+				'get_skill',
+			]);
+		});
+
+		it('withholds preference scopes while the MCP Preferences switch is off', () => {
+			mockModuleSettings({ mcp: { preferencesEnabled: false } });
+
+			expect(resource.scopes).not.toContain('aiPreference:read');
+			expect(resource.scopes).not.toContain('aiPreference:write');
+			expect(resource.scopes).toContain('skill:read');
+		});
+
+		it('withholds preference scopes while the instance preferences switch is off', () => {
+			Container.set(
+				AiPreferenceSettingsService,
+				mock<AiPreferenceSettingsService>({ isEnabled: false }),
+			);
+
+			expect(resource.scopes).not.toContain('aiPreference:read');
+			expect(resource.scopes).not.toContain('aiPreference:write');
+			expect(resource.scopes).toContain('skill:read');
+		});
+
 		it('keeps skill scopes when Agents is disabled', () => {
-			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+			mockModuleSettings({ agents: { enabled: false } });
 
 			expect(resource.scopes).not.toContain('agent:read');
 			expect(resource.scopes).toContain('skill:read');
@@ -146,37 +209,30 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 		});
 
-		it('withholds all context tools from consent when the instance flag is off', async () => {
-			moduleRegistry.isActive.mockReturnValue(true);
-			postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
+		it('keeps only the index tools in consent when the activity log is off', async () => {
+			const scopeTools = await new McpProtectedResource(
+				urlService,
+				mcpSettingsService,
+				mcpConfig,
+				makeGlobalConfig({ activityLogEnabled: false }),
+				moduleRegistry,
+				licenseState,
+				postHogClient,
+			).getScopeTools();
 
-			const scopeTools = await resource.getScopeTools();
-
-			for (const tool of INSTANCE_CONTEXT_TOOLS) {
+			for (const tool of ACTIVITY_LOG_TOOLS) {
 				expect(scopeTools['workflow:read']).not.toContain(tool);
 			}
+			expect(scopeTools['workflow:read']).toContain('get_node_usage');
+			expect(scopeTools['workflow:read']).toContain('get_dependencies');
 		});
 
-		it('withholds all context tools when the instance flag cannot be read', async () => {
-			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('Flag unavailable'));
-
-			const scopeTools = await resource.getScopeTools();
-
-			for (const tool of INSTANCE_CONTEXT_TOOLS) {
-				expect(scopeTools['workflow:read']).not.toContain(tool);
-			}
-		});
-
-		it('checks each instance flag once without a user argument', async () => {
+		it('checks the credential descriptions flag once without a user argument', async () => {
 			await resource.getScopeTools();
 
-			for (const flag of [INSTANCE_ACTIVITY_CONTEXT_FLAG, CREDENTIAL_DESCRIPTIONS_FLAG]) {
-				expect(
-					postHogClient.getFeatureFlagForInstance.mock.calls.filter(
-						([requested]) => requested === flag,
-					),
-				).toEqual([[flag]]);
-			}
+			expect(postHogClient.getFeatureFlagForInstance.mock.calls).toEqual([
+				[CREDENTIAL_DESCRIPTIONS_FLAG],
+			]);
 		});
 
 		it('should drop tools this instance does not expose', async () => {

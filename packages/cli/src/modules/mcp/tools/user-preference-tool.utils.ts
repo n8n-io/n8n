@@ -5,8 +5,11 @@ import z from 'zod';
 
 import { NotFoundError } from '@n8n/errors';
 import type { AiPreferenceWriteRejection } from '@/services/ai-preference-write';
-import { secondsSinceSaved, toAiPreferenceWriteRejection } from '@/services/ai-preference-write';
-import type { UrlService } from '@n8n/backend-services';
+import {
+	preferencesSettingsUrl,
+	secondsSinceSaved,
+	toAiPreferenceWriteRejection,
+} from '@/services/ai-preference-write';
 
 /**
  * Why a write by id did not land. The shared rejections plus `not_found`, which only a tool that
@@ -55,10 +58,6 @@ export const savedPreferenceSchema = z.object({
 export type SavedPreferenceOutput = z.infer<typeof savedPreferenceSchema>;
 
 /** One page for every preference: the list is paginated, so a row cannot be addressed by URL. */
-export function preferencesSettingsUrl(urlService: UrlService): string {
-	return `${urlService.getInstanceBaseUrl()}/settings/context/preferences`;
-}
-
 export function toSavedPreferenceOutput(
 	preference: AiPreferenceDto,
 	url: string,
@@ -75,4 +74,4 @@ export function preferenceScopeOf(preference: AiPreferenceDto): AiPreferenceScop
 	return aiPreferenceScopeOf(preference);
 }
 
-export { secondsSinceSaved };
+export { preferencesSettingsUrl, secondsSinceSaved };

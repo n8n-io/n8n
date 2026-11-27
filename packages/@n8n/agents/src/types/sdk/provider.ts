@@ -75,7 +75,17 @@ export interface OpenAIThinkingConfig {
 	 * OpenAI quirks may default when unset; `custom` only forwards an explicit value.
 	 */
 	reasoningEffort?: OpenAIReasoningEffort;
+	/**
+	 * How much earlier reasoning text goes back to a `custom` (OpenAI-compatible)
+	 * model. `tool-chain` (default) sends the reasoning of the current tool chain
+	 * only. `conversation` also sends the reasoning of earlier turns, for models
+	 * served with a chat template that keeps it. Other providers ignore this.
+	 */
+	replayReasoning?: ReasoningReplayScope;
 }
+
+/** Which assistant messages have their reasoning text sent back to the model. */
+export type ReasoningReplayScope = 'tool-chain' | 'conversation';
 
 export interface GoogleThinkingConfig {
 	/** Token budget for thinking. */

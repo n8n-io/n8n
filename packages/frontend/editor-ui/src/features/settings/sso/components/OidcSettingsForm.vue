@@ -10,6 +10,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type OidcConfigDto } from '@n8n/api-types';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
@@ -234,13 +235,12 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 }
 
 function sendTrackingEvent(config: OidcConfigDto) {
-	const trackingMetadata = {
+	telemetry.track(TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS, {
 		instance_id: useRootStore().instanceId,
 		authentication_method: SupportedProtocols.OIDC,
 		discovery_endpoint: config.discoveryEndpoint,
 		is_active: config.loginEnabled,
-	};
-	telemetry.track('User updated single sign on settings', trackingMetadata);
+	});
 }
 
 const isTestEnabled = computed(

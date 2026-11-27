@@ -1,8 +1,10 @@
+import { SELF_HEALING_FLAG } from '@n8n/api-types';
 import type { SelfHealingLocation } from '@n8n/frontend-constants/self-healing';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { truncate } from '@n8n/utils/string/truncate';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { ProjectTypes, type Project, type ProjectListItem } from './projects.types';
 import { useProjectsStore } from './projects.store';
 
@@ -102,15 +104,27 @@ export const enum ResourceType {
 	DataTable = 'dataTable',
 }
 
+/** Tells whether users can set up self-healing now. */
+export function isSelfHealingEnabled(): boolean {
+	const settingsStore = useSettingsStore();
+	const settings = settingsStore.moduleSettings['instance-ai'];
+	if (!settings?.workflowSuggestionsEnabled) return false;
+	if (!settings.cloudManaged) {
+		// Self-healing is not available on self-hosted Enterprise yet.
+		// Other self-hosted instances have no PostHog flag.
+		return !settingsStore.isEnterprisePlan;
+	}
+	// Every Cloud plan requires both the env setting and the PostHog instance flag.
+	return usePostHog().isFeatureEnabled(SELF_HEALING_FLAG);
+}
+
 export function canConfigureSelfHealing(
 	project:
 		| (Pick<Project, 'type'> & Partial<Pick<Project, 'scopes' | 'relations'>>)
 		| null
 		| undefined,
 ): boolean {
-	if (!project || !useSettingsStore().moduleSettings['instance-ai']?.workflowSuggestionsEnabled) {
-		return false;
-	}
+	if (!project || !isSelfHealingEnabled()) return false;
 	if (project.type !== ProjectTypes.Personal) {
 		return !!getResourcePermissions(project.scopes).project.update;
 	}

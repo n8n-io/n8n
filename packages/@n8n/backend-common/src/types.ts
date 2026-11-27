@@ -12,4 +12,6 @@ export interface LicenseProvider {
 
 	/** Returns the value of a feature in the user's license plan, typically a boolean or integer. */
 	getValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T];
+
+	isEnterprisePlan(): boolean;
 }

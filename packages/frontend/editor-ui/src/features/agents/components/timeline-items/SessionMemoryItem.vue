@@ -63,12 +63,12 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 	gap: var(--spacing--2xs);
 	margin-inline: var(--spacing--2xs);
 
-	--ai-activity-step--color: var(--text-color--subtle);
+	--n8n-ai-activity-step--color: var(--text-color--subtle);
 }
 
 /* Matches the tool row header so names, icons, and times line up. */
 .activityButton {
-	--ai-activity-step--padding: var(--spacing--2xs);
+	--n8n-ai-activity-step--padding: var(--spacing--2xs);
 }
 
 .iconContainer {

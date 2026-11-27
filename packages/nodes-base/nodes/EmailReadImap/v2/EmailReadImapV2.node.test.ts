@@ -209,8 +209,11 @@ describe('EmailReadImapV2', () => {
 	describe('search criteria', () => {
 		it('does not accumulate UID filters across arrivals', async () => {
 			const criteriaPerFetch: unknown[][] = [];
-			fetched.mockImplementation(async function (this: ITriggerFunctions, { searchCriteria }) {
-				criteriaPerFetch.push([...searchCriteria]);
+			fetched.mockImplementation(async function (
+				this: ITriggerFunctions,
+				{ searchCriteria, newMailWindow },
+			) {
+				criteriaPerFetch.push([...searchCriteria, newMailWindow]);
 				// Past the first fetch the node takes the UID path rather than the SINCE one.
 				const data = this.getWorkflowStaticData('node');
 				data.lastMessageUid = ((data.lastMessageUid as number) ?? 0) + 1;
@@ -253,6 +256,19 @@ describe('EmailReadImapV2', () => {
 	});
 
 	describe('a connection that fails', () => {
+		it('rejects activation with a warning-level node error when the server cannot be reached', async () => {
+			const cause = Object.assign(new Error('Socket timeout'), { code: 'ETIMEOUT' });
+			connectMock.mockRejectedValueOnce(cause);
+
+			const activation = startTrigger();
+
+			await expect(activation).rejects.toBeInstanceOf(NodeOperationError);
+			await expect(activation).rejects.toMatchObject({
+				message: 'Socket timeout',
+				level: 'warning',
+			});
+		});
+
 		it('reports the error to the error workflow', async () => {
 			const connection = createConnection();
 			connectMock.mockResolvedValueOnce(connection);
@@ -334,32 +350,32 @@ describe('EmailReadImapV2', () => {
 				typeVersion: 2.1,
 				lastMessageUid: 42,
 				options: {},
-				criteria: ['UNSEEN', ['UID', '42:*']],
+				newMailWindow: ['UID', '42:*'],
 			},
 			{
 				case: 'a first activation',
 				typeVersion: 2.1,
 				lastMessageUid: undefined,
 				options: {},
-				criteria: ['UNSEEN', ['SINCE', '13-Oct-2026']],
+				newMailWindow: ['SINCE', '13-Oct-2026'],
 			},
 			{
 				case: 'an untracked last message id',
 				typeVersion: 2.1,
 				lastMessageUid: 42,
 				options: { trackLastMessageId: false },
-				criteria: ['UNSEEN'],
+				newMailWindow: undefined,
 			},
 			{
 				case: 'version 2',
 				typeVersion: 2,
 				lastMessageUid: 42,
 				options: {},
-				criteria: ['UNSEEN'],
+				newMailWindow: undefined,
 			},
 		])(
 			'searches the mailbox after $case',
-			async ({ typeVersion, lastMessageUid, options, criteria }) => {
+			async ({ typeVersion, lastMessageUid, options, newMailWindow }) => {
 				vi.setSystemTime(new Date('2026-10-13T12:00:00Z'));
 				triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion }));
 				staticData.lastMessageUid = lastMessageUid;
@@ -370,7 +386,9 @@ describe('EmailReadImapV2', () => {
 				expect(connection.catchUp).toHaveBeenCalledTimes(1);
 				await arrive(connection, 'unknown');
 
-				expect(fetched).toHaveBeenCalledWith(expect.objectContaining({ searchCriteria: criteria }));
+				expect(fetched).toHaveBeenCalledWith(
+					expect.objectContaining({ searchCriteria: ['UNSEEN'], newMailWindow }),
+				);
 			},
 		);
 	});

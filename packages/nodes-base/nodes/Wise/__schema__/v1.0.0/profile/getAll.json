@@ -1,0 +1,86 @@
+{
+	"properties": {
+		"details": {
+			"properties": {
+				"abn": {
+					"type": ["null", "string"]
+				},
+				"acn": {
+					"type": ["null", "string"]
+				},
+				"arbn": {},
+				"avatar": {
+					"type": ["null", "string"]
+				},
+				"businessCategory": {
+					"type": "string"
+				},
+				"businessSubCategory": {
+					"type": "string"
+				},
+				"companyRole": {
+					"type": ["null", "string"]
+				},
+				"companyType": {
+					"type": "string"
+				},
+				"dateOfBirth": {
+					"type": "string"
+				},
+				"descriptionOfBusiness": {
+					"type": "string"
+				},
+				"firstName": {
+					"type": "string"
+				},
+				"firstNameInKana": {},
+				"lastName": {
+					"type": "string"
+				},
+				"lastNameInKana": {},
+				"localizedInformation": {
+					"items": {},
+					"type": "array"
+				},
+				"name": {
+					"type": "string"
+				},
+				"occupation": {},
+				"occupations": {
+					"items": {
+						"properties": {
+							"code": {
+								"type": "string"
+							},
+							"format": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": ["array", "null"]
+				},
+				"phoneNumber": {
+					"type": "string"
+				},
+				"primaryAddress": {
+					"type": "number"
+				},
+				"registrationNumber": {
+					"type": "string"
+				},
+				"webpage": {
+					"type": ["null", "string"]
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "number"
+		},
+		"type": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

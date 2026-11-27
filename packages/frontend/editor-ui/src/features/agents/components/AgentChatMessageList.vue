@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, ref } from 'vue';
 import {
 	N8nButton,
 	N8nCallout,
@@ -13,19 +13,25 @@ import {
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
-import { useInfiniteScroll, useResizeObserver, useSessionStorage } from '@vueuse/core';
+import { useSessionStorage } from '@vueuse/core';
 import { TIME } from '@/app/constants/durations';
 import type { RouteLocationRaw } from 'vue-router';
 import {
 	DISPLAY_GROUP_KIND,
 	isAssistantGroup,
 	type DisplayGroup,
+	type TurnDisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
-import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	getMessageInteractives,
+	isRecord,
+	isStoppedMessage,
+} from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
 	appendHostEventSources,
 	findHostEventRenderer,
+	findToolFooterRenderer,
 	findToolResultRenderer,
 	getHostEventItems,
 	type AgentsChatHostEventItems,
@@ -40,18 +46,16 @@ import type {
 	InteractivePayload,
 	ToolCall,
 } from '@/features/ai/shared/agentsChat/types';
-import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
-import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatBackgroundJobSignal from './AgentChatBackgroundJobSignal.vue';
 import AgentChatHostEvents from './AgentChatHostEvents.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
-import AgentChatToolSteps from './AgentChatToolSteps.vue';
+import AgentChatActivity from './AgentChatActivity.vue';
 import AgentChatRetryError from './AgentChatRetryError.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentChatTaskSummary from './AgentChatTaskSummary.vue';
-import AgentTypingIndicator from './AgentTypingIndicator.vue';
+import AiTypingIndicator from '@/features/ai/shared/components/AiTypingIndicator.vue';
 import AgentBudgetNoticeCard from './AgentBudgetNoticeCard.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
@@ -88,8 +92,14 @@ const props = defineProps<{
 	summaryMissing?: boolean;
 	/** The thread has turns older than `messages`. */
 	hasOlderMessages?: boolean;
-	/** Adds the next older page to `messages`. Rejects when the page fails to load. */
-	loadOlderMessages?: () => Promise<void>;
+	/** An older page is loading. */
+	loadingOlderMessages?: boolean;
+	/** The last older page failed to load. */
+	loadOlderMessagesFailed?: boolean;
+	/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
+	thinkingLabel?: string;
+	/** Replaces the generic "Session stopped" of a stopped turn. The Assistant sets it. */
+	stoppedLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -102,14 +112,29 @@ const emit = defineEmits<{
 	];
 	sendToAssistant: [event?: AgentSendToAssistantEvent];
 	'increase-budget': [payload: { field: 'monthlyBudgetUsd' | 'sessionCostCapUsd'; amount: number }];
+	/** The user asks to load the older page again after a failure. */
+	'retry-load-older': [];
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
 	/** Temporary status at the end of the transcript. */
 	status?: () => unknown;
 	/** Host actions for a finished agent reply, next to the default copy action. */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
+	/**
+	 * The `references` of a user message, for example mentioned workflows. They
+	 * show before the files of the message, in the same group.
+	 */
+	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
 }>();
+
+function showsReferences(message: ChatMessage): boolean {
+	return (
+		message.role === CHAT_MESSAGE_ROLE.USER &&
+		!!message.references?.length &&
+		!!slots['user-message-references']
+	);
+}
 
 const i18n = useI18n();
 const canSendToAssistant = computed(() =>
@@ -214,9 +239,6 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 
 const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
 
-const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
-const statusRef = useTemplateRef<HTMLDivElement>('statusRef');
-
 /** True when the bubble of `message` shows something besides host events. */
 function hasBubbleContent(message: ChatMessage): boolean {
 	return !!(
@@ -285,7 +307,7 @@ const tailSummaryId = computed(() => {
 interface GroupToolCalls {
 	/** Calls that render as default tool steps. */
 	steps: ToolCall[];
-	/** Finished calls that a host extension renders in place of a step. */
+	/** Finished calls that a host extension renders after the steps: in place of a step, or as a step footer. */
 	hostResults: Array<{ toolCall: ToolCall; renderer: AgentsChatToolResultRenderer }>;
 }
 
@@ -309,8 +331,14 @@ const toolCallsByGroupId = computed(() => {
 		for (const toolCall of toolCalls) {
 			const renderer =
 				extensions.length > 0 ? findToolResultRenderer(toolCall, extensions) : undefined;
-			if (renderer) split.hostResults.push({ toolCall, renderer });
-			else split.steps.push(toolCall);
+			if (renderer) {
+				split.hostResults.push({ toolCall, renderer });
+				continue;
+			}
+			split.steps.push(toolCall);
+			const footer =
+				extensions.length > 0 ? findToolFooterRenderer(toolCall, extensions) : undefined;
+			if (footer) split.hostResults.push({ toolCall, renderer: footer });
 		}
 		byGroupId.set(group.id, split);
 	}
@@ -484,6 +512,21 @@ function isThinkingActive(message: ChatMessage): boolean {
 	);
 }
 
+/** The thinking of a run sits on its head group but is live while the last group of the run is. */
+function getThinkingLiveState(group: TurnDisplayGroup): {
+	active: boolean;
+	awaitingInput: boolean;
+} {
+	const tail = group.runTail ?? group;
+	if (tail.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
+		return { active: tail.active || tail.awaitingInput, awaitingInput: tail.awaitingInput };
+	}
+	return {
+		active: isThinkingActive(tail.message),
+		awaitingInput: tail.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER,
+	};
+}
+
 function getAssistantGroupContent(group: DisplayGroup): string {
 	if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return '';
 	if (group.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
@@ -627,215 +670,17 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			? null
 			: openMemoryFooterGroupId.value;
 }
-
-// How close to the bottom the user has to be for incoming chunks to keep
-// following them. Small enough that a deliberate scroll-up breaks the lock,
-// large enough that sub-pixel DOM growth during markdown rendering doesn't
-// falsely count as "scrolled up".
-const SCROLL_STICK_THRESHOLD_PX = 80;
-
-/**
- * True when the user is (or was last) near the bottom of the chat and wants
- * incoming stream chunks to keep scrolling into view. Flipped to false when
- * the user scrolls up away from the bottom, and back to true when they
- * scroll back down or send a new message.
- */
-const isStickToBottom = ref(true);
-
-function isNearBottom(): boolean {
-	const el = scrollRef.value;
-	if (!el) return true;
-	return el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_STICK_THRESHOLD_PX;
-}
-
-function onScroll(): void {
-	isStickToBottom.value = isNearBottom();
-	onScrollForOlderMessages();
-}
-
-function scrollToBottom(): void {
-	void nextTick(() => {
-		// Double rAF — async children (markdown, highlighters) can grow content
-		// after the first frame, so we measure on the second one.
-		requestAnimationFrame(() => {
-			requestAnimationFrame(() => {
-				if (scrollRef.value) {
-					scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
-					isStickToBottom.value = true;
-				}
-			});
-		});
-	});
-}
-
-function autoScrollIfSticky(): void {
-	if (isStickToBottom.value) scrollToBottom();
-}
-
-// Snap to the bottom on initial render with a preloaded history. Two hooks on
-// purpose: the watcher with `immediate: true` fires after setup / initial
-// render, and `onMounted` covers cases where the post-flush scroll measured an
-// incomplete height because async content (markdown, highlighters) was still
-// expanding.
-onMounted(() => {
-	if (props.messages.length > 0) scrollToBottom();
-});
-
-// New message appended. If it's the user's own message we always follow to
-// the bottom (they just sent — they want to see the response). For
-// assistant messages and state transitions, follow only if the user is
-// sticking to the bottom. Older messages added above the last one keep the
-// view where it is.
-watch(
-	[() => props.messages.length, () => props.messages.at(-1)?.id],
-	([newLen, lastId], [oldLen, oldLastId]) => {
-		if ((oldLen ?? 0) < newLen) {
-			if (oldLen && lastId === oldLastId) return;
-			const last = props.messages[newLen - 1];
-			if (last?.role === CHAT_MESSAGE_ROLE.USER) {
-				scrollToBottom();
-				return;
-			}
-		}
-		autoScrollIfSticky();
-	},
-	{ flush: 'post' },
-);
-
-/** Distance from the top, in px, at which older messages start to load. */
-const OLDER_MESSAGES_DISTANCE_PX = 200;
-
-// Stops a failed load from retrying in a loop. The retry button, or a scroll
-// away from the top, allows a new try.
-const loadOlderFailed = ref(false);
-// On mount the view is at the top before it scrolls to the bottom. Thus older
-// messages load only after the first scroll event.
-const viewScrolled = ref(false);
-
-function onScrollForOlderMessages(): void {
-	viewScrolled.value = true;
-	if ((scrollRef.value?.scrollTop ?? 0) > OLDER_MESSAGES_DISTANCE_PX) loadOlderFailed.value = false;
-}
-
-/** Frames to wait for content above the anchor (markdown, highlighters) to stop growing. */
-const MAX_ANCHOR_SETTLE_FRAMES = 30;
-
-/**
- * The first element in view, which stays in place when older messages load
- * above it. The loading status is not an anchor: it sticks to the top of the
- * view and goes away after the load.
- */
-function findScrollAnchor(container: HTMLElement): HTMLElement | undefined {
-	const viewTop = container.getBoundingClientRect().top;
-	const candidates = [...container.children].filter(
-		(child): child is HTMLElement =>
-			child instanceof HTMLElement && child.dataset.olderMessagesStatus === undefined,
-	);
-	return (
-		candidates.find((child) => child.getBoundingClientRect().bottom > viewTop) ?? candidates[0]
-	);
-}
-
-const nextFrame = async () => await new Promise((resolve) => requestAnimationFrame(resolve));
-
-/**
- * Run `change`, and keep `anchor` in the same place in the view while the
- * content above it changes and finishes its render (markdown, highlighters).
- */
-async function keepInPlace(
-	container: HTMLElement,
-	anchor: HTMLElement | undefined,
-	change: () => Promise<void>,
-): Promise<void> {
-	// Measure only how far the anchor moves in the content: the user can scroll,
-	// and a live reply can grow below the view, while the change runs.
-	const contentTop = (el: HTMLElement) => el.getBoundingClientRect().top + container.scrollTop;
-	let anchorTop = anchor ? contentTop(anchor) : 0;
-	// This code moves the view itself. Browser scroll anchoring would move it a
-	// second time, and the view would jump down by the height of the change.
-	container.style.overflowAnchor = 'none';
-	try {
-		await change();
-		await nextTick();
-		let stableFrames = 0;
-		for (let frame = 0; frame < MAX_ANCHOR_SETTLE_FRAMES && stableFrames < 2; frame++) {
-			if (!anchor || !container.contains(anchor)) return;
-			const moved = contentTop(anchor) - anchorTop;
-			if (moved === 0) {
-				stableFrames++;
-			} else {
-				stableFrames = 0;
-				container.scrollTop += moved;
-				anchorTop += moved;
-			}
-			await nextFrame();
-		}
-	} finally {
-		container.style.overflowAnchor = '';
-	}
-}
-
-const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
-	scrollRef,
-	async () => {
-		const container = scrollRef.value;
-		const load = props.loadOlderMessages;
-		if (!container || !load) return;
-		try {
-			await keepInPlace(container, findScrollAnchor(container), load);
-		} catch {
-			loadOlderFailed.value = true;
-		}
-	},
-	{
-		direction: 'top',
-		distance: OLDER_MESSAGES_DISTANCE_PX,
-		// A thread too short to scroll loads older messages until it fills the view.
-		canLoadMore: (el) =>
-			!!props.hasOlderMessages &&
-			!!props.loadOlderMessages &&
-			!loadOlderFailed.value &&
-			(viewScrolled.value || (el !== null && el.scrollHeight <= el.clientHeight)),
-	},
-);
-
-watch(() => props.messagingState, autoScrollIfSticky, { flush: 'post' });
-
-watch(() => props.preparingSummary, autoScrollIfSticky, { flush: 'post' });
-
-useResizeObserver(statusRef, autoScrollIfSticky);
-
-// Content within the last message grew (streaming text, tool calls, thinking,
-// host events). Only follow the stream down if the user is still near the
-// bottom — otherwise we yank them away from whatever they scrolled up to read.
-watch(
-	[
-		() => {
-			const last = props.messages[props.messages.length - 1];
-			if (!last) return '';
-			const thinking = getMessageThinkingSegments(last)
-				.map((segment) => segment.content)
-				.join('');
-			return `${last.content}|${last.toolCalls?.length ?? 0}|${getMessageInteractives(last).length}|${thinking}`;
-		},
-		// A new host event, or a keyed update of one, sets a new `hostEvents`
-		// array, so the reference changes even when the text does not.
-		() => props.messages.at(-1)?.hostEvents,
-	],
-	autoScrollIfSticky,
-	{ flush: 'post' },
-);
 </script>
 
 <template>
-	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
+	<div :class="$style.messages">
 		<!-- Takes no space, so the messages do not move when it shows or hides. -->
 		<div
-			v-if="isLoadingOlderMessages || loadOlderFailed"
+			v-if="loadingOlderMessages || loadOlderMessagesFailed"
 			:class="$style.olderMessagesStatus"
 			data-older-messages-status
 		>
-			<N8nSpinner v-if="isLoadingOlderMessages" data-testid="agent-chat-older-messages-loading" />
+			<N8nSpinner v-if="loadingOlderMessages" data-testid="agent-chat-older-messages-loading" />
 			<!-- A thread too short to scroll cannot leave the top, so it needs a button to try again. -->
 			<div
 				v-else
@@ -846,7 +691,7 @@ watch(
 				<N8nText size="small" color="text-light">
 					{{ i18n.baseText('agents.chat.loadOlder.error') }}
 				</N8nText>
-				<N8nButton variant="ghost" size="xsmall" @click="loadOlderFailed = false">
+				<N8nButton variant="ghost" size="xsmall" @click="emit('retry-load-older')">
 					{{ i18n.baseText('generic.retry') }}
 				</N8nButton>
 			</div>
@@ -878,9 +723,16 @@ watch(
 			>
 				<N8nChatMessage role="assistant">
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
-					<AgentChatToolSteps
-						v-if="getGroupToolCalls(group.id).steps.length"
+					<AgentChatActivity
+						v-if="getGroupToolCalls(group.id).steps.length || group.thinkingSegments.length"
 						:tool-calls="getGroupToolCalls(group.id).steps"
+						:thinking="{
+							segments: group.thinkingSegments,
+							...getThinkingLiveState(group),
+							durationSec: getThinkingDurationSec(group.thinkingSegments),
+							idleLabel: props.thinkingLabel,
+							hostEvents: getGroupHostEventItems(group.id).thinking,
+						}"
 						:project-id="projectId"
 						:agent-id="agentId"
 						:can-fix-with-assistant="canSendToAssistant"
@@ -946,13 +798,11 @@ watch(
 						v-else-if="group.finalMessage?.content"
 						:class="{ [$style.chatMessageError]: group.finalMessage.status === 'error' }"
 					>
-						<div :class="$style.markdownContent">
-							<AgentMarkdownChunk
-								:source="group.finalMessage.content"
-								:can-open-build="standaloneBuilder && canSendToAssistant"
-								@open-build="onBuildLink($event, group.finalMessage)"
-							/>
-						</div>
+						<AgentMarkdownChunk
+							:source="group.finalMessage.content"
+							:can-open-build="standaloneBuilder && canSendToAssistant"
+							@open-build="onBuildLink($event, group.finalMessage)"
+						/>
 					</div>
 					<AgentBudgetNoticeCard
 						v-for="notice in group.budgetNotices"
@@ -963,24 +813,6 @@ watch(
 						@increase="emit('increase-budget', $event)"
 					/>
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
-					<template #after-actions>
-						<AiThinkingBlock
-							v-if="group.thinkingSegments.length"
-							:segments="group.thinkingSegments"
-							:active="group.active || group.awaitingInput"
-							:awaiting-input="group.awaitingInput"
-							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
-							test-id="agent-chat-thinking-block"
-						>
-							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
-							<AiReasoningBlock
-								v-for="segment in group.thinkingSegments"
-								:key="segment.id"
-								:entry="segment"
-								:streaming="group.active && segment.endTime === undefined"
-							/>
-						</AiThinkingBlock>
-					</template>
 					<template #actions v-if="shouldShowAssistantFooter(group.id)">
 						<div :class="$style.messageFooter" :data-open="openMemoryFooterGroupId === group.id">
 							<AgentChatMemoryUsed
@@ -1003,7 +835,7 @@ watch(
 							</AgentChatMessageActions>
 						</div>
 					</template>
-					<AgentTypingIndicator
+					<AiTypingIndicator
 						v-if="
 							group.id === streamingGroupId &&
 							!taskSummaryGroupIds.has(group.id) &&
@@ -1023,11 +855,21 @@ watch(
 				]"
 			>
 				<AgentChatMessageAttachments
-					v-if="group.message.attachments?.length && projectId && agentId"
-					:attachments="group.message.attachments"
+					v-if="
+						(group.message.attachments?.length || showsReferences(group.message)) &&
+						projectId &&
+						agentId
+					"
+					:attachments="group.message.attachments ?? []"
 					:project-id="projectId"
 					:agent-id="agentId"
-				/>
+				>
+					<slot
+						v-if="showsReferences(group.message)"
+						name="user-message-references"
+						:message="group.message"
+					/>
+				</AgentChatMessageAttachments>
 				<N8nText
 					v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.author"
 					size="xsmall"
@@ -1039,9 +881,16 @@ watch(
 				</N8nText>
 				<N8nChatMessage :role="group.message.role">
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
-					<AgentChatToolSteps
-						v-if="getGroupToolCalls(group.id).steps.length"
+					<AgentChatActivity
+						v-if="getGroupToolCalls(group.id).steps.length || group.thinkingSegments.length"
 						:tool-calls="getGroupToolCalls(group.id).steps"
+						:thinking="{
+							segments: group.thinkingSegments,
+							...getThinkingLiveState(group),
+							durationSec: getThinkingDurationSec(group.thinkingSegments),
+							idleLabel: props.thinkingLabel,
+							hostEvents: getGroupHostEventItems(group.id).thinking,
+						}"
 						:project-id="projectId"
 						:agent-id="agentId"
 						:can-fix-with-assistant="canSendToAssistant"
@@ -1105,7 +954,7 @@ watch(
 								group.message.status !== CHAT_MESSAGE_STATUS.STREAMING
 							"
 						>
-							<div :class="[$style.chatMessage, $style.markdownContent, $style.stopReplyText]">
+							<div :class="[$style.chatMessage, $style.stopReplyText]">
 								<AgentMarkdownChunk
 									v-if="group.message.content.trim()"
 									:source="group.message.content"
@@ -1123,6 +972,14 @@ watch(
 							</N8nLink>
 						</template>
 					</div>
+					<div
+						v-else-if="isStoppedMessage(group.message)"
+						:class="$style.stoppedNotice"
+						data-testid="agent-chat-stopped"
+					>
+						<N8nIcon icon="circle-x" size="small" />
+						<span>{{ props.stoppedLabel ?? i18n.baseText('agentSessions.stopped') }}</span>
+					</div>
 					<template v-else>
 						<AgentChatRetryError
 							v-if="isRetryableChatError(group.message)"
@@ -1138,13 +995,11 @@ watch(
 								v-if="item.type === 'text'"
 								:class="{ [$style.chatMessageError]: group.message.status === 'error' }"
 							>
-								<div :class="$style.markdownContent">
-									<AgentMarkdownChunk
-										:source="item.text"
-										:can-open-build="standaloneBuilder && canSendToAssistant"
-										@open-build="onBuildLink($event, group.message)"
-									/>
-								</div>
+								<AgentMarkdownChunk
+									:source="item.text"
+									:can-open-build="standaloneBuilder && canSendToAssistant"
+									@open-build="onBuildLink($event, group.message)"
+								/>
 							</div>
 							<div v-else :class="$style.interactives">
 								<InteractiveCard
@@ -1201,26 +1056,6 @@ watch(
 								</N8nButton>
 							</template>
 						</N8nCallout>
-
-						<AiThinkingBlock
-							v-if="group.thinkingSegments.length"
-							:segments="group.thinkingSegments"
-							:active="isThinkingActive(group.message)"
-							:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
-							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
-							test-id="agent-chat-thinking-block"
-						>
-							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
-							<AiReasoningBlock
-								v-for="segment in group.thinkingSegments"
-								:key="segment.id"
-								:entry="segment"
-								:streaming="
-									group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
-									segment.endTime === undefined
-								"
-							/>
-						</AiThinkingBlock>
 					</template>
 					<template #actions v-if="shouldShowAssistantFooter(group.id)">
 						<div :class="$style.messageFooter" :data-open="openMemoryFooterGroupId === group.id">
@@ -1244,7 +1079,7 @@ watch(
 							/>
 						</div>
 					</template>
-					<AgentTypingIndicator
+					<AiTypingIndicator
 						v-if="
 							group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
 							!taskSummaryGroupIds.has(group.id) &&
@@ -1267,10 +1102,10 @@ watch(
 			:class="$style.message"
 		>
 			<div :class="$style.content">
-				<AgentTypingIndicator :class="$style.typingIndicator" />
+				<AiTypingIndicator :class="$style.typingIndicator" />
 			</div>
 		</div>
-		<div v-if="$slots.status" ref="statusRef" :class="$style.message">
+		<div v-if="$slots.status" :class="$style.message">
 			<slot name="status" />
 		</div>
 	</div>
@@ -1278,10 +1113,8 @@ watch(
 
 <style lang="scss" module>
 .messages {
-	flex: 1;
-	width: 100%;
-	min-height: 0;
-	overflow-y: auto;
+	// A host panel can cover the end of the chat. The messages center in the space it leaves.
+	width: calc(100% - var(--agent-chat-reserved-end, 0px));
 	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
 	padding-bottom: var(--spacing--xl);
 	display: flex;
@@ -1289,15 +1122,9 @@ watch(
 	gap: var(--spacing--sm);
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
-
-	// AGENT: use mixin instead
-	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
-
-	// AGENT: Use mixin insteasd
-	scrollbar-width: none;
-	&::-webkit-scrollbar {
-		display: none;
-	}
+	// An offset, not a transform: a transform would move fixed-position descendants.
+	position: relative;
+	left: calc(var(--agent-chat-reserved-end, 0px) / -2);
 }
 
 // Sticks to the top of the view. The zero height and the negative margin
@@ -1378,6 +1205,14 @@ watch(
 	margin-bottom: var(--spacing--2xs);
 }
 
+.stoppedNotice {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+}
+
 /* Stretches past the right-aligned user bubble it follows, and stacks the
    hand-off button under the note instead of squeezing it in beside the text.
    `stretch` gives the text row the full width the dismiss button needs to sit
@@ -1436,7 +1271,11 @@ watch(
 	color: var(--text-color--danger);
 }
 
+/* Takes the row of the thinking header that replaces it, so the dots have the
+   same space above and below. */
 .typingIndicator {
-	margin-top: var(--spacing--xs);
+	align-items: center;
+	height: calc(var(--font-size--sm) * var(--line-height--lg));
+	margin-block: var(--spacing--4xs);
 }
 </style>

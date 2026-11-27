@@ -10,6 +10,8 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { ProjectRepository, WorkflowDependencyRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentCredentialDependency } from '@/modules/agents/entities/agent-credential-dependency.entity';
 import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentWorkflowDependency } from '@/modules/agents/entities/agent-workflow-dependency.entity';
@@ -83,7 +85,7 @@ async function seedIndexedAgent(
 	schema: Pick<AgentJsonConfig, 'credential' | 'tools'>,
 ) {
 	const project = await projectRepo.getPersonalProjectForUserOrFail(user.id);
-	const agent = agentRepo.create({
+	const agent = await createAgent({
 		name,
 		projectId: project.id,
 		schema: storedAgentConfig({
@@ -97,7 +99,6 @@ async function seedIndexedAgent(
 		tools: {},
 		versionId: 'draft-version-1',
 	});
-	await agentRepo.save(agent);
 
 	const publishedVersionId = randomUUID();
 	await agentHistoryRepo.saveVersion(
@@ -483,6 +484,29 @@ describe('POST /workflow-dependencies/details', () => {
 		expect(resp.body.data[credential.id]).toEqual({
 			dependencies: [],
 			inaccessibleCount: 1,
+			inaccessibleAffectedCount: 1,
+		});
+	});
+
+	it('should count an inaccessible caller once across both parent relationships', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+		const workflow = await createWorkflow({ name: 'Target workflow' }, member);
+		const caller = await createWorkflow({ name: 'Private caller' }, owner);
+
+		await seedDep(caller.id, 'workflowCall', workflow.id);
+		await seedDep(caller.id, 'errorWorkflow', workflow.id);
+
+		const resp = await testServer
+			.authAgentFor(member)
+			.post('/workflow-dependencies/details')
+			.send({ resourceIds: [workflow.id], resourceType: 'workflow' });
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data[workflow.id]).toEqual({
+			dependencies: [],
+			inaccessibleCount: 2,
+			inaccessibleAffectedCount: 1,
 		});
 	});
 
@@ -731,6 +755,7 @@ describe('Workflow and credential ID collisions', () => {
 		expect.soft(details.body.data[workflow.id]).toEqual({
 			dependencies: [{ id: caller.id, name: caller.name, type: 'workflowParent' }],
 			inaccessibleCount: 1,
+			inaccessibleAffectedCount: 1,
 		});
 
 		if (batch) {

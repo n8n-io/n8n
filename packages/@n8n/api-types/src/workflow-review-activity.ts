@@ -23,8 +23,13 @@ export type WorkflowReviewActivityType =
 	| 'review.approved'
 	| WorkflowReviewWorkflowCauseActivityType
 	| 'workflow.published'
-	/** Closed without an approval. An approval writes `review.approved` instead, never both. */
-	| 'review.closed';
+	/**
+	 * Closed by the system without an approval. An approval writes `review.approved` instead,
+	 * never both.
+	 */
+	| 'review.closed'
+	/** Closed by a user without an approval. Never written together with `review.closed`. */
+	| 'review.closed_by_user';
 
 // These are the typeVersion 1 shapes. A typeVersion 2 gets its own schema, its own
 // union member and its own mapper case; never widen one of these in place.
@@ -123,8 +128,9 @@ export type WorkflowReviewActivityMessage = {
 
 /**
  * Total over every type in {@link WorkflowReviewActivityType}, so no stored row is ever
- * unmappable. `data: null` on a non-comment entry means the stored payload did not parse; the
- * renderer degrades rather than dropping the entry.
+ * unmappable. `comment.created` and `review.closed_by_user` carry no payload. `data: null` on any
+ * other entry means the stored payload did not parse; the renderer degrades rather than dropping
+ * the entry.
  */
 export type WorkflowReviewActivityEntry =
 	| (WorkflowReviewActivityBase & {
@@ -147,6 +153,10 @@ export type WorkflowReviewActivityEntry =
 	| (WorkflowReviewActivityBase & {
 			type: 'review.closed';
 			data: WorkflowReviewClosedActivityData | null;
+	  })
+	| (WorkflowReviewActivityBase & {
+			type: 'review.closed_by_user';
+			data: null;
 	  })
 	| (WorkflowReviewActivityBase & {
 			type: WorkflowReviewWorkflowCauseActivityType;

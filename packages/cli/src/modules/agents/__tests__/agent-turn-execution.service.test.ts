@@ -4,6 +4,7 @@ import type {
 	ExecutionOptions,
 	SideCallUsageReport,
 	StreamChunk,
+	ThreadTitleUpdate,
 	Workspace,
 } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
@@ -93,6 +94,7 @@ describe('onBeforeFinalize', () => {
 			streamError?: Error;
 			expectedError?: Error;
 			workspace?: Workspace;
+			fileResourceId?: string;
 		} = {},
 	) {
 		const executions = mock<AgentExecutionService>();
@@ -133,6 +135,7 @@ describe('onBeforeFinalize', () => {
 				toolRegistry: new Map(),
 				mcpServerAttributions: new Map(),
 				context: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+				...(options.fileResourceId ? { fileResourceId: options.fileResourceId } : {}),
 				onBeforeFinalize,
 				onRecorderCreated: options.onRecorderCreated,
 				prepare: async () => turn,
@@ -169,6 +172,21 @@ describe('onBeforeFinalize', () => {
 			expect(sandboxFiles.syncOutputs.mock.invocationCallOrder[0]).toBeLessThan(
 				onBeforeFinalize.mock.invocationCallOrder[0],
 			);
+		});
+
+		it('stores the outputs under the file resource of the turn', async () => {
+			const workspace = mock<Workspace>();
+			const { sandboxFiles } = await runTurn(toolChunks('workspace_write_file'), {
+				workspace,
+				fileResourceId: 'system-chat:user-1',
+			});
+
+			expect(sandboxFiles.syncOutputs).toHaveBeenCalledWith(workspace, {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				resourceId: 'system-chat:user-1',
+			});
 		});
 
 		it('does not sync a turn that did not use the workspace', async () => {
@@ -387,6 +405,85 @@ describe('onBeforeFinalize', () => {
 		});
 
 		expect(executions.finalizeExecution).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('onThreadTitle', () => {
+	const update: ThreadTitleUpdate = {
+		threadId: 'thread-1',
+		title: 'Berlin rain alert',
+		emoji: '🌧️',
+	};
+
+	/** Run one admitted turn whose fake runtime reports a stored title while it runs. */
+	async function runTurn(callerOnThreadTitle?: (update: ThreadTitleUpdate) => void) {
+		const executions = mock<AgentExecutionService>();
+		executions.finalizeExecution.mockResolvedValue('exec-1');
+		executions.getAbortSignal.mockReturnValue(new AbortController().signal);
+		executions.applyGeneratedTitle.mockResolvedValue();
+		const service = new AgentTurnExecutionService(
+			mock<Logger>(),
+			executions,
+			mock<AgentChatExecutionService>(),
+			mock<AgentMessageQueueService>(),
+			mock<AgentMessageSteeringService>(),
+			mock<AgentToolApprovalService>(),
+			mock<AgentKnowledgeUsageTracker>(),
+			mock<AgentSandboxFilesService>(),
+		);
+		const agentInstance = mock<RuntimeAgent>();
+		agentInstance.stream.mockImplementation(async (_input, options) => {
+			await options?.onThreadTitle?.(update);
+			return {
+				stream: new ReadableStream<StreamChunk>({
+					start(controller) {
+						controller.enqueue({ type: 'finish', finishReason: 'stop' });
+						controller.close();
+					},
+				}),
+			} as never;
+		});
+		const recording = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
+		const options = {
+			abortSignal: new AbortController().signal,
+			...(callerOnThreadTitle ? { onThreadTitle: callerOnThreadTitle } : {}),
+		};
+		const turn = {
+			type: 'start',
+			input: 'hello',
+			options,
+			recording,
+		} as unknown as AgentTurnRequest;
+		for await (const _chunk of service.execute({
+			admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
+			agentInstance,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
+			context: recording,
+			prepare: async () => turn,
+		})) {
+			// Read the stream to the end.
+		}
+		return executions;
+	}
+
+	it('stores the title on the thread list and forwards it to the caller', async () => {
+		const callerOnThreadTitle = vi.fn();
+
+		const executions = await runTurn(callerOnThreadTitle);
+
+		expect(executions.applyGeneratedTitle).toHaveBeenCalledWith(
+			{ projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			'Berlin rain alert',
+			'🌧️',
+		);
+		expect(callerOnThreadTitle).toHaveBeenCalledWith(update);
+	});
+
+	it('stores the title when the caller passes no callback', async () => {
+		const executions = await runTurn();
+
+		expect(executions.applyGeneratedTitle).toHaveBeenCalledTimes(1);
 	});
 });
 

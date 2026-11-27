@@ -7,6 +7,12 @@
         "friendly_name": {
             "type": "string"
         },
+        "http_password": {
+            "type": "string"
+        },
+        "http_username": {
+            "type": "string"
+        },
         "id": {
             "type": "integer"
         },
@@ -19,6 +25,9 @@
         "status": {
             "type": "integer"
         },
+        "sub_type": {
+            "type": "string"
+        },
         "timeout": {
             "type": "integer"
         },
@@ -29,5 +38,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

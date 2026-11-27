@@ -7,6 +7,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { ApplyPreviewService } from '../apply-preview.service';
 import type { LocalPackageEntities } from '../local-package-entities.service';
+import type { PromotionCredentialSelectionService } from '../promotion-credential-selection.service';
 import { PromotePreviewService } from '../promote-preview.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import type { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
@@ -49,10 +50,12 @@ describe('PromotionChangeService.getPreview review gate', () => {
 			mock<N8nPackagesService>(),
 			mock<SharedWorkflowRepository>(),
 			reviewGate,
+			mock<PromotionCredentialSelectionService>(),
 		),
 		mock<LocalPackageEntities>(),
 		environmentResolver,
 		mock(),
+		mock<PromotionCredentialSelectionService>(),
 	);
 
 	beforeEach(() => {
@@ -75,13 +78,8 @@ describe('PromotionChangeService.getPreview review gate', () => {
 
 		expect(preview).toEqual({
 			commitSha: null,
-			source: {
-				environmentId: 'env-1',
-				environmentName: 'Staging',
-				providerType: 'gitlab',
-				branchName: 'staging',
-				createBranchOnPromotion: true,
-			},
+			source: { environmentId: 'env-1', branchName: 'staging' },
+			environment: { name: 'Staging', providerType: 'gitlab', createBranchOnPromotion: true },
 			resources: [],
 			dependencies: [],
 			blocker: { code: 'reviewOpen', reviewId: 'review-1', viewerCanRead: true },

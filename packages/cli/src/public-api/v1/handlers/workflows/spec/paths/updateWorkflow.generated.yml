@@ -11,7 +11,7 @@ parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the workflow.
+    description: The ID of the workflow
     name: workflowId
     in: path
   - schema:
@@ -1140,7 +1140,7 @@ responses:
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
-    description: Conflict, e.g. re-publication blocked by an open workflow review (then `reason` and `workflowReviewRequestId` are present; the update itself is still saved as a draft) or a webhook path conflict.
+    description: Conflict, e.g. re-publication blocked by an open workflow review (then `reason` and `workflowReviewRequestId` are present), re-publication of a version without an approved review when the instance or the project requires one (then `reason` is `review_required` and `versionId` names the draft), or a webhook path conflict. A blocked re-publication still saves the update as a draft. To save without publishing, set `publishIfActive=false`.
     content:
       application/json:
         schema:
@@ -1153,7 +1153,10 @@ responses:
               enum:
                 - review_pending
                 - changes_requested
+                - review_required
             workflowReviewRequestId:
+              type: string
+            versionId:
               type: string
           required:
             - message

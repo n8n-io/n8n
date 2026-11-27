@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useTemplateRef, watch, type Ref } from 'vue';
+import { computed, ref, useId, useTemplateRef, watch, type Ref } from 'vue';
 import {
 	base64EncodedSize,
 	exceedsAttachmentSizeLimit,
@@ -8,7 +8,13 @@ import {
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nIconButton, N8nChatInput, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nIconButton,
+	N8nChatInput,
+	N8nText,
+	N8nTooltip,
+	N8nVisuallyHidden,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
 import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
@@ -74,6 +80,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const voiceReasonId = useId();
 const toast = useToast();
 const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
@@ -142,6 +149,11 @@ function focusInput(options?: FocusOptions) {
 /** Returns the native textarea while the component is mounted. */
 function getInputElement(): HTMLTextAreaElement | undefined {
 	return inputRef.value?.getInputElement();
+}
+
+/** Returns the element around the send and stop button while the component is mounted. */
+function getSendStopButtonElement(): HTMLElement | undefined {
+	return inputRef.value?.getSendStopButtonElement();
 }
 
 /**
@@ -240,6 +252,7 @@ function handleSubmit() {
 defineExpose({
 	focus: focusInput,
 	getInputElement,
+	getSendStopButtonElement,
 	openFilePicker: handleAttach,
 });
 </script>
@@ -310,12 +323,14 @@ defineExpose({
 				<slot name="right-actions" />
 				<N8nTooltip
 					v-if="showAttach && showAttachButton && acceptedMimeTypes !== undefined"
+					as-child
 					:content="i18n.baseText('chatInputBase.button.attach')"
 					placement="top"
 				>
 					<N8nIconButton
 						variant="ghost"
 						:disabled="disabled || isStreaming"
+						focusable-when-disabled
 						icon="paperclip"
 						icon-size="large"
 						:aria-label="i18n.baseText('chatInputBase.button.attach')"
@@ -323,20 +338,19 @@ defineExpose({
 						@click.stop="handleAttach"
 					/>
 				</N8nTooltip>
-				<N8nTooltip
-					v-if="showVoice && speechInput.isSupported"
-					:content="
+				<N8nTooltip v-if="showVoice && speechInput.isSupported" as-child placement="top">
+					<template #content>{{
 						i18n.baseText(
 							isStreaming
 								? 'chatInputBase.button.dictate.stopResponse'
 								: 'chatInputBase.button.dictate',
 						)
-					"
-					placement="top"
-				>
+					}}</template>
 					<N8nIconButton
 						variant="ghost"
 						:disabled="disabled || isStreaming"
+						:focusable-when-disabled="isStreaming"
+						:aria-describedby="isStreaming ? voiceReasonId : undefined"
 						:icon="speechInput.isListening.value ? 'square' : 'mic'"
 						:class="{ [$style.recording]: speechInput.isListening.value }"
 						icon-size="large"
@@ -347,6 +361,12 @@ defineExpose({
 				</N8nTooltip>
 			</template>
 		</N8nChatInput>
+		<!-- Screen readers do not always open the tooltip, e.g. swipe navigation on touch. -->
+		<N8nVisuallyHidden
+			v-if="showVoice && speechInput.isSupported && isStreaming"
+			:id="voiceReasonId"
+			>{{ i18n.baseText('chatInputBase.button.dictate.stopResponse') }}</N8nVisuallyHidden
+		>
 	</div>
 </template>
 

@@ -106,7 +106,7 @@ export class InstanceAiConfig {
 
 	/**
 	 * Token threshold for the Reflector to condense observations.
-	 * When unset, the threshold is a share of the model's window or of the max window, whichever is smaller.
+	 * When unset, the threshold is 15% of the model's window or of the max window, whichever is smaller.
 	 * When set, this fixed value replaces that share.
 	 */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
@@ -298,15 +298,6 @@ export class InstanceAiConfig {
 	thinkingEnabled: boolean = true;
 
 	/**
-	 * Force-enable canvas-selected-nodes chat context in Instance AI.
-	 * Acts as an operator-level override of the PostHog rollout flag
-	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
-	 * `false` falls back to PostHog.
-	 */
-	@Env('N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED')
-	canvasNodeContextEnabled: boolean = false;
-
-	/**
 	 * Pin every Instance AI run on this instance to one published prompt profile
 	 * (e.g. `concise@1`). Empty keeps the backend experiment assignment.
 	 *
@@ -330,15 +321,6 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_NODE_USAGE_ENABLED')
 	nodeUsageEnabled: boolean = false;
-
-	/**
-	 * Force-enable folder exploration in Instance AI: folder attribution and
-	 * folder scoping on the workflows list tool. Overrides the
-	 * `110_instance_ai_folder_exploration` PostHog flag to on. `false` falls back
-	 * to PostHog.
-	 */
-	@Env('N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED')
-	folderExplorationEnabled: boolean = false;
 
 	/**
 	 * Max orchestrator runs executing concurrently on this process. A new user turn over

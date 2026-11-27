@@ -36,9 +36,17 @@ describe('workflow publication blocker details', () => {
 		},
 	);
 
+	test('accepts the "review_required" reason with the version that needs a review', () => {
+		const details = { reason: 'review_required', versionId: 'version-2' };
+
+		expect(workflowPublishBlockedDetailsSchema.parse(details)).toEqual(details);
+		expect(isWorkflowPublishBlockedDetails(details)).toBe(true);
+	});
+
 	test.each([
 		undefined,
 		{},
+		{ reason: 'review_required' },
 		{ reason: 'approved', workflowReviewRequestId: 'review-1' },
 		{ reason: 'review_pending', workflowReviewRequestId: '' },
 		{

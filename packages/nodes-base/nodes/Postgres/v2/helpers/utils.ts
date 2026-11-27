@@ -6,7 +6,6 @@ import type {
 	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { isRecord } from '@n8n/utils/is-record';
 import { NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
 
 import type {
@@ -228,59 +227,6 @@ export function addStartAfterClause(
 	];
 }
 
-export function getStartAfter(ctx: IExecuteFunctions, itemIndex: number): StartAfter | undefined {
-	const startAfter: unknown = ctx.getNodeParameter('startAfter.values', itemIndex, null);
-	if (!isRecord(startAfter)) return undefined;
-
-	const { column, value } = startAfter;
-	if (typeof column !== 'string' || column === '') {
-		throw new NodeOperationError(ctx.getNode(), 'Choose a column in Start After', {
-			itemIndex,
-			description: 'Start After needs a unique column, for example the primary key.',
-		});
-	}
-
-	if (value === undefined || value === null || value === '') return { column };
-	if (typeof value === 'object') {
-		throw new NodeOperationError(ctx.getNode(), 'The Start After value must be text or a number', {
-			itemIndex,
-			description: `Use the value of "${column}" in the last row of the page before.`,
-		});
-	}
-	if (typeof value === 'number' && Number.isInteger(value) && !Number.isSafeInteger(value)) {
-		throw new NodeOperationError(ctx.getNode(), 'The Start After value is too big to be exact', {
-			itemIndex,
-			description:
-				'n8n cannot keep all digits of a number above 9007199254740991, so the next page can skip rows. In Options, set Output Large-Format Numbers As to Text.',
-		});
-	}
-
-	return { column, value: String(value) };
-}
-
-/**
- * The cursor column must be the first sort key. A key before it changes the
- * order of the rows, so "after the last value" skips rows.
- */
-export function getStartAfterSortRules(
-	node: INode,
-	itemIndex: number,
-	sortRules: SortRule[],
-	column: string,
-): SortRule[] {
-	if (sortRules.length === 0) return [{ column, direction: 'ASC' }];
-	if (sortRules[0].column === column) return sortRules;
-
-	const fix = sortRules.some((rule) => rule.column === column)
-		? `Move "${column}" to the top of Sort.`
-		: `Add "${column}" as the first sort rule, or remove the other sort rules.`;
-
-	throw new NodeOperationError(node, `Sort by "${column}" first`, {
-		itemIndex,
-		description: `Start After pages by "${column}", so "${column}" must be the first sort rule. ${fix}`,
-	});
-}
-
 export function addSortRules(
 	query: string,
 	rules: SortRule[],
@@ -320,22 +266,22 @@ export function addReturning(
 	return [`${query} RETURNING $${replacementIndex}:name`, [...replacements, outputColumns]];
 }
 
-// Strip SQL comments and string literals so they can't interfere with statement
-// classification. Strings collapse to empty quotes / empty dollar tags so paren and
-// semicolon structure outside strings is preserved.
+// Mask SQL comments and quoted text so they cannot interfere with statement
+// classification or query parameter matching. The output keeps the same length so
+// matches can be mapped back to the original query.
 
 // `\` is an escape only inside E-strings (`E'...'`). For standard strings, with
 // `standard_conforming_strings = on` (PG default since 9.1), `\` is a literal.
 // The `E` prefix must be a standalone token, not the trailing char of an identifier.
 const isEStringPrefix = (query: string, quoteIndex: number): boolean => {
-	if (quoteIndex === 0) return false;
 	const prev = query[quoteIndex - 1];
-	if (prev !== 'E' && prev !== 'e') return false;
-	if (quoteIndex === 1) return true;
-	return !/[A-Za-z0-9_]/.test(query[quoteIndex - 2]);
+	return (prev === 'E' || prev === 'e') && !isPostgresIdentifierCharacter(query[quoteIndex - 2]);
 };
 
-const stripStringsAndComments = (query: string): string => {
+const isPostgresIdentifierCharacter = (character: string | undefined): boolean =>
+	character !== undefined && /[A-Za-z0-9_$\u0080-\uFFFF]/.test(character);
+
+const stripStringsAndComments = (query: string, treatBackslashesAsEscapes = false): string => {
 	const len = query.length;
 	let out = '';
 	let i = 0;
@@ -344,21 +290,35 @@ const stripStringsAndComments = (query: string): string => {
 		const next = query[i + 1];
 
 		if (c === '/' && next === '*') {
-			const end = query.indexOf('*/', i + 2);
-			i = end === -1 ? len : end + 2;
-			out += ' ';
+			const start = i;
+			let depth = 1;
+			i += 2;
+			while (i < len && depth > 0) {
+				if (query[i] === '/' && query[i + 1] === '*') {
+					depth++;
+					i += 2;
+				} else if (query[i] === '*' && query[i + 1] === '/') {
+					depth--;
+					i += 2;
+				} else {
+					i++;
+				}
+			}
+			out += ' '.repeat(i - start);
 			continue;
 		}
 
 		if (c === '-' && next === '-') {
-			const newline = query.indexOf('\n', i + 2);
-			i = newline === -1 ? len : newline;
-			out += ' ';
+			const start = i;
+			i += 2;
+			while (i < len && query[i] !== '\n' && query[i] !== '\r') i++;
+			out += ' '.repeat(i - start);
 			continue;
 		}
 
 		if (c === "'") {
-			const allowBackslashEscape = isEStringPrefix(query, i);
+			const start = i;
+			const allowBackslashEscape = treatBackslashesAsEscapes || isEStringPrefix(query, i);
 			i++;
 			while (i < len) {
 				if (allowBackslashEscape && query[i] === '\\' && i + 1 < len) {
@@ -375,31 +335,38 @@ const stripStringsAndComments = (query: string): string => {
 				}
 				i++;
 			}
-			out += "''";
+			out += `'${' '.repeat(i - start - 1)}`;
 			continue;
 		}
 
 		if (c === '"') {
+			const start = i;
 			i++;
-			while (i < len && query[i] !== '"') {
-				if (query[i] === '\\' && i + 1 < len) {
-					i += 2;
-					continue;
+			while (i < len) {
+				if (query[i] === '"') {
+					if (query[i + 1] === '"') {
+						i += 2;
+						continue;
+					}
+					i++;
+					break;
 				}
 				i++;
 			}
-			if (i < len) i++;
-			out += '""';
+			out += `"${' '.repeat(i - start - 1)}`;
 			continue;
 		}
 
 		if (c === '$') {
-			const tagMatch = query.slice(i).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/);
+			const tagMatch = isPostgresIdentifierCharacter(query[i - 1])
+				? null
+				: query.slice(i).match(/^\$(?:[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF]*)?\$/);
 			if (tagMatch) {
+				const start = i;
 				const tag = tagMatch[0];
 				const end = query.indexOf(tag, i + tag.length);
 				i = end === -1 ? len : end + tag.length;
-				out += ' ';
+				out += `$${' '.repeat(i - start - 1)}`;
 				continue;
 			}
 		}
@@ -408,6 +375,37 @@ const stripStringsAndComments = (query: string): string => {
 		i++;
 	}
 	return out;
+};
+
+const POSITIONAL_PARAMETER_PATTERN =
+	/(?<![A-Za-z0-9_$\u0080-\uFFFF])\$[1-9][0-9]{0,16}(?![0-9])(?:(?:\^|~|#)|:(?:raw|alias|name|json|csv|list|value))?(?![A-Za-z0-9_$\u0080-\uFFFF]|:[A-Za-z0-9_$\u0080-\uFFFF])/g;
+
+export const formatPostgresQuery = (
+	pgp: PgpClient,
+	query: QueryWithValues,
+	standardConformingStrings: boolean,
+): string => {
+	if (query.values === undefined) return query.query;
+
+	const queryMask = stripStringsAndComments(query.query, !standardConformingStrings);
+
+	return query.query.replace(POSITIONAL_PARAMETER_PATTERN, (match, offset: number) => {
+		const end = offset + match.length;
+		const isExecutable = queryMask.slice(offset, end) === match;
+
+		return isExecutable ? pgp.as.format(match, query.values, query.options) : match;
+	});
+};
+
+type QueryExecutor = {
+	one<T>(query: string): Promise<T>;
+};
+
+const usesStandardConformingStrings = async (executor: QueryExecutor): Promise<boolean> => {
+	const result = await executor.one<{ standard_conforming_strings: 'on' | 'off' }>(
+		'SHOW standard_conforming_strings',
+	);
+	return result.standard_conforming_strings === 'on';
 };
 
 // Split on `;` outside of string literals. Since `stripStringsAndComments` already
@@ -473,10 +471,20 @@ export function configureQueryRunner(
 			options.operation === 'select' ? [] : [{ json: { success: true } }];
 
 		const queryBatching = (options.queryBatching as QueryMode) || 'single';
+		const useSafeQueryParameters = (options.nodeVersion as number) >= 2.9;
 
 		if (queryBatching === 'single') {
 			try {
-				returnData = (await db.multi(pgp.helpers.concat(queries)))
+				const queryResults = useSafeQueryParameters
+					? await db.task(async (task) => {
+							const standardConformingStrings = await usesStandardConformingStrings(task);
+							const queriesToRun = queries.map((query) =>
+								formatPostgresQuery(pgp, query, standardConformingStrings),
+							);
+							return await task.multi(pgp.helpers.concat(queriesToRun));
+						})
+					: await db.multi(pgp.helpers.concat(queries));
+				returnData = queryResults
 					.map((result, i) => {
 						return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
 							itemData: { item: i },
@@ -522,7 +530,14 @@ export function configureQueryRunner(
 						const values = queries[i].values;
 
 						let transactionResults;
-						if ((options?.nodeVersion as number) < 2.3) {
+						if (useSafeQueryParameters) {
+							const standardConformingStrings = await usesStandardConformingStrings(transaction);
+							transactionResults = (
+								await transaction.multi(
+									formatPostgresQuery(pgp, queries[i], standardConformingStrings),
+								)
+							).flat();
+						} else if ((options?.nodeVersion as number) < 2.3) {
 							transactionResults = await transaction.any(query, values);
 						} else {
 							transactionResults = (await transaction.multi(query, values)).flat();
@@ -562,7 +577,12 @@ export function configureQueryRunner(
 						const values = queries[i].values;
 
 						let transactionResults;
-						if ((options?.nodeVersion as number) < 2.3) {
+						if (useSafeQueryParameters) {
+							const standardConformingStrings = await usesStandardConformingStrings(task);
+							transactionResults = (
+								await task.multi(formatPostgresQuery(pgp, queries[i], standardConformingStrings))
+							).flat();
+						} else if ((options?.nodeVersion as number) < 2.3) {
 							transactionResults = await task.any(query, values);
 						} else {
 							transactionResults = (await task.multi(query, values)).flat();

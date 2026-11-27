@@ -19,9 +19,9 @@ import {
 	describePromptProfile,
 	createDomainAccessTracker,
 	createSetupItemsEmitter,
+	createWorkflowDraftPublisher,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
-	threadTargetsAgent,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
@@ -65,6 +65,9 @@ import {
 	isAssistantCreditBalanceExhausted,
 } from './assistant-credits';
 
+/** Marks traces of instances that opted out, so the training pipeline can skip them. */
+const MODEL_TRAINING_OPT_OUT_TAG = 'model-training-opt-out';
+
 /**
  * Normalises `N8N_INSTANCE_AI_PROMPT_VERSION`. Blank and absent both mean "no
  * pin" and must become `undefined`: passing `''` on to `resolvePromptProfile`
@@ -97,6 +100,7 @@ export interface AssistantTurnEnvironment {
 	instanceContextEnabled: boolean;
 	nodeUsageEnabled: boolean;
 	skillScope: InstanceAiSkillScope;
+	preferencesNoteVariant?: string;
 }
 
 export interface AssistantTurnEnvironmentParams {
@@ -112,8 +116,6 @@ export interface AssistantTurnEnvironmentParams {
 	instanceContextGates?: InstanceContextGates;
 	experimentGates?: InstanceAiFeatureFlags;
 	tracing?: InstanceAiTraceContext;
-	/** The message attaches an agent, as the Agent Builder panel does before it binds its thread. */
-	attachesAgent?: boolean;
 }
 
 export type AssistantProxyRunConfig = Awaited<
@@ -178,6 +180,10 @@ export class AssistantTurnEnvironmentFactory {
 	}> {
 		if (!this.aiService.isProxyEnabled()) return {};
 
+		// Tag the traces when the setting cannot be read, so a read error never fails the turn.
+		const allowModelTraining = await this.aiUsageService
+			.isModelTrainingAllowed()
+			.catch(() => false);
 		const client = await this.aiService.getClient();
 		const proxyBaseUrl = client.getApiProxyBaseUrl();
 		const tokenManager = new ProxyTokenManager(async () => {
@@ -204,6 +210,7 @@ export class AssistantTurnEnvironmentFactory {
 					...(await tokenManager.getAuthHeaders()),
 					...featureHeaders,
 				}),
+				...(allowModelTraining ? {} : { traceTags: [MODEL_TRAINING_OPT_OUT_TAG] }),
 			},
 		};
 	}
@@ -271,6 +278,8 @@ export class AssistantTurnEnvironmentFactory {
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 
 		const proxyContext = { runId, threadId };
+		const baseModelFetch = this.modelService.getModelFetch();
+		const labeledModelFetch = this.modelService.getLabeledModelFetch(proxyContext);
 		const modelId =
 			proxyBaseUrl && tokenManager
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
@@ -285,12 +294,15 @@ export class AssistantTurnEnvironmentFactory {
 		const {
 			configEvalsEnabled,
 			conversationHistoryEnabled,
+			draftWorkflowPreviewEnabled,
 			conciseStyleEnabled,
 			setupPanelEnabled,
 			setupPanelVariant,
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
+			skillSourcesEnabled,
+			preferencesNoteVariant,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
 		// Resumed segments use the gates bound to the original turn.
@@ -334,10 +346,12 @@ export class AssistantTurnEnvironmentFactory {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
+			skillSourcesEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),
-			modelFetch: this.modelService.getModelFetch(),
+			modelFetch: labeledModelFetch,
+			catalogFetch: baseModelFetch,
 			allowSendingParameterValues,
 			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
 		});
@@ -360,12 +374,7 @@ export class AssistantTurnEnvironmentFactory {
 		// Auto mode reviews an approval before its card shows. Manual mode keeps every card,
 		// and keeps a user's MCP settings as they are. In Auto, a user's MCP settings can only
 		// make the admin's stricter, so an admin's Ask first still reaches the review.
-		// Auto mode is not part of the Agent Builder: a thread that builds or edits an agent
-		// keeps every card.
-		const buildsAgent = params.attachesAgent === true || threadTargetsAgent(thread?.metadata);
-		const approvalMode = buildsAgent
-			? 'manual'
-			: this.approvalModeService.resolveMode(user, gates.approvalModesEnabled);
+		const approvalMode = this.approvalModeService.resolveMode(user, gates.approvalModesEnabled);
 		if (gates.approvalModesEnabled) context.approvalMode = approvalMode;
 		context.enforceAdminMcpPermissions = approvalMode === 'auto';
 		if (approvalMode === 'auto') {
@@ -383,7 +392,8 @@ export class AssistantTurnEnvironmentFactory {
 						tokenManager,
 						proxyContext,
 					}),
-				modelFetch: this.modelService.getModelFetch(),
+				modelFetch: labeledModelFetch,
+				requestLabels: this.instanceAiConfig.modelRequestLabels,
 				getTracing: () => orchestrationContext.tracing,
 			});
 		}
@@ -553,7 +563,7 @@ export class AssistantTurnEnvironmentFactory {
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
 			...(tracing ? { tracing } : {}),
-			modelFetch: this.modelService.getModelFetch(),
+			modelFetch: labeledModelFetch,
 			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
 			eventBus: runtime.eventBus,
 			logger: this.logger,
@@ -595,7 +605,6 @@ export class AssistantTurnEnvironmentFactory {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			skills: skills.source,
-			mapSkillEventForDisplay: skills.mapSkillEventForDisplay,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			cancelBackgroundTask: runtime.cancelBackgroundTask,
 			touchRun: runtime.touchRun,
@@ -607,6 +616,15 @@ export class AssistantTurnEnvironmentFactory {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 		};
+		if (draftWorkflowPreviewEnabled) {
+			context.workflowDraftPublisher = createWorkflowDraftPublisher({
+				eventBus: runtime.eventBus,
+				threadId,
+				runId,
+				agentId: orchestratorAgentId(runId),
+				context,
+			});
+		}
 
 		const { cloudBrowser } = runtime;
 		if (adminSettings.cloudBrowserEnabled && cloudBrowser && (await cloudBrowser.isAvailable())) {
@@ -642,6 +660,7 @@ export class AssistantTurnEnvironmentFactory {
 			instanceContextEnabled,
 			nodeUsageEnabled,
 			skillScope,
+			preferencesNoteVariant,
 		};
 	}
 

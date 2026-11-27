@@ -2,9 +2,11 @@
 import type { McpDiscoveryEventMap } from '@/modules/mcp-discovery/events';
 // EOF Experiment cleanup
 import type { ExecutionLedgerMetricsEventMap } from '@n8n/backend-module-execution-ledger';
+import type { ExecutionLimitsMetricsEventMap } from '@n8n/backend-module-execution-limits';
 import { EventService, type EventMap } from '@n8n/backend-services';
 import { expectTypeOf } from 'vitest';
 
+import type { AgentMetricsEventMap } from '../maps/agent-metrics.event-map';
 import type { AiEventMap } from '../maps/ai.event-map';
 import type { ExecutionDataEventMap } from '../maps/execution-data.event-map';
 import type { InstanceAiEventMap } from '../maps/instance-ai.event-map';
@@ -24,11 +26,13 @@ describe('CLI event map', () => {
 			AiEventMap &
 			ExecutionDataEventMap &
 			InstanceAiEventMap &
+			AgentMetricsEventMap &
 			McpPostSaveMetricsEventMap &
 			WorkflowPublicationMetricsEventMap &
 			PollTriggerMetricsEventMap &
 			SystemTaskMetricsEventMap &
-			ExecutionLedgerMetricsEventMap;
+			ExecutionLedgerMetricsEventMap &
+			ExecutionLimitsMetricsEventMap;
 
 		expectTypeOf<EventMap>().toMatchTypeOf<CliEventMap>();
 		expectTypeOf<CliEventMap>().toMatchTypeOf<EventMap>();

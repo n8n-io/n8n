@@ -16,9 +16,6 @@ on:
       ENCRYPTION_KEY:
         description: 'Encryption key for n8n operations.'
         required: true
-      CURRENTS_RECORD_KEY:
-        description: 'Currents record key for test reporting. Empty on fork PRs.'
-        required: false
 
 env:
   NODE_OPTIONS: --max-old-space-size=3072
@@ -27,6 +24,9 @@ jobs:
   run_workflow_tests:
     name: Run Workflow Tests with Snapshots
     runs-on: blacksmith-2vcpu-ubuntu-2204
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -36,6 +36,14 @@ jobs:
       - name: Set up Environment
         uses: ./.github/actions/setup-nodejs
 
+      - name: Authenticate with Currents
+        if: vars.CURRENTS_OIDC_POLICY_ID != ''
+        env:
+          CURRENTS_OIDC_POLICY_ID: ${{ vars.CURRENTS_OIDC_POLICY_ID }}
+        run: |
+          KEY=$(pnpm --silent --filter=n8n-playwright exec currents ci auth get-record-key --oidc-provider github-actions)
+          echo "CURRENTS_RECORD_KEY=$KEY" >> "$GITHUB_ENV"
+
       - name: Set up Workflow Tests
         run: pnpm --filter=n8n-playwright test:workflows:setup
         env:
@@ -44,12 +52,14 @@ jobs:
       - name: Run Workflow Tests
         run: pnpm --filter=n8n-playwright test:workflows --workers 4
         env:
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           CURRENTS_PROJECT_ID: 'mpLFH9'
 
       - name: Run Workflow Schema Tests
         if: ${{ inputs.compare_schemas == 'true' }}
         run: pnpm --filter=n8n-playwright test:workflows:schema
         env:
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           CURRENTS_PROJECT_ID: 'mpLFH9'
+
+      - name: Revoke Currents OIDC credential
+        if: ${{ always() && env.CURRENTS_RECORD_KEY != '' }}
+        run: pnpm --filter=n8n-playwright exec currents ci auth revoke || true

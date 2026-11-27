@@ -17,12 +17,16 @@ export const description: INodeProperties[] = [
 				value: 'analyze',
 				action: 'Analyze audio',
 				description: 'Take in audio and answer questions about it',
+				// Uploads binary inputs and external URLs to the Gemini Files API.
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 			{
 				name: 'Transcribe a Recording',
 				value: 'transcribe',
 				action: 'Transcribe a recording',
 				description: 'Transcribes audio into the text',
+				// Uploads binary inputs and external URLs to the Gemini Files API.
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 		],
 		default: 'transcribe',

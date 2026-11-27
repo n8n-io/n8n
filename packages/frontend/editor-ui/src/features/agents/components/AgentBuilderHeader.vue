@@ -18,6 +18,7 @@ import {
 	N8nIcon,
 	N8nHoverCard,
 	N8nText,
+	useDropdownSearch,
 } from '@n8n/design-system';
 import type { IconOrEmoji, PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
@@ -60,7 +61,7 @@ const emit = defineEmits<{
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 	'open-publish-timeline': [];
-	'setup-task-action': [task: SetupTask<SetupTaskId>];
+	'setup-task-action': [task: SetupTask];
 }>();
 
 const i18n = useI18n();
@@ -120,6 +121,9 @@ const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 		label: a.name,
 	}));
 });
+
+const { filteredItems: filteredSwitcherOptions, handleSearch: onSwitcherSearch } =
+	useDropdownSearch(switcherOptions, { isSearchable: (item) => !item.disabled });
 
 function onSwitcherSelect(id: string) {
 	if (id === '__empty__') return;
@@ -183,9 +187,13 @@ function onMenuSelect(id: string) {
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
-						:items="switcherOptions"
+						:items="filteredSwitcherOptions"
 						placement="bottom-start"
 						data-testid="agent-header-switcher"
+						searchable
+						:search-placeholder="i18n.baseText('generic.search')"
+						:empty-text="i18n.baseText('agents.noResults')"
+						@search="onSwitcherSearch"
 						@select="onSwitcherSelect"
 					>
 						<template #trigger>

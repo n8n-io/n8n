@@ -14,12 +14,37 @@ import { getTooltip } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
+const { customMcpServersEnabled } = vi.hoisted(() => ({ customMcpServersEnabled: vi.fn() }));
+vi.mock('@/experiments/customMcpServers/customMcpServersEnabled', () => ({
+	customMcpServersEnabled,
+}));
+
 const totalOptions = INSTANCE_SCOPE_GROUP_LIST.reduce((sum, g) => sum + g.options.length, 0);
 
 describe('ScopeGroupSelector', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
-		useSettingsStore().settings.activeModules = ['apps'];
+		useSettingsStore().settings.activeModules = ['apps', 'mcp-servers'];
+		customMcpServersEnabled.mockReturnValue(true);
+	});
+
+	it.each([
+		['the module is inactive', [], true],
+		['the flag is off', ['mcp-servers'], false],
+	])('hides MCP server options when %s', (_case, activeModules, flag) => {
+		useSettingsStore().settings.activeModules = activeModules;
+		customMcpServersEnabled.mockReturnValue(flag);
+		const { queryByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
+
+		expect(queryByTestId('scope-option-mcpServer-view')).not.toBeInTheDocument();
+		expect(queryByTestId('scope-option-mcpServer-manage')).not.toBeInTheDocument();
+	});
+
+	it('shows MCP server options when the module is active and the flag is on', () => {
+		const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
+
+		expect(getByTestId('scope-option-mcpServer-view')).toBeInTheDocument();
+		expect(getByTestId('scope-option-mcpServer-manage')).toBeInTheDocument();
 	});
 
 	it('hides App options when the module is inactive', () => {

@@ -39,6 +39,7 @@ import {
 	type SideIndex,
 	parseBranchJson,
 	parsePackageManifest,
+	previewEnvironment,
 	previewSource,
 	scopeManifestToProject,
 } from './promotion-preview';
@@ -46,6 +47,7 @@ import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { ApplyPreviewService } from './apply-preview.service';
 import { PromotePreviewService } from './promote-preview.service';
 import { exportInstancePackage, type InstancePackage } from './instance-package';
+import { PromotionCredentialSelectionService } from './promotion-credential-selection.service';
 import {
 	LocalPackageEntities,
 	type LocalDataTable,
@@ -70,6 +72,7 @@ export class PromotionChangeService {
 		private readonly localEntities: LocalPackageEntities,
 		private readonly environmentResolver: PromotionEnvironmentResolver,
 		private readonly projectRepository: ProjectRepository,
+		private readonly credentialSelection: PromotionCredentialSelectionService,
 	) {}
 
 	/**
@@ -105,7 +108,12 @@ export class PromotionChangeService {
 			exportInstancePackage(this.packagesService, user, [projectId]),
 		]);
 		const preview = await this.applyPreviewService.build({ user, projectId, files, instance });
-		return { commitSha: branch.commitSha, source: previewSource(branch.input), ...preview };
+		return {
+			commitSha: branch.commitSha,
+			source: previewSource(branch.input),
+			environment: previewEnvironment(branch.input),
+			...preview,
+		};
 	}
 
 	/**
@@ -116,10 +124,10 @@ export class PromotionChangeService {
 		user: User,
 		environmentId: string,
 	): Promise<PromotionInstanceApplyPreview> {
-		const { commitSha, source, files } =
+		const { commitSha, source, environment, files } =
 			await this.promotionsService.readInstanceApplyPackage(environmentId);
 		const preview = await this.applyPreviewService.buildInstance({ user, files });
-		return { commitSha, source, ...preview };
+		return { commitSha, source, environment, ...preview };
 	}
 
 	/**
@@ -148,6 +156,11 @@ export class PromotionChangeService {
 						paths,
 					);
 		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
+		// Promote lists the project's own credentials that the user can select. Details show no other.
+		const selectableCredentialIds =
+			direction === 'promote'
+				? await this.credentialSelection.findSelectableIds(user, projectId)
+				: [];
 		const [branchFiles, instance] = await Promise.all([
 			readBranch([manifestPath]),
 			exportInstancePackage(this.packagesService, user, [projectId], {
@@ -155,12 +168,25 @@ export class PromotionChangeService {
 				keepContent: (path) =>
 					requestedIds.has(entityIdOfPath(path)) ||
 					path.includes(`/${PACKAGE_ENTITY_LAYOUT.variables.directory}/`),
+				// Promote lists the project's own credentials, so their details need them in the export.
+				// Only the requested credentials need an export, because the content of the others is dropped.
+				credentialIds: selectableCredentialIds.filter((id) => requestedIds.has(id)),
 			}),
 		]);
 		const branchManifest = parseBranchManifest(branchFiles.get(manifestPath), projectId);
-		const branchIndex = indexSide({ manifest: branchManifest, blobByPath: new Map() }, projectId);
+		const ownedCredentials = direction === 'promote';
+		const visibleCredentialIds = new Set(selectableCredentialIds);
+		const branchIndex = indexSide(
+			{ manifest: branchManifest, blobByPath: new Map(), ownedCredentials, visibleCredentialIds },
+			projectId,
+		);
 		const instanceIndex = indexSide(
-			{ manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
+			{
+				manifest: instance.manifest,
+				blobByPath: blobsByPath(instance.files),
+				ownedCredentials,
+				visibleCredentialIds,
+			},
 			projectId,
 		);
 		const hiddenKeys = await unreadableCredentialKeys(user, keys, branchIndex);

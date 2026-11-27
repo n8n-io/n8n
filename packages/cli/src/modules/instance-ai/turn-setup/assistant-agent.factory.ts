@@ -1,7 +1,7 @@
 import { AgentEvent } from '@n8n/agents';
 import type { AgentEventData, MemoryTaskUsageReport } from '@n8n/agents';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { TelemetryProxy } from '@n8n/backend-services';
+import { PushProxy, TelemetryProxy } from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -21,7 +21,6 @@ import { ErrorReporter } from 'n8n-core';
 
 import { formatPreviewSessionContext } from '@/modules/agents/format-agent-session-context';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { Push } from '@/push';
 
 import { canAccessAgentTestHandoff } from '../agent-test-handoff';
 import { getAgentContextService, isAgentsAccessEnabled } from '../agents-access';
@@ -79,7 +78,7 @@ export class AssistantAgentFactory {
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly errorReporter: ErrorReporter,
 		private readonly telemetry: TelemetryProxy,
-		private readonly push: Push,
+		private readonly push: PushProxy,
 		private readonly modelService: InstanceAiModelService,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -298,16 +297,10 @@ export class AssistantAgentFactory {
 		generateTitle = false,
 	): InstanceAiMemoryConfig {
 		return {
-			// Titles run on the utility model, like the observer and the reflector.
+			// Titles run on the utility model, like the observer and the reflector. The
+			// run does not wait for the title: the host stores and pushes it when it is ready.
 			...(generateTitle
-				? {
-						titleGeneration: {
-							...(utilityModelId ? { model: utilityModelId } : {}),
-							// The host copies the title to the thread list when the run ends, so the
-							// title must be saved by then to show after the first turn.
-							sync: true,
-						},
-					}
+				? { titleGeneration: { ...(utilityModelId ? { model: utilityModelId } : {}) } }
 				: {}),
 			observationalMemory: {
 				model: utilityModelId,

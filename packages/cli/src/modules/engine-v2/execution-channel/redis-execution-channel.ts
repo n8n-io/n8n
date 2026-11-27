@@ -3,6 +3,8 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { ExecutionChannelTopic } from '@n8n/engine';
 
+import type { RedisChannelPublisher } from './redis-execution-channel-publisher';
+
 export type RedisExecutionChannelNameGenerator = (
 	topic: ExecutionChannelTopic,
 	executionId: string,
@@ -18,16 +20,17 @@ async function createChannelNameGenerator(): Promise<RedisExecutionChannelNameGe
 	return (topic, executionId) => `${prefix}:engine-v2-${topic}:${executionId}`;
 }
 
-/** Creates the data plane end of the Redis execution channel. */
-export async function createRedisExecutionChannelPublisher(logger: Logger) {
-	const { RedisClientService } = await import('@n8n/backend-services');
+/**
+ * Creates the data plane end of the Redis execution channel. It disconnects
+ * `client` when it stops.
+ */
+export async function createRedisExecutionChannelPublisher(
+	client: RedisChannelPublisher,
+	logger: Logger,
+) {
 	const { RedisExecutionChannelPublisher } = await import('./redis-execution-channel-publisher.js');
 
-	return new RedisExecutionChannelPublisher(
-		Container.get(RedisClientService).createClient({ type: 'publisher(n8n)' }),
-		await createChannelNameGenerator(),
-		logger,
-	);
+	return new RedisExecutionChannelPublisher(client, await createChannelNameGenerator(), logger);
 }
 
 /** Creates and starts the control plane end of the Redis execution channel. */

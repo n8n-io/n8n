@@ -1,0 +1,45 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"campaignId": {
+			"type": "string"
+		},
+		"campaignName": {
+			"type": "string"
+		},
+		"companyName": {
+			"type": "string"
+		},
+		"createdAt": {
+			"type": "string"
+		},
+		"email": {
+			"type": "string"
+		},
+		"firstName": {
+			"type": "string"
+		},
+		"lastName": {
+			"type": "string"
+		},
+		"leadEmail": {
+			"type": "string"
+		},
+		"leadFirstName": {
+			"type": "string"
+		},
+		"leadId": {
+			"type": "string"
+		},
+		"leadLastName": {
+			"type": "string"
+		},
+		"sequenceStep": {
+			"type": "number"
+		},
+		"type": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

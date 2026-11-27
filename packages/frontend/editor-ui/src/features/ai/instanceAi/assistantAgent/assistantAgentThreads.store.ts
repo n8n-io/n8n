@@ -1,4 +1,4 @@
-import type { SystemAgentThreadSummary } from '@n8n/api-types';
+import type { PushPayload, SystemAgentThreadSummary } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -105,13 +105,20 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		openedThreads.value.push(thread);
 	}
 
-	/** Loads and adds a thread that the store does not hold yet. */
-	async function loadThread(threadId: string): Promise<void> {
+	/**
+	 * Loads and adds a thread that the store does not hold yet. A new thread can load
+	 * while its first message is still queued, before the server has its preview. Pass
+	 * the sent text as `firstMessage` so that the lists show it until the title arrives.
+	 */
+	async function loadThread(threadId: string, firstMessage?: string): Promise<void> {
 		if (threadsById.value.has(threadId)) return;
 		try {
-			addOpenedThread(
-				await getSystemAgentThread(rootStore.restApiContext, ASSISTANT_AGENT_ID, threadId),
+			const thread = await getSystemAgentThread(
+				rootStore.restApiContext,
+				ASSISTANT_AGENT_ID,
+				threadId,
 			);
+			addOpenedThread({ ...thread, firstMessage: thread.firstMessage ?? firstMessage ?? null });
 		} catch (error) {
 			console.error('Failed to load Assistant agent thread', error);
 		}
@@ -152,6 +159,28 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		}
 	}
 
+	/**
+	 * Shows a title that title generation stored, from its push. The title can come
+	 * while the first turn still runs, so the lists do not wait for the turn to end.
+	 * A rename in this session still wins, through `renamedTitles`.
+	 */
+	function applyGeneratedTitle({
+		agentId,
+		threadId,
+		title,
+	}: PushPayload<'agentThreadTitleUpdated'>): void {
+		if (agentId !== ASSISTANT_AGENT_ID || deletedThreadIds.value.has(threadId)) return;
+		if (!threadsById.value.has(threadId)) {
+			// The lists do not hold the thread yet. Its load returns the stored title.
+			void loadThread(threadId);
+			return;
+		}
+		const retitle = (threads: SystemAgentThreadSummary[]) =>
+			threads.map((thread) => (thread.id === threadId ? { ...thread, title } : thread));
+		recentThreads.value = retitle(recentThreads.value);
+		openedThreads.value = retitle(openedThreads.value);
+	}
+
 	/** The credit total of a thread, or `undefined` before its first claim. */
 	function threadCreditsUsed(threadId: string): number | undefined {
 		return creditsUsed.value.get(threadId);
@@ -166,17 +195,22 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		if (current === undefined || total > current) creditsUsed.value.set(threadId, total);
 	}
 
-	/** Loads the stored credit total of a thread, so the total shows after a reload. */
-	async function loadThreadCredits(threadId: string): Promise<void> {
+	/**
+	 * Loads the stored credit total of a thread, so the total shows after a reload.
+	 * Returns `false` when the load failed, so the caller does not read a missing total as zero.
+	 */
+	async function loadThreadCredits(threadId: string): Promise<boolean> {
 		try {
 			const { creditsUsed: total } = await fetchAssistantAgentThreadCredits(
 				rootStore.restApiContext,
 				threadId,
 			);
 			if (total !== null) setThreadCreditsUsed(threadId, total);
+			return true;
 		} catch (error) {
 			// Best effort: the header shows no thread total.
 			console.error('Failed to load Assistant agent thread credits', error);
+			return false;
 		}
 	}
 
@@ -193,6 +227,7 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		loadThread,
 		deleteThread,
 		renameThread,
+		applyGeneratedTitle,
 		threadCreditsUsed,
 		setThreadCreditsUsed,
 		loadThreadCredits,

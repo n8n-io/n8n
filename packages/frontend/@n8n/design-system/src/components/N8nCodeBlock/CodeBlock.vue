@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useResizeObserver } from '@vueuse/core';
+import { useClipboard, useResizeObserver } from '@vueuse/core';
 import { ElNotification as Notification } from 'element-plus';
 import hljs from 'highlight.js/lib/core';
 import * as xss from 'xss';
@@ -10,6 +10,7 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 
 
 import { CODE_BLOCK_LANGUAGES, type CodeBlockEmits, type CodeBlockProps } from './CodeBlock.types';
 import { useI18n } from '../../composables/useI18n';
+import { useScrollEdges } from '../../composables/useScrollEdges';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
@@ -31,6 +32,11 @@ const props = withDefaults(defineProps<Omit<CodeBlockProps, 'collapsed'>>(), {
 const emit = defineEmits<Omit<CodeBlockEmits, 'update:collapsed'>>();
 const collapsed = defineModel<boolean>('collapsed', { default: true });
 const preRef = useTemplateRef<HTMLPreElement>('pre');
+const { scrollMaskAttrs, canScrollTop, canScrollBottom } = useScrollEdges(preRef, {
+	axis: 'vertical',
+});
+/** The preview fade stays until the block can scroll. */
+const showsPreviewFade = computed(() => !canScrollTop.value && !canScrollBottom.value);
 const explicitHeight = ref<string>();
 const isCollapsible = ref(false);
 const { t } = useI18n();
@@ -89,8 +95,8 @@ const expandButtonLabel = computed(() =>
 	collapsed.value ? t('codeBlock.expand') : t('codeBlock.collapse'),
 );
 const expandButtonIcon = computed(() => (collapsed.value ? 'arrow-down' : 'arrow-up'));
-const isClipboardAvailable =
-	typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function';
+// The legacy fallback copies on origins without the async Clipboard API, such as plain HTTP.
+const clipboard = useClipboard({ legacy: true });
 
 /** Here we check if the collapsible control is needed.
  * Only if we exceed the maxHeight (default: 280px) do we show the Expand/Collapse toggle
@@ -108,7 +114,7 @@ watch(() => [preRef.value, props.code, props.maxHeight], measureCollapsibility, 
 
 async function copyCode() {
 	try {
-		await navigator.clipboard.writeText(props.code);
+		await clipboard.copy(props.code);
 		showCopiedFeedback.value = true;
 		clearTimeout(feedbackTimer);
 		feedbackTimer = setTimeout(() => {
@@ -161,13 +167,20 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	<div :class="$style.codeBlock">
 		<pre
 			ref="pre"
-			:class="[$style.pre, { [$style.isExpanded]: !collapsed }]"
+			:class="[
+				$style.pre,
+				{
+					[$style.isExpanded]: !collapsed,
+					[$style.previewFade]: showsPreviewFade,
+				},
+			]"
+			v-bind="scrollMaskAttrs"
 			:style="heightStyle"
 			:aria-label="ariaLabel"
 			:tabindex="ariaLabel ? 0 : undefined"
 			@transitionend="onHeightTransitionEnd"
 		><code class="hljs" v-html="highlightedCode" /></pre>
-		<div v-if="copyable && isClipboardAvailable" :class="$style.actions">
+		<div v-if="copyable" :class="$style.actions">
 			<N8nTooltip :content="copyButtonLabel">
 				<N8nButton
 					icon-only
@@ -211,6 +224,7 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 
 <style lang="scss" module>
 @use '../../css/mixins/focus.scss';
+@use '../../css/mixins/mixins' as scroll-mask;
 @use '../../css/mixins/motion.scss';
 
 .codeBlock {
@@ -271,12 +285,13 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	tab-size: 4;
 	scrollbar-width: thin;
 	scrollbar-color: gray transparent;
-	mask-image: linear-gradient(
-		to bottom,
-		black 0,
-		black calc(100% - var(--spacing--sm)),
-		transparent 100%
-	);
+	@include scroll-mask.scroll-mask-when-y;
+
+	// A block that does not scroll keeps the collapsed-preview fade.
+	// The edge mask replaces it after the content overflows.
+	&.previewFade {
+		@include scroll-mask.scroll-mask(bottom);
+	}
 
 	code {
 		/** Override background color injected by hjs **/

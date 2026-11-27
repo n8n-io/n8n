@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.42.0",
+  "version": "0.43.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -169,12 +169,14 @@
     "fast-glob": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
+    "ai": "catalog:",
     "axios": "catalog:",
     "nock": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:"
   },
   "dependencies": {
+    "@ai-sdk/provider": "catalog:",
     "@n8n/errors": "workspace:*",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:",

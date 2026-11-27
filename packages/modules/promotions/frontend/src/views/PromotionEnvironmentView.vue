@@ -490,7 +490,7 @@ onBeforeRouteLeave(() => {
 							<N8nCheckbox
 								v-if="direction === 'promote'"
 								:model-value="isReviewLocked === true || form.createBranchOnPromotion"
-								:disabled="isSaving || isReviewLocked !== false"
+								:disabled="isSaving || isReviewLocked === true"
 								data-test-id="promotion-environment-create-branch"
 								@update:model-value="form.createBranchOnPromotion = $event"
 							>
@@ -540,6 +540,7 @@ onBeforeRouteLeave(() => {
 			:open="dialogOpen"
 			:type="pickedType"
 			:provider-id="loaded ? providerId : undefined"
+			:environment-id="loaded?.id"
 			@update:open="onDialogOpenChange"
 			@saved="onProviderSaved"
 		/>

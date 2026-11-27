@@ -3,7 +3,7 @@ import {
 	type PromotionSettings,
 	type UpdatePromotionSettingsDto,
 } from '@n8n/api-types';
-import { EventService, RoleService } from '@n8n/backend-services';
+import { EventService, loginIdOf, RoleService } from '@n8n/backend-services';
 import { type OperationContext, SettingsRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -16,7 +16,6 @@ import {
 	readPromotionProjectAccess,
 } from '@n8n/permissions';
 
-import { loginIdOf } from '@/events/login-id';
 import type { UserLike } from '@/types/user-like.types';
 
 const REQUIRE_APPROVAL_KEY = 'promotions.requireApproval';

@@ -94,3 +94,11 @@ export function laterOfColumnAndNowPlusMsLiteral(
 export function parseDbTime(value: Date | string): Date {
 	return typeof value === 'string' ? new Date(`${value.replace(' ', 'T')}Z`) : value;
 }
+
+/**
+ * The inverse of {@link parseDbTime} for SQLite: UTC text with milliseconds, as TypeORM
+ * stores a datetime. Bind it in raw SQL, so text comparisons see one format.
+ */
+export function toSqliteDbTime(date: Date): string {
+	return date.toISOString().replace('T', ' ').replace('Z', '');
+}

@@ -235,7 +235,7 @@ export async function createSlackReplayContext(
 	};
 	const setup = createReplayContextSetup({
 		chat: chat as never,
-		integrationImpl: new SlackIntegration(mock<AgentRepository>()),
+		integrationImpl: new SlackIntegration(mock<AgentRepository>(), mock()),
 		integration,
 		componentMapper: new ComponentMapper(),
 		stream: options.stream,

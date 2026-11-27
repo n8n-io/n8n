@@ -141,10 +141,13 @@ const badges = computed(() => {
 		<N8nTooltip
 			v-for="badge in badges"
 			:key="`${badge.direction}-${badge.anchor}`"
-			:content="badge.label"
 			:disabled="badge.loading"
 			as-child
 		>
+			<!-- Text, not HTML: the label can hold an environment name. -->
+			<template #content
+				><span>{{ badge.label }}</span></template
+			>
 			<span
 				v-if="badge.blocked"
 				role="button"

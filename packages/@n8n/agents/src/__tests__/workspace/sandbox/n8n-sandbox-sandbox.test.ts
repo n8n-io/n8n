@@ -112,13 +112,38 @@ describe('destroy()', () => {
 });
 
 describe('start()', () => {
+	it.each(['none', 'public'] as const)('keeps egress %s across restarts', async (egress) => {
+		const sandbox = new N8nSandboxServiceSandbox({ ...makeDefaultOptions(), egress });
+
+		await sandbox.start();
+		await sandbox.stop();
+		await sandbox.start();
+
+		expect(mockCreateSandbox).toHaveBeenNthCalledWith(1, { egress });
+		expect(mockCreateSandbox).toHaveBeenNthCalledWith(2, { id: 'sb-123', egress });
+	});
+
+	it('propagates an egress conflict without retrying with public access', async () => {
+		mockCreateSandbox.mockRejectedValue(new SandboxServiceError('egress conflict', 409));
+		const sandbox = new N8nSandboxServiceSandbox({
+			...makeDefaultOptions(),
+			id: '11111111-1111-4111-8111-111111111111',
+			egress: 'none',
+		});
+
+		await expect(sandbox.start()).rejects.toThrow('egress conflict');
+
+		expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
+		expect(mockDeleteSandbox).not.toHaveBeenCalled();
+	});
+
 	describe('fresh creation (no existing ID)', () => {
 		it('creates a new sandbox with a service-generated id', async () => {
 			const sandbox = new N8nSandboxServiceSandbox(makeDefaultOptions());
 			await sandbox.start();
 
 			expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
-			expect(mockCreateSandbox).toHaveBeenCalledWith({});
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ egress: 'public' });
 			expect(sandbox.id).toBe('sb-123');
 		});
 
@@ -126,7 +151,7 @@ describe('start()', () => {
 			const sandbox = new N8nSandboxServiceSandbox({ ...makeDefaultOptions(), ephemeral: true });
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenCalledWith({ ephemeral: true });
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ ephemeral: true, egress: 'public' });
 		});
 
 		it('times out stalled creation and removes a sandbox created after the timeout', async () => {
@@ -160,7 +185,7 @@ describe('start()', () => {
 
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenCalledWith({ id });
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ id, egress: 'public' });
 			expect(mockGetSandbox).not.toHaveBeenCalled();
 			expect(sandbox.id).toBe(id);
 		});
@@ -176,7 +201,7 @@ describe('start()', () => {
 			});
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenCalledWith({ id, ephemeral: true });
+			expect(mockCreateSandbox).toHaveBeenCalledWith({ id, ephemeral: true, egress: 'public' });
 		});
 
 		it('does not delete a deterministic sandbox when creation times out', async () => {
@@ -208,7 +233,7 @@ describe('start()', () => {
 			await sandbox.stop();
 			await sandbox.start();
 
-			expect(mockCreateSandbox).toHaveBeenLastCalledWith({ id: 'sb-123' });
+			expect(mockCreateSandbox).toHaveBeenLastCalledWith({ id: 'sb-123', egress: 'public' });
 			expect(sandbox.id).toBe('sb-123');
 		});
 
@@ -348,7 +373,7 @@ describe('recovery when the remote sandbox is gone', () => {
 		expect(result.stdout).toBe('ok');
 		expect(mockGetSandbox).toHaveBeenCalledWith(id);
 		expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
-		expect(mockCreateSandbox).toHaveBeenCalledWith({ id });
+		expect(mockCreateSandbox).toHaveBeenCalledWith({ id, egress: 'public' });
 		expect(mockExec).toHaveBeenCalledTimes(2);
 	});
 

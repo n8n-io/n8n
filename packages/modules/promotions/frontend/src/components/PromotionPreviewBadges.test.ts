@@ -106,13 +106,13 @@ describe('PromotionPreviewBadges', () => {
 		const preview = billingPreview();
 		vi.mocked(api.getPromotionPreview).mockResolvedValue({
 			...preview,
-			source: { ...preview.source, environmentName: name },
+			environment: { ...preview.environment, name },
 			resources: preview.resources
 				.filter(({ key }) => ['workflow:w1', 'workflow:w3'].includes(key))
 				.slice(0, count),
 			dependencies: [],
 		});
-		const { getByTestId, findByText } = renderComponent();
+		const { getByTestId, findByTestId } = renderComponent();
 		await waitAllPromises();
 		const badge = getByTestId('promotion-preview-badge-promote');
 
@@ -121,7 +121,7 @@ describe('PromotionPreviewBadges', () => {
 		expect(badge).not.toHaveAttribute('aria-disabled');
 		expect(badge).toHaveAttribute('aria-label', label);
 		badge.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }));
-		expect(await findByText(label)).toBeVisible();
+		expect(await findByTestId('tooltip-content')).toHaveTextContent(label);
 	});
 
 	it('should show an arrow that does not link when an open review holds the promote changes', async () => {
@@ -134,7 +134,7 @@ describe('PromotionPreviewBadges', () => {
 						})
 					: billingPreview({ resources: [] }),
 		);
-		const { getByTestId, findByText } = renderComponent();
+		const { getByTestId, findByTestId } = renderComponent();
 		await waitAllPromises();
 		const promote = getByTestId('promotion-preview-badge-promote');
 		const label = "A review is open. You can't promote until it's merged or closed.";
@@ -147,7 +147,7 @@ describe('PromotionPreviewBadges', () => {
 		expect(promote).toHaveTextContent(/^$/);
 		expect(promote.querySelector('.n8n-text')).toBeNull();
 		promote.focus();
-		expect(await findByText(label)).toBeVisible();
+		expect(await findByTestId('tooltip-content')).toHaveTextContent(label);
 		expect(getByTestId('promotion-preview-badge-apply')).toHaveTextContent('0');
 	});
 
@@ -155,7 +155,7 @@ describe('PromotionPreviewBadges', () => {
 		'should show a non-interactive zero %s badge with an explanatory tooltip',
 		async (direction) => {
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview({ resources: [] }));
-			const { getByTestId, findByText } = renderComponent();
+			const { getByTestId, findByTestId } = renderComponent();
 			await waitAllPromises();
 			const badge = getByTestId(`promotion-preview-badge-${direction}`);
 
@@ -164,7 +164,7 @@ describe('PromotionPreviewBadges', () => {
 			expect(badge.tagName).toBe('SPAN');
 			expect(badge).not.toHaveAttribute('tabindex');
 			badge.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }));
-			expect(await findByText(`No changes to ${direction}`)).toBeVisible();
+			expect(await findByTestId('tooltip-content')).toHaveTextContent(`No changes to ${direction}`);
 		},
 	);
 
@@ -173,7 +173,7 @@ describe('PromotionPreviewBadges', () => {
 		async (direction) => {
 			vi.mocked(api.getPromotionPreview).mockRejectedValue(new Error('offline'));
 
-			const { getByTestId, findByText } = renderComponent();
+			const { getByTestId, findByTestId } = renderComponent();
 			await waitAllPromises();
 			const badge = getByTestId(`promotion-preview-badge-${direction}`);
 			const label =
@@ -190,7 +190,7 @@ describe('PromotionPreviewBadges', () => {
 			expect(badge).not.toHaveAttribute('aria-disabled');
 			expect(badge).toHaveAttribute('aria-label', label);
 			badge.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }));
-			expect(await findByText(label)).toBeVisible();
+			expect(await findByTestId('tooltip-content')).toHaveTextContent(label);
 		},
 	);
 

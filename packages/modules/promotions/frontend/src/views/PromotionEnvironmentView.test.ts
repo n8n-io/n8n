@@ -390,4 +390,20 @@ describe('PromotionEnvironmentView', () => {
 			),
 		);
 	});
+
+	it("keeps the review setting editable when the instance setting can't be loaded", async () => {
+		getPromotionSettings.mockRejectedValue(new Error('Network error'));
+		api.fetchPromotionEnvironment.mockResolvedValue(
+			applyEnvironment({
+				direction: 'promote',
+				settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+			}),
+		);
+		await renderAt('/edit/environment-apply');
+
+		const review = await screen.findByRole('checkbox', { name: /Push to a new branch/ });
+		await waitFor(() => expect(getPromotionSettings).toHaveBeenCalled());
+		expect(review).toBeEnabled();
+		expect(screen.queryByText(/Require approval is set to Always required/)).toBeNull();
+	});
 });

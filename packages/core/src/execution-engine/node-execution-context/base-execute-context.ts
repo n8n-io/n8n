@@ -45,14 +45,53 @@ import {
 	isExecutionOutputRedacted,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 	AI_EVENT_REDACTED_MESSAGE,
+	NodeApiError,
 } from 'n8n-workflow';
-import { UnexpectedError, OperationalError } from '@n8n/errors';
+import { UnexpectedError, OperationalError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
+import { collectAllowedBinaryDataIds } from '@/binary-data';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 import { deepMerge } from '@/utils/deep-merge';
 
 import { NodeExecutionContext } from './node-execution-context';
+
+/** The parts of an Agent error that the node shows. Node context stores only JSON. */
+interface StoredAgentError {
+	message: string;
+	description?: string;
+	httpCode?: string;
+	userError?: boolean;
+}
+
+interface AgentInvocationState {
+	runIndex: number;
+	items: Array<{
+		threadId: string;
+		result?: ExecuteAgentData;
+		error?: StoredAgentError;
+	}>;
+}
+
+function storeAgentError(error: unknown): StoredAgentError {
+	if (!(error instanceof Error)) return { message: String(error) };
+	const stored: StoredAgentError = { message: error.message };
+	if ('description' in error && typeof error.description === 'string')
+		stored.description = error.description;
+	if ('httpCode' in error && typeof error.httpCode === 'string') stored.httpCode = error.httpCode;
+	if (error instanceof UserError) stored.userError = true;
+	return stored;
+}
+
+/** Rebuild an Agent error after a resume, so the node shows the same details as before. */
+function restoreAgentError(node: INode, stored: StoredAgentError): Error {
+	const { message, description, httpCode } = stored;
+	if (httpCode)
+		return new NodeApiError(node, { message, httpCode }, { message, description, httpCode });
+	return stored.userError
+		? new UserError(message, { description })
+		: new OperationalError(message, { description });
+}
 
 export class BaseExecuteContext extends NodeExecutionContext {
 	constructor(
@@ -184,13 +223,21 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 		let result: ExecuteWorkflowData;
 		try {
+			const binaryDataAccess = await collectAllowedBinaryDataIds(
+				inputData ?? [],
+				this.additionalData.binaryDataAccess,
+				this.workflow,
+				this.runExecutionData.binaryDataAccess,
+			);
 			result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
 				...options,
+				binaryDataAccess,
 				parentWorkflowId: this.workflow.id,
 				inputData,
 				parentWorkflowSettings: this.workflow.settings,
 				node: this.node,
 				parentCallbackManager,
+				abortSignal: this.abortSignal,
 			});
 		} catch (error) {
 			// A failed sub-workflow may still have attempted or resolved private credentials
@@ -233,28 +280,32 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		return result;
 	}
 
-	async executeAgent(
-		agentInfo: ExecuteAgentInfo,
-		message: string,
-		executionId: string,
-		itemIndex: number,
-	): Promise<ExecuteAgentData> {
-		if (!this.additionalData.executeAgent) {
-			throw new OperationalError('Agent execution is not available in this context');
-		}
-
-		let source: ExecuteAgentSource;
-		if (agentInfo.inlineAgent) {
-			source = { inlineAgent: agentInfo.inlineAgent };
-		} else if (agentInfo.agentId) {
-			source = { agentId: agentInfo.agentId };
-		} else {
-			throw new OperationalError('Either an agent id or an inline agent definition is required');
-		}
-
+	private prepareAgentInvocation(agentInfo: ExecuteAgentInfo, itemIndex: number) {
 		const callerSessionId = agentInfo.sessionId?.trim();
-		const threadId = callerSessionId || randomUUID();
+		const supportsSuspension =
+			this.node.type === 'n8n-nodes-base.messageAnAgent' &&
+			this.node.typeVersion >= 4 &&
+			!agentInfo.inlineAgent;
+		let invocations: AgentInvocationState | undefined;
+		if (supportsSuspension) {
+			const context = this.getContext('node');
+			const saved: AgentInvocationState | undefined = context.agentInvocations;
+			invocations =
+				saved?.runIndex === this.runIndex ? saved : { runIndex: this.runIndex, items: [] };
+			context.agentInvocations = invocations;
+			this.setMetadata({ resumeMode: 'reexecute' });
+		}
+		const previous = invocations?.items[itemIndex];
+		if (previous?.error) throw restoreAgentError(this.node, previous.error);
+		const threadId = previous?.threadId ?? (callerSessionId || randomUUID());
+		if (invocations) {
+			invocations.items[itemIndex] = { ...previous, threadId };
+		}
 
+		return { supportsSuspension, invocations, previous, threadId, callerSessionId };
+	}
+
+	private getAgentWorkflowInput(agentInfo: ExecuteAgentInfo, itemIndex: number) {
 		const inputDataScope = agentInfo.inputDataScope ?? 'item';
 		const mainBranches = this.inputData?.main ?? [];
 		const primaryBranch = mainBranches[0] ?? [];
@@ -268,7 +319,37 @@ export class BaseExecuteContext extends NodeExecutionContext {
 					? [primaryBranch[itemIndex]]
 					: [];
 
+		return { inputDataScope, scopedInput };
+	}
+
+	async executeAgent(
+		agentInfo: ExecuteAgentInfo,
+		message: string,
+		executionId: string,
+		itemIndex: number,
+	): Promise<ExecuteAgentData> {
+		const runAgent = this.additionalData.executeAgent;
+		if (!runAgent) {
+			throw new OperationalError('Agent execution is not available in this context');
+		}
+
+		let source: ExecuteAgentSource;
+		if (agentInfo.inlineAgent) {
+			source = { inlineAgent: agentInfo.inlineAgent };
+		} else if (agentInfo.agentId) {
+			source = { agentId: agentInfo.agentId };
+		} else {
+			throw new OperationalError('Either an agent id or an inline agent definition is required');
+		}
+
+		const { supportsSuspension, invocations, previous, threadId, callerSessionId } =
+			this.prepareAgentInvocation(agentInfo, itemIndex);
+		if (previous?.result && !previous.result.waiting) return previous.result;
+		const { inputDataScope, scopedInput } = this.getAgentWorkflowInput(agentInfo, itemIndex);
+
 		const workflowContext: ExecuteAgentWorkflowContext = {
+			...(supportsSuspension && { supportsSuspension: true }),
+			...(previous?.result?.waiting && { continuation: previous.result.waiting }),
 			workflowId: this.workflow.id,
 			workflowName: this.workflow.name,
 			callingNodeName: this.node.name,
@@ -289,23 +370,54 @@ export class BaseExecuteContext extends NodeExecutionContext {
 						await this.sendChunk(type, itemIndex, content)
 				: undefined;
 
-		return await this.additionalData.executeAgent(
-			source,
-			message,
-			executionId,
+		return await this.runAgentInvocation(
+			async () =>
+				await runAgent(
+					source,
+					message,
+					executionId,
+					threadId,
+					this.additionalData,
+					this.additionalData.rootExecutionMode ?? this.getMode(),
+					agentInfo.outputSchema,
+					workflowContext,
+					{
+						nodeId: this.node.id,
+						nodeName: this.node.name,
+						runIndex: this.runIndex,
+						itemIndex,
+						...(sendResponseChunk ? { sendResponseChunk } : {}),
+					},
+				),
+			invocations,
 			threadId,
-			this.additionalData,
-			this.additionalData.rootExecutionMode ?? this.getMode(),
-			agentInfo.outputSchema,
-			workflowContext,
-			{
-				nodeId: this.node.id,
-				nodeName: this.node.name,
-				runIndex: this.runIndex,
-				itemIndex,
-				...(sendResponseChunk ? { sendResponseChunk } : {}),
-			},
+			itemIndex,
 		);
+	}
+
+	private async runAgentInvocation(
+		run: () => Promise<ExecuteAgentData>,
+		invocations: AgentInvocationState | undefined,
+		threadId: string,
+		itemIndex: number,
+	): Promise<ExecuteAgentData> {
+		let result: ExecuteAgentData;
+		try {
+			result = await run();
+		} catch (error) {
+			if (invocations) {
+				invocations.items[itemIndex] = { threadId, error: storeAgentError(error) };
+			}
+			throw error;
+		}
+		if (invocations) {
+			invocations.items[itemIndex] = { threadId, result };
+			this.setMetadata({
+				waitingChildExecutionIds: result.waiting?.executionIds,
+			});
+			if (result.waiting) await this.putExecutionToWait(WAIT_FOR_SUB_EXECUTION);
+		}
+		return result;
 	}
 
 	isStreaming(): boolean {

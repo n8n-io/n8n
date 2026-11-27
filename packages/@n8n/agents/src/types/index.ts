@@ -52,6 +52,7 @@ export type {
 	AgentExecutionCounter,
 	SideCallTask,
 	SideCallUsageReport,
+	ThreadTitleUpdate,
 	PersistedExecutionOptions,
 	ResumeOptions,
 	GenerateResult,
@@ -74,6 +75,8 @@ export type { SerializedMessageList } from './runtime/message-list';
 
 export type {
 	ToolContext,
+	ToolCallInterception,
+	ToolCallInterceptor,
 	ToolCancellationContext,
 	ToolExecutionContext,
 	ToolApprovalContext,

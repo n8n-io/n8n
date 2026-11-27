@@ -82,7 +82,7 @@ it('keeps the selects disabled when the settings cannot load', async () => {
 	await waitFor(() =>
 		expect(showError).toHaveBeenCalledWith(
 			expect.any(Error),
-			"Couldn't load the promotion settings",
+			"Couldn't load project access settings",
 			expect.anything(),
 		),
 	);
@@ -97,10 +97,10 @@ it('puts the previous option back when saving fails', async () => {
 
 	const select = await choose('Project admins and editors');
 
-	await waitFor(() => expect(select).toHaveTextContent(/^Instance admins only$/));
+	await waitFor(() => expect(select).toHaveTextContent(/^Instance owners and admins$/));
 	expect(showError).toHaveBeenCalledWith(
 		expect.any(Error),
-		"Couldn't save the promotion setting",
+		"Couldn't save project access settings",
 		expect.anything(),
 	);
 });

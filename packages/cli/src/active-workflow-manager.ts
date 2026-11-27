@@ -906,6 +906,7 @@ export class ActiveWorkflowManager {
 					}
 				}
 
+				// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 				await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
 
 				// A user may have unpublished it before this command arrived.
