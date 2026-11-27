@@ -35,7 +35,7 @@ on:
 jobs:
   push-new-release-to-channel:
     name: Push new release to channel
-    if: inputs.release_type != 'rc'
+    if: inputs.release_type != 'rc' && inputs.track != 'v2'
     uses: ./.github/workflows/release-push-to-channel.yml
     secrets: inherit
     with:
@@ -46,7 +46,7 @@ jobs:
     name: Promote previous beta to stable
     if: |
       inputs.release_type != 'rc' &&
-      inputs.bump == 'minor'
+      inputs.track == 'beta' && inputs.new_stable_version != ''
     uses: ./.github/workflows/release-push-to-channel.yml
     secrets: inherit
     with:
@@ -57,7 +57,7 @@ jobs:
     name: Promote backport labels
     if: |
       inputs.release_type != 'rc' &&
-      inputs.bump == 'minor'
+      inputs.track == 'beta' && inputs.new_stable_version != ''
     uses: ./.github/workflows/release-promote-backport-labels.yml
     secrets:
       N8N_ASSISTANT_APP_ID: ${{ secrets.N8N_ASSISTANT_APP_ID }}
@@ -69,7 +69,7 @@ jobs:
     name: Promote previous minor Github Release to latest
     if: |
       inputs.release_type != 'rc' &&
-      inputs.bump == 'minor'
+      inputs.track == 'beta' && inputs.new_stable_version != ''
     uses: ./.github/workflows/release-promote-github-release.yml
     secrets: inherit
     with:
@@ -78,7 +78,7 @@ jobs:
   ensure-release-candidate-branches:
     name: 'Ensure release candidate branches'
     if: |
-      inputs.release_type != 'rc'
+      inputs.release_type != 'rc' && inputs.track != 'v2'
     uses: ./.github/workflows/util-ensure-release-candidate-branches.yml
     secrets: inherit
 
@@ -88,7 +88,7 @@ jobs:
     # beta, so every beta publish needs a re-pin, not just stable promotions.
     if: |
       inputs.release_type != 'rc' &&
-      (inputs.bump == 'minor' || inputs.track == 'stable' || inputs.track == 'beta')
+      (inputs.track == 'stable' || inputs.track == 'beta')
     uses: ./.github/workflows/release-set-stable-npm-packages-to-latest.yml
     secrets: inherit
 

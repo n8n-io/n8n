@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { getSemverTagForTrack } from './get-release-versions.mjs';
+import { resolveRcBranchForTrack } from './github-helpers.mjs';
 
 describe('getSemverTagForTrack', () => {
 	it('returns the highest release tag at the track commit', () => {
@@ -27,6 +28,18 @@ describe('getSemverTagForTrack', () => {
 
 	it('returns an empty string when the track is missing', () => {
 		assert.equal(getSemverTagForTrack('v1', new Map()), '');
+	});
+
+	it('resolves the v2 pointer and branch separately from v3 stable', () => {
+		const tags = new Map([
+			['stable', 'v3'],
+			['n8n@3.4.1', 'v3'],
+			['v2', 'v2'],
+			['n8n@2.50.2', 'v2'],
+		]);
+
+		assert.equal(getSemverTagForTrack('v2', tags), 'n8n@2.50.2');
+		assert.equal(resolveRcBranchForTrack('v2'), '2.x');
 	});
 
 	it('returns an empty string when no release tag points at the track commit', () => {

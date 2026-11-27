@@ -13,6 +13,7 @@ const bump = ensureEnvVar('BUMP');
 const stable = process.env['STABLE_VERSION'];
 const beta = process.env['BETA_VERSION'];
 const v1 = process.env['V1_VERSION'];
+const v2 = process.env['V2_VERSION'];
 
 let base = null;
 switch (track) {
@@ -25,11 +26,14 @@ switch (track) {
 	case 'v1':
 		base = v1;
 		break;
+	case 'v2':
+		base = v2;
+		break;
 }
 
 if (!base) {
 	console.error(
-		`Unknown track or missing base version. track=${track} stable=${stable} beta=${beta} v1=${v1}`,
+		`Unknown track or missing base version. track=${track} stable=${stable} beta=${beta} v1=${v1} v2=${v2}`,
 	);
 	process.exit(1);
 }
@@ -43,6 +47,10 @@ if (!cleanedBase) {
 if (!isReleaseType(bump)) {
 	console.error(`Invalid release type in $bump: ${bump}`);
 	process.exit(1);
+}
+
+if (track === 'v2' && bump !== 'patch') {
+	throw new Error('The v2 maintenance track only supports patch releases.');
 }
 
 const next = semver.inc(cleanedBase, bump);

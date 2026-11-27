@@ -74,6 +74,17 @@ export function determineTrack(packageVersion, { prerelease = false } = {}) {
 		}
 	}
 
+	if (
+		(track === 'stable' || track === 'beta') &&
+		trackToReleaseMap.v2 &&
+		matchesTrack(trackToReleaseMap.v2, packageVersion)
+	) {
+		throw new Error('The v2 maintenance line overlaps with a main release track.');
+	}
+	if (track === 'v2' && (semver.major(packageVersion) !== 2 || bump !== 'patch')) {
+		throw new Error('The v2 maintenance track only supports v2 patch releases.');
+	}
+
 	if (!track) {
 		let previousBeta = trackToReleaseMap.beta?.version;
 		if (!previousBeta) {
@@ -103,10 +114,13 @@ export function determineTrack(packageVersion, { prerelease = false } = {}) {
 		throw new Error('Could not determine track for release. Exiting...');
 	}
 
-	const rc_branch = tagVersionInfoToReleaseCandidateBranchName({
-		version: packageVersion,
-		tag: /** @type {import('./github-helpers.mjs').ReleaseVersion} */ (`n8n@${packageVersion}`),
-	});
+	const rc_branch = tagVersionInfoToReleaseCandidateBranchName(
+		{
+			version: packageVersion,
+			tag: /** @type {import('./github-helpers.mjs').ReleaseVersion} */ (`n8n@${packageVersion}`),
+		},
+		track,
+	);
 
 	const previousVersion = newStable ?? trackToReleaseMap[track]?.version;
 

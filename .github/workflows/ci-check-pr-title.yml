@@ -9,6 +9,7 @@ on:
     branches:
       - 'master'
       - '1.x'
+      - '2.x'
 
 jobs:
   check-pr-title:

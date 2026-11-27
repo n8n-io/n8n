@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 /** @returns { typeof import('semver') } */
 const loadSemver = () => require('semver');
 
-export const CURRENT_MAJOR_VERSION = 2;
+const FIRST_MAJOR_WITH_RC_BRANCHES = 2;
 export const RELEASE_CANDIDATE_BRANCH_PREFIX = 'release-candidate/';
 
 export const RELEASE_TRACKS = /** @type { const } */ ([
@@ -21,7 +21,15 @@ export const RELEASE_TRACKS = /** @type { const } */ ([
 	'stable',
 	'beta',
 	'v1',
+	'v2',
 ]);
+
+const MAINTENANCE_BRANCHES = /** @type { const } */ ({ v1: '1.x', v2: '2.x' });
+
+/** @param {ReleaseTrack} track */
+function maintenanceBranchForTrack(track) {
+	return track === 'v1' || track === 'v2' ? MAINTENANCE_BRANCHES[track] : null;
+}
 
 /**
  * @typedef { InstanceType<typeof import("@actions/github/lib/utils").GitHub> } GitHubInstance
@@ -122,17 +130,14 @@ export function resolveReleaseTagForTrack(track) {
  * @param { ReleaseTrack } track
  * */
 export function resolveRcBranchForTrack(track) {
-	if (track === 'v1') {
-		return '1.x';
-	}
+	const maintenanceBranch = maintenanceBranchForTrack(track);
+	if (maintenanceBranch) return maintenanceBranch;
 
 	const tagToSha = listRemoteTagsWithCommits();
 	const trackSha = tagToSha.get(track);
 	if (!trackSha) return null;
 
-	const tagsAtCommit = [...tagToSha]
-		.filter(([, sha]) => sha === trackSha)
-		.map(([tag]) => tag);
+	const tagsAtCommit = [...tagToSha].filter(([, sha]) => sha === trackSha).map(([tag]) => tag);
 
 	const releaseTag = pickHighestReleaseTag(tagsAtCommit);
 	if (!releaseTag) return null;
@@ -149,13 +154,17 @@ export function resolveRcBranchForTrack(track) {
  * e.g. release-candidate/2.8.x or 1.x
  *
  * @param {import('./github-helpers.mjs').TagVersionInfo} tagVersionInfo
+ * @param {ReleaseTrack} [track]
  *
  * @returns { `${RELEASE_CANDIDATE_BRANCH_PREFIX}${number}.${number}.x` | `${number}.x` }
  * */
-export function tagVersionInfoToReleaseCandidateBranchName(tagVersionInfo) {
+export function tagVersionInfoToReleaseCandidateBranchName(tagVersionInfo, track) {
+	const maintenanceBranch = track && maintenanceBranchForTrack(track);
+	if (maintenanceBranch) return maintenanceBranch;
+
 	const version = tagVersionInfo.version;
 	const majorVersion = loadSemver().major(version);
-	if (majorVersion < CURRENT_MAJOR_VERSION) {
+	if (majorVersion < FIRST_MAJOR_WITH_RC_BRANCHES) {
 		return `${majorVersion}.x`;
 	}
 
@@ -387,7 +396,9 @@ export function initGithub() {
 	}
 
 	if (!actionsGithub) {
-		throw new Error('No Octokit client: call setOctokit() or install the .github/scripts dependencies');
+		throw new Error(
+			'No Octokit client: call setOctokit() or install the .github/scripts dependencies',
+		);
 	}
 	const token = ensureEnvVar('GITHUB_TOKEN');
 	const octokit = actionsGithub.getOctokit(token);
