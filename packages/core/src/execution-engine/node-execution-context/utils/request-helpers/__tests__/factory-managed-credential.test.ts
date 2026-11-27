@@ -71,7 +71,7 @@ describe('request helpers in managed mode', () => {
 		expect(authenticate.mock.calls[0][1]).toBe('platformManagedApi');
 	});
 
-	it('sends OAuth2 requests through the managed type, with no token', async () => {
+	it('routes OAuth2 requests through the managed type', async () => {
 		const { helpers, context, authenticate } = setup();
 
 		// oxlint-disable-next-line typescript/no-deprecated
@@ -80,6 +80,28 @@ describe('request helpers in managed mode', () => {
 		});
 
 		expect(authenticate.mock.calls[0][1]).toBe('platformManagedApi');
+	});
+
+	it('asks the eval mock once for a managed OAuth2 request', async () => {
+		const { context } = setup();
+		const evalLlmMockHandler = vi.fn(async () => undefined);
+		const additionalData =
+			mockDeep<IWorkflowExecuteAdditionalData>() as IWorkflowExecuteAdditionalData;
+		additionalData.otel = undefined;
+		additionalData.evalLlmMockHandler = evalLlmMockHandler;
+		additionalData.credentialsHelper.getParentTypes = vi.fn(() => []);
+		additionalData.credentialsHelper.preAuthentication = vi.fn(async () => undefined);
+		additionalData.credentialsHelper.authenticate = vi.fn(
+			async (_data: unknown, _type: string, options: IHttpRequestOptions) => options,
+		) as never;
+		const evalHelpers = getRequestHelperFunctions(workflow, node, additionalData);
+
+		// oxlint-disable-next-line typescript/no-deprecated
+		await evalHelpers.requestOAuth2.call(context, 'googleSheetsOAuth2Api', {
+			uri: 'https://sheets.googleapis.com/v4/spreadsheets/1',
+		});
+
+		expect(evalLlmMockHandler).toHaveBeenCalledTimes(1);
 	});
 
 	it("uses the node's own type when managed mode is off", async () => {

@@ -12,7 +12,6 @@ import type {
 	INode,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
-	INodeProperties,
 	INodeType,
 	INodeExecutionData,
 	INodeInputConfiguration,
@@ -333,26 +332,13 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		}
 	}
 
-	/**
-	 * SPIKE (API-663): the node runs with the stored managed credential, which holds no secret.
-	 * The node still reads its own type's fields, so give it those with empty secrets.
-	 */
-	private withRequestedTypeFields<T extends object>(
-		requestedType: string,
-		managedData: ICredentialDataDecryptedObject,
-	): T {
-		let properties: INodeProperties[] = [];
-		try {
-			properties = this.additionalData.credentialsHelper.getCredentialsProperties(requestedType);
-		} catch (error) {
-			this.logger.warn(`Managed credential: unknown credential type "${requestedType}"`, {
-				error,
-			});
-		}
-		return fillManagedPlaceholders(properties, managedData) as T;
+	/** SPIKE (API-663): the node still reads its own type's fields, so give it those with no secret. */
+	private withRequestedTypeFields<T extends object>(requestedType: string): T {
+		return fillManagedPlaceholders(
+			this.additionalData.credentialsHelper.getCredentialsProperties(requestedType),
+		) as T;
 	}
 
-	/** The node's description of a credential type, if the node can use it with its current parameters. */
 	private getShownCredentialDescription(
 		nodeType: INodeType,
 		type: string,
@@ -440,8 +426,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		// fullAccess bypass that HTTP Request and its tool variants enjoy.
 		this.assertCredentialUsableByNode(type, node.type);
 
-		// SPIKE (API-663): in managed mode every node may use the managed credential. The node's
-		// own description lists only its own types, so it cannot say whether the managed one applies.
+		// SPIKE (API-663): the node's own description lists only its own types, not the managed one.
 		const isManaged = type === getManagedCredentialType();
 
 		const nodeCredentialDescription =
@@ -525,7 +510,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		);
 
 		if (type !== requestedType) {
-			return this.withRequestedTypeFields<T>(requestedType, decryptedDataObject);
+			return this.withRequestedTypeFields<T>(requestedType);
 		}
 		return decryptedDataObject as T;
 	}

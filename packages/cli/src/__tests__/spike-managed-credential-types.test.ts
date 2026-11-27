@@ -139,6 +139,12 @@ describe('spike managed credential types', () => {
 			]);
 		});
 
+		it('leaves the HTTP Request tool variant unchanged too', () => {
+			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
+			const tool = { ...http, name: 'n8n-nodes-base.httpRequestTool' };
+			expect(applyManagedCredentialToDescription(tool)).toEqual(tool);
+		});
+
 		it('keeps HTTP Request credentials when the fetched description has the short node name', () => {
 			process.env.N8N_MANAGED_CREDENTIAL_TYPE = 'platformManagedApi';
 			const shortName = { ...http, name: 'httpRequest' };

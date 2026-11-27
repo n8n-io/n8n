@@ -1,7 +1,6 @@
 'use strict';
 
 // Loaded through N8N_CUSTOM_EXTENSIONS. N8N_MANAGED_CREDENTIAL_TYPE must match `name`.
-// No secret fields: the platform's gateway adds the real credentials outside n8n.
 class PlatformManagedApi {
 	name = 'platformManagedApi';
 	displayName = 'Managed by platform';
@@ -15,7 +14,8 @@ class PlatformManagedApi {
 			default: '',
 		},
 	];
-	httpRequestNode = { name: 'Managed by platform', docsUrl: '', apiBaseUrlPlaceholder: 'https://' };
+	// Adds nothing to requests. HTTP Request lists only credential types that have it.
+	authenticate = { type: 'generic', properties: {} };
 }
 
 module.exports = { PlatformManagedApi };

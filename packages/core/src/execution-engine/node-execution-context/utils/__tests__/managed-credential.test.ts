@@ -39,16 +39,13 @@ describe('managed credential (spike)', () => {
 			({ displayName: p.name, type: 'string', default: '', ...p }) as INodeProperties;
 
 		it('uses the default, then the UI example, then a placeholder', () => {
-			const filled = fillManagedPlaceholders(
-				[
-					property({ name: 'graphApiBaseUrl', default: 'https://graph.microsoft.com' }),
-					property({ name: 'domain', placeholder: 'https://example.atlassian.net' }),
-					property({ name: 'subdomain' }),
-					property({ name: 'apiKey' }),
-					property({ name: 'note', type: 'notice' }),
-				],
-				{},
-			);
+			const filled = fillManagedPlaceholders([
+				property({ name: 'graphApiBaseUrl', default: 'https://graph.microsoft.com' }),
+				property({ name: 'domain', placeholder: 'https://example.atlassian.net' }),
+				property({ name: 'subdomain' }),
+				property({ name: 'apiKey' }),
+				property({ name: 'note', type: 'notice' }),
+			]);
 			expect(filled).toEqual({
 				graphApiBaseUrl: 'https://graph.microsoft.com',
 				domain: 'https://example.atlassian.net',
@@ -59,16 +56,10 @@ describe('managed credential (spike)', () => {
 		});
 
 		it('leaves secret fields empty, so no stand-in secret leaves n8n', () => {
-			const filled = fillManagedPlaceholders(
-				[property({ name: 'accessToken', typeOptions: { password: true } })],
-				{},
-			);
+			const filled = fillManagedPlaceholders([
+				property({ name: 'accessToken', typeOptions: { password: true } }),
+			]);
 			expect(filled).toEqual({ accessToken: '' });
-		});
-
-		it('keeps values stored in the managed credential', () => {
-			const filled = fillManagedPlaceholders([property({ name: 'apiKey' })], { managedBy: 'acme' });
-			expect(filled).toEqual({ apiKey: 'managed', managedBy: 'acme' });
 		});
 	});
 });

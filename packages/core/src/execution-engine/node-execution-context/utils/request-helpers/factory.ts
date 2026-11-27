@@ -196,16 +196,7 @@ export const getRequestHelperFunctions = (
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
 			const requestOptions = toLegacyRequestOptions(requestOptionsWithTarget);
-			if (evalLlmMock) {
-				const evalMockResponse = await callEvalMockHandler(
-					evalLlmMock,
-					normalizeLegacyRequest(requestOptions),
-					node,
-					requestOptions.resolveWithFullResponse,
-					'legacy',
-				);
-				if (evalMockResponse !== undefined) return evalMockResponse;
-			}
+			// requestWithAuthentication runs the eval mock itself.
 			const resolvedOAuth1Type = resolveManagedCredentialType(node, credentialsType);
 			if (resolvedOAuth1Type !== credentialsType) {
 				// oxlint-disable-next-line typescript/no-deprecated
@@ -217,6 +208,16 @@ export const getRequestHelperFunctions = (
 					node,
 					additionalData,
 				);
+			}
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(requestOptions),
+					node,
+					requestOptions.resolveWithFullResponse,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions);
@@ -231,16 +232,7 @@ export const getRequestHelperFunctions = (
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
 			const requestOptions = toLegacyRequestOptions(requestOptionsWithTarget);
-			if (evalLlmMock) {
-				const evalMockResponse = await callEvalMockHandler(
-					evalLlmMock,
-					normalizeLegacyRequest(requestOptions),
-					node,
-					requestOptions.resolveWithFullResponse,
-					'legacy',
-				);
-				if (evalMockResponse !== undefined) return evalMockResponse;
-			}
+			// requestWithAuthentication runs the eval mock itself.
 			const resolvedOAuth2Type = resolveManagedCredentialType(node, credentialsType);
 			if (resolvedOAuth2Type !== credentialsType) {
 				// oxlint-disable-next-line typescript/no-deprecated
@@ -252,6 +244,16 @@ export const getRequestHelperFunctions = (
 					node,
 					additionalData,
 				);
+			}
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(requestOptions),
+					node,
+					requestOptions.resolveWithFullResponse,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(
