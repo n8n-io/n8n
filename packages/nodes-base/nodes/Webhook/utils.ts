@@ -411,6 +411,8 @@ export async function validateWebhookAuthentication(
 		} catch (error) {
 			throw new WebhookAuthorizationError(403, error.message);
 		}
+	} else {
+		throw new WebhookAuthorizationError(500, 'Unsupported authentication method!');
 	}
 }
 

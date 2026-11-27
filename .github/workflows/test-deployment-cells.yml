@@ -174,7 +174,7 @@ jobs:
             runner: blacksmith-2vcpu-ubuntu-2204
             n8n_image_key: n8n
             runners_image_key: runners
-            specs: '--grep-invert @cell:IMG-07|@cell:CRT-01|@cell:DEP-05|@cell:DEP-06|@cell:PLT-04'
+            specs: '--grep-invert @cell:IMG-07|@cell:CRT-01|@cell:CRT-02|@cell:DEP-05|@cell:DEP-06|@cell:PLT-04'
           - group: distroless
             arch: amd64
             runner: blacksmith-2vcpu-ubuntu-2204
@@ -186,7 +186,7 @@ jobs:
             runner: blacksmith-2vcpu-ubuntu-2204
             n8n_image_key: n8n_pc
             runners_image_key: runners_distroless
-            specs: tests/deployment/cloud-image-pair.spec.ts
+            specs: tests/deployment/cloud-image-pair.spec.ts tests/deployment/cloud-launch-settings.spec.ts
           - group: redis-7
             arch: amd64
             runner: blacksmith-2vcpu-ubuntu-2204
@@ -212,7 +212,7 @@ jobs:
             runner: blacksmith-8vcpu-ubuntu-2204-arm
             n8n_image_key: n8n_pc
             runners_image_key: runners_distroless
-            specs: tests/deployment/cloud-image-pair.spec.ts
+            specs: tests/deployment/cloud-image-pair.spec.ts tests/deployment/cloud-launch-settings.spec.ts
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
       DEPLOYMENT_CHANNEL: ${{ needs.resolve.outputs.channel }}

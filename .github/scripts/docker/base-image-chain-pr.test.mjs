@@ -20,6 +20,10 @@ describe('isRefreshCommit', () => {
 		assert.ok(isRefreshCommit('build: Update base image digests that need a review (#45003)'));
 	});
 
+	it('accepts the squash merge of the Node PR', () => {
+		assert.ok(isRefreshCommit('build: Update Node to 26.13.1 (#45004)'));
+	});
+
 	it('rejects other commits', () => {
 		assert.ok(!isRefreshCommit('build: Update Docker base images to Node 26.14.0 (#45002)'));
 		assert.ok(!isRefreshCommit('build: Pin the base images that master published (#45001)'));

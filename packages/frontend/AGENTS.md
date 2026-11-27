@@ -94,6 +94,18 @@ useDebounceFn(() => { ... }, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 Categories: `UI`, `INPUT`, `API`, `TELEMETRY`, `COLLABORATION`, `CONNECTION`.
 Other `editor-ui` timing constants are in `@/app/constants/durations`.
 
+## Node types and credential types
+
+Startup does not wait for the node types or the credential types, so their stores can be empty on the first render.
+A component that reads them must wait with the composable for the types that the getter reads:
+
+- Node types: `useNodeTypesLoad()` from `@/app/composables/useNodeTypesLoad`.
+- Credential types: `useCredentialTypesLoad()` from `@/features/credentials/composables/useCredentialTypesLoad`.
+- Some getters read both, for example `isCredentialTypeTestable` and `getNodeType()` for a credential-only node. Use both composables.
+
+Both return `isLoading`, `isLoaded`, `error`, `whenLoaded()` and `whenSettled()`, and share one request between callers.
+Do not wait with `getNodeTypes()` or `fetchCredentialTypes(true)`. They load the types again on each call.
+
 ## Tests and analytics attributes
 
 - Set `data-test-id` for tests. Vitest and Playwright `getByTestId` find elements by `data-test-id`.

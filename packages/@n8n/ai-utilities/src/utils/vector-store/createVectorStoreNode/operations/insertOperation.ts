@@ -1,7 +1,7 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { logAiEvent } from '../../../log-ai-event';
@@ -62,14 +62,20 @@ export async function handleInsertOperation<T extends VectorStore = VectorStore>
 	}
 
 	// For the version 1.1, we run the populateVectorStore in batches
-	if (nodeVersion >= 1.1) {
-		// Skip setup when nothing will be inserted, so that a clear step does not empty the store
-		if (args.beforeInsert && documentsForEmbedding.length > 0) {
-			await args.beforeInsert(context, embeddings, 0);
+	if (nodeVersion >= 1.1 && documentsForEmbedding.length > 0) {
+		const embeddingBatchSize = context.getNodeParameter('embeddingBatchSize', 0, 200) ?? 200;
+		if (
+			typeof embeddingBatchSize !== 'number' ||
+			!Number.isSafeInteger(embeddingBatchSize) ||
+			embeddingBatchSize < 1
+		) {
+			throw new NodeOperationError(
+				context.getNode(),
+				'Embedding Batch Size must be a positive integer',
+			);
 		}
 
-		const embeddingBatchSize =
-			(context.getNodeParameter('embeddingBatchSize', 0, 200) as number) ?? 200;
+		await args.beforeInsert?.(context, embeddings, 0);
 
 		// Populate the vector store with the processed documents in batches
 		for (let i = 0; i < documentsForEmbedding.length; i += embeddingBatchSize) {
