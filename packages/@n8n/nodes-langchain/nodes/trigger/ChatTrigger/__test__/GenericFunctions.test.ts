@@ -317,6 +317,51 @@ describe('validateAuth', () => {
 			});
 		});
 	});
+
+	describe('unsupported authentication modes', () => {
+		it.each(['unsupportedMode', 'BasicAuth'])(
+			'should throw 500 for unsupported authentication mode "%s"',
+			async (authentication) => {
+				mockContext.getNodeParameter.calledWith('authentication').mockReturnValue(authentication);
+				mockContext.getCredentials.mockResolvedValue({
+					user: 'admin',
+					password: 'secret',
+				} as ICredentialDataDecryptedObject);
+				mockContext.getRequestObject.mockReturnValue({
+					headers: {},
+				} as never);
+				mockContext.getHeaderData.mockReturnValue({});
+
+				const authCheck = validateAuth(mockContext);
+
+				await expect(authCheck).rejects.toThrow(ChatTriggerAuthorizationError);
+				await expect(authCheck).rejects.toMatchObject({
+					responseCode: 500,
+					message: 'Unsupported authentication method!',
+				});
+			},
+		);
+
+		it.each([
+			['empty string', ''],
+			['null', null],
+			['undefined', undefined],
+		])('should throw 500 for non-matching authentication value (%s)', async (_label, value) => {
+			mockContext.getNodeParameter.calledWith('authentication').mockReturnValue(value as never);
+			mockContext.getRequestObject.mockReturnValue({
+				headers: {},
+			} as never);
+			mockContext.getHeaderData.mockReturnValue({});
+
+			const authCheck = validateAuth(mockContext);
+
+			await expect(authCheck).rejects.toThrow(ChatTriggerAuthorizationError);
+			await expect(authCheck).rejects.toMatchObject({
+				responseCode: 500,
+				message: 'Unsupported authentication method!',
+			});
+		});
+	});
 });
 
 describe('establishChatSessionIdentity', () => {

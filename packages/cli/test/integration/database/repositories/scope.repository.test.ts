@@ -1,7 +1,8 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { type Scope, ScopeRepository } from '@n8n/db';
+import { Scope, ScopeRepository, TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope as ScopeType } from '@n8n/permissions';
+import { DataSource } from '@n8n/typeorm';
 
 import { createScope, createScopes, createTestScopes } from '../../shared/db/roles';
 
@@ -36,7 +37,7 @@ describe('ScopeRepository', () => {
 				//
 				// ACT
 				//
-				const scopes = await scopeRepository.findByList([]);
+				const scopes = await scopeRepository.findByList([], {});
 
 				//
 				// ASSERT
@@ -48,7 +49,7 @@ describe('ScopeRepository', () => {
 				//
 				// ARRANGE & ACT
 				//
-				const scopes = await scopeRepository.findByList(['non-existent:scope']);
+				const scopes = await scopeRepository.findByList(['non-existent:scope'], {});
 
 				//
 				// ASSERT
@@ -65,7 +66,7 @@ describe('ScopeRepository', () => {
 				//
 				// ACT
 				//
-				const scopes = await scopeRepository.findByList([readScope.slug]);
+				const scopes = await scopeRepository.findByList([readScope.slug], {});
 
 				//
 				// ASSERT
@@ -89,11 +90,10 @@ describe('ScopeRepository', () => {
 				//
 				// ACT
 				//
-				const scopes = await scopeRepository.findByList([
-					readScope.slug,
-					writeScope.slug,
-					deleteScope.slug,
-				]);
+				const scopes = await scopeRepository.findByList(
+					[readScope.slug, writeScope.slug, deleteScope.slug],
+					{},
+				);
 
 				//
 				// ASSERT
@@ -120,12 +120,10 @@ describe('ScopeRepository', () => {
 				//
 				// ACT
 				//
-				const scopes = await scopeRepository.findByList([
-					readScope.slug,
-					writeScope.slug,
-					deleteScope.slug,
-					adminScope.slug,
-				]);
+				const scopes = await scopeRepository.findByList(
+					[readScope.slug, writeScope.slug, deleteScope.slug, adminScope.slug],
+					{},
+				);
 
 				//
 				// ASSERT
@@ -152,12 +150,15 @@ describe('ScopeRepository', () => {
 				//
 				// ACT
 				//
-				const scopes = await scopeRepository.findByList([
-					readScope.slug,
-					'non-existent:scope:1' as ScopeType,
-					writeScope.slug,
-					'non-existent:scope:2' as ScopeType,
-				]);
+				const scopes = await scopeRepository.findByList(
+					[
+						readScope.slug,
+						'non-existent:scope:1' as ScopeType,
+						writeScope.slug,
+						'non-existent:scope:2' as ScopeType,
+					],
+					{},
+				);
 
 				//
 				// ASSERT
@@ -180,11 +181,14 @@ describe('ScopeRepository', () => {
 				//
 				// ACT
 				//
-				const scopes = await scopeRepository.findByList([
-					'non-existent:scope:1' as ScopeType,
-					'non-existent:scope:2' as ScopeType,
-					'non-existent:scope:3' as ScopeType,
-				]);
+				const scopes = await scopeRepository.findByList(
+					[
+						'non-existent:scope:1' as ScopeType,
+						'non-existent:scope:2' as ScopeType,
+						'non-existent:scope:3' as ScopeType,
+					],
+					{},
+				);
 
 				//
 				// ASSERT
@@ -203,13 +207,16 @@ describe('ScopeRepository', () => {
 				//
 				// ACT
 				//
-				const scopes = await scopeRepository.findByList([
-					readScope.slug,
-					writeScope.slug,
-					readScope.slug, // Duplicate
-					writeScope.slug, // Duplicate
-					readScope.slug, // Another duplicate
-				]);
+				const scopes = await scopeRepository.findByList(
+					[
+						readScope.slug,
+						writeScope.slug,
+						readScope.slug, // Duplicate
+						writeScope.slug, // Duplicate
+						readScope.slug, // Another duplicate
+					],
+					{},
+				);
 
 				//
 				// ASSERT
@@ -237,14 +244,17 @@ describe('ScopeRepository', () => {
 				//
 				// ACT
 				//
-				const scopes = await scopeRepository.findByList([
-					readScope.slug,
-					'invalid:scope:1' as ScopeType,
-					readScope.slug, // Duplicate valid
-					'invalid:scope:2' as ScopeType,
-					'invalid:scope:1' as ScopeType, // Duplicate invalid
-					readScope.slug, // Another duplicate valid
-				]);
+				const scopes = await scopeRepository.findByList(
+					[
+						readScope.slug,
+						'invalid:scope:1' as ScopeType,
+						readScope.slug, // Duplicate valid
+						'invalid:scope:2' as ScopeType,
+						'invalid:scope:1' as ScopeType, // Duplicate invalid
+						readScope.slug, // Another duplicate valid
+					],
+					{},
+				);
 
 				//
 				// ASSERT
@@ -266,7 +276,7 @@ describe('ScopeRepository', () => {
 				// ACT
 				//
 				const startTime = Date.now();
-				const scopes = await scopeRepository.findByList(slugsToQuery);
+				const scopes = await scopeRepository.findByList(slugsToQuery, {});
 				const endTime = Date.now();
 
 				//
@@ -308,7 +318,7 @@ describe('ScopeRepository', () => {
 				//
 				// ACT
 				//
-				const scopes = await scopeRepository.findByList(slugsToQuery);
+				const scopes = await scopeRepository.findByList(slugsToQuery, {});
 
 				//
 				// ASSERT
@@ -338,7 +348,7 @@ describe('ScopeRepository', () => {
 				//
 				// ACT
 				//
-				const scopes = await scopeRepository.findByList([scope.slug]);
+				const scopes = await scopeRepository.findByList([scope.slug], {});
 
 				//
 				// ASSERT
@@ -359,9 +369,9 @@ describe('ScopeRepository', () => {
 				//
 				// ACT
 				//
-				const scopes1 = await scopeRepository.findByList(slugsToQuery);
-				const scopes2 = await scopeRepository.findByList(slugsToQuery);
-				const scopes3 = await scopeRepository.findByList(slugsToQuery);
+				const scopes1 = await scopeRepository.findByList(slugsToQuery, {});
+				const scopes2 = await scopeRepository.findByList(slugsToQuery, {});
+				const scopes3 = await scopeRepository.findByList(slugsToQuery, {});
 
 				//
 				// ASSERT
@@ -386,9 +396,10 @@ describe('ScopeRepository', () => {
 				//
 				// ACT
 				//
-				const scopesBefore = await scopeRepository.find();
-				await scopeRepository.findByList([readScope.slug, writeScope.slug]);
-				const scopesAfter = await scopeRepository.find();
+				const scopeTable = Container.get(DataSource).getRepository(Scope);
+				const scopesBefore = await scopeTable.find();
+				await scopeRepository.findByList([readScope.slug, writeScope.slug], {});
+				const scopesAfter = await scopeTable.find();
 
 				//
 				// ASSERT
@@ -412,7 +423,7 @@ describe('ScopeRepository', () => {
 			it('should return empty array when given empty slug array', async () => {
 				await createTestScopes();
 
-				const scopes = await scopeRepository.findByListOrFail([]);
+				const scopes = await scopeRepository.findByListOrFail([], {});
 
 				expect(scopes).toEqual([]);
 			});
@@ -420,7 +431,7 @@ describe('ScopeRepository', () => {
 			it('should return single scope when one slug matches', async () => {
 				const { readScope } = await createTestScopes();
 
-				const scopes = await scopeRepository.findByListOrFail([readScope.slug]);
+				const scopes = await scopeRepository.findByListOrFail([readScope.slug], {});
 
 				expect(scopes).toHaveLength(1);
 				expect(scopes[0]).toEqual(
@@ -435,11 +446,10 @@ describe('ScopeRepository', () => {
 			it('should return multiple scopes when multiple slugs match', async () => {
 				const { readScope, writeScope, deleteScope } = await createTestScopes();
 
-				const scopes = await scopeRepository.findByListOrFail([
-					readScope.slug,
-					writeScope.slug,
-					deleteScope.slug,
-				]);
+				const scopes = await scopeRepository.findByListOrFail(
+					[readScope.slug, writeScope.slug, deleteScope.slug],
+					{},
+				);
 
 				expect(scopes).toHaveLength(3);
 				expect(scopes).toEqual(
@@ -457,7 +467,7 @@ describe('ScopeRepository', () => {
 				await createTestScopes();
 
 				await expect(
-					scopeRepository.findByListOrFail(['non-existent:scope' as ScopeType]),
+					scopeRepository.findByListOrFail(['non-existent:scope' as ScopeType], {}),
 				).rejects.toThrow('The following scopes are invalid: non-existent:scope');
 			});
 
@@ -465,11 +475,10 @@ describe('ScopeRepository', () => {
 				const { readScope } = await createTestScopes();
 
 				await expect(
-					scopeRepository.findByListOrFail([
-						readScope.slug,
-						'non-existent:1' as ScopeType,
-						'non-existent:2' as ScopeType,
-					]),
+					scopeRepository.findByListOrFail(
+						[readScope.slug, 'non-existent:1' as ScopeType, 'non-existent:2' as ScopeType],
+						{},
+					),
 				).rejects.toThrow('The following scopes are invalid: non-existent:1, non-existent:2');
 			});
 
@@ -477,12 +486,43 @@ describe('ScopeRepository', () => {
 				await createTestScopes();
 
 				await expect(
-					scopeRepository.findByListOrFail([
-						'non-existent:1' as ScopeType,
-						'non-existent:2' as ScopeType,
-					]),
+					scopeRepository.findByListOrFail(
+						['non-existent:1' as ScopeType, 'non-existent:2' as ScopeType],
+						{},
+					),
 				).rejects.toThrow('The following scopes are invalid: non-existent:1, non-existent:2');
 			});
+		});
+	});
+
+	describe('transaction context', () => {
+		it('should run findByList and findByListOrFail through the active transaction', async () => {
+			const { readScope, writeScope } = await createTestScopes();
+			const transactionRunner = Container.get(TransactionRunner);
+			const defaultFindBySpy = vi.spyOn(Container.get(DataSource).manager, 'findBy');
+
+			try {
+				await transactionRunner.run({}, async (ctx) => {
+					const scopes = await scopeRepository.findByList([readScope.slug, writeScope.slug], ctx);
+					expect(scopes).toHaveLength(2);
+					expect(scopes).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({ slug: readScope.slug }),
+							expect.objectContaining({ slug: writeScope.slug }),
+						]),
+					);
+
+					const requiredScopes = await scopeRepository.findByListOrFail(
+						[readScope.slug, writeScope.slug],
+						ctx,
+					);
+					expect(requiredScopes).toHaveLength(2);
+				});
+
+				expect(defaultFindBySpy).not.toHaveBeenCalled();
+			} finally {
+				defaultFindBySpy.mockRestore();
+			}
 		});
 	});
 });

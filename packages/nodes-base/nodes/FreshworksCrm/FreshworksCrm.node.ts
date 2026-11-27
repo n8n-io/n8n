@@ -939,7 +939,7 @@ export class FreshworksCrm implements INodeType {
 						const body = {
 							title: this.getNodeParameter('title', i),
 							owner_id: this.getNodeParameter('ownerId', i),
-							due_date: tz(dueDate, defaultTimezone).format(),
+							due_date: tz(dueDate as string, defaultTimezone).format(),
 							targetable_type: this.getNodeParameter('targetableType', i),
 							targetable_id: this.getNodeParameter('targetable_id', i),
 						} as IDataObject;
@@ -1025,7 +1025,7 @@ export class FreshworksCrm implements INodeType {
 						const { dueDate, ...rest } = updateFields;
 
 						if (dueDate) {
-							body.due_date = tz(dueDate, defaultTimezone).format();
+							body.due_date = tz(dueDate as string, defaultTimezone).format();
 						}
 
 						if (Object.keys(rest).length) {
