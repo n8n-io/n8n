@@ -187,7 +187,9 @@ export function createEngineMetrics({
 
 		/**
 		 * Returns a function whose time counts as engine time also when the v1 shim
-		 * calls it, for engine work that runs inside the shim.
+		 * calls it, for engine work that runs inside the shim. Today that is the
+		 * step data loader. A call outside a shim call but inside a queue message
+		 * would make the engine time longer than the handler time.
 		 */
 		countAsEngineTime<TArgs extends unknown[], TResult>(
 			work: (...args: TArgs) => Promise<TResult>,
@@ -206,7 +208,9 @@ export function createEngineMetrics({
 		/**
 		 * Returns stores whose execution store counts each execution it ends. Only
 		 * the write that wins the compare-and-set returns a result, so every
-		 * finished execution counts once.
+		 * finished execution counts once. It relies on the `ExecutionStore`
+		 * contract that only `finishExecution` and `cancelExecution` end an
+		 * execution.
 		 */
 		wrapStores(stores: EngineStores): EngineStores {
 			const finished = new Counter({

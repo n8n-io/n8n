@@ -125,6 +125,9 @@ export function isMissingExecution(error: unknown, executionId: string): boolean
  * A write that makes an execution `queued` also records when the engine treats
  * it as stuck in that status (see `StalenessThresholds`). A transition out of
  * `queued` clears that time.
+ *
+ * Only `finishExecution` and `cancelExecution` move an execution to an ended
+ * status, so a host that wraps the store sees every end.
  */
 export interface ExecutionStore {
 	/**
