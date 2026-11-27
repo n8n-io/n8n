@@ -74,7 +74,20 @@ export type AgentUserTurns = z.infer<typeof AgentUserTurnsSchema>;
 
 /** Separate pass/fail statements about one Agent run, like a workflow case's
  *  outcomeExpectations. A scenario passes only if all of them hold. */
-export const AgentExpectationsSchema = z.array(z.string().min(1));
+export const AgentExpectationsSchema = z.array(z.string().min(1)).superRefine((list, ctx) => {
+	// Each expectation is a unit keyed by its text, so a repeat would merge into one.
+	const seen = new Set<string>();
+	for (const [index, text] of list.entries()) {
+		if (seen.has(text)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: [index],
+				message: `expectation "${text}" is listed twice — each expectation is graded as its own unit, keyed by its text`,
+			});
+		}
+		seen.add(text);
+	}
+});
 
 /** A session may grade what happened in it, e.g. recall in a later session. */
 export const AgentSessionSchema = AgentUserTurnsSchema.extend({

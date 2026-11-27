@@ -367,6 +367,59 @@ describe('scenario expectations', () => {
 	});
 });
 
+describe('duplicate expectations', () => {
+	const scenario = (extra: Record<string, unknown>) => ({
+		name: 'refund',
+		description: 'asks for a refund',
+		dataSetup: 'The user asks for a refund on order 42.',
+		...extra,
+	});
+
+	it('are refused within a scenario, since both would be one unit', () => {
+		const messages = issueMessages(
+			directCase({
+				executionScenarios: [
+					scenario({ expectations: ['Quotes the window', 'Quotes the window'] }),
+				],
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('"Quotes the window" is listed twice')]);
+	});
+
+	it('are refused within a session', () => {
+		const messages = issueMessages(
+			directCase({
+				executionScenarios: [
+					scenario({
+						sessions: [{ goal: 'g', expectations: ['Recalls the order', 'Recalls the order'] }],
+					}),
+				],
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('"Recalls the order" is listed twice')]);
+	});
+
+	it('are allowed across a scenario and its sessions, which key them apart', () => {
+		const messages = issueMessages(
+			directCase({
+				executionScenarios: [
+					scenario({
+						expectations: ['Is polite'],
+						sessions: [
+							{ goal: 'g', expectations: ['Is polite'] },
+							{ goal: 'g', expectations: ['Is polite'] },
+						],
+					}),
+				],
+			}),
+		);
+
+		expect(messages).toEqual([]);
+	});
+});
+
 describe('agentExpectationUnits', () => {
 	it('keys each expectation by its scenario, and a session expectation by its session too', () => {
 		const units = agentExpectationUnits({
