@@ -1,5 +1,5 @@
 import { Container, Service } from '@n8n/di';
-import type { SeededSteps, StartExecutionRequest } from '@n8n/engine';
+import type { LifecycleEventSubscription, SeededSteps, StartExecutionRequest } from '@n8n/engine';
 import {
 	ConflictError,
 	NotFoundError,
@@ -29,6 +29,7 @@ import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks'
 import type { ResumableExecution } from '@/interfaces';
 import {
 	EngineDataPlaneProxyService,
+	EngineV2UnavailableError,
 	isStartRefusedBeforeSave,
 } from '@/services/engine-data-plane-proxy.service';
 import {
@@ -280,8 +281,7 @@ export class EngineV2Dispatcher {
 					projectId: data.projectId,
 				},
 				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
-				// Only a run with a push ref has an editor session to relay events to.
-				lifecycleEventSubscription: data.pushRef ? { kind: 'all' } : undefined,
+				lifecycleEventSubscription: await this.toLifecycleEventSubscription(executionId, data),
 			},
 		};
 	}
@@ -298,7 +298,7 @@ export class EngineV2Dispatcher {
 		plan?: ManualRunPlan,
 	): void {
 		const { pushRef, workflowData } = data;
-		// No push ref means nothing is watching this run.
+		// No push ref means no editor watches this run.
 		if (!pushRef) return;
 
 		const runData = plan?.runData ?? {};
@@ -328,6 +328,23 @@ export class EngineV2Dispatcher {
 		});
 	}
 
+	/** An editor or a caller that waits for the end of the run needs its lifecycle events. */
+	private async toLifecycleEventSubscription(
+		executionId: string,
+		data: IWorkflowExecutionDataProcess,
+	): Promise<LifecycleEventSubscription | undefined> {
+		if (data.pushRef) return { kind: 'all' };
+
+		const { EngineV2LifecycleSubscriptions } = await import(
+			'@/modules/engine-v2/engine-lifecycle-event-subscriptions.js'
+		);
+		if (Container.get(EngineV2LifecycleSubscriptions).hasListener(executionId)) {
+			return { kind: 'all' };
+		}
+
+		return undefined;
+	}
+
 	/** v1's `resolvePinData`: a production run ignores pinned data. */
 	private resolvePinData(data: IWorkflowExecutionDataProcess): IPinData | undefined {
 		if (!['manual', 'evaluation'].includes(data.executionMode)) return undefined;
@@ -337,7 +354,7 @@ export class EngineV2Dispatcher {
 	/**
 	 * An editor that watches the run shows its progress from lifecycle events.
 	 * The events are not replayed, so the subscription must be active before the
-	 * run starts. The subscription ends with the push session.
+	 * run starts. The editor's listener ends with the push session.
 	 */
 	private async subscribeToLifecycleEvents(
 		executionId: string,
@@ -367,9 +384,7 @@ export class EngineV2Dispatcher {
 	 */
 	private assertAvailable(): void {
 		if (!this.proxy.isAvailable()) {
-			throw new UserError(
-				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
-			);
+			throw new EngineV2UnavailableError();
 		}
 	}
 

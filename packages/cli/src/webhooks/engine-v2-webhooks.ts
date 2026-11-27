@@ -18,7 +18,10 @@ import {
 import { UserError } from '@n8n/errors';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import {
+	EngineDataPlaneProxyService,
+	EngineV2UnavailableError,
+} from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/webhook-outcome';
 
@@ -98,9 +101,7 @@ export class EngineV2Webhooks {
 		// registered its channel, and throws an internal error otherwise. Only a check
 		// that precedes that call can turn "module off" into a 400 instead of a 500.
 		if (!this.proxy.isAvailable()) {
-			throw new UserError(
-				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
-			);
+			throw new EngineV2UnavailableError();
 		}
 
 		// A resume runs the waiting node, not a trigger. The trigger checks below
