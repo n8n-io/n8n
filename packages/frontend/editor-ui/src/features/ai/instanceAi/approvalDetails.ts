@@ -114,6 +114,10 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 					interpolate: { filter: filterText(details.filter) },
 				},
 			);
+		case 'archive-agent':
+			return t('instanceAi.approval.archiveAgent', {
+				interpolate: { name: details.name, id: details.id },
+			});
 		case 'archive-workflow':
 			return t('instanceAi.approval.archiveWorkflow', {
 				interpolate: { name: details.name, id: details.id },
@@ -456,6 +460,8 @@ function formatDataTableChangesTitle(changes: DataTableChanges): string {
 const approvalTitleKeys = new Map<string, BaseTextKey>(
 	(
 		[
+			'instanceAi.tools.archive_agent.imperative',
+			'instanceAi.tools.archive_agent.imperativeWithResource',
 			'instanceAi.tools.archive_workflow.imperative',
 			'instanceAi.tools.archive_workflow.imperativeWithResource',
 			'instanceAi.tools.unarchive_workflow.imperative',

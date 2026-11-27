@@ -38,6 +38,7 @@ import type {
 	AgentSkillAvailability,
 	AgentsSettingsDto,
 	AgentSkillMutationResponse,
+	AgentSkillWorkflowAccessResponse,
 	AgentTaskConfig,
 	AgentTaskDto,
 	AgentIntegrationSettings,
@@ -896,6 +897,19 @@ export const createAgentSkill = async (
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/skills`,
 		{ ...skill, ...(availableTo ? { availableTo } : {}), ...(method ? { method } : {}) },
+	);
+};
+
+export const getAgentSkillWorkflowAccess = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	skillId: string,
+): Promise<AgentSkillWorkflowAccessResponse> => {
+	return await makeRestApiRequest<AgentSkillWorkflowAccessResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/skill-workflow-access/${skillId}`,
 	);
 };
 

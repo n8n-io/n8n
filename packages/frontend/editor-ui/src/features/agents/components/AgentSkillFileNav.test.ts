@@ -139,6 +139,42 @@ describe('AgentSkillFileNav', () => {
 		);
 	});
 
+	it('hides the instance access note of a workflow that the agent project cannot use', async () => {
+		flag.enabled = true;
+		searchWorkflows.mockResolvedValue(
+			['wf1', 'wf2'].map((id) => ({
+				id,
+				nodes: [{ type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, name: 'Start' }],
+				activeVersionId: 'v1',
+				settings: {},
+			})),
+		);
+		const { container } = renderComponent({
+			props: {
+				skill: MENTIONING_SKILL,
+				selectedPath: 'SKILL.md',
+				instanceSkill: true,
+				agentContext: true,
+				outsideProjectWorkflowIds: ['wf2'],
+			},
+		});
+
+		const rows = () => container.querySelectorAll('[data-testid="agent-skill-workflow-item"]');
+		await waitFor(() =>
+			expect(byTestId(rows()[0], 'agent-skill-workflow-notes')).toHaveAttribute(
+				'aria-label',
+				"Agents can use this workflow only in its own project. To use it in other projects, share it with those projects and set 'This workflow can be called by' to 'Any workflow'.",
+			),
+		);
+		const [weeklyRow, archiveRow] = rows();
+		expect(byTestId(weeklyRow, 'agent-skill-workflow-warnings')).toBeNull();
+		expect(byTestId(archiveRow, 'agent-skill-workflow-warnings')).toHaveAttribute(
+			'aria-label',
+			'This agent\'s project can\'t use workflow "Archive". Share the workflow with this project and set "This workflow can be called by" to "Any workflow".',
+		);
+		expect(byTestId(archiveRow, 'agent-skill-workflow-notes')).toBeNull();
+	});
+
 	it('shows no warning outside the agent context', async () => {
 		flag.enabled = true;
 		searchWorkflows.mockResolvedValue([
@@ -376,6 +412,34 @@ describe('AgentSkillFileNav', () => {
 
 		expect(byTestId(container, 'agent-skill-workflows')).not.toBeNull();
 		expect(byTestId(container, 'picker-stub')).toBeNull();
+	});
+
+	it('warns about the workflows that the agent project cannot use', () => {
+		flag.enabled = true;
+		const { container } = renderComponent({
+			props: {
+				skill: MENTIONING_SKILL,
+				selectedPath: 'SKILL.md',
+				readOnly: true,
+				outsideProjectWorkflowIds: ['wf2'],
+			},
+		});
+
+		const warnings = container.querySelectorAll('[data-testid="agent-skill-workflow-warnings"]');
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toHaveAttribute(
+			'aria-label',
+			'This agent\'s project can\'t use workflow "Archive". Share the workflow with this project and set "This workflow can be called by" to "Any workflow".',
+		);
+	});
+
+	it('shows no project warning without an agent project', () => {
+		flag.enabled = true;
+		const { container } = renderComponent({
+			props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md', readOnly: true },
+		});
+
+		expect(byTestId(container, 'agent-skill-workflow-warnings')).toBeNull();
 	});
 
 	it('hides the workflows section when the flag is off', () => {

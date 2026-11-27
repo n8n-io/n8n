@@ -100,6 +100,16 @@ describe('InstanceAiCloudBrowsersCard', () => {
 		);
 	});
 
+	it('blocks the live view from session recordings', () => {
+		const { container } = render(makeTask(), {
+			status: 'live',
+			liveViewUrl: 'https://live.example.com/1',
+			windowId: 'window-1',
+		});
+
+		expect(container.querySelector('iframe')).toHaveClass('ph-no-capture');
+	});
+
 	it('says when the browser closed', () => {
 		const { getByTestId, container } = render(makeTask(), {
 			status: 'disconnected',
