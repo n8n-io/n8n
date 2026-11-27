@@ -25,7 +25,7 @@ on:
       runner:
         description: 'GitHub runner to use'
         required: false
-        default: 'blacksmith-2vcpu-ubuntu-2204'
+        default: 'blacksmith-2vcpu-bmi-n8n'
         type: string
       timeout-minutes:
         description: 'Job timeout in minutes'
@@ -66,10 +66,6 @@ on:
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
-  # Browser cache location - must match install-browsers script.
-  # Absolute so nested pnpm invocations (e.g. coverage shard runner) don't
-  # re-resolve a relative path against the package's INIT_CWD and double it.
-  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/packages/quality/testing/playwright/.playwright-browsers
   # docker-artifact loads the image locally as n8nio/n8n:local; unused in local mode.
   TEST_IMAGE_N8N: 'n8nio/n8n:local'
   N8N_SKIP_LICENSES: 'true'
@@ -104,7 +100,13 @@ jobs:
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Install Browsers
-        run: pnpm turbo run install-browsers --filter=n8n-playwright
+        run: |
+          if [ "$(cat /opt/playwright-browsers/.playwright-version 2>/dev/null)" = "$(cat packages/quality/testing/playwright/.playwright-version)" ]; then
+            echo "PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers" >> "$GITHUB_ENV"
+          else
+            echo "PLAYWRIGHT_BROWSERS_PATH=$GITHUB_WORKSPACE/packages/quality/testing/playwright/.playwright-browsers" >> "$GITHUB_ENV"
+            pnpm turbo run install-browsers --filter=n8n-playwright
+          fi
 
       - name: Load n8n image from cache
         if: ${{ inputs.test-mode == 'docker-artifact' }}

@@ -26,7 +26,6 @@ import {
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 	getThreadDisplayTitle,
-	threadTargetsAgent,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from './useCanvasPreview';
@@ -963,11 +962,7 @@ function handleNewThreadClick() {
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
-					<!-- A thread that builds an agent always runs in Manual mode. -->
-					<template
-						v-if="!threadTargetsAgent(store.getThreadMetadata(props.threadId))"
-						#composer-controls
-					>
+					<template #composer-controls>
 						<ApprovalModeSelector :thread-id="props.threadId" />
 					</template>
 					<template #above-input>

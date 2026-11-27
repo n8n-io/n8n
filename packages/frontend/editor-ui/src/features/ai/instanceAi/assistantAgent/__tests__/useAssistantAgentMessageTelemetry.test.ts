@@ -65,12 +65,12 @@ describe('useAssistantAgentMessageTelemetry', () => {
 	test.each([
 		{ available: false, attachesAgent: false, metadata: undefined, expected: 'unavailable' },
 		{ available: true, attachesAgent: false, metadata: undefined, expected: 'auto' },
-		{ available: true, attachesAgent: true, metadata: undefined, expected: 'manual' },
+		{ available: true, attachesAgent: true, metadata: undefined, expected: 'auto' },
 		{
 			available: true,
 			attachesAgent: false,
 			metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' } },
-			expected: 'manual',
+			expected: 'auto',
 		},
 	])(
 		'reports the approval mode $expected (agent attached: $attachesAgent)',

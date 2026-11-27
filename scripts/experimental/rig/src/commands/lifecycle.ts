@@ -35,6 +35,7 @@ import { wizard } from './wizard';
 import { RIG } from '../meta';
 import { parseSlot, slotsInUse } from '../topology/slots';
 import { ensureContainerRuntime } from '../services/runtime';
+import { licenseForNewEnv, requireLicense } from '../licenses';
 
 const LAYER_HEADERS: Record<string, string> = {
 	shared: 'every component (mains, workers, engine, launchers)',
@@ -50,7 +51,7 @@ export function layerHeader(layer: string): string {
 	const target = LAYER_HEADERS[layer] ?? `the component "${layer}"`;
 	return (
 		`# Env vars for ${target}.\n` +
-		'# Order, later wins: managed by rig < global secrets < profiles < secrets.env < shared.env < <role>.env < <component>.env\n' +
+		'# Order, later wins: managed by rig < global secrets < license < profiles < secrets.env < shared.env < <role>.env < <component>.env\n' +
 		`# Edit this file or use \`${RIG} env set KEY=value --on <role|component>\`.\n` +
 		'# Running components show drift and restart on request.\n\n'
 	);
@@ -231,8 +232,20 @@ export const createCommand = defineCommand({
 			type: 'string',
 			description: 'Port slot: 0 (default ports) to 9, or auto for the lowest free slot',
 		},
+		license: {
+			type: 'string',
+			description: 'A stored license. Default: the default license. --no-license uses none',
+		},
 	},
 	async run({ args }) {
+		// citty gives `false` for --no-license.
+		const licenseFlag: unknown = args.license;
+		const license =
+			licenseFlag === false
+				? false
+				: typeof licenseFlag === 'string'
+					? requireLicense(licenseFlag)
+					: undefined;
 		const hasTopologyFlags = [
 			args.preset,
 			args.db,
@@ -252,11 +265,11 @@ export const createCommand = defineCommand({
 
 		let input: TopologyInput;
 		if (!hasTopologyFlags && isInteractive()) {
-			const answer = await wizard(args.name);
+			const answer = await wizard(args.name, { license });
 			if (!answer) return;
 			input = answer;
 		} else if (args.name) {
-			input = inputFromFlags(args.name, args);
+			input = { ...inputFromFlags(args.name, args), license: licenseForNewEnv(license) };
 		} else {
 			throw new RigError(`Give a name: \`${RIG} create <name> --preset <preset>\`.`);
 		}
