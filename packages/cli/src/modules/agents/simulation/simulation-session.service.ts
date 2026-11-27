@@ -92,10 +92,7 @@ export class SimulationSessionService {
 			!(await this.threadRepository.findTestChatState(params.testChatId))?.testChat
 		) {
 			// Delete only the entry this call read: a new turn can replace it during the lookup.
-			if (this.sessions.get(key) === cached) {
-				this.sessions.delete(key);
-				this.closeWorld(cached.session);
-			}
+			if (this.sessions.get(key) === cached) this.dropSession(key, cached);
 			return undefined;
 		}
 		this.sessions.touch(key);
