@@ -423,6 +423,36 @@ export class InstanceAiPage extends BasePage {
 		return this.getAppHeader().getByTestId('app-publish-button');
 	}
 
+	getAppShareButton(): Locator {
+		return this.getAppHeader().getByTestId('app-share-trigger');
+	}
+
+	getAppSharePopoverContent(): Locator {
+		return this.getVisiblePoppers().getByTestId('app-share-content');
+	}
+
+	/**
+	 * Injects `publishedUrl` into the app detail response so the header renders
+	 * the Share popover button alongside Publish without publishing a live bundle.
+	 */
+	async mockPublishedAppUrl(projectId: string, appId: string, publishedUrl: string): Promise<void> {
+		await this.page.route(`**/rest/projects/${projectId}/apps/${appId}`, async (route) => {
+			if (route.request().method() !== 'GET') {
+				await route.continue();
+				return;
+			}
+			const response = await route.fetch();
+			const body = (await response.json()) as { data?: Record<string, unknown> };
+			await route.fulfill({
+				response,
+				json: {
+					...body,
+					data: body.data ? { ...body.data, publishedUrl } : body.data,
+				},
+			});
+		});
+	}
+
 	/**
 	 * Stubs a built version and preview grant for an app so the header's Publish
 	 * button is enabled without requiring an external build sandbox.

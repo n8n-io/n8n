@@ -188,15 +188,15 @@ watch(
 
 <style lang="scss" module>
 .header {
-	display: grid;
-	grid-template-columns: 1fr auto 1fr;
+	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--md) var(--spacing--xs) var(--spacing--xs);
 	background-color: var(--background--surface);
 	border-bottom: var(--border);
 	flex-shrink: 0;
-	height: var(--height--4xl);
+	min-height: var(--height--4xl);
 	container-type: inline-size;
 	container-name: app-header;
 }
@@ -219,11 +219,11 @@ watch(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	min-width: 0;
 }
 
 .left {
-	grid-column: 1;
+	flex: 1 1 0;
+	min-width: min(100%, var(--spacing--3xl));
 	overflow: hidden;
 }
 
@@ -232,11 +232,12 @@ watch(
 }
 
 .center {
-	grid-column: 2;
+	flex: 0 0 auto;
 }
 
 .right {
-	grid-column: 3;
+	flex: 1 0 0;
+	min-width: max-content;
 	justify-content: flex-end;
 }
 
