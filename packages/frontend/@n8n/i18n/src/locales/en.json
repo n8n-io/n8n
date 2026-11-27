@@ -473,7 +473,7 @@
 	"apps.preview.empty.heading": "No app preview yet",
 	"apps.preview.empty.description": "Build this app with n8n Assistant",
 	"apps.preview.confirm.heading": "Run {name}?",
-	"apps.preview.confirm.description": "This app may run workflows and agents, and change data tables",
+	"apps.preview.confirm.description": "This app runs as you. It may use your connected accounts, run workflows and agents, and change data tables.",
 	"apps.preview.confirm.run": "Run app",
 	"apps.preview.noPermission.heading": "You can't preview this app",
 	"apps.preview.noPermission.description": "Ask a project admin for access",
