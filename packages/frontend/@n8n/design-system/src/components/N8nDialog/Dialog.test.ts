@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { render, waitFor } from '@testing-library/vue';
+import { render, waitFor, within } from '@testing-library/vue';
 import { DialogRoot, DialogTrigger, DialogPortal } from 'reka-ui';
 import { ref } from 'vue';
 
@@ -852,6 +852,7 @@ describe('N8nDialog', () => {
 
 			await user.keyboard('{Escape}');
 			await expect(pending).resolves.toBe('close');
+			expect(escapeHandler).not.toHaveBeenCalled();
 			expect(getByRole('dialog', { name: 'Parent Dialog' })).toBeInTheDocument();
 		});
 
@@ -870,9 +871,13 @@ describe('N8nDialog', () => {
 			await user.click(getByTestId('popover-trigger'));
 			const popover = await waitFor(() => getByRole('dialog'));
 
-			void useMessage().confirm('Sure?', 'Confirm?');
+			const pending = useMessage().confirm('Sure?', 'Confirm?');
 			const messageBox = await waitFor(() => getByRole('dialog', { name: 'Confirm?' }));
 			expect(popover.contains(messageBox)).toBe(false);
+
+			// Close the message box so it does not leak into later tests.
+			await user.click(within(messageBox).getByRole('button', { name: /confirm|ok|yes/i }));
+			await expect(pending).resolves.toBe('confirm');
 		});
 	});
 });
