@@ -3941,13 +3941,13 @@ export interface IWorkflowExecutionTelemetryMetadata {
 	origin?: WorkflowExecutionOrigin;
 }
 
-/** The agent, parent workflow or public API call that started a run. */
-export type WorkflowExecutionCaller = 'agent' | 'workflow' | 'public_api';
+/** The agent, parent workflow, public API call or Instance AI that started a run. */
+export type WorkflowExecutionCaller = 'agent' | 'workflow' | 'public_api' | 'instance_ai';
 
 export interface WorkflowExecutionOrigin {
 	/** Type of the trigger node that started the execution. Absent when no trigger node did. */
 	triggerNodeType?: string;
-	/** Absent when no agent, parent workflow or public API call started the run. */
+	/** Absent when no agent, parent workflow, public API call or Instance AI started the run. */
 	caller?: WorkflowExecutionCaller;
 }
 

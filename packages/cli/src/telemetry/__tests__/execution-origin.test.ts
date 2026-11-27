@@ -166,6 +166,25 @@ describe('getExecutionOrigin', () => {
 		expect(getExecutionOrigin(run)?.caller).toBe('workflow');
 	});
 
+	it('sets the caller to instance_ai when Instance AI started the run', () => {
+		// A test run of a webhook workflow uses the production mode of its trigger node.
+		const run: IWorkflowExecutionDataProcess = { ...runFrom(webhook), source: 'instance_ai' };
+
+		expect(getExecutionOrigin(run)).toEqual({
+			triggerNodeType: 'n8n-nodes-base.webhook',
+			caller: 'instance_ai',
+		});
+	});
+
+	it('sets the caller to instance_ai from the source saved with a resumed run', () => {
+		const resumed = runFrom(wait, {
+			runData: { Webhook: taskStartedAt(1000) },
+			manualData: { source: 'instance_ai' },
+		});
+
+		expect(getExecutionOrigin(resumed)?.caller).toBe('instance_ai');
+	});
+
 	it('keeps the caller that a public API endpoint set', () => {
 		const manualRun: IWorkflowExecutionDataProcess = {
 			executionMode: 'manual',

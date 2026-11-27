@@ -258,7 +258,10 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	 * Absent when there is none.
 	 */
 	trigger_node_type?: string;
-	/** The agent, parent workflow or public API call that started the run. Absent when none did. */
+	/**
+	 * The agent, parent workflow, public API call or Instance AI that started the run. Absent when
+	 * none did.
+	 */
 	execution_caller?: WorkflowExecutionCaller;
 }
 

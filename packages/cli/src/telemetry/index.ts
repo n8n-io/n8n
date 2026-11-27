@@ -64,7 +64,7 @@ interface IExecutionTriggerCount extends IExecutionTrackData {
 	node_type: string | null;
 	/** null when the run has no run data */
 	mode: WorkflowExecuteMode | null;
-	/** null when no agent, parent workflow or public API call started the run */
+	/** null when no agent, parent workflow, public API call or Instance AI started the run */
 	caller: WorkflowExecutionCaller | null;
 	status: 'success' | 'error' | 'crashed';
 	/** Time of the last run since the last flush. `first` is the time of the first run. */

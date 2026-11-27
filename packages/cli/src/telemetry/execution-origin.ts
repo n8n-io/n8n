@@ -35,6 +35,11 @@ export function getExecutionOrigin(
 function getCaller(data: IWorkflowExecutionDataProcess): WorkflowExecutionCaller | undefined {
 	if (data.executionData?.parentAgentRun) return 'agent';
 	if (data.executionData?.parentExecution) return 'workflow';
+	// The same source that labels the run's `execution_source`. A worker or a resumed run only has
+	// the copy saved with the execution.
+	if ((data.source ?? data.executionData?.manualData?.source) === 'instance_ai') {
+		return 'instance_ai';
+	}
 	// The public API endpoints that start runs set it.
 	const origin = data.telemetryMetadata?.origin;
 	return typeof origin === 'object' ? origin.caller : undefined;
