@@ -28,10 +28,12 @@ const isSwitching = ref(false);
 
 // The open state can be set before the canvas loads the workflow, for example after a route
 // change. The dialog shows once the findings are there.
-const open = computed({
-	get: () => findingsDialog.isOpen.value && groups.value.length > 0,
-	set: (value: boolean) => (value ? findingsDialog.open() : findingsDialog.close()),
-});
+const isDialogVisible = computed(() => findingsDialog.isOpen.value && groups.value.length > 0);
+
+function onUpdateOpen(value: boolean) {
+	if (value) findingsDialog.open();
+	else findingsDialog.close();
+}
 
 // When the last finding goes, close the dialog, so that a later finding doesn't open it again.
 watch(
@@ -78,7 +80,8 @@ async function onSwitchToV1() {
 
 <template>
 	<EngineV2CompatibilityDialog
-		v-model:open="open"
+		:open="isDialogVisible"
+		@update:open="onUpdateOpen"
 		:groups="groups"
 		:can-switch-to-v1="!readOnly"
 		:switching="isSwitching"
