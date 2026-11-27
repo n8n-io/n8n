@@ -14,6 +14,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import { createRunExecutionData, type IWorkflowBase } from 'n8n-workflow';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v4 as uuid } from 'uuid';
 
 import { AgentChatAttachment } from '@/modules/agents/entities/agent-chat-attachment.entity';
@@ -173,7 +174,7 @@ async function saveTurn(
 
 async function saveFile(threadId: string, source: string, createdAt: Date) {
 	const files = Container.get(DataSource).getRepository(AgentChatAttachment);
-	const id = uuid();
+	const id = generateNanoId();
 	await files.save(
 		files.create({
 			id,

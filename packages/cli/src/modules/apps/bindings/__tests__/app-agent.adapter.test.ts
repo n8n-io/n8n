@@ -253,7 +253,7 @@ describe('AppAgentAdapter', () => {
 				threadId: `agent-1:app:app-1:user:user-1:${SESSION}`,
 				projectId: 'project-1',
 				agentId: 'agent-1',
-				userId: 'app:app-1:user:user-1',
+				reader: { sessionEndUserId: 'app:app-1:user:user-1' },
 			});
 			expect(result).toMatchObject({
 				messages: [message],

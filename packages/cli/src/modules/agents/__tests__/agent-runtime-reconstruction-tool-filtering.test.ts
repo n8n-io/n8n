@@ -1,4 +1,3 @@
-import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type * as agents from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
 import {
@@ -25,7 +24,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type {
+	CredentialsFinderService,
+	ExecutionRedactionServiceProxy,
+} from '@n8n/backend-services';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
