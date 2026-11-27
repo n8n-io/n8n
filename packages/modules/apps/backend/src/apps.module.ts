@@ -39,6 +39,8 @@ export class AppsModule implements ModuleInterface {
 		const { ProtectedResourceRegistry } = await import('@n8n/backend-services/auth');
 		const { AppProtectedResource } = await import('./auth/app-protected-resource.js');
 		Container.get(ProtectedResourceRegistry).registerResolver(Container.get(AppProtectedResource));
+		const { registerAppGrantRevocation } = await import('./auth/app-grant-revocation.js');
+		registerAppGrantRevocation();
 		Container.get(Logger).warn('The apps module is experimental.');
 	}
 

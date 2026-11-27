@@ -20,7 +20,7 @@ import { EventService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-services/auth';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
-import { accountSummary, isPerson, type User } from '@n8n/db';
+import { accountSummary, isPerson, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
@@ -726,6 +726,11 @@ export class OAuthServerService implements OAuthServerProvider {
 		this.logger.debug('Token revocation requested for unknown token', {
 			clientId: client.client_id,
 		});
+	}
+
+	async revokeVirtualClients(clientIds: string[], ctx: OperationContext): Promise<void> {
+		const removed = await this.oauthClientRepository.removeVirtualClients(clientIds, ctx);
+		if (removed > 0) this.logger.debug('Revoked virtual OAuth clients', { clientIds, removed });
 	}
 
 	/**

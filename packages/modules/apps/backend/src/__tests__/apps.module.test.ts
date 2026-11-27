@@ -1,11 +1,19 @@
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Logger, ModuleRegistry, ModulesConfig } from '@n8n/backend-common';
+import {
+	OwnershipTransferHandlerRegistry,
+	ProjectMutationHooksProxy,
+	type ProjectMutationHooks,
+	type ProjectOwnershipTransferHandler,
+} from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
+import type { OperationContext } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { AppsModule } from '../apps.module';
 import { AppsConfig } from '../apps.config';
+import { AppGrantRevocation } from '../auth/app-grant-revocation';
 import { AppProtectedResource } from '../auth/app-protected-resource';
 import {
 	AppAgentPort,
@@ -46,6 +54,7 @@ describe('AppsModule', () => {
 		const resource = mock<AppProtectedResource>();
 		Container.set(ProtectedResourceRegistry, registry);
 		Container.set(AppProtectedResource, resource);
+		Container.set(AppGrantRevocation, mock<AppGrantRevocation>());
 		const blobs = mock<AppBlobStore>();
 		const sourceVersions = mock<SnapshotAppSourceVersionStore>();
 		const buildResults = mock<SnapshotAppBuildResultStore>();
@@ -78,6 +87,41 @@ describe('AppsModule', () => {
 		]);
 		expect(logger.warn).toHaveBeenCalledWith('The apps module is experimental.');
 		expect(await module.settings()).toEqual({ enabled: true });
+	});
+
+	it('revokes app grants when a project or a user is deleted', async () => {
+		const config = Container.get(AppsConfig);
+		config.baseUrl = 'https://apps.example.com';
+		Container.set(Logger, mock<Logger>());
+		Container.set(ProtectedResourceRegistry, mock<ProtectedResourceRegistry>());
+		Container.set(AppProtectedResource, mock<AppProtectedResource>());
+		Container.set(AppBlobStore, mock<AppBlobStore>());
+		Container.set(SnapshotAppSourceVersionStore, mock<SnapshotAppSourceVersionStore>());
+		Container.set(SnapshotAppBuildResultStore, mock<SnapshotAppBuildResultStore>());
+		Container.set(AppBindingAdapters, {
+			resolve: () => ({
+				dataTables: mock<AppDataTablePort>(),
+				workflows: mock<AppWorkflowPort>(),
+				agents: mock<AppAgentPort>(),
+			}),
+		});
+		const grants = mock<AppGrantRevocation>();
+		Container.set(AppGrantRevocation, grants);
+		const hooks = mock<ProjectMutationHooksProxy>();
+		Container.set(ProjectMutationHooksProxy, hooks);
+		const transfers = mock<OwnershipTransferHandlerRegistry<unknown>>();
+		Container.set(OwnershipTransferHandlerRegistry, transfers);
+		const ctx = mock<OperationContext>();
+
+		await new AppsModule().init();
+
+		const [hookProvider]: [Partial<ProjectMutationHooks>] = hooks.registerProvider.mock.calls[0];
+		await hookProvider.beforeProjectDeleted?.({ projectId: 'project-1', userId: 'user-1' }, ctx);
+		expect(grants.revokeProject).toHaveBeenCalledExactlyOnceWith('project-1', ctx);
+
+		const [handler]: [ProjectOwnershipTransferHandler<unknown>] = transfers.register.mock.calls[0];
+		await handler.finalizeUserDeletion?.('user-1', 'personal-project-1', ctx);
+		expect(grants.revokeProject).toHaveBeenLastCalledWith('personal-project-1', ctx);
 	});
 
 	it('rejects missing hosting configuration before initializing storage', async () => {

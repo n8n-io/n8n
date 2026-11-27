@@ -81,6 +81,16 @@ export class AppRepository extends BaseRepository<App> {
 		return result.affected === 1;
 	}
 
+	async findHostsInProject(
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<Array<Pick<App, 'id' | 'namespace'>>> {
+		return await this.managerFor(ctx).find(App, {
+			select: { id: true, namespace: true },
+			where: { projectId },
+		});
+	}
+
 	async projectExists(projectId: string, ctx: OperationContext = {}) {
 		return await this.managerFor(ctx).existsBy(Project, { id: projectId });
 	}

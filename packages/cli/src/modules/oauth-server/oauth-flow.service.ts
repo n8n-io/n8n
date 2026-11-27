@@ -12,6 +12,7 @@ import {
 	ProtectedResourceRegistry,
 } from '@n8n/backend-services/auth';
 import { Time } from '@n8n/constants';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	deriveCapabilities,
@@ -328,6 +329,11 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 				: await this.refreshWithRegisteredClient(login.value, issued.refreshToken, resourceUrl);
 		if (!refreshed.valid) return refreshed;
 		return { ...refreshed, refreshToken: encodeRefreshGrant(accepted, refreshed.refreshToken) };
+	}
+
+	/** The virtual client ID of a resource is its URL. */
+	async revokeClients(resourceUrls: string[], ctx: OperationContext): Promise<void> {
+		await this.oauthServerService.revokeVirtualClients(resourceUrls, ctx);
 	}
 
 	/** The internal server's rotation, in process, on the trigger's virtual client. */
