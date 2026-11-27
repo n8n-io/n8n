@@ -2,7 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
 import {
+	hideCredentialCarriers,
 	isSecretKey,
+	redactEndpoint,
+	redactNodeParameters,
+	redactSecretBodyStrings,
 	redactSecretKeys,
 	redactSecretValuePatterns,
 	truncateForLlm,
@@ -379,5 +383,178 @@ describe('truncateForLlm', () => {
 		const result = truncateForLlm(overByOne);
 		expect(result.endsWith('... [truncated]')).toBe(true);
 		expect(mockWarn).toHaveBeenCalled();
+	});
+});
+
+describe('redactNodeParameters', () => {
+	it('hides the value of a name and value pair with a secret name, and keeps the other pairs', () => {
+		const result = redactNodeParameters({
+			headerParameters: {
+				parameters: [
+					{ name: 'X-Api-Key', value: 'secret-1' },
+					{ name: 'Accept', value: 'application/json' },
+				],
+			},
+			authToken: 'secret-2',
+			url: 'https://a.test/x',
+		});
+
+		expect(JSON.stringify(result)).not.toContain('secret-');
+		expect(JSON.stringify(result)).toContain('application/json');
+		expect(JSON.stringify(result)).toContain('https://a.test/x');
+	});
+});
+
+describe('redactEndpoint', () => {
+	const BOT = 'bot123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw';
+	const HIDDEN = '<redacted:[0-9a-f]{6}>';
+
+	it('hides a bot token and a long opaque segment of the path', () => {
+		expect(redactEndpoint(`/${BOT}/sendMessage`)).toMatch(new RegExp(`^/${HIDDEN}/sendMessage$`));
+		expect(redactEndpoint('/v1/keys/k9Xq2LmPz7Rt4VbN8YcW1HdS5Fg/use')).toMatch(
+			new RegExp(`^/v1/keys/${HIDDEN}/use$`),
+		);
+		expect(redactEndpoint(`https://api.x.test/${BOT}/getMe`)).toMatch(
+			new RegExp(`^https://api.x.test/${HIDDEN}/getMe$`),
+		);
+	});
+
+	it('keeps two different hidden ids apart, and the same id the same', () => {
+		const one = redactEndpoint('/v1/items/k9Xq2LmPz7Rt4VbN8YcW1HdS5Fg');
+		const two = redactEndpoint('/v1/items/Zr3Tt8WqLm2Xc9VbN4YdH7Js1Pk');
+
+		expect(one).not.toBe(two);
+		expect(redactEndpoint('/v1/items/k9Xq2LmPz7Rt4VbN8YcW1HdS5Fg')).toBe(one);
+	});
+
+	it('keeps a normal path, a UUID, a hex id, a plain word and a kebab-case slug', () => {
+		const path = '/v1/tasks/3f2b6c1e-8a4d-4f0b-9c7e-1d2a3b4c5d6e/comments/507f1f77bcf86cd799439011';
+		expect(redactEndpoint(path)).toBe(path);
+		expect(redactEndpoint('/v1/organizationmembershipsettings')).toBe(
+			'/v1/organizationmembershipsettings',
+		);
+		expect(redactEndpoint('/posts/weekly-report-for-the-team-2024')).toBe(
+			'/posts/weekly-report-for-the-team-2024',
+		);
+	});
+
+	it('hides a secret parameter of the query as well', () => {
+		expect(redactEndpoint('/v1/tasks?api_key=abc&page=2')).toBe(
+			'/v1/tasks?api_key=<redacted>&page=2',
+		);
+	});
+
+	it('hides the user and password of a URL', () => {
+		const out = redactEndpoint('https://jo:hunter22@api.x.test/v1/tasks');
+
+		expect(out).toBe('https://<redacted>@api.x.test/v1/tasks');
+		expect(redactEndpoint('=https://jo:hunter22@api.x.test/v1')).not.toContain('hunter22');
+	});
+});
+
+describe('redactNodeParameters with strings', () => {
+	it('hides a secret in a URL parameter', () => {
+		const out = JSON.stringify(
+			redactNodeParameters({
+				url: 'https://a.test/bot123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw/x?token=t1',
+			}),
+		);
+
+		expect(out).not.toContain('AAHdqTcv');
+		expect(out).not.toContain('t1');
+		expect(out).toContain('a.test');
+	});
+
+	it('hides a secret inside a JSON text, and keeps a JSON text with no secret as it is', () => {
+		const headers = '{"Authorization":"Basic abc123","Accept":"application/json"}';
+		const plain = '{ "title": "Buy milk" }';
+
+		expect(redactNodeParameters({ jsonHeaders: headers })).toEqual({
+			jsonHeaders: expect.not.stringContaining('abc123'),
+		});
+		expect(JSON.stringify(redactNodeParameters({ jsonHeaders: headers }))).toContain(
+			'application/json',
+		);
+		expect(redactNodeParameters({ jsonBody: plain })).toEqual({ jsonBody: plain });
+	});
+});
+
+describe('redactNodeParameters with expressions', () => {
+	it('hides a secret in a JSON text that starts with `=`', () => {
+		const out = JSON.stringify(redactNodeParameters({ jsonHeaders: '={"X-Token":"SECRET"}' }));
+
+		expect(out).not.toContain('SECRET');
+		expect(out).toContain('X-Token');
+	});
+
+	it('hides a secret query parameter of a URL inside an expression', () => {
+		const out = JSON.stringify(
+			redactNodeParameters({ url: '={{ "https://a.test/v1?token=SECRET&page=2" }}' }),
+		);
+
+		expect(out).not.toContain('SECRET');
+		expect(out).toContain('a.test/v1');
+		expect(out).toContain('page=2');
+	});
+
+	it('keeps an expression that has no secret as it is', () => {
+		const text = '={{ $json.name }}';
+
+		expect(redactNodeParameters({ name: text })).toEqual({ name: text });
+	});
+});
+
+describe('redactSecretBodyStrings', () => {
+	it('hides a secret in a JSON text body', () => {
+		const out = redactSecretBodyStrings('{"api_key":"SECRET","title":"Buy milk"}');
+
+		expect(JSON.stringify(out)).not.toContain('SECRET');
+		expect(out).toEqual({ api_key: '<redacted>', title: 'Buy milk' });
+	});
+
+	it('hides a secret in a form-encoded text body', () => {
+		const out = redactSecretBodyStrings('grant=x&token=SECRET');
+
+		expect(out).not.toContain('SECRET');
+		expect(out).toContain('grant=x');
+	});
+
+	it('keeps text that is neither JSON nor a form, and keeps an object body unchanged', () => {
+		expect(redactSecretBodyStrings('Buy milk, please')).toBe('Buy milk, please');
+		expect(redactSecretBodyStrings({ title: 'Buy milk' })).toEqual({ title: 'Buy milk' });
+	});
+});
+
+describe('hideCredentialCarriers', () => {
+	const hidden = (text: string) => expect(text).toMatch(/<redacted:[0-9a-f]{6}>/);
+
+	it('hides every query value, and keeps the names, the path and the other values apart', () => {
+		const one = hideCredentialCarriers({ url: 'https://a.test/w?q=Berlin&appid=SECRET' }, 'query');
+		const two = hideCredentialCarriers({ url: 'https://a.test/w?q=Paris&appid=SECRET' }, 'query');
+
+		expect(one.url).not.toContain('SECRET');
+		expect(one.url).toContain('https://a.test/w?q=');
+		expect(one.url).toContain('&appid=');
+		hidden(one.url);
+		expect(one.url).not.toBe(two.url);
+	});
+
+	it('leaves a body alone for query auth, and hides every body value for custom auth', () => {
+		const request = { url: 'https://a.test/x', body: { user: 'jo', pass: 'SECRET' } };
+
+		expect(hideCredentialCarriers(request, 'query').body).toEqual(request.body);
+		const custom = hideCredentialCarriers(request, 'custom');
+		expect(JSON.stringify(custom.body)).not.toContain('SECRET');
+		expect(JSON.stringify(custom.body)).not.toContain('jo');
+		expect(custom.body).toEqual({ user: expect.any(String), pass: expect.any(String) });
+	});
+
+	it('hides a text body of custom auth, as JSON, as a form or as plain text', () => {
+		const texts = ['{"pass":"SECRET"}', 'user=jo&pass=SECRET', 'SECRET'];
+
+		for (const body of texts) {
+			const out = hideCredentialCarriers({ url: 'https://a.test/x', body }, 'custom').body;
+			expect(JSON.stringify(out)).not.toContain('SECRET');
+		}
 	});
 });

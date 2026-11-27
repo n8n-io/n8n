@@ -12,7 +12,9 @@
  */
 
 import { Logger } from '@n8n/backend-common';
+import { createHash } from 'node:crypto';
 import { Container } from '@n8n/di';
+import type { IHttpRequestOptions } from 'n8n-workflow';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -159,4 +161,185 @@ export function redactSecretSearchParams(endpoint: string): string {
 		})
 		.join('&');
 	return `${endpoint.slice(0, queryStart)}?${query}`;
+}
+
+const UUID_SEGMENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TELEGRAM_TOKEN_SEGMENT = /^(?:bot)?\d{6,}:[A-Za-z0-9_-]{20,}$/i;
+const OPAQUE_SEGMENT = /^[A-Za-z0-9_-]{24,}$/;
+// Words and numbers with hyphens, such as `weekly-report-2024`. A token mixes letters and digits in one part.
+const KEBAB_SLUG = /^(?:[a-z]+|\d+)(?:-(?:[a-z]+|\d+))+$/;
+const FORM_BODY = /^[^\s=&{}[\]]+=[^\s]*$/;
+const USERINFO = /^(\s*=?\s*[a-z][a-z0-9+.-]*:\/\/)[^/?#]*@/i;
+
+// A path segment that holds a credential, such as `/bot<token>/sendMessage`. No vendor profile tells
+// which segment it is, so this reads the shape: a bot token, or a long mix of letters and digits.
+// A UUID and a plain hex id stay, because the model needs ids to write a consistent answer.
+function isTokenSegment(segment: string): boolean {
+	let text = segment;
+	try {
+		text = decodeURIComponent(segment);
+	} catch {
+		// Use the segment as it is.
+	}
+	if (TELEGRAM_TOKEN_SEGMENT.test(text)) return true;
+	return (
+		OPAQUE_SEGMENT.test(text) &&
+		/\d/.test(text) &&
+		/[A-Za-z]/.test(text) &&
+		!UUID_SEGMENT.test(text) &&
+		!KEBAB_SLUG.test(text) &&
+		!/^[0-9a-f]+$/i.test(text)
+	);
+}
+
+// A short hash keeps two different hidden segments apart. The write ledger keys on the endpoint, so a
+// fixed marker would make two resources look like one.
+function hiddenSegment(segment: string): string {
+	return `<redacted:${createHash('sha256').update(segment).digest('hex').slice(0, 6)}>`;
+}
+
+/**
+ * Redact the secrets of an endpoint or of a URL for a model or a log: a token-like path segment, and
+ * the secret parameters of the query. A host has dots, so it is never a token segment.
+ */
+export function redactEndpoint(endpoint: string): string {
+	// A URL can carry `user:password@` before the host.
+	const text = endpoint.replace(USERINFO, '$1<redacted>@');
+	const queryStart = text.indexOf('?');
+	const path = queryStart === -1 ? text : text.slice(0, queryStart);
+	const query = queryStart === -1 ? '' : text.slice(queryStart);
+	const safePath = path
+		.split('/')
+		.map((segment) => (isTokenSegment(segment) ? hiddenSegment(segment) : segment))
+		.join('/');
+	return redactSecretSearchParams(safePath + query);
+}
+
+const EMBEDDED_URL = /https?:\/\/[^\s"'`)}]+/gi;
+
+// A string parameter can hold a URL, or a JSON text such as the headers of a node. In expression mode
+// the text starts with `=`, and a URL can sit inside a string of the expression.
+function redactStringParameter(value: string): string {
+	const trimmed = value.trim();
+	const expression = trimmed.startsWith('=');
+	const text = expression ? trimmed.slice(1).trim() : trimmed;
+	if (/^https?:\/\//i.test(text)) return redactEndpoint(value);
+	if (text.startsWith('{') || text.startsWith('[')) {
+		try {
+			const parsed: unknown = JSON.parse(text);
+			const redacted = JSON.stringify(redactNodeParameters(parsed));
+			// Keep the text as it is when nothing changed.
+			if (redacted !== JSON.stringify(parsed)) return expression ? `=${redacted}` : redacted;
+			return value;
+		} catch {
+			// Not JSON. Keep the text.
+		}
+	}
+	if (expression) return value.replace(EMBEDDED_URL, (url) => redactEndpoint(url));
+	return value;
+}
+
+/**
+ * Redact the secrets of the parameters of a node. Besides the key rules of `redactSecretKeys`, it
+ * hides the value of a `{ name, value }` pair whose name is a secret, such as a header or a query
+ * parameter of the HTTP Request node.
+ */
+export function redactNodeParameters(value: unknown): unknown {
+	if (typeof value === 'string') return redactStringParameter(value);
+	if (Array.isArray(value)) return value.map((item) => redactNodeParameters(item));
+	if (typeof value !== 'object' || value === null) return value;
+
+	const record = value as Record<string, unknown>;
+	const pairIsSecret = typeof record.name === 'string' && isSecretKey(record.name);
+	const result: Record<string, unknown> = {};
+	for (const [key, val] of Object.entries(record)) {
+		if (isSecretKey(key) || (pairIsSecret && key === 'value')) result[key] = REDACTED;
+		else result[key] = redactNodeParameters(val);
+	}
+	return result;
+}
+
+/**
+ * Redact the secrets of a text body: a JSON text by key name, a form-encoded text by parameter name.
+ * Any other value is returned as it is. `redactSecretKeys` skips a text, so call this first.
+ */
+export function redactSecretBodyStrings(body: unknown): unknown {
+	if (typeof body !== 'string') return body;
+	const text = body.trim();
+	if (text.startsWith('{') || text.startsWith('[')) {
+		try {
+			return redactSecretKeys(JSON.parse(text));
+		} catch {
+			// Not JSON. Try a form.
+		}
+	}
+	if (!FORM_BODY.test(text)) return body;
+	const params = [...new URLSearchParams(text)];
+	if (!params.some(([key]) => isSecretKey(key))) return body;
+	return params
+		.map(
+			([key, value]) =>
+				`${encodeURIComponent(key)}=${isSecretKey(key) ? REDACTED : encodeURIComponent(value)}`,
+		)
+		.join('&');
+}
+
+/** Which parts of a request an auth type of the HTTP Request node fills from a credential. */
+export type CredentialCarrier = 'query' | 'custom';
+
+function hideValue(value: unknown): string {
+	return hiddenSegment(JSON.stringify(value) ?? '');
+}
+
+function hideAllValues(value: unknown): string | object {
+	if (Array.isArray(value)) return value.map((item) => hideAllValues(item));
+	if (
+		typeof value === 'object' &&
+		value !== null &&
+		Object.getPrototypeOf(value) === Object.prototype
+	) {
+		return Object.fromEntries(Object.entries(value).map(([key, val]) => [key, hideAllValues(val)]));
+	}
+	return hideValue(value);
+}
+
+function hideBody(body: unknown): string | object {
+	if (typeof body !== 'string') return hideAllValues(body);
+	const text = body.trim();
+	if (text.startsWith('{') || text.startsWith('[')) {
+		try {
+			return hideAllValues(JSON.parse(text));
+		} catch {
+			// Not JSON. Try a form.
+		}
+	}
+	if (FORM_BODY.test(text)) {
+		return [...new URLSearchParams(text)]
+			.map(([key, value]) => `${encodeURIComponent(key)}=${hideValue(value)}`)
+			.join('&');
+	}
+	return hideValue(body);
+}
+
+/**
+ * Hide the values that a credential fills in, when no key name tells which they are. The node adds
+ * them to the query (`httpQueryAuth`) or to the query and the body (custom auth). The mock never
+ * sends the request, so a hidden value costs only a little detail. A short hash keeps two different
+ * values apart for the cache and the write ledger.
+ */
+export function hideCredentialCarriers(
+	request: { url: string; body?: IHttpRequestOptions['body'] },
+	carrier: CredentialCarrier,
+): { url: string; body?: IHttpRequestOptions['body'] } {
+	let url = request.url;
+	const queryStart = url.indexOf('?');
+	if (queryStart !== -1) {
+		const query = [...new URLSearchParams(url.slice(queryStart + 1))]
+			.map(([key, value]) => `${encodeURIComponent(key)}=${hideValue(value)}`)
+			.join('&');
+		url = `${url.slice(0, queryStart)}?${query}`;
+	}
+	const body =
+		carrier === 'custom' && request.body !== undefined ? hideBody(request.body) : request.body;
+	return { url, body };
 }

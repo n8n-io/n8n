@@ -8,13 +8,15 @@
  * CLI test suite.
  */
 
+import type { FetchFn, ModelConfig } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
-import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
+import type { EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
+import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE } from 'n8n-workflow';
 import { OperationalError } from '@n8n/errors';
@@ -22,7 +24,7 @@ import { z } from 'zod';
 
 import { buildDateAnchors } from './date-anchors';
 import { findMockQuirks } from './mock-quirks';
-import { extractNodeConfig } from './node-config';
+import { extractNodeConfig, extractRedactedNodeConfig } from './node-config';
 import {
 	applyProviderShapeNormalizers,
 	findProviderShapeViolation,
@@ -30,7 +32,14 @@ import {
 	type ProviderRequestInfo,
 } from './provider-shapes';
 import { redactBinaryBody } from './request-binary-redactor';
-import { redactSecretKeys, redactSecretSearchParams, truncateForLlm } from './request-sanitizer';
+import {
+	redactEndpoint,
+	redactSecretBodyStrings,
+	redactSecretKeys,
+	redactSecretSearchParams,
+	redactSecretValuePatterns,
+	truncateForLlm,
+} from './request-sanitizer';
 
 // Re-export: existing consumers/tests import buildDateAnchors from this module.
 export { buildDateAnchors } from './date-anchors';
@@ -149,7 +158,13 @@ const LLM_CALL_TIMEOUT_MS = 120_000;
 // timing out at 180s (3/10 attempts) in run 28699672651.
 const LLM_CALL_RETRY_TIMEOUT_MS = 300_000;
 
-interface MockHandlerOptions {
+/** The model that writes the mock responses. Without it, the eval settings of the environment choose one. */
+export interface MockModel {
+	resolve(): Promise<ModelConfig>;
+	fetch?: FetchFn;
+}
+
+export interface MockHandlerOptions {
 	/** Steers the LLM toward specific behavior (errors, edge cases). */
 	scenarioHints?: string;
 	/** Workflow-level data context from Phase 1 (generateMockHints). */
@@ -159,6 +174,10 @@ interface MockHandlerOptions {
 	/** Compact summary of Phase-1.5 pinned node outputs — fixed data the mock must stay consistent with. */
 	pinnedOutputs?: string;
 	maxRetries?: number;
+	/** A model chosen by the host, for example the model of an agent test chat. */
+	model?: MockModel;
+	/** Remove secrets from the URL, the node parameters and the whole prompt. Set it when the data is not synthetic. */
+	redactSecrets?: boolean;
 	/** Aborted when the run ends: every later request fails, like a cancelled real request. */
 	signal?: AbortSignal;
 }
@@ -255,8 +274,9 @@ function serializeForLedger(value: unknown): string {
 }
 
 /** Redacted, serialized and clipped: the form a ledger entry keeps and the prompt shows. */
-function ledgerSnapshot(value: unknown): string {
-	return clip(serializeForLedger(redactSecretKeys(value)), LEDGER_BODY_MAX);
+function ledgerSnapshot(value: unknown, redact = false): string {
+	const readable = redact ? redactSecretBodyStrings(value) : value;
+	return clip(serializeForLedger(redactSecretKeys(readable)), LEDGER_BODY_MAX);
 }
 
 /** A success status whose body reports a failure: `ok: false`, or GraphQL errors with no data. */
@@ -273,6 +293,7 @@ function recordWrite(
 	request: MockRequest,
 	nodeName: string,
 	response: EvalMockHttpResponse,
+	redact = false,
 ): void {
 	if (!request.url || !isWriteRequest(request)) return;
 	if (response.statusCode >= 400 || isMockErrorSentinel(response)) return;
@@ -288,14 +309,17 @@ function recordWrite(
 	ledger.push({
 		hostname,
 		method,
-		endpoint: redactSecretSearchParams(extractEndpoint(request.url)),
+		endpoint: redactSecretSearchParams(extractEndpoint(request.url, redact)),
 		nodeName,
 		// Snapshot now: the entry must not change when node code mutates the body later.
 		body:
 			request.body === undefined
 				? undefined
-				: ledgerSnapshot(redactBinaryBody(request.body, getContentType(request.headers))),
-		qs: request.qs && Object.keys(request.qs).length > 0 ? ledgerSnapshot(request.qs) : undefined,
+				: ledgerSnapshot(redactBinaryBody(request.body, getContentType(request.headers)), redact),
+		qs:
+			request.qs && Object.keys(request.qs).length > 0
+				? ledgerSnapshot(request.qs, redact)
+				: undefined,
 	});
 }
 
@@ -333,7 +357,25 @@ export function formatWriteLedger(
 // Handler factory
 // ---------------------------------------------------------------------------
 
-export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockHandler {
+/**
+ * A mock handler. A caller that stops waiting for one request passes the `signal` of that request:
+ * the handler then makes no more attempts, and it neither caches nor records the late answer.
+ */
+export type SignalAwareMockHandler = (
+	requestOptions: IHttpRequestOptions,
+	node: INode,
+	signal?: AbortSignal,
+) => Promise<EvalMockHttpResponse | undefined>;
+
+function buildCancelledResponse(): EvalMockHttpResponse {
+	return {
+		body: { _evalMockError: true, message: 'Mock generation was cancelled' },
+		headers: { 'content-type': 'application/json' },
+		statusCode: 200,
+	};
+}
+
+export function createLlmMockHandler(options?: MockHandlerOptions): SignalAwareMockHandler {
 	const nodeConfigCache = new Map<string, string>();
 	// Identical repeated requests (multi-item loops fanning out one HTTP call
 	// per item) are served from cache: one LLM round-trip per distinct request
@@ -349,7 +391,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 	// later requests to the same service so a read returns what was written.
 	const writeLedger: WriteLedgerEntry[] = [];
 
-	return async (requestOptions, node) => {
+	return async (requestOptions, node, signal) => {
 		// Thrown past the catch-all below: a node that ignores HTTP errors must not keep looping.
 		if (options?.signal?.aborted) {
 			throw new OperationalError('The eval run has ended, so this mocked request was cancelled');
@@ -362,7 +404,10 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 		// recorded intercepted request and no stack to debug from.
 		try {
 			if (!nodeConfigCache.has(node.name)) {
-				nodeConfigCache.set(node.name, extractNodeConfig(node));
+				nodeConfigCache.set(
+					node.name,
+					options?.redactSecrets ? extractRedactedNodeConfig(node) : extractNodeConfig(node),
+				);
 			}
 
 			const hostname = requestOptions.url ? extractHostname(requestOptions.url) : undefined;
@@ -375,11 +420,12 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 			const cached = cacheKey ? responseCache.get(cacheKey) : undefined;
 			if (cached) {
 				Container.get(Logger).debug(
-					`[EvalMock] Serving cached mock for ${requestOptions.method ?? 'GET'} ${extractEndpoint(requestOptions.url)} ("${node.name}")`,
+					`[EvalMock] Serving cached mock for ${requestOptions.method ?? 'GET'} ${extractEndpoint(requestOptions.url, options?.redactSecrets)} ("${node.name}")`,
 				);
 				await sleep(CACHED_REPLY_DELAY_MS);
 				const response = cloneMockResponse(await cached);
-				recordWrite(writeLedger, requestOptions, node.name, response);
+				if (signal?.aborted) return buildCancelledResponse();
+				recordWrite(writeLedger, requestOptions, node.name, response, options?.redactSecrets);
 				return response;
 			}
 
@@ -391,6 +437,9 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				priorWrites: formatWriteLedger(writeLedger, hostname),
 				nodeConfig: nodeConfigCache.get(node.name) ?? '',
 				maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
+				model: options?.model,
+				redactSecrets: options?.redactSecrets,
+				signal,
 			});
 
 			if (cacheKey) {
@@ -409,10 +458,15 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 			// the object with the cached promise, so an in-place body mutation by
 			// node code would otherwise leak into every later hit.
 			const response = cloneMockResponse(await pending);
-			recordWrite(writeLedger, requestOptions, node.name, response);
+			// The caller gave up. A late answer must not stay in the cache or show in the ledger.
+			if (signal?.aborted) {
+				if (cacheKey && responseCache.get(cacheKey) === pending) responseCache.delete(cacheKey);
+				return buildCancelledResponse();
+			}
+			recordWrite(writeLedger, requestOptions, node.name, response, options?.redactSecrets);
 			return response;
 		} catch (error) {
-			return buildPipelineErrorResponse(error, requestOptions, node.name);
+			return buildPipelineErrorResponse(error, requestOptions, node.name, options?.redactSecrets);
 		}
 	};
 }
@@ -449,12 +503,13 @@ function buildPipelineErrorResponse(
 	error: unknown,
 	request: { url?: string; method?: string },
 	nodeName: string,
+	redact = false,
 ): EvalMockHttpResponse {
 	const message = error instanceof Error ? error.message : String(error);
 	const stack =
 		error instanceof Error && error.stack ? error.stack.replace(/\s*\n\s*/g, ' <- ') : '(no stack)';
 	Container.get(Logger).error(
-		`[EvalMock] Mock pipeline error for "${nodeName}" (${request.method ?? 'GET'} ${extractEndpoint(request.url ?? '')}): ${message} | stack: ${stack}`,
+		`[EvalMock] Mock pipeline error for "${nodeName}" (${request.method ?? 'GET'} ${extractEndpoint(request.url ?? '', redact)}): ${message} | stack: ${stack}`,
 	);
 	return {
 		body: { _evalMockError: true, message: `Mock pipeline error: ${message}` },
@@ -512,6 +567,9 @@ interface MockResponseContext {
 	priorWrites?: string;
 	nodeConfig: string;
 	maxRetries: number;
+	model?: MockModel;
+	redactSecrets?: boolean;
+	signal?: AbortSignal;
 }
 
 async function generateMockResponse(
@@ -537,7 +595,7 @@ async function generateMockResponse(
 	}
 
 	const serviceName = extractServiceName(request.url);
-	const endpoint = extractEndpoint(request.url);
+	const endpoint = extractEndpoint(request.url, context.redactSecrets);
 	const requestHostname = extractHostname(request.url);
 
 	const dateAnchors = buildDateAnchors(new Date());
@@ -546,7 +604,7 @@ async function generateMockResponse(
 		'## Request',
 		`Service: ${serviceName}`,
 		`Node: "${node.name}" (${node.type})`,
-		(request.method ?? 'GET') + ' ' + endpoint,
+		`${request.method ?? 'GET'} ${endpoint}`,
 		'Generate the response for this EXACT endpoint and method.',
 	];
 
@@ -554,7 +612,10 @@ async function generateMockResponse(
 		// Strip raw binary bytes (Buffers, FormData) BEFORE secret redaction so the
 		// LLM prompt always sees a JSON-safe structure even for multipart uploads.
 		const binarySafe = redactBinaryBody(request.body, getContentType(request.headers));
-		const sanitized = redactSecretKeys(binarySafe);
+		// A text body has no key names for `redactSecretKeys`, so read it as JSON or as a form first.
+		const sanitized = redactSecretKeys(
+			context.redactSecrets ? redactSecretBodyStrings(binarySafe) : binarySafe,
+		);
 		const serialized = truncateForLlm(JSON.stringify(sanitized));
 		sections.push(`Body: ${serialized}`);
 	}
@@ -621,9 +682,11 @@ async function generateMockResponse(
 	// need to be the freshest context before generation.
 	sections.push('', '## Date anchors', dateAnchors);
 
-	const userPrompt = sections.join('\n');
+	// The last guard. It catches a secret that has no key name, such as a token inside a value.
+	const joined = sections.join('\n');
+	const userPrompt = context.redactSecrets ? redactSecretValuePatterns(joined) : joined;
 
-	const safeUrl = extractEndpoint(request.url);
+	const safeUrl = extractEndpoint(request.url, context.redactSecrets);
 	let lastError = '';
 
 	const requestPath = extractEndpointPath(request.url);
@@ -631,6 +694,7 @@ async function generateMockResponse(
 	const dateConstraints = extractDateFilterConstraints(request.body, request.qs);
 
 	for (let attempt = 0; attempt <= context.maxRetries; attempt++) {
+		if (context.signal?.aborted) return buildCancelledResponse();
 		try {
 			const { spec, softOnly } = await callLlm(
 				userPrompt,
@@ -642,6 +706,7 @@ async function generateMockResponse(
 				},
 				attempt === 0 ? LLM_CALL_TIMEOUT_MS : LLM_CALL_RETRY_TIMEOUT_MS,
 				dateConstraints,
+				context.model,
 			);
 			applyEndpointNormalizers(request, spec);
 			applyProviderShapeNormalizers(
@@ -1006,13 +1071,17 @@ async function callLlm(
 	requestInfo: { serviceName: string; method: string; pathname: string; hostname?: string },
 	timeoutMs: number,
 	dateConstraints: DateFilterConstraint[] = [],
+	model?: MockModel,
 ): Promise<{ spec: MockResponseSpec; softOnly: boolean }> {
 	const capture: SubmitCapture = {};
+	const resolvedModel = await model?.resolve();
 
 	// Cached prefix = tools + instructions; keep MOCK_SYSTEM_PROMPT static, per-request data in the user prompt.
 	const agent = createEvalAgent('eval-mock-responder', {
 		instructions: MOCK_SYSTEM_PROMPT,
 		cache: true,
+		...(resolvedModel && { resolvedModel }),
+		...(model?.fetch && { modelFetch: model.fetch }),
 	})
 		.tool(
 			createQuirksLookupTool(
@@ -1297,13 +1366,16 @@ function extractServiceName(url: string): string {
 	}
 }
 
-function extractEndpoint(url: string): string {
+/** The path and query of a URL. With `redact`, a token-like segment and a secret parameter are hidden. */
+function extractEndpoint(url: string, redact = false): string {
+	let endpoint = url;
 	try {
 		const parsed = new URL(url);
-		return parsed.pathname + (parsed.search ? parsed.search : '');
+		endpoint = parsed.pathname + (parsed.search ? parsed.search : '');
 	} catch {
-		return url;
+		// Keep the text as it is.
 	}
+	return redact ? redactEndpoint(endpoint) : endpoint;
 }
 
 function extractEndpointPath(url: string): string {

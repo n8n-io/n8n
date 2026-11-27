@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 import { Readable } from 'node:stream';
 
 import { HttpGuardService } from '../http-guard.service';
+import { HttpSimulator } from '../http-simulator';
 import type { HydrationModel } from '../hydration-llm';
 import { createNodeRequestGuard, toCapturedRequest } from '../node-request-guard';
 
@@ -178,6 +179,63 @@ describe('createNodeRequestGuard', () => {
 		});
 		expect(await guard({ url: 'https://a.test/x' }, {} as never)).toMatchObject({
 			body: '{broken',
+		});
+	});
+
+	describe('a call of the HTTP Request node', () => {
+		const respond = vi.fn();
+		const httpNode = { name: 'HTTP Request', type: 'n8n-nodes-base.httpRequestTool' } as never;
+		const simulated = { statusCode: 200, headers: {}, body: { simulated: true } };
+
+		beforeEach(() => {
+			respond.mockReset().mockResolvedValue(simulated);
+			Container.set(HttpSimulator, { respond } as unknown as HttpSimulator);
+		});
+
+		it('goes to the simulator when no vendor serves the host', async () => {
+			const options = { url: 'https://api.unknown.test/items', method: 'POST' as const };
+
+			const answer = await createNodeRequestGuard(scope)(options, httpNode);
+
+			expect(answer).toBe(simulated);
+			expect(respond).toHaveBeenCalledWith(options, httpNode, scope);
+			expect(handle).not.toHaveBeenCalled();
+		});
+
+		it('goes to the guard when a vendor serves the host', async () => {
+			handle.mockResolvedValue(Response.json({ messages: [] }));
+
+			await createNodeRequestGuard(scope)(
+				{ url: 'https://www.googleapis.com/gmail/v1/users/me/messages' },
+				httpNode,
+			);
+
+			expect(handle).toHaveBeenCalledTimes(1);
+			expect(respond).not.toHaveBeenCalled();
+		});
+
+		it('lets a token exchange of a vendor go to the guard', async () => {
+			handle.mockResolvedValue(undefined);
+
+			await createNodeRequestGuard(scope)(
+				{ url: 'https://oauth2.googleapis.com/token', method: 'POST' },
+				httpNode,
+			);
+
+			expect(handle).toHaveBeenCalledTimes(1);
+			expect(respond).not.toHaveBeenCalled();
+		});
+
+		it('keeps the refusal for a node that is not the HTTP Request node', async () => {
+			handle.mockResolvedValue(new Response('no', { status: 403 }));
+
+			const answer = await createNodeRequestGuard(scope)(
+				{ url: 'https://api.unknown.test/items' },
+				{ name: 'Gmail', type: 'n8n-nodes-base.gmail' } as never,
+			);
+
+			expect(answer).toMatchObject({ statusCode: 403 });
+			expect(respond).not.toHaveBeenCalled();
 		});
 	});
 
