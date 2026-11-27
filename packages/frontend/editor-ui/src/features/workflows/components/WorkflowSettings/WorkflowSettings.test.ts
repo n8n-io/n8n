@@ -1665,7 +1665,7 @@ describe('WorkflowSettingsVue', () => {
 			await waitFor(() => {
 				expect(toast.showMessage).toHaveBeenCalledWith(
 					expect.objectContaining({
-						title: 'Execution Logic changed',
+						title: 'Execution logic changed',
 						type: 'warning',
 						duration: 0,
 					}),
