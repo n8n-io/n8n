@@ -1,0 +1,24 @@
+{
+	"node": "n8n-nodes-base.qualys",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.qualys.com/en/csam/api/get_started/API_Authentication.htm"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.qualys.com/en/vmdr-ot/api/"
+			},
+			{
+				"url": "https://docs.qualys.com/en/csam/api/"
+			},
+			{
+				"url": "https://docs.qualys.com/en/vm/api/index.htm"
+			}
+		]
+	}
+}
