@@ -90,9 +90,11 @@ const showTemplatesIntro = computed(() => templatesExperimentEnabled.value);
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
-const { canCreate: canCreateAgent, canUpdate: canUpdateAgent } = useAgentPermissions(
-	() => projectId.value ?? homeProject.value?.id,
-);
+const {
+	canCreate: canCreateAgent,
+	canUpdate: canUpdateAgent,
+	canRead: canReadAgent,
+} = useAgentPermissions(() => projectId.value ?? projectsStore.personalProject?.id);
 
 const allAgents = ref<AgentListItem[]>([]);
 /** The shared list layout only accepts resource-typed rows; the wrapper is added at render time. */
@@ -114,6 +116,20 @@ const loading = ref(true);
 const projectId = computed(() =>
 	typeof route.params.projectId === 'string' ? route.params.projectId : undefined,
 );
+const canListAgents = computed(() => {
+	if (getResourcePermissions(usersStore.currentUser?.globalScopes).agent.list) return true;
+
+	const currentProject = projectsStore.currentProject;
+	if (currentProject?.id === projectId.value && currentProject?.scopes) {
+		return Boolean(getResourcePermissions(currentProject.scopes).agent.list);
+	}
+
+	return projectsStore.myProjects.some(
+		(project) =>
+			(!projectId.value || project.id === projectId.value) &&
+			getResourcePermissions(project.scopes).agent.list,
+	);
+});
 const folderPermissions = computed(() => {
 	const global = getResourcePermissions(usersStore.currentUser?.globalScopes).folder;
 	const project = getResourcePermissions(
@@ -128,9 +144,10 @@ const folderPermissions = computed(() => {
 		list: Boolean(global.list || project.list),
 	};
 });
-const showFolders = computed(() =>
+const canFilterByFolder = computed(() =>
 	Boolean(projectId.value && settingsStore.isFoldersFeatureEnabled && folderPermissions.value.list),
 );
+const showFolders = computed(() => canFilterByFolder.value && canReadAgent.value);
 
 // Exposure covers both arms: control users see the default empty state, test users
 // the templates intro. The source mirrors the layout's empty-state condition, so a
@@ -138,6 +155,8 @@ const showFolders = computed(() =>
 // readiness still fires while the surface is visible.
 watch(
 	() =>
+		canListAgents.value &&
+		canCreateAgent.value &&
 		!loading.value &&
 		totalItems.value === 0 &&
 		!filters.value.search &&
@@ -157,11 +176,12 @@ const sortFns = {
 };
 
 function buildListFilter() {
+	const filterByFolder = showFolders.value || (canFilterByFolder.value && folderId.value);
 	const folderFilter = filters.value.search
-		? showFolders.value && folderId.value
+		? filterByFolder && folderId.value
 			? { parentFolderId: folderId.value, includeDescendants: true }
 			: {}
-		: showFolders.value
+		: filterByFolder
 			? { parentFolderId: folderId.value }
 			: {};
 	const filter = {
@@ -177,6 +197,7 @@ let fetchGeneration = 0;
 
 async function fetchAgents() {
 	const requestGeneration = ++fetchGeneration;
+	if (!canListAgents.value) return;
 	const requestProjectId = projectId.value;
 	const requestFolderId = folderId.value;
 	const search = filters.value.search;
@@ -248,7 +269,7 @@ async function fetchAgents() {
 			!filter?.includeArchived &&
 			count === 0 &&
 			folderPage.count === 0 &&
-			(!includeFolders || !requestFolderId)
+			!filter?.parentFolderId
 		) {
 			const archivedOptions = {
 				offset: 0,
@@ -350,7 +371,7 @@ function onAgentPublished(updated: Agent) {
 }
 
 function createFolder() {
-	if (!projectId.value || !showFolders.value) return;
+	if (!projectId.value || !canListAgents.value || !showFolders.value) return;
 
 	folderActionProjectId.value = projectId.value;
 	folderAction.value = { mode: 'create', parentFolderId: folderId.value };
@@ -366,12 +387,14 @@ function openMove(agent: AgentListItem) {
 	};
 }
 
-watch([projectId, folderId, showFolders], () => {
+watch([canListAgents, projectId, folderId, showFolders, canFilterByFolder], () => {
+	if (!canListAgents.value) folderAction.value = null;
 	currentPage.value = 1;
 	folders.value = [];
 	allAgents.value = [];
 	totalItems.value = 0;
 	hasArchivedAgents.value = false;
+	loading.value = true;
 
 	void fetchAgents();
 });
@@ -504,7 +527,12 @@ onMounted(async () => {
 			@update:pagination-and-sort="setPaginationAndSort"
 		>
 			<template #header>
-				<ProjectHeader main-button="agent" @create-folder="createFolder">
+				<ProjectHeader
+					main-button="agent"
+					:disable-agent-creation="!canListAgents || !canCreateAgent"
+					:hide-folder-creation="!canListAgents || !showFolders"
+					@create-folder="createFolder"
+				>
 					<InsightsSummary
 						v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 						:loading="insightsStore.weeklySummary.isLoading"
@@ -512,6 +540,14 @@ onMounted(async () => {
 						time-range="week"
 					/>
 				</ProjectHeader>
+			</template>
+
+			<template v-if="!canListAgents" #unavailable>
+				<N8nEmptyState
+					:icon="{ type: 'icon', value: 'lock' }"
+					:heading="locale.baseText('agents.list.noPermission.heading')"
+					:description="locale.baseText('agents.list.noPermission.description')"
+				/>
 			</template>
 
 			<template v-if="showFolders" #breadcrumbs>
@@ -549,9 +585,10 @@ onMounted(async () => {
 								interpolate: { folderName: folderBrowser?.breadcrumbs.at(-1)?.label ?? '' },
 							})
 						"
-						:button-text="locale.baseText('projects.header.create.agent')"
+						:button-text="
+							canCreateAgent ? locale.baseText('projects.header.create.agent') : undefined
+						"
 						button-type="secondary"
-						:button-disabled="!canCreateAgent"
 						@click:button="onCreateAgentClick"
 					/>
 				</template>
@@ -569,17 +606,20 @@ onMounted(async () => {
 					</N8nLink>
 				</N8nInfoTip>
 				<AgentsListIntro
-					v-if="showTemplatesIntro"
-					:disabled="!canCreateAgent"
+					v-if="canCreateAgent && showTemplatesIntro"
 					@create-blank="onCreateBlank"
 					@submit="onCreateFromPrompt"
 					@select="onCreateFromTemplate"
 				/>
 				<ResourcesListEmptyState
-					v-else
+					v-else-if="canCreateAgent"
 					resource-key="agents"
-					:button-disabled="!canCreateAgent"
 					@click:button="onCreateAgentClick"
+				/>
+				<N8nEmptyState
+					v-else
+					:icon="{ type: 'icon', value: 'robot' }"
+					:heading="locale.baseText('agents.list.empty.readOnly.heading')"
 				/>
 			</template>
 
@@ -618,6 +658,7 @@ onMounted(async () => {
 			</template>
 		</ResourcesListLayout>
 		<AgentFolderDialog
+			v-if="canListAgents"
 			:project-id="folderActionProjectId"
 			:action="folderAction"
 			@close="folderAction = null"
