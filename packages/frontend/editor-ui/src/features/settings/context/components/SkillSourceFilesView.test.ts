@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import type { DiscoveredSkill } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import SkillSourceFilesView from './SkillSourceFilesView.vue';
@@ -73,8 +73,11 @@ it('marks incoming diff lines, renders markup as text, and clears stale findings
 	const scroll = vi.fn();
 	mark.closest('tr')!.scrollIntoView = scroll;
 	await fireEvent.click(view.getByRole('link', { name: 'Links to a new domain in SKILL.md:2' }));
-	expect(scroll).toHaveBeenCalled();
-	expect(mark.closest('.blob-code')).toHaveTextContent('See <img src=x> and https://example.com.');
+	await waitFor(() => expect(scroll).toHaveBeenCalled());
+	expect(view.getByTestId('skill-source-file-toggle')).toHaveAttribute('aria-expanded', 'true');
+	expect(view.getByTestId('skill-source-finding-mark').closest('.blob-code')).toHaveTextContent(
+		'See <img src=x> and https://example.com.',
+	);
 	expect(view.container.querySelector('pre')).not.toBeInTheDocument();
 	expect(view.container.querySelector('img')).not.toBeInTheDocument();
 	expect(view.getByTestId('skill-source-file-diff')).toHaveTextContent('Removed heading');
@@ -83,24 +86,188 @@ it('marks incoming diff lines, renders markup as text, and clears stale findings
 	expect(view.getByTestId('skill-source-file-diff')).toHaveTextContent(after.split('\n')[1]);
 });
 
-it('keeps unchanged file content visible when it is far from the change', () => {
+/** A file of 80 lines with a change in line 41. */
+function longFile() {
 	const lines = Array.from({ length: 80 }, (_, index) => `Line ${index + 1}`);
 	const before = lines.join('\n');
 	lines[40] = 'Updated line 41';
-	const view = render({
-		props: { skill, diffFiles: [{ path: 'SKILL.md', before, after: lines.join('\n') }] },
-	});
-	const diff = within(view.getByTestId('skill-source-file-diff'));
-	expect(diff.getByText('Line 1', { exact: true })).toBeVisible();
-	expect(diff.getByText('Line 80', { exact: true })).toBeVisible();
+	return { path: 'SKILL.md', before, after: lines.join('\n') };
+}
+
+it('shows the lines around a change, and folds the other lines until the user asks for them', async () => {
+	const view = render({ props: { skill, diffFiles: [longFile()] } });
+	const diff = view.getByTestId('skill-source-file-diff');
+	const text = (line: string) => within(diff).queryByText(line, { exact: true });
+	expect(diff.querySelector('.blob-code-addition')).toHaveTextContent('Updated line 41');
+	expect(text('Line 38')).toBeInTheDocument();
+	expect(text('Line 44')).toBeInTheDocument();
+	expect(text('Line 37')).not.toBeInTheDocument();
+	expect(text('Line 45')).not.toBeInTheDocument();
+	const folds = diff.querySelectorAll('td.blob-num-hunk[colspan]');
+	expect(folds).toHaveLength(2);
+
+	await fireEvent.click(folds[0]);
+
+	expect(text('Line 1')).toBeInTheDocument();
+	expect(text('Line 37')).toBeInTheDocument();
+	expect(text('Line 80')).not.toBeInTheDocument();
 });
 
-it('shows import previews without a diff', () => {
+it('shows the folded line of a finding when the user goes to it, and marks its text', async () => {
+	const view = render({
+		props: {
+			skill: {
+				...skill,
+				check: {
+					verdict: 'needs_review',
+					findings: [
+						{
+							rule: 'new_url',
+							severity: 'needs_review',
+							file: 'SKILL.md',
+							detail: '',
+							domain: 'example.com',
+							location: { line: 5, start: 0, end: 4 },
+						},
+					],
+				},
+			},
+			diffFiles: [longFile()],
+		},
+	});
+	expect(view.queryByTestId('skill-source-finding-mark')).not.toBeInTheDocument();
+
+	await fireEvent.click(view.getByRole('link', { name: 'Links to a new domain in SKILL.md:5' }));
+
+	const mark = await view.findByTestId('skill-source-finding-mark');
+	expect(mark).toHaveTextContent('Line');
+	expect(mark.closest('tr')?.children[1]).toHaveTextContent('5');
+	expect(view.getByTestId('skill-source-file-toggle')).toHaveAttribute('aria-expanded', 'true');
+	// Only the fold that holds the line opens.
+	expect(
+		within(view.getByTestId('skill-source-file-diff')).queryByText('Line 80', { exact: true }),
+	).not.toBeInTheDocument();
+});
+
+it('marks the text of a finding in the lines that the user unfolds', async () => {
+	const view = render({
+		props: {
+			skill: {
+				...skill,
+				check: {
+					verdict: 'needs_review',
+					findings: [
+						{
+							rule: 'new_url',
+							severity: 'needs_review',
+							file: 'SKILL.md',
+							detail: '',
+							domain: 'example.com',
+							location: { line: 70, start: 0, end: 4 },
+						},
+					],
+				},
+			},
+			diffFiles: [longFile()],
+		},
+	});
+	const folds = view
+		.getByTestId('skill-source-file-diff')
+		.querySelectorAll('td.blob-num-hunk[colspan]');
+
+	await fireEvent.click(folds[1]);
+
+	const mark = await view.findByTestId('skill-source-finding-mark');
+	expect(mark.closest('tr')?.children[1]).toHaveTextContent('70');
+});
+
+it('shows the removed and added lines of each changed file in its header', () => {
+	const view = render({
+		props: {
+			skill,
+			diffFiles: [
+				{ path: 'SKILL.md', before: 'One\nTwo\nThree', after: 'One\n2\nThree\nFour' },
+				{ path: 'references/tone.md', before: 'Same.', after: 'Same.' },
+				{ path: 'references/new.md', before: '', after: 'A\nB', status: 'added' },
+				{ path: 'references/old.md', before: 'A\nB\nC', after: '', status: 'removed' },
+			],
+		},
+	});
+	const file = (path: string) => within(view.getByRole('region', { name: path }));
+	const changes = (path: string) => file(path).queryByTestId('skill-source-file-changes');
+	expect(changes('SKILL.md')).toHaveTextContent('−1+2');
+	expect(changes('SKILL.md')).toHaveAttribute('title', '+2 / −1 lines');
+	expect(file('SKILL.md').queryByTestId('skill-source-file-status')).not.toBeInTheDocument();
+	expect(changes('references/tone.md')).not.toBeInTheDocument();
+	// A new file and a removed file show only the side that has lines.
+	expect(changes('references/new.md')).toHaveTextContent(/^\+2$/);
+	expect(file('references/new.md').getByTestId('skill-source-file-status')).toHaveTextContent(
+		'Added',
+	);
+	expect(changes('references/old.md')).toHaveTextContent(/^−3$/);
+	expect(file('references/old.md').getByTestId('skill-source-file-status')).toHaveTextContent(
+		'Removed',
+	);
+});
+
+it('shows no line counts in an import preview', () => {
 	const view = render({
 		props: { skill: { ...skill, previewFiles: [{ path: 'SKILL.md', text: 'Use plain text.' }] } },
 	});
-	expect(view.getByText('Use plain text.')).toBeVisible();
+	expect(view.queryByTestId('skill-source-file-changes')).not.toBeInTheDocument();
+});
+
+it('keeps each file closed until the user opens it', async () => {
+	const view = render({
+		props: {
+			skill,
+			diffFiles: [
+				{ path: 'SKILL.md', before: 'Use plain text.', after: 'Use Markdown text.' },
+				{ path: 'references/tone.md', before: 'Same.', after: 'Same.' },
+			],
+		},
+	});
+	const changed = within(view.getByRole('region', { name: 'SKILL.md' }));
+	const same = within(view.getByRole('region', { name: 'references/tone.md' }));
+	const toggle = changed.getByTestId('skill-source-file-toggle');
+	expect(toggle).toHaveAttribute('aria-expanded', 'false');
+	expect(changed.getByTestId('skill-source-file-diff')).not.toBeVisible();
+
+	await fireEvent.click(toggle);
+
+	expect(toggle).toHaveAttribute('aria-expanded', 'true');
+	await waitFor(() => expect(changed.getByTestId('skill-source-file-diff')).toBeVisible());
+	expect(same.getByTestId('skill-source-file-toggle')).toHaveAttribute('aria-expanded', 'false');
+});
+
+it('opens the file on GitHub from an icon link, without a change to the open state', async () => {
+	const view = render({
+		props: { skill: { ...skill, previewFiles: [{ path: 'SKILL.md', text: 'Use plain text.' }] } },
+	});
+	const link = view.getByRole('link', { name: 'Open in GitHub' });
+	expect(link).toHaveAttribute(
+		'href',
+		'https://github.com/acme/skills/blob/abc/skills/release-notes/SKILL.md',
+	);
+	expect(link).toHaveAttribute('target', '_blank');
+	expect(link).toHaveTextContent('');
+	link.addEventListener('click', (event) => event.preventDefault());
+
+	await fireEvent.click(link);
+
+	expect(view.getByTestId('skill-source-file-toggle')).toHaveAttribute('aria-expanded', 'false');
+});
+
+it('shows import previews without a diff', async () => {
+	const view = render({
+		props: { skill: { ...skill, previewFiles: [{ path: 'SKILL.md', text: 'Use plain text.' }] } },
+	});
 	expect(view.queryByTestId('skill-source-file-diff')).not.toBeInTheDocument();
+	expect(view.getByText('Use plain text.')).not.toBeVisible();
+
+	await fireEvent.click(view.getByTestId('skill-source-file-toggle'));
+
+	await waitFor(() => expect(view.getByText('Use plain text.')).toBeVisible());
 });
 
 it('marks a binary update and shows text when a file changes encoding', () => {
@@ -133,9 +300,9 @@ it('marks a binary update and shows text when a file changes encoding', () => {
 			],
 		},
 	});
-	const logo = within(view.getByRole('region', { name: 'skills/release-notes/assets/logo.png' }));
-	const guide = within(view.getByRole('region', { name: 'skills/release-notes/guide' }));
-	const same = within(view.getByRole('region', { name: 'skills/release-notes/assets/same.png' }));
+	const logo = within(view.getByRole('region', { name: 'assets/logo.png' }));
+	const guide = within(view.getByRole('region', { name: 'guide' }));
+	const same = within(view.getByRole('region', { name: 'assets/same.png' }));
 	expect(logo.getByText('Modified file')).toBeVisible();
 	expect(logo.queryByTestId('skill-source-file-diff')).not.toBeInTheDocument();
 	expect(guide.getByText('Modified file')).toBeVisible();
