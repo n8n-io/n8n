@@ -1,4 +1,8 @@
-import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
+import type {
+	PromotionDirection,
+	PromotionMissingDependency,
+	PromotionResource,
+} from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
 import { isBlocking, type Blocker } from '../promotionOperation';
@@ -95,6 +99,18 @@ export function usePromotionPreviewLabels() {
 		return i18n.baseText('promotions.preview.marker.conflict', options);
 	}
 
+	/** What a workflow says about the dependencies that Promote leaves out. They do not stop it. */
+	function missingDependencyMarker(dependencies: readonly PromotionMissingDependency[]): string {
+		// A dependency of another project that the user can access is not outside the access of
+		// the user. Then the text only says that the Promote does not include the dependencies.
+		return i18n.baseText(
+			dependencies.every(({ group }) => group === 'outside-access')
+				? 'promotions.preview.marker.outside.promote'
+				: 'promotions.preview.marker.notIncluded',
+			{ adjustToNumber: dependencies.length, interpolate: { count: String(dependencies.length) } },
+		);
+	}
+
 	/** The checkbox of a project or folder selects it and everything inside it. */
 	function selectLabel(resource: PromotionResource): string {
 		const interpolate = { name: resource.name };
@@ -117,5 +133,5 @@ export function usePromotionPreviewLabels() {
 		});
 	}
 
-	return { changeLabel, blockerMessage, selectLabel, moveDetail };
+	return { changeLabel, blockerMessage, missingDependencyMarker, selectLabel, moveDetail };
 }

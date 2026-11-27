@@ -73,20 +73,54 @@ function variableKey(name: string, scope: PromotionVariableScope) {
 const consumerKeys = (consumers: PromotionBindingConsumer[]) =>
 	consumers.flatMap(({ workflows }) => workflows.map(({ id }) => workflowKey(id)));
 
+type UsedByWorkflows = { consumers: PromotionBindingConsumer[] };
+
+/** Keeps the entries that a kept workflow uses, with only the kept workflows as their consumers. */
+function scopeConsumers<Entry extends UsedByWorkflows>(
+	entries: Entry[],
+	keep: (workflowId: string) => boolean,
+): Entry[] {
+	return entries.flatMap((entry) => {
+		const consumers = entry.consumers.flatMap((consumer) => {
+			const workflows = consumer.workflows.filter(({ id }) => keep(id));
+			return workflows.length > 0 ? [{ ...consumer, workflows }] : [];
+		});
+		return consumers.length > 0 ? [{ ...entry, consumers }] : [];
+	});
+}
+
+/**
+ * Keeps the missing dependencies and warnings of a Promote that a selected workflow uses. The
+ * preview lists them for every workflow of the project, and Promote sends only the selection.
+ */
+export function scopeToSelection<Entry extends UsedByWorkflows>(
+	entries: Entry[],
+	selected: ReadonlySet<ResourceKey>,
+): Entry[] {
+	return scopeConsumers(entries, (id) => selected.has(workflowKey(id)));
+}
+
+/** The entries that each workflow uses, by workflow key. */
+export function indexByWorkflow<Entry extends UsedByWorkflows>(
+	entries: Entry[],
+): Map<ResourceKey, Entry[]> {
+	const byWorkflow = new Map<ResourceKey, Entry[]>();
+	for (const entry of entries) {
+		for (const key of consumerKeys(entry.consumers)) {
+			byWorkflow.set(key, [...(byWorkflow.get(key) ?? []), entry]);
+		}
+	}
+	return byWorkflow;
+}
+
 /**
  * Keeps the blockers of workflows that the preview lists. The check also covers unchanged
  * workflows, which users cannot select, so their blockers stop nothing on the page.
  */
 export function scopeCheck(check: ApplyCheckResult, graph: SelectionGraph): ApplyCheckResult {
 	const listed = (id: string) => graph.resources.has(workflowKey(id));
-	const scope = <Entry extends { consumers: PromotionBindingConsumer[] }>(entries: Entry[]) =>
-		entries.flatMap((entry) => {
-			const consumers = entry.consumers.flatMap((consumer) => {
-				const workflows = consumer.workflows.filter(({ id }) => listed(id));
-				return workflows.length > 0 ? [{ ...consumer, workflows }] : [];
-			});
-			return consumers.length > 0 ? [{ ...entry, consumers }] : [];
-		});
+	const scope = <Entry extends UsedByWorkflows>(entries: Entry[]) =>
+		scopeConsumers(entries, listed);
 	return {
 		...check,
 		missingBindings: scope(check.missingBindings),

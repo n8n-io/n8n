@@ -13,6 +13,7 @@ import type {
 	PromotionMissingProjectListPublicDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromotionPromoteCheck,
 	PromotionProviderCreatedPublicDto,
 	PromotionProviderPublicDto,
 	PromotionRepositoryListPublicDto,
@@ -169,6 +170,17 @@ export const connectPromotionCheckout = async (
 		context,
 		'POST',
 		`${promotionsApiRoot}/environments/${environmentId}/connect`,
+	);
+
+/** What an instance Promote leaves out. The instance Promote has no preview that lists it. */
+export const fetchPromoteCheck = async (
+	context: PublicApiContext,
+	environmentId: string,
+): Promise<PromotionPromoteCheck> =>
+	await makePublicApiRequest(
+		context,
+		'GET',
+		`${promotionsApiRoot}/environments/${encodeURIComponent(environmentId)}/promote/check`,
 	);
 
 /** Promotes the whole instance through its instance Promote environment. */

@@ -48,7 +48,7 @@ function matchesCreation(binding: MissingPromotionBinding, created: CreatedPromo
 }
 
 /**
- * The missing bindings of an Apply check, which users create from the Blockers tab. A created
+ * The missing bindings of an Apply check, which users create from the Issues tab. A created
  * binding stays in the table as resolved while later checks of the same commit come in.
  */
 export function usePromotionBindings() {

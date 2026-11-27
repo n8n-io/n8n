@@ -2,6 +2,7 @@ import { makePublicApiRequest, ResponseError } from '@n8n/rest-api-client';
 import {
 	continueApplyPromotion,
 	deleteProviderIfUnused,
+	fetchPromoteCheck,
 	fetchPromotionRepositories,
 	fetchPromotionBranches,
 } from './promotionsSettings.api';
@@ -54,6 +55,19 @@ it('uses the public API context and returns the complete result', async () => {
 		'POST',
 		'/promotions/environments/environment-id/apply/continue',
 		body,
+	);
+});
+
+it('requests the check of an instance Promote with the encoded environment', async () => {
+	const result = { missingDependencies: [], warnings: [], revision: 'r1' };
+	const context = { baseUrl: '/custom/api/v2' };
+	vi.mocked(makePublicApiRequest).mockResolvedValue(result);
+
+	expect(await fetchPromoteCheck(context, 'environment/one')).toBe(result);
+	expect(makePublicApiRequest).toHaveBeenLastCalledWith(
+		context,
+		'GET',
+		'/promotions/environments/environment%2Fone/promote/check',
 	);
 });
 
