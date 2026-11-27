@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_a74a11a8e268a5::t_bcfd0ba89c9a51 151,161
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_a74a11a8e268a5::t_ceabefbe7954dc 1863-1867
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.handoffContext.ts
+  s_a74a11a8e268a5::t_54a7059cb0c7bc 10
+  s_a74a11a8e268a5::t_d5f34a746ef8a6 45-54
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiAgentTestHandoff.ts
+  s_a74a11a8e268a5::t_1d49ccbf84e4c8 12-13
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a74a11a8e268a5::t_c8534f4df8fe22 1992
+  s_a74a11a8e268a5::t_3c527b5dc50625 8903
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_a74a11a8e268a5::t_c2620de3adba45 159-162,165-168,170-189,192-193,201
+  s_b11177269db4f3::t_6fbb06dcf2da19 153
+  s_b11177269db4f3::t_8a2ab1e1144a2f 97,163-164,169,190-191,194-200
+packages/cli/src/modules/instance-ai/agent-test-handoff.ts
+  s_a74a11a8e268a5::t_3d2b8e6e611515 83,95-102,119-130
+  s_a74a11a8e268a5::t_6a9be43ccdeff1 131-132
+packages/cli/src/modules/agents/format-agent-session-context.ts
+  s_a74a11a8e268a5::t_7603d16a26e669 107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f514240796c201fd5d9ad2d6789c4e48bf1e69eb",
+  "prompts": {},
+  "sessions": {
+    "s_a74a11a8e268a5": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a219bd-30e9-71f6-8a19-692c56259e98",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_b11177269db4f3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a219c9-58d9-71f6-8a19-692f0cbb5d69",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

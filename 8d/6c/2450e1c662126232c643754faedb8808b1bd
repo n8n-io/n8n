@@ -1,0 +1,47 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_88e49051a12369::t_8e6fff30ce6749 1983
+  s_88e49051a12369::t_4ebc3bb9662e76 1982
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsFilter.spec.ts
+  s_88e49051a12369::t_017f63da6c3b4a 14,17
+  s_bf97c774b48f34::t_851dd8c839cb02 19-23
+  s_88e49051a12369::t_4e077b26ed7215 36,40
+  s_88e49051a12369::t_20196af5ca0872 51,66
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_88e49051a12369::t_8e6fff30ce6749 159
+  s_88e49051a12369::t_22fcab3cb08da0 2-4,8,77,87-88,153-154,163-164,235,262
+  s_bf97c774b48f34::t_7b87989093c8e0 5,12,29,39,57-69,132-135,146-149,165
+  s_88e49051a12369::t_8fc0b043f3a386 117,245,249-254
+  s_88e49051a12369::t_111a90b1b760d7 157-158
+  s_88e49051a12369::t_50319dd33401a2 7,81-86,155,161-162
+  s_88e49051a12369::t_1961f1db54ebe7 156
+  s_88e49051a12369::t_6d126fe579c1e1 160
+  s_88e49051a12369::t_8ad902b707cc8a 232-234
+  s_88e49051a12369::t_328d496c1f1749 236
+  s_88e49051a12369::t_0824c8590abd72 247-248
+  s_88e49051a12369::t_eb22145acadae0 260-261
+  s_88e49051a12369::t_146e3dfea3f2e2 263-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d6c2450e1c662126232c643754faedb8808b1bd",
+  "prompts": {},
+  "sessions": {
+    "s_88e49051a12369": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a21944-3240-71f6-8a19-6924bc5aa7e5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_bf97c774b48f34": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a219a2-7ffe-71f6-8a19-6927b0ace036",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

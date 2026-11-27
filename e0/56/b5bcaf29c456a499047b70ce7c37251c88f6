@@ -1,0 +1,73 @@
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 4744,4747-4752,4778-4787
+packages/frontend/editor-ui/src/features/agents/components/agentBuilderInjectionKeys.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 2,19-24
+packages/@n8n/api-types/src/agents/dto.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 105-109
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 2117-2126,2143,2150
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.handoff.spec.ts
+  s_6435a1128bc285::t_ec92d49c804dd2 11,19
+  s_6435a1128bc285::t_e1d65f1adce65d 1-10,12-18,20-255
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 945,1345,1361,1399-1400,2076
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_6435a1128bc285::t_e1d65f1adce65d 2-5,7,9,27-31,35-36,44-58,75,81,86-87,206-276,278-279,284-285,309-311,313-336,339-343,346-347,350-355,359-360,365-367,376-405,412-414,425,433-439,444-458,461-462,474-475,534-549,551-588,604-605,614,617-625,628,631,637,639,641,644-651,653,655
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionListItemSkeleton.vue
+  s_6435a1128bc285::t_e1d65f1adce65d 1-91
+packages/frontend/editor-ui/src/features/agents/utils/token-count.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 1-16
+packages/cli/src/modules/agents/__tests__/latest-session-activity.test.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 1-68
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 9,92,174,1046,1056,1068-1072
+packages/cli/src/modules/agents/utils/latest-session-activity.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 1-32
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionListItem.vue
+  s_6435a1128bc285::t_e1d65f1adce65d 1-499
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineHeader.vue
+  s_6435a1128bc285::t_e1d65f1adce65d 19,203
+packages/frontend/@n8n/design-system/src/components/N8nEmptyState/EmptyState.vue
+  s_6435a1128bc285::t_e1d65f1adce65d 19,51-55,124,131-134
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/token-count.test.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 1-38
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentBuildingIndicator.vue
+  s_6435a1128bc285::t_e1d65f1adce65d 3,8
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 1501
+packages/frontend/@n8n/design-system/src/components/N8nBadge/component-badge.md
+  s_6435a1128bc285::t_e1d65f1adce65d 43-52,64,83,91,99,108,113,121,129-134
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6435a1128bc285::t_e1d65f1adce65d 1944,1959-1960,1973,1989-1990,2091
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_6435a1128bc285::t_72b1f7d93afefe 145,164
+  s_6435a1128bc285::t_e1d65f1adce65d 44-48,112-113,128-132,136-138,142-144,146,152,159-163,222-226,250-251,254-257,344-381,386,401,415,429,442-501,508-511,516-522,528,672-812,818,887-892,905,930-1121
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_6435a1128bc285::t_e1d65f1adce65d 154,1336,1361,1363,2005-2009
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 6,404,407,413-414,421-436
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  s_6435a1128bc285::t_e1d65f1adce65d 23-25
+packages/frontend/editor-ui/src/features/agents/composables/useAgentSessionStop.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 19,23
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 12,42
+packages/frontend/editor-ui/src/features/ai/shared/utils/whimsicalLabel.ts
+  s_6435a1128bc285::t_e1d65f1adce65d 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e056b5bcaf29c456a499047b70ce7c37251c88f6",
+  "prompts": {},
+  "sessions": {
+    "s_6435a1128bc285": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a219de-1454-71f6-8a19-69357c961a84",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

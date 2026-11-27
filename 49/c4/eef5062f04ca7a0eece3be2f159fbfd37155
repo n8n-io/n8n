@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_8c8419f0f0c809::t_a70c1417e57a6d 9,80,132,137-138,301-302,304,306-320,328,339-367,375-376,406-419
+  s_8c8419f0f0c809::t_87963bc2f96745 303,305,420
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionListItem.vue
+  s_8c8419f0f0c809::t_8a48451fdf2e4b 329
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_8c8419f0f0c809::t_388e78599491bc 1336,1361,1363,2006
+packages/frontend/editor-ui/src/features/agents/components/agentBuilderInjectionKeys.ts
+  s_8c8419f0f0c809::t_b9179ec40294aa 20
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8c8419f0f0c809::t_485a5da0b835d6 1959-1960
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.handoff.spec.ts
+  s_8c8419f0f0c809::t_838a600e107c59 8,98
+  s_8c8419f0f0c809::t_31e3b59c648759 6,17,91,96-97,99-110,131-132,136-140,144,148-152,156-157,167-169,177,200,218,222-228,233-235,243,250-251
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_8c8419f0f0c809::t_bbd894ece418cc 44-48,206-210,236-240,285,290,304,614-746,752
+  s_8c8419f0f0c809::t_85ea2a9b2c04c8 51-66
+  s_8c8419f0f0c809::t_96d78c38b97da8 747-751
+  s_8c8419f0f0c809::t_13c97af1c815c1 753-754
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionFlagCard.vue
+  s_8c8419f0f0c809::t_2d3c62733b4ece 100-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49c4eef5062f04ca7a0eece3be2f159fbfd37155",
+  "prompts": {},
+  "sessions": {
+    "s_8c8419f0f0c809": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a219ae-dc9e-71f6-8a19-692847fb84f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

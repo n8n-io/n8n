@@ -1,0 +1,14 @@
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  h_8a472ace01776f 309-314,374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e918ae5e6eb2c1c837e8fa53d911fe8a0b50736",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

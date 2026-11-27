@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  h_8a472ace01776f 14-18,75-80,280-290,292
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  h_8a472ace01776f 23,261-262,265-266,269-270,352-355,357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0934270d5ac1d69e3fe45bb04f4f3e823f27960",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
