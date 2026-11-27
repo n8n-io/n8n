@@ -3881,6 +3881,9 @@ importers:
 
   packages/@n8n/n8n-node-codegen:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       pluralize:
         specifier: 'catalog:'
         version: 8.0.0
