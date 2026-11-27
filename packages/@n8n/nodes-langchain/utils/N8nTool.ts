@@ -1,7 +1,7 @@
 import type { DynamicStructuredToolInput } from '@langchain/core/tools';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 import { StructuredOutputParser } from '@langchain/classic/output_parsers';
-import type { ISupplyDataFunctions, IDataObject } from 'n8n-workflow';
+import type { ISupplyDataFunctions, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { NodeConnectionTypes, jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { ZodTypeAny } from 'zod';
 import { ZodBoolean, ZodNullable, ZodNumber, ZodObject, ZodOptional } from 'zod';
@@ -48,7 +48,7 @@ ALL parameters marked as required must be provided`;
 
 export class N8nTool extends DynamicStructuredTool<ZodObjectAny> {
 	constructor(
-		private context: ISupplyDataFunctions,
+		private context: ISupplyDataFunctions | IExecuteFunctions,
 		fields: DynamicStructuredToolInput<ZodObjectAny>,
 	) {
 		super(fields);
