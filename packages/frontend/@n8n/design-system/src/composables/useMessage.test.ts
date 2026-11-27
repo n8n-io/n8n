@@ -360,7 +360,7 @@ describe('useMessage', () => {
 		).toBe(false);
 	});
 
-	it('keeps the host layer mounted until a leaving overlay vanishes, then cleans up', async () => {
+	it('keeps the host layer mounted until a mounted overlay is removed, without relying on transition classes', async () => {
 		let resolveConfirm!: (value: string) => void;
 		let layerEl!: HTMLElement;
 		let overlayEl!: HTMLDivElement;
@@ -368,7 +368,6 @@ describe('useMessage', () => {
 		mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
 			layerEl = config.appendTo as HTMLElement;
 			overlayEl = document.createElement('div');
-			overlayEl.className = 'el-overlay is-message-box';
 			layerEl.appendChild(overlayEl);
 			return await new Promise<string>((resolve) => {
 				resolveConfirm = resolve;
@@ -378,8 +377,6 @@ describe('useMessage', () => {
 		const pending = useMessage().confirm('Discard changes?', 'Close without saving?');
 		expect(hasActiveMessageBox.value).toBe(true);
 
-		// Simulate Vue Transition adding the leave-active class before the promise settles.
-		overlayEl.classList.add('fade-in-linear-leave-active');
 		resolveConfirm('confirm');
 		await expect(pending).resolves.toBe('confirm');
 
@@ -389,14 +386,14 @@ describe('useMessage', () => {
 		expect(layerEl.contains(overlayEl)).toBe(true);
 		expect(layerEl.style.pointerEvents).toBe('none');
 
-		// Once Element Plus's onVanish removes the overlay, the host layer tears down.
+		// Once Element Plus unmounts the overlay after leave completes, the host layer tears down.
 		overlayEl.remove();
 		await vi.waitFor(() => {
 			expect(document.body.contains(layerEl)).toBe(false);
 		});
 	});
 
-	it('cleans up a leaving overlay via fallback timer if it never vanishes', async () => {
+	it('cleans up a mounted overlay via fallback timer if it is never removed', async () => {
 		vi.useFakeTimers();
 		try {
 			let resolveConfirm!: (value: string) => void;
@@ -405,7 +402,6 @@ describe('useMessage', () => {
 			mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
 				layerEl = config.appendTo as HTMLElement;
 				const overlayEl = document.createElement('div');
-				overlayEl.className = 'el-overlay is-message-box fade-in-linear-leave-active';
 				layerEl.appendChild(overlayEl);
 				return await new Promise<string>((resolve) => {
 					resolveConfirm = resolve;
@@ -422,5 +418,123 @@ describe('useMessage', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it('tears down immediately when the overlay is removed before the promise settles', async () => {
+		let resolveConfirm!: (value: string) => void;
+		let layerEl!: HTMLElement;
+		let overlayEl!: HTMLDivElement;
+
+		mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
+			layerEl = config.appendTo as HTMLElement;
+			overlayEl = document.createElement('div');
+			layerEl.appendChild(overlayEl);
+			return await new Promise<string>((resolve) => {
+				resolveConfirm = resolve;
+			});
+		});
+
+		const pending = useMessage().confirm('Discard changes?', 'Close without saving?');
+		overlayEl.remove();
+		resolveConfirm('confirm');
+		await expect(pending).resolves.toBe('confirm');
+
+		expect(hasActiveMessageBox.value).toBe(false);
+		expect(document.body.contains(layerEl)).toBe(false);
+	});
+
+	it('tears down immediately when the message box rejects with an Error even if an overlay is mounted', async () => {
+		let rejectAlert!: (reason: Error) => void;
+		let layerEl!: HTMLElement;
+
+		mockedBox.alert.mockImplementation(async (_msg, _title, config) => {
+			layerEl = config.appendTo as HTMLElement;
+			layerEl.appendChild(document.createElement('div'));
+			return await new Promise<string>((_resolve, reject) => {
+				rejectAlert = reject;
+			});
+		});
+
+		const pending = useMessage().alert('Something failed', 'Error');
+		rejectAlert(new Error('boom'));
+		await expect(pending).rejects.toThrow('boom');
+
+		expect(hasActiveMessageBox.value).toBe(false);
+		expect(document.body.contains(layerEl)).toBe(false);
+	});
+
+	it('tears down immediately when the mounted overlay is already hidden', async () => {
+		let resolveConfirm!: (value: string) => void;
+		let layerEl!: HTMLElement;
+		let overlayEl!: HTMLDivElement;
+
+		mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
+			layerEl = config.appendTo as HTMLElement;
+			overlayEl = document.createElement('div');
+			layerEl.appendChild(overlayEl);
+			return await new Promise<string>((resolve) => {
+				resolveConfirm = resolve;
+			});
+		});
+
+		const pending = useMessage().confirm('Discard changes?', 'Close without saving?');
+		overlayEl.style.display = 'none';
+		resolveConfirm('confirm');
+		await expect(pending).resolves.toBe('confirm');
+
+		expect(hasActiveMessageBox.value).toBe(false);
+		expect(document.body.contains(layerEl)).toBe(false);
+	});
+
+	it('tears down immediately when a wrapper holds a single hidden overlay', async () => {
+		let resolveConfirm!: (value: string) => void;
+		let layerEl!: HTMLElement;
+		let overlayEl!: HTMLDivElement;
+
+		mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
+			layerEl = config.appendTo as HTMLElement;
+			const wrapper = document.createElement('div');
+			overlayEl = document.createElement('div');
+			wrapper.appendChild(overlayEl);
+			layerEl.appendChild(wrapper);
+			return await new Promise<string>((resolve) => {
+				resolveConfirm = resolve;
+			});
+		});
+
+		const pending = useMessage().confirm('Discard changes?', 'Close without saving?');
+		overlayEl.style.display = 'none';
+		resolveConfirm('confirm');
+		await expect(pending).resolves.toBe('confirm');
+
+		expect(hasActiveMessageBox.value).toBe(false);
+		expect(document.body.contains(layerEl)).toBe(false);
+	});
+
+	it('cleans up an asynchronously appended overlay once removed after settle', async () => {
+		let resolveConfirm!: (value: string) => void;
+		let layerEl!: HTMLElement;
+		let overlayEl!: HTMLDivElement;
+
+		mockedBox.confirm.mockImplementation(async (_msg, _title, config) => {
+			layerEl = config.appendTo as HTMLElement;
+			return await new Promise<string>((resolve) => {
+				resolveConfirm = (value) => {
+					overlayEl = document.createElement('div');
+					layerEl.appendChild(overlayEl);
+					resolve(value);
+				};
+			});
+		});
+
+		const pending = useMessage().confirm('Discard changes?', 'Close without saving?');
+		resolveConfirm('confirm');
+		await expect(pending).resolves.toBe('confirm');
+
+		expect(document.body.contains(layerEl)).toBe(true);
+		overlayEl.remove();
+		await vi.waitFor(() => {
+			expect(document.body.contains(layerEl)).toBe(false);
+		});
 	});
 });

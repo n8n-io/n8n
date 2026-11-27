@@ -66,6 +66,21 @@ function observeNodeRoots(observer: MutationObserver, node: Node) {
 	}
 }
 
+function hasVisibleOverlay(layerEl: HTMLElement): boolean {
+	const child = layerEl.firstElementChild;
+	if (!(child instanceof HTMLElement)) return false;
+	if (child.style.display === 'none') return false;
+	// A wrapper around a single hidden overlay (such as a stubbed Transition) has no active leave transition.
+	if (
+		child.childElementCount === 1 &&
+		child.firstElementChild instanceof HTMLElement &&
+		child.firstElementChild.style.display === 'none'
+	) {
+		return false;
+	}
+	return true;
+}
+
 async function withModalLayer<T>(
 	config: ElMessageBoxOptions,
 	openMessageBox: (layerConfig: ElMessageBoxOptions) => Promise<T>,
@@ -116,6 +131,8 @@ async function withModalLayer<T>(
 
 	let activeReleased = false;
 	let hostRemoved = false;
+	let settled = false;
+	let threw = false;
 	let observer: MutationObserver | null = null;
 	let leaveCleanupTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -157,7 +174,7 @@ async function withModalLayer<T>(
 				if (layerEl instanceof HTMLElement) {
 					if (layerEl.childElementCount > 0) {
 						hadLayerChild = true;
-					} else if (hadLayerChild) {
+					} else if (hadLayerChild || settled) {
 						teardownLayer();
 					}
 				}
@@ -165,15 +182,20 @@ async function withModalLayer<T>(
 			observeNodeRoots(observer, targetEl);
 		}
 		return await promise;
+	} catch (error) {
+		threw = true;
+		throw error;
 	} finally {
+		settled = true;
 		releaseActiveState();
-		const isLeaving =
+		const hasMountedOverlay =
+			!threw &&
 			!hostRemoved &&
 			layerEl instanceof HTMLElement &&
 			layerEl.isConnected &&
-			layerEl.firstElementChild?.classList.contains('fade-in-linear-leave-active') === true;
-		if (isLeaving && observer) {
-			// Let the Element Plus fade-out finish before detaching the host layer.
+			hasVisibleOverlay(layerEl);
+		if (hasMountedOverlay && observer) {
+			// Keep the host mounted until the message box removes its overlay.
 			render(createScopeVNode(false), host);
 			leaveCleanupTimer = setTimeout(teardownLayer, LEAVE_CLEANUP_FALLBACK_MS);
 		} else {
