@@ -8,6 +8,7 @@ import { N8nDropdownMenu } from '@n8n/design-system';
 
 import AgentGuardrailsSection from '../components/AgentGuardrailsSection.vue';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
+import type { AgentHitlContext } from '../components/agent-hitl.types';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -58,7 +59,16 @@ vi.mock('../components/AgentBudgetPanel.vue', () => ({
 vi.mock('../components/AgentGuardrailModal.vue', () => ({
 	default: {
 		name: 'AgentGuardrailModal',
-		props: ['open', 'guardrail', 'kind', 'tools', 'disabled'],
+		props: [
+			'open',
+			'guardrail',
+			'kind',
+			'tools',
+			'reviewConfigurations',
+			'reviewContext',
+			'projectId',
+			'disabled',
+		],
 		emits: ['update:open', 'save', 'remove'],
 		template: '<div data-testid="agent-guardrail-modal-stub" />',
 	},
@@ -164,6 +174,7 @@ function mountSection(
 		tools: AgentJsonToolRef[];
 		disabled: boolean;
 		validationIssues: AgentConfigValidationIssue[];
+		reviewContext: AgentHitlContext;
 	}> = {},
 	approval?: string,
 ) {
@@ -471,6 +482,15 @@ describe('AgentGuardrailsSection', () => {
 
 		expect(wrapper.emitted('update:budget-config')?.[0]).toEqual([changes]);
 		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('forwards the review context and configurations into the guardrail modal', () => {
+		const reviewContext: AgentHitlContext = { getConfig: () => null, saveConfiguration: vi.fn() };
+		const wrapper = mountSection({ reviewContext });
+
+		const modal = wrapper.getComponent({ name: 'AgentGuardrailModal' });
+		expect(modal.props('reviewContext')).toStrictEqual(reviewContext);
+		expect(modal.props('reviewConfigurations')).toEqual([]);
 	});
 
 	it('opens the add menu from the empty-state button when no guardrail exists', async () => {

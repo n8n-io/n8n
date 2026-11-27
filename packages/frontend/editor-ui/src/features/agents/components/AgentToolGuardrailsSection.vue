@@ -12,6 +12,7 @@ import { computed, toValue, withDefaults, type MaybeRefOrGetter } from 'vue';
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import type { AgentJsonToolRef } from '../types';
 import { guardrailDisplayName, guardrailNamesTool } from '../utils/guardrails';
+import type { AgentHitlContext } from './agent-hitl.types';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentGuardrailAddMenu from './AgentGuardrailAddMenu.vue';
 
@@ -35,6 +36,8 @@ export interface ToolGuardrailsWiring {
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
 	/** The agent's human-review configurations, for the `review` response target. */
 	getReviewConfigurations?: () => AgentHitlConfiguration[];
+	/** Write access to the agent's configurations, for the modal's add-reviewer flow. */
+	getReviewContext?: () => AgentHitlContext | undefined;
 	/** The agent's project: the check workflow picker lists its workflows. */
 	getProjectId?: () => string | undefined;
 	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;

@@ -189,6 +189,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			// The `review` response routes through one of these configurations.
 			getReviewConfigurations: () =>
 				isCurrent() ? (localConfig.value?.hitlConfigurations ?? []) : [],
+			// Write access to those configurations, for the modal's add-reviewer flow.
+			getReviewContext: () => (isCurrent() ? hitlContext() : undefined),
 			getProjectId: () => (isCurrent() ? projectId.value : undefined),
 			onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => {
 				if (!isCurrent()) return;

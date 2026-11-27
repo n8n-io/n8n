@@ -22,6 +22,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { computed, nextTick, ref, watch } from 'vue';
 
 import type { AgentJsonToolRef } from '../types';
@@ -34,7 +35,10 @@ import {
 	slugifyGuardrailId,
 	TOOL_GUARDRAIL_KINDS,
 } from '../utils/guardrails';
+import type { AgentHitlContext } from './agent-hitl.types';
+import type { ApprovalDestination } from '../utils/approvalDestination';
 import AgentModal from './modals/AgentModal.vue';
+import AgentApprovalDestinationMenu from './AgentApprovalDestinationMenu.vue';
 import AgentTagInput from './AgentTagInput.vue';
 import AgentWorkflowPicker from './AgentWorkflowPicker.vue';
 
@@ -49,6 +53,8 @@ const props = withDefaults(
 		tools?: AgentJsonToolRef[];
 		/** The agent's human-review configurations, for the review response target. */
 		reviewConfigurations?: AgentHitlConfiguration[];
+		/** Write access to the agent's configurations, so an empty picker can add a reviewer. */
+		reviewContext?: AgentHitlContext;
 		/** The agent's project: the check workflow picker lists its workflows. */
 		projectId?: string;
 		/** Ids of guardrails that already exist, so a create cannot duplicate one. */
@@ -60,6 +66,7 @@ const props = withDefaults(
 		kind: 'keywords',
 		tools: () => [],
 		reviewConfigurations: () => [],
+		reviewContext: undefined,
 		projectId: undefined,
 		disabled: false,
 	},
@@ -244,6 +251,19 @@ const reviewConfigurationOptions = computed(() =>
 		label: configuration.name,
 	})),
 );
+
+/**
+ * Saves a picked review destination into the agent's configurations and
+ * selects it for this guardrail — one step, so an empty picker is never a
+ * dead end. The configuration list derives from the agent config, so the
+ * picker shows the new entry on the next render.
+ */
+function addReviewConfiguration(destination: ApprovalDestination) {
+	if (!props.reviewContext || props.disabled) return;
+	const configuration = { ...destination, id: generateNanoId() };
+	props.reviewContext.saveConfiguration(configuration);
+	reviewConfigurationId.value = configuration.id;
+}
 
 const piiEntityOptions = computed(() =>
 	TOOL_GUARDRAIL_PII_ENTITIES.map((value: ToolGuardrailPiiEntity) => ({
@@ -646,6 +666,16 @@ function onRemove() {
 					<N8nText v-else size="small" :class="$style.hint">
 						{{ i18n.baseText('agents.builder.guardrails.review.configuration.none') }}
 					</N8nText>
+					<AgentApprovalDestinationMenu
+						v-if="reviewContext"
+						:context="reviewContext"
+						:project-id="projectId ?? ''"
+						:disabled="disabled"
+						:class="$style.addReview"
+						:label="i18n.baseText('agents.builder.guardrails.review.configuration.add')"
+						data-testid="agent-guardrail-review-configuration-add"
+						@select="addReviewConfiguration"
+					/>
 				</div>
 
 				<div :class="$style.field">
@@ -832,5 +862,11 @@ function onRemove() {
 
 .hint {
 	color: var(--text-color--subtler);
+}
+
+/* Sits under the empty-state hint as the field's action row. */
+.addReview {
+	margin-top: var(--spacing--3xs);
+	align-self: flex-start;
 }
 </style>

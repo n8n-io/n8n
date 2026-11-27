@@ -111,6 +111,7 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 			getGuardrails: wiring.getGuardrails,
 			getTools: wiring.getTools,
 			getReviewConfigurations: wiring.getReviewConfigurations,
+			getReviewContext: wiring.getReviewContext,
 			getProjectId: wiring.getProjectId,
 			disabled: wiring.disabled,
 			onUpdateGuardrails: wiring.onUpdateGuardrails,

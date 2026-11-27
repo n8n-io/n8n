@@ -4,6 +4,8 @@ import { N8nDropdownMenu } from '@n8n/design-system';
 import type { Component } from 'vue';
 import type { AgentHitlConfiguration, AgentToolGuardrailConfig } from '@n8n/api-types';
 
+import type { AgentHitlContext } from '../components/agent-hitl.types';
+
 import AgentGuardrailModal from '../components/AgentGuardrailModal.vue';
 import type { AgentJsonToolRef } from '../types';
 
@@ -58,6 +60,17 @@ vi.mock('../components/AgentWorkflowPicker.vue', () => ({
 		// The modal's data-testid falls through onto the stub's root input.
 		template:
 			'<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+	},
+}));
+
+// The destination menu is covered by the approval suites; the stub offers one fixed workflow destination.
+vi.mock('../components/AgentApprovalDestinationMenu.vue', () => ({
+	default: {
+		name: 'AgentApprovalDestinationMenu',
+		props: { context: Object, projectId: String, disabled: Boolean, label: String },
+		emits: ['select', 'attach'],
+		template:
+			"<button type=\"button\" v-bind=\"$attrs\" @click=\"$emit('select', { method: 'workflow', workflowId: 'wf-9', name: 'Security review' })\" />",
 	},
 }));
 
@@ -176,6 +189,7 @@ function mountModal(
 		kind: AgentToolGuardrailConfig['kind'];
 		tools: AgentJsonToolRef[];
 		reviewConfigurations: AgentHitlConfiguration[];
+		reviewContext: AgentHitlContext;
 		existingIds: string[];
 		disabled: boolean;
 	}> = {},
@@ -547,6 +561,60 @@ describe('AgentGuardrailModal', () => {
 			response: 'review',
 			reviewConfigurationId: 'config-1',
 		});
+	});
+
+	it('adds a reviewer from the empty picker and selects it for the guardrail', async () => {
+		const saveConfiguration = vi.fn();
+		const reviewContext: AgentHitlContext = {
+			getConfig: () => null,
+			saveConfiguration,
+		};
+		const wrapper = mountModal({ kind: 'keywords', reviewContext });
+		const keywordInput = wrapper.find('[data-testid="agent-guardrail-keywords"]');
+		await keywordInput.setValue('secret');
+		await keywordInput.trigger('keydown.enter');
+		await selectSingle(wrapper, 'agent-guardrail-response', 'review');
+
+		// The empty state offers the add affordance; the select is absent.
+		expect(wrapper.find('[data-testid="agent-guardrail-review-configuration"]').exists()).toBe(
+			false,
+		);
+		await wrapper.get('[data-testid="agent-guardrail-review-configuration-add"]').trigger('click');
+
+		// The picked destination is saved with a new id and selected for the guardrail.
+		expect(saveConfiguration).toHaveBeenCalledTimes(1);
+		const configuration = saveConfiguration.mock.calls[0]?.[0] as AgentHitlConfiguration;
+		expect(configuration).toMatchObject({
+			method: 'workflow',
+			workflowId: 'wf-9',
+			name: 'Security review',
+		});
+		expect(configuration.id.length).toBeGreaterThan(0);
+
+		// The configuration list derives from the agent config, so it re-renders.
+		await wrapper.setProps({ reviewConfigurations: [configuration] });
+		expect(saveButton(wrapper).attributes('disabled')).toBeUndefined();
+		await saveButton(wrapper).trigger('click');
+
+		expect(savedConfig(wrapper)).toMatchObject({
+			kind: 'keywords',
+			keywords: ['secret'],
+			response: 'review',
+			reviewConfigurationId: configuration.id,
+		});
+	});
+
+	it('keeps the plain hint without a review context', async () => {
+		const wrapper = mountModal({ kind: 'keywords' });
+		const keywordInput = wrapper.find('[data-testid="agent-guardrail-keywords"]');
+		await keywordInput.setValue('secret');
+		await keywordInput.trigger('keydown.enter');
+		await selectSingle(wrapper, 'agent-guardrail-response', 'review');
+
+		expect(wrapper.find('[data-testid="agent-guardrail-review-configuration-add"]').exists()).toBe(
+			false,
+		);
+		expect(wrapper.text()).toContain('agents.builder.guardrails.review.configuration.none');
 	});
 
 	it('requires a check workflow for the workflow kind and writes its id', async () => {

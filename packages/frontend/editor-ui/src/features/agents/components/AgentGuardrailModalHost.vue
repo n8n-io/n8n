@@ -7,6 +7,7 @@ import type {
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentJsonToolRef } from '../types';
+import type { AgentHitlContext } from './agent-hitl.types';
 import AgentGuardrailModal from './AgentGuardrailModal.vue';
 
 defineOptions({ inheritAttrs: false });
@@ -24,6 +25,8 @@ export interface AgentGuardrailModalData {
 	getTools: () => AgentJsonToolRef[];
 	/** The agent's human-review configurations, for the `review` response target. */
 	getReviewConfigurations?: () => AgentHitlConfiguration[];
+	/** Write access to the agent's configurations, for the modal's add-reviewer flow. */
+	getReviewContext?: () => AgentHitlContext | undefined;
 	/** The agent's project: the check workflow picker lists its workflows. */
 	getProjectId?: () => string | undefined;
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
@@ -71,6 +74,7 @@ function onRemove() {
 		:kind="data.kind ?? 'keywords'"
 		:tools="data.getTools()"
 		:review-configurations="data.getReviewConfigurations?.() ?? []"
+		:review-context="data.getReviewContext?.()"
 		:project-id="data.getProjectId?.()"
 		:existing-ids="data.getGuardrails().map((guardrail) => guardrail.id)"
 		data-testid="agent-guardrail-modal-host"
