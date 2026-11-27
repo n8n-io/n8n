@@ -6,6 +6,7 @@ import {
 	STALE_MS,
 	WAIT_MS,
 	findPublishedRun,
+	nodeMismatch,
 	planAlerts,
 	renderAlerts,
 } from './base-image-alerts.mjs';
@@ -200,6 +201,77 @@ describe('planAlerts', () => {
 		const { alerts, state: next } = planAlerts([source], state, { now });
 		assert.deepEqual(alerts, []);
 		assert.deepEqual(next.findings, {});
+	});
+});
+
+describe('nodeMismatch', () => {
+	const bake = (versions) =>
+		[
+			`variable "NODE_VERSION" { default = "26.13.1" }`,
+			...Object.entries(versions).map(
+				([name, tag]) => `variable "${name}" {\n  default = "repo:${tag}@${digest('a')}"\n}`,
+			),
+		].join('\n');
+	const aligned = {
+		DHI_REF: '26.13.1-alpine3.24-dev',
+		DEBIAN_DHI_REF: '26.13.1-debian13-dev',
+		BUILDER_IMAGE: '26.13.1-alpine3.24',
+		DEBIAN_BUILDER_IMAGE: '26.13.1-trixie-slim',
+		RUNTIME_IMAGE: `26.13.1-${'a'.repeat(40)}`,
+		DEBIAN_RUNTIME_IMAGE: `26.13.1-debian-${'a'.repeat(40)}`,
+		N8N_BUILDER_IMAGE: `26.13.1-${'a'.repeat(40)}-dev`,
+		PC_BUILDER_IMAGE: `26.13.1-${'a'.repeat(40)}-dev`,
+	};
+
+	it('finds no pin when all are on NODE_VERSION', () => {
+		assert.deepEqual(nodeMismatch(bake(aligned)), { version: '26.13.1', lagging: [] });
+	});
+
+	it('lists the pins on another Node version', () => {
+		const stopped = {
+			...aligned,
+			N8N_BUILDER_IMAGE: `26.13.0-${'b'.repeat(40)}-dev`,
+			PC_BUILDER_IMAGE: `26.13.0-${'b'.repeat(40)}-dev`,
+		};
+		assert.deepEqual(nodeMismatch(bake(stopped)).lagging, [
+			'N8N_BUILDER_IMAGE',
+			'PC_BUILDER_IMAGE',
+		]);
+	});
+});
+
+describe('planAlerts for the Node pins', () => {
+	const node = { version: '26.13.1', lagging: ['N8N_BUILDER_IMAGE'] };
+
+	it('alerts when a Node pin stays on another version for 48 hours, then every 7 days', () => {
+		const first = planAlerts([], {}, { now, node });
+		const early = planAlerts([], first.state, { now: now + DAY, node });
+		const late = planAlerts([], early.state, { now: now + WAIT_MS, node });
+		const quiet = planAlerts([], late.state, { now: now + WAIT_MS + DAY, node });
+		const repeat = planAlerts([], quiet.state, { now: now + WAIT_MS + REPEAT_MS, node });
+		assert.deepEqual(first.alerts, []);
+		assert.deepEqual(early.alerts, []);
+		assert.match(
+			late.alerts[0],
+			/`NODE_VERSION` is `26\.13\.1`, but `N8N_BUILDER_IMAGE` still use another Node version after 2 days/,
+		);
+		assert.deepEqual(quiet.alerts, []);
+		assert.equal(repeat.alerts.length, 1);
+	});
+
+	it('starts the count again when the pins are aligned', () => {
+		const first = planAlerts([], {}, { now, node });
+		const aligned = planAlerts([], first.state, {
+			now: now + DAY,
+			node: { version: '26.13.1', lagging: [] },
+		});
+		const again = planAlerts([], aligned.state, { now: now + WAIT_MS, node });
+		assert.equal(aligned.state.nodeMismatchSince, undefined);
+		assert.deepEqual(again.alerts, []);
+	});
+
+	it('skips the check when the Node pins could not be read', () => {
+		assert.deepEqual(planAlerts([], {}, { now, node: [] }).alerts, []);
 	});
 });
 
