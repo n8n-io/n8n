@@ -114,7 +114,7 @@ export function draftAgentVerdict(
 	modelResolution?: AgentModelResolution,
 ): DraftAgentVerdict | undefined {
 	if (!artifact || !isRecord(artifact.config)) return undefined;
-	if (modelResolution?.skipReason) return skippedVerdict(modelResolution.skipReason);
+	if (modelResolution?.skip) return skippedVerdict(modelResolution.skip);
 	const model = artifact.config.model;
 	if (typeof model === 'string' && model.trim() !== '') {
 		return seededModelVerdict(artifact.config, credentials ?? [], seededConfig);
@@ -122,11 +122,20 @@ export function draftAgentVerdict(
 	return noModelVerdict(credentials ?? []);
 }
 
-function skippedVerdict(skipReason: string): DraftAgentVerdict {
+const SKIP_VERDICTS = {
+	'no-model-mapping': {
+		execError: 'Skipped: no model mapping',
+		note: ' The eval has no route to run this Agent on its own model or a comparable one.',
+	},
+	'no-embedding-key': { execError: 'Skipped: no embedding key', note: '' },
+} as const;
+
+function skippedVerdict(skip: NonNullable<AgentModelResolution['skip']>): DraftAgentVerdict {
+	const { execError, note } = SKIP_VERDICTS[skip.kind];
 	return {
 		attribution: 'framework_issue',
-		reasoning: `Skipped: ${skipReason}. The eval has no route to run this Agent on its own model or a comparable one.`,
-		execError: 'Skipped: no model mapping',
+		reasoning: `Skipped: ${skip.reason}.${note}`,
+		execError,
 		incomplete: true,
 	};
 }

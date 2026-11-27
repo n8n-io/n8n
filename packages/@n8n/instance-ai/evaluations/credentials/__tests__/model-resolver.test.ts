@@ -333,9 +333,11 @@ describe('resolveAgentConfigModels', () => {
 		const { resolution } = resolveAgentConfigModels(baseConfig(), keys());
 
 		expect(resolution.modelResolution).toBe('skipped');
-		expect(resolution.skipReason).toBe(
-			'no model mapping for anthropic/claude-sonnet-4-5: no real key for its provider, OpenRouter, or a comparable model',
-		);
+		expect(resolution.skip).toEqual({
+			kind: 'no-model-mapping',
+			reason:
+				'no model mapping for anthropic/claude-sonnet-4-5: no real key for its provider, OpenRouter, or a comparable model',
+		});
 	});
 
 	it('drops Anthropic-only options when the main model leaves the Anthropic provider', () => {
@@ -483,5 +485,44 @@ describe('describeModelResolution', () => {
 		expect(describeModelResolution(resolution)).toBe(
 			'skipped: no model mapping for anthropic/claude-sonnet-4-5: no real key for its provider, OpenRouter, or a comparable model',
 		);
+	});
+});
+
+describe('resolveDirectRunAgentModels with episodic memory', () => {
+	const episodicAgent = baseConfig({
+		memory: {
+			enabled: true,
+			storage: 'n8n',
+			episodicMemory: { enabled: true, credential: '[redacted]' },
+		},
+	});
+	const directCase = (keepMemory: boolean) => ({
+		...seededCase([episodicAgent]),
+		agentRun: { mode: 'direct' as const, keepMemory },
+	});
+
+	it('skips a run that keeps episodic memory when no OpenAI key is set', () => {
+		const { resolutions } = resolveDirectRunAgentModels(directCase(true), keys('anthropicApi'));
+
+		expect(resolutions[0].skip).toEqual({
+			kind: 'no-embedding-key',
+			reason: 'no embedding key: episodic memory embeds with OpenAI, and no OpenAI key is set',
+		});
+		expect(resolutions[0].modelResolution).toBe('direct');
+	});
+
+	it('runs it when the OpenAI key is set', () => {
+		const { resolutions } = resolveDirectRunAgentModels(
+			directCase(true),
+			keys('anthropicApi', 'openAiApi'),
+		);
+
+		expect(resolutions[0].skip).toBeUndefined();
+	});
+
+	it('runs it when the run strips memory', () => {
+		const { resolutions } = resolveDirectRunAgentModels(directCase(false), keys('anthropicApi'));
+
+		expect(resolutions[0].skip).toBeUndefined();
 	});
 });

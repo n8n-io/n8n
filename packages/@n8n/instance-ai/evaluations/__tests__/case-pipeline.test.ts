@@ -786,7 +786,10 @@ describe('createCasePipeline', () => {
 				credentialTypes: [],
 				embeddings: 'none',
 				tags: [],
-				skipReason: 'no model mapping for anthropic/claude-sonnet-5-5',
+				skip: {
+					kind: 'no-model-mapping',
+					reason: 'no model mapping for anthropic/claude-sonnet-5-5',
+				},
 			};
 
 			const { output, lane } = await runWith({

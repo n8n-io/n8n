@@ -87,7 +87,11 @@ export const agentModelResolutionSchema = z.object({
 	/** How episodic memory's embeddings (always OpenAI) will run. */
 	embeddings: z.enum(['none', 'openai', 'no-embedding-key']),
 	tags: z.array(z.string()),
-	skipReason: z.string().optional(),
+	/** Why the run is skipped, not failed: no route for a model, or a run that
+	 *  keeps episodic memory with no OpenAI key for its embeddings. */
+	skip: z
+		.object({ kind: z.enum(['no-model-mapping', 'no-embedding-key']), reason: z.string() })
+		.optional(),
 });
 
 export type AgentModelResolution = z.infer<typeof agentModelResolutionSchema>;
@@ -335,7 +339,9 @@ function summarize(
 		credentialTypes: credentialTypesFor(slots, embeddings),
 		embeddings,
 		tags: slots.some((s) => s.kind === 'comparable') ? [MODEL_FALLBACK_TAG] : [],
-		...(skipped?.kind === 'skipped' ? { skipReason: skipped.reason } : {}),
+		...(skipped?.kind === 'skipped'
+			? { skip: { kind: 'no-model-mapping' as const, reason: skipped.reason } }
+			: {}),
 	};
 }
 
@@ -391,7 +397,7 @@ function dropProviderTools(config: AgentJsonConfig, provider: string): string[] 
 
 /** One log line: the route, the main model before and after, and what was dropped. */
 export function describeModelResolution(resolution: AgentModelResolution): string {
-	if (resolution.skipReason) return `skipped: ${resolution.skipReason}`;
+	if (resolution.skip) return `skipped: ${resolution.skip.reason}`;
 	const models = `${resolution.originalModel ?? '(no model)'} -> ${resolution.actualModel ?? '(no model)'}`;
 	const dropped = resolution.droppedOptions.length
 		? ` (dropped: ${resolution.droppedOptions.join(', ')})`
@@ -419,7 +425,8 @@ export function resolveCaseAgentModels<T extends ResolvableCase>(
 		agent,
 		...resolveAgentConfigModels(agent.config, available, options),
 	}));
-	const resolutions = resolved.map((r) => r.resolution);
+	const keepsMemory = testCase.agentRun?.keepMemory === true;
+	const resolutions = resolved.map((r) => withEmbeddingSkip(r.resolution, keepsMemory));
 	const agents = resolved.map(({ agent, config }) => ({ ...agent, config }));
 	return {
 		testCase: {
@@ -442,6 +449,19 @@ export function resolveDirectRunAgentModels<T extends ResolvableCase>(
 ): { testCase: T; resolutions: AgentModelResolution[] } {
 	if (!isDirectAgentRun(testCase)) return { testCase, resolutions: [] };
 	return resolveCaseAgentModels(testCase, available, options);
+}
+
+/** A run that keeps episodic memory needs OpenAI for its embeddings; without
+ *  the key it is skipped, not failed. A run that strips memory needs none. */
+function withEmbeddingSkip(
+	resolution: AgentModelResolution,
+	keepsMemory: boolean,
+): AgentModelResolution {
+	if (!keepsMemory || resolution.skip || resolution.embeddings !== 'no-embedding-key') {
+		return resolution;
+	}
+	const reason = 'no embedding key: episodic memory embeds with OpenAI, and no OpenAI key is set';
+	return { ...resolution, skip: { kind: 'no-embedding-key', reason } };
 }
 
 /** Declare each credential type the resolved models need, and mark the one the

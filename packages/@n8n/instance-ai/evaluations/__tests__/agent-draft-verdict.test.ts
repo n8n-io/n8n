@@ -63,7 +63,10 @@ describe('draftAgentVerdict', () => {
 			credentialTypes: [],
 			embeddings: 'none',
 			tags: [],
-			skipReason: 'no model mapping for azure-openai/my-deployment: no real key',
+			skip: {
+				kind: 'no-model-mapping',
+				reason: 'no model mapping for azure-openai/my-deployment: no real key',
+			},
 		};
 
 		expect(draftAgentVerdict(artifact(seeded), [], seeded, resolution)).toEqual({
@@ -71,6 +74,25 @@ describe('draftAgentVerdict', () => {
 			reasoning:
 				'Skipped: no model mapping for azure-openai/my-deployment: no real key. The eval has no route to run this Agent on its own model or a comparable one.',
 			execError: 'Skipped: no model mapping',
+			incomplete: true,
+		});
+	});
+
+	it('marks the run skipped when episodic memory has no embedding key', () => {
+		const resolution: AgentModelResolution = {
+			modelResolution: 'direct',
+			slots: [],
+			droppedOptions: [],
+			credentialTypes: [],
+			embeddings: 'no-embedding-key',
+			tags: [],
+			skip: { kind: 'no-embedding-key', reason: 'no embedding key: no OpenAI key is set' },
+		};
+
+		expect(draftAgentVerdict(artifact(seeded), [], seeded, resolution)).toEqual({
+			attribution: 'framework_issue',
+			reasoning: 'Skipped: no embedding key: no OpenAI key is set.',
+			execError: 'Skipped: no embedding key',
 			incomplete: true,
 		});
 	});
