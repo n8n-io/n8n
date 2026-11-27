@@ -10,7 +10,7 @@ import {
 	WorkflowExecute,
 	rewireGraph,
 } from 'n8n-core';
-import { NodeHelpers, createRunExecutionData } from 'n8n-workflow';
+import { NodeHelpers, createRunExecutionData, isTriggerNodeType } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import type {
 	ExecutionStorageLocation,
@@ -89,8 +89,14 @@ export class ManualExecutionService {
 				waitingExecutionSource = recreatedStack.waitingExecutionSource;
 			}
 
+			const triggerNodeType = workflow.getNode(data.triggerToStartFrom.name)?.type;
 			const executionData = createRunExecutionData({
 				binaryDataAccess: data.binaryDataAccess,
+				startData: {
+					destinationNode: data.destinationNode,
+					triggerNodeType:
+						triggerNodeType && isTriggerNodeType(triggerNodeType) ? triggerNodeType : null,
+				},
 				resultData: {
 					runData,
 					pinData,
@@ -102,10 +108,6 @@ export class ManualExecutionService {
 				},
 				resumeToken,
 			});
-
-			if (data.destinationNode) {
-				executionData.startData = { destinationNode: data.destinationNode };
-			}
 
 			const workflowExecute = new WorkflowExecute(
 				additionalData,
