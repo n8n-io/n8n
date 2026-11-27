@@ -280,6 +280,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		workflowDocumentStore.setPublicationStatus({ status: 'idle' });
 		uiStore.markStateClean();
 		collaborationStore.shouldBeReadOnly = false;
+		collaborationStore.isCurrentUserWriter = false;
 
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
@@ -935,6 +936,188 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				'true',
 			);
 		});
+
+		it('should give a disabled Publish menu item the reason as a tooltip', async () => {
+			workflowDocumentStore.setNodes([]);
+			uiStore.markStateDirty();
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('version-menu-button'));
+
+			const publishItem = getByTestId('version-menu-item-publish');
+			expect(publishItem).toHaveClass('is-disabled');
+			// The tooltip stub of the tests renders its content as an attribute.
+			expect(publishItem.parentElement).toHaveAttribute(
+				'content',
+				'This workflow has no trigger nodes that require publishing',
+			);
+		});
+
+		it('should give an enabled Publish menu item no tooltip even when the button has one', async () => {
+			setupEnabledPublishButton();
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-1',
+				activeVersion: createMockActiveVersion('version-1'),
+			});
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-2',
+				name: null,
+				description: null,
+			});
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('version-menu-button'));
+
+			const publishItem = getByTestId('version-menu-item-publish');
+			expect(publishItem).not.toHaveClass('is-disabled');
+			expect(publishItem.parentElement).not.toHaveAttribute('content');
+		});
+
+		it.each([
+			{
+				name: 'someone else is editing the workflow',
+				isCurrentUserWriter: false,
+				reason: 'This workflow is read-only while someone else is editing it',
+			},
+			{
+				name: 'the current user is editing the workflow in another tab',
+				isCurrentUserWriter: true,
+				reason: "You're editing this workflow in another tab",
+			},
+		])(
+			'should explain collaboration read-only on the disabled Publish menu item when $name even with pending changes',
+			async ({ isCurrentUserWriter, reason }) => {
+				setupEnabledPublishButton();
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'version-1',
+					activeVersion: createMockActiveVersion('version-1'),
+				});
+				workflowDocumentStore.setVersionData({
+					versionId: 'version-2',
+					name: null,
+					description: null,
+				});
+				collaborationStore.shouldBeReadOnly = true;
+				collaborationStore.isCurrentUserWriter = isCurrentUserWriter;
+
+				const { getByTestId } = renderComponent();
+
+				await userEvent.click(getByTestId('version-menu-button'));
+
+				const publishItem = getByTestId('version-menu-item-publish');
+				expect(publishItem).toHaveClass('is-disabled');
+				expect(publishItem.parentElement).toHaveAttribute('content', reason);
+			},
+		);
+
+		it.each([
+			{
+				decision: 'pending' as const,
+				reason: 'This version is already waiting for review',
+			},
+			{
+				decision: 'changes_requested' as const,
+				reason: 'Make the requested changes before you submit again',
+			},
+		])(
+			'should explain the open review state ($decision) on the disabled Publish menu item when it holds the saved version',
+			async ({ decision, reason }) => {
+				setWorkflowReviewGates({ alwaysRequired: true });
+				setHomeProjectType('team');
+				setupEnabledPublishButton();
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'version-0',
+					activeVersion: createMockActiveVersion('version-0'),
+				});
+				workflowDocumentStore.setVersionData({
+					versionId: 'version-1',
+					name: null,
+					description: null,
+				});
+				vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+					count: 1,
+					data: [
+						{
+							id: 'req-1',
+							state: 'open',
+							decision,
+							workflowVersionId: 'version-1',
+							workflowVersionName: null,
+							description: null,
+							createdAt: '2026-07-20T10:00:00.000Z',
+							updatedAt: '2026-07-20T10:00:00.000Z',
+							decisionBy: null,
+							viewerCanOpen: true,
+						},
+					],
+					reviewRequiredBy: 'instance',
+				});
+
+				const { getByTestId } = renderComponent();
+
+				await waitFor(() =>
+					expect(getByTestId('workflow-open-publish-modal-button')).toHaveAttribute(
+						'aria-disabled',
+						'true',
+					),
+				);
+
+				await userEvent.click(getByTestId('version-menu-button'));
+
+				const publishItem = getByTestId('version-menu-item-publish');
+				expect(publishItem).toHaveClass('is-disabled');
+				expect(publishItem.parentElement).toHaveAttribute('content', reason);
+			},
+		);
+
+		it('should explain when a published workflow has no changes on the disabled Publish menu item', async () => {
+			setupEnabledPublishButton();
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-1',
+				activeVersion: createMockActiveVersion('version-1'),
+			});
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('version-menu-button'));
+
+			const publishItem = getByTestId('version-menu-item-publish');
+			expect(publishItem).toHaveClass('is-disabled');
+			expect(publishItem.parentElement).toHaveAttribute('content', 'No changes to publish');
+		});
+
+		it.each(['failed', 'partial'] as const)(
+			'should show the publish-blocking reason instead of retry text when %s publication is not publishable',
+			async (status) => {
+				useSettingsStore().$patch((state) => {
+					state.settings = { ...state.settings, useWorkflowPublicationService: true };
+				});
+				workflowDocumentStore.setActiveState({
+					activeVersionId: 'version-1',
+					activeVersion: createMockActiveVersion('version-1'),
+				});
+				workflowDocumentStore.setNodes([]);
+				workflowDocumentStore.setPublicationStatus({ status });
+
+				const { getByTestId } = renderComponent();
+
+				await userEvent.click(getByTestId('version-menu-button'));
+
+				const publishItem = getByTestId('version-menu-item-publish');
+				expect(publishItem).toHaveClass('is-disabled');
+				expect(publishItem.parentElement).toHaveAttribute(
+					'content',
+					'This workflow has no trigger nodes that require publishing',
+				);
+			},
+		);
 
 		it('should show publish button disabled when trigger node is disabled', () => {
 			workflowDocumentStore.setNodes([{ ...triggerNode, disabled: true }]);
@@ -1641,6 +1824,67 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const unpublishItem = getByTestId('version-menu-item-unpublish');
 			expect(unpublishItem).toBeInTheDocument();
 			expect(unpublishItem).toHaveClass('is-disabled');
+		});
+
+		it.each([
+			{
+				name: 'the workflow is not published',
+				arrange: () =>
+					workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null }),
+				props: {},
+				reason: "This workflow isn't published",
+			},
+			{
+				name: 'someone else is editing the workflow',
+				arrange: () => {
+					collaborationStore.shouldBeReadOnly = true;
+				},
+				props: {},
+				reason: 'This workflow is read-only while someone else is editing it',
+			},
+			{
+				name: 'the current user is editing the workflow in another tab',
+				arrange: () => {
+					collaborationStore.shouldBeReadOnly = true;
+					collaborationStore.isCurrentUserWriter = true;
+				},
+				props: {},
+				reason: "You're editing this workflow in another tab",
+			},
+			{
+				name: 'the user lacks the unpublish permission',
+				arrange: () => {},
+				props: {
+					workflowPermissions: { ...defaultWorkflowProps.workflowPermissions, unpublish: false },
+				},
+				reason: "You don't have permission to unpublish this workflow",
+			},
+		])('should give Unpublish the reason as a tooltip when $name', async (scenario) => {
+			setupEnabledPublishButton();
+			scenario.arrange();
+
+			const { getByTestId } = renderComponent({
+				props: { ...defaultWorkflowProps, ...scenario.props },
+			});
+
+			await userEvent.click(getByTestId('version-menu-button'));
+			const unpublishItem = getByTestId('version-menu-item-unpublish');
+
+			expect(unpublishItem).toHaveClass('is-disabled');
+			// The tooltip stub of the tests renders its content as an attribute.
+			expect(unpublishItem.parentElement).toHaveAttribute('content', scenario.reason);
+		});
+
+		it('should give Unpublish no tooltip when it is available', async () => {
+			setupEnabledPublishButton();
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('version-menu-button'));
+			const unpublishItem = getByTestId('version-menu-item-unpublish');
+
+			expect(unpublishItem).not.toHaveClass('is-disabled');
+			expect(unpublishItem.parentElement).not.toHaveAttribute('content');
 		});
 	});
 

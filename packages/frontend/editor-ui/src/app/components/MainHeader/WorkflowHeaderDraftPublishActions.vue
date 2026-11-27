@@ -710,6 +710,48 @@ const enum VERSION_ACTIONS {
 	UNPUBLISH = 'unpublish',
 }
 
+/** Why Publish is disabled in the version menu, or '' when it is available. */
+const publishDisabledReason = computed(() => {
+	if (!shouldDisablePublishButton.value) return '';
+	if (collaborationReadOnly.value) {
+		return collaborationStore.isCurrentUserWriter
+			? i18n.baseText('workflows.publish.readOnlyAnotherTab')
+			: i18n.baseText('workflows.publish.readOnly');
+	}
+	if (unusableCredentialReason.value) return unusableCredentialReason.value;
+	if (!hasPublishPermission.value) {
+		return isPersonalSpace.value
+			? i18n.baseText('workflows.publish.personalSpaceRestricted')
+			: i18n.baseText('workflows.publish.permissionDenied');
+	}
+	if (reviewsApply.value && isReviewUpdateBlocked.value) {
+		return openReviewRequest.value?.decision === 'changes_requested'
+			? i18n.baseText('workflows.publish.changesRequested')
+			: i18n.baseText('workflows.publish.waitingForReview');
+	}
+	if (workflowPublishState.value === 'publishing') return publishButtonConfig.value.tooltip;
+	if (publishBlockedReason.value) return publishBlockedReason.value;
+	if (props.isNewWorkflow) return i18n.baseText('workflows.publish.unsaved');
+	if (workflowPublishState.value === 'published-no-changes') {
+		return i18n.baseText('workflows.publishModal.noChanges');
+	}
+
+	return publishButtonConfig.value.tooltip;
+});
+
+/** Why Unpublish is disabled, or '' when it is not. Also the tooltip of the menu item. */
+const unpublishDisabledReason = computed(() => {
+	if (!activeVersion.value) return i18n.baseText('workflows.unpublish.notPublished');
+	if (collaborationReadOnly.value) {
+		return collaborationStore.isCurrentUserWriter
+			? i18n.baseText('workflows.unpublish.readOnlyAnotherTab')
+			: i18n.baseText('workflows.unpublish.readOnly');
+	}
+	if (!hasUnpublishPermission.value) return i18n.baseText('workflows.unpublish.permissionDenied');
+
+	return '';
+});
+
 const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(() => {
 	const actions: Array<ActionDropdownItem<VERSION_ACTIONS>> = [
 		{
@@ -719,6 +761,7 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 				: i18n.baseText('workflows.publish'),
 			shortcut: { shiftKey: true, keys: ['P'] },
 			disabled: shouldDisablePublishButton.value,
+			tooltip: publishDisabledReason.value || undefined,
 		},
 	];
 
@@ -740,7 +783,8 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 	actions.push({
 		id: VERSION_ACTIONS.UNPUBLISH,
 		label: i18n.baseText('workflows.unpublish'),
-		disabled: !activeVersion.value || collaborationReadOnly.value || !hasUnpublishPermission.value,
+		disabled: unpublishDisabledReason.value !== '',
+		tooltip: unpublishDisabledReason.value || undefined,
 		divided: true,
 		shortcut: { metaKey: true, keys: ['U'] },
 	});
