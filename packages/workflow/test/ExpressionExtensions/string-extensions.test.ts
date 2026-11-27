@@ -224,6 +224,13 @@ describe('Data Transformation Functions', () => {
 			).toEqual('http://192.168.1.1:8000/path?q=value#frag');
 		});
 
+		test.each([
+			['Docs: https://docs.n8n.io.', 'https://docs.n8n.io'],
+			['Wiki (https://example.com/C_(lang))', 'https://example.com/C_(lang)'],
+		])('.extractUrl should leave out the punctuation after the URL in %j', (text, url) => {
+			expect(evaluate('={{ $json.text.extractUrl() }}', [{ text }])).toEqual(url);
+		});
+
 		test('.extractDomain should work on a string', () => {
 			expect(evaluate('={{ "test@example.org".extractDomain() }}')).toEqual('example.org');
 			expect(evaluate('={{ "https://example.org/".extractDomain() }}')).toEqual('example.org');
