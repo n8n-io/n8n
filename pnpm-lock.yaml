@@ -10067,6 +10067,9 @@ importers:
       '@aws-sdk/client-secrets-manager':
         specifier: 3.808.0
         version: 3.808.0
+      '@azure/storage-blob':
+        specifier: 'catalog:'
+        version: 12.32.0(supports-color@8.1.1)
       '@testcontainers/k3s':
         specifier: 'catalog:'
         version: 11.13.0(supports-color@8.1.1)

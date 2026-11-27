@@ -26,6 +26,7 @@ export const SERVICE_NAMES = [
 	'ngrok',
 	'mysql',
 	'localstack',
+	'azurite',
 	'vault',
 	'kent',
 	'postgresExporter',

@@ -36,6 +36,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "3.808.0",
     "@aws-sdk/client-secrets-manager": "3.808.0",
+    "@azure/storage-blob": "catalog:",
     "@testcontainers/k3s": "catalog:",
     "@testcontainers/kafka": "catalog:",
     "@testcontainers/mysql": "catalog:",
