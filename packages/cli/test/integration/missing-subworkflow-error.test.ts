@@ -27,6 +27,7 @@ describe('ExecuteWorkflow node with missing or invalid sub-workflow ID', () => {
 		const nodeTypes = loadNodesFromDist([
 			'n8n-nodes-base.manualTrigger',
 			'n8n-nodes-base.executeWorkflow',
+			'n8n-nodes-base.executeWorkflowTrigger',
 		]);
 
 		await utils.initNodeTypes(nodeTypes);
@@ -198,7 +199,7 @@ describe('ExecuteWorkflow node with missing or invalid sub-workflow ID', () => {
 		expect(await executionRepository.count()).toBe(1);
 	});
 
-	it('fails with a non-reportable UserError when the workflow ID expression resolves to a number', async () => {
+	it('fails with a non-reportable UserError naming the ID when a numeric workflow ID expression matches no workflow', async () => {
 		const execution = await runParentWithSubworkflow('={{ 123 }}', 'once');
 
 		expect(execution.status).toBe('error');
@@ -207,10 +208,58 @@ describe('ExecuteWorkflow node with missing or invalid sub-workflow ID', () => {
 			name: 'UserError',
 			level: 'info',
 			shouldReport: false,
-			message: expect.stringContaining('Workflow ID is invalid.'),
+			message: 'Workflow "123" does not exist.',
 		});
 		expect(await executionRepository.count()).toBe(1);
 	});
+
+	it('executes an existing sub-workflow whose legacy string ID matches a numeric expression', async () => {
+		await createWorkflow(
+			{
+				id: '5',
+				name: 'Legacy Numeric ID Sub-workflow',
+				nodes: [
+					{
+						parameters: { inputSource: 'passthrough' },
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1.1,
+						id: uuid(),
+						name: 'When Executed by Another Workflow',
+						position: [0, 0],
+					},
+				],
+				connections: {},
+			} as unknown as IWorkflowDb,
+			owner,
+		);
+
+		const execution = await runParentWithSubworkflow('={{ 5 }}', 'once');
+
+		expect(execution.status).toBe('success');
+		expect(await executionRepository.count()).toBe(2);
+	});
+
+	it.each([
+		['boolean', '={{ true }}'],
+		['NaN', '={{ Number.NaN }}'],
+		['Infinity', '={{ Infinity }}'],
+		['object', '={{ ({}) }}'],
+	])(
+		'fails with a non-reportable UserError when the workflow ID expression resolves to %s',
+		async (_label, expression) => {
+			const execution = await runParentWithSubworkflow(expression, 'once');
+
+			expect(execution.status).toBe('error');
+			const nodeError = execution.data.resultData.runData['Execute Sub-workflow']?.at(-1)?.error;
+			expect(nodeError).toMatchObject({
+				name: 'UserError',
+				level: 'info',
+				shouldReport: false,
+				message: expect.stringContaining('Workflow ID is invalid.'),
+			});
+			expect(await executionRepository.count()).toBe(1);
+		},
+	);
 
 	it('throws a non-reportable UserError naming the missing ID in published mode with publication service enabled', async () => {
 		expect(Container.get(WorkflowsConfig).useWorkflowPublicationService).toBe(true);

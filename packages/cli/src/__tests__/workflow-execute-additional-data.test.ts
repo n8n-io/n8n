@@ -2407,8 +2407,10 @@ describe('WorkflowExecuteAdditionalData', () => {
 		it.each([
 			{ usePublicationService: false, label: 'empty string', invalidId: '' },
 			{ usePublicationService: true, label: 'empty string', invalidId: '' },
-			{ usePublicationService: false, label: 'number (123)', invalidId: 123 },
-			{ usePublicationService: true, label: 'number (123)', invalidId: 123 },
+			{ usePublicationService: false, label: 'NaN', invalidId: Number.NaN },
+			{ usePublicationService: true, label: 'NaN', invalidId: Number.NaN },
+			{ usePublicationService: false, label: 'Infinity', invalidId: Number.POSITIVE_INFINITY },
+			{ usePublicationService: true, label: 'Infinity', invalidId: Number.POSITIVE_INFINITY },
 			{ usePublicationService: false, label: 'boolean (true)', invalidId: true },
 			{ usePublicationService: true, label: 'boolean (true)', invalidId: true },
 		])(
@@ -2426,6 +2428,80 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(workflowRepository.get).not.toHaveBeenCalled();
 				expect(workflowRepository.existsBy).not.toHaveBeenCalled();
 				expect(workflowPublishedDataService.getPublishedWorkflowData).not.toHaveBeenCalled();
+			},
+		);
+
+		it('should coerce finite numeric workflow IDs to string before lookup (flag off)', async () => {
+			workflowsConfig.useWorkflowPublicationService = false;
+			workflowRepository.get.mockResolvedValueOnce(
+				mock<WorkflowEntity>({
+					id: '5',
+					active: true,
+					activeVersionId: 'version-5',
+					nodes: [],
+					connections: {},
+					activeVersion: mock<WorkflowHistory>({
+						versionId: 'version-5',
+						nodes: [],
+						connections: {},
+					}),
+				}),
+			);
+
+			const result = await getPublishedWorkflowData(
+				{ id: 5 as unknown as string },
+				'parent-workflow-id',
+			);
+
+			expect(workflowRepository.get).toHaveBeenCalledWith(
+				{ id: '5' },
+				{ relations: ['activeVersion', 'tags'] },
+			);
+			expect(result.id).toBe('5');
+		});
+
+		it('should coerce finite numeric workflow IDs to string before lookup (flag on)', async () => {
+			workflowsConfig.useWorkflowPublicationService = true;
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValueOnce({
+				workflow: mock<WorkflowEntity>({ id: '5', name: 'Legacy Numeric ID' }),
+				publishedVersion: mock<WorkflowHistory>({
+					versionId: 'version-5',
+					nodes: [],
+					connections: {},
+				}),
+			});
+
+			const result = await getPublishedWorkflowData(
+				{ id: 5 as unknown as string },
+				'parent-workflow-id',
+			);
+
+			expect(workflowPublishedDataService.getPublishedWorkflowData).toHaveBeenCalledWith('5');
+			expect(result.id).toBe('5');
+		});
+
+		it.each([false, true])(
+			'should throw a UserError naming the numeric workflow ID when not found (flag=%s)',
+			async (usePublicationService) => {
+				workflowsConfig.useWorkflowPublicationService = usePublicationService;
+				if (usePublicationService) {
+					workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValueOnce(null);
+					workflowRepository.existsBy.mockResolvedValueOnce(false);
+				} else {
+					workflowRepository.get.mockResolvedValueOnce(null);
+				}
+
+				const promise = getPublishedWorkflowData(
+					{ id: 123 as unknown as string },
+					'parent-workflow-id',
+				);
+
+				await expect(promise).rejects.toBeInstanceOf(UserError);
+				await expect(promise).rejects.toMatchObject({
+					shouldReport: false,
+					message: 'Workflow "123" does not exist.',
+					extra: { workflowId: '123', parentWorkflowId: 'parent-workflow-id' },
+				});
 			},
 		);
 	});
@@ -2544,8 +2620,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 
 		// Regression test for CET-178: an expression that resolves to an empty string,
-		// whitespace, null, or a non-string value must throw a non-reportable UserError
-		// without querying the database.
+		// whitespace, null, a non-finite number, or another non-string value must throw
+		// a non-reportable UserError without querying the database.
 		it.each([
 			['empty string', '', 'Workflow ID is empty.'],
 			['whitespace', '   ', 'Workflow ID is empty.'],
@@ -2553,9 +2629,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 			['object', {}, 'Workflow ID is invalid.'],
 			['array', [], 'Workflow ID is invalid.'],
 			['boolean', true, 'Workflow ID is invalid.'],
-			['number (123)', 123, 'Workflow ID is invalid.'],
-			['number (0)', 0, 'Workflow ID is invalid.'],
 			['NaN', Number.NaN, 'Workflow ID is invalid.'],
+			['Infinity', Number.POSITIVE_INFINITY, 'Workflow ID is invalid.'],
+			['-Infinity', Number.NEGATIVE_INFINITY, 'Workflow ID is invalid.'],
 			['bigint', BigInt(42), 'Workflow ID is invalid.'],
 			['symbol', Symbol('id'), 'Workflow ID is invalid.'],
 			['function', () => 'id', 'Workflow ID is invalid.'],
@@ -2577,6 +2653,46 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(workflowRepository.get).not.toHaveBeenCalled();
 			},
 		);
+
+		it.each([
+			[5, '5'],
+			[0, '0'],
+		])(
+			'should coerce finite numeric workflow ID %d to string "%s" before querying',
+			async (numericId, expectedId) => {
+				workflowRepository.get.mockResolvedValueOnce(
+					mock<WorkflowEntity>({ id: expectedId, nodes: [], connections: {} }),
+				);
+
+				const result = await getDraftWorkflowData(
+					{ id: numericId as unknown as string },
+					'parent-workflow-id',
+				);
+
+				expect(workflowRepository.get).toHaveBeenCalledWith(
+					{ id: expectedId },
+					{ relations: ['activeVersion', 'tags'] },
+				);
+				expect(result.id).toBe(expectedId);
+			},
+		);
+
+		it('should throw a UserError naming the numeric workflow ID when workflow does not exist', async () => {
+			workflowRepository.get.mockResolvedValueOnce(null);
+
+			const promise = getDraftWorkflowData({ id: 123 as unknown as string }, 'parent-workflow-id');
+
+			await expect(promise).rejects.toBeInstanceOf(UserError);
+			await expect(promise).rejects.toMatchObject({
+				shouldReport: false,
+				message: 'Workflow "123" does not exist.',
+				extra: { workflowId: '123', parentWorkflowId: 'parent-workflow-id' },
+			});
+			expect(workflowRepository.get).toHaveBeenCalledWith(
+				{ id: '123' },
+				{ relations: ['activeVersion', 'tags'] },
+			);
+		});
 
 		it('should throw a UserError without querying the database when neither id nor code is provided', async () => {
 			const promise = getDraftWorkflowData({ id: undefined }, 'parent-workflow-id');

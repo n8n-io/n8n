@@ -138,13 +138,10 @@ export function getRunData(
 }
 
 /**
- * Rejects blank or non-string workflow IDs before querying the database.
- * Node expressions can resolve to empty strings, null, numbers, or objects at runtime.
+ * Validates a workflow ID and converts finite numbers to strings before the database query.
+ * Node expressions can evaluate to empty strings, null, legacy integer IDs, or non-string values.
  */
-function assertValidWorkflowId(
-	workflowId: unknown,
-	parentWorkflowId: string,
-): asserts workflowId is string {
+function normalizeWorkflowId(workflowId: unknown, parentWorkflowId: string): string {
 	if (
 		workflowId === null ||
 		workflowId === undefined ||
@@ -156,6 +153,10 @@ function assertValidWorkflowId(
 				extra: { workflowId, parentWorkflowId },
 			},
 		);
+	}
+
+	if (typeof workflowId === 'number' && Number.isFinite(workflowId)) {
+		return String(workflowId);
 	}
 
 	if (typeof workflowId !== 'string') {
@@ -172,6 +173,8 @@ function assertValidWorkflowId(
 			},
 		);
 	}
+
+	return workflowId;
 }
 
 /**
@@ -193,7 +196,7 @@ async function fetchWorkflowData(
 	}
 
 	if (workflowInfo.id !== undefined) {
-		assertValidWorkflowId(workflowInfo.id, parentWorkflowId);
+		const workflowId = normalizeWorkflowId(workflowInfo.id, parentWorkflowId);
 
 		const baseRelations = ['activeVersion'];
 		const relations = Container.get(GlobalConfig).tags.disabled
@@ -201,13 +204,13 @@ async function fetchWorkflowData(
 			: [...baseRelations, 'tags'];
 
 		const workflowFromDb = await Container.get(WorkflowRepository).get(
-			{ id: workflowInfo.id },
+			{ id: workflowId },
 			{ relations },
 		);
 
 		if (workflowFromDb === undefined || workflowFromDb === null) {
-			throw new UserError(`Workflow "${workflowInfo.id}" does not exist.`, {
-				extra: { workflowId: workflowInfo.id, parentWorkflowId },
+			throw new UserError(`Workflow "${workflowId}" does not exist.`, {
+				extra: { workflowId, parentWorkflowId },
 			});
 		}
 
@@ -267,21 +270,21 @@ export async function getPublishedWorkflowData(
 		workflowInfo.id !== undefined &&
 		Container.get(WorkflowsConfig).useWorkflowPublicationService
 	) {
-		assertValidWorkflowId(workflowInfo.id, parentWorkflowId);
+		const workflowId = normalizeWorkflowId(workflowInfo.id, parentWorkflowId);
 
 		const publishedData = await Container.get(
 			WorkflowPublishedDataService,
-		).getPublishedWorkflowData(workflowInfo.id);
+		).getPublishedWorkflowData(workflowId);
 		if (publishedData === null) {
-			const exists = await Container.get(WorkflowRepository).existsBy({ id: workflowInfo.id });
+			const exists = await Container.get(WorkflowRepository).existsBy({ id: workflowId });
 			if (!exists) {
-				throw new UserError(`Workflow "${workflowInfo.id}" does not exist.`, {
-					extra: { workflowId: workflowInfo.id, parentWorkflowId },
+				throw new UserError(`Workflow "${workflowId}" does not exist.`, {
+					extra: { workflowId, parentWorkflowId },
 				});
 			}
 
 			throw new OperationalError('Workflow is not active and cannot be executed.', {
-				extra: { workflowId: workflowInfo.id, parentWorkflowId },
+				extra: { workflowId, parentWorkflowId },
 			});
 		}
 		return {
@@ -322,7 +325,7 @@ export async function getPublishedWorkflowData(
 	}
 
 	throw new OperationalError('Workflow is not active and cannot be executed.', {
-		extra: { workflowId: workflowInfo.id, parentWorkflowId },
+		extra: { workflowId: workflowData?.id ?? String(workflowInfo.id), parentWorkflowId },
 	});
 }
 
