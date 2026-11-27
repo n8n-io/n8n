@@ -61,8 +61,9 @@ export const APP_RUNTIME_MAX_BODY_BYTES = 1024 * 1024;
 const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
 const VISITOR_ERROR_MESSAGE = 'The agent could not answer.';
 
+/** Without `read`, the response must not show which rows matched the filter. */
 function readableRows(binding: AppDataTableBinding, rows: AppRow[]): AppRow[] {
-	return binding.permissions.includes('read') ? rows : rows.map(({ id }) => ({ id }));
+	return binding.permissions.includes('read') ? rows : [];
 }
 
 const parseCookies = cookieParser();
