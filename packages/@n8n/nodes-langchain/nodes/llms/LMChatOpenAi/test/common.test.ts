@@ -240,10 +240,13 @@ describe('prepareAdditionalResponsesParams', () => {
 		expect(text).toEqual({ text: { verbosity: 'high', format: { type: 'text' } } });
 	});
 
-	it('sets reasoning effort', () => {
-		const body = prepareAdditionalResponsesParams({
-			reasoningEffort: 'low',
-		} as unknown as IDataObject);
-		expect(body).toEqual({ reasoning: { effort: 'low' } });
-	});
+	it.each(['none', 'low', 'medium', 'high'] as const)(
+		'maps reasoningEffort %s to reasoning.effort',
+		(reasoningEffort) => {
+			const body = prepareAdditionalResponsesParams({
+				reasoningEffort,
+			} as unknown as IDataObject);
+			expect(body).toEqual({ reasoning: { effort: reasoningEffort } });
+		},
+	);
 });
