@@ -1,6 +1,5 @@
 packages/cli/test/migration/1795609783977-add-test-task-id-to-agent-execution-threads.test.ts
-  ai_agent 105-113
-  s_08ad1fe1d43e02::t_3f2548c3ba7a30 1-104,114
+  s_08ad1fe1d43e02::t_b3a5b8aa37c2c6 105-113
 ---
 {
   "schema_version": "authorship/3.0.0",
