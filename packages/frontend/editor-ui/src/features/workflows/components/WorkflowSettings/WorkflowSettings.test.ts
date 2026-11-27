@@ -13,6 +13,16 @@ import { EnterpriseEditionFeature, EXECUTE_WORKFLOW_NODE_TYPE } from '@/app/cons
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import WorkflowSettingsVue from '@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue';
+
+function expectFieldDisabled(field: HTMLElement, disabled = true) {
+	if (field.getAttribute('data-test-id') === 'select-trigger') {
+		if (disabled) expect(field).toHaveAttribute('data-disabled');
+		else expect(field).not.toHaveAttribute('data-disabled');
+		return;
+	}
+	if (disabled) expect(field).toBeDisabled();
+	else expect(field).not.toBeDisabled();
+}
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -221,7 +231,6 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	it.each([
-		['workflow-settings-execution-order', 'workflowSettings.executionLogic.placeholder'],
 		['workflow-settings-error-workflow', 'workflowSettings.errorWorkflow.placeholder'],
 		['workflow-settings-timezone', 'workflowSettings.timezone.placeholder'],
 	])('should localize the placeholder of %s', async (testId, key) => {
@@ -236,6 +245,28 @@ describe('WorkflowSettingsVue', () => {
 			await flushPromises();
 
 			expect(getByTestId(testId).outerHTML).toContain('Translated placeholder');
+		} finally {
+			i18nInstance.global.locale.value = originalLocale;
+			i18n.clearCache();
+		}
+	});
+
+	it('should localize the selected execution logic label', async () => {
+		const originalLocale = i18nInstance.global.locale.value;
+		i18nInstance.global.setLocaleMessage('test-locale', {
+			'workflowSettings.executionLogic.v1.title': 'Translated logic',
+		});
+		i18nInstance.global.locale.value = 'test-locale';
+		i18n.clearCache();
+
+		try {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getByTestId('workflow-settings-execution-order').textContent).toContain(
+				'Translated logic',
+			);
 		} finally {
 			i18nInstance.global.locale.value = originalLocale;
 			i18n.clearCache();
@@ -300,9 +331,7 @@ describe('WorkflowSettingsVue', () => {
 		const { getByTestId, queryByTestId } = createComponent({ pinia });
 		await flushPromises();
 
-		expect(
-			within(getByTestId('workflow-caller-policy-select')).getByRole('combobox'),
-		).toBeDisabled();
+		expectFieldDisabled(within(getByTestId('workflow-caller-policy-select')).getByRole('combobox'));
 		expect(queryByTestId('workflow-caller-policy-workflow-ids')).not.toBeInTheDocument();
 	});
 
@@ -729,8 +758,10 @@ describe('WorkflowSettingsVue', () => {
 			const dropdownItems = await getDropdownItems(
 				getByTestId('workflow-settings-engine-type-select'),
 			);
-			const selectedItem = Array.from(dropdownItems).find((item) =>
-				item.classList.contains('selected'),
+			const selectedItem = Array.from(dropdownItems).find(
+				(item) =>
+					item.getAttribute('aria-selected') === 'true' ||
+					item.getAttribute('data-state') === 'checked',
 			);
 			expect(selectedItem).toHaveTextContent(label);
 		});
@@ -820,9 +851,9 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
-			expect(
+			expectFieldDisabled(
 				within(getByTestId('workflow-settings-engine-type-select')).getByRole('combobox'),
-			).toBeDisabled();
+			);
 		});
 
 		it('should disable the select if user has no permission to update workflow', async () => {
@@ -838,9 +869,9 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
-			expect(
+			expectFieldDisabled(
 				within(getByTestId('workflow-settings-engine-type-select')).getByRole('combobox'),
-			).toBeDisabled();
+			);
 		});
 	});
 
@@ -998,7 +1029,7 @@ describe('WorkflowSettingsVue', () => {
 				getByTestId('workflow-settings-execution-order'),
 			).getByRole('combobox');
 
-			expect(executionOrderDropdown).toBeDisabled();
+			expectFieldDisabled(executionOrderDropdown);
 		});
 
 		it('should disable execution order dropdown when user has no update permission', async () => {
@@ -1023,7 +1054,7 @@ describe('WorkflowSettingsVue', () => {
 				getByTestId('workflow-settings-execution-order'),
 			).getByRole('combobox');
 
-			expect(executionOrderDropdown).toBeDisabled();
+			expectFieldDisabled(executionOrderDropdown);
 		});
 	});
 
@@ -1469,8 +1500,8 @@ describe('WorkflowSettingsVue', () => {
 			const manualCombobox = within(
 				getByTestId('workflow-settings-redact-manual-select'),
 			).getByRole('combobox');
-			expect(productionCombobox).toBeDisabled();
-			expect(manualCombobox).toBeDisabled();
+			expectFieldDisabled(productionCombobox);
+			expectFieldDisabled(manualCombobox);
 		});
 
 		it('should render redaction policy when module is active and user has scope', async () => {
@@ -1632,13 +1663,13 @@ describe('WorkflowSettingsVue', () => {
 			const productionCombobox = within(
 				getByTestId('workflow-settings-redact-production-select'),
 			).getByRole('combobox');
-			expect(productionCombobox).not.toBeDisabled();
+			expectFieldDisabled(productionCombobox, false);
 
 			// Manual select stays disabled until production is set to redact (workflow-level invariant).
 			const manualCombobox = within(
 				getByTestId('workflow-settings-redact-manual-select'),
 			).getByRole('combobox');
-			expect(manualCombobox).toBeDisabled();
+			expectFieldDisabled(manualCombobox);
 		});
 
 		it('should disable dropdowns when policy is active and user has only enableRedaction scope', async () => {
@@ -1665,13 +1696,13 @@ describe('WorkflowSettingsVue', () => {
 				const productionCombobox = within(
 					getByTestId('workflow-settings-redact-production-select'),
 				).getByRole('combobox');
-				expect(productionCombobox).toBeDisabled();
+				expectFieldDisabled(productionCombobox);
 			});
 
 			const manualCombobox = within(
 				getByTestId('workflow-settings-redact-manual-select'),
 			).getByRole('combobox');
-			expect(manualCombobox).toBeDisabled();
+			expectFieldDisabled(manualCombobox);
 		});
 
 		it('should disable production redaction select and force "Redact" when dynamic credentials are configured', async () => {
@@ -1714,8 +1745,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			const productionSelect = getByTestId('workflow-settings-redact-production-select');
-			const input = productionSelect.querySelector('input');
-			expect(input).toBeDisabled();
+			expect(within(productionSelect).getByRole('combobox')).toHaveAttribute('data-disabled');
 		});
 
 		describe('manual requires production', () => {
@@ -1747,7 +1777,7 @@ describe('WorkflowSettingsVue', () => {
 				const manualCombobox = within(
 					getByTestId('workflow-settings-redact-manual-select'),
 				).getByRole('combobox');
-				expect(manualCombobox).toBeDisabled();
+				expectFieldDisabled(manualCombobox);
 			});
 
 			it('keeps manual select enabled when production is set to redact', async () => {
@@ -1759,7 +1789,7 @@ describe('WorkflowSettingsVue', () => {
 				const manualCombobox = within(
 					getByTestId('workflow-settings-redact-manual-select'),
 				).getByRole('combobox');
-				expect(manualCombobox).not.toBeDisabled();
+				expectFieldDisabled(manualCombobox, false);
 			});
 
 			it('coerces manual back to default when production drops to default and persists redactionPolicy: none on save', async () => {
@@ -1769,10 +1799,8 @@ describe('WorkflowSettingsVue', () => {
 				await flushPromises();
 
 				// Sanity check: both selects start as "Redact"
-				const manualInput = getByTestId('workflow-settings-redact-manual-select').querySelector(
-					'input',
-				) as HTMLInputElement;
-				expect(manualInput.value).toBe('Redact');
+				const manualSelect = getByTestId('workflow-settings-redact-manual-select');
+				expect(within(manualSelect).getByRole('combobox')).toHaveTextContent('Redact');
 
 				const productionItems = await getDropdownItems(
 					getByTestId('workflow-settings-redact-production-select'),
@@ -1782,7 +1810,9 @@ describe('WorkflowSettingsVue', () => {
 				await flushPromises();
 
 				// Manual select should have visibly reset to "Default - Do not redact"
-				expect(manualInput.value).toBe('Default - Do not redact');
+				expect(within(manualSelect).getByRole('combobox')).toHaveTextContent(
+					'Default - Do not redact',
+				);
 
 				toast.showError.mockClear();
 				await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -1808,7 +1838,7 @@ describe('WorkflowSettingsVue', () => {
 				const manualCombobox = within(
 					getByTestId('workflow-settings-redact-manual-select'),
 				).getByRole('combobox');
-				expect(manualCombobox).toBeDisabled();
+				expectFieldDisabled(manualCombobox);
 			});
 		});
 
@@ -1961,10 +1991,8 @@ describe('WorkflowSettingsVue', () => {
 				const productionInput = within(
 					getByTestId('workflow-settings-redact-production-select'),
 				).getByRole('combobox');
-				expect(productionInput).toBeDisabled();
-				expect(
-					getByTestId('workflow-settings-redact-production-select').querySelector('input')?.value,
-				).toBe('Redact');
+				expect(productionInput).toHaveAttribute('data-disabled');
+				expect(productionInput).toHaveTextContent('Redact');
 
 				const floorIcons = getAllByTestId('workflow-settings-redaction-floor-lock');
 				expect(floorIcons).toHaveLength(1);
@@ -1973,7 +2001,7 @@ describe('WorkflowSettingsVue', () => {
 				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
 					'combobox',
 				);
-				expect(manualInput).not.toBeDisabled();
+				expectFieldDisabled(manualInput, false);
 			});
 
 			it('locks both selects with floor copy under floor "all"', async () => {
@@ -1988,15 +2016,10 @@ describe('WorkflowSettingsVue', () => {
 				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
 					'combobox',
 				);
-				expect(productionInput).toBeDisabled();
-				expect(manualInput).toBeDisabled();
-
-				expect(
-					getByTestId('workflow-settings-redact-production-select').querySelector('input')?.value,
-				).toBe('Redact');
-				expect(
-					getByTestId('workflow-settings-redact-manual-select').querySelector('input')?.value,
-				).toBe('Redact');
+				expect(productionInput).toHaveAttribute('data-disabled');
+				expect(manualInput).toHaveAttribute('data-disabled');
+				expect(productionInput).toHaveTextContent('Redact');
+				expect(manualInput).toHaveTextContent('Redact');
 
 				expect(getAllByTestId('workflow-settings-redaction-floor-lock')).toHaveLength(2);
 			});
@@ -2013,8 +2036,8 @@ describe('WorkflowSettingsVue', () => {
 				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
 					'combobox',
 				);
-				expect(productionInput).not.toBeDisabled();
-				expect(manualInput).not.toBeDisabled();
+				expectFieldDisabled(productionInput, false);
+				expectFieldDisabled(manualInput, false);
 				expect(queryByTestId('workflow-settings-redaction-floor-lock')).not.toBeInTheDocument();
 				expect(getSecuritySettings).toHaveBeenCalled();
 			});
@@ -2040,7 +2063,7 @@ describe('WorkflowSettingsVue', () => {
 				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
 					'combobox',
 				);
-				expect(manualInput).not.toBeDisabled();
+				expectFieldDisabled(manualInput, false);
 				// IAM-697 hint must not be shown — production is forced to redact.
 				expect(
 					queryByText(
@@ -2162,8 +2185,8 @@ describe('WorkflowSettingsVue', () => {
 				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
 					'combobox',
 				);
-				expect(productionInput).not.toBeDisabled();
-				expect(manualInput).not.toBeDisabled();
+				expectFieldDisabled(productionInput, false);
+				expectFieldDisabled(manualInput, false);
 				expect(queryByTestId('workflow-settings-redaction-floor-lock')).not.toBeInTheDocument();
 			});
 
@@ -2183,8 +2206,8 @@ describe('WorkflowSettingsVue', () => {
 				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
 					'combobox',
 				);
-				expect(productionInput).toBeDisabled();
-				expect(manualInput).toBeDisabled();
+				expectFieldDisabled(productionInput);
+				expectFieldDisabled(manualInput);
 
 				// No floor-lock indicator under floor "off" (the lock comes from missing permission).
 				expect(queryByTestId('workflow-settings-redaction-floor-lock')).not.toBeInTheDocument();

@@ -26,6 +26,7 @@ import {
 	N8nIconButton,
 	N8nOption,
 	N8nSelect,
+	N8nSelect2,
 	N8nSwitch,
 	N8nText,
 	N8nTooltip,
@@ -224,6 +225,74 @@ const executionLogic = computed(() => {
 	}
 	return workflowSettings.value.executionOrder || 'v0';
 });
+
+function isOneOf<T extends string>(
+	value: string | number | undefined,
+	allowed: readonly T[],
+): value is T {
+	return typeof value === 'string' && allowed.some((item) => item === value);
+}
+
+function toSelectItems(options: ReadonlyArray<{ key: string | boolean; value: string }>) {
+	return options.map((option) => ({
+		value: option.key === true ? 'true' : option.key === false ? 'false' : option.key,
+		label: option.value,
+	}));
+}
+
+function booleanChoiceValue(value: 'DEFAULT' | boolean | undefined) {
+	if (value === true) return 'true';
+	if (value === false) return 'false';
+	return 'DEFAULT';
+}
+
+const callerPolicyItems = computed(() => toSelectItems(workflowCallerPolicyOptions.value));
+const saveDataErrorItems = computed(() => toSelectItems(saveDataErrorExecutionOptions.value));
+const saveDataSuccessItems = computed(() => toSelectItems(saveDataSuccessExecutionOptions.value));
+const saveManualItems = computed(() => toSelectItems(saveManualOptions.value));
+const saveProgressItems = computed(() => toSelectItems(saveExecutionProgressOptions.value));
+const redactionItems = computed(() => toSelectItems(redactionToggleOptions.value));
+
+function onEngineTypeChange(value: string | number | undefined) {
+	if (value === 'v1' || value === 'v2') engineType.value = value;
+}
+
+function onCallerPolicyChange(value: string | number | undefined) {
+	if (!isOneOf(value, ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const)) {
+		return;
+	}
+	workflowSettings.value.callerPolicy = value;
+}
+
+function onSaveDataErrorChange(value: string | number | undefined) {
+	if (!isOneOf(value, ['DEFAULT', 'all', 'none'] as const)) return;
+	workflowSettings.value.saveDataErrorExecution = value;
+}
+
+function onSaveDataSuccessChange(value: string | number | undefined) {
+	if (!isOneOf(value, ['DEFAULT', 'all', 'none'] as const)) return;
+	workflowSettings.value.saveDataSuccessExecution = value;
+}
+
+function onBooleanSettingChange(
+	value: string | number | undefined,
+	apply: (value: 'DEFAULT' | boolean) => void,
+) {
+	if (value === 'true') apply(true);
+	else if (value === 'false') apply(false);
+	else if (value === 'DEFAULT') apply('DEFAULT');
+}
+
+function onRedactionChange(
+	value: string | number | undefined,
+	apply: (value: 'default' | 'redact') => void,
+) {
+	if (value === 'default' || value === 'redact') apply(value);
+}
+
+function onTimeSavedModeChange(value: string | number | undefined) {
+	if (value === 'fixed' || value === 'dynamic') workflowSettings.value.timeSavedMode = value;
+}
 
 const isMCPEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
@@ -464,6 +533,14 @@ const executionLogicOptions = computed(() => {
 
 	return executionLogicAllOptions.value.filter((option) => option.key !== 'v2');
 });
+
+const executionLogicItems = computed(() =>
+	executionLogicOptions.value.map((option) => ({ value: option.key, label: option.value })),
+);
+
+function executionLogicDescription(value: string | number) {
+	return executionLogicOptions.value.find((option) => option.key === value)?.description ?? '';
+}
 
 const onCallerIdsInput = (str: string) => {
 	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s_-]+$/.test(str)
@@ -887,6 +964,10 @@ const onExecutionLogicModeChange = (value: string) => {
 	}
 };
 
+function onExecutionLogicSelect(value: string | number | undefined) {
+	if (typeof value === 'string') onExecutionLogicModeChange(value);
+}
+
 onMounted(async () => {
 	executionTimeout.value = rootStore.executionTimeout;
 	maxExecutionTimeout.value = rootStore.maxExecutionTimeout;
@@ -1097,20 +1178,15 @@ onBeforeUnmount(() => {
 						</N8nTooltip>
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
-						<N8nSelect
-							v-model="engineType"
-							size="medium"
-							:disabled="isWorkflowSettingsReadOnly"
-							:limit-popper-width="true"
-							data-test-id="workflow-settings-engine-type-select"
-						>
-							<N8nOption
-								v-for="option in engineTypeOptions"
-								:key="option.key"
-								:label="option.value"
-								:value="option.key"
+						<div data-test-id="workflow-settings-engine-type-select">
+							<N8nSelect2
+								size="medium"
+								:model-value="engineType"
+								:items="toSelectItems(engineTypeOptions)"
+								:disabled="isWorkflowSettingsReadOnly"
+								@update:model-value="onEngineTypeChange"
 							/>
-						</N8nSelect>
+						</div>
 					</ElCol>
 				</ElRow>
 				<ElRow v-if="isExecutionLogicSettingVisible">
@@ -1118,28 +1194,26 @@ onBeforeUnmount(() => {
 						{{ i18n.baseText('workflowSettings.executionLogic') }}
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
-						<N8nSelect
-							v-model="executionLogic"
-							:placeholder="i18n.baseText('workflowSettings.executionLogic.placeholder')"
-							size="medium"
-							filterable
-							:disabled="readOnlyEnv || !workflowPermissions.update"
-							:limit-popper-width="true"
-							data-test-id="workflow-settings-execution-order"
-							@update:model-value="onExecutionLogicModeChange"
-						>
-							<N8nOption
-								v-for="option in executionLogicOptions"
-								:key="option.key"
-								:label="option.value"
-								:value="option.key"
+						<div data-test-id="workflow-settings-execution-order">
+							<N8nSelect2
+								size="medium"
+								:model-value="executionLogic"
+								:items="executionLogicItems"
+								:placeholder="i18n.baseText('workflowSettings.executionLogic.placeholder')"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								@update:model-value="onExecutionLogicSelect"
 							>
-								<div class="list-option">
-									<div class="option-headline">{{ option.value }}</div>
-									<div v-n8n-html="option.description" class="option-description"></div>
-								</div>
-							</N8nOption>
-						</N8nSelect>
+								<template #item-label="{ item }">
+									<div class="list-option">
+										<div class="option-headline">{{ item.label }}</div>
+										<div
+											v-n8n-html="executionLogicDescription(item.value)"
+											class="option-description"
+										></div>
+									</div>
+								</template>
+							</N8nSelect2>
+						</div>
 					</ElCol>
 				</ElRow>
 
@@ -1256,26 +1330,20 @@ onBeforeUnmount(() => {
 						</ElCol>
 
 						<ElCol :span="14" class="ignore-key-press-canvas">
-							<N8nSelect
-								v-model="workflowSettings.callerPolicy"
-								:disabled="
-									readOnlyEnv ||
-									!workflowPermissions.update ||
-									nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)
-								"
-								:placeholder="i18n.baseText('workflowSettings.selectOption')"
-								filterable
-								:limit-popper-width="true"
-								data-test-id="workflow-caller-policy-select"
-							>
-								<N8nOption
-									v-for="option of workflowCallerPolicyOptions"
-									:key="option.key"
-									:label="option.value"
-									:value="option.key"
-								>
-								</N8nOption>
-							</N8nSelect>
+							<div data-test-id="workflow-caller-policy-select">
+								<N8nSelect2
+									size="medium"
+									:model-value="workflowSettings.callerPolicy"
+									:items="callerPolicyItems"
+									:disabled="
+										readOnlyEnv ||
+										!workflowPermissions.update ||
+										nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)
+									"
+									:placeholder="i18n.baseText('workflowSettings.selectOption')"
+									@update:model-value="onCallerPolicyChange"
+								/>
+							</div>
 						</ElCol>
 					</ElRow>
 					<ElRow v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
@@ -1343,22 +1411,16 @@ onBeforeUnmount(() => {
 						</N8nTooltip>
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
-						<N8nSelect
-							v-model="workflowSettings.saveDataErrorExecution"
-							:placeholder="i18n.baseText('workflowSettings.selectOption')"
-							filterable
-							:disabled="readOnlyEnv || !workflowPermissions.update"
-							:limit-popper-width="true"
-							data-test-id="workflow-settings-save-failed-executions"
-						>
-							<N8nOption
-								v-for="option of saveDataErrorExecutionOptions"
-								:key="option.key"
-								:label="option.value"
-								:value="option.key"
-							>
-							</N8nOption>
-						</N8nSelect>
+						<div data-test-id="workflow-settings-save-failed-executions">
+							<N8nSelect2
+								size="medium"
+								:model-value="workflowSettings.saveDataErrorExecution"
+								:items="saveDataErrorItems"
+								:placeholder="i18n.baseText('workflowSettings.selectOption')"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								@update:model-value="onSaveDataErrorChange"
+							/>
+						</div>
 					</ElCol>
 				</ElRow>
 				<ElRow>
@@ -1372,22 +1434,16 @@ onBeforeUnmount(() => {
 						</N8nTooltip>
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
-						<N8nSelect
-							v-model="workflowSettings.saveDataSuccessExecution"
-							:placeholder="i18n.baseText('workflowSettings.selectOption')"
-							filterable
-							:disabled="readOnlyEnv || !workflowPermissions.update"
-							:limit-popper-width="true"
-							data-test-id="workflow-settings-save-success-executions"
-						>
-							<N8nOption
-								v-for="option of saveDataSuccessExecutionOptions"
-								:key="option.key"
-								:label="option.value"
-								:value="option.key"
-							>
-							</N8nOption>
-						</N8nSelect>
+						<div data-test-id="workflow-settings-save-success-executions">
+							<N8nSelect2
+								size="medium"
+								:model-value="workflowSettings.saveDataSuccessExecution"
+								:items="saveDataSuccessItems"
+								:placeholder="i18n.baseText('workflowSettings.selectOption')"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								@update:model-value="onSaveDataSuccessChange"
+							/>
+						</div>
 					</ElCol>
 				</ElRow>
 				<ElRow>
@@ -1401,22 +1457,21 @@ onBeforeUnmount(() => {
 						</N8nTooltip>
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
-						<N8nSelect
-							v-model="workflowSettings.saveManualExecutions"
-							:placeholder="i18n.baseText('workflowSettings.selectOption')"
-							filterable
-							:disabled="readOnlyEnv || !workflowPermissions.update"
-							:limit-popper-width="true"
-							data-test-id="workflow-settings-save-manual-executions"
-						>
-							<N8nOption
-								v-for="option of saveManualOptions"
-								:key="`${option.key}`"
-								:label="option.value"
-								:value="option.key"
-							>
-							</N8nOption>
-						</N8nSelect>
+						<div data-test-id="workflow-settings-save-manual-executions">
+							<N8nSelect2
+								size="medium"
+								:model-value="booleanChoiceValue(workflowSettings.saveManualExecutions)"
+								:items="saveManualItems"
+								:placeholder="i18n.baseText('workflowSettings.selectOption')"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								@update:model-value="
+									(value) =>
+										onBooleanSettingChange(value, (next) => {
+											workflowSettings.saveManualExecutions = next;
+										})
+								"
+							/>
+						</div>
 					</ElCol>
 				</ElRow>
 				<ElRow>
@@ -1430,22 +1485,21 @@ onBeforeUnmount(() => {
 						</N8nTooltip>
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
-						<N8nSelect
-							v-model="workflowSettings.saveExecutionProgress"
-							:placeholder="i18n.baseText('workflowSettings.selectOption')"
-							filterable
-							:disabled="readOnlyEnv || !workflowPermissions.update"
-							:limit-popper-width="true"
-							data-test-id="workflow-settings-save-execution-progress"
-						>
-							<N8nOption
-								v-for="option of saveExecutionProgressOptions"
-								:key="`${option.key}`"
-								:label="option.value"
-								:value="option.key"
-							>
-							</N8nOption>
-						</N8nSelect>
+						<div data-test-id="workflow-settings-save-execution-progress">
+							<N8nSelect2
+								size="medium"
+								:model-value="booleanChoiceValue(workflowSettings.saveExecutionProgress)"
+								:items="saveProgressItems"
+								:placeholder="i18n.baseText('workflowSettings.selectOption')"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								@update:model-value="
+									(value) =>
+										onBooleanSettingChange(value, (next) => {
+											workflowSettings.saveExecutionProgress = next;
+										})
+								"
+							/>
+						</div>
 					</ElCol>
 				</ElRow>
 				<template v-if="isRedactionSettingVisible">
@@ -1521,27 +1575,23 @@ onBeforeUnmount(() => {
 										></span
 									>
 								</template>
-								<N8nSelect
-									v-model="redactProductionData"
-									:disabled="
-										!isDataRedactionLicensed ||
-										readOnlyEnv ||
-										isProductionRedactionLocked ||
-										workflowHasDynamicCredentials
-									"
-									:placeholder="i18n.baseText('workflowSettings.selectOption')"
-									filterable
-									:limit-popper-width="true"
-									data-test-id="workflow-settings-redact-production-select"
-								>
-									<N8nOption
-										v-for="option of redactionToggleOptions"
-										:key="option.key"
-										:label="option.value"
-										:value="option.key"
-									>
-									</N8nOption>
-								</N8nSelect>
+								<div data-test-id="workflow-settings-redact-production-select">
+									<N8nSelect2
+										size="medium"
+										:model-value="redactProductionData"
+										:items="redactionItems"
+										:disabled="
+											!isDataRedactionLicensed ||
+											readOnlyEnv ||
+											isProductionRedactionLocked ||
+											workflowHasDynamicCredentials
+										"
+										:placeholder="i18n.baseText('workflowSettings.selectOption')"
+										@update:model-value="
+											(value) => onRedactionChange(value, (next) => (redactProductionData = next))
+										"
+									/>
+								</div>
 							</N8nTooltip>
 						</ElCol>
 					</ElRow>
@@ -1633,27 +1683,23 @@ onBeforeUnmount(() => {
 										i18n.baseText('workflowSettings.redactManualData.requiresProductionHint')
 									}}</span>
 								</template>
-								<N8nSelect
-									v-model="redactManualData"
-									:disabled="
-										!isDataRedactionLicensed ||
-										readOnlyEnv ||
-										isManualRedactionLocked ||
-										isManualRedactionDisabledByProduction
-									"
-									:placeholder="i18n.baseText('workflowSettings.selectOption')"
-									filterable
-									:limit-popper-width="true"
-									data-test-id="workflow-settings-redact-manual-select"
-								>
-									<N8nOption
-										v-for="option of redactionToggleOptions"
-										:key="option.key"
-										:label="option.value"
-										:value="option.key"
-									>
-									</N8nOption>
-								</N8nSelect>
+								<div data-test-id="workflow-settings-redact-manual-select">
+									<N8nSelect2
+										size="medium"
+										:model-value="redactManualData"
+										:items="redactionItems"
+										:disabled="
+											!isDataRedactionLicensed ||
+											readOnlyEnv ||
+											isManualRedactionLocked ||
+											isManualRedactionDisabledByProduction
+										"
+										:placeholder="i18n.baseText('workflowSettings.selectOption')"
+										@update:model-value="
+											(value) => onRedactionChange(value, (next) => (redactManualData = next))
+										"
+									/>
+								</div>
 							</N8nTooltip>
 						</ElCol>
 					</ElRow>
@@ -1837,21 +1883,15 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14">
 						<div class="ignore-key-press-canvas">
-							<N8nSelect
-								v-model="workflowSettings.timeSavedMode"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								data-test-id="workflow-settings-time-saved-mode"
-								size="medium"
-								filterable
-								:limit-popper-width="true"
-							>
-								<N8nOption
-									v-for="option in timeSavedModeOptions"
-									:key="option.value"
-									:label="option.label"
-									:value="option.value"
+							<div data-test-id="workflow-settings-time-saved-mode">
+								<N8nSelect2
+									size="medium"
+									:model-value="workflowSettings.timeSavedMode"
+									:items="timeSavedModeOptions"
+									:disabled="readOnlyEnv || !workflowPermissions.update"
+									@update:model-value="onTimeSavedModeChange"
 								/>
-							</N8nSelect>
+							</div>
 						</div>
 					</ElCol>
 				</ElRow>
