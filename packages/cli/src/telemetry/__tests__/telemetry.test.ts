@@ -376,6 +376,32 @@ describe('Telemetry', () => {
 			);
 		});
 
+		test('should count a crashed run in a row of its own', () => {
+			const crashTime = fakeTestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution({
+				workflow_id: '1',
+				is_manual: false,
+				success: false,
+				crashed: true,
+				execution_mode: 'trigger',
+				trigger_node_type: 'n8n-nodes-base.scheduleTrigger',
+			});
+
+			const execBuffer = telemetry.getCountsBuffer();
+			expect([...(execBuffer['1'].trigger_counts?.values() ?? [])]).toEqual([
+				{
+					node_type: 'n8n-nodes-base.scheduleTrigger',
+					mode: 'trigger',
+					caller: null,
+					status: 'crashed',
+					count: 1,
+					first: crashTime,
+					last: crashTime,
+				},
+			]);
+			expect(execBuffer['1'].prod_crashed?.count).toBe(1);
+		});
+
 		test('should fire "Workflow execution errored" event for failed executions', async () => {
 			const payload = {
 				workflow_id: '1',
