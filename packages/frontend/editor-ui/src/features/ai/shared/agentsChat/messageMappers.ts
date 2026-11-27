@@ -7,7 +7,6 @@ import {
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { useI18n } from '@n8n/i18n';
 import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
@@ -254,13 +253,16 @@ export function createStoppedMessage(executionId: string): ChatMessage {
 	return {
 		id: stoppedMessageId(executionId),
 		role: CHAT_MESSAGE_ROLE.ASSISTANT,
-		content: useI18n().baseText('agentSessions.stopped'),
+		content: '',
 		status: CHAT_MESSAGE_STATUS.SUCCESS,
 		executionId,
 	};
 }
 
-/** Whether the message is the notice that `createStoppedMessage` adds after a stopped turn. */
+/**
+ * Whether the message is the notice that `createStoppedMessage` adds after a stopped turn.
+ * The notice has no text. The message list shows it as a status line.
+ */
 export function isStoppedMessage(message: Pick<ChatMessage, 'id' | 'executionId'>): boolean {
 	return message.executionId !== undefined && message.id === stoppedMessageId(message.executionId);
 }

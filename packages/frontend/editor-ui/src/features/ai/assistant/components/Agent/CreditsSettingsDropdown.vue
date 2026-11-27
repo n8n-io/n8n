@@ -4,7 +4,7 @@ import { onClickOutside } from '@vueuse/core';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import type { ButtonSize, IconSize } from '@n8n/design-system';
 import { round2 } from './creditFormatting';
 
@@ -107,16 +107,27 @@ function onGetMoreCredits() {
 
 <template>
 	<div ref="dropdownRef" :class="$style.wrapper">
-		<N8nButton
-			icon="n8n-assistant-circle"
-			variant="ghost"
-			:size="props.buttonSize"
-			:icon-size="props.iconSize"
-			icon-only
-			:class="{ [$style.active]: isOpen }"
-			data-test-id="credits-dropdown-button"
-			@click="toggleDropdown"
-		/>
+		<!-- Hidden while the dropdown is open, so it does not cover the dropdown. -->
+		<N8nTooltip
+			:content="i18n.baseText('aiAssistant.builder.settings.credits')"
+			placement="bottom"
+			:show-after="TOOLTIP_DELAY_MS"
+			:disabled="isOpen"
+			as-child
+		>
+			<N8nButton
+				icon="n8n-assistant-circle"
+				variant="ghost"
+				:size="props.buttonSize"
+				:icon-size="props.iconSize"
+				icon-only
+				:aria-label="i18n.baseText('aiAssistant.builder.settings.credits')"
+				:aria-expanded="isOpen"
+				:class="{ [$style.active]: isOpen }"
+				data-test-id="credits-dropdown-button"
+				@click="toggleDropdown"
+			/>
+		</N8nTooltip>
 		<Transition name="dropdown">
 			<div v-if="isOpen" :class="$style.dropdown" data-test-id="credits-dropdown">
 				<div v-if="hasCredits" :class="$style.creditsSection">

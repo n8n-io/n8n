@@ -1,8 +1,8 @@
 const { createInstanceAgent } = vi.hoisted(() => ({ createInstanceAgent: vi.fn() }));
 
+import type { MemoryTaskUsageReport } from '@n8n/agents';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import type { MemoryTaskUsageReport } from '@n8n/agents';
 import { Container } from '@n8n/di';
 import type { InstanceAiContext, ModelConfig, OrchestrationContext } from '@n8n/instance-ai';
 import type { Mock } from 'vitest';
@@ -79,6 +79,8 @@ describe('AssistantAgentFactory — Agent archive', () => {
 			projectId: 'project-1',
 			branchReadOnly: false,
 			agentArchiveService: undefined,
+			agentPreviewSession: undefined,
+			threadMemory: undefined,
 			...overrides,
 		});
 		const environment = mock<AssistantTurnEnvironment>({
@@ -145,7 +147,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 				onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void>;
 				policy?: Record<string, unknown>;
 			};
-			titleGeneration?: { model?: ModelConfig; sync?: boolean };
+			titleGeneration?: { model?: ModelConfig };
 		};
 		instanceAiConfig: Pick<
 			InstanceAiConfig,
@@ -218,7 +220,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		).toBeUndefined();
 	});
 
-	it('generates titles only when the caller asks for it, on the memory model, before the run ends', () => {
+	it('generates titles only when the caller asks for it, on the memory model, without waiting for them', () => {
 		const service = buildService();
 		const user = { id: 'user-1' } as User;
 		expect(
@@ -227,7 +229,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		expect(
 			service.createAgentMemoryOptions(user, 'thread-1', 'run-1', undefined, undefined, true)
 				.titleGeneration,
-		).toEqual({ sync: true });
+		).toEqual({});
 		expect(
 			service.createAgentMemoryOptions(
 				user,
@@ -237,7 +239,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 				undefined,
 				true,
 			).titleGeneration,
-		).toEqual({ model: 'anthropic/claude-haiku-4-5', sync: true });
+		).toEqual({ model: 'anthropic/claude-haiku-4-5' });
 	});
 
 	it('uses the per-thread override when an eval set one', () => {

@@ -47,6 +47,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-memory.controller.js');
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
+		await import('./agent-test-run.controller.js');
 		await import('./system-agents/system-agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
 		await import('./approval/agent-hitl-channels.controller.js');
@@ -274,6 +275,7 @@ export class AgentsModule implements ModuleInterface {
 		const config = Container.get(AgentsConfig);
 		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
+		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		const { KnowledgeAvailabilityService } = await import(
 			'@/modules/knowledge/knowledge-availability.service.js'
 		);
@@ -283,6 +285,8 @@ export class AgentsModule implements ModuleInterface {
 			enabled: await Container.get(AgentsSettingsService).getEnabled(),
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
+			sandboxEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
+			sandboxEgressPolicy: config.sandboxEgressPolicy,
 			proxyEnabled,
 		};
 	}

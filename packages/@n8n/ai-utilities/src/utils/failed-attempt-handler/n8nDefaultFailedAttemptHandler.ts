@@ -1,3 +1,4 @@
+import { ContextOverflowError } from '@langchain/core/errors';
 import { classifyRateLimitError } from '@langchain/core/utils/async_caller';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -12,6 +13,7 @@ const STATUS_NO_RETRY = [
 	407, // Proxy Authentication Required
 	409, // Conflict
 	413, // Payload Too Large
+	422, // Unprocessable Content
 ];
 
 /**
@@ -45,6 +47,17 @@ export const n8nDefaultFailedAttemptHandler = (error: any) => {
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	if (error?.code === 'ECONNABORTED') {
+		throw error;
+	}
+
+	if (ContextOverflowError.isInstance(error)) {
+		// LangChain keeps the provider status on the cause. Expose it to NodeApiError.
+		if (isRecord(error.cause)) {
+			const { status } = error.cause;
+			if (typeof status === 'number' || typeof status === 'string') {
+				Object.assign(error, { status });
+			}
+		}
 		throw error;
 	}
 

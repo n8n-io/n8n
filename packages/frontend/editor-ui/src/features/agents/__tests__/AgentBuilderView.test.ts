@@ -42,6 +42,7 @@ import {
 } from '../components/agentBuilderInjectionKeys';
 import {
 	AGENT_BUILDER_VIEW,
+	AGENT_CONFIRMATION_MODAL_KEY,
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	NEW_SESSION_PARAM,
@@ -80,7 +81,7 @@ const routeState = reactive({
 	params: routeParams,
 	query: routeQuery,
 });
-type RouteGuard = (to: { params: Record<string, string> }) => void | Promise<void>;
+type RouteGuard = (to: { params: Record<string, string> }) => unknown;
 const routeGuards: { leave?: RouteGuard; update?: RouteGuard } = {};
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
@@ -554,9 +555,20 @@ ${String(options?.interpolate?.diagnostics ?? '')}
 	return map[key] ?? key;
 }
 
+const { baseTextMock } = vi.hoisted(() => ({
+	baseTextMock: vi.fn(
+		(
+			key: string,
+			_options?: { adjustToNumber?: number; interpolate?: Record<string, string | number> },
+		) => key,
+	),
+}));
+
+baseTextMock.mockImplementation(baseTextFn);
+
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: baseTextFn }),
-	i18n: { baseText: baseTextFn },
+	useI18n: () => ({ baseText: baseTextMock }),
+	i18n: { baseText: baseTextMock },
 }));
 
 /** Shared stubs used by both mount helpers. */
@@ -929,6 +941,8 @@ function resetViewMocks() {
 	}
 	routerPush.mockReset();
 	routerReplace.mockReset();
+	baseTextMock.mockReset();
+	baseTextMock.mockImplementation(baseTextFn);
 	fetchSessionThreadsMock.mockReset();
 	fetchSessionThreadsMock.mockImplementation(fetchSessionThreads);
 	getSessionThreadDetailMock.mockReset();
@@ -1648,6 +1662,82 @@ describe('AgentBuilderView — preview routing', () => {
 		await expect(
 			routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } }),
 		).rejects.toThrow('save failed');
+	});
+
+	describe('when a never-saved agent fails to save', () => {
+		async function renderWithFailedCreate() {
+			history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+			createAgentMock.mockRejectedValue(new Error('Skill is not available to this agent'));
+			const wrapper = await renderView();
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { instructions: 'Imported' });
+			await nextTick();
+			return wrapper;
+		}
+
+		function answerLeaveConfirmation(answer: 'onConfirm' | 'onCancel') {
+			const modal = openModalWithDataMock.mock.calls
+				.map((call) => call[0] as { name?: string; data: Record<typeof answer, () => void> })
+				.find(({ name }) => name === AGENT_CONFIRMATION_MODAL_KEY);
+			expect(modal).toBeDefined();
+			modal?.data[answer]();
+		}
+
+		it('asks before leaving, and leaves without retrying the save on confirm', async () => {
+			const wrapper = await renderWithFailedCreate();
+
+			const navigation = routeGuards.leave?.({ params: {} });
+			await vi.waitFor(() => answerLeaveConfirmation('onConfirm'));
+
+			await expect(navigation).resolves.toBe(true);
+			const createCalls = createAgentMock.mock.calls.length;
+			wrapper.unmount();
+			await flushPromises();
+			expect(createAgentMock).toHaveBeenCalledTimes(createCalls);
+		});
+
+		it('stays on the agent when the user keeps editing', async () => {
+			await renderWithFailedCreate();
+
+			const navigation = routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } });
+			await vi.waitFor(() => answerLeaveConfirmation('onCancel'));
+
+			await expect(navigation).resolves.toBe(false);
+		});
+
+		it('still lets the embedded AI panel start a thread', async () => {
+			const wrapper = await renderWithFailedCreate();
+			const beforeNewThread = wrapper
+				.findComponent({ name: 'InstanceAiChatPanel' })
+				.props('beforeNewThread') as () => Promise<void>;
+
+			await expect(beforeNewThread()).resolves.toBeUndefined();
+			expect(createAgentMock).toHaveBeenCalled();
+		});
+
+		// The usual path: the debounced save fails first, so later flushes find no queued
+		// edit and must still report the failure instead of resolving as if all was saved.
+		it('starts a thread and asks before leaving after the debounced save already failed', async () => {
+			const wrapper = await renderWithFailedCreate();
+			await vi.waitFor(() =>
+				expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), 'agents.builder.saveError'),
+			);
+			createAgentMock.mockClear();
+
+			const beforeNewThread = wrapper
+				.findComponent({ name: 'InstanceAiChatPanel' })
+				.props('beforeNewThread') as () => Promise<void>;
+			await expect(beforeNewThread()).resolves.toBeUndefined();
+
+			const navigation = routeGuards.leave?.({ params: {} });
+			await vi.waitFor(() => answerLeaveConfirmation('onConfirm'));
+			await expect(navigation).resolves.toBe(true);
+
+			wrapper.unmount();
+			await flushPromises();
+			expect(createAgentMock).not.toHaveBeenCalled();
+		});
 	});
 
 	it('loads node types when the page opens', async () => {
@@ -4305,6 +4395,9 @@ describe('AgentBuilderView — three-column shell', () => {
 
 	beforeEach(() => {
 		resetViewMocks();
+		agentPermissionsMock.canDelete.value = false;
+		deleteAgentMock.mockReset();
+		deleteAgentMock.mockResolvedValue(undefined);
 		favoritesStoreMock.toggleFavorite.mockClear();
 		favoritesStoreMock.renameFavorite.mockClear();
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
@@ -5522,14 +5615,24 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
-	it('passes a flushAutosave guard as before-send to the embedded AI panel', async () => {
-		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+	it('flushes the config before an embedded AI panel send, and still sends when the save fails', async () => {
 		const wrapper = await renderView();
-		const panel = wrapper.findComponent({ name: 'InstanceAiChatPanel' });
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+		};
+		const beforeSend = wrapper
+			.findComponent({ name: 'InstanceAiChatPanel' })
+			.props('beforeSend') as () => Promise<void>;
+		updateConfigMock.mockRejectedValueOnce(new Error('Skill is not available to this agent'));
 
-		expect(panel.props('beforeSend')).toBe(
-			(wrapper.vm as unknown as { flushAutosaveIgnoringResult: () => Promise<void> })
-				.flushAutosaveIgnoringResult,
+		vm.onConfigFieldUpdate({ instructions: 'Imported' });
+
+		await expect(beforeSend()).resolves.toBeUndefined();
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ instructions: 'Imported' }),
+			expect.anything(),
 		);
 	});
 
@@ -6168,6 +6271,69 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(actionIds).toEqual(expect.arrayContaining(['unarchive', 'delete']));
 		expect(actionIds).not.toContain('archive');
 		expect(actionIds).not.toContain('import-json');
+	});
+
+	it('deletes an archived agent after confirmation and navigates to the project agents list', async () => {
+		getAgentMock.mockImplementation(async () => makeAgentResponse({ isArchived: true }));
+		agentPermissionsMock.canDelete.value = true;
+		routerReplace.mockImplementationOnce(async () => {
+			routeParams.agentId = '';
+		});
+
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'delete');
+		await flushPromises();
+
+		const confirmCall = openModalWithDataMock.mock.calls.find(
+			(call) => (call[0] as { name?: string } | undefined)?.name === AGENT_CONFIRMATION_MODAL_KEY,
+		);
+		expect(confirmCall).toBeDefined();
+		(confirmCall?.[0] as { data: { onConfirm: () => void } }).data.onConfirm();
+		await flushPromises();
+
+		expect(deleteAgentMock).toHaveBeenCalledWith(rootStoreMock.restApiContext, 'p1', 'a1');
+		expect(favoritesStoreMock.removeFavoriteLocally).toHaveBeenCalledWith('a1', 'agent');
+		expect(showErrorMock).not.toHaveBeenCalled();
+		expect(routerReplace).toHaveBeenCalledWith('/projects/p1/agents');
+	});
+
+	it('localizes the error toast title when deleting an archived agent fails', async () => {
+		// AGENT-1618: Delete error toast in the agent builder is hardcoded English
+		getAgentMock.mockImplementation(async () => makeAgentResponse({ isArchived: true }));
+		agentPermissionsMock.canDelete.value = true;
+		const deleteError = new Error('delete failed');
+		deleteAgentMock.mockRejectedValueOnce(deleteError);
+
+		const wrapper = await renderView();
+
+		// Simulate a non-English locale so any hardcoded English string stands out
+		// from titles resolved through useI18n().baseText().
+		baseTextMock.mockImplementation((key: string) => `localized:${key}`);
+
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'delete');
+		await flushPromises();
+
+		const confirmCall = openModalWithDataMock.mock.calls.find(
+			(call) => (call[0] as { name?: string } | undefined)?.name === AGENT_CONFIRMATION_MODAL_KEY,
+		);
+		expect(confirmCall).toBeDefined();
+		(confirmCall?.[0] as { data: { onConfirm: () => void } }).data.onConfirm();
+		await flushPromises();
+
+		expect(deleteAgentMock).toHaveBeenCalledWith(rootStoreMock.restApiContext, 'p1', 'a1');
+		expect(showErrorMock).toHaveBeenCalledTimes(1);
+		const [actualError, actualTitle] = showErrorMock.mock.calls[0];
+		expect(actualError).toBe(deleteError);
+		expect(actualTitle).toBe('localized:agents.builder.deleteError');
+		const i18nKey = String(actualTitle).slice('localized:'.length);
+		const actualI18nModule = await vi.importActual<typeof import('@n8n/i18n')>('@n8n/i18n');
+		expect(actualI18nModule.i18n.exists(i18nKey)).toBe(true);
+		expect(actualI18nModule.i18n.baseText('agents.builder.deleteError')).toBe(
+			'Could not delete agent',
+		);
+		expect(routerReplace).not.toHaveBeenCalled();
+		expect(favoritesStoreMock.removeFavoriteLocally).not.toHaveBeenCalled();
 	});
 
 	it('adds JSON import and export actions to the header menu', async () => {

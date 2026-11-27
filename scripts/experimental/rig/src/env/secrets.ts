@@ -1,7 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 
-import { readDotenv, setInDotenv } from './dotenv';
+import { parseDotenv } from './dotenv';
+import { setEnvValue } from './secret-store';
 
 /** Secrets that `rig` generates once for each environment. */
 const GENERATED_SECRETS: Record<string, () => string> = {
@@ -12,20 +13,20 @@ const GENERATED_SECRETS: Record<string, () => string> = {
 	N8N_ENGINE_RESUME_SECRET: () => randomBytes(32).toString('hex'),
 };
 
+export const GENERATED_SECRET_KEYS: readonly string[] = Object.keys(GENERATED_SECRETS);
+
 const HEADER =
 	'# Secrets of this rig environment. Only you can read this file (mode 0600).\n' +
+	'# rig encrypts the values. Edit them with `rig env edit --on secrets`.\n' +
 	'# rig generated the values below. You can add your own secrets, for example API keys.\n';
 
 /** Adds missing generated secrets. Existing values stay. */
 export function ensureSecrets(file: string): void {
-	let text = existsSync(file) ? readFileSync(file, 'utf8') : HEADER;
-	const present = new Set(readDotenv(file).map((entry) => entry.key));
-	let changed = !existsSync(file);
-	for (const [key, generate] of Object.entries(GENERATED_SECRETS)) {
-		if (present.has(key)) continue;
-		text = setInDotenv(text, key, generate());
-		changed = true;
-	}
-	if (changed) writeFileSync(file, text, { mode: 0o600 });
+	if (!existsSync(file)) writeFileSync(file, HEADER, { mode: 0o600 });
 	chmodSync(file, 0o600);
+	// Only the key names matter here, so there is nothing to decrypt.
+	const present = new Set(parseDotenv(readFileSync(file, 'utf8')).map((entry) => entry.key));
+	for (const [key, generate] of Object.entries(GENERATED_SECRETS)) {
+		if (!present.has(key)) setEnvValue(file, key, generate());
+	}
 }

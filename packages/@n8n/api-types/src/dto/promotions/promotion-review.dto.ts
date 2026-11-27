@@ -5,6 +5,7 @@ import {
 	promotionResourceSchema,
 } from './promotion-preview.dto';
 import { n8nIdSchema } from '../../schemas/id.schema';
+import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 import { Z } from '../../zod-class';
 
 /**
@@ -45,56 +46,74 @@ const reviewUserSchema = z.object({
 	email: z.string().nullable(),
 });
 
-/** What the host reports about the review. NULL when the host did not answer. */
-const promotionReviewRemoteSchema = z.object({
-	title: z.string(),
-	webUrl: z.string(),
-	hasConflicts: z.boolean(),
-});
-export type PromotionReviewRemote = z.infer<typeof promotionReviewRemoteSchema>;
-
 /**
  * Why the host data of a review is missing. Computed for each request and never stored.
  * `no_connection` means the environment was deleted or its provider no longer matches.
  * The Inbox sync then closes the review.
  */
-export type PromotionReviewRemoteError = 'not_found' | 'auth' | 'unreachable' | 'no_connection';
-
-/**
- * One inbox row. The branch and commit stay off this row. They live on the newest
- * run, and the list query does not load runs.
- */
-export const promotionReviewSummarySchema = z.object({
-	id: n8nIdSchema,
-	state: promotionReviewStateSchema,
-	/** Host reference for the review type. GitLab stores `<projectId>!<iid>`. NULL when the review lives in n8n. */
-	remoteReviewId: z.string().nullable(),
-	environment: z.object({ id: n8nIdSchema, name: z.string() }).nullable(),
-	createdBy: reviewUserSchema.nullable(),
-	approvedBy: reviewUserSchema.nullable(),
-	createdAt: z.string().datetime(),
-	approvedAt: z.string().datetime().nullable(),
-	/** Time of the latest state change. NULL until the first change. */
-	lastStateChangeAt: z.string().datetime().nullable(),
-	remote: promotionReviewRemoteSchema.nullable(),
-});
-export type PromotionReviewSummary = z.infer<typeof promotionReviewSummarySchema>;
-
-export const promotionReviewListPublicSchema = z.object({
-	count: z.number().int().nonnegative(),
-	data: z.array(promotionReviewSummarySchema),
-});
-export class PromotionReviewListPublicDto extends Z.class(promotionReviewListPublicSchema.shape) {}
+export const promotionReviewRemoteErrorSchema = z.enum([
+	'not_found',
+	'auth',
+	'unreachable',
+	'no_connection',
+]);
+export type PromotionReviewRemoteError = z.infer<typeof promotionReviewRemoteErrorSchema>;
 
 /** Open rows are one tab, every terminal state is the other. */
 export const promotionReviewTabSchema = z.enum(['open', 'closed']);
 export type PromotionReviewTab = z.infer<typeof promotionReviewTabSchema>;
 
-export class ListPromotionReviewsQueryDto extends Z.class({
-	tab: promotionReviewTabSchema.optional(),
-	offset: z.coerce.number().int().nonnegative().optional(),
-	limit: z.coerce.number().int().positive().max(100).optional(),
+/** One review, as the Inbox and the public API show it. */
+export const promotionReviewItemSchema = z.object({
+	id: z.string(),
+	state: promotionReviewTabSchema.openapi({
+		description: 'The Inbox tab of the review. `closed` covers the merged and the closed reviews.',
+	}),
+	reviewState: promotionReviewStateSchema.openapi({
+		description:
+			'The state of the review. `open` and `changes_requested` come from the Git host. `merged` and `closed` are final.',
+	}),
+	/** The Git host of the review, such as GitLab. */
+	reviewType: promotionReviewTypeSchema,
+	title: z.string().nullable(),
+	webUrl: z.string().nullable(),
+	branchName: z.string().nullable(),
+	environmentName: z.string().nullable(),
+	requester: reviewUserSchema.nullable(),
+	approver: reviewUserSchema.nullable(),
+	remoteError: promotionReviewRemoteErrorSchema.nullable().openapi({
+		description:
+			'Why the Git host data is missing. Then `title`, `webUrl` and `headCommitSha` are NULL, and `hasConflicts` is false without a check. NULL when the Git host answered.',
+	}),
+	headCommitSha: z.string().nullable().openapi({
+		description:
+			'The head of the merge request on the Git host. It differs from `runCommitSha` after a push on the Git host.',
+	}),
+	runCommitSha: z
+		.string()
+		.nullable()
+		.openapi({ description: 'The commit that n8n pushed in the newest promotion.' }),
+	hasConflicts: z.boolean(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+export type PromotionReviewItem = z.infer<typeof promotionReviewItemSchema>;
+
+export class PromotionReviewPublicDto extends Z.class(promotionReviewItemSchema.shape) {}
+
+export class PromotionReviewListPublicDto extends Z.class({
+	data: z.array(promotionReviewItemSchema),
+	nextCursor: z.string().nullable(),
 }) {}
+
+export class ListPromotionReviewsQueryDto extends Z.class(
+	{
+		state: promotionReviewTabSchema.default('open'),
+		limit: publicApiPaginationSchema.limit,
+		cursor: z.string().max(2048).optional(),
+	},
+	{ strict: true },
+) {}
 
 const commitShaSchema = z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/);
 

@@ -225,11 +225,19 @@ export class NodeTestHarness {
 		const waitPromise = createDeferredPromise<IRun>();
 		hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
 
+		const grantedBinaryDataIds = new Set<string>();
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({
 			executionId: '1',
 			webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
 			formWaitingBaseUrl: 'http://localhost/waiting-form',
 			hooks,
+			binaryDataAccess: {
+				grant: (binaryDataId) => grantedBinaryDataIds.add(binaryDataId),
+				isGranted: (binaryDataId) => grantedBinaryDataIds.has(binaryDataId),
+				isAllowed: async (binaryDataId, _workflowId, explicitlyGrantedIds) =>
+					grantedBinaryDataIds.has(binaryDataId) ||
+					explicitlyGrantedIds?.includes(binaryDataId) === true,
+			},
 			// Get from node.parameters
 			currentNodeParameters: undefined,
 			parentCallbackManager: undefined,

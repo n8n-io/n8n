@@ -104,10 +104,11 @@ export function isSafeInteger(val: number) {
 export function parseFilterProperties(filterProperties: GristFilterProperties) {
 	return filterProperties.reduce<{ [key: string]: Array<string | number> }>((acc, cur) => {
 		acc[cur.field] = acc[cur.field] ?? [];
-		const values = isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
-		acc[cur.field].push(values);
+		const value = String(cur.values);
+		acc[cur.field].push(value);
+		if (value.trim() !== '' && isSafeInteger(Number(value))) acc[cur.field].push(Number(value));
 		return acc;
-	}, {});
+	}, Object.create(null));
 }
 
 export function parseDefinedFields(fieldsToSendProperties: GristDefinedFields) {

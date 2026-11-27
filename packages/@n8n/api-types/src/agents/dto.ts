@@ -31,6 +31,7 @@ import {
 	createAgentSkillSchema,
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
+import { agentChatModeSchema } from '../schemas/agent-safe-testing.schema';
 import { alsoNullable } from '../dto/openapi-nullable';
 import { workflowParentFolderPublicSchema } from '../dto/workflows/workflow-public.dto';
 import {
@@ -367,6 +368,15 @@ export class CreateAgentPublicDto extends Z.class(
 		}).optional(),
 		tools: z.record(createAgentToolEntrySchema).optional(),
 		availableInMCP: z.boolean().optional(),
+	},
+	{ strict: true },
+) {}
+
+export class PublishAgentPublicDto extends Z.class(
+	{
+		versionId: z.string().min(1).optional().openapi({
+			description: 'The saved version to publish. Omit this field to publish the current draft.',
+		}),
 	},
 	{ strict: true },
 ) {}
@@ -829,6 +839,20 @@ const agentChatMessageShape = {
 	 * shape and validates it. Project agents ignore it.
 	 */
 	clientContext: z.record(z.unknown()).optional(),
+	/**
+	 * Only the preview chat has test runs. Every other surface accepts `live` and rejects
+	 * `test`, so a message that asked for a test run fails instead of running live.
+	 */
+	mode: z.literal('live').optional(),
+};
+
+const agentPreviewChatMessageShape = {
+	...agentChatMessageShape,
+	/**
+	 * `test` starts a test run (safe testing flag on). A chat that is already a test run
+	 * stays one. Absent or `live` runs the draft against real services.
+	 */
+	mode: agentChatModeSchema.optional(),
 };
 
 /** Rules that every chat message DTO applies on top of its shape. */
@@ -845,6 +869,11 @@ const hasSessionForMessageId = {
 
 const agentChatMessageSchema = z
 	.object(agentChatMessageShape)
+	.refine(hasMessageContent.check, hasMessageContent.options)
+	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
+
+const agentPreviewChatMessageSchema = z
+	.object(agentPreviewChatMessageShape)
 	.refine(hasMessageContent.check, hasMessageContent.options)
 	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
 
@@ -908,6 +937,25 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 }
 
 /**
+ * A message in the agent preview chat, the only surface with test runs. Same as
+ * {@link AgentChatMessageDto}, but `mode` can be `test`. Validate via `parse`/`safeParse`,
+ * for the same reason as `AgentChatMessageDto`.
+ */
+export class AgentPreviewChatMessageDto extends Z.class(agentPreviewChatMessageShape) {
+	constructor(data: z.infer<typeof agentPreviewChatMessageSchema>) {
+		super(agentPreviewChatMessageSchema.parse(data));
+	}
+
+	static override safeParse(data: unknown) {
+		return agentPreviewChatMessageSchema.safeParse(data);
+	}
+
+	static override parse(data: unknown) {
+		return agentPreviewChatMessageSchema.parse(data);
+	}
+}
+
+/**
  * The chat message of a system agent. Same as {@link AgentChatMessageDto},
  * but the session ID must be a lowercase UUID and the message has a maximum
  * length. Validate via `parse`/`safeParse`, for the same reason as
@@ -960,6 +1008,10 @@ export class AgentChatResumeDto extends Z.class({
 	// know about). Each interactive tool validates its own resume payload via
 	// `.resume(schema)`.
 	resumeData: z.unknown(),
+}) {}
+
+export class GenerateAgentTestScenariosDto extends Z.class({
+	previousScenarios: z.array(z.string().trim().min(1).max(300)).max(20).optional(),
 }) {}
 
 const agentConnectIntegrationShape = {

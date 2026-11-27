@@ -309,7 +309,9 @@ describe('createEngineRuntime', () => {
 
 	it('runs on the queues the host gives it', async () => {
 		const executionId = generateId();
-		vi.spyOn(TypeOrmExecutionStore.prototype, 'createExecution').mockResolvedValue();
+		vi.spyOn(TypeOrmExecutionStore.prototype, 'createExecution').mockResolvedValue({
+			errorExecutionAlreadyExists: false,
+		});
 		// Lets the wait sweeper publish to the step queue without a database.
 		vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null);
 		vi.spyOn(TypeOrmStepStore.prototype, 'resumeDueSteps')
@@ -406,6 +408,10 @@ describe('createEngineRuntime', () => {
 				.spyOn(TypeOrmExecutionStore.prototype, 'findPrunableExecutions')
 				.mockResolvedValueOnce([{ id: 'exec-1', workflowId: 'wf-1', finishedAt: new Date(0) }])
 				.mockResolvedValue([]);
+			const countCutoff = { id: 'exec-0', finishedAt: new Date(0) };
+			const findCutoff = vi
+				.spyOn(TypeOrmExecutionStore.prototype, 'findRetentionCountCutoff')
+				.mockResolvedValue(countCutoff);
 			vi.spyOn(TypeOrmExecutionStore.prototype, 'deleteEndedExecutions').mockResolvedValue(1);
 			const deleteExecutionFiles = vi.fn(async () => {});
 			const engine = createEngineRuntime({
@@ -416,7 +422,7 @@ describe('createEngineRuntime', () => {
 				responseSender,
 				externalDependencies: () => ({ deleteExecutionFiles }),
 				queues: createInMemoryWorkQueues(),
-				retention: { maxAgeMs: 1_000, intervalMs: 1 },
+				retention: { maxAgeMs: 1_000, intervalMs: 1, maxCount: 5 },
 			});
 			engine.start();
 
@@ -426,7 +432,8 @@ describe('createEngineRuntime', () => {
 					executionId: 'exec-1',
 				}),
 			);
-			expect(findPrunable).toHaveBeenCalledWith({ maxAgeMs: 1_000, limit: 100 });
+			expect(findCutoff).toHaveBeenCalledWith(5);
+			expect(findPrunable).toHaveBeenCalledWith({ maxAgeMs: 1_000, limit: 100, countCutoff });
 			await engine.stop();
 		},
 	);
@@ -451,6 +458,49 @@ describe('createEngineRuntime', () => {
 		expect(start).not.toHaveBeenCalled();
 	});
 
+	it.each<{
+		name: string;
+		roles: EngineRole[];
+		retention?: { maxAgeMs: number };
+		logged: unknown[];
+	}>([
+		{
+			name: 'orchestrator, retention on',
+			roles: ['orchestrator'],
+			retention: { maxAgeMs: 1_000 },
+			logged: [['Execution retention is on', { maxAgeMs: 1_000 }]],
+		},
+		{
+			name: 'orchestrator, retention off',
+			roles: ['orchestrator'],
+			logged: [['Execution retention is off']],
+		},
+		{
+			name: 'api and step-worker',
+			roles: ['api', 'step-worker'],
+			retention: { maxAgeMs: 1_000 },
+			logged: [],
+		},
+	])(
+		'logs whether retention is on only in the orchestrator role ($name)',
+		({ roles, retention, logged }) => {
+			const logger = { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() };
+
+			runtime({
+				roles,
+				retention,
+				logger,
+				externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
+			});
+
+			expect(
+				logger.info.mock.calls.filter(([message]) =>
+					String(message).startsWith('Execution retention'),
+				),
+			).toEqual(logged);
+		},
+	);
+
 	it('refuses a retention policy without a file deleter', () => {
 		expect(() => runtime({ retention: { maxAgeMs: 1_000 } })).toThrow(
 			'Execution retention needs a file deleter',
@@ -465,6 +515,8 @@ describe('createEngineRuntime', () => {
 		{ maxAgeMs: 0, intervalMs: 2 ** 31 },
 		{ maxAgeMs: 0, batchSize: 0 },
 		{ maxAgeMs: 0, batchSize: 1.5 },
+		{ maxAgeMs: 0, maxCount: -1 },
+		{ maxAgeMs: 0, maxCount: 1.5 },
 	])('refuses the retention policy %o', (retention) => {
 		expect(() =>
 			createEngineRuntime({
@@ -524,7 +576,7 @@ describe('createEngineRuntime', () => {
 		await stopping;
 	});
 
-	it.each([Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 1.5])(
+	it.each([Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 1.5, undefined as unknown as number])(
 		'refuses a staleness threshold of %s',
 		(queuedMs) => {
 			expect(() =>
@@ -539,6 +591,19 @@ describe('createEngineRuntime', () => {
 			).toThrow('The staleness threshold "queuedMs" must be a positive whole number');
 		},
 	);
+
+	it('refuses an error workflow wait that is set but not a positive whole number', () => {
+		expect(() =>
+			createEngineRuntime({
+				dataSource: fakeDataSource(),
+				admittance: new AllowAllAdmittance(),
+				identityVerifier,
+				responseSender,
+				queues: createInMemoryWorkQueues(),
+				staleness: { queuedMs: 1, runningStepMs: 60_000, errorWorkflowPendingMs: 0 },
+			}),
+		).toThrow('The staleness threshold "errorWorkflowPendingMs" must be a positive whole number');
+	});
 
 	it('accepts positive whole staleness thresholds', () => {
 		expect(() =>

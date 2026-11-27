@@ -100,18 +100,16 @@ function isDataKey(container: object, key: string): boolean {
 	return descriptor?.enumerable === true && 'value' in descriptor;
 }
 
-/**
- * A copy of the value that a key reads as, when the value goes across whole in
- * at most `maxChars` characters. Undefined for any other value.
- */
+const NO_COPY: SmallJsonCopy = { copy: undefined, chars: 0 };
+
 function wholeChild(
 	container: Record<string, unknown> | unknown[],
 	key: string,
 	maxChars: number,
-): SmallJsonCopy | undefined {
+): SmallJsonCopy {
 	return isDataKey(container, key)
 		? smallJsonCopy((container as Record<string, unknown>)[key], maxChars)
-		: undefined;
+		: NO_COPY;
 }
 
 /**
@@ -130,8 +128,10 @@ function wholeItemsFrom(
 	let remaining = readChars;
 	for (let index = start; index < items.length; index++) {
 		const maxChars = index === start ? childChars : Math.min(childChars, remaining);
-		const item = maxChars > 0 ? wholeChild(items, String(index), maxChars) : undefined;
-		if (item === undefined) {
+		const item = maxChars > 0 ? wholeChild(items, String(index), maxChars) : NO_COPY;
+		if (item.copy === undefined) {
+			// A later item that does not go across starts the next read, which counts it.
+			if (index === start) remaining -= item.chars;
 			break;
 		}
 		remaining -= item.chars;
@@ -143,7 +143,7 @@ function wholeItemsFrom(
 
 /**
  * The fields in `names` that go across whole, each in at most `childChars` characters.
- * A field that is there but does not go across counts as `childChars`.
+ * A field that is there but does not go across counts what its walk counted.
  */
 function namedFieldsOf(
 	item: Record<string, unknown>,
@@ -157,11 +157,9 @@ function namedFieldsOf(
 			continue;
 		}
 		const field = smallJsonCopy(item[name], childChars);
-		if (field === undefined) {
-			// The size check of a large field can cost more than its limit, for example to list many keys.
-			chars += childChars;
-		} else {
-			chars += name.length + field.chars;
+		chars += field.chars;
+		if (field.copy !== undefined) {
+			chars += name.length;
 			defineOwnValue(fields, name, field.copy);
 		}
 	}
@@ -205,7 +203,8 @@ function namedFieldsOfItemsFrom(
 
 /**
  * The fields of an object that go across whole, in at most `readChars`
- * characters for all of them. A field that does not is left out.
+ * characters for all of them. A field that does not is left out, but its
+ * walk still counts.
  */
 function wholeFieldsOf(
 	record: Record<string, unknown>,
@@ -216,14 +215,16 @@ function wholeFieldsOf(
 	const whole: Record<string, unknown> = {};
 	let remaining = readChars;
 	for (const key of Object.keys(record)) {
+		if (remaining <= 0) {
+			break;
+		}
 		const maxChars = Math.min(childChars, remaining - key.length);
-		const field =
-			maxChars > 0 && !TRANSFER_FRAMING_KEYS.includes(key)
-				? wholeChild(record, key, maxChars)
-				: undefined;
-		if (field !== undefined) {
+		if (maxChars > 0 && !TRANSFER_FRAMING_KEYS.includes(key)) {
+			const field = wholeChild(record, key, maxChars);
 			remaining -= field.chars + key.length;
-			defineOwnValue(whole, key, field.copy);
+			if (field.copy !== undefined) {
+				defineOwnValue(whole, key, field.copy);
+			}
 		}
 	}
 	budget.remaining -= readChars - remaining;

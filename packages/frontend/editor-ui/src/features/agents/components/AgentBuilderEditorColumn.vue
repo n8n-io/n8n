@@ -7,6 +7,7 @@ import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 import { useTestButtonPrimaryColorExperiment } from '@/experiments/testButtonPrimaryColor/useTestButtonPrimaryColorExperiment';
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { useAgentTriggerRedesignFlag } from '../composables/useAgentTriggerRedesignFlag';
 import type { SetupTask, SetupTaskId } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
@@ -16,6 +17,7 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useIsCollectionsEnabled } from '@/features/shared/knowledge/useIsCollectionsEnabled';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
@@ -26,6 +28,7 @@ import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
+import AgentKnowledgeCollectionsPanel from './AgentKnowledgeCollectionsPanel.vue';
 import AgentMemoryEntriesPanel from './AgentMemoryEntriesPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
 import AgentMcpPanel from './AgentMcpPanel.vue';
@@ -83,6 +86,11 @@ provideAgentPersonalisation(
 );
 const isKnowledgeAdvancedExpanded = ref(false);
 const isMemoryViewAll = ref(false);
+const isCollectionsEnabled = useIsCollectionsEnabled();
+// Collections link to a saved agent, and the full memory list replaces the Knowledge cards.
+const showCollectionsPanel = computed(
+	() => isCollectionsEnabled.value && !props.agentUnsaved && !isMemoryViewAll.value,
+);
 
 const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
@@ -141,6 +149,7 @@ const testButtonPrimaryColorExperiment = useTestButtonPrimaryColorExperiment();
 const showPrimaryColorTestButton = computed(
 	() => !props.artifactMode && testButtonPrimaryColorExperiment.isEnabled.value,
 );
+const isTriggerRedesignEnabled = useAgentTriggerRedesignFlag();
 
 const agentInfoPanel = ref<InstanceType<typeof AgentInfoPanel>>();
 const agentTriggersSection = ref<InstanceType<typeof AgentTriggersSection>>();
@@ -212,7 +221,7 @@ defineExpose({ onSetupTaskAction });
 							@action="emit('setup-task-action', $event)"
 						/>
 						<AgentTestButton
-							v-if="!props.hidePreviewButton"
+							v-if="!props.hidePreviewButton && !isTriggerRedesignEnabled"
 							:disabled-reason="props.previewDisabledReason"
 							:is-runnable="props.agent?.isRunnable === true"
 							:is-preview-open="props.isPreviewOpen"
@@ -239,44 +248,50 @@ defineExpose({ onSetupTaskAction });
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
-					<AgentInfoPanel
-						ref="agentInfoPanel"
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						:project-id="projectId"
-						@update:config="(changes, meta) => emit('update:config', changes, meta)"
-						@draft:config="emit('draft:config')"
-					/>
-
-					<AgentPanel
-						:header="i18n.baseText('agents.builder.skills.title')"
-						:description="i18n.baseText('agents.builder.skills.description')"
-						data-testid="agent-skills-panel"
-					>
-						<AgentSkillsSection
-							:skills="appliedSkills"
+					<template v-if="!isTriggerRedesignEnabled">
+						<AgentInfoPanel
+							ref="agentInfoPanel"
+							:config="localConfig"
 							:disabled="childrenDisabled"
-							:show-label="false"
-							:validation-issues="configValidationIssues ?? []"
-							:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
-							@open-skill="emit('open-skill', $event)"
-							@add-skill="emit('add-skill')"
-							@remove-skill="emit('remove-skill', $event)"
+							:project-id="projectId"
+							@update:config="(changes, meta) => emit('update:config', changes, meta)"
+							@draft:config="emit('draft:config')"
 						/>
-					</AgentPanel>
+
+						<AgentPanel
+							:header="i18n.baseText('agents.builder.skills.title')"
+							:description="i18n.baseText('agents.builder.skills.description')"
+							data-testid="agent-skills-panel"
+						>
+							<AgentSkillsSection
+								:skills="appliedSkills"
+								:disabled="childrenDisabled"
+								:show-label="false"
+								:validation-issues="configValidationIssues ?? []"
+								:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
+								:tools="localConfig?.tools ?? []"
+								@open-skill="emit('open-skill', $event)"
+								@add-skill="emit('add-skill')"
+								@remove-skill="emit('remove-skill', $event)"
+							/>
+						</AgentPanel>
+					</template>
 
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.triggers.title')"
 						:description="i18n.baseText('agents.builder.triggers.description')"
+						data-testid="agent-triggers-panel"
 					>
 						<template #header-actions>
 							<AgentTestButton
 								:disabled-reason="props.previewDisabledReason"
-								:icon-only="true"
+								:icon-only="!isTriggerRedesignEnabled"
 								:is-runnable="props.agent?.isRunnable === true"
+								:is-preview-open="isTriggerRedesignEnabled && props.isPreviewOpen"
 								:validation-issues="props.configValidationIssues ?? []"
 								test-id="agent-triggers-preview-chat-button"
 								@open-preview="emit('open-preview', 'icon')"
+								@close-preview="emit('close-preview')"
 							/>
 						</template>
 						<AgentTriggersSection
@@ -307,9 +322,39 @@ defineExpose({ onSetupTaskAction });
 						/>
 					</AgentPanel>
 
+					<template v-if="isTriggerRedesignEnabled">
+						<AgentInfoPanel
+							ref="agentInfoPanel"
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							:project-id="projectId"
+							@update:config="(changes, meta) => emit('update:config', changes, meta)"
+							@draft:config="emit('draft:config')"
+						/>
+
+						<AgentPanel
+							:header="i18n.baseText('agents.builder.skills.title')"
+							:description="i18n.baseText('agents.builder.skills.description')"
+							data-testid="agent-skills-panel"
+						>
+							<AgentSkillsSection
+								:skills="appliedSkills"
+								:disabled="childrenDisabled"
+								:show-label="false"
+								:validation-issues="configValidationIssues ?? []"
+								:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
+								:tools="localConfig?.tools ?? []"
+								@open-skill="emit('open-skill', $event)"
+								@add-skill="emit('add-skill')"
+								@remove-skill="emit('remove-skill', $event)"
+							/>
+						</AgentPanel>
+					</template>
+
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.capabilities.title')"
 						:description="i18n.baseText('agents.builder.capabilities.description')"
+						data-testid="agent-capabilities-panel"
 					>
 						<AgentCapabilitiesSection
 							supports-activation
@@ -325,6 +370,7 @@ defineExpose({ onSetupTaskAction });
 							:agent-unsaved="agentUnsaved"
 							:sections="['tools', 'subAgents', 'tasks']"
 							@open-tool="emit('open-tool', $event)"
+							@open-skill="emit('open-skill', $event)"
 							@add-tool="emit('add-tool', $event)"
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
@@ -361,6 +407,12 @@ defineExpose({ onSetupTaskAction });
 							@delete-file="emit('delete-file', $event)"
 						/>
 					</AgentPanel>
+					<AgentKnowledgeCollectionsPanel
+						v-if="showCollectionsPanel"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:disabled="childrenDisabled"
+					/>
 					<AgentMemoryEntriesPanel
 						v-if="!agentUnsaved"
 						v-model:show-all="isMemoryViewAll"
