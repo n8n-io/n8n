@@ -720,7 +720,7 @@ Push to master
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
-| Daily 02:00               | `sec-base-image-refresh.yml`      | Find base image digests that remove fixable OS findings, open the pin PRs, build `n8nio/base` again when a package that it installs has a fix, alert `#updates-security`, and publish the Trivy report of the released images |
+| Monday–Friday 02:00       | `sec-base-image-refresh.yml`      | Find base image digests that remove fixable OS findings, open the pin PRs, build `n8nio/base` again when a package that it installs has a fix, alert `#updates-security`, and publish the Trivy report of the released images |
 | Daily 03:00               | `test-e2e-helm.yml`               | n8n build on the public Helm chart |
 | Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
 | Daily 04:30               | `test-image-efficiency.yml`       | Image size and layer waste with Dive |
