@@ -13,6 +13,7 @@ import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
 import { googleApiCredentials } from './credentials.fixture';
+import { GoogleBigQuery } from '../../../GoogleBigQuery.node';
 import { description, execute } from '../../../v2/actions/database/executeQuery.operation';
 
 describe('Test Google BigQuery V2, executeQuery with named parameters', () => {
@@ -39,7 +40,7 @@ describe('Test Google BigQuery V2, executeQuery with named parameters', () => {
 						{
 							name: 'n8n_variable',
 							parameterType: { type: 'STRING' },
-							parameterValue: { value: 42 },
+							parameterValue: { value: '42' },
 						},
 					],
 					query:
@@ -81,11 +82,13 @@ describe('Test Google BigQuery V2, executeQuery named parameter types (NODE-5865
 		option: INodeProperties | INodePropertyOptions | INodePropertyCollection,
 	): option is INodePropertyOptions => 'value' in option;
 
-	const namedParameter = (name: string, value: GenericValue, type?: string): IDataObject =>
-		type === undefined ? { name, value } : { name, value, type };
+	const namedParameter = (name: string, value: unknown, type?: string): IDataObject =>
+		type === undefined
+			? { name, value: value as GenericValue }
+			: { name, value: value as GenericValue, type };
 
-	const runExecuteQuery = async (
-		namedParameters: IDataObject[],
+	const runExecuteQueryWithOptions = async (
+		queryParameters: unknown,
 		sqlQuery = 'SELECT * FROM dataset.customers WHERE customer_id = @customer_id;',
 	) => {
 		const nodeParameters: IDataObject = {
@@ -93,9 +96,7 @@ describe('Test Google BigQuery V2, executeQuery named parameter types (NODE-5865
 			projectId: 'test-project',
 			sqlQuery,
 			options: {
-				queryParameters: {
-					namedParameters,
-				},
+				queryParameters: queryParameters as GenericValue,
 			},
 		};
 		const requestOAuth2 = vi.fn().mockResolvedValue({
@@ -126,6 +127,11 @@ describe('Test Google BigQuery V2, executeQuery named parameter types (NODE-5865
 
 		return requestOAuth2;
 	};
+
+	const runExecuteQuery = async (
+		namedParameters: IDataObject[],
+		sqlQuery = 'SELECT * FROM dataset.customers WHERE customer_id = @customer_id;',
+	) => await runExecuteQueryWithOptions({ namedParameters }, sqlQuery);
 
 	it('should send plain string named parameters with STRING type', async () => {
 		const requestOAuth2 = await runExecuteQuery(
@@ -175,6 +181,36 @@ describe('Test Google BigQuery V2, executeQuery named parameter types (NODE-5865
 			paramValue: '2026-01-15T10:30:00Z',
 			paramType: 'TIMESTAMP',
 			expectedValue: '2026-01-15T10:30:00Z',
+		},
+		{
+			paramName: 'total_balance',
+			paramValue: '12345678901234567890.123456789',
+			paramType: 'BIGNUMERIC',
+			expectedValue: '12345678901234567890.123456789',
+		},
+		{
+			paramName: 'event_datetime',
+			paramValue: '2026-01-15 10:30:00',
+			paramType: 'DATETIME',
+			expectedValue: '2026-01-15 10:30:00',
+		},
+		{
+			paramName: 'event_time',
+			paramValue: '10:30:00',
+			paramType: 'TIME',
+			expectedValue: '10:30:00',
+		},
+		{
+			paramName: 'raw_bytes',
+			paramValue: 'aGVsbG8=',
+			paramType: 'BYTES',
+			expectedValue: 'aGVsbG8=',
+		},
+		{
+			paramName: 'payload',
+			paramValue: { customerId: 42, active: true },
+			paramType: 'JSON',
+			expectedValue: '{"customerId":42,"active":true}',
 		},
 	])(
 		'should send $paramType parameterType and stringified parameterValue for $paramName',
@@ -253,6 +289,7 @@ describe('Test Google BigQuery V2, executeQuery named parameter types (NODE-5865
 
 		expect(typeProperty).toBeDefined();
 		expect(typeProperty?.type).toBe('options');
+		expect(typeProperty?.default).toBe('STRING');
 
 		const optionValues = typeProperty?.options
 			?.filter(isNodePropertyOption)
@@ -260,14 +297,205 @@ describe('Test Google BigQuery V2, executeQuery named parameter types (NODE-5865
 
 		expect(optionValues).toEqual(
 			expect.arrayContaining([
-				'STRING',
-				'INT64',
-				'FLOAT64',
-				'NUMERIC',
+				'BIGNUMERIC',
 				'BOOL',
+				'BYTES',
 				'DATE',
+				'DATETIME',
+				'FLOAT64',
+				'INT64',
+				'JSON',
+				'NUMERIC',
+				'STRING',
+				'TIME',
 				'TIMESTAMP',
 			]),
+		);
+	});
+
+	it('should serialize null, undefined, falsy scalars, Date, and Buffer values cleanly', async () => {
+		const sqlQuery =
+			'MERGE dataset.customers AS target USING (SELECT @customer_id AS customer_id, @count AS count, @is_active AS is_active, @empty_text AS empty_text, @optional_id AS optional_id, @missing_id AS missing_id, @created_at AS created_at, @raw_bytes AS raw_bytes) AS source ON target.customer_id = source.customer_id WHEN NOT MATCHED THEN INSERT ROW;';
+		const requestOAuth2 = await runExecuteQuery(
+			[
+				namedParameter('customer_id', 42, 'INT64'),
+				namedParameter('count', 0, 'INT64'),
+				namedParameter('is_active', false, 'BOOL'),
+				namedParameter('empty_text', '', 'STRING'),
+				namedParameter('optional_id', null, 'INT64'),
+				namedParameter('missing_id', undefined, 'INT64'),
+				namedParameter('created_at', new Date('2026-01-15T10:30:00Z'), 'TIMESTAMP'),
+				namedParameter('raw_bytes', Buffer.from('hello'), 'BYTES'),
+			],
+			sqlQuery,
+		);
+
+		expect(requestOAuth2).toHaveBeenNthCalledWith(
+			1,
+			'googleBigQueryOAuth2Api',
+			expect.objectContaining({
+				method: 'POST',
+				body: {
+					configuration: {
+						query: {
+							query: sqlQuery,
+							useLegacySql: false,
+							parameterMode: 'NAMED',
+							queryParameters: [
+								{
+									name: 'customer_id',
+									parameterType: { type: 'INT64' },
+									parameterValue: { value: '42' },
+								},
+								{
+									name: 'count',
+									parameterType: { type: 'INT64' },
+									parameterValue: { value: '0' },
+								},
+								{
+									name: 'is_active',
+									parameterType: { type: 'BOOL' },
+									parameterValue: { value: 'false' },
+								},
+								{
+									name: 'empty_text',
+									parameterType: { type: 'STRING' },
+									parameterValue: { value: '' },
+								},
+								{
+									name: 'optional_id',
+									parameterType: { type: 'INT64' },
+									parameterValue: { value: null },
+								},
+								{
+									name: 'missing_id',
+									parameterType: { type: 'INT64' },
+									parameterValue: { value: null },
+								},
+								{
+									name: 'created_at',
+									parameterType: { type: 'TIMESTAMP' },
+									parameterValue: { value: '2026-01-15T10:30:00.000Z' },
+								},
+								{
+									name: 'raw_bytes',
+									parameterType: { type: 'BYTES' },
+									parameterValue: { value: 'aGVsbG8=' },
+								},
+							],
+						},
+					},
+				},
+			}),
+		);
+	});
+
+	it('should default empty parameter type string to STRING', async () => {
+		const requestOAuth2 = await runExecuteQuery([namedParameter('customer_id', 42, '')]);
+
+		expect(requestOAuth2).toHaveBeenNthCalledWith(
+			1,
+			'googleBigQueryOAuth2Api',
+			expect.objectContaining({
+				method: 'POST',
+				body: {
+					configuration: {
+						query: {
+							query: 'SELECT * FROM dataset.customers WHERE customer_id = @customer_id;',
+							useLegacySql: false,
+							parameterMode: 'NAMED',
+							queryParameters: [
+								{
+									name: 'customer_id',
+									parameterType: { type: 'STRING' },
+									parameterValue: { value: '42' },
+								},
+							],
+						},
+					},
+				},
+			}),
+		);
+	});
+
+	it.each([
+		{ label: 'null queryParameters', queryParameters: null },
+		{ label: 'missing namedParameters', queryParameters: {} },
+		{ label: 'empty namedParameters array', queryParameters: { namedParameters: [] } },
+	])('should omit queryParameters and parameterMode for $label', async ({ queryParameters }) => {
+		const sqlQuery = 'SELECT 1;';
+		const requestOAuth2 = await runExecuteQueryWithOptions(queryParameters, sqlQuery);
+
+		expect(requestOAuth2).toHaveBeenNthCalledWith(
+			1,
+			'googleBigQueryOAuth2Api',
+			expect.objectContaining({
+				method: 'POST',
+				body: {
+					configuration: {
+						query: {
+							query: sqlQuery,
+							useLegacySql: false,
+						},
+					},
+				},
+			}),
+		);
+	});
+
+	it('should send typed named parameters through GoogleBigQuery v2.2 node execution', async () => {
+		const nodeType = new GoogleBigQuery().getNodeType(2.2);
+		const sqlQuery = 'SELECT * FROM dataset.customers WHERE customer_id = @customer_id;';
+		const nodeParameters: IDataObject = {
+			resource: 'database',
+			operation: 'executeQuery',
+			authentication: 'oAuth2',
+			projectId: 'test-project',
+			sqlQuery,
+			options: {
+				queryParameters: {
+					namedParameters: [namedParameter('customer_id', 42, 'INT64')],
+				},
+			},
+		};
+		const requestOAuth2 = vi.fn().mockResolvedValue({
+			jobReference: { jobId: 'job_123' },
+			status: { state: 'DONE' },
+		});
+		const executeFunctions = mock<IExecuteFunctions>({
+			getExecutionCancelSignal: () => undefined,
+			getInputData: () => [{ json: {} }],
+			getNode: () => mock<INode>({ typeVersion: 2.2 }),
+			getNodeParameter: ((name: string, _itemIndex: number, fallbackValue?: unknown) =>
+				nodeParameters[name] ?? fallbackValue) as IExecuteFunctions['getNodeParameter'],
+			evaluateExpression: (expression: string) => expression,
+			helpers: mock({ constructExecutionMetaData, requestOAuth2 }),
+		});
+
+		await nodeType.execute?.call(executeFunctions);
+
+		expect(requestOAuth2).toHaveBeenNthCalledWith(
+			1,
+			'googleBigQueryOAuth2Api',
+			expect.objectContaining({
+				method: 'POST',
+				body: {
+					configuration: {
+						query: {
+							query: sqlQuery,
+							useLegacySql: false,
+							parameterMode: 'NAMED',
+							queryParameters: [
+								{
+									name: 'customer_id',
+									parameterType: { type: 'INT64' },
+									parameterValue: { value: '42' },
+								},
+							],
+						},
+					},
+				},
+			}),
 		);
 	});
 });

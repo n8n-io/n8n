@@ -14,10 +14,31 @@ import { prepareOutput } from '../../helpers/utils';
 import { googleBigQueryApiRequestAllItems, googleBigQueryApiRequest } from '../../transport';
 
 interface IQueryParameterOptions {
-	namedParameters: Array<{
+	namedParameters?: Array<{
 		name: string;
-		value: string;
+		value: unknown;
+		type?: string;
 	}>;
+}
+
+function serializeQueryParameterValue(value: unknown): string | null {
+	if (value === null || value === undefined) {
+		return null;
+	}
+	if (typeof value === 'string') {
+		return value;
+	}
+	if (value instanceof Date) {
+		return Number.isNaN(value.getTime()) ? String(value) : value.toISOString();
+	}
+	if (Buffer.isBuffer(value)) {
+		return value.toString('base64');
+	}
+	if (typeof value === 'object') {
+		const serialized = JSON.stringify(value);
+		return serialized ?? null;
+	}
+	return String(value);
 }
 
 const properties: INodeProperties[] = [
@@ -179,6 +200,7 @@ const properties: INodeProperties[] = [
 						{
 							name: '',
 							value: '',
+							type: 'STRING',
 						},
 					],
 				},
@@ -200,7 +222,28 @@ const properties: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								description:
-									'The substitute value. It must be a string. Arrays, dates and struct types mentioned in <a href="https://cloud.google.com/bigquery/docs/parameterized-queries#using_structs_in_parameterized_queries" target="_blank">the official documentation</a> are not yet supported.',
+									'The substitute value for the parameter. Arrays and struct types mentioned in <a href="https://cloud.google.com/bigquery/docs/parameterized-queries#using_structs_in_parameterized_queries" target="_blank">the official documentation</a> are not yet supported.',
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								default: 'STRING',
+								description: 'BigQuery data type of the parameter',
+								options: [
+									{ name: 'BigNumeric', value: 'BIGNUMERIC' },
+									{ name: 'Boolean', value: 'BOOL' },
+									{ name: 'Bytes', value: 'BYTES' },
+									{ name: 'Date', value: 'DATE' },
+									{ name: 'DateTime', value: 'DATETIME' },
+									{ name: 'Float64', value: 'FLOAT64' },
+									{ name: 'Int64', value: 'INT64' },
+									{ name: 'JSON', value: 'JSON' },
+									{ name: 'Numeric', value: 'NUMERIC' },
+									{ name: 'String', value: 'STRING' },
+									{ name: 'Time', value: 'TIME' },
+									{ name: 'Timestamp', value: 'TIMESTAMP' },
+								],
 							},
 						],
 					},
@@ -296,23 +339,25 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				body.useLegacySql = false;
 			}
 
-			if (typeof body.queryParameters === 'object') {
-				const { namedParameters } = body.queryParameters as IQueryParameterOptions;
+			if (body.queryParameters !== undefined) {
+				const namedParameters = options.queryParameters?.namedParameters;
 
-				body.parameterMode = 'NAMED';
+				if (Array.isArray(namedParameters) && namedParameters.length > 0) {
+					body.parameterMode = 'NAMED';
 
-				body.queryParameters = namedParameters.map(({ name, value }) => {
-					// BigQuery type descriptors are very involved, and it would be hard to support all possible
-					// options, that's why the only supported type here is "STRING".
-					//
-					// If we switch this node to the official JS SDK from Google, we should be able to use `getTypeDescriptorFromValue`
-					// at runtime, which would infer BQ type descriptors of any valid JS value automatically:
-					//
-					// https://github.com/googleapis/nodejs-bigquery/blob/22021957f697ce67491bd50535f6fb43a99feea0/src/bigquery.ts#L1111
-					//
-					// Another, less user-friendly option, would be to allow users to specify the types manually.
-					return { name, parameterType: { type: 'STRING' }, parameterValue: { value } };
-				});
+					body.queryParameters = namedParameters.map(({ name, value, type }) => {
+						const parameterType =
+							typeof type === 'string' && type.trim() !== '' ? type.trim().toUpperCase() : 'STRING';
+
+						return {
+							name,
+							parameterType: { type: parameterType },
+							parameterValue: { value: serializeQueryParameterValue(value) },
+						};
+					});
+				} else {
+					delete body.queryParameters;
+				}
 			}
 
 			//https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/insert
