@@ -318,11 +318,12 @@ export class AgentRuntime {
 
 	/**
 	 * Wait until no background task (title, observer, reflector, episodic
-	 * memory) is in flight, including tasks scheduled while waiting. Unlike
-	 * `dispose()`, nothing is torn down.
+	 * memory, side-call usage reports) is in flight, including tasks scheduled
+	 * while waiting, for a bounded number of rounds. Unlike `dispose()`,
+	 * nothing is torn down. True when nothing is left in flight.
 	 */
-	async waitForBackgroundTasks(): Promise<void> {
-		await this.backgroundTasks.drain();
+	async waitForBackgroundTasks(): Promise<boolean> {
+		return await this.backgroundTasks.drain();
 	}
 
 	get pendingBackgroundTaskCount(): number {

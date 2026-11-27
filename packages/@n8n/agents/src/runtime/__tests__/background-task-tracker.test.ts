@@ -68,4 +68,53 @@ describe('BackgroundTaskTracker', () => {
 		await tracker.flush();
 		await expect(tracker.flush()).resolves.toBeUndefined();
 	});
+
+	describe('drain()', () => {
+		it('also waits for tasks tracked while it waits', async () => {
+			const tracker = new BackgroundTaskTracker();
+			let followUpDone = false;
+			tracker.track(
+				new Promise<void>((resolve) =>
+					setTimeout(() => {
+						tracker.track(
+							new Promise<void>((done) =>
+								setTimeout(() => {
+									followUpDone = true;
+									done();
+								}, 5),
+							),
+						);
+						resolve();
+					}, 5),
+				),
+			);
+
+			expect(await tracker.drain()).toBe(true);
+			expect(followUpDone).toBe(true);
+		});
+
+		it('gives up after maxRounds when every task schedules another, so nothing is pinned forever', async () => {
+			const tracker = new BackgroundTaskTracker();
+			let scheduled = 0;
+			let stopped = false;
+			const scheduleNext = () => {
+				if (stopped) return;
+				scheduled++;
+				tracker.track(
+					new Promise<void>((resolve) =>
+						setTimeout(() => {
+							scheduleNext();
+							resolve();
+						}, 1),
+					),
+				);
+			};
+			scheduleNext();
+
+			expect(await tracker.drain({ maxRounds: 3 })).toBe(false);
+			expect(scheduled).toBeLessThanOrEqual(5);
+			expect(tracker.pendingCount).toBeGreaterThan(0);
+			stopped = true;
+		});
+	});
 });

@@ -144,27 +144,27 @@ function isObservationalMemoryTaskEvent(event: MemoryTaskEvent): event is Scoped
 	return event.task.taskKind !== 'episodic';
 }
 
-/** True when `work` settles before `timeoutMs` runs out. */
-async function settlesWithin(work: Promise<unknown>, timeoutMs: number): Promise<boolean> {
+/** True when every runtime drained before `timeoutMs` runs out. */
+async function settlesWithin(work: Promise<boolean[]>, timeoutMs: number): Promise<boolean> {
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	const timedOut = new Promise<false>((resolve) => {
 		timer = setTimeout(() => resolve(false), timeoutMs);
 	});
 	try {
-		return await Promise.race([work.then(() => true), timedOut]);
+		return await Promise.race([work.then((drained) => drained.every(Boolean)), timedOut]);
 	} finally {
 		clearTimeout(timer);
 	}
 }
 
-/** `Agent.waitForBackgroundTasks` ran out of time. Lists the memory tasks still in flight. */
+/** `Agent.waitForBackgroundTasks` ran out of time, or tasks kept scheduling more. Lists the memory tasks still in flight. */
 export class BackgroundTasksTimeoutError extends Error {
 	constructor(
 		readonly timeoutMs: number,
 		readonly inFlightTasks: MemoryTaskInfo[],
 	) {
 		const kinds = inFlightTasks.map((task) => `${task.taskKind} (${task.status})`).join(', ');
-		super(`Background tasks still running after ${timeoutMs}ms${kinds ? `: ${kinds}` : ''}`);
+		super(`Background tasks did not settle within ${timeoutMs}ms${kinds ? `: ${kinds}` : ''}`);
 		this.name = 'BackgroundTasksTimeoutError';
 	}
 }
@@ -1144,7 +1144,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 	}
 
-	/** Forget a finished runtime once it has no background task left. */
+	/** Forget a finished runtime once its background tasks drained, or the drain gave up. */
 	private async settleRuntime(runtime: AgentRuntime): Promise<void> {
 		await runtime.waitForBackgroundTasks();
 		this.settlingRuntimes.delete(runtime);
@@ -1164,10 +1164,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...[...this.activeRuntimes].map(({ runtime }) => runtime),
 			...this.settlingRuntimes,
 		];
-		const settled = Promise.all(
+		const drained = Promise.all(
 			runtimes.map(async (runtime) => await runtime.waitForBackgroundTasks()),
 		);
-		if (await settlesWithin(settled, timeoutMs)) return;
+		if (await settlesWithin(drained, timeoutMs)) return;
 		const inFlight = runtimes.flatMap((runtime) => runtime.getInFlightMemoryTasks());
 		throw new BackgroundTasksTimeoutError(timeoutMs, inFlight);
 	}
