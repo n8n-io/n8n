@@ -1,0 +1,104 @@
+{
+	"name": "Pipedrive v2 organization create test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1000001-0001-4000-8000-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "organization",
+				"operation": "create",
+				"name": "Test Org LLC",
+				"additionalFields": {
+					"address": "Dietmar-Hopp-Allee 16, 69190 Walldorf, Germany",
+					"annual_revenue": 1000000,
+					"employee_count": 51,
+					"industry": 4,
+					"linkedin": "https://www.linkedin.com/company/example",
+					"website": "example.com"
+				}
+			},
+			"id": "a1000001-0001-4000-8000-000000000002",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "a1000001-0001-4000-8000-000000000003",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 7,
+					"name": "Test Org LLC",
+					"add_time": "2026-04-01T22:03:26Z",
+					"update_time": null,
+					"visible_to": 3,
+					"owner_id": 25455458,
+					"label_ids": [],
+					"website": "example.com",
+					"linkedin": "https://www.linkedin.com/company/example",
+					"industry": 4,
+					"annual_revenue": 1000000,
+					"employee_count": 51,
+					"is_deleted": false,
+					"address": {
+						"value": "Dietmar-Hopp-Allee 16, 69190 Walldorf, Germany",
+						"country": "Germany",
+						"locality": "Walldorf",
+						"postal_code": "69190",
+						"route": "Dietmar-Hopp-Allee",
+						"street_number": "16"
+					},
+					"custom_fields": {
+						"test_string": null
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Pipedrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pipedrive": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

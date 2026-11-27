@@ -28,3 +28,13 @@ export function addFieldsToBody(body: IDataObject, fields: IDataObject): void {
 		body.visible_to = coerceToNumber(body.visible_to);
 	}
 }
+
+/**
+ * The v2 organizations endpoint expects the address as an object. The node takes a
+ * single line, so wrap it; Pipedrive geocodes `value` into the address parts.
+ */
+export function wrapOrganizationAddress(body: IDataObject): void {
+	if (typeof body.address === 'string') {
+		body.address = body.address === '' ? null : { value: body.address };
+	}
+}
