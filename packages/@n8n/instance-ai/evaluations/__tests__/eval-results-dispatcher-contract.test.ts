@@ -178,6 +178,8 @@ interface DispatcherView {
 				execErrors: string[];
 				/** Agent runs: the multi-turn conversation, sessions marked by `heading`. */
 				transcript?: TranscriptTurn[];
+				/** Graded by its expectations: not a scored scenario unit (AGENT-1666). */
+				expectationGraded?: boolean;
 				/** Agent memory runs: the memory config the run used. */
 				memoryConfig?: Record<string, unknown>;
 				/** Agent memory runs: the stored memory after the run. */
@@ -523,6 +525,53 @@ describe('eval-results.json — dispatcher contract', () => {
 			unpricedSideCalls: 0,
 		});
 		expect(report.testCases[0].scenarios[0].runs[0].sideCallUsage).toHaveLength(2);
+	});
+
+	it('marks every run of a scenario graded by its expectations', () => {
+		const graded: ExecutionScenario = {
+			...scenario,
+			successCriteria: '',
+			expectations: ['Quotes it'],
+		};
+		const directCase: WorkflowTestCase = {
+			complexity: 'simple',
+			tags: [],
+			datasets: ['full'],
+			executionScenarios: [graded],
+			agentRun: { mode: 'direct' },
+		};
+		const run = (success: boolean): WorkflowTestCaseResult => ({
+			testCase: directCase,
+			workflowBuildSuccess: true,
+			agentId: 'agent-1',
+			executionScenarioResults: [
+				{ scenario: graded, success, score: success ? 1 : 0, reasoning: 'r' },
+			],
+		});
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const { jsonPath } = writeEvalResults(
+			aggregateResults([[run(true)], [run(false)]], 2),
+			1234,
+			dir,
+			'exp-graded',
+			undefined,
+			undefined,
+			new Map([[directCase, 'graded-agent']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+
+		expect(report.testCases[0].scenarios[0].runs.map((r) => r.expectationGraded)).toEqual([
+			true,
+			true,
+		]);
+	});
+
+	it('leaves expectationGraded off a scenario graded by its success criteria', () => {
+		expect(writeAndRead().testCases[0].scenarios[0].runs[0]).not.toHaveProperty(
+			'expectationGraded',
+		);
 	});
 
 	it('leaves memoryConfig and memoryState off a workflow scenario run', () => {

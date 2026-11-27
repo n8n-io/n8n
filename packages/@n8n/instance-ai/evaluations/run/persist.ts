@@ -571,6 +571,8 @@ export function writeEvalResults(
 					...(sr.agentTurnCount !== undefined ? { agentTurnCount: sr.agentTurnCount } : {}),
 					...(sr.durationMs !== undefined ? { durationMs: sr.durationMs } : {}),
 					...(sr.agentTranscript ? { transcript: sr.agentTranscript } : {}),
+					// Graded by its expectations, so not a scored scenario unit (AGENT-1666).
+					...(isExpectationGraded(sa.scenario) ? { expectationGraded: true } : {}),
 					// Agent memory runs (AGENT-1666): the config the run used, the memory it stored.
 					...(sr.agentEvalResult?.memoryConfig
 						? { memoryConfig: sr.agentEvalResult.memoryConfig }
