@@ -18,6 +18,7 @@ import { ConflictError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 
+import { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
@@ -62,7 +63,7 @@ describe('AgentsService.create — client-minted id', () => {
 		});
 	});
 
-	it('makes the creating user the owner, or the project admin when no user creates', async () => {
+	it('makes the creating user or the draft creator the owner, or the project admin when nobody creates', async () => {
 		const admin = await createMember();
 		const editor = await createMember();
 		const project = await createTeamProject(undefined, admin);
@@ -72,9 +73,15 @@ describe('AgentsService.create — client-minted id', () => {
 			actor: { kind: 'user', user: editor },
 			user: editor,
 		});
+		const seeded = await Container.get(AgentDraftService).createDraft(
+			editor,
+			project.id,
+			'Seeded Agent',
+		);
 		const drafted = await agentsService.create(project.id, 'Drafted Agent', { actor });
 
 		expect(created.ownerUserId).toBe(editor.id);
+		expect((await agentRepo.findOneByOrFail({ id: seeded.agentId })).ownerUserId).toBe(editor.id);
 		expect(drafted.ownerUserId).toBe(admin.id);
 	});
 

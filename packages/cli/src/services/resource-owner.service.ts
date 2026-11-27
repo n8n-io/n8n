@@ -84,15 +84,16 @@ export class ResourceOwnerService {
 	}
 
 	async ownerForNewResource(
-		actor: User | undefined,
+		creator: { id: string } | undefined,
 		projectId: string,
 		type: OwnedResourceType,
 		ctx: OperationContext,
 	) {
-		if (actor && (await this.findValidOwnerIds([actor.id], projectId, ctx)).has(actor.id)) {
-			return actor.id;
+		if (creator && (await this.findValidOwnerIds([creator.id], projectId, ctx)).has(creator.id)) {
+			return creator.id;
 		}
-		return await this.resolveFallbackOwner(actor, projectId, type, ctx);
+		// A creator who is not a valid owner also fails the actor step of the fallback.
+		return await this.resolveFallbackOwner(undefined, projectId, type, ctx);
 	}
 
 	async reconcileAfterMove(
@@ -102,7 +103,7 @@ export class ResourceOwnerService {
 		ctx: OperationContext,
 	) {
 		const workflows = await this.workflowRepository.findOwners(workflowIds, ctx);
-		const ownerUserIds = workflows.flatMap(({ ownerUserId }) => ownerUserId ?? []);
+		const ownerUserIds = [...new Set(workflows.flatMap(({ ownerUserId }) => ownerUserId ?? []))];
 		const validOwnerIds = await this.findValidOwnerIds(ownerUserIds, destinationProjectId, ctx);
 
 		await this.replaceOwner(

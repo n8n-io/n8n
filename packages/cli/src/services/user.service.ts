@@ -394,7 +394,7 @@ export class UserService {
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
 	}
 
-	async changeUserRole(user: User, newRole: RoleChangeRequestDto) {
+	async changeUserRole(user: User, newRole: RoleChangeRequestDto, actor?: User) {
 		// Check that new role exists
 		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
 
@@ -454,7 +454,7 @@ export class UserService {
 						{
 							userId: user.id,
 							projectId: relation.projectId,
-							actor: undefined,
+							actor,
 							reason: 'member-removed',
 						},
 						ctx,
@@ -501,7 +501,7 @@ export class UserService {
 				);
 			}
 
-			await this.reassignResourcesOfFormerImplicitMember(user, newRole.newRoleName, ctx);
+			await this.reassignResourcesOfFormerImplicitMember(user, newRole.newRoleName, actor, ctx);
 		});
 
 		// Invalidate ownership cache for the user to ensure their new permissions are reflected in subsequent requests
@@ -511,6 +511,7 @@ export class UserService {
 	private async reassignResourcesOfFormerImplicitMember(
 		user: User,
 		newRoleSlug: string,
+		actor: User | undefined,
 		ctx: OperationContext,
 	) {
 		const isImplicitMember = (roleSlug: string) =>
@@ -518,7 +519,7 @@ export class UserService {
 		if (!isImplicitMember(user.role.slug) || isImplicitMember(newRoleSlug)) return;
 
 		await this.resourceOwnerService.reassignOwnedBy(
-			{ userId: user.id, actor: undefined, reason: 'role-changed' },
+			{ userId: user.id, actor, reason: 'role-changed' },
 			ctx,
 		);
 	}
@@ -877,7 +878,7 @@ export class UserService {
 			);
 		}
 
-		await this.changeUserRole(targetUser, payload);
+		await this.changeUserRole(targetUser, payload, actor);
 
 		this.eventService.emit('user-changed-role', {
 			userId: actor.id,

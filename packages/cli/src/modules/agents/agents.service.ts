@@ -360,7 +360,7 @@ export class AgentsService {
 		return await this.transactionRunner.run({}, async (ctx) => {
 			await this.agentServiceAccount.assignToNewAgent(agent, ctx);
 			agent.ownerUserId = await this.resourceOwnerService.ownerForNewResource(
-				options.user,
+				options.actor.kind === 'user' ? options.actor.user : undefined,
 				agent.projectId,
 				'agent',
 				ctx,

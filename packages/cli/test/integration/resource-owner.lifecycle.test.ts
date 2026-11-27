@@ -114,6 +114,14 @@ describe('Resource owner on lifecycle changes', () => {
 		expect(await ownerOf(workflow)).toBe(projectAdmin.id);
 	});
 
+	it('gives the workflows to the instance owner who makes a user a chat user', async () => {
+		await userService.changeGlobalRole(instanceOwner, leavingUser.id, {
+			newRoleName: 'global:chatUser',
+		});
+
+		expect(await ownerOf(workflow)).toBe(instanceOwner.id);
+	});
+
 	it('replaces a demoted instance admin as owner only in projects without a relation', async () => {
 		const instanceAdmin = await createAdmin();
 		await linkUserToProject(instanceAdmin, project, 'project:editor');
