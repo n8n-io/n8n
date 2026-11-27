@@ -846,6 +846,21 @@ describe('ProjectHeader', () => {
 			expect(getByTestId('add-resource-agent')).toBeEnabled();
 		});
 
+		it('omits the agent create action from both the main button and menu when excluded', () => {
+			settingsStore.isAgentsEnabled = true;
+			const project = createTestProject({ scopes: ['workflow:create', 'agent:create'] });
+			projectsStore.currentProject = project;
+			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { mainButton: 'agent', excludedCreateActions: ['agent'] },
+			});
+
+			expect(queryByTestId('add-resource-agent')).not.toBeInTheDocument();
+			expect(queryByTestId('menu-agent')).not.toBeInTheDocument();
+			expect(getByTestId('add-resource-workflow')).toBeEnabled();
+		});
+
 		it('should disable agent create button when no scope allows it', () => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
 			settingsStore.isAgentsEnabled = true;

@@ -72,7 +72,9 @@ async function onToggleProjectFavorite() {
 
 const projectPages = useProjectPages();
 
-const props = defineProps<SlotProjectHeaderProps>();
+const props = defineProps<
+	SlotProjectHeaderProps & { excludedCreateActions?: Array<'agent' | 'folder'> }
+>();
 
 const emit = defineEmits<{
 	createFolder: [];
@@ -283,7 +285,10 @@ const createSelfHealingButton = computed(() => ({
 }));
 
 const selectedMainButtonType = computed(() => {
-	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isAgentsEnabled) {
+	if (
+		props.mainButton === ACTION_TYPES.AGENT &&
+		(!settingsStore.isAgentsEnabled || props.excludedCreateActions?.includes(ACTION_TYPES.AGENT))
+	) {
 		return ACTION_TYPES.WORKFLOW;
 	}
 	if (props.mainButton === ACTION_TYPES.APP && !settingsStore.isAppsEnabled) {
@@ -395,7 +400,9 @@ const menu = computed(() => {
 		});
 	}
 
-	return items;
+	return items.filter(
+		({ value }) => !props.excludedCreateActions?.some((action) => action === value),
+	);
 });
 
 const showProjectIcon = computed(() => {
