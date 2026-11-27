@@ -12,6 +12,7 @@ export type DialogContentSize =
 	| 'large'
 	| 'xlarge'
 	| '2xlarge'
+	| '3xlarge'
 	| 'fit'
 	| 'full'
 	| 'cover';
@@ -93,6 +94,7 @@ const sizeClasses: Record<DialogContentSize, string> = {
 	large: $style.large,
 	xlarge: $style.xlarge,
 	'2xlarge': $style['2xlarge'],
+	'3xlarge': $style['3xlarge'],
 	fit: $style.fit,
 	full: $style.full,
 	cover: $style.cover,
@@ -316,6 +318,14 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 
 	@media (min-width: 640px) {
 		--dialog--max-width: 780px;
+	}
+}
+
+.\33xlarge {
+	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+
+	@media (min-width: 640px) {
+		--dialog--max-width: 920px;
 	}
 }
 
