@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_af367323ed1620::t_9fcc4ef2b9a0eb 127-132,146
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_af367323ed1620::t_208dd141ab15c5 1979-1983,2109
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.vue
+  s_af367323ed1620::t_dadefbaee54db7 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ff1c389eb1b4ea3b7e3df132b100431183b3d773",
+  "prompts": {},
+  "sessions": {
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
