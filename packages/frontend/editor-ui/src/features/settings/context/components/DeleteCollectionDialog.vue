@@ -22,6 +22,8 @@ const MAX_INLINE_AGENT_NAMES = 5;
 /** Rendered by the collections page while it deletes a collection: `close`, then `deleted`. */
 const props = defineProps<{
 	collection: KnowledgeCollectionDto;
+	/** The agents that the parent loaded already. Without them, the dialog loads them itself. */
+	agents?: KnowledgeCollectionAgentDto[];
 }>();
 
 const emit = defineEmits<{
@@ -35,7 +37,8 @@ const collectionsStore = useCollectionsStore();
 
 const deleting = ref(false);
 // Stays null while the names load and after a failed load.
-const agents = ref<KnowledgeCollectionAgentDto[] | null>(null);
+const loadedAgents = ref<KnowledgeCollectionAgentDto[] | null>(null);
+const agents = computed(() => props.agents ?? loadedAgents.value);
 
 const agentCount = computed(() => props.collection.agentCount);
 
@@ -51,12 +54,12 @@ function joinAgentNames(list: KnowledgeCollectionAgentDto[]) {
 }
 
 async function loadAgents() {
-	if (agentCount.value === 0) {
+	if (agentCount.value === 0 || props.agents) {
 		return;
 	}
 
 	try {
-		agents.value = await collectionsStore.listCollectionAgents(
+		loadedAgents.value = await collectionsStore.listCollectionAgents(
 			props.collection.homeProject.id,
 			props.collection.id,
 		);

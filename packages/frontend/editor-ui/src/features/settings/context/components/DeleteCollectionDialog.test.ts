@@ -133,6 +133,20 @@ describe('DeleteCollectionDialog', () => {
 		expect(queryByTestId('collection-delete-agents-trigger')).toBeNull();
 	});
 
+	it('names the agents that the parent passes, without loading them again', () => {
+		const { getByTestId } = renderDialog({
+			props: {
+				collection: collection({ agentCount: 2 }),
+				agents: agentsNamed(['FirstClassDarwin', 'Support agent']),
+			},
+		});
+
+		expect(getByTestId('collection-delete-agents-warning')).toHaveTextContent(
+			'2 agents use this collection and will stop answering from it: FirstClassDarwin, Support agent.',
+		);
+		expect(collectionsStore.listCollectionAgents).not.toHaveBeenCalled();
+	});
+
 	it('lists more than 5 agents as text in a tooltip that the count opens from the keyboard', async () => {
 		const names = ['Support agent', 'Support agent', '<b>x</b>', 'Ada', 'Billing', 'Darwin'];
 		collectionsStore.listCollectionAgents.mockResolvedValue(agentsNamed(names));
