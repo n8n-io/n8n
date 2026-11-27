@@ -42,10 +42,8 @@ type ConfigurationChange = InferTelemetryProps<
 
 const NO_ELIGIBLE_REVIEWER =
 	'No reviewer can edit these workflows. Add a reviewer who can edit them, or give a reviewer edit access.';
-const ASSISTANT_DISABLED =
-	"The n8n Assistant is disabled, so self-healing can't run. Ask an instance owner or admin to turn it on.";
-const ASSISTANT_SETUP_INCOMPLETE =
-	"The n8n Assistant isn't set up, so self-healing can't run. Ask an instance owner or admin to finish the setup.";
+const ASSISTANT_DISABLED = "The n8n Assistant is disabled, so self-healing can't run.";
+const ASSISTANT_SETUP_INCOMPLETE = "The n8n Assistant isn't set up, so self-healing can't run.";
 
 @Service()
 export class SelfHealingConfigurationService {
@@ -88,7 +86,7 @@ export class SelfHealingConfigurationService {
 
 	/**
 	 * Tells whether the n8n Assistant has a model and a sandbox for a run. A run does not
-	 * need web search. This reads the Assistant setup under its lock, so call it only when
+	 * need web search. This reads the Assistant setup from the database, so call it only when
 	 * a run is about to start or a user saves a configuration.
 	 */
 	async hasAssistantSetup(): Promise<boolean> {

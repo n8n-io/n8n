@@ -562,14 +562,12 @@ it.each([
 	{
 		assistantEnabled: false,
 		setupCompleted: true,
-		message:
-			"The n8n Assistant is disabled, so self-healing can't run. Ask an instance owner or admin to turn it on.",
+		message: "The n8n Assistant is disabled, so self-healing can't run.",
 	},
 	{
 		assistantEnabled: true,
 		setupCompleted: false,
-		message:
-			"The n8n Assistant isn't set up, so self-healing can't run. Ask an instance owner or admin to finish the setup.",
+		message: "The n8n Assistant isn't set up, so self-healing can't run.",
 	},
 ])(
 	'rejects creating or enabling a configuration when assistantEnabled=$assistantEnabled and setupCompleted=$setupCompleted, while keeping edits, pause, and delete available',
