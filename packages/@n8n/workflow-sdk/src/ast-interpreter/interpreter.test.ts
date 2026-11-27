@@ -426,9 +426,20 @@ describe('AST Interpreter', () => {
 			sdkFunctions = createMockSDKFunctions();
 		});
 
-		it('should reject arrow functions', () => {
+		it('should reject arrow functions with general guidance and scoped fromAi hint', () => {
 			const code = 'export default(() => 1);';
-			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(UnsupportedNodeError);
+			let caught: unknown;
+			try {
+				interpretSDKCode(code, sdkFunctions);
+			} catch (error) {
+				caught = error;
+			}
+			expect(caught).toBeInstanceOf(UnsupportedNodeError);
+			const message = (caught as UnsupportedNodeError).message;
+			expect(message).toContain(
+				'Arrow functions are not allowed. SDK code is a static subset of TypeScript: declare each node explicitly. For AI tool parameters, call fromAi() directly.',
+			);
+			expect(message).not.toContain('instead of ($) => $.fromAi()');
 		});
 
 		it('should reject function expressions', () => {

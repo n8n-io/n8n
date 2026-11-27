@@ -231,7 +231,7 @@ const ALLOWED_NODE_TYPES = new Set([
 /** Forbidden node types; remediation strings are reused in the SDK language reference. */
 export const FORBIDDEN_NODE_TYPES: Record<string, string> = {
 	ArrowFunctionExpression:
-		'Arrow functions are not allowed. Use fromAi() directly instead of ($) => $.fromAi()',
+		'Arrow functions are not allowed. SDK code is a static subset of TypeScript: declare each node explicitly. For AI tool parameters, call fromAi() directly.',
 	FunctionExpression: 'Function expressions are not allowed in SDK code',
 	FunctionDeclaration: 'Function declarations are not allowed in SDK code',
 	ClassDeclaration: 'Class declarations are not allowed in SDK code',
