@@ -177,7 +177,15 @@ vi.mock('../components/AgentGuardrailsSection.vue', () => ({
 	default: {
 		name: 'AgentGuardrailsSection',
 		template: '<div data-testid="agent-guardrails-section-stub"><slot name="approval" /></div>',
-		props: ['config', 'tools', 'projectId', 'agentId', 'disabled', 'validationIssues'],
+		props: [
+			'config',
+			'tools',
+			'projectId',
+			'agentId',
+			'disabled',
+			'validationIssues',
+			'reviewContext',
+		],
 		emits: ['update:config', 'update:budget-config'],
 	},
 }));
@@ -707,6 +715,19 @@ describe('AgentBuilderEditorColumn', () => {
 	it('keeps Approval hidden for new Agents when the module is disabled', async () => {
 		const wrapper = await mountColumn({ agentUnsaved: true });
 		expect(wrapper.findComponent({ name: 'AgentHitlPanel' }).exists()).toBe(false);
+	});
+
+	it('withholds the guardrail review context when the module is disabled', async () => {
+		const disabled = await mountColumn({ agentUnsaved: true });
+		expect(disabled.getComponent({ name: 'AgentGuardrailsSection' }).props('reviewContext')).toBe(
+			undefined,
+		);
+
+		// With the module on, the guardrail modal may create review destinations.
+		const enabled = await mountColumn({ humanReviewEnabled: true });
+		expect(
+			enabled.getComponent({ name: 'AgentGuardrailsSection' }).props('reviewContext'),
+		).toMatchObject({ agentId: 'agent-1' });
 	});
 
 	it('keeps Approval read-only on a new Agent without edit permission', async () => {

@@ -415,7 +415,7 @@ defineExpose({ onSetupTaskAction });
 							:agent-id="agentId"
 							:disabled="childrenDisabled"
 							:validation-issues="configValidationIssues ?? []"
-							:review-context="guardrailReviewContext"
+							:review-context="approvalDestinationsEnabled ? guardrailReviewContext : undefined"
 							@update:config="emit('update:config', $event)"
 							@update:budget-config="emit('update:budget-config', $event)"
 						>
