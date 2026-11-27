@@ -1,3 +1,4 @@
+import type { JsonObject } from '../common';
 import type {
 	StepError,
 	StepKey,
@@ -144,6 +145,7 @@ export interface StepStore {
 		id: string,
 		outputs: StepSlots,
 		outputSources: StepOutputSources | null,
+		metadata?: JsonObject,
 	): Promise<boolean>;
 
 	/**

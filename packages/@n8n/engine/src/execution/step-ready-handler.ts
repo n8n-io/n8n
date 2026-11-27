@@ -1,4 +1,4 @@
-import { UnexpectedError, UnimplementedError, type JsonValue } from '../common';
+import { UnexpectedError, UnimplementedError, type JsonObject, type JsonValue } from '../common';
 import type {
 	ExternalDependencies,
 	IStepExecutor,
@@ -118,7 +118,12 @@ export class StepReadyHandler {
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
 		let run:
-			| { kind: 'outputs'; outputs: StepSlots; outputSources: StepOutputSources | null }
+			| {
+					kind: 'outputs';
+					outputs: StepSlots;
+					outputSources: StepOutputSources | null;
+					metadata?: JsonObject;
+			  }
 			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
 			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
 			| { kind: 'error'; error: StepError };
@@ -135,7 +140,12 @@ export class StepReadyHandler {
 				} else if (result.subExecution) {
 					run = { kind: 'subExecution', subExecution: result.subExecution };
 				} else {
-					run = { kind: 'outputs', outputs: result.outputs, outputSources: null };
+					run = {
+						kind: 'outputs',
+						outputs: result.outputs,
+						outputSources: null,
+						metadata: result.metadata,
+					};
 				}
 			}
 		} catch (error) {
@@ -157,7 +167,12 @@ export class StepReadyHandler {
 
 		let recorded: boolean;
 		if (run.kind === 'outputs') {
-			recorded = await this.stepStore.completeStep(event.stepId, run.outputs, run.outputSources);
+			recorded = await this.stepStore.completeStep(
+				event.stepId,
+				run.outputs,
+				run.outputSources,
+				...(run.metadata ? [run.metadata] : []),
+			);
 		} else if (run.kind === 'wait') {
 			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
 		} else {

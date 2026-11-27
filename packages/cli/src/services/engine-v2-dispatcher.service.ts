@@ -1,3 +1,6 @@
+import { Logger } from '@n8n/backend-common';
+import { ExecutionLedger } from '@n8n/backend-services';
+import { TransactionRunner } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { SeededSteps, StartExecutionRequest } from '@n8n/engine';
 import {
@@ -226,7 +229,43 @@ export class EngineV2Dispatcher {
 			throw error;
 		}
 
+		await this.recordStarted(executionId, data);
 		return executionId;
+	}
+
+	/**
+	 * The `started` row of a top-level run, after the data plane accepted it, as on v1.
+	 * A crash between the `201` and this write loses the row: the start is not safe to repeat.
+	 */
+	private async recordStarted(executionId: string, data: IWorkflowExecutionDataProcess) {
+		const ledger = Container.get(ExecutionLedger);
+		if (!ledger.isEnabled) return;
+
+		const { workflowData } = data;
+		try {
+			await Container.get(TransactionRunner).run(
+				{},
+				async (ctx) =>
+					await ledger.recordStarted(
+						{
+							executionId,
+							workflowId: workflowData.id,
+							workflowName: workflowData.name,
+							mode: data.executionMode,
+							source: data.source,
+							projectId: data.projectId,
+							occurredAt: new Date(),
+							origin: 'v2',
+						},
+						ctx,
+					),
+			);
+		} catch (error) {
+			Container.get(Logger).error('Failed to write the started ledger row of a v2 run', {
+				executionId,
+				error,
+			});
+		}
 	}
 
 	/** Everything before the data plane is called, so no run exists if this fails. */
@@ -277,6 +316,7 @@ export class EngineV2Dispatcher {
 					hostMode: data.executionMode,
 					userId: data.userId,
 					projectId: data.projectId,
+					source: data.source,
 				},
 				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
 				// Only a run with a push ref has an editor session to relay events to.

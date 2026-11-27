@@ -11,6 +11,14 @@ export class InsightsModule implements ModuleInterface {
 	async init() {
 		await import('./insights.controller.js');
 
+		const { InsightsConfig } = await import('./insights.config.js');
+		if (Container.get(InsightsConfig).fromLedger) {
+			const { FoldStepRegistry } = await import('@n8n/db');
+			const { InsightsLedgerFoldStep } = await import('./insights-ledger.fold-step.js');
+			Container.get(FoldStepRegistry).register(Container.get(InsightsLedgerFoldStep));
+			return;
+		}
+
 		const { InsightsService } = await import('./insights.service.js');
 		await Container.get(InsightsService).init();
 	}

@@ -1,5 +1,6 @@
 import type {
 	GraphNode,
+	JsonObject,
 	IStepExecutor,
 	StepExecutionRequest,
 	StepExecutionResult,
@@ -69,7 +70,13 @@ function toStepResult(
 	}
 
 	const { waitTill } = context.runExecutionData;
-	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
+	if (waitTill === undefined) {
+		const { metadata } = context.getExecuteData();
+		return {
+			outputs: toStepOutputs(nodeResult),
+			...(metadata ? { metadata: metadata as unknown as JsonObject } : {}),
+		};
+	}
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
 		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
 		return { wait: { resumeBinding: context.resumeBinding } };

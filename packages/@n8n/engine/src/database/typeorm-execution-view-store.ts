@@ -5,6 +5,7 @@ import { parentLinkSql } from './parent-link-columns';
 import { UnexpectedError } from '../common';
 import { ENDED_EXECUTION_STATUSES } from '../execution/execution.types';
 import { ExecutionNotFoundError } from '../execution/execution-store';
+import { STALE_RUNNING_STEP_ERROR_NAME } from '../reconciliation/running-step-repair';
 import type {
 	EndedExecutionQuery,
 	EndedExecutionView,
@@ -171,6 +172,31 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect(parentLinkSql('execution'), 'parent')
 			.addSelect('execution.created_at', 'createdAt')
 			.addSelect('execution.finished_at', 'finishedAt')
+			.addSelect(
+				`COALESCE((SELECT min(step.created_at) FROM workflow_step_execution step
+					WHERE step.execution_id = execution.id AND step.node_id NOT IN (
+						SELECT node->>'id' FROM jsonb_array_elements(execution.graph->'nodes') node
+						WHERE node->>'type' = 'trigger')), execution.created_at)`,
+				'startedAt',
+			)
+			.addSelect("execution.workflow->'settings'->>'timeSavedMode'", 'timeSavedMode')
+			.addSelect(
+				"(execution.workflow->'settings'->>'timeSavedPerExecution')::float8",
+				'timeSavedPerExecution',
+			)
+			.addSelect(
+				`(SELECT COALESCE(sum((step.metadata->'timeSaved'->>'minutes')::float8), 0)
+					FROM workflow_step_execution step WHERE step.execution_id = execution.id)`,
+				'dynamicTimeSavedMin',
+			)
+			.addSelect("execution.caller_context->>'source'", 'source')
+			.addSelect(
+				`EXISTS (SELECT 1 FROM workflow_step_execution step
+					WHERE step.execution_id = execution.id AND step.status = 'failed'
+					AND step.error->>'name' = :sweepError)`,
+				'endedBySweep',
+			)
+			.setParameter('sweepError', STALE_RUNNING_STEP_ERROR_NAME)
 			.addSelect(
 				`(SELECT json_build_object(
 					'nodeId', failed.node_id,

@@ -2,7 +2,7 @@ import { In, LessThanOrEqual, type EntityManager, type Repository } from '@n8n/t
 
 import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
-import { UnexpectedError } from '../common';
+import { UnexpectedError, type JsonObject } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
 	isLiveExecutionStatus,
@@ -210,8 +210,13 @@ export class TypeOrmStepStore implements StepStore {
 		id: string,
 		outputs: StepSlots,
 		outputSources: StepOutputSources | null,
+		metadata?: JsonObject,
 	): Promise<boolean> {
-		return await this.transition(id, 'running', 'completed', { outputs, outputSources });
+		return await this.transition(id, 'running', 'completed', {
+			outputs,
+			outputSources,
+			...(metadata ? { metadata } : {}),
+		});
 	}
 
 	async suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean> {
@@ -401,6 +406,7 @@ export class TypeOrmStepStore implements StepStore {
 		fields: {
 			outputs?: StepSlots;
 			outputSources?: StepOutputSources | null;
+			metadata?: JsonObject;
 			error?: StepError;
 			waitDeclaration?: WaitDeclaration;
 			waitTill?: Date | null;

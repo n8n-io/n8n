@@ -1,3 +1,4 @@
+import type { JsonObject } from '../common';
 import type {
 	CallerContext,
 	SubExecutionResumeCause,
@@ -108,6 +109,8 @@ export type StepExecutionResult =
 	| {
 			/** Output slots; persisted by the engine without inspecting slot contents. */
 			outputs: StepSlots;
+			/** What the node recorded about its run, such as the time it saved. Stored, never read. */
+			metadata?: JsonObject;
 			wait?: never;
 			subExecution?: never;
 	  }

@@ -53,6 +53,8 @@ export interface CallerContext {
 	 * to the engine; a v1 host stores its `WorkflowExecuteMode` here.
 	 */
 	hostMode: string;
+	/** Who asked for the run, such as `user` or `instance_ai`. Opaque to the engine. */
+	source?: string;
 }
 
 /**

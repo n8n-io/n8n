@@ -16,6 +16,7 @@ import type {
 	StepStatus,
 	WaitDeclaration,
 } from '../../execution/execution.types';
+import type { JsonObject } from '../../common';
 import { generateId } from '../generate-id';
 
 @Entity('workflow_step_execution')
@@ -57,6 +58,10 @@ export class WorkflowStepExecution {
 
 	@Column('jsonb', { nullable: true })
 	error!: StepError | null;
+
+	/** What the executor recorded about the run, such as the time a node saved. */
+	@Column('jsonb', { nullable: true })
+	metadata!: JsonObject | null;
 
 	/**
 	 * What the step waits for, as its executor declared it. The engine reads the

@@ -46,6 +46,15 @@ export interface EndedExecutionItem {
 	parent: ParentLink | null;
 	createdAt: string;
 	finishedAt: string;
+	/** When the first step after the trigger was created: the engine stores no start time. */
+	startedAt: string;
+	timeSavedMode: string | null;
+	timeSavedPerExecution: number | null;
+	/** The sum of `metadata.timeSaved.minutes` over all step runs. */
+	dynamicTimeSavedMin: number;
+	source: string | null;
+	/** The reconciliation sweep ended the run. The control plane counts it as crashed. */
+	endedBySweep: boolean;
 	failedStep: {
 		nodeId: string;
 		nodeName: string | null;

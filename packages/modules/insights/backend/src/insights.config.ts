@@ -51,6 +51,13 @@ export class InsightsConfig {
 	flushIntervalSeconds: number = 30;
 
 	/**
+	 * Spike (GOV-401): count runs from the `ended` rows of the execution ledger, for v1 and v2,
+	 * and stop the in-memory collector. Needs the `execution-ledger` module.
+	 */
+	@Env('N8N_INSIGHTS_FROM_LEDGER')
+	fromLedger: boolean = false;
+
+	/**
 	 * How old (days) insights data must be to qualify for regular deletion.
 	 * Default: 365. Values are capped at 730 (two years).
 	 */

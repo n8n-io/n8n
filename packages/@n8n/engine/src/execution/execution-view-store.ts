@@ -80,6 +80,20 @@ export interface EndedExecutionView {
 	parent: ParentLink | null;
 	createdAt: Date;
 	finishedAt: Date;
+	/**
+	 * When the first step after the trigger was created. The engine stores no start
+	 * time, so this is the best available value. `createdAt` when no such step exists.
+	 */
+	startedAt: Date;
+	/** From the settings of the workflow snapshot. */
+	timeSavedMode: string | null;
+	timeSavedPerExecution: number | null;
+	/** The sum of `metadata.timeSaved.minutes` over all step runs. */
+	dynamicTimeSavedMin: number;
+	/** `callerContext.source`. */
+	source: string | null;
+	/** The reconciliation sweep failed a stalled step of the run. */
+	endedBySweep: boolean;
 	/** The first step that failed, or `null`. */
 	failedStep: {
 		nodeId: string;

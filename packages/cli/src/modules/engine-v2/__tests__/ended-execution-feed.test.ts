@@ -25,6 +25,12 @@ const item = (overrides: Partial<EndedExecutionItem> = {}): EndedExecutionItem =
 	parent: null,
 	createdAt: '2026-11-23T10:00:00.000Z',
 	finishedAt: '2026-11-23T10:00:02.000Z',
+	startedAt: '2026-11-23T10:00:00.100Z',
+	timeSavedMode: null,
+	timeSavedPerExecution: null,
+	dynamicTimeSavedMin: 0,
+	source: null,
+	endedBySweep: false,
 	failedStep: null,
 	...overrides,
 });
