@@ -357,7 +357,7 @@ describe('EvalAgentExecutionService with memory (AGENT-1666)', () => {
 		]);
 	});
 
-	it('does not mock the memory tools: recall_memory and flag_memory run for real and are reported', async () => {
+	it('reports the memory tools as unmocked calls: no mock intercepted a request behind them', async () => {
 		generate.mockResolvedValueOnce(
 			reply('Noted.', {
 				toolCalls: [
@@ -415,5 +415,45 @@ describe('EvalAgentExecutionService with memory (AGENT-1666)', () => {
 		});
 
 		expect(result.success).toBe(true);
+	});
+
+	it('reports no memory config on a single-shot run, which has no thread memory', async () => {
+		generate.mockResolvedValueOnce(reply('Hi.'));
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, {
+			projectId: 'proj-1',
+			agentRun: { keepMemory: true },
+		});
+
+		expect(result.memoryConfig).toBeUndefined();
+		expect(generate.mock.calls[0][1]).not.toHaveProperty('persistence');
+	});
+
+	it('names the failed and skipped memory tasks of the turn in "memory not settled"', async () => {
+		generate.mockImplementationOnce(async () => {
+			const task = {
+				id: 't1',
+				taskKind: 'episodic' as const,
+				observationScopeId: 'user-a',
+				status: 'running' as const,
+				queuedAt: new Date(),
+			};
+			for (const observer of observers) {
+				observer({ type: 'failed', task, error: new Error('embedding down') });
+				observer({ type: 'skipped', task: { ...task, id: 't2' }, reason: 'lock-held' });
+			}
+			return reply('Noted.');
+		});
+		memoryReader.pendingCandidateCount.mockResolvedValue(1);
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, {
+			...turn(THREAD_A, 'user-a', 'Hi'),
+			awaitMemory: true,
+		});
+
+		const message = result.errors.join(' ');
+		expect(message).toContain('memory not settled');
+		expect(message).toContain('episodic failed: embedding down');
+		expect(message).toContain('episodic skipped: lock-held');
 	});
 });

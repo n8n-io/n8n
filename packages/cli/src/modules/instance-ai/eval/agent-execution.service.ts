@@ -805,6 +805,8 @@ export class EvalAgentExecutionService {
 		const output = withTurnExtras(this.executionResult(run, preparation, seed, evidence), {
 			sideCalls,
 			memoryError,
+			// Only a turn with persistence used the memory config.
+			memoryConfig: memoryTurn ? config.memory : undefined,
 		});
 		return output.success
 			? { output, threadMessages: threadMessagesOf(run, output.finalText) }
@@ -833,12 +835,16 @@ export class EvalAgentExecutionService {
 	): Promise<string | undefined> {
 		const waitError = await this.waitForMemoryTasks(agent, deadline);
 		if (!memoryTurn.awaitMemory) return undefined;
-		if (waitError) return `memory not settled: ${waitError}`;
-		const { agentId, persistence } = memoryTurn;
+		const reason = waitError ?? (await this.pendingMemoryReason(memoryTurn));
+		return reason && `memory not settled: ${reason}${unfinishedMemoryTasks(memoryTurn.tasks)}`;
+	}
+
+	/** Flagged memories of the resource not yet turned into entries, or undefined. */
+	private async pendingMemoryReason({ agentId, persistence }: MemoryTurn) {
 		const reader = Container.get(EvalAgentMemoryReader);
 		const pending = await reader.pendingCandidateCount(agentId, persistence.resourceId);
 		if (pending === 0) return undefined;
-		return `memory not settled: ${String(pending)} flagged memories are still pending for ${persistence.resourceId}`;
+		return `${String(pending)} flagged memories are still pending for ${persistence.resourceId}`;
 	}
 
 	/** Why the agent's background tasks did not settle in the turn budget, or undefined. */
@@ -1001,7 +1007,6 @@ export class EvalAgentExecutionService {
 			seed,
 			skippedFeatures,
 			mockedCredentials: credentialHelpers.flatMap((helper) => helper.mockedCredentials),
-			...(config.memory?.enabled ? { memoryConfig: config.memory } : {}),
 		};
 	}
 
@@ -1070,16 +1075,33 @@ export class EvalAgentExecutionService {
 	}
 }
 
-/** Add the turn's side-call usage, and fail it when memory did not settle. */
+/** The turn's failed and skipped memory tasks, as a suffix for "memory not settled". */
+function unfinishedMemoryTasks(tasks: InstanceAiEvalAgentMemoryTask[]): string {
+	const unfinished = tasks.filter((task) => task.outcome !== 'completed');
+	if (unfinished.length === 0) return '';
+	const listed = unfinished.map(
+		(task) => `${task.taskKind} ${task.outcome}${task.error ? `: ${task.error}` : ''}`,
+	);
+	return ` (memory tasks this turn: ${listed.join('; ')})`;
+}
+
+/** Add the turn's side-call usage and, on a thread turn with memory, the memory
+ *  config; fail the turn when memory did not settle. */
 function withTurnExtras(
 	output: InstanceAiEvalAgentExecutionResult,
 	{
 		sideCalls,
 		memoryError,
-	}: { sideCalls: InstanceAiEvalAgentSideCallUsage[]; memoryError?: string },
+		memoryConfig,
+	}: {
+		sideCalls: InstanceAiEvalAgentSideCallUsage[];
+		memoryError?: string;
+		memoryConfig?: AgentJsonConfig['memory'];
+	},
 ): InstanceAiEvalAgentExecutionResult {
 	return {
 		...output,
+		...(memoryConfig ? { memoryConfig } : {}),
 		...(sideCalls.length > 0 ? { sideCallUsage: sideCalls } : {}),
 		...(memoryError ? { success: false, errors: [...output.errors, memoryError] } : {}),
 	};
