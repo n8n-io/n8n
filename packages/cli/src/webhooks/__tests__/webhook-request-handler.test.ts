@@ -12,6 +12,7 @@ import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import { ResponseError, OperationalError } from '@n8n/errors';
+import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 import { createStreamResponse } from '@/webhooks/webhook-response';
 import type {
@@ -63,6 +64,20 @@ describe('WebhookRequestHandler', () => {
 			code: 0,
 			message: 'The method CONNECT is not supported.',
 		});
+	});
+
+	it('should log an unknown webhook at warn', async () => {
+		webhookManager.executeWebhook.mockRejectedValueOnce(
+			new WebhookNotFoundError({ path: '/missing', httpMethod: 'GET' }),
+		);
+		const req = mock<WebhookRequest>({ path: '/missing', method: 'GET', headers: {} });
+		const res = mock<Response>({ headersSent: false });
+		res.status.mockReturnValue(res);
+
+		await handler(req, res);
+
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('unknown webhook'));
+		expect(logger.error).not.toHaveBeenCalled();
 	});
 
 	describe('preflight requests', () => {

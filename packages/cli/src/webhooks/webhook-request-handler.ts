@@ -99,7 +99,7 @@ class WebhookRequestHandler {
 			const logger = Container.get(Logger);
 
 			if (e instanceof WebhookNotFoundError) {
-				logger.error(`Received request for unknown webhook: ${e.message}`);
+				logger.warn(`Received request for unknown webhook: ${e.message}`);
 			} else {
 				logger.error(
 					`Error in handling webhook request ${req.method} ${req.path}: ${error.message}`,

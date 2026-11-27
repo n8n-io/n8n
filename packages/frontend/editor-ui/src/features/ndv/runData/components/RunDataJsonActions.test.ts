@@ -20,7 +20,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
 import { useI18n } from '@n8n/i18n';
-import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -114,32 +114,6 @@ async function createPiniaWithActiveNode() {
 												id: 3,
 												name: 'Second run 1',
 											},
-										},
-									],
-								],
-								ai_tool: [
-									[
-										{
-											json: { id: 4, name: 'Tool output' },
-										},
-									],
-									[
-										{
-											json: { id: 7, name: 'Tool branch 2 output' },
-										},
-									],
-								],
-								ai_memory: [
-									[
-										{
-											json: { id: 5, name: 'Memory output' },
-										},
-									],
-								],
-								ai_languageModel: [
-									[
-										{
-											json: { id: 6, name: 'Language model output' },
 										},
 									],
 								],
@@ -241,6 +215,23 @@ describe('RunDataJsonActions', () => {
 		'should copy unselected JSON output from the active %s connection branch %i',
 		async (connectionType, outputIndex, item) => {
 			const { pinia, activeNode } = await createPiniaWithActiveNode();
+			const connectionData = Array.from({ length: outputIndex + 1 }, (_, index) => [
+				{ json: index === outputIndex ? item : { id: 0, name: 'Other branch' } },
+			]);
+			const execution = createRunExecutionData({
+				resultData: {
+					runData: {
+						[activeNode!.name]: [
+							{
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: { [connectionType]: connectionData },
+							},
+						],
+					},
+				},
+			});
 			const renderComponent = createComponentRenderer(RunDataJsonActions, {
 				props: {
 					node: activeNode ?? undefined,
@@ -250,20 +241,24 @@ describe('RunDataJsonActions', () => {
 					selectedJsonPath: nonExistingJsonPath,
 					jsonData: [item],
 					outputIndex,
-					runIndex: 1,
+					runIndex: 0,
+					execution,
 					connectionType,
 				},
 				global: {
 					provide: {
 						[WorkflowIdKey as unknown as string]: computed(() => '1'),
 					},
+					mocks: {
+						$route: {
+							name: VIEWS.WORKFLOW,
+						},
+					},
 				},
 			});
-
 			const { getByTestId } = renderComponent({ pinia });
-
+			await waitFor(() => expect(getByTestId('ndv-json-actions')).toBeInTheDocument());
 			await fireEvent.click(within(getByTestId('ndv-json-actions')).getByRole('button'));
-
 			expect(copy).toHaveBeenCalledWith(JSON.stringify([item], null, 2));
 		},
 	);
