@@ -1104,6 +1104,7 @@ export class TestRunnerService {
 						await this.evaluationCollectionRepository.updateInsightsCache(
 							testRun.collectionId,
 							null,
+							{},
 						);
 					} catch (cacheError) {
 						this.logger.warn('Failed to bust eval-collection insights cache', {

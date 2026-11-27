@@ -149,21 +149,24 @@ export class EvaluationCollectionService {
 
 		// Persist before kicking off runs so each run can be tagged with
 		// `collectionId` at creation time.
-		const collection = await this.collectionRepo.createCollection({
-			id: nanoid(),
-			name: input.name,
-			description: input.description ?? null,
-			workflowId,
-			evaluationConfigId: input.evaluationConfigId,
-			createdById: user.id,
-		});
+		const collection = await this.collectionRepo.createCollection(
+			{
+				id: nanoid(),
+				name: input.name,
+				description: input.description ?? null,
+				workflowId,
+				evaluationConfigId: input.evaluationConfigId,
+				createdById: user.id,
+			},
+			{},
+		);
 
 		// Attach the runs the user wants to reuse.
 		const existingRunIds = input.versions
 			.filter((v) => v.existingTestRunId)
 			.map((v) => v.existingTestRunId!);
 		if (existingRunIds.length > 0) {
-			await this.collectionRepo.addRunsToCollection(collection.id, existingRunIds);
+			await this.collectionRepo.addRunsToCollection(collection.id, existingRunIds, {});
 		}
 
 		// Kick off runs for unmatched versions. "Current draft" entries snapshot a
@@ -221,7 +224,11 @@ export class EvaluationCollectionService {
 		// launch a wave: a second caller waits on the re-run lock, then sees the
 		// first's fresh runs below and bails.
 		return await this.withRerunLock(collectionId, async () => {
-			const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(collectionId, workflowId);
+			const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(
+				collectionId,
+				workflowId,
+				{},
+			);
 			if (!detail) throw new NotFoundError('Collection not found');
 			const { collection, runs } = detail;
 
@@ -284,6 +291,7 @@ export class EvaluationCollectionService {
 				await this.collectionRepo.removeRunsFromCollection(
 					collection.id,
 					runs.map((run) => run.id),
+					{},
 				);
 			} catch (error) {
 				// Restore the pre-rerun state (only the old runs linked): cancel the fresh
@@ -295,7 +303,7 @@ export class EvaluationCollectionService {
 					await this.testRunnerService.cancelTestRun(runId).catch(() => {});
 				}
 				try {
-					await this.collectionRepo.removeRunsFromCollection(collection.id, runsStartedIds);
+					await this.collectionRepo.removeRunsFromCollection(collection.id, runsStartedIds, {});
 				} catch (cleanupError) {
 					// The rollback unlink itself failed — the collection may now hold both
 					// the old and fresh runs. Surface it so the inconsistency isn't silent;
@@ -309,7 +317,7 @@ export class EvaluationCollectionService {
 			}
 
 			// Membership changed — the cached insights envelope is now stale.
-			await this.collectionRepo.updateInsightsCache(collection.id, null);
+			await this.collectionRepo.updateInsightsCache(collection.id, null, {});
 
 			this.telemetry.track('Eval collection rerun', {
 				user_id: user.id,
@@ -365,7 +373,7 @@ export class EvaluationCollectionService {
 	}
 
 	async listCollections(workflowId: string): Promise<EvaluationCollectionRecord[]> {
-		const items = await this.collectionRepo.listByWorkflowId(workflowId);
+		const items = await this.collectionRepo.listByWorkflowId(workflowId, {});
 		return items.map(({ runCount, ...c }) => this.toRecord(c, runCount));
 	}
 
@@ -373,7 +381,11 @@ export class EvaluationCollectionService {
 		workflowId: string,
 		collectionId: string,
 	): Promise<EvaluationCollectionDetail> {
-		const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(collectionId, workflowId);
+		const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(
+			collectionId,
+			workflowId,
+			{},
+		);
 		if (!detail) throw new NotFoundError('Collection not found');
 
 		// Collection-wide scales from the current config: the default for runs with
@@ -393,7 +405,7 @@ export class EvaluationCollectionService {
 		collectionId: string,
 		input: UpdateEvaluationCollectionPayload,
 	): Promise<EvaluationCollectionRecord> {
-		const updated = await this.collectionRepo.updateMeta(collectionId, workflowId, input);
+		const updated = await this.collectionRepo.updateMeta(collectionId, workflowId, input, {});
 		if (!updated) throw new NotFoundError('Collection not found');
 		const runCount = await this.testRunRepo.count({ where: { collectionId } });
 		return this.toRecord(updated, runCount);
@@ -406,7 +418,7 @@ export class EvaluationCollectionService {
 	): Promise<{ runsUnlinked: number }> {
 		// Verify ownership before any cancellation side effect, else a caller
 		// could trigger another workflow's cancellation before getting a 404.
-		const owned = await this.collectionRepo.findByIdAndWorkflowId(collectionId, workflowId);
+		const owned = await this.collectionRepo.findByIdAndWorkflowId(collectionId, workflowId, {});
 		if (!owned) throw new NotFoundError('Collection not found');
 
 		// Cancel active runs first so workers stop touching rows we're about to
@@ -425,6 +437,7 @@ export class EvaluationCollectionService {
 		const { deleted, runsUnlinked } = await this.collectionRepo.deleteByIdAndWorkflowId(
 			collectionId,
 			workflowId,
+			{},
 		);
 		if (!deleted) throw new NotFoundError('Collection not found');
 
@@ -443,7 +456,11 @@ export class EvaluationCollectionService {
 		collectionId: string,
 		testRunId: string,
 	): Promise<EvaluationCollectionDetail> {
-		const collection = await this.collectionRepo.findByIdAndWorkflowId(collectionId, workflowId);
+		const collection = await this.collectionRepo.findByIdAndWorkflowId(
+			collectionId,
+			workflowId,
+			{},
+		);
 		if (!collection) throw new NotFoundError('Collection not found');
 
 		const run = await this.testRunRepo.findOneBy({ id: testRunId });
@@ -462,9 +479,9 @@ export class EvaluationCollectionService {
 			);
 		}
 
-		await this.collectionRepo.addRunsToCollection(collectionId, [testRunId]);
+		await this.collectionRepo.addRunsToCollection(collectionId, [testRunId], {});
 		// Membership change invalidates the cached insights envelope.
-		await this.collectionRepo.updateInsightsCache(collectionId, null);
+		await this.collectionRepo.updateInsightsCache(collectionId, null, {});
 		return await this.getCollectionDetail(workflowId, collectionId);
 	}
 
@@ -473,17 +490,21 @@ export class EvaluationCollectionService {
 		collectionId: string,
 		testRunId: string,
 	): Promise<EvaluationCollectionDetail> {
-		const collection = await this.collectionRepo.findByIdAndWorkflowId(collectionId, workflowId);
+		const collection = await this.collectionRepo.findByIdAndWorkflowId(
+			collectionId,
+			workflowId,
+			{},
+		);
 		if (!collection) throw new NotFoundError('Collection not found');
 
-		const affected = await this.collectionRepo.removeRunFromCollection(collectionId, testRunId);
+		const affected = await this.collectionRepo.removeRunFromCollection(collectionId, testRunId, {});
 		if (affected === 0) {
 			throw new NotFoundError('Test run is not part of this collection');
 		}
 
 		// Same invariant as `addRunToCollection` — the comparable set shifted, so
 		// cached insights are stale.
-		await this.collectionRepo.updateInsightsCache(collectionId, null);
+		await this.collectionRepo.updateInsightsCache(collectionId, null, {});
 		return await this.getCollectionDetail(workflowId, collectionId);
 	}
 

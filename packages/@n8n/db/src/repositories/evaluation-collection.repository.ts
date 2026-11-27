@@ -1,9 +1,11 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
+import { BaseRepository } from './base-repository';
 import { EvaluationCollection } from '../entities/evaluation-collection.ee';
 import { TestRun } from '../entities/test-run.ee';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type EvaluationCollectionListItem = {
 	id: EvaluationCollection['id'];
@@ -18,21 +20,33 @@ export type EvaluationCollectionListItem = {
 	runCount: number;
 };
 
+class EvaluationCollectionTable extends BaseRepository<EvaluationCollection> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(EvaluationCollection, dataSource.manager, transactionRunner);
+	}
+}
+
 @Service()
-export class EvaluationCollectionRepository extends Repository<EvaluationCollection> {
-	constructor(dataSource: DataSource) {
-		super(EvaluationCollection, dataSource.manager);
+export class EvaluationCollectionRepository {
+	private readonly table: EvaluationCollectionTable;
+
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		this.table = new EvaluationCollectionTable(dataSource, transactionRunner);
 	}
 
-	async createCollection(input: {
-		id: string;
-		name: string;
-		description: string | null;
-		workflowId: string;
-		evaluationConfigId: string;
-		createdById: string | null;
-	}): Promise<EvaluationCollection> {
-		const entity = this.create({
+	async createCollection(
+		input: {
+			id: string;
+			name: string;
+			description: string | null;
+			workflowId: string;
+			evaluationConfigId: string;
+			createdById: string | null;
+		},
+		ctx: OperationContext,
+	): Promise<EvaluationCollection> {
+		const manager = this.table.managerFor(ctx);
+		const entity = manager.create(EvaluationCollection, {
 			id: input.id,
 			name: input.name,
 			description: input.description,
@@ -41,14 +55,17 @@ export class EvaluationCollectionRepository extends Repository<EvaluationCollect
 			createdById: input.createdById,
 			insightsCache: null,
 		});
-		return await this.save(entity);
+		return await manager.save(EvaluationCollection, entity);
 	}
 
 	async findByIdAndWorkflowId(
 		id: string,
 		workflowId: string,
+		ctx: OperationContext,
 	): Promise<EvaluationCollection | null> {
-		return await this.findOne({ where: { id, workflowId } });
+		return await this.table
+			.managerFor(ctx)
+			.findOne(EvaluationCollection, { where: { id, workflowId } });
 	}
 
 	/**
@@ -56,15 +73,19 @@ export class EvaluationCollectionRepository extends Repository<EvaluationCollect
 	 * page uses this — it does not need the full run rows, just the count and
 	 * the collection's own fields.
 	 */
-	async listByWorkflowId(workflowId: string): Promise<EvaluationCollectionListItem[]> {
-		const collections = await this.find({
+	async listByWorkflowId(
+		workflowId: string,
+		ctx: OperationContext,
+	): Promise<EvaluationCollectionListItem[]> {
+		const manager = this.table.managerFor(ctx);
+		const collections = await manager.find(EvaluationCollection, {
 			where: { workflowId },
 			order: { createdAt: 'DESC' },
 		});
 
 		if (collections.length === 0) return [];
 
-		const runCounts = await this.manager
+		const runCounts = await manager
 			.createQueryBuilder(TestRun, 'tr')
 			.select('tr.collectionId', 'collectionId')
 			.addSelect('COUNT(tr.id)', 'count')
@@ -89,11 +110,13 @@ export class EvaluationCollectionRepository extends Repository<EvaluationCollect
 	async getDetailByIdAndWorkflowId(
 		id: string,
 		workflowId: string,
+		ctx: OperationContext,
 	): Promise<{ collection: EvaluationCollection; runs: TestRun[] } | null> {
-		const collection = await this.findOne({ where: { id, workflowId } });
+		const manager = this.table.managerFor(ctx);
+		const collection = await manager.findOne(EvaluationCollection, { where: { id, workflowId } });
 		if (!collection) return null;
 
-		const runs = await this.manager.find(TestRun, {
+		const runs = await manager.find(TestRun, {
 			where: { collectionId: id },
 			order: { createdAt: 'ASC' },
 		});
@@ -101,17 +124,23 @@ export class EvaluationCollectionRepository extends Repository<EvaluationCollect
 		return { collection, runs };
 	}
 
-	async addRunsToCollection(collectionId: string, testRunIds: string[]): Promise<void> {
+	async addRunsToCollection(
+		collectionId: string,
+		testRunIds: string[],
+		ctx: OperationContext,
+	): Promise<void> {
 		if (testRunIds.length === 0) return;
-		await this.manager.update(TestRun, { id: In(testRunIds) }, { collectionId });
+		await this.table.managerFor(ctx).update(TestRun, { id: In(testRunIds) }, { collectionId });
 	}
 
-	async removeRunFromCollection(collectionId: string, testRunId: string): Promise<number> {
-		const result = await this.manager.update(
-			TestRun,
-			{ id: testRunId, collectionId },
-			{ collectionId: null },
-		);
+	async removeRunFromCollection(
+		collectionId: string,
+		testRunId: string,
+		ctx: OperationContext,
+	): Promise<number> {
+		const result = await this.table
+			.managerFor(ctx)
+			.update(TestRun, { id: testRunId, collectionId }, { collectionId: null });
 		return result.affected ?? 0;
 	}
 
@@ -120,13 +149,15 @@ export class EvaluationCollectionRepository extends Repository<EvaluationCollect
 	 * (e.g. replacing a collection's runs on re-run) applies atomically rather
 	 * than leaving a partial mix if it fails midway.
 	 */
-	async removeRunsFromCollection(collectionId: string, testRunIds: string[]): Promise<void> {
+	async removeRunsFromCollection(
+		collectionId: string,
+		testRunIds: string[],
+		ctx: OperationContext,
+	): Promise<void> {
 		if (testRunIds.length === 0) return;
-		await this.manager.update(
-			TestRun,
-			{ id: In(testRunIds), collectionId },
-			{ collectionId: null },
-		);
+		await this.table
+			.managerFor(ctx)
+			.update(TestRun, { id: In(testRunIds), collectionId }, { collectionId: null });
 	}
 
 	/**
@@ -141,30 +172,37 @@ export class EvaluationCollectionRepository extends Repository<EvaluationCollect
 	async deleteByIdAndWorkflowId(
 		id: string,
 		workflowId: string,
+		ctx: OperationContext,
 	): Promise<{ deleted: boolean; runsUnlinked: number }> {
-		const collection = await this.findOne({ where: { id, workflowId } });
+		const manager = this.table.managerFor(ctx);
+		const collection = await manager.findOne(EvaluationCollection, { where: { id, workflowId } });
 		if (!collection) return { deleted: false, runsUnlinked: 0 };
 
-		const runsUnlinked = await this.manager.count(TestRun, { where: { collectionId: id } });
+		const runsUnlinked = await manager.count(TestRun, { where: { collectionId: id } });
 
-		await this.delete({ id });
+		await manager.delete(EvaluationCollection, { id });
 
 		return { deleted: true, runsUnlinked };
 	}
 
-	async updateInsightsCache(id: string, insights: IDataObject | null): Promise<void> {
-		await this.update(id, { insightsCache: insights });
+	async updateInsightsCache(
+		id: string,
+		insights: IDataObject | null,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.table.managerFor(ctx).update(EvaluationCollection, id, { insightsCache: insights });
 	}
 
 	async updateMeta(
 		id: string,
 		workflowId: string,
 		payload: { name?: string; description?: string | null },
+		ctx: OperationContext,
 	): Promise<EvaluationCollection | null> {
-		const existing = await this.findByIdAndWorkflowId(id, workflowId);
+		const existing = await this.findByIdAndWorkflowId(id, workflowId, ctx);
 		if (!existing) return null;
 		if (payload.name !== undefined) existing.name = payload.name;
 		if (payload.description !== undefined) existing.description = payload.description;
-		return await this.save(existing);
+		return await this.table.managerFor(ctx).save(EvaluationCollection, existing);
 	}
 }

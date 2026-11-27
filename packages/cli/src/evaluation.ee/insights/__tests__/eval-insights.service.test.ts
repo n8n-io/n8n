@@ -196,7 +196,7 @@ describe('EvalInsightsService', () => {
 			]);
 			expect(generateMock).toHaveBeenCalledTimes(1);
 			// A successful envelope is cached.
-			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', result);
+			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', result, {});
 		});
 
 		it('retries once with a stricter prompt when the first output is invalid', async () => {

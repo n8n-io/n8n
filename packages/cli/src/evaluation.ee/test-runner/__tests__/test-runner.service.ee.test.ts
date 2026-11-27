@@ -2687,6 +2687,7 @@ describe('TestRunnerService', () => {
 				expect(evaluationCollectionRepository.updateInsightsCache).toHaveBeenCalledWith(
 					'col-x',
 					null,
+					{},
 				);
 			});
 
@@ -2732,6 +2733,7 @@ describe('TestRunnerService', () => {
 				expect(evaluationCollectionRepository.updateInsightsCache).toHaveBeenCalledWith(
 					'col-y',
 					null,
+					{},
 				);
 			});
 		});

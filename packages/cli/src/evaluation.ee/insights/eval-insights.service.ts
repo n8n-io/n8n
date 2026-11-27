@@ -115,7 +115,11 @@ export class EvalInsightsService {
 			throw new NotFoundError('Collection not found');
 		}
 
-		const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(collectionId, workflowId);
+		const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(
+			collectionId,
+			workflowId,
+			{},
+		);
 		if (!detail) {
 			throw new NotFoundError('Collection not found');
 		}
@@ -195,7 +199,7 @@ export class EvalInsightsService {
 		// Cache only successful envelopes; a fallback stays uncached so the next
 		// view re-attempts the LLM (see the cache short-circuit above).
 		if (response.status === 'ok') {
-			await this.collectionRepo.updateInsightsCache(collectionId, response);
+			await this.collectionRepo.updateInsightsCache(collectionId, response, {});
 		}
 
 		this.telemetry.track('Eval collection insights generated', {
