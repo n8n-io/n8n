@@ -1,0 +1,206 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentRedactedTurnsNotice.vue
+  s_af367323ed1620::t_3f251ce65c3c22 1-32
+packages/cli/test/integration/agents/agent-thread-redaction.api.test.ts
+  s_af367323ed1620::t_3210a59eabc174 154
+  s_af367323ed1620::t_3fc61e6870ea46 1-124,135-153,155-175,179-180,183-185,187,192,194,198-199,201,205,208,211,213-215,219-221,223-224,228-230
+  s_af367323ed1620::t_c7b9f4df3f34c9 125-134
+  s_af367323ed1620::t_b696b03c136701 176-178,190
+  s_af367323ed1620::t_c2c568032acb82 181-182,186,188-189,191,193,195-197,200,202-204,206-207,209-210,212,216-218,222,225-227,231-429
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentThreadsApi.test.ts
+  s_af367323ed1620::t_4e6d711f59f335 78-92
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_af367323ed1620::t_0e0126b0b1f625 37-38
+  s_af367323ed1620::t_fd3c3ec602becd 22-23
+  s_af367323ed1620::t_e1d4dbec93ea83 5
+packages/frontend/editor-ui/src/features/agents/components/AgentChatRedactedReply.vue
+  s_af367323ed1620::t_0e9da653b9cb8c 1-25
+packages/cli/src/modules/agents/agent-thread-redaction.service.ts
+  s_af367323ed1620::t_bc998c5dbf489d 1-88,90-91,93-127,131-151,156,158,162,165,197-198,201-202,212,214,221,223,225,235,237,242,251,277-278
+  s_af367323ed1620::t_b31eee4ce6b083 89
+  s_af367323ed1620::t_a8d32d31c32aff 92
+  s_af367323ed1620::t_4cb61a18683f0f 128-130
+  s_af367323ed1620::t_f8ba09864bc354 152-153,176,199,211,222
+  s_af367323ed1620::t_9485edbc32ec14 154-155,157,159-161,163-164,166-175,177-196,200,203-210,213,215-220,224,226-234,236,238-241,243-250,252-276,279-521
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_af367323ed1620::t_1b607e1984e34d 275-277
+  s_af367323ed1620::t_445079ffbc46b6 273,278,411-420,474-475
+  s_af367323ed1620::t_e7b44e4397323d 279-280
+  s_af367323ed1620::t_70c4d107b1fee7 259-272,274,461-473
+packages/cli/src/modules/agents/__tests__/agent-thread-redaction.service.test.ts
+  s_af367323ed1620::t_94ffa54236e604 173,280
+  s_af367323ed1620::t_7c9ae7f644f790 275-277
+  s_af367323ed1620::t_2e9255eae80ee9 1-172,174-274,281-282,286,288,291,294,296,299-300,302,304-309,349-350,353-358,361-363,370,373,378,380-381,383,385-390,396,398-403,407-410,416,419-422,429-430,433-436,439-440,443,445-447,450-451,455-458,460-461,465,470-471,473-474,477,489,491-494,496,499-502,510,516,520,523-524,527-528,534,547,551
+  s_af367323ed1620::t_3b00c0e080428a 278-279,283-285,287,289-290,292-293,295,297-298,301,303,310-348,351-352,359-360,364-369,371-372,374-377,379,382,384,391-395,397,404-406,411-415,417-418,423-428,431-432,437-438,441-442,444,448-449,452-454,459,462-464,466-469,472,475-476,478-488,490,495,497-498,503-509,511-515,517-519,521-522,525-526,529-533,535-546,548-550,552
+packages/cli/src/modules/agents/__tests__/test-utils/thread-reader.ts
+  s_af367323ed1620::t_26bd9f70c5c298 1-19
+packages/@n8n/api-types/src/agents/agent-config-validation.schema.ts
+  s_af367323ed1620::t_6fba60dd640d2f 87-90,95-110
+packages/@n8n/api-types/src/agents/types.ts
+  s_af367323ed1620::t_4d50aa0d8dd58b 534-547,642-646,729-734
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_af367323ed1620::t_d48dc9459d03ff 13,432-470,980
+packages/cli/src/modules/agents/__tests__/agent-context.service.test.ts
+  s_af367323ed1620::t_88e64a7106a572 651,734
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_af367323ed1620::t_beda8ddbff70cd 99,4438-4443,4480-4485,4505,4513,4533
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_af367323ed1620::t_8bf4754b7ec5e1 35,137,179,1074,1185,1999,2096,2135-2139,2537-2542,2594-2599,2619-2624,2642-2647,2687-2692,2711-2716,2732,2814,2828,2852,2884,2913,2932-2934
+packages/cli/src/modules/agents/__tests__/agent-memory-trace.service.test.ts
+  s_af367323ed1620::t_eec5d2c096af35 180-203
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_af367323ed1620::t_3004a09747735e 1,175
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_af367323ed1620::t_df0e0ff28ce411 1,94
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_af367323ed1620::t_8e08645cacdd32 1,166,181,207,722-812,1424-1428
+packages/cli/src/modules/agents/__tests__/agent-session-langsmith-export.service.test.ts
+  s_af367323ed1620::t_d3152ac818624e 277,284
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_af367323ed1620::t_a3cbe8e0e0a9be 1320-1363
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_af367323ed1620::t_e6ce881fa09c0e 520-521,547-548
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_af367323ed1620::t_5aee4358ecbe11 1,165
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_af367323ed1620::t_c8aeb03d91cdce 747-764
+packages/cli/src/modules/agents/__tests__/messages-envelope.test.ts
+  s_af367323ed1620::t_31e6aa603871b4 436-492
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_af367323ed1620::t_d326acebe69f98 46-50,111-144,511,548,565-573,881-886,888-892,1155,1188-1191,1193-1206,1233-1241,1269-1274,1314-1346
+packages/cli/src/modules/agents/agent-context.service.ts
+  s_af367323ed1620::t_901ed089464764 137-139,325
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_af367323ed1620::t_ebb4a44b624e13 108,121,463-464,468,474,488,495,500-507
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_af367323ed1620::t_d667903949a0f6 21,57-61,94-98,101-116,256,1089,1103,1107,1112,1128,1133,1153-1298
+packages/cli/src/modules/agents/agent-memory-trace.service.ts
+  s_af367323ed1620::t_800946005742d5 45-46
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_af367323ed1620::t_c77cea3d0fc930 51,58-62,359-360,385,457,507-513,587,610-617,636,677,720-727,731-754,796-806,834-840
+packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
+  s_af367323ed1620::t_c23ef0296e68b1 90,131,139-141,157
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_af367323ed1620::t_e2f43bc1ecc718 12,63
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_af367323ed1620::t_7a009a1edaf5a3 348-351,374-411
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_af367323ed1620::t_7a4bd72d2fd27c 9,131-132
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_af367323ed1620::t_fc15a85bc8748b 1545-1569
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_af367323ed1620::t_96ba699865a240 8-18,229-230,252-253,261,290,292,1427-1429,1431,1433,1622-1627
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_af367323ed1620::t_a2382874e7141f 227-228,257-258,267,274,289
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_af367323ed1620::t_2772640e0a9bfe 138-155
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_af367323ed1620::t_ac202d58894db1 449
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-turn-events.service.test.ts
+  s_af367323ed1620::t_52465a85fa32c0 36-53
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_af367323ed1620::t_264987f48979dd 26,171,301,326-335,356-362
+packages/cli/src/modules/agents/system-agents/system-agent-turn-events.service.ts
+  s_af367323ed1620::t_f773a3e453226b 33-41
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-result-outputs.test.ts
+  s_af367323ed1620::t_25c2bf7939bb0f 1-63
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_af367323ed1620::t_528d85ea708d2c 31,37,497-500,594-614,620,623-625,655-661,865-871
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_af367323ed1620::t_7f10b57f2919dc 20,258-259,270,323-324
+packages/cli/src/modules/agents/utils/messages-envelope.ts
+  s_af367323ed1620::t_f2b350c94916ef 182-185,190-194,197,200-215
+packages/cli/src/modules/apps/bindings/app-agent.adapter.ts
+  s_af367323ed1620::t_87a013bb7f1b65 213-214
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_af367323ed1620::t_49274fec334928 1952-1964
+packages/cli/test/integration/agents/system-agent-user-deletion.test.ts
+  s_af367323ed1620::t_48f82d03e1c1cc 47,191,225,325,396
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_af367323ed1620::t_5a3c91eff1e017 121-124,257,1488,1528,1882,2189,3135,3469-3474,3951,3975,4086-4091,4189-4196,4333-4334,4337,4468
+packages/cli/test/integration/shared/types.ts
+  s_af367323ed1620::t_e41184447dec79 73
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_af367323ed1620::t_a01eea86a6961b 2104-2107,10371
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatActivity.test.ts
+  s_af367323ed1620::t_8f0a845350872c 711-731
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatBackgroundJobSignal.test.ts
+  s_af367323ed1620::t_c69732d55228a5 20-29
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_af367323ed1620::t_10fc8dce3d79b6 176-224
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_af367323ed1620::t_1a840261e5d5bb 4,24,145-148,259,395-397,444-445,1478-1574
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_af367323ed1620::t_1f12d365cc99d3 9-10,21,54-57,868-982
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionBackgroundTaskItem.test.ts
+  s_af367323ed1620::t_8850bc905d2453 28-43
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionCapabilityItem.test.ts
+  s_af367323ed1620::t_34de93c46a42e9 147-189
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_af367323ed1620::t_a594fb587f4fa6 130-133,143,411-441
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_af367323ed1620::t_aeb084ae75a21f 18,1453-1512
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_af367323ed1620::t_e999f54ec9413d 3540-3722
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_af367323ed1620::t_23e1848c7290f1 199,208
+packages/frontend/editor-ui/src/features/agents/components/AgentChatBackgroundJobSignal.vue
+  s_af367323ed1620::t_5861853d395334 6-9,31-33
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_af367323ed1620::t_6bebceaf3951fa 55,243-251,817-819,997,999
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_af367323ed1620::t_90d7889210e787 79-81,322-324,377,381-397,698-705,778,1832,1843-1858,2252-2259
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_af367323ed1620::t_ecf0911c8e1038 9-11,30,95-102,114,239-260,437-438,448,454,457-460,480-491,593-599,678-683
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_af367323ed1620::t_661e2471940b16 22,136
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_af367323ed1620::t_d6e6385aff13ce 20,162-187,466-473
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionBackgroundTaskItem.vue
+  s_af367323ed1620::t_5004bcb64f41a1 13,37-38,40
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionCapabilityItem.vue
+  s_af367323ed1620::t_59257bc6a850ed 100-109,181-190,209-218,346-354
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionMessageItem.spec.ts
+  s_af367323ed1620::t_1b70680987b529 108-124
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionMessageItem.vue
+  s_af367323ed1620::t_21173d8068a7de 90-100,181-186
+packages/frontend/editor-ui/src/features/agents/composables/useAgentActivityItems.ts
+  s_af367323ed1620::t_d4dcc7e2059ec2 181,199-206,220-221
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_af367323ed1620::t_82eb1a8cb285ab 1102-1106,1118,1121-1133,1200-1206,1209-1210,1212,1217,1226-1233
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_af367323ed1620::t_2f93fd891f5144 220-230,281,285-286,295,301,310,316,332-333,361,373,375-379,428-458,474-475,477-480,490,516-532,781-782,2327-2329
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_af367323ed1620::t_a81da4aea5795d 10,127-128,181,187-192
+packages/frontend/editor-ui/src/features/agents/composables/useConfirmRevealData.ts
+  s_af367323ed1620::t_debc3165078e5d 1-31
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_af367323ed1620::t_7803ca41623992 106-110
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_af367323ed1620::t_5c094f067c0976 439-440,448,835,937,1032-1047
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/background-job-labels.test.ts
+  s_af367323ed1620::t_470623271ad68d 1-27
+packages/frontend/editor-ui/src/features/agents/utils/background-job-labels.ts
+  s_af367323ed1620::t_fa1fba578d0666 42-52,59
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.redaction.test.ts
+  s_af367323ed1620::t_f7158e078974ab 1-64
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_af367323ed1620::t_4212943281f5bf 315,393-394,408,450
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_af367323ed1620::t_517c7703097f61 61-62,202-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b839e0b3a997f10b5f0bbd569d6b3eb3c59ef48b",
+  "prompts": {},
+  "sessions": {
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
