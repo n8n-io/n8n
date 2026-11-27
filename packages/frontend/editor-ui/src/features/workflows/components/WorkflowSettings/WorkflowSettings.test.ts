@@ -8,7 +8,13 @@ import { SYSTEM_RESOLVER_ID, type FrontendSettings } from '@n8n/api-types';
 import { i18n, i18nInstance } from '@n8n/i18n';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
-import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
+import {
+	getDropdownItems,
+	getTooltip,
+	hoverTooltipTrigger,
+	mockedStore,
+	type MockedStore,
+} from '@/__tests__/utils';
 import {
 	EnterpriseEditionFeature,
 	EXECUTE_WORKFLOW_NODE_TYPE,
@@ -19,6 +25,7 @@ import { useRBACStore } from '@n8n/stores/rbac.store';
 import WorkflowSettingsVue from '@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -577,6 +584,51 @@ describe('WorkflowSettingsVue', () => {
 				'1',
 				expect.objectContaining({
 					settings: expect.objectContaining({ executionTimeout: -1 }),
+				}),
+			);
+		});
+
+		it('explains the instance maximum in the timeout tooltip', async () => {
+			useRootStore().setMaxExecutionTimeout(3600);
+			workflowDocumentStore.setSettings({ executionTimeout: 60 });
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const help = within(getByTestId('workflow-settings-timeout-form')).getByRole('button', {
+				name: 'More info about Timeout After',
+			});
+			await hoverTooltipTrigger(help);
+
+			await waitFor(() => {
+				expect(getTooltip()).toHaveTextContent(
+					'How long the workflow should wait before timing out. The maximum is 1 hour.',
+				);
+			});
+		});
+
+		it('keeps the fields within the instance maximum', async () => {
+			useRootStore().setMaxExecutionTimeout(3600);
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-timeout-workflow'));
+			const form = getByTestId('workflow-settings-timeout-form');
+			await setTimeoutValue(form, 'minutes', '30');
+			await setTimeoutValue(form, 'hours', '1');
+			await userEvent.tab();
+
+			expect(getTimeoutInput(form, 'hours')).toHaveValue('1');
+			expect(getTimeoutInput(form, 'minutes')).toHaveValue('0');
+			expect(getTimeoutInput(form, 'seconds')).toHaveValue('0');
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ executionTimeout: 3600 }),
 				}),
 			);
 		});

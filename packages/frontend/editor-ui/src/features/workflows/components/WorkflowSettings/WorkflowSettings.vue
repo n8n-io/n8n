@@ -499,14 +499,106 @@ const closeDialog = () => {
 	});
 };
 
+const TIMEOUT_FIELD_MAX = 60;
+
+// A cap of 0 or less means the instance sets no maximum.
+const executionTimeoutCapSeconds = computed(() => {
+	const cap = workflowSettings.value.maxExecutionTimeout;
+	if (typeof cap !== 'number' || cap <= 0) return undefined;
+	return cap;
+});
+
+const formatTimeoutPart = (count: number, oneKey: string, manyKey: string) => {
+	if (count <= 0) return undefined;
+	if (count === 1) return i18n.baseText(oneKey);
+	return i18n.baseText(manyKey, { interpolate: { count } });
+};
+
+const formatTimeoutCap = (capSeconds: number) => {
+	const parts = [
+		formatTimeoutPart(
+			Math.floor(capSeconds / 3600),
+			'workflowSettings.timeoutMaximum.hour',
+			'workflowSettings.timeoutMaximum.hours',
+		),
+		formatTimeoutPart(
+			Math.floor((capSeconds % 3600) / 60),
+			'workflowSettings.timeoutMaximum.minute',
+			'workflowSettings.timeoutMaximum.minutes',
+		),
+		formatTimeoutPart(
+			capSeconds % 60,
+			'workflowSettings.timeoutMaximum.second',
+			'workflowSettings.timeoutMaximum.seconds',
+		),
+	].filter((part): part is string => part !== undefined);
+
+	if (parts.length <= 1) return parts[0] ?? '';
+	if (parts.length === 2) {
+		return i18n.baseText('workflowSettings.timeoutMaximum.pair', {
+			interpolate: { first: parts[0], second: parts[1] },
+		});
+	}
+	return i18n.baseText('workflowSettings.timeoutMaximum.list', {
+		interpolate: { items: parts.slice(0, -1).join(', '), last: parts[parts.length - 1] },
+	});
+};
+
+const executionTimeoutTooltip = computed(() => {
+	const description = i18n.baseText('workflowSettings.helpTexts.executionTimeout');
+	const cap = executionTimeoutCapSeconds.value;
+	if (cap === undefined) return description;
+	return i18n.baseText('workflowSettings.helpTexts.executionTimeoutWithMaximum', {
+		interpolate: { description, maximum: formatTimeoutCap(cap) },
+	});
+});
+
+// The cap is one total. Each field stops at the time still available.
+const timeoutFieldMax = computed(() => {
+	const cap = executionTimeoutCapSeconds.value;
+	const { hours, minutes } = timeoutHMS.value;
+	if (cap === undefined) {
+		return { hours: undefined, minutes: TIMEOUT_FIELD_MAX, seconds: TIMEOUT_FIELD_MAX };
+	}
+
+	const maxHours = Math.floor(cap / 3600);
+	const maxMinutes = Math.min(
+		TIMEOUT_FIELD_MAX,
+		Math.max(0, Math.floor((cap - hours * 3600) / 60)),
+	);
+	const maxSeconds = Math.min(TIMEOUT_FIELD_MAX, Math.max(0, cap - hours * 3600 - minutes * 60));
+	return { hours: maxHours, minutes: maxMinutes, seconds: maxSeconds };
+});
+
+const clampTimeout = (value: ITimeoutHMS): ITimeoutHMS => {
+	const cap = executionTimeoutCapSeconds.value;
+	let { hours, minutes, seconds } = value;
+	if (cap === undefined) {
+		return {
+			hours,
+			minutes: Math.min(TIMEOUT_FIELD_MAX, minutes),
+			seconds: Math.min(TIMEOUT_FIELD_MAX, seconds),
+		};
+	}
+
+	hours = Math.min(hours, Math.floor(cap / 3600));
+	minutes = Math.min(
+		TIMEOUT_FIELD_MAX,
+		minutes,
+		Math.max(0, Math.floor((cap - hours * 3600) / 60)),
+	);
+	seconds = Math.min(TIMEOUT_FIELD_MAX, seconds, Math.max(0, cap - hours * 3600 - minutes * 60));
+	return { hours, minutes, seconds };
+};
+
 const setTheTimeout = (key: string, value: string | number | null | undefined) => {
 	const parsed = typeof value === 'number' ? value : value ? parseInt(value, 10) : 0;
 	const time = Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0;
 
-	timeoutHMS.value = {
+	timeoutHMS.value = clampTimeout({
 		...timeoutHMS.value,
 		[key]: time,
-	};
+	});
 };
 
 const loadWorkflowCallerPolicyOptions = async () => {
@@ -1045,7 +1137,7 @@ onMounted(async () => {
 		workflowSettings.value.credentialResolverId = undefined;
 	}
 
-	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
+	timeoutHMS.value = clampTimeout(convertToHMS(workflowSettingsData.executionTimeout));
 	isLoading.value = false;
 
 	void externalHooks.run('workflowSettings.dialogVisibleChanged', {
@@ -1332,7 +1424,7 @@ onBeforeUnmount(() => {
 							<template #info>
 								<WorkflowSettingsRowTitle
 									:title="i18n.baseText('workflowSettings.timeoutAfter')"
-									:tooltip="helpTexts.executionTimeout"
+									:tooltip="executionTimeoutTooltip"
 								/>
 							</template>
 							<template #action>
@@ -1348,6 +1440,7 @@ onBeforeUnmount(() => {
 											:disabled="readOnlyEnv || !workflowPermissions.update"
 											:model-value="timeoutHMS.hours"
 											:min="0"
+											:max="timeoutFieldMax.hours"
 											@update:model-value="(value) => setTheTimeout('hours', value)"
 										/>
 									</label>
@@ -1362,7 +1455,7 @@ onBeforeUnmount(() => {
 											:disabled="readOnlyEnv || !workflowPermissions.update"
 											:model-value="timeoutHMS.minutes"
 											:min="0"
-											:max="60"
+											:max="timeoutFieldMax.minutes"
 											@update:model-value="(value) => setTheTimeout('minutes', value)"
 										/>
 									</label>
@@ -1377,7 +1470,7 @@ onBeforeUnmount(() => {
 											:disabled="readOnlyEnv || !workflowPermissions.update"
 											:model-value="timeoutHMS.seconds"
 											:min="0"
-											:max="60"
+											:max="timeoutFieldMax.seconds"
 											@update:model-value="(value) => setTheTimeout('seconds', value)"
 										/>
 									</label>
@@ -2039,6 +2132,12 @@ onBeforeUnmount(() => {
 	align-items: flex-end;
 	gap: var(--spacing--2xs);
 	width: 100%;
+	padding-block: var(--spacing--xs);
+
+	// The vertical row already has space under the control.
+	.workflow-settings--vertical & {
+		padding-block: 0;
+	}
 }
 
 .timeoutField {
