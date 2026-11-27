@@ -81,6 +81,7 @@ describe('Person Entity', () => {
 				firstName: 'Don',
 				lastName: 'Joe',
 				password: '123456789',
+				sessionGeneration: 2,
 			});
 			expect(JSON.stringify(person)).toEqual(
 				'{"kind":"person","email":"test@example.com","firstName":"Don","lastName":"Joe"}',
@@ -243,6 +244,7 @@ describe('User type', () => {
 		'personalizationAnswers',
 		'mfaEnabled',
 		'mfaRecoveryCodes',
+		'sessionGeneration',
 		'lastActiveAt',
 		'isPending',
 		'authIdentities',

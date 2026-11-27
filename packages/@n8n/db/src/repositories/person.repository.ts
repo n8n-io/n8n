@@ -203,8 +203,26 @@ export class PersonRepository {
 		await this.table.update({ id }, { personalizationAnswers: answers });
 	}
 
+	async enableMfa(id: string): Promise<void> {
+		await this.table.update(
+			{ id },
+			{
+				mfaEnabled: true,
+				sessionGeneration: () => '"sessionGeneration" + 1',
+			},
+		);
+	}
+
 	async disableMfa(id: string): Promise<void> {
-		await this.table.update({ id }, { mfaEnabled: false, mfaSecret: null, mfaRecoveryCodes: [] });
+		await this.table.update(
+			{ id },
+			{
+				mfaEnabled: false,
+				mfaSecret: null,
+				mfaRecoveryCodes: [],
+				sessionGeneration: () => '"sessionGeneration" + 1',
+			},
+		);
 	}
 
 	/**

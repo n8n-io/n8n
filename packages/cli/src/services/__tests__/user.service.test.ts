@@ -128,13 +128,22 @@ describe('UserService', () => {
 				mfaEnabled: false,
 				mfaSecret: 'test',
 				mfaRecoveryCodes: ['test'],
+				sessionGeneration: 2,
 				updatedAt: new Date(),
 				authIdentities: [],
 				role: GLOBAL_MEMBER_ROLE,
 			});
 
 			type MaybeSensitiveProperties = Partial<
-				Pick<Person, 'password' | 'updatedAt' | 'authIdentities' | 'mfaSecret' | 'mfaRecoveryCodes'>
+				Pick<
+					Person,
+					| 'password'
+					| 'updatedAt'
+					| 'authIdentities'
+					| 'mfaSecret'
+					| 'mfaRecoveryCodes'
+					| 'sessionGeneration'
+				>
 			>;
 
 			// to prevent typechecking from blocking assertions
@@ -145,6 +154,7 @@ describe('UserService', () => {
 			expect(publicUser.authIdentities).toBeUndefined();
 			expect(publicUser.mfaSecret).toBeUndefined();
 			expect(publicUser.mfaRecoveryCodes).toBeUndefined();
+			expect(publicUser.sessionGeneration).toBeUndefined();
 		});
 
 		it('returns only the public fields of a service account', async () => {

@@ -8,12 +8,13 @@ import { randomString } from 'n8n-workflow';
 import request from 'supertest';
 
 import { AuthService } from '@/auth/auth.service';
+import { DisableMFACommand } from '@/commands/mfa/disable';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { MFA_ENFORCE_SETTING } from '@/mfa/constants';
-import { MFA_CACHE_KEY } from '@/mfa/mfa.service';
+import { MFA_CACHE_KEY, MfaService } from '@/mfa/mfa.service';
 import { TOTPService } from '@/mfa/totp.service';
 import { CacheService } from '@n8n/backend-services';
 
@@ -58,9 +59,10 @@ describe('Enable MFA setup', () => {
 		});
 
 		test('GET /qr should reuse secret and recovery codes until setup is complete', async () => {
-			const firstCall = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
+			const ownerAgent = testServer.authAgentFor(owner);
+			const firstCall = await ownerAgent.get('/mfa/qr').expect(200);
 
-			const secondCall = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
+			const secondCall = await ownerAgent.get('/mfa/qr').expect(200);
 
 			expect(firstCall.body.data.secret).toBe(secondCall.body.data.secret);
 			expect(firstCall.body.data.recoveryCodes.join('')).toBe(
@@ -68,9 +70,9 @@ describe('Enable MFA setup', () => {
 			);
 
 			const mfaCode = new TOTPService().generateTOTP(firstCall.body.data.secret);
-			await testServer.authAgentFor(owner).post('/mfa/disable').send({ mfaCode }).expect(200);
+			await ownerAgent.post('/mfa/disable').send({ mfaCode }).expect(200);
 
-			const thirdCall = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
+			const thirdCall = await ownerAgent.get('/mfa/qr').expect(200);
 
 			expect(firstCall.body.data.secret).not.toBe(thirdCall.body.data.secret);
 			expect(firstCall.body.data.recoveryCodes.join('')).not.toBe(
@@ -268,6 +270,99 @@ describe('Disable MFA setup', () => {
 		expect(personWithNewMfa.mfaSecret).not.toBe(user.mfaSecret);
 
 		expect((await getCurrentUser(earlierToken)).status).toBe(401);
+	});
+
+	test('should keep a pre-enrollment session invalid after disabling MFA with a TOTP code', async () => {
+		expect(await Container.get(MfaService).isMFAEnforced()).toBe(false);
+
+		const user = await createUser();
+		const preEnrollmentToken = Container.get(AuthService).issueJWT(user, false, 'test-browser-id');
+		const getCurrentUser = async (token: string) =>
+			await request(testServer.app)
+				.get(`/${REST_PATH_SEGMENT}/login`)
+				.set('Cookie', `${AUTH_COOKIE_NAME}=${token}`);
+
+		expect((await getCurrentUser(preEnrollmentToken)).status).toBe(200);
+
+		const agent = testServer.authAgentFor(user);
+		const qrResponse = await agent.get('/mfa/qr').expect(200);
+		const { secret } = qrResponse.body.data;
+		const mfaCode = new TOTPService().generateTOTP(secret);
+		await agent.post('/mfa/verify').send({ mfaCode }).expect(200);
+		await agent.post('/mfa/enable').send({ mfaCode }).expect(200);
+
+		expect((await getCurrentUser(preEnrollmentToken)).status).toBe(401);
+
+		await agent
+			.post('/mfa/disable')
+			.send({ mfaCode: new TOTPService().generateTOTP(secret) })
+			.expect(200);
+
+		expect((await getCurrentUser(preEnrollmentToken)).status).toBe(401);
+		await agent.get('/login').expect(200);
+	});
+
+	test('should keep a pre-enrollment session invalid after disabling MFA with a recovery code', async () => {
+		expect(await Container.get(MfaService).isMFAEnforced()).toBe(false);
+
+		const user = await createUser();
+		const preEnrollmentToken = Container.get(AuthService).issueJWT(user, false, 'test-browser-id');
+		const getCurrentUser = async (token: string) =>
+			await request(testServer.app)
+				.get(`/${REST_PATH_SEGMENT}/login`)
+				.set('Cookie', `${AUTH_COOKIE_NAME}=${token}`);
+
+		expect((await getCurrentUser(preEnrollmentToken)).status).toBe(200);
+
+		const agent = testServer.authAgentFor(user);
+		const qrResponse = await agent.get('/mfa/qr').expect(200);
+		const { secret, recoveryCodes } = qrResponse.body.data;
+		const mfaCode = new TOTPService().generateTOTP(secret);
+		await agent.post('/mfa/verify').send({ mfaCode }).expect(200);
+		await agent.post('/mfa/enable').send({ mfaCode }).expect(200);
+
+		expect((await getCurrentUser(preEnrollmentToken)).status).toBe(401);
+
+		await agent.post('/mfa/disable').send({ mfaRecoveryCode: recoveryCodes[0] }).expect(200);
+
+		expect((await getCurrentUser(preEnrollmentToken)).status).toBe(401);
+		await agent.get('/login').expect(200);
+	});
+
+	test('should keep a pre-enrollment session invalid after disabling MFA via CLI command', async () => {
+		expect(await Container.get(MfaService).isMFAEnforced()).toBe(false);
+
+		const password = randomValidPassword();
+		const user = await createUser({ password });
+		const preEnrollmentToken = Container.get(AuthService).issueJWT(user, false, 'test-browser-id');
+		const getCurrentUser = async (token: string) =>
+			await request(testServer.app)
+				.get(`/${REST_PATH_SEGMENT}/login`)
+				.set('Cookie', `${AUTH_COOKIE_NAME}=${token}`);
+
+		expect((await getCurrentUser(preEnrollmentToken)).status).toBe(200);
+
+		const agent = testServer.authAgentFor(user);
+		const qrResponse = await agent.get('/mfa/qr').expect(200);
+		const { secret } = qrResponse.body.data;
+		const mfaCode = new TOTPService().generateTOTP(secret);
+		await agent.post('/mfa/verify').send({ mfaCode }).expect(200);
+		await agent.post('/mfa/enable').send({ mfaCode }).expect(200);
+
+		expect((await getCurrentUser(preEnrollmentToken)).status).toBe(401);
+		await agent.get('/login').expect(200);
+
+		const command = new DisableMFACommand();
+		Object.assign(command, { flags: { email: user.email } });
+		await command.run();
+
+		expect((await getCurrentUser(preEnrollmentToken)).status).toBe(401);
+		await agent.get('/login').expect(401);
+
+		await testServer.authlessAgent
+			.post('/login')
+			.send({ emailOrLdapLoginId: user.email, password })
+			.expect(200);
 	});
 });
 

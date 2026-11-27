@@ -136,14 +136,44 @@ describe('PersonRepository', () => {
 			);
 		});
 
-		it('disables MFA', async () => {
+		it('enables MFA and increments sessionGeneration', async () => {
+			await repository.enableMfa('id-1');
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				Person,
+				{ id: 'id-1' },
+				{
+					mfaEnabled: true,
+					sessionGeneration: expect.any(Function),
+				},
+			);
+			const [, , payload] = entityManager.update.mock.calls[0] as [
+				unknown,
+				unknown,
+				{ sessionGeneration: () => string },
+			];
+			expect(payload.sessionGeneration()).toBe('"sessionGeneration" + 1');
+		});
+
+		it('disables MFA and increments sessionGeneration', async () => {
 			await repository.disableMfa('id-1');
 
 			expect(entityManager.update).toHaveBeenCalledWith(
 				Person,
 				{ id: 'id-1' },
-				{ mfaEnabled: false, mfaSecret: null, mfaRecoveryCodes: [] },
+				{
+					mfaEnabled: false,
+					mfaSecret: null,
+					mfaRecoveryCodes: [],
+					sessionGeneration: expect.any(Function),
+				},
 			);
+			const [, , payload] = entityManager.update.mock.calls[0] as [
+				unknown,
+				unknown,
+				{ sessionGeneration: () => string },
+			];
+			expect(payload.sessionGeneration()).toBe('"sessionGeneration" + 1');
 		});
 	});
 

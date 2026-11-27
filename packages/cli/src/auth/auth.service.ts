@@ -585,10 +585,13 @@ export class AuthService {
 		return person;
 	}
 
-	createJWTHash({ email, password, mfaEnabled, mfaSecret }: Person) {
+	createJWTHash({ email, password, mfaEnabled, mfaSecret, sessionGeneration }: Person) {
 		const payload = [email, password];
 		if (mfaEnabled && mfaSecret) {
 			payload.push(mfaSecret);
+		}
+		if (sessionGeneration > 0) {
+			payload.push(`gen:${sessionGeneration}`);
 		}
 		return this.hash(payload.join(':')).substring(0, 10);
 	}

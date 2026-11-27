@@ -179,6 +179,19 @@ describe('MfaService', () => {
 		});
 	});
 
+	describe('enableMfa', () => {
+		it('should enable MFA via personRepository and return the reloaded person', async () => {
+			const updatedPerson = mock<Awaited<ReturnType<PersonRepository['findByIdWithRole']>>>();
+			mockPersonRepository.findByIdWithRole.mockResolvedValue(updatedPerson);
+
+			const result = await mfaService.enableMfa('id-1');
+
+			expect(mockPersonRepository.enableMfa).toHaveBeenCalledWith('id-1');
+			expect(mockPersonRepository.findByIdWithRole).toHaveBeenCalledWith('id-1');
+			expect(result).toBe(updatedPerson);
+		});
+	});
+
 	describe('enforceMFA', () => {
 		it('should enforce MFA when license allows and value is true', async () => {
 			mockLicense.isMFAEnforcementLicensed.mockReturnValue(true);

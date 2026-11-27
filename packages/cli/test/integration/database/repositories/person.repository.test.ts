@@ -119,6 +119,31 @@ describe('PersonRepository', () => {
 	});
 
 	describe('writes', () => {
+		it('enables and disables MFA while incrementing sessionGeneration for a person', async () => {
+			const person = await createMember();
+			expect(person.sessionGeneration).toBe(0);
+
+			await personRepository.enableMfa(person.id);
+			const enabled = await reloadPerson(person.id);
+			expect(enabled.mfaEnabled).toBe(true);
+			expect(enabled.sessionGeneration).toBe(1);
+
+			await personRepository.disableMfa(person.id);
+			const disabled = await reloadPerson(person.id);
+			expect(disabled.mfaEnabled).toBe(false);
+			expect(disabled.mfaSecret).toBeNull();
+			expect(disabled.mfaRecoveryCodes).toEqual([]);
+			expect(disabled.sessionGeneration).toBe(2);
+		});
+
+		it('does not enable MFA of a service account', async () => {
+			const serviceAccount = await createServiceAccount();
+
+			await personRepository.enableMfa(serviceAccount.id);
+
+			expect(await readStoredMfaEnabled(serviceAccount.id)).toBe(false);
+		});
+
 		it('does not disable MFA of a service account', async () => {
 			const serviceAccount = await createServiceAccount();
 			await setStoredMfaEnabled(serviceAccount.id);

@@ -18,6 +18,7 @@
 | password | varchar(255) |  | true |  |  |  |
 | personalizationAnswers | json |  | true |  |  |  |
 | roleSlug | varchar(128) | 'global:member'::character varying | false |  | [public.role](public.role.md) |  |
+| sessionGeneration | integer | 0 | false |  |  | Monotonic counter incremented on session-invalidating account changes |
 | settings | json |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -35,6 +36,7 @@
 | user_kind_not_null | n | NOT NULL kind |
 | user_mfaEnabled_not_null | n | NOT NULL "mfaEnabled" |
 | user_roleSlug_not_null | n | NOT NULL "roleSlug" |
+| user_sessionGeneration_not_null | n | NOT NULL "sessionGeneration" |
 | user_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -128,6 +130,7 @@ erDiagram
   varchar_255_ password
   json personalizationAnswers
   varchar_128_ roleSlug FK
+  integer sessionGeneration
   json settings
   timestamp_3__with_time_zone updatedAt
 }

@@ -49,6 +49,8 @@ export class Person extends User implements IUser {
 
 	declare mfaRecoveryCodes: string[];
 
+	declare sessionGeneration: number;
+
 	@Column({ type: 'date', nullable: true })
 	lastActiveAt?: Date | null;
 

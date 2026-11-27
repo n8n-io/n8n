@@ -21,7 +21,7 @@ import { Role } from './role';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 
-const SECRET_COLUMNS = new Set(['password', 'mfaSecret', 'mfaRecoveryCodes']);
+const SECRET_COLUMNS = new Set(['password', 'mfaSecret', 'mfaRecoveryCodes', 'sessionGeneration']);
 
 /** The same values a `Principal` carries, so a `User` maps to a `Principal` without translation. */
 export type UserKind = PrincipalType;
@@ -75,7 +75,7 @@ export class User extends WithTimestamps implements AuthPrincipal {
 	settings: IUserSettings | null;
 
 	/*
-	 * These two are `NOT NULL`, so the column metadata stays here although only a
+	 * These columns are `NOT NULL`, so the column metadata stays here although only a
 	 * person uses them. TypeORM marks every column of a child entity as nullable
 	 * and, after a save, sets an unset nullable column to `null`. On a child, the
 	 * next save of the same object would write `NULL` and fail. They are
@@ -87,6 +87,9 @@ export class User extends WithTimestamps implements AuthPrincipal {
 
 	@Column({ type: 'simple-array', default: '' })
 	protected mfaRecoveryCodes: string[];
+
+	@Column({ type: 'int', default: 0 })
+	protected sessionGeneration: number;
 
 	/*
 	 * TypeORM runs the listeners of a child entity on every row of the table,
