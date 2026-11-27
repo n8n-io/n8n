@@ -420,7 +420,12 @@ export class EvalAgentExecutionService {
 		caseInput?: string,
 	): Promise<EvalAgentWorld | { error: InstanceAiEvalAgentExecutionResult }> {
 		const { projectId } = options;
-		const prepared = await Container.get(AgentEvaluationService).prepare(user, projectId, agentId);
+		const prepared = await Container.get(AgentEvaluationService).prepare(
+			user,
+			projectId,
+			agentId,
+			options.agentRun,
+		);
 		if (prepared.error !== undefined) return { error: this.errorResult(prepared.error) };
 		const preparation = prepared.preparation;
 		const { config, tools: toolSummaries } = preparation;
@@ -819,6 +824,7 @@ export class EvalAgentExecutionService {
 			seed,
 			skippedFeatures,
 			mockedCredentials: credentialHelpers.flatMap((helper) => helper.mockedCredentials),
+			...(config.memory?.enabled ? { memoryConfig: config.memory } : {}),
 		};
 	}
 

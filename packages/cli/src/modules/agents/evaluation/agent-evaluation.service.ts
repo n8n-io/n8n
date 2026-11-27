@@ -1,4 +1,5 @@
 import { raceWithAbort, throwIfAborted } from '@n8n/agents';
+import { applyAgentConfigOverrides, type InstanceAiEvalAgentRunOptions } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -61,6 +62,7 @@ export class AgentEvaluationService {
 		user: User,
 		projectId: string,
 		agentId: string,
+		runOptions: InstanceAiEvalAgentRunOptions = {},
 	): Promise<AgentEvaluationPreparationResult> {
 		const error = await this.accessError(user, projectId, agentId);
 		if (error) return { error };
@@ -69,9 +71,14 @@ export class AgentEvaluationService {
 		if (!saved.schema) return { error: `Agent ${agentId} has no JSON config to run.` };
 
 		const refs = await this.skillRefs.refsForDraft(saved, {});
-		const { config, skippedFeatures } = pruneConfigForEval(
+		const document = applyAgentConfigOverrides(
 			toAgentDocument(structuredClone(saved.schema), refs),
+			runOptions.configOverrides,
 		);
+		if (!document.success) return { error: `Invalid agentRun.configOverrides: ${document.error}` };
+		const { config, skippedFeatures } = pruneConfigForEval(document.config, {
+			keepMemory: runOptions.keepMemory,
+		});
 		const pruned = fromAgentDocument(config);
 		if ((saved.integrations ?? []).length > 0) {
 			skippedFeatures.push({
