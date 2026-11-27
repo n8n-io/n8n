@@ -13,6 +13,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { isAgentsAccessEnabled } from '../../agents-access';
 import { InstanceAiAgentContextAdapterService } from '../../instance-ai-agent-context.adapter';
+import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('../../agents-access', () => ({ isAgentsAccessEnabled: vi.fn() }));
@@ -61,14 +62,18 @@ describe('AssistantAgentFactory — Agent archive', () => {
 	});
 
 	async function createAgent(overrides: Partial<InstanceAiContext> = {}) {
-		const factory = Object.assign(
-			Object.create(AssistantAgentFactory.prototype) as AssistantAgentFactory,
-			{
-				instanceAiConfig: { mcpServers: '' },
-				ssrfProtectionConfig: { enabled: false },
-				settingsService: { isMcpAccessEnabled: () => false },
-				modelService: { getLabeledModelFetch: vi.fn() },
-			},
+		const factory = new AssistantAgentFactory(
+			mock({ instanceAi: mock<InstanceAiConfig>({ mcpServers: '' }) }),
+			mock({ enabled: false }),
+			mock(),
+			mock<InstanceAiSettingsService>({ isMcpAccessEnabled: () => false }),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
 		);
 		const context = mock<InstanceAiContext>({
 			projectId: 'project-1',
