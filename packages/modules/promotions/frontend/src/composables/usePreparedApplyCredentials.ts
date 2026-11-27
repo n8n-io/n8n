@@ -53,10 +53,15 @@ export function usePreparedApplyCredentials(
 		});
 	}
 
-	/** Creates the ready credentials right before the Apply. Resolves the ids it created. */
-	async function create(): Promise<string[]> {
+	/**
+	 * Creates the ready credentials that the Apply includes, right before it. Resolves the ids it
+	 * created.
+	 */
+	async function create(included: (sourceId: string) => boolean): Promise<string[]> {
 		const id = projectId.value;
-		const ready = branchCredentials.value.filter(isReady);
+		const ready = branchCredentials.value.filter(
+			(credential) => isReady(credential) && included(credential.sourceId),
+		);
 		if (id === undefined || ready.length === 0) return [];
 		const { credentials } = await prepareApplyCredentials(
 			rootStore.publicApiContext,

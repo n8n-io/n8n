@@ -111,7 +111,10 @@ const operation = usePromotionOperation(projectId, direction, {
 	check,
 	refresh,
 	beforeApply: async () => {
-		const created = await branchCredentials.create();
+		// Only the credentials that the selection includes, so a pending one elsewhere does not stop it.
+		const created = await branchCredentials.create((id) =>
+			selection.inclusion.value.included.has(`credential:${id}`),
+		);
 		return {
 			changed: created.length > 0,
 			undo: async () => await branchCredentials.discard(created),
@@ -271,13 +274,6 @@ const hasSelectedBlocked = computed(() =>
 	[...selection.selected.value].some((key) => blockers.value.blocked.has(key)),
 );
 const submitBlockedReason = computed(() => {
-	const pendingValues = branchCredentials.pending.value.length;
-	if (pendingValues > 0) {
-		return i18n.baseText('promotions.prototype.submit.pendingValues', {
-			adjustToNumber: pendingValues,
-			interpolate: { count: String(pendingValues) },
-		});
-	}
 	// A folder that moved to another project stops the whole apply, so it blocks every selection.
 	const movedFolders = scopedCheck.value?.movedFolders ?? [];
 	if (movedFolders.length > 0) {
@@ -618,7 +614,6 @@ const treeResizer = useResizablePanel({
 					v-if="branchCredentials.branchCredentials.value.length > 0"
 					:credentials="branchCredentials.branchCredentials.value"
 					:ready-ids="branchCredentials.readyIds.value"
-					:drafted-ids="new Set(branchCredentials.drafts.value.keys())"
 					:busy="operation.isBusy.value"
 					@add-values="branchCredentials.addValues"
 				/>

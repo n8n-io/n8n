@@ -9,7 +9,6 @@ import type { BranchCredential } from '../../composables/usePreparedApplyCredent
 const props = defineProps<{
 	credentials: BranchCredential[];
 	readyIds: ReadonlySet<string>;
-	draftedIds: ReadonlySet<string>;
 	busy: boolean;
 }>();
 
@@ -65,16 +64,15 @@ const pendingCount = computed(
 						}}
 					</N8nText>
 					<N8nButton
-						v-if="credential.dataIsComplete !== true"
 						size="small"
-						:variant="draftedIds.has(credential.sourceId) ? 'outline' : 'solid'"
+						:variant="readyIds.has(credential.sourceId) ? 'outline' : 'solid'"
 						:disabled="busy"
 						data-test-id="promotion-prepared-add-values"
 						@click="emit('addValues', credential)"
 					>
 						{{
 							i18n.baseText(
-								draftedIds.has(credential.sourceId)
+								readyIds.has(credential.sourceId)
 									? 'promotions.prototype.prepared.editValues'
 									: 'promotions.prototype.prepared.addValues',
 							)

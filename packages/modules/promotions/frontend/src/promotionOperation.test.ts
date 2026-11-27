@@ -101,11 +101,12 @@ describe('promotion operation', () => {
 			),
 		);
 
-		expect([...index.blocked]).toEqual(['workflow:w1', 'workflow:w4']);
+		// A missing credential also blocks its own row, so users cannot apply it alone.
+		expect([...index.blocked]).toEqual(['workflow:w1', 'credential:c1', 'workflow:w4']);
 		// The tree marks the dependency rows with the same keys as the preview.
 		expect(index.byResource.get('credential:c1')?.[0]).toMatchObject({
 			kind: 'missing',
-			workflowKeys: ['workflow:w1'],
+			workflowKeys: ['workflow:w1', 'credential:c1'],
 		});
 		expect(index.byResource.get('variable:global:API_URL')?.[0].kind).toBe('warning');
 		// A data table change that removes values needs a confirmation, but does not block.

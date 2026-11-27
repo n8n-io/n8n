@@ -133,8 +133,11 @@ export function listBlockers(
 		blockers.push({
 			kind: 'missing',
 			resourceKey,
-			// Without a consumer, the binding stops its own row from being applied.
-			workflowKeys: binding.consumers.length > 0 ? consumerKeys(binding.consumers) : [resourceKey],
+			// A missing credential also stops its own row, so it cannot be applied on its own.
+			workflowKeys: [
+				...consumerKeys(binding.consumers),
+				...(binding.kind === 'credential' ? [resourceKey] : []),
+			],
 		});
 	}
 	for (const access of accessRequirements) {
