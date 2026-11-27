@@ -205,7 +205,7 @@ export class PersonRepository {
 
 	async enableMfa(id: string): Promise<void> {
 		await this.table.update(
-			{ id },
+			{ id, mfaEnabled: false },
 			{
 				mfaEnabled: true,
 				sessionGeneration: () => '"sessionGeneration" + 1',
@@ -214,13 +214,16 @@ export class PersonRepository {
 	}
 
 	async disableMfa(id: string): Promise<void> {
+		// Clear pending setup secrets even when MFA is not enabled, but advance the
+		// generation only when MFA transitions from enabled to disabled.
 		await this.table.update(
 			{ id },
 			{
 				mfaEnabled: false,
 				mfaSecret: null,
 				mfaRecoveryCodes: [],
-				sessionGeneration: () => '"sessionGeneration" + 1',
+				sessionGeneration: () =>
+					'CASE WHEN "mfaEnabled" THEN "sessionGeneration" + 1 ELSE "sessionGeneration" END',
 			},
 		);
 	}

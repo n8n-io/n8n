@@ -59,10 +59,9 @@ describe('Enable MFA setup', () => {
 		});
 
 		test('GET /qr should reuse secret and recovery codes until setup is complete', async () => {
-			const ownerAgent = testServer.authAgentFor(owner);
-			const firstCall = await ownerAgent.get('/mfa/qr').expect(200);
+			const firstCall = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
 
-			const secondCall = await ownerAgent.get('/mfa/qr').expect(200);
+			const secondCall = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
 
 			expect(firstCall.body.data.secret).toBe(secondCall.body.data.secret);
 			expect(firstCall.body.data.recoveryCodes.join('')).toBe(
@@ -70,9 +69,9 @@ describe('Enable MFA setup', () => {
 			);
 
 			const mfaCode = new TOTPService().generateTOTP(firstCall.body.data.secret);
-			await ownerAgent.post('/mfa/disable').send({ mfaCode }).expect(200);
+			await testServer.authAgentFor(owner).post('/mfa/disable').send({ mfaCode }).expect(200);
 
-			const thirdCall = await ownerAgent.get('/mfa/qr').expect(200);
+			const thirdCall = await testServer.authAgentFor(owner).get('/mfa/qr').expect(200);
 
 			expect(firstCall.body.data.secret).not.toBe(thirdCall.body.data.secret);
 			expect(firstCall.body.data.recoveryCodes.join('')).not.toBe(

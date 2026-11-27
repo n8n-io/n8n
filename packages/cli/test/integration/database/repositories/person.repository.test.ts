@@ -119,15 +119,35 @@ describe('PersonRepository', () => {
 	});
 
 	describe('writes', () => {
-		it('enables and disables MFA while incrementing sessionGeneration for a person', async () => {
+		it('enables and disables MFA while incrementing sessionGeneration only on state transitions', async () => {
 			const person = await createMember();
 			expect(person.sessionGeneration).toBe(0);
 
+			// Clearing pending setup secrets before MFA is enabled does not advance the generation.
+			person.mfaSecret = 'pending-secret';
+			person.mfaRecoveryCodes = ['code-1'];
+			await personRepository.save(person);
+
+			await personRepository.disableMfa(person.id);
+			const clearedPending = await reloadPerson(person.id);
+			expect(clearedPending.mfaEnabled).toBe(false);
+			expect(clearedPending.mfaSecret).toBeNull();
+			expect(clearedPending.mfaRecoveryCodes).toEqual([]);
+			expect(clearedPending.sessionGeneration).toBe(0);
+
+			await Promise.all([
+				personRepository.enableMfa(person.id),
+				personRepository.enableMfa(person.id),
+			]);
 			await personRepository.enableMfa(person.id);
 			const enabled = await reloadPerson(person.id);
 			expect(enabled.mfaEnabled).toBe(true);
 			expect(enabled.sessionGeneration).toBe(1);
 
+			await Promise.all([
+				personRepository.disableMfa(person.id),
+				personRepository.disableMfa(person.id),
+			]);
 			await personRepository.disableMfa(person.id);
 			const disabled = await reloadPerson(person.id);
 			expect(disabled.mfaEnabled).toBe(false);

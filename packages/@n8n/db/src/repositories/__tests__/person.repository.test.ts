@@ -136,12 +136,12 @@ describe('PersonRepository', () => {
 			);
 		});
 
-		it('enables MFA and increments sessionGeneration', async () => {
+		it('enables MFA and increments sessionGeneration only when MFA is disabled', async () => {
 			await repository.enableMfa('id-1');
 
 			expect(entityManager.update).toHaveBeenCalledWith(
 				Person,
-				{ id: 'id-1' },
+				{ id: 'id-1', mfaEnabled: false },
 				{
 					mfaEnabled: true,
 					sessionGeneration: expect.any(Function),
@@ -155,7 +155,7 @@ describe('PersonRepository', () => {
 			expect(payload.sessionGeneration()).toBe('"sessionGeneration" + 1');
 		});
 
-		it('disables MFA and increments sessionGeneration', async () => {
+		it('disables MFA and increments sessionGeneration only when MFA was enabled', async () => {
 			await repository.disableMfa('id-1');
 
 			expect(entityManager.update).toHaveBeenCalledWith(
@@ -173,7 +173,9 @@ describe('PersonRepository', () => {
 				unknown,
 				{ sessionGeneration: () => string },
 			];
-			expect(payload.sessionGeneration()).toBe('"sessionGeneration" + 1');
+			expect(payload.sessionGeneration()).toBe(
+				'CASE WHEN "mfaEnabled" THEN "sessionGeneration" + 1 ELSE "sessionGeneration" END',
+			);
 		});
 	});
 
