@@ -15,7 +15,6 @@ export const executionLimitMaxExecutionsSchema = z
 export const executionLimitSettingsSchema = z.object({
 	periodUnit: executionLimitPeriodUnitSchema,
 	instanceMaxExecutions: executionLimitMaxExecutionsSchema.nullable(),
-	defaultProjectMaxExecutions: executionLimitMaxExecutionsSchema.nullable(),
 });
 
 export type ExecutionLimitSettings = z.infer<typeof executionLimitSettingsSchema>;
@@ -24,5 +23,4 @@ export type ExecutionLimitSettings = z.infer<typeof executionLimitSettingsSchema
 export const DEFAULT_EXECUTION_LIMIT_SETTINGS: ExecutionLimitSettings = {
 	periodUnit: 'month',
 	instanceMaxExecutions: null,
-	defaultProjectMaxExecutions: null,
 };

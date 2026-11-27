@@ -5,32 +5,32 @@ import { PubSubMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import type { ExecutionLimitPolicyRepository } from '../execution-limit-policy.repository';
 import type { ExecutionLimitSettingsStore } from '../execution-limit-settings.store';
 import { ExecutionLimitsSnapshot, REFRESH_INTERVAL_MS } from '../execution-limits-snapshot';
-import type { ProjectExecutionLimitRepository } from '../project-execution-limit.repository';
 
 const SETTINGS: ExecutionLimitSettings = {
 	periodUnit: 'week',
 	instanceMaxExecutions: 1000,
-	defaultProjectMaxExecutions: null,
 };
 
 const LIMITED = { periodUnit: 'week', instanceMaxExecutions: 1000, projectMaxExecutions: 50 };
+const PROJECT_LIMITS = [{ projectId: 'limited', maxExecutions: 50 }];
 
 describe('ExecutionLimitsSnapshot', () => {
 	const settingsStore = mock<ExecutionLimitSettingsStore>();
-	const projectLimitRepository = mock<ProjectExecutionLimitRepository>();
+	const policyRepository = mock<ExecutionLimitPolicyRepository>();
 	const publisher = mock<Publisher>();
 	let snapshot: ExecutionLimitsSnapshot;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
 		settingsStore.read.mockResolvedValue(SETTINGS);
-		projectLimitRepository.findAll.mockResolvedValue([{ projectId: 'limited', maxExecutions: 50 }]);
+		policyRepository.findProjectLimits.mockResolvedValue(PROJECT_LIMITS);
 		publisher.publishCommand.mockResolvedValue();
 		snapshot = new ExecutionLimitsSnapshot(
 			settingsStore,
-			projectLimitRepository,
+			policyRepository,
 			publisher,
 			mockLogger(),
 		);
@@ -69,19 +69,28 @@ describe('ExecutionLimitsSnapshot', () => {
 		await snapshot.start();
 		expect(snapshot.read('limited')).toEqual(LIMITED);
 
-		projectLimitRepository.findAll.mockResolvedValue([]);
+		policyRepository.findProjectLimits.mockResolvedValue([]);
 		await vi.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS);
 		expect(snapshot.read('limited')).toEqual({ ...LIMITED, projectMaxExecutions: null });
 
 		snapshot.stop();
-		projectLimitRepository.findAll.mockResolvedValue([{ projectId: 'limited', maxExecutions: 50 }]);
+		policyRepository.findProjectLimits.mockResolvedValue(PROJECT_LIMITS);
 		await vi.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS);
 		expect(snapshot.read('limited')).toEqual({ ...LIMITED, projectMaxExecutions: null });
 	});
 
-	it('keeps the loaded limits when a reload fails', async () => {
+	it('keeps the loaded limits when a settings read fails', async () => {
 		await snapshot.reload();
-		projectLimitRepository.findAll.mockRejectedValueOnce(new Error('database is down'));
+		settingsStore.read.mockRejectedValueOnce(new Error('database is down'));
+
+		await snapshot.reload();
+
+		expect(snapshot.read('limited')).toEqual(LIMITED);
+	});
+
+	it('keeps the loaded limits when a policy read fails', async () => {
+		await snapshot.reload();
+		policyRepository.findProjectLimits.mockRejectedValueOnce(new Error('database is down'));
 
 		await snapshot.reload();
 
@@ -91,7 +100,7 @@ describe('ExecutionLimitsSnapshot', () => {
 	it('loads the changed limits on a reload request', async () => {
 		await snapshot.reload();
 		settingsStore.read.mockResolvedValue(DEFAULT_EXECUTION_LIMIT_SETTINGS);
-		projectLimitRepository.findAll.mockResolvedValue([]);
+		policyRepository.findProjectLimits.mockResolvedValue([]);
 
 		await snapshot.reload();
 
@@ -117,7 +126,7 @@ describe('ExecutionLimitsSnapshot', () => {
 			});
 
 			settingsStore.read.mockResolvedValue(DEFAULT_EXECUTION_LIMIT_SETTINGS);
-			projectLimitRepository.findAll.mockResolvedValue([]);
+			policyRepository.findProjectLimits.mockResolvedValue([]);
 			await snapshot.reload();
 
 			expect(snapshot.readLimitedScopes()).toEqual({

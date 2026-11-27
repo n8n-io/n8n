@@ -88,6 +88,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_ledger_parked](public.execution_ledger_parked.md) | 20 |  | BASE TABLE |
 | [public.execution_limit_audit](public.execution_limit_audit.md) | 8 |  | BASE TABLE |
 | [public.execution_limit_instance_usage](public.execution_limit_instance_usage.md) | 5 |  | BASE TABLE |
+| [public.execution_limit_policy](public.execution_limit_policy.md) | 5 |  | BASE TABLE |
+| [public.execution_limit_policy_assignment](public.execution_limit_policy_assignment.md) | 3 |  | BASE TABLE |
+| [public.execution_limit_policy_group_assignment](public.execution_limit_policy_group_assignment.md) | 3 |  | BASE TABLE |
 | [public.execution_limit_usage](public.execution_limit_usage.md) | 6 |  | BASE TABLE |
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 7 |  | BASE TABLE |
@@ -138,7 +141,6 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.poller_state](public.poller_state.md) | 7 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
 | [public.project](public.project.md) | 9 |  | BASE TABLE |
-| [public.project_execution_limit](public.project_execution_limit.md) | 4 |  | BASE TABLE |
 | [public.project_pool_settings](public.project_pool_settings.md) | 4 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
@@ -364,6 +366,9 @@ erDiagram
 "public.execution_annotations" }o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
 "public.execution_data" |o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
 "public.execution_entity" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.execution_limit_policy_assignment" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.execution_limit_policy_assignment" }o--|| "public.execution_limit_policy" : "FOREIGN KEY (#quot;policyId#quot;) REFERENCES execution_limit_policy(id) ON DELETE CASCADE"
+"public.execution_limit_policy_group_assignment" }o--|| "public.execution_limit_policy" : "FOREIGN KEY (#quot;policyId#quot;) REFERENCES execution_limit_policy(id) ON DELETE CASCADE"
 "public.execution_metadata" }o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
 "public.folder" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.folder" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE CASCADE"
@@ -431,7 +436,6 @@ erDiagram
 "public.poller_state" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.processed_data" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.project" }o--o| "public.user" : "FOREIGN KEY (#quot;creatorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
-"public.project_execution_limit" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_pool_settings" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -1403,6 +1407,23 @@ erDiagram
   integer startedCount
   timestamp_3__with_time_zone updatedAt
 }
+"public.execution_limit_policy" {
+  timestamp_3__with_time_zone createdAt
+  uuid id
+  integer maxExecutions
+  varchar_128_ name
+  timestamp_3__with_time_zone updatedAt
+}
+"public.execution_limit_policy_assignment" {
+  timestamp_3__with_time_zone createdAt
+  uuid policyId FK
+  varchar_36_ projectId FK
+}
+"public.execution_limit_policy_group_assignment" {
+  timestamp_3__with_time_zone createdAt
+  varchar_32_ group
+  uuid policyId FK
+}
 "public.execution_limit_usage" {
   integer blockedCount
   date day
@@ -1883,12 +1904,6 @@ erDiagram
   varchar_36_ id
   varchar_255_ name
   varchar_36_ type
-  timestamp_3__with_time_zone updatedAt
-}
-"public.project_execution_limit" {
-  timestamp_3__with_time_zone createdAt
-  integer maxExecutions
-  varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.project_pool_settings" {
