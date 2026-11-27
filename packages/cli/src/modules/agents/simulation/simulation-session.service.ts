@@ -76,27 +76,35 @@ export class SimulationSessionService {
 
 	/**
 	 * Returns the active simulation session bound to this owner, project, agent, and test chat.
-	 * Returns nothing when the test chat was removed, so its held actions cannot run.
+	 * Returns nothing when the test chat was removed or the connections of the draft changed,
+	 * so the held actions of that world cannot run.
 	 */
-	async getSession(params: {
-		userId: string;
-		projectId: string;
-		agentId: string;
-		testChatId: string;
-	}): Promise<SimulationSession | undefined> {
-		const key = sessionKeyFromIds(params);
+	async getSession(params: SessionOwner): Promise<SimulationSession | undefined> {
+		const key = sessionKey(params);
 		const cached = this.sessions.get(key);
 		if (!cached) return undefined;
-		if (
-			cached.marked &&
-			!(await this.threadRepository.findTestChatState(params.testChatId))?.testChat
-		) {
-			// Delete only the entry this call read: a new turn can replace it during the lookup.
-			if (this.sessions.get(key) === cached) this.dropSession(key, cached);
+		const valid = await this.isStillValid(params, cached);
+		// A new turn can replace the entry during the lookups. Its world is not the one read here.
+		if (this.sessions.get(key) !== cached) return undefined;
+		if (!valid) {
+			this.dropSession(key, cached);
 			return undefined;
 		}
 		this.sessions.touch(key);
 		return cached.session;
+	}
+
+	/** The checks of each turn: the thread keeps its marker and the connections did not change. */
+	private async isStillValid(params: SessionOwner, cached: CachedSession): Promise<boolean> {
+		if (
+			cached.marked &&
+			!(await this.threadRepository.findTestChatState(params.testChatId))?.testChat
+		) {
+			return false;
+		}
+		if (cached.bindingDigest === undefined) return true;
+		const { config } = await this.describeAgent(params.agentId, params.projectId);
+		return (await this.bindingFor(config, params.user)).digest === cached.bindingDigest;
 	}
 
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
@@ -528,18 +536,11 @@ interface DescribedAgent {
 	hostGaps: Map<string, string>;
 }
 
-/** A session belongs to one chat of one agent and user, so a reused chat ID never shares a world. */
-function sessionKey({ user, projectId, agentId, testChatId }: OpenSimulationInput): string {
-	return sessionKeyFromIds({ userId: user.id, projectId, agentId, testChatId });
-}
+type SessionOwner = Pick<OpenSimulationInput, 'user' | 'projectId' | 'agentId' | 'testChatId'>;
 
-function sessionKeyFromIds(params: {
-	userId: string;
-	projectId: string;
-	agentId: string;
-	testChatId: string;
-}): string {
-	return `${params.userId}:${params.projectId}:${params.agentId}:${params.testChatId}`;
+/** A session belongs to one chat of one agent and user, so a reused chat ID never shares a world. */
+function sessionKey({ user, projectId, agentId, testChatId }: SessionOwner): string {
+	return `${user.id}:${projectId}:${agentId}:${testChatId}`;
 }
 
 /**

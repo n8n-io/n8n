@@ -472,19 +472,34 @@ describe('SimulationSessionService connection binding', () => {
 		});
 
 		it('should not return the session of a removed thread for a commit', async () => {
-			const { service, turn, closed, threads } = setup();
+			const { service, turn, closed, threads, input } = setup();
 			await turn();
-			const ids = {
-				userId: 'user-1',
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				testChatId: 'chat-1',
-			};
-			expect(await service.getSession(ids)).toBeDefined();
+			expect(await service.getSession(input())).toBeDefined();
 
 			threads.delete('chat-1');
 
-			expect(await service.getSession(ids)).toBeUndefined();
+			expect(await service.getSession(input())).toBeUndefined();
+			expect(closed).toEqual(['world-1']);
+		});
+
+		it('should not return the session for a commit after the connections changed', async () => {
+			const { service, turn, closed, draft, input } = setup();
+			const session = await turn();
+			expect(await service.getSession(input())).toBe(session);
+
+			draft.current = draftWith([serverB]);
+
+			expect(await service.getSession(input())).toBeUndefined();
+			expect(closed).toEqual(['world-1']);
+		});
+
+		it('should not return the session for a commit after the owner lost a credential', async () => {
+			const { service, turn, closed, credentials, input } = setup();
+			await turn();
+
+			credentials.delete('credential-a');
+
+			expect(await service.getSession(input())).toBeUndefined();
 			expect(closed).toEqual(['world-1']);
 		});
 
