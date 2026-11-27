@@ -135,9 +135,11 @@ export class KnowledgeFileService {
 				});
 			});
 
-		// The sandbox follows the files to mirror: it stays, without the deleted file, while the
-		// agent has a file of its own or a file in a collection it searches. An empty collection
-		// keeps the tools attached, but needs no sandbox.
+		// Refresh the mirror while a file is left to mirror, so the deleted file leaves it.
+		// Delete the sandbox when none is left. The agent's own files and the files of its
+		// collections both count. A collection without files does not: it keeps the tools
+		// attached, but no tool call needs a sandbox then (`findFiles` reads the database,
+		// `searchText` returns early).
 		const hasFilesToMirror =
 			(await this.fileRepository.hasFilesForAgent(scope.agentId, {})) ||
 			(await this.collectionSourceService.hasCollectionFiles(scope));
