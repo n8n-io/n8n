@@ -506,6 +506,7 @@ describe('Engine', () => {
 			expect(startEngineMetricsServer).toHaveBeenCalledExactlyOnceWith(registry, {
 				host: '::',
 				port: 9464,
+				logger: expect.anything(),
 			});
 		});
 

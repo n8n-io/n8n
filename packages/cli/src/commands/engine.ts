@@ -133,6 +133,7 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 			this.metricsServer = await startEngineMetricsServer(metricsRegistry, {
 				host,
 				port: metricsPort,
+				logger,
 			});
 			this.logger.info(`Engine v2 metrics listening on port ${metricsPort}`);
 		}
