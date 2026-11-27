@@ -318,6 +318,21 @@ export class EvalAgentExecutionService {
 		});
 	}
 
+	/** A turn must be the next one of the thread the server holds. */
+	private turnStepRefusal(
+		turn: InstanceAiEvalAgentThreadTurn,
+		thread: EvalAgentThread | undefined,
+	): string | undefined {
+		if (!thread) {
+			return turn.expectedTurn === 1
+				? undefined
+				: `Eval thread ${turn.threadId} is unknown or expired, so turn ${String(turn.expectedTurn)} cannot continue it`;
+		}
+		const next = thread.turns + 1;
+		if (turn.expectedTurn === next) return undefined;
+		return `Eval thread ${turn.threadId} is at turn ${String(thread.turns)}, so the next turn is ${String(next)}, not ${String(turn.expectedTurn)}`;
+	}
+
 	/** Why a thread turn cannot run, or undefined when it can. */
 	private threadRefusal(
 		agentId: string,
@@ -325,6 +340,8 @@ export class EvalAgentExecutionService {
 		turn: InstanceAiEvalAgentThreadTurn,
 		thread: EvalAgentThread | undefined,
 	): string | undefined {
+		const stepRefusal = this.turnStepRefusal(turn, thread);
+		if (stepRefusal) return stepRefusal;
 		if (thread && (thread.agentId !== agentId || thread.userId !== user.id)) {
 			return `Eval thread ${turn.threadId} belongs to another Agent or user`;
 		}

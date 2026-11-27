@@ -111,7 +111,10 @@ async function runSession(
 	let message = fromUser ? await nextMessage() : undefined;
 	if (fromUser && message === undefined) return session;
 	while (session.turns.length < plan.maxTurns) {
-		const turn = await runTurn(session.threadId, message, context);
+		const turn = await runTurn(
+			{ threadId: session.threadId, expectedTurn: session.turns.length + 1, message },
+			context,
+		);
 		session.turns.push(turn);
 		if (!turn.result.success || session.turns.length >= plan.maxTurns) break;
 		message = await nextMessage();
@@ -121,17 +124,35 @@ async function runSession(
 }
 
 async function runTurn(
-	threadId: string,
-	message: string | undefined,
+	{ threadId, expectedTurn, message }: { threadId: string; expectedTurn: number; message?: string },
 	context: ConversationContext,
 ): Promise<AgentConversationTurn> {
 	const result = await context.executeTurn({
 		threadId,
 		resourceId: context.resourceId,
+		expectedTurn,
 		...(message !== undefined ? { message } : {}),
 	});
+	throwIfTurnOutOfStep(result, expectedTurn);
 	const userMessage = result.thread?.userMessage ?? message ?? result.seed.openingMessage;
 	return { userMessage, result };
+}
+
+/**
+ * The server must report the turn the harness sent. Anything else (a refused,
+ * unknown, or expired thread) means the Agent did not see the conversation the
+ * harness thinks it did, so the run is not graded.
+ */
+function throwIfTurnOutOfStep(
+	result: InstanceAiEvalAgentExecutionResult,
+	expectedTurn: number,
+): void {
+	const turn = result.thread?.turn;
+	if (turn === expectedTurn) return;
+	const errors = result.errors.length > 0 ? ` (${result.errors.join('; ')})` : '';
+	throw new Error(
+		`FRAMEWORK ISSUE: eval thread out of step — expected turn ${String(expectedTurn)}, got ${turn === undefined ? 'none' : String(turn)}${errors}`,
+	);
 }
 
 function userTurnsOf(turns: AgentConversationTurn[]): AgentUserTurn[] {

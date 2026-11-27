@@ -81,11 +81,12 @@ function turn(
 	threadId: string,
 	resourceId: string,
 	message?: string,
+	expectedTurn = 1,
 ): InstanceAiEvalAgentExecutionRequest {
 	return {
 		projectId: 'proj-1',
 		scenarioHints: 'Customer asks about an order',
-		thread: { threadId, resourceId, ...(message !== undefined ? { message } : {}) },
+		thread: { threadId, resourceId, expectedTurn, ...(message !== undefined ? { message } : {}) },
 	};
 }
 
@@ -140,11 +141,15 @@ describe('EvalAgentExecutionService multi-turn threads', () => {
 			.mockResolvedValueOnce(reply('You are welcome.'));
 
 		await service.executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a'));
-		await service.executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a', 'Make it express'));
+		await service.executeWithLlmMock(
+			'agent-1',
+			user,
+			turn(THREAD_A, 'user-a', 'Make it express', 2),
+		);
 		const third = await service.executeWithLlmMock(
 			'agent-1',
 			user,
-			turn(THREAD_A, 'user-a', 'Thanks'),
+			turn(THREAD_A, 'user-a', 'Thanks', 3),
 		);
 
 		expect(third.thread?.turn).toBe(3);
@@ -172,7 +177,7 @@ describe('EvalAgentExecutionService multi-turn threads', () => {
 		const second = await service.executeWithLlmMock(
 			'agent-1',
 			user,
-			turn(THREAD_A, 'user-a', 'Cancel it'),
+			turn(THREAD_A, 'user-a', 'Cancel it', 2),
 		);
 
 		expect(second.toolCalls).toEqual([]);
@@ -212,7 +217,11 @@ describe('EvalAgentExecutionService multi-turn threads', () => {
 		generate.mockResolvedValue(reply('Hi.'));
 
 		await service.executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a'));
-		const result = await service.executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a'));
+		const result = await service.executeWithLlmMock(
+			'agent-1',
+			user,
+			turn(THREAD_A, 'user-a', undefined, 2),
+		);
 
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/needs a message/);
@@ -227,7 +236,7 @@ describe('EvalAgentExecutionService multi-turn threads', () => {
 		const result = await service.executeWithLlmMock(
 			'agent-1',
 			user,
-			turn(THREAD_A, 'user-b', 'Hello'),
+			turn(THREAD_A, 'user-b', 'Hello', 2),
 		);
 
 		expect(result.success).toBe(false);
@@ -258,11 +267,39 @@ describe('EvalAgentExecutionService multi-turn threads', () => {
 		const result = await service.executeWithLlmMock(
 			'agent-1',
 			otherUser,
-			turn(THREAD_A, 'user-a', 'Hello'),
+			turn(THREAD_A, 'user-a', 'Hello', 2),
 		);
 
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/Eval thread .* belongs to another Agent or user/);
+		expect(generate).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses a later turn of a thread the server does not know (unknown or expired)', async () => {
+		const result = await buildService().executeWithLlmMock(
+			'agent-1',
+			user,
+			turn(THREAD_A, 'user-a', 'Make it express', 2),
+		);
+
+		expect(result.success).toBe(false);
+		expect(result.errors[0]).toMatch(/unknown or expired/);
+		expect(generate).not.toHaveBeenCalled();
+	});
+
+	it('refuses a turn whose number does not follow the thread', async () => {
+		const service = buildService();
+		generate.mockResolvedValue(reply('Hi.'));
+
+		await service.executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a'));
+		const result = await service.executeWithLlmMock(
+			'agent-1',
+			user,
+			turn(THREAD_A, 'user-a', 'Hello', 3),
+		);
+
+		expect(result.success).toBe(false);
+		expect(result.errors[0]).toMatch(/is at turn 1, so the next turn is 2, not 3/);
 		expect(generate).toHaveBeenCalledTimes(1);
 	});
 
@@ -277,9 +314,13 @@ describe('EvalAgentExecutionService multi-turn threads', () => {
 		const failed = await service.executeWithLlmMock(
 			'agent-1',
 			user,
-			turn(THREAD_A, 'user-a', 'Make it express'),
+			turn(THREAD_A, 'user-a', 'Make it express', 2),
 		);
-		await service.executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a', 'Make it express'));
+		await service.executeWithLlmMock(
+			'agent-1',
+			user,
+			turn(THREAD_A, 'user-a', 'Make it express', 2),
+		);
 
 		expect(failed.success).toBe(false);
 		expect(generateInputs(generate)[2]).toEqual([
@@ -307,7 +348,7 @@ describe('EvalAgentExecutionService multi-turn threads', () => {
 		buildRuntime.mockImplementation(async () => ({ generate, approve, close: vi.fn() }));
 
 		await service.executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a'));
-		await service.executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a', 'Thanks'));
+		await service.executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a', 'Thanks', 2));
 
 		expect(generateInputs(generate)[1]).toEqual([
 			userText(seed.openingMessage),

@@ -60,7 +60,7 @@ function agentReply(text: string, thread?: InstanceAiEvalAgentThreadTurn) {
 					thread: {
 						threadId: thread.threadId,
 						resourceId: thread.resourceId,
-						turn: 1,
+						turn: thread.expectedTurn,
 						userMessage: thread.message ?? 'Where is my order?',
 					},
 				}
@@ -148,6 +148,27 @@ describe('executeAgentScenario: multi-turn runs', () => {
 			'Make it express',
 			'Thanks',
 		]);
+		expect(calls.map((call) => call.thread?.expectedTurn)).toEqual([1, 2, 3]);
+	});
+
+	it('fails as a framework issue when the server reports another turn than expected', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['Make it express']));
+		const client = recordingClient([]);
+		vi.mocked(client.executeAgentWithLlmMock).mockImplementation(async (...args) => {
+			const thread = args[4];
+			// A server that lost the thread starts it over at turn 1.
+			return agentReply('Hello again', thread && { ...thread, expectedTurn: 1 });
+		});
+
+		await expect(
+			executeAgentScenario(
+				client,
+				'agent-1',
+				{ ...base, userTurns: { goal: 'Track it', maxTurns: 3 } },
+				'(agent context)',
+				silentLogger,
+			),
+		).rejects.toThrow(/FRAMEWORK ISSUE: .*expected turn 2, got 1/);
 	});
 
 	it('stops at maxTurns even when the simulated user has more to say', async () => {

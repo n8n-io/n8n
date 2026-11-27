@@ -3246,6 +3246,10 @@ export const instanceAiEvalAgentThreadTurnSchema = z.object({
 	/** The user's message. Required to continue a thread. Omitted on a thread's
 	 *  first turn: the seed's generated opening message is sent. */
 	message: z.string().min(1).max(20_000).optional(),
+	/** The turn this request is, 1-based. 1 opens the thread. A later turn must
+	 *  follow the thread the server holds, or it is refused (unknown or expired
+	 *  thread, or a turn out of step), so history is never silently lost. */
+	expectedTurn: z.number().int().min(1).max(1000),
 });
 
 export type InstanceAiEvalAgentThreadTurn = z.infer<typeof instanceAiEvalAgentThreadTurnSchema>;
