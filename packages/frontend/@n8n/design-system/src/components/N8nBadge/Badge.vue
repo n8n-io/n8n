@@ -20,6 +20,8 @@ const effectiveIconSize = computed(function getEffectiveIconSize(): IconSize {
 		case 'large':
 		case 'xlarge':
 			return 'xlarge';
+		case 'xxxsmall':
+			return 'xsmall';
 		default:
 			return 'medium';
 	}
@@ -29,6 +31,8 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 		case 'large':
 		case 'xlarge':
 			return 'sm';
+		case 'xxxsmall':
+			return '3xs';
 		case 'xsmall':
 		case 'xxsmall':
 			return '2xs';
@@ -130,6 +134,13 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	&:focus-visible {
 		@include focus.focus-ring-with-border;
 	}
+}
+
+.xxxsmall {
+	--n8n-badge--height: var(--height--3xs);
+	--n8n-badge--padding-inline-start: var(--spacing--3xs);
+	--n8n-badge--padding-inline-end: var(--spacing--3xs);
+	--n8n-badge--radius: var(--radius--3xs);
 }
 
 .xxsmall {
@@ -242,6 +253,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 }
 
 /* At small sizes the capitals sit above the middle of the icon. A label without an icon stays put. */
+.xxxsmall .hasIcon,
 .xxsmall .hasIcon,
 .xsmall .hasIcon {
 	transform: translateY(1px);

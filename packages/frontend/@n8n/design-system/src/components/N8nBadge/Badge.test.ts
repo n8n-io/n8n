@@ -24,6 +24,23 @@ describe('components', function describeComponents() {
 				expect(wrapper.container.querySelector('.n8n-text')).toBeNull();
 			});
 
+			it('should render the xxxsmall size one step under xxsmall', function testXxxsmallSize() {
+				render(N8nBadge, {
+					props: {
+						size: 'xxxsmall',
+						leadingIcon: 'circle-check',
+					},
+					slots: {
+						default: 'Tiny badge',
+					},
+				});
+
+				const badge = screen.getByText('Tiny badge').closest('.n8n-badge');
+				expect(badge).toHaveClass('xxxsmall');
+				expect(screen.getByText('Tiny badge')).toHaveClass('step-3xs');
+				expect(badge?.querySelector('.n8n-icon')).toHaveAttribute('height', '10px');
+			});
+
 			it('should render the selected variant and size', function testVariantAndSize() {
 				const wrapper = render(N8nBadge, {
 					props: {

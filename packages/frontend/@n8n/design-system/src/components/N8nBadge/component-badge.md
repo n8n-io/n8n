@@ -55,7 +55,7 @@ type BadgeVariant =
   | 'success'
   | 'info';
 
-type BadgeSize = 'xxsmall' | 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge';
+type BadgeSize = 'xxxsmall' | 'xxsmall' | 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge';
 ```
 
 
@@ -66,8 +66,8 @@ type BadgeSize = 'xxsmall' | 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge';
 - Clickable badges show a pointer cursor and distinct hover, active, focus-visible, and disabled states.
 - The label stays on one line. Overflowing label text is truncated with an ellipsis when a consumer limits the badge width.
 - Leading and trailing icons do not shrink.
-- `xxsmall`, `xsmall`, `small`, and `medium` badges use medium icons. `large` and `xlarge` badges use xlarge icons.
-- `xxsmall` and `xsmall` badges use `2xs` text. `small` and `medium` badges use `xs` text. `large` and `xlarge` badges use `sm` text.
+- `xxxsmall` badges use xsmall icons. `xxsmall`, `xsmall`, `small`, and `medium` badges use medium icons. `large` and `xlarge` badges use xlarge icons.
+- `xxxsmall` badges use `3xs` text. `xxsmall` and `xsmall` badges use `2xs` text. `small` and `medium` badges use `xs` text. `large` and `xlarge` badges use `sm` text.
 - The badge supports light and dark color modes through design tokens.
 
 
@@ -143,6 +143,7 @@ function removeFilter() {
 
 ```vue
 <template>
+  <N8nBadge size="xxxsmall">Extra extra extra small</N8nBadge>
   <N8nBadge size="xxsmall">Extra extra small</N8nBadge>
   <N8nBadge size="xsmall">Extra small</N8nBadge>
   <N8nBadge size="small">Small</N8nBadge>
