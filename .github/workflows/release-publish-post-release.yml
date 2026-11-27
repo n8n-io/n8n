@@ -27,10 +27,6 @@ on:
         description: 'Release type acquired from determine-version-info. (stable or rc)'
         required: true
         type: string
-      prerelease:
-        description: 'Whether this is a standalone v3 prerelease.'
-        required: true
-        type: boolean
 
 jobs:
   push-new-release-to-channel:
@@ -98,7 +94,7 @@ jobs:
     with:
       previous-version: ${{ inputs.previous_version }}
       version: ${{ inputs.version }}
-      experimental: ${{ inputs.release_type == 'rc' && !inputs.prerelease }}
+      experimental: ${{ inputs.release_type == 'rc' }}
     secrets: inherit
 
   send-version-release-notification:
@@ -117,7 +113,6 @@ jobs:
     # release that promotes the previous beta to stable.
     if: |
       inputs.release_type != 'rc' &&
-      !inputs.prerelease &&
       (inputs.track == 'stable' || inputs.new_stable_version != '')
     permissions:
       contents: read

@@ -606,31 +606,26 @@ For older release refs without the verifier package, the verification job emits 
 notice and skips dependency verification, even in blocking mode. Release PR creation
 can continue without that check.
 
-### Standalone prereleases
+### First normal v3 release
 
-Set `prerelease: true` on `release-create-pr.yml` to publish a bare SemVer as a
-prerelease without moving the stable or beta release channels. This mode:
+1. Record the current `master` SHA and the `stable` and `beta` tag targets. Keep the
+   v2 beta version for the v2 maintenance handoff.
+2. Finish the final sync and stop the old sync workflow. Check for open PRs that
+   target `3.x` and retarget or close them. Merge `3.x` into `master` with the
+   `n8n@3.4.1` tag in its history.
+3. Verify the published `3.4.1` n8n and runner images and smoke-test the installer.
+   Dispatch **Release: Create Minor Release PR** on `master`. If the cadence guard
+   reports a minor release in the same UTC week, dispatch with `force: true` for
+   this planned cutover.
+4. Verify that the Git `beta` and `stable` tags point to the same commits as
+   `n8n@3.5.0` and `n8n@3.4.1`, respectively. Check `beta`/`next` and
+   `stable`/`latest` in both image registries. Check GitHub Releases, the Cloud
+   release record, and the Public API schema. Do not rebuild `3.4.1` to promote it.
 
-- publishes public packages under the npm `rc` dist-tag;
-- publishes versioned Docker images without moving channel tags;
-- marks the GitHub release as a prerelease and populates cloud with the same
-  non-experimental payload as a normal minor or patch release;
-- skips pointer tag updates, backport label updates, release notifications, and
-  release-candidate branch maintenance; and
-- fast-forwards `3.x` to the release tag so the next minor version increments
-  from the released version.
+The old standalone prerelease mode is no longer available. Experimental releases
+still use **Release: Create Experiment PR**.
 
-Standalone prereleases require `base-branch: 3.x`, a bare v3 version, and a
-`major`, `minor`, or `patch` release type. The release tag update shares a
-concurrency group with the master-to-`3.x` sync. The publish workflow verifies
-that the release descends from the current `3.x` branch before it publishes any
-artifacts. The final branch update fails unless `3.x` can move with a
-fast-forward. Do not merge or push other changes to `3.x` from release PR
-creation until the release tag returns to `3.x`.
-
-For the first v3 prerelease, use `base-branch: 3.x`, `release-type: major`, and
-`prerelease: true`. For later weekly prereleases, use `base-branch: 3.x`,
-`release-type: minor`, and `prerelease: true`.
+### Major releases
 
 A major release marks every public package as dirty and increments every package
 by one major version. This gives parallel release lines separate npm version
@@ -735,7 +730,6 @@ Push to master
 | Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
 | Daily 04:30               | `test-image-efficiency.yml`       | Image size and layer waste with Dive |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
-| Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
@@ -747,25 +741,12 @@ Push to master
 
 ---
 
-## v3 development (master + 3.x)
+## Legacy v3 nightly images
 
-The sync runs automation code from the triggering `master` SHA while its working checkout
-stays on `3.x`.
+After cutover, use the regular `master` nightly for new v3 builds. Keep the legacy
+workflow until deployment cells verify the regular nightly and the Helm release
+owner confirms what will replace `v3-rc`.
 
-During the v3 release window, `master` carries normal feature work (behind opt-in
-flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-master-to-3x.yml`
-syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
-clean sync adds no commit and nothing is squashed. What it pushes is always verified to be
-exactly the tree a merge of `3.x` and `master` produces, and marker-free. Conflicts confined
-to non-lockfile mechanical files (bot-maintained data files — see `MECHANICAL_PATHS` in
-`sync-master-to-3x.mjs`) are auto-resolved during the replay. On a code or `pnpm-lock.yaml`
-conflict, `3.x` is left untouched and a draft PR carrying the conflict markers (labeled
-`automation:v3-sync`, with other mechanical files pre-resolved) is opened on
-`sync/master-to-3x`. The lockfile is always left for the resolver. The PR names both ends of
-the conflict — the breaking-commit authors and the `master` commits that touched the same
-files — via `sync-conflict-owners.mjs`, posts to `#alerts-v3-sync`, and pauses further syncs
-until it is resolved and merged normally. Delete/modify conflicts have no markers to carry,
-so they are resolved toward `3.x` and listed as an explicit decision in the PR body.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
 by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`. On Mondays it also
 retags that run's n8n + runners manifests as a release candidate (by digest on GHCR, so
@@ -981,7 +962,6 @@ rewrite safe.
 | Script                     | Purpose                                                              | Called By                          |
 |----------------------------|----------------------------------------------------------------------|------------------------------------|
 | `branch-replay.mjs`        | Shared primitives: merge-tree, tree guard, marker scan               | the two scripts below              |
-| `sync-master-to-3x.mjs`    | master → `3.x`, rebased; auto-resolves mechanical files, opens a conflict PR | `util-sync-master-to-3x.yml`       |
 | `sync-bundle-branch.mjs`   | base → `bundle/*` in n8n-private, merged; skips while the base is unpublished; fail-loud, never resolves conflicts | `sec-sync-bundle-branches.yml`   |
 
 ### Slack Scripts
