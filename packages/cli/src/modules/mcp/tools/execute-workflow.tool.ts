@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
@@ -39,6 +40,10 @@ import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils'
 
 import type { McpService } from '@/modules/mcp/mcp.service';
 import type { WorkflowRunner } from '@/workflow-runner';
+import {
+	inferInputSchema,
+	toSubWorkflowTriggerOutput,
+} from '@/workflows/callable/callable-workflow-input';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import {
 	type TelemetryProxy,
@@ -64,7 +69,7 @@ const inputSchema = z.object({
 	inputs: workflowInputsSchema
 		.optional()
 		.describe(
-			'Trigger payload. Required for webhook, chat, and form triggers. Must be omitted for schedule and manual triggers. Use get_workflow_details to see the expected payload for each trigger.',
+			'Trigger payload. Required for webhook, chat, form, and "When Executed by Another Workflow" triggers. Must be omitted for schedule and manual triggers. Use get_workflow_details to see the expected payload for each trigger.',
 		),
 });
 
@@ -387,7 +392,7 @@ const resolveExecuteWorkflowTrigger = (
 		if (!isMcpSupportedTriggerType(named.type, executionMode)) {
 			if (named.type === MANUAL_TRIGGER_NODE_TYPE && executionMode === 'production') {
 				throw new WorkflowAccessError(
-					`Trigger node "${triggerNodeName}" cannot be used in production mode. Use a webhook, form, chat, or schedule trigger, or execute in manual mode.`,
+					`Trigger node "${triggerNodeName}" cannot be used in production mode. Use a webhook, form, chat, schedule, or "When Executed by Another Workflow" trigger, or execute in manual mode.`,
 					'unsupported_trigger',
 				);
 			}
@@ -401,9 +406,14 @@ const resolveExecuteWorkflowTrigger = (
 		return named;
 	}
 
-	const noPayloadTriggers = eligible.filter((node) => !triggerRequiresInputs(node.type));
-	if (eligible.length === 1 && noPayloadTriggers.length === 1) {
-		return noPayloadTriggers[0];
+	const triggersOtherThanSubWorkflow = eligible.filter(
+		(node) => node.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	);
+	if (
+		triggersOtherThanSubWorkflow.length === 1 &&
+		!triggerRequiresInputs(triggersOtherThanSubWorkflow[0].type)
+	) {
+		return triggersOtherThanSubWorkflow[0];
 	}
 
 	if (eligible.length === 0) throw noEligibleTriggerError(executionMode);
@@ -448,6 +458,8 @@ const inputsMatchTrigger = (nodeType: string, inputs: WorkflowInputs): boolean =
 			return 'formData' in inputs;
 		case WEBHOOK_NODE_TYPE:
 			return 'webhookData' in inputs;
+		case EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE:
+			return 'workflowInputs' in inputs;
 		default:
 			return false;
 	}
@@ -485,8 +497,8 @@ const getExecutionModeForTrigger = (node: INode): WorkflowExecuteMode => {
 };
 
 /**
- * Constructs pin data for the trigger node based on provided inputs.
- * Callers must validate inputs against the trigger before this runs.
+ * Constructs the trigger items from the provided inputs, keyed by node name.
+ * Callers must check the input shape against the trigger before this runs.
  */
 const getPinDataForTrigger = async (
 	node: INode,
@@ -537,6 +549,22 @@ const getPinDataForTrigger = async (
 						},
 					},
 				],
+			};
+		}
+		case EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE: {
+			const workflowInputs = inputs && 'workflowInputs' in inputs ? inputs.workflowInputs : {};
+			const parsed = inferInputSchema(node, 'executeWorkflow').safeParse(workflowInputs);
+			if (!parsed.success) {
+				const issues = parsed.error.issues
+					.map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+					.join('; ');
+				throw new WorkflowAccessError(
+					`Trigger node "${node.name}" inputs do not match its declared fields. ${issues}.`,
+					'invalid_inputs',
+				);
+			}
+			return {
+				[node.name]: [{ json: toSubWorkflowTriggerOutput(node, parsed.data) }],
 			};
 		}
 		case SCHEDULE_TRIGGER_NODE_TYPE: {
@@ -605,6 +633,9 @@ const getInputMetaData = (
 			inputs.webhookData?.query ? Object.keys(inputs.webhookData.query).length : 0,
 			inputs.webhookData?.headers ? Object.keys(inputs.webhookData.headers).length : 0,
 		].reduce((a, b) => a + b, 0);
+	} else if ('workflowInputs' in inputs) {
+		metadata.type = 'workflowInputs';
+		metadata.parameter_count = Object.keys(inputs.workflowInputs).length;
 	}
 	return metadata;
 };

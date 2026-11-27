@@ -5,6 +5,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	NodeHelpers,
 	type ICredentialDataDecryptedObject,
 	type INode,
@@ -13,6 +14,10 @@ import {
 } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import {
+	isPassthroughTrigger,
+	listWorkflowInputFields,
+} from '@/workflows/callable/callable-workflow-input';
 
 import {
 	hasHttpHeaderAuthDecryptedData,
@@ -85,9 +90,9 @@ export const getTriggerDetails = async (
 	if (supportedTriggers.length === 0) {
 		if (unsupportedTriggers.length > 0) {
 			const names = unsupportedTriggers.map((trigger) => trigger.name).join(', ');
-			return `This workflow's trigger(s) are not supported for direct execution through MCP: ${names}. Only Schedule, Webhook, Form, and Chat triggers can be executed directly through MCP, so this workflow cannot be executed through MCP. Its trigger(s) still run normally when the workflow is active.`;
+			return `This workflow's trigger(s) are not supported for direct execution through MCP: ${names}. Only Schedule, Webhook, Form, Chat, and "When Executed by Another Workflow" triggers can be executed directly through MCP, so this workflow cannot be executed through MCP. Its trigger(s) still run normally when the workflow is active.`;
 		}
-		return 'This workflow has no production triggers (Schedule, Webhook, Form, or Chat). It can only be executed in manual mode.';
+		return 'This workflow has no production triggers (Schedule, Webhook, Form, Chat, or "When Executed by Another Workflow"). It can only be executed in manual mode.';
 	}
 
 	// Organize triggers by their node type
@@ -96,6 +101,7 @@ export const getTriggerDetails = async (
 		[WEBHOOK_NODE_TYPE]: [],
 		[FORM_TRIGGER_NODE_TYPE]: [],
 		[CHAT_TRIGGER_NODE_TYPE]: [],
+		[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: [],
 	};
 
 	// Group triggers by type
@@ -139,6 +145,12 @@ export const getTriggerDetails = async (
 		responses.push(getFormTriggerDetails(triggersByType[FORM_TRIGGER_NODE_TYPE]));
 	}
 
+	if (triggersByType[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE].length > 0) {
+		responses.push(
+			getSubWorkflowTriggerDetails(triggersByType[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]),
+		);
+	}
+
 	return responses.join('\n\n');
 };
 
@@ -165,6 +177,28 @@ const getFormTriggerDetails = (formTriggers: INode[]): string => {
 				<trigger ${index + 1}>
 				\t - Node name: ${node.name}
 				\t - Form fields: ${JSON.stringify(node.parameters?.formFields ?? 'N/A')}
+				</trigger ${index + 1}>`,
+		)
+		.join('\n\n');
+	return header + triggers + footer;
+};
+
+const describeWorkflowInputFields = (node: INode): string => {
+	if (isPassthroughTrigger(node)) return 'any fields (passthrough)';
+	const fields = listWorkflowInputFields(node);
+	if (fields.length === 0) return 'none declared';
+	return fields.map((field) => `${field.name} (${field.type ?? 'string'})`).join(', ');
+};
+
+const getSubWorkflowTriggerDetails = (subWorkflowTriggers: INode[]): string => {
+	const header = '"When Executed by Another Workflow" trigger(s):\n\n';
+	const footer = `\n\nTo execute this trigger, pass triggerNodeName and inputs: ${getExecuteWorkflowCallExample(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)}. Pass { workflowInputs: {} } when no fields are declared. A declared field you omit is null.`;
+	const triggers = subWorkflowTriggers
+		.map(
+			(node, index) => `
+				<trigger ${index + 1}>
+				\t - Node name: ${node.name}
+				\t - Input fields: ${describeWorkflowInputFields(node)}
 				</trigger ${index + 1}>`,
 		)
 		.join('\n\n');

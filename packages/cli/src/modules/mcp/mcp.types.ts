@@ -202,7 +202,7 @@ export type UserConnectedToMCPEventPayload = {
 };
 
 export type ExecuteWorkflowsInputMeta = {
-	type?: 'webhook' | 'chat' | 'form';
+	type?: 'webhook' | 'chat' | 'form' | 'workflowInputs';
 	parameter_count?: number;
 	triggerNodeName?: string;
 };

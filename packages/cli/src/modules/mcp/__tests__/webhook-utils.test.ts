@@ -12,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
@@ -437,7 +438,7 @@ describe('getTriggerDetails', () => {
 			workflowId,
 		);
 		expect(res).toBe(
-			'This workflow has no production triggers (Schedule, Webhook, Form, or Chat). It can only be executed in manual mode.',
+			'This workflow has no production triggers (Schedule, Webhook, Form, Chat, or "When Executed by Another Workflow"). It can only be executed in manual mode.',
 		);
 	});
 
@@ -522,5 +523,54 @@ describe('getTriggerDetails', () => {
 		expect(res).not.toContain('formData: Array<');
 		expect(res).toContain('{ triggerNodeName: "<node name>" }');
 		expect(res).toContain('do not take inputs');
+	});
+
+	it('lists the input fields of each "When Executed by Another Workflow" trigger', async () => {
+		const declaredFields = createTriggerNode({
+			name: 'Declared Fields',
+			type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+			parameters: {
+				inputSource: 'workflowInputs',
+				workflowInputs: {
+					values: [{ name: 'customerId', type: 'number' }, { name: 'email' }],
+				},
+			},
+		});
+		const jsonExample = createTriggerNode({
+			name: 'Json Example',
+			type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+			parameters: { inputSource: 'jsonExample', jsonExample: '{"active": true}' },
+		});
+		const passthrough = createTriggerNode({
+			name: 'Passthrough',
+			type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+			parameters: { inputSource: 'passthrough' },
+		});
+		const noFields = createTriggerNode({
+			name: 'No Fields',
+			type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+			parameters: { inputSource: 'workflowInputs' },
+		});
+
+		const res = await getTriggerDetails(
+			user,
+			[declaredFields, jsonExample, passthrough, noFields],
+			[],
+			baseUrl,
+			credentialsService,
+			credentialsFinderService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+
+		expect(res).toContain('"When Executed by Another Workflow" trigger(s)');
+		expect(res).toContain('Input fields: customerId (number), email (string)');
+		expect(res).toContain('Input fields: active (boolean)');
+		expect(res).toContain('Input fields: any fields (passthrough)');
+		expect(res).toContain('Input fields: none declared');
+		expect(res).toContain(
+			'{ triggerNodeName: "<node name>", inputs: { workflowInputs: { FIELD_NAME: VALUE } } }',
+		);
 	});
 });

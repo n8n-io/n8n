@@ -7,6 +7,7 @@ import { Container } from '@n8n/di';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
@@ -751,6 +752,161 @@ describe('execute-workflow MCP tool', () => {
 			});
 		});
 
+		describe('"When Executed by Another Workflow" trigger execution', () => {
+			const subWorkflowTrigger = {
+				id: 'node-1',
+				name: 'SubWorkflowTrigger',
+				type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+				typeVersion: 1.1,
+				position: [0, 0],
+				disabled: false,
+				parameters: {
+					inputSource: 'workflowInputs',
+					workflowInputs: { values: [{ name: 'customerId', type: 'number' }] },
+				},
+			} as INode;
+
+			const runSubWorkflow = async ({
+				nodes = [subWorkflowTrigger],
+				inputs,
+				executionMode = 'production',
+				triggerNodeName = subWorkflowTrigger.name,
+				pinData,
+			}: {
+				nodes?: INode[];
+				inputs?: Parameters<typeof executeWorkflow>[7];
+				executionMode?: 'manual' | 'production';
+				triggerNodeName?: string | null;
+				pinData?: IWorkflowExecutionDataProcess['pinData'];
+			}) => {
+				const workflow = createWorkflow({
+					activeVersionId: executionMode === 'production' ? uuid() : null,
+					settings: { availableInMCP: true },
+					nodes,
+					pinData,
+				});
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as Mock).mockResolvedValue('exec-sub');
+				await executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+					'sub-workflow',
+					inputs,
+					executionMode,
+					triggerNodeName ?? undefined,
+				);
+				return (workflowRunner.run as Mock).mock.calls[0][0] as IWorkflowExecutionDataProcess;
+			};
+
+			const triggerWith = (parameters: INode['parameters']) => ({
+				...subWorkflowTrigger,
+				parameters,
+			});
+
+			test('runs in production with the trigger execution mode and pins the inputs', async () => {
+				const runCall = await runSubWorkflow({ inputs: { workflowInputs: { customerId: 42 } } });
+
+				expect(runCall.executionMode).toBe('trigger');
+				expect(runCall.pinData).toEqual({ SubWorkflowTrigger: [{ json: { customerId: 42 } }] });
+			});
+
+			test('pins the declared fields, sets omitted ones to null and drops the rest', async () => {
+				const trigger = triggerWith({
+					inputSource: 'workflowInputs',
+					workflowInputs: { values: [{ name: 'customerId', type: 'number' }, { name: 'email' }] },
+				});
+
+				const runCall = await runSubWorkflow({
+					nodes: [trigger],
+					inputs: { workflowInputs: { customerId: 42, extra: 'x' } },
+				});
+
+				expect(runCall.pinData?.SubWorkflowTrigger).toEqual([
+					{ json: { customerId: 42, email: null } },
+				]);
+			});
+
+			test('pins an empty item when the trigger declares no fields', async () => {
+				const runCall = await runSubWorkflow({
+					nodes: [triggerWith({ inputSource: 'workflowInputs' })],
+					inputs: { workflowInputs: { extra: 'x' } },
+				});
+
+				expect(runCall.pinData?.SubWorkflowTrigger).toEqual([{ json: {} }]);
+			});
+
+			test('pins every input when the trigger accepts all data', async () => {
+				const runCall = await runSubWorkflow({
+					nodes: [triggerWith({ inputSource: 'passthrough' })],
+					inputs: { workflowInputs: { anything: 'goes', count: 2 } },
+				});
+
+				expect(runCall.pinData?.SubWorkflowTrigger).toEqual([
+					{ json: { anything: 'goes', count: 2 } },
+				]);
+			});
+
+			test('converts inputs to the declared field types', async () => {
+				const runCall = await runSubWorkflow({ inputs: { workflowInputs: { customerId: '99' } } });
+
+				expect(runCall.pinData?.SubWorkflowTrigger).toEqual([{ json: { customerId: 99 } }]);
+			});
+
+			test('replaces an editor pin on the trigger with the inputs in manual mode', async () => {
+				const runCall = await runSubWorkflow({
+					executionMode: 'manual',
+					inputs: { workflowInputs: { customerId: 42 } },
+					pinData: {
+						SubWorkflowTrigger: [{ json: { customerId: 1 } }],
+						OtherNode: [{ json: { pinned: 'data' } }],
+					},
+				});
+
+				expect(runCall.executionMode).toBe('manual');
+				expect(runCall.pinData).toEqual({
+					OtherNode: [{ json: { pinned: 'data' } }],
+					SubWorkflowTrigger: [{ json: { customerId: 42 } }],
+				});
+			});
+
+			test('rejects inputs that do not match the declared field types', async () => {
+				await expect(
+					runSubWorkflow({ inputs: { workflowInputs: { customerId: 'not a number' } } }),
+				).rejects.toThrow('inputs do not match its declared fields. customerId:');
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			test('rejects the trigger when inputs are omitted', async () => {
+				await expect(runSubWorkflow({})).rejects.toThrow(
+					'requires inputs matching { workflowInputs: { FIELD_NAME: VALUE } }',
+				);
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			test('still runs the manual trigger next to it when triggerNodeName is omitted', async () => {
+				const manualTrigger = {
+					...subWorkflowTrigger,
+					id: 'node-2',
+					name: 'ManualTrigger',
+					type: MANUAL_TRIGGER_NODE_TYPE,
+					typeVersion: 1,
+					parameters: {},
+				};
+
+				const runCall = await runSubWorkflow({
+					nodes: [subWorkflowTrigger, manualTrigger],
+					executionMode: 'manual',
+					triggerNodeName: null,
+				});
+
+				expect(runCall.startNodes).toEqual([{ name: 'ManualTrigger', sourceData: null }]);
+			});
+		});
+
 		describe('execution start', () => {
 			test('returns started status with execution ID', async () => {
 				const workflow = createWorkflow({
@@ -925,6 +1081,60 @@ describe('execute-workflow MCP tool', () => {
 							data: {
 								executionId: 'exec-telemetry',
 								status: 'started',
+							},
+						},
+					}),
+				);
+			});
+
+			test('tracks the field count of sub-workflow inputs', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'SubWorkflowTrigger',
+							type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+							typeVersion: 1.1,
+							position: [0, 0],
+							disabled: false,
+							parameters: { inputSource: 'passthrough' },
+						} as INode,
+					],
+				});
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as Mock).mockResolvedValue('exec-telemetry-sub');
+
+				const tool = createExecuteWorkflowTool(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					telemetry,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+				);
+
+				await tool.handler(
+					{
+						workflowId: 'telemetry-sub-workflow',
+						executionMode: 'production',
+						triggerNodeName: 'SubWorkflowTrigger',
+						inputs: { workflowInputs: { customerId: 1, email: 'a@b.co' } },
+					},
+					{} as any,
+				);
+
+				expect(telemetry.track).toHaveBeenCalledWith(
+					'User called mcp tool',
+					expect.objectContaining({
+						parameters: {
+							workflowId: 'telemetry-sub-workflow',
+							executionMode: 'production',
+							inputs: {
+								type: 'workflowInputs',
+								parameter_count: 2,
+								triggerNodeName: 'SubWorkflowTrigger',
 							},
 						},
 					}),

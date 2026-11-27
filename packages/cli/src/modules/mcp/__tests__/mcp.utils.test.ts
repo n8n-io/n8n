@@ -2,7 +2,12 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Request } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { MANUAL_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE, type INode } from 'n8n-workflow';
+import {
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	type INode,
+} from 'n8n-workflow';
 
 import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
 import {
@@ -523,6 +528,13 @@ describe('mcp.utils', () => {
 		it('includes webhook triggers in both modes', () => {
 			expect(isMcpSupportedTriggerType(WEBHOOK_NODE_TYPE, 'manual')).toBe(true);
 			expect(isMcpSupportedTriggerType(WEBHOOK_NODE_TYPE, 'production')).toBe(true);
+		});
+
+		it('includes "When Executed by Another Workflow" triggers in both modes', () => {
+			expect(isMcpSupportedTriggerType(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, 'manual')).toBe(true);
+			expect(isMcpSupportedTriggerType(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, 'production')).toBe(
+				true,
+			);
 		});
 	});
 });

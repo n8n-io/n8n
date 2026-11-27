@@ -1,5 +1,6 @@
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
@@ -44,10 +45,21 @@ export const webhookWorkflowInputSchema = z
 	})
 	.strict();
 
+export const subWorkflowInputSchema = z
+	.object({
+		workflowInputs: z
+			.record(z.unknown())
+			.describe(
+				'Input fields for workflows with a "When Executed by Another Workflow" trigger. Pass {} when the trigger declares no fields.',
+			),
+	})
+	.strict();
+
 export const workflowInputsSchema = z.union([
 	chatWorkflowInputSchema,
 	formWorkflowInputSchema,
 	webhookWorkflowInputSchema,
+	subWorkflowInputSchema,
 ]);
 
 export type WorkflowInputs = z.infer<typeof workflowInputsSchema>;
@@ -55,7 +67,8 @@ export type WorkflowInputs = z.infer<typeof workflowInputsSchema>;
 export const triggerRequiresInputs = (nodeType: string): boolean =>
 	nodeType === CHAT_TRIGGER_NODE_TYPE ||
 	nodeType === FORM_TRIGGER_NODE_TYPE ||
-	nodeType === WEBHOOK_NODE_TYPE;
+	nodeType === WEBHOOK_NODE_TYPE ||
+	nodeType === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE;
 
 export const getExpectedInputsDescription = (nodeType: string): string => {
 	switch (nodeType) {
@@ -65,6 +78,8 @@ export const getExpectedInputsDescription = (nodeType: string): string => {
 			return '{ formData: { FIELD_NAME: VALUE } }';
 		case WEBHOOK_NODE_TYPE:
 			return '{ webhookData: { headers?, query?, body? } }';
+		case EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE:
+			return '{ workflowInputs: { FIELD_NAME: VALUE } }';
 		case SCHEDULE_TRIGGER_NODE_TYPE:
 		case MANUAL_TRIGGER_NODE_TYPE:
 			return 'omit inputs';
@@ -82,6 +97,8 @@ export const getExecuteWorkflowCallExample = (nodeType: string): string => {
 			return '{ triggerNodeName: "<node name>", inputs: { formData: { FIELD_NAME: VALUE } } }';
 		case WEBHOOK_NODE_TYPE:
 			return '{ triggerNodeName: "<node name>", inputs: { webhookData: { headers?, query?, body? } } }';
+		case EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE:
+			return '{ triggerNodeName: "<node name>", inputs: { workflowInputs: { FIELD_NAME: VALUE } } }';
 		case SCHEDULE_TRIGGER_NODE_TYPE:
 		case MANUAL_TRIGGER_NODE_TYPE:
 			return '{ triggerNodeName: "<node name>" }';
