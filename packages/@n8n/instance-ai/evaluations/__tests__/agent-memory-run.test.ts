@@ -227,4 +227,56 @@ describe('executeAgentScenario with memory (AGENT-1666)', () => {
 			],
 		});
 	});
+
+	it('runs a single-shot scenario as a one-turn thread when memory is kept, so memory is used', async () => {
+		const calls: ExecuteCall[] = [];
+
+		const result = await run(
+			{ ...twoSessions, sessions: undefined, expectations: ['Answers'] },
+			calls,
+		);
+
+		expect(calls).toHaveLength(1);
+		expect(calls[0]?.thread).toMatchObject({ expectedTurn: 1, final: true });
+		expect(calls[0]?.thread?.message).toBeUndefined();
+		expect(calls[0]?.options?.awaitMemory).toBe(false);
+		expect(createAgentUserProxy).not.toHaveBeenCalled();
+		expect(result.agentTurnCount).toBe(1);
+	});
+
+	it('keeps a single-shot scenario single-shot without keepMemory', async () => {
+		const calls: ExecuteCall[] = [];
+
+		await run({ ...twoSessions, sessions: undefined, expectations: ['Answers'] }, calls, {});
+
+		expect(calls).toEqual([{ thread: undefined, options: { agentRun: {}, awaitMemory: false } }]);
+	});
+
+	it('does not retry a turn aborted by a transient error when memory is kept: it fails as a framework issue', async () => {
+		const calls: ExecuteCall[] = [];
+		const client = memoryClient(calls);
+		vi.mocked(client.executeAgentWithLlmMock).mockResolvedValueOnce({
+			...agentReply('', undefined),
+			success: false,
+			errors: ['SQLITE_CONSTRAINT: UNIQUE constraint failed'],
+		});
+
+		await expect(
+			executeAgentScenario(
+				client,
+				'agent-1',
+				twoSessions,
+				'(agent context)',
+				silentLogger,
+				60_000,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				agentRun,
+			),
+		).rejects.toThrow(/FRAMEWORK ISSUE: .*not retried/);
+		expect(client.executeAgentWithLlmMock).toHaveBeenCalledTimes(1);
+	});
 });

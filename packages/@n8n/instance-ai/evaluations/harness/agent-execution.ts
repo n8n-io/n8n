@@ -25,6 +25,7 @@ import {
 	runAgentConversation,
 	singleTurnTranscript,
 	withTurnCount,
+	type AgentSessionPlan,
 } from './agent-conversation';
 import { agentExpectationUnits, type AgentExpectationUnit } from './agent-run-schema';
 import { agentHandler } from './artifacts/agent-handler';
@@ -57,7 +58,7 @@ import type {
 	TestCaseCredential,
 	TranscriptTurn,
 } from '../types';
-import { createAgentUserProxy } from '../utils/user-proxy/agent-user';
+import { createAgentUserProxy, type AgentUserProxy } from '../utils/user-proxy/agent-user';
 import type { CaseSeed } from './schema';
 import { agentModelSlots, AgentModelSlotsViewSchema } from '../credentials/agent-model-slots';
 import type { AgentModelResolution } from '../credentials/model-resolver';
@@ -276,6 +277,7 @@ async function executeAgentTurn(
 			},
 		);
 	let evalResult = await send();
+	throwIfMemoryTurnAborted(evalResult, target, thread);
 	for (
 		let attempt = 1;
 		!evalResult.success &&
@@ -292,6 +294,37 @@ async function executeAgentTurn(
 	return evalResult;
 }
 
+/**
+ * A turn with memory kept that a transient DB error aborted may already be
+ * in the runtime's thread; a retry would send its user message twice. Not
+ * retried: the run fails as a framework issue instead.
+ */
+function throwIfMemoryTurnAborted(
+	evalResult: InstanceAiEvalAgentExecutionResult,
+	target: AgentTurnTarget,
+	thread: InstanceAiEvalAgentThreadTurn | undefined,
+): void {
+	if (!thread || target.agentRun?.keepMemory !== true) return;
+	if (evalResult.success || !isTransientExecutionAbort(evalResult.errors)) return;
+	throw new Error(
+		`FRAMEWORK ISSUE: the Agent turn was aborted by a transient error and not retried, because the Agent's memory may already hold its message (${evalResult.errors.join('; ')})`,
+	);
+}
+
+/** A simulated user that never speaks: a one-turn thread opens with the seed's message. */
+const SILENT_USER: AgentUserProxy = { nextMessage: async () => ({ kind: 'done' }) };
+
+/**
+ * How the scenario talks to the Agent: its sessions or user turns, else one
+ * turn. With memory kept, that one turn is still a thread (with the seed's
+ * opening message), so the Agent runs on its memory as in a real chat.
+ */
+function scenarioPlans(target: AgentTurnTarget): AgentSessionPlan[] | undefined {
+	const plans = agentSessionPlans(target.scenario);
+	if (plans || target.agentRun?.keepMemory !== true) return plans;
+	return [{ goal: target.scenario.dataSetup, maxTurns: 1, opening: 'seed' }];
+}
+
 /** The scenario's run: one request, or a conversation of turns and sessions. */
 async function runAgentScenarioTurns(
 	client: N8nClient,
@@ -301,12 +334,14 @@ async function runAgentScenarioTurns(
 	transcript?: TranscriptTurn[];
 	turnCount: number;
 }> {
-	const plans = agentSessionPlans(target.scenario);
+	const plans = scenarioPlans(target);
 	if (!plans) return { evalResult: await executeAgentTurn(client, target), turnCount: 1 };
 	const conversation = await runAgentConversation({
 		plans,
 		dataSetup: target.scenario.dataSetup,
-		user: createAgentUserProxy({ logger: target.logger }),
+		user: agentSessionPlans(target.scenario)
+			? createAgentUserProxy({ logger: target.logger })
+			: SILENT_USER,
 		executeTurn: async (thread, { awaitMemory }) =>
 			await executeAgentTurn(client, target, thread, awaitMemory),
 	});
