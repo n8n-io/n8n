@@ -114,6 +114,8 @@ export class McpServerProtectedResource implements ProtectedResourceResolver {
 			projectId: server.projectId,
 		});
 		const reason: McpServerConnectRefusal = role ? 'no_connect_scope' : 'not_member';
+		// The name of a personal project holds the email of its owner, so the screen gets no name.
+		if (withProject.project.type !== 'team') return { reason };
 		return { reason, projectName: withProject.project.name };
 	}
 }

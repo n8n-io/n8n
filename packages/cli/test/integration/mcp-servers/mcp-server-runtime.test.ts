@@ -34,6 +34,7 @@ import { TrustedSourceDiscoveryService } from '@/modules/inbound-auth-core/trust
 import { TrustedSourceDbStore } from '@/modules/inbound-auth-core/trusted-source.store';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import { OAuthClient } from '@/modules/oauth-server/database/entities/oauth-client.entity';
+import { RefreshToken } from '@/modules/oauth-server/database/entities/oauth-refresh-token.entity';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -261,12 +262,15 @@ describe('Custom MCP server runtime with a real MCP client', () => {
 		await client.close();
 	});
 
-	it('returns an error result with the error message of a failed run', async () => {
+	it('returns a general error result for a failed run, without the error text', async () => {
 		vi.spyOn(Container.get(WorkflowToolPort), 'run').mockResolvedValue({
 			status: 'error',
 			executionId: '1',
 			finished: Promise.resolve(),
-			error: { message: 'The CRM answered 500' },
+			error: {
+				message: 'connect ECONNREFUSED crm.internal:5432',
+				nodeType: 'n8n-nodes-base.postgres',
+			},
 		});
 		const client = await connect(await tokenFor(member, resourceUrl(serverSlug)));
 
@@ -274,7 +278,30 @@ describe('Custom MCP server runtime with a real MCP client', () => {
 
 		expect(result).toEqual({
 			isError: true,
-			content: [{ type: 'text', text: 'The CRM answered 500' }],
+			content: [
+				{
+					type: 'text',
+					text: 'The workflow of this tool failed. A builder of the server can see the details in its executions.',
+				},
+			],
+		});
+		await client.close();
+	});
+
+	it('returns the text of a Stop and Error node', async () => {
+		vi.spyOn(Container.get(WorkflowToolPort), 'run').mockResolvedValue({
+			status: 'error',
+			executionId: '1',
+			finished: Promise.resolve(),
+			error: { message: 'The campaign ID is unknown', nodeType: 'n8n-nodes-base.stopAndError' },
+		});
+		const client = await connect(await tokenFor(member, resourceUrl(serverSlug)));
+
+		const result = await client.callTool({ name: 'get_pipeline_summary', arguments: {} });
+
+		expect(result).toEqual({
+			isError: true,
+			content: [{ type: 'text', text: 'The campaign ID is unknown' }],
 		});
 		await client.close();
 	});
@@ -424,6 +451,24 @@ describe('Custom MCP server runtime access', () => {
 
 		expect(response.statusCode).toBe(401);
 		expect(response.headers['www-authenticate']).toMatch(/error="invalid_token"/);
+	});
+
+	it('revokes the refresh tokens of an old server when a new server takes its slug', async () => {
+		const slug = `reused-tools-${uuidv7().slice(-8)}`;
+		await tokenFor(member, resourceUrl(slug));
+		const refreshTokens = async () =>
+			await Container.get(DataSource)
+				.getRepository(RefreshToken)
+				.countBy({ resource: resourceUrl(slug) });
+		expect(await refreshTokens()).toBe(1);
+
+		await testServer
+			.authAgentFor(member)
+			.post(`/projects/${project.id}/mcp-servers`)
+			.send({ name: 'Reused tools', slug })
+			.expect(200);
+
+		expect(await refreshTokens()).toBe(0);
 	});
 
 	it('refuses a token for the instance MCP with 401', async () => {

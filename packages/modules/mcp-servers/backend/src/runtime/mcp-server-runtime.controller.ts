@@ -1,15 +1,30 @@
 import { Logger } from '@n8n/backend-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { Delete, Get, Options, Post, RootLevelController } from '@n8n/decorators';
+import {
+	createIpRateLimit,
+	Delete,
+	Get,
+	Options,
+	Post,
+	RootLevelController,
+} from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Request, Response } from 'express';
 
+import { McpServersConfig } from '../mcp-servers.config';
 import { MCP_SERVERS_PATH, McpServerProtectedResource } from './mcp-server-protected-resource';
 import { McpServerRuntimeService } from './mcp-server-runtime.service';
 
 type RuntimeRequest = Request<{ slug: string }>;
 
-const routeOptions = { skipAuth: true, usesTemplates: true } as const;
+// The routes skip the n8n session and take a bearer token, so they get an IP rate limit, as the
+// instance MCP does.
+const routeOptions = {
+	skipAuth: true,
+	usesTemplates: true,
+	ipRateLimit: createIpRateLimit(Container.get(McpServersConfig).rateLimit),
+} as const;
 
 /**
  * The MCP endpoint of each custom server: MCP over streamable HTTP, with no session and no SSE.

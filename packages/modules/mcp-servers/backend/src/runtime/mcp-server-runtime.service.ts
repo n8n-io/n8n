@@ -45,6 +45,11 @@ const ANY_INPUT: WorkflowToolInputSchema = { type: 'object', additionalPropertie
 
 export const SERVER_BUSY_MESSAGE = 'The server is busy. Try again in a moment.';
 
+/** The only node whose error text is written for the users of a workflow, as in Apps. */
+const STOP_AND_ERROR_NODE_TYPE = 'n8n-nodes-base.stopAndError';
+const GENERIC_FAILURE_MESSAGE =
+	'The workflow of this tool failed. A builder of the server can see the details in its executions.';
+
 const REFUSAL_MESSAGES: Record<WorkflowToolRefusal, string> = {
 	not_found: 'The workflow of this tool no longer exists. Ask a builder of the server to fix it.',
 	not_published: 'The workflow of this tool is not published. Publish it to use this tool.',
@@ -237,7 +242,15 @@ export class McpServerRuntimeService {
 					result: { content: [{ type: 'text', text: JSON.stringify(run.output) }] },
 				};
 			case 'error':
-				return { status: 'error', result: errorResult(run.error.message) };
+				// Other error texts can name hosts and tables of a private workflow.
+				return {
+					status: 'error',
+					result: errorResult(
+						run.error.nodeType === STOP_AND_ERROR_NODE_TYPE
+							? run.error.message
+							: GENERIC_FAILURE_MESSAGE,
+					),
+				};
 			default:
 				return { status: 'error', result: errorResult(RUN_STATUS_MESSAGES[run.status]) };
 		}
