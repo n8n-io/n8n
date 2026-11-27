@@ -21,11 +21,12 @@ import { KnowledgeFileRepository } from '../repositories/knowledge-file.reposito
 import { KnowledgeCollectionSourceService } from '../retrieval/collection-source.service';
 import { KnowledgeMirrorService } from '../retrieval/mirror.service';
 import { KnowledgeFileStore, type KnowledgeFileStorageReference } from './knowledge-file-store';
-import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
 import {
-	hasAllowedKnowledgeFileExtension,
+	KnowledgeUploadError,
+	type KnowledgeUploadFailureReason,
 	knowledgeFileTypeError,
-} from './knowledge-upload.middleware';
+} from './knowledge-upload.error';
+import { hasAllowedKnowledgeFileExtension } from './knowledge-upload.middleware';
 import { extractPdfText } from './pdf-text';
 import { toKnowledgeContentFileName, toAgentFileDto } from './storage-naming';
 
