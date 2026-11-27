@@ -14,6 +14,7 @@ import {
 } from '@n8n/api-types';
 import type {
 	AgentChatQueueItem,
+	AgentConfigValidationIssue,
 	AgentBackgroundJobDto,
 	AgentSseEvent,
 	ProviderAttachmentCapabilities,
@@ -472,6 +473,7 @@ describe('AgentChatPanel', () => {
 			beforeSend: () => Promise<void> | void;
 			backgroundJobsActive: boolean;
 			scheduleTestDisabledReason: string;
+			scheduleTestValidationIssues: AgentConfigValidationIssue[];
 			increaseBudget: (payload: {
 				field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
 				amount: number;
@@ -3729,13 +3731,27 @@ describe('AgentChatPanel', () => {
 
 		it('disables Run again while Preview cannot open', async () => {
 			sessionTestTaskIdMock.value = 'task-1';
-			const wrapper = mountPanel({ scheduleTestDisabledReason: 'The agent is building' });
+			const issues: AgentConfigValidationIssue[] = [
+				{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } },
+			];
+			const wrapper = mountPanel({
+				scheduleTestDisabledReason: 'Fix the agent first',
+				scheduleTestValidationIssues: issues,
+			});
 			const runAgain = wrapper.get('[data-testid="agent-schedule-test-run-again"]');
 
 			expect(runAgain.attributes('disabled')).toBeDefined();
-			expect(
-				wrapper.findComponent({ name: 'AgentScheduleTestNotice' }).props('runAgainDisabledReason'),
-			).toBe('The agent is building');
+			// Focusable, so keyboard users reach the tooltip.
+			expect(runAgain.attributes('focusable-when-disabled')).toBeDefined();
+			const tooltip = wrapper
+				.findComponent({ name: 'AgentScheduleTestNotice' })
+				.findComponent({ name: 'AgentValidationTooltip' });
+			expect(tooltip.props()).toMatchObject({
+				disabled: false,
+				fallback: 'Fix the agent first',
+				action: 'preview',
+				issues,
+			});
 			await runAgain.trigger('click');
 			await wrapper.get('[data-testid="agent-schedule-test-chat"]').trigger('click');
 			expect(wrapper.emitted('schedule-test-run-again')).toBeUndefined();

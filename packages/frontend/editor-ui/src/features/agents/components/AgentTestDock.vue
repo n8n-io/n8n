@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
@@ -61,6 +62,7 @@ const props = withDefaults(
 		initialPrompt?: AgentPreviewPrompt;
 		showTestScenarios?: boolean;
 		scheduleTestDisabledReason?: string;
+		scheduleTestValidationIssues?: AgentConfigValidationIssue[];
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		canDeleteSession?: boolean;
@@ -349,6 +351,7 @@ defineExpose({ clearBudgetStops });
 				:initial-prompt="props.initialPrompt"
 				:show-test-scenarios="props.showTestScenarios"
 				:schedule-test-disabled-reason="props.scheduleTestDisabledReason"
+				:schedule-test-validation-issues="props.scheduleTestValidationIssues"
 				:can-send-to-assistant="props.canSendToAssistant"
 				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"

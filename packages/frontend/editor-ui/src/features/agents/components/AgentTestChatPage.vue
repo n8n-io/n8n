@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { MANAGED_CREDENTIAL_TOKEN, type AgentConfigValidationIssue } from '@n8n/api-types';
 import { computed, inject, ref, useTemplateRef, watch } from 'vue';
 
 import { deriveAgentStatus } from '@/features/agents/composables/agentTelemetry.utils';
@@ -32,6 +32,7 @@ const props = withDefaults(
 		initialPrompt?: AgentPreviewPrompt;
 		showTestScenarios?: boolean;
 		scheduleTestDisabledReason?: string;
+		scheduleTestValidationIssues?: AgentConfigValidationIssue[];
 		placeholder?: string;
 		composerHeight?: string;
 		canSendToAssistant?: boolean;
@@ -144,6 +145,7 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				:budget-cards="budgetCards"
 				:increase-budget="increaseBudget"
 				:schedule-test-disabled-reason="scheduleTestDisabledReason"
+				:schedule-test-validation-issues="scheduleTestValidationIssues"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@usage-updated="emit('usage-updated', $event)"
 				@session-created="emit('session-created', $event)"

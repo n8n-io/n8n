@@ -35,6 +35,7 @@ import {
 	type AgentSessionFile,
 	type AgentBuilderOpenSuspension,
 	type AgentSseEvent,
+	type AgentConfigValidationIssue,
 	type ProviderAttachmentCapabilities,
 	APPROVAL_TOOL_NAME,
 	WAIT_TOOL_NAME,
@@ -191,6 +192,8 @@ const props = withDefaults(
 		disabled?: boolean;
 		/** Why a schedule test cannot run again now, for example while the agent builds. */
 		scheduleTestDisabledReason?: string;
+		/** The problems that keep the agent from running, for the Run again tooltip. */
+		scheduleTestValidationIssues?: AgentConfigValidationIssue[];
 		/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
 		thinkingLabel?: string;
 		/** Replaces the generic "Session stopped" of a stopped turn. The Assistant sets it. */
@@ -2078,6 +2081,7 @@ onBeforeUnmount(() => {
 						v-if="sessionTestTaskId"
 						:class="$style.scheduleTestNotice"
 						:run-again-disabled-reason="scheduleTestDisabledReason"
+						:run-again-validation-issues="scheduleTestValidationIssues"
 						@run-again="runScheduleTestAgain"
 						@chat="emit('schedule-test-chat')"
 					/>

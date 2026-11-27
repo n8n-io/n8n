@@ -3021,6 +3021,23 @@ describe('AgentBuilderView — preview routing', () => {
 		});
 	});
 
+	it('tests an unsaved schedule as a normal chat, without its timezone', async () => {
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('preview-task', {
+			objective: 'Draft objective',
+			timezone: 'Asia/Tokyo',
+			source: 'schedule_modal',
+		});
+		await flushPromises();
+
+		// The server takes a task timezone only with a task ID.
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialPrompt')).toEqual({
+			text: 'Draft objective',
+			scheduleTest: undefined,
+		});
+	});
+
 	it('clears selected task instructions when the active agent changes', async () => {
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });

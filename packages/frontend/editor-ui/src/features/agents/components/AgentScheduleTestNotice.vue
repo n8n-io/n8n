@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-/** Why Preview cannot open now. Run again is disabled while it is set. */
-defineProps<{ runAgainDisabledReason?: string }>();
+import AgentValidationTooltip from './AgentValidationTooltip.vue';
+
+defineProps<{
+	/** Why Preview cannot open now. Run again is disabled while it is set. */
+	runAgainDisabledReason?: string;
+	/** The problems that keep the agent from running, as the Test button lists them. */
+	runAgainValidationIssues?: AgentConfigValidationIssue[];
+}>();
 
 const emit = defineEmits<{ 'run-again': []; chat: [] }>();
 const locale = useI18n();
@@ -25,19 +32,25 @@ const locale = useI18n();
 			>
 				{{ locale.baseText('agents.chat.scheduleTest.chat') }}
 			</N8nButton>
-			<N8nTooltip :content="runAgainDisabledReason" :disabled="!runAgainDisabledReason">
+			<AgentValidationTooltip
+				:disabled="!runAgainDisabledReason"
+				:fallback="runAgainDisabledReason ?? ''"
+				action="preview"
+				:issues="runAgainValidationIssues"
+			>
 				<N8nButton
 					variant="outline"
 					size="small"
 					icon="flask-conical"
 					:disabled="!!runAgainDisabledReason"
+					focusable-when-disabled
 					data-testid="agent-schedule-test-run-again"
 					data-attr="agent-schedule-test-run-again"
 					@click="emit('run-again')"
 				>
 					{{ locale.baseText('agents.chat.scheduleTest.runAgain') }}
 				</N8nButton>
-			</N8nTooltip>
+			</AgentValidationTooltip>
 		</div>
 	</div>
 </template>
