@@ -588,7 +588,7 @@ describe('createCasePipeline', () => {
 		expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
 	});
 
-	it('carries the agent scenario expectation verdicts on its row', async () => {
+	it('carries the agent scenario expectation verdicts and turn count on its row', async () => {
 		const lane = makeLane();
 		const verdict = { expectation: 'happy-path › Quotes the price', pass: false, reason: 'no' };
 		vi.mocked(lane.tracedExecuteAgent).mockResolvedValue({
@@ -597,6 +597,7 @@ describe('createCasePipeline', () => {
 			reasoning: 'Failed expectations',
 			agentEvalResult: { errors: [] },
 			expectationResults: [verdict],
+			agentTurnCount: 4,
 		} as never);
 		const build = okBuild({
 			workflowId: undefined,
@@ -611,6 +612,7 @@ describe('createCasePipeline', () => {
 		const output = await pipeline.runRow(rowInputs('happy-path'));
 
 		expect(output.scenarioExpectationResults).toEqual([verdict]);
+		expect(output.agentTurnCount).toBe(4);
 	});
 
 	it('does not run a draft Agent and owns the red as framework_issue when no LLM credential was declared', async () => {

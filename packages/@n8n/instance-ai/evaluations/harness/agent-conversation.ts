@@ -20,10 +20,13 @@ import { randomUUID } from 'node:crypto';
 import type { ExecutionScenario, TranscriptStep, TranscriptTurn } from '../types';
 import type { AgentUserProxy, AgentUserTurn } from '../utils/user-proxy/agent-user';
 
-/** One thread the simulated user drives toward `goal`. */
+/** One thread the simulated user drives toward `goal`. `opening`: who writes the
+ *  thread's first message — the seed (generated from the data setup, as a
+ *  single-shot run does) or the simulated user, from the goal. */
 export interface AgentSessionPlan {
 	goal: string;
 	maxTurns: number;
+	opening: 'seed' | 'user';
 }
 
 export interface AgentConversationTurn {
@@ -49,10 +52,11 @@ export type ExecuteAgentTurn = (
 /** The sessions a scenario runs, or undefined for a single-shot scenario. */
 export function agentSessionPlans(scenario: ExecutionScenario): AgentSessionPlan[] | undefined {
 	if (scenario.sessions) {
-		return scenario.sessions.map(({ goal, maxTurns }) => ({ goal, maxTurns }));
+		return scenario.sessions.map(({ goal, maxTurns }) => ({ goal, maxTurns, opening: 'user' }));
 	}
 	if (scenario.userTurns) {
-		return [{ goal: scenario.userTurns.goal, maxTurns: scenario.userTurns.maxTurns }];
+		const { goal, maxTurns } = scenario.userTurns;
+		return [{ goal, maxTurns, opening: 'seed' }];
 	}
 	return undefined;
 }
@@ -70,9 +74,9 @@ interface ConversationContext {
 
 /**
  * Run every session in order, each in a new thread for the same resource id.
- * The first session opens with the seed's message (generated from the data
- * setup, as a single-shot run does); a later one with the simulated user's own
- * opening. A failed turn ends the conversation.
+ * A `userTurns` thread opens with the seed's message; every session of a
+ * `sessions` scenario with the simulated user's own opening for its goal. A
+ * failed turn ends the conversation.
  */
 export async function runAgentConversation(input: {
 	plans: AgentSessionPlan[];
@@ -82,8 +86,8 @@ export async function runAgentConversation(input: {
 }): Promise<AgentConversation> {
 	const context: ConversationContext = { ...input, resourceId: newEvalResourceId() };
 	const sessions: AgentConversationSession[] = [];
-	for (const [index, plan] of input.plans.entries()) {
-		const session = await runSession(plan, index === 0, sessions, context);
+	for (const plan of input.plans) {
+		const session = await runSession(plan, sessions, context);
 		sessions.push(session);
 		if (session.turns.some((turn) => !turn.result.success)) break;
 	}
@@ -92,7 +96,6 @@ export async function runAgentConversation(input: {
 
 async function runSession(
 	plan: AgentSessionPlan,
-	first: boolean,
 	earlier: AgentConversationSession[],
 	context: ConversationContext,
 ): Promise<AgentConversationSession> {
@@ -104,8 +107,9 @@ async function runSession(
 			transcript: userTurnsOf(session.turns),
 			earlierSessions: earlier.map((done) => userTurnsOf(done.turns)),
 		});
-	let message = first ? undefined : await nextMessage();
-	if (!first && message === undefined) return session;
+	const fromUser = plan.opening === 'user';
+	let message = fromUser ? await nextMessage() : undefined;
+	if (fromUser && message === undefined) return session;
 	while (session.turns.length < plan.maxTurns) {
 		const turn = await runTurn(session.threadId, message, context);
 		session.turns.push(turn);
@@ -142,6 +146,11 @@ function sumOptional(values: Array<number | undefined>): number | undefined {
 	return present.length > 0 ? present.reduce((sum, value) => sum + value, 0) : undefined;
 }
 
+/** User messages sent across every session. */
+export function conversationTurnCount(conversation: AgentConversation): number {
+	return conversation.sessions.reduce((count, session) => count + session.turns.length, 0);
+}
+
 /**
  * One result for the whole conversation, in the single-shot shape the reports
  * and artifacts read: every turn's tool calls, model turns, errors, and usage,
@@ -153,7 +162,11 @@ export function mergeConversationResult(
 	const results = conversation.sessions.flatMap((session) => session.turns.map((t) => t.result));
 	const [first] = results;
 	const last = results[results.length - 1];
-	if (!first || !last) throw new Error('An Agent conversation ran no turns');
+	if (!first || !last) {
+		throw new Error(
+			'FRAMEWORK ISSUE: the Agent conversation ran no turns — the simulated user wrote no opening message',
+		);
+	}
 	const inputTokens = sumOptional(results.map((r) => r.usage?.inputTokens));
 	const outputTokens = sumOptional(results.map((r) => r.usage?.outputTokens));
 	return {

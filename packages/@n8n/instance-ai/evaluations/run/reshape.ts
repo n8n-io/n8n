@@ -90,6 +90,8 @@ const targetOutputSchema = z.object({
 	 *  <expectation>` (AGENT-1666). Unlike `expectationResults`, which repeats the
 	 *  case's verdicts on every row, each row carries only its scenario's. */
 	scenarioExpectationResults: expectationResultsSchema.optional().catch(undefined),
+	/** Agent runs: user messages sent across all sessions of the scenario. */
+	agentTurnCount: z.number().optional(),
 	execErrors: z.array(z.string()).default([]),
 	evalResult: z.unknown().optional(),
 	agentEvalResult: z.unknown().optional(),
@@ -365,6 +367,10 @@ export function reshapeLangSmithRuns(
 					...(output.incomplete ? { incomplete: true } : {}),
 					...(output.scenarioExpectationResults
 						? { expectationResults: output.scenarioExpectationResults }
+						: {}),
+					// `execDurationMs` spans the row's whole agent run (every turn and the grading).
+					...(output.agentTurnCount !== undefined
+						? { agentTurnCount: output.agentTurnCount, durationMs: output.execDurationMs }
 						: {}),
 				});
 			}

@@ -134,9 +134,13 @@ describe('executeAgentScenario: multi-turn runs', () => {
 		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['Make it express', 'Thanks']));
 		const calls: ExecuteCall[] = [];
 
-		await run({ ...base, userTurns: { goal: 'Get the order sent express', maxTurns: 6 } }, calls);
+		const result = await run(
+			{ ...base, userTurns: { goal: 'Get the order sent express', maxTurns: 6 } },
+			calls,
+		);
 
 		expect(calls).toHaveLength(3);
+		expect(result.agentTurnCount).toBe(3);
 		const threadIds = new Set(calls.map((call) => call.thread?.threadId));
 		expect(threadIds.size).toBe(1);
 		expect(calls.map((call) => call.thread?.message)).toEqual([
@@ -157,7 +161,7 @@ describe('executeAgentScenario: multi-turn runs', () => {
 
 	it('runs each session in a new thread for one resource id', async () => {
 		vi.mocked(createAgentUserProxy).mockReturnValue(
-			scriptedUser(['I am allergic to nuts', 'Hi again']),
+			scriptedUser(['I need dinner ideas', 'I am allergic to nuts', 'Hi again']),
 		);
 		const calls: ExecuteCall[] = [];
 
@@ -178,7 +182,8 @@ describe('executeAgentScenario: multi-turn runs', () => {
 		expect(first?.threadId).toBe(second?.threadId);
 		expect(third?.threadId).not.toBe(first?.threadId);
 		expect(new Set(calls.map((call) => call.thread?.resourceId)).size).toBe(1);
-		// A later session opens with the simulated user's own message.
+		// Every session, the first included, opens with the simulated user's own message.
+		expect(first?.message).toBe('I need dinner ideas');
 		expect(third?.message).toBe('Hi again');
 	});
 
@@ -197,7 +202,7 @@ describe('executeAgentScenario: multi-turn runs', () => {
 
 	it('judges the whole transcript, with every session marked', async () => {
 		vi.mocked(createAgentUserProxy).mockReturnValue(
-			scriptedUser(['I am allergic to nuts', 'Hi again']),
+			scriptedUser(['I need dinner ideas', 'I am allergic to nuts', 'Hi again']),
 		);
 		const calls: ExecuteCall[] = [];
 
@@ -215,7 +220,7 @@ describe('executeAgentScenario: multi-turn runs', () => {
 		const input = vi.mocked(verifyBuildExpectations).mock.calls[0]?.[1];
 		const transcript: TranscriptTurn[] = input?.transcript ?? [];
 		expect(transcript.map((turn) => turn.userMessage)).toEqual([
-			'Where is my order?',
+			'I need dinner ideas',
 			'I am allergic to nuts',
 			'Hi again',
 		]);
@@ -233,10 +238,21 @@ describe('executeAgentScenario: multi-turn runs', () => {
 	it('keeps the single-shot request unchanged when the scenario has no turns or sessions', async () => {
 		const calls: ExecuteCall[] = [];
 
-		await run(base, calls);
+		const result = await run(base, calls);
 
 		expect(calls).toEqual([{ thread: undefined }]);
 		expect(createAgentUserProxy).not.toHaveBeenCalled();
+		expect(result.agentTurnCount).toBe(1);
+	});
+
+	it('fails the run when the simulated user writes no opening for the first session', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser([]));
+		const calls: ExecuteCall[] = [];
+
+		await expect(
+			run({ ...base, sessions: [{ goal: 'Order dinner', maxTurns: 2 }] }, calls),
+		).rejects.toThrow(/FRAMEWORK ISSUE: .*no opening message/);
+		expect(calls).toEqual([]);
 	});
 });
 
@@ -281,6 +297,7 @@ describe('executeAgentScenario: per-expectation grading', () => {
 
 	it('keys a session expectation by its session too', async () => {
 		vi.mocked(verifyBuildExpectations).mockResolvedValue(verdicts(true, true));
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['Hi', 'Hi again']));
 
 		const result = await run(
 			{

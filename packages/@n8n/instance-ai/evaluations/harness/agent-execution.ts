@@ -18,6 +18,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import {
 	agentSessionPlans,
 	conversationTranscript,
+	conversationTurnCount,
 	mergeConversationResult,
 	runAgentConversation,
 	singleTurnTranscript,
@@ -279,9 +280,13 @@ async function executeAgentTurn(
 async function runAgentScenarioTurns(
 	client: N8nClient,
 	target: AgentTurnTarget,
-): Promise<{ evalResult: InstanceAiEvalAgentExecutionResult; transcript?: TranscriptTurn[] }> {
+): Promise<{
+	evalResult: InstanceAiEvalAgentExecutionResult;
+	transcript?: TranscriptTurn[];
+	turnCount: number;
+}> {
 	const plans = agentSessionPlans(target.scenario);
-	if (!plans) return { evalResult: await executeAgentTurn(client, target) };
+	if (!plans) return { evalResult: await executeAgentTurn(client, target), turnCount: 1 };
 	const conversation = await runAgentConversation({
 		plans,
 		dataSetup: target.scenario.dataSetup,
@@ -291,6 +296,7 @@ async function runAgentScenarioTurns(
 	return {
 		evalResult: mergeConversationResult(conversation),
 		transcript: conversationTranscript(conversation),
+		turnCount: conversationTurnCount(conversation),
 	};
 }
 
@@ -514,6 +520,7 @@ export async function executeAgentScenario(
 		attribution,
 		rootCause,
 		...(verdict.expectationResults ? { expectationResults: verdict.expectationResults } : {}),
+		agentTurnCount: run.turnCount,
 		...(incomplete ? { incomplete: true } : {}),
 	};
 }

@@ -84,7 +84,13 @@ describe('reshapeLangSmithRuns', () => {
 		const rows = [
 			row(
 				{ testCaseFile: 'agent-case', scenarioName: 's1', _iteration: 0 },
-				{ buildSuccess: true, passed: true, scenarioExpectationResults: [s1Verdict] },
+				{
+					buildSuccess: true,
+					passed: true,
+					scenarioExpectationResults: [s1Verdict],
+					agentTurnCount: 3,
+					execDurationMs: 4200,
+				},
 			),
 			row(
 				{ testCaseFile: 'agent-case', scenarioName: 's2', _iteration: 0 },
@@ -106,6 +112,10 @@ describe('reshapeLangSmithRuns', () => {
 			[s1Verdict],
 			[s2Verdict],
 		]);
+		expect(tc.executionScenarioResults[0]).toMatchObject({
+			agentTurnCount: 3,
+			durationMs: 4200,
+		});
 	});
 
 	it('retains the structured agent artifact from a target row', () => {

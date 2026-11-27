@@ -517,6 +517,9 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					...(agentResult.expectationResults
 						? { scenarioExpectationResults: agentResult.expectationResults }
 						: {}),
+					...(agentResult.agentTurnCount !== undefined
+						? { agentTurnCount: agentResult.agentTurnCount }
+						: {}),
 					execErrors: agentResult.agentEvalResult?.errors ?? [],
 					buildDurationMs,
 					...buildSpendFields,

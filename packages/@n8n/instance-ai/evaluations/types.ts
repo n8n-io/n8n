@@ -337,6 +337,10 @@ export interface ExecutionScenarioResult {
 	 *  `<scenario> › <expectation>` (harness/agent-run-schema.ts). Folded into the
 	 *  case's expectation units by the reshape. */
 	expectationResults?: BuildExpectationResult[];
+	/** Agent runs: user messages sent across all sessions (1 for a single-shot run). */
+	agentTurnCount?: number;
+	/** Agent runs: wall time of the whole scenario row, every turn and the grading included. */
+	durationMs?: number;
 }
 
 /**
