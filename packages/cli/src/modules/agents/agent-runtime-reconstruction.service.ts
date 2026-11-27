@@ -48,14 +48,18 @@ import {
 import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { AgentsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UnexpectedError, UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService } from '@n8n/backend-services';
+import {
+	CredentialsFinderService,
+	ExecutionRedactionServiceProxy,
+	type RedactableExecution,
+} from '@n8n/backend-services';
 import { sanitizeSandboxErrorDetail } from '@n8n/utils/redaction/sanitize-sandbox-error-detail';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -356,6 +360,8 @@ export interface UserToolAccessSnapshot {
 	 * `workflow:execute` on the project, integrations do not.
 	 */
 	requiresWorkflowExecute?: boolean;
+	/** The mode the workflow tools run in, to re-check that the user can see their output. */
+	workflowToolExecutionMode?: WorkflowToolExecutionMode;
 }
 
 /** Add the kept draft integration credentials to the snapshot so cached runtimes re-check them. */
@@ -380,7 +386,7 @@ function withIntegrationCredentials(
 export interface UnavailableTool {
 	toolName: string;
 	toolType: ReferencedToolKind;
-	reason: 'not_found' | 'not_published' | 'incompatible' | 'no_access';
+	reason: 'not_found' | 'not_published' | 'incompatible' | 'no_access' | 'redacted_output';
 	message: string;
 }
 
@@ -452,6 +458,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly sandboxFiles: AgentSandboxFilesService,
 		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
+		private readonly executionRedaction: ExecutionRedactionServiceProxy,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -502,7 +509,13 @@ export class AgentRuntimeReconstructionService {
 		if (user && config.tools?.length) {
 			const tools = config.tools;
 			const filtered = await raceWithAbort(
-				async () => await this.filterToolsForUser(tools, agentEntity.projectId, user),
+				async () =>
+					await this.filterToolsForUser(
+						tools,
+						agentEntity.projectId,
+						user,
+						workflowToolExecutionMode,
+					),
 				abortSignal,
 			);
 			config = { ...config, tools: filtered.tools };
@@ -577,6 +590,7 @@ export class AgentRuntimeReconstructionService {
 		tools: AgentJsonToolConfig[],
 		projectId: string,
 		user: User,
+		mode: WorkflowToolExecutionMode,
 	): Promise<{
 		tools: AgentJsonToolConfig[];
 		snapshot?: UserToolAccessSnapshot;
@@ -599,7 +613,14 @@ export class AgentRuntimeReconstructionService {
 				filtered.push(ref);
 				continue;
 			}
-			const access = await this.checkToolAccess(ref, projectId, user, canExecute, loadUsableIds);
+			const access = await this.checkToolAccess(
+				ref,
+				projectId,
+				user,
+				canExecute,
+				loadUsableIds,
+				mode,
+			);
 			if ('reason' in access) {
 				unavailable.push(access);
 				continue;
@@ -618,6 +639,7 @@ export class AgentRuntimeReconstructionService {
 						snapshot: {
 							credentialIds: [...grantedCredentialIds],
 							workflowIds: [...grantedWorkflowIds],
+							workflowToolExecutionMode: mode,
 						},
 					}
 				: {}),
@@ -658,6 +680,7 @@ export class AgentRuntimeReconstructionService {
 		user: User,
 		canExecute: boolean,
 		loadUsableIds: () => Promise<Set<string>>,
+		mode: WorkflowToolExecutionMode,
 	): Promise<UserToolAccessSnapshot | UnavailableTool> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
@@ -700,7 +723,39 @@ export class AgentRuntimeReconstructionService {
 		if (!accessibleWorkflow) {
 			return denied(`The user cannot execute workflow "${workflow.name}"`);
 		}
+		if (await this.isWorkflowOutputHiddenFrom(workflow, user, mode)) {
+			return {
+				toolName: toolRefName(ref),
+				toolType: ref.type,
+				reason: 'redacted_output',
+				message: `Workflow "${workflow.name}" redacts its execution data and the user cannot reveal it`,
+			};
+		}
 		return { credentialIds: [], workflowIds: [workflow.id] };
+	}
+
+	/**
+	 * True when the workflow redacts the execution data of a run in `mode` and
+	 * the user cannot reveal it. An interactive run streams the tool output to
+	 * the user, so the user must be able to see it. Reads the workflow like an
+	 * execution without run data, so the strictest of the workflow settings and
+	 * the instance floor applies.
+	 */
+	private async isWorkflowOutputHiddenFrom(
+		workflow: Pick<WorkflowEntity, 'id' | 'settings' | 'nodes'>,
+		user: User,
+		mode: WorkflowToolExecutionMode,
+	): Promise<boolean> {
+		const standIn: RedactableExecution = {
+			mode,
+			workflowId: workflow.id,
+			workflowData: { settings: workflow.settings ?? {}, nodes: workflow.nodes },
+			data: { resultData: { runData: {} } },
+			dataTooLargeToDisplay: true,
+		};
+		await this.executionRedaction.processExecutions([standIn], { user });
+		const info = standIn.data.redactionInfo;
+		return info?.isRedacted === true && !info.canReveal;
 	}
 
 	/**
@@ -744,7 +799,17 @@ export class AgentRuntimeReconstructionService {
 					await this.workflowFinderService.findWorkflowForUser(id, user, ['workflow:execute']),
 			),
 		);
-		return workflows.every((workflow) => Boolean(workflow));
+		if (!workflows.every((workflow) => Boolean(workflow))) return false;
+
+		const mode = snapshot.workflowToolExecutionMode;
+		if (!mode) return true;
+		const hidden = await Promise.all(
+			workflows.map(
+				async (workflow) =>
+					workflow !== null && (await this.isWorkflowOutputHiddenFrom(workflow, user, mode)),
+			),
+		);
+		return !hidden.some(Boolean);
 	}
 
 	/**
@@ -773,7 +838,13 @@ export class AgentRuntimeReconstructionService {
 			const user = params.user;
 			const tools = config.tools;
 			const filtered = await raceWithAbort(
-				async () => await this.filterToolsForUser(tools, params.projectId, user),
+				async () =>
+					await this.filterToolsForUser(
+						tools,
+						params.projectId,
+						user,
+						params.workflowToolExecutionMode ?? 'manual',
+					),
 				params.abortSignal,
 			);
 			config = { ...config, tools: filtered.tools };

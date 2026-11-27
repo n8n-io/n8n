@@ -1,3 +1,4 @@
+import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
@@ -161,6 +162,7 @@ function makeReconstructionService(
 		overrides.knowledgeAvailabilityService ?? makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
 		mock<WorkflowsInSkillsFlagGate>(),
+		mock<ExecutionRedactionServiceProxy>(),
 	);
 }
 
