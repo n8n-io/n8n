@@ -20,7 +20,6 @@ import {
 import { createRunExecutionData, ExpressionError, WorkflowOperationError } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 import type {
-	IExecuteData,
 	IRunExecutionData,
 	ITaskData,
 	Workflow,
@@ -1907,78 +1906,6 @@ describe('Execution Lifecycle Hooks', () => {
 			);
 			expect(preExecute).toBeDefined();
 			expect(preExecute?.[1]).not.toHaveProperty('parentAgentRun');
-		});
-	});
-
-	describe('the start node on workflow events', () => {
-		const startNode: INode = {
-			id: 'webhook-node',
-			name: 'Webhook',
-			type: 'n8n-nodes-base.webhook',
-			typeVersion: 2,
-			position: [0, 0],
-			parameters: {},
-		};
-		const executionData = () =>
-			createRunExecutionData({
-				executionData: {
-					nodeExecutionStack: [{ node: startNode, data: { main: [[{ json: {} }]] }, source: null }],
-				},
-			});
-
-		it.each([
-			{
-				hooks: 'regular main',
-				create: () =>
-					getLifecycleHooksForRegularMain(
-						{ executionMode: 'webhook', workflowData, executionData: executionData() },
-						executionId,
-					),
-			},
-			{
-				hooks: 'scaling main',
-				create: () =>
-					getLifecycleHooksForScalingMain(
-						{ executionMode: 'webhook', workflowData, executionData: executionData() },
-						executionId,
-					),
-			},
-		])(
-			'passes the type of the start node to workflow-post-execute ($hooks)',
-			async ({ create }) => {
-				const hooks = create();
-
-				// The run that main gets back from a worker can be a slim summary without run data.
-				await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
-
-				expect(eventService.emit).toHaveBeenCalledWith(
-					'workflow-post-execute',
-					expect.objectContaining({ startNodeType: 'n8n-nodes-base.webhook' }),
-				);
-			},
-		);
-
-		it('creates the hooks when the first entry of the execution stack has no node', async () => {
-			const stackEntryWithoutNode = { data: { main: [[{ json: {} }]] }, source: null };
-			const hooks = getLifecycleHooksForRegularMain(
-				{
-					executionMode: 'trigger',
-					workflowData,
-					executionData: createRunExecutionData({
-						executionData: {
-							nodeExecutionStack: [stackEntryWithoutNode as unknown as IExecuteData],
-						},
-					}),
-				},
-				executionId,
-			);
-
-			await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
-
-			const postExecute = eventService.emit.mock.calls.find(
-				([eventName]) => eventName === 'workflow-post-execute',
-			);
-			expect(postExecute?.[1]).not.toHaveProperty('startNodeType');
 		});
 	});
 

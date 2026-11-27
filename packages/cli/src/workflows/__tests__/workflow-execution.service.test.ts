@@ -1304,11 +1304,11 @@ describe('WorkflowExecutionService', () => {
 						payload: runPayload,
 						user,
 						waitForWebhook: false,
-						telemetryMetadata: { startedByPublicApi: true },
+						telemetryMetadata: { origin: { caller: 'public_api' } },
 					});
 
 					expect(workflowRunner.run).toHaveBeenCalledWith(
-						expect.objectContaining({ telemetryMetadata: { startedByPublicApi: true } }),
+						expect.objectContaining({ telemetryMetadata: { origin: { caller: 'public_api' } } }),
 					);
 				});
 

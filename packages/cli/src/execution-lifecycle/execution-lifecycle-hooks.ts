@@ -178,7 +178,6 @@ function hookFunctionsWorkflowEvents(
 	source?: IWorkflowExecutionDataProcess['source'],
 	telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'],
 	parentAgentRun?: RelatedAgentRun,
-	startNodeType?: string,
 ) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('workflowExecuteBefore', function () {
@@ -232,15 +231,8 @@ function hookFunctionsWorkflowEvents(
 			...(source ? { source } : {}),
 			...(telemetryMetadata ? { telemetryMetadata } : {}),
 			...(parentAgentRun ? { parentAgentRun } : {}),
-			...(startNodeType ? { startNodeType } : {}),
 		});
 	});
-}
-
-/** The head of the initial execution stack. For a webhook or trigger run, this is the trigger node. */
-/** Only for telemetry, so it must never throw while the hooks of a run are created. */
-function getStartNodeType(data: IWorkflowExecutionDataProcess): string | undefined {
-	return data.executionData?.executionData?.nodeExecutionStack?.[0]?.node?.type;
 }
 
 /** Must be the first `workflowExecuteAfter` handler, so that every later handler sees a stop. */
@@ -1084,8 +1076,7 @@ export function getLifecycleHooksForScalingMain(
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const unsavedManualExecutionService = Container.get(UnsavedManualExecutionService);
 
-	// Read the marker and the start node here: the run that main gets back from a worker can be a
-	// slim summary without them.
+	// Read the marker here: the run that main gets back from a worker can be a slim summary without it.
 	hookFunctionsWorkflowEvents(
 		hooks,
 		userId,
@@ -1094,7 +1085,6 @@ export function getLifecycleHooksForScalingMain(
 		source,
 		telemetryMetadata,
 		data.executionData?.parentAgentRun,
-		getStartNodeType(data),
 	);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsPreExecute(hooks, source);
@@ -1206,7 +1196,7 @@ export function getLifecycleHooksForRegularMain(
 		suppressErrorWorkflow,
 	};
 	hookFunctionsMemoryGuard(hooks);
-	// Read the marker and the start node here, so that a failed run without run data still names them.
+	// Read the marker here, so that a failed run without run data still names the agent.
 	hookFunctionsWorkflowEvents(
 		hooks,
 		userId,
@@ -1215,7 +1205,6 @@ export function getLifecycleHooksForRegularMain(
 		source,
 		telemetryMetadata,
 		data.executionData?.parentAgentRun,
-		getStartNodeType(data),
 	);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);

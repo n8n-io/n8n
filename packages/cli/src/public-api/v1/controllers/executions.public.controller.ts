@@ -419,7 +419,7 @@ export class ExecutionsPublicController {
 					options: { loadWorkflow: body.loadWorkflow },
 					sharedWorkflowIds: sharedWorkflowsIds,
 					user: req.user,
-					telemetryMetadata: { startedByPublicApi: true },
+					telemetryMetadata: { origin: { caller: 'public_api' } },
 				},
 				req.ctx,
 			);

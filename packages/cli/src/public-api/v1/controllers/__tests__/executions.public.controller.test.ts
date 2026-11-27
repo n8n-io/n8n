@@ -90,7 +90,7 @@ describe('ExecutionsPublicController', () => {
 			await retryExecution(undefined);
 
 			expect(executionService.retry.mock.calls[0][0].telemetryMetadata).toEqual({
-				startedByPublicApi: true,
+				origin: { caller: 'public_api' },
 			});
 		});
 	});

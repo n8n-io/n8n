@@ -3937,8 +3937,18 @@ export interface IWorkflowExecutionTelemetryMetadata {
 	mockDataSources?: WorkflowExecutionMockDataSource[];
 	/** Credentials the run uses only through the acting user's own access, not the workflow's project. */
 	personalCredentialsCount?: number;
-	/** True when a call to the public API started the run. */
-	startedByPublicApi?: boolean;
+	/** How the run started, recorded when its execution is created. */
+	origin?: WorkflowExecutionOrigin;
+}
+
+/** The agent, parent workflow or public API call that started a run. */
+export type WorkflowExecutionCaller = 'agent' | 'workflow' | 'public_api';
+
+export interface WorkflowExecutionOrigin {
+	/** Type of the trigger node that started the execution. Absent when no trigger node did. */
+	triggerNodeType?: string;
+	/** Absent when no agent, parent workflow or public API call started the run. */
+	caller?: WorkflowExecutionCaller;
 }
 
 /**

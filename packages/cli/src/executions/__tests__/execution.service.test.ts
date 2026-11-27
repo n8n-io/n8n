@@ -562,10 +562,13 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
 			);
 
-			await service.retry({ ...retryArgs(), telemetryMetadata: { startedByPublicApi: true } });
+			await service.retry({
+				...retryArgs(),
+				telemetryMetadata: { origin: { caller: 'public_api' } },
+			});
 
 			expect(workflowRunner.run).toHaveBeenCalledWith(
-				expect.objectContaining({ telemetryMetadata: { startedByPublicApi: true } }),
+				expect.objectContaining({ telemetryMetadata: { origin: { caller: 'public_api' } } }),
 			);
 		});
 

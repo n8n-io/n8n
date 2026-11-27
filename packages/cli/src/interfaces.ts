@@ -22,6 +22,7 @@ import type {
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
 	IExecutionContext,
+	WorkflowExecutionCaller,
 	WorkflowExecutionSource,
 	ExecutionStorageLocation,
 } from 'n8n-workflow';
@@ -252,13 +253,11 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	personal_credentials_count?: number;
 	/** Mode that started the run, for example `webhook`. Absent when the run has no run data. */
 	execution_mode?: WorkflowExecuteMode;
-	/** Type of the trigger node that started the run. Absent when no trigger node ran. */
+	/** Type of the trigger node that started the execution. Absent when no trigger node did. */
 	trigger_node_type?: string;
 	/** The agent, parent workflow or public API call that started the run. Absent when none did. */
-	execution_caller?: ExecutionCaller;
+	execution_caller?: WorkflowExecutionCaller;
 }
-
-export type ExecutionCaller = 'agent' | 'workflow' | 'public_api';
 
 // ----------------------------------
 //               license

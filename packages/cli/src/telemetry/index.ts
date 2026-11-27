@@ -20,10 +20,14 @@ import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import type { ITelemetryTrackProperties, WorkflowExecuteMode } from 'n8n-workflow';
+import type {
+	ITelemetryTrackProperties,
+	WorkflowExecuteMode,
+	WorkflowExecutionCaller,
+} from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
-import type { ExecutionCaller, IExecutionTrackProperties } from '@/interfaces';
+import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import type { PublicApiClient } from '@/public-api/public-api-client';
 import type { PublicApiResult } from '@/public-api/types';
@@ -56,12 +60,12 @@ interface IExecutionTrackData {
  * node types as object keys would add one warehouse column for each node type.
  */
 interface IExecutionTriggerCount extends IExecutionTrackData {
-	/** null when no trigger node ran */
+	/** null when no trigger node started the execution */
 	node_type: string | null;
 	/** null when the run has no run data */
 	mode: WorkflowExecuteMode | null;
 	/** null when no agent, parent workflow or public API call started the run */
-	caller: ExecutionCaller | null;
+	caller: WorkflowExecutionCaller | null;
 	status: 'success' | 'error' | 'crashed';
 	/** Time of the last run since the last flush. `first` is the time of the first run. */
 	last: Date;

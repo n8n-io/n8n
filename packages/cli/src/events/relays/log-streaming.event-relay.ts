@@ -38,18 +38,14 @@ function hasUser(event: WorkflowExecutedEvent): event is WorkflowExecutedEventWi
 
 function withoutExecutionMetadata(
 	event: RelayEventMap['workflow-post-execute'],
-): Omit<
-	RelayEventMap['workflow-post-execute'],
-	'source' | 'telemetryMetadata' | 'parentAgentRun' | 'startNodeType'
-> {
+): Omit<RelayEventMap['workflow-post-execute'], 'source' | 'telemetryMetadata' | 'parentAgentRun'> {
 	const trimmed = { ...event };
 
-	// Execution metadata (provenance, telemetry, the agent tool call, the start node) is internal
+	// Execution metadata (provenance, telemetry, the agent tool call) is internal
 	// and not part of the log-streaming payload contract.
 	delete trimmed.source;
 	delete trimmed.telemetryMetadata;
 	delete trimmed.parentAgentRun;
-	delete trimmed.startNodeType;
 
 	return trimmed;
 }

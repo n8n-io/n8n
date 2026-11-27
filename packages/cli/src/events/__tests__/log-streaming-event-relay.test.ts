@@ -826,25 +826,6 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should not send the start node type on `workflow-post-execute`', () => {
-			eventService.emit('workflow-post-execute', {
-				executionId: 'exec-123',
-				workflow: mock<IWorkflowBase>({ id: 'wf-789', name: 'Test Workflow' }),
-				runData: mock<IRun>({
-					finished: true,
-					status: 'success',
-					mode: 'webhook',
-					data: { resultData: {} },
-				} as never),
-				startNodeType: 'n8n-nodes-base.webhook',
-			});
-
-			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledTimes(1);
-			expect(eventBus.sendWorkflowEvent.mock.calls[0][0].payload).not.toHaveProperty(
-				'startNodeType',
-			);
-		});
-
 		it('should log job completion on `workflow-post-execute` for successful job', () => {
 			const runData = mock<IRun>({
 				finished: true,

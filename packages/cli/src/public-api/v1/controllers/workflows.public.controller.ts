@@ -993,7 +993,7 @@ export class WorkflowsPublicController {
 			payload: runPayload,
 			user: req.user,
 			waitForWebhook: false,
-			telemetryMetadata: { startedByPublicApi: true },
+			telemetryMetadata: { origin: { caller: 'public_api' } },
 		});
 
 		// `waitForWebhook: false` makes the service throw instead of waiting, so this cannot happen.

@@ -308,11 +308,6 @@ export type RelayEventMap = ModuleEventMap & {
 		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
 		/** The agent tool call that started this execution. Relays read ids from it and never send it whole. */
 		parentAgentRun?: RelatedAgentRun;
-		/**
-		 * Type of the first node in the initial execution stack, for example the trigger node of a
-		 * webhook or trigger run. `runData` can have no run data, so it cannot always give this node.
-		 */
-		startNodeType?: string;
 	};
 
 	'workflow-sharing-updated': {
