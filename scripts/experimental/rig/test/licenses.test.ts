@@ -1,5 +1,5 @@
-import { mkdirSync, readFileSync, rmSync, statSync } from 'node:fs';
-import { afterEach, describe, expect, it } from 'vitest';
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { loadTopology, parseTopology, saveTopology } from '../src/config/env-yaml';
 import { globalConfigFile, licenseFile, licensesDir } from '../src/config/paths';
@@ -7,6 +7,7 @@ import { envPaths, listEnvNames } from '../src/environment';
 import {
 	defaultLicense,
 	deleteLicense,
+	describeLicense,
 	envsUsingLicense,
 	inferLicenseKind,
 	type License,
@@ -107,6 +108,18 @@ describe('writeLicense', () => {
 		});
 	});
 
+	it('should keep the old license when the replacement fails', () => {
+		writeLicense('prod', cert);
+		const before = readFileSync(licenseFile('prod'), 'utf8');
+		vi.stubEnv('RIG_SECRETS_BACKEND', 'not-a-backend');
+		try {
+			expect(() => writeLicense('prod', activation)).toThrow();
+		} finally {
+			vi.unstubAllEnvs();
+		}
+		expect(readFileSync(licenseFile('prod'), 'utf8')).toBe(before);
+	});
+
 	it('should make the first license the default', () => {
 		expect(writeLicense('a', activation)).toBe(true);
 		expect(writeLicense('b', cert)).toBe(false);
@@ -150,6 +163,14 @@ describe('licenseForNewEnv', () => {
 		createEnv('one', licenseForNewEnv(undefined));
 		setDefaultLicense('b');
 		expect(loadTopology(envPaths('one').envYaml).license).toBe('a');
+	});
+});
+
+describe('describeLicense', () => {
+	it('should describe a license that rig cannot read', () => {
+		writeLicense('prod', activation);
+		writeFileSync(licenseFile('prod'), 'N8N_LICENSE_ACTIVATION_KEY=enc:v1:AAAA\n');
+		expect(describeLicense('prod')).toBe('prod · unreadable');
 	});
 });
 

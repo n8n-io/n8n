@@ -3,7 +3,7 @@ import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { LICENSE_NAME_PATTERN, loadTopology } from './config/env-yaml';
 import { loadGlobalConfig, saveGlobalConfig } from './config/global-config';
 import { licenseFile, licensesDir } from './config/paths';
-import { readEnvFile, setEnvValue } from './env/secret-store';
+import { readEnvFile, replaceEnvFile } from './env/secret-store';
 import { envPaths, listEnvNames, suggest } from './environment';
 import { RigError } from './errors';
 import { RIG } from './meta';
@@ -185,11 +185,7 @@ export function writeLicense(
 	options: { makeDefault?: boolean } = {},
 ): boolean {
 	assertLicenseName(name);
-	const file = licenseFile(name);
-	rmSync(file, { force: true });
-	for (const [key, value] of Object.entries(licenseToValues(license))) {
-		setEnvValue(file, key, value);
-	}
+	replaceEnvFile(licenseFile(name), licenseToValues(license));
 	const becomesDefault = options.makeDefault || defaultLicense() === undefined;
 	if (becomesDefault) setDefaultLicense(name);
 	return becomesDefault;
@@ -216,7 +212,13 @@ export function envsUsingLicense(name: string): string[] {
 
 /** For example `prod · cert · tenant 1`. */
 export function describeLicense(name: string): string {
-	const license = licenseFromValues(readLicenseValues(name));
+	let values: Record<string, string>;
+	try {
+		values = readLicenseValues(name);
+	} catch {
+		return `${name} · unreadable`;
+	}
+	const license = licenseFromValues(values);
 	if (!license) return `${name} · invalid`;
 	return `${name} · ${kindLabel(license.kind)} · tenant ${license.tenantId || '?'}`;
 }

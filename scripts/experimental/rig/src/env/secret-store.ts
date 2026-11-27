@@ -351,6 +351,25 @@ export function setEnvValue(file: string, name: string, value: string): void {
 	else writeFileSync(file, next);
 }
 
+/**
+ * Replaces a file with these values in one step. It gets the key before it
+ * writes, so a failure keeps the old file.
+ */
+export function replaceEnvFile(file: string, values: Record<string, string>): void {
+	const { backend } = secretsBackend();
+	const entries = Object.entries(values);
+	const key =
+		backend !== 'off' && entries.some(([name]) => mustEncrypt(file, name))
+			? activeKey(true)
+			: undefined;
+	let text = '';
+	for (const [name, value] of entries) {
+		const stored = key && mustEncrypt(file, name) ? encryptValue(key, name, value) : value;
+		text = setInDotenv(text, name, stored);
+	}
+	writePrivate(file, text);
+}
+
 /** Whether a file has encrypted values. Does not decrypt them. */
 export function hasEncryptedValues(file: string): boolean {
 	return (
