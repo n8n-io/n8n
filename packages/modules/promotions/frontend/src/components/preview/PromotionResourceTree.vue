@@ -23,9 +23,6 @@ const props = withDefaults(
 		graph: SelectionGraph;
 		selected: ReadonlySet<ResourceKey>;
 		inclusion: Inclusion;
-		/** Included changes, out of the total in the tab above the tree. */
-		includedChanges: number;
-		totalChanges: number;
 		inspectedKey?: ResourceKey;
 		/** Blocked workflows, which users cannot add. */
 		disabled: DisabledKeys;
@@ -112,16 +109,6 @@ function onToggle(resource: PromotionResource) {
 				<N8nText step="xs" bold color="text-dark" :class="$style.selectAllLabel">
 					{{ i18n.baseText('promotions.preview.tree.selectAll') }}
 				</N8nText>
-				<N8nText step="xs" color="text-light" data-test-id="promotion-preview-counts">
-					{{
-						i18n.baseText('promotions.preview.tree.selectedOfTotal', {
-							interpolate: {
-								selected: String(includedChanges),
-								total: String(totalChanges),
-							},
-						})
-					}}
-				</N8nText>
 			</div>
 			<span :class="$style.separator" aria-hidden="true" />
 		</template>
@@ -159,18 +146,10 @@ function onToggle(resource: PromotionResource) {
 					/>
 					<N8nText step="xs" bold color="text-dark" :class="$style.groupLabel">
 						{{ item.label }}
-					</N8nText>
-					<N8nText
-						v-if="selectable && group"
-						step="2xs"
-						color="text-light"
-						data-test-id="promotion-preview-group-count"
-					>
-						{{
-							i18n.baseText('promotions.preview.tree.selectedOfTotal', {
-								interpolate: { selected: String(group.included), total: String(group.total) },
-							})
-						}}
+						<!-- Inside the label, so the total looks like part of the group name. -->
+						<span v-if="group" data-test-id="promotion-preview-group-total"
+							>({{ group.total }})</span
+						>
 					</N8nText>
 				</li>
 				<li
