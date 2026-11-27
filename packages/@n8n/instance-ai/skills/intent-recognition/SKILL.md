@@ -49,7 +49,7 @@ directly for out-of-scope.
 - If the user did not explicitly select an Agent and the request is
   underspecified on an anchor-deciding axis, ask for the missing detail instead
   of guessing. An explicit Agent request already decides the anchor. Leave
-  missing setup and implementation details to the Agent Builder.
+  every other missing detail to the build skill you load next.
 
 ## Decisions
 
