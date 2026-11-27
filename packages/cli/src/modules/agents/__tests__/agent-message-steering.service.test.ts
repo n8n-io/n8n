@@ -1,4 +1,4 @@
-import type { AgentInputBoundary } from '@n8n/agents';
+import type { AgentInputBoundary, SerializableAgentState } from '@n8n/agents';
 import type { TransactionRunner } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -70,6 +70,24 @@ describe('AgentMessageSteeringService', () => {
 			updates,
 		);
 	});
+
+	it.each(['foreground', 'background'] as const)(
+		'checks steering eligibility with a %s approval',
+		async (approval) => {
+			const thread = mock<AgentExecutionThread>({ id: 'thread-1', agentId: 'agent-1' });
+			const execution = mock<AgentExecution>({ id: 'running' });
+			executions.findSteerable.mockResolvedValueOnce(execution);
+			const checkpoint = mock<SerializableAgentState>({ status: 'suspended' });
+			checkpoints.findSuspendedForThread.mockImplementationOnce(
+				async (_agent, _thread, _ctx, options) =>
+					approval === 'background' && options?.includeBackground === false ? null : checkpoint,
+			);
+
+			await expect(service.findEligible(thread)).resolves.toBe(
+				approval === 'background' ? execution : null,
+			);
+		},
+	);
 
 	const boundary: AgentInputBoundary = {
 		messages: [],

@@ -158,6 +158,55 @@ describe('AgentConversationStateService', () => {
 			});
 		});
 
+		it('identifies a suspended background approval', async () => {
+			const call = {
+				toolCallId: 'tc-1',
+				toolName: 'slack_action',
+				input: {},
+			};
+			const service = createService({
+				status: 'active',
+				checkpoint: {
+					status: 'suspended',
+					persistence: { threadId: 'agent-thread-1', resourceId: 'resource-1' },
+					pendingToolCalls: {
+						'tc-1': {
+							...call,
+							runId: RUN_ID,
+							suspended: true,
+							suspendPayload: { type: 'workflow_wait' },
+							resumeSchema: {},
+							continuation: {
+								__agentDecisionWorkflow: true,
+								executionId: 'execution-1',
+								definitionHash: 'hash',
+								backgroundApproval: true,
+							},
+						},
+					},
+					messageList: {
+						messages: [
+							{
+								id: 'm-1',
+								createdAt: new Date(0),
+								role: 'assistant',
+								content: [{ ...call, type: 'tool-call', state: 'pending' }],
+							},
+						],
+						historyIds: [],
+						inputIds: [],
+						responseIds: ['m-1'],
+					},
+				},
+			});
+
+			await expect(service.getSuspendedRun(AGENT_ID, RUN_ID)).resolves.toEqual({
+				threadId: 'agent-thread-1',
+				toolResults: [],
+				backgroundApproval: true,
+			});
+		});
+
 		it('returns null for a checkpoint that is not suspended', async () => {
 			const service = createService({
 				status: 'active',

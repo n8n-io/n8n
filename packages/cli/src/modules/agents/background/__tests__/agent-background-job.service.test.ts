@@ -690,11 +690,12 @@ describe('background task notifications', () => {
 	);
 
 	it.each([
-		['requester', 'cancelled'],
-		['other-participant', 'not-found'],
+		['requester', 'slack', 'cancelled'],
+		['other-participant', 'slack', 'not-found'],
+		['requester', 'discord', 'not-found'],
 	] as const)(
-		'checks who requested the pending approval before acting on a cancellation by %s',
-		async (id, expected) => {
+		'checks who requested the pending approval before acting on a cancellation by %s on %s',
+		async (id, source, expected) => {
 			const { service, jobRepository, checkpointStorage } = setup();
 			const job = makeWorkflowJob({ kind: 'approval', parentRunId: 'run-1' });
 			jobRepository.findByParentThread.mockResolvedValue([job]);
@@ -750,10 +751,10 @@ describe('background task notifications', () => {
 			const executions = mock<ExecutionService>();
 			Container.set(ExecutionService, executions);
 
-			await expect(service.cancelFromTool('thread-1', job.id, { ...requester, id })).resolves.toBe(
+			await expect(service.cancelFromTool('thread-1', job.id, { id, source })).resolves.toBe(
 				expected,
 			);
-			expect(executions.stop).toHaveBeenCalledTimes(id === requester.id ? 1 : 0);
+			expect(executions.stop).toHaveBeenCalledTimes(expected === 'cancelled' ? 1 : 0);
 			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		},
 	);

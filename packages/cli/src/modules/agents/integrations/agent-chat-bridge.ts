@@ -1455,21 +1455,23 @@ export class AgentChatBridge {
 			return 'failed';
 		}
 
-		const cardPayload = buildSuspendCardPayload(suspendPayload);
+		let cardPayload = buildSuspendCardPayload(suspendPayload);
 		if (
 			cardPayload &&
 			isRecord(suspendPayload) &&
 			suspendPayload.backgroundApproval === true &&
-			(await this.agentService.getSuspendedRun?.({ agentId: this.agentId, runId }))
-				?.backgroundApproval
+			(await this.isBackgroundApproval(runId))
 		) {
-			cardPayload.components = [
-				...(cardPayload.components ?? []).slice(0, -1),
-				{
-					type: 'section',
-					text: 'You can keep chatting while you wait. To cancel this action, ask the agent to cancel the pending approval.',
-				},
-			];
+			cardPayload = {
+				...cardPayload,
+				components: [
+					...(cardPayload.components ?? []).slice(0, -1),
+					{
+						type: 'section',
+						text: 'You can keep chatting while you wait. To cancel this action, ask the agent to cancel the pending approval.',
+					},
+				],
+			};
 		}
 		if (!cardPayload) return 'skipped';
 		const callbackMetadata: CallbackMetadata = {
@@ -1495,6 +1497,25 @@ export class AgentChatBridge {
 				error: error instanceof Error ? error.message : String(error),
 			});
 			return 'failed';
+		}
+	}
+
+	private async isBackgroundApproval(runId: string): Promise<boolean> {
+		try {
+			const suspension = await this.agentService.getSuspendedRun?.({
+				agentId: this.agentId,
+				runId,
+			});
+			return suspension?.backgroundApproval === true;
+		} catch {
+			this.logger.warn(
+				'[AgentChatBridge] Could not check whether approval runs in the background',
+				{
+					agentId: this.agentId,
+					runId,
+				},
+			);
+			return false;
 		}
 	}
 
