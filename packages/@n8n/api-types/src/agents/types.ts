@@ -3,6 +3,7 @@ import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } 
 import type { AgentApproval, AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 import type { AgentPersonalisation } from './agent-personalisation';
+import type { ToolCallSimulation } from '../schemas/agent-safe-testing.schema';
 import type { AgentSkillReference } from './agent-skill.schema';
 import type { AgentBackgroundJobSignal } from './background-job';
 import type { ProviderAttachmentCapabilities } from './provider-capabilities';
@@ -594,6 +595,8 @@ export interface AgentPersistedMessageContentPart {
 	key?: string;
 	/** Event payload of a `host-event` part. */
 	payload?: unknown;
+	/** How the tool call ran in a test run (safe testing). */
+	simulation?: ToolCallSimulation;
 }
 
 /** Platform user who wrote a turn in a shared integration thread. */

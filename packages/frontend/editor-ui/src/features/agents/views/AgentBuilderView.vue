@@ -3754,6 +3754,7 @@ useKeybindings({
 					:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
 					@continue-loaded="onContinueLoaded"
 					@session-created="markSessionCreated"
+					@new-session="startNewPreviewSession"
 					@open-build="returnToBuilderFromPreview"
 					@send-to-assistant="onSendPreviewToAssistant"
 				/>

@@ -19,6 +19,7 @@ import {
 	applyForwardedChildChunk,
 	APPROVAL_TOOL_NAME,
 	emptyChildTrace,
+	toolCallSimulationSchema,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { convertFileToBinaryData, resolveFileMimeType } from '@/app/utils/fileUtils';
@@ -1399,6 +1400,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							? TOOL_CALL_STATE.CANCELLED
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
+					if (event.simulation !== undefined) {
+						const parsedSimulation = toolCallSimulationSchema.safeParse(event.simulation);
+						if (parsedSimulation.success) {
+							found.tc.simulation = parsedSimulation.data;
+						}
+					}
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					addReplyAttachments(found.msg, found.tc);
 					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);

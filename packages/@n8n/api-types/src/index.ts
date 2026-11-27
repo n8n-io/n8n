@@ -1182,6 +1182,7 @@ export type {
 	ToolTestability,
 	ToolTestKind,
 	ToolTestCapability,
+	AgentTestRunResetResponse,
 	AgentTestRunToolsResponse,
 	AgentTestRunCommitRequest,
 	AgentTestRunCommitActionStatus,

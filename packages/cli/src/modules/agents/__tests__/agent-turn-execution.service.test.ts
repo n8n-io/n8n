@@ -7,6 +7,7 @@ import type {
 	ThreadTitleUpdate,
 	Workspace,
 } from '@n8n/agents';
+import type { ToolCallSimulation } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
@@ -95,6 +96,7 @@ describe('onBeforeFinalize', () => {
 			expectedError?: Error;
 			workspace?: Workspace;
 			fileResourceId?: string;
+			getToolSimulation?: (toolCallId: string) => ToolCallSimulation | undefined;
 		} = {},
 	) {
 		const executions = mock<AgentExecutionService>();
@@ -138,6 +140,7 @@ describe('onBeforeFinalize', () => {
 				...(options.fileResourceId ? { fileResourceId: options.fileResourceId } : {}),
 				onBeforeFinalize,
 				onRecorderCreated: options.onRecorderCreated,
+				...(options.getToolSimulation ? { getToolSimulation: options.getToolSimulation } : {}),
 				prepare: async () => turn,
 			})) {
 				outputChunks.push(chunk);
@@ -147,6 +150,43 @@ describe('onBeforeFinalize', () => {
 		else await collect();
 		return { onBeforeFinalize, executions, chatExecutions, sandboxFiles, chunks: outputChunks };
 	}
+
+	it('records how each tool call ran in a test run on the timeline', async () => {
+		const simulation: ToolCallSimulation = {
+			route: 'simulated',
+			reason: 'served_from_world',
+			evidence: ['world_write'],
+		};
+		let recorder: ExecutionRecorder | undefined;
+		const getToolSimulation = vi.fn((toolCallId: string) =>
+			toolCallId === 'call-sim' ? simulation : undefined,
+		);
+
+		await runTurn(
+			[
+				{ type: 'tool-call', toolCallId: 'call-sim', toolName: 'gmail_send', input: {} },
+				{ type: 'tool-result', toolCallId: 'call-sim', toolName: 'gmail_send', output: 'ok' },
+				{ type: 'tool-call', toolCallId: 'call-local', toolName: 'read_file', input: {} },
+				{ type: 'tool-result', toolCallId: 'call-local', toolName: 'read_file', output: 'ok' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+			{
+				getToolSimulation,
+				onRecorderCreated: (created) => {
+					recorder = created;
+				},
+			},
+		);
+
+		const toolCalls = (recorder?.getMessageRecord().timeline ?? []).filter(
+			(event) => event.type === 'tool-call',
+		);
+		expect(getToolSimulation.mock.calls).toEqual([['call-sim'], ['call-local']]);
+		expect(toolCalls).toHaveLength(2);
+		expect(toolCalls[0]).toMatchObject({ toolCallId: 'call-sim', simulation });
+		expect(toolCalls[1]).toMatchObject({ toolCallId: 'call-local' });
+		expect(toolCalls[1]).not.toHaveProperty('simulation');
+	});
 
 	describe('sandbox outputs', () => {
 		const toolChunks = (toolName: string): StreamChunk[] => [

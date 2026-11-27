@@ -1,5 +1,7 @@
 import type { Agent as RuntimeAgent, BuiltTool } from '@n8n/agents';
+import { AgentTestRunResetDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { Publisher } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
@@ -37,6 +39,8 @@ describe('AgentTestRunController', () => {
 			mock<SafeTestingFlagGate>(),
 			sessions,
 			mock<HeldActionCommitService>(),
+			mock<Publisher>(),
+			mock<Logger>(),
 		);
 
 		await expect(
@@ -55,6 +59,8 @@ describe('AgentTestRunController', () => {
 			flagGate,
 			sessions,
 			mock<HeldActionCommitService>(),
+			mock<Publisher>(),
+			mock<Logger>(),
 		);
 
 		await expect(
@@ -71,6 +77,8 @@ describe('AgentTestRunController', () => {
 			flagGate,
 			mock<SimulationSessionService>(),
 			commitService,
+			mock<Publisher>(),
+			mock<Logger>(),
 		);
 
 		await expect(
@@ -88,6 +96,8 @@ describe('AgentTestRunController', () => {
 			mock<SafeTestingFlagGate>(),
 			mock<SimulationSessionService>(),
 			commitService,
+			mock<Publisher>(),
+			mock<Logger>(),
 		);
 
 		await expect(
@@ -159,6 +169,8 @@ describe('AgentTestRunController', () => {
 			mock<SafeTestingFlagGate>(),
 			sessions,
 			commitService,
+			mock<Publisher>(),
+			mock<Logger>(),
 		);
 
 		const first = await controller.commitHeldActions(
@@ -194,5 +206,95 @@ describe('AgentTestRunController', () => {
 			{ actionId: 'tc-1', toolName: 'send_slack', status: 'already_committed' },
 		]);
 		expect(realHandler).toHaveBeenCalledTimes(1);
+	});
+
+	it('resets the simulation world of the chat in the request body on every main', async () => {
+		const sessions = mock<SimulationSessionService>();
+		const publisher = mock<Publisher>();
+		const controller = new AgentTestRunController(
+			mock<SafeTestingFlagGate>(),
+			sessions,
+			mock<HeldActionCommitService>(),
+			publisher,
+			mock<Logger>(),
+		);
+		const payload = AgentTestRunResetDto.parse({ sessionId: ' session-42 ' });
+		const chat = {
+			userId: 'user-1',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			testChatId: 'session-42',
+		};
+
+		await expect(
+			controller.resetTestRun(req, mock<Response>(), 'project-1', 'agent-1', payload),
+		).resolves.toEqual({ reset: true });
+		expect(sessions.resetForTestChat).toHaveBeenCalledWith(chat);
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'reset-agent-test-run',
+			payload: chat,
+		});
+	});
+
+	it('still resets the local world when the relay to other mains fails', async () => {
+		const sessions = mock<SimulationSessionService>();
+		const publisher = mock<Publisher>();
+		publisher.publishCommand.mockRejectedValue(new Error('redis down'));
+		const logger = mock<Logger>();
+		const controller = new AgentTestRunController(
+			mock<SafeTestingFlagGate>(),
+			sessions,
+			mock<HeldActionCommitService>(),
+			publisher,
+			logger,
+		);
+
+		await expect(
+			controller.resetTestRun(
+				req,
+				mock<Response>(),
+				'project-1',
+				'agent-1',
+				AgentTestRunResetDto.parse({ sessionId: 'session-42' }),
+			),
+		).resolves.toEqual({ reset: true });
+		expect(sessions.resetForTestChat).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'[SafeTesting] Failed to relay a test run reset',
+			expect.objectContaining({ error: 'redis down' }),
+		);
+	});
+
+	it.each([{}, { sessionId: '   ' }, { sessionId: 42 }])(
+		'rejects a reset body without a chat (%j)',
+		(body) => {
+			expect(AgentTestRunResetDto.safeParse(body).success).toBe(false);
+		},
+	);
+
+	it('returns 404 on reset while the flag is off', async () => {
+		const sessions = mock<SimulationSessionService>();
+		const publisher = mock<Publisher>();
+		const flagGate = mock<SafeTestingFlagGate>();
+		flagGate.assertEnabled.mockRejectedValue(new NotFoundError('Not found'));
+		const controller = new AgentTestRunController(
+			flagGate,
+			sessions,
+			mock<HeldActionCommitService>(),
+			publisher,
+			mock<Logger>(),
+		);
+
+		await expect(
+			controller.resetTestRun(
+				req,
+				mock<Response>(),
+				'project-1',
+				'agent-1',
+				AgentTestRunResetDto.parse({ sessionId: 'session-42' }),
+			),
+		).rejects.toThrow(NotFoundError);
+		expect(sessions.resetForTestChat).not.toHaveBeenCalled();
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 });

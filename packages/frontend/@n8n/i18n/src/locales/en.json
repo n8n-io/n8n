@@ -10204,6 +10204,7 @@
 	"agents.testRun.reset.title": "Start a new test run?",
 	"agents.testRun.reset.description": "Starts fresh, without this chat's changes.",
 	"agents.testRun.reset.confirm": "Start new test run",
+	"agents.testRun.reset.error": "Couldn't start a new test run. Try again.",
 	"agents.chat.loadHistory.error": "Could not load chat history",
 	"agents.chat.loadOlder.error": "Couldn't load earlier messages",
 	"agents.chat.clearHistory.error": "Could not clear chat history",

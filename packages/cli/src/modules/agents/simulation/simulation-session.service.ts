@@ -5,7 +5,7 @@ import { AI_GATEWAY_MANAGED_TAG, isCredentialAgentIntegration } from '@n8n/api-t
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
 
@@ -335,6 +335,28 @@ export class SimulationSessionService {
 		return await this.capabilitiesFor(await this.describeAgent(agentId, projectId));
 	}
 
+	/**
+	 * Drops the cached simulation session for a test chat and closes its backend world. Another
+	 * main can hold the world of the chat, so the reset route also relays the reset to them.
+	 */
+	@OnPubSubEvent('reset-agent-test-run', { instanceType: 'main' })
+	resetForTestChat(input: {
+		userId: string;
+		projectId: string;
+		agentId: string;
+		testChatId: string;
+	}): void {
+		const key = sessionKeyFromIds(input);
+		const drop = () => {
+			const cached = this.sessions.get(key);
+			if (cached) this.dropSession(key, cached);
+		};
+		drop();
+		// An open that still runs caches its world after this call, so that world goes too.
+		const opening = this.opening.get(key);
+		if (opening) void opening.then(drop, () => undefined);
+	}
+
 	private async describeAgent(agentId: string, projectId: string): Promise<DescribedAgent> {
 		const saved = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!saved?.schema) throw new NotFoundError(`Agent ${agentId} not found`);
@@ -542,7 +564,16 @@ type SessionOwner = Pick<OpenSimulationInput, 'user' | 'projectId' | 'agentId' |
 
 /** A session belongs to one chat of one agent and user, so a reused chat ID never shares a world. */
 function sessionKey({ user, projectId, agentId, testChatId }: SessionOwner): string {
-	return `${user.id}:${projectId}:${agentId}:${testChatId}`;
+	return sessionKeyFromIds({ userId: user.id, projectId, agentId, testChatId });
+}
+
+function sessionKeyFromIds(params: {
+	userId: string;
+	projectId: string;
+	agentId: string;
+	testChatId: string;
+}): string {
+	return `${params.userId}:${params.projectId}:${params.agentId}:${params.testChatId}`;
 }
 
 /**

@@ -14,6 +14,8 @@
  * - Output files: attachments that a tool call returned, under its row.
  * - Fix with assistant: one callout that sends the failed calls of the run to
  *   the assistant.
+ * - Test runs: how each simulated call ran, under the steps. The raw calls stay
+ *   collapsed in a group, even a single call.
  */
 import { N8nButton, N8nCallout, N8nIcon } from '@n8n/design-system';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
@@ -31,6 +33,8 @@ import {
 import AgentChatToolPolicyRefusal from './AgentChatToolPolicyRefusal.vue';
 import AgentChatHostEvents from './AgentChatHostEvents.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
+import AgentToolCallRouteList from './AgentToolCallRouteList.vue';
+import type { AgentToolCallRouteItem } from '../toolCallSimulation.types';
 import { getToolOutputAttachments } from '../utils/tool-output-files';
 
 const props = defineProps<{
@@ -71,6 +75,16 @@ const failures = computed(() =>
 
 const fixableErrorTexts = computed(() => [...new Set(failures.value.map(({ error }) => error))]);
 
+const simulatedRouteItems = computed<AgentToolCallRouteItem[]>(() =>
+	props.toolCalls
+		.filter((tc) => tc.simulation !== undefined)
+		.map((tc) => ({
+			toolCallId: tc.toolCallId,
+			toolName: toolStepLabel(tc),
+			simulation: tc.simulation,
+		})),
+);
+
 const outputFilesByToolCallId = computed(
 	() =>
 		new Map(
@@ -98,7 +112,7 @@ function emitFixWithAssistant() {
 
 <template>
 	<div :class="$style.activity" data-test-id="agent-chat-activity">
-		<AiActivityTrace :items="items">
+		<AiActivityTrace :items="items" :group-single-tool="simulatedRouteItems.length > 0">
 			<template v-if="props.thinking?.hostEvents?.length" #thinking-prepend>
 				<AgentChatHostEvents :items="props.thinking.hostEvents" />
 			</template>
@@ -121,6 +135,12 @@ function emitFixWithAssistant() {
 				/>
 			</template>
 		</AiActivityTrace>
+
+		<AgentToolCallRouteList
+			v-if="simulatedRouteItems.length > 0"
+			:class="$style.routeList"
+			:calls="simulatedRouteItems"
+		/>
 
 		<Transition name="fix-callout">
 			<N8nCallout
@@ -184,6 +204,10 @@ function emitFixWithAssistant() {
 
 .outputFiles {
 	margin: var(--spacing--4xs) 0 var(--spacing--2xs);
+}
+
+.routeList {
+	margin-top: var(--spacing--2xs);
 }
 </style>
 

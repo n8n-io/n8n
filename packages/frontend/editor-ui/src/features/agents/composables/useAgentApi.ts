@@ -41,6 +41,8 @@ import type {
 	AgentSkillWorkflowAccessResponse,
 	AgentTaskConfig,
 	AgentTaskDto,
+	AgentTestRunResetResponse,
+	AgentTestRunToolsResponse,
 	AgentIntegrationSettings,
 	AgentCatalogModel,
 	AgentProviderModelsResponse,
@@ -1239,6 +1241,32 @@ export const clearTestChatMessages = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
+export const getAgentTestRunTools = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentTestRunToolsResponse> => {
+	return await makeRestApiRequest<AgentTestRunToolsResponse>(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/test-run/tools`,
+	);
+};
+
+export const resetAgentTestRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	sessionId: string,
+): Promise<AgentTestRunResetResponse> => {
+	return await makeRestApiRequest<AgentTestRunResetResponse>(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/test-run/reset`,
+		{ sessionId },
 	);
 };
 

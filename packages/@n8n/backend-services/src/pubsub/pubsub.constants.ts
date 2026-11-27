@@ -55,6 +55,8 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'self-healing-failure',
 	'cancel-agent-background-job',
 	'wake-agent-background-job',
+	// Debouncing by name would drop the resets of other chats sent at the same time.
+	'reset-agent-test-run',
 	'relay-instance-ai-event',
 	'relay-instance-ai-task-control',
 	'agent-chat-subscription-changed',

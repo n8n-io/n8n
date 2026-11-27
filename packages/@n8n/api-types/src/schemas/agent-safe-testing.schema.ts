@@ -130,6 +130,10 @@ export interface AgentTestRunToolsResponse {
 	tools: ToolTestCapability[];
 }
 
+export interface AgentTestRunResetResponse {
+	reset: boolean;
+}
+
 /** The most held write actions a test chat keeps, and so the most one commit can replay. */
 export const AGENT_TEST_RUN_MAX_HELD_ACTIONS = 500;
 

@@ -2161,6 +2161,27 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
+	it('starts a new session when the standalone preview asks for a new test run', async () => {
+		routeState.name = AGENT_PREVIEW_VIEW;
+		routeQuery.continueSessionId = 'thread-1';
+		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentTestChatPage' });
+		expect(preview.props('effectiveSessionId')).toBe('thread-1');
+		routerReplace.mockClear();
+
+		preview.vm.$emit('new-session');
+		await nextTick();
+
+		const newSessionId = preview.props('effectiveSessionId');
+		expect(newSessionId).not.toBe('thread-1');
+		expect(preview.props('newSession')).toBe(true);
+		expect(routerReplace).toHaveBeenCalledWith({
+			query: expect.objectContaining({ continueSessionId: newSessionId }),
+		});
+	});
+
 	it('dismisses handed-off tool calls after the assistant writes the agent', async () => {
 		handoffMock.mockReturnValueOnce(true);
 		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');

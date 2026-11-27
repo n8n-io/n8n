@@ -31,6 +31,13 @@ describe('groupActivityItems', () => {
 		]);
 	});
 
+	it('groups a single tool call when the minimum group size is one', () => {
+		const grouped = groupActivityItems<string>([tool('a')], { minGroupSize: 1 });
+
+		expect(grouped).toHaveLength(1);
+		expect(grouped[0]).toMatchObject({ kind: 'tools', id: 'tools-a' });
+	});
+
 	it('starts a new group after a row that is not a tool call', () => {
 		const grouped = groupActivityItems<string>([
 			{ kind: 'thinking', id: 'thinking', segments: [], active: false },

@@ -331,6 +331,7 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	isWakeRun?: boolean;
 	pauseReport?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
+	simulationSession?: SimulationSession;
 }
 
 /**
@@ -1464,6 +1465,12 @@ export class AgentExecutionOrchestratorService {
 				config.isWakeRun || config.skipBackgroundWake
 					? undefined
 					: async () => await this.requestPendingBackgroundWake(config.memory.threadId),
+			...(config.simulationSession
+				? {
+						getToolSimulation: (toolCallId: string) =>
+							config.simulationSession?.peekDecision(toolCallId),
+					}
+				: {}),
 			prepare: async () => await this.prepareChatTurn(config),
 		});
 	}
@@ -1645,6 +1652,12 @@ export class AgentExecutionOrchestratorService {
 					await this.requestPendingBackgroundWake(threadId);
 				}
 			},
+			...(config.simulationSession
+				? {
+						getToolSimulation: (toolCallId: string) =>
+							config.simulationSession?.peekDecision(toolCallId),
+					}
+				: {}),
 			prepare: async () => await this.prepareChatResume(config, checkpoint, runtime),
 		});
 	}
@@ -2065,6 +2078,7 @@ export class AgentExecutionOrchestratorService {
 			onExecutionStarted: config.onExecutionStarted,
 			sandboxPrincipalHash: setup.sandboxPrincipalHash,
 			sessionMode,
+			simulationSession: config.simulationSession,
 			...simulationEpisodicScope(config.simulationSession),
 		});
 	}
