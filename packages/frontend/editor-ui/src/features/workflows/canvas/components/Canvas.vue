@@ -231,7 +231,7 @@ const props = withDefaults(
 	},
 );
 
-const { isMobileDevice, controlKeyCode } = useDeviceSupport();
+const { isMobileDevice, isTouchDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -329,29 +329,39 @@ const classes = computed(() => ({
  * Panning and Selection key bindings
  */
 
+const isTouchPanningDevice = isMobileDevice || isTouchDevice;
+
 // @see https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_key_values#whitespace_keys
-const panningKeyCode = ref<string[] | true>(isMobileDevice ? true : [' ', controlKeyCode]);
-const panningMouseButton = ref<number[] | true>(isMobileDevice ? true : [1]);
-const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : true);
+const panningKeyCode = ref<string[] | true>(isTouchPanningDevice ? true : [' ', controlKeyCode]);
+const panningMouseButton = ref<number[] | true>(isTouchPanningDevice ? true : [1]);
+const selectionKeyCode = ref<string | true | null>(isTouchPanningDevice ? 'Shift' : true);
 const isInPanningMode = ref(false);
 
 function switchToPanningMode() {
+	if (isTouchPanningDevice) return;
+
 	selectionKeyCode.value = null;
 	panningMouseButton.value = [0, 1];
 	isInPanningMode.value = true;
 }
 
 function switchToSelectionMode() {
+	if (isTouchPanningDevice) return;
+
 	selectionKeyCode.value = true;
 	panningMouseButton.value = [1];
 	isInPanningMode.value = false;
 }
 
-onKeyDown(panningKeyCode.value, switchToPanningMode, {
-	dedupe: true,
-});
+// Panning stays active on touch devices. Passing `true` to onKeyDown/onKeyUp
+// matches every keystroke and replaces panOnDrag with a mouse-button array.
+if (!isTouchPanningDevice) {
+	onKeyDown(panningKeyCode.value, switchToPanningMode, {
+		dedupe: true,
+	});
 
-onKeyUp(panningKeyCode.value, switchToSelectionMode);
+	onKeyUp(panningKeyCode.value, switchToSelectionMode);
+}
 
 /**
  * Rename node key bindings
