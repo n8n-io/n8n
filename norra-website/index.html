@@ -2128,6 +2128,135 @@
     .ptl .ptl-step.now .ptl-node::after { animation: none !important; }
   }
 
+
+  /* =====================================================================
+     V2 · INTEGRATIONS HUB (NORRA.integrationMatrix, every page)
+     The .nst stage look: gradient, drifting blobs, white cards with a soft cast shadow. Norra in the middle,
+     areas around it, wires drawn by NORRA.wireMatrix from the real card positions.
+     ===================================================================== */
+  .nhub-sect .nhub-box { margin-top: 56px; }
+  .nhub-box { scroll-margin-top: 96px; }
+  .nhub.nst { display: block; min-height: 0; padding: 22px 16px 20px; border-radius: 32px; container: nhub / inline-size; }
+  .nhub-grid { position: relative; z-index: 1; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+  .nhub-cards { display: contents; }
+
+  .nhub-wires { display: none; position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; overflow: visible; pointer-events: none; }
+  .nhub-wires path { fill: none; stroke: hsl(var(--primary)); stroke-opacity: .28; stroke-width: 1.6; stroke-dasharray: 3 7; stroke-linecap: round;
+    animation: nhubFlow 1.4s linear infinite; transition: stroke-opacity .5s var(--ease-out), stroke-width .5s var(--ease-out); }
+  .nhub-wires path.on { stroke-opacity: .85; stroke-width: 2.2; stroke-dasharray: 6 8; animation-duration: .7s; }
+  @keyframes nhubFlow { to { stroke-dashoffset: -20; } }
+  .nhub-grid::before { content: ""; position: absolute; z-index: 0; left: 38px; top: 40px; bottom: 40px; width: 2px; border-radius: 2px;
+    background: repeating-linear-gradient(to bottom, hsl(var(--primary) / .4) 0 4px, transparent 4px 11px); background-size: 2px 22px;
+    animation: nhubFlowY 1.1s linear infinite; }
+  @keyframes nhubFlowY { to { background-position: 0 22px; } }
+
+  .nhub-core { position: relative; z-index: 2; display: flex; align-items: center; gap: 14px; padding: 4px 6px 6px; }
+  .nhub-node { position: relative; flex: none; width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center;
+    background: hsl(var(--card)); color: hsl(var(--primary)); border: 1px solid hsl(var(--border) / .5);
+    box-shadow: 0 2px 4px hsl(var(--shadow-color) / .05), 0 18px 40px hsl(var(--shadow-color) / .16); }
+  .nhub-mark { width: 46%; height: 46%; }
+  .nhub-pulse { position: absolute; inset: -1px; border-radius: inherit; border: 1.5px solid hsl(var(--primary) / .35); animation: nhubPulse 2.4s var(--ease-out) infinite; }
+  .nhub-pulse.p2 { animation-delay: 1.2s; }
+  @keyframes nhubPulse { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.55); opacity: 0; } }
+  .nhub-total { margin: 0; display: flex; align-items: baseline; gap: 8px; color: hsl(var(--foreground)); }
+  .nhub-total b { font: 600 34px/1 var(--font-display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .nhub-total span { font-size: 14px; color: hsl(var(--foreground) / .7); }
+
+  .nhub-card { position: relative; z-index: 1; display: flex; flex-direction: column; min-width: 0; border-radius: 22px; padding: 18px 18px 16px; text-align: left;
+    background: hsl(var(--card)); color: hsl(var(--foreground)); border: 1px solid hsl(var(--border) / .45);
+    box-shadow: 0 2px 4px hsl(var(--shadow-color) / .05), 0 14px 32px hsl(var(--shadow-color) / .1);
+    transition: transform .55s var(--ease-out), box-shadow .55s var(--ease-out), border-color .55s var(--ease-out); }
+  .nhub-card.on { transform: translateY(-4px); border-color: hsl(var(--primary) / .32);
+    box-shadow: 0 2px 4px hsl(var(--shadow-color) / .06), 0 22px 48px hsl(var(--shadow-color) / .18); }
+  .nhub-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .nhub-ico { flex: none; width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
+    background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); transition: background .55s var(--ease-out), color .55s var(--ease-out); }
+  .nhub-ico svg { width: 19px; height: 19px; }
+  .nhub-card.on .nhub-ico { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .nhub-top h3 { margin: 0; min-width: 0; font: 600 16.5px/1.25 var(--font-display); letter-spacing: -.01em; }
+  .nhub-n { margin-left: auto; flex: none; min-width: 26px; height: 22px; padding: 0 7px; border-radius: 999px; display: grid; place-items: center;
+    font: 500 11px var(--font-mono); background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); font-variant-numeric: tabular-nums; }
+  .nhub-ex { margin: 10px 0 0; font-size: 13.5px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
+  .nhub-logos { margin: 0; padding: 14px 0 0; display: flex; flex-wrap: wrap; gap: 7px; }
+  .nhub-chip, .nhub-plus { -webkit-appearance: none; appearance: none; font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; max-width: 100%;
+    border-radius: 999px; padding: 4px 11px 4px 4px; font-size: 13px; font-weight: 500; line-height: 1.2; color: hsl(var(--foreground));
+    background: hsl(var(--background)); border: 1px solid hsl(var(--border) / .8); transition: border-color .2s, background-color .2s, box-shadow .2s; }
+  .nhub-chip:hover { border-color: hsl(var(--primary) / .4); box-shadow: 0 2px 8px hsl(var(--shadow-color) / .08); }
+  .nhub-chip[aria-expanded="true"] { border-color: hsl(var(--primary) / .7); background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+  .nhub-chip:focus-visible, .nhub-plus:focus-visible, .nhub-allbtn:focus-visible, .nhub-seg button:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+  .nhub-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nhub-mono { flex: none; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center;
+    font: 700 9.5px/1 var(--font-sans); letter-spacing: .02em; background: hsl(var(--h) 70% 92%); color: hsl(var(--h) 52% 30%); }
+  .nhub-chip.nhub-x { display: none; }
+  .nhub-all .nhub-chip.nhub-x { display: inline-flex; animation: nhubIn .4s var(--ease-out) both; animation-delay: calc(var(--k, 0) * 30ms); }
+  .nhub-plus { padding: 4px 12px; border-style: dashed; color: hsl(var(--muted-foreground)); background: transparent; font-family: var(--font-mono); font-size: 12px; }
+  .nhub-plus:hover { border-color: hsl(var(--primary) / .5); color: hsl(var(--primary)); }
+  .nhub-card.on .nhub-chip { animation: nhubChip .6s var(--ease-out) both; animation-delay: calc(var(--k, 0) * 90ms + 120ms); }
+  @keyframes nhubChip { 0% { transform: none; } 40% { transform: translateY(-3px) scale(1.04); box-shadow: 0 6px 14px hsl(var(--shadow-color) / .12); } 100% { transform: none; } }
+  @keyframes nhubIn { from { opacity: 0; transform: translateY(4px); } }
+  .nhub-detail { margin-top: 12px; border-radius: 14px; padding: 11px 13px; background: hsl(var(--muted)); font-size: 13.5px; line-height: 1.5;
+    animation: nhubIn .35s var(--ease-out); }
+  .nhub-detail[hidden] { display: none; }
+  .nhub-dh { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; }
+  .nhub-dh b { font-weight: 600; }
+  .nhub-hw { border-radius: 999px; padding: 2px 8px; font: 600 10.5px var(--font-mono); background: hsl(var(--primary) / .1); color: hsl(var(--primary)); }
+  .nhub-ch { font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+  .nhub-detail p + p { margin: 5px 0 0; color: hsl(var(--foreground) / .8); }
+
+  .nhub-allbtn { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; margin: 20px auto 0; border-radius: 999px; padding: 9px 18px;
+    font: 500 14px var(--font-sans); cursor: pointer; color: hsl(var(--foreground)); background: hsl(var(--card) / .75); border: 1px solid hsl(0 0% 100% / .5);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: var(--shadow-soft); transition: background-color .2s, box-shadow .2s; }
+  .nhub-allbtn:hover { background: hsl(var(--card)); box-shadow: var(--shadow-lg); }
+  .nhub-allbtn svg { width: 16px; height: 16px; transition: transform .3s var(--ease-out); }
+  .nhub-allbtn[aria-expanded="true"] svg { transform: rotate(180deg); }
+  .nhub-allbtn[hidden] { display: none; }
+
+  .nhub-how { position: relative; z-index: 1; margin: 20px 0 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .nhub-how span { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; padding: 6px 13px; font-size: 12.5px;
+    color: hsl(var(--foreground) / .78); background: hsl(var(--card) / .55); border: 1px solid hsl(0 0% 100% / .45);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .nhub-how b { font: 600 11px var(--font-mono); letter-spacing: .02em; color: hsl(var(--primary)); }
+
+  .nhub-filters { display: flex; justify-content: center; margin: 0 0 18px; }
+  .nhub-seg { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 4px; border-radius: 22px; background: hsl(var(--muted)); }
+  .nhub-seg button { border: 0; background: none; cursor: pointer; border-radius: 999px; padding: 7px 14px; font: 500 13px var(--font-sans);
+    color: hsl(var(--muted-foreground)); transition: background-color .2s, color .2s, box-shadow .2s; }
+  .nhub-seg button:hover { color: hsl(var(--foreground)); }
+  .nhub-seg button[aria-pressed="true"] { background: hsl(var(--card)); color: hsl(var(--foreground)); box-shadow: var(--shadow-soft); }
+  .nhub-box > .note { margin-top: 16px; text-align: center; }
+
+  /* two columns around the core */
+  @container nhub (min-width: 760px) {
+    .nhub-grid { grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr); column-gap: 52px; row-gap: 22px; align-items: stretch; }
+    .nhub-card { grid-column: var(--c); grid-row: var(--r); }
+    .nhub-core { grid-column: 2; grid-row: 1 / span var(--rows, 2); align-self: center; flex-direction: column; justify-content: center; gap: 16px; padding: 0; text-align: center; }
+    .nhub-grid::before { display: none; }
+    .nhub-wires { display: block; }
+    .nhub-node { width: 96px; height: 96px; border-radius: 28px; }
+    .nhub-total { flex-direction: column; align-items: center; gap: 4px; }
+    .nhub-total b { font-size: 40px; }
+    .nhub-total span { font-size: 13px; }
+  }
+  @media (min-width: 640px) { .nhub.nst { padding: 40px 36px 28px; } }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .nhub-mono { background: hsl(var(--h) 34% 22%); color: hsl(var(--h) 60% 78%); }
+    :root:not([data-theme="light"]) .nhub-how span, :root:not([data-theme="light"]) .nhub-allbtn { border-color: hsl(0 0% 100% / .1); }
+    :root:not([data-theme="light"]) .nhub-chip, :root:not([data-theme="light"]) .nhub-detail { background: hsl(var(--muted)); }
+    :root:not([data-theme="light"]) .nhub-chip[aria-expanded="true"] { background: hsl(var(--accent)); }
+    :root:not([data-theme="light"]) .nhub-detail { background: hsl(var(--secondary)); }
+  }
+  :root[data-theme="dark"] .nhub-mono { background: hsl(var(--h) 34% 22%); color: hsl(var(--h) 60% 78%); }
+  :root[data-theme="dark"] .nhub-how span, :root[data-theme="dark"] .nhub-allbtn { border-color: hsl(0 0% 100% / .1); }
+  :root[data-theme="dark"] .nhub-chip { background: hsl(var(--muted)); }
+  :root[data-theme="dark"] .nhub-chip[aria-expanded="true"] { background: hsl(var(--accent)); }
+  :root[data-theme="dark"] .nhub-detail { background: hsl(var(--secondary)); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nhub-wires path, .nhub-grid::before, .nhub-pulse, .nhub-card.on .nhub-chip, .nhub-all .nhub-chip.nhub-x, .nhub-detail { animation: none; }
+    .nhub-pulse { display: none; }
+  }
+
 /* ===== src/content/07-alle-funktionen.css ===== */
   /* ---------- Alle Funktionen im Überblick (end of every product page) ---------- */
   .af-grid { margin-top: 44px; columns: 1; column-gap: 16px; }
@@ -2363,99 +2492,6 @@
 /* home calculator: two quiet links instead of Norra prices */
 .start-calc-ctas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .start-calc-ctas .btn { margin: 0; }
-
-/* ---------- integrations hub (#anbindungen only) ----------
-   Built on the .nst stage look: gradient, drifting blobs, white cards with a soft cast shadow. */
-.nhub-sect .nhub.nst { display: block; min-height: 0; margin-top: 56px; padding: 22px 16px 20px; border-radius: 32px; container: nhub / inline-size; }
-.nhub-grid { position: relative; z-index: 1; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "core" "a0" "a1" "a2" "a3"; }
-.nhub-a0 { grid-area: a0; } .nhub-a1 { grid-area: a1; } .nhub-a2 { grid-area: a2; } .nhub-a3 { grid-area: a3; }
-
-/* wires: desktop draws curves into the core; on one column a dotted spine runs behind the cards */
-.nhub-wires { display: none; position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; overflow: visible; pointer-events: none; }
-.nhub-wires path { fill: none; stroke: hsl(var(--primary)); stroke-opacity: .28; stroke-width: 1.6; stroke-dasharray: 3 7; stroke-linecap: round;
-  animation: nhubFlow 1.4s linear infinite; transition: stroke-opacity .5s var(--ease-out), stroke-width .5s var(--ease-out); }
-.nhub-wires path.on { stroke-opacity: .85; stroke-width: 2.2; stroke-dasharray: 6 8; animation-duration: .7s; }
-@keyframes nhubFlow { to { stroke-dashoffset: -20; } }
-.nhub-grid::before { content: ""; position: absolute; z-index: 0; left: 38px; top: 40px; bottom: 40px; width: 2px; border-radius: 2px;
-  background: repeating-linear-gradient(to bottom, hsl(var(--primary) / .4) 0 4px, transparent 4px 11px); background-size: 2px 22px;
-  animation: nhubFlowY 1.1s linear infinite; }
-@keyframes nhubFlowY { to { background-position: 0 22px; } }
-
-/* core: the Norra mark with two pulse rings and the total */
-.nhub-core { grid-area: core; position: relative; z-index: 2; display: flex; align-items: center; gap: 14px; padding: 4px 6px 6px; }
-.nhub-node { position: relative; flex: none; width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center;
-  background: hsl(var(--card)); color: hsl(var(--primary)); border: 1px solid hsl(var(--border) / .5);
-  box-shadow: 0 2px 4px hsl(var(--shadow-color) / .05), 0 18px 40px hsl(var(--shadow-color) / .16); }
-.nhub-mark { width: 46%; height: 46%; }
-.nhub-pulse { position: absolute; inset: -1px; border-radius: inherit; border: 1.5px solid hsl(var(--primary) / .35); animation: nhubPulse 2.4s var(--ease-out) infinite; }
-.nhub-pulse.p2 { animation-delay: 1.2s; }
-@keyframes nhubPulse { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.55); opacity: 0; } }
-.nhub-total { margin: 0; display: flex; align-items: baseline; gap: 8px; color: hsl(var(--foreground)); }
-.nhub-total b { font: 600 34px/1 var(--font-display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.nhub-total span { font-size: 14px; color: hsl(var(--foreground) / .7); }
-
-/* area cards */
-.nhub-card { position: relative; z-index: 1; display: flex; flex-direction: column; min-width: 0; border-radius: 22px; padding: 18px 18px 16px; text-align: left;
-  background: hsl(var(--card)); color: hsl(var(--foreground)); border: 1px solid hsl(var(--border) / .45);
-  box-shadow: 0 2px 4px hsl(var(--shadow-color) / .05), 0 14px 32px hsl(var(--shadow-color) / .1);
-  transition: transform .55s var(--ease-out), box-shadow .55s var(--ease-out), border-color .55s var(--ease-out), opacity .7s var(--ease-out); }
-.nhub-card.on { transform: translateY(-4px); border-color: hsl(var(--primary) / .32);
-  box-shadow: 0 2px 4px hsl(var(--shadow-color) / .06), 0 22px 48px hsl(var(--shadow-color) / .18); }
-.nhub-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.nhub-ico { flex: none; width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center;
-  background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); transition: background .55s var(--ease-out), color .55s var(--ease-out); }
-.nhub-ico svg { width: 19px; height: 19px; }
-.nhub-card.on .nhub-ico { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
-.nhub-top h3 { margin: 0; min-width: 0; font: 600 16.5px/1.25 var(--font-display); letter-spacing: -.01em; }
-.nhub-n { margin-left: auto; flex: none; min-width: 26px; height: 22px; padding: 0 7px; border-radius: 999px; display: grid; place-items: center;
-  font: 500 11px var(--font-mono); background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); font-variant-numeric: tabular-nums; }
-.nhub-ex { margin: 10px 0 0; font-size: 13.5px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
-.nhub-logos { list-style: none; margin: auto 0 0; padding: 14px 0 0; display: flex; flex-wrap: wrap; gap: 7px; }
-.nhub-logos li { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; border-radius: 999px; padding: 4px 11px 4px 4px;
-  font-size: 13px; font-weight: 500; line-height: 1.2; background: hsl(var(--background)); border: 1px solid hsl(var(--border) / .8); }
-.nhub-logos li > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nhub-mono { flex: none; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center;
-  font: 700 9.5px/1 var(--font-sans); letter-spacing: .02em; background: hsl(var(--h) 70% 92%); color: hsl(var(--h) 52% 30%); }
-.nhub-logos li.nhub-more { padding: 4px 11px; border-style: dashed; color: hsl(var(--muted-foreground)); background: transparent; font-family: var(--font-mono); font-size: 12px; }
-.nhub-card.on .nhub-logos li { animation: nhubChip .6s var(--ease-out) both; animation-delay: calc(var(--k, 0) * 90ms + 120ms); }
-@keyframes nhubChip { 0% { transform: translateY(0) scale(1); } 40% { transform: translateY(-3px) scale(1.04); box-shadow: 0 6px 14px hsl(var(--shadow-color) / .12); } 100% { transform: none; } }
-
-/* how-it-connects legend as glass pills */
-.nhub-how { position: relative; z-index: 1; margin: 20px 0 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-.nhub-how span { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; padding: 6px 13px; font-size: 12.5px;
-  color: hsl(var(--foreground) / .78); background: hsl(var(--card) / .55); border: 1px solid hsl(0 0% 100% / .45);
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-.nhub-how b { font: 600 11px var(--font-mono); letter-spacing: .02em; color: hsl(var(--primary)); }
-
-/* two columns around the core */
-@container nhub (min-width: 760px) {
-  .nhub-grid { grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 52px; row-gap: 22px;
-    grid-template-areas: "a0 core a1" "a2 core a3"; }
-  .nhub-grid::before { display: none; }
-  .nhub-wires { display: block; }
-  .nhub-core { flex-direction: column; justify-content: center; gap: 16px; padding: 0; text-align: center; }
-  .nhub-node { width: 96px; height: 96px; border-radius: 28px; }
-  .nhub-total { flex-direction: column; align-items: center; gap: 4px; }
-  .nhub-total b { font-size: 40px; }
-  .nhub-total span { font-size: 13px; }
-}
-@media (min-width: 640px) { .nhub-sect .nhub.nst { padding: 40px 36px 28px; } }
-
-/* dark */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .nhub-mono { background: hsl(var(--h) 34% 22%); color: hsl(var(--h) 60% 78%); }
-  :root:not([data-theme="light"]) .nhub-how span { border-color: hsl(0 0% 100% / .1); }
-  :root:not([data-theme="light"]) .nhub-logos li { background: hsl(var(--muted)); }
-}
-:root[data-theme="dark"] .nhub-mono { background: hsl(var(--h) 34% 22%); color: hsl(var(--h) 60% 78%); }
-:root[data-theme="dark"] .nhub-how span { border-color: hsl(0 0% 100% / .1); }
-:root[data-theme="dark"] .nhub-logos li { background: hsl(var(--muted)); }
-
-@media (prefers-reduced-motion: reduce) {
-  .nhub-wires path, .nhub-grid::before, .nhub-pulse, .nhub-card.on .nhub-logos li { animation: none; }
-  .nhub-pulse { display: none; }
-}
 
 /* ===== src/content/20-produkte.css ===== */
 /* Leistungen (#produkte): services stage + cards, compact comparison, catalogue explorer. Prefix lsx-. */
@@ -7516,9 +7552,14 @@ NORRA.wireUsp = function (root) {
   });
 };
 
-/* ---------- NORRA.integrationMatrix ----------
+/* ---------- NORRA.integrationMatrix: the integrations hub ----------
+   One look on every page (home, products, each product page, website, industries): Norra in the middle, one white
+   card per area around it on the .nst stage, wires flowing into the core; the active area lights up in turn.
+   Every platform is reachable: "+N" opens the rest of an area, a platform opens its detail (what it does, how it
+   connects), "Alle {n} Bereiche zeigen" opens the remaining areas.
    data: integration groups (default NORRA.integrations). o: {filter:'all'|'voice'|'chat', filters (chips, default true),
-   limit (rows before "Alle zeigen", default 6), groups:[ids or names], eyebrow, title, lede, id, note, bare}. */
+   limit (areas before "Alle {n} Bereiche zeigen", 0 = all, rounded up to pairs), perGroup (platforms before "+N",
+   default 3), groups:[ids or names], eyebrow, title, lede, id, note, bare}. */
 NORRA._imx = [];
 NORRA.IMX_HUES = [158, 205, 28, 336, 262, 190, 45, 12, 120, 230];
 NORRA._mono = function (name) {
@@ -7531,59 +7572,7 @@ NORRA._mono = function (name) {
   return { text: m, hue: NORRA.IMX_HUES[h % NORRA.IMX_HUES.length] };
 };
 NORRA.IMX_CH = { voice: 'Telefon', chat: 'Chat', both: 'Telefon und Chat', social: 'Social Media', website: 'Website' };
-NORRA._imxRows = function (data, filter, uid, per) {
-  var how = NORRA.HOW_LABELS || {};
-  return data.map(function (g, gi) {
-    var plats = g.platforms.filter(function (p) { return NORRA._applies(p.appliesTo, filter); });
-    if (!plats.length) return '';
-    var extra = per && plats.length > per + 1 ? plats.length - per : 0;
-    return '<div class="imx-row" data-g="' + gi + '"><div class="imx-fn"><span class="imx-gico">' + NORRA.ico(g.icon || 'plug') + '</span>' +
-      '<div><h3>' + g.functionCategory + ' <span class="imx-n">' + plats.length + '</span></h3><p>' + g.explain + '</p></div></div>' +
-      '<div class="imx-plats">' + plats.map(function (p, pi) {
-        var m = NORRA._mono(p.name);
-        var hw = how[p.how] || p.how;
-        return '<button type="button" class="imx-chip' + (extra && pi >= per ? ' imx-x' : '') + '" style="--h:' + m.hue + ';--j:' + pi + '" aria-expanded="false" aria-controls="' + uid + '-d' + gi + '"' +
-          ' data-name="' + NORRA.esc(p.name) + '" data-what="' + NORRA.esc(p.whatItDoes) + '" data-how="' + NORRA.esc(hw) + '" data-a="' + p.appliesTo + '">' +
-          '<span class="imx-mono" aria-hidden="true"></span><span class="imx-nm">' + p.name + '</span>' +
-          '<span class="imx-tip" aria-hidden="true">' + NORRA.esc(hw) + '</span></button>';
-      }).join('') + (extra ? '<button type="button" class="imx-plus" aria-expanded="false" data-n="' + extra + '"><span>+' + extra + '</span><span class="sr-only"> weitere anzeigen</span></button>' : '') +
-      '</div><div class="imx-detail" id="' + uid + '-d' + gi + '" hidden></div></div>';
-  }).join('');
-};
-NORRA.integrationMatrix = function (data, o) {
-  if (data && !Array.isArray(data)) { o = data; data = null; }
-  o = o || {};
-  data = data || NORRA.integrations || [];
-  if (o.groups) data = data.filter(function (g) { return o.groups.indexOf(g.id) > -1 || o.groups.indexOf(g.functionCategory) > -1; });
-  var filter = o.filter || 'all';
-  var uid = NORRA._pid('imx', o.id);
-  var per = o.perGroup || 0;
-  var idx = NORRA._imx.push({ data: data, uid: uid, per: per }) - 1;
-  var limit = o.limit === 0 ? 0 : (o.limit || 6);
-  var counts = NORRA._imxCount(data, filter);
-  var has = {};
-  data.forEach(function (g) { g.platforms.forEach(function (p) { has[p.appliesTo] = true; }); });
-  var chips = o.filters === false ? '' : '<div class="imx-filters" role="group" aria-label="Nach Kanal filtern">' +
-    [['all', 'Alle'], ['voice', 'Telefon'], ['chat', 'Chat & Nachrichten'], ['social', 'Social Media'], ['website', 'Website']].filter(function (f) {
-      return f[0] === 'all' || has[f[0]] || (has.both && (f[0] === 'voice' || f[0] === 'chat'));
-    }).map(function (f) {
-      return '<button type="button" data-f="' + f[0] + '" aria-pressed="' + (f[0] === filter) + '">' + f[1] + '</button>';
-    }).join('') + '</div>';
-  var how = NORRA.HOW_LABELS || {};
-  var used = {};
-  data.forEach(function (g) { g.platforms.forEach(function (p) { if (NORRA._applies(p.appliesTo, filter)) used[p.how] = true; }); });
-  var legend = '<p class="imx-legend">' + [['direkt', 'Direkt', 'fertige Anbindung'], ['über Schnittstelle', 'API', 'über Schnittstelle'],
-    ['über Automation', 'Automation', 'über Zapier, Make oder n8n'], ['per SIP', 'SIP', 'über Ihre Telefonanlage'],
-    ['über MCP', 'MCP', 'Werkzeug-Schnittstelle für KI'], ['über Norra-Anbindung', 'Norra-Anbindung', 'von uns eingerichtet']].filter(function (k) { return used[k[0]]; })
-    .map(function (k) { return '<span><b>' + (how[k[0]] || k[1]) + '</b> ' + k[2] + '</span>'; }).join('') + '</p>';
-  var body = '<div class="imx reveal" data-imx="' + idx + '" data-filter="' + filter + '"' + (limit ? ' data-limit="' + limit + '"' : '') + (per ? ' data-per="' + per + '"' : '') + '>' +
-    '<div class="imx-bar">' + chips + '<p class="imx-count"><b data-imx-count>' + counts.p + '</b> <span>Anbindungen in</span> <b data-imx-groups>' + counts.g + '</b> <span>Bereichen</span></p></div>' +
-    '<div class="imx-rows">' + NORRA._imxRows(data, filter, uid, per) + '</div>' +
-    (limit ? '<button type="button" class="imx-more" aria-expanded="false"><span>Alle Bereiche zeigen</span>' + NORRA.ico('chevron') + '</button>' : '') +
-    legend + '</div>' + (o.note ? '<p class="note">' + o.note + '</p>' : '');
-  if (o.bare) return body;
-  return '<section class="wrap sect imx-sect"' + (o.id ? ' id="' + o.id + '"' : '') + '>' + NORRA.sectHead(o) + body + '</section>';
-};
+NORRA.HUB_MARK = '<svg class="nhub-mark" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true"><path d="M37.5 0H45.5V33.5A12 12 0 0 1 33.5 45.5H0V37.5H33.5A4 4 0 0 0 37.5 33.5Z"/><path d="M54.5 0H62.5V37.5H100V45.5H54.5Z"/><path d="M0 54.5H45.5V100H37.5V62.5H0Z"/><path d="M54.5 100V66.5A12 12 0 0 1 66.5 54.5H100V62.5H66.5A4 4 0 0 0 62.5 66.5V100Z"/></svg>';
 NORRA._imxCount = function (data, filter) {
   var p = 0, g = 0;
   data.forEach(function (grp) {
@@ -7592,73 +7581,187 @@ NORRA._imxCount = function (data, filter) {
   });
   return { p: p, g: g };
 };
+/* Cards for one filter; shown = how many areas (0 = all). Returns {html, total}. */
+NORRA._hubCards = function (data, filter, per, uid, shown) {
+  var how = NORRA.HOW_LABELS || {};
+  var list = data.map(function (g) {
+    return { g: g, plats: g.platforms.filter(function (p) { return NORRA._applies(p.appliesTo, filter); }) };
+  }).filter(function (x) { return x.plats.length; });
+  var n = shown ? Math.min(shown, list.length) : list.length;
+  return { total: list.length, shown: n, html: list.slice(0, n).map(function (x, i) {
+    var g = x.g, plats = x.plats, extra = per && plats.length > per + 1 ? plats.length - per : 0;
+    return '<div class="nhub-card" data-hub="' + i + '" style="--r:' + (Math.floor(i / 2) + 1) + ';--c:' + (i % 2 ? 3 : 1) + '">' +
+      '<div class="nhub-top"><span class="nhub-ico">' + NORRA.ico(g.icon || 'plug') + '</span><h3>' + g.functionCategory + '</h3>' +
+      '<span class="nhub-n">' + plats.length + '</span></div>' +
+      (g.explain ? '<p class="nhub-ex">' + g.explain + '</p>' : '') +
+      '<div class="nhub-logos">' + plats.map(function (p, k) {
+        var m = NORRA._mono(p.name), hw = how[p.how] || p.how || '';
+        return '<button type="button" class="nhub-chip' + (extra && k >= per ? ' nhub-x' : '') + '" style="--h:' + m.hue + ';--k:' + Math.min(k, 6) + '"' +
+          ' aria-expanded="false" aria-controls="' + uid + '-d' + i + '" data-what="' + NORRA.esc(p.whatItDoes || '') + '" data-how="' + NORRA.esc(hw) + '"' +
+          ' data-a="' + (p.appliesTo || '') + '"><span class="nhub-mono" aria-hidden="true">' + NORRA.esc(m.text) + '</span><span class="nhub-nm">' + p.name + '</span></button>';
+      }).join('') +
+      (extra ? '<button type="button" class="nhub-plus" aria-expanded="false" data-n="' + extra + '"><span>+' + extra + '</span><span class="sr-only">weitere anzeigen</span></button>' : '') +
+      '</div><div class="nhub-detail" id="' + uid + '-d' + i + '" hidden></div></div>';
+  }).join('') };
+};
+NORRA._hubLimit = function (limit, total) { return limit && total > limit + 2 ? limit : 0; };
+NORRA.integrationMatrix = function (data, o) {
+  if (data && !Array.isArray(data)) { o = data; data = null; }
+  o = o || {};
+  data = data || NORRA.integrations || [];
+  if (o.groups) data = data.filter(function (g) { return o.groups.indexOf(g.id) > -1 || o.groups.indexOf(g.functionCategory) > -1; });
+  var filter = o.filter || 'all';
+  var uid = NORRA._pid('imx', o.id);
+  var per = o.perGroup || 3;
+  var limit = o.limit === 0 ? 0 : (o.limit || 6);
+  if (limit % 2) limit += 1;
+  var idx = NORRA._imx.push({ data: data, uid: uid, per: per, limit: limit }) - 1;
+  var counts = NORRA._imxCount(data, filter);
+  var has = {};
+  data.forEach(function (g) { g.platforms.forEach(function (p) { has[p.appliesTo] = true; }); });
+  var chips = o.filters === false ? '' : '<div class="nhub-filters"><div class="nhub-seg" role="group" aria-label="Nach Kanal filtern">' +
+    [['all', 'Alle'], ['voice', 'Telefon'], ['chat', 'Chat & Nachrichten'], ['social', 'Social Media'], ['website', 'Website']].filter(function (f) {
+      return f[0] === 'all' || has[f[0]] || (has.both && (f[0] === 'voice' || f[0] === 'chat'));
+    }).map(function (f) {
+      return '<button type="button" data-f="' + f[0] + '" aria-pressed="' + (f[0] === filter) + '">' + f[1] + '</button>';
+    }).join('') + '</div></div>';
+  var how = NORRA.HOW_LABELS || {};
+  var used = {};
+  data.forEach(function (g) { g.platforms.forEach(function (p) { if (NORRA._applies(p.appliesTo, filter)) used[p.how] = true; }); });
+  var legend = [['direkt', 'Direkt', 'fertige Anbindung'], ['über Schnittstelle', 'API', 'über Schnittstelle'],
+    ['über Automation', 'Automation', 'über Zapier, Make oder n8n'], ['per SIP', 'SIP', 'über Ihre Telefonanlage'],
+    ['über MCP', 'MCP', 'Werkzeug-Schnittstelle für KI'], ['über Norra-Anbindung', 'Norra-Anbindung', 'von uns eingerichtet']].filter(function (k) { return used[k[0]]; })
+    .map(function (k) { return '<span><b>' + (how[k[0]] || k[1]) + '</b> ' + k[2] + '</span>'; }).join('');
+  /* Never hide just one or two areas behind the button: then everything is shown. */
+  var eff = NORRA._hubLimit(limit, counts.g);
+  var cards = NORRA._hubCards(data, filter, per, uid, eff);
+  var body = '<div class="nhub-box" data-imx="' + idx + '" data-filter="' + filter + '">' + chips +
+    '<div class="nhub nst reveal">' +
+      '<span class="nst-blob b1"></span><span class="nst-blob b2"></span><span class="nst-blob b3"></span>' +
+      '<div class="nhub-grid" style="--rows:' + Math.max(1, Math.ceil(cards.shown / 2)) + '">' +
+        '<svg class="nhub-wires" aria-hidden="true" focusable="false"></svg>' +
+        '<div class="nhub-core"><div class="nhub-node"><span class="nhub-pulse"></span><span class="nhub-pulse p2"></span>' + NORRA.HUB_MARK + '</div>' +
+          '<p class="nhub-total"><b data-imx-count>' + counts.p + '</b><span>Anbindungen</span></p></div>' +
+        '<div class="nhub-cards">' + cards.html + '</div>' +
+      '</div>' +
+      (limit ? '<button type="button" class="nhub-allbtn" aria-expanded="false"' + (eff ? '' : ' hidden') + '><span>' +
+        NORRA.trf('Alle {n} Bereiche zeigen', { n: cards.total }) + '</span>' + NORRA.ico('chevron') + '</button>' : '') +
+      (legend ? '<p class="nhub-how">' + legend + '</p>' : '') +
+    '</div>' + (o.note ? '<p class="note">' + o.note + '</p>' : '') + '</div>';
+  if (o.bare) return body;
+  return '<section class="wrap sect nhub-sect"' + (o.id ? ' id="' + o.id + '"' : '') + '>' + NORRA.sectHead(o) + body + '</section>';
+};
 NORRA.wireMatrix = function (root) {
-  root.querySelectorAll('[data-imx]').forEach(function (mx) {
-    if (mx.__w) return;
-    mx.__w = true;
-    var reg = NORRA._imx[parseInt(mx.getAttribute('data-imx'), 10)];
+  root.querySelectorAll('[data-imx]').forEach(function (box) {
+    if (box.__w) return;
+    box.__w = true;
+    var reg = NORRA._imx[parseInt(box.getAttribute('data-imx'), 10)];
     if (!reg) return;
-    var rowsEl = mx.querySelector('.imx-rows'), more = mx.querySelector('.imx-more');
-    var limit = parseInt(mx.getAttribute('data-limit') || '0', 10), expanded = false;
-    function applyLimit() {
-      var rows = rowsEl.querySelectorAll('.imx-row');
-      rows.forEach(function (r, i) { r.hidden = !!limit && !expanded && i >= limit; });
-      if (more) {
-        more.hidden = !limit || rows.length <= limit;
-        more.setAttribute('aria-expanded', String(expanded));
-        more.querySelector('span').textContent = expanded ? NORRA.tr('Weniger zeigen') : NORRA.trf('Alle {n} Bereiche zeigen', { n: rows.length });
+    var stage = box.querySelector('.nhub'), grid = box.querySelector('.nhub-grid'), list = box.querySelector('.nhub-cards');
+    var svg = box.querySelector('.nhub-wires'), node = box.querySelector('.nhub-node'), allBtn = box.querySelector('.nhub-allbtn');
+    var filter = box.getAttribute('data-filter') || 'all', expanded = false, hover = -1, held = false, active = -1, raf = 0;
+    function cards() { return list.querySelectorAll('.nhub-card'); }
+    function set(i) {
+      active = i;
+      [].forEach.call(cards(), function (c, k) { c.classList.toggle('on', k === i); });
+      [].forEach.call(svg.querySelectorAll('path'), function (p, k) { p.classList.toggle('on', k === i); });
+    }
+    /* Wires are drawn from the real card positions, so they follow open details, filters and resizes. */
+    function draw() {
+      raf = 0;
+      if (!svg || !grid.offsetWidth || getComputedStyle(svg).display === 'none') { if (svg) svg.innerHTML = ''; return; }
+      var W = grid.offsetWidth, H = grid.offsetHeight, g = grid.getBoundingClientRect(), n = node.getBoundingClientRect();
+      var cx = n.left + n.width / 2 - g.left, cy = n.top + n.height / 2 - g.top;
+      svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+      svg.innerHTML = [].map.call(cards(), function (c, k) {
+        var left = c.offsetLeft + c.offsetWidth / 2 < cx;
+        var sx = left ? c.offsetLeft + c.offsetWidth - 20 : c.offsetLeft + 20, sy = c.offsetTop + Math.min(c.offsetHeight / 2, 90);
+        var mx = (sx + cx) / 2;
+        return '<path d="M' + sx.toFixed(1) + ' ' + sy.toFixed(1) + 'C' + mx.toFixed(1) + ' ' + sy.toFixed(1) + ' ' + mx.toFixed(1) + ' ' + cy.toFixed(1) + ' ' +
+          cx.toFixed(1) + ' ' + cy.toFixed(1) + '"' + (k === active ? ' class="on"' : '') + '/>';
+      }).join('');
+    }
+    function redraw() { if (!raf) raf = requestAnimationFrame(draw); }
+    function render() {
+      var eff = NORRA._hubLimit(reg.limit, NORRA._imxCount(reg.data, filter).g);
+      var r = NORRA._hubCards(reg.data, filter, reg.per, reg.uid, expanded ? 0 : eff);
+      list.innerHTML = r.html;
+      grid.style.setProperty('--rows', Math.max(1, Math.ceil(r.shown / 2)));
+      if (allBtn) {
+        allBtn.hidden = !eff;
+        allBtn.setAttribute('aria-expanded', String(expanded));
+        allBtn.querySelector('span').textContent = expanded ? NORRA.tr('Weniger zeigen') : NORRA.trf('Alle {n} Bereiche zeigen', { n: r.total });
       }
+      var pc = box.querySelector('[data-imx-count]');
+      if (pc) pc.textContent = NORRA._imxCount(reg.data, filter).p;
+      active = -1;
+      redraw();
     }
-    function animate() {
-      if (NORRA.reduced) return;
-      mx.classList.remove('imx-in'); void mx.offsetWidth; mx.classList.add('imx-in');
-    }
-    function setFilter(f) {
-      mx.setAttribute('data-filter', f);
-      mx.querySelectorAll('.imx-filters button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-f') === f)); });
-      rowsEl.innerHTML = NORRA._imxRows(reg.data, f, reg.uid, reg.per);
-      var c = NORRA._imxCount(reg.data, f);
-      var pc = mx.querySelector('[data-imx-count]'), gc = mx.querySelector('[data-imx-groups]');
-      if (pc) pc.textContent = c.p;
-      if (gc) gc.textContent = c.g;
-      applyLimit(); animate();
-    }
-    mx.querySelectorAll('.imx-filters button').forEach(function (b) {
-      b.addEventListener('click', function () { setFilter(b.getAttribute('data-f')); });
+    function indexOf(card) { return [].indexOf.call(cards(), card); }
+    box.querySelectorAll('.nhub-seg button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        filter = b.getAttribute('data-f');
+        box.setAttribute('data-filter', filter);
+        box.querySelectorAll('.nhub-seg button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        render();
+      });
     });
-    if (more) more.addEventListener('click', function () {
-      expanded = !expanded; applyLimit();
+    if (allBtn) allBtn.addEventListener('click', function () {
+      expanded = !expanded;
+      render();
       if (!expanded) {
-        var r = mx.getBoundingClientRect();
-        if (r.top < 0) mx.scrollIntoView({ block: 'start', behavior: NORRA.reduced ? 'auto' : 'smooth' });
+        var r = box.getBoundingClientRect();
+        if (r.top < 0) box.scrollIntoView({ block: 'start', behavior: NORRA.reduced ? 'auto' : 'smooth' });
       }
     });
-    rowsEl.addEventListener('click', function (e) {
-      var plus = e.target.closest && e.target.closest('.imx-plus');
-      if (plus) {
-        var prow = plus.closest('.imx-row'), all = !prow.classList.contains('imx-all');
-        prow.classList.toggle('imx-all', all);
-        plus.setAttribute('aria-expanded', String(all));
-        plus.firstChild.textContent = all ? 'Weniger' : '+' + plus.getAttribute('data-n');
-        plus.lastChild.textContent = all ? '' : NORRA.tr(' weitere anzeigen');
+    grid.addEventListener('mouseover', function (e) {
+      var c = e.target.closest && e.target.closest('.nhub-card');
+      if (c) { hover = indexOf(c); if (hover !== active) { set(hover); } }
+    });
+    grid.addEventListener('mouseleave', function () { hover = -1; });
+    list.addEventListener('click', function (e) {
+      var t = e.target.closest && e.target.closest('.nhub-plus, .nhub-chip');
+      if (!t) return;
+      var card = t.closest('.nhub-card');
+      held = true;
+      if (indexOf(card) !== active) set(indexOf(card));
+      if (t.classList.contains('nhub-plus')) {
+        var all = !card.classList.contains('nhub-all');
+        card.classList.toggle('nhub-all', all);
+        t.setAttribute('aria-expanded', String(all));
+        t.firstChild.textContent = all ? NORRA.tr('Weniger') : '+' + t.getAttribute('data-n');
+        t.lastChild.textContent = all ? '' : NORRA.tr('weitere anzeigen');
+        if (!all) {
+          var openX = card.querySelector('.nhub-chip.nhub-x[aria-expanded="true"]');
+          if (openX) { openX.setAttribute('aria-expanded', 'false'); card.querySelector('.nhub-detail').hidden = true; }
+        }
+        redraw();
         return;
       }
-      var chip = e.target.closest && e.target.closest('.imx-chip');
-      if (!chip) return;
-      var row = chip.closest('.imx-row'), det = row.querySelector('.imx-detail');
-      var open = chip.getAttribute('aria-expanded') === 'true';
-      row.querySelectorAll('.imx-chip').forEach(function (c) { c.setAttribute('aria-expanded', 'false'); });
-      if (open) { det.hidden = true; return; }
-      chip.setAttribute('aria-expanded', 'true');
-      var a = chip.getAttribute('data-a');
-      det.innerHTML = '<p class="imx-dh"><b>' + NORRA.esc(chip.getAttribute('data-name')) + '</b><span class="imx-how">' + NORRA.esc(chip.getAttribute('data-how')) + '</span>' +
-        '<span class="imx-ch">' + (NORRA.IMX_CH[a] || 'Telefon und Chat') + '</span></p><p>' + NORRA.esc(chip.getAttribute('data-what')) + '</p>';
+      var det = card.querySelector('.nhub-detail'), open = t.getAttribute('aria-expanded') === 'true';
+      card.querySelectorAll('.nhub-chip').forEach(function (c) { c.setAttribute('aria-expanded', 'false'); });
+      if (open) { det.hidden = true; redraw(); return; }
+      t.setAttribute('aria-expanded', 'true');
+      var what = t.getAttribute('data-what'), hw = t.getAttribute('data-how');
+      det.innerHTML = '<p class="nhub-dh"><b>' + NORRA.esc(t.querySelector('.nhub-nm').textContent) + '</b>' +
+        (hw ? '<span class="nhub-hw">' + NORRA.esc(hw) + '</span>' : '') +
+        '<span class="nhub-ch">' + (NORRA.IMX_CH[t.getAttribute('data-a')] || 'Telefon und Chat') + '</span></p>' +
+        (what ? '<p>' + NORRA.esc(what) + '</p>' : '');
       det.hidden = false;
+      redraw();
     });
-    applyLimit();
-    if (!NORRA.reduced) {
-      var io = NORRA._io(mx, function (v) { if (v) { mx.classList.add('imx-in'); if (io) io.disconnect(); } }, { threshold: 0.1 });
-    }
+    if (window.ResizeObserver) new ResizeObserver(redraw).observe(grid);
+    else window.addEventListener('resize', redraw);
+    redraw();
+    var count = box.querySelector('[data-imx-count]'), counted = false;
+    if (count && !NORRA.reduced) NORRA._io(stage, function (v) {
+      if (v && !counted) { counted = true; count.setAttribute('data-count', count.textContent); NORRA.runCount(count, 900); }
+    });
+    NORRA.ticker(stage, 2400, function (t) {
+      if (hover > -1 || held) return;
+      var n = cards().length;
+      if (n) set(t % n);
+    });
   });
 };
 
@@ -9986,51 +10089,13 @@ NORRA.start.llm = function () {
     lede: 'Das passende Modell pro Aufgabe. Beim Voice Agent auch Ihr eigenes.' });
 };
 
-/* ---------- 8. Integrations hub ----------
-   Only this home-page section: Norra in the middle, the four areas as cards around it, joined by flowing wires,
-   drawn in the style of the channels stage (.nst gradient and blobs). The active area lights up in turn
-   (NORRA.start.wireHub). The shared NORRA.integrationMatrix used on the other pages is not touched. */
-NORRA.start.HUB_GROUPS = ['kalender-termine', 'crm-kundendaten', 'nachrichten-kanaele', 'social-media-inhalte'];
-NORRA.start.HUB_MARK = '<svg class="nhub-mark" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true"><path d="M37.5 0H45.5V33.5A12 12 0 0 1 33.5 45.5H0V37.5H33.5A4 4 0 0 0 37.5 33.5Z"/><path d="M54.5 0H62.5V37.5H100V45.5H54.5Z"/><path d="M0 54.5H45.5V100H37.5V62.5H0Z"/><path d="M54.5 100V66.5A12 12 0 0 1 66.5 54.5H100V62.5H66.5A4 4 0 0 0 62.5 66.5V100Z"/></svg>';
+/* ---------- 8. Integrations hub (shared NORRA.integrationMatrix, same look on every page) ---------- */
 NORRA.start.integrations = function () {
-  var ids = NORRA.start.HUB_GROUPS;
-  var groups = (NORRA.integrations || []).filter(function (g) { return ids.indexOf(g.id) > -1; })
-    .sort(function (a, b) { return ids.indexOf(a.id) - ids.indexOf(b.id); });
-  if (!groups.length) return '';
-  var how = NORRA.HOW_LABELS || {}, used = {}, total = 0;
-  var cards = groups.map(function (g, i) {
-    var plats = g.platforms, show = plats.slice(0, 3), extra = plats.length - show.length;
-    total += plats.length;
-    plats.forEach(function (p) { used[p.how] = true; });
-    return '<div class="nhub-card nhub-a' + i + ' reveal" data-hub="' + i + '" style="--i:' + (i + 1) + '">' +
-      '<div class="nhub-top"><span class="nhub-ico">' + NORRA.ico(g.icon || 'plug') + '</span>' +
-      '<h3>' + g.functionCategory + '</h3><span class="nhub-n">' + plats.length + '</span></div>' +
-      '<p class="nhub-ex">' + g.explain + '</p>' +
-      '<ul class="nhub-logos">' + show.map(function (p, k) {
-        var m = NORRA._mono(p.name);
-        return '<li style="--h:' + m.hue + ';--k:' + k + '"><span class="nhub-mono" aria-hidden="true">' + NORRA.esc(m.text) + '</span><span>' + p.name + '</span></li>';
-      }).join('') + (extra > 0 ? '<li class="nhub-more" style="--k:3"><span>+' + extra + '</span></li>' : '') + '</ul></div>';
-  });
-  var wires = ['M28 25C40 25 42 50 50 50', 'M72 25C60 25 58 50 50 50', 'M28 75C40 75 42 50 50 50', 'M72 75C60 75 58 50 50 50'];
-  var legend = [['direkt', 'Direkt', 'fertige Anbindung'], ['über Schnittstelle', 'API', 'über Schnittstelle'],
-    ['über Automation', 'Automation', 'über Zapier, Make oder n8n'], ['per SIP', 'SIP', 'über Ihre Telefonanlage'],
-    ['über Norra-Anbindung', 'Norra-Anbindung', 'von uns eingerichtet']].filter(function (k) { return used[k[0]]; })
-    .map(function (k) { return '<span><b>' + (how[k[0]] || k[1]) + '</b> ' + k[2] + '</span>'; }).join('');
-  return '<section class="wrap sect nhub-sect" id="anbindungen">' +
-    NORRA.sectHead({ eyebrow: 'Anbindungen', title: 'Passt zu Ihren Werkzeugen.', lede: 'Welche Plattform für welche Aufgabe. Eine Auswahl.' }) +
-    '<div class="nhub nst reveal" data-hub-root>' +
-      '<span class="nst-blob b1"></span><span class="nst-blob b2"></span><span class="nst-blob b3"></span>' +
-      '<div class="nhub-grid">' +
-        '<svg class="nhub-wires" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' +
-          wires.slice(0, groups.length).map(function (d, i) { return '<path d="' + d + '" vector-effect="non-scaling-stroke" data-w="' + i + '"/>'; }).join('') + '</svg>' +
-        '<div class="nhub-core">' +
-          '<div class="nhub-node"><span class="nhub-pulse"></span><span class="nhub-pulse p2"></span>' + NORRA.start.HUB_MARK + '</div>' +
-          '<p class="nhub-total"><b data-count="' + total + '">' + total + '</b><span>Anbindungen</span></p>' +
-        '</div>' + cards.join('') +
-      '</div>' +
-      (legend ? '<p class="nhub-how">' + legend + '</p>' : '') +
-    '</div>' +
-    '<div class="start-more reveal">' + NORRA.btn({ label: 'Alle Anbindungen', href: '#produkte', kind: 'outline', arrow: true }) + '</div></section>';
+  return NORRA.integrationMatrix({
+    id: 'anbindungen', eyebrow: 'Anbindungen', title: 'Passt zu Ihren Werkzeugen.',
+    lede: 'Welche Plattform für welche Aufgabe. Eine Auswahl.', filters: false, limit: 0, perGroup: 3,
+    groups: ['kalender-termine', 'crm-kundendaten', 'nachrichten-kanaele', 'social-media-inhalte']
+  }).replace(/<\/section>$/, '<div class="start-more reveal">' + NORRA.btn({ label: 'Alle Anbindungen', href: '#produkte', kind: 'outline', arrow: true }) + '</div></section>');
 };
 
 /* ---------- 9. Secondary video band ---------- */
@@ -10400,27 +10465,8 @@ NORRA.start.wireCalc = function (el) {
     NORRA.start.applyPreset(b.getAttribute('data-preset'), tab ? tab.textContent : '');
   });
 };
-/* Integrations hub: one area at a time lights up and its wire carries the flow; hovering a card takes over. */
-NORRA.start.wireHub = function (el) {
-  var root = el.querySelector('[data-hub-root]');
-  if (!root || root.__w) return;
-  root.__w = true;
-  var cards = root.querySelectorAll('.nhub-card'), wires = root.querySelectorAll('.nhub-wires path'), hover = -1;
-  function set(i) {
-    [].forEach.call(cards, function (c, k) { c.classList.toggle('on', k === i); });
-    [].forEach.call(wires, function (w, k) { w.classList.toggle('on', k === i); });
-  }
-  [].forEach.call(cards, function (c, k) {
-    c.addEventListener('mouseenter', function () { hover = k; set(k); });
-    c.addEventListener('mouseleave', function () { hover = -1; });
-  });
-  var count = root.querySelector('[data-count]'), counted = false;
-  if (count && !NORRA.reduced) NORRA._io(root, function (v) { if (v && !counted) { counted = true; NORRA.runCount(count, 900); } });
-  NORRA.ticker(root, 2400, function (t) { if (hover < 0) set(t % cards.length); });
-};
 NORRA.pages.start.wire = function (el) {
   NORRA.start.wireFeeds(el);
-  NORRA.start.wireHub(el);
   NORRA.start.wireWhy(el);
   NORRA.start.wireIndustries(el);
   NORRA.start.wireCalc(el);
