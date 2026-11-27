@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'DropAppVisibility1795681965097';
+const migrationName = 'DropAppVisibility1795794866213';
 
 type Row = Record<string, string | number | null>;
 

@@ -7,7 +7,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * column one release later. The apps module is experimental and opt-in (`N8N_ENABLED_MODULES`),
  * and it is not rolled out yet, so no production instance reads this column.
  */
-export class DropAppVisibility1795681965097 implements ReversibleMigration {
+export class DropAppVisibility1795794866213 implements ReversibleMigration {
 	async up({ schemaBuilder: { dropEnumCheck, dropColumns } }: MigrationContext) {
 		// On SQLite, the table rebuild keeps the CHECK, so remove it before the column.
 		await dropEnumCheck('app', 'visibility', { recreatesOnSqlite: true });
