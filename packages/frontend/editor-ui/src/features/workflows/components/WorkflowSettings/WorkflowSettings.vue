@@ -73,6 +73,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import WorkflowCustomTelemetryTags from '@/features/workflows/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
 import {
 	confirmEngineV2Switch,
+	describeEngineV2IssueCount,
 	findEngineV2Issues,
 	hasBlockingGroup,
 } from '@n8n/frontend-module-engine-v2';
@@ -311,12 +312,7 @@ const engineV2Issues = computed(() => {
 	});
 });
 
-const engineV2Warning = computed(() =>
-	i18n.baseText('workflowSettings.engineType.v2Warning', {
-		adjustToNumber: engineV2Issues.value.length,
-		interpolate: { count: engineV2Issues.value.length },
-	}),
-);
+const engineV2Warning = computed(() => describeEngineV2IssueCount(engineV2Issues.value.length));
 
 // A select change, not a watch: loading the settings also writes `engineType`, and that must
 // not ask anything.

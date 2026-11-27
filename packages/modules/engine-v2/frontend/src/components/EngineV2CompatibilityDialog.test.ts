@@ -146,24 +146,6 @@ const OWN_TEXT: Array<[Code, Kind, BaseTextKey, BaseTextKey]> = [
 		'engineV2Compatibility.fix.continueErrorOutput',
 	],
 	[
-		'RETRY_ON_FAIL',
-		'temporary',
-		'engineV2Compatibility.reason.retryOnFail',
-		'engineV2Compatibility.fix.retryOnFail',
-	],
-	[
-		'ALWAYS_OUTPUT_DATA',
-		'temporary',
-		'engineV2Compatibility.reason.alwaysOutputData',
-		'engineV2Compatibility.fix.alwaysOutputData',
-	],
-	[
-		'EXECUTE_ONCE',
-		'temporary',
-		'engineV2Compatibility.reason.executeOnce',
-		'engineV2Compatibility.fix.executeOnce',
-	],
-	[
 		'MERGE_CHOOSE_BRANCH',
 		'temporary',
 		'engineV2Compatibility.reason.mergeChooseBranch',
@@ -281,6 +263,19 @@ describe('EngineV2CompatibilityDialog', () => {
 			expect(reasonTexts(getAllByTestId)).toEqual([`${text}\n${fix}`]);
 		},
 	);
+
+	// One pair of keys for these codes. Each finding names its setting as the node settings do.
+	it.each<[Code, string]>([
+		['RETRY_ON_FAIL', 'Retry On Fail'],
+		['ALWAYS_OUTPUT_DATA', 'Always Output Data'],
+		['EXECUTE_ONCE', 'Execute Once'],
+	])('names the node setting of %s in what is not supported and in the fix', async (code, name) => {
+		const { getAllByTestId } = await renderDialog([reason(code, 'temporary')]);
+
+		expect(reasonTexts(getAllByTestId)).toEqual([
+			`${name} isn't supported yet.\nTurn off ${name} in the node settings.`,
+		]);
+	});
 
 	it('never repeats "Engine v2" in a finding', async () => {
 		const { getAllByTestId } = await renderDialog(

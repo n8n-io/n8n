@@ -39,7 +39,8 @@ The module tells the editor if the open workflow can run on engine v2. Every ans
   - `REASON_TEXT_KEYS` has an entry for every code of the package, so the typecheck fails when
     the package adds a code. An entry is a `reason` key and a `fix` key in `en.json`, one pair
     for each `kind` when a code has two meanings, or `null`. Codes with the same text share a
-    key.
+    key. A code about one node setting uses `unsupportedNodeSetting`, which puts the setting's
+    name from `nodeSettings.<setting>.displayName` in the shared `nodeSetting` keys.
   - A `null` code shows the English `message` of the package. Use `null` when the `message` holds
     details that a fixed string can't, such as a second node or a count. The dialog then shows no
     node name before the `message` when the `message` already names the node.

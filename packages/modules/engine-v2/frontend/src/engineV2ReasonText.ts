@@ -10,6 +10,8 @@ import type {
 interface ReasonKeys {
 	reason: BaseTextKey;
 	fix: BaseTextKey;
+	/** The name that both texts put in `{setting}`. */
+	setting?: BaseTextKey;
 }
 
 /**
@@ -23,6 +25,15 @@ const UNSUPPORTED_NODE: ReasonKeys = {
 	reason: 'engineV2Compatibility.reason.unsupportedNode',
 	fix: 'engineV2Compatibility.fix.removeNode',
 };
+
+/** A node setting that engine v2 can't run yet. The texts use its name from the node settings. */
+function unsupportedNodeSetting(setting: BaseTextKey): ReasonKeys {
+	return {
+		reason: 'engineV2Compatibility.reason.nodeSetting',
+		fix: 'engineV2Compatibility.fix.nodeSetting',
+		setting,
+	};
+}
 
 /**
  * Every code of the package has an entry, so the typecheck fails when the package adds a code.
@@ -70,18 +81,9 @@ const REASON_TEXT_KEYS: Record<EngineCompatibilityReasonCode, ReasonText> = {
 		reason: 'engineV2Compatibility.reason.continueErrorOutput',
 		fix: 'engineV2Compatibility.fix.continueErrorOutput',
 	},
-	RETRY_ON_FAIL: {
-		reason: 'engineV2Compatibility.reason.retryOnFail',
-		fix: 'engineV2Compatibility.fix.retryOnFail',
-	},
-	ALWAYS_OUTPUT_DATA: {
-		reason: 'engineV2Compatibility.reason.alwaysOutputData',
-		fix: 'engineV2Compatibility.fix.alwaysOutputData',
-	},
-	EXECUTE_ONCE: {
-		reason: 'engineV2Compatibility.reason.executeOnce',
-		fix: 'engineV2Compatibility.fix.executeOnce',
-	},
+	RETRY_ON_FAIL: unsupportedNodeSetting('nodeSettings.retryOnFail.displayName'),
+	ALWAYS_OUTPUT_DATA: unsupportedNodeSetting('nodeSettings.alwaysOutputData.displayName'),
+	EXECUTE_ONCE: unsupportedNodeSetting('nodeSettings.executeOnce.displayName'),
 	MERGE_CHOOSE_BRANCH: {
 		reason: 'engineV2Compatibility.reason.mergeChooseBranch',
 		fix: 'engineV2Compatibility.fix.mergeChooseBranch',
@@ -184,9 +186,12 @@ export function describeCompatibilityReason(reason: EngineCompatibilityReason): 
 	}
 
 	const i18n = useI18n();
+	const options = keys.setting
+		? { interpolate: { setting: i18n.baseText(keys.setting) } }
+		: undefined;
 	return {
 		nodeName: reason.nodeName,
-		text: i18n.baseText(keys.reason),
-		fix: i18n.baseText(keys.fix),
+		text: i18n.baseText(keys.reason, options),
+		fix: i18n.baseText(keys.fix, options),
 	};
 }
