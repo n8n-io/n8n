@@ -440,3 +440,50 @@ describe('AgentKnowledgeController knowledge base gating', () => {
 		expect(agentKnowledgeService.deleteFile).not.toHaveBeenCalled();
 	});
 });
+
+describe('AgentKnowledgeController collections', () => {
+	const req = { params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never;
+
+	it('adds the collection and clears runtime cache', async () => {
+		const { controller, agentKnowledgeService, runtimeCacheService } = makeController();
+
+		await expect(
+			controller.addCollection(req, undefined as never, 'project-1', 'agent-1', 'collection-1'),
+		).resolves.toEqual({ success: true });
+
+		expect(agentKnowledgeService.addCollection).toHaveBeenCalledWith(
+			{ id: 'user-1' },
+			'agent-1',
+			'project-1',
+			'collection-1',
+		);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('agent-1');
+	});
+
+	it('removes the collection and clears runtime cache', async () => {
+		const { controller, agentKnowledgeService, runtimeCacheService } = makeController();
+
+		await expect(
+			controller.removeCollection(req, undefined as never, 'project-1', 'agent-1', 'collection-1'),
+		).resolves.toEqual({ success: true });
+
+		expect(agentKnowledgeService.removeCollection).toHaveBeenCalledWith(
+			{ id: 'user-1' },
+			'agent-1',
+			'project-1',
+			'collection-1',
+		);
+		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('agent-1');
+	});
+
+	it('keeps the runtime cache when the write fails', async () => {
+		const { controller, agentKnowledgeService, runtimeCacheService } = makeController();
+		agentKnowledgeService.addCollection.mockRejectedValue(new NotFoundError('Agent not found'));
+
+		await expect(
+			controller.addCollection(req, undefined as never, 'project-1', 'agent-1', 'collection-1'),
+		).rejects.toThrow(NotFoundError);
+
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+	});
+});
