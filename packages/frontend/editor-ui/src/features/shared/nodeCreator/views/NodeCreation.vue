@@ -33,6 +33,9 @@ import { N8nIcon, N8nButton, N8nButtonList, N8nIconButton, N8nTooltip } from '@n
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+// Experiment cleanup (158_build_manually_by_default)
+import AssistantButtonHighlight from '@/experiments/buildManuallyByDefault/components/AssistantButtonHighlight.vue';
+// EOF Experiment cleanup
 
 type Props = {
 	nodeViewScale: number;
@@ -253,22 +256,23 @@ function openCommandBar(event: MouseEvent) {
 			<!-- Instance AI hand-off (mimics the assistant button) — shown when the
 			Instance AI feature is on and the host provides the workflow action.
 			Clicking hands the current workflow off to a new Instance AI thread. -->
-			<N8nTooltip
+			<!-- Experiment cleanup (158_build_manually_by_default): remove the AssistantButtonHighlight wrapper and keep the tooltip. -->
+			<AssistantButtonHighlight
 				v-if="
 					chatPanelStore.isEditableCanvasView && instanceAi && !!instanceAiCapability.openWorkflow
 				"
-				placement="left"
-				:content="i18n.baseText('aiAssistant.openInAssistant')"
 			>
-				<N8nIconButton
-					variant="ghost"
-					size="large"
-					icon="n8n-assistant"
-					:aria-label="i18n.baseText('aiAssistant.openInAssistant')"
-					data-test-id="instance-ai-canvas-action-button"
-					@click="onInstanceAiCanvasActionClick"
-				/>
-			</N8nTooltip>
+				<N8nTooltip placement="left" :content="i18n.baseText('aiAssistant.openInAssistant')">
+					<N8nIconButton
+						variant="ghost"
+						size="large"
+						icon="n8n-assistant"
+						:aria-label="i18n.baseText('aiAssistant.openInAssistant')"
+						data-test-id="instance-ai-canvas-action-button"
+						@click="onInstanceAiCanvasActionClick"
+					/>
+				</N8nTooltip>
+			</AssistantButtonHighlight>
 			<!-- Legacy assistant/builder button — only while Instance AI is off. -->
 			<N8nTooltip
 				v-if="chatPanelStore.isEditableCanvasView && (aiAssistant || aiBuilder) && !instanceAi"

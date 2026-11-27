@@ -3,6 +3,9 @@
 import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
 import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
 // EOF Experiment cleanup
+// Experiment cleanup (158_build_manually_by_default)
+import { useBuildManuallyByDefaultStore } from '@/experiments/buildManuallyByDefault/stores/buildManuallyByDefault.store';
+// EOF Experiment cleanup
 
 import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/app/constants';
 import {
@@ -46,8 +49,17 @@ const isChatWindowOpen = computed(
 const { aiBuilder, instanceAi } = useEditorContext();
 const instanceAiCapability = useInstanceAiEditorCapability();
 
+// Experiment cleanup (158_build_manually_by_default)
+// The composer arm replaces this tile with the composer at the bottom of the canvas.
+const buildManuallyByDefaultStore = useBuildManuallyByDefaultStore();
+// EOF Experiment cleanup
+
 const showInstanceAiBuildWithAi = computed(
-	() => instanceAi.value && !!instanceAiCapability.openWorkflow,
+	() =>
+		instanceAi.value &&
+		!!instanceAiCapability.openWorkflow &&
+		// Experiment cleanup (158_build_manually_by_default): remove this condition.
+		!buildManuallyByDefaultStore.isComposerVariant,
 );
 const showLegacyBuildWithAi = computed(() => aiBuilder.value && !instanceAi.value);
 

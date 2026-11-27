@@ -2021,6 +2021,7 @@ export class InstanceAiCloudBrowserReturnControlRequest extends Z.class({
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `onboarding` — seeded "Welcome to n8n" thread for a new user; the greeting is stored before the first user turn
  * - `preferences_empty_state` — "Suggest preferences" on the empty AI preferences page
+ * - `empty_canvas_composer` — prompt sent from the composer on an empty canvas (experiment 158)
  * - `evals` — Instance AI evaluation harness / offline eval runners
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
  * Experiment cleanup: remove with openWorkflowInAssistant.
@@ -2044,6 +2045,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'assistant_page',
 	'onboarding',
 	'preferences_empty_state', // Experiment cleanup (127_preferences_empty_state)
+	'empty_canvas_composer', // Experiment cleanup (158_build_manually_by_default)
 	// Experiment cleanup: remove with openWorkflowInAssistant.
 	'workflow_list_auto',
 	'workflow_list_button',

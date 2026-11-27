@@ -1,5 +1,11 @@
 {
 	"agents.hitl.title": "Human review",
+	"experiments.buildManuallyByDefault.composer.label": "Describe what to build",
+	"experiments.buildManuallyByDefault.composer.placeholder": "Describe what to build…",
+	"experiments.buildManuallyByDefault.composer.orConnect": "or connect",
+	"experiments.buildManuallyByDefault.composer.claude": "Claude",
+	"experiments.buildManuallyByDefault.composer.otherAssistants": "Other assistants",
+	"experiments.buildManuallyByDefault.assistantButton.tip": "Assistant is always here",
 	"experiments.mcpDiscovery.cta.connect": "Connect Claude",
 	"experiments.mcpDiscovery.cta.build": "Build in Claude",
 	"experiments.mcpDiscovery.footer.prefix": "Prefer Claude?",

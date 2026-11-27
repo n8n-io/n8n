@@ -192,4 +192,16 @@ export const MCP_TELEMETRY = defineTelemetryEvents({
 				),
 		}),
 	},
+	// Experiment cleanup (158_build_manually_by_default)
+	EMPTY_CANVAS_CONNECT_OPTION_CLICKED: {
+		name: 'User clicked MCP connect option on empty canvas',
+		description:
+			'A user in the canvas-composer variant of experiment 158 clicked an option in the "or connect" row under the empty canvas composer. Claude opens the MCP settings page with the connect dialog. Other assistants opens the MCP settings page.',
+		properties: z.object({
+			variant: z.literal('canvas-composer'),
+			'$feature/158_build_manually_by_default': z.literal('canvas-composer'),
+			client: z.enum(['claude', 'other_assistants']).describe('The option the user clicked'),
+		}),
+	},
+	// EOF Experiment cleanup
 });

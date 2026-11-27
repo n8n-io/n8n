@@ -269,7 +269,35 @@ export const CUSTOM_MCP_SERVERS_EXPERIMENT = createExperiment(CUSTOM_MCP_SERVERS
 	test: CUSTOM_MCP_SERVERS_FLAG_VARIANT,
 });
 
+// Experiment cleanup (157_new_cloud_onboarding_tracks)
+/**
+ * Splits new Cloud traffic into two tracks, one per onboarding experiment, so
+ * their controls never mix. Each experiment flag depends on its own track.
+ * It assigns no treatment, so it is not in EXPERIMENTS_TO_TRACK.
+ */
+// The key and variants match the shared PostHog flag. The other track keeps its
+// placeholder value until its owner renames it with experiment_1_ff.
+export const NEW_CLOUD_ONBOARDING_TRACKS = createExperiment('157_new_cloud_onboarding_tracks', {
+	buildManually: 'build-manually',
+	assistantPrompt: 'experiment_1',
+});
+// EOF Experiment cleanup
+
+// Experiment cleanup (158_build_manually_by_default)
+export const BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT = createExperiment(
+	'158_build_manually_by_default',
+	{
+		control: 'control',
+		canvas: 'canvas',
+		canvasComposer: 'canvas-composer',
+	},
+);
+// EOF Experiment cleanup
+
 export const EXPERIMENTS_TO_TRACK = [
+	// Experiment cleanup (158_build_manually_by_default)
+	BUILD_MANUALLY_BY_DEFAULT_EXPERIMENT.name,
+	// EOF Experiment cleanup
 	AGENT_SETUP_HEADER_EXPERIMENT.name,
 	AGENT_TRIGGER_REDESIGN_EXPERIMENT.name,
 	CUSTOM_MCP_SERVERS_EXPERIMENT.name,

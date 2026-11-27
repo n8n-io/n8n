@@ -258,6 +258,14 @@ const instanceContextTurnSchema = z.object({
 		.describe('How this segment ended'),
 });
 
+// Experiment cleanup (158_build_manually_by_default)
+const buildManuallyComposerVariant = z.literal('canvas-composer');
+const buildManuallyComposerProps = {
+	variant: buildManuallyComposerVariant,
+	'$feature/158_build_manually_by_default': buildManuallyComposerVariant,
+};
+// EOF Experiment cleanup
+
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	SETUP_PANEL_STATE_OBSERVED: {
 		name: 'AI Assistant setup panel state observed',
@@ -1156,4 +1164,33 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.strict(),
 		]),
 	},
+	// Experiment cleanup (158_build_manually_by_default)
+	EMPTY_CANVAS_COMPOSER_SHOWN: {
+		name: 'Empty canvas composer shown',
+		description:
+			'The Assistant composer appeared on an empty canvas for a user in the canvas-composer variant of experiment 158. Fires each time the canvas becomes empty and the composer shows, including after all nodes are removed.',
+		properties: z.object(buildManuallyComposerProps),
+	},
+	EMPTY_CANVAS_COMPOSER_PROMPT_SENT: {
+		name: 'User sent prompt from empty canvas composer',
+		description:
+			'A user in the canvas-composer variant of experiment 158 sent a prompt from the empty canvas composer. n8n then opens the Assistant view and starts a new thread with the prompt.',
+		properties: z.object({
+			...buildManuallyComposerProps,
+			prompt_length: z.number().int().describe('Number of characters in the sent prompt'),
+		}),
+	},
+	EMPTY_CANVAS_COMPOSER_MINIMIZED: {
+		name: 'Empty canvas composer minimized',
+		description:
+			'The empty canvas composer hid and moved into the canvas Assistant button because the canvas got its first node. Fires for users in the canvas-composer variant of experiment 158. The node can come from any source: the user adds it by hand, pastes or imports it, or the Assistant builds it. It also fires when the user opens a workflow with nodes after an empty one.',
+		properties: z.object(buildManuallyComposerProps),
+	},
+	CANVAS_ASSISTANT_BUTTON_TIP_SHOWN: {
+		name: 'Canvas Assistant button tip shown',
+		description:
+			'The tip "Assistant is always here" appeared next to the canvas Assistant button after the empty canvas composer minimized. Fires for users in the canvas-composer variant of experiment 158, once for each minimize.',
+		properties: z.object(buildManuallyComposerProps),
+	},
+	// EOF Experiment cleanup
 });
