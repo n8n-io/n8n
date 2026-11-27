@@ -440,6 +440,17 @@ describe('InstanceAiInput', () => {
 		});
 	});
 
+	it('lets Tab move focus when there is no contextual suggestion', async () => {
+		const { getByRole } = renderComponent({
+			props: { isStreaming: false, suggestions },
+		});
+
+		const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+		getByRole('textbox').dispatchEvent(tab);
+
+		expect(tab.defaultPrevented).toBe(false);
+	});
+
 	it('does not submit when Enter is pressed on an empty draft', async () => {
 		const { emitted, getByRole } = renderComponent({
 			props: {

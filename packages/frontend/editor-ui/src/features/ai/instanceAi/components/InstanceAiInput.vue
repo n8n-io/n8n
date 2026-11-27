@@ -934,6 +934,7 @@ const resizable = computed(() => {
 			:composer-height="props.composerHeight"
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
+			:accepts-tab="!inputText && !!props.contextualSuggestion"
 			:show-attach="showAttach"
 			:show-attach-button="props.attachOnlyMimeTypes !== undefined"
 			:accepted-mime-types="props.attachOnlyMimeTypes ?? props.acceptedMimeTypes"

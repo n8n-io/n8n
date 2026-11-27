@@ -213,15 +213,28 @@ describe('ChatInputBase', () => {
 		expect(emitted().submit).toBeFalsy();
 	});
 
-	it('should emit tab on Tab keydown', () => {
+	it('should emit tab on Tab keydown when the host accepts Tab', () => {
+		const { getByRole, emitted } = renderComponent({
+			props: makeProps({ acceptsTab: true }),
+		});
+
+		const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+		getByRole('textbox').dispatchEvent(tab);
+
+		expect(emitted().tab).toBeTruthy();
+		expect(tab.defaultPrevented).toBe(true);
+	});
+
+	it('keeps normal Tab navigation when the host does not accept Tab', () => {
 		const { getByRole, emitted } = renderComponent({
 			props: makeProps(),
 		});
 
-		const textarea = getByRole('textbox');
-		textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+		const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+		getByRole('textbox').dispatchEvent(tab);
 
-		expect(emitted().tab).toBeTruthy();
+		expect(emitted().tab).toBeFalsy();
+		expect(tab.defaultPrevented).toBe(false);
 	});
 
 	it('should disable send button when canSubmit is false', () => {
