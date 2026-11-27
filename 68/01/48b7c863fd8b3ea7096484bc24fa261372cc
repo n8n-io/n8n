@@ -1,0 +1,37 @@
+packages/@n8n/n8n-node-codegen/src/cli.ts
+  s_f5b6971a0ab7f6::t_d87d5451a139ad 61
+.agents/skills/public-api/SKILL.md
+  s_f5b6971a0ab7f6::t_5442d4da7fe8b1 189-195
+.github/scripts/workflow-validation.test.mjs
+  s_f5b6971a0ab7f6::t_e651b53f610bef 380-421,423-440
+  s_f5b6971a0ab7f6::t_b1fa956d90ad90 422
+.github/WORKFLOWS.md
+  s_f5b6971a0ab7f6::t_b7fe91ca3a116e 943
+.github/scripts/quality/check-n8n-node-override.mjs
+  s_f5b6971a0ab7f6::t_c0ecef6fe37dd4 5,16-17,29-41,44-45,47,49-50
+  s_f5b6971a0ab7f6::t_472d06158489dd 1-4,6-15,18-28,42-43,51-55
+.github/workflows/ci-pull-requests.yml
+  s_f5b6971a0ab7f6::t_a4bff22ef9c9e6 745
+  s_f5b6971a0ab7f6::t_0c3134cc6a3946 656
+  s_f5b6971a0ab7f6::t_920f1f709dd4bf 41
+  s_f5b6971a0ab7f6::t_548a976b8b249e 193-198
+  s_f5b6971a0ab7f6::t_e9da441f30d149 657-703
+.github/scripts/quality/check-n8n-node-override.test.mjs
+  s_f5b6971a0ab7f6::t_8fed56518e86bd 1-51,53-58,60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "680148b7c863fd8b3ea7096484bc24fa261372cc",
+  "prompts": {},
+  "sessions": {
+    "s_f5b6971a0ab7f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34345f33-68d5-4c0e-9308-7e63f21dd4db",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

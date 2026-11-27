@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatSafeTesting.test.ts
+  h_8a472ace01776f 293-352
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  h_8a472ace01776f 1791-1800,1805,1835
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "66fe7e2b0eba1f605a03066101d059b40e9c3854",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

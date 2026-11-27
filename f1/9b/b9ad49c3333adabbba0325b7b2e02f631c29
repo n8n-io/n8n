@@ -1,0 +1,29 @@
+packages/cli/src/modules/type-availability-policies/__tests__/request-fed-credential-type-policy.test.ts
+  s_55c9c16466c150::t_458cc5c146a92c 43
+  s_55c9c16466c150::t_fe3332d6d4569f 3
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_55c9c16466c150::t_0ddad17e065d69 6013
+packages/cli/src/modules/type-availability-policies/type-availability-policy.service.ts
+  s_55c9c16466c150::t_8476f4b10e23fc 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f19bb9ad49c3333adabbba0325b7b2e02f631c29",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+AGENTS.md
+  h_52a137d26d774c 37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6e5efa18c2aa1cb8f9c8e8b97aa21e2a537b30a",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

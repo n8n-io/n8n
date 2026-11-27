@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  h_8a472ace01776f 8123-8165
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  h_8a472ace01776f 3764,3941
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e7ba037cc010427bead0ee48a4b9fc398bf7f4a",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
