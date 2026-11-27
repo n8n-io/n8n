@@ -1,0 +1,50 @@
+packages/cli/src/spike-managed-credential-types.ts
+  s_f93f6dff9520ae::t_b6cc97a5e74e15 2-81
+spike/api-663/start.sh
+  s_f93f6dff9520ae::t_849266adc9b453 1-29
+spike/api-663/check.mjs
+  s_f93f6dff9520ae::t_29754ef415fc1f 1-65,70-71,84-114,116,118-121,124-133,135-199
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_f93f6dff9520ae::t_06d7462ef2e5f5 52-57
+  s_f93f6dff9520ae::t_bed53348e57687 338,345
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/factory.ts
+  s_f93f6dff9520ae::t_eacf4b891a1dae 250-255,257-261
+  s_f93f6dff9520ae::t_866d9c0cd373e1 215-220,222-226
+  s_f93f6dff9520ae::t_e0d910f32dea01 25,29
+packages/core/src/execution-engine/node-execution-context/utils/managed-credential.ts
+  s_f93f6dff9520ae::t_225dfcfef6c806 2-9,13,29,97
+packages/@n8n/backend-network/src/http/axios/request.ts
+  s_f93f6dff9520ae::t_2723b885e36e78 227
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/managed-credential.test.ts
+  s_f93f6dff9520ae::t_a1c898f07bb3d4 107-114
+  s_f93f6dff9520ae::t_d0803d492fbccf 1-34,36-51,53-70,72-106,115-120
+packages/@n8n/backend-network/src/http/spike-egress.ts
+  s_f93f6dff9520ae::t_83bdedc06a42bf 1-16
+spike/api-663/mock-agw.mjs
+  s_f93f6dff9520ae::t_b5bcbc3d4f46b7 12,14
+  s_f93f6dff9520ae::t_1ef52d65e01822 1-11,13,15-63
+packages/@n8n/backend-network/src/http/legacy-request.ts
+  s_f93f6dff9520ae::t_ce8de30ff4bc43 90
+spike/api-663/README.md
+  s_f93f6dff9520ae::t_463f85908c6892 8-12,14-26,42,61-68,72-74,82-83,89-90,92-94
+  s_f93f6dff9520ae::t_6fb9bda4ad28ee 1-7,13,27-41,45-60,69-71,75-80,84-88,91,95-96
+packages/cli/src/__tests__/spike-managed-credential-types.test.ts
+  s_f93f6dff9520ae::t_b830123936670d 1-17,19-26,28-31,33-114,116-129,131,137-139
+  s_f93f6dff9520ae::t_594d12d17c4c49 130,132-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "be7ecafbfebc67cadbb3938517c2342182296ab7",
+  "prompts": {},
+  "sessions": {
+    "s_f93f6dff9520ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00622748-5e28-4f20-9f3f-2a773a82a768",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,57 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_dfe3f914c8bb46::t_15884eb15102a6 559-575,579-581
+  s_dfe3f914c8bb46::t_116b623dc501ff 576-578
+  s_dfe3f914c8bb46::t_404705a3a42e9f 275
+packages/frontend/editor-ui/src/features/agents/components/AgentPanelDisclosure.vue
+  s_dfe3f914c8bb46::t_d22cabe2453253 2,14-20
+packages/frontend/editor-ui/src/features/agents/components/AgentGuardrailsSection.vue
+  s_dfe3f914c8bb46::t_d22cabe2453253 278
+packages/frontend/editor-ui/src/features/shared/toolsConnection/McpToolPermissionsEditor.vue
+  s_dfe3f914c8bb46::t_d22cabe2453253 36,50,158-160,163-171,234-235,238,244
+  s_dfe3f914c8bb46::t_116b623dc501ff 161-162
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_d22cabe2453253 657-661,678-679
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentApprovalRouteSelect.test.ts
+  s_dfe3f914c8bb46::t_c1565da1103d2e 48,51,75-85
+  s_dfe3f914c8bb46::t_d6e4c3c196259e 86-87
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/McpToolPermissionsEditor.test.ts
+  s_dfe3f914c8bb46::t_c1565da1103d2e 1-34
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBudgetPanel.test.ts
+  s_dfe3f914c8bb46::t_c1565da1103d2e 135-156
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalRouteSelect.vue
+  s_dfe3f914c8bb46::t_d22cabe2453253 96-99,101
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentGuardrailsSection.test.ts
+  s_dfe3f914c8bb46::t_15884eb15102a6 405
+  s_dfe3f914c8bb46::t_c1565da1103d2e 415-423
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_dfe3f914c8bb46::t_c1565da1103d2e 549
+  s_dfe3f914c8bb46::t_15884eb15102a6 460-466
+  s_dfe3f914c8bb46::t_116b623dc501ff 486-489,657-660,698-701
+packages/frontend/editor-ui/src/features/agents/components/AgentBudgetPanel.vue
+  s_dfe3f914c8bb46::t_d22cabe2453253 133
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_dfe3f914c8bb46::t_d22cabe2453253 188,191-196
+  s_dfe3f914c8bb46::t_116b623dc501ff 189-190
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_dfe3f914c8bb46::t_d22cabe2453253 87-94
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsAvailability.vue
+  s_dfe3f914c8bb46::t_20ac5345d54054 8,65-72
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetup.test.ts
+  s_dfe3f914c8bb46::t_e46e092929ea01 951-959
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12d5b1de55323b29c524c4ebc06f45d833eee615",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionListItem.vue
+  s_ac04a1ec561a13::t_c75e060500a84d 249,399,404-410,412-413
+  s_ac04a1ec561a13::t_e6bcbc854b8936 281,290,479
+  s_ac04a1ec561a13::t_747b9d68aadde2 280,282,285-288,291-292,478
+  s_9d941e4f9f06b0::t_4a795cdb3c16f2 186,243-248,250-256,258-279,289,312,314,339-340,355,364-369,373-388
+  s_ac04a1ec561a13::t_562fb79eb03da2 346
+  s_ac04a1ec561a13::t_8447cc1d871ce2 283-284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97b6a4c0c6076c8e3ebba058a009e5c30a6b5441",
+  "prompts": {},
+  "sessions": {
+    "s_9d941e4f9f06b0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c58a-af0d-73eb-8fe3-1997768c4f83",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ac04a1ec561a13": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c584-0dc2-728a-aad4-dd0d4dec3279",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

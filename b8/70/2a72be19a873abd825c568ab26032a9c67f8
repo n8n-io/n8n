@@ -1,0 +1,18 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHoldReplay.test.ts
+  h_8a472ace01776f 272,281,299-322
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentHeldActionsTray.vue
+  h_8a472ace01776f 34-36,42,69,72-74,78
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  h_8a472ace01776f 3772,3954
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8702a72be19a873abd825c568ab26032a9c67f8",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

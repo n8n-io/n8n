@@ -1,0 +1,42 @@
+.github/backport_conventions.md
+  h_52a137d26d774c 16-23
+.github/scripts/compute-backport-targets.mjs
+  h_52a137d26d774c 22
+.github/scripts/compute-backport-targets.test.mjs
+  h_52a137d26d774c 56-62
+.github/scripts/determine-maintenance-version-info.test.mjs
+  h_52a137d26d774c 1-54
+.github/scripts/determine-version-info.mjs
+  h_52a137d26d774c 74-84,103-109
+.github/scripts/get-release-versions.test.mjs
+  h_52a137d26d774c 5,33-44
+.github/scripts/github-helpers.mjs
+  h_52a137d26d774c 16,24,27-33,133-134,140,157,161-164,167,399-401
+.github/scripts/plan-release.mjs
+  h_52a137d26d774c 16,29-31,36,52-55
+.github/workflows/ci-check-pr-title.yml
+  h_52a137d26d774c 12
+.github/workflows/clean-stale-branches.yml
+  h_52a137d26d774c 47
+.github/workflows/release-create-github-releases.yml
+  h_52a137d26d774c 28
+.github/workflows/release-create-patch-pr.yml
+  h_52a137d26d774c 23
+.github/workflows/release-publish-post-release.yml
+  h_52a137d26d774c 38,49,60,72,81,91
+.github/workflows/release-update-pointer-tag.yml
+  h_52a137d26d774c 19
+.github/workflows/util-determine-current-version.yml
+  h_52a137d26d774c 16-18,27,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6953dc17f82af5d44c2471143c2e81c6f658ad3",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

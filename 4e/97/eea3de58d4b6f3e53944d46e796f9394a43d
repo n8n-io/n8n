@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/agents/components/chatMode/heldActions.ts
+  h_8a472ace01776f 2,248,251-252,256-259,273-274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e97eea3de58d4b6f3e53944d46e796f9394a43d",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

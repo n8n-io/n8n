@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_72860b67d0263f::t_be6a2ee4afb16a 5-13
+  s_72860b67d0263f::t_c87cc3c16a01d7 1044
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_72860b67d0263f::t_dd47bece6145ca 91-98,1470-1482
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "effa530443033599eda2aad650c0273019b1e3fb",
+  "prompts": {},
+  "sessions": {
+    "s_72860b67d0263f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf0a6a12-ff59-42b9-b058-80693a4ddacf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

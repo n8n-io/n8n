@@ -1,0 +1,32 @@
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_c51b71bedc600f::t_bfc15ac5eb1b06 27,31-35,40
+packages/cli/src/modules/promotions.ee/__tests__/utils/promotion-fixtures.ts
+  s_c51b71bedc600f::t_aa4ee70cd8bf69 16
+  s_c51b71bedc600f::t_efe9d8c3829c46 50,54-57
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-changes.integration.test.ts
+  s_c51b71bedc600f::t_6d493be9351e8c 5,532,548
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_c51b71bedc600f::t_3036c213bca39a 3254-3267,3273-3274
+  s_c51b71bedc600f::t_ad94c49d387871 3268-3272
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_c51b71bedc600f::t_bfc15ac5eb1b06 291-298
+packages/cli/src/modules/promotions.ee/promotion-credential-selection.service.ts
+  s_c51b71bedc600f::t_bfc15ac5eb1b06 46,69,76-78
+  s_c51b71bedc600f::t_2c909c3c64bdc4 21-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a246230424b830b322ea4dbab1c99d2bf45e3cef",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

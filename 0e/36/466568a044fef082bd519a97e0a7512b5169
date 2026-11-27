@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_08ad1fe1d43e02::t_9c4c61ec0a375a 412-434
+  s_08ad1fe1d43e02::t_42559f7d4c1277 64-71,75-79
+  ai_agent 72-74
+docs/generated/postgres-schema/public.agent_attention_flags.md
+  ai_agent 62
+docs/generated/sqlite-schema/agent_attention_flags.md
+  ai_agent 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0e36466568a044fef082bd519a97e0a7512b5169",
+  "prompts": {},
+  "sessions": {
+    "s_08ad1fe1d43e02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8181cd39-5693-42c0-89cf-63f7653ab06b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/nodes-base/utils/microsoft/test/transport.test.ts
+  s_19d0075c8a53f6::t_aa989a700e9496 369-370,372,458,460
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/message-filters.ts
+  s_19d0075c8a53f6::t_7b4b9f8c828efa 119
+  s_19d0075c8a53f6::t_38587a5cb1395c 104-107,110-113
+packages/nodes-base/utils/microsoft/transport.ts
+  s_19d0075c8a53f6::t_38587a5cb1395c 63-64
+  s_19d0075c8a53f6::t_7b4b9f8c828efa 57-58
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/message-filters.test.ts
+  s_19d0075c8a53f6::t_7b4b9f8c828efa 63-65,69-80,578,617-618,641,785
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b46014ea5d4a78b966adba8ce21943bf1dad1d9e",
+  "prompts": {},
+  "sessions": {
+    "s_19d0075c8a53f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26141c98-b309-4f29-9b08-56b2cc676f66",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

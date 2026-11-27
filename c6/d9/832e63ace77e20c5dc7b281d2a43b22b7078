@@ -1,0 +1,22 @@
+packages/cli/src/manual-execution.service.ts
+  h_52a137d26d774c 183,206
+packages/cli/src/modules/instance-ai/__tests__/cloud-browser-local-mcp-server.test.ts
+  h_52a137d26d774c 105
+packages/cli/src/services/__tests__/password.utility.dummy-hash.test.ts
+  h_52a137d26d774c 3
+packages/cli/src/services/__tests__/password.utility.integration.test.ts
+  h_52a137d26d774c 3
+pnpm-lock.yaml
+  h_52a137d26d774c 16914
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6d9832e63ace77e20c5dc7b281d2a43b22b7078",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

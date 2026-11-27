@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Grist/test/parseFilterProperties.test.ts
+  s_59135aa18665d9::t_3d287d19bfd6bd 1-51
+packages/nodes-base/nodes/Grist/GenericFunctions.ts
+  s_59135aa18665d9::t_7e407738bc8af9 107-109,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "38b012d842dad3dba4b94b9ceb04a83d9dcf5826",
+  "prompts": {},
+  "sessions": {
+    "s_59135aa18665d9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49019508-5f03-4c02-b191-8a4d4238fe39",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jani Jez <jani.jez@n8n.io>"
+    }
+  }
+}
