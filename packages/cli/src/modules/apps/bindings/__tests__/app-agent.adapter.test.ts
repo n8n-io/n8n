@@ -550,6 +550,7 @@ describe('AppAgentAdapter', () => {
 			yield {
 				type: 'subagent-chunk',
 				parentToolCallId: 'tc-1',
+				taskName: 'child',
 				taskPath: 'child',
 				chunk: { type: 'text-delta', id: 'c1', delta: 'subagent text' },
 			};
