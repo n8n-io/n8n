@@ -17,6 +17,7 @@ import { expandHome, globalConfigFile } from '../config/paths';
 import { formatValue } from '../env/dotenv';
 import { RigError } from '../errors';
 import { editFile } from '../integrations/editor';
+import { requireLicense } from '../licenses';
 import { execInService, type ServiceName } from '../services/compose';
 import { requiredServices } from '../config/env-yaml';
 import { CLI_DIR, userCwd } from '../source';
@@ -209,6 +210,7 @@ export const configCommand = defineCommand({
 				}
 				const raw = String(args.value);
 				const value = PATH_KEYS.includes(key) ? expandHome(raw) : raw;
+				if (key === 'license.default') requireLicense(value);
 				saveGlobalConfig(setGlobalConfigValue(loadGlobalConfig(), key, value));
 				ui.success(`${key} = ${value}`);
 			},

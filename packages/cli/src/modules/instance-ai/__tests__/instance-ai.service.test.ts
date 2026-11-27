@@ -17,7 +17,6 @@ vi.mock('@n8n/instance-ai', async () => {
 		resolvePromptProfile: profiles.resolvePromptProfile,
 		MAX_STEPS: profiles.MAX_STEPS,
 		createThreadApprovalContext: profiles.createThreadApprovalContext,
-		threadTargetsAgent: profiles.threadTargetsAgent,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		SELF_HEALING_PROFILE_VERSION: profiles.SELF_HEALING_PROFILE_VERSION,

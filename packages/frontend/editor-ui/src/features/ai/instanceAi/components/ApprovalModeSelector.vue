@@ -32,9 +32,9 @@ const telemetry = useTelemetry();
 const open = ref(false);
 const { isTooltipDisabled } = useMenuTriggerTooltip(open);
 
-// A failed load hides the selector, so each new composer asks again.
+// Without loaded preferences the selector stays hidden, so each new composer loads them.
 onMounted(() => {
-	void settingsStore.fetchPreferencesAfterFailure();
+	void settingsStore.ensurePreferences();
 });
 
 const items = computed<ModeItem[]>(() => [

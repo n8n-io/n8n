@@ -135,6 +135,7 @@ describe('PromotionsSettingsView', () => {
 			whoCanPromote: 'projectAdmins',
 			whoCanApprove: 'instanceAdmins',
 			whoCanApply: 'instanceAdmins',
+			requireApproval: 'whenConfigured',
 		});
 		renderView();
 

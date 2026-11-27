@@ -60,6 +60,7 @@ import {
 	validateFormPageAuth,
 	generateFormUserAuthToken,
 	verifyFormUserAuthToken,
+	setFormAuthCookie,
 } from '../utils/utils';
 import { isIpAllowed } from '../../Webhook/utils';
 import type { Mock } from 'vitest';
@@ -4361,6 +4362,75 @@ describe('validateFormPageAuth', () => {
 		expect(res.writeHead).toHaveBeenCalledWith(
 			302,
 			expect.objectContaining({ Location: expect.stringContaining('/signin?redirect=') }),
+		);
+	});
+});
+
+// The browser sends a cookie to every path under its own. Each run's cookie has
+// its own name, so a shared path would send all unexpired run cookies with every
+// page request until the header grew too large.
+describe('setFormAuthCookie', () => {
+	const setup = (resumeFormUrl: string | Error) => {
+		const cookie = vi.fn();
+		const ctx = mock<IWebhookFunctions>();
+		ctx.getRequestObject.mockReturnValue({
+			headers: { host: 'localhost:5678' },
+			protocol: 'http',
+		} as unknown as Request);
+		ctx.getResponseObject.mockReturnValue({ cookie } as never);
+		ctx.evaluateExpression.mockImplementation(() => {
+			if (resumeFormUrl instanceof Error) throw resumeFormUrl;
+			return resumeFormUrl;
+		});
+		return { ctx, cookie };
+	};
+
+	it("scopes a run's cookie to that run's pages", () => {
+		const { ctx, cookie } = setup('http://localhost:5678/form-waiting/123?signature=abc');
+
+		setFormAuthCookie(ctx, 'token', { workflowId: 'wf-1', executionId: '123' });
+
+		expect(cookie).toHaveBeenCalledWith(
+			'n8n-form-auth-ex-123',
+			'token',
+			expect.objectContaining({ path: '/form-waiting/123' }),
+		);
+	});
+
+	it('keeps an instance path prefix in the run path', () => {
+		const { ctx, cookie } = setup('https://example.com/n8n/form-waiting/123');
+
+		setFormAuthCookie(ctx, 'token', { workflowId: 'wf-1', executionId: '123' });
+
+		expect(cookie).toHaveBeenCalledWith(
+			'n8n-form-auth-ex-123',
+			'token',
+			expect.objectContaining({ path: '/n8n/form-waiting/123' }),
+		);
+	});
+
+	it("scopes the trigger's cookie to the form-waiting base path", () => {
+		// The first page of a run is served before the trigger knows the run's id.
+		const { ctx, cookie } = setup('http://localhost:5678/form-waiting/123');
+
+		setFormAuthCookie(ctx, 'token', { workflowId: 'wf-1' });
+
+		expect(cookie).toHaveBeenCalledWith(
+			'n8n-form-auth-wf-wf-1',
+			'token',
+			expect.objectContaining({ path: '/form-waiting' }),
+		);
+	});
+
+	it('falls back to the root path when the form-waiting path is unknown', () => {
+		const { ctx, cookie } = setup(new Error('no resume URL'));
+
+		setFormAuthCookie(ctx, 'token', { workflowId: 'wf-1', executionId: '123' });
+
+		expect(cookie).toHaveBeenCalledWith(
+			'n8n-form-auth-ex-123',
+			'token',
+			expect.objectContaining({ path: '/' }),
 		);
 	});
 });
