@@ -31,7 +31,7 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 **Search-specific Props**
 - `searchable?: boolean` Enable search functionality
 - `searchMode?: 'internal' | 'external'` Select whether the menu or an external text control owns search focus | `default: 'internal'`
-- `externalFocusTarget?: HTMLInputElement | HTMLTextAreaElement | null` Text control that owns focus in external search mode
+- `externalFocusTarget?: HTMLElement | null` Text control, such as an input, a textarea or a rich text editor, that owns focus in external search mode
 - `searchPlaceholder?: string` Search input placeholder
 - `searchDebounce?: number` Debounce delay in ms | `default: 0`
 

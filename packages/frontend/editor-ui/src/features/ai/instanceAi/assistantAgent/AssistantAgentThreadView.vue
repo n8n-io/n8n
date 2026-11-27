@@ -52,7 +52,6 @@ import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview
 import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
-import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiWorkflowDraftPreview from '../components/InstanceAiWorkflowDraftPreview.vue';
@@ -98,14 +97,11 @@ import {
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-import {
-	firstMessageTitle,
-	getAppTargetsFromThreadMetadata,
-	threadTargetsAgent,
-} from '../instanceAi.threadRuntime';
+import { getAppTargetsFromThreadMetadata, threadTargetsAgent } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext, createDisplayedExecutionReader } from '../threadArtifacts';
 import { isArtifactTab, isSavedArtifactTab, useCanvasPreview } from '../useCanvasPreview';
+import { provideOpenResource } from '@/features/ai/instanceAi/openResourceContext';
 import { toAgentPreviewComposerAttachment } from './assistantAgentPreviewHandoff';
 import {
 	fetchAssistantAgentThreadTabs,
@@ -161,6 +157,7 @@ import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantAgentFeedback } from './useAssistantAgentFeedback';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 import { useAssistantWorkflowDrafts } from './useAssistantWorkflowDrafts';
+import { formatThreadTitle } from '@/features/agents/utils/thread-title';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
 
@@ -399,8 +396,13 @@ function onSessionCreated(): void {
 	finishLaunch();
 	// The thread exists once the server accepts its first message. Show it in the lists
 	// now, not only after the first reply ends.
-	void threadsStore.loadThread(props.threadId);
+	void threadsStore.loadThread(props.threadId, firstUserMessageText());
 	void agentTargets.refresh();
+}
+
+/** The first message that the user sent in this thread, as the panel shows it. */
+function firstUserMessageText(): string | undefined {
+	return panel.value?.messages.find((message) => message.role === 'user')?.content || undefined;
 }
 
 // A finished turn can add the thread to the lists, or give it a title.
@@ -559,6 +561,14 @@ provide('openAppPreview', preview.openAppPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
+provideOpenResource({
+	projectId: () => props.projectId,
+	// A resource opened before the stored tabs load replaces them, and the history can open
+	// tabs for past builds, so the item waits for both.
+	isAvailable: () => preview.tabsLoaded.value && !thread.isHydratingThread,
+	excludedTabs: () => preview.openTabs.value.filter(isArtifactTab),
+	open: preview.openTab,
+});
 // Links to the resources of the thread open in the preview, as in the current Assistant.
 provide(AGENT_CHAT_MARKDOWN_HOST_KEY, {
 	resources: () => [...thread.resourceNameIndex.values()],
@@ -756,12 +766,17 @@ function handleAgentPreviewAssistantHandoff(params: AgentTestHandoffParams): voi
 const { previewToggleLabel, togglePreview } = usePreviewToggle(preview);
 
 // --- Header ---
-// The stored title, else the first user message, as in the Assistant runtime view.
+// As in the sidebar: the generated title, else the first user message until the title
+// arrives. The panel has the message before the thread summary loads. A thread with no
+// messages has no title, so the header does not flash the placeholder.
 const threadTitle = computed(() => {
-	const title = threadsStore.threadsById.get(props.threadId)?.title;
-	if (title) return title;
-	const firstUserMessage = panel.value?.messages.find((message) => message.role === 'user');
-	return firstUserMessage?.content ? firstMessageTitle(firstUserMessage.content) : undefined;
+	const thread = threadsStore.threadsById.get(props.threadId);
+	const firstMessage = thread?.firstMessage ?? firstUserMessageText();
+	if (!thread?.title && !firstMessage) return undefined;
+	return formatThreadTitle(
+		{ title: thread?.title ?? null, firstMessage },
+		i18n.baseText('commandBar.instanceAi.newThread'),
+	);
 });
 
 function startNewThread(): void {
@@ -1012,40 +1027,9 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 							@click="toggleArtifactsPanel"
 						/>
 					</N8nTooltip>
-					<!-- With no tabs to show, the toggle opens a resource in a new tab. It waits for
-					the history, which can open tabs for past builds. -->
-					<InstanceAiResourcePicker
-						v-if="
-							!thread.isHydratingThread &&
-							!preview.isPreviewVisible.value &&
-							preview.openTabs.value.length === 0
-						"
-						:project-id="props.projectId"
-						:excluded-tabs="preview.openTabs.value.filter(isArtifactTab)"
-						placement="bottom-end"
-						content-test-id="assistant-agent-open-resource-picker"
-						@select="preview.openTab"
-					>
-						<template #trigger>
-							<N8nTooltip
-								:content="i18n.baseText('instanceAi.artifactsPanel.openResource')"
-								placement="bottom"
-								:show-after="TOOLTIP_DELAY_MS"
-								as-child
-							>
-								<N8nIconButton
-									icon="square-plus"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="assistant-agent-open-resource"
-									:aria-label="i18n.baseText('instanceAi.artifactsPanel.openResource')"
-								/>
-							</N8nTooltip>
-						</template>
-					</InstanceAiResourcePicker>
+					<!-- With no tab open, the "+" menu of the composer opens a resource. -->
 					<N8nTooltip
-						v-else-if="!preview.isPreviewVisible.value"
+						v-if="preview.openTabs.value.length > 0 && !preview.isPreviewVisible.value"
 						:content="previewToggleLabel"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
@@ -1058,7 +1042,6 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 							data-test-id="assistant-agent-preview-toggle"
 							:aria-label="previewToggleLabel"
 							:aria-pressed="false"
-							:disabled="preview.openTabs.value.length === 0"
 							@click="togglePreview"
 						/>
 					</N8nTooltip>
@@ -1295,6 +1278,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 								:project-id="preview.activeApp.value.projectId"
 								:app-id="preview.activeApp.value.id"
 								:refresh-key="preview.appRefreshKey.value"
+								:assistant-working="preview.isActiveAppInLiveTurn.value"
 								@deleted="preview.closeTab"
 							/>
 							<InstanceAiAgentPreview

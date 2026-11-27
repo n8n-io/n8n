@@ -26,6 +26,7 @@ import type {
 	IDataObject,
 	IHttpRequestOptions,
 	INode,
+	INodeCredentialsDetails,
 	IOAuth2Options,
 	IRequestOptions,
 	IWorkflowExecuteAdditionalData,
@@ -146,6 +147,32 @@ function buildOAuth2ReconnectError(node: INode, credentialsType: string): NodeOp
 	);
 }
 
+/**
+ * Removes a per-user token whose refresh token the provider rejected, so the
+ * next run asks the caller to connect again. A failure here must not hide the
+ * reconnect error, so it is only logged.
+ */
+async function discardRejectedToken(
+	ctx: RefreshOAuth2TokenContext,
+	nodeCredentials: INodeCredentialsDetails,
+): Promise<void> {
+	const rejectedRefreshToken = ctx.token.refreshToken;
+	if (!rejectedRefreshToken) return;
+
+	try {
+		await ctx.additionalData.credentialsHelper.discardRejectedOauthTokenData?.(
+			nodeCredentials,
+			ctx.credentialsType,
+			rejectedRefreshToken,
+			ctx.additionalData,
+		);
+	} catch (error) {
+		ctx.logger.warn(`Could not discard the rejected OAuth2 token for "${ctx.credentialsType}"`, {
+			error,
+		});
+	}
+}
+
 const inFlightRefreshes = new SingleFlightLease<ClientOAuth2Token>();
 
 async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {
@@ -226,6 +253,9 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 			}
 		} catch (error) {
 			if (isRevokedOAuth2GrantError(error)) {
+				if (credentials.grantType !== 'clientCredentials') {
+					await discardRejectedToken(ctx, nodeCredentials);
+				}
 				throw buildOAuth2ReconnectError(node, credentialsType);
 			}
 			throw error;

@@ -15,8 +15,8 @@ import { ExecutionLimitUsageFoldStep } from '../execution-limit-usage.fold-step'
 import { ExecutionLimitUsageRepository } from '../execution-limit-usage.repository';
 import { ledgerRow } from './ledger-rows';
 
-const COUNTED_MODES = ['cli', 'retry', 'trigger', 'webhook', 'evaluation', 'agent'];
-const UNCOUNTED_MODES = ['integrated', 'error', 'internal', 'manual', 'chat'];
+const COUNTED_MODES = ['cli', 'retry', 'trigger', 'webhook', 'evaluation'];
+const UNCOUNTED_MODES = ['integrated', 'error', 'internal', 'manual', 'chat', 'agent'];
 
 describe('ExecutionLimitUsageFoldStep', () => {
 	let usage: Repository<ExecutionLimitUsage>;
@@ -70,6 +70,13 @@ describe('ExecutionLimitUsageFoldStep', () => {
 			await fold(ledgerRow({ mode }));
 
 			expect(await usage.count()).toBe(0);
+		});
+
+		it('writes no rows for an agent run', async () => {
+			await fold(ledgerRow({ entityType: 'agent' }));
+
+			expect(await usage.count()).toBe(0);
+			expect(await instanceUsage.count()).toBe(0);
 		});
 	});
 

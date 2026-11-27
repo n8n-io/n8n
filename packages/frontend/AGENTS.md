@@ -16,7 +16,7 @@ Read the root `AGENTS.md` first. This file does not repeat its rules.
 
 Skills are in `.agents/skills/<name>`. Load a skill when the task matches:
 
-- `ui-design`: you build, change or style UI in `editor-ui`, `@n8n/design-system` or a module frontend.
+- `ui-review`: you build, change or style UI in `editor-ui`, `@n8n/design-system` or a module frontend.
 - `content-design`: you write or change UI text.
 - `experiments`: you add, change or remove an experiment or a PostHog feature flag in `editor-ui`.
 - `agent-design-language`: you change the Agent Builder UI.
@@ -68,7 +68,7 @@ Its message names the design-system component to use, or tells you to add one to
 ## Design system
 
 - To select a CSS token, use the narrowest token layer that fits.
-  `.agents/review-rules/frontend/design-system.md` lists the layers. `ui-design` tells how to find a token.
+  `.agents/review-rules/frontend/design-system.md` lists the layers. `ui-review` tells how to find a token.
 - Available icon names are in `packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts`.
   Use keys from `updatedIconSet` only — `deprecatedIconSet` entries must not be used in new code.
 - When rendering `el-plus` popovers/dropdowns/selects inside `N8nDialog`, prefer to keep them in the dialog stacking context with `:teleported="false"` unless they intentionally need to escape.

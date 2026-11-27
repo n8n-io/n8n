@@ -1,5 +1,7 @@
 import { Logger } from '@n8n/backend-common';
+import { CredentialResolverDataNotFoundError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
 import {
 	type ICredentialContext,
@@ -127,6 +129,60 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				{ cause: error },
 			);
 		}
+	}
+
+	/**
+	 * Deletes the caller's stored data when its OAuth refresh token is still the
+	 * one the provider rejected. The next run then asks the caller to connect again.
+	 */
+	async discardRejectedOAuthTokenData(
+		credentialStoreMetadata: CredentialStoreMetadata,
+		rejectedRefreshToken: string,
+		credentialContext: ICredentialContext,
+		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
+	): Promise<void> {
+		if (!credentialStoreMetadata.isResolvable) return;
+
+		const resolverId =
+			credentialStoreMetadata.resolverId ??
+			this.dynamicCredentialsProxy.getEffectiveResolverId(workflowSettings);
+		if (!resolverId) return;
+
+		const resolverEntity = await this.resolverRepository.findOneBy({ id: resolverId });
+		const resolver = resolverEntity
+			? this.resolverRegistry.getResolverByTypename(resolverEntity.type)
+			: undefined;
+		if (!resolverEntity || !resolver?.deleteSecret) return;
+		if (carriesN8nIdentity(credentialContext) && !resolver.resolveOwningUserId) return;
+
+		const handle = {
+			configuration: jsonParse<Record<string, unknown>>(
+				await this.cipher.decryptV2(resolverEntity.config),
+			),
+			resolverName: resolverEntity.name,
+			resolverId: resolverEntity.id,
+		};
+
+		let stored: ICredentialDataDecryptedObject;
+		try {
+			stored = await resolver.getSecret(
+				credentialStoreMetadata.id,
+				credentialContext,
+				handle,
+				executionId,
+			);
+		} catch (error) {
+			if (error instanceof CredentialResolverDataNotFoundError) return;
+			throw error;
+		}
+
+		const storedTokenData = stored.oauthTokenData;
+		if (!isRecord(storedTokenData) || storedTokenData.refresh_token !== rejectedRefreshToken) {
+			return;
+		}
+
+		await resolver.deleteSecret(credentialStoreMetadata.id, credentialContext, handle, executionId);
 	}
 
 	private handleNoResolver(credentialStoreMetadata: CredentialStoreMetadata) {

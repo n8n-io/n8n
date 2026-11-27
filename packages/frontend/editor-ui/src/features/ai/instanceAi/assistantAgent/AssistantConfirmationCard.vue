@@ -374,7 +374,6 @@ function onApprovalSelect(key: string) {
 		<AppBlueprintCard
 			v-else-if="variant === 'app-blueprint' && input.appBlueprint"
 			:blueprint="input.appBlueprint"
-			:errors="input.appBlueprintErrors"
 			:read-only="isInactive"
 			data-test-id="assistant-agent-app-blueprint"
 			@submit="

@@ -10,6 +10,39 @@ import { N8nSandboxServiceSandbox } from '../../../workspace/sandbox/n8n-sandbox
 import type { SandboxConfig } from '../../../workspace/sandbox/types';
 
 describe('createSandbox', () => {
+	it.each([
+		[undefined, undefined],
+		['none', true],
+		['public', false],
+	] as const)('maps egress %s to Daytona networkBlockAll=%s', async (egress, networkBlockAll) => {
+		const sandbox = await createSandbox({
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiKey: 'test-key',
+			egress,
+		});
+
+		expect(
+			(sandbox as unknown as { options: { networkBlockAll?: boolean } }).options.networkBlockAll,
+		).toBe(networkBlockAll);
+	});
+
+	it.each([undefined, 'none', 'public'] as const)(
+		'passes egress %s to the n8n sandbox adapter',
+		async (egress) => {
+			const sandbox = await createSandbox({
+				enabled: true,
+				provider: 'n8n-sandbox',
+				serviceUrl: 'https://sandbox.example.com',
+				egress,
+			});
+
+			expect(
+				(sandbox as unknown as { options: { egress?: 'none' | 'public' } }).options.egress,
+			).toBe(egress);
+		},
+	);
+
 	it('returns undefined when sandbox is disabled', async () => {
 		const config: SandboxConfig = { enabled: false, provider: 'n8n-sandbox' };
 
