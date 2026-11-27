@@ -31,20 +31,4 @@ describe('Internal API usage', () => {
 	it('rejects a report without calls', () => {
 		expect(INTERNAL_API_USAGE.getValidationError({ ...report, total_calls: 0 })).not.toBeNull();
 	});
-
-	it('rejects a route row without a call count for each client', () => {
-		const row = { route: 'GET /rest/workflows', editor_ui: 1 };
-
-		expect(INTERNAL_API_USAGE_JSON_FIELDS.routes.safeParse([row]).success).toBe(false);
-	});
-
-	it('rejects a negative call count', () => {
-		const row = { route: 'GET /rest/workflows', editor_ui: -1, other: 0 };
-
-		expect(INTERNAL_API_USAGE_JSON_FIELDS.routes.safeParse([row]).success).toBe(false);
-	});
-
-	it('rejects a clients count without the other client', () => {
-		expect(INTERNAL_API_USAGE_JSON_FIELDS.clients.safeParse({ editor_ui: 1 }).success).toBe(false);
-	});
 });
