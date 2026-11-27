@@ -48,6 +48,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { BuilderCredentialService, BuilderToolsOptions } from './builder-session';
 import { runInBuilderTelemetrySession } from './builder-telemetry-session';
 import type { Operation } from 'fast-json-patch';
+import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
@@ -360,8 +361,10 @@ type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 /**
  * What the publish tool sends to `suspend()`: an Assistant approval card. The Assistant
  * reads `message`, `severity`, `resourceName` and `approvalDetails` from the payload.
+ * The Assistant agent chat shows a card only for a payload with a `requestId`.
  */
 const PUBLISH_CONFIRMATION_SCHEMA = z.object({
+	requestId: z.string(),
 	message: z.string(),
 	severity: z.literal('warning'),
 	resourceName: z.string().optional(),
@@ -1331,6 +1334,7 @@ export class AgentsBuilderToolsService {
 
 		return {
 			confirmation: {
+				requestId: nanoid(),
 				// Clients that cannot read the details show this text instead.
 				message: `${changedSinceAsked ? 'The agent changed since you were asked. ' : ''}${headline} ${sends}`,
 				severity: 'warning',

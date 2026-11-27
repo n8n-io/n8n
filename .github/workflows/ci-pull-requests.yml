@@ -16,7 +16,7 @@ jobs:
     name: Install & Build
     needs: pr-policy
     if: needs.pr-policy.outputs.skip-ci != 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-bmi-n8n' }}
     # find-last-green-commit.mjs reads the workflow runs and the PR commits.
     permissions:
       contents: read
@@ -59,7 +59,6 @@ jobs:
       affected_packages: ${{ steps.affected-packages.outputs.list }}
       lockfile_impact: ${{ steps.affected-packages.outputs.lockfile-impact }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
-      currents_record_key: ${{ secrets.CURRENTS_RECORD_KEY != '' && 'present' || '' }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -173,6 +172,7 @@ jobs:
               scripts/cloud-session*.mjs
               scripts/codespace-env.mjs
               scripts/codespace-preview/**
+              scripts/format.mjs
               scripts/licenses/**
               scripts/mutation-health/**
               scripts/telemetry/**
@@ -346,7 +346,7 @@ jobs:
     name: Format check
     needs: pr-policy
     if: needs.pr-policy.outputs.skip-ci != 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-bmi-n8n' }}
     permissions:
       contents: read
     steps:
@@ -389,11 +389,11 @@ jobs:
   typecheck:
     name: Typecheck
     if: needs.install-and-build.outputs.ci == 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-bmi-n8n' }}
     needs: [install-and-build, format-check]
     env:
-      # Inherited by every worker turbo spawns, so the real budget is
-      # concurrency x cap: 2 x 6 GB fits the runner's 15.2 GB.
+      # Inherited by every worker turbo spawns (editor-ui overrides to 8 GB);
+      # 8vcpu (30.4 GB) gives headroom for two concurrent workers on BMI runners.
       NODE_OPTIONS: --max-old-space-size=6144
       # Read by `turbo --affected`. If the base is missing, turbo checks every package.
       TURBO_SCM_BASE: ${{ needs.install-and-build.outputs.affected_base }}
@@ -433,7 +433,7 @@ jobs:
   check-packaging:
     name: Check packaging
     if: needs.install-and-build.outputs.ci == 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-bmi-n8n' }}
     needs: [install-and-build, format-check]
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
@@ -475,7 +475,7 @@ jobs:
     name: Prepare E2E / Shard matrix
     needs: install-and-build
     if: needs.install-and-build.outputs.run_e2e == 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-bmi-n8n' }}
     outputs:
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
       skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
@@ -532,6 +532,9 @@ jobs:
       needs.e2e-matrix.result == 'success' &&
       needs.install-and-build.outputs.run_e2e == 'true' &&
       needs.e2e-matrix.outputs.skip_tests != 'true'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -540,7 +543,7 @@ jobs:
       workers: '1'
       pre-generated-matrix: ${{ needs.e2e-matrix.outputs.matrix }}
       artifact-prefix: e2e
-      currents-record-key: ${{ needs.install-and-build.outputs.currents_record_key }}
+      skip-shard-upload-when-recording: true
     secrets: inherit
 
   # Engine v2 parity: runs the `@engine:*` specs against a main that routes
@@ -557,6 +560,9 @@ jobs:
         || contains(github.event.pull_request.labels.*.name, 'force-engine-e2e')) &&
       github.event.pull_request.head.repo.fork != true &&
       github.event_name != 'merge_group'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -615,6 +621,9 @@ jobs:
       (needs.install-and-build.outputs.e2e_performance == 'true' ||
        contains(github.event.pull_request.labels.*.name, 'run-perf-tests')) &&
       github.event.pull_request.head.repo.fork != true
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/test-e2e-performance-reusable.yml
     secrets: inherit
 
@@ -751,7 +760,7 @@ jobs:
       needs.prepare-docker.result == 'success' &&
       needs.required-checks.result == 'success' &&
       (needs.e2e-performance.result == 'success' || needs.e2e-performance.result == 'skipped')
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-2vcpu-bmi-n8n
     steps:
       # Not `gh api --method DELETE`: written on Blacksmith runners, where
       # actions/cache is transparently intercepted, so GitHub's cache has no

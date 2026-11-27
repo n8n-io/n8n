@@ -14,10 +14,11 @@ public API endpoint gets into the node with no manual node code.
 | Command | What it does |
 |---------|--------------|
 | `pnpm --filter @n8n/n8n-node-codegen generate` | Prints the operations of the node and writes `properties.generated.ts`. When the file is up to date, it does not change the file. |
-| `pnpm --filter @n8n/n8n-node-codegen generate --check` | Fails when `properties.generated.ts` is out of date. It does not write the file. |
+| `pnpm --filter @n8n/n8n-node-codegen generate --check` | Fails when `properties.generated.ts` is out of date, and names the new and the removed operations. It does not write the file. |
+| `pnpm --filter @n8n/n8n-node-codegen generate --check --base <file>` | Runs `generate --check`, and also fails when your changes break saved workflows. See [Check for breaking changes](#check-for-breaking-changes). |
 | `pnpm --filter @n8n/n8n-node-codegen test` | Runs the tests. |
 
-Both `generate` commands fail when the node has errors, and then they do not
+The `generate` commands fail when the node has errors, and then they do not
 write the file. Do not edit `properties.generated.ts` manually.
 
 ## How it works
@@ -168,7 +169,7 @@ you add it to the node.
 | Make a required parameter optional, or the opposite | The field moves into or out of `Options` and loses its value. |
 | Add a required parameter | The new field is empty. |
 | Change the type of a parameter, or remove an enum value | The saved value does not fit the field. |
-| Change the `default`, or the `minimum` of a number without a `default` | A workflow that kept the default gets the new value. |
+| Change the `default` of a field outside `Options`, or its `minimum` when it has no `default` | A workflow that kept the default gets the new value. A field in `Options` keeps its value. |
 | Add or remove the `cursor` parameter | `Return All` appears or disappears, and `limit` moves. |
 | Add a body to an empty response, or the opposite | The node returns different data. |
 | Add an operation to `flatten`, or remove it | The fields of the operation change. |
@@ -180,17 +181,33 @@ These changes are safe:
 
 - Change a `summary`, an `x-displayName`, or a description.
 - Mark an operation or a parameter as deprecated.
-- Add an optional parameter or an enum value.
+- Add an optional parameter (but not `limit` next to `cursor`), or an enum value.
 - Add an operation to the node.
 
 A change in the generator can also break the saved workflows, for example a new
 rule for defaults or an update of `pluralize`.
 
-
 To make a breaking change, do not change the old operation or parameter. Add a
 new one, and mark the old one as deprecated. For example, `publishWorkflow`
 replaces `activateWorkflow`. If you cannot keep the old one, the node needs a
 new version.
+
+### Check for breaking changes
+
+Run `generate --check --base <file>` to find out if your changes break saved
+workflows. The check compares the node with the node in `<file>`, for example
+with `properties.generated.ts` on master. It fails on the changes from the
+table above. The path is relative to `packages/@n8n/n8n-node-codegen`.
+
+To compare with master, save `properties.generated.ts` from the commit where
+your branch starts from master, and give this file to the check. Run these
+commands from the repository root:
+
+```bash
+mkdir -p packages/@n8n/n8n-node-codegen/dist
+git show "$(git merge-base HEAD origin/master)":packages/nodes-base/nodes/N8n/v2/generated/properties.generated.ts > packages/@n8n/n8n-node-codegen/dist/base.ts
+pnpm --filter @n8n/n8n-node-codegen generate --check --base dist/base.ts
+```
 
 ### Other limits
 

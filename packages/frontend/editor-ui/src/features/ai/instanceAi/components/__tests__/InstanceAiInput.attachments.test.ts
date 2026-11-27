@@ -120,39 +120,9 @@ describe('InstanceAiInput — staged node attachments', () => {
 	});
 });
 
-describe('attach-only composer', () => {
+describe('InstanceAiInput — accepted file types', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
-	});
-
-	it('replaces the "+" menu with a paperclip restricted to the agent\'s file types', () => {
-		const { getByTestId, queryByTestId, container } = renderComponent({
-			props: { attachOnlyMimeTypes: 'image/*,application/pdf' },
-		});
-
-		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
-		expect(getByTestId('chat-input-attach-button')).toBeInTheDocument();
-		const fileInput = container.querySelector('input[type="file"]');
-		expect(fileInput).toHaveAttribute('accept', 'image/*,application/pdf');
-	});
-
-	it('tells the user when a dropped file type is not accepted', async () => {
-		const { getByRole } = renderComponent({
-			props: { attachOnlyMimeTypes: 'image/*' },
-		});
-		const file = new File(['%PDF'], 'report.pdf', { type: 'application/pdf' });
-		const drop = new Event('drop', { bubbles: true, cancelable: true });
-		Object.defineProperty(drop, 'dataTransfer', {
-			value: { files: [file], types: ['Files'], items: [{ kind: 'file', type: file.type }] },
-		});
-
-		getByRole('textbox').dispatchEvent(drop);
-		await nextTick();
-
-		expect(showMessageMock).toHaveBeenCalledWith({
-			type: 'error',
-			title: 'report.pdf is not a supported file type',
-		});
 	});
 
 	it('restricts the file types and keeps the "+" menu with acceptedMimeTypes', async () => {
@@ -180,16 +150,6 @@ describe('attach-only composer', () => {
 			type: 'error',
 			title: 'archive.zip is not a supported file type',
 		});
-	});
-
-	it('hides attaching entirely when the agent accepts no file types', () => {
-		const { queryByTestId, container } = renderComponent({
-			props: { attachOnlyMimeTypes: '' },
-		});
-
-		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
-		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
-		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
 	});
 });
 
@@ -279,7 +239,7 @@ describe('InstanceAiInput — file attachments', () => {
 		stubNoReducedMotion();
 		const { createObjectURL, revokeObjectURL } = stubObjectUrls();
 		const { container, findByAltText, findByTestId } = renderComponent({
-			props: { attachOnlyMimeTypes: 'image/*' },
+			props: { acceptedMimeTypes: 'image/*' },
 		});
 		const file = new File(['image'], 'preview.png', { type: 'image/png' });
 		const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!;
@@ -303,7 +263,7 @@ describe('InstanceAiInput — file attachments', () => {
 		stubNoReducedMotion();
 		stubObjectUrls();
 		const { emitted, container, getByRole, getByTestId } = renderComponent({
-			props: { attachOnlyMimeTypes: 'image/*' },
+			props: { acceptedMimeTypes: 'image/*' },
 		});
 		const textbox = getByRole('textbox');
 		await userEvent.type(textbox, 'Send this message');

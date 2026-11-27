@@ -5,7 +5,7 @@ summary: 'Beta: Get the promotion settings'
 description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
-  Returns who can promote, approve, and apply in their own projects. Instance owners and admins can always do all three.
+  Returns who can promote, approve, and apply in their own projects, and whether every promote needs a review. Instance owners and admins can always promote, approve, and apply.
 
   Requires the `securitySettings:manage` API key scope.
 x-required-scope: securitySettings:manage

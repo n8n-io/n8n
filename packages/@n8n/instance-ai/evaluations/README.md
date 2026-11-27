@@ -1290,8 +1290,6 @@ user names (CONTEXT-86: `list_workflows` takes `folderPath` or `folderId`).
   agent against a folder that does not exist. On a local instance started with
   `E2E_TESTS=true`, `/rest/e2e/reset` stubs the license to all-false, so re-enable it
   after seeding the owner: `PATCH /rest/e2e/feature {"feature":"feat:folders","enabled":true}`.
-  Folder exploration itself is behind the PostHog flag `110_instance_ai_folder_exploration`;
-  force it on with `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED=true` on the target instance.
 - **Cleanup deletes the folders after the workflows.** A folder delete does not delete
   what it still holds. It archives that workflow and moves it to the project root, so the
   order matters. Cleanup deletes the root folders only, and the `onDelete: 'CASCADE'`

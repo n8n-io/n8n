@@ -37,7 +37,6 @@ if (args[0] === 'codespace' && args[1] === 'list') {
     res.end(JSON.stringify({ version: process.env.TEST_SERVER_VERSION || '2.4.1', pid: process.pid, urls: [], paths: { tmp: '/tmp' } }));
   });
   server.listen(port, '127.0.0.1');
-  if (process.env.TEST_TUNNEL_DROP) setTimeout(() => process.exit(1), 500);
   process.on('SIGTERM', () => { log({ event: 'tunnel-stopped' }); server.closeAllConnections(); server.close(() => process.exit(0)); });
 } else if (args.at(-1).includes('node --input-type=module')) {
   let source = '';
@@ -70,7 +69,6 @@ if (args[0] === '--version') {
     legacyPassword: process.env.OPENCODE_SERVER_PASSWORD ?? null,
     legacyUsername: process.env.OPENCODE_SERVER_USERNAME ?? null,
   });
-  if (process.env.TEST_CLIENT_WAIT) setInterval(() => {}, 1000);
 }
 `,
 	);
@@ -240,7 +238,6 @@ for (const [label, env, message] of [
 	['a tunnel startup failure', { TEST_TUNNEL_FAIL: '1' }, /SSH tunnel closed/],
 	['a remote preparation failure', { TEST_BOOTSTRAP_FAIL: '1' }, /Could not prepare/],
 	['a missing local client', { TEST_NO_CLIENT: '1' }, /Install OpenCode locally/],
-	['a connection loss', { TEST_CLIENT_WAIT: '1', TEST_TUNNEL_DROP: '1' }, /SSH connection closed/],
 ]) {
 	test(`reports ${label} without printing credentials`, { timeout: 15000 }, async (t) => {
 		const f = fixture(t, env);
@@ -248,7 +245,6 @@ for (const [label, env, message] of [
 		assert.equal(result.code, 1, result.output);
 		assert.match(result.output, message);
 		assert.ok(!result.output.includes(secret));
-		if (label !== 'a connection loss')
-			assert.ok(!f.calls().some((call) => call.command === 'opencode'));
+		assert.ok(!f.calls().some((call) => call.command === 'opencode'));
 	});
 }

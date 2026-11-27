@@ -2,7 +2,13 @@ import { defineComponent, h, nextTick, ref } from 'vue';
 import { cleanup, render } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 
-import { isModalPrefetchRunning, usePrefetchModals } from '@/app/composables/usePrefetchModals';
+import { modalRegistry } from '@n8n/frontend-module-sdk';
+
+import {
+	isModalPrefetchRunning,
+	useModalPrefetch,
+	usePrefetchModals,
+} from '@/app/composables/usePrefetchModals';
 import {
 	MODAL_PREFETCH_FALLBACK_DELAY,
 	MODAL_PREFETCH_IDLE_TIMEOUT,
@@ -270,5 +276,72 @@ describe('usePrefetchModals', () => {
 		} finally {
 			process.off('unhandledRejection', unhandledRejection);
 		}
+	});
+
+	describe('a modal that a module registered', () => {
+		const MODULE_MODAL_KEY = 'testModuleModal';
+		const STATIC_MODULE_MODAL_KEY = 'testStaticModuleModal';
+		const moduleLoader = vi.fn(async () => ({}));
+
+		function renderModulePage(keys: readonly string[]) {
+			const Page = defineComponent({
+				setup() {
+					useModalPrefetch(keys);
+					return () => h('div');
+				},
+			});
+			return render(Page);
+		}
+
+		beforeEach(() => {
+			modalRegistry.register({ key: MODULE_MODAL_KEY, component: moduleLoader });
+			modalRegistry.register({ key: STATIC_MODULE_MODAL_KEY, component: { render: () => null } });
+		});
+
+		afterEach(() => {
+			modalRegistry.clear();
+		});
+
+		it('loads it through the lazy component of its registration', async () => {
+			let finishLoad = () => {};
+			moduleLoader.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finishLoad = () => resolve({});
+					}),
+			);
+			renderModulePage([MODULE_MODAL_KEY]);
+
+			idleCallbacks.shift()?.({ didTimeout: false, timeRemaining: () => 50 });
+
+			expect(moduleLoader).toHaveBeenCalledTimes(1);
+			// The preload-error handler must see a module modal prefetch as running too.
+			expect(isModalPrefetchRunning()).toBe(true);
+			finishLoad();
+			await flushPromises();
+			expect(isModalPrefetchRunning()).toBe(false);
+		});
+
+		it('skips a key with no lazy loader and loads the next modal', async () => {
+			renderModulePage(['unknownModal', STATIC_MODULE_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY]);
+
+			await runNextIdle();
+			await runNextIdle();
+			expect(loader(WORKFLOW_SETTINGS_MODAL_KEY)).not.toHaveBeenCalled();
+
+			await runNextIdle();
+			expect(loader(WORKFLOW_SETTINGS_MODAL_KEY)).toHaveBeenCalledTimes(1);
+			expect(isModalPrefetchRunning()).toBe(false);
+		});
+
+		it('prefers the shell loader when a module registers the same key', async () => {
+			modalRegistry.register({ key: WORKFLOW_SETTINGS_MODAL_KEY, component: moduleLoader });
+			renderModulePage([WORKFLOW_SETTINGS_MODAL_KEY]);
+
+			await runNextIdle();
+
+			expect(loader(WORKFLOW_SETTINGS_MODAL_KEY)).toHaveBeenCalledTimes(1);
+			expect(moduleLoader).not.toHaveBeenCalled();
+		});
 	});
 });

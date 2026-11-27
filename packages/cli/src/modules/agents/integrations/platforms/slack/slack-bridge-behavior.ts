@@ -12,6 +12,7 @@ import type {
 } from '../../agent-chat-integration';
 import type { ChatInstance } from '../../chat-integration.service';
 import type { ReplyExpectation } from '../../integration-tools';
+import { getInboundMessageText } from '../../inbound-message-text';
 
 const SLACK_THINKING_STATUS = 'Thinking...';
 const SLACK_STATUS_RETRY_DELAY_MS = 750;
@@ -365,7 +366,7 @@ async function fetchSlackThreadHistory(
 				break;
 			}
 
-			const text = typeof message.text === 'string' ? message.text.trim() : '';
+			const text = (await getInboundMessageText(message, { preserveCode: true }))?.trim();
 			if (!text) continue;
 
 			const line = formatSlackHistoryLine(message, text);
@@ -469,11 +470,12 @@ function getSlackAssistantStatusAdapter(
 
 function stripSlackSelfMention(text: string, userId: string): string {
 	const escapedUserId = escapeRegExp(userId);
-	return text
-		.replace(new RegExp(`(^|\\s)<@!?${escapedUserId}(?:\\|[^>]+)?>`, 'gi'), '$1')
-		.replace(new RegExp(`(^|\\s)@${escapedUserId}\\b`, 'gi'), '$1')
-		.replace(/\s+/g, ' ')
-		.trim();
+	const codeSpan = /(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/;
+	const codeOrMention = new RegExp(
+		String.raw`${codeSpan.source}|(?<!\S)(?:<@!?${escapedUserId}(?:\|[^>]+)?>|@${escapedUserId}\b)[ \t]*`,
+		'gi',
+	);
+	return text.replace(codeOrMention, (match, delimiter) => (delimiter ? match : '')).trim();
 }
 
 function isSlackAssistantStatusAdapter(value: unknown): value is SlackAssistantStatusAdapter {

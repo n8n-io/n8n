@@ -17,9 +17,9 @@ function isAgentsN8nChatFlagEnabled(): boolean {
 export const useAgentsN8nChatFlag = () => computed(isAgentsN8nChatFlagEnabled);
 
 /**
- * Distinguishes the two active arms of the n8n Chat experiment, for surfaces
- * (like the Instance AI empty state) that behave differently per variant.
- * Both arms stay off while Agents is inactive or turned off: their agent lists would fail.
+ * Distinguishes the arms of the n8n Chat experiment, for surfaces (like the
+ * Instance AI empty state) that behave differently per variant. Every arm stays
+ * off while Agents is inactive or turned off: its agent list would fail.
  */
 export function useAgentsN8nChatVariant() {
 	const posthog = usePostHog();
@@ -29,7 +29,6 @@ export function useAgentsN8nChatVariant() {
 	);
 	return {
 		isVariantA: computed(() => variant.value === AGENTS_N8N_CHAT_EXPERIMENT.variantA),
-		isVariantB: computed(() => variant.value === AGENTS_N8N_CHAT_EXPERIMENT.variantB),
 	};
 }
 

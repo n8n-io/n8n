@@ -1715,7 +1715,7 @@ export class WorkflowDataProxy {
 						},
 					);
 				}
-				itemIndex = itemIndex || that.itemIndex;
+				itemIndex = itemIndex ?? that.itemIndex;
 				return that.workflow.expression.getParameterValue(
 					`=${expression}`,
 					that.runExecutionData,

@@ -5,7 +5,7 @@ import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, type TransactionRunner, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -105,7 +105,7 @@ describe('AgentSkillsService', () => {
 		projectScopeService.getProjectIds.mockResolvedValue([projectId]);
 		skillAccess = mock<SkillAccessService>();
 		// The real rule, on top of the mocked permission checks.
-		const realAccess = new SkillAccessService(mock(), projectScopeService);
+		const realAccess = new SkillAccessService(mock(), projectScopeService, mock(), mock(), mock());
 		skillAccess.canCreate.mockImplementation(
 			async (...args) => await realAccess.canCreate(...args),
 		);
@@ -269,6 +269,18 @@ describe('AgentSkillsService', () => {
 			await expect(
 				service.createAndAttachSkills(agentId, projectId, [skill], context),
 			).rejects.toThrow('Agent has no JSON config yet.');
+			expect(skillRefs.createSkills).not.toHaveBeenCalled();
+		});
+
+		it('refuses a batch that mentions a workflow the user cannot read', async () => {
+			givenAgent({ schema: baseConfig });
+			skillAccess.assertCanReadMentionedWorkflows.mockRejectedValue(new UserError('No access'));
+			const mentioning = { ...skill, instructions: 'Run [Report](n8n://workflow/wf1).' };
+
+			await expect(
+				service.createAndAttachSkills(agentId, projectId, [mentioning], context),
+			).rejects.toThrow('No access');
+			expect(skillAccess.assertCanReadMentionedWorkflows).toHaveBeenCalledWith(user, mentioning);
 			expect(skillRefs.createSkills).not.toHaveBeenCalled();
 		});
 
@@ -695,6 +707,22 @@ describe('AgentSkillsService', () => {
 			await expect(
 				service.updateSkill(agentId, projectId, 'skill_a', { instructions: 'New.' }, context),
 			).rejects.toThrow(ForbiddenError);
+			expect(skillService.saveTrusted).not.toHaveBeenCalled();
+		});
+
+		it('refuses a save that mentions a workflow the user cannot read, and checks it against the shown version', async () => {
+			givenAgent({ schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] } });
+			skillAccess.assertCanReadMentionedWorkflows.mockRejectedValue(new UserError('No access'));
+			const instructions = 'Use [A](n8n://workflow/a).';
+
+			await expect(
+				service.updateSkill(agentId, projectId, 'skill_a', { instructions }, context),
+			).rejects.toThrow('No access');
+			expect(skillAccess.assertCanReadMentionedWorkflows).toHaveBeenCalledWith(
+				user,
+				{ ...skill, instructions },
+				skill,
+			);
 			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
 

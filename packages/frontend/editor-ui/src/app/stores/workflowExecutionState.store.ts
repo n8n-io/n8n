@@ -471,6 +471,10 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		});
 
 		const activeExecutionWaitingByNodeId = computed(() => {
+			// Debug imports are snapshots. New manual runs must still show their wait state.
+			if (isInDebugMode.value && activeExecutionId.value === undefined) {
+				return EMPTY_EXECUTION_WAITING_BY_NODE_ID;
+			}
 			const executionId = getResolvedActiveExecutionId();
 			if (!executionId) return EMPTY_EXECUTION_WAITING_BY_NODE_ID;
 			return useExecutionDataStore(createExecutionDataId(executionId)).executionWaitingByNodeId;

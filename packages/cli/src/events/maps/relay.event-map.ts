@@ -1,6 +1,7 @@
 import type { AppEventMap } from '@n8n/backend-module-apps';
 import type { DataTableEventMap } from '@n8n/backend-module-data-table';
 import type { ExecutionLimitsEventMap } from '@n8n/backend-module-execution-limits';
+import type { McpServerEventMap } from '@n8n/backend-module-mcp-servers';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -105,7 +106,7 @@ export type ProjectSummary = {
 	name: string;
 };
 
-type ModuleEventMap = DataTableEventMap & AppEventMap & ExecutionLimitsEventMap;
+type ModuleEventMap = DataTableEventMap & AppEventMap & ExecutionLimitsEventMap & McpServerEventMap;
 
 export type RelayEventMap = ModuleEventMap & {
 	// #region Lifecycle
@@ -1563,7 +1564,8 @@ export type RelayEventMap = ModuleEventMap & {
 				settingName:
 					| 'promotions_who_can_promote'
 					| 'promotions_who_can_approve'
-					| 'promotions_who_can_apply';
+					| 'promotions_who_can_apply'
+					| 'promotions_require_approval';
 				value: PromotionSettings[keyof PromotionSettings];
 		  }
 	);

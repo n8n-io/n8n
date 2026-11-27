@@ -69,7 +69,6 @@ const ALLOWED_CATALOGUE_KEYS = [
 	'communityPackageInstall',
 	'communityPackageManageConfirm',
 	'communityPlusEnrollment',
-	'createOrEditApiKey',
 	'credentialResolverEdit',
 	'debugPaywall',
 	'deleteFolder',

@@ -586,6 +586,47 @@ describe('refreshOAuth2Token', () => {
 		).not.toHaveBeenCalled();
 	});
 
+	test('should discard the rejected token when refresh returns invalid_grant', async () => {
+		mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+		nock(baseUrl).post('/token').reply(400, { error: 'invalid_grant' });
+
+		await expect(
+			refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+		).rejects.toThrow('needs to be reconnected');
+
+		expect(mockAdditionalData.credentialsHelper.discardRejectedOauthTokenData).toHaveBeenCalledWith(
+			{ id: 'test-credentials-id', name: 'test-credentials-name' },
+			'test-credentials-type',
+			'old-refresh-token',
+			mockAdditionalData,
+		);
+	});
+
+	test('should still throw the reconnect error when discarding the rejected token fails', async () => {
+		mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+		mockAdditionalData.credentialsHelper.discardRejectedOauthTokenData = vi
+			.fn()
+			.mockRejectedValue(new Error('storage unavailable'));
+		nock(baseUrl).post('/token').reply(400, { error: 'invalid_grant' });
+
+		await expect(
+			refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+		).rejects.toThrow('The credential "test-credentials-name" needs to be reconnected.');
+	});
+
+	test('should not discard the token when refresh fails with another error', async () => {
+		mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+		nock(baseUrl).post('/token').reply(400, { error: 'invalid_client' });
+
+		await expect(
+			refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+		).rejects.toThrow();
+
+		expect(
+			mockAdditionalData.credentialsHelper.discardRejectedOauthTokenData,
+		).not.toHaveBeenCalled();
+	});
+
 	test('should surface an actionable reconnect message when client credentials token fetch returns invalid_grant', async () => {
 		mockThis.getCredentials.mockResolvedValue({
 			...mockCredentialData,
@@ -598,6 +639,9 @@ describe('refreshOAuth2Token', () => {
 		await expect(
 			refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
 		).rejects.toThrow('The credential "test-credentials-name" needs to be reconnected.');
+		expect(
+			mockAdditionalData.credentialsHelper.discardRejectedOauthTokenData,
+		).not.toHaveBeenCalled();
 	});
 
 	test('should rethrow non-invalid_grant token errors unchanged', async () => {
