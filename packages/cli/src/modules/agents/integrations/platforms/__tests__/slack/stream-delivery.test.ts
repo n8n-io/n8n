@@ -14,13 +14,18 @@ import {
 	SLACK_STREAMING_OPTIONS,
 } from '../../slack/slack-bridge-behavior';
 import { SlackIntegration } from '../../slack/slack-integration';
+import { createSlackSourceAdapter } from '../../slack/slack-adapter';
+
+vi.mock('../../../esm-loader', () => ({
+	loadSlackAdapter: async () => await import('@chat-adapter/slack'),
+	loadChatSdk: async () => await import('chat'),
+}));
 
 async function makeSlackContext(topLevel: boolean, resume = false) {
 	const threadTs = topLevel ? '1719000001.000100' : '1719000000.000100';
-	const { createSlackAdapter } = await import('@chat-adapter/slack');
 	const { createMemoryState } = await import('@chat-adapter/state-memory');
 	const { ThreadImpl } = await import('chat');
-	const adapter = createSlackAdapter({
+	const adapter = await createSlackSourceAdapter({
 		botToken: 'xoxb-test-token',
 		botUserId: 'U_BOT',
 		signingSecret: 'test-signing-secret',
@@ -64,6 +69,48 @@ async function makeSlackContext(topLevel: boolean, resume = false) {
 
 describe('Slack stream delivery', () => {
 	afterEach(() => nock.cleanAll());
+
+	// AGENT-1629: Slack rewrites bullets when it renders markdown_text.
+	it.each([
+		{
+			markdown: '**Math**: x • y and `*x* • y`\n\n```lean\n  a*b*c • y < z\n```\n\na*b*c',
+			field: 'text',
+			expected: '*Math*: x • y and `*x* • y`\n\n```\n  a*b*c • y &lt; z\n```\n\na*b*c',
+		},
+		{
+			markdown: '*This* is math: 𝑎*b*c and `a*b*c`.',
+			field: 'markdown_text',
+			expected: '*This* is math: 𝑎\\*b\\*c and `a*b*c`.',
+		},
+	])(
+		'preserves literal math in Slack posts and edits ($field)',
+		async ({ markdown, field, expected }) => {
+			const bodies: unknown[] = [];
+			const ts = '1719000999.000100';
+			const capture = (uri: string, body: unknown) => {
+				if (uri === '/api/chat.postMessage' || uri === '/api/chat.update') {
+					bodies.push(
+						typeof body === 'string' ? Object.fromEntries(new URLSearchParams(body)) : body,
+					);
+				}
+				return { ok: true, ts, message: { ts } };
+			};
+			nock('https://slack.com')
+				.persist()
+				.post(/\/api\/.+/)
+				.reply(200, capture);
+			const { thread } = await makeSlackContext(false);
+			const reply = await thread.post({ markdown });
+			await reply.edit({ markdown });
+			expect(bodies).toEqual([
+				expect.objectContaining({ [field]: expected, thread_ts: '1719000000.000100' }),
+				expect.objectContaining({ [field]: expected, ts }),
+			]);
+			for (const body of bodies) {
+				expect(body).not.toHaveProperty(field === 'text' ? 'markdown_text' : 'text');
+			}
+		},
+	);
 
 	it.each([
 		{ name: 'threaded stream', topLevel: false, textEnd: true, ending: 'reply' },
