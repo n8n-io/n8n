@@ -8,10 +8,8 @@ import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import CustomRolesUpgradeModal from './CustomRolesUpgradeModal.vue';
-import {
-	UI_VISIBLE_SCOPES,
-	TOTAL_PROJECT_PERMISSIONS,
-} from '@/features/roles/project/projectRoleScopes';
+import { UI_VISIBLE_SCOPES } from '@/features/roles/project/projectRoleScopes';
+import { useHiddenRoleResources, withoutHiddenScopes } from '../composables/useHiddenRoleResources';
 
 const props = withDefaults(
 	defineProps<{
@@ -45,16 +43,19 @@ const upgradeModalVisible = ref(false);
 const canManageRoles = computed(() => hasPermission(['rbac'], { rbac: { scope: 'role:manage' } }));
 const canEditRole = computed(() => canManageRoles.value && !props.role.systemRole);
 
-// Count only UI-visible scopes (exclude implicit :list, :execute, :listProject)
+// Count only UI-visible scopes (exclude implicit :list, :execute, :listProject), and leave out
+// the scopes of resources that the role editor hides.
+const hiddenResources = useHiddenRoleResources();
+const visibleScopes = computed(
+	() => new Set(withoutHiddenScopes([...UI_VISIBLE_SCOPES], hiddenResources.value)),
+);
 const resolvedPermissionCount = computed(
 	() =>
 		props.permissionCount ??
-		props.role.scopes?.filter((scope) => UI_VISIBLE_SCOPES.has(scope)).length ??
+		props.role.scopes?.filter((scope) => visibleScopes.value.has(scope)).length ??
 		0,
 );
-const resolvedTotalPermissions = computed(
-	() => props.totalPermissions ?? TOTAL_PROJECT_PERMISSIONS,
-);
+const resolvedTotalPermissions = computed(() => props.totalPermissions ?? visibleScopes.value.size);
 
 const buttonText = computed(() =>
 	canEditRole.value

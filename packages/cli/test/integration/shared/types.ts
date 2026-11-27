@@ -67,7 +67,8 @@ type EndpointGroup =
 	| 'workflow-reviews'
 	| 'test-webhooks'
 	| 'type-availability-policies'
-	| 'execution-limits';
+	| 'execution-limits'
+	| 'mcp-servers';
 
 type ModuleName =
 	| 'inbox'
@@ -91,6 +92,7 @@ type ModuleName =
 	| 'workflow-reviews'
 	| 'type-availability-policies'
 	| 'inbound-auth-core'
+	| 'mcp-servers'
 	| 'scim'
 	| 'execution-limits';
 

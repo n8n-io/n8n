@@ -241,7 +241,11 @@ type EntityName =
 	| 'ExecutionLedgerEntity'
 	| 'ExecutionLedgerParkedEntity'
 	| 'ExecutionLimitAudit'
-	| 'ProjectExecutionLimit';
+	| 'ProjectExecutionLimit'
+	| 'McpServer'
+	| 'McpServerTool'
+	| 'McpServerConnection'
+	| 'McpServerBlock';
 
 /**
  * Truncate specific DB tables in a test DB.

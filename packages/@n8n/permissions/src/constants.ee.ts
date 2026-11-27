@@ -116,6 +116,9 @@ export const RESOURCES = {
 	role: ['manage', 'read', 'manageProject', 'list'] as const,
 	mcp: ['manage', 'oauth'] as const,
 	mcpApiKey: ['create', 'rotate'] as const,
+	// Custom MCP servers of a project. `mcp` is the instance MCP. `connect` lets a person
+	// connect an AI client to a server.
+	mcpServer: [...DEFAULT_OPERATIONS, 'connect'] as const,
 	chatHub: ['manage', 'message'] as const,
 	chatHubAgent: [...DEFAULT_OPERATIONS] as const,
 	breakingChanges: ['list', 'migrate'] as const,

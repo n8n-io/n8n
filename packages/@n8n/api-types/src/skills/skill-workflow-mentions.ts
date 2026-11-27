@@ -1,3 +1,5 @@
+import type { AgentSkill } from '../agents/types';
+
 export type SkillWorkflowMention = {
 	workflowId: string;
 	name: string;
@@ -8,7 +10,8 @@ const SKILL_WORKFLOW_MENTION_PATTERN =
 
 const unescapeLinkText = (text: string) => text.replace(/\\([\\[\]])/g, '$1');
 
-const escapeLinkText = (text: string) => text.replace(/[\\[\]]/g, '\\$&');
+const escapeLinkText = (text: string) =>
+	text.replace(/\s*[\r\n]+\s*/g, ' ').replace(/[\\[\]]/g, '\\$&');
 
 export function parseSkillWorkflowMentions(body: string): SkillWorkflowMention[] {
 	const mentions = new Map<string, SkillWorkflowMention>();
@@ -20,6 +23,38 @@ export function parseSkillWorkflowMentions(body: string): SkillWorkflowMention[]
 	return [...mentions.values()];
 }
 
+export function parseAgentSkillWorkflowMentions(
+	skill: Pick<AgentSkill, 'instructions' | 'references'>,
+): SkillWorkflowMention[] {
+	const files = [skill.instructions, ...(skill.references ?? []).map(({ content }) => content)];
+	return parseSkillWorkflowMentions(files.join('\n'));
+}
+
+export function getSkillWorkflowMentionUrl(workflowId: string): string {
+	return `n8n://workflow/${workflowId}`;
+}
+
 export function formatSkillWorkflowMention({ workflowId, name }: SkillWorkflowMention): string {
-	return `[${escapeLinkText(name)}](n8n://workflow/${workflowId})`;
+	return `[${escapeLinkText(name)}](${getSkillWorkflowMentionUrl(workflowId)})`;
+}
+
+export function renameSkillWorkflowMentions(
+	body: string,
+	namesByWorkflowId: ReadonlyMap<string, string>,
+): string {
+	return body.replace(SKILL_WORKFLOW_MENTION_PATTERN, (link, text: string, workflowId: string) => {
+		const name = namesByWorkflowId.get(workflowId);
+		if (name === undefined) return link;
+		return `[${escapeLinkText(name)}]${link.slice(text.length + 2)}`;
+	});
+}
+
+export function replaceSkillWorkflowMentionUrls(
+	body: string,
+	urlForWorkflow: (workflowId: string) => string,
+): string {
+	return body.replace(
+		SKILL_WORKFLOW_MENTION_PATTERN,
+		(_link, text: string, workflowId: string) => `[${text}](${urlForWorkflow(workflowId)})`,
+	);
 }
