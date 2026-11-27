@@ -2,6 +2,7 @@ import {
 	createTestMigrationContext,
 	initDbUpToMigration,
 	runSingleMigration,
+	undoLastSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
 import { DbConnection, type Migration } from '@n8n/db';
@@ -146,6 +147,50 @@ describe('DropAgentDescriptionFromAgents Migration', () => {
 			expect(historyRows).toHaveLength(1);
 			expect(historyRows[0].versionId).toBe(versionId);
 
+			expect(await countMigrationRecords(context)).toBe(1);
+		});
+	});
+
+	it('restores description on down, keeps child rows intact, and reapplies cleanly', async () => {
+		const projectId = randomUUID();
+		const agentId = randomUUID();
+		const versionId = randomUUID();
+
+		await withContext(async (context) => {
+			await insertProject(context, projectId);
+			await insertAgent(context, {
+				id: agentId,
+				projectId,
+				description: 'Legacy agent description',
+			});
+			await insertAgentHistory(context, { versionId, agentId });
+		});
+
+		await runSingleMigration(MIGRATION_NAME);
+		dataSource = Container.get(DataSource);
+
+		await undoLastSingleMigration();
+
+		await withContext(async (context) => {
+			expect(await getAgentColumns(context)).toContain('description');
+			const historyRows = await context.runQuery<Array<{ versionId: string }>>(
+				`SELECT "versionId" FROM ${context.escape.tableName('agent_history')} WHERE "agentId" = :id`,
+				{ id: agentId },
+			);
+			expect(historyRows).toEqual([{ versionId }]);
+			expect(await countMigrationRecords(context)).toBe(0);
+		});
+
+		await runSingleMigration(MIGRATION_NAME);
+		dataSource = Container.get(DataSource);
+
+		await withContext(async (context) => {
+			expect(await getAgentColumns(context)).not.toContain('description');
+			const historyRows = await context.runQuery<Array<{ versionId: string }>>(
+				`SELECT "versionId" FROM ${context.escape.tableName('agent_history')} WHERE "agentId" = :id`,
+				{ id: agentId },
+			);
+			expect(historyRows).toEqual([{ versionId }]);
 			expect(await countMigrationRecords(context)).toBe(1);
 		});
 	});
