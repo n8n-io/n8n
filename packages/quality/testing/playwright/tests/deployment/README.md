@@ -29,6 +29,11 @@ TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly-pc \
 TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly-distroless \
 pnpm --filter n8n-playwright test:deployment tests/deployment/cloud-launch-settings.spec.ts
 
+# CRT-04: Cloud plan memory limits (768 MiB RAM, no swap, 0.5 CPU under large payload)
+TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly-pc \
+TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly-distroless \
+pnpm --filter n8n-playwright test:deployment tests/deployment/cloud-memory-limits.spec.ts
+
 # DEP-05: queue mode against pinned Redis 7
 TEST_IMAGE_N8N=ghcr.io/n8n-io/n8n:nightly \
 TEST_IMAGE_TASK_RUNNER=ghcr.io/n8n-io/runners:nightly \
@@ -72,6 +77,7 @@ To test the `3.x` channel, replace `nightly` with `v3-nightly` (`v3-nightly`, `v
 | `IMG-07` | `task-runner-distroless.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Distroless runner (for example `ghcr.io/n8n-io/runners:nightly-distroless`) | `runCodeNodes({ python: true })` (JS + Python Code nodes), n8n image ref and architecture, distroless runner label, architecture, and nonroot user `65532:65532` |
 | `CRT-01` (`amd64`), `CRT-01`/`IMG-04`/`IMG-08` (`arm64`) | `cloud-image-pair.spec.ts` | Pointer-compressed `-pc` image (for example `ghcr.io/n8n-io/n8n:nightly-pc`) | Distroless runner (for example `ghcr.io/n8n-io/runners:nightly-distroless`) | `runCodeNodes({ python: true })` (JS + Python Code nodes), distroless runner, image architecture, V8 pointer compression enabled |
 | `CRT-02` | `cloud-launch-settings.spec.ts` | Pointer-compressed `-pc` image (for example `ghcr.io/n8n-io/n8n:nightly-pc`) | Distroless runner (for example `ghcr.io/n8n-io/runners:nightly-distroless`) | `runWebhook()` + `runCodeNodes({ python: true })`, user `1000:1000`, direct `/usr/local/bin/node` entrypoint with `/usr/local/bin/n8n` command (PID 1), `NODE_PATH=/usr/local/lib/node_modules`, distroless runner, V8 pointer compression enabled |
+| `CRT-04` | `cloud-memory-limits.spec.ts` | Pointer-compressed `-pc` image (for example `ghcr.io/n8n-io/n8n:nightly-pc`) | Distroless runner (for example `ghcr.io/n8n-io/runners:nightly-distroless`) | 768 MiB container memory limit with swap disabled (`HostConfig.Memory` and `HostConfig.MemorySwap`), `0.5` CPU quota, cgroup memory limit and V8 heap cap active, V8 pointer compression and distroless runner, large-payload webhook workflow (~4.3 MiB, 4,000 items), zero OOM kills or restarts, follow-up `runWebhook()`, `/healthz`, and `signIn()` |
 | `DEP-05` | `redis-7.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`), `runWebhook()` + `runCodeNodes()`, `INFO server` reports engine `redis` and major version `7`, Bull job counter advances |
 | `DEP-06` | `valkey.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`) with `TEST_IMAGE_REDIS=valkey/valkey:9.2.1-alpine`, `runWebhook()` + `runCodeNodes()`, `INFO server` reports engine `valkey` and major version `9`, Bull job counter advances |
 | `ENV-09` | `azure-binary-storage.spec.ts` | Standard image (for example `ghcr.io/n8n-io/n8n:nightly`) | Standard runner (for example `ghcr.io/n8n-io/runners:nightly`) | Queue mode (`workers: 1`, `services: ['azurite']`, `N8N_DEFAULT_BINARY_DATA_MODE=azure`), `roundTripBinary()` + `readExecution()`, uploaded and worker-written binary blobs verified in Azurite |
@@ -94,11 +100,12 @@ To test the `3.x` channel, replace `nightly` with `v3-nightly` (`v3-nightly`, `v
 
 | File | Responsibility |
 | --- | --- |
-| `probe.ts` | Relative-path REST probe (`signIn`, `runWebhook`, `runCodeNodes`, `readExecution`, `roundTripBinary`), image, architecture, and runtime assertions, and the shared `runDeploymentCell()` runner |
+| `probe.ts` | Relative-path REST probe (`checkHealth`, `signIn`, `runWebhook`, `runCodeNodes`, `readExecution`, `roundTripBinary`), image, architecture, and runtime assertions, and the shared `runDeploymentCell()` runner |
 | `standard-image-pair.spec.ts` | `@cell:IMG-01`/`@cell:IMG-05` (`amd64`) and `@cell:IMG-02`/`@cell:IMG-06` (`arm64`) spec for standard n8n with the standard task runner |
 | `task-runner-distroless.spec.ts` | `@cell:IMG-07` spec for standard n8n with the distroless task runner |
 | `cloud-image-pair.spec.ts` | `@cell:CRT-01` (`amd64`) and `@cell:CRT-01`/`@cell:IMG-04`/`@cell:IMG-08` (`arm64`) spec for `-pc` n8n with the distroless task runner |
 | `cloud-launch-settings.spec.ts` | `@cell:CRT-02` spec for Cloud container launch settings (`1000:1000`, `/usr/local/bin/node`, `/usr/local/bin/n8n`, `NODE_PATH`) |
+| `cloud-memory-limits.spec.ts` | `@cell:CRT-04` spec for Cloud starter memory limits (768 MiB RAM, no swap, 0.5 CPU) under a large-payload workflow |
 | `redis-7.spec.ts` | `@cell:DEP-05` spec for queue mode against pinned Redis 7 |
 | `valkey.spec.ts` | `@cell:DEP-06` spec for queue mode against pinned Valkey |
 | `azure-binary-storage.spec.ts` | `@cell:ENV-09` spec for Azure Blob binary data storage against Azurite |

@@ -154,6 +154,10 @@ export interface StackConfig {
 		entrypoint?: string[];
 		/** Override the container command (Docker `Cmd`). Worker and webhook roles append their subcommand. */
 		command?: string[];
+		/** Hard container memory limit in bytes (Docker `HostConfig.Memory`). Overrides `resourceQuota.memory`. */
+		memoryBytes?: number;
+		/** Total memory plus swap limit in bytes (Docker `HostConfig.MemorySwap`). Requires a memory limit; set equal to memory to disable swap, or `-1` for unlimited swap. */
+		memorySwapBytes?: number;
 	};
 }
 

@@ -268,6 +268,16 @@ class N8NContainer extends GenericContainer {
 		return this;
 	}
 
+	withMemoryBytes(memoryBytes: number): this {
+		this.hostConfig.Memory = memoryBytes;
+		return this;
+	}
+
+	withMemorySwapBytes(memorySwapBytes: number): this {
+		this.hostConfig.MemorySwap = memorySwapBytes;
+		return this;
+	}
+
 	override async start(): Promise<StartedTestContainer> {
 		const { platform } = this.createOpts;
 		if (platform) {
@@ -302,6 +312,62 @@ function resolveContainerCommand(role: InstanceRole, command?: string[]): string
 	return roleSubcommand ? [...command, roleSubcommand] : [...command];
 }
 
+export interface ResolvedContainerMemoryLimits {
+	memoryBytes?: number;
+	memorySwapBytes?: number;
+}
+
+export function resolveContainerMemoryLimits(
+	containerName: string,
+	options: {
+		memoryBytes?: number;
+		memorySwapBytes?: number;
+		resourceQuotaMemoryGb?: number;
+	},
+): ResolvedContainerMemoryLimits {
+	const { memoryBytes, memorySwapBytes, resourceQuotaMemoryGb } = options;
+
+	if (memoryBytes !== undefined && (!Number.isSafeInteger(memoryBytes) || memoryBytes <= 0)) {
+		throw new Error(
+			`Container "${containerName}" requires n8nContainer.memoryBytes to be a positive integer, got ${memoryBytes}.`,
+		);
+	}
+
+	if (
+		memorySwapBytes !== undefined &&
+		memorySwapBytes !== -1 &&
+		(!Number.isSafeInteger(memorySwapBytes) || memorySwapBytes <= 0)
+	) {
+		throw new Error(
+			`Container "${containerName}" requires n8nContainer.memorySwapBytes to be a positive integer or -1, got ${memorySwapBytes}.`,
+		);
+	}
+
+	const effectiveMemoryBytes =
+		memoryBytes ??
+		(resourceQuotaMemoryGb !== undefined
+			? Math.ceil(resourceQuotaMemoryGb * 1024 ** 3)
+			: undefined);
+
+	if (memorySwapBytes !== undefined) {
+		if (effectiveMemoryBytes === undefined) {
+			throw new Error(
+				`Container "${containerName}" cannot set n8nContainer.memorySwapBytes without n8nContainer.memoryBytes or resourceQuota.memory.`,
+			);
+		}
+		if (memorySwapBytes !== -1 && memorySwapBytes < effectiveMemoryBytes) {
+			throw new Error(
+				`Container "${containerName}" requires n8nContainer.memorySwapBytes (${memorySwapBytes}) to be >= memory limit (${effectiveMemoryBytes}) or -1.`,
+			);
+		}
+	}
+
+	return {
+		memoryBytes,
+		memorySwapBytes,
+	};
+}
+
 async function createContainer(
 	instance: InstanceConfig,
 	shared: SharedConfig,
@@ -322,7 +388,15 @@ async function createContainer(
 		userHomeHostDir,
 		binaryDataHostDir,
 		user,
-		n8nContainer: { readOnlyRootfs, tmpfs, platform, entrypoint, command } = {},
+		n8nContainer: {
+			readOnlyRootfs,
+			tmpfs,
+			platform,
+			entrypoint,
+			command,
+			memoryBytes,
+			memorySwapBytes,
+		} = {},
 		startupTimeoutMs,
 	} = shared;
 	if (entrypoint !== undefined && entrypoint.length === 0) {
@@ -330,6 +404,11 @@ async function createContainer(
 			`Container "${name}" requires at least one element in n8nContainer.entrypoint.`,
 		);
 	}
+	const memoryLimits = resolveContainerMemoryLimits(name, {
+		memoryBytes,
+		memorySwapBytes,
+		resourceQuotaMemoryGb: resourceQuota?.memory,
+	});
 	const filesToCopy = [...stackFiles, ...filesToMount];
 	if (filesToCopy.length > 0) {
 		if (readOnlyRootfs) {
@@ -441,14 +520,16 @@ async function createContainer(
 	// Reuse stays off for a container with a host dir mounted: the process must
 	// exit to flush coverage, cycle data belongs to the cycle, and a reused
 	// container would keep the binary data dir of an earlier stack.
-	// Testcontainers does not hash stack file contents or filesystem settings in HostConfig.
+	// Testcontainers does not hash stack file contents or HostConfig settings.
 	if (
 		!coverageHostDir &&
 		!userHomeHostDir &&
 		!binaryDataHostDir &&
 		stackFiles.length === 0 &&
 		!readOnlyRootfs &&
-		!tmpfs
+		!tmpfs &&
+		memoryLimits.memoryBytes === undefined &&
+		memoryLimits.memorySwapBytes === undefined
 	) {
 		container = container.withReuse();
 	}
@@ -459,6 +540,12 @@ async function createContainer(
 
 	if (resourceQuota) {
 		container = container.withResourcesQuota(resourceQuota);
+	}
+	if (memoryLimits.memoryBytes !== undefined) {
+		container = container.withMemoryBytes(memoryLimits.memoryBytes);
+	}
+	if (memoryLimits.memorySwapBytes !== undefined) {
+		container = container.withMemorySwapBytes(memoryLimits.memorySwapBytes);
 	}
 
 	if (networkAlias) {
