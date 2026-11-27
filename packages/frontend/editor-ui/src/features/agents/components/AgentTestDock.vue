@@ -333,6 +333,7 @@ defineExpose({ clearBudgetStops });
 					</KeyboardShortcutTooltip>
 				</div>
 			</header>
+			<slot name="sub-header" />
 
 			<AgentTestChatPage
 				ref="previewChatPage"

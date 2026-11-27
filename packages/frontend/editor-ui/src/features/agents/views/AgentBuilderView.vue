@@ -168,6 +168,7 @@ import AgentTestHeader from '../components/AgentTestHeader.vue';
 import AgentTestChatPage from '../components/AgentTestChatPage.vue';
 import AgentTestDock from '../components/AgentTestDock.vue';
 import AgentHeldActionsTray from '../components/chatMode/AgentHeldActionsTray.vue';
+import AgentTestChatSubHeader from '../components/chatMode/AgentTestChatSubHeader.vue';
 import AgentRunHeldActionsModal from '../components/chatMode/AgentRunHeldActionsModal.vue';
 import AgentTestRunEmptyState from '../components/chatMode/AgentTestRunEmptyState.vue';
 import { extractHeldActions } from '../components/chatMode/heldActions';
@@ -3971,6 +3972,9 @@ useKeybindings({
 									:agent-name="localConfig?.name || agentName"
 									@select-prompt="sendStarterPrompt"
 								/>
+							</template>
+							<template v-if="isSafeTestingEnabled" #sub-header>
+								<AgentTestChatSubHeader :sent-count="heldActionsState.sentCount.value" />
 							</template>
 							<template v-if="isSafeTestingEnabled" #after-reply="{ groupId, toolCalls, complete }">
 								<AgentHeldActionsTray

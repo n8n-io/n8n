@@ -10296,6 +10296,8 @@
 	"agents.testRun.holdReplay.partialSummary": "Some actions failed. The rest ran in your real apps at {time}.",
 	"agents.testRun.holdReplay.actionObjectFallback": "action",
 	"agents.testRun.holdReplay.previewInputKey": "Input",
+	"agents.testRun.subHeader.title": "Test chat",
+	"agents.testRun.subHeader.sent": "{count} action sent to your apps | {count} actions sent to your apps",
 	"agents.chat.tasks.stopFailedTitle": "Some tasks still need to stop",
 	"agents.chat.plan.title": "Plan: {title}",
 	"agents.chat.plan.progress": "{done} of {total} task done | {done} of {total} tasks done",

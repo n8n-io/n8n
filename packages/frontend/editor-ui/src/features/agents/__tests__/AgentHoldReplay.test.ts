@@ -8,6 +8,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 
 import AgentHeldActionsTray from '../components/chatMode/AgentHeldActionsTray.vue';
+import AgentTestChatSubHeader from '../components/chatMode/AgentTestChatSubHeader.vue';
 import AgentRunHeldActionsModal from '../components/chatMode/AgentRunHeldActionsModal.vue';
 import AgentTestRunEmptyState from '../components/chatMode/AgentTestRunEmptyState.vue';
 import {
@@ -563,5 +564,59 @@ describe('useAgentHeldActions', () => {
 		resolveCommit({ committedAt: new Date().toISOString(), results: [] });
 		expect(await firstCommit).toBe(true);
 		expect(state.confirmModalOpen.value).toBe(false);
+	});
+
+	it('counts the actions of the chat that ran, across replies, without failed ones', async () => {
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref('chat-1'),
+		});
+		expect(state.sentCount.value).toBe(0);
+
+		commitAgentTestRunActionsMock.mockResolvedValueOnce({
+			committedAt: new Date().toISOString(),
+			results: [
+				{ actionId: 'call-1', toolName: 'slack__post_message', status: 'done' },
+				{ actionId: 'call-2', toolName: 'linear__create_issue', status: 'failed' },
+			],
+		});
+		state.openConfirmModal('reply-1', sampleActions);
+		await state.confirmCommit();
+		expect(state.sentCount.value).toBe(1);
+
+		commitAgentTestRunActionsMock.mockResolvedValueOnce({
+			committedAt: new Date().toISOString(),
+			results: [{ actionId: 'call-3', toolName: 'gmail_send_email', status: 'already_committed' }],
+		});
+		state.openConfirmModal('reply-2', [{ ...sampleActions[0], actionId: 'call-3' }]);
+		await state.confirmCommit();
+		expect(state.sentCount.value).toBe(2);
+	});
+});
+
+describe('AgentTestChatSubHeader', () => {
+	const renderSubHeader = createComponentRenderer(AgentTestChatSubHeader, {
+		pinia: createTestingPinia(),
+	});
+
+	it('shows the Test chat title without a status before a run', () => {
+		const { getByTestId, queryByTestId } = renderSubHeader({ props: { sentCount: 0 } });
+		expect(getByTestId('agent-test-chat-sub-header')).toHaveTextContent('Test chat');
+		expect(queryByTestId('agent-test-chat-sent-status')).not.toBeInTheDocument();
+	});
+
+	it('says how many actions were sent after a run', () => {
+		const { getByTestId } = renderSubHeader({ props: { sentCount: 4 } });
+		expect(getByTestId('agent-test-chat-sent-status')).toHaveTextContent(
+			'4 actions sent to your apps',
+		);
+	});
+
+	it('uses the singular for one action', () => {
+		const { getByTestId } = renderSubHeader({ props: { sentCount: 1 } });
+		expect(getByTestId('agent-test-chat-sent-status')).toHaveTextContent(
+			'1 action sent to your apps',
+		);
 	});
 });
