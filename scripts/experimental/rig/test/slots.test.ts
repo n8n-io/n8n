@@ -83,21 +83,40 @@ describe('wizard ports', () => {
 		).toBe(3);
 	});
 
-	it('should use slot 0 when it is the only free slot', () => {
+	it('should use slot 0 when no other slot is free', () => {
 		const used = new Map(Array.from({ length: 9 }, (_, i) => [i + 1, [`e${i + 1}`]]));
 		expect(preferredSlot(used)).toBe(0);
 		used.set(0, ['e0']);
-		expect(preferredSlot(used)).toBe(1);
+		expect(preferredSlot(used)).toBe(0);
 	});
 
-	it('should list every slot with its editor port and the environments that use it', () => {
-		const choices = slotChoices(new Map([[2, ['a', 'b']]]));
-		expect(choices).toHaveLength(10);
-		expect(choices[0]).toEqual({
-			value: 0,
-			label: 'Slot 0 (default ports)',
-			hint: 'editor on port 5678',
-		});
-		expect(choices[2].hint).toBe('editor on port 7678, used by a, b: not at the same time');
+	it('should offer the default ports and the own ports of the first free slot', () => {
+		expect(slotChoices(new Map())).toEqual([
+			{ value: 0, label: 'Default ports (slot 0)', hint: 'editor on port 5678' },
+			{
+				value: 1,
+				label: 'Own ports (slot 1)',
+				hint: 'runs next to other environments, editor on port 6678',
+			},
+		]);
+	});
+
+	it('should name the environments that use the default ports', () => {
+		const choices = slotChoices(
+			new Map([
+				[0, ['a', 'b']],
+				[1, ['c']],
+			]),
+		);
+		expect(choices.map((c) => c.value)).toEqual([0, 2]);
+		expect(choices[0].hint).toBe(
+			'editor on port 5678, same as a, b: they cannot run at the same time',
+		);
+		expect(choices[1].label).toBe('Own ports (slot 2)');
+	});
+
+	it('should offer only the default ports when no other slot is free', () => {
+		const used = new Map(Array.from({ length: 9 }, (_, i) => [i + 1, [`e${i + 1}`]]));
+		expect(slotChoices(used).map((c) => c.value)).toEqual([0]);
 	});
 });

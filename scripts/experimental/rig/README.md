@@ -249,8 +249,9 @@ Environments with different slots run at the same time.
 | Engine | `+10 × k` |
 | Postgres, Redis, tunnel, Mailpit | `+k` |
 
-The wizard always asks for the slot. It selects the lowest free slot above
-`0`, so the default ports stay free for other tools, for example `pnpm dev`.
+The wizard always asks for the ports. It offers the default ports (slot `0`)
+and own ports, which use the lowest free slot above `0`. It selects own ports,
+so the default ports stay free for other tools, for example `pnpm dev`.
 `rig create --slot auto` and `rig clone` pick a free slot. When another
 environment uses a port, `rig` names it and suggests a free slot.
 

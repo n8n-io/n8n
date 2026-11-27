@@ -101,28 +101,41 @@ async function runnerSetup(): Promise<Pick<TopologyInput, 'runners'>> {
 	return { runners: { mode: 'external', via: choice, languages } };
 }
 
-/** Every slot, with its editor port and the environments that use it. */
+/**
+ * The default ports, and the own ports of the first free slot above 0. Only
+ * the default ports when no slot above 0 is free.
+ */
 export function slotChoices(used: Map<number, string[]>): Array<Choice<number>> {
-	return Array.from({ length: MAX_SLOT + 1 }, (_, slot) => {
-		const sharing = used.get(slot);
-		const port = `editor on port ${5678 + 1000 * slot}`;
-		return {
+	const sharing = used.get(0);
+	const choices: Array<Choice<number>> = [
+		{
+			value: 0,
+			label: 'Default ports (slot 0)',
+			hint: sharing
+				? `editor on port 5678, same as ${sharing.join(', ')}: they cannot run at the same time`
+				: 'editor on port 5678',
+		},
+	];
+	const slot = preferredSlot(used);
+	if (slot !== 0) {
+		choices.push({
 			value: slot,
-			label: slot === 0 ? 'Slot 0 (default ports)' : `Slot ${slot}`,
-			hint: sharing ? `${port}, used by ${sharing.join(', ')}: not at the same time` : port,
-		};
-	});
+			label: `Own ports (slot ${slot})`,
+			hint: `runs next to other environments, editor on port ${5678 + 1000 * slot}`,
+		});
+	}
+	return choices;
 }
 
 /**
  * The lowest free slot that is not slot 0, so the default ports stay free for
- * other tools, for example `pnpm dev`. Slot 0 when it is the only free slot.
+ * other tools, for example `pnpm dev`. Slot 0 when no other slot is free.
  */
 export function preferredSlot(used: Map<number, string[]>): number {
-	const free = Array.from({ length: MAX_SLOT + 1 }, (_, slot) => slot).filter(
-		(slot) => !used.has(slot),
-	);
-	return free.find((slot) => slot > 0) ?? free[0] ?? 1;
+	for (let slot = 1; slot <= MAX_SLOT; slot++) {
+		if (!used.has(slot)) return slot;
+	}
+	return 0;
 }
 
 function freeName(base: string): string {
