@@ -1550,7 +1550,22 @@ describe('ExecutionService', () => {
 					expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 				});
 
-				it('keeps the parent stopped when the children cannot be found', async () => {
+				it('skips a child whose execution is gone when it is loaded', async () => {
+					arrange(execution('parent', 'waiting', ['child-1', 'child-2']), [
+						execution('child-1', 'waiting'),
+						execution('child-2', 'waiting'),
+					]);
+					executionPersistence.findSingleExecution.mockResolvedValueOnce(undefined);
+
+					const result = await executionService.stop('parent', ['workflow-of-parent']);
+
+					expect(result.status).toBe('canceled');
+					expect(stoppedIds()).toEqual(['parent', 'child-2']);
+					// A missing child is skipped on purpose, not reported as a failed stop.
+					expect(executionService['logger'].warn).not.toHaveBeenCalled();
+				});
+
+				it('keeps the parent stopped when the child status lookup fails', async () => {
 					arrange(execution('parent', 'waiting', ['child']), [execution('child', 'waiting')]);
 					executionPersistence.findStatusesByIds.mockRejectedValueOnce(
 						new Error('database unavailable'),
