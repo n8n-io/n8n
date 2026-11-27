@@ -1,4 +1,5 @@
 import { DEFAULT_EXECUTION_LIMIT_SETTINGS, type ExecutionLimitSettings } from '@n8n/api-types';
+import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { Publisher } from '@n8n/backend-services';
 import { PubSubMetadata } from '@n8n/decorators';
@@ -21,6 +22,7 @@ describe('ExecutionLimitsSnapshot', () => {
 	const settingsStore = mock<ExecutionLimitSettingsStore>();
 	const projectLimitRepository = mock<ProjectExecutionLimitRepository>();
 	const publisher = mock<Publisher>();
+	const licenseState = mock<LicenseState>();
 	let snapshot: ExecutionLimitsSnapshot;
 
 	beforeEach(() => {
@@ -28,10 +30,12 @@ describe('ExecutionLimitsSnapshot', () => {
 		settingsStore.read.mockResolvedValue(SETTINGS);
 		projectLimitRepository.findAll.mockResolvedValue([{ projectId: 'limited', maxExecutions: 50 }]);
 		publisher.publishCommand.mockResolvedValue();
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
 		snapshot = new ExecutionLimitsSnapshot(
 			settingsStore,
 			projectLimitRepository,
 			publisher,
+			licenseState,
 			mockLogger(),
 		);
 	});
@@ -157,6 +161,34 @@ describe('ExecutionLimitsSnapshot', () => {
 
 			await expect(snapshot.refreshAfterWrite()).resolves.toBeUndefined();
 		});
+	});
+
+	it('skips reading from the database and clears loaded limits when unlicensed', async () => {
+		await snapshot.reload();
+		expect(snapshot.read('limited')).toEqual(LIMITED);
+		vi.clearAllMocks();
+
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
+		await snapshot.reload();
+
+		expect(settingsStore.read).not.toHaveBeenCalled();
+		expect(projectLimitRepository.findAll).not.toHaveBeenCalled();
+		expect(snapshot.read('limited')).toBeNull();
+		expect(snapshot.readLimitedScopes()).toBeNull();
+	});
+
+	it('loads on the next tick once the license turns on after an unlicensed start', async () => {
+		vi.useFakeTimers();
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
+
+		await snapshot.start();
+		expect(settingsStore.read).not.toHaveBeenCalled();
+		expect(snapshot.read('limited')).toBeNull();
+
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
+		await vi.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS);
+
+		expect(snapshot.read('limited')).toEqual(LIMITED);
 	});
 
 	it.each(['reload-execution-limits', 'pubsub-reconnected'])('reloads on %s', (eventName) => {

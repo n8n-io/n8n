@@ -1,4 +1,4 @@
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -15,7 +15,6 @@ export class PrometheusExecutionLimitsMetricsService implements PrometheusMetric
 		private readonly config: PrometheusMetricsConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly moduleRegistry: ModuleRegistry,
-		private readonly licenseState: LicenseState,
 		private readonly eventService: EventService,
 	) {}
 
@@ -28,8 +27,7 @@ export class PrometheusExecutionLimitsMetricsService implements PrometheusMetric
 		return (
 			this.config.includeExecutionLimitsMetrics &&
 			(instanceType === 'main' || instanceType === 'webhook') &&
-			this.moduleRegistry.isActive('execution-limits') &&
-			this.licenseState.isExecutionLimitsLicensed()
+			this.moduleRegistry.isActive('execution-limits')
 		);
 	}
 
