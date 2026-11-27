@@ -45,6 +45,7 @@ import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
+import { SubExecutionTracker } from '@/scaling/sub-execution-tracker';
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -166,6 +167,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
 	const activeExecutions = mockInstance(ActiveExecutions);
+	const subExecutionTracker = mockInstance(SubExecutionTracker);
 	const credentialsPermissionChecker = mockInstance(CredentialsPermissionChecker);
 	mockInstance(SubworkflowPolicyChecker);
 	const workflowPreExecute = mockInstance(WorkflowPreExecute);
@@ -1705,6 +1707,60 @@ describe('WorkflowExecuteAdditionalData', () => {
 				);
 
 				expect(loadedVersionId()).toBe(DRAFT_VERSION);
+			});
+		});
+
+		describe('sub-execution tracking for queue recovery', () => {
+			const runPendingChild = () => {
+				let finish!: (run: IRun) => void;
+				let fail!: (error: Error) => void;
+				processRunExecutionData.mockReturnValue(
+					new Promise<IRun>((resolve, reject) => {
+						finish = resolve;
+						fail = reject;
+					}) as unknown as PCancelable<IRun>,
+				);
+				const running = executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mockExecuteOptions({
+						loadedWorkflowData: undefined,
+						doNotWaitToFinish: false,
+						parentExecution: { executionId: 'parent-1', workflowId: 'parent-workflow' },
+					}),
+				);
+				return { running, finish: () => finish(runWithData), fail };
+			};
+
+			beforeEach(() => {
+				subExecutionTracker.addSubExecution.mockClear();
+				subExecutionTracker.removeSubExecution.mockClear();
+			});
+
+			it('records the sub-execution under its parent until it ends', async () => {
+				const child = runPendingChild();
+				await vi.waitFor(() =>
+					expect(subExecutionTracker.addSubExecution).toHaveBeenCalledWith(
+						EXECUTION_ID,
+						'parent-1',
+					),
+				);
+				expect(subExecutionTracker.removeSubExecution).not.toHaveBeenCalled();
+
+				child.finish();
+				await child.running;
+
+				expect(subExecutionTracker.removeSubExecution).toHaveBeenCalledWith(EXECUTION_ID);
+			});
+
+			it('removes the sub-execution when its run fails', async () => {
+				const child = runPendingChild();
+				await vi.waitFor(() => expect(subExecutionTracker.addSubExecution).toHaveBeenCalled());
+
+				child.fail(new Error('boom'));
+				await expect(child.running).rejects.toThrow();
+
+				expect(subExecutionTracker.removeSubExecution).toHaveBeenCalledWith(EXECUTION_ID);
 			});
 		});
 
