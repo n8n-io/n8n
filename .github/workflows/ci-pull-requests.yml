@@ -389,11 +389,11 @@ jobs:
   typecheck:
     name: Typecheck
     if: needs.install-and-build.outputs.ci == 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-bmi-n8n' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-bmi-n8n' }}
     needs: [install-and-build, format-check]
     env:
-      # Inherited by every worker turbo spawns, so the real budget is
-      # concurrency x cap: 2 x 6 GB fits the runner's 15.2 GB.
+      # Inherited by every worker turbo spawns (editor-ui overrides to 8 GB);
+      # 8vcpu (30.4 GB) gives headroom for two concurrent workers on BMI runners.
       NODE_OPTIONS: --max-old-space-size=6144
       # Read by `turbo --affected`. If the base is missing, turbo checks every package.
       TURBO_SCM_BASE: ${{ needs.install-and-build.outputs.affected_base }}
