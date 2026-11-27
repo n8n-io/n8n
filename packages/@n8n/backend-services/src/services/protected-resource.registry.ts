@@ -114,8 +114,17 @@ export class ProtectedResourceRegistry {
 		for (const resource of this.resources.values()) {
 			for (const url of getResourceUrls(resource)) {
 				try {
-					if (trimTrailingSlash(new URL(url).pathname) === normalized) {
+					const urlPathname = trimTrailingSlash(new URL(url).pathname);
+					if (urlPathname === normalized) {
 						return resource;
+					}
+					// If the resource URL includes a base path prefix (e.g. /somepath/mcp-server/http),
+					// also match when queried with the mount-relative path (/mcp-server/http).
+					if (normalized !== '' && normalized !== '/' && urlPathname.endsWith(normalized)) {
+						const prefix = urlPathname.slice(0, urlPathname.length - normalized.length);
+						if (prefix.endsWith('/') || prefix === '' || normalized.startsWith('/')) {
+							return resource;
+						}
 					}
 				} catch {
 					continue;

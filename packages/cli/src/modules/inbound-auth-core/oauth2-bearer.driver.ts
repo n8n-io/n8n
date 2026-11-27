@@ -13,6 +13,7 @@ import {
 import { decode, verify as verifyJwt, type Jwt } from 'jsonwebtoken';
 
 import { Logger } from '@n8n/backend-common';
+import { UrlService } from '@n8n/backend-services';
 import { getPublicKeyFromJwk } from './key.utils';
 
 type JwtFailure = { name: string; message: string };
@@ -31,7 +32,7 @@ const normalizeAudiences = (aud: unknown): string[] => {
 export class Oauth2BearerDriver extends AuthenticationDriver {
 	readonly credentialKind = 'bearer' as const;
 
-	readonly sourceTypes: Array<TrustedSource['type']> = ['oauth2'];
+	readonly sourceTypes: TrustedSource['type'][] = ['oauth2'];
 
 	private readonly logger: Logger;
 
@@ -39,6 +40,7 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 		private readonly store: TrustedSourceStore,
 		private readonly localServer: LocalAuthorizationServer,
 		logger: Logger,
+		private readonly urlService?: UrlService,
 	) {
 		super();
 		this.logger = logger.scoped('inbound-auth');
@@ -197,11 +199,28 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 		try {
 			const url = new URL(resource.resource.url);
 
-			const path = url.pathname === '/' ? '' : url.pathname;
+			let basePath = '';
+			let path = url.pathname === '/' ? '' : url.pathname;
+
+			if (this.urlService) {
+				try {
+					const instanceUrl = new URL(this.urlService.getInstanceBaseUrl());
+					if (url.origin === instanceUrl.origin) {
+						const instancePath = instanceUrl.pathname.replace(/\/+$/, '');
+						if (instancePath !== '' && url.pathname.startsWith(`${instancePath}/`)) {
+							basePath = instancePath;
+							path = url.pathname.slice(instancePath.length);
+						}
+					}
+				} catch {
+					// Fall back to origin-level metadata URL
+				}
+			}
+
 			return {
 				authorizationServers: sources.filter((s) => s.type === 'oauth2').map((s) => s.issuer),
 				// The query selects among resources sharing a path (a webhook's `?method=`), so it stays.
-				challenge: `Bearer resource_metadata="${url.origin}/.well-known/oauth-protected-resource${path}${url.search}"`,
+				challenge: `Bearer resource_metadata="${url.origin}${basePath}/.well-known/oauth-protected-resource${path}${url.search}"`,
 			};
 		} catch (error) {
 			this.logger.warn('Failed to advertise resource', { error });

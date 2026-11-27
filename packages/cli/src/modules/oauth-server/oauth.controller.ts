@@ -275,17 +275,35 @@ export class OAuthController {
 	}
 
 	/**
-	 * RFC 8414 path-inserted probes target issuers with a path component; this
-	 * instance's issuer is the bare origin, so answer with a machine-readable
-	 * 404 rather than letting the probe fall through to Express's HTML 404.
+	 * RFC 8414 path-inserted probes target issuers with a path component; answer with
+	 * the local server's metadata when the requested path matches the instance mount prefix,
+	 * or return 404 for unknown issuers.
 	 */
 	@Get('/.well-known/oauth-authorization-server/*issuerPath', {
 		skipAuth: true,
 		usesTemplates: true,
 		ipRateLimit: wellKnownIpRateLimit,
 	})
-	pathInsertedMetadata(_req: Request, res: Response) {
+	async pathInsertedMetadata(req: Request, res: Response) {
 		this.setCorsHeaders(res);
+
+		const issuerPath = Array.isArray(req.params.issuerPath)
+			? req.params.issuerPath.join('/')
+			: req.params.issuerPath;
+
+		let expectedPath = '';
+		try {
+			const baseUrl = new URL(this.urlService.getInstanceBaseUrl());
+			expectedPath = baseUrl.pathname.replace(/^\/+|\/+$/g, '');
+		} catch {
+			// Ignore invalid URL
+		}
+
+		if (expectedPath && issuerPath === expectedPath) {
+			res.json(await this.localServer.getMetadata());
+			return;
+		}
+
 		res.status(404).json({ message: 'Unknown authorization server' });
 	}
 

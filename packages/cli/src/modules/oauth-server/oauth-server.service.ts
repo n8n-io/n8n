@@ -489,7 +489,14 @@ export class OAuthServerService implements OAuthServerProvider {
 			}
 
 			const flowId = this.oauthSessionService.createSession(res, sessionPayload);
-			res.redirect(`/oauth/consent?flow=${flowId}`);
+			let basePath = '';
+			try {
+				const base = new URL(this.urlService.getInstanceBaseUrl());
+				basePath = base.pathname.replace(/\/+$/, '');
+			} catch {
+				// Fall back to root-relative path if URL parsing fails
+			}
+			res.redirect(`${basePath}/oauth/consent?flow=${flowId}`);
 		} catch (error) {
 			if (error instanceof InvalidResourceIndicatorError) {
 				this.logger.warn('Rejecting OAuth authorization request with invalid resource', {

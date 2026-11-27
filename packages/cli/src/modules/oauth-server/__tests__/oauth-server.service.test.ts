@@ -7,7 +7,6 @@ import { type EventService, type UrlService, type PostHogClient } from '@n8n/bac
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { TransactionRunner } from '@n8n/db';
 import {
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -16,6 +15,7 @@ import {
 	ServiceAccountDetails,
 	type User,
 	type OperationContext,
+	type TransactionRunner,
 } from '@n8n/db';
 import type { Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
@@ -125,6 +125,7 @@ describe('OAuthServerService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		urlServiceMock.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com/');
 		getAllowedRedirectUris.mockResolvedValue([]);
 		isResourceAvailable.mockResolvedValue(true);
 		oauthSessionService.createSession.mockReturnValue(FLOW_ID);
@@ -713,6 +714,34 @@ describe('OAuthServerService', () => {
 				resource: 'https://n8n.example.com/mcp-server/http',
 			});
 			expect(res.redirect).toHaveBeenCalledWith(`/oauth/consent?flow=${FLOW_ID}`);
+		});
+
+		it('should include subpath in consent redirect when instance is mounted on subpath', async () => {
+			urlServiceMock.getInstanceBaseUrl.mockReturnValue('https://example.com/somepath');
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+			};
+			const params = {
+				responseType: 'code' as const,
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				codeChallengeMethod: 'S256' as const,
+				state: 'state-xyz',
+				resource: TEST_RESOURCE_URL,
+			};
+
+			const res = mock<Response>();
+
+			await service.authorize(client, params, res);
+
+			expect(res.redirect).toHaveBeenCalledWith(`/somepath/oauth/consent?flow=${FLOW_ID}`);
 		});
 
 		it('should reject with invalid_target when the named resource is unavailable', async () => {

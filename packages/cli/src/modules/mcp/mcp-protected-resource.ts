@@ -152,8 +152,11 @@ export class McpProtectedResource implements ProtectedResource {
 	 * discover the metadata directly instead of guessing the well-known path.
 	 */
 	getProtectedResourceMetadataUrl(): string {
-		const url = new URL(this.getResourceUrl());
-		return `${url.origin}/.well-known/oauth-protected-resource${url.pathname}`;
+		const baseUrl = (this.mcpConfig.baseUrl || this.urlService.getInstanceBaseUrl()).replace(
+			/\/+$/,
+			'',
+		);
+		return `${baseUrl}/.well-known/oauth-protected-resource${MCP_RESOURCE_PATH}`;
 	}
 
 	/**
