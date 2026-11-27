@@ -85,6 +85,21 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	}
 
 	/**
+	 * A value that changes when a turn of the thread is added, removed or
+	 * updated: the number of turns and the newest update time.
+	 */
+	async findTurnStamp(threadId: string): Promise<string> {
+		const row = await this.createQueryBuilder('execution')
+			.select('COUNT(execution.id)', 'count')
+			.addSelect('MAX(execution.updatedAt)', 'latestUpdatedAt')
+			.where('execution.threadId = :threadId', { threadId })
+			.getRawOne<{ count: number | string; latestUpdatedAt: Date | string | null }>();
+		const latest = row?.latestUpdatedAt;
+		const latestValue = latest instanceof Date ? latest.toISOString() : (latest ?? '');
+		return `${String(row?.count ?? 0)}:${latestValue}`;
+	}
+
+	/**
 	 * Up to `limit` executions of a thread, newest first. With `before`, only
 	 * the executions older than that one. The `id` breaks ties in `createdAt`.
 	 */
@@ -136,9 +151,9 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	}
 
 	/**
-	 * The delegated runs of the given executions, with their timelines, oldest
-	 * first. Delegation has one level, so these are all the delegated runs of
-	 * the given turns.
+	 * The runs that the given executions delegated directly, with their
+	 * timelines, oldest first. A delegated run can delegate again, so a caller
+	 * that needs every descendant calls this again with the returned ids.
 	 */
 	async findChildrenByParentIds(parentIds: string[]): Promise<AgentExecution[]> {
 		const rows: AgentExecution[] = [];

@@ -4227,6 +4227,36 @@ describe('AgentExecutionRepository', () => {
 		return await repository.save(execution);
 	};
 
+	it('changes the turn stamp when a turn is added or updated', async () => {
+		const thread = await createThread();
+		const empty = await repository.findTurnStamp(thread.id);
+
+		const first = await createExecution({ threadId: thread.id });
+		const added = await repository.findTurnStamp(thread.id);
+		await repository.update(
+			{ id: first.id },
+			{ status: 'error', updatedAt: new Date(Date.now() + 60_000) },
+		);
+		const updated = await repository.findTurnStamp(thread.id);
+
+		expect(empty).toBe('0:');
+		expect(added).not.toBe(empty);
+		expect(updated).not.toBe(added);
+		expect(await repository.findTurnStamp(thread.id)).toBe(updated);
+	});
+
+	it('finds the runs that executions delegated directly', async () => {
+		const thread = await createThread();
+		const childThread = await createThread({ sessionNumber: 2 });
+		const parent = await createExecution({ threadId: thread.id });
+		const child = await createExecution({ threadId: childThread.id, parentExecutionId: parent.id });
+		await createExecution({ threadId: childThread.id, parentExecutionId: child.id });
+
+		const children = await repository.findChildrenByParentIds([parent.id]);
+
+		expect(children.map(({ id }) => id)).toEqual([child.id]);
+	});
+
 	it('paginates sessions with whole-second and millisecond timestamps', async () => {
 		const newest = await createThread();
 		const middle = await createThread();

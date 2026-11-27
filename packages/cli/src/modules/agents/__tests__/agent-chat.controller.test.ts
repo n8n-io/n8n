@@ -2140,6 +2140,31 @@ describe('AgentChatController n8n Chat read-route ownership', () => {
 			});
 		});
 
+		it('reads the history as the n8n user, with a reveal when the query asks for it', async () => {
+			const { controller, agentsService, agentExecutionOrchestratorService, checkpointStorage } =
+				makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentExecutionOrchestratorService.getConversationHistory.mockResolvedValue({
+				messages: [],
+				activeExecutionId: null,
+			} as never);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
+			const user = { id: userId };
+			const req = {
+				params: { projectId, agentId, threadId: 'thread-1' },
+				query: { redactExecutionData: 'false' },
+				user,
+			};
+
+			await controller.getProductionChatMessages(req as never, mock<express.Response>());
+
+			expect(agentExecutionOrchestratorService.getConversationHistory).toHaveBeenCalledWith(
+				expect.objectContaining({
+					reader: expect.objectContaining({ user, revealExecutionData: true }),
+				}),
+			);
+		});
+
 		it("404s another user's thread instead of serving it", async () => {
 			const { controller, agentsService, agentExecutionService } = makeController();
 			agentsService.isN8nChatPublished.mockResolvedValue(true);

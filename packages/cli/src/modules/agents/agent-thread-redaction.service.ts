@@ -5,7 +5,7 @@ import {
 	type RedactableExecution,
 } from '@n8n/backend-services';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
@@ -85,8 +85,12 @@ export function readerUserId(reader: ThreadReader): string {
 
 const SOURCE_UNAVAILABLE_REASON = 'source_unavailable';
 
-const REDACTED_CACHE_TTL_MS = 60_000;
-const REDACTED_CACHE_MAX_ENTRIES = 5_000;
+const DECISION_CACHE_TTL_MS = 60_000;
+const DECISION_CACHE_MAX_ENTRIES = 5_000;
+
+/** How long one reveal of a thread's sources counts as audited for the same user. */
+const REVEAL_AUDIT_WINDOW_MS = 5 * 60_000;
+const REVEAL_AUDIT_MAX_ENTRIES = 5_000;
 
 /**
  * Applies execution data redaction to agent turns.
@@ -106,8 +110,14 @@ export class AgentThreadRedactionService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
 		private readonly credentialsRepository: CredentialsRepository,
+		private readonly licenseState: LicenseState,
 	) {
 		this.logger = this.logger.scoped('agents');
+	}
+
+	/** True when the instance applies redaction policies to execution data. */
+	isDataRedactionLicensed(): boolean {
+		return this.licenseState.isDataRedactionLicensed();
 	}
 
 	/**
@@ -166,7 +176,7 @@ export class AgentThreadRedactionService {
 
 		const sources =
 			workflowIdBySource.size > 0
-				? await this.resolveSources(workflowIdBySource, reader)
+				? await this.resolveSources(workflowIdBySource, reader, turns[0]?.threadId)
 				: new Map<string, AgentTurnRedactionInfo>();
 
 		let carried: AgentTurnRedactionInfo | undefined;
@@ -186,10 +196,43 @@ export class AgentThreadRedactionService {
 		return decisions;
 	}
 
-	/** The redaction of each source execution for the reader. Absent when it is not redacted. */
+	/**
+	 * The redaction of each source execution for the reader. Absent when it is
+	 * not redacted.
+	 *
+	 * A reveal is audited per source execution. A chat reads the same thread
+	 * again and again after one reveal (refreshes, older pages, files, polls),
+	 * so a reveal of sources that the same user revealed in the same thread
+	 * within {@link REVEAL_AUDIT_WINDOW_MS} is not audited again. It still goes
+	 * through the authorization of the redaction service: a pass without a
+	 * reveal must show that the user can reveal every source. When it cannot,
+	 * the request takes the audited reveal path, which records and refuses it.
+	 */
 	private async resolveSources(
 		workflowIdBySource: ReadonlyMap<string, string | undefined>,
 		reader: UserThreadReader,
+		threadId: string | undefined,
+	): Promise<Map<string, AgentTurnRedactionInfo>> {
+		const ids = [...workflowIdBySource.keys()];
+		if (reader.revealExecutionData && threadId && this.isRevealAudited(reader, threadId, ids)) {
+			const { revealExecutionData: _reveal, ...withoutReveal } = reader;
+			const decided = await this.decideSources(workflowIdBySource, withoutReveal, false);
+			if ([...decided.values()].every(({ canReveal }) => canReveal)) return new Map();
+		}
+
+		const result = await this.decideSources(
+			workflowIdBySource,
+			reader,
+			!reader.revealExecutionData,
+		);
+		if (reader.revealExecutionData && threadId) this.recordRevealAudit(reader, threadId, ids);
+		return result;
+	}
+
+	private async decideSources(
+		workflowIdBySource: ReadonlyMap<string, string | undefined>,
+		reader: UserThreadReader,
+		useCache: boolean,
 	): Promise<Map<string, AgentTurnRedactionInfo>> {
 		const options: RedactionOptions = {
 			user: reader.user,
@@ -201,9 +244,9 @@ export class AgentThreadRedactionService {
 		const result = new Map<string, AgentTurnRedactionInfo>();
 		const toLoad: string[] = [];
 		for (const id of workflowIdBySource.keys()) {
-			const cached = reader.revealExecutionData ? undefined : this.cachedRedaction(reader, id);
-			if (cached) result.set(id, cached);
-			else toLoad.push(id);
+			const cached = useCache ? this.cachedDecision(reader, id) : undefined;
+			if (!cached) toLoad.push(id);
+			else if (cached.redaction) result.set(id, cached.redaction);
 		}
 
 		const loaded = await Promise.all(
@@ -255,50 +298,68 @@ export class AgentThreadRedactionService {
 			if (redaction) result.set(id, redaction);
 		}
 
-		if (!reader.revealExecutionData) {
-			for (const id of toLoad) {
-				const redaction = result.get(id);
-				if (redaction) this.cacheRedaction(reader, id, redaction);
-			}
+		if (useCache) {
+			for (const id of toLoad) this.cacheDecision(reader, id, result.get(id));
 		}
 		return result;
 	}
 
 	/**
-	 * Redacted decisions of recent reads, so that chat refreshes do not load
-	 * the run data of every source again. Only redacted decisions are kept: a
-	 * stale entry can hide data for a short time, but never shows it.
+	 * Decisions of recent reads without a reveal, so that chat refreshes do not
+	 * load the run data of every source again. The key holds the user, so a
+	 * decision is used only for the user it was made for. A reveal neither reads
+	 * nor writes the cache. A changed policy or role takes effect after
+	 * {@link DECISION_CACHE_TTL_MS} at the latest.
 	 */
-	private readonly redactedCache = new Map<
+	private readonly decisionCache = new Map<
 		string,
-		{ redaction: AgentTurnRedactionInfo; expiresAt: number }
+		{ redaction: AgentTurnRedactionInfo | undefined; expiresAt: number }
 	>();
 
-	private cachedRedaction(
+	private cachedDecision(
 		reader: UserThreadReader,
 		executionId: string,
-	): AgentTurnRedactionInfo | undefined {
+	): { redaction: AgentTurnRedactionInfo | undefined } | undefined {
 		const key = `${reader.user.id}:${executionId}`;
-		const entry = this.redactedCache.get(key);
+		const entry = this.decisionCache.get(key);
 		if (!entry) return undefined;
-		if (entry.expiresAt > Date.now()) return entry.redaction;
-		this.redactedCache.delete(key);
+		if (entry.expiresAt > Date.now()) return entry;
+		this.decisionCache.delete(key);
 		return undefined;
 	}
 
-	private cacheRedaction(
+	private cacheDecision(
 		reader: UserThreadReader,
 		executionId: string,
-		redaction: AgentTurnRedactionInfo,
+		redaction: AgentTurnRedactionInfo | undefined,
 	): void {
-		if (this.redactedCache.size >= REDACTED_CACHE_MAX_ENTRIES) {
-			const oldest = this.redactedCache.keys().next();
-			if (!oldest.done) this.redactedCache.delete(oldest.value);
-		}
-		this.redactedCache.set(`${reader.user.id}:${executionId}`, {
+		setBounded(this.decisionCache, DECISION_CACHE_MAX_ENTRIES, `${reader.user.id}:${executionId}`, {
 			redaction,
-			expiresAt: Date.now() + REDACTED_CACHE_TTL_MS,
+			expiresAt: Date.now() + DECISION_CACHE_TTL_MS,
 		});
+	}
+
+	/** The time of the last audited reveal, by user, thread and source execution. */
+	private readonly revealAudits = new Map<string, number>();
+
+	private isRevealAudited(reader: UserThreadReader, threadId: string, ids: string[]): boolean {
+		const now = Date.now();
+		return ids.every((id) => {
+			const auditedAt = this.revealAudits.get(revealAuditKey(reader, threadId, id));
+			return auditedAt !== undefined && now - auditedAt < REVEAL_AUDIT_WINDOW_MS;
+		});
+	}
+
+	private recordRevealAudit(reader: UserThreadReader, threadId: string, ids: string[]): void {
+		const now = Date.now();
+		for (const id of ids) {
+			setBounded(
+				this.revealAudits,
+				REVEAL_AUDIT_MAX_ENTRIES,
+				revealAuditKey(reader, threadId, id),
+				now,
+			);
+		}
 	}
 
 	/**
@@ -407,6 +468,20 @@ export class AgentThreadRedactionService {
 			return true;
 		}
 	}
+}
+
+function revealAuditKey(reader: UserThreadReader, threadId: string, executionId: string): string {
+	return `${reader.user.id}:${threadId}:${executionId}`;
+}
+
+/** Set a map entry, and drop the oldest entry first when the map is full. */
+function setBounded<V>(map: Map<string, V>, maxEntries: number, key: string, value: V): void {
+	map.delete(key);
+	if (map.size >= maxEntries) {
+		const oldest = map.keys().next();
+		if (!oldest.done) map.delete(oldest.value);
+	}
+	map.set(key, value);
 }
 
 /** True when the workflow can start other workflows, whose settings the decision does not see. */

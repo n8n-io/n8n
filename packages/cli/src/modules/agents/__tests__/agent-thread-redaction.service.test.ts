@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import type { LicenseState, Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRedactionServiceProxy, RedactableExecution } from '@n8n/backend-services';
 import type {
@@ -128,6 +128,7 @@ function setup(options: {
 		workflowRepository,
 		mock<GlobalConfig>({ executions: { maxDisplaySize: 1024 } }),
 		credentialsRepository,
+		mock<LicenseState>(),
 	);
 	return { service, executionPersistence, redactionProxy, workflowRepository };
 }
@@ -463,16 +464,105 @@ describe('AgentThreadRedactionService', () => {
 		expect(executionPersistence.findSingleExecution).toHaveBeenCalledTimes(1);
 	});
 
-	it('should load the source again for a source that is not redacted', async () => {
+	it('should reuse a decision without redaction for the same user only', async () => {
 		const { service, executionPersistence } = setup({
 			executions: { e1: { workflowId: 'wf-open' } },
 		});
 		const turns = [turn('t1', [workflowToolCall('wf-open', 'e1')])];
+		const otherUser = mock<User>({ id: 'other' });
 
 		await service.redactForReader(turns, { user: viewer });
-		await service.redactForReader(turns, { user: viewer });
+		const [cached] = await service.redactForReader(turns, { user: viewer });
+		expect(cached.redaction).toBeUndefined();
+		expect(executionPersistence.findSingleExecution).toHaveBeenCalledTimes(1);
 
+		await service.redactForReader(turns, { user: otherUser });
 		expect(executionPersistence.findSingleExecution).toHaveBeenCalledTimes(2);
+	});
+
+	it('should not use a cached decision for a reveal', async () => {
+		const { service, executionPersistence, redactionProxy } = setup({
+			executions: { e1: { workflowId: 'wf-redacted' } },
+			redacted: { 'wf-redacted': { canReveal: true } },
+		});
+		const turns = [turn('t1', [workflowToolCall('wf-redacted', 'e1')])];
+
+		await service.redactForReader(turns, { user: viewer });
+		const [revealed] = await service.redactForReader(turns, {
+			user: viewer,
+			revealExecutionData: true,
+		});
+
+		expect(revealed.redaction).toBeUndefined();
+		expect(executionPersistence.findSingleExecution).toHaveBeenCalledTimes(2);
+		expect(redactionProxy.processExecutions).toHaveBeenLastCalledWith(expect.any(Array), {
+			user: viewer,
+			redactExecutionData: false,
+		});
+	});
+
+	describe('audit of repeated reveals', () => {
+		const reveal = { user: viewer, revealExecutionData: true } as const;
+
+		function auditedReveals(redactionProxy: ReturnType<typeof setup>['redactionProxy']) {
+			return redactionProxy.processExecutions.mock.calls.filter(
+				([, options]) => options.redactExecutionData === false,
+			).length;
+		}
+
+		it('should audit a repeated reveal of the same thread sources once, and still check the reveal right', async () => {
+			const { service, redactionProxy } = setup({
+				executions: { e1: { workflowId: 'wf-redacted' } },
+				redacted: { 'wf-redacted': { canReveal: true } },
+			});
+			const turns = [turn('t1', [workflowToolCall('wf-redacted', 'e1')])];
+
+			await service.redactForReader(turns, reveal);
+			const [second] = await service.redactForReader(turns, reveal);
+
+			expect(second.redaction).toBeUndefined();
+			expect(auditedReveals(redactionProxy)).toBe(1);
+			// The second request went through the service without a reveal.
+			expect(redactionProxy.processExecutions).toHaveBeenLastCalledWith(expect.any(Array), {
+				user: viewer,
+			});
+		});
+
+		it('should take the audited reveal path again when the user can no longer reveal', async () => {
+			const redacted = { 'wf-redacted': { canReveal: true } };
+			const { service, redactionProxy } = setup({
+				executions: { e1: { workflowId: 'wf-redacted' } },
+				redacted,
+			});
+			const turns = [turn('t1', [workflowToolCall('wf-redacted', 'e1')])];
+
+			await service.redactForReader(turns, reveal);
+			redacted['wf-redacted'].canReveal = false;
+
+			await expect(service.redactForReader(turns, reveal)).rejects.toThrow(ForbiddenError);
+			expect(auditedReveals(redactionProxy)).toBe(2);
+		});
+
+		it('should audit a reveal again in another thread and after the window', async () => {
+			vi.useFakeTimers();
+			try {
+				const { service, redactionProxy } = setup({
+					executions: { e1: { workflowId: 'wf-redacted' } },
+					redacted: { 'wf-redacted': { canReveal: true } },
+				});
+				const call = workflowToolCall('wf-redacted', 'e1');
+
+				await service.redactForReader([turn('t1', [call])], reveal);
+				await service.redactForReader([{ ...turn('t2', [call]), threadId: 'thread-2' }], reveal);
+				expect(auditedReveals(redactionProxy)).toBe(2);
+
+				vi.advanceTimersByTime(5 * 60_000 + 1);
+				await service.redactForReader([turn('t1', [call])], reveal);
+				expect(auditedReveals(redactionProxy)).toBe(3);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 
 	it('should redact a turn whose timeline did not load, and the turns after it', async () => {
