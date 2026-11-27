@@ -180,7 +180,7 @@ export interface ErrorWorkflowSource {
 	workflow: WorkflowDocument;
 	/** The host mode of the caller context. */
 	hostMode: string;
-	/** Whether it is a sub-execution. A sub-execution is never an error execution, whatever its host mode. */
+	/** Whether it is a sub-execution. A sub-execution is never an error execution, even when hostMode === "error". */
 	hasParent: boolean;
 	/** The first failed step by settle time. Absent when the execution failed without a failed step. */
 	failedStep?: {
