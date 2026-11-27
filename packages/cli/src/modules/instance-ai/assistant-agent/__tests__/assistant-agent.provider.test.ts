@@ -425,6 +425,28 @@ describe('AssistantAgentProvider', () => {
 			);
 		});
 
+		it('reads back the checklists of this turn when earlier turns cannot be read', async () => {
+			const { provider, turnEnvironment, turnEvents, logger } = setup();
+			turnEvents.readRecentHostEvents.mockRejectedValue(new Error('db down'));
+			await provider.prepareTurn(startTurn());
+
+			const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+			runtime.eventBus.publish('thread-1', {
+				type: 'setup-items',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload: { workflowId: 'wf-1', items: [] },
+			} as InstanceAiEvent);
+
+			await expect(runtime.readSetupItemsSnapshots()).resolves.toEqual([
+				{ workflowId: 'wf-1', items: [] },
+			]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to read the setup checklists of earlier turns',
+				{ threadId: 'thread-1', error: 'db down' },
+			);
+		});
+
 		it('logs and continues when the artifact tab cannot be stored', async () => {
 			const { provider, turnEnvironment, threadTabs, logger } = setup();
 			threadTabs.showArtifactTab.mockRejectedValue(new Error('db down'));

@@ -77,8 +77,18 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 	const isHydratingThread = computed(() => options.isLoadingHistory());
 	// The credential choices of the setup panel. The agent reads them from the thread metadata.
 	const setupMetadata = shallowRef<Record<string, unknown>>();
+	let setupMetadataRequested = false;
 	const setupMetadataStore: SetupPanelMetadataStore = {
-		getThreadMetadata: () => setupMetadata.value,
+		getThreadMetadata: () => {
+			// Load the stored choices once, when the panel first reads them. Local writes win.
+			if (!setupMetadataRequested) {
+				setupMetadataRequested = true;
+				void fetchAssistantAgentSetupCredentials(rootStore.restApiContext, options.threadId)
+					.then(({ metadata }) => (setupMetadata.value = { ...metadata, ...setupMetadata.value }))
+					.catch(() => {});
+			}
+			return setupMetadata.value;
+		},
 		setThreadMetadata: (metadata) => (setupMetadata.value = metadata),
 		updateThreadMetadata: async (metadata) =>
 			await saveAssistantAgentSetupCredentials(

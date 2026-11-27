@@ -79,13 +79,17 @@ describe('SystemAgentTurnEventsService', () => {
 	it('returns the events with the name from the first history page, oldest first', async () => {
 		agentExecutions.getThreadDetailPage.mockResolvedValue({
 			thread: mock<AgentExecutionThread>(),
-			executions: [{ timeline }, { timeline: null }] as AgentExecution[],
+			executions: [
+				{ timeline },
+				{ timeline: null },
+				{ timeline: [{ type: 'host-event', name: 'status', payload: { step: 3 }, timestamp: 5 }] },
+			] as AgentExecution[],
 			hasOlder: false,
 		});
 
 		await expect(
 			service.readRecentHostEvents(AGENT_ID, user, THREAD_ID, 'status', 20),
-		).resolves.toEqual([{ step: 1 }, { step: 2 }]);
+		).resolves.toEqual([{ step: 1 }, { step: 2 }, { step: 3 }]);
 		expect(agentExecutions.getThreadDetailPage).toHaveBeenCalledWith(
 			THREAD_ID,
 			'project-1',

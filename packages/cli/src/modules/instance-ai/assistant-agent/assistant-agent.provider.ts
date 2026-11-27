@@ -688,13 +688,21 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			}),
 			// A merge builds on the checklists of earlier turns, and an unchanged one is not sent again.
 			readSetupItemsSnapshots: async () => {
-				earlierSetupItems ??= this.turnEvents.readRecentHostEvents(
-					ASSISTANT_AGENT_ID,
-					turn.user,
-					turn.thread.id,
-					'setup-items',
-					EARLIER_SETUP_ITEMS_TURN_LIMIT,
-				);
+				earlierSetupItems ??= this.turnEvents
+					.readRecentHostEvents(
+						ASSISTANT_AGENT_ID,
+						turn.user,
+						turn.thread.id,
+						'setup-items',
+						EARLIER_SETUP_ITEMS_TURN_LIMIT,
+					)
+					.catch((error: unknown) => {
+						this.logger.warn('Failed to read the setup checklists of earlier turns', {
+							threadId: turn.thread.id,
+							error: getErrorMessage(error),
+						});
+						return [];
+					});
 				return eventBus.setupItemsSnapshots(await earlierSetupItems);
 			},
 			// The setup panel announces the checklist without suspending the turn.

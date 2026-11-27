@@ -92,8 +92,11 @@ vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
 	};
 });
 
+// The tests set the agent tree. The panel reads the artifact turns that it maps to.
 let thread: SetupPanelThreadSource &
-	Pick<ThreadRuntime, 'id' | 'sendMessage' | 'rememberManualExecution'>;
+	Pick<ThreadRuntime, 'id' | 'sendMessage' | 'rememberManualExecution'> & {
+		messages: Array<{ agentTree?: InstanceAiAgentNode }>;
+	};
 let threadMetadata = ref<Record<string, unknown>>({});
 vi.mock('../../../instanceAi.store', () => ({
 	useThread: () => thread,

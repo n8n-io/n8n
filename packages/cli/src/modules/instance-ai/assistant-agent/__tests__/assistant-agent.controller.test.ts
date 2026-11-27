@@ -208,19 +208,30 @@ describe('AssistantAgentController', () => {
 		const choice = { 'instanceAiSetupCredentialSelection:wf-1:credential:slackApi': { id: 'c' } };
 		const metadata = { assistantTabs: { tabs: [] }, ...choice };
 
-		it('reads and merges only the setup keys of the thread metadata', async () => {
+		it('returns only the setup keys of the thread metadata', async () => {
 			threadMetadata.readThread.mockResolvedValue({ projectId: 'project-1', metadata });
-			threadMetadata.patch.mockImplementation(async (_agent, _user, _thread, change) =>
-				change({ assistantTabs: { tabs: [] } }),
-			);
-			const payload = new AssistantSetupCredentialMetadataRequestDto({ metadata: choice });
 
 			await expect(controller.getSetupCredentials(req, res, THREAD_ID)).resolves.toEqual({
 				metadata: choice,
 			});
+		});
+
+		it('merges new choices into the stored metadata of the Assistant thread', async () => {
+			const older = { 'instanceAiSetupCredentialSelection:wf-1:credential:notionApi': { id: 'n' } };
+			threadMetadata.patch.mockImplementation(async (_agent, _user, _thread, change) =>
+				change({ assistantTabs: { tabs: [] }, ...older }),
+			);
+			const payload = new AssistantSetupCredentialMetadataRequestDto({ metadata: choice });
+
 			await expect(controller.saveSetupCredentials(req, res, THREAD_ID, payload)).resolves.toEqual({
-				metadata: choice,
+				metadata: { ...older, ...choice },
 			});
+			expect(threadMetadata.patch).toHaveBeenCalledWith(
+				'assistant',
+				user,
+				THREAD_ID,
+				expect.any(Function),
+			);
 		});
 
 		it('refuses metadata keys that the setup panel does not own', () => {
