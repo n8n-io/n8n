@@ -166,6 +166,11 @@ const unsafeObjectProperties = new Set([
 	'loadEnvFile',
 ]);
 
+/** Whether the name is absent from the property denylist. */
+export function isSafeObjectProperty(property: string): boolean {
+	return !unsafeObjectProperties.has(property);
+}
+
 export function __sanitize(value: unknown): unknown {
 	// Symbols are not string-coercible and fall outside the denylist; pass through.
 	if (typeof value === 'symbol') return value;
