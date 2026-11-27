@@ -1,0 +1,14 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatCustomEndpoint/LmChatCustomEndpoint.node.ts
+  h_23d60aac2fe72e 229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ffd0150477305fbf00c917a2104fa32b0cb9b315",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
