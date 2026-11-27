@@ -17,6 +17,7 @@ import {
 	BadRequestError,
 	ConflictError,
 	NotFoundError,
+	PaymentRequiredError,
 	ServiceUnavailableError,
 } from '@n8n/errors';
 
@@ -36,9 +37,10 @@ import { WorkflowToolPort, type WorkflowToolRefusal } from '../tools/workflow-to
 
 /**
  * Parallel drafts after an add can pick the same name. The unique index refuses the second
- * write, and the draft tries again with the next free name.
+ * write, and the draft tries again with the next free name. Each refusal means that another
+ * draft took a name, so the cap is far above the number of drafts that the editor runs at once.
  */
-const DRAFT_SAVE_ATTEMPTS = 3;
+const DRAFT_SAVE_ATTEMPTS = 10;
 
 const TOOL_CHECK_BATCH_SIZE = 10;
 
@@ -261,6 +263,12 @@ export class McpServerToolsService {
 		if (result.status === 'not_available') {
 			track('not_available');
 			return { status: 'not_available', tool: toToolResponse(tool, null) };
+		}
+		if (result.status === 'no_credits') {
+			track('no_credits');
+			throw new PaymentRequiredError(
+				'You have no n8n Assistant credits left, so n8n cannot write a draft.',
+			);
 		}
 
 		const answer = parseToolDraftAnswer(result.text, field);
