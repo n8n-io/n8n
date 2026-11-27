@@ -449,10 +449,9 @@ investigations remains available when the flag is off.
 
 Self-healing requires the n8n Assistant to be enabled, with a model and a sandbox. When the
 Assistant is disabled, no new investigation starts. The model and sandbox check reads the Assistant
-setup under its lock, so it runs only for a failure in a watched workflow, and when a user creates
-or enables a configuration. A run does not
-need web search, so self-healing does not wait for the web search choice that the Assistant setup
-asks for. On Cloud and proxy-managed instances, the model and the sandbox count as configured.
+setup from the database, so it runs only for a failure in a watched workflow, and when a user
+creates or enables a configuration. A run does not need web search, so self-healing does not wait
+for the web search choice that the Assistant setup asks for. On Cloud and proxy-managed instances, the model and the sandbox count as configured.
 Self-healing is off on self-hosted Enterprise instances even when the environment variable is on.
 Every Cloud plan requires both `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` and the PostHog
 instance flag `150_self_healing`.
