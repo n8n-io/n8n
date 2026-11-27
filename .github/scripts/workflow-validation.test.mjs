@@ -409,6 +409,56 @@ describe('release SBOM validation in PR CI', () => {
 	});
 });
 
+describe('engine-e2e path filter in PR CI', () => {
+	const workflow = workflowFile('ci-pull-requests.yml');
+	const filterStep = stepNamed(workflow, 'install-and-build', 'Check for relevant changes');
+	const filters = parseFilters(filterStep.with.filters);
+
+	it('skips Playwright-only changes and matches engine, control-plane, and container paths', () => {
+		const patterns = filters.get('engine-e2e');
+		assert.ok(patterns, 'PR CI has no engine-e2e path filter');
+
+		for (const file of [
+			'packages/quality/testing/playwright/tests/e2e/workflows/basic.spec.ts',
+			'packages/quality/testing/playwright/playwright-projects.ts',
+			'packages/quality/testing/playwright/fixtures/base.ts',
+		]) {
+			assert.equal(evaluateFilter([file], patterns), false, file);
+		}
+
+		for (const file of [
+			'packages/@n8n/engine/src/index.ts',
+			'packages/@n8n/node-engine-compatibility/src/index.ts',
+			'packages/@n8n/config/src/configs/engine.config.ts',
+			'packages/cli/src/modules/engine-v2/index.ts',
+			'packages/cli/src/commands/engine.ts',
+			'packages/cli/src/commands/base-command.ts',
+			'packages/cli/src/services/engine-router.service.ts',
+			'packages/cli/src/executions/execution.service.ts',
+			'packages/cli/src/webhooks/webhook.service.ts',
+			'packages/cli/src/workflows/triggers/trigger.service.ts',
+			'packages/cli/src/workflow-runner.ts',
+			'packages/quality/environments/containers/n8n-stack.ts',
+		]) {
+			assert.equal(evaluateFilter([file], patterns), true, file);
+		}
+	});
+
+	it('still triggers e2e-engine on engine_e2e filter output or the force-engine-e2e label', () => {
+		const job = workflow.jobs['e2e-engine'];
+		assert.ok(job, 'PR CI has no e2e-engine job');
+		assert.match(job.if, /needs\.install-and-build\.outputs\.engine_e2e == 'true'/);
+		assert.match(
+			job.if,
+			/contains\(github\.event\.pull_request\.labels\.\*\.name, 'force-engine-e2e'\)/,
+		);
+		assert.match(
+			workflow.jobs['prepare-docker'].if,
+			/contains\(github\.event\.pull_request\.labels\.\*\.name, 'force-engine-e2e'\)/,
+		);
+	});
+});
+
 describe('release PR verification gate', () => {
 	const workflow = workflowFile('release-create-pr.yml');
 
