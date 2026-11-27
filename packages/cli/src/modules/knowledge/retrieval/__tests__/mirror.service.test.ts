@@ -995,6 +995,21 @@ describe('KnowledgeMirrorService', () => {
 			expect(searchCommand).toContain("-- '\\''./handbook'\\'' '\\''./own.txt'\\''");
 		});
 
+		it('searches a file once when its collection directory is also a path value', async () => {
+			const service = makeCollectionService();
+
+			await service.searchText(scope, {
+				pattern: 'leave',
+				path: ['handbook/leave.txt', 'handbook', 'own.txt'],
+			});
+
+			const searchCommand = sandbox.executeCommand.mock.calls
+				.map(([command]) => command)
+				.find((command) => command.includes(' rg '));
+			expect(searchCommand).toContain("-- '\\''./handbook'\\'' '\\''./own.txt'\\''");
+			expect(searchCommand).not.toContain('./handbook/leave.txt');
+		});
+
 		it('finds nothing in a collection without files, without a sandbox command', async () => {
 			const service = makeCollectionService({
 				source: { collections: [{ ...docs, fileCount: 0 }], files: [] },

@@ -12,6 +12,7 @@ import { nanoid } from 'nanoid';
 import { KnowledgeFileStore } from '../files/knowledge-file-store';
 import {
 	assertKnowledgeMirrorPath,
+	getKnowledgeMirrorPathDir,
 	getKnowledgeMirrorPaths,
 	type KnowledgeMirrorPaths,
 	tryKnowledgeContentFileName,
@@ -528,7 +529,9 @@ export class KnowledgeMirrorService {
 	 * The targets of a scoped search, relative to the mirror: the `file` value
 	 * of a file, or the directory of a collection, which stands for every file
 	 * of the collection. A collection without files has no directory in the
-	 * mirror, so it adds no target.
+	 * mirror, so it adds no target. A file whose collection directory is also
+	 * a target is left out: rg walks each target on its own, so it would
+	 * search the file twice and report every match twice.
 	 */
 	private resolveSearchTargets(
 		request: SearchKnowledgeTextRequest,
@@ -552,7 +555,10 @@ export class KnowledgeMirrorService {
 			}
 			targets.add(file.file);
 		}
-		return [...targets];
+		return [...targets].filter((target) => {
+			const dir = getKnowledgeMirrorPathDir(target);
+			return dir === undefined || !targets.has(dir);
+		});
 	}
 
 	private parseSearchResult(
