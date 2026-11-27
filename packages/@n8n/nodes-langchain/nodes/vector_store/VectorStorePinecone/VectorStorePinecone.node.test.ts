@@ -4,12 +4,13 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { UserError } from '@n8n/errors';
-import type { IExecuteFunctions, INode, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
+import type { INode, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { VectorStorePinecone } from './VectorStorePinecone.node';
 import { assertPineconeIndexAcceptsVectors, getPineconeVectorStore } from '../shared/pinecone';
+import { createInsertContext } from '../../../test/vectorStoreInsert';
 
 vi.mock('../shared/pinecone', () => ({
 	getPineconeVectorStore: vi.fn(),
@@ -65,34 +66,47 @@ describe('VectorStorePinecone', () => {
 		);
 	});
 
-	it('rejects an insert into a document index before it clears the namespace', async () => {
-		const deleteAll = vi.fn();
+	const deleteAll = vi.fn();
+	const insertParameters = {
+		pineconeIndex: { mode: 'list', value: 'docs' },
+		options: { pineconeNamespace: 'ns', clearNamespace: true },
+	};
+	const documents = [
+		{ pageContent: 'first', metadata: {} },
+		{ pageContent: 'second', metadata: {} },
+	];
+
+	beforeEach(() => {
+		vi.resetAllMocks();
 		vi.mocked(Pinecone).mockImplementation(function () {
-			return {
+			return mock<Pinecone>({
 				listIndexes: vi.fn().mockResolvedValue({ indexes: [{ name: 'docs' }] }),
 				Index: vi.fn().mockReturnValue({ namespace: () => ({ deleteAll }) }),
-			} as never;
+			});
 		});
+	});
+
+	it.each([1, 1.1])('clears the namespace once with version %s', async (version) => {
+		const ctx = createInsertContext(version, insertParameters, embeddings, documents, {
+			apiKey: 'key',
+		});
+
+		await new VectorStorePinecone().execute.call(ctx);
+
+		expect(deleteAll).toHaveBeenCalledExactlyOnceWith();
+		expect(deleteAll).toHaveBeenCalledBefore(vi.mocked(PineconeStore.fromDocuments));
+		expect(vi.mocked(PineconeStore.fromDocuments).mock.calls.map(([batch]) => batch)).toEqual(
+			version === 1 ? [documents] : [[documents[0]], [documents[1]]],
+		);
+	});
+
+	it('rejects an insert into a document index before it clears the namespace', async () => {
 		vi.mocked(assertPineconeIndexAcceptsVectors).mockRejectedValue(
 			new UserError('Inserting into a Pinecone index with a document schema is not supported yet'),
 		);
-		const ctx = createMockExecuteFunction<IExecuteFunctions>(
-			{
-				mode: 'insert',
-				pineconeIndex: { mode: 'list', value: 'docs' },
-				options: { pineconeNamespace: 'ns', clearNamespace: true },
-			},
-			nodeDef,
-		) as Mocked<IExecuteFunctions>;
-		ctx.getCredentials = vi.fn().mockResolvedValue({ apiKey: 'key' });
-		ctx.getInputData = vi.fn().mockReturnValue([{ json: {} }]);
-		ctx.getInputConnectionData = vi
-			.fn()
-			.mockResolvedValueOnce(embeddings)
-			.mockResolvedValueOnce([{ pageContent: 'hello', metadata: {} }]);
-		ctx.getExecutionCancelSignal = vi.fn().mockReturnValue(undefined);
-		ctx.logger = mock<IExecuteFunctions['logger']>();
-		ctx.logAiEvent = vi.fn();
+		const ctx = createInsertContext(nodeDef.typeVersion, insertParameters, embeddings, documents, {
+			apiKey: 'key',
+		});
 
 		await expect(new VectorStorePinecone().execute.call(ctx)).rejects.toThrow(
 			'document schema is not supported yet',

@@ -52,6 +52,25 @@ describe('planAlerts', () => {
 		assert.equal(second.alerts.length, 1);
 	});
 
+	it('sends no publisher alert for a Node pin that only waits for another Node pin', () => {
+		const held = result('DHI_REF', 'unverified', { heldBy: ['BUILDER_IMAGE'] });
+		const missing = result('DEBIAN_DHI_REF', 'no-publish-time', { heldBy: ['BUILDER_IMAGE'] });
+		const first = planAlerts([held, missing], {}, { now });
+		const second = planAlerts([held, missing], first.state, { now: now + DAY });
+		assert.deepEqual(first.alerts, []);
+		assert.deepEqual(second.alerts, []);
+	});
+
+	it('alerts when the Node patch check fails for 2 runs', () => {
+		const failed = result('NODE_VERSION', 'node-check-failed', { error: 'fetch failed' });
+		const first = planAlerts([failed], {}, { now });
+		const second = planAlerts([failed], first.state, { now: now + DAY });
+		const back = planAlerts([], second.state, { now: now + 2 * DAY });
+		assert.deepEqual(first.alerts, []);
+		assert.match(second.alerts[0], /could not check for a Node patch for 2 runs: fetch failed/);
+		assert.equal(back.state.nodeCheckFailed, 0);
+	});
+
 	it('alerts when the publish time stays missing for 2 runs', () => {
 		const missing = result('DISTROLESS_BASE_IMAGE', 'no-publish-time');
 		const first = planAlerts([missing], {}, { now });
@@ -84,7 +103,10 @@ describe('planAlerts', () => {
 		const skipped = result('DHI_REF', 'ready', { gateSkipped: true, autoMerge: false });
 		const { alerts } = planAlerts([skipped], {}, { now, manual: true, actor: 'octocat' });
 		assert.match(alerts[0], /manual run by @octocat skipped the 24-hour gate/);
+		assert.match(alerts[0], /The pin is in the review PR\./);
 		assert.deepEqual(planAlerts([skipped], {}, { now }).alerts, []);
+		const node = { ...skipped, group: 'node' };
+		assert.match(planAlerts([node], {}, { now, manual: true }).alerts[0], /in the Node PR\./);
 	});
 
 	it('alerts on a version update, then again after 7 days', () => {
@@ -214,6 +236,7 @@ describe('planAlerts for the refresh PRs and the chains', () => {
 		const young = planAlerts([], {}, { now, prs: [pr('base-image-refresh/review')] });
 		const review = planAlerts([], {}, { now, prs: [pr('base-image-refresh/review', old)] });
 		const daily = planAlerts([], {}, { now, prs: [pr('base-image-refresh/daily', old)] });
+		const node = planAlerts([], {}, { now, prs: [pr('base-image-refresh/node', old)] });
 		const chain = planAlerts(
 			[],
 			{},
@@ -225,6 +248,7 @@ describe('planAlerts for the refresh PRs and the chains', () => {
 		assert.deepEqual(young.alerts, []);
 		assert.match(review.alerts[0], /#45000> waits for a review\. It is open for 3 days\./);
 		assert.match(daily.alerts[0], /#45000> is open for 3 days without a merge\./);
+		assert.match(node.alerts[0], /#45000> waits for a review\. It is open for 3 days\./);
 		assert.deepEqual(chain.alerts, []);
 		assert.deepEqual(chain.state.lastAlert, {});
 	});

@@ -397,6 +397,34 @@ describe('FormTrigger', () => {
 		expect(responseData).toEqual({ noWebhookResponse: true });
 	});
 
+	it.each(['unsupportedMode', 'BasicAuth'])(
+		'should reject requests when authentication mode "%s" is unsupported',
+		async (authentication) => {
+			const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+			const { responseData, response } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				mode: 'manual',
+				node: {
+					parameters: {
+						formTitle: 'Test Form',
+						formDescription: 'Test Description',
+						responseMode: 'onReceived',
+						formFields: { values: formFields },
+						authentication,
+					},
+				},
+				request: { method: 'POST', query: {}, headers: {} },
+				credential: {
+					user: 'testuser',
+					password: 'testpass',
+				},
+			});
+
+			expect(responseData).toEqual({ noWebhookResponse: true });
+			expect(response.status).toHaveBeenCalledWith(401);
+		},
+	);
+
 	it('should validate POST requests with correct authentication token', async () => {
 		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },

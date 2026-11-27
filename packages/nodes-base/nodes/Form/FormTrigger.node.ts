@@ -14,7 +14,7 @@ export class FormTrigger extends VersionedNodeType {
 			iconColor: 'teal',
 			group: ['trigger'],
 			description: 'Generate webforms in n8n and pass their responses to the workflow',
-			defaultVersion: 2.7,
+			defaultVersion: 2.8,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -27,6 +27,7 @@ export class FormTrigger extends VersionedNodeType {
 			2.5: new FormTriggerV2(baseDescription),
 			2.6: new FormTriggerV2(baseDescription),
 			2.7: new FormTriggerV2(baseDescription),
+			2.8: new FormTriggerV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
