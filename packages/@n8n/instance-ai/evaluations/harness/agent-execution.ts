@@ -10,6 +10,8 @@ import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	getAgentModelProviderCredentialTypes,
 	type InstanceAiEvalAgentExecutionResult,
+	type InstanceAiEvalAgentMemoryState,
+	type InstanceAiEvalAgentRunOptions,
 	type InstanceAiEvalAgentThreadTurn,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -248,6 +250,8 @@ interface AgentTurnTarget {
 	scenario: ExecutionScenario;
 	timeoutMs?: number;
 	logger: EvalLogger;
+	/** The case's memory and config options, sent on every turn. */
+	agentRun?: InstanceAiEvalAgentRunOptions;
 }
 
 /** One request to the agent eval endpoint, with the in-band transient-abort
@@ -256,10 +260,21 @@ async function executeAgentTurn(
 	client: N8nClient,
 	target: AgentTurnTarget,
 	thread?: InstanceAiEvalAgentThreadTurn,
+	awaitMemory = false,
 ): Promise<InstanceAiEvalAgentExecutionResult> {
-	const { agentId, projectId, scenario, timeoutMs, logger } = target;
+	const { agentId, projectId, scenario, timeoutMs, logger, agentRun } = target;
 	const send = async () =>
-		await client.executeAgentWithLlmMock(agentId, projectId, scenario.dataSetup, timeoutMs, thread);
+		await client.executeAgentWithLlmMock(
+			agentId,
+			projectId,
+			scenario.dataSetup,
+			timeoutMs,
+			thread,
+			{
+				agentRun,
+				awaitMemory,
+			},
+		);
 	let evalResult = await send();
 	for (
 		let attempt = 1;
@@ -292,7 +307,8 @@ async function runAgentScenarioTurns(
 		plans,
 		dataSetup: target.scenario.dataSetup,
 		user: createAgentUserProxy({ logger: target.logger }),
-		executeTurn: async (thread) => await executeAgentTurn(client, target, thread),
+		executeTurn: async (thread, { awaitMemory }) =>
+			await executeAgentTurn(client, target, thread, awaitMemory),
 	});
 	return {
 		evalResult: mergeConversationResult(conversation),
@@ -441,6 +457,8 @@ export async function executeAgentScenario(
 	seedContext?: ScenarioSeedContext,
 	/** The build's project. Absent: the client's personal project. */
 	projectId?: string,
+	/** A direct run's memory and config options (AGENT-1666). */
+	agentRun?: InstanceAiEvalAgentRunOptions,
 ): Promise<ExecutionScenarioResult> {
 	if (seedContext) {
 		await reseedScenarioTables(
@@ -454,7 +472,7 @@ export async function executeAgentScenario(
 
 	const execStart = Date.now();
 	const agentProjectId = projectId ?? (await client.getPersonalProjectId());
-	const target = { agentId, projectId: agentProjectId, scenario, timeoutMs, logger };
+	const target = { agentId, projectId: agentProjectId, scenario, timeoutMs, logger, agentRun };
 	const run = await runAgentScenarioTurns(client, target);
 	const evalResult = run.evalResult;
 	try {
@@ -658,6 +676,8 @@ function buildAgentScenarioContextBlock(
 		});
 	}
 
+	if (evalResult.memory) sections.push(...agentMemorySection(evalResult.memory));
+
 	sections.push(
 		'## Agent final reply',
 		'',
@@ -672,4 +692,30 @@ function buildAgentScenarioContextBlock(
 	);
 
 	return sections.join('\n');
+}
+
+/** What the Agent's memory held for the simulated user after the run, so memory
+ *  expectations are graded against what was stored, not only what was said. */
+function agentMemorySection(memory: InstanceAiEvalAgentMemoryState): string[] {
+	const entries = memory.episodicEntries.map((entry) => `- ${entry.content}`);
+	const observations = memory.observations.map(
+		(observation) => `- [${observation.marker.toUpperCase()}] ${observation.text}`,
+	);
+	const tasks = memory.tasks.map(
+		(task) => `- ${task.taskKind}: ${task.outcome}${task.error ? ` (${task.error})` : ''}`,
+	);
+	return [
+		'## Agent memory after the run (ground truth — read from the memory store)',
+		'',
+		'**Episodic memory entries stored for this user:**',
+		...(entries.length > 0 ? entries : ['(none)']),
+		'',
+		'**Observations (compacted summaries of the threads):**',
+		...(observations.length > 0 ? observations : ['(none)']),
+		'',
+		'**Background memory tasks that ran:**',
+		...(tasks.length > 0 ? tasks : ['(none)']),
+		`**Flagged memories still pending:** ${String(memory.pendingCandidates)}`,
+		'',
+	];
 }

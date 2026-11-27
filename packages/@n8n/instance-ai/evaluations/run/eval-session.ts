@@ -10,6 +10,7 @@
 
 import type {
 	InstanceAiEvalLlmUsage,
+	InstanceAiEvalAgentRunOptions,
 	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiRunDebugResponse,
 } from '@n8n/api-types';
@@ -240,6 +241,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 					testCaseName?: string;
 					seedContext?: ScenarioSeedContext;
 					projectId?: string;
+					agentRun?: InstanceAiEvalAgentRunOptions;
 				}) =>
 					await executeAgentScenario(
 						lane.client,
@@ -253,6 +255,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						args.outputDir,
 						execArgs.seedContext,
 						execArgs.projectId,
+						execArgs.agentRun,
 					),
 			),
 		};

@@ -63,9 +63,18 @@ describe('agentRun case contract', () => {
 		expect(parsed.agentRun).toBeUndefined();
 	});
 
-	it('accepts the memory fields for later runs', () => {
+	const memoryConfig = {
+		name: 'Support',
+		model: 'anthropic/claude-sonnet-5-5',
+		instructions: 'Answer support questions.',
+		memory: { enabled: true, storage: 'n8n', observationalMemory: { enabled: true } },
+	};
+	const memorySeed = { mode: 'inline', agents: [{ id: SEED_AGENT_ID, config: memoryConfig }] };
+
+	it('accepts the memory fields', () => {
 		const parsed = EvalTestCaseSchema.parse(
 			directCase({
+				seed: memorySeed,
 				agentRun: {
 					mode: 'direct',
 					agent: SEED_AGENT_ID,
@@ -111,6 +120,31 @@ describe('agentRun case contract', () => {
 		expect(
 			issueMessages(directCase({ agentRun: { mode: 'direct', keepMemroy: true } })),
 		).not.toEqual([]);
+	});
+
+	it('rejects configOverrides that make the seeded Agent config invalid', () => {
+		const messages = issueMessages(
+			directCase({
+				seed: memorySeed,
+				agentRun: {
+					mode: 'direct',
+					configOverrides: { memory: { observationalMemory: { observerThresholdTokens: -1 } } },
+				},
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('observerThresholdTokens')]);
+	});
+
+	it('rejects a configOverrides key the Agent config does not have', () => {
+		const messages = issueMessages(
+			directCase({
+				seed: memorySeed,
+				agentRun: { mode: 'direct', configOverrides: { memory: { observerModel: 'x' } } },
+			}),
+		);
+
+		expect(messages).toEqual([expect.stringContaining('memory.observerModel')]);
 	});
 
 	it('rejects configOverrides that is not an object', () => {

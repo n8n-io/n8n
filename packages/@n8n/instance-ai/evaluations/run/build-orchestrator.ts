@@ -9,6 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	InstanceAiEvalAgentRunOptions,
 	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiRunDebugResponse,
 } from '@n8n/api-types';
@@ -179,6 +180,7 @@ export interface LaneState {
 		testCaseName?: string;
 		seedContext?: ScenarioSeedContext;
 		projectId?: string;
+		agentRun?: InstanceAiEvalAgentRunOptions;
 	}) => Promise<Awaited<ReturnType<typeof executeAgentScenario>>>;
 }
 

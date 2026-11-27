@@ -25,7 +25,11 @@ import {
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
 import { AgentRunError } from '../harness/agent-conversation';
-import { isDirectAgentRun, isExpectationGraded } from '../harness/agent-run-schema';
+import {
+	agentRunOptions,
+	isDirectAgentRun,
+	isExpectationGraded,
+} from '../harness/agent-run-schema';
 import { buildFailedOnInfra, harnessFault } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
@@ -495,6 +499,9 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 							testCaseName: inputs.testCaseFile,
 							seedContext,
 							projectId: agentRef.projectId,
+							...(testCase && isDirectAgentRun(testCase)
+								? { agentRun: agentRunOptions(testCase.agentRun) }
+								: {}),
 						});
 						break;
 					} catch (error: unknown) {

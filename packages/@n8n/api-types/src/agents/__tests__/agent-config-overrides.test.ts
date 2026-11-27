@@ -1,4 +1,4 @@
-import { applyAgentConfigOverrides } from '../agent-config-overrides';
+import { agentConfigOverrideError, applyAgentConfigOverrides } from '../agent-config-overrides';
 import type { AgentJsonConfig } from '../agent-json-config.schema';
 
 const observerModel = { model: 'anthropic/claude-haiku-5-5', credential: 'cred-1' };
@@ -93,5 +93,21 @@ describe('applyAgentConfigOverrides', () => {
 		expect(!result.success && result.error).toContain(
 			'memory.observationalMemory.observerThresholdToken',
 		);
+	});
+});
+
+describe('agentConfigOverrideError', () => {
+	it('is undefined when the merged config is valid', () => {
+		expect(
+			agentConfigOverrideError(seeded, { memory: { episodicMemory: { enabled: false } } }),
+		).toBeUndefined();
+	});
+
+	it('names the field an invalid override breaks, for a config of unknown shape', () => {
+		const raw: unknown = JSON.parse(JSON.stringify(seeded));
+
+		expect(
+			agentConfigOverrideError(raw, { memory: { observationalMemory: { lockTtlMs: -1 } } }),
+		).toContain('memory.observationalMemory.lockTtlMs');
 	});
 });

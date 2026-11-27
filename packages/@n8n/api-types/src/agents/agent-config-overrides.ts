@@ -36,18 +36,10 @@ function unknownOverridePaths(override: unknown, parsed: unknown, prefix = ''): 
 	});
 }
 
-/**
- * Deep-merge `overrides` onto an Agent config and validate the result against
- * the Agent JSON config schema. Without overrides, `config` is returned as
- * is (not re-validated). Fails on an invalid result and on override
- * keys the schema does not know (it would drop them silently).
- */
-export function applyAgentConfigOverrides(
-	config: AgentJsonConfig,
-	overrides: AgentConfigOverrides | undefined,
+function mergeAndValidate(
+	config: unknown,
+	overrides: AgentConfigOverrides,
 ): AgentConfigOverrideResult {
-	// Without overrides the stored config runs as-is, as it always has.
-	if (overrides === undefined) return { success: true, config };
 	const parsed = AgentJsonConfigSchema.safeParse(deepMerge(config, overrides));
 	if (!parsed.success) {
 		return { success: false, error: formatAgentConfigZodError(parsed.error) };
@@ -57,4 +49,29 @@ export function applyAgentConfigOverrides(
 		return { success: false, error: `Not Agent config fields: ${unknown.join(', ')}` };
 	}
 	return { success: true, config: parsed.data };
+}
+
+/**
+ * Deep-merge `overrides` onto an Agent config and validate the result against
+ * the Agent JSON config schema. Without overrides, `config` is returned as
+ * is (not re-validated). Fails on an invalid result and on override keys the
+ * schema does not know (it would drop them silently).
+ */
+export function applyAgentConfigOverrides(
+	config: AgentJsonConfig,
+	overrides: AgentConfigOverrides | undefined,
+): AgentConfigOverrideResult {
+	// Without overrides the stored config runs as-is, as it always has.
+	if (overrides === undefined) return { success: true, config };
+	return mergeAndValidate(config, overrides);
+}
+
+/** Why `overrides` do not give a valid Agent config, or undefined when they do.
+ *  For a config not yet parsed, e.g. an eval case's seeded Agent. */
+export function agentConfigOverrideError(
+	config: unknown,
+	overrides: AgentConfigOverrides,
+): string | undefined {
+	const result = mergeAndValidate(config, overrides);
+	return result.success ? undefined : result.error;
 }
