@@ -199,6 +199,7 @@ describe('TestRunsController', () => {
 			expect(mockEvaluationConfigRepository.findByIdAndWorkflowId).toHaveBeenCalledWith(
 				'cfg-1',
 				mockWorkflowId,
+				{},
 			);
 		});
 	});

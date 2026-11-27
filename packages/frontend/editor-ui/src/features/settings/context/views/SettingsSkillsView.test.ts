@@ -613,10 +613,9 @@ describe('SettingsSkillsView', () => {
 	it('sorts on the server and turns the order around instead of clearing it', async () => {
 		skillsStore.skills = [skill()];
 		skillsStore.count = 1;
-		const { container } = renderView();
+		const { getByRole } = renderView();
 		await new Promise(process.nextTick);
-		const header = (title: string) =>
-			[...container.querySelectorAll('thead th')].find((th) => th.textContent?.includes(title))!;
+		const header = (title: string) => getByRole('button', { name: title });
 
 		await userEvent.click(header('Skill'));
 		await waitFor(() =>

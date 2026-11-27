@@ -70,6 +70,49 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		]);
 	});
 
+	it('sends a generated thread title to the users of the thread and relays it from workers', async () => {
+		Object.defineProperty(instanceSettings, 'isWorker', { value: true, configurable: true });
+		const title = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			title: 'Berlin rain alert',
+		};
+
+		broadcaster.notifyThreadTitleUpdated(title);
+
+		await vi.waitFor(() =>
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-agent-thread-title-update',
+				payload: { data: title, userIds: ['user-1', 'user-2'] },
+			}),
+		);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'agentThreadTitleUpdated', data: title },
+			['user-1', 'user-2'],
+		);
+
+		push.sendToUsers.mockClear();
+		broadcaster.handleThreadTitleRelay({ data: title, userIds: ['user-2'] });
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'agentThreadTitleUpdated', data: title },
+			['user-2'],
+		);
+	});
+
+	it('sends no thread title for a thread of another agent', async () => {
+		broadcaster.notifyThreadTitleUpdated({
+			projectId: 'project-1',
+			agentId: 'agent-2',
+			threadId: 'thread-1',
+			title: 'Berlin rain alert',
+		});
+
+		await vi.waitFor(() => expect(threadRepository.findOneBy).toHaveBeenCalled());
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(push.sendToUsers).not.toHaveBeenCalled();
+	});
+
 	it('delivers relayed invalidations locally without publishing them again', () => {
 		broadcaster.handleRelay({ data: update, userIds: ['user-2'] });
 

@@ -51,6 +51,7 @@ import type {
 	McpToolPermissions,
 	McpToolCallRequest,
 	McpToolCallResult,
+	WorkflowReviewBlockedDetails,
 	InstanceAiAgentFeedbackCategory,
 	InstanceAiAgentFeedbackSeverity,
 } from '@n8n/api-types';
@@ -633,6 +634,14 @@ export interface InstanceAiWorkflowService {
 		options?: { versionId?: string; name?: string; description?: string },
 	): Promise<{ activeVersionId: string }>;
 	unpublish(workflowId: string): Promise<void>;
+	/**
+	 * The workflow review rule that blocks publishing this version (the draft when omitted), or
+	 * undefined when the version may go live. Absent when the host has no review rules.
+	 */
+	getPublishReviewBlock?(
+		workflowId: string,
+		versionId?: string,
+	): Promise<WorkflowReviewBlockedDetails['reason'] | undefined>;
 	/** List version history for a workflow (metadata only, no nodes/connections). */
 	listVersions?(
 		workflowId: string,
@@ -2174,14 +2183,13 @@ export interface InstanceAiMemoryConfig {
 		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 	};
 	/**
-	 * Generate a title for a thread that has none, after the first turn. The
-	 * runtime reports the usage of the title call through `onSideCallUsage`.
+	 * Generate a title for a thread that has none. The title call runs beside the
+	 * first turn, and the run does not wait for it. The runtime reports the usage
+	 * of the title call through `onSideCallUsage`.
 	 */
 	titleGeneration?: {
 		/** Model for the title call. Defaults to the agent's model. */
 		model?: ModelConfig;
-		/** Saves the title before the run ends, instead of after it in the background. */
-		sync?: boolean;
 	};
 }
 

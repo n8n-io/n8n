@@ -791,6 +791,7 @@ describe('GlobalConfig', () => {
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
+			sandboxEgressPolicy: 'opt-in',
 			maxGeneratedFileSizeMb: 50,
 			maxGeneratedFileCount: 100,
 			maxGeneratedTotalMb: 500,

@@ -26,7 +26,7 @@ import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { HelperContext, Service, ServiceResult } from './types';
+import type { HelperContext, Service, ServiceResult, StartContext } from './types';
 
 const HOSTNAME = 'localstack';
 const EDGE_PORT = 4566;
@@ -181,7 +181,12 @@ export function buildN8nS3Env(
 export const localstack: Service<LocalStackResult> = {
 	description: 'AWS service emulator (LocalStack)',
 
-	async start(network: StartedNetwork, projectName: string): Promise<LocalStackResult> {
+	async start(
+		network: StartedNetwork,
+		projectName: string,
+		_options?: unknown,
+		ctx?: StartContext,
+	): Promise<LocalStackResult> {
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 		try {
@@ -212,15 +217,22 @@ export const localstack: Service<LocalStackResult> = {
 				.withReuse()
 				.withLogConsumer(consumer)
 				.start();
+			ctx?.registerContainer?.(container);
 
 			const hostPort = container.getMappedPort(EDGE_PORT);
 			const host = `${container.getHost()}:${hostPort}`;
 			const internalHost = `${HOSTNAME}:${EDGE_PORT}`;
+			const endpoint = `http://${host}`;
+
+			const bucket = ctx?.config.env?.N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME;
+			if (bucket) {
+				await new S3Client(endpoint).createBucket(bucket);
+			}
 
 			return {
 				container,
 				meta: {
-					endpoint: `http://${host}`,
+					endpoint,
 					internalEndpoint: `http://${internalHost}`,
 					host,
 					internalHost,

@@ -752,6 +752,8 @@ export interface AgentN8nChatAgentDetails extends AgentChatListItem {
 export interface AgentN8nChatThreadSummary {
 	id: string;
 	title: string | null;
+	/** A short preview of the first user message. Lists show it until the thread has a title. */
+	firstMessage?: string | null;
 	updatedAt: string;
 	agent: {
 		id: string;
@@ -770,6 +772,8 @@ export interface AgentN8nChatThreadsResponse {
 export interface SystemAgentThreadSummary {
 	id: string;
 	title: string | null;
+	/** A short preview of the first user message. Lists show it until the thread has a title. */
+	firstMessage?: string | null;
 	updatedAt: string;
 	projectId: string;
 	/** The memory metadata of the thread, such as the agent that an Assistant thread builds. */
