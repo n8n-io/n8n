@@ -9,7 +9,7 @@ const DELETE_BATCH_SIZE = 500;
  *
  * Irreversible: the deleted rows are not kept anywhere, so a `down()` could not restore them.
  */
-export class DeletePersonalProjectTypeAvailabilityPolicies1795692905033
+export class DeletePersonalProjectTypeAvailabilityPolicies1795778326728
 	implements IrreversibleMigration
 {
 	async up(ctx: MigrationContext) {
