@@ -1,0 +1,36 @@
+packages/cli/src/modules/apps/bindings/app-workflow.adapter.ts
+  s_d041703aa66d37::t_74c3534a50dec3 72-77,79-90
+  s_d041703aa66d37::t_70e12ffceb9a42 391
+  s_d041703aa66d37::t_bd43941ec012e4 366
+  s_d041703aa66d37::t_d62704ee93464e 344,351-356
+  s_d041703aa66d37::t_17449235a205a8 373
+  s_d041703aa66d37::t_92506a19d4c49a 42
+  s_d041703aa66d37::t_b2d2d869e49c89 426-451
+  s_d041703aa66d37::t_5307200395e2d1 78
+  s_d041703aa66d37::t_0a5fbd2778669a 26,29,36
+packages/cli/test/integration/apps/app-workflow-save-settings.test.ts
+  s_d041703aa66d37::t_4520cfb33a4cff 5,14,16-17,39,42,44,58-67,78-82,84-93,96-100,102,104,109
+  s_d041703aa66d37::t_23c9425be06285 1-4,6-13,15,18-38,40-41,45-56,68-77,83,94-95,101,103,105-108,110-111
+  s_d041703aa66d37::t_7a4dc27e4b2610 43,57
+packages/cli/src/modules/apps/bindings/__tests__/app-workflow.adapter.test.ts
+  s_d041703aa66d37::t_78e8980cb3791a 549-553,557-558
+  s_d041703aa66d37::t_eecd9d046ff4df 258
+  s_d041703aa66d37::t_e7c11fc353baaa 471-548,554-556,559-640
+  s_d041703aa66d37::t_9ee912a1ea81ca 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f7663ae4c7d7e7ef45f52afae792e81e507855e",
+  "prompts": {},
+  "sessions": {
+    "s_d041703aa66d37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae6c9c7f-7a29-496f-b87a-7fa6e072eecd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
