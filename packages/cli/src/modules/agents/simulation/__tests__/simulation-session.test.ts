@@ -1,5 +1,11 @@
 import type { BuiltTool } from '@n8n/agents';
-import { toolCallSimulationSchema, type ToolTestCapability } from '@n8n/api-types';
+import {
+	toolCallEvidenceSchema,
+	toolCallSimulationSchema,
+	type ToolTestCapability,
+} from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type {
@@ -921,5 +927,33 @@ describe('SimulationSession route evidence', () => {
 		});
 		expect(JSON.stringify(decision)).not.toContain(SECRET_TEXT);
 		expect(toolCallSimulationSchema.safeParse(decision).success).toBe(true);
+	});
+
+	it('reads no more items than the evidence values that exist', async () => {
+		const padding = toolCallEvidenceSchema.options.map(() => SECRET_TEXT);
+		const session = sessionFor([served([...padding, 'world_write'])]);
+
+		await runTool(session, requestTool(session, 1));
+
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'simulated',
+			reason: 'served_from_world',
+		});
+	});
+
+	it('warns when the evidence is not a list', async () => {
+		const logger = mockInstance(Logger);
+		const session = sessionFor([served('world_write')]);
+
+		await runTool(session, requestTool(session, 1));
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'[SafeTesting] The simulator sent evidence that is not a list',
+			{ toolName: 'send_slack' },
+		);
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'simulated',
+			reason: 'served_from_world',
+		});
 	});
 });
