@@ -65,11 +65,49 @@ describe('TransactionBoundaryRule', () => {
 				'\tmanager?: LicenseManager;',
 				'\ta() { return this.manager?.toString(); }',
 				'\tb() { return this.txRunner.run({}, async (ctx) => ctx); }',
+				'\tasync c() { const { manager } = await this.getWorkspace(); return manager; }',
 				'}',
 			].join('\n'),
 		);
 
 		expect(await analyze()).toEqual([]);
+	});
+
+	it('rejects an own field declared as EntityManager and a destructured manager', async () => {
+		write(
+			'packages/example/src/x.service.ts',
+			[
+				'export class XService {',
+				'\tconstructor(private readonly manager: EntityManager) {}',
+				'\ta() { return this.manager.find(X); }',
+				'\tb() { const { manager: db } = this.repository; return db; }',
+				'}',
+			].join('\n'),
+		);
+
+		expect(await analyze()).toEqual([
+			expect.stringContaining('x.service.ts:3 Business logic uses `this.manager`.'),
+			expect.stringContaining('x.service.ts:4 Business logic uses `{manager}=this.repository`.'),
+		]);
+	});
+
+	it('numbers each repeat of the same code, so the baseline counts every use', async () => {
+		write(
+			'packages/example/src/x.service.ts',
+			[
+				'export class XService {',
+				'\ta() { return this.repository.manager; }',
+				'\tb() { return this.repository.manager; }',
+				'}',
+			].join('\n'),
+		);
+
+		expect(await analyze()).toEqual([
+			expect.stringContaining('x.service.ts:2 Business logic uses `this.repository.manager`.'),
+			expect.stringContaining(
+				'x.service.ts:3 Business logic uses `this.repository.manager` (use 2 in this file).',
+			),
+		]);
 	});
 
 	it('accepts persistence adapters and test files', async () => {

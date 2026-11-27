@@ -6,34 +6,44 @@ import type { ClassDeclaration, SourceFile } from 'ts-morph';
 import type { CodeHealthContext } from '../context.js';
 import { persistenceScopeFiles } from './typeorm-persistence-boundary.rule.js';
 
-/** Local names that refer to TypeORM's `Repository` or n8n's `BaseRepository` in a file. */
-function repositoryBaseNames(file: SourceFile): Set<string> {
+/** Local names (with aliases and namespace imports) under which a file imports `importedName`. */
+function localNames(
+	file: SourceFile,
+	importedName: string,
+	fromSource: (source: string) => boolean,
+): Set<string> {
 	const names = new Set<string>();
 	for (const declaration of file.getImportDeclarations()) {
-		const source = declaration.getModuleSpecifierValue();
-		const importedBase =
-			source === '@n8n/typeorm'
-				? 'Repository'
-				: source === '@n8n/db'
-					? 'BaseRepository'
-					: undefined;
-		if (!importedBase) continue;
+		if (!fromSource(declaration.getModuleSpecifierValue())) continue;
 		for (const specifier of declaration.getNamedImports()) {
-			if (specifier.getName() === importedBase) {
-				names.add(specifier.getAliasNode()?.getText() ?? importedBase);
+			if (specifier.getName() === importedName) {
+				names.add(specifier.getAliasNode()?.getText() ?? importedName);
 			}
 		}
 		const namespace = declaration.getNamespaceImport()?.getText();
-		if (namespace) names.add(`${namespace}.${importedBase}`);
+		if (namespace) names.add(`${namespace}.${importedName}`);
 	}
 	return names;
 }
 
-function isRegisteredService(cls: ClassDeclaration): boolean {
+/** Local names that refer to TypeORM's `Repository` or n8n's `BaseRepository` in a file. */
+function repositoryBaseNames(file: SourceFile): Set<string> {
+	return new Set([
+		...localNames(file, 'Repository', (source) => source === '@n8n/typeorm'),
+		// Inside @n8n/db, repositories import BaseRepository with a relative path.
+		...localNames(
+			file,
+			'BaseRepository',
+			(source) => source === '@n8n/db' || source.startsWith('.'),
+		),
+	]);
+}
+
+function isRegisteredService(cls: ClassDeclaration, serviceNames: Set<string>): boolean {
 	return cls.getDecorators().some((decorator) => {
 		const expression = decorator.getExpression();
 		const target = Node.isCallExpression(expression) ? expression.getExpression() : expression;
-		return target.getText() === 'Service';
+		return serviceNames.has(target.getText());
 	});
 }
 
@@ -57,12 +67,13 @@ export class RepositoryCompositionRule extends BaseRule<CodeHealthContext> {
 		for (const { file } of files) {
 			const baseNames = repositoryBaseNames(file);
 			if (baseNames.size === 0) continue;
+			const serviceNames = localNames(file, 'Service', (source) => source === '@n8n/di');
 
 			for (const cls of file.getClasses()) {
 				const base = cls.getExtends()?.getExpression().getText();
 				if (!base || !baseNames.has(base)) continue;
 				if (cls.isAbstract()) continue; // a shared base class, such as BaseRepository itself
-				if (!cls.isExported() && !isRegisteredService(cls)) continue;
+				if (!cls.isExported() && !isRegisteredService(cls, serviceNames)) continue;
 
 				const position = file.getLineAndColumnAtPos(cls.getStart());
 				violations.push(

@@ -258,8 +258,10 @@ baseline. A new business-logic import fails CI.
   `find(options)` passthrough.
 - **Transactions:** business logic uses the `TransactionRunner` from `@n8n/db`
   (`txRunner.run(ctx, async (ctx) => …)`), never `.manager`,
-  `createQueryBuilder(...)` or `managerFor(...)`. Thread the `ctx` that you get
-  into the repository methods that you call. The code-health rule
+  `createQueryBuilder(...)` or `managerFor(...)`. Pass `{}` only at the
+  operation entry point. Below it, pass the callback's `ctx` to each repository
+  method and each nested `run`, so that they join the active transaction. The
+  code-health rule
   `transaction-boundary` enforces this. See `oauth-token.service.ts`.
 - **Repositories compose, they don't extend:** a repository is a `@Service()`
   class that holds a file-private `BaseRepository` subclass (the table). The

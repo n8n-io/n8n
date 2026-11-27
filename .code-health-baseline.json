@@ -1129,6 +1129,12 @@
 				"line": 104,
 				"message": "Business logic uses `this.credentialDependencyRepository.manager`.",
 				"hash": "391c4ae58779"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 122,
+				"message": "Business logic uses `this.credentialDependencyRepository.manager` (use 2 in this file).",
+				"hash": "c248cea8b38a"
 			}
 		],
 		"packages/cli/src/credentials/credentials.controller.ts": [
@@ -1137,6 +1143,12 @@
 				"line": 32,
 				"message": "Business logic imports TypeORM directly.",
 				"hash": "510cfb224f30"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 625,
+				"message": "Business logic uses `{manager}=this.sharedCredentialsRepository`.",
+				"hash": "2a8f986ce999"
 			}
 		],
 		"packages/cli/src/credentials/credentials.service.ee.ts": [
@@ -1151,6 +1163,12 @@
 				"line": 50,
 				"message": "Business logic uses `this.sharedCredentialsRepository.manager`.",
 				"hash": "955299eef080"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 264,
+				"message": "Business logic uses `this.sharedCredentialsRepository.manager` (use 2 in this file).",
+				"hash": "e417115c1839"
 			}
 		],
 		"packages/cli/src/credentials/credentials.service.ts": [
@@ -1280,6 +1298,12 @@
 			},
 			{
 				"rule": "transaction-boundary",
+				"line": 132,
+				"message": "Business logic uses `{manager}=this.credentialsRepository`.",
+				"hash": "743cba3c43c0"
+			},
+			{
+				"rule": "transaction-boundary",
 				"line": 387,
 				"message": "Business logic uses `this.dataSource.createQueryBuilder`.",
 				"hash": "e0dbed8a2c78"
@@ -1303,6 +1327,24 @@
 				"line": 671,
 				"message": "Business logic uses `this.projectRelationRepository.manager`.",
 				"hash": "c2a1854fa109"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 909,
+				"message": "Business logic uses `this.projectRelationRepository.manager` (use 2 in this file).",
+				"hash": "1ed2238a8480"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 952,
+				"message": "Business logic uses `this.projectRelationRepository.manager` (use 3 in this file).",
+				"hash": "c9fa3071ee8c"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 1038,
+				"message": "Business logic uses `this.projectRelationRepository.manager` (use 4 in this file).",
+				"hash": "d9a6e6df82d8"
 			}
 		],
 		"packages/cli/src/services/public-api-key.service.ts": [
@@ -1320,9 +1362,21 @@
 			},
 			{
 				"rule": "transaction-boundary",
+				"line": 150,
+				"message": "Business logic uses `this.apiKeyRepository.createQueryBuilder` (use 2 in this file).",
+				"hash": "cb479229f05d"
+			},
+			{
+				"rule": "transaction-boundary",
 				"line": 276,
 				"message": "Business logic uses `this.apiKeyRepository.manager`.",
 				"hash": "be75e2236505"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 380,
+				"message": "Business logic uses `this.apiKeyRepository.manager` (use 2 in this file).",
+				"hash": "f73fe4dd7e65"
 			}
 		],
 		"packages/cli/src/services/user.service.ts": [
@@ -1343,6 +1397,12 @@
 				"line": 126,
 				"message": "Business logic uses `this.userRepository.manager`.",
 				"hash": "10cf9c8d0376"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 420,
+				"message": "Business logic uses `this.userRepository.manager` (use 2 in this file).",
+				"hash": "54575c437073"
 			}
 		],
 		"packages/cli/src/workflows/workflow-creation.service.ts": [
@@ -1407,6 +1467,24 @@
 				"line": 1808,
 				"message": "Business logic uses `this.workflowRepository.manager`.",
 				"hash": "8a9f305a834f"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 2171,
+				"message": "Business logic uses `this.workflowRepository.manager` (use 2 in this file).",
+				"hash": "3f2ebb5b7a30"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 2409,
+				"message": "Business logic uses `this.workflowRepository.manager` (use 3 in this file).",
+				"hash": "dfa3edbab581"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 2505,
+				"message": "Business logic uses `this.workflowRepository.manager` (use 4 in this file).",
+				"hash": "67d11a706134"
 			}
 		],
 		"packages/cli/src/workflows/workflows.controller.ts": [
@@ -1415,6 +1493,12 @@
 				"line": 39,
 				"message": "Business logic imports TypeORM directly.",
 				"hash": "63742f55819c"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 608,
+				"message": "Business logic uses `{manager}=this.projectRepository`.",
+				"hash": "31ad2fa29830"
 			}
 		],
 		"packages/cli/src/events/relays/telemetry.event-relay.ts": [
@@ -1529,6 +1613,12 @@
 				"line": 168,
 				"message": "Business logic uses `this.chatToolRepository.manager`.",
 				"hash": "22079aac2457"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 205,
+				"message": "Business logic uses `this.chatToolRepository.manager` (use 2 in this file).",
+				"hash": "aa008849bc23"
 			}
 		],
 		"packages/cli/src/modules/chat-hub/chat-hub-workflow.service.ts": [
@@ -1589,6 +1679,12 @@
 				"line": 220,
 				"message": "Business logic uses `this.repository.manager`.",
 				"hash": "69ce9ffa806c"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 436,
+				"message": "Business logic uses `this.repository.manager` (use 2 in this file).",
+				"hash": "072b136c67e8"
 			}
 		],
 		"packages/cli/src/modules/favorites/favorites.service.ts": [
@@ -1635,6 +1731,18 @@
 				"line": 36,
 				"message": "Business logic uses `this.apiKeyRepository.manager`.",
 				"hash": "8decfd450196"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 120,
+				"message": "Business logic uses `this.apiKeyRepository.manager` (use 2 in this file).",
+				"hash": "c803857f80de"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 158,
+				"message": "Business logic uses `this.apiKeyRepository.manager` (use 3 in this file).",
+				"hash": "4f2cb0ea532b"
 			}
 		],
 		"packages/cli/src/modules/mcp/mcp.settings.service.ts": [
@@ -1711,6 +1819,12 @@
 				"line": 35,
 				"message": "Business logic uses `this.projectRepository.createQueryBuilder`.",
 				"hash": "d8c396581ee3"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 63,
+				"message": "Business logic uses `this.projectRepository.createQueryBuilder` (use 2 in this file).",
+				"hash": "8ce419f2a47e"
 			}
 		],
 		"packages/cli/src/modules/source-control.ee/source-control-export.service.ee.ts": [
@@ -1745,6 +1859,18 @@
 				"line": 1591,
 				"message": "Business logic uses `this.dataTableRepository.manager`.",
 				"hash": "b8024f39f169"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 1715,
+				"message": "Business logic uses `this.dataTableRepository.manager` (use 2 in this file).",
+				"hash": "066cecf0664c"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 1849,
+				"message": "Business logic uses `this.dataTableRepository.manager` (use 3 in this file).",
+				"hash": "846a164f253b"
 			}
 		],
 		"packages/cli/src/modules/source-control.ee/source-control-scoped.service.ts": [
@@ -1816,9 +1942,21 @@
 			},
 			{
 				"rule": "transaction-boundary",
+				"line": 625,
+				"message": "Business logic uses `this.observationLockRepository.createQueryBuilder` (use 2 in this file).",
+				"hash": "d944b43c0250"
+			},
+			{
+				"rule": "transaction-boundary",
 				"line": 720,
 				"message": "Business logic uses `this.memoryEntryLockRepository.createQueryBuilder`.",
 				"hash": "aaba39b68161"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 739,
+				"message": "Business logic uses `this.memoryEntryLockRepository.createQueryBuilder` (use 2 in this file).",
+				"hash": "0facd3c01e4b"
 			}
 		],
 		"packages/cli/src/modules/dynamic-credentials.ee/services/credential-connection-status.service.ts": [
@@ -1839,6 +1977,18 @@
 				"line": 141,
 				"message": "Business logic uses `this.repository.manager`.",
 				"hash": "a600db69a1ab"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 152,
+				"message": "Business logic uses `this.repository.manager` (use 2 in this file).",
+				"hash": "45c129c7e26b"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 179,
+				"message": "Business logic uses `this.repository.manager` (use 3 in this file).",
+				"hash": "a39d02789ba5"
 			}
 		],
 		"packages/cli/src/modules/dynamic-credentials.ee/services/credential-resolver-workflow.service.ts": [
@@ -1855,6 +2005,12 @@
 				"line": 10,
 				"message": "Business logic imports TypeORM directly.",
 				"hash": "9b6ffe4b90ce"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 222,
+				"message": "Business logic uses `{manager}=this.repository`.",
+				"hash": "b322c680d24c"
 			}
 		],
 		"packages/cli/src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts": [
@@ -2707,6 +2863,14 @@
 				"hash": "fc7a7565f56f"
 			}
 		],
+		"packages/@n8n/db/src/repositories/ai-preference.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 35,
+				"message": "Repository `AiPreferenceRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "cc3b53e7c0d9"
+			}
+		],
 		"packages/@n8n/db/src/repositories/annotation-tag-mapping.repository.ee.ts": [
 			{
 				"rule": "repository-composition",
@@ -2755,12 +2919,28 @@
 				"hash": "f5bd1ffc1de7"
 			}
 		],
+		"packages/@n8n/db/src/repositories/credential-access.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 16,
+				"message": "Repository `CredentialAccessRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "ef8770c3abde"
+			}
+		],
 		"packages/@n8n/db/src/repositories/credential-dependency.repository.ts": [
 			{
 				"rule": "repository-composition",
 				"line": 62,
 				"message": "Repository `CredentialDependencyRepository` extends `Repository`, so TypeORM's API leaks to every class that injects it.",
 				"hash": "c02aa39fadc8"
+			}
+		],
+		"packages/@n8n/db/src/repositories/credentials.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 64,
+				"message": "Repository `CredentialsRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "4d6996bff9ef"
 			}
 		],
 		"packages/@n8n/db/src/repositories/evaluation-collection.repository.ts": [
@@ -2787,6 +2967,22 @@
 				"hash": "2361efaf92d4"
 			}
 		],
+		"packages/@n8n/db/src/repositories/execution.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 230,
+				"message": "Repository `ExecutionRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "31346869b076"
+			}
+		],
+		"packages/@n8n/db/src/repositories/folder-access.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 12,
+				"message": "Repository `FolderAccessRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "eb57857830a2"
+			}
+		],
 		"packages/@n8n/db/src/repositories/folder-tag-mapping.repository.ts": [
 			{
 				"rule": "repository-composition",
@@ -2801,6 +2997,22 @@
 				"line": 31,
 				"message": "Repository `FolderRepository` extends `Repository`, so TypeORM's API leaks to every class that injects it.",
 				"hash": "c6778d890c58"
+			}
+		],
+		"packages/@n8n/db/src/repositories/idempotency-key.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 16,
+				"message": "Repository `IdempotencyKeyRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "3d07709440e2"
+			}
+		],
+		"packages/@n8n/db/src/repositories/instance-credential-assignment.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 9,
+				"message": "Repository `InstanceCredentialAssignmentRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "32e33e4be37c"
 			}
 		],
 		"packages/@n8n/db/src/repositories/invalid-auth-token.repository.ts": [
@@ -2819,6 +3031,14 @@
 				"hash": "0d6dc5767c0f"
 			}
 		],
+		"packages/@n8n/db/src/repositories/poller-state.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 28,
+				"message": "Repository `PollerStateRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "5640895a9a8d"
+			}
+		],
 		"packages/@n8n/db/src/repositories/processed-data.repository.ts": [
 			{
 				"rule": "repository-composition",
@@ -2835,6 +3055,14 @@
 				"hash": "9a05ef3cd991"
 			}
 		],
+		"packages/@n8n/db/src/repositories/project-relation.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 14,
+				"message": "Repository `ProjectRelationRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "bebc2fa2c2ed"
+			}
+		],
 		"packages/@n8n/db/src/repositories/project-secrets-provider-access.repository.ee.ts": [
 			{
 				"rule": "repository-composition",
@@ -2843,12 +3071,28 @@
 				"hash": "0efe48ec9d97"
 			}
 		],
+		"packages/@n8n/db/src/repositories/project.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 25,
+				"message": "Repository `ProjectRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "5ddc0f029fd1"
+			}
+		],
 		"packages/@n8n/db/src/repositories/role-mapping-rule.repository.ts": [
 			{
 				"rule": "repository-composition",
 				"line": 6,
 				"message": "Repository `RoleMappingRuleRepository` extends `Repository`, so TypeORM's API leaks to every class that injects it.",
 				"hash": "d41d572b0e57"
+			}
+		],
+		"packages/@n8n/db/src/repositories/role.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 32,
+				"message": "Repository `RoleRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "075c474a59ec"
 			}
 		],
 		"packages/@n8n/db/src/repositories/scheduled-job.repository.ts": [
@@ -2883,12 +3127,60 @@
 				"hash": "38d5963ed8a6"
 			}
 		],
+		"packages/@n8n/db/src/repositories/settings.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 10,
+				"message": "Repository `SettingsRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "1169006a2136"
+			}
+		],
 		"packages/@n8n/db/src/repositories/shared-credentials.repository.ts": [
 			{
 				"rule": "repository-composition",
 				"line": 24,
 				"message": "Repository `SharedCredentialsRepository` extends `Repository`, so TypeORM's API leaks to every class that injects it.",
 				"hash": "05d3829eb037"
+			}
+		],
+		"packages/@n8n/db/src/repositories/shared-workflow.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 22,
+				"message": "Repository `SharedWorkflowRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "4d8a471b9beb"
+			}
+		],
+		"packages/@n8n/db/src/repositories/tag.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 13,
+				"message": "Repository `TagRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "3a731c8a0eb1"
+			}
+		],
+		"packages/@n8n/db/src/repositories/test-case-execution.repository.ee.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 32,
+				"message": "Repository `TestCaseExecutionRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "f72c38d43390"
+			}
+		],
+		"packages/@n8n/db/src/repositories/test-run.repository.ee.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 20,
+				"message": "Repository `TestRunRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "48bd3b119ffc"
+			}
+		],
+		"packages/@n8n/db/src/repositories/user.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 69,
+				"message": "Repository `UserRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "099517de09d2"
 			}
 		],
 		"packages/@n8n/db/src/repositories/variables.repository.ts": [
@@ -2915,12 +3207,132 @@
 				"hash": "5f24a000587b"
 			}
 		],
+		"packages/@n8n/db/src/repositories/workflow-history.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 20,
+				"message": "Repository `WorkflowHistoryRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "7b74d39c4a5d"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 28,
+				"message": "Repository `WorkflowPublicationOutboxRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "97a87a409286"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-publication-retry-state.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 38,
+				"message": "Repository `WorkflowPublicationRetryStateRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "2d0af5ca8083"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-publication-trigger-status.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 28,
+				"message": "Repository `WorkflowPublicationTriggerStatusRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "c2b459433823"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-publish-history.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 12,
+				"message": "Repository `WorkflowPublishHistoryRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "dc5f3c043a33"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-published-version.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 41,
+				"message": "Repository `WorkflowPublishedVersionRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "f2b5896fc3f9"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-review-activity-comment.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 8,
+				"message": "Repository `WorkflowReviewActivityCommentRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "2566f2f18b09"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-review-activity.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 45,
+				"message": "Repository `WorkflowReviewActivityRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "da7703ba4922"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-review-lifecycle.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 37,
+				"message": "Repository `WorkflowReviewLifecycleRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "2db3f6a5ba0f"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 8,
+				"message": "Repository `WorkflowReviewRequestAuthorRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "d4b6873beaa6"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-review-request-reviewer.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 8,
+				"message": "Repository `WorkflowReviewRequestReviewerRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "3cdfab58ce5c"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-review-request-workflow.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 32,
+				"message": "Repository `WorkflowReviewRequestWorkflowRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "7ba888026199"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-review-request.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 30,
+				"message": "Repository `WorkflowReviewRequestRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "846284d0274f"
+			}
+		],
 		"packages/@n8n/db/src/repositories/workflow-statistics.repository.ts": [
 			{
 				"rule": "repository-composition",
 				"line": 79,
 				"message": "Repository `WorkflowStatisticsRepository` extends `Repository`, so TypeORM's API leaks to every class that injects it.",
 				"hash": "a76f2f92e7bc"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow-tag-mapping.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 8,
+				"message": "Repository `WorkflowTagMappingRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "3931328031b1"
+			}
+		],
+		"packages/@n8n/db/src/repositories/workflow.repository.ts": [
+			{
+				"rule": "repository-composition",
+				"line": 124,
+				"message": "Repository `WorkflowRepository` extends `BaseRepository`, so TypeORM's API leaks to every class that injects it.",
+				"hash": "fe94da8bdd0a"
 			}
 		],
 		"packages/modules/apps/backend/src/app.repository.ts": [
@@ -3001,6 +3413,12 @@
 				"line": 156,
 				"message": "Business logic uses `this.userRepository.manager`.",
 				"hash": "29263cb9822f"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 487,
+				"message": "Business logic uses `this.userRepository.manager` (use 2 in this file).",
+				"hash": "c191017c61e2"
 			}
 		],
 		"packages/cli/src/commands/execute-batch.ts": [
@@ -3111,6 +3529,30 @@
 				"line": 551,
 				"message": "Business logic uses `this.dataTableColumnRepository.manager`.",
 				"hash": "fda8ef66a966"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 609,
+				"message": "Business logic uses `this.dataTableColumnRepository.manager` (use 2 in this file).",
+				"hash": "5a9c8af86b6d"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 717,
+				"message": "Business logic uses `this.dataTableColumnRepository.manager` (use 3 in this file).",
+				"hash": "0921a609acba"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 787,
+				"message": "Business logic uses `this.dataTableColumnRepository.manager` (use 4 in this file).",
+				"hash": "e2303b0c37d6"
+			},
+			{
+				"rule": "transaction-boundary",
+				"line": 820,
+				"message": "Business logic uses `this.dataTableColumnRepository.manager` (use 5 in this file).",
+				"hash": "592f5e25797c"
 			}
 		]
 	}

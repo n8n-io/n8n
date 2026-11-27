@@ -89,6 +89,17 @@ describe('RepositoryCompositionRule', () => {
 		]);
 	});
 
+	it('rejects a table registered with an aliased Service decorator', async () => {
+		write(
+			'packages/example/src/x.repository.ts',
+			"import { BaseRepository } from '@n8n/db';\nimport { Service as Utility } from '@n8n/di';\n@Utility()\nclass XRepository extends BaseRepository<X> {}\n",
+		);
+
+		expect(await analyze()).toEqual([
+			expect.stringContaining('x.repository.ts:3 Repository `XRepository`'),
+		]);
+	});
+
 	it('ignores other base classes, abstract bases and test files', async () => {
 		write(
 			'packages/example/src/x.service.ts',
@@ -112,8 +123,13 @@ describe('RepositoryCompositionRule', () => {
 			'packages/db/src/repositories/user.repository.ts',
 			"import { Repository } from '@n8n/typeorm';\nexport class UserRepository extends Repository<User> {}\n",
 		);
+		write(
+			'packages/db/src/repositories/role.repository.ts',
+			"import { BaseRepository } from './base-repository';\nexport class RoleRepository extends BaseRepository<Role> {}\n",
+		);
 
-		expect(await analyze()).toEqual([
+		expect((await analyze()).sort()).toEqual([
+			expect.stringContaining('role.repository.ts:2 Repository `RoleRepository`'),
 			expect.stringContaining('user.repository.ts:2 Repository `UserRepository`'),
 		]);
 	});
