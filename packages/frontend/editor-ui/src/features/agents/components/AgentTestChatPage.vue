@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { inject, ref, useTemplateRef, watch } from 'vue';
+import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { computed, inject, ref, useTemplateRef, watch } from 'vue';
 
-import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
+import { deriveAgentStatus } from '@/features/agents/composables/agentTelemetry.utils';
 import type {
 	AgentContinueLoadedEvent,
 	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
-} from '../types';
-import type { BudgetAmountField } from '../utils/budget-config';
+} from '@/features/agents/types';
+import type { BudgetAmountField } from '@/features/agents/utils/budget-config';
 import AgentChatPanel from './AgentChatPanel.vue';
+import AgentTestScenariosEmptyState from './AgentTestScenariosEmptyState.vue';
 import { AGENT_BUILDER_STANDALONE_KEY } from './agentBuilderInjectionKeys';
 
 const standaloneBuilder = inject(AGENT_BUILDER_STANDALONE_KEY, false);
@@ -27,11 +29,13 @@ const props = withDefaults(
 		effectiveSessionId?: string;
 		newSession?: boolean;
 		initialPrompt?: string;
+		showTestScenarios?: boolean;
 		placeholder?: string;
 		composerHeight?: string;
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
+		beforeGenerate?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
 		budgetCards?: boolean;
 		/** Persists a raised budget cap. Omitted when the agent is read-only. */
@@ -40,6 +44,8 @@ const props = withDefaults(
 	{
 		visible: true,
 		newSession: false,
+		showTestScenarios: false,
+		beforeGenerate: undefined,
 		layout: 'dock',
 		dismissedFixToolCallIds: () => [],
 		budgetCards: false,
@@ -60,8 +66,23 @@ const emit = defineEmits<{
 const inputDraft = ref('');
 const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
 
+const canShowTestScenarios = computed(() => {
+	if (!props.showTestScenarios || !props.localConfig) return false;
+
+	return Boolean(
+		props.localConfig.instructions?.trim() &&
+			props.localConfig.model?.trim() &&
+			props.localConfig.credential?.trim() &&
+			props.localConfig.credential !== MANAGED_CREDENTIAL_TOKEN,
+	);
+});
+
 function onFirstUserMessage(text: string | undefined) {
 	if (text !== undefined) emit('message-sent');
+}
+
+function onSelectTestScenario(prompt: string) {
+	void chatPanel.value?.sendHostMessage(prompt);
 }
 
 function focusInput(options?: FocusOptions) {
@@ -126,6 +147,14 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@first-user-message="onFirstUserMessage"
 			>
+				<template v-if="canShowTestScenarios" #empty-state>
+					<AgentTestScenariosEmptyState
+						:project-id="projectId"
+						:agent-id="agentId"
+						:before-generate="beforeGenerate"
+						@select="onSelectTestScenario"
+					/>
+				</template>
 				<template v-if="$slots['composer-start']" #composer-start>
 					<slot name="composer-start" />
 				</template>

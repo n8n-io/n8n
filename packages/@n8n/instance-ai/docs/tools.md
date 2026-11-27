@@ -340,9 +340,7 @@ of guessable by comparing per-scope counts.
 `folder` (`{ id, name, path }`) is the workflow's folder with its root-relative
 path (`Clients/Acme`). Folder names cannot contain `/`, so `path` is
 unambiguous. Absent for root-level workflows, and absent on every row
-while folder exploration is off for the run (PostHog flag
-`110_instance_ai_folder_exploration`, force-on via
-`N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED`).
+while folder exploration is off for the run.
 
 `folderResolution` (`{ requested, reason, candidates }`) is present only when a
 requested folder did not resolve. `workflows` is then empty on purpose, and
@@ -1544,8 +1542,11 @@ the `apps` tool group, which the skill lists in `recommended_tool_groups`.
 | `commit_app` | `app:update` | Save the folder as one version and wait for its build |
 | `discard_app_changes` | `app:read` | Replace the folder with the current draft. Keeps `node_modules` |
 
-Only `create_app` suspends. A namespace that is taken shows the blueprint again
-with a field error, instead of an error result.
+Only `create_app` suspends. The plan card shows the app title only. When the
+namespace is too long for the instance, n8n cuts it. When the namespace is taken, n8n
+uses the next free numbered namespace (`todos-2`, `todos-3` and so on), within
+the namespace length limit of the instance. When all of them are taken, the tool
+returns an error result.
 
 The model edits the folder with the workspace tools and runs `npm ci` and
 `npm run build` there before it commits. The source moves in and out of the

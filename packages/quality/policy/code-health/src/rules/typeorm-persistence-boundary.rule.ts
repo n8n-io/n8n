@@ -37,6 +37,7 @@ const DEFAULT_ALLOWED_FILES = [
 	// Engine v2 keeps its persistence infrastructure and composition root in one package.
 	'packages/@n8n/engine/src/database/create-stores.ts',
 	'packages/@n8n/engine/src/database/data-source.ts',
+	'packages/@n8n/engine/src/database/run-migrations.ts',
 	'packages/@n8n/engine/src/database/typeorm-execution-store.ts',
 	'packages/@n8n/engine/src/database/typeorm-execution-view-store.ts',
 	'packages/@n8n/engine/src/database/typeorm-step-store.ts',

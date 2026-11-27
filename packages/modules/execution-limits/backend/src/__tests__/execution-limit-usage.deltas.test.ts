@@ -54,22 +54,11 @@ describe('toUsageDeltas', () => {
 		);
 	});
 
-	it('gives an agent entity its own key', () => {
-		const deltas = toUsageDeltas([ledgerRow(), ledgerRow({ entityType: 'agent' })]);
+	it('gives no delta for an agent row', () => {
+		const agentStart = ledgerRow({ entityType: 'agent' });
+		const agentBlockedEnd = ledgerRow({ entityType: 'agent', event: 'ended', outcome: 'blocked' });
 
-		const counts = (entityType: string) => ({
-			day: '2026-10-28',
-			entityType,
-			startedCount: 1,
-			blockedCount: 0,
-		});
-		expect(deltas).toEqual({
-			projects: [
-				{ projectId: 'project-1', ...counts('agent') },
-				{ projectId: 'project-1', ...counts('workflow') },
-			],
-			instance: [counts('agent'), counts('workflow')],
-		});
+		expect(toUsageDeltas([agentStart, agentBlockedEnd])).toEqual(NONE);
 	});
 
 	it('uses the UTC day when the local day is already the next one', () => {

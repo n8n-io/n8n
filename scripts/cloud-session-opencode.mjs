@@ -31,13 +31,19 @@ export function parseOpenCodeArgs(args) {
 	return { name: positionals[0] ?? 'agent', web: !!values.web, fresh: !!values.new, port };
 }
 
+export function parseOpenCodeVersion(output) {
+	const match = output
+		.trim()
+		.match(/^(?:opencode\s+v?)?(\d+\.\d+\.\d+(?:-[\w.-]+)?(?:\+[\w.-]+)?)$/);
+	return match?.[1];
+}
+
 function localVersion() {
 	const result = spawnSync('opencode', ['--version'], { encoding: 'utf8' });
 	if (result.error || result.status !== 0)
 		throw new Error('Install OpenCode locally, or use --web to connect with a browser.');
-	const version = result.stdout.trim();
-	if (!/^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(version))
-		throw new Error('Cannot read the local OpenCode version. Use --web or --legacy.');
+	const version = parseOpenCodeVersion(result.stdout);
+	if (!version) throw new Error('Cannot read the local OpenCode version. Use --web or --legacy.');
 	return version;
 }
 
@@ -148,7 +154,7 @@ async function waitForTunnel(url, password, tunnel, signal) {
 			throw new Error('The SSH tunnel closed. Check the SSH output above, then reconnect.');
 		let response;
 		try {
-			response = await fetch(`${url}/global/health`, {
+			response = await fetch(`${url}/api/info`, {
 				headers: { authorization: basicAuth(password) },
 				signal: AbortSignal.any([signal, AbortSignal.timeout(1000)]),
 			});
@@ -160,10 +166,10 @@ async function waitForTunnel(url, password, tunnel, signal) {
 				throw new Error(
 					`OpenCode health check failed (${response.status}). Reconnect after checking the remote server.`,
 				);
-			const health = await response.json();
-			if (health.healthy !== true || typeof health.version !== 'string')
+			const info = await response.json();
+			if (typeof info?.version !== 'string' || info.version.length === 0)
 				throw new Error('Invalid OpenCode health response.');
-			return health;
+			return info;
 		}
 		await delay(500, undefined, { signal });
 	}
@@ -217,10 +223,10 @@ export async function connectOpenCode(options, ensureCodespace) {
 			],
 			{ stdio: ['ignore', 'ignore', 'inherit'], detached: true },
 		);
-		const health = await waitForTunnel(url, state.password, tunnel, controller.signal);
-		if (version && health.version !== version) {
+		const info = await waitForTunnel(url, state.password, tunnel, controller.signal);
+		if (version && info.version !== version) {
 			throw new Error(
-				`OpenCode versions differ: local ${version}, server ${health.version}. Install the matching version with \`npm install -g opencode-ai@${health.version}\`, or use --web or --legacy. The remote server is still running.`,
+				`OpenCode versions differ: local ${version}, server ${info.version}. Install the matching version with \`npm install -g @opencode/cli@${info.version}\`, or use --web or --legacy. The remote server is still running.`,
 			);
 		}
 		const stopped = new Promise((resolve) =>
@@ -235,25 +241,23 @@ export async function connectOpenCode(options, ensureCodespace) {
 			);
 			openBrowser(webUrl);
 		} else {
-			console.log(`Connecting to OpenCode ${health.version} in ${state.directory}…`);
+			console.log(`Connecting to OpenCode ${info.version} in ${state.directory}…`);
 			// OpenCode's own resume spans all worktrees of the repository. The
 			// server resolved the workspace's latest conversation instead, so
 			// target it directly. A fresh TUI conversation needs no target.
 			client = startChild(
 				'opencode',
 				[
-					'attach',
+					'--server',
 					url,
-					'--dir',
-					state.directory,
 					...(state.sessionID ? ['--session', state.sessionID] : []),
+					state.directory,
 				],
 				{
 					stdio: 'inherit',
 					env: {
 						...process.env,
-						OPENCODE_SERVER_PASSWORD: state.password,
-						OPENCODE_SERVER_USERNAME: 'opencode',
+						OPENCODE_PASSWORD: state.password,
 					},
 				},
 			);

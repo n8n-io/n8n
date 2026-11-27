@@ -47,4 +47,22 @@ describe('resolveAgentValidationIssueMessageKey', () => {
 			`agents.builder.validation.issue.${key}`,
 		);
 	});
+
+	it.each([
+		['missing_reference', undefined, 'skillWorkflow.missingReference'],
+		['incompatible_reference', 'not_in_project', 'tool.workflow.notInProject'],
+		['incompatible_reference', 'not_published', 'tool.workflow.notPublished'],
+	] satisfies Array<[AgentConfigValidationIssue['code'], string | undefined, string]>)(
+		'uses the skill workflow message for %s with reason %s',
+		(code, reason, key) => {
+			expect(
+				resolveAgentValidationIssueMessageKey({
+					code,
+					path: 'skills.skill-1.workflows.wf-1',
+					capability: { kind: 'tool', toolType: 'workflow', id: 'Report' },
+					...(reason ? { reason } : {}),
+				}),
+			).toBe(`agents.builder.validation.issue.${key}`);
+		},
+	);
 });

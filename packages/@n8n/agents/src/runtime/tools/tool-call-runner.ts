@@ -36,6 +36,7 @@ import { isZodSchema } from '../../utils/zod';
 import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import { stringifyError } from '../loop/runtime-helpers';
+import { withMcpHttpStatus } from '../mcp/http-error';
 import type { AgentMessageList } from '../model/message-list';
 import type { AgentEventBus } from '../state/event-bus';
 import type { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
@@ -323,7 +324,9 @@ export class ToolCallRunner {
 			result: error,
 			isError: true,
 		});
-		const errorText = stringifyError(error);
+		const errorText = builtTool?.mcpTool
+			? await withMcpHttpStatus(error, stringifyError(error))
+			: stringifyError(error);
 		const guardedError = await guardToolErrorForModel(
 			builtTool?.outputTrust === 'untrusted'
 				? protectUntrustedToolError(errorText, builtTool)

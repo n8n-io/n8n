@@ -6,7 +6,7 @@ import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agents
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { MAX_TOOL_DATA_DISPLAY_LENGTH } from '@/features/ai/shared/components/ToolDataBlock/toolData.utils';
 
-import { extractToolCallCode } from '../toolResultCode';
+import { extractToolCallCode } from '@/features/ai/shared/components/ToolResult/toolResultCode';
 
 /**
  * The code in the output of an Assistant code tool call, or `undefined` for

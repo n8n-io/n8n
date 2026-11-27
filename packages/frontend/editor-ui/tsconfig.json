@@ -31,6 +31,8 @@
 			"@n8n/frontend-module-html-display-mode/*": [
 				"../../modules/html-display-mode/frontend/src/*"
 			],
+			"@n8n/frontend-module-mcp-servers": ["../../modules/mcp-servers/frontend/src/index.ts"],
+			"@n8n/frontend-module-mcp-servers/*": ["../../modules/mcp-servers/frontend/src/*"],
 			"@n8n/frontend-module-engine-v2": ["../../modules/engine-v2/frontend/src/index.ts"],
 			"@n8n/frontend-module-engine-v2/*": ["../../modules/engine-v2/frontend/src/*"],
 			"@n8n/frontend-module-promotions": ["../../modules/promotions/frontend/src/index.ts"],

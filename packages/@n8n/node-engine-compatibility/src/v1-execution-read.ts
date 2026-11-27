@@ -5,7 +5,7 @@
  * iteration.
  */
 
-import type { StepDetail, StepError, StepStatus, WorkflowGraph } from '@n8n/engine';
+import type { StepDetail, StepError, StepSlots, StepStatus, WorkflowGraph } from '@n8n/engine';
 import type {
 	INodeExecutionData,
 	ExecutionError,
@@ -179,7 +179,17 @@ function toLineage(graph: WorkflowGraph, steps: StepDetail[]): SourceLineage {
 		}
 	}
 
-	return toSourceLineage(graph, lastIterationByNodeId);
+	const completedOutputs = new Map<string, Map<number, StepSlots>>();
+	for (const step of steps) {
+		if (step.status !== 'completed' || step.outputs === null) continue;
+		const byIteration = completedOutputs.get(step.nodeId) ?? new Map<number, StepSlots>();
+		byIteration.set(step.iteration, step.outputs);
+		completedOutputs.set(step.nodeId, byIteration);
+	}
+
+	return toSourceLineage(graph, lastIterationByNodeId, (nodeId, iteration) =>
+		completedOutputs.get(nodeId)?.get(iteration),
+	);
 }
 
 function toTaskData(

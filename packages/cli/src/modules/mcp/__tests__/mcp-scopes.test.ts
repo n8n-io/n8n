@@ -1,6 +1,5 @@
 import { Container } from '@n8n/di';
 import type { Mock } from 'vitest';
-import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import {
 	EventService,
@@ -238,6 +237,7 @@ describe('McpService scope enforcement', () => {
 		instanceAiActive = false,
 		breakingChangesActive = false,
 		agentsActive = false,
+		activityLogEnabled = true,
 		postHogClient = mockInstance(PostHogClient),
 	}: {
 		builderEnabled?: boolean;
@@ -245,6 +245,7 @@ describe('McpService scope enforcement', () => {
 		instanceAiActive?: boolean;
 		breakingChangesActive?: boolean;
 		agentsActive?: boolean;
+		activityLogEnabled?: boolean;
 		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
@@ -258,6 +259,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(CredentialsFinderService),
 			mockInstance(ActiveExecutions),
 			mockInstance(GlobalConfig, {
+				activityLog: { enabled: activityLogEnabled, retentionDays: 0, maxEntries: 1_000 },
 				endpoints: {
 					...new EndpointsConfig(),
 					webhook: '/webhook',
@@ -490,28 +492,25 @@ describe('McpService scope enforcement', () => {
 		},
 	);
 
-	it.each([true, false])(
-		'sets all context tools and the resource from the shared flag override: %s',
-		async (enabled) => {
-			mockInstance(InstanceContextService);
-			mockInstance(WorkflowDependencyQueryService);
-			const config = mockInstance(GlobalConfig, {
-				diagnostics: { enabled: false },
-				featureFlags: { override: { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: enabled } },
-			});
-			const service = buildService({
-				instanceAiActive: true,
-				postHogClient: new PostHogClient(mockInstance(InstanceSettings), config),
-			});
+	it('registers all context tools and the resource without telemetry', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+		const config = mockInstance(GlobalConfig, {
+			diagnostics: { enabled: false },
+			featureFlags: { override: {} },
+		});
+		const service = buildService({
+			instanceAiActive: true,
+			postHogClient: new PostHogClient(mockInstance(InstanceSettings), config),
+		});
 
-			const flags = await service.resolveFeatureFlags(user);
-			const server = await service.getServer(user, flags);
+		const flags = await service.resolveFeatureFlags(user);
+		const server = await service.getServer(user, flags);
 
-			const registered = getRegisteredToolNames(server);
-			for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered.has(name)).toBe(enabled);
-			expect(getRegisteredResourceUris(server).has(INSTANCE_CONTEXT_RESOURCE_URI)).toBe(enabled);
-		},
-	);
+		const registered = getRegisteredToolNames(server);
+		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered.has(name)).toBe(true);
+		expect(getRegisteredResourceUris(server).has(INSTANCE_CONTEXT_RESOURCE_URI)).toBe(true);
+	});
 
 	/**
 	 * Node usage reads the dependency index, which belongs to no module, so it does not follow the
@@ -531,6 +530,22 @@ describe('McpService scope enforcement', () => {
 
 		expect(indexBound).toEqual(['get_node_usage', 'get_dependencies']);
 		for (const name of indexBound) expect(registered).toContain(name);
+		for (const name of ACTIVITY_LOG_TOOLS) expect(registered).not.toContain(name);
+		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
+	});
+
+	it('keeps the index tools but drops the activity tools when the activity log is off', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({
+			instanceAiActive: true,
+			activityLogEnabled: false,
+		}).getServer(user, mcpFeatureFlags({ instanceContextEnabled: true }));
+
+		const registered = getRegisteredToolNames(server);
+		expect(registered).toContain('get_node_usage');
+		expect(registered).toContain('get_dependencies');
 		for (const name of ACTIVITY_LOG_TOOLS) expect(registered).not.toContain(name);
 		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
 	});

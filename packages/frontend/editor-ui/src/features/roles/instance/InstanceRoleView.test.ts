@@ -7,6 +7,7 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { GLOBAL_ADMIN_SCOPES } from '@n8n/permissions';
 import InstanceRoleView from './InstanceRoleView.vue';
+import { getPresetScopes } from './instanceRoleScopes';
 import {
 	BASELINE_INSTANCE_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
@@ -207,6 +208,25 @@ describe('InstanceRoleView', () => {
 			expect(getByTestId('scope-option-credential-use')).toBeDisabled();
 		});
 
+		it('leaves the scopes of hidden resources out of the Admin preset', async () => {
+			// The Apps module and the MCP servers module are off in this test.
+			rolesStore.processedInstanceRoles = [
+				{ ...mockSystemRole, scopes: [...GLOBAL_ADMIN_SCOPES] },
+			] as typeof rolesStore.processedInstanceRoles;
+			rolesStore.createRole.mockResolvedValueOnce({ ...mockCustomRole, slug: 'support' });
+			const { container, getByRole, getByTestId } = renderComponent();
+
+			await fillName(container, 'Support');
+			await waitFor(() => expect(getByTestId('role-preset-global:admin')).toBeInTheDocument());
+			await userEvent.click(getByTestId('role-preset-global:admin'));
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			await waitFor(() => expect(rolesStore.createRole).toHaveBeenCalled());
+			const { scopes } = rolesStore.createRole.mock.calls[0][0];
+			expect(scopes).toContain('tag:create');
+			expect(scopes.filter((scope: string) => /^(app|mcpServer):/.test(scope))).toEqual([]);
+		});
+
 		it('populates scopes from a system-role preset', async () => {
 			const { getByTestId } = renderComponent();
 
@@ -292,6 +312,18 @@ describe('InstanceRoleView', () => {
 
 			// ... and it returns once the form matches the preset again.
 			await userEvent.click(getByTestId('scope-option-project-create'));
+
+			await waitFor(() =>
+				expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('true'),
+			);
+		});
+		it('highlights the matching preset of a role that holds scopes of a hidden resource', async () => {
+			// The MCP servers module is off in this test, so its scopes are hidden.
+			rolesStore.fetchRoleBySlug.mockResolvedValue({
+				...mockCustomRole,
+				scopes: [...getPresetScopes(GLOBAL_MEMBER_SCOPES), 'mcpServer:read', 'mcpServer:list'],
+			});
+			const { getByTestId } = renderComponent({ props: { roleSlug: 'support' } });
 
 			await waitFor(() =>
 				expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('true'),

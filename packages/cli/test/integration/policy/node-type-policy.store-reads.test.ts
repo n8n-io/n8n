@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService, Publisher } from '@n8n/backend-services';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { TransactionRunner, type OperationContext } from '@n8n/db';
+import { ProjectRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
@@ -209,6 +209,7 @@ describe('node type policy store reads', () => {
 				unloaded,
 				Container.get(LoadNodesAndCredentials),
 				Container.get(NodeTypes),
+				Container.get(ProjectRepository),
 			);
 
 			let action: string | undefined;

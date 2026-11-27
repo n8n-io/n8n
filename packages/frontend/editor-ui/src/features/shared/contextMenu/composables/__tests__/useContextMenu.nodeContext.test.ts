@@ -11,7 +11,6 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 	};
 });
 import { NO_OP_NODE_TYPE } from '@/app/constants';
-import { CANVAS_NODE_CONTEXT_FLAG } from '@n8n/api-types';
 import { faker } from '@faker-js/faker';
 import { shallowRef } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -61,13 +60,6 @@ vi.mock('@/app/composables/useEditorContext', async () => {
 	};
 });
 
-// The item under test is gated by posthog directly (not a store flag) —
-// stub isFeatureEnabled so tests can flip CANVAS_NODE_CONTEXT_FLAG.
-const isFeatureEnabled = vi.hoisted(() => vi.fn((_flag: string) => false));
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled }),
-}));
-
 const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 	id: faker.string.uuid(),
 	name: faker.word.words(3),
@@ -113,7 +105,6 @@ describe('useContextMenu - add_nodes_to_chat (node context) gating', () => {
 		editorContextFlags.aiAssistant = true;
 		editorContextFlags.aiBuilder = true;
 		editorContextFlags.instanceAi = false;
-		isFeatureEnabled.mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -123,8 +114,7 @@ describe('useContextMenu - add_nodes_to_chat (node context) gating', () => {
 
 	const mockEvent = new MouseEvent('contextmenu', { clientX: 500, clientY: 300 });
 
-	it('shows "Add node to chat" (singular) when the flag is on and a single node is selected', () => {
-		isFeatureEnabled.mockImplementation((flag: string) => flag === CANVAS_NODE_CONTEXT_FLAG);
+	it('shows "Add node to chat" (singular) when a single node is selected', () => {
 		editorContextFlags.instanceAi = true;
 
 		const { open, actions } = useContextMenu();
@@ -135,8 +125,7 @@ describe('useContextMenu - add_nodes_to_chat (node context) gating', () => {
 		expect(item?.label).toBe('Add node to chat');
 	});
 
-	it('shows "Add 3 nodes to chat" (plural) when the flag is on and 3 nodes are selected', () => {
-		isFeatureEnabled.mockImplementation((flag: string) => flag === CANVAS_NODE_CONTEXT_FLAG);
+	it('shows "Add 3 nodes to chat" (plural) when 3 nodes are selected', () => {
 		editorContextFlags.instanceAi = true;
 
 		const { open, actions } = useContextMenu();
@@ -147,18 +136,7 @@ describe('useContextMenu - add_nodes_to_chat (node context) gating', () => {
 		expect(item?.label).toBe('Add 3 nodes to chat');
 	});
 
-	it('hides "Add node(s) to chat" when the flag is off, regardless of selection size', () => {
-		isFeatureEnabled.mockReturnValue(false);
-		editorContextFlags.instanceAi = true;
-
-		const { open, actions } = useContextMenu();
-		open(mockEvent, { source: 'canvas', nodeIds: nodes.map((n) => n.id) });
-
-		expect(actions.value.some((action) => action.id === 'add_nodes_to_chat')).toBe(false);
-	});
-
-	it('hides "Add node(s) to chat" when the flag is on but Instance AI is unavailable', () => {
-		isFeatureEnabled.mockImplementation((flag: string) => flag === CANVAS_NODE_CONTEXT_FLAG);
+	it('hides "Add node(s) to chat" when Instance AI is unavailable', () => {
 		editorContextFlags.instanceAi = false;
 
 		const { open, actions } = useContextMenu();
@@ -168,7 +146,6 @@ describe('useContextMenu - add_nodes_to_chat (node context) gating', () => {
 	});
 
 	it('stays enabled in read-only mode, since it only adds chat context', () => {
-		isFeatureEnabled.mockImplementation((flag: string) => flag === CANVAS_NODE_CONTEXT_FLAG);
 		editorContextFlags.instanceAi = true;
 		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
 
@@ -182,7 +159,6 @@ describe('useContextMenu - add_nodes_to_chat (node context) gating', () => {
 
 	// The two share Alt+I and are mutually exclusive on Instance AI availability.
 	it('with Instance AI available, shows add_nodes_to_chat and hides legacy focus_ai', () => {
-		isFeatureEnabled.mockImplementation((flag: string) => flag === CANVAS_NODE_CONTEXT_FLAG);
 		editorContextFlags.instanceAi = true;
 
 		const { open, actions } = useContextMenu();
@@ -193,7 +169,6 @@ describe('useContextMenu - add_nodes_to_chat (node context) gating', () => {
 	});
 
 	it('with Instance AI unavailable, shows legacy focus_ai and hides add_nodes_to_chat', () => {
-		isFeatureEnabled.mockImplementation((flag: string) => flag === CANVAS_NODE_CONTEXT_FLAG);
 		editorContextFlags.instanceAi = false;
 
 		const { open, actions } = useContextMenu();
