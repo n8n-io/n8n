@@ -1,0 +1,53 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_55c9c16466c150::t_9af1f2e5d02579 7702
+packages/frontend/editor-ui/src/Interface.ts
+  s_55c9c16466c150::t_5c6c0338a8a314 376-377
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.test.ts
+  s_55c9c16466c150::t_85d483faaf6a16 234,251,253,268
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_55c9c16466c150::t_85031fde80051a 357
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_55c9c16466c150::t_3ac8606cd52250 1162
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_55c9c16466c150::t_8ebbe6744e215c 1976
+packages/frontend/editor-ui/src/features/credentials/components/RuntimeCredentialIndicator.vue
+  s_55c9c16466c150::t_60952c332453d7 10-11,15,30
+packages/frontend/editor-ui/src/features/credentials/composables/useNodeCredentialOptions.ts
+  s_55c9c16466c150::t_6a801c446247e0 144
+packages/frontend/editor-ui/src/features/credentials/composables/useRuntimeRuleLink.test.ts
+  s_55c9c16466c150::t_ef2472c8a64c27 1-2,4-15,18-20
+packages/frontend/editor-ui/src/features/credentials/composables/useRuntimeRuleLink.ts
+  s_55c9c16466c150::t_6bf02f572d5065 11-12,18-20
+packages/frontend/editor-ui/src/features/credentials/credentials.types.ts
+  s_55c9c16466c150::t_0b57a4a0139c01 36-37
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.vue
+  s_55c9c16466c150::t_a37006fc23e21e 149
+packages/modules/runtime-credentials/frontend/src/components/project/ProjectAccessTable.vue
+  s_55c9c16466c150::t_07463d6f105942 87,101,121,123,127-129,133,135,139,207,218,240,254
+packages/modules/runtime-credentials/frontend/src/components/project/credentialTypes.ts
+  s_55c9c16466c150::t_2b3b0d4f7be33f 8-9,11,13,17-18
+packages/modules/runtime-credentials/frontend/src/components/project/useProjectRuntimeInputs.ts
+  s_55c9c16466c150::t_9a2765c2dd6d4f 4,7,9-10,18-22,28-48,53,55,68-69,71,74-77,79,82,87,95,97-99,104,114-115,118
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.api.test.ts
+  s_55c9c16466c150::t_7d4696da3343aa 6,113-114,116,120
+packages/modules/runtime-credentials/frontend/src/runtime-credentials.api.ts
+  s_55c9c16466c150::t_44ada435517e48 3,12,34-49,85-86
+packages/modules/runtime-credentials/frontend/src/views/RuntimeInputsProjectView.test.ts
+  s_55c9c16466c150::t_e5e4b6e091239d 5,21,26,31-32,35-37,42-47,52,61,80-81,94-95,98-99,101,121,127,132,140-142,181,191,208-210,214,219,222-224,228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "313d2396d2a89b72d52c47ae2429559abd647d65",
+  "prompts": {},
+  "sessions": {
+    "s_55c9c16466c150": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022b425f-64c1-4a6b-9b1e-ef90cecbeeaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

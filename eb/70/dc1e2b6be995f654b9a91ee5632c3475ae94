@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_af367323ed1620::t_17a798a3169eec 27-30
+packages/cli/src/modules/apps/bindings/__tests__/app-agent.adapter.test.ts
+  s_af367323ed1620::t_b4f1fe90925268 256
+packages/cli/test/integration/agents/agent-thread-redaction.api.test.ts
+  s_af367323ed1620::t_f44bb1fbb30107 17,177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb70dc1e2b6be995f654b9a91ee5632c3475ae94",
+  "prompts": {},
+  "sessions": {
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
