@@ -1428,8 +1428,12 @@ export async function formWebhook(
 				await validateWebhookAuthentication(context, authProperty);
 			} catch (error) {
 				if (error instanceof WebhookAuthorizationError) {
-					res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
-					res.status(401).send();
+					if (error.responseCode === 401) {
+						res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+						res.status(401).send();
+					} else {
+						res.status(error.responseCode).send(error.message);
+					}
 					return { noWebhookResponse: true };
 				}
 				throw error;

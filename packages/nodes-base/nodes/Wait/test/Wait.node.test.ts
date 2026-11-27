@@ -307,7 +307,7 @@ describe('Wait Node webhook authentication', () => {
 	);
 
 	it.each(['unsupportedMode', 'BasicAuth'])(
-		'should reject form resume without workflowData when authentication mode "%s" is unsupported',
+		'should return 500 without workflowData when form resume uses unsupported authentication mode "%s"',
 		async (incomingAuthentication) => {
 			const waitNode = new Wait();
 			const { context, res } = createWebhookContext('form', incomingAuthentication);
@@ -315,8 +315,9 @@ describe('Wait Node webhook authentication', () => {
 			const result = await waitNode.webhook(context);
 
 			expect(result).toEqual({ noWebhookResponse: true });
-			expect(res.status).toHaveBeenCalledWith(401);
-			expect(res.send).toHaveBeenCalled();
+			expect(res.setHeader).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(500);
+			expect(res.send).toHaveBeenCalledWith('Unsupported authentication method!');
 		},
 	);
 });

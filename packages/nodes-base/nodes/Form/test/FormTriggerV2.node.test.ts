@@ -398,7 +398,7 @@ describe('FormTrigger', () => {
 	});
 
 	it.each(['unsupportedMode', 'BasicAuth'])(
-		'should reject requests when authentication mode "%s" is unsupported',
+		'should return 500 when authentication mode "%s" is unsupported',
 		async (authentication) => {
 			const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
 
@@ -421,7 +421,8 @@ describe('FormTrigger', () => {
 			});
 
 			expect(responseData).toEqual({ noWebhookResponse: true });
-			expect(response.status).toHaveBeenCalledWith(401);
+			expect(response.setHeader).not.toHaveBeenCalledWith('WWW-Authenticate', expect.any(String));
+			expect(response.status).toHaveBeenCalledWith(500);
 		},
 	);
 
