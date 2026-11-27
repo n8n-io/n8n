@@ -515,6 +515,7 @@ export async function executeAgentScenario(
 		rootCause,
 		...(verdict.expectationResults ? { expectationResults: verdict.expectationResults } : {}),
 		agentTurnCount: run.turnCount,
+		agentTranscript: transcript,
 		...(incomplete ? { incomplete: true } : {}),
 	};
 }

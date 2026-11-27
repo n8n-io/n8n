@@ -341,6 +341,10 @@ export interface ExecutionScenarioResult {
 	agentTurnCount?: number;
 	/** Agent runs: wall time of the whole scenario row, every turn and the grading included. */
 	durationMs?: number;
+	/** Agent runs: the conversation the judge read, turn by turn, each session of a
+	 *  `sessions` scenario starting with a `heading`. Written to eval-results.json as
+	 *  `scenarios[].runs[].transcript`. */
+	agentTranscript?: TranscriptTurn[];
 }
 
 /**

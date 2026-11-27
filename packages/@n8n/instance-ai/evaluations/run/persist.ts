@@ -552,6 +552,7 @@ export function writeEvalResults(
 					...(sr.modelResolution ? { modelResolution: sr.modelResolution } : {}),
 					...(sr.agentTurnCount !== undefined ? { agentTurnCount: sr.agentTurnCount } : {}),
 					...(sr.durationMs !== undefined ? { durationMs: sr.durationMs } : {}),
+					...(sr.agentTranscript ? { transcript: sr.agentTranscript } : {}),
 					passed: sr.success,
 					...(sr.incomplete ? { incomplete: true } : {}),
 					score: sr.score,

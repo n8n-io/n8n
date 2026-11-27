@@ -300,7 +300,7 @@ describe('executeAgentScenario: multi-turn runs', () => {
 		);
 		const calls: ExecuteCall[] = [];
 
-		await run(
+		const result = await run(
 			{
 				...base,
 				sessions: [
@@ -313,6 +313,8 @@ describe('executeAgentScenario: multi-turn runs', () => {
 
 		const input = vi.mocked(verifyBuildExpectations).mock.calls[0]?.[1];
 		const transcript: TranscriptTurn[] = input?.transcript ?? [];
+		// The row keeps the transcript the judge read, for eval-results.json.
+		expect(result.agentTranscript).toEqual(transcript);
 		expect(transcript.map((turn) => turn.userMessage)).toEqual([
 			'I need dinner ideas',
 			'I am allergic to nuts',

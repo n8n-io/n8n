@@ -95,6 +95,8 @@ const targetOutputSchema = z.object({
 	/** The scenario is graded by its expectations, so its row is not a scored
 	 *  scenario unit (AGENT-1666). */
 	expectationGraded: z.boolean().optional(),
+	/** Agent runs: the conversation the judge read (`TranscriptTurn[]`). */
+	agentTranscript: z.unknown().optional(),
 	execErrors: z.array(z.string()).default([]),
 	evalResult: z.unknown().optional(),
 	agentEvalResult: z.unknown().optional(),
@@ -124,8 +126,14 @@ const targetOutputSchema = z.object({
 
 export type TargetOutput = Omit<
 	z.infer<typeof targetOutputSchema>,
-	'evalResult' | 'agentEvalResult' | 'agentArtifact' | 'workflowJson' | 'buildTrace'
+	| 'evalResult'
+	| 'agentEvalResult'
+	| 'agentArtifact'
+	| 'workflowJson'
+	| 'buildTrace'
+	| 'agentTranscript'
 > & {
+	agentTranscript?: TranscriptTurn[];
 	evalResult?: InstanceAiEvalExecutionResult;
 	agentEvalResult?: InstanceAiEvalAgentExecutionResult;
 	agentArtifact?: AgentArtifact;
@@ -166,6 +174,14 @@ function isWorkflowResponse(v: unknown): v is WorkflowResponse {
 	);
 }
 
+/** A transcript as `conversationTranscript` builds it: turns with a steps array. */
+function isTranscript(v: unknown): v is TranscriptTurn[] {
+	return (
+		Array.isArray(v) &&
+		v.every((turn) => isRecord(turn) && Array.isArray(turn.steps) && turn.steps.every(isRecord))
+	);
+}
+
 function isBuildTrace(v: unknown): v is BuildTrace {
 	if (!isRecord(v)) return false;
 	return (
@@ -198,6 +214,9 @@ export function parseTargetOutput(raw: unknown): TargetOutput | undefined {
 			? parsed.data.workflowJson
 			: undefined,
 		buildTrace: isBuildTrace(parsed.data.buildTrace) ? parsed.data.buildTrace : undefined,
+		agentTranscript: isTranscript(parsed.data.agentTranscript)
+			? parsed.data.agentTranscript
+			: undefined,
 	};
 }
 
@@ -375,6 +394,7 @@ export function reshapeLangSmithRuns(
 					...(output.agentTurnCount !== undefined
 						? { agentTurnCount: output.agentTurnCount, durationMs: output.execDurationMs }
 						: {}),
+					...(output.agentTranscript ? { agentTranscript: output.agentTranscript } : {}),
 				});
 			}
 

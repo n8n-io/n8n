@@ -90,6 +90,7 @@ describe('reshapeLangSmithRuns', () => {
 					scenarioExpectationResults: [s1Verdict],
 					agentTurnCount: 3,
 					execDurationMs: 4200,
+					agentTranscript: [{ userMessage: 'hi', steps: [{ kind: 'agent-text', text: 'hello' }] }],
 				},
 			),
 			row(
@@ -115,7 +116,9 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.executionScenarioResults[0]).toMatchObject({
 			agentTurnCount: 3,
 			durationMs: 4200,
+			agentTranscript: [{ userMessage: 'hi', steps: [{ kind: 'agent-text', text: 'hello' }] }],
 		});
+		expect(tc.executionScenarioResults[1]?.agentTranscript).toBeUndefined();
 	});
 
 	it('retains the structured agent artifact from a target row', () => {

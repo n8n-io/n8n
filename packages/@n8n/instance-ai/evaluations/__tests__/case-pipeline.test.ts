@@ -708,6 +708,7 @@ describe('createCasePipeline', () => {
 			agentEvalResult: { errors: [] },
 			expectationResults: [verdict],
 			agentTurnCount: 4,
+			agentTranscript: [{ userMessage: 'hi', steps: [{ kind: 'agent-text', text: 'hello' }] }],
 		} as never);
 		const build = okBuild({
 			workflowId: undefined,
@@ -723,6 +724,9 @@ describe('createCasePipeline', () => {
 
 		expect(output.scenarioExpectationResults).toEqual([verdict]);
 		expect(output.agentTurnCount).toBe(4);
+		expect(output.agentTranscript).toEqual([
+			{ userMessage: 'hi', steps: [{ kind: 'agent-text', text: 'hello' }] },
+		]);
 	});
 
 	it('does not run a draft Agent and owns the red as framework_issue when no LLM credential was declared', async () => {

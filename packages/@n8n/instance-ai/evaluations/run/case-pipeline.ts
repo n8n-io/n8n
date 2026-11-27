@@ -552,6 +552,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					...(agentResult.agentTurnCount !== undefined
 						? { agentTurnCount: agentResult.agentTurnCount }
 						: {}),
+					...(agentResult.agentTranscript ? { agentTranscript: agentResult.agentTranscript } : {}),
 					execErrors: agentResult.agentEvalResult?.errors ?? [],
 					buildDurationMs,
 					...buildSpendFields,
