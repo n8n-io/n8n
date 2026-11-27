@@ -31,6 +31,7 @@ import {
 import { isSkillNameTakenError, normalizeAgentSkillForSave } from '../utils/agentSkill';
 import { hitlConfigurationUpdates } from '../utils/hitlConfiguration';
 import { withToolGuardrails } from '../utils/guardrails';
+import { useAgentApprovalDestinationsEnabled } from './useAgentApprovalDestinationsEnabled';
 import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import type { AgentSkillConfirmResult } from '../components/AgentSkillModal.vue';
 import type { ToolGuardrailsWiring } from '../components/AgentToolGuardrailsSection.vue';
@@ -164,6 +165,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const rbacStore = useRBACStore();
+	const approvalDestinationsEnabled = useAgentApprovalDestinationsEnabled();
 	const { showError, showMessage } = useToast();
 	const { projectName } = useAgentProjectBreadcrumb(computed(() => projectId.value));
 
@@ -189,8 +191,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			// The `review` response routes through one of these configurations.
 			getReviewConfigurations: () =>
 				isCurrent() ? (localConfig.value?.hitlConfigurations ?? []) : [],
-			// Write access to those configurations, for the modal's add-reviewer flow.
-			getReviewContext: () => (isCurrent() ? hitlContext() : undefined),
+			getReviewContext: () =>
+				isCurrent() && approvalDestinationsEnabled.value ? hitlContext() : undefined,
 			getProjectId: () => (isCurrent() ? projectId.value : undefined),
 			onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => {
 				if (!isCurrent()) return;
