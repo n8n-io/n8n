@@ -16,8 +16,10 @@ describe('useAssistantArtifactThread', () => {
 	});
 
 	it('loads the stored setup credential choices once, and keeps the choices saved meanwhile', async () => {
-		const stored = { 'instanceAiSetupCredentialSelection:wf-1:credential:slackApi': { id: 's' } };
-		const local = { 'instanceAiSetupCredentialSelection:wf-1:credential:notionApi': { id: 'n' } };
+		const slack = 'instanceAiSetupCredentialSelection:wf-1:credential:slackApi';
+		const notion = 'instanceAiSetupCredentialSelection:wf-1:credential:notionApi';
+		const stored = { [slack]: { id: 'stale' }, [notion]: { id: 'n' } };
+		const local = { [slack]: { id: 'new' } };
 		vi.mocked(fetchAssistantAgentSetupCredentials).mockResolvedValue({ metadata: stored });
 		const { setupMetadataStore } = useAssistantArtifactThread({
 			threadId: 'thread-1',
@@ -33,7 +35,10 @@ describe('useAssistantArtifactThread', () => {
 		setupMetadataStore?.getThreadMetadata();
 		await flushPromises();
 
-		expect(setupMetadataStore?.getThreadMetadata()).toEqual({ ...stored, ...local });
+		expect(setupMetadataStore?.getThreadMetadata()).toEqual({
+			[slack]: { id: 'new' },
+			[notion]: { id: 'n' },
+		});
 		expect(fetchAssistantAgentSetupCredentials).toHaveBeenCalledExactlyOnceWith(
 			expect.anything(),
 			'thread-1',
