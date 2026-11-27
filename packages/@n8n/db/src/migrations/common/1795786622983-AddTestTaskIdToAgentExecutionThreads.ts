@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddTestTaskIdToAgentExecutionThreads1795609783977 implements ReversibleMigration {
+export class AddTestTaskIdToAgentExecutionThreads1795786622983 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { addColumns, column },
 		isSqlite,

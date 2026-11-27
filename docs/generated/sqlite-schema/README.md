@@ -25,7 +25,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_execution](agent_execution.md) | 28 |  | table |
 | [agent_execution_message_links](agent_execution_message_links.md) | 5 |  | table |
 | [agent_execution_statistics](agent_execution_statistics.md) | 2 |  | table |
-| [agent_execution_threads](agent_execution_threads.md) | 21 |  | table |
+| [agent_execution_threads](agent_execution_threads.md) | 22 |  | table |
 | [agent_file_grants](agent_file_grants.md) | 4 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 11 |  | table |

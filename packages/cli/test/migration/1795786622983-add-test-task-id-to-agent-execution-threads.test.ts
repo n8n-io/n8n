@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddTestTaskIdToAgentExecutionThreads1795609783977';
+const MIGRATION_NAME = 'AddTestTaskIdToAgentExecutionThreads1795786622983';
 
 describe('AddTestTaskIdToAgentExecutionThreads migration', () => {
 	let dataSource: DataSource;
