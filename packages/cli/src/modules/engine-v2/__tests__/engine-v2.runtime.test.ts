@@ -20,13 +20,13 @@ import type { CredentialsHelper } from '@/credentials-helper';
 import type { NodeTypesProxy } from '@n8n/backend-services';
 
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
-import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
-import type { EngineCredentialsClient } from '../engine-credentials-client';
-import type { EngineWorkflowResolveClient } from '../engine-workflow-resolve-client';
+import type { EngineControlPlaneTransport } from '../control-plane/engine-control-plane-transport';
+import type { EngineCredentialsClient } from '../credentials/engine-credentials-client';
+import type { EngineWorkflowResolveClient } from '../workflow-resolve/engine-workflow-resolve-client';
 import type { EngineMtls } from '../engine-mtls';
 import { EngineV2Runtime } from '../engine-v2.runtime';
-import { RemoteCredentialsHelper } from '../remote-credentials-helper';
-import { RemoteDataTableProxyProvider } from '../remote-data-table-proxy-provider';
+import { RemoteCredentialsHelper } from '../credentials/remote-credentials-helper';
+import { RemoteDataTableProxyProvider } from '../data-tables/remote-data-table-proxy-provider';
 
 // Hoisted so the `vi.mock` factories below, which vitest lifts above the imports,
 // can close over them.

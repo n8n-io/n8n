@@ -14,6 +14,7 @@ import {
 	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
 	PROMOTIONS_SETTINGS_VIEW,
 } from '../promotions.constants';
+import type * as PromotionsSettings from '../promotions.api';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import type { PromotionEnvironment } from '../promotionsSettings.api';
 import PromotionEnvironmentView from './PromotionEnvironmentView.vue';
@@ -31,6 +32,11 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock('../promotionsSettings.api', () => api);
+
+const getPromotionSettings = vi.hoisted(() =>
+	vi.fn<typeof PromotionsSettings.getPromotionSettings>(),
+);
+vi.mock('../promotions.api', () => ({ getPromotionSettings }));
 
 const mockShowMessage = vi.fn();
 const mockConfirm = vi.fn();
@@ -125,6 +131,12 @@ describe('PromotionEnvironmentView', () => {
 		usePromotionCheckout().connectErrors.clear();
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
 		api.deleteProviderIfUnused.mockResolvedValue(undefined);
+		getPromotionSettings.mockResolvedValue({
+			whoCanPromote: 'instanceAdmins',
+			whoCanApprove: 'instanceAdmins',
+			whoCanApply: 'instanceAdmins',
+			requireApproval: 'whenConfigured',
+		});
 	});
 
 	it('reuses the provider of the other environment when the provider type matches', async () => {
@@ -342,5 +354,56 @@ describe('PromotionEnvironmentView', () => {
 			{ name: 'Development', settings: { schemaVersion: 1, branchName: 'release' } },
 		);
 		expect(mockConfirm).not.toHaveBeenCalled();
+	});
+	it("shows the review setting on and locked while approval is always required, and saves the environment's own setting", async () => {
+		getPromotionSettings.mockResolvedValue({
+			whoCanPromote: 'instanceAdmins',
+			whoCanApprove: 'instanceAdmins',
+			whoCanApply: 'instanceAdmins',
+			requireApproval: 'alwaysRequired',
+		});
+		api.fetchPromotionEnvironment.mockResolvedValue(
+			applyEnvironment({
+				direction: 'promote',
+				settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+			}),
+		);
+		api.updatePromotionEnvironment.mockResolvedValue(applyEnvironment());
+		await renderAt('/edit/environment-apply');
+
+		const review = await screen.findByRole('checkbox', { name: /Push to a new branch/ });
+		await waitFor(() => expect(review).toBeChecked());
+		expect(review).toBeDisabled();
+		expect(screen.getByText(/Require approval is set to Always required/)).toBeVisible();
+
+		await fillInput('promotion-environment-branch-input', 'release');
+		await userEvent.click(screen.getByTestId('promotion-environment-save'));
+
+		// The stored value, so the environment uses it again when the policy goes back.
+		await waitFor(() =>
+			expect(api.updatePromotionEnvironment).toHaveBeenCalledWith(
+				expect.anything(),
+				'environment-apply',
+				expect.objectContaining({
+					settings: { schemaVersion: 1, baseBranchName: 'release', createBranchOnPromotion: false },
+				}),
+			),
+		);
+	});
+
+	it("keeps the review setting editable when the instance setting can't be loaded", async () => {
+		getPromotionSettings.mockRejectedValue(new Error('Network error'));
+		api.fetchPromotionEnvironment.mockResolvedValue(
+			applyEnvironment({
+				direction: 'promote',
+				settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+			}),
+		);
+		await renderAt('/edit/environment-apply');
+
+		const review = await screen.findByRole('checkbox', { name: /Push to a new branch/ });
+		await waitFor(() => expect(getPromotionSettings).toHaveBeenCalled());
+		expect(review).toBeEnabled();
+		expect(screen.queryByText(/Require approval is set to Always required/)).toBeNull();
 	});
 });

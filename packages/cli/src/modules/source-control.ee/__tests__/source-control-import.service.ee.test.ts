@@ -27,7 +27,7 @@ import {
 	type WorkflowRepository,
 	type WorkflowPublishedVersionRepository,
 } from '@n8n/db';
-import { In } from '@n8n/typeorm';
+import { In, QueryFailedError } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
 import { type InstanceSettings } from 'n8n-core';
@@ -1950,21 +1950,21 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should skip credential files with invalid JSON', async () => {
-			// ARRANGE
 			globMock.mockResolvedValue(['/mock/credential_good.json', '/mock/credential_bad.json']);
 			fsReadFile.mockImplementation(async (file: string) =>
 				file.includes('bad')
-					? 'not json'
+					? '{"apiKey": super-secret-value}'
 					: JSON.stringify({ id: 'cred1', name: 'Good', type: 'oauth2' }),
 			);
 
-			// ACT
 			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
 
-			// ASSERT
 			expect(result).toHaveLength(1);
 			expect(result[0]).toEqual(expect.objectContaining({ id: 'cred1' }));
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('credential_bad.json'));
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to parse credential from file /mock/credential_bad.json: invalid JSON format',
+			);
+			expect(JSON.stringify(mockLogger.warn.mock.calls)).not.toContain('super-secr');
 		});
 
 		it('should skip credentials that are instance credentials locally, for any caller', async () => {
@@ -2245,6 +2245,53 @@ describe('SourceControlImportService', () => {
 				}),
 				['id'],
 			);
+		});
+
+		it('skips a credential candidate with invalid JSON instead of failing the pull', async () => {
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Good Credential',
+					type: 'credential',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+				{
+					file: '/mock/credential_stubs/cred2.json',
+					id: 'cred2',
+					name: 'Broken Credential',
+					type: 'credential',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			fsReadFile
+				.mockResolvedValueOnce(
+					JSON.stringify({ id: 'cred1', name: 'Good Credential', type: 'oauth2Api', data: {} }),
+				)
+				.mockResolvedValueOnce('{"apiKey": super-secret-value}');
+			credentialsRepository.find.mockResolvedValue([]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.upsert.mockResolvedValue({
+				identifiers: [],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			const result = await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({ id: 'cred1', name: 'Good Credential', type: 'oauth2Api' });
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to parse credential from file /mock/credential_stubs/cred2.json: invalid JSON format',
+			);
+			expect(JSON.stringify(mockLogger.warn.mock.calls)).not.toContain('super-secr');
 		});
 
 		it('should skip credential files flagged as instance credentials', async () => {
@@ -3237,6 +3284,28 @@ describe('SourceControlImportService', () => {
 			expect(credential.contentImportPolicy).toEqual({ violations: [], checkErrors });
 		});
 
+		it('skips a credential file with invalid JSON instead of failing the preview', async () => {
+			fsReadFile.mockImplementation(async (path) =>
+				path === '/mock/cred-bad.json'
+					? '{"apiKey": super-secret-value}'
+					: JSON.stringify({ id: 'cred1', type: 'slackApi', ownedBy: null }),
+			);
+
+			await service.previewContentImportPolicy(
+				[
+					file({ file: '/mock/cred-good.json', id: 'cred1', type: 'credential' }),
+					file({ file: '/mock/cred-bad.json', id: 'cred2', type: 'credential' }),
+				],
+				userId,
+			);
+
+			expect(policyEnforcementService.evaluateContentImport).toHaveBeenCalledTimes(1);
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to parse credential from file /mock/cred-bad.json: invalid JSON format',
+			);
+			expect(JSON.stringify(mockLogger.warn.mock.calls)).not.toContain('super-secr');
+		});
+
 		it('resolves each owner once', async () => {
 			const owner = { type: 'team', teamId: 'team-1', teamName: 'Team 1' };
 			projectRepository.findOne.mockResolvedValue(
@@ -3278,6 +3347,34 @@ describe('SourceControlImportService', () => {
 			const result = await service.getRemoteVariablesFromFile();
 
 			expect(result).toHaveLength(0);
+		});
+	});
+
+	describe('importVariablesFromWorkFolder', () => {
+		it('keeps the local value when adopting a same-key variable with a different id', async () => {
+			// The local instance created VAR1 independently (id local1, real value set);
+			// Git tracks it under the upstream id remote1 with the sync placeholder value ''.
+			variablesRepository.find.mockResolvedValue([mock<Variables>({ id: 'local1', key: 'VAR1' })]);
+			variablesRepository.upsert.mockRejectedValueOnce(
+				new QueryFailedError(
+					'insert',
+					[],
+					Object.assign(new Error('duplicate key'), { code: '23505' }),
+				),
+			);
+			fsReadFile.mockResolvedValue(
+				JSON.stringify([{ id: 'remote1', key: 'VAR1', value: '', type: 'string' }]),
+			);
+
+			await service.importVariablesFromWorkFolder(
+				mock<SourceControlledFile>({ file: '/mock/n8n/git/variable_stubs.json' }),
+			);
+
+			const updateCall = variablesRepository.update.mock.calls.at(-1);
+			expect(updateCall?.[0]).toEqual({ key: 'VAR1' });
+			expect(updateCall?.[1]).toMatchObject({ id: 'remote1' });
+			// The remote '' is the sync placeholder for an instance-local value: keep the local one.
+			expect(updateCall?.[1]?.value).toBeUndefined();
 		});
 	});
 
