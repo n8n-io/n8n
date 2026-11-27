@@ -1497,11 +1497,7 @@ importers:
         version: 1.0.27(@aws-sdk/credential-provider-node@3.972.80)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(@smithy/signature-v4@5.7.2)(cheerio@1.1.0)(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/community':
         specifier: 'catalog:'
-<<<<<<< HEAD
-        version: 1.1.27(6a537aadd7ef46c1b62ec015156742f1)
-=======
-        version: 1.1.27(1d23fb9788574fb3c4d1f6c159bc8017)
->>>>>>> 467bcd35b9a50f072cbc6e53da5f62a7cdeed631
+        version: 1.1.27(7cf20dfdbf948ce62d21741957bef7eb)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -4099,15 +4095,6 @@ importers:
       '@azure/search-documents':
         specifier: 12.1.0
         version: 12.1.0(supports-color@8.1.1)
-<<<<<<< HEAD
-=======
-      '@getzep/zep-cloud':
-        specifier: 1.0.6
-        version: 1.0.6(3a1cb3b9f59bb76e66f0a802c4550bb5)
-      '@getzep/zep-js':
-        specifier: 2.0.2
-        version: 2.0.2(encoding@0.1.13)
->>>>>>> 467bcd35b9a50f072cbc6e53da5f62a7cdeed631
       '@google-cloud/resource-manager':
         specifier: 6.0.1
         version: 6.0.1(supports-color@8.1.1)
@@ -4134,11 +4121,7 @@ importers:
         version: 1.0.1(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-<<<<<<< HEAD
-        version: 1.1.27(de87f382ec460444012478acf26cccf6)
-=======
-        version: 1.1.27(bd97ed2184084218b3dfe0ed1a150194)
->>>>>>> 467bcd35b9a50f072cbc6e53da5f62a7cdeed631
+        version: 1.1.27(926d9b7aa17c6f9a085c6fd8d17ec51b)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -4298,12 +4281,6 @@ importers:
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.3
-<<<<<<< HEAD
-=======
-      langchain:
-        specifier: 'catalog:'
-        version: 1.2.30(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(ws@8.23.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
->>>>>>> 467bcd35b9a50f072cbc6e53da5f62a7cdeed631
       lodash:
         specifier: 4.18.1
         version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
@@ -31803,11 +31780,7 @@ snapshots:
       - aws-crt
       - encoding
 
-<<<<<<< HEAD
-  '@langchain/community@1.1.27(6a537aadd7ef46c1b62ec015156742f1)':
-=======
-  '@langchain/community@1.1.27(1d23fb9788574fb3c4d1f6c159bc8017)':
->>>>>>> 467bcd35b9a50f072cbc6e53da5f62a7cdeed631
+  '@langchain/community@1.1.27(7cf20dfdbf948ce62d21741957bef7eb)':
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -31829,12 +31802,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.972.80
       '@azure/storage-blob': 12.32.0(supports-color@8.1.1)
       '@browserbasehq/sdk': 2.12.0(encoding@0.1.13)
-<<<<<<< HEAD
-      '@getzep/zep-cloud': 1.0.6(9980a818c6426eec4183d32c32b19e1a)
-=======
       '@getzep/zep-cloud': 1.0.6(3a1cb3b9f59bb76e66f0a802c4550bb5)
-      '@getzep/zep-js': 2.0.2(encoding@0.1.13)
->>>>>>> 467bcd35b9a50f072cbc6e53da5f62a7cdeed631
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)(supports-color@8.1.1)
       '@libsql/client': 0.17.2(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
       '@mozilla/readability': 0.6.0
@@ -31878,11 +31846,7 @@ snapshots:
       - '@smithy/hash-node'
       - peggy
 
-<<<<<<< HEAD
-  '@langchain/community@1.1.27(de87f382ec460444012478acf26cccf6)':
-=======
-  '@langchain/community@1.1.27(bd97ed2184084218b3dfe0ed1a150194)':
->>>>>>> 467bcd35b9a50f072cbc6e53da5f62a7cdeed631
+  '@langchain/community@1.1.27(926d9b7aa17c6f9a085c6fd8d17ec51b)':
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -31905,12 +31869,7 @@ snapshots:
       '@azure/search-documents': 12.1.0(supports-color@8.1.1)
       '@azure/storage-blob': 12.32.0(supports-color@8.1.1)
       '@browserbasehq/sdk': 2.12.0(encoding@0.1.13)
-<<<<<<< HEAD
-      '@getzep/zep-cloud': 1.0.6(9980a818c6426eec4183d32c32b19e1a)
-=======
       '@getzep/zep-cloud': 1.0.6(3a1cb3b9f59bb76e66f0a802c4550bb5)
-      '@getzep/zep-js': 2.0.2(encoding@0.1.13)
->>>>>>> 467bcd35b9a50f072cbc6e53da5f62a7cdeed631
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)(supports-color@8.1.1)
       '@huggingface/inference': 4.0.5
       '@libsql/client': 0.17.2(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
