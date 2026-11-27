@@ -13,6 +13,7 @@ import {
 	isSafeObjectProperty,
 	isTerminalExecutionStatus,
 	makeGetNodeTypeForGrouping,
+	NodeHelpers,
 	normalizeGroupDescription,
 	resolveNodeWebhookId,
 	resolveVariables,
@@ -215,6 +216,31 @@ export function validateWorkflowStructure(workflow: Pick<IWorkflowBase, 'nodes' 
 		`Workflow structure is invalid. ${details}`,
 		result.issues,
 	);
+}
+
+/**
+ * Rejects nodes whose credential display options test a parameter holding a value of
+ * an unexpected type, so stored parameters match what the credential checks evaluate.
+ */
+export function validateCredentialDisplayParameters(
+	workflow: Pick<IWorkflowBase, 'nodes'>,
+	nodeTypes: INodeTypes,
+) {
+	for (const node of workflow.nodes ?? []) {
+		let description;
+		try {
+			description = nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		} catch {
+			continue;
+		}
+
+		const [parameterName] = NodeHelpers.getInvalidCredentialDisplayParameters(node, description);
+		if (parameterName !== undefined) {
+			throw new BadRequestError(
+				`Parameter "${parameterName}" of node "${node.name}" has a value of an unexpected type`,
+			);
+		}
+	}
 }
 
 /**

@@ -17,6 +17,7 @@ import {
 	isExecutable,
 	displayParameter,
 	getActiveCredentialTypes,
+	getInvalidCredentialDisplayParameters,
 	getRequestedCredentialTypes,
 	makeDescription,
 	getUpdatedToolDescription,
@@ -6196,6 +6197,66 @@ describe('NodeHelpers', () => {
 						),
 					).toEqual(new Set());
 				},
+			);
+		});
+	});
+
+	describe('getInvalidCredentialDisplayParameters', () => {
+		const nodeType: INodeTypeDescription = {
+			name: 'Test Node',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			displayName: '',
+			group: [],
+			description: '',
+			credentials: [
+				{ name: 'gatedApi', displayOptions: { show: { useGatedAuth: [true] } } },
+				{ name: 'oAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+			],
+			properties: [
+				{ displayName: 'Use Auth', name: 'useGatedAuth', type: 'boolean', default: false },
+				{ displayName: 'Enabled', name: 'enabled', type: 'boolean', default: false },
+				{
+					displayName: 'Generic Auth Type',
+					name: 'genericAuthType',
+					type: 'credentialsSelect',
+					default: '',
+					credentialTypes: ['has:genericAuth'],
+					displayOptions: { show: { mode: [{ _cnd: { eq: 'secure' } }], enabled: ['on'] } },
+				},
+			],
+		};
+		const nodeWith = (parameters: Record<string, unknown>): INode => ({
+			id: '1',
+			name: 'Test Node',
+			typeVersion: 1,
+			type: 'n8n-nodes-base.testNode',
+			position: [0, 0],
+			parameters: parameters as INodeParameters,
+		});
+
+		it.each([
+			[{}],
+			[{ useGatedAuth: true, authentication: 'oAuth2' }],
+			[{ useGatedAuth: false, authentication: 'none' }],
+			[{ useGatedAuth: '={{ $json.enabled }}' }],
+			[{ mode: 1 }],
+			[{ enabled: true }],
+		])('should accept %j', (parameters) => {
+			expect(getInvalidCredentialDisplayParameters(nodeWith(parameters), nodeType)).toEqual([]);
+		});
+
+		it.each([
+			[{ useGatedAuth: 1 }, ['useGatedAuth']],
+			[{ useGatedAuth: 'true' }, ['useGatedAuth']],
+			[{ useGatedAuth: [true] }, ['useGatedAuth']],
+			[{ useGatedAuth: null }, ['useGatedAuth']],
+			[{ useGatedAuth: {}, authentication: true }, ['useGatedAuth', 'authentication']],
+		])('should report the parameters with an unexpected type in %j', (parameters, expected) => {
+			expect(getInvalidCredentialDisplayParameters(nodeWith(parameters), nodeType)).toEqual(
+				expected,
 			);
 		});
 	});

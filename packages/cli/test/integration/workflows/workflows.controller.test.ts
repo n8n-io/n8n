@@ -44,6 +44,7 @@ import {
 	calculateWorkflowChecksum,
 	type IDataObject,
 	type INode,
+	type INodeType,
 	type IPinData,
 	type ITaskData,
 	type IWorkflowBase,
@@ -53,6 +54,7 @@ import { v4 as uuid } from 'uuid';
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -6464,5 +6466,70 @@ describe('PATCH /workflows/:id - error workflow reference', () => {
 
 		const stored = await workflowRepository.findOneBy({ id: victim.id });
 		expect(stored?.settings?.errorWorkflow).toBeUndefined();
+	});
+});
+
+describe('credential display parameters', () => {
+	const nodeTypeName = 'n8n-nodes-base.credentialGateTest';
+
+	beforeAll(() => {
+		const nodeType = utils.minimalNodeType(nodeTypeName, [
+			{ displayName: 'Use Auth', name: 'useGatedAuth', type: 'boolean', default: false },
+		]);
+		(nodeType.type as INodeType).description.credentials = [
+			{ name: 'httpBasicAuth', displayOptions: { show: { useGatedAuth: [true] } } },
+		];
+		Container.get(LoadNodesAndCredentials).loaded.nodes[nodeTypeName] = nodeType;
+	});
+
+	afterAll(() => {
+		delete Container.get(LoadNodesAndCredentials).loaded.nodes[nodeTypeName];
+	});
+
+	const gatedNode = (useGatedAuth: unknown) => ({
+		id: 'uuid-gated',
+		name: 'Gated',
+		type: nodeTypeName,
+		typeVersion: 1,
+		position: [240, 300],
+		parameters: { useGatedAuth },
+	});
+
+	test.each([[true], [false], ['={{ $json.enabled }}']])(
+		'should create a workflow when the credential display parameter is %j',
+		async (useGatedAuth) => {
+			const response = await authOwnerAgent
+				.post('/workflows')
+				.send({ name: 'gated', nodes: [gatedNode(useGatedAuth)], connections: {}, active: false });
+
+			expect(response.statusCode).toBe(200);
+		},
+	);
+
+	test.each([[1], ['true'], [{}]])(
+		'should reject creating a workflow when the credential display parameter is %j',
+		async (useGatedAuth) => {
+			const response = await authOwnerAgent
+				.post('/workflows')
+				.send({ name: 'gated', nodes: [gatedNode(useGatedAuth)], connections: {}, active: false });
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe(
+				'Parameter "useGatedAuth" of node "Gated" has a value of an unexpected type',
+			);
+		},
+	);
+
+	test('should reject an update that stores an unexpected credential display parameter type', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			nodes: [gatedNode(1)],
+			connections: {},
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Parameter "useGatedAuth" of node "Gated"');
 	});
 });

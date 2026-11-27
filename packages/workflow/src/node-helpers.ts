@@ -552,12 +552,17 @@ function hasExpectedDisplayValueType(
  * `displayParameter` matches values strictly, while nodes may read them loosely
  * (`if (value)`), so a value whose type differs from the rule's values or from the
  * parameter's declared type can hide a credential the node still uses.
+ *
+ * In `resolve` mode, conditions with operators count as unexpected because their
+ * expected type is not known. In `validate` mode they are skipped, as are
+ * expressions and parameters whose declared type contradicts the rule.
  */
-function hasUnexpectedDisplayValueType(
+function findUnexpectedDisplayValue(
 	parameters: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
 	nodeTypeDescription: INodeTypeDescription,
-): boolean {
+	mode: 'resolve' | 'validate',
+): string | undefined {
 	const { show, hide } = parameter.displayOptions ?? {};
 
 	for (const rules of [show, hide]) {
@@ -565,7 +570,10 @@ function hasUnexpectedDisplayValueType(
 			if (DISPLAY_METADATA_KEYS.has(propertyName) || !conditions) continue;
 
 			const conditionTypes = new Set<string>(conditions.map((condition) => typeof condition));
-			if (conditionTypes.has('object')) return true;
+			if (conditionTypes.has('object')) {
+				if (mode === 'resolve') return propertyName;
+				continue;
+			}
 
 			const propertyPath = propertyName.startsWith('/') ? propertyName.slice(1) : propertyName;
 			const declared = (nodeTypeDescription.properties ?? []).filter(
@@ -576,18 +584,21 @@ function hasUnexpectedDisplayValueType(
 				declared.length > 0 && declaredTypes.every((type) => type !== undefined)
 					? new Set([...conditionTypes].filter((type) => declaredTypes.includes(type)))
 					: conditionTypes;
+			if (mode === 'validate' && expectedTypes.size === 0) continue;
+
 			const allowArray = declared.some((property) => property.type === 'multiOptions');
 			const allowResourceLocator = declared.some((property) => property.type === 'resourceLocator');
 
 			const value = get(parameters, propertyPath);
+			if (mode === 'validate' && isExpression(value)) continue;
 
 			if (!hasExpectedDisplayValueType(value, expectedTypes, allowArray, allowResourceLocator)) {
-				return true;
+				return propertyName;
 			}
 		}
 	}
 
-	return false;
+	return undefined;
 }
 
 function isCredentialSlotActive(
@@ -598,8 +609,69 @@ function isCredentialSlotActive(
 ): boolean {
 	return (
 		displayParameter(parameters, parameter, node, nodeTypeDescription) ||
-		hasUnexpectedDisplayValueType(parameters, parameter, nodeTypeDescription)
+		findUnexpectedDisplayValue(parameters, parameter, nodeTypeDescription, 'resolve') !== undefined
 	);
+}
+
+// Saved nodes drop parameters that hold their default value, but the Workflow
+// constructor restores those defaults before a node reads its credentials.
+// Resolve the same defaults here so the credential display options evaluate
+// what execution evaluates. Resolved values win — this keeps nested defaults
+// and stripped expression prefixes in step with execution — and raw values
+// fill in only the parameters the node type does not declare.
+function resolveCredentialDisplayParameters(
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription,
+): INodeParameters {
+	const resolved =
+		getNodeParameters(
+			nodeTypeDescription.properties ?? [],
+			node.parameters,
+			true,
+			true,
+			node,
+			nodeTypeDescription,
+		) ?? {};
+	const declaredNames = new Set((nodeTypeDescription.properties ?? []).map((p) => p.name));
+	const parameters: INodeParameters = { ...resolved };
+	for (const name of Object.keys(node.parameters)) {
+		if (!declaredNames.has(name)) parameters[name] = node.parameters[name];
+	}
+	return parameters;
+}
+
+const CREDENTIAL_SELECTOR_PARAMETERS = ['nodeCredentialType', 'genericAuthType'];
+
+/**
+ * Returns the names of parameters that the display options of a credential or a
+ * credential selector test, and whose value has a type those options don't expect.
+ */
+export function getInvalidCredentialDisplayParameters(
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription,
+): string[] {
+	try {
+		const parameters = resolveCredentialDisplayParameters(node, nodeTypeDescription);
+		const gated = [
+			...(nodeTypeDescription.credentials ?? []),
+			...(nodeTypeDescription.properties ?? []).filter((property) =>
+				CREDENTIAL_SELECTOR_PARAMETERS.includes(property.name),
+			),
+		];
+		const invalid = new Set<string>();
+		for (const parameter of gated) {
+			const name = findUnexpectedDisplayValue(
+				parameters,
+				parameter,
+				nodeTypeDescription,
+				'validate',
+			);
+			if (name !== undefined) invalid.add(name);
+		}
+		return [...invalid];
+	} catch {
+		return [];
+	}
 }
 
 /**
@@ -627,26 +699,7 @@ export function getActiveCredentialTypes(
 	}
 
 	try {
-		// Saved nodes drop parameters that hold their default value, but the Workflow
-		// constructor restores those defaults before a node reads its credentials.
-		// Resolve the same defaults here so the credential display options evaluate
-		// what execution evaluates. Resolved values win — this keeps nested defaults
-		// and stripped expression prefixes in step with execution — and raw values
-		// fill in only the parameters the node type does not declare.
-		const resolved =
-			getNodeParameters(
-				nodeTypeDescription.properties ?? [],
-				node.parameters,
-				true,
-				true,
-				node,
-				nodeTypeDescription,
-			) ?? {};
-		const declaredNames = new Set((nodeTypeDescription.properties ?? []).map((p) => p.name));
-		const parameters: INodeParameters = { ...resolved };
-		for (const name of Object.keys(node.parameters)) {
-			if (!declaredNames.has(name)) parameters[name] = node.parameters[name];
-		}
+		const parameters = resolveCredentialDisplayParameters(node, nodeTypeDescription);
 
 		const activeTypes = new Set<string>();
 
