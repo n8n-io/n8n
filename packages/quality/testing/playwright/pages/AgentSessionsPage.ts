@@ -174,8 +174,8 @@ export class AgentSessionsPage extends BasePage {
 		});
 	}
 
-	async getSessionTableWidth(): Promise<ElementWidth> {
-		return await this.page.getByTestId('table-base-scroll').evaluate((element) => ({
+	async getSessionRowWidth(): Promise<ElementWidth> {
+		return await this.page.getByTestId('agent-session-list-item').evaluate((element) => ({
 			clientWidth: element.clientWidth,
 			scrollWidth: element.scrollWidth,
 		}));

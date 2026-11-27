@@ -49,6 +49,12 @@ import {
 	makeThread,
 } from './createThreadComponentRenderer';
 
+const previewContextKey = handoffContextKey({
+	source: 'agent-preview',
+	agentId: 'agent-1',
+	threadId: 'preview-thread-1',
+});
+
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 } as Ref<number>,
 }));
@@ -1988,7 +1994,7 @@ describe('InstanceAiThreadView', () => {
 		await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
 
 		expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
-			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
+			dismissedContextKeys: [previewContextKey],
 		});
 	});
 

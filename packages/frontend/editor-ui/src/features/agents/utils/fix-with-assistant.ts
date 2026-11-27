@@ -199,6 +199,37 @@ export function renderAssistantDraft(
 	return template.replaceAll(BODY_SENTINEL, () => body);
 }
 
+function renderSessionPrompt(error: string, i18n: FixWithAssistantI18n): string {
+	return renderAssistantDraft(
+		i18n,
+		'agentSessions.fixWithAssistantPrompt',
+		'diagnostics',
+		[
+			'<untrusted_data source="agent-session-error">',
+			JSON.stringify({ error }, null, 2),
+			'</untrusted_data>',
+		].join('\n'),
+	);
+}
+
+export function buildAgentSessionFixWithAssistantPrompt(
+	error: string,
+	i18n: FixWithAssistantI18n,
+): string {
+	let diagnostic = truncate(
+		scrubSecretsInText(sanitizeDiagnosticText(error.trim())),
+		MAX_ERROR_LENGTH,
+		'…',
+	).value;
+	let prompt = renderSessionPrompt(diagnostic, i18n);
+	// JSON escaping can make the draft longer than the diagnostic text.
+	while (prompt.length > MAX_FIX_WITH_ASSISTANT_DRAFT_LENGTH && diagnostic.length > 0) {
+		diagnostic = truncate(diagnostic, Math.floor(diagnostic.length / 2), '…').value;
+		prompt = renderSessionPrompt(diagnostic, i18n);
+	}
+	return prompt;
+}
+
 function renderPrompt(payload: DiagnosticPayload, i18n: FixWithAssistantI18n): string {
 	// Tool output from external services — genuinely untrusted, so it is fenced
 	// and the template tells the assistant to read it as data.

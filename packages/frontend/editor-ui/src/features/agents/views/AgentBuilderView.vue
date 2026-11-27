@@ -151,6 +151,7 @@ import {
 	AGENT_CONFIG_WRITE_KEY,
 	AGENT_BUILDER_STANDALONE_KEY,
 	AGENT_SESSION_ASSISTANT_KEY,
+	OPEN_AGENT_PREVIEW_KEY,
 	type AgentConfigWrite,
 } from '../components/agentBuilderInjectionKeys';
 import AgentBuilderChatMode from '../components/AgentBuilderChatMode.vue';
@@ -993,7 +994,7 @@ const {
 	isDeletingSession,
 	setSessionInUrl,
 	clearContinueSessionParam,
-	onSessionPick,
+	onSessionPick: selectSession,
 	onNewChat,
 	markSessionCreated,
 	deleteSession,
@@ -1002,6 +1003,18 @@ const {
 	projectId,
 	agentId,
 });
+watch(
+	effectiveSessionId,
+	() => {
+		previewRequest++;
+	},
+	{ flush: 'sync' },
+);
+function onSessionPick(sessionId: string) {
+	previewRequest++;
+	selectSession(sessionId);
+}
+
 const { dismissedToolCallIds: dismissedFixToolCallIds, trackAcceptedFixHandoff: trackFixHandoff } =
 	useFixWithAssistantCalloutDismissal(effectiveSessionId);
 trackAcceptedFixHandoff = trackFixHandoff;
@@ -1332,6 +1345,7 @@ async function onDeletePreviewSession(sessionId: string) {
 async function onOpenPreview(
 	source?: InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW>['source'],
 	expectedTarget?: { projectId: string; agentId: string },
+	preferredSessionId?: string,
 ): Promise<boolean> {
 	if (!isBuilt.value || (!isArtifactMode.value && !canExecuteAgent.value) || chatModeBusy.value)
 		return false;
@@ -1342,23 +1356,19 @@ async function onOpenPreview(
 	} catch {
 		return false;
 	}
-	if (isArtifactMode.value) {
-		if (expectedTarget && isStaleAgentTarget(expectedTarget.projectId, expectedTarget.agentId)) {
-			return false;
-		}
-	} else if (
+	if (
 		request !== previewRequest ||
 		isStaleAgentTarget(target.projectId, target.agentId) ||
 		!isBuilt.value ||
-		!canExecuteAgent.value ||
+		(!isArtifactMode.value && !canExecuteAgent.value) ||
 		chatModeBusy.value
 	) {
 		return false;
 	}
 	if (isArtifactMode.value) {
-		openArtifactPreview();
+		openArtifactPreview(preferredSessionId);
 	} else {
-		await openPreview();
+		await openPreview(preferredSessionId);
 	}
 	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW, {
 		agent_id: agentId.value,
@@ -2000,6 +2010,11 @@ provide(AGENT_SESSION_ASSISTANT_KEY, {
 	},
 });
 provide(AGENT_CONFIG_WRITE_KEY, runConfigWrite);
+provide(OPEN_AGENT_PREVIEW_KEY, {
+	open: (sessionId?: string) => onOpenPreview(undefined, undefined, sessionId),
+	isRunnable: computed(() => agent.value?.isRunnable === true),
+	validationIssues: computed(() => configValidation.value?.issues ?? []),
+});
 
 async function flushAutosave(): Promise<AutosaveResult> {
 	return await flushAutosaveLoops();

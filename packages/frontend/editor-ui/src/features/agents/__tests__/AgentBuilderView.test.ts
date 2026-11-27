@@ -7984,6 +7984,56 @@ describe('chat-first builder', () => {
 		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
 	});
 
+	it.each(['target', 'session', 'new session', 'close', 'newer request'] as const)(
+		'ignores a pending artifact preview after a change to %s',
+		async (change) => {
+			fetchedSessionThreads.push({ id: 'new-session', updatedAt: '2026-01-02T00:00:00Z' });
+			const wrapper = await renderView({
+				props: {
+					artifactMode: true,
+					artifactProjectId: 'p2',
+					artifactAgentId: 'a2',
+				},
+			});
+			const save = Promise.withResolvers<{
+				config: TestAgentConfig;
+				versionId: string;
+				stale: boolean;
+			}>();
+			updateConfigMock.mockImplementationOnce(() => save.promise);
+			wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:config', {
+				instructions: 'Answer support questions.',
+			});
+			await nextTick();
+			const vm = wrapper.vm as unknown as {
+				onOpenPreview: (
+					source?: undefined,
+					target?: undefined,
+					sessionId?: string,
+				) => Promise<boolean>;
+			};
+			const opening = vm.onOpenPreview(undefined, undefined, 'old-session');
+			await flushPromises();
+			expect(updateConfigMock).toHaveBeenCalled();
+			const preview = wrapper.getComponent({ name: 'AgentTestDock' });
+			let newer: Promise<boolean> | undefined;
+			if (change === 'target') await wrapper.setProps({ artifactAgentId: 'a3' });
+			if (change === 'session') preview.vm.$emit('session-select', 'new-session');
+			if (change === 'new session') preview.vm.$emit('new-session');
+			if (change === 'close') preview.vm.$emit('close');
+			if (change === 'newer request') newer = vm.onOpenPreview(undefined, undefined, 'new-session');
+			await nextTick();
+			if (!mockConfig.value) throw new Error('Agent config is missing');
+			save.resolve({ config: mockConfig.value, versionId: 'v2', stale: false });
+			expect(await opening).toBe(false);
+			if (newer) expect(await newer).toBe(true);
+			await flushPromises();
+			if (change === 'session' || change === 'newer request')
+				expect(preview.props('effectiveSessionId')).toBe('new-session');
+			expect(preview.props('effectiveSessionId')).not.toBe('old-session');
+		},
+	);
+
 	it('keeps the standalone selector visible when the agent cannot run', async () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
 		const wrapper = await renderView({ props: { builderLayout: undefined } });
