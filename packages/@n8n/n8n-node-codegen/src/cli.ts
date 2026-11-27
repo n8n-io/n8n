@@ -58,6 +58,7 @@ async function main() {
 				added,
 			),
 			...listOf('These operations are still in the file, but not in the node:', removed),
+			'See "Add an operation to the node" in packages/@n8n/n8n-node-codegen/README.md.',
 		]);
 	} else {
 		await writeFile(file, content);

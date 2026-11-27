@@ -409,6 +409,67 @@ describe('release SBOM validation in PR CI', () => {
 	});
 });
 
+describe('n8n node check in PR CI', () => {
+	const workflow = workflowFile('ci-pull-requests.yml');
+	const filterStep = stepNamed(workflow, 'install-and-build', 'Check for relevant changes');
+	const patterns = parseFilters(filterStep.with.filters).get('n8n-node');
+	const job = workflow.jobs['n8n-node'];
+
+	it('runs when the public API, the n8n node, the generator, or the lockfile changes', () => {
+		assert.ok(patterns, 'PR CI has no n8n node path filter');
+		for (const file of [
+			'packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml',
+			'packages/cli/src/public-api/v1/openapi.yml',
+			'packages/nodes-base/nodes/N8n/v2/overrides.ts',
+			'packages/nodes-base/nodes/N8n/shared/WorkflowLocator.ts',
+			'packages/@n8n/n8n-node-codegen/src/cli.ts',
+			'pnpm-lock.yaml',
+			'.github/workflows/ci-pull-requests.yml',
+		]) {
+			assert.equal(evaluateFilter([file], patterns), true, file);
+		}
+		for (const file of [
+			'packages/cli/src/index.ts',
+			'packages/nodes-base/nodes/Slack/Slack.node.ts',
+			'packages/@n8n/api-types/src/index.ts',
+		]) {
+			assert.equal(evaluateFilter([file], patterns), false, file);
+		}
+	});
+
+	it('runs for each merge queue entry and is a required check', () => {
+		assert.ok(job, 'PR CI has no n8n node job');
+		assert.equal(
+			job.if,
+			"github.event_name == 'merge_group' || needs.install-and-build.outputs.n8n_node == 'true'",
+		);
+		assert.equal(
+			workflow.jobs['install-and-build'].outputs.n8n_node,
+			"${{ fromJSON(steps.ci-filter.outputs.results)['n8n-node'] == true }}",
+		);
+		assert.ok(workflow.jobs['required-checks'].needs.includes('n8n-node'));
+		assert.equal(job['continue-on-error'] ?? false, false);
+	});
+
+	it('gets the base node from the lockfile base commit', () => {
+		const base = stepNamed(workflow, 'n8n-node', 'Get the node from the base branch');
+		assert.equal(base.env.BASE_SHA, '${{ needs.install-and-build.outputs.lockfile_base }}');
+	});
+
+	it('runs the override check only when the breaking-change check fails', () => {
+		const check = stepNamed(workflow, 'n8n-node', 'Check for breaking changes');
+		const override = stepNamed(
+			workflow,
+			'n8n-node',
+			'Check for an override of the breaking changes',
+		);
+		assert.equal(check['continue-on-error'], true);
+		assert.match(check.run, /generate --check --base dist\/base\.ts$/);
+		assert.equal(override.if, `steps.${check.id}.outcome == 'failure'`);
+		assert.equal(override.with.script, '.github/scripts/quality/check-n8n-node-override.mjs');
+	});
+});
+
 describe('release PR verification gate', () => {
 	const workflow = workflowFile('release-create-pr.yml');
 
