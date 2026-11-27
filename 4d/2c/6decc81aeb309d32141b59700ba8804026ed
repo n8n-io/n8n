@@ -1,0 +1,24 @@
+packages/cli/src/binary-data/unassigned-binary-data-cleanup.service.ts
+  s_319b9a55768bfb::t_5dad9d84493d16 1-17,19-28,32-34,36-38,40-53
+  s_319b9a55768bfb::t_e99c62fa3bfd5b 18,29-31,35,39
+packages/cli/test/integration/unassigned-binary-data-cleanup.test.ts
+  s_319b9a55768bfb::t_eada49247b3bc9 1-25,30-46,48-153
+  s_319b9a55768bfb::t_bcd69ae28b177f 26-29
+  s_319b9a55768bfb::t_b96e13edf0c37d 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4d2c6decc81aeb309d32141b59700ba8804026ed",
+  "prompts": {},
+  "sessions": {
+    "s_319b9a55768bfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc6ae560-d599-4c21-8a44-d5f519bed682",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

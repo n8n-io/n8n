@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  h_23d60aac2fe72e 4073-4085,4093-4098,4134-4136,4139
+packages/cli/src/modules/agents/integrations/__tests__/slack-integration.test.ts
+  h_23d60aac2fe72e 15,25,30
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  h_23d60aac2fe72e 76,885
+packages/cli/src/modules/agents/integrations/inbound-message-text.ts
+  h_23d60aac2fe72e 1-29
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/stream-delivery.test.ts
+  h_23d60aac2fe72e 17-22,28,73-114
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/synthetic-integration.test.ts
+  h_23d60aac2fe72e 143-159
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-adapter.ts
+  h_23d60aac2fe72e 2,4,7-60,63-64
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  h_23d60aac2fe72e 15,369,473-478
+patches/@chat-adapter__slack@4.39.0.patch
+  h_23d60aac2fe72e 1-46
+pnpm-lock.yaml
+  h_23d60aac2fe72e 1162,5164,30710
+pnpm-workspace.yaml
+  h_23d60aac2fe72e 569-570
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11a90d2a60b43ec012247d3153d11db28fe5d048",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
