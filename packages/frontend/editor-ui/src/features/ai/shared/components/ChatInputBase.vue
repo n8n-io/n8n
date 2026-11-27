@@ -8,7 +8,13 @@ import {
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nIconButton, N8nChatInput, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nIconButton,
+	N8nChatInput,
+	N8nText,
+	N8nTooltip,
+	N8nVisuallyHidden,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
 import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
@@ -355,13 +361,11 @@ defineExpose({
 				</N8nTooltip>
 			</template>
 		</N8nChatInput>
-		<N8nText
+		<!-- Screen readers do not always open the tooltip, e.g. swipe navigation on touch. -->
+		<N8nVisuallyHidden
 			v-if="showVoice && speechInput.isSupported && isStreaming"
 			:id="voiceReasonId"
-			tag="p"
-			size="small"
-			color="text-light"
-			>{{ i18n.baseText('chatInputBase.button.dictate.stopResponse') }}</N8nText
+			>{{ i18n.baseText('chatInputBase.button.dictate.stopResponse') }}</N8nVisuallyHidden
 		>
 	</div>
 </template>
