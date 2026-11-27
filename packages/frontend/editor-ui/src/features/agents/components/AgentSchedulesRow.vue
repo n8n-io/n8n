@@ -73,7 +73,7 @@ const testTooltip = computed(() =>
 );
 
 function testTask(task: AgentTaskRow) {
-	if (props.disabled || testDisabled.value) return;
+	if (props.disabled || testDisabled.value || removingTaskId.value !== null) return;
 	emit('preview-task', { objective: task.objective, taskId: task.id, source: 'schedule' });
 }
 
@@ -141,7 +141,7 @@ defineExpose({ openAddSchedule });
 						variant="ghost"
 						size="medium"
 						icon-only
-						:disabled="props.disabled || testDisabled"
+						:disabled="props.disabled || testDisabled || removingTaskId !== null"
 						focusable-when-disabled
 						:aria-label="
 							i18n.baseText('agents.builder.tasks.test.ariaLabel', {

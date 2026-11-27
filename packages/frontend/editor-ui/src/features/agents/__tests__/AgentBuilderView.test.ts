@@ -2972,6 +2972,49 @@ describe('AgentBuilderView — preview routing', () => {
 			);
 		});
 
+		it('drops Run again when the user picks another session while the schedule loads', async () => {
+			const tasks = Promise.withResolvers<unknown[]>();
+			getAgentTasksMock.mockReturnValue(tasks.promise);
+			const preview = await openPreview();
+
+			preview.vm.$emit('schedule-test-run-again', 'task-1');
+			preview.vm.$emit('schedule-test-chat');
+			await flushPromises();
+			const chatSession = preview.props('effectiveSessionId');
+			tasks.resolve([
+				{
+					id: 'task-1',
+					name: 'Inbox digest',
+					objective: 'Summarize the inbox',
+					cronExpression: '0 9 * * *',
+					createdAt: '2026-01-01T00:00:00.000Z',
+					updatedAt: '2026-01-01T00:00:00.000Z',
+				},
+			]);
+			await flushPromises();
+
+			expect(preview.props('effectiveSessionId')).toBe(chatSession);
+			expect(preview.props('initialPrompt')).toBeUndefined();
+		});
+
+		it('drops an unsent schedule test when the user picks another session', async () => {
+			fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+			const wrapper = await renderView();
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('preview-task', {
+				objective: 'Summarize the inbox',
+				taskId: 'task-1',
+				source: 'schedule',
+			});
+			await flushPromises();
+			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+			expect(preview.props('initialPrompt')).toBeDefined();
+
+			preview.vm.$emit('session-select', 'thread-1');
+			await flushPromises();
+
+			expect(preview.props('initialPrompt')).toBeUndefined();
+		});
+
 		it('tells the user when the schedule no longer exists', async () => {
 			getAgentTasksMock.mockResolvedValue([]);
 			const preview = await openPreview();

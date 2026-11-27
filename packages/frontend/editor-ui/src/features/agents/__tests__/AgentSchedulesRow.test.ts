@@ -146,6 +146,26 @@ describe('AgentSchedulesRow', () => {
 			expect(openModalWithDataSpy).not.toHaveBeenCalled();
 		});
 
+		it('does not test a schedule while it is being removed', async () => {
+			getAgentTasksSpy.mockResolvedValue([makeTask()]);
+			const pending = Promise.withResolvers<void>();
+			deleteAgentTaskSpy.mockReturnValueOnce(pending.promise);
+			const wrapper = mountRow([taskRef()], { isRunnable: true });
+			await flushPromises();
+
+			await wrapper.get('[data-testid="agent-capabilities-task-row"]').trigger('contextmenu');
+			await userEvent.click(
+				await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.remove' }),
+			);
+			const test = wrapper.get('[data-testid="agent-capabilities-test-task"]');
+			expect(test.attributes('aria-disabled')).toBe('true');
+			await test.trigger('click');
+
+			expect(wrapper.emitted('preview-task')).toBeUndefined();
+			pending.resolve();
+			await flushPromises();
+		});
+
 		it('tests a schedule from Test now in its menu', async () => {
 			getAgentTasksSpy.mockResolvedValue([makeTask()]);
 			const wrapper = mountRow([taskRef()], { isRunnable: true });

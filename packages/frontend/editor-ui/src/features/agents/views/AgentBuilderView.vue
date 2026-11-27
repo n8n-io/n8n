@@ -1327,6 +1327,12 @@ function startNewPreviewSession() {
 	onNewChat();
 }
 
+/** An unsent prompt belongs to the session it was made for, not to the picked one. */
+function pickPreviewSession(sessionId: string) {
+	taskPreviewPrompt.value = undefined;
+	onSessionPick(sessionId);
+}
+
 async function onDeletePreviewSession(sessionId: string) {
 	if (!canDeletePreviewSession.value) return;
 	await deleteSession(sessionId);
@@ -1389,15 +1395,19 @@ async function onPreviewTask({ objective, taskId, timezone, source }: AgentTaskT
 /** Tests the schedule of a schedule test session again, with its saved objective. */
 async function onRunScheduleTestAgain(taskId: string) {
 	const target = { projectId: projectId.value, agentId: agentId.value };
+	// The user can pick another session or start a chat while the tasks load.
+	const sessionId = effectiveSessionId.value;
+	const isStale = () =>
+		isStaleAgentTarget(target.projectId, target.agentId) || effectiveSessionId.value !== sessionId;
 	let task;
 	try {
 		const tasks = await getAgentTasks(rootStore.restApiContext, target.projectId, target.agentId);
 		task = tasks.find(({ id }) => id === taskId);
 	} catch (error) {
-		showError(error, locale.baseText('agents.chat.scheduleTest.runAgain.error'));
+		if (!isStale()) showError(error, locale.baseText('agents.chat.scheduleTest.runAgain.error'));
 		return;
 	}
-	if (isStaleAgentTarget(target.projectId, target.agentId)) return;
+	if (isStale()) return;
 	if (!task) {
 		showMessage({
 			type: 'warning',
@@ -3564,7 +3574,7 @@ useKeybindings({
 			@back="returnToBuilderFromPreview"
 			@delete-session="onDeletePreviewSession"
 			@new-session="startNewPreviewSession"
-			@session-select="onSessionPick"
+			@session-select="pickPreviewSession"
 			@view-trace="viewPreviewTrace"
 		/>
 		<AgentBuilderHeader
@@ -3950,7 +3960,7 @@ useKeybindings({
 							@view-trace="viewPreviewTrace"
 							@new-session="startNewPreviewSession"
 							@delete-session="onDeletePreviewSession"
-							@session-select="onSessionPick"
+							@session-select="pickPreviewSession"
 							@close="closeTestChat"
 							@continue-loaded="onContinueLoaded"
 							@session-created="markSessionCreated"

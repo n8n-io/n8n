@@ -1053,8 +1053,16 @@ describe('AgentExecutionOrchestratorService', () => {
 							...(announceExecution ? { onExecutionStarted } : {}),
 							previewChat,
 							...(onBudgetNotice ? { onBudgetNotice } : {}),
-							// The queue consumer reads the schedule test mark from the thread.
-							...(scheduleTest ? { allowBackgroundTasks: false } : {}),
+							// The Preview queue admits the one turn of a schedule test.
+							...(scheduleTest
+								? {
+										admittedExecution: {
+											executionId: 'admitted-1',
+											startedAt: new Date(),
+											inputMessageIds: ['message-1'],
+										},
+									}
+								: {}),
 							abortSignal,
 						})
 					: fixtures.service.resumeForChat({
@@ -1091,6 +1099,28 @@ describe('AgentExecutionOrchestratorService', () => {
 				expect.objectContaining({ previewChat: true, allowBackgroundTasks: false }),
 			);
 		});
+
+		it.runIf(operation === 'start')(
+			'refuses a turn of a schedule test that the Preview queue did not admit',
+			async () => {
+				// MCP `call_agent` and the Instance AI draft test run a turn without the queue.
+				const { runtimeCacheService, executionService, service } = makeTurn({
+					scheduleTest: true,
+				});
+				const stream = service.executeForChat({
+					agentId,
+					projectId,
+					user,
+					message: 'Follow up',
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					sessionMode: 'existing',
+				});
+
+				await expect(collect(stream)).rejects.toThrow('A schedule test runs once');
+				expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+				expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+			},
+		);
 
 		it('resumes a schedule test without background tasks on every surface', async () => {
 			const { stream, runtimeCacheService } = makeTurn({ scheduleTest: true });

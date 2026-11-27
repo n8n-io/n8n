@@ -704,8 +704,8 @@ export class AgentExecutionOrchestratorService {
 	}
 
 	/**
-	 * A schedule test resumes like a scheduled run, without background tasks.
-	 * The mark is on the thread, so every resume surface keeps it.
+	 * A schedule test runs and resumes like a scheduled run, without background
+	 * tasks. The mark is on the thread, so every surface keeps it.
 	 */
 	private async isScheduleTest(threadId: string): Promise<boolean> {
 		const thread = await this.agentExecutionService.findThreadById(threadId);
@@ -943,8 +943,20 @@ export class AgentExecutionOrchestratorService {
 			previewChat: config.previewChat,
 			sessionMode,
 		});
+		// Every new draft turn passes here: the Preview queue, MCP and Instance AI.
+		const scheduleTest = await this.isScheduleTest(config.memory.threadId);
+		// A schedule test runs one turn, like the scheduled run. Only the Preview queue
+		// creates a test session and admits its first turn, so any other turn is a follow-up.
+		if (scheduleTest && !config.admittedExecution) {
+			throw new UserError('A schedule test runs once. Start a new session to chat with the agent.');
+		}
 		const simulationSession = await config.simulation?.(config.memory.threadId);
-		const draft = { ...config, sessionMode, simulationSession };
+		const draft = {
+			...config,
+			sessionMode,
+			simulationSession,
+			...(scheduleTest ? { allowBackgroundTasks: false } : {}),
+		};
 		// The session is known only after the access check, and a new test chat is marked only
 		// when its turn starts, so the test chat's own sandbox is chosen here.
 		const draftSetup = simulationSession
