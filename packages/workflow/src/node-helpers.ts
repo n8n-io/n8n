@@ -567,8 +567,9 @@ function hasUnexpectedDisplayValueType(
 			const conditionTypes = new Set<string>(conditions.map((condition) => typeof condition));
 			if (conditionTypes.has('object')) return true;
 
+			const propertyPath = propertyName.startsWith('/') ? propertyName.slice(1) : propertyName;
 			const declared = (nodeTypeDescription.properties ?? []).filter(
-				(property) => property.name === propertyName,
+				(property) => property.name === propertyPath,
 			);
 			const declaredTypes = declared.map((property) => DECLARED_VALUE_TYPES[property.type]);
 			const expectedTypes =
@@ -578,10 +579,7 @@ function hasUnexpectedDisplayValueType(
 			const allowArray = declared.some((property) => property.type === 'multiOptions');
 			const allowResourceLocator = declared.some((property) => property.type === 'resourceLocator');
 
-			const value =
-				propertyName.charAt(0) === '/'
-					? get(parameters, propertyName.slice(1))
-					: get(parameters, propertyName);
+			const value = get(parameters, propertyPath);
 
 			if (!hasExpectedDisplayValueType(value, expectedTypes, allowArray, allowResourceLocator)) {
 				return true;
