@@ -51,6 +51,11 @@ export interface WorkQueue<TMessage> {
 	 * being dispatched.
 	 */
 	stop(): Promise<void>;
+	/**
+	 * The number of messages that no data plane has taken yet. A message whose
+	 * handler runs is not counted.
+	 */
+	size(): Promise<number>;
 }
 
 /** The two queues the engine runs on. */

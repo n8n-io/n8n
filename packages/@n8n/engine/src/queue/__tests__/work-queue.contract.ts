@@ -271,6 +271,18 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 			expect(gated.started).toHaveLength(1);
 		});
 
+		it('counts the messages that no handler has taken', async () => {
+			const queue = await build(1);
+			await publishAll(queue, [1, 2, 3]);
+			expect(await queue.size()).toBe(3);
+
+			const gated = gatedHandler();
+			queue.start(gated.handler);
+			await eventually(() => expect(gated.started).toHaveLength(1));
+
+			expect(await queue.size()).toBe(2);
+		});
+
 		it('resolves stop when no consumer ever started', async () => {
 			const queue = await build(2);
 			await queue.publish({ n: 1 });
