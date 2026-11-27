@@ -186,7 +186,13 @@ defect to remove, not a contract to preserve. Detail:
    GitBook builds the page URL from the display name, so do not change an
    existing `x-displayName` without checking the docs URLs.
    `openapi-tags.test.ts` fails if the tag is not declared or is out of order.
-6. Add the route to `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
+6. Run `pnpm --filter @n8n/n8n-node-codegen generate --check`. If it fails,
+   tell the user that the n8n node needs their decision about the change, and
+   that the `n8n node` CI job fails until they make it. Do not change
+   `packages/nodes-base/nodes/N8n/v2/overrides.ts` or
+   `properties.generated.ts` yourself. The
+   [generator README](../../../packages/@n8n/n8n-node-codegen/README.md#add-an-operation-to-the-node)
+   tells the user what to do.
 7. Tests.
 
 ## Testing

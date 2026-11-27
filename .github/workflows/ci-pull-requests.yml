@@ -38,6 +38,7 @@ jobs:
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
       sbom: ${{ fromJSON(steps.ci-filter.outputs.results).sbom == true }}
+      n8n_node: ${{ fromJSON(steps.ci-filter.outputs.results)['n8n-node'] == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
       db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
@@ -189,6 +190,12 @@ jobs:
               .github/actions/setup-nodejs/**
               .github/workflows/ci-pull-requests.yml
               .github/workflows/sbom-validation-callable.yml
+            n8n-node:
+              packages/cli/src/public-api/**
+              packages/nodes-base/nodes/N8n/**
+              packages/@n8n/n8n-node-codegen/**
+              pnpm-lock.yaml
+              .github/workflows/ci-pull-requests.yml
             e2e-performance:
               packages/quality/efficiency/memory/idle/**
               packages/quality/efficiency/playwright.config.ts
@@ -655,6 +662,54 @@ jobs:
     with:
       sha: ${{ needs.install-and-build.outputs.commit_sha }}
 
+  # The merge queue runs it for each entry: the filter cannot list each input of the generator.
+  n8n-node:
+    name: n8n node
+    needs: [install-and-build, format-check]
+    if: github.event_name == 'merge_group' || needs.install-and-build.outputs.n8n_node == 'true'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          ref: ${{ needs.install-and-build.outputs.commit_sha }}
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/n8n-node-codegen...
+
+      - name: Check that the node is up to date
+        run: pnpm --filter @n8n/n8n-node-codegen generate --check
+
+      - name: Get the node from the base branch
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ needs.install-and-build.outputs.lockfile_base }}
+          NODE_FILE: packages/nodes-base/nodes/N8n/v2/generated/properties.generated.ts
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          mkdir -p packages/@n8n/n8n-node-codegen/dist
+          git show "$BASE_SHA:$NODE_FILE" > packages/@n8n/n8n-node-codegen/dist/base.ts
+
+      - name: Check for breaking changes
+        id: breaking-changes
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: pnpm --filter @n8n/n8n-node-codegen generate --check --base dist/base.ts
+
+      - name: Check for an override of the breaking changes
+        if: steps.breaking-changes.outcome == 'failure'
+        uses: ./.github/actions/run-workflow-script
+        with:
+          script: .github/scripts/quality/check-n8n-node-override.mjs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
   # In-process discovery eval — asserts the orchestrator reaches for Browser Use
   # tools at OAuth/screenshot moments. Lightweight (no Docker), runs in parallel with the
   # heavy workflow eval. Non-blocking initially; promote to required after stability.
@@ -696,6 +751,7 @@ jobs:
         security-checks,
         workflow-scripts,
         validate-sbom,
+        n8n-node,
       ]
     if: always()
     runs-on: ubuntu-slim
