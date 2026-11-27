@@ -99,12 +99,17 @@ describe('RolesModule', () => {
 		it.each([
 			['/settings/instance-roles', 'instance'],
 			['/settings/project-roles', 'project'],
-		])('redirects %s to the %s tab of the roles page', async (path, tab) => {
-			await router.push(path);
+		])(
+			'redirects %s to the %s tab of the roles page',
+			async (path, tab) => {
+				await router.push(path);
 
-			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
-			expect(router.currentRoute.value.query.tab).toBe(tab);
-		});
+				expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
+				expect(router.currentRoute.value.query.tab).toBe(tab);
+			},
+			// The first navigation loads the roles page cold, which can take over 10 seconds in CI.
+			30_000,
+		);
 
 		const RolesView = async () => (await import('./RolesView.vue')).default;
 		const InstanceRoleView = async () => (await import('./instance/InstanceRoleView.vue')).default;
