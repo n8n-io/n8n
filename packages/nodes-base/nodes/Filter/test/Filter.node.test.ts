@@ -1,6 +1,6 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import get from 'lodash/get';
-import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
+import { NodeConnectionTypes, type INode, type WorkflowTestData } from 'n8n-workflow';
 
 describe('Test Filter Node', () => {
 	const testHarness = new NodeTestHarness();
@@ -10,9 +10,11 @@ describe('Test Filter Node', () => {
 		const createSingleValueWorkflowTest = ({
 			description,
 			rightValue,
+			extraNodes = [],
 		}: {
 			description: string;
 			rightValue: string;
+			extraNodes?: INode[];
 		}): WorkflowTestData => ({
 			description,
 			input: {
@@ -75,6 +77,7 @@ describe('Test Filter Node', () => {
 							typeVersion: 1,
 							position: [600, 0],
 						},
+						...extraNodes,
 					],
 					connections: {
 						'When clicking "Execute workflow"': {
@@ -126,5 +129,23 @@ describe('Test Filter Node', () => {
 				);
 			},
 		});
+
+		testHarness.setupTest(
+			createSingleValueWorkflowTest({
+				description:
+					'ignores hidden rightValue referencing an unexecuted node for single-value operator (NODE-5984)',
+				rightValue: "={{ $('Unexecuted').first().json.x }}",
+				extraNodes: [
+					{
+						parameters: {},
+						id: 'unexecuted-node',
+						name: 'Unexecuted',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 200],
+					},
+				],
+			}),
+		);
 	});
 });

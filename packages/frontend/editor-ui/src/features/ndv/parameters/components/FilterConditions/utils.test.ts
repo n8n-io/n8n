@@ -234,6 +234,42 @@ describe('FilterConditions > utils', () => {
 			});
 			expect(condition.rightValue).toBe("={{ $('Unexecuted').first().json.x }}");
 		});
+
+		test('should still return resolve_error for two-value operator with unresolvable rightValue', async () => {
+			const { workflowDocumentId } = setupWorkflowContext();
+			const condition: FilterConditionValue = {
+				id: '1',
+				leftValue: '={{ $json.value }}',
+				rightValue: "={{ $('x').item.json.x }}",
+				operator: getFilterOperator('string:equals'),
+			};
+
+			const result = await resolveCondition({
+				condition,
+				options: defaultOptions,
+				workflowDocumentId,
+			});
+
+			expect(result).toEqual({ status: 'resolve_error' });
+		});
+
+		test('should still return resolve_error for single-value operator with unresolvable leftValue', async () => {
+			const { workflowDocumentId } = setupWorkflowContext();
+			const condition: FilterConditionValue = {
+				id: '1',
+				leftValue: "={{ $('x').item.json.x }}",
+				rightValue: '',
+				operator: getFilterOperator('string:exists'),
+			};
+
+			const result = await resolveCondition({
+				condition,
+				options: defaultOptions,
+				workflowDocumentId,
+			});
+
+			expect(result).toEqual({ status: 'resolve_error' });
+		});
 	});
 
 	describe('inferOperatorType', () => {

@@ -24,6 +24,26 @@ const DEPRECATED_VM2_SANDBOX_NODE_TYPES = new Set([
 	CODE_LANGCHAIN_NODE_TYPE,
 ]);
 
+// Single-value filter operators hide rightValue in the UI, so skip resolving any stored value.
+function isSingleValueFilterCondition(value: object): boolean {
+	if (!('rightValue' in value) || !('leftValue' in value) || !('operator' in value)) {
+		return false;
+	}
+
+	const { operator } = value;
+	return (
+		typeof operator === 'object' &&
+		operator !== null &&
+		!Array.isArray(operator) &&
+		'type' in operator &&
+		typeof operator.type === 'string' &&
+		'operation' in operator &&
+		typeof operator.operation === 'string' &&
+		'singleValue' in operator &&
+		operator.singleValue === true
+	);
+}
+
 export class WorkflowExpression {
 	private readonly expression: Expression;
 
@@ -179,8 +199,12 @@ export class WorkflowExpression {
 
 		// Data is an object
 		const returnData: INodeParameters = {};
+		const skipRightValue = isSingleValueFilterCondition(parameterValue);
 
 		for (const [key, value] of Object.entries(parameterValue)) {
+			if (skipRightValue && key === 'rightValue') {
+				continue;
+			}
 			returnData[key] = resolveParameterValue(
 				value as NodeParameterValueType,
 				parameterValue as INodeParameters,

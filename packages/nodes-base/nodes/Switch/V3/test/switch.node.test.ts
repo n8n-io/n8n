@@ -4,6 +4,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	INode,
 	INodeTypeBaseDescription,
 	WorkflowTestData,
 } from 'n8n-workflow';
@@ -590,9 +591,11 @@ describe('SwitchV3 Node', () => {
 		const createSingleValueWorkflowTest = ({
 			description,
 			rightValue,
+			extraNodes = [],
 		}: {
 			description: string;
 			rightValue: string;
+			extraNodes?: INode[];
 		}): WorkflowTestData => ({
 			description,
 			input: {
@@ -674,6 +677,7 @@ describe('SwitchV3 Node', () => {
 							typeVersion: 1,
 							position: [600, 100],
 						},
+						...extraNodes,
 					],
 					connections: {
 						'When clicking "Execute workflow"': {
@@ -727,5 +731,23 @@ describe('SwitchV3 Node', () => {
 				).toBe("={{ $('x').item.json.x }}");
 			},
 		});
+
+		testHarness.setupTest(
+			createSingleValueWorkflowTest({
+				description:
+					'ignores hidden rightValue referencing an unexecuted node for single-value operator (NODE-5984)',
+				rightValue: "={{ $('Unexecuted').first().json.x }}",
+				extraNodes: [
+					{
+						parameters: {},
+						id: 'unexecuted-node',
+						name: 'Unexecuted',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 200],
+					},
+				],
+			}),
+		);
 	});
 });
