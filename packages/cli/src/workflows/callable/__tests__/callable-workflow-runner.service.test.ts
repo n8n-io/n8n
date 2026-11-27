@@ -347,9 +347,9 @@ describe('CallableWorkflowRunner', () => {
 					settings: { saveDataSuccessExecution: 'none', saveDataErrorExecution: 'none' },
 				}),
 			);
-			startExecution(ctx);
+			const done = startExecution(ctx);
 
-			void ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
+			const run = ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
 			await vi.waitFor(() => expect(ctx.workflowRunner.run).toHaveBeenCalledTimes(1));
 
 			const [runData] = ctx.workflowRunner.run.mock.calls[0] as [IWorkflowExecutionDataProcess];
@@ -357,6 +357,8 @@ describe('CallableWorkflowRunner', () => {
 				saveDataSuccessExecution: 'none',
 				saveDataErrorExecution: 'all',
 			});
+			done.resolve(completedRun());
+			await run;
 		});
 
 		it('returns the error message and the node type of a failed run', async () => {
@@ -497,7 +499,7 @@ describe('CallableWorkflowRunner', () => {
 		it('returns "busy" and starts nothing when the limit is full', async () => {
 			const ctx = setup({ maxRuns: 1 });
 			ctx.loader.loadWorkflow.mockResolvedValue(makeWorkflow());
-			startExecution(ctx);
+			const done = startExecution(ctx);
 
 			const first = ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
 			await vi.waitFor(() => expect(ctx.workflowRunner.run).toHaveBeenCalledTimes(1));
@@ -506,7 +508,8 @@ describe('CallableWorkflowRunner', () => {
 				status: 'busy',
 			});
 			expect(ctx.workflowRunner.run).toHaveBeenCalledTimes(1);
-			void first;
+			done.resolve(completedRun());
+			await first;
 		});
 
 		it('keeps the slot after the wait ends, until the execution finishes', async () => {
@@ -565,14 +568,17 @@ describe('CallableWorkflowRunner', () => {
 		it('has no limit when the limit is 0', async () => {
 			const ctx = setup({ maxRuns: 0 });
 			ctx.loader.loadWorkflow.mockResolvedValue(makeWorkflow());
-			startExecution(ctx, 'exec-1');
-			void ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
+			const firstDone = startExecution(ctx, 'exec-1');
+			const first = ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
 			await vi.waitFor(() => expect(ctx.workflowRunner.run).toHaveBeenCalledTimes(1));
-			startExecution(ctx, 'exec-2');
+			const secondDone = startExecution(ctx, 'exec-2');
 
-			void ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
+			const second = ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
 
 			await vi.waitFor(() => expect(ctx.workflowRunner.run).toHaveBeenCalledTimes(2));
+			firstDone.resolve(completedRun());
+			secondDone.resolve(completedRun());
+			await Promise.all([first, second]);
 		});
 	});
 });
