@@ -11580,7 +11580,7 @@
 	"promotions.preview.submit.apply": "Apply changes | Apply {count} change | Apply {count} changes",
 	"promotions.preview.submit.blocked": "Apply is disabled. Some selected changes have blockers. Resolve their blockers or clear these changes.",
 	"promotions.preview.submit.blockedTooltip.apply": "Resolve the blockers to apply the changes.",
-	"promotions.preview.submit.blockedTooltip.promote": "Promote can't move workflows between projects. Move them back on this instance.",
+	"promotions.preview.submit.blockedTooltip.promote": "Resolve the blockers to promote the changes.",
 	"promotions.preview.submit.selectTooltip.apply": "Select at least one change to apply.",
 	"promotions.preview.submit.selectTooltip.promote": "Select at least one change to promote.",
 	"promotions.preview.submit.blockedInstance": "Apply is disabled. Some changes have blockers. Resolve the blockers, then apply.",

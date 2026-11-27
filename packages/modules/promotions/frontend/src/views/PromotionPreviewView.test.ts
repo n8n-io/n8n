@@ -297,13 +297,9 @@ describe('PromotionPreviewView', () => {
 
 		await userEvent.hover(submit);
 		const tooltip = await findByRole('tooltip', { hidden: true });
-		expect(tooltip).toHaveTextContent(
-			"Promote can't move workflows between projects. Move them back on this instance.",
-		);
+		expect(tooltip).toHaveTextContent('Resolve the blockers to promote the changes.');
 		expect(submit).toHaveAttribute('aria-describedby', tooltip.id);
-		expect(submit).toHaveAccessibleDescription(
-			"Promote can't move workflows between projects. Move them back on this instance.",
-		);
+		expect(submit).toHaveAccessibleDescription('Resolve the blockers to promote the changes.');
 		expect(queryByText('Select at least one change to promote.')).not.toBeInTheDocument();
 	});
 
