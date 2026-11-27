@@ -57,6 +57,8 @@ export class SimulationSessionService {
 		(expired) => {
 			void this.closeWorld(expired.session);
 		},
+		// The held actions exist only in the session, so it stays until they are committed.
+		(cached) => cached.session.hasPendingHeldActions(),
 	);
 
 	private readonly opening = new Map<string, Promise<SimulationSession | undefined>>();
