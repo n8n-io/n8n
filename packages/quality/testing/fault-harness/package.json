@@ -2,7 +2,7 @@
   "name": "@n8n/fault-harness",
   "private": true,
   "version": "0.1.0",
-  "description": "Runs n8n stacks under test control: in-process hooks, signals and probes",
+  "description": "Controls n8n containers from a test: in-process hooks, signals and log waits",
   "main": "src/index.ts",
   "scripts": {
     "test": "vitest run --passWithNoTests",
