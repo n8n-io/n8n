@@ -43,6 +43,7 @@ export class AgentWorkspaceService {
 		projectId: string,
 		agentId: string,
 		principalHash: AgentSandboxPrincipalHash,
+		options?: { sandboxEgress?: boolean },
 	): Promise<AgentWorkspaceAcquisition> {
 		this.agentSandboxRuntimeService.assertSandboxConfiguration(projectId, agentId);
 		// The sandbox boots lazily on first filesystem/command use: the scope below
@@ -54,6 +55,7 @@ export class AgentWorkspaceService {
 			agentId,
 			principalHash,
 			{
+				...(options?.sandboxEgress !== undefined ? { sandboxEgress: options.sandboxEgress } : {}),
 				onFilesystemInit: ({ filesystem }) => {
 					this.reconcileToolResultsInBackground(
 						runtime.cacheKey,
@@ -74,7 +76,11 @@ export class AgentWorkspaceService {
 			undefined,
 			{ ensureRootExists: true },
 		);
-		return { workspace: this.withCoreToolsOnly(workspace), handle: runtime };
+
+		return {
+			workspace: this.configureWorkspace(workspace, runtime.egressEnabled),
+			handle: runtime,
+		};
 	}
 
 	/**
@@ -90,13 +96,23 @@ export class AgentWorkspaceService {
 			undefined,
 			{ ensureRootExists: true },
 		);
-		return this.withCoreToolsOnly(workspace);
+
+		return this.configureWorkspace(workspace, handle.egressEnabled);
 	}
 
-	private withCoreToolsOnly(workspace: Workspace): Workspace {
+	private configureWorkspace(workspace: Workspace, egressEnabled: boolean): Workspace {
 		const getTools = workspace.getTools.bind(workspace);
 		workspace.getTools = () =>
 			getTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name));
+
+		if (!egressEnabled) {
+			const getInstructions = workspace.getInstructions.bind(workspace);
+			workspace.getInstructions = () =>
+				[getInstructions(), 'Outbound network access from this sandbox is disabled.']
+					.filter(Boolean)
+					.join('\n\n');
+		}
+
 		return workspace;
 	}
 

@@ -15,7 +15,7 @@ import type {
 	EntityManager,
 } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { PROJECT_ROOT } from 'n8n-workflow';
+import { PROJECT_ROOT, type IWorkflowSettings } from 'n8n-workflow';
 import { UnexpectedError, UserError } from '@n8n/errors';
 
 import type { ActivityProjectScope } from './activity-event.repository';
@@ -332,6 +332,11 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			select: { isArchived: true },
 			where: { id: workflowId },
 		});
+	}
+
+	async findSettings(workflowId: string): Promise<IWorkflowSettings | undefined> {
+		const workflow = await this.findOne({ select: ['settings'], where: { id: workflowId } });
+		return workflow?.settings;
 	}
 
 	async getAllActiveIds() {
@@ -758,7 +763,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			// it the backend falls back to scanning every enabled node and
 			// disagrees with the frontend picker, which fetches connections.
 			// `activeVersionId` tells the publish check whether the workflow is published.
-			select: ['id', 'name', 'nodes', 'connections', 'activeVersionId'],
+			select: ['id', 'name', 'nodes', 'connections', 'activeVersionId', 'isArchived'],
 		});
 	}
 

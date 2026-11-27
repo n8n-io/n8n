@@ -841,6 +841,9 @@ function createHostMetadata(
 					runtimeSnapshot: JSON.stringify(runtimeSource),
 					difficulty: context.selfDelegationDifficulty,
 					sharedWorkspace: context.parentWorkspaceHandle !== undefined,
+					...(context.parentWorkspaceHandle !== undefined
+						? { sharedWorkspaceEgress: context.parentWorkspaceHandle.egressEnabled }
+						: {}),
 					messageContext: context.parentMessageContext ?? null,
 				}),
 			),

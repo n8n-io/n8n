@@ -266,9 +266,12 @@ const isCustomMcpServersEnabled = computed(() => customMcpServersEnabled());
 const createMcpServerButton = computed(() => ({
 	value: ACTION_TYPES.MCP_SERVER,
 	label: i18n.baseText('mcpServers.create.button'),
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
 	size: 'mini' as const,
 	// On Overview the dialog lets the builder pick a project, so the check uses the home project.
-	disabled: !getResourcePermissions(homeProject.value?.scopes).mcpServer?.create,
+	disabled:
+		sourceControlStore.preferences.branchReadOnly ||
+		!getResourcePermissions(homeProject.value?.scopes).mcpServer?.create,
 }));
 
 const createSelfHealingButton = computed(() => ({

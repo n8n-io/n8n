@@ -17,10 +17,16 @@ const api = vi.hoisted(() => ({
 vi.mock('../mcp-servers.api', () => api);
 
 const push = vi.hoisted(() => vi.fn());
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
-	useRouter: () => ({ push }),
-}));
+const router = vi.hoisted(() => ({ route: undefined as { fullPath: string } | undefined }));
+vi.mock('vue-router', async (importOriginal) => {
+	const { reactive } = await import('vue');
+	router.route = reactive({ fullPath: '/projects/project-1/mcp-servers' });
+	return {
+		...(await importOriginal()),
+		useRoute: () => router.route,
+		useRouter: () => ({ push }),
+	};
+});
 
 const server: McpServerResponse = {
 	id: '0190a8d6-4a2e-7000-8000-000000000001',
@@ -61,6 +67,28 @@ describe('CreateMcpServerDialog', () => {
 		useCreateMcpServerDialog().close();
 		capabilityRegistry.clear();
 		vi.clearAllMocks();
+	});
+
+	it('keeps Create available when the URL check fails, and says so', async () => {
+		api.checkMcpServerSlug.mockRejectedValue(new Error('Network error'));
+		setUp();
+		await renderDialog();
+
+		await userEvent.type(screen.getByTestId('create-mcp-server-name'), 'Sales tools');
+
+		expect(await screen.findByTestId('create-mcp-server-slug-unchecked')).toHaveTextContent(
+			'n8n checks it again when you create the server',
+		);
+		expect(screen.getByTestId('create-mcp-server-submit')).toBeEnabled();
+	});
+
+	it('closes when the page changes, so it never creates in the project of an old page', async () => {
+		setUp();
+		await renderDialog();
+
+		router.route!.fullPath = '/projects/project-2/mcp-servers';
+
+		await waitFor(() => expect(useCreateMcpServerDialog().state.open).toBe(false));
 	});
 
 	it('makes the slug from the name and shows the server URL', async () => {

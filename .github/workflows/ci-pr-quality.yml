@@ -123,10 +123,24 @@ jobs:
         with:
           build-command: pnpm turbo run build --filter=@n8n/code-health --filter=@n8n/playwright-janitor
 
+      # `github.base_ref` is empty on merge_group events.
+      - name: Resolve base branch
+        id: base
+        env:
+          BASE_REF: ${{ github.base_ref || github.event.merge_group.base_ref }}
+        run: echo "branch=${BASE_REF#refs/heads/}" >> "$GITHUB_OUTPUT"
+
+      # The migration-backport rule compares the migrations of a release branch with master.
+      - name: Fetch master
+        if: steps.base.outputs.branch != 'master'
+        run: git fetch --no-tags --depth=1 origin +refs/heads/master:refs/remotes/origin/master
+
       - name: Run code-health
         env:
           CODE_HEALTH_CHANGED_FILES: ${{ needs.changes.outputs.changed-files }}
           CODE_HEALTH_ADDED_FILES: ${{ needs.changes.outputs.added-files }}
+          CODE_HEALTH_BASE_BRANCH: ${{ steps.base.outputs.branch }}
+          CODE_HEALTH_MASTER_REF: origin/master
         run: pnpm --filter=@n8n/code-health check
 
       - name: Run janitor

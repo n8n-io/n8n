@@ -92,11 +92,12 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		Manage: ['app:list', 'app:read', 'app:create', 'app:update', 'app:delete'],
 	},
 	mcpServer: {
-		Use: ['mcpServer:list', 'mcpServer:read', 'mcpServer:connect'],
+		// No `mcpServer:connect`: a global scope skips the project membership check, and only
+		// members of the project that owns a server may connect. Connect comes from a project role.
+		View: ['mcpServer:list', 'mcpServer:read'],
 		Manage: [
 			'mcpServer:list',
 			'mcpServer:read',
-			'mcpServer:connect',
 			'mcpServer:create',
 			'mcpServer:update',
 			'mcpServer:delete',

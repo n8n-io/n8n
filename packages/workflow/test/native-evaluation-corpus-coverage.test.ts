@@ -17,8 +17,7 @@
 // rewriting this test.
 
 import { getParsedExpression } from '@n8n/tournament';
-import { isNativelyEvaluable } from '../src/expressions/native-evaluation';
-import { RESERVED_NAMES } from '../src/expressions/native-evaluation/grammar';
+import { isNativelyEvaluable, RESERVED_NAMES } from '../src/expressions/native-evaluation';
 import { ALL_CORPORA } from './native-evaluation-corpus';
 
 // ── Shape tokenization ────────────────────────────────────────────────────

@@ -256,6 +256,20 @@ describe('POST /projects/:projectId/mcp-servers/:serverId/tools/:toolId/draft', 
 		});
 	});
 
+	it('answers 402 and keeps the text when the person has no Assistant credits left', async () => {
+		const { serverId, tool, draftUrl } = await setup();
+		draft.mockResolvedValueOnce({ status: 'no_credits' });
+
+		const response = await testServer.authAgentFor(editor).post(draftUrl).send({}).expect(402);
+
+		expect(response.body.message).toContain('credits');
+		const server = await testServer.authAgentFor(editor).get(base(serverId)).expect(200);
+		expect(server.body.data.tools[0]).toMatchObject({
+			toolName: tool.toolName,
+			draftSource: 'defaults',
+		});
+	});
+
 	it('reports a failed model call', async () => {
 		const { draftUrl } = await setup();
 		draft.mockRejectedValueOnce(new Error('Invalid API key: sk-ant-api03-abcdefghijklmnopqrstuv'));
@@ -270,12 +284,14 @@ describe('POST /projects/:projectId/mcp-servers/:serverId/tools/:toolId/draft', 
 		['invalid_answer', 'description', 'description'],
 		['model_failed', undefined, 'both'],
 		['not_available', undefined, 'both'],
+		['no_credits', undefined, 'both'],
 	] as const)('sends the event "%s" for the field %s', async (status, field, eventField) => {
 		const { serverId, draftUrl } = await setup();
 		if (status === 'drafted') answer({ toolName: 'get_numbers', description: 'Gives numbers.' });
 		if (status === 'invalid_answer') answer({ description: '' });
 		if (status === 'model_failed') draft.mockRejectedValueOnce(new Error('rate limited'));
 		if (status === 'not_available') isAvailable.mockResolvedValue(false);
+		if (status === 'no_credits') draft.mockResolvedValueOnce({ status: 'no_credits' });
 		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		await testServer.authAgentFor(editor).post(draftUrl).send({ field });

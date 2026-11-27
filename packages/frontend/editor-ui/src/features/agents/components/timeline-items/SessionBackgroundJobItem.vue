@@ -100,14 +100,14 @@ const { isOpen } = useTimelineItemExpansion({
 
 <style module lang="scss">
 .step .activityButton {
-	--ai-activity-step--padding: var(--spacing--2xs);
+	--n8n-ai-activity-step--padding: var(--spacing--2xs);
 	--button--color--background-hover: var(--background--hover);
 	--button--color--background-active: var(--background--active);
 }
 
 .step {
 	margin-inline: var(--spacing--2xs);
-	--ai-activity-step--color: var(--text-color--subtle);
+	--n8n-ai-activity-step--color: var(--text-color--subtle);
 }
 
 .header {

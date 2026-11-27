@@ -106,13 +106,15 @@ export class McpServerToolRepository {
 		changes: McpServerToolChanges,
 		ctx: OperationContext = {},
 	): Promise<McpServerTool | null> {
-		const manager = this.table.managerFor(ctx);
-		try {
-			await manager.update(McpServerTool, { id: toolId, serverId }, changes);
-		} catch (error) {
-			throw toNameConflict(error);
-		}
-		return await this.findInServer(serverId, toolId, ctx);
+		// One transaction, so a parallel delete cannot turn a saved edit into a 404.
+		return await this.table.runInTransaction(ctx, async (manager) => {
+			try {
+				await manager.update(McpServerTool, { id: toolId, serverId }, changes);
+			} catch (error) {
+				throw toNameConflict(error);
+			}
+			return await manager.findOneBy(McpServerTool, { id: toolId, serverId });
+		});
 	}
 
 	async deleteInServer(

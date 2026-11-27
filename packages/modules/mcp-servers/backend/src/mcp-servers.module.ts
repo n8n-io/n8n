@@ -15,10 +15,12 @@ export class McpServersModule implements ModuleInterface {
 		);
 		const { TextDraftPort } = await import('./tools/text-draft-port.js');
 		const { OAuthClientNamePort } = await import('./tools/oauth-client-name-port.js');
+		const { OAuthGrantPort } = await import('./tools/oauth-grant-port.js');
 		const adapters = Container.get(McpServerToolAdapters).resolve();
 		Container.set(WorkflowToolPort, adapters.workflows);
 		Container.set(TextDraftPort, adapters.textDrafts);
 		Container.set(OAuthClientNamePort, adapters.clients);
+		Container.set(OAuthGrantPort, adapters.grants);
 		await import('./controllers/mcp-servers.controller.js');
 		await import('./controllers/mcp-servers-list.controller.js');
 		await import('./controllers/mcp-server-tools.controller.js');

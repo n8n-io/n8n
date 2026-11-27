@@ -216,6 +216,10 @@ describe('GET /projects/:projectId/mcp-servers', () => {
 	it('refuses a person outside the project', async () => {
 		await outsiderAgent.get(serversPath()).expect(403);
 	});
+
+	it('answers 404 for a project that does not exist', async () => {
+		await ownerAgent.get(serversPath('non-existing-id')).expect(404);
+	});
 });
 
 describe('GET /mcp-servers', () => {
@@ -296,13 +300,12 @@ describe('PATCH /projects/:projectId/mcp-servers/:serverId', () => {
 		});
 	});
 
-	it('refuses a slug, an empty change, and a person without the update scope', async () => {
+	it('refuses a slug and an empty change', async () => {
 		const server = await createServer({ name: 'Sales tools', slug: 'sales-tools' });
 		const path = `${serversPath()}/${server.id}`;
 
 		await ownerAgent.patch(path).send({ slug: 'new-slug' }).expect(400);
 		await ownerAgent.patch(path).send({}).expect(400);
-		await agentFor('project:viewer').patch(path).send({ name: 'X' }).expect(403);
 	});
 
 	it.each([

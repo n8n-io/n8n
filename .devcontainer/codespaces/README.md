@@ -107,9 +107,10 @@ pnpm agent:harness
 ```
 
 The command verifies the release checksum. It caches the bundle under
-`~/.cache/n8n-agent-harness`. It then links the bundle plugin into
-`~/.config/opencode/plugins`. Run the command again after the lock changes.
-Restart OpenCode after the command completes.
+`~/.cache/n8n-agent-harness`. It then writes a managed plugin shim at
+`~/.config/opencode/plugins/n8n-harness/index.js` and removes any legacy
+`n8n-harness.js` symlink. Run the command again after the lock changes.
+OpenCode watches plugin files and reloads automatically.
 
 ## Local OpenCode clients
 
@@ -130,7 +131,7 @@ For the TUI, install the same OpenCode version as the remote server. The
 for new images:
 
 ```bash
-npm install -g opencode-ai@<version>
+npm install -g @opencode/cli@<version>
 ```
 
 Use npm, not pnpm. The package gets its binary from a `postinstall` script.
@@ -180,7 +181,6 @@ your laptop can access the local browser proxy while it runs. Do not forward
 this proxy or the OpenCode server port to other machines.
 
 The server enables only OpenRouter. It reads `OPENROUTER_API_KEY` when it starts.
-It enables OpenCode code mode by default to reduce the initial tool context.
 Browser mode opens the workspace's most recently updated conversation directly.
 The web UI stores opened projects in browser storage. If a new-session page
 shows **New project**, open `/workspaces/n8n` there once. Keep the same browser

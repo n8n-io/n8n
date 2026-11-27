@@ -1,5 +1,6 @@
 import { N8nDialog } from '@n8n/design-system';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,6 +8,12 @@ import { defineComponent, h } from 'vue';
 
 import RestrictReviewDialog from './RestrictReviewDialog.vue';
 import { useRestrictReviewStore, type RestrictReviewRequest } from './restrict-review.store';
+
+const { track } = vi.hoisted(() => ({ track: vi.fn() }));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost', pushRef: 'test' } }),
@@ -139,6 +146,83 @@ describe('RestrictReviewDialog', () => {
 		await clickReviewOverlay();
 
 		await waitFor(() => expect(resolve).toHaveBeenCalledWith(false));
+	});
+
+	describe('telemetry', () => {
+		const reviewedEvent = TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_REVIEWED_TYPE_RESTRICTION;
+
+		it('reports a confirm with the type and its usage', async () => {
+			open(notion);
+
+			await userEvent.click(await screen.findByRole('button', { name: 'Restrict' }));
+
+			expect(track).toHaveBeenCalledTimes(1);
+			expect(track).toHaveBeenCalledWith(reviewedEvent, {
+				kind: 'node-types',
+				type_name: 'n8n-nodes-base.notion',
+				decision: 'confirm',
+				use_count: 3,
+				workflow_count: 2,
+				active_workflow_count: 0,
+			});
+		});
+
+		it('reports a cancel by Escape, with unknown counts', async () => {
+			open({ ...notion, kind: 'credential', name: 'notionApi', usage: null });
+
+			await screen.findByTestId('restrict-review-dialog');
+			await userEvent.keyboard('{Escape}');
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(reviewedEvent, {
+					kind: 'credential-types',
+					type_name: 'notionApi',
+					decision: 'cancel',
+					use_count: null,
+					workflow_count: null,
+					active_workflow_count: null,
+				}),
+			);
+			expect(track).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			[
+				'the Cancel button',
+				async () => {
+					await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+				},
+			],
+			['a click outside', clickReviewOverlay],
+		])('reports a cancel by %s, with the usage', async (_, cancel) => {
+			open(notion);
+
+			await cancel();
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(reviewedEvent, {
+					kind: 'node-types',
+					type_name: 'n8n-nodes-base.notion',
+					decision: 'cancel',
+					use_count: 3,
+					workflow_count: 2,
+					active_workflow_count: 0,
+				}),
+			);
+			expect(track).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not report a review that the page cancels', async () => {
+			open(notion);
+			await screen.findByTestId('restrict-review-dialog');
+
+			useRestrictReviewStore().cancelAll();
+
+			await waitFor(() =>
+				expect(screen.queryByTestId('restrict-review-dialog')).not.toBeInTheDocument(),
+			);
+			expect(track).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('above an access dialog', () => {

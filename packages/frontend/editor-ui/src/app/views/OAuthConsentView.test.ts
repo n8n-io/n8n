@@ -447,7 +447,7 @@ describe('OAuthConsentView', () => {
 				getByRole('heading', { name: 'Claude Code wants to connect to Sales tools' }),
 			).toBeVisible();
 			expect(
-				getByText('Claude Code can see the tools of this MCP server and call them as you.'),
+				getByText('Claude Code can see the tools of this MCP server and use them on your behalf.'),
 			).toBeVisible();
 			expect(getByText('Signed in as Maya Lopez (maya@example.com)')).toBeVisible();
 			expect(queryByText(/requests access to workflow/)).toBeNull();
@@ -502,6 +502,25 @@ describe('OAuthConsentView', () => {
 			expect(getByTestId('consent-close-button')).toHaveTextContent('Go to n8n');
 			expect(queryByTestId('consent-error-notice')).toBeNull();
 			expect(queryByTestId('consent-allow-button')).toBeNull();
+		});
+
+		it('shows no project name for a server in a personal project', async () => {
+			consentStore.error = 'You do not have sufficient permissions to authorize this request';
+			consentStore.errorCode = 'forbidden';
+			consentStore.refusal = {
+				reason: 'not_member',
+				resourceName: 'Sales tools',
+				uiHints: { icon: 'mcp', consentType: 'mcp-server' },
+			};
+
+			const { getByText } = renderComponent();
+			await waitAllPromises();
+
+			expect(
+				getByText(
+					'This MCP server is in a personal project. Only the owner of the project can connect to it.',
+				),
+			).toBeVisible();
 		});
 
 		it('shows no toast and no spinner on the refusal screen', async () => {

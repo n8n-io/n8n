@@ -13,6 +13,8 @@ export default defineConfig({
 				'src/database/migrations/1791417600000-CreateWorkflowSeededStep.ts',
 				'src/database/migrations/1794960000000-AddOutputSourcesToWorkflowStepExecution.ts',
 				'src/database/migrations/1795046400000-AddFinishedAtIndexToWorkflowExecution.ts',
+				'src/database/migrations/1795050000000-WidenStepStaleAfterIndex.ts',
+				'src/database/migrations/1795132800000-AddErrorWorkflowColumnsToWorkflowExecution.ts',
 			],
 			rules: { 'unicorn/filename-case': 'off' },
 		},

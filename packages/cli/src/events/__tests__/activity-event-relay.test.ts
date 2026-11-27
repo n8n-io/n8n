@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
-import { EventService, type PostHogClient } from '@n8n/backend-services';
-import type { GlobalConfig } from '@n8n/config';
+import { EventService } from '@n8n/backend-services';
+import type { ActivityLogConfig } from '@n8n/config';
 import type {
 	ActivityEventRepository,
 	WorkflowHistory,
@@ -10,7 +10,7 @@ import type {
 	SharedWorkflowRepository,
 } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
-import { mock, type MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
@@ -39,33 +39,14 @@ describe('ActivityEventRelay', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
 	let eventService: EventService;
-	let postHogClient: MockProxy<PostHogClient>;
 
-	const relayWith = ({
-		rolloutFlag = false,
-		diagnostics = true,
-		flagOverride,
-	}: {
-		rolloutFlag?: boolean;
-		diagnostics?: boolean;
-		flagOverride?: boolean | { value: boolean };
-	} = {}) => {
-		const overrideValue = typeof flagOverride === 'object' ? flagOverride.value : flagOverride;
-		postHogClient.getFeatureFlagForInstance.mockResolvedValue(overrideValue ?? rolloutFlag);
-
+	const relayWith = ({ enabled = true } = {}) => {
 		const relay = new ActivityEventRelay(
 			eventService,
 			activityEventRepository,
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
-			mock<GlobalConfig>({
-				diagnostics: { enabled: diagnostics },
-				featureFlags: {
-					override:
-						flagOverride === undefined ? {} : { '114_instance_activity_context': flagOverride },
-				},
-			}),
-			postHogClient,
+			mock<ActivityLogConfig>({ enabled }),
 			logger,
 		);
 		relay.init();
@@ -74,7 +55,6 @@ describe('ActivityEventRelay', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		postHogClient = mock<PostHogClient>();
 		eventService = new EventService();
 		// Every event whose resource still exists resolves its project through one of these.
 		sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
@@ -85,7 +65,7 @@ describe('ActivityEventRelay', () => {
 		);
 	});
 
-	describe('the write gate', () => {
+	describe('recording', () => {
 		const emitDeletion = async (actingUser = user) => {
 			eventService.emit('workflow-deleted', {
 				user: actingUser,
@@ -97,32 +77,16 @@ describe('ActivityEventRelay', () => {
 			await flushPromises();
 		};
 
-		it('records when the instance rollout is on', async () => {
-			relayWith({ rolloutFlag: true });
-
-			await emitDeletion();
-
-			expect(activityEventRepository.record).toHaveBeenCalled();
-		});
-
-		it('records when the override is on and the rollout is off', async () => {
-			relayWith({ rolloutFlag: false, flagOverride: true });
-
-			await emitDeletion();
-
-			expect(activityEventRepository.record).toHaveBeenCalled();
-		});
-
-		it('records nothing when neither control is on', async () => {
-			relayWith({ rolloutFlag: false });
+		it('records nothing while the activity log is off', async () => {
+			relayWith({ enabled: false });
 
 			await emitDeletion();
 
 			expect(activityEventRepository.record).not.toHaveBeenCalled();
 		});
 
-		it('checks the instance once for a burst of events', async () => {
-			relayWith({ rolloutFlag: true });
+		it('records every event of a burst', async () => {
+			relayWith();
 
 			eventService.emit('workflow-created', {
 				user,
@@ -138,78 +102,7 @@ describe('ActivityEventRelay', () => {
 			});
 			await emitDeletion();
 
-			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledTimes(1);
 			expect(activityEventRepository.record).toHaveBeenCalledTimes(3);
-		});
-
-		it('uses one instance answer for two users', async () => {
-			relayWith({ rolloutFlag: true });
-			const secondUser = { ...user, id: 'user2', email: 'john@n8n.io' };
-
-			eventService.emit('workflow-deleted', {
-				user,
-				workflowId: 'workflow1',
-				workflowName: 'Lead enrichment',
-				projectId: 'project1',
-				publicApi: false,
-			});
-			await emitDeletion(secondUser);
-
-			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledTimes(1);
-			expect(activityEventRepository.record).toHaveBeenCalledTimes(2);
-		});
-
-		it('records nothing when the instance flag cannot be read', async () => {
-			relayWith({ rolloutFlag: true });
-			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('PostHog failed'));
-
-			await emitDeletion();
-
-			expect(activityEventRepository.record).not.toHaveBeenCalled();
-		});
-
-		it('lets an explicit override disable recording while the rollout is on', async () => {
-			relayWith({ rolloutFlag: true, flagOverride: false });
-
-			await emitDeletion();
-
-			expect(activityEventRepository.record).not.toHaveBeenCalled();
-		});
-
-		it('registers listeners when an explicit flag override is the only control set', async () => {
-			const onSpy = vi.spyOn(eventService, 'on');
-
-			relayWith({ diagnostics: false, flagOverride: true });
-
-			expect(onSpy).toHaveBeenCalled();
-		});
-
-		it('registers no listeners without an override when diagnostics are off', async () => {
-			const onSpy = vi.spyOn(eventService, 'on');
-
-			relayWith({ diagnostics: false });
-
-			expect(onSpy).not.toHaveBeenCalled();
-
-			await emitDeletion();
-
-			expect(activityEventRepository.record).not.toHaveBeenCalled();
-		});
-
-		it('registers no listeners when the flag is overridden off', async () => {
-			const onSpy = vi.spyOn(eventService, 'on');
-
-			relayWith({ diagnostics: false, flagOverride: false });
-
-			expect(onSpy).not.toHaveBeenCalled();
-		});
-
-		it('registers listeners for an override that holds its value in an object', async () => {
-			const onSpy = vi.spyOn(eventService, 'on');
-
-			relayWith({ diagnostics: false, flagOverride: { value: true } });
-
-			expect(onSpy).toHaveBeenCalled();
 		});
 	});
 
@@ -381,7 +274,7 @@ describe('ActivityEventRelay', () => {
 		];
 
 		it.each(cases)('records %s', async (_name, emit, expected) => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			emit(eventService);
 			await flushPromises();
@@ -393,7 +286,7 @@ describe('ActivityEventRelay', () => {
 		});
 
 		it('clips a version name rather than letting it spend the whole budget', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			eventService.emit('workflow-activated', {
 				user,
@@ -418,7 +311,7 @@ describe('ActivityEventRelay', () => {
 			{ label: 'empty', name: '' },
 			{ label: 'long', name: 'v'.repeat(2_000) },
 		])('formats $label version names the same when publishing and updating', async ({ name }) => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			eventService.emit('workflow-activated', {
 				user,
@@ -445,7 +338,7 @@ describe('ActivityEventRelay', () => {
 		});
 
 		it('records no version name when unpublishing, which clears the relation first', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			eventService.emit('workflow-deactivated', {
 				user,
@@ -466,7 +359,7 @@ describe('ActivityEventRelay', () => {
 		});
 
 		it('falls back to a lookup when a created credential carries no project', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			eventService.emit('credentials-created', {
 				user,
@@ -488,7 +381,7 @@ describe('ActivityEventRelay', () => {
 		});
 
 		it('takes a deletion at its word rather than looking up what is already gone', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			eventService.emit('workflow-deleted', {
 				user,
@@ -520,7 +413,7 @@ describe('ActivityEventRelay', () => {
 			activityEventRepository.record.mock.calls[0][0].data as Record<string, unknown>;
 
 		it('records who made the change and which node types moved', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			savedWith({
 				workflow: workflowWith([node('n8n-nodes-base.slack'), node('n8n-nodes-base.httpRequest')]),
@@ -542,7 +435,7 @@ describe('ActivityEventRelay', () => {
 		});
 
 		it('keeps an explicit false apart from a save that never mentioned the builder', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			savedWith({ source: 'ui', aiBuilderAssisted: false });
 			await flushPromises();
@@ -551,7 +444,7 @@ describe('ActivityEventRelay', () => {
 		});
 
 		it('reports no delta when there is no before state to compare against', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			savedWith({ source: 'api', previousWorkflow: undefined });
 			await flushPromises();
@@ -560,7 +453,7 @@ describe('ActivityEventRelay', () => {
 		});
 
 		it('does not call a second node of an existing type a change of type', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			savedWith({
 				workflow: workflowWith([
@@ -580,7 +473,7 @@ describe('ActivityEventRelay', () => {
 		 * would take `source` with it — and provenance is the field this entry exists to carry.
 		 */
 		it('clips an unbounded version name so the pointer survives the budget', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			eventService.emit('workflow-version-updated', {
 				user,
@@ -597,7 +490,7 @@ describe('ActivityEventRelay', () => {
 		});
 
 		it('sheds detail to fit the budget rather than losing provenance to truncation', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			const many = (count: number, prefix: string) =>
 				Array.from({ length: count }, (_, i) =>
@@ -625,7 +518,7 @@ describe('ActivityEventRelay', () => {
 
 	describe('when something goes wrong', () => {
 		it('drops the entry rather than writing a row no read could ever return', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
 
 			eventService.emit('workflow-archived', { user, workflowId: 'workflow1', publicApi: false });
@@ -639,7 +532,7 @@ describe('ActivityEventRelay', () => {
 		});
 
 		it('reports a failed lookup once, naming the event, rather than blaming a missing project', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 			sharedWorkflowRepository.getWorkflowOwningProject.mockRejectedValue(new Error('db is gone'));
 
 			eventService.emit('workflow-archived', { user, workflowId: 'workflow1', publicApi: false });
@@ -657,7 +550,7 @@ describe('ActivityEventRelay', () => {
 		 * here would be an unhandled rejection rather than a lost row.
 		 */
 		it('swallows a malformed payload while the entry is still being shaped', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 
 			eventService.emit('workflow-saved', {
 				user,
@@ -677,7 +570,7 @@ describe('ActivityEventRelay', () => {
 		});
 
 		it('lets nothing escape a listener, whatever stage it fails at', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 			// Throwing from the lookup itself, which sits outside the handler's own try/catch.
 			sharedWorkflowRepository.getWorkflowOwningProject.mockImplementation(() => {
 				throw new Error('synchronous boom');
@@ -696,7 +589,7 @@ describe('ActivityEventRelay', () => {
 		 * project and never will. Warning about it every time would be noise no operator can act on.
 		 */
 		it('drops an unattributable credential quietly, unlike an unattributable workflow', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
 
 			eventService.emit('credentials-updated', {
@@ -717,7 +610,7 @@ describe('ActivityEventRelay', () => {
 		});
 
 		it('swallows a failed write, because a full disk must not lose a workflow save', async () => {
-			relayWith({ flagOverride: true });
+			relayWith();
 			activityEventRepository.record.mockRejectedValue(new Error('disk is full'));
 
 			eventService.emit('workflow-archived', { user, workflowId: 'workflow1', publicApi: false });

@@ -18,6 +18,11 @@ export class FloatingUiHelper {
 		);
 	}
 
+	/** Innermost scroll area viewport that contains the given floating content. */
+	getScrollAreaViewport(content: Locator) {
+		return this.page.locator('[data-reka-scroll-area-viewport]').filter({ has: content }).last();
+	}
+
 	/** Tooltip content is teleported out of its trigger, so scope it to the page. */
 	getTooltip() {
 		return this.page.getByTestId('tooltip-content').filter({ visible: true });

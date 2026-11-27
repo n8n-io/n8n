@@ -13,6 +13,7 @@ import type express from 'express';
 import merge from 'lodash/merge';
 import {
 	BinaryDataService,
+	collectAllowedBinaryDataIds,
 	ErrorReporter,
 	establishExecutionContext,
 	ExecutionContextService,
@@ -63,6 +64,7 @@ import { finished } from 'stream/promises';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
+import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import {
 	ResponseError,
@@ -462,16 +464,22 @@ async function sendResponseNodeResponse(
 	workflowStartNode: INode,
 	executionId: string | undefined,
 	workflow: Workflow,
+	grantedBinaryDataIds?: string[],
 ): Promise<void> {
 	try {
 		const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 		if (binaryData?.id) {
-			if (response.statusCode) {
-				res.status(response.statusCode);
-			}
-			WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
-			applySandboxCSP(res);
 			try {
+				await Container.get(BinaryDataAccessService).assertIsAllowed(
+					binaryData.id,
+					workflow.id,
+					grantedBinaryDataIds,
+				);
+				if (response.statusCode) {
+					res.status(response.statusCode);
+				}
+				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
+				applySandboxCSP(res);
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
 				await ResponseHelper.sendStreamToResponse(res, stream);
 			} finally {
@@ -525,6 +533,7 @@ export function setupResponseNodePromise(
 	workflowStartNode: INode,
 	executionId: string | undefined,
 	workflow: Workflow,
+	grantedBinaryDataIds?: string[],
 ): void {
 	void responsePromise.promise
 		.then(async (response) => {
@@ -542,6 +551,7 @@ export function setupResponseNodePromise(
 				workflowStartNode,
 				executionId,
 				workflow,
+				grantedBinaryDataIds,
 			);
 		})
 		.catch(async (e: unknown) => {
@@ -775,7 +785,6 @@ export function prepareExecutionData(
 		},
 		...(executionMode === 'manual' && userId ? { manualData: { userId } } : {}),
 	});
-
 	if (destinationNode && runExecutionData.startData) {
 		runExecutionData.startData.destinationNode = destinationNode;
 	}
@@ -1225,6 +1234,14 @@ export async function executeWebhook(
 		const { webhookResultData } = invocationResult;
 		runExecutionDataMerge = invocationResult.runExecutionDataChanges;
 		if (routesToEngineV2) engineV2Payload = webhookResultData.workflowData;
+		const binaryDataAccess = routesToEngineV2
+			? []
+			: await collectAllowedBinaryDataIds(
+					(webhookResultData.workflowData ?? []).flatMap((slot) => slot ?? []),
+					additionalData.binaryDataAccess,
+					workflowData,
+					runExecutionData?.binaryDataAccess,
+				);
 
 		if (cleanupMultipartFiles && webhookResultData.webhookResponse instanceof Readable) {
 			deferCleanupUntilStreamEnds(webhookResultData.webhookResponse, res, cleanupMultipartFiles);
@@ -1279,8 +1296,14 @@ export async function executeWebhook(
 			webhookData.userId,
 		);
 		runExecutionData = preparedRunExecutionData;
+		runExecutionData.binaryDataAccess = [
+			...new Set([...(runExecutionData.binaryDataAccess ?? []), ...binaryDataAccess]),
+		];
 
 		const runData: IWorkflowExecutionDataProcess = {
+			...(runExecutionData.binaryDataAccess.length > 0
+				? { binaryDataAccess: runExecutionData.binaryDataAccess }
+				: {}),
 			executionMode,
 			executionData: runExecutionData,
 			pushRef,
@@ -1333,6 +1356,7 @@ export async function executeWebhook(
 				workflowStartNode,
 				executionId,
 				workflow,
+				runExecutionData.binaryDataAccess,
 			);
 		}
 
@@ -1614,7 +1638,15 @@ export async function executeWebhook(
 						responseData as WebhookResponseData,
 						lastNodeTaskData,
 						checkAllMainOutputs,
-						{ responsePropertyName, responseContentType, responseBinaryPropertyName },
+						{
+							responsePropertyName,
+							responseContentType,
+							responseBinaryPropertyName,
+							binaryDataAccess: {
+								workflowId: workflow.id,
+								grantedIds: runData.data.binaryDataAccess,
+							},
+						},
 					);
 
 					if (!result.ok) {

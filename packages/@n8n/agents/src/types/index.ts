@@ -52,6 +52,7 @@ export type {
 	AgentExecutionCounter,
 	SideCallTask,
 	SideCallUsageReport,
+	ThreadTitleUpdate,
 	PersistedExecutionOptions,
 	ResumeOptions,
 	GenerateResult,
