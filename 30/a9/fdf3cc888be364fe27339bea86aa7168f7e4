@@ -1,0 +1,24 @@
+packages/frontend/@n8n/design-system/src/components/N8nDialog/DialogContent.vue
+  s_f53b289bcaf584::t_43975a4ba13ccd 134-138
+packages/frontend/@n8n/design-system/src/components/N8nDialog/Dialog.test.ts
+  s_f53b289bcaf584::t_13ef03b71ff114 18,817-854
+packages/frontend/@n8n/design-system/src/composables/useMessage.ts
+  s_f53b289bcaf584::t_43975a4ba13ccd 14-26,59,119,144,147
+  s_f53b289bcaf584::t_b1956ea3af797f 53-57,123-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30a9fdf3cc888be364fe27339bea86aa7168f7e4",
+  "prompts": {},
+  "sessions": {
+    "s_f53b289bcaf584": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbdb7969-3d41-477d-92e6-445de5bb6977",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
