@@ -95,6 +95,16 @@ describe('startEngineMetricsServer', () => {
 		}
 	});
 
+	it('logs a server error after it bound, instead of crashing', () => {
+		const error = new Error('accept failed');
+
+		expect(() => {
+			server.emit('error', error);
+			server.emit('error', error);
+		}).not.toThrow();
+		expect(logger.error).toHaveBeenCalledWith('Engine metrics server error', { error });
+	});
+
 	it('rejects when it cannot bind the port', async () => {
 		await expect(
 			startEngineMetricsServer(registry, { host: '127.0.0.1', port: port(), logger }),

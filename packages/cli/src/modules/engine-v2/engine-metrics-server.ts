@@ -29,8 +29,13 @@ export async function startEngineMetricsServer(
 	});
 
 	return await new Promise<Server>((resolve, reject) => {
-		server.once('listening', () => resolve(server));
+		// Detached once listening: a later error is not a failed bind.
 		server.once('error', reject);
-		server.listen(port, host);
+		server.listen(port, host, () => {
+			server.off('error', reject);
+			// Nothing else handles a later error, so log it instead of crashing.
+			server.on('error', (error) => logger.error('Engine metrics server error', { error }));
+			resolve(server);
+		});
 	});
 }
