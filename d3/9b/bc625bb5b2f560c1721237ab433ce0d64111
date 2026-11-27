@@ -1,0 +1,50 @@
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
+  ai_agent 138-139
+packages/frontend/editor-ui/src/features/agents/components/AgentTestChatPage.vue
+  s_08ad1fe1d43e02::t_739ccc2015b9e6 34,146
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 108
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_08ad1fe1d43e02::t_72de92a429d911 3001,3022-3023
+  s_08ad1fe1d43e02::t_555b3a519ff516 2918-2921,2967,3014,3035
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_08ad1fe1d43e02::t_a8b284c26d12e3 315-316,324,326-327
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_08ad1fe1d43e02::t_802edc3d53c36c 3704-3706,3707-3716,3718-3731,3733-3735,3739-3745
+  s_08ad1fe1d43e02::t_0f6b3033a5ef7e 474
+  s_08ad1fe1d43e02::t_555b3a519ff516 3623,3627,3640
+  s_08ad1fe1d43e02::t_8e89d678a88bc9 3717
+packages/@n8n/api-types/src/agents/dto.ts
+  s_08ad1fe1d43e02::t_ebd879cb46fa76 932,938
+  ai_agent 958,947-951,959-960
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_08ad1fe1d43e02::t_802edc3d53c36c 3921-3922,3953,3956,3961-3962,3966,3969,3972-3973,3976-3977,3924,3930-3932,3937,3942,3944-3945,3950-3951
+  s_08ad1fe1d43e02::t_555b3a519ff516 3960,3906,3913,3936,3941,3965
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_08ad1fe1d43e02::t_392596019c0558 89
+  s_08ad1fe1d43e02::t_739ccc2015b9e6 192-193,1145-1146,2080
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 1049,1381,1402,1465,1500,1519,1530,1592,1660,1665,1702
+packages/frontend/editor-ui/src/features/agents/components/AgentScheduleTestNotice.vue
+  s_08ad1fe1d43e02::t_505156e776bf75 7
+  s_08ad1fe1d43e02::t_739ccc2015b9e6 29-39
+packages/frontend/editor-ui/src/features/agents/components/AgentTestDock.vue
+  s_08ad1fe1d43e02::t_739ccc2015b9e6 63,351
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_08ad1fe1d43e02::t_7e4dbb460d3c3c 1374,1383-1386
+  s_08ad1fe1d43e02::t_1909f8fc22b434 3782,3939
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d39bbc625bb5b2f560c1721237ab433ce0d64111",
+  "prompts": {},
+  "sessions": {
+    "s_08ad1fe1d43e02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8181cd39-5693-42c0-89cf-63f7653ab06b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
