@@ -1,0 +1,149 @@
+operationId: getPromotionReview
+tags:
+  - Promotions
+summary: 'Beta: Retrieve a promotion review'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Returns one promotion review with the same fields as the list. Reads the merge request from the Git host now. Returns 404 when the Inbox of the key owner does not show the review.
+
+  Requires the `promotions:readReviews` API key scope.
+x-required-scope: promotions:readReviews
+parameters:
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion review.
+    name: promotionReviewId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+            state:
+              type: string
+              enum:
+                - open
+                - closed
+              description: The Inbox tab of the review. `closed` covers the merged and the closed reviews.
+            reviewState:
+              type: string
+              enum:
+                - open
+                - changes_requested
+                - merged
+                - closed
+              description: The state of the review. `open` and `changes_requested` come from the Git host. `merged` and `closed` are final.
+            reviewType:
+              type: string
+              enum:
+                - gitlab
+            title:
+              type: string
+              nullable: true
+            webUrl:
+              type: string
+              nullable: true
+            branchName:
+              type: string
+              nullable: true
+            environmentName:
+              type: string
+              nullable: true
+            requester:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: string
+                firstName:
+                  type: string
+                  nullable: true
+                lastName:
+                  type: string
+                  nullable: true
+                email:
+                  type: string
+                  nullable: true
+              required:
+                - id
+                - firstName
+                - lastName
+                - email
+            approver:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: string
+                firstName:
+                  type: string
+                  nullable: true
+                lastName:
+                  type: string
+                  nullable: true
+                email:
+                  type: string
+                  nullable: true
+              required:
+                - id
+                - firstName
+                - lastName
+                - email
+            remoteError:
+              type: string
+              nullable: true
+              enum:
+                - not_found
+                - auth
+                - unreachable
+                - no_connection
+              description: Why the Git host data is missing. Then `title`, `webUrl` and `headCommitSha` are NULL, and `hasConflicts` is false without a check. NULL when the Git host answered.
+            headCommitSha:
+              type: string
+              nullable: true
+              description: The head of the merge request on the Git host. It differs from `runCommitSha` after a push on the Git host.
+            runCommitSha:
+              type: string
+              nullable: true
+              description: The commit that n8n pushed in the newest promotion.
+            hasConflicts:
+              type: boolean
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+          required:
+            - id
+            - state
+            - reviewState
+            - reviewType
+            - title
+            - webUrl
+            - branchName
+            - environmentName
+            - requester
+            - approver
+            - remoteError
+            - headCommitSha
+            - runCommitSha
+            - hasConflicts
+            - createdAt
+            - updatedAt
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

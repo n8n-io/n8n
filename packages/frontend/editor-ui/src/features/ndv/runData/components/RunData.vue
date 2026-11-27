@@ -584,15 +584,24 @@ const binaryData = computed(() => {
 
 const { availableDisplayModes, displayModeToAutoSelect, getAvailableDisplayMode } =
 	useRunDataDisplayModes({ node, pane: () => props.paneType, data: unfilteredInputData });
-/**
- * The mode to render. A registered mode that cannot render this data falls back to
- * the pane default. The fallback is not saved, so the stored choice stays for other nodes.
- */
-const activeDisplayMode = computed<IRunDataDisplayMode>(() =>
-	isBuiltInDisplayMode(props.displayMode) || getAvailableDisplayMode(props.displayMode)
+const pickedOnThisNode = ref(false);
+const automaticDisplayMode = computed<IRunDataDisplayMode | undefined>(() => {
+	if (displayModeToAutoSelect.value) return displayModeToAutoSelect.value.id;
+	if (hasBinaryData.value) return 'binary';
+	if (hasParsedAiContent.value) return 'ai';
+	return undefined;
+});
+function isDisplayModeAvailable(mode: IRunDataDisplayMode): boolean {
+	if (mode === 'binary') return hasBinaryData.value;
+	if (mode === 'ai') return hasParsedAiContent.value;
+	return isBuiltInDisplayMode(mode) || !!getAvailableDisplayMode(mode);
+}
+const activeDisplayMode = computed<IRunDataDisplayMode>(() => {
+	if (!pickedOnThisNode.value && automaticDisplayMode.value) return automaticDisplayMode.value;
+	return isDisplayModeAvailable(props.displayMode)
 		? props.displayMode
-		: PANE_DEFAULT_DISPLAY_MODE[props.paneType],
-);
+		: PANE_DEFAULT_DISPLAY_MODE[props.paneType];
+});
 const activeRenderer = computed(() => getAvailableDisplayMode(activeDisplayMode.value));
 // Text typed in another mode must not filter or hide a mode that cannot search
 const activeSearch = computed(() =>
@@ -807,10 +816,18 @@ watch(node, (newNode, prevNode) => {
 	init();
 });
 
+watch(automaticDisplayMode, () => {
+	pickedOnThisNode.value = false;
+});
+
+watch(
+	activeDisplayMode,
+	(mode) => ndvStore.value.setNDVPanelShownDisplayMode({ pane: props.paneType, mode }),
+	{ immediate: true },
+);
+
 watch([hasNodeRun, isTrimmedManualExecutionDataItem], () => {
-	if (props.paneType === 'output') {
-		setDisplayMode();
-	} else {
+	if (props.paneType === 'input') {
 		// InputPanel relies on the outputIndex to check if we have data
 		outputIndex.value = determineInitialOutputIndex();
 	}
@@ -838,14 +855,6 @@ watch(jsonData, (data: IDataObject[], prevData: IDataObject[]) => {
 	showPinDataDiscoveryTooltip(data);
 });
 
-watch(binaryData, (newData, prevData) => {
-	if (newData.length && !prevData.length && activeDisplayMode.value !== 'binary') {
-		switchToBinary();
-	} else if (!newData.length && activeDisplayMode.value === 'binary') {
-		onDisplayModeChange('table');
-	}
-});
-
 watch(currentOutputIndex, (branchIndex: number) => {
 	ndvStore.value.setNDVBranchIndex({
 		pane: props.paneType,
@@ -856,17 +865,6 @@ watch(currentOutputIndex, (branchIndex: number) => {
 watch(search, (newSearch) => {
 	emit('search', newSearch);
 });
-
-// Switch to AI display mode if it's most suitable
-watch(
-	hasParsedAiContent,
-	(hasAiContent) => {
-		if (hasAiContent && activeDisplayMode.value !== 'ai') {
-			emit('displayModeChange', 'ai');
-		}
-	},
-	{ immediate: true },
-);
 
 onMounted(() => {
 	init();
@@ -1295,6 +1293,7 @@ function onPageSizeChange(newPageSize: number) {
 
 function onDisplayModeChange(newDisplayMode: IRunDataDisplayMode) {
 	const previous = activeDisplayMode.value;
+	pickedOnThisNode.value = true;
 	emit('displayModeChange', newDisplayMode);
 
 	if (!userEnabledShowData.value) updateShowData();
@@ -1441,17 +1440,9 @@ function init() {
 		outputTypes = NodeHelpers.getConnectionTypes(outputs);
 	}
 	connectionType.value = outputTypes.length === 0 ? NodeConnectionTypes.Main : outputTypes[0];
-	if (binaryData.value.length > 0) {
-		emit('displayModeChange', 'binary');
-	} else if (activeDisplayMode.value === 'binary') {
-		emit('displayModeChange', 'schema');
-	}
+	pickedOnThisNode.value = false;
 
 	pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
-
-	if (props.paneType === 'output') {
-		setDisplayMode();
-	}
 }
 
 function closeBinaryDataDisplay() {
@@ -1529,12 +1520,6 @@ function enableNode() {
 		};
 
 		workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
-	}
-}
-
-function setDisplayMode() {
-	if (displayModeToAutoSelect.value) {
-		emit('displayModeChange', displayModeToAutoSelect.value.id);
 	}
 }
 

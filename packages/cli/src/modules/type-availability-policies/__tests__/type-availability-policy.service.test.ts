@@ -1,4 +1,5 @@
 import type { EventService } from '@n8n/backend-services';
+import { ProjectNotFoundError } from '@n8n/backend-services';
 import type { OperationContext, ProjectRepository, TransactionRunner } from '@n8n/db';
 import type { SecurityContext } from '@n8n/permissions';
 import type { NodeLoader } from 'n8n-workflow';
@@ -18,7 +19,10 @@ import { unconfiguredScope, type EffectivePolicy } from '../effective-policy';
 import type { ListTypes } from '../listed-node-types';
 import type { PolicyAttachment, PolicyRule } from '../policy-rule.types';
 import type { TypeAvailabilityPolicySnapshot } from '../type-availability-policy-snapshot';
-import { TypeAvailabilityPolicyService } from '../type-availability-policy.service';
+import {
+	PERSONAL_PROJECT_POLICY,
+	TypeAvailabilityPolicyService,
+} from '../type-availability-policy.service';
 
 const KIND = 'node-types';
 const ROOT: OperationContext = {};
@@ -124,6 +128,10 @@ describe('TypeAvailabilityPolicyService', () => {
 		snapshot.projectScopes.mockReturnValue(null);
 		snapshot.refreshAfterWrite.mockResolvedValue(undefined);
 		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(ROOT));
+		// Every project id in these tests names a team project unless a test says otherwise.
+		projectRepository.findTypesByIds.mockImplementation(async (ids) =>
+			ids.map((id) => ({ id, type: 'team' as const })),
+		);
 		// Every fixture rule names `n8n-nodes-base`, so it must resolve as an installed package.
 		loadNodesAndCredentials.loaders = { 'n8n-nodes-base': makeLoader('n8n-nodes-base') };
 		// Fixture `name` rules name Slack, so it must resolve as a loaded node.
@@ -263,6 +271,16 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			expect(transactionRunner.run).not.toHaveBeenCalled();
 			expect(scopeRepository.findScopeByKindAndProject).not.toHaveBeenCalled();
+		});
+
+		it('rejects a personal project before opening a transaction', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([{ id: 'project-1', type: 'personal' }]);
+
+			await expect(
+				service.setDefaultAction(KIND, 'project-1', 'deny', 0, 'user-1'),
+			).rejects.toThrow(PERSONAL_PROJECT_POLICY);
+
+			expect(transactionRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('still allows a delegate defaultAction at instance scope', async () => {
@@ -1079,6 +1097,53 @@ describe('TypeAvailabilityPolicyService', () => {
 		beforeEach(() => {
 			// By default a scope's document is attached to that scope alone.
 			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
+		});
+
+		it('rejects a personal project before opening a transaction', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([{ id: 'project-1', type: 'personal' }]);
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					'project-1',
+					{ rules: [RULE], defaultAction: 'deny' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow(PERSONAL_PROJECT_POLICY);
+			expect(projectRepository.findTypesByIds).toHaveBeenCalledWith(['project-1']);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('throws ProjectNotFoundError for an unknown project, before opening a transaction', async () => {
+			projectRepository.findTypesByIds.mockResolvedValue([]);
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					'missing-project',
+					{ rules: [RULE], defaultAction: 'deny' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow(ProjectNotFoundError);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('does not look up a project at instance scope', async () => {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ version: 2 }));
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					null,
+					{ rules: [RULE], defaultAction: 'deny' },
+					1,
+					'user-1',
+				),
+			).rejects.toThrow(ConflictError);
+			expect(projectRepository.findTypesByIds).not.toHaveBeenCalled();
 		});
 
 		it('rejects a package rule on the credential-only prefix, before opening a transaction', async () => {

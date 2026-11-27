@@ -10,6 +10,8 @@ import {
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	formatSkillWorkflowMention,
+	MCP_SKILLS_EXTENSION_FLAG,
 	skillNameKey,
 	type AgentSkillAvailability,
 	type ProjectIcon,
@@ -19,6 +21,7 @@ import {
 	type SkillSyncedFrom,
 	type SkillUsedBy,
 	type SkillVersionDetail,
+	type SkillWorkflowMention,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -45,6 +48,8 @@ import { parseScope } from '@/features/settings/context/skills.utils';
 import { sourceLineOf } from '@/features/settings/context/skillSourceReview.utils';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
@@ -62,6 +67,7 @@ import type {
 } from '@/features/shared/toolsConnection/types';
 import { getSkillDetail, listAttachableSkills } from '../composables/useAgentApi';
 import { useSkillVersions } from '../composables/useSkillVersions';
+import { useSkillWorkflowMentionNames } from '@/features/agents/composables/useSkillWorkflowMentionNames';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
 import {
@@ -237,6 +243,17 @@ function toFormSkill(source: AgentSkill | undefined): AgentSkill {
 
 const initialSkill = ref<AgentSkill>(toFormSkill(props.data.skill));
 const skill = ref<AgentSkill>(cloneDeep(initialSkill.value));
+const posthog = usePostHog();
+const { refreshWorkflowMentionNames } = useSkillWorkflowMentionNames();
+
+async function refreshMentionNames() {
+	const loaded = initialSkill.value;
+	const refreshed = await refreshWorkflowMentionNames(loaded);
+	if (refreshed === loaded || initialSkill.value !== loaded || !isEqual(skill.value, loaded))
+		return;
+	initialSkill.value = refreshed;
+	skill.value = cloneDeep(refreshed);
+}
 const submitted = ref(false);
 const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
@@ -566,6 +583,17 @@ const selectedScopeSkill = computed(() => {
 		projectIcon: selectedScope.value?.projectIcon ?? saved?.projectIcon ?? null,
 	};
 });
+const mentionsInInstanceSkill = computed(() => selectedScopeSkill.value.scope === 'instance');
+const mentionsAvailableToMcp = computed(() =>
+	showAvailableToMCP.value
+		? availableToMCP.value
+		: posthog.isFeatureEnabled(MCP_SKILLS_EXTENSION_FLAG) &&
+			skillAccess.value?.availableToMCP === true,
+);
+const mentionProjectId = computed(() => selectedScopeSkill.value.projectId ?? undefined);
+const mentionProjectName = computed(() =>
+	mentionProjectId.value ? (selectedScopeSkill.value.projectName ?? undefined) : undefined,
+);
 const showScopeBadge = computed(
 	() =>
 		isFormStep.value &&
@@ -1023,6 +1051,15 @@ onMounted(() => {
 		if (showRecommendedSkills.value) trackRecommendedSkillsShown('agent_skill_modal');
 	}
 	if (props.data.skillId && props.data.skillRefsEnabled) void loadSkillAccess(props.data.skillId);
+	if (
+		isEditing.value &&
+		posthog.isVariantEnabled(
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		)
+	) {
+		void refreshMentionNames();
+	}
 });
 
 const showAssistantToggle = computed(
@@ -1218,6 +1255,28 @@ function onSkillUpdate(updates: Partial<AgentSkill>) {
 	) {
 		selectedPath.value = SKILL_FILE;
 	}
+}
+
+function appendOnNewLine(text: string, mention: SkillWorkflowMention) {
+	const trimmed = text.trimEnd();
+	return `${trimmed}${trimmed ? '\n\n' : ''}${formatSkillWorkflowMention(mention)}`;
+}
+
+function onAddWorkflow(mention: SkillWorkflowMention) {
+	const references = skill.value.references ?? [];
+	const openReference = references.find(({ path }) => path === selectedPath.value);
+	if (openReference && !openReference.isBinary && /\.(md|markdown)$/i.test(openReference.path)) {
+		onSkillUpdate({
+			references: references.map((reference) =>
+				reference === openReference
+					? { ...reference, content: appendOnNewLine(reference.content, mention) }
+					: reference,
+			),
+		});
+		return;
+	}
+	onSkillUpdate({ instructions: appendOnNewLine(skill.value.instructions, mention) });
+	selectedPath.value = SKILL_FILE;
 }
 
 function normalizeSkill(skill: AgentSkill): AgentSkill {
@@ -1715,6 +1774,9 @@ function onRemove() {
 						:skill="comparedSkill"
 						:selected-path="selectedPath"
 						:change-counts="diffCounts"
+						:instance-skill="mentionsInInstanceSkill"
+						:available-to-mcp="mentionsAvailableToMcp"
+						:agent-context="!!props.data.agentId"
 						read-only
 						@select="selectedPath = $event"
 					/>
@@ -1732,6 +1794,12 @@ function onRemove() {
 						:add-reference-disabled="!canAddReference"
 						:read-only="editorLocked || !!viewedVersion"
 						:invalid-paths="visibleInvalidReferencePaths"
+						:mention-project-id="mentionProjectId"
+						:mention-project-name="mentionProjectName"
+						:instance-skill="mentionsInInstanceSkill"
+						:available-to-mcp="mentionsAvailableToMcp"
+						:agent-context="!!props.data.agentId"
+						@add-workflow="onAddWorkflow"
 						@add-reference="onAddReference"
 						@remove-reference="onRemoveReference"
 						@select="selectedPath = $event"
@@ -1745,6 +1813,8 @@ function onRemove() {
 						:read-only="cannotEdit || skillAccessFailed || !!viewedVersion"
 						:errors="visibleErrors"
 						:show-validation-warnings="submitted || openedWithMissingContent"
+						:mention-project-id="mentionProjectId"
+						:mention-project-name="mentionProjectName"
 						@select:path="selectedPath = $event"
 						@update:skill="onSkillUpdate"
 						@update:valid="onValidUpdate"

@@ -2,6 +2,7 @@ import { POLICY_VIOLATION_KIND, POLICY_VIOLATION_SUBJECT_TYPE } from '@n8n/api-t
 import { Logger } from '@n8n/backend-common';
 import { NodesConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import isEqual from 'lodash/isEqual';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { NodeHelpers, normalizeNodeShape } from 'n8n-workflow';
@@ -48,6 +49,22 @@ export class DeprecatedNodesValidationService {
 		}
 
 		this.throwIfViolations(violations, workflowId);
+	}
+
+	/** Throws if an agent tool runs a deprecated node. The message is worded for agents. */
+	validateAgentTool(node: INode): void {
+		if (!this.nodesConfig.blockDeprecated) return;
+
+		const description = this.deprecatedDescription(node);
+		if (!description) return;
+
+		const refusal = `The "${description.displayName}" node is deprecated, so agents cannot run it.`;
+		const replacement = this.getReplacementDisplayName(description.replacedByNodeType);
+		throw new UserError(
+			replacement
+				? `${refusal} Use the "${replacement}" node instead.`
+				: `${refusal} Remove this tool from the agent.`,
+		);
 	}
 
 	/**

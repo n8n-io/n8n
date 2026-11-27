@@ -156,4 +156,32 @@ export class DynamicCredentialsProxy
 			executionId,
 		);
 	}
+
+	/**
+	 * Discards a per-user OAuth token that the provider rejected, handling execution context decryption
+	 */
+	async discardRejectedOAuthTokenDataIfNeeded(
+		credentialStoreMetadata: CredentialStoreMetadata,
+		rejectedRefreshToken: string,
+		executionContext: IExecutionContext | undefined,
+		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
+	): Promise<void> {
+		if (!credentialStoreMetadata.isResolvable || !credentialStoreMetadata.resolverId) return;
+		if (!this.storageProvider?.discardRejectedOAuthTokenData || !executionContext?.credentials) {
+			return;
+		}
+
+		const decrypted = await Container.get(Cipher).decryptV2(executionContext.credentials);
+		const credentialContext = toCredentialContext(decrypted);
+		if (!credentialContext) return;
+
+		await this.storageProvider.discardRejectedOAuthTokenData(
+			credentialStoreMetadata,
+			rejectedRefreshToken,
+			credentialContext,
+			workflowSettings,
+			executionId,
+		);
+	}
 }

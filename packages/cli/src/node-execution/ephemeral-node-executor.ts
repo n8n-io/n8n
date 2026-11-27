@@ -31,6 +31,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { findPolicyViolations, type NonEmptyViolations } from '@/policy/policy-violation.error';
 import { stripToolSuffix, withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import {
 	isUnsupportedEphemeralNodeOperation,
@@ -171,6 +172,7 @@ export class EphemeralNodeExecutor {
 		private readonly logger: Logger,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly credentialAccessRepository: CredentialAccessRepository,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	/**
@@ -308,8 +310,11 @@ export class EphemeralNodeExecutor {
 	/**
 	 * Every node run goes through `executeNodeDirectly` or `withSupplyDataTool`, so both call
 	 * this. Not a `WorkflowRunner` run, so `workflowExecuteBefore` never polices it.
+	 * It also refuses deprecated nodes, as saving a workflow does.
 	 */
 	private async enforceRunPolicy(node: INode, projectId: string) {
+		this.deprecatedNodesValidationService.validateAgentTool(node);
+
 		await this.policyEnforcementService.enforceWorkflowStart(
 			{ workflow: { id: null, name: node.name, nodes: [node], artifactKind: 'agent' }, projectId },
 			{ kind: 'system', reason: 'execution' },

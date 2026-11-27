@@ -12,7 +12,7 @@ import type { SkillVersion } from '../database/entities/skill-version.entity';
 import type { Skill } from '../database/entities/skill.entity';
 import type { SkillAccessService } from '../services/skill-access.service';
 import type { SkillService } from '../services/skill.service';
-import type { ResolvedSkillRow } from '../utils/skill-content';
+import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
@@ -75,7 +75,6 @@ describe('SkillService user actions', () => {
 		telemetry: skillsTelemetry,
 		usage,
 		skillUsage,
-		assistantGate: rollout,
 		access,
 		links,
 		skillSyncGate,
@@ -99,7 +98,6 @@ describe('SkillService user actions', () => {
 			agents: [{ key: 'agent-1', name: 'Support bot', project: 'project-1' }],
 			skills: [],
 		});
-		rollout.isEnabled.mockResolvedValue(true);
 		visible = Object.keys(NAMES).map((id) => skill(id));
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 		vi.mocked(hasGlobalScope).mockReturnValue(false);
@@ -678,16 +676,6 @@ describe('SkillService user actions', () => {
 			expect(setAssistantAvailability).not.toHaveBeenCalled();
 		});
 
-		it('refuses the Assistant availability when the Assistant flag is off', async () => {
-			vi.mocked(hasGlobalScope).mockReturnValue(true);
-			rollout.isEnabled.mockResolvedValue(false);
-
-			await expect(service.create(user, payload({ availableToAssistant: true }))).rejects.toThrow(
-				UserError,
-			);
-			expect(createTrusted).not.toHaveBeenCalled();
-		});
-
 		it('stores the source the caller passed', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
@@ -747,6 +735,7 @@ describe('SkillService user actions', () => {
 
 	describe('update', () => {
 		const update = (fields: Partial<SaveSkillDto>) => fields as SaveSkillDto;
+		const latestHash = getSkillHash(toAgentSkill(row(skill('skill_a'), 2)));
 		const saved = {
 			versionId: 'v3',
 			version: 3,
@@ -755,26 +744,18 @@ describe('SkillService user actions', () => {
 			followingAgentIds: ['agent-1'],
 		};
 
-		it('refuses availability changes when the Assistant flag is off', async () => {
-			rollout.isEnabled.mockResolvedValue(false);
-			await expect(
-				service.update(user, 'skill_a', update({ availableToAssistant: true })),
-			).rejects.toThrow(NotFoundError);
-			expect(setAssistantAvailability).not.toHaveBeenCalled();
-		});
-
 		it('saves the update for a user who may edit the skill', async () => {
 			saveTrusted.mockResolvedValue(saved);
 
 			const result = await service.update(
 				user,
 				'skill_a',
-				update({ instructions: 'New.', baseSkillHash: 'base' }),
+				update({ instructions: 'New.', baseSkillHash: latestHash }),
 			);
 
 			expect(saveTrusted).toHaveBeenCalledWith(
 				'skill_a',
-				{ instructions: 'New.', baseSkillHash: 'base' },
+				{ instructions: 'New.', baseSkillHash: latestHash },
 				user.id,
 			);
 			expect(canAccess).toHaveBeenCalledWith(user, visible[0], 'update');
@@ -793,7 +774,7 @@ describe('SkillService user actions', () => {
 			await service.update(
 				user,
 				'skill_a',
-				update({ instructions: 'New.', baseSkillHash: 'base' }),
+				update({ instructions: 'New.', baseSkillHash: latestHash }),
 				'assistant',
 			);
 
@@ -913,7 +894,11 @@ describe('SkillService user actions', () => {
 		it('reports nothing for a save that stored no new version', async () => {
 			saveTrusted.mockResolvedValue({ ...saved, created: false, followingAgentIds: [] });
 
-			await service.update(user, 'skill_a', update({ instructions: 'Do it.', baseSkillHash: 'b' }));
+			await service.update(
+				user,
+				'skill_a',
+				update({ instructions: 'Do it.', baseSkillHash: latestHash }),
+			);
 
 			expect(skillsTelemetry.updated).not.toHaveBeenCalled();
 		});

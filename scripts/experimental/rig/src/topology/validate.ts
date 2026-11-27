@@ -1,7 +1,10 @@
 import { assertEngineSupported } from 'n8n-containers/services/engine';
 
 import type { Topology } from '../config/env-yaml';
+import type { ResolvedEnv } from '../env/resolve';
 import { RigError } from '../errors';
+import { LICENSE_KEYS, licenseExists } from '../licenses';
+import { RIG } from '../meta';
 
 /** Throws a `RigError` when the topology cannot run. */
 export function validateTopology(topology: Topology): void {
@@ -73,21 +76,36 @@ export function validateTopology(topology: Topology): void {
 	}
 }
 
-/** Problems that do not stop a start. */
-export function topologyWarnings(
-	topology: Topology,
-	mainEnv: Record<string, string> | undefined,
-): string[] {
+/** Problems that do not stop a start. `main` is the resolved env of main-1. */
+export function topologyWarnings(topology: Topology, main: ResolvedEnv | undefined): string[] {
 	const warnings: string[] = [];
+	const { license } = topology;
+	if (license && !licenseExists(license)) {
+		warnings.push(
+			`License "${license}" does not exist. Add it with \`${RIG} license add ${license}\`, or pick another with \`${RIG} license use\`.`,
+		);
+	}
+	const mainEnv = main?.env;
 	if (
 		topology.mains > 1 &&
 		mainEnv &&
-		!mainEnv.N8N_LICENSE_ACTIVATION_KEY &&
-		!mainEnv.N8N_LICENSE_CERT
+		!mainEnv[LICENSE_KEYS.activationKey] &&
+		!mainEnv[LICENSE_KEYS.cert]
 	) {
 		warnings.push(
-			'Multi-main needs a license. Set N8N_LICENSE_ACTIVATION_KEY or N8N_LICENSE_CERT, for example with `rig env set N8N_LICENSE_ACTIVATION_KEY=… --on main`.',
+			`Multi-main needs a license. Add one with \`${RIG} license add\`, then run \`${RIG} license use\`.`,
 		);
+	}
+	if (license && main) {
+		// A license of one kind does not remove a key of the other kind from another layer.
+		for (const key of [LICENSE_KEYS.activationKey, LICENSE_KEYS.cert]) {
+			const sources = main.trace.get(key) ?? [];
+			const winner = sources.at(-1);
+			if (!winner || sources.some((source) => source.layer === 'license')) continue;
+			warnings.push(
+				`${key} comes from ${winner.label}, not from license "${license}". n8n gets both license keys.`,
+			);
+		}
 	}
 	return warnings;
 }
