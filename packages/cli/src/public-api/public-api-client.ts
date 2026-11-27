@@ -1,6 +1,8 @@
 import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_CLI, N8N_CLIENT_N8N_NODE } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 
+import { resolveClientHeader } from '@/client-header';
+
 export type PublicApiClient = 'editor_ui' | 'n8n_node' | 'n8n_cli' | 'other';
 
 /** The client behind a public API call, or `false` when no public API route was used. */
@@ -22,12 +24,5 @@ const TELEMETRY_CLIENT_BY_HEADER_VALUE = new Map<string, PublicApiClient>([
 ]);
 
 export function resolvePublicApiClient(header: string | string[] | undefined): PublicApiClient {
-	const value = Array.isArray(header) ? header[0] : header;
-	const normalizedValue = value?.trim().toLowerCase();
-
-	if (normalizedValue === undefined) {
-		return 'other';
-	}
-
-	return TELEMETRY_CLIENT_BY_HEADER_VALUE.get(normalizedValue) ?? 'other';
+	return resolveClientHeader(header, TELEMETRY_CLIENT_BY_HEADER_VALUE, 'other');
 }
