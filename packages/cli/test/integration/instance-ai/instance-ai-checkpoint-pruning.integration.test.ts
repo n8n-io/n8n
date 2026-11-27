@@ -1,15 +1,22 @@
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { DbConnectionOptions, type Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SerializableAgentState } from '@n8n/agents';
-import type { QueryRunner } from '@n8n/typeorm';
+import type { QueryRunner, Repository } from '@n8n/typeorm';
 import { DataSource, IsNull, Not } from '@n8n/typeorm';
 import { sleep } from '@n8n/utils/sleep';
 import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
 
+import { InstanceAiCheckpoint } from '@/modules/instance-ai/entities/instance-ai-checkpoint.entity';
 import { InstanceAiCheckpointRepository } from '@/modules/instance-ai/repositories/instance-ai-checkpoint.repository';
 import { InstanceAiThreadRepository } from '@/modules/instance-ai/repositories/instance-ai-thread.repository';
 import { TypeORMAgentCheckpointStore } from '@/modules/instance-ai/storage/typeorm-agent-checkpoint-store';
+
+// Share the transaction adapter loaded by the built BaseRepository.
+const { TypeOrmTransactionRunner } = createRequire(__filename)(
+	'@n8n/db/dist/services/typeorm-transaction',
+) as typeof import('@n8n/db/dist/services/typeorm-transaction');
 
 const HOUR = 60 * 60 * 1000;
 const isPostgres = process.env.DB_TYPE === 'postgresdb';
@@ -18,7 +25,7 @@ const EXPIRED = { expiredAt: expect.any(Date), state: null };
 const RESUMED = { expiredAt: null, state: expect.objectContaining({ status: 'running' }) };
 
 describe('Instance AI checkpoint pruning', () => {
-	let checkpointRepository: InstanceAiCheckpointRepository;
+	let checkpointRows: Repository<InstanceAiCheckpoint>;
 	let threadRepository: InstanceAiThreadRepository;
 	let store: TypeORMAgentCheckpointStore;
 	let project: Project;
@@ -30,7 +37,7 @@ describe('Instance AI checkpoint pruning', () => {
 	beforeAll(async () => {
 		await testModules.loadModules(['instance-ai']);
 		await testDb.init();
-		checkpointRepository = Container.get(InstanceAiCheckpointRepository);
+		checkpointRows = Container.get(DataSource).getRepository(InstanceAiCheckpoint);
 		threadRepository = Container.get(InstanceAiThreadRepository);
 		store = Container.get(TypeORMAgentCheckpointStore);
 		project = await createTeamProject();
@@ -58,7 +65,7 @@ describe('Instance AI checkpoint pruning', () => {
 	});
 
 	afterEach(async () => {
-		await checkpointRepository.delete({});
+		await checkpointRows.delete({});
 		await threadRepository.delete({});
 	});
 
@@ -73,8 +80,8 @@ describe('Instance AI checkpoint pruning', () => {
 	): Promise<string[]> {
 		const keys = Array.from({ length: count }, (_, i) => `${prefix}:${i}`);
 		for (let start = 0; start < keys.length; start += 500) {
-			await checkpointRepository.save(
-				checkpointRepository.create(
+			await checkpointRows.save(
+				checkpointRows.create(
 					keys.slice(start, start + 500).map((key) => ({
 						key,
 						runId: key,
@@ -94,8 +101,8 @@ describe('Instance AI checkpoint pruning', () => {
 
 	async function counts(): Promise<{ expired: number; open: number }> {
 		return {
-			expired: await checkpointRepository.count({ where: { expiredAt: Not(IsNull()) } }),
-			open: await checkpointRepository.count({ where: { expiredAt: IsNull() } }),
+			expired: await checkpointRows.count({ where: { expiredAt: Not(IsNull()) } }),
+			open: await checkpointRows.count({ where: { expiredAt: IsNull() } }),
 		};
 	}
 
@@ -134,7 +141,7 @@ describe('Instance AI checkpoint pruning', () => {
 		const expired = await store.markExpiredOlderThan(olderThan);
 
 		expect(expired).toBe(0);
-		expect(await checkpointRepository.findOneByOrFail({ key })).toMatchObject(RESUMED);
+		expect(await checkpointRows.findOneByOrFail({ key })).toMatchObject(RESUMED);
 	});
 
 	// A second connection holds one side of the race open in a transaction, so the
@@ -152,8 +159,15 @@ describe('Instance AI checkpoint pruning', () => {
 		beforeEach(async () => {
 			otherRunner = otherConnection.createQueryRunner();
 			await otherRunner.startTransaction();
+			const otherDataSource = {
+				manager: otherRunner.manager,
+				transaction: otherRunner.manager.transaction.bind(otherRunner.manager),
+			} as DataSource;
 			otherStore = new TypeORMAgentCheckpointStore(
-				new InstanceAiCheckpointRepository({ manager: otherRunner.manager } as DataSource),
+				new InstanceAiCheckpointRepository(
+					otherDataSource,
+					new TypeOrmTransactionRunner(otherDataSource, mockLogger()),
+				),
 			);
 		});
 
@@ -179,7 +193,7 @@ describe('Instance AI checkpoint pruning', () => {
 			await otherRunner.commitTransaction();
 
 			expect(await claim).toBe(false);
-			expect(await checkpointRepository.findOneByOrFail({ key })).toMatchObject(EXPIRED);
+			expect(await checkpointRows.findOneByOrFail({ key })).toMatchObject(EXPIRED);
 		});
 
 		it('should block a prune behind an uncommitted resume and then skip the resumed row', async () => {
@@ -194,8 +208,8 @@ describe('Instance AI checkpoint pruning', () => {
 			await otherRunner.commitTransaction();
 
 			expect(await prune).toBe(1);
-			expect(await checkpointRepository.findOneByOrFail({ key: resumed })).toMatchObject(RESUMED);
-			expect(await checkpointRepository.findOneByOrFail({ key: untouched })).toMatchObject(EXPIRED);
+			expect(await checkpointRows.findOneByOrFail({ key: resumed })).toMatchObject(RESUMED);
+			expect(await checkpointRows.findOneByOrFail({ key: untouched })).toMatchObject(EXPIRED);
 		});
 	});
 });

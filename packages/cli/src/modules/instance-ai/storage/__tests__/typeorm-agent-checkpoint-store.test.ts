@@ -1,7 +1,5 @@
 import type { SerializableAgentState } from '@n8n/agents';
-import { LessThan } from '@n8n/typeorm';
 import { UserError } from '@n8n/errors';
-import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiCheckpoint } from '../../entities/instance-ai-checkpoint.entity';
@@ -54,58 +52,64 @@ describe('TypeORMAgentCheckpointStore', () => {
 			store.save('checkpoint:run-1', makeState({ persistence: undefined })),
 		).rejects.toThrow('missing a thread id');
 
-		expect(checkpointRepo.save).not.toHaveBeenCalled();
+		expect(checkpointRepo.createCheckpoint).not.toHaveBeenCalled();
+		expect(checkpointRepo.saveCheckpointChanges).not.toHaveBeenCalled();
 	});
 
 	it('stores checkpoint state as structured JSON for a fresh key', async () => {
 		const state = makeState();
-		const checkpoint = makeCheckpoint({ state });
-		checkpointRepo.findOne.mockResolvedValueOnce(null);
-		checkpointRepo.create.mockReturnValueOnce(checkpoint);
+		checkpointRepo.findByKey.mockResolvedValueOnce(null);
 
 		await store.save('checkpoint:run-1', state);
 
-		expect(checkpointRepo.create).toHaveBeenCalledWith({
-			key: 'checkpoint:run-1',
-			runId: 'run-1',
-			hostRunId: null,
-			threadId: 'thread-1',
-			resourceId: 'user-1',
-			state,
-			expiredAt: null,
-		});
-		expect(checkpointRepo.save).toHaveBeenCalledWith(checkpoint);
+		expect(checkpointRepo.findByKey).toHaveBeenCalledWith('checkpoint:run-1', {});
+		expect(checkpointRepo.createCheckpoint).toHaveBeenCalledWith(
+			{
+				key: 'checkpoint:run-1',
+				runId: 'run-1',
+				hostRunId: null,
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				state,
+				expiredAt: null,
+			},
+			{},
+		);
+		expect(checkpointRepo.saveCheckpointChanges).not.toHaveBeenCalled();
 	});
 
 	it('clears the expired tombstone flag when re-saving the same key', async () => {
 		const existing = makeCheckpoint({ expiredAt: new Date(), state: null });
-		checkpointRepo.findOne.mockResolvedValueOnce(existing);
+		checkpointRepo.findByKey.mockResolvedValueOnce(existing);
 
 		const newState = makeState();
 		await store.save('checkpoint:run-1', newState);
 
-		expect(checkpointRepo.save).toHaveBeenCalledWith(
+		expect(checkpointRepo.saveCheckpointChanges).toHaveBeenCalledWith(
 			expect.objectContaining({
 				key: 'checkpoint:run-1',
 				expiredAt: null,
 				state: newState,
 			}),
+			{},
 		);
+		expect(checkpointRepo.createCheckpoint).not.toHaveBeenCalled();
 	});
 
 	it('returns the stored state on load and leaves the row intact', async () => {
 		const checkpoint = makeCheckpoint();
-		checkpointRepo.findOne.mockResolvedValueOnce(checkpoint);
+		checkpointRepo.findByKey.mockResolvedValueOnce(checkpoint);
 
 		const loaded = await store.load('checkpoint:run-1');
 
 		expect(loaded).toBe(checkpoint.state);
-		expect(checkpointRepo.delete).not.toHaveBeenCalled();
-		expect(checkpointRepo.update).not.toHaveBeenCalled();
+		expect(checkpointRepo.findByKey).toHaveBeenCalledWith('checkpoint:run-1', {});
+		expect(checkpointRepo.markExpiredByKey).not.toHaveBeenCalled();
+		expect(checkpointRepo.deleteExpiredOlderThan).not.toHaveBeenCalled();
 	});
 
 	it('returns undefined when no checkpoint exists for the key', async () => {
-		checkpointRepo.findOne.mockResolvedValueOnce(null);
+		checkpointRepo.findByKey.mockResolvedValueOnce(null);
 
 		const loaded = await store.load('checkpoint:run-1');
 
@@ -117,11 +121,15 @@ describe('TypeORMAgentCheckpointStore', () => {
 		checkpointRepo.claimSuspendedForResume.mockResolvedValueOnce(true);
 
 		await expect(store.claimForResume('checkpoint:run-1', state)).resolves.toBe(true);
-		expect(checkpointRepo.claimSuspendedForResume).toHaveBeenCalledWith('checkpoint:run-1', state);
+		expect(checkpointRepo.claimSuspendedForResume).toHaveBeenCalledWith(
+			'checkpoint:run-1',
+			state,
+			{},
+		);
 	});
 
 	it('throws a UserError when loading an expired tombstone', async () => {
-		checkpointRepo.findOne.mockResolvedValueOnce(
+		checkpointRepo.findByKey.mockResolvedValueOnce(
 			makeCheckpoint({ expiredAt: new Date(), state: null }),
 		);
 
@@ -131,37 +139,21 @@ describe('TypeORMAgentCheckpointStore', () => {
 	it('soft-deletes by stamping expiredAt and clearing the state blob', async () => {
 		await store.delete('checkpoint:run-1');
 
-		expect(checkpointRepo.update).toHaveBeenCalledWith(
-			{ key: 'checkpoint:run-1' },
-			expect.objectContaining({ state: null, expiredAt: expect.any(Date) }),
+		expect(checkpointRepo.markExpiredByKey).toHaveBeenCalledWith(
+			'checkpoint:run-1',
+			expect.any(Date),
+			{},
 		);
-		expect(checkpointRepo.delete).not.toHaveBeenCalled();
+		expect(checkpointRepo.deleteExpiredOlderThan).not.toHaveBeenCalled();
 	});
 
-	it('marks stale checkpoints expired via the query builder', async () => {
-		const builder = {
-			update: vi.fn(),
-			set: vi.fn(),
-			where: vi.fn(),
-			andWhere: vi.fn(),
-			execute: vi.fn(),
-		};
-		builder.update.mockReturnValue(builder);
-		builder.set.mockReturnValue(builder);
-		builder.where.mockReturnValue(builder);
-		builder.andWhere.mockReturnValue(builder);
-		builder.execute.mockResolvedValueOnce({ affected: 4, raw: {}, generatedMaps: [] });
-
-		(checkpointRepo.createQueryBuilder as unknown as Mock).mockReturnValueOnce(builder);
+	it('marks stale checkpoints expired via the repository', async () => {
+		checkpointRepo.markExpiredOlderThan.mockResolvedValueOnce(4);
 
 		const olderThan = new Date('2026-05-01T00:00:00.000Z');
 		await expect(store.markExpiredOlderThan(olderThan)).resolves.toBe(4);
 
-		expect(builder.set).toHaveBeenCalledWith(
-			expect.objectContaining({ state: null, expiredAt: expect.any(Date) }),
-		);
-		expect(builder.where).toHaveBeenCalledWith('updatedAt < :olderThan', { olderThan });
-		expect(builder.andWhere).toHaveBeenCalledWith('expiredAt IS NULL');
+		expect(checkpointRepo.markExpiredOlderThan).toHaveBeenCalledWith(olderThan, {});
 	});
 
 	it('keeps the deleteOlderThan shim delegating to markExpiredOlderThan', async () => {
@@ -172,12 +164,12 @@ describe('TypeORMAgentCheckpointStore', () => {
 	});
 
 	it('hard-deletes tombstones expired before the GC horizon', async () => {
-		checkpointRepo.delete.mockResolvedValueOnce({ affected: 3, raw: {} });
+		checkpointRepo.deleteExpiredOlderThan.mockResolvedValueOnce(3);
 
 		const olderThan = new Date('2026-05-01T00:00:00.000Z');
 		await expect(store.hardDeleteExpiredOlderThan(olderThan)).resolves.toBe(3);
 
-		expect(checkpointRepo.delete).toHaveBeenCalledWith({ expiredAt: LessThan(olderThan) });
+		expect(checkpointRepo.deleteExpiredOlderThan).toHaveBeenCalledWith(olderThan, {});
 	});
 
 	describe('findSuspendedSubAgentResumeInfo', () => {

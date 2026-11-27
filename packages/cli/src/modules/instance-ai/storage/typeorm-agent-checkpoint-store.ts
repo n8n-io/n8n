@@ -1,6 +1,5 @@
 import { Service } from '@n8n/di';
 import type { CheckpointStore, SerializableAgentState } from '@n8n/agents';
-import { LessThan } from '@n8n/typeorm';
 import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { InstanceAiCheckpointRepository } from '../repositories/instance-ai-checkpoint.repository';
@@ -20,7 +19,7 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 			});
 		}
 
-		const existing = await this.checkpointRepo.findOne({ where: { key } });
+		const existing = await this.checkpointRepo.findByKey(key, {});
 		if (existing) {
 			existing.runId = this.getRunId(key);
 			existing.hostRunId = state.persistence?.hostRunId ?? null;
@@ -28,24 +27,26 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 			existing.resourceId = state.persistence?.resourceId ?? null;
 			existing.state = state;
 			existing.expiredAt = null;
-			await this.checkpointRepo.save(existing);
+			await this.checkpointRepo.saveCheckpointChanges(existing, {});
 			return;
 		}
 
-		const checkpoint = this.checkpointRepo.create({
-			key,
-			runId: this.getRunId(key),
-			hostRunId: state.persistence?.hostRunId ?? null,
-			threadId,
-			resourceId: state.persistence?.resourceId ?? null,
-			state,
-			expiredAt: null,
-		});
-		await this.checkpointRepo.save(checkpoint);
+		await this.checkpointRepo.createCheckpoint(
+			{
+				key,
+				runId: this.getRunId(key),
+				hostRunId: state.persistence?.hostRunId ?? null,
+				threadId,
+				resourceId: state.persistence?.resourceId ?? null,
+				state,
+				expiredAt: null,
+			},
+			{},
+		);
 	}
 
 	async load(key: string): Promise<SerializableAgentState | undefined> {
-		const checkpoint = await this.checkpointRepo.findOne({ where: { key } });
+		const checkpoint = await this.checkpointRepo.findByKey(key, {});
 		if (!checkpoint) return undefined;
 		if (checkpoint.expiredAt !== null || checkpoint.state === null) {
 			throw new UserError(EXPIRED_CHECKPOINT_MESSAGE);
@@ -54,7 +55,7 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 	}
 
 	async claimForResume(key: string, state: SerializableAgentState): Promise<boolean> {
-		return await this.checkpointRepo.claimSuspendedForResume(key, state);
+		return await this.checkpointRepo.claimSuspendedForResume(key, state, {});
 	}
 
 	async delete(key: string): Promise<void> {
@@ -62,18 +63,11 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 		// agents' N8NCheckpointStorage) so a stale resume gets a clear
 		// "expired" error instead of an indistinguishable "not found".
 		// The heavy state blob is released so the row stays cheap.
-		await this.checkpointRepo.update({ key }, { expiredAt: new Date(), state: null });
+		await this.checkpointRepo.markExpiredByKey(key, new Date(), {});
 	}
 
 	async markExpiredOlderThan(olderThan: Date): Promise<number> {
-		const result = await this.checkpointRepo
-			.createQueryBuilder()
-			.update()
-			.set({ expiredAt: new Date(), state: null })
-			.where('updatedAt < :olderThan', { olderThan })
-			.andWhere('expiredAt IS NULL')
-			.execute();
-		return result.affected ?? 0;
+		return await this.checkpointRepo.markExpiredOlderThan(olderThan, {});
 	}
 
 	/**
@@ -98,7 +92,7 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 		  }
 		| undefined
 	> {
-		const row = await this.checkpointRepo.findActiveByResourceId(resourceId);
+		const row = await this.checkpointRepo.findActiveByResourceId(resourceId, {});
 		if (!row?.state) return undefined;
 		// `pendingToolCalls` can hold parallel tool calls from one turn, only
 		// some of which suspended. Pick the suspended entry explicitly so we
@@ -117,10 +111,7 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 
 	/** Drop expired tombstones outright once they're past the GC horizon. */
 	async hardDeleteExpiredOlderThan(olderThan: Date): Promise<number> {
-		const result = await this.checkpointRepo.delete({
-			expiredAt: LessThan(olderThan),
-		});
-		return result.affected ?? 0;
+		return await this.checkpointRepo.deleteExpiredOlderThan(olderThan, {});
 	}
 
 	private getRunId(key: string): string | null {
