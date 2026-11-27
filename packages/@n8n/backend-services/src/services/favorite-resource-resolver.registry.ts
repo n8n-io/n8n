@@ -12,9 +12,9 @@ export type FavoriteResourceMeta = {
 export type ResolvedFavoriteResourceType = Extract<FavoriteResourceType, 'dataTable' | 'agent'>;
 
 export interface FavoriteResourceResolver {
-	readonly globalReadScope: Scope;
+	readonly readScope: Scope;
 	findMeta(ids: string[]): Promise<Map<string, FavoriteResourceMeta>>;
-	exists(id: string): Promise<boolean>;
+	findProjectId(id: string): Promise<string | null>;
 }
 
 @Service()

@@ -6,7 +6,7 @@ import { DataTableRepository } from './data-table.repository';
 export function registerFavoriteResolver() {
 	const dataTableRepository = Container.get(DataTableRepository);
 	Container.get(FavoriteResourceResolverRegistry).register('dataTable', {
-		globalReadScope: 'dataTable:read',
+		readScope: 'dataTable:read',
 		findMeta: async (ids) =>
 			new Map(
 				(await dataTableRepository.findSummariesByIds(ids)).map(({ id, name, projectId }) => [
@@ -14,6 +14,6 @@ export function registerFavoriteResolver() {
 					{ name, projectId },
 				]),
 			),
-		exists: async (id) => await dataTableRepository.existsBy({ id }),
+		findProjectId: async (id) => await dataTableRepository.findProjectIdForScope(id),
 	});
 }
