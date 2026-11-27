@@ -1,0 +1,19 @@
+packages/cli/test/migration/1795609783977-add-test-task-id-to-agent-execution-threads.test.ts
+  s_08ad1fe1d43e02::t_b3a5b8aa37c2c6 105-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "10fe204b21bec6e1ac64dd1426ed2445ab22dede",
+  "prompts": {},
+  "sessions": {
+    "s_08ad1fe1d43e02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8181cd39-5693-42c0-89cf-63f7653ab06b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

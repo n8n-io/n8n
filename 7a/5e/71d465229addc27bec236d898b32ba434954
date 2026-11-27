@@ -1,0 +1,43 @@
+packages/@n8n/api-types/src/agents/agent-config-validation.schema.ts
+  s_6f169c4a47095e::t_dcb409c83833c7 87-90,95-110
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_6f169c4a47095e::t_0b74bdc008f9c6 1320-1363
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_6f169c4a47095e::t_27e9c5e24ea290 520-521,547-548
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_6f169c4a47095e::t_4a0cd8966e0ed2 348-351,374-411
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_6f169c4a47095e::t_e3d4c1e61a4bc3 9,131-132
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_6f169c4a47095e::t_54bacc5fe57f45 1545-1569
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_6f169c4a47095e::t_7e55597fcfc4e7 8-18,229-230,252-253,261,290,292,1427-1429,1431,1433,1622-1627
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-result-outputs.test.ts
+  s_6f169c4a47095e::t_5e77c4220c062c 1-63
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_6f169c4a47095e::t_a63a162f51479e 31,37,497-500,594-614,620,623-625,655-661,865-871
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_6f169c4a47095e::t_8d079435e4cfff 1952-1964
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6f169c4a47095e::t_a3b3a19ee503b8 10367
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_6f169c4a47095e::t_853630d6154901 130-133,143,411-441
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_6f169c4a47095e::t_58732d9d0e47d1 20,162-187,466-473
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a5e71d465229addc27bec236d898b32ba434954",
+  "prompts": {},
+  "sessions": {
+    "s_6f169c4a47095e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-acdeee567512a4396",
+        "model": "unknown"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
