@@ -778,6 +778,7 @@ export type {
 	ExecuteNodeResult,
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
+	InstanceAiApp,
 	InstanceAiAppService,
 	InstanceAiDataTableService,
 	DataTableSummary,

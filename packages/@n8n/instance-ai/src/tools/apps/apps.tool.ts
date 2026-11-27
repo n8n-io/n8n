@@ -32,6 +32,10 @@ import {
 
 const MAX_LOG_CHARS = 4000;
 
+const APP_URL_NOTE =
+	'`url` is the address of the app. It works only after the user publishes the app. ' +
+	'`publishedUrl` is null until then.';
+
 const appIdSchema = z.string().uuid().describe('ID of the app');
 
 const labelSchema = z.string().max(255).describe('Short summary of the change set');
@@ -52,11 +56,13 @@ const ACTION_SCHEMAS = {
 		blueprint: appBlueprintProposalSchema.describe('The app you propose to build'),
 	}),
 	list: z.object({
-		action: z.literal('list').describe('List the apps of the project with their ids and URLs'),
+		action: z
+			.literal('list')
+			.describe(`List the apps of the project with their ids and URLs. ${APP_URL_NOTE}`),
 		search: z.string().max(128).optional().describe('Only apps whose name contains this text'),
 	}),
 	get: z.object({
-		action: z.literal('get').describe('Get the state of an app'),
+		action: z.literal('get').describe(`Get the state of an app. ${APP_URL_NOTE}`),
 		appId: appIdSchema,
 	}),
 	open: z.object({
@@ -257,11 +263,12 @@ async function handle(
 		case 'list': {
 			const { data, count } = await apps.listApps({ name: input.search });
 			return {
-				apps: data.map(({ id, name, namespace, visibility, publishedUrl }) => ({
+				apps: data.map(({ id, name, namespace, visibility, url, publishedUrl }) => ({
 					id,
 					name,
 					namespace,
 					visibility,
+					url,
 					publishedUrl,
 				})),
 				count,

@@ -82,6 +82,11 @@ export class AppsService {
 		return { data: data.map((app) => toResponse(app, this.hosts)), count };
 	}
 
+	/** The address where the app is served once published. Null for a namespace that has no valid host. */
+	appUrl(namespace: string): string | null {
+		return this.hosts.origin(namespace);
+	}
+
 	async listAppsForUser(user: User, query: ListAppsQueryDto): Promise<AppListResponse> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['app:list']);
 		const { data, count } = await this.appRepository.list(projectIds, query);
