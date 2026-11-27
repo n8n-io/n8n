@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       upgrade_target:
-        description: 'Published n8n version to test as the upgrade target. Leave empty to test the installer fallback.'
+        description: 'Published n8n version to test for both fresh install and upgrade. Leave empty to test the installer fallback.'
         required: false
         type: string
 
@@ -45,7 +45,7 @@ jobs:
         run: dash -n docker/get-n8n.sh && dash -n docker/test-get-n8n.sh
 
   e2e:
-    name: 'Install, boot, upgrade'
+    name: 'Fresh install and legacy upgrade'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
