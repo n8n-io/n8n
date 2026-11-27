@@ -2,6 +2,7 @@
 import type {
 	McpServerDetailResponse,
 	McpServerToolCandidate,
+	McpServerToolDraftField,
 	McpServerToolResponse,
 	UpdateMcpServerToolDto,
 } from '@n8n/api-types';
@@ -15,6 +16,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import {
 	addWorkflowTools,
+	draftTool,
 	getMcpServer,
 	listToolCandidates,
 	removeTool,
@@ -23,6 +25,9 @@ import {
 import { getMcpServerPermissions } from '../mcp-servers.permissions';
 import McpServerToolRow from './McpServerToolRow.vue';
 import McpWorkflowPickerDialog from './McpWorkflowPickerDialog.vue';
+
+/** The drafts after an add run at most this many at a time, so a save does not wait behind them. */
+const DRAFT_CONCURRENCY = 4;
 
 const props = defineProps<{
 	projectId: string;
@@ -41,8 +46,13 @@ const loading = ref(true);
 const pickerOpen = ref(false);
 const candidates = ref<McpServerToolCandidate[]>([]);
 const candidatesLoading = ref(false);
+/** Tools that wait for their first draft, after the add. */
+const draftingIds = ref(new Set<string>());
+/** The fields of each tool for which a "Generate" call runs. */
+const generating = ref(new Map<string, Set<McpServerToolDraftField>>());
 
 const canUpdate = computed(() => getMcpServerPermissions(props.projectId).canUpdate);
+const canGenerate = computed(() => canUpdate.value && !!server.value?.toolDraftsAvailable);
 const workflowTools = computed(
 	() => server.value?.tools.filter((tool) => tool.kind === 'workflow') ?? [],
 );
@@ -58,6 +68,18 @@ function workflowHref(workflowId: string) {
 function replaceTool(updated: McpServerToolResponse) {
 	if (!server.value) return;
 	server.value.tools = server.value.tools.map((tool) => (tool.id === updated.id ? updated : tool));
+}
+
+/** A "Generate" answer changes only its field, so a save that ran meanwhile keeps its text. */
+function mergeDraftedField(drafted: McpServerToolResponse, field: McpServerToolDraftField) {
+	const current = server.value?.tools.find(({ id }) => id === drafted.id);
+	if (!current) return;
+	replaceTool({
+		...current,
+		[field]: drafted[field],
+		draftSource: drafted.draftSource,
+		updatedAt: drafted.updatedAt,
+	});
 }
 
 async function load() {
@@ -97,9 +119,84 @@ async function onAdd(workflowIds: string[]) {
 			workflowIds,
 		);
 		if (server.value) server.value.tools = [...server.value.tools, ...added];
+		// The add returns at once. The new tools get their drafts in the background.
+		if (server.value?.toolDraftsAvailable) void draftNewTools(added);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('mcpServers.tools.addError'));
 	}
+}
+
+/** `not_available` gives the tool with its default text, so the row shows it in both cases. */
+async function requestDraft(tool: McpServerToolResponse, field?: McpServerToolDraftField) {
+	const { tool: drafted } = await draftTool(
+		rootStore.restApiContext,
+		props.projectId,
+		props.serverId,
+		tool.id,
+		field,
+	);
+	if (field) mergeDraftedField(drafted, field);
+	else replaceTool(drafted);
+}
+
+/**
+ * Every new row shows the loading line at once. A small pool of workers takes the tools from a
+ * queue. The failed drafts of one add give one toast.
+ */
+async function draftNewTools(tools: McpServerToolResponse[]) {
+	draftingIds.value = new Set([...draftingIds.value, ...tools.map(({ id }) => id)]);
+	const queue = [...tools];
+	let failed = 0;
+	let lastError: unknown;
+	async function worker() {
+		for (let tool = queue.shift(); tool; tool = queue.shift()) {
+			try {
+				await requestDraft(tool);
+			} catch (error) {
+				failed++;
+				lastError = error;
+			}
+			const next = new Set(draftingIds.value);
+			next.delete(tool.id);
+			draftingIds.value = next;
+		}
+	}
+	await Promise.all(Array.from({ length: Math.min(DRAFT_CONCURRENCY, tools.length) }, worker));
+	if (failed === 0) return;
+	toast.showError(
+		lastError,
+		failed === 1
+			? i18n.baseText('mcpServers.tools.draftError')
+			: i18n.baseText('mcpServers.tools.draftErrors', {
+					adjustToNumber: failed,
+					interpolate: { count: failed },
+				}),
+	);
+}
+
+function generatingFields(toolId: string): McpServerToolDraftField[] {
+	return [...(generating.value.get(toolId) ?? [])];
+}
+
+function setGenerating(toolId: string, fields: Set<McpServerToolDraftField>) {
+	const next = new Map(generating.value);
+	if (fields.size > 0) next.set(toolId, fields);
+	else next.delete(toolId);
+	generating.value = next;
+}
+
+async function onGenerate(tool: McpServerToolResponse, field: McpServerToolDraftField) {
+	const running = generating.value.get(tool.id) ?? new Set();
+	if (running.has(field)) return;
+	setGenerating(tool.id, new Set(running).add(field));
+	try {
+		await requestDraft(tool, field);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('mcpServers.tools.draftError'));
+	}
+	const after = new Set(generating.value.get(tool.id));
+	after.delete(field);
+	setGenerating(tool.id, after);
 }
 
 async function onUpdate(tool: McpServerToolResponse, changes: UpdateMcpServerToolDto) {
@@ -184,10 +281,14 @@ onMounted(load);
 						:key="tool.id"
 						:tool="tool"
 						:can-update="canUpdate"
+						:can-generate="canGenerate"
+						:drafting="draftingIds.has(tool.id)"
+						:generating="generatingFields(tool.id)"
 						:workflow-href="tool.targetId ? workflowHref(tool.targetId) : null"
 						:initially-expanded="!!expandName && tool.toolName === expandName"
 						@update="onUpdate(tool, $event)"
 						@remove="onRemove(tool)"
+						@generate="onGenerate(tool, $event)"
 					/>
 				</div>
 				<N8nText v-else size="small" color="text-light">

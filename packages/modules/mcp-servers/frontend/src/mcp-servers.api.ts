@@ -4,6 +4,8 @@ import type {
 	McpServerResponse,
 	McpServerSlugAvailability,
 	McpServerToolCandidate,
+	McpServerToolDraftField,
+	McpServerToolDraftResponse,
 	McpServerToolResponse,
 	UpdateMcpServerDto,
 	UpdateMcpServerToolDto,
@@ -118,4 +120,20 @@ export async function removeTool(
 	toolId: string,
 ): Promise<void> {
 	await makeRestApiRequest(context, 'DELETE', `${serverPath(projectId, serverId)}/tools/${toolId}`);
+}
+
+/** One model call. Without `field`, the draft writes both fields, as after an add. */
+export async function draftTool(
+	context: IRestApiContext,
+	projectId: string,
+	serverId: string,
+	toolId: string,
+	field?: McpServerToolDraftField,
+): Promise<McpServerToolDraftResponse> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`${serverPath(projectId, serverId)}/tools/${toolId}/draft`,
+		field ? { field } : {},
+	);
 }

@@ -1,3 +1,5 @@
+import type { TextDraftPort } from './text-draft-port';
+
 /**
  * The CLI implements these ports and registers them when it loads the module.
  * They keep this package free of imports from `packages/cli`.
@@ -41,13 +43,17 @@ export interface WorkflowToolListItem {
 	check: WorkflowToolCheck;
 }
 
-/** The name and the description of the workflow, and the inputs of its published version. */
+/**
+ * The name and the description of the workflow, and the inputs and the node names of its
+ * published version.
+ */
 export type WorkflowToolDescription =
 	| {
 			callable: true;
 			name: string;
 			description: string | null;
 			inputSchema: WorkflowToolInputSchema;
+			nodeNames: string[];
 	  }
 	| { callable: false; reason: WorkflowToolRefusal };
 
@@ -104,5 +110,5 @@ export abstract class WorkflowToolPort {
  * exist yet at load time.
  */
 export abstract class McpServerToolAdapters {
-	abstract resolve(): { workflows: WorkflowToolPort };
+	abstract resolve(): { workflows: WorkflowToolPort; textDrafts: TextDraftPort };
 }

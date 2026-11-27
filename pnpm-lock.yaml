@@ -8933,9 +8933,15 @@ importers:
 
   packages/modules/mcp-servers/backend:
     dependencies:
+      '@n8n/ai-utilities':
+        specifier: workspace:*
+        version: link:../../../@n8n/ai-utilities
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-common
       '@n8n/backend-services':
         specifier: workspace:*
         version: link:../../../@n8n/backend-services
@@ -8954,6 +8960,9 @@ importers:
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
       uuid:
         specifier: 'catalog:'
         version: 11.1.1

@@ -254,7 +254,7 @@ describe('CallableWorkflowRunner', () => {
 	});
 
 	describe('describe', () => {
-		it('describes the name, the description, and the inputs of the published version', async () => {
+		it('describes the name, the description, the inputs, and the node names of the published version', async () => {
 			const { runner, loader } = setup();
 			loader.loadWorkflow.mockResolvedValue(makeWorkflow());
 
@@ -270,6 +270,7 @@ describe('CallableWorkflowRunner', () => {
 					},
 					additionalProperties: false,
 				},
+				nodeNames: ['Start', 'Set'],
 			});
 		});
 

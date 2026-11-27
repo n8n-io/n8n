@@ -17,3 +17,4 @@ export {
 	type WorkflowToolRunResult,
 	type WorkflowToolStartedRun,
 } from './tools/workflow-tool-port';
+export { TextDraftPort, type TextDraftResult } from './tools/text-draft-port';
