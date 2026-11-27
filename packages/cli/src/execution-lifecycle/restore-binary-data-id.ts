@@ -4,12 +4,14 @@ import type { BinaryData } from 'n8n-core';
 import { BinaryDataConfig, BinaryDataService, TEMP_EXECUTION_ID } from 'n8n-core';
 import type { IBinaryData, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
+import { DatabaseManager } from '@/binary-data/database.manager';
+
 /**
  * Whenever the execution ID is not available to the binary data service at the
  * time of writing a binary data file, its name is missing the execution ID.
  * This function restores the ID in the file name and run data reference.
  *
- * This edge case can happen only for a Webhook node that accepts binary data,
+ * This happens for a Webhook node or a trigger node that produces binary data,
  * when the binary data manager is set to persist this binary data.
  *
  * ```txt
@@ -61,12 +63,53 @@ function collectRenameEntries(run: IRun, executionId: string): RenameEntry[] {
 	return [...entriesByFileId.values()];
 }
 
+const DATABASE_ID_PREFIX = 'database:';
+
+function collectDatabaseFileIds(run: IRun): string[] {
+	const fileIds = Object.values(run.data.resultData.runData)
+		.flatMap((nodeRuns) => nodeRuns ?? [])
+		.flatMap((nodeRun) => nodeRun.data?.main ?? [])
+		.flatMap((outputs) => outputs ?? [])
+		.flatMap((item) => Object.values(item?.binary ?? {}))
+		.flatMap((binaryData) =>
+			binaryData?.id?.startsWith(DATABASE_ID_PREFIX)
+				? [binaryData.id.slice(DATABASE_ID_PREFIX.length)]
+				: [],
+		);
+
+	return [...new Set(fileIds)];
+}
+
+export async function assignDatabaseFilesToExecution(run: IRun, executionId: string) {
+	try {
+		const fileIds = collectDatabaseFileIds(run);
+
+		if (fileIds.length > 0) {
+			await Container.get(DatabaseManager).assignToExecution(fileIds, executionId);
+		}
+	} catch (error) {
+		Container.get(Logger).error('Failed to assign binary data files to the execution', {
+			executionId,
+			error,
+		});
+	}
+}
+
+/**
+ * True for a mode whose first node stores its files before the execution exists.
+ * In another mode, a file under the temporary path can belong to another execution.
+ */
+const storesFilesBeforeItsExecution = (mode: WorkflowExecuteMode) =>
+	mode === 'webhook' || mode === 'trigger';
+
+const keepsBinaryDataInMemory = () => Container.get(BinaryDataConfig).mode === 'default';
+
 export async function restoreBinaryDataId(
 	run: IRun,
 	executionId: string,
 	workflowExecutionMode: WorkflowExecuteMode,
 ) {
-	if (workflowExecutionMode !== 'webhook' || Container.get(BinaryDataConfig).mode === 'default') {
+	if (!storesFilesBeforeItsExecution(workflowExecutionMode) || keepsBinaryDataInMemory()) {
 		return;
 	}
 
