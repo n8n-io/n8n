@@ -25,6 +25,8 @@ import {
 	WAIT_NODE_TYPE,
 	WorkflowConfigurationError,
 	jsonParse,
+	recordConsumedAuth,
+	redactedHeaders,
 	tryToParseUrl,
 	BINARY_MODE_COMBINED,
 	tryToParseJsonToFormFields,
@@ -479,6 +481,23 @@ export function addFormResponseDataToReturnItem(
 	}
 }
 
+/** First Form Trigger version that hides the headers used by its built-in authentication. */
+export const HIDE_CONSUMED_AUTH_HEADERS_VERSION = 2.8;
+
+/**
+ * Request headers for the "Show Headers" output. From version 2.8, the Form Trigger shows the
+ * headers that its built-in authentication used as hidden, so their values are not stored.
+ */
+export function getFormOutputHeaders(context: IWebhookFunctions) {
+	const { type, typeVersion } = context.getNode();
+
+	if (type === FORM_TRIGGER_NODE_TYPE && typeVersion >= HIDE_CONSUMED_AUTH_HEADERS_VERSION) {
+		return redactedHeaders(context.getRequestObject());
+	}
+
+	return context.getHeaderData();
+}
+
 export async function prepareFormReturnItem(
 	context: IWebhookFunctions,
 	formFields: FormFieldsParameter,
@@ -568,7 +587,7 @@ export async function prepareFormReturnItem(
 	returnItem.json.formMode = mode;
 
 	if (context.getNodeParameter('options.showHeaders', false)) {
-		returnItem.json.headers = context.getHeaderData();
+		returnItem.json.headers = getFormOutputHeaders(context);
 	}
 
 	if (
@@ -982,6 +1001,23 @@ function getFormWaitingBasePath(context: IWebhookFunctions): string | null {
 }
 
 /**
+ * Path the form page auth cookie is scoped to. A run's cookie only goes to that
+ * run's pages, so the cookies of earlier runs aren't sent along and can't pile
+ * up in the request header. The trigger's cookie must reach the first page of a
+ * run that doesn't exist yet, so it keeps the form-waiting base path.
+ */
+function getFormAuthCookiePath(
+	context: IWebhookFunctions,
+	binding: FormUserAuthTokenBinding,
+): string {
+	const basePath = getFormWaitingBasePath(context);
+	// Nothing narrower is derivable when the base path is unknown; the cookie is
+	// httpOnly and expires with the token either way.
+	if (!basePath) return '/';
+	return binding.executionId ? `${basePath}/${binding.executionId}` : basePath;
+}
+
+/**
  * Hand the follow-up pages of a multi-page form their own auth token, scoped to
  * the form-waiting path. Re-set on every page render, so a long form's later
  * pages get a token that is still within its TTL.
@@ -998,9 +1034,7 @@ export function setFormAuthCookie(
 		// initiates from the real origin.
 		sameSite: 'lax',
 		secure: isSecureRequest(req),
-		// Nothing narrower is derivable when the base path is unknown; the cookie is
-		// httpOnly and expires with the token either way.
-		path: getFormWaitingBasePath(context) ?? '/',
+		path: getFormAuthCookiePath(context, binding),
 		maxAge: FORM_USER_AUTH_TOKEN_TTL_SECONDS * 1000,
 	});
 }
@@ -1168,6 +1202,12 @@ async function authenticateFormUserOrRespond(
 			const token = typeof formToken === 'string' ? formToken : '';
 			const validation = await context.validateN8nOAuth2Token(token, resourceUrl);
 			if (validation.valid) {
+				// The OAuth cookie is normally gone by now, but when a submission still carries
+				// it, it holds a token of the same kind as `x-auth-token`.
+				recordConsumedAuth(
+					req,
+					readFormOAuthToken(req) === null ? ['x-auth-token'] : ['x-auth-token', 'cookie'],
+				);
 				// Seeds the run. The subject rides in the seal, so a worker never needs the token.
 				await context.establishTriggerIdentity(token, resourceUrl, validation.user.id);
 				return {

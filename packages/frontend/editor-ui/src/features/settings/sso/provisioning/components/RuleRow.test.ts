@@ -57,15 +57,12 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/features/roles/components/RoleHoverPopover.vue', () => ({
-	default: { name: 'RoleHoverPopover', template: '<div><slot /></div>' },
-}));
-vi.mock('@/features/roles/components/RoleContactAdminModal.vue', () => ({
-	default: { name: 'RoleContactAdminModal', template: '<div />' },
-}));
-vi.mock('@/features/roles/components/CustomRolesUpgradeModal.vue', () => ({
-	default: { name: 'CustomRolesUpgradeModal', template: '<div />' },
-}));
+// Stub out heavy sub-components that rely on router / dialogs.
+const roleComponentStubs = {
+	RoleHoverPopover: { template: '<div><slot /></div>' },
+	RoleContactAdminModal: { template: '<div />' },
+	CustomRolesUpgradeModal: { template: '<div />' },
+};
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn(),
@@ -125,7 +122,10 @@ const makeRule = (overrides: Partial<RoleMappingRuleResponse> = {}): RoleMapping
 });
 
 const renderRow = (props: Record<string, unknown>) =>
-	createComponentRenderer(RuleRow, { pinia: pinia() })({
+	createComponentRenderer(RuleRow, {
+		pinia: pinia(),
+		global: { stubs: roleComponentStubs },
+	})({
 		props: { priority: 1, ...props },
 	});
 

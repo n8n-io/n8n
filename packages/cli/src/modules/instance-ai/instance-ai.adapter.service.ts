@@ -5,15 +5,10 @@ import {
 	CreateAppDto,
 	ListAppsQueryDto,
 	SetAppBindingsDto,
-	AI_ASSISTANT_AT_MENTIONS_FLAG,
-	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
@@ -26,7 +21,6 @@ import {
 	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
-	ASSISTANT_SKILLS_FLAG,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -221,7 +215,7 @@ import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
 import type { AssistantCredentialTestTarget } from './turn-setup/assistant-turn-overrides';
 import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
 
-import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate, WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	getMcpRegistryCredentialOptions,
@@ -449,19 +443,18 @@ export interface InstanceAiFeatureFlags {
 	setupPanelVariant?: 'control' | 'variant';
 	/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 	nodeUsageEnabled: boolean;
-	/** Node attachments from either the canvas or Assistant mentions rollout. */
+	/** Node attachments from the canvas and from Assistant mentions. */
 	nodeContextEnabled: boolean;
-	/** Per-user folder-exploration gate, passed into `createContext`. Fails
-	 *  closed with every other gate: `getFeatureFlags` never throws, it
-	 *  returns `{}` on a PostHog outage. */
+	/** Folder attribution and folder scoping on the workflows list tool. */
 	folderExplorationEnabled: boolean;
 	credentialDescriptionsEnabled: boolean;
 	/** Approval modes: the Manual and Auto selector, and Auto for users without a saved choice. */
 	approvalModesEnabled: boolean;
-	/** Shared activity recording and retrieval use the same instance gate. */
+	/** The activity reader: its tool, the context block, and the skill about both. Off with the activity log. */
 	instanceContextEnabled: boolean;
 	assistantSkillsEnabled: boolean;
 	skillSourcesEnabled?: boolean;
+	workflowsInSkillsEnabled?: boolean;
 	preferencesNoteVariant?: string;
 }
 
@@ -616,6 +609,7 @@ export class InstanceAiAdapterService {
 			credentialDescriptionsEnabled?: boolean;
 			assistantSkillsEnabled?: boolean;
 			skillSourcesEnabled?: boolean;
+			workflowsInSkillsEnabled?: boolean;
 			/** Host-resolved main model for the run. */
 			modelId?: ModelConfig;
 			/** Host-resolved utility model. Absent → utility calls use `modelId`. */
@@ -650,6 +644,7 @@ export class InstanceAiAdapterService {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			skillSourcesEnabled,
+			workflowsInSkillsEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage,
@@ -748,6 +743,7 @@ export class InstanceAiAdapterService {
 				user,
 				assistantSkillsEnabled === true,
 				skillSourcesEnabled,
+				workflowsInSkillsEnabled,
 			),
 			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
@@ -810,6 +806,7 @@ export class InstanceAiAdapterService {
 		user: User,
 		assistantSkillsEnabled: boolean,
 		skillSourcesEnabled?: boolean,
+		workflowsInSkillsEnabled?: boolean,
 	): InstanceAiSkillService | undefined {
 		try {
 			if (!Container.get(SkillsGate).isEnabled) return undefined;
@@ -817,6 +814,7 @@ export class InstanceAiAdapterService {
 				user,
 				assistantSkillsEnabled,
 				skillSourcesEnabled,
+				workflowsInSkillsEnabled,
 			);
 		} catch (error) {
 			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {
@@ -865,20 +863,16 @@ export class InstanceAiAdapterService {
 	/** Resolves experiment assignments. */
 	async resolveExperimentGates(user: User): Promise<InstanceAiFeatureFlags> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
-		let instanceContextEnabled = false;
-		let assistantSkillsEnabled = false;
 		let skillSourcesEnabled = false;
+		let workflowsInSkillsEnabled = false;
 		try {
-			const postHog = Container.get(PostHogClient);
-			const [userFlags, instanceFlag, assistantSkillsFlag] = await Promise.allSettled([
-				postHog.getFeatureFlags(user),
-				postHog.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
-				postHog.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG),
+			const [userFlags, workflowsInSkillsFlag] = await Promise.allSettled([
+				Container.get(PostHogClient).getFeatureFlags(user),
+				(async () => await Container.get(WorkflowsInSkillsFlagGate).isEnabled())(),
 			]);
 			if (userFlags.status === 'fulfilled') flags = userFlags.value;
-			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
-			assistantSkillsEnabled =
-				assistantSkillsFlag.status === 'fulfilled' && assistantSkillsFlag.value === true;
+			workflowsInSkillsEnabled =
+				workflowsInSkillsFlag.status === 'fulfilled' && workflowsInSkillsFlag.value;
 			// Reuse the assignments already fetched for this turn.
 			skillSourcesEnabled = Container.get(SkillSyncFlagGate).isEnabledForFlags(flags);
 		} catch {
@@ -902,15 +896,13 @@ export class InstanceAiAdapterService {
 				? { setupPanelVariant }
 				: {}),
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
-			nodeContextEnabled:
-				flags[CANVAS_NODE_CONTEXT_FLAG] === true || flags[AI_ASSISTANT_AT_MENTIONS_FLAG] === true,
-			folderExplorationEnabled:
-				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
-				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+			nodeContextEnabled: true,
+			folderExplorationEnabled: true,
 			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
-			instanceContextEnabled,
-			assistantSkillsEnabled,
+			instanceContextEnabled: this.globalConfig.activityLog.enabled,
+			assistantSkillsEnabled: true,
 			...(skillSourcesEnabled ? { skillSourcesEnabled } : {}),
+			...(workflowsInSkillsEnabled ? { workflowsInSkillsEnabled } : {}),
 			...(typeof preferencesNoteVariant === 'string' ? { preferencesNoteVariant } : {}),
 		};
 	}

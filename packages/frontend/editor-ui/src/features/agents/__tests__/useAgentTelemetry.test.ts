@@ -359,7 +359,7 @@ describe('useAgentTelemetry', () => {
 	});
 
 	it('trackSentMessageToN8nChatAgent fires with agent_id, thread_id, is_new_thread, and variant', () => {
-		usePostHog().overrides = { [AGENTS_N8N_CHAT_FLAG]: { value: 'variant-b' } };
+		usePostHog().overrides = { [AGENTS_N8N_CHAT_FLAG]: { value: 'variant-a' } };
 
 		useAgentTelemetry().trackSentMessageToN8nChatAgent({
 			agentId: 'agent-1',
@@ -373,7 +373,7 @@ describe('useAgentTelemetry', () => {
 				agent_id: 'agent-1',
 				thread_id: 'thread-1',
 				is_new_thread: true,
-				variant: 'variant-b',
+				variant: 'variant-a',
 				push_ref: 'session-xyz',
 			},
 		);

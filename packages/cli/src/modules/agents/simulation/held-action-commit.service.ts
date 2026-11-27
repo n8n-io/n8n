@@ -68,7 +68,7 @@ export class HeldActionCommitService {
 		}
 
 		const session = await this.simulationSessions.getSession({
-			userId: input.user.id,
+			user: input.user,
 			projectId: input.projectId,
 			agentId: input.agentId,
 			testChatId: input.testChatId,

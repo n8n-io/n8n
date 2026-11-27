@@ -367,21 +367,41 @@ vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
 	}),
 }));
 
-// The real menu reads the MCP and browser use stores, which have their own tests.
-vi.mock('../../components/InstanceAiInputMenu.vue', () => ({
-	default: defineComponent({
-		props: { disabled: { type: Boolean, default: false } },
-		emits: ['attachFiles'],
-		setup:
-			(props, { emit }) =>
-			() =>
-				h('button', {
-					'data-test-id': 'input-menu-attach',
-					disabled: props.disabled,
-					onClick: () => emit('attachFiles'),
-				}),
-	}),
-}));
+// The real menu reads the MCP and browser use stores, which have their own tests. Opening a
+// resource emits a fixed workflow, so the tests do not depend on the resource search.
+vi.mock('../../components/InstanceAiInputMenu.vue', async () => {
+	const { injectOpenResource } = await import('../../openResourceContext');
+	return {
+		default: defineComponent({
+			props: { disabled: { type: Boolean, default: false } },
+			emits: ['attachFiles'],
+			setup(props, { emit }) {
+				const openResource = injectOpenResource();
+				return () => [
+					h('button', {
+						'data-test-id': 'input-menu-attach',
+						disabled: props.disabled,
+						onClick: () => emit('attachFiles'),
+					}),
+					openResource?.isAvailable()
+						? h('button', {
+								'data-test-id': 'input-menu-open-resource',
+								'data-project-id': openResource.projectId(),
+								onClick: () =>
+									openResource.open({
+										type: 'workflow',
+										id: 'wf-picked',
+										name: 'Picked workflow',
+										icon: 'workflow',
+										projectId: openResource.projectId(),
+									}),
+							})
+						: null,
+				];
+			},
+		}),
+	};
+});
 
 // The real selector reads the settings store, which has its own tests.
 vi.mock('../../components/ApprovalModeSelector.vue', () => ({
@@ -1386,31 +1406,41 @@ describe('AssistantAgentThreadView', () => {
 		expect(previewProps.current).toBeUndefined();
 	});
 
-	it('offers a resource picker in the header while no tabs are open, and opens the picked resource', async () => {
+	it('lets the composer menu open a resource while the header shows no open-resource button', async () => {
 		const { getByTestId, queryByTestId } = renderView({
 			props: { threadId: 'thread-1', projectId: 'project-1' },
 		});
 		await flushPromises();
-		// The history can open tabs for past builds, so the picker waits for it.
-		expect(queryByTestId('assistant-agent-open-resource-picker')).toBeNull();
+		// The history can open tabs for past builds, so the item waits for it.
+		expect(queryByTestId('input-menu-open-resource')).toBeNull();
 
 		isLoadingHistory.value = false;
 		await flushPromises();
 
-		expect(getByTestId('assistant-agent-open-resource-picker')).toHaveAttribute(
-			'data-project-id',
-			'project-1',
-		);
+		expect(queryByTestId('assistant-agent-open-resource')).toBeNull();
 		expect(queryByTestId('assistant-agent-preview-toggle')).toBeNull();
+		expect(getByTestId('input-menu-open-resource')).toHaveAttribute('data-project-id', 'project-1');
 
-		await fireEvent.click(getByTestId('assistant-agent-open-resource-picker'));
+		await fireEvent.click(getByTestId('input-menu-open-resource'));
 
 		expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
 		expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-picked' });
 	});
 
-	it('shows the preview toggle, not the picker, while tabs are open', async () => {
-		const { getByTestId, queryByTestId } = renderView({
+	it('does not offer to open a resource until the stored tabs load', async () => {
+		fetchTabs.mockReturnValue(new Promise(() => {}));
+		const { queryByTestId } = renderView({
+			props: { threadId: 'thread-1', projectId: 'project-1' },
+		});
+		await flushPromises();
+		isLoadingHistory.value = false;
+		await flushPromises();
+
+		expect(queryByTestId('input-menu-open-resource')).toBeNull();
+	});
+
+	it('shows the preview toggle while tabs are open', async () => {
+		const { getByTestId } = renderView({
 			props: { threadId: 'thread-1', projectId: 'project-1' },
 		});
 		await flushPromises();
@@ -1421,7 +1451,6 @@ describe('AssistantAgentThreadView', () => {
 
 		await fireEvent.click(getByTestId('tab-bar-preview-toggle'));
 
-		expect(queryByTestId('assistant-agent-open-resource-picker')).toBeNull();
 		expect(getByTestId('assistant-agent-preview-toggle')).toBeEnabled();
 	});
 

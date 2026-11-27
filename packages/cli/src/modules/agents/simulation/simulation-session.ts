@@ -257,6 +257,14 @@ export class SimulationSession {
 		return [...this.heldActions.values()].map((action) => ({ ...action }));
 	}
 
+	/** True while an action waits for its replay: not committed, and no replay failed. */
+	hasPendingHeldActions(): boolean {
+		for (const action of this.heldActions.values()) {
+			if (action.committedAt === undefined && action.failedAt === undefined) return true;
+		}
+		return false;
+	}
+
 	/**
 	 * Claims a held action for one-shot replay. Returns `already_committed` when the action
 	 * already finished or is currently replaying, so duplicate requests never execute twice.

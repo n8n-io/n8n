@@ -200,6 +200,19 @@ export class EngineTestRuntime {
 		throw new ExecutionStalledError(executionId, steps);
 	}
 
+	/**
+	 * Cancels an execution, so it does not run on beside the next one. An
+	 * execution that ended before the cancel is not an error.
+	 */
+	async cancelExecution(executionId: string): Promise<void> {
+		const response = await this.request('POST', `/api/workflow-executions/${executionId}/cancel`);
+		if (response.status !== 200 && response.status !== 409) {
+			throw new Error(`Cannot cancel execution ${executionId}: ${response.status}`);
+		}
+		// Nobody waits for this execution any more.
+		this.finished.delete(executionId);
+	}
+
 	async getExecution(executionId: string): Promise<ExecutionSnapshot> {
 		const response = await this.request(
 			'GET',

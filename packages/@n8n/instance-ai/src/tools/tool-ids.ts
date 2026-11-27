@@ -67,6 +67,7 @@ export const DOMAIN_TOOL_IDS = {
 	SHARE_FILES: 'share-files',
 	VIEW_FILE: 'view-file',
 	AGENT_CONTEXT: 'agent-context',
+	ARCHIVE_AGENT: 'archive_agent',
 	MCP_SERVERS: 'mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
 	ACTIVITY: 'activity',
@@ -194,6 +195,7 @@ const TOOL_GROUP_BY_NAME = new Map<string, string>([
 	...CREDENTIAL_TOOL_NAMES.map((name): [string, string] => [name, 'credentials']),
 	...NODE_TOOL_NAMES.map((name): [string, string] => [name, 'nodes']),
 	...Object.values(AGENT_BUILDER_TOOL_NAMES).map((name): [string, string] => [name, 'agents']),
+	[DOMAIN_TOOL_IDS.ARCHIVE_AGENT, 'agents'],
 	...Object.values(INSTANCE_TOOL_NAME_BY_ACTION).map((name): [string, string] => [
 		name,
 		'instance',
@@ -208,7 +210,7 @@ const TOOL_GROUP_DESCRIPTIONS: Readonly<Record<string, string>> = {
 	data_tables: 'create, read and change data tables and their rows',
 	credentials: 'set up, test and manage credentials',
 	nodes: 'search node types and read their parameter definitions',
-	agents: 'build and configure standalone n8n Agents',
+	agents: 'manage standalone n8n Agents',
 	instance:
 		'list projects and tags, manage folders, tag workflows and clean up test executions in this n8n instance',
 	apps: 'create, open, change, save and bind n8n Apps',

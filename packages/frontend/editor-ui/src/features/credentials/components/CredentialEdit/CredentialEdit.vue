@@ -183,7 +183,7 @@ const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
 const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
-const { getQuickConnectOption, connect: quickConnect } = useQuickConnect();
+const { getQuickConnectOptionForContext, connect: quickConnect } = useQuickConnect();
 const aiGateway = useAiGateway();
 const aiGatewayStore = useAiGatewayStore();
 const { fetchDependencyCounts, hasDependencies } = useDependencies();
@@ -537,15 +537,10 @@ onMounted(async () => {
 		}
 
 		// Default to quick connect mode for new credentials when available and not forced to manual
-		if (
-			props.mode === 'new' &&
-			!forceManual &&
-			credentialTypeName.value &&
-			ndvStore.value.activeNode
-		) {
-			const qcOption = getQuickConnectOption(
+		if (props.mode === 'new' && !forceManual && credentialTypeName.value) {
+			const qcOption = getQuickConnectOptionForContext(
 				credentialTypeName.value,
-				ndvStore.value.activeNode.type,
+				ndvStore.value.activeNode?.type,
 			);
 			if (qcOption) {
 				isQuickConnectMode.value = true;
@@ -1644,14 +1639,14 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 }
 
 async function onQuickConnect(): Promise<void> {
-	if (!credentialTypeName.value || !ndvStore.value.activeNode) return;
+	if (!credentialTypeName.value) return;
 
 	const serviceName = getAppNameFromCredType(credentialType.value?.displayName ?? '');
 
 	const credential = await quickConnect({
 		credentialTypeName: credentialTypeName.value,
 		...(canEditDescription.value ? { description: credentialDescription.value } : {}),
-		nodeType: ndvStore.value.activeNode.type,
+		nodeType: ndvStore.value.activeNode?.type,
 		source: 'credential_type',
 		serviceName,
 	});

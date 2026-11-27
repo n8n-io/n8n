@@ -16,4 +16,8 @@ export interface CodeHealthContext {
 	 * so such rules run no check.
 	 */
 	addedFiles?: string[];
+	/** Branch that the change merges into, for example `release-candidate/2.50.x`. */
+	baseBranch?: string;
+	/** Git ref of `master` that this checkout can read. */
+	masterRef?: string;
 }

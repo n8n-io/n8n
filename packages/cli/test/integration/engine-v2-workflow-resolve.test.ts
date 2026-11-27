@@ -23,13 +23,13 @@ import type {
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
-import { EngineControlPlaneServer } from '@/modules/engine-v2/engine-control-plane-server';
+import { EngineControlPlaneServer } from '@/modules/engine-v2/control-plane/engine-control-plane-server';
 import { WORKFLOWS_RESOLVE_PATH } from '@/modules/engine-v2/engine-v2.constants';
-import { EngineWorkflowResolveClient } from '@/modules/engine-v2/engine-workflow-resolve-client';
+import { EngineWorkflowResolveClient } from '@/modules/engine-v2/workflow-resolve/engine-workflow-resolve-client';
 import type {
 	ResolveErrorWorkflowRequest,
 	ResolveSubWorkflowRequest,
-} from '@/modules/engine-v2/engine-workflow-resolve.contract';
+} from '@/modules/engine-v2/workflow-resolve/engine-workflow-resolve.contract';
 
 import { saveCredential } from './shared/db/credentials';
 import { createMember } from './shared/db/users';

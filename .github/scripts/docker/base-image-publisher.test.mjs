@@ -75,6 +75,25 @@ describe('checkProvenance', () => {
 		assert.match(checkProvenance(provenance, 'python', platforms), /the source is/);
 	});
 
+	it('accepts the nodejs/docker-node source for the node image', () => {
+		const node = 'https://github.com/nodejs/docker-node.git#1274f3ee:26/trixie-slim';
+		const provenance = {
+			'linux/amd64': slsa('https://github.com/docker-library', node),
+			'linux/arm64': slsa('https://github.com/docker-library', node),
+		};
+		assert.equal(checkProvenance(provenance, 'node', platforms), null);
+		assert.match(checkProvenance(provenance, 'python', platforms), /the source is/);
+	});
+
+	it('rejects a docker-library source for the node image', () => {
+		const other = 'https://github.com/docker-library/node.git#1:26/trixie-slim';
+		const provenance = {
+			'linux/amd64': slsa('https://github.com/docker-library', other),
+			'linux/arm64': slsa('https://github.com/docker-library', other),
+		};
+		assert.match(checkProvenance(provenance, 'node', platforms), /the source is/);
+	});
+
 	it('rejects a missing platform', () => {
 		const provenance = { 'linux/amd64': slsa('https://github.com/docker-library', source) };
 		assert.match(

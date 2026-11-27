@@ -10,12 +10,13 @@ import { PromotionEnvironmentProjectRepository } from './database/repositories/p
 import { PromotionEnvironmentRepository } from './database/repositories/promotion-environment.repository';
 import { promotionHostBaseUrl, resolvePromotionGitRemote } from './git-hosts/git-host-remote';
 import { resolveStoredConfig } from './promotion-config-settings';
-import type { PromotionOperationInput } from './promotions.types';
+import { PromotionSettingsService } from './promotion-settings.service';
+import type { PromotionOperationInput, ResolvedPromotionConfig } from './promotions.types';
 
 /**
  * Turns a route into the immutable snapshot an operation runs on. Resolution
  * reads nothing but configuration: it never exports, imports, or claims ownership
- * of content.
+ * of content. The snapshot holds the effective settings, after instance policies.
  */
 @Service()
 export class PromotionEnvironmentResolver {
@@ -23,6 +24,7 @@ export class PromotionEnvironmentResolver {
 		private readonly environmentRepository: PromotionEnvironmentRepository,
 		private readonly linkRepository: PromotionEnvironmentProjectRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly promotionSettings: PromotionSettingsService,
 	) {}
 
 	/**
@@ -35,7 +37,7 @@ export class PromotionEnvironmentResolver {
 	): Promise<PromotionOperationInput> {
 		const environment = await this.environmentRepository.findByIdWithProvider(environmentId);
 		if (!environment) throw new NotFoundError('Promotion environment not found');
-		return this.toOperationInput(environment, direction);
+		return await this.toOperationInput(environment, direction);
 	}
 
 	/**
@@ -61,17 +63,17 @@ export class PromotionEnvironmentResolver {
 				`No ${direction} promotion environment is configured for this instance`,
 			);
 		}
-		return this.toOperationInput(environment, direction);
+		return await this.toOperationInput(environment, direction);
 	}
 
 	/**
 	 * Reads the joined row into plain values, so the transport never sees a live
 	 * entity, and rejects a stored payload this version cannot read.
 	 */
-	private toOperationInput(
+	private async toOperationInput(
 		environment: PromotionEnvironment,
 		direction?: PromotionDirection,
-	): PromotionOperationInput {
+	): Promise<PromotionOperationInput> {
 		if (direction && environment.direction !== direction) {
 			throw new BadRequestError(
 				`The promotion environment is for ${environment.direction}, not ${direction}`,
@@ -86,10 +88,11 @@ export class PromotionEnvironmentResolver {
 
 		const remote = resolvePromotionGitRemote(provider, environment.remote);
 
-		const resolved = resolveStoredConfig(environment);
-		if (!resolved) {
+		const stored = resolveStoredConfig(environment);
+		if (!stored) {
 			throw new BadRequestError('The stored promotion environment cannot be read');
 		}
+		const config = await this.applyApprovalPolicy(stored);
 
 		return Object.freeze({
 			environmentId: environment.id,
@@ -101,7 +104,19 @@ export class PromotionEnvironmentResolver {
 			encryptedAuth: provider.auth,
 			hostBaseUrl: promotionHostBaseUrl(provider),
 			remote,
-			config: resolved,
+			config,
 		});
+	}
+
+	/**
+	 * "Always required" sends every promote to a new branch. The stored setting stays as
+	 * it is, so the environment uses it again when the policy goes back to "When configured".
+	 */
+	private async applyApprovalPolicy(
+		config: ResolvedPromotionConfig,
+	): Promise<ResolvedPromotionConfig> {
+		if (config.direction !== 'promote' || config.settings.createBranchOnPromotion) return config;
+		if (!(await this.promotionSettings.isApprovalAlwaysRequired())) return config;
+		return { ...config, settings: { ...config.settings, createBranchOnPromotion: true } };
 	}
 }

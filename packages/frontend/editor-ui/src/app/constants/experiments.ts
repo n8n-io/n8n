@@ -2,7 +2,8 @@ import {
 	AGENT_SAFE_TESTING_FLAG,
 	AGENT_SAFE_TESTING_TEST_VARIANT,
 	AGENTS_N8N_CHAT_FLAG,
-	ASSISTANT_SKILLS_FLAG,
+	CUSTOM_MCP_SERVERS_FLAG,
+	CUSTOM_MCP_SERVERS_FLAG_VARIANT,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
@@ -160,7 +161,6 @@ export const INSTANCE_AI_SETUP_PANEL_EXPERIMENT = createExperiment(INSTANCE_AI_S
 export const AI_ASSISTANT_AT_MENTIONS_EXPERIMENT = createExperiment(AI_ASSISTANT_AT_MENTIONS_FLAG);
 
 export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
-export const ASSISTANT_SKILLS_EXPERIMENT = createExperiment(ASSISTANT_SKILLS_FLAG);
 export const WORKFLOWS_IN_SKILLS_EXPERIMENT = createExperiment(WORKFLOWS_IN_SKILLS_FLAG);
 
 /** Boolean flag. New threads of the user run on the Assistant agent, if the instance runs it. */
@@ -242,6 +242,7 @@ export const AGENT_SAFE_TESTING_EXPERIMENT = createExperiment(AGENT_SAFE_TESTING
 	test: AGENT_SAFE_TESTING_TEST_VARIANT,
 });
 
+export const AGENT_TEST_SCENARIOS_EXPERIMENT = createExperiment('156_agent_test_scenarios');
 export const AGENT_BUILDER_EXPERIMENT_COHORT = createExperiment(
 	'133_agent_builder_experiment_cohort',
 	{
@@ -270,9 +271,16 @@ export const AGENT_SETUP_HEADER_EXPERIMENT = createExperiment('136_agent_setup_h
 /** A/B test. The `variant` arm shows agent triggers first and restyles the trigger section. */
 export const AGENT_TRIGGER_REDESIGN_EXPERIMENT = createExperiment('143_agent_trigger_redesign');
 
+/** Per-instance rollout of custom MCP servers. Only `test` turns the feature on. */
+export const CUSTOM_MCP_SERVERS_EXPERIMENT = createExperiment(CUSTOM_MCP_SERVERS_FLAG, {
+	control: 'control',
+	test: CUSTOM_MCP_SERVERS_FLAG_VARIANT,
+});
+
 export const EXPERIMENTS_TO_TRACK = [
 	AGENT_SETUP_HEADER_EXPERIMENT.name,
 	AGENT_TRIGGER_REDESIGN_EXPERIMENT.name,
+	CUSTOM_MCP_SERVERS_EXPERIMENT.name,
 	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT.name,
 	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT.name,
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -320,7 +328,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
 	// EOF Experiment cleanup
 	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
-	ASSISTANT_SKILLS_EXPERIMENT.name,
 	WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
 	INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name,
 	INSTANCE_AI_CLOUD_BROWSER_EXPERIMENT.name,
@@ -331,4 +338,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	TEST_BUTTON_PRIMARY_COLOR_EXPERIMENT.name,
 	AGENTS_INVOCATION_STEP_EXPERIMENT.name,
 	AGENT_SAFE_TESTING_EXPERIMENT.name,
+	AGENT_TEST_SCENARIOS_EXPERIMENT.name,
 ];

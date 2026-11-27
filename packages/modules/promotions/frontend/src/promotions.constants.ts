@@ -1,3 +1,4 @@
+import type { PromotionSettings } from '@n8n/api-types';
 import type { PromotionProjectAccessSetting } from '@n8n/permissions';
 
 export const PROMOTIONS_SETTINGS_VIEW = 'PromotionsSettings';
@@ -22,6 +23,11 @@ export const PROMOTIONS_SETTINGS_SCOPES = [
  */
 export const PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE: readonly PromotionProjectAccessSetting[] =
 	['whoCanPromote'];
+
+/** The promotion review settings that Settings > Policies shows. LIGO-1475 adds `whoCanApprove`. */
+export const PROMOTION_REVIEW_SETTINGS_ON_POLICIES_PAGE: ReadonlyArray<keyof PromotionSettings> = [
+	'requireApproval',
+];
 
 export const PROMOTION_PREVIEW_VIEWS = {
 	promote: 'PromotionPreviewPromote',

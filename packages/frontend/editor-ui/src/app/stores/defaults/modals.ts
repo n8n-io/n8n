@@ -46,7 +46,6 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 } from '@/features/credentials/credentials.constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
 import {
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -86,13 +85,6 @@ export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = O
 	[AI_BUILDER_DIFF_MODAL_KEY]: { open: false },
 	[AI_GATEWAY_TOP_UP_MODAL_KEY]: { open: false },
 	[ANNOTATION_TAGS_MANAGER_MODAL_KEY]: { open: false },
-	[API_KEY_CREATE_OR_EDIT_MODAL_KEY]: {
-		open: false,
-		data: {
-			activeId: null,
-			mode: '',
-		},
-	},
 	[BINARY_DATA_VIEW_MODAL_KEY]: { open: false },
 	[CHAT_EMBED_MODAL_KEY]: { open: false },
 	[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY]: {

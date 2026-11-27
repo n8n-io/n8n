@@ -611,8 +611,8 @@ describe('SimulationSessionService', () => {
 
 		service.resetForTestChat(resetInput);
 
-		await expect(service.getSession(resetInput)).resolves.toBeUndefined();
-		await expect(service.getSession({ ...resetInput, testChatId: 'chat-2' })).resolves.toBe(
+		await expect(service.getSession(openInput)).resolves.toBeUndefined();
+		await expect(service.getSession({ ...openInput, testChatId: 'chat-2' })).resolves.toBe(
 			otherChat,
 		);
 		await vi.waitFor(() => expect(closeWorld).toHaveBeenCalledWith('world-1'));
@@ -663,7 +663,7 @@ describe('SimulationSessionService', () => {
 		await pending;
 
 		await vi.waitFor(() => expect(closeWorld).toHaveBeenCalledWith('world-1'));
-		await expect(service.getSession(resetInput)).resolves.toBeUndefined();
+		await expect(service.getSession(openInput)).resolves.toBeUndefined();
 	});
 
 	it('keeps the sessions of two agents apart when they share a chat ID', async () => {

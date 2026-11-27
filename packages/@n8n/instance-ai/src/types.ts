@@ -1277,6 +1277,7 @@ export interface InstanceAiAgentFeedbackService {
 
 export interface InstanceAiSkillService {
 	assistantSkillsEnabled: boolean;
+	workflowsInSkillsEnabled?: boolean;
 	sources?: {
 		list(): Promise<SkillSourceListItem[]>;
 		discover(input: DiscoverPublicSkillSource): Promise<PublicSkillSourceDiscovery>;
@@ -1739,6 +1740,12 @@ type WithResolvedAgentId<T> = T extends { agentId?: string }
 
 export type AgentContextLookup = WithResolvedAgentId<AgentContextInput>;
 
+/** Agent archive operations bound to one user and project. */
+export interface InstanceAiAgentArchiveService {
+	preview(agentId: string): Promise<{ name: string }>;
+	archive(agentId: string): Promise<{ name: string }>;
+}
+
 /** Read-only Agent context. The host binds this reader to one user and project. */
 export interface InstanceAiAgentContextReader {
 	lookup(input: AgentContextLookup): Promise<Record<string, unknown>>;
@@ -1880,6 +1887,8 @@ export interface InstanceAiContext {
 	conversationHistoryService?: InstanceAiConversationHistoryReader;
 	/** Present when the user can read Agents in the bound project. */
 	agentContextService?: InstanceAiAgentContextReader;
+	/** Present when the user can archive Agents in the bound project. */
+	agentArchiveService?: InstanceAiAgentArchiveService;
 	/** Present only when the instance-context reader is enabled; its absence hides the tool. */
 	activityService?: InstanceAiActivityService;
 	/** Present only when saved preferences are enabled for this user; its

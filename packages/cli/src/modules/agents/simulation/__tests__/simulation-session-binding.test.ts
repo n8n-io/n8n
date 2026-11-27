@@ -1,3 +1,4 @@
+import type { BuiltTool } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CredentialsFinderService, TelemetryProxy } from '@n8n/backend-services';
@@ -12,6 +13,7 @@ import type { AgentExecutionRepository } from '../../repositories/agent-executio
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { SafeTestingFlagGate } from '../safe-testing-flag-gate';
 import { SimulationBackendRegistry } from '../simulation-backend-registry';
+import type { SimulationSession } from '../simulation-session';
 import { SimulationSessionService } from '../simulation-session.service';
 import type {
 	OpenWorldInput,
@@ -473,19 +475,34 @@ describe('SimulationSessionService connection binding', () => {
 		});
 
 		it('should not return the session of a removed thread for a commit', async () => {
-			const { service, turn, closed, threads } = setup();
+			const { service, turn, closed, threads, input } = setup();
 			await turn();
-			const ids = {
-				userId: 'user-1',
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				testChatId: 'chat-1',
-			};
-			expect(await service.getSession(ids)).toBeDefined();
+			expect(await service.getSession(input())).toBeDefined();
 
 			threads.delete('chat-1');
 
-			expect(await service.getSession(ids)).toBeUndefined();
+			expect(await service.getSession(input())).toBeUndefined();
+			expect(closed).toEqual(['world-1']);
+		});
+
+		it('should not return the session for a commit after the connections changed', async () => {
+			const { service, turn, closed, draft, input } = setup();
+			const session = await turn();
+			expect(await service.getSession(input())).toBe(session);
+
+			draft.current = draftWith([serverB]);
+
+			expect(await service.getSession(input())).toBeUndefined();
+			expect(closed).toEqual(['world-1']);
+		});
+
+		it('should not return the session for a commit after the owner lost a credential', async () => {
+			const { service, turn, closed, credentials, input } = setup();
+			await turn();
+
+			credentials.delete('credential-a');
+
+			expect(await service.getSession(input())).toBeUndefined();
 			expect(closed).toEqual(['world-1']);
 		});
 
@@ -521,6 +538,74 @@ describe('SimulationSessionService connection binding', () => {
 			await vi.advanceTimersByTimeAsync(36 * 60 * 1000);
 
 			expect(closed).toEqual(['world-1']);
+		});
+
+		describe('a session with held actions', () => {
+			const tool: BuiltTool = {
+				name: 'tracker_create_issue',
+				description: 'Create an issue',
+				mcpTool: true,
+				mcpServerName: 'tracker',
+				mcpToolName: 'create_issue',
+				handler: async () => ({ ok: true }),
+			};
+			const holdAction = async (session: SimulationSession | undefined) => {
+				await session?.interceptor(
+					{ tool, toolCallId: 'tc-1', input: { title: 'Bug' } },
+					async () => ({ ok: true }),
+				);
+				expect(session?.hasPendingHeldActions()).toBe(true);
+			};
+
+			it('should stay past the idle time, and expire after the actions are committed', async () => {
+				const { service, turn, closed, input } = setup();
+				const session = await turn();
+				await holdAction(session);
+
+				await vi.advanceTimersByTimeAsync(36 * 60 * 1000);
+
+				expect(closed).toEqual([]);
+				expect(await service.getSession(input())).toBe(session);
+
+				session?.beginCommitAction('tc-1');
+				session?.completeCommitAction('tc-1', new Date().toISOString());
+				await vi.advanceTimersByTimeAsync(36 * 60 * 1000);
+
+				expect(closed).toEqual(['world-1']);
+				expect(await service.getSession(input())).toBeUndefined();
+			});
+
+			it('should still be dropped when the connections change', async () => {
+				const { service, turn, closed, draft, input } = setup();
+				await holdAction(await turn());
+				await vi.advanceTimersByTimeAsync(36 * 60 * 1000);
+
+				draft.current = draftWith([serverB]);
+
+				expect(await service.getSession(input())).toBeUndefined();
+				expect(closed).toEqual(['world-1']);
+			});
+
+			it('should still be dropped when the test chat is removed', async () => {
+				const { service, turn, closed, threads, input } = setup();
+				await holdAction(await turn());
+				await vi.advanceTimersByTimeAsync(36 * 60 * 1000);
+
+				threads.delete('chat-1');
+
+				expect(await service.getSession(input())).toBeUndefined();
+				expect(closed).toEqual(['world-1']);
+			});
+
+			it('should still be closed on shutdown', async () => {
+				const { service, turn, closed } = setup();
+				await holdAction(await turn());
+				await vi.advanceTimersByTimeAsync(36 * 60 * 1000);
+
+				await service.shutdown();
+
+				expect(closed).toEqual(['world-1']);
+			});
 		});
 
 		it('should close the open worlds on shutdown', async () => {
