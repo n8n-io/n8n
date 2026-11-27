@@ -284,7 +284,7 @@ describe('Google BigQuery v2 Utils', () => {
 				false,
 				false,
 			),
-		).toEqual([{ json: { success: true, numDmlAffectedRows: '5' }, pairedItem: { item: 0 } }]);
+		).toEqual([{ json: { success: true, numDmlAffectedRows: 5 }, pairedItem: { item: 0 } }]);
 
 		expect(
 			prepareOutput.call(
@@ -294,11 +294,11 @@ describe('Google BigQuery v2 Utils', () => {
 				false,
 				false,
 			),
-		).toEqual([{ json: { success: true, numDmlAffectedRows: '0' }, pairedItem: { item: 1 } }]);
+		).toEqual([{ json: { success: true, numDmlAffectedRows: 0 }, pairedItem: { item: 1 } }]);
 
 		expect(
 			prepareOutput.call(thisArg, { numDmlAffectedRows: '3', jobComplete: true }, 2, false, false),
-		).toEqual([{ json: { success: true, numDmlAffectedRows: '3' }, pairedItem: { item: 2 } }]);
+		).toEqual([{ json: { success: true, numDmlAffectedRows: 3 }, pairedItem: { item: 2 } }]);
 	});
 
 	it('should include _schema on version 2.3 DML output when includeSchema is true', () => {
@@ -317,7 +317,7 @@ describe('Google BigQuery v2 Utils', () => {
 			),
 		).toEqual([
 			{
-				json: { success: true, numDmlAffectedRows: '2', _schema: {} },
+				json: { success: true, numDmlAffectedRows: 2, _schema: {} },
 				pairedItem: { item: 0 },
 			},
 		]);

@@ -91,10 +91,12 @@ export function prepareOutput(
 			numDmlAffectedRows !== undefined &&
 			numDmlAffectedRows !== null
 		) {
-			responseData =
-				schema && includeSchema
-					? { success: true, numDmlAffectedRows, _schema: schema }
-					: { success: true, numDmlAffectedRows };
+			responseData = {
+				success: true,
+				// BigQuery sends the count as an int64 string
+				numDmlAffectedRows: Number(numDmlAffectedRows),
+				...(schema && includeSchema ? { _schema: schema } : {}),
+			};
 		} else if (rows !== undefined && schema !== undefined) {
 			const fields = (schema as TableSchema).fields;
 			responseData = simplify(rows as TableRawData[], fields, includeSchema, parseTimestamps);

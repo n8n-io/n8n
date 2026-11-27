@@ -183,7 +183,7 @@ describe('Test Google BigQuery V2, executeQuery DML output', () => {
 				{
 					json: {
 						success: true,
-						numDmlAffectedRows,
+						numDmlAffectedRows: Number(numDmlAffectedRows),
 					},
 					pairedItem: { item: 0 },
 				},
@@ -220,7 +220,7 @@ describe('Test Google BigQuery V2, executeQuery DML output', () => {
 			{
 				json: {
 					success: true,
-					numDmlAffectedRows: '12',
+					numDmlAffectedRows: 12,
 				},
 				pairedItem: { item: 0 },
 			},
@@ -254,7 +254,7 @@ describe('Test Google BigQuery V2, executeQuery DML output', () => {
 			{
 				json: {
 					success: true,
-					numDmlAffectedRows: '3',
+					numDmlAffectedRows: 3,
 				},
 				pairedItem: { item: 0 },
 			},
@@ -356,7 +356,7 @@ describe('Test Google BigQuery V2, executeQuery DML output', () => {
 			{
 				json: {
 					success: true,
-					numDmlAffectedRows: '1',
+					numDmlAffectedRows: 1,
 					_schema: {},
 				},
 				pairedItem: { item: 0 },
@@ -477,11 +477,11 @@ describe('Test Google BigQuery V2, executeQuery DML output', () => {
 		expect(requestOAuth2).toHaveBeenCalledTimes(4);
 		expect(result).toEqual([
 			{
-				json: { success: true, numDmlAffectedRows: '1' },
+				json: { success: true, numDmlAffectedRows: 1 },
 				pairedItem: { item: 0 },
 			},
 			{
-				json: { success: true, numDmlAffectedRows: '4' },
+				json: { success: true, numDmlAffectedRows: 4 },
 				pairedItem: { item: 1 },
 			},
 		]);
