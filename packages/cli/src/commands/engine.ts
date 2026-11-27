@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { EngineConfig, PrometheusMetricsConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
@@ -111,6 +112,9 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 		});
 
 		const metricsRegistry = await this.createMetricsRegistry();
+		// Before the engine takes work: a crash exit loses a message the queue
+		// handed out, so a taken port must stop the boot first.
+		if (metricsRegistry) await this.startMetricsServer(metricsRegistry, engineConfig, logger);
 
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
@@ -123,20 +127,6 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 		});
 
 		if (runsSteps) await Container.get(LoadNodesAndCredentials).postProcessLoaders();
-
-		// Last, so a data plane that failed to start serves no metrics.
-		if (metricsRegistry) {
-			const { startEngineMetricsServer } = await import(
-				'@/modules/engine-v2/engine-metrics-server.js'
-			);
-			const { host, metricsPort } = engineConfig;
-			this.metricsServer = await startEngineMetricsServer(metricsRegistry, {
-				host,
-				port: metricsPort,
-				logger,
-			});
-			this.logger.info(`Engine v2 metrics listening on port ${metricsPort}`);
-		}
 	}
 
 	/**
@@ -151,6 +141,29 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const registry = new promClient.Registry();
 		if (includeDefaultMetrics) promClient.collectDefaultMetrics({ prefix, register: registry });
 		return registry;
+	}
+
+	private async startMetricsServer(
+		registry: Registry,
+		{ host, metricsPort }: EngineConfig,
+		logger: Logger,
+	): Promise<void> {
+		const { startEngineMetricsServer } = await import(
+			'@/modules/engine-v2/engine-metrics-server.js'
+		);
+		try {
+			this.metricsServer = await startEngineMetricsServer(registry, {
+				host,
+				port: metricsPort,
+				logger,
+			});
+		} catch (error) {
+			throw new UserError(
+				`The engine metrics server cannot listen on ${host}:${metricsPort}. Check N8N_ENGINE_HOST and N8N_ENGINE_METRICS_PORT.`,
+				{ cause: error },
+			);
+		}
+		logger.info(`Engine v2 metrics listening on port ${metricsPort}`);
 	}
 
 	/**

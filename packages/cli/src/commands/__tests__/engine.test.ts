@@ -510,14 +510,24 @@ describe('Engine', () => {
 			});
 		});
 
-		it('starts the metrics server only after the engine has started', async () => {
+		it('starts the metrics server before the engine takes work', async () => {
 			metricsConfig.enable = true;
 
 			await createEngine().init();
 
-			expect(vi.mocked(runtime.init).mock.invocationCallOrder[0]).toBeLessThan(
-				vi.mocked(startEngineMetricsServer).mock.invocationCallOrder[0],
+			expect(vi.mocked(startEngineMetricsServer).mock.invocationCallOrder[0]).toBeLessThan(
+				vi.mocked(runtime.init).mock.invocationCallOrder[0],
 			);
+		});
+
+		it('refuses to boot, naming N8N_ENGINE_METRICS_PORT, when the metrics port is taken', async () => {
+			metricsConfig.enable = true;
+			vi.mocked(startEngineMetricsServer).mockRejectedValueOnce(
+				new Error('listen EADDRINUSE: address already in use'),
+			);
+
+			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_METRICS_PORT');
+			expect(runtime.init).not.toHaveBeenCalled();
 		});
 
 		it('registers the Node.js default metrics under N8N_METRICS_PREFIX', async () => {
