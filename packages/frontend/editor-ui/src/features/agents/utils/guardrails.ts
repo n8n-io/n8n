@@ -33,7 +33,7 @@ export function guardrailDefaultResponse(kind: AgentToolGuardrailKind): ToolGuar
 /** Only the responses the kind allows, in the agreed order. */
 export function guardrailAllowedResponses<K extends AgentToolGuardrailKind>(
 	kind: K,
-): Array<(typeof TOOL_GUARDRAIL_RESPONSES)[K]['allowed']> {
+): Array<(typeof TOOL_GUARDRAIL_RESPONSES)[K]['allowed'][number]> {
 	return [...TOOL_GUARDRAIL_RESPONSES[kind].allowed];
 }
 

@@ -36,7 +36,7 @@ export interface ToolGuardrailsWiring {
 	/** The agent's human-review configurations, for the `review` response target. */
 	getReviewConfigurations?: () => AgentHitlConfiguration[];
 	/** The agent's project: the check workflow picker lists its workflows. */
-	getProjectId?: () => string;
+	getProjectId?: () => string | undefined;
 	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 	disabled?: MaybeRefOrGetter<boolean>;
 }

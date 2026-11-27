@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { N8nDropdownMenu } from '@n8n/design-system';
+import type { Component } from 'vue';
 import type { AgentHitlConfiguration, AgentToolGuardrailConfig } from '@n8n/api-types';
 
 import AgentGuardrailModal from '../components/AgentGuardrailModal.vue';
@@ -200,7 +201,8 @@ function selectSingle(wrapper: ReturnType<typeof mountModal>, testId: string, va
 
 /** Picks a guardrail kind from the type dropdown menu, as a menu select does. */
 async function pickKind(wrapper: ReturnType<typeof mountModal>, kind: string) {
-	const menu = wrapper.findComponent(N8nDropdownMenu);
+	// N8nDropdownMenu is generic, so `findComponent` cannot infer its type on its own.
+	const menu = wrapper.findComponent(N8nDropdownMenu as Component);
 	expect(menu.exists()).toBe(true);
 	menu.vm.$emit('select', kind);
 	await wrapper.vm.$nextTick();

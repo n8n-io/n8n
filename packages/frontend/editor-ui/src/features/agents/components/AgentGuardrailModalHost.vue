@@ -25,7 +25,7 @@ export interface AgentGuardrailModalData {
 	/** The agent's human-review configurations, for the `review` response target. */
 	getReviewConfigurations?: () => AgentHitlConfiguration[];
 	/** The agent's project: the check workflow picker lists its workflows. */
-	getProjectId?: () => string;
+	getProjectId?: () => string | undefined;
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
 	disabled?: MaybeRefOrGetter<boolean>;
 	/** Reopens the tool modal this one replaced. Runs on every close path. */

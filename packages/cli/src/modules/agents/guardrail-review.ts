@@ -10,7 +10,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
-import type { ActiveExecutions } from '@/active-executions';
+import { ActiveExecutions } from '@/active-executions';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 

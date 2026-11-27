@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { mount } from '@vue/test-utils';
+import { mount, type VueWrapper } from '@vue/test-utils';
+import type { ComponentPublicInstance } from 'vue';
+import type { Component } from 'vue';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nDropdownMenu } from '@n8n/design-system';
 
@@ -309,7 +311,11 @@ describe('AgentGuardrailsSection', () => {
 		const button = wrapper.get('[data-testid="agent-guardrails-add"]').element;
 		await openAddMenu(wrapper);
 
-		expect(wrapper.getComponent(N8nDropdownMenu).props('reference')).toBe(button);
+		// N8nDropdownMenu is generic, so `getComponent` cannot infer its type on its own.
+		const menu = wrapper.getComponent(N8nDropdownMenu as Component) as VueWrapper<
+			ComponentPublicInstance<{ reference: unknown }>
+		>;
+		expect(menu.props('reference')).toBe(button);
 		expect(document.querySelector('[role="menu"]')).not.toBeNull();
 	});
 
