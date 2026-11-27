@@ -773,8 +773,6 @@ claims the next free `v3-rc-<date>.N` as its immutable tag and moves the floatin
 and `v3-rc-<date>` onto it. The counter is derived by probing the registry, and the job
 is serialized on a `v3-rc-tagging` concurrency group so two runs can't claim one number.
 
-See **[`DEVELOPING_V3.md`](./DEVELOPING_V3.md)** for the full model.
-
 ---
 
 ## Custom Actions

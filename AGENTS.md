@@ -34,8 +34,8 @@ frontend, and extensible node-based workflow engine.
   `pnpm --filter @n8n/telemetry catalog` (`--json` for structured output). The
   registry is being adopted incrementally, so search call sites if the catalog
   has no match. The `n8n:telemetry` skill covers adding or changing events
-- When starting to work on a new ticket – create a new branch from fresh
-  master with the name specified in Linear ticket
+- For new work, branch from the latest `master` and target `master`. Use
+  maintenance branches only for approved backports.
 - When creating a new branch for a ticket in Linear - use the branch name
   suggested by Linear, **unless it is a security fix** (see Security Fix
   Hygiene below)
@@ -44,10 +44,6 @@ frontend, and extensible node-based workflow engine.
   engineer could challenge in 12 months, say so in one line and let the
   human decide. Read [docs/adr/README.md](docs/adr/README.md) before you
   write one. CI enforces its conventions
-- **Developing on v3:** after cutover, target `master` for new work. Use maintenance
-  branches only for approved backports. Check the release plan before introducing
-  breaking changes. See
-  [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
 - The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
   error messages, prompts). Only internal identifiers, i18n keys, telemetry, and
   comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
