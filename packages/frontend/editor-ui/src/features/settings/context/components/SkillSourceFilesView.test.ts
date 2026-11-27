@@ -95,6 +95,7 @@ function longFile() {
 }
 
 it('shows the lines around a change, and folds the other lines until the user asks for them', async () => {
+	// The file is closed, so the queries by role include hidden elements.
 	const view = render({ props: { skill, diffFiles: [longFile()] } });
 	const diff = view.getByTestId('skill-source-file-diff');
 	const text = (line: string) => within(diff).queryByText(line, { exact: true });
@@ -105,12 +106,57 @@ it('shows the lines around a change, and folds the other lines until the user as
 	expect(text('Line 45')).not.toBeInTheDocument();
 	const folds = diff.querySelectorAll('td.blob-num-hunk[colspan]');
 	expect(folds).toHaveLength(2);
+	// Each folded part says how many lines it hides: 1 to 37, and 45 to 80.
+	const labels = within(diff).getAllByRole('button', { hidden: true });
+	expect(labels.map((label) => label.getAttribute('data-label'))).toEqual([
+		'Show 37 hidden lines',
+		'Show 36 hidden lines',
+	]);
+	expect(labels[0]).toHaveAccessibleName('Show 37 hidden lines');
 
 	await fireEvent.click(folds[0]);
 
 	expect(text('Line 1')).toBeInTheDocument();
 	expect(text('Line 37')).toBeInTheDocument();
 	expect(text('Line 80')).not.toBeInTheDocument();
+	await waitFor(() =>
+		expect(
+			within(diff)
+				.getAllByRole('button', { hidden: true })
+				.map((label) => label.getAttribute('data-label')),
+		).toEqual(['Show 36 hidden lines']),
+	);
+});
+
+it.each(['click', 'Enter', ' '])('opens a folded part from its label with %s', async (action) => {
+	const view = render({ props: { skill, diffFiles: [longFile()] } });
+	const diff = view.getByTestId('skill-source-file-diff');
+	const label = within(diff).getByRole('button', { name: 'Show 36 hidden lines', hidden: true });
+	expect(label).toHaveAttribute('tabindex', '0');
+
+	if (action === 'click') await fireEvent.click(label);
+	else await fireEvent.keyDown(label, { key: action });
+
+	await waitFor(() =>
+		expect(within(diff).getByText('Line 80', { exact: true })).toBeInTheDocument(),
+	);
+	expect(within(diff).queryByText('Line 1', { exact: true })).not.toBeInTheDocument();
+});
+
+it('counts one hidden line as "line", also in a file that ends with a line break', () => {
+	const lines = Array.from({ length: 9 }, (_, index) => `Line ${index + 1}`);
+	const before = `${lines.join('\n')}\n`;
+	lines[4] = 'Updated line 5';
+	const view = render({
+		props: { skill, diffFiles: [{ path: 'SKILL.md', before, after: `${lines.join('\n')}\n` }] },
+	});
+	const labels = within(view.getByTestId('skill-source-file-diff')).getAllByRole('button', {
+		hidden: true,
+	});
+	expect(labels.map((label) => label.getAttribute('data-label'))).toEqual([
+		'Show 1 hidden line',
+		'Show 1 hidden line',
+	]);
 });
 
 it('shows the folded line of a finding when the user goes to it, and marks its text', async () => {

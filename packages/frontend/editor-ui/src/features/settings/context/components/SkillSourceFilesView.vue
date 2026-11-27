@@ -89,26 +89,29 @@ function rowOf(section: HTMLElement, line: number): Element | undefined {
 	);
 }
 
-/** Opens the folded part of a diff that holds a line. Returns false when no fold holds it. */
-function unfoldLine(section: HTMLElement, line: number): boolean {
-	const rows = Array.from(section.querySelectorAll('tr'));
+/** The folded parts of a diff: the cell that opens each one, and the lines of the new file that it hides. */
+function foldsOf(root: HTMLElement, lineCount = Infinity) {
+	const rows = Array.from(root.querySelectorAll('tr'));
 	let before = 0;
-	for (const [index, row] of rows.entries()) {
-		const fold = row.querySelector<HTMLElement>(DIFF_FOLD);
-		if (!fold) {
+	return rows.flatMap((row, index) => {
+		const cell = row.querySelector<HTMLElement>(DIFF_FOLD);
+		if (!cell) {
 			before = diffLineOf(row) || before;
-			continue;
+			return [];
 		}
 		const after = rows
 			.slice(index + 1)
 			.map(diffLineOf)
 			.find((number) => number > 0);
-		if (line > before && (after === undefined || line < after)) {
-			fold.click();
-			return true;
-		}
-	}
-	return false;
+		return [{ cell, row, first: before + 1, last: (after ?? lineCount + 1) - 1 }];
+	});
+}
+
+/** Opens the folded part of a diff that holds a line. Returns false when no fold holds it. */
+function unfoldLine(section: HTMLElement, line: number): boolean {
+	const fold = foldsOf(section).find(({ first, last }) => line >= first && line <= last);
+	fold?.cell.click();
+	return !!fold;
 }
 
 /** The open animation moves the content of a file, so a scroll waits for its end. */
@@ -126,12 +129,9 @@ async function goToFile(path: string, line?: number) {
 	let row = line ? rowOf(section, line) : undefined;
 	if (line && !row && unfoldLine(section, line)) {
 		await nextTick();
-		const marks = findings.value.filter((finding) => finding.file === path && finding.location);
-		for (const diff of section.querySelectorAll<HTMLElement>(
-			'[data-test-id="skill-source-file-diff"]',
-		)) {
-			markFindings(diff, marks);
-		}
+		const file = files.value.find((candidate) => candidate.path === path);
+		const diff = section.querySelector<HTMLElement>('[data-test-id="skill-source-file-diff"]');
+		if (file && diff) decorateDiff(diff, file);
 		row = rowOf(section, line);
 	}
 	(row ?? section).scrollIntoView({ block: row ? 'center' : 'start', inline: 'nearest' });
@@ -251,16 +251,44 @@ function markFindings(element: HTMLElement, value: SkillScanFinding[]) {
 	}
 }
 
-const vFindingMarks: Directive<HTMLElement, SkillScanFinding[]> = (element, { value }) =>
-	markFindings(element, value);
+type DiffFile = { marks: SkillScanFinding[]; after: string };
 
-/** The viewer shows the lines of a fold without an update of this component, so they get their marks here. */
-async function onDiffClick(event: MouseEvent, marks: SkillScanFinding[]) {
-	const diff = event.currentTarget;
-	if (!(diff instanceof HTMLElement) || !(event.target instanceof Element)) return;
-	if (!event.target.closest(DIFF_FOLD)) return;
+/** The diff viewer has no slots, so this adds the marks of the findings and the labels of the folded parts. */
+function decorateDiff(diff: HTMLElement, file: DiffFile) {
+	markFindings(diff, file.marks);
+	// The viewer leaves out a line break at the end of the file.
+	const lineCount = file.after.replace(/\n$/, '').split('\n').length;
+	for (const { row, first, last } of foldsOf(diff, lineCount)) {
+		const count = last - first + 1;
+		const label = i18n.baseText('settings.context.skills.connect.review.hiddenLines', {
+			interpolate: { count },
+			adjustToNumber: count,
+		});
+		// The last cell shows the label. It is the button for the keyboard.
+		const attributes = { 'data-label': label, 'aria-label': label, role: 'button', tabindex: '0' };
+		for (const [name, value] of Object.entries(attributes)) {
+			row.lastElementChild?.setAttribute(name, value);
+		}
+	}
+}
+
+const vDiffDecor: Directive<HTMLElement, DiffFile> = (element, { value }) =>
+	decorateDiff(element, value);
+
+/**
+ * Opens a folded part from a click or a key on its row. Only the first cell of the viewer listens
+ * for a click. The viewer shows the lines without an update of this component, so the new rows
+ * get their marks and labels here.
+ */
+async function onFoldAction(event: MouseEvent | KeyboardEvent, file: DiffFile) {
+	const { currentTarget: diff, target } = event;
+	const cell =
+		target instanceof Element ? target.closest('tr')?.querySelector<HTMLElement>(DIFF_FOLD) : null;
+	if (!(diff instanceof HTMLElement) || !(target instanceof Node) || !cell) return;
+	if (event instanceof KeyboardEvent) event.preventDefault();
+	if (!cell.contains(target) || event instanceof KeyboardEvent) cell.click();
 	await nextTick();
-	markFindings(diff, marks);
+	decorateDiff(diff, file);
 }
 
 const reviewFiles = computed<SkillUpdateFile[]>(
@@ -510,14 +538,15 @@ function hasPreview(finding: SkillScanFinding): boolean {
 					>{{ segment.text }}</mark><template v-else>{{ segment.text }}</template></template></span></span></code></pre>
 						<NodeDiff
 							v-if="diffFiles && file.hasText"
-							v-finding-marks="file.marks"
+							v-diff-decor="file"
 							:class="$style.diff"
 							:old-string="file.before"
 							:new-string="file.after"
 							language="plaintext"
 							:context="DIFF_CONTEXT"
 							data-test-id="skill-source-file-diff"
-							@click="onDiffClick($event, file.marks)"
+							@click="onFoldAction($event, file)"
+							@keydown.enter.space="onFoldAction($event, file)"
 						/>
 					</N8nAnimatedCollapsibleContent>
 				</CollapsibleRoot>
@@ -627,6 +656,31 @@ function hasPreview(finding: SkillScanFinding): boolean {
 		padding: 0;
 		overflow: hidden;
 		font-size: 0;
+	}
+
+	/* A folded part is one grey row with the text "Show N hidden lines", not the "> ⋯" of the viewer. */
+	tr:has(:global(.blob-num-hunk[colspan])) td {
+		background-color: var(--background--subtle);
+		font-size: 0;
+		cursor: pointer;
+
+		&[data-label]::after {
+			content: attr(data-label);
+			font-family: var(--font-family);
+			font-size: var(--font-size--2xs);
+			color: var(--text-color--subtle);
+		}
+
+		&:focus-visible {
+			outline: var(--focus--border-width) solid var(--focus--outline-color);
+			outline-offset: calc(-1 * var(--focus--border-width));
+		}
+	}
+
+	/* The lines of an opened part look like the other unchanged lines. */
+	:global(.blob-num-hunk):not([colspan]),
+	:global(.blob-num-hunk):not([colspan]) ~ :global(.blob-code-hunk) {
+		background-color: transparent;
 	}
 
 	tr:has(.warning) {
