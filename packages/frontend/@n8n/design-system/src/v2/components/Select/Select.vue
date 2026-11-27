@@ -661,8 +661,12 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	width: max-content;
-	min-width: max(var(--reka-select-trigger-width, 0px), var(--spacing--4xl));
+	width: var(--select-content--width, max-content);
+	min-width: var(
+		--select-content--min-width,
+		max(var(--reka-select-trigger-width, 0px), var(--spacing--4xl))
+	);
+	max-width: var(--select-content--max-width, none);
 	max-height: min(var(--reka-select-content-available-height, 50vh), calc(var(--height--5xl) * 3));
 	border-radius: var(--input--radius);
 	background-color: var(--background--surface);
