@@ -269,6 +269,98 @@ describe('Disable MFA setup', () => {
 
 		expect((await getCurrentUser(earlierToken)).status).toBe(401);
 	});
+
+	test('should keep a session issued before enabling MFA invalid after disabling MFA with a TOTP code', async () => {
+		// IAM-1643
+		const user = await createUser();
+		const earlierToken = Container.get(AuthService).issueJWT(user, false, 'test-browser-id');
+		const getCurrentUser = async (token: string) =>
+			await request(testServer.app)
+				.get(`/${REST_PATH_SEGMENT}/login`)
+				.set('Cookie', `${AUTH_COOKIE_NAME}=${token}`);
+
+		expect((await getCurrentUser(earlierToken)).status).toBe(200);
+
+		const qrResponse = await testServer.authAgentFor(user).get('/mfa/qr').expect(200);
+		const { secret } = qrResponse.body.data;
+		const mfaCode = new TOTPService().generateTOTP(secret);
+
+		await testServer.authAgentFor(user).post('/mfa/verify').send({ mfaCode }).expect(200);
+		const enableResponse = await testServer
+			.authAgentFor(user)
+			.post('/mfa/enable')
+			.send({ mfaCode })
+			.expect(200);
+
+		const mfaToken = utils.getAuthToken(enableResponse);
+		expect(mfaToken).toBeDefined();
+		expect((await getCurrentUser(mfaToken!)).status).toBe(200);
+		expect((await getCurrentUser(earlierToken)).status).toBe(401);
+
+		const disableResponse = await request(testServer.app)
+			.post(`/${REST_PATH_SEGMENT}/mfa/disable`)
+			.set('Cookie', `${AUTH_COOKIE_NAME}=${mfaToken}`)
+			.send({ mfaCode: new TOTPService().generateTOTP(secret) })
+			.expect(200);
+
+		const postDisableToken = utils.getAuthToken(disableResponse);
+		expect(postDisableToken).toBeDefined();
+		expect((await getCurrentUser(postDisableToken!)).status).toBe(200);
+
+		const personAfterDisable = await Container.get(DataSource).manager.findOneOrFail(Person, {
+			where: { id: user.id },
+		});
+		expect(personAfterDisable.mfaEnabled).toBe(false);
+		expect(personAfterDisable.mfaSecret).toBeNull();
+
+		expect((await getCurrentUser(earlierToken)).status).toBe(401);
+	});
+
+	test('should keep a session issued before enabling MFA invalid after disabling MFA with a recovery code', async () => {
+		// IAM-1643
+		const user = await createUser();
+		const earlierToken = Container.get(AuthService).issueJWT(user, false, 'test-browser-id');
+		const getCurrentUser = async (token: string) =>
+			await request(testServer.app)
+				.get(`/${REST_PATH_SEGMENT}/login`)
+				.set('Cookie', `${AUTH_COOKIE_NAME}=${token}`);
+
+		expect((await getCurrentUser(earlierToken)).status).toBe(200);
+
+		const qrResponse = await testServer.authAgentFor(user).get('/mfa/qr').expect(200);
+		const { secret, recoveryCodes } = qrResponse.body.data;
+		const mfaCode = new TOTPService().generateTOTP(secret);
+
+		await testServer.authAgentFor(user).post('/mfa/verify').send({ mfaCode }).expect(200);
+		const enableResponse = await testServer
+			.authAgentFor(user)
+			.post('/mfa/enable')
+			.send({ mfaCode })
+			.expect(200);
+
+		const mfaToken = utils.getAuthToken(enableResponse);
+		expect(mfaToken).toBeDefined();
+		expect((await getCurrentUser(mfaToken!)).status).toBe(200);
+		expect((await getCurrentUser(earlierToken)).status).toBe(401);
+
+		const disableResponse = await request(testServer.app)
+			.post(`/${REST_PATH_SEGMENT}/mfa/disable`)
+			.set('Cookie', `${AUTH_COOKIE_NAME}=${mfaToken}`)
+			.send({ mfaRecoveryCode: recoveryCodes[0] })
+			.expect(200);
+
+		const postDisableToken = utils.getAuthToken(disableResponse);
+		expect(postDisableToken).toBeDefined();
+		expect((await getCurrentUser(postDisableToken!)).status).toBe(200);
+
+		const personAfterDisable = await Container.get(DataSource).manager.findOneOrFail(Person, {
+			where: { id: user.id },
+		});
+		expect(personAfterDisable.mfaEnabled).toBe(false);
+		expect(personAfterDisable.mfaSecret).toBeNull();
+
+		expect((await getCurrentUser(earlierToken)).status).toBe(401);
+	});
 });
 
 describe('Change password with MFA enabled', () => {
