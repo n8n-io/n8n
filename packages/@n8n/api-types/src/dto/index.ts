@@ -881,6 +881,7 @@ export {
 	PromotePackageResultDto,
 	PrototypeApplyCredentialsDto,
 	PrototypeDiscardedCredentialsDto,
+	PrototypePrepareCredentialsDto,
 	PrototypePreparedCredentialsDto,
 	PromoteSelectionResultDto,
 	applyPackageCountsSchema,

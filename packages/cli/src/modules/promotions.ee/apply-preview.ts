@@ -525,6 +525,7 @@ function addCredentialRules(
 			consumers,
 			ownerProject: projectOf(projectId),
 			...(file.credential.data !== undefined ? { expressionData: file.credential.data } : {}),
+			...prototypeBranchSettings(file, projectOf),
 		});
 	}
 
@@ -547,6 +548,7 @@ function addCredentialRules(
 			consumers: [],
 			ownerProject: projectOf(file.projectId),
 			...(file.credential.data !== undefined ? { expressionData: file.credential.data } : {}),
+			...prototypeBranchSettings(file, projectOf),
 		});
 	}
 }
@@ -647,4 +649,15 @@ function sortedByJson<T>(entries: T[]): T[] {
 		.map((entry) => [canonicalJson(entry), entry] as const)
 		.sort(([a], [b]) => compare(a, b))
 		.map(([, entry]) => entry);
+}
+
+/** Prototype: what the branch says about a credential beyond its values. */
+function prototypeBranchSettings(file: InventoryCredential, projectOf: ProjectLookup) {
+	const { dataIsComplete, sharedWithProjectIds } = file.credential;
+	return {
+		...(dataIsComplete !== undefined ? { dataIsComplete } : {}),
+		...(sharedWithProjectIds?.length
+			? { sharedWithProjects: sharedWithProjectIds.map((id) => projectOf(id)) }
+			: {}),
+	};
 }

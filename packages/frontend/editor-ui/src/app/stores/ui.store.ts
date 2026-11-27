@@ -499,6 +499,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			initialData?: NewCredentialsModal['initialData'];
 			destination?: NewCredentialsModal['destination'];
 			createCredential?: NewCredentialsModal['createCredential'];
+			saveDraft?: NewCredentialsModal['saveDraft'];
 			onInitializeError?: NewCredentialsModal['onInitializeError'];
 			workflowId?: string;
 		} = {},
@@ -526,6 +527,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			initialData: options.initialData,
 			destination: options.destination,
 			createCredential: options.createCredential,
+			saveDraft: options.saveDraft,
 			onInitializeError: options.onInitializeError,
 		} as Partial<NewCredentialsModal>);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');

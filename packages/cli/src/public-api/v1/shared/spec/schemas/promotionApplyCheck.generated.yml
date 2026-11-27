@@ -109,6 +109,21 @@ properties:
               additionalProperties:
                 $ref: promotionCredentialExpressionValue.generated.yml
               description: Credential expressions.
+            dataIsComplete:
+              type: boolean
+            sharedWithProjects:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
           required:
             - kind
             - sourceId

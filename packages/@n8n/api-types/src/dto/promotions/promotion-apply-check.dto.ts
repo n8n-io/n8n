@@ -96,6 +96,10 @@ export const promotionMissingCredentialBindingSchema = credentialSchema.extend({
 	}),
 	ownerProject: promotionBindingProjectSchema,
 	expressionData: promotionCredentialExpressionDataSchema.optional(),
+	/** Prototype: the branch file holds every value, so the user adds none. */
+	dataIsComplete: z.boolean().optional(),
+	/** Prototype: the projects that the branch shares the credential with. */
+	sharedWithProjects: z.array(promotionBindingProjectSchema).optional(),
 });
 
 export const promotionMissingVariableBindingSchema = z.object({

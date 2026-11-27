@@ -1104,7 +1104,7 @@ export class PromotionsService {
 	async prepareApplyCredentials(
 		projectId: string,
 		actor: User,
-		credentialIds: string[],
+		requested: Array<{ id: string; name?: string; data?: Record<string, unknown> }>,
 	): Promise<PreparedApplyCredential[]> {
 		const input = await this.resolver.resolveForProject(projectId, 'apply');
 		return await this.withEnvironmentLock(
@@ -1120,7 +1120,7 @@ export class PromotionsService {
 				this.preparedCredentials.set(actor.id, prepared);
 
 				const result: PreparedApplyCredential[] = [];
-				for (const id of new Set(credentialIds)) {
+				for (const { id, name, data: values } of requested) {
 					const file = inventory.credentials.find(({ credential }) => credential.id === id);
 					if (!file?.projectId) continue;
 					const { credential } = file;
@@ -1129,12 +1129,11 @@ export class PromotionsService {
 						await credentials.createStubCredential(
 							{
 								id,
-								name: credential.name,
+								name: name ?? credential.name,
 								type: credential.type,
 								projectId: file.projectId,
-								...(credential.data !== undefined
-									? { data: credential.data as ICredentialDataDecryptedObject }
-									: {}),
+								// The values that the user added win over the expressions on the branch.
+								data: { ...credential.data, ...values } as ICredentialDataDecryptedObject,
 								...(credential.description !== undefined
 									? { description: credential.description }
 									: {}),
@@ -1157,7 +1156,7 @@ export class PromotionsService {
 						type: credential.type,
 						ownerProjectId: file.projectId,
 						created: prepared.has(id),
-						needsValues: credential.dataIsComplete !== true,
+						needsValues: credential.dataIsComplete !== true && values === undefined,
 						sharedWith: shared.map(({ project }) => ({ id: project.id, name: project.name })),
 						notShared: sharedWith.filter(
 							(pid) => !shared.some(({ projectId }) => projectId === pid),

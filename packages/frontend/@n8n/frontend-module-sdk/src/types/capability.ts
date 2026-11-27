@@ -121,6 +121,8 @@ export type CredentialEditorOptions = {
 	onInitializeError?: (error: unknown) => void;
 	/** Saves the credential and resolves its id. */
 	createCredential?: (details: CredentialPayload, projectId: string) => Promise<string>;
+	/** Prototype: keeps the form values in the caller and closes. Nothing is saved on the server. */
+	saveDraft?: (details: CredentialPayload) => void;
 };
 
 /** A variable as the editor reads it from `/variables`. */

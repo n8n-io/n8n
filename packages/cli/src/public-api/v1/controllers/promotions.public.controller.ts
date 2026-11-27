@@ -6,6 +6,7 @@ import {
 	ContinueApplySelectionDto,
 	PrototypeApplyCredentialsDto,
 	PrototypeDiscardedCredentialsDto,
+	PrototypePrepareCredentialsDto,
 	PrototypePreparedCredentialsDto,
 	CreatePromotionEnvironmentDto,
 	CreatePromotionProviderDto,
@@ -914,7 +915,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Prototype: Create the missing credentials of an Apply from the branch')
 	@ApiDescription(
 		BETA_NOTE +
-			'Prototype. Creates each listed credential that this instance lacks, with the name, type, description, expression values and sharing on the branch. Secrets stay empty.',
+			'Prototype. Creates each listed credential that this instance lacks, with the name, type, description, expression values and sharing on the branch, and the values in the request.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PrototypePreparedCredentialsDto)
@@ -922,13 +923,13 @@ export class PromotionsPublicController {
 		req: PublicApiRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
-		@Body input: PrototypeApplyCredentialsDto,
+		@Body input: PrototypePrepareCredentialsDto,
 	) {
 		return {
 			credentials: await (await this.promotionsService()).prepareApplyCredentials(
 				projectId,
 				req.user,
-				input.credentialIds,
+				input.credentials,
 			),
 		};
 	}

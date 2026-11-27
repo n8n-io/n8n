@@ -21,7 +21,7 @@ import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, toRef, watch } from 'vue';
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
 import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue';
@@ -82,22 +82,41 @@ const scopedCheck = computed(() => {
 });
 // A project-wide conflict blocks all of them, so it also stops a selection without workflows.
 const selectableResourceKeys = computed(() => (graph.value ? selectableKeys(graph.value) : []));
+// Prototype: the missing credentials come from the branch. The user adds their missing values here,
+// and Apply creates them. A credential with all its values no longer blocks.
+const branchCredentials = usePreparedApplyCredentials(
+	computed(() => (props.direction === 'apply' ? props.projectId : undefined)),
+	computed(() => (props.direction === 'apply' ? scopedCheck.value : null)),
+);
+const withoutCredentials = (keep: (sourceId: string) => boolean) =>
+	scopedCheck.value && {
+		...scopedCheck.value,
+		missingBindings: scopedCheck.value.missingBindings.filter(
+			(binding) => binding.kind !== 'credential' || keep(binding.sourceId),
+		),
+	};
+// Gates the selection: only the credentials that still need values block.
+const blockingCheck = computed(() =>
+	withoutCredentials((id) => !branchCredentials.readyIds.value.has(id)),
+);
+// The Blockers table: the branch credentials have their own list above it.
+const blockersTableCheck = computed(() => withoutCredentials(() => false));
 const blockerList = computed(() => [
-	...(scopedCheck.value ? listBlockers(scopedCheck.value, selectableResourceKeys.value) : []),
+	...(blockingCheck.value ? listBlockers(blockingCheck.value, selectableResourceKeys.value) : []),
 	...(props.direction === 'promote' && graph.value ? crossProjectMoveBlockers(graph.value) : []),
 ]);
 const blockers = computed(() => indexBlockers(blockerList.value));
-// Prototype: Apply creates the missing branch credentials in flight, and deletes them on abort.
-const preparedCredentials = usePreparedApplyCredentials(
-	computed(() => (props.direction === 'apply' ? props.projectId : undefined)),
-	computed(() => (props.direction === 'apply' ? scopedCheck.value : null)),
-	refresh,
-);
 const operation = usePromotionOperation(projectId, direction, {
 	preview,
 	check,
 	refresh,
-	onApplied: () => preparedCredentials.keep(),
+	beforeApply: async () => {
+		const created = await branchCredentials.create();
+		return {
+			changed: created.length > 0,
+			undo: async () => await branchCredentials.discard(created),
+		};
+	},
 });
 const selection = usePromotionSelection(graph, {
 	disabled: computed(() => blockers.value.blocked),
@@ -252,7 +271,7 @@ const hasSelectedBlocked = computed(() =>
 	[...selection.selected.value].some((key) => blockers.value.blocked.has(key)),
 );
 const submitBlockedReason = computed(() => {
-	const pendingValues = preparedCredentials.pendingValues.value.length;
+	const pendingValues = branchCredentials.pending.value.length;
 	if (pendingValues > 0) {
 		return i18n.baseText('promotions.prototype.submit.pendingValues', {
 			adjustToNumber: pendingValues,
@@ -326,22 +345,6 @@ watch([projectId, direction], () => {
 	promoteDialogOpen.value = false;
 	createdBindings.value = 0;
 });
-
-// Prototype: leaving without an Apply deletes the credentials that the page created.
-onBeforeRouteLeave(async () => {
-	await preparedCredentials.discard();
-});
-watch([projectId, direction], async () => {
-	await preparedCredentials.discard();
-});
-const createdFromBranch = computed(
-	() => preparedCredentials.prepared.value.filter(({ created }) => created).length,
-);
-
-async function confirmPreparedOnly() {
-	preparedCredentials.keep();
-	await router.replace({ name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: props.projectId } });
-}
 
 async function onSubmit() {
 	if (props.direction === 'promote') {
@@ -486,37 +489,6 @@ const treeResizer = useResizablePanel({
 			@click:button="refresh"
 		/>
 		<PromotionReviewBlocker v-else-if="state === 'blocked'" :class="$style.state" />
-		<div
-			v-else-if="state === 'empty' && createdFromBranch > 0"
-			:class="[$style.state, $style.prepared]"
-			data-test-id="promotion-preview-prepared-only"
-		>
-			<N8nText tag="h2" bold color="text-dark">
-				{{ i18n.baseText('promotions.prototype.ready.title') }}
-			</N8nText>
-			<N8nText tag="p" color="text-base">
-				{{
-					i18n.baseText('promotions.prototype.ready.description', {
-						adjustToNumber: createdFromBranch,
-						interpolate: { count: String(createdFromBranch) },
-					})
-				}}
-			</N8nText>
-			<PromotionPreparedCredentials
-				:prepared="preparedCredentials.prepared.value"
-				:pending="preparedCredentials.pendingValues.value"
-				:busy="preparedCredentials.isPreparing.value"
-				:error="preparedCredentials.error.value"
-				@add-values="preparedCredentials.addValues"
-			/>
-			<N8nButton
-				:disabled="preparedCredentials.pendingValues.value.length > 0"
-				data-test-id="promotion-preview-prepared-confirm"
-				@click="confirmPreparedOnly"
-			>
-				{{ i18n.baseText('promotions.prototype.ready.confirm') }}
-			</N8nButton>
-		</div>
 		<N8nEmptyState
 			v-else-if="state === 'empty'"
 			:class="$style.state"
@@ -637,18 +609,18 @@ const treeResizer = useResizablePanel({
 				v-if="showBlockersTab && scopedCheck"
 				v-show="activeTab === 'blockers'"
 				:class="$style.blockers"
-				:check="scopedCheck"
+				:check="blockersTableCheck ?? scopedCheck"
 				:busy="operation.isBusy.value"
 				@refresh="onBindingCreated"
 				@inspect="inspectFromBlockers"
 			>
 				<PromotionPreparedCredentials
-					v-if="preparedCredentials.prepared.value.length > 0 || preparedCredentials.error.value"
-					:prepared="preparedCredentials.prepared.value"
-					:pending="preparedCredentials.pendingValues.value"
-					:busy="preparedCredentials.isPreparing.value"
-					:error="preparedCredentials.error.value"
-					@add-values="preparedCredentials.addValues"
+					v-if="branchCredentials.branchCredentials.value.length > 0"
+					:credentials="branchCredentials.branchCredentials.value"
+					:ready-ids="branchCredentials.readyIds.value"
+					:drafted-ids="new Set(branchCredentials.drafts.value.keys())"
+					:busy="operation.isBusy.value"
+					@add-values="branchCredentials.addValues"
 				/>
 				<N8nCallout v-if="submitBlockedReason && !operation.error.value" theme="warning" slim>
 					{{ submitBlockedReason }}

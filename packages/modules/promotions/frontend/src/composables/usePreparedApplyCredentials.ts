@@ -1,113 +1,80 @@
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref, shallowRef, watch, type Ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 
-import {
-	discardApplyCredentials,
-	prepareApplyCredentials,
-	type PreparedApplyCredential,
-} from '../promotions.api';
-import type { ApplyCheckResult } from '../promotions.types';
+import { discardApplyCredentials, prepareApplyCredentials } from '../promotions.api';
+import type { ApplyCheckResult, MissingPromotionBinding } from '../promotions.types';
+
+export type BranchCredential = Extract<MissingPromotionBinding, { kind: 'credential' }>;
+
+type Draft = { name: string; data: Record<string, unknown> };
 
 /**
- * Prototype. Creates the missing credentials of an Apply from the branch as soon as the check
- * names them, with their sharing and expression values. The user then only adds the secret
- * values. An Apply that does not finish deletes the credentials again.
+ * Prototype. The missing credentials of an Apply come from the branch: name, expression values
+ * and sharing. The user adds only the values that the branch lacks. The values stay in this page
+ * until the user applies. Apply then creates the credentials first, and deletes them again when
+ * the Apply does not go through.
  */
 export function usePreparedApplyCredentials(
 	projectId: Ref<string | undefined>,
 	check: Ref<Omit<ApplyCheckResult, 'environmentId' | 'git'> | null>,
-	refresh: () => Promise<void>,
 ) {
 	const rootStore = useRootStore();
 	// Looked up on first use: the editors are shell modals that only an edit needs.
 	const editors = () => capabilityRegistry.use(capabilities.resourceEditors);
 
-	const prepared = shallowRef<PreparedApplyCredential[]>([]);
-	const completed = ref(new Set<string>());
-	const isPreparing = ref(false);
-	const error = ref<string | null>(null);
-	/** The credential whose editor is open, so its close marks the values as added. */
-	const editing = ref<string | null>(null);
-	let kept = false;
+	const drafts = ref(new Map<string, Draft>());
 
-	const pendingValues = computed(() =>
-		prepared.value.filter(
-			({ id, created, needsValues }) => created && needsValues && !completed.value.has(id),
+	const branchCredentials = computed((): BranchCredential[] =>
+		(check.value?.missingBindings ?? []).filter(
+			(binding): binding is BranchCredential => binding.kind === 'credential',
 		),
 	);
-	const createdIds = computed(() =>
-		prepared.value.filter(({ created }) => created).map(({ id }) => id),
+	const isReady = (credential: BranchCredential) =>
+		credential.dataIsComplete === true || drafts.value.has(credential.sourceId);
+	const pending = computed(() => branchCredentials.value.filter((c) => !isReady(c)));
+	const readyIds = computed(
+		() => new Set(branchCredentials.value.filter(isReady).map(({ sourceId }) => sourceId)),
 	);
 
-	async function prepare(ids: string[]) {
+	function addValues(credential: BranchCredential) {
+		const draft = drafts.value.get(credential.sourceId);
+		editors().openCredentialEditor(credential.credentialType, {
+			initialName: draft?.name ?? credential.name,
+			initialData: { ...credential.expressionData, ...draft?.data },
+			appendToBody: true,
+			hideAskAssistant: true,
+			usageScope: 'project',
+			saveDraft: (details) => {
+				const next = new Map(drafts.value);
+				next.set(credential.sourceId, { name: details.name, data: { ...details.data } });
+				drafts.value = next;
+			},
+		});
+	}
+
+	/** Creates the ready credentials right before the Apply. Resolves the ids it created. */
+	async function create(): Promise<string[]> {
 		const id = projectId.value;
-		const known = new Set(prepared.value.map((credential) => credential.id));
-		const fresh = ids.filter((credentialId) => !known.has(credentialId));
-		if (id === undefined || fresh.length === 0 || isPreparing.value) return;
-		isPreparing.value = true;
-		error.value = null;
-		try {
-			const { credentials } = await prepareApplyCredentials(rootStore.publicApiContext, id, fresh);
-			prepared.value = [...prepared.value, ...credentials];
-			kept = false;
-			await refresh();
-		} catch (cause) {
-			error.value = cause instanceof Error ? cause.message : String(cause);
-		} finally {
-			isPreparing.value = false;
-		}
+		const ready = branchCredentials.value.filter(isReady);
+		if (id === undefined || ready.length === 0) return [];
+		const { credentials } = await prepareApplyCredentials(
+			rootStore.publicApiContext,
+			id,
+			ready.map(({ sourceId }) => {
+				const draft = drafts.value.get(sourceId);
+				return { id: sourceId, ...(draft ? { name: draft.name, data: draft.data } : {}) };
+			}),
+		);
+		return credentials.filter(({ created }) => created).map(({ id: created }) => created);
 	}
 
-	// The check lists a branch credential that this instance lacks: create it from the branch.
-	watch(
-		check,
-		async (current) => {
-			const ids = (current?.missingBindings ?? []).flatMap((binding) =>
-				binding.kind === 'credential' ? binding.sourceId : [],
-			);
-			await prepare(ids);
-		},
-		{ immediate: true },
-	);
-
-	function addValues(credentialId: string) {
-		editing.value = credentialId;
-		editors().openExistingCredentialEditor(credentialId);
-	}
-
-	// Prototype: closing the editor counts as adding the values.
-	watch(
-		() => editing.value !== null && editors().isEditorOpen('credential'),
-		(open, wasOpen) => {
-			if (open || !wasOpen || editing.value === null) return;
-			completed.value = new Set([...completed.value, editing.value]);
-			editing.value = null;
-		},
-	);
-
-	/** The Apply finished, so the credentials stay. */
-	function keep() {
-		kept = true;
-	}
-
-	/** The Apply did not finish: delete what this page created. */
-	async function discard() {
+	/** The Apply did not go through: delete what {@link create} made. The drafts stay. */
+	async function discard(ids: string[]) {
 		const id = projectId.value;
-		const ids = createdIds.value;
-		if (kept || id === undefined || ids.length === 0) return;
-		prepared.value = [];
-		completed.value = new Set();
+		if (id === undefined || ids.length === 0) return;
 		await discardApplyCredentials(rootStore.publicApiContext, id, ids);
 	}
 
-	return {
-		prepared,
-		pendingValues,
-		isPreparing,
-		error,
-		addValues,
-		keep,
-		discard,
-	};
+	return { branchCredentials, pending, readyIds, drafts, addValues, create, discard };
 }

@@ -245,6 +245,22 @@ export class PrototypeApplyCredentialsDto extends Z.class(
 	{ strict: true },
 ) {}
 
+/** Prototype: the branch credentials to create, with the values that the user added. */
+export class PrototypePrepareCredentialsDto extends Z.class(
+	{
+		credentials: z
+			.array(
+				z.object({
+					id: z.string().min(1).max(36),
+					name: z.string().min(1).optional(),
+					data: z.record(z.unknown()).optional(),
+				}),
+			)
+			.max(500),
+	},
+	{ strict: true },
+) {}
+
 /** Prototype: the branch credentials that an Apply created in flight, or found. */
 export class PrototypePreparedCredentialsDto extends Z.class({
 	credentials: z.array(

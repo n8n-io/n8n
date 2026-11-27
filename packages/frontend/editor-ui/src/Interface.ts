@@ -722,6 +722,8 @@ export interface NewCredentialsModal extends ModalState {
 	initialData?: Record<string, unknown>;
 	destination?: ResourceEditorDestination;
 	createCredential?: (details: CredentialPayload, projectId: string) => Promise<string>;
+	/** Prototype: keeps the form values in the caller and closes. Nothing is saved on the server. */
+	saveDraft?: (details: CredentialPayload) => void;
 	onInitializeError?: (error: unknown) => void;
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;

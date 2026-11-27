@@ -152,17 +152,17 @@ export type PreparedApplyCredential = {
 	notShared: string[];
 };
 
-/** Prototype: creates the missing credentials of an Apply from the branch. */
+/** Prototype: creates the missing credentials of an Apply from the branch and the added values. */
 export async function prepareApplyCredentials(
 	context: PublicApiContext,
 	projectId: string,
-	credentialIds: string[],
+	credentials: Array<{ id: string; name?: string; data?: Record<string, unknown> }>,
 ): Promise<{ credentials: PreparedApplyCredential[] }> {
 	return await makePublicApiRequest(
 		context,
 		'POST',
 		`/promotions/projects/${projectId}/apply/credentials/prepare`,
-		{ credentialIds },
+		{ credentials },
 	);
 }
 

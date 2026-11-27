@@ -66,13 +66,16 @@ export function usePromotionOperation(
 		preview,
 		check,
 		refresh,
-		onApplied,
+		beforeApply,
 	}: {
 		preview: Ref<PromotionPreview | null>;
 		check: Ref<ApplyCheckResult | null>;
 		refresh: () => Promise<void>;
-		/** Prototype: runs before the page leaves after a successful Apply. */
-		onApplied?: () => void;
+		/**
+		 * Prototype: runs right before a project Apply request. `changed` says it wrote to this
+		 * instance, and `undo` runs when the Apply does not go through.
+		 */
+		beforeApply?: () => Promise<{ changed: boolean; undo: () => Promise<void> }>;
 	},
 ) {
 	const i18n = useI18n();
@@ -184,22 +187,31 @@ export function usePromotionOperation(
 	}
 
 	async function applyProject(id: string, request: OperationRequest, source: ApplyCheckResult) {
+		const prepared = await beforeApply?.();
 		// Apply what the page shows. A branch or an instance that changed since is reported, not applied.
+		// Prototype: the credentials that this Apply created change the instance, so the reviewed
+		// preview revision no longer matches. The commit check stays.
 		const expected = {
 			workflowIds: request.workflowIds,
 			folderIds: request.folderIds,
 			credentialIds: request.credentialIds,
 			expectedSource: { environmentId: source.environmentId, ...source.git },
-			expectedPreviewRevision: preview.value?.revision,
+			...(prepared?.changed ? {} : { expectedPreviewRevision: preview.value?.revision }),
 		};
-		const result = request.confirmDestructiveChanges
-			? await continueApplyProjectSelection(rootStore.publicApiContext, id, {
-					...expected,
-					confirmDestructiveChanges: true,
-				})
-			: await applyProjectSelection(rootStore.publicApiContext, id, expected);
+		let result;
+		try {
+			result = request.confirmDestructiveChanges
+				? await continueApplyProjectSelection(rootStore.publicApiContext, id, {
+						...expected,
+						confirmDestructiveChanges: true,
+					})
+				: await applyProjectSelection(rootStore.publicApiContext, id, expected);
+		} catch (cause) {
+			await prepared?.undo();
+			throw cause;
+		}
+		if (result.status !== 'applied') await prepared?.undo();
 		if (result.status === 'applied') {
-			onApplied?.();
 			outcome.showApplied(result);
 			await leave();
 			await outcome.announceApplied(id);

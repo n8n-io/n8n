@@ -1011,6 +1011,16 @@ async function persistCredential(): Promise<
 
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
 
+	// Prototype: a draft stays with the caller until it applies, so nothing is saved here.
+	const saveDraft = modalOptions.value?.saveDraft;
+	if (isNewCredential && saveDraft) {
+		saveDraft(credentialDetails);
+		hasUnsavedChanges.value = false;
+		uiStore.closeModal(props.modalName);
+		modalBus.value.emit('closed');
+		return null;
+	}
+
 	if (isNewCredential) {
 		if (presetUsageScope.value) {
 			credentialDetails.usageScope = presetUsageScope.value;
