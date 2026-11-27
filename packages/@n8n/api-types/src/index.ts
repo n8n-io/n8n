@@ -12,6 +12,7 @@ export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
 export * from './skills/index';
+export * from './mcp-triggers';
 export * from './knowledge/index';
 export * from './builder-tool-names';
 export * from './schemas/app.schema';
@@ -166,6 +167,7 @@ export { passwordSchema, createPasswordSchema } from './schemas/password.schema'
 export { n8nIdSchema } from './schemas/id.schema';
 export {
 	agentIdParamSchema,
+	agentVersionIdParamSchema,
 	aiPreferenceIdParamSchema,
 	columnIdParamSchema,
 	communityPackageNameParamSchema,

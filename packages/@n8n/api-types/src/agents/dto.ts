@@ -48,7 +48,7 @@ import {
 	publicApiPaginationSchema,
 } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
-import { nullableObjectGuardSchema } from '../schemas/object-guard.schema';
+import { nullableObjectGuardSchema, objectGuardSchema } from '../schemas/object-guard.schema';
 import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
 import { Z } from '../zod-class';
 import {
@@ -554,6 +554,59 @@ export class AgentListPublicItemDto extends Z.class(agentListPublicItemSchema.sh
 export class AgentListPublicDto extends Z.class({
 	data: z.array(agentListPublicItemSchema),
 	nextCursor: z.string().nullable(),
+}) {}
+
+const agentVersionLastPublishedSchema = z.object({
+	author: z.string(),
+	createdAt: z.string(),
+	isLegacy: z.boolean(),
+});
+
+/**
+ * Row of the Public API version list. Editor-only fields such as
+ * `includesN8nChat` stay off this shape.
+ */
+export const agentVersionListItemPublicSchema = z.object({
+	versionId: z.string(),
+	agentId: z.string(),
+	name: z.string().nullable(),
+	description: z.string().nullable(),
+	author: z.string(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+	isActive: z.boolean(),
+	isCurrent: z.boolean(),
+	lastPublished: agentVersionLastPublishedSchema.optional(),
+});
+
+/** Query of the Public API `GET /agents/:agentId/versions`. `offset` stays inside the cursor. */
+export class ListAgentVersionsPublicQueryDto extends Z.class({
+	cursor: z.string().optional(),
+	limit: publicApiPaginationSchema.limit,
+}) {}
+
+/** Response of the Public API `GET /agents/:agentId/versions`: one cursor page of versions. */
+export class AgentVersionListPublicDto extends Z.class({
+	data: z.array(agentVersionListItemPublicSchema),
+	nextCursor: z.string().nullable(),
+}) {}
+
+/**
+ * Stored skill bodies predate the current write schema. A strict skill schema
+ * would reject a saved row and turn the version GET into a 500.
+ */
+const agentVersionSkillResponseSchema = objectGuardSchema<AgentSkill>().openapi({
+	type: 'object',
+	description: 'A skill body saved with this version.',
+	additionalProperties: true,
+});
+
+/** Response of the Public API `GET /agents/:agentId/versions/:versionId`. */
+export class AgentVersionPublicDto extends Z.class({
+	...agentVersionListItemPublicSchema.shape,
+	config: agentConfigResponseSchema,
+	tools: z.record(agentToolEntrySchema),
+	skills: z.record(agentVersionSkillResponseSchema),
 }) {}
 
 const agentListItemShape = {

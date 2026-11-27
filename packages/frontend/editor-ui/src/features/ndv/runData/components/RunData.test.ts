@@ -611,6 +611,18 @@ describe('RunData', () => {
 		expect(pinDataButton).not.toBeDisabled();
 	});
 
+	it('keeps the unpin link when the pin button is disabled', () => {
+		const { getByTestId } = render({
+			defaultRunItems: [],
+			displayMode: 'table',
+			pinnedData: [{ json: { name: 'Test' } }],
+			paneType: 'output',
+			disablePin: true,
+		});
+
+		expect(getByTestId('ndv-unpin-data')).toBeInTheDocument();
+	});
+
 	it('should render callout when data is pinned in output panel', async () => {
 		const { getByTestId } = render({
 			defaultRunItems: [],
@@ -2255,6 +2267,7 @@ describe('RunData', () => {
 		fetchedRunData,
 		inputNodes,
 		node,
+		disablePin = false,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -2284,6 +2297,7 @@ describe('RunData', () => {
 		/** The parent nodes that the input panel's schema view shows. */
 		inputNodes?: IConnectedNode[];
 		node?: INodeUi;
+		disablePin?: boolean;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -2458,6 +2472,7 @@ describe('RunData', () => {
 				executingMessage: '',
 				noDataInBranchMessage: '',
 				overrideOutputs,
+				disablePin,
 			},
 			slots: {
 				'data-redacted': '<div data-test-id="data-redacted-slot">Data is redacted</div>',

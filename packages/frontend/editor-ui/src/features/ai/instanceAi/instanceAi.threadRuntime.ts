@@ -309,22 +309,12 @@ export function getMcpServerTargetFromThreadMetadata(
 	return parsed.success ? parsed.data : undefined;
 }
 
-/** Whether the thread builds or edits an agent. Auto approval mode does not apply there. */
-export function threadTargetsAgent(metadata: Record<string, unknown> | undefined): boolean {
-	return (
-		getAgentBuilderTargetFromThreadMetadata(metadata) !== undefined ||
-		getAgentBuilderTargetsFromThreadMetadata(metadata).length > 0 ||
-		getPendingAgentTargetFromThreadMetadata(metadata) !== undefined
-	);
-}
-
 /** The approval mode that the backend uses for the run of a message sent now. */
-export function messageApprovalMode(
-	settings: { approvalModesAvailable: boolean; approvalMode: InstanceAiApprovalMode },
-	buildsAgent: boolean,
-): InstanceAiApprovalMode | 'unavailable' {
-	if (!settings.approvalModesAvailable) return 'unavailable';
-	return buildsAgent ? 'manual' : settings.approvalMode;
+export function messageApprovalMode(settings: {
+	approvalModesAvailable: boolean;
+	approvalMode: InstanceAiApprovalMode;
+}): InstanceAiApprovalMode | 'unavailable' {
+	return settings.approvalModesAvailable ? settings.approvalMode : 'unavailable';
 }
 
 export function getAgentPreviewViewFromThreadMetadata(
@@ -1657,10 +1647,7 @@ export function createThreadRuntime(
 			prefill_type: isPrefill ? authorship.prefillType : null,
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
-			approval_mode: messageApprovalMode(
-				instanceAiSettingsStore,
-				threadTargetsAgent(hooks.getThreadMetadata?.(threadId)),
-			),
+			approval_mode: messageApprovalMode(instanceAiSettingsStore),
 			mention_counts: mentionCounts,
 			attachment_count: attachmentCount,
 			selected_element_count: selectedElementCount,

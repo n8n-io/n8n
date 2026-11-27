@@ -14,6 +14,7 @@ import {
 import {
 	logsCommand,
 	openCommand,
+	panesCommand,
 	restartCommand,
 	runCommand,
 	servicesCommand,
@@ -56,6 +57,7 @@ const rig = defineCommand({
 		status: statusCommand,
 		logs: logsCommand,
 		open: openCommand,
+		panes: panesCommand,
 		services: servicesCommand,
 		env: envCommand,
 		profile: profileCommand,
