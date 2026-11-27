@@ -24,7 +24,6 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
-import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 import type {
 	AddedNodesAndConnections,
 	INodeUi,
@@ -251,7 +250,6 @@ const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBef
 	route,
 });
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
-const { openUpgrade: openAiGatewayUpgrade } = useAiGatewayTopUp();
 const { runWorkflow, runEntireWorkflow, stopCurrentExecution, stopWaitingForWebhook } =
 	useRunWorkflow({ router });
 const {
@@ -1843,18 +1841,12 @@ function registerCustomActions() {
 			});
 		},
 	});
-
-	registerCustomAction({
-		key: 'aiGatewayRequestLimitUpgrade',
-		action: () => openAiGatewayUpgrade('requestLimit'),
-	});
 }
 
 function unregisterCustomActions() {
 	unregisterCustomAction('openNodeDetail');
 	unregisterCustomAction('openSelectiveNodeCreator');
 	unregisterCustomAction('showNodeCreator');
-	unregisterCustomAction('aiGatewayRequestLimitUpgrade');
 }
 
 function showAddFirstStepIfEnabled() {

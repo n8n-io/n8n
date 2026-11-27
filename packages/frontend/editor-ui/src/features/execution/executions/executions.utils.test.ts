@@ -32,6 +32,8 @@ import {
 } from '@/app/constants';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { VNode } from 'vue';
+import { render, screen } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 
 // `restoreMocks` restores spies before each test, so this is (re)established in beforeEach.
 let windowOpenSpy: MockInstance;
@@ -61,6 +63,7 @@ vi.mock('@n8n/i18n', () => ({
 			const texts: { [key: string]: string } = {
 				'pushConnection.executionError': `Execution error${options?.interpolate?.error}`,
 				'pushConnection.executionError.details': `Details: ${options?.interpolate?.details}`,
+				'aiGateway.requestLimit.toast.message': 'Over the limit. <a>Upgrade</a> to a paid plan.',
 			};
 			return texts[key] || key;
 		},
@@ -72,6 +75,12 @@ const aiGatewayStore = vi.hoisted(() => ({ canUpgrade: false }));
 vi.mock('@/app/stores/aiGateway.store', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/app/stores/aiGateway.store')>()),
 	useAiGatewayStore: () => aiGatewayStore,
+}));
+
+const openUpgradeMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/useAiGatewayTopUp', () => ({
+	useAiGatewayTopUp: () => ({ openUpgrade: openUpgradeMock }),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -541,15 +550,19 @@ describe('getExecutionErrorToastConfiguration', () => {
 			node: { name: 'OpenAI Chat Model' },
 		});
 
-		it('links to the upgrade modal for users who can upgrade', () => {
+		it('links to the upgrade modal for users who can upgrade', async () => {
 			aiGatewayStore.canUpgrade = true;
 
-			const result = getExecutionErrorToastConfiguration({ error: gatewayLimitError });
+			const { title, message } = getExecutionErrorToastConfiguration({ error: gatewayLimitError });
+			render({ render: () => message });
 
-			expect(result).toEqual({
-				title: 'aiGateway.requestLimit.toast.title',
-				message: 'aiGateway.requestLimit.toast.message',
-			});
+			expect(title).toBe('aiGateway.requestLimit.toast.title');
+			expect(screen.getByText(/Over the limit\./)).toHaveTextContent(
+				'Over the limit. Upgrade to a paid plan.',
+			);
+
+			await userEvent.click(screen.getByText('Upgrade'));
+			expect(openUpgradeMock).toHaveBeenCalledWith('requestLimit');
 		});
 
 		it('asks users who cannot upgrade to contact the owner', () => {

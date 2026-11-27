@@ -2936,7 +2936,7 @@
 	"aiGateway.premiumModels.notice": "Some models aren't listed. Premium models with Gateway credits require a paid plan. <a data-key='upgrade'>Upgrade</a> or use your own credential",
 	"aiGateway.premiumModels.notice.member": "Some models aren't listed. Premium models with Gateway credits require a paid plan. Use your own credential, or ask your instance owner to upgrade.",
 	"aiGateway.requestLimit.toast.title": "Request is over your Gateway credits limit for trial plan",
-	"aiGateway.requestLimit.toast.message": "This execution was estimated to cost over the $0.50 limit. <a data-action='aiGatewayRequestLimitUpgrade'>Upgrade</a> to a paid plan, or use your own credential.",
+	"aiGateway.requestLimit.toast.message": "This execution was estimated to cost over the $0.50 limit. <a>Upgrade</a> to a paid plan, or use your own credential.",
 	"aiGateway.requestLimit.toast.message.member": "This execution was estimated to cost over the $0.50 limit. Use your own credential, or ask your instance owner to upgrade.",
 	"aiGateway.upgrade.modal.title.premiumModels": "Upgrade your plan to use premium models",
 	"aiGateway.upgrade.modal.title.requestLimit": "Upgrade your plan to send larger requests",

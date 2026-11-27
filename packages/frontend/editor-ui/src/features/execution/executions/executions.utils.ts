@@ -49,6 +49,8 @@ import {
 	isGatewayTrialRequestCostLimitError,
 	useAiGatewayStore,
 } from '@/app/stores/aiGateway.store';
+import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
+import { sanitizeHtml } from '@n8n/frontend-utils/htmlUtils';
 import { parse } from 'flatted';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
@@ -373,13 +375,22 @@ export function getExecutionErrorToastConfiguration({
 	}
 
 	if (isGatewayTrialRequestCostLimitError(error)) {
+		const title = i18n.baseText('aiGateway.requestLimit.toast.title');
+		if (!useAiGatewayStore().canUpgrade) {
+			return { title, message: i18n.baseText('aiGateway.requestLimit.toast.message.member') };
+		}
+
 		return {
-			title: i18n.baseText('aiGateway.requestLimit.toast.title'),
-			message: i18n.baseText(
-				useAiGatewayStore().canUpgrade
-					? 'aiGateway.requestLimit.toast.message'
-					: 'aiGateway.requestLimit.toast.message.member',
-			),
+			title,
+			// The toast can show outside the canvas, where no global link actions are registered.
+			message: h('span', {
+				innerHTML: sanitizeHtml(i18n.baseText('aiGateway.requestLimit.toast.message')),
+				onClick: (event: MouseEvent) => {
+					if (event.target instanceof HTMLAnchorElement) {
+						useAiGatewayTopUp().openUpgrade('requestLimit');
+					}
+				},
+			}),
 		};
 	}
 
