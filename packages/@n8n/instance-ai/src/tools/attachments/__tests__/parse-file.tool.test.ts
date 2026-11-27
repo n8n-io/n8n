@@ -8,6 +8,29 @@ import {
 	parseStoredFileInputSchema,
 } from '../parse-file.tool';
 
+const { mockPdfGetText, mockPdfDestroy, mockDocxExtractRawText } = vi.hoisted(() => ({
+	mockPdfGetText: vi.fn<() => Promise<{ text: string; total: number }>>(),
+	mockPdfDestroy: vi.fn<() => Promise<void>>(),
+	mockDocxExtractRawText:
+		vi.fn<(arg: unknown) => Promise<{ value: string; messages: unknown[] }>>(),
+}));
+
+vi.mock('pdf-parse', () => {
+	class PDFParse {
+		getText = mockPdfGetText;
+		destroy = mockPdfDestroy;
+	}
+	return { PDFParse };
+});
+
+vi.mock('mammoth', () => ({
+	__esModule: true,
+	default: {
+		extractRawText: async (input: { buffer: Buffer }) => await mockDocxExtractRawText(input),
+	},
+	extractRawText: async (input: { buffer: Buffer }) => await mockDocxExtractRawText(input),
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -306,6 +329,154 @@ describe('createParseFileTool', () => {
 			expect(result.format).toBe('html');
 			expect(result.title).toBe('Release');
 			expect(result.content).toContain('amber-otter');
+		});
+
+		it('paginates HTML content with startChar, maxChars, totalChars, and nextStartChar', async () => {
+			const html =
+				'<html><head><title>Notes</title></head><body><p>First section. Second section.</p></body></html>';
+			const context = createMockContext({
+				currentUserAttachments: [
+					{ type: 'file', data: toBase64(html), mimeType: 'text/html', fileName: 'notes.html' },
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const first = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20, maxChars: 14 },
+				{} as never,
+			);
+
+			expect(first.error).toBeUndefined();
+			expect(first.format).toBe('html');
+			expect(first.title).toBe('Notes');
+			expect(first.content).toBe('First section.');
+			expect(first.totalChars).toBe('First section. Second section.'.length);
+			expect(first.truncated).toBe(true);
+			expect(first.nextStartChar).toBe(14);
+
+			const second = await executeTool(
+				tool,
+				{
+					attachmentIndex: 0,
+					hasHeader: true,
+					startRow: 0,
+					maxRows: 20,
+					startChar: first.nextStartChar,
+					maxChars: 50,
+				},
+				{} as never,
+			);
+
+			expect(second.error).toBeUndefined();
+			expect(second.content).toBe(' Second section.');
+			expect(second.totalChars).toBe(first.totalChars);
+			expect(second.truncated).toBe(false);
+			expect(second.nextStartChar).toBeUndefined();
+		});
+	});
+
+	describe('with PDF and DOCX attachments', () => {
+		beforeEach(() => {
+			mockPdfGetText.mockReset();
+			mockPdfDestroy.mockReset().mockResolvedValue(undefined);
+			mockDocxExtractRawText.mockReset();
+		});
+
+		it('paginates PDF content and forwards pages, totalChars, and nextStartChar', async () => {
+			mockPdfGetText.mockResolvedValue({ text: 'Alpha Beta Gamma', total: 3 });
+			const context = createMockContext({
+				currentUserAttachments: [
+					{
+						type: 'file',
+						data: toBase64('pdf-bytes'),
+						mimeType: 'application/pdf',
+						fileName: 'report.pdf',
+					},
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const first = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20, maxChars: 6 },
+				{} as never,
+			);
+
+			expect(first.error).toBeUndefined();
+			expect(first.format).toBe('pdf');
+			expect(first.pages).toBe(3);
+			expect(first.content).toBe('Alpha ');
+			expect(first.totalChars).toBe('Alpha Beta Gamma'.length);
+			expect(first.truncated).toBe(true);
+			expect(first.nextStartChar).toBe(6);
+
+			const second = await executeTool(
+				tool,
+				{
+					attachmentIndex: 0,
+					hasHeader: true,
+					startRow: 0,
+					maxRows: 20,
+					startChar: first.nextStartChar,
+					maxChars: 50,
+				},
+				{} as never,
+			);
+
+			expect(second.error).toBeUndefined();
+			expect(second.pages).toBe(3);
+			expect(second.content).toBe('Beta Gamma');
+			expect(second.totalChars).toBe(first.totalChars);
+			expect(second.truncated).toBe(false);
+			expect(second.nextStartChar).toBeUndefined();
+		});
+
+		it('paginates DOCX content and forwards totalChars and nextStartChar', async () => {
+			mockDocxExtractRawText.mockResolvedValue({ value: 'Paragraph 1\nParagraph 2', messages: [] });
+			const context = createMockContext({
+				currentUserAttachments: [
+					{
+						type: 'file',
+						data: toBase64('docx-bytes'),
+						mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+						fileName: 'memo.docx',
+					},
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const first = await executeTool(
+				tool,
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20, maxChars: 12 },
+				{} as never,
+			);
+
+			expect(first.error).toBeUndefined();
+			expect(first.format).toBe('docx');
+			expect(first.content).toBe('Paragraph 1\n');
+			expect(first.totalChars).toBe('Paragraph 1\nParagraph 2'.length);
+			expect(first.truncated).toBe(true);
+			expect(first.nextStartChar).toBe(12);
+
+			const second = await executeTool(
+				tool,
+				{
+					attachmentIndex: 0,
+					hasHeader: true,
+					startRow: 0,
+					maxRows: 20,
+					startChar: first.nextStartChar,
+					maxChars: 50,
+				},
+				{} as never,
+			);
+
+			expect(second.error).toBeUndefined();
+			expect(second.content).toBe('Paragraph 2');
+			expect(second.totalChars).toBe(first.totalChars);
+			expect(second.truncated).toBe(false);
+			expect(second.nextStartChar).toBeUndefined();
 		});
 	});
 

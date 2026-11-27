@@ -714,6 +714,34 @@ describe('paginateTextContent', () => {
 
 		expect(first.content + second.content + third.content).toBe(text);
 	});
+
+	it('keeps UTF-16 surrogate pairs whole when maxChars is 1', () => {
+		const text = '😀a😀';
+		let startChar: number | undefined = 0;
+		const chunks: string[] = [];
+
+		while (startChar !== undefined) {
+			const page = paginateTextContent(text, { startChar, maxChars: 1 });
+			chunks.push(page.content);
+			startChar = page.nextStartChar;
+		}
+
+		expect(chunks).toEqual(['😀', 'a', '😀']);
+		expect(chunks.join('')).toBe(text);
+	});
+
+	it('snaps startChar back to the high surrogate when it lands mid-pair', () => {
+		const text = 'ab😀cd';
+		const page = paginateTextContent(text, { startChar: 3, maxChars: 2 });
+
+		expect(page.content).toBe('😀');
+		expect(page.truncated).toBe(true);
+		expect(page.nextStartChar).toBe(4);
+
+		const singleCharPage = paginateTextContent(text, { startChar: 3, maxChars: 1 });
+		expect(singleCharPage.content).toBe('😀');
+		expect(singleCharPage.nextStartChar).toBe(4);
+	});
 });
 
 describe('extractPlainTextContent', () => {
@@ -821,7 +849,18 @@ describe('parseJsonAttachment', () => {
 		expect(actualHash).toBe(expectedHash);
 	});
 
-	it('falls back to raw JSON content for nested arrays/objects and primitive arrays', () => {
+	it('handles empty JSON arrays in tabular mode', () => {
+		const result = parseJsonAttachment(makeJsonAttachment('[]'), 0, {});
+
+		expect(result.format).toBe('json');
+		expect(result.columns).toEqual([]);
+		expect(result.rows).toEqual([]);
+		expect(result.totalRows).toBe(0);
+		expect(result.content).toBeUndefined();
+		expect(result.warnings).toBeUndefined();
+	});
+
+	it('falls back to raw JSON content for nested arrays/objects and primitive arrays without warnings', () => {
 		for (const payload of [
 			JSON.stringify([{ name: 'Alice', meta: { role: 'admin' } }]),
 			JSON.stringify([{ name: 'Alice', tags: ['a', 'b'] }]),
@@ -834,16 +873,20 @@ describe('parseJsonAttachment', () => {
 			expect(result.content).toBe(payload);
 			expect(result.totalChars).toBe(payload.length);
 			expect(result.truncated).toBe(false);
+			expect(result.warnings).toBeUndefined();
 		}
 	});
 
-	it('falls back to raw JSON content when a flat array exceeds tabular cell or column limits', () => {
+	it('falls back to raw JSON content with a warning when a flat array exceeds tabular cell or column limits', () => {
 		const longCellJson = JSON.stringify([
 			{ path: 'a.ts', content: 'x'.repeat(MAX_CELL_STRING_LENGTH + 100) },
 		]);
 		const longCellResult = parseJsonAttachment(makeJsonAttachment(longCellJson), 0, {});
 		expect(longCellResult.content).toBe(longCellJson);
 		expect(longCellResult.totalChars).toBe(longCellJson.length);
+		expect(longCellResult.warnings).toEqual([
+			`Returned as raw JSON text: cell string length exceeds the ${MAX_CELL_STRING_LENGTH}-character tabular limit.`,
+		]);
 
 		const wideRow: Record<string, number> = {};
 		for (let i = 0; i <= MAX_COLUMNS; i++) {
@@ -853,6 +896,9 @@ describe('parseJsonAttachment', () => {
 		const wideResult = parseJsonAttachment(makeJsonAttachment(wideJson), 0, {});
 		expect(wideResult.content).toBe(wideJson);
 		expect(wideResult.totalChars).toBe(wideJson.length);
+		expect(wideResult.warnings).toEqual([
+			`Returned as raw JSON text: key count exceeds the ${MAX_COLUMNS}-column tabular limit.`,
+		]);
 	});
 
 	it('still rejects invalid JSON and dangerous keys in tabular JSON arrays', () => {

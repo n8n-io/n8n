@@ -9,7 +9,8 @@ import type { parse as csvParse } from 'csv-parse/sync';
  * - Max columns capped at MAX_COLUMNS
  * - Max returned rows capped at MAX_ROWS_PER_CALL
  * - Output cells capped at MAX_CELLS_PER_CALL
- * - Serialized result chars capped at MAX_RESULT_CHARS
+ * - Tabular output serialized chars capped at MAX_RESULT_CHARS
+ * - Paginated text and non-tabular JSON pages capped at MAX_RESULT_CHARS raw chars
  * - Individual cell strings capped at MAX_CELL_STRING_LENGTH
  * - Dangerous keys (__proto__, constructor, prototype) are rejected
  */
@@ -501,6 +502,14 @@ function buildJsonTabularRows(
 	return { columns, paginatedRows, totalRows };
 }
 
+function isHighSurrogate(code: number): boolean {
+	return code >= 0xd800 && code <= 0xdbff;
+}
+
+function isLowSurrogate(code: number): boolean {
+	return code >= 0xdc00 && code <= 0xdfff;
+}
+
 /**
  * Paginates text content by character offset.
  *
@@ -512,7 +521,7 @@ export function paginateTextContent(
 	options: TextPaginationOptions = {},
 ): TextPaginationResult {
 	const totalChars = text.length;
-	const startChar = Math.max(0, options.startChar ?? 0);
+	let startChar = Math.max(0, options.startChar ?? 0);
 	const maxChars = Math.min(Math.max(1, options.maxChars ?? MAX_RESULT_CHARS), MAX_RESULT_CHARS);
 
 	if (startChar >= totalChars) {
@@ -523,12 +532,20 @@ export function paginateTextContent(
 		};
 	}
 
+	if (
+		startChar > 0 &&
+		isHighSurrogate(text.charCodeAt(startChar - 1)) &&
+		isLowSurrogate(text.charCodeAt(startChar))
+	) {
+		startChar -= 1;
+	}
+
 	let end = Math.min(startChar + maxChars, totalChars);
-	if (end < totalChars && end - 1 > startChar) {
+	if (end < totalChars && end > startChar) {
 		const lastCode = text.charCodeAt(end - 1);
 		const nextCode = text.charCodeAt(end);
-		if (lastCode >= 0xd800 && lastCode <= 0xdbff && nextCode >= 0xdc00 && nextCode <= 0xdfff) {
-			end -= 1;
+		if (isHighSurrogate(lastCode) && isLowSurrogate(nextCode)) {
+			end += end - startChar === 1 ? 1 : -1;
 		}
 	}
 
@@ -559,28 +576,40 @@ export function extractPlainTextContent(
 	return paginateTextContent(raw, options);
 }
 
+type TabularJsonResult =
+	| { kind: 'tabular'; rawHeaders: string[]; allRows: Array<Record<string, unknown>> }
+	| { kind: 'non-tabular'; warning?: string };
+
 /**
  * Checks whether a parsed JSON array can be represented as flat tabular rows
- * within the tabular limits. Returns null when the JSON is non-tabular, and
- * throws on dangerous keys.
+ * within the tabular limits. Returns a non-tabular result (with a warning when
+ * a tabular limit triggered the fallback), and throws on dangerous keys.
  */
-function extractTabularJsonRows(
-	parsed: unknown[],
-): { rawHeaders: string[]; allRows: Array<Record<string, unknown>> } | null {
+function extractTabularJsonRows(parsed: unknown[]): TabularJsonResult {
 	if (parsed.length === 0) {
-		return { rawHeaders: [], allRows: [] };
+		return { kind: 'tabular', rawHeaders: [], allRows: [] };
 	}
 
 	const keySet = new Set<string>();
 	const allRows: Array<Record<string, unknown>> = [];
 
 	for (const item of parsed) {
-		if (!isRecord(item)) return null;
+		if (!isRecord(item)) return { kind: 'non-tabular' };
 		for (const [key, value] of Object.entries(item)) {
-			if (value !== null && typeof value === 'object') return null;
-			if (typeof value === 'string' && value.length > MAX_CELL_STRING_LENGTH) return null;
+			if (value !== null && typeof value === 'object') return { kind: 'non-tabular' };
+			if (typeof value === 'string' && value.length > MAX_CELL_STRING_LENGTH) {
+				return {
+					kind: 'non-tabular',
+					warning: `Returned as raw JSON text: cell string length exceeds the ${MAX_CELL_STRING_LENGTH}-character tabular limit.`,
+				};
+			}
 			keySet.add(key);
-			if (keySet.size > MAX_COLUMNS) return null;
+			if (keySet.size > MAX_COLUMNS) {
+				return {
+					kind: 'non-tabular',
+					warning: `Returned as raw JSON text: key count exceeds the ${MAX_COLUMNS}-column tabular limit.`,
+				};
+			}
 		}
 		allRows.push(item);
 	}
@@ -593,7 +622,7 @@ function extractTabularJsonRows(
 		}
 	}
 
-	return { rawHeaders: [...keySet], allRows };
+	return { kind: 'tabular', rawHeaders: [...keySet], allRows };
 }
 
 /**
@@ -621,9 +650,11 @@ export function parseJsonAttachment(
 	const requestsCharPagination =
 		(input.startChar !== undefined && input.startChar > 0) || input.maxChars !== undefined;
 
+	let warnings: string[] | undefined;
+
 	if (!requestsCharPagination && Array.isArray(parsed)) {
 		const tabular = extractTabularJsonRows(parsed);
-		if (tabular) {
+		if (tabular.kind === 'tabular') {
 			const startRow = input.startRow ?? 0;
 			const maxRows = Math.min(input.maxRows ?? DEFAULT_MAX_ROWS, MAX_ROWS_PER_CALL);
 			const { columns, paginatedRows, totalRows } = buildJsonTabularRows(
@@ -642,6 +673,9 @@ export function parseJsonAttachment(
 				startRow,
 			);
 		}
+		if (tabular.warning) {
+			warnings = [tabular.warning];
+		}
 	}
 
 	return {
@@ -657,6 +691,7 @@ export function parseJsonAttachment(
 			startChar: input.startChar,
 			maxChars: input.maxChars,
 		}),
+		...(warnings ? { warnings } : {}),
 	};
 }
 
