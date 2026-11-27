@@ -843,6 +843,24 @@ describe('CredentialsPermissionChecker', () => {
 					expect.arrayContaining([staleCredentialId, activeCredentialId]),
 				);
 			});
+
+			it('should check every credential for a non-string value in a displayed selector parameter', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+
+				const node = makeNode({
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: ['slackApi'] as unknown as string,
+				});
+
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "HTTP Request" does not have access to the credential',
+				);
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					expect.arrayContaining([staleCredentialId, activeCredentialId]),
+				);
+			});
 		});
 
 		describe('with a default-valued authentication parameter', () => {
@@ -962,6 +980,7 @@ describe('CredentialsPermissionChecker', () => {
 				[[]],
 				[[false]],
 				[{ __rl: true, value: false }],
+				[{ __rl: true, mode: 'id', value: false }],
 				[null],
 			])('should check the credential when the boolean parameter is %j', async (value) => {
 				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);

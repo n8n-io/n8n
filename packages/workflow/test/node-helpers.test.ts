@@ -5901,6 +5901,7 @@ describe('NodeHelpers', () => {
 				[[]],
 				[[false]],
 				[{ __rl: true, value: false }],
+				[{ __rl: true, mode: 'id', value: false }],
 				[null],
 			])('should treat the credential as active when a boolean parameter holds %j', (value) => {
 				expect(
@@ -5926,6 +5927,7 @@ describe('NodeHelpers', () => {
 				[1, ['gatedApi']],
 				[[true], ['gatedApi']],
 				[{ __rl: true, value: true }, ['gatedApi']],
+				[{ __rl: true, mode: 'id', value: true }, ['gatedApi']],
 			])(
 				'should treat the credential as active for hide rules when the value is %j',
 				(value, expected) => {
@@ -5992,10 +5994,18 @@ describe('NodeHelpers', () => {
 				);
 			});
 
-			it('should check the inner value of resource locator parameters', () => {
-				const nodeType = makeNodeType([
-					{ name: 'gatedApi', displayOptions: { show: { target: ['protected'] } } },
-				]);
+			it('should check the inner value only for resource locator parameters', () => {
+				const nodeType = withProperties(
+					[{ name: 'gatedApi', displayOptions: { show: { target: ['protected'] } } }],
+					[
+						{
+							displayName: 'Target',
+							name: 'target',
+							type: 'resourceLocator',
+							default: { mode: 'id', value: '' },
+						},
+					],
+				);
 				expect(
 					getActiveCredentialTypes(
 						nodeWith({ target: { __rl: true, mode: 'id', value: 'public' } }),
@@ -6005,6 +6015,12 @@ describe('NodeHelpers', () => {
 				expect(
 					getActiveCredentialTypes(
 						nodeWith({ target: { __rl: true, mode: 'id', value: 1 } }),
+						nodeType,
+					),
+				).toEqual(new Set(['gatedApi']));
+				expect(
+					getActiveCredentialTypes(
+						nodeWith({ target: { __rl: false, mode: 'id', value: 'public' } }),
 						nodeType,
 					),
 				).toEqual(new Set(['gatedApi']));
@@ -6034,7 +6050,7 @@ describe('NodeHelpers', () => {
 
 			it('should not check the type of node metadata conditions', () => {
 				const nodeType = makeNodeType([
-					{ name: 'gatedApi', displayOptions: { show: { '@version': [2] } } },
+					{ name: 'gatedApi', displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } } },
 				]);
 				expect(getActiveCredentialTypes(nodeWith({}), nodeType)).toEqual(new Set());
 			});
@@ -6066,6 +6082,43 @@ describe('NodeHelpers', () => {
 					),
 				).toEqual(new Set(['httpHeaderAuth']));
 			});
+
+			it.each([[['slackApi']], [1], [{}]])(
+				'should return null when a displayed credential selector holds non-string value %j',
+				(value) => {
+					const nodeType = withProperties(
+						[],
+						[
+							{
+								displayName: 'Credential Type',
+								name: 'nodeCredentialType',
+								type: 'credentialsSelect',
+								default: '',
+								credentialTypes: ['extends:oAuth2Api'],
+								displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+							},
+						],
+					);
+					expect(
+						getActiveCredentialTypes(
+							nodeWith({
+								authentication: 'predefinedCredentialType',
+								nodeCredentialType: value,
+							}),
+							nodeType,
+						),
+					).toBeNull();
+					expect(
+						getActiveCredentialTypes(
+							nodeWith({
+								authentication: 'none',
+								nodeCredentialType: value,
+							}),
+							nodeType,
+						),
+					).toEqual(new Set());
+				},
+			);
 		});
 	});
 

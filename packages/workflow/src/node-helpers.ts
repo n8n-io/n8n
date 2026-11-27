@@ -531,15 +531,19 @@ function hasExpectedDisplayValueType(
 	value: unknown,
 	expectedTypes: Set<string>,
 	allowArray: boolean,
+	allowResourceLocator: boolean,
 ): boolean {
 	if (value === undefined) return true;
 	if (Array.isArray(value)) {
 		return (
-			allowArray && value.every((item) => hasExpectedDisplayValueType(item, expectedTypes, false))
+			allowArray &&
+			value.every((item) => hasExpectedDisplayValueType(item, expectedTypes, false, false))
 		);
 	}
-	if (isResourceLocatorValue(value)) {
-		return hasExpectedDisplayValueType(value.value, expectedTypes, false);
+	if (isResourceLocatorValue(value) && value.__rl) {
+		return (
+			allowResourceLocator && hasExpectedDisplayValueType(value.value, expectedTypes, false, false)
+		);
 	}
 	return value !== null && expectedTypes.has(typeof value);
 }
@@ -572,13 +576,16 @@ function hasUnexpectedDisplayValueType(
 					? new Set([...conditionTypes].filter((type) => declaredTypes.includes(type)))
 					: conditionTypes;
 			const allowArray = declared.some((property) => property.type === 'multiOptions');
+			const allowResourceLocator = declared.some((property) => property.type === 'resourceLocator');
 
 			const value =
 				propertyName.charAt(0) === '/'
 					? get(parameters, propertyName.slice(1))
 					: get(parameters, propertyName);
 
-			if (!hasExpectedDisplayValueType(value, expectedTypes, allowArray)) return true;
+			if (!hasExpectedDisplayValueType(value, expectedTypes, allowArray, allowResourceLocator)) {
+				return true;
+			}
 		}
 	}
 
@@ -608,10 +615,10 @@ function isCredentialSlotActive(
  *   declaring them in the node type description.
  *
  * Returns `null` when the node type description is unavailable, a credential-type
- * parameter is an expression (it only resolves at runtime), or evaluating the
- * configuration throws. Callers must fall back conservatively for their use case:
- * treat all referenced credentials as active when validating, and clean nothing
- * when removing stale entries.
+ * parameter is an expression or non-string value, or evaluating the configuration
+ * throws. Callers must fall back conservatively for their use case: treat all
+ * referenced credentials as active when validating, and clean nothing when removing
+ * stale entries.
  */
 export function getActiveCredentialTypes(
 	node: INode,
@@ -654,7 +661,7 @@ export function getActiveCredentialTypes(
 		const { nodeCredentialType, genericAuthType } = parameters;
 		for (const paramName of ['nodeCredentialType', 'genericAuthType'] as const) {
 			const paramValue = paramName === 'nodeCredentialType' ? nodeCredentialType : genericAuthType;
-			if (typeof paramValue !== 'string' || !paramValue) {
+			if (paramValue === undefined || paramValue === null || paramValue === '') {
 				continue;
 			}
 
@@ -675,9 +682,9 @@ export function getActiveCredentialTypes(
 			}
 
 			// Checked after the hidden check: a hidden parameter holds no active value,
-			// expression or not, so a leftover expression must not make the whole node
-			// indeterminable and block cleanup.
-			if (isExpression(paramValue)) {
+			// expression or not, so a leftover expression or non-string value must not
+			// make the whole node indeterminable and block cleanup.
+			if (typeof paramValue !== 'string' || isExpression(paramValue)) {
 				return null;
 			}
 
