@@ -14,6 +14,7 @@ import type {
 } from '@n8n/api-types';
 import { sleep } from '@n8n/utils/sleep';
 
+import { prepareDirectAgentRun } from './direct-agent-run';
 import type { LaneAllocator } from './lane-allocator';
 import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
 import { prepareMcpBuildSeed, type McpBuildSeed } from './mcp-seed';
@@ -35,6 +36,7 @@ import {
 	type AgentScenarioContext,
 	type executeAgentScenario,
 } from '../harness/agent-execution';
+import { isDirectAgentRun } from '../harness/agent-run-schema';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import { attributionForExpectation } from '../harness/attribution';
 import {
@@ -748,6 +750,46 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		);
 	}
 
+	/** A direct Agent run (AGENT-1665): no builder of any kind, so it bypasses the
+	 *  MCP, prebuilt and assistant paths alike. No retry loop: a transport failure
+	 *  is evicted below and the next row restores again. */
+	async function runDirectAgentCase(
+		key: string,
+		fileSlug: string,
+		iteration: number,
+		testCase: WorkflowTestCase,
+	): Promise<CachedBuild> {
+		const lane = await allocator.acquire(fileSlug);
+		const start = Date.now();
+		let build: BuildResult;
+		try {
+			build = await prepareDirectAgentRun({
+				lane: lane.runner,
+				testCase,
+				caseIdentity: { fileSlug, iteration },
+				logger,
+			});
+		} finally {
+			allocator.release(lane, fileSlug);
+		}
+		return await recordDirectAgentRun(key, lane, build, start);
+	}
+
+	async function recordDirectAgentRun(
+		key: string,
+		lane: LaneState,
+		build: BuildResult,
+		start: number,
+	): Promise<CachedBuild> {
+		const { transient } = await classifyBuildFailure(build, lane, start);
+		allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
+		const buildDurationMs = Date.now() - start;
+		buildDurations.set(key, buildDurationMs);
+		stashTranscript(build, key);
+		stashAgentContext(key, lane.runner.client, build);
+		return { build, lane, buildDurationMs };
+	}
+
 	async function getOrBuild(iteration: number, fileSlug: string): Promise<CachedBuild> {
 		// Cache key on (iteration, fileSlug) — every scenario in a test-case file
 		// shares this build, and prebuilt + orchestrator-built paths use the same key.
@@ -755,6 +797,10 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		const existing = buildCache.get(key);
 		if (existing) return await existing;
 		const promise = (async () => {
+			const directCase = testCaseByFileSlug.get(fileSlug);
+			if (directCase && isDirectAgentRun(directCase)) {
+				return await runDirectAgentCase(key, fileSlug, iteration, directCase);
+			}
 			if (args.buildViaMcp) {
 				// Fused MCP build: acquire a lane (work-stealing, capped per-lane),
 				// drive its MCP server with `claude` to build the workflow, then

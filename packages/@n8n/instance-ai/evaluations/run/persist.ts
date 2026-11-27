@@ -26,6 +26,7 @@ import {
 	AGENT_ARTIFACT_CASE_CAP_BYTES,
 	sanitizeAgentArtifact,
 } from '../harness/artifacts/agent-artifact';
+import { DIRECT_AGENT_BUILD_PATH, isDirectAgentRun } from '../harness/agent-run-schema';
 import type { EvalLogger } from '../harness/logger';
 import { extractErrorMessage } from '../harness/transient-error';
 import { rollupCaseVerification } from '../summary';
@@ -482,6 +483,10 @@ export function writeEvalResults(
 		testCases: testCases.map((tc) => ({
 			name: caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 70),
 			testCaseFile: slugByTestCase?.get(tc.testCase),
+			// A direct Agent run had no assistant turn: lang-tracer keeps its history,
+			// Slack summaries and tickets apart from assistant builds (AGENT-1665).
+			// Absent on every other case, so existing output is unchanged.
+			...(isDirectAgentRun(tc.testCase) ? { buildPath: DIRECT_AGENT_BUILD_PATH } : {}),
 			// `notVerified` when no scenario or expectation was scored across runs —
 			// consumers must not treat a zero pass rate here as a pass.
 			status: tc.status,

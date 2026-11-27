@@ -137,6 +137,7 @@ interface DispatcherView {
 	experimentName?: string;
 	testCases: Array<{
 		testCaseFile?: string;
+		buildPath?: string;
 		status?: string;
 		buildSuccessCount: number;
 		workflowJson?: { id: string };
@@ -336,6 +337,41 @@ describe('eval-results.json — dispatcher contract', () => {
 
 		expect(tc).not.toHaveProperty('agentArtifact');
 		expect(tc.agentArtifactPerRun).toEqual([null, null]);
+	});
+
+	it('marks a direct Agent run with its own build path, so lang-tracer keeps it apart', () => {
+		const directCase: WorkflowTestCase = {
+			complexity: 'simple',
+			tags: [],
+			datasets: ['full'],
+			executionScenarios: [scenario],
+			agentRun: { mode: 'direct' },
+		};
+		const run = (): WorkflowTestCaseResult => ({
+			testCase: directCase,
+			workflowBuildSuccess: true,
+			agentId: 'agent-1',
+			executionScenarioResults: [{ scenario, success: true, score: 1, reasoning: 'ok' }],
+		});
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const { jsonPath } = writeEvalResults(
+			aggregateResults([[run()]], 1),
+			1234,
+			dir,
+			'exp-direct-agent',
+			undefined,
+			undefined,
+			new Map([[directCase, 'support-agent']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+
+		expect(report.testCases[0].buildPath).toBe('agent-direct');
+	});
+
+	it('leaves the build path off an assistant build, as before', () => {
+		expect(writeAndRead().testCases[0]).not.toHaveProperty('buildPath');
 	});
 
 	it('caps the final formatted artifact fields while preserving positional artifacts', () => {
