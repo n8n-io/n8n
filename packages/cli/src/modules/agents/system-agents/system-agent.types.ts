@@ -359,10 +359,17 @@ export interface SystemAgentProvider<TLease = unknown> {
 	/** The sandbox workspace source. Without a source, the turns of the agent have no sandbox. */
 	readonly workspace?: SystemAgentWorkspaceSource<TLease>;
 	/**
-	 * Agent-specific access checks for the user in the working project. The
-	 * runtime calls this only after its own floor check passed.
+	 * Agent-specific access checks for the user that do not depend on a project,
+	 * such as a setting that turns the agent off. Every route that reads or
+	 * continues a conversation runs them, and so does the thread list. Stop and
+	 * delete do not, so that a user can always clean up their own threads.
 	 */
-	authorize(user: User, projectId: string): Promise<boolean>;
+	authorizeUser?(user: User): Promise<boolean>;
+	/**
+	 * Agent-specific access checks for the user in the working project. The
+	 * runtime calls this only after its floor check and `authorizeUser` passed.
+	 */
+	authorize?(user: User, projectId: string): Promise<boolean>;
 	prepareTurn(turn: SystemAgentTurn<TLease>): Promise<SystemAgentTurnHandle>;
 	/**
 	 * The user-facing text and code of an error that `prepareTurn` threw. The

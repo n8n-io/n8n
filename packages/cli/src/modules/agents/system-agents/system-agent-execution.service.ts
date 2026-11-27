@@ -48,7 +48,7 @@ import {
 	SYSTEM_CHAT_SOURCE,
 	systemChatFileScope,
 } from '../utils/agent-thread-access';
-import { canUseSystemAgent } from './system-agent-access';
+import { canUseSystemAgent, isSystemAgentAvailableTo } from './system-agent-access';
 import { SystemAgentHostEventChannel } from './system-agent-host-events';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
@@ -287,13 +287,19 @@ export class SystemAgentExecutionService {
 	/**
 	 * One page of the user's own sessions with the agent, newest first. `search`
 	 * matches the title, and `before` is the last session of the previous page.
+	 * The provider's user checks run, but the project checks do not: the list
+	 * spans projects, and opening a thread runs them.
 	 */
 	async listThreads(
 		agentId: string,
 		user: User,
 		options: { limit: number; search?: string; before?: AgentExecutionThreadKeyset },
 	): Promise<AgentExecutionThreadKeysetPage> {
-		this.assertRegistered(agentId);
+		const provider = this.getProvider(agentId);
+		// Refuse with "not found", like `assertCanUse`.
+		if (!(await isSystemAgentAvailableTo(provider, user))) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
 		return await this.threadRepository.findOwnedHistoryPage(
 			agentId,
 			user.id,

@@ -51,8 +51,9 @@ import { SystemAgentExecutionService } from './system-agent-execution.service';
  * `SystemAgentExecutionService` checks access on every route: thread
  * ownership, and for routes that read or continue a conversation also the
  * runtime floor (`project:read` on the working project) and the provider's
- * own checks. Listing threads, stopping a turn and deleting a thread need
- * thread ownership only.
+ * own checks. Listing threads also runs the provider's user checks, but not
+ * the project checks. Stopping a turn and deleting a thread need thread
+ * ownership only.
  */
 @RestController('/agents/system')
 export class SystemAgentChatController {
@@ -110,8 +111,9 @@ export class SystemAgentChatController {
 	/**
 	 * One page of the user's own threads with the agent, newest first. `search`
 	 * matches the title, and `cursor` is the `nextCursor` of the previous page.
-	 * It checks thread ownership only, like a stop: the list shows a thread in a
-	 * project that the user can no longer read, but opening it runs the floor.
+	 * It runs the provider's user checks but not the project checks: the list
+	 * shows a thread in a project that the user can no longer read, but opening
+	 * it runs the floor.
 	 * The list shows the title and the first message of the thread. The user
 	 * wrote that message, and the title is generated from it.
 	 */

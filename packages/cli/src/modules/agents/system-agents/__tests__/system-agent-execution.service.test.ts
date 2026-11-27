@@ -137,6 +137,7 @@ function setup(
 	const provider = {
 		agentId: AGENT_ID,
 		name: 'Test Assistant',
+		authorizeUser: vi.fn(async (_user: User) => true),
 		authorize: vi.fn(async (_user: User, _projectId: string) => true),
 		prepareTurn: vi.fn(async (_turn: SystemAgentTurn<TestLease>) => handle),
 		formatSetupError: vi.fn(
@@ -1916,7 +1917,26 @@ describe('SystemAgentExecutionService', () => {
 			expect(userHasScopes).toHaveBeenCalledWith(user, ['project:read'], false, {
 				projectId: 'project-1',
 			});
+			expect(provider.authorizeUser).toHaveBeenCalledWith(user);
 			expect(provider.authorize).toHaveBeenCalledWith(user, 'project-1');
+		});
+
+		it('refuses a user the provider does not let use the agent, before the project checks', async () => {
+			const { service, provider } = setup();
+			provider.authorizeUser.mockResolvedValue(false);
+
+			await expect(service.getUsableThread(AGENT_ID, user, 'thread-1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(provider.authorize).not.toHaveBeenCalled();
+		});
+
+		it('lets the owner load a thread to stop or delete it without the provider checks', async () => {
+			const { service, provider } = setup();
+			provider.authorizeUser.mockResolvedValue(false);
+
+			expect(await service.getThread(AGENT_ID, user, 'thread-1')).toEqual(thread);
+			expect(provider.authorizeUser).not.toHaveBeenCalled();
 		});
 
 		it('refuses a thread the user does not own', async () => {
@@ -1948,7 +1968,7 @@ describe('SystemAgentExecutionService', () => {
 
 	describe('listThreads', () => {
 		it("reads a page of the user's sessions with the agent", async () => {
-			const { service, threadRepository } = setup();
+			const { service, threadRepository, provider } = setup();
 			const page = { threads: [thread], hasMore: true };
 			threadRepository.findOwnedHistoryPage.mockResolvedValue(page);
 			const before = { updatedAt: new Date('2026-10-19T10:00:00.000Z'), id: 'thread-0' };
@@ -1963,6 +1983,29 @@ describe('SystemAgentExecutionService', () => {
 				'digest',
 				before,
 			);
+			expect(provider.authorizeUser).toHaveBeenCalledWith(user);
+			// The list spans projects, so it skips the project checks.
+			expect(userHasScopes).not.toHaveBeenCalled();
+			expect(provider.authorize).not.toHaveBeenCalled();
+		});
+
+		it('refuses a user the provider does not let use the agent', async () => {
+			const { service, threadRepository, provider } = setup();
+			provider.authorizeUser.mockResolvedValue(false);
+
+			await expect(service.listThreads(AGENT_ID, user, { limit: 5 })).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(threadRepository.findOwnedHistoryPage).not.toHaveBeenCalled();
+		});
+
+		it('refuses an agent that is not registered', async () => {
+			const { service, threadRepository } = setup();
+
+			await expect(service.listThreads('unknown', user, { limit: 5 })).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(threadRepository.findOwnedHistoryPage).not.toHaveBeenCalled();
 		});
 	});
 
