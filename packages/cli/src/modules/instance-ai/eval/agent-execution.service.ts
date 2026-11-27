@@ -224,6 +224,10 @@ function extractFinalAssistantText(result: GenerateResult): string {
 export class EvalAgentExecutionService {
 	private readonly threads = new EvalAgentThreadStore<EvalAgentWorld>();
 
+	/** Resource ids with a turn in flight. One turn per simulated user at a time:
+	 *  turns share the world's evidence and the thread's history. */
+	private readonly busyResources = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionsConfig: ExecutionsConfig,
@@ -253,12 +257,31 @@ export class EvalAgentExecutionService {
 		if (!this.moduleRegistry.isActive('agents')) {
 			return this.errorResult('Agent eval execution requires the agents module to be active.');
 		}
-		if (options.thread) return await this.executeThreadTurn(agentId, user, options, options.thread);
+		if (options.thread)
+			return await this.executeGuardedThreadTurn(agentId, user, options, options.thread);
 
 		const world = await this.createWorld(agentId, user, options, caseInput);
 		if ('error' in world) return world.error;
 		const { output } = await this.runTurn(world, world.seed.openingMessage, options);
 		return output;
+	}
+
+	/** Run a thread turn unless one is already running for its resource id. */
+	private async executeGuardedThreadTurn(
+		agentId: string,
+		user: User,
+		options: InstanceAiEvalAgentExecutionRequest,
+		turn: InstanceAiEvalAgentThreadTurn,
+	): Promise<InstanceAiEvalAgentExecutionResult> {
+		if (this.busyResources.has(turn.resourceId)) {
+			return this.errorResult(`Resource id ${turn.resourceId} has a turn already running`);
+		}
+		this.busyResources.add(turn.resourceId);
+		try {
+			return await this.executeThreadTurn(agentId, user, options, turn);
+		} finally {
+			this.busyResources.delete(turn.resourceId);
+		}
 	}
 
 	/**

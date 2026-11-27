@@ -303,6 +303,35 @@ describe('EvalAgentExecutionService multi-turn threads', () => {
 		expect(generate).toHaveBeenCalledTimes(1);
 	});
 
+	it('refuses a second turn for a resource while one is running, and allows it after', async () => {
+		const service = buildService();
+		let finish: (result: GenerateResult) => void = () => {};
+		generate
+			.mockImplementationOnce(
+				async () => await new Promise<GenerateResult>((resolve) => (finish = resolve)),
+			)
+			.mockResolvedValueOnce(reply('Second.'));
+
+		const first = service.executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a'));
+		await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+		const overlapping = await service.executeWithLlmMock(
+			'agent-1',
+			user,
+			turn(THREAD_B, 'user-a', 'Hello'),
+		);
+		finish(reply('First.'));
+		await first;
+		const after = await service.executeWithLlmMock(
+			'agent-1',
+			user,
+			turn(THREAD_B, 'user-a', 'Hello'),
+		);
+
+		expect(overlapping.success).toBe(false);
+		expect(overlapping.errors[0]).toMatch(/turn already running/);
+		expect(after.success).toBe(true);
+	});
+
 	it('does not add a failed turn to the thread', async () => {
 		const service = buildService();
 		generate
