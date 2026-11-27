@@ -44,7 +44,7 @@ function toResponse(res: CallToolResult): Response {
 }
 
 // `parentFolderId` names a folder that the gym made, when a message of the gym is read.
-const ID_FIELD = /"(?:id|threadId|spreadsheetId|parentFolderId)"\s*:\s*"([^"]+)"/g;
+const ID_FIELD = /"(?:id|threadId|spreadsheetId|documentId|parentFolderId)"\s*:\s*"([^"]+)"/g;
 
 // A path can hold an id with `%2B` or `%3D`. The gym answer holds it as plain text.
 const decodeSegment = (segment: string): string => {
@@ -92,7 +92,9 @@ export class HttpGuardRouter {
 		this.log(args, 'gym');
 		if (profile.hydrateWrite?.(args, this.gymIds)) {
 			// A failed parent read must not block the write. The gym then answers with its own error.
-			await hydrator.hydrateWrite?.(name, args).catch(() => undefined);
+			// The body of an upload holds bytes. They go to the gym only, never to the model.
+			const forModel = args.path.startsWith('/upload/') ? { ...args, body: undefined } : args;
+			await hydrator.hydrateWrite?.(name, forModel).catch(() => undefined);
 		}
 		// An id in the answer of a write names an object that the gym made, also for a vendor with real ids.
 		const res = await this.callGym(name, args, true);
