@@ -134,7 +134,7 @@ describe('Knowledge collection repositories', () => {
 			);
 		});
 
-		describe('findUsableByAgent', () => {
+		describe('findSearchableByAgent', () => {
 			it('finds the linked collections that the project of the agent owns, by name', async () => {
 				const agent = await createAgent({ projectId });
 				const secondId = await createCollection({ name: 'B docs' });
@@ -145,11 +145,11 @@ describe('Knowledge collection repositories', () => {
 					{ agentId: agent.id, knowledgeCollectionId: firstId },
 				]);
 
-				const collections = await collectionRepo.findUsableByAgent(agent.id, projectId, {});
+				const collections = await collectionRepo.findSearchableByAgent(agent.id, projectId, {});
 
 				expect(collections.map(({ id }) => id)).toEqual([firstId, secondId]);
 				expect(collections[0]).toBeInstanceOf(KnowledgeCollection);
-				expect(await collectionRepo.hasUsableByAgent(agent.id, projectId, {})).toBe(true);
+				expect(await collectionRepo.hasSearchableByAgent(agent.id, projectId, {})).toBe(true);
 			});
 
 			it('leaves out a linked collection that another project owns', async () => {
@@ -158,10 +158,10 @@ describe('Knowledge collection repositories', () => {
 				const foreignId = await createCollection({ projectId: otherProjectId });
 				await dependencyTable.insert({ agentId: agent.id, knowledgeCollectionId: foreignId });
 
-				await expect(collectionRepo.findUsableByAgent(agent.id, projectId, {})).resolves.toEqual(
-					[],
-				);
-				expect(await collectionRepo.hasUsableByAgent(agent.id, projectId, {})).toBe(false);
+				await expect(
+					collectionRepo.findSearchableByAgent(agent.id, projectId, {}),
+				).resolves.toEqual([]);
+				expect(await collectionRepo.hasSearchableByAgent(agent.id, projectId, {})).toBe(false);
 			});
 
 			it('leaves out the private collection of the agent and the collections of other agents', async () => {
@@ -174,14 +174,14 @@ describe('Knowledge collection repositories', () => {
 					{ agentId: otherAgent.id, knowledgeCollectionId: otherAgentCollectionId },
 				]);
 
-				await expect(collectionRepo.findUsableByAgent(agent.id, projectId, {})).resolves.toEqual(
-					[],
-				);
-				expect(await collectionRepo.hasUsableByAgent(agent.id, projectId, {})).toBe(false);
+				await expect(
+					collectionRepo.findSearchableByAgent(agent.id, projectId, {}),
+				).resolves.toEqual([]);
+				expect(await collectionRepo.hasSearchableByAgent(agent.id, projectId, {})).toBe(false);
 			});
 		});
 
-		describe('hasUsableFileByAgent', () => {
+		describe('hasSearchableFileByAgent', () => {
 			it('is true only when a linked collection of the project has a file', async () => {
 				const agent = await createAgent({ projectId });
 				const emptyId = await createCollection({ name: 'Empty' });
@@ -189,12 +189,12 @@ describe('Knowledge collection repositories', () => {
 				const unlinkedId = await createCollection({ name: 'Not linked' });
 				await fileRepo.saveUploadedFile(fileParams(unlinkedId, 'unlinked.txt'), {});
 
-				expect(await collectionRepo.hasUsableByAgent(agent.id, projectId, {})).toBe(true);
-				expect(await collectionRepo.hasUsableFileByAgent(agent.id, projectId, {})).toBe(false);
+				expect(await collectionRepo.hasSearchableByAgent(agent.id, projectId, {})).toBe(true);
+				expect(await collectionRepo.hasSearchableFileByAgent(agent.id, projectId, {})).toBe(false);
 
 				await fileRepo.saveUploadedFile(fileParams(emptyId, 'first.txt'), {});
 
-				expect(await collectionRepo.hasUsableFileByAgent(agent.id, projectId, {})).toBe(true);
+				expect(await collectionRepo.hasSearchableFileByAgent(agent.id, projectId, {})).toBe(true);
 			});
 
 			it('ignores the file of a linked collection that another project owns', async () => {
@@ -204,7 +204,7 @@ describe('Knowledge collection repositories', () => {
 				await dependencyTable.insert({ agentId: agent.id, knowledgeCollectionId: foreignId });
 				await fileRepo.saveUploadedFile(fileParams(foreignId, 'foreign.txt'), {});
 
-				expect(await collectionRepo.hasUsableFileByAgent(agent.id, projectId, {})).toBe(false);
+				expect(await collectionRepo.hasSearchableFileByAgent(agent.id, projectId, {})).toBe(false);
 			});
 		});
 	});

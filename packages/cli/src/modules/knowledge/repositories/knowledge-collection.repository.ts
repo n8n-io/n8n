@@ -121,38 +121,38 @@ export class KnowledgeCollectionRepository {
 	 * agent can search a collection when it has the collection and its project
 	 * owns it. The agent link alone gives no access.
 	 */
-	async findUsableByAgent(
+	async findSearchableByAgent(
 		agentId: string,
 		projectId: string,
 		ctx: OperationContext,
 	): Promise<KnowledgeCollection[]> {
-		return await this.usableByAgentQuery(agentId, projectId, ctx)
+		return await this.searchableByAgentQuery(agentId, projectId, ctx)
 			.orderBy('collection.name', 'ASC')
 			.addOrderBy('collection.id', 'ASC')
 			.getMany();
 	}
 
-	/** Whether the agent can search at least one shared collection. Same rule as `findUsableByAgent`. */
-	async hasUsableByAgent(
+	/** Whether the agent can search at least one shared collection. Same rule as `findSearchableByAgent`. */
+	async hasSearchableByAgent(
 		agentId: string,
 		projectId: string,
 		ctx: OperationContext,
 	): Promise<boolean> {
-		return await this.usableByAgentQuery(agentId, projectId, ctx).getExists();
+		return await this.searchableByAgentQuery(agentId, projectId, ctx).getExists();
 	}
 
-	/** Whether a shared collection that the agent can search has a file. Same rule as `findUsableByAgent`. */
-	async hasUsableFileByAgent(
+	/** Whether a shared collection that the agent can search has a file. Same rule as `findSearchableByAgent`. */
+	async hasSearchableFileByAgent(
 		agentId: string,
 		projectId: string,
 		ctx: OperationContext,
 	): Promise<boolean> {
-		return await this.usableByAgentQuery(agentId, projectId, ctx)
+		return await this.searchableByAgentQuery(agentId, projectId, ctx)
 			.innerJoin(KnowledgeFile, 'file', 'file.knowledgeCollectionId = collection.id')
 			.getExists();
 	}
 
-	private usableByAgentQuery(agentId: string, projectId: string, ctx: OperationContext) {
+	private searchableByAgentQuery(agentId: string, projectId: string, ctx: OperationContext) {
 		return this.table
 			.managerFor(ctx)
 			.createQueryBuilder(KnowledgeCollection, 'collection')

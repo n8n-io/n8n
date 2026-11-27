@@ -46,7 +46,7 @@ export class KnowledgeCollectionSourceService {
 			return false;
 		}
 
-		return await this.collectionRepository.hasUsableByAgent(scope.agentId, scope.projectId, {});
+		return await this.collectionRepository.hasSearchableByAgent(scope.agentId, scope.projectId, {});
 	}
 
 	/**
@@ -59,7 +59,11 @@ export class KnowledgeCollectionSourceService {
 			return false;
 		}
 
-		return await this.collectionRepository.hasUsableFileByAgent(scope.agentId, scope.projectId, {});
+		return await this.collectionRepository.hasSearchableFileByAgent(
+			scope.agentId,
+			scope.projectId,
+			{},
+		);
 	}
 
 	async load(scope: KnowledgeConsumerScope): Promise<KnowledgeCollectionSource> {
@@ -68,7 +72,7 @@ export class KnowledgeCollectionSourceService {
 		}
 
 		const collections = (
-			await this.collectionRepository.findUsableByAgent(scope.agentId, scope.projectId, {})
+			await this.collectionRepository.findSearchableByAgent(scope.agentId, scope.projectId, {})
 		).filter((collection) => this.hasMirrorableSlug(collection, scope));
 		if (collections.length === 0) {
 			return EMPTY_SOURCE;

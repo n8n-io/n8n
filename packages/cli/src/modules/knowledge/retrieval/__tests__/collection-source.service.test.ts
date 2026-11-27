@@ -75,11 +75,11 @@ describe('KnowledgeCollectionSourceService', () => {
 	describe('hasCollections', () => {
 		it('asks the repository with the agent and the project of the scope', async () => {
 			const { service, collectionRepository } = makeService();
-			collectionRepository.hasUsableByAgent.mockResolvedValue(true);
+			collectionRepository.hasSearchableByAgent.mockResolvedValue(true);
 
 			await expect(service.hasCollections(scope)).resolves.toBe(true);
 
-			expect(collectionRepository.hasUsableByAgent).toHaveBeenCalledWith(
+			expect(collectionRepository.hasSearchableByAgent).toHaveBeenCalledWith(
 				'agent-1',
 				'project-1',
 				{},
@@ -93,18 +93,18 @@ describe('KnowledgeCollectionSourceService', () => {
 
 			await expect(service.hasCollections(scope)).resolves.toBe(false);
 
-			expect(collectionRepository.hasUsableByAgent).not.toHaveBeenCalled();
+			expect(collectionRepository.hasSearchableByAgent).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('hasCollectionFiles', () => {
-		it('asks the repository for a file in a usable collection of the scope', async () => {
+		it('asks the repository for a file in a searchable collection of the scope', async () => {
 			const { service, collectionRepository } = makeService();
-			collectionRepository.hasUsableFileByAgent.mockResolvedValue(true);
+			collectionRepository.hasSearchableFileByAgent.mockResolvedValue(true);
 
 			await expect(service.hasCollectionFiles(scope)).resolves.toBe(true);
 
-			expect(collectionRepository.hasUsableFileByAgent).toHaveBeenCalledWith(
+			expect(collectionRepository.hasSearchableFileByAgent).toHaveBeenCalledWith(
 				'agent-1',
 				'project-1',
 				{},
@@ -118,14 +118,14 @@ describe('KnowledgeCollectionSourceService', () => {
 
 			await expect(service.hasCollectionFiles(scope)).resolves.toBe(false);
 
-			expect(collectionRepository.hasUsableFileByAgent).not.toHaveBeenCalled();
+			expect(collectionRepository.hasSearchableFileByAgent).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('load', () => {
 		it('returns the collections of the scope with their files under one directory each', async () => {
 			const { service, collectionRepository, fileRepository } = makeService();
-			collectionRepository.findUsableByAgent.mockResolvedValue([
+			collectionRepository.findSearchableByAgent.mockResolvedValue([
 				makeCollection(),
 				makeCollection({
 					id: 'collection-2',
@@ -143,7 +143,7 @@ describe('KnowledgeCollectionSourceService', () => {
 
 			const source = await service.load(scope);
 
-			expect(collectionRepository.findUsableByAgent).toHaveBeenCalledWith(
+			expect(collectionRepository.findSearchableByAgent).toHaveBeenCalledWith(
 				'agent-1',
 				'project-1',
 				{},
@@ -198,13 +198,13 @@ describe('KnowledgeCollectionSourceService', () => {
 
 			await expect(service.load(scope)).resolves.toEqual({ collections: [], files: [] });
 
-			expect(collectionRepository.findUsableByAgent).not.toHaveBeenCalled();
+			expect(collectionRepository.findSearchableByAgent).not.toHaveBeenCalled();
 			expect(fileRepository.findByCollectionIds).not.toHaveBeenCalled();
 		});
 
 		it('reads no files when the scope has no collection', async () => {
 			const { service, collectionRepository, fileRepository } = makeService();
-			collectionRepository.findUsableByAgent.mockResolvedValue([]);
+			collectionRepository.findSearchableByAgent.mockResolvedValue([]);
 
 			await expect(service.load(scope)).resolves.toEqual({ collections: [], files: [] });
 
@@ -213,7 +213,7 @@ describe('KnowledgeCollectionSourceService', () => {
 
 		it('skips a collection whose slug cannot be a directory name, with a warning', async () => {
 			const { service, collectionRepository, fileRepository, logger } = makeService();
-			collectionRepository.findUsableByAgent.mockResolvedValue([
+			collectionRepository.findSearchableByAgent.mockResolvedValue([
 				makeCollection({ id: 'collection-bad', slug: '../escape' }),
 				makeCollection(),
 			]);
@@ -231,7 +231,7 @@ describe('KnowledgeCollectionSourceService', () => {
 
 		it('skips a file whose stored name cannot be a file name, with a warning, and keeps the others', async () => {
 			const { service, collectionRepository, fileRepository, logger } = makeService();
-			collectionRepository.findUsableByAgent.mockResolvedValue([makeCollection()]);
+			collectionRepository.findSearchableByAgent.mockResolvedValue([makeCollection()]);
 			fileRepository.findByCollectionIds.mockResolvedValue([
 				makeFile({ id: 'file-bad', name: '..' }),
 				makeFile(),
