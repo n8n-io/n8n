@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_af367323ed1620::t_a8cd2bdac54a35 1,175
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_af367323ed1620::t_3576b1a49e4b09 1,94
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_af367323ed1620::t_f061807273a486 27-30,168,183,209,724-814,1426-1430
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_af367323ed1620::t_b0d313bb2cf5d0 1,165
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_af367323ed1620::t_e96ae0a7c125c6 51,58-62,359-360,385,457,507-513,587,610-617,636,677,720-727,731-754,796-806,834-840
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "59005142fd71fd123d076224833d08ac2bdcba2c",
+  "prompts": {},
+  "sessions": {
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

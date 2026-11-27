@@ -1,0 +1,37 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_af367323ed1620::t_5a5a8d9aabe5f0 432-470
+packages/cli/src/modules/agents/__tests__/agent-memory-trace.service.test.ts
+  s_af367323ed1620::t_10d1001043767c 180-203
+packages/cli/src/modules/agents/__tests__/agent-thread-redaction.service.test.ts
+  s_af367323ed1620::t_d353148ae4f468 18,536-552
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_af367323ed1620::t_d5141fe22ea6dd 46-50,111-144,548,565-573,881-886,888-892,1233-1241,1269-1274,1324-1346
+packages/cli/src/modules/agents/agent-memory-trace.service.ts
+  s_af367323ed1620::t_9035e46638013e 45-46
+packages/cli/src/modules/agents/agent-thread-redaction.service.ts
+  s_af367323ed1620::t_693997790872fa 82-97
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-turn-events.service.test.ts
+  s_af367323ed1620::t_dd3e589cbb8ba2 36-53
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_af367323ed1620::t_54fae8bf3e1e72 26,326-335,356-362
+packages/cli/src/modules/agents/system-agents/system-agent-turn-events.service.ts
+  s_af367323ed1620::t_8eefbaa75c38a1 33-41
+packages/cli/test/integration/agents/agent-thread-redaction.api.test.ts
+  s_af367323ed1620::t_608ba95498a060 17,175-196,335-390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0e4544bc59e2d10b69c45c9cb4bac1562eb524e",
+  "prompts": {},
+  "sessions": {
+    "s_af367323ed1620": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d8c11b5-1630-4b4d-b9d4-fdd64aac86ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
