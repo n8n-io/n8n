@@ -1,0 +1,14 @@
+.github/scripts/plan-release.mjs
+  h_52a137d26d774c 52-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fcb1cf291f58d7fdb02b270e84241f27901efb6a",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
