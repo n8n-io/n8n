@@ -873,6 +873,7 @@ export class TelemetryEventRelay extends EventRelay {
 		rulesAfter,
 		shadowWarningCount,
 		notLoadedWarningCount,
+		origin,
 	}: RelayEventMap['node-type-policy-saved']) {
 		if (!isPolicyKind(kind)) return;
 
@@ -899,6 +900,7 @@ export class TelemetryEventRelay extends EventRelay {
 				shadow_warning_count: shadowWarningCount,
 				not_loaded_warning_count: notLoadedWarningCount,
 				version: after.version,
+				origin: origin ?? 'save',
 			},
 		);
 	}

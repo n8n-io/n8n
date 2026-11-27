@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import { setActivePinia, getActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
+import { createRunExecutionData, NodeOperationError } from 'n8n-workflow';
 import { STORES } from '@n8n/stores';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
@@ -25,10 +26,11 @@ import {
 	useExecutionDataStore,
 } from '@/app/stores/executionData.store';
 import { useLogsStore } from '@/app/stores/logs.store';
+import { useToast } from '@n8n/composables/useToast';
 import { useExecutionPreviewDocument } from './useExecutionPreviewDocument';
 
 vi.mock('@n8n/composables/useToast', () => {
-	const showMessage = vi.fn();
+	const showMessage = vi.fn(() => ({ close: vi.fn() }));
 	const showError = vi.fn();
 	return {
 		useToast: () => ({ showMessage, showError }),
@@ -45,6 +47,7 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 
 const WORKFLOW_ID = 'test-workflow';
 const EXECUTION_ID = 'execution-1';
+const showMessage = vi.mocked(useToast().showMessage);
 
 function createExecution(overrides: Partial<IExecutionResponse> = {}): IExecutionResponse {
 	return {
@@ -117,6 +120,7 @@ describe('useExecutionPreviewDocument', () => {
 		);
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.getExecution = vi.fn().mockResolvedValue(createExecution());
+		showMessage.mockClear();
 	});
 
 	it('opens the logs panel when the execution data is too large to display', async () => {
@@ -231,6 +235,51 @@ describe('useExecutionPreviewDocument', () => {
 		await preview.load();
 
 		expect(workflowsStore.getExecution).toHaveBeenCalledTimes(2);
+	});
+
+	describe('execution error toast', () => {
+		function createFailedExecution(id: string): IExecutionResponse {
+			return createExecution({
+				id,
+				finished: false,
+				status: 'error',
+				data: createRunExecutionData({
+					resultData: {
+						runData: { 'Node A': [] },
+						lastNodeExecuted: 'Node A',
+						error: new NodeOperationError(createTestNode({ name: 'Node A' }), 'Node failed'),
+					},
+				}),
+			});
+		}
+
+		it('shows one sticky error toast when the loaded execution failed', async () => {
+			workflowsStore.getExecution = vi.fn().mockResolvedValue(createFailedExecution(EXECUTION_ID));
+
+			const preview = useExecutionPreviewDocument({ executionId: () => EXECUTION_ID });
+			await preview.load();
+
+			expect(showMessage).toHaveBeenCalledTimes(1);
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'error', duration: 0 }),
+			);
+		});
+
+		it("closes the previous execution's error toast when the next execution loads", async () => {
+			const previousToast = { close: vi.fn() };
+			const nextToast = { close: vi.fn() };
+			showMessage.mockReturnValueOnce(previousToast).mockReturnValueOnce(nextToast);
+			const executionId = ref('execution-previous');
+			workflowsStore.getExecution = vi.fn(async (id: string) => createFailedExecution(id));
+
+			const preview = useExecutionPreviewDocument({ executionId });
+			await preview.load();
+			executionId.value = 'execution-next';
+			await preview.load();
+
+			expect(previousToast.close).toHaveBeenCalled();
+			expect(nextToast.close).not.toHaveBeenCalled();
+		});
 	});
 
 	it('sets loadError and keeps the document store empty when the fetch fails', async () => {

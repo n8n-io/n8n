@@ -11,6 +11,7 @@ import {
 
 import { wrapCustomModelEndpointErrorFetch } from './error-handling';
 import { asSent, buildRequestHeaders, credentialSecrets } from './headers';
+import type { AccessTokenSource } from './oauth2';
 import { createClientCredentialsTokenSource } from './oauth2';
 import type { EndpointCredential } from './types';
 
@@ -54,6 +55,57 @@ function withoutInheritedAuthorization(
 	return { input, init: { ...init, headers } };
 }
 
+function allowedUrlAssertion(
+	ctx: CustomModelEndpointFetchContext,
+	credential: ICredentialDataDecryptedObject,
+	endpoint: EndpointCredential,
+	egressFilter: NodeEgressFilter,
+) {
+	const node = ctx.getNode();
+	const allowedDomains = getCredentialAllowedDomains({
+		node,
+		credentialData: credential,
+		credentialOwnedSurface: true,
+		nodeEndpointUrl: endpoint.baseUrl,
+	});
+
+	return async (hopUrl: string) => {
+		assertUrlAllowed({ url: hopUrl, allowedDomains, node });
+		const result = await egressFilter.validateUrl(hopUrl);
+		if (!result.ok) throw result.error;
+	};
+}
+
+/**
+ * The token lives in the source, so a caller that builds a transport for each item has to
+ * hold one of these across them or it signs in again for every item. The login server is a
+ * host of its own, so the user has to allow it too.
+ */
+export function createCustomModelEndpointTokenSource(
+	ctx: CustomModelEndpointFetchContext,
+	credential: ICredentialDataDecryptedObject,
+	options: {
+		endpoint: EndpointCredential;
+		egressFilter: NodeEgressFilter;
+		/**
+		 * Defaults to a transport of its own, for a source shared by several of them. The
+		 * token request carries its own deadline, so that one takes no timeout.
+		 */
+		baseFetch?: typeof fetch;
+	},
+): AccessTokenSource | undefined {
+	const { endpoint, egressFilter } = options;
+	if (endpoint.login.type !== 'oauth2') return undefined;
+
+	return createClientCredentialsTokenSource(
+		endpoint.login,
+		createRefreshingAuthFetch({
+			baseFetch: options.baseFetch ?? createEndpointBaseFetch(egressFilter),
+			assertAllowedUrl: allowedUrlAssertion(ctx, credential, endpoint, egressFilter),
+		}),
+	);
+}
+
 export function createCustomModelEndpointAuthFetch(
 	ctx: CustomModelEndpointFetchContext,
 	credential: ICredentialDataDecryptedObject,
@@ -68,33 +120,17 @@ export function createCustomModelEndpointAuthFetch(
 		contextHeaders?: Record<string, string>;
 		/** The headers the user typed on the node, any of which can hold a key. */
 		userHeaders?: Record<string, string>;
+		/** Pass one in to sign in once across transports. See the factory above. */
+		tokenSource?: AccessTokenSource;
 	},
 ): typeof fetch {
 	const { endpoint, egressFilter, baseFetch, contextHeaders = {}, userHeaders = {} } = options;
 	// Built here from the one list, so a header cannot be sent without also being filtered
 	const requestHeaders = { ...contextHeaders, ...userHeaders };
-	const node = ctx.getNode();
-	const allowedDomains = getCredentialAllowedDomains({
-		node,
-		credentialData: credential,
-		credentialOwnedSurface: true,
-		nodeEndpointUrl: endpoint.baseUrl,
-	});
+	const assertAllowedUrl = allowedUrlAssertion(ctx, credential, endpoint, egressFilter);
 
-	const assertAllowedUrl = async (hopUrl: string) => {
-		assertUrlAllowed({ url: hopUrl, allowedDomains, node });
-		const result = await egressFilter.validateUrl(hopUrl);
-		if (!result.ok) throw result.error;
-	};
-
-	// The login server is a host of its own, so the user has to allow it too
 	const tokenSource =
-		endpoint.login.type === 'oauth2'
-			? createClientCredentialsTokenSource(
-					endpoint.login,
-					createRefreshingAuthFetch({ baseFetch, assertAllowedUrl }),
-				)
-			: undefined;
+		options.tokenSource ?? createCustomModelEndpointTokenSource(ctx, credential, options);
 
 	const resolveHeaders = async () =>
 		buildRequestHeaders({

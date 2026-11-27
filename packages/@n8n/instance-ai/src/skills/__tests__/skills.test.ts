@@ -354,6 +354,9 @@ describe('Instance AI skills', () => {
 		// The skill and task tools no longer carry the templates, so these load gates must stay.
 		expect(loaded?.instructions).toContain('Load `agent-builder-target-skills`');
 		expect(loaded?.instructions).toContain('Load `agent-builder-target-tasks`');
+		// Agent builds search existing attachable skills before creating duplicates or writing procedures inline.
+		expect(loaded?.instructions).toContain('attachableToAgentId');
+		expect(loaded?.instructions).toContain('skills({ action: "list"');
 	});
 
 	it('loads the bundled Browser Use credential setup skill', async () => {

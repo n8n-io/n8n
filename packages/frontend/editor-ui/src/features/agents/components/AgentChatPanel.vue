@@ -189,6 +189,8 @@ const props = withDefaults(
 		disabled?: boolean;
 		/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
 		thinkingLabel?: string;
+		/** Replaces the generic "Session stopped" of a stopped turn. The Assistant sets it. */
+		stoppedLabel?: string;
 	}>(),
 	{
 		visible: true,
@@ -2264,6 +2266,7 @@ onBeforeUnmount(() => {
 				:loading-older-messages="isLoadingOlderMessages"
 				:load-older-messages-failed="loadOlderMessagesFailed"
 				:thinking-label="props.thinkingLabel"
+				:stopped-label="props.stoppedLabel"
 				:task-trace-route="
 					continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 				"
@@ -2328,6 +2331,8 @@ onBeforeUnmount(() => {
 .scrollArea {
 	flex: 1;
 	min-height: 0;
+	// Centers the scroll button over the input, which a host panel can move.
+	--n8n-chat-scroll-area--x-offset--end: var(--agent-chat-reserved-end, 0);
 }
 
 .centeredEmpty {
@@ -2345,18 +2350,21 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	width: 100%;
+	// Same as the messages: centers in the space that a host panel leaves.
+	width: calc(100% - var(--agent-chat-reserved-end, 0px));
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
+	position: relative;
+	left: calc(var(--agent-chat-reserved-end, 0px) / -2);
 }
 
 .backgroundJobs {
 	min-width: 0;
 
-	--ai-activity-step--height: auto;
-	--ai-activity-step--min-height: var(--height--xl);
-	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
-	--ai-activity-step--color: var(--text-color);
+	--n8n-ai-activity-step--height: auto;
+	--n8n-ai-activity-step--min-height: var(--height--xl);
+	--n8n-ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
+	--n8n-ai-activity-step--color: var(--text-color);
 	background: var(--background--surface);
 	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--xs);

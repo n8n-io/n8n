@@ -5,10 +5,12 @@ import { useDebounceFn } from '@vueuse/core';
 import {
 	AGENT_REASONING_LEVELS,
 	getModelPromptCachingCapability,
+	resolveAgentSandboxEgressEnabled,
 	type AgentReasoningLevel,
 } from '@n8n/api-types';
 import { N8nInputNumber, N8nOption, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentMemoryModelSetting from './AgentMemoryModelSetting.vue';
 import AgentPanel from './AgentPanel.vue';
 
@@ -19,6 +21,7 @@ import { modelToString, parseModelString } from '../utils/model-string';
 import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 const { catalog, ensureLoaded } = useModelCatalog();
 
 function normalizeReasoningLevel(value: unknown): AgentReasoningLevel {
@@ -237,6 +240,36 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 		},
 	});
 }
+
+// ---------------------------------------------------------------------------
+// Sandbox internet access
+// ---------------------------------------------------------------------------
+
+const isSandboxEnabled = computed(
+	() => settingsStore.moduleSettings.agents?.sandboxEnabled === true,
+);
+const sandboxEgressPolicy = computed(
+	() => settingsStore.moduleSettings.agents?.sandboxEgressPolicy ?? 'opt-in',
+);
+const isSandboxEgressLockedByInstance = computed(() => sandboxEgressPolicy.value === 'disabled');
+const sandboxEgressEnabled = computed(() =>
+	resolveAgentSandboxEgressEnabled(sandboxEgressPolicy.value, props.config?.config?.sandboxEgress),
+);
+const sandboxEgressHintKey = computed(() =>
+	isSandboxEgressLockedByInstance.value
+		? 'agents.builder.advanced.sandboxEgress.disabledHint'
+		: 'agents.builder.advanced.sandboxEgress.hint',
+);
+
+function onSandboxEgressToggle(enabled: boolean) {
+	if (isSandboxEgressLockedByInstance.value) return;
+	emit('update:config', {
+		config: {
+			...props.config?.config,
+			sandboxEgress: enabled,
+		},
+	});
+}
 </script>
 
 <template>
@@ -396,6 +429,33 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						:class="shared.settingControlShort"
 						data-testid="agent-max-iterations-input"
 						@update:model-value="onMaxIterationsChange"
+					/>
+				</div>
+
+				<div
+					v-if="isSandboxEnabled"
+					:class="shared.settingRow"
+					data-testid="agent-sandbox-egress-row"
+				>
+					<div :class="shared.settingLabel">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+							i18n.baseText('agents.builder.advanced.sandboxEgress.label')
+						}}</N8nText>
+						<N8nText
+							size="small"
+							:class="shared.dataEntrySubLabel"
+							data-testid="agent-sandbox-egress-hint"
+						>
+							{{ i18n.baseText(sandboxEgressHintKey) }}
+						</N8nText>
+					</div>
+					<N8nSwitch2
+						:model-value="sandboxEgressEnabled"
+						:disabled="props.disabled || isSandboxEgressLockedByInstance"
+						:class="[$style.switchControl, shared.settingControl]"
+						data-testid="agent-sandbox-egress-toggle"
+						data-attr="agent-sandbox-egress-toggle"
+						@update:model-value="(v) => onSandboxEgressToggle(Boolean(v))"
 					/>
 				</div>
 			</div>
