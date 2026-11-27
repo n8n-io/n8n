@@ -54,8 +54,33 @@ describe('createErrorWorkflowResolver', () => {
 		const executionId = resolution.kind === 'start' ? resolution.executionId : undefined;
 		expect(client.resolve).toHaveBeenCalledExactlyOnceWith(
 			{ kind: 'error-workflow', executionId, source },
-			signal,
+			expect.any(AbortSignal),
 		);
+	});
+
+	it('aborts the request when the runtime stops', async () => {
+		const stopping = new AbortController();
+		client.resolve.mockResolvedValue(resolved);
+		await createErrorWorkflowResolver(client, logger, stopping.signal)(source);
+		const [, requestSignal] = client.resolve.mock.calls[0];
+
+		stopping.abort();
+
+		expect(requestSignal.aborted).toBe(true);
+	});
+
+	it('aborts a request that takes longer than the timeout, so the engine asks again later', async () => {
+		client.resolve.mockImplementation(
+			async (_request, requestSignal) =>
+				await new Promise((_resolve, reject) => {
+					requestSignal.addEventListener('abort', () => reject(new Error('aborted')));
+				}),
+		);
+
+		await expect(createErrorWorkflowResolver(client, logger, signal, 10)(source)).rejects.toThrow(
+			'aborted',
+		);
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('mints a new id for every try', async () => {
