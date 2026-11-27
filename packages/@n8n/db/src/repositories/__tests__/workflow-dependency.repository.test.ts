@@ -1,5 +1,12 @@
 import type { DatabaseConfig } from '@n8n/config';
-import type { DataSource, Driver, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	IsNull,
+	Not,
+	type DataSource,
+	type Driver,
+	type EntityManager,
+	type SelectQueryBuilder,
+} from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { User } from '../../entities';
@@ -74,6 +81,10 @@ describe('WorkflowDependencyRepository', () => {
 			);
 
 			expect(result).toBe(4);
+			expect(sharedWorkflowRepository.buildSharedWorkflowIdsSubquery).toHaveBeenCalledWith(user, {
+				projectRoles: ['project:admin'],
+				workflowRoles: ['workflow:owner'],
+			});
 			expect(entityManager.createQueryBuilder).toHaveBeenCalledWith(
 				WorkflowDependency,
 				'dependency',
@@ -87,6 +98,39 @@ describe('WorkflowDependencyRepository', () => {
 			expect(qb.andWhere).toHaveBeenCalledWith('workflow.isArchived = :isArchived', {
 				isArchived: false,
 			});
+			expect(qb.andWhere).toHaveBeenCalledWith(
+				'dependency.workflowId IN (SELECT sw.workflowId FROM shared_workflow sw)',
+			);
+			expect(qb.setParameters).toHaveBeenCalledWith({ userId: 'user-1' });
+		});
+
+		it('uses the active transaction manager when ctx carries a transaction', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const readableSubquery = mock<SelectQueryBuilder<WorkflowDependency>>();
+			readableSubquery.getQuery.mockReturnValue('SELECT sw.workflowId FROM shared_workflow sw');
+			readableSubquery.getParameters.mockReturnValue({ userId: 'user-1' });
+			sharedWorkflowRepository.buildSharedWorkflowIdsSubquery.mockReturnValueOnce(readableSubquery);
+
+			const qb = mock<SelectQueryBuilder<WorkflowDependency>>();
+			qb.innerJoin.mockReturnThis();
+			qb.where.mockReturnThis();
+			qb.andWhere.mockReturnThis();
+			qb.setParameters.mockReturnThis();
+			qb.select.mockReturnThis();
+			qb.getRawOne.mockResolvedValueOnce({ total: '2' });
+
+			const { txManager } = createTransactionManager();
+			txManager.createQueryBuilder.mockReturnValueOnce(qb);
+
+			const result = await repository.countWorkflowsInScope(
+				user,
+				{ projectRoles: ['project:admin'], workflowRoles: ['workflow:owner'] },
+				{ trx: new TypeOrmTransaction(txManager) },
+			);
+
+			expect(result).toBe(2);
+			expect(txManager.createQueryBuilder).toHaveBeenCalledWith(WorkflowDependency, 'dependency');
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
 		});
 	});
 
@@ -155,6 +199,27 @@ describe('WorkflowDependencyRepository', () => {
 				'workflow.id = dependency.workflowId',
 			);
 		});
+
+		it('uses the active transaction manager when ctx carries a transaction', async () => {
+			const qb = mock<SelectQueryBuilder<WorkflowDependency>>();
+			qb.innerJoin.mockReturnThis();
+			qb.where.mockReturnThis();
+			qb.andWhere.mockReturnThis();
+			qb.select.mockReturnThis();
+			qb.distinct.mockReturnThis();
+			qb.getRawMany.mockResolvedValueOnce([{ workflowId: 'wf-3' }]);
+
+			const { txManager } = createTransactionManager();
+			txManager.createQueryBuilder.mockReturnValueOnce(qb);
+
+			const ids = await repository.findUnpublishedWorkflowIdsWithPublishedDependencies({
+				trx: new TypeOrmTransaction(txManager),
+			});
+
+			expect(ids).toEqual(['wf-3']);
+			expect(txManager.createQueryBuilder).toHaveBeenCalledWith(WorkflowDependency, 'dependency');
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('removePublishedDependenciesForUnpublishedWorkflow', () => {
@@ -179,6 +244,37 @@ describe('WorkflowDependencyRepository', () => {
 				'SELECT id FROM "n8n_workflow_entity" WHERE id = $1 FOR UPDATE',
 				['wf-1'],
 			);
+			expect(txManager.delete).toHaveBeenCalledWith(WorkflowDependency, {
+				workflowId: 'wf-1',
+				publishedVersionId: Not(IsNull()),
+			});
+			expect(txManager.query.mock.invocationCallOrder[0]).toBeLessThan(
+				txManager.findOne.mock.invocationCallOrder[0],
+			);
+			expect(txManager.query.mock.invocationCallOrder[0]).toBeLessThan(
+				txManager.delete.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('skips the row lock query on SQLite', async () => {
+			const { txManager } = createTransactionManager();
+			transactionRunner.run.mockImplementationOnce(async (ctx, fn) => {
+				return await fn({ ...ctx, trx: new TypeOrmTransaction(txManager) });
+			});
+			txManager.findOne.mockResolvedValueOnce(null);
+			txManager.delete.mockResolvedValueOnce({ affected: 1, raw: {} });
+
+			const removed = await repository.removePublishedDependenciesForUnpublishedWorkflow(
+				'wf-1',
+				{},
+			);
+
+			expect(removed).toBe(true);
+			expect(txManager.query).not.toHaveBeenCalled();
+			expect(txManager.delete).toHaveBeenCalledWith(WorkflowDependency, {
+				workflowId: 'wf-1',
+				publishedVersionId: Not(IsNull()),
+			});
 		});
 	});
 });
