@@ -73,26 +73,31 @@ export function prepareOutput(
 	rawOutput: boolean,
 	includeSchema = false,
 ) {
-	let responseData;
+	let responseData: IDataObject | IDataObject[];
 
 	if (response === undefined) return [];
 
 	if (rawOutput) {
 		responseData = response;
 	} else {
-		const { rows, schema } = response;
-		const parseTimestamps = this.getNode().typeVersion >= 2.1;
+		const { rows, schema, numDmlAffectedRows } = response;
+		const { typeVersion } = this.getNode();
+		const parseTimestamps = typeVersion >= 2.1;
+		const hasRows = Array.isArray(rows) && rows.length > 0;
 
-		if (rows !== undefined && schema !== undefined) {
+		if (
+			typeVersion >= 2.3 &&
+			!hasRows &&
+			numDmlAffectedRows !== undefined &&
+			numDmlAffectedRows !== null
+		) {
+			responseData =
+				schema && includeSchema
+					? { success: true, numDmlAffectedRows, _schema: schema }
+					: { success: true, numDmlAffectedRows };
+		} else if (rows !== undefined && schema !== undefined) {
 			const fields = (schema as TableSchema).fields;
-			responseData = rows;
-
-			responseData = simplify(
-				responseData as TableRawData[],
-				fields,
-				includeSchema,
-				parseTimestamps,
-			);
+			responseData = simplify(rows as TableRawData[], fields, includeSchema, parseTimestamps);
 		} else if (schema && includeSchema) {
 			responseData = { success: true, _schema: schema };
 		} else {
@@ -100,12 +105,9 @@ export function prepareOutput(
 		}
 	}
 
-	const executionData = this.helpers.constructExecutionMetaData(
-		wrapData(responseData as IDataObject[]),
-		{
-			itemData: { item: itemIndex },
-		},
-	);
+	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
+		itemData: { item: itemIndex },
+	});
 
 	return executionData;
 }

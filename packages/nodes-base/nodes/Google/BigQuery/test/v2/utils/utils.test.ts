@@ -269,4 +269,118 @@ describe('Google BigQuery v2 Utils', () => {
 			},
 		]);
 	});
+
+	it('should return success and numDmlAffectedRows for DML responses on version 2.3', () => {
+		const thisArg = mock<IExecuteFunctions>({
+			getNode: () => ({ typeVersion: 2.3 }) as INode,
+			helpers: mock({ constructExecutionMetaData }),
+		});
+
+		expect(
+			prepareOutput.call(
+				thisArg,
+				{ rows: [], schema: {}, numDmlAffectedRows: '5', jobComplete: true },
+				0,
+				false,
+				false,
+			),
+		).toEqual([{ json: { success: true, numDmlAffectedRows: '5' }, pairedItem: { item: 0 } }]);
+
+		expect(
+			prepareOutput.call(
+				thisArg,
+				{ rows: [], schema: {}, numDmlAffectedRows: '0', jobComplete: true },
+				1,
+				false,
+				false,
+			),
+		).toEqual([{ json: { success: true, numDmlAffectedRows: '0' }, pairedItem: { item: 1 } }]);
+
+		expect(
+			prepareOutput.call(thisArg, { numDmlAffectedRows: '3', jobComplete: true }, 2, false, false),
+		).toEqual([{ json: { success: true, numDmlAffectedRows: '3' }, pairedItem: { item: 2 } }]);
+	});
+
+	it('should include _schema on version 2.3 DML output when includeSchema is true', () => {
+		const thisArg = mock<IExecuteFunctions>({
+			getNode: () => ({ typeVersion: 2.3 }) as INode,
+			helpers: mock({ constructExecutionMetaData }),
+		});
+
+		expect(
+			prepareOutput.call(
+				thisArg,
+				{ rows: [], schema: {}, numDmlAffectedRows: '2', jobComplete: true },
+				0,
+				false,
+				true,
+			),
+		).toEqual([
+			{
+				json: { success: true, numDmlAffectedRows: '2', _schema: {} },
+				pairedItem: { item: 0 },
+			},
+		]);
+	});
+
+	it('should return simplified rows on version 2.3 when rows are non-empty even if numDmlAffectedRows is present', () => {
+		const thisArg = mock<IExecuteFunctions>({
+			getNode: () => ({ typeVersion: 2.3 }) as INode,
+			helpers: mock({ constructExecutionMetaData }),
+		});
+
+		expect(
+			prepareOutput.call(
+				thisArg,
+				{
+					rows: [{ f: [{ v: 'alpha' }] }],
+					schema: { fields: [{ name: 'name', type: 'STRING', mode: 'NULLABLE' }] },
+					numDmlAffectedRows: '1',
+					jobComplete: true,
+				},
+				0,
+				false,
+				false,
+			),
+		).toEqual([{ json: { name: 'alpha' }, pairedItem: { item: 0 } }]);
+	});
+
+	it('should return no items on version 2.3 for a zero-row SELECT without numDmlAffectedRows', () => {
+		const thisArg = mock<IExecuteFunctions>({
+			getNode: () => ({ typeVersion: 2.3 }) as INode,
+			helpers: mock({ constructExecutionMetaData }),
+		});
+
+		expect(
+			prepareOutput.call(
+				thisArg,
+				{
+					rows: [],
+					schema: { fields: [{ name: 'id', type: 'INTEGER', mode: 'NULLABLE' }] },
+					totalRows: '0',
+					jobComplete: true,
+				},
+				0,
+				false,
+				false,
+			),
+		).toEqual([]);
+	});
+
+	it('should preserve empty output on version 2.2 for DML responses with schema', () => {
+		const thisArg = mock<IExecuteFunctions>({
+			getNode: () => ({ typeVersion: 2.2 }) as INode,
+			helpers: mock({ constructExecutionMetaData }),
+		});
+
+		expect(
+			prepareOutput.call(
+				thisArg,
+				{ rows: [], schema: {}, numDmlAffectedRows: '5', jobComplete: true },
+				0,
+				false,
+				false,
+			),
+		).toEqual([]);
+	});
 });
