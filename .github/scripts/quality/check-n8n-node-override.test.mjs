@@ -20,9 +20,12 @@ mock.module('../github-helpers.mjs', {
 				rest: {
 					issues: { listComments: () => {} },
 					repos: {
-						getCollaboratorPermissionLevel: async ({ username }) => ({
-							data: { permission: permissions[username] ?? 'read' },
-						}),
+						getCollaboratorPermissionLevel: async ({ username }) => {
+							if (!(username in permissions)) {
+								throw Object.assign(new Error('Not Found'), { status: 404 });
+							}
+							return { data: { permission: permissions[username] } };
+						},
 					},
 				},
 			},
@@ -40,6 +43,16 @@ describe('check-n8n-node-override', () => {
 
 	it('passes when a user with write access commented the override command', async () => {
 		comments = [{ body: OVERRIDE_COMMAND, user: { login: 'maintainer' } }];
+		permissions = { maintainer: 'write' };
+
+		await main();
+	});
+
+	it('passes when a write user overrides after a user whose permission lookup returns 404', async () => {
+		comments = [
+			{ body: OVERRIDE_COMMAND, user: { login: 'unknown' } },
+			{ body: OVERRIDE_COMMAND, user: { login: 'maintainer' } },
+		];
 		permissions = { maintainer: 'write' };
 
 		await main();

@@ -15,6 +15,22 @@ export const OVERRIDE_COMMAND = '/n8n-node-break-override';
 
 const MAINTAINER_PERMISSIONS = ['admin', 'maintain', 'write'];
 
+async function getPermission(octokit, owner, repo, username) {
+	try {
+		const { data } = await octokit.rest.repos.getCollaboratorPermissionLevel({
+			owner,
+			repo,
+			username,
+		});
+		return data.permission;
+	} catch (error) {
+		if (error.status === 404) {
+			return 'none';
+		}
+		throw error;
+	}
+}
+
 export async function main() {
 	const { pull_request: pr } = getEventFromGithubEventPath();
 	const { octokit, owner, repo } = initGithub();
@@ -30,12 +46,8 @@ export async function main() {
 		if (!comment.body?.startsWith(OVERRIDE_COMMAND) || !comment.user) {
 			continue;
 		}
-		const { data } = await octokit.rest.repos.getCollaboratorPermissionLevel({
-			owner,
-			repo,
-			username: comment.user.login,
-		});
-		if (MAINTAINER_PERMISSIONS.includes(data.permission)) {
+		const permission = await getPermission(octokit, owner, repo, comment.user.login);
+		if (MAINTAINER_PERMISSIONS.includes(permission)) {
 			console.log(`${OVERRIDE_COMMAND} from @${comment.user.login} allows the breaking changes.`);
 			return;
 		}
