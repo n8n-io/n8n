@@ -52,8 +52,8 @@ const hasHeader = computed(() =>
 .section {
 	display: flex;
 	flex-direction: column;
-	/* Enforced section-header (title/description) → body gap: 16px. */
-	gap: var(--spacing--sm);
+	/* Enforced section-header (title/description) → body gap: 16px. A parent can set a tighter gap. */
+	gap: var(--settings-section-header-gap, var(--spacing--sm));
 	width: 100%;
 }
 
@@ -63,7 +63,8 @@ const hasHeader = computed(() =>
  * sections sit 32px apart while the header→content gap stays untouched.
  */
 .section + .section {
-	margin-block-start: var(--spacing--xl); /* 32px */
+	/* 32px by default. A parent can set --settings-section-gap for a tighter stack. */
+	margin-block-start: var(--settings-section-gap, var(--spacing--xl));
 }
 
 .header {
