@@ -15,4 +15,17 @@ describe('intercomApiRequest', () => {
 			'https://api.intercom.io/contacts/5f1a%2Fusers%3Fx=1',
 		);
 	});
+
+	it.each([
+		['apiKey', 'intercomApi'],
+		['oAuth2', 'intercomOAuth2Api'],
+	])('should use the %s credential type', async (authentication, credentialType) => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.getNodeParameter.mockReturnValue(authentication);
+		context.helpers.httpRequestWithAuthentication.mockResolvedValue({});
+
+		await intercomApiRequest.call(context, requestPath`/contacts`, 'GET');
+
+		expect(context.helpers.httpRequestWithAuthentication.mock.calls[0][0]).toBe(credentialType);
+	});
 });
