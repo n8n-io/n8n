@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_d8f20fc9febbf2::t_5ff42943fb8678 374-375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b89ff11671579981a3576d5edc53b1f7f08c3d53",
+  "prompts": {},
+  "sessions": {
+    "s_d8f20fc9febbf2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b7b4e2e-8874-41a4-9843-3743bd02a84c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

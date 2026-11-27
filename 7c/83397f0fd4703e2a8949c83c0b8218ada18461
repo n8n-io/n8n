@@ -1,0 +1,73 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 204-205
+packages/cli/src/modules/instance-ai/agent-test-handoff.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 1-4,72-73,88,100-107,124-166
+  s_6435a1128bc285::t_e6827f209a299f 167
+packages/frontend/editor-ui/src/features/agents/__tests__/agentSessions.store.spec.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 20-23
+packages/@n8n/api-types/src/index.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 537
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 1858-1860,1866-1874
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiAgentTestHandoff.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 12-13
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsFilter.spec.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 14,17,19-23,36,40,51,66
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 1,11-13,38,48,52,69,82,88-100
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.test.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 41-59
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_6435a1128bc285::t_5a42c93576830a 1044,1834-1881,1883-1894,1896-1922
+  s_6435a1128bc285::t_8b4e76bf193ad4 27,1882,1895
+  s_6435a1128bc285::t_5224c23516d13e 466
+  s_6435a1128bc285::t_378df877817dac 1923
+packages/frontend/editor-ui/src/features/agents/composables/useAgentAttentionFlags.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 1-42
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.handoffContext.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 10,45-54
+packages/cli/src/modules/agents/format-agent-session-context.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 107
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_6435a1128bc285::t_6202c1a85aa76f 45-46,111,157
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6435a1128bc285::t_7f21b86039208e 1982-1984,1987-1992,8899
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionFlagCard.vue
+  s_6435a1128bc285::t_6202c1a85aa76f 1-131
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_6435a1128bc285::t_118e2dc7190b24 2-3,59-60,151-158,164-165,185-213
+packages/cli/src/modules/instance-ai/__tests__/agent-test-handoff.test.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 78-96
+packages/frontend/editor-ui/src/features/agents/components/agentBuilderInjectionKeys.ts
+  s_6435a1128bc285::t_8b4e76bf193ad4 2,20
+  s_6435a1128bc285::t_118e2dc7190b24 1,17-19,21
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_6435a1128bc285::t_c19328f1f95c11 52,153,1120,1123,1991-2001
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 1,8-9,25-27,59,64-102,159,324-326,338-339
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_6435a1128bc285::t_c0c5cebdf4624c 2,5,12,23,25,36,72,79-84,86-93,96-190,437-444
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_6435a1128bc285::t_6202c1a85aa76f 2-8,12,29,39,57-69,77,81-97,112,120,126-130,145-148,159-178,207-208,210,223-224,247-251,253,260,262-269,275-283
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_6435a1128bc285::t_138500149d81f6 47-69,183-190,225-227,272,277,291,534-572
+  s_6435a1128bc285::t_501107ebbd778d 573-574
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_6435a1128bc285::t_6202c1a85aa76f 151,161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c83397f0fd4703e2a8949c83c0b8218ada18461",
+  "prompts": {},
+  "sessions": {
+    "s_6435a1128bc285": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a219de-1454-71f6-8a19-69357c961a84",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
