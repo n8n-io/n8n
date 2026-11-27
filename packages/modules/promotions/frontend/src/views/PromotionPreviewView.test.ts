@@ -222,7 +222,7 @@ describe('PromotionPreviewView', () => {
 				),
 				dependencies: [],
 			});
-			const { getByTestId, getAllByTestId, findAllByText } = await render(
+			const { getByTestId, getAllByTestId, findByRole } = await render(
 				`/projects/p1/promotions/${direction}`,
 				direction,
 			);
@@ -240,11 +240,72 @@ describe('PromotionPreviewView', () => {
 			expect(submit).toHaveAttribute('aria-disabled', 'true');
 
 			await userEvent.hover(submit);
-			expect(
-				(await findAllByText(`Select at least one change to ${action.toLowerCase()}.`)).length,
-			).toBeGreaterThan(0);
+			const tooltip = await findByRole('tooltip', { hidden: true });
+			expect(tooltip).toHaveTextContent(`Select at least one change to ${action.toLowerCase()}.`);
+			expect(submit).toHaveAttribute('aria-describedby', tooltip.id);
+			expect(submit).toHaveAccessibleDescription(
+				`Select at least one change to ${action.toLowerCase()}.`,
+			);
 		},
 	);
+
+	it('explains blockers instead of asking to select a change when every Apply change is blocked', async () => {
+		const preview = previewWithCheck(
+			check({ missingBindings: [{ ...variable, consumers: consumers('w1', 'w3') }] }),
+		);
+		vi.mocked(api.getPromotionPreview).mockResolvedValue({
+			...preview,
+			resources: [
+				{ ...billingResources.reconciliation, parentKey: null },
+				{ ...billingResources.kpiReport, parentKey: null },
+			],
+			dependencies: [],
+		});
+
+		const { getByTestId, findByRole, queryByTestId, queryByText } = await renderApply();
+		const submit = getByTestId('promotion-preview-submit');
+		expect(submit).toHaveAttribute('aria-disabled', 'true');
+		expect(queryByTestId('promotion-preview-submit-blocked')).not.toBeInTheDocument();
+
+		await userEvent.hover(submit);
+		const tooltip = await findByRole('tooltip', { hidden: true });
+		expect(tooltip).toHaveTextContent('Resolve the blockers to apply the changes.');
+		expect(submit).toHaveAttribute('aria-describedby', tooltip.id);
+		expect(submit).toHaveAccessibleDescription('Resolve the blockers to apply the changes.');
+		expect(queryByText('Select at least one change to apply.')).not.toBeInTheDocument();
+	});
+
+	it('explains moved workflows instead of asking to select a change when every Promote change moved projects', async () => {
+		const preview = billingPreview();
+		vi.mocked(api.getPromotionPreview).mockResolvedValue({
+			...preview,
+			resources: [
+				{
+					...billingResources.reconciliation,
+					parentKey: null,
+					change: 'deleted',
+					movedToProject: { id: 'p2', name: 'Ops' },
+				},
+			],
+			dependencies: [],
+		});
+
+		const { getByTestId, findByRole, queryByTestId, queryByText } = await render();
+		const submit = getByTestId('promotion-preview-submit');
+		expect(submit).toHaveAttribute('aria-disabled', 'true');
+		expect(queryByTestId('promotion-preview-submit-blocked')).not.toBeInTheDocument();
+
+		await userEvent.hover(submit);
+		const tooltip = await findByRole('tooltip', { hidden: true });
+		expect(tooltip).toHaveTextContent(
+			"Promote can't move workflows between projects. Move them back on this instance.",
+		);
+		expect(submit).toHaveAttribute('aria-describedby', tooltip.id);
+		expect(submit).toHaveAccessibleDescription(
+			"Promote can't move workflows between projects. Move them back on this instance.",
+		);
+		expect(queryByText('Select at least one change to promote.')).not.toBeInTheDocument();
+	});
 
 	it('omits the count and disables Apply when a refresh blocks every selected workflow', async () => {
 		// Two changed workflows cover this refresh without mounting unrelated cards.
@@ -1239,12 +1300,15 @@ describe('PromotionPreviewView', () => {
 				dependencies: [],
 			});
 
-			const { getByTestId, findAllByText, queryByText } = await renderInstance();
+			const { getByTestId, findByRole, queryByText } = await renderInstance();
 			const submit = getByTestId('promotion-preview-submit');
 			expect(submit).toHaveAttribute('aria-disabled', 'true');
 
 			await userEvent.hover(submit);
-			expect((await findAllByText('No changes to apply')).length).toBeGreaterThan(0);
+			const tooltip = await findByRole('tooltip', { hidden: true });
+			expect(tooltip).toHaveTextContent('No changes to apply');
+			expect(submit).toHaveAttribute('aria-describedby', tooltip.id);
+			expect(submit).toHaveAccessibleDescription('No changes to apply');
 			expect(queryByText('Select at least one change to apply.')).not.toBeInTheDocument();
 		});
 

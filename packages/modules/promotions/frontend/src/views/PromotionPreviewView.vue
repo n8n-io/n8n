@@ -45,6 +45,7 @@ import {
 	touchesDestructiveChange,
 } from '../promotionOperation';
 import {
+	availableKeys,
 	includedChangeCount,
 	resolveInclusion,
 	selectableKeys,
@@ -259,22 +260,6 @@ const submitBlockedReason = computed(() => {
 			: 'promotions.preview.submit.blocked',
 	);
 });
-// The tooltip repeats the reason in short form. The callout below keeps the full text visible.
-const submitBlockedReasonId = useId();
-const submitTooltip = computed(() => {
-	if (!submitBlockedReason.value) {
-		// A ready preview with no actionable changes has no callout, so the tooltip is the only hint.
-		if (state.value !== 'ready' || actionableChanges.value !== 0) return undefined;
-		return i18n.baseText(
-			isInstance.value
-				? 'promotions.preview.badge.empty.apply'
-				: `promotions.preview.submit.selectTooltip.${props.direction}`,
-		);
-	}
-	return props.direction === 'apply' && !scopedCheck.value?.movedFolders.length
-		? i18n.baseText('promotions.preview.submit.blockedTooltip')
-		: submitBlockedReason.value;
-});
 const actionableChanges = computed(() => {
 	if (!graph.value || scopedCheck.value?.movedFolders.length) return 0;
 	if (isInstance.value) return totalChanges.value;
@@ -282,6 +267,36 @@ const actionableChanges = computed(() => {
 		[...selection.selected.value].filter((key) => !blockers.value.blocked.has(key)),
 	);
 	return includedChangeCount(graph.value, resolveInclusion(graph.value, actionable));
+});
+const availableChanges = computed(() => {
+	if (!graph.value || scopedCheck.value?.movedFolders.length) return 0;
+	if (isInstance.value) return totalChanges.value;
+	const available = new Set(availableKeys(graph.value, blockers.value.blocked));
+	return includedChangeCount(graph.value, resolveInclusion(graph.value, available));
+});
+// The tooltip repeats the reason in short form. The callout below keeps the full text visible.
+const submitBlockedReasonId = useId();
+// Omit aria-describedby when no callout shows so N8nTooltip's as-child trigger keeps its own link.
+const submitDescribedByAttrs = computed(() =>
+	submitBlockedReason.value && !operation.error.value
+		? { 'aria-describedby': submitBlockedReasonId }
+		: {},
+);
+const submitTooltip = computed(() => {
+	if (!submitBlockedReason.value) {
+		// A ready preview with no actionable changes has no callout, so the tooltip is the only hint.
+		if (state.value !== 'ready' || actionableChanges.value !== 0) return undefined;
+		if (isInstance.value || totalChanges.value === 0) {
+			return i18n.baseText(`promotions.preview.badge.empty.${props.direction}`);
+		}
+		if (availableChanges.value === 0) {
+			return i18n.baseText(`promotions.preview.submit.blockedTooltip.${props.direction}`);
+		}
+		return i18n.baseText(`promotions.preview.submit.selectTooltip.${props.direction}`);
+	}
+	return props.direction === 'apply' && !scopedCheck.value?.movedFolders.length
+		? i18n.baseText('promotions.preview.submit.blockedTooltip.apply')
+		: submitBlockedReason.value;
 });
 const canSubmit = computed(
 	() =>
@@ -406,20 +421,15 @@ const treeResizer = useResizablePanel({
 					>
 						{{ i18n.baseText('promotions.preview.refresh') }}
 					</N8nButton>
-					<N8nTooltip
-						:content="submitTooltip"
-						:disabled="!submitTooltip"
-						placement="bottom"
-						as-child
-					>
+					<N8nTooltip :disabled="!submitTooltip" placement="bottom" as-child>
+						<!-- Plain text in the slot: reka-ui reads slot text for its aria-describedby target, and folder names are not HTML. -->
+						<template #content>{{ submitTooltip }}</template>
 						<N8nButton
+							v-bind="submitDescribedByAttrs"
 							:variant="isDestructive ? 'destructive' : 'brand'"
 							size="small"
 							:disabled="!canSubmit"
 							:focusable-when-disabled="!!submitTooltip"
-							:aria-describedby="
-								submitBlockedReason && !operation.error.value ? submitBlockedReasonId : undefined
-							"
 							:loading="operation.isRunning.value"
 							data-test-id="promotion-preview-submit"
 							@click="onSubmit"
