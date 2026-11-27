@@ -1,6 +1,8 @@
+import { DateTime } from 'luxon';
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -13,15 +15,50 @@ import type { ResponseWithJobReference } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
 import { googleBigQueryApiRequestAllItems, googleBigQueryApiRequest } from '../../transport';
 
-interface IQueryParameterOptions {
-	namedParameters?: Array<{
-		name: string;
-		value: unknown;
-		type?: string;
-	}>;
+interface INamedQueryParameter {
+	name: string;
+	value: unknown;
+	type?: string;
 }
 
-function serializeQueryParameterValue(value: unknown): string | null {
+interface IQueryParameterOptions {
+	namedParameters?: INamedQueryParameter[];
+}
+
+interface IToIsoLike {
+	toISO: () => string | null;
+}
+
+function isToIsoLike(value: object): value is IToIsoLike {
+	return 'toISO' in value && typeof value.toISO === 'function';
+}
+
+function formatDateTimeForParameterType(
+	dateTime: DateTime,
+	parameterType: string,
+	fallback: string,
+): string {
+	if (!dateTime.isValid) {
+		return fallback;
+	}
+
+	switch (parameterType) {
+		case 'DATE':
+			return dateTime.toISODate();
+		case 'DATETIME':
+			return dateTime.toISO({ includeOffset: false });
+		case 'TIME':
+			return dateTime.toISOTime({ includeOffset: false });
+		default:
+			return dateTime.toISO();
+	}
+}
+
+function serializeQueryParameterValue(
+	value: unknown,
+	parameterType: string,
+	context: { node: INode; itemIndex: number; parameterName: string },
+): string | null {
 	if (value === null || value === undefined) {
 		return null;
 	}
@@ -29,14 +66,42 @@ function serializeQueryParameterValue(value: unknown): string | null {
 		return value;
 	}
 	if (value instanceof Date) {
-		return Number.isNaN(value.getTime()) ? String(value) : value.toISOString();
+		return formatDateTimeForParameterType(
+			DateTime.fromJSDate(value, { zone: 'utc' }),
+			parameterType,
+			String(value),
+		);
 	}
 	if (Buffer.isBuffer(value)) {
 		return value.toString('base64');
 	}
 	if (typeof value === 'object') {
-		const serialized = JSON.stringify(value);
-		return serialized ?? null;
+		if (isToIsoLike(value)) {
+			const isoValue = value.toISO();
+			if (typeof isoValue !== 'string') {
+				return String(value);
+			}
+			if (parameterType === 'DATE' || parameterType === 'DATETIME' || parameterType === 'TIME') {
+				const parsed = DateTime.fromISO(isoValue, { setZone: true });
+				if (parsed.isValid) {
+					return formatDateTimeForParameterType(parsed, parameterType, isoValue);
+				}
+			}
+			return isoValue;
+		}
+		if (parameterType === 'JSON') {
+			const serialized = JSON.stringify(value);
+			return serialized ?? null;
+		}
+		throw new NodeOperationError(
+			context.node,
+			`Array and struct values are not supported for parameter "${context.parameterName}" of type "${parameterType}"`,
+			{
+				description:
+					'Select type "JSON" to pass an object or array as a JSON parameter, or convert the value to a string.',
+				itemIndex: context.itemIndex,
+			},
+		);
 	}
 	return String(value);
 }
@@ -237,7 +302,9 @@ const properties: INodeProperties[] = [
 									{ name: 'Date', value: 'DATE' },
 									{ name: 'DateTime', value: 'DATETIME' },
 									{ name: 'Float64', value: 'FLOAT64' },
+									{ name: 'Geography', value: 'GEOGRAPHY' },
 									{ name: 'Int64', value: 'INT64' },
+									{ name: 'Interval', value: 'INTERVAL' },
 									{ name: 'JSON', value: 'JSON' },
 									{ name: 'Numeric', value: 'NUMERIC' },
 									{ name: 'String', value: 'STRING' },
@@ -340,19 +407,31 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 
 			if (body.queryParameters !== undefined) {
-				const namedParameters = options.queryParameters?.namedParameters;
+				const rawNamedParameters = options.queryParameters?.namedParameters;
+				const namedParameters = Array.isArray(rawNamedParameters)
+					? rawNamedParameters.filter(
+							(parameter) => typeof parameter?.name === 'string' && parameter.name.trim() !== '',
+						)
+					: [];
 
-				if (Array.isArray(namedParameters) && namedParameters.length > 0) {
+				if (namedParameters.length > 0) {
 					body.parameterMode = 'NAMED';
 
 					body.queryParameters = namedParameters.map(({ name, value, type }) => {
+						const parameterName = name.trim();
 						const parameterType =
 							typeof type === 'string' && type.trim() !== '' ? type.trim().toUpperCase() : 'STRING';
 
 						return {
-							name,
+							name: parameterName,
 							parameterType: { type: parameterType },
-							parameterValue: { value: serializeQueryParameterValue(value) },
+							parameterValue: {
+								value: serializeQueryParameterValue(value, parameterType, {
+									node: this.getNode(),
+									itemIndex: i,
+									parameterName,
+								}),
+							},
 						};
 					});
 				} else {
@@ -430,6 +509,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				);
 				returnData.push(...executionErrorData);
 				continue;
+			}
+			if (error instanceof NodeOperationError) {
+				throw error;
 			}
 			if ((error.message as string).includes('location') || error.httpCode === '404') {
 				error.description =
