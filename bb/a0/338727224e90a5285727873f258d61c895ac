@@ -1,0 +1,61 @@
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 379-386
+packages/@n8n/db/src/migrations/common/1795778318405-CreatePromotionCredentialDraftTable.ts
+  s_3947e7a7645066::t_95ad4549feed76 1-44
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,64,282-289
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/prepareApplyCredentials.generated.yml
+  ai_agent 8,27,30-32,35
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,89,482-489
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_3947e7a7645066::t_cfad0673ff6081 617-618,621
+packages/modules/promotions/frontend/src/promotions.api.ts
+  s_3947e7a7645066::t_f0f8924410fc7a 155,159,165,182-228
+docs/generated/sqlite-schema/promotion_credential_draft.md
+  ai_agent 1-92
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/listCredentialDrafts.generated.yml
+  ai_agent 1-57
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/discardCredentialDraft.generated.yml
+  ai_agent 1-33
+packages/cli/src/modules/promotions.ee/database/entities/promotion-credential-draft.entity.ts
+  s_3947e7a7645066::t_a22970495e8f13 1-25
+packages/modules/promotions/frontend/src/components/preview/PromotionPreparedCredentials.vue
+  s_3947e7a7645066::t_cfad0673ff6081 7,13-14,18-30,51,71-73,76-85
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-credential-draft.repository.ts
+  s_3947e7a7645066::t_a22970495e8f13 1-43
+packages/cli/src/modules/promotions.ee/promotions.module.ts
+  s_3947e7a7645066::t_a22970495e8f13 45-47,49
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_3947e7a7645066::t_7527daaf00a0be 31,39
+  s_3947e7a7645066::t_5a4d17749a2244 1218-1220
+  s_3947e7a7645066::t_33df88fce2f33b 1230-1233
+  s_3947e7a7645066::t_76ef0c4936fc46 79,130-141,1122,1134,1139-1142,1190-1217,1221-1229,1234-1271
+packages/modules/promotions/frontend/src/composables/usePreparedApplyCredentials.ts
+  s_3947e7a7645066::t_957734d468aac3 3,5-12,19-21,31-32,46-61,63-64,73-78,83-89,103,115-125
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3947e7a7645066::t_06e3076a5a7071 966-970,989-992
+  s_3947e7a7645066::t_5a4d17749a2244 971-976
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3947e7a7645066::t_cfad0673ff6081 11609-11612
+docs/generated/sqlite-schema/README.md
+  ai_agent 141,411-412,1853-1860
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/saveCredentialDraft.generated.yml
+  ai_agent 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bba0338727224e90a5285727873f258d61c895ac",
+  "prompts": {},
+  "sessions": {
+    "s_3947e7a7645066": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6c1ad71-79f0-424f-bcac-75282364c349",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
