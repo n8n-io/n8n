@@ -16,6 +16,8 @@ import {
 	type ToolTestCapability,
 	type ToolTestKind,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, EvalNodeMockHandler } from 'n8n-core';
@@ -407,10 +409,16 @@ export class SimulationSession {
 		}
 		if (reply.outcome === 'served') {
 			active?.sources.push(reply.source);
-			if (active && Array.isArray(reply.evidence)) {
-				for (const item of reply.evidence as unknown[]) {
-					if (isToolCallEvidence(item)) active.evidence.add(item);
+			if (Array.isArray(reply.evidence)) {
+				// A valid list holds each value at most once, so a longer one is cut before parsing.
+				const items = reply.evidence.slice(0, toolCallEvidenceSchema.options.length);
+				for (const item of items) {
+					if (isToolCallEvidence(item)) active?.evidence.add(item);
 				}
+			} else if (reply.evidence !== undefined) {
+				Container.get(Logger).warn('[SafeTesting] The simulator sent evidence that is not a list', {
+					toolName: active?.toolName,
+				});
 			}
 			return reply;
 		}
