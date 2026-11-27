@@ -3587,7 +3587,7 @@
 	"oauth.consentView.redirectWarning.title": "After you allow, access to this instance is sent to:",
 	"oauth.consentView.redirectWarning.confirm": "I recognize and trust this URL",
 	"oauth.consentView.mcpServer.heading": "{clientName} wants to connect to {resourceName}",
-	"oauth.consentView.mcpServer.description": "{clientName} can see the tools of this MCP server and call them as you.",
+	"oauth.consentView.mcpServer.description": "{clientName} can see the tools of this MCP server and use them on your behalf.",
 	"oauth.consentView.mcpServer.refusal.not_member.heading": "You cannot connect to {resourceName}",
 	"oauth.consentView.mcpServer.refusal.not_member.description": "Only members of the {projectName} project can connect to this MCP server. Ask an admin of the project to add you, then connect again.",
 	"oauth.consentView.mcpServer.refusal.no_connect_scope.heading": "You cannot connect to {resourceName}",

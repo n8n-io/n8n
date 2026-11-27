@@ -160,7 +160,13 @@ export class OAuthConsentService {
 		resource: ProtectedResource,
 		user: User,
 	): Promise<Extract<ConsentDetailsResult, { reason: 'forbidden' }>> {
-		const refusal = await resource.describeRefusal?.(user);
+		// The details only explain the refusal. A failed lookup still answers `forbidden`.
+		const refusal = await Promise.resolve(resource.describeRefusal?.(user)).catch(
+			(error: unknown) => {
+				this.logger.warn('Could not describe a refusal', { error });
+				return undefined;
+			},
+		);
 		if (!refusal) return { ok: false, reason: 'forbidden' };
 		return {
 			ok: false,

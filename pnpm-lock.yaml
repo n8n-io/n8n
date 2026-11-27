@@ -8782,9 +8782,6 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
-      express:
-        specifier: 'catalog:'
-        version: 5.1.0(supports-color@8.1.1)
       uuid:
         specifier: 'catalog:'
         version: 11.1.1

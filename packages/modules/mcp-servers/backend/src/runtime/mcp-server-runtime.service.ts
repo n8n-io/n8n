@@ -1,7 +1,15 @@
 import { EventService } from '@n8n/backend-services';
 import { isRecord } from '@n8n/utils/is-record';
+import { lazyImport } from '@n8n/utils/lazy-import';
 import { Service } from '@n8n/di';
-import { ResourceAdmission, type AdmissionResult } from '@n8n/inbound-auth';
+import {
+	extractBearer,
+	inboundFrom,
+	inboundRequestOf,
+	ResourceAdmission,
+	type AdmissionResult,
+	type Inbound,
+} from '@n8n/inbound-auth';
 import type { SecurityContext } from '@n8n/permissions';
 
 import type { McpServerTool } from '../database/entities/mcp-server-tool.entity';
@@ -17,8 +25,8 @@ import {
 import { McpServerProtectedResource } from './mcp-server-protected-resource';
 import { McpServerRunCap } from './run-cap';
 
-// A type import resolves the CommonJS declarations of the SDK, and `await import()` the ESM ones.
-// TypeScript treats their `Server` classes as two classes, so `createServer` infers its type.
+// The type imports and `lazyImport` both resolve the CommonJS declarations of the SDK, so the
+// controller can pass the `Server` of `createServer` to the SDK handler.
 type CallToolRequest = import('@modelcontextprotocol/server').CallToolRequest;
 type CallToolResult = import('@modelcontextprotocol/server').CallToolResult;
 type ListToolsResult = import('@modelcontextprotocol/server').ListToolsResult;
@@ -93,10 +101,23 @@ export class McpServerRuntimeService {
 	) {}
 
 	/** Checks the token and the connect scope of the person, for this server only. */
-	async admit(server: McpServer, token: string, ip: string): Promise<AdmissionResult> {
+	async admit(
+		server: McpServer,
+		req: {
+			method: string;
+			originalUrl: string;
+			headers: Inbound['request']['headers'];
+			ip?: string;
+		},
+	): Promise<AdmissionResult> {
 		const resource = this.resources.forServer(server);
-		const request = { method: 'POST', url: resource.getResourceUrl(), ip };
-		return await this.admission.admitBearer(resource, request, token);
+		const inbound = inboundFrom(resource, {
+			...inboundRequestOf(req),
+			url: resource.getResourceUrl(),
+		});
+		const extracted = extractBearer(inbound);
+		if (!extracted.ok) return this.admission.refuse(inbound, extracted.reason);
+		return await this.admission.admit(resource, extracted.value);
 	}
 
 	async challenge(refused: Extract<AdmissionResult, { ok: false }>): Promise<string> {
@@ -109,9 +130,9 @@ export class McpServerRuntimeService {
 
 	/** A new MCP server object for one request, as the instance MCP does. */
 	async createServer(server: McpServer, caller: McpServerCaller) {
-		const { Server, ProtocolError, ProtocolErrorCode } = await import(
-			'@modelcontextprotocol/server'
-		);
+		const { Server, ProtocolError, ProtocolErrorCode } = await lazyImport<
+			typeof import('@modelcontextprotocol/server')
+		>(async () => await import('@modelcontextprotocol/server'));
 		const mcp = new Server(
 			{ name: server.name, version: '1.0.0' },
 			{
@@ -165,7 +186,13 @@ export class McpServerRuntimeService {
 		caller: McpServerCaller,
 	): Promise<CallOutcome | { invalidInput: string }> {
 		const startedAt = Date.now();
-		const outcome = await this.runTool(server, tool, request.params.arguments ?? {});
+		let outcome: CallOutcome | { invalidInput: string };
+		try {
+			outcome = await this.runTool(server, tool, request.params.arguments ?? {});
+		} catch (error) {
+			await this.trackCall(server, tool, caller, 'error', Date.now() - startedAt);
+			throw error;
+		}
 		const status = 'invalidInput' in outcome ? 'error' : outcome.status;
 		await this.trackCall(server, tool, caller, status, Date.now() - startedAt);
 		return outcome;

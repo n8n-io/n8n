@@ -92,10 +92,10 @@ async function tokenFor(user: User, resource: string) {
 	return pair.accessToken;
 }
 
-async function connect(token: string, slug = serverSlug) {
+async function connect(token: string, slug = serverSlug, scheme = 'Bearer') {
 	const client = new Client({ name: 'runtime-test', version: '1.0.0' });
 	const transport = new StreamableHTTPClientTransport(runtimeUrl(slug), {
-		requestInit: { headers: { Authorization: `Bearer ${token}` } },
+		requestInit: { headers: { Authorization: `${scheme} ${token}` } },
 	});
 	await client.connect(transport);
 	return client;
@@ -279,6 +279,22 @@ describe('Custom MCP server runtime with a real MCP client', () => {
 		await client.close();
 	});
 
+	it('records a failed call when the run throws', async () => {
+		vi.spyOn(Container.get(WorkflowToolPort), 'run').mockRejectedValue(new Error('Lost the DB'));
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		const client = await connect(await tokenFor(member, resourceUrl(serverSlug)));
+
+		await expect(
+			client.callTool({ name: 'get_pipeline_summary', arguments: {} }),
+		).rejects.toThrow();
+
+		expect(emit).toHaveBeenCalledWith(
+			'mcp-server-tool-called',
+			expect.objectContaining({ userId: member.id, status: 'error' }),
+		);
+		await client.close();
+	});
+
 	it('returns an error result with the reason for a broken tool', async () => {
 		const client = await connect(await tokenFor(member, resourceUrl(serverSlug)));
 
@@ -355,6 +371,37 @@ describe('Custom MCP server runtime access', () => {
 		expect(response.headers['www-authenticate']).toContain(
 			`/.well-known/oauth-protected-resource/mcp-servers/${serverSlug}`,
 		);
+	});
+
+	it('accepts the auth scheme in any case', async () => {
+		const token = await tokenFor(member, resourceUrl(serverSlug));
+
+		const client = await connect(token, serverSlug, 'bearer');
+
+		expect((await client.listTools()).tools).toHaveLength(2);
+		await client.close();
+	});
+
+	it('answers a malformed Authorization header with 401 and invalid_token', async () => {
+		const response = await testServer.restlessAgent
+			.post(`/mcp-servers/${serverSlug}`)
+			.set('Authorization', 'Basic dXNlcjpwYXNz')
+			.send({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} });
+
+		expect(response.statusCode).toBe(401);
+		expect(response.headers['www-authenticate']).toMatch(/error="invalid_token"/);
+	});
+
+	it('answers the CORS preflight with the MCP headers', async () => {
+		const response = await testServer.restlessAgent
+			.options(`/mcp-servers/${serverSlug}`)
+			.set('Origin', 'https://client.example.com')
+			.set('Access-Control-Request-Method', 'POST')
+			.expect(204);
+
+		expect(response.headers['access-control-allow-origin']).toBe('*');
+		expect(response.headers['access-control-allow-headers']).toContain('Authorization');
+		expect(response.headers['access-control-allow-headers']).toContain('Mcp-Method');
 	});
 
 	it('serves the resource metadata with the server URL as the resource', async () => {
