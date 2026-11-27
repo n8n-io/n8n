@@ -114,10 +114,10 @@ async function onSelect(value: unknown) {
 
 			<template #item-label="{ item }">
 				<span :class="$style.itemStack">
-					<N8nText tag="span" size="medium" color="text-dark" :bold="item.checked">
+					<N8nText tag="span" step="sm" color="text-dark" :bold="item.checked">
 						{{ item.label }}
 					</N8nText>
-					<N8nText tag="span" size="small" color="text-base">
+					<N8nText tag="span" step="xs" color="text-base">
 						{{ item.data?.description }}
 					</N8nText>
 				</span>
