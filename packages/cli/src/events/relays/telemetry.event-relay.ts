@@ -62,6 +62,7 @@ import type {
 import { NodeTypes } from '@/node-types';
 import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { OwnershipService } from '@/services/ownership.service';
+import { getFirstTriggerNodeTypeInRun } from '@/telemetry/execution-origin';
 import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
 import { detectDbVendor, detectRedisVendor } from '@/utils/detect-managed-services';
 import { detectKubernetesProvider, detectRuntime } from '@/utils/detect-runtime';
@@ -2035,8 +2036,14 @@ export class TelemetryEventRelay extends EventRelay {
 			telemetryProperties.user_id = userId;
 		}
 
-		// Recorded when the execution was created, see `getExecutionOrigin`.
-		const { caller, triggerNodeType } = telemetryMetadata?.origin ?? {};
+		// Recorded when the execution was created, see `getExecutionOrigin`. A manual run that named no
+		// trigger node then gets one from the engine during the run, so it is read from the run data.
+		const { caller, triggerNodeType: originTriggerNodeType } = telemetryMetadata?.origin ?? {};
+		const triggerNodeType =
+			originTriggerNodeType ??
+			(runData?.mode === 'manual'
+				? getFirstTriggerNodeTypeInRun(workflow.nodes, runData.data?.resultData?.runData)
+				: undefined);
 		if (caller) {
 			telemetryProperties.execution_caller = caller;
 		}

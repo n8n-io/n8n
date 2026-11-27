@@ -5275,6 +5275,63 @@ describe('TelemetryEventRelay', () => {
 				expect(getTrackedProperties()).not.toHaveProperty('trigger_node_type');
 				expect(getTrackedProperties()).not.toHaveProperty('execution_caller');
 			});
+
+			const runDataWithTrigger = (mode: IRun['mode']) =>
+				({
+					...runData,
+					mode,
+					data: {
+						resultData: {
+							runData: {
+								Start: [{ startTime: 1000, executionTime: 1, executionIndex: 0, source: [] }],
+							},
+						},
+					},
+				}) as unknown as IRun;
+
+			it('should take the trigger node from the run data for a manual run that named none', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: mockWorkflowBase,
+					executionId: 'execution123',
+					runData: runDataWithTrigger('manual'),
+					telemetryMetadata: { origin: { caller: 'public_api' } },
+				});
+
+				await flushPromises();
+
+				expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+					expect.objectContaining({
+						execution_mode: 'manual',
+						trigger_node_type: 'n8n-nodes-base.manualTrigger',
+						execution_caller: 'public_api',
+					}),
+				);
+			});
+
+			it('should keep the trigger node recorded when a manual run was created', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: mockWorkflowBase,
+					executionId: 'execution123',
+					runData: runDataWithTrigger('manual'),
+					telemetryMetadata: { origin: { triggerNodeType: 'n8n-nodes-base.webhook' } },
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties().trigger_node_type).toBe('n8n-nodes-base.webhook');
+			});
+
+			it('should not read the run data for a run that is not manual', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: mockWorkflowBase,
+					executionId: 'execution123',
+					runData: runDataWithTrigger('webhook'),
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties()).not.toHaveProperty('trigger_node_type');
+			});
 		});
 
 		it('should call telemetry.track when manual node execution finished', async () => {

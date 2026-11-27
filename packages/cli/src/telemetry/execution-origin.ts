@@ -1,4 +1,5 @@
 import type {
+	INode,
 	IRunData,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecutionCaller,
@@ -42,8 +43,7 @@ function getCaller(data: IWorkflowExecutionDataProcess): WorkflowExecutionCaller
  * run data starts from no trigger node.
  */
 function getTriggerNodeType(data: IWorkflowExecutionDataProcess): string | undefined {
-	const nodes = Array.isArray(data.workflowData?.nodes) ? data.workflowData.nodes : [];
-	const nodeTypesByName = new Map(nodes.map((node) => [node.name, node.type]));
+	const nodeTypesByName = getNodeTypesByName(data.workflowData?.nodes);
 	const triggerToStartFrom = data.triggerToStartFrom?.name;
 	const startItem = first(data.executionData?.executionData?.nodeExecutionStack);
 
@@ -54,6 +54,23 @@ function getTriggerNodeType(data: IWorkflowExecutionDataProcess): string | undef
 			typeof triggerToStartFrom === 'string' ? nodeTypesByName.get(triggerToStartFrom) : undefined,
 		)
 	);
+}
+
+/**
+ * Returns the trigger node with the earliest start time in the data of a run that ended. A manual
+ * run that names no trigger node, such as a public API run, gets one from the engine during the
+ * run, so its telemetry falls back to this. For a partial run, it is the trigger node of the earlier
+ * run whose data the partial run reuses.
+ */
+export function getFirstTriggerNodeTypeInRun(
+	nodes: INode[] | undefined,
+	runData: IRunData | undefined,
+): string | undefined {
+	return getFirstTriggerNodeType(runData, getNodeTypesByName(nodes));
+}
+
+function getNodeTypesByName(nodes: INode[] | undefined): Map<string, string> {
+	return new Map((Array.isArray(nodes) ? nodes : []).map((node) => [node.name, node.type]));
 }
 
 /** The trigger node with the earliest start time, if the run data has one. */
