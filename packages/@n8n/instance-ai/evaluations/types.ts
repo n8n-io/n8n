@@ -15,6 +15,7 @@ import type {
 import type { z } from 'zod';
 
 import type { CheckOutcome } from './binaryChecks/types';
+import type { AgentModelResolution } from './credentials/model-resolver';
 import type { WorkflowResponse } from './clients/n8n-client';
 import type { AgentRun, AgentSession, AgentUserTurns } from './harness/agent-run-schema';
 import type { EvalAttribution } from './harness/attribution';
@@ -307,6 +308,8 @@ export interface ExecutionScenarioResult {
 	agentEvalResult?: InstanceAiEvalAgentExecutionResult;
 	/** Agent the scenario executed, for agent-artifact cases. */
 	agentId?: string;
+	/** How the seeded Agent's models were routed (credentials/model-resolver.ts). */
+	modelResolution?: AgentModelResolution;
 	/** Workflow actually executed for this scenario, after multi-workflow routing. */
 	workflowId?: string;
 	score: number;

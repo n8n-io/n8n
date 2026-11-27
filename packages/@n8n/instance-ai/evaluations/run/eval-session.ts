@@ -28,6 +28,12 @@ import { LaneAllocator } from './lane-allocator';
 import { buildProjectProvider } from './lane-users';
 import type { EvalUsageMeter } from '../../src/utils/eval-usage';
 import type { CliArgs } from '../cli/args';
+import {
+	availableModelCredentialTypes,
+	describeModelResolution,
+	resolveDirectRunAgentModels,
+	type AgentModelResolution,
+} from '../credentials/model-resolver';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { executeAgentScenario, type AgentScenarioContext } from '../harness/agent-execution';
 import {
@@ -130,11 +136,20 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 
 	// Rows carry only per-scenario fields. The build-side fields (conversation,
 	// expectations, declared credentials) are sourced locally, keyed by fileSlug.
+	// A case that runs its seeded Agents directly runs them on their own model
+	// (credentials/model-resolver.ts); the build and the rows see the resolved case.
 	const testCaseByFileSlug = new Map<string, WorkflowTestCase>();
 	const slugByTestCase = new Map<WorkflowTestCase, string>();
+	const agentModelResolutionsByFileSlug = new Map<string, AgentModelResolution[]>();
+	const availableModelKeys = availableModelCredentialTypes();
 	for (const { testCase, fileSlug } of testCasesWithFiles) {
-		testCaseByFileSlug.set(fileSlug, testCase);
+		const resolved = resolveDirectRunAgentModels(testCase, availableModelKeys);
+		testCaseByFileSlug.set(fileSlug, resolved.testCase);
 		slugByTestCase.set(testCase, fileSlug);
+		if (resolved.resolutions.length > 0) {
+			agentModelResolutionsByFileSlug.set(fileSlug, resolved.resolutions);
+			logModelResolutions(logger, fileSlug, resolved.resolutions);
+		}
 	}
 
 	const laneStates: LaneState[] = lanes.map((lane, idx) => {
@@ -283,6 +298,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 		agentContextByKey,
 		runDebugByThreadId,
 		harnessUsageByKey,
+		agentModelResolutionsByFileSlug,
 	});
 
 	const resolveSideBand = async (): Promise<ResolvedSideBand> => {
@@ -335,4 +351,16 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 		resolveSideBand,
 		drainBuilds,
 	};
+}
+
+function logModelResolutions(
+	logger: EvalLogger,
+	fileSlug: string,
+	resolutions: AgentModelResolution[],
+): void {
+	for (const resolution of resolutions) {
+		const line = `  [model] ${fileSlug}: ${describeModelResolution(resolution)}`;
+		if (resolution.modelResolution === 'direct') logger.verbose(line);
+		else logger.info(line);
+	}
 }

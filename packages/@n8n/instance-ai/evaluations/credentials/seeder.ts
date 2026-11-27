@@ -18,7 +18,8 @@ import type { TestCaseCredential } from '../types';
 
 interface CredentialTemplate {
 	defaultName: string;
-	envVar?: string;
+	/** Env vars holding a real token, in preference order. Unset or empty: placeholder. */
+	envVars?: readonly string[];
 	buildData: (token: string) => Record<string, unknown>;
 }
 
@@ -28,32 +29,32 @@ const PLACEHOLDER_TOKEN = 'eval-placeholder';
 const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 	slackApi: {
 		defaultName: '[eval] Slack',
-		envVar: 'EVAL_SLACK_ACCESS_TOKEN',
+		envVars: ['EVAL_SLACK_ACCESS_TOKEN'],
 		buildData: (token) => ({ accessToken: token }),
 	},
 	notionApi: {
 		defaultName: '[eval] Notion',
-		envVar: 'EVAL_NOTION_API_KEY',
+		envVars: ['EVAL_NOTION_API_KEY'],
 		buildData: (key) => ({ apiKey: key }),
 	},
 	githubApi: {
 		defaultName: '[eval] GitHub',
-		envVar: 'EVAL_GITHUB_ACCESS_TOKEN',
+		envVars: ['EVAL_GITHUB_ACCESS_TOKEN'],
 		buildData: (token) => ({ accessToken: token }),
 	},
 	gmailOAuth2: {
 		defaultName: '[eval] Gmail',
-		envVar: 'EVAL_GMAIL_ACCESS_TOKEN',
+		envVars: ['EVAL_GMAIL_ACCESS_TOKEN'],
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
 	},
 	googleDriveOAuth2Api: {
 		defaultName: '[eval] Google Drive',
-		envVar: 'EVAL_GOOGLE_DRIVE_ACCESS_TOKEN',
+		envVars: ['EVAL_GOOGLE_DRIVE_ACCESS_TOKEN'],
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
 	},
 	googleSheetsOAuth2Api: {
 		defaultName: '[eval] Google Sheets',
-		envVar: 'EVAL_GOOGLE_SHEETS_ACCESS_TOKEN',
+		envVars: ['EVAL_GOOGLE_SHEETS_ACCESS_TOKEN'],
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
 	},
 	googleCalendarOAuth2Api: {
@@ -82,17 +83,17 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 	// placeholder tokens are fine — agent eval runs mock the MCP wire.
 	linearMcpOAuth2Api: {
 		defaultName: '[eval] Linear MCP',
-		envVar: 'EVAL_LINEAR_MCP_ACCESS_TOKEN',
+		envVars: ['EVAL_LINEAR_MCP_ACCESS_TOKEN'],
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
 	},
 	notionMcpOAuth2Api: {
 		defaultName: '[eval] Notion MCP',
-		envVar: 'EVAL_NOTION_MCP_ACCESS_TOKEN',
+		envVars: ['EVAL_NOTION_MCP_ACCESS_TOKEN'],
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
 	},
 	microsoftTeamsOAuth2Api: {
 		defaultName: '[eval] Teams',
-		envVar: 'EVAL_TEAMS_ACCESS_TOKEN',
+		envVars: ['EVAL_TEAMS_ACCESS_TOKEN'],
 		buildData: (token) => ({
 			scope: 'openid',
 			oauthTokenData: { access_token: token },
@@ -104,7 +105,7 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 	},
 	googlePalmApi: {
 		defaultName: '[eval] Google Gemini',
-		envVar: 'EVAL_GEMINI_API_KEY',
+		envVars: ['EVAL_GEMINI_API_KEY'],
 		buildData: (key) => ({
 			host: 'https://generativelanguage.googleapis.com',
 			apiKey: key,
@@ -124,7 +125,7 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 	},
 	openAiApi: {
 		defaultName: '[eval] OpenAI',
-		envVar: 'EVAL_OPENAI_API_KEY',
+		envVars: ['EVAL_OPENAI_API_KEY'],
 		buildData: (key) => ({ apiKey: key }),
 	},
 	stripeApi: {
@@ -190,7 +191,15 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 	},
 	anthropicApi: {
 		defaultName: '[eval] Anthropic',
+		// The CI dispatcher sends EVAL_ANTHROPIC_API_KEY as ANTHROPIC_API_KEY; a local
+		// .env.eval only has the server's key.
+		envVars: ['ANTHROPIC_API_KEY', 'N8N_AI_ANTHROPIC_KEY'],
 		buildData: (key) => ({ apiKey: key, url: 'https://api.anthropic.com' }),
+	},
+	openRouterApi: {
+		defaultName: '[eval] OpenRouter',
+		envVars: ['EVAL_OPENROUTER_API_KEY'],
+		buildData: (key) => ({ apiKey: key, url: 'https://openrouter.ai/api/v1' }),
 	},
 	groqApi: {
 		defaultName: '[eval] Groq',
@@ -214,6 +223,21 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 export const SUPPORTED_CREDENTIAL_TYPES: ReadonlySet<string> = new Set(
 	Object.keys(CREDENTIAL_TEMPLATES),
 );
+
+/** The first non-empty env var a template names, if any. */
+function realToken(template: CredentialTemplate | undefined): string | undefined {
+	for (const name of template?.envVars ?? []) {
+		const value = process.env[name];
+		if (value) return value;
+	}
+	return undefined;
+}
+
+/** True when a credential of this type would be created with a real token, not
+ *  the placeholder. The model resolver counts only these providers as available. */
+export function hasRealCredentialKey(credentialType: string): boolean {
+	return realToken(CREDENTIAL_TEMPLATES[credentialType]) !== undefined;
+}
 
 export interface CreatedCredential {
 	id: string;
@@ -262,8 +286,7 @@ export async function createOneCredential(
 	usedNames.set(base, count);
 	const resolvedName = count > 1 ? `${base} #${count}` : base;
 
-	const envToken = template.envVar ? process.env[template.envVar] : undefined;
-	const token = envToken ?? PLACEHOLDER_TOKEN;
+	const token = realToken(template) ?? PLACEHOLDER_TOKEN;
 	options?.logger?.verbose(
 		`  Creating credential ${resolvedName} (${credentialType})${options.blank ? ' [blank]' : ''}`,
 	);

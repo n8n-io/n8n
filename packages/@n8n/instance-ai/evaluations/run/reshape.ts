@@ -17,6 +17,8 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Run } from 'langsmith/schemas';
 import { z } from 'zod';
 
+import { agentModelResolutionSchema } from '../credentials/model-resolver';
+
 import { CHECK_DIMENSIONS, type CheckOutcome } from '../binaryChecks/types';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
@@ -91,6 +93,8 @@ const targetOutputSchema = z.object({
 	agentContext: z.string().optional(),
 	/** Structured, redacted agent preview. Persistence validates and caps it for export. */
 	agentArtifact: z.unknown().optional(),
+	/** How the seeded Agent's models were routed (credentials/model-resolver.ts). */
+	modelResolution: agentModelResolutionSchema.optional().catch(undefined),
 	/** Only set on the scenario that initiated the build. */
 	buildDurationMs: z.number().optional(),
 	/** `claude` build spend in USD (--build-via-mcp only). Repeats on every row
@@ -337,6 +341,7 @@ export function reshapeLangSmithRuns(
 					...(output.agentEvalResult ? { agentEvalResult: output.agentEvalResult } : {}),
 					workflowId: output.scenarioWorkflowId ?? output.workflowId,
 					...(output.agentId ? { agentId: output.agentId } : {}),
+					...(output.modelResolution ? { modelResolution: output.modelResolution } : {}),
 					score: output.score,
 					reasoning: output.reasoning,
 					failureCategory: output.failureCategory,
