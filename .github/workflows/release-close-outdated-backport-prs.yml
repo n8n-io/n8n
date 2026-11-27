@@ -1,0 +1,60 @@
+name: 'Release: Close Outdated Backport PRs'
+run-name: 'Closing backport PRs older than stable ${{ inputs.stable-version }}'
+
+on:
+  workflow_call:
+    inputs:
+      stable-version:
+        required: true
+        type: string
+    secrets:
+      N8N_ASSISTANT_APP_ID:
+        required: true
+      N8N_ASSISTANT_PRIVATE_KEY:
+        required: true
+  workflow_dispatch:
+    inputs:
+      stable-version:
+        description: 'The stable version (e.g. 2.10.3). Leave empty to read it from the `stable` tag.'
+        required: false
+        type: string
+      dry-run:
+        description: 'Only list the PRs. Do not close them.'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  close-outdated-backport-prs:
+    name: Close outdated backport PRs
+    runs-on: ubuntu-slim
+
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          permission-contents: read
+          permission-issues: write
+          permission-pull-requests: write
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The script reads tags with `git ls-remote` and uses the API for the rest.
+          persist-credentials: false
+          sparse-checkout: .github
+
+      - name: Close outdated backport PRs
+        uses: ./.github/actions/run-workflow-script
+        env:
+          STABLE_VERSION: ${{ inputs.stable-version }}
+          DRY_RUN: ${{ inputs.dry-run == true }}
+        with:
+          script: .github/scripts/close-outdated-backport-prs.mjs
+          github-token: ${{ steps.generate_token.outputs.token }}

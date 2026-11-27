@@ -45,3 +45,5 @@ A minor release moves the `stable` tag to the old beta line. The release workflo
 - A PR with only `Backport to Stable` loses that label.
 
 The workflow adds a comment to each PR that it changes. Merged PRs keep their labels.
+
+The release workflow also closes each open backport PR into a `release-candidate/*` branch that is older than the new stable line. Patch releases come only from the stable and beta lines, so these PRs cannot ship. The workflow adds a comment that tells you how to backport the fix to the new stable line.

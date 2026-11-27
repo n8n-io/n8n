@@ -65,6 +65,18 @@ jobs:
     with:
       version: ${{ inputs.version }}
 
+  close-outdated-backport-prs:
+    name: Close outdated backport PRs
+    if: |
+      inputs.release_type != 'rc' &&
+      inputs.new_stable_version != ''
+    uses: ./.github/workflows/release-close-outdated-backport-prs.yml
+    secrets:
+      N8N_ASSISTANT_APP_ID: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+      N8N_ASSISTANT_PRIVATE_KEY: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+    with:
+      stable-version: ${{ inputs.new_stable_version }}
+
   promote-previous-minor-github-release-to-latest:
     name: Promote previous minor Github Release to latest
     if: |
