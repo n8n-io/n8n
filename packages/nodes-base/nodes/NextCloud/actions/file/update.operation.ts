@@ -217,7 +217,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 	const file = this.getNodeParameter('file', i) as INodeParameterResourceLocator;
 	const newFileName = String(this.getNodeParameter('newFileName', i, '') ?? '');
 	const options = this.getNodeParameter('options', i, {}) as { eTag?: string };
-	const expectedETag = options.eTag?.trim().replace(/^"|"$/g, '');
+	const expectedETag = String(options.eTag ?? '')
+		.trim()
+		.replace(/^"|"$/g, '');
 
 	if (newFileName.includes('/')) {
 		throw new NodeOperationError(this.getNode(), 'The new file name cannot contain "/"', {
@@ -226,11 +228,20 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 		});
 	}
 
-	// Read the content before changing anything, so a missing binary field stops the node before a rename
+	if ('eTag' in options && !expectedETag) {
+		throw new NodeOperationError(this.getNode(), 'The "Only If ETag Matches" option is empty', {
+			itemIndex: i,
+			description: 'Nothing was changed. Enter an ETag, or remove the option.',
+		});
+	}
+
 	const content = await readNewContent.call(this, i);
 
 	const current = await findFile.call(this, file, i);
-	const currentPath = String(current.path);
+	// Nextcloud gives a path from the user's root, but requests start at the credential URL,
+	// which can end in a folder. By ID needs a URL that ends at the root, like Search.
+	const currentPath =
+		file.mode === 'id' ? String(current.path) : outputPath(String(file.value ?? ''));
 	const currentETag = String(current.eTag);
 
 	if (expectedETag && expectedETag !== currentETag) {
@@ -282,20 +293,24 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 			});
 		} catch (error) {
 			const changed = isPreconditionFailed(error);
-			if (!changed && path === currentPath) throw error;
-			// After a rename the old path is gone, so the user needs the new one to try again
+			// After a rename the old path is gone, so the message names the new one
+			if (path !== currentPath) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`The file was renamed to "${path}", but its content was not replaced`,
+					{
+						itemIndex: i,
+						description: changed
+							? 'The file changed or was deleted while the node was updating it.'
+							: ensureError(error).message,
+					},
+				);
+			}
+			if (!changed) throw error;
 			throw new NodeOperationError(
 				this.getNode(),
-				changed
-					? `The file "${path}" changed or was deleted while the node was updating it`
-					: ensureError(error),
-				{
-					itemIndex: i,
-					description:
-						path === currentPath
-							? 'The content was not replaced. Run the node again.'
-							: `The file was renamed to "${path}", but its content was not replaced. Update it at that path.`,
-				},
+				`The file "${path}" changed or was deleted while the node was updating it`,
+				{ itemIndex: i, description: 'The content was not replaced. Run the node again.' },
 			);
 		}
 	}

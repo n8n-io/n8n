@@ -68,7 +68,7 @@ function fakeNextcloud(initial: Record<string, Partial<FakeFile>> = { 'docs/note
 	);
 	let nextETag = 100;
 	const pathOf = (uri: unknown) =>
-		decodeURIComponent(String(uri).slice(webDavUrl.length)).replace(/^\/+/, '');
+		decodeURIComponent(String(uri).slice(webDavUrl.length)).replace(/\/+/g, '/').replace(/^\//, '');
 
 	const request = vi.fn(async (_credentialType: string, options: RequestOptions) => {
 		const uri = String(options.uri);
@@ -122,10 +122,11 @@ const byId = (value: string) => ({ __rl: true, mode: 'id', value });
 function buildExecuteFunctions(
 	parameters: IDataObject,
 	request: ReturnType<typeof fakeNextcloud>['request'],
+	credentialUrl = webDavUrl,
 ) {
 	return {
 		continueOnFail: () => false,
-		getCredentials: async () => ({ webDavUrl, user: 'alice' }),
+		getCredentials: async () => ({ webDavUrl: credentialUrl, user: 'alice' }),
 		getInputData: () => [{ json: {} }],
 		getNode: () => node,
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) => {
@@ -330,6 +331,33 @@ describe('NextCloud Node: file update', () => {
 		expect(output[0][0].json).toMatchObject({ path: '/docs/report ' });
 	});
 
+	it('sends the typed path when the credential URL ends in a folder', async () => {
+		const { files, request, calls } = fakeNextcloud({ 'Team/docs/notes.txt': {} });
+		const folderUrl = `${webDavUrl}/Team`;
+
+		const output = await run(
+			buildExecuteFunctions(
+				{
+					file: byPath('/docs/notes.txt'),
+					newFileName: 'renamed.txt',
+					newContent: 'text',
+					fileContent: 'new text',
+				},
+				request,
+				folderUrl,
+			),
+		);
+
+		expect(calls().map((options) => [options.method, String(options.uri)])).toEqual([
+			['PROPFIND', `${folderUrl}//docs/notes.txt`],
+			['MOVE', `${folderUrl}//docs/notes.txt`],
+			['PUT', `${folderUrl}//docs/renamed.txt`],
+			['PROPFIND', `${folderUrl}//docs/renamed.txt`],
+		]);
+		expect(files.get('Team/docs/renamed.txt')?.content).toBe('new text');
+		expect(output[0][0].json).toMatchObject({ path: '/Team/docs/renamed.txt' });
+	});
+
 	it('trims a file ID', async () => {
 		const { files, request } = fakeNextcloud();
 
@@ -429,20 +457,21 @@ describe('NextCloud Node: file update', () => {
 				),
 			),
 		).rejects.toMatchObject({
-			message: 'The file "/docs/renamed.txt" changed or was deleted while the node was updating it',
-			description:
-				'The file was renamed to "/docs/renamed.txt", but its content was not replaced. Update it at that path.',
+			message: 'The file was renamed to "/docs/renamed.txt", but its content was not replaced',
+			description: 'The file changed or was deleted while the node was updating it.',
 		});
 		expect(files.get('docs/renamed.txt')?.content).toBe('old');
 	});
 
-	it('names the new path when any write error follows a rename', async () => {
+	// Continue On Fail outputs only the message, so the message names the new path
+	it.each([
+		new NodeApiError(node, { message: 'Insufficient Storage', httpCode: '507' }),
+		new NodeOperationError(node, "NextCloud responded with a 'Fatal error'"),
+	])('names the new path in the message when any write error follows a rename', async (error) => {
 		const { files, request } = fakeNextcloud();
 		const nextcloud = request.getMockImplementation()!;
 		request.mockImplementation(async (credentialType, options) => {
-			if (options.method === 'PUT') {
-				throw new NodeApiError(node, { message: 'Insufficient Storage', httpCode: '507' });
-			}
+			if (options.method === 'PUT') throw error;
 			return await nextcloud(credentialType, options);
 		});
 
@@ -459,8 +488,8 @@ describe('NextCloud Node: file update', () => {
 				),
 			),
 		).rejects.toMatchObject({
-			description:
-				'The file was renamed to "/docs/renamed.txt", but its content was not replaced. Update it at that path.',
+			message: 'The file was renamed to "/docs/renamed.txt", but its content was not replaced',
+			description: error.message,
 		});
 		expect(files.get('docs/renamed.txt')?.content).toBe('old');
 	});
@@ -522,6 +551,31 @@ describe('NextCloud Node: file update', () => {
 
 		expect(files.get('docs/notes.txt')?.content).toBe('new text');
 	});
+
+	it.each(['', '  ', '""', undefined])(
+		'stops before any request when the ETag option is %j',
+		async (eTag) => {
+			const { request } = fakeNextcloud();
+
+			await expect(
+				run(
+					buildExecuteFunctions(
+						{
+							file: byPath('/docs/notes.txt'),
+							newContent: 'text',
+							fileContent: 'new text',
+							options: { eTag },
+						},
+						request,
+					),
+				),
+			).rejects.toMatchObject({
+				message: 'The "Only If ETag Matches" option is empty',
+				description: 'Nothing was changed. Enter an ETag, or remove the option.',
+			});
+			expect(request).not.toHaveBeenCalled();
+		},
+	);
 
 	it('keeps the other file when the new name is taken', async () => {
 		const { files, request, calls } = fakeNextcloud({
