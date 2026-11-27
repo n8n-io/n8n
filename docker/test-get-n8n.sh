@@ -3,7 +3,8 @@
 # Test harness for get-n8n.sh. Requires docker + compose v2 (like the script).
 #
 #   sh docker/test-get-n8n.sh          # fast checks only (no containers started)
-#   sh docker/test-get-n8n.sh --e2e    # also boot the full stack and test upgrade
+#   sh docker/test-get-n8n.sh --e2e    # test a fresh install and a legacy upgrade
+#   N8N_INSTALLER_E2E_TARGET=3.4.1 sh docker/test-get-n8n.sh --e2e
 #
 # Runs in a temp dir; e2e uses ports/volumes of a real install, so don't run it
 # next to a live get-n8n.sh setup.
@@ -100,6 +101,29 @@ case "$(env_value "$WORK/a" N8N_VERSION)" in
 [0-9]*.[0-9]*) pass "default install resolves a sane n8n version" ;;
 *) fail "default install resolves a sane n8n version" ;;
 esac
+
+mkdir "$WORK/releases"
+cat >"$WORK/releases/curl" <<'EOF'
+#!/bin/sh
+case "$*" in
+*https://api.github.com/repos/n8n-io/n8n/releases/latest)
+	[ -n "${LATEST_RELEASE:-}" ] || exit 22
+	printf '{"tag_name":"n8n@%s"}\n' "$LATEST_RELEASE"
+	;;
+*) exit 2 ;;
+esac
+EOF
+chmod +x "$WORK/releases/curl"
+fallback="$(sed -n 's/^FALLBACK_N8N_VERSION="\(.*\)"$/\1/p' "$SCRIPT")"
+check "default install succeeds with a v3 GitHub latest release" \
+	env PATH="$WORK/releases:$PATH" LATEST_RELEASE=3.4.1 N8N_DIR="$WORK/latest" sh "$SCRIPT" --no-start
+[ "$(env_value "$WORK/latest" N8N_VERSION)" = "3.4.1" ] &&
+	pass "default install pins the v3 latest release" || fail "default install pins the v3 latest release"
+check "default install succeeds when GitHub latest is unavailable" \
+	env PATH="$WORK/releases:$PATH" LATEST_RELEASE= N8N_DIR="$WORK/fallback" sh "$SCRIPT" --no-start
+[ -n "$fallback" ] && [ "$(env_value "$WORK/fallback" N8N_VERSION)" = "$fallback" ] &&
+	pass "default install pins the fallback when GitHub is unavailable" ||
+	fail "default install pins the fallback when GitHub is unavailable"
 
 # sandbox images follow one pin in .env; compose.yml carries no tags of its own
 [ -n "$SANDBOX_PIN" ] && [ "$(env_value "$WORK/a" N8N_SANDBOX_VERSION)" = "$SANDBOX_PIN" ] &&
@@ -301,16 +325,29 @@ cd "$WORK" || exit 1
 # --- e2e ---------------------------------------------------------------------
 
 if [ "$E2E" -eq 1 ]; then
+	FRESH_DIR="$WORK/fresh-target"
 	E2E_DIR="$WORK/e2e"
-	trap 'teardown "$E2E_DIR"; rm -rf "$WORK"' EXIT INT TERM
+	trap 'teardown "$FRESH_DIR"; teardown "$E2E_DIR"; rm -rf "$WORK"' EXIT INT TERM
+	target="${N8N_INSTALLER_E2E_TARGET:-$fallback}"
+
+	# The installer waits for /healthz. Stop this stack before the legacy install uses its port.
+	if env N8N_DIR="$FRESH_DIR" sh "$SCRIPT" --version "$target"; then
+		pass "fresh install of ${target} boots and reaches /healthz"
+	else
+		fail "fresh install of ${target} boots and reaches /healthz"
+		docker compose -f "$FRESH_DIR/compose.yml" ps -a || true
+		docker compose -f "$FRESH_DIR/compose.yml" logs --tail 30 || true
+	fi
+	check "fresh install pins ${target}" grep -Fxq "N8N_VERSION=$target" "$FRESH_DIR/.env"
+	teardown "$FRESH_DIR"
 
 	# install the previous release from stack definition v1, so --upgrade below
 	# is a real n8n version change and a real sandbox migration (1.2.0 + http)
 	legacy_compose "$COMPOSE_SRC" >"$WORK/e2e-legacy-compose.yml"
 	if env N8N_DIR="$E2E_DIR" N8N_COMPOSE_URL="$WORK/e2e-legacy-compose.yml" sh "$SCRIPT" --version 2.31.4; then
-		pass "fresh install boots and reaches /healthz"
+		pass "legacy install boots and reaches /healthz"
 	else
-		fail "fresh install boots and reaches /healthz"
+		fail "legacy install boots and reaches /healthz"
 		docker compose -f "$E2E_DIR/compose.yml" ps -a || true
 		docker compose -f "$E2E_DIR/compose.yml" logs --tail 30 || true
 	fi
@@ -338,7 +375,6 @@ if [ "$E2E" -eq 1 ]; then
 	# upgrade: only the version lines may change, and the new images must run.
 	# Pin the target explicitly so the assertion is deterministic (a bare
 	# --upgrade resolves the latest stable release at run time).
-	target="$(sed -n 's/^FALLBACK_N8N_VERSION="\(.*\)"$/\1/p' "$SCRIPT")"
 	cp "$E2E_DIR/.env" "$WORK/env-before"
 	check "--upgrade succeeds" env N8N_DIR="$E2E_DIR" sh "$SCRIPT" --upgrade --version "$target"
 	diff "$WORK/env-before" "$E2E_DIR/.env" >"$WORK/env.diff" 2>&1 || true
@@ -353,6 +389,8 @@ if [ "$E2E" -eq 1 ]; then
 	fi
 	docker compose -f "$E2E_DIR/compose.yml" ps n8n --format '{{.Image}}' | grep -q ":${target}\$" &&
 		pass "n8n container runs upgraded image" || fail "n8n container runs upgraded image"
+	docker compose -f "$E2E_DIR/compose.yml" ps runners --format '{{.Image}}' | grep -q ":${target}\$" &&
+		pass "task runners container runs upgraded image" || fail "task runners container runs upgraded image"
 	for svc in sandbox-api sandbox-runner-1; do
 		docker compose -f "$E2E_DIR/compose.yml" ps "$svc" --format '{{.Image}}' | grep -q ":${SANDBOX_PIN}\$" &&
 			pass "${svc} runs the pinned sandbox image after upgrade" || fail "${svc} runs the pinned sandbox image after upgrade"
