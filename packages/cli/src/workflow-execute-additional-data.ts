@@ -15,7 +15,6 @@ import {
 	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
@@ -90,6 +89,7 @@ import { Push } from '@/push';
 import { findSubworkflowStart } from '@/utils';
 import { buildSubWorkflowError } from '@/utils/sub-workflow-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { determineWorkflowDeadline } from '@/workflows/workflow-deadline';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 
@@ -273,40 +273,6 @@ export async function getPublishedWorkflowData(
 	throw new OperationalError('Workflow is not active and cannot be executed.', {
 		extra: { workflowId: workflowInfo.id, parentWorkflowId },
 	});
-}
-
-/**
- * Determines a workflow's deadline given its start time, its settings
- * and global execution config.
- */
-function determineWorkflowDeadline(
-	startTime: number,
-	workflowSettings: IWorkflowSettings | undefined,
-	executionsConfig: ExecutionsConfig,
-): number | undefined {
-	const effectiveMaxTimeout =
-		executionsConfig.maxTimeout > 0 ? executionsConfig.maxTimeout : Infinity;
-
-	if (workflowSettings?.executionTimeout !== undefined) {
-		// A defined timeout of <= 0 means the workflow's own timeout is explicitly
-		// disabled, so it runs unbounded rather than falling back to the global
-		// default. Otherwise it is clamped to the configurable maximum. This mirrors
-		// the main-workflow path in workflow-runner.ts and job-processor.ts.
-		if (workflowSettings.executionTimeout <= 0) {
-			return undefined;
-		}
-		return (
-			startTime +
-			Math.min(workflowSettings.executionTimeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
-		);
-	}
-	if (executionsConfig.timeout > 0) {
-		return (
-			startTime +
-			Math.min(executionsConfig.timeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
-		);
-	}
-	return undefined;
 }
 
 /**

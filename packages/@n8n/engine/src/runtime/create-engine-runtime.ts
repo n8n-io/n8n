@@ -20,6 +20,7 @@ import {
 	StepReadyHandler,
 	StepSettledHandler,
 	StepWorker,
+	TimeoutSweeper,
 	WaitSweeper,
 } from '../execution';
 import type { StalenessThresholds } from '../execution';
@@ -198,6 +199,7 @@ export function createEngineRuntime({
 		responseSender,
 		stepQueue,
 	);
+	const timeoutSweeper = new TimeoutSweeper(executionStore, cancelExecution, logger);
 	const orchestrationWorker = new OrchestrationWorker(
 		orchestrationQueue,
 		new ExecutionStartHandler(
@@ -205,6 +207,8 @@ export function createEngineRuntime({
 			stepStore,
 			orchestrationQueue,
 			lifecycleEventPublisherFactory,
+			// A deadline set after the sweeper armed would otherwise wait for its next pass.
+			(deadline) => timeoutSweeper.noteDeadline(deadline),
 		),
 		new StepSettledHandler(
 			executionStore,
@@ -307,11 +311,14 @@ export function createEngineRuntime({
 	const { app } = createEngineServer(apiDeps);
 
 	const workers: Array<OrchestrationWorker | StepWorker> = [];
-	const sweepers: Array<ReconciliationSweeper | WaitSweeper | RetentionSweeper> = [];
+	const sweepers: Array<ReconciliationSweeper | WaitSweeper | RetentionSweeper | TimeoutSweeper> =
+		[];
 	if (runs.has('orchestrator')) {
 		workers.push(orchestrationWorker);
 		// Not with the step worker: it repairs what a crashed step worker leaves behind.
 		sweepers.push(reconciliationSweeper);
+		// With the start handler, which re-arms it when an execution with a deadline starts.
+		sweepers.push(timeoutSweeper);
 		// Only here: the role with the fewest replicas, so fewer processes race to delete the same rows.
 		if (retentionSweeper) sweepers.push(retentionSweeper);
 		if (retention) logger.info('Execution retention is on', { ...retention });

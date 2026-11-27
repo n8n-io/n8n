@@ -28,6 +28,7 @@ const execution: ExecutionRecord = {
 	parent: null,
 	lifecycleEventSubscription: { kind: 'all' },
 	finishedAt: null,
+	deadline: null,
 };
 
 function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
@@ -43,6 +44,9 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 			.fn()
 			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
+		loadDeadline: vi.fn().mockResolvedValue(null),
+		findExecutionsPastDeadline: vi.fn().mockResolvedValue([]),
+		nextDeadline: vi.fn().mockResolvedValue(null),
 		findStaleQueuedExecutions: vi.fn(),
 		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),

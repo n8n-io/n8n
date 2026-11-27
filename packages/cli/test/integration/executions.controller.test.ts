@@ -353,6 +353,7 @@ describe('GET /executions/:id', () => {
 			createdAt: '2026-08-25T10:00:00.000Z',
 			updatedAt: '2026-08-25T10:00:05.000Z',
 			finishedAt: '2026-08-25T10:00:05.000Z',
+			deadline: null,
 			steps,
 		});
 

@@ -93,6 +93,8 @@ export interface SubWorkflowResolveResult {
 	graph: WorkflowGraph;
 	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
+	/** The sub-execution's own deadline, ISO-8601, from its workflow's settings. `null` means none. */
+	deadline?: string | null;
 }
 
 /** The options of `executeWorkflow` that the shim reads. */

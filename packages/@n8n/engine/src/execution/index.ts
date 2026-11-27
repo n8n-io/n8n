@@ -75,6 +75,11 @@ export {
 	DEFAULT_WAIT_SWEEP_BATCH_SIZE,
 	DEFAULT_WAIT_SWEEP_INTERVAL_MS,
 } from './wait-sweeper';
+export {
+	TimeoutSweeper,
+	DEFAULT_TIMEOUT_SWEEP_BATCH_SIZE,
+	DEFAULT_TIMEOUT_SWEEP_INTERVAL_MS,
+} from './timeout-sweeper';
 export { ExecutionFileCleanup } from './execution-file-cleanup';
 export { ResumeRejectedError, ResumeRequestService } from './resume-request.service';
 export type {

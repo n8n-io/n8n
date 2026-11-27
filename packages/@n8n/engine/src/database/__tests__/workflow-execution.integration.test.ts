@@ -117,6 +117,7 @@ describe('workflow_execution table (integration)', () => {
 			createdAt: expect.any(Date) as Date,
 			updatedAt: expect.any(Date) as Date,
 			finishedAt,
+			deadline: null,
 		});
 	});
 
@@ -152,6 +153,7 @@ describe('workflow_execution table (integration)', () => {
 			parent: null,
 			lifecycleEventSubscription: { kind: 'all' },
 			finishedAt: null,
+			deadline: null,
 		});
 	});
 

@@ -1,4 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { ExecutionsConfig } from '@n8n/config';
 import { UUID_V7_PATTERN } from '@n8n/constants';
 import { ConflictError, NotFoundError, NotImplementedError, UserError } from '@n8n/errors';
 import type {
@@ -158,6 +159,7 @@ describe('EngineV2Dispatcher', () => {
 			pushRegistry,
 			payloadFiles,
 			manualRunPlanner,
+			mock<ExecutionsConfig>({ timeout: -1, maxTimeout: 3600 }),
 		);
 	});
 

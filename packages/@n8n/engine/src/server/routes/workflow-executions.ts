@@ -52,6 +52,8 @@ const StartExecutionBody = z.object({
 	executionId: z.string().regex(UUID_V7_PATTERN),
 	/** Whether a failure resolves an error workflow. The host decides. */
 	resolveErrorWorkflowOnFailure: z.boolean().optional(),
+	/** When the engine cancels the execution if it has not ended. The host decides. */
+	deadline: z.string().datetime({ offset: true }).optional(),
 });
 
 export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterType {

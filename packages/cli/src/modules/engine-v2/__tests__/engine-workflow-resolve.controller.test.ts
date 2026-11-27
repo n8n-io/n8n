@@ -51,6 +51,7 @@ const resolved: ResolvedSubWorkflow = {
 	triggerOutputs: [[{ json: { a: 1 } }]],
 	returnLastRunOnly: false,
 	resolveErrorWorkflowOnFailure: false,
+	deadline: null,
 };
 
 const resolvedErrorWorkflow: ResolvedErrorWorkflow = {
@@ -60,6 +61,7 @@ const resolvedErrorWorkflow: ResolvedErrorWorkflow = {
 	workflow: { id: 'err-wf' },
 	triggerOutputs: [[{ json: { execution: { id: 'exec' } } }]],
 	resolveErrorWorkflowOnFailure: false,
+	deadline: null,
 	projectId: 'project-1',
 };
 

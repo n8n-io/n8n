@@ -88,6 +88,11 @@ export type SubExecutionDeclaration = {
 	graph: WorkflowGraph;
 	workflow: WorkflowDocument;
 	triggerOutputs?: TriggerOutputs | null;
+	/**
+	 * The sub-execution's own deadline, ISO-8601, from its workflow's settings.
+	 * The engine caps it at the parent's deadline. Missing or `null` means none.
+	 */
+	deadline?: string | null;
 } & SubExecutionMode;
 
 /** Whether the step waits for the sub-execution, and what it completes with if not. */

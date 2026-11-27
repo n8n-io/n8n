@@ -50,6 +50,8 @@ export type NewExecutionRecord = BaseExecutionRecord & {
 	errorSource: ErrorSourceLink | null;
 	/** Whether a failure of this execution resolves an error workflow. See `StartExecutionRequest`. */
 	resolveErrorWorkflowOnFailure: boolean;
+	/** When the engine cancels the execution if it has not ended. Missing or `null` means no timeout. */
+	deadline?: Date | null;
 };
 
 /**
@@ -61,6 +63,11 @@ export type NewExecutionRecord = BaseExecutionRecord & {
 export type ExecutionRecord = BaseExecutionRecord & {
 	/** When the execution ended, or `null` while it has not. */
 	finishedAt: Date | null;
+	/**
+	 * When the timeout sweep cancels the execution, or `null` for no timeout.
+	 * The execution path only passes it to the sweep and never decides on it.
+	 */
+	deadline: Date | null;
 };
 
 /** What `createExecution` did with the record. */
@@ -149,6 +156,18 @@ export interface ExecutionStore {
 
 	/** Load only an execution's status. Throws `ExecutionNotFoundError` if absent. */
 	loadExecutionStatus(id: string): Promise<ExecutionStatus>;
+
+	/** Load only an execution's deadline, `null` for none. Throws `ExecutionNotFoundError` if absent. */
+	loadDeadline(id: string): Promise<Date | null>;
+
+	/**
+	 * The executions that have not ended and whose deadline is `at` or earlier,
+	 * earliest first, at most `limit`. A plain read: it locks no row.
+	 */
+	findExecutionsPastDeadline(at: Date, limit: number): Promise<string[]>;
+
+	/** The earliest deadline of an execution that has not ended, or `null` when none has one. */
+	nextDeadline(): Promise<Date | null>;
 
 	/**
 	 * The outputs the caller seeded for the given steps, by step key id. A key

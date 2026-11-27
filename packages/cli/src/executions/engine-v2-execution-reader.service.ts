@@ -15,6 +15,7 @@ import type {
 	ExecutionSummary,
 	Workflow,
 } from 'n8n-workflow';
+import { ManualExecutionCancelledError, TimeoutExecutionCancelledError } from 'n8n-workflow';
 import { UnexpectedError, UserError } from '@n8n/errors';
 import type { ExecutionLinks } from '@n8n/node-engine-compatibility';
 
@@ -264,11 +265,14 @@ export class EngineV2ExecutionReader {
 		return this.toExecutionResponse(
 			snapshot,
 			workflow,
-			toV1RunExecutionData(
-				snapshot.graph,
-				snapshot.steps ?? [],
-				workflow.pinData,
-				toExecutionLinks(snapshot),
+			withCancellationError(
+				snapshot,
+				toV1RunExecutionData(
+					snapshot.graph,
+					snapshot.steps ?? [],
+					workflow.pinData,
+					toExecutionLinks(snapshot),
+				),
 			),
 		);
 	}
@@ -320,6 +324,25 @@ export function asWorkflowSnapshot(document: unknown): WorkflowRunDocument | und
 	if (!Array.isArray((document as { nodes?: unknown }).nodes)) return undefined;
 
 	return document as unknown as WorkflowRunDocument;
+}
+
+/**
+ * v1 records why a cancelled run ended as its run error, and the editor shows
+ * it. Engine v2 stores no reason: an execution that ended at or after its
+ * deadline timed out, any other was cancelled on request.
+ */
+export function withCancellationError(
+	snapshot: Pick<ExecutionSnapshot, 'id' | 'status' | 'finishedAt' | 'deadline'>,
+	data: IRunExecutionData,
+): IRunExecutionData {
+	if (snapshot.status !== 'cancelled') return data;
+	const { deadline, finishedAt } = snapshot;
+	const timedOut =
+		deadline !== null && finishedAt !== null && Date.parse(finishedAt) >= Date.parse(deadline);
+	data.resultData.error = timedOut
+		? new TimeoutExecutionCancelledError(snapshot.id)
+		: new ManualExecutionCancelledError(snapshot.id);
+	return data;
 }
 
 /** The links the editor offers, from what the snapshot reports. */

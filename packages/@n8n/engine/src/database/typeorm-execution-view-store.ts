@@ -171,7 +171,8 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect(errorSourceSql('execution'), 'errorSource')
 			.addSelect('execution.created_at', 'createdAt')
 			.addSelect('execution.updated_at', 'updatedAt')
-			.addSelect('execution.finished_at', 'finishedAt');
+			.addSelect('execution.finished_at', 'finishedAt')
+			.addSelect('execution.deadline', 'deadline');
 	}
 
 	/**

@@ -35,7 +35,11 @@ export interface CancelExecutionResponse {
 /** `T` without its `K` fields. */
 type Without<T, K extends keyof T> = Omit<T, K>;
 
-export type ExecutionListItem = Without<ExecutionSnapshot, 'graph' | 'workflow' | 'steps'>;
+/** The list omits the deadline: only the read of one execution reports why it was cancelled. */
+export type ExecutionListItem = Without<
+	ExecutionSnapshot,
+	'graph' | 'workflow' | 'steps' | 'deadline'
+>;
 
 export interface SearchExecutionsResponse {
 	items: ExecutionListItem[];
@@ -72,6 +76,11 @@ export interface ExecutionSnapshot {
 	createdAt: string;
 	updatedAt: string;
 	finishedAt: string | null;
+	/**
+	 * When the engine cancels the execution if it has not ended, or `null`. A
+	 * cancelled execution that finished at or after it timed out.
+	 */
+	deadline: string | null;
 	/** Only set when the request asked for steps. Oldest first. */
 	steps?: StepDetail[];
 	/** Only set when the request asked for steps. `null` for a top-level execution. */

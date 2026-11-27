@@ -77,6 +77,11 @@ export interface ExecutionView {
 	createdAt: Date;
 	updatedAt: Date;
 	finishedAt: Date | null;
+	/**
+	 * When the engine cancels the execution if it has not ended, or `null`. A
+	 * cancelled execution that finished at or after it timed out.
+	 */
+	deadline: Date | null;
 }
 
 /**

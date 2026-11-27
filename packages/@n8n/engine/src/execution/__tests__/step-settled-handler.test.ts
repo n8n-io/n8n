@@ -76,6 +76,7 @@ function makeExecutionStore(
 		parent: null,
 		lifecycleEventSubscription: { kind: 'all' },
 		finishedAt: null,
+		deadline: null,
 		...overrides,
 		graph: { seeded: [], ...(overrides.graph ?? graph) },
 	};
@@ -89,6 +90,9 @@ function makeExecutionStore(
 			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
 		cancelExecution: vi.fn().mockResolvedValue(null),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
+		loadDeadline: vi.fn().mockResolvedValue(null),
+		findExecutionsPastDeadline: vi.fn().mockResolvedValue([]),
+		nextDeadline: vi.fn().mockResolvedValue(null),
 		findStaleQueuedExecutions: vi.fn(),
 		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
