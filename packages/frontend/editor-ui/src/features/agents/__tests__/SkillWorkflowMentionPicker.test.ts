@@ -103,6 +103,16 @@ describe('SkillWorkflowMentionPicker', () => {
 		);
 	});
 
+	it('names the project when the search finds no workflow in it', async () => {
+		searchWorkflows.mockResolvedValue([]);
+		const { menu } = mountPicker({ projectId: 'p1', projectName: 'Ops' });
+		await flushPromises();
+
+		expect(menu().props('emptyText')).toBe(
+			'agents.builder.skills.workflowMentions.noResultsInProject:{"project":"Ops"}',
+		);
+	});
+
 	it('highlights the first result, so Enter selects it', async () => {
 		searchWorkflows.mockResolvedValue([{ id: 'wf1', name: 'Weekly report' }]);
 		mountPicker();

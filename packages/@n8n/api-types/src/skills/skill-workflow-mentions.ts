@@ -34,7 +34,7 @@ export function getSkillWorkflowMentionUrl(workflowId: string): string {
 	return `n8n://workflow/${workflowId}`;
 }
 
-export const SKILL_WORKFLOW_MENTION_HINT = `To make a skill run an n8n workflow, link the workflow in the instructions as [Workflow name](${getSkillWorkflowMentionUrl('<workflow-id>')}).`;
+export const SKILL_WORKFLOW_MENTION_HINT = `To make a project skill run an n8n workflow, link the workflow in the instructions as [Workflow name](${getSkillWorkflowMentionUrl('<workflow-id>')}). Instance skills can't use workflows.`;
 
 export function formatSkillWorkflowMention({ workflowId, name }: SkillWorkflowMention): string {
 	return `[${escapeLinkText(name)}](${getSkillWorkflowMentionUrl(workflowId)})`;

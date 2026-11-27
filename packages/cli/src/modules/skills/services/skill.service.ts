@@ -72,7 +72,12 @@ import { skillGroupPage, type SkillSourceGroup } from '../utils/skill-group-page
 import { getSkillHash } from '../utils/skill-hash';
 import { withUnsentSkillFiles } from '../utils/skill-model-update';
 import { withSkillWorkflowMentionHint } from '../utils/skill-workflow-mention-hint';
-import { addedWorkflowMentionIds } from '../utils/skill-workflow-mentions';
+import {
+	addedWorkflowMentionIds,
+	hasWorkflowMentions,
+	INSTANCE_SKILL_WORKFLOWS_MESSAGE,
+	skillWithWorkflowsMoveMessage,
+} from '../utils/skill-workflow-mentions';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
@@ -593,6 +598,7 @@ export class SkillService {
 			if (moves) {
 				await this.moveTrusted(skillId, target, undefined, ctx, {
 					nameAfterMove: update.name,
+					contentAfterMove: { instructions: update.instructions, references: update.references },
 					checkedSource,
 					agentProjectIds: agentProjectIds ?? 'all',
 				});
@@ -696,6 +702,7 @@ export class SkillService {
 		return await this.txRunner.run(ctx, async (txCtx) => {
 			const skill = withTrimmedName(input.skill);
 			assertHasInstructions(skill);
+			await this.assertNoWorkflowsInInstanceSkill(input.target, skill);
 			await this.skillRepository.lockNames(txCtx);
 			if (input.checkNameTaken) {
 				await this.assertNameFree(skill.name, input.target, undefined, txCtx);
@@ -787,6 +794,7 @@ export class SkillService {
 			if (!allowSynced && (await this.sourceRepository.isLinked(skillId, txCtx))) {
 				throw new SkillSyncedError(latest.version.name, sourceLabelOf(latest.skill.source));
 			}
+			await this.assertNoWorkflowsInInstanceSkill(latest.skill, skill);
 			if (skillNameKey(skill.name) !== skillNameKey(current.name)) {
 				await this.skillRepository.lockNames(txCtx);
 			}
@@ -827,6 +835,7 @@ export class SkillService {
 		ctx: OperationContext = {},
 		{
 			nameAfterMove,
+			contentAfterMove,
 			checkedSource,
 			agentProjectIds = 'all',
 			movingSourceId,
@@ -865,6 +874,7 @@ export class SkillService {
 				(id) => id !== keepAgentId,
 			);
 			await this.assertAgentsKeepAccess(others, target, agentProjectIds, txCtx);
+			await this.assertWorkflowsStayInProject(skillId, target, contentAfterMove, txCtx);
 			await this.skillRepository.lockNames(txCtx);
 			// The new scope must not already hold a name like the one the skill has after the move.
 			if (name) await this.assertNameFree(name, target, skillId, txCtx);
@@ -1018,6 +1028,35 @@ export class SkillService {
 			ctx,
 		);
 		return isNameTaken(name, names, exceptSkillId);
+	}
+
+	private async assertNoWorkflowsInInstanceSkill(
+		target: SkillTarget,
+		skill: Pick<AgentSkill, 'instructions' | 'references'>,
+	): Promise<void> {
+		if (target.projectId !== null || !hasWorkflowMentions(skill)) return;
+		if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return;
+		throw new UserError(INSTANCE_SKILL_WORKFLOWS_MESSAGE);
+	}
+
+	private async assertWorkflowsStayInProject(
+		skillId: string,
+		target: SkillTarget,
+		contentAfterMove: SkillMoveOptions['contentAfterMove'],
+		ctx: OperationContext,
+	): Promise<void> {
+		const [skill] = await this.skillRepository.findByIds([skillId], ctx);
+		if (!skill || skill.projectId === null || skill.projectId === target.projectId) return;
+		const latest = (await this.skillRepository.findLatestSaved([skillId], ctx)).get(skillId);
+		if (!latest) return;
+		const stored = toAgentSkill(latest);
+		const content = {
+			instructions: contentAfterMove?.instructions ?? stored.instructions,
+			references: contentAfterMove?.references ?? stored.references,
+		};
+		if (!hasWorkflowMentions(content)) return;
+		if (!(await this.workflowsInSkillsFlagGate.isEnabled())) return;
+		throw new ConflictError(skillWithWorkflowsMoveMessage(target.projectId === null));
 	}
 
 	/** Refuses a move that takes the skill away from one of `agentIds`. The rule is `findLosingAgents`. */

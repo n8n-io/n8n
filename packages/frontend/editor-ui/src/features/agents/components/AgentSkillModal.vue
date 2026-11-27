@@ -12,6 +12,7 @@ import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	formatSkillWorkflowMention,
 	MCP_SKILLS_EXTENSION_FLAG,
+	parseAgentSkillWorkflowMentions,
 	skillNameKey,
 	type AgentSkillAvailability,
 	type ProjectIcon,
@@ -590,7 +591,6 @@ const selectedScopeSkill = computed(() => {
 		projectIcon: selectedScope.value?.projectIcon ?? saved?.projectIcon ?? null,
 	};
 });
-const mentionsInInstanceSkill = computed(() => selectedScopeSkill.value.scope === 'instance');
 const mentionsAvailableToMcp = computed(() =>
 	showAvailableToMCP.value
 		? availableToMCP.value
@@ -598,6 +598,7 @@ const mentionsAvailableToMcp = computed(() =>
 			skillAccess.value?.availableToMCP === true,
 );
 const mentionProjectId = computed(() => selectedScopeSkill.value.projectId ?? undefined);
+const mentionsInInstanceSkill = computed(() => mentionProjectId.value === undefined);
 const mentionProjectName = computed(() =>
 	mentionProjectId.value ? (selectedScopeSkill.value.projectName ?? undefined) : undefined,
 );
@@ -612,6 +613,31 @@ const scopeEditable = computed(
 		scopeChoices.value.length > 1 &&
 		(showScope.value ? canChangeScope.value && !isSaving.value : showAvailabilitySelect.value),
 );
+
+const scopeLockedByWorkflows = computed(
+	() =>
+		selectedScopeSkill.value.scope === 'project' &&
+		posthog.isVariantEnabled(
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		) &&
+		parseAgentSkillWorkflowMentions(skill.value).length > 0,
+);
+
+function scopeBlockedReason(value: string): string | undefined {
+	if (!scopeLockedByWorkflows.value || value === selectedScopeValue.value) return undefined;
+	return i18n.baseText(
+		value === 'instance'
+			? 'agents.builder.skills.workflowMentions.scope.instanceBlocked'
+			: 'agents.builder.skills.workflowMentions.scope.projectBlocked',
+	);
+}
+
+function scopeItemBlockedReason(itemId: string): string | undefined {
+	return itemId.startsWith('scope:')
+		? scopeBlockedReason(itemId.slice('scope:'.length))
+		: undefined;
+}
 
 function onScopeChoice(value: string) {
 	if (!scopeEditable.value) return;
@@ -640,6 +666,7 @@ function scopeItems(testIdPrefix: string): Array<DropdownMenuItemProps<string>> 
 			label: choice.label,
 			icon: scopeItemIcon(choice),
 			checked: choice.value === selectedScopeValue.value,
+			disabled: scopeBlockedReason(choice.value) !== undefined,
 			testId: `${testIdPrefix}${choice.value}`,
 		}));
 }
@@ -1581,6 +1608,15 @@ function onRemove() {
 							item.label
 						}}</span>
 					</N8nTooltip>
+					<N8nTooltip
+						v-else-if="scopeItemBlockedReason(item.id)"
+						:content="scopeItemBlockedReason(item.id)"
+						placement="right"
+					>
+						<span :class="ui.class" :data-testid="`${item.testId}-blocked-reason`">{{
+							item.label
+						}}</span>
+					</N8nTooltip>
 					<span v-else :class="ui.class">{{ item.label }}</span>
 				</template>
 				<template #item-trailing="{ item }">
@@ -1829,7 +1865,6 @@ function onRemove() {
 						:skill="comparedSkill"
 						:selected-path="selectedPath"
 						:change-counts="diffCounts"
-						:instance-skill="mentionsInInstanceSkill"
 						:available-to-mcp="mentionsAvailableToMcp"
 						:agent-context="!!props.data.agentId"
 						read-only

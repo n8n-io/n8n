@@ -69,7 +69,11 @@ import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/ut
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
 import { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
-import { withSkillWorkflowMentionHint, WorkflowsInSkillsFlagGate } from '@/modules/skills';
+import {
+	SkillRuntimeService,
+	withSkillWorkflowMentionHint,
+	WorkflowsInSkillsFlagGate,
+} from '@/modules/skills';
 import type { EmbeddingProviderOptions } from '@/modules/knowledge/vector-stores/embedding-credential';
 import { WorkflowRunner } from '@/workflow-runner';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
@@ -452,6 +456,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly sandboxFiles: AgentSandboxFilesService,
 		private readonly workflowsInSkillsFlagGate: WorkflowsInSkillsFlagGate,
+		private readonly skillRuntime: SkillRuntimeService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -816,11 +821,15 @@ export class AgentRuntimeReconstructionService {
 			legacyRefs,
 			projectId,
 		);
-		const withTools = withSkillWorkflowTools(config, skills, legacyWorkflows);
+		const projectSkills = await this.skillRuntime.withoutInstanceSkills(skills);
+		const withTools = withSkillWorkflowTools(config, projectSkills, legacyWorkflows);
 		return {
 			config: withTools.config,
 			skills: Object.fromEntries(
-				Object.entries(skills).map(([id, skill]) => [id, withSkillWorkflowMentionHint(skill)]),
+				Object.entries(skills).map(([id, skill]) => [
+					id,
+					Object.hasOwn(projectSkills, id) ? withSkillWorkflowMentionHint(skill) : skill,
+				]),
 			),
 			skillIdsByWorkflowId: withTools.skillIdsByWorkflowId,
 		};

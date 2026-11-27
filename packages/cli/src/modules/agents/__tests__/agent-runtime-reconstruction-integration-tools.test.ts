@@ -1,5 +1,5 @@
 import type { BuiltTool, Tool } from '@n8n/agents';
-import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
+import type { SkillRuntimeService, WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { FolderService } from '@/services/folder.service';
 import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 import { SlackIntegration } from '../integrations/platforms/slack/slack-integration';
@@ -171,6 +171,7 @@ function makeRuntimeReconstructionService(
 		makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
 		mock<WorkflowsInSkillsFlagGate>(),
+		mock<SkillRuntimeService>(),
 	);
 }
 
@@ -376,6 +377,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			new AgentPolicyService(new PolicyEnforcementService()),
 			mock<WorkflowsInSkillsFlagGate>(),
 			mock<WorkflowFinderService>(),
+			mock<SkillRuntimeService>(),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,

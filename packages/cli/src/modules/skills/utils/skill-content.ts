@@ -84,6 +84,7 @@ export type SkillMoveOptions = {
 	movingSourceId?: string;
 	/** The name the skill has after this request, when the same request renames it. */
 	nameAfterMove?: string;
+	contentAfterMove?: Partial<Pick<AgentSkill, 'instructions' | 'references'>>;
 	/** The scope `assertCanMove` checked. The move is refused if the skill left it since. */
 	checkedSource?: SkillTarget;
 	/**

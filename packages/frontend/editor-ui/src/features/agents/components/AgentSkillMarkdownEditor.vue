@@ -42,6 +42,9 @@ const mentionsEnabled = computed(() =>
 		WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
 	),
 );
+const typedMentionsEnabled = computed(
+	() => mentionsEnabled.value && !props.disabled && props.mentionProjectId !== undefined,
+);
 const editor = shallowRef<MarkdownEditor>();
 const picker = useTemplateRef<InstanceType<typeof SkillWorkflowMentionPicker>>('picker');
 const pickerOpen = ref(false);
@@ -60,7 +63,7 @@ const caretReference: DropdownMenuProps['reference'] = {
 
 const editorProps: EditorProps = {
 	handleTextInput(view, from, _to, text) {
-		if (!mentionsEnabled.value || props.disabled || !isMentionTrigger(text)) return false;
+		if (!typedMentionsEnabled.value || !isMentionTrigger(text)) return false;
 		const $from = view.state.doc.resolve(from);
 		if ($from.parent.type.spec.code || $from.marks().some((mark) => mark.type.spec.code)) {
 			return false;
@@ -192,7 +195,7 @@ function onPickerOpenChange(open: boolean) {
 			@ready="onReady"
 		/>
 		<SkillWorkflowMentionPicker
-			v-if="mentionsEnabled && !props.disabled"
+			v-if="typedMentionsEnabled"
 			ref="picker"
 			mode="typed"
 			:open="pickerOpen"

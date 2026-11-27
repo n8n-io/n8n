@@ -1072,6 +1072,208 @@ describe('SkillService', () => {
 		});
 	});
 
+	describe('workflows only in project skills', () => {
+		const withMention = 'Run [Report](n8n://workflow/wf1).';
+		const instanceMessage =
+			'Workflows work only in project skills. Remove the workflows from this skill, or save it in a project.';
+
+		function givenStored(projectId: string | null, instructions: string) {
+			const skill = skillRow('skill_a', { projectId });
+			const latest = versionRow(skill, 2, { instructions });
+			skills.findByIds.mockResolvedValue([skill]);
+			skills.findLatestSaved.mockResolvedValue(new Map([['skill_a', latest]]));
+			skills.nextVersionNumber.mockResolvedValue(3);
+			skills.insertSavedVersion.mockResolvedValue('new-version-id');
+			return getSkillHash(toAgentSkill(latest));
+		}
+
+		beforeEach(() => workflowsInSkillsGate.isEnabled.mockResolvedValue(true));
+
+		it('createTrusted refuses a workflow mention in an instance skill', async () => {
+			await expectError(
+				service.createTrusted({
+					target: { projectId: null },
+					skill: { name: 'n', description: 'd', instructions: withMention },
+					source: 'ui',
+					createdById: user.id,
+				}),
+				UserError,
+				instanceMessage,
+			);
+			expect(skills.createSkill).not.toHaveBeenCalled();
+		});
+
+		it('createTrusted keeps a workflow mention in a project skill', async () => {
+			await service.createTrusted({
+				target: { projectId: PROJECT },
+				skill: { name: 'n', description: 'd', instructions: withMention },
+				source: 'ui',
+				createdById: user.id,
+			});
+
+			expect(skills.createSkill).toHaveBeenCalled();
+		});
+
+		it('createTrusted keeps a workflow mention in an instance skill while the flag is off', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(false);
+
+			await service.createTrusted({
+				target: { projectId: null },
+				skill: { name: 'n', description: 'd', instructions: withMention },
+				source: 'ui',
+				createdById: user.id,
+			});
+
+			expect(skills.createSkill).toHaveBeenCalled();
+		});
+
+		it('saveTrusted refuses new content with a workflow mention in an instance skill', async () => {
+			const baseSkillHash = givenStored(null, 'Use short sentences.');
+
+			await expectError(
+				service.saveTrusted('skill_a', { baseSkillHash, instructions: withMention }, user.id),
+				UserError,
+				instanceMessage,
+			);
+			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
+		});
+
+		it('saveTrusted refuses a workflow mention in a reference file of an instance skill', async () => {
+			const baseSkillHash = givenStored(null, 'Use short sentences.');
+
+			await expectError(
+				service.saveTrusted(
+					'skill_a',
+					{ baseSkillHash, references: [{ path: 'references/a.md', content: withMention }] },
+					user.id,
+				),
+				UserError,
+				instanceMessage,
+			);
+		});
+
+		it('saveTrusted lets an unchanged instance skill with old mentions pass', async () => {
+			const baseSkillHash = givenStored(null, withMention);
+
+			const result = await service.saveTrusted(
+				'skill_a',
+				{ baseSkillHash, instructions: withMention },
+				user.id,
+			);
+
+			expect(result.created).toBe(false);
+		});
+
+		it('saveTrusted keeps a workflow mention in a project skill', async () => {
+			const baseSkillHash = givenStored(PROJECT, 'Use short sentences.');
+
+			const result = await service.saveTrusted(
+				'skill_a',
+				{ baseSkillHash, instructions: withMention },
+				user.id,
+			);
+
+			expect(result.created).toBe(true);
+		});
+
+		it.each([
+			[null, 'Remove the workflows from this skill to make it global.'],
+			['p2', 'Remove the workflows from this skill to move it to another project.'],
+		])(
+			'moveTrusted refuses with a conflict to move a project skill with workflows to %s',
+			async (targetProjectId, message) => {
+				givenStored('p1', withMention);
+
+				await expectError(
+					service.moveTrusted('skill_a', { projectId: targetProjectId }, undefined),
+					ConflictError,
+					message,
+				);
+				expect(skills.updateTarget).not.toHaveBeenCalled();
+			},
+		);
+
+		it('moveTrusted checks the content that the same request saves', async () => {
+			givenStored('p1', withMention);
+
+			await service.moveTrusted(
+				'skill_a',
+				{ projectId: null },
+				undefined,
+				{},
+				{ contentAfterMove: { instructions: 'Use short sentences.' } },
+			);
+
+			expect(skills.updateTarget).toHaveBeenCalledWith('skill_a', { projectId: null }, TX_CTX);
+		});
+
+		it('moveTrusted refuses a move when the same request adds a workflow', async () => {
+			givenStored('p1', 'Use short sentences.');
+
+			await expectError(
+				service.moveTrusted(
+					'skill_a',
+					{ projectId: null },
+					undefined,
+					{},
+					{ contentAfterMove: { references: [{ path: 'references/a.md', content: withMention }] } },
+				),
+				ConflictError,
+				'Remove the workflows from this skill to make it global.',
+			);
+		});
+
+		it('moveTrusted lets an instance skill with old mentions move into a project', async () => {
+			givenStored(null, withMention);
+
+			await service.moveTrusted('skill_a', { projectId: 'p1' }, undefined);
+
+			expect(skills.updateTarget).toHaveBeenCalledWith('skill_a', { projectId: 'p1' }, TX_CTX);
+		});
+
+		it('moveTrusted lets a project skill with workflows move while the flag is off', async () => {
+			workflowsInSkillsGate.isEnabled.mockResolvedValue(false);
+			givenStored('p1', withMention);
+
+			await service.moveTrusted('skill_a', { projectId: null }, undefined);
+
+			expect(skills.updateTarget).toHaveBeenCalled();
+		});
+
+		it('update passes the content of the save to the move', async () => {
+			const skill = skillRow('skill_a', { projectId: PROJECT });
+			vi.spyOn(access, 'requireAccess').mockResolvedValue(skill);
+			vi.spyOn(access, 'resolveCreateTarget').mockResolvedValue({ projectId: null });
+			vi.spyOn(access, 'assertCanMove').mockResolvedValue({ projectId: PROJECT });
+			projectScope.getProjectIds.mockResolvedValue(null);
+			const move = vi.spyOn(service, 'moveTrusted').mockResolvedValue(undefined);
+			const content = toAgentSkill(versionRow(skill, 2));
+			vi.spyOn(service, 'saveTrusted').mockResolvedValue({
+				created: false,
+				versionId: 'skill_a-v2',
+				version: 2,
+				skill: content,
+				followingAgentIds: [],
+			});
+
+			await service.update(user, 'skill_a', {
+				scope: 'instance',
+				instructions: 'Plain.',
+				baseSkillHash: getSkillHash(content),
+			});
+
+			expect(move).toHaveBeenCalledWith(
+				'skill_a',
+				{ projectId: null },
+				undefined,
+				TX_CTX,
+				expect.objectContaining({
+					contentAfterMove: { instructions: 'Plain.', references: undefined },
+				}),
+			);
+		});
+	});
+
 	describe('update by a caller that reads no binary content', () => {
 		const skill = skillRow('skill_a', { projectId: PROJECT });
 		const stored = versionRow(skill, 2, {}, [

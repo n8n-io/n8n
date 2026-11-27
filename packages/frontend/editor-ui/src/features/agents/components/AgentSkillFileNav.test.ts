@@ -108,7 +108,7 @@ describe('AgentSkillFileNav', () => {
 		).toBeNull();
 	});
 
-	it('shows the notes that block an agent as a warning in the agent context, and the other notes as info', async () => {
+	it('shows the notes that block an agent as a warning in the agent context', async () => {
 		flag.enabled = true;
 		searchWorkflows.mockResolvedValue([
 			{
@@ -122,7 +122,6 @@ describe('AgentSkillFileNav', () => {
 			props: {
 				skill: { ...MENTIONING_SKILL, references: [] },
 				selectedPath: 'SKILL.md',
-				instanceSkill: true,
 				agentContext: true,
 			},
 		});
@@ -133,46 +132,34 @@ describe('AgentSkillFileNav', () => {
 				"To use this workflow in agents, add an 'Execute Workflow Trigger' (When Executed by Another Workflow). To use this workflow in a published agent, publish the workflow.",
 			),
 		);
-		expect(byTestId(container, 'agent-skill-workflow-notes')).toHaveAttribute(
-			'aria-label',
-			"Agents can use this workflow only in its own project. To use it in other projects, share it with those projects and set 'This workflow can be called by' to 'Any workflow'.",
-		);
+		expect(byTestId(container, 'agent-skill-workflow-notes')).toBeNull();
 	});
 
-	it('hides the instance access note of a workflow that the agent project cannot use', async () => {
+	it('disables the add workflow button of an instance skill and keeps its workflows', () => {
 		flag.enabled = true;
-		searchWorkflows.mockResolvedValue(
-			['wf1', 'wf2'].map((id) => ({
-				id,
-				nodes: [{ type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, name: 'Start' }],
-				activeVersionId: 'v1',
-				settings: {},
-			})),
-		);
+		const { container } = renderComponent({
+			props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md', instanceSkill: true },
+		});
+
+		const disabled = byTestId(container, 'skill-workflow-mention-disabled');
+		expect(disabled?.querySelector('button')).toBeDisabled();
+		expect(byTestId(container, 'picker-stub')).toBeNull();
+		expect(container.querySelectorAll('[data-testid="agent-skill-workflow-item"]')).toHaveLength(2);
+	});
+
+	it('shows no add workflow button in a read-only instance skill', () => {
+		flag.enabled = true;
 		const { container } = renderComponent({
 			props: {
 				skill: MENTIONING_SKILL,
 				selectedPath: 'SKILL.md',
 				instanceSkill: true,
-				agentContext: true,
-				outsideProjectWorkflowIds: ['wf2'],
+				readOnly: true,
 			},
 		});
 
-		const rows = () => container.querySelectorAll('[data-testid="agent-skill-workflow-item"]');
-		await waitFor(() =>
-			expect(byTestId(rows()[0], 'agent-skill-workflow-notes')).toHaveAttribute(
-				'aria-label',
-				"Agents can use this workflow only in its own project. To use it in other projects, share it with those projects and set 'This workflow can be called by' to 'Any workflow'.",
-			),
-		);
-		const [weeklyRow, archiveRow] = rows();
-		expect(byTestId(weeklyRow, 'agent-skill-workflow-warnings')).toBeNull();
-		expect(byTestId(archiveRow, 'agent-skill-workflow-warnings')).toHaveAttribute(
-			'aria-label',
-			'This agent\'s project can\'t use workflow "Archive". Share the workflow with this project and set "This workflow can be called by" to "Any workflow".',
-		);
-		expect(byTestId(archiveRow, 'agent-skill-workflow-notes')).toBeNull();
+		expect(byTestId(container, 'skill-workflow-mention-disabled')).toBeNull();
+		expect(byTestId(container, 'picker-stub')).toBeNull();
 	});
 
 	it('shows no warning outside the agent context', async () => {
@@ -188,7 +175,7 @@ describe('AgentSkillFileNav', () => {
 		expect(byTestId(container, 'agent-skill-workflow-warnings')).toBeNull();
 	});
 
-	it('adds the MCP notes for a skill available to MCP and the access note for an instance skill', async () => {
+	it('adds the MCP notes for a skill available to MCP', async () => {
 		flag.enabled = true;
 		searchWorkflows.mockResolvedValue([
 			{
@@ -202,7 +189,6 @@ describe('AgentSkillFileNav', () => {
 			props: {
 				skill: { ...MENTIONING_SKILL, references: [] },
 				selectedPath: 'SKILL.md',
-				instanceSkill: true,
 				availableToMcp: true,
 			},
 		});
@@ -210,7 +196,7 @@ describe('AgentSkillFileNav', () => {
 		await waitFor(() =>
 			expect(byTestId(container, 'agent-skill-workflow-notes')).toHaveAttribute(
 				'aria-label',
-				"To run this workflow from MCP, add a Schedule, Webhook, Form, or Chat trigger. To run this workflow from MCP, turn on 'Available in MCP' in the workflow settings. Agents can use this workflow only in its own project. To use it in other projects, share it with those projects and set 'This workflow can be called by' to 'Any workflow'.",
+				"To run this workflow from MCP, add a Schedule, Webhook, Form, or Chat trigger. To run this workflow from MCP, turn on 'Available in MCP' in the workflow settings.",
 			),
 		);
 	});
@@ -314,7 +300,9 @@ describe('AgentSkillFileNav', () => {
 		);
 		expect(byTestId(sharedRow, 'agent-skill-workflow-notes')).toBeNull();
 
-		const agent = renderComponent({ props: { ...props, agentContext: true, instanceSkill: true } });
+		const agent = renderComponent({
+			props: { ...props, agentContext: true, availableToMcp: true },
+		});
 		await waitFor(() =>
 			expect(
 				agent.container.querySelectorAll('[data-testid="agent-skill-workflow-notes"]'),

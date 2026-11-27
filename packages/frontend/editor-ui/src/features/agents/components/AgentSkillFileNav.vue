@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { parseAgentSkillWorkflowMentions, type SkillWorkflowMention } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { VIEWS } from '@/app/constants';
@@ -93,7 +93,6 @@ const NOTE_TEXT_KEYS: Record<SkillWorkflowNote, BaseTextKey> = {
 	mcpUnavailable: 'agents.builder.skills.workflowMentions.note.mcpUnavailable',
 	unpublished: 'agents.builder.skills.workflowMentions.note.unpublished',
 	outsideProject: 'agents.builder.skills.workflowMentions.note.outsideProject',
-	instanceAccess: 'agents.builder.skills.workflowMentions.note.instanceAccess',
 };
 const workflowRows = computed(() =>
 	mentionedWorkflows.value.map((workflow) => {
@@ -102,7 +101,6 @@ const workflowRows = computed(() =>
 			data === undefined
 				? []
 				: getSkillWorkflowNotes(data, {
-						instanceSkill: props.instanceSkill,
 						availableToMCP: props.availableToMcp,
 						projectId: props.agentContext ? undefined : props.mentionProjectId,
 					});
@@ -115,13 +113,11 @@ const workflowRows = computed(() =>
 			: [];
 		const isWarning = (note: SkillWorkflowNote) =>
 			props.agentContext && AGENT_BLOCKING_NOTES.includes(note);
-		const isCoveredByWarning = (note: SkillWorkflowNote) =>
-			note === 'instanceAccess' && outsideProjectWarnings.length > 0;
 		const toText = (note: SkillWorkflowNote) => i18n.baseText(NOTE_TEXT_KEYS[note]);
 		return {
 			...workflow,
 			warnings: [...outsideProjectWarnings, ...allNotes.filter(isWarning).map(toText)],
-			notes: allNotes.filter((note) => !isWarning(note) && !isCoveredByWarning(note)).map(toText),
+			notes: allNotes.filter((note) => !isWarning(note)).map(toText),
 		};
 	}),
 );
@@ -255,8 +251,24 @@ function testIdForPath(path: string) {
 				<N8nText size="small" color="text-light" :class="$style.sectionTitle">
 					{{ i18n.baseText('agents.builder.skills.workflowMentions.title') }}
 				</N8nText>
+				<N8nTooltip
+					v-if="!props.readOnly && props.instanceSkill"
+					:content="i18n.baseText('agents.builder.skills.workflowMentions.projectSkillsOnly')"
+					placement="top"
+				>
+					<span data-testid="skill-workflow-mention-disabled">
+						<N8nIconButton
+							:class="$style.addReference"
+							icon="plus"
+							variant="ghost"
+							size="xsmall"
+							disabled
+							:aria-label="i18n.baseText('agents.builder.skills.workflowMentions.add')"
+						/>
+					</span>
+				</N8nTooltip>
 				<SkillWorkflowMentionPicker
-					v-if="!props.readOnly"
+					v-else-if="!props.readOnly"
 					v-model:open="addWorkflowOpen"
 					mode="button"
 					:project-id="props.mentionProjectId"

@@ -116,6 +116,16 @@ export class SkillRuntimeService {
 		return new Map<string, SkillTarget>(skills.map(({ id, projectId }) => [id, { projectId }]));
 	}
 
+	async withoutInstanceSkills(
+		skills: Record<string, AgentSkill>,
+		ctx: OperationContext = {},
+	): Promise<Record<string, AgentSkill>> {
+		const targets = await this.findTargets(Object.keys(skills), ctx);
+		return Object.fromEntries(
+			Object.entries(skills).filter(([id]) => targets.get(id)?.projectId !== null),
+		);
+	}
+
 	async lockForEdit(skillIds: string[], ctx: OperationContext): Promise<void> {
 		await this.skillRepository.lockForEdit(skillIds, ctx);
 	}

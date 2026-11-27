@@ -10,8 +10,7 @@ export type SkillWorkflowNote =
 	| 'mcpTrigger'
 	| 'mcpUnavailable'
 	| 'unpublished'
-	| 'outsideProject'
-	| 'instanceAccess';
+	| 'outsideProject';
 
 export const AGENT_BLOCKING_NOTES: readonly SkillWorkflowNote[] = [
 	'notFound',
@@ -35,11 +34,7 @@ function isInProject(workflow: SkillWorkflowNoteData, projectId: string): boolea
 
 export function getSkillWorkflowNotes(
 	workflow: SkillWorkflowNoteData | null,
-	{
-		instanceSkill,
-		availableToMCP,
-		projectId,
-	}: { instanceSkill: boolean; availableToMCP: boolean; projectId?: string },
+	{ availableToMCP, projectId }: { availableToMCP: boolean; projectId?: string },
 ): SkillWorkflowNote[] {
 	if (workflow === null) return ['notFound'];
 	if (workflow.isArchived) return ['archived'];
@@ -54,6 +49,5 @@ export function getSkillWorkflowNotes(
 	}
 	if (!workflow.activeVersionId) notes.push('unpublished');
 	if (projectId && !isInProject(workflow, projectId)) notes.push('outsideProject');
-	if (instanceSkill) notes.push('instanceAccess');
 	return notes;
 }

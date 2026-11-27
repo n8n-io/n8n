@@ -6,7 +6,7 @@ import type { PolicyViolation } from '@n8n/decorators';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import type { NodeTypesProxy } from '@n8n/backend-services';
-import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
+import type { SkillRuntimeService, WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -90,6 +90,8 @@ function makeService() {
 	agentPolicyService.evaluatePublish.mockResolvedValue({ violations: [] });
 	const workflowsInSkillsFlagGate = mock<WorkflowsInSkillsFlagGate>();
 	const workflowFinderService = mock<WorkflowFinderService>();
+	const skillRuntime = mock<SkillRuntimeService>();
+	skillRuntime.withoutInstanceSkills.mockImplementation(async (skills) => skills);
 	return {
 		service: new AgentValidationService(
 			agentRepository,
@@ -109,6 +111,7 @@ function makeService() {
 			agentPolicyService,
 			workflowsInSkillsFlagGate,
 			workflowFinderService,
+			skillRuntime,
 		),
 		skillRefs,
 		agentRepository,
@@ -122,6 +125,7 @@ function makeService() {
 		agentPolicyService,
 		workflowsInSkillsFlagGate,
 		workflowFinderService,
+		skillRuntime,
 	};
 }
 
@@ -1861,6 +1865,16 @@ describe('AgentValidationService — structured issues', () => {
 				],
 			});
 			expect(runtimeResult).toEqual({ missing: [] });
+		});
+
+		it('reports nothing for a workflow that an instance skill mentions', async () => {
+			const { service, workflowRepository, skillRuntime } = mentionSetup();
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([draftWorkflow] as never);
+			skillRuntime.withoutInstanceSkills.mockResolvedValue({});
+
+			const result = await validateMentionPublish(service, user);
+
+			expect(result.issues).toEqual([]);
 		});
 
 		it('names a mentioned workflow in the project of the agent by its current name', async () => {

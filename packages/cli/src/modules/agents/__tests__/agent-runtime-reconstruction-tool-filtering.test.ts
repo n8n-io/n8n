@@ -22,7 +22,7 @@ import { Container } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowsInSkillsFlagGate } from '@/modules/skills';
+import type { SkillRuntimeService, WorkflowsInSkillsFlagGate } from '@/modules/skills';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -177,6 +177,8 @@ function makeService(overrides: {
 	const workflowRepository = overrides.workflowRepository ?? mock<WorkflowRepository>();
 	const credentialsService = overrides.credentialsService ?? mock<CredentialsService>();
 	const workflowsInSkillsFlagGate = mock<WorkflowsInSkillsFlagGate>();
+	const skillRuntime = mock<SkillRuntimeService>();
+	skillRuntime.withoutInstanceSkills.mockImplementation(async (skills) => skills);
 
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
@@ -202,11 +204,13 @@ function makeService(overrides: {
 		makeKnowledgeAvailabilityService(),
 		mock<AgentSandboxFilesService>(),
 		workflowsInSkillsFlagGate,
+		skillRuntime,
 	);
 
 	return {
 		service,
 		workflowsInSkillsFlagGate,
+		skillRuntime,
 		credentialsFinderService,
 		workflowFinderService,
 		workflowRepository,
@@ -1401,6 +1405,20 @@ describe('AgentRuntimeReconstructionService — workflows that skills mention', 
 
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['Get code']);
 		expect(result.userToolAccessSnapshot).toEqual({ credentialIds: [], workflowIds: [] });
+	});
+
+	it('adds no tool and no hint for a mention in an instance skill', async () => {
+		const { service, workflowsInSkillsFlagGate, skillRuntime } = makeService({});
+		workflowsInSkillsFlagGate.isEnabled.mockResolvedValue(true);
+		skillRuntime.withoutInstanceSkills.mockResolvedValue({});
+		buildFromJsonResolvingTools([]);
+		const source = makeSkillAgentEntity();
+
+		await service.reconstructFromAgentEntity(source, mock<CredentialProvider>(), 'production');
+
+		expect(skillRuntime.withoutInstanceSkills).toHaveBeenCalledWith(source.skills);
+		expect(resolveWorkflowToolMock).not.toHaveBeenCalled();
+		expect(skillInstructionsPassedToBuildFromJson()).toBe(source.skills['skill-1'].instructions);
 	});
 
 	it('adds no tool while the flag is off', async () => {

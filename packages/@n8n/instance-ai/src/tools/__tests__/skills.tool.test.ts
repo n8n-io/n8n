@@ -489,7 +489,7 @@ describe('skills tool', () => {
 
 	describe('workflow mention hint', () => {
 		const hint =
-			'To make a skill run an n8n workflow, link the workflow in the instructions as [Workflow name](n8n://workflow/<workflow-id>).';
+			"To make a project skill run an n8n workflow, link the workflow in the instructions as [Workflow name](n8n://workflow/<workflow-id>). Instance skills can't use workflows.";
 
 		function toolDescription(workflowsInSkillsEnabled: boolean) {
 			const skillService = { ...createSkillService(), workflowsInSkillsEnabled };

@@ -464,6 +464,22 @@ describe('SkillRuntimeService', () => {
 			]);
 		});
 
+		it('withoutInstanceSkills drops instance skills and keeps project skills and unknown ones', async () => {
+			skills.findByIds.mockResolvedValue([
+				skillRow('skill_a', { projectId: PROJECT }),
+				skillRow('skill_b'),
+			]);
+			const body = { name: 'n', description: 'd', instructions: 'i' };
+
+			const kept = await runtime.withoutInstanceSkills({
+				skill_a: body,
+				skill_b: body,
+				skill_new: body,
+			});
+
+			expect(Object.keys(kept)).toEqual(['skill_a', 'skill_new']);
+		});
+
 		it('resolveVersions maps each version to its skill and runtime content', async () => {
 			const a = skillRow('skill_a');
 			skills.findVersionsByIds.mockResolvedValue(

@@ -1130,6 +1130,100 @@ describe('SkillsController', () => {
 		});
 	});
 
+	describe('workflows only in project skills', () => {
+		beforeEach(() => {
+			postHog.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+				flag === WORKFLOWS_IN_SKILLS_FLAG ? WORKFLOWS_IN_SKILLS_ENABLED_VARIANT : false,
+			);
+		});
+
+		it('refuses a workflow mention in a new instance skill', async () => {
+			const workflow = await createWorkflow({ name: 'Owner report' }, ownerPerson);
+
+			const { body: refused } = await owner
+				.post('/skills')
+				.send({
+					scope: 'instance',
+					skill: {
+						...body,
+						name: 'Global with workflow',
+						instructions: `Run [Owner report](n8n://workflow/${workflow.id}).`,
+					},
+				})
+				.expect(400);
+
+			expect(refused.message).toBe(
+				'Workflows work only in project skills. Remove the workflows from this skill, or save it in a project.',
+			);
+		});
+
+		it('refuses with 409 to make a project skill with workflows global, and keeps its scope', async () => {
+			const workflow = await createWorkflow({ name: 'Owner report' }, ownerPerson);
+			const { id, skillHash } = await create(owner, {
+				scope: 'project',
+				projectId: project.id,
+				skill: {
+					...body,
+					name: 'Project with workflow',
+					instructions: `Run [Owner report](n8n://workflow/${workflow.id}).`,
+				},
+			});
+
+			const { body: refused } = await owner
+				.patch(`/skills/${id}`)
+				.send({ scope: 'instance', baseSkillHash: skillHash })
+				.expect(409);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(refused.message).toBe('Remove the workflows from this skill to make it global.');
+			expect(read.body.data).toMatchObject({ scope: 'project', projectId: project.id });
+		});
+
+		it('refuses with 409 to move a project skill with workflows to another project', async () => {
+			const other = await createTeamProject('Other team');
+			const workflow = await createWorkflow({ name: 'Owner report' }, ownerPerson);
+			const { id, skillHash } = await create(owner, {
+				scope: 'project',
+				projectId: project.id,
+				skill: {
+					...body,
+					name: 'Project with workflow',
+					instructions: `Run [Owner report](n8n://workflow/${workflow.id}).`,
+				},
+			});
+
+			const { body: refused } = await owner
+				.patch(`/skills/${id}`)
+				.send({ scope: 'project', projectId: other.id, baseSkillHash: skillHash })
+				.expect(409);
+
+			expect(refused.message).toBe(
+				'Remove the workflows from this skill to move it to another project.',
+			);
+		});
+
+		it('makes a skill global when the same save removes its workflows', async () => {
+			const workflow = await createWorkflow({ name: 'Owner report' }, ownerPerson);
+			const { id, skillHash } = await create(owner, {
+				scope: 'project',
+				projectId: project.id,
+				skill: {
+					...body,
+					name: 'Project with workflow',
+					instructions: `Run [Owner report](n8n://workflow/${workflow.id}).`,
+				},
+			});
+
+			await owner
+				.patch(`/skills/${id}`)
+				.send({ scope: 'instance', instructions: 'Be brief.', baseSkillHash: skillHash })
+				.expect(200);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(read.body.data).toMatchObject({ scope: 'instance', projectId: null });
+		});
+	});
+
 	describe('delete', () => {
 		it('deletes an unused skill', async () => {
 			const { id } = await create(editor, { scope: 'project', projectId: project.id, skill: body });
