@@ -2,6 +2,7 @@ import {
 	coerceArrayTypeFields,
 	findMatches,
 	removeIgnored,
+	toFormulaString,
 	valuesMatch,
 } from '../../v2/helpers/utils';
 
@@ -297,5 +298,24 @@ describe('test AirtableV2, valuesMatch', () => {
 
 	it('should match when both are undefined', () => {
 		expect(valuesMatch(undefined, undefined)).toBe(true);
+	});
+});
+
+describe('test AirtableV2, toFormulaString', () => {
+	it('should wrap a plain value in single quotes', () => {
+		expect(toFormulaString('foo')).toBe("'foo'");
+	});
+
+	it('should escape single quotes', () => {
+		expect(toFormulaString("foo'&'")).toBe("'foo\\'&\\''");
+	});
+
+	it('should escape backslashes before quotes', () => {
+		expect(toFormulaString("a\\'b")).toBe("'a\\\\\\'b'");
+	});
+
+	it('should stringify non-string values', () => {
+		expect(toFormulaString(42)).toBe("'42'");
+		expect(toFormulaString(true)).toBe("'true'");
 	});
 });

@@ -49,6 +49,14 @@ export function valuesMatch(recordValue: unknown, inputValue: unknown): boolean 
 	return false;
 }
 
+/**
+ * Quote a value as an Airtable formula string. A quote or backslash in the value
+ * would otherwise end the string early and change what the formula matches.
+ */
+export function toFormulaString(value: unknown): string {
+	return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+}
+
 export function findMatches(
 	data: UpdateRecord[],
 	keys: string[],

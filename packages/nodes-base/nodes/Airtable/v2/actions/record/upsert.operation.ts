@@ -9,7 +9,12 @@ import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import type { UpdateRecord } from '../../helpers/interfaces';
-import { coerceArrayTypeFields, processAirtableError, removeIgnored } from '../../helpers/utils';
+import {
+	coerceArrayTypeFields,
+	processAirtableError,
+	removeIgnored,
+	toFormulaString,
+} from '../../helpers/utils';
 import { apiRequest, apiRequestAllItems, batchUpdate } from '../../transport';
 import { insertUpdateOptions } from '../common.descriptions';
 
@@ -123,7 +128,7 @@ export async function execute(
 					responseData = await apiRequest.call(this, 'POST', endpoint, createBody);
 				} else if (error?.description?.includes('Cannot update more than one record')) {
 					const conditions = columnsToMatchOn
-						.map((column) => `{${column}} = '${records[0].fields[column]}'`)
+						.map((column) => `{${column}} = ${toFormulaString(records[0].fields[column])}`)
 						.join(',');
 					const response = await apiRequestAllItems.call(
 						this,
