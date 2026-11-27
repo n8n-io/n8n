@@ -1,0 +1,20 @@
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/getSourceControlStatus.generated.yml
+  h_b48525a15b2d62 151-156
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/pullSourceControl.generated.yml
+  h_b48525a15b2d62 163-168,331-336
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/pushSourceControl.generated.yml
+  h_b48525a15b2d62 183-188,358-363
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  h_b48525a15b2d62 115-120,877-882,952-957
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce590662552546857555af6f826706d06761cb70",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
