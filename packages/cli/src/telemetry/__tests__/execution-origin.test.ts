@@ -1,4 +1,4 @@
-import type { INode, IRunData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import type { INode, INodeTypes, IRunData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 
 import { getExecutionOrigin } from '../execution-origin';
@@ -83,15 +83,55 @@ describe('getExecutionOrigin', () => {
 		});
 	});
 
-	it('returns nothing for a manual partial run that reuses earlier run data', () => {
-		const partialRun: IWorkflowExecutionDataProcess = {
-			executionMode: 'manual',
-			workflowData,
-			runData: { Webhook: taskStartedAt(1000) },
-			destinationNode: { nodeName: 'Edit Fields', mode: 'inclusive' },
+	describe('manual run up to a node that names no trigger node', () => {
+		// Both trigger nodes feed "Edit Fields", so the engine has to pick one.
+		const connectedWorkflowData = {
+			...workflowData,
+			connections: {
+				'Schedule Trigger': { main: [[{ node: 'Edit Fields', type: 'main' as const, index: 0 }]] },
+				Webhook: { main: [[{ node: 'Edit Fields', type: 'main' as const, index: 0 }]] },
+			},
 		};
+		const nodeTypes = {
+			getByNameAndVersion: (type: string) => ({
+				description: {
+					name: type,
+					group: type === editFields.type ? ['transform'] : ['trigger'],
+					properties: [],
+				},
+				...(type === scheduleTrigger.type ? { trigger: async () => undefined } : {}),
+			}),
+		} as unknown as INodeTypes;
+		const runUpTo = (runData?: IRunData): IWorkflowExecutionDataProcess => ({
+			executionMode: 'manual',
+			workflowData: connectedWorkflowData,
+			runData,
+			destinationNode: { nodeName: 'Edit Fields', mode: 'inclusive' },
+		});
 
-		expect(getExecutionOrigin(partialRun)).toBeUndefined();
+		it('uses the trigger node whose output a partial run reuses', () => {
+			const partialRun = runUpTo({ 'Schedule Trigger': taskStartedAt(1000) });
+
+			expect(getExecutionOrigin(partialRun, nodeTypes)).toEqual({
+				triggerNodeType: 'n8n-nodes-base.scheduleTrigger',
+			});
+		});
+
+		it('uses the trigger node that the engine prefers when no run data is reused', () => {
+			expect(getExecutionOrigin(runUpTo({}), nodeTypes)).toEqual({
+				triggerNodeType: 'n8n-nodes-base.webhook',
+			});
+		});
+
+		it('uses the start node that the engine picks for a run without run data', () => {
+			expect(getExecutionOrigin(runUpTo(undefined), nodeTypes)).toEqual({
+				triggerNodeType: 'n8n-nodes-base.scheduleTrigger',
+			});
+		});
+
+		it('returns nothing without node types', () => {
+			expect(getExecutionOrigin(runUpTo({}))).toBeUndefined();
+		});
 	});
 
 	it('sets the caller to agent when an agent started the run', () => {

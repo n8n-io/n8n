@@ -1,24 +1,28 @@
+import { findTriggerForPartialExecution } from 'n8n-core';
 import type {
 	INode,
+	INodeTypes,
 	IRunData,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecutionCaller,
 	WorkflowExecutionOrigin,
 } from 'n8n-workflow';
-import { isTriggerNodeType } from 'n8n-workflow';
+import { isTriggerNodeType, Workflow } from 'n8n-workflow';
 
 /**
  * Returns how a run started, from what is known when its execution is created, so that its
  * telemetry does not have to work it out when the run ends. Returns `undefined` when neither a
- * trigger node nor a caller started the run.
+ * trigger node nor a caller started the run. Without `nodeTypes`, a manual run up to a node that
+ * names no trigger node records none.
  *
  * Only for telemetry, so it must never throw or change `data` while a run starts. It reads lists
  * with `first`, because reading index 0 of an empty list on a proxy can add an entry.
  */
 export function getExecutionOrigin(
 	data: IWorkflowExecutionDataProcess,
+	nodeTypes?: INodeTypes,
 ): WorkflowExecutionOrigin | undefined {
-	const triggerNodeType = getTriggerNodeType(data);
+	const triggerNodeType = getTriggerNodeType(data, nodeTypes);
 	const caller = getCaller(data);
 	if (!triggerNodeType && !caller) return undefined;
 
@@ -39,10 +43,13 @@ function getCaller(data: IWorkflowExecutionDataProcess): WorkflowExecutionCaller
 /**
  * A resumed or retried run continues run data saved earlier, which holds the trigger node that
  * started the execution. Any other run starts from the first node of its execution stack or, for a
- * manual run, from the trigger node that the user picked. A manual partial run that reuses earlier
- * run data starts from no trigger node.
+ * manual run, from the trigger node that the user picked. A manual run up to a node that names no
+ * trigger node gets the one that the engine will start from.
  */
-function getTriggerNodeType(data: IWorkflowExecutionDataProcess): string | undefined {
+function getTriggerNodeType(
+	data: IWorkflowExecutionDataProcess,
+	nodeTypes: INodeTypes | undefined,
+): string | undefined {
 	const nodeTypesByName = getNodeTypesByName(data.workflowData?.nodes);
 	const triggerToStartFrom = data.triggerToStartFrom?.name;
 	const startItem = first(data.executionData?.executionData?.nodeExecutionStack);
@@ -52,21 +59,44 @@ function getTriggerNodeType(data: IWorkflowExecutionDataProcess): string | undef
 		asTriggerNodeType(startItem?.node?.type) ??
 		asTriggerNodeType(
 			typeof triggerToStartFrom === 'string' ? nodeTypesByName.get(triggerToStartFrom) : undefined,
-		)
+		) ??
+		(nodeTypes ? getManualRunTriggerNodeType(data, nodeTypes) : undefined)
 	);
 }
 
 /**
- * Returns the trigger node with the earliest start time in the data of a run that ended. A manual
- * run that names no trigger node, such as a public API run, gets one from the engine during the
- * run, so its telemetry falls back to this. For a partial run, it is the trigger node of the earlier
- * run whose data the partial run reuses.
+ * The engine picks the start node of a manual run up to a node when the run starts, possibly on a
+ * worker, so this asks the same engine functions. A partial run, which reuses earlier run data,
+ * starts from a parent trigger node; any other run starts from the highest parent node.
  */
-export function getFirstTriggerNodeTypeInRun(
-	nodes: INode[] | undefined,
-	runData: IRunData | undefined,
+function getManualRunTriggerNodeType(
+	data: IWorkflowExecutionDataProcess,
+	nodeTypes: INodeTypes,
 ): string | undefined {
-	return getFirstTriggerNodeType(runData, getNodeTypesByName(nodes));
+	const destinationNodeName = data.destinationNode?.nodeName;
+	if (data.executionMode !== 'manual' || typeof destinationNodeName !== 'string') return undefined;
+
+	try {
+		const workflow = new Workflow({
+			id: data.workflowData.id,
+			name: data.workflowData.name,
+			nodes: data.workflowData.nodes,
+			connections: data.workflowData.connections,
+			active: false,
+			nodeTypes,
+			settings: data.workflowData.settings,
+			pinData: data.pinData ?? data.workflowData.pinData,
+		});
+		const startNode =
+			data.runData === undefined
+				? workflow.getStartNode(destinationNodeName)
+				: findTriggerForPartialExecution(workflow, destinationNodeName, data.runData);
+
+		return asTriggerNodeType(startNode?.type);
+	} catch {
+		// The engine fails such a run itself, for example on an unknown node type.
+		return undefined;
+	}
 }
 
 function getNodeTypesByName(nodes: INode[] | undefined): Map<string, string> {

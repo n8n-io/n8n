@@ -509,7 +509,7 @@ export class WorkflowRunner {
 		}
 
 		// Records how the run started while its execution is created, for the run's telemetry.
-		const origin = getExecutionOrigin(data);
+		const origin = getExecutionOrigin(data, this.nodeTypes);
 		if (origin) {
 			data.telemetryMetadata = { ...data.telemetryMetadata, origin };
 		}

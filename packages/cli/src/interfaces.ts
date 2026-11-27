@@ -254,8 +254,8 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	/** Mode that started the run, for example `webhook`. Absent when the run has no run data. */
 	execution_mode?: WorkflowExecuteMode;
 	/**
-	 * Type of the trigger node that started the execution. For a manual run that named no trigger
-	 * node, the first trigger node in its run data. Absent when there is none.
+	 * Type of the trigger node that started the execution, or whose output a partial run reuses.
+	 * Absent when there is none.
 	 */
 	trigger_node_type?: string;
 	/** The agent, parent workflow or public API call that started the run. Absent when none did. */

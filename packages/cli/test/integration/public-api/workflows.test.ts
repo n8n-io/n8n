@@ -4555,12 +4555,14 @@ describe('POST /workflows/:workflowId/run', () => {
 			expect(response.statusCode).toBe(200);
 			await waitForExecution(response.body.executionId);
 
-			// A partial run reuses the run data of the trigger, so it starts from no trigger node.
+			// A partial run reuses the output of the trigger node, which is recorded as its trigger.
 			expect(emitSpy).toHaveBeenCalledWith(
 				'workflow-post-execute',
 				expect.objectContaining({
 					executionId: response.body.executionId,
-					telemetryMetadata: expect.objectContaining({ origin: { caller: 'public_api' } }),
+					telemetryMetadata: expect.objectContaining({
+						origin: { triggerNodeType: 'n8n-nodes-base.manualTrigger', caller: 'public_api' },
+					}),
 				}),
 			);
 		});
