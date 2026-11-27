@@ -21,7 +21,7 @@ test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: a task request no runner accepts ends inside the shutdown window',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	async () => {
 		test.setTimeout(300_000);
 

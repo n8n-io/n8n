@@ -20,7 +20,7 @@ test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: job fetched before SIGTERM finishes or goes back to the queue',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	async () => {
 		test.setTimeout(300_000);
 

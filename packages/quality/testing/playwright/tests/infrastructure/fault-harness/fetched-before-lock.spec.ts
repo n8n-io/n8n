@@ -17,7 +17,7 @@ test.afterEach(async () => await stopAllStacks());
 
 test(
 	'job moved to active before the worker takes its lock is not failed as stalled',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	async () => {
 		test.setTimeout(300_000);
 

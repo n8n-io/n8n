@@ -23,7 +23,7 @@ test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: a worker does not wait on the error workflow it enqueued',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	async () => {
 		test.setTimeout(300_000);
 

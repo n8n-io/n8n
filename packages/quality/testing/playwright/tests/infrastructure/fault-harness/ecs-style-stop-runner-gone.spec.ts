@@ -23,7 +23,7 @@ test.afterEach(async () => await stopAllStacks());
 
 test(
 	'ECS-style stop: a node needs a runner after the worker and runner sidecar got SIGTERM',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	async () => {
 		test.setTimeout(400_000);
 

@@ -20,7 +20,7 @@ test.afterEach(async () => await stopAllStacks());
 
 test(
 	'worker drain: a job handed to the worker after stop began runs on another worker',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	async () => {
 		test.setTimeout(300_000);
 

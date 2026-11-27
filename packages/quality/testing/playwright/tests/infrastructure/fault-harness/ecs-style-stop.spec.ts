@@ -22,7 +22,7 @@ test.afterEach(async () => await stopAllStacks());
 
 test(
 	'ECS-style stop: worker and runner get SIGTERM together, then SIGKILL at the stop timeout',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	async () => {
 		test.setTimeout(400_000);
 
