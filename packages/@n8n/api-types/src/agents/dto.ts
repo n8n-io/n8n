@@ -1010,6 +1010,10 @@ export class AgentChatResumeDto extends Z.class({
 	resumeData: z.unknown(),
 }) {}
 
+export class GenerateAgentTestScenariosDto extends Z.class({
+	previousScenarios: z.array(z.string().trim().min(1).max(300)).max(20).optional(),
+}) {}
+
 const agentConnectIntegrationShape = {
 	type: z.string().min(1),
 	credentialId: z.string(),
