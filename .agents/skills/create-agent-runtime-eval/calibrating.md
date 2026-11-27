@@ -1,7 +1,9 @@
 # Calibrating and publishing
 
-Run locally first to catch case errors. Calibrate remotely, where every
-provider and episodic memory work.
+The case lives in LangTracer ([building.md](building.md)). Run it locally
+first to catch case errors. Calibrate remotely, where every provider and
+episodic memory work. Publish by adding the case to the suite. There is no push
+from a disk file: do not use `eval:langtracer-push` for runtime cases.
 
 ## Run locally (smoke test)
 
@@ -19,15 +21,34 @@ The instance needs `N8N_INSTANCE_AI_EVAL_INSTANCE=true` (it turns on the eval
 endpoints) and `N8N_INSTANCE_AI_ENABLED=true`. Direct mode needs no sandbox.
 Start an isolated instance and seed the owner as in
 [running-evals.md](../create-instance-ai-eval/running-evals.md#run-locally-against-a-dev-instance).
-Then, from `packages/@n8n/instance-ai`:
+### Get the case onto disk
+
+LangTracer has no single-case export. The only pull path is per suite:
+`export_suite`, which `--source langtracer --suite <slug>` also uses. So keep
+unpublished cases in a drafts suite, for example "Agents — runtime (drafts)".
+Ask the driver before you create it with `create_suite`. Reuse it for every
+case. It has no schedule.
+
+Then run straight from LangTracer, from `packages/@n8n/instance-ai`:
 
 ```bash
-pnpm eval:instance-ai \
-  --base-url http://localhost:5680 \
-  --filter <slug> \
-  --concurrency 1 \
-  --verbose
+pnpm exec dotenvx run -f ../../../.env.eval -- \
+  pnpm eval:instance-ai --source langtracer --suite <drafts-slug> \
+  --filter <case-name> --base-url http://localhost:5680 --concurrency 1 --verbose
 ```
+
+To edit and rerun quickly, write the case's body from `export_suite`
+(`<case-name>.json`) to a scratch file at
+`packages/@n8n/instance-ai/evaluations/data/agents/<case-name>.json`, and run
+with `--filter <case-name>` and no `--source`. This file is scratch:
+
+- Never commit it. Delete it when you are done.
+- Copy every fix back to LangTracer with `update_test_case`. LangTracer is the
+  source of truth.
+
+**Pending L2/L3.** The export does not carry `agentRun`, seed `rows`,
+`expectations`, `userTurns`, or `sessions` yet. Until it does, add them to the
+scratch file by hand. The first run is the strict loader's check of the case.
 
 Check:
 
@@ -46,14 +67,16 @@ Remote runs use the CI keys: Anthropic, OpenAI (also for embeddings), and
 OpenRouter (pending L2).
 
 **Pending L2/L3.** Until LangTracer carries `agentRun` and the multi-turn
-fields, the case cannot be pushed, so it cannot run remotely.
+fields, the case runs remotely as an assistant case, which is wrong. Do not
+calibrate remotely before then.
 
 1. Build an n8n image from the top of the stack:
    `gh workflow run docker-build-push.yml --ref <stack-head-branch> -f push_enabled=true`.
    Rebuild after each change to the stack.
-2. Push the case (see Publish), then start the run with `start_evaluation`.
-   Set `configuration.image` to that GHCR image. Select the case by id, or
-   the suite filtered by tag.
+2. Start the run with `start_evaluation`. Set `configuration.image` to that
+   GHCR image. Select the case by id (`selection.kind: "cases"`). It does not
+   need to be in the suite yet. A case still marked `containsUserData` runs
+   on your personal dispatcher only.
 3. Run each new case 3–5 times. A runtime case uses real models and a
    simulated user, so one green proves little.
 
@@ -86,8 +109,9 @@ Classify each red, as in "A red is signal" in
   settle, the proxy went off goal. Record it. Do not loosen the expectation to
   hide it.
 - **Agent failure:** the Agent breaks a rule its instructions give. Keep it.
-  This is a finding about the Agent or the runtime. Push it with
-  `--set-kind capability_gap`, and propose a Linear ticket for the Agent team.
+  This is a finding about the Agent or the runtime. Set
+  `setKind: "capability_gap"` with `update_test_case`, and propose a Linear
+  ticket for the Agent team. Do not create the ticket unless the driver says so.
 - **Noise:** passes in some runs. Tighten the goal or the expectation, then
   run again.
 
@@ -95,25 +119,16 @@ Never weaken an expectation to make a real Agent failure pass.
 
 ## Publish
 
-**Pending L2/L3.** Until then, `eval:langtracer-push` refuses runtime cases.
+Publish only after the review (see [SKILL.md](SKILL.md#review)) and after a
+person cleared `containsUserData`.
 
-After review (see [SKILL.md](SKILL.md#review)), from `packages/@n8n/instance-ai`:
-
-```bash
-pnpm exec dotenvx run -f ../../../.env.eval -- \
-  pnpm eval:langtracer-push --suite <agents-runtime-slug> --dry-run --changed
-
-pnpm exec dotenvx run -f ../../../.env.eval -- \
-  pnpm eval:langtracer-push --suite <agents-runtime-slug> --changed
-```
-
-Get the slug of "Agents — runtime" from `list_suites`. Then:
-
-- Link the case to its source: `update_test_case` with `sourceThreadId` and
-  `sourceRunId` (the snapshot run).
-- Report the case, the suite, and the source thread as LangTracer links.
-- Delete the local JSON, and the scrub working case if you made one
-  ([building.md](building.md#1-snapshot--seedagents)).
+1. Get the id of "Agents — runtime" from `list_suites`.
+2. File the case: `move_cases_to_suite` from the drafts suite, or
+   `add_cases_to_suite` if it is in no suite.
+3. Check the source link (`sourceThreadId`, `sourceRunId`) set in
+   [building.md](building.md#1-snapshot--seedagents).
+4. Report the case, the suite, and the source thread as LangTracer links.
+5. Delete the scratch file, if you made one.
 
 The nightly schedule and Slack (`#alerts-agents-evals`) are turned on for the
 suite once, after N1–N4 are in the nightly image. Not per case.

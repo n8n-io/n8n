@@ -51,9 +51,10 @@ Until each part lands:
 - **Before N4:** memory is stripped from the seeded Agent. Memory expectations
   cannot pass.
 - **Before L1:** rewrite the snapshot by hand. Follow [building.md](building.md).
-- **Before L2/L3:** `eval:langtracer-push` refuses a case that uses `agentRun`,
-  `userTurns`, `sessions`, `expectations` or seed `rows`. Keep the case on disk
-  and run it locally.
+- **Before L2/L3:** LangTracer cases cannot hold `agentRun`, `userTurns`,
+  `sessions`, `expectations` or seed `rows`. Build the rest in LangTracer. Add
+  these fields by hand to the scratch file for the local run, and copy them to
+  the case when L2/L3 land.
 
 The pinned case contract is in
 [`harness/agent-run-schema.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/agent-run-schema.ts).
@@ -71,6 +72,10 @@ The schema wins if this skill and the code disagree. Then fix this skill.
    See [Measure the skill](#measure-the-skill).
 
 ## Steps
+
+LangTracer is the home of every runtime case. You build, edit, and publish it
+there with the LangTracer MCP tools. A file on disk is only scratch, for a local
+run. Never commit it, and never push it with `eval:langtracer-push`.
 
 1. **Source** an Agent snapshot. See [sourcing.md](sourcing.md).
 2. **Build** the case: seed, scrub, rows, scenarios, `agentRun`, tags. See
@@ -218,4 +223,5 @@ this skill, in the same branch.
 - It ran locally, then remotely on a pinned image. Each red is fixed or kept
   as a finding.
 - It is in the "Agents — runtime" suite, and the report links to it.
+- No scratch file is left in the worktree.
 - The time, manual fixes, and review result are recorded.

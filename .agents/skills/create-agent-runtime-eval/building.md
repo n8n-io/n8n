@@ -1,11 +1,20 @@
 # Building a runtime case
 
-The order matters. Each step uses the output of the one before it.
+LangTracer is the home of a runtime case. You build it there with the
+LangTracer MCP tools, not as a file on disk:
 
 ```
-snapshot → seed.agents → scrub → check the rewrite → seed rows
-         → scenarios → agentRun → tags
+create_test_case → scrub_test_case → update_test_case (rows, scenarios,
+agentRun, tags) → review → add to the suite
 ```
+
+The order matters. Each step uses the output of the one before it.
+
+**Pending L2/L3.** Today `create_test_case` and `update_test_case` do not
+carry `agentRun`, `seed.dataTables[].rows`, `expectations`, `userTurns`, or
+`sessions`. Until they do, write those parts in the local smoke-run file
+([calibrating.md](calibrating.md#run-locally-smoke-test)), and copy them into
+the LangTracer case when L2/L3 land.
 
 ## 1. Snapshot → `seed.agents`
 
@@ -19,19 +28,26 @@ Map the snapshot to one seed entry: `{ id, config, skills }`.
   resolver binds real keys. The resolver also adds the model credential types
   the case needs. Declare at most one credential of each model type.
 
-With L1: create the case in LangTracer with `create_test_case`, with no suite
-and without `synthetic: true`. It holds real prose, so it stays marked
-`containsUserData`. Scrub it there (step 2), then copy the scrubbed seed into
-your disk file. Open question for L1/L2: whether the push updates this case or
-makes a new one. Until that is settled, delete this working case after the push,
-so the suite holds one copy.
+Create the case with `create_test_case`:
 
-Before L1: skip `create_test_case`. Rewrite on disk.
+- `seed: { "mode": "inline", "agents": [ … ] }`.
+- `setKind: "regression"`, and no `suiteId`. The case joins the suite only
+  after review ([calibrating.md](calibrating.md#publish)).
+- `sourceThreadId` and `sourceRunId` (the snapshot run), so the case links to
+  its source.
+- Do not set `synthetic: true`. The case holds real prose, so it stays marked
+  `containsUserData`.
+
+Record the case id. Every later step edits this case.
 
 ## 2. Scrub
 
-**Pending L1.** `scrub_test_case` rewrites `seed.agents`. Until L1 lands, it
-does not touch seeds. Rewrite the Agent by hand, with the rules below.
+Run `scrub_test_case` with the case id. It keeps the id and stores the
+originals in `metadata.scrubbedFrom`.
+
+**Pending L1.** Until L1 lands, `scrub_test_case` does not rewrite
+`seed.agents`. Rewrite the Agent by hand with the rules below, and write it
+back with `update_test_case` (`seed`).
 
 The rules (from the C1 rewrite spec):
 
@@ -89,7 +105,8 @@ For every Data Table the Agent's tools use, add a `seed.dataTables` entry:
 Before each scenario, every seed table is reset to its seed rows. Use a
 scenario's `seedDataTables` only when that scenario needs different rows.
 
-**Pending L2** to push rows to LangTracer. They run locally today.
+Write the tables with `update_test_case` (`seed`). **Pending L2** for
+`rows`: LangTracer stores seed tables as schema only today.
 
 ## 4. Scenarios
 
@@ -111,6 +128,10 @@ Write 1–3 scenarios. Each tests one behavior the user built the Agent for.
 Tool outbound calls go through the LLM mock. Data Tables are real. Say in
 `dataSetup` what a mocked tool returns when the scenario depends on it.
 
+Write the scenarios with `update_test_case` (`scenarios`, the full set,
+matched by name). **Pending L3** for `expectations`, `userTurns`, and
+`sessions`.
+
 ## 5. `agentRun`
 
 ```json
@@ -127,6 +148,9 @@ Tool outbound calls go through the LLM mock. Data Tables are real. Say in
 - `keepMemory`, `configOverrides`: see
   [Memory cases](SKILL.md#memory-cases). **Pending N4.**
 
+Write it with `update_test_case`. **Pending L2** for `mode` and `agent`,
+**L3** for `keepMemory` and `configOverrides`.
+
 Direct mode rejects assistant-only fields: `conversation`,
 `processExpectations`, `outcomeExpectations`, `messageBudget`, `promptVersion`,
 `credentialFixture`, and `seed.messages`, `seed.projects`, `seed.priorRuns`,
@@ -137,17 +161,11 @@ Direct mode rejects assistant-only fields: `conversation`,
 Always `agent-runtime`. Then one tag per component the case exercises:
 `data-tables`, `mcp`, `skills`, `web-search`, `memory`, `episodic`,
 `multi-turn`. Add the `business_domain`. Tags let a run select part of the
-suite.
+suite. Set them with `update_test_case` (`evalTags`; the export writes them as
+the case's `tags`).
 
 ## Validate
 
-Author the file at
-`packages/@n8n/instance-ai/evaluations/data/agents/<slug>.json`. Do not commit
-it. From `packages/@n8n/instance-ai`:
-
-```bash
-pnpm exec tsx -e "import { loadAgentEvalTestCasesWithFiles } from './evaluations/data/agents/index.ts'; const m = loadAgentEvalTestCasesWithFiles('<slug>'); if (m.length !== 1) throw new Error('found ' + m.length); console.log(m[0].fileSlug)"
-```
-
-The loader is strict. It fails on unknown keys, on rows that don't fit the
-columns, and on a scenario with no expectation.
+The local smoke run validates the case: the loader is strict. It fails on
+unknown keys, on rows that don't fit the columns, and on a scenario with no
+expectation. See [calibrating.md](calibrating.md#run-locally-smoke-test).
