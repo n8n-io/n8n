@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { DateTime, Duration, Interval } from 'luxon';
+import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { workflow, asDuration, asInterval } from './ExpressionExtensions/helpers';
 import { baseFixtures } from './ExpressionFixtures/base';
@@ -11,7 +11,7 @@ import { ExpressionError } from '../src/errors/expression.error';
 import { Expression } from '../src/expression';
 import { extendSyntax } from '../src/extensions/expression-extension';
 import { createRunExecutionData } from '../src';
-import type { INodeExecutionData } from '../src/interfaces';
+import type { INodeExecutionData, IWorkflowDataProxyData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 
@@ -1610,6 +1610,30 @@ describe('Expression', () => {
 			await expression.releaseIsolate();
 
 			expect(result).toBe('HELLO');
+		});
+
+		test('passes workflow timezone to native Date extension evaluation', () => {
+			const expression = new Expression('America/New_York');
+			const previousZone = Settings.defaultZone;
+			Settings.defaultZone = 'UTC';
+			Expression.setNativeEvaluation(true);
+
+			try {
+				const result = expression.resolveSimpleParameterValue(
+					"={{ $parameter.stamp.format('yyyy-MM-dd HH') }}",
+					{
+						$parameter: {
+							stamp: new Date('2024-01-02T03:04:05.000Z'),
+						},
+					} as unknown as IWorkflowDataProxyData,
+					false,
+				);
+
+				expect(result).toBe('2024-01-01 22');
+			} finally {
+				Expression.setNativeEvaluation(false);
+				Settings.defaultZone = previousZone;
+			}
 		});
 	});
 });

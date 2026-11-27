@@ -16,9 +16,8 @@
 // can grow with the grammar (more roots, methods, callback forms) without
 // rewriting this test.
 
+import { isNativelyEvaluable, RESERVED_NAMES } from '@n8n/expression-runtime';
 import { getParsedExpression } from '@n8n/tournament';
-import { isNativelyEvaluable } from '../src/expressions/native-evaluation';
-import { RESERVED_NAMES } from '../src/expressions/native-evaluation/grammar';
 import { ALL_CORPORA } from './native-evaluation-corpus';
 
 // ── Shape tokenization ────────────────────────────────────────────────────

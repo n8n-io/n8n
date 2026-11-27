@@ -1,10 +1,21 @@
-import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
+import type {
+	ExpressionEvaluationOutcome,
+	IExpressionEvaluator,
+	NativeFallbackReason,
+	NativeVerifyMismatch,
+	ObservabilityProvider,
+} from '@n8n/expression-runtime';
 import {
+	canVerifyNatively,
 	classifyExpressionError,
 	errorOriginOf,
+	evaluateNatively,
 	EXPRESSION_METRICS,
+	ExpressionExtensionError as RuntimeExpressionExtensionError,
 	HostCallError,
+	isNativelyEvaluable,
 	MemoryLimitError,
+	NativeVerifier,
 	SecurityViolationError,
 	TimeoutError,
 } from '@n8n/expression-runtime';
@@ -16,13 +27,6 @@ import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
-import { evaluateNatively } from './expressions/native-evaluation';
-import type { NativeFallbackReason } from './expressions/native-evaluation/evaluator';
-import {
-	canVerifyNatively,
-	NativeVerifier,
-	type NativeVerifyMismatch,
-} from './expressions/native-evaluation/verify';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -41,7 +45,18 @@ const isSyntaxError = (error: unknown): error is SyntaxError =>
 const isExpressionError = (error: unknown): error is ExpressionError =>
 	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
 
-export type { NativeVerifyMismatch } from './expressions/native-evaluation/verify';
+function mapNativeError(error: unknown): unknown {
+	if (error instanceof RuntimeExpressionExtensionError) {
+		return new ExpressionExtensionError(error.message, { description: error.description });
+	}
+	return error;
+}
+
+// Re-export here rather than in index.ts: index.ts is in package.json sideEffects,
+// so a direct @n8n/expression-runtime import there pulls the runtime into browser
+// worker bundles that only import unrelated n8n-workflow helpers.
+export { isNativelyEvaluable };
+export type { ExpressionEvaluationOutcome, NativeVerifyMismatch } from '@n8n/expression-runtime';
 
 const JSON_STRING_OR_SEPARATOR = /"(?:[^"\\]|\\.)*"|:|,(?=")/g;
 
@@ -59,14 +74,6 @@ const isTypeError = (error: unknown): error is TypeError =>
 setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
-
-/**
- * What one engine did with one expression. `errorClass` names the failure without its message.
- * `errorOrigin` tells where a QuickJS failure started, when the bridge knows it.
- */
-export type ExpressionEvaluationOutcome =
-	| { ok: true; value: unknown }
-	| { ok: false; error: unknown; errorClass: string; errorOrigin?: string };
 
 export interface ExpressionShadowContext {
 	/** The expression after `extendSyntax`, as the engines receive it. */
@@ -413,6 +420,7 @@ export class Expression {
 					verifySample,
 					options.reportNativeVerifyMismatch,
 					options.canReportNativeVerifyMismatch,
+					LoggerProxy,
 				)
 			: undefined;
 		if (verifySample > 0 && this.nativeEvaluation) {
@@ -634,7 +642,7 @@ export class Expression {
 		canReportMismatch?: () => boolean,
 	): void {
 		this.nativeVerifier = reportMismatch
-			? new NativeVerifier(sample, reportMismatch, canReportMismatch)
+			? new NativeVerifier(sample, reportMismatch, canReportMismatch, LoggerProxy)
 			: undefined;
 	}
 	private static shouldVerifyNative(expression: string): boolean {
@@ -646,14 +654,21 @@ export class Expression {
 		);
 	}
 
-	private static evaluateNative(expression: string, data: IWorkflowDataProxyData) {
+	private static evaluateNative(
+		expression: string,
+		data: IWorkflowDataProxyData,
+		timezone: string,
+	) {
 		let native: ReturnType<typeof evaluateNatively>;
 		try {
-			native = evaluateNatively(expression, data);
+			native = evaluateNatively(expression, data, {
+				shouldRethrowError: isExpressionError,
+				timezone,
+			});
 		} catch (error) {
 			// The error is the expression's result: the engine does not run.
 			this.countNativeResult('handled');
-			throw error;
+			throw mapNativeError(error);
 		}
 		if (native.handled) {
 			this.countNativeResult('handled');
@@ -905,13 +920,21 @@ export class Expression {
 		if (this.allowNativeEvaluation) {
 			if (Expression.shouldVerifyNative(parameterValue)) {
 				try {
-					const native = evaluateNatively(parameterValue, data);
+					const native = evaluateNatively(parameterValue, data, {
+						shouldRethrowError: isExpressionError,
+						timezone: this.timezone,
+					});
 					if (native.handled) nativeResult = { ok: true, value: native.value };
 				} catch (error) {
-					nativeResult = { ok: false, error, errorClass: errorClassOf(error) };
+					const mappedError = mapNativeError(error);
+					nativeResult = {
+						ok: false,
+						error: mappedError,
+						errorClass: errorClassOf(mappedError),
+					};
 				}
 			} else if (Expression.nativeEvaluation) {
-				const native = Expression.evaluateNative(parameterValue, data);
+				const native = Expression.evaluateNative(parameterValue, data, this.timezone);
 				if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
 			}
 		}

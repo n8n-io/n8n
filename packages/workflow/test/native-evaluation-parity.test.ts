@@ -6,15 +6,15 @@ import { ExpressionError } from '../src/errors/expression.error';
 import type { IWorkflowDataProxyData } from '../src/interfaces';
 import { ExpressionExtensions } from '../src/extensions';
 import {
+	CALLABLE_METHODS,
 	evaluateNatively,
 	isNativelyEvaluable,
-	CALLABLE_METHODS,
-	TIME_METHODS,
 	ITERATOR_METHODS,
 	MAX_RESULT_LENGTH,
 	MAX_STEPS,
 	MAX_WORK,
-} from '../src/expressions/native-evaluation';
+	TIME_METHODS,
+} from '@n8n/expression-runtime';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 import { Expression } from '../src/expression';
 import { Workflow } from '../src/workflow';

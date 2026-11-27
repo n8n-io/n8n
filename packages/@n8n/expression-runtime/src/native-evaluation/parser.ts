@@ -1,5 +1,5 @@
-import type { namedTypes } from 'ast-types';
-import type { ExpressionKind, SpreadElementKind } from 'ast-types/lib/gen/kinds';
+import type { astNamedTypes as namedTypes } from '@n8n/tournament';
+import { isSafeObjectProperty } from '@n8n/utils/object/is-safe-object-property';
 
 import {
 	BINARY_OPS,
@@ -21,7 +21,6 @@ import {
 	type Literal,
 	type SimpleNode,
 } from './grammar';
-import { isSafeObjectProperty } from '../../utils';
 
 // ── Parsing: esprima output → the subset grammar, or null. ────────────────
 //
@@ -36,7 +35,7 @@ import { isSafeObjectProperty } from '../../utils';
 // child inherits the parent's.
 type ParseChild = (node: AstNode, param?: string | null) => SimpleNode | null;
 
-type AstNode = ExpressionKind | SpreadElementKind;
+type AstNode = namedTypes.CallExpression['arguments'][number];
 
 function parseLiteral(node: namedTypes.Literal): Literal | null {
 	// Regex literals stay on the engine (backtracking blowup has no isolate
