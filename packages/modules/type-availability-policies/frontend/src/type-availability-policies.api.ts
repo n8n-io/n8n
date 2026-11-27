@@ -4,6 +4,7 @@ import type {
 	CredentialTransferPreview,
 	CredentialTypePolicyEffectivePublicDto,
 	CredentialTypeUsageResponse,
+	DeleteProjectPolicyQueryDto,
 	FolderTransferPreview,
 	InstanceTypeAccessResponse,
 	NodeTypeUsageResponse,
@@ -86,6 +87,54 @@ export async function createProjectPolicy(
 	projectId: string,
 ): Promise<ProjectPolicySummary> {
 	return await makeRestApiRequest(context, 'POST', '/project-policies', { projectId });
+}
+
+/** The composed policy of one kind in a project. It has the shape of the instance policy. */
+export type ProjectPolicy<K extends RestrictedTypeKind> = InstancePolicyByKind[K];
+
+export type ProjectPolicyByKind = { [K in RestrictedTypeKind]: ProjectPolicy<K> };
+
+const PROJECT_POLICY_RESOURCE = {
+	node: 'node-type-policies',
+	credential: 'credential-type-policies',
+} as const satisfies Record<RestrictedTypeKind, string>;
+
+export async function fetchProjectPolicy<K extends RestrictedTypeKind>(
+	context: IRestApiContext,
+	projectId: string,
+	kind: K,
+): Promise<ProjectPolicy<K>> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${projectId}/${PROJECT_POLICY_RESOURCE[kind]}/project`,
+	);
+}
+
+/** A project policy always covers both kinds, so a page reads them together. */
+export async function fetchProjectPolicyByKind(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ProjectPolicyByKind> {
+	const [node, credential] = await Promise.all([
+		fetchProjectPolicy(context, projectId, 'node'),
+		fetchProjectPolicy(context, projectId, 'credential'),
+	]);
+	return { node, credential };
+}
+
+export type ProjectPolicyVersions = DeleteProjectPolicyQueryDto;
+
+/**
+ * Fails with 409 when either kind changed since `versions` was read, and with 404 when the
+ * project has no policy.
+ */
+export async function deleteProjectPolicy(
+	context: IRestApiContext,
+	projectId: string,
+	versions: ProjectPolicyVersions,
+): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `/project-policies/${projectId}`, versions);
 }
 
 export async function fetchCredentialTypeUsage(

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import {
 	createProjectPolicy,
+	deleteProjectPolicy,
 	fetchCredentialTypeSummaries,
 	fetchCredentialTypeUsage,
 	fetchInstanceAccess,
@@ -10,6 +11,7 @@ import {
 	fetchNodeTypeSummaries,
 	fetchNodeTypeUsage,
 	fetchProjectPolicies,
+	fetchProjectPolicyByKind,
 	saveInstancePolicy,
 } from './type-availability-policies.api';
 
@@ -75,6 +77,43 @@ describe('project policy requests', () => {
 		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'POST', '/project-policies', {
 			projectId: 'project-1',
 		});
+	});
+
+	it('reads both kinds of a project policy', async () => {
+		const node = { scopeId: 'n', rules: [], defaultAction: 'allow', version: 4 };
+		const credential = { scopeId: 'c', rules: [], defaultAction: 'allow', version: 0 };
+		makeRestApiRequest.mockResolvedValueOnce(node).mockResolvedValueOnce(credential);
+
+		await expect(fetchProjectPolicyByKind(context, 'project-1')).resolves.toEqual({
+			node,
+			credential,
+		});
+		expect(makeRestApiRequest).toHaveBeenNthCalledWith(
+			1,
+			context,
+			'GET',
+			'/projects/project-1/node-type-policies/project',
+		);
+		expect(makeRestApiRequest).toHaveBeenNthCalledWith(
+			2,
+			context,
+			'GET',
+			'/projects/project-1/credential-type-policies/project',
+		);
+	});
+
+	it('deletes a project policy with the versions it read', async () => {
+		await deleteProjectPolicy(context, 'project-1', {
+			nodeTypesVersion: 4,
+			credentialTypesVersion: 0,
+		});
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'DELETE',
+			'/project-policies/project-1',
+			{ nodeTypesVersion: 4, credentialTypesVersion: 0 },
+		);
 	});
 });
 
