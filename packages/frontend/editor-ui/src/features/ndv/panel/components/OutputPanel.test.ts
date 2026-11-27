@@ -3,9 +3,12 @@ import {
 	createTestTaskData,
 	createTestWorkflow,
 	createTestWorkflowExecutionResponse,
+	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
+import { SET_NODE_TYPE } from '@/app/constants';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -87,4 +90,60 @@ describe('OutputPanel redaction cause', () => {
 			expect(queryByTestId('ndv-redacted-error') !== null).toBe(redactedError);
 		},
 	);
+});
+
+describe('OutputPanel read-only actions (GOV-117)', () => {
+	afterEach(async () => {
+		await vi.dynamicImportSettled();
+	});
+
+	function renderOutputPanel(isReadOnly: boolean) {
+		const pinia = createTestingPinia({ stubActions: false });
+		const node = createTestNode({ name: 'Set', type: SET_NODE_TYPE });
+		const workflow = createTestWorkflow({ nodes: [node] });
+		const documentId = createWorkflowDocumentId(workflow.id);
+		const documentStore = useWorkflowDocumentStore(documentId);
+		documentStore.hydrate(workflow);
+		useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
+		useNDVStore(documentId).setActiveNodeName(node.name, 'other');
+		useWorkflowExecutionStateStore(documentId).setWorkflowExecutionData(
+			createTestWorkflowExecutionResponse({
+				workflowData: workflow,
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							[node.name]: [createTestTaskData(), createTestTaskData()],
+						},
+					},
+				}),
+			}),
+		);
+
+		return createComponentRenderer(OutputPanel, {
+			pinia,
+			props: { runIndex: 0, pushRef: 'pushRef', displayMode: 'schema', isReadOnly },
+			global: {
+				provide: {
+					[WorkflowIdKey as symbol]: computed(() => workflow.id),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(documentStore),
+				},
+			},
+		})();
+	}
+
+	it('keeps pin and edit available when the NDV can change the workflow', () => {
+		const { getByTestId } = renderOutputPanel(false);
+
+		expect(getByTestId('ndv-edit-pinned-data')).toBeEnabled();
+		expect(getByTestId('ndv-pin-data')).toBeEnabled();
+		expect(getByTestId('run-selector')).toBeInTheDocument();
+	});
+
+	it('hides pin and edit when the NDV is read-only and keeps run browsing', () => {
+		const { getByTestId, queryByTestId } = renderOutputPanel(true);
+
+		expect(queryByTestId('ndv-edit-pinned-data')).not.toBeInTheDocument();
+		expect(queryByTestId('ndv-pin-data')).not.toBeInTheDocument();
+		expect(getByTestId('run-selector')).toBeInTheDocument();
+	});
 });
