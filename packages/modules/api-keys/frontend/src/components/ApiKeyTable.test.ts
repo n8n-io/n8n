@@ -2,7 +2,7 @@ import { fireEvent, screen } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
-import { renderComponent } from '@/__tests__/render';
+import { renderComponent } from '@n8n/frontend-test-utils';
 import ApiKeyTable from './ApiKeyTable.vue';
 import type { ApiKey, ApiKeyOwner } from '@n8n/api-types';
 

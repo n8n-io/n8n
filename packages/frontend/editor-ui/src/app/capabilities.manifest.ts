@@ -9,6 +9,7 @@ import type {
 import type { IWorkflowSettings, ModalKey } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useModalPrefetch } from '@/app/composables/usePrefetchModals';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createWorkflowDocumentId,
@@ -46,6 +47,10 @@ const modalOpeners = {
 	openModal: (name: ModalKey) => useUIStore().openModal(name),
 	openModalWithData: (payload: { name: ModalKey; data: Record<string, unknown> }) =>
 		useUIStore().openModalWithData(payload),
+};
+
+const modalCloser = {
+	closeModal: (name: ModalKey) => useUIStore().closeModal(name),
 };
 
 const syncWorkflowMcpAccess = (workflowIds: string[], availableInMCP: boolean) => {
@@ -200,6 +205,8 @@ const typeDescriptions = {
 
 export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.modalOpeners, modalOpeners);
+	capabilityRegistry.provide(capabilities.modalCloser, modalCloser);
+	capabilityRegistry.provide(capabilities.modalPrefetch, useModalPrefetch);
 	capabilityRegistry.provide(capabilities.projectPermissions, projectPermissions);
 	capabilityRegistry.provide(capabilities.workflowMcpAccessSync, syncWorkflowMcpAccess);
 	capabilityRegistry.provide(capabilities.mcpExposeAllOffer, mcpExposeAllOffer);

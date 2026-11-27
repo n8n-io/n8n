@@ -4,12 +4,13 @@ import RevokeApiKeyConfirmModal from './RevokeApiKeyConfirmModal.vue';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { isApiKeyExpired } from '../apiKeys.utils';
 import { computed, onMounted, ref } from 'vue';
-import { useUIStore } from '@/app/stores/ui.store';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useApiKeysStore } from '../apiKeys.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -48,20 +49,19 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 
-const uiStore = useUIStore();
+const modalCloser = capabilityRegistry.use(capabilities.modalCloser);
 const rootStore = useRootStore();
 const apiKeysStore = useApiKeysStore();
 const { createApiKey, updateApiKey, deleteApiKey, apiKeysById, availableScopes } = apiKeysStore;
 const usersStore = useUsersStore();
 const rbacStore = useRBACStore();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({
+	releaseChannel: useSettingsStore().settings.releaseChannel,
+});
 
 const label = ref('');
 const inputRef = ref<InstanceType<typeof N8nInput> | null>(null);
 const expirationDaysFromNow = ref(EXPIRATION_OPTIONS['30_DAYS']);
-const modalOpen = computed(
-	() => uiStore.modalsById[API_KEY_CREATE_OR_EDIT_MODAL_KEY]?.open === true,
-);
 const newApiKey = ref<ApiKeyWithRawValue | null>(null);
 const loading = ref(false);
 const rawApiKey = ref('');
@@ -101,19 +101,22 @@ const expirationDate = ref(
 	calculateExpirationDate(expirationDaysFromNow.value).toFormat(API_KEY_DATE_FORMAT),
 );
 
-const props = withDefaults(
-	defineProps<{
+// `DynamicModalLoader` passes the modal state as props. The openers put `mode`,
+// `activeId` and `rotatedApiKey` in `data`.
+const props = defineProps<{
+	open?: boolean;
+	data?: {
 		mode?: 'new' | 'edit';
-		activeId?: string;
+		activeId?: string | null;
 		/** When set, the modal opens straight into the created view to show a freshly rotated key. */
 		rotatedApiKey?: ApiKeyWithRawValue | null;
-	}>(),
-	{
-		mode: 'new',
-		activeId: '',
-		rotatedApiKey: null,
-	},
-);
+	};
+}>();
+
+const mode = computed(() => (props.data?.mode === 'edit' ? 'edit' : 'new'));
+const activeId = computed(() => props.data?.activeId ?? '');
+const rotatedApiKey = computed(() => props.data?.rotatedApiKey ?? null);
+const modalOpen = computed(() => props.open === true);
 
 const allFormFieldsAreSet = computed(() => {
 	const isExpirationDateSet =
@@ -124,12 +127,12 @@ const allFormFieldsAreSet = computed(() => {
 	return (
 		label.value &&
 		selectedScopes.value.length > 0 &&
-		(props.mode === 'edit' ? true : isExpirationDateSet)
+		(mode.value === 'edit' ? true : isExpirationDateSet)
 	);
 });
 
 const currentApiKey = computed<ApiKey | null>(() =>
-	props.mode === 'edit' ? (apiKeysById[props.activeId] ?? null) : null,
+	mode.value === 'edit' ? (apiKeysById[activeId.value] ?? null) : null,
 );
 
 const isOwnKey = computed(() => {
@@ -180,9 +183,9 @@ const isCustomDateInThePast = (date: Date) => Date.now() > date.getTime();
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.api'));
 
-	if (props.rotatedApiKey) {
-		newApiKey.value = props.rotatedApiKey;
-		rawApiKey.value = props.rotatedApiKey.rawApiKey;
+	if (rotatedApiKey.value) {
+		newApiKey.value = rotatedApiKey.value;
+		rawApiKey.value = rotatedApiKey.value.rawApiKey;
 		return;
 	}
 
@@ -190,8 +193,8 @@ onMounted(() => {
 		inputRef.value?.focus();
 	});
 
-	if (props.mode === 'edit') {
-		const apiKey = apiKeysById[props.activeId];
+	if (mode.value === 'edit') {
+		const apiKey = apiKeysById[activeId.value];
 		label.value = apiKey.label ?? '';
 		apiKeyCreationDate.value = getApiKeyCreationTime(apiKey);
 		selectedScopes.value = apiKey.scopes.filter((scope) => availableScopes.includes(scope));
@@ -216,7 +219,7 @@ const getApiKeyCreationTime = (apiKey: ApiKey): string => {
 async function onEdit() {
 	try {
 		loading.value = true;
-		await updateApiKey(props.activeId, { label: label.value, scopes: selectedScopes.value });
+		await updateApiKey(activeId.value, { label: label.value, scopes: selectedScopes.value });
 		showMessage({
 			type: 'success',
 			title: i18n.baseText('settings.api.update.toast'),
@@ -230,7 +233,7 @@ async function onEdit() {
 }
 
 async function closeDialog() {
-	uiStore.closeModal(API_KEY_CREATE_OR_EDIT_MODAL_KEY);
+	modalCloser.closeModal(API_KEY_CREATE_OR_EDIT_MODAL_KEY);
 }
 
 function onDialogOpenUpdate(open: boolean) {
@@ -290,7 +293,7 @@ function onApiKeyCopied() {
 }
 
 const modalTitle = computed(() => {
-	if (props.rotatedApiKey) {
+	if (rotatedApiKey.value) {
 		return i18n.baseText('settings.api.rotate.success.title');
 	}
 	if (isReadOnly.value) {
@@ -302,7 +305,7 @@ const modalTitle = computed(() => {
 				});
 	}
 	let path = 'edit';
-	if (props.mode === 'new') {
+	if (mode.value === 'new') {
 		if (newApiKey.value) {
 			path = 'created';
 		} else {
@@ -316,7 +319,7 @@ async function onRevokeConfirm() {
 	if (!currentApiKey.value) return;
 	revoking.value = true;
 	try {
-		await deleteApiKey(props.activeId);
+		await deleteApiKey(activeId.value);
 		showMessage({ type: 'success', title: i18n.baseText('settings.api.revoke.toast') });
 		showRevokeConfirm.value = false;
 		closeDialog();
@@ -348,7 +351,7 @@ const onSelect = (value: number) => {
 async function handleEnterKey(event: KeyboardEvent) {
 	if (event.key === 'Enter') {
 		if (isReadOnly.value) return;
-		if (props.mode === 'new') {
+		if (mode.value === 'new') {
 			await onSave();
 		} else {
 			await onEdit();

@@ -7593,6 +7593,9 @@ importers:
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/design-system
+      '@n8n/frontend-constants':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-constants
       '@n8n/frontend-module-sdk':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-module-sdk
@@ -7608,15 +7611,33 @@ importers:
       '@n8n/stores':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/stores
+      '@vueuse/core':
+        specifier: catalog:frontend
+        version: 14.3.0(vue@3.5.26(typescript@6.0.2))
+      change-case:
+        specifier: 'catalog:'
+        version: 5.4.4
+      element-plus:
+        specifier: catalog:frontend
+        version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
+      luxon:
+        specifier: 'catalog:'
+        version: 3.7.2
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+      reka-ui:
+        specifier: ^2.5.0
+        version: 2.5.0(patch_hash=aae76c02ce4d2dd6366e80dbb2026f6c8be88e358e9315016de1d82a4469eba6)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
+      vue-i18n:
+        specifier: catalog:frontend
+        version: 11.4.14(vue@3.5.26(typescript@6.0.2))
       vue-router:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
@@ -7645,15 +7666,27 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      '@pinia/testing':
+        specifier: ^0.1.6
+        version: 0.1.6(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.9.1
+      '@testing-library/user-event':
+        specifier: catalog:frontend
+        version: 14.6.1(@testing-library/dom@10.4.1)
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
+      '@types/luxon':
+        specifier: 'catalog:'
+        version: 3.2.0
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+      '@vue/test-utils':
+        specifier: catalog:frontend
+        version: 2.4.6
       oxlint:
         specifier: 'catalog:'
         version: 1.93.0(oxlint-tsgolint@7.0.2007)

@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import type { ApiKeyScope } from '@n8n/permissions';
 
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import ApiKeyScopes from './ApiKeyScopes.vue';
 
 const availableScopes: ApiKeyScope[] = [

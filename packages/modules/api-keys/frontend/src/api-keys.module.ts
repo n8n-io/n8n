@@ -1,31 +1,57 @@
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import { VIEWS } from '@n8n/frontend-constants/views';
+
+import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from './apiKeys.constants';
 
 /**
- * Keep this file import-light: types and the SDK only. Views load lazily
- * (`const View = async () => await import('./views/X.vue')`), and stores are
- * referenced inside route guards or handlers, never at module scope — a
- * top-level store import pulls the whole module in even when it is disabled.
+ * Keep this file import-light: types, the SDK and constants only. Views and modals
+ * load lazily, and no store is read at module scope.
  */
+const SettingsApiView = async () => await import('./views/SettingsApiView.vue');
+const ApiKeyCreateOrEditModal = async () =>
+	await import('./components/ApiKeyCreateOrEditModal.vue');
+
 export const ApiKeysModule = defineFrontendModule({
-	// Must match the backend module id: both gate off `/rest/module-settings`.
+	// No backend module has this id: API keys are a service in `packages/cli`. So
+	// `settingsStore.isModuleActive('api-keys')` is always false, by design. Do not use a
+	// surface that the shell hides for an inactive module:
+	// - The route has no `'custom'` middleware, so the module availability check never runs.
+	// - There is no `settingsPages` entry. The shell keeps the "n8n API" sidebar link in
+	//   `useSettingsItems.ts`, gated on `settingsStore.isPublicApiEnabled`.
+	// `api-keys.module.test.ts` and the shell's `moduleInitializer.test.ts` guard both.
 	id: 'api-keys',
-	name: 'Api Keys',
-	description: 'TODO: describe what this module does',
-	icon: 'box',
-
-	// The shell reads the fields below. Uncomment what this module contributes.
-	//
-	// routes: [ /* RouteRecordRaw[]; components must be lazy */ ],
-	// projectTabs: { overview: [], project: [], shared: [] },
-	// resources: [ /* ResourceMetadata[]; feeds ResourcesListLayout */ ],
-	// modals: [ /* ModalDefinition[]; rendered by DynamicModalLoader */ ],
-	// adHocModalKeyPrefixes: [ /* prefixes for modal keys minted at runtime */ ],
-	// settingsPages: [ /* IMenuItem[]; feeds SettingsSidebar */ ],
-	// pushHandlers: { /* keyed by push message type */ },
-	// parameterInputs: [ /* ParameterInputContribution[]; resolved by parameter.type in the NDV */ ],
-	// runDataDisplayModes: [ /* RunDataDisplayModeContribution[]; shown in the NDV and Logs run data panes */ ],
-	// commands: [ /* CommandBarEntry[] */ ],
-
-	// The SDK types the fields below, but no host in the shell reads them yet.
-	// A value here does nothing at runtime: locales, shortcuts, banners, setup.
+	name: 'API keys',
+	description: 'Create and manage the API keys of the n8n public API',
+	icon: 'plug',
+	routes: [
+		{
+			path: 'api',
+			name: VIEWS.API_SETTINGS,
+			component: SettingsApiView,
+			meta: {
+				middleware: ['authenticated'],
+				telemetry: {
+					pageCategory: 'settings',
+					getProperties() {
+						return {
+							feature: 'api',
+						};
+					},
+				},
+			},
+		},
+	],
+	modals: [
+		{
+			key: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
+			component: ApiKeyCreateOrEditModal,
+			initialState: {
+				open: false,
+				data: {
+					activeId: null,
+					mode: '',
+				},
+			},
+		},
+	],
 });
