@@ -1,0 +1,22 @@
+packages/cli/src/evaluation.ee/test-runner/__tests__/test-runner.service.ee.test.ts
+  s_6659ee5659bfaf::t_95f145dab10931 183-184,186
+  s_6659ee5659bfaf::t_28c9baa0c60a69 166-182,185,187-202
+packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts
+  s_6659ee5659bfaf::t_39abace3a864e0 403-404,413
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "357df645bd2fef9d32e274e93c28b89e90cdf099",
+  "prompts": {},
+  "sessions": {
+    "s_6659ee5659bfaf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c721c19-fd04-4586-b302-6f92ef39358c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
