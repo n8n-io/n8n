@@ -2,7 +2,6 @@ import { Post, RestController } from '@n8n/decorators';
 
 import { ForbiddenError } from '@n8n/errors';
 
-import { McpRegistryServerEntity } from './registry/mcp-registry-server.entity';
 import { McpRegistryServerRepository } from './registry/mcp-registry-server.repository';
 import { McpRegistryService } from './registry/mcp-registry.service';
 import { toEntity } from './registry/mcp-registry.types';
@@ -26,10 +25,7 @@ export class McpRegistryTestController {
 		const entities = [notionMockServer, linearMockServer].map(toEntity);
 
 		// Replace rather than upsert to keep test seeds deterministic.
-		await this.repository.manager.transaction(async (manager) => {
-			await manager.createQueryBuilder().delete().from(McpRegistryServerEntity).execute();
-			await manager.insert(McpRegistryServerEntity, entities);
-		});
+		await this.repository.replaceAll(entities, {});
 		await this.service.handleReloadMcpRegistry();
 
 		return { ok: true, count: entities.length };

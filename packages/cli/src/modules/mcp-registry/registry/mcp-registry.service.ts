@@ -76,7 +76,7 @@ export class McpRegistryService {
 	}
 
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
-		const entity = await this.repository.findOneBy({ slug });
+		const entity = await this.repository.findBySlug(slug, {});
 		if (!entity) return undefined;
 
 		const server = fromEntity(entity);
@@ -89,7 +89,7 @@ export class McpRegistryService {
 			return [];
 		}
 
-		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
+		const entities = await this.repository.findBySlugs(slugs, {});
 		const servers = entities
 			.map(fromEntity)
 			.filter(({ requiredCapabilities }) => this.capabilities.supports(requiredCapabilities));
@@ -112,7 +112,7 @@ export class McpRegistryService {
 		const partnerSlugs = withAiGatewayPartnerSlugs([...slugs]).filter((slug) => !slugs.has(slug));
 		const partners =
 			partnerSlugs.length > 0
-				? (await this.repository.findBy(partnerSlugs.map((slug) => ({ slug }))))
+				? (await this.repository.findBySlugs(partnerSlugs, {}))
 						.map(fromEntity)
 						.filter(({ requiredCapabilities }) => this.capabilities.supports(requiredCapabilities))
 				: [];
@@ -149,7 +149,7 @@ export class McpRegistryService {
 	 * the other one: its error is thrown after the other source's rows are saved.
 	 */
 	async refreshFromApi(signal?: AbortSignal): Promise<void> {
-		const fetchedAt = await this.repository.readDbNow();
+		const fetchedAt = await this.repository.readDbNow({});
 		const results = await Promise.allSettled([
 			this.refreshRegistryServers(signal),
 			this.refreshAiGatewayServers(signal),
@@ -195,8 +195,8 @@ export class McpRegistryService {
 
 	private async getStoredServers(includeDeprecated: boolean): Promise<McpRegistryServer[]> {
 		const entities = includeDeprecated
-			? await this.repository.find()
-			: await this.repository.findBy({ status: 'active' });
+			? await this.repository.findAll({})
+			: await this.repository.findActive({});
 		return entities.map(fromEntity);
 	}
 
@@ -274,7 +274,7 @@ export class McpRegistryService {
 		// we will set its status to 'deprecated' instead.
 		// If a server is removed from the remote API,
 		// it will be marked as deprecated as well.
-		await this.repository.upsertFetchedServers(entities, fetchedAt);
+		await this.repository.upsertFetchedServers(entities, fetchedAt, {});
 	}
 
 	private async saveAndReload(servers: McpRegistryServer[], fetchedAt: Date): Promise<void> {
