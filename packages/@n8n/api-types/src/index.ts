@@ -1088,6 +1088,7 @@ export {
 	autoApprovalPayloadSchema,
 	DATA_TABLE_CHANGE_SEVERITY,
 	isSessionGrantableDataTableAction,
+	MAX_APPROVAL_FILE_NAMES,
 	type InstanceAiApprovalAskReason,
 	type InstanceAiApprovalDetails,
 	type InstanceAiDataTableChangeDetails,

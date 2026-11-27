@@ -1145,13 +1145,13 @@ describe('execution tools', () => {
 	describe('files of a run', () => {
 		const pngBinary = { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' };
 
-		function contextWithFiles() {
+		function contextWithFiles(overrides: Parameters<typeof createMockContext>[0] = {}) {
 			const storedFiles = {
 				read: vi.fn(),
 				readBinary: vi.fn(async (fileId: string) => (fileId === 'file-1' ? pngBinary : undefined)),
 				storeWorkflowFile: vi.fn(),
 			};
-			const context = createMockContext({ permissions: {}, storedFiles });
+			const context = createMockContext({ permissions: {}, storedFiles, ...overrides });
 			vi.mocked(context.executionService.run).mockResolvedValue({
 				executionId: 'exec-1',
 				status: 'success',
@@ -1222,6 +1222,94 @@ describe('execution tools', () => {
 				}
 			},
 		);
+
+		describe('approval', () => {
+			const namedFile = (id: string, fileName: string) => ({ ...pngBinary, id, fileName });
+
+			it.each([
+				[
+					'a session grant for the workflow',
+					{ sessionApprovedToolKeys: new Set(['executions:run:wf-1']) },
+				],
+				[
+					'always_allow on a workflow the agent created',
+					{
+						permissions: { runWorkflow: 'always_allow' as const },
+						aiCreatedWorkflowIds: new Set(['wf-1']),
+					},
+				],
+			])('asks for every run with files, also with %s', async (_, overrides) => {
+				const { context } = contextWithFiles(overrides);
+				const suspend = vi.fn();
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					{ action: 'run' as const, workflowId: 'wf-1', files: { data: 'file-1' } },
+					createAgentCtx({ suspend }) as never,
+				);
+
+				expect(suspend).toHaveBeenCalled();
+				expect(context.executionService.run).not.toHaveBeenCalled();
+			});
+
+			it('names the stored files on the card, each file one time', async () => {
+				const { context, storedFiles } = contextWithFiles();
+				const files = Array.from({ length: 7 }, (_, i) => namedFile(`bin-${i}`, `f${i}.png`));
+				storedFiles.readBinary.mockImplementation(async (fileId: string) =>
+					fileId === 'dup' ? files[0] : files[Number(fileId)],
+				);
+				const suspend = vi.fn();
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					{
+						action: 'run' as const,
+						workflowId: 'wf-1',
+						files: {
+							...Object.fromEntries(files.map((_, i) => [`k${i}`, String(i)])),
+							again: 'dup',
+						},
+					},
+					createAgentCtx({ suspend }) as never,
+				);
+
+				const payload = suspend.mock.calls[0][0];
+				expect(payload.approvalDetails).toMatchObject({
+					action: 'run-workflow',
+					files: ['f0.png', 'f1.png', 'f2.png', 'f3.png', 'f4.png'],
+					moreFiles: 2,
+				});
+				expect(payload.message).toContain('with the files f0.png, f1.png');
+			});
+
+			it('does not store a grant when the user approves a run with files for the session', async () => {
+				const grantSessionToolApproval = vi.fn();
+				const { context } = contextWithFiles({ grantSessionToolApproval });
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					{ action: 'run' as const, workflowId: 'wf-1', files: { data: 'file-1' } },
+					createAgentCtx({ resumeData: { approved: true, scope: 'session' } }) as never,
+				);
+
+				expect(grantSessionToolApproval).not.toHaveBeenCalled();
+				expect(context.executionService.run).toHaveBeenCalled();
+			});
+
+			it('fails a missing file before the card shows', async () => {
+				const { context } = contextWithFiles();
+				const suspend = vi.fn();
+
+				const result = await executeTool(
+					createExecutionToolRouter(context),
+					{ action: 'run' as const, workflowId: 'wf-1', files: { data: 'other' } },
+					createAgentCtx({ suspend }) as never,
+				);
+
+				expect(suspend).not.toHaveBeenCalled();
+				expect(result).toMatchObject({ status: 'error' });
+			});
+		});
 
 		it('does not run the workflow with a file that the conversation does not have', async () => {
 			const { context } = contextWithFiles();

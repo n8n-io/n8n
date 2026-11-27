@@ -23,6 +23,15 @@ export function isSessionGrantableDataTableAction(action: DataTableWriteToolActi
 	return DATA_TABLE_CHANGE_SEVERITY[action] !== 'destructive';
 }
 
+/** Most file names that an approval card lists. `moreFiles` counts the rest. */
+export const MAX_APPROVAL_FILE_NAMES = 5;
+
+/** The conversation files that a run gets, by the names that n8n stored for them. */
+const approvalFilesSchema = {
+	files: z.array(z.string()).max(MAX_APPROVAL_FILE_NAMES).optional(),
+	moreFiles: z.number().int().positive().optional(),
+};
+
 const valuePreviewSchema = z.object({ column: z.string(), value: z.string().nullable() });
 const rowPreviewSchema = z.object({
 	values: z.array(valuePreviewSchema),
@@ -145,6 +154,7 @@ export const instanceAiApprovalDetailsSchema = z.discriminatedUnion('action', [
 		action: z.literal('run-workflow'),
 		summary: z.string().optional(),
 		trigger: z.string().optional(),
+		...approvalFilesSchema,
 	}),
 	z.object({
 		action: z.literal('publish-agent'),

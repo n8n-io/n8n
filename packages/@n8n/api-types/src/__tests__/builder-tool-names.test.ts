@@ -9,6 +9,7 @@ import {
 	LEGACY_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	callCarriesInputFiles,
 	getDataTableCallAction,
 	getLegacyBuilderToolActions,
 	getLegacyBuilderToolNames,
@@ -16,6 +17,26 @@ import {
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '../builder-tool-names';
+
+describe('callCarriesInputFiles', () => {
+	it('is true for a workflow run with files, also for a stored call of the former tool', () => {
+		expect(callCarriesInputFiles('run_workflow', { files: { data: 'file-1' } })).toBe(true);
+		expect(
+			callCarriesInputFiles('workflow_builder_executions', {
+				action: 'run',
+				files: { data: 'file-1' },
+			}),
+		).toBe(true);
+	});
+
+	it('is false for a run without files and for other tools', () => {
+		expect(callCarriesInputFiles('run_workflow', { workflowId: 'wf-1' })).toBe(false);
+		expect(callCarriesInputFiles('run_workflow', { files: {} })).toBe(false);
+		expect(callCarriesInputFiles('run_workflow', { files: 'file-1' })).toBe(false);
+		expect(callCarriesInputFiles('get_execution', { files: { data: 'file-1' } })).toBe(false);
+		expect(callCarriesInputFiles('run_workflow', undefined)).toBe(false);
+	});
+});
 
 describe('resolveBuilderToolName', () => {
 	it('maps a renamed tool to its current name', () => {
