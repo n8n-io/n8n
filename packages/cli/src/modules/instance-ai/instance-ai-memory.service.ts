@@ -563,13 +563,18 @@ export class InstanceAiMemoryService {
 		const start = Date.now();
 		let rows;
 		try {
-			const runStarts = await this.eventLogRepository.getRunStarts(threadId);
+			const runStarts = await this.eventLogRepository.getRunStarts(threadId, {});
 			if (runStarts.length === 0) return [];
 
-			const windowedRunIds = await this.eventLogRepository.findRunIdsInWindow(threadId, pageWindow);
+			const windowedRunIds = await this.eventLogRepository.findRunIdsInWindow(
+				threadId,
+				pageWindow,
+				{},
+			);
 			rows = await this.eventLogRepository.getForThreadRuns(
 				threadId,
 				expandRunIdsToGroups(windowedRunIds, runStarts),
+				{},
 			);
 		} catch (error) {
 			// Degrade to messages-without-trees rather than failing the page read.

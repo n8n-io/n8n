@@ -1213,9 +1213,11 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			const service = createService();
 			const result = await service.getRichMessages('user-1', 'thread-1');
 
-			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith('thread-1', [
-				'run_recent',
-			]);
+			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith(
+				'thread-1',
+				['run_recent'],
+				{},
+			);
 			expect(result.messages).toHaveLength(2);
 			expect(result.messages[1].runId).toBe('run_recent');
 			expect(result.messages[1].agentTree?.toolCalls.map((tc) => tc.toolName)).toEqual([
@@ -1233,13 +1235,18 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			const service = createService();
 			const result = await service.getRichMessages('user-1', 'thread-1');
 
-			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
-				since: userMessage.createdAt,
-			});
-			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith('thread-1', [
-				'run_recent',
-				'run_live',
-			]);
+			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith(
+				'thread-1',
+				{
+					since: userMessage.createdAt,
+				},
+				{},
+			);
+			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith(
+				'thread-1',
+				['run_recent', 'run_live'],
+				{},
+			);
 			expect(result.messages.some((m) => m.runId === 'run_live')).toBe(true);
 		});
 
@@ -1260,10 +1267,14 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			expect(mockListMessages).toHaveBeenCalledWith(
 				expect.objectContaining({ before: { createdAt: nextPageAt, id: 'msg-next' } }),
 			);
-			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
-				since: userMessage.createdAt,
-				before: nextPageAt,
-			});
+			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith(
+				'thread-1',
+				{
+					since: userMessage.createdAt,
+					before: nextPageAt,
+				},
+				{},
+			);
 		});
 
 		it('hydrates nothing for an empty older page', async () => {
@@ -1354,10 +1365,11 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			});
 
 			// `run_bg` is outside the page bounds; it rides in on its group.
-			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith('thread-1', [
-				'run_parent',
-				'run_bg',
-			]);
+			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith(
+				'thread-1',
+				['run_parent', 'run_bg'],
+				{},
+			);
 			const toolNames = result.messages[1].agentTree?.toolCalls.map((tc) => tc.toolName) ?? [];
 			expect(toolNames).toContain('tool-run_parent');
 			expect(toolNames).toContain('tool-run_bg');
@@ -1372,7 +1384,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			const service = createService();
 			const result = await service.getRichMessages('user-1', 'thread-1');
 
-			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {});
+			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {}, {});
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0].runId).toBe('run_live');
 		});
@@ -1385,9 +1397,13 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			const service = createService();
 			await service.getRichMessages('user-1', 'thread-1');
 
-			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
-				since: userMessage.createdAt,
-			});
+			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith(
+				'thread-1',
+				{
+					since: userMessage.createdAt,
+				},
+				{},
+			);
 		});
 	});
 });

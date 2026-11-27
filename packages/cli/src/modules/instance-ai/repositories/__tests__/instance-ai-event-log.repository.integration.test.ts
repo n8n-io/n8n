@@ -1,13 +1,17 @@
 import type { InstanceAiRunFinishEvent } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
+import { InstanceAiEventLogEntry } from '../../entities/instance-ai-event-log-entry.entity';
 import { InstanceAiEventLogRepository } from '../instance-ai-event-log.repository';
 import { InstanceAiThreadRepository } from '../instance-ai-thread.repository';
 
 describe('InstanceAiEventLogRepository.getRunFinish', () => {
 	let repository: InstanceAiEventLogRepository;
+	let rows: Repository<InstanceAiEventLogEntry>;
 	const threadId = randomUUID();
 	const otherThreadId = randomUUID();
 
@@ -15,6 +19,7 @@ describe('InstanceAiEventLogRepository.getRunFinish', () => {
 		await testModules.loadModules(['instance-ai']);
 		await testDb.init();
 		repository = Container.get(InstanceAiEventLogRepository);
+		rows = Container.get(DataSource).getRepository(InstanceAiEventLogEntry);
 		const project = await createTeamProject();
 		await Container.get(InstanceAiThreadRepository).insert(
 			[threadId, otherThreadId].map((id) => ({
@@ -27,7 +32,7 @@ describe('InstanceAiEventLogRepository.getRunFinish', () => {
 	});
 
 	afterEach(async () => {
-		await repository.delete({});
+		await rows.delete({});
 	});
 
 	afterAll(async () => {
@@ -42,39 +47,71 @@ describe('InstanceAiEventLogRepository.getRunFinish', () => {
 	}
 
 	it('returns null when the run has no finish event', async () => {
-		await expect(repository.getRunFinish(threadId, 'run-1')).resolves.toBeNull();
-		await repository.appendBatch(threadId, 1, [
-			{ type: 'run-start', runId: 'run-1', agentId: 'agent-1', payload: { messageId: 'm-1' } },
-			finish('run-2', { status: 'completed' }),
-		]);
-		await repository.appendBatch(otherThreadId, 1, [finish('run-1', { status: 'completed' })]);
+		await expect(repository.getRunFinish(threadId, 'run-1', {})).resolves.toBeNull();
+		await repository.appendBatch(
+			threadId,
+			1,
+			[
+				{ type: 'run-start', runId: 'run-1', agentId: 'agent-1', payload: { messageId: 'm-1' } },
+				finish('run-2', { status: 'completed' }),
+			],
+			{},
+		);
+		await repository.appendBatch(otherThreadId, 1, [finish('run-1', { status: 'completed' })], {});
 
-		await expect(repository.getRunFinish(threadId, 'run-1')).resolves.toBeNull();
+		await expect(repository.getRunFinish(threadId, 'run-1', {})).resolves.toBeNull();
 	});
 
 	it('returns the latest matching finish by sequence, excluding other threads, runs, and events', async () => {
-		await repository.appendBatch(threadId, 2, [
-			finish('run-1', { status: 'cancelled', reason: 'user_cancelled' }),
-			finish('run-2', { status: 'completed' }),
-			{ type: 'run-start', runId: 'run-1', agentId: 'agent-1', payload: { messageId: 'm-1' } },
-		]);
-		await repository.appendBatch(otherThreadId, 5, [finish('run-1', { status: 'completed' })]);
-		await repository.appendBatch(threadId, 1, [
-			finish('run-1', { status: 'interrupted', reason: 'crash_interrupted' }),
-		]);
+		await repository.appendBatch(
+			threadId,
+			2,
+			[
+				finish('run-1', { status: 'cancelled', reason: 'user_cancelled' }),
+				finish('run-2', { status: 'completed' }),
+				{ type: 'run-start', runId: 'run-1', agentId: 'agent-1', payload: { messageId: 'm-1' } },
+			],
+			{},
+		);
+		await repository.appendBatch(otherThreadId, 5, [finish('run-1', { status: 'completed' })], {});
+		await repository.appendBatch(
+			threadId,
+			1,
+			[finish('run-1', { status: 'interrupted', reason: 'crash_interrupted' })],
+			{},
+		);
 
-		await expect(repository.getRunFinish(threadId, 'run-1')).resolves.toEqual({
+		await expect(repository.getRunFinish(threadId, 'run-1', {})).resolves.toEqual({
 			status: 'cancelled',
 			reason: 'user_cancelled',
 		});
 	});
 
 	it('returns a finish without adding a missing reason', async () => {
-		await repository.appendBatch(threadId, 1, [finish('run-1', { status: 'completed' })]);
+		await repository.appendBatch(threadId, 1, [finish('run-1', { status: 'completed' })], {});
 
-		await expect(repository.getRunFinish(threadId, 'run-1')).resolves.toEqual({
+		await expect(repository.getRunFinish(threadId, 'run-1', {})).resolves.toEqual({
 			status: 'completed',
 			reason: undefined,
 		});
+	});
+
+	it('uses the supplied transaction for reads and rolls back appended batches', async () => {
+		const failure = new Error('Roll back event log changes');
+
+		await expect(
+			Container.get(TransactionRunner).run({}, async (ctx) => {
+				await repository.appendBatch(threadId, 1, [finish('run-1', { status: 'completed' })], ctx);
+				await expect(repository.maxSeq(threadId, ctx)).resolves.toBe(1);
+				await expect(repository.getRunFinish(threadId, 'run-1', ctx)).resolves.toEqual({
+					status: 'completed',
+					reason: undefined,
+				});
+				throw failure;
+			}),
+		).rejects.toBe(failure);
+
+		await expect(repository.maxSeq(threadId, {})).resolves.toBe(0);
+		await expect(repository.getRunFinish(threadId, 'run-1', {})).resolves.toBeNull();
 	});
 });

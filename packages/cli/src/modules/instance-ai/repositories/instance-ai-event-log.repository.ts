@@ -4,9 +4,10 @@ import type {
 	InstanceAiPreferencesAppliedEvent,
 	InstanceAiSetupItem,
 } from '@n8n/api-types';
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { StoredEvent } from '@n8n/instance-ai';
-import { DataSource, MoreThan, Repository } from '@n8n/typeorm';
+import { DataSource, MoreThan } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 
 import { InstanceAiEventLogEntry } from '../entities/instance-ai-event-log-entry.entity';
@@ -17,15 +18,25 @@ export interface UnfinishedRun {
 	runId: string;
 }
 
+class InstanceAiEventLogEntryTable extends BaseRepository<InstanceAiEventLogEntry> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(InstanceAiEventLogEntry, dataSource.manager, transactionRunner);
+	}
+}
+
 @Service()
-export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogEntry> {
-	constructor(dataSource: DataSource) {
-		super(InstanceAiEventLogEntry, dataSource.manager);
+export class InstanceAiEventLogRepository {
+	private readonly table: InstanceAiEventLogEntryTable;
+
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		this.table = new InstanceAiEventLogEntryTable(dataSource, transactionRunner);
 	}
 
 	/** Highest seq assigned for a thread, 0 when the log is empty. */
-	async maxSeq(threadId: string): Promise<number> {
-		const row = await this.createQueryBuilder('e')
+	async maxSeq(threadId: string, ctx: OperationContext): Promise<number> {
+		const row = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder(InstanceAiEventLogEntry, 'e')
 			.select('MAX(e.seq)', 'max')
 			.where('e.threadId = :threadId', { threadId })
 			.getRawOne<{ max: number | null }>();
@@ -43,6 +54,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		threadId: string,
 		firstSeq: number,
 		events: InstanceAiEvent[],
+		ctx: OperationContext,
 	): Promise<number> {
 		let bytes = 0;
 		const rows = events.map((event, i) => {
@@ -56,7 +68,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 				payload,
 			};
 		});
-		await this.insert(rows);
+		await this.table.managerFor(ctx).insert(InstanceAiEventLogEntry, rows);
 		return bytes;
 	}
 
@@ -64,22 +76,34 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 * Raw payload at an exact (threadId, seq), or null. Used by the writer to
 	 * detect whether an append whose response was lost actually committed.
 	 */
-	async payloadAt(threadId: string, seq: number): Promise<string | null> {
-		const row = await this.findOne({ where: { threadId, seq } });
+	async payloadAt(threadId: string, seq: number, ctx: OperationContext): Promise<string | null> {
+		const row = await this.table
+			.managerFor(ctx)
+			.findOne(InstanceAiEventLogEntry, { where: { threadId, seq } });
 		return row?.payload ?? null;
 	}
 
-	async getAfter(threadId: string, afterSeq: number): Promise<StoredEvent[]> {
-		const rows = await this.find({
+	async getAfter(
+		threadId: string,
+		afterSeq: number,
+		ctx: OperationContext,
+	): Promise<StoredEvent[]> {
+		const rows = await this.table.managerFor(ctx).find(InstanceAiEventLogEntry, {
 			where: { threadId, seq: MoreThan(afterSeq) },
 			order: { seq: 'ASC' },
 		});
 		return rows.map((r) => ({ id: r.seq, event: this.toEvent(r) }));
 	}
 
-	async getForRuns(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
+	async getForRuns(
+		threadId: string,
+		runIds: string[],
+		ctx: OperationContext,
+	): Promise<InstanceAiEvent[]> {
 		if (runIds.length === 0) return [];
-		const rows = await this.createQueryBuilder('e')
+		const rows = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder(InstanceAiEventLogEntry, 'e')
 			.where('e.threadId = :threadId', { threadId })
 			.andWhere('e.runId IN (:...runIds)', { runIds })
 			.orderBy('e.seq', 'ASC')
@@ -87,8 +111,8 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		return rows.map((r) => this.toEvent(r));
 	}
 
-	async getRunFinish(threadId: string, runId: string) {
-		const row = await this.findOne({
+	async getRunFinish(threadId: string, runId: string, ctx: OperationContext) {
+		const row = await this.table.managerFor(ctx).findOne(InstanceAiEventLogEntry, {
 			where: { threadId, runId, type: 'run-finish' },
 			order: { seq: 'DESC' },
 		});
@@ -100,9 +124,15 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	}
 
 	/** Read terminal facts before a writer admits more activity for these runs. */
-	async getActivityTerminalEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
+	async getActivityTerminalEvents(
+		threadId: string,
+		runIds: string[],
+		ctx: OperationContext,
+	): Promise<InstanceAiEvent[]> {
 		if (runIds.length === 0) return [];
-		const rows = await this.createQueryBuilder('e')
+		const rows = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder(InstanceAiEventLogEntry, 'e')
 			.where('e.threadId = :threadId', { threadId })
 			.andWhere('e.runId IN (:...runIds)', { runIds })
 			.andWhere('e.type IN (:...types)', { types: ['run-finish', 'agent-completed'] })
@@ -118,9 +148,12 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	async getForThreadRuns(
 		threadId: string,
 		runIds: string[],
+		ctx: OperationContext,
 	): Promise<Array<{ runId: string; createdAt: Date; event: InstanceAiEvent }>> {
 		if (runIds.length === 0) return [];
-		const rows = await this.createQueryBuilder('e')
+		const rows = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder(InstanceAiEventLogEntry, 'e')
 			.where('e.threadId = :threadId', { threadId })
 			.andWhere('e.runId IN (:...runIds)', { runIds })
 			.orderBy('e.seq', 'ASC')
@@ -145,8 +178,11 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	async findRunIdsInWindow(
 		threadId: string,
 		window: { since?: Date; before?: Date },
+		ctx: OperationContext,
 	): Promise<string[]> {
-		const qb = this.createQueryBuilder('e')
+		const qb = this.table
+			.managerFor(ctx)
+			.createQueryBuilder(InstanceAiEventLogEntry, 'e')
 			.select('e.runId', 'runId')
 			.distinct(true)
 			.where('e.threadId = :threadId', { threadId });
@@ -161,8 +197,11 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 * map for a thread, one row per run. The windowed read needs the whole map
 	 * even though it folds a slice, because a group's runs must fold together.
 	 */
-	async getRunStarts(threadId: string): Promise<Array<{ runId: string; messageGroupId?: string }>> {
-		const rows = await this.find({
+	async getRunStarts(
+		threadId: string,
+		ctx: OperationContext,
+	): Promise<Array<{ runId: string; messageGroupId?: string }>> {
+		const rows = await this.table.managerFor(ctx).find(InstanceAiEventLogEntry, {
 			where: { threadId, type: 'run-start' },
 			order: { seq: 'ASC' },
 		});
@@ -190,8 +229,9 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	async findLangsmithAnchor(
 		threadId: string,
 		responseId: string,
+		ctx: OperationContext,
 	): Promise<{ langsmithRunId: string; langsmithTraceId: string } | undefined> {
-		const rows = await this.find({
+		const rows = await this.table.managerFor(ctx).find(InstanceAiEventLogEntry, {
 			where: { threadId, type: 'run-start' },
 			order: { seq: 'ASC' },
 		});
@@ -218,8 +258,9 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 */
 	async getSetupItemsSnapshots(
 		threadId: string,
+		ctx: OperationContext,
 	): Promise<Array<{ workflowId: string; items: InstanceAiSetupItem[] }>> {
-		const rows = await this.find({
+		const rows = await this.table.managerFor(ctx).find(InstanceAiEventLogEntry, {
 			where: { threadId, type: 'setup-items' },
 			order: { seq: 'ASC' },
 		});
@@ -243,14 +284,16 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 */
 	async getLastAppliedPreferences(
 		threadId: string,
+		ctx: OperationContext,
 	): Promise<AiPreferencesAppliedPayload | undefined> {
-		return (await this.findLastPreferencesApplied(threadId))?.payload;
+		return (await this.findLastPreferencesApplied(threadId, ctx))?.payload;
 	}
 
 	private async findLastPreferencesApplied(
 		threadId: string,
+		ctx: OperationContext,
 	): Promise<InstanceAiPreferencesAppliedEvent | undefined> {
-		const row = await this.findOne({
+		const row = await this.table.managerFor(ctx).findOne(InstanceAiEventLogEntry, {
 			where: { threadId, type: 'preferences-applied' },
 			order: { seq: 'DESC' },
 		});
@@ -260,8 +303,10 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	}
 
 	/** Timestamp of the run's most recent durable fact (sweep liveness proxy). */
-	async lastFactAt(threadId: string, runId: string): Promise<Date | null> {
-		const row = await this.createQueryBuilder('e')
+	async lastFactAt(threadId: string, runId: string, ctx: OperationContext): Promise<Date | null> {
+		const row = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder(InstanceAiEventLogEntry, 'e')
 			.select('MAX(e.createdAt)', 'max')
 			.where('e.threadId = :threadId', { threadId })
 			.andWhere('e.runId = :runId', { runId })
@@ -274,11 +319,30 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 * Interrupted-run sweep source: runs whose log has a `run-start` but no
 	 * `run-finish`, as distinct (threadId, runId) pairs. Pure log query —
 	 * liveness (is a main still driving it?) is the caller's concern.
-	 * Instance-wide for the boot sweep; pass `threadId` to scope a single
-	 * thread (cancel-time zombie resolution) to its (threadId, runId) index.
+	 * Instance-wide for the boot sweep.
 	 */
-	async findUnfinishedRuns(threadId?: string): Promise<UnfinishedRun[]> {
-		const qb = this.createQueryBuilder('e')
+	async findUnfinishedRuns(ctx: OperationContext): Promise<UnfinishedRun[]> {
+		return await this.queryUnfinishedRuns(ctx);
+	}
+
+	/**
+	 * Unfinished runs scoped to a single thread (cancel-time zombie resolution),
+	 * using the (threadId, runId) index.
+	 */
+	async findUnfinishedRunsForThread(
+		threadId: string,
+		ctx: OperationContext,
+	): Promise<UnfinishedRun[]> {
+		return await this.queryUnfinishedRuns(ctx, threadId);
+	}
+
+	private async queryUnfinishedRuns(
+		ctx: OperationContext,
+		threadId?: string,
+	): Promise<UnfinishedRun[]> {
+		const qb = this.table
+			.managerFor(ctx)
+			.createQueryBuilder(InstanceAiEventLogEntry, 'e')
 			.select('e.threadId', 'threadId')
 			.addSelect('e.runId', 'runId')
 			.distinct(true)
