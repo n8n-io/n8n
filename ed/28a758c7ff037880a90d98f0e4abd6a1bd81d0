@@ -1,0 +1,20 @@
+.github/scripts/determine-version-info.mjs
+  h_52a137d26d774c 102-105
+.github/scripts/determine-version-info.test.mjs
+  h_52a137d26d774c 54,66,79,147,159,171
+.github/scripts/ensure-release-candidate-branches.test.mjs
+  h_52a137d26d774c 26-27,50,55,65-66
+.github/scripts/github-helpers.mjs
+  h_52a137d26d774c 16,121-122,144-147,153,159,162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ed28a758c7ff037880a90d98f0e4abd6a1bd81d0",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
