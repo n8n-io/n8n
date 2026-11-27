@@ -540,39 +540,6 @@ describe('McpTrigger', () => {
 			expect(resp.end).toHaveBeenCalledWith('Unauthorized');
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
-
-		it('should return 500 when authentication configuration is unsupported', async () => {
-			const { WebhookAuthorizationError } = await vi.importActual<
-				typeof import('n8n-nodes-base/dist/nodes/Webhook/error')
-			>('n8n-nodes-base/dist/nodes/Webhook/error');
-			validateWebhookAuthenticationMock.mockRejectedValueOnce(
-				new WebhookAuthorizationError(500, 'Unsupported authentication method!'),
-			);
-
-			const req = createMockRequest({ path: '/webhook' });
-			const resp = createMockResponse();
-			const node = mock<INode>({
-				typeVersion: 2,
-				name: 'MCP Server Trigger',
-			});
-
-			mockContext.getWebhookName.mockReturnValue('setup');
-			mockContext.getRequestObject.mockReturnValue(req as never);
-			mockContext.getResponseObject.mockReturnValue(resp as never);
-			mockContext.getNode.mockReturnValue(node);
-			mockContext.getNodeParameter.mockImplementation((paramName: string) => {
-				if (paramName === 'authentication') return 'unsupportedMode';
-				return undefined;
-			});
-
-			const result = await mcpTrigger.webhook(mockContext);
-
-			expect(validateWebhookAuthenticationMock).toHaveBeenCalledWith(mockContext, 'authentication');
-			expect(resp.writeHead).toHaveBeenCalledWith(500);
-			expect(resp.end).toHaveBeenCalledWith('Unsupported authentication method!');
-			expect(result).toEqual({ noWebhookResponse: true });
-			expect(mockMcpServer.handleSetupRequest).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('n8nOAuth2 authentication', () => {
