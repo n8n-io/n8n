@@ -92,6 +92,9 @@ const targetOutputSchema = z.object({
 	scenarioExpectationResults: expectationResultsSchema.optional().catch(undefined),
 	/** Agent runs: user messages sent across all sessions of the scenario. */
 	agentTurnCount: z.number().optional(),
+	/** The scenario is graded by its expectations, so its row is not a scored
+	 *  scenario unit (AGENT-1666). */
+	expectationGraded: z.boolean().optional(),
 	execErrors: z.array(z.string()).default([]),
 	evalResult: z.unknown().optional(),
 	agentEvalResult: z.unknown().optional(),

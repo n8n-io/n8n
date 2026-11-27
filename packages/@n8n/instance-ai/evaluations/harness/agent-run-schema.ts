@@ -182,6 +182,13 @@ export function agentExpectationUnits(
 	return [...own, ...perSession];
 }
 
+/** A scenario graded by its expectations is not a scored unit itself: its
+ *  expectations are. Its row stays, for display and for runs that never reached
+ *  the judge (framework issues). */
+export function isExpectationGraded(scenario: AgentScenarioView & { name: string }): boolean {
+	return agentExpectationUnits(scenario).length > 0;
+}
+
 /** `false` turns a flag off, which is the same as leaving it out. */
 function isPresent(value: unknown): boolean {
 	if (value === undefined || value === null || value === false) return false;

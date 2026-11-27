@@ -258,6 +258,21 @@ describe('fetchBaselineBucket', () => {
 		expect(bucket.evaluationUnits.has('my-case#expectation:s2 › Is polite')).toBe(false);
 	});
 
+	it('counts no scenario trial for a row graded by expectations', async () => {
+		const client = bucketClient([
+			scenarioRun('graded', false, {
+				expectationGraded: true,
+				scenarioExpectationResults: [{ expectation: 'graded › Quotes', pass: false, reason: 'no' }],
+			}),
+			scenarioRun('plain', true),
+		]);
+		const bucket = await fetchBaselineBucket(client, 'instance-ai-baseline-x');
+
+		expect(bucket.evaluationUnits.has('my-case/graded')).toBe(false);
+		expect(bucket.evaluationUnits.has('my-case#expectation:graded › Quotes')).toBe(true);
+		expect(bucket.trialTotal).toBe(1);
+	});
+
 	it('defaults a missing _iteration to 0 so single-iteration rows dedupe together', async () => {
 		const verdicts = [{ expectation: 'asks first', pass: true, reason: 'did' }];
 		const client = bucketClient([

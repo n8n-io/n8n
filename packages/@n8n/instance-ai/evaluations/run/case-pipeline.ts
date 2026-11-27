@@ -24,7 +24,7 @@ import {
 	findAgentArtifactRef,
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
-import { isDirectAgentRun } from '../harness/agent-run-schema';
+import { isDirectAgentRun, isExpectationGraded } from '../harness/agent-run-schema';
 import { buildFailedOnInfra, harnessFault } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
@@ -165,7 +165,21 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		return await next;
 	}
 
-	const runRow = async (inputs: ScenarioRowInputs): Promise<TargetOutput> => {
+	/** A scenario graded by expectations is not a scored unit; its row says so on
+	 *  every outcome, so the baseline fetch can skip it too. */
+	const markExpectationGraded = (inputs: ScenarioRowInputs, output: TargetOutput): TargetOutput => {
+		const scenario = testCaseByFileSlug
+			.get(inputs.testCaseFile)
+			?.executionScenarios?.find((s) => s.name === inputs.scenarioName);
+		return scenario && isExpectationGraded(scenario)
+			? { ...output, expectationGraded: true }
+			: output;
+	};
+
+	const runRow = async (inputs: ScenarioRowInputs): Promise<TargetOutput> =>
+		markExpectationGraded(inputs, await runRowOutcome(inputs));
+
+	const runRowOutcome = async (inputs: ScenarioRowInputs): Promise<TargetOutput> => {
 		const iteration = inputs._iteration ?? 0;
 		try {
 			// Only rows start builds, so a build and its judges count on the meter of its own case.

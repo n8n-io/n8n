@@ -14,6 +14,7 @@
 // nothing to judge.
 // ---------------------------------------------------------------------------
 
+import { isExpectationGraded } from '../harness/agent-run-schema';
 import { GATED_TIER_NAMES } from '../run/tiers';
 import type { MultiRunEvaluation, WorkflowTestCase } from '../types';
 
@@ -100,6 +101,8 @@ export function evaluateGate(
 		const prefix = fileSlug ?? 'unknown';
 
 		for (const sa of tc.executionScenarios) {
+			// Graded by its expectations, which are gated as units of their own.
+			if (isExpectationGraded(sa.scenario)) continue;
 			// Verifier-incomplete runs carry no verdict — out of the denominator and
 			// the failure tally, mirroring build expectations.
 			const evaluated = sa.runs.filter((r) => !r.incomplete);

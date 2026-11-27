@@ -62,6 +62,8 @@ const outputsSchema = z
 		expectationResults: expectationResultsSchema.optional().catch(undefined),
 		// Agent scenario expectations (AGENT-1666): each row carries only its own.
 		scenarioExpectationResults: expectationResultsSchema.optional().catch(undefined),
+		// Graded by its expectations: not a scenario unit (AGENT-1666).
+		expectationGraded: z.boolean().optional(),
 	})
 	.passthrough();
 
@@ -203,7 +205,8 @@ export async function fetchBaselineBucket(
 		// add a pseudo-scenario per build-only case and skew the trial totals.
 		if (inputs.data.scenarioName === BUILD_ONLY_SCENARIO_NAME) continue;
 		// Verifier-incomplete rows carry no verdict — skip so they don't count as failed trials.
-		if (outputs.data.incomplete) continue;
+		// A row graded by expectations counts through them only.
+		if (outputs.data.incomplete || outputs.data.expectationGraded) continue;
 
 		const key = scenarioUnitKey(inputs.data.testCaseFile, inputs.data.scenarioName);
 		const existing: EvaluationUnitCounts = evaluationUnits.get(key) ?? {

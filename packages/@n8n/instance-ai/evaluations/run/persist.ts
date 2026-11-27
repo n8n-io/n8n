@@ -14,6 +14,7 @@ import { parseTargetOutput, reshapeLangSmithRuns, type ReshapeRunRow } from './r
 import { roundRobinCaseRows } from './rows';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import type { CliArgs } from '../cli/args';
+import { isExpectationGraded } from '../harness/agent-run-schema';
 import type { ComparisonOutcome, ComparisonResult } from '../comparison/compare';
 import {
 	formatComparisonMarkdown,
@@ -115,7 +116,7 @@ export function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 		for (const tc of testCases) {
 			for (const sa of tc.executionScenarios) {
 				const runResult = sa.runs[i];
-				if (runResult?.incomplete) continue;
+				if (runResult?.incomplete || isExpectationGraded(sa.scenario)) continue;
 				total++;
 				if (runResult?.success) passed++;
 			}

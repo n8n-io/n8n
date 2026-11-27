@@ -546,6 +546,62 @@ describe('createCasePipeline', () => {
 		});
 	});
 
+	describe('a scenario graded by expectations', () => {
+		const gradedCase = (): WorkflowTestCase => {
+			const testCase = scenarioCase(['happy-path']);
+			const [scenario] = testCase.executionScenarios ?? [];
+			if (scenario) scenario.expectations = ['Quotes the price'];
+			return testCase;
+		};
+
+		it('marks its row, so the baseline does not count it as a scenario trial', async () => {
+			const lane = makeLane();
+			vi.mocked(lane.tracedExecute).mockResolvedValue({
+				success: true,
+				score: 1,
+				reasoning: 'ok',
+			} as never);
+			const pipeline = createCasePipeline(
+				makeDeps(makeOrchestrator({ build: okBuild(), lane, buildDurationMs: 1 }), {
+					testCaseByFileSlug: new Map([['case-a', gradedCase()]]),
+				}),
+			);
+
+			const output = await pipeline.runRow(rowInputs('happy-path'));
+
+			expect(output.expectationGraded).toBe(true);
+		});
+
+		it('marks a build-phase framework_issue row too', async () => {
+			const lane = makeLane();
+			const orchestrator = makeOrchestrator({ build: okBuild(), lane, buildDurationMs: 1 });
+			vi.mocked(orchestrator.getOrBuild).mockRejectedValue(new Error('lane exploded'));
+			const pipeline = createCasePipeline(
+				makeDeps(orchestrator, { testCaseByFileSlug: new Map([['case-a', gradedCase()]]) }),
+			);
+
+			const output = await pipeline.runRow(rowInputs('happy-path'));
+
+			expect(output).toMatchObject({ failureCategory: 'framework_issue', expectationGraded: true });
+		});
+
+		it('leaves a scenario without expectations unmarked', async () => {
+			const lane = makeLane();
+			vi.mocked(lane.tracedExecute).mockResolvedValue({
+				success: true,
+				score: 1,
+				reasoning: 'ok',
+			} as never);
+			const pipeline = createCasePipeline(
+				makeDeps(makeOrchestrator({ build: okBuild(), lane, buildDurationMs: 1 })),
+			);
+
+			const output = await pipeline.runRow(rowInputs('happy-path'));
+
+			expect(output.expectationGraded).toBeUndefined();
+		});
+	});
+
 	it('routes agent-anchored builds through the agent scenario path', async () => {
 		const lane = makeLane();
 		vi.mocked(lane.tracedExecuteAgent).mockResolvedValue({
