@@ -4,15 +4,15 @@ import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError, UserError } from '@n8n/errors';
 
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
-import { isResolveSubWorkflowResponse } from './engine-workflow-resolve.contract';
+import { isResolveWorkflowResponse } from './engine-workflow-resolve.contract';
 import type {
-	ResolveSubWorkflowRequest,
-	ResolveSubWorkflowResponse,
+	ResolveWorkflowCall,
+	ResolveWorkflowResponseFor,
 } from './engine-workflow-resolve.contract';
-import { SUB_WORKFLOWS_RESOLVE_PATH } from './engine-v2.constants';
+import { WORKFLOWS_RESOLVE_PATH } from './engine-v2.constants';
 
 /** The message and hint a control plane error response carries, if any. */
-function errorTextOf(body: unknown): { message?: string; hint?: string } {
+export function errorTextOf(body: unknown): { message?: string; hint?: string } {
 	if (!isRecord(body)) return {};
 	return {
 		message: typeof body.message === 'string' ? body.message : undefined,
@@ -20,25 +20,44 @@ function errorTextOf(body: unknown): { message?: string; hint?: string } {
 	};
 }
 
-/** Asks the control plane server for the graph of a sub-workflow a step calls. */
+/**
+ * A 4xx names a problem with the request, which the caller can fix. A 401
+ * names a disagreement between the planes, such as a secret that is being
+ * rotated, and 408 and 429 ask the caller to try again.
+ */
+const TRANSIENT_CLIENT_ERRORS = new Set([401, 408, 429]);
+
+function callerCanFix(statusCode: number): boolean {
+	return statusCode >= 400 && statusCode < 500 && !TRANSIENT_CLIENT_ERRORS.has(statusCode);
+}
+
+function describe(request: ResolveWorkflowCall): string {
+	return request.kind === 'sub-workflow'
+		? `sub-workflow "${request.workflowId}"`
+		: `the error workflow of execution "${request.source.executionId}"`;
+}
+
+/** Asks the control plane server for a workflow that the data plane starts. */
 @Service()
-export class EngineSubWorkflowClient {
+export class EngineWorkflowResolveClient {
 	private readonly http: HttpRequestClient;
 
 	constructor(transport: EngineControlPlaneTransport) {
-		this.http = transport.forScope('sub-workflows:resolve');
+		this.http = transport.forScope('workflows:resolve');
 	}
 
 	/**
-	 * Resolves the sub-workflow the request names: its graph, workflow document
-	 * and trigger outputs. `signal` aborts the request when the step is cancelled.
+	 * Resolves the workflow that the request names: its graph, workflow
+	 * document and trigger outputs. A refusal that the caller can fix throws a
+	 * `UserError` with v1's description as its hint. Every other failure throws
+	 * an `OperationalError`. `signal` aborts the request.
 	 */
-	async resolve(
-		request: ResolveSubWorkflowRequest,
+	async resolve<C extends ResolveWorkflowCall>(
+		request: C,
 		signal: AbortSignal,
-	): Promise<ResolveSubWorkflowResponse> {
+	): Promise<ResolveWorkflowResponseFor<C['kind']>> {
 		const response = await this.http.request<unknown>({
-			url: SUB_WORKFLOWS_RESOLVE_PATH,
+			url: WORKFLOWS_RESOLVE_PATH,
 			method: 'POST',
 			body: request,
 			json: true,
@@ -47,7 +66,7 @@ export class EngineSubWorkflowClient {
 			ignoreHttpStatusErrors: true,
 			// A redirect would forward the token to whatever host it names.
 			disableFollowRedirect: true,
-			// The step owns the deadline. A client timeout would fire first.
+			// The caller owns the deadline. A client timeout would fire first.
 			abortSignal: signal,
 		});
 
@@ -56,20 +75,17 @@ export class EngineSubWorkflowClient {
 			const text = errorTextOf(response.body);
 			const message =
 				text.message ??
-				`Control plane refused to resolve sub-workflow "${request.workflowId}" with ${response.statusCode}`;
-			// Only a 4xx names a problem the caller can fix, and a 401 names a
-			// disagreement between the planes rather than with the caller.
-			const callerCanFix =
-				response.statusCode >= 400 && response.statusCode < 500 && response.statusCode !== 401;
+				`Control plane refused to resolve ${describe(request)} with ${response.statusCode}`;
 			// The hint is v1's description of the refusal, which the node shows the user.
-			throw callerCanFix
+			throw callerCanFix(response.statusCode)
 				? new UserError(message, { description: text.hint })
-				: new OperationalError(message);
+				: new OperationalError(message, { extra: { statusCode: response.statusCode } });
 		}
 
-		if (!isResolveSubWorkflowResponse(response.body)) {
+		const kind: C['kind'] = request.kind;
+		if (!isResolveWorkflowResponse(kind, response.body)) {
 			throw new OperationalError(
-				`Control plane returned a malformed response for sub-workflow "${request.workflowId}"`,
+				`Control plane returned a malformed response for ${describe(request)}`,
 			);
 		}
 

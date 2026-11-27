@@ -339,6 +339,23 @@ Each project's verdicts are compared with the verdicts of a project that has no 
 A project rule on a hidden type, or on a tool variant that follows its base, adds nothing to the
 counts.
 
+### Give a team project its own policy
+
+`POST /project-policies` with the body `{ projectId }` gives a team project a policy of both kinds.
+It needs the same two scopes as the list. It returns the new entry, in the same shape as the list.
+
+- The call creates a scope row for each kind that has none, in one transaction. If one write
+  fails, the call saves nothing.
+- A new row has no rules and `defaultAction: 'allow'`, so the project gets the access that the
+  instance policy gives. A type that the instance delegates stays blocked, because only an
+  explicit project `allow` rule satisfies `delegate`.
+- A kind that already has a row does not change.
+- If the project already has a row of both kinds, the call returns 409.
+- A personal project returns 400. A project that does not exist returns 404.
+
+For each created kind, the call emits `node-type-policy-scope-updated` for the audit log, and
+`node-type-policy-saved` with `origin: 'add-project-policy'` for telemetry.
+
 ### Setting the access of a type
 
 `PATCH /{node,credential}-type-policies/instance/access` and
@@ -480,7 +497,7 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |
 | `credential-type-policy-instance.controller.ts`   | Instance scope, documents, attachments and access of each type, `credential-types` |
 | `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
-| `project-policies.controller.ts`                  | The policy state of every team project, for both kinds                          |
+| `project-policies.controller.ts`                  | List and create the project policies of team projects, for both kinds           |
 | `listed-node-types.ts`                            | The node types the instance policy page lists, for the access route and counts  |
 | `hidden-node-types.ts`                            | The hidden node types, read from the static node types file                     |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |

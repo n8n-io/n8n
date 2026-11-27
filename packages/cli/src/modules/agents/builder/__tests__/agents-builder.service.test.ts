@@ -156,6 +156,7 @@ describe('AgentsBuilderService', () => {
 			provider,
 			'publish',
 			{ skillRefs: refs },
+			user,
 		);
 		expect(providerFor).toHaveBeenCalledWith('agent-1');
 	});

@@ -9,6 +9,7 @@ import {
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
+	WORKFLOWS_IN_SKILLS_FLAG,
 } from '@n8n/api-types';
 
 function createExperiment<
@@ -160,6 +161,7 @@ export const AI_ASSISTANT_AT_MENTIONS_EXPERIMENT = createExperiment(AI_ASSISTANT
 
 export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
 export const ASSISTANT_SKILLS_EXPERIMENT = createExperiment(ASSISTANT_SKILLS_FLAG);
+export const WORKFLOWS_IN_SKILLS_EXPERIMENT = createExperiment(WORKFLOWS_IN_SKILLS_FLAG);
 
 /** Boolean flag. New threads of the user run on the Assistant agent, if the instance runs it. */
 export const INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT = createExperiment('141_assistant_agent');
@@ -215,6 +217,9 @@ export const PREFERENCES_EMPTY_STATE_EXPERIMENT = createExperiment('127_preferen
 });
 
 export const RECOMMENDED_SKILLS_EXPERIMENT = createExperiment('143_recommended_skills');
+
+/** Boolean flag. It gates the node version picker in the node settings. */
+export const NODE_VERSION_PICKER_EXPERIMENT = createExperiment('154_node_version_picker');
 
 export const MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT = createExperiment(
 	'150_mcp_preferences_entry_points',
@@ -317,6 +322,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	// EOF Experiment cleanup
 	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
 	ASSISTANT_SKILLS_EXPERIMENT.name,
+	WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
 	INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name,
 	INSTANCE_AI_CLOUD_BROWSER_EXPERIMENT.name,
 	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT.name,

@@ -16,6 +16,7 @@ import {
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	KNOWLEDGE_COLLECTIONS_FLAG,
 	SELF_HEALING_FLAG,
+	WORKFLOWS_IN_SKILLS_FLAG,
 } from '@n8n/api-types';
 import { getN8nVersion } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -46,13 +47,14 @@ const EDITOR_INSTANCE_FLAGS = [
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	KNOWLEDGE_COLLECTIONS_FLAG,
 	SELF_HEALING_FLAG,
+	WORKFLOWS_IN_SKILLS_FLAG,
+	CUSTOM_MCP_SERVERS_FLAG,
 ];
 /**
  * Multivariate flags that roll out by instance. The editor gets the instance variant as it is,
  * so the editor and the backend read the same value.
  */
-const EDITOR_INSTANCE_VARIANT_FLAGS = [CUSTOM_MCP_SERVERS_FLAG];
-const ALL_EDITOR_INSTANCE_FLAGS = [...EDITOR_INSTANCE_FLAGS, ...EDITOR_INSTANCE_VARIANT_FLAGS];
+const MULTIVARIATE_EDITOR_INSTANCE_FLAGS = [WORKFLOWS_IN_SKILLS_FLAG, CUSTOM_MCP_SERVERS_FLAG];
 
 const SESSION_ID_MAX_LENGTH = 1000;
 
@@ -178,9 +180,7 @@ export class PostHogClient {
 	}
 
 	async getFeatureFlagForInstance(flagName: string): Promise<FeatureFlags[string]> {
-		const flagNames = ALL_EDITOR_INSTANCE_FLAGS.includes(flagName)
-			? ALL_EDITOR_INSTANCE_FLAGS
-			: [flagName];
+		const flagNames = EDITOR_INSTANCE_FLAGS.includes(flagName) ? EDITOR_INSTANCE_FLAGS : [flagName];
 		return (await this.getFeatureFlagsForInstance(flagNames))[flagName];
 	}
 
@@ -253,16 +253,18 @@ export class PostHogClient {
 		}
 		const overridden = this.applyEnvOverrides(data);
 		// The editor and backend must use the same instance result.
-		const instanceFlags = await this.getFeatureFlagsForInstance(ALL_EDITOR_INSTANCE_FLAGS);
+		const instanceFlags = await this.getFeatureFlagsForInstance(EDITOR_INSTANCE_FLAGS);
 		return {
 			...overridden,
 			featureFlags: {
 				...overridden.featureFlags,
 				...Object.fromEntries(
-					EDITOR_INSTANCE_FLAGS.map((flag) => [flag, instanceFlags[flag] === true]),
-				),
-				...Object.fromEntries(
-					EDITOR_INSTANCE_VARIANT_FLAGS.map((flag) => [flag, instanceFlags[flag] ?? false]),
+					EDITOR_INSTANCE_FLAGS.map((flag) => [
+						flag,
+						MULTIVARIATE_EDITOR_INSTANCE_FLAGS.includes(flag)
+							? (instanceFlags[flag] ?? false)
+							: instanceFlags[flag] === true,
+					]),
 				),
 			},
 		};

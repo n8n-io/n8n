@@ -157,4 +157,32 @@ describe('IsolatedVmBridge', () => {
 			});
 		});
 	});
+
+	describe('result transfer', () => {
+		it('should return objects and errors after an array iterator replacement', async () => {
+			const bridge = new IsolatedVmBridge();
+			await bridge.initialize();
+			try {
+				const result = bridge.execute(
+					`
+						const error = new TypeError("bad");
+						error.code = 5;
+						const result = { plain: { a: 1, b: [1, 2] }, error };
+						Array.prototype[Symbol.iterator] = function () {
+							return { next: () => ({ done: true }) };
+						};
+						return result;
+					`,
+					{},
+				) as { plain: unknown; error: Error & { code?: number } };
+
+				expect(result.plain).toEqual({ a: 1, b: [1, 2] });
+				expect(result.error).toBeInstanceOf(TypeError);
+				expect(result.error.message).toBe('bad');
+				expect(result.error.code).toBe(5);
+			} finally {
+				await bridge.dispose();
+			}
+		});
+	});
 });
