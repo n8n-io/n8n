@@ -332,6 +332,44 @@ describe('EvalAgentExecutionService multi-turn threads', () => {
 		expect(after.success).toBe(true);
 	});
 
+	it('drops the world after a final turn', async () => {
+		const service = buildService();
+		generate.mockResolvedValue(reply('Hi.'));
+		const final = turn(THREAD_A, 'user-a');
+		if (final.thread) final.thread.final = true;
+
+		await service.executeWithLlmMock('agent-1', user, final);
+		const continued = await service.executeWithLlmMock(
+			'agent-1',
+			user,
+			turn(THREAD_A, 'user-a', 'Hello', 2),
+		);
+		await service.executeWithLlmMock('agent-1', user, turn(THREAD_B, 'user-a', 'Hello'));
+
+		expect(continued.errors[0]).toMatch(/unknown or expired/);
+		expect(generateAgentScenarioSeed).toHaveBeenCalledTimes(2);
+	});
+
+	it('releases a thread world without running a turn when a final request has no message', async () => {
+		const service = buildService();
+		generate.mockResolvedValue(reply('Hi.'));
+		await service.executeWithLlmMock('agent-1', user, turn(THREAD_A, 'user-a'));
+		const release = turn(THREAD_A, 'user-a', undefined, 2);
+		if (release.thread) release.thread.final = true;
+
+		const released = await service.executeWithLlmMock('agent-1', user, release);
+		const continued = await service.executeWithLlmMock(
+			'agent-1',
+			user,
+			turn(THREAD_A, 'user-a', 'Hello', 2),
+		);
+
+		expect(released.success).toBe(true);
+		expect(released.thread?.turn).toBe(1);
+		expect(generate).toHaveBeenCalledTimes(1);
+		expect(continued.errors[0]).toMatch(/unknown or expired/);
+	});
+
 	it('does not add a failed turn to the thread', async () => {
 		const service = buildService();
 		generate

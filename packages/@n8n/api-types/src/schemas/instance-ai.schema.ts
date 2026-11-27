@@ -3250,6 +3250,10 @@ export const instanceAiEvalAgentThreadTurnSchema = z.object({
 	 *  follow the thread the server holds, or it is refused (unknown or expired
 	 *  thread, or a turn out of step), so history is never silently lost. */
 	expectedTurn: z.number().int().min(1).max(1000),
+	/** The scenario's last request for this resource id. After a successful turn
+	 *  the server drops the resource's world and threads. Without `message`, on a
+	 *  thread it holds: only that release, no turn runs. */
+	final: z.boolean().optional(),
 });
 
 export type InstanceAiEvalAgentThreadTurn = z.infer<typeof instanceAiEvalAgentThreadTurnSchema>;

@@ -46,6 +46,12 @@ class IdleMap<T> {
 		return entry.value;
 	}
 
+	deleteWhere(matches: (value: T, key: string) => boolean): void {
+		for (const [key, entry] of this.entries) {
+			if (matches(entry.value, key)) this.entries.delete(key);
+		}
+	}
+
 	set(key: string, value: T, now: number): void {
 		this.entries.delete(key);
 		this.entries.set(key, { value, lastUsedAt: now });
@@ -85,5 +91,11 @@ export class EvalAgentThreadStore<World> {
 
 	saveThread(threadId: string, thread: EvalAgentThread): void {
 		this.threads.set(threadId, thread, this.now());
+	}
+
+	/** Forget a simulated user: its world and every thread it has. */
+	dropResource(resourceId: string): void {
+		this.worlds.deleteWhere((_world, key) => key === resourceId);
+		this.threads.deleteWhere((thread) => thread.resourceId === resourceId);
 	}
 }

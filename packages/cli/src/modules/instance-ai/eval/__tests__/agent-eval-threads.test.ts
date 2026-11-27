@@ -49,4 +49,18 @@ describe('EvalAgentThreadStore', () => {
 		expect(store.thread('t-1')).toBeUndefined();
 		expect(store.thread('t-new')).toBeDefined();
 	});
+
+	it('drops a resource: its world and its threads, and nothing else', () => {
+		store.saveWorld('r-1', { name: 'world 1' });
+		store.saveWorld('r-2', { name: 'world 2' });
+		store.saveThread('t-1', thread('r-1'));
+		store.saveThread('t-2', thread('r-2'));
+
+		store.dropResource('r-1');
+
+		expect(store.world('r-1')).toBeUndefined();
+		expect(store.thread('t-1')).toBeUndefined();
+		expect(store.world('r-2')).toBeDefined();
+		expect(store.thread('t-2')).toBeDefined();
+	});
 });

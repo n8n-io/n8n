@@ -298,6 +298,7 @@ export class EvalAgentExecutionService {
 		const thread = this.threads.thread(turn.threadId);
 		const refusal = this.threadRefusal(agentId, user, turn, thread);
 		if (refusal) return this.errorResult(refusal);
+		if (thread && turn.final && turn.message === undefined) return this.releaseThread(turn, thread);
 
 		const world = await this.resolveWorld(agentId, user, options, turn.resourceId);
 		if ('error' in world) return world.error;
@@ -309,8 +310,35 @@ export class EvalAgentExecutionService {
 		if (threadMessages) {
 			this.saveThread(turn, { agentId, userId: user.id }, [...input, ...threadMessages], turns);
 		}
+		if (threadMessages && turn.final) this.threads.dropResource(turn.resourceId);
 		const echo = { threadId: turn.threadId, resourceId: turn.resourceId, turn: turns, userMessage };
 		return { ...output, thread: echo };
+	}
+
+	/** A final request with no message: forget the resource, run nothing. */
+	private releaseThread(
+		turn: InstanceAiEvalAgentThreadTurn,
+		thread: EvalAgentThread,
+	): InstanceAiEvalAgentExecutionResult {
+		const seed = this.threads.world(turn.resourceId)?.seed;
+		this.threads.dropResource(turn.resourceId);
+		return {
+			runId: '',
+			success: true,
+			errors: [],
+			finalText: '',
+			toolCalls: [],
+			modelTurns: [],
+			seed: seed ?? { openingMessage: '', globalContext: '', toolHints: {}, warnings: [] },
+			skippedFeatures: [],
+			mockedCredentials: [],
+			thread: {
+				threadId: turn.threadId,
+				resourceId: turn.resourceId,
+				turn: thread.turns,
+				userMessage: '',
+			},
+		};
 	}
 
 	/** The resource's world, made on its first turn. */
@@ -371,7 +399,7 @@ export class EvalAgentExecutionService {
 		if (thread && thread.resourceId !== turn.resourceId) {
 			return `Eval thread ${turn.threadId} belongs to another resource id`;
 		}
-		if (thread && turn.message === undefined) {
+		if (thread && turn.message === undefined && !turn.final) {
 			return `Continuing eval thread ${turn.threadId} needs a message`;
 		}
 		const world = this.threads.world(turn.resourceId);

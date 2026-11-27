@@ -89,6 +89,13 @@ function recordingClient(calls: ExecuteCall[]): N8nClient {
 	} as unknown as N8nClient;
 }
 
+/** The requests that ran a turn, without the closing release (final, no message). */
+function turnCalls(calls: ExecuteCall[]): ExecuteCall[] {
+	return calls.filter(
+		({ thread }) => !(thread?.final && thread.message === undefined && thread.expectedTurn > 1),
+	);
+}
+
 /** A simulated user that sends the given messages, then declares done. */
 function scriptedUser(messages: string[]): AgentUserProxy {
 	const queue = [...messages];
@@ -139,16 +146,17 @@ describe('executeAgentScenario: multi-turn runs', () => {
 			calls,
 		);
 
-		expect(calls).toHaveLength(3);
+		const turns = turnCalls(calls);
+		expect(turns).toHaveLength(3);
 		expect(result.agentTurnCount).toBe(3);
 		const threadIds = new Set(calls.map((call) => call.thread?.threadId));
 		expect(threadIds.size).toBe(1);
-		expect(calls.map((call) => call.thread?.message)).toEqual([
+		expect(turns.map((call) => call.thread?.message)).toEqual([
 			undefined,
 			'Make it express',
 			'Thanks',
 		]);
-		expect(calls.map((call) => call.thread?.expectedTurn)).toEqual([1, 2, 3]);
+		expect(turns.map((call) => call.thread?.expectedTurn)).toEqual([1, 2, 3]);
 	});
 
 	it('fails as a framework issue when the server reports another turn than expected', async () => {
@@ -169,6 +177,30 @@ describe('executeAgentScenario: multi-turn runs', () => {
 				silentLogger,
 			),
 		).rejects.toThrow(/FRAMEWORK ISSUE: .*expected turn 2, got 1/);
+	});
+
+	it('marks the last turn final when maxTurns makes it the last one', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['one', 'two']));
+		const calls: ExecuteCall[] = [];
+
+		await run({ ...base, userTurns: { goal: 'Keep talking', maxTurns: 2 } }, calls);
+
+		expect(calls.map((call) => call.thread?.final)).toEqual([undefined, true]);
+	});
+
+	it('releases the world with a final request when the simulated user ends the scenario', async () => {
+		vi.mocked(createAgentUserProxy).mockReturnValue(scriptedUser(['Make it express']));
+		const calls: ExecuteCall[] = [];
+
+		await run({ ...base, userTurns: { goal: 'Track it', maxTurns: 6 } }, calls);
+
+		expect(calls).toHaveLength(3);
+		expect(calls[2]?.thread).toEqual({
+			threadId: calls[0]?.thread?.threadId,
+			resourceId: calls[0]?.thread?.resourceId,
+			expectedTurn: 3,
+			final: true,
+		});
 	});
 
 	it('stops at maxTurns even when the simulated user has more to say', async () => {
@@ -216,7 +248,7 @@ describe('executeAgentScenario: multi-turn runs', () => {
 		await run(scenario, calls);
 		await run(scenario, calls);
 
-		const [first, second] = calls.map((call) => call.thread?.resourceId);
+		const [first, second] = turnCalls(calls).map((call) => call.thread?.resourceId);
 		expect(first).not.toBe(second);
 		expect(first).toMatch(/^eval-user-[0-9a-f-]{36}$/);
 	});

@@ -32,6 +32,8 @@ export interface AgentSessionPlan {
 export interface AgentConversationTurn {
 	userMessage: string;
 	result: InstanceAiEvalAgentExecutionResult;
+	/** Sent as the scenario's last request (`final`), so the server dropped the world. */
+	final?: boolean;
 }
 
 export interface AgentConversationSession {
@@ -86,16 +88,43 @@ export async function runAgentConversation(input: {
 }): Promise<AgentConversation> {
 	const context: ConversationContext = { ...input, resourceId: newEvalResourceId() };
 	const sessions: AgentConversationSession[] = [];
-	for (const plan of input.plans) {
-		const session = await runSession(plan, sessions, context);
+	for (const [index, plan] of input.plans.entries()) {
+		const last = index === input.plans.length - 1;
+		const session = await runSession(plan, last, sessions, context);
 		sessions.push(session);
 		if (session.turns.some((turn) => !turn.result.success)) break;
 	}
+	await releaseWorld(sessions, context);
 	return { resourceId: context.resourceId, sessions };
+}
+
+/**
+ * Tell the server the scenario is over, so it drops the simulated user's world,
+ * unless the last turn already did (it was sent `final` and succeeded). Best
+ * effort: the server drops idle worlds on its own.
+ */
+async function releaseWorld(
+	sessions: AgentConversationSession[],
+	context: ConversationContext,
+): Promise<void> {
+	const session = sessions.filter((s) => s.turns.length > 0).at(-1);
+	const lastTurn = session?.turns.at(-1);
+	if (!session || !lastTurn || (lastTurn.final && lastTurn.result.success)) return;
+	try {
+		await context.executeTurn({
+			threadId: session.threadId,
+			resourceId: context.resourceId,
+			expectedTurn: session.turns.length + 1,
+			final: true,
+		});
+	} catch {
+		// The server forgets the world after its idle TTL anyway.
+	}
 }
 
 async function runSession(
 	plan: AgentSessionPlan,
+	last: boolean,
 	earlier: AgentConversationSession[],
 	context: ConversationContext,
 ): Promise<AgentConversationSession> {
@@ -111,8 +140,10 @@ async function runSession(
 	let message = fromUser ? await nextMessage() : undefined;
 	if (fromUser && message === undefined) return session;
 	while (session.turns.length < plan.maxTurns) {
+		const expectedTurn = session.turns.length + 1;
+		const final = last && expectedTurn === plan.maxTurns;
 		const turn = await runTurn(
-			{ threadId: session.threadId, expectedTurn: session.turns.length + 1, message },
+			{ threadId: session.threadId, expectedTurn, message, final },
 			context,
 		);
 		session.turns.push(turn);
@@ -124,18 +155,20 @@ async function runSession(
 }
 
 async function runTurn(
-	{ threadId, expectedTurn, message }: { threadId: string; expectedTurn: number; message?: string },
+	request: { threadId: string; expectedTurn: number; message?: string; final: boolean },
 	context: ConversationContext,
 ): Promise<AgentConversationTurn> {
+	const { threadId, expectedTurn, message, final } = request;
 	const result = await context.executeTurn({
 		threadId,
 		resourceId: context.resourceId,
 		expectedTurn,
 		...(message !== undefined ? { message } : {}),
+		...(final ? { final } : {}),
 	});
 	throwIfTurnOutOfStep(result, expectedTurn);
 	const userMessage = result.thread?.userMessage ?? message ?? result.seed.openingMessage;
-	return { userMessage, result };
+	return { userMessage, result, ...(final ? { final } : {}) };
 }
 
 /**
