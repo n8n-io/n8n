@@ -181,9 +181,19 @@ export function stashPendingFirstMessage(threadId: string, payload: PendingFirst
  * can't send it (the destination loads before the BE persists it), so it does.
  */
 export function consumePendingFirstMessage(threadId: string): PendingFirstMessage | null {
+	const message = readPendingFirstMessage(threadId);
+	clearPendingFirstMessage(threadId);
+	return message;
+}
+
+/**
+ * Read the stashed opening message and leave it in place. A view that can mount
+ * twice for one navigation reads it with this, and removes it with
+ * `claimPendingFirstMessage` only when it sends it.
+ */
+export function readPendingFirstMessage(threadId: string): PendingFirstMessage | null {
 	const raw = localStorage.getItem(pendingFirstMessageKey(threadId));
 	if (!raw) return null;
-	localStorage.removeItem(pendingFirstMessageKey(threadId));
 	try {
 		const parsed = JSON.parse(raw) as Partial<PendingFirstMessage>;
 		if (typeof parsed?.message !== 'string') return null;
@@ -346,6 +356,16 @@ export function clearPendingRedirectLanding(threadId: string): void {
 /** Drop a stashed opening message without sending it (e.g. its thread is gone). */
 export function clearPendingFirstMessage(threadId: string): void {
 	localStorage.removeItem(pendingFirstMessageKey(threadId));
+}
+
+/**
+ * Remove the stashed opening message before it is sent. Returns false if it is
+ * gone, because another view or a previous page load sent it already.
+ */
+export function claimPendingFirstMessage(threadId: string): boolean {
+	if (localStorage.getItem(pendingFirstMessageKey(threadId)) === null) return false;
+	clearPendingFirstMessage(threadId);
+	return true;
 }
 
 const pendingDraftAttachmentKey = (threadId: string) =>

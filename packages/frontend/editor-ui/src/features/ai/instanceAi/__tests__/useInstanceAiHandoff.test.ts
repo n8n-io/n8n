@@ -62,6 +62,7 @@ import {
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	buildInstanceAiCredentialHandoffContext,
+	claimPendingFirstMessage,
 	clearPendingAgentAttachment,
 	clearPendingComposerDraft,
 	clearPendingFirstMessage,
@@ -79,6 +80,7 @@ import {
 	provisionLaunchedSubjectThread,
 	provisionSubjectThread,
 	provisionWorkflowThread,
+	readPendingFirstMessage,
 	stashPendingAgentAttachment,
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
@@ -569,6 +571,22 @@ describe('useInstanceAiHandoff', () => {
 		clearPendingFirstMessage('thread-1');
 
 		expect(consumePendingFirstMessage('thread-1')).toBeNull();
+	});
+
+	it('reads a stashed opening message without removing it, until one reader claims it', () => {
+		const payload: PendingFirstMessage = {
+			message: 'The execution failed. Look into what went wrong and help me fix it.',
+			authorship: { kind: 'prefill', prefillType: 'handoff_execution_error' },
+			attachments: [{ type: 'workflow', id: 'wf-1', executionId: 'exec-1' }],
+		};
+		stashPendingFirstMessage('thread-1', payload);
+
+		expect(readPendingFirstMessage('thread-1')).toEqual(payload);
+		expect(readPendingFirstMessage('thread-1')).toEqual(payload);
+
+		expect(claimPendingFirstMessage('thread-1')).toBe(true);
+		expect(claimPendingFirstMessage('thread-1')).toBe(false);
+		expect(readPendingFirstMessage('thread-1')).toBeNull();
 	});
 
 	it('round-trips an opening message with its attachments so a refused send can requeue it', () => {
