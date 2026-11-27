@@ -25,10 +25,12 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
 	createErrorExecutionData,
+	createRunExecutionData,
 	ERROR_MESSAGE_REDACTED_MESSAGE,
 	type INode,
 	type INodesGraphResult,
 	type IRun,
+	type ITaskData,
 	type IWorkflowBase,
 	NodeApiError,
 	TelemetryHelpers,
@@ -5260,6 +5262,79 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
 				expect.objectContaining({ execution_source: 'user', personal_credentials_count: 2 }),
 			);
+		});
+
+		describe('trigger node and caller', () => {
+			const createRunData = (
+				triggerNodeType?: string | null,
+				extraData: Parameters<typeof createRunExecutionData>[0] = {},
+			) =>
+				mock<IRun>({
+					finished: true,
+					status: 'success',
+					mode: 'webhook',
+					data: createRunExecutionData({ startData: { triggerNodeType }, ...extraData }),
+				});
+
+			const getTrackedProperties = () =>
+				vi.mocked(telemetry.trackWorkflowExecution).mock.calls[0][0];
+
+			it('reads the recorded trigger without node results', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: mockWorkflowBase,
+					executionId: 'execution123',
+					runData: createRunData('n8n-nodes-base.webhook'),
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties()).toMatchObject({
+					execution_mode: 'webhook',
+					trigger_node_type: 'n8n-nodes-base.webhook',
+				});
+			});
+
+			it.each([null, undefined])(
+				'does not infer a trigger from previous node results when the recorded trigger is %s',
+				async (triggerNodeType) => {
+					const webhook = mock<INode>({ name: 'Webhook', type: 'n8n-nodes-base.webhook' });
+					eventService.emit('workflow-post-execute', {
+						workflow: { ...mockWorkflowBase, nodes: [webhook] },
+						executionId: 'execution123',
+						runData: createRunData(triggerNodeType, {
+							resultData: { runData: { Webhook: [mock<ITaskData>({ startTime: 1000 })] } },
+						}),
+					});
+
+					await flushPromises();
+
+					expect(getTrackedProperties()).not.toHaveProperty('trigger_node_type');
+				},
+			);
+
+			it('should add the caller recorded when the execution was created', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: mockWorkflowBase,
+					executionId: 'execution123',
+					runData: createRunData('n8n-nodes-base.webhook'),
+					telemetryMetadata: { origin: { caller: 'public_api' } },
+				});
+
+				await flushPromises();
+
+				expect(getTrackedProperties().execution_caller).toBe('public_api');
+			});
+
+			it('should not set a caller when no origin was recorded', async () => {
+				eventService.emit('workflow-post-execute', {
+					workflow: mockWorkflowBase,
+					executionId: 'execution123',
+					runData: createRunData('n8n-nodes-base.webhook'),
+				});
+
+				await flushPromises();
+				expect(getTrackedProperties()).not.toHaveProperty('execution_caller');
+			});
 		});
 
 		it('should call telemetry.track when manual node execution finished', async () => {
