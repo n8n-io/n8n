@@ -178,17 +178,27 @@ export class ToolCallRunner {
 				return await this.toolError(params, new GuardrailStopError('before', stop.code));
 			}
 		}
+		// A before-stage redact rewrote the input inside the context. The
+		// context wins whenever it exists, so a redaction to `null` or
+		// `undefined` is preserved instead of falling back to the original.
+		const effectiveInput = (guardCtx !== undefined ? guardCtx.input : input) as typeof input;
 
 		if (shouldEmitToolExecutionStart(builtTool, resumeData)) {
 			this.eventBus.emit({
 				type: AgentEvent.ToolExecutionStart,
 				toolCallId,
 				toolName,
-				args: input,
+				args: effectiveInput,
 			});
 		}
 
-		return await this.executeValidatedToolCall(params, builtTool, input, guardrails, guardCtx);
+		return await this.executeValidatedToolCall(
+			params,
+			builtTool,
+			effectiveInput,
+			guardrails,
+			guardCtx,
+		);
 	}
 
 	private async executeValidatedToolCall(
@@ -240,7 +250,7 @@ export class ToolCallRunner {
 		}
 
 		if (isSuspendedToolResult(toolResult)) {
-			return await this.buildSuspendedOutcome(params, builtTool, toolResult);
+			return await this.buildSuspendedOutcome(params, builtTool, toolResult, input);
 		}
 
 		return await this.buildSuccessOutcome(params, builtTool, input, toolResult);
@@ -490,11 +500,15 @@ export class ToolCallRunner {
 					// Final result only: a call that suspended reports once,
 					// after resume. The after-stage check runs inside the span
 					// so a refused result is recorded as the refusal, never as
-					// span output; the throw becomes a tool error upstream.
+					// span output; the throw becomes a tool error upstream. An
+					// after-stage redact returns the rewritten result instead.
 					if (guardrails && guardCtx && !isSuspendedToolResult(result)) {
-						const stop = await guardrails.afterTool(guardCtx, result);
-						if (stop) {
-							throw new GuardrailStopError('after', stop.code);
+						const outcome = await guardrails.afterTool(guardCtx, result);
+						if (outcome && 'stop' in outcome) {
+							throw new GuardrailStopError('after', outcome.stop.code);
+						}
+						if (outcome && 'redacted' in outcome) {
+							return outcome.redacted;
 						}
 					}
 					return result;
@@ -507,6 +521,7 @@ export class ToolCallRunner {
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
 		toolResult: SuspendedToolResult,
+		input: JSONValue,
 	): Promise<ToolCallOutcome> {
 		if (builtTool.suspendSchema) {
 			const parseResult = await parseWithSchema(builtTool.suspendSchema, toolResult.payload);
@@ -527,6 +542,9 @@ export class ToolCallRunner {
 		}
 		return {
 			outcome: 'suspended',
+			// The input the tool received, redactions included, so the
+			// suspension persists the redacted input instead of the original.
+			input,
 			payload: toolResult.payload,
 			resumeSchema,
 			...(toolResult.continuation !== undefined ? { continuation: toolResult.continuation } : {}),

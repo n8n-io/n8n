@@ -1,4 +1,4 @@
-import type { GuardrailDecision, ModelGuardrail, TokenUsage } from '../../types';
+import type { GuardrailModelCallDecision, ModelGuardrail, TokenUsage } from '../../types';
 import { computeSideCallCost } from '../loop/side-call-cost';
 import { toTokenUsage } from '../streaming/stream';
 
@@ -29,10 +29,10 @@ export interface BudgetGuardrailOptions {
 	onNotice?: (notice: { code: 'budget.alert' }) => void;
 }
 
-const SESSION_STOP: GuardrailDecision = { action: 'stop', code: 'budget.session' };
-const MONTHLY_STOP: GuardrailDecision = { action: 'stop', code: 'budget.monthly' };
-const MISCONFIGURED: GuardrailDecision = { action: 'stop', code: 'budget.misconfigured' };
-const ALLOW: GuardrailDecision = { action: 'allow' };
+const SESSION_STOP: GuardrailModelCallDecision = { action: 'stop', code: 'budget.session' };
+const MONTHLY_STOP: GuardrailModelCallDecision = { action: 'stop', code: 'budget.monthly' };
+const MISCONFIGURED: GuardrailModelCallDecision = { action: 'stop', code: 'budget.misconfigured' };
+const ALLOW: GuardrailModelCallDecision = { action: 'allow' };
 
 /** UTC month bucket shared by the guardrail and the settings spend read. */
 export function budgetMonthKey(agentId: string, now: Date = new Date()): string {
@@ -59,7 +59,7 @@ export function createBudgetGuardrail(options: BudgetGuardrailOptions): ModelGua
 	const monthlyBudgetUsd = positiveUsd(options.monthlyBudgetUsd);
 
 	return {
-		async before(): Promise<GuardrailDecision> {
+		async before(): Promise<GuardrailModelCallDecision> {
 			if (sessionCostCapUsd !== undefined && !hasId(sessionId)) return MISCONFIGURED;
 			if (monthlyBudgetUsd !== undefined && !hasId(agentId)) return MISCONFIGURED;
 
@@ -73,7 +73,6 @@ export function createBudgetGuardrail(options: BudgetGuardrailOptions): ModelGua
 			}
 			return ALLOW;
 		},
-
 		async after(ctx, usage: TokenUsage | undefined): Promise<void> {
 			await recordBudgetSpend(options, ctx.callId, usage?.cost);
 		},

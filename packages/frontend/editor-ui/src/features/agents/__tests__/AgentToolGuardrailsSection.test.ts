@@ -4,7 +4,7 @@ import { mount } from '@vue/test-utils';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 
 import AgentToolGuardrailsSection from '../components/AgentToolGuardrailsSection.vue';
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonToolRef, WorkflowToolRef } from '../types';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -45,11 +45,11 @@ const TOOL: AgentJsonToolRef = {
 	},
 } as AgentJsonToolRef;
 
-const WORKFLOW_TOOL: AgentJsonToolRef = {
+const WORKFLOW_TOOL: WorkflowToolRef = {
 	type: 'workflow',
 	workflow: 'Sync customers',
 	workflowId: 'wf-1',
-} as AgentJsonToolRef;
+};
 
 const NAMED_GUARDRAIL = {
 	kind: 'keywords',

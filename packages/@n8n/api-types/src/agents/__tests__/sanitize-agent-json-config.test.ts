@@ -722,6 +722,83 @@ describe('sanitizeAgentJsonConfig', () => {
 		});
 		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
 	});
+
+	it('heals a review guardrail whose configuration was deleted', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'keywords',
+							id: 'g1',
+							keywords: ['secret'],
+							response: 'approval',
+							approvalConfigurationId: 'deleted-config',
+						},
+					],
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			config: {
+				guardrails: {
+					// The review can no longer route, so the guardrail falls back
+					// to blocking and drops the dead reference.
+					tools: [{ kind: 'keywords', id: 'g1', keywords: ['secret'], response: 'block' }],
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('heals a approval response without a configuration', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'pii', id: 'g1', type: 'all', response: 'approval' }],
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'pii', id: 'g1', type: 'all', response: 'block' }],
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('keeps a review guardrail whose configuration still exists', () => {
+		const config = {
+			...baseConfig,
+			hitlConfigurations: [
+				{ id: 'config-1', name: 'Review', method: 'workflow', workflowId: 'wf-9' },
+			],
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'keywords',
+							id: 'g1',
+							keywords: ['secret'],
+							response: 'approval',
+							approvalConfigurationId: 'config-1',
+						},
+					],
+				},
+			},
+		};
+
+		expect(sanitizeAgentJsonConfig(config)).toEqual(config);
+		expect(AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(config)).success).toBe(true);
+	});
 });
 
 describe('sanitizeAgentSkillBodies', () => {

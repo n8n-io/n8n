@@ -1,9 +1,11 @@
 import {
 	AgentJsonConfigSchema,
+	RunnableAgentJsonConfigSchema,
 	findToolGuardrailRefIssues,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
 	McpOAuth2CredentialTypeSchema,
+	TOOL_GUARDRAIL_RESPONSES,
 } from '../agent-json-config.schema';
 
 const minimalConfig = {
@@ -912,9 +914,9 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 			blockUserinfo: true,
 			allowSubdomains: false,
 		},
-		{ kind: 'jailbreak' },
-		{ kind: 'jailbreak', prompt: 'Detect jailbreaks', threshold: 0.7 },
-		{ kind: 'nsfw', threshold: 0 },
+		{ kind: 'jailbreak', stage: 'after' },
+		{ kind: 'jailbreak', stage: 'after', prompt: 'Detect jailbreaks', threshold: 0.7 },
+		{ kind: 'nsfw', stage: 'after', threshold: 0 },
 		{ kind: 'topicalAlignment', prompt: 'Stay on topic', threshold: 1 },
 		{ kind: 'workflow', workflowId: 'wf-1' },
 	])('accepts a valid %s guardrail', (guardrail) => {
@@ -1016,6 +1018,140 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 			);
 		}
 	});
+
+	it('accepts an explicit stage outside the kind preset: an older config keeps working', () => {
+		const result = parseGuardrails([
+			{ ...baseGuardrail, kind: 'pii', type: 'all', stage: 'after' },
+			{ ...baseGuardrail, kind: 'jailbreak', stage: 'before', id: 'guardrail_2' },
+		]);
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts an absent response and presets it from the kind table', () => {
+		const result = parseGuardrails([
+			{ ...baseGuardrail, kind: 'pii', type: 'all' },
+			{ ...baseGuardrail, kind: 'jailbreak', stage: 'after', id: 'guardrail_2' },
+		]);
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.config?.guardrails?.tools?.[0]?.response).toBeUndefined();
+		}
+		// The runtime and the modal resolve an absent response from the preset.
+		expect(TOOL_GUARDRAIL_RESPONSES.pii.default).toBe('redact');
+		expect(TOOL_GUARDRAIL_RESPONSES.keywords.default).toBe('block');
+		expect(TOOL_GUARDRAIL_RESPONSES.jailbreak.default).toBe('block');
+	});
+
+	it('rejects a response the kind does not allow', () => {
+		expect(
+			parseGuardrails([{ ...baseGuardrail, kind: 'jailbreak', stage: 'after', response: 'redact' }])
+				.success,
+		).toBe(false);
+		expect(
+			parseGuardrails([{ ...baseGuardrail, kind: 'keywords', keywords: ['a'], response: 'warn' }])
+				.success,
+		).toBe(false);
+	});
+
+	it('rejects review without a configuration and a configuration without review', () => {
+		const reviewless = parseGuardrails([
+			{ ...baseGuardrail, kind: 'keywords', keywords: ['a'], response: 'approval' },
+		]);
+		expect(reviewless.success).toBe(false);
+		if (!reviewless.success) {
+			expect(reviewless.error.errors[0].message).toBe(
+				'Send to review requires a human-review configuration',
+			);
+		}
+
+		const misconfigured = parseGuardrails([
+			{
+				...baseGuardrail,
+				kind: 'keywords',
+				keywords: ['a'],
+				response: 'block',
+				approvalConfigurationId: 'config-1',
+			},
+		]);
+		expect(misconfigured.success).toBe(false);
+		if (!misconfigured.success) {
+			expect(misconfigured.error.errors[0].message).toBe(
+				'A human-review configuration only applies to send to review',
+			);
+		}
+	});
+
+	it('rejects a review configuration that is not one of the agent configurations', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			hitlConfigurations: [
+				{ id: 'config-1', name: 'Review', method: 'workflow', workflowId: 'wf-9' },
+			],
+			config: {
+				guardrails: {
+					tools: [
+						{
+							...baseGuardrail,
+							kind: 'keywords',
+							keywords: ['a'],
+							response: 'approval',
+							approvalConfigurationId: 'config-missing',
+						},
+					],
+				},
+			},
+		});
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.errors[0].message).toBe(
+				'Select a human-review configuration of this agent',
+			);
+		}
+	});
+
+	it('accepts a review guardrail pointing at an agent configuration', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			hitlConfigurations: [
+				{ id: 'config-1', name: 'Review', method: 'workflow', workflowId: 'wf-9' },
+			],
+			config: {
+				guardrails: {
+					tools: [
+						{
+							...baseGuardrail,
+							kind: 'keywords',
+							keywords: ['a'],
+							response: 'approval',
+							approvalConfigurationId: 'config-1',
+						},
+					],
+				},
+			},
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a dangling review reference on a runnable config too', () => {
+		const result = RunnableAgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			credential: 'cred-1',
+			config: {
+				guardrails: {
+					tools: [
+						{
+							...baseGuardrail,
+							kind: 'keywords',
+							keywords: ['a'],
+							response: 'approval',
+							approvalConfigurationId: 'config-missing',
+						},
+					],
+				},
+			},
+		});
+		expect(result.success).toBe(false);
+	});
 });
 
 describe('findToolGuardrailRefIssues', () => {
@@ -1043,6 +1179,7 @@ describe('findToolGuardrailRefIssues', () => {
 							kind: 'keywords',
 							id: 'g1',
 							stage: 'before',
+							response: 'block',
 							keywords: ['a'],
 							tools: [
 								{ type: 'workflow', workflowId: 'wf-1' },
@@ -1063,7 +1200,9 @@ describe('findToolGuardrailRefIssues', () => {
 			tools: configuredTools,
 			config: {
 				guardrails: {
-					tools: [{ kind: 'keywords', id: 'g1', stage: 'before', keywords: ['a'] }],
+					tools: [
+						{ kind: 'keywords', id: 'g1', stage: 'before', response: 'block', keywords: ['a'] },
+					],
 				},
 			},
 		});
@@ -1081,6 +1220,7 @@ describe('findToolGuardrailRefIssues', () => {
 							kind: 'nsfw',
 							id: 'g1',
 							stage: 'after',
+							response: 'block',
 							tools: [
 								{ type: 'workflow', workflowId: 'wf-1' },
 								{ type: 'workflow', workflowId: 'wf-missing' },

@@ -3,6 +3,7 @@ import type {
 	GuardrailModelCallSource,
 	GuardrailStop,
 	GuardrailToolCallContext,
+	GuardrailToolCallOutcome,
 	GuardrailsOptions,
 	ModelGuardrail,
 	TokenUsage,
@@ -61,6 +62,9 @@ export class GuardrailRunner {
 		for (const hook of this.hooks) {
 			const decision = await hook.beforeTool?.(ctx);
 			if (decision?.action === 'stop') return { code: decision.code };
+			// A redact rewrites the input the tool receives; later hooks see
+			// the rewritten value.
+			if (decision?.action === 'redact') ctx.input = decision.value;
 		}
 		return undefined;
 	}
@@ -68,11 +72,17 @@ export class GuardrailRunner {
 	async afterTool(
 		ctx: GuardrailToolCallContext,
 		result: unknown,
-	): Promise<GuardrailStop | undefined> {
+	): Promise<GuardrailToolCallOutcome | undefined> {
+		let redacted = false;
 		for (const hook of this.hooks) {
 			const decision = await hook.afterTool?.(ctx, result);
-			if (decision?.action === 'stop') return { code: decision.code };
+			if (decision?.action === 'stop') return { stop: { code: decision.code } };
+			// A redact rewrites the result the model receives
+			if (decision?.action === 'redact') {
+				result = decision.value;
+				redacted = true;
+			}
 		}
-		return undefined;
+		return redacted ? { redacted: result } : undefined;
 	}
 }

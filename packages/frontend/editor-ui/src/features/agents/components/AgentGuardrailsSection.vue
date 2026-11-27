@@ -4,6 +4,7 @@ import type {
 	AgentToolGuardrailConfig,
 	AgentToolGuardrailKind,
 } from '@n8n/api-types';
+import type { AgentHitlContext } from './agent-hitl.types';
 import { N8nIcon } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -39,11 +40,14 @@ const props = withDefaults(
 		disabled?: boolean;
 		/** Structured backend validation issues — drives the invalid state on guardrail chips. */
 		validationIssues?: AgentConfigValidationIssue[];
+		/** Write access to the agent's configurations, for the modal's add-reviewer flow. */
+		approvalContext?: AgentHitlContext;
 	}>(),
 	{
 		tools: () => [],
 		disabled: false,
 		validationIssues: () => [],
+		approvalContext: undefined,
 	},
 );
 
@@ -256,6 +260,9 @@ function onModalRemove() {
 			:guardrail="editingGuardrail"
 			:kind="createKind"
 			:tools="tools"
+			:approval-configurations="config?.hitlConfigurations ?? []"
+			:approval-context="approvalContext"
+			:project-id="projectId"
 			:existing-ids="guardrails.map((guardrail) => guardrail.id)"
 			:disabled="disabled"
 			@update:open="modalOpen = $event"

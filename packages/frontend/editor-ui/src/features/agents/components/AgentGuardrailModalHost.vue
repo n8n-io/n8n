@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import type { AgentToolGuardrailConfig, AgentToolGuardrailKind } from '@n8n/api-types';
+import type {
+	AgentHitlConfiguration,
+	AgentToolGuardrailConfig,
+	AgentToolGuardrailKind,
+} from '@n8n/api-types';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentJsonToolRef } from '../types';
+import type { AgentHitlContext } from './agent-hitl.types';
 import AgentGuardrailModal from './AgentGuardrailModal.vue';
 
 defineOptions({ inheritAttrs: false });
@@ -18,6 +23,12 @@ export interface AgentGuardrailModalData {
 	kind?: AgentToolGuardrailKind;
 	getGuardrails: () => AgentToolGuardrailConfig[];
 	getTools: () => AgentJsonToolRef[];
+	/** The agent's human-review configurations, for the `approval` response target. */
+	getApprovalConfigurations?: () => AgentHitlConfiguration[];
+	/** Write access to the agent's configurations, for the modal's add-reviewer flow. */
+	getApprovalContext?: () => AgentHitlContext | undefined;
+	/** The agent's project: the check workflow picker lists its workflows. */
+	getProjectId?: () => string | undefined;
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
 	disabled?: MaybeRefOrGetter<boolean>;
 	/** Reopens the tool modal this one replaced. Runs on every close path. */
@@ -62,6 +73,9 @@ function onRemove() {
 		:guardrail="data.guardrail"
 		:kind="data.kind ?? 'keywords'"
 		:tools="data.getTools()"
+		:approval-configurations="data.getApprovalConfigurations?.() ?? []"
+		:approval-context="data.getApprovalContext?.()"
+		:project-id="data.getProjectId?.()"
 		:existing-ids="data.getGuardrails().map((guardrail) => guardrail.id)"
 		data-testid="agent-guardrail-modal-host"
 		@update:open="!$event && close()"

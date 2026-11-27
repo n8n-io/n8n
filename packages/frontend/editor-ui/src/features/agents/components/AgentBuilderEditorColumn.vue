@@ -18,6 +18,8 @@ import type {
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAgentApprovalDestinationsEnabled } from '@/features/agents/composables/useAgentApprovalDestinationsEnabled';
+import { hitlConfigurationUpdates } from '../utils/hitlConfiguration';
+import type { AgentHitlContext } from './agent-hitl.types';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
@@ -146,6 +148,29 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const agentTelemetry = useAgentTelemetry();
 const testButtonPrimaryColorExperiment = useTestButtonPrimaryColorExperiment();
+
+/**
+ * Write access to the agent's human-review configurations for the guardrail
+ * modal, so an empty approval picker can add a reviewer. Mirrors the context
+ * the Human-review panel builds for itself.
+ */
+const guardrailApprovalContext: AgentHitlContext = {
+	get agentId() {
+		return props.agentUnsaved ? undefined : props.agentId;
+	},
+	get isPublished() {
+		return Boolean(props.agent?.activeVersionId);
+	},
+	getConfig: () => props.localConfig,
+	getCustomToolName: (id) =>
+		props.agent?.tools && Object.hasOwn(props.agent.tools, id)
+			? props.agent.tools[id]?.descriptor.name
+			: undefined,
+	saveConfiguration: (configuration) => {
+		emit('update:config', hitlConfigurationUpdates(props.localConfig, configuration));
+	},
+	ensureAgentPersisted: () => props.ensureAgentPersisted?.() ?? Promise.resolve(),
+};
 
 // AGENT-1437 scopes the treatment to the standalone agent page. The same
 // component also renders inside the Assistant artifact builder, which must
@@ -390,6 +415,7 @@ defineExpose({ onSetupTaskAction });
 							:agent-id="agentId"
 							:disabled="childrenDisabled"
 							:validation-issues="configValidationIssues ?? []"
+							:approval-context="approvalDestinationsEnabled ? guardrailApprovalContext : undefined"
 							@update:config="emit('update:config', $event)"
 							@update:budget-config="emit('update:budget-config', $event)"
 						>

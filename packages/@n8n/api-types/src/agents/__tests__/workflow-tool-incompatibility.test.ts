@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 	SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
+	getGuardrailCheckWorkflowIncompatibilityReason,
 	getWorkflowToolIncompatibilityReason,
 } from '../types';
 
@@ -130,5 +131,56 @@ describe('getWorkflowToolIncompatibilityReason', () => {
 			reason: 'incompatible_nodes',
 			nodeTypes: [incompatibleBodyNode],
 		});
+	});
+});
+
+describe('getGuardrailCheckWorkflowIncompatibilityReason', () => {
+	it('accepts a decision-trigger workflow that the tool check rejects', () => {
+		const decisionWorkflow = wf('n8n-nodes-base.agentDecisionTrigger', 'n8n-nodes-base.set');
+		expect(getWorkflowToolIncompatibilityReason(decisionWorkflow)).toEqual({
+			reason: 'no_supported_trigger',
+		});
+		expect(getGuardrailCheckWorkflowIncompatibilityReason(decisionWorkflow)).toBeNull();
+	});
+
+	it('still accepts the tool trigger', () => {
+		expect(getGuardrailCheckWorkflowIncompatibilityReason(wf(compatibleTrigger))).toBeNull();
+	});
+
+	it('keeps the incompatible body node rules', () => {
+		const result = getGuardrailCheckWorkflowIncompatibilityReason(
+			wfNamed(
+				[
+					{ type: 'n8n-nodes-base.agentDecisionTrigger', name: 'Trigger' },
+					{ type: incompatibleBodyNode, name: 'Form' },
+				],
+				link('Trigger', 'Form'),
+			),
+		);
+		expect(result).toEqual({
+			reason: 'incompatible_nodes',
+			nodeTypes: [incompatibleBodyNode],
+		});
+	});
+
+	it('checks reachability from the decision trigger as the entry point', () => {
+		const result = getGuardrailCheckWorkflowIncompatibilityReason(
+			wfNamed(
+				[
+					{ type: 'n8n-nodes-base.agentDecisionTrigger', name: 'Trigger' },
+					{ type: 'n8n-nodes-base.set', name: 'Set' },
+					{ type: 'n8n-nodes-base.cronTrigger', name: 'Cron' },
+					{ type: incompatibleBodyNode, name: 'Form' },
+				],
+				{ ...link('Trigger', 'Set'), ...link('Cron', 'Form') },
+			),
+		);
+		expect(result).toBeNull();
+	});
+
+	it('returns no_supported_trigger without any known entry trigger', () => {
+		expect(
+			getGuardrailCheckWorkflowIncompatibilityReason(wf('n8n-nodes-base.cronTrigger')),
+		).toEqual({ reason: 'no_supported_trigger' });
 	});
 });

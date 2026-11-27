@@ -25,7 +25,15 @@ import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
 vi.mock('@n8n/design-system', () => ({
 	N8nAiActivityStep: {
-		props: ['label', 'hasContent', 'loading', 'error', 'hideErrorCallout', 'errorIcon'],
+		props: [
+			'label',
+			'hasContent',
+			'loading',
+			'error',
+			'hideErrorCallout',
+			'errorIcon',
+			'errorIconColor',
+		],
 		data: () => ({ isOpen: false }),
 		computed: {
 			labelParts(this: { label: string }): string[] {
@@ -47,6 +55,7 @@ vi.mock('@n8n/design-system', () => ({
 					data-testid="tool-step-warning"
 					:title="error"
 					:data-error-icon="errorIcon"
+					:data-error-icon-color="errorIconColor"
 				>⚠</span>
 				<div v-if="error && !hideErrorCallout" data-test-id="tool-step-error">
 					<slot name="errorCallout">{{ error }}</slot>
@@ -72,7 +81,7 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nCallout: {
 		props: ['theme'],
-		template: '<div><slot /><slot name="trailingContent" /></div>',
+		template: '<div v-bind="$attrs"><slot /><slot name="trailingContent" /></div>',
 	},
 	N8nIcon: {
 		template: '<i :data-icon="icon" />',
@@ -135,12 +144,19 @@ vi.mock('@n8n/i18n', () => {
 			'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
 			'agents.chat.toolPolicyRefusal.reason': '{name} is restricted on this instance.',
 			'agents.chat.toolPolicyRefusal.reason.project': '{name} is restricted in this project.',
+			'agents.chat.toolGuardrailStop.call.label': 'Tool call stopped by Guardrail {type}',
+			'agents.chat.toolGuardrailStop.result.label': 'Tool result blocked by Guardrail {type}',
+			'agents.builder.guardrails.kind.keywords': 'Blocked Keywords',
+			'agents.builder.guardrails.kind.pii': 'PII detection',
 			'typeAvailabilityPolicies.restrictedNode.scope.instance': 'Restricted on this instance',
 			'typeAvailabilityPolicies.restrictedNode.scope.project': 'Restricted in this project',
 			'typeAvailabilityPolicies.restrictedNode.contactAdmin': 'Contact instance admin',
 			'typeAvailabilityPolicies.restrictedNode.contactProjectAdmin': 'Contact project admin',
 		} as Record<string, string>,
-		baseText(key: string, opts?: { interpolate?: { name?: string; count?: string } }) {
+		baseText(
+			key: string,
+			opts?: { interpolate?: { name?: string; count?: string; type?: string } },
+		) {
 			if (key === 'agents.chat.delegate.label' && opts?.interpolate?.name) {
 				return `Sub-agent · ${opts.interpolate.name}`;
 			}
@@ -154,10 +170,14 @@ vi.mock('@n8n/i18n', () => {
 			}
 			if (key === 'agents.chat.writeTodos.summary.done') return 'done';
 			const template = this.translations[key];
-			if (template && opts?.interpolate?.name) {
-				return template.replace('{name}', opts.interpolate.name);
+			let text = template ?? key;
+			if (template && opts?.interpolate?.type) {
+				text = text.replace('{type}', opts.interpolate.type);
 			}
-			return template ?? key;
+			if (opts?.interpolate?.name) {
+				text = text.replace('{name}', opts.interpolate.name);
+			}
+			return text;
 		},
 	};
 
@@ -215,6 +235,115 @@ describe('AgentChatToolSteps', () => {
 
 		expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(error);
 		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
+	});
+
+	it('shows the guardrail callout for a stopped tool call and keeps it out of the fix flow', async () => {
+		const wrapper = mountSteps(
+			[
+				{
+					tool: 'search_web',
+					toolCallId: 'tc-stopped',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'GuardrailStopError: Tool call stopped by guardrail: guardrail.keywords.g1',
+				},
+			],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+
+		await wrapper.get('button').trigger('click');
+
+		const callout = wrapper.get('[data-test-id="agent-chat-guardrail-stop-callout"]');
+		expect(callout.text()).toBe('Tool call stopped by Guardrail Blocked Keywords');
+		// The step's icon is the blue crosshair, not the danger triangle.
+		const warning = wrapper.get('[data-testid="tool-step-warning"]');
+		expect(warning.attributes('data-error-icon')).toBe('crosshair');
+		expect(warning.attributes('data-error-icon-color')).toBe('--icon-color--info');
+		// Standalone: the step's danger callout stays away, so nothing nests it.
+		expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+		// A guardrail stops by design: no repair action and no fix aggregation.
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+		expect(
+			wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
+		).toBe(false);
+	});
+
+	it('names the guardrail kind for an after-stage stop', async () => {
+		const wrapper = mountSteps(
+			[
+				{
+					tool: 'search_web',
+					toolCallId: 'tc-blocked-result',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'GuardrailStopError: Tool result blocked by guardrail: guardrail.pii.g2',
+				},
+			],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+
+		await wrapper.get('button').trigger('click');
+
+		expect(wrapper.get('[data-test-id="agent-chat-guardrail-stop-callout"]').text()).toBe(
+			'Tool result blocked by Guardrail PII detection',
+		);
+	});
+
+	it('accepts an Error-prefixed stop and a runtime stop code verbatim', async () => {
+		for (const output of [
+			'Error: Tool call stopped by guardrail: guardrail.keywords.g1',
+			'GuardrailStopError: Tool call stopped by guardrail: guardrail.keywords.keywords_j5dfng',
+		]) {
+			const wrapper = mountSteps(
+				[{ tool: 'search_web', toolCallId: 'tc-stopped', state: TOOL_CALL_STATE.ERROR, output }],
+				{ canFixWithAssistant: true, executionId: 'execution-1' },
+			);
+
+			await wrapper.get('button').trigger('click');
+
+			expect(wrapper.get('[data-test-id="agent-chat-guardrail-stop-callout"]').text()).toBe(
+				'Tool call stopped by Guardrail Blocked Keywords',
+			);
+		}
+	});
+
+	it('keeps an unknown guardrail kind on the regular error path', () => {
+		const error = 'GuardrailStopError: Tool call stopped by guardrail: guardrail.unknown-kind.g1';
+		const wrapper = mountSteps(
+			[{ tool: 'lookup', toolCallId: 'tc-error', state: TOOL_CALL_STATE.ERROR, output: error }],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+
+		expect(wrapper.find('[data-test-id="agent-chat-guardrail-stop-callout"]').exists()).toBe(false);
+		expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(error);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
+	});
+
+	it('excludes a guardrail stop from the failures the fix action reports', async () => {
+		const wrapper = mountSteps(
+			[
+				{
+					tool: 'search_web',
+					toolCallId: 'tc-stopped',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'GuardrailStopError: Tool call stopped by guardrail: guardrail.keywords.g1',
+				},
+				{
+					tool: 'fetch_url',
+					toolCallId: 'tc-failed',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Error: connect ECONNREFUSED',
+				},
+			],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+
+		await wrapper.get('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
+		const failures = wrapper.emitted('fixWithAssistant')?.[0]?.[0] as
+			| Array<{ toolCallId: string }>
+			| undefined;
+		expect(failures).toHaveLength(1);
+		expect(failures?.[0]).toMatchObject({ toolCallId: 'tc-failed' });
 	});
 
 	it.each([

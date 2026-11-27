@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
-import type { Component } from 'vue';
 import { N8nDropdownMenu } from '@n8n/design-system';
-import type { AgentToolGuardrailConfig } from '@n8n/api-types';
+import type { Component } from 'vue';
+import type { AgentHitlConfiguration, AgentToolGuardrailConfig } from '@n8n/api-types';
+
+import type { AgentHitlContext } from '../components/agent-hitl.types';
 
 import AgentGuardrailModal from '../components/AgentGuardrailModal.vue';
 import type { AgentJsonToolRef } from '../types';
@@ -17,8 +19,11 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.guardrails.keywords.placeholder': 'Type a keyword and press Enter',
 				'agents.builder.guardrails.pii.all': 'All entities',
 				'agents.builder.guardrails.pii.entities': 'Entities to detect',
-				'agents.builder.guardrails.trigger.before': 'Block execution',
-				'agents.builder.guardrails.trigger.after': 'Block output',
+				'agents.builder.guardrails.response.label': 'Response',
+				'agents.builder.guardrails.response.block': 'Block execution',
+				'agents.builder.guardrails.response.redact': 'Redact the match',
+				'agents.builder.guardrails.response.review': 'Send to review',
+				'agents.builder.guardrails.approval.configuration.label': 'Human approval destination',
 				'agents.builder.guardrails.tools.all': 'All tools',
 				'agents.builder.guardrails.tools.selected': 'Select tools',
 				'agents.builder.guardrails.tools.none': 'Add tools to the agent first.',
@@ -43,6 +48,29 @@ vi.mock('../components/modals/AgentModal.vue', () => ({
 		emits: ['update:open', 'update:title'],
 		template:
 			'<div v-if="open" v-bind="$attrs"><input v-if="editableTitle" data-testid="agent-guardrail-name-input" :value="title" @input="$emit(\'update:title\', $event.target.value)" /><slot /><slot name="footerLeft" /><slot name="footerActions" /></div>',
+	},
+}));
+
+// The workflow picker is covered by its own suite; the stub keeps this suite off the workflow stores.
+vi.mock('../components/AgentWorkflowPicker.vue', () => ({
+	default: {
+		name: 'AgentWorkflowPicker',
+		props: { modelValue: { type: String, default: '' }, projectId: String, disabled: Boolean },
+		emits: ['update:modelValue'],
+		// The modal's data-testid falls through onto the stub's root input.
+		template:
+			'<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+	},
+}));
+
+// The destination menu is covered by the approval suites; the stub offers one fixed workflow destination.
+vi.mock('../components/AgentApprovalDestinationMenu.vue', () => ({
+	default: {
+		name: 'AgentApprovalDestinationMenu',
+		props: { context: Object, projectId: String, disabled: Boolean, label: String },
+		emits: ['select', 'attach'],
+		template:
+			"<button type=\"button\" v-bind=\"$attrs\" @click=\"$emit('select', { method: 'workflow', workflowId: 'wf-9', name: 'Security review' })\" />",
 	},
 }));
 
@@ -150,7 +178,7 @@ const KEYWORDS_ENTRY = {
 	kind: 'keywords',
 	id: 'block_secrets',
 	name: 'Block secrets',
-	stage: 'after',
+	response: 'block',
 	keywords: ['secret'],
 } satisfies AgentToolGuardrailConfig;
 
@@ -160,6 +188,8 @@ function mountModal(
 		guardrail: AgentToolGuardrailConfig | null;
 		kind: AgentToolGuardrailConfig['kind'];
 		tools: AgentJsonToolRef[];
+		approvalConfigurations: AgentHitlConfiguration[];
+		approvalContext: AgentHitlContext;
 		existingIds: string[];
 		disabled: boolean;
 	}> = {},
@@ -233,7 +263,6 @@ describe('AgentGuardrailModal', () => {
 		const keywordInput = wrapper.find('[data-testid="agent-guardrail-keywords"]');
 		await keywordInput.setValue('secret');
 		await keywordInput.trigger('keydown.enter');
-		await selectSingle(wrapper, 'agent-guardrail-trigger', 'after');
 		await saveButton(wrapper).trigger('click');
 
 		const saved = savedConfig(wrapper);
@@ -241,7 +270,7 @@ describe('AgentGuardrailModal', () => {
 			kind: 'keywords',
 			id: 'block_secrets',
 			name: 'Block secrets',
-			stage: 'after',
+			response: 'block',
 			keywords: ['secret'],
 		});
 		// "All tools" persists no tools field.
@@ -353,7 +382,7 @@ describe('AgentGuardrailModal', () => {
 		expect(saved).toEqual({
 			kind: 'jailbreak',
 			id: expect.stringMatching(/^jailbreak_[a-z0-9]+$/),
-			stage: 'before',
+			response: 'block',
 			prompt: 'Detect prompt injection',
 			threshold: 0.8,
 		});
@@ -370,11 +399,10 @@ describe('AgentGuardrailModal', () => {
 		expect(saved.allowedSchemes).toEqual(['https']);
 	});
 
-	it('keeps the shared fields and resets kind options on a kind switch', async () => {
+	it('resets the kind options and presets the new kind response on a switch', async () => {
 		const wrapper = mountModal({ kind: 'urls' });
 
 		await wrapper.find('[data-testid="agent-guardrail-block-userinfo"]').trigger('click');
-		await selectSingle(wrapper, 'agent-guardrail-trigger', 'after');
 		await pickKind(wrapper, 'secretKeys');
 		// The permissiveness picker is a segment control; its options carry
 		// radio-button-<value> ids.
@@ -385,7 +413,7 @@ describe('AgentGuardrailModal', () => {
 		expect(saved).toMatchObject({
 			kind: 'secretKeys',
 			permissiveness: 'strict',
-			stage: 'after',
+			response: 'redact',
 		});
 		expect('blockUserinfo' in saved).toBe(false);
 	});
@@ -398,20 +426,20 @@ describe('AgentGuardrailModal', () => {
 		expect(savedConfig(wrapper)).toEqual(KEYWORDS_ENTRY);
 	});
 
-	it('preserves both stages when the saved stage is omitted', async () => {
-		const guardrail = { ...KEYWORDS_ENTRY, stage: undefined };
-		const wrapper = mountModal({ guardrail });
-		await saveButton(wrapper).trigger('click');
-		expect(savedConfig(wrapper)).not.toHaveProperty('stage');
-	});
+	it('preserves the saved stage on an unchanged edit, and drops it on a kind switch', async () => {
+		const staged: AgentToolGuardrailConfig = { ...KEYWORDS_ENTRY, stage: 'before' };
 
-	it('removes a keyword when its remove button is clicked', async () => {
-		const wrapper = mountModal({ guardrail: { ...KEYWORDS_ENTRY, keywords: ['secret', 'keep'] } });
-		await wrapper
-			.findAll('[data-testid="agent-guardrail-keywords-tag-remove"]')[0]
-			.trigger('click');
-		await saveButton(wrapper).trigger('click');
-		expect(savedConfig(wrapper)).toMatchObject({ keywords: ['keep'] });
+		const edit = mountModal({ guardrail: staged });
+		await saveButton(edit).trigger('click');
+		expect(savedConfig(edit)).toEqual(staged);
+
+		// A kind switch leaves the stage unset, so the new kind's preset applies.
+		const switched = mountModal({ guardrail: staged });
+		await pickKind(switched, 'secretKeys');
+		await saveButton(switched).trigger('click');
+		const afterSwitch = savedConfig(switched);
+		expect(afterSwitch.kind).toBe('secretKeys');
+		expect('stage' in afterSwitch).toBe(false);
 	});
 
 	it('keeps the id while a rename changes only the name', async () => {
@@ -423,20 +451,6 @@ describe('AgentGuardrailModal', () => {
 		const saved = savedConfig(wrapper);
 		expect(saved.id).toBe('block_secrets');
 		expect(saved.name).toBe('Renamed');
-	});
-
-	it('preserves the workflow when editing a workflow guardrail', async () => {
-		const guardrail = {
-			id: 'workflow-check',
-			kind: 'workflow',
-			stage: 'before',
-			workflowId: 'wf-guardrail',
-		} as const;
-		const wrapper = mountModal({ guardrail });
-
-		expect(wrapper.find('[data-testid="agent-guardrail-prompt"]').exists()).toBe(false);
-		await saveButton(wrapper).trigger('click');
-		expect(savedConfig(wrapper)).toEqual(guardrail);
 	});
 
 	it('emits remove only from the edit footer', async () => {
@@ -461,12 +475,12 @@ describe('AgentGuardrailModal', () => {
 		await wrapper.setProps({ open: true });
 
 		expect(wrapper.find('[data-testid="agent-guardrail-type"]').exists()).toBe(true);
-		const triggerSelect = wrapper.find('[data-testid="agent-guardrail-trigger"]');
+		const responseSelect = wrapper.find('[data-testid="agent-guardrail-response"]');
 		expect(
-			Array.from((triggerSelect.element as HTMLSelectElement).options).find(
+			Array.from((responseSelect.element as HTMLSelectElement).options).find(
 				(option) => option.selected,
 			)?.value,
-		).toBe('after');
+		).toBe('block');
 	});
 
 	it('disables every control and both footer actions for a read-only builder', async () => {
@@ -479,8 +493,6 @@ describe('AgentGuardrailModal', () => {
 		expect(
 			wrapper.find('[data-testid="agent-guardrail-remove"]').attributes('disabled'),
 		).toBeDefined();
-		// The read-only modal renders the name as static text, not as an input.
-		expect(wrapper.find('[data-testid="agent-guardrail-name-input"]').exists()).toBe(false);
 
 		await saveButton(wrapper).trigger('click');
 		expect(wrapper.emitted('save')).toBeUndefined();
@@ -493,35 +505,132 @@ describe('AgentGuardrailModal', () => {
 		expect(callout.exists()).toBe(true);
 		expect(callout.text()).toContain('agents.builder.guardrails.tools.callout');
 		// Below the tool selection, inside the trigger group.
-		const toolsSwitch = wrapper.get('[data-testid="agent-guardrail-tools-all"]');
+		const toolsRadio = wrapper.get('[data-testid="agent-guardrail-tools-all"]');
 		expect(
-			toolsSwitch.element.compareDocumentPosition(callout.element) &
+			toolsRadio.element.compareDocumentPosition(callout.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 	});
 
-	it('keeps a reopened entrys kind fields loaded across a kind change', async () => {
-		// The mounted modal reopens with a different kind: the queued kind
-		// watcher must not wipe the fields the open watcher just loaded.
-		const nsfwEntry: AgentToolGuardrailConfig = {
-			kind: 'nsfw',
-			id: 'nsfw-guard',
-			name: 'Content check',
-			stage: 'before',
-			prompt: 'Refuse unsafe content',
-			threshold: 0.9,
-		};
-		const wrapper = mountModal({ guardrail: KEYWORDS_ENTRY });
-		await wrapper.setProps({ open: false });
-		await wrapper.setProps({ guardrail: nsfwEntry, open: true });
+	it('offers only the responses the kind allows: model kinds never redact', () => {
+		const wrapper = mountModal({ kind: 'jailbreak' });
+		const options = Array.from(
+			(wrapper.get('[data-testid="agent-guardrail-response"]').element as HTMLSelectElement)
+				.options,
+		).map((option) => option.value);
+		expect(options).toEqual(['block', 'approval']);
+	});
 
-		expect(wrapper.find('[data-testid="agent-guardrail-prompt"]').element).toBeTruthy();
-		await expect
-			.poll(
-				() =>
-					(wrapper.find('[data-testid="agent-guardrail-prompt"]').element as HTMLTextAreaElement)
-						.value,
-			)
-			.toBe('Refuse unsafe content');
+	it('presets the kind default response: pii redacts, keywords block', () => {
+		const selected = (wrapper: ReturnType<typeof mountModal>) =>
+			Array.from(
+				(wrapper.get('[data-testid="agent-guardrail-response"]').element as HTMLSelectElement)
+					.options,
+			).find((option) => option.selected)?.value;
+
+		expect(selected(mountModal({ kind: 'pii' }))).toBe('redact');
+		expect(selected(mountModal({ kind: 'keywords' }))).toBe('block');
+		expect(selected(mountModal({ kind: 'jailbreak' }))).toBe('block');
+	});
+
+	it('requires a approval destination for the approval response and writes it', async () => {
+		const wrapper = mountModal({ kind: 'keywords' });
+		const keywordInput = wrapper.find('[data-testid="agent-guardrail-keywords"]');
+		await keywordInput.setValue('secret');
+		await keywordInput.trigger('keydown.enter');
+		await selectSingle(wrapper, 'agent-guardrail-response', 'approval');
+
+		// No configurations exist: the empty-state hint shows and save stays off.
+		expect(wrapper.find('[data-testid="agent-guardrail-approval-configuration"]').exists()).toBe(
+			false,
+		);
+		expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
+
+		await wrapper.setProps({
+			approvalConfigurations: [
+				{ id: 'config-1', name: 'Security review', method: 'workflow', workflowId: 'wf-9' },
+			],
+		});
+		await selectSingle(wrapper, 'agent-guardrail-approval-configuration', 'config-1');
+		expect(saveButton(wrapper).attributes('disabled')).toBeUndefined();
+		await saveButton(wrapper).trigger('click');
+
+		expect(savedConfig(wrapper)).toMatchObject({
+			kind: 'keywords',
+			keywords: ['secret'],
+			response: 'approval',
+			approvalConfigurationId: 'config-1',
+		});
+	});
+
+	it('adds a reviewer from the empty picker and selects it for the guardrail', async () => {
+		const saveConfiguration = vi.fn();
+		const approvalContext: AgentHitlContext = {
+			getConfig: () => null,
+			saveConfiguration,
+		};
+		const wrapper = mountModal({ kind: 'keywords', approvalContext });
+		const keywordInput = wrapper.find('[data-testid="agent-guardrail-keywords"]');
+		await keywordInput.setValue('secret');
+		await keywordInput.trigger('keydown.enter');
+		await selectSingle(wrapper, 'agent-guardrail-response', 'approval');
+
+		// The empty state offers the add affordance; the select is absent.
+		expect(wrapper.find('[data-testid="agent-guardrail-approval-configuration"]').exists()).toBe(
+			false,
+		);
+		await wrapper
+			.get('[data-testid="agent-guardrail-approval-configuration-add"]')
+			.trigger('click');
+
+		// The picked destination is saved with a new id and selected for the guardrail.
+		expect(saveConfiguration).toHaveBeenCalledTimes(1);
+		const configuration = saveConfiguration.mock.calls[0]?.[0] as AgentHitlConfiguration;
+		expect(configuration).toMatchObject({
+			method: 'workflow',
+			workflowId: 'wf-9',
+			name: 'Security review',
+		});
+		expect(configuration.id.length).toBeGreaterThan(0);
+
+		// The configuration list derives from the agent config, so it re-renders.
+		await wrapper.setProps({ approvalConfigurations: [configuration] });
+		expect(saveButton(wrapper).attributes('disabled')).toBeUndefined();
+		await saveButton(wrapper).trigger('click');
+
+		expect(savedConfig(wrapper)).toMatchObject({
+			kind: 'keywords',
+			keywords: ['secret'],
+			response: 'approval',
+			approvalConfigurationId: configuration.id,
+		});
+	});
+
+	it('keeps the plain hint without a review context', async () => {
+		const wrapper = mountModal({ kind: 'keywords' });
+		const keywordInput = wrapper.find('[data-testid="agent-guardrail-keywords"]');
+		await keywordInput.setValue('secret');
+		await keywordInput.trigger('keydown.enter');
+		await selectSingle(wrapper, 'agent-guardrail-response', 'approval');
+
+		expect(
+			wrapper.find('[data-testid="agent-guardrail-approval-configuration-add"]').exists(),
+		).toBe(false);
+		expect(wrapper.text()).toContain('agents.builder.guardrails.approval.configuration.none');
+	});
+
+	it('requires a check workflow for the workflow kind and writes its id', async () => {
+		const wrapper = mountModal({ kind: 'workflow' });
+		expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
+
+		await wrapper.find('[data-testid="agent-guardrail-check-workflow"]').setValue('wf-7');
+		expect(saveButton(wrapper).attributes('disabled')).toBeUndefined();
+		await saveButton(wrapper).trigger('click');
+
+		expect(savedConfig(wrapper)).toMatchObject({
+			kind: 'workflow',
+			workflowId: 'wf-7',
+			response: 'block',
+		});
 	});
 });

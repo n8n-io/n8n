@@ -9,8 +9,10 @@ import {
 	JAILBREAK_PROMPT,
 	type CheckFn,
 	type GuardrailModelRunner,
+	type GuardrailResult,
 	NSFW_SYSTEM_PROMPT,
 	PIIEntity,
+	redactMatches,
 	TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
 } from '@n8n/ai-utilities/guardrails';
 import {
@@ -18,14 +20,24 @@ import {
 	type BudgetGuardrailOptions,
 	type ExecutionOptions,
 	type GuardrailDecision,
+	type GuardrailNotice,
+	type GuardrailToolCallContext,
 	type ModelGuardrail,
 	type RunOptions,
 } from '@n8n/agents';
-import type { AgentToolGuardrailConfig, AgentToolGuardrailKind } from '@n8n/api-types';
+import {
+	TOOL_GUARDRAIL_RESPONSES,
+	TOOL_GUARDRAIL_STAGE_SCOPE,
+	type AgentToolGuardrailConfig,
+	type AgentToolGuardrailKind,
+} from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { generateText, type LanguageModel } from 'ai';
 import { nodeNameToToolName } from 'n8n-workflow';
 
 import { attachGuardrails } from './budget-guardrail';
+import type { ToolGuardrailApprovalContext } from './guardrail-approval';
+import { ToolGuardrailApprovalService } from './guardrail-approval';
 import { createWorkflowGuardrailCheck } from './tools/workflow-guardrail-check';
 import type { WorkflowToolContext } from './tools/workflow-tool-factory';
 import type { ToolRegistry } from './tool-registry';
@@ -33,11 +45,17 @@ import type { ToolRegistry } from './tool-registry';
 /**
  * Pattern-, model-, and workflow-based tool guardrails for saved agents. Each
  * configured entry becomes one hook that runs at the stages its kind supports:
- * absent `stage` means every supported stage, absent `tools` means every tool.
- * The check runs on the JSON-stringified tool input (before) and final tool
- * result (after). A trigger or a check failure stops the call with the code
- * `guardrail.<kind>.<id>`.
- * Workflow checks use the structured tool input and run before the call.
+ * absent `stage` means the kind's scope, absent `tools` means every tool. The
+ * check runs on the JSON-stringified tool input (before) and final tool
+ * result (after). A `block` response stops the call with the code
+ * `guardrail.<kind>.<id>`; a `redact` response rewrites the value with the
+ * matches removed; a `approval` response routes the flagged content to the
+ * agent's human-review configuration and lets the call continue.
+ * Pattern kinds check locally; the model kinds run on the agent's own model
+ * through the AGENT-1547 seam and charge its spend; workflow checks use the
+ * structured tool input and run before the call. Hooks build pattern kinds
+ * first, so a cheap stop short-circuits the model spend, and workflow checks
+ * last, as the most expensive stop.
  */
 
 /** The node's default trigger confidence for the model-based kinds. */
@@ -74,6 +92,11 @@ type ModelGuardrailKind = 'jailbreak' | 'nsfw' | 'topicalAlignment';
 type PatternToolGuardrailConfig = Exclude<AgentToolGuardrailConfig, { kind: ModelGuardrailKind }>;
 
 type ModelToolGuardrailConfig = Extract<AgentToolGuardrailConfig, { kind: ModelGuardrailKind }>;
+
+/** The configured response, with the kind's default for configs saved before the field existed. */
+function responseOf(guardrail: AgentToolGuardrailConfig): 'block' | 'redact' | 'approval' {
+	return guardrail.response ?? TOOL_GUARDRAIL_RESPONSES[guardrail.kind].default;
+}
 
 function buildPatternCheck(guardrail: PatternToolGuardrailConfig): CheckFn | undefined {
 	switch (guardrail.kind) {
@@ -158,42 +181,117 @@ function checkedText(value: unknown): string {
 }
 
 /**
- * Checks fail closed: a trigger, a reported failure, or a throw all stop.
- * Serialization lives inside the try so a circular or `BigInt` value stops
- * the call instead of escaping as an exception.
+ * A check run. `failed` covers a reported failure and a throw. Serialization
+ * lives inside the try so a circular or `BigInt` value fails the check
+ * instead of escaping as an exception.
+ */
+type CheckOutcome = { failed: true } | { failed: false; result: GuardrailResult };
+
+async function runCheck(check: CheckFn, value: unknown): Promise<CheckOutcome> {
+	try {
+		return { failed: false, result: await check(checkedText(value)) };
+	} catch {
+		return { failed: true };
+	}
+}
+
+/** Fires the flagged content at the approval destination; the call itself continues. */
+function routeApproval(
+	approval: {
+		service: ToolGuardrailApprovalService;
+		context: ToolGuardrailApprovalContext | undefined;
+	},
+	guardrail: AgentToolGuardrailConfig,
+	ctx: GuardrailToolCallContext,
+	stage: 'before' | 'after',
+	value: unknown,
+	result: GuardrailResult,
+): void {
+	void approval.service.route(approval.context, guardrail, ctx, {
+		stage,
+		value,
+		matchDetails: result.info,
+	});
+}
+
+/** Everything a triggered check needs to apply the configured response. */
+interface ResponseContext {
+	code: string;
+	response: 'block' | 'redact' | 'approval';
+	guardrail: AgentToolGuardrailConfig;
+	stage: 'before' | 'after';
+	ctx: GuardrailToolCallContext;
+	approval:
+		| { service: ToolGuardrailApprovalService; context: ToolGuardrailApprovalContext | undefined }
+		| undefined;
+	notice: ((notice: GuardrailNotice) => void) | undefined;
+}
+
+/**
+ * Checks fail closed: a trigger, a reported failure, or a throw all stop a
+ * `block` response. A `redact` response re-runs the check on every string of
+ * the value and masks the matches in place, so a token that the serialized
+ * scan reported with JSON punctuation attached still redacts cleanly. A match
+ * that exists only in the serialized form (a serialization artifact, no field
+ * content carries it) has nothing to remove, so the call continues. A
+ * `approval` response routes the flagged content to the agent's human-review
+ * configuration and lets the call continue.
  */
 async function decide(
 	check: CheckFn,
 	value: unknown,
-	code: string,
+	rc: ResponseContext,
 ): Promise<GuardrailDecision | undefined> {
-	try {
-		const result = await check(checkedText(value));
-		if (result.tripwireTriggered || result.executionFailed) return { action: 'stop', code };
+	const outcome = await runCheck(check, value);
+	if (outcome.failed || outcome.result.executionFailed) return { action: 'stop', code: rc.code };
+	if (!outcome.result.tripwireTriggered) return undefined;
+	if (rc.response === 'approval') {
+		if (rc.approval) {
+			rc.notice?.({ code: rc.code, outcome: 'approval' });
+			routeApproval(rc.approval, rc.guardrail, rc.ctx, rc.stage, value, outcome.result);
+		}
+		// The call continues: an approval informs, it never gates.
 		return undefined;
-	} catch {
-		return { action: 'stop', code };
 	}
+	if (rc.response === 'block') return { action: 'stop', code: rc.code };
+
+	const isPlainObject = (entry: object): boolean => {
+		const proto = Object.getPrototypeOf(entry);
+		return proto === Object.prototype || proto === null;
+	};
+	const walk = async (entry: unknown): Promise<unknown> => {
+		if (typeof entry === 'string') {
+			// The check sees the raw string: the serialized scan already
+			// carried the trigger, and this pass needs the clean tokens.
+			let result: GuardrailResult | undefined;
+			try {
+				result = await check(entry);
+			} catch {
+				result = undefined;
+			}
+			if (result && !result.executionFailed && result.tripwireTriggered) {
+				return redactMatches(entry, [result]);
+			}
+			return entry;
+		}
+		if (Array.isArray(entry)) {
+			return await Promise.all(entry.map(async (item) => await walk(item)));
+		}
+		if (typeof entry === 'object' && entry !== null && isPlainObject(entry)) {
+			return Object.fromEntries(
+				await Promise.all(
+					Object.entries(entry).map(async ([key, item]) => [key, await walk(item)]),
+				),
+			);
+		}
+		return entry;
+	};
+	const rewritten = await walk(value);
+	if (checkedText(rewritten) === checkedText(value)) {
+		return undefined;
+	}
+	return { action: 'redact', code: rc.code, value: rewritten };
 }
-
-const BOTH_STAGES: ReadonlySet<'before' | 'after'> = new Set(['before', 'after']);
-const BEFORE_ONLY: ReadonlySet<'before' | 'after'> = new Set(['before']);
-
-/**
- * Stage support is a property of the kind: the pattern kinds run at both
- * stages; the model kinds run at both; a workflow-backed kind registers
- * before-only, since the call it guards has not produced a result yet.
- */
-const SUPPORTED_STAGES: Record<AgentToolGuardrailKind, ReadonlySet<'before' | 'after'>> = {
-	keywords: BOTH_STAGES,
-	pii: BOTH_STAGES,
-	secretKeys: BOTH_STAGES,
-	urls: BOTH_STAGES,
-	jailbreak: BOTH_STAGES,
-	nsfw: BOTH_STAGES,
-	topicalAlignment: BOTH_STAGES,
-	workflow: BEFORE_ONLY,
-};
 
 /** The kinds whose check runs on an LLM rather than a local pattern. */
 const MODEL_KINDS: ReadonlySet<AgentToolGuardrailKind> = new Set([
@@ -224,13 +322,20 @@ function buildHook(
 	guardrailModel: LanguageModel | undefined,
 	spend: Omit<GuardrailSpend, 'callId'> | undefined,
 	guardrailWorkflowContext: WorkflowToolContext | undefined,
+	approval:
+		| { service: ToolGuardrailApprovalService; context: ToolGuardrailApprovalContext | undefined }
+		| undefined,
+	notice: ((notice: GuardrailNotice) => void) | undefined,
 ): ModelGuardrail | undefined {
 	const stages =
-		guardrail.stage === undefined ? SUPPORTED_STAGES[guardrail.kind] : new Set([guardrail.stage]);
+		guardrail.stage === undefined
+			? new Set(TOOL_GUARDRAIL_STAGE_SCOPE[guardrail.kind])
+			: new Set([guardrail.stage]);
 	const toolNames =
 		guardrail.tools === undefined ? undefined : resolveToolNames(guardrail.tools, registry);
 	const covers = (toolName: string) => toolNames === undefined || toolNames.has(toolName);
 	const code = `guardrail.${guardrail.kind}.${guardrail.id}`;
+	const response = responseOf(guardrail);
 
 	if (guardrail.kind === 'workflow') {
 		// A missing callable context is a construction gap, not a user
@@ -243,9 +348,16 @@ function buildHook(
 			hook.beforeTool = async (ctx) => {
 				if (!covers(ctx.toolName)) return undefined;
 				const result = await check(ctx.toolName, ctx.input);
-				return result.tripwireTriggered || result.executionFailed
-					? { action: 'stop', code }
-					: undefined;
+				if (result.executionFailed) return { action: 'stop', code };
+				if (!result.tripwireTriggered) return undefined;
+				if (response === 'approval') {
+					if (approval) {
+						notice?.({ code, outcome: 'approval' });
+						routeApproval(approval, guardrail, ctx, 'before', ctx.input, result);
+					}
+					return undefined;
+				}
+				return { action: 'stop', code };
 			};
 		}
 		return hook;
@@ -256,12 +368,13 @@ function buildHook(
 	let run: (
 		stage: 'before' | 'after',
 		toolCallId: string,
+		ctx: GuardrailToolCallContext,
 		value: unknown,
 	) => Promise<GuardrailDecision | undefined>;
 	if (isModelKind(guardrail)) {
 		if (guardrailModel === undefined) return undefined;
 		const model = guardrailModel;
-		run = async (stage, toolCallId, value) =>
+		run = async (stage, toolCallId, ctx, value) =>
 			await decide(
 				buildModelCheck(
 					guardrail,
@@ -269,23 +382,30 @@ function buildHook(
 					spend ? { ...spend, callId: guardrailCallId(toolCallId, guardrail, stage) } : undefined,
 				),
 				value,
-				code,
+				{ code, response, guardrail, stage, ctx, approval, notice },
 			);
 	} else {
 		const check = buildPatternCheck(guardrail);
 		if (!check) return undefined;
-		run = async (_stage, _toolCallId, value) => await decide(check, value, code);
+		run = async (stage, _toolCallId, ctx, value) =>
+			await decide(check, value, { code, response, guardrail, stage, ctx, approval, notice });
 	}
 
 	const hook: ModelGuardrail = {};
 	if (stages.has('before')) {
-		hook.beforeTool = async (ctx) =>
-			covers(ctx.toolName) ? await run('before', ctx.toolCallId, ctx.input) : undefined;
+		hook.beforeTool = async (ctx) => {
+			if (!covers(ctx.toolName)) return undefined;
+			const decision = await run('before', ctx.toolCallId, ctx, ctx.input);
+			if (decision?.action === 'redact') notice?.({ code, outcome: 'redact' });
+			return decision;
+		};
 	}
 	if (stages.has('after')) {
 		hook.afterTool = async (ctx, result): Promise<GuardrailDecision> => {
 			if (!covers(ctx.toolName)) return { action: 'allow' };
-			return (await run('after', ctx.toolCallId, result)) ?? { action: 'allow' };
+			const decision = await run('after', ctx.toolCallId, ctx, result);
+			if (decision?.action === 'redact') notice?.({ code, outcome: 'redact' });
+			return decision ?? { action: 'allow' };
 		};
 	}
 	return hook;
@@ -303,6 +423,8 @@ export function withToolGuardrails<T extends RunOptions & ExecutionOptions>(
 		budget?: BudgetGuardrailOptions;
 		/** Callable-workflow machinery for `workflow`-kind guardrail checks. */
 		guardrailWorkflowContext?: WorkflowToolContext;
+		/** Approval identity for `approval`-response guardrails. */
+		guardrailApproval?: ToolGuardrailApprovalContext;
 	},
 ): T {
 	const guardrails = input.toolGuardrails ?? [];
@@ -323,6 +445,9 @@ export function withToolGuardrails<T extends RunOptions & ExecutionOptions>(
 		input.budget && input.guardrailModelId
 			? { modelId: input.guardrailModelId, budget: input.budget }
 			: undefined;
+	const approval = guardrails.some((guardrail) => responseOf(guardrail) === 'approval')
+		? { service: Container.get(ToolGuardrailApprovalService), context: input.guardrailApproval }
+		: undefined;
 
 	const hooks: ModelGuardrail[] = [];
 	for (const guardrail of ordered) {
@@ -332,6 +457,8 @@ export function withToolGuardrails<T extends RunOptions & ExecutionOptions>(
 			input.guardrailModel,
 			spend,
 			input.guardrailWorkflowContext,
+			approval,
+			options.guardrails?.onNotice,
 		);
 		if (hook) hooks.push(hook);
 	}

@@ -12,7 +12,17 @@ export interface BuiltGuardrail {
 	/** @internal */ readonly _config: Record<string, unknown>;
 }
 
-export type GuardrailDecision = { action: 'allow' } | { action: 'stop'; code: string };
+export type GuardrailDecision =
+	| { action: 'allow' }
+	| { action: 'stop'; code: string }
+	| { action: 'redact'; code: string; value: unknown };
+
+/**
+ * A model-call hook can only allow or stop: the model-call runner has no
+ * redact handling, so a redact there would silently send the unredacted
+ * request. Redaction belongs to the tool-call stages.
+ */
+export type GuardrailModelCallDecision = { action: 'allow' } | { action: 'stop'; code: string };
 
 export type GuardrailStop = { code: string };
 export type GuardrailModelCallSource = 'turn' | 'title' | 'memory';
@@ -36,11 +46,14 @@ export interface GuardrailToolCallContext {
 }
 
 /**
- * Hooks around model and tool calls. A `before*` hook returns `undefined` or
- * `allow` to continue, or `stop` to refuse the call.
+ * Hooks around model and tool calls. A tool-call hook returns `undefined` or
+ * `allow` to continue, `stop` to refuse the call, or `redact` to continue
+ * with the rewritten value: a before-stage redact rewrites the tool input,
+ * an after-stage redact rewrites the tool result. A model-call hook can only
+ * allow or stop.
  */
 export interface ModelGuardrail {
-	before?(ctx: GuardrailModelCallContext): Promise<GuardrailDecision | undefined>;
+	before?(ctx: GuardrailModelCallContext): Promise<GuardrailModelCallDecision | undefined>;
 	after?(ctx: GuardrailModelCallContext, usage: TokenUsage | undefined): Promise<void>;
 	beforeTool?(ctx: GuardrailToolCallContext): Promise<GuardrailDecision | undefined>;
 	afterTool?(
@@ -48,6 +61,12 @@ export interface ModelGuardrail {
 		result: unknown,
 	): Promise<GuardrailDecision> | Promise<void>;
 }
+
+/**
+ * What an after-stage tool check decided: stop the call, or continue with the
+ * redacted result.
+ */
+export type GuardrailToolCallOutcome = { stop: GuardrailStop } | { redacted: unknown };
 
 /** Host-supplied on `ExecutionOptions`. The SDK never looks up settings. */
 export interface GuardrailsOptions {
@@ -60,4 +79,6 @@ export interface GuardrailsOptions {
 export type GuardrailNotice = {
 	code: string;
 	agentId?: string;
+	/** Marks a non-blocking outcome so the session timeline can show it later. */
+	outcome?: 'redact' | 'approval';
 };

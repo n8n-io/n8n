@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { TOOL_GUARDRAIL_PII_ENTITIES } from '@n8n/api-types';
 import type {
+	AgentHitlConfiguration,
 	AgentToolGuardrailConfig,
 	AgentToolGuardrailKind,
 	AgentToolGuardrailToolRef,
 	ToolGuardrailPiiEntity,
+	ToolGuardrailResponse,
 } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -20,17 +22,25 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { computed, nextTick, ref, watch } from 'vue';
 
 import type { AgentJsonToolRef } from '../types';
 import {
+	guardrailAllowedResponses,
+	guardrailDefaultResponse,
 	guardrailKindLabelKey,
+	guardrailResponseLabelKey,
 	piiEntityLabelKey,
 	slugifyGuardrailId,
 	TOOL_GUARDRAIL_KINDS,
 } from '../utils/guardrails';
+import type { AgentHitlContext } from './agent-hitl.types';
+import type { ApprovalDestination } from '../utils/approvalDestination';
 import AgentModal from './modals/AgentModal.vue';
+import AgentApprovalDestinationMenu from './AgentApprovalDestinationMenu.vue';
 import AgentTagInput from './AgentTagInput.vue';
+import AgentWorkflowPicker from './AgentWorkflowPicker.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -41,6 +51,12 @@ const props = withDefaults(
 		kind?: AgentToolGuardrailKind;
 		/** The agent's configured tools, for the "Which tools" picker. */
 		tools?: AgentJsonToolRef[];
+		/** The agent's human-review configurations, for the approval response target. */
+		approvalConfigurations?: AgentHitlConfiguration[];
+		/** Write access to the agent's configurations, so an empty picker can add a reviewer. */
+		approvalContext?: AgentHitlContext;
+		/** The agent's project: the check workflow picker lists its workflows. */
+		projectId?: string;
 		/** Ids of guardrails that already exist, so a create cannot duplicate one. */
 		existingIds?: string[];
 		disabled?: boolean;
@@ -49,6 +65,9 @@ const props = withDefaults(
 		guardrail: null,
 		kind: 'keywords',
 		tools: () => [],
+		approvalConfigurations: () => [],
+		approvalContext: undefined,
+		projectId: undefined,
 		disabled: false,
 	},
 );
@@ -75,7 +94,9 @@ const blockUserinfo = ref(true);
 const allowSubdomains = ref(false);
 const prompt = ref('');
 const threshold = ref<number | undefined>();
-const stage = ref<'before' | 'after' | 'both'>('before');
+const response = ref<ToolGuardrailResponse>('block');
+const approvalConfigurationId = ref('');
+const checkWorkflowId = ref('');
 const toolScope = ref<'all' | 'selected'>('all');
 const selectedToolKeys = ref<string[]>([]);
 
@@ -93,6 +114,10 @@ function resetKindFields() {
 	allowSubdomains.value = false;
 	prompt.value = '';
 	threshold.value = undefined;
+	// The new kind presets its own default response and drops the old target.
+	response.value = guardrailDefaultResponse(selectedKind.value);
+	approvalConfigurationId.value = '';
+	checkWorkflowId.value = '';
 }
 
 function toolRefKey(ref: AgentToolGuardrailToolRef): string {
@@ -126,14 +151,17 @@ watch(
 					blockUserinfo.value = guardrail.blockUserinfo ?? true;
 					allowSubdomains.value = guardrail.allowSubdomains ?? false;
 					break;
-				case 'jailbreak':
-				case 'nsfw':
-				case 'topicalAlignment':
+				case 'workflow':
+					checkWorkflowId.value = guardrail.workflowId;
+					break;
+				default:
+					// The model-based kinds: jailbreak, nsfw, topicalAlignment.
 					prompt.value = guardrail.prompt ?? '';
 					threshold.value = guardrail.threshold;
 			}
 		}
-		stage.value = guardrail ? (guardrail.stage ?? 'both') : 'before';
+		response.value = guardrail?.response ?? guardrailDefaultResponse(selectedKind.value);
+		approvalConfigurationId.value = guardrail?.approvalConfigurationId ?? '';
 		toolScope.value = guardrail?.tools ? 'selected' : 'all';
 		selectedToolKeys.value = (guardrail?.tools ?? []).map(toolRefKey);
 		// The kind watcher runs as a queued job after this one; clearing the
@@ -210,15 +238,39 @@ const permissivenessOptions = computed(() =>
 	})),
 );
 
-const stageOptions = computed(() =>
-	(['before', 'after', 'both'] as const).map((value) => ({
+const responseOptions = computed(() =>
+	guardrailAllowedResponses(selectedKind.value).map((value) => ({
 		value,
-		label: i18n.baseText(`agents.builder.guardrails.trigger.${value}` as BaseTextKey),
+		label: i18n.baseText(guardrailResponseLabelKey(value)),
 	})),
 );
 
+// Channel destinations have no notify-only delivery yet, so a channel approval
+// would never route; the picker offers workflow destinations only.
+const approvalConfigurationOptions = computed(() =>
+	props.approvalConfigurations
+		.filter((configuration) => configuration.method === 'workflow')
+		.map((configuration) => ({
+			value: configuration.id,
+			label: configuration.name,
+		})),
+);
+
+/**
+ * Saves a picked approval destination into the agent's configurations and
+ * selects it for this guardrail — one step, so an empty picker is never a
+ * dead end. The configuration list derives from the agent config, so the
+ * picker shows the new entry on the next render.
+ */
+function addApprovalConfiguration(destination: ApprovalDestination) {
+	if (!props.approvalContext || props.disabled) return;
+	const configuration = { ...destination, id: generateNanoId() };
+	props.approvalContext.saveConfiguration(configuration);
+	approvalConfigurationId.value = configuration.id;
+}
+
 const piiEntityOptions = computed(() =>
-	TOOL_GUARDRAIL_PII_ENTITIES.map((value) => ({
+	TOOL_GUARDRAIL_PII_ENTITIES.map((value: ToolGuardrailPiiEntity) => ({
 		value,
 		label: i18n.baseText(piiEntityLabelKey(value)),
 	})),
@@ -227,54 +279,90 @@ const piiEntityOptions = computed(() =>
 /** Light client checks; the backend schema stays the authority on save. */
 const canSave = computed(() => {
 	if (toolScope.value === 'selected' && selectedTools.value.length === 0) return false;
-	if (selectedKind.value === 'workflow') return props.guardrail?.kind === 'workflow';
-	if (selectedKind.value === 'keywords') return keywords.value.length > 0;
-	if (selectedKind.value === 'pii') {
-		return piiType.value === 'all' || piiEntities.value.length > 0;
-	}
+	if (selectedKind.value === 'keywords' && keywords.value.length === 0) return false;
+	if (selectedKind.value === 'pii' && !(piiType.value === 'all' || piiEntities.value.length > 0))
+		return false;
+	if (selectedKind.value === 'workflow' && checkWorkflowId.value.trim().length === 0) return false;
+	// The approval response routes through one of the agent's configurations.
+	if (response.value === 'approval' && approvalConfigurationId.value.length === 0) return false;
 	if (threshold.value !== undefined && (threshold.value < 0 || threshold.value > 1)) return false;
 	return true;
 });
 
-function buildConfig(): AgentToolGuardrailConfig | undefined {
+/**
+ * The response field, narrowed to the kind the config carries: the picker only
+ * offers the kind's allowed responses, so the cast is a narrowing, not a guess.
+ */
+function responseField<K extends AgentToolGuardrailKind>(kind: K) {
+	const allowed = guardrailAllowedResponses(kind);
+	return { response: response.value as (typeof allowed)[number] };
+}
+
+function buildConfig(): AgentToolGuardrailConfig {
 	// The id is stable across edits; a create derives it from the name.
+	// An edit of the same kind keeps the saved stage: dropping it would
+	// silently broaden or narrow the guardrail's enforcement. A kind switch
+	// leaves the stage unset, so the kind's preset scope applies.
+	const stage =
+		props.guardrail && props.guardrail.kind === selectedKind.value && props.guardrail.stage
+			? { stage: props.guardrail.stage }
+			: {};
 	const shared = {
 		id:
 			props.guardrail?.id ?? slugifyGuardrailId(name.value, selectedKind.value, props.existingIds),
+		...stage,
 		...(name.value.trim() ? { name: name.value.trim() } : {}),
-		...(stage.value === 'both' ? {} : { stage: stage.value }),
+		...(response.value === 'approval' && approvalConfigurationId.value
+			? { approvalConfigurationId: approvalConfigurationId.value }
+			: {}),
 		...(toolScope.value === 'selected' ? { tools: selectedTools.value } : {}),
 	};
 
 	switch (selectedKind.value) {
-		case 'workflow': {
-			const guardrail = props.guardrail;
-			if (guardrail?.kind !== 'workflow') return;
-			return { kind: 'workflow', ...shared, stage: 'before', workflowId: guardrail.workflowId };
-		}
 		case 'keywords':
-			return { kind: 'keywords', ...shared, keywords: keywords.value };
+			return {
+				kind: 'keywords',
+				...responseField('keywords'),
+				...shared,
+				keywords: keywords.value,
+			};
 		case 'pii':
 			return {
 				kind: 'pii',
+				...responseField('pii'),
 				...shared,
 				type: piiType.value,
 				...(piiType.value === 'selected' ? { entities: piiEntities.value } : {}),
 			};
 		case 'secretKeys':
-			return { kind: 'secretKeys', ...shared, permissiveness: permissiveness.value };
+			return {
+				kind: 'secretKeys',
+				...responseField('secretKeys'),
+				...shared,
+				permissiveness: permissiveness.value,
+			};
 		case 'urls':
 			return {
 				kind: 'urls',
+				...responseField('urls'),
 				...shared,
 				...(allowedUrls.value.length > 0 ? { allowedUrls: allowedUrls.value } : {}),
 				...(allowedSchemes.value.length > 0 ? { allowedSchemes: allowedSchemes.value } : {}),
 				blockUserinfo: blockUserinfo.value,
 				allowSubdomains: allowSubdomains.value,
 			};
+		case 'workflow':
+			return {
+				kind: 'workflow',
+				...responseField('workflow'),
+				...shared,
+				workflowId: checkWorkflowId.value.trim(),
+			};
 		default:
+			// The model-based kinds: jailbreak, nsfw, topicalAlignment.
 			return {
 				kind: selectedKind.value,
+				...responseField('jailbreak'),
 				...shared,
 				...(prompt.value.trim() ? { prompt: prompt.value.trim() } : {}),
 				...(threshold.value !== undefined ? { threshold: threshold.value } : {}),
@@ -284,9 +372,7 @@ function buildConfig(): AgentToolGuardrailConfig | undefined {
 
 function onSave() {
 	if (!canSave.value) return;
-	const guardrail = buildConfig();
-	if (!guardrail) return;
-	emit('save', guardrail);
+	emit('save', buildConfig());
 	emit('update:open', false);
 }
 
@@ -337,13 +423,9 @@ function onRemove() {
 					</div>
 				</div>
 
-				<div v-if="selectedKind !== 'workflow'" :class="$style.divider" aria-hidden="true" />
+				<div :class="$style.divider" aria-hidden="true" />
 
-				<div
-					v-if="selectedKind !== 'workflow'"
-					:class="$style.kindOptions"
-					data-testid="agent-guardrail-kind-options"
-				>
+				<div :class="$style.kindOptions" data-testid="agent-guardrail-kind-options">
 					<template v-if="selectedKind === 'keywords'">
 						<div :class="$style.field">
 							<N8nText size="medium" bold>
@@ -478,6 +560,26 @@ function onRemove() {
 						</div>
 					</template>
 
+					<template v-else-if="selectedKind === 'workflow'">
+						<div :class="$style.field">
+							<N8nText size="medium" bold>
+								{{ i18n.baseText('agents.builder.guardrails.workflow.checkWorkflow.label') }}
+								<N8nText color="primary" bold size="small">*</N8nText>
+							</N8nText>
+							<AgentWorkflowPicker
+								:model-value="checkWorkflowId"
+								:project-id="projectId"
+								:disabled="disabled"
+								for-guardrail-check
+								data-testid="agent-guardrail-check-workflow"
+								@update:model-value="checkWorkflowId = $event"
+							/>
+							<N8nText size="small" :class="$style.hint">
+								{{ i18n.baseText('agents.builder.guardrails.workflow.checkWorkflow.hint') }}
+							</N8nText>
+						</div>
+					</template>
+
 					<template v-else>
 						<div :class="$style.field">
 							<N8nText size="medium" bold>
@@ -526,23 +628,58 @@ function onRemove() {
 			<div :class="$style.group" data-testid="agent-guardrail-trigger-group">
 				<div :class="$style.field">
 					<N8nText size="medium" bold>
-						{{ i18n.baseText('agents.builder.guardrails.trigger.label') }}
+						{{ i18n.baseText('agents.builder.guardrails.response.label') }}
 						<N8nText color="primary" bold size="small">*</N8nText>
 					</N8nText>
 					<N8nSelect
-						:model-value="selectedKind === 'workflow' ? 'before' : stage"
+						:model-value="response"
 						size="small"
-						:disabled="disabled || selectedKind === 'workflow'"
-						data-testid="agent-guardrail-trigger"
-						@update:model-value="stage = $event"
+						:disabled="disabled"
+						data-testid="agent-guardrail-response"
+						@update:model-value="response = $event"
 					>
 						<N8nOption
-							v-for="option in stageOptions"
+							v-for="option in responseOptions"
 							:key="option.value"
 							:value="option.value"
 							:label="option.label"
 						/>
 					</N8nSelect>
+				</div>
+
+				<div v-if="response === 'approval'" :class="$style.field">
+					<N8nText size="medium" bold>
+						{{ i18n.baseText('agents.builder.guardrails.approval.configuration.label') }}
+						<N8nText color="primary" bold size="small">*</N8nText>
+					</N8nText>
+					<N8nSelect
+						v-if="approvalConfigurationOptions.length > 0"
+						:model-value="approvalConfigurationId"
+						size="small"
+						:disabled="disabled"
+						data-testid="agent-guardrail-approval-configuration"
+						@update:model-value="approvalConfigurationId = $event"
+					>
+						<N8nOption
+							v-for="option in approvalConfigurationOptions"
+							:key="option.value"
+							:value="option.value"
+							:label="option.label"
+						/>
+					</N8nSelect>
+					<N8nText v-else size="small" :class="$style.hint">
+						{{ i18n.baseText('agents.builder.guardrails.approval.configuration.none') }}
+					</N8nText>
+					<AgentApprovalDestinationMenu
+						v-if="approvalContext"
+						:context="approvalContext"
+						:project-id="projectId ?? ''"
+						:disabled="disabled"
+						:class="$style.addReview"
+						:label="i18n.baseText('agents.builder.guardrails.approval.configuration.add')"
+						data-testid="agent-guardrail-approval-configuration-add"
+						@select="addApprovalConfiguration"
+					/>
 				</div>
 
 				<div :class="$style.field">
@@ -729,5 +866,11 @@ function onRemove() {
 
 .hint {
 	color: var(--text-color--subtler);
+}
+
+/* Sits under the empty-state hint as the field's action row. */
+.addReview {
+	margin-top: var(--spacing--3xs);
+	align-self: flex-start;
 }
 </style>

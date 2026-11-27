@@ -175,7 +175,7 @@ export interface TelemetrySchema {
 	source: string;
 }
 
-export type WorkflowToolRef = AgentJsonToolConfig & { type: 'workflow' };
+export type WorkflowToolRef = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
 
 export type {
 	NodeToolConfig,

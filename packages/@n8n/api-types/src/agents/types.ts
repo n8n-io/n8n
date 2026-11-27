@@ -5,6 +5,7 @@ import type { AgentJsonConfig } from './agent-json-config.schema';
 import type { AgentPersonalisation } from './agent-personalisation';
 import type { AgentSkillReference } from './agent-skill.schema';
 import type { AgentBackgroundJobSignal } from './background-job';
+import { AGENT_DECISION_TRIGGER_NODE_TYPE } from './agent-hitl.schema';
 import type { ProviderAttachmentCapabilities } from './provider-capabilities';
 
 export type AgentActor = 'user' | 'builder' | 'mcp';
@@ -22,6 +23,17 @@ export interface AgentSessionPreviewAccess {
 }
 
 export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE] as const;
+
+/**
+ * Triggers a `workflow`-kind guardrail check may start with: the callable
+ * tool trigger, plus the decision trigger — a check reuses the decision
+ * request contract. Tools keep the stricter tool list: a decision-trigger
+ * workflow cannot be attached as an agent tool.
+ */
+export const SUPPORTED_GUARDRAIL_CHECK_TRIGGERS = [
+	...SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
+	AGENT_DECISION_TRIGGER_NODE_TYPE,
+] as const;
 
 /** Display name of each supported trigger, keyed by node type so a rename is a one-line change. */
 const WORKFLOW_TOOL_TRIGGER_DISPLAY_NAMES: Record<
@@ -71,15 +83,35 @@ export function getWorkflowToolIncompatibilityReason(workflow: {
 	nodes?: Array<{ type: string; name: string; disabled?: boolean }>;
 	connections?: IConnections;
 }): WorkflowToolIncompatibilityReason | null {
+	return getWorkflowIncompatibilityReason(workflow, SUPPORTED_WORKFLOW_TOOL_TRIGGERS);
+}
+
+/**
+ * Why a workflow can't run as a `workflow`-kind guardrail check. `null` means
+ * compatible. Same rules as the tool check, except the entry point may also
+ * be a decision trigger.
+ */
+export function getGuardrailCheckWorkflowIncompatibilityReason(workflow: {
+	nodes?: Array<{ type: string; name: string; disabled?: boolean }>;
+	connections?: IConnections;
+}): WorkflowToolIncompatibilityReason | null {
+	return getWorkflowIncompatibilityReason(workflow, SUPPORTED_GUARDRAIL_CHECK_TRIGGERS);
+}
+
+function getWorkflowIncompatibilityReason(
+	workflow: {
+		nodes?: Array<{ type: string; name: string; disabled?: boolean }>;
+		connections?: IConnections;
+	},
+	entryTriggers: readonly string[],
+): WorkflowToolIncompatibilityReason | null {
 	const nodes = workflow.nodes ?? [];
 
 	// Entry point the agent invokes — the first supported trigger in node
 	// order, matching the runtime `detectTriggerNode` selection. Runtime does
 	// not skip disabled triggers, so neither do we; this keeps the picker and
 	// the runtime from disagreeing on which subgraph executes.
-	const triggerNode = nodes.find((n) =>
-		(SUPPORTED_WORKFLOW_TOOL_TRIGGERS as readonly string[]).includes(n.type),
-	);
+	const triggerNode = nodes.find((n) => entryTriggers.includes(n.type));
 
 	// Only nodes reachable from the entry-point trigger run when the workflow
 	// is invoked as an agent tool. With no trigger (or no connections to

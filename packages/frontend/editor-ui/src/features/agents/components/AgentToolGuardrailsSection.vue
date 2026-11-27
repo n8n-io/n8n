@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
 	AgentConfigValidationIssue,
+	AgentHitlConfiguration,
 	AgentToolGuardrailConfig,
 	AgentToolGuardrailKind,
 } from '@n8n/api-types';
@@ -11,6 +12,7 @@ import { computed, toValue, withDefaults, type MaybeRefOrGetter } from 'vue';
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import type { AgentJsonToolRef } from '../types';
 import { guardrailDisplayName, guardrailNamesTool } from '../utils/guardrails';
+import type { AgentHitlContext } from './agent-hitl.types';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentGuardrailAddMenu from './AgentGuardrailAddMenu.vue';
 
@@ -32,6 +34,12 @@ export interface ToolGuardrailsWiring {
 	getGuardrails: () => AgentToolGuardrailConfig[];
 	getTools: () => AgentJsonToolRef[];
 	onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => void;
+	/** The agent's human-review configurations, for the `approval` response target. */
+	getApprovalConfigurations?: () => AgentHitlConfiguration[];
+	/** Write access to the agent's configurations, for the modal's add-reviewer flow. */
+	getApprovalContext?: () => AgentHitlContext | undefined;
+	/** The agent's project: the check workflow picker lists its workflows. */
+	getProjectId?: () => string | undefined;
 	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 	disabled?: MaybeRefOrGetter<boolean>;
 }

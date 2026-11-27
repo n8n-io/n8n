@@ -31,6 +31,7 @@ import {
 import { isSkillNameTakenError, normalizeAgentSkillForSave } from '../utils/agentSkill';
 import { hitlConfigurationUpdates } from '../utils/hitlConfiguration';
 import { withToolGuardrails } from '../utils/guardrails';
+import { useAgentApprovalDestinationsEnabled } from './useAgentApprovalDestinationsEnabled';
 import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import type { AgentSkillConfirmResult } from '../components/AgentSkillModal.vue';
 import type { ToolGuardrailsWiring } from '../components/AgentToolGuardrailsSection.vue';
@@ -164,6 +165,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const rbacStore = useRBACStore();
+	const approvalDestinationsEnabled = useAgentApprovalDestinationsEnabled();
 	const { showError, showMessage } = useToast();
 	const { projectName } = useAgentProjectBreadcrumb(computed(() => projectId.value));
 
@@ -186,6 +188,12 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			getGuardrails: () =>
 				isCurrent() ? (localConfig.value?.config?.guardrails?.tools ?? []) : [],
 			getTools: () => (isCurrent() ? (localConfig.value?.tools ?? []) : []),
+			// The `approval` response routes through one of these configurations.
+			getApprovalConfigurations: () =>
+				isCurrent() ? (localConfig.value?.hitlConfigurations ?? []) : [],
+			getApprovalContext: () =>
+				isCurrent() && approvalDestinationsEnabled.value ? hitlContext() : undefined,
+			getProjectId: () => (isCurrent() ? projectId.value : undefined),
 			onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => {
 				if (!isCurrent()) return;
 				if (canEditAgent && !canEditAgent.value) return;

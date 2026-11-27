@@ -225,12 +225,20 @@ const hasReviewContext = computed(
 );
 const [DefineParameters, ReuseParameters] = createReusableTemplate();
 const activeTab = ref<ToolConfigTab>(toolModalData.value?.initialTab ?? 'params');
-const tabs = computed(() => [
-	...(nodeContentRef.value?.tabOptions ?? [
+const guardrailsTab = {
+	value: 'guardrails' as const,
+	label: i18n.baseText('agents.builder.guardrails.title'),
+};
+const tabs = computed(() => {
+	const nodeTabs = nodeContentRef.value?.tabOptions ?? [
 		{ value: 'params' as const, label: i18n.baseText('nodeSettings.parameters') },
-	]),
-	{ value: 'guardrails' as const, label: i18n.baseText('agents.builder.guardrails.title') },
-]);
+	];
+	// A settings-capable node reads Parameters, Guardrails, Settings, so the
+	// guardrails tab slots in before the settings tab.
+	const settingsIndex = nodeTabs.findIndex((tab) => tab.value === 'settings');
+	if (settingsIndex === -1) return [...nodeTabs, guardrailsTab];
+	return [...nodeTabs.slice(0, settingsIndex), guardrailsTab, ...nodeTabs.slice(settingsIndex)];
+});
 const showTabs = computed(
 	() => !isMcpTool.value && (supportsApproval.value || guardrailsSection.value),
 );

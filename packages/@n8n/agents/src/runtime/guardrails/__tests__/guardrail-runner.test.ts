@@ -12,7 +12,7 @@ const stop = (code: string): GuardrailDecision => ({ action: 'stop', code });
 
 function makeHook(overrides: Partial<ModelGuardrail> = {}) {
 	return {
-		before: vi.fn<NonNullable<ModelGuardrail['before']>>().mockResolvedValue(allow),
+		before: vi.fn<NonNullable<ModelGuardrail['before']>>().mockResolvedValue({ action: 'allow' }),
 		after: vi.fn<NonNullable<ModelGuardrail['after']>>().mockResolvedValue(undefined),
 		beforeTool: vi.fn<NonNullable<ModelGuardrail['beforeTool']>>().mockResolvedValue(allow),
 		afterTool: vi.fn<NonNullable<ModelGuardrail['afterTool']>>().mockResolvedValue(undefined),
@@ -174,7 +174,7 @@ describe('GuardrailRunner', () => {
 
 			const result = await runnerFor([first, second, third]).afterTool(toolCtx, {});
 
-			expect(result).toEqual({ code: 'tool.a' });
+			expect(result).toEqual({ stop: { code: 'tool.a' } });
 			expect(first.afterTool).toHaveBeenCalledWith(toolCtx, {});
 			expect(third.afterTool).not.toHaveBeenCalled();
 		});
@@ -186,6 +186,61 @@ describe('GuardrailRunner', () => {
 			const result = await runnerFor([observing, voidHook]).afterTool(toolCtx, {});
 
 			expect(result).toBeUndefined();
+		});
+
+		it('threads a before-stage redact into the context and later hooks', async () => {
+			const redact = makeHook({
+				beforeTool: vi.fn<NonNullable<ModelGuardrail['beforeTool']>>().mockResolvedValue({
+					action: 'redact',
+					code: 'guardrail.redact',
+					value: { rewritten: true },
+				}),
+			});
+			const later = makeHook();
+
+			const ctx = { ...toolCtx };
+			const result = await runnerFor([redact, later]).beforeTool(ctx);
+
+			expect(result).toBeUndefined();
+			expect(ctx.input).toEqual({ rewritten: true });
+			expect(later.beforeTool).toHaveBeenCalledWith(ctx);
+			// The rewritten input was visible to the later hook at call time.
+			expect(vi.mocked(later.beforeTool).mock.calls[0]?.[0].input).toEqual({ rewritten: true });
+		});
+
+		it('stops even when a later hook would redact', async () => {
+			const first = makeHook();
+			const stopper = makeHook({ beforeTool: vi.fn().mockResolvedValue(stop('tool.a')) });
+			const redacts = makeHook({
+				beforeTool: vi.fn<NonNullable<ModelGuardrail['beforeTool']>>().mockResolvedValue({
+					action: 'redact',
+					code: 'guardrail.redact',
+					value: { rewritten: true },
+				}),
+			});
+
+			const ctx = { ...toolCtx };
+			const result = await runnerFor([first, stopper, redacts]).beforeTool(ctx);
+
+			expect(result).toEqual({ code: 'tool.a' });
+			expect(ctx.input).toBe(toolCtx.input);
+			expect(redacts.beforeTool).not.toHaveBeenCalled();
+		});
+
+		it('returns the redacted result and lets later hooks see it', async () => {
+			const redact = makeHook({
+				afterTool: vi.fn<NonNullable<ModelGuardrail['afterTool']>>().mockResolvedValue({
+					action: 'redact',
+					code: 'guardrail.redact',
+					value: { clean: true },
+				}),
+			});
+			const later = makeHook();
+
+			const result = await runnerFor([redact, later]).afterTool(toolCtx, { dirty: true });
+
+			expect(result).toEqual({ redacted: { clean: true } });
+			expect(later.afterTool).toHaveBeenCalledWith(toolCtx, { clean: true });
 		});
 	});
 });

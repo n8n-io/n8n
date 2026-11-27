@@ -23,3 +23,4 @@ export {
 	createTopicalAlignmentCheckFn,
 	TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
 } from './checks/topical-alignment';
+export { redactMatches } from './mask';

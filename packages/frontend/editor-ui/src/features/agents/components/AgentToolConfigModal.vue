@@ -110,6 +110,9 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 			...(request.kind ? { kind: request.kind } : {}),
 			getGuardrails: wiring.getGuardrails,
 			getTools: wiring.getTools,
+			getApprovalConfigurations: wiring.getApprovalConfigurations,
+			getApprovalContext: wiring.getApprovalContext,
+			getProjectId: wiring.getProjectId,
 			disabled: wiring.disabled,
 			onUpdateGuardrails: wiring.onUpdateGuardrails,
 			onExit: () => {

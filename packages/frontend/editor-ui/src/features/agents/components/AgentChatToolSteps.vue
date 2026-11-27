@@ -28,6 +28,11 @@ import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { isCompactToolName, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import {
+	parseGuardrailStop,
+	guardrailStopLabelKey,
+	guardrailStopType,
+} from '../utils/guardrail-stop';
+import {
 	getDelegateDifficultySummary,
 	isDelegateSubAgentTool,
 	resolveSubAgentName,
@@ -44,6 +49,7 @@ import {
 import { TOOL_CALL_STATE } from '../constants';
 import { parseToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
 import AgentChatToolPolicyRefusal from './AgentChatToolPolicyRefusal.vue';
+import AgentChatGuardrailStopCallout from './AgentChatGuardrailStopCallout.vue';
 import AgentChatHostEvents from './AgentChatHostEvents.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import { getToolOutputAttachments } from '../utils/tool-output-files';
@@ -111,6 +117,8 @@ const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 		if (isRecoverablePlanError(toolCall)) continue;
 		// The assistant cannot lift a policy.
 		if (toolStepRefusal(toolCall)) continue;
+		// A guardrail stops by design; fixing the agent does not change that.
+		if (toolStepGuardrailStop(toolCall)) continue;
 
 		const error = toolStepError(toolCall)?.trim();
 		if (!error) continue;
@@ -239,6 +247,23 @@ function toolStepRefusal(tc: ToolCall) {
 	return parseToolPolicyRefusal(tc.output);
 }
 
+function toolStepGuardrailStop(tc: ToolCall) {
+	return parseGuardrailStop(tc);
+}
+
+/** A guardrail stop carries the callout's shared info blue, not danger. */
+const GUARDRAIL_STOP_ICON_COLOR = '--icon-color--info';
+
+function toolStepErrorIcon(tc: ToolCall) {
+	if (toolStepRefusal(tc)) return 'lock';
+	if (toolStepGuardrailStop(tc)) return 'crosshair';
+	return undefined;
+}
+
+function toolStepErrorIconColor(tc: ToolCall) {
+	return toolStepGuardrailStop(tc) ? GUARDRAIL_STOP_ICON_COLOR : undefined;
+}
+
 function isCanceledToolCall(tc: ToolCall): boolean {
 	return (
 		tc.canceled === true ||
@@ -259,6 +284,13 @@ function toolStepError(tc: ToolCall): string | undefined {
 		const { scope } = getViolationVerdict(refusal.violations[0]);
 		return i18n.baseText(SCOPE_LABEL_KEY[scope ?? 'instance']);
 	}
+	// The stop callout names the guardrail kind; the raw stop code stays in
+	// the step's data section.
+	if (toolStepGuardrailStop(tc)) {
+		return i18n.baseText(guardrailStopLabelKey(toolStepGuardrailStop(tc)!), {
+			interpolate: { type: i18n.baseText(guardrailStopType(toolStepGuardrailStop(tc)!)) },
+		});
+	}
 	if (isEmptyToolErrorPayload(tc.output)) {
 		return i18n.baseText('agents.chat.toolError.generic');
 	}
@@ -267,6 +299,9 @@ function toolStepError(tc: ToolCall): string | undefined {
 
 function hideToolErrorCallout(tc: ToolCall): boolean {
 	if (toolStepRefusal(tc)) return false;
+	// The guardrail stop renders its own standalone callout in the step
+	// content, so the danger wrapper must not nest it.
+	if (toolStepGuardrailStop(tc)) return true;
 	return isRecoverablePlanError(tc) || (showFix.value && tc.state === TOOL_CALL_STATE.ERROR);
 }
 
@@ -314,7 +349,8 @@ function hasActiveToolCall(): boolean {
 						:label="view.label"
 						:loading="isToolStepLoading(tc)"
 						:error="toolStepError(tc)"
-						:error-icon="toolStepRefusal(tc) ? 'lock' : undefined"
+						:error-icon="toolStepErrorIcon(tc)"
+						:error-icon-color="toolStepErrorIconColor(tc)"
 						:hide-error-callout="hideToolErrorCallout(tc)"
 						:has-content="view.expandable"
 					>
@@ -378,6 +414,12 @@ function hasActiveToolCall(): boolean {
 								</ToolDataSection>
 							</template>
 						</div>
+						<!-- Standalone so it never nests inside the step's error callout. -->
+						<AgentChatGuardrailStopCallout
+							v-if="toolStepGuardrailStop(tc)"
+							:stop="toolStepGuardrailStop(tc)!"
+							:class="$style.stopCallout"
+						/>
 					</N8nAiActivityStep>
 					<AgentChatMessageAttachments
 						v-if="outputFiles(tc).length && projectId && agentId"
@@ -397,7 +439,8 @@ function hasActiveToolCall(): boolean {
 					:label="toolStepView(tc).label"
 					:loading="isToolStepLoading(tc)"
 					:error="toolStepError(tc)"
-					:error-icon="toolStepRefusal(tc) ? 'lock' : undefined"
+					:error-icon="toolStepErrorIcon(tc)"
+					:error-icon-color="toolStepErrorIconColor(tc)"
 					:hide-error-callout="hideToolErrorCallout(tc)"
 					:has-content="toolStepView(tc).expandable"
 				>
@@ -462,6 +505,12 @@ function hasActiveToolCall(): boolean {
 								</ToolDataSection>
 							</template>
 						</div>
+						<!-- Standalone so it never nests inside the step's error callout. -->
+						<AgentChatGuardrailStopCallout
+							v-if="toolStepGuardrailStop(tc)"
+							:stop="toolStepGuardrailStop(tc)!"
+							:class="$style.stopCallout"
+						/>
 					</template>
 				</N8nAiActivityStep>
 				<AgentChatMessageAttachments
@@ -571,6 +620,13 @@ function hasActiveToolCall(): boolean {
 	gap: var(--spacing--xs);
 	margin-bottom: var(--spacing--xs);
 	max-width: min(520px, calc(100vw - var(--spacing--4xl)));
+}
+
+/* Sits where the step's own error callout would, as a standalone row. */
+.stopCallout {
+	margin-top: var(--spacing--xs);
+	margin-bottom: var(--spacing--xs);
+	max-width: 90%;
 }
 </style>
 

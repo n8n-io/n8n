@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { mount } from '@vue/test-utils';
+import { mount, type VueWrapper } from '@vue/test-utils';
+import type { ComponentPublicInstance } from 'vue';
+import type { Component } from 'vue';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nDropdownMenu } from '@n8n/design-system';
 
 import AgentGuardrailsSection from '../components/AgentGuardrailsSection.vue';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
+import type { AgentHitlContext } from '../components/agent-hitl.types';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -56,7 +59,16 @@ vi.mock('../components/AgentBudgetPanel.vue', () => ({
 vi.mock('../components/AgentGuardrailModal.vue', () => ({
 	default: {
 		name: 'AgentGuardrailModal',
-		props: ['open', 'guardrail', 'kind', 'tools', 'disabled'],
+		props: [
+			'open',
+			'guardrail',
+			'kind',
+			'tools',
+			'approvalConfigurations',
+			'approvalContext',
+			'projectId',
+			'disabled',
+		],
 		emits: ['update:open', 'save', 'remove'],
 		template: '<div data-testid="agent-guardrail-modal-stub" />',
 	},
@@ -162,6 +174,7 @@ function mountSection(
 		tools: AgentJsonToolRef[];
 		disabled: boolean;
 		validationIssues: AgentConfigValidationIssue[];
+		approvalContext: AgentHitlContext;
 	}> = {},
 	approval?: string,
 ) {
@@ -280,7 +293,7 @@ describe('AgentGuardrailsSection', () => {
 		expect(chip.find('[data-testid="guardrail-chip-tool-fallback-icon"]').exists()).toBe(false);
 	});
 
-	it('offers the seven kinds on the add menu', async () => {
+	it('offers the eight kinds on the add menu', async () => {
 		const wrapper = mountSection();
 
 		await openAddMenu(wrapper);
@@ -293,12 +306,12 @@ describe('AgentGuardrailsSection', () => {
 			'secretKeys',
 			'topicalAlignment',
 			'urls',
+			'workflow',
 		];
 		for (const kind of expectedKinds) {
 			expect(addMenuItem(kind), `add menu item ${kind}`).not.toBeNull();
 		}
-		// v1 has no Workflow, custom prompt, or custom regex kinds.
-		expect(addMenuItem('workflow')).toBeNull();
+		// v1 has no custom prompt or custom regex kinds.
 		expect(addMenuItem('customPrompt')).toBeNull();
 		expect(addMenuItem('customRegex')).toBeNull();
 	});
@@ -309,7 +322,11 @@ describe('AgentGuardrailsSection', () => {
 		const button = wrapper.get('[data-testid="agent-guardrails-add"]').element;
 		await openAddMenu(wrapper);
 
-		expect(wrapper.getComponent(N8nDropdownMenu).props('reference')).toBe(button);
+		// N8nDropdownMenu is generic, so `getComponent` cannot infer its type on its own.
+		const menu = wrapper.getComponent(N8nDropdownMenu as Component) as VueWrapper<
+			ComponentPublicInstance<{ reference: unknown }>
+		>;
+		expect(menu.props('reference')).toBe(button);
 		expect(document.querySelector('[role="menu"]')).not.toBeNull();
 	});
 
@@ -465,6 +482,15 @@ describe('AgentGuardrailsSection', () => {
 
 		expect(wrapper.emitted('update:budget-config')?.[0]).toEqual([changes]);
 		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('forwards the review context and configurations into the guardrail modal', () => {
+		const approvalContext: AgentHitlContext = { getConfig: () => null, saveConfiguration: vi.fn() };
+		const wrapper = mountSection({ approvalContext });
+
+		const modal = wrapper.getComponent({ name: 'AgentGuardrailModal' });
+		expect(modal.props('approvalContext')).toStrictEqual(approvalContext);
+		expect(modal.props('approvalConfigurations')).toEqual([]);
 	});
 
 	it('opens the add menu from the empty-state button when no guardrail exists', async () => {

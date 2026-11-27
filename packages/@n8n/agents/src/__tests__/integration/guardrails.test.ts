@@ -14,6 +14,7 @@ import { Agent } from '../../index';
 import type {
 	GuardrailDecision,
 	GuardrailModelCallContext,
+	GuardrailModelCallDecision,
 	GuardrailToolCallContext,
 	GuardrailsOptions,
 	ModelGuardrail,
@@ -26,7 +27,7 @@ const IDS = { agentId: 'agent-1', threadId: 'thread-1' };
 
 type Decide = {
 	/** Called with the 1-based index of the model call. */
-	before?: (callNumber: number) => GuardrailDecision | undefined;
+	before?: (callNumber: number) => GuardrailModelCallDecision | undefined;
 	beforeTool?: (ctx: GuardrailToolCallContext) => GuardrailDecision | undefined;
 };
 
@@ -60,7 +61,7 @@ function recordingGuardrail(decide: Decide = {}) {
 	return { guardrails, calls };
 }
 
-const stop = (code: string): GuardrailDecision => ({ action: 'stop', code });
+const stop = (code: string): GuardrailModelCallDecision => ({ action: 'stop', code });
 
 describe('guardrails integration', () => {
 	it('refuses the first model call in generate', async () => {

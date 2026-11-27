@@ -516,7 +516,7 @@ describe('AgentToolConfigModal', () => {
 		expect(getNativeTestId(container, 'agent-tool-config-validation-error')).toBeInTheDocument();
 	});
 
-	it('places HTTP Request Settings in the main tab bar before Guardrails', async () => {
+	it('places Guardrails in the main tab bar before HTTP Request Settings', async () => {
 		const { getAllByRole, getByRole, getByTestId } = renderModal({
 			ref: toolRef({ nodeType: 'n8n-nodes-base.httpRequestTool' }),
 		});
@@ -525,8 +525,8 @@ describe('AgentToolConfigModal', () => {
 		expect(getAllByRole('tablist')).toHaveLength(1);
 		expect(getAllByRole('tab').map((tab) => tab.textContent?.trim())).toEqual([
 			'nodeSettings.parameters',
-			'nodeSettings.settings',
 			'agents.builder.guardrails.title',
+			'nodeSettings.settings',
 		]);
 
 		const content = getByTestId('node-tool-settings-content');

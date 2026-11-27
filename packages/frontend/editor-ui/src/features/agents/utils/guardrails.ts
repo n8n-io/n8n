@@ -3,7 +3,9 @@ import type {
 	AgentToolGuardrailKind,
 	AgentToolGuardrailToolRef,
 	ToolGuardrailPiiEntity,
+	ToolGuardrailResponse,
 } from '@n8n/api-types';
+import { TOOL_GUARDRAIL_RESPONSES } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
@@ -16,10 +18,27 @@ export const TOOL_GUARDRAIL_KINDS: readonly AgentToolGuardrailKind[] = [
 	'secretKeys',
 	'topicalAlignment',
 	'urls',
+	'workflow',
 ] as const;
 
 export function guardrailKindLabelKey(kind: AgentToolGuardrailKind): BaseTextKey {
 	return `agents.builder.guardrails.kind.${kind}` as BaseTextKey;
+}
+
+/** The kind's default response; the modal presets it and the runtime resolves an absent response the same way. */
+export function guardrailDefaultResponse(kind: AgentToolGuardrailKind): ToolGuardrailResponse {
+	return TOOL_GUARDRAIL_RESPONSES[kind].default;
+}
+
+/** Only the responses the kind allows, in the agreed order. */
+export function guardrailAllowedResponses<K extends AgentToolGuardrailKind>(
+	kind: K,
+): Array<(typeof TOOL_GUARDRAIL_RESPONSES)[K]['allowed'][number]> {
+	return [...TOOL_GUARDRAIL_RESPONSES[kind].allowed];
+}
+
+export function guardrailResponseLabelKey(response: ToolGuardrailResponse): BaseTextKey {
+	return `agents.builder.guardrails.response.${response}` as BaseTextKey;
 }
 
 export function guardrailDisplayName(
