@@ -48,10 +48,9 @@ export class CreateFolderTable1738709609940 implements ReversibleMigration {
 				onDelete: 'CASCADE',
 			});
 
-		// On SQLite this migration commits its own transaction, and the executor
-		// records it afterwards. A stop between the two leaves the column in place
-		// with no record, so the next run must not add the column again. The
-		// `createTable` calls above already skip existing tables.
+		// An older version can leave the column in place with no record in `migrations`,
+		// so the next run must not add the column again. The `createTable` calls above
+		// already skip existing tables.
 		if (await queryRunner.hasColumn(`${tablePrefix}workflow_entity`, 'parentFolderId')) return;
 
 		await runQuery(

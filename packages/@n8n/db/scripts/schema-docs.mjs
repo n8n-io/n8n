@@ -289,9 +289,6 @@ async function main() {
 			migrations,
 		});
 		await dataSource.initialize();
-		// Wrap only after initialize(): TypeORM constructs each migration during
-		// metadata building, and wrapping installs a `transaction` getter that
-		// would clash with migrations setting `transaction` in their constructor.
 		migrations.forEach(wrapMigration);
 		await dataSource.runMigrations({ transaction: 'each' });
 		await dataSource.destroy();

@@ -439,7 +439,7 @@ All six require a final options parameter with `recreatesOnSqlite: true` — Typ
    }
    ```
 
-**How `withFKsDisabled` works:** The migration wrapper calls `PRAGMA foreign_keys=OFF` before `up()`/`down()`, runs the migration inside a manual transaction, then re-enables foreign keys. This prevents CASCADE from firing during the internal table drop. It also sets `transaction = false` to avoid TypeORM's default transaction (since SQLite can't nest transactions with PRAGMA changes).
+**How `withFKsDisabled` works:** On SQLite, the migration executor turns foreign keys off (`PRAGMA foreign_keys = OFF`) before the transaction opens. It then runs the migration and updates the `migrations` table in one transaction, so the rebuild and the `migrations` row commit together. After commit or rollback, the executor turns foreign keys back on. This stops `CASCADE` from firing during the table drop. On rollback (`down`), the executor disables foreign keys only when `withFKsDisabled = true`, so ordinary reverts keep `ON DELETE CASCADE` active.
 
 > **Note:** On Postgres, these methods use `ALTER TABLE` directly and don't recreate the table. The risk is SQLite-specific.
 
@@ -794,7 +794,7 @@ Count source vs temp before swapping; throw on mismatch. Silent row loss during 
 
 ### Atomic SQL within the migration's transaction
 
-Some migrations override with `transaction = false as const` for big DDL on engines that disallow it inside a transaction. The DSL/wrapper sets `transaction = false` automatically when `withFKsDisabled = true`. Otherwise, leave transactions alone — TypeORM wraps each migration in one by default.
+Some migrations override with `transaction = false as const` for big DDL on engines that disallow it inside a transaction. Do not set `transaction = false` on a `withFKsDisabled` migration. That sends it down the standalone path in `runDisablingForeignKeys`, which commits the schema change separately from the `migrations` row. Otherwise, leave transactions alone — TypeORM wraps each migration in one by default.
 
 ---
 

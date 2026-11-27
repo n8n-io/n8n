@@ -134,7 +134,7 @@ describe('SQLite withFKsDisabled migration atomicity (CAP-733)', () => {
 		rmSync(tempDir, { recursive: true, force: true });
 	});
 
-	async function runWithPostCommitInterruption(ds: DataSource): Promise<void> {
+	function interruptAfterNextCommit(ds: DataSource): { wasInterrupted: () => boolean } {
 		let interrupted = false;
 		const crashAfterCommit: EntitySubscriberInterface = {
 			afterTransactionCommit() {
@@ -145,11 +145,7 @@ describe('SQLite withFKsDisabled migration atomicity (CAP-733)', () => {
 			},
 		};
 		ds.subscribers.push(crashAfterCommit);
-
-		await expect(ds.runMigrations({ transaction: 'each' })).rejects.toThrow(
-			'Transaction commit failed',
-		);
-		expect(interrupted).toBe(true);
+		return { wasInterrupted: () => interrupted };
 	}
 
 	async function getForeignKeysEnabled(ds: DataSource): Promise<number> {
@@ -248,7 +244,11 @@ describe('SQLite withFKsDisabled migration atomicity (CAP-733)', () => {
 		dataSource = await openSqliteDataSource(dbPath, [migration]);
 		await seedTables(dataSource);
 
-		await runWithPostCommitInterruption(dataSource);
+		const crash = interruptAfterNextCommit(dataSource);
+		await expect(dataSource.runMigrations({ transaction: 'each' })).rejects.toThrow(
+			'Transaction commit failed',
+		);
+		expect(crash.wasInterrupted()).toBe(true);
 
 		// Simulate a fresh process boot on the same SQLite database file.
 		await dataSource.destroy();
@@ -265,15 +265,20 @@ describe('SQLite withFKsDisabled migration atomicity (CAP-733)', () => {
 
 	it('commits the migration record atomically with the schema change when withFKsDisabled is set', async () => {
 		// Regression test for CAP-733:
-		// runDisablingForeignKeys commits the table rebuild before MigrationExecutor
-		// inserts the row into `migrations`. A stop right after commit leaves the
-		// column dropped without a migration record, so every later boot fails.
+		// Previously, runDisablingForeignKeys committed the table rebuild before
+		// MigrationExecutor inserted the row into `migrations`. A stop right after
+		// commit left the column dropped without a migration record, so every later
+		// boot failed.
 		const dbPath = join(tempDir, `interrupted-${++dbCounter}.sqlite`);
 		const migration = createDropDescriptionMigration({ withFKsDisabled: true });
 		dataSource = await openSqliteDataSource(dbPath, [migration]);
 		await seedTables(dataSource);
 
-		await runWithPostCommitInterruption(dataSource);
+		const crash = interruptAfterNextCommit(dataSource);
+		await expect(dataSource.runMigrations({ transaction: 'each' })).rejects.toThrow(
+			'Transaction commit failed',
+		);
+		expect(crash.wasInterrupted()).toBe(true);
 
 		// Simulate a fresh process boot on the same SQLite database file.
 		await dataSource.destroy();
@@ -321,21 +326,11 @@ describe('SQLite withFKsDisabled migration atomicity (CAP-733)', () => {
 		await dataSource.runMigrations({ transaction: 'each' });
 		expect(await getParentColumns(dataSource)).not.toContain('description');
 
-		let interrupted = false;
-		const crashAfterCommit: EntitySubscriberInterface = {
-			afterTransactionCommit() {
-				if (!interrupted) {
-					interrupted = true;
-					throw new Error('Simulated process stop after rollback commit');
-				}
-			},
-		};
-		dataSource.subscribers.push(crashAfterCommit);
-
+		const crash = interruptAfterNextCommit(dataSource);
 		await expect(dataSource.undoLastMigration({ transaction: 'each' })).rejects.toThrow(
 			'Transaction commit failed',
 		);
-		expect(interrupted).toBe(true);
+		expect(crash.wasInterrupted()).toBe(true);
 
 		// Simulate a fresh process boot on the same SQLite database file.
 		await dataSource.destroy();
