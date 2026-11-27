@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/AgentTimeline.assistantTestRun.test.ts
+  h_8a472ace01776f 12,162,165,176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e3dd42f0f0e2ba0103aa44d42a2c7cb9179de79b",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
