@@ -134,12 +134,11 @@ export class LeaseSessionManager {
 		this.watchdogTimer = undefined;
 		this.inFlightInsert?.giveUp();
 
-		await this.waitForInserts();
-
 		const id = this.currentId;
 		this.currentId = undefined;
-		if (id !== undefined) await this.deleteSession(id);
+		if (id !== undefined) this.deleteRow(id);
 
+		await this.waitForInserts();
 		await Promise.all(this.pendingDeletes);
 	}
 

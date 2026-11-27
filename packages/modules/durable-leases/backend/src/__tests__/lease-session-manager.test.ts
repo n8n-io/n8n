@@ -475,7 +475,7 @@ describe('LeaseSessionManager', () => {
 		await expectHeld(second.id);
 	});
 
-	it('waits on stop for an abandoned insert and deletes its row', async () => {
+	it('deletes the current row before stop waits for an abandoned insert, then deletes its row', async () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0.5);
 		let finishInsert: () => void = () => {};
 		sessions.insertSession.mockImplementationOnce(
@@ -496,12 +496,13 @@ describe('LeaseSessionManager', () => {
 		});
 		await vi.advanceTimersByTimeAsync(0);
 		expect(stopped).toBe(false);
+		expect(sessions.deleteSession).toHaveBeenCalledWith(second.id, expect.anything());
+		expect(sessions.deleteSession).not.toHaveBeenCalledWith(first.id, expect.anything());
 
 		finishInsert();
 		await stopping;
 
 		expect(sessions.deleteSession).toHaveBeenCalledWith(first.id, expect.anything());
-		expect(sessions.deleteSession).toHaveBeenCalledWith(second.id, expect.anything());
 	});
 
 	it('resolves a second stop only after the first has deleted the row', async () => {
